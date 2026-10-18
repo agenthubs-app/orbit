@@ -159,7 +159,7 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
 
   if (stage.kind === "checking") return <AppScreen title="" backIcon="x" onBack={back}><Skeleton lines={4} /></AppScreen>;
   if (stage.kind === "intro") return <PermissionStage denied={stage.denied} error={error} onAllow={() => void allow()} onNotNow={back} onVcard={() => void pickVcard()} onBack={back} />;
-  if (stage.kind === "pick") return <PickStage people={stage.people} error={error} onBack={back} onImport={importPeople} />;
+  if (stage.kind === "pick") return <PickStage people={stage.people} error={error} onBack={back} onImport={importPeople} {...(design === "design-pick" ? { previewRows: 6 } : {})} />;
   return <OrganizingStage count={stage.count} preview={stage.preview} progress={stage.progress} onClose={() => router.replace("/contacts" as Href)} />;
 }
 
@@ -208,7 +208,7 @@ function PermissionStage({ denied, error, onAllow, onNotNow, onVcard, onBack }: 
 type PickFilter = "company" | "workMail";
 
 /** b9 A2 ② 選ぶ: すべて / 選んで取り込む, the ✨ pre-selection with its 根拠, filters, the list, N人を取り込む. */
-function PickStage({ people, error, onBack, onImport }: { people: PickPerson[]; error: string | null; onBack: () => void; onImport: (chosen: readonly PickPerson[], excluded: number) => void }) {
+function PickStage({ people, error, onBack, onImport, previewRows }: { people: PickPerson[]; error: string | null; onBack: () => void; onImport: (chosen: readonly PickPerson[], excluded: number) => void; previewRows?: number }) {
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [mode, setMode] = useState<"all" | "pick">("pick");
@@ -243,7 +243,7 @@ function PickStage({ people, error, onBack, onImport }: { people: PickPerson[]; 
             <FilterOption label={t("add.import.filterWorkMail")} count={people.filter((person) => person.workMail).length} selected={filter === "workMail"} onToggle={() => setFilter((value) => (value === "workMail" ? null : "workMail"))} />
           </View>
           <View style={[styles.card, styles.listCard]}>
-            {shown.map((person, index) => {
+            {(previewRows === undefined ? shown : shown.slice(0, previewRows)).map((person, index) => {
               const on = mode === "all" || chosen.has(person.id);
               return (
                 <UiPressable key={person.id} accessibilityRole="checkbox" accessibilityLabel={t("add.import.selectRow", { name: person.name })} accessibilityState={{ checked: on, disabled: mode === "all" }} disabled={mode === "all"}
