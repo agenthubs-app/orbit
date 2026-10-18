@@ -1,0 +1,21 @@
+{
+  "_note": "R20b PLANNER rev2 §7 board inventory only. Routes and state steps remain provisional until SC04–08; no pixel-pass claim. AI/recording areas await board revision or are deferred.",
+  "defaults": {
+    "grid": 30,
+    "wait": 2500,
+    "attribution": "scripts/visual/attribution-redesign-R20b.json"
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/memo/**",
+    "repos/orbit-app/src/screens/task/TaskScreen.tsx",
+    "repos/orbit-app/src/i18n/*/notes.ts"
+  ],
+  "views": [
+    { "id": "A-R20b-01", "design": "app.html", "board-index": 26, "themes": ["light"], "path": "/task?seg=memo", "note": "大量数据；SC04。当前旧屏不作为实现截图。" },
+    { "id": "A-R20b-02", "design": "b11-nav-v3.html", "board-index": 36, "themes": ["light"], "path": "/notes/new", "note": "@人 / @イベント候补；SC05，交互状态待接。" },
+    { "id": "A-R20b-03", "design": "b5-me-inbox.html", "board-index": 46, "themes": ["light"], "path": "/notes/new", "note": "只取手写与保存结构；AI 文案待主会话改稿。" },
+    { "id": "A-R20b-05", "design": "b5-me-inbox.html", "board-index": 49, "themes": ["light"], "path": "/task?seg=memo", "note": "空态；AI 提示待改稿。" },
+    { "id": "A-R20b-06", "design": "b5-me-inbox.html", "board-index": 50, "themes": ["light"], "path": "/task?seg=memo", "note": "少量数据；SC04/06。" },
+    { "id": "A-R20b-07", "design": "b5-me-inbox.html", "board-index": 51, "themes": ["light"], "path": "/task?seg=memo", "note": "大量数据；voice 仅来源 chip，回放元素待改稿。" }
+  ]
+}

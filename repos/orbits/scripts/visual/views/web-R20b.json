@@ -1,0 +1,17 @@
+{
+  "_note": "R20b PLANNER rev2 §7: web.html #19 is the sole Web memo board. 1024, 390 and dark boards do not exist; screenshot-only handoff, no pixel-pass claim.",
+  "defaults": {
+    "app-origin": "http://localhost:3500",
+    "login": "qa@orbit.test",
+    "grid": 30,
+    "attribution": "scripts/visual/attribution-redesign-R20b.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/memo/**",
+    "repos/orbits/app/(app)/app/orbit-2026/task/TaskContainer.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/memo.ts"
+  ],
+  "views": [
+    { "id": "W-R20b-01", "app": "/app/tasks?tab=memo", "design": "web.html", "board-index": 19, "width": 1440, "themes": ["light"], "note": "左列表/右详情；SC07/14。当前空态不作为实现截图。" }
+  ]
+}
