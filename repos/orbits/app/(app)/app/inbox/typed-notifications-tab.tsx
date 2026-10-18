@@ -1,7 +1,7 @@
 'use client';
 import {notificationWebSourceHref} from './notification-source-view-model';
 import { scanSecretaryNotificationPage, secretaryKind } from '../../../../shared/compute/secretary-source';
-import { CategoryTabs, ListRow, type RowAction } from '../orbit-2026/ui';
+import { CategoryTabs, Icon, ListRow, type RowAction } from '../orbit-2026/ui';
 import styles from './typed-notifications-tab.module.css';
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
@@ -76,7 +76,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
   {data?<div className={styles.workspace}>
    <section className={`${styles.list} ${detail?styles.detailOpen:''}`} aria-label={t({zh:'通知列表',en:'Notifications',ja:'通知一覧'})}>
     <CategoryTabs label={t({zh:'通知类别',en:'Notification categories',ja:'通知の分類'})} value={filter} onChange={key=>selectFilter(key as keyof typeof categories)} options={(Object.keys(categories) as (keyof typeof categories)[]).map(k=>({key:k,label:t(categories[k])}))} />
-    <div className={styles.toolbar}><button type="button" className="btn btn-ghost" disabled={busy||!data.items.some(n=>!n.readAt&&n.actions.includes('read'))} onClick={()=>void markRead()}>{t({zh:'全部已读',en:'Mark all read',ja:'すべて既読'})}</button></div>
+    <div className={styles.toolbar}><button type="button" className="btn btn-ghost" disabled={busy||!data.items.some(n=>!n.readAt&&n.actions.includes('read'))} onClick={()=>void markRead()}>{t({zh:'全部已读',en:'Mark all read',ja:'すべて既読'})}</button><a className="btn btn-ghost" href="/app/settings/notifications" aria-label={t({zh:'通知设置',en:'Notification settings',ja:'通知の設定'})}><Icon name="settings" size={16}/></a></div>
     {data.items.map(n=>{
       const day=new Date(n.occurredAt).toLocaleDateString(language,{timeZone:'Asia/Tokyo',month:'long',day:'numeric'});
       const heading=day!==previousDay;previousDay=day;
