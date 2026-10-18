@@ -80,6 +80,7 @@ test.before(async () => {
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export { AppState } from "fixture";
+export const findNodeHandle = instance => instance ?? null;
 export const useWindowDimensions = () => ({ ...realDimensions(), fontScale: useFixture().fontScale });
 const scaled = (style, scale) => { const s = StyleSheet.flatten(style) || {}; return [style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]; };
 export const Text = props => <RealText {...props} style={scaled(props.style, useFixture().fontScale)} />;
@@ -113,6 +114,39 @@ async function writes(p: Page) { return p.evaluate(() => (window as any).fixture
 async function reply(p: Page, status = 200, taskPatch: object = {}, dataOverride?: object) {
   await p.evaluate(({ status, taskPatch, dataOverride }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); const task = { ...s.task, ...s.requests[i].body.patch, updatedAt: "2026-09-13T03:00:00.000Z", ...taskPatch }; for (const key of ["plannedDate", "dueAt", "location"]) if (task[key] === null) delete task[key]; if (status === 200 && !dataOverride) s.task = task; s.reply(i, status, dataOverride ?? (status === 200 ? { task } : undefined)); }, { status, taskPatch, dataOverride }); await settle(p);
 }
+
+test("task deletion waits for confirmation, cancel leaves it intact, and confirm sends its version", async t => {
+  const p = await open(t);
+  await press(p, "删除待办");
+  assert.equal(await p.getByText("要删除这项待办吗？", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  await press(p, "取消");
+  assert.deepEqual(await writes(p), []);
+  await press(p, "删除待办");
+  await press(p, "确认删除");
+  const [write] = await writes(p);
+  assert.equal(write.method, "DELETE");
+  assert.equal(write.path, "/api/tasks/task%3Aedit");
+  assert.equal(write.body.expectedUpdatedAt, initialTask.updatedAt);
+  assert.ok(write.body.idempotencyKey);
+});
+
+test("second date deferral asks before writing and cancellation keeps the edited date", async t => {
+  const p = await open(t, { task: { ...initialTask, plannedDate: "2026-09-14", deferralCount: 1 } });
+  await fill(p, "安排日期", "2026-09-16");
+  await press(p, "保存日期、时间和地点");
+  assert.equal(await p.getByText("又推迟一次吗？", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  await press(p, "取消");
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-16");
+  await press(p, "保存日期、时间和地点");
+  await press(p, "继续延期");
+  const [write] = await writes(p);
+  assert.equal(write.method, "PATCH");
+  assert.equal(write.body.expectedUpdatedAt, initialTask.updatedAt);
+  assert.deepEqual(write.body.patch, { plannedDate: "2026-09-16" });
+});
 
 test("date editor saves only changed dates with version/key and rereads detail, history and reminders", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");

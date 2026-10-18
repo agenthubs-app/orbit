@@ -66,5 +66,11 @@ export const taskDetail = {
   "taskDetail.cancelReminder": "キャンセル",
   "taskDetail.changeHistory": "変更履歴",
   "taskDetail.deleteTask": "タスクを削除",
+  "taskDetail.deleteConfirmTitle": "このタスクを削除しますか？",
+  "taskDetail.deleteConfirmBody": "メモとやりとりは残ります。削除は元に戻せません。",
+  "taskDetail.deleteConfirmAction": "削除する",
+  "taskDetail.deferAgainTitle": "また延期しますか？",
+  "taskDetail.deferAgainBody": "このタスクはすでに延期されています。",
+  "taskDetail.deferAgainAction": "延期する",
   "taskDetail.cancelTask": "タスクを取り消す",
 } as const;

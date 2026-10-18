@@ -50,6 +50,13 @@ export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, ti
   return Object.keys(patch).length ? { kind: "ready", patch } : { kind: "unchanged" };
 }
 
+/** Match the task service's "moved later" rule; first-time dates are not deferrals. */
+export function taskDatePatchMovesLater(baseline: TaskDates, patch: TaskDatePatch): boolean {
+  return typeof patch.plannedDate === "string" && typeof baseline.plannedDate === "string" && patch.plannedDate > baseline.plannedDate ||
+    typeof patch.dueAt === "string" && typeof baseline.dueAt === "string" &&
+    Number.isFinite(Date.parse(patch.dueAt)) && Number.isFinite(Date.parse(baseline.dueAt)) && Date.parse(patch.dueAt) > Date.parse(baseline.dueAt);
+}
+
 export function taskDateReceiptMatches(data: unknown, taskId: string, actorId: string, patch: TaskDatePatch): boolean {
   if (!data || typeof data !== "object" || !("task" in data)) return false;
   const task = data.task;

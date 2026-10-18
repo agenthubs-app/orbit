@@ -66,5 +66,11 @@ export const taskDetail = {
   "taskDetail.cancelReminder": "Cancel",
   "taskDetail.changeHistory": "Change history",
   "taskDetail.deleteTask": "Delete task",
+  "taskDetail.deleteConfirmTitle": "Delete this task?",
+  "taskDetail.deleteConfirmBody": "Notes and conversations will remain. Deleting this task cannot be undone.",
+  "taskDetail.deleteConfirmAction": "Delete task",
+  "taskDetail.deferAgainTitle": "Postpone this task again?",
+  "taskDetail.deferAgainBody": "This task has already been postponed.",
+  "taskDetail.deferAgainAction": "Postpone again",
   "taskDetail.cancelTask": "Cancel task",
 } as const;

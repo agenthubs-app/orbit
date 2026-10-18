@@ -154,6 +154,19 @@ test("actual list keeps 61 task IDs in four scope/status combinations without ca
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
+test("personal list tab reads the owned complement and never treats contact-linked work as personal", async t => {
+  const page = await open(t);
+  await page.getByRole("tab", { name: "个人", exact: true }).click();
+  await page.getByRole("tab", { name: "未完成 10", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox").count(), 10);
+  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 0);
+  await page.getByRole("tab", { name: "已完成 9", exact: true }).click();
+  await page.getByRole("checkbox", { name: "恢复：事项 43", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox").count(), 9);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+});
+
 test("route parameters use first values and preserve a distinct contact navigation target", async t => {
   const page = await open(t, { params: { scope: ["relationship", "all"], view: ["completed", "open"] } });
   await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();

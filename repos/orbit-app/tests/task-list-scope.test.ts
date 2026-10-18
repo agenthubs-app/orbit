@@ -88,6 +88,16 @@ test("61 canonical tasks retain four orthogonal views, unique IDs and no candida
   assert.deepEqual(selectTaskListItems([], { scope: "relationship", view: "completed" }), []);
 });
 
+test("personal tasks exclude contact-linked work even when its contact label is unavailable", () => {
+  const tasks = Array.from({ length: 61 }, (_, index) => task(index));
+  const personalOpen = selectTaskListItems(tasks, { scope: "personal", view: "open" });
+  const personalCompleted = selectTaskListItems(tasks, { scope: "personal", view: "completed" });
+  assert.deepEqual([personalOpen.length, personalCompleted.length], [10, 9]);
+  assert.ok(personalOpen.some(item => item.id === "task:60"));
+  assert.ok(!personalOpen.some(item => item.id === "task:22"));
+  assert.ok(!personalCompleted.some(item => item.id === "task:21"));
+});
+
 test("legacy followups links return to the relationship list with only supported status parameters", () => {
   assert.equal(resolveSupportedInitialRouteHref("/followups?scope=all&view=completed&next=https://outside.example"), "/task?seg=todo&scope=relationship&view=completed");
   assert.equal(resolveSupportedInitialRouteHref("/app/home/schedule?view=unknown"), "/task?seg=todo&scope=relationship");

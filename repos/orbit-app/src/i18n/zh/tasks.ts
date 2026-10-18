@@ -11,6 +11,7 @@ export const tasks = {
   "tasks.addAtToday": "添加待办（前往今天）",
   "tasks.scopeAll": "全部",
   "tasks.scopeRelationship": "人脉",
+  "tasks.scopePersonal": "个人",
   "tasks.unavailable": "待办暂时打不开",
   "tasks.dataUnavailable": "待办数据暂不可用",
   "tasks.dataUnavailableBody": "无法确认事项所属账号或版本，请重新读取。",

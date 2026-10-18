@@ -6,6 +6,13 @@
 import { hostCopyKinds } from "./host-kinds";
 
 export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[] = [
+  ["tasks.scopePersonal", "tab"],
+  ["taskDetail.deleteConfirmTitle", "question"],
+  ["taskDetail.deleteConfirmBody", "sentence"],
+  ["taskDetail.deleteConfirmAction", "button"],
+  ["taskDetail.deferAgainTitle", "question"],
+  ["taskDetail.deferAgainBody", "sentence"],
+  ["taskDetail.deferAgainAction", "button"],
   ["todo.retry", "button"],
   ["todo.open", "button"],
   ["todo.accept", "button"],

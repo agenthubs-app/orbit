@@ -147,7 +147,7 @@ export function TasksScreen() {
       title={locale.t("tasks.title")}
     >
       <View accessibilityRole="tablist" style={styles.tabs}>
-        {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
+        {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")], ["personal", locale.t("tasks.scopePersonal")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
       </View>
       <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={source.counts?.open} completedCount={source.counts?.completed} />
       {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} queues="tasks" /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
@@ -216,7 +216,7 @@ export function TasksScreen() {
       {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
       {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-      <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} />
+      {selection.scope !== "personal" ? <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} /> : null}
       {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}
       {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={`tools:${scopeKey}`} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={source.tasksPayload} /> : null}
     </AppScreen>

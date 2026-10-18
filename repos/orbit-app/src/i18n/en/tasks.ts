@@ -11,6 +11,7 @@ export const tasks = {
   "tasks.addAtToday": "Add task (open Today)",
   "tasks.scopeAll": "All",
   "tasks.scopeRelationship": "People",
+  "tasks.scopePersonal": "Personal",
   "tasks.unavailable": "Tasks unavailable",
   "tasks.dataUnavailable": "Task data unavailable",
   "tasks.dataUnavailableBody": "The task account or version could not be confirmed. Reload the list.",

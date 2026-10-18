@@ -210,6 +210,12 @@ test("task detail and activity history expose stable Chinese labels", () => {
   assert.equal(activities[1]?.dateLabel, "8月29日 11:00");
 });
 
+test("task detail preserves only a valid deferral count for the second-delay warning", () => {
+  assert.equal(taskDetailToView({ task: { ...openTask, deferralCount: 1 } })?.deferralCount, 1);
+  assert.equal(taskDetailToView({ task: openTask })?.deferralCount, 0);
+  assert.equal(taskDetailToView({ task: { ...openTask, deferralCount: -1 } })?.deferralCount, 0);
+});
+
 test("owned task detail accepts the canonical account and rejects a foreign owner", () => {
   assert.equal(ownedTaskDetailToView({ task: openTask }, "account:xiaoyu")?.id, openTask.id);
   assert.equal(ownedTaskDetailToView({ task: openTask }, "user:raw-login"), null);

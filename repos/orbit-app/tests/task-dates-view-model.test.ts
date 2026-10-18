@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildTaskDatePatch, taskDateDraftFromView, taskDateReceiptMatches } from "../src/view-models/task-dates";
+import { buildTaskDatePatch, taskDateDraftFromView, taskDatePatchMovesLater, taskDateReceiptMatches } from "../src/view-models/task-dates";
 
 const empty = { plannedDate: "", dueDate: "", dueTime: "" };
 const task = { id: "task:edit", accountId: "actor-1", ownerUserId: "actor-1", title: "A task", notes: "A note", status: "open", category: "work", priority: "normal", source: "manual", createdAt: "2026-09-07T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z", plannedDate: "2026-09-15", dueAt: "2026-09-15T00:30:00+09:00" };
@@ -86,4 +86,14 @@ test("explicit empty date and location drafts produce null deletion patches", ()
   assert.deepEqual(buildTaskDatePatch({ plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z", location: "Tokyo" }, { ...empty, location: "" }), { kind: "ready", patch: { plannedDate: null, dueAt: null, location: null } });
   assert.equal(taskDateReceiptMatches({ task: { ...task, plannedDate: undefined, dueAt: undefined, location: undefined } }, task.id, "actor-1", { plannedDate: null, dueAt: null, location: null }), true);
   assert.equal(taskDateReceiptMatches({ task }, task.id, "actor-1", { plannedDate: null }), false);
+});
+
+test("another-deferral warning follows the server's later-date rule only", () => {
+  const baseline = { plannedDate: "2026-09-15", dueAt: "2026-09-15T00:30:00+09:00" };
+  assert.equal(taskDatePatchMovesLater(baseline, { plannedDate: "2026-09-16" }), true);
+  assert.equal(taskDatePatchMovesLater(baseline, { dueAt: "2026-09-14T16:00:00.000Z" }), true);
+  assert.equal(taskDatePatchMovesLater(baseline, { plannedDate: "2026-09-14" }), false);
+  assert.equal(taskDatePatchMovesLater(baseline, { dueAt: "2026-09-14T15:00:00.000Z" }), false);
+  assert.equal(taskDatePatchMovesLater(baseline, { location: "Tokyo" }), false);
+  assert.equal(taskDatePatchMovesLater({}, { plannedDate: "2026-09-16" }), false);
 });

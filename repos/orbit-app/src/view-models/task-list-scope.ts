@@ -2,7 +2,7 @@ import type { TaskItemContract } from "../api/contract/tasks";
 import { taskDetailToView } from "./today-tasks";
 
 export interface TaskListSelection {
-  scope: "all" | "relationship";
+  scope: "all" | "relationship" | "personal";
   view: "open" | "completed";
 }
 
@@ -29,7 +29,8 @@ export function taskListHref(params?: { scope?: unknown; view?: unknown } | null
 export function selectTaskListItems<T extends Pick<TaskItemContract,"id"|"status"|"category"|"relatedContactId">>(tasks: readonly T[], selection: TaskListSelection): T[] {
   const ids = new Set<string>();
   return tasks.filter(task => {
-    if (!task.id || task.status !== selection.view || (selection.scope === "relationship" && !isRelationshipTask(task)) || ids.has(task.id)) return false;
+    if (!task.id || task.status !== selection.view || (selection.scope === "relationship" && !isRelationshipTask(task)) ||
+      (selection.scope === "personal" && isRelationshipTask(task)) || ids.has(task.id)) return false;
     ids.add(task.id);
     return true;
   });

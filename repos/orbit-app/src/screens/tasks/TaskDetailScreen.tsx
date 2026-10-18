@@ -28,13 +28,14 @@ import type { TaskItemContract } from "../../api/contract/tasks";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
 import { ownedTaskDetailToView, taskActivitiesToView, type TaskDetailView } from "../../view-models/today-tasks";
-import { buildTaskDatePatch, taskDateDraftFromView, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
+import { buildTaskDatePatch, taskDateDraftFromView, taskDatePatchMovesLater, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -144,6 +145,8 @@ export function TaskDetailScreen() {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
   const [confirmConflictDelete, setConfirmConflictDelete] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmSecondDeferral, setConfirmSecondDeferral] = useState(false);
   const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>(), controller: new AbortController() }), [client, scopeKey]);
   const scopeRef = useRef(mutationScope);
   scopeRef.current = mutationScope;
@@ -155,7 +158,7 @@ export function TaskDetailScreen() {
     setEditTimeZone(timeZone);
     setBaseline(null); setLatest(null); setTitle(""); setNotes("");
     setDateDraft(taskDateDraftFromView(null));
-    setMoreOpen(false); setSaving(false); setMutationError(null); setReminderMessage(null);
+    setMoreOpen(false); setConfirmDelete(false); setConfirmSecondDeferral(false); setSaving(false); setMutationError(null); setReminderMessage(null);
   }
 
   useEffect(() => {
@@ -164,6 +167,8 @@ export function TaskDetailScreen() {
     setMutationError(null);
     setReminderMessage(null);
     setMoreOpen(false);
+    setConfirmDelete(false);
+    setConfirmSecondDeferral(false);
     return () => { mutationScope.active = false; mutationScope.controller.abort(); mutationScope.keys.clear(); };
   }, [mutationScope]);
 
@@ -275,7 +280,7 @@ export function TaskDetailScreen() {
     setDateDraft(dateDraftRef.current);
   }
 
-  async function saveDates() {
+  async function saveDates(confirmedSecondDeferral = false) {
     if (!canSave) { setMutationError(locale.t("taskDetail.timezoneUnavailable")); return; }
     if (!ready || scopeRef.current !== mutationScope || !mutationScope.active || dateDraftRef.current !== dateDraft) return;
     if (!detail || !baseline || baseline.id !== taskId || detail.status === "cancelled" || staleDraft || saving) return;
@@ -283,6 +288,11 @@ export function TaskDetailScreen() {
     const change = buildTaskDatePatch(baseline, dateDraft, editTimeZone);
     if (change.kind === "invalid") { setMutationError(change.message); return; }
     if (change.kind === "unchanged") { setMutationError(null); return; }
+    if (baseline.deferralCount >= 1 && taskDatePatchMovesLater(baseline, change.patch) && !confirmedSecondDeferral) {
+      setMoreOpen(false);
+      setConfirmSecondDeferral(true);
+      return;
+    }
     const revisionAtStart = latest?.updatedAt;
     await mutate("patch", taskPath(taskId), {
       action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
@@ -630,7 +640,7 @@ export function TaskDetailScreen() {
                   </View>)}
                   <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
                   {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
-                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category) || staleDraft || detail.status === "cancelled"} onPress={saveDates}
+                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category) || staleDraft || detail.status === "cancelled"} onPress={() => { void saveDates(); }}
                     style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
                     <Text style={styles.completeButtonText}>{locale.t(saving ? "taskDetail.saving" : "taskDetail.saveDateTime")}</Text>
                   </Pressable>
@@ -662,7 +672,7 @@ export function TaskDetailScreen() {
                   {detail.status === "open" ? <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={cancelTask} style={styles.sheetRow}>
                     <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelTask")}</Text>
                   </Pressable> : null}
-                  <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={deleteTask} style={styles.deleteButton}>
+                  <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => { setMoreOpen(false); setConfirmDelete(true); }} style={styles.deleteButton}>
                     <Ionicons color={colors.coralText} name="trash-outline" size={18} />
                     <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
                   </Pressable>
@@ -670,6 +680,14 @@ export function TaskDetailScreen() {
               </View>
             </View>
           </Modal>
+          <ConfirmDialog visible={confirmDelete && !saving} destructive title={locale.t("taskDetail.deleteConfirmTitle")}
+            message={locale.t("taskDetail.deleteConfirmBody")} confirmLabel={locale.t("taskDetail.deleteConfirmAction")}
+            onCancel={() => { setConfirmDelete(false); setMoreOpen(true); }}
+            onConfirm={() => { setConfirmDelete(false); void deleteTask(); }} />
+          <ConfirmDialog visible={confirmSecondDeferral && !saving} destructive title={locale.t("taskDetail.deferAgainTitle")}
+            message={locale.t("taskDetail.deferAgainBody")} confirmLabel={locale.t("taskDetail.deferAgainAction")}
+            onCancel={() => { setConfirmSecondDeferral(false); setMoreOpen(true); }}
+            onConfirm={() => { setConfirmSecondDeferral(false); void saveDates(true); }} />
         </>
       ) : null}
     </AppScreen>

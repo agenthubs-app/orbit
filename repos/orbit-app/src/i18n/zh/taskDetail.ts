@@ -66,5 +66,11 @@ export const taskDetail = {
   "taskDetail.cancelReminder": "取消",
   "taskDetail.changeHistory": "变更历史",
   "taskDetail.deleteTask": "删除待办",
+  "taskDetail.deleteConfirmTitle": "要删除这项待办吗？",
+  "taskDetail.deleteConfirmBody": "备注和往来记录会保留。删除待办后无法恢复。",
+  "taskDetail.deleteConfirmAction": "确认删除",
+  "taskDetail.deferAgainTitle": "又推迟一次吗？",
+  "taskDetail.deferAgainBody": "这项待办之前已经推迟过。",
+  "taskDetail.deferAgainAction": "继续延期",
   "taskDetail.cancelTask": "取消待办",
 } as const;

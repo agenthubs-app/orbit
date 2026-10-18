@@ -66,6 +66,7 @@ export interface TaskDetailView {
   sourceNoteVersion?: number;
   priority: TaskItemContract["priority"];
   updatedAt: string;
+  deferralCount: number;
   localMutationState?: "queued" | "conflict" | "failed";
 }
 
@@ -393,6 +394,7 @@ export function taskDetailToView(payload: unknown, language: OrbitLanguage = "zh
       : {}),
     priority: task.priority,
     updatedAt: task.updatedAt,
+    deferralCount: Number.isSafeInteger(task.deferralCount) && (task.deferralCount ?? -1) >= 0 ? task.deferralCount! : 0,
     ...(task.localMutationState ? { localMutationState: task.localMutationState } : {}),
   };
 }

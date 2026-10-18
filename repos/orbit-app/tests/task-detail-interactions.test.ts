@@ -68,6 +68,7 @@ export const ErrorState = ({ message }) => <div>{message}</div>;
 export const LoadingState = () => <div>Loading</div>;
 export const Ionicons = () => <span aria-hidden="true">◇</span>;
 export const createThemedStyles = () => () => ({ colors: {}, styles: {} });
+export const useOrbitTheme = () => ({ colors: {}, scheme: "light" });
 export const notifyReminderPlansChanged = () => { state.notifications++; };
 export const requestNotificationPermission = async () => {
   state.permissionCalls++;
@@ -91,6 +92,7 @@ test.before(async () => {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native-props", namespace: "task-test" }));
         plugin.onLoad({ filter: /^native-props$/, namespace: "task-test" }, () => ({
           contents: `import React from "react"; import { Pressable as NativePressable } from "react-native-web"; export * from "react-native-web";
+            export const findNodeHandle = instance => instance ?? null;
             export const Pressable = React.forwardRef((props, ref) => {
               if (props.testID === "task-settings-scrim") window.fixture.scrimAccessibility = {
                 accessible: props.accessible,
@@ -386,6 +388,8 @@ for (const boundary of ["task", "client", "unmount"]) {
     await page.evaluate(() => { (window as any).fixture.hold = true; });
     await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
     await page.getByRole("button", { name: "删除待办", exact: true }).click();
+    assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0, "delete waits for confirmation");
+    await page.getByRole("button", { name: "确认删除", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
     await page.evaluate(boundary => {
       const fixture = (window as any).fixture;
@@ -442,9 +446,12 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       : operation === "delete" ? page.getByRole("button", { name: "删除待办", exact: true })
       : page.getByText(operation === "reminder" ? "1 小时后" : "取消", { exact: true });
     await action.click();
-    await page.getByRole("alert").filter({ hasText: "连接暂时失败" }).waitFor();
+    if (operation === "delete") await page.getByRole("button", { name: "确认删除", exact: true }).click();
+    await page.getByRole("alert").filter({ hasText: "连接暂时失败" }).first().waitFor();
     await page.evaluate(() => { (window as any).fixture.failure = false; });
+    if (operation === "delete") await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
     await action.click();
+    if (operation === "delete") await page.getByRole("button", { name: "确认删除", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.notifications === 1);
     const snapshot = await page.evaluate(() => {
       const { requests, refreshes, navigation } = (window as any).fixture;

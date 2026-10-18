@@ -11,6 +11,7 @@ export const tasks = {
   "tasks.addAtToday": "タスクを追加（今日へ移動）",
   "tasks.scopeAll": "すべて",
   "tasks.scopeRelationship": "つながり",
+  "tasks.scopePersonal": "個人",
   "tasks.unavailable": "タスクを開けません",
   "tasks.dataUnavailable": "タスクデータを利用できません",
   "tasks.dataUnavailableBody": "タスクのアカウントまたはバージョンを確認できません。再読み込みしてください。",

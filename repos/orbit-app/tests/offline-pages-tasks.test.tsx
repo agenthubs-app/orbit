@@ -102,6 +102,8 @@ test("task detail on the phone offline: the actor's own work task completes, can
   await deletePage.getByText(TASKS_OFFLINE_BANNER).waitFor();
   await deletePage.getByRole("button", { name: "更多待办操作" }).first().dispatchEvent("click");
   await deletePage.getByRole("button", { name: "删除待办", exact: true }).dispatchEvent("click");
+  assert.deepEqual((await enqueued(deletePage)) ?? [], [], "delete waits for explicit confirmation even offline");
+  await deletePage.getByRole("button", { name: "确认删除", exact: true }).click();
   await deletePage.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
   const [remove] = await enqueued(deletePage);
   assert.equal(remove?.operation, "delete");
