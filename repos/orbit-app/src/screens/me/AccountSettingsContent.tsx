@@ -8,14 +8,16 @@ import { AccountRow } from "./parts/AccountRow";
 import type { AccountPermissionStatus } from "./permission-action";
 
 export type AccountPermissionRow = { key: "camera" | "calendar" | "notification"; status: AccountPermissionStatus; onPress: () => void };
-export function AccountSettingsContent({ t, name, email, language, appearance, development, permissions, onOpen, onLanguage, onAppearance, onSignOut }: {
-  t: OrbitTranslator; name: string; email: string; language: "ja" | "en" | "zh"; appearance: AppearanceChoice; development: boolean; permissions: AccountPermissionRow[];
+export function AccountSettingsContent({ t, name, email, accountName, accountEmail, language, appearance, development, permissions, onOpen, onLanguage, onAppearance, onSignOut }: {
+  t: OrbitTranslator; name: string; email: string; accountName?: string; accountEmail?: string; language: "ja" | "en" | "zh"; appearance: AppearanceChoice; development: boolean; permissions: AccountPermissionRow[];
   onOpen: (path: string) => void; onLanguage: (language: "ja" | "en" | "zh") => void; onAppearance: (choice: AppearanceChoice) => void; onSignOut: () => void;
 }) {
   const { styles } = useStyles();
+  const rowName = name.trim() || accountName?.trim() || t("settings.account");
+  const rowEmail = accountEmail?.trim() || email.trim();
   return <View style={styles.stack}>
     <Card>
-      <ListRow title={name} subtitle={email} leading={<Avatar name={name} />} onPress={() => onOpen("/account")} /></Card>
+      <ListRow title={rowName} subtitle={rowEmail} leading={<Avatar name={rowName} />} onPress={() => onOpen("/account")} /></Card>
     <UiText style={styles.label}>{t("me.help")}</UiText>
     <Card style={styles.group}>
       <AccountRow icon="share" title={t("me.export")} onPress={() => onOpen("/settings/export")} />

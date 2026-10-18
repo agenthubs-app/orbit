@@ -28,7 +28,7 @@ export function AccountSettingsScreen() {
   return <AppScreen inset="kit" title={locale.t("me.settings")}>
     {error ? <UiText accessibilityRole="alert">{error}</UiText> : null}
     {permission.failed ? <UiText accessibilityRole="alert">{locale.t("me.permissionsError")}</UiText> : null}
-    <AccountSettingsContent t={locale.t} name={profile.data?.profile?.displayName ?? locale.t("settings.account")} email={profile.data?.profile?.handles?.email ?? ""} language={locale.language} appearance={appearance} development={typeof __DEV__ !== "undefined" && __DEV__} permissions={permission.rows}
+    <AccountSettingsContent t={locale.t} name={profile.data?.profile?.displayName ?? ""} email={profile.data?.profile?.handles?.email ?? ""} accountName={auth.user?.name ?? ""} accountEmail={auth.user?.email ?? ""} language={locale.language} appearance={appearance} development={typeof __DEV__ !== "undefined" && __DEV__} permissions={permission.rows}
       onOpen={path => router.push(accountDestination(path, profile.path) as Href)} onLanguage={language => void locale.setLanguage(language)} onAppearance={choice => void setAppearanceChoice(choice)} onSignOut={() => void signOut()} />
   </AppScreen>;
 }

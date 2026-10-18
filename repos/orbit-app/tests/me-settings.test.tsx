@@ -11,6 +11,16 @@ test("R18a settings shows only three effective languages and approved destinatio
   for (const hidden of ["NFC", "ご利用プラン", "端末の言語を使用", "サーバー", "プッシュ通知"]) assert.ok(!html.includes(hidden), hidden);
   assert.equal((html.match(/role="tab"/g) ?? []).length, 6);
 });
+test("R18a settings shows the signed-in account when the profile name is unconfirmed", async () => {
+  const { AccountSettingsContent } = await import("../src/screens/me/AccountSettingsContent");
+  const html = renderToHtml(createElement(AccountSettingsContent, {
+    t: createTranslator("en"), name: "", email: "", accountName: "R18a Native 25", accountEmail: "native25@example.test",
+    language: "en", appearance: "system", development: false, permissions: [],
+    onOpen: () => {}, onLanguage: () => {}, onAppearance: () => {}, onSignOut: () => {},
+  }));
+  assert.match(html, /R18a Native 25/);
+  assert.match(html, /native25@example\.test/);
+});
 test("R18a OS permission action requests only undetermined and opens Settings after denial", async () => {
   const module = await import("../src/screens/me/permission-action").catch(() => null); assert.ok(module);
   const calls: string[] = [];
