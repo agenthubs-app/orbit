@@ -124,7 +124,7 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
                   </View>
                   <DensityDots level={1} />
                 </View>
-                {draft.sourceLabel ? <View style={d.chips}><KitChip label={t("add.drafts.from", { label: draft.sourceLabel })} /></View> : null}
+                {draft.sourceLabel ? <View style={d.chips}><KitChip label={`${fixture ? "🥂 " : ""}${t("add.drafts.from", { label: draft.sourceLabel })}`} /></View> : null}
                 <View style={d.acts}>
                   <View style={d.act}><SmallButton label={t("add.drafts.confirm")} busy={busy === draft.id} disabled={Boolean(busy)} onPress={() => void confirm(draft)} testID={`add-draft-confirm-${draft.id}`} /></View>
                   <View style={d.act}><SmallButton ghost label={t("add.drafts.discard")} disabled={Boolean(busy)} onPress={() => setDiscarding(draft)} testID={`add-draft-discard-${draft.id}`} /></View>
