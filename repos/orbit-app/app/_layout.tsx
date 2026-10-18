@@ -94,13 +94,14 @@ export function ErrorBoundary({
 // R05: the shell's one tab bar sits over the navigator, under overlays.
 function UiRoot({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const auth = useOrbitAuthSession();
   // The bar hides while the keyboard is up; the toast then drops to its no-bar place (R05 review m6).
   const { keyboardVisible } = useMobileViewport();
   return (
-    <ToastProvider hasTabBar={mainTabForPath(pathname) !== null && !keyboardVisible}>
+    <ToastProvider hasTabBar={auth.signedIn && mainTabForPath(pathname) !== null && !keyboardVisible}>
       <UiPortalHost routeKey={pathname}>
         {children}
-        <ShellTabBar />
+        {auth.signedIn ? <ShellTabBar /> : null}
         <UiFeedbackHost />
       </UiPortalHost>
     </ToastProvider>
