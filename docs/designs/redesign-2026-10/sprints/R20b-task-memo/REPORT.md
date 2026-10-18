@@ -8,6 +8,8 @@
 
 エラー記録の先行テストは **22 pass / 5 fail**。失敗の原因は actor/contact/note ID と例外文がログに出ること、また `beginCall` / 書戻しの任意例外文が提取記録に保存されることだった。両方を固定 stage / code に替え、同じ二ファイル **27/27 pass**。provider の呼出し回数、失敗後の再試行可否、抽出済み結果の保持は変更していない。Web `typecheck:app` exit0。通常の Web `typecheck` は B 線全量と重なり、空きメモリ 8% の時点でこちらから中断した（exit130）；合格扱いせず資源が落ち着いてから再走する。全量は Sprint 收口時のみという主会話の指示どおり未実行。C11 の保存→計画提議→確認後の計分、端末読回と UI は未検証で、SC-10 は OPEN のまま。
 
+補助回帰として、新筆記の本文だけを変更すると新しい hash で再補掃され、再度の同一本文は実行されないことを実 PostgreSQL で確認した。終態、disabled、未来／到期 deferred の候補判定も同じ新筆記で確認し、保守ファイルは最終編集後 **7/7 pass**、隔離 `network_%` schema 残留 **0**。追加テストを含む作業ツリーで通常 Web `typecheck` を新規実行し **exit0**、Web `lint` も **exit0**。これは C11 の局所検証であり、Sprint 全量や E2E の合格ではない。
+
 ## 20:30 統合チェックポイント
 
 `line-d` の clean `5e0419cdc` を `origin/redesign 324218dda` へ rebase し、HEAD は `c06741285` になった。157 commits の replay で止まったのは `add-contact-screens.test.tsx` の dialog entrance wait 一箇所だけ。上流 `936a7289d` が同じ待機を実装済みなので、その実装を残し、D 側の重複を入れなかった。rebase は exit0、直後の `git diff --check` は exit0。R20a / R20b の product source をこの衝突解消で変更していない。
@@ -114,4 +116,4 @@ SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror �
 
 ## 未完と次の検証
 
-両端の typecheck と Web `typecheck:app` / lint は各記録時点では exit0、画板 preflight runner も両端 exit0 だが七板の五項目確認は未通過。上記の full はすべて記載した source 時点の赤い結果で、現 HEAD の green を意味しない。一般 task list の plan-aware ETag は actor scope と一行 304 を保って修正済みだが、端末側の計画失効 mirror と E 線 UI 連動は OPEN。2026-10-19 の RD-33 により、offline contact create / ID alias は B 線後続 DEFERRED、R20b はオンライン作成済み連絡先を参照する offline note に絞る。C11 補掃・PII 不記録は D 線担当となり未実装。R20a の残項、b5 の AI・録音改稿、Web #19 右欄の操作出典と七板 preflight はなお UI／pixel 門禁を閉じない。cross-client readback、C11 提議から計分、E 線 UI 相互検証も未実施。変更したファイル以外の D 線 Task source / tests は他作業として保持し、この REPORT の成果に数えない。
+両端の typecheck と Web `typecheck:app` / lint は各記録時点では exit0、画板 preflight runner も両端 exit0 だが七板の五項目確認は未通過。上記の full はすべて記載した source 時点の赤い結果で、現 HEAD の green を意味しない。一般 task list の plan-aware ETag は actor scope と一行 304 を保って修正済みだが、端末側の計画失効 mirror と E 線 UI 連動は OPEN。2026-10-19 の RD-33 により、offline contact create / ID alias は B 線後続 DEFERRED、R20b はオンライン作成済み連絡先を参照する offline note に絞る。C11 補掃・PII 不記録は D 線の部分実装と上記の局所回帰まで完了したが、保存から計画提議・確認後の計分、端末読回までは未検証。R20a の残項、b5 の AI・録音改稿、Web #19 右欄の操作出典と七板 preflight はなお UI／pixel 門禁を閉じない。cross-client readback と E 線 UI 相互検証も未実施。変更したファイル以外の D 線 Task source / tests は他作業として保持し、この REPORT の成果に数えない。

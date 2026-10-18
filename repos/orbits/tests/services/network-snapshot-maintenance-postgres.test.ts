@@ -125,16 +125,14 @@ test("SC-04 maintenance: bounded memo-extraction rescan runs memos without an ex
 test("R20b C11: a saved plan-use meeting note is rescanned once after its after-hook is missed", databaseTest, async () => {
   await withNetworkDatabase(async (harness) => {
     await harness.addContact(ALICE, "c1", { organization: "Cloudline", role: "CTO" });
+    const note = {
+      id: "note:meeting-1", accountId: ALICE, ownerUserId: ALICE, title: "Meeting", body: "Discussed a SaaS partnership.",
+      manualContactIds: ["c1"], mentions: [], contactIds: ["c1"], eventIds: [], noteKind: "meeting", usedForPlan: true,
+      version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+    };
     await harness.insertRecord({
       collection: "notes", id: "note:meeting-1", userId: ALICE,
-      payload: {
-        schemaVersion: 2, operations: [],
-        note: {
-          id: "note:meeting-1", accountId: ALICE, ownerUserId: ALICE, title: "Meeting", body: "Discussed a SaaS partnership.",
-          manualContactIds: ["c1"], mentions: [], contactIds: ["c1"], eventIds: [], noteKind: "meeting", usedForPlan: true,
-          version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
-        },
-      },
+      payload: { schemaVersion: 2, operations: [], note },
     });
     const pgStore = createPostgresLiveRecordStore({ client: harness.pool as never });
     const memoStore = createLiveRecordMemoExtractionStore({ store: pgStore as never, workspaceId: WORKSPACE });
@@ -161,7 +159,53 @@ test("R20b C11: a saved plan-use meeting note is rescanned once after its after-
     const second = await task.run({ deadline: Date.now() + 30_000, now: () => NOW });
     assert.equal((second as Record<string, number>).memoRescanned, 0);
     assert.equal(providerCalls, 1);
-    assert.deepEqual((await harness.pool.query(`select pool, purpose, status from ai_usage_ledger`)).rows, [{ pool: "background", purpose: "memo_extraction", status: "succeeded" }]);
+    const editedBody = "Discussed a new investment partnership.";
+    await harness.updatePayload("notes", note.id, { note: { ...note, body: editedBody } });
+    assert.deepEqual(
+      (await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE })).map(({ noteId, body }) => [noteId, body]),
+      [[note.id, editedBody]],
+    );
+    const edited = await task.run({ deadline: Date.now() + 30_000, now: () => NOW });
+    assert.equal((edited as Record<string, number>).memoRescanned, 1);
+    assert.equal(providerCalls, 2);
+    assert.equal((await task.run({ deadline: Date.now() + 30_000, now: () => NOW }) as Record<string, number>).memoRescanned, 0);
+    const ledgerRows = (await harness.pool.query(`select pool, purpose, status from ai_usage_ledger`)).rows;
+    assert.equal(ledgerRows.length, 2);
+    assert.ok(ledgerRows.every((row) => row.pool === "background" && row.purpose === "memo_extraction" && row.status === "succeeded"));
+  });
+});
+
+test("R20b C11: plan-use note rescan honors terminal, disabled and deferred extraction states", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await harness.addContact(ALICE, "c1");
+    const noteId = "note:meeting-retry";
+    const body = "Discussed a partnership.";
+    await harness.insertRecord({
+      collection: "notes", id: noteId, userId: ALICE,
+      payload: {
+        schemaVersion: 2, operations: [],
+        note: {
+          id: noteId, accountId: ALICE, ownerUserId: ALICE, title: "Meeting", body,
+          manualContactIds: ["c1"], mentions: [], contactIds: ["c1"], eventIds: [], noteKind: "meeting", usedForPlan: true,
+          version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+        },
+      },
+    });
+    const candidates = () => listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE });
+    assert.deepEqual((await candidates()).map(({ noteId: id }) => id), [noteId]);
+    const key = memoExtractionKey(noteId, body);
+    const extractionId = `memo-extraction:${encodeURIComponent(ALICE)}:${key}`;
+    await harness.insertRecord({
+      collection: "memo_extractions", id: extractionId, userId: ALICE,
+      payload: { actorId: ALICE, contactId: "c1", key, noteId, status: "succeeded" },
+    });
+    assert.equal((await candidates()).length, 0, "terminal extraction is not retried");
+    await harness.updatePayload("memo_extractions", extractionId, { status: "disabled" });
+    assert.equal((await candidates()).length, 1, "disabled extraction can be reconsidered");
+    await harness.updatePayload("memo_extractions", extractionId, { status: "deferred", retryOn: TOMORROW.toISOString() });
+    assert.equal((await candidates()).length, 0, "future retry is not due");
+    await harness.updatePayload("memo_extractions", extractionId, { retryOn: NOW.toISOString() });
+    assert.equal((await candidates()).length, 1, "due retry is eligible");
   });
 });
 
