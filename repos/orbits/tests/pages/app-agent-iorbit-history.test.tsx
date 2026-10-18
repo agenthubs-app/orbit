@@ -693,6 +693,25 @@ test("deleting from the row menu goes through the confirmation dialog before the
   assert.ok(textOf(toastNode(harness.root)!.children as unknown).includes("对话已删除"));
 });
 
+test("undo timer uses the server deadline when DELETE is delayed", async (t) => {
+  const harness = await mountShell(t, {
+    deleteUndoMs: 2_000,
+    sessionPages: [[session("session:a", "要删掉的对话", "2026-09-20T00:00:00.000Z")]],
+  });
+  await openDrawer(harness);
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick();
+  });
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-delete": "session:a" }).props.onClick();
+  });
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-confirm-delete": true }).props.onClick();
+  });
+  await harness.settle();
+  assert.ok(harness.timers.some((timer) => timer.delay > 1_000 && timer.delay <= 2_000));
+});
+
 /* ── 3. 右栏行为 ───────────────────────────────────────────────────────── */
 
 test("the aside's first two rows ask through the conversations API", async (t) => {

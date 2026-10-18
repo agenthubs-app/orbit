@@ -67,6 +67,8 @@ export interface HarnessOptions {
   organizationPersisted?: boolean;
   /** `DELETE` 是否写入成功。 */
   removePersisted?: boolean;
+  /** `DELETE` 回执距服务端撤销截止的毫秒数。 */
+  deleteUndoMs?: number;
   search?: string;
   sessionStorageSeed?: Record<string, string>;
   /** 按 cursor 分页返回的会话页。 */
@@ -323,7 +325,7 @@ export async function mountAgent(
       return Response.json({ success: true, data: {
         storage: { persisted: true },
         undoToken: `undo:${sessionId}`,
-        undoUntil: new Date(Date.now() + 5_000).toISOString(),
+        undoUntil: new Date(Date.now() + (options.deleteUndoMs ?? 5_000)).toISOString(),
       } });
     }
     if (url.startsWith("/api/ai/conversations/sessions/") && options.sessionReader) {
