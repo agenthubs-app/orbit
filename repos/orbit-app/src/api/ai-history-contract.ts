@@ -38,7 +38,13 @@ export const aiSessionSchema = z.object({
   messages: z.array(z.object({ id: identifier.optional(), createdAt: timestamp.optional(), role: z.enum(["user", "assistant"]), text: z.string().trim().min(1) }).passthrough()).min(1)
 }).passthrough();
 const storage = z.object({ configured: z.boolean(), persisted: z.boolean(), source: z.string().optional() });
-export const aiSessionDeleteReceiptSchema = z.object({ deleted: z.literal(true), storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }) });
+export const aiSessionDeleteReceiptSchema = z.object({
+  deleted: z.literal(true),
+  undoToken: z.string().nullable().optional(),
+  undoUntil: timestamp.nullable().optional(),
+  storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }),
+});
+export const aiSessionRestoreReceiptSchema = z.object({ restored: z.literal(true) });
 export const aiSessionGroupSchema = z.object({ id: identifier, name: z.string().trim().min(1), revision: z.number().int().positive(), createdAt: timestamp, updatedAt: timestamp });
 export const aiSessionGroupListSchema = z.object({ groups: z.array(aiSessionGroupSchema) });
 export const aiSessionOrganizationReceiptSchema = z.object({ session: aiSessionSchema, storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }) });

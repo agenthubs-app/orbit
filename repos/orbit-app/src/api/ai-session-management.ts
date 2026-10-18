@@ -2,7 +2,9 @@ import type { OrbitApiClient } from "./client";
 import {
   aiSessionGroupDeleteReceiptSchema,
   aiSessionGroupReceiptSchema,
+  aiSessionDeleteReceiptSchema,
   aiSessionOrganizationReceiptSchema,
+  aiSessionRestoreReceiptSchema,
   type AiSession,
 } from "./ai-history-contract";
 import type {
@@ -20,10 +22,10 @@ import {
 
 export type AiSessionManagementResult<T> =
   | { ok: true; value: T }
-  | { error: string; ok: false };
+  | { code?: string; error: string; ok: false };
 
-function failed(message?: string): AiSessionManagementResult<never> {
-  return { error: message?.trim() || "更改尚未保存，请刷新后重试。", ok: false };
+function failed(message?: string, code?: string): AiSessionManagementResult<never> {
+  return { ...(code ? { code } : {}), error: message?.trim() || "更改尚未保存，请刷新后重试。", ok: false };
 }
 
 export async function updateAiSessionOrganization(
@@ -36,9 +38,36 @@ export async function updateAiSessionOrganization(
     body: mutation,
     ...(signal ? { signal } : {}),
   });
-  if (!result.success) return failed(result.error.message);
+  if (!result.success) return failed(result.error.message, result.error.code);
   const parsed = aiSessionOrganizationReceiptSchema.safeParse(result.data);
   return parsed.success ? { ok: true, value: parsed.data.session } : failed();
+}
+
+export async function deleteAiSession(
+  client: OrbitApiClient,
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<AiSessionManagementResult<{ undoToken: string | null; undoUntil: string | null }>> {
+  const result = await client.delete<unknown>(aiConversationSessionPath(sessionId), signal ? { signal } : undefined);
+  if (!result.success) return failed(result.error.message, result.error.code);
+  const parsed = aiSessionDeleteReceiptSchema.safeParse(result.data);
+  return parsed.success
+    ? { ok: true, value: { undoToken: parsed.data.undoToken ?? null, undoUntil: parsed.data.undoUntil ?? null } }
+    : failed();
+}
+
+export async function restoreAiSession(
+  client: OrbitApiClient,
+  sessionId: string,
+  undoToken: string,
+  signal?: AbortSignal,
+): Promise<AiSessionManagementResult<true>> {
+  const result = await client.post<unknown>(`${aiConversationSessionPath(sessionId)}/restore`, {
+    body: { undoToken },
+    ...(signal ? { signal } : {}),
+  });
+  if (!result.success) return failed(result.error.message, result.error.code);
+  return aiSessionRestoreReceiptSchema.safeParse(result.data).success ? { ok: true, value: true } : failed();
 }
 
 export async function createAiSessionGroup(

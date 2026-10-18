@@ -11,6 +11,7 @@ import type {
   OrbitAiTaskInteractionContract,
 } from "../../shared/contract/orbit-ai";
 import type { ReliableAiSendReceiptContract } from "../../shared/contract/ai-sessions";
+import type { AiPageContextContract } from "../../shared/contract/ai-sessions";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
 import type { EntityDraftProposal } from "./entity-drafts/contract";
 import type { OrbitAiEntityDraftCardContract } from "../../shared/contract/orbit-ai";
@@ -92,6 +93,8 @@ export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput 
    */
   outcomes?: readonly OrbitAgentOutcomeContext[];
   message?: string | null;
+  /** This turn only; validated against actor-scoped page data by the route. */
+  pageContext?: AiPageContextContract | undefined;
   locale?: "zh" | "en" | string | null;
   sourceNote?: {
     id: string;

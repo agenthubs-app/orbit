@@ -122,11 +122,11 @@ export function createOrbitAgentChatSessionHandlers(
       }
 
       try {
-        const deleted = await resolved.provider.deleteSession(id);
+        const deletion = await resolved.provider.deleteSessionWithUndo(id);
 
         return NextResponse.json(
           success({
-            deleted,
+            ...deletion,
             storage: {
               configured: true,
               persisted: true,
@@ -138,6 +138,33 @@ export function createOrbitAgentChatSessionHandlers(
             status: 200,
           },
         );
+      } catch (error) {
+        return responseForError(mode, error);
+      }
+    },
+
+    async RESTORE(
+      request: Request,
+      context: OrbitAgentChatSessionRouteContext,
+    ): Promise<Response> {
+      const mode = resolveFeatureMode();
+      const resolved = await providerForRequest(mode);
+      if (!resolved) return authenticatedApiActorRequiredResponse(mode);
+      if (!resolved.provider) return responseForError(mode, new AppError("SERVICE_UNAVAILABLE", "Orbit Agent chat history storage is not configured."));
+      let body: unknown;
+      try { body = await request.json(); } catch { body = null; }
+      const undoToken = body && typeof body === "object" && "undoToken" in body ? body.undoToken : null;
+      if (typeof undoToken !== "string" || !undoToken || undoToken.length > 200) {
+        return responseForError(mode, new AppError("VALIDATION_ERROR", "A valid undo token is required."));
+      }
+      const { id } = await context.params;
+      try {
+        const restored = await resolved.provider.restoreDeletedSession(id, undoToken);
+        if (!restored) return responseForError(mode, new AppError("CONFLICT", "This deletion can no longer be undone."));
+        return NextResponse.json(success({ restored: true }), {
+          headers: runtimeBoundaryHeaders(mode),
+          status: 200,
+        });
       } catch (error) {
         return responseForError(mode, error);
       }
@@ -336,6 +363,8 @@ export function createOrbitAgentChatSessionHandlers(
               ? "NOT_FOUND"
               : error.code === "VALIDATION_ERROR"
                 ? "VALIDATION_ERROR"
+                : error.code === "PIN_LIMIT"
+                  ? "PIN_LIMIT"
                 : "CONFLICT";
           return responseForError(mode, new AppError(code, error.message));
         }

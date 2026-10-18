@@ -177,6 +177,11 @@ export const reliableAiSendInputSchema: z.ZodType<ReliableAiSendInputContract> =
     locale: z.enum(["zh", "en", "ja"]),
     message: z.string().trim().min(1).max(12000),
     origin: aiSessionOriginInputSchema.optional(),
+    pageContext: z.object({
+      route: z.string().min(1).max(160),
+      filters: z.record(z.string().max(40), z.union([z.string().max(80), z.array(z.string().max(80)).max(10)])),
+      count: z.number().int().nonnegative().max(100_000),
+    }).optional(),
     protocolVersion: z.literal(2),
     references: z.array(referenceSchema).max(20),
     requestId: identifier,

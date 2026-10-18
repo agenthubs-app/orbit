@@ -5,7 +5,7 @@
 // - 查询文本不进应用日志（只记长度、组数、耗时）。
 import { globalSearchQueryObject, globalSearchResponseSchema } from "../../../shared/api-schema/global-search";
 import { splitSearchTerms } from "../../../shared/compute/search-normalize";
-import type { GlobalSearchResponse } from "../../../shared/contract/global-search";
+import type { GlobalSearchConversationHit, GlobalSearchResponse } from "../../../shared/contract/global-search";
 import { AppError } from "../../../shared/errors/app-error";
 import { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
 import { demoGlobalSearch } from "../../../shared/mock/demo-world/global-search";
@@ -140,5 +140,15 @@ export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: 
     live.events(input.actorId, terms.join(" "), 20),
     wanted.has("conversations") && live.conversations ? live.conversations(input.actorId, input.query, 20) : Promise.resolve(null),
   ]);
-  return buildGlobalSearch({ conversations, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: found.items, peopleTotal: found.total, planLinked, semantic, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
+  const navigable = conversations?.flatMap((hit): GlobalSearchConversationHit[] => {
+    if (!hit.id?.trim()) return [];
+    const id = encodeURIComponent(hit.id);
+    const href = hit.kind === "iorbit"
+      ? input.platform === "app" ? `/ai/${id}` : `/app/agent?session=${id}`
+      : hit.kind === "inbox"
+        ? input.platform === "app" ? `/inbox/${id}` : `/app/inbox?conversationId=${id}`
+        : null;
+    return href ? [{ ...hit, href }] : [];
+  }) ?? null;
+  return buildGlobalSearch({ conversations: navigable, events, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: found.items, peopleTotal: found.total, planLinked, semantic, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types, wanted: input.types });
 }

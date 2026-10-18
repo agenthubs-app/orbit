@@ -9,6 +9,7 @@ export const APP_ERROR_CODES = [
   "FORBIDDEN",
   "NOT_FOUND",
   "CONFLICT",
+  "PIN_LIMIT",
   "INTERNAL_ERROR",
   "SERVICE_UNAVAILABLE",
 ] as const;
@@ -22,6 +23,7 @@ export const APP_ERROR_HTTP_STATUS: Record<AppErrorCode, number> = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  PIN_LIMIT: 409,
   INTERNAL_ERROR: 500,
   SERVICE_UNAVAILABLE: 503,
 };

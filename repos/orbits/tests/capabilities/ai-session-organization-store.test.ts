@@ -170,3 +170,24 @@ test("memory organization transactions roll back every write when commit fails",
   assert.equal((await store.getSessionOrganization("session:a")).groupId, group.id);
   assert.equal((await store.getSessionOrganization("session:b")).groupId, group.id);
 });
+
+test("the sixth pin fails inside the actor transaction, including concurrent writes", async () => {
+  const records = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const alice = createMemoryOrbitAgentChatOrganizationStore({ actorId: "actor:alice", store: records, workspaceId: "workspace:pin-limit" });
+  const bob = createMemoryOrbitAgentChatOrganizationStore({ actorId: "actor:bob", store: records, workspaceId: "workspace:pin-limit" });
+  const results = await Promise.allSettled(Array.from({ length: 6 }, (_, index) =>
+    alice.mutateSessionOrganization(`session:${index}`, {
+      expectedRevision: 0, mutationId: `pin:${index}`, patch: { pinned: true },
+    })));
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 5);
+  assert.equal(results.filter((result) => result.status === "rejected" && result.reason instanceof OrbitAgentChatOrganizationError && result.reason.code === "PIN_LIMIT").length, 1);
+  assert.equal((await bob.mutateSessionOrganization("bob:session", {
+    expectedRevision: 0, mutationId: "bob:pin", patch: { pinned: true },
+  })).pinned, true, "another actor has an independent quota");
+  await alice.mutateSessionOrganization("session:0", {
+    expectedRevision: 1, mutationId: "unpin:0", patch: { pinned: false },
+  });
+  assert.equal((await alice.mutateSessionOrganization("session:5", {
+    expectedRevision: 0, mutationId: "retry:5", patch: { pinned: true },
+  })).pinned, true);
+});

@@ -8,6 +8,7 @@ export type ApiErrorCodeContract =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "PIN_LIMIT"
   | "INTERNAL_ERROR"
   | "SERVICE_UNAVAILABLE";
 

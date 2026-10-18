@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   createAiSessionGroup,
+  deleteAiSession,
   deleteAiSessionGroup,
   renameAiSessionGroup,
+  restoreAiSession,
   updateAiSessionOrganization,
 } from "../src/api/ai-session-management";
 import type { OrbitApiClient } from "../src/api/client";
@@ -69,5 +71,33 @@ test("App session management keeps a conflict visible", async () => {
     mutationId: "mutation:conflict",
     patch: { pinned: true },
   });
-  assert.deepEqual(result, { error: "当前状态已经变化，请刷新后再试。", ok: false });
+  assert.deepEqual(result, { code: "CONFLICT", error: "当前状态已经变化，请刷新后再试。", ok: false });
+});
+
+test("App session management preserves PIN_LIMIT apart from revision conflicts", async () => {
+  const client = {
+    patch: async () => ({ error: { code: "PIN_LIMIT", message: "固定できる会話は5件までです。" }, meta, status: 409, success: false as const }),
+  } as unknown as OrbitApiClient;
+  const result = await updateAiSessionOrganization(client, "session:one", {
+    expectedRevision: 1, mutationId: "mutation:sixth-pin", patch: { pinned: true },
+  });
+  assert.deepEqual(result, { code: "PIN_LIMIT", error: "固定できる会話は5件までです。", ok: false });
+});
+
+test("App session deletion keeps a bounded undo receipt and restores it through the actor route", async () => {
+  const calls: Array<{ path: string; body?: unknown }> = [];
+  const client = {
+    delete: async (path: string) => ({ success: true as const, status: 200, meta, data: {
+      deleted: true, undoToken: "undo:one", undoUntil: "2026-10-18T09:00:05.000Z",
+      storage: { configured: true, persisted: true },
+    } }),
+    post: async (path: string, options?: { body?: unknown }) => {
+      calls.push({ path, body: options?.body });
+      return { success: true as const, status: 200, meta, data: { restored: true } };
+    },
+  } as unknown as OrbitApiClient;
+  const deleted = await deleteAiSession(client, "session:one");
+  assert.deepEqual(deleted, { ok: true, value: { undoToken: "undo:one", undoUntil: "2026-10-18T09:00:05.000Z" } });
+  assert.deepEqual(await restoreAiSession(client, "session:one", "undo:one"), { ok: true, value: true });
+  assert.deepEqual(calls, [{ path: "/api/ai/conversations/sessions/session%3Aone/restore", body: { undoToken: "undo:one" } }]);
 });

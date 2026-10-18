@@ -104,10 +104,18 @@ export interface ReliableAiSendInputContract {
   locale: "en" | "ja" | "zh";
   message: string;
   origin?: AiSessionOriginInputContract | undefined;
+  pageContext?: AiPageContextContract | undefined;
   protocolVersion: 2;
   references: readonly AiSessionReferenceContract[];
   requestId: string;
   sessionId: string;
+}
+
+/** User-enabled, server-validated context for one send; never persisted with the session. */
+export interface AiPageContextContract {
+  route: string;
+  filters: Record<string, string | string[]>;
+  count: number;
 }
 
 export type ReliableAiSendState =

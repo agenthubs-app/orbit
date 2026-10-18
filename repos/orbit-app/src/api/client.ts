@@ -79,6 +79,7 @@ const NON_JSON_RESPONSE_MESSAGE =
   "Orbit 服务返回了无法识别的内容，请稍后重试。";
 const API_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   CONFLICT: "当前状态已经变化，请刷新后再试。",
+  PIN_LIMIT: "最多只能固定 5 个会话。请先取消固定一个会话。",
   FORBIDDEN: "当前账号没有权限完成这项操作。",
   INTERNAL_ERROR: "Orbit 服务暂时出了问题，请稍后重试。",
   NOT_FOUND: "没有找到对应内容，它可能已被移除或不可用。",

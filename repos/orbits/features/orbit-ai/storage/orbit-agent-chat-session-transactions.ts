@@ -1,17 +1,19 @@
 import { createHash } from "node:crypto";
 
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
+import { orbitAgentChatSessionActorWorkspaceId } from "./orbit-agent-chat-session-live-record-provider";
 import {
   createMemoryLiveRecordStore,
   type LiveRecord,
   type LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
-import type { TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
+import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 
 const GROUP_COLLECTION = "orbit_agent_chat_groups";
 const ORGANIZATION_COLLECTION = "orbit_agent_chat_session_organizations";
 const MAX_GROUP_NAME_LENGTH = 80;
 const MAX_CUSTOM_TITLE_LENGTH = 120;
+export const MAX_PINNED_AI_SESSIONS = 5;
 
 export interface OrbitAgentChatSessionOrganization {
   customTitle: string | null;
@@ -38,6 +40,7 @@ export class OrbitAgentChatOrganizationError extends Error {
       | "GROUP_DELETED"
       | "GROUP_NOT_FOUND"
       | "MUTATION_ID_REUSED"
+      | "PIN_LIMIT"
       | "REVISION_CONFLICT"
       | "VALIDATION_ERROR",
   ) {
@@ -48,6 +51,8 @@ export class OrbitAgentChatOrganizationError extends Error {
           ? "Session group was not found"
           : code === "MUTATION_ID_REUSED"
             ? "Mutation ID was already used for different input"
+            : code === "PIN_LIMIT"
+              ? "Only five conversations can be pinned"
             : code === "REVISION_CONFLICT"
               ? "Organization changed on another client"
               : "Invalid session organization mutation",
@@ -89,7 +94,7 @@ export interface OrbitAgentChatOrganizationStore {
 
 type OrganizationRecord = LiveRecord<Record<string, unknown>>;
 type TransactionRunner = <T>(
-  operation: (store: LiveRecordStoreLike<Record<string, unknown>>) => Promise<T>,
+  operation: (store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor) => Promise<T>,
 ) => Promise<T>;
 
 function cleanIdentifier(value: string): string {
@@ -244,6 +249,32 @@ export function createOrbitAgentChatOrganizationStore(input: {
     operation: (store: LiveRecordStoreLike<Record<string, unknown>>) => Promise<T>,
   ): Promise<T> {
     return input.runTransaction(operation);
+  }
+
+  async function pinnedCount(store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor): Promise<number> {
+    if (sql) {
+      const result = await sql.query<{ count: string }>(`
+        with owned_organizations as materialized (
+          select payload->>'sessionId' as session_id, payload->>'pinned' as pinned
+          from orbit_records where workspace_id=$1 and collection_name=$4
+            and user_id=$3 and lifecycle_state<>'deleted'
+        )
+        select count(*)::text as count from orbit_records s
+        left join owned_organizations o on o.session_id=s.record_id
+        where s.workspace_id=$2 and s.collection_name='orbit_agent_chat_sessions'
+          and s.lifecycle_state<>'deleted'
+          and coalesce(o.pinned='true', s.payload->>'pinned'='true', false)`,
+        [input.workspaceId, orbitAgentChatSessionActorWorkspaceId(input.workspaceId, actorId), actorId, ORGANIZATION_COLLECTION],
+      );
+      return Number(result.rows[0]?.count ?? 0);
+    }
+    const records = await store.listRecords({
+      collectionName: ORGANIZATION_COLLECTION,
+      limit: "unbounded",
+      userId: actorId,
+      workspaceId: input.workspaceId,
+    });
+    return records.filter((record) => record.payload.pinned === true).length;
   }
 
   return {
@@ -487,7 +518,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
         throw new OrbitAgentChatOrganizationError("VALIDATION_ERROR");
       }
       const mutationFingerprint = fingerprint({ expectedRevision, patch, sessionId });
-      return input.runTransaction(async (store) => {
+      return input.runTransaction(async (store, sql) => {
         if (patch.groupId !== undefined && patch.groupId !== null) {
           const group = groupFromRecord(
             await readRecord(store, GROUP_COLLECTION, groupRecordId(patch.groupId)),
@@ -506,6 +537,9 @@ export function createOrbitAgentChatOrganizationStore(input: {
         const current = organizationFromRecord(existing);
         if (current.revision !== expectedRevision) {
           throw new OrbitAgentChatOrganizationError("REVISION_CONFLICT");
+        }
+        if (patch.pinned === true && !current.pinned && await pinnedCount(store, sql) >= MAX_PINNED_AI_SESSIONS) {
+          throw new OrbitAgentChatOrganizationError("PIN_LIMIT");
         }
         const at = now();
         const next: OrbitAgentChatSessionOrganization = {
@@ -654,6 +688,7 @@ export function createTransactionalOrbitAgentChatOrganizationStore(input: {
               createPostgresLiveRecordStore<Record<string, unknown>>({
                 client: transaction,
               }),
+              transaction,
             );
           });
         } catch (error) {

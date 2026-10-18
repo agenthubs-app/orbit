@@ -165,6 +165,24 @@ test("session summary pages stay bounded and enforce actor/filter-bound server p
     assert.deepEqual(oldest.items.map((item) => item.id), ["session-10000"]);
     assert.equal(oldest.hasMore, false);
 
+    await pool.query(`
+      insert into orbit_records (
+        workspace_id,collection_name,record_id,user_id,source_type,source_id,
+        evidence_ids,lifecycle_state,search_text,payload,created_at,updated_at
+      ) values
+        ($1,'orbit_agent_chat_messages','deep-message',$2,'manual','deep-message',
+          array[]::text[],'active','truncated-index',
+          jsonb_build_object('sessionId','session-10000','role','user','text',repeat('x',9000)||'深い質問'),
+          $3::timestamptz,$3::timestamptz),
+        ($4,'orbit_agent_chat_messages','bob-deep-message','actor:bob','manual','bob-deep-message',
+          array[]::text[],'active','truncated-index',
+          jsonb_build_object('sessionId','bob-session','role','user','text','bob-only-secret'),
+          $3::timestamptz,$3::timestamptz)`,
+    [aliceWorkspaceId, aliceId, createdAt, bobWorkspaceId]);
+    assert.deepEqual((await alice.listSessionSummariesPage({ limit: 20, q: "深い質問" })).items.map((item) => item.id),
+      ["session-10000"], "a body match after 8,000 characters is still found across every page");
+    assert.equal((await alice.listSessionSummariesPage({ limit: 20, q: "bob-only-secret" })).items.length, 0);
+
     const pinned = await alice.listSessionSummariesPage({ limit: 20, pinned: true });
     assert.deepEqual(pinned.items.map((item) => item.id), ["session-00000"]);
     const inOwnedGroup = await alice.listSessionSummariesPage({ limit: 20, groupId: "group:owned" });

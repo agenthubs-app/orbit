@@ -22,6 +22,7 @@ export interface OrbitAgentChatSessionSummaryCandidate {
   updatedAt: string;
   messageRevision: number;
   searchText: string;
+  bodyMatch?: boolean;
   sessionCustomTitle: string | null;
   pinned: boolean;
   organization?: AiSessionOrganizationContract;
@@ -122,7 +123,7 @@ function matches(candidate: OrbitAgentChatSessionSummaryCandidate, query: OrbitA
   if (query.pinned !== null && organization.pinned !== query.pinned) return false;
   if (!query.q) return true;
   const search = `${candidate.id} ${candidate.searchText} ${organization.customTitle ?? ""}`.toLocaleLowerCase();
-  return search.includes(query.q.toLocaleLowerCase());
+  return candidate.bodyMatch === true || search.includes(query.q.toLocaleLowerCase());
 }
 
 function compare(left: OrbitAgentChatSessionSummaryCandidate, right: OrbitAgentChatSessionSummaryCandidate): number {
@@ -198,7 +199,7 @@ const SUMMARY_SQL = `with owned_sessions as materialized (
   select *,case when has_organization then organization_custom_title else session_custom_title end as custom_title
   from session_rows
   where ($4='' or strpos(lower(record_id || ' ' || title || ' ' || coalesce(case when has_organization then organization_custom_title else session_custom_title end,'')),lower($4))>0
-    or strpos(lower(coalesce(search_text,'')),lower($4))>0)
+    or strpos(lower(coalesce(search_text,'')),lower($4))>0 /*MESSAGE_SEARCH*/)
     and (not $5::boolean or ($6::text='ungrouped' and group_id is null) or ($6::text<>'ungrouped' and group_id=$6))
     and ($7::boolean is null or pinned=$7)
     and ($8::boolean is null or pinned<$8 or (pinned=$8 and created_at collate "C"<$9 collate "C")
@@ -209,6 +210,13 @@ select record_id,title,first_user_text,last_message_preview,created_at,updated_a
 from filtered
 order by pinned desc,created_at collate "C" desc,record_id collate "C" asc
 limit $11`;
+
+const MESSAGE_BODY_SEARCH_SQL = ` or exists (select 1 from orbit_records m
+  where m.workspace_id=$2 and m.collection_name='orbit_agent_chat_messages'
+    and m.lifecycle_state<>'deleted' and m.payload->>'sessionId'=session_rows.record_id
+    and strpos(lower(coalesce(m.payload->>'text','')),lower($4))>0)`;
+const SUMMARY_LIST_SQL = SUMMARY_SQL.replace("/*MESSAGE_SEARCH*/", "");
+const SUMMARY_SEARCH_SQL = SUMMARY_SQL.replace("/*MESSAGE_SEARCH*/", MESSAGE_BODY_SEARCH_SQL);
 
 export function createOrbitAgentChatSessionSummaryPageReader(input: {
   actorId: string;
@@ -222,7 +230,7 @@ export function createOrbitAgentChatSessionSummaryPageReader(input: {
       const query = normalizeQuery(queryInput);
       const codec = cursorCodec(input.secret, identity({ ...input, query }));
       const after = codec.open(query.cursor);
-      const rows = await input.client.query<Record<string, unknown>>(SUMMARY_SQL, [
+      const rows = await input.client.query<Record<string, unknown>>(query.q ? SUMMARY_SEARCH_SQL : SUMMARY_LIST_SQL, [
         input.baseWorkspaceId, input.actorWorkspaceId, input.actorId, query.q ?? "",
         query.groupId !== null, query.groupId ?? "", query.pinned,
         after?.pinned ?? null, after?.createdAt ?? null, after?.id ?? null, query.limit + 1,

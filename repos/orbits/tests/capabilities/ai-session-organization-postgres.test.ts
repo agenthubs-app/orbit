@@ -12,6 +12,7 @@ import {
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { orbitAgentChatSessionActorWorkspaceId } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 
 const databaseUrl = process.env.ORBIT_AGENT_SESSION_TEST_DATABASE_URL;
 const databaseTest = {
@@ -68,6 +69,24 @@ test("PostgreSQL organization transactions provide CAS, actor isolation, atomic 
     const organizations = await alice.listSessionOrganizations();
     assert.equal(organizations.size, 61);
     assert.equal([...organizations.values()].every((value) => value.groupId === null), true);
+
+    await client.query(`insert into orbit_records
+      (workspace_id,collection_name,record_id,user_id,source_type,source_id,evidence_ids,lifecycle_state,payload,created_at,updated_at)
+      select $1,'orbit_agent_chat_sessions','session:pin:'||n,$2,'manual','session:pin:'||n,array[]::text[],'active',
+        jsonb_build_object('id','session:pin:'||n,'title','Pinned '||n,'pinned',false),now(),now()
+      from generate_series(0,5) as n`, [orbitAgentChatSessionActorWorkspaceId(workspaceId, "actor:alice"), "actor:alice"]);
+    for (let index = 0; index < 4; index += 1) {
+      await alice.mutateSessionOrganization(`session:pin:${index}`, {
+        expectedRevision: 0, mutationId: `mutation:pin:${index}`, patch: { pinned: true },
+      });
+    }
+    const pins = await Promise.allSettled([4, 5].map((index) =>
+      (index === 4 ? alice : alicePeer).mutateSessionOrganization(`session:pin:${index}`, {
+        expectedRevision: 0, mutationId: `mutation:pin:${index}`, patch: { pinned: true },
+      })));
+    assert.equal(pins.filter((result) => result.status === "fulfilled").length, 1);
+    assert.equal(pins.filter((result) => result.status === "rejected"
+      && result.reason instanceof OrbitAgentChatOrganizationError && result.reason.code === "PIN_LIMIT").length, 1);
 
     const rollbackStore = createOrbitAgentChatOrganizationStore({
       actorId: "actor:rollback",

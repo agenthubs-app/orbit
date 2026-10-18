@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { aiSessionOriginSchema } from "../../../shared/api-schema/ai-sessions";
 import {
@@ -143,6 +143,9 @@ export interface OrbitAgentChatSessionProvider {
     input: OrbitAgentChatSessionAppendInput,
   ) => Promise<OrbitAgentChatSessionHeader>;
   deleteSession: (sessionId: string) => Promise<boolean>;
+  deleteSessionWithUndo: (sessionId: string) => Promise<{ deleted: boolean; undoToken: string | null; undoUntil: string | null }>;
+  restoreDeletedSession: (sessionId: string, undoToken: string) => Promise<boolean>;
+  deleteExpiredSession: (sessionId: string, referenceTime: Date, isPinned: () => Promise<boolean>) => Promise<boolean>;
   /** The session with its latest page of messages (default 20). */
   getSession: (
     sessionId: string,
@@ -174,6 +177,7 @@ export interface OrbitAgentChatSessionProvider {
 
 export interface StorageOrbitAgentChatSessionProviderOptions {
   actorId: string;
+  now?: () => Date;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -199,6 +203,8 @@ const SEARCH_TEXT_HEAD_LENGTH = 2000;
 /** An old client's whole-session save is merged over its newest messages only. */
 const MERGE_WINDOW = 200;
 const DELETE_BATCH = 200;
+const UNDO_WINDOW_MS = 5_000;
+const RETENTION_DAYS = 90;
 const ENTRY_POINT_SESSION_LIMIT = 50;
 /**
  * In-process stores (mock mode, unit tests) cannot order or page in storage.
@@ -229,6 +235,14 @@ function cleanString(value: unknown, maxLength: number): string {
 
 function cloneJson<TValue>(value: TValue): TValue {
   return JSON.parse(JSON.stringify(value)) as TValue;
+}
+
+function tokyoDayNumber(value: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit", month: "2-digit", timeZone: "Asia/Tokyo", year: "numeric",
+  }).formatToParts(value);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  return Math.floor(Date.UTC(get("year"), get("month") - 1, get("day")) / 86_400_000);
 }
 
 function safeIdPart(value: string): string {
@@ -631,6 +645,7 @@ function originBase(origin: StoredAiSessionOriginContract): unknown {
 
 export function createStorageOrbitAgentChatSessionProvider({
   actorId,
+  now = () => new Date(),
   source,
   sourceLabel = "Orbit Agent chat session live storage",
   store,
@@ -981,46 +996,175 @@ export function createStorageOrbitAgentChatSessionProvider({
     },
 
     async deleteSession(sessionId) {
-      const deletedAt = new Date().toISOString();
-      const activeSession = await store.getRecord({
-        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-        includeDeleted: true,
-        recordId: sessionId,
-        workspaceId: actorWorkspaceId,
-      });
-      const deletedSession = activeSession?.lifecycleState === "active"
-        ? await store.deleteRecord({
-            collectionName:
-              ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-            deletedAt,
-            recordId: sessionId,
-            workspaceId: actorWorkspaceId,
-          })
-        : null;
-      // Tombstone the messages a bounded batch at a time; each batch removes what it read.
-      for (;;) {
-        const batch = await store.listRecords({
-          limit: DELETE_BATCH,
-          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-          targetId: sessionId,
-          targetType: "conversation",
+      return (await this.deleteSessionWithUndo(sessionId)).deleted;
+    },
+
+    async deleteSessionWithUndo(sessionId) {
+      return inSession(sessionId, async (tx) => {
+        const deletedAt = now().toISOString();
+        const session = await tx.getRecord({
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+          includeDeleted: true,
+          recordId: sessionId,
           workspaceId: actorWorkspaceId,
         });
-        if (batch.length === 0) break;
-        const results = await Promise.all(batch.map((message) =>
-          store.deleteRecord({
+        if (!session) return { deleted: false, undoToken: null, undoUntil: null };
+        if (session.lifecycleState === "deleted") return { deleted: true, undoToken: null, undoUntil: null };
+        const undoToken = randomUUID();
+        const undoUntil = new Date(now().getTime() + UNDO_WINDOW_MS).toISOString();
+        const deletedSession = await tx.deleteRecord({
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+          deletedAt,
+          recordId: sessionId,
+          workspaceId: actorWorkspaceId,
+        });
+        if (!deletedSession) throw new Error("Orbit Agent chat session deletion made no progress");
+        await tx.upsertRecord({
+          ...deletedSession,
+          payload: {
+            ...deletedSession.payload,
+            undoTokenHash: createHash("sha256").update(JSON.stringify([actorWorkspaceId, sessionId, deletedAt, undoToken])).digest("hex"),
+            undoUntil,
+          },
+        });
+        // Each bounded batch removes exactly what it read. The transaction keeps
+        // the session and its messages on the same side of the tombstone.
+        for (;;) {
+          const batch = await tx.listRecords({
+            limit: DELETE_BATCH,
             collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-            deletedAt,
-            recordId: message.recordId,
+            targetId: sessionId,
+            targetType: "conversation",
             workspaceId: actorWorkspaceId,
-          })));
-        if (results.some((result) => result === null)) {
-          throw new Error("Orbit Agent chat message deletion made no progress");
+          });
+          if (batch.length === 0) break;
+          for (const message of batch) {
+            const deleted = await tx.deleteRecord({
+              collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+              deletedAt,
+              recordId: message.recordId,
+              workspaceId: actorWorkspaceId,
+            });
+            if (!deleted) throw new Error("Orbit Agent chat message deletion made no progress");
+          }
+          if (batch.length < DELETE_BATCH) break;
         }
-        if (batch.length < DELETE_BATCH) break;
-      }
+        return { deleted: true, undoToken, undoUntil };
+      });
+    },
 
-      return Boolean(activeSession ?? deletedSession);
+    async restoreDeletedSession(sessionId, undoToken) {
+      if (!undoToken || undoToken.length > 200) return false;
+      return inSession(sessionId, async (tx, sql) => {
+        const session = await tx.getRecord({
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+          includeDeleted: true,
+          recordId: sessionId,
+          workspaceId: actorWorkspaceId,
+        });
+        if (!session?.deletedAt || typeof session.payload.undoTokenHash !== "string" ||
+          typeof session.payload.undoUntil !== "string") return false;
+        const expected = createHash("sha256").update(JSON.stringify([actorWorkspaceId, sessionId, session.deletedAt, undoToken])).digest("hex");
+        if (expected !== session.payload.undoTokenHash || now().getTime() > Date.parse(session.payload.undoUntil)) return false;
+        if (session.lifecycleState === "active") return true;
+        const restoredAt = now().toISOString();
+        await tx.upsertRecord({ ...session, deletedAt: null, lifecycleState: "active", updatedAt: restoredAt });
+        for (;;) {
+          const matching = sql
+            ? await (async () => {
+                const { rows } = await sql.query<{ record_id: string }>(`
+                  select record_id from orbit_records
+                  where workspace_id = $1 and collection_name = $2 and target_id = $3
+                    and lifecycle_state = 'deleted' and deleted_at = $4
+                  order by record_id limit $5
+                `, [actorWorkspaceId, ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages, sessionId, session.deletedAt, DELETE_BATCH]);
+                return (await Promise.all(rows.map((row) => tx.getRecord({
+                  collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+                  includeDeleted: true,
+                  recordId: row.record_id,
+                  workspaceId: actorWorkspaceId,
+                })))).filter((row): row is LiveRecord<Record<string, unknown>> => row !== null);
+              })()
+            : (await scanInProcess(tx, {
+                collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+                includeDeleted: true,
+                lifecycleState: "deleted",
+                targetId: sessionId,
+                targetType: "conversation",
+                workspaceId: actorWorkspaceId,
+              })).filter((message) => message.deletedAt === session.deletedAt);
+          for (const message of matching) {
+            await tx.upsertRecord({ ...message, deletedAt: null, lifecycleState: "active", updatedAt: restoredAt });
+          }
+          if (!sql || matching.length < DELETE_BATCH) break;
+        }
+        return true;
+      });
+    },
+
+    async deleteExpiredSession(sessionId, referenceTime, isPinned) {
+      if (!Number.isFinite(referenceTime.getTime())) throw new RangeError("A valid retention clock is required");
+      return inSession(sessionId, async (tx, sql) => {
+        // Pin mutations take this same actor lock. A pin committed before this
+        // point is visible to the read below; one arriving later waits.
+        if (sql) await sql.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [
+          JSON.stringify(["orbit-agent-organization", workspaceId, actorId]),
+        ]);
+        const session = await tx.getRecord({
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+          includeDeleted: true,
+          recordId: sessionId,
+          workspaceId: actorWorkspaceId,
+        });
+        if (!session || session.lifecycleState === "deleted") return false;
+        const activity = typeof session.payload.updatedAt === "string" ? session.payload.updatedAt : session.updatedAt;
+        const activityTime = new Date(activity);
+        if (!Number.isFinite(activityTime.getTime()) ||
+          tokyoDayNumber(referenceTime) - tokyoDayNumber(activityTime) <= RETENTION_DAYS) return false;
+        const organizationPinned = sql
+          ? await (async () => {
+              const organizationId = createHash("sha256")
+                .update(JSON.stringify([actorId, "session-organization", sessionId])).digest("hex");
+              const { rows } = await sql.query<{ pinned: boolean | null }>(`
+                select (payload->>'pinned')::boolean as pinned from orbit_records
+                where workspace_id = $1 and collection_name = 'orbit_agent_chat_session_organizations'
+                  and record_id = $2 and user_id = $3 and lifecycle_state <> 'deleted'
+                limit 1
+              `, [workspaceId, organizationId, actorId]);
+              return rows[0]?.pinned ?? (session.payload.pinned === true);
+            })()
+          : await isPinned();
+        if (organizationPinned) return false;
+        const deletedAt = referenceTime.toISOString();
+        const deleted = await tx.deleteRecord({
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+          deletedAt,
+          recordId: sessionId,
+          workspaceId: actorWorkspaceId,
+        });
+        if (!deleted) throw new Error("Expired Orbit Agent chat session deletion made no progress");
+        for (;;) {
+          const batch = await tx.listRecords({
+            limit: DELETE_BATCH,
+            collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+            targetId: sessionId,
+            targetType: "conversation",
+            workspaceId: actorWorkspaceId,
+          });
+          if (batch.length === 0) break;
+          for (const message of batch) {
+            const removed = await tx.deleteRecord({
+              collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+              deletedAt,
+              recordId: message.recordId,
+              workspaceId: actorWorkspaceId,
+            });
+            if (!removed) throw new Error("Expired Orbit Agent chat message deletion made no progress");
+          }
+          if (batch.length < DELETE_BATCH) break;
+        }
+        return true;
+      });
     },
 
     async getSession(sessionId, options = {}) {
@@ -1035,6 +1179,21 @@ export function createStorageOrbitAgentChatSessionProvider({
 
     async listSessionSummariesPage(query, listOrganizations) {
       if (summaryPageReader) return summaryPageReader.read(query);
+      const needle = query.q?.trim().toLocaleLowerCase() ?? "";
+      const bodyMatches = new Set<string>();
+      if (needle) {
+        const messages = await scanInProcess(store, {
+          collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
+          workspaceId: actorWorkspaceId,
+        });
+        for (const record of messages) {
+          if (typeof record.payload.sessionId === "string"
+            && typeof record.payload.text === "string"
+            && record.payload.text.toLocaleLowerCase().includes(needle)) {
+            bodyMatches.add(record.payload.sessionId);
+          }
+        }
+      }
       const records = await scanInProcess(store, {
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         workspaceId: actorWorkspaceId,
@@ -1055,6 +1214,7 @@ export function createStorageOrbitAgentChatSessionProvider({
           updatedAt,
           messageRevision: typeof payload.messageRevision === "number" && Number.isSafeInteger(payload.messageRevision) && payload.messageRevision >= 0 ? payload.messageRevision : 0,
           searchText: record.searchText ?? "",
+          bodyMatch: bodyMatches.has(id),
           sessionCustomTitle: typeof payload.customTitle === "string" ? payload.customTitle : null,
           pinned: payload.pinned === true,
         }];

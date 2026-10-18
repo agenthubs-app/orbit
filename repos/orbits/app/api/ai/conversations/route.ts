@@ -58,6 +58,8 @@ import {
 import { createOrbitAgentChatSessionProvider } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
 import { createConfiguredMobileContactsDashboardService } from "../../../../features/mobile/contacts-dashboard-service";
+import { createContactCardService } from "../../../../features/contacts/card-service";
+import { AiPageContextError, authorizeAiPageContext } from "../../../../features/orbit-ai/page-context";
 import { verifyContactsAnalysisSourceVersion } from "../../../../features/mobile/contacts-analysis-report-provider";
 import { isSuccessfulContactsAnalysisExecution } from "../../../../features/orbit-ai/contacts-analysis-execution";
 import {
@@ -652,6 +654,30 @@ export async function POST(request: Request): Promise<Response> {
       { headers: runtimeBoundaryHeaders(mode), status: 400 },
     );
   }
+  if (body.pageContext !== undefined && !reliableInput?.success) {
+    return NextResponse.json(failure(new AppError("VALIDATION_ERROR", "Page context requires a reliable send.")),
+      { headers: runtimeBoundaryHeaders(mode), status: 400 });
+  }
+  let pageContext: OrbitAgentSendMessageInput["pageContext"];
+  if (reliableInput?.success && reliableInput.data.pageContext) {
+    try {
+      const actorId = agentContext.actorId;
+      if (!actorId) throw new AiPageContextError("PAGE_CONTEXT_INVALID");
+      pageContext = await authorizeAiPageContext({
+        actorId,
+        proposed: reliableInput.data.pageContext,
+        countContacts: async (id, filters) =>
+          (await createContactCardService({ id }).summary({ industryFilters: filters.industry }, id)).total,
+      });
+    } catch (error) {
+      const stale = error instanceof AiPageContextError && error.code === "PAGE_CONTEXT_STALE";
+      const invalid = error instanceof AiPageContextError && error.code === "PAGE_CONTEXT_INVALID";
+      return NextResponse.json(failure(new AppError(
+        stale ? "CONFLICT" : invalid ? "VALIDATION_ERROR" : "SERVICE_UNAVAILABLE",
+        stale ? "The page changed. Refresh its context before sending." : invalid ? "Page context is not allowed." : "Page context could not be verified.",
+      )), { headers: runtimeBoundaryHeaders(mode), status: stale ? 409 : invalid ? 400 : 503 });
+    }
+  }
   const memoryService = agentContext.actorId
     ? createAgentMemoryService({
         actorId: agentContext.actorId,
@@ -675,10 +701,14 @@ export async function POST(request: Request): Promise<Response> {
   const trustedInput = memoryService
     ? {
         ...input,
-        memory: await memoryService.context(),
+        ...(pageContext ? { pageContext } : {}),
+        memory: [
+          ...(await memoryService.context()),
+          ...(pageContext ? [{ category: "page_context", content: JSON.stringify(pageContext) }] : []),
+        ],
         outcomes: await feedbackService?.context(),
       }
-    : input;
+    : { ...input, ...(pageContext ? { pageContext, memory: [{ category: "page_context", content: JSON.stringify(pageContext) }] } : {}) };
   timing.finish("orbit-read-body", readBodyStartedAt);
   const serviceStartedAt = timing.now();
   const service = agentContext.actorId

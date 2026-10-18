@@ -12,6 +12,7 @@ import { demoGlobalSearch } from "../../shared/mock/demo-world/global-search";
 import { buildGlobalSearch, industriesForTerms, suggestionsFor, type GlobalSearchCoreInput } from "../../features/search/global/core";
 import { createGlobalSearchHandlers, createRateWindow, GLOBAL_SEARCH_KEYWORD_PER_MINUTE, searchLive } from "../../features/search/global/handlers";
 import { intersectById, type GlobalSearchLivePorts } from "../../features/search/global/live";
+import { createConversationSearch } from "../../features/search/global/conversations";
 
 // R30 (search/DESIGN.md §3–§6; PLANNER SC-R30-01…07): one service behind the Web ⌘K panel and the App search page.
 
@@ -108,8 +109,14 @@ test("demo world: the three board inputs answer exactly the boards (b5 #57 / #58
   assert.deepEqual(takahashi.people.items.map((hit) => [hit.name, hit.status]), [["高橋 美咲", "in_progress"], ["高橋 亮", "acquaintance"]]);
   assert.equal(takahashi.events.items[0]!.note, "高橋さんも参加予定 · 10/16");
   assert.deepEqual(takahashi.conversations!.items.map((hit) => hit.kind), ["iorbit", "inbox"]);
+  assert.deepEqual(takahashi.conversations!.items.map((hit) => hit.href), [
+    "/app/agent?session=demo-session-takahashi", "/app/inbox?conversationId=demo-mail-plan-v3",
+  ]);
   assert.equal(takahashi.people.items[0]!.href, "/app/contacts/demo-person-takahashi");
   assert.equal(demoGlobalSearch({ limit: 6, platform: "app", query: "高橋", semantic: false }).people.items[0]!.href, "/contacts/demo-person-takahashi");
+  assert.deepEqual(demoGlobalSearch({ limit: 6, platform: "app", query: "高橋", semantic: false }).conversations?.items.map((hit) => hit.href), [
+    "/ai/demo-session-takahashi", "/inbox/demo-mail-plan-v3",
+  ]);
 
   const investors = demoGlobalSearch({ limit: 6, platform: "web", query: "投資家", semantic: true });
   assert.deepEqual(investors.semantic, { available: true, enabled: true, matched: 9, related: 14 });
@@ -217,6 +224,46 @@ test("searchLive: an actor with no contacts and no events gets the empty-state r
   assert.equal(out.people.total, 0);
   assert.deepEqual(out.suggestions.map((item) => item.label), ["貿易・物流"]);
   assert.equal(out.alternatives.length, 2);
+});
+
+test("R21 conversation hits use platform routes built from kind and encoded id", async () => {
+  const hits = [
+    { id: "ai/a b", kind: "iorbit" as const, title: "高橋", subtitle: "10/18 · iOrbit", highlights: [], href: "/untrusted" },
+    { id: "inbox/a b", kind: "inbox" as const, title: "高橋", subtitle: "10/18 · 会話", highlights: [], href: "/untrusted" },
+    { id: "unknown", kind: "unknown" as "iorbit", title: "高橋", subtitle: "", highlights: [], href: "/untrusted" },
+  ];
+  const ports = { ...fakePorts({ "actor:a": [] }), conversations: async () => hits };
+  const base = { actorId: "actor:a", language: "ja" as const, limit: 6, now: NOW, query: "高橋" };
+  const web = await searchLive(ports, { ...base, platform: "web" });
+  const app = await searchLive(ports, { ...base, platform: "app" });
+  assert.deepEqual(web.types, ["people", "events", "conversations"]);
+  assert.deepEqual(web.conversations?.items.map((hit) => hit.href), [
+    "/app/agent?session=ai%2Fa%20b", "/app/inbox?conversationId=inbox%2Fa%20b",
+  ]);
+  assert.deepEqual(app.conversations?.items.map((hit) => hit.href), [
+    "/ai/ai%2Fa%20b", "/inbox/inbox%2Fa%20b",
+  ]);
+});
+
+test("R21 conversation search reads one actor-scoped server page and highlights Unicode titles", async () => {
+  const calls: unknown[][] = [];
+  const search = createConversationSearch({
+    sessionForActor(actorId) {
+      calls.push([actorId]);
+      return { async listSessionSummariesPage(query) {
+        calls.push([query]);
+        return { items: [
+          { id: "session/a", title: "old", updatedAt: "2026-10-17T16:00:00.000Z", organization: { customTitle: "高橋へ返信 😀", groupId: null, pinned: false, revision: 2 } },
+        ] };
+      } };
+    },
+  });
+  const hits = await search("actor:one", "高橋", 6);
+  assert.deepEqual(calls, [["actor:one"], [{ q: "高橋", limit: 6 }]]);
+  assert.deepEqual(hits, [{
+    id: "session/a", kind: "iorbit", title: "高橋へ返信 😀", subtitle: "10/18 · iOrbit との会話",
+    highlights: [{ field: "title", start: 0, end: 2 }], href: "/app/agent?session=session%2Fa",
+  }]);
 });
 
 test("live AND: per-term rows intersect by id in the first list's order; terms arrive folded (全角 / case)", async () => {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { AiSessionOriginContract, AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
+import type { AiPageContextContract, AiSessionOriginContract, AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
 import {
   ORBIT_AGENT_CHAT_HISTORY_WINDOW,
   type OrbitAgentChatSessionProvider,
@@ -12,6 +12,7 @@ export interface ReliableSendInput {
   locale: string;
   message: string;
   origin?: AiSessionOriginInputContract | undefined;
+  pageContext?: AiPageContextContract | undefined;
   protocolVersion: 2;
   references: readonly { id: string; type: "contact" | "event" | "note" }[];
   requestId: string;
@@ -97,6 +98,7 @@ function canonicalFingerprint(input: ReliableSendInput): string {
               template: input.origin.template,
             }
           : null,
+        pageContext: input.pageContext ?? null,
         protocolVersion: input.protocolVersion,
         references: [...input.references]
           .map((reference) => ({ id: reference.id, type: reference.type }))

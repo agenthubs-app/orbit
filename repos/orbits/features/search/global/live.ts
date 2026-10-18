@@ -3,13 +3,14 @@
 // - 推進中 / 知り合い：计划关联联系人（features/plans/v2/active-needs.ts，R11-05 同源）；
 // - イベント：R27 journey 的 live 服务（规则 A 由它守）；
 // - 人数与业界计数：orbit_records contacts 的两条 count 查询（与 journey live 的 contacts 读法同一张表）；
-// - 会話：R21 接口到位后在这里接 `conversations`，types 随之出现（现在为 null）。
+// - 会話：R21 的本人 iOrbit 摘要读取；inbox 分支等 B 线只读接口。
 import type { EventSearchResponse } from "../../../shared/contract/event-search";
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import { createContactsListSearchAndFilterService } from "../../contacts/service-factory";
 import { configuredJourneyLiveService } from "../../events/journey/handlers";
 import { planGoalRelatedContactIds } from "../../plans/v2/active-needs";
 import type { ConversationCandidate, IndustryCount, PersonCandidate } from "./core";
+import { searchConversations } from "./conversations";
 
 export interface GlobalSearchLivePorts {
   /** `terms` are folded (NFKC, lower case) and AND-ed: every term must hit somewhere in the contact. */
@@ -91,7 +92,7 @@ export function createGlobalSearchLivePorts(): GlobalSearchLivePorts | null {
         total: Number(result?.rows[0]?.total ?? 0) || 0,
       };
     },
-    conversations: null,
+    conversations: searchConversations,
     // 意味検索 lite（静态同义词表，§50）：不调 AI，所以 live 也可用；真 embedding 等 provider 配好后再换。
     semanticAvailable: true,
   };

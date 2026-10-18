@@ -106,6 +106,19 @@ test("organization APIs create groups, patch sessions, filter, search, and pagin
     { params: Promise.resolve({ id: "session:54" }) },
   );
   assert.equal(conflictResponse.status, 409);
+  assert.equal((await conflictResponse.json()).error.code, "CONFLICT");
+  for (let index = 0; index < 4; index += 1) {
+    const id = `session:${String(index).padStart(2, "0")}`;
+    const response = await sessionItems.PATCH(request(`/api/ai/conversations/sessions/${encodeURIComponent(id)}`, "PATCH", {
+      expectedRevision: 0, mutationId: `mutation:pin-${index}`, patch: { pinned: true },
+    }), { params: Promise.resolve({ id }) });
+    assert.equal(response.status, 200);
+  }
+  const sixth = await sessionItems.PATCH(request("/api/ai/conversations/sessions/session%3A04", "PATCH", {
+    expectedRevision: 0, mutationId: "mutation:pin-sixth", patch: { pinned: true },
+  }), { params: Promise.resolve({ id: "session:04" }) });
+  assert.equal(sixth.status, 409);
+  assert.equal((await sixth.json()).error.code, "PIN_LIMIT");
 
   const renameResponse = await groupItems.PATCH(
     request("/api/ai/conversations/groups/group%3Aalpha", "PATCH", {
@@ -126,8 +139,22 @@ test("organization APIs create groups, patch sessions, filter, search, and pagin
     request("/api/ai/conversations/sessions/session%3A54", "DELETE"),
     { params: Promise.resolve({ id: "session:54" }) },
   );
-  assert.equal((await deleteOnce.json()).data.deleted, true);
+  const undo = (await deleteOnce.json()).data;
+  assert.equal(undo.deleted, true);
+  assert.equal(typeof undo.undoToken, "string");
+  assert.equal(typeof undo.undoUntil, "string");
   assert.equal((await deleteAgain.json()).data.deleted, true);
+  const restored = await sessionItems.RESTORE(
+    request("/api/ai/conversations/sessions/session%3A54/restore", "POST", { undoToken: undo.undoToken }),
+    { params: Promise.resolve({ id: "session:54" }) },
+  );
+  assert.equal(restored.status, 200);
+  assert.equal((await restored.json()).data.restored, true);
+  const deletedAgain = await sessionItems.DELETE(
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE"),
+    { params: Promise.resolve({ id: "session:54" }) },
+  );
+  assert.equal((await deletedAgain.json()).data.deleted, true);
   const lateSave = await sessions.POST(
     request("/api/ai/conversations/sessions", "POST", {
       createdAt: "2026-09-15T00:00:00.000Z",

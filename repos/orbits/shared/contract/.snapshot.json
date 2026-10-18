@@ -859,6 +859,11 @@
           "kind": "text",
           "type": "AiSessionOriginInputContract"
         },
+        "pageContext": {
+          "optional": true,
+          "kind": "text",
+          "type": "AiPageContextContract"
+        },
         "protocolVersion": {
           "optional": false,
           "kind": "text",
@@ -878,6 +883,32 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        }
+      }
+    },
+    "ai-sessions.ts::AiPageContextContract": {
+      "kind": "object",
+      "members": {
+        "route": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "filters": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "[string]": {
+              "optional": false,
+              "kind": "text",
+              "type": "string | string[]"
+            }
+          }
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
         }
       }
     },
@@ -4777,6 +4808,7 @@
         "'FORBIDDEN'",
         "'INTERNAL_ERROR'",
         "'NOT_FOUND'",
+        "'PIN_LIMIT'",
         "'SERVICE_UNAVAILABLE'",
         "'UNAUTHORIZED'",
         "'VALIDATION_ERROR'"

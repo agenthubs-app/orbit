@@ -213,6 +213,34 @@ test("Orbit Agent chat session deletion is idempotent", async () => {
   assert.deepEqual((await provider.listSessionSummariesPage({ limit: 50 })).items, []);
 });
 
+test("R21 user deletion can be undone for five seconds by the same actor and deletion version", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  let at = Date.parse("2026-10-18T09:00:00.000Z");
+  const options = { store, workspaceId: "workspace:undo", now: () => new Date(at) };
+  const alice = createStorageOrbitAgentChatSessionProvider({ ...options, actorId: "actor:alice" });
+  const bob = createStorageOrbitAgentChatSessionProvider({ ...options, actorId: "actor:bob" });
+  await alice.upsertSession({
+    createdAt: "2026-10-17T00:00:00.000Z", id: "session:undo", title: "復元する会話",
+    updatedAt: "2026-10-17T00:01:00.000Z",
+    messages: [{ id: "u1", role: "user", text: "質問" }, { id: "a1", role: "assistant", text: "回答" }],
+  });
+  const first = await alice.deleteSessionWithUndo("session:undo");
+  assert.equal(first.deleted, true);
+  assert.equal(first.undoUntil, "2026-10-18T09:00:05.000Z");
+  assert.ok(first.undoToken);
+  assert.equal(await alice.getSession("session:undo"), null);
+  assert.equal(await bob.restoreDeletedSession("session:undo", first.undoToken!), false);
+  assert.equal(await alice.restoreDeletedSession("session:undo", `${first.undoToken}bad`), false);
+  at += 4_999;
+  assert.equal(await alice.restoreDeletedSession("session:undo", first.undoToken!), true);
+  assert.deepEqual((await alice.getSession("session:undo"))?.messages.map((message) => message.text), ["質問", "回答"]);
+  const second = await alice.deleteSessionWithUndo("session:undo");
+  assert.equal(await alice.restoreDeletedSession("session:undo", first.undoToken!), false, "the previous deletion version cannot restore a later tombstone");
+  at += 5_001;
+  assert.equal(await alice.restoreDeletedSession("session:undo", second.undoToken!), false);
+  assert.equal(await alice.getSession("session:undo"), null);
+});
+
 test("Orbit Agent chat session provider rejects a stale shorter snapshot without deleting newer messages", async () => {
   const provider = createStorageOrbitAgentChatSessionProvider({
     actorId: "account:stale-writer",

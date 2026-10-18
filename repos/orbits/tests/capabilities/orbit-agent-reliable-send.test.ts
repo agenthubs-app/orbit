@@ -134,6 +134,17 @@ test("reliable send fingerprint includes the trusted request origin", async () =
   );
 });
 
+test("R21 reliable send fingerprint binds the one-turn page context", async () => {
+  const service = createReliableOrbitAgentSendService(createHarness());
+  const execute = async () => ({ result: { accepted: true } });
+  const withContext = { ...input, pageContext: { route: "/app/contacts", filters: { industry: ["manufacturing_supply_chain"] }, count: 12 } };
+  await service.send({ execute, input: withContext });
+  await assert.rejects(
+    service.send({ execute, input: { ...withContext, pageContext: { ...withContext.pageContext, count: 11 } } }),
+    (error: unknown) => error instanceof ReliableSendError && error.code === "REQUEST_ID_REUSED",
+  );
+});
+
 test("reliable send preserves outcome_unknown and never executes a blind retry", async () => {
   const harness = createHarness();
   const service = createReliableOrbitAgentSendService(harness);

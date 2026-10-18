@@ -39,8 +39,8 @@ function takahashi(platform: GlobalSearchPlatform, terms: readonly string[]) {
   const note = "高橋さんも参加予定 · 10/16";
   const events: GlobalSearchEventHit[] = [{ emoji: "🎤", eventId: "demo-event-saas-summit", href: eventHref(platform, "demo-event-saas-summit"), highlights: highlightsFor(eventTitle, note, terms), note, startsAt: "2026-10-16T10:00:00+09:00", title: eventTitle, via: null }];
   const conversations: GlobalSearchConversationHit[] = [
-    { highlights: highlightsFor("高橋さんへのお礼の下書き", "10/7 · iOrbit との会話", terms), href: platform === "app" ? "/ai?session=demo-session-takahashi" : "/app/agent?session=demo-session-takahashi", id: "demo-session-takahashi", kind: "iorbit", subtitle: "10/7 · iOrbit との会話", title: "高橋さんへのお礼の下書き" },
-    { highlights: highlightsFor("Re: 事業計画書 v3 のご送付", "高橋 美咲 · 受信箱 · 今日", terms), href: platform === "app" ? "/inbox/demo-mail-plan-v3" : "/app/inbox/demo-mail-plan-v3", id: "demo-mail-plan-v3", kind: "inbox", subtitle: "高橋 美咲 · 受信箱 · 今日", title: "Re: 事業計画書 v3 のご送付" },
+    { highlights: highlightsFor("高橋さんへのお礼の下書き", "10/7 · iOrbit との会話", terms), href: platform === "app" ? "/ai/demo-session-takahashi" : "/app/agent?session=demo-session-takahashi", id: "demo-session-takahashi", kind: "iorbit", subtitle: "10/7 · iOrbit との会話", title: "高橋さんへのお礼の下書き" },
+    { highlights: highlightsFor("Re: 事業計画書 v3 のご送付", "高橋 美咲 · 受信箱 · 今日", terms), href: platform === "app" ? "/inbox/demo-mail-plan-v3" : "/app/inbox?conversationId=demo-mail-plan-v3", id: "demo-mail-plan-v3", kind: "inbox", subtitle: "高橋 美咲 · 受信箱 · 今日", title: "Re: 事業計画書 v3 のご送付" },
   ];
   return { conversations, events, people };
 }
