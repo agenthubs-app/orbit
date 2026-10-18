@@ -2,6 +2,7 @@ export const taskDetail = {
   "taskDetail.title": "待办详情",
   "taskDetail.edit": "编辑待办",
   "taskDetail.unavailable": "待办暂时打不开",
+  "taskDetail.readFailed": "待办加载失败，请重试。",
   "taskDetail.missing": "这条待办已删除或不存在。",
   "taskDetail.dateUnscheduled": "未安排日期",
   "taskDetail.dateUnavailable": "日期不可用",

@@ -40,6 +40,8 @@ state.leave = () => {
 };
 export const useApiResource = (path) => {
   rerender();
+  if (new URLSearchParams(location.search).has("readFailure") && path.startsWith("/api/tasks/") && !path.endsWith("/activities"))
+    return { kind: "failure", error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; emit(); } };
   return { kind: "success", data: path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: state.reminders } : { task: state.task }, refreshing: false, refresh() { state.refreshes++; emit(); } };
 };
 async function request(method, path, options) {
@@ -64,7 +66,7 @@ export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const AppScreen = ({ children }) => <main>{children}</main>;
-export const ErrorState = ({ message }) => <div>{message}</div>;
+export const ErrorState = ({ message }) => <div role="alert">{message}</div>;
 export const LoadingState = () => <div>Loading</div>;
 export const Ionicons = () => <span aria-hidden="true">◇</span>;
 export const createThemedStyles = () => () => ({ colors: {}, styles: {} });
@@ -134,6 +136,17 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }, langu
   await page.waitForFunction((label) => document.querySelector<HTMLTextAreaElement>(`[aria-label="${label}"]`)?.value === "Original title", language === "ja" ? "タスク名" : "待办标题");
   return page;
 }
+
+test("Japanese task detail does not expose server-language read errors", async (t) => {
+  const page = await browser.newPage();
+  page.setDefaultTimeout(3000);
+  t.after(() => page.close());
+  await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
+  await page.goto(`${url}?lang=ja&readFailure=1`);
+  await page.getByRole("alert").waitFor();
+  assert.equal(await page.getByText("连接暂时失败", { exact: true }).count(), 0);
+  await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).waitFor();
+});
 
 async function seedDeleteConflict(page: Page): Promise<void> {
   const mutation = buildOfflineTaskMutation({

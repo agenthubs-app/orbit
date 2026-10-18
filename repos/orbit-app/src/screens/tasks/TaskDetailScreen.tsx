@@ -519,7 +519,7 @@ export function TaskDetailScreen() {
         </View>
       </View> : null}
       {!offline && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
-      {!offline && detailState.kind === "failure" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
+      {!offline && detailState.kind === "failure" ? <ErrorState message={locale.t("taskDetail.readFailed")} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           <View style={styles.hero}>

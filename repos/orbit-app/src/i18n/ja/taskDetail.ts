@@ -2,6 +2,7 @@ export const taskDetail = {
   "taskDetail.title": "タスク詳細",
   "taskDetail.edit": "タスクを編集",
   "taskDetail.unavailable": "タスクを開けません",
+  "taskDetail.readFailed": "タスクを読み込めません。もう一度お試しください。",
   "taskDetail.missing": "このタスクは削除されたか、存在しません。",
   "taskDetail.dateUnscheduled": "日付未設定",
   "taskDetail.dateUnavailable": "日付を利用できません",
