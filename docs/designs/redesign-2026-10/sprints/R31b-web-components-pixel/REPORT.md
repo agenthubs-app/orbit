@@ -13,9 +13,9 @@
 | 调用点改新参数 + 替换手写件 + 交接表通知甲 | `d5f27962c` |
 | RetryCard / DegradedCard / QuotaChip / QuotaMeter / Why / Bone | `7a038e192` |
 | 勾选类控件保留 44×44 布局框（不退步修复）、Popover 格位置 | `3193238b5` |
-| 深色 Toast 动作钮（01-system ① 按 RD-17 改稿后）、c-ctl 格跟改稿 | `6ef30621c` |
-| 预检清单、DEFERRED-A / 交接表处理结果 | `30b6c3cee` |
-| 键盘与无障碍测试（无 ✕ Modal、ConfirmDialog 焦点） | `0956c7700` |
+| 深色 Toast 动作钮（01-system ① 按 RD-17 改稿后）、c-ctl 格跟改稿 | `265dc2445` |
+| 预检清单、DEFERRED-A / 交接表处理结果 | `e1a6fc8b5` |
+| 键盘与无障碍测试（无 ✕ Modal、ConfirmDialog 焦点） | `a5d5d1878` |
 | 本 REPORT | 本文件所在提交 |
 
 `2569ad835`～`3193238b5` 已由主会话推到 `origin/redesign`。
@@ -30,8 +30,8 @@
 | SC-R31b-04 键盘与无障碍 | ✅ 无 ✕ 的 Modal Esc 关闭、焦点回到打开它的按钮；图标块 `aria-hidden`、不进 Tab 顺序；破坏性 ConfirmDialog 焦点先在キャンセル、非破坏性在主按钮；焦点环照 01-system ② `.focus` 改 `--plum-500`（仍是 outline）；UnderlineTabs / Segmented 方向键；Why 的 ? 视觉 18 + 隐形 24 命中区 | `orbit-2026-modal.test.tsx`、`orbit-2026-ui-render.test.tsx` |
 | SC-R31b-05 手写件与调用点 | ✅ 见第 5 节；甲已在交接表 R31b 节被通知 | `d5f27962c`、交接表 |
 | SC-R31b-06 待组件库画面重比 | 部分：重比清单 22 张全部重跑；W-R27-13、W-R16-08 浅深通过（DEFERRED-A 改 done）；其余组件部分已对齐，剩余是页面自身原因 → 第 6 节「交还」 | 第 4 节 |
-| SC-R31b-07 不退步 | ✅ `pass-baseline-web.json` 265 张全部仍通过；R07 壳门禁组件改动后重跑通过 | `run-01/nr1`、`nr1b` |
-| SC-R31b-08 测试与复核 | orbits 全量 7497 条：6 失败，全部在基线 worktree（`e081084b0`，同一 `.env.local`）上同样失败（基线 7 失败），零新增；`typecheck`、`typecheck:app`、`lint` 通过。App 没改文件（App 全量归 R31a）。GitNexus 按 RD-32 不跑。独立复核待主会话安排 | 第 7 节 |
+| SC-R31b-07 不退步 | ✅ `pass-baseline-web.json` 265 张全部仍通过；本轮首跑的 6 张加载／fixture 问题经定向补跑全部通过 | `run-01/nr1`、`nr1b`；复核处理 |
+| SC-R31b-08 测试与复核 | 本轮 orbits 全量 7534 条：7 失败（原有 6 项 + 修复前快照已失败的按钮门禁），零新增；`typecheck`、`typecheck:app`、`lint` 通过。App 没改文件；App 全量对照引用 R31a REPORT §5（下方第 7 节注明来源与状态）。GitNexus 按 RD-32 不跑。独立复核见本轮「复核处理」。 | 第 7 节、复核处理 |
 
 ## 3. 逐件对照（Web，`views/web-R31b-components.json`，1440，`--grid 30`，归因 `attribution-redesign-R31b.json`）
 
@@ -92,7 +92,7 @@ R24-05b 五张的带数没降：整屏带里压着页面本身的差异（下一
 | 活动 `VenuePage` / `EventsScreen` | 手写分段 | `Segmented variant="seg"`（`VenuePage` 新文案键 `venueTabs`） |
 | 主办 `HostCohosts` | bare 抽屉 + 手写头部 | 组件 Drawer 标题 + 副标题 + 白圆 ✕（520 / 22；b6 #20 画板按 RD-27 改 520） |
 | 计划 `PlanOverview` / `PlanTypeDialogs` | Modal 默认头 + description | `icon` / `subtitle` / `titleSize` / `size={380}` / `closable={false}`；两处抽屉 `titleSize={18}`（推翻 R24 自定 7） |
-| 活动 `EventsScreen` 参加コード | 420 + description | `size={380}`，副标题按 #320 放标题行下 4px（推翻 R26 自定 7） |
+| 活动 `EventsScreen` 参加コード | 420 + description | `size={380}`，`subtitle` + `subtitleBelowHead` 按 #320 放标题行下 4px（推翻 R26 自定 7；复核 M2 后不再加页面正文节点） |
 | ConfirmDialog 全站 | 图标在上（App 式） | Web 版式（主办 3 处、加人 InviteCodeModal 随之变化） |
 | 未换 | `HostConsole` レポート 链接分段；`SearchPanel` 类型 chip；计划 `FlowDialog` | 交还 9 |
 
@@ -118,6 +118,7 @@ PLANNER「已查清的事实」2 说已有的 `?env=legacy` 展示页其实不�
 | orbits 全量（`LANG=en_US.UTF-8`） | 7497 条，6503 过、6 失败、988 跳过；6 条失败（`add-scan-flow` ×2、`add-contact-screens` 手入力、产品清单生成、合并写回、只有 dev 路由引用设计 fixture）在基线 worktree（同一 `.env.local`，7493 条 7 失败）上同样失败，**零新增** |
 | `typecheck` / `typecheck:app` / `lint` | 通过 |
 | 组件门禁 | `orbit-2026-*`（含新 `orbit-2026-legacy-btn`）、`orbit-modal-standard`、`orbit-button-ratchet`、`orbit-z-scale`、`orbit-2026-css-tokens`、`orbit-2026-scope`、`no-hardcoded-copy`、工具测试 `redesign-pixel-components` 全部通过 |
+| App 全量对照（R31a 负责） | [R31a REPORT §5](</Volumes/ORICO/Dev/worktrees/orbit/redesign-a/docs/designs/redesign-2026-10/sprints/R31a-app-components-pixel/REPORT.md>) 的 2026-10-18 16:44 工作稿记录最近一轮 3338 项：失败项为基线同名与负载超时（后者串行复核），新增失败 0，`tsc` 0。该文档尚在 `line-a` 收口，R31b 只引用其 App 全量证据，不把 Web 测试当作 App 已验证。 |
 
 ## 8. 自定决定（工程）
 
@@ -125,20 +126,57 @@ PLANNER「已查清的事实」2 说已有的 `?env=legacy` 展示页其实不�
 2. Segmented 默认外观不改（Task 段、壳头像菜单在用），新增 `variant="seg"` = kit `.seg` 给页面分段。
 3. 勾选类控件保留 44×44 布局框（R16 表格按它排）；c-ctl 展示格用负外边距把命中区收回标记大小再排行。
 4. 焦点环改 `--plum-500`（01-system ② `.focus` 是 kit 唯一画出的焦点环），保持 outline（键盘测试与强制色模式）。
-5. 标题 17 没有语义 token，用同值 `--fs-logo`，不改 `tokens.json`（避免与 R31a 并行时同步 App 副本冲突）。
+5. 新参数标题 17 没有语义 token，用同值 `--fs-logo`；旧 Modal 默认仍用 `--fs-dialog-title`。不改 `tokens.json`（避免与 R31a 并行时同步 App 副本冲突）。
 6. 规格格示例文字放 `cell-samples.json`（设计稿示例数据，不是界面文案）；c-ctl 的中文说明按 01-system 页面语言以 `lang="zh"` 渲染。
 
-## 9. 待主会话决定
+## 9. §52 主会话代定
 
-1. **W-R17-P26**：剩余带是背景柱高（数据）与抽屉文字栅格同带；改清单只比抽屉区域，还是接受。
-2. **c-ctl-0 浅色**：带 0 / 1 是行尾说明文字的 RD-05 加深（同一替换在其他带判定通过），工具逐像素对等宽字体那段解释不足（38.8% / 15.8%），是否接受为 `[contrast]`。
-3. **Drawer `lg` 600**：PLANNER 契约写「宽度只有 520 / 380」，但 kit `.drawer` 与 01-system 规格是 600，`EventsScreen` 详情抽屉、`ManualContactDrawer` 粘贴模式在用并按 600 画板通过；本 Sprint 保留 lg。
-4. **非壳抽屉深色细边**：PLANNER 契约要有，kit `.drawer` 没有；保留现状。
-5. 交还 1–10 的分派。
+1. **W-R17-P26**：按 §52-1 只比抽屉区域；背景「申込の推移」柱高不计。
+2. **c-ctl-0 浅色**：按 §52-2 保留 RD-05 加深；两带 `[contrast]` 人工例外接受，工具仍报 fail。裁剪图与逐带说明在归因文件，见「复核处理」。
+3. **Drawer `lg` 600**：按 §52-3 保留 lg；RD-17 的 520 / 380 限于新内容抽屉的选档。
+4. **非壳抽屉深色细边**：按 §52-4 删除，重比见「复核处理」。
+5. 交还 1–10 归 R32 清理轮（§52-5）。
 
 ## 10. 交接
 
-- 组件新参数：`Modal`（`size` 380 / 760 / 860 / 1000、`icon`、`subtitle`、`titleSize`、`closable`、`closeOnScrim`、`role`）、`ModalIcon`（kit `.dic` / `.dic.emo`）、`ConfirmDialog`（Web 版式、`emoji`）、`Drawer`（`subtitle`、`titleSize`）、`Segmented`（`variant="seg"`、`className`、`data-*`）、`UnderlineTabs`（`line` / `host`、`count`、`badge`、`href`）、`ConfirmCard`（`emoji`、`reason`、`undo`、`link`、动作 `ghost`）、`WhyButton` / `WhyBody`、`QuotaMeter`、`Bone`、`Avatar tone`、`ToastPreview`、`Button` 转发 ref。
+- 组件新参数：`Modal`（`size` 380 / 760 / 860 / 1000、`icon`、`subtitle`、`subtitleBelowHead`、`titleSize`、`closable`、`closeOnScrim`、`role`；旧默认头部外观保留）、`ModalIcon`（kit `.dic` / `.dic.emo`）、`ConfirmDialog`（Web 版式、`emoji`）、`Drawer`（`subtitle`、`titleSize`）、`Segmented`（`variant="seg"`、`className`、`data-*`）、`UnderlineTabs`（`line` / `host`、`count`、`badge`、`href`）、`ConfirmCard`（`emoji`、`reason`、`undo`、`link`、动作 `ghost`）、`WhyButton` / `WhyBody`、`QuotaMeter`、`Bone`、`Avatar tone`、`ToastPreview`、`Button` 转发 ref。
 - 旧样式隔离：新组件元素带 `btn` 就必须写 `:global(.btn)` 双类规则（测试会拦）。
 - 证据：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-a2/R31b/run-01/`（`baseline`、`nr1`、`nr1b`、`rerun2`、`components-final`）；内置盘满过一次，证据统一放 ORICO。
-- 基线 worktree `/Volumes/ORICO/Dev/worktrees/orbit/a2-base`（`e081084b0`，只用于全量对照，可删）。
+- 开发轮全量对照使用过基线 worktree `/Volumes/ORICO/Dev/worktrees/orbit/a2-base`（`e081084b0`）；本轮复核时该目录已不存在。新增观察到的按钮门禁另用修复前提交的源码快照复现，见第 11 节。
+
+## 11. 复核处理（RD-25，§52）
+
+| 项 | 本轮本地提交 |
+| --- | --- |
+| S1 | `814ab4acf` |
+| M1 | `acc209eeb` |
+| M2 | `a23a5c477` |
+| M3 | `c68f078c8` |
+| M4 | `ff605362e`、`5ff94a033` |
+| M5 | `a02f9f4a9` |
+| m | `1176474a0` |
+| REPORT | 本文件所在提交 |
+
+- **S1**：`attribution-redesign-R31b.json` 给 c-ctl-0 浅色及 legacy 的带 0 / 1 写了 `[contrast]`、§52-2 人工判定和每带设计／实现裁剪图路径。原始工具报告分别有 38.8% / 15.8% 未解释像素；裁剪图显示位置和控件一致，差异集中在 RD-05 加深的等宽说明字。两个环境的对应裁剪图逐字节相同。**结论为「§52 例外接受」，不是「自动门禁通过」**；自动门禁结果与本轮重跑摘要另记在下方。
+- **M1**：删去非壳 Drawer 两条深色细边规则及因此多余的 bare 覆盖；浏览器测试同时验证显式深色主题和系统深色主题均为 `border-top-width: 0px`。抽屉区域重比结果见下方。
+- **M2**：参加コード副标题改为 `Modal subtitle` + `subtitleBelowHead`，副标题仍在整条标题行下 4px，输入区仍接 14px 间距；没有增加页面正文节点。浏览器布局测试已过，W-R26-31 重比见下方。
+- **M3**：`HostPeople` 给 `Segmented` 传页面类，767px 以下恢复 `overflow-x: auto`、`max-width: 100%` 与 `min-width: 0`。390px 浏览器测试量到 4 个页签、tablist 314px、卡片 354px、内部可滚动宽 390px，tablist 右沿在卡片内。
+- **M4**：`orbit-2026-legacy-btn` 用 Chromium 对照新／旧页面 CSS 的正常、按下、禁用实际计算样式；覆盖旧 `.btn:active` 对 Segmented 的额外平移。禁用主按钮、IconButton、Toggle 保留各自背景／字色与默认光标；按下态保留 Button 的 0.96、IconButton 的 0.9 缩放，Segmented / Toggle 不平移。旧页面 `.btn` 的 0.5px 平移在新作用域内清除。
+- **M5**：旧 Modal 默认值恢复开工前的标题 `16px / 800 / 1.35`、关闭钮 `36px`／透明底／`20px` 图标；只有传 `icon`、`subtitle` 或 `titleSize` 才用新版 `17px / 700` 与 `34px` 关闭钮。采用 REVIEW 允许的「新外观限于新参数」方案；浏览器计算样式断言覆盖旧默认与新参数。
+- **m**：`run-web-gates.mjs` 只合并本次新摘要，子进程退出非零或缺少预期 key 会返回非零。模拟退出失败、缺 key、已生成新摘要但退出失败、成功、fixture 切换失败的 5 个测试均通过；旧摘要没有混入。第 1 节已更正三个提交号；第 7 节补 R31a App 全量对照来源。
+
+定向测试证据：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-a2/R31b/fix/focused-tests.log`（37 / 37）与 `run-web-gates-tests.log`（5 / 5）。
+
+本轮像素重跑证据在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-a2/R31b/fix/`：
+
+| 门禁 | 结果 | 说明 |
+| --- | --- | --- |
+| `components/summary.json` | 58 / 60 自动通过 | 唯二失败为 c-ctl-0 浅色及 legacy 浅色，各 2 未归因带；按 §52-2 人工例外接受，自动门禁仍 fail |
+| `M1-W-R17-P26/all-summary.json` | 浅 7、深 6 未归因带 | §52-1 只裁 `906,14,520,932` 抽屉；三联图可见深色顶部细边已去掉，余带为字形／内容的像素差，门禁仍 fail |
+| `M1-W-R24-12/all-summary.json` | 浅 10、深 9 未归因带 | 抽屉重比仍受页面状态与正文差异影响（第 6 节交还 4），门禁仍 fail |
+| `M2-W-R26-31/all-summary.json` | 浅 7、深 4 未归因带 | 截图中 Modal 已出现，但 `--wait-for [role=dialog]` 本轮超时；门禁仍 fail，页面与画板状态差异见第 6 节交还 6 |
+| `noregression/` + 两次定向补跑 | 265 / 265 通过 | 首轮 263 条新记录、259 通过；R25 legacy 补跑 4 / 4、R30 搜索补跑第二轮 2 / 2。按基线 key 合并后预期 265、实际 265、通过 265，无缺失或额外 key |
+
+不退步首轮 `noregression/all-summary.json` 只含本次新结果：预期 265 key，实际 263 条、259 通过；W-R25-12 浅深在导航中断后缺 key，W-R25-13 浅深的画面显示「このプランは見つかりません」，W-R30-P01 浅／P01d 深截到「検索中…」。脚本因子进程失败与缺 key 返回 1，没有把旧摘要补进来。`noregression-r25-legacy-retry1/all-summary.json` 四张全部通过；`noregression-r30-retry1/` 仍截到加载态，`noregression-r30-retry2/all-summary.json` 两张全部通过（raw 各 0.0006）。合并时只用本轮新摘要中对应 key 的最后成功结果。
+
+本轮 orbits 全量日志为 `full-tests.log`：7534 项，6538 过、7 失败、989 跳过。六项与第 7 节所记基线失败同名；另一个 `orbit-button-ratchet` 上限 79／实测 80，在修复前 `f6923b753` 源码快照上亦为 80（`ratchet-pre-fix.log`），本轮没有增加无 `.btn` 的按钮。`typecheck`、`typecheck:app`、`lint` 本轮均退出 0。
