@@ -31,6 +31,8 @@ Modal テスト補正後の sanitized Web full は **7,715 tests / 6,655 pass / 
 
 SC-14 の Agent 旧入口は、単純な行先変更で `?entry=` の特定行を失うため、まだ残す。Web の実リンク・参照は `agent-action-status-card.tsx`、`agent/iorbit-0918/{iorbit-home,iorbit-actions}.tsx`、`orbit-product-href.ts`、`orbit-global-ask/orbit-ask-routes.ts`。これらの消費先を E 線との交接リストにする。新しい To-do は現状「すべて」をローカル状態で開くが、URL の entry ID を読んで source 別 paging から正確に焦点を当てる契約はない。旧 `/app/agent/actions` をまだ新画面への等価な redirect と称さず、移行判断待ちとする。
 
+現行 clean D `e06deb439` で SC-06 / SC-10 の Web browser 定向を sanitized env と全機 `heavy.sh d` で再実行し、**8/8 pass、exit 0**。原始ログは `_evidence-d/R20a/run-01/d-web-calendar-container-current-e06deb439.log`。Task container は四段切替・矢印鍵・`?tab=`・plan hash、calendar product は追加フォーカス、個人予定 create/edit/delete の権威 readback、外部詳細 read-only、週/日選択窓を確認した。既存 container harness は Next router を呼出記録へ置換しており、実ログイン後の二級ページ往復や戻り時スクロール位置の証拠ではない。calendar browser も fixture HTTP / auth context で、実 Google、繰り返し sheet、simulator、pixel / full suite は未検証のまま。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
