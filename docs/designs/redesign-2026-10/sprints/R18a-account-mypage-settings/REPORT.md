@@ -110,6 +110,12 @@ The pristine C App baseline `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/or
 
 Coordinator approved the new exact C-only ORICO evidence root `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18a/run-01/`. Only the reviewed verification harness and fresh syntax/check-only artifacts were reconstructed there, with `evidence-loss-20261018.json` explicitly recording `recoveredPriorRunEvidence:false`. No old raw log/JSON was regenerated or presented as recovered. The nonce, binary SHA, local DB/schema/workspace, ownership/cleanup guards and phase caps are preserved; the harness expected-head guard is advanced only for this REPORT-only commit. The native ownership manifest had never been created, the nonce-owned view is still absent, and ports3400/8084 had no listeners at the post-loss check. No native setup, boot, install, launch or credentials operation has run; those operations remain held for the coordinator's D-gate release. Native SC03–06 and SC12 pixels remain **OPEN**.
 
+### Current native harness read-only preflight
+
+At clean C HEAD `5b3b25326`, the reconstructed `native-lifecycle-26f7f50d8edc.cjs` still pins `INITIAL_HEAD=4f8804cd0`. A read-only `--check-only` invocation under the available Node 25 exited 1 at that exact assertion, before any schema, server, or simulator action. The required Homebrew Node 22 binary could not even start because its `libsimdjson.30.dylib` dependency is absent (`dyld` exit 134); no package install or replacement runtime was attempted. The harness also still passes Expo CLI's mutually exclusive `--offline --localhost` pair, and directs `simctl io screenshot` to the external evidence volume, where the D public smoke reproduced Cocoa 513 / POSIX 1. These are harness prerequisites to repair and re-review, not R18a native product failures. Do not simply advance the pinned HEAD and treat the old approval or build as current-source acceptance.
+
+Read-only resource checks found the exact C schema `r18a_native_20261018_26f7f50d8edc` absent in `orbit_line_c_test`, the nonce-owned `.next-r18a-native-26f7f50d8edc` view absent, the C simulator Shutdown, and ports 3400 / 8084 free. No local fixture, account, server, or native installation was created by this preflight. The prior bounded resource-scope approval remains documented, but the changed source and broken runtime require a fresh guarded harness check before any write or private native operation.
+
 ## Baseline and evidence
 
 - C Web pristine: 7475 tests, 6428 pass, 32 fail, 1015 skip. 25 failures explicitly require a missing DB URL; six other failure categories match D. The extra `tests/ui/add-contact-screens.test.tsx` doors assertion (`kit .wmodal.w560`) subsequently passed the correct targeted rerun (2/2, 3.26s). This supports timing sensitivity, not a full-suite pass.
@@ -300,6 +306,7 @@ Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper 
 
 ## 请求
 
+- C native gate owner / coordinator: review the current `5b3b25326` source delta against the originally pinned harness, restore a working Node 22 runtime without broad package changes, and correct the Expo host/offline and simulator screenshot paths before fresh `--check-only`. Do not provision the approved C-only schema or fake actor until the exact-version guard and ownership preflight pass.
 - R12 App add-test owner: `tests/helpers/add-fixtures.ts` fixes batch expiry at `2026-10-18T01:00:00Z`. Nine camera/reading browser cases now stop on an expired batch. Stabilize the test clock or fixture expiry, then rerun that file and App full; C will not edit R12 files.
 - Backend owners: genuine Japanese intro/candidate support is still absent (G18 hides live Japanese actions). Binary résumé parsing is outside the adopted supported-text scope, not required by this continuation.
 - D / R20a: native uses the approved Web settings fallback; a later native OAuth session/callback contract would require separate review. Existing signed Web return destination is not native round-trip proof. Language preference synchronization belongs in the shared language context, not a second page-specific writer.
