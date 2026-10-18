@@ -476,6 +476,7 @@ inventory handback 後、initial-proposal の exact GET / POST を `meeting-prop
 
 ## 请求
 
+- R12 の App add-test owner：`tests/helpers/add-fixtures.ts` の batch expiry が `2026-10-18T01:00:00Z` に固定され、現在は9件の camera / reading browser test が期限切れ batch で止まる。テスト時計か fixture 期限を安定化し、単独ファイルと App 全量を再実行してほしい。D は R12 ファイルを変更しない。
 - A の completion-question source owner：既存 `today()` は初期化時に書くため、保存済み question の pure read-only peek / projection が必要。aggregate GET からは呼ばず、未初期化は `sources.completion_question=not_implemented` として件数が partial と分かる表示を維持する。独立 TodayQuestionCard flow を mount しても aggregate count parity や自動減算の証拠にはしない。
 - Agent / chat owner：entity_draft から検証済み persisted session identifier、または actor-scoped な対応 mapping を投影し、「該当する保存済み会話を開く」end-to-end test を追加してほしい。D は ownership 外の Agent chat path を変更しない。
 - draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
