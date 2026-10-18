@@ -55,6 +55,7 @@ export function overlayQueuedNotes(
     } : existing!;
     const manualContactIds = Array.isArray(patch.manualContactIds) ? patch.manualContactIds : base.manualContactIds;
     const mentions = Array.isArray(patch.mentions) ? patch.mentions : base.mentions;
+    if (mentions.some((mention) => typeof mention !== "object" || mention === null || Array.isArray(mention))) return null;
     const contactIds = [...new Set([
       ...(manualContactIds as string[]),
       ...(mentions as { entityType?: string; contactId?: string }[]).filter((mention) => (mention.entityType ?? "contact") === "contact").map((mention) => mention.contactId).filter((id): id is string => typeof id === "string"),

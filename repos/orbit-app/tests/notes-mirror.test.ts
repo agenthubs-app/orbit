@@ -115,6 +115,8 @@ test("R20b rejects a malformed queued note instead of projecting a status-only g
     attemptCount: 1, firstAttemptAt: "2026-10-18T00:00:01.000Z", serverSnapshot: null,
   };
   assert.equal(overlayQueuedNotes([], [mutation], "a", "en"), null);
+  assert.equal(overlayQueuedNotes([], [{ ...mutation, patch: { title: "Broken", body: "Body", mentions: [null] } }], "a", "en"), null,
+    "a corrupted queued mention must fail the overlay without throwing");
 });
 
 test("freshness: never synced is loading; a failed attempt after a sync is offline with its time", () => {
