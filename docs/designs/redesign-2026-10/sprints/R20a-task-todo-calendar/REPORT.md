@@ -789,3 +789,9 @@ To-do の合成 relationship task `QA follow-up` はサーバーで open follow-
 Calendar の `Couldn't load Google Calendar events` は、この sanitized API env に `ORBIT_INTEGRATION_TOKEN_KEY` がなく `createConfiguredOrbitIntegrationService` が null となるため、external reader が `connection: unavailable` を返す fixture 表示。合成アカウントで実 Google の未接続 UI・連携往復を検証した証拠ではない。
 
 合成 session は Settings から sign out して login 画面を確認した（Metro は通知 cleanup 未完全確認の warning を一件出したため通知登録の完全清掃は主張しない）。本 run の API 3500 / Metro 8085 を停止、D app を terminate、simulator を初期 Shutdown に戻した。host 127.0.0.1 / port 5432 / owner xzhao / exact name と active connection 0、`orbit_records` はすべて nonce workspace / actor だけであることを確認してから nonce DB だけを dropし、catalog 不在を再確認。既存 simulator app / data container は消していない。Next dev が生成した二ファイルの差分は scoped に戻した。push / 本番 / 実 Google / paid AI なし。
+
+## 2026-10-19　R20b DB guard 修正後の Web 全量再測定
+
+product/test source は前回 full 後の R20b exact test DB allowlist 修正を含み、今回の run 開始時点の HEAD は native 記録のみの `e2abb515f`（実行中の `b72df7fea` amend は REPORT 一行追加のみ）。同じ loopback `/orbit_line_d_test` と共有 heavy queue で `npm test` を fresh 実行した原始ログ `_evidence-d/R20a/run-01/d-web-full-post-r20b-guard-e2abb515f.log` は **7,674 tests / 7,109 pass / 21 fail / 0 cancelled / 544 skip、exit1**。直前の可比 `d-web-full-task-login-harness-policy-postfix.log` は 7,108 pass / 22 fail；failure name 集合の差は R20b `saved meeting memo creates one C11 card` が消えただけで、新規名は **0**。同 case は今回の full 内で pass。Web 全量 green ではない。
+
+終了後 D test DB に非 system schema 七件を観測したが、六件の relation file の変更時刻は **02:16–02:23 JST** で今回の 08:21 開始より前。残る一件は object 0 で作成時刻を裏付けられない。今回の run が作ったものと断定できないため **一件も削除していない**。この保留を cleanup 成功や今回の新規残留とは数えない。D worktree はこの記録以外 clean；App full / native 未網羅 / SC-15 pixel / 独立再検は OPEN のまま。
