@@ -63,7 +63,7 @@ export function CalendarScreen() {
   const offlineMessage = Platform.OS !== "web"
     ? syncTime ? t("schedule.offlineQueuedSnapshot", { time: syncTime }) : t("schedule.offlineQueuedNoSnapshot")
     : syncTime ? t("sync.offlineSnapshot", { time: syncTime }) : t("sync.offlineNoSnapshot");
-  return <AppScreen title={t("schedule.title")} refreshControl={<RefreshControl refreshing={source.refreshing || external.refreshing} onRefresh={refresh} tintColor={colors.accentText} />}
+  return <AppScreen inset="kit" title={t("schedule.title")} refreshControl={<RefreshControl refreshing={source.refreshing || external.refreshing} onRefresh={refresh} tintColor={colors.accentText} />}
     headerActions={<IconButton icon="plus" accessibilityLabel={t("schedule.newPersonal")} onPress={create} />}>
     {loading && !projection ? <Skeleton /> : null}
     {source.offline ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{offlineMessage}</UiText> : null}

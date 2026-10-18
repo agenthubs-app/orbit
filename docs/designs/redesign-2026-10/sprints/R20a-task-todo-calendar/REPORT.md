@@ -15,6 +15,8 @@ SC-14 の Web 旧 plain-task 詳細入口を部分更新した。`/app/tasks/[id
 
 SC-09 App の完了済み fold は、未完了の期限群を残したまま、開いた時だけ別の completed page を読む。browser online-only は署名 cursor を渡し、端末 mirror は同じ保存集合を別窓として切る。初回ブラウザ RED は展開ボタン欠落で、実装後の新ケースは pass。最初の合わせ実行 `d-app-task-shell-focused-green.log` は **28 tests / 26 pass / 2 fail**：root テストの無寸法 fixture `<nav>` を visible と待った timeout と、既存 task browser suite 終了後の `route.fulfill: Route is already handled!`。前者を attached 判定に直した root browser は **4/4 pass**、後者の task file 単独再実行は fold を含む **21/21 pass**。型検査の初回 exit2 は parsed page と API interface の optional 型差、および新 fixture の強制変換 1 件。修正後の fresh App typecheck は **exit0**（`d-app-typecheck-fold-shell-tsfix.log`）。合わせ実行の async failure は消えたと主張せず、次の full gate で再確認する。App fold は `5ccec50d0` に局所コミットしたが、空 / 少 / 大の native 操作や pixel はまだない。
 
+その後の clean `git pull --rebase origin redesign` は D の96パッチを上流 R31a / R31b に重ねた。range-diff で内容差が出たのは App root の1コミットだけ：上流 `UiPortalHost routeKey={pathname}` と本線の `auth.signedIn` bottom-bar guard を両方保持して解決した。現 hash は root `98afb412e`、App fold `9738cb711`、Web 旧 task 入口 `201bf7d86`。rebase 後の軽量 root / mirror **3/3** と Web route / list **13/13** は pass。新規全面画面 Todo / Calendar の `AppScreen inset="kit"` 守衛は RED 0/1 → GREEN 1/1、fresh App typecheck は **exit0**（`d-app-typecheck-after-rebase-kit.log`）。browser / full の再検証と pixel 判定はまだない。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。

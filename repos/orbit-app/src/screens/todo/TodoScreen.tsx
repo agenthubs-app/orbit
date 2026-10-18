@@ -433,7 +433,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
 
   if (!page && todoAggregateHidden(todo.state)) return null;
 
-  return <AppScreen title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
+  return <AppScreen inset="kit" title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
     {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds}
       onRefresh={refresh} canOpen={item => "actions" in item ? todoDecisionHref(item) !== null : true}
       onMore={section => { void loadMore(section); }}
