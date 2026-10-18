@@ -230,6 +230,46 @@
    "region": "0,120,359,177",
    "placement": "inline",
    "note": "Toggle / CheckCircle / Checkbox / Radio / FilterOption / CategoryTabs"
+  },
+  {
+   "id": "A-R31a-b2-utabs",
+   "design": "b2-events-flow.html",
+   "board-index": 15,
+   "path": "/showcase/components/b2-utabs?theme={theme}",
+   "design-region": "18,443,354,64",
+   "region": "0,120,354,64",
+   "placement": "inline",
+   "note": "イベント詳細 · 参加者 少：UnderlineTabs；画板实测 .p-tabs x18 y457，裁剪含上方 14 点 margin"
+  },
+  {
+   "id": "A-R31a-b2-tabbar-main",
+   "design": "b2-events-flow.html",
+   "board-index": 6,
+   "path": "/showcase/components/b2-tabbar-main?theme={theme}",
+   "design-region": "14,756,362,62",
+   "region": "14,756,362,62",
+   "placement": "screen",
+   "note": "探す：主 TabBar 胶囊本体 362×62"
+  },
+  {
+   "id": "A-R31a-b2-tabbar-live",
+   "design": "b2-events-flow.html",
+   "board-index": 27,
+   "path": "/showcase/components/b2-tabbar-live?theme={theme}",
+   "design-region": "14,756,360,62",
+   "region": "14,756,360,62",
+   "placement": "screen",
+   "note": "現場ホーム：livebar 胶囊本体 360×62"
+  },
+  {
+   "id": "A-R31a-b2-search",
+   "design": "b2-events-flow.html",
+   "board-index": 10,
+   "path": "/showcase/components/b2-search?theme={theme}",
+   "design-region": "0,50,390,62",
+   "region": "0,50,390,62",
+   "placement": "screen",
+   "note": "探す · 検索：FullScreenSearch 的搜索行（结果卡由业务页负责）"
   }
  ],
  "_excluded": {

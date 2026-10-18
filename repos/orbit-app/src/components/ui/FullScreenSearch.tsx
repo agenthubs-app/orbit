@@ -68,7 +68,8 @@ export function FullScreenSearch({
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={[styles.sbar, events && styles.sbarEvents]}>
-          <View style={[styles.search, events && styles.searchOn]}>
+          <View style={styles.search}>
+            {events ? <View pointerEvents="none" style={styles.searchRing} /> : null}
             <Icon name="search" size={16} color={iconColor} />
             <TextInput value={value} onChangeText={onChangeText} autoFocus showSoftInputOnFocus={showSoftInputOnFocus} onSubmitEditing={onSubmitEditing} placeholder={placeholder} placeholderTextColor={colors.ink3Text} accessibilityLabel={placeholder} returnKeyType="search" style={styles.input} {...(inputTestID ? { testID: inputTestID } : {})} />
             {value ? <UiPressable accessibilityRole="button" accessibilityLabel={clearLabel} onPress={() => onChangeText("")} hitSlop={8}><Icon name="x" size={16} color={iconColor} /></UiPressable> : null}
@@ -91,8 +92,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sbar: { alignItems: "center", flexDirection: "row", gap: 10, paddingBottom: 12, paddingTop: 6 },
   sbarEvents: { gap: 8 },
   search: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flex: 1, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 16 },
-  // kit .search.on: a 2px plum-300 ring drawn outside the 44 field (the row keeps its height).
-  searchOn: { borderColor: colors.plum300, borderWidth: 2, height: 48, marginLeft: -2, marginVertical: -2, paddingHorizontal: 16 },
+  // kit .search.on uses an outer box-shadow; draw its 2px ring outside the 44pt field.
+  searchRing: { position: "absolute", top: -2, right: -2, bottom: -2, left: -2, borderColor: colors.plum300, borderRadius: radius.pill, borderWidth: 2 },
   input: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
   cancel: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 4 },
   cancelSm: { height: 32, paddingHorizontal: 12 },

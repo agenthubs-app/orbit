@@ -6,8 +6,8 @@ import { getAppearanceChoice, useAppearanceChoice } from "../../design/appearanc
 import { createThemedStyles } from "../../design/theme";
 import { findComponentSection, SECTION_TOP } from "./component-sections";
 
-// R31a 逐件对照的小节页：只画这一个规格格。inline 小节固定在 (0, SECTION_TOP)、宽 = 规格格宽、整数坐标，
-// 门禁按清单里的 rect 裁剪；overlay 小节（确认框 / 动作表 / 底部弹层）按组件自身规则定位。
+// R31a 逐件对照的小节页：inline 规格格固定在 (0, SECTION_TOP)、宽 = 格宽；
+// overlay 小节按弹层自身规则定位，b2 的 screen 小节占满页面；门禁按清单里的 rect 裁剪。
 // 页面底色 = --bg（规格格的文档雾面底由比对工具换成纯 --bg，见 redesign-pixel-lib specCellsInPage）。
 // `theme` 只预览、不写入设置；离开时回到用户自己的外观选择。
 export function ComponentSectionScreen({ id, theme }: { id: string | undefined; theme?: "light" | "dark" | undefined }) {

@@ -12,19 +12,32 @@ import { renderedText, renderToHtml } from "./helpers/render";
 // 门禁清单 repos/orbits/scripts/visual/views/app-R31a-components.json 与小节一一对应（迁移自 R04 的整页展示页）。
 const repoRoot = new URL("..", import.meta.url).pathname;
 const manifest = JSON.parse(readFileSync(join(repoRoot, "../orbits/scripts/visual/views/app-R31a-components.json"), "utf8")) as {
-  views: { id: string; design: string; section: string; cell: number; path: string; region: string; placement: string }[];
+  views: { id: string; design: string; section?: string; cell?: number; path: string; region: string; placement?: string; "board-index"?: number; "design-region"?: string }[];
   _excluded: Record<string, string>;
 };
 
-test("every section is one 01-system spec cell, named <sec2 id>-<cell>", () => {
+test("showcase section ids are unique and resolve", () => {
   const ids = COMPONENT_SECTIONS.map((section) => section.id);
   assert.equal(new Set(ids).size, ids.length, "section ids are unique");
   for (const section of COMPONENT_SECTIONS) {
-    assert.match(section.id, /^[cn]-[a-z]+-\d+$/u);
+    assert.match(section.id, /^(?:[cn]-[a-z]+-\d+|b2-[a-z-]+)$/u);
     assert.ok(section.width > 0 && section.width <= 390, `${section.id}: a phone-width cell`);
     assert.equal(findComponentSection(section.id), section);
   }
   assert.equal(findComponentSection("nope-0"), null);
+});
+
+test("all R31a b2 component variants have showcase routes and comparable board regions", () => {
+  const ids = ["b2-utabs", "b2-tabbar-main", "b2-tabbar-live", "b2-search"];
+  for (const id of ids) {
+    assert.ok(findComponentSection(id), `${id}: missing showcase specimen`);
+    const view = manifest.views.find((item) => item.path === `/showcase/components/${id}?theme={theme}`);
+    assert.ok(view, `${id}: missing gate view`);
+    assert.equal(view.design, "b2-events-flow.html");
+    assert.ok(Number.isInteger(view["board-index"]), `${id}: named b2 board`);
+    assert.ok(view["design-region"] && view.region, `${id}: component regions on both sides`);
+    assert.ok(renderToHtml(<ComponentSectionScreen id={id} theme="light" />).includes(`component-section-${id}`));
+  }
 });
 
 test("the gate manifest lists every section once (or says why not), at the section's route and rect", () => {
@@ -34,8 +47,14 @@ test("the gate manifest lists every section once (or says why not), at the secti
     if (excluded.includes(section.id)) { assert.equal(views.length, 0, `${section.id} is both excluded and gated`); continue; }
     assert.equal(views.length, 1, `${section.id} needs one manifest entry`);
     const [view] = views;
-    assert.equal(view!.design, "01-system.html");
-    assert.equal(`${view!.section}-${view!.cell}`, section.id);
+    if (section.id.startsWith("b2-")) {
+      assert.equal(view!.design, "b2-events-flow.html");
+      assert.ok(Number.isInteger(view!["board-index"]));
+      assert.ok(view!["design-region"]);
+    } else {
+      assert.equal(view!.design, "01-system.html");
+      assert.equal(`${view!.section}-${view!.cell}`, section.id);
+    }
     assert.equal(view!.path, `/showcase/components/${section.id}?theme={theme}`);
     assert.equal(view!.placement, section.placement);
     const [xs, ys, ws, hs] = view!.region.split(",");
@@ -45,13 +64,13 @@ test("the gate manifest lists every section once (or says why not), at the secti
     const y = ys === "c" ? Math.round((844 - h) / 2) : ys === "b" ? 844 - h : Number(ys);
     assert.ok([x, y, w, h].every((n) => Number.isInteger(n)), `${section.id}: integer rect`);
     // overlays: c (centred) or the measured 16e point when the design cell does not centre them (RD-33).
-    if (section.placement === "inline") {
+    if (section.placement === "inline" && !section.id.startsWith("b2-")) {
       assert.deepEqual([x, y], [0, SECTION_TOP], `${section.id}: inline sections draw at (0, SECTION_TOP)`);
       assert.ok(Math.abs(w - section.width) <= 1, `${section.id}: rect width ${w} = cell width ${section.width}`);
     }
     assert.ok(x >= 0 && x + w <= 390 && y + h <= 844, `${section.id}: rect inside the 390×844 screen`);
   }
-  for (const view of manifest.views) assert.ok(findComponentSection(`${view.section}-${view.cell}`), `${view.id}: no showcase section`);
+  for (const view of manifest.views) assert.ok(findComponentSection(view.design === "b2-events-flow.html" ? view.path.split("/").pop()!.split("?")[0] : `${view.section}-${view.cell}`), `${view.id}: no showcase section`);
 });
 
 test("each section page renders its cell; an unknown id says so", () => {
@@ -68,12 +87,13 @@ test("the showcase page lists the spec cells first, in 01-system order, then the
   // structure is checked in the source; the sections it maps are the ones rendered above.
   const order = ["c-toast", "c-confirm", "c-layer", "c-ai", "c-why", "c-perm", "c-load", "c-err", "c-sample", "c-chip", "c-pay", "c-push", "c-kbd", "c-text", "c-ctl", "n-nav", "n-home", "n-task", "n-io", "n-add"];
   const rank = (id: string) => order.indexOf(id.replace(/-\d+$/u, "")) * 100 + Number(id.match(/\d+$/u)![0]);
-  const ranks = COMPONENT_SECTIONS.map((section) => rank(section.id));
+  const ranks = COMPONENT_SECTIONS.filter((section) => !section.id.startsWith("b2-")).map((section) => rank(section.id));
   assert.ok(ranks.every((r) => r >= 0), "every section belongs to a 01-system part-2 section");
   assert.deepEqual(ranks, [...ranks].sort((x, y) => x - y), "sections follow 01-system order");
   const source = readFileSync(join(repoRoot, "src/screens/showcase/ComponentShowcaseScreen.tsx"), "utf8");
-  const cells = source.indexOf("COMPONENT_SECTIONS.map(");
+  const cells = source.indexOf('COMPONENT_SECTIONS.filter((section) => !section.id.startsWith("b2-"))');
+  const b2 = source.indexOf('COMPONENT_SECTIONS.filter((section) => section.id.startsWith("b2-"))');
   const rest = source.indexOf(">no spec cell · interactive demos · business sheets<");
-  assert.ok(cells > 0 && rest > cells && source.indexOf('<Section name="button">') > rest, "spec cells first, then the demos without a cell");
+  assert.ok(cells > 0 && b2 > cells && rest > b2 && source.indexOf('<Section name="button">') > rest, "spec cells first, then b2 components, then interactive demos");
   for (const demo of ["button", "feedback", "add contact sheet", "invite share sheet", "controls", "states"]) assert.ok(source.includes(`<Section name="${demo}">`), `${demo} kept`);
 });

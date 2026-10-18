@@ -4,7 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 import {
   ActionSheet, Avatar, BottomSheet, Button, Card, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog, DegradedCard, Icon,
   FilterOption, ListRow, MacTile, OfflineBar, QuotaChip, Radio, RetryCard, SampleBar, SampleTag, Skeleton, TextField, Toggle, UiPressable, UiText, WhyDisclosure,
-  type ChipTone,
+  FullScreenSearch, TabBar, UnderlineTabs,
+  type ChipTone, type IconName,
 } from "../../components/ui";
 import { ToastCapsule } from "../../components/ui/Toast";
 import { createToast, type ToastKind } from "../../components/ui/toast-model";
@@ -12,7 +13,7 @@ import Svg, { Circle, Defs, RadialGradient, Stop } from "../../components/ui/svg
 import { createThemedStyles } from "../../design/theme";
 import samples from "./component-section-samples.json";
 
-// R31a 逐件对照：展示页按 01-system 规格格重排，一个规格格一个小节（`/showcase/components/<id>`）。
+// R31a 逐件对照：01-system 按规格格重排；b2 的四种新组件展示态追加在末尾（`/showcase/components/<id>`）。
 // id = `<sec2 id>-<格序号>`，格序号与 compare-redesign.mjs --list-cells 一致（0 起）。
 // 小节画面固定画在 SECTION_TOP（设计点）下方、x = 0、宽 = 规格格宽；`placement: "overlay"` 的弹层按自身规则
 // 定位（居中 / 贴底），rect 写在 repos/orbits/scripts/visual/views/app-R31a-components.json。
@@ -26,7 +27,7 @@ export type ComponentSection = {
   title: string;
   /** 规格格宽（设计点）；inline 小节按这个宽度画 */
   width: number;
-  placement: "inline" | "overlay";
+  placement: "inline" | "overlay" | "screen";
   render: () => ReactNode;
 };
 
@@ -169,8 +170,17 @@ function EventTextSection() {
   return <Card style={{ padding: 14 }}><Stack gap={4}><UiText numberOfLines={2} style={{ color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.025 }}>{text1.title}</UiText><UiText numberOfLines={1} style={styles.label}>{text1.sub}</UiText></Stack></Card>;
 }
 
+function B2SearchSection() {
+  const { colors } = useStyles();
+  // The b2 phone starts its content at y=50; the 16e simulator reports a 47pt top safe inset.
+  return <FullScreenSearch kind="events" topGap={3} value={b2.search.value} onChangeText={noop} placeholder={b2.search.placeholder} clearLabel={b2.search.clear} cancelLabel={b2.search.cancel} onCancel={noop} showSoftInputOnFocus={false}>
+    <Card style={{ paddingHorizontal: 16, paddingVertical: 8 }}><UiText style={{ color: colors.ink, fontSize: 14.5, fontWeight: "800", marginVertical: 8 }}>{b2.search.heading}</UiText><ListRow title={b2.search.result} subtitle={b2.search.resultSub} /></Card>
+  </FullScreenSearch>;
+}
+
 const section = (id: string, width: number, placement: ComponentSection["placement"], render: () => ReactNode): ComponentSection => ({ id, title: T[id] ?? id, width, placement, render });
 const { confirm0, confirm1, participantSheet: ps, ai0, ai1, ai2, ai3, load1, err0, err1, err2, err3, sample0, sample1, pay0, pay1, text0, text1, text2 } = samples;
+const b2 = samples.b2;
 
 export const COMPONENT_SECTIONS: readonly ComponentSection[] = [
   section("c-toast-0", 359, "inline", () => <Stack>{TOASTS.map((toast) => <ToastCapsule key={toast.id} toast={toast} onClose={noop} />)}</Stack>),
@@ -207,6 +217,11 @@ export const COMPONENT_SECTIONS: readonly ComponentSection[] = [
   section("c-text-1", 280, "inline", () => <EventTextSection />),
   section("c-text-2", 300, "inline", () => <LongChipSection />),
   section("c-ctl-0", 359, "inline", () => <ControlsSection />),
+  // b2-events-flow: the detail tabs, the two floating navigation variants, and the event search page.
+  section("b2-utabs", 354, "inline", () => <UnderlineTabs tabs={b2.detailTabs} value="intro" onChange={noop} />),
+  section("b2-tabbar-main", 390, "screen", () => <TabBar items={b2.mainTabs as { key: string; label: string; icon: IconName }[]} value="events" onChange={noop} />),
+  section("b2-tabbar-live", 390, "screen", () => <TabBar items={b2.liveTabs as { key: string; label: string; icon: IconName }[]} value="site" variant="live" onChange={noop} />),
+  section("b2-search", 390, "screen", () => <B2SearchSection />),
 ];
 
 export function findComponentSection(id: string | undefined): ComponentSection | null {

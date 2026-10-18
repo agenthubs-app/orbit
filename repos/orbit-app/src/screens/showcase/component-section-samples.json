@@ -25,7 +25,11 @@
     "c-text-0": "⑭ 长文案 · 列表行",
     "c-text-1": "⑭ 长文案 · 卡片标题 2 行",
     "c-text-2": "⑭ 长文案 · chip 最大 160",
-    "c-ctl-0": "⑮ 开关与选择控件"
+    "c-ctl-0": "⑮ 开关与选择控件",
+    "b2-utabs": "イベント詳細 · 下線タブ",
+    "b2-tabbar-main": "探す · 底部ナビゲーション",
+    "b2-tabbar-live": "現場ホーム · 会場ナビゲーション",
+    "b2-search": "探す · 全画面検索"
   },
   "toasts": [
     { "kind": "success", "message": "完了にしました", "undo": true },
@@ -90,5 +94,11 @@
   "text0": { "name": "北村 恭介", "subtitle": "株式会社ノースブリッジ・インダストリアル・ソリューションズ · 執行役員 兼 グローバル事業開発本部 本部長", "chip": "関係構築" },
   "text1": { "title": "第12回 日本製造業デジタルトランスフォーメーション推進フォーラム 2026 秋季大会", "sub": "10月28日（水）10:00 · パシフィコ横浜 ノース G301–G304" },
   "text2": { "chip": "執行役員 兼 グローバル事業開発本部 本部長" },
-  "ctl": { "toggle": "开关 44×26 · 开 = `--plum-700`", "check": "任务完成：圆形 22 · `--ok`", "box": "多选（表格/批量）：方形 20 圆角 7", "radio": "单选：圆 18 + 内点", "filters": ["東京", "大阪"], "tabs": ["すべて", "通知"], "filterNote": "多选 chip / 单选页签" }
+  "ctl": { "toggle": "开关 44×26 · 开 = `--plum-700`", "check": "任务完成：圆形 22 · `--ok`", "box": "多选（表格/批量）：方形 20 圆角 7", "radio": "单选：圆 18 + 内点", "filters": ["東京", "大阪"], "tabs": ["すべて", "通知"], "filterNote": "多选 chip / 单选页签" },
+  "b2": {
+    "detailTabs": [{ "key": "intro", "label": "紹介" }, { "key": "agenda", "label": "アジェンダ" }, { "key": "host", "label": "主催" }, { "key": "participants", "label": "参加者", "count": 12 }],
+    "mainTabs": [{ "key": "home", "label": "ホーム", "icon": "home" }, { "key": "network", "label": "人脈", "icon": "users" }, { "key": "ai", "label": "iOrbit", "icon": "sparkle" }, { "key": "events", "label": "イベント", "icon": "calendar" }, { "key": "task", "label": "Task", "icon": "task" }],
+    "liveTabs": [{ "key": "site", "label": "現場", "icon": "home" }, { "key": "recommend", "label": "おすすめ", "icon": "star" }, { "key": "participants", "label": "参加者", "icon": "users" }, { "key": "groups", "label": "グループ", "icon": "grid" }, { "key": "schedule", "label": "予定", "icon": "clock" }],
+    "search": { "value": "CFO", "placeholder": "イベント名・主催・キーワード", "clear": "検索をクリア", "cancel": "キャンセル", "heading": "イベント", "result": "CFO Night Tokyo vol.18", "resultSub": "渋谷 · 参加確定" }
+  }
 }

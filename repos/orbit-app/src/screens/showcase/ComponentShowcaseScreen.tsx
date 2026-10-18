@@ -61,7 +61,17 @@ export function ComponentShowcaseScreen({ onOpenSection }: { onOpenSection?: (id
           </View>
 
           <UiText style={styles.group}>01-system spec cells (R31a)</UiText>
-          {COMPONENT_SECTIONS.map((section) => (
+          {COMPONENT_SECTIONS.filter((section) => !section.id.startsWith("b2-")).map((section) => (
+            <View key={section.id} style={styles.section}>
+              <UiPressable accessibilityRole="link" accessibilityLabel={section.id} onPress={() => onOpenSection?.(section.id)}>
+                <UiText style={styles.sectionName}>{`${section.id} · ${section.title} ›`}</UiText>
+              </UiPressable>
+              {section.placement === "inline" ? <View style={{ width: section.width }}>{section.render()}</View> : null}
+            </View>
+          ))}
+
+          <UiText style={styles.group}>b2-events-flow components (R31a)</UiText>
+          {COMPONENT_SECTIONS.filter((section) => section.id.startsWith("b2-")).map((section) => (
             <View key={section.id} style={styles.section}>
               <UiPressable accessibilityRole="link" accessibilityLabel={section.id} onPress={() => onOpenSection?.(section.id)}>
                 <UiText style={styles.sectionName}>{`${section.id} · ${section.title} ›`}</UiText>

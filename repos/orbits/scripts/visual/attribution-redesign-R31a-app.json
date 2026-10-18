@@ -294,5 +294,33 @@
     "0": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 2/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-0.png",
     "1": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-1.png",
     "2": "[raster] 活动时间地点的单行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #746c7c/#74747c ΔE6.2，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-2.png"
+  },
+  "A-R31a-b2-utabs-app-light": {
+    "1": "[raster] UnderlineTabs 标签字形与 2px 下划线；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #9c94a4/#9c94a4 ΔE0，墨迹像素 753/748。裁剪图 R31a-review/b2-retry/A-R31a-b2-utabs-app-light/bands/band-1.png"
+  },
+  "A-R31a-b2-utabs-app-dark": {
+    "0": "[raster] UnderlineTabs 标签字形与 2px 下划线；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=0-30，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #84848c/#84848c ΔE0，墨迹像素 313/279。裁剪图 R31a-review/b2-first/A-R31a-b2-utabs-app-dark/bands/band-0.png",
+    "1": "[raster] UnderlineTabs 标签字形与 2px 下划线；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#84848c ΔE41.1，墨迹像素 765/783。裁剪图 R31a-review/b2-first/A-R31a-b2-utabs-app-dark/bands/band-1.png"
+  },
+  "A-R31a-b2-tabbar-main-app-light": {
+    "0": "[raster] 主 TabBar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #9c94a4/#9c94a4 ΔE0，墨迹像素 555/522。裁剪图 R31a-review/b2-first/A-R31a-b2-tabbar-main-app-light/bands/band-0.png",
+    "1": "[raster] 主 TabBar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #9c94a4/#9c94a4 ΔE0，墨迹像素 534/528。裁剪图 R31a-review/b2-first/A-R31a-b2-tabbar-main-app-light/bands/band-1.png"
+  },
+  "A-R31a-b2-tabbar-main-app-dark": {
+    "1": "[raster] 主 TabBar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。深色玻璃层由 iOS BlurView 与浏览器 backdrop-filter 分别合成，底色差见数值；该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #2c2c34/#24242c ΔE3.8，墨迹 #847c8c/#84848c ΔE6.1，墨迹像素 663/549。裁剪图 R31a-review/b2-first/A-R31a-b2-tabbar-main-app-dark/bands/band-1.png"
+  },
+  "A-R31a-b2-tabbar-live-app-light": {
+    "0": "[raster] 会場 livebar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #9c94a4/#9c94a4 ΔE0，墨迹像素 575/543。裁剪图 R31a-review/b2-retry/A-R31a-b2-tabbar-live-app-light/bands/band-0.png",
+    "1": "[raster] 会場 livebar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #a49cac/#9c94a4 ΔE3，墨迹像素 775/752。裁剪图 R31a-review/b2-retry/A-R31a-b2-tabbar-live-app-light/bands/band-1.png"
+  },
+  "A-R31a-b2-tabbar-live-app-dark": {
+    "0": "[raster] 会場 livebar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。深色玻璃层由 iOS BlurView 与浏览器 backdrop-filter 分别合成，底色差见数值；该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=0-30，底色 #2c2c34/#24242c ΔE3.8，墨迹 #84848c/#84848c ΔE0，墨迹像素 672/552。裁剪图 R31a-review/b2-retry/A-R31a-b2-tabbar-live-app-dark/bands/band-0.png",
+    "1": "[raster] 会場 livebar 的五个图标、标签与选中胶囊；两侧文字、顺序、轮廓和位置一致，无缺块，墨迹投影 dx 0/dy 0。深色玻璃层由 iOS BlurView 与浏览器 backdrop-filter 分别合成，底色差见数值；该带残差为原生/浏览器字形、SVG 描边及玻璃采样。y=30-60，底色 #2c2c34/#24242c ΔE3.8，墨迹 #847c8c/#847c8c ΔE0，墨迹像素 906/758。裁剪图 R31a-review/b2-retry/A-R31a-b2-tabbar-live-app-dark/bands/band-1.png"
+  },
+  "A-R31a-b2-search-app-light": {
+    "0": "[raster] b2 イベント検索行：2px 外側フォーカスリング、44pt 入力欄、検索/閉じるアイコン、CFO とキャンセルの位置は両側で一致し、欠落なし。残差は iOS と Chrome の字形、SVG 線と輪郭サンプリング。墨跡 dx 0/dy 0、y=0-30、底色 #fcfcfc/#fcfcfc ΔE0、墨色 #bcb4d4/#bcb4d4 ΔE0、墨跡画素 1039/1010。裁剪图 R31a-review/b2-search-corrected/A-R31a-b2-search-app-light/bands/band-0.png"
+  },
+  "A-R31a-b2-search-app-dark": {
+    "0": "[raster] b2 イベント検索行：2px 外側フォーカスリング、44pt 入力欄、検索/閉じるアイコン、CFO とキャンセルの位置は両側で一致し、欠落なし。残差は iOS と Chrome の字形、SVG 線と輪郭サンプリング。墨跡 dx 0/dy 0、y=0-30、底色 #24242c/#24242c ΔE0、墨色 #6c648c/#6c648c ΔE0、墨跡画素 1009/975。裁剪图 R31a-review/b2-search-corrected/A-R31a-b2-search-app-dark/bands/band-0.png"
   }
 }
