@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { createTasksClient, TasksClientError } from "../../tasks/tasks-client";
@@ -50,6 +50,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd }: { 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const inShell = useInShell();
   const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor), JSON.stringify([filter, query.trim(), openCursor, "open"]));
   const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor), JSON.stringify([filter, query.trim(), doneCursor, "completed"]));
@@ -97,9 +98,18 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd }: { 
   const blocked = denied;
   const openGroups = groupTaskRows(visibleOpen, date, timeZone, filter);
   const doneGroups = groupTaskRows(visibleDone, date, timeZone, filter);
+  const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
   const renderRows = (items: TaskRowView[]) => items.map(item => <div key={item.id} className={`${styles.taskRow} ${item.id === selectedId ? styles.selected : ""}`}>
     <CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} />
-    <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} onClick={() => setSelectedId(item.id)}>
+    <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} ref={element => { if (element) rowButtons.current.set(item.id, element); else rowButtons.current.delete(item.id); }} onClick={() => setSelectedId(item.id)} onKeyDown={event => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const index = orderedRows.findIndex(row => row.id === item.id);
+      const next = orderedRows[index + (event.key === "ArrowDown" ? 1 : -1)];
+      if (!next) return;
+      event.preventDefault();
+      rowButtons.current.get(next.id)?.focus();
+      setSelectedId(next.id);
+    }}>
       <strong>{item.title}</strong><small>{item.relatedContact?.namePreview ?? t(item.relationship ? taskCopy.taskListRelationship : taskCopy.taskListPersonal)}</small>
     </button>
     <span className={styles.rowDate}>{formatDate(item.dueAt ?? item.plannedDate, language, timeZone)}</span>

@@ -83,3 +83,17 @@ test("product task list deletion is cancelled safely and only disappears after c
   await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor({ state: "detached" });
   assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method === "DELETE").length, 1);
 });
+
+test("arrow keys move task-list selection and focus without writing", async t => {
+  const current = await page(t);
+  const first = current.getByRole("button", { name: "山本さんへ返信の詳細" });
+  const second = current.getByRole("button", { name: "今日の資料の詳細" });
+  await first.click();
+  await first.press("ArrowDown");
+  await current.waitForFunction(() => document.querySelector('[aria-label="今日の資料の詳細"]')?.getAttribute("aria-current") === "true");
+  assert.equal(await second.evaluate(element => element === document.activeElement), true);
+  await second.press("ArrowUp");
+  await current.waitForFunction(() => document.querySelector('[aria-label="山本さんへ返信の詳細"]')?.getAttribute("aria-current") === "true");
+  assert.equal(await first.evaluate(element => element === document.activeElement), true);
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method !== "GET").length, 0);
+});

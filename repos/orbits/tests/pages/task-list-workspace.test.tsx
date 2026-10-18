@@ -84,6 +84,20 @@ test("legacy completed intent starts on completed tasks, not the open list", asy
   assert.match(content(root!), /今日の資料/);
 });
 
+test("arrow keys select adjacent task rows without a write", async t => {
+  const { fetcher, calls } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onKeyDown?.({ key: "ArrowDown", preventDefault() {} }));
+  assert.equal(buttons(root!, "山本さんへ返信の詳細")[0]!.props["aria-current"], "true");
+  await act(async () => buttons(root!, "山本さんへ返信の詳細")[0]!.props.onKeyDown?.({ key: "ArrowUp", preventDefault() {} }));
+  assert.equal(buttons(root!, "今日の資料の詳細")[0]!.props["aria-current"], "true");
+  assert.equal(calls.filter(call => call.method !== "GET").length, 0);
+});
+
 test("task deletion requires confirmation and removes the row only after the server confirms", async t => {
   const restore = setupDocument();
   const { fetcher, calls } = fixture();
