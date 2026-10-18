@@ -65,6 +65,8 @@ SC-13 Web タスク一覧の失敗境界を追加検証した。`useTasksResourc
 
 後続の clean HEAD `02a9fc9b6` に対する App `npm test` は `_evidence-d/R20a/run-01/d-app-full-post-rebase-1dad1a9a1.log` で **3326 tests / 3312 pass / 12 fail / 2 skip、exit 1**。失敗名は add-contact camera / batch の 9 件（各 browser wait timeout）、旧 split dictionary exact-key 1 件、joined-person 1 件、plan-overview skip の click/overlay timeout 1 件。Task / To-do 名の失敗はこの run に無いが、全量 pass ではない。`pristine-d-app-baseline.log`（3324 tests / 3318 pass / 4 fail / 2 skip）と失敗名を比べると dictionary・joined-person・plan skip の 3 件は共通、add-contact camera / batch の 9 件が新たに失敗し、pristine の `tests/tasks-unification-interactions.test.ts` file timeout は今回の失敗一覧に無い。前回 D full の camera 9 件は再発している。総数と失敗数だけで回帰なしとは主張せず、D 帰属範囲の定向証拠と区別する。Web `typecheck:app` / 全量、C native、App / Web pixel は引き続き OPEN。
 
+続く Web `npm run typecheck:app` は `_evidence-d/R20a/run-01/d-web-typecheck-app-stale-read-fix.log` で **exit 0**。同じ clean source の Web `npm test` は `_evidence-d/R20a/run-01/d-web-full-stale-read-fix.log` で **7744 tests / 6675 pass / 40 fail / 1029 skip、exit 1**。新 SC-13 失敗再読の三つの component tests はこの full 内で全て pass。15:19 の D Web full と失敗名を比較すると旧 32 件は全て継続し、新 8 件は `tests/ui/network-screen.test.tsx` の bundle が `orbit-shared-read-account.ts` から import する `SessionContext` を `SHELL_STUBS` の `next-auth/react` stand-in が export しない同一の build error。Task List / To-do の失敗名は増えていない。ratchet は旧失敗名が継続したうえ現時点 **86 > 79** で、旧い「コメントだけで +1」という説明を今回の件数へ延長しない。全量 pass / Web SC-13 完了とはしない。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
@@ -532,7 +534,8 @@ D 専用 simulator にのみ install して、localhost:8085 の offline Metro �
 - draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
 - encounter / next-move source owner：`POST /api/encounters` は authoritative contactId / observedAt / privacy / talked / idempotency key を要求するが、TodoNextMoveItem の contactId / taskId は optional。source の signal kind と対応する contact / canonical task を検証できる projection が必要。「送りましたか」から fake encounter や task mutation を作らず、D-10 は mapping が立つまで fail-closed にする。
 - A の Web kit owner：SC-11 Modal 1000 / 760 の additive API は `2569ad835` で提供され、D の clean rebase + fresh compiler で確認済み。D は library を変更していない。pixel review / final fidelity は別 gate として残す。
-- A の Web kit / 共通 ratchet owner：R31b `orbit-2026/ui/Button.tsx:14` のコメント内 `<button>` が `tests/ui/orbit-button-ratchet.test.ts` の本文 scanner に実要素として数えられ、現行 Web full に false-positive 1 件を追加した。コメント表記か scanner を owner 側で直して再検証してほしい。D は A-owned kit / 共通テストを変更しない。
+- A の Web kit / 共通 ratchet owner：R31b `orbit-2026/ui/Button.tsx:14` のコメント内 `<button>` が `tests/ui/orbit-button-ratchet.test.ts` の本文 scanner に実要素として数えられ、当時の Web full に false-positive 1 件を追加した。現行 full は **86 > 79** で、コメントだけに全超過を帰さず、各線の追加 button と D-owned hidden `data-task-add` 二件も切り分ける。A-owned kit / 共通テストは D で変更しない。
+- R11a Web 人脈 / shell harness owner：現行 Web full の `tests/ui/network-screen.test.tsx` 八件はすべて `orbit-shared-read-account.ts` が import する `SessionContext` を `tests/ui/support/orbit-2026-shell-harness.ts` の `next-auth/react` stand-in が export しない bundle error。同 stand-in と実 session consumer の contract を合わせ、八件と全量を再実行してほしい。D は人脈画面・共通 shell harness を変更しない。
 - `contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
 
 ## 待主会话代定
