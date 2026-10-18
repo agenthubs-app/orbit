@@ -114,6 +114,21 @@ export function isoTimestamp(time: number): string | null {
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
+/** Pin notification grouping to an IANA zone, falling back to the product default. */
+export function notificationDisplayZone(value: unknown): string {
+  if (typeof value !== "string" || !value) return "Asia/Tokyo";
+  try { new Intl.DateTimeFormat("en", { timeZone: value }); return value; }
+  catch { return "Asia/Tokyo"; }
+}
+
+export function notificationLocalDay(instant: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: notificationDisplayZone(timeZone), year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(parseTimestamp(instant)));
+  const field = (kind: string) => parts.find(part => part.type === kind)!.value;
+  return `${field("year")}-${field("month")}-${field("day")}`;
+}
+
 /** Locale-independent lower case. */
 export function lowerText(value: string): string {
   return value.toLowerCase();
