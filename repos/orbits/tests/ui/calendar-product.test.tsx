@@ -3,7 +3,7 @@ import test from "node:test";
 import type { Browser } from "playwright";
 import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 
-declare global { interface Window { calendar: { calls: { path: string; method: string }[] } } }
+declare global { interface Window { calendar: { calls: { path: string; method: string }[] }; meetingState: { posts: number; detailReads: number } } }
 
 let browser: Browser;
 let code: { js: string; css: string };
@@ -89,4 +89,33 @@ test("browser: week summary and selected-day agenda cards share a baseline", asy
   assert.ok(summary && agenda);
   assert.ok(Math.abs(summary.y - agenda.y) < 1);
   assert.ok(Math.abs(summary.height - agenda.height) < 1, "the two week cards should align at their bottoms");
+});
+
+test("browser: cancelling a calendar meeting requires confirmation and removes only the verified appointment", async t => {
+  const appointment = { appointmentId: "meeting:1", contactId: "contact-b", status: "confirmed", visibility: "participants", title: "Meeting with B", version: 3, updatedAt: "2030-04-01T00:00:00Z", details: "", detailsUpdatedAt: null, detailsUpdatedBy: null, eventId: "event:1", pendingProposalRevision: null, confirmed: { candidateId: "old:1", proposalRevision: 1, durationMinutes: 60, medium: { kind: "in_person", location: "Room 1" }, startsAtUtc: "2030-04-08T09:00:00Z", timezone: "UTC" }, proposals: [] };
+  const meetingCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { CalendarWorkspace } from "./app/(app)/app/orbit-2026/calendar/CalendarWorkspace";
+    if (!crypto.randomUUID) Object.defineProperty(crypto, "randomUUID", { value: () => "calendar-meeting-test" });
+    window.meetingState = { appointment: ${JSON.stringify(appointment)}, posts: 0, detailReads: 0 };
+    window.fetch = async (url, init = {}) => {
+      const state = window.meetingState, path = String(url);
+      if (path.includes("external-events")) return Response.json({ success: true, data: { provider: "google_calendar", connection: "not_connected", events: [], asOf: "2030-04-01T00:00:00Z" } });
+      if (path.includes("scope=calendar")) return Response.json({ success: true, data: { scheduleItems: state.appointment.status === "cancelled" ? [] : [{ id: "schedule:meeting:1", sourceId: "meeting:1", kind: "meeting", category: "meeting", state: "upcoming", title: "Meeting with B", startsAt: "2030-04-08T09:00:00Z", endsAt: "2030-04-08T10:00:00Z" }] } });
+      if (path === "/api/appointments/meeting%3A1/commands" && init.method === "POST") { state.posts++; state.appointment = { ...state.appointment, status: "cancelled", version: 4 }; return Response.json({ success: true, data: { ...state.appointment, replayed: false } }); }
+      if (path === "/api/appointments/meeting%3A1") { state.detailReads++; return Response.json({ success: true, data: state.appointment }); }
+      throw Error("Unexpected calendar request: " + path);
+    };
+    createRoot(document.getElementById("root")).render(<CalendarWorkspace actorId="a" language="ja" timeZone="UTC" today="2030-04-08" />);
+  `, { "^next-auth/react$": 'import { createContext } from "react"; export const SessionContext = createContext(undefined);' });
+  const page = await open(browser, meetingCode);
+  t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
+  await page.getByRole("button", { name: /Meeting with B/ }).first().click();
+  await page.getByRole("button", { name: "面談をキャンセル", exact: true }).click();
+  assert.equal(await page.evaluate(() => window.meetingState.posts), 0);
+  await page.getByRole("alertdialog").getByRole("button", { name: "面談をキャンセル", exact: true }).click();
+  await page.getByText("面談をキャンセルしました", { exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => [window.meetingState.posts, window.meetingState.detailReads]), [1, 2]);
+  assert.equal(await page.getByRole("button", { name: /Meeting with B/ }).count(), 0);
 });
