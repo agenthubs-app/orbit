@@ -1,3 +1,298 @@
 {
- "_schema": "\"<id>-app-<theme>\": { \"<band>\": \"[data] / [raster] / [contrast] 看过该带对照后写的具体理由\" }（R31a 逐件对照，App；[contrast] 由工具按 contrast-substitutions.json 判定）"
+  "_schema": "\"<id>-app-<theme>\": { \"<band>\": \"[data] / [raster] / [contrast] 看过该带对照后写的具体理由\" }（R31a 逐件对照，App；[contrast] 由工具按 contrast-substitutions.json 判定）",
+  "A-R31a-c-toast-0-app-light": {
+    "0": "[raster] 第 1 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #f4f4f4/#5c9c84 ΔE45.5，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-0.png",
+    "2": "[raster] 第 2 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-2.png",
+    "3": "[raster] 第 2 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #ece4ec/#f4f4f4 ΔE7，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-3.png",
+    "6": "[raster] 第 4 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-6.png",
+    "8": "[raster] 第 5 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #f4f4f4/#4c4c54 ΔE63.8，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-8.png",
+    "9": "[raster] 第 5 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-289，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #4c4c54/#f4f4f4 ΔE63.8，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-light/bands/band-9.png"
+  },
+  "A-R31a-c-toast-0-app-dark": {
+    "0": "[raster] 第 1 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-0.png",
+    "2": "[raster] 第 2 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-2.png",
+    "3": "[raster] 第 2 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #141414/#84848c ΔE49.3，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-3.png",
+    "6": "[raster] 第 4 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-6.png",
+    "8": "[raster] 第 5 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-8.png",
+    "9": "[raster] 第 5 条 Toast 的图标、文字和按钮胶囊。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-289，底色 #3c3c44/#3c3c44 ΔE0，墨迹 #74747c/#a4a4ac ΔE18.5，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-toast-0-app-dark/bands/band-9.png"
+  },
+  "A-R31a-c-confirm-0-app-light": {
+    "2": "[raster] 遮罩示意的圆角与对话框上沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #bcb4bc/#bcb4bc ΔE0，墨迹 #fcfcfc/#fcfcfc ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-2.png",
+    "5": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bcb4bc/#bcb4bc ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-5.png",
+    "6": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bcb4bc/#bcb4bc ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-6.png",
+    "7": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bcb4bc/#bcb4bc ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-7.png",
+    "8": "[raster] 确认框双按钮与下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bc3c24/#bc3c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-8.png",
+    "9": "[raster] 确认框双按钮与下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-300，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bc3c24/#bc3c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-9.png",
+    "10": "[raster] 确认框双按钮与下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=300-330，底色 #bcb4bc/#bcb4bc ΔE0，墨迹 #fcfcfc/#fcfcfc ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-light/bands/band-10.png"
+  },
+  "A-R31a-c-confirm-0-app-dark": {
+    "5": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-dark/bands/band-5.png",
+    "6": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-dark/bands/band-6.png",
+    "7": "[raster] 确认框图标、标题和后果文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #24242c/#24242c ΔE0，墨迹 #9c94a4/#5c5c64 ΔE23.7，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-dark/bands/band-7.png",
+    "8": "[raster] 确认框双按钮与下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #24242c/#24242c ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-dark/bands/band-8.png",
+    "9": "[raster] 确认框双按钮与下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-300，底色 #24242c/#24242c ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-confirm-0-app-dark/bands/band-9.png"
+  },
+  "A-R31a-c-ai-0-app-light": {
+    "0": "[raster] 待确认卡的 emoji、标题与虚线边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-light/bands/band-0.png",
+    "1": "[raster] 待确认卡的 emoji、标题与虚线边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #9c949c/#aca4ac ΔE6，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-light/bands/band-1.png",
+    "2": "[raster] 待确认说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-light/bands/band-2.png",
+    "3": "[raster] 待确认双按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-light/bands/band-3.png"
+  },
+  "A-R31a-c-ai-0-app-dark": {
+    "0": "[raster] 待确认卡的 emoji、标题与虚线边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-dark/bands/band-0.png",
+    "1": "[raster] 待确认卡的 emoji、标题与虚线边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #7c7c84/#6c6c74 ΔE6.4，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-dark/bands/band-1.png",
+    "2": "[raster] 待确认说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-dark/bands/band-2.png",
+    "3": "[raster] 待确认双按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-0-app-dark/bands/band-3.png"
+  },
+  "A-R31a-c-ai-1-app-light": {
+    "0": "[raster] 成功卡的绿勾、标题及撤销入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #b4d4cc/#b4d4cc ΔE0，墨迹投影 dx -1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-light/bands/band-0.png",
+    "1": "[raster] 成功卡的绿勾、标题及撤销入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #5c9c84/#5c9c84 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-light/bands/band-1.png",
+    "2": "[raster] 已添加任务文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #b4d4cc/#acacb4 ΔE18.7，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-light/bands/band-2.png",
+    "3": "[raster] 查看计划链接和卡片下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #6c648c/#b4d4cc ΔE49.9，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-light/bands/band-3.png",
+    "4": "[raster] 查看计划链接和卡片下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-135，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #b4d4cc/#b4d4cc ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-light/bands/band-4.png"
+  },
+  "A-R31a-c-ai-1-app-dark": {
+    "0": "[raster] 成功卡的绿勾、标题及撤销入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #546c64/#546c64 ΔE0，墨迹投影 dx -1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-dark/bands/band-0.png",
+    "1": "[raster] 成功卡的绿勾、标题及撤销入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-dark/bands/band-1.png",
+    "2": "[raster] 已添加任务文案。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #546c64/#546c64 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-dark/bands/band-2.png",
+    "3": "[raster] 查看计划链接和卡片下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-dark/bands/band-3.png",
+    "4": "[raster] 查看计划链接和卡片下沿。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-135，底色 #24242c/#24242c ΔE0，墨迹 #546c64/#546c64 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-1-app-dark/bands/band-4.png"
+  },
+  "A-R31a-c-ai-2-app-light": {
+    "0": "[raster] 失败卡的警告图标、标题及原因。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-light/bands/band-0.png",
+    "1": "[raster] 失败卡的警告图标、标题及原因。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #a49cac/#ac9ca4 ΔE5.4，墨迹投影 dx -1/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-light/bands/band-1.png",
+    "2": "[raster] 未写入说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #8c848c/#ccbcbc ΔE22.1，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-light/bands/band-2.png",
+    "3": "[raster] 未写入说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #ccbcbc/#ccbcbc ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-light/bands/band-3.png",
+    "4": "[raster] 重新连接等三个动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-light/bands/band-4.png"
+  },
+  "A-R31a-c-ai-2-app-dark": {
+    "0": "[raster] 失败卡的警告图标、标题及原因。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #44342c/#44342c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-dark/bands/band-0.png",
+    "1": "[raster] 失败卡的警告图标、标题及原因。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #44342c/#44342c ΔE0，墨迹 #746c74/#847c84 ΔE6.4，墨迹投影 dx -1/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-dark/bands/band-1.png",
+    "2": "[raster] 未写入说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #44342c/#44342c ΔE0，墨迹 #9c949c/#9c949c ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-dark/bands/band-2.png",
+    "3": "[raster] 未写入说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #44342c/#44342c ΔE0，墨迹 #948c94/#6c5c5c ΔE19.5，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-dark/bands/band-3.png",
+    "4": "[raster] 重新连接等三个动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #44342c/#44342c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-2-app-dark/bands/band-4.png"
+  },
+  "A-R31a-c-ai-3-app-light": {
+    "0": "[raster] 候选人头像、身份和两个决策圆钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #6c648c/#6c648c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-light/bands/band-0.png",
+    "1": "[raster] 候选人头像、身份和两个决策圆钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #6c648c/#6c648c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-light/bands/band-1.png",
+    "2": "[raster] AI 提案提示和虚线建议 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bcb4d4/#d4cce4 ΔE9.6，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-light/bands/band-2.png",
+    "3": "[raster] AI 提案提示和虚线建议 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #bcb4d4/#bcb4d4 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-light/bands/band-3.png"
+  },
+  "A-R31a-c-ai-3-app-dark": {
+    "0": "[raster] 候选人头像、身份和两个决策圆钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-dark/bands/band-0.png",
+    "1": "[raster] 候选人头像、身份和两个决策圆钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-dark/bands/band-1.png",
+    "2": "[raster] AI 提案提示和虚线建议 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #6c648c/#645c7c ΔE5.7，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-dark/bands/band-2.png",
+    "3": "[raster] AI 提案提示和虚线建议 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #bcb4c4/#6c648c ΔE33.5，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ai-3-app-dark/bands/band-3.png"
+  },
+  "A-R31a-c-why-0-app-light": {
+    "1": "[raster] 收起态依据卡的 emoji、标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-1.png",
+    "2": "[raster] 收起态依据卡的 emoji、标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-2.png",
+    "5": "[raster] 展开态依据卡的标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-5.png",
+    "6": "[raster] 展开态依据卡的标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-6.png",
+    "7": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-7.png",
+    "8": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #a4a4ac/#b4acb4 ΔE4.7，墨迹投影 dx 1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-8.png",
+    "9": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-300，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #a49ca4/#8c8494 ΔE10.1，墨迹投影 dx -1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-9.png",
+    "11": "[raster] 页尾说明 chip 与问号入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=330-345，底色 #ece4f4/#ece4f4 ΔE0，墨迹 #6c5c9c/#6c5c9c ΔE0，墨迹投影 dx 2/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-light/bands/band-11.png"
+  },
+  "A-R31a-c-why-0-app-dark": {
+    "1": "[raster] 收起态依据卡的 emoji、标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 2。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-1.png",
+    "2": "[raster] 收起态依据卡的 emoji、标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-2.png",
+    "5": "[raster] 展开态依据卡的标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-5.png",
+    "6": "[raster] 展开态依据卡的标题与摘要。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-6.png",
+    "7": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-7.png",
+    "8": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #74747c/#6c6c74 ΔE3.2，墨迹投影 dx 1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-8.png",
+    "9": "[raster] 展开态依据文字框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=270-300，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #6c6c74/#948c9c ΔE14.5，墨迹投影 dx -1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-9.png",
+    "10": "[raster] 页尾说明 chip 与问号入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=300-330，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #7c7494/#7c7494 ΔE0，墨迹投影 dx -2/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-10.png",
+    "11": "[raster] 页尾说明 chip 与问号入口。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=330-345，底色 #342c44/#342c44 ΔE0，墨迹 #ccbcec/#ccbcec ΔE0，墨迹投影 dx 2/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-why-0-app-dark/bands/band-11.png"
+  },
+  "A-R31a-c-load-1-app-light": {
+    "0": "[raster] 渐变光球、星号及加载标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-0.png",
+    "1": "[raster] 渐变光球、星号及加载标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-1.png",
+    "4": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #5c9c84/#5c9c84 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-4.png",
+    "5": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #5c9c84/#5c9c84 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-5.png",
+    "6": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#6c647c ΔE34.5，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-6.png",
+    "7": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #d4ccd4/#948c9c ΔE24，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-7.png",
+    "8": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #d4ccd4/#847c8c ΔE30.1，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-8.png",
+    "10": "[raster] 关闭等待按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=300-330，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-light/bands/band-10.png"
+  },
+  "A-R31a-c-load-1-app-dark": {
+    "0": "[raster] 渐变光球、星号及加载标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-0.png",
+    "1": "[raster] 渐变光球、星号及加载标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-1.png",
+    "4": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #24242c/#24242c ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-4.png",
+    "5": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-5.png",
+    "6": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#9c949c ΔE34.4，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-6.png",
+    "7": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #24242c/#24242c ΔE0，墨迹 #544c54/#54545c ΔE4.3，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-7.png",
+    "8": "[raster] 分步勾选、环形进度与阶段文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#6c6c74 ΔE9.9，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-8.png",
+    "10": "[raster] 关闭等待按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=300-330，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-load-1-app-dark/bands/band-10.png"
+  },
+  "A-R31a-c-err-0-app-light": {
+    "0": "[raster] 离线横条的 wifi 图标、文案和待机计数。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4ecdc/#f4ecdc ΔE0，墨迹 #9c6c34/#8c642c ΔE5.3，墨迹投影 dx -1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-light/bands/band-0.png",
+    "1": "[raster] 离线横条的 wifi 图标、文案和待机计数。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #f4ecdc/#f4ecdc ΔE0，墨迹 #9c6c34/#8c642c ΔE5.3，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-light/bands/band-1.png",
+    "2": "[raster] 离线列表行的头像、任务与待同步标记。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 4/dy 1 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-light/bands/band-2.png",
+    "3": "[raster] 离线列表行的头像、任务与待同步标记。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-light/bands/band-3.png",
+    "5": "[raster] 恢复同步横条。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #dcf4ec/#dcf4ec ΔE0，墨迹 #3c7c6c/#3c7464 ΔE3.5，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-light/bands/band-5.png"
+  },
+  "A-R31a-c-err-0-app-dark": {
+    "0": "[raster] 离线横条的 wifi 图标、文案和待机计数。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #3c342c/#3c342c ΔE0，墨迹 #e4c494/#e4c494 ΔE0，墨迹投影 dx -1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-dark/bands/band-0.png",
+    "1": "[raster] 离线横条的 wifi 图标、文案和待机计数。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #3c342c/#3c342c ΔE0，墨迹 #e4c494/#e4c494 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-dark/bands/band-1.png",
+    "2": "[raster] 离线列表行的头像、任务与待同步标记。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 7/dy 1 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-dark/bands/band-2.png",
+    "3": "[raster] 离线列表行的头像、任务与待同步标记。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 3/dy 2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-dark/bands/band-3.png",
+    "5": "[raster] 恢复同步横条。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #2c342c/#2c342c ΔE0，墨迹 #9cd4bc/#9cd4bc ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-err-0-app-dark/bands/band-5.png"
+  },
+  "A-R31a-c-err-2-app-light": {
+    "0": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 1/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-light/bands/band-0.png",
+    "1": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #b4b4bc/#bcb4bc ΔE3，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-light/bands/band-1.png",
+    "2": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #7c7484/#acacac ΔE22.6，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-light/bands/band-2.png",
+    "5": "[raster] 模板兜底卡的标题和说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -4 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-light/bands/band-5.png",
+    "6": "[raster] 模板兜底卡的标题和说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #b4b4bc/#bcb4bc ΔE3，墨迹投影 dx 0/dy -7 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-light/bands/band-6.png"
+  },
+  "A-R31a-c-err-2-app-dark": {
+    "0": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 1/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-dark/bands/band-0.png",
+    "1": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #948c9c/#64646c ΔE17.6，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-dark/bands/band-1.png",
+    "2": "[raster] 首张降级卡的图标、文案与重试钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #8c8c94/#8c8c94 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-dark/bands/band-2.png",
+    "5": "[raster] 模板兜底卡的标题和说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -5 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-dark/bands/band-5.png",
+    "6": "[raster] 模板兜底卡的标题和说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #6c6c74/#64646c ΔE3.3，墨迹投影 dx 0/dy -7 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-err-2-app-dark/bands/band-6.png"
+  },
+  "A-R31a-c-err-3-app-light": {
+    "0": "[raster] 表单标签。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #9c94a4/#6c647c ΔE19.3，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-light/bands/band-0.png",
+    "1": "[raster] 错误输入框的值与珊瑚边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #e48c74/#e48c74 ΔE0，墨迹投影 dx 1/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-light/bands/band-1.png",
+    "2": "[raster] 错误输入框的值与珊瑚边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #e48c74/#e48c74 ΔE0，墨迹投影 dx 1/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-light/bands/band-2.png",
+    "3": "[raster] 错误提示框的强调句和正文。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #e48c74/#e48c74 ΔE0，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-light/bands/band-3.png",
+    "4": "[raster] 错误提示框的强调句和正文。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #fce4e4/#fce4e4 ΔE0，墨迹 #5c545c/#ac9c9c ΔE29.5，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-light/bands/band-4.png"
+  },
+  "A-R31a-c-err-3-app-dark": {
+    "1": "[raster] 错误输入框的值与珊瑚边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 1/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-dark/bands/band-1.png",
+    "2": "[raster] 错误输入框的值与珊瑚边框。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 1/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-dark/bands/band-2.png",
+    "3": "[raster] 错误提示框的强调句和正文。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #44342c/#44342c ΔE0，墨迹 #f49c8c/#f49c8c ΔE0，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-dark/bands/band-3.png",
+    "4": "[raster] 错误提示框的强调句和正文。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #44342c/#44342c ΔE0，墨迹 #b4acac/#6c5c5c ΔE30.6，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-err-3-app-dark/bands/band-4.png"
+  },
+  "A-R31a-c-sample-0-app-light": {
+    "0": "[raster] 示例模式横条的试管、两行提示与继续钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4ecdc/#f4ecdc ΔE0，墨迹 #9c6c34/#8c642c ΔE5.3，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-light/bands/band-0.png",
+    "1": "[raster] 示例模式横条的试管、两行提示与继续钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #f4ecdc/#f4ecdc ΔE0，墨迹 #9c6c34/#8c642c ΔE5.3，墨迹投影 dx 2/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-light/bands/band-1.png",
+    "3": "[raster] 山本列表行、头像和示例角标。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #ccccd4/#acacb4 ΔE11.7，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-light/bands/band-3.png",
+    "5": "[raster] 鈴木列表行、头像和示例角标。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #ccccd4/#4c6c94 ΔE43.2，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-light/bands/band-5.png"
+  },
+  "A-R31a-c-sample-0-app-dark": {
+    "0": "[raster] 示例模式横条的试管、两行提示与继续钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #3c342c/#3c342c ΔE0，墨迹 #e4c494/#e4c494 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-dark/bands/band-0.png",
+    "1": "[raster] 示例模式横条的试管、两行提示与继续钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #3c342c/#3c342c ΔE0，墨迹 #e4c494/#e4c494 ΔE0，墨迹投影 dx 2/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-dark/bands/band-1.png",
+    "3": "[raster] 山本列表行、头像和示例角标。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#64646c ΔE6.6，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-dark/bands/band-3.png",
+    "5": "[raster] 鈴木列表行、头像和示例角标。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#74747c ΔE13.1，墨迹投影 dx 0/dy -2。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-0-app-dark/bands/band-5.png"
+  },
+  "A-R31a-c-sample-1-app-light": {
+    "3": "[raster] 示例拦截框的试管与标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-light/bands/band-3.png",
+    "4": "[raster] 示例拦截说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #9c9ca4/#94949c ΔE3，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-light/bands/band-4.png",
+    "5": "[raster] 示例拦截说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #7c7c84/#847c8c ΔE5.7，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-light/bands/band-5.png",
+    "6": "[raster] 继续指引主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #fcfcfc/#fcfcfc ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-light/bands/band-6.png",
+    "7": "[raster] 继续查看示例次按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-light/bands/band-7.png"
+  },
+  "A-R31a-c-sample-1-app-dark": {
+    "3": "[raster] 示例拦截框的试管与标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-dark/bands/band-3.png",
+    "4": "[raster] 示例拦截说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #24242c/#24242c ΔE0，墨迹 #9c94a4/#9c94a4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-dark/bands/band-4.png",
+    "5": "[raster] 示例拦截说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#9c94a4 ΔE26.9，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-dark/bands/band-5.png",
+    "6": "[raster] 继续指引主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #24242c/#24242c ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-dark/bands/band-6.png",
+    "7": "[raster] 继续查看示例次按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-sample-1-app-dark/bands/band-7.png"
+  },
+  "A-R31a-c-chip-0-app-light": {
+    "0": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #eca494/#ecac9c ΔE4.2，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-light/bands/band-0.png",
+    "2": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #f4ecdc/#f4ecdc ΔE0，墨迹 #9c6c34/#9c6c34 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-light/bands/band-2.png",
+    "5": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #3c7c6c/#3c7c6c ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-light/bands/band-5.png",
+    "6": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #54749c/#54749c ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-light/bands/band-6.png",
+    "8": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #5c5c64/#5c5c64 ΔE0，墨迹投影 dx 0/dy 2。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-light/bands/band-8.png"
+  },
+  "A-R31a-c-chip-0-app-dark": {
+    "0": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #e49484/#f49c8c ΔE4.8，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-0.png",
+    "2": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #3c342c/#3c342c ΔE0，墨迹 #e4c494/#e4c494 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-2.png",
+    "4": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #342c44/#342c44 ΔE0，墨迹 #c4b4e4/#c4b4e4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-4.png",
+    "5": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #9cd4bc/#9cd4bc ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-5.png",
+    "6": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #acc4e4/#acc4e4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-6.png",
+    "8": "[raster] 逐行状态 chip 的原稿底色、文字和药丸轮廓。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #bcb4c4/#bcb4c4 ΔE0，墨迹投影 dx 0/dy 2。裁剪图 R31a-sc03/full-02/A-R31a-c-chip-0-app-dark/bands/band-8.png"
+  },
+  "A-R31a-c-pay-0-app-light": {
+    "0": "[raster] 月度配额标题和计数 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-light/bands/band-0.png",
+    "1": "[raster] 配额三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #8c84ac/#8c84ac ΔE0，墨迹投影 dx 0/dy -4 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-light/bands/band-1.png",
+    "2": "[raster] 重置说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #ccccd4/#8c8494 ΔE26.6，墨迹投影 dx 0/dy -4 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-light/bands/band-2.png",
+    "4": "[raster] 再分析主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #fcfcfc/#fcfcfc ΔE0，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-light/bands/band-4.png",
+    "6": "[raster] 用尽状态计数 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-204，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #aca4b4/#5c5c64 ΔE29.6，墨迹投影 dx 0/dy -5 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-light/bands/band-6.png"
+  },
+  "A-R31a-c-pay-0-app-dark": {
+    "0": "[raster] 月度配额标题和计数 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-dark/bands/band-0.png",
+    "1": "[raster] 配额三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #a49cc4/#a49cc4 ΔE0，墨迹投影 dx 0/dy -4 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-dark/bands/band-1.png",
+    "2": "[raster] 重置说明文字。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#7c7c84 ΔE16.3，墨迹投影 dx 0/dy -4 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-dark/bands/band-2.png",
+    "4": "[raster] 再分析主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #24242c/#24242c ΔE0，墨迹投影 dx 0/dy -3。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-dark/bands/band-4.png",
+    "6": "[raster] 用尽状态计数 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-204，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #4c4c54/#bcb4c4 ΔE42.1，墨迹投影 dx 0/dy -5 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-0-app-dark/bands/band-6.png"
+  },
+  "A-R31a-c-pay-1-app-light": {
+    "0": "[raster] 用尽卡的沙漏、标题、日期与三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-0.png",
+    "1": "[raster] 用尽卡的沙漏、标题、日期与三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-1.png",
+    "3": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #9c9ca4/#94949c ΔE3，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-3.png",
+    "4": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #84848c/#7c7484 ΔE7.9，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-4.png",
+    "5": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #f4ecf4/#f4ecf4 ΔE0，墨迹 #acacb4/#847c8c ΔE18.3，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-5.png",
+    "6": "[raster] 确认主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #fcfcfc/#fcfcfc ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-6.png",
+    "8": "[raster] 查看方案次按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #5c5c64/#5c5c64 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-light/bands/band-8.png"
+  },
+  "A-R31a-c-pay-1-app-dark": {
+    "0": "[raster] 用尽卡的沙漏、标题、日期与三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-0.png",
+    "1": "[raster] 用尽卡的沙漏、标题、日期与三段点。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-1.png",
+    "3": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #64646c/#84848c ΔE12.8，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-3.png",
+    "4": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #5c5c64/#5c5c64 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-4.png",
+    "5": "[raster] 可继续使用功能的说明卡。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #2c2c34/#2c2c34 ΔE0，墨迹 #948c9c/#9c94a4 ΔE3.1，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-5.png",
+    "6": "[raster] 确认主按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #24242c/#24242c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-6.png",
+    "8": "[raster] 查看方案次按钮。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=240-270，底色 #24242c/#24242c ΔE0，墨迹 #bcb4c4/#bcb4c4 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-pay-1-app-dark/bands/band-8.png"
+  },
+  "A-R31a-c-text-0-app-light": {
+    "1": "[raster] 联系人列表长公司名的单行截断、头像和关系 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #4c6c94/#4c6c94 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-text-0-app-light/bands/band-1.png"
+  },
+  "A-R31a-c-text-0-app-dark": {
+    "1": "[raster] 联系人列表长公司名的单行截断、头像和关系 chip。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #acc4e4/#acc4e4 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/full-02/A-R31a-c-text-0-app-dark/bands/band-1.png"
+  },
+  "A-R31a-c-text-1-app-light": {
+    "0": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 2/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-light/bands/band-0.png",
+    "1": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-light/bands/band-1.png",
+    "2": "[raster] 活动时间地点的单行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #a49cac/#7c7484 ΔE15.5，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-light/bands/band-2.png"
+  },
+  "A-R31a-c-text-2-app-light": {
+    "0": "[raster] 长 chip 全文气泡及其尾尖。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #1c1c24/#1c1c24 ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-light/bands/band-0.png",
+    "1": "[raster] 长 chip 全文气泡及其尾尖。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-light/bands/band-1.png",
+    "2": "[raster] 长 chip 的单行省略。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-70，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #7c6ca4/#8474ac ΔE3.2，墨迹投影 dx 0/dy 3。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-light/bands/band-2.png"
+  },
+  "A-R31a-c-text-2-app-dark": {
+    "0": "[raster] 长 chip 全文气泡及其尾尖。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c1c/#1c1c1c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-dark/bands/band-0.png",
+    "1": "[raster] 长 chip 全文气泡及其尾尖。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 1/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-dark/bands/band-1.png",
+    "2": "[raster] 长 chip 的单行省略。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-70，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #443c54/#ccbcec ΔE53，墨迹投影 dx -2/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-text-2-app-dark/bands/band-2.png"
+  },
+  "A-R31a-c-ctl-0-app-light": {
+    "0": "[contrast] §52-2 人工例外：控件旁等宽说明按 RD-05 用 ink-3-text，设计格用 ink-3；控件形状、文字与位置已对照。iOS/Chrome 字形重采样使 RD-26 算法在此带仍有 62.08% 差异像素未解释，明确不计自动门禁通过。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-0.png",
+    "1": "[contrast] §52-2 人工例外：控件旁等宽说明按 RD-05 用 ink-3-text，设计格用 ink-3；控件形状、文字与位置已对照。iOS/Chrome 字形重采样使 RD-26 算法在此带仍有 58.74% 差异像素未解释，明确不计自动门禁通过。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-1.png",
+    "2": "[raster] 多选框与说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #6c648c/#6c648c ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-2.png",
+    "3": "[raster] 单选圆与说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #6c648c/#6c648c ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-3.png",
+    "4": "[raster] 过滤 chip、页签和行尾说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-4.png",
+    "5": "[raster] 过滤 chip、页签和行尾说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-177，底色 #f4f4f4/#f4f4f4 ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 2/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-light/bands/band-5.png"
+  },
+  "A-R31a-c-ctl-0-app-dark": {
+    "0": "[raster] 两个开关与等宽说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-0.png",
+    "1": "[raster] 完成勾与说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #8cc4ac/#8cc4ac ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-1.png",
+    "2": "[raster] 多选框与说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 1/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-2.png",
+    "3": "[raster] 单选圆与说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #ccc4e4/#ccc4e4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-3.png",
+    "4": "[raster] 过滤 chip、页签和行尾说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-4.png",
+    "5": "[raster] 过滤 chip、页签和行尾说明。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-177，底色 #1c1c1c/#1c1c1c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 2/dy 1。裁剪图 R31a-sc03/full-02/A-R31a-c-ctl-0-app-dark/bands/band-5.png"
+  },
+  "A-R31a-c-err-1-app-light": {
+    "3": "[raster] 重试卡的警告图标与标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-light/bands/band-3.png",
+    "4": "[raster] 重试卡的说明和保留输入文案。该带两侧示例文案、底色与组件轮廓一致；iOS standard 断行策略将「お試しください」保为同一词组，Chrome 在词内换行；两侧正文相同，卡片和按钮边界重合。残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #84848c/#94949c ΔE6.2，墨迹投影 dx 6/dy 0 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-light/bands/band-4.png",
+    "5": "[raster] 重试卡的说明和保留输入文案。该带两侧示例文案、底色与组件轮廓一致；iOS standard 断行策略将「お試しください」保为同一词组，Chrome 在词内换行；两侧正文相同，卡片和按钮边界重合。残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #a4a4ac/#94949c ΔE6，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-light/bands/band-5.png",
+    "6": "[raster] 重试及缓存动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-light/bands/band-6.png",
+    "7": "[raster] 重试及缓存动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #fcfcfc/#fcfcfc ΔE0，墨迹 #1c1c24/#1c1c24 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-light/bands/band-7.png"
+  },
+  "A-R31a-c-err-1-app-dark": {
+    "3": "[raster] 重试卡的警告图标与标题。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=90-120，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy -1。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-dark/bands/band-3.png",
+    "4": "[raster] 重试卡的说明和保留输入文案。该带两侧示例文案、底色与组件轮廓一致；iOS standard 断行策略将「お試しください」保为同一词组，Chrome 在词内换行；两侧正文相同，卡片和按钮边界重合。残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=120-150，底色 #24242c/#24242c ΔE0，墨迹 #54545c/#8c8494 ΔE21，墨迹投影 dx 6/dy 0 受字形或断行影响；三联图中的卡片和控件边界已人工核对。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-dark/bands/band-4.png",
+    "5": "[raster] 重试卡的说明和保留输入文案。该带两侧示例文案、底色与组件轮廓一致；iOS standard 断行策略将「お試しください」保为同一词组，Chrome 在词内换行；两侧正文相同，卡片和按钮边界重合。残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=150-180，底色 #24242c/#24242c ΔE0，墨迹 #5c5c64/#948c9c ΔE20.7，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-dark/bands/band-5.png",
+    "6": "[raster] 重试及缓存动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=180-210，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-dark/bands/band-6.png",
+    "7": "[raster] 重试及缓存动作。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=210-240，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/err1-font-fix/A-R31a-c-err-1-app-dark/bands/band-7.png"
+  },
+  "A-R31a-c-text-1-app-dark": {
+    "0": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=0-30，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 2/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-0.png",
+    "1": "[raster] 长活动标题的两行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=30-60，底色 #24242c/#24242c ΔE0，墨迹 #f4f4f4/#f4f4f4 ΔE0，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-1.png",
+    "2": "[raster] 活动时间地点的单行截断。该带两侧示例文案、底色与组件轮廓一致；残差集中在 iOS 与 Chrome 各自栅格化并缩到设计点后的字形、emoji、SVG 描边和圆角采样。y=60-90，底色 #24242c/#24242c ΔE0，墨迹 #746c7c/#74747c ΔE6.2，墨迹投影 dx 0/dy 0。裁剪图 R31a-sc03/text1-dark-fix/A-R31a-c-text-1-app-dark/bands/band-2.png"
+  }
 }

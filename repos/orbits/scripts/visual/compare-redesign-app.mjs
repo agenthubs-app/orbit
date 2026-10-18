@@ -27,7 +27,8 @@
 //   [contrast]：归因理由以 [contrast] 开头的带按 contrast-substitutions.json 逐像素判定（RD-26，见 redesign-pixel-lib checkContrastBand）。
 // 退出码同 compare-redesign.mjs。
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
 import { APP_DESIGN_FONT_FIX, appDesignFontFix, changedFiles, compareImages, crop, cropPair, formatBandReport, moveFrameToTop, designCache, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, parseRegion, pool, printSummary, readPng, resize, selectChanged, selectOnly, specCellsInPage, writePng } from "./redesign-pixel-lib.mjs";
@@ -174,7 +175,15 @@ async function shotFor(v) {
     else if (v.url) sim("openurl", v.simulator, v.url);
     await new Promise((r) => setTimeout(r, Number(v.wait ?? (v.path ? 8000 : 2500))));
   }
-  sim("io", v.simulator, "screenshot", "--type=png", file);
+  // simctl may not have permission to write directly to an external evidence volume.
+  const temporaryDir = mkdtempSync(join(tmpdir(), "orbit-app-shot-"));
+  try {
+    const temporaryFile = join(temporaryDir, "simulator-raw.png");
+    sim("io", v.simulator, "screenshot", "--type=png", temporaryFile);
+    copyFileSync(temporaryFile, file);
+  } finally {
+    rmSync(temporaryDir, { recursive: true, force: true });
+  }
   return file;
 }
 

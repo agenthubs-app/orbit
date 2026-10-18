@@ -2,6 +2,7 @@
  "_note": "R31a 逐件对照（App）：01-system 规格格 ↔ 展示页小节 /showcase/components/<id>。设计侧 = 第 cell 格（compare-redesign.mjs --list-cells；整数对齐、.stage 雾面底换成纯 --bg、3x 渲染缩到 1x）；实现侧 = 模拟器截图缩到设备点（不按 390 缩）后按 region 裁剪。inline 小节画在 (0, 120)、宽 = 格宽（src/screens/showcase/component-sections.tsx SECTION_TOP）；overlay 的 region 用 c（居中）/ b（贴底）或 iPhone 16e（Orbit Line A 16e，RD-33）上的实测点。跳转走开发开关 open-path（Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path）。键 = <id>-app-<theme>。新组件（UnderlineTabs / 可配置 TabBar / 全屏搜索页）以 b2 画板区域为准，补件时追加（--design-region）。",
  "defaults": {
   "grid": 30,
+  "crop": true,
   "attribution": "scripts/visual/attribution-redesign-R31a-app.json"
  },
  "sources": [
@@ -26,9 +27,9 @@
    "section": "c-confirm",
    "cell": 0,
    "path": "/showcase/components/c-confirm-0?theme={theme}",
-   "region": "29,227,322,390",
-   "placement": "overlay",
-   "note": "ConfirmDialog（居中，宽 296）；设计侧 .scrimbox 内容宽 286 < 对话框 296，网格居中溢出时贴左（对话框在格内 x=18，不是居中的 13），实现侧按 16e 上对话框 x=47 取 29"
+   "region": "0,120,322,390",
+   "placement": "inline",
+   "note": "ConfirmDialog 真组件的静态展示态，放进与规格格相同的 322×390 圆角 scrimbox"
   },
   {
    "id": "A-R31a-c-ai-0",
@@ -156,9 +157,9 @@
    "section": "c-sample",
    "cell": 1,
    "path": "/showcase/components/c-sample-1?theme={theme}",
-   "region": "29,271,280,302",
-   "placement": "overlay",
-   "note": "写操作拦截（ConfirmDialog .dic.emo）；同 c-confirm-0：格内对话框 x=18（溢出贴左），16e 上对话框 x=47 → region x 29"
+   "region": "0,120,280,302",
+   "placement": "inline",
+   "note": "写操作拦截：ConfirmDialog 真组件的静态展示态，宽 280；规格格没有 scrimbox"
   },
   {
    "id": "A-R31a-c-chip-0",
