@@ -101,7 +101,8 @@ function HistoryPane({ history, goals, intakes, onNew, onPick }: { history: Hist
       <Button label="新しい会話" icon="plus" variant="primary" onClick={onNew} block />
       <SearchField label="会話を検索" placeholder="タイトルと本文を検索" value={search} onChange={setSearch} />
       {history.historyPageLoading && !history.storedHistory.length ? <p role="status">会話を読み込み中…</p> : null}
-      {!history.historyPageLoading && !history.storedHistory.length ? <p className={styles.emptyHistory}>{search ? "一致する会話はありません" : "まだ会話はありません"}</p> : null}
+      {history.historyReadError ? <div role="alert" className={styles.error}>会話を読み込めませんでした。<Button label="再試行" variant="ghost" size="sm" onClick={history.retryHistoryRead} /></div> : null}
+      {!history.historyPageLoading && !history.historyReadError && !history.storedHistory.length ? <p className={styles.emptyHistory}>{search ? "一致する会話はありません" : "まだ会話はありません"}</p> : null}
       {sections.map(([title, items]) => <section key={title} aria-label={title} className={styles.historySection}>
         <h3>{title}</h3>
         {items.map((item) => <HistoryRow key={item.id} item={item} history={history} onPick={onPick} />)}

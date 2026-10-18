@@ -92,6 +92,7 @@ export function useAgentHistory() {
   const [historyPageHasMore, setHistoryPageHasMore] = useState(false);
   const [historyPageCursor, setHistoryPageCursor] = useState<string | null>(null);
   const [historyPageLoading, setHistoryPageLoading] = useState(false);
+  const [historyReadError, setHistoryReadError] = useState<"page" | "more" | null>(null);
   const [historyRefreshVersion, setHistoryRefreshVersion] = useState(0);
   const [groupMutationPending, setGroupMutationPending] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export function useAgentHistory() {
         setHistoryPageCursor(null);
         setHistoryPageHasMore(false);
       }
+      setHistoryReadError(null);
       setHistoryPageLoading(true);
       void Promise.all([
         loadStoredAgentChatSessions({ groupId: selectedSessionGroupId, q: historyQuery }),
@@ -134,11 +136,9 @@ export function useAgentHistory() {
           setStoredSessions(page.items);
           setHistoryPageCursor(page.nextCursor);
           setHistoryPageHasMore(page.hasMore);
+          setHistoryReadError(null);
         } else {
-          storedSessionsRef.current = [];
-          setStoredSessions([]);
-          setHistoryPageCursor(null);
-          setHistoryPageHasMore(false);
+          setHistoryReadError("page");
         }
         setSessionGroups(groups);
       }).finally(() => {
@@ -161,7 +161,8 @@ export function useAgentHistory() {
     setHistoryPageLoading(true);
     try {
       const page = await loadStoredAgentChatSessions({ cursor, groupId: selectedSessionGroupId, q: historyQuery });
-      if (!page || generation !== historyPageGenerationRef.current) return;
+      if (generation !== historyPageGenerationRef.current) return;
+      if (!page) { setHistoryReadError("more"); return; }
       const merged = [...storedSessionsRef.current];
       const existing = new Set(merged.map((session) => session.id));
       for (const session of page.items) if (!existing.has(session.id)) merged.push(session);
@@ -169,9 +170,15 @@ export function useAgentHistory() {
       setStoredSessions(merged);
       setHistoryPageCursor(page.nextCursor);
       setHistoryPageHasMore(page.hasMore);
+      setHistoryReadError(null);
     } finally {
       if (generation === historyPageGenerationRef.current) setHistoryPageLoading(false);
     }
+  };
+
+  const retryHistoryRead = () => {
+    if (historyReadError === "more") void loadMoreHistory();
+    else setHistoryRefreshVersion((version) => version + 1);
   };
 
   const updateHistorySession = async (
@@ -456,6 +463,7 @@ export function useAgentHistory() {
     historyMutationSessionId,
     historyPageHasMore,
     historyPageLoading,
+    historyReadError,
     historyQuery,
     moveHistorySession,
     loadMoreHistory,
@@ -463,6 +471,7 @@ export function useAgentHistory() {
     pendingUndo,
     renameHistoryGroup,
     renameHistorySession,
+    retryHistoryRead,
     selectedSessionGroupId,
     sessionGroups,
     setHistoryDeleteError,
