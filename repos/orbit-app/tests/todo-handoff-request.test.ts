@@ -5,6 +5,8 @@ import { todoHandoffTarget, todoHandoffRetryTarget, todoHandoffTaskReceipt, todo
 
 const item = { key: "agent_signal:signal-1", source: "agent_signal" as const, sourceId: "signal-1",
   titlePreview: "A message", createdAt: "2026-10-18T01:00:00.000Z", draftAvailable: false, contactId: "contact-1" };
+const { contactId: _omittedContactId, ...itemWithoutContact } = item;
+void _omittedContactId;
 const task = { id: "task-1", accountId: "actor-1", ownerUserId: "actor-1", title: "Follow up", status: "open",
   category: "relationship", priority: "normal", source: "manual", relatedContactId: "contact-1",
   createdAt: "2026-10-18T01:00:00.000Z", updatedAt: "2026-10-18T01:00:00.000Z" };
@@ -33,7 +35,7 @@ test("a persisted retry keeps its original target after the task was completed",
   assert.equal(todoHandoffRetryTarget(record, { ...linked, contactId: "contact-2" }), null);
   assert.equal(todoHandoffRetryTarget(record, { ...linked, taskId: "task-2" }), null);
   assert.equal(todoHandoffRetryTarget({ ...record, confirmation: { ...record.confirmation, taskId: null } },
-    { ...item, contactId: undefined }), null, "an untasked signal cannot lose its direct contact authority");
+    itemWithoutContact), null, "an untasked signal cannot lose its direct contact authority");
 });
 
 test("task completion receipt keeps the same contact across the read/write race", () => {

@@ -17,6 +17,8 @@ const signal = {
   key: "agent_signal:signal-1", source: "agent_signal" as const, sourceId: "signal-1",
   titlePreview: "Follow up", createdAt: now, draftAvailable: true, contactId: "contact-1",
 };
+const { contactId: _omittedContactId, ...signalWithoutContact } = signal;
+void _omittedContactId;
 
 test("only a real signal with an authoritative target can enter the sent reminder", () => {
   assert.deepEqual(markTodoHandoff([], signal, now), [{ sourceId: "signal-1", handedOffAt: now }]);
@@ -24,11 +26,11 @@ test("only a real signal with an authoritative target can enter the sent reminde
     { ...signal, sample: true as const },
     { ...signal, source: "plan_today_chance" as const },
     { ...signal, sourceId: "" },
-    { ...signal, contactId: undefined },
+    signalWithoutContact,
   ]) assert.deepEqual(markTodoHandoff([], item, now), []);
   assert.deepEqual(markTodoHandoff([], { ...signal, draftAvailable: false }, now), [{ sourceId: "signal-1", handedOffAt: now }],
     "a person may handwrite a message while AI drafting is unavailable");
-  assert.deepEqual(markTodoHandoff([], { ...signal, contactId: undefined, taskId: "task-1" }, now), [{ sourceId: "signal-1", handedOffAt: now }]);
+  assert.deepEqual(markTodoHandoff([], { ...signalWithoutContact, taskId: "task-1" }, now), [{ sourceId: "signal-1", handedOffAt: now }]);
 });
 
 test("the reminder expires at 24 hours and storage is account/server scoped without draft text", () => {
@@ -62,7 +64,7 @@ test("confirmation retains its idempotency identity and never silently retargets
 });
 
 test("task completion is checkpointed before encounter retry and does not clear the reminder", () => {
-  const item = { ...signal, contactId: undefined, taskId: "task-1" };
+  const item = { ...signalWithoutContact, taskId: "task-1" };
   const begun = beginTodoHandoffConfirmation(markTodoHandoff([], item, now), item, {
     contactId: "contact-1", taskId: "task-1", idempotencyKey: "ios:sent:key-1", observedAt: now,
   }, now);
