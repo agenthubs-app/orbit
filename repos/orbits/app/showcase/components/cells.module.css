@@ -12,3 +12,8 @@
 .keys > span { display: inline-flex; align-items: center; gap: 5px; }
 /* c-layer #2：弹出层的触发钮（选中底色） */
 .trigger { background: var(--accent-soft); }
+/* kit .card（01-system 规格格里的通用卡：surface、圆角 24） */
+.card { background: var(--surface); border-radius: var(--r-xl); }
+/* c-why：撑满一行的 chip（kit .chip.ell flex:1 max-width:none） */
+.chipFill { flex: 1; min-width: 0; display: flex; }
+.chipFill > span { max-width: none; flex: 1; }

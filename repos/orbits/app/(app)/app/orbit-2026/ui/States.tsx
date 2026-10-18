@@ -86,23 +86,25 @@ export function OfflineBar({ offline, pending }: { offline: boolean; pending: nu
   );
 }
 
-// 01-system ⑧ block error: coral-soft icon block, what failed, why + reassurance, 再試行.
+// 01-system ⑧ block error (kit .card.err-card, R31b c-err #1): centred — coral-soft icon block 54, what failed (15),
+// why + reassurance on two lines, then 再試行 (primary sm) and 端末に保存済みを見る (ghost sm).
 export function RetryCard({ title, message, onRetry, retrying = false, onViewCached }: { title: string; message?: string; onRetry: () => void; retrying?: boolean; onViewCached?: () => void }) {
   const copy = useStandardCopy();
   return (
     <div role="alert" className={styles.retry}>
       <span className={styles.retryIcon}><Icon name="alert" size={24} /></span>
-      <h3 className={styles.title}>{title}</h3>
-      <p className={styles.message}>{message ?? `${copy.error.checkConnection}${copy.error.inputKept}`}</p>
+      <h3 className={styles.retryTitle}>{title}</h3>
+      <p className={styles.retryMessage}>{message ?? <>{copy.error.checkConnection}<br />{copy.error.inputKept}</>}</p>
       <div className={styles.retryActions}>
-        <Button icon="refresh" label={copy.action.retry} variant="primary" loading={retrying} onClick={onRetry} />
-        {onViewCached ? <Button label={copy.error.viewCached} variant="ghost" onClick={onViewCached} /> : null}
+        <Button icon="refresh" label={copy.action.retry} variant="primary" size="sm" loading={retrying} onClick={onRetry} />
+        {onViewCached ? <Button label={copy.error.viewCached} variant="ghost" size="sm" onClick={onViewCached} /> : null}
       </div>
     </div>
   );
 }
 
-// 01-system ⑧ AI degraded: grey (not the user's fault), what stopped and what still works.
+// 01-system ⑧ AI degraded (kit .degrade, R31b c-err #2): grey (not the user's fault), what stopped and what still
+// works; 再試行 (sm, on surface) sits under the text.
 export function DegradedCard({ title, message, onRetry }: { title?: string; message?: string; onRetry?: () => void }) {
   const copy = useStandardCopy();
   return (
@@ -110,9 +112,9 @@ export function DegradedCard({ title, message, onRetry }: { title?: string; mess
       <Icon name="alert" size={16} />
       <div className={styles.degradedBody}>
         <b className={styles.degradedTitle}>{title ?? copy.degraded.iorbitUnavailable}</b>
-        <p className={styles.message}>{message ?? copy.degraded.iorbitStopped}</p>
+        <div className={styles.degradedText}>{message ?? copy.degraded.iorbitStopped}</div>
+        {onRetry ? <Button label={copy.action.retry} icon="refresh" size="sm" className={styles.degradedRetry} onClick={onRetry} /> : null}
       </div>
-      {onRetry ? <Button label={copy.action.retry} size="sm" onClick={onRetry} /> : null}
     </div>
   );
 }
@@ -133,9 +135,23 @@ export function SampleBar({ trailing }: { trailing?: ReactNode }) {
   );
 }
 
-// Quota: 「今月あと N 回」, coral when used up.
+// Quota (kit .qchip): a 6px dot (plum-500, coral when used up) + 「今月あと N 回」.
 export function QuotaChip({ left }: { left: number }) {
   const copy = useStandardCopy();
   const out = left <= 0;
-  return <span className={`${styles.quota} ${out ? styles.quotaOut : ""}`}>{out ? copy.quota.reached : fillCopy(copy.quota.left, { count: left })}</span>;
+  return <span className={`${styles.quota} ${out ? styles.quotaOut : ""}`}><i className={styles.quotaDot} aria-hidden />{out ? copy.quota.reached : fillCopy(copy.quota.left, { count: left })}</span>;
+}
+
+/** R31b: one shimmer block (kit .shimmer, radius 8) — skeletons are composed to match the real page's structure. */
+export function Bone({ width, height, round = false }: { width: number | string; height: number; round?: boolean }) {
+  return <i className={`${styles.bone} ${round ? styles.boneRound : ""}`} style={{ width, height }} aria-hidden />;
+}
+
+/** R31b: kit .qdots — one 26 × 8 bar per allowance, used ones grey (配额条). */
+export function QuotaMeter({ used, total, label }: { used: number; total: number; label: string }) {
+  return (
+    <span className={styles.qdots} role="img" aria-label={label}>
+      {Array.from({ length: total }, (_, index) => <i key={index} className={index < used ? styles.qdotUsed : undefined} />)}
+    </span>
+  );
 }

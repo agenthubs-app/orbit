@@ -18,21 +18,26 @@
 .inner { padding: 0 4px 10px; color: var(--ink-2); font-size: var(--fs-body-sm); }
 
 .why { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* kit .why: 18 round on surface-2, 10.5 / 800; a 24 × 24 invisible ring keeps the target size (WCAG 2.5.8). */
 .whyButton {
-  width: 24px;
-  height: 24px;
+  position: relative;
+  width: 18px;
+  height: 18px;
   border-radius: var(--r-pill);
   background: var(--surface-2);
   color: var(--ink-3-text);
-  font-size: var(--fs-label);
+  font-size: var(--fs-tiny);
   font-weight: var(--fw-heavy);
+  line-height: 1.5;
   display: inline-grid;
   place-items: center;
+  flex: none;
 }
+.whyButton::before { content: ""; position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); }
 .whyBody {
   display: block;
   flex-basis: 100%;
-  margin-top: 4px;
+  margin-top: 10px;
   padding: 10px 12px;
   border-radius: var(--r-md);
   background: var(--surface-2);
@@ -42,6 +47,8 @@
 }
 
 /* kit .confirm-card (no padding, as drawn in 01-system ④) / .ok-card / .ng-card (padding 14), radius 20. */
+.whyBodySurface { background: var(--surface); }
+
 .confirm { border-radius: var(--r-lg); }
 .pending { border: 1.5px dashed var(--plum-300); background: transparent; }
 .success { padding: 14px; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--ok) 45%, transparent); }
@@ -73,4 +80,4 @@
 :global([data-motion="reduce"]) .chev { transition: none; }
 /* Over an old page's unscoped legacy .btn (HANDOFF G13 / R31b): two classes restate the kit values. */
 .head:global(.btn) { gap: 8px; height: auto; min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-md); font-size: var(--fs-body); font-weight: var(--fw-bold); letter-spacing: normal; justify-content: space-between; }
-.whyButton:global(.btn) { gap: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--r-pill); font-size: var(--fs-label); font-weight: var(--fw-heavy); letter-spacing: normal; }
+.whyButton:global(.btn) { gap: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: var(--r-pill); font-size: var(--fs-tiny); font-weight: var(--fw-heavy); letter-spacing: normal; }

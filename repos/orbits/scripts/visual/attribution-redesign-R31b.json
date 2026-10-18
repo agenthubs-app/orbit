@@ -59,5 +59,13 @@
  },
  "W-R31b-c-text-0L-1440-light": {
   "1": "[contrast] 会社·役職行 .meta span --ink-3 → --ink-3-text、蓝 chip -ink → -text（底 surface / mac-blue）"
+ },
+ "W-R31b-c-pay-0-1440-light": {
+  "2": "[contrast] 说明行 .lbl --ink-3 → --ink-3-text（底 surface）；位置、字号、折行一致",
+  "6": "[contrast] 下方「← 用尽（标题栏常驻）」.lbl --ink-3 → --ink-3-text（底 bg）；配额 chip 本身一致"
+ },
+ "W-R31b-c-pay-0L-1440-light": {
+  "2": "[contrast] 说明行 .lbl --ink-3 → --ink-3-text（底 surface）；位置、字号、折行一致",
+  "6": "[contrast] 下方「← 用尽（标题栏常驻）」.lbl --ink-3 → --ink-3-text（底 bg）；配额 chip 本身一致"
  }
 }

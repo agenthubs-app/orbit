@@ -39,6 +39,17 @@ export function WhyDisclosure({ reason }: { reason: string }) {
   );
 }
 
+/** R31b: the ? on its own (kit .why) for a card that puts it at the end of its head row and the body at its foot. */
+export function WhyButton({ open, onToggle, controls }: { open: boolean; onToggle: () => void; controls: string }) {
+  const copy = useStandardCopy();
+  return <button type="button" className={`btn ${styles.whyButton}`} aria-expanded={open} aria-controls={controls} aria-label={copy.aiCard.showWhy} title={copy.aiCard.showWhy} onClick={onToggle}>?</button>;
+}
+
+/** R31b: the body (kit .why-body; on a flat / macaron card pass `onSurface`). */
+export function WhyBody({ id, open, onSurface = false, children }: { id: string; open: boolean; onSurface?: boolean; children: ReactNode }) {
+  return open ? <div id={id} className={`${styles.whyBody} ${onSurface ? styles.whyBodySurface : ""}`}>{children}</div> : null;
+}
+
 export type ConfirmCardAction = { label: string; onSelect: () => void; primary?: boolean; /** R31b: transparent (kit .btn.ghost, 「あとで」). */ ghost?: boolean };
 
 // 01-system ④ / kit .confirm-card → .ok-card → .ng-card: an AI write waits in place

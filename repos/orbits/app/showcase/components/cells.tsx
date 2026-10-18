@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import type { OrbitLanguage } from "../../../shared/contract/language";
 import {
-  Avatar, Button, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog, FilterOption, Icon, Kbd, ListRow, MacTile,
+  Avatar, Bone, Button, CategoryTabs, DegradedCard, QuotaChip, QuotaMeter, RetryCard, WhyBody, WhyButton, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog, FilterOption, Icon, Kbd, ListRow, MacTile,
   Orbit2026Scope, Popover, Radio, Toggle, useStandardCopy, type ChipTone,
 } from "../../(app)/app/orbit-2026/ui";
 import { ToastPreview } from "../../(app)/app/orbit-2026/ui/Toast";
@@ -112,6 +112,61 @@ function AiCell({ state }: { state: "pending" | "success" | "failure" }) {
   return <ConfirmCard state="failure" title={a.ngTitle} reason={a.ngReason} detail={a.ngBody} actions={[{ label: a.reconnect, onSelect: () => undefined, primary: true }, { label: a.again, onSelect: () => undefined }, { label: a.later, onSelect: () => undefined, ghost: true }]} />;
 }
 
+function WhyCard({ open }: { open: boolean }) {
+  const w = S.why;
+  const [shown, setShown] = useState(open);
+  const id = useId();
+  return (
+    <div className={styles.card} style={{ padding: 16 }}>
+      <div className={styles.row} style={{ gap: 8 }}><MacTile emoji="🎯" tone="apricot" size="sm" /><b style={{ fontSize: 13 }}>{w.title}</b><span style={{ marginLeft: "auto", display: "inline-flex" }}><WhyButton open={shown} onToggle={() => setShown(!shown)} controls={id} /></span></div>
+      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 8, lineHeight: 1.55 }}>{w.text}</div>
+      <WhyBody id={id} open={shown}>{w.body}</WhyBody>
+    </div>
+  );
+}
+
+function WhyCell() {
+  const w = S.why;
+  const [shown, setShown] = useState(false);
+  const id = useId();
+  return (
+    <div style={{ width: 359 }}>
+      <WhyCard open={false} />
+      <div style={{ marginTop: 10 }}><WhyCard open /></div>
+      <div style={{ marginTop: 12 }}>
+        <div className={styles.row} style={{ gap: 6 }}><span className={styles.chipFill}><Chip label={w.chip} tone="lav" /></span><WhyButton open={shown} onToggle={() => setShown(!shown)} controls={id} /></div>
+        <WhyBody id={id} open={shown}>{w.chipBody}</WhyBody>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonCell() {
+  return (
+    <div className={styles.card} style={{ padding: "14px 16px", width: 280 }} role="progressbar" aria-busy aria-label="loading">
+      <Bone width="40%" height={11} /><div style={{ marginTop: 10 }}><Bone width="52%" height={30} /></div>
+      {[78, 64, 70].map((w) => (
+        <div key={w} className={styles.row} style={{ marginTop: 14 }}><Bone width={38} height={38} round /><div style={{ flex: 1 }}><Bone width={`${w}%`} height={11} /><div style={{ marginTop: 7 }}><Bone width={`${w - 22}%`} height={9} /></div></div></div>
+      ))}
+    </div>
+  );
+}
+
+function PayCell() {
+  const p = S.pay;
+  return (
+    <div style={{ width: 300 }}>
+      <div className={styles.card} style={{ padding: 14 }}>
+        <div className={`${styles.row} ${styles.between}`}><b style={{ fontSize: 13 }}>{p.title}</b><QuotaChip left={2} /></div>
+        <div style={{ marginTop: 10 }}><QuotaMeter used={1} total={3} label="1 / 3" /></div>
+        <div className={styles.lbl} style={{ marginTop: 8 }}>{p.note}</div>
+        <Button label={p.run} icon="refresh" variant="primary" block style={{ marginTop: 12 }} />
+      </div>
+      <div className={styles.row} style={{ marginTop: 10, gap: 8 }}><QuotaChip left={0} /><span className={styles.lbl} lang="zh">{p.outNote}</span></div>
+    </div>
+  );
+}
+
 function TextCell({ kind }: { kind: 0 | 1 | 2 }) {
   const x = S.text;
   if (kind === 0) return <div style={{ width: 330, padding: "6px 14px", background: "var(--surface)", borderRadius: 22 }}><ListRow title={x.name} subtitle={`${x.company} · ${x.role}`} leading={<Avatar name={x.name} tone="blue" />} trailing={<Chip label={x.stage} tone="blue" />} /></div>;
@@ -127,6 +182,11 @@ const CELLS: Record<CellId, Cell> = {
   "c-ai-1": { width: 280, render: () => <AiCell state="success" /> },
   "c-ai-2": { width: 300, render: () => <AiCell state="failure" /> },
   "c-chip-0": { width: 359, render: () => <ChipsCell /> },
+  "c-why-0": { width: 359, render: () => <WhyCell /> },
+  "c-load-0": { width: 280, render: () => <SkeletonCell /> },
+  "c-err-1": { width: 290, render: () => <RetryCard title={S.err.retryTitle} onRetry={() => undefined} onViewCached={() => undefined} /> },
+  "c-err-2": { width: 290, render: () => <div><DegradedCard title={S.err.degTitle} message={S.err.degBody} onRetry={() => undefined} />{/* 规格格里两块 .degrade 是 .cell（flex 列，gap 8）的两个子项，再加 margin-top 8 = 16 */}<div style={{ marginTop: 16 }}><DegradedCard title={S.err.deg2Title} message={S.err.deg2Body} /></div></div> },
+  "c-pay-0": { width: 300, render: () => <PayCell /> },
   "c-kbd-0": { width: 420, render: () => <KbdPanelCell /> },
   "c-text-0": { width: 330, render: () => <TextCell kind={0} /> },
   "c-ctl-0": { width: 359, render: () => <ControlsCell /> },

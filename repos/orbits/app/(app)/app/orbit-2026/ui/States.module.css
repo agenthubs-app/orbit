@@ -61,11 +61,12 @@
 .bone {
   display: block;
   height: 14px;
-  border-radius: var(--r-tag);
+  border-radius: var(--r-chip); /* kit .shimmer 8 */
   background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
   background-size: 200% 100%;
   animation: shimmer var(--dur-shimmer) linear infinite;
 }
+.boneRound { border-radius: var(--r-pill); }
 .slow { display: flex; align-items: center; gap: 10px; font-size: var(--fs-meta); color: var(--ink-2); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
@@ -85,36 +86,42 @@
 .barText { flex: 1; min-width: 0; }
 .pending { font-family: var(--font-num); }
 
+/* kit .card.err-card: centred, padding 24 / 20; icon block 54 / radius 18; title 15; text 12.5 / 1.6. */
 .retry {
   background: var(--surface);
   border-radius: var(--r-card-web);
-  padding: var(--space-20);
-  display: grid;
-  gap: 8px;
-  justify-items: start;
+  padding: var(--space-24) var(--space-20);
+  text-align: center;
 }
 .retryIcon {
   width: 54px;
   height: 54px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-menu);
   background: var(--coral-soft);
   color: var(--coral-text);
   display: grid;
   place-items: center;
+  margin: 0 auto 12px;
 }
-.retryActions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.retryTitle { font-size: var(--fs-emph); font-weight: var(--fw-bold); line-height: var(--lh-body); }
+.retryMessage { font-size: var(--fs-control); color: var(--ink-2); line-height: 1.6; margin: 6px 0 14px; }
+.retryActions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
+/* kit .degrade: padding 12 / 14, radius 18, 12 px ink-2; the retry under the text, on surface. */
 .degraded {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 14px;
-  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  border-radius: var(--r-menu);
   background: var(--surface-2);
   color: var(--ink-2);
+  font-size: var(--fs-meta);
 }
-.degradedBody { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.degradedTitle { color: var(--ink); font-size: var(--fs-body-sm); }
+.degradedBody { flex: 1; min-width: 0; }
+.degradedTitle { color: var(--ink); }
+.degradedText { margin-top: 2px; }
+.degraded .degradedRetry { margin-top: 8px; background: var(--surface); }
 
 .sampleTag {
   font-size: var(--fs-caption);
@@ -141,6 +148,8 @@
 .quota {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
+  white-space: nowrap;
   padding: 3px 9px;
   border-radius: var(--r-pill);
   background: var(--surface-2);
@@ -148,8 +157,14 @@
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
 }
-.quotaOut { background: var(--coral-soft); color: var(--coral-text); }
+.quotaDot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--plum-500); }
+/* kit .qchip.out keeps the grey chip and turns only the dot coral. */
+.quotaOut .quotaDot { background: var(--coral); }
 
 @keyframes fadeIn { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .bone { animation: none; } }
 :global([data-motion="reduce"]) .bone { animation: none; }
+/* kit .qdots */
+.qdots { display: flex; gap: 5px; }
+.qdots > i { width: 26px; height: 8px; border-radius: var(--r-dot); background: var(--plum-500); }
+.qdots > i.qdotUsed { background: var(--surface-3); }

@@ -207,6 +207,96 @@
    "app": "/showcase/components/c-ctl-0?theme={theme}&env=legacy",
    "region": "0,0,359,200",
    "width": 1440
+  },
+  {
+   "id": "W-R31b-c-why-0",
+   "design": "01-system.html",
+   "section": "c-why",
+   "cell": 0,
+   "app": "/showcase/components/c-why-0?theme={theme}",
+   "region": "0,0,359,345",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-why-0L",
+   "design": "01-system.html",
+   "section": "c-why",
+   "cell": 0,
+   "app": "/showcase/components/c-why-0?theme={theme}&env=legacy",
+   "region": "0,0,359,345",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-load-0",
+   "design": "01-system.html",
+   "section": "c-load",
+   "cell": 0,
+   "app": "/showcase/components/c-load-0?theme={theme}",
+   "region": "0,0,280,235",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-load-0L",
+   "design": "01-system.html",
+   "section": "c-load",
+   "cell": 0,
+   "app": "/showcase/components/c-load-0?theme={theme}&env=legacy",
+   "region": "0,0,280,235",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-err-1",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 1,
+   "app": "/showcase/components/c-err-1?theme={theme}",
+   "region": "0,0,290,249",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-err-1L",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 1,
+   "app": "/showcase/components/c-err-1?theme={theme}&env=legacy",
+   "region": "0,0,290,249",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-err-2",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 2,
+   "app": "/showcase/components/c-err-2?theme={theme}",
+   "region": "0,0,290,216",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-err-2L",
+   "design": "01-system.html",
+   "section": "c-err",
+   "cell": 2,
+   "app": "/showcase/components/c-err-2?theme={theme}&env=legacy",
+   "region": "0,0,290,216",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-pay-0",
+   "design": "01-system.html",
+   "section": "c-pay",
+   "cell": 0,
+   "app": "/showcase/components/c-pay-0?theme={theme}",
+   "region": "0,0,300,204",
+   "width": 1440
+  },
+  {
+   "id": "W-R31b-c-pay-0L",
+   "design": "01-system.html",
+   "section": "c-pay",
+   "cell": 0,
+   "app": "/showcase/components/c-pay-0?theme={theme}&env=legacy",
+   "region": "0,0,300,204",
+   "width": 1440
   }
  ]
 }
