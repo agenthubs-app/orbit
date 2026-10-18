@@ -2268,6 +2268,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["network.delete.restored", "toast"],
   ["network.delete.failed", "toast"],
   ["network.delete.queued", "toast"],
+  ["network.delete.signInAgain", "toast"],
   ["network.edit.seniorityDecision", "chip"],
   ["network.edit.seniorityManager", "chip"],
   ["network.edit.seniorityStaff", "chip"],

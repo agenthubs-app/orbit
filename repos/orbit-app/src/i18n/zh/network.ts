@@ -171,6 +171,7 @@ export const network = {
   "network.delete.restored": "已恢复",
   "network.delete.failed": "没能删除",
   "network.delete.queued": "联网后删除",
+  "network.delete.signInAgain": "重新登录后会删除",
   "network.edit.seniorityDecision": "决策层",
   "network.edit.seniorityManager": "管理层",
   "network.edit.seniorityStaff": "执行层",

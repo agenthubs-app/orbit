@@ -171,6 +171,7 @@ export const network = {
   "network.delete.restored": "Restored",
   "network.delete.failed": "Couldn't delete",
   "network.delete.queued": "Will delete when online",
+  "network.delete.signInAgain": "Sign in again to finish deleting",
   "network.edit.seniorityDecision": "Leadership",
   "network.edit.seniorityManager": "Management",
   "network.edit.seniorityStaff": "Staff",

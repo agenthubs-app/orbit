@@ -171,6 +171,7 @@ export const network = {
   "network.delete.restored": "元に戻しました",
   "network.delete.failed": "削除できませんでした",
   "network.delete.queued": "オンラインになったら削除します",
+  "network.delete.signInAgain": "ログインし直すと削除します",
   "network.edit.seniorityDecision": "経営層",
   "network.edit.seniorityManager": "管理職",
   "network.edit.seniorityStaff": "担当者",

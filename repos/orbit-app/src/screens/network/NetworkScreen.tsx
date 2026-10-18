@@ -49,7 +49,6 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const merge = useNetworkMerge();
-  const deleted = useDeletedContacts();
   const monthStart = tokyoMonthStart(now());
 
   // その他 expands against the facets of the last summary (facets cover everyone, so they do not depend on the filters).
@@ -57,6 +56,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const directoryQuery = useMemo(() => networkDirectoryQuery({ query, tab, filters, summary: facets, merge: { goalIds: merge.goalIds, followUpIds: merge.followUpIds, monthStart } }),
     [query, tab, filters, facets, merge.goalIds, merge.followUpIds, monthStart]);
   const list = useNetworkList(directoryQuery);
+  const deleted = useDeletedContacts(!list.offline);
   const summary: ContactCardSummaryDTO | null = list.summary ?? facets;
   useEffect(() => { if (list.summary && JSON.stringify(list.summary) !== JSON.stringify(facets)) setFacets(list.summary); }, [list.summary]); // eslint-disable-line react-hooks/exhaustive-deps
   const header = networkHeaderCounts(summary);
@@ -119,7 +119,7 @@ export const NETWORK_CHIP_COPY = { meishi: "network.chipMeishi", linkedin: "netw
 const MET_COPY = { event: "network.metEvent", referral: "network.metReferral", visit: "network.metVisit", other: "network.metOther" } as const;
 
 /** SC-10：本机删除队列 + 「削除しました · 元に戻す」（Toast 挂在列表上，详情返回后已卸载）。 */
-function useDeletedContacts(): ReadonlySet<string> {
+function useDeletedContacts(online: boolean): ReadonlySet<string> {
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
   const toast = useToast();
@@ -132,13 +132,17 @@ function useDeletedContacts(): ReadonlySet<string> {
     let live = true;
     const actorId = auth.actorId;
     void (async () => {
-      setQueued((await readContactDeleteQueue(actorId)).map((item) => item.contactId));
-      // 联网后补发离线时的删除（失败的留在队里）。
+      const pending = (await readContactDeleteQueue(actorId)).map((item) => item.contactId);
+      setQueued(pending);
+      // 联网时（和恢复联网时）补发离线时的删除；失败的留在队里。认证失败（401 / 403）也留着，并提示重新登录后再发。
+      if (!online || pending.length === 0) return;
       const flushed = await flushContactDeleteQueue(actorId, client);
-      if (live && (flushed.sent.length || flushed.dropped.length)) setQueued((await readContactDeleteQueue(actorId)).map((item) => item.contactId));
+      if (!live) return;
+      if (flushed.authFailed.length) toast.error(t("network.delete.signInAgain"));
+      if (flushed.sent.length || flushed.dropped.length) setQueued((await readContactDeleteQueue(actorId)).map((item) => item.contactId));
     })();
     return () => { live = false; };
-  }, [auth.actorId, client, version]);
+  }, [auth.actorId, client, version, online]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const announced = takeAnnouncedContactDelete();
     if (!announced || !auth.actorId) return;
