@@ -20,6 +20,7 @@
       "width": 1440,
       "height": 960,
       "themes": ["light"],
+      "wait-for": "aside[aria-label=\"会話リスト\"]",
       "note": "Web start with QA account data; board has sample names and different counts."
     },
     {
@@ -30,7 +31,9 @@
       "width": 1024,
       "height": 880,
       "themes": ["light"],
-      "wait-for": "[data-orbit-iorbit-thread]",
+      "wait-for": "[data-orbit-iorbit-message]",
+      "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
+      "app-wait": 5000,
       "note": "1024 conversation; actor-owned fixture differs from board data"
     },
     {
@@ -42,7 +45,9 @@
       "height": 844,
       "themes": ["light"],
       "viewport-only": true,
-      "wait-for": "[data-orbit-iorbit-thread]",
+      "wait-for": "[data-orbit-iorbit-message]",
+      "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
+      "app-wait": 5000,
       "note": "390 conversation; actor-owned fixture differs from board data. Design browser chrome excluded by comparator."
     },
     {
@@ -54,7 +59,9 @@
       "height": 880,
       "themes": ["light"],
       "viewport-only": true,
-      "wait-for": "[data-orbit-iorbit-thread]",
+      "wait-for": "[data-orbit-iorbit-message]",
+      "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
+      "app-wait": 5000,
       "note": "1024 actor-scoped history drawer; QA account content differs from the board."
     },
     {
@@ -66,7 +73,9 @@
       "height": 844,
       "themes": ["light"],
       "viewport-only": true,
-      "wait-for": "[data-orbit-iorbit-thread]",
+      "wait-for": "[data-orbit-iorbit-message]",
+      "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
+      "app-wait": 5000,
       "note": "390 actor-scoped history drawer; QA account content differs from the board."
     },
     {
@@ -78,7 +87,9 @@
       "height": 844,
       "themes": ["dark"],
       "viewport-only": true,
-      "wait-for": "[data-orbit-iorbit-thread]",
+      "wait-for": "[data-orbit-iorbit-message]",
+      "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
+      "app-wait": 5000,
       "note": "390 dark conversation"
     }
   ]
