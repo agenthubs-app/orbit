@@ -4,11 +4,12 @@ import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
-// Sprint 0117: the BROWSER dashboard and contacts-analysis screens (resolved
-// with .web first). With the browser mirror active they compute from the device
-// copy like native (no dashboard read, 「截至」 offline); without it
-// (non-secure context) they keep the server reads, with no probe and no
-// offline banner. Replaced boundaries: useSyncedCollection, useWebMirrorStatus,
+// Sprint 0117: the BROWSER dashboard screen (resolved with .web first). With
+// the browser mirror active it computes from the device copy like native (no
+// dashboard read, 「截至」 offline); without it (non-secure context) it keeps the
+// server reads, with no probe and no offline banner. (R11b replaced the
+// contacts-analysis screen; see tests/network-analysis-screen.test.tsx.)
+// Replaced boundaries: useSyncedCollection, useWebMirrorStatus,
 // useApiResource and useOrbitApiClient (record requests).
 let browser: Browser;
 let server: Server;
@@ -76,12 +77,11 @@ test.before(async () => {
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-        import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
-        const screen = window.initialFixture?.screen === "analysis" ? <ContactsDashboardScreen /> : <DashboardScreen />;
+        const screen = <DashboardScreen />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -128,15 +128,11 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 const requests = (page: Page) => page.evaluate(() => (window as any).fixture.requests as string[]);
 const dashboardReads = async (page: Page) => (await requests(page)).filter((path) => /\/api\/dashboard|\/api\/mobile\/contacts-dashboard/.test(path) && !path.includes("view=analysis"));
 
-test("with the browser mirror active the dashboard and the contacts analysis compute from the device copy; offline says 截至 and sends no dashboard read", async (t) => {
+test("with the browser mirror active the dashboard computes from the device copy; offline says 截至 and sends no dashboard read", async (t) => {
   const page = await open(t, { status: "stale" });
   await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
   await page.getByText("张伟", { exact: false }).first().waitFor();
   assert.deepEqual(await dashboardReads(page), [], "no /api/dashboard read with the browser mirror");
-  const analysis = await open(t, { screen: "analysis", status: "stale" });
-  await analysis.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  await analysis.getByText("关键机会").waitFor();
-  assert.deepEqual(await dashboardReads(analysis), []);
 });
 
 test("without the browser mirror (non-secure context) the dashboard reads the server: no probe, no offline banner, no error", async (t) => {
@@ -148,7 +144,4 @@ test("without the browser mirror (non-secure context) the dashboard reads the se
     assert.ok(reads.has(path), `${path} is read from the server`);
   }
   assert.equal(await page.evaluate(() => (window as any).fixture.syncs), 0, "no mirror probe");
-  const analysis = await open(t, { screen: "analysis", mirror: "insecure-context" });
-  await analysis.waitForFunction(() => (window as any).fixture.requests.some((path: string) => path.startsWith("resource:/api/mobile/contacts-dashboard?capabilities=roleCounts")));
-  assert.equal((await requests(analysis)).some((path) => path.includes("view=analysis")), false, "the full page read, not the analysis-only read");
 });

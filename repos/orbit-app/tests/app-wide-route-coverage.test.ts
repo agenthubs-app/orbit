@@ -35,11 +35,12 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/contacts/list", consumer: "Redirect", kind: "alias" },
   { route: "/contacts/[id]", consumer: "NetworkContactScreen", kind: "screen" },
   { route: "/contacts/new", consumer: "AddContactScreen", kind: "screen" },
-  { route: "/contacts/dashboard", consumer: "ContactsDashboardScreen", kind: "screen" },
-  { route: "/contacts/graph", consumer: "ContactsDashboardScreen", kind: "alias" },
+  // R11b 人脈分析: the page, its drill-down list and the old graph link (→ 構造).
+  { route: "/contacts/dashboard", consumer: "NetworkAnalysisScreen", kind: "screen" },
+  { route: "/contacts/graph", consumer: "Redirect → /contacts/dashboard?tab=structure", kind: "redirect" },
   {
     route: "/contacts/analysis/[dimension]/[bucketId]",
-    consumer: "ContactStructureDetailScreen",
+    consumer: "NetworkAnalysisListScreen",
     kind: "screen"
   },
   {

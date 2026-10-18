@@ -68,11 +68,9 @@ export const launchImageLibraryAsync = async () => { state.nativeCalls.push("pho
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
-import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
-import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { analysis: ContactsDashboardScreen, structure: ContactStructureDetailScreen, dashboard: DashboardScreen };
-const Screen = screens[new URLSearchParams(location.search).get("screen") || "analysis"];
+const screens = { dashboard: DashboardScreen };
+const Screen = screens[new URLSearchParams(location.search).get("screen") || "dashboard"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
@@ -119,155 +117,6 @@ test("touch measurement accepts compositor precision but rejects undersized cont
   const measured = (height: number) => ({ boundingBox: async () => ({ x: 0, y: 0, width: 44, height }) }) as Locator;
   await touchFits(measured(43.99993896484375));
   await assert.rejects(touchFits(measured(43.99)), /touch target/);
-});
-
-test("analysis uses open 15/22 sections and keeps structure, opportunity and reports operable at 320pt", async t => {
-  const page = await openScreen(t, "analysis");
-  const title = page.getByText("结构摘要", { exact: true });
-  await title.waitFor();
-  assert.deepEqual(await title.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis.png", fullPage: true });
-  const section = title.locator("..").locator("..").locator("..");
-  assert.equal(await section.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
-  assert.equal(await page.getByRole("textbox", { name: "关系目标", exact: true }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: /当前目标.*编辑目标/ }).count(), 0);
-  await page.getByRole("button", { name: "结构分析", exact: true }).click();
-  for (const name of ["行业结构分析", "地区结构分析", "角色结构分析", "关系结构分析"]) {
-    const action = page.getByRole("button", { name, exact: true });
-    await touchFits(action); await action.click();
-  }
-  assert.ok(await page.locator("svg").count() > 0, "real structure chart remains rendered");
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-structure.png", fullPage: true });
-  await page.getByRole("button", { name: "机会分析", exact: true }).click();
-  await page.getByRole("button", { name: /确认合作时间/ }).click();
-  await page.emulateMedia({ colorScheme: "dark" });
-  await touchFits(page.getByRole("button", { name: "关闭行动简报", exact: true }).last());
-  await touchFits(page.getByRole("button", { name: "开始联系", exact: true }), 50);
-  await page.getByRole("button", { name: "关闭行动简报", exact: true }).last().click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-});
-
-test("analysis displays the persisted report and opens a one-time editable IORBIT draft without a model request", async t => {
-  const page = await openScreen(t, "analysis");
-  await page.getByText("现有人脉覆盖零售合作，下一步应补充投资人联系。", { exact: true }).waitFor();
-  await page.getByText("需要更新", { exact: true }).waitFor();
-  assert.match(await page.getByText(/contacts\.analysis@1/u).textContent() ?? "", /contacts\.analysis@1/u);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-
-  await page.getByText("人脉分析报告", { exact: true }).waitFor();
-  await page.getByText("进入后可修改问题，发送后生成报告。", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "去 IORBIT 分析", exact: true }).click();
-
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  const navigation = await page.evaluate(() => (window as any).fixture.navigation.at(-1));
-  assert.equal(navigation.pathname, "/ai/[id]");
-  assert.equal(navigation.params.id, "new");
-  assert.match(navigation.params.prefillIntent, /^ai-prefill-/u);
-});
-
-test("analysis keeps an existing stale report visible when the current contact count is zero", async t => {
-  const page = await openScreen(t, "analysis");
-  await page.evaluate(() => (window as any).fixture.update({ zeroContacts: true }));
-  await page.getByText("现有人脉覆盖零售合作，下一步应补充投资人联系。", { exact: true }).waitFor();
-  await page.getByText("需要更新", { exact: true }).waitFor();
-  assert.equal(await page.getByText("暂无人脉资产", { exact: true }).count(), 0);
-});
-
-test("analysis scopes dashboard reads to actor, session and server and hides old actions on switch", async t => {
-  const page = await openScreen(t, "analysis");
-  assert.equal(await page.evaluate(() => (window as any).fixture.dashboardScopeKey), JSON.stringify(["actor:one", "session=one", "http://fixture"]));
-  assert.equal(await page.evaluate(() => (window as any).fixture.clientScopeKey), JSON.stringify(["actor:one", "session=one", "http://fixture"]));
-  await page.evaluate(() => (window as any).fixture.update({ actor: "actor:two", cookieHeader: "session=two", baseUrl: "https://other.example" }));
-  await page.getByLabel("正在加载", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "去 IORBIT 分析", exact: true }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: /当前目标.*编辑目标/ }).count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-});
-
-test("analysis declares the roleCounts capability so the server may send only the page's contacts (0121)", async t => {
-  const page = await openScreen(t, "analysis");
-  await page.getByText(/contacts\.analysis@1/u).first().waitFor();
-  const path = await page.evaluate(() => (window as any).fixture.dashboardPath as string);
-  const [pathname, query] = path.split("?");
-  assert.equal(pathname, "/api/mobile/contacts-dashboard");
-  assert.deepEqual(new URLSearchParams(query).getAll("capabilities"), ["roleCounts"]);
-});
-
-test("analysis ignores an old opportunity recompute after actor and server scope replacement", async t => {
-  const page = await openScreen(t, "analysis");
-  await page.evaluate(() => (window as any).fixture.update({ postMode: "pending" }));
-  await page.getByRole("button", { name: "机会分析", exact: true }).click();
-  await page.getByRole("button", { name: "刷新机会", exact: true }).click();
-  await page.waitForFunction(() => Boolean((window as any).fixture.pendingPost));
-
-  const newScope = JSON.stringify(["actor:two", "session=two", "https://other.example"]);
-  await page.evaluate(newScope => (window as any).fixture.update({
-    actor: "actor:two",
-    cookieHeader: "session=two",
-    baseUrl: "https://other.example",
-    resourceScopeKey: newScope,
-  }), newScope);
-  await page.getByRole("button", { name: "刷新机会", exact: true }).waitFor();
-  await page.evaluate(() => (window as any).fixture.pendingPost({
-    success: true,
-    status: 200,
-    data: { evaluatedContacts: 99, generatedOpportunityCount: 88, state: "success" },
-  }));
-  await page.waitForTimeout(50);
-
-  assert.equal(await page.getByText("机会提醒已更新", { exact: true }).count(), 0);
-  assert.equal(await page.getByText("检查了 99 位联系人，更新 88 条机会。", { exact: true }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: "刷新机会", exact: true }).isEnabled(), true);
-});
-
-test("structure detail renders real success content and opens its contact at 320pt", async t => {
-  const page = await openScreen(t, "structure", "dark");
-  await page.getByText("科技合作伙伴", { exact: true }).waitFor();
-  for (const name of ["关系质量", "常见标签", "相关联系人"]) {
-    const heading = page.getByText(name, { exact: true });
-    assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
-    assert.equal(await heading.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
-  }
-  const contact = page.getByRole("button", { name: "查看林悦", exact: true });
-  await touchFits(contact);
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-structure-detail-dark.png", fullPage: true });
-  await contact.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3A1"]);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  await page.evaluate(() => (window as any).fixture.update({ kind: "offline" }));
-  await page.getByText("连接暂时失败", { exact: true }).waitFor();
-});
-
-test("analysis summary shows complete values and explanations on a narrow phone", async t => {
-  const page = await openScreen(t, "analysis");
-  const summary = page.getByText("结构摘要", { exact: true }).locator("..").locator("..").locator("..");
-  await summary.waitFor();
-  const clipped = await summary.locator("[dir='auto']").evaluateAll(elements => elements.filter(el => el.scrollWidth > el.clientWidth + 1).map(el => el.textContent));
-  assert.deepEqual(clipped, [], "structure values and their explanations must wrap rather than disappear behind ellipses");
-  await summary.locator("[dir='auto']").evaluateAll(elements => elements.forEach(node => {
-    const element = node as HTMLElement, style = getComputedStyle(element);
-    element.style.fontSize = `${parseFloat(style.fontSize) * 2}px`;
-    element.style.lineHeight = `${parseFloat(style.lineHeight) * 2}px`;
-  }));
-  const inflatedClipped = await summary.locator("[dir='auto']").evaluateAll(elements => elements.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(el => el.textContent));
-  assert.deepEqual(inflatedClipped, [], "large-text structure summary keeps every percentage and explanation");
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-summary-large.png", fullPage: true });
-});
-
-test("analysis opened in dark appearance keeps its real modal readable and bounded", async t => {
-  const page = await openScreen(t, "analysis", "dark");
-  await page.getByText("结构摘要", { exact: true }).waitFor();
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-dark.png", fullPage: true });
-  await page.getByRole("button", { name: "机会分析", exact: true }).click();
-  await page.getByRole("button", { name: /确认合作时间/ }).click();
-  const action = page.getByRole("button", { name: "开始联系", exact: true });
-  await action.click({ trial: true });
-  await touchFits(action, 50);
-  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(243, 240, 246)");
-  const labelColor = await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).color);
-  assert.equal(labelColor, "rgb(30, 26, 36)");
-  if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-brief-dark.png", fullPage: true, animations: "disabled" });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
 test("dashboard retains its real actions and request boundaries", async t => {

@@ -4,14 +4,14 @@ import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
-// Sprint 0117 (dashboard D3): the NATIVE dashboard and contacts-analysis
-// screens (resolved without .web) compute every section from the device copy
-// of the sync domain "dashboard-graph" with the shared code (api/compute).
-// useSyncedCollection is the replaced mirror boundary; useApiResource and
-// useOrbitApiClient are the network boundary and record every request. Opening
-// either page sends no dashboard computation request; the contacts analysis
-// asks only for its AI report (?view=analysis). Offline they keep the device
-// copy, say 「截至」 and turn off what needs the server.
+// Sprint 0117 (dashboard D3): the NATIVE dashboard (resolved without .web)
+// computes every section from the device copy of the sync domain
+// "dashboard-graph" with the shared code (api/compute). useSyncedCollection is
+// the replaced mirror boundary; useApiResource and useOrbitApiClient are the
+// network boundary and record every request. Opening the page sends no
+// dashboard computation request. Offline it keeps the device copy, says 「截至」
+// and turns off what needs the server. (R11b replaced the contacts-analysis
+// screens; tests/network-analysis-screen.test.tsx covers 人脈分析.)
 let browser: Browser;
 let server: Server;
 let url: string;
@@ -76,14 +76,11 @@ test.before(async () => {
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-        import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
-        import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
-        const which = window.initialFixture?.screen;
-        const screen = which === "analysis" ? <ContactsDashboardScreen /> : which === "structure" ? <ContactStructureDetailScreen /> : <DashboardScreen />;
+        const screen = <DashboardScreen />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -152,60 +149,6 @@ test("offline: the dashboard keeps the device copy with 截至, and recomputing 
   assert.deepEqual((await requests(page)).filter((path) => path.startsWith("post:")), [], "a disabled recompute sends nothing");
   assert.equal(await page.getByText("服务器连不上").count(), 0, "no error block over the device copy");
   assert.deepEqual(await dashboardReads(page), []);
-});
-
-test("the contacts analysis computes its sections on the device and reads only its AI report", async (t) => {
-  const page = await open(t, { screen: "analysis" });
-  await page.getByText("人脉分析报告").waitFor();
-  await page.getByText("设备上的报告正文", { exact: false }).waitFor();
-  await page.getByText("关键机会").waitFor();
-  assert.deepEqual(await dashboardReads(page), [], "no section read");
-  // (The replaced hook records once per render; the paths are what matter.)
-  assert.deepEqual([...new Set((await requests(page)).filter((path) => path.includes("/api/mobile/contacts-dashboard")))], ["resource:/api/mobile/contacts-dashboard?view=analysis&capabilities=roleCounts"], "only the AI report and its profile");
-});
-
-test("offline: the contacts analysis keeps the device copy with 截至; the AI report says it is unavailable and asking needs the network", async (t) => {
-  const page = await open(t, { screen: "analysis", status: "stale" });
-  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  await page.getByText("关键机会").waitFor();
-  await page.getByText("人脉分析暂不可用").waitFor();
-  assert.equal(await page.getByRole("button", { name: "去 IORBIT 分析" }).count(), 0, "no AI entry without its version");
-  assert.equal(await page.getByText("服务器连不上").count(), 0);
-  assert.deepEqual(await dashboardReads(page), []);
-});
-
-test("offline: the analysis drill-down (one structure bucket) is computed on the device, with 截至 and no structure read", async (t) => {
-  const page = await open(t, { screen: "structure", status: "stale", params: { dimension: "location", bucketId: "location_osaka" } });
-  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  await page.getByText("佐藤 花子", { exact: false }).first().waitFor();
-  assert.equal(await page.getByText("张伟", { exact: false }).count(), 0, "only the bucket's contacts (大阪)");
-  assert.deepEqual(await dashboardReads(page), [], "no /api/dashboard/structure read");
-  const unknown = await open(t, { screen: "structure", params: { dimension: "location", bucketId: "no-such-bucket" } });
-  // The same failure the server answers for a bucket that does not exist.
-  await unknown.getByText("没有找到对应内容，它可能已被移除或不可用。").waitFor();
-  assert.deepEqual(await dashboardReads(unknown), []);
-});
-
-test("offline with a last-known report status: asking the AI says 需要联网 and is off", async (t) => {
-  const page = await open(t, { screen: "analysis", status: "stale", overviewCached: true, noReport: true });
-  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
-  const ask = page.getByRole("button", { name: "去 IORBIT 分析 · 需要联网" });
-  await ask.waitFor();
-  assert.equal(await ask.isDisabled(), true);
-  await ask.click({ force: true });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [], "no AI draft is opened offline");
-});
-
-test("a non-ASCII location bucket (上海) opens its drill-down even when the route parameter arrives decoded (0131)", async (t) => {
-  const at = "2026-09-27T00:30:00.000000Z";
-  const src = { type: "manual", id: "src:sh", label: "手动记录" };
-  const contact = (id: string, name: string) => ({ id: "contacts/" + id, payload: { collection: "contacts", recordId: id, occurredAt: at, updatedAt: at, data: { id, displayName: name, organization: "浦东资本", role: "合伙人", location: "上海", stage: "nurture", source: src, evidenceIds: ["e:" + id], createdAt: "2026-09-26T09:00:00.000Z", updatedAt: "2026-09-26T09:00:00.000Z" } } });
-  const graph = [contact("s1", "王磊"), contact("s2", "李娜")];
-  for (const bucketId of [`location_${encodeURIComponent("上海")}`, "location_上海"]) {
-    const page = await open(t, { screen: "structure", graph, params: { dimension: "location", bucketId } });
-    await page.getByText("王磊", { exact: false }).first().waitFor();
-    assert.equal(await page.getByText("没有找到对应内容，它可能已被移除或不可用。").count(), 0, bucketId);
-  }
 });
 
 test("the source audit runs on demand; the dashboard shows the last result and its time without reading (0131)", async (t) => {

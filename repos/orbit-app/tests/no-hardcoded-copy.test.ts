@@ -31,6 +31,8 @@ const ZERO = [
   /^app\/contacts\/new(?:\.tsx|\/)/,
   // R15 招待コード · 受け取る側 / 手入力.
   /^app\/i\//,
+  // R11b 人脈分析 (page, drill-down list).
+  /^src\/screens\/network-analysis\//,
   /^src\/components\/(?:AppScreen|OrbitTabBar|OrbitNavigationIcon|OrbitRouteAccessBoundary|OnlineOnlyBoundary|AppErrorBoundary)\.tsx$/,
   /^src\/view-models\/app-navigation\.ts$/,
   /^src\/api\/AuthSessionProvider\.tsx$/,

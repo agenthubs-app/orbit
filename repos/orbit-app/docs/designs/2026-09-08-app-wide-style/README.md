@@ -14,6 +14,8 @@
 
 2026-10-18 补充（改版 R11a）：`/contacts/pipeline`（`ContactPipelineScreen`，关系推进看板）已删除（R11-12），下表从 57 条减为 56 条；`/contacts`、`/contacts/[id]` 换为新人脈一覧 / 連絡先詳細，`/contacts/list` 改为跳到 `/contacts`。
 
+2026-10-18 补充（改版 R11b）：`/contacts/dashboard` 换为人脈分析（`NetworkAnalysisScreen`），`/contacts/analysis/[dimension]/[bucketId]` 换为人脈分析の名簿（`NetworkAnalysisListScreen`），`/contacts/graph` 改为跳到 `/contacts/dashboard?tab=structure`；旧 `ContactsDashboardScreen` / `ContactStructureDetailScreen` 已删除，条数不变。
+
 沿用已确认的蓝灰浅深色和原生排版，将统一页头、开放分区、表单及操作层级覆盖到全 App，不改变业务、API、权限或导航行为。
 
 - [执行规格](../../superpowers/specs/2026-09-08-app-wide-style-design.md)
@@ -40,7 +42,7 @@
 - 真实活动 `event_signup_03` 的运营入口返回「当前账号没有权限完成这项操作」。该结果只验证权限提示；运营成功内容仍需受控渲染测试。
 - 当前服务不提供结构详情 mock 成功数据；该页成功内容需受控 fixture，不能以 NOT_FOUND 界面代替成功验收。
 - `event_signup_03` 的报名、参会者和现场入口显示 NOT_FOUND，运营/审核/签到/角色/分析入口显示权限提示。当前账号实际负责的活动可打开角色成功页、授权表单与零样本分析；其运营页显示未配置规则。成功内容和操作参数另由受控真实组件渲染覆盖，没有更改角色或配置来制造成功态。
-- `/contacts/graph` 现有实现复用 `ContactsDashboardScreen`；未路由的 `ContactsGraphScreen` 不计为另一条已验收路线。
+- `/contacts/graph` 自 R11b 起跳到 `/contacts/dashboard?tab=structure`（人脈分析「構造」）；未路由的 `ContactsGraphScreen` 不计为另一条已验收路线。
 - startup/legacy resolver 的既有缺口已列在路由矩阵；视觉迁移不顺带更改兼容路由策略。
 - 截图先生成到 `/tmp`，再归档到 `.tmp/app-wide-style/`；模拟器、截图和生成日志不提交。
 
@@ -87,7 +89,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 实现来源按表中状态统一解释，并适用于每一行：
 
 - `screen`：表中精确列出的 canonical consumer 已在 Tasks 2–5 直接改造；`app/**.tsx` 入口仍是未改的薄 wrapper，并继续继承该 consumer 原先使用的 Task 1 `AppScreen`、`DataCard`、state/control primitives。
-- `alias`：只有 `/contacts/graph`；未改薄 wrapper 复用已直接改造的 `ContactsDashboardScreen`，没有把未路由的 `ContactsGraphScreen` 算成 live route。
+- `alias`：`/contacts/list`（R11a 起跳到 `/contacts`）；`/contacts/graph` 自 R11b 起是 redirect，没有把未路由的 `ContactsGraphScreen` 算成 live route。
 - `redirect`：本轮原始记录为 `/`、`/home`、`/account/mobile-google`、`/[...legacy]`。2026-09-12 Ink & Signal 批次已把 `/home` 改为真实首页，并修改默认启动/兜底目标；其余三个仍为跳转入口。
 
 本轮历史记录是 54 个 screen/alias、4 个 redirect；2026-09-12 首页替换后现为 55 个 screen/alias、3 个 redirect。原生栏保留当时实际观察到的状态，不把旧 AI 跳转截图当作新版首页验收。渲染栏指向真实 screen/content 与交互测试或跳转契约，不以源码文件存在替代视觉证明。
@@ -102,9 +104,9 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/contacts/list` | `Redirect` | alias | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11a 起跳到 `/contacts`） | `tests/network-screen.test.tsx`: 列表在 `/contacts` |
 | `/contacts/[id]` | `NetworkContactScreen` | screen | `.tmp/app-wide-style/after/task2/native-detail-observation.json`: success（R11a 换为連絡先詳細） | `tests/network-screen.test.tsx`: 详情、招待连接、删除与撤回 |
 | `/contacts/new` | `AddContactScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R12 重写为「人脈を追加」，新原生走查待 R12 模拟器走查） | `tests/add-contact-screens.test.tsx`: 入口（招待 / その他隐藏、下書き件数）、名刺・手入力・下書き |
-| `/contacts/dashboard` | `ContactsDashboardScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，完整分析 | `tests/app-wide-contacts.test.ts`: 320pt 分析、完整数值、深色弹层 |
-| `/contacts/graph` | `ContactsDashboardScreen` | alias | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，同 dashboard 实屏 | `tests/app-wide-contacts.test.ts`: alias 动作与请求边界；`tests/contacts-analysis-route-source.test.ts`: canonical 绑定 |
-| `/contacts/analysis/[dimension]/[bucketId]` | `ContactStructureDetailScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: NOT_FOUND，未冒充成功 | `tests/app-wide-contacts.test.ts`: 受控 success 内容和 320pt 联系人入口 |
+| `/contacts/dashboard` | `NetworkAnalysisScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11b 换为人脈分析：锁定 / 構造 / 機会 / インサイト；新原生走查待 R11b 模拟器走查） | `tests/network-analysis-screen.test.tsx`: 锁定、参考値、構造数字与下钻、機会、インサイト与見立て、离线 |
+| `/contacts/graph` | `Redirect → /contacts/dashboard?tab=structure` | redirect | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11b 起跳到人脈分析「構造」） | `tests/network-analysis-screen.test.tsx`: 旧链接跳到 `?tab=structure` |
+| `/contacts/analysis/[dimension]/[bucketId]` | `NetworkAnalysisListScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: NOT_FOUND，未冒充成功（R11b 换为人脈分析の名簿，新原生走查待 R11b） | `tests/network-analysis-screen.test.tsx`: 段階の内訳、並び順、翻页、行打开連絡先、锁定深链 |
 | `/contacts/all-actions` | `AllActionsAgentLedgerScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 0 条账本记录空态 | `tests/app-wide-workspaces.test.ts`: workspace 标题/动作；`tests/agent-ledger-screen-render.test.tsx`: 受控内容 |
 | `/events` | `EventsHome` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success（R26 / R27 换为 イベント主页：評価 / 参加予定 / 探す；门禁见 app-R26 / app-R27） | `tests/shell-back-restore.test.tsx`: 根布局画唯一底栏，イベント主页不自画 |
 | `/events/[id]` | `EventDetailPage` | screen | `build/harness-state/evidence/redesign-R27/run-01/native-route-observations.json`: success（A-R27-14/15/16） | `tests/r27-journey-routes.test.ts`: 路由指向 R27 新屏 |
@@ -162,7 +164,7 @@ Sprint 0018 在该 58 路由视觉快照之后新增 `/notes`、`/notes/new` 与
 - Task 4 的 `.tmp/app-wide-style/after/task4/native-state-observations.json` 记录 settled AI history、输入菜单、真实 AI/收件箱软件键盘、键盘滚动及只在本地 staging 的回复预览；预览文字已清除，没有保存或发送。
 - Task 2 的 acquisition 软件键盘及通用 `AppScreen` 键盘滚动是 controller 查看过的原生证据；acquisition artifact 为 `.tmp/app-wide-style/after/task2/orbit-global-task2-acquisition-keyboard.png`，没有为它虚构 supplemental JSON。Task 5 的 auth/profile 只观察到输入聚焦和滚动，截图中没有软件键盘，因此不计为该页面族键盘通过；`orbit-task5-profile-large-dark-final.png` 是 LOADING ONLY，不是深色身份成功证据。
 - Task 4 冷启动 `accessibility-medium` 记录日/周日历、drawer、conversation 的可读性。它不解决运行中改变字号后 glyph 变大但 frame 陈旧的问题；对应截图保存在 `.tmp/app-wide-style/open-issues/`，问题继续为 **OPEN**。
-- `/contacts/graph` 的 routed consumer 是 `ContactsDashboardScreen`。未路由的 `ContactsGraphScreen`（含 evidence form）只有受控真实组件渲染和 GET/失败 POST 草稿证据，不是原生 route 证据。
+- `/contacts/graph` 自 R11b 起是跳转（到人脈分析「構造」）。未路由的 `ContactsGraphScreen`（含 evidence form）只有受控真实组件渲染和 GET/失败 POST 草稿证据，不是原生 route 证据。
 - `HomeScreen` 的 events 模式有 `/home/events` 原生记录；未路由的 legacy hub 模式只有真实受控 render，不是另一条 live route。
 - loading、empty、offline、failure、成功数据和 mutation 边界由各 `app-wide-*` 真实 consumer 测试及相邻交互测试补足。受控 HTTP/native fixture 没有触达真实 API；截图也不证明真实写入成功。
 

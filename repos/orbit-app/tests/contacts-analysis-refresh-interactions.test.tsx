@@ -11,7 +11,6 @@ import {
   contactsAnalysisTemplate,
   registerAiTemplatePrefill,
 } from "../src/data/ai-template-prefill";
-import { contactsAnalysisReportToView } from "../src/view-models/contacts-analysis";
 
 const sourceDataVersion = "a".repeat(64);
 const changedSourceDataVersion = "b".repeat(64);
@@ -80,40 +79,6 @@ test("dashboard analysis schema preserves stored metadata and rejects a false fr
     },
   });
   assert.equal(contradiction.success, false);
-});
-
-test("analysis view distinguishes unavailable, never generated, current and stale reports", () => {
-  assert.equal(
-    contactsAnalysisReportToView(undefined, []).state,
-    "unavailable",
-    "an older server must not be presented as a user who never generated a report",
-  );
-  assert.equal(
-    contactsAnalysisReportToView(null, ["analysis"]).state,
-    "unavailable",
-  );
-  assert.deepEqual(contactsAnalysisReportToView({ current, report: null, stale: false }, []), {
-    action: "analyze",
-    analysisVersion: "contacts.analysis@1",
-    body: null,
-    generatedAt: null,
-    sourceDataVersion,
-    stale: false,
-    state: "empty",
-  });
-  assert.deepEqual(contactsAnalysisReportToView({
-    current,
-    report: { ...report, sourceDataVersion: changedSourceDataVersion },
-    stale: true,
-  }, []), {
-    action: "reanalyze",
-    analysisVersion: "contacts.analysis@1",
-    body: report.body,
-    generatedAt: report.generatedAt,
-    sourceDataVersion,
-    stale: true,
-    state: "ready",
-  });
 });
 
 test("explicit analysis action registers one actor/server-scoped editable IORBIT prefill", () => {
