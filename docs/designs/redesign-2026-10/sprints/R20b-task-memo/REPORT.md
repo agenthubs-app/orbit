@@ -2,6 +2,8 @@
 
 2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。20:30 のチェックポイントで `origin/redesign` に rebase した。push はしていない。
 
+2026-10-19 03:13 統合チェックポイント：D の clean な 5 件を C / R13 契約までの `origin/redesign b62a13a95` に、次いで上流の R18a / R20a REVIEW `5d277cbe9` に、いずれも衝突なく rebase した。現在の D は上流より 12 commit 先で、push していない。rebase 後の Web Task container **8/8** と隣接 task page **2/2** は exit0。C11 本機 PostgreSQL 保守ファイルは最初 **6/7**：一項が隔離 schema 作成中の接続 timeout で失敗し、断言失敗ではない。PostgreSQL 応答と利用接続を確認後、その一項を隔離再実行 **1/1 pass**、`network_*` schema 残留 **0**。最初の 6/7 を 7/7 に書き換えない。現在の D tree で Web `typecheck` / `typecheck:app` / `lint` と App `typecheck` は exit0。R20b 全量、C11 保存→提議→確認後計分の一体 E2E、native / pixel は引き続き OPEN。
+
 ## 2026-10-19 C11 補掃・ログの個人情報対策（部分）
 
 `1f2af290f` で、従来の `contact_detail_states` memo 補掃を残したまま、`notes` 集合の `usedForPlan=true`／`meeting`／単一連絡先の筆記を候補に追加した。note の record ID と本人の `ownerUserId` / `accountId`、有効な同一 actor の連絡先を SQL で照合し、同じ `noteId + body hash` の終態作業があれば再抽出しない。候補は既存の一回最大 10 件・一 SQL 読取のまま。新筆記の `usedForPlan` も保守作業から既存 C11 入口へ渡す。保存直後の after-hook を失った本機隔離 PostgreSQL 用例は **0 件で RED → 1 件抽出・再走査 0 件で GREEN**、旧 memo を含む保守ファイル **6/6**。他 actor の連絡先、削除済み連絡先、非面談、未 opt-in、複数連絡先、所有者不一致も候補から除いた。テスト後の `network_%` schema 残留は **0**。
