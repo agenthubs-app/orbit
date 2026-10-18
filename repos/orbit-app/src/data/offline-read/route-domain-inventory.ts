@@ -101,6 +101,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   // online_only_secret is this inventory's existing never-persisted read policy.
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate === '/api/app/version'
+    // Push preferences are live account/device state; the settings screen does not read a device mirror.
+    || endpointTemplate === '/api/inbox/delivery/preferences'
     || endpointTemplate.startsWith('/api/integrations') || endpointTemplate.startsWith('/api/agent/memory')
     || (consumerFile.startsWith('src/screens/me/') && ['/api/events/center', '/api/search/global', '/api/agent/plans/v2/summary'].includes(endpointTemplate))
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
@@ -689,6 +691,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/inbox/RelationshipInboxScreen.tsx","PATCH","/api/agent/signals/:id"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-communication/conversations/:id/read"],
   ["src/screens/inbox/useNotificationInbox.ts","GET","/api/inbox/notifications"],
+  ["src/screens/inbox/useNotificationInbox.ts","GET","/api/inbox/delivery/preferences"],
   ["src/screens/inbox/useNotificationInbox.ts","POST","/api/inbox/notifications/read"],
   ["src/screens/inbox/useNotificationInbox.ts","POST","/api/inbox/notifications/:id/actions"],
   // R11a 人脈（一覧・連絡先詳細・編集・削除）。

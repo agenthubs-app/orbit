@@ -182,6 +182,7 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/inbox/RelationshipInboxScreen.tsx PUT /api/relationship-communication/conversations/:id/draft',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
+    'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/delivery/preferences',
     'src/screens/inbox/useNotificationInbox.ts POST /api/inbox/notifications/read',
     'src/api/inbox-summary.ts GET /api/inbox/summary',
     'src/hooks/useContactCardPages.ts GET /api/contacts/page',
@@ -418,6 +419,7 @@ test('reads and mutations on one endpoint remain separate registered surfaces', 
   const mutation = resolveReadSurface('POST', '/api/inbox/delivery/preferences');
   assert.notEqual(read.selector, mutation.selector);
   assert.equal(read.domainId, 'notification-delivery');
+  assert.equal(read.readPersistence, 'online_only_secret');
   assert.equal(mutation.mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('GET', '/api/inbox/discovery/preferences').domainId, 'notification-discovery');
   assert.throws(() => resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1'), /UNREGISTERED_READ/u);
