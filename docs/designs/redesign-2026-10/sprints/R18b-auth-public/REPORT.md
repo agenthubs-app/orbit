@@ -8,6 +8,8 @@
 
 2026-10-19 02:18 检查点：B 线 R11b 接入 `origin/redesign bf1aac746` 后，C 再从干净树 rebase；重复的页面清单文档提交被 Git 自动略去，现 C ahead 65 / behind 0。冲突中同时保留 B 的 `networkAnalysis` 与 C 的 `me` 三语／copy-qa 注册及 live 能力；离线页面清单由仓库生成器重建为 **121 条**，对应测试通过。最终上游的 Web 版本 / 合同路由 / FAQ **24/24**；App 契约及页面清单等 **13/14**，唯一失败是已有的拆分前字典固定键数锁（现 2902，固定值 2253），三语键集一致性本身通过。Web `typecheck:app` 在这次 B rebase 之前 exit0，不能算最终树验证；最终树 App `typecheck` 因同机 B / A2 并行检查使内存降到 5%、内置盘约 4.45 GiB，由本线主动中断 **exit130**，未通过也未失败于类型诊断。待资源恢复重跑，未重跑全量。
 
+02:27 复验：同一 B+D 上游的 C 工作树中，App `npm run typecheck`、Web `npm run typecheck:app`、Web `npm run typecheck` 均重跑 **exit0**。前述 App exit130 保留为资源中断记录；Web 全范围检查在内置盘再跌到约 3.8 GiB 时已经自行完成，停止指令到达后返回的原命令状态仍为 exit0，并无类型诊断。Web lint 与两端完整套件未在这次 rebase 后重跑；不能据此关闭 SC-16。
+
 ## 当前检查点
 
 | SC | 状态 | 实际证据 / 未完依赖 |
