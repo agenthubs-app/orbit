@@ -1,5 +1,9 @@
 # R20b — 実装記録（進行中）
 
+2026-10-19 06:41 局所 C11 接続検証：計画 `docs/superpowers/plans/2026-10-19-r20b-c11-local-e2e.md` に従い、`tests/capabilities/r20b-memo-plan-local-e2e-postgres.test.ts` を追加した。明示した回環 `orbit_line_d` のランダム隔離 schema で、本人の面談メモを実際の notes HTTP handler から保存し、同じ PostgreSQL の note / extraction / Plan v2 記録を使用。保存時の C11 job は一件だけ発行され、再送では増えない。固定 AI provider・quota gate を注入して実 memo-extraction 状態機械を通し、2/3 問の回答から本人の確認カード一枚を作成。提案時の score は不変で、確認後に一回だけ増え、同鍵の確認・抽出再実行では二重計分も provider 再呼出もない。他 actor はメモを 404 として受け、確認カードも読めない。既存の PostgreSQL notes/mirror と R24 plan 対象 **15/15 pass**。このテストは製品の `after()` 実行コンテキストを scheduler spy で置き換え、AI provider／quota gate は固定応答であり、production の構成済み provider・実課金 ledger、端末の確認カード読回、UI / native / pixel を証明しない。SC-10 と全量受入は引き続き OPEN。
+
+07:05 最終確認：新テストは永続行／再処理断言と型修正後 **1/1 pass、0 skip、exit0**。その前の再実行一回は PostgreSQL 接続確立の 2 秒 timeout で **0/1、exit1**（断言に到達せず）；DB が接続を受け付け、残留 schema 0 件であることを確認してから再走した。Web `tsc -p tsconfig.json --noEmit --incremental false` は型修正後 **exit0**。最終テスト後の独立照会でも `network_%` schema は **0**。全量テストや実 AI 呼出はこの検証では行っていない。
+
 2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。20:30 のチェックポイントで `origin/redesign` に rebase した。push はしていない。
 
 2026-10-19 04:37 現行 D は `origin/redesign d8e6dafb7` への rebase 後。R20b notes の service / HTTP 定向 **25/25**、App mirror / view-model / search / outbox 定向 **22/22** は exit0。Web `npm run typecheck` / `typecheck:app` / `lint` と App `npm run typecheck` も現行 D tree で exit0（App check は同時進行の calendar locale 修正 `da0ef82bf` の commit 後）。R20b 全量、C11 保存→提議→確認後計分の単一本機 E2E、native / pixel と R20a 残項は OPEN。これらの局所結果を全量合格へ拡張しない。
