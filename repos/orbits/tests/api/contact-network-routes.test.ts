@@ -29,6 +29,15 @@ test("R11a: tab and filter parameters reach the reader; absent ones leave the ol
   assert.throws(() => read("needsFollowUp=1&needsFollowUp=1"), /CONTACT_PAGE_INPUT_INVALID/);
 });
 
+test("RD-33: sort=added reaches the reader; sort=recent / absent keep the old query; anything else is invalid", () => {
+  const read = (qs: string) => readContactCardQuery(new URL(`http://localhost/api/contacts/page?${qs}`).searchParams);
+  assert.equal(read("sort=added&limit=4").sort, "added");
+  assert.equal(read("sort=recent").sort, undefined);
+  assert.equal(read("").sort, undefined);
+  assert.throws(() => read("sort=name"), /CONTACT_PAGE_INPUT_INVALID/);
+  assert.throws(() => read("sort=added&sort=added"), /CONTACT_PAGE_INPUT_INVALID/);
+});
+
 test("R11a: an invalid flag answers 400 with the original contract error", async () => {
   const handler = createContactCardGetHandler({ resolveActor: async () => actor, service: () => ({ page: async () => empty as never, summary: async () => { throw Error("unused"); } }) });
   const response = await handler(new Request("http://localhost/api/contacts/page?goalRelated=maybe"));

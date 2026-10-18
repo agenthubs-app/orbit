@@ -46,4 +46,6 @@ export interface LocalContactDirectoryQuery {
   followUpContactIds?: readonly string[] | null;
   /** R11a: the first instant of the current Tokyo month (addedThisMonth); omitted → addedThisMonth is not counted. */
   monthStart?: string | null;
+  /** List order (ContactCardSort in contact-card-page.ts); omitted = `recent`. */
+  sort?: "recent" | "added" | null;
 }

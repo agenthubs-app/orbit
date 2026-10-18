@@ -214,6 +214,26 @@ test("R11a: list cards, tabs, filters and the summary are computed in SQL with t
     assert.deepEqual((await noPlan.page({ limit: 50, goalRelated: true }, "a")).items, []);
     assert.equal((await noPlan.summary({}, "a")).tabCounts!.goalRelated, 0);
 
+    // RD-33 sort=added (R10 home 「最近 4 人」): newest joiners first by the card's addedAt rule; cursors walk the
+    // same order and do not cross with the default order.
+    const added = await service.page({ limit: 50, sort: "added" }, "a");
+    const addedIds = added.items.map((item) => item.id);
+    assert.equal(addedIds.length, own.length);
+    assert.deepEqual(addedIds.slice(-4), ["c-follow", "c-follow-lc", "c-done", "c-li"]);
+    const addedTimes = added.items.map((item) => item.addedAt!);
+    assert.deepEqual([...addedTimes].sort().reverse(), addedTimes, "addedAt is non-increasing");
+    const addedWalk: string[] = [];
+    let addedCursor: string | null = null;
+    do {
+      const step: Awaited<ReturnType<typeof service.page>> = await service.page({ limit: 4, sort: "added", cursor: addedCursor }, "a");
+      addedWalk.push(...step.items.map((item) => item.id));
+      addedCursor = step.nextCursor;
+    } while (addedCursor);
+    assert.deepEqual(addedWalk, addedIds);
+    const recentCursor = (await service.page({ limit: 4 }, "a")).nextCursor!;
+    await assert.rejects(service.page({ limit: 4, sort: "added", cursor: recentCursor }, "a"), /CONTACT_CURSOR_INVALID/);
+    assert.deepEqual((await service.page({ limit: 50, sort: "added", goalRelated: true }, "a")).items.map((item) => item.id).sort(), [...GOAL].sort());
+
     // Invalid filter values keep the original contract error.
     await assert.rejects(service.page({ metFilters: ["somewhere"] }, "a"), /CONTACT_PAGE_INPUT_INVALID/);
     await assert.rejects(service.page({ densityFilters: ["4"] }, "a"), /CONTACT_PAGE_INPUT_INVALID/);
@@ -234,6 +254,8 @@ test("R11a: list cards, tabs, filters and the summary are computed in SQL with t
     for (const query of [{ goalRelated: true }, { needsFollowUp: true }, { industryFilters: ["it.saas"] }, { regionFilters: ["none"] }, { metFilters: ["referral", "visit"] }, { densityFilters: ["3"] }, { goalRelated: true, statusFilters: ["active"] }]) {
       assert.deepEqual(localIds(query), await ids(query), JSON.stringify(query));
     }
+    // RD-33: the device's sort=added order equals the server's.
+    assert.deepEqual(localContactDirectory(mirror, { ...local, sort: "added" }).map((row) => row.card?.id), addedIds);
     const localSummary = localContactDirectorySummary(mirror, local);
     for (const key of ["densityCounts", "addedThisMonth", "tabCounts", "sourceChips", "industries", "regions", "metKinds"] as const) {
       assert.deepEqual(localSummary[key], summary[key], key);

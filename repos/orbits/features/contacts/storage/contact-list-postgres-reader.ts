@@ -181,6 +181,15 @@ function contactNetworkFactsSql(c: string): string {
     ${isoTextSql(`least(coalesce(${safeTimestampSql(`${c}.payload->>'createdAt'`)}, ${c}.created_at), ${safeTimestampSql(str("linkedinConnectedAt"))})`)} as added_at_text`;
 }
 
+/**
+ * RD-33 (`sort=added`): when the person joined 人脈 — the card's `addedAt` rule (added_at_text) as a timestamp.
+ * Only the cards output reads it, through $27 (`added` | `recent`).
+ */
+function contactAddedAtSql(c: string): string {
+  const linkedin = `(case when jsonb_typeof(${c}.payload->'linkedinConnectedAt') = 'string' then ${c}.payload->>'linkedinConnectedAt' end)`;
+  return `least(coalesce(${safeTimestampSql(`${c}.payload->>'createdAt'`)}, ${c}.created_at), ${safeTimestampSql(linkedin)})`;
+}
+
 /** R11a: the derived card facts on top of contactNetworkFactsSql (alias `v` = contact_view_base). */
 function contactNetworkDerivedSql(v: string, withPlan: boolean): string {
   return `case when ${v}.has_interaction or ${v}.self_linked then 3
@@ -891,7 +900,8 @@ ${openFollowUpContactIdsSql("$1", "$4")}  ) f
     c.target_type,
     c.target_id,
     c.occurred_at,
-    coalesce(c.occurred_at, c.record_updated_at) as sort_occurred_at,
+    ${output === "cards" ? `case when $27::text = 'added' then ${contactAddedAtSql("c")}
+      else coalesce(c.occurred_at, c.record_updated_at) end` : "coalesce(c.occurred_at, c.record_updated_at)"} as sort_occurred_at,
     c.lifecycle_state,
     c.search_text,
     c.created_at,
@@ -1435,10 +1445,13 @@ export function createPostgresContactCardReader(input: {
     // No derived filters: select the authorized contact page before expanding
     // relationships. Applying this shortcut to status/tag/value search would
     // incorrectly filter only a partial candidate set.
-    const head = !summary && !verified && !statuses.length && !tiers.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length
+    const sortAdded = query.sort === "added";
+    // The head shortcut walks the stored occurred-at order; `sort=added` takes the full cards SQL.
+    const head = !summary && !sortAdded && !verified && !statuses.length && !tiers.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length
       && !hasNetworkFilters(query);
     const result = await input.client.query<Record<string, unknown>>(
-      head ? CONTACT_CARD_HEAD_SQL : (summary ? CONTACT_SUMMARY_SQL : CONTACT_CARD_SQL)[verified ? 1 : 0]!, values,
+      head ? CONTACT_CARD_HEAD_SQL : (summary ? CONTACT_SUMMARY_SQL : CONTACT_CARD_SQL)[verified ? 1 : 0]!,
+      summary ? values : [...values, sortAdded ? "added" : "recent"],
     );
     if (result.rows.length !== 1) throw new Error("CONTACT_PAGE_RESULT_INVALID");
     const row = result.rows[0]!;
@@ -1834,6 +1847,8 @@ function queryScope(
       ...(selectedValues(input.tierFilters).length ? { tierFilters: selectedValues(input.tierFilters) } : {}),
       // R11a：页签与絞り込み同样只在选了时进作用域。
       ...(hasNetworkFilters(input) ? { network: networkScope(input) } : {}),
+      // RD-33：只有 sort=added 进作用域（两种顺序的游标互不通用，旧游标不变）。
+      ...(input.sort === "added" ? { sort: "added" } : {}),
       contextEventId: input.contextEventId?.trim() ?? "",
       sortVersion: "contact-list-keyset-v1",
       ...(matchPath === null ? {} : { matchPath }),

@@ -2343,6 +2343,13 @@
         "'visit'"
       ]
     },
+    "contact-card-page.ts::ContactCardSort": {
+      "kind": "enum",
+      "values": [
+        "'added'",
+        "'recent'"
+      ]
+    },
     "contact-card-page.ts::ContactCardDTO": {
       "kind": "object",
       "members": {
@@ -3931,6 +3938,11 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        },
+        "sort": {
+          "optional": true,
+          "kind": "text",
+          "type": "'recent' | 'added' | null"
         }
       }
     },

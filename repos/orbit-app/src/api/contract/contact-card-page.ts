@@ -4,6 +4,12 @@
  */
 export type ContactCardSourceChip = "meishi" | "linkedin" | "phone" | "manual" | "self" | "event";
 export type ContactCardMetKind = "event" | "referral" | "visit" | "other";
+/**
+ * Order of GET /api/contacts/page (`sort=` query) and of the device's local directory (RD-33, for R10 home 「最近 4 人」):
+ * `recent` (default, omitted) = the contact's occurred-at / update time, newest first; `added` = when the person joined
+ * 人脈 (`addedAt`: the earlier of the contact's createdAt and LinkedIn connected-on), newest first. Ties: update time, id.
+ */
+export type ContactCardSort = "recent" | "added";
 
 /** Bounded list previews, not contact details or an offline contact replica. */
 export interface ContactCardDTO {

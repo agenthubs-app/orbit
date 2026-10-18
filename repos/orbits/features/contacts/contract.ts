@@ -126,6 +126,8 @@ export interface ContactsListSearchFilterInput {
   regionFilters?: readonly string[] | null;
   metFilters?: readonly string[] | null;
   densityFilters?: readonly string[] | null;
+  /** RD-33（R10 首页「最近 4 人」）：`added` = 按加入人脈的时间倒序（只有有界卡片页支持）；缺省 = 原顺序。 */
+  sort?: "recent" | "added" | null;
   /** R11a: server-side merge inputs (not query parameters): plan goal-related ids and invite-linked ids. */
   goalRelatedContactIds?: readonly string[] | null;
   inviteLinkedContactIds?: readonly string[] | null;

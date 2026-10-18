@@ -20,6 +20,9 @@ import type { ContactSyncPayload, LocalContactDirectoryQuery } from "../contract
  *     values present). Blank filter values are ignored.
  *   - order: display names that start with the query first, then the
  *     contact's occurred-at time (newest first), its update time, its id.
+ *     With `sort: "added"` (RD-33) the occurred-at time is replaced by the
+ *     card's `addedAt` (when the person joined 人脈; a row from an older
+ *     mirror without it falls back to its occurred-at time).
  *   - summary: the total is the number of matches; the facet counts (sources,
  *     statuses, relationship values, the first 50 tags in list order) cover
  *     every contact, exactly as the server's summary does.
@@ -49,6 +52,13 @@ function compareText(left: string, right: string): number {
 /** occurred-at desc, updated-at desc, id asc: the list's own order. */
 function compareListOrder(left: ContactSyncPayload, right: ContactSyncPayload): number {
   return compareText(right.search.occurredAt, left.search.occurredAt)
+    || compareText(right.search.updatedAt, left.search.updatedAt)
+    || compareText(left.id, right.id);
+}
+
+/** RD-33 `sort: "added"`: addedAt desc (millisecond ISO text compares as text), then the list's own order. */
+function compareAddedOrder(left: Listed, right: Listed): number {
+  return compareText(right.card.addedAt ?? right.search.occurredAt, left.card.addedAt ?? left.search.occurredAt)
     || compareText(right.search.updatedAt, left.search.updatedAt)
     || compareText(left.id, right.id);
 }
@@ -104,7 +114,7 @@ export function localContactDirectory(rows: readonly ContactSyncPayload[], input
   const rank = (row: Listed) => (query === "" || row.card.displayName.toLowerCase().startsWith(query) ? 0 : 1);
   return listed(rows)
     .filter((row) => row.search.error === null && matches(row, input, query, sets))
-    .sort((left, right) => rank(left) - rank(right) || compareListOrder(left, right));
+    .sort((left, right) => rank(left) - rank(right) || (input.sort === "added" ? compareAddedOrder(left, right) : compareListOrder(left, right)));
 }
 
 /** The list summary for this query and filters (the server's /api/contacts/summary without asOf). */

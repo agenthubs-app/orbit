@@ -95,6 +95,13 @@ export function wrapContactCardReader(reader: ContactCardService, actor: Contact
   };
 }
 
+function sortParam(params: URLSearchParams): "recent" | "added" {
+  const value = params.get("sort");
+  if (value === null || value === "" || value === "recent") return "recent";
+  if (value === "added") return "added";
+  throw new Error("CONTACT_PAGE_INPUT_INVALID");
+}
+
 function flag(params: URLSearchParams, key: string): boolean {
   const values = params.getAll(key);
   if (values.length > 1) throw new Error("CONTACT_PAGE_INPUT_INVALID");
@@ -105,7 +112,7 @@ function flag(params: URLSearchParams, key: string): boolean {
 }
 
 export function readContactCardQuery(params: URLSearchParams): ContactsListSearchFilterInput {
-  for (const key of ["query", "cursor", "limit"]) {
+  for (const key of ["query", "cursor", "limit", "sort"]) {
     if (params.getAll(key).length > 1) throw new Error("CONTACT_PAGE_INPUT_INVALID");
   }
   const list = (key: string) => params.getAll(key).flatMap(v => v.split(",")).map(v => v.trim()).filter(Boolean);
@@ -121,7 +128,9 @@ export function readContactCardQuery(params: URLSearchParams): ContactsListSearc
     ...(list("industry").length ? { industryFilters: list("industry") } : {}),
     ...(list("region").length ? { regionFilters: list("region") } : {}),
     ...(list("met").length ? { metFilters: list("met") } : {}),
-    ...(list("density").length ? { densityFilters: list("density") } : {}) };
+    ...(list("density").length ? { densityFilters: list("density") } : {}),
+    // RD-33：`sort=added` 按加入时间倒序（R10 首页「最近 4 人」）；缺省 / `recent` = 原顺序，旧请求与旧游标不变。
+    ...(sortParam(params) === "added" ? { sort: "added" as const } : {}) };
 }
 
 export function contactCardReadError(error: unknown): AppError {
