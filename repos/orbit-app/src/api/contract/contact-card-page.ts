@@ -53,6 +53,10 @@ export interface ContactCardPageDTO {
 }
 
 export interface ContactCardSummaryDTO {
+  /**
+   * Matches of the request's query / filters / tab (R11a REVIEW m). With no query or filter it is everyone: the
+   * 「N人」 header and the R11b page lock read it that way. The facets below are always counted over every contact.
+   */
   total: number;
   sources: Record<string, number>;
   statuses: Record<string, number>;

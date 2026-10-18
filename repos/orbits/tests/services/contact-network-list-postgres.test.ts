@@ -184,7 +184,7 @@ test("R11a: list cards, tabs, filters and the summary are computed in SQL with t
     await assert.rejects(service.page({ limit: 2, needsFollowUp: true, cursor: allCursor }, "a"), /CONTACT_CURSOR_INVALID/, "a cursor from another tab is refused");
     assert.equal(filteredFirst.hasMore, false);
 
-    // Summary: SQL aggregation over every contact; total / addedThisMonth do not move with tabs and filters.
+    // Summary: SQL aggregation. total = matches of the query (everyone when unfiltered); the facets, addedThisMonth and tabCounts are over every contact.
     bytes = 0; reads = 0;
     const summary = await service.summary({}, "a");
     const summaryCost = { reads, bytes };
