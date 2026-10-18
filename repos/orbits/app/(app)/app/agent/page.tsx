@@ -39,6 +39,7 @@ import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/au
 import { redirect } from "next/navigation";
 import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
 import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
+import { IOrbit2026 } from "../orbit-2026/iorbit/IOrbit2026";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
@@ -196,7 +197,6 @@ export default async function AppAgentPage({
   const communityJoined = await readCommunityJoinedForActor({ actorId });
   // W0022：开关只决定无计划时「帮我制定推进计划 →」的去向，不做任何读取。
   const guideEnabled = readGuideDemoConfig().enabled;
-  const viewModel = createOrbitAgentStarterViewModel();
   const language = requestedLanguage ?? (await getAgentPageLanguage());
 
   return (
@@ -204,14 +204,7 @@ export default async function AppAgentPage({
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       <div data-orbit-route="app-agent-route">
-          <IOrbitShell
-            communityJoined={communityJoined}
-            guide={null}
-            guideEnabled={guideEnabled}
-            initialDeepLink={Boolean(
-              firstSearchParam(resolvedSearchParams, "q") ||
-                firstSearchParam(resolvedSearchParams, "session"),
-            )}
+          <IOrbit2026
             initialHistoryOpen={
               firstSearchParam(resolvedSearchParams, "history") === "1"
             }
@@ -240,7 +233,6 @@ export default async function AppAgentPage({
                   )
                 : null
             }
-            viewModel={localizeOrbitTree(viewModel, language)}
           />
       </div>
     </>

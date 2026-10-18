@@ -125,13 +125,14 @@ test.before(async () => {
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
-    resolveExtensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
+    resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     loader: { ".png": "dataurl", ".jpg": "dataurl", ".ttf": "dataurl" },
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "inbox-ai-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+        plugin.onResolve({ filter: /\/usePendingWriteCounts$/ }, () => ({ path: `${process.cwd()}/src/hooks/usePendingWriteCounts.ts` }));
         plugin.onResolve({ filter: /^react-native-svg($|\/)|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-haptics$/ }, () => ({ path: "icons", namespace: "inbox-ai-icons" }));
         plugin.onLoad({ filter: /.*/, namespace: "inbox-ai-icons" }, () => ({ contents: "const Stub=()=>null; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Mask=Stub; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false}); export const setStringAsync=async()=>true; export const impactAsync=async()=>{}; export const ImpactFeedbackStyle={};", loader: "js" }));
         plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|^react-native-safe-area-context($|\/)|\/(useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useMirrorProbe)$/ }, () => ({ path: "fixture", namespace: "inbox-ai" }));
@@ -158,6 +159,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   page.setDefaultTimeout(4000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => { (window as any).global = window; });
   await page.addInitScript((initialFixture) => { (window as any).initialFixture = initialFixture; }, patch);
   t.after(async () => { await page.close(); assert.deepEqual(errors, [], "no page errors"); });
   await page.goto(url);
@@ -206,18 +208,17 @@ test("AI home: the session list comes from the device copy (pinned first) withou
   await page.getByText("东京投资人名单").first().waitFor();
   assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/ai/conversations/sessions")), [], "no session list read");
   const offline = await open(t, { screen: "ai", status: "stale" });
-  await offline.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
+  await offline.getByText(/^オフライン · .+時点の履歴$/).first().waitFor();
   await offline.getByText("东京投资人名单").first().waitFor();
   await offline.getByRole("textbox").first().fill("明天见谁");
-  await offline.getByRole("button", { name: /发送/ }).first().click();
-  await offline.getByText("需要联网").first().waitFor();
+  assert.equal(await offline.getByRole("button", { name: "送信" }).first().isDisabled(), true);
   assert.deepEqual(await fixtureValue(offline, "navigation"), [], "no conversation is started offline");
 });
 
 test("AI conversation offline: the opened session shows its device messages and the cached cards; sending needs the network", async (t) => {
   const cards = { turns: [{ sessionId: "s1", requestId: "request:1", userMessageId: "user:0", assistantMessageId: "assistant:request:1", status: "ready", artifacts: [CARD] }], truncated: false };
   const page = await open(t, { status: "stale", screen: "conversation", params: { id: "s1", source: "session" }, cards });
-  await page.getByText(/^无法连接 · 显示截至 .+/).waitFor();
+  await page.getByText(/^オフライン · .+時点の会話$/).waitFor();
   await page.getByText("已列出 3 位东京投资人").waitFor();
   await page.getByText("本机缓存的候选人").waitFor();
   await page.getByText(/发送.* · 需要联网/).first().waitFor();
@@ -258,20 +259,16 @@ test("AI conversation online: the server page replaces the device copy and its c
   assert.deepEqual(await fixtureValue(page, "savedCards"), ["s1"], "one server read saves its cards once (no write loop per render)");
 });
 
-test("AI history search says it covers only titles, first questions and latest messages; 搜索更多 asks the server online and needs the network offline (0131)", async (t) => {
+test("AI history search asks the server for full message text online and stays local offline (R21)", async (t) => {
   const page = await open(t, { screen: "ai" });
-  await page.getByText("置顶的会话").first().waitFor();
-  await page.getByRole("button", { name: "全部会话" }).click();
-  await page.getByPlaceholder("搜索历史").fill("投资人");
-  await page.getByText("本机只搜标题、第一个问题和最近一条消息。").waitFor();
-  assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/ai/conversations/sessions?")), [], "typing searches the device only");
-  await page.getByRole("button", { name: "搜索更多" }).click();
+  await page.getByRole("button", { name: "会話リスト" }).click();
+  await page.getByPlaceholder("タイトルと本文を検索").fill("投资人");
   await page.waitForFunction(() => (window as any).fixture.requests.some((request: string) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")));
   const offline = await open(t, { screen: "ai", status: "stale" });
-  await offline.getByText("东京投资人名单").first().waitFor();
-  await offline.getByRole("button", { name: "全部会话" }).click();
-  await offline.getByPlaceholder("搜索历史").fill("投资人");
-  assert.equal(await offline.getByRole("button", { name: "搜索更多 · 需要联网" }).isDisabled(), true);
+  await offline.getByRole("button", { name: "会話リスト" }).click();
+  await offline.getByPlaceholder("タイトルと本文を検索").fill("投资人");
+  await offline.waitForTimeout(350);
+  assert.deepEqual((await requests(offline)).filter((request) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")), []);
 });
 
 test("the Today block offline shows that it is not on this device yet instead of 暂时无法连接 (0131)", async (t) => {

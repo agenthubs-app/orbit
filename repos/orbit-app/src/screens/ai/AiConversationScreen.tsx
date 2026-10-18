@@ -19,6 +19,8 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { AppScreen } from "../../components/AppScreen";
+import { ActionSheet, Button as UiButton, Card as UiCard, EmptyState as UiEmptyState, Icon as UiIcon, IconButton as UiIconButton, RetryCard, Skeleton, UiText } from "../../components/ui";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   ORBIT_API_ENDPOINTS,
@@ -677,77 +679,55 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (owns()) router.push(href as Href);
   }
 
+  if (!thread) return <AppScreen inset="kit" title="iOrbit" backIcon="x" onBack={() => { if (router.canGoBack()) router.back(); else router.replace("/ai" as Href); }}>
+    {!isDraftConversation && state.kind === "loading" && !localSession ? <Skeleton onRetry={refresh} /> : null}
+    {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? <RetryCard title="会話を開けませんでした" message={locale.t("sync.notOnDevice")} onRetry={refresh} /> : null}
+    {!isDraftConversation && !conversationOffline && state.kind === "failure" ? <RetryCard title="会話を開けませんでした" message={state.error.message} onRetry={refresh} /> : null}
+    {readInvalid ? <RetryCard title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} onRetry={refresh} /> : null}
+    {state.kind === "empty" ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
+  </AppScreen>;
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={[
-        styles.readingSafeArea,
-        viewport.visibleHeight === null
-          ? null
-          : { height: viewport.visibleHeight, maxHeight: viewport.visibleHeight }
-      ]}
-    >
-      <KeyboardAvoidingView behavior={Platform.OS === "web" ? undefined : Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
-      {!thread ? <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
-        <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
-      </Pressable> : null}
-      {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
-      {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
-      {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? (
-        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refresh} />
-      ) : null}
-      {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? (
-        <ErrorState message={state.error.message} />
-      ) : null}
-      {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
-      {!thread && state.kind !== "loading" ? <Pressable accessibilityRole="button" onPress={refresh} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>{locale.t("aiConversation.retryRead")}</Text></Pressable> : null}
-      {state.kind === "empty" && !thread ? (
-        <EmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} />
-      ) : null}
-      {thread ? (
-        <ConversationThread
-          baseUrl={baseUrl}
-          scopeKey={scopeKey}
-          draftMessage={draftMessage}
-          selectedReferences={selectedReferences}
-          onBack={() => openHref("/ai")}
-          onChangeDraft={changeDraft}
-          onAddMention={addMention}
-          onRemoveReference={removeReference}
-          onOpenHref={openHref}
-          onResolveTaskSuggestion={resolveTaskSuggestion}
-          onRefresh={refresh}
-          refreshing={state.refreshing}
-          earlier={earlier}
-          onRetryCards={recoveryIncomplete(combinedRecovery) ? () => { void retryCards(); } : undefined}
-          onSend={sendMessage}
-          sendError={sendError}
-          sendCode={sendCode}
-          actionError={actionError}
-          saveError={saveError}
-          saveNotice={saveNotice}
-          saving={saving}
-          writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
-          sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
-          pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
-          retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
-          onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
-          onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
-          onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
-          sending={sending}
-          taskInteractionBusy={taskInteractionBusy}
-          taskInteractionResolution={taskInteractionResolution}
-          entityDraftBusy={entityDraftBusy}
-          entityDraftEdits={entityDraftEdits}
-          entityDraftOverride={entityDraftOverride}
-          onEditEntityDraftField={(field, value) =>
-            setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
-          onResolveEntityDraft={resolveEntityDraft}
-          thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
-        />
-      ) : null}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <ConversationThread
+      baseUrl={baseUrl}
+      scopeKey={scopeKey}
+      draftMessage={draftMessage}
+      selectedReferences={selectedReferences}
+      onBack={() => openHref("/ai")}
+      onChangeDraft={changeDraft}
+      onAddMention={addMention}
+      onRemoveReference={removeReference}
+      onOpenHref={openHref}
+      onResolveTaskSuggestion={resolveTaskSuggestion}
+      onRefresh={refresh}
+      refreshing={state.refreshing}
+      earlier={earlier}
+      onRetryCards={recoveryIncomplete(combinedRecovery) ? () => { void retryCards(); } : undefined}
+      onSend={sendMessage}
+      sendError={sendError}
+      sendCode={sendCode}
+      actionError={actionError}
+      saveError={saveError}
+      saveNotice={saveNotice}
+      saving={saving}
+      writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
+      offline={conversationOffline}
+      offlineAt={localConversation.freshness.lastSyncedAt}
+      sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
+      pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
+      retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
+      onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
+      onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
+      onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
+      sending={sending}
+      taskInteractionBusy={taskInteractionBusy}
+      taskInteractionResolution={taskInteractionResolution}
+      entityDraftBusy={entityDraftBusy}
+      entityDraftEdits={entityDraftEdits}
+      entityDraftOverride={entityDraftOverride}
+      onEditEntityDraftField={(field, value) => setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
+      onResolveEntityDraft={resolveEntityDraft}
+      thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
+    />
   );
 }
 
@@ -774,6 +754,8 @@ function ConversationThread({
   saveNotice,
   saving,
   writingBlocked,
+  offline,
+  offlineAt,
   sendLabelSuffix,
   pendingNoteChanges,
   onRetrySend,
@@ -812,6 +794,8 @@ function ConversationThread({
   saveNotice: string | null;
   saving: boolean;
   writingBlocked: boolean;
+  offline: boolean;
+  offlineAt: string | null;
   /** Sprint 0118: "needs a connection" while the conversation shows its offline device copy. */
   sendLabelSuffix?: string | undefined;
   /** Sprint 0136: the pending items phrase (empty when nothing waits). */
@@ -835,7 +819,8 @@ function ConversationThread({
   const [routesOpen, setRoutesOpen] = useState(false);
   const [mentionsOpen, setMentionsOpen] = useState(false);
   const [referenceNames, setReferenceNames] = useState<Record<string, string>>({});
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, height: windowHeight } = useWindowDimensions();
+  const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
   const historyScroll = useRef<ScrollView>(null);
@@ -878,48 +863,26 @@ function ConversationThread({
       )
     : null;
 
+  const router = useRouter();
   return (
-    <View style={styles.threadSurface}>
-      <View accessibilityLabel={locale.t("aiConversation.navigation")} style={styles.threadHeader}>
-        <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { Keyboard.dismiss(); onBack(); }} style={styles.backButton}>
-          <Ionicons color={colors.ink} name="chevron-back" size={22} />
-        </Pressable>
-        <View style={styles.threadTitleBlock}>
-          <View style={styles.threadBrand}><Image accessible={false} source={iorbitBrandMark} testID="iorbit-brand-mark" style={styles.brandMark} /><Text style={styles.threadEyebrow}>IORBIT</Text></View>
-          <Text numberOfLines={1} style={styles.threadTitle}>
-            {thread.title}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityLabel={locale.t("aiConversation.moreOptions")}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: routesOpen }}
-          onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.ink} name="ellipsis-horizontal" size={24} />
-        </Pressable>
-      </View>
-      {routesOpen ? <View style={styles.routesPanel}><QuickRouteDock onOpenHref={(href) => { setRoutesOpen(false); onOpenHref(href); }} /></View> : null}
-      <ScrollView
-        ref={historyScroll}
-        testID="conversation-history"
-        contentContainerStyle={styles.readingContent}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
+    <AppScreen inset="kit" title="iOrbit" showBack={false}
+      header={<View style={styles.r21Header}>
+        <UiIconButton icon="menu" accessibilityLabel="会話リスト" onPress={() => onOpenHref("/ai?drawer=1")} />
+        <View style={styles.r21TitleBlock}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.r21Title}>iOrbit</UiText><UiText numberOfLines={1} style={styles.r21Subtitle}>{thread.title}</UiText></View>
+        <UiIconButton icon="x" accessibilityLabel="閉じる" onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />
+      </View>}>
+      {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>オフライン · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} 時点の会話` : "保存済みの会話"}</UiText> : null}
+      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
+        keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
+        refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
+        onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
         onScroll={(event) => {
           const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
           followNewMessages.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
-          // Scrolling back up to the top of the history loads the page before it.
           const movingUp = contentOffset.y < scrollOffset.current;
           scrollOffset.current = contentOffset.y;
           if (userDragged.current && movingUp && contentOffset.y < 48) requestEarlier();
         }}
-        onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
-        scrollEventThrottle={100}
         onContentSizeChange={(_width, height) => {
           const anchor = pendingAnchor.current;
           contentHeight.current = height;
@@ -941,159 +904,42 @@ function ConversationThread({
           }
           settlingAnchor.current = null;
           if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true });
-        }}
-        refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
-        style={styles.readingHistory}
-      >
-      <View style={styles.messagePanel}>
-        {earlier && (earlier.hasMore || earlier.status === "error") ? (
-          earlier.status === "loading" ? (
-            <View accessibilityLiveRegion="polite" style={styles.earlierRow}>
-              <Text style={styles.earlierMuted}>{locale.t("aiConversation.loadingEarlier")}</Text>
-            </View>
-          ) : earlier.status === "error" ? (
-            <View style={[styles.earlierRow, styles.earlierFailure]}>
-              <Text accessibilityRole="alert" style={styles.earlierError}>{locale.t("aiConversation.loadEarlierFailed")}</Text>
-              <Pressable accessibilityRole="button" hitSlop={8} onPress={requestEarlier} style={({ pressed }) => [styles.earlierInline, pressed ? styles.pressed : null]}>
-                <Text style={styles.earlierLink}>{locale.t("aiConversation.retryEarlier")}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable accessibilityRole="button" onPress={requestEarlier} style={({ pressed }) => [styles.earlierRow, styles.earlierButton, pressed ? styles.pressed : null]}>
-              <Text style={styles.earlierLink}>{locale.t("aiConversation.loadEarlier")}</Text>
-            </Pressable>
-          )
-        ) : earlier?.allLoaded ? (
-          <View style={styles.earlierRow}><Text style={styles.earlierMuted}>{locale.t("aiConversation.allMessagesLoaded")}</Text></View>
-        ) : null}
-        {thread.messages.length === 0 ? (
-          <EmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} />
-        ) : (
-          <View style={styles.messageStack}>
-            {thread.messages.map((message, index) => (
-              <Fragment key={message.id}>
-                <MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} />
-                {turnCards.get(message.id)?.length ? (
-                  <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} />
-                ) : null}
-                {/* Sprint 0094: one card shape for all five entities. The contact
-                    panel that used to be here rendered only contact recommendations
-                    and marked everything else "unsupported", which is why events,
-                    tasks, schedules and notes never appeared as cards at all. */}
-                {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? (
-                  <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} />
-                ) : null}
-              </Fragment>
-            ))}
+        }}>
+        {earlier && (earlier.hasMore || earlier.status === "error") ? earlier.status === "loading"
+          ? <UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t("aiConversation.loadingEarlier")}</UiText>
+          : earlier.status === "error"
+            ? <View style={styles.earlierFailure}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.loadEarlierFailed")}</UiText><UiButton label={locale.t("aiConversation.retryEarlier")} variant="ghost" onPress={requestEarlier} /></View>
+            : <UiButton label={locale.t("aiConversation.loadEarlier")} variant="ghost" onPress={requestEarlier} />
+          : earlier?.allLoaded ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.allMessagesLoaded")}</UiText> : null}
+        {thread.messages.length === 0 ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
+        {thread.messages.map((message, index) => <Fragment key={message.id}>
+          <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
+            {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
+            <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} /></View>
           </View>
-        )}
-      </View>
-      {thread.contactArtifactNotice ? <Text accessibilityRole="alert" style={{ ...textStyles.small, color: colors.ink }}>{locale.t("aiContactArtifact.partial")}</Text> : null}
-      {thread.contactArtifactNotice && onRetryCards ? (
-        <Pressable accessibilityRole="button" onPress={onRetryCards} style={({ pressed }) => [styles.earlierInline, pressed ? styles.pressed : null]}>
-          <Text style={styles.earlierLink}>{locale.t("aiConversation.retryCards")}</Text>
-        </Pressable>
-      ) : null}
-      {thread.taskInteraction ? (
-        <TaskInteractionCard
-          busy={taskInteractionBusy}
-          interaction={thread.taskInteraction}
-          onResolve={onResolveTaskSuggestion}
-          onOpenHref={onOpenHref}
-          resolution={taskInteractionResolution}
-        />
-      ) : null}
-      {draftCardView ? (
-        <AiEntityDraftCard
-          busy={entityDraftBusy}
-          onCancel={() => onResolveEntityDraft("cancel")}
-          onConfirm={() => onResolveEntityDraft("confirm")}
-          onEditField={onEditEntityDraftField}
-          onOpenRecord={onOpenHref}
-          view={draftCardView}
-        />
-      ) : null}
-      {thread.proposedToolIntents.length > 0 ? (
-        <View style={styles.intentPanel}>
-          <Text style={styles.panelTitle}>{locale.t("aiConversation.suggestedActions")}</Text>
-          {thread.proposedToolIntents.map((intent) => (
-            <View key={intent.id} style={styles.intentBlock}>
-              <Text style={styles.intentTitle}>{intent.label}</Text>
-              <Text style={styles.bodyText}>{intent.reason}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {/* Sprint 0085: the "AI 运行依据" panel is gone. It appeared under every
-          single reply, took half a screen, and said the same thing each time.
-          Where a reply came from now rides on the entity card's source line and
-          on the record's own detail page. */}
-      {sendError ? <View accessibilityLiveRegion="polite" style={styles.failureStack}>
-        <Text style={[styles.messageLabel, styles.assistantLabel]}>IORBIT</Text>
-        <View style={styles.failureCard}>
-        <View style={styles.failureHeading}><Ionicons color={colors.coralText} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>{locale.t("aiConversation.answerFailed")}</Text></View>
-        <Text style={styles.failureBody}>{sendError}</Text>
-        <View style={styles.failureActions}>
-          <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{retrySendLabel}</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={onEditQuestion} disabled={sending} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>{locale.t("aiConversation.editQuestion")}</Text></Pressable>
-        </View>
-        </View>
-        {sendCode ? <Text selectable style={styles.failureCode}>{sendCode}</Text> : null}
-      </View> : null}
-      {actionError ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{actionError}</Text> : null}
-      {saveError ? <View accessibilityLiveRegion="polite" style={styles.failureCard}>
-        <Text style={styles.failureTitle}>{locale.t("aiConversation.replyUnsaved")}</Text><Text style={styles.failureBody}>{saveError}</Text>
-        <Pressable accessibilityRole="button" onPress={onRetrySave} disabled={saving} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{locale.t("aiConversation.retrySave")}</Text></Pressable>
-      </View> : null}
-      {sending || saving ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</Text> : null}
+          {turnCards.get(message.id)?.length ? <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} /> : null}
+          {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} /> : null}
+        </Fragment>)}
+        {thread.contactArtifactNotice ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{locale.t("aiContactArtifact.partial")}</UiText> : null}
+        {thread.contactArtifactNotice && onRetryCards ? <UiButton label={locale.t("aiConversation.retryCards")} onPress={onRetryCards} variant="secondary" /> : null}
+        {thread.taskInteraction ? <TaskInteractionCard busy={taskInteractionBusy} interaction={thread.taskInteraction} onResolve={onResolveTaskSuggestion} onOpenHref={onOpenHref} resolution={taskInteractionResolution} /> : null}
+        {draftCardView ? <AiEntityDraftCard busy={entityDraftBusy} onCancel={() => onResolveEntityDraft("cancel")} onConfirm={() => onResolveEntityDraft("confirm")} onEditField={onEditEntityDraftField} onOpenRecord={onOpenHref} view={draftCardView} /> : null}
+        {thread.proposedToolIntents.length ? <UiCard variant="flat"><View style={styles.r21Stack}><UiText style={styles.r21Section}>{locale.t("aiConversation.suggestedActions")}</UiText>{thread.proposedToolIntents.map((intent) => <View key={intent.id}><UiText style={styles.r21Section}>{intent.label}</UiText><UiText style={styles.r21Muted}>{intent.reason}</UiText></View>)}</View></UiCard> : null}
+        {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
+        {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
+        {saveError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{saveError}</UiText><UiButton label={locale.t("aiConversation.retrySave")} onPress={onRetrySave} disabled={saving} /></View></UiCard> : null}
+        {sending || saving ? <UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText> : null}
+        {saveNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{saveNotice}</UiText> : null}
       </ScrollView>
-      {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
-      <View testID="conversation-composer" style={styles.composerPanel}>
-        {sendLabelSuffix ? <Text style={styles.threadNextAction}>{`${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}`}</Text> : null}
-        {pendingNoteChanges ? <Text style={styles.pendingNoteChanges}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</Text> : null}
-        {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
-          <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
-            onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />
-        ))}</View> : null}
-        {mentionsOpen ? <ContactMentionPicker scopeKey={scopeKey} onSelect={(contact) => {
-          setReferenceNames(names => ({ ...names, [contact.id]: contact.name })); onAddMention(contact); setMentionsOpen(false);
-        }} selectedIds={selectedReferences.filter(reference => reference.type === "contact").map(reference => reference.id)} /> : null}
-        <TextInput
-          accessibilityLabel={locale.t("ai.message")}
-          multiline
-          numberOfLines={1}
-          onChangeText={(value) => { if (!value) setInputHeight(minimumInputHeight); onChangeDraft(value); }}
-          onContentSizeChange={(event) => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
-          placeholder={locale.t("aiConversation.continuePlaceholder")}
-          placeholderTextColor={colors.ink3Text}
-          style={[styles.input, { height: Math.max(minimumInputHeight, inputHeight) }]}
-          textAlignVertical="top"
-          value={draftMessage}
-        />
-        <View style={styles.composerActions}>
-        <Pressable accessibilityLabel={locale.t("aiConversation.mentionContact")} accessibilityRole="button" onPress={() => setMentionsOpen(value => !value)} style={styles.composerPlusButton}>
-          <Text style={styles.mentionButtonText}>@</Text>
-        </Pressable>
-        <Pressable accessibilityLabel={locale.t("aiConversation.openShortcuts")} accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.composerPlusButton}>
-          <Ionicons color={colors.ink} name="add" size={22} />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={sendLabelSuffix ? `${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}` : locale.t("aiConversation.sendMessage")}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: sending || writingBlocked || !draftMessage.trim(), busy: sending || saving }}
-          disabled={sending || writingBlocked || !draftMessage.trim()}
-          onPress={() => { followNewMessages.current = true; onSend(); }}
-          style={({ pressed }) => [
-            styles.sendButton,
-            sending || writingBlocked || !draftMessage.trim() ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.onAccent} name={sending ? "ellipsis-horizontal" : "paper-plane-outline"} size={20} />
-        </Pressable>
-        </View>
+      <View testID="conversation-composer" style={styles.r21Composer}>
+        {sendLabelSuffix ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.sendMessage") + " · " + sendLabelSuffix}</UiText> : null}
+        {pendingNoteChanges ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</UiText> : null}
+        {selectedReferences.length ? <View style={styles.referenceRow}>{selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}</View> : null}
+        {mentionsOpen ? <ContactMentionPicker scopeKey={scopeKey} onSelect={(contact) => { setReferenceNames((names) => ({ ...names, [contact.id]: contact.name })); onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter((reference) => reference.type === "contact").map((reference) => reference.id)} /> : null}
+        <View style={styles.r21ComposerLine}><UiButton label="@" size="sm" variant="ghost" onPress={() => setMentionsOpen((open) => !open)} /><TextInput accessibilityLabel={locale.t("ai.message")} multiline={false} onChangeText={onChangeDraft} onSubmitEditing={() => { followNewMessages.current = true; onSend(); }} placeholder={locale.t("aiConversation.continuePlaceholder")} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.r21Input} value={draftMessage} /><UiIconButton icon="send" accessibilityLabel={locale.t("aiConversation.sendMessage")} onPress={() => { followNewMessages.current = true; onSend(); }} disabled={sending || writingBlocked || !draftMessage.trim()} solid /></View>
       </View>
-    </View>
+      <ActionSheet visible={routesOpen} title={locale.t("aiConversation.commonEntries")} onClose={() => setRoutesOpen(false)} options={conversationQuickRoutes(locale.language).map((route) => ({ key: route.href, label: route.title }))} onSelect={(key) => { setRoutesOpen(false); onOpenHref(key); }} />
+    </AppScreen>
   );
 }
 
@@ -1385,6 +1231,23 @@ function MarkdownSegment({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  r21Header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.sm },
+  r21TitleBlock: { flex: 1, minWidth: 0, alignItems: "center", paddingHorizontal: spacing.sm },
+  r21Title: { color: colors.ink, fontSize: typography.titleSm, fontWeight: "800" },
+  r21Subtitle: { color: colors.ink3Text, fontSize: typography.label },
+  r21Thread: { gap: spacing.lg, paddingBottom: spacing.lg },
+  r21User: { alignItems: "flex-end" },
+  r21Assistant: { flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" },
+  r21AssistantIcon: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center" },
+  r21Message: { flex: 1, minWidth: 0 },
+  r21Stack: { gap: spacing.sm },
+  r21Section: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800" },
+  r21Muted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  r21Error: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "700" },
+  r21Actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  r21Composer: { gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, padding: spacing.sm, marginBottom: spacing.lg },
+  r21ComposerLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  r21Input: { flex: 1, minWidth: 0, color: colors.ink, fontSize: typography.body, minHeight: 44 },
   readingSafeArea: { backgroundColor: colors.surface, flex: 1 },
   readingRoot: { flex: 1, maxWidth: layout.contentMax, width: "100%", alignSelf: "center" },
   readingFallback: { paddingHorizontal: layout.pageInset, paddingTop: spacing.md, gap: spacing.lg },

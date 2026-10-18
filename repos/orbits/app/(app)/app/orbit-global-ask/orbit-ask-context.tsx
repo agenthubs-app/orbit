@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { isIndustryIdCode } from "../../../../shared/domain/industries";
 import {
   createContext,
   useCallback,
@@ -121,7 +122,15 @@ export function OrbitAskProvider({ children }: { children: ReactNode }) {
 
       if (!trimmed) return;
 
-      stashAgentPrefill({ origin: null, query: trimmed, returnTo: pathname || "/app" });
+      // Preserve only the supported contact-list facet. Other page state is
+      // deliberately absent from the handoff and cannot become AI context.
+      const source = pathname === "/app/contacts" && typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).getAll("industry")
+        : [];
+      const industry = source.length && source.length <= 10 && source.every((value) => isIndustryIdCode(value) || value === "none")
+        ? `?${new URLSearchParams(source.map((value) => ["industry", value])).toString()}`
+        : "";
+      stashAgentPrefill({ origin: null, query: trimmed, returnTo: `${pathname || "/app"}${industry}` });
       setOpen(false);
       router.push(ORBIT_ASK_HOME);
     },

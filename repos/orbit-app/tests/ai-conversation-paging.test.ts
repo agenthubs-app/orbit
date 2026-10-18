@@ -108,6 +108,7 @@ async function open(t: { after(fn: () => Promise<void>): void }): Promise<Page> 
   const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
+  await p.addScriptTag({ content: "window.global = window;" });
   await p.addScriptTag({ content: script });
   await p.getByText("第149条回答").waitFor();
   return p;

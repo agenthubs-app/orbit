@@ -124,7 +124,7 @@ export function takeAgentPrefill(): OrbitAgentPrefill | null {
     const query = typeof value?.query === "string" ? value.query.trim() : "";
     const returnTo = typeof value?.returnTo === "string" ? value.returnTo : "";
     // R30: the ⌘K search hands over a plain prefill (no structured origin) from any /app page.
-    if (origin === null) return query && returnTo.startsWith("/app") ? { origin: null, query, returnTo } : null;
+    if (origin === null) return query && /^\/app(?:\/|$)/u.test(returnTo) && !returnTo.startsWith("//") ? { origin: null, query, returnTo } : null;
     if (
       !query || returnTo !== "/app/contacts/dashboard" ||
       origin?.entryClient !== "web" || origin.entryPointId !== "contacts.analysis" ||

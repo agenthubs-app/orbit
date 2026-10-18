@@ -92,7 +92,7 @@ test("an AI session absent from the device uses the existing not-on-device state
     screenSource,
     /!isDraftConversation && !conversationOffline && \(state\.kind === "offline" \|\| missingLocalSessionOffline\)/u
   );
-  assert.match(screenSource, /NeedsNetworkState message=\{locale\.t\("sync\.notOnDevice"\)\}/u);
+  assert.match(screenSource, /RetryCard title="会話を開けませんでした" message=\{locale\.t\("sync\.notOnDevice"\)\} onRetry=\{refresh\}/u);
   assert.doesNotMatch(
     screenSource,
     /!isDraftConversation && !conversationOffline && state\.kind === "failure" \? \(\s*<ErrorState/u

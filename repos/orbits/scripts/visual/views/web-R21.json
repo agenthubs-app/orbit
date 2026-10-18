@@ -1,0 +1,55 @@
+{
+  "_note": "R21 iOrbit live start and responsive smoke views. The other R21 states require actor-owned session and draft fixtures before their pixel gate can run.",
+  "defaults": {
+    "app-origin": "http://localhost:3700",
+    "login": "qa@orbit.test",
+    "grid": 30,
+    "attribution": "scripts/visual/attribution-redesign-R21.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/iorbit/**",
+    "repos/orbits/app/(app)/app/agent/page.tsx"
+  ],
+  "views": [
+    {
+      "id": "W-R21-03",
+      "app": "/app/agent",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 37,
+      "width": 1440,
+      "height": 960,
+      "themes": ["light"],
+      "note": "Web start with QA account data; board has sample names and different counts."
+    },
+    {
+      "id": "W-R21-R01",
+      "app": "/app/agent",
+      "design": "b8-responsive.html",
+      "board-index": 9,
+      "width": 1024,
+      "height": 880,
+      "themes": ["light"],
+      "note": "1024 start"
+    },
+    {
+      "id": "W-R21-R02",
+      "app": "/app/agent",
+      "design": "b8-responsive.html",
+      "board-index": 10,
+      "width": 390,
+      "height": 844,
+      "themes": ["light"],
+      "note": "390 start; design browser chrome excluded by comparator."
+    },
+    {
+      "id": "W-R21-R05",
+      "app": "/app/agent",
+      "design": "b8-responsive.html",
+      "board-index": 18,
+      "width": 390,
+      "height": 844,
+      "themes": ["dark"],
+      "note": "390 dark start"
+    }
+  ]
+}

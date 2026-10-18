@@ -41,12 +41,14 @@ import {
   agentChatHistorySessionsToHistory,
   createAgentSessionId,
   deleteStoredAgentChatSession,
+  restoreStoredAgentChatSession,
   loadStoredAgentChatSessions,
   upsertAgentChatSummary,
   type AgentHistoryFeedback,
   type AgentMessage,
   type AgentPanel,
   type AgentSessionSummary,
+  type AgentSessionUndoReceipt,
 } from "./iorbit-model";
 
 // 删除当前会话时要重置的对话侧状态。`use-agent-chat` 在组件里通过 `bindChat`
@@ -90,12 +92,20 @@ export function useAgentHistory() {
   const [historyPageHasMore, setHistoryPageHasMore] = useState(false);
   const [historyPageCursor, setHistoryPageCursor] = useState<string | null>(null);
   const [historyPageLoading, setHistoryPageLoading] = useState(false);
+  const [historyRefreshVersion, setHistoryRefreshVersion] = useState(0);
   const [groupMutationPending, setGroupMutationPending] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
   const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<(AgentSessionUndoReceipt & { sessionId: string; summary: AgentSessionSummary | null }) | null>(null);
   const historyMutationSessionIdRef = useRef<string | null>(null);
   const historyPageGenerationRef = useRef(0);
+
+  useEffect(() => {
+    if (!pendingUndo) return;
+    const timer = window.setTimeout(() => setPendingUndo((current) => current?.undoToken === pendingUndo.undoToken ? null : current), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [pendingUndo]);
 
   const storedHistory = useMemo(
     () => agentChatHistorySessionsToHistory(storedSessions, language, sessionGroups)
@@ -142,7 +152,7 @@ export function useAgentHistory() {
       cancelled = true;
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [historyQuery, selectedSessionGroupId]);
+  }, [historyQuery, selectedSessionGroupId, historyRefreshVersion]);
 
   const loadMoreHistory = async () => {
     const cursor = historyPageCursor;
@@ -187,13 +197,14 @@ export function useAgentHistory() {
 
     try {
       let savedOrganization: AiSessionOrganizationContract | null = null;
+      let errorCode: string | null = null;
       const persisted = await historyMutationQueue.save(sessionId, () => {
         const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
         return patchAgentChatSessionOrganization(sessionId, {
           expectedRevision: latest.organization?.revision ?? 0,
           mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
           patch,
-        }).then((organization) => {
+        }, (code) => { errorCode = code; }).then((organization) => {
           savedOrganization = organization;
           return organization !== null;
         });
@@ -201,11 +212,13 @@ export function useAgentHistory() {
       if (!persisted) {
         setHistoryFeedback({
           kind: "error",
-          text:
-            languageRef.current === "zh"
+          text: errorCode === "PIN_LIMIT"
+            ? "ピン留めは5件までです。別の会話のピン留めを外してください。"
+            : languageRef.current === "zh"
               ? "未能保存对话历史更改，页面保持原状态。请稍后重试。"
               : "The history change could not be saved, so nothing changed. Please try again.",
         });
+        if (errorCode === "PIN_LIMIT" || errorCode === "CONFLICT") setHistoryRefreshVersion((version) => version + 1);
         return false;
       }
 
@@ -350,7 +363,11 @@ export function useAgentHistory() {
     setHistoryFeedback(null);
 
     try {
-      const persisted = await historyMutationQueue.remove(sessionId, () => deleteStoredAgentChatSession(sessionId));
+      let receipt: AgentSessionUndoReceipt | null = null;
+      const persisted = await historyMutationQueue.remove(sessionId, async () => {
+        receipt = await deleteStoredAgentChatSession(sessionId);
+        return receipt !== null;
+      });
       if (!persisted) {
         setHistoryDeleteError(
           languageRef.current === "zh"
@@ -360,11 +377,13 @@ export function useAgentHistory() {
         return;
       }
 
+      const previousSummary = storedSessionsRef.current.find((session) => session.id === sessionId) ?? null;
       const nextSessions = storedSessionsRef.current.filter(
         (session) => session.id !== sessionId,
       );
       storedSessionsRef.current = nextSessions;
       setStoredSessions(nextSessions);
+      if (receipt) setPendingUndo({ ...receipt, sessionId, summary: previousSummary });
       setPendingDeleteHistory(null);
       setHistoryFeedback({
         kind: "success",
@@ -402,6 +421,28 @@ export function useAgentHistory() {
     }
   };
 
+  const undoDeletedHistorySession = async () => {
+    const pending = pendingUndo;
+    if (!pending) return false;
+    const restored = await historyMutationQueue.restore(pending.sessionId, () =>
+      restoreStoredAgentChatSession(pending.sessionId, pending.undoToken));
+    if (!restored) {
+      setPendingUndo(null);
+      setHistoryFeedback({ kind: "error", text: t({ en: "Undo expired. The conversation remains deleted.", zh: "撤销期限已过，对话仍已删除。" }) });
+      return false;
+    }
+    if (pending.summary) {
+      setStoredSessions((current) => {
+        const next = [pending.summary!, ...current.filter((item) => item.id !== pending.sessionId)];
+        storedSessionsRef.current = next;
+        return next;
+      });
+    }
+    setPendingUndo(null);
+    setHistoryFeedback({ kind: "success", text: t({ en: "Conversation restored", zh: "对话已恢复" }) });
+    return true;
+  };
+
   return {
     bindChat,
     confirmDeleteHistorySession,
@@ -419,6 +460,7 @@ export function useAgentHistory() {
     moveHistorySession,
     loadMoreHistory,
     pendingDeleteHistory,
+    pendingUndo,
     renameHistoryGroup,
     renameHistorySession,
     selectedSessionGroupId,
@@ -434,5 +476,6 @@ export function useAgentHistory() {
     storedSessions,
     storedSessionsRef,
     togglePinnedHistorySession,
+    undoDeletedHistorySession,
   };
 }

@@ -52,3 +52,12 @@ test("failed deletion keeps the session writable for an explicit retry", async (
   assert.equal(await queue.save("session:one", async () => true), true);
   assert.equal(await queue.remove("session:one", async () => true), true);
 });
+
+test("R21 an acknowledged server undo reopens the same-session queue", async () => {
+  const { createAgentChatSessionMutationQueue } = await import("../../app/(app)/app/agent/agent-chat-session-mutations");
+  const queue = createAgentChatSessionMutationQueue();
+  assert.equal(await queue.remove("session:one", async () => true), true);
+  assert.equal(await queue.save("session:one", async () => true), false);
+  assert.equal(await queue.restore("session:one", async () => true), true);
+  assert.equal(await queue.save("session:one", async () => true), true);
+});

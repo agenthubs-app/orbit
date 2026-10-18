@@ -29,10 +29,13 @@ import {
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, type AiSession } from "../../api/ai-history-contract";
+import { contactCardSummarySchema } from "../../api/schema/contact-card-page";
+import { planIntakeListResponseSchema } from "../../api/schema/plan-v2";
+import { planFlowHref, planNewGoalHref } from "../../api/compute/plan-href";
 import type { AiSessionEntryPointId, AiSessionGroupContract } from "../../api/contract/ai-sessions";
 import type { AiSessionSummaryItemContract } from "../../api/contract/ai-session-page";
 import type { OrbitLanguage } from "../../api/contract/language";
-import { createAiSessionGroup, deleteAiSessionGroup, renameAiSessionGroup, updateAiSessionOrganization } from "../../api/ai-session-management";
+import { createAiSessionGroup, deleteAiSession, deleteAiSessionGroup, renameAiSessionGroup, restoreAiSession, updateAiSessionOrganization } from "../../api/ai-session-management";
 import { aiSessionOriginInputSchema } from "../../api/schema/ai-sessions";
 import { aiSessionSummaryPageSchema } from "../../api/schema/ai-session-page";
 import { validateApiResourceState } from "../../api/validated-resource-state";
@@ -69,6 +72,8 @@ import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { localAiSessionPage } from "../../view-models/ai-sessions-local";
+import { IOrbitStartView } from "./IOrbitStartView";
+import { useToast } from "../../components/ui";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
@@ -128,6 +133,7 @@ type AiDrawerHistoryItem = {
   preview: string;
   source: "conversation" | "session";
   title: string;
+  updatedAt: string;
   when: string;
 };
 
@@ -213,6 +219,7 @@ function useStableKeyboardBottomInset(): number {
 }
 
 export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
+  const toast = useToast();
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
@@ -286,6 +293,12 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     () => false,
     { scopeKey: JSON.stringify([readScope, groupsAttempt]) }
   ), aiSessionGroupListSchema);
+  const contactSummary = validateApiResourceState(useApiResource<unknown>(
+    "/api/contacts/summary", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
+  ), contactCardSummarySchema);
+  const planIntakes = validateApiResourceState(useApiResource<unknown>(
+    "/api/agent/plans/intakes?platform=app", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
+  ), planIntakeListResponseSchema);
   const todayNow = new Date();
   const todayDate = localDateKey("Asia/Tokyo", todayNow);
   // Sprint 0131 (coordinator item from 0118): the Today block is the page copy "today-summary" (today's only),
@@ -333,22 +346,21 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
-  // Sprint 0131 (coordinator item from 0118): the device searches only titles, the first question and the latest
-  // message; online, 「搜索更多」 asks the server, whose index also covers older messages.
-  const [serverQuery, setServerQuery] = useState<string | null>(null);
-  const serverSearchActive = historyFromDevice && historyQueryParam.length > 0 && serverQuery === historyQueryParam;
+  const [pendingUndo, setPendingUndo] = useState<{ id: string; token: string } | null>(null);
+  useEffect(() => {
+    if (!pendingUndo) return;
+    const timer = setTimeout(() => setPendingUndo(current => current?.token === pendingUndo.token ? null : current), 5_000);
+    return () => clearTimeout(timer);
+  }, [pendingUndo]);
+  // The device mirror is partial. A nonempty online query must use the actor-scoped
+  // server search so older message bodies and pages are included automatically.
+  const serverSearchActive = historyFromDevice && historyQueryParam.length > 0 && !aiOffline;
   const serverSearchState = validateApiResourceState(useApiResource<unknown>(
     historyPath,
     () => false,
     { scopeKey: historyFilterIdentity + ":server-search", cachePolicy: "network-only", enabled: serverSearchActive && !aiOffline }
   ), aiSessionSummaryPageSchema);
   const serverSearchPage = serverSearchActive && (serverSearchState.kind === "success" || serverSearchState.kind === "empty") ? serverSearchState.data : null;
-  const searchScope = historyFromDevice && historyQuery.trim().length > 0 ? {
-    offline: aiOffline,
-    searching: serverSearchActive && serverSearchState.kind === "loading",
-    shownFromServer: serverSearchPage !== null,
-    onSearchMore: () => { const query = historyQuery.trim(); if (owns() && query) setServerQuery(query); },
-  } : null;
   const firstHistoryPage = historyFromDevice
     ? serverSearchPage ?? localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
     : !localSessions.available && (historyState.kind === "success" || historyState.kind === "empty")
@@ -500,7 +512,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
 
   useEffect(() => {
     if (optionalParam(params.drawer) === "1") {
-      setDrawerOpen(true);
+      setHistoryOpen(true);
     }
   }, [params.drawer]);
 
@@ -519,9 +531,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     router.push(item.href as Href);
   }
 
-  function sendMessage() {
+  function sendMessage(messageOverride?: string) {
     if (!owns() || navigationLock.current || !auth.actorId) return;
-    const message = draftMessage.trim();
+    const message = (messageOverride ?? draftMessage).trim();
 
     if (!message) {
       setSendError(locale.t("ai.enterQuestion"));
@@ -623,7 +635,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       }
       setHistoryAttempt(value => value + 1);
     } else {
-      setOrganizationError(result.error);
+      setOrganizationError(result.code === "PIN_LIMIT" ? "ピン留めは5件までです。別の会話のピン留めを外してください。" : result.error);
+      if (result.code === "PIN_LIMIT" || result.code === "CONFLICT") setHistoryAttempt(value => value + 1);
     }
     organizationOperation.current = null;
     setOrganizationBusy(false);
@@ -693,12 +706,15 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     setDeletingHistoryId(item.id);
     setHistoryDeleteError(null);
 
-    const result = await client.delete<unknown>(
-      aiConversationSessionPath(item.id), { signal: operation.signal }
-    );
+    const result = await deleteAiSession(client, item.id, operation.signal);
     if (!owns() || operation.signal.aborted || deleteOperation.current !== operation) return;
-    if (result.success && result.status >= 200 && result.status < 300 && aiSessionDeleteReceiptSchema.safeParse(result.data).success) {
+    if (result.ok) {
       setDeletedIds(ids => [...ids, item.id]);
+      if (result.value.undoToken) {
+        const token = result.value.undoToken;
+        setPendingUndo({ id: item.id, token });
+        toast.success("削除しました", { undo: () => { void restoreDeletion(item.id, token); } });
+      }
       setConfirmDelete(null);
       setHistoryAttempt(value => value + 1);
       if (localSessions.available) void localSessions.refresh();
@@ -709,167 +725,59 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     setDeletingHistoryId(null);
   }
 
+  async function restoreDeletion(id: string, token: string) {
+    if (!owns()) return;
+    setPendingUndo(null);
+    const restored = await restoreAiSession(client, id, token);
+    if (restored.ok) {
+      setDeletedIds(ids => ids.filter(deletedId => deletedId !== id));
+      setHistoryAttempt(value => value + 1);
+      if (localSessions.available) void localSessions.refresh();
+    } else {
+      setHistoryDeleteError("元に戻せませんでした。削除期限が過ぎた可能性があります。");
+    }
+  }
+
+  async function undoDelete() {
+    if (pendingUndo) await restoreDeletion(pendingUndo.id, pendingUndo.token);
+  }
+
   return (
-    <SafeAreaView edges={["bottom", "top"]} style={styles.safeArea}>
-      <ShellBackground />
-      <View {...drawerPanResponder.panHandlers} style={styles.chatRoot}>
-        <ChatTopBar
-          onHome={() => openCapability("/home" as Href)}
-          onOpenHistory={() => setHistoryOpen(true)}
-        />
-        <View
-          style={[
-            styles.chatBody,
-            keyboardBottomInset > 0
-              ? { paddingBottom: keyboardBottomInset }
-              : null
-          ]}
-        >
-          <ChatTranscript
-            chat={homeChat}
-            onRefresh={refresh}
-            refreshing={
-              state.refreshing ||
-              historyState.refreshing ||
-              todayState.refreshing
-            }
-          >
-            <Text accessibilityRole="header" style={styles.heroTitle}>{locale.t("ai.promptTitle")}</Text>
-            <Text style={styles.heroSubtitle}>{locale.t("ai.promptSubtitle")}</Text>
-            <View style={styles.suggestionList}>
-              <Text style={styles.suggestionHeading}>{locale.t("ai.suggestionHeading")}</Text>
-              {suggestedPrompts.map(prompt => (
-                <Pressable accessibilityLabel={locale.t("ai.fillQuestion", { question: prompt.label })} accessibilityHint={locale.t("ai.fillQuestionHint")} accessibilityRole="button" key={prompt.kind}
-                  onPress={() => { if (owns()) { navigationLock.current = false; setDraftMessage(prompt.label); } }}
-                  style={({ pressed }) => [styles.suggestionRow, pressed ? styles.pressed : null]}>
-                  <Ionicons color={colors.ink} name={prompt.kind === "discovery" || prompt.kind === "preparation" ? "calendar-outline" : prompt.kind === "discussion" || prompt.kind === "followup" ? "people-outline" : "checkbox-outline"} size={20} />
-                  <Text style={styles.suggestionText}>{prompt.label}</Text>
-                  <Ionicons color={colors.accentText} name="arrow-forward" size={20} />
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.recentSection}>
-              <View style={styles.recentHeader}>
-                <Text style={styles.sectionLabel}>{locale.t("ai.recentChats")}</Text>
-                <Pressable accessibilityLabel={locale.t("ai.allChats")} accessibilityRole="button" onPress={() => setHistoryOpen(true)} style={styles.allHistoryButton}>
-                  <Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text><Ionicons name="chevron-forward" color={colors.accentText} size={14} />
-                </Pressable>
-              </View>
-              {aiOffline ? <OfflineNotice lastSyncedAt={localSessions.freshness.lastSyncedAt} /> : null}
-              {historyItems.slice(0, 3).map(item => (
-                <Pressable accessibilityLabel={locale.t("ai.continueChat", { title: item.title })} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
-                  <View style={styles.recentCopy}><Text numberOfLines={2} style={styles.recentTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.recentPreview}>{item.preview}</Text></View>
-                  <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.ink3Text} size={14} />
-                </Pressable>
-              ))}
-              {recentLoading && !recentOverdue ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
-              {recentOverdue ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.recentTimedOut")}</Text><Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={() => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
-              {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}
-              {!aiOffline && (state.kind === "failure" || state.kind === "offline") ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
-              {historyKind === "failure" || historyKind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={() => { if (owns()) { setHistoryAttempt(value => value + 1); if (localSessions.available) void localSessions.refresh(); } }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
-              {!localSessions.available && (historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.historyUnavailable")}</Text> : null}
-              {historyItems.length === 0 && (aiOffline || ((state.kind === "success" || state.kind === "empty") && state.data.state !== "pending")) && (historyFromDevice || ((historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured)) ? <Text style={styles.recentState}>{locale.t("ai.noConversations")}</Text> : null}
-            </View>
-            <OrbitNextActions
-              error={todayError}
-              loading={todayState.kind === "loading" && !todayOverdue}
-              onOpen={openTodayAction}
-              onOpenSuggestions={() => openCapability("/today" as Href)}
-              onRefresh={() => { if (owns()) setTodayAttempt(value => value + 1); todayState.refresh(); }}
-            summary={todaySummaryView}
-            />
-          </ChatTranscript>
-          {sendError ? (
-            <Text style={styles.composerError}>{sendError}</Text>
-          ) : null}
-          <ChatComposer
-            draftMessage={draftMessage}
-            onDraftMessageChange={value => { if (owns()) { navigationLock.current = false; setDraftMessage(value); } }}
-            onOpenMenu={() => setComposerMenuOpen(true)}
-            onSend={sendMessage}
-          />
-        </View>
-      </View>
-      <OrbitAiDrawer
-        accountName={mobileUserDisplayName(auth.user, locale.t("ai.account"))}
-        inboxBadge={inboxBadge}
-        historyItems={historyItems}
-        historyNotices={historyNotices}
-        historyQuery={historyQuery}
-        todayBadge={todaySummaryView.openTaskCount}
-        searchScope={searchScope}
-        onHistoryQueryChange={setHistoryQuery}
-        onClose={() => setDrawerOpen(false)}
-        onNewChat={startNewChat}
-        onOpenCapability={openCapability}
-        onOpenHistoryItem={openHistoryItem}
-        visible={drawerOpen}
-      />
-      <OrbitAiHistoryPanel
-        deletingHistoryId={deletingHistoryId}
-        historyDeleteError={historyDeleteError}
-        historyPaginationError={activeHistoryPageError}
-        historyPaging={historyPaging}
-        historyHasMore={historyHasMore && historyQuerySettled}
-        historyItems={historyItems}
-        historyQuery={historyQuery}
-        groupFilterName={groups.find(group => group.id === selectedGroupId)?.name ?? null}
-        historyStateKind={historyKind}
-        conversationStateKind={aiOffline ? "success" : state.kind}
-        offlineLastSyncedAt={aiOffline ? localSessions.freshness.lastSyncedAt : undefined}
-        conversationPending={(state.kind === "success" || state.kind === "empty") && state.data.state === "pending"}
-        historyUnavailable={!localSessions.available && (historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured}
-        onRetryConversation={() => { if (owns()) setConversationAttempt(value => value + 1); }}
-        onRetryHistory={() => { if (owns()) setHistoryAttempt(value => value + 1); }}
-        confirmDelete={confirmDelete}
-        onCancelDelete={() => { if (!deleteOperation.current) setConfirmDelete(null); }}
-        onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
-        onClose={() => setHistoryOpen(false)}
-        onDismiss={() => {
-          if (!organizationPendingOpen) return;
-          setOrganizationPendingOpen(false);
-          if (owns()) setOrganizationOpen(true);
-        }}
-        onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
-        onLoadMoreHistory={() => { void loadMoreHistory(); }}
-        searchScope={searchScope}
-        onHistoryQueryChange={setHistoryQuery}
-        onManageGroups={() => openOrganization(null)}
-        onManageHistoryItem={item => openOrganization(item)}
-        onOpenHistoryItem={openHistoryItem}
-        onClearGroupFilter={() => setSelectedGroupId(null)}
-        visible={historyOpen}
-      />
-      <AiSessionOrganizationPanel
-        busy={organizationBusy}
-        error={organizationError}
-        groups={groups}
-        item={organizationItem}
-        onClose={() => { if (!organizationBusy) setOrganizationOpen(false); }}
-        onDismiss={() => {
-          if (!historyPendingOpen) return;
-          setHistoryPendingOpen(false);
-          if (owns()) setHistoryOpen(true);
-        }}
-        onCreateGroup={name => { void createGroup(name); }}
-        onDeleteGroup={group => { void deleteGroup(group); }}
-        onDeleteSession={item => { const historyItem = historyItems.find(row => row.id === item.id); if (historyItem) { setConfirmDelete(historyItem); closeOrganizationAndOpenHistory(); } }}
-        onMoveSession={(item, groupId) => { void mutateOrganization(item as AiDrawerHistoryItem, { groupId }); }}
-        onOpenGroup={group => { setSelectedGroupId(group.id); closeOrganizationAndOpenHistory(); }}
-        onRenameGroup={(group, name) => { void renameGroup(group, name); }}
-        onRenameSession={(item, title) => { void mutateOrganization(item as AiDrawerHistoryItem, { customTitle: title.trim() }); }}
-        onStartGroupChat={group => { setOrganizationOpen(false); startNewChat(group.id); }}
-        onTogglePin={item => { void mutateOrganization(item as AiDrawerHistoryItem, { pinned: !item.pinned }); }}
-        visible={organizationOpen}
-      />
-      <ComposerMenuSheet
-        onClose={() => setComposerMenuOpen(false)}
-        onNewChat={startNewChat}
-        onOpenDrawer={() => { setComposerMenuOpen(false); setDrawerOpen(true); }}
-        onScanCard={() => openCapability("/contacts/new/scan" as Href)}
-        visible={composerMenuOpen}
-      />
-    </SafeAreaView>
+    <IOrbitStartView
+      contactCount={contactSummary.kind === "success" || contactSummary.kind === "empty" ? contactSummary.data.total : -1}
+      confirmDelete={confirmDelete}
+      deleting={deletingHistoryId !== null}
+      draft={draftMessage}
+      error={sendError ?? historyDeleteError ?? organizationError ?? activeHistoryPageError ?? (serverSearchActive && serverSearchState.kind === "failure" ? serverSearchState.error.message : null)}
+      history={historyItems}
+      historyHasMore={historyHasMore && historyQuerySettled}
+      historyLoading={historyKind === "loading" || historyPaging || (serverSearchActive && serverSearchState.kind === "loading")}
+      historyOpen={historyOpen}
+      historyQuery={historyQuery}
+      offline={aiOffline}
+      offlineAt={localSessions.freshness.lastSyncedAt}
+      onCancelDelete={() => { if (!deleteOperation.current) setConfirmDelete(null); }}
+      onClose={() => { if (router.canGoBack()) router.back(); else router.replace("/home" as Href); }}
+      onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
+      onDelete={item => { if (owns()) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
+      onDraftChange={value => { if (owns()) { navigationLock.current = false; setDraftMessage(value); } }}
+      onHistoryClose={() => setHistoryOpen(false)}
+      onHistoryOpen={() => setHistoryOpen(true)}
+      onHistoryQueryChange={setHistoryQuery}
+      onLoadMore={() => { void loadMoreHistory(); }}
+      onNew={() => startNewChat()}
+      onNewGoal={() => router.push(planNewGoalHref("app") as Href)}
+      onOpen={openHistoryItem}
+      onOpenIntake={intake => router.push(planFlowHref("app", intake.intakeId) as Href)}
+      onPin={item => { void mutateOrganization(item, { pinned: !item.pinned }); }}
+      onRename={(item, title) => { void mutateOrganization(item, { customTitle: title }); }}
+      onScan={() => openCapability("/contacts/new/scan" as Href)}
+      onSend={sendMessage}
+      onUndo={() => { void undoDelete(); }}
+      planIntakes={planIntakes.kind === "success" || planIntakes.kind === "empty" ? planIntakes.data.intakes : []}
+      suggestions={suggestedPrompts.slice(0, 4).map((item, index) => ({ key: String(item.kind), label: item.label, emoji: ["👥", "🎟️", "🎯", "✦"][index] ?? "✦" }))}
+      undoAvailable={pendingUndo !== null}
+    />
   );
 }
 

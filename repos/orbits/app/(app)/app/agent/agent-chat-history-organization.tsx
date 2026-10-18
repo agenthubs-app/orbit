@@ -48,6 +48,7 @@ export async function loadAgentChatGroups(): Promise<AiSessionGroupContract[]> {
 export async function patchAgentChatSessionOrganization(
   sessionId: string,
   input: AiSessionOrganizationMutationContract,
+  onErrorCode?: (code: string) => void,
 ): Promise<AiSessionOrganizationContract | null> {
   try {
     const response = await fetch(`${SESSION_PATH}/${encodeURIComponent(sessionId)}`, {
@@ -56,6 +57,9 @@ export async function patchAgentChatSessionOrganization(
       method: "PATCH",
     });
     const payload = await json(response);
+    if (!response.ok && isRecord(payload) && isRecord(payload.error) && typeof payload.error.code === "string") {
+      onErrorCode?.(payload.error.code);
+    }
     const data = isRecord(payload) && payload.success === true && isRecord(payload.data) ? payload.data : null;
     const session = data && isRecord(data.session) ? data.session : null;
     const parsed = aiSessionOrganizationSchema.safeParse(session?.organization);

@@ -26,5 +26,12 @@ export function createAgentChatSessionMutationQueue() {
         return removed;
       });
     },
+    restore(id: string, mutation: () => Promise<boolean>): Promise<boolean> {
+      if (!removing.has(id)) return Promise.resolve(false);
+      return enqueue(id, mutation).then((restored) => {
+        if (restored) removing.delete(id);
+        return restored;
+      });
+    },
   };
 }

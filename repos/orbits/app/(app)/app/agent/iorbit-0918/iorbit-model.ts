@@ -943,19 +943,34 @@ async function persistStoredAgentChatSession(
   }
 }
 
+export interface AgentSessionUndoReceipt { undoToken: string; undoUntil: string }
+
 async function deleteStoredAgentChatSession(
   sessionId: string,
-): Promise<boolean> {
+): Promise<AgentSessionUndoReceipt | null> {
   try {
     const response = await fetch(agentChatSessionsApiPath(sessionId), {
       method: "DELETE",
     });
     const payload = await readJsonResponse(response);
 
-    return response.ok && agentChatHistoryMutationWasPersisted(payload);
+    if (!response.ok || !agentChatHistoryMutationWasPersisted(payload) || !isRecord(payload) || !isRecord(payload.data)) return null;
+    const { undoToken, undoUntil } = payload.data;
+    return typeof undoToken === "string" && typeof undoUntil === "string" && Number.isFinite(Date.parse(undoUntil))
+      ? { undoToken, undoUntil } : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function restoreStoredAgentChatSession(sessionId: string, undoToken: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${agentChatSessionsApiPath(sessionId)}/restore`, {
+      body: JSON.stringify({ undoToken }), headers: { "content-type": "application/json" }, method: "POST",
+    });
+    const payload = await readJsonResponse(response);
+    return response.ok && isRecord(payload) && payload.success === true && isRecord(payload.data) && payload.data.restored === true;
+  } catch { return false; }
 }
 
 export async function copyAgentMessageText(text: string): Promise<boolean> {
@@ -1200,6 +1215,7 @@ export {
   currentAgentQuery,
   currentAgentSessionId,
   deleteStoredAgentChatSession,
+  restoreStoredAgentChatSession,
   depthFor,
   displayTitleForStoredSession,
   draftPurposeFor,

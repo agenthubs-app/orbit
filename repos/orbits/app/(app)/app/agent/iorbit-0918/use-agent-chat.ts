@@ -20,6 +20,7 @@ import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
   AiSessionOriginInputContract,
+  AiPageContextContract,
 } from "../../../../../shared/contract/ai-sessions";
 import { reliableAiSendReceiptSchema } from "../../../../../shared/api-schema/ai-sessions";
 import type {
@@ -108,6 +109,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   });
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
+  const requestInFlightRef = useRef(false);
   const [chatDraft, setChatDraft] = useState("");
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
@@ -298,7 +300,12 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     query: string,
     retryAssistantIndex?: number,
     originOverride?: AiSessionOriginInputContract,
+    pageContext?: AiPageContextContract,
   ) => {
+    // A second click can arrive before React paints `thinking`. Keep the
+    // reliable request and its billable execution single-flight per screen.
+    if (requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
       locale === "zh"
@@ -343,6 +350,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
           existingSession?.messageRevision ?? 0,
         locale,
         message: query,
+        ...(pageContext ? { pageContext } : {}),
         ...(existingSession
           ? {}
           : {
@@ -598,6 +606,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         },
       ]);
     } finally {
+      requestInFlightRef.current = false;
       setThinking(false);
     }
   }, []);
@@ -671,7 +680,8 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         setPanel(null);
         setActiveSessionId(null);
         activeSessionIdRef.current = null;
-        void ask(query);
+        setChatDraft(query);
+        setChatOpen(true);
         return;
       }
       setAgentPrefill(takeAgentPrefill());
@@ -777,16 +787,10 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
 
     if (!pending) return;
 
-    // 上下文拼进消息本体，而不是偷偷加在 system prompt 里：用户在对话里
-    // 看到的那句话，就是我们真正发出去的那句话。
-    const message = pending.context
-      ? languageRef.current === "zh"
-        ? `${pending.query}\n\n（我正在看${pending.context}）`
-        : `${pending.query}\n\n(I'm currently looking at ${pending.context}.)`
-      : pending.query;
-
     setChatOpen(true);
-    void ask(message);
+    // The source-page label is untrusted handoff data. A confirmed submit sends
+    // the user's words only; structured page context uses the explicit toggle.
+    void ask(pending.query);
   }, [ask]);
   return {
     activeQ,
