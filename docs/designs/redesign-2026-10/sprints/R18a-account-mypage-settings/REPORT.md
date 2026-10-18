@@ -1,5 +1,9 @@
 # R18a implementation report (in progress)
 
+## 2026-10-19 Settings account identity follow-up
+
+The run-04 Settings screenshot had an empty account row and a `?` avatar, while `/account` showed the signed-in actor's name and email. This was a data-source mismatch. Password registration stores its technical name in the auth account but marks the profile name unconfirmed; `/api/profile` intentionally returns `displayName: ""` until onboarding. Settings read only that profile name and `profile.handles.email`, which is also empty for this actor. Commit `c448c553f` keeps a confirmed profile name when present and otherwise shows the signed-in account name; the row's email comes from the auth account when available. The render regression failed on the blank row before the change and passed afterward. Focused Settings/interaction checks were **8/8**, the final Settings file was **4/4**, App typecheck exited 0, and `git diff --check` was clean. This source has **not** been retested on a native screen or rebuilt into a signed binary. The run-05 integration result below belongs to its pinned `e61ea5e3a` JavaScript, not this later identity change.
+
 ## 2026-10-19 signed native run-04 and post-fix run-05 (partial SC03–06 evidence)
 
 Run-04 used clean C `6ce429487` (product source identical to signed-build `d091cc4`), an ad-hoc signed simulator `Orbit.app` with executable SHA-256 `8062b37daafba84fc3fb747f418bf268106fc844d8451342b547b42df2d95b0f`, a new iPhone 17 Pro iOS 26.4 simulator, and an isolated loopback `orbit_line_c_test` schema `r18a_native_20261019_e9fb69f08bb2`. Three synthetic 25/50/100% actors signed in through the actual native credentials screen; the API logged three `POST /api/auth/mobile/credentials 200` responses. No production actor, Google OAuth or paid AI was used. The raw API/Metro logs, ownership receipt and native screenshots are retained under `_evidence-c/R18a/run-04/`.
