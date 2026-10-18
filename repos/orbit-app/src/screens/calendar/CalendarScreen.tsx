@@ -63,13 +63,14 @@ export function CalendarScreen() {
   const offlineMessage = Platform.OS !== "web"
     ? syncTime ? t("schedule.offlineQueuedSnapshot", { time: syncTime }) : t("schedule.offlineQueuedNoSnapshot")
     : syncTime ? t("sync.offlineSnapshot", { time: syncTime }) : t("sync.offlineNoSnapshot");
+  const failureMessage = (message: string) => t(message === "sync.failure" ? "sync.failure" : "calendar.view.invalid");
   return <AppScreen inset="kit" title={t("schedule.title")} refreshControl={<RefreshControl refreshing={source.refreshing || external.refreshing} onRefresh={refresh} tintColor={colors.accentText} />}
     headerActions={<IconButton icon="plus" accessibilityLabel={t("schedule.newPersonal")} onPress={create} />}>
     {loading && !projection ? <Skeleton /> : null}
     {source.offline ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{offlineMessage}</UiText> : null}
-    {source.tasks.kind === "failure" || source.tasks.kind === "offline" ? <RetryCard title={t("schedule.tasksFailed")} message={source.tasks.message} onRetry={refresh} /> : null}
-    {source.events.kind === "failure" || source.events.kind === "offline" ? <RetryCard title={t("schedule.eventsFailed")} message={source.events.message} onRetry={refresh} /> : null}
-    {source.scheduleItems.kind === "failure" || source.scheduleItems.kind === "offline" ? <RetryCard title={t("schedule.personalFailed")} message={source.scheduleItems.message} onRetry={refresh} /> : null}
+    {source.tasks.kind === "failure" || source.tasks.kind === "offline" ? <RetryCard title={t("schedule.tasksFailed")} message={failureMessage(source.tasks.message)} onRetry={refresh} /> : null}
+    {source.events.kind === "failure" || source.events.kind === "offline" ? <RetryCard title={t("schedule.eventsFailed")} message={failureMessage(source.events.message)} onRetry={refresh} /> : null}
+    {source.scheduleItems.kind === "failure" || source.scheduleItems.kind === "offline" ? <RetryCard title={t("schedule.personalFailed")} message={failureMessage(source.scheduleItems.message)} onRetry={refresh} /> : null}
     {projection?.kind === "invalid_schedule" ? <RetryCard title={t("schedule.personalFailed")} message={t("calendar.view.invalid")} onRetry={refresh} /> : null}
     {projection?.kind === "ready" ? <CalendarContent mode={mode} projection={projection} timeZone={timeZone} onConnectExternal={connectExternal}
       {...(external.view ? { external: external.view } : {})} onChangeMode={setMode} onSelectDate={setDateKey}
