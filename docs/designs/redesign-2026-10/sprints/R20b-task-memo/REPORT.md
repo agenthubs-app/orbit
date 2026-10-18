@@ -2,6 +2,8 @@
 
 2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。20:30 のチェックポイントで `origin/redesign` に rebase した。push はしていない。
 
+2026-10-19 04:37 現行 D は `origin/redesign d8e6dafb7` への rebase 後。R20b notes の service / HTTP 定向 **25/25**、App mirror / view-model / search / outbox 定向 **22/22** は exit0。Web `npm run typecheck` / `typecheck:app` / `lint` と App `npm run typecheck` も現行 D tree で exit0（App check は同時進行の calendar locale 修正 `da0ef82bf` の commit 後）。R20b 全量、C11 保存→提議→確認後計分の単一本機 E2E、native / pixel と R20a 残項は OPEN。これらの局所結果を全量合格へ拡張しない。
+
 2026-10-19 03:13 統合チェックポイント：D の clean な 5 件を C / R13 契約までの `origin/redesign b62a13a95` に、次いで上流の R18a / R20a REVIEW `5d277cbe9` に、いずれも衝突なく rebase した。現在の D は上流より 12 commit 先で、push していない。rebase 後の Web Task container **8/8** と隣接 task page **2/2** は exit0。C11 本機 PostgreSQL 保守ファイルは最初 **6/7**：一項が隔離 schema 作成中の接続 timeout で失敗し、断言失敗ではない。PostgreSQL 応答と利用接続を確認後、その一項を隔離再実行 **1/1 pass**、`network_*` schema 残留 **0**。最初の 6/7 を 7/7 に書き換えない。現在の D tree で Web `typecheck` / `typecheck:app` / `lint` と App `typecheck` は exit0。R20b 全量、C11 保存→提議→確認後計分の一体 E2E、native / pixel は引き続き OPEN。
 
 ## 2026-10-19 C11 補掃・ログの個人情報対策（部分）

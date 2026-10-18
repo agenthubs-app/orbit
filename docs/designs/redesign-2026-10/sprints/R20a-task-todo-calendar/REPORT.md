@@ -2,6 +2,8 @@
 
 2026-10-19 04:25 checkpoint：D が clean な状態で 31 local commits を `origin/redesign d8e6dafb7`（R31a 復核修正）へ無衝突 rebase。新 HEAD `345c6659a`、ahead31 / behind0。rebase 後の Web task list / page API **16/16**、App task source / unification **24/24** は pass。直前の M2 PG **5/5**・Web compiler / lint exit0 は同じ D パッチだが上流差分を取り込む前の結果であり、rebase 後の PG growth / compiler / full suite に流用しない。push なし。
 
+04:35 の rebase 後再測定：同じ D task-page source を共有 heavy lock 下で、本機 `orbit_line_d_test` の隔離 schema に対して実行。`tests/services/task-page-postgres.test.ts` **5/5 pass、exit0**、10万件成長値は total 100,062 / 1 query / 12,888 bytes、約14.3秒。対象 prefix の残留 schema **0**。Web 全範囲 `npm run typecheck` と `npm run lint` も当該 D tree で **exit0**。これは M2 の現行局所証拠であり、App / Web 全量、native / pixel、S1 / S2 は OPEN のまま。
+
 同 REVIEW の minor route coverage 対応：App `/today` / `/followups` の現行 consumer は旧 screen ではなく私有 Task redirect。旧 2026-09 native 観測は歴史証拠と明記し、route coverage の consumer / kind と README の二行を現行 route に合わせた。既存の route・redirect・scope 定向 **18/18 pass**（変更前後とも）、`git diff --check` exit0。現行 redirect の新しい native 観測や R20a 全体の通過を意味しない。
 
 2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
@@ -693,8 +695,14 @@ W-R20-01（`web.html` #13）を current D の本機署名済み合成 QA actor�
 
 週／月／日カレンダーの面談行から詳細を開く時、schedule row の `sourceId` で原生 appointment を再取得し、participant-visible の確定済み状態だけに操作を出す。古い行に対して原生状態が cancelled に変わっていれば操作は出さず、その状態を明示する。「動かす」は既存の `MeetingProposalModal` に appointment / contact を渡し、3～5 候補→形式→確認→`propose` とする。元の確定時刻は合意まで変えない。キャンセルは確認後に原生 command を送る。既存 client の厳密な receipt と独立 GET readback が一致した時だけ成功 Toast と calendar refresh を行い、403 や未確認 readback は成功扱いしない。Google 予定と personal 予定の既存操作は変えない。
 
-局所 TDD は原生 GET／確認前 POST なし／cancel readback／古い cancelled 行で RED を確認し、実装後に拒否と readback 不一致も追加した。presenter、workspace、proposal flow、実 Chromium の合成 transport を合わせて **29/29 pass**、Web `typecheck` と lint は exit0、`git diff --check` は exit0。copy QA は **3,678 entries / 26 issues、exit1** だが、今回の `taskCopy` キーに issue はなく、残るものは eventsJourney / host / plan の既存領域。実 Google、paid AI、production、外部送信は使っていない。実装四ファイルは `847b2ac4e` に限定提交した。
+局所 TDD は原生 GET／確認前 POST なし／cancel readback／古い cancelled 行で RED を確認し、実装後に拒否と readback 不一致も追加した。presenter、workspace、proposal flow、実 Chromium の合成 transport を合わせて **29/29 pass**、Web `typecheck` と lint は exit0、`git diff --check` は exit0。copy QA は **3,678 entries / 26 issues、exit1** だが、今回の `taskCopy` キーに issue はなく、残るものは eventsJourney / host / plan の既存領域。実 Google、paid AI、production、外部送信は使っていない。実装四ファイルは R31a 後の現行 commit `e0dda9a8e` に限定提交した。
 
 最初の Web 全量 `_evidence-d/R20a/run-01/d-web-full-meeting-detail.log` は **7,661 total / 6,582 pass / 42 fail / 1,037 skip、exit1**。面談カレンダーの新 browser 用例はその中でも pass。ただしこの command は隔離 `ORBIT_EVENT_DATABASE_URL` を指定し忘れたため、前回 542 skip の baseline と比較できない。出力は保存し、loopback `orbit_line_d_test` を明示、他の DB target / URL 変数を除いて再実行した。
 
 可比な `_evidence-d/R20a/run-01/d-web-full-meeting-detail-loopback.log` は **7,661 total / 7,096 pass / 21 fail / 544 skip、exit1**。面談の新六用例（実 Chromium を含む）は全て pass。直前の同じ隔離 DB 設定の `d-web-full-calendar-week.log`（7,650 / 7,086 pass / 22 fail / 542 skip）と failure 名集合を照合すると、追加は **0**、旧 `SC-02 (d)` の一件だけが今回は消えた。この差を今回の修正効果とはみなさない。R12 / R16 PostgreSQL、R11a browser、manifest、全域 button ratchet 等の 21 失敗は残る。DB の非 system schema は実行後 **7 件**残り、他者所有のため削除していない。Web 全量は赤で SC-16 は OPEN。この slice は Web detail の入口だけであり、App b7 #40～#43 の native 操作、Web b7 #44/#45 の pixel、面談「編集」や SC-11 全体の完了証拠ではない。
+
+## 2026-10-19　App カレンダー失敗文言の言語境界（SC-10 部分）
+
+PLANNER §2 が挙げる `app/tasks/personal.tsx:5` の固定中国語「待办」は現行 source にはなく、この route は `LegacyTaskRedirect` になっている。現在の CalendarScreen が確認できる別の漏れは、source の `message` をそのまま `RetryCard` に渡す経路。mirror は `sync.failure` の内部コード、Web fallback は server の任意言語の error message を返し得る。日本語に設定した実 Chromium の CalendarScreen で、中国語「认证失败，请重试。」と `sync.failure` が失敗カード三枚にそのまま出る RED を確認した。
+
+既知の `sync.failure` は既存の `sync.failure` 辞書、その他の未確認 message は既存の `calendar.view.invalid` 辞書へ写し、原文を画面に出さない。新しい文言は作らず、既存の短い日本語を再利用した。RED 2 → GREEN、隣接 calendar content / projection と合わせ **16/16 pass**、App `typecheck` exit0、`git diff --check` exit0。実装・browser 回帰は `da0ef82bf` の二ファイルに限定。App 全量 `_evidence-d/R20a/run-01/d-app-full-calendar-failure-locale.log` は **3,223 total / 3,207 pass / 13 fail / 1 cancelled / 2 skip、exit1**。新二用例は全量でも pass。失敗13のうち R12 card 九件と旧辞書 exact-key pin 一件、shared compute rule 一件、D Task list 二件。通知 logout 一件は5秒 timeoutで cancelled。直前の post-rebase full とは source と負荷が異なるため、件数だけから追加回帰とは断定しない。D Task list 二件を別途単独実行して帰属を調べる。SC-10 全画面日本語・native 操作・pixel はなお OPEN。
