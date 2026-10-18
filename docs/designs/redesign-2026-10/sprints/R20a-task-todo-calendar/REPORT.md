@@ -795,3 +795,13 @@ Calendar の `Couldn't load Google Calendar events` は、この sanitized API e
 product/test source は前回 full 後の R20b exact test DB allowlist 修正を含み、今回の run 開始時点の HEAD は native 記録のみの `e2abb515f`（実行中の `b72df7fea` amend は REPORT 一行追加のみ）。同じ loopback `/orbit_line_d_test` と共有 heavy queue で `npm test` を fresh 実行した原始ログ `_evidence-d/R20a/run-01/d-web-full-post-r20b-guard-e2abb515f.log` は **7,674 tests / 7,109 pass / 21 fail / 0 cancelled / 544 skip、exit1**。直前の可比 `d-web-full-task-login-harness-policy-postfix.log` は 7,108 pass / 22 fail；failure name 集合の差は R20b `saved meeting memo creates one C11 card` が消えただけで、新規名は **0**。同 case は今回の full 内で pass。Web 全量 green ではない。
 
 終了後 D test DB に非 system schema 七件を観測したが、六件の relation file の変更時刻は **02:16–02:23 JST** で今回の 08:21 開始より前。残る一件は object 0 で作成時刻を裏付けられない。今回の run が作ったものと断定できないため **一件も削除していない**。この保留を cleanup 成功や今回の新規残留とは数えない。D worktree はこの記録以外 clean；App full / native 未網羅 / SC-15 pixel / 独立再検は OPEN のまま。
+
+## 2026-10-19　D native Calendar のオフライン作成・再同期（SC-05 部分）
+
+前回の native 操作と独立した nonce `7b21c5985270` の本機 DB / workspace / 合成 actor を使った。DB 不在、D simulator Shutdown、ports 3500/8085 free を確認してから作成し、web-runtime と strict `sync_revision` migration をこの DB のみに適用。signed D app の既存 data container は消さず、`d2@r20a.test` でログインした。localhost API / Metro とも sanitized environment で、実 Google / paid AI / production は使っていない。
+
+Calendar の native form から 2026-10-19 の終日個人予定 `QA online` を保存し、詳細の saved 表示、PostgreSQL の `personal_schedule_items` 1行、月画面の当日1件を確認。API 3500 だけ停止すると last-seen の予定が月・週・日で残り、同時に「Could not verify your schedule」の error banner も出た。offline form は時点と「単発個人予定は復帰後同期、反復予定・面談は接続が必要」を明示。そこから終日 `QA offline` を保存すると詳細は `Not synced`、DB は依然1件。exact API を再起動すると DB は2件になり、詳細を開き直すと pending 表示が消えた。Home も当日「2 scheduled」と両件を表示。API 停止による bounded offline test であり、端末の実ネットワーク遮断は未検証。画像・作成と清掃の exact 境界は `_evidence-d/R20a/native-calendar-7b21c5985270/` に保存した。
+
+`Couldn't load Google Calendar events` は前回と同じ sanitized fixture の制約で、実 Google の認可・取り込み結果ではない。面談 source の native 表示、反復予定、変更・削除、端末再起動後の outbox、衝突、別 actor、長期 offline、empty/small/large、SC-15 pixel と全量 green はこの実測で閉じない。特に API 停止中の verification error banner と native Calendar last-seen の併存は観測事実として残す。
+
+合成 account は Settings で sign out し login 画面を確認。Metro に通知 cleanup 未完全確認 warning が一件あり、通知登録の完全清掃は主張しない。所有 API / Metro 停止、app terminate、D simulator は元の Shutdown、Next 生成の二 tracked 差分は scoped 復元。drop 前に exact DB name / owner / active connection 0 と全8 `orbit_records` が nonce workspace 内であることを確認し、その DB のみ drop、catalog count 0。既存 simulator app / data は保持。push なし。
