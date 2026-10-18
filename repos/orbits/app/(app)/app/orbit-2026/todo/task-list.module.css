@@ -2,7 +2,7 @@
 .top { align-items: center; display: flex; gap: var(--space-14); margin-bottom: var(--space-20); }
 .top h1 { flex: 1; font-size: var(--fs-title); margin: 0; }
 .back { color: var(--ink-2); font-size: var(--fs-body-sm); text-decoration: none; }
-.back:hover, .editLink:hover { text-decoration: underline; }
+.back:hover { text-decoration: underline; }
 .toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-16); justify-content: space-between; margin-bottom: var(--space-18); }
 .toolbar > :last-child { min-width: 220px; }
 .count, .hint { color: var(--ink-3); font-size: var(--fs-body-sm); margin: var(--space-12) 0; }
@@ -24,7 +24,6 @@
 @media (hover: none) { .quickComplete { opacity: 1; pointer-events: auto; } }
 .taskRowOverdue .rowMain strong, .taskRowOverdue .rowDate { color: var(--coral-text); }
 .pager { display: flex; gap: var(--space-8); justify-content: flex-end; margin-top: var(--space-12); }
-.rail h2 { font-size: var(--fs-card-title); margin: 0 0 var(--space-16); }
 .detailTitle { font-size: var(--fs-body); line-height: var(--lh-body); margin: 0 0 var(--space-8); overflow-wrap: anywhere; }
 .detailMeta { align-items: center; display: flex; gap: var(--space-8); }
 .detailFacts { border-top: 1px solid var(--surface-3); display: grid; gap: var(--space-6); margin: var(--space-16) 0; padding-top: var(--space-14); }
@@ -32,8 +31,10 @@
 .detailFacts dd { font-size: var(--fs-body-sm); margin: 0; }
 .detailNotes p { font-size: var(--fs-body-sm); overflow-wrap: anywhere; }
 .detailActions { align-items: flex-start; display: grid; gap: var(--space-8); margin-top: var(--space-18); }
-.editLink { color: var(--accent-text); font-size: var(--fs-body-sm); padding: var(--space-8) 0; text-decoration: none; }
-.inlineRail { margin-top: var(--space-24); }
+.editForm { display: grid; gap: var(--space-14); }
+.editNotes { color: var(--ink-2); display: grid; font-size: var(--fs-body-sm); gap: var(--space-6); }
+.editNotes textarea { background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: var(--r-input-sm); color: var(--ink); font: inherit; min-height: 120px; padding: var(--space-12); resize: vertical; width: 100%; }
+.editActions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .error { color: var(--coral-text); }
 .addForm { display: grid; gap: var(--space-14); }
 @media (max-width: 767px) { .top { flex-wrap: wrap; } .top h1 { order: -1; width: 100%; } .toolbar > :last-child { width: 100%; } .taskRow { grid-template-columns: 28px minmax(0, 1fr); } .rowSide { grid-column: 2; margin-top: -10px; } }

@@ -8,8 +8,8 @@ import { useTasksMutation, useTasksResource } from "../../tasks/tasks-hooks";
 import type { TaskRowView, TaskView } from "../../tasks/tasks-view-model";
 import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
-import { Button, Card, CategoryTabs, CheckCircle, Chip, ConfirmDialog, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useToast } from "../ui";
-import { ShellPage, useInShell } from "../shell/slots";
+import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useToast } from "../ui";
+import { ShellPage } from "../shell/slots";
 import { groupTaskRows, type TaskListFilter, type TaskListGroupKey } from "./task-list-groups";
 import styles from "./task-list.module.css";
 
@@ -50,11 +50,12 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [showCompleted, setShowCompleted] = useState(initialCompleted);
   const [showOpen, setShowOpen] = useState(!initialCompleted);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
+  const selectedIdRef = useRef<string | null>(initialSelectedId ?? null);
+  const [editing, setEditing] = useState<{ task: TaskView; title: string; notes: string; conflict: boolean } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
-  const inShell = useInShell();
   const context = { today: date, timeZone };
   const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor, context), JSON.stringify([filter, query.trim(), openCursor, "open", date, timeZone]));
   const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor, context), JSON.stringify([filter, query.trim(), doneCursor, "completed", date, timeZone]));
@@ -63,8 +64,18 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");
   const visibleOpen = !denied && !open.error ? open.data?.items ?? [] : [];
   const visibleDone = !denied && !completed.error ? completed.data?.items ?? [] : [];
-  const setScope = (next: TaskListFilter) => { setFilter(next); setOpenCursor(null); setDoneCursor(null); setSelectedId(null); setConfirmDelete(false); };
-  const search = (next: string) => { setQuery(next); setOpenCursor(null); setDoneCursor(null); setSelectedId(null); setConfirmDelete(false); };
+  const selectTask = (id: string | null) => {
+    selectedIdRef.current = id;
+    setSelectedId(id);
+    setEditing(null);
+    setConfirmDelete(false);
+    if (typeof window === "undefined" || !window.location?.href || !window.history?.replaceState) return;
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("task", id); else url.searchParams.delete("task");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  const setScope = (next: TaskListFilter) => { setFilter(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
+  const search = (next: string) => { setQuery(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
   const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); };
 
   function toggle(item: TaskRowView | TaskView) {
@@ -85,41 +96,67 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         throw error;
       }
     }, () => {
-      setConfirmDelete(false); setSelectedId(null); setOpenCursor(null); setDoneCursor(null); open.refresh(); completed.refresh();
+      selectTask(null); setOpenCursor(null); setDoneCursor(null); open.refresh(); completed.refresh();
       toast.success(t(taskCopy.taskListDeleted));
     }, "");
   }
+  function saveEdit() {
+    if (!editing || !editing.title.trim() || editing.conflict || editing.task.notes && !editing.notes.trim()) return;
+    const draft = editing;
+    void mutation.run(async () => {
+      try { return await client.update(draft.task, draft.title, draft.notes); }
+      catch (error) {
+        if (error instanceof TasksClientError && error.code === "CONFLICT" && selectedIdRef.current === draft.task.id) {
+          setEditing(current => current?.task.id === draft.task.id ? { ...current, conflict: true } : current);
+          detail.refresh();
+        }
+        throw error;
+      }
+    }, updated => {
+      open.refresh(); completed.refresh();
+      if (selectedIdRef.current !== draft.task.id) return;
+      detail.replace(updated);
+      setEditing(null);
+      toast.success(t(taskCopy.taskListSaved));
+    }, "");
+  }
   const selectedRow = [...visibleOpen, ...visibleDone].find(item => item.id === selectedId);
-  const rail = <Card className={styles.rail} aria-label={t(taskCopy.taskListDetail)}>
-    <h2>{t(taskCopy.taskListDetail)}</h2>
+  const notesClearUnsupported = Boolean(editing?.task.notes && !editing.notes.trim());
+  const detailContent = <div className={styles.rail}>
     {selectedId && detail.loading && !detail.data ? <Skeleton lines={4} onRetry={detail.refresh} /> : null}
     {selectedId && detail.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={detail.refresh} /> : null}
-    {selectedId && !denied && !detail.error && detail.data ? <>
+    {selectedId && !denied && editing?.task.id === selectedId ? <form className={styles.editForm} onSubmit={event => { event.preventDefault(); saveEdit(); }}>
+      <TextField label={t(taskCopy.todoTitle)} value={editing.title} onChange={event => setEditing({ ...editing, title: event.target.value })} disabled={mutation.busy} autoFocus />
+      <label className={styles.editNotes}>{t(taskCopy.taskListNotes)}<textarea aria-label={t(taskCopy.taskListNotes)} value={editing.notes} onChange={event => setEditing({ ...editing, notes: event.target.value })} disabled={mutation.busy} /></label>
+      {notesClearUnsupported ? <p role="alert" className={styles.error}>{t(taskCopy.taskListNotesCannotClear)}</p> : null}
+      {editing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListConflict)}</p> : null}
+      <div className={styles.editActions}><Button label={t(taskCopy.todoSave)} type="submit" variant="primary" disabled={!editing.title.trim() || notesClearUnsupported || editing.conflict || mutation.busy} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => setEditing(null)} /></div>
+    </form> : selectedId && !denied && !detail.error && detail.data ? <>
       <h3 className={styles.detailTitle}>{detail.data.title}</h3>
       <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
       <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ?? detail.data.plannedDate, language, timeZone)}</dd></dl>
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <div className={styles.detailActions}>
         <Button label={t(detail.data.status === "completed" ? taskCopy.taskListReopen : taskCopy.todoDone).replace("{title}", detail.data.title)} disabled={mutation.busy} onClick={() => toggle(detail.data!)} />
-        <a className={styles.editLink} href={detail.data.href}>{t(taskCopy.taskListEdit)}</a>
+        <Button label={t(taskCopy.taskListEdit)} variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => setEditing({ task: detail.data!, title: detail.data!.title, notes: detail.data!.notes ?? "", conflict: false })} />
         <Button label={t(taskCopy.taskListDelete)} aria-label={t(taskCopy.taskListDelete)} variant="dangerGhost" disabled={mutation.busy || detail.loading || Boolean(detail.error)} onClick={() => setConfirmDelete(true)} />
       </div>
     </> : !selectedId ? <p className={styles.hint}>{t(taskCopy.taskListNoSelection)}</p> : null}
-  </Card>;
+  </div>;
   const blocked = denied;
   const openGroups = groupTaskRows(visibleOpen, date, timeZone, filter);
   const doneGroups = groupTaskRows(visibleDone, date, timeZone, filter);
   const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
   const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <div key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} />
-    <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} ref={element => { if (element) rowButtons.current.set(item.id, element); else rowButtons.current.delete(item.id); }} onClick={() => setSelectedId(item.id)} onKeyDown={event => {
+    <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} ref={element => { if (element) rowButtons.current.set(item.id, element); else rowButtons.current.delete(item.id); }} onClick={() => selectTask(item.id)} onKeyDown={event => {
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
       const index = orderedRows.findIndex(row => row.id === item.id);
       const next = orderedRows[index + (event.key === "ArrowDown" ? 1 : -1)];
       if (!next) return;
       event.preventDefault();
       rowButtons.current.get(next.id)?.focus();
-      setSelectedId(next.id);
+      selectTask(next.id);
     }}>
       <strong>{item.title}</strong><small>{item.relatedContact?.namePreview ?? t(item.relationship ? taskCopy.taskListRelationship : taskCopy.taskListPersonal)}</small>
     </button>
@@ -134,7 +171,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   </section>;
 
   return <>
-    <ShellPage title={t(taskCopy.taskListTitle)} rightRail={rail} phoneFold />
+    <ShellPage title={t(taskCopy.taskListTitle)} phoneFold />
     <main className={styles.page}>
       <div className={styles.top}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
@@ -146,18 +183,18 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {!blocked && showOpen && !open.error && open.data ? <>
         <p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(open.data.total))}</p>
         {visibleOpen.length === 0 ? <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : openGroups.map(renderGroup)}
-        {openCursor || open.data.nextCursor ? <div className={styles.pager}>{openCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setOpenCursor(null); setSelectedId(null); }} /> : null}{open.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setOpenCursor(open.data!.nextCursor); setSelectedId(null); }} /> : null}</div> : null}
+        {openCursor || open.data.nextCursor ? <div className={styles.pager}>{openCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setOpenCursor(null); selectTask(null); }} /> : null}{open.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setOpenCursor(open.data!.nextCursor); selectTask(null); }} /> : null}</div> : null}
       </> : null}
       <section className={styles.group}>
         {showOpen ? <Button label={t(showCompleted ? taskCopy.taskListHideCompleted : taskCopy.taskListShowCompleted)} aria-expanded={showCompleted} onClick={() => setShowCompleted(current => !current)} variant="ghost" /> : null}
         {!blocked && showCompleted ? completed.loading && !completed.data ? <Skeleton lines={3} onRetry={completed.refresh} /> : <>
           {completed.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={completed.refresh} /> : null}
           {!completed.error && completed.data ? <><p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(completed.data.total))}</p>{doneGroups.map(renderGroup)}
-            {doneCursor || completed.data.nextCursor ? <div className={styles.pager}>{doneCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setDoneCursor(null); setSelectedId(null); }} /> : null}{completed.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setDoneCursor(completed.data!.nextCursor); setSelectedId(null); }} /> : null}</div> : null}</> : null}
+            {doneCursor || completed.data.nextCursor ? <div className={styles.pager}>{doneCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setDoneCursor(null); selectTask(null); }} /> : null}{completed.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setDoneCursor(completed.data!.nextCursor); selectTask(null); }} /> : null}</div> : null}</> : null}
         </> : null}
       </section>
-      {!inShell && !blocked ? <aside className={styles.inlineRail}>{rail}</aside> : null}
     </main>
+    <Drawer open={Boolean(selectedId)} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
     <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
     <Modal open={adding} title={t(taskCopy.taskListAdd)} onClose={() => { if (!mutation.busy) setAdding(false); }}>
       <form className={styles.addForm} onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; void mutation.run(() => client.create(draft, date), () => { setDraft(""); setAdding(false); setFilter("all"); setOpenCursor(null); open.refresh(); toast.success(t(taskCopy.todoSaved)); }, ""); }}>

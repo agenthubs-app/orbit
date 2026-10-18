@@ -42,9 +42,23 @@ const fixture = `<div id="root"></div><script>
     const id = decodeURIComponent(path.slice("/api/tasks/".length));
     const row = window.taskRows.find(item => item.id === id);
     if (!row) return Response.json({ success: false, error: { code: "NOT_FOUND" } }, { status: 404 });
-    const task = { ...row, notes: "", accountId: "a", ownerUserId: "a", priority: "normal", plannedDate: "2026-10-17", updatedAt: row.updatedAt || stamp };
+    const task = { ...row, notes: row.notes || "", accountId: "a", ownerUserId: "a", priority: "normal", plannedDate: "2026-10-17", updatedAt: row.updatedAt || stamp };
     if (method === "PATCH") {
-      row.status = JSON.parse(init.body).action === "complete" ? "completed" : "open";
+      const body = JSON.parse(init.body);
+      if (body.action === "update") {
+        if (window.forceEditConflictOnce) {
+          window.forceEditConflictOnce = false;
+          row.title = "\\u30b5\\u30fc\\u30d0\\u30fc\\u7248";
+          row.updatedAt = "2026-10-17T00:00:01.000Z";
+          return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
+        }
+        if (body.expectedUpdatedAt !== (row.updatedAt || stamp)) return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
+        row.title = body.patch.title;
+        row.notes = body.patch.notes || row.notes || "";
+        row.updatedAt = "2026-10-17T00:00:02.000Z";
+        return Response.json({ success: true, data: { task: { ...task, ...row } } });
+      }
+      row.status = body.action === "complete" ? "completed" : "open";
       return Response.json({ success: true, data: { task: { ...task, status: row.status } } });
     }
     if (method === "DELETE") {
@@ -58,7 +72,7 @@ const fixture = `<div id="root"></div><script>
 </script>`;
 
 async function page(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
-  const current = await open(browser, code, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture });
+  const current = await open(browser, code, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture, width: Number(process.env.ORBIT_TASK_BROWSER_WIDTH ?? 1440) });
   t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
   await current.getByRole("heading", { name: "タスク一覧" }).waitFor();
   await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor();
@@ -75,6 +89,36 @@ test("product task list filters on server scopes and discloses completed tasks",
   await current.getByRole("button", { name: "完了したタスクを表示" }).click();
   await current.getByRole("button", { name: "済んだ用事の詳細" }).waitFor();
   assert.ok((await current.evaluate(() => (window as any).taskCalls)).some((call: { path: string }) => call.path.includes("scope=personal")));
+});
+
+test("task drawer edits title and notes with one versioned write", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "編集する" }).click();
+  await current.getByRole("textbox", { name: "やること" }).fill("更新した資料");
+  await current.getByRole("textbox", { name: "メモ" }).fill("確認する");
+  await current.getByRole("button", { name: "保存" }).click();
+  await current.getByRole("heading", { name: "更新した資料" }).waitFor();
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].body.expectedUpdatedAt, "2026-10-17T00:00:00.000Z");
+  assert.deepEqual(writes[0].body.patch, { title: "更新した資料", notes: "確認する" });
+});
+
+test("task drawer conflict keeps the draft without a second write", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "編集する" }).click();
+  await current.getByRole("textbox", { name: "やること" }).fill("私の下書き");
+  await current.evaluate(() => { (window as any).forceEditConflictOnce = true; });
+  await current.getByRole("button", { name: "保存" }).click();
+  await current.getByText(/ほかの画面で変更されました/).waitFor();
+  assert.equal(await current.getByRole("textbox", { name: "やること" }).inputValue(), "私の下書き");
+  assert.equal(await current.getByRole("button", { name: "保存" }).isDisabled(), true);
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  await current.getByRole("button", { name: "キャンセル" }).click();
+  await current.getByRole("heading", { name: "サーバー版" }).waitFor();
 });
 
 test("product task list deletion is cancelled safely and only disappears after confirmation", async t => {

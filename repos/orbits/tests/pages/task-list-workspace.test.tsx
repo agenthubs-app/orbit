@@ -13,14 +13,16 @@ const card = (item: ReturnType<typeof task>) => ({
   priority: item.priority, plannedDate: item.plannedDate, dueAt: null, updatedAt: item.updatedAt,
   completedAt: item.status === "completed" ? at : null, relatedContact: null, relationship: item.category === "relationship",
 });
-function fixture() {
-  let tasks = [task("今日の資料"), task("山本さんへ返信", "open", "relationship"), task("済んだ用事", "completed")];
+function fixture(options: { initialNotes?: string } = {}) {
+  let tasks = [{ ...task("今日の資料"), notes: options.initialNotes ?? "" }, task("山本さんへ返信", "open", "relationship"), task("済んだ用事", "completed")];
   let failPageReads = false;
   let failDetailReads = false;
-  const calls: Array<{ path: string; method: string }> = [];
+  let conflictOnce = false;
+  const calls: Array<{ path: string; method: string; body?: Record<string, unknown> }> = [];
   const fetcher = async (input: string, init?: RequestInit) => {
     const path = String(input), method = init?.method ?? "GET";
-    calls.push({ path, method });
+    const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+    calls.push({ path, method, body });
     if (path.startsWith("/api/tasks/page?")) {
       if (failPageReads) return Response.json({ success: false, error: { code: "UNAVAILABLE", message: "Read unavailable" } }, { status: 503 });
       const query = new URL(path, "https://orbit.test").searchParams;
@@ -39,14 +41,20 @@ function fixture() {
       return Response.json({ success: true, data: { task: item } });
     }
     if (method === "PATCH") {
-      const action = JSON.parse(String(init?.body)).action;
-      const updated = { ...item, status: action === "complete" ? "completed" as const : "open" as const, updatedAt: "2026-10-17T00:01:00.000Z" };
+      if (conflictOnce) {
+        conflictOnce = false;
+        tasks = tasks.map(current => current.id === id ? { ...current, title: "server title", updatedAt: "2026-10-17T00:01:00.000Z" } : current);
+        return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
+      }
+      const action = body?.action;
+      const patch = body?.patch as { title?: string; notes?: string } | undefined;
+      const updated = { ...item, ...(action === "update" ? patch : {}), status: action === "complete" ? "completed" as const : "open" as const, updatedAt: "2026-10-17T00:01:00.000Z" };
       tasks = tasks.map(current => current.id === id ? updated : current);
       return Response.json({ success: true, data: { task: updated } });
     }
     return Response.json({ success: true, data: { task: item } });
   };
-  return { fetcher, calls, failPageReads: () => { failPageReads = true; }, failDetailReads: () => { failDetailReads = true; } };
+  return { fetcher, calls, conflictNext: () => { conflictOnce = true; }, failPageReads: () => { failPageReads = true; }, failDetailReads: () => { failDetailReads = true; } };
 }
 
 const nodeText = (node: { children: unknown[] }): string => node.children.map(child => typeof child === "string" ? child : child && typeof child === "object" && "children" in child ? nodeText(child as { children: unknown[] }) : "").join("");
@@ -57,6 +65,31 @@ const setupDocument = () => {
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
   return () => { if (descriptor) Object.defineProperty(globalThis, "document", descriptor); else Reflect.deleteProperty(globalThis, "document"); };
 };
+const setupLocation = (path = "/app/tasks?tab=todo&view=all&foo=keep") => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  let href = new URL(path, "https://orbit.test").href;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {
+    location: { get href() { return href; } },
+    history: { replaceState(_state: unknown, _unused: string, next: string) { href = new URL(next, href).href; } },
+  } });
+  return { current: () => new URL(href), restore: () => { if (descriptor) Object.defineProperty(globalThis, "window", descriptor); else Reflect.deleteProperty(globalThis, "window"); } };
+};
+
+test("opening and closing a task uses the detail drawer and changes only the task URL parameter", async t => {
+  const location = setupLocation();
+  const { fetcher } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => { act(() => root.unmount()); location.restore(); });
+  assert.equal(root!.root.findAllByProps({ role: "dialog" }).length, 0);
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  assert.equal(root!.root.findAllByProps({ role: "dialog" }).length, 1);
+  assert.deepEqual(Object.fromEntries(location.current().searchParams), { tab: "todo", view: "all", foo: "keep", task: "今日の資料" });
+  await act(async () => buttons(root!, "閉じる")[0]!.props.onClick());
+  assert.equal(root!.root.findAllByProps({ role: "dialog" }).length, 0);
+  assert.deepEqual(Object.fromEntries(location.current().searchParams), { tab: "todo", view: "all", foo: "keep" });
+});
 
 test("task list uses exact server scopes and keeps completed tasks behind an explicit disclosure", async t => {
   const { fetcher, calls } = fixture();
@@ -128,6 +161,7 @@ test("legacy task detail identity reads the selected task even when its row is o
   await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="済んだ用事" />); });
   t.after(() => act(() => root.unmount()));
   assert.match(content(root!), /済んだ用事/);
+  assert.equal(root!.root.findAllByProps({ role: "dialog" }).length, 1);
   assert.ok(calls.some(call => call.path.endsWith(`/api/tasks/${encodeURIComponent("済んだ用事")}`)));
   assert.equal(calls.filter(call => call.method !== "GET").length, 0);
 });
@@ -141,6 +175,124 @@ test("a second legacy task link replaces the selected detail without retaining t
   assert.equal(nodeText(root!.root.findByType("h3")), "今日の資料");
   await act(async () => { root!.update(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="済んだ用事" />); });
   assert.equal(nodeText(root!.root.findByType("h3")), "済んだ用事");
+});
+
+test("task drawer edit saves title and notes once against the displayed version", async t => {
+  const { fetcher, calls } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  const title = root!.root.findAllByType("input").find(node => node.props.value === "今日の資料")!;
+  await act(async () => title.props.onChange({ target: { value: "更新した資料" } }));
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "確認する" } }));
+  await act(async () => root!.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  const writes = calls.filter(call => call.method === "PATCH" && call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0]!.body?.expectedUpdatedAt, at);
+  assert.deepEqual(writes[0]!.body?.patch, { title: "更新した資料", notes: "確認する" });
+  assert.equal(root!.root.findAllByType("textarea").length, 0);
+  assert.match(content(root!), /更新した資料/);
+});
+
+test("cancelling task edit discards its draft without a write", async t => {
+  const { fetcher, calls } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "下書き" } }));
+  await act(async () => buttons(root!, "キャンセル")[0]!.props.onClick());
+  assert.equal(calls.filter(call => call.method !== "GET").length, 0);
+  assert.equal(root!.root.findAllByType("textarea").length, 0);
+  assert.doesNotMatch(content(root!), /下書き/);
+});
+
+test("a conflicting task save preserves the draft but requires reopening edit for a new version", async t => {
+  const { fetcher, calls, conflictNext } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  const title = root!.root.findAllByType("input").find(node => node.props.value === "今日の資料")!;
+  await act(async () => title.props.onChange({ target: { value: "私の下書き" } }));
+  conflictNext();
+  await act(async () => root!.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  assert.equal(root!.root.findAllByType("input").some(node => node.props.value === "私の下書き"), true);
+  assert.match(content(root!), /ほかの画面で変更されました/);
+  assert.equal(buttons(root!, "保存")[0]!.props.disabled, true);
+  assert.equal(calls.filter(call => call.method === "PATCH" && call.body?.action === "update").length, 1);
+  assert.ok(calls.filter(call => call.path.endsWith(`/api/tasks/${encodeURIComponent("今日の資料")}`) && call.method === "GET").length >= 2);
+  await act(async () => buttons(root!, "キャンセル")[0]!.props.onClick());
+  assert.match(content(root!), /server title/);
+});
+
+test("clearing existing notes is explained and cannot submit an update", async t => {
+  const { fetcher, calls } = fixture({ initialNotes: "元のメモ" });
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "" } }));
+  assert.equal(buttons(root!, "保存")[0]!.props.disabled, true);
+  assert.match(content(root!), /メモを空にはできません/);
+  await act(async () => root!.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  assert.equal(calls.filter(call => call.method === "PATCH" && call.body?.action === "update").length, 0);
+});
+
+test("a failed post-conflict detail reload keeps the draft visible with retry", async t => {
+  const { fetcher, calls, conflictNext, failDetailReads } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  const title = root!.root.findAllByType("input").find(node => node.props.value === "今日の資料")!;
+  await act(async () => title.props.onChange({ target: { value: "私の下書き" } }));
+  conflictNext();
+  failDetailReads();
+  await act(async () => root!.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  assert.equal(root!.root.findAllByType("input").some(node => node.props.value === "私の下書き"), true);
+  assert.match(content(root!), /ほかの画面で変更されました/);
+  assert.match(content(root!), /タスクを読み込めませんでした/);
+  assert.equal(buttons(root!, "保存")[0]!.props.disabled, true);
+  assert.equal(calls.filter(call => call.method === "PATCH" && call.body?.action === "update").length, 1);
+});
+
+test("switching selected task discards the old edit draft", async t => {
+  const { fetcher } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "秘密の下書き" } }));
+  await act(async () => buttons(root!, "山本さんへ返信の詳細")[0]!.props.onClick());
+  assert.equal(root!.root.findAllByType("textarea").length, 0);
+  assert.doesNotMatch(content(root!), /秘密の下書き/);
+});
+
+test("changing actors remounts the drawer without retaining an edit draft", async t => {
+  const { fetcher } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace actorId="actor-a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="今日の資料" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "編集する")[0]!.props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "前のアカウントの下書き" } }));
+  await act(async () => { root!.update(<TaskListWorkspace actorId="actor-b" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="今日の資料" />); });
+  assert.equal(root!.root.findAllByType("textarea").length, 0);
+  assert.doesNotMatch(content(root!), /前のアカウントの下書き/);
 });
 
 test("arrow keys select adjacent task rows without a write", async t => {
