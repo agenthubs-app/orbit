@@ -116,7 +116,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
     <>
       <div className={`${s.card} ${m.span9}`} data-host-people={query.bucket}>
         <div className={`${s.row} ${s.between} ${m.peopleHead}`}>
-          <Segmented variant="seg" label={t("pBuckets")} value={query.bucket} onChange={(bucket) => props.onBucket?.(bucket)} segments={BUCKETS.map((bucket) => ({ key: bucket, label: t(BUCKET_LABEL[bucket], { n: data.counts[bucket] }) }))} />
+          <Segmented variant="seg" className={s.peopleSeg} label={t("pBuckets")} value={query.bucket} onChange={(bucket) => props.onBucket?.(bucket)} segments={BUCKETS.map((bucket) => ({ key: bucket, label: t(BUCKET_LABEL[bucket], { n: data.counts[bucket] }) }))} />
           <div className={s.row} style={{ gap: 8 }}>
             <label className={`${m.input} ${m.searchSm}`}><Icon name="search" size={16} /><input type="search" aria-label={t("pSearch")} placeholder={t("pSearchPh")} defaultValue={query.q} onChange={(event) => props.onSearch?.(event.target.value)} /></label>
             <button type="button" className={`btn ${s.btn} ${s.sm} ${query.incomplete ? m.filterOn : ""}`} aria-pressed={query.incomplete} onClick={props.onIncomplete}><Icon name="filter" size={16} />{t("pIncomplete")}</button>
