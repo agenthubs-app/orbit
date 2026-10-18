@@ -41,6 +41,7 @@
       "width": 390,
       "height": 844,
       "themes": ["light"],
+      "viewport-only": true,
       "wait-for": "[data-orbit-iorbit-thread]",
       "note": "390 conversation; actor-owned fixture differs from board data. Design browser chrome excluded by comparator."
     },
@@ -76,6 +77,7 @@
       "width": 390,
       "height": 844,
       "themes": ["dark"],
+      "viewport-only": true,
       "wait-for": "[data-orbit-iorbit-thread]",
       "note": "390 dark conversation"
     }
