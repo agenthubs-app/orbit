@@ -30,7 +30,7 @@ Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,0
 | SC-01 像素準備 | 主会話の `5bdad3d89` で App 48 / Web 24 view、attribution schema と preflight 記録を追加。像素検証自体は未実施。 |
 | SC-04 統一待辦 | live readonly 集約・署名 cursor・SQL 件数 / budgets は実装済み。未初期化 question を生成せず not_implemented、source 不可用時の件数は partial。既知の非同等性は主会話承認の partial として残す。 |
 | SC-05 App offline | To-do copy / stale read-only / task mirror・outbox upload の focused 証拠あり。calendar offline と飛行モード→再起動→復帰の simulator 操作記録は OPEN。 |
-| SC-06 Task container | navigation / quick add / scroll と To-do max-three rail は定向検証。Calendar rail、recent-history verified source、Later / ask の未配線部分は OPEN。plan / memo は変更しない。 |
+| SC-06 Task container | 現行 HEAD で App 容器／navigation **15/15**（seg 切替・連打・＋・再表示時の scroll 位置を含む）、Web 容器／To-do rail **21/21**（←→、`?tab=`、plan hash、rail の同一読取・最大3件・account scope を含む）を再実行。App native device 操作記録と Web 二級ページ往復時の scroll 復元の実操作証拠は OPEN。plan / memo の内部は変更しない。Calendar rail・recent-history・Later / ask の残余は SC-06 のこの定向テスト合格だけでは閉じない別 UI 課題として扱う。 |
 | SC-07 判断待ち | 支持する source-native actions / per-source paging は接続。未検証の persisted conversation deep link を出さない accepted partial を維持。ひとこと保存と全 source flow の収口は OPEN。 |
 | SC-08 draft / sent | 両端 manual-only editor、AI unavailable は実装。App sent/encounter の実ブラウザ2/2、fresh typecheck0、full は上記の既存2失敗のみ。Web はまだ manual-only。日本語 AI / tone / rewrite と native handoff 完全性は OPEN。 |
 | SC-09 詳細 | 承認済み B helper を再利用した exact resolver / App exact-task entry は提出済み。Web Modal `5ff2b01b9` と To-do host `f6bd5b21a` は後続 fresh mounted30/30・実ブラウザ follow-up4/4、secure fixture3/3。target list / detail / delete / defer-two warning は OPEN。 |
