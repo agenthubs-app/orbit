@@ -2,6 +2,12 @@
 
 2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。20:30 のチェックポイントで `origin/redesign` に rebase した。push はしていない。
 
+## 2026-10-19 C11 補掃・ログの個人情報対策（部分）
+
+`1f2af290f` で、従来の `contact_detail_states` memo 補掃を残したまま、`notes` 集合の `usedForPlan=true`／`meeting`／単一連絡先の筆記を候補に追加した。note の record ID と本人の `ownerUserId` / `accountId`、有効な同一 actor の連絡先を SQL で照合し、同じ `noteId + body hash` の終態作業があれば再抽出しない。候補は既存の一回最大 10 件・一 SQL 読取のまま。新筆記の `usedForPlan` も保守作業から既存 C11 入口へ渡す。保存直後の after-hook を失った本機隔離 PostgreSQL 用例は **0 件で RED → 1 件抽出・再走査 0 件で GREEN**、旧 memo を含む保守ファイル **6/6**。他 actor の連絡先、削除済み連絡先、非面談、未 opt-in、複数連絡先、所有者不一致も候補から除いた。テスト後の `network_%` schema 残留は **0**。
+
+エラー記録の先行テストは **22 pass / 5 fail**。失敗の原因は actor/contact/note ID と例外文がログに出ること、また `beginCall` / 書戻しの任意例外文が提取記録に保存されることだった。両方を固定 stage / code に替え、同じ二ファイル **27/27 pass**。provider の呼出し回数、失敗後の再試行可否、抽出済み結果の保持は変更していない。Web `typecheck:app` exit0。通常の Web `typecheck` は B 線全量と重なり、空きメモリ 8% の時点でこちらから中断した（exit130）；合格扱いせず資源が落ち着いてから再走する。全量は Sprint 收口時のみという主会話の指示どおり未実行。C11 の保存→計画提議→確認後の計分、端末読回と UI は未検証で、SC-10 は OPEN のまま。
+
 ## 20:30 統合チェックポイント
 
 `line-d` の clean `5e0419cdc` を `origin/redesign 324218dda` へ rebase し、HEAD は `c06741285` になった。157 commits の replay で止まったのは `add-contact-screens.test.tsx` の dialog entrance wait 一箇所だけ。上流 `936a7289d` が同じ待機を実装済みなので、その実装を残し、D 側の重複を入れなかった。rebase は exit0、直後の `git diff --check` は exit0。R20a / R20b の product source をこの衝突解消で変更していない。
