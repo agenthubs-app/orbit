@@ -3,7 +3,7 @@ import test from "node:test";
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { SessionContext } from "next-auth/react";
 import { MeetingProposalModal } from "../../app/(app)/app/orbit-2026/calendar/MeetingProposalModal";
-import { Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
+import { Modal, Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
 
 const now = Date.parse("2030-04-01T00:00:00Z");
 const text = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : text(child)).join("");
@@ -81,6 +81,8 @@ test("three selected candidates pass through format and review before a verified
   });
   let root: ReactTestRenderer;
   await act(async () => { root = create(<Orbit2026Scope language="ja"><MeetingProposalModal open appointmentId="meeting:1" contactId="contact-b" initialCandidates={candidates} onSent={id => sent.push(id)} onClose={() => { closes++; }} /></Orbit2026Scope>); });
+  assert.equal(root!.root.findByType(Modal).props.form, true, "proposal uses the shared form modal surface");
+  assert.equal(root!.root.findByType(Modal).props.size, 1000);
   t.after(() => { act(() => root.unmount()); restore(); });
   assert.equal(root!.root.findAll(node => node.type === "ol" && node.props["aria-label"] === "候補日時")[0]?.findAllByType("li").length, 3);
   assert.deepEqual(posts, []);
@@ -90,6 +92,8 @@ test("three selected candidates pass through format and review before a verified
   await act(async () => button(root!, "次へ").props.onClick());
   assert.deepEqual(posts, []);
   assert.ok(JSON.stringify(root!.toJSON()).includes("合意するまで、元の予定は変わりません。"));
+  assert.equal(root!.root.findByType(Modal).props.size, 760);
+  assert.equal(root!.root.findByType(Modal).props.form, true);
   await act(async () => button(root!, "再提案を保存").props.onClick());
   assert.equal(posts.length, 1); assert.equal(posts[0].command, "propose"); assert.equal(posts[0].expectedVersion, 3);
   assert.deepEqual(posts[0].proposal.candidateTimes, candidates.map(value => ({ startsAtUtc: value.startsAt })));
