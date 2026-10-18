@@ -19,7 +19,7 @@ import {
   type TransactionalSqlExecutor,
 } from "../../shared/storage/transactional-postgres";
 import { cancelPendingPlanMatchForContact, enqueuePlanMatchJob } from "../plans/matching-repository";
-import { inviteConnectedNotification } from "./notification";
+import { inviteConnectedNotification, inviteRedeemerNotification } from "./notification";
 import { runInviteCodeMigrations } from "./migrations";
 import { createMemoryInviteProfileReader, createPostgresInviteProfileReader } from "./profile-reader";
 import { createPostgresInviteAttemptStore, resolveInviteRateSecret, createInviteRateLimiter, type InviteAttemptStore, type InviteRateLimiter } from "./rate-limit";
@@ -118,7 +118,7 @@ export function createMemoryInviteCodeStorage(input: {
   };
 }
 
-/** 收件箱写入：邀请人收到一条「〇〇さんが招待から登録しました」。 */
+/** 收件箱写入：连接双方各有一条本人联系人通知。 */
 export function createInboxInviteNotifier(input: {
   client: TransactionalPostgresClient;
   workspaceId: string;
@@ -127,11 +127,17 @@ export function createInboxInviteNotifier(input: {
   const store = createPostgresLiveRecordStore<Record<string, unknown>>({ client: input.client });
   return {
     async connected(notice) {
-      const contact = await store.getRecord({ collectionName: "contacts", recordId: notice.inviterContactId, workspaceId: input.workspaceId });
-      if (!contact || contact.lifecycleState !== "active" || contact.userId !== notice.inviterActorId) return;
-      // 收件箱按联系人的版本判断「还能打开」：用写入时联系人的 updatedAt 作为来源版本。
-      const revision = String(contact.payload.version ?? contact.payload.updatedAt ?? contact.updatedAt);
-      await input.upsert(inviteConnectedNotification({ ...notice, contactRevision: revision }));
+      const rows=await input.client.query<{inviter_actor_id:string;inviter_contact_id:string;redeemer_actor_id:string;redeemer_contact_id:string}>(`select inviter_actor_id,inviter_contact_id,redeemer_actor_id,redeemer_contact_id from invite_connections where workspace_id=$1 and id=$2 and unlinked_at is null`,[input.workspaceId,notice.connectionId]);
+      const link=rows.rows[0];if(!link||link.inviter_actor_id!==notice.inviterActorId||link.inviter_contact_id!==notice.inviterContactId)throw Error('INVITE_NOTICE_CONNECTION_UNAVAILABLE');
+      const [inviterContact,redeemerContact]=await Promise.all([
+        store.getRecord({collectionName:'contacts',recordId:link.inviter_contact_id,workspaceId:input.workspaceId}),
+        store.getRecord({collectionName:'contacts',recordId:link.redeemer_contact_id,workspaceId:input.workspaceId}),
+      ]);
+      if(!inviterContact||inviterContact.lifecycleState!=='active'||inviterContact.userId!==link.inviter_actor_id||!redeemerContact||redeemerContact.lifecycleState!=='active'||redeemerContact.userId!==link.redeemer_actor_id)throw Error('INVITE_NOTICE_CONTACT_UNAVAILABLE');
+      const inviterName=String(redeemerContact.payload.displayName??'').trim();if(!inviterName)throw Error('INVITE_NOTICE_NAME_UNAVAILABLE');
+      // Each source revision belongs to the recipient's own contact.
+      await input.upsert(inviteConnectedNotification({...notice,contactRevision:String(inviterContact.payload.version??inviterContact.payload.updatedAt??inviterContact.updatedAt)}));
+      await input.upsert(inviteRedeemerNotification({at:notice.at,connectionId:notice.connectionId,redeemerActorId:link.redeemer_actor_id,redeemerContactId:link.redeemer_contact_id,inviterDisplayName:inviterName,contactRevision:String(redeemerContact.payload.version??redeemerContact.payload.updatedAt??redeemerContact.updatedAt)}));
     },
   };
 }

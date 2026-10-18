@@ -427,7 +427,7 @@ suite("postgres", databaseTest, (run) =>
       return rows.map((row) => ({ actorId: row.actor_id, contactId: row.contact_id, op: "enqueue" as const }));
     })));
 
-test("the inviter's notification uses the existing inbox kinds and opens the contact (written through the real inbox service)", databaseTest, async () => {
+test("both invite participants receive their own contact notification through the real inbox service", databaseTest, async () => {
   const { inviteConnectedNotification } = await import("../../features/invite-codes/notification");
   const { createInboxInviteNotifier } = await import("../../features/invite-codes/configured");
   const { createInboxRuntime } = await import("../../features/notifications/inbox-record-service-factory");
@@ -448,6 +448,10 @@ test("the inviter's notification uses the existing inbox kinds and opens the con
     const alice = await inbox.service.list(ALICE, { limit: 10 });
     assert.equal(alice.items.length, 1);
     assert.deepEqual([alice.items[0]!.title, alice.items[0]!.target.href, alice.items[0]!.target.status], ["Bob Example通过你的邀请加入了", `/contacts/${encodeURIComponent(contactId!)}`, "available"], "listed in the account language (zh by default)");
-    assert.equal((await inbox.service.list(BOB, { limit: 10 })).items.length, 0, "the redeemer is not notified");
+    const bob = await inbox.service.list(BOB, { limit: 10 });
+    const [bobContactId] = await service.linkedContactIds(BOB);
+    assert.equal(bob.items.length, 1);
+    assert.deepEqual([bob.items[0]!.kind,bob.items[0]!.sources[0]!.sourceKind,bob.items[0]!.target.href],['update','contact',`/contacts/${encodeURIComponent(bobContactId!)}`]);
+    assert.notEqual(bob.items[0]!.id,alice.items[0]!.id);
   });
 });
