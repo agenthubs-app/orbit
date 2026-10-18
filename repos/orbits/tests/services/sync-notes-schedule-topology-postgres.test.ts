@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { Pool } from "pg";
 import { createSyncDomainHandlers } from "../../app/api/sync/domain-handlers";
+import { createNoteCollectionHandlers } from "../../app/api/notes/collection-handler";
+import { createNoteDetailHandlers } from "../../app/api/notes/[id]/handler";
 import { createNoteRepository } from "../../features/notes/repository";
 import { createNoteService } from "../../features/notes/service";
 import { createPersonalScheduleService } from "../../features/personal-schedule/service";
@@ -115,7 +117,7 @@ test("isolation: each account's device holds only its own notes and personal sch
 test("memo kind, plan flag and event token survive a local PostgreSQL device mirror pull", options, async (t) => {
   const h = await host(t);
   const saved = await h.notes.create({
-    actorId: A, body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+    actorId: A, body: "Meet @Launch", noteKind: "meeting", usedForPlan: true, manualContactIds: ["contact:a"],
     mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
     idempotencyKey: "note:event-mirror", now: clock,
   });
@@ -125,11 +127,38 @@ test("memo kind, plan flag and event token survive a local PostgreSQL device mir
   assert.equal(pulled?.noteKind, "meeting");
   assert.equal(pulled?.usedForPlan, true);
   assert.deepEqual(pulled?.mentions, saved.mentions);
-  assert.deepEqual(pulled?.contactIds, []);
+  assert.deepEqual(pulled?.contactIds, ["contact:a"]);
   assert.deepEqual(pulled?.eventIds, ["event:launch"]);
   const other = device(h, B, "notes");
   await other.pull();
   assert.equal(other.rows.has(saved.id), false);
+});
+
+test("a saved meeting memo reaches the C11 handoff once while PostgreSQL keeps the actor-owned note", options, async (t) => {
+  const h = await host(t);
+  const jobs: Array<{ actorId: string; contactId: string; noteId: string; body: string }> = [];
+  const owner = { service: h.notes, resolveActor: async () => ({ id: A, userId: A, workspaceId: W }),
+    now: () => clock, scheduleMemoExtraction: (job: { actorId: string; contactId: string; noteId: string; body: string }) => { jobs.push(job); } };
+  const collection = createNoteCollectionHandlers(owner);
+  const payload = { body: "Met Ada", noteKind: "meeting", usedForPlan: true,
+    contactIds: ["contact:a"], idempotencyKey: "pg:c11:create" };
+  const request = () => new Request("https://orbit.local/api/notes", { method: "POST", body: JSON.stringify(payload) });
+  const createdResponse = await collection.POST(request());
+  assert.equal(createdResponse.status, 201);
+  const created = ((await createdResponse.json()) as { data: { note: { id: string } } }).data.note;
+  assert.equal((await collection.POST(request())).status, 201);
+  assert.deepEqual(jobs.map((job) => [job.actorId, job.contactId, job.noteId, job.body]),
+    [[A, "contact:a", created.id, "Met Ada"]]);
+  const row = await h.pool.query<{ user_id: string; payload: { note: { usedForPlan: boolean; noteKind: string } } }>(
+    "select user_id, payload from orbit_records where workspace_id=$1 and collection_name='notes' and record_id=$2",
+    [W, created.id],
+  );
+  assert.equal(row.rows[0]?.user_id, A);
+  assert.equal(row.rows[0]?.payload.note.usedForPlan, true);
+  assert.equal(row.rows[0]?.payload.note.noteKind, "meeting");
+  const other = createNoteDetailHandlers({ service: h.notes, resolveActor: async () => ({ id: B, userId: B, workspaceId: W }) });
+  assert.equal((await other.GET(new Request(`https://orbit.local/api/notes/${created.id}`),
+    { params: Promise.resolve({ id: created.id }) })).status, 404);
 });
 
 test("a linked task reaches only its owner's device with plan and type IDs", options, async (t) => {

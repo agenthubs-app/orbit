@@ -10,6 +10,7 @@ import {
   noteKind,
   noteMentions,
   noteNow,
+  noteOnPersisted,
   noteOptionalString,
   noteService,
   noteString,
@@ -53,6 +54,7 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
           expectedVersion: noteVersion(body.expectedVersion),
           idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
           now: noteNow(dependencies),
+          onPersisted: (saved) => noteOnPersisted(saved, dependencies),
         });
         return noteSuccess({ note });
       } catch (error) { return noteError(error); }

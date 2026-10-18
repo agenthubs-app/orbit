@@ -247,14 +247,14 @@ test("event mention and memo fields persist without inventing a contact associat
     },
   });
   const created = await service.create({
-    actorId: "account:one", body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+    actorId: "account:one", body: "Meet @Launch", noteKind: "meeting", usedForPlan: false,
     mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
     idempotencyKey: "create:event", now: "2026-10-18T00:00:00.000Z",
   });
   assert.deepEqual(created.contactIds, []);
   assert.deepEqual(created.eventIds, ["event:launch"]);
   assert.equal(created.noteKind, "meeting");
-  assert.equal(created.usedForPlan, true);
+  assert.equal(created.usedForPlan, false);
   assert.deepEqual((await service.get({ actorId: "account:one", noteId: created.id }))?.mentions, created.mentions);
 
   const updated = await service.update({
@@ -290,6 +290,81 @@ test("event mention and memo fields persist without inventing a contact associat
     mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: 42 as never }],
     idempotencyKey: "create:event:wrong-type", now: "2026-10-18T00:06:00.000Z",
   }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+});
+
+test("plan-use can be enabled only for a meeting memo with exactly one accessible contact", async () => {
+  const { service } = fixture();
+  for (const [index, input] of [
+    { noteKind: "meeting" as const, contactIds: [] },
+    { noteKind: "meeting" as const, contactIds: ["contact:a", "contact:b"] },
+    { noteKind: "free" as const, contactIds: ["contact:a"] },
+  ].entries()) {
+    await assert.rejects(service.create({ actorId: "account:one", body: "Plan memo", usedForPlan: true,
+      ...input, idempotencyKey: `plan-use:invalid:${index}`, now: "2026-10-18T08:00:00.000Z" }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  }
+  const created = await service.create({ actorId: "account:one", body: "Plan memo", noteKind: "meeting",
+    contactIds: ["contact:a"], usedForPlan: true, idempotencyKey: "plan-use:valid", now: "2026-10-18T08:00:00.000Z" });
+  assert.equal(created.usedForPlan, true);
+  await assert.rejects(service.unlinkContact({ actorId: "account:one", noteId: created.id, contactId: "contact:a",
+    expectedVersion: 1, idempotencyKey: "plan-use:unlink-contact", now: "2026-10-18T08:01:00.000Z" }),
+  (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  await assert.rejects(service.update({ actorId: "account:one", noteId: created.id,
+    contactIds: [], expectedVersion: 1, idempotencyKey: "plan-use:unlink-invalid", now: "2026-10-18T08:01:00.000Z" }),
+  (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  await assert.rejects(service.update({ actorId: "account:one", noteId: created.id,
+    noteKind: "free", expectedVersion: 1, idempotencyKey: "plan-use:kind-invalid", now: "2026-10-18T08:01:00.000Z" }),
+  (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  const disabled = await service.update({ actorId: "account:one", noteId: created.id,
+    contactIds: [], noteKind: "free", usedForPlan: false, expectedVersion: 1,
+    idempotencyKey: "plan-use:disable", now: "2026-10-18T08:01:00.000Z" });
+  assert.equal(disabled.usedForPlan, false);
+  assert.deepEqual(disabled.contactIds, []);
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const restricted = createNoteService({ repository: createNoteRepository({ store, workspaceId: "workspace:test" }),
+    associationReader: {
+      async accessibleContactIds({ actorId, ids }) { return actorId === "account:one" ? ids : []; },
+      async accessibleEventIds({ ids }) { return ids; },
+      async searchContactIds() { return []; },
+    },
+  });
+  await assert.rejects(restricted.create({ actorId: "account:two", body: "Foreign contact", noteKind: "meeting",
+    contactIds: ["contact:a"], usedForPlan: true, idempotencyKey: "plan-use:foreign",
+    now: "2026-10-18T08:02:00.000Z" }),
+  (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+});
+
+test("post-save handoff runs for persisted writes, not replays, and cannot undo the note", async () => {
+  const { service } = fixture();
+  const handedOff: number[] = [];
+  const createdInput = { actorId: "account:one", body: "Plan memo", noteKind: "meeting" as const,
+    contactIds: ["contact:a"], usedForPlan: true, idempotencyKey: "handoff:create", now: "2026-10-18T08:00:00.000Z",
+    onPersisted: (note: { version: number }) => { handedOff.push(note.version); },
+  };
+  const created = await service.create(createdInput);
+  await service.create(createdInput);
+  const updatedInput = { actorId: "account:one", noteId: created.id, body: "Plan memo updated", expectedVersion: 1,
+    idempotencyKey: "handoff:update", now: "2026-10-18T08:01:00.000Z",
+    onPersisted: (note: { version: number }) => { handedOff.push(note.version); },
+  };
+  const updated = await service.update(updatedInput);
+  await service.update(updatedInput);
+  assert.deepEqual(handedOff, [1, 2]);
+  assert.equal(updated.version, 2);
+  const originalError = console.error;
+  const errors: string[] = [];
+  console.error = (message) => { errors.push(String(message)); };
+  try {
+    const afterFailure = await service.update({ actorId: "account:one", noteId: created.id, body: "Still saved",
+      expectedVersion: 2, idempotencyKey: "handoff:failure", now: "2026-10-18T08:02:00.000Z",
+      onPersisted: () => { throw new Error("scheduler unavailable"); },
+    });
+    assert.equal(afterFailure.version, 3);
+    assert.equal((await service.get({ actorId: "account:one", noteId: created.id }))?.body, "Still saved");
+  } finally { console.error = originalError; }
+  assert.equal(errors.length, 1);
+  assert.equal(JSON.parse(errors[0]!).stage, "enqueue_failed");
+  assert.equal(errors[0]!.includes("Still saved"), false);
 });
 
 test("a future mention survives an unchanged edit but cannot be forged or rewritten", async () => {

@@ -65,6 +65,8 @@ export interface NoteCreateInput {
   usedForPlan?: boolean;
   idempotencyKey: string;
   now: string;
+  /** Called only after a new write commits; derived work must not affect the note response. */
+  onPersisted?: (note: NoteDTO) => void;
 }
 
 export interface NoteUpdateInput {
@@ -81,6 +83,7 @@ export interface NoteUpdateInput {
   expectedVersion: number;
   idempotencyKey: string;
   now: string;
+  onPersisted?: (note: NoteDTO) => void;
 }
 
 const mutationTails = new Map<string, Promise<void>>();
@@ -175,6 +178,24 @@ function noteKind(value: unknown): "free" | "meeting" | "voice" | undefined {
 function usedForPlan(value: unknown): boolean | undefined {
   if (value === undefined || typeof value === "boolean") return value;
   throw new NoteServiceError("NOTE_INVALID_INPUT", "Plan use flag is invalid");
+}
+
+function requirePlanUseEligibility(kind: NoteDTO["noteKind"], enabled: boolean | undefined, contactIds: readonly string[]): void {
+  if (enabled === true && (kind !== "meeting" || contactIds.length !== 1)) {
+    throw new NoteServiceError("NOTE_INVALID_INPUT", "Plan use requires a meeting memo with one contact");
+  }
+}
+
+function notifyPersisted(note: NoteDTO, callback: ((note: NoteDTO) => void) | undefined): void {
+  if (!callback) return;
+  try { callback(note); }
+  catch (error) {
+    console.error(JSON.stringify({
+      event: "memo_extraction_error", stage: "enqueue_failed", actorId: note.ownerUserId,
+      contactId: note.contactIds[0] ?? null, noteId: note.id,
+      error: error instanceof Error ? error.name : "unknown",
+    }));
+  }
 }
 
 async function requireAccessibleIds(
@@ -297,6 +318,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const contactIds = canonicalContactIds(manualContactIds, mentions);
       const nextNoteKind = noteKind(createInput.noteKind);
       const nextUsedForPlan = usedForPlan(createInput.usedForPlan);
+      requirePlanUseEligibility(nextNoteKind, nextUsedForPlan, contactIds);
       await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: createInput.actorId, ids }), "contactIds");
       await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: createInput.actorId, ids }), "eventIds");
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
@@ -324,7 +346,10 @@ export function createNoteService(input: { repository: NoteRepository; associati
           operations: [receipt({ idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint, resultVersion: 1 })],
         };
         const inserted = await input.repository.saveIfAbsent(payload);
-        if (inserted) return inserted.note;
+        if (inserted) {
+          notifyPersisted(inserted.note, createInput.onPersisted);
+          return inserted.note;
+        }
         const existing = await input.repository.get(createInput.actorId, noteId);
         const replay = existing && checkReplay(existing, { idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint });
         if (replay) return replay;
@@ -356,6 +381,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
         if (stored.note.version !== updateInput.expectedVersion) {
           throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
         }
+        requirePlanUseEligibility(nextNoteKind ?? stored.note.noteKind, nextUsedForPlan ?? stored.note.usedForPlan, contactIds);
         const note: NoteDTO = {
           ...stored.note,
           title,
@@ -380,6 +406,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
           if (replay) return replay;
           throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
         }
+        notifyPersisted(saved.note, updateInput.onPersisted);
         return saved.note;
       });
     },
@@ -395,14 +422,16 @@ export function createNoteService(input: { repository: NoteRepository; associati
           throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
         }
         if (!stored.note.contactIds.includes(contactId)) return stored.note;
+        const nextContactIds = canonicalContactIds(
+          stored.note.manualContactIds.filter((id) => id !== contactId),
+          stored.note.mentions.filter((item) => item.contactId !== contactId),
+        );
+        requirePlanUseEligibility(stored.note.noteKind, stored.note.usedForPlan, nextContactIds);
         const note: NoteDTO = {
           ...stored.note,
           manualContactIds: stored.note.manualContactIds.filter((id) => id !== contactId),
           mentions: stored.note.mentions.filter((item) => item.contactId !== contactId),
-          contactIds: canonicalContactIds(
-            stored.note.manualContactIds.filter((id) => id !== contactId),
-            stored.note.mentions.filter((item) => item.contactId !== contactId),
-          ),
+          contactIds: nextContactIds,
           version: stored.note.version + 1,
           updatedAt: unlinkInput.now,
         };

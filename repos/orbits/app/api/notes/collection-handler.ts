@@ -11,6 +11,7 @@ import {
   noteKind,
   noteMentions,
   noteNow,
+  noteOnPersisted,
   noteOptionalString,
   noteService,
   noteString,
@@ -76,6 +77,7 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
           usedForPlan: noteUsedForPlan(body.usedForPlan),
           idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
           now: noteNow(dependencies),
+          onPersisted: (saved) => noteOnPersisted(saved, dependencies),
         });
         return noteSuccess({ note }, 201);
       } catch (error) { return noteError(error); }

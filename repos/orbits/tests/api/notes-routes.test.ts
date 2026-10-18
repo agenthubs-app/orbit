@@ -145,18 +145,18 @@ test("HTTP accepts v2 note fields while legacy PATCH preserves omitted associati
 });
 
 test("HTTP persists event mentions and memo flags while keeping old omitted fields absent", async () => {
-  const deps = dependencies();
+  const deps = { ...dependencies(), scheduleMemoExtraction: () => {} };
   const collection = createNoteCollectionHandlers(deps);
   const createdResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
     body: JSON.stringify({
-      body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+      body: "Meet @Launch", noteKind: "meeting", usedForPlan: true, manualContactIds: ["contact:a"],
       mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
       idempotencyKey: "api:create:event",
     }), method: "POST",
   }));
   assert.equal(createdResponse.status, 201);
   const created = (await json(createdResponse)).data.note;
-  assert.deepEqual(created.contactIds, []);
+  assert.deepEqual(created.contactIds, ["contact:a"]);
   assert.deepEqual(created.eventIds, ["event:launch"]);
   assert.equal(created.noteKind, "meeting");
   assert.equal(created.usedForPlan, true);
@@ -186,6 +186,57 @@ test("HTTP persists event mentions and memo flags while keeping old omitted fiel
   assert.equal((await json(freePage)).data.total, 2);
   const invalidKind = await collection.GET(new Request("https://orbit.local/api/notes?noteKind=other"));
   assert.equal(invalidKind.status, 400);
+});
+
+test("HTTP rejects plan-use without a single contact or meeting kind", async () => {
+  const deps = { ...dependencies(), scheduleMemoExtraction: () => {} };
+  const collection = createNoteCollectionHandlers(deps);
+  const invalidCreate = await collection.POST(new Request("https://orbit.local/api/notes", {
+    method: "POST", body: JSON.stringify({ body: "Plan memo", noteKind: "meeting", usedForPlan: true, idempotencyKey: "plan:no-contact" }),
+  }));
+  assert.equal(invalidCreate.status, 400);
+  const createdResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
+    method: "POST", body: JSON.stringify({ body: "Plan memo", noteKind: "meeting", usedForPlan: true,
+      contactIds: ["contact:a"], idempotencyKey: "plan:valid" }),
+  }));
+  assert.equal(createdResponse.status, 201);
+  const created = (await json(createdResponse)).data.note;
+  const detail = createNoteDetailHandlers(deps);
+  const invalidUpdate = await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    method: "PATCH", body: JSON.stringify({ noteKind: "free", expectedVersion: 1, idempotencyKey: "plan:invalid-update" }),
+  }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(invalidUpdate.status, 400);
+});
+
+test("HTTP schedules C11 only after a new eligible save", async () => {
+  const jobs: Array<{ actorId: string; contactId: string; noteId: string; body: string; usedForPlan: boolean }> = [];
+  const deps = { ...dependencies(), scheduleMemoExtraction: (job: typeof jobs[number]) => { jobs.push(job); } };
+  const collection = createNoteCollectionHandlers(deps);
+  const createBody = { body: "Met Ada", noteKind: "meeting", usedForPlan: true,
+    contactIds: ["contact:a"], idempotencyKey: "c11:create" };
+  const createdResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
+    method: "POST", body: JSON.stringify(createBody),
+  }));
+  assert.equal(createdResponse.status, 201);
+  const created = (await json(createdResponse)).data.note;
+  await collection.POST(new Request("https://orbit.local/api/notes", { method: "POST", body: JSON.stringify(createBody) }));
+  assert.deepEqual(jobs.map((job) => [job.actorId, job.contactId, job.noteId, job.body, job.usedForPlan]),
+    [[actorId, "contact:a", created.id, "Met Ada", true]]);
+  const detail = createNoteDetailHandlers(deps);
+  const context = { params: Promise.resolve({ id: created.id }) };
+  const updateBody = { body: "Met Ada again", expectedVersion: 1, idempotencyKey: "c11:update" };
+  assert.equal((await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    method: "PATCH", body: JSON.stringify(updateBody),
+  }), context)).status, 200);
+  await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    method: "PATCH", body: JSON.stringify(updateBody),
+  }), context);
+  assert.equal(jobs.length, 2);
+  assert.equal(jobs[1]?.body, "Met Ada again");
+  assert.equal((await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    method: "PATCH", body: JSON.stringify({ usedForPlan: false, expectedVersion: 2, idempotencyKey: "c11:disable" }),
+  }), context)).status, 200);
+  assert.equal(jobs.length, 2);
 });
 
 test("HTTP PATCH echoes a stored future token unchanged but rejects a rewritten token", async () => {

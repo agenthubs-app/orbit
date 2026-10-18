@@ -1,7 +1,10 @@
 import type { ConditionalReadDependencies } from "../_shared/conditional-read";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import type { NoteService } from "../../../features/notes/service";
+import type { NoteDTO } from "../../../features/notes/contract";
+import type { MemoExtractionJobInput } from "../../../features/contacts/memo-extraction/job";
+import { runConfiguredMemoExtraction } from "../../../features/contacts/memo-extraction/store";
 import type { NoteMentionContract } from "../../../shared/contract/notes";
 import { NoteServiceError } from "../../../features/notes/service";
 import { createConfiguredNoteService } from "../../../features/notes/service-factory";
@@ -15,6 +18,7 @@ export interface NoteRouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;
   service?: NoteService;
   conditionalRead?: ConditionalReadDependencies;
+  scheduleMemoExtraction?: (job: MemoExtractionJobInput & { usedForPlan: true }) => void;
 }
 
 export type NoteRouteContext = { params: Promise<{ id: string }> };
@@ -26,6 +30,18 @@ export function noteNow(dependencies?: NoteRouteDependencies): string {
 
 export function noteService(dependencies?: NoteRouteDependencies): NoteService {
   return dependencies?.service ?? createConfiguredNoteService();
+}
+
+/** Only persisted, eligible notes reach this hook; the service suppresses replay and enqueue failures. */
+export function noteOnPersisted(note: NoteDTO, dependencies?: NoteRouteDependencies): void {
+  if (note.usedForPlan !== true || note.noteKind !== "meeting" || note.contactIds.length !== 1) return;
+  const job = {
+    actorId: note.ownerUserId, contactId: note.contactIds[0]!, noteId: note.id,
+    body: note.body, contact: {}, usedForPlan: true as const,
+  };
+  (dependencies?.scheduleMemoExtraction ?? ((input: MemoExtractionJobInput & { usedForPlan: true }) => {
+    after(async () => { await runConfiguredMemoExtraction(input); });
+  }))(job);
 }
 
 export function noteActorResolver(dependencies?: NoteRouteDependencies): ResolveAuthenticatedApiActor {
