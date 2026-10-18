@@ -16,6 +16,8 @@ M2 の固定 offset 追補 `0bc95193a`：`Intl` が認める `+09:00` を Postgr
 
 その後の heavy lock 再測定は D の別 worker が同時に queue へ入ったため、1 線 1 heavy 待ちの規則を守ってこちらの ticket を取得前に取消した（exit143、テスト本体 0 件）。従って上記性能判定はまだ更新されていない。
 
+04:24 の共有 heavy lock 下で現行 source を再測定した。10 万件成長ケース単独 **1/1 pass、exit0、11.0 秒**、同じ source の PG file 全体 **5/5 pass、exit0、21.0 秒**。10 万件 read は一 query / 12,888 bytes を維持し、テスト用 schema の残留は 0。前二回の timeout は共有機の過負荷下の結果として保持し、この隔離再測定では再現しなかった。SQL 性能の無条件保証や R20a 全量合格ではないが、M2 の現 source の局所 PG gate は pass。
+
 REVIEW m1 の経路一覧は、`app-wide-route-coverage.test.ts` が 2026-09 の画面スナップショット README と行単位で照合する履歴テストである点に注意が要る。そこには退役前の `/today` / `/followups` consumer 名が残るが、現行 route は両方とも私有 `LegacyTaskRedirect`。`retired-today-screen`、`followups-screen-source`、`task-list-scope`、`shell-navigation` の現行遷移テストは **17/17 pass**。履歴表を現行在庫として使わないことは明示できるが、当時の記録そのものを書き換えるか、新しい現行一覧を置くかは主会話の文書方針判断に残す。ここでは履歴テスト／README を改変していない。
 
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
