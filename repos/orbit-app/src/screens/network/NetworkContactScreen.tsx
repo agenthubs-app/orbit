@@ -5,15 +5,13 @@
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { ShellBackground } from "../../components/ShellBackground";
-import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
+import { AppScreen } from "../../components/AppScreen";
 import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -48,7 +46,6 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
   const inviteApi = useInviteApi();
-  const topGap = useShellTopGap();
   const local = useLocalContacts();
   const merge = useNetworkMerge();
   const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: contactId, cachePolicy: "network-only", enabled: !local.available });
@@ -108,13 +105,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   if (!contact) {
     const loading = local.available ? local.freshness.loading : remote.kind === "loading";
     return (
-      <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="network-contact">
-        <ShellBackground />
-        <View style={styles.scroll}>
-          <ShellTopBar title="" left={<IconButton icon="left" accessibilityLabel={t("network.detail.back")} onPress={() => router.back()} />} />
+      <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}>
+        <View testID="network-contact">
           {loading ? <View style={styles.card}><Skeleton lines={5} /></View> : <RetryCard title={local.available ? t("network.detail.notFound") : t("network.detail.loadFailed")} onRetry={() => (local.available ? local.refresh() : remote.refresh())} />}
         </View>
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
@@ -132,12 +127,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const history = (field: string) => previousValues(contact.fieldHistory, field);
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="network-contact">
-      <ShellBackground />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <ShellTopBar title=""
-          left={<IconButton icon="left" accessibilityLabel={t("network.detail.back")} onPress={() => router.back()} />}
-          right={<IconButton icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />} />
+    <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}
+      headerActions={<IconButton icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />}>
+      <View testID="network-contact">
         {local.freshness.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
 
         <View style={[styles.card, styles.head]} testID="network-contact-head">
@@ -285,7 +277,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             </>
           ) : <UiText style={styles.lbl}>{t("network.detail.noInteractions")}</UiText>}
         </View>
-      </ScrollView>
+      </View>
 
       <ActionSheet visible={menuOpen} title={contact.displayName} options={menuOptions} onClose={() => setMenuOpen(false)}
         onSelect={(key) => { setMenuOpen(false); if (key === "edit") router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href); else if (key === "share") setShareOpen(true); else if (key === "unlink") setUnlinkOpen(true); else if (key === "delete") setDeleteOpen(true); }} />
@@ -302,7 +294,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
       ) : null}
       {/* R20a 面談の日程提案（D 线交付的组件；R11a 只挂载，见 REPORT 交接）。 */}
       <MeetingProposalSheet open={proposalOpen} contactId={contactId} onClose={() => setProposalOpen(false)} />
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -348,8 +340,6 @@ function PreviousToggle({ field, open, onToggle, entries }: { field: string; ope
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: SHELL_GUTTER, paddingBottom: 60 },
   grow: { flex: 1, minWidth: 0 },
   gapTop: { marginTop: 12 },
   gapSmall: { marginTop: 10, marginBottom: 8 },

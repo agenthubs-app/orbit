@@ -4,16 +4,14 @@
 // 编辑需要联网（离线时 ✓ 不可用并说明）；删除确认后软删，离线进队列（useDeleteContact）。
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, TextInput, View } from "react-native";
 
 import { seniorityGroup, type SeniorityGroup } from "../../api/compute/seniority-group";
 import type { IndustryIdCode } from "../../api/contract/industries";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../api/domain/industries";
 import { meetingNoteValue } from "../../api/compute/contact-source-chip";
-import { ShellBackground } from "../../components/ShellBackground";
-import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
-import { Avatar, BottomSheet, Button, CategoryTabs, Chip, ConfirmDialog, Icon, IconButton, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
+import { AppScreen } from "../../components/AppScreen";
+import { Avatar, BottomSheet, Button, CategoryTabs, Chip, ConfirmDialog, Icon, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -37,7 +35,6 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   const router = useRouter();
   const toast = useToast();
   const client = useOrbitApiClient();
-  const topGap = useShellTopGap();
   const local = useLocalContacts();
   const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: `edit:${contactId}`, cachePolicy: "network-only", enabled: !local.available });
   const contact = useMemo(() => (local.available ? detailContactFrom(localContactDetail(local.rows, contactId)) : remote.kind === "success" ? detailContactFrom(remote.data) : null), [local.available, local.rows, contactId, remote]);
@@ -57,13 +54,11 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
 
   if (!contact || !value || !initial) {
     return (
-      <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="network-edit">
-        <ShellBackground />
-        <View style={styles.scroll}>
-          <ShellTopBar title={t("network.edit.title")} left={<IconButton icon="x" accessibilityLabel={t("network.edit.cancel")} onPress={() => router.back()} />} />
+      <AppScreen inset="kit" title={t("network.edit.title")} backIcon="x" backAccessibilityLabel={t("network.edit.cancel")}>
+        <View testID="network-edit">
           {(local.available ? local.freshness.loading : remote.kind === "loading") ? <Skeleton lines={6} /> : <RetryCard title={t("network.detail.notFound")} onRetry={() => (local.available ? local.refresh() : remote.refresh())} />}
         </View>
-      </SafeAreaView>
+      </AppScreen>
     );
   }
   const set = (patch: Partial<Draft>) => setDraft({ ...value, ...patch });
@@ -102,12 +97,9 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="network-edit">
-      <ShellBackground />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <ShellTopBar title={t("network.edit.title")}
-          left={<IconButton icon="x" accessibilityLabel={t("network.edit.cancel")} onPress={() => router.back()} />}
-          right={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.save")} accessibilityState={{ disabled: offline || saving }} disabled={offline || saving} onPress={() => void save()} style={[styles.saveButton, (offline || saving) && styles.disabled]}><Icon name="check" size={20} color={colors.bg} /></UiPressable>} />
+    <AppScreen inset="kit" title={t("network.edit.title")} backIcon="x" backAccessibilityLabel={t("network.edit.cancel")}
+      headerActions={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.save")} accessibilityState={{ disabled: offline || saving }} disabled={offline || saving} onPress={() => void save()} style={[styles.saveButton, (offline || saving) && styles.disabled]}><Icon name="check" size={20} color={colors.bg} /></UiPressable>}>
+      <View testID="network-edit">
         {offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /><UiText style={styles.lbl}>{t("network.edit.needsNetwork")}</UiText></View> : null}
         <View style={styles.center}><Avatar name={value.displayName || contact.displayName} size="lg" /></View>
         <View style={styles.form}>
@@ -143,7 +135,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
           </View>
         </View>
         <View style={styles.deleteRow}><Button variant="dangerGhost" block icon="x" label={t("network.edit.delete")} onPress={() => setDeleteOpen(true)} /></View>
-      </ScrollView>
+      </View>
       <IndustryPickerSheet visible={pickerOpen} onClose={() => setPickerOpen(false)} role={value.role}
         primary={value.primaryIndustryId} secondary={value.secondaryIndustryId} seniority={value.seniorityLevel}
         onDone={(next) => { set(next); setPickerOpen(false); }} />
@@ -151,7 +143,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
         message={t("network.delete.body", { interactions: contact.lastInteraction ? 1 : 0, memos: contact.notes.length })}
         confirmLabel={t("network.delete.confirm")} cancelLabel={t("network.delete.cancel")}
         onConfirm={() => { setDeleteOpen(false); void deletion.remove(contactId, contact.displayName, now); }} onCancel={() => setDeleteOpen(false)} />
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -205,8 +197,6 @@ function IndustryPickerSheet({ visible, onClose, onDone, primary, secondary, sen
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: SHELL_GUTTER, paddingBottom: 60 },
   grow: { flex: 1, minWidth: 0 },
   gapBottom: { marginBottom: 12, gap: 6 },
   center: { alignItems: "center", marginBottom: 12 },

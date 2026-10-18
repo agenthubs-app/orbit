@@ -3,14 +3,12 @@
 // 页签 すべて / 目標に関係 / 要フォロー（§B-1）；絞り込み 四组 + 情報の濃さ；「＋」弹 AddContactSheet，背景是列表（R11-01 / R11-04）。
 // 列表、页签、汇总、搜索都在本机按服务端同一规则算，飞行模式可用；计划与跟进 id 读时合并（useNetworkMerge）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 
 import type { ContactCardSummaryDTO } from "../../api/contract/contact-card-page";
-import { ShellBackground } from "../../components/ShellBackground";
-import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
-import { TabPageBar } from "../../components/TabPageBar";
+import { AppScreen } from "../../components/AppScreen";
+import { ShellTopBar } from "../../components/ShellTopBar";
 import { Avatar, BottomSheet, Button, CategoryTabs, Chip, EmptyState, FilterOption, Icon, IconButton, OfflineBar, RetryCard, SampleTag, SearchField, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -30,8 +28,8 @@ import { useNetworkMerge } from "./useNetworkMerge";
 /** Below this many people the page shows the invite card and the locked analysis card (app.html #7), not the density card (#8). */
 export const NETWORK_ANALYSIS_MIN = 10;
 
-/** A-R05-10: the list keeps its tab, filters, search and scroll while a detail is open (the main tab unmounts when unfocused). */
-const memory = new Map<string, { tab: NetworkTab; filters: NetworkFilters; query: string; scrollY: number }>();
+/** A-R05-10: the list keeps its tab, filters and search while a detail is open (the main tab unmounts when unfocused); AppScreen keeps the scroll. */
+const memory = new Map<string, { tab: NetworkTab; filters: NetworkFilters; query: string }>();
 export function resetNetworkScreenMemory(): void { memory.clear(); }
 
 export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: string; now?: () => number }) {
@@ -39,7 +37,6 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const { t } = useOrbitLocale();
   const router = useRouter();
   const params = useLocalSearchParams<{ industry?: string | string[] }>();
-  const topGap = useShellTopGap();
   const remembered = memory.get(scopeKey);
   const [tab, setTab] = useState<NetworkTab>(remembered?.tab ?? "all");
   const [filters, setFilters] = useState<NetworkFilters>(() => {
@@ -49,8 +46,6 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const [query, setQuery] = useState(remembered?.query ?? "");
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(remembered?.scrollY ?? 0);
   const merge = useNetworkMerge();
   const deleted = useDeletedContacts();
   const monthStart = tokyoMonthStart(now());
@@ -70,16 +65,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
     return list.items.filter((card) => !deleted.has(card.id)).map((card) => networkRow(card, merge.links, goalIds));
   }, [list.items, merge.goalIds, merge.links, deleted]);
 
-  useEffect(() => { memory.set(scopeKey, { tab, filters, query, scrollY: scrollY.current }); }, [scopeKey, tab, filters, query]);
-  useEffect(() => {
-    const y = remembered?.scrollY ?? 0;
-    if (y > 0 && list.status === "ready") requestAnimationFrame(() => scrollRef.current?.scrollTo({ y, animated: false }));
-  }, [list.status === "ready"]); // eslint-disable-line react-hooks/exhaustive-deps
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollY.current = event.nativeEvent.contentOffset.y;
-    const current = memory.get(scopeKey);
-    if (current) current.scrollY = scrollY.current;
-  };
+  useEffect(() => { memory.set(scopeKey, { tab, filters, query }); }, [scopeKey, tab, filters, query]);
 
   const subtitle = empty ? t("network.subtitleEmpty") : header ? t("network.subtitle", { total: header.total, added: header.added }) : undefined;
   const openSearch = () => router.push((query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : "/search") as Href);
@@ -87,12 +73,11 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const counts = networkTabCounts(summary);
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="network-screen">
-      <ShellBackground />
-      <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={64} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" testID="network-scroll">
-        <ShellTopBar title={t("network.title")} subtitle={subtitle}
-          left={<IconButton icon="search" accessibilityLabel={t("network.globalSearch")} onPress={openSearch} />}
-          right={<IconButton icon="plus" accessibilityLabel={t("network.addPeople")} onPress={() => setAddOpen(true)} />} />
+    <AppScreen inset="kit" title={t("network.title")}
+      header={<ShellTopBar title={t("network.title")} subtitle={subtitle}
+        left={<IconButton icon="search" accessibilityLabel={t("network.globalSearch")} onPress={openSearch} />}
+        right={<IconButton icon="plus" accessibilityLabel={t("network.addPeople")} onPress={() => setAddOpen(true)} />} />}>
+      <View testID="network-screen">
         {list.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
         {list.status === "loading" ? <NetworkLoading /> : list.status === "failure" && rows.length === 0 && !empty ? (
           <RetryCard title={t("network.loadFailed")} {...(list.failure ? { message: list.failure } : {})} onRetry={list.refresh} />
@@ -121,11 +106,10 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
             {total < NETWORK_ANALYSIS_MIN ? <AnalysisLockedCard missing={NETWORK_ANALYSIS_MIN - total} onPress={() => router.push("/contacts/dashboard" as Href)} /> : null}
           </>
         )}
-      </ScrollView>
+      </View>
       <NetworkFilterSheet visible={filterOpen} onClose={() => setFilterOpen(false)} summary={summary} filters={filters} onChange={setFilters} matched={list.matched} />
       <AddContactSheet visible={addOpen} onClose={() => setAddOpen(false)} />
-      <TabPageBar tab="contacts" />
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -335,8 +319,6 @@ export function NetworkFilterSheet({ visible, onClose, summary, filters, onChang
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: SHELL_GUTTER, paddingBottom: 130 },
   grow: { flex: 1, minWidth: 0 },
   gapTop: { marginTop: 12 },
   gapBottom: { marginBottom: 12 },
