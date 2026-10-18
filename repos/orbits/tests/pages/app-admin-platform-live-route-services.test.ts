@@ -98,13 +98,10 @@ test("admin only renders sourced records and platform fails closed without a pro
   const routeModelSource = source(
     "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
   );
-  const adminDashboardSource = adminSource.slice(
-    adminSource.indexOf("function AdminDashContent"),
-    adminSource.indexOf("function MemberRow"),
-  );
+  const adminDashboardSource = adminSource;
 
-  assert.match(adminDashboardSource, /Source records · read only/);
-  assert.match(adminDashboardSource, /Data boundary/);
+  assert.match(adminDashboardSource, /adminText\("readOnly", language\)/);
+  assert.match(adminDashboardSource, /adminText\("boundary", language\)/);
   assert.doesNotMatch(
     adminDashboardSource,
     /Registration funnel|Live activity|Total registered|Checked in|Matched|Capacity|Run AI matching|Export|Invite/,
@@ -139,14 +136,13 @@ test("admin entry and event management do not claim unexecuted email or writes",
   );
   const adminSource = [loginSource, shellSource, eventsSource].join("\n");
 
-  assert.match(loginSource, /Continue to secure sign in/);
-  assert.match(loginSource, /actor-scoped event source records/);
-  assert.match(loginSource, /dedicated providers are connected/);
+  assert.match(loginSource, /adminText\("loginAction", language\)/);
+  assert.match(loginSource, /adminText\("loginDescription", language\)/);
   assert.match(
     loginSource,
-    /\/app\/account\/login\?next=\$\{encodeURIComponent\(dest\)\}/,
+    /\/app\/account\/login\?next=\$\{encodeURIComponent\(destination\)\}/,
   );
-  assert.match(eventsSource, /Source events · read only/);
+  assert.match(eventsSource, /adminText\("readOnly", language\)/);
   assert.doesNotMatch(
     adminSource,
     /Login email sent|Send sign-in email|Enter admin \(demo\)|Skip · enter admin directly \(demo\)/,

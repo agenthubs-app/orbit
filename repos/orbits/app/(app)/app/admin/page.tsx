@@ -3,18 +3,18 @@
  *
  * 负责本地化 admin view model，并挂载管理员工作台组件。
  */
-import { StateView } from "../../../../shared/ui/state-view";
 import { auth } from "../../../../auth";
 import { redirect } from "next/navigation";
 import type { OrbitLanguage } from "../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
+import { adminRecoveryText, adminRouteStateText, adminText } from "../orbit-2026/copy/admin";
+import { Card, ListRow, Orbit2026Scope } from "../orbit-2026/ui";
 import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
 } from "./compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
 import { OrbitRealAdminWorkspace } from "./orbit-real-admin-workspace";
+import styles from "./Admin.module.css";
 
 async function getAdminPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -34,29 +34,22 @@ async function getAdminPageLanguage(): Promise<OrbitLanguage> {
 function AdminRouteStateBoundary({
   marker = "app-admin-route-state",
   routeState,
+  language,
 }: {
   marker?: string;
   routeState: AppAdminPlatformRouteStateViewModel;
+  language: OrbitLanguage;
 }) {
   return (
-    <div data-orbit-route={marker}>
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          recoveryCopy: action.recoveryCopy,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
+    <Orbit2026Scope language={language} className={styles.page}>
+      <main className={styles.errorPage} data-orbit-route={marker} data-error-code={routeState.errorCode}>
+        <Card className={styles.section} title={adminRouteStateText(routeState.scenario, language).title}>
+          <p className={styles.body}>{adminRouteStateText(routeState.scenario, language).description}</p>
+          {routeState.recoveryActions.map((action) => <ListRow key={action.id} title={adminRecoveryText(action.id, language).label} subtitle={adminRecoveryText(action.id, language).description} href={action.href} />)}
+          <p className={styles.meta}>{adminText("readOnly", language)}</p>
+        </Card>
+      </main>
+    </Orbit2026Scope>
   );
 }
 
@@ -78,22 +71,18 @@ export default async function AdminPage() {
     },
     surface: "admin",
   });
-  const language =
-    routeModel.state === "success" ? await getAdminPageLanguage() : "zh";
+  const language = await getAdminPageLanguage();
 
   return (
-    <>
-      <OrbitReferenceStyles />
-      {routeModel.state === "success" ? (
+    routeModel.state === "success" ? (
         <div data-orbit-route="app-admin-route">
           <OrbitRealAdminWorkspace
+            language={language}
             viewModel={localizeOrbitTree(routeModel.admin, language)}
           />
         </div>
       ) : (
-        <AdminRouteStateBoundary routeState={routeModel.routeState} />
-      )}
-      <OrbitVisualFreezeRuntime />
-    </>
+        <AdminRouteStateBoundary language={language} routeState={routeModel.routeState} />
+      )
   );
 }

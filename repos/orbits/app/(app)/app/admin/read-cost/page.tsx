@@ -1,10 +1,4 @@
-/**
- * 管理后台「读取量」页（监控 O3）。
- *
- * 只有 ORBIT_READ_COST_ADMIN_ACCOUNT_IDS 里的账号能看；其他已登录账号得到 404，
- * 未登录跳登录页。数据来自每日汇总表，不直接扫小票。
- */
-import type { ReactNode } from "react";
+/** Authorized, actor-scoped read-cost rollup. No receipt scan or write operation. */
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { resolveAuthenticatedApiActor } from "../../../../api/_shared/authenticated-actor";
@@ -12,18 +6,19 @@ import { isReadCostAdmin } from "../../../../../features/operations/read-cost/co
 import { readReadCostOverview, type ReadCostOverview } from "../../../../../features/operations/read-cost/overview";
 import { createConfiguredTransactionalPostgresRuntime } from "../../../../../shared/storage/transactional-postgres";
 import { getOrbitServerLanguage } from "../../orbit-language-server";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
+import type { OrbitLanguage } from "../../orbit-language-core";
+import { adminText } from "../../orbit-2026/copy/admin";
+import { Button, Card, EmptyState, Orbit2026Scope, Table, ToastProvider } from "../../orbit-2026/ui";
 import { READ_COST_ADMIN_COPY } from "./read-cost-copy";
+import styles from "../Admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-type Copy = Record<string, { zh: string; en: string }>;
-const COPY = READ_COST_ADMIN_COPY;
 const RULES = {
-  route_average_spike: { zh: "平均读取翻倍", en: "Average doubled" },
-  large_request: { zh: "单次超过 5 MB", en: "Request over 5 MB" },
-  low_coverage: { zh: "覆盖率低于 70%", en: "Coverage below 70%" },
-} satisfies Copy;
+  route_average_spike: { ja: "平均読み取り量が倍増", zh: "平均读取翻倍", en: "Average doubled" },
+  large_request: { ja: "1 回で 5 MB 超", zh: "单次超过 5 MB", en: "Request over 5 MB" },
+  low_coverage: { ja: "カバー率が 70% 未満", zh: "覆盖率低于 70%", en: "Coverage below 70%" },
+};
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
@@ -32,131 +27,72 @@ function formatBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-const cell = { padding: "8px 10px", borderBottom: "1px solid var(--line)", textAlign: "left" as const, verticalAlign: "middle" as const };
-const num = { ...cell, textAlign: "right" as const, fontVariantNumeric: "tabular-nums" as const, whiteSpace: "nowrap" as const };
-const head = { ...cell, color: "var(--ink-3-text)", fontWeight: 500, fontSize: "var(--fs-label)" };
-const headNum = { ...head, textAlign: "right" as const };
-
-function Bar({ value, max, label }: { value: number; max: number; label: string }) {
-  const width = max > 0 ? Math.max(value > 0 ? 2 : 0, Math.round((value / max) * 100)) : 0;
-  return (
-    <div aria-hidden title={label} style={{ background: "var(--surface-2)", borderRadius: 4, height: 8, minWidth: 80, overflow: "hidden" }}>
-      <div style={{ background: "var(--accent-text)", borderRadius: 4, height: 8, width: `${width}%` }} />
-    </div>
-  );
+function Bar({ value, max }: { value: number; max: number }) {
+  const width = max > 0 ? Math.max(value > 0 ? 2 : 0, Math.round(value / max * 100)) : 0;
+  return <div className={styles.bar} aria-hidden="true"><div className={styles.barFill} style={{ width: `${width}%` }} /></div>;
 }
 
-function Section({ title, children, id }: { title: string; children: ReactNode; id: string }) {
-  return (
-    <section className="card" data-read-cost-section={id} style={{ marginTop: 18, overflowX: "auto", padding: 18 }}>
-      <h2 className="h-section" style={{ margin: "0 0 12px" }}>{title}</h2>
-      {children}
-    </section>
-  );
+function hasRecords(data: ReadCostOverview): boolean {
+  return data.days.some((day) => day.requests > 0 || day.recordedBytes > 0)
+    || data.topRoutes.length > 0 || data.topAccounts.length > 0 || data.alerts.length > 0;
 }
 
-function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof typeof COPY) => string; zh: boolean }) {
-  const maxDay = Math.max(0, ...data.days.map((d) => Math.max(d.recordedBytes, d.neonBytes ?? 0)));
-  const maxRoute = Math.max(0, ...data.topRoutes.map((r) => r.totalBytes));
-  const maxAccount = Math.max(0, ...data.topAccounts.map((a) => a.totalBytes));
-  const maxTrend = Math.max(0, ...data.trend.points.map((p) => p.avgBytes));
-  const neonLabel = (status: string) => (status === "failed" ? t("failed") : status === "pending" ? t("pending") : t("unavailable"));
+function ReadCostView({ data, language }: { data: ReadCostOverview; language: OrbitLanguage }) {
+  const t = (key: keyof typeof READ_COST_ADMIN_COPY) => READ_COST_ADMIN_COPY[key][language];
+  const maxDay = Math.max(0, ...data.days.map((day) => Math.max(day.recordedBytes, day.neonBytes ?? 0)));
+  const maxRoute = Math.max(0, ...data.topRoutes.map((route) => route.totalBytes));
+  const maxAccount = Math.max(0, ...data.topAccounts.map((account) => account.totalBytes));
+  const maxTrend = Math.max(0, ...data.trend.points.map((point) => point.avgBytes));
+  const neonLabel = (status: string) => status === "failed" ? t("failed") : status === "pending" ? t("pending") : t("unavailable");
   return (
     <>
-      <Section id="days" title={t("days")}>
-        <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
-          <thead><tr><th style={head}>{t("day")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("recorded")}</th><th style={head} /><th style={headNum}>{t("neon")}</th><th style={headNum}>{t("coverage")}</th></tr></thead>
-          <tbody>
-            {data.days.map((d) => (
-              <tr key={d.day}>
-                <td style={{ ...cell, whiteSpace: "nowrap" }}>{d.day}</td>
-                <td style={num}>{d.requests.toLocaleString("en-US")}</td>
-                <td style={num}>{formatBytes(d.recordedBytes)}</td>
-                <td style={{ ...cell, width: "30%" }}><Bar label={formatBytes(d.recordedBytes)} max={maxDay} value={d.recordedBytes} /></td>
-                <td style={num}>{d.neonStatus === "ok" && d.neonBytes !== null ? formatBytes(d.neonBytes) : <span style={{ color: "var(--ink-3-text)" }}>{neonLabel(d.neonStatus)}</span>}</td>
-                <td style={num}>{d.coverage !== null ? `${Math.round(d.coverage * 100)}%` : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Section>
-      <Section id="routes" title={t("routes")}>
-        {data.topRoutes.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
-            <thead><tr><th style={head}>{t("route")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("avg")}</th><th style={headNum}>{t("max")}</th><th style={headNum}>{t("total")}</th><th style={head} /></tr></thead>
-            <tbody>
-              {data.topRoutes.map((r) => (
-                <tr key={r.route} style={r.route === data.trend.route ? { background: "var(--accent-soft)" } : undefined}>
-                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)", whiteSpace: "nowrap" }}>
-                    <Link href={`/app/admin/read-cost?route=${encodeURIComponent(r.route)}`}>{r.route}</Link>
-                  </td>
-                  <td style={num}>{r.requests.toLocaleString("en-US")}</td>
-                  <td style={num}>{formatBytes(r.avgBytes)}</td>
-                  <td style={num}>{formatBytes(r.maxRequestBytes)}</td>
-                  <td style={num}>{formatBytes(r.totalBytes)}</td>
-                  <td style={{ ...cell, width: "20%" }}><Bar label={formatBytes(r.totalBytes)} max={maxRoute} value={r.totalBytes} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Section>
-      <Section id="accounts" title={t("accounts")}>
-        {data.topAccounts.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
-            <thead><tr><th style={head}>{t("account")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("avg")}</th><th style={headNum}>{t("total")}</th><th style={head} /></tr></thead>
-            <tbody>
-              {data.topAccounts.map((a) => (
-                <tr key={a.accountId}>
-                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)", whiteSpace: "nowrap" }}>{a.accountId}</td>
-                  <td style={num}>{a.requests.toLocaleString("en-US")}</td>
-                  <td style={num}>{formatBytes(a.avgBytes)}</td>
-                  <td style={num}>{formatBytes(a.totalBytes)}</td>
-                  <td style={{ ...cell, width: "20%" }}><Bar label={formatBytes(a.totalBytes)} max={maxAccount} value={a.totalBytes} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Section>
-      <Section id="trend" title={`${t("trend")}${data.trend.route ? ` · ${data.trend.route}` : ""}`}>
-        {data.trend.route === null ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <>
-            <p className="orbit-host-muted" style={{ margin: "0 0 10px" }}>{t("trendHint")}</p>
-            <div role="img" aria-label={`${t("trend")} ${data.trend.route}`} style={{ alignItems: "flex-end", borderBottom: "1px solid var(--ink-4)", display: "flex", gap: 4, height: 140 }}>
-              {data.trend.points.map((p) => (
-                <div
-                  key={p.day}
-                  title={`${p.day} · ${t("avg")} ${formatBytes(p.avgBytes)} · ${t("requests")} ${p.requests.toLocaleString("en-US")}`}
-                  style={{ alignItems: "flex-end", display: "flex", flex: 1, height: "100%", minWidth: 4 }}
-                >
-                  <div style={{ background: "var(--accent-text)", borderRadius: "4px 4px 0 0", height: `${maxTrend > 0 ? Math.max(p.avgBytes > 0 ? 2 : 0, Math.round((p.avgBytes / maxTrend) * 100)) : 0}%`, width: "100%" }} />
-                </div>
-              ))}
-            </div>
-            <div className="orbit-host-muted" style={{ display: "flex", fontSize: "var(--fs-label)", justifyContent: "space-between", marginTop: 6 }}>
-              <span>{data.trend.points[0]?.day}</span><span>{t("peak")} {formatBytes(maxTrend)}</span><span>{data.trend.points.at(-1)?.day}</span>
-            </div>
-          </>
-        )}
-      </Section>
-      <Section id="alerts" title={t("alerts")}>
-        {data.alerts.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
-            <tbody>
-              {data.alerts.map((a) => (
-                <tr key={`${a.rule}:${a.day}:${a.subject}`}>
-                  <td style={{ ...cell, whiteSpace: "nowrap" }}>{a.day}</td>
-                  <td style={cell}>{RULES[a.rule][zh ? "zh" : "en"]}</td>
-                  <td style={{ ...cell, fontFamily: "var(--font-num)", fontSize: "var(--fs-body-sm)" }}>{a.subject}</td>
-                  <td style={num}>{a.rule === "low_coverage" ? `${Math.round(a.observed * 100)}%` : formatBytes(a.observed)}</td>
-                  <td style={cell}>{a.notified ? t("notified") : t("waiting")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Section>
+      <Card className={styles.readCostSection} title={t("days")} data-read-cost-section="days">
+        <Table caption={t("days")} rows={data.days} rowKey={(day) => day.day} columns={[
+          { key: "day", header: t("day"), render: (day) => day.day },
+          { key: "requests", header: t("requests"), align: "end", render: (day) => day.requests.toLocaleString("en-US") },
+          { key: "recorded", header: t("recorded"), align: "end", render: (day) => formatBytes(day.recordedBytes) },
+          { key: "bar", header: "", render: (day) => <Bar value={day.recordedBytes} max={maxDay} /> },
+          { key: "neon", header: t("neon"), align: "end", render: (day) => day.neonStatus === "ok" && day.neonBytes !== null ? formatBytes(day.neonBytes) : neonLabel(day.neonStatus) },
+          { key: "coverage", header: t("coverage"), align: "end", render: (day) => day.coverage !== null ? `${Math.round(day.coverage * 100)}%` : "—" },
+        ]} />
+      </Card>
+      <Card className={styles.readCostSection} title={t("routes")} data-read-cost-section="routes">
+        {data.topRoutes.length === 0 ? <p className={styles.body}>{t("noData")}</p> : <Table caption={t("routes")} rows={data.topRoutes} rowKey={(route) => route.route} columns={[
+          { key: "route", header: t("route"), render: (route) => <Link aria-current={route.route === data.trend.route ? "page" : undefined} className={route.route === data.trend.route ? styles.selectedRoute : undefined} href={`/app/admin/read-cost?route=${encodeURIComponent(route.route)}`}>{route.route}</Link> },
+          { key: "requests", header: t("requests"), align: "end", render: (route) => route.requests.toLocaleString("en-US") },
+          { key: "avg", header: t("avg"), align: "end", render: (route) => formatBytes(route.avgBytes) },
+          { key: "max", header: t("max"), align: "end", render: (route) => formatBytes(route.maxRequestBytes) },
+          { key: "total", header: t("total"), align: "end", render: (route) => formatBytes(route.totalBytes) },
+          { key: "bar", header: "", render: (route) => <Bar value={route.totalBytes} max={maxRoute} /> },
+        ]} />}
+      </Card>
+      <Card className={styles.readCostSection} title={t("accounts")} data-read-cost-section="accounts">
+        {data.topAccounts.length === 0 ? <p className={styles.body}>{t("noData")}</p> : <Table caption={t("accounts")} rows={data.topAccounts} rowKey={(account) => account.accountId} columns={[
+          { key: "account", header: t("account"), render: (account) => account.accountId },
+          { key: "requests", header: t("requests"), align: "end", render: (account) => account.requests.toLocaleString("en-US") },
+          { key: "avg", header: t("avg"), align: "end", render: (account) => formatBytes(account.avgBytes) },
+          { key: "total", header: t("total"), align: "end", render: (account) => formatBytes(account.totalBytes) },
+          { key: "bar", header: "", render: (account) => <Bar value={account.totalBytes} max={maxAccount} /> },
+        ]} />}
+      </Card>
+      <Card className={styles.readCostSection} title={`${t("trend")}${data.trend.route ? ` · ${data.trend.route}` : ""}`} data-read-cost-section="trend">
+        {data.trend.route === null ? <p className={styles.body}>{t("noData")}</p> : <>
+          <p className={styles.body}>{t("trendHint")}</p>
+          <div className={styles.trend} role="img" aria-label={`${t("trend")} ${data.trend.route}`}>
+            {data.trend.points.map((point) => <div className={styles.trendColumn} key={point.day} title={`${point.day} · ${t("avg")} ${formatBytes(point.avgBytes)} · ${t("requests")} ${point.requests.toLocaleString("en-US")}`}><div className={styles.trendColumnBar} style={{ height: `${maxTrend > 0 ? Math.max(point.avgBytes > 0 ? 2 : 0, Math.round(point.avgBytes / maxTrend * 100)) : 0}%` }} /></div>)}
+          </div>
+          <div className={styles.trendLabels}><span>{data.trend.points[0]?.day}</span><span>{t("peak")} {formatBytes(maxTrend)}</span><span>{data.trend.points.at(-1)?.day}</span></div>
+        </>}
+      </Card>
+      <Card className={styles.readCostSection} title={t("alerts")} data-read-cost-section="alerts">
+        {data.alerts.length === 0 ? <p className={styles.body}>{t("noData")}</p> : <Table caption={t("alerts")} rows={data.alerts} rowKey={(alert) => `${alert.rule}:${alert.day}:${alert.subject}`} columns={[
+          { key: "day", header: t("day"), render: (alert) => alert.day },
+          { key: "rule", header: t("alerts"), render: (alert) => RULES[alert.rule][language] },
+          { key: "subject", header: t("route"), render: (alert) => alert.subject },
+          { key: "observed", header: t("total"), align: "end", render: (alert) => alert.rule === "low_coverage" ? `${Math.round(alert.observed * 100)}%` : formatBytes(alert.observed) },
+          { key: "notified", header: "", render: (alert) => alert.notified ? t("notified") : t("waiting") },
+        ]} />}
+      </Card>
     </>
   );
 }
@@ -165,26 +101,41 @@ export default async function AdminReadCostPage({ searchParams }: { searchParams
   const actor = await resolveAuthenticatedApiActor();
   if (!actor) redirect("/app/account/login?next=%2Fapp%2Fadmin%2Fread-cost");
   if (!isReadCostAdmin(actor.id)) notFound();
-  let language = "zh";
-  try { language = await getOrbitServerLanguage(); } catch { /* default zh */ }
-  const zh = language === "zh";
-  const t = (key: keyof typeof COPY) => COPY[key][zh ? "zh" : "en"];
+  let language: OrbitLanguage = "zh";
+  try { language = await getOrbitServerLanguage(); } catch { /* requestless tests use zh */ }
+  const t = (key: keyof typeof READ_COST_ADMIN_COPY) => READ_COST_ADMIN_COPY[key][language];
   const params = await searchParams;
   const route = typeof params.route === "string" ? params.route.slice(0, 300) : null;
-  const runtime = createConfiguredTransactionalPostgresRuntime();
-  const data = runtime ? await readReadCostOverview(runtime.client, { now: new Date(), route }) : null;
+  let data: ReadCostOverview | null = null;
+  let failure: "runtime" | "read" | null = null;
+  try {
+    const runtime = createConfiguredTransactionalPostgresRuntime();
+    if (!runtime) failure = "runtime";
+    else data = await readReadCostOverview(runtime.client, { now: new Date(), route });
+  } catch {
+    failure = "read";
+  }
   return (
-    <>
-      <OrbitReferenceStyles />
-      <main data-orbit-route="app-admin-read-cost-route" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", padding: "28px 16px 64px" }}>
-        <div style={{ margin: "0 auto", maxWidth: 1080 }}>
-          <Link className="orbit-host-muted" href="/app/admin">← {t("back")}</Link>
-          <div className="eyebrow" style={{ marginTop: 16 }}>READ COST</div>
-          <h1 className="h-display" style={{ margin: "4px 0" }}>{t("title")}</h1>
-          <p className="orbit-host-muted" style={{ margin: 0 }}>{t("subtitle")}{data ? ` ${data.window.from} – ${data.window.to}` : ""}</p>
-          {data ? <ReadCostView data={data} t={t} zh={zh} /> : <p style={{ marginTop: 18 }}>{t("noData")}</p>}
-        </div>
-      </main>
-    </>
+    <Orbit2026Scope language={language} className={styles.page}>
+      <ToastProvider>
+        <main className={styles.readCost} data-orbit-route="app-admin-read-cost-route" data-read-cost-state={failure ?? (data && hasRecords(data) ? "ready" : "empty")}>
+          <Link href="/app/admin">← {t("back")}</Link>
+          <header className={styles.section}>
+            <p className={styles.eyebrow}>Orbit · {t("title")}</p>
+            <h1 className={styles.title}>{t("title")}</h1>
+            <p className={styles.body}>{t("subtitle")}{data ? ` ${data.window.from} – ${data.window.to}` : ""}</p>
+          </header>
+          {failure ? (
+            <Card className={styles.section} title={adminText("readCostUnavailable", language)}>
+              <p className={styles.body}>{adminText(failure === "runtime" ? "readCostRuntime" : "readCostFailure", language)}</p>
+              <form method="get" action="/app/admin/read-cost">
+                {route ? <input type="hidden" name="route" value={route} /> : null}
+                <Button label={adminText("retry", language)} type="submit" variant="primary" />
+              </form>
+            </Card>
+          ) : data && hasRecords(data) ? <ReadCostView data={data} language={language} /> : <EmptyState title={t("noData")} message={t("emptyMessage")} />}
+        </main>
+      </ToastProvider>
+    </Orbit2026Scope>
   );
 }

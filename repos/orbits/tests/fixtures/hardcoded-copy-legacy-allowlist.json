@@ -65,34 +65,6 @@
       "hardcoded": 1,
       "missingJa": 0
     },
-    "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts": {
-      "hardcoded": 4,
-      "missingJa": 0
-    },
-    "app/(app)/app/admin/orbit-real-admin-events.tsx": {
-      "hardcoded": 0,
-      "missingJa": 10
-    },
-    "app/(app)/app/admin/orbit-real-admin-login.tsx": {
-      "hardcoded": 0,
-      "missingJa": 5
-    },
-    "app/(app)/app/admin/orbit-real-admin-shell.tsx": {
-      "hardcoded": 0,
-      "missingJa": 4
-    },
-    "app/(app)/app/admin/orbit-real-admin-workspace.tsx": {
-      "hardcoded": 0,
-      "missingJa": 9
-    },
-    "app/(app)/app/admin/read-cost/page.tsx": {
-      "hardcoded": 0,
-      "missingJa": 3
-    },
-    "app/(app)/app/admin/read-cost/read-cost-copy.ts": {
-      "hardcoded": 0,
-      "missingJa": 26
-    },
     "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx": {
       "hardcoded": 5,
       "missingJa": 0

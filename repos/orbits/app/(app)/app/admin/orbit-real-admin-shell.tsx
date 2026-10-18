@@ -1,52 +1,46 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { OrbitLanguage } from "../orbit-language-core";
 import type { OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
-import { useOrbitLanguage } from "../orbit-language-context";
-import { Icon, Logo } from "../orbit-reference-primitives";
+import { adminText } from "../orbit-2026/copy/admin";
+import { Avatar, Button, Orbit2026Scope, Segmented, ToastProvider } from "../orbit-2026/ui";
+import styles from "./Admin.module.css";
 
-export type OrbitT = (copy: { en: string; zh: string }) => string;
+type HostSection = "dash" | "events";
 
-function navigateTo(path: string) {
-  window.location.href = path;
-}
+const paths: Record<HostSection, string> = { dash: "/app/admin", events: "/app/admin/events" };
+function navigateTo(path: string) { window.location.assign(path); }
 
-function buildHostNav(t: OrbitT): Array<[string, string, string, string]> {
-  return [
-    ["dash", "grid", t({ en: "Dashboard", zh: "仪表盘" }), "/app/admin"],
-    ["events", "calendar", t({ en: "Events", zh: "活动管理" }), "/app/admin/events"],
-  ];
-}
-
-export function HostShell({
-  active,
-  children,
-  viewModel,
-}: {
-  active: string;
+export function HostShell({ active, children, language, viewModel }: {
+  active: HostSection;
   children: ReactNode;
+  language: OrbitLanguage;
   viewModel: OrbitAdminViewModel;
 }) {
-  const { t } = useOrbitLanguage();
-  const hostNav = buildHostNav(t);
+  const sections = [
+    { key: "dash" as const, label: adminText("dashboard", language) },
+    { key: "events" as const, label: adminText("events", language) },
+  ];
   return (
-    <div className="orbit-host-admin-page" data-orbit-real-page>
-      <div className="orbit-host-desktop-shell">
-        <aside className="orbit-host-sidebar">
-          <div className="orbit-host-logo"><Logo size={24} /></div>
-          <div className="orbit-host-org-card"><span className={`avatar ${viewModel.adminOrg.g}`} style={{ borderRadius: 9, fontSize: 14, height: 34, width: 34 }}>{viewModel.adminOrg.initial}</span><div style={{ minWidth: 0 }}><div className="orbit-host-org-name">{viewModel.adminOrg.name}</div><div className="orbit-host-muted">{viewModel.adminOrg.sub}</div></div></div>
-          <div className="orbit-host-nav-label eyebrow">{t({ en: "Workspace", zh: "工作区" })}</div>
-          <nav className="orbit-host-nav">{hostNav.map(([key, icon, label, href]) => <button className={`orbit-host-nav-item${active === key ? " is-active" : ""}`} key={key} onClick={() => navigateTo(href)} type="button"><Icon name={icon} size={18} />{label}</button>)}</nav>
-          <div className="orbit-host-sidebar-spacer" />
-          <button className="orbit-host-exit" onClick={() => navigateTo("/app")} type="button"><Icon name="logout" size={16} />{t({ en: "Exit admin", zh: "退出后台" })}</button>
-        </aside>
-        <div className="orbit-host-main"><div className="orbit-host-content">{children}</div></div>
-      </div>
-      <div className="orbit-host-mobile-shell">
-        <div className="orbit-host-mobile-header"><Logo size={22} /><span className={`avatar ${viewModel.adminOrg.g}`} style={{ borderRadius: 8, fontSize: 13, height: 32, width: 32 }}>{viewModel.adminOrg.initial}</span></div>
-        <div className="orbit-host-mobile-tabs">{hostNav.map(([key, , label, href]) => <button className={`chip${active === key ? " is-active" : ""}`} key={key} onClick={() => navigateTo(href)} type="button">{label}</button>)}</div>
-        <div className="orbit-host-mobile-scroll" data-appscroll>{children}</div>
-      </div>
-    </div>
+    <Orbit2026Scope language={language} className={styles.page}>
+      <ToastProvider>
+        <div className={styles.shell} data-orbit-admin-shell="">
+          <aside className={styles.sidebar}>
+            <div className={styles.brand}>Orbit · {adminText("workspace", language)}</div>
+            <div className={styles.org}><Avatar name={viewModel.adminOrg.name} /><span className={styles.orgCopy}>{viewModel.adminOrg.name}</span></div>
+            <nav className={styles.nav} aria-label={adminText("workspace", language)}>
+              {sections.map((item) => <Button key={item.key} className={styles.navButton} label={item.label} variant={active === item.key ? "primary" : "ghost"} onClick={() => navigateTo(paths[item.key])} />)}
+            </nav>
+            <Button className={styles.exit} label={adminText("exit", language)} variant="ghost" onClick={() => navigateTo("/app")} />
+          </aside>
+          <div className={styles.mobileHead}>
+            <div className={styles.mobileBrand}><strong>Orbit · {adminText("workspace", language)}</strong><Button label={adminText("exit", language)} size="sm" variant="ghost" onClick={() => navigateTo("/app")} /></div>
+            <Segmented segments={sections} value={active} onChange={(section) => navigateTo(paths[section])} label={adminText("workspace", language)} wide variant="seg" />
+          </div>
+          <main className={styles.main}><div className={styles.content}>{children}</div></main>
+        </div>
+      </ToastProvider>
+    </Orbit2026Scope>
   );
 }

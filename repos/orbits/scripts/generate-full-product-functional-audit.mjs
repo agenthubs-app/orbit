@@ -1746,7 +1746,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:33",
     {
       actualResult:
         "Desktop 活动管理 opened /app/admin/events and 仪表盘 returned to /app/admin with the same actor-owned source record.",
@@ -1758,9 +1758,9 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:41",
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:35",
     {
-      actualResult: "退出后台 opened the authenticated personal /app entry.",
+      actualResult: "退出后台 opened the authenticated personal /app/home entry.",
       testData: "Authenticated Admin dashboard",
       idempotency:
         "Route navigation only; the authenticated session and all actor-owned records were preserved.",
@@ -1768,7 +1768,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:47",
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
     {
       actualResult:
         "At 390x844 the visible 活动管理 tab opened /app/admin/events and 仪表盘 returned to /app/admin.",
@@ -1779,7 +1779,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:33",
     {
       actualResult:
         "Desktop 仪表盘 opened /app/admin and 活动管理 returned to /app/admin/events with the same actor-owned source record.",
@@ -1791,10 +1791,10 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:41",
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:35",
     {
       actualResult:
-        "The shared desktop 退出后台 control was exercised from the Admin shell and resolved to /app.",
+        "The shared desktop 退出后台 control was exercised from the Admin shell and resolved to /app/home.",
       testData: "Authenticated shared Admin shell",
       idempotency:
         "Route navigation only; the authenticated session and actor-owned records were preserved.",
@@ -1802,7 +1802,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:47",
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
     {
       actualResult:
         "At 390x844 the visible 仪表盘 tab opened /app/admin and 活动管理 returned to /app/admin/events.",

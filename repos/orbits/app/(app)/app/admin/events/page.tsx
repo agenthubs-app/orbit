@@ -3,18 +3,18 @@
  *
  * 复用 admin view model，只把渲染目标切换到活动管理组件。
  */
-import { StateView } from "../../../../../shared/ui/state-view";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { adminRecoveryText, adminRouteStateText } from "../../orbit-2026/copy/admin";
+import { Card, ListRow, Orbit2026Scope } from "../../orbit-2026/ui";
 import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
 } from "../compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
 import { OrbitRealAdminEvents } from "../orbit-real-admin-events";
+import styles from "../Admin.module.css";
 
 async function getAdminEventsPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -33,28 +33,20 @@ async function getAdminEventsPageLanguage(): Promise<OrbitLanguage> {
 
 function AdminEventsRouteStateBoundary({
   routeState,
+  language,
 }: {
   routeState: AppAdminPlatformRouteStateViewModel;
+  language: OrbitLanguage;
 }) {
   return (
-    <div data-orbit-route="app-admin-events-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={routeState.recoveryActions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          recoveryCopy: action.recoveryCopy,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
+    <Orbit2026Scope language={language} className={styles.page}>
+      <main className={styles.errorPage} data-orbit-route="app-admin-events-route-state" data-error-code={routeState.errorCode}>
+        <Card className={styles.section} title={adminRouteStateText(routeState.scenario, language).title}>
+          <p className={styles.body}>{adminRouteStateText(routeState.scenario, language).description}</p>
+          {routeState.recoveryActions.map((action) => <ListRow key={action.id} title={adminRecoveryText(action.id, language).label} subtitle={adminRecoveryText(action.id, language).description} href={action.href} />)}
+        </Card>
+      </main>
+    </Orbit2026Scope>
   );
 }
 
@@ -76,22 +68,18 @@ export default async function AdminEventsPage() {
     },
     surface: "admin",
   });
-  const language =
-    routeModel.state === "success" ? await getAdminEventsPageLanguage() : "zh";
+  const language = await getAdminEventsPageLanguage();
 
   return (
-    <>
-      <OrbitReferenceStyles />
-      {routeModel.state === "success" ? (
+    routeModel.state === "success" ? (
         <div data-orbit-route="app-admin-events-route">
           <OrbitRealAdminEvents
+            language={language}
             viewModel={localizeOrbitTree(routeModel.admin, language)}
           />
         </div>
       ) : (
-        <AdminEventsRouteStateBoundary routeState={routeModel.routeState} />
-      )}
-      <OrbitVisualFreezeRuntime />
-    </>
+        <AdminEventsRouteStateBoundary language={language} routeState={routeModel.routeState} />
+      )
   );
 }

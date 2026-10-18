@@ -8,6 +8,7 @@ import {
   loadAppProfileRouteViewModel,
 } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
+import { adminText } from "../../orbit-2026/copy/admin";
 import type {
   OrbitAdminEventView,
   OrbitAdminMemberView,
@@ -342,28 +343,28 @@ function adminViewModel(input: {
         delta: "source records",
         g: "g-indigo",
         icon: "calendar",
-        label: "活动记录",
+        label: adminText("statRecords", "zh"),
         value: String(events.length),
       },
       {
         delta: "derived from dates",
         g: "g-emerald",
         icon: "clock",
-        label: "即将开始",
+        label: adminText("statUpcoming", "zh"),
         value: String(upcomingCount),
       },
       {
         delta: "derived from dates",
         g: "g-violet",
         icon: "zap",
-        label: "进行中",
+        label: adminText("statActive", "zh"),
         value: String(activeCount),
       },
       {
         delta: "derived from dates",
         g: "g-amber",
         icon: "checkCircle",
-        label: "已结束",
+        label: adminText("statEnded", "zh"),
         value: String(endedCount),
       },
     ],

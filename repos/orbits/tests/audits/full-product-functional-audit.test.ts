@@ -508,9 +508,18 @@ test("route UI inventory follows imported exports instead of sibling components"
   );
 
   assert.ok(adminAccess);
-  assert.deepEqual(
-    adminAccess.interactions.map((interaction) => interaction.sourceFile),
-    ["repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx"],
+  assert.equal(
+    adminAccess.interactions.some((interaction) =>
+      interaction.sourceFile === "repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx",
+    ),
+    true,
+  );
+  assert.equal(
+    adminAccess.interactions.every((interaction) =>
+      interaction.sourceFile === "repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx"
+      || interaction.sourceFile.startsWith("repos/orbits/app/(app)/app/orbit-2026/ui/"),
+    ),
+    true,
   );
   assert.ok(adminDashboard);
   assert.equal(
@@ -533,7 +542,7 @@ test("route UI inventory follows imported exports instead of sibling components"
       (interaction) =>
         interaction.sourceFile === "repos/orbits/shared/ui/state-view.tsx",
     ),
-    true,
+    false,
   );
 });
 
