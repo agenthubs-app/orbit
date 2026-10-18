@@ -144,6 +144,7 @@ export function buildRichNoteCreateRequest(
   const t = createTranslator(language);
   const title = draft.title.trim();
   const body = draft.body.trim();
+  const trimmedPrefixLength = draft.body.length - draft.body.trimStart().length;
   if (!title) return { success: false, error: t("notes.titleRequired") };
   if (!body) return { success: false, error: t("notes.bodyRequired") };
   return {
@@ -152,7 +153,7 @@ export function buildRichNoteCreateRequest(
       title,
       body,
       manualContactIds: contactIds(draft.manualContactIds),
-      mentions: draft.mentions.map((mention) => ({ ...mention })),
+      mentions: draft.mentions.map((mention) => ({ ...mention, start: mention.start - trimmedPrefixLength, end: mention.end - trimmedPrefixLength })),
       eventIds: contactIds(draft.eventIds),
       ...(draft.noteKind === undefined ? {} : { noteKind: draft.noteKind }),
       ...(draft.usedForPlan === undefined ? {} : { usedForPlan: draft.usedForPlan }),

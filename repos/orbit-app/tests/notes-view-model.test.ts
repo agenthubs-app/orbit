@@ -54,6 +54,20 @@ test("create and update requests reject empty drafts and canonicalize contact se
   });
 });
 
+test("a trimmed note body keeps event mention offsets aligned in UTF-16", () => {
+  const result = buildRichNoteCreateRequest({
+    title: "Launch",
+    body: "  👋 @Launch  ",
+    manualContactIds: [],
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    eventIds: [],
+  }, "create:trimmed-mention");
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(result.body.body, "👋 @Launch");
+  assert.deepEqual(result.body.mentions, [{ entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" }]);
+});
+
 test("local validation errors follow the active app language", () => {
   assert.deepEqual(buildNoteCreateRequest("   ", [], "create:key", "en"), {
     success: false,
