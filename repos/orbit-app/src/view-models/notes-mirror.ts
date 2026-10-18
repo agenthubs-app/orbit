@@ -76,7 +76,7 @@ export function overlayQueuedNotes(
       version: base.version + 1,
       updatedAt: mutation.createdAt,
     }] }, actorId, language);
-    if (!projected) return null;
+    if (!projected || projected.length !== 1) return null;
     notes.set(mutation.id, {
       ...projected[0]!,
       localMutationState: mutation.state === "failed" ? "failed" : mutation.state === "conflict" ? "conflict" : "queued",

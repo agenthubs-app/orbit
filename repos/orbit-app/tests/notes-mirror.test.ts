@@ -105,6 +105,18 @@ test("failed note creates and edits stay visible with their local content", () =
   ]);
 });
 
+test("R20b rejects a malformed queued note instead of projecting a status-only ghost row", () => {
+  const mutation: LocalSyncQueuedMutation = {
+    actorId: "a", workspaceId: "w", domainId: "notes", mutationId: "bad-flag", kind: "note",
+    id: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
+    patch: { title: "Broken", body: "Body", usedForPlan: "yes" }, requestJson: "{}",
+    baseRevision: null, dependsOn: null, createdAt: "2026-10-18T00:00:00.000Z",
+    retryCount: 0, nextRetryAt: null, lastErrorCode: "INVALID_REQUEST", state: "failed",
+    attemptCount: 1, firstAttemptAt: "2026-10-18T00:00:01.000Z", serverSnapshot: null,
+  };
+  assert.equal(overlayQueuedNotes([], [mutation], "a", "en"), null);
+});
+
 test("freshness: never synced is loading; a failed attempt after a sync is offline with its time", () => {
   const base = { error: null, lastSyncedAt: null, status: "unsynced" as const };
   assert.deepEqual([mirrorFreshness(base, true).readable, mirrorFreshness(base, true).loading, mirrorFreshness(base, true).offline], [false, true, false]);
