@@ -13,6 +13,7 @@ import { events } from "./events";
 import { notes } from "./notes";
 import { nav } from "./nav";
 import { settings } from "./settings";
+import { notifications } from "./notifications";
 import { aiEntityDraft } from "./aiEntityDraft";
 import { profile } from "./profile";
 import { account } from "./account";
@@ -77,6 +78,7 @@ export const zh = {
   ...notes,
   ...nav,
   ...settings,
+  ...notifications,
   ...aiEntityDraft,
   ...profile,
   ...account,
