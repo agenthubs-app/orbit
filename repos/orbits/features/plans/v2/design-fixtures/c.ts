@@ -119,6 +119,16 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
     base.goalText = "シリーズA 資金調達（3億円）";
     const sales = { ...structuredClone(base), creationKey: "design-plan-sales", goalId: "design-goal-sales", goalKind: "sales" as const, goalText: "製造業の新規顧客開拓", id: "design-plan-sales", lastOpenedAt: "2026-10-01T08:30:00+09:00" };
     const seed = { ...structuredClone(base), achievedAt: "2026-06-30T03:00:00.000Z", creationKey: "design-plan-seed", goalId: "design-goal-seed", goalText: "シード調達（8,000万円）", id: "design-plan-seed", lastOpenedAt: "2026-06-30T08:30:00+09:00" };
+    const itemIds = new Map((state.typeItems ?? []).map((item) => [item.id, `design-sales-${item.id}`]));
+    state.typeItems = [...(state.typeItems ?? []), ...(state.typeItems ?? []).map((item) => ({ ...structuredClone(item), id: itemIds.get(item.id)!, planId: sales.id }))];
+    const omitted = new Set<string>();
+    const salesAwards = (state.log ?? []).filter((entry) => {
+      if (entry.event !== "score_awarded" || !entry.payload.contactId) return false;
+      const key = String(entry.payload.typeKey);
+      if (["vc_partner", "angel", "cvc"].includes(key) && !omitted.has(key)) { omitted.add(key); return false; }
+      return true;
+    });
+    state.log = [...(state.log ?? []), ...salesAwards.map((entry) => ({ ...structuredClone(entry), id: `design-sales-${entry.id}`, idempotencyKey: `design-sales-${entry.idempotencyKey}`, itemId: entry.itemId ? itemIds.get(entry.itemId)! : null, planId: sales.id }))];
     state.plans = [base, sales, seed];
     state.legacy = [{ ...structuredClone(LEGACY_SERIES_A), goal: "展示会で代理店を見つける", planId: "design-legacy-fair", status: "archived", archivedAt: "2026-06-01T00:00:00.000Z" }];
     return state;

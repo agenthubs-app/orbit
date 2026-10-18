@@ -85,4 +85,6 @@ test("c-goals keeps the 128-point achievement example consistent with the goal s
   const overview = await service.overview(state.plans![0]!.id);
   assert.equal(overview?.score.total, 128);
   assert.equal(overview?.score.overflow, 38);
+  const goals = await service.listGoals();
+  assert.deepEqual(goals.filter((goal) => goal.status === "active").map((goal) => [goal.total, goal.talkedPeople]), [[128, 19], [72, 14]]);
 });
