@@ -28,6 +28,7 @@
 - これらの後続を合わせた serial focused run は Web **66/66 pass** (`_evidence-d/R20b/run-01/web-focused-after-demo-and-app-fixes.log`)、App **33/33 pass** (`app-focused-after-memo-fixes.log`)；両方 exit0 / skip0。これは full suite、型検査、ブラウザ操作、pixel の代用ではない。
 - 共有 D worktree の別 App 作業者による `2272b8e48` は本文 trim 後の `@` token UTF-16 offset を補正し、局所 regression を追加した。こちらは後からその commit を確認し、既存行を上書きせず additive に続けた；独立の full compiler / browser はまだ待機中。
 - `1dc0d05bd` は App request builder に `usedForPlan=true` の面談／単一 contact 構造チェックと三言語エラーを追加した。TDD **8/9 RED → 9/9 GREEN**、周辺 App **28/28 pass** (`app-focused-plan-use-local-validation.log`)。actor 可視性は従来どおり server が最終判定する。`i18n-domain-split` の古い exact count は **2890 vs 2253** で失敗（加鍵前から 2889 vs 2253 の既知基線）；他の同 file 2 checks は pass。notes copy-qa は **135 entries / 150 issues、exit1** (`app-notes-copy-qa-after-plan-use.log`) だが、新キーは component kind を登録しており issue 行なし。150 件を合格とは扱わない。
+- 最新 App source で note draft / outbox / mirror / category / view-model と task mirror / outbox の軽量再実行は **39/39 pass、0 skip、exit0** (`_evidence-d/R20b/run-01/app-focused-post-overlay-final.log`)。これは App full / `tsc` / simulator ではない。
 
 ## SC-11 データ鎖（部分実装）
 
