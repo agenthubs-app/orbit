@@ -1,15 +1,23 @@
+/**
+ * R11b 下钻名单（/app/contacts/analysis/[dimension]/[bucketId]）：新屏 `NetworkAnalysisListScreen`，路径保留（R11-12）。
+ * 维度：industry / seniority / region / met / opportunity；旧的 `tier` 等维度回到分析页。不足 10 人与分析页一样锁定（直链绕不过）；
+ * 名单由客户端读 GET /api/network/analysis/people（同一判定规则，人数与卡片一致）。W0005 示例期间回到分析页。
+ */
 import { redirect } from "next/navigation";
+
 import { auth } from "../../../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../../../api/_shared/authenticated-actor";
 import { getOrbitServerLanguage } from "../../../../orbit-language-server";
-import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../../../../orbit-visual-freeze-runtime";
-import { loadContactsStructureDetail } from "../../contacts-structure-route-service";
-import { ContactsStructureDetail } from "../../contacts-structure-detail";
-import { NetworkShell } from "../../../network-0918/network-shell";
 import { readDemoModeViewForActor } from "../../../../_demo/demo-guide-view";
+import { NetworkAnalysisListScreen } from "../../../../orbit-2026/network-analysis/NetworkAnalysisListScreen";
+import { resolveNetworkAnalysisReadDeps } from "../../../../../../../features/network-analysis/analysis-handlers";
+import { networkAnalysisPageLock } from "../../../../../../../features/network-analysis/page-lock";
+import type { NetworkAnalysisDimension } from "../../../../../../../shared/contract/network-analysis-view";
 
-export default async function AppContactsStructureDetailPage({ params }: { params: Promise<{ dimension: string; bucketId: string }> }) {
+export const dynamic = "force-dynamic";
+const DIMENSIONS: readonly NetworkAnalysisDimension[] = ["industry", "seniority", "region", "met", "opportunity"];
+
+export default async function AppContactsAnalysisListPage({ params }: { params: Promise<{ dimension: string; bucketId: string }> }) {
   const { dimension, bucketId } = await params;
   const session = await auth();
   if (!session?.user?.id) {
@@ -18,10 +26,12 @@ export default async function AppContactsStructureDetailPage({ params }: { param
   }
   const actor = await resolveAuthenticatedApiActorFromSession({ email: session.user.email, name: session.user.name, userId: session.user.id });
   if (!actor) throw new Error("Authenticated Orbit account membership is unavailable.");
-  // W0005：示例期间没有真实的分组下钻，回到只有横条与说明的分析子页，任何真实读取之前就跳走。
-  // 开关关闭时这次判定不做任何读取。
+  if (!(DIMENSIONS as readonly string[]).includes(dimension)) redirect("/app/contacts/dashboard?tab=structure");
   if (await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id })) redirect("/app/contacts/dashboard?tab=structure");
-  const view = await loadContactsStructureDetail({ actorId: actor.id, dimension, bucketId, language: await getOrbitServerLanguage() });
-  // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
-  return <><OrbitReferenceStyles /><OrbitVisualFreezeRuntime /><div data-orbit-real-page="network" data-orbit-route="app-contacts-structure-detail-route"><NetworkShell screen="analysis"><ContactsStructureDetail view={view} /></NetworkShell></div></>;
+  const language = await getOrbitServerLanguage();
+  const lock = networkAnalysisPageLock(await (await resolveNetworkAnalysisReadDeps()).readTotal({ id: actor.id, workspaceId: actor.workspaceId }).catch(() => null));
+  return (
+    <NetworkAnalysisListScreen language={language} dimension={dimension as NetworkAnalysisDimension} bucketId={decodeURIComponent(bucketId)}
+      lock={lock.state === "locked" ? lock : { state: "open" }} />
+  );
 }
