@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {changeNotificationOptIn} from '../../src/screens/settings/notifications/notification-permission-control';
+
+test('opt-in requests an undetermined OS permission before enabling registration',async()=>{
+ const calls:string[]=[];
+ const result=await changeNotificationOptIn(true,{
+  getPermission:async()=>{calls.push('get');return 'undetermined';},
+  requestPermission:async()=>{calls.push('request');return 'granted';},
+  setOptIn:async value=>{calls.push('set:'+value);},
+  revoke:async()=>{calls.push('revoke');return true;},
+ });
+ assert.equal(result,'enabled');assert.deepEqual(calls,['get','request','set:true']);
+});
+
+test('denied OS permission never claims push is enabled',async()=>{
+ const calls:string[]=[];
+ const result=await changeNotificationOptIn(true,{
+  getPermission:async()=> 'denied',requestPermission:async()=>{calls.push('request');return 'granted';},
+  setOptIn:async()=>{calls.push('set');},revoke:async()=>true,
+ });
+ assert.equal(result,'denied');assert.deepEqual(calls,[]);
+});
+
+test('turning push off revokes the device after disabling registration, even if revocation fails',async()=>{
+ const calls:string[]=[];
+ const result=await changeNotificationOptIn(false,{
+  getPermission:async()=> 'granted',requestPermission:async()=> 'granted',
+  setOptIn:async value=>{calls.push('set:'+value);},
+  revoke:async()=>{calls.push('revoke');return false;},
+ });
+ assert.equal(result,'revoke-failed');assert.deepEqual(calls,['set:false','revoke']);
+});

@@ -31,4 +31,9 @@ export const notifications = {
   "notifications.sharedCap":'Orbit 全体のプッシュと同じ上限です。',
   "notifications.goQuiet":'静かな時間帯を変更',
   "notifications.noSend":'秘書はあなたの代わりにメールやメッセージを送りません。',
+  "notifications.pushOptIn":'この端末でプッシュを許可',
+  "notifications.pushOptInHint":'システムの許可を確認してから、この端末を登録します。',
+  "notifications.permissionDenied":'Orbit のシステム通知がオフです。',
+  "notifications.openSystemSettings":'システム設定を開く',
+  "notifications.pushError":'この端末を更新できませんでした。再試行してください。',
 } as const;

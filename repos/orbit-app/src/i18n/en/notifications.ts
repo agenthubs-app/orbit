@@ -31,4 +31,9 @@ export const notifications = {
   "notifications.sharedCap":'Shares the daily limit with all Orbit push notifications.',
   "notifications.goQuiet":'Change quiet hours',
   "notifications.noSend":'Your secretary never sends email or messages for you.',
+  "notifications.pushOptIn":'Allow push on this device',
+  "notifications.pushOptInHint":'Ask for system permission, then register this device for push.',
+  "notifications.permissionDenied":'System notifications are off for Orbit.',
+  "notifications.openSystemSettings":'Open system settings',
+  "notifications.pushError":'Could not update this device. Try again.',
 } as const;

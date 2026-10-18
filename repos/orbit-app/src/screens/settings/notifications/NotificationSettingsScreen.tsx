@@ -6,11 +6,12 @@ import {useOrbitLocale} from '../../../i18n/OrbitLocaleContext';
 import {useOrbitTheme} from '../../../design/theme';
 import {NotificationDeliverySettings} from '../NotificationDeliverySettings';
 import {NotificationDiscoverySettings} from '../NotificationDiscoverySettings';
+import {PushPermissionSettings} from './PushPermissionSettings';
 
 export function NotificationSettingsScreen(){
  const {t}=useOrbitLocale();
  return <AppScreen inset="kit" title={t('notifications.title')}>
-  <View style={{gap:20,paddingBottom:24}}><NotificationDeliverySettings/><NotificationDiscoverySettings/></View>
+  <View style={{gap:20,paddingBottom:24}}><PushPermissionSettings/><NotificationDeliverySettings/><NotificationDiscoverySettings/></View>
  </AppScreen>;
 }
 

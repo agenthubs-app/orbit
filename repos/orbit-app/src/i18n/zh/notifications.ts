@@ -31,4 +31,9 @@ export const notifications = {
   "notifications.sharedCap":'与 Orbit 所有推送共用每日上限。',
   "notifications.goQuiet":'调整免打扰时段',
   "notifications.noSend":'秘书不会代你发送邮件或消息。',
+  "notifications.pushOptIn":'允许此设备接收推送',
+  "notifications.pushOptInHint":'先取得系统权限，再登记此设备。',
+  "notifications.permissionDenied":'系统已关闭 Orbit 通知。',
+  "notifications.openSystemSettings":'打开系统设置',
+  "notifications.pushError":'无法更新此设备，请重试。',
 } as const;
