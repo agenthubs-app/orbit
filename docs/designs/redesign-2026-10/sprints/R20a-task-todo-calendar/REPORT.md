@@ -747,4 +747,6 @@ source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native 
 
 ## 2026-10-19　App タスク詳細の読取失敗文言（SC-13 部分）
 
-日本語のタスク詳細で読取が失敗すると、API の中国語原文「连接暂时失败」がそのまま見えた。mounted Chromium 用例は修正前 **RED 0/1**、画面境界で三言語の短い `taskDetail.readFailed` に写した `dbdd646e5` 後 **GREEN 1/1**。詳細の交互作用全体 `_evidence-d/R20a/run-01/d-app-task-detail-read-locale-interactions.log` は **30/30 pass**、App `typecheck` と差分 check は exit0。読取・端末副本・書込の分岐は変えていない。App 全量は `_evidence-d/R20a/run-01/d-app-full-task-detail-read-locale.log` へ共有 heavy queue に登録済みで、現時点では**未開始・結果なし**。SC-13 全体、native / pixel、全量 gate は OPEN のまま。
+日本語のタスク詳細で読取が失敗すると、API の中国語原文「连接暂时失败」がそのまま見えた。mounted Chromium 用例は修正前 **RED 0/1**、画面境界で三言語の短い `taskDetail.readFailed` に写した `dbdd646e5` 後 **GREEN 1/1**。詳細の交互作用全体 `_evidence-d/R20a/run-01/d-app-task-detail-read-locale-interactions.log` は **30/30 pass**、App `typecheck` と差分 check は exit0。読取・端末副本・書込の分岐は変えていない。
+
+同じ `75af0fcb6` source の App 全量 `_evidence-d/R20a/run-01/d-app-full-task-detail-read-locale.log` は **3,256 total / 3,227 pass / 26 fail / 1 cancelled / 2 skip、exit1**。今回の日本語読取失敗用例は全量でも pass。直前の12 failure 名との照合では11件が残り、旧 invite-history click timeout 一件は再現せず、新たに17件（カレンダー、通知、inbox、タスク一覧・詳細など）が出た。新たな失敗は browser timeout が中心で、`page.goto` や可視 button の `locator.click` も時間切れになった。全量中は test child が同時に複数走り、CPU を使用していたことを確認したが、負荷だけで新しい17 failure と1 cancelled の原因を確定していない。タスク詳細・日付・関連タスク一覧の三 file を共有 heavy queue へ定向再実行登録し、局所再現性を調べる。全量 gate は赤、SC-13 全体、native / pixel は OPEN のまま。
