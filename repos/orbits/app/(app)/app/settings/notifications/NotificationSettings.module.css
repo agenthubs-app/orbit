@@ -7,6 +7,6 @@
 .rowText span,.hint{color:var(--ink-3);font-size:12px;line-height:1.6}
 .hint{margin:10px 0 0}
 .time{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
-.error{color:var(--coral);font-size:12px;line-height:1.6;margin:8px 0}
+.error{color:var(--coral-text);font-size:12px;line-height:1.6;margin:8px 0}
 .conversation{padding-top:8px;padding-bottom:8px}
 @media(max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}.side{grid-row:auto}}
