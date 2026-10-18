@@ -32,10 +32,10 @@ test('durable cross-device quota, sound, consent revisions and unknown provider 
   assert.equal((await capped('a1:d1','a1',true)).allowed,false);
   at='2026-09-19T01:00:00.000Z';
   const digest=(deliveryId:string,deviceId:string)=>repo.reserve(actor,{deliveryId,eventKey:'digest:2026-09-19',digestKey:'digest:2026-09-19',deviceId,automatic:true,suggestion:false,expectedPreferenceRevision:2});
-  assert.equal((await digest('dig-one:d1','d1')).allowed,true);
-  assert.equal((await digest('dig-two:d1','d1')).allowed,false);
+  const competing=await Promise.all([digest('dig-one:d1','d1'),digest('dig-two:d1','d1')]);
+  assert.equal(competing.filter(result=>result.allowed).length,1,'two workers cannot send two digests to one device');
   assert.equal((await digest('dig-one:d2','d2')).allowed,true);
-  assert.equal((await repo.get<{deliveryId:string}>(client,'notificationDigestGuards',deliveryPolicyId(actor,'digest:2026-09-19','d1')))?.deliveryId,'dig-one:d1');
+  assert.ok(['dig-one:d1','dig-two:d1'].includes((await repo.get<{deliveryId:string}>(client,'notificationDigestGuards',deliveryPolicyId(actor,'digest:2026-09-19','d1')))?.deliveryId??''));
   await repo.tx(actor,db=>repo.save(db,'notificationDeliveries','wake',actor,{kind:'notification_delivery',delivery:{policySource:{kind:'notification',id:'n',eventKey:'n'},status:'retry_scheduled',availableAt:'2026-09-19T02:00:00.000Z',scheduledFor:'2026-09-18T14:00:00.000Z'}}));
   await repo.updatePreferences(actor,{expectedRevision:2,secretaryPick:false},async()=>true);
   assert.equal((await repo.get<{delivery:{availableAt:string}}>(client,'notificationDeliveries','wake'))?.delivery.availableAt,at);

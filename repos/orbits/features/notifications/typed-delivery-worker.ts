@@ -7,6 +7,18 @@ export interface TypedDeliveryContent {subject:DeliveryPolicySubject;title:strin
 export interface TypedDeliverySources {resolve(delivery:NotificationDelivery):Promise<TypedDeliveryContent|null>;}
 const privateBody={zh:{message:'你收到了一条新消息',notification:'你有一条 Orbit 通知'},en:{message:'You have a new message',notification:'You have an Orbit notification'},ja:{message:'新しいメッセージがあります',notification:'Orbit から通知があります'}};
 const digestBody={zh:'你的 Orbit 通知已汇总，请在收件箱查看',en:'Your Orbit updates are ready in your inbox',ja:'Orbit の通知を受信箱にまとめました'};
+const digestCountBody=(count:number,language:'zh'|'en'|'ja')=>language==='zh'?`${count} 条 Orbit 通知已汇总到收件箱`:language==='en'?`${count} Orbit notifications are ready in your inbox`:`Orbit の通知${count}件を受信箱にまとめました`;
+async function digestNotificationCount(input:{ledger:NotificationDeliveryService;sources:TypedDeliverySources},delivery:NotificationDelivery,digestAt:string,preferences:Awaited<ReturnType<DeliveryPolicyRepository['preferences']>>,now:string):Promise<number|null>{
+ const rows=await input.ledger.list({limit:500});
+ if(rows.length>=500)return null;
+ const keys=new Set<string>();
+ for(const candidate of [delivery,...rows]){
+  if(candidate.deviceId!==delivery.deviceId||!candidate.policySource||!['scheduled','retry_scheduled','processing'].includes(candidate.status))continue;
+  const source=await input.sources.resolve(candidate);
+  if(source&&evaluateDeliveryPolicy(source.subject,preferences,now).action==='send'&&deliveryDigestAt(source.subject,preferences)===digestAt)keys.add(candidate.policySource.eventKey);
+ }
+ return Math.max(1,keys.size);
+}
 export function createTypedDeliveryWorker(input:{actorId:string;ledger:NotificationDeliveryService;repository:DeliveryPolicyRepository;devices:PushDeviceService;push:OrbitPushAdapter|null;sources:TypedDeliverySources;now?:()=>string}) {
  const now=input.now??(()=>new Date().toISOString());
  return {async run(options:{workerId:string;limit?:number}) {
@@ -33,9 +45,10 @@ export function createTypedDeliveryWorker(input:{actorId:string;ledger:Notificat
    const fresh=await input.sources.resolve(d),current=await input.repository.preferences(input.actorId);device=(await input.devices.listActive()).find(x=>x.deviceId===d.deviceId);
    if(!fresh||!device||current.revision!==reserved.preferences.revision||evaluateDeliveryPolicy(fresh.subject,current,now()).action!=='send'||digestKey&&deliveryDigestAt(fresh.subject,current)!==digestAt){await input.repository.settle(input.actorId,d.deliveryId,'rejected');await suppress('pre_send_state_changed');continue;}
    const full=current.lockScreenContent==='full';
+   const digestCount=digestKey&&digestAt?await digestNotificationCount(input,d,digestAt,current,now()).catch(()=>null):null;
    let receipt:Awaited<ReturnType<OrbitPushAdapter['send']>>;
    try {
-    receipt=await input.push.send({token:device.token,title:full?(digestKey?'Orbit':fresh.title.slice(0,160)):'Orbit',body:digestKey?full?digestBody[fresh.language]:privateBody[fresh.language].notification:full?fresh.body.slice(0,512):privateBody[fresh.language][fresh.subject.channel==='message'?'message':'notification'],data:{deliveryId:d.deliveryId},sound:reserved.sound?'default':null});
+    receipt=await input.push.send({token:device.token,title:full?(digestKey?'Orbit':fresh.title.slice(0,160)):'Orbit',body:digestKey?digestCount===null?digestBody[fresh.language]:digestCountBody(digestCount,fresh.language):full?fresh.body.slice(0,512):privateBody[fresh.language][fresh.subject.channel==='message'?'message':'notification'],data:{deliveryId:d.deliveryId},sound:reserved.sound?'default':null});
     if(!receipt.receiptId)throw Error('Missing provider ticket');
 
    }catch(error){
