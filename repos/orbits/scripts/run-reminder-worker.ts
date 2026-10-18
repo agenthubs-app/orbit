@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { createExpoPushProvider } from "../features/notifications/expo-push-provider";
+import { runNotificationDeliveryPass, type NotificationDeliveryPassResult } from "../features/notifications/delivery-pass";
 import { createConfiguredReminderPlanService } from "../features/notifications/reminder-plan-service-factory";
 import { loadLocalEnv } from "./load-local-env";
 
@@ -27,12 +27,16 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+export async function runReminderWorkerCycle<T>(input:{typedPass:()=>Promise<unknown>;legacyDispatch:()=>Promise<T>}):Promise<T>{
+  // The legacy dispatcher checks notificationCutover before every actor. It
+  // must never see an opted-in actor before the typed pass has set that gate.
+  await input.typedPass();
+  return input.legacyDispatch();
+}
+
 export async function runReminderWorker(command: ReminderWorkerCommand): Promise<void> {
   loadLocalEnv();
   const service = createConfiguredReminderPlanService();
-  const provider = createExpoPushProvider({
-    accessToken: process.env.ORBIT_EXPO_PUSH_ACCESS_TOKEN,
-  });
   let stopping = false;
   const stop = () => { stopping = true; };
   process.once("SIGINT", stop);
@@ -40,8 +44,14 @@ export async function runReminderWorker(command: ReminderWorkerCommand): Promise
   try {
     do {
       const startedAt = new Date().toISOString();
-      const result = await service.dispatchDue({ now: startedAt, provider });
-      console.log(JSON.stringify({ startedAt, ...result }));
+      let typed:NotificationDeliveryPassResult|undefined;
+      const result = await runReminderWorkerCycle({
+        typedPass:async()=>{typed=await runNotificationDeliveryPass({now:startedAt,workerId:`reminder:${startedAt}`});},
+        // A missed cutover may delay a legacy reminder but cannot bypass the
+        // shared cap or send an unaccounted push.
+        legacyDispatch:()=>service.dispatchDue({now:startedAt,provider:{async send(){throw new Error('Legacy external reminder sends are disabled');}}}),
+      });
+      console.log(JSON.stringify({ startedAt, typed, ...result }));
       if (!command.watch || stopping) break;
       await wait(command.intervalMs);
     } while (!stopping);
