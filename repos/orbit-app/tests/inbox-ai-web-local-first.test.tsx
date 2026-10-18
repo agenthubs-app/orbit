@@ -153,7 +153,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   page.setDefaultTimeout(4000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript((initialFixture) => { (window as any).initialFixture = initialFixture; }, patch);
+  await page.addInitScript((initialFixture) => { (window as any).global = window; (window as any).initialFixture = initialFixture; }, patch);
   t.after(async () => { await page.close(); assert.deepEqual(errors, [], "no page errors"); });
   await page.goto(url);
   return page;
@@ -167,7 +167,7 @@ test("with the browser mirror active: the inbox and the AI list read the device 
   await page.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
   await page.getByText("提醒 n1", { exact: true }).waitFor();
   const ai = await open(t, { screen: "ai", status: "stale" });
-  await ai.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
+  await ai.getByText(/^离线 · .+ 时的历史记录$/).first().waitFor();
   await ai.getByText("东京投资人名单").first().waitFor();
   for (const p of [page, ai]) assert.deepEqual((await requests(p)).filter((request) => /\/api\/inbox\/notifications|\/api\/ai\/conversations\/sessions/.test(request)), []);
 });

@@ -353,7 +353,7 @@ test("無効にする: an action sheet with the consequences, focus on キャン
   await page.getByRole("button", { name: "キャンセル" }).click();
   assert.deepEqual(server.writes(), []);
   await page.getByTestId("invite-revoke").click();
-  await page.getByRole("button", { name: "無効にする" }).last().click();
+  await page.locator('[aria-label="このコードを無効にしますか？"]').getByRole("button", { name: "無効にする" }).click();
   await page.getByText("コードを無効にしました").waitFor();
   await page.getByTestId("invite-nocode").waitFor();
   assert.deepEqual(server.writes().map((call) => `${call.method} ${call.path}`), ["POST /api/invite-codes/K7QX-2M9P/revoke"]);

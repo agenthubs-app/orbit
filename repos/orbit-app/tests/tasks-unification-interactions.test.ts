@@ -121,7 +121,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
     if (!page.isClosed()) await route.fulfill({ status: response.status, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify(payload) });
   });
   await page.setContent('<div id="root"></div>');
-  await page.evaluate(patch => { (window as any).initialFixture = patch; }, { tasks: [...tasks, tasks[0], { taskId: "candidate:1", title: "未确认候选", category: "relationship" }], ...patch });
+  await page.evaluate(patch => { (window as any).global = window; (window as any).initialFixture = patch; }, { tasks: [...tasks, tasks[0], { taskId: "candidate:1", title: "未确认候选", category: "relationship" }], ...patch });
   await page.addScriptTag({ content: script });
   return page;
 }
