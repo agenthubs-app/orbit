@@ -35,7 +35,7 @@ const memory = new Map<string, { tab: NetworkTab; filters: NetworkFilters; query
 export function resetNetworkScreenMemory(): void { memory.clear(); }
 
 export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: string; now?: () => number }) {
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
   const params = useLocalSearchParams<{ industry?: string | string[] }>();
@@ -88,8 +88,8 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
         ) : (
           <>
             <View style={styles.searchRow}>
-              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholder")} accessibilityLabel={t("network.searchPlaceholder")} /></View>
-              <IconButton icon="sliders" accessibilityLabel={t("network.filter")} onPress={() => setFilterOpen(true)} />
+              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholder")} accessibilityLabel={t("network.searchPlaceholder")}
+                trailing={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.filter")} hitSlop={12} onPress={() => setFilterOpen(true)}><Icon name="sliders" size={16} color={colors.ink3Text} /></UiPressable>} /></View>
             </View>
             {total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <DensityCard summary={summary} onAnalysis={() => router.push("/contacts/dashboard" as Href)} /> : null}
             <View style={styles.tabs} testID="network-tabs">
@@ -115,6 +115,8 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   );
 }
 
+/** app.html :336 SRC — the kit .chip icon before each source label. */
+export const NETWORK_CHIP_ICON = { meishi: "scan", linkedin: "link", phone: "phone", manual: "pen", self: "check", event: "calendar" } as const;
 export const NETWORK_CHIP_COPY = { meishi: "network.chipMeishi", linkedin: "network.chipLinkedin", phone: "network.chipPhone", manual: "network.chipManual", self: "network.chipSelf", event: "network.chipEvent" } as const;
 const MET_COPY = { event: "network.metEvent", referral: "network.metReferral", visit: "network.metVisit", other: "network.metOther" } as const;
 
@@ -176,7 +178,7 @@ export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first
       </View>
       <View style={styles.rend}>
         <DensityDots level={row.density} />
-        <Chip label={t(chipKey)} tone={row.chip === "self" ? "teal" : "neutral"} />
+        <Chip label={t(chipKey)} icon={NETWORK_CHIP_ICON[row.chip]} tone={row.chip === "self" ? "teal" : "neutral"} />
       </View>
     </UiPressable>
   );

@@ -11,7 +11,7 @@ import type { IndustryIdCode } from "../../api/contract/industries";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../api/domain/industries";
 import { meetingNoteValue } from "../../api/compute/contact-source-chip";
 import { mergeEditedContactTags, userFacingContactTags } from "../../api/compute/contact-tags";
-import { AppScreen } from "../../components/AppScreen";
+import { FormScreen } from "../../components/FormScreen";
 import { Avatar, BottomSheet, Button, CategoryTabs, Chip, ConfirmDialog, Icon, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -55,11 +55,11 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
 
   if (!contact || !value || !initial) {
     return (
-      <AppScreen inset="kit" title={t("network.edit.title")} backIcon="x" backAccessibilityLabel={t("network.edit.cancel")}>
+      <FormScreen title={t("network.edit.title")} cancelLabel={t("network.edit.cancel")} saveLabel={t("network.edit.save")} onCancel={() => router.back()} onSave={() => undefined} saveDisabled>
         <View testID="network-edit">
           {(local.available ? local.freshness.loading : remote.kind === "loading") ? <Skeleton lines={6} /> : <RetryCard title={t("network.detail.notFound")} onRetry={() => (local.available ? local.refresh() : remote.refresh())} />}
         </View>
-      </AppScreen>
+      </FormScreen>
     );
   }
   const set = (patch: Partial<Draft>) => setDraft({ ...value, ...patch });
@@ -98,8 +98,8 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   };
 
   return (
-    <AppScreen inset="kit" title={t("network.edit.title")} backIcon="x" backAccessibilityLabel={t("network.edit.cancel")}
-      headerActions={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.save")} accessibilityState={{ disabled: offline || saving }} disabled={offline || saving} onPress={() => void save()} style={[styles.saveButton, (offline || saving) && styles.disabled]}><Icon name="check" size={20} color={colors.bg} /></UiPressable>}>
+    <FormScreen title={t("network.edit.title")} cancelLabel={t("network.edit.cancel")} saveLabel={t("network.edit.save")} onCancel={() => router.back()}
+      onSave={() => void save()} saveDisabled={offline || saving}>
       <View testID="network-edit">
         {offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /><UiText style={styles.lbl}>{t("network.edit.needsNetwork")}</UiText></View> : null}
         <View style={styles.center}><Avatar name={value.displayName || contact.displayName} size="lg" /></View>
@@ -144,7 +144,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
         message={t("network.delete.body", { interactions: contact.lastInteraction ? 1 : 0, memos: contact.notes.length })}
         confirmLabel={t("network.delete.confirm")} cancelLabel={t("network.delete.cancel")}
         onConfirm={() => { setDeleteOpen(false); void deletion.remove(contactId, contact.displayName, now); }} onCancel={() => setDeleteOpen(false)} />
-    </AppScreen>
+    </FormScreen>
   );
 }
 
@@ -211,8 +211,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
   tagInput: { minWidth: 80, color: colors.ink, fontSize: 12.5, paddingVertical: 4 },
   deleteRow: { marginTop: 22 },
-  saveButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  disabled: { opacity: 0.4 },
   sheet: { gap: 12 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
