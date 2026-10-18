@@ -265,8 +265,8 @@
 | R16-01 | 两端导入界面 | **已做（2026-10-14）**：Web `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → 列の対応 → まとめて確認 → 完成），App `contacts/new/import`（連絡先 / LinkedIn）；旧 `network-import*` 已删，`?method=` / `?import=` 重定向 | Web `Chip` apricot 字色（G23b）与 App `Segmented` 高度（G23）在组件库轮修，修完补跑 W-R16-08 浅、A-R16-02 | `R16-import-and-completion/REPORT.md` 界面部分  **R31a 2026-10-18：R31a：A-R16-02 分段区已对齐，余带为页面自身（列表尾部行偏移、头像色 [data]）→ 交还 R16（见 R31a REPORT）** |
 | R16-02 | 每天一问题型 | 两种 | 本期两种；b9「字段冲突 · 転職」下一期，不进门禁 | DEC D34 |
 | R16-03 | **已定（2026-10-12）** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 作加入时间；当天导入后当天可以出题（维持现状）；活动选项来源见 R26-07 | DEC §9-5、§9-6；`R16-import-and-completion/REPORT.md`:32–36 |
-| R31a-H2 | **R31a 交还（2026-10-18）**：A-R12-N09 用开发开关 `design=n09` 到达破棄确认，ConfirmDialog 本体已与画板一致 | 草稿卡来源 chip 画板带 🥂（「🥂 CFO Night Tokyo vol.18 から」），实现无；「参加者から取り込む」卡图标不同 | R32：改 ContactDraftsScreen 后重跑 N09 | R31a REPORT |
-| R31a-H3 | **R31a 交还（2026-10-18）**：A-R16-02 分段区已对齐 | 列表尾部行偏移 1–2、尾部渐隐区域内容不同；头像底色 [data] | R32：改导入选择页后逐带归因重跑 | R31a REPORT |
+| R31a-H2 | **R31a 交还（2026-10-18）**：A-R12-N09 用开发开关 `design=n09` 到达破棄确认，ConfirmDialog 本体已与画板一致 | 草稿卡来源 chip 画板带 🥂（「🥂 CFO Night Tokyo vol.18 から」），实现无；「参加者から取り込む」卡图标不同 | R32 `26b65c483` 已补设计 fixture 来源 chip；图标与整屏浅色门禁仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
+| R31a-H3 | **R31a 交还（2026-10-18）**：A-R16-02 分段区已对齐 | 列表尾部行偏移 1–2、尾部渐隐区域内容不同；头像底色 [data] | R32 `08ab1e446` 已把设计预览可见行限为六条，真实导入计数保留；浅深逐带及头像数据仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
 
 ## R22–R25 计划 v2.2 的界面返工与遗留
 
