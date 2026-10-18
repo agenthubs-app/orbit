@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { nativeUiStubs } from "./helpers/native-ui-stubs";
 
 const require = createRequire(import.meta.url);
 const iconFont = readFileSync(require.resolve("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf")).toString("base64");
@@ -34,6 +35,7 @@ export const useRouter = () => ({ canGoBack: () => false, push(href) { state.nav
 export const usePathname = () => state.screen === "account" ? "/account" : "/settings";
 export const useLocalSearchParams = () => ({});
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, { paddingTop: edges?.includes("top") ? 48 : 0 }]} />;
+export const useSafeAreaInsets = () => ({ top: 48, right: 0, bottom: 0, left: 0 });
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ fontFamily: "OrbitTestIonicons", fontSize: size, color, width: size, height: size, flexShrink: 0, lineHeight: 1 }}>{String.fromCodePoint(glyphs[name])}</span>;
 export const isPushNotificationsOptedIn = async () => { if (state.holdRead) await new Promise(resolve => state.releaseRead = resolve); return state.optedIn; };
 export const setPushNotificationsOptIn = async enabled => { state.calls.push("opt-in:" + enabled); state.optedIn = enabled; };
@@ -49,7 +51,7 @@ import React from "react"; import { Text as RealText, StyleSheet, useWindowDimen
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
 export const Text = props => { const s = StyleSheet.flatten(props.style) || {}, scale = useFixture().fontScale; return <RealText {...props} style={[props.style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]} />; };
 ` : fixture, loader: "jsx", resolveDir: process.cwd() }));
-  } }] });
+  } }, nativeUiStubs] });
   script = result.outputFiles[0]!.text; browser = await chromium.launch({ headless: true });
 });
 test.after(async () => { await browser?.close(); });
@@ -60,7 +62,10 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   await page.route("**/*", r => r.abort());
   await page.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, patch);
-  await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor(); await page.evaluate(() => document.fonts.ready);
+  await page.addScriptTag({ content: script });
+  try { await page.getByRole("heading").first().waitFor(); }
+  catch (error) { throw new Error(`Settings fixture did not render: ${errors.join(" | ") || "no page error"}`, { cause: error }); }
+  await page.evaluate(() => document.fonts.ready);
   return page;
 }
 async function calls(page: Page) { return page.evaluate(() => (window as any).fixture.calls); }
