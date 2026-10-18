@@ -133,6 +133,15 @@
           "click": "[data-plan-propose]"
         },
         {
+          "waitFor": "[data-plan-proposal-person] button"
+        },
+        {
+          "click": "[data-plan-proposal-person] button:has-text(\"下書きをつくる\")"
+        },
+        {
+          "waitFor": "[data-plan-draft]"
+        },
+        {
           "wait": 800
         }
       ],
