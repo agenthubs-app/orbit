@@ -14,6 +14,8 @@ M2 の追補 `acd9ebf69`：Web list の状態に旧日付 cursor が残ると、
 
 M2 の固定 offset 追補 `0bc95193a`：`Intl` が認める `+09:00` を PostgreSQL の `AT TIME ZONE` に直渡しすると POSIX 符号で逆方向になる。実 PG で `+09:00` の today 行が overdue に並ぶ RED を確認し、固定 offset の符号だけ SQL 境界で反転した。`Asia/Tokyo` / `+09:00` / `+09` / `-05:00` の跨 page 回帰は GREEN **1/1**、同 file の通常 4 ケースは **4/4**。追補後の Web `typecheck:app` / 全範囲 `typecheck` / `lint` は exit0。**ただし現行 source の PG file 全体は 5 件中 1 件失敗、exit1**：10 万件成長テストを共有 heavy lock 外で走らせ、15 秒 SQL timeout が一回目は 9 万件 seed、二回目は 10 万件 page read に発生した。前 source の同成長ケースは pass しているが、当時と現在の負荷が異なり、現在の 10 万件 read を pass と主張しない。両 heavy slot 使用中、10 CPU に対する load average 約 29 を確認。lock 下で同 source を再測定し、結果に応じて性能回帰か負荷起因か判定するまで OPEN。
 
+その後の heavy lock 再測定は D の別 worker が同時に queue へ入ったため、1 線 1 heavy 待ちの規則を守ってこちらの ticket を取得前に取消した（exit143、テスト本体 0 件）。従って上記性能判定はまだ更新されていない。
+
 REVIEW m1 の経路一覧は、`app-wide-route-coverage.test.ts` が 2026-09 の画面スナップショット README と行単位で照合する履歴テストである点に注意が要る。そこには退役前の `/today` / `/followups` consumer 名が残るが、現行 route は両方とも私有 `LegacyTaskRedirect`。`retired-today-screen`、`followups-screen-source`、`task-list-scope`、`shell-navigation` の現行遷移テストは **17/17 pass**。履歴表を現行在庫として使わないことは明示できるが、当時の記録そのものを書き換えるか、新しい現行一覧を置くかは主会話の文書方針判断に残す。ここでは履歴テスト／README を改変していない。
 
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
