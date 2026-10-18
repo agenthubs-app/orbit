@@ -300,6 +300,7 @@ Subsequent user-adopted §C-1 in-place b5/b7 amendments and matching b12 helper 
 
 ## 请求
 
+- R12 App add-test owner: `tests/helpers/add-fixtures.ts` fixes batch expiry at `2026-10-18T01:00:00Z`. Nine camera/reading browser cases now stop on an expired batch. Stabilize the test clock or fixture expiry, then rerun that file and App full; C will not edit R12 files.
 - Backend owners: genuine Japanese intro/candidate support is still absent (G18 hides live Japanese actions). Binary résumé parsing is outside the adopted supported-text scope, not required by this continuation.
 - D / R20a: native uses the approved Web settings fallback; a later native OAuth session/callback contract would require separate review. Existing signed Web return destination is not native round-trip proof. Language preference synchronization belongs in the shared language context, not a second page-specific writer.
 - A: consider private `AccountRow`, field/diff presenters and copied offline notice for later consolidation; EmptyState currently cannot disable its action. R18a uses a page-private disabled-button fallback in the offline empty state, without editing the kit.
