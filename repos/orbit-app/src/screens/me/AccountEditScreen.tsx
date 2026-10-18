@@ -8,7 +8,7 @@ import { useAccountEditor } from "./useAccountEditor";
 
 export function AccountEditScreen() {
   const state = useAccountEditor(); const { t } = useOrbitLocale(); const router = useRouter();
-  return <AppScreen title={t("profile.editPageTitle")} backIcon="x" headerActions={
+  return <AppScreen inset="kit" title={t("profile.editPageTitle")} backIcon="x" headerActions={
       <Button size="sm" label={t("me.save")} disabled={!state.canSave} onPress={() => void state.save().then(saved => { if (saved) router.replace(accountDestination("/profile", state.path) as Href); })} />}>
     <OfflineBar offline={state.offline} pending={0} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : null}

@@ -48,7 +48,7 @@ export function AccountIorbitScreen() {
     if (current.current === api && !controller.current?.signal.aborted) { if (success) setMemories(values => values?.filter(value => value.memoryId !== id) ?? null); else setError(true); setBusy(false); }
   }
   async function semantic(value: boolean) { try { await writeAccountSemantic(AsyncStorage, value); setSemanticOn(value); } catch { setError(true); } }
-  return <AppScreen title={t("me.iorbit")}><AccountCopyNotice copy={state.copy} language={language} t={t} />
+  return <AppScreen inset="kit" title={t("me.iorbit")}><AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : null}
     {!state.session && state.resource.kind !== "loading" ? <Card><UiText>{t(state.resource.kind === "offline" ? "sync.notOnDevice" : "me.loadError")}</UiText>
       <Button label={t("me.retry")} onPress={state.refresh} /></Card> : null}

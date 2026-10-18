@@ -11,7 +11,7 @@ import { AccountCopyNotice } from "./AccountCopyNotice";
 export function AccountPreviewScreen() {
   const state = useAccountEditor(true); const { t, language } = useOrbitLocale(); const router = useRouter();
   const profile = state.baseProfile;
-  return <AppScreen title={t("me.preview")} headerActions={
+  return <AppScreen inset="kit" title={t("me.preview")} headerActions={
       <Button label={t("me.edit")} size="sm" variant="ghost" onPress={() => router.push(accountDestination("/profile/edit", state.path) as Href)} />}>
     <AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : null}

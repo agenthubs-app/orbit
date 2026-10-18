@@ -17,11 +17,11 @@ export function AccountTagsScreen() {
   const selected = state.session?.draft[field] ?? [];
   function patch(values: string[]) { state.patch({ [field]: normalizeProfileTagValues(values) }); }
   function add() { if (selected.length < 5 && query.trim()) { patch([...selected, query]); setQuery(""); } }
-  if (!state.session) return <AppScreen title={t(field === "offering" ? "me.offering" : "me.seeking")}>
+  if (!state.session) return <AppScreen inset="kit" title={t(field === "offering" ? "me.offering" : "me.seeking")}>
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.refresh} /> : <Card><UiText>{t(state.resource.kind === "offline" ? "sync.notOnDevice" : "me.loadError")}</UiText>
       <Button label={t("me.retry")} onPress={state.refresh} /></Card>}
   </AppScreen>;
-  return <AppScreen title={t(field === "offering" ? "me.offering" : "me.seeking")} headerActions={
+  return <AppScreen inset="kit" title={t(field === "offering" ? "me.offering" : "me.seeking")} headerActions={
       <Button label={t("me.save")} size="sm" disabled={!state.canSave} onPress={() => void state.save().then(saved => { if (saved) router.replace(accountDestination("/profile", state.path) as Href); })} />}>
     <AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.feedback ? <UiText accessibilityRole="alert">{state.feedback}</UiText> : null}

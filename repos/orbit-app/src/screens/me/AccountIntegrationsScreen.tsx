@@ -36,7 +36,7 @@ export function AccountIntegrationsScreen() {
     const success = await api.disconnect(provider, controller.current?.signal);
     if (current.current === api && !controller.current?.signal.aborted) { if (success) await load(); else setFailed(true); setBusy(false); }
   }
-  return <AppScreen title={t("me.integrations")}>
+  return <AppScreen inset="kit" title={t("me.integrations")}>
     {!records && !failed ? <Skeleton onRetry={() => void load()} /> : null}
     {failed ? <><UiText accessibilityRole="alert">{t("me.failed")}</UiText>
       <Button label={t("me.retry")} onPress={() => void load()} /></> : null}

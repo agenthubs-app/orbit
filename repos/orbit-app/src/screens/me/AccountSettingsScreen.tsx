@@ -25,7 +25,7 @@ export function AccountSettingsScreen() {
     else setError(result.message ?? locale.t("account.signOutFailure"));
     setBusy(false);
   }
-  return <AppScreen title={locale.t("me.settings")}>
+  return <AppScreen inset="kit" title={locale.t("me.settings")}>
     {error ? <UiText accessibilityRole="alert">{error}</UiText> : null}
     {permission.failed ? <UiText accessibilityRole="alert">{locale.t("me.permissionsError")}</UiText> : null}
     <AccountSettingsContent t={locale.t} name={profile.data?.profile?.displayName ?? locale.t("settings.account")} email={profile.data?.profile?.handles?.email ?? ""} language={locale.language} appearance={appearance} development={typeof __DEV__ !== "undefined" && __DEV__} permissions={permission.rows}

@@ -99,7 +99,7 @@ export function AccountSuggestionsScreen() {
       await extract("business-card", `Name: ${scanned.name}\nCompany: ${scanned.company}\nRole: ${scanned.title}`);
     } catch { if (active()) setError(t("me.failed")); }
   }
-  return <AppScreen title={t("me.suggestions")}>
+  return <AppScreen inset="kit" title={t("me.suggestions")}>
     <OfflineBar offline={state.offline} pending={0} />
     {loading ? <Skeleton onRetry={() => void reload()} /> : null}
     {error ? <Card><UiText accessibilityRole="alert">{error}</UiText>

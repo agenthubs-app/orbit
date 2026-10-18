@@ -72,7 +72,7 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
       else setError(true);
     } finally { if (owner === controller.current) saving.current = false; }
   }
-  return <AppScreen title={t("me.title")} headerActions={
+  return <AppScreen inset="kit" title={t("me.title")} headerActions={
       <IconButton icon="settings" accessibilityLabel={t("me.settings")} onPress={() => open("/settings")} />}>
     <AccountCopyNotice copy={state.copy} language={language} t={t} />
     {state.resource.kind === "loading" ? <Skeleton onRetry={state.resource.refresh} /> : null}
