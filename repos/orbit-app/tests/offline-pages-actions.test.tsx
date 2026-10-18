@@ -127,13 +127,14 @@ test("every online-only route is wrapped by the boundary (onboarding keeps its o
   }
 });
 
-test("the five logged-out guest routes opt into the one-shot boundary health check", async () => {
+test("the six logged-out guest routes opt into the one-shot boundary health check", async () => {
   const files = [
     "app/account/login.tsx",
     "app/account/signup.tsx",
     "app/account/forgot-password.tsx",
     "app/account/reset-password.tsx",
     "app/login-admin.tsx",
+    "app/admin/access.tsx",
   ];
   for (const file of files) {
     const source = await readFile(file, "utf8");
