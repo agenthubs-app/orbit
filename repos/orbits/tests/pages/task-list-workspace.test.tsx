@@ -84,6 +84,28 @@ test("legacy completed intent starts on completed tasks, not the open list", asy
   assert.match(content(root!), /今日の資料/);
 });
 
+test("legacy task detail identity reads the selected task even when its row is outside the open page", async t => {
+  const { fetcher, calls } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="済んだ用事" />); });
+  t.after(() => act(() => root.unmount()));
+  assert.match(content(root!), /済んだ用事/);
+  assert.ok(calls.some(call => call.path.endsWith(`/api/tasks/${encodeURIComponent("済んだ用事")}`)));
+  assert.equal(calls.filter(call => call.method !== "GET").length, 0);
+});
+
+test("a second legacy task link replaces the selected detail without retaining the first identity", async t => {
+  const { fetcher } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="今日の資料" />); });
+  t.after(() => act(() => root.unmount()));
+  assert.equal(nodeText(root!.root.findByType("h3")), "今日の資料");
+  await act(async () => { root!.update(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId="済んだ用事" />); });
+  assert.equal(nodeText(root!.root.findByType("h3")), "済んだ用事");
+});
+
 test("arrow keys select adjacent task rows without a write", async t => {
   const { fetcher, calls } = fixture();
   t.mock.method(globalThis, "fetch", fetcher);

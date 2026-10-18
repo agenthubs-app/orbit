@@ -27,16 +27,16 @@ function formatDate(value: string | undefined, language: OrbitLanguage, timeZone
   }).format(new Date(dateOnly ? `${value}T12:00:00Z` : value));
 }
 
-export function TaskListWorkspace({ actorId, language, date, timeZone, initialCompleted = false, initialAdd = false }: {
-  actorId?: string; language: OrbitLanguage; date: string; timeZone: string; initialCompleted?: boolean; initialAdd?: boolean;
+export function TaskListWorkspace({ actorId, language, date, timeZone, initialCompleted = false, initialAdd = false, initialSelectedId }: {
+  actorId?: string; language: OrbitLanguage; date: string; timeZone: string; initialCompleted?: boolean; initialAdd?: boolean; initialSelectedId?: string;
 }) {
   const { account, ready } = useSharedReadAccount();
   return <Orbit2026Scope language={language}><ToastProvider>
-    {ready ? <TaskList key={JSON.stringify([actorId, account])} language={language} date={date} timeZone={timeZone} initialCompleted={initialCompleted} initialAdd={initialAdd} /> : <Skeleton lines={5} />}
+    {ready ? <TaskList key={JSON.stringify([actorId, account, initialSelectedId])} language={language} date={date} timeZone={timeZone} initialCompleted={initialCompleted} initialAdd={initialAdd} initialSelectedId={initialSelectedId} /> : <Skeleton lines={5} />}
   </ToastProvider></Orbit2026Scope>;
 }
 
-function TaskList({ language, date, timeZone, initialCompleted, initialAdd }: { language: OrbitLanguage; date: string; timeZone: string; initialCompleted: boolean; initialAdd: boolean }) {
+function TaskList({ language, date, timeZone, initialCompleted, initialAdd, initialSelectedId }: { language: OrbitLanguage; date: string; timeZone: string; initialCompleted: boolean; initialAdd: boolean; initialSelectedId?: string }) {
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
   const toast = useToast();
   const client = useMemo(() => createTasksClient(), []);
@@ -46,7 +46,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd }: { 
   const [doneCursor, setDoneCursor] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(initialCompleted);
   const [showOpen, setShowOpen] = useState(!initialCompleted);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");

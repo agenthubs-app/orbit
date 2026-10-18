@@ -11,6 +11,10 @@
 
 Web task 行のキーボード操作を含む現行 D の全量 `d-web-full-after-task-arrows-fairqueue.log` は **7,709 tests / 6,650 pass / 31 fail / 1,028 skip、exit 1**。直前の `d-web-full-task-list-after.log` と失敗名集合は同一で、新しい失敗名は 0。追加 4 件は通ったが、31 件を pass と読み替えない。App の今回の修正と SC-09 fold はこの Web run の検証対象ではない。
 
+SC-14 の Web 旧 plain-task 詳細入口を部分更新した。`/app/tasks/[id]` は Task › To-do の新一覧へ `tab=todo&view=all&task=<id>` で移り、新一覧の右側詳細は先頭ページにない task も本人の詳細 API で読む。ログイン継続時も task ID を保持し、別の旧リンクを開くと前の選択を残さない。route / mounted list の回帰は RED 3 件から修正後 **13/13 pass**（`d-web-sc14-task-detail-red-complete.log`、`d-web-sc14-task-detail-green2.log`）、fresh Web typecheck は **exit0**（`d-web-typecheck-sc14-task-detail.log`）。これは `/app/tasks/relationship/[id]` や旧コンポーネントの削除、Web full の証拠ではない。後者は別途確認する。
+
+SC-09 App の完了済み fold は、未完了の期限群を残したまま、開いた時だけ別の completed page を読む。browser online-only は署名 cursor を渡し、端末 mirror は同じ保存集合を別窓として切る。初回ブラウザ RED は展開ボタン欠落で、実装後の新ケースは pass。最初の合わせ実行 `d-app-task-shell-focused-green.log` は **28 tests / 26 pass / 2 fail**：root テストの無寸法 fixture `<nav>` を visible と待った timeout と、既存 task browser suite 終了後の `route.fulfill: Route is already handled!`。前者を attached 判定に直した root browser は **4/4 pass**、後者の task file 単独再実行は fold を含む **21/21 pass**。型検査の初回 exit2 は parsed page と API interface の optional 型差、および新 fixture の強制変換 1 件。修正後の fresh App typecheck は **exit0**（`d-app-typecheck-fold-shell-tsfix.log`）。合わせ実行の async failure は消えたと主張せず、次の full gate で再確認する。App fold は `5ccec50d0` に局所コミットしたが、空 / 少 / 大の native 操作や pixel はまだない。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。

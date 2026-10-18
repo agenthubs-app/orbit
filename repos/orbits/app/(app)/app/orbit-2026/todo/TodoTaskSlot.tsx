@@ -10,7 +10,7 @@ import { TodoWorkspace } from "./TodoWorkspace";
 import { TaskListWorkspace } from "./TaskListWorkspace";
 
 /** Device-zone selection is explicit; no SSR assumption about the browser's day. */
-export function TodoTaskSlot({ actorId, initialAdd = false, initialList = false, initialCompleted = false }: { actorId?: string; initialAdd?: boolean; initialList?: boolean; initialCompleted?: boolean }) {
+export function TodoTaskSlot({ actorId, initialAdd = false, initialList = false, initialCompleted = false, initialSelectedId }: { actorId?: string; initialAdd?: boolean; initialList?: boolean; initialCompleted?: boolean; initialSelectedId?: string }) {
   const { language } = useOrbitLanguage();
   const [context, setContext] = useState<{ date: string; timeZone: string } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -30,6 +30,6 @@ export function TodoTaskSlot({ actorId, initialAdd = false, initialList = false,
   }, [retry]);
   if (failed || !context) return <Orbit2026Scope language={language}>{failed ? <RetryCard title={pickCopy(taskCopy.todoReadFailed, language)} onRetry={() => setRetry(value => value + 1)} /> : <Skeleton lines={5} />}</Orbit2026Scope>;
   return initialList
-    ? <TaskListWorkspace actorId={actorId} language={language} timeZone={context.timeZone} date={context.date} initialAdd={initialAdd} initialCompleted={initialCompleted} />
+    ? <TaskListWorkspace actorId={actorId} language={language} timeZone={context.timeZone} date={context.date} initialAdd={initialAdd} initialCompleted={initialCompleted} initialSelectedId={initialSelectedId} />
     : <TodoWorkspace actorId={actorId} language={language} timeZone={context.timeZone} date={context.date} initialAdd={initialAdd} />;
 }

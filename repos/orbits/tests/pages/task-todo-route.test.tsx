@@ -54,6 +54,24 @@ test("legacy completed view opens the new task list with completed rows expanded
   assert.equal(all.props.todo.props.initialCompleted, false);
 });
 
+test("legacy task identity opens the new list detail and survives login continuation", async () => {
+  const task = "task:one/two";
+  const runtime = loadPage();
+  const element = await runtime.page({ searchParams: Promise.resolve({ tab: "todo", view: "all", task }) });
+  assert.equal(element.props.todo.props.initialList, true);
+  assert.equal(element.props.todo.props.initialSelectedId, task);
+  const duplicate = await runtime.page({ searchParams: Promise.resolve({ tab: "todo", view: "all", task: [task, "task:other"] }) });
+  assert.equal(duplicate.props.todo.props.initialSelectedId, undefined);
+
+  const signedOut = loadPage(false);
+  await assert.rejects(signedOut.page({ searchParams: Promise.resolve({ tab: "todo", view: "all", task }) }), error => {
+    const destination = new URL((error as Error & { destination: string }).destination, "https://orbit.test");
+    const next = new URL(destination.searchParams.get("next")!, "https://orbit.test");
+    assert.equal(next.searchParams.get("task"), task);
+    return true;
+  });
+});
+
 test("Task calendar mounts the selected-window calendar with canonical actor and validated linked date", async () => {
   const runtime = loadPage();
   const element = await runtime.page({ searchParams: Promise.resolve({ tab: "calendar", date: "2030-04-01", new: "1" }) });

@@ -17,10 +17,11 @@ export const dynamic = "force-dynamic";
 // Calendar reads the selected native window and a read-only external source. プラン is the
 // plan v2 overview / goal input / 以前のプラン (`plan-slot.tsx`), read only when that
 // tab is asked for: switching tabs on the client re-requests the page with ?tab=.
-export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string; plan?: string; new?: string; date?: string }> } = {}) {
+export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams & { tab?: string; plan?: string; new?: string; date?: string; task?: string | string[] }> } = {}) {
   const params = await searchParams;
   const tab = taskTabFrom(params?.tab);
   const date = typeof params?.date === "string" && calendarDate(params.date) ? params.date : undefined;
+  const taskId = typeof params?.task === "string" && params.task ? params.task : undefined;
   const session = await auth();
   if (!session?.user?.id) {
     const continuation = new URLSearchParams();
@@ -28,6 +29,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     if (typeof params?.plan === "string") continuation.set("plan", params.plan);
     if (params?.new === "1") continuation.set("new", "1");
     if (params?.view === "completed") continuation.set("view", "completed");
+    if (taskId && tab === "todo") continuation.set("task", taskId);
     if (date && tab === "calendar") continuation.set("date", date);
     const next = `/app/tasks${continuation.size ? `?${continuation}` : ""}`;
     redirect(`/app/account/login?${new URLSearchParams({ next })}`);
@@ -43,7 +45,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
   return <TaskContainer
     initialTab={tab}
     calendar={actor ? <CalendarTaskSlot actorId={actor.id} initialDate={date} initialAdd={tab === "calendar" && params?.new === "1"} /> : null}
-    todo={actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} initialList={params?.view === "all" || params?.view === "completed"} initialCompleted={params?.view === "completed"} /> : null}
+    todo={actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} initialList={params?.view === "all" || params?.view === "completed" || Boolean(taskId)} initialCompleted={params?.view === "completed"} initialSelectedId={taskId} /> : null}
     plan={plan}
     planStartHref={planStartHref()}
   />;
