@@ -46,14 +46,19 @@ function PopoverCell() {
   );
 }
 
+/** 勾选类控件的布局框是 44 命中区（标记 22 / 20 / 18 居中）；规格格画的是裸标记、行内 gap 14，展示格用负外边距把命中区收回标记大小再排。 */
+function Mark({ size, children }: { size: number; children: ReactNode }) {
+  return <span style={{ display: "inline-flex", margin: -(44 - size) / 2 }}>{children}</span>;
+}
+
 function ControlsCell() {
   const c = S.ctl;
   return (
     <div className={styles.grid} style={{ gap: 14, width: 359 }}>
       <div className={styles.row} style={{ gap: 14 }}><Toggle checked={false} onChange={() => undefined} label="off" /><Toggle checked onChange={() => undefined} label="on" /><span className={styles.lbl} lang="zh">{c.toggle}<code lang="zh">{c.toggleCode}</code></span></div>
-      <div className={styles.row} style={{ gap: 14 }}><CheckCircle checked={false} onChange={() => undefined} label="off" /><CheckCircle checked onChange={() => undefined} label="on" /><span className={styles.lbl} lang="zh">{c.circle}<code lang="zh">{c.circleCode}</code></span></div>
-      <div className={styles.row} style={{ gap: 14 }}><Checkbox checked={false} onChange={() => undefined} label="off" /><Checkbox checked onChange={() => undefined} label="on" /><span className={styles.lbl} lang="zh">{c.box}</span></div>
-      <div className={styles.row} style={{ gap: 14 }}><Radio selected={false} onSelect={() => undefined} label="off" /><Radio selected onSelect={() => undefined} label="on" /><span className={styles.lbl} lang="zh">{c.radio}</span></div>
+      <div className={styles.row} style={{ gap: 14 }}><Mark size={22}><CheckCircle checked={false} onChange={() => undefined} label="off" /></Mark><Mark size={22}><CheckCircle checked onChange={() => undefined} label="on" /></Mark><span className={styles.lbl} lang="zh">{c.circle}<code lang="zh">{c.circleCode}</code></span></div>
+      <div className={styles.row} style={{ gap: 14 }}><Mark size={20}><Checkbox checked={false} onChange={() => undefined} label="off" /></Mark><Mark size={20}><Checkbox checked onChange={() => undefined} label="on" /></Mark><span className={styles.lbl} lang="zh">{c.box}</span></div>
+      <div className={styles.row} style={{ gap: 14 }}><Mark size={18}><Radio selected={false} onSelect={() => undefined} label="off" /></Mark><Mark size={18}><Radio selected onSelect={() => undefined} label="on" /></Mark><span className={styles.lbl} lang="zh">{c.radio}</span></div>
       <div className={styles.row} style={{ gap: 6, flexWrap: "wrap" }}>
         <FilterOption label={c.fopt[0]!} selected onToggle={() => undefined} /><FilterOption label={c.fopt[1]!} selected={false} onToggle={() => undefined} />
         <CategoryTabs label="cat" value="all" onChange={() => undefined} options={[{ key: "all", label: c.cat[0]! }, { key: "notice", label: c.cat[1]! }]} />

@@ -24,7 +24,7 @@
     "toggle": "开关 44×26 · 开 = ",
     "toggleCode": "--plum-700",
     "circle": "任务完成：圆形 22 · ",
-    "circleCode": "--plum-500",
+    "circleCode": "--ok",
     "box": "多选（表格/批量）：方形 20 圆角 7",
     "radio": "单选：圆 18 + 内点",
     "fopt": [

@@ -43,13 +43,15 @@
   "6": "[contrast] 底部提示行 .keys 文字与 kbd 键名 --ink-3 → --ink-3-text（底 surface / kbd 底 surface-2）"
  },
  "W-R31b-c-ctl-0-1440-light": {
-  "0": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
+  "0": "[contrast] 行尾说明「开关 44×26 · 开 = --plum-700」.lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 两个与位置一致（工具逐像素判定对这一行等宽字体部分解释不足，如实保留）",
+  "1": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；完成勾已按 RD-17 / RD-33 画成 --ok，与实现一致",
   "2": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
   "3": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
   "6": "[contrast] 「多选 chip / 单选页签」.lbl --ink-3 → --ink-3-text（底 bg）"
  },
  "W-R31b-c-ctl-0L-1440-light": {
-  "0": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
+  "0": "[contrast] 行尾说明「开关 44×26 · 开 = --plum-700」.lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 两个与位置一致（工具逐像素判定对这一行等宽字体部分解释不足，如实保留）",
+  "1": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；完成勾已按 RD-17 / RD-33 画成 --ok，与实现一致",
   "2": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
   "3": "[contrast] 行尾说明 .lbl --ink-3 → --ink-3-text（底 bg）；开关 44×26 / 方框 20 圆角 7 / 单选 18 与位置一致",
   "6": "[contrast] 「多选 chip / 单选页签」.lbl --ink-3 → --ink-3-text（底 bg）"

@@ -28,6 +28,11 @@
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme="light"])) .toast { background: var(--surface-3); color: var(--ink); }
 }
+/* 01-system ① dark (RD-17, redrawn per RD-33): the 元に戻す / action pill is --surface-2 on the --surface-3 capsule. */
+:global(:root[data-theme="dark"]) .button { background: var(--surface-2); }
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .button { background: var(--surface-2); }
+}
 .keep { border-radius: var(--r-card-web); padding: 10px 10px 10px 12px; }
 /* kit .tk: 26 round, the icon 15 at stroke 2.2. */
 .mark {
