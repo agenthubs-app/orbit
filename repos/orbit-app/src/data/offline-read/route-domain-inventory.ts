@@ -94,6 +94,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     && ['POST', 'PATCH', 'DELETE'].includes(method);
   // Sprint 0135: the queued relationship message send (message plan M4).
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
+  const aiSessionOutboxWrite = consumerFile === 'src/data/sync/ai-session-outbox-upload.ts' && domainId === 'ai-sessions'
+    && (method === 'PATCH' || method === 'DELETE');
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   // The version response is public, but changes on the server and is no-store;
   // online_only_secret is this inventory's existing never-persisted read policy.
@@ -139,7 +141,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     selector: providerTodo ? 'todo:external-provider-oauth' : `${domainId}:${method}:${endpointTemplate}`,
     schemaVersion: 1,
     readPersistence: secret ? 'online_only_secret' : 'durable_normalized',
-    mutationPolicy: taskOutboxWrite || messageOutboxWrite ? 'offline_queue' : 'online_only',
+    mutationPolicy: taskOutboxWrite || messageOutboxWrite || aiSessionOutboxWrite ? 'offline_queue' : 'online_only',
     binaryPolicy: secret ? 'never_local' : binary ? 'on_demand_encrypted' : 'metadata_only',
   };
 }
@@ -561,6 +563,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/schedule-outbox-upload.ts","PATCH","/api/schedule-items/:id"],
   ["src/data/sync/schedule-outbox-upload.ts","DELETE","/api/schedule-items/:id"],
   ["src/data/sync/message-outbox-upload.ts","POST","/api/relationship-communication/conversations/:id/messages"],
+  ["src/data/sync/ai-session-outbox-upload.ts","PATCH","/api/ai/conversations/sessions/:id"],
+  ["src/data/sync/ai-session-outbox-upload.ts","DELETE","/api/ai/conversations/sessions/:id"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],
