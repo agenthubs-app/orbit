@@ -7,6 +7,7 @@ import type {
   AiSessionGroupDeleteContract,
   AiSessionGroupContract,
   AiSessionGroupMutationContract,
+  AiSessionDeleteContract,
   AiSessionOrganizationContract,
   AiSessionOrganizationMutationContract,
   AiSessionReferenceContract,
@@ -153,6 +154,10 @@ export const aiSessionOrganizationMutationSchema: z.ZodType<AiSessionOrganizatio
       })
       .refine((patch) => Object.keys(patch).length > 0),
   }) as unknown as z.ZodType<AiSessionOrganizationMutationContract>;
+
+export const aiSessionDeleteSchema: z.ZodType<AiSessionDeleteContract> = z.object({
+  expectedRevision: z.number().int().nonnegative().safe(),
+}).strict();
 
 export const aiSessionGroupCreateSchema: z.ZodType<AiSessionGroupCreateContract> =
   z.object({ id: identifier, mutationId: identifier, name: z.string().trim().min(1).max(80) });

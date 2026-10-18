@@ -691,7 +691,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     setDeletingHistoryId(item.id);
     setHistoryDeleteError(null);
 
-    const result = await deleteAiSession(client, item.id, operation.signal);
+    const result = await deleteAiSession(client, item.id, item.organizationRevision, operation.signal);
     if (!owns() || operation.signal.aborted || deleteOperation.current !== operation) return;
     if (result.ok) {
       setDeletedIds(ids => [...ids, item.id]);
@@ -707,7 +707,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setHistoryAttempt(value => value + 1);
       if (localSessions.available) void localSessions.refresh();
     } else {
-      setHistoryDeleteError(locale.t("ai.deleteUnconfirmed"));
+      setHistoryDeleteError(result.code === "CONFLICT" ? iorbitR21Copy[locale.language].syncConflict : locale.t("ai.deleteUnconfirmed"));
+      if (result.code === "CONFLICT" && localSessions.available) void localSessions.refresh();
     }
     deleteOperation.current = null;
     setDeletingHistoryId(null);

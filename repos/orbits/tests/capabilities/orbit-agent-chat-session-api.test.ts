@@ -204,7 +204,7 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
     const deleteResponse = await byIdRoute.DELETE(
       new Request(
         `https://orbit.local/api/ai/conversations/sessions/${sessionId}`,
-        { method: "DELETE" },
+        { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedRevision: 0 }) },
       ),
       { params: Promise.resolve({ id: sessionId }) },
     );
@@ -312,7 +312,7 @@ test("Orbit Agent chat session APIs reject unauthenticated access before storage
       item.DELETE(
         new Request(
           "https://orbit.local/api/ai/conversations/sessions/private-session",
-          { method: "DELETE" },
+          { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedRevision: 0 }) },
         ),
         { params: Promise.resolve({ id: "private-session" }) },
       ),

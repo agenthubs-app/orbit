@@ -372,7 +372,7 @@ export function useAgentHistory() {
     try {
       let receipt: AgentSessionUndoReceipt | null = null;
       const persisted = await historyMutationQueue.remove(sessionId, async () => {
-        receipt = await deleteStoredAgentChatSession(sessionId);
+        receipt = await deleteStoredAgentChatSession(sessionId, item.organizationRevision);
         return receipt !== null;
       });
       if (!persisted) {

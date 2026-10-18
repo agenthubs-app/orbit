@@ -81,6 +81,10 @@ export interface AiSessionOrganizationMutationContract {
   >;
 }
 
+export interface AiSessionDeleteContract {
+  expectedRevision: number;
+}
+
 export interface AiSessionGroupCreateContract {
   id: string;
   mutationId: string;

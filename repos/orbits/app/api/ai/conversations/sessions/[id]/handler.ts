@@ -13,7 +13,7 @@ import {
   AppError,
   getHttpStatusForAppErrorCode,
 } from "../../../../../../shared/errors/app-error";
-import { aiSessionOrganizationMutationSchema } from "../../../../../../shared/api-schema/ai-sessions";
+import { aiSessionDeleteSchema, aiSessionOrganizationMutationSchema } from "../../../../../../shared/api-schema/ai-sessions";
 import { createOrbitAgentChatOrganizationStore } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-group-provider";
 import {
   OrbitAgentChatOrganizationError,
@@ -21,6 +21,7 @@ import {
 } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-transactions";
 import {
   OrbitAgentChatSessionCursorError,
+  OrbitAgentChatSessionRevisionConflictError,
   type OrbitAgentChatSessionProvider,
 } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import {
@@ -103,7 +104,7 @@ export function createOrbitAgentChatSessionHandlers(
 
   return {
     async DELETE(
-      _request: Request,
+      request: Request,
       context: OrbitAgentChatSessionRouteContext,
     ): Promise<Response> {
       const mode = resolveFeatureMode();
@@ -121,8 +122,19 @@ export function createOrbitAgentChatSessionHandlers(
         );
       }
 
+      let body: unknown;
+      try { body = await request.json(); } catch { body = null; }
+      const parsed = aiSessionDeleteSchema.safeParse(body);
+      if (!parsed.success) return responseForError(mode, new AppError("VALIDATION_ERROR", "A valid session revision is required for deletion."));
+      const organizationStore = organizationStoreForActor(mode, resolved.actor.id);
+      if (!organizationStore) return responseForError(mode, new AppError("SERVICE_UNAVAILABLE", "Orbit Agent chat organization storage is not configured."));
+
       try {
-        const deletion = await resolved.provider.deleteSessionWithUndo(id);
+        const organization = await organizationStore.getSessionOrganization(id);
+        if (organization.revision !== parsed.data.expectedRevision) {
+          return responseForError(mode, new AppError("CONFLICT", "AI session changed before deletion."));
+        }
+        const deletion = await resolved.provider.deleteSessionWithUndo(id, parsed.data.expectedRevision);
 
         return NextResponse.json(
           success({
@@ -139,6 +151,9 @@ export function createOrbitAgentChatSessionHandlers(
           },
         );
       } catch (error) {
+        if (error instanceof OrbitAgentChatSessionRevisionConflictError) {
+          return responseForError(mode, new AppError("CONFLICT", error.message));
+        }
         return responseForError(mode, error);
       }
     },

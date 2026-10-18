@@ -948,9 +948,12 @@ export interface AgentSessionUndoReceipt { undoToken: string; undoUntil: string 
 
 async function deleteStoredAgentChatSession(
   sessionId: string,
+  expectedRevision: number,
 ): Promise<AgentSessionUndoReceipt | null> {
   try {
     const response = await fetch(agentChatSessionsApiPath(sessionId), {
+      body: JSON.stringify({ expectedRevision }),
+      headers: { "content-type": "application/json" },
       method: "DELETE",
     });
     const payload = await readJsonResponse(response);

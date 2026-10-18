@@ -46,9 +46,12 @@ export async function updateAiSessionOrganization(
 export async function deleteAiSession(
   client: OrbitApiClient,
   sessionId: string,
+  expectedRevision: number,
   signal?: AbortSignal,
 ): Promise<AiSessionManagementResult<{ undoToken: string | null; undoUntil: string | null }>> {
-  const result = await client.delete<unknown>(aiConversationSessionPath(sessionId), signal ? { signal } : undefined);
+  const result = await client.delete<unknown>(aiConversationSessionPath(sessionId), {
+    body: { expectedRevision }, ...(signal ? { signal } : {}),
+  });
   if (!result.success) return failed(result.error.message, result.error.code);
   const parsed = aiSessionDeleteReceiptSchema.safeParse(result.data);
   return parsed.success

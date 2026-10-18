@@ -133,12 +133,29 @@ test("organization APIs create groups, patch sessions, filter, search, and pagin
   assert.equal(renameResponse.status, 200);
   assert.equal((await renameResponse.json()).data.group.name, "Alpha renamed");
 
-  const deleteOnce = await sessionItems.DELETE(
+  const unversionedDelete = await sessionItems.DELETE(
     request("/api/ai/conversations/sessions/session%3A54", "DELETE"),
     { params: Promise.resolve({ id: "session:54" }) },
   );
+  assert.equal(unversionedDelete.status, 400);
+  const expandedDelete = await sessionItems.DELETE(
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE", { expectedRevision: 1, extra: true }),
+    { params: Promise.resolve({ id: "session:54" }) },
+  );
+  assert.equal(expandedDelete.status, 400);
+  const staleDelete = await sessionItems.DELETE(
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE", { expectedRevision: 0 }),
+    { params: Promise.resolve({ id: "session:54" }) },
+  );
+  assert.equal(staleDelete.status, 409);
+  assert.equal((await staleDelete.json()).error.code, "CONFLICT");
+  assert.ok(await provider.getSession("session:54"));
+  const deleteOnce = await sessionItems.DELETE(
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE", { expectedRevision: 1 }),
+    { params: Promise.resolve({ id: "session:54" }) },
+  );
   const deleteAgain = await sessionItems.DELETE(
-    request("/api/ai/conversations/sessions/session%3A54", "DELETE"),
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE", { expectedRevision: 1 }),
     { params: Promise.resolve({ id: "session:54" }) },
   );
   const undo = (await deleteOnce.json()).data;
@@ -153,7 +170,7 @@ test("organization APIs create groups, patch sessions, filter, search, and pagin
   assert.equal(restored.status, 200);
   assert.equal((await restored.json()).data.restored, true);
   const deletedAgain = await sessionItems.DELETE(
-    request("/api/ai/conversations/sessions/session%3A54", "DELETE"),
+    request("/api/ai/conversations/sessions/session%3A54", "DELETE", { expectedRevision: 1 }),
     { params: Promise.resolve({ id: "session:54" }) },
   );
   assert.equal((await deletedAgain.json()).data.deleted, true);
@@ -249,8 +266,8 @@ test("App offline pin, rename, and delete round-trip through the Web actor's ses
         return response.ok ? { success: true, status: response.status, data: body.data }
           : { success: false, status: response.status, error: body.error };
       },
-      async delete(path: string) {
-        const response = await sessionItems.DELETE(request(path, "DELETE"), { params: Promise.resolve({ id: sessionId }) });
+      async delete(path: string, options: { body: unknown }) {
+        const response = await sessionItems.DELETE(request(path, "DELETE", options.body), { params: Promise.resolve({ id: sessionId }) });
         const body = await response.json();
         return response.ok ? { success: true, status: response.status, data: body.data }
           : { success: false, status: response.status, error: body.error };

@@ -776,6 +776,16 @@
         }
       }
     },
+    "ai-sessions.ts::AiSessionDeleteContract": {
+      "kind": "object",
+      "members": {
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
     "ai-sessions.ts::AiSessionGroupCreateContract": {
       "kind": "object",
       "members": {

@@ -12,7 +12,11 @@ import {
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
-import { orbitAgentChatSessionActorWorkspaceId } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import {
+  createStorageOrbitAgentChatSessionProvider,
+  OrbitAgentChatSessionRevisionConflictError,
+  orbitAgentChatSessionActorWorkspaceId,
+} from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 
 const databaseUrl = process.env.ORBIT_AGENT_SESSION_TEST_DATABASE_URL;
 const databaseTest = {
@@ -87,6 +91,18 @@ test("PostgreSQL organization transactions provide CAS, actor isolation, atomic 
     assert.equal(pins.filter((result) => result.status === "fulfilled").length, 1);
     assert.equal(pins.filter((result) => result.status === "rejected"
       && result.reason instanceof OrbitAgentChatOrganizationError && result.reason.code === "PIN_LIMIT").length, 1);
+
+    const sessionProvider = createStorageOrbitAgentChatSessionProvider({
+      actorId: "actor:alice", store: createPostgresLiveRecordStore({ client }), transactionClient: client, workspaceId,
+    });
+    await assert.rejects(sessionProvider.deleteSessionWithUndo("session:pin:0", 0),
+      (error: unknown) => error instanceof OrbitAgentChatSessionRevisionConflictError);
+    const stillActive = await createPostgresLiveRecordStore({ client }).getRecord({
+      collectionName: "orbit_agent_chat_sessions", recordId: "session:pin:0",
+      workspaceId: orbitAgentChatSessionActorWorkspaceId(workspaceId, "actor:alice"), includeDeleted: true,
+    });
+    assert.equal(stillActive?.lifecycleState, "active", "a stale DELETE cannot tombstone the session");
+    assert.equal((await sessionProvider.deleteSessionWithUndo("session:pin:0", 1)).deleted, true);
 
     const rollbackStore = createOrbitAgentChatOrganizationStore({
       actorId: "actor:rollback",

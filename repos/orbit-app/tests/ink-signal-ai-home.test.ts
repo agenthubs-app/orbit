@@ -209,7 +209,24 @@ test("R21 history deletion requires confirmation and starts one server write", a
   assert.deepEqual(await writes(p), []);
   await p.getByRole("heading", { name: "删除这个会话？" }).waitFor();
   await twice(p, "删除");
-  assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: null }]);
+  assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: { expectedRevision: 2 } }]);
+});
+
+test("R21 stale session deletion keeps the history row and shows a conflict", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "会话列表");
+  await press(p, "产品试点讨论的操作");
+  await press(p, "删除");
+  await press(p, "删除");
+  await p.evaluate(() => {
+    const state = (window as any).fixture;
+    const index = state.requests.findLastIndex((request: { method: string }) => request.method === "DELETE");
+    state.pending[index](new Response(JSON.stringify({ success: false, error: { code: "CONFLICT", message: "Session changed" } }),
+      { status: 409, headers: { "Content-Type": "application/json" } }));
+  });
+  await p.getByText("会话更改未同步，请重试。").first().waitFor();
+  await p.getByRole("button", { name: "产品试点讨论", exact: true }).first().waitFor();
+  assert.equal(await p.getByRole("button", { name: "撤销删除" }).count(), 0);
 });
 
 test("R21 undo button expires at the server deadline after a delayed DELETE reply", async t => {

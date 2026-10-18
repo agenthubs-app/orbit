@@ -32,9 +32,12 @@ export function createAiSessionOutboxUploader(input: {
     now,
     uploadOne: async (row: LocalSyncQueuedMutation, signal) => {
       if (row.operation === "delete") {
-        try { parseOfflineAiSessionDelete(row as OfflineAiSessionDeleteInput); }
+        let expectedRevision: number;
+        try { expectedRevision = parseOfflineAiSessionDelete(row as OfflineAiSessionDeleteInput).expectedRevision; }
         catch { return { status: 400 }; }
-        const response = await input.writeClient.delete<unknown>(aiConversationSessionPath(row.id), { signal });
+        const response = await input.writeClient.delete<unknown>(aiConversationSessionPath(row.id), {
+          body: { expectedRevision }, signal,
+        });
         if (!response.success && "error" in response) return { status: response.status, errorCode: response.error.code };
         if (!aiSessionDeleteReceiptSchema.safeParse(response.data).success) return { status: 0 };
         const previous = await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "ai_session", id: row.id });

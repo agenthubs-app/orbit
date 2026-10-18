@@ -98,7 +98,7 @@ test("after local undo expires, reconnect DELETE hides the mirrored session on s
   let row: LocalSyncQueuedMutation | null = { ...mutation, actorId: "actor-1", workspaceId: "workspace-1", state: "queued",
     attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
   let acknowledged: SyncRecord | null = null;
-  const requests: string[] = [];
+  const requests: Array<{ path: string; body: unknown }> = [];
   const uploader = createAiSessionOutboxUploader({
     actorId: "actor-1", baseUrl: "https://host.example", workspaceId: "workspace-1", now: () => Date.parse(at) + 6000,
     repository: {
@@ -108,12 +108,41 @@ test("after local undo expires, reconnect DELETE hides the mirrored session on s
       async markOutboxMutationFailure() { throw new Error("DELETE should be acknowledged"); },
       async getRecord() { return mirror; },
     },
-    writeClient: { async delete(path: string) { requests.push(path); return { success: true, status: 200,
+    writeClient: { async delete(path: string, options: { body: unknown }) { requests.push({ path, body: options?.body }); return { success: true, status: 200,
       data: { deleted: true, undoToken: null, undoUntil: null, storage: { configured: true, persisted: true, source: "local" } } } as any; },
       async patch() { throw new Error("DELETE must not become PATCH"); } } as any,
   });
   const result = await uploader.run();
   assert.equal(result.acknowledged, 1);
-  assert.deepEqual(requests, ["/api/ai/conversations/sessions/session-1"]);
+  assert.deepEqual(requests, [{ path: "/api/ai/conversations/sessions/session-1", body: { expectedRevision: 0 } }]);
   assert.equal((acknowledged as SyncRecord | null)?.deletedAt, new Date(Date.parse(at) + 6000).toISOString());
+});
+
+test("a stale offline DELETE stays a visible conflict with its mirrored session", async () => {
+  const { createAiSessionOutboxUploader } = await import("../src/data/sync/ai-session-outbox-upload");
+  const mutation = buildOfflineAiSessionDelete({ mutationId: "delete-stale", sessionId: "session-1", expectedRevision: 0, createdAt: at });
+  let row: LocalSyncQueuedMutation | null = { ...mutation, actorId: "actor-1", workspaceId: "workspace-1", state: "queued",
+    attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  let failure: { state: string; errorCode: string } | null = null;
+  let acknowledged = false;
+  const uploader = createAiSessionOutboxUploader({
+    actorId: "actor-1", baseUrl: "https://host.example", workspaceId: "workspace-1",
+    repository: {
+      async listQueuedMutations() { return row ? [row] : []; },
+      async beginOutboxMutationAttempt() { return row; },
+      async acknowledgeOutboxMutation() { acknowledged = true; row = null; },
+      async markOutboxMutationFailure(input) { failure = input; row = null; },
+      async getRecord() { return mirror; },
+    },
+    writeClient: { async delete(_path: string, options: { body: unknown }) {
+      assert.deepEqual(options?.body, { expectedRevision: 0 });
+      return { success: false, status: 409, error: { code: "CONFLICT", message: "Session changed" } } as any;
+    }, async patch() { throw new Error("DELETE must not become PATCH"); } } as any,
+  });
+  const result = await uploader.run();
+  assert.equal(result.conflicts, 1);
+  const conflict = failure as { state: string; errorCode: string } | null;
+  assert.deepEqual(conflict && { state: conflict.state, errorCode: conflict.errorCode }, { state: "conflict", errorCode: "CONFLICT" });
+  assert.equal(acknowledged, false);
+  assert.equal(aiSessionRows([mirror])[0]?.id, "session-1");
 });

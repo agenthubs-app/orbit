@@ -546,7 +546,9 @@ test("SC-02 a session that was deleted stays deleted when an old client saves la
   const sessionId = "session:paging:deleted";
   await seedLegacySession(ACTOR_A, sessionId, 6);
   const loaded = (await openPage(ACTOR_A, sessionId)).body.data.session;
-  const deleted = await sessionHandlers(ACTOR_A).DELETE(new Request("https://orbit.test/x", { method: "DELETE" }), { params: Promise.resolve({ id: sessionId }) });
+  const deleted = await sessionHandlers(ACTOR_A).DELETE(new Request("https://orbit.test/x", {
+    method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedRevision: 0 }),
+  }), { params: Promise.resolve({ id: sessionId }) });
   assert.equal(deleted.status, 200);
   assert.ok((await messageRows(ACTOR_A, sessionId)).every((row) => row.lifecycle_state === "deleted"));
   const late = await postSession(ACTOR_A, { ...loaded, messages: [...loaded.messages, { id: "late", role: "user", text: "晚到" }], updatedAt: new Date().toISOString() });

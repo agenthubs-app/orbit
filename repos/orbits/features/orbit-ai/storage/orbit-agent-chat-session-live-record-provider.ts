@@ -74,6 +74,12 @@ export class OrbitAgentChatSessionWriteError extends Error {
   }
 }
 
+export class OrbitAgentChatSessionRevisionConflictError extends Error {
+  constructor() {
+    super("AI session organization changed before deletion");
+  }
+}
+
 /** A page cursor that is malformed, forged, or issued for another session or account. */
 export class OrbitAgentChatSessionCursorError extends Error {
   constructor() {
@@ -143,7 +149,7 @@ export interface OrbitAgentChatSessionProvider {
     input: OrbitAgentChatSessionAppendInput,
   ) => Promise<OrbitAgentChatSessionHeader>;
   deleteSession: (sessionId: string) => Promise<boolean>;
-  deleteSessionWithUndo: (sessionId: string) => Promise<{ deleted: boolean; undoToken: string | null; undoUntil: string | null }>;
+  deleteSessionWithUndo: (sessionId: string, expectedRevision?: number) => Promise<{ deleted: boolean; undoToken: string | null; undoUntil: string | null }>;
   restoreDeletedSession: (sessionId: string, undoToken: string) => Promise<boolean>;
   deleteExpiredSession: (sessionId: string, referenceTime: Date, isPinned: () => Promise<boolean>) => Promise<boolean>;
   /** The session with its latest page of messages (default 20). */
@@ -999,8 +1005,8 @@ export function createStorageOrbitAgentChatSessionProvider({
       return (await this.deleteSessionWithUndo(sessionId)).deleted;
     },
 
-    async deleteSessionWithUndo(sessionId) {
-      return inSession(sessionId, async (tx) => {
+    async deleteSessionWithUndo(sessionId, expectedRevision) {
+      return inSession(sessionId, async (tx, sql) => {
         const deletedAt = now().toISOString();
         const session = await tx.getRecord({
           collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
@@ -1009,6 +1015,24 @@ export function createStorageOrbitAgentChatSessionProvider({
           workspaceId: actorWorkspaceId,
         });
         if (!session) return { deleted: false, undoToken: null, undoUntil: null };
+        if (expectedRevision !== undefined && sql) {
+          // PATCH holds this actor lock while changing organization. Read the
+          // revision under the same transaction before tombstoning the session.
+          await sql.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [
+            JSON.stringify(["orbit-agent-organization", workspaceId, actorId]),
+          ]);
+          const organizationId = createHash("sha256")
+            .update(JSON.stringify([actorId, "session-organization", sessionId])).digest("hex");
+          const organization = await tx.getRecord({
+            collectionName: "orbit_agent_chat_session_organizations",
+            includeDeleted: true,
+            recordId: organizationId,
+            workspaceId,
+          });
+          const revision = organization?.userId === actorId && organization.lifecycleState === "active"
+            && typeof organization.payload.revision === "number" ? organization.payload.revision : 0;
+          if (revision !== expectedRevision) throw new OrbitAgentChatSessionRevisionConflictError();
+        }
         if (session.lifecycleState === "deleted") return { deleted: true, undoToken: null, undoUntil: null };
         const undoToken = randomUUID();
         const undoUntil = new Date(now().getTime() + UNDO_WINDOW_MS).toISOString();

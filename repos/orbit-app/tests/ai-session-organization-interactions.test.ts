@@ -87,17 +87,36 @@ test("App session management preserves PIN_LIMIT apart from revision conflicts",
 test("App session deletion keeps a bounded undo receipt and restores it through the actor route", async () => {
   const calls: Array<{ path: string; body?: unknown }> = [];
   const client = {
-    delete: async (path: string) => ({ success: true as const, status: 200, meta, data: {
-      deleted: true, undoToken: "undo:one", undoUntil: "2026-10-18T09:00:05.000Z",
-      storage: { configured: true, persisted: true },
-    } }),
+    delete: async (path: string, options?: { body?: unknown }) => {
+      calls.push({ path, body: options?.body });
+      return { success: true as const, status: 200, meta, data: {
+        deleted: true, undoToken: "undo:one", undoUntil: "2026-10-18T09:00:05.000Z",
+        storage: { configured: true, persisted: true },
+      } };
+    },
     post: async (path: string, options?: { body?: unknown }) => {
       calls.push({ path, body: options?.body });
       return { success: true as const, status: 200, meta, data: { restored: true } };
     },
   } as unknown as OrbitApiClient;
-  const deleted = await deleteAiSession(client, "session:one");
+  const deleted = await deleteAiSession(client, "session:one", 2);
   assert.deepEqual(deleted, { ok: true, value: { undoToken: "undo:one", undoUntil: "2026-10-18T09:00:05.000Z" } });
   assert.deepEqual(await restoreAiSession(client, "session:one", "undo:one"), { ok: true, value: true });
-  assert.deepEqual(calls, [{ path: "/api/ai/conversations/sessions/session%3Aone/restore", body: { undoToken: "undo:one" } }]);
+  assert.deepEqual(calls, [
+    { path: "/api/ai/conversations/sessions/session%3Aone", body: { expectedRevision: 2 } },
+    { path: "/api/ai/conversations/sessions/session%3Aone/restore", body: { undoToken: "undo:one" } },
+  ]);
+});
+
+test("App session deletion exposes a stale revision conflict without a success receipt", async () => {
+  const client = {
+    delete: async (_path: string, options?: { body?: unknown }) => {
+      assert.deepEqual(options?.body, { expectedRevision: 2 });
+      return { success: false as const, status: 409, meta,
+        error: { code: "CONFLICT", message: "当前状态已经变化，请刷新后再试。" } };
+    },
+  } as unknown as OrbitApiClient;
+  assert.deepEqual(await deleteAiSession(client, "session:one", 2), {
+    ok: false, code: "CONFLICT", error: "当前状态已经变化，请刷新后再试。",
+  });
 });
