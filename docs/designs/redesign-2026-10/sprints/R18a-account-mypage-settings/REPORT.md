@@ -1,6 +1,6 @@
 # R18a implementation report (in progress)
 
-Approved scope: GOAL / PLANNER rev2, plus the explicit continuation authority recorded below. Latest frozen App verification at `0bab5674d`: typecheck0, full3191 / 3187 pass / 2 exact pristine failures / 2 skip; the authorized authenticated-client audit fix introduces no new full-suite failure names. Implementation is not acceptance closure: native interaction evidence, Web final verification, component-gated pixels and remaining independent review are OPEN. No pixel closure before R31a / R31b. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
+Approved scope: GOAL / PLANNER rev2, plus the explicit continuation authority recorded below. The latest current-source App typecheck passed; App full reported 3,200 tests / 3,186 pass / 12 fail / 2 skip. Nine failures are R12 camera/add cases, one is a task-date click timeout, and two match the pristine C baseline. The task-date file passed 32/32 in isolation, but the full-suite result remains red. Web full reported 7,425 tests / 6,374 pass / 32 fail / 1,019 skip; its failure names add none against pristine C. The authorized authenticated-client audit fix had no new full-suite failure names at its frozen `0bab5674d` checkpoint. Native interaction evidence, component-gated pixels and independent review are OPEN; this is not acceptance closure. No production database, real Google, deploy, TestFlight, push, stash or reset was used.
 
 ## 2026-10-18 Web final-gate checkpoint (still open)
 
