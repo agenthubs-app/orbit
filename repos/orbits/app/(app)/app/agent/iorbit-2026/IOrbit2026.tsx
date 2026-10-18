@@ -10,29 +10,26 @@ import { planIntakeListResponseSchema, planV2SummaryResponseSchema } from "../..
 import type { OrbitAgentHistoryView, OrbitAgentSuggestView } from "../../orbit-agent-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { ShellPage } from "../shell/slots";
-import { Button, Card, Chip, ConfirmDialog, ContextMenu, Drawer, Icon, IconButton, ListRow, Orbit2026Scope, SearchField, Toggle } from "../ui";
-import { AgentActionStatusCard } from "../../agent/agent-action-status-card";
-import { AgentTaskInteractionCard } from "../../agent/agent-task-interaction-card";
-import { CONSOLE_STYLES } from "../../agent/iorbit-0918/console-styles";
-import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../../agent/iorbit-0918/iorbit-rich-components";
-import { useAgentChat } from "../../agent/iorbit-0918/use-agent-chat";
-import { useAgentHistory } from "../../agent/iorbit-0918/use-agent-history";
-import { contactPageContextSource, loadContactPageContext } from "./page-context";
-import { readIOrbitEntityDraft, type IOrbitEntityDraft } from "./entity-draft";
+import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
+import { ShellPage } from "../../orbit-2026/shell/slots";
+import { Button, Card, Chip, ConfirmDialog, ContextMenu, Drawer, Icon, IconButton, ListRow, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
+import { AgentActionStatusCard } from "../agent-action-status-card";
+import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
+import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
+import { useAgentChat } from "../iorbit-0918/use-agent-chat";
+import { useAgentHistory } from "../iorbit-0918/use-agent-history";
+import { contactPageContextSource, loadContactPageContext } from "../../orbit-2026/iorbit/page-context";
+import { readIOrbitEntityDraft, type IOrbitEntityDraft } from "../../orbit-2026/iorbit/entity-draft";
 import styles from "./IOrbit2026.module.css";
 
-const AgentMarkdown = dynamic(() => import("../../agent/agent-markdown"), {
+const AgentMarkdown = dynamic(() => import("../agent-markdown"), {
   loading: () => <div aria-hidden className="orbit-agent-markdown" />,
 });
 
 type HistoryStore = ReturnType<typeof useAgentHistory>;
-const STARTER_SUGGESTIONS: OrbitAgentSuggestView[] = [
-  { icon: "💼", label: "今、誰に連絡すべき？", q: "今、誰に連絡すべきか、理由と次の一歩を教えて。" },
-  { icon: "🔍", label: "参加する価値があるイベントは？", q: "参加する価値があるイベントを、理由とともに教えて。" },
-  { icon: "📇", label: "関係の次の行動を整理して", q: "人脈との関係で次にすべきことを整理して。" },
-  { icon: "🧭", label: "新しいプランを考えたい", q: "新しい目標に向けたプランを考えるのを手伝って。" },
-];
+function fill(copy: string, values: Record<string, string | number>): string {
+  return copy.replace(/\{(\w+)\}/gu, (_, key: string) => String(values[key] ?? ""));
+}
 
 function tokyoDate(value: string): string | null {
   const date = new Date(value);
@@ -41,24 +38,25 @@ function tokyoDate(value: string): string | null {
   }).format(date);
 }
 
-function historySections(history: HistoryStore): [string, OrbitAgentHistoryView[]][] {
+function historySections(history: HistoryStore): ["pinned" | "today" | "week" | "older", OrbitAgentHistoryView[]][] {
   const dates = new Map(history.storedSessions.map((session) => [session.id, session.updatedAt || session.createdAt]));
   const today = tokyoDate(new Date().toISOString())!;
   const todayDay = Date.parse(`${today}T00:00:00Z`) / 86_400_000;
   const mondayDay = todayDay - ((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7);
-  const groups = new Map<string, OrbitAgentHistoryView[]>([
-    ["ピン留め", []], ["今日", []], ["今週", []], ["それ以前", []],
+  const groups = new Map<"pinned" | "today" | "week" | "older", OrbitAgentHistoryView[]>([
+    ["pinned", []], ["today", []], ["week", []], ["older", []],
   ]);
   for (const item of history.storedHistory) {
     const day = tokyoDate(dates.get(item.sessionId ?? "") ?? "");
     const ordinal = day ? Date.parse(`${day}T00:00:00Z`) / 86_400_000 : -Infinity;
-    const section = item.pinned ? "ピン留め" : ordinal === todayDay ? "今日" : ordinal >= mondayDay ? "今週" : "それ以前";
+    const section = item.pinned ? "pinned" : ordinal === todayDay ? "today" : ordinal >= mondayDay ? "week" : "older";
     groups.get(section)!.push(item);
   }
   return [...groups].filter(([, items]) => items.length > 0);
 }
 
 function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; history: HistoryStore; onPick: (item: OrbitAgentHistoryView) => void }) {
+  const { t } = useOrbitLanguage();
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -71,54 +69,55 @@ function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; hi
     <div className={styles.historyRow}>
       {renaming ? (
         <form className={styles.rename} onSubmit={(event) => { event.preventDefault(); history.renameHistorySession(item, title); setRenaming(false); }}>
-          <input autoFocus aria-label="会話の名前" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(false); }} />
-          <Button size="sm" label="保存" type="submit" disabled={!title.trim()} />
+          <input autoFocus aria-label={t(iorbitCopy.name)} value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(false); }} />
+          <Button size="sm" label={t(iorbitCopy.save)} type="submit" disabled={!title.trim()} />
         </form>
       ) : (
         <div className={styles.historyEntry}>
           <button className={`btn ${styles.historyEntryMain}`} type="button" onClick={() => onPick(item)}><Icon name={item.pinned ? "pin" : "chat"} size={16} /><span><b>{item.title}</b><small>{item.date}</small></span></button>
-          <Button ref={menuAnchor} icon="more" size="sm" label="操作" variant="ghost" onClick={() => setMenuOpen(true)} />
+          <Button ref={menuAnchor} icon="more" size="sm" label={t(iorbitCopy.actions)} variant="ghost" onClick={() => setMenuOpen(true)} />
         </div>
       )}
-      <ContextMenu open={menuOpen} onClose={() => setMenuOpen(false)} anchor={menuAnchor} label={`${item.title} の操作`} items={[
-        { key: "pin", label: item.pinned ? "ピン留めを外す" : "ピン留め", icon: "pin", onSelect: () => history.togglePinnedHistorySession(item) },
-        { key: "rename", label: "名前を変更", icon: "edit", onSelect: () => setRenaming(true) },
-        { key: "copy", label: "共有用にコピー", icon: "copy", onSelect: copy },
-        ...history.sessionGroups.map((group) => ({ key: `group:${group.id}`, label: `${group.name} に移動`, icon: "folder" as const, onSelect: () => history.moveHistorySession(item, group.id) })),
-        ...(item.groupId ? [{ key: "ungroup", label: "グループから外す", icon: "folder" as const, onSelect: () => history.moveHistorySession(item, null) }] : []),
-        { key: "delete", label: "削除", icon: "trash", destructive: true, onSelect: () => history.deleteHistorySession(item) },
+      <ContextMenu open={menuOpen} onClose={() => setMenuOpen(false)} anchor={menuAnchor} label={fill(t(iorbitCopy.actionsFor), { title: item.title })} items={[
+        { key: "pin", label: t(item.pinned ? iorbitCopy.unpin : iorbitCopy.pinned), icon: "pin", onSelect: () => history.togglePinnedHistorySession(item) },
+        { key: "rename", label: t(iorbitCopy.rename), icon: "edit", onSelect: () => setRenaming(true) },
+        { key: "copy", label: t(iorbitCopy.copyLink), icon: "copy", onSelect: copy },
+        ...history.sessionGroups.map((group) => ({ key: `group:${group.id}`, label: fill(t(iorbitCopy.moveGroup), { group: group.name }), icon: "folder" as const, onSelect: () => history.moveHistorySession(item, group.id) })),
+        ...(item.groupId ? [{ key: "ungroup", label: t(iorbitCopy.removeGroup), icon: "folder" as const, onSelect: () => history.moveHistorySession(item, null) }] : []),
+        { key: "delete", label: t(iorbitCopy.delete), icon: "trash", destructive: true, onSelect: () => history.deleteHistorySession(item) },
       ]} />
     </div>
   );
 }
 
 function HistoryPane({ history, goals, intakes, onNew, onPick }: { history: HistoryStore; goals: readonly PlanGoalListItem[]; intakes: readonly PlanIntakeListItem[]; onNew: () => void; onPick: (item: OrbitAgentHistoryView) => void }) {
+  const { t } = useOrbitLanguage();
   const [search, setSearch] = useState(history.historyQuery);
   useEffect(() => { const timer = window.setTimeout(() => history.setHistoryQuery(search), 250); return () => window.clearTimeout(timer); }, [search, history.setHistoryQuery]);
   const sections = useMemo(() => historySections(history), [history.storedHistory, history.storedSessions]);
   return (
     <div className={styles.history}>
-      <Button label="新しい会話" icon="plus" variant="primary" onClick={onNew} block />
-      <SearchField label="会話を検索" placeholder="タイトルと本文を検索" value={search} onChange={setSearch} />
-      {history.historyPageLoading && !history.storedHistory.length ? <p role="status">会話を読み込み中…</p> : null}
-      {history.historyReadError ? <div role="alert" className={styles.error}>会話を読み込めませんでした。<Button label="再試行" variant="ghost" size="sm" onClick={history.retryHistoryRead} /></div> : null}
-      {!history.historyPageLoading && !history.historyReadError && !history.storedHistory.length ? <p className={styles.emptyHistory}>{search ? "一致する会話はありません" : "まだ会話はありません"}</p> : null}
-      {sections.map(([title, items]) => <section key={title} aria-label={title} className={styles.historySection}>
-        <h3>{title}</h3>
+      <Button label={t(iorbitCopy.newChat)} icon="plus" variant="primary" onClick={onNew} block />
+      <SearchField label={t(iorbitCopy.searchLabel)} placeholder={t(iorbitCopy.searchPlaceholder)} value={search} onChange={setSearch} />
+      {history.historyPageLoading && !history.storedHistory.length ? <p role="status">{t(iorbitCopy.loading)}</p> : null}
+      {history.historyReadError ? <div role="alert" className={styles.error}>{t(iorbitCopy.readFailed)}<Button label={t(iorbitCopy.retry)} variant="ghost" size="sm" onClick={history.retryHistoryRead} /></div> : null}
+      {!history.historyPageLoading && !history.historyReadError && !history.storedHistory.length ? <p className={styles.emptyHistory}>{t(search ? iorbitCopy.noMatch : iorbitCopy.empty)}</p> : null}
+      {sections.map(([section, items]) => <section key={section} aria-label={t(iorbitCopy[section])} className={styles.historySection}>
+        <h3>{t(iorbitCopy[section])}</h3>
         {items.map((item) => <HistoryRow key={item.id} item={item} history={history} onPick={onPick} />)}
       </section>)}
-      <section aria-label="プランを作る" className={styles.historySection}>
-        <h3>プランを作る</h3>
-        {intakes.map((intake) => <ListRow key={intake.intakeId} title={intake.goal} subtitle="作成中のプランを続ける" leading={<Icon name="target" size={16} />} onSelect={() => { window.location.href = planFlowHref("web", intake.intakeId); }} />)}
+      <section aria-label={t(iorbitCopy.plans)} className={styles.historySection}>
+        <h3>{t(iorbitCopy.plans)}</h3>
+        {intakes.map((intake) => <ListRow key={intake.intakeId} title={intake.goal} subtitle={t(iorbitCopy.continuePlan)} leading={<Icon name="target" size={16} />} onSelect={() => { window.location.href = planFlowHref("web", intake.intakeId); }} />)}
         {goals.map((goal) => <div key={goal.planId} className={styles.planEntry}>
-          <ListRow title={goal.goal} subtitle={goal.status === "achieved" ? "完了した目標" : "進行中の目標"} leading={<Icon name="target" size={16} />} onSelect={() => { window.location.href = planOverviewHref("web", goal.planId); }} />
-          <Button label={goal.status === "achieved" ? "完了を見る" : "振り返る"} variant="ghost" size="sm" onClick={() => { window.location.href = goal.status === "achieved" ? planDoneHref("web", goal.planId) : planReviewHref("web", goal.planId); }} />
+          <ListRow title={goal.goal} subtitle={t(goal.status === "achieved" ? iorbitCopy.achieved : iorbitCopy.inProgress)} leading={<Icon name="target" size={16} />} onSelect={() => { window.location.href = planOverviewHref("web", goal.planId); }} />
+          <Button label={t(goal.status === "achieved" ? iorbitCopy.viewDone : iorbitCopy.review)} variant="ghost" size="sm" onClick={() => { window.location.href = goal.status === "achieved" ? planDoneHref("web", goal.planId) : planReviewHref("web", goal.planId); }} />
         </div>)}
-        <Button label="新しい目標" icon="plus" variant="ghost" size="sm" onClick={() => { window.location.href = planNewGoalHref("web"); }} />
+        <Button label={t(iorbitCopy.newGoal)} icon="plus" variant="ghost" size="sm" onClick={() => { window.location.href = planNewGoalHref("web"); }} />
       </section>
-      {history.historyPageHasMore ? <Button label={history.historyPageLoading ? "読み込み中…" : "もっと見る"} variant="ghost" disabled={history.historyPageLoading} onClick={() => void history.loadMoreHistory()} block /> : null}
+      {history.historyPageHasMore ? <Button label={t(history.historyPageLoading ? iorbitCopy.loadingMore : iorbitCopy.more)} variant="ghost" disabled={history.historyPageLoading} onClick={() => void history.loadMoreHistory()} block /> : null}
       {history.historyFeedback ? <p role={history.historyFeedback.kind === "error" ? "alert" : "status"} className={history.historyFeedback.kind === "error" ? styles.error : styles.feedback}>{history.historyFeedback.text}</p> : null}
-      {history.pendingUndo ? <div className={styles.undo} role="status"><span>削除しました</span><Button label="元に戻す" size="sm" variant="ghost" onClick={() => void history.undoDeletedHistorySession()} /></div> : null}
+      {history.pendingUndo ? <div className={styles.undo} role="status"><span>{t(iorbitCopy.deleted)}</span><Button label={t(iorbitCopy.undo)} size="sm" variant="ghost" onClick={() => void history.undoDeletedHistorySession()} /></div> : null}
     </div>
   );
 }
@@ -128,6 +127,12 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   initialHistoryOpen?: boolean;
 }) {
   const { language, t } = useOrbitLanguage();
+  const suggestions = useMemo<OrbitAgentSuggestView[]>(() => [
+    { icon: "💼", label: t(iorbitCopy.suggestionPeople), q: t(iorbitCopy.suggestionPeopleQuery) },
+    { icon: "🔍", label: t(iorbitCopy.suggestionEvents), q: t(iorbitCopy.suggestionEventsQuery) },
+    { icon: "📇", label: t(iorbitCopy.suggestionRelations), q: t(iorbitCopy.suggestionRelationsQuery) },
+    { icon: "🧭", label: t(iorbitCopy.suggestionPlan), q: t(iorbitCopy.suggestionPlanQuery) },
+  ], [language]);
   const history = useAgentHistory();
   const chat = useAgentChat({ history: {
     historyMutationQueue: history.historyMutationQueue,
@@ -135,7 +140,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     setSessionGroups: history.setSessionGroups,
     setStoredSessions: history.setStoredSessions,
     storedSessionsRef: history.storedSessionsRef,
-  }, suggests: STARTER_SUGGESTIONS });
+  }, suggests: suggestions });
   history.bindChat({
     activeSessionIdRef: chat.activeSessionIdRef, navigate: chat.navigate, setActiveQ: chat.setActiveQ,
     setActiveSessionId: chat.setActiveSessionId, setChatOpen: chat.setChatOpen, setHistOpen: chat.setHistOpen,
@@ -197,7 +202,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
         const raw = (body.data as { draft?: unknown } | null)?.draft;
         setEntityDraft(readIOrbitEntityDraft(raw));
         setEntityDraftLoaded(true);
-      }).catch(() => { if (!controller.signal.aborted) setEntityDraftError("下書きを確認できません。ページを更新してもう一度お試しください。"); });
+      }).catch(() => { if (!controller.signal.aborted) setEntityDraftError(t(iorbitCopy.draftReadFailed)); });
     return () => controller.abort();
   }, [chat.activeSessionId, chat.thinking]);
   useEffect(() => {
@@ -219,7 +224,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
       if (!response.ok || !next || next.draftId !== entityDraft.draftId) throw new Error("DRAFT_ACTION_UNCONFIRMED");
       setEntityDraft(next);
     } catch {
-      setEntityDraftError("下書きの操作を確認できません。もう一度お試しください。");
+      setEntityDraftError(t(iorbitCopy.draftActionFailed));
     } finally {
       entityDraftBusyRef.current = false;
       setEntityDraftBusy(false);
@@ -251,7 +256,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     setContextError(null);
     if (!enabled || !source) return;
     try { setPageContext(await loadContactPageContext(source)); setContextEnabled(true); }
-    catch { setContextError("このページの人数を確認できません。もう一度お試しください。"); }
+    catch { setContextError(t(iorbitCopy.contextFailed)); }
   };
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
@@ -276,35 +281,33 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); setContextEnabled(false); setPageContext(null); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
   const recent = history.storedHistory.slice(0, 3);
-  const suggestions = STARTER_SUGGESTIONS;
   const panelLanguage = language === "zh" ? "zh" : "en";
   return (
     <Orbit2026Scope language={language} className={styles.scope}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
-      <style>{CONSOLE_STYLES}</style>
-      <ShellPage title="iOrbit" subtitle={inConversation ? "会話中" : "人脈・イベント・予定を知っている秘書"}
-        left={<IconButton icon="menu" label="会話リスト" onClick={() => setHistoryOpen((open) => !open)} />}
-        right={<Button label="新しい会話" icon="plus" onClick={startNew} />}
+      <ShellPage title="iOrbit" subtitle={t(inConversation ? iorbitCopy.inConversation : iorbitCopy.subtitle)}
+        left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen((open) => !open)} />}
+        right={<Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} />}
         rightRail={false} phoneFold />
       <div className={styles.layout}>
-        {historyOpen && !narrow ? <aside className={styles.sidebar} aria-label="会話リスト"><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></aside> : null}
+        {historyOpen && !narrow ? <aside className={styles.sidebar} aria-label={t(iorbitCopy.list)}><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></aside> : null}
         <main className={styles.main}>
-          <div className={styles.phoneHeader}><IconButton icon="menu" label="会話リスト" onClick={() => setHistoryOpen(true)} /><strong>iOrbit</strong><IconButton icon="plus" label="新しい会話" onClick={startNew} /></div>
-          {!inConversation ? <section className={styles.start} aria-label="新しい会話">
+          <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><strong>iOrbit</strong><IconButton icon="plus" label={t(iorbitCopy.newChat)} onClick={startNew} /></div>
+          {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
             <div className={styles.star} aria-hidden><Icon name="sparkle" size={24} /></div>
-            <h1><span>{home?.account.fullName ? `${home.account.fullName.split(/\s+/u)[0]}さん、` : "こんにちは、"}</span><br />何をお手伝いしましょう？</h1>
-            <p>人脈やイベント、プランのこと。iOrbit に聞いてください。</p>
+            <h1><span>{home?.account.fullName ? fill(t(iorbitCopy.greetingName), { name: home.account.fullName.split(/\s+/u)[0] }) : t(iorbitCopy.greeting)}</span><br />{t(iorbitCopy.heading)}</h1>
+            <p>{t(iorbitCopy.intro)}</p>
             <div className={styles.suggestions}>
               {suggestions.map((suggestion, index) => <button key={`${suggestion.q}-${index}`} type="button" className={`btn ${styles.suggestion}`} onClick={() => sendSuggestion(suggestion.q)}>
                 <span className={styles.suggestionIcon} aria-hidden>{suggestion.icon}</span><span>{suggestion.label}</span><Icon name="right" size={16} />
               </button>)}
             </div>
-            {recent.length ? <Card><div className={styles.recentHead}><b>最近の会話</b><Button label="すべて" variant="ghost" size="sm" onClick={() => setHistoryOpen(true)} /></div>
+            {recent.length ? <Card><div className={styles.recentHead}><b>{t(iorbitCopy.recent)}</b><Button label={t(iorbitCopy.all)} variant="ghost" size="sm" onClick={() => setHistoryOpen(true)} /></div>
               {recent.map((item) => <ListRow key={item.id} title={item.title} subtitle={item.date} leading={<Icon name="chat" size={16} />} onSelect={() => pick(item)} />)}
             </Card> : null}
-            <div className={styles.capabilities}><Chip label={`人脈 ${home?.stats.people ?? 0}`} /><Chip label={`イベント ${home?.stats.events ?? 0}`} /><Chip label="プラン" /></div>
-          </section> : <section className={styles.thread} aria-label="会話" data-orbit-iorbit-thread>
-            {chat.earlier.hasMore || chat.earlier.status === "error" ? <Button label={chat.earlier.status === "error" ? "もう一度読み込む" : "以前のメッセージを読み込む"} variant="ghost" onClick={() => void chat.loadEarlier()} disabled={chat.earlier.status === "loading"} /> : null}
+            <div className={styles.capabilities}><Chip label={fill(t(iorbitCopy.peopleCount), { n: home?.stats.people ?? 0 })} /><Chip label={fill(t(iorbitCopy.eventsCount), { n: home?.stats.events ?? 0 })} /><Chip label={t(iorbitCopy.plan)} /></div>
+          </section> : <section className={styles.thread} aria-label={t(iorbitCopy.conversation)} data-orbit-iorbit-thread>
+            {chat.earlier.hasMore || chat.earlier.status === "error" ? <Button label={t(chat.earlier.status === "error" ? iorbitCopy.earlierRetry : iorbitCopy.earlier)} variant="ghost" onClick={() => void chat.loadEarlier()} disabled={chat.earlier.status === "loading"} /> : null}
             {chat.messages.map((message, index) => message.role === "user" ?
               <div className={styles.userRow} key={message.id ?? `u${index}`} data-orbit-iorbit-message><span className={styles.userBubble}>{message.text}{message.supplement ? <small>{message.supplement}</small> : null}</span><AgentMessageCopyButton text={message.text} /></div> :
               <div className={styles.assistantRow} key={message.id ?? `a${index}`} data-orbit-iorbit-message><span className={styles.assistantIcon} aria-hidden><Icon name="sparkle" size={16} /></span><div className={styles.answer}>
@@ -312,31 +315,31 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
                 {message.taskInteraction ? <AgentTaskInteractionCard interaction={message.taskInteraction} language={panelLanguage} {...chat.taskSuggestions.forInteraction(message.taskInteraction)} /> : null}
                 {message.items.length ? <PanelCards language={panelLanguage} navigate={chat.navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} /> : null}
                 {message.runId && message.actionIds?.length ? <AgentActionStatusCard actionIds={message.actionIds} language={panelLanguage} navigate={chat.navigate} runId={message.runId} showRunDetails={false} /> : null}
-                {message.evidenceRefs?.length ? <p className={styles.sources}>参照: {message.evidenceRefs.map((ref) => ref.label).join(" · ")}</p> : null}
-                {message.retryRequest ? <Button label={message.stopped ? "再開" : "もう一度"} variant="secondary" disabled={chat.thinking} onClick={() => void chat.ask(message.retryRequest!, index)} /> : null}
+                {message.evidenceRefs?.length ? <p className={styles.sources}>{t(iorbitCopy.sources)}{message.evidenceRefs.map((ref) => ref.label).join(" · ")}</p> : null}
+                {message.retryRequest ? <Button label={t(message.stopped ? iorbitCopy.resume : iorbitCopy.tryAgain)} variant="secondary" disabled={chat.thinking} onClick={() => void chat.ask(message.retryRequest!, index)} /> : null}
                 <AgentMessageCopyButton text={message.text} />
               </div></div>)}
             {entityDraft && (!requestedDraftId || requestedDraftId === entityDraft.draftId) ? <Card><div id="iorbit-entity-draft" className={styles.entityDraft}>
-              <b>確認待ちの{entityDraft.kind === "task" ? "タスク" : entityDraft.kind === "note" ? "メモ" : entityDraft.kind === "schedule" ? "予定" : "イベント"}</b>
+              <b>{fill(t(iorbitCopy.draftHeading), { kind: t(iorbitCopy[entityDraft.kind]) })}</b>
               {Object.entries(entityDraft.fields).slice(0, 4).map(([key, value]) => <p key={key}><small>{key}</small><span>{value}</span></p>)}
-              {entityDraft.state === "pending_confirmation" ? <div className={styles.entityDraftActions}><Button label="作成を確認" variant="primary" disabled={entityDraftBusy} onClick={() => void resolveEntityDraft("confirm")} /><Button label="キャンセル" variant="ghost" disabled={entityDraftBusy} onClick={() => void resolveEntityDraft("cancel")} /></div> : <p role="status">{entityDraft.state === "created" ? "作成しました" : entityDraft.state === "cancelled" ? "キャンセルしました" : "この下書きは更新されました"}</p>}
+              {entityDraft.state === "pending_confirmation" ? <div className={styles.entityDraftActions}><Button label={t(iorbitCopy.confirmCreate)} variant="primary" disabled={entityDraftBusy} onClick={() => void resolveEntityDraft("confirm")} /><Button label={t(iorbitCopy.cancel)} variant="ghost" disabled={entityDraftBusy} onClick={() => void resolveEntityDraft("cancel")} /></div> : <p role="status">{t(entityDraft.state === "created" ? iorbitCopy.created : entityDraft.state === "cancelled" ? iorbitCopy.cancelled : iorbitCopy.draftChanged)}</p>}
             </div></Card> : null}
-            {requestedDraftId && entityDraftLoaded && entityDraft?.draftId !== requestedDraftId ? <p role="status" className={styles.error}>この会話に確認待ちの下書きはありません。</p> : null}
+            {requestedDraftId && entityDraftLoaded && entityDraft?.draftId !== requestedDraftId ? <p role="status" className={styles.error}>{t(iorbitCopy.draftMissing)}</p> : null}
             {entityDraftError ? <p role="alert" className={styles.error}>{entityDraftError}</p> : null}
-            {chat.thinking ? <div role="status" className={styles.assistantRow}><span className={styles.assistantIcon}><Icon name="sparkle" size={16} /></span><div><ThinkingIndicator t={t} /><Button label="停止" variant="ghost" size="sm" onClick={chat.stopResponse} /></div></div> : null}
-            <div className={styles.followups}><Button label="プランを見る" variant="ghost" onClick={() => { window.location.href = planTaskSegmentHref("web"); }} /></div>
+            {chat.thinking ? <div role="status" className={styles.assistantRow}><span className={styles.assistantIcon}><Icon name="sparkle" size={16} /></span><div><ThinkingIndicator t={t} /><Button label={t(iorbitCopy.stop)} variant="ghost" size="sm" onClick={chat.stopResponse} /></div></div> : null}
+            <div className={styles.followups}><Button label={t(iorbitCopy.viewPlans)} variant="ghost" onClick={() => { window.location.href = planTaskSegmentHref("web"); }} /></div>
           </section>}
-          {source ? <div className={styles.contextCard}><div><b>このページを文脈に含める</b><p>{contextEnabled && pageContext ? `${pageContext.route} · ${source.length ? `業界 ${source.join("、")} · ` : ""}${pageContext.count}人` : "オフ · 人脈ページの情報は送信しません"}</p></div><Toggle checked={contextEnabled} onChange={(next) => void enableContext(next)} label="このページを文脈に含める" /></div> : null}
+          {source ? <div className={styles.contextCard}><div><b>{t(iorbitCopy.pageContext)}</b><p>{contextEnabled && pageContext ? `${pageContext.route} · ${source.length ? fill(t(iorbitCopy.industry), { value: source.join(", ") }) : ""}${fill(t(iorbitCopy.peopleUnit), { n: pageContext.count })}` : t(iorbitCopy.contextOff)}</p></div><Toggle checked={contextEnabled} onChange={(next) => void enableContext(next)} label={t(iorbitCopy.pageContext)} /></div> : null}
           {contextError ? <p className={styles.error} role="alert">{contextError}</p> : null}
           <form className={styles.composer} onSubmit={submit} data-orbit-agent-chat-composer>
-            <textarea ref={inputRef} rows={2} aria-label="iOrbit に聞く" placeholder="iOrbit に聞く…" value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
-            <IconButton icon="send" label="送信" type="submit" disabled={chat.thinking || !chat.chatDraft.trim()} data-orbit-agent-submit="true" />
+            <textarea ref={inputRef} rows={2} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.askPlaceholder)} value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
+            <IconButton icon="send" label={t(iorbitCopy.send)} type="submit" disabled={chat.thinking || !chat.chatDraft.trim()} data-orbit-agent-submit="true" />
           </form>
-          <p className={styles.privacy}>送信はあなたが行います。回答の根拠は結果で確認できます。</p>
+          <p className={styles.privacy}>{t(iorbitCopy.privacy)}</p>
         </main>
       </div>
-      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title="会話リスト" size="lg" fullOnPhone><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
-      <ConfirmDialog open={Boolean(history.pendingDeleteHistory)} title="この会話を削除しますか？" message="会話内で追加したタスクや予定は削除されません。" confirmLabel="削除" cancelLabel="キャンセル" destructive icon="trash" onConfirm={() => void history.confirmDeleteHistorySession()} onCancel={() => history.setPendingDeleteHistory(null)} />
+      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="lg" fullOnPhone><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
+      <ConfirmDialog open={Boolean(history.pendingDeleteHistory)} title={t(iorbitCopy.deleteTitle)} message={t(iorbitCopy.deleteMessage)} confirmLabel={t(iorbitCopy.delete)} cancelLabel={t(iorbitCopy.cancel)} destructive icon="trash" onConfirm={() => void history.confirmDeleteHistorySession()} onCancel={() => history.setPendingDeleteHistory(null)} />
       {history.historyDeleteError ? <p className={styles.error} role="alert">{history.historyDeleteError}</p> : null}
     </div>
     </Orbit2026Scope>

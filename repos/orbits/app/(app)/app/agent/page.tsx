@@ -39,7 +39,7 @@ import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/au
 import { redirect } from "next/navigation";
 import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
 import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
-import { IOrbit2026 } from "../orbit-2026/iorbit/IOrbit2026";
+import { IOrbit2026 } from "./iorbit-2026/IOrbit2026";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";

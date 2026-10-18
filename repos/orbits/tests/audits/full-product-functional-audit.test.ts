@@ -453,8 +453,9 @@ test("route query parameters come from route-local URL consumers, not transitive
   // R11a：/contacts/list 只是跳到 /contacts（新人脈页），不再读查询参数。
   assert.deepEqual(routeParameters("mobile:/contacts/list"), []);
   // Every key below is declared in the route's own useLocalSearchParams in
-  // repos/orbit-app/app/ai/[id].tsx (send/prefill intents, session origin, note source).
+  // repos/orbit-app/app/ai/[id].tsx (send/prefill intents, draft, session origin, note source).
   assert.deepEqual(routeParameters("mobile:/ai/[id]"), [
+    "draftId",
     "entryPointId",
     "initialGroupId",
     "initialMessage",

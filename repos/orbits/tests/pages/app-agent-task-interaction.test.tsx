@@ -257,6 +257,13 @@ async function mountPage(
   });
   const home = analysisPrefill ? { account: { fullName: "本人", headline: "", initial: "本" }, events: [], stats: { events: 0, people: 1, inProgress: 0 } } : undefined;
   await act(async () => { root = create(<IOrbitShell home={home ?? null} initialDeepLink viewModel={createOrbitAgentStarterViewModel()} />); });
+  if (!restoredSession && !analysisPrefill) {
+    assert.equal(conversationRequests.length, 0, "a ?q deep link only prefills before explicit submit");
+    await act(async () => {
+      root!.root.findByProps({ "data-orbit-agent-chat-composer": true }).props.onSubmit({ preventDefault() {} });
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    });
+  }
   return { root: root!, persisted, requests, organizationMutations, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
 }
 

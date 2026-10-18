@@ -220,7 +220,7 @@ export function useAgentHistory() {
         setHistoryFeedback({
           kind: "error",
           text: errorCode === "PIN_LIMIT"
-            ? "ピン留めは5件までです。別の会話のピン留めを外してください。"
+            ? t({ ja: "ピン留めは5件までです。別の会話のピン留めを外してください。", zh: "最多置顶 5 个对话。请先取消其他对话的置顶。", en: "You can pin up to five conversations. Unpin another conversation first." })
             : languageRef.current === "zh"
               ? "未能保存对话历史更改，页面保持原状态。请稍后重试。"
               : "The history change could not be saved, so nothing changed. Please try again.",
@@ -435,7 +435,7 @@ export function useAgentHistory() {
       restoreStoredAgentChatSession(pending.sessionId, pending.undoToken));
     if (!restored) {
       setPendingUndo(null);
-      setHistoryFeedback({ kind: "error", text: t({ en: "Undo expired. The conversation remains deleted.", zh: "撤销期限已过，对话仍已删除。" }) });
+      setHistoryFeedback({ kind: "error", text: t({ ja: "元に戻せる期限が過ぎました。会話は削除されたままです。", en: "Undo expired. The conversation remains deleted.", zh: "撤销期限已过，对话仍已删除。" }) });
       return false;
     }
     if (pending.summary) {
@@ -446,7 +446,7 @@ export function useAgentHistory() {
       });
     }
     setPendingUndo(null);
-    setHistoryFeedback({ kind: "success", text: t({ en: "Conversation restored", zh: "对话已恢复" }) });
+    setHistoryFeedback({ kind: "success", text: t({ ja: "会話を元に戻しました", en: "Conversation restored", zh: "对话已恢复" }) });
     return true;
   };
 

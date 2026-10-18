@@ -703,7 +703,7 @@ export async function POST(request: Request): Promise<Response> {
         ...input,
         ...(pageContext ? { pageContext } : {}),
         memory: [
-          ...(await memoryService.context()),
+          ...(await memoryService.context() ?? []),
           ...(pageContext ? [{ category: "page_context", content: JSON.stringify(pageContext) }] : []),
         ],
         outcomes: await feedbackService?.context(),

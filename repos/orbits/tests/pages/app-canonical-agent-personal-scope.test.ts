@@ -21,8 +21,10 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
     [join(root, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => "zh", localizeOrbitTree: (tree: unknown) => tree },
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，页面挂的是 `IOrbitShell`。
+    [join(root, "app/(app)/app/tasks/personal-schedule-workspace.tsx")]: { PersonalScheduleWorkspace: () => null },
+    // Live R21 iOrbit renders the kit-backed view; demo keeps IOrbitShell after orbit-real-agent removal.
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell: () => null },
+    [join(root, "app/(app)/app/agent/iorbit-2026/IOrbit2026.tsx")]: { IOrbit2026: () => null },
     [join(root, "app/(app)/app/home/orbit-real-home.tsx")]: { OrbitRealHome: () => null },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: { loadAppHomeRouteViewModel: stub("home", { state: "success", home: { events: [] } }) },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: stub("events", {}) },
@@ -55,16 +57,15 @@ for (const route of ["agent", "home/events"] as const) {
     const tree = await page();
     assert.deepEqual(calls.find(call => call.operation === "identity")?.input, [{ userId: "subject:external", email: "owner@example.test", name: "Owner" }]);
     if (route === "agent") {
-      // Sprint 0104: no legacy chat read; the welcome questions come from the starter model.
       const nodes: any[] = [tree];
-      let suggests: Array<{ label: string }> | undefined;
-      while (nodes.length && !suggests) {
+      let liveHome: unknown;
+      while (nodes.length && liveHome === undefined) {
         const node = nodes.pop();
         if (!node?.props) continue;
-        suggests = node.props.viewModel?.suggests;
+        if (node.type?.name === "IOrbit2026") liveHome = node.props.home;
         nodes.push(...[node.props.children].flat());
       }
-      assert.deepEqual(suggests?.map(item => item.label), ["找值得跟进的人脉", "推荐可拓展活动", "整理关系待办"]);
+      assert.deepEqual(liveHome, { events: [] });
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
       assert.equal(calls.find(call => call.operation === "events")?.input[0].actorId, "account:canonical");

@@ -94,7 +94,7 @@ export interface OrbitAgentChatOrganizationStore {
 
 type OrganizationRecord = LiveRecord<Record<string, unknown>>;
 type TransactionRunner = <T>(
-  operation: (store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor) => Promise<T>,
+  operation: (store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor, memoryPinnedCount?: number) => Promise<T>,
 ) => Promise<T>;
 
 function cleanIdentifier(value: string): string {
@@ -251,7 +251,8 @@ export function createOrbitAgentChatOrganizationStore(input: {
     return input.runTransaction(operation);
   }
 
-  async function pinnedCount(store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor): Promise<number> {
+  async function pinnedCount(sql?: TransactionalSqlExecutor, memoryPinnedCount?: number): Promise<number> {
+    if (memoryPinnedCount !== undefined) return memoryPinnedCount;
     if (sql) {
       const result = await sql.query<{ count: string }>(`
         with owned_organizations as materialized (
@@ -268,13 +269,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
       );
       return Number(result.rows[0]?.count ?? 0);
     }
-    const records = await store.listRecords({
-      collectionName: ORGANIZATION_COLLECTION,
-      limit: "unbounded",
-      userId: actorId,
-      workspaceId: input.workspaceId,
-    });
-    return records.filter((record) => record.payload.pinned === true).length;
+    throw new Error("A pin count requires a transactional organization snapshot");
   }
 
   return {
@@ -518,7 +513,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
         throw new OrbitAgentChatOrganizationError("VALIDATION_ERROR");
       }
       const mutationFingerprint = fingerprint({ expectedRevision, patch, sessionId });
-      return input.runTransaction(async (store, sql) => {
+      return input.runTransaction(async (store, sql, memoryPinnedCount) => {
         if (patch.groupId !== undefined && patch.groupId !== null) {
           const group = groupFromRecord(
             await readRecord(store, GROUP_COLLECTION, groupRecordId(patch.groupId)),
@@ -538,7 +533,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
         if (current.revision !== expectedRevision) {
           throw new OrbitAgentChatOrganizationError("REVISION_CONFLICT");
         }
-        if (patch.pinned === true && !current.pinned && await pinnedCount(store, sql) >= MAX_PINNED_AI_SESSIONS) {
+        if (patch.pinned === true && !current.pinned && await pinnedCount(sql, memoryPinnedCount) >= MAX_PINNED_AI_SESSIONS) {
           throw new OrbitAgentChatOrganizationError("PIN_LIMIT");
         }
         const at = now();
@@ -572,11 +567,13 @@ export function createOrbitAgentChatOrganizationStore(input: {
 }
 
 function createSerializedMemoryRunner(input: {
+  actorId: string;
   beforeCommit?: (() => void) | undefined;
   store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
 }): TransactionRunner {
   let queue = Promise.resolve();
-  return async <T>(operation: (store: LiveRecordStoreLike<Record<string, unknown>>) => Promise<T>) => {
+  return async <T>(operation: (store: LiveRecordStoreLike<Record<string, unknown>>, sql?: TransactionalSqlExecutor, memoryPinnedCount?: number) => Promise<T>) => {
     let release!: () => void;
     const previous = queue;
     queue = new Promise<void>((resolve) => {
@@ -591,7 +588,8 @@ function createSerializedMemoryRunner(input: {
               limit: "unbounded",
               collectionName,
               includeDeleted: true,
-              workspaceId: "__all__",
+              ...(collectionName === ORGANIZATION_COLLECTION ? { userId: input.actorId } : {}),
+              workspaceId: collectionName === ORGANIZATION_COLLECTION ? input.workspaceId : "__all__",
             }),
           ),
         )
@@ -637,7 +635,9 @@ function createSerializedMemoryRunner(input: {
           return record;
         },
       };
-      const result = await operation(overlay);
+      const memoryPinnedCount = seed.filter((record) => record.collectionName === ORGANIZATION_COLLECTION
+        && record.lifecycleState !== "deleted" && record.userId === input.actorId && record.payload.pinned === true).length;
+      const result = await operation(overlay, undefined, memoryPinnedCount);
       input.beforeCommit?.();
       for (const record of writes.values()) await input.store.upsertRecord(record);
       return result;
@@ -659,8 +659,10 @@ export function createMemoryOrbitAgentChatOrganizationStore(input: {
     actorId: input.actorId,
     now: input.now,
     runTransaction: createSerializedMemoryRunner({
+      actorId: input.actorId,
       beforeCommit: input.beforeCommit,
       store,
+      workspaceId: input.workspaceId,
     }),
     workspaceId: input.workspaceId,
   });

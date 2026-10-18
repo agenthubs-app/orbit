@@ -6,6 +6,7 @@ import {
   createMemoryOrbitAgentChatRequestStore,
   createReliableOrbitAgentSendService,
 } from "../../features/orbit-ai/reliable-send-service";
+import { runOrbitAgentModelText } from "../../features/orbit-ai/gemini-provider";
 import { createStorageOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
@@ -166,6 +167,35 @@ test("reliable send preserves outcome_unknown and never executes a blind retry",
     ),
     [{ id: "message:client:1", role: "user", text: "第一问" }],
   );
+});
+
+test("a quota failure replays the same receipt without another provider attempt", async () => {
+  const harness = createHarness();
+  const service = createReliableOrbitAgentSendService(harness);
+  let providerAttempts = 0;
+  const execute = async () => ({ result: await runOrbitAgentModelText({
+    config: {
+      apiKey: "test-key",
+      fetchImplementation: (async () => {
+        providerAttempts += 1;
+        return new Response(JSON.stringify({ error: { message: "quota exhausted" } }), { status: 429 });
+      }) as typeof fetch,
+      provider: "gemini",
+    },
+    systemInstruction: "Answer the question.",
+    userText: input.message,
+  }) });
+
+  const first = await service.send({ execute, input });
+  const replay = await service.send({ execute, input });
+
+  if (first.state !== "completed") throw new Error("Expected a completed failure receipt");
+  assert.equal(first.result.success, false);
+  if (first.result.success) throw new Error("Expected a provider quota failure");
+  assert.equal(first.result.error.code, "MODEL_REQUEST_FAILED");
+  assert.equal(first.result.retryable, true);
+  assert.deepEqual(replay, { ...first, replayed: true });
+  assert.equal(providerAttempts, 1);
 });
 
 test("reliable send marks an execution-safe failure and retries the same request after storage recovers", async () => {

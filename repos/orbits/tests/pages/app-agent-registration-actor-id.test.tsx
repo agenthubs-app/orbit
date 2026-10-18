@@ -45,6 +45,10 @@ function loadPage(t: TestContext, scenario: Scenario) {
     void props;
     return null;
   };
+  const IOrbit2026 = (props: Record<string, unknown>) => {
+    void props;
+    return null;
+  };
   const noop = async () => undefined;
 
   const previousFlag = process.env.ORBIT_GUIDE_DEMO;
@@ -59,6 +63,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(root, "app/(app)/app/orbit-event-presentation.ts")]: { presentOrbitEvents: (events: unknown) => events },
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell },
+    [join(root, "app/(app)/app/agent/iorbit-2026/IOrbit2026.tsx")]: { IOrbit2026 },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
       loadAppHomeRouteViewModel: async () => ({
         home: { account: { relationshipGoal: "" }, events: [{ id: EVENT_ID, stats: {} }] },
@@ -146,13 +151,13 @@ function loadPage(t: TestContext, scenario: Scenario) {
   };
 }
 
-/** 页面返回元素树（壳是桩），取传给壳的 home 里这场活动的报名状态。 */
+/** 页面返回元素树（壳是桩），取传给 live 视图的 home 里这场活动的报名状态。 */
 async function registeredOnHome(page: () => Promise<ReactElement>): Promise<boolean> {
   const nodes: unknown[] = [await page()];
   while (nodes.length) {
     const node = nodes.pop() as { props?: Record<string, unknown>; type?: unknown } | null;
     if (!node || typeof node !== "object") continue;
-    if (typeof node.type === "function" && (node.type as { name?: string }).name === "IOrbitShell") {
+    if (typeof node.type === "function" && ["IOrbitShell", "IOrbit2026"].includes((node.type as { name?: string }).name ?? "")) {
       const home = node.props?.home as { events: Array<{ id: string; youRsvped: boolean; stats: { youRsvped: boolean } }> };
       const event = home.events.find((candidate) => candidate.id === EVENT_ID);
       assert.ok(event, "the event reaches the shell");
@@ -162,7 +167,7 @@ async function registeredOnHome(page: () => Promise<ReactElement>): Promise<bool
     const children = node.props?.children;
     nodes.push(...(Array.isArray(children) ? children : [children]));
   }
-  assert.fail("IOrbitShell was not rendered");
+  assert.fail("iOrbit view was not rendered");
 }
 
 for (const path of ["legacy", "canonical"] as const) {

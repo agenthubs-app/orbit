@@ -12,7 +12,7 @@ function source(path: string): string {
 
 test("/app/agent page renders the real Orbit AI chat experience", async () => {
   const pageSource = source("app/(app)/app/agent/page.tsx");
-  const agentSource = source("app/(app)/app/orbit-2026/iorbit/IOrbit2026.tsx");
+  const agentSource = source("app/(app)/app/agent/iorbit-2026/IOrbit2026.tsx");
   const agentModelSource = source(
     "app/(app)/app/orbit-agent-route-view-model.ts",
   );

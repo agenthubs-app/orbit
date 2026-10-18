@@ -139,7 +139,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell },
-    [join(root, "app/(app)/app/orbit-2026/iorbit/IOrbit2026.tsx")]: { IOrbit2026 },
+    [join(root, "app/(app)/app/agent/iorbit-2026/IOrbit2026.tsx")]: { IOrbit2026 },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
       loadAppHomeRouteViewModel: async (...args: unknown[]) => {
         calls.push({ input: args, operation: "home" });
