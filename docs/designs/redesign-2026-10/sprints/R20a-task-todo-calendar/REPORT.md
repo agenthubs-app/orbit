@@ -726,3 +726,15 @@ App 全量 `_evidence-d/R20a/run-01/d-app-full-personal-detail-locale.log` は *
 ## 2026-10-19　App タスク詳細の保存失敗文言（SC-09 部分）
 
 タスク詳細の mutation 失敗は API の任意言語の `error.message` をそのまま alert に出していた。日本語画面に中国語「连接暂时失败」が表示される実 Chromium 用例で **RED 0/1** を確認し、既存の `taskDetail.operationFailed` 辞書へ画面境界で写した（`1b436dd9a`）。修正後は定向 **GREEN 1/1**、タスク詳細の交互作用全体 `_evidence-d/R20a/run-01/d-app-task-detail-locale-interactions-full.log` が **29/29 pass**。失敗時の下書き保持、同一 request key での再試行、離脱処理も通過し、App `typecheck` と `git diff --check` は exit0。今回の二ファイル以外の別担当の Web Task / App calendar・offline source は commit に含めない。App 全量はこの同時変更中には再実行せず、直近の全量 **11 fail** を green に読み替えない。SC-09 の native 操作・pixel と全量 gate は OPEN のまま。
+
+## 2026-10-19　R20a S1 Web タスク詳細 drawer・編集
+
+`48ef54072`（`fix(R20a): restore task drawer editing`）は新 To-do の一覧から `?task=<id>` で kit Drawer を開き、既存 URL の他パラメータを保持する。旧 detail route の encoded ID は同じ drawer へつなぎ、一覧外の ID も直接読める。編集は title/notes のみで、表示した `updatedAt` を CAS token として一回の PATCH に使う。Cancel は write なし、409 は下書きを残し新 version で自動再送しない。既存 notes の空欄化は server が拒否するため Save を無効にして理由を表示する。409 後の detail 再読込が失敗しても下書きと Retry を同時に表示する。独立 read-only review の二指摘は RED→GREEN テストで修正した。
+
+Web component + legacy route **20/20 pass**、product-browser **10/10 pass**（390px；修正前の1440pxも10/10）、`typecheck:app`・lint・path-scoped diff check exit0。copy QA は **7,039 entries / 218 issues、exit1** で、追加 task copy の issue はない。全量 test、native/pixel、push は未実行。隣接 App の未提交変更は commit に含めていない。
+
+## 2026-10-19　R20a S2 App Calendar 面談 source・オフライン副本
+
+`3631f691f`（`fix(R20a): show offline-safe calendar meetings`）は、表示中の day/week/month のローカル日付範囲で actor 認証済み `/api/schedule-items?scope=calendar` を読み、確認済み面談の必要最小限の preview だけを App 専用 `calendar-meetings` 副本へ保存する。個人予定・イベント・外部 Google 行はこの副本に入れず、既存 mirror と merge して面談詳細の read-only route を使う。副本は actor/lease に束縛し、最大3範囲・各256KiB。過去日の読み取りには「以前の情報」、副本表示中はネットワーク待機中も時点を表示する。4xx は該当範囲を削除し、進行中の旧保存→削除を範囲ごとに順序付けて復活を防ぐ。認証の変化では旧 scope の delete を新 actor に適用しない。同 actor の別日へ移動しても denial delete は完了する。
+
+source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native loader 付き）**48/48 pass**、Calendar/hook/browser と隣接 locale **14/14 pass**、App `typecheck`・path-scoped diff check exit0。独立 read-only review の race と timestamp 指摘は各 RED→GREEN で修正され、最終 follow-up に残る具体的指摘はなかった。copy QA は上記と同じ **218既存 issues、exit1**、追加 calendar key に issue はない。Web/App 全量、native/pixel、push は sprint closure まで未実行。
