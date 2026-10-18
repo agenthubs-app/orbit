@@ -1,0 +1,91 @@
+{
+ "_note": "R11b 人脈分析（App）。模拟器 Orbit Line B，Metro :8083，dev :3300（ORBIT_REDESIGN_MOCK=network-analysis，设计稿 fixture 变体见 variant）。像素收口在 R31a 合入后；App 深色锁定 / 少量 / 機会 / インサイト / 下钻（b12 g11）尚未补画 → 设计稿无。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R11b-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/network-analysis/**",
+  "repos/orbit-app/src/i18n/*/networkAnalysis.ts"
+ ],
+ "views": [
+  {
+   "id": "A-R11b-01",
+   "variant": "locked5",
+   "design": "b5-me-inbox.html",
+   "board-index": 32,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/dashboard",
+   "note": "锁定 5/10（b5 #32）"
+  },
+  {
+   "id": "A-R11b-02",
+   "variant": "few14",
+   "design": "b5-me-inbox.html",
+   "board-index": 33,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/dashboard?tab=structure",
+   "note": "構造 少量 14 · 参考値（#33）"
+  },
+  {
+   "id": "A-R11b-03",
+   "variant": "many286",
+   "design": "b5-me-inbox.html",
+   "board-index": 34,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/dashboard?tab=structure",
+   "note": "構造 大量（#34）"
+  },
+  {
+   "id": "A-R11b-03D",
+   "variant": "many286",
+   "design": "b5-me-inbox.html",
+   "board-index": 67,
+   "themes": [
+    "dark"
+   ],
+   "path": "/contacts/dashboard?tab=structure",
+   "note": "構造 大量 深（#67）"
+  },
+  {
+   "id": "A-R11b-04",
+   "variant": "many286",
+   "design": "b5-me-inbox.html",
+   "board-index": 35,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/dashboard?tab=opportunities",
+   "note": "機会（#35）"
+  },
+  {
+   "id": "A-R11b-05",
+   "variant": "many286",
+   "design": "b5-me-inbox.html",
+   "board-index": 36,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/dashboard?tab=insight",
+   "note": "インサイト（#36）"
+  },
+  {
+   "id": "A-R11b-06",
+   "variant": "many286",
+   "design": "b5-me-inbox.html",
+   "board-index": 37,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/analysis/industry/finance_investment",
+   "note": "下钻名单 投資・金融（#37）"
+  }
+ ]
+}

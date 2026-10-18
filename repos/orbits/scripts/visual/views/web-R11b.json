@@ -1,0 +1,70 @@
+{
+ "_note": "R11b 人脈分析（Web）。dev :3300（distDir .next-line-b，库 orbit_line_b），ORBIT_REDESIGN_MOCK=network-analysis；每组先切设计稿 fixture 变体（POST /api/dev/network-design-fixture {variant}，views 的 variant 字段）。b12 g11（1024 / 390 / 深色 / 独立インサイト 1440）尚未补画 → 设计稿无，不在此清单。",
+ "defaults": {
+  "app-origin": "http://localhost:3300",
+  "login": "qa@orbit.test",
+  "grid": 30,
+  "wait": 4000,
+  "attribution": "scripts/visual/attribution-redesign-R11b.json"
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/network-analysis/**",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/network-analysis.ts",
+  "repos/orbits/app/(app)/app/contacts/dashboard/page.tsx",
+  "repos/orbits/features/network-analysis/analysis-*.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R11b-01",
+   "variant": "locked5",
+   "app": "/app/contacts/dashboard",
+   "design": "b5-me-inbox.html",
+   "board-index": 38,
+   "width": 1440,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-analysis-locked]",
+   "note": "人脈分析 锁定 5/10（b5 #38）"
+  },
+  {
+   "id": "W-R11b-02",
+   "variant": "few14",
+   "app": "/app/contacts/dashboard?tab=structure",
+   "design": "b5-me-inbox.html",
+   "board-index": 39,
+   "width": 1440,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-analysis-list] [data-analysis-person]",
+   "note": "構造 少量 14 人 · 参考値（b5 #39）"
+  },
+  {
+   "id": "W-R11b-03",
+   "variant": "many286",
+   "app": "/app/contacts/dashboard?tab=structure",
+   "design": "b5-me-inbox.html",
+   "board-index": 40,
+   "width": 1440,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-analysis-list] [data-analysis-person]",
+   "note": "構造 大量 286 + 右栏 投資・金融 名单（b5 #40）"
+  },
+  {
+   "id": "W-R11b-04",
+   "variant": "many286",
+   "app": "/app/contacts/dashboard?tab=opportunities",
+   "design": "b5-me-inbox.html",
+   "board-index": 41,
+   "width": 1440,
+   "themes": [
+    "light"
+   ],
+   "wait-for": "[data-analysis-list] [data-analysis-person]",
+   "note": "機会 大量 + 右栏 再会すべき人（b5 #41；インサイトから 按 §B-3 移到独立インサイト页）"
+  }
+ ]
+}
