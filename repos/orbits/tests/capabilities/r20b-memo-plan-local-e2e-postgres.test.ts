@@ -20,7 +20,7 @@ const BOB = "actor:bob";
 const CONTACT = "contact:alice-cfo";
 
 test("R20b local PostgreSQL: saved meeting memo creates one C11 card; only confirmation scores", databaseTest, async () => {
-  assert.equal(new URL(process.env.ORBIT_EVENT_DATABASE_URL!).pathname, "/orbit_line_d", "D's isolated test database only");
+  assert.ok(["/orbit_line_d", "/orbit_line_d_test"].includes(new URL(process.env.ORBIT_EVENT_DATABASE_URL!).pathname), "D's isolated test databases only");
   await withNetworkDatabase(async ({ addContact, client, pool }) => {
     const records = createPostgresLiveRecordStore({ client });
     const notes = createNoteService({ repository: createNoteRepository({ store: records, workspaceId: WORKSPACE }) });
