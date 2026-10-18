@@ -71,6 +71,8 @@ D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-boa
 - `1dc0d05bd` は App request builder に `usedForPlan=true` の面談／単一 contact 構造チェックと三言語エラーを追加した。TDD **8/9 RED → 9/9 GREEN**、周辺 App **28/28 pass** (`app-focused-plan-use-local-validation.log`)。actor 可視性は従来どおり server が最終判定する。`i18n-domain-split` の古い exact count は **2890 vs 2253** で失敗（加鍵前から 2889 vs 2253 の既知基線）；他の同 file 2 checks は pass。notes copy-qa は **135 entries / 150 issues、exit1** (`app-notes-copy-qa-after-plan-use.log`) だが、新キーは component kind を登録しており issue 行なし。150 件を合格とは扱わない。
 - 最新 App source で note draft / outbox / mirror / category / view-model と task mirror / outbox の軽量再実行は **39/39 pass、0 skip、exit0** (`_evidence-d/R20b/run-01/app-focused-post-overlay-final.log`)。これは App full / `tsc` / simulator ではない。
 
+SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror の分類テストは旧 kind 不在行と `voice` を自由メモに入れて **1/1 pass**；Web notes service には本文だけ編集した歴史 `voice` の kind が保存後 GET と自由メモ検索でも変わらない回帰を追加し、同 file **16/16 pass**、fresh Web typecheck **exit 0**（`_evidence-d/R20b/run-01/d-app-voice-mirror-characterization.log`、`d-notes-service-voice-characterization.log`、`d-web-tsc-after-voice-characterization.log`）。これはサービス／mirror の局所証拠であり、旧四画面を置き換えた後の source chip、🎙 非表示、権限・依存の不増加、両端操作／画素は未確認。SC-06 は OPEN のまま。
+
 ## SC-11 データ鎖（部分実装）
 
 - Task DTO / record decoder / service / HTTP POST・PATCH に任意の `{planId,typeItemId}` と PATCH `null` 解除を追加した。サーバー側は actor の生効 v2 plan に実在する type item を参照する場合のみ書き込みを受ける；偽 ID は 400。Task GET / list は後に計画が失効したリンクを隠し、task 自体は残す。`GET /api/tasks?planId=…&typeItemId=…` は同じ actor/type の task だけ返し、計画状態が task-record ETag に含まれないためこの絞込だけ条件付き 304 を使わない。

@@ -507,3 +507,18 @@ test("memo kind filter counts and cursors belong to the filtered actor-owned que
   assert.equal((await service.search({ actorId: "account:one", noteKind: "meeting" })).total, 1);
   assert.equal((await service.search({ actorId: "account:two", noteKind: "free" })).total, 0);
 });
+
+test("editing the text of a historical voice memo preserves its source kind", async () => {
+  const { service } = fixture();
+  const created = await service.create({
+    actorId: "account:one", body: "Spoken note", noteKind: "voice",
+    idempotencyKey: "voice:create", now: "2026-10-18T00:00:00.000Z",
+  });
+  const updated = await service.update({
+    actorId: "account:one", noteId: created.id, body: "Corrected transcript",
+    expectedVersion: 1, idempotencyKey: "voice:edit", now: "2026-10-18T00:01:00.000Z",
+  });
+  assert.equal(updated.noteKind, "voice");
+  assert.equal((await service.get({ actorId: "account:one", noteId: created.id }))?.noteKind, "voice");
+  assert.deepEqual((await service.search({ actorId: "account:one", noteKind: "free" })).notes.map((note) => note.id), [created.id]);
+});
