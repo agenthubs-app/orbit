@@ -71,20 +71,26 @@ export function localContactLabel(rows: readonly ContactSyncPayload[], contactId
 /**
  * R11a（代定 10）：旧镜像兜底。服务端在 R11a 之后才给卡片带 `density` / `sourceChip` / `metKind`；升级前同步下来的行没有，
  * 不强制重建镜像，按本机已有字段现算（与服务端同一组共享函数；不含计划，计划在读时合并）：
- * - 浓度：详情里的邮箱 / 电话、名片备注里的「出会い」行、详情笔记（往来）；
+ * - 读同步详情的 `contact`（同步行是 `{ state, contact }`，`features/contacts/live-detail-service.ts`；裸形状兜底）；
+ * - 浓度：详情里的邮箱 / 电话、名片备注（`note:business-card-notes:` 那条笔记）里的「出会い」行、用户写的笔记（往来，
+ *   `note:live-contact-detail-update:`，与服务端「detail state 有 notes」同口径）；
  * - 出どころ：按 `sourceType`（名刺 / イベント / 連絡先 vCard 标签 / 其余 手入力）；
  * - 出会った場所：活动导入 → イベント、来源 referral / 「出会い：紹介」→ 紹介、商談 / 訪問 → 訪問・商談。
  */
 export function withLegacyNetworkFields(row: ContactSyncPayload): ContactSyncPayload {
   const card = row.card;
   if (!card || (card.density !== undefined && card.sourceChip !== undefined && card.metKind !== undefined)) return row;
-  const detail = row.detail ?? {};
+  const raw = row.detail ?? {};
+  const detail = (isRecord(raw.contact) ? raw.contact : raw) as Record<string, unknown>;
+  const notes = Array.isArray(detail.notes) ? detail.notes.filter(isRecord) : [];
+  const noteId = (note: Record<string, unknown>) => (typeof note.noteId === "string" ? note.noteId : "");
+  const cardNote = notes.find((note) => noteId(note).startsWith("note:business-card-notes:"));
   const text = (key: string) => (typeof detail[key] === "string" ? (detail[key] as string).trim() : "");
-  const notesText = text("cardNotes");
+  const notesText = text("cardNotes") || (typeof cardNote?.body === "string" ? cardNote.body.trim() : "");
   const meetingNote = meetingNoteValue(notesText);
   const source = typeof detail.source === "object" && detail.source !== null ? detail.source as Record<string, unknown> : {};
   const sourceLabel = typeof source.label === "string" ? source.label : "";
-  const interacted = Array.isArray(detail.notes) && detail.notes.length > 0;
+  const interacted = notes.some((note) => noteId(note).startsWith("note:live-contact-detail-update:"));
   const density = card.density ?? contactDensity({
     hasIdentity: Boolean(card.displayName.trim()), hasContactPoint: Boolean(text("primaryEmail") || text("primaryPhone")),
     hasMetContext: meetingNote !== null, hasGoalRelation: false, hasInteraction: interacted, selfReported: false,
