@@ -1,28 +1,31 @@
 'use client';
 import {notificationWebSourceHref} from './notification-source-view-model';
 import { scanSecretaryNotificationPage, secretaryKind } from '../../../../shared/compute/secretary-source';
+import {notificationDisplayZone,notificationLocalDay} from '../../../../shared/compute/inbox-notification-day';
+import {inboxDeliveryPreferencesSchema} from '../../../../shared/api-schema/notification-delivery-policy';
 import { CategoryTabs, Icon, ListRow, type RowAction } from '../orbit-2026/ui';
 import styles from './typed-notifications-tab.module.css';
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
-import {formatOrbitDateTime} from '../orbit-datetime';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor,readContactMessageActorForWrite} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},secretary:{zh:'秘书',en:'Secretary',ja:'秘書'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
 const actions={read:{zh:'标为已读',en:'Mark read',ja:'既読にする'},dismiss:{zh:'忽略',en:'Dismiss',ja:'非表示'},handle:{zh:'已处理',en:'Mark handled',ja:'対応済みにする'},accept:{zh:'加入待办',en:'Add task',ja:'タスクに追加'},snooze:{zh:'一小时后提醒',en:'Remind in one hour',ja:'1時間後に通知'}};
 export function NotificationCategoryIcon({kind}:{kind:NotificationCategory}){return <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{kind==='reminder'?<><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></>:kind==='suggestion'?<><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7z"/><path d="M20 3v4m-2-2h4"/></>:<><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></>}</svg>;}
-export function NotificationRecordCard({notification:n,onOpen,onAction}:{notification:NotificationRow;onOpen:()=>void;onAction?:(action:'read'|'accept'|'snooze')=>void}) {
+export function NotificationRecordCard({notification:n,onOpen,onAction,timeZone}:{notification:NotificationRow;onOpen:()=>void;onAction?:(action:'read'|'accept'|'snooze')=>void;timeZone?:string}) {
  const {t,language}=useOrbitLanguage();
+ const zone=notificationDisplayZone(timeZone);
+ const formatActorTime=(value:string)=>new Intl.DateTimeFormat(language,{timeZone:zone,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
  const hoverActions:RowAction[]=onAction?(['read','accept','snooze'] as const).filter(action=>n.actions.includes(action)&&!(action==='read'&&n.readAt)).map(action=>({key:action,label:t(actions[action]),icon:action==='read'?'check':action==='accept'?'plus':'clock',tone:action==='read'?'lav':action==='accept'?'ok':'coral',onSelect:()=>onAction(action)})):[];
  return <ListRow title={n.title} onSelect={onOpen}
   leading={<span style={{display:'grid',placeItems:'center',width:38,height:38,borderRadius:12,flexShrink:0,background:'var(--surface-2)',color:'var(--accent-text)'}}>{secretaryKind(n)?'✦':<NotificationCategoryIcon kind={n.kind}/>}</span>}
-  subtitle={[t(categories[n.kind]),n.reason,n.sources[0]?.excerpt,n.dueAt?`${t({zh:'截止时间',en:'Due',ja:'期限'})} · ${formatOrbitDateTime(n.dueAt,language)}`:null].filter(Boolean).join(' · ')}
-  trailing={<span style={{display:'grid',gap:6,justifyItems:'end'}}>{!n.readAt&&n.disposition==='open'?<span aria-label={t({zh:'未读',en:'Unread',ja:'未読'})} style={{width:6,height:6,borderRadius:3,background:'var(--accent-text)'}}/>:null}<small>{formatOrbitDateTime(n.occurredAt,language)}</small></span>}
+  subtitle={[t(categories[n.kind]),n.reason,n.sources[0]?.excerpt,n.dueAt?`${t({zh:'截止时间',en:'Due',ja:'期限'})} · ${formatActorTime(n.dueAt)}`:null].filter(Boolean).join(' · ')}
+  trailing={<span style={{display:'grid',gap:6,justifyItems:'end'}}>{!n.readAt&&n.disposition==='open'?<span aria-label={t({zh:'未读',en:'Unread',ja:'未読'})} style={{width:6,height:6,borderRadius:3,background:'var(--accent-text)'}}/>:null}<small>{formatActorTime(n.occurredAt)}</small></span>}
   hoverActions={hoverActions} />;
 }
 export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:string;onIdentityChanged:()=>void}) {
- const {t,language}=useOrbitLanguage();const [filter,setFilter]=useState<keyof typeof categories>('all'),[data,setData]=useState<NotificationList|null>(null),[detail,setDetail]=useState<NotificationRow|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false);
+ const {t,language}=useOrbitLanguage();const [filter,setFilter]=useState<keyof typeof categories>('all'),[data,setData]=useState<NotificationList|null>(null),[detail,setDetail]=useState<NotificationRow|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[timeZone,setTimeZone]=useState('Asia/Tokyo');
  useEffect(()=>{if(new URLSearchParams(window.location.search).get('filter')==='secretary')setFilter('secretary');},[]);
  function selectFilter(next:keyof typeof categories){setFilter(next);setDetail(null);const url=new URL(window.location.href);url.searchParams.set('filter',next);window.history.replaceState(window.history.state,'',url);}
  const scope=useRef<AbortController|null>(null),pending=useRef<{id:string;request:{action:keyof typeof actions;expectedRevision:number;idempotencyKey:string;scheduledFor?:string}}|null>(null),lock=useRef(false),query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
@@ -41,7 +44,11 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
   return result;
  }
  useEffect(()=>{
-  const controller=new AbortController();scope.current=controller;setData(null);setDetail(null);let loading=false;
+  const controller=new AbortController();scope.current=controller;setData(null);setDetail(null);setTimeZone('Asia/Tokyo');let loading=false;
+  void request('/api/inbox/delivery/preferences',{},controller).then(raw=>{
+    const parsed=inboxDeliveryPreferencesSchema.safeParse(raw);
+    if(!controller.signal.aborted&&parsed.success&&parsed.data.actorId===actorId)setTimeZone(notificationDisplayZone(parsed.data.timeZone));
+  }).catch(()=>{});
   async function refresh(){if(loading||document.visibilityState==='hidden')return;loading=true;try{
     const load=async(cursor?:string)=>notificationInboxView(await request('/api/inbox/notifications?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{},controller),actorId);
     const next=filter==='secretary'?await scanSecretaryNotificationPage(load):await load();
@@ -78,9 +85,9 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     <CategoryTabs label={t({zh:'通知类别',en:'Notification categories',ja:'通知の分類'})} value={filter} onChange={key=>selectFilter(key as keyof typeof categories)} options={(Object.keys(categories) as (keyof typeof categories)[]).map(k=>({key:k,label:t(categories[k])}))} />
     <div className={styles.toolbar}><button type="button" className="btn btn-ghost" disabled={busy||!data.items.some(n=>!n.readAt&&n.actions.includes('read'))} onClick={()=>void markRead()}>{t({zh:'全部已读',en:'Mark all read',ja:'すべて既読'})}</button><a className="btn btn-ghost" href="/app/settings/notifications" aria-label={t({zh:'通知设置',en:'Notification settings',ja:'通知の設定'})}><Icon name="settings" size={16}/></a></div>
     {data.items.map(n=>{
-      const day=new Date(n.occurredAt).toLocaleDateString(language,{timeZone:'Asia/Tokyo',month:'long',day:'numeric'});
-      const heading=day!==previousDay;previousDay=day;
-      return <div key={n.id} className={n.id===detail?.id?styles.selected:''}>{heading?<h3 className={styles.day}>{day}</h3>:null}<NotificationRecordCard notification={n} onOpen={()=>void open(n.id)} onAction={action=>void actFor(n,action)}/></div>;
+      const zone=notificationDisplayZone(timeZone),day=new Date(n.occurredAt).toLocaleDateString(language,{timeZone:zone,month:'long',day:'numeric'});
+      const dayKey=notificationLocalDay(n.occurredAt,zone),heading=dayKey!==previousDay;previousDay=dayKey;
+      return <div key={n.id} className={n.id===detail?.id?styles.selected:''}>{heading?<h3 className={styles.day}>{day}</h3>:null}<NotificationRecordCard notification={n} timeZone={zone} onOpen={()=>void open(n.id)} onAction={action=>void actFor(n,action)}/></div>;
     })}
     {!data.items.length?<p className={styles.empty}>{t({zh:'暂无通知',en:'No notifications',ja:'通知はありません'})}</p>:null}
     {data.nextCursor?<button type="button" className="btn btn-ghost" disabled={busy} onClick={()=>void more()}>{t({zh:'加载更多',en:'Load more',ja:'さらに読み込む'})}</button>:null}

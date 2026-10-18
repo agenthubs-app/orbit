@@ -8,6 +8,8 @@ import {emitMessageStateInvalidation} from '../../api/message-state';
 import {useLocalInbox} from '../../hooks/useLocalInbox';
 import {localInboxListData} from '../../view-models/inbox-local';
 import {scanSecretaryNotificationPage,secretaryKind,withoutMailSummary} from '../../api/compute/secretary-source';
+import {notificationDisplayZone} from '../../api/compute/inbox-notification-day';
+import {inboxDeliveryPreferencesSchema} from '../../api/schema/notification-delivery-policy';
 type Get=(path:string,options?:{signal?:AbortSignal})=>Promise<ApiResult<unknown>>;
 type Post=(path:string,body:unknown)=>Promise<ApiResult<unknown>>;
 /**
@@ -27,6 +29,15 @@ export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:
  // The parent remounts on account, credentials or server changes. Retain only
  // rollout capability across foreground refreshes, never notification content.
  const [enabled,setEnabled]=useState<boolean|undefined>(undefined);
+ const [timeZone,setTimeZone]=useState('Asia/Tokyo');
+ useEffect(()=>{
+  const controller=new AbortController();setTimeZone('Asia/Tokyo');
+  if(isCurrent())void get('/api/inbox/delivery/preferences',{signal:controller.signal}).then(result=>{
+   const parsed=result.success?inboxDeliveryPreferencesSchema.safeParse(result.data):null;
+   if(!controller.signal.aborted&&isCurrent()&&parsed?.success&&parsed.data.actorId===actorId)setTimeZone(notificationDisplayZone(parsed.data.timeZone));
+  }).catch(()=>{});
+  return()=>controller.abort();
+ },[actorId,get,isCurrent]);
  const query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
  const pageLock=useRef(false),mutationLock=useRef(false),lifetime=useRef<AbortController|null>(null);
  const pendingAction=useRef<{id:string;action:'read'|'accept'|'snooze';expectedRevision:number;idempotencyKey:string;scheduledFor?:string}|null>(null);
@@ -80,5 +91,5 @@ export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:
   }catch{if(isCurrent())setError(t('typedInbox.conflict'));}finally{mutationLock.current=false;if(isCurrent())setBusy(false);}
  }
  const deviceError=local.available&&local.freshness.failure?t('typedInbox.error'):'';
- return {data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,act,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null};
+ return {data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,act,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null,timeZone};
 }

@@ -21,3 +21,10 @@ test('a source-only reminder labels its scheduled time separately from occurrenc
  const html=renderToHtml(React.createElement(NotificationInboxList,{data,onOpen:()=>{},onRefresh:()=>{},onMore:()=>{},onFilter:()=>{},filter:'all',busy:false,error:''}));
  assert.ok(html.includes('提醒时间'));assert.ok(html.includes('2026/9/18'));
 });
+test('day headings follow the account time zone across midnight',()=>{
+ const boundary=['2026-10-19T06:30:00Z','2026-10-19T07:30:00Z'];
+ const data=notificationInboxData({enabled:true,items:boundary.map((occurredAt,i)=>({...rows[0],id:'boundary'+i,occurredAt,updatedAt:occurredAt})),unreadCount:2,nextCursor:null,asOf:at},'a');assert.ok(data);
+ const html=renderToHtml(React.createElement(NotificationInboxList,{data,timeZone:'America/Los_Angeles',onOpen:()=>{},onRefresh:()=>{},onMore:()=>{},onFilter:()=>{},filter:'all',busy:false,error:''}));
+ assert.ok(html.includes('10月18日'));
+ assert.ok(html.includes('10月19日'));
+});
