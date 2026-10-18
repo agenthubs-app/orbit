@@ -15,9 +15,21 @@ import { OfflineNotice } from "../../components/OfflineNotice";
 import type { PageCopyStatus } from "../../data/sync/page-copies";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { OrbitLanguage } from "../../api/contract/language";
+import { createTranslator, type MessageKey } from "../../i18n/messages";
 import { useOrbitTheme as useTheme } from "../../design/theme";
 
 const emptyDraft: RelationshipCompletionDraft = { taskId: "", kind: "next_task", title: "", date: "", time: "", goal: "", archiveConfirmed: false };
+function lifecycleFailureCopy(language: OrbitLanguage, error: { code: string; message: string }, action: "read" | "save"): string {
+  if (language === "zh") return error.message;
+  const key: MessageKey = error.code === "CONFLICT"
+    ? action === "save" ? "relationshipTasks.lifecycleConflictSave" : "relationshipTasks.lifecycleConflictRead"
+    : error.code === "UNAUTHORIZED" ? "relationshipTasks.lifecycleSignInAgain"
+    : error.code === "NOT_FOUND" || error.code === "FORBIDDEN" ? "relationshipTasks.lifecycleRelationshipUnavailable"
+    : error.code === "VALIDATION_ERROR" && action === "save" ? "relationshipTasks.lifecycleInvalidInput"
+    : action === "save" ? "relationshipTasks.lifecycleSaveRetry" : "relationshipTasks.lifecycleReadFailed";
+  return createTranslator(language)(key);
+}
 export function RelationshipLifecycleScreen() {
   const params = useLocalSearchParams<{ id: string | string[]; taskId?: string | string[]; contactId?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -75,7 +87,7 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId,
         const kept = saved as { value: RelationshipLifecycleSnapshotDTO; syncedAt: string } | null;
         if (kept && reason && current.active) { setSnapshot(kept.value); setCopy({ lastSyncedAt: kept.syncedAt, offline: true, reason }); setMessage(""); return; }
         setCopy(null);
-        setSnapshot(null); setMessage(reason === "unreachable" ? text("这项内容还没保存在这台设备上，联网打开一次后断网也能看。", "This isn't stored on this device yet. Open it once while connected and it will be readable offline.", "この内容はまだこの端末に保存されていません。接続中に一度開くと、オフラインでも読めます。") : result.success ? "返回的关系不一致，请重试。" : result.error.message); return;
+        setSnapshot(null); setMessage(reason === "unreachable" ? text("这项内容还没保存在这台设备上，联网打开一次后断网也能看。", "This isn't stored on this device yet. Open it once while connected and it will be readable offline.", "この内容はまだこの端末に保存されていません。接続中に一度開くと、オフラインでも読めます。") : result.success ? createTranslator(language)("relationshipTasks.lifecycleReadMismatch") : lifecycleFailureCopy(language, result.error, "read")); return;
       }
       answered = true;
       setCopy(null);
@@ -83,9 +95,9 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId,
       setSnapshot(value); intent.current = null;
       setDraft(previous => ({ ...previous, taskId: relationshipOpenTasks(value, targetTaskId, targetContactId)[0]?.taskId ?? "" }));
       setMessage("");
-    } catch { if (current.active) { setSnapshot(null); setCopy(null); setMessage("读取失败，请重试。"); } }
+    } catch { if (current.active) { setSnapshot(null); setCopy(null); setMessage(createTranslator(language)("relationshipTasks.lifecycleReadFailed")); } }
     finally { current.busy = false; if (current.active) setBusy(false); }
-  }, [ready, client, actorId, connectionId, targetTaskId, targetContactId, whenReady]);
+  }, [ready, client, actorId, connectionId, targetTaskId, targetContactId, whenReady, language]);
   useEffect(() => { void load(); }, [load]);
   async function save() {
     const current = scope.current;
@@ -97,12 +109,12 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId, targetTaskId,
       const body = intent.current.body;
       const result = await client.post<unknown>(relationshipLifecyclePath(connectionId), { body, signal: current.controller.signal });
       if (!current.active) return;
-      if (!result.success) { setMessage(result.error.message); return; }
+      if (!result.success) { setMessage(lifecycleFailureCopy(language, result.error, "save")); return; }
       const after = relationshipReceiptMatches(result.data, snapshot, body);
-      if (!after || result.status < 200 || result.status >= 300) { setMessage("保存回执不一致，请刷新核对。输入已保留。"); return; }
+      if (!after || result.status < 200 || result.status >= 300) { setMessage(t("relationshipTasks.lifecycleReceiptMismatch")); return; }
       setSnapshot(after); setDraft(emptyDraft); intent.current = null;
       setMessage(text("跟进已完成，关系下一步已保存。", "Follow-up completed and next step saved.", "フォローアップと次のステップを保存しました。"));
-    } catch (error) { if (current.active) setMessage(error instanceof Error ? error.message : "保存失败，输入已保留。"); }
+    } catch (error) { if (current.active) setMessage(language === "zh" && error instanceof Error ? error.message : t("relationshipTasks.lifecycleSaveFailed")); }
     finally { current.busy = false; if (current.active) setBusy(false); }
   }
   const open = snapshot ? relationshipOpenTasks(snapshot, targetTaskId, targetContactId) : [];

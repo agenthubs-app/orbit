@@ -12,7 +12,7 @@ const fixture = `
 import React, { useSyncExternalStore } from 'react';
 import { createTranslator } from './src/i18n/messages';
 let revision = 0, next = 0; const listeners = new Set();
-const state = window.fixture = { actor: 'owner', signedIn: true, routeTaskId: window.__targetTaskId, routeContactId: window.__targetContactId, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
+const state = window.fixture = { actor: 'owner', signedIn: true, language: window.__language || 'zh', routeTaskId: window.__targetTaskId, routeContactId: window.__targetContactId, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useOrbitAuthSession = () => { useFixture(); return { ready: true, signedIn: state.signedIn, actorId: state.actor, cookieHeader: '' }; };
 // Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
@@ -25,7 +25,7 @@ export const usePathname = () => '/tasks/relationship/connection%3A1';
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
 export const Redirect = () => <div>Sign in</div>;
 export const useOrbitTimeZone = () => ({ timeZone: 'Asia/Shanghai', canSave: true });
-export const useOrbitLocale = () => ({ language: 'zh', t: createTranslator('zh') });
+export const useOrbitLocale = () => { const state = useFixture(); return { language: state.language, t: createTranslator(state.language) }; };
 export const randomUUID = () => 'intent-' + ++next;
 export const AppScreen = ({ children, title }) => <main><h1>{title}</h1>{children}</main>;
 `;
@@ -111,4 +111,62 @@ test("task-addressed relationship detail cannot silently select another open tas
   await page.getByText("当前跟进已不可用，请返回任务列表刷新。").waitFor();
   assert.equal(await page.getByRole("radio", { name: /二つ目/ }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "完成并保存下一步" }).count(), 0);
+});
+
+test("Japanese lifecycle mismatch shows a Japanese error instead of a Chinese fallback", async t => {
+  const page = await browser.newPage(); page.setDefaultTimeout(3000); t.after(() => page.close());
+  await page.route("https://orbit.example/**", async route => {
+    const headers = { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "content-type" };
+    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
+    await route.fulfill({ status: 200, headers, contentType: "application/json", json: { success: true, data: {} } });
+  });
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate(() => { (window as any).__language = "ja"; });
+  await page.addScriptTag({ content: script });
+  await page.getByRole("alert").waitFor();
+  assert.equal(await page.getByRole("alert").textContent(), "返された関係を確認できません。もう一度お試しください。");
+});
+
+test("Japanese lifecycle read localizes a Chinese server conflict", async t => {
+  const page = await browser.newPage(); page.setDefaultTimeout(3000); t.after(() => page.close());
+  await page.route("https://orbit.example/**", async route => {
+    const headers = { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "content-type" };
+    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
+    await route.fulfill({ status: 409, headers, contentType: "application/json", json: { success: false, error: { code: "CONFLICT", message: "关系已变更，请刷新后核对。" } } });
+  });
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate(() => { (window as any).__language = "ja"; });
+  await page.addScriptTag({ content: script });
+  await page.getByRole("alert").waitFor();
+  assert.equal(await page.getByRole("alert").textContent(), "関係が更新されています。更新して確認してください。");
+});
+
+test("Japanese lifecycle rejects an unverified save receipt without Chinese copy", async t => {
+  const page = await browser.newPage(); page.setDefaultTimeout(3000); t.after(() => page.close());
+  const now = "2026-09-16T00:00:00.000Z";
+  const identity = { actorId: "owner", connectionId: "connection:1", contactId: "contact:1", version: 1, createdAt: now, updatedAt: now };
+  const snapshot = { connection: { ...identity, stage: "needs_follow_up", activeGoal: null }, tasks: [
+    { ...identity, taskId: "task:1", title: "次の連絡", dueAt: now, status: "open", purpose: "follow_up" },
+  ] };
+  let postCount = 0;
+  await page.route("https://orbit.example/**", async route => {
+    const headers = { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Methods": "GET,POST", "Access-Control-Allow-Headers": "content-type" };
+    if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
+    if (route.request().method() === "GET") { await route.fulfill({ status: 200, headers, contentType: "application/json", json: { success: true, data: { snapshot } } }); return; }
+    postCount++;
+    await route.fulfill({ status: postCount === 1 ? 200 : 409, headers, contentType: "application/json", json: postCount === 1 ? { success: true, data: {} } : { success: false, error: { code: "CONFLICT", message: "关系已变更，请刷新后核对。" } } });
+  });
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate(() => { (window as any).__language = "ja"; });
+  await page.addScriptTag({ content: script });
+  await page.getByRole("radio", { name: /次の連絡/ }).waitFor();
+  await page.getByRole("radio", { name: /進行中にする/ }).click();
+  await page.getByRole("textbox", { name: "関係の目標" }).fill("次の面談を決める");
+  await page.getByRole("button", { name: "完了して次を保存" }).click();
+  await page.getByRole("alert").waitFor();
+  assert.equal(await page.getByRole("alert").textContent(), "保存結果を確認できません。入力は残っています。更新して確認してください。");
+  await page.getByRole("button", { name: "完了して次を保存" }).click();
+  await page.getByText(/関係が更新されています|关系已变更/).waitFor();
+  assert.equal(await page.getByRole("alert").textContent(), "関係が更新されています。入力は残っています。更新して確認してください。");
+  assert.equal(await page.getByRole("textbox", { name: "関係の目標" }).inputValue(), "次の面談を決める");
 });

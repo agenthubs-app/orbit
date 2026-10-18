@@ -534,6 +534,14 @@ D 専用 simulator にのみ install して、localhost:8085 の offline Metro �
 
 TDD: projection / external-range の変更後、product 修正前の RED は 3 件の期待どおりの不一致。product 修正後、正しい render-hooks harness を含む定向テストは **17/17 pass**、App typecheck は **exit 0**。App full は `_evidence-d/R20a/run-01/d-app-full-week-monday-working-tree.log` に **3343 total / 3330 pass / 11 fail / 2 skip、exit 1**。前回 `d-app-full-task-race-fix.log` の 3342 / 3329 / 11 / 2 と比べると新しい一件が pass、失敗 11 件の名前は完全一致（R12 camera / batch 九件、split-dictionary pin 一件、joined-person 一件）。full-green と呼ばず、既存 baseline failure を残す。今回の patch は App calendar projection / 対応 test と本記録のみで、面談 source gap、offline calendar、native / pixel gate を解決したとは扱わない。
 
+### App 関係フォローアップの失敗文言と言語境界（2026-10-18）
+
+`RelationshipLifecycleScreen` の日本語表示で、snapshot 不一致・読取例外・保存 receipt 不一致・保存例外の失敗分岐だけが中国語 literal を使い、さらに API `CONFLICT` 等の中国語 `error.message` をそのまま描いていた。日本語 browser fixture で snapshot 不一致は **2 pass / 1 fail**、保存 receipt 不一致を足すと **2 pass / 2 fail** の RED を確認。中国語の server `CONFLICT` を読取 / 保存で渡した二経路も RED。失敗の発生源は画面の非翻訳分岐と server error の無条件直表示であり、actor / receipt 検証自体ではない。
+
+画面固有の error code 分岐を追加し、zh は従来どおり server message を保持、ja / en は衝突・認証・不可視・入力不正と read / save の汎用失敗を各辞書から表示する。receipt 未確認は成功にせず入力を保持する。新文言は `relationshipTasks` 三言語辞書に置き、R03 の hard-coded copy 許可数をこの画面だけ **50→46** に縮小。辞書移動前の App full は **3346 / 3331 pass / 13 fail / 2 skip、exit1**（新しい hard-coded copy ratchet 1、Plan overlay timeout 1 を含む）。移動後の no-hardcoded-copy は **5/5 pass**、日本語 browser 操作は **5/5 pass**、App typecheck は **exit0**。`i18n-domain-split` は locale 間同一キー集合 / 空値なしの二件が pass、旧 pre-split exact-key-count は **2900 != 2253** で既存 baseline fail のまま。文言を同辞書へ置くという R03 ルールに沿ったため、この旧 exact-count pin は緩めていない。
+
+最終 App full raw `_evidence-d/R20a/run-01/d-app-full-lifecycle-locale-dictionary-working-tree.log` は **3346 total / 3333 pass / 11 fail / 2 skip、exit1**。直前の `d-app-full-week-monday-working-tree.log` の 11 failure names と集合差は 0、新三件の browser test は pass。11 件は R12 camera / batch 九件、旧辞書 exact-count 一件、joined-person 一件であり、全量 green ではない。別に E-owned `plan-overview-screens.test.tsx` を単独実行すると **26 total / 24 pass / 1 fail / 1 skip**：`スキップを取り消しました` の overlay / modal が `type-skip` click を遮り timeout。今回の最終 full では通るが、孤立実行の赤を消したとは扱わず E owner に交接する。この修正は lifecycle screen の失敗表示に限り、Task / calendar 全画面の日本語 SC-10、native、pixel、面談 source gap の完了を主張しない。
+
 ## 请求
 
 - D native operation owner / 主会話：D-only localhost API、隔離 schema / workspace / fake actor の exact identity と作成・cleanup 境界を決めてほしい。C の `orbit_line_c_test` / actor / simulator / Metro receipt は D の SC-05 / SC-06 native 操作証拠に転用しない。決定前は public startup までとし、private To-do / calendar readback と SC-15 pixel を pass にしない。
