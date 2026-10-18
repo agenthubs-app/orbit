@@ -17,6 +17,8 @@ Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,0
 
 同日後続の局所収口：App SC-11 Sheet は fresh typecheck0、契約・inventory・Sheet **44/44**、実ブラウザ **8/8** を確認して `2f972dd86` に局所コミット。Web SC-09 To-do 行から exact-task 完了まで mounted **30/30**、実ブラウザ **7/7**（secure fixture 3 と follow-up 操作4）、fresh typecheck0 を確認して `f6bd5b21a` に局所コミット。Web SC-11 secure-origin browser **2/2** の fixture 修正は `cd7f50044`、App handoff fixture 型修正 **11/11** は `69d3014f6` に局所コミットした。これらの局所検証は前段 full-suite 後の変更なので、後段の全量 suite 成績に流用しない。独立 review、native/pixel、残り SC は OPEN。
 
+同じ commit 群に対する後段 full gate：Web `d-web-full-after-closeout.log` は **7,693 tests / 6,634 pass / 31 fail / 1,028 skip、exit 1**。失敗名集合は pristine D Web の31件と完全一致し、新規名0。App `d-app-full-after-closeout.log` は **3,453 tests / 3,448 pass / 3 fail / 2 skip、exit 1**。辞書 key-count と joined-person overlay click は pristine の2件だが、plan overview skip→undo click が追加で失敗した。後者はオーバーレイが「スキップを取り消す」クリックを遮る timeout で、同一 plan file の隔離実行は **25 pass / 1 skip / 0 fail**。C 線 full でも同名失敗が反復しており、D の Task 変更箇所ではないが、App full 新規失敗として OPEN のまま引き継ぐ。計画画面は本線の編集禁止範囲なので、この結果を全量成功として扱わず、D 線で plan source/test を改変しない。
+
 ## SC 対照
 
 | SC | 現在の結果 |
@@ -36,7 +38,7 @@ Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,0
 | SC-13 failure / NI | source 別 retry、unknown partial count、whole-page NOT_IMPLEMENTED hide、App stale/offline guard を実装・定向検証。最新追加を含む両端統合確認は OPEN。 |
 | SC-14 old routes | App Today / Followups の orphan 退役と Web personal redirect は提出済み。App agent entry / target focus は主会話担当、Web task / lifecycle / agent retirement と E 消費先交接は OPEN。 |
 | SC-15 pixel | user 指示により R31b 待ち。library width API の利用確認を pixel 完了とは扱わない。 |
-| SC-16 full / review | App full3453 / 3449 pass / 2 pristine fail / 2 skip、exit1。Web full再実行7693 / 6634 pass / 31 pristine fail / 1028 skip、exit1、新規失敗名0。両端 typecheck0、Web lint0。copy global218 issues / Web26 / App calendar0、独立 review・native/pixel は OPEN。 |
+| SC-16 full / review | 後段 Web full7693 / 6634 pass / 31 pristine fail / 1028 skip、exit1、新規名0。後段 App full3453 / 3448 pass / 3 fail / 2 skip、exit1：pristine2件と越線 plan overlay click 1件。plan file 隔離25 pass / 1 skip、full の新規失敗は OPEN。両端 typecheck0、Web lint0。copy global218 issues / Web26 / App calendar0、独立 review・native/pixel は OPEN。 |
 
 ## フォロー 根因
 
