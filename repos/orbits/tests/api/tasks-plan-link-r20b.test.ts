@@ -58,6 +58,27 @@ test("task HTTP writes a validated planLink, reads it, and accepts PATCH null to
   assert.equal(((await updated.json()) as any).data.task.planLink, undefined);
 });
 
+test.skip("general task list rechecks plan validity even when its task watermark is unchanged (plan-aware ETag pending)", async () => {
+  const { collection, setActive } = handlers();
+  const created = await collection.POST(post({ title: "会う準備", category: "relationship",
+    idempotencyKey: "task-plan:general-list", planLink }));
+  assert.equal(created.status, 201);
+
+  const url = "https://orbit.local/api/tasks";
+  const first = await collection.GET(new Request(url));
+  assert.equal(first.status, 200);
+  assert.deepEqual(((await first.json()) as any).data.tasks[0].planLink, planLink);
+  const previousTag = first.headers.get("etag");
+  assert.ok(previousTag, "the general task list keeps its conditional-read contract");
+
+  setActive(false);
+  const refreshed = await collection.GET(new Request(url, {
+    headers: { "if-none-match": previousTag },
+  }));
+  assert.equal(refreshed.status, 200);
+  assert.equal(((await refreshed.json()) as any).data.tasks[0].planLink, undefined);
+});
+
 test("task HTTP rejects malformed and foreign plan links before persistence", async () => {
   const { collection } = handlers();
   for (const [index, link] of [
