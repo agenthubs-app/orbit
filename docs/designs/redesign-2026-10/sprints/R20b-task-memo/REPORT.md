@@ -8,6 +8,8 @@
 
 rebase 後の軽量確認は Web notes route/service と task planLink route/service **29/29 pass**、App notes view-model/mirror/search と旧 local-first 画面 **28/28 pass**（各 `node --import tsx --test …`、exit0）。App の render test は `notes-native:fixture` の `useSafeAreaInsets` 未定義 export warning を出した。今回の 28 件に失敗はないが、warning は消していない。これは新しい upstream 上での定向結果で、rebase 前の full 40/11 failures、typecheck exit0、native/pixel 未完を上書きしない。新 upstream の full/typecheck は別に再実行する。
 
+20:51 の監視点で upstream がさらに `bd39989dd` まで 5 commits 進んだ。D は clean `11c093cda` から同じ `origin/redesign` へ 160 commits を衝突なしに再適用し、HEAD `917978ff9`、`git diff --check` exit0。追加の upstream は R31a の App-add kit no-regress と文書であり、D の product 差分を手修正していない。この HEAD の定向 Web notes/planLink は **29 pass / 1 skip / 0 fail**、App notes view-model/mirror/search は **18/18 pass**。Web の 1 skip は後述の一般 task-list stale plan ETag 回帰で、合格ではない。新 upstream の full/typecheck は公平キューの結果待ちで、旧 HEAD の結果を移用しない。
+
 ## 18:22 主会話継続の検証キュー（結果待ち）
 
 D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-board-preflight.log` は **0 byte**、対応 runner PID も消えた。これは合格／失敗ではなく未実行として扱う。主会話は clean `66769b462` から独立した新規ログ名で App／Web `typecheck`、Web `typecheck:app`、App／Web 画板 preflight、Web full を全機 `heavy.sh` の公平キューへ再登録した。先に独立登録済みの App full も待機中。開始時の実際の source を確認してから成績を追記し、旧空ログを結果へ読み替えない。
