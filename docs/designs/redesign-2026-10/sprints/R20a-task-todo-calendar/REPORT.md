@@ -19,6 +19,14 @@ SC-09 App の完了済み fold は、未完了の期限群を残したまま、�
 
 rebase 後の Web full `d-web-full-sc14-201bf7d86.log` は **7,715 tests / 6,654 pass / 33 fail / 1,028 skip、exit 1**。前回の31失敗名に二つ追加された。一つは `non-.btn <button>` ratchet：R31b `ui/Button.tsx:14` の新しいコメント中の字面 `<button>` を古いテキスト scanner がタグとして数え、79の上限に対して80と報告する false positive。A-owned kit / 共通 ratchet は本線では変更しない。もう一つは D の `meeting-proposal-flow` テストが旧 `findByType(Modal)` で、R31b 後に閉じた確認 Modal も数えること。開いている `form` Modal を対象に直し、当該8件を **8/8 pass** で再確認した（`d-web-meeting-proposal-after-r31b-fixture.log`）。fresh Web typecheck は **exit0**（`d-web-typecheck-meeting-fixture-after-rebase.log`）。full 自体の33失敗は未修正の記録であり、新 test-only 修正後の全量値はまだない。
 
+現行 D App の sanitized full `d-app-full-after-kit-db219315a.log` は **3,473 tests / 3,460 pass / 11 fail / 2 skip、exit 1**。失敗名は R12 拍照・追加の9件と、pristine D にある辞書 key-count / joined-person overlay click の2件。新しい fold、root auth guard、kit inset の失敗名はこの run にない。R12 の9件は C 線 full にも出ているが、未解決のままであり D の full を pass とは扱わない。ログは NUL byte なし、runner の exit 1 を末尾に保存した。
+
+Modal テスト補正後の sanitized Web full は **7,715 tests / 6,655 pass / 32 fail / 1,028 skip、exit 1**（`d-web-full-after-modal-fixture-clean-2b706926f.log`）。直前の33失敗名から面談の誤った Modal 選択だけが消え、残る追加1件は A-owned `non-.btn <button>` ratchet。pristine の31件は残る。最初の同内容 run はキャンセルされた重複 runner が同じログ先を開き、58,669 NUL bytes の欠損を生んだため raw 証拠として採らない。別名で再実行した上記ログは NUL 0、集計と失敗名を再確認した。suite-green ではない。
+
+同じ Web source の fresh typecheck は `d-web-typecheck-meeting-fixture-after-rebase.log` で exit 0、`npm run lint` は `d-web-lint-current-2b706926f.log` で exit 0。型・lint の成功を full-suite の成功とはしない。
+
+SC-14 の Agent 旧入口は、単純な行先変更で `?entry=` の特定行を失うため、まだ残す。Web の実リンク・参照は `agent-action-status-card.tsx`、`agent/iorbit-0918/{iorbit-home,iorbit-actions}.tsx`、`orbit-product-href.ts`、`orbit-global-ask/orbit-ask-routes.ts`。これらの消費先を E 線との交接リストにする。新しい To-do は現状「すべて」をローカル状態で開くが、URL の entry ID を読んで source 別 paging から正確に焦点を当てる契約はない。旧 `/app/agent/actions` をまだ新画面への等価な redirect と称さず、移行判断待ちとする。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
