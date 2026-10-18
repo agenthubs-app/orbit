@@ -144,12 +144,14 @@ export function notesSearchPath(input: {
   contactId?: string;
   cursor?: string;
   limit?: number;
+  noteKind?: "all" | "meeting" | "free";
   q?: string;
 } = {}): string {
   const params = new URLSearchParams();
   if (input.q?.trim()) params.set("q", input.q.trim());
   if (input.contactId?.trim()) params.set("contactId", input.contactId.trim());
   if (input.association && input.association !== "all") params.set("association", input.association);
+  if (input.noteKind && input.noteKind !== "all") params.set("noteKind", input.noteKind);
   if (input.cursor) params.set("cursor", input.cursor);
   params.set("limit", String(input.limit ?? 20));
   const query = params.toString();

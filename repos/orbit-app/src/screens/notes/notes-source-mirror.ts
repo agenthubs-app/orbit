@@ -28,6 +28,7 @@ export interface NotesListSourceInput {
   scopeKey: string;
   association: NoteAssociationFilter;
   contactId?: string | undefined;
+  noteKind?: "all" | "meeting" | "free";
   q: string;
 }
 
@@ -120,8 +121,8 @@ async function confirmSaved(state: Synced, actorId: string, language: Parameters
 
 export function useMirrorNotesList(input: NotesListSourceInput, enabled = true): NotesListSource {
   const { state, freshness, notes, queueFailure } = useNotesMirror(input.actorId, enabled);
-  const selected = useMemo(() => notes ? selectMirrorNotes(notes, input) : null, [notes, input.association, input.contactId, input.q]);
-  const queryKey = JSON.stringify([input.scopeKey, input.association, input.contactId ?? "", input.q]);
+  const selected = useMemo(() => notes ? selectMirrorNotes(notes, input) : null, [notes, input.association, input.contactId, input.noteKind, input.q]);
+  const queryKey = JSON.stringify([input.scopeKey, input.association, input.contactId ?? "", input.noteKind ?? "all", input.q]);
   const [shown, setShown] = useState({ queryKey, count: NOTES_PAGE_SIZE });
   useEffect(() => { setShown({ queryKey, count: NOTES_PAGE_SIZE }); }, [queryKey]);
   const count = shown.queryKey === queryKey ? shown.count : NOTES_PAGE_SIZE;
