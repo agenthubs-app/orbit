@@ -103,3 +103,55 @@ test("a new Button keeps its normal, pressed and disabled computed styles in bot
     assert.deepEqual(samples.legacy, samples.new);
   } finally { await browser.close(); }
 });
+
+test("icon and switch buttons keep their pressed and disabled styles over legacy .btn", async () => {
+  const code = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { IconButton, Orbit2026Scope, Toggle } from "./app/(app)/app/orbit-2026/ui";
+    createRoot(document.getElementById("root")).render(<Orbit2026Scope language="ja">
+      <IconButton icon="x" label="Icon normal" />
+      <IconButton icon="x" label="Icon pressed" />
+      <IconButton icon="x" label="Icon disabled" disabled />
+      <Toggle checked={false} onChange={() => undefined} label="Switch normal" />
+      <Toggle checked={false} onChange={() => undefined} label="Switch disabled" disabled />
+    </Orbit2026Scope>);
+  `);
+  const browser = await launch();
+  const samples: Record<string, unknown> = {};
+  try {
+    for (const env of ["new", "legacy"] as const) {
+      const page = await open(browser, code);
+      try {
+        if (env === "legacy") await page.addStyleTag({ path: `${process.cwd()}/public/orbit-reference/orbit-reference.generated.css` });
+        const read = (role: "button" | "switch", label: string) => page.getByRole(role, { name: label }).evaluate((el) => {
+          const s = getComputedStyle(el);
+          return { background: s.backgroundColor, color: s.color, cursor: s.cursor, opacity: s.opacity, transform: s.transform };
+        });
+        const icon = await read("button", "Icon normal");
+        await page.getByRole("button", { name: "Icon pressed" }).hover();
+        await page.mouse.down();
+        await page.waitForTimeout(250);
+        const iconPressed = await read("button", "Icon pressed");
+        await page.mouse.up();
+        const iconDisabled = await read("button", "Icon disabled");
+        const toggle = await read("switch", "Switch normal");
+        await page.getByRole("switch", { name: "Switch normal" }).hover();
+        await page.mouse.down();
+        const togglePressed = await read("switch", "Switch normal");
+        await page.mouse.up();
+        const toggleDisabled = await read("switch", "Switch disabled");
+        samples[env] = { icon, iconPressed, iconDisabled, toggle, togglePressed, toggleDisabled };
+        assert.match(iconPressed.transform, /^matrix\(0\.9, 0, 0, 0\.9, 0, 0\)$/, env);
+        assert.equal(togglePressed.transform, "none", env);
+        assert.equal(iconDisabled.background, icon.background, env);
+        assert.equal(iconDisabled.color, icon.color, env);
+        assert.equal(iconDisabled.cursor, "default", env);
+        assert.equal(toggleDisabled.background, toggle.background, env);
+        assert.equal(toggleDisabled.cursor, "default", env);
+        assert.deepEqual(errorsOf(page), []);
+      } finally { await page.close(); }
+    }
+    assert.deepEqual(samples.legacy, samples.new);
+  } finally { await browser.close(); }
+});

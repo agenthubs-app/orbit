@@ -111,6 +111,7 @@
 .foptOn:global(.btn) { border-color: var(--plum-500); }
 .hit:global(.btn) { gap: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .toggle:global(.btn) { gap: 0; width: 44px; height: 26px; padding: 0; border: 0; border-radius: var(--r-pill); }
+.toggle:global(.btn):disabled { background: var(--surface-3); color: inherit; cursor: default; }
 .segOption:global(.btn) { gap: 0; height: auto; min-height: 32px; padding: 6px 14px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-control); font-weight: var(--fw-bold); letter-spacing: normal; }
 .foptOn { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
 /* kit .fopt.on::before: a ✓ glyph, plum-700, weight 900. */
