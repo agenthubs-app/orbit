@@ -6,7 +6,7 @@ import { Icon, type IconName } from "./Icon";
 import { UiPressable } from "./Pressable";
 import { UiText } from "./Text";
 
-export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger" | "dangerGhost" | "dangerSoft";
+export type ButtonVariant = "primary" | "accent" | "secondary" | "surface" | "ghost" | "danger" | "dangerGhost" | "dangerSoft";
 
 // kit/ui.css .btn: pill, 40 tall (R31a: was 44; 2 of hit slop each side keep 44), sm 32 (hit area 44), lg 46 =
 // kit .actsheet .btn (action-sheet buttons), 13/700. Variants map to
@@ -59,6 +59,7 @@ export function tones(colors: OrbitColors): Record<ButtonVariant, { background: 
     primary: { background: colors.ink, text: colors.onAccent },
     accent: { background: colors.accent, text: colors.onAccent },
     secondary: { background: colors.surface2, text: colors.ink },
+    surface: { background: colors.surface, text: colors.ink },
     ghost: { background: "transparent", text: colors.ink2 },
     danger: { background: colors.coralText, text: colors.onAccent },
     dangerGhost: { background: "transparent", text: colors.coralText },

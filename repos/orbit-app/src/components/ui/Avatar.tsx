@@ -33,9 +33,9 @@ function toneColors(colors: OrbitColors, tone: Tone) {
   }[tone];
 }
 
-export function Avatar({ name, size = "md" }: { name: string; size?: keyof typeof SIZES }) {
+export function Avatar({ name, size = "md", tone }: { name: string; size?: keyof typeof SIZES; tone?: Tone }) {
   const { colors, styles } = useStyles();
-  const { background, text } = toneColors(colors, avatarTone(name));
+  const { background, text } = toneColors(colors, tone ?? avatarTone(name));
   const dimension = SIZES[size];
   return (
     <View accessibilityLabel={name} accessibilityRole="image" style={[styles.avatar, { width: dimension, height: dimension, backgroundColor: background }]}>

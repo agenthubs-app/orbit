@@ -29,6 +29,8 @@ export function ConfirmDialog({
   stacked = false,
   cancelVariant = "secondary",
   icon,
+  width,
+  presentation = "overlay",
   onConfirm,
   onCancel,
 }: {
@@ -46,6 +48,10 @@ export function ConfirmDialog({
    * `.dic.emo` (apricot square, 24px emoji — e.g. 🧪 the sample-mode block, 01-system ⑨); an icon name swaps the line icon.
    */
   icon?: IconName | { emoji: string };
+  /** The specimen dialog is 280pt wide; the normal overlay remains 296pt. */
+  width?: number;
+  /** Render only the dialog body inside a showcase cell. */
+  presentation?: "overlay" | "static";
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -55,17 +61,18 @@ export function ConfirmDialog({
   const focusTarget = useRef<View>(null);
   const appear = useRef(new Animated.Value(0)).current;
   const cancel = useCallback(() => onCancel(), [onCancel]);
-  useBackHandler(visible, cancel);
+  useBackHandler(visible && presentation === "overlay", cancel);
   const focused = useRef(false);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || presentation === "static") return;
     focused.current = false;
     appear.setValue(0);
     Animated.timing(appear, { toValue: 1, duration: durations.dialog, useNativeDriver: true }).start();
-  }, [appear, visible]);
+  }, [appear, presentation, visible]);
   // The dialog draws in the portal host after this component commits, so the
   // initial focus is set once the target has been laid out.
   const focusFirst = () => {
+    if (presentation === "static") return;
     if (focused.current) return;
     const node = findNodeHandle(focusTarget.current);
     if (!node) return;
@@ -85,20 +92,24 @@ export function ConfirmDialog({
       <Button block label={confirmLabel} onPress={onConfirm} variant={destructive ? "danger" : "primary"} />
     </View>
   );
+  const dialog = (
+    <Animated.View accessibilityRole="alert" style={[styles.dialog, width ? { width } : null, floatShadow(colors), presentation === "static" ? styles.staticDialog : { opacity: appear, transform: [{ scale }] }]}>
+      <View style={[styles.iconBlock, destructive && !isEmoji(icon) ? styles.iconDanger : styles.iconNeutral]}>
+        {isEmoji(icon)
+          ? <UiText maxFontSizeMultiplier={1} style={styles.emoji}>{icon.emoji}</UiText>
+          : <Icon name={icon ?? (destructive ? "trash" : "info")} size={24} color={destructive ? colors.coralText : colors.macApricotText} />}
+      </View>
+      <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
+      {message ? <UiText style={styles.message}>{message}</UiText> : null}
+      {stacked ? <View style={[styles.stack, presentation === "static" && styles.staticStack]}>{confirmButton}{cancelButton}</View> : <View style={styles.row}>{cancelButton}{confirmButton}</View>}
+    </Animated.View>
+  );
+  if (presentation === "static") return dialog;
   return (
     <UiPortal>
       <View accessibilityViewIsModal onAccessibilityEscape={cancel} style={styles.root}>
         <Scrim onPress={destructive ? undefined : cancel} />
-        <Animated.View accessibilityRole="alert" style={[styles.dialog, floatShadow(colors), { opacity: appear, transform: [{ scale }] }]}>
-          <View style={[styles.iconBlock, destructive && !isEmoji(icon) ? styles.iconDanger : styles.iconNeutral]}>
-            {isEmoji(icon)
-              ? <UiText maxFontSizeMultiplier={1} style={styles.emoji}>{icon.emoji}</UiText>
-              : <Icon name={icon ?? (destructive ? "trash" : "info")} size={24} color={destructive ? colors.coralText : colors.macApricotText} />}
-          </View>
-          <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
-          {message ? <UiText style={styles.message}>{message}</UiText> : null}
-          {stacked ? <View style={styles.stack}>{confirmButton}{cancelButton}</View> : <View style={styles.row}>{cancelButton}{confirmButton}</View>}
-        </Animated.View>
+        {dialog}
       </View>
     </UiPortal>
   );
@@ -111,6 +122,7 @@ function isEmoji(icon: IconName | { emoji: string } | undefined): icon is { emoj
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", padding: 24 },
   dialog: { width: 296, maxWidth: "100%", borderRadius: radius.dialog, backgroundColor: colors.surface, paddingTop: 22, paddingHorizontal: 18, paddingBottom: 16, alignItems: "center" },
+  staticDialog: { maxWidth: 296, opacity: 1 },
   iconBlock: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   iconDanger: { backgroundColor: colors.coralSoft },
   iconNeutral: { backgroundColor: colors.macApricot },
@@ -119,5 +131,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   message: { color: colors.ink2, fontSize: 12.5, lineHeight: 20, textAlign: "center", marginTop: 6 },
   row: { flexDirection: "row", gap: 8, marginTop: 16, alignSelf: "stretch" },
   stack: { gap: 8, marginTop: 16, alignSelf: "stretch" },
+  staticStack: { gap: 20 },
   half: { flex: 1 },
 }));

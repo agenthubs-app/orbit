@@ -7,6 +7,7 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 import { durations, useReducedMotion } from "./motion";
+import { UiPressable } from "./Pressable";
 import { UiText } from "./Text";
 
 // 01-system ⑨ empty guide (kit .guide / .step / .ghost-row): what will appear here,
@@ -41,7 +42,7 @@ export function EmptyState({ title, message, action, steps, ghostRows = 0 }: {
 // line offers a retry. Reduce Motion: static blocks. Dark: surface-2 / surface-3 stay visible.
 export const SKELETON_SLOW_MS = 8000;
 
-export function Skeleton({ lines = 3, onRetry }: { lines?: number; onRetry?: () => void }) {
+export function Skeleton({ lines = 3, onRetry, presentation = "default" }: { lines?: number; onRetry?: () => void; presentation?: "default" | "kit" }) {
   const { styles } = useStyles();
   const copy = useStandardCopy();
   const reduced = useReducedMotion();
@@ -55,6 +56,14 @@ export function Skeleton({ lines = 3, onRetry }: { lines?: number; onRetry?: () 
     return () => { clearTimeout(timer); loop.stop(); };
   }, [reduced, shimmer]);
   const opacity = reduced ? 1 : shimmer.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.55, 1] });
+  if (presentation === "kit") return <View accessibilityLabel={copy.loading.loading} accessibilityRole="progressbar" style={styles.kitSkeleton}>
+    <Animated.View style={[styles.bone, styles.kitSkeletonLabel, { opacity }]} />
+    <Animated.View style={[styles.bone, styles.kitSkeletonTitle, { opacity }]} />
+    {[78, 64, 70].map((width, index) => <View key={index} style={styles.kitSkeletonRow}>
+      <Animated.View style={[styles.bone, styles.kitSkeletonAvatar, { opacity }]} />
+      <View style={styles.kitSkeletonLines}><Animated.View style={[styles.bone, { width: `${width}%`, height: 11, opacity }]} /><Animated.View style={[styles.bone, { width: `${width - 22}%`, height: 9, marginTop: 7, opacity }]} /></View>
+    </View>)}
+  </View>;
   return (
     <View accessibilityLabel={copy.loading.loading} accessibilityRole="progressbar" style={styles.skeleton}>
       {slow ? (
@@ -74,8 +83,8 @@ export function Skeleton({ lines = 3, onRetry }: { lines?: number; onRetry?: () 
 // the connection returns it turns mint 「同期しました」 and folds away after 2 s.
 export const OFFLINE_SYNCED_MS = 2000;
 
-export function OfflineBar({ offline, pending }: { offline: boolean; pending: number }) {
-  const { styles } = useStyles();
+export function OfflineBar({ offline, pending, previewSynced = false, presentation = "default", pendingText, syncedNote }: { offline: boolean; pending: number; previewSynced?: boolean; presentation?: "default" | "kit"; pendingText?: string; syncedNote?: string }) {
+  const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   const [synced, setSynced] = useState(false);
   const wasOffline = useRef(offline);
@@ -88,7 +97,14 @@ export function OfflineBar({ offline, pending }: { offline: boolean; pending: nu
     }
     wasOffline.current = offline;
   }, [offline]);
-  if (!offline && !synced) return null;
+  if (!offline && !synced && !previewSynced) return null;
+  if (presentation === "kit") return (
+    <View accessibilityLiveRegion="polite" accessibilityRole="alert" style={[styles.kitOffline, { backgroundColor: offline ? colors.macApricot : colors.macTeal }]}>
+      <Icon name={offline ? "wifioff" : "check"} size={16} color={offline ? colors.macApricotText : colors.macTealText} />
+      <UiText style={[styles.kitOfflineText, { color: offline ? colors.macApricotText : colors.macTealText }]}>{offline ? copy.offline.banner : copy.offline.synced}</UiText>
+      {offline && pending > 0 ? <View style={styles.kitPending}><Icon name="clock" size={12} color={colors.macApricotText} /><UiText style={styles.kitPendingText}>{pendingText ?? fillCopy(copy.offline.pending, { count: pending })}</UiText></View> : syncedNote ? <UiText style={styles.kitSyncedNote}>{syncedNote}</UiText> : null}
+    </View>
+  );
   return (
     <View accessibilityLiveRegion="polite" accessibilityRole="alert" style={[styles.bar, offline ? styles.barOffline : styles.barSynced]}>
       <Icon name={offline ? "wifioff" : "check"} size={16} color={offline ? styles.offlineText.color : styles.syncedText.color} />
@@ -100,17 +116,17 @@ export function OfflineBar({ offline, pending }: { offline: boolean; pending: nu
 
 // 01-system ⑧ block error: 54 coral-soft icon block, 「〜を読み込めませんでした」, the
 // reason and a reassurance, 再試行 (spins in the button), optional cached view.
-export function RetryCard({ title, message, onRetry, retrying = false, onViewCached }: { title: string; message?: string; onRetry: () => void; retrying?: boolean; onViewCached?: () => void }) {
+export function RetryCard({ title, message, onRetry, retrying = false, onViewCached, presentation = "default" }: { title: string; message?: string; onRetry: () => void; retrying?: boolean; onViewCached?: () => void; presentation?: "default" | "kit" }) {
   const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   return (
-    <View accessibilityRole="alert" style={styles.retry}>
-      <View style={styles.retryIcon}><Icon name="alert" size={24} color={colors.coralText} /></View>
-      <UiText accessibilityRole="header" style={styles.title}>{title}</UiText>
-      <UiText style={styles.message}>{message ?? `${copy.error.checkConnection}${copy.error.inputKept}`}</UiText>
-      <View style={styles.retryActions}>
-        <Button icon="refresh" label={copy.action.retry} loading={retrying} onPress={onRetry} variant="primary" />
-        {onViewCached ? <Button label={copy.error.viewCached} onPress={onViewCached} variant="ghost" /> : null}
+    <View accessibilityRole="alert" style={[styles.retry, presentation === "kit" && styles.kitRetry]}>
+      <View style={[styles.retryIcon, presentation === "kit" && styles.kitRetryIcon]}><Icon name="alert" size={24} color={colors.coralText} /></View>
+      <UiText accessibilityRole="header" style={[styles.title, presentation === "kit" && styles.kitRetryTitle]}>{title}</UiText>
+      <UiText style={[styles.message, presentation === "kit" && styles.kitRetryMessage]}>{message ?? `${copy.error.checkConnection}${copy.error.inputKept}`}</UiText>
+      <View style={[styles.retryActions, presentation === "kit" && styles.kitRetryActions]}>
+        <Button icon="refresh" label={copy.action.retry} loading={retrying} onPress={onRetry} variant="primary" size={presentation === "kit" ? "sm" : "md"} />
+        {onViewCached ? <Button label={copy.error.viewCached} onPress={onViewCached} variant="ghost" size={presentation === "kit" ? "sm" : "md"} /> : null}
       </View>
     </View>
   );
@@ -118,47 +134,51 @@ export function RetryCard({ title, message, onRetry, retrying = false, onViewCac
 
 // 01-system ⑧ AI degraded: grey (not coral — not the user's fault), says what stopped
 // and what still works.
-export function DegradedCard({ title, message, onRetry }: { title?: string; message?: string; onRetry?: () => void }) {
+export function DegradedCard({ title, message, onRetry, presentation = "default" }: { title?: string; message?: string; onRetry?: () => void; presentation?: "default" | "kit" }) {
   const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   return (
-    <View accessibilityRole="alert" style={styles.degraded}>
+    <View accessibilityRole="alert" style={[styles.degraded, presentation === "kit" && styles.kitDegraded]}>
       <Icon name="alert" size={16} color={colors.ink2} />
       <View style={styles.degradedBody}>
-        <UiText style={styles.degradedTitle}>{title ?? copy.degraded.iorbitUnavailable}</UiText>
-        <UiText style={styles.message}>{message ?? copy.degraded.iorbitStopped}</UiText>
+        <UiText style={[styles.degradedTitle, presentation === "kit" && styles.kitDegradedTitle]}>{title ?? copy.degraded.iorbitUnavailable}</UiText>
+        <UiText style={[styles.message, presentation === "kit" && styles.kitDegradedMessage]}>{message ?? copy.degraded.iorbitStopped}</UiText>
+        {presentation === "kit" && onRetry ? <View style={styles.kitDegradedRetry}><Button icon="refresh" label={copy.action.retry} onPress={onRetry} size="sm" variant="surface" /></View> : null}
       </View>
-      {onRetry ? <Button label={copy.action.retry} onPress={onRetry} size="sm" variant="secondary" /> : null}
+      {presentation !== "kit" && onRetry ? <Button label={copy.action.retry} onPress={onRetry} size="sm" variant="secondary" /> : null}
     </View>
   );
 }
 
 // Sample data marks (01-system 示例模式): a small apricot tag and a banner.
-export function SampleTag() {
+export function SampleTag({ presentation = "default" }: { presentation?: "default" | "kit" }) {
   const { styles } = useStyles();
   const copy = useStandardCopy();
-  return <View style={styles.sampleTag}><UiText style={styles.sampleText}>{copy.sample.tag}</UiText></View>;
+  return <View style={styles.sampleTag}><UiText style={[styles.sampleText, presentation === "kit" && styles.kitSampleTagText]}>{copy.sample.tag}</UiText></View>;
 }
 
-export function SampleBar({ trailing }: { trailing?: ReactNode }) {
+export function SampleBar({ trailing, presentation = "default", onClose, emoji }: { trailing?: ReactNode; presentation?: "default" | "kit"; onClose?: () => void; emoji?: string }) {
   const { styles } = useStyles();
   const copy = useStandardCopy();
   return (
-    <View style={styles.sampleBar}>
-      <UiText style={[styles.sampleText, styles.sampleBarText]}>{copy.sample.banner}</UiText>
+    <View style={[styles.sampleBar, presentation === "kit" && styles.kitSampleBar]}>
+      {presentation === "kit" && emoji ? <UiText style={styles.kitSampleEmoji}>{emoji}</UiText> : null}
+      <UiText numberOfLines={presentation === "kit" ? 2 : undefined} adjustsFontSizeToFit={presentation === "kit"} minimumFontScale={0.9} style={[styles.sampleText, styles.sampleBarText, presentation === "kit" && styles.kitSampleBarText]}>{copy.sample.banner}</UiText>
       {trailing}
+      {presentation === "kit" && onClose ? <UiPressable accessibilityRole="button" accessibilityLabel={copy.action.close} hitSlop={8} onPress={onClose} style={styles.kitSampleClose}><Icon name="x" size={16} color={styles.sampleText.color} /></UiPressable> : null}
     </View>
   );
 }
 
 // Quota (01-system 配额): 「今月あと N 回」, coral when used up.
-export function QuotaChip({ left }: { left: number }) {
+export function QuotaChip({ left, presentation = "default" }: { left: number; presentation?: "default" | "kit" }) {
   const { styles } = useStyles();
   const copy = useStandardCopy();
   const out = left <= 0;
   return (
-    <View style={[styles.quota, out && styles.quotaOut]}>
-      <UiText style={[styles.quotaText, out && styles.quotaTextOut]}>{out ? copy.quota.reached : fillCopy(copy.quota.left, { count: left })}</UiText>
+    <View style={[styles.quota, out && styles.quotaOut, presentation === "kit" && styles.kitQuota, presentation === "kit" && out && styles.kitQuotaOut]}>
+      {presentation === "kit" ? <View style={[styles.quotaDot, out && styles.quotaDotOut]} /> : null}
+      <UiText style={[styles.quotaText, out && styles.quotaTextOut, presentation === "kit" && out && styles.kitQuotaTextOut]}>{out ? copy.quota.reached : fillCopy(copy.quota.left, { count: left })}</UiText>
     </View>
   );
 }
@@ -177,6 +197,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   action: { marginTop: 6 },
   skeleton: { gap: 10, padding: 4 },
   bone: { height: 14, borderRadius: 8, backgroundColor: colors.surface3 },
+  kitSkeleton: { backgroundColor: colors.surface, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 14 },
+  kitSkeletonLabel: { width: "40%", height: 11 },
+  kitSkeletonTitle: { width: "52%", height: 30, marginTop: 10 },
+  kitSkeletonRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 },
+  kitSkeletonAvatar: { width: 38, height: 38, borderRadius: 19 },
+  kitSkeletonLines: { flex: 1 },
   slow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   slowText: { color: colors.ink2, fontSize: 12.5 },
   bar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14 },
@@ -194,11 +220,35 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   degradedTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "800" },
   sampleTag: { alignSelf: "flex-start", backgroundColor: colors.macApricot, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
   sampleText: { color: colors.macApricotText, fontSize: 10.5, fontWeight: "800" },
+  kitSampleTagText: { fontSize: 9.5 },
   sampleBar: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.macApricot, borderRadius: 14, padding: 12 },
   sampleBarText: { flex: 1, fontSize: 12.5 },
   quota: { alignSelf: "flex-start", backgroundColor: colors.surface2, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   quotaOut: { backgroundColor: colors.coralSoft },
   quotaText: { color: colors.ink2, fontSize: 11, fontWeight: "700" },
   quotaTextOut: { color: colors.coralText },
+  kitOffline: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 14, paddingRight: 10, paddingVertical: 9, borderRadius: 16 },
+  kitOfflineText: { flex: 1, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  kitPending: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: colors.surface },
+  kitPendingText: { color: colors.macApricotText, fontSize: 11, fontWeight: "700" },
+  kitSyncedNote: { color: colors.macTealText, opacity: 0.7, fontSize: 11.5 },
+  kitRetry: { alignItems: "center", paddingHorizontal: 20, paddingVertical: 24, gap: 0 },
+  kitRetryIcon: { marginBottom: 12 },
+  kitRetryTitle: { fontSize: 15 },
+  kitRetryMessage: { textAlign: "center", fontSize: 12.5, marginTop: 6, marginBottom: 14, lineHeight: 20 },
+  kitRetryActions: { justifyContent: "center", marginTop: 0 },
+  kitDegraded: { paddingHorizontal: 14, paddingVertical: 12 },
+  kitDegradedTitle: { fontSize: 12 },
+  kitDegradedMessage: { fontSize: 12, lineHeight: 18 },
+  kitDegradedRetry: { marginTop: 8 },
+  kitSampleBar: { gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16 },
+  kitSampleBarText: { fontSize: 11.5, fontWeight: "700", letterSpacing: -0.2 },
+  kitSampleEmoji: { fontSize: 16 },
+  kitSampleClose: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  kitQuota: { flexDirection: "row", alignItems: "center", gap: 5 },
+  kitQuotaOut: { backgroundColor: colors.surface2 },
+  kitQuotaTextOut: { color: colors.ink2 },
+  quotaDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.plum500 },
+  quotaDotOut: { backgroundColor: colors.coral },
 }));
 

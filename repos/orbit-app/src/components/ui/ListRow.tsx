@@ -9,11 +9,12 @@ import { UiText } from "./Text";
 // 12 / ink-3-text, trailing slot. Tappable rows are buttons with a 44+ target.
 // One line each at normal sizes; with larger text they wrap (up to 3 lines) instead
 // of cutting the name short, like iOS table cells (R04 review M3).
-export function ListRow({ title, subtitle, leading, trailing, onPress, accessibilityLabel }: {
+export function ListRow({ title, subtitle, leading, trailing, titleAddon, onPress, accessibilityLabel }: {
   title: string;
   subtitle?: string;
   leading?: ReactNode;
   trailing?: ReactNode;
+  titleAddon?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
 }) {
@@ -23,7 +24,7 @@ export function ListRow({ title, subtitle, leading, trailing, onPress, accessibi
     <>
       {leading}
       <View style={styles.meta}>
-        <UiText numberOfLines={lines} style={styles.title}>{title}</UiText>
+        {titleAddon ? <View style={styles.titleLine}><UiText numberOfLines={lines} style={[styles.title, styles.titleWithAddon]}>{title}</UiText>{titleAddon}</View> : <UiText numberOfLines={lines} style={styles.title}>{title}</UiText>}
         {subtitle ? <UiText numberOfLines={lines} style={styles.subtitle}>{subtitle}</UiText> : null}
       </View>
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
@@ -41,6 +42,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 11 },
   meta: { flex: 1, minWidth: 0 },
   title: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  titleLine: { flexDirection: "row", alignItems: "center", gap: 4 },
+  titleWithAddon: { flexShrink: 1 },
   subtitle: { color: colors.ink3Text, fontSize: 12, marginTop: 2 },
   trailing: { flexShrink: 0, alignItems: "flex-end" },
 }));
