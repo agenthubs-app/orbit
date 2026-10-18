@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build } from "esbuild";
 import { chromium } from "playwright";
+import { bundle as bundleUi } from "../ui/support/orbit-2026-harness";
 
 test("Web reads previews first, one message window on selection, and retries sending with the same request identity", async () => {
-  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+  const code = await bundleUi(`
     import React from "react"; import {createRoot} from "react-dom/client";
     import {BoundedContactMessagesTab} from "./app/(app)/app/inbox/bounded-contact-messages-tab";
     const at="2026-09-25T00:00:00Z";
@@ -24,14 +24,15 @@ test("Web reads previews first, one message window on selection, and retries sen
       return Response.json({success:false,error:{code:"NOT_FOUND"}},{status:404});
     };
     createRoot(document.getElementById("root")).render(<BoundedContactMessagesTab actorId="a" onIdentityChanged={()=>window.changed++} />);
-  ` }, bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"' } });
+  `);
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await page.route("https://orbit.test/", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
     await page.goto("https://orbit.test/");
-    await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
+    if (code.css) await page.addStyleTag({ content: code.css });
+    await page.addScriptTag({ content: code.js });
     await page.getByText("最新预览", { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => (window as any).calls.filter((c: any) => c.path.includes("/messages")).length), 0);
     await page.getByRole("button", { name: /Remote/ }).click();

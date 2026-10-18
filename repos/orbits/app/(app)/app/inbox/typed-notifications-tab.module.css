@@ -1,0 +1,19 @@
+.root { padding: 16px; }
+.workspace { display: grid; grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); min-height: 540px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); }
+.list { min-width: 0; border-right: 1px solid var(--line); padding: 18px; overflow: auto; }
+.detail { min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+.toolbar { display: flex; justify-content: flex-end; padding: 8px 0; }
+.day { margin: 18px 0 4px; color: var(--ink-3-text); font-size: 12px; font-weight: 700; }
+.empty { padding: 32px 8px; text-align: center; color: var(--ink-3-text); }
+.selected { background: var(--surface-2); border-radius: 12px; }
+.placeholder { margin: auto; color: var(--ink-3-text); font-size: 13px; }
+.back { display: none; align-self: flex-start; }
+@media (max-width: 767px) {
+  .root { padding: 0; }
+  .workspace { display: block; min-height: 0; border: 0; border-radius: 0; }
+  .list { border: 0; padding: 16px; }
+  .detail { display: none; padding: 20px; }
+  .detailVisible { display: flex; }
+  .list.detailOpen { display: none; }
+  .back { display: inline-flex; }
+}

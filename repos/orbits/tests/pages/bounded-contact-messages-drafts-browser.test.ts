@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build } from "esbuild";
 import { chromium } from "playwright";
+import { bundle as bundleUi } from "../ui/support/orbit-2026-harness";
 
 /**
  * Sprint 0104: the web inbox reply composer loads and saves the participant's
@@ -9,7 +9,7 @@ import { chromium } from "playwright";
  * is covered against real Postgres in relationship-drafts-postgres.test.ts).
  */
 test("Web loads the saved reply draft for the opened conversation, saves edits, reports a failed save, and clears it after sending", async () => {
-  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+  const code = await bundleUi(`
     import React from "react"; import {createRoot} from "react-dom/client";
     import {BoundedContactMessagesTab} from "./app/(app)/app/inbox/bounded-contact-messages-tab";
     const at="2026-09-27T00:00:00Z";
@@ -31,14 +31,15 @@ test("Web loads the saved reply draft for the opened conversation, saves edits, 
       return Response.json({success:false,error:{code:"NOT_FOUND"}},{status:404});
     };
     createRoot(document.getElementById("root")).render(<BoundedContactMessagesTab actorId="a" onIdentityChanged={()=>{}} />);
-  ` }, bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"' } });
+  `);
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await page.route("https://orbit.test/", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
     await page.goto("https://orbit.test/");
-    await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
+    if (code.css) await page.addStyleTag({ content: code.css });
+    await page.addScriptTag({ content: code.js });
     await page.getByRole("button", { name: /Remote/ }).click();
     const box = page.getByRole("textbox", { name: "回复消息", exact: true });
     await page.waitForFunction(() => (document.querySelector("textarea") as HTMLTextAreaElement | null)?.value === "已保存的草稿");
@@ -67,7 +68,7 @@ test("Web loads the saved reply draft for the opened conversation, saves edits, 
 
 /** Sprint 0122 (Codex 104-A): "saved" is bound to the saved text and conversation. */
 test("Web never reports an edited reply as saved from a late receipt, and a save receipt cannot cross into another conversation", async () => {
-  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+  const code = await bundleUi(`
     import React from "react"; import {createRoot} from "react-dom/client";
     import {BoundedContactMessagesTab} from "./app/(app)/app/inbox/bounded-contact-messages-tab";
     const at="2026-09-27T00:00:00Z";
@@ -86,14 +87,15 @@ test("Web never reports an edited reply as saved from a late receipt, and a save
       return Response.json({success:false,error:{code:"NOT_FOUND"}},{status:404});
     };
     createRoot(document.getElementById("root")).render(<BoundedContactMessagesTab actorId="a" onIdentityChanged={()=>{}} />);
-  ` }, bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"' } });
+  `);
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await page.route("https://orbit.test/", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
     await page.goto("https://orbit.test/");
-    await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
+    if (code.css) await page.addStyleTag({ content: code.css });
+    await page.addScriptTag({ content: code.js });
     const box = page.getByRole("textbox", { name: "回复消息", exact: true });
     const saved = page.getByText("草稿已保存，只有你能看到。", { exact: true });
     const release = () => page.evaluate(() => (window as any).held.shift()());

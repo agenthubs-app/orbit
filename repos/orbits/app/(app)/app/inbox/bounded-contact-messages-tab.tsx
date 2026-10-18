@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { NotificationDeliverySettings } from "../settings/notification-delivery-settings";
-import { Avatar } from "../orbit-reference-primitives";
-import { BoundedMessageReadError, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
+import { Avatar, ListRow, SearchField } from "../orbit-2026/ui";
+import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
   const { t, language } = useOrbitLanguage();
   const [cards, setCards] = useState<MessageCardPageView | null>(null);
+  const [search, setSearch] = useState("");
   const [listCursor, setListCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
@@ -144,12 +145,14 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     finally { sendLock.current = false; if (!controller.signal.aborted) setSending(false); }
   }
   const retry = <button className="btn btn-ghost" onClick={() => setAttempt(n => n + 1)}>{t({ zh: "重试", en: "Retry" })}</button>;
+  const visibleCards = filterMessageCards(cards?.items ?? [], search);
   return <div className={`ri-thread-workspace${selected ? " has-open-thread" : ""}`}>
     <aside className="ri-thread-list"><div className="ri-thread-scroll scroll">
-      {listError ? <p role="alert">{t({ zh: "消息列表读取失败。", en: "Could not load conversations." })}{retry}</p> : !cards ? <p role="status">{t({ zh: "正在读取消息…", en: "Loading messages…" })}</p> : !cards.items.length ? <p>{t({ zh: "暂无消息", en: "No messages yet" })}</p> : null}
-      {cards?.items.map(item => <button type="button" className="ri-row" key={item.id} disabled={sending || Boolean(pending.current)} onClick={() => { setSelected(item.id); setHistoryCursor(null); setBody(""); setSendError(false); readKey.current = ""; }}>
-        <Avatar letter={Array.from(item.name)[0] || "?"} g="g-violet" size={38}/><span className="ri-row-main"><span className="ri-row-name">{item.name}</span><span className="ri-row-preview">{item.preview}</span><span className="ri-row-time">{formatOrbitDateTime(item.updatedAt,language)}</span></span>{item.unread>0 && <span className="ri-row-unread">{item.unread}</span>}
-      </button>)}
+      <div style={{padding:12}}><SearchField value={search} onChange={setSearch} placeholder={t({zh:"搜索会话",en:"Search conversations",ja:"スレッドを検索"})}/></div>
+      {listError ? <p role="alert">{t({ zh: "消息列表读取失败。", en: "Could not load conversations." })}{retry}</p> : !cards ? <p role="status">{t({ zh: "正在读取消息…", en: "Loading messages…" })}</p> : !cards.items.length ? <p>{t({ zh: "暂无消息", en: "No messages yet" })}</p> : search.trim()&&!visibleCards.length ? <p>{t({zh:"没有匹配的会话",en:"No matching conversations",ja:"一致するスレッドはありません"})}</p> : null}
+      {visibleCards.map(item => <ListRow key={item.id} title={item.name} subtitle={item.preview} leading={<Avatar name={item.name} size="md"/>}
+        trailing={<span style={{display:'grid',gap:5,justifyItems:'end'}}><small>{formatOrbitDateTime(item.updatedAt,language)}</small>{item.unread>0?<span className="ri-row-unread">{item.unread}</span>:null}</span>}
+        onSelect={() => { if(sending||pending.current)return;setSelected(item.id); setHistoryCursor(null); setBody(""); setSendError(false); readKey.current = ""; }}/>) }
       {listCursor && <button className="btn btn-ghost" onClick={() => setListCursor(null)}>{t({ zh: "最新会话", en: "Latest conversations" })}</button>}
       {cards?.nextCursor && <button className="btn btn-ghost" onClick={() => setListCursor(cards.nextCursor)}>{t({ zh: "下一页会话", en: "Next conversations" })}</button>}
     </div></aside>

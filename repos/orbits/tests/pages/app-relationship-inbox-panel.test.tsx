@@ -128,7 +128,7 @@ test("exact contact identity survives compose seed and create-thread POST", asyn
         "utf8",
       ),
     );
-    assert.match(source, /contactId: detail\.contactId/);
+    assert.match(source, /setSeed\(sanitizeInboxComposeSeed\(\(event as CustomEvent<unknown>\)\.detail\)\)/);
     assert.match(source, /contactId: initialContactId/);
   } finally {
     globalThis.fetch = previousFetch;

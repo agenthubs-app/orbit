@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { build } from "esbuild";
 import { chromium } from "playwright";
+import { bundle as bundleUi } from "../ui/support/orbit-2026-harness";
 
 // W0031 SC-02 (a)(d)(e) on the real notifications tab: reads share one identity confirmation,
 // every action passes a fresh pre-write barrier, and an account switch stops the write.
 test("notifications tab shares the read confirmation and confirms afresh before every action", async () => {
-  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+  const code = await bundleUi(`
     import React from "react"; import {createRoot} from "react-dom/client";
     import {TypedNotificationsTab} from "./app/(app)/app/inbox/typed-notifications-tab";
     const at="2026-09-16T02:00:00Z";
@@ -22,22 +22,21 @@ test("notifications tab shares the read confirmation and confirms afresh before 
       return Response.json({success:false,error:{code:"NOT_FOUND"}},{status:404});
     };
     createRoot(document.getElementById("root")).render(<TypedNotificationsTab actorId="a" onIdentityChanged={()=>window.changed++} />);
-  ` }, bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"' } });
+  `);
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await page.route("https://orbit.test/", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
     await page.goto("https://orbit.test/");
-    await page.addScriptTag({ content: bundle.outputFiles[0]!.text });
+    if (code.css) await page.addStyleTag({ content: code.css });
+    await page.addScriptTag({ content: code.js });
     const me = () => page.evaluate(() => (window as any).calls.filter((c: any) => c.path === "/api/account/me").length);
     const posts = () => page.evaluate(() => (window as any).calls.filter((c: any) => c.method === "POST").length);
     await page.getByText("发送报价资料").first().waitFor();
     assert.equal(await me(), 1, "list read: the before and after confirmations share one request");
     await page.getByText("发送报价资料").first().click();
-    await page.getByRole("button", { name: "标为已读" }).waitFor();
-    assert.equal(await me(), 1, "opening the detail inside the same cycle reuses it");
-    await page.getByRole("button", { name: "标为已读" }).click();
+    // Opening a detail now marks it read, using the same action barrier.
     await page.waitForFunction(() => (window as any).calls.some((c: any) => c.method === "POST"));
     // Barrier before the action, then a fresh post-write confirmation (never the barrier's answer).
     await page.waitForFunction(() => (window as any).calls.filter((c: any) => c.path === "/api/account/me").length >= 3);

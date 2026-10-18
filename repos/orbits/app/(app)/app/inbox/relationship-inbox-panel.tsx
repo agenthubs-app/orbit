@@ -1,5 +1,7 @@
 "use client";
 import {TypedNotificationsTab} from './typed-notifications-tab';
+import { sanitizeInboxComposeSeed, type NewThreadSeed } from './inbox-compose-seed';
+import { Segmented } from '../orbit-2026/ui';
 import { readWebInboxSummary } from './inbox-summary-client';
 
 import {
@@ -62,14 +64,6 @@ function clampRelationshipInboxWidth(
   );
 }
 
-interface NewThreadSeed {
-  body?: string;
-  contactId?: string;
-  recipient?: string;
-  organization?: string;
-  subject?: string;
-}
-
 // 让其它页面（如联系人详情页"起草邮件"）打开收件箱并直接进入发起新对话流程。
 // 用 window 自定义事件解耦：入口 trigger 监听该事件，页面只需 dispatch。
 export const RELATIONSHIP_INBOX_COMPOSE_EVENT = "orbit:relationship-inbox-compose";
@@ -78,8 +72,10 @@ export function openRelationshipInboxCompose(seed: NewThreadSeed): void {
   if (typeof window === "undefined") {
     return;
   }
+  const clean = sanitizeInboxComposeSeed(seed);
+  if (!clean) return;
   window.dispatchEvent(
-    new CustomEvent(RELATIONSHIP_INBOX_COMPOSE_EVENT, { detail: seed }),
+    new CustomEvent(RELATIONSHIP_INBOX_COMPOSE_EVENT, { detail: clean }),
   );
 }
 
@@ -99,7 +95,9 @@ export function openRelationshipInbox(): void {
 const PENDING_COMPOSE_KEY = "orbit:inbox:pending-compose";
 
 export function stashInboxComposeSeed(seed: NewThreadSeed): void {
-  try { sessionStorage.setItem(PENDING_COMPOSE_KEY, JSON.stringify(seed)); } catch { /* the page opens without a draft */ }
+  const clean = sanitizeInboxComposeSeed(seed);
+  if (!clean) return;
+  try { sessionStorage.setItem(PENDING_COMPOSE_KEY, JSON.stringify(clean)); } catch { /* the page opens without a draft */ }
 }
 
 function takeInboxComposeSeed(): NewThreadSeed | null {
@@ -107,7 +105,7 @@ function takeInboxComposeSeed(): NewThreadSeed | null {
     const raw = sessionStorage.getItem(PENDING_COMPOSE_KEY);
     sessionStorage.removeItem(PENDING_COMPOSE_KEY);
     const value = raw ? JSON.parse(raw) as unknown : null;
-    return value && typeof value === "object" ? value as NewThreadSeed : null;
+    return sanitizeInboxComposeSeed(value);
   } catch { return null; }
 }
 
@@ -121,7 +119,7 @@ export function RelationshipInboxPage() {
   useEffect(() => { setSeed(takeInboxComposeSeed()); }, []);
   // Already on the page: open the new draft now (the panel takes its seed on mount).
   useEffect(() => {
-    const onCompose = (event: Event) => { setSeed((event as CustomEvent<NewThreadSeed>).detail ?? {}); setVersion((value) => value + 1); };
+    const onCompose = (event: Event) => { setSeed(sanitizeInboxComposeSeed((event as CustomEvent<unknown>).detail)); setVersion((value) => value + 1); };
     window.addEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
     return () => window.removeEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
   }, []);
@@ -978,13 +976,24 @@ function RelationshipInboxPanel({
     void readContactMessageActor(controller.signal).then(actor => {
       if (controller.signal.aborted) return;
       setActorId(actor);
-      try { if (!initialSeed && localStorage.getItem("orbit:inbox:tab:" + actor) === "alerts") setTab("alerts"); } catch { /* Tab memory is optional. */ }
+      try {
+        if (initialSeed) return;
+        const requested = new URLSearchParams(window.location.search).get('tab');
+        if (requested === 'notifications') setTab('alerts');
+        else if (requested === 'messages') setTab('threads');
+        else if (localStorage.getItem("orbit:inbox:tab:" + actor) === "alerts") setTab("alerts");
+      } catch { /* Tab memory is optional. */ }
     }).catch(() => { if (!controller.signal.aborted) setIdentityError(true); });
     return () => controller.abort();
   }, [initialSeed]);
   function selectTab(next: InboxTab) {
     setTab(next);
     if (actorId) try { localStorage.setItem("orbit:inbox:tab:" + actorId, next); } catch { /* Keep the selected tab for this visit. */ }
+    if (inline) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', next === 'alerts' ? 'notifications' : 'messages');
+      window.history.replaceState(window.history.state, '', url);
+    }
   }
   const [seed, setSeed] = useState<NewThreadSeed | null>(initialSeed ?? null);
   const [panelWidth, setPanelWidth] = useState(
@@ -1138,9 +1147,9 @@ function RelationshipInboxPanel({
     }
   };
 
-  const tabs: { id: InboxTab; icon: string; label: ReactNode }[] = [
-    { id: "threads", icon: "message", label: t({ en: "Messages", zh: "消息", ja: "メッセージ" }) },
-    { id: "alerts", icon: "bell", label: t({ en: "Notifications", zh: "通知", ja: "通知" }) },
+  const tabs: { id: InboxTab; label: string }[] = [
+    { id: "threads", label: t({ en: "Messages", zh: "消息", ja: "メッセージ" }) },
+    { id: "alerts", label: t({ en: "Notifications", zh: "通知", ja: "通知" }) },
   ];
 
   return (
@@ -1224,22 +1233,8 @@ function RelationshipInboxPanel({
           <span aria-hidden="true" />
         </button></>}
 
-        <div className="ri-panel-tabs" role="tablist">
-          {tabs.map((item) => (
-            <button
-              aria-selected={tab === item.id}
-              className={`ri-tab${tab === item.id ? " is-on" : ""}`}
-              key={item.id}
-              onClick={() => selectTab(item.id)}
-              role="tab"
-              type="button"
-            >
-              <Icon name={item.icon} size={15} />
-              {item.label}
-              {counts[item.id] > 0 ? <span className="ri-row-unread">{counts[item.id]}</span> : null}
-            </button>
-          ))}
-        </div>
+        <div className="ri-panel-tabs"><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
+          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` · ${counts[item.id]}` : ''}`}))} /></div>
 
         <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
@@ -1451,14 +1446,7 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
       ) {
         return;
       }
-      const detail = (event as CustomEvent<NewThreadSeed>).detail ?? {};
-      setSeed({
-        body: detail.body,
-        contactId: detail.contactId,
-        recipient: detail.recipient,
-        organization: detail.organization,
-        subject: detail.subject,
-      });
+      setSeed(sanitizeInboxComposeSeed((event as CustomEvent<unknown>).detail));
       setOpen(true);
     }
     window.addEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);

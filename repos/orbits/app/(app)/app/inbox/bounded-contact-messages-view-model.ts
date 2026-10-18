@@ -33,6 +33,10 @@ async function expectActor(actorId: string, signal: AbortSignal, write = false):
 }
 export interface MessageCardView { id: string; name: string; preview: string; unread: number; updatedAt: string }
 export interface MessageCardPageView { items: MessageCardView[]; nextCursor: string | null }
+export function filterMessageCards(items: readonly MessageCardView[], query: string): MessageCardView[] {
+  const needle = query.trim().normalize('NFKC').toLocaleLowerCase();
+  return needle ? items.filter(item => `${item.name} ${item.preview}`.normalize('NFKC').toLocaleLowerCase().includes(needle)) : [...items];
+}
 export interface MessageWindowView {
   id: string; name: string; version: string; nextCursor: string | null;
   messages: { id: string; authorId: string; author: string; body: string; at: string }[];
