@@ -31,6 +31,7 @@
 | R32-X01a | Web `Modal` 没有 520 宽档，W-R23-06 仍用手写 `FlowDialog` | **待 A 线组件维护**：只加 520 档，不改旧档；交付后乙在页面调用点替换并重比 W-R23-06。请求见 HANDOFF G23；不得因请求已登记记 done |
 | R32-X01b | `HostConsole` 报表链接分段需要 `href`、焦点与当前页语义，现有 `Segmented` 不支持 | **待 A 线组件维护**：保留链接语义的参数；乙在交付后替换调用点并测键盘、href。请求见 HANDOFF G23 |
 | R32-X01c | `SearchPanel` 类型 chip 是 tablist + `aria-controls`，现有 `CategoryTabs` 为 radiogroup | **待 A 线组件维护**：提供同语义参数，或确认保留页面控件；乙不改变现有语义。请求见 HANDOFF G23 |
+| R32-X01d | App A-R25-11 的目标切换 Popover 达上限时「目標を追加」需真实禁用，现有 `PopoverRow` 只有 `muted` | **待 A 线组件维护**：补 `disabled` 参数、交互与无障碍禁用态及 kit 禁用色；乙后续换页面并重比 SC-P12。请求见 HANDOFF G23；未交付不记 done |
 | R32-X02 c-ai-3 | Web ✓/✕ 与建议 chip 规格格缺组件 | **待 A 线组件维护**：按 01-system c-ai-3 补件并单格重比；R32 页面数不含本项 |
 | R32-X02 c-load-1 | Web 分步清单规格格缺组件 | **待 A 线组件维护**：按 01-system c-load-1 补件并单格重比 |
 | R32-X02 c-err-0 | Web 同步恢复横条及标准文案键缺组件 | **待 A 线组件维护**：按 01-system c-err-0 补件；标准文案键实施时同步 App，不由 R32 页面私加 |

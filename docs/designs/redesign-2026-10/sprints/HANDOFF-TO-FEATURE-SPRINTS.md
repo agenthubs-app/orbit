@@ -60,6 +60,8 @@
 
 **R32 / G23、G23b 组件维护请求（仍待交付）：** X01a 为 Web `Modal` 只加 520 宽档，供 W-R23-06 替换手写 `FlowDialog`，旧档尺寸保持；X01b 给 `Segmented` 增加 `HostConsole` 报表分段所需的 `href`、焦点及当前页语义；X01c 给 `CategoryTabs` 增加 `SearchPanel` 所需的 tablist 与 `aria-controls` 语义，或由组件维护确认保留页面实现。页面乙不改组件，不以请求发出记完成。来源：R31b REPORT §6-5/9、R32 SC-X01。
 
+**R32 / G23 App 补充请求 X01d（待交付）：** `PopoverRow` 增加 `disabled` 参数并同时阻止按下、标记可访问状态和使用 kit 禁用色，不改既有行。A-R25-11 的 `.gmenu` 达到两个进行中目标时仍画「目標を追加」及「フリーは同時に 2つまで」，但既有 `plan-review-screens.test.tsx` 要求加目标入口不可点；目前组件只有 `muted`，不足以表达禁用。乙只替换页面调用，组件维护 A 线交付参数后才把 SC-P12 记 done。
+
 **R32 / G23、G23b 规格格逐组请求（SC-X02，均待组件维护）：** `c-ai-3` ✓/✕ 与建议 chip；`c-load-1` 分步清单；`c-err-0` 同步恢复横条及标准文案键（实施时同步 App）；`c-err-3` 字段错误块；`c-sample-2` Web 示例横条与药丸；`c-kbd-1` tooltip；`c-text-1`、`c-text-2` 各自的文字规格。责任人为 A 线组件维护；八组各自保留未完成，不纳入 R32 页面门禁通过数。来源：R31b REPORT §6-10 / preflight-checklist、R32 PLANNER SC-X02。
 
 ---
