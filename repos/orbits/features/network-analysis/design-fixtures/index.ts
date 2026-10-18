@@ -34,7 +34,7 @@ function rangeOf<T extends string>(index: number, ranges: readonly [number, T][]
 function many286(): NetworkAnalysisRow[] {
   const rows: NetworkAnalysisRow[] = [];
   for (let i = 0; i < 286; i += 1) {
-    const industry = rangeOf(i, [[105, "finance_investment"], [188, "manufacturing_supply_chain"], [251, "technology_internet"], [286, "trade_logistics"]] as const);
+    const industry = rangeOf(i, [[105, "finance_investment"], [188, "retail_consumer"], [251, "education_research"], [286, "trade_logistics"]] as const);
     const p = (i * 97) % 286;
     const q = (i * 151) % 286;
     const seniority = rangeOf(p, [[74, "c_level"], [170, "manager"], [286, "individual_contributor"]] as const);
@@ -58,8 +58,8 @@ function many286(): NetworkAnalysisRow[] {
     rows.push({
       id: `design-person-${String(i + 1).padStart(3, "0")}`, name, organization, role,
       status: nurture ? "nurture" : "active", primaryIndustryId: industry, city, metKind: met, seniorityLevel: seniority,
-      addedAt: ago(added), lastInteractionAt: ago(lastTouch), goalRelated, needsFollowUp: i === 1 || i === 3 || (i >= 40 && i < 52),
-      nextActionPreview: i === 0 ? "シリーズAのリード投資家候補。SaaS領域に年8社出資" : i === 1 ? "前回の面談で資料の再送を依頼されたまま" : i === 2 ? "資本政策の相談相手。VC 4社と面識あり" : i === 3 ? "シード〜シリーズA の製造業テックに出資" : i === 4 ? "ベンチャーデットの相談窓口" : i === 5 ? "事業会社の投資担当。製造業 SaaS に関心" : "",
+      addedAt: ago(added), lastInteractionAt: ago(lastTouch), goalRelated, needsFollowUp: i === 0 || i === 1 || (i >= 40 && i < 52),
+      nextActionPreview: i === 0 ? "💼 シリーズAのリード投資家候補。SaaS領域に年8社出資" : i === 1 ? "💼 前回の面談で資料の再送を依頼されたまま" : i === 2 ? "📊 資本政策の相談相手。VC 4社と面識あり" : i === 3 ? "💼 シード〜シリーズA の製造業テックに出資" : i === 4 ? "🏦 ベンチャーデットの相談窓口" : i === 5 ? "🏭 事業会社の投資担当。製造業 SaaS に関心" : "",
     });
   }
   return rows;
@@ -71,12 +71,12 @@ function few14(): NetworkAnalysisRow[] {
     return {
       id: `design-person-${String(i + 1).padStart(3, "0")}`, name, organization, role,
       status: i === 0 || i === 2 ? "nurture" : "active",
-      primaryIndustryId: rangeOf(i, [[5, "finance_investment"], [9, "manufacturing_supply_chain"], [12, "technology_internet"], [14, "trade_logistics"]] as const),
+      primaryIndustryId: rangeOf(i, [[5, "finance_investment"], [9, "retail_consumer"], [12, "education_research"], [14, "trade_logistics"]] as const),
       seniorityLevel: rangeOf((i * 5) % 14, [[4, "c_level"], [10, "manager"], [14, "individual_contributor"]] as const),
       city: i === 13 ? null : rangeOf((i * 3) % 13, [[9, "Tokyo"], [11, "Osaka"], [13, "Nagoya"]] as const),
       metKind: rangeOf((i * 9) % 14, [[7, "event"], [10, "referral"], [13, "visit"], [14, "other"]] as const),
       addedAt: ago(10 + i * 3), lastInteractionAt: ago(2 + i), goalRelated: i < 3, needsFollowUp: i === 1,
-      nextActionPreview: i === 0 ? "シリーズAのリード投資家候補。SaaS領域に年8社出資" : i === 1 ? "前回の面談で資料の再送を依頼されたまま" : i === 2 ? "資本政策の相談相手。VC 4社と面識あり" : "",
+      nextActionPreview: i === 0 ? "💼 シリーズAのリード投資家候補。SaaS領域に年8社出資" : i === 1 ? "💼 前回の面談で資料の再送を依頼されたまま" : i === 2 ? "📊 資本政策の相談相手。VC 4社と面識あり" : "",
     } satisfies NetworkAnalysisRow;
   });
 }
@@ -94,7 +94,7 @@ export function designNetworkPeople(variant: NetworkDesignVariant): NetworkAnaly
 }
 
 const CVC_NEED = (linkedCount: number): NetworkAnalysisNeed => ({ planId: "design-plan", needId: "design-need-cvc", title: "CVC・事業会社の投資担当", primaryIndustryId: "finance_investment", targetCount: 4, linkedCount, skipped: false });
-const GROWTH_NEED: NetworkAnalysisNeed = { planId: "design-plan", needId: "design-need-mfg", title: "製造業の新規顧客開拓", primaryIndustryId: "manufacturing_supply_chain", targetCount: 3, linkedCount: 3, skipped: false };
+const GROWTH_NEED: NetworkAnalysisNeed = { planId: "design-plan", needId: "design-need-mfg", title: "小売の新規顧客開拓", primaryIndustryId: "retail_consumer", targetCount: 3, linkedCount: 3, skipped: false };
 
 export function designNetworkNeeds(variant: NetworkDesignVariant): NetworkAnalysisNeed[] {
   switch (variant) {

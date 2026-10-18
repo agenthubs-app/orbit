@@ -31,7 +31,7 @@ test("many286 reproduces b5 #34 / #35 / #36 / #40 / #41", () => {
   assert.equal(met.referralRate, 21);
   const growth = result.insights!.find((entry) => entry.kind === "growth")!;
   assert.equal(growth.added, 9);
-  assert.equal(growth.planNeedTitle, "製造業の新規顧客開拓");
+  assert.equal(growth.planNeedTitle, "小売の新規顧客開拓");
   const finance = buildNetworkAnalysisPeople({ rows: designNetworkPeople("many286"), needs: designNetworkNeeds("many286"), dimension: "industry", bucketId: "finance_investment", now: NETWORK_FIXTURE_NOW })!;
   assert.equal(finance.total, 105);
   assert.equal(finance.sort, "goal");
