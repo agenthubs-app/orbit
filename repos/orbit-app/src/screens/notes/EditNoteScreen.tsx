@@ -23,7 +23,7 @@ import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
 import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
-import { buildRichNoteUpdateRequest, confirmedNote, type NoteView } from "../../view-models/notes";
+import { buildRichNoteUpdateRequest, confirmedNote, noteAssociationsForReceipt, type NoteView } from "../../view-models/notes";
 import { NoteContactPicker } from "./NoteContactPicker";
 import { NoteMentionEditor } from "./NoteMentionEditor";
 import { NoteEventPicker } from "./NoteEventPicker";
@@ -182,7 +182,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const result = await client.patch<unknown>(notePath(targetNoteId), { body: request.body, signal: operation.signal });
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds, noteId: targetNoteId }, locale.language) : null;
+      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, ...noteAssociationsForReceipt(request.body), noteKind: request.body.noteKind, usedForPlan: request.body.usedForPlan, noteId: targetNoteId }, locale.language) : null;
     if (note) {
       autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);

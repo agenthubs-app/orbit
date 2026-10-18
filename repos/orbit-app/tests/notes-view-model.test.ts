@@ -6,6 +6,7 @@ import {
   buildRichNoteCreateRequest,
   buildNoteUpdateRequest,
   confirmedNote,
+  noteAssociationsForReceipt,
   noteFromPayload,
   notesPageFromPayload,
   notesFromPayload,
@@ -125,4 +126,18 @@ test("memo acknowledgement includes event token identity and optional plan flags
   assert.equal(confirmedNote({ note: { ...saved, noteKind: "free" } }, expected), null);
   assert.equal(confirmedNote({ note: { ...saved, usedForPlan: false } }, expected), null);
   assert.equal(confirmedNote({ note: { ...saved, mentions: [{ ...mention, eventId: "event:other" }] } }, expected), null);
+});
+
+test("R20b receipt relations separate event mentions from contact mentions", () => {
+  const associations = noteAssociationsForReceipt({
+    manualContactIds: ["contact:b"], eventIds: ["event:manual"],
+    mentions: [
+      { contactId: "contact:a", start: 0, end: 2, displayText: "@A" },
+      { entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" },
+    ],
+  });
+  assert.deepEqual(associations, {
+    contactIds: ["contact:a", "contact:b"],
+    eventIds: ["event:launch", "event:manual"],
+  });
 });

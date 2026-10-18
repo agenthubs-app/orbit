@@ -19,7 +19,7 @@ import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
 import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
-import { buildRichNoteCreateRequest, confirmedNote } from "../../view-models/notes";
+import { buildRichNoteCreateRequest, confirmedNote, noteAssociationsForReceipt } from "../../view-models/notes";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { NoteContactPicker } from "./NoteContactPicker";
 import { NoteMentionEditor } from "./NoteMentionEditor";
@@ -166,7 +166,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     }
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
+      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, ...noteAssociationsForReceipt(request.body), noteKind: request.body.noteKind, usedForPlan: request.body.usedForPlan }, locale.language) : null;
     if (note) {
       autosaveAllowed.current = false; await noteDraftStorage.clear(draftScope);
       // The detail page reads the device copy: pull the new note before opening it.

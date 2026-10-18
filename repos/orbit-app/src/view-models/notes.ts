@@ -122,6 +122,20 @@ export interface RichNoteDraft {
   usedForPlan?: boolean;
 }
 
+/** Associations in a successful response include both explicit chips and typed @mentions. */
+export function noteAssociationsForReceipt(draft: Pick<RichNoteDraft, "manualContactIds" | "eventIds" | "mentions">): { contactIds: string[]; eventIds: string[] } {
+  return {
+    contactIds: contactIds([
+      ...draft.manualContactIds,
+      ...draft.mentions.filter((mention) => (mention.entityType ?? "contact") === "contact").map((mention) => mention.contactId).filter((id): id is string => Boolean(id)),
+    ]),
+    eventIds: contactIds([
+      ...draft.eventIds,
+      ...draft.mentions.filter((mention) => mention.entityType === "event").map((mention) => mention.eventId).filter((id): id is string => Boolean(id)),
+    ]),
+  };
+}
+
 export function buildRichNoteCreateRequest(
   draft: RichNoteDraft,
   idempotencyKey: string,
