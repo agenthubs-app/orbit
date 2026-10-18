@@ -43,6 +43,8 @@
 
 新 `onPersisted` の enqueue 例外ログはエラー名のみだが、委譲先の既存 `features/contacts/memo-extraction/{store,job}.ts` は `error.message` を最大 200 字出す経路がある。provider 等の任意エラー文に本文が含まれないことは証明できず、SC-10 の「ログに本文なし」全経路合格とも言わない。この両ファイルは R20b §1 の notes allowlist 外なので、所有者への修正依頼として残す。
 
+既存 `tests/capabilities/memo-extraction-job.test.ts` の軽量単体回帰は **9/9 pass**（2026-10-18、mock provider / gate）。disabled 時の provider 0 回と同一 job の重複抑止は確認したが、R20b の保存後 handoff から実 C11 提議・確認・計分までの本機 end-to-end は含まない。
+
 ## 未完と次の検証
 
 両端の fresh typecheck と画板 preflight を待ち、型エラーがあれば R20b 自身のものを修正する。R20a の未完 container / native / pixel に依存しない notes service・outbox の RED→GREEN を先行する。変更したファイル以外の D 線進行中の Task source／tests は他作業として保持し、この REPORT の成果に数えない。全量 suite・旧四画面・Web 新頁・cross-client readback・C11・SC-11 の失効 mirror と E 線相互検証は未検証／未実装。
