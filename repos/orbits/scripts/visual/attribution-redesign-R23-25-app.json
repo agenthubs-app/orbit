@@ -410,6 +410,7 @@
   "27": "[data] y 810-840：「判定：」后的计数规则文案来自 fixture countRule（demo-world fixtures.ts「3 問のうち 2 問以上…」），画板是 CVC 专用句"
  },
  "A-R24-09-app-dark": {
+  "13": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 390-420 的文字 / 图形位置一致（dx 0、dy 2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
   "5": "[raster] y 150-180：UiText 混排基线统一（OrbitTextLeading，2026-10-14）后字形纵向 dx -1 dy -1，底色 / 字色同（ΔE≤9.8），裁剪核对同字",
   "7": "[raster] y 210-240：UiText 混排基线统一（OrbitTextLeading，2026-10-14）后字形纵向 dx -1 dy 0，底色 / 字色同（ΔE≤0.0），裁剪核对同字",
   "8": "[raster] y 240-270：UiText 混排基线统一（OrbitTextLeading，2026-10-14）后字形纵向 dx 0 dy 0，底色 / 字色同（ΔE≤0.0），裁剪核对同字",

@@ -276,7 +276,7 @@ function OrganizingStage({ count, preview, progress, onClose }: { count: number;
   const k = useImportKitStyles().styles;
   return (
     <View style={styles.fill}>
-      <AppScreen title={t("add.import.orgTitle")} subtitle={t("add.import.orgSub", { n: count })} backIcon="down" onBack={onClose}>
+      <AppScreen inset="kit" title={t("add.import.orgTitle")} subtitle={t("add.import.orgSub", { n: count })} backIcon="down" onBack={onClose}>
         <FadeIn testID="add-import-organizing">
           <KitOrb />
           <View style={[styles.center, styles.orgHead]}>
@@ -353,7 +353,7 @@ export function LinkedInImportScreen() {
   const can: MessageKey[] = ["add.import.liCanName", "add.import.liCanCompany", "add.import.liCanRole", "add.import.liCanConnected"];
   return (
     <View style={styles.fill}>
-      <AppScreen title={t("add.import.liTitle")} subtitle={t("add.import.liSub")} backIcon="x" onBack={back}>
+      <AppScreen inset="kit" title={t("add.import.liTitle")} subtitle={t("add.import.liSub")} backIcon="x" onBack={back}>
         <FadeIn testID="add-import-linkedin">
           <View style={[styles.card, styles.flat, styles.liNote]}>
             <UiText style={styles.liNoteText}><UiText style={styles.liNoteLead}>{t("add.import.liNoteLead")}</UiText>{t("add.import.liNote")}</UiText>
@@ -489,7 +489,7 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
   ) : null;
   return (
     <View style={styles.fill}>
-      <AppScreen title={title} subtitle={subtitle} onBack={close} showBack={!done}>
+      <AppScreen inset="kit" title={title} subtitle={subtitle} onBack={close} showBack={!done}>
         <FadeIn testID={`add-import-batch-${state.phase === "ready" ? (done ? "done" : "review") : state.phase}`}>
           {state.phase === "loading" ? <Skeleton lines={6} /> : null}
           {state.phase === "missing" || state.phase === "expired" ? (

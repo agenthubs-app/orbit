@@ -1,13 +1,83 @@
 {
  "_schema": "\"<grid-view>\": { \"<band>\": \"[data] / [raster] 看过该带三联图后写的具体理由\" }",
- "A-R16-01-app-dark": {},
- "A-R16-01-app-light": {},
- "A-R16-03-app-dark": {},
- "A-R16-03-app-light": {},
+ "A-R16-01-app-dark": {
+  "5": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 150-180 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "8": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 240-270 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "9": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 270-300 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "13": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 390-420 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "16": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 480-510 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "17": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 510-540 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "18": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 540-570 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "20": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 600-630 的文字 / 图形位置一致（dx 0、dy -1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "24": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 720-750 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "26": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 780-810 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ },
+ "A-R16-01-app-light": {
+  "5": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 150-180 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "8": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 240-270 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "9": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 270-300 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "13": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 390-420 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "16": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 480-510 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "17": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 510-540 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "18": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 540-570 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "20": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 600-630 的文字 / 图形位置一致（dx 0、dy -1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "24": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 720-750 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ },
+ "A-R16-03-app-dark": {
+  "7": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 210-240 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "8": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 240-270 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "10": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 300-330 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy -1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "19": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 570-600 的文字 / 图形位置一致（dx 0、dy -2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "26": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 780-810 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ },
+ "A-R16-03-app-light": {
+  "7": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 210-240 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "8": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 240-270 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "10": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 300-330 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy -1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "19": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 570-600 的文字 / 图形位置一致（dx 0、dy -2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "26": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 780-810 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ },
  "A-R16-04-app-dark": {},
  "A-R16-04-app-light": {
   "15": "[data] 450-480 渡辺 翔 行的两个头像配色（按姓名算的色调，画板 apricot / 实现 teal）"
  },
- "A-R16-05-app-dark": {},
- "A-R16-05-app-light": {}
+ "A-R16-05-app-dark": {
+  "2": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 60-90 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "3": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 90-120 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "4": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 120-150 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "5": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 150-180 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "7": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 210-240 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "9": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 270-300 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "17": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 510-540 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "18": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 540-570 的文字 / 图形位置一致（dx 0、dy 2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "20": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 600-630 的文字 / 图形位置一致（dx 0、dy 2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "23": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 690-720 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "24": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 720-750 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "26": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 780-810 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ },
+ "A-R16-05-app-light": {
+  "2": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 60-90 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "4": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 120-150 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "5": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 150-180 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "7": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 210-240 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "9": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 270-300 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "12": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 360-390 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "14": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 420-450 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "17": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 510-540 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "18": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 540-570 的文字 / 图形位置一致（dx 0、dy 2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "20": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 600-630 的文字 / 图形位置一致（dx 0、dy 2，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "23": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 690-720 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "24": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 720-750 的文字 / 图形位置一致（dx 0、dy 0，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图",
+  "26": "[raster] R31a 不退步重比（iPhone 16e · Orbit Line A 16e）：y 780-810 的文字 / 图形位置一致（dx 0、dy 1，≤3px），底色与字色一致，只差 iOS（3x 缩 1x）与 Chrome 的字形栅格化；换模拟器后新越过阈值，看过该带三联图"
+ }
 }
