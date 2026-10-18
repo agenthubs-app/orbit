@@ -33,3 +33,23 @@ export async function loadContactPageContext(
   if (!Number.isSafeInteger(count) || Number(count) < 0 || Number(count) > 100_000) throw new Error("PAGE_CONTEXT_UNAVAILABLE");
   return { route: "/app/contacts", filters: { industry }, count: Number(count) };
 }
+
+/** A later question or switch change invalidates any summary still in flight. */
+export function createContactPageContextLoader(
+  load: (industry: string[]) => Promise<AiPageContextContract> = loadContactPageContext,
+) {
+  let generation = 0;
+  return {
+    async resolve(industry: string[]): Promise<AiPageContextContract | null> {
+      const request = ++generation;
+      try {
+        const context = await load(industry);
+        return request === generation ? context : null;
+      } catch (error) {
+        if (request === generation) throw error;
+        return null;
+      }
+    },
+    clear() { generation++; },
+  };
+}

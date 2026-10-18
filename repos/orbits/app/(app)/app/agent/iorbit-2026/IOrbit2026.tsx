@@ -19,7 +19,7 @@ import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
 import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
 import { useAgentChat } from "../iorbit-0918/use-agent-chat";
 import { useAgentHistory } from "../iorbit-0918/use-agent-history";
-import { contactPageContextSource, loadContactPageContext } from "../../orbit-2026/iorbit/page-context";
+import { contactPageContextSource, createContactPageContextLoader } from "../../orbit-2026/iorbit/page-context";
 import { readIOrbitEntityDraft, type IOrbitEntityDraft } from "../../orbit-2026/iorbit/entity-draft";
 import styles from "./IOrbit2026.module.css";
 
@@ -153,6 +153,10 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   const [contextEnabled, setContextEnabled] = useState(false);
   const [pageContext, setPageContext] = useState<AiPageContextContract | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
+  const contextLoaderRef = useRef<ReturnType<typeof createContactPageContextLoader> | null>(null);
+  contextLoaderRef.current ??= createContactPageContextLoader();
+  const contextLoader = contextLoaderRef.current;
+  useEffect(() => () => contextLoader.clear(), [contextLoader]);
   const [intakes, setIntakes] = useState<readonly PlanIntakeListItem[]>([]);
   const [goals, setGoals] = useState<readonly PlanGoalListItem[]>([]);
   const [entityDraft, setEntityDraft] = useState<IOrbitEntityDraft | null>(null);
@@ -259,12 +263,21 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
       }).catch(() => {});
     return () => controller.abort();
   }, []);
-  const enableContext = async (enabled: boolean) => {
+  const resetContext = () => {
+    contextLoader.clear();
     setContextEnabled(false);
     setPageContext(null);
     setContextError(null);
+  };
+  const enableContext = async (enabled: boolean) => {
+    resetContext();
     if (!enabled || !source) return;
-    try { setPageContext(await loadContactPageContext(source)); setContextEnabled(true); }
+    try {
+      const context = await contextLoader.resolve(source);
+      if (!context) return;
+      setPageContext(context);
+      setContextEnabled(true);
+    }
     catch { setContextError(t(iorbitCopy.contextFailed)); }
   };
   const submit = (event?: FormEvent) => {
@@ -275,19 +288,17 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     chat.setAgentPrefill(null);
     void chat.ask(query, undefined, prefillOrigin ?? undefined, contextEnabled ? pageContext ?? undefined : undefined);
     setPrefillOrigin(null);
-    setContextEnabled(false);
-    setPageContext(null);
+    resetContext();
   };
   const sendSuggestion = (query: string) => {
     if (chat.thinking || (contextEnabled && !pageContext)) return;
     chat.setAgentPrefill(null);
     setPrefillOrigin(null);
     void chat.ask(query, undefined, undefined, contextEnabled ? pageContext ?? undefined : undefined);
-    setContextEnabled(false);
-    setPageContext(null);
+    resetContext();
   };
-  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); setContextEnabled(false); setPageContext(null); setSource(null); setRequestedDraftId(null); };
-  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); setContextEnabled(false); setPageContext(null); setSource(null); setRequestedDraftId(null); };
+  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
+  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
   const recent = history.storedHistory.slice(0, 3);
   const panelLanguage = language === "zh" ? "zh" : "en";
