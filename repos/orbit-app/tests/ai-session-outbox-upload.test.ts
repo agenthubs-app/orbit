@@ -4,6 +4,7 @@ import { buildOfflineAiSessionDelete, buildOfflineAiSessionMutation } from "../s
 import type { SyncRecord } from "../src/api/contract/sync";
 import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 import { uploadAllOutboxes } from "../src/data/sync/upload-outboxes";
+import { aiSessionRows } from "../src/view-models/ai-sessions-local";
 
 const at = "2026-10-18T09:00:00.000Z";
 const organization = { customTitle: null, groupId: null, pinned: false, revision: 0 };
@@ -68,6 +69,12 @@ test("reconnect sends the frozen iOrbit PATCH and applies its organization recei
   }]]);
   assert.deepEqual((state.acknowledged?.payload as Record<string, unknown>)?.organization,
     { customTitle: null, groupId: null, pinned: true, revision: 1 });
+  const acknowledged = state.acknowledged;
+  assert.ok(acknowledged);
+  assert.equal("pinned" in (acknowledged.payload as Record<string, unknown>), false);
+  assert.equal("customTitle" in (acknowledged.payload as Record<string, unknown>), false);
+  assert.equal(aiSessionRows([acknowledged as SyncRecord<Record<string, unknown>>])[0]?.id, "session-1",
+    "the acknowledged mirror row must remain visible in history");
 });
 
 test("a server PIN_LIMIT receipt stays a visible conflict, not a retried write", async () => {

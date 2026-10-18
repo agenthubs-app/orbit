@@ -62,8 +62,6 @@ export function createAiSessionOutboxUploader(input: {
         payload: {
           ...previous.payload,
           organization,
-          pinned: organization.pinned,
-          customTitle: organization.customTitle,
         },
         syncState: "synced",
       };
