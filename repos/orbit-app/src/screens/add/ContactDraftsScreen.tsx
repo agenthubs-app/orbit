@@ -21,6 +21,7 @@ import { draftsDesignFor } from "./scan-design-fixtures";
 import { SmallButton } from "./UnifiedReviewApp";
 
 type State = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; drafts: ContactDraftRow[] };
+const N09_AVATAR_TONES: Record<string, "pink" | "blue" | "teal"> = { "松田 悠": "pink", "早川 誠一": "blue", "杉本 葵": "teal" };
 
 export function ContactDraftsScreen({ eventId, design = null }: { eventId: string | null; design?: string | null }) {
   const api = useAddApi();
@@ -114,10 +115,12 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
         {state.kind === "ready" && !state.drafts.length ? <EmptyState title={t("add.drafts.emptyTitle")} message={t("add.drafts.emptyBody")} /> : null}
         {state.kind === "ready" && state.drafts.length ? (
           <View style={d.list}>
-            {state.drafts.map((draft, index) => (
+            {state.drafts.map((draft, index) => {
+              const avatarTone = gateState === "n09" ? N09_AVATAR_TONES[draft.displayName] : undefined;
+              return (
               <View key={draft.id} style={[d.card, d.drf, index > 0 && d.drfNext]} testID={`add-draft-${draft.id}`}>
                 <View style={d.row}>
-                  <Avatar name={draft.displayName} />
+                  <Avatar name={draft.displayName} {...(avatarTone ? { tone: avatarTone } : {})} />
                   <View style={d.grow}>
                     <UiText numberOfLines={1} style={d.name}>{draft.displayName}</UiText>
                     <UiText numberOfLines={1} style={d.lbl}>{[draft.organization, draft.role].filter(Boolean).join(" · ")}</UiText>
@@ -130,7 +133,8 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
                   <View style={d.act}><SmallButton ghost label={t("add.drafts.discard")} disabled={Boolean(busy)} onPress={() => setDiscarding(draft)} testID={`add-draft-discard-${draft.id}`} /></View>
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
         ) : null}
       </FadeIn>

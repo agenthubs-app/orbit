@@ -206,6 +206,10 @@ function PermissionStage({ denied, error, onAllow, onNotNow, onVcard, onBack }: 
 }
 
 type PickFilter = "company" | "workMail";
+const PICK_PREVIEW_TONES: Record<string, "apricot" | "lav" | "blue" | "pink" | "teal"> = {
+  "青山 和也": "apricot", "阿部 さくら": "lav", "石田 剛": "blue",
+  "母": "pink", "上田 優子": "teal", "クリーニング中村": "pink",
+};
 
 /** b9 A2 ② 選ぶ: すべて / 選んで取り込む, the ✨ pre-selection with its 根拠, filters, the list, N人を取り込む. */
 function PickStage({ people, error, onBack, onImport, previewRows }: { people: PickPerson[]; error: string | null; onBack: () => void; onImport: (chosen: readonly PickPerson[], excluded: number) => void; previewRows?: number }) {
@@ -245,11 +249,12 @@ function PickStage({ people, error, onBack, onImport, previewRows }: { people: P
           <View style={[styles.card, styles.listCard]}>
             {(previewRows === undefined ? shown : shown.slice(0, previewRows)).map((person, index) => {
               const on = mode === "all" || chosen.has(person.id);
+              const avatarTone = previewRows === undefined ? undefined : PICK_PREVIEW_TONES[person.name];
               return (
                 <UiPressable key={person.id} accessibilityRole="checkbox" accessibilityLabel={t("add.import.selectRow", { name: person.name })} accessibilityState={{ checked: on, disabled: mode === "all" }} disabled={mode === "all"}
                   onPress={() => toggle(person.id)} style={[styles.xrow, index > 0 && styles.xrowLine]} testID={`add-import-person-${person.id}`}>
                   <KitCheck on={on} />
-                  <Avatar name={person.name} size="sm" />
+                  <Avatar name={person.name} size="sm" {...(avatarTone ? { tone: avatarTone } : {})} />
                   <View style={styles.grow}>
                     <UiText numberOfLines={1} style={styles.b13}>{person.name}</UiText>
                     <UiText numberOfLines={1} style={styles.lbl}>{person.sub || "—"}</UiText>
@@ -467,6 +472,9 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
       existingLine: t("add.batch.existingLine", { value: [candidate.organization, candidate.role].filter(Boolean).join(" · ") || candidate.displayName }),
       // Same company as the person in 人脈: only the name differs, so only the name is shown (R12 名刺 likewise).
       incomingLine: t("add.batch.incomingLine", { value: !row.fields.organization ? t("add.import.incomingNoCompany", { name }) : row.fields.organization === candidate.organization ? name : `${name} · ${row.fields.organization}` }),
+      ...(design === "design-review" && (candidate.displayName === "鈴木 大輔" || candidate.displayName === "渡辺 翔")
+        ? { avatarTone: candidate.displayName === "鈴木 大輔" ? "blue" as const : "apricot" as const }
+        : {}),
       selected: Boolean(choice[row.seq]) && !skipped.has(row.seq), problem: null,
     };
   });

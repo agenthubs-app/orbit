@@ -19,6 +19,8 @@ export interface AppReviewDuplicateRow {
   existingLine: string;
   /** 今回：鈴木 大輔（会社なし） */
   incomingLine: string;
+  /** The read-only design sample specifies the avatar colour for each pair. */
+  avatarTone?: "blue" | "apricot";
   selected: boolean;
   /** Why the last settle did not go through (保存できませんでした …), under the row. */
   problem: string | null;
@@ -102,8 +104,8 @@ export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly
               style={styles.xrow} testID={`add-dup-${row.id}`}>
               <View style={[styles.cbx, row.selected && styles.cbxOn]}>{row.selected ? <Icon name="check" size={16} color={colors.surface} /> : null}</View>
               <View style={styles.avs}>
-                <Avatar name={row.existingName} size="sm" />
-                <View style={styles.avSecond}><Avatar name={row.name} size="sm" /></View>
+                <Avatar name={row.existingName} size="sm" {...(row.avatarTone ? { tone: row.avatarTone } : {})} />
+                <View style={styles.avSecond}><Avatar name={row.name} size="sm" {...(row.avatarTone ? { tone: row.avatarTone } : {})} /></View>
               </View>
               <View style={styles.grow}>
                 <UiText numberOfLines={1} style={styles.metaTitle}>{row.name}</UiText>
