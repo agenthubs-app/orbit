@@ -22,7 +22,7 @@ function handlers() {
     now: () => "2026-10-18T08:00:00.000Z",
     conditionalRead: { workspaceId, client: { query: async () => ({ rows: [{ max_updated_at: "2026-10-18T08:00:00.000Z", count: "2",
       task_updated_at: "2026-10-18T08:00:00.000Z", task_count: "2",
-      active_plan_id: active ? planLink.planId : null, type_digest: active ? planLink.typeItemId : "" }] }) } as any } };
+      active_plan_digest: active ? planLink.planId : "", type_digest: active ? planLink.typeItemId : "" }] }) } as any } };
   return { collection: createTaskCollectionHandlers(dependencies), detail: createTaskDetailHandlers(dependencies), setActive: (value: boolean) => { active = value; } };
 }
 

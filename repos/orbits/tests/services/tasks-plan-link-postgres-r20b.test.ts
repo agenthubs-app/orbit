@@ -86,3 +86,45 @@ test("a deleted type invalidates only its owner's task-list ETag", databaseTest,
     assert.equal(((await changed.json()) as any).data.tasks[0].planLink, undefined);
   }, { syncRevision: true });
 });
+
+test("archiving either of two active goals invalidates its linked task in the general list", databaseTest, async () => {
+  await withNetworkDatabase(async ({ pool, client }) => {
+    const plans = createPostgresPlanV2Repository({ pool });
+    let next = 0;
+    const planService = createPlanV2Service({ repository: plans, scope: { actorId: A, workspaceId: WORKSPACE },
+      references: ANY_REFERENCES, now: steppingClock(), newId: () => `multi-goal-${++next}` });
+    const first = (await planService.createPlanFromDraft(draftInput())).plan;
+    const second = (await planService.createPlanFromDraft(draftInput({ goalId: "intake-2", creationKey: "draft-2" }))).plan;
+    const links = [first, second].map((plan) => ({ planId: plan.planId, typeItemId: plan.content.personTypes[0]!.itemId }));
+    const tasks = createTaskService({
+      repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId: WORKSPACE, transactionClient: client }),
+      planLinkReader: { isActiveTypeLink: ({ actorId, ...link }) => isActivePlanTypeLink(plans, { actorId, workspaceId: WORKSPACE }, link) },
+    });
+    const taskIds: string[] = [];
+    for (const [index, planLink] of links.entries()) {
+      const saved = await tasks.create({ actorId: A, title: `Goal ${index + 1}`, category: "relationship", planLink,
+        idempotencyKey: `task:multi-goal-${index}`, now: "2026-10-18T08:00:00.000Z" });
+      taskIds.push(saved.task.id);
+    }
+    const collection = createTaskCollectionHandlers({ service: tasks, resolveActor: async () => ({ id: A, workspaceId: WORKSPACE }),
+      conditionalRead: { client, workspaceId: WORKSPACE, version: "r20b-plan-link" } });
+    const url = "https://orbit.local/api/tasks";
+    const initial = await collection.GET(new Request(url));
+    assert.equal(initial.status, 200);
+    assert.equal(((await initial.json()) as any).data.tasks.filter((task: any) => task.planLink).length, 2);
+    const etag = initial.headers.get("etag");
+    assert.ok(etag);
+    const selected = await client.query<{ id: string }>(`select id from plans where workspace_id = $1 and actor_id = $2 and model_version = 2
+      and status = 'active' and achieved_at is null limit 1`, [WORKSPACE, A]);
+    const archived = links.find((link) => link.planId !== selected.rows[0]?.id);
+    assert.ok(archived);
+    await pool.query("update plans set status = 'archived', archived_at = $3 where workspace_id = $1 and id = $2",
+      [WORKSPACE, archived.planId, "2026-10-18T08:01:00.000Z"]);
+    const changed = await collection.GET(new Request(url, { headers: { "if-none-match": etag } }));
+    assert.equal(changed.status, 200);
+    const rows = ((await changed.json()) as any).data.tasks as Array<{ id: string; planLink?: { planId: string } }>;
+    assert.deepEqual(rows.map((task) => task.id).sort(), taskIds.sort(), "both tasks remain after one plan is archived");
+    assert.equal(rows.find((task) => task.planLink?.planId === archived.planId), undefined);
+    assert.equal(rows.filter((task) => task.planLink).length, 1);
+  }, { syncRevision: true });
+});

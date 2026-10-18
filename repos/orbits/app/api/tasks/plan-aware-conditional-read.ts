@@ -19,25 +19,27 @@ const TASK_LIST_WATERMARK_SQL = `
     where workspace_id = $1 and lifecycle_state <> 'deleted'
       and ((collection_name = 'tasks' and user_id = $2)
         or collection_name = any($3::text[]))
-  ), active_plan as (
+  ), active_plans as (
     select id from plans
     where workspace_id = $1 and actor_id = $2 and model_version = 2
       and status = 'active' and achieved_at is null
-    limit 1
+  ), plan_watermark as (
+    select md5(coalesce(string_agg(id, E'\\x1f' order by id), '')) as active_plan_digest
+    from active_plans
   ), type_watermark as (
-    select md5(coalesce(string_agg(item.id, E'\\x1f' order by item.id), '')) as type_digest
-    from plan_items item join active_plan plan on plan.id = item.plan_id
+    select md5(coalesce(string_agg(plan.id || E'\\x1f' || item.id, E'\\x1f' order by plan.id, item.id), '')) as type_digest
+    from plan_items item join active_plans plan on plan.id = item.plan_id
     where item.workspace_id = $1 and item.actor_id = $2 and item.kind = 'network_need'
   )
   select task_watermark.task_updated_at, task_watermark.task_count,
-    (select id from active_plan) as active_plan_id, type_watermark.type_digest
-  from task_watermark cross join type_watermark
+    plan_watermark.active_plan_digest, type_watermark.type_digest
+  from task_watermark cross join plan_watermark cross join type_watermark
 `;
 
 type WatermarkRow = {
   task_updated_at: string | null;
   task_count: string;
-  active_plan_id: string | null;
+  active_plan_digest: string;
   type_digest: string;
 };
 
@@ -65,7 +67,7 @@ export async function conditionalTaskListRead(
     const url = new URL(scope.request.url);
     const digest = createHash("sha256").update(JSON.stringify([
       scope.routeKey, url.pathname, url.search, scope.actorId, workspaceId,
-      row.task_updated_at, row.task_count, row.active_plan_id, row.type_digest, version(dependencies),
+      row.task_updated_at, row.task_count, row.active_plan_digest, row.type_digest, version(dependencies),
     ])).digest("hex");
     etag = `W/"${digest}"`;
   } catch {
