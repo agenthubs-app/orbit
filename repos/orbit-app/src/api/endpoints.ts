@@ -54,7 +54,6 @@ export const ORBIT_API_ENDPOINTS = {
   messageDrafts: "/api/message-drafts",
   appointments: "/api/appointments",
   notes: "/api/notes",
-  mobileContactsDashboard: "/api/mobile/contacts-dashboard",
   devicePushToken: "/api/devices/push-token",
   notificationPreferences: "/api/notification-preferences",
   notifications: "/api/notifications",
@@ -85,7 +84,12 @@ export const ORBIT_API_ENDPOINTS = {
   taskSuggestions: "/api/task-suggestions",
   reminders: "/api/reminders",
   today: "/api/today",
-  aiEntityDrafts: "/api/ai/entity-drafts"
+  aiEntityDrafts: "/api/ai/entity-drafts",
+  // R11b 人脈分析: the view, its drill-down lists, the iOrbit snapshot (?lang=) and 見直す.
+  networkAnalysis: "/api/network/analysis",
+  networkAnalysisPeople: "/api/network/analysis/people",
+  networkSnapshot: "/api/network/snapshot",
+  networkSnapshotRecompute: "/api/network/snapshot/recompute"
 } as const;
 
 function detailPath(collectionPath: string, id: string): string {
@@ -106,13 +110,6 @@ export function appointmentDetailsPath(id: string): string {
 
 export function scheduleMeetingDetailsPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.scheduleItems, id)}/meeting-details`;
-}
-
-export function contactStructureDetailPath(
-  dimension: string,
-  bucketId: string
-): string {
-  return `/api/dashboard/structure/${encodeURIComponent(dimension)}/${encodeURIComponent(bucketId)}`;
 }
 
 export function publicEventDetailPath(id: string): string {

@@ -30,7 +30,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17' | 'R11a';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17' | 'R11a' | 'R11b';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -89,9 +89,9 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/contacts/[id].tsx', path: '/contacts/:id', title: '連絡先詳細（R11a）', classification: 'local-first', sprint: 'R11a', reads: '域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id', offline: '「截至」；联网增强整块隐藏；删除进本机队列' },
   { file: 'app/contacts/edit/[id].tsx', path: '/contacts/edit/:id', title: '連絡先の編集（R11a）', classification: 'local-first', sprint: 'R11a', reads: '域 contacts', offline: '「截至」；保存需要联网；删除进本机队列' },
   { file: 'app/dashboard.tsx', path: '/dashboard', title: '看板', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131）', offline: '「截至」；重新计算、运行审计需要联网' },
-  { file: 'app/contacts/dashboard.tsx', path: '/contacts/dashboard', title: '联系人分析', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis', offline: '「截至」；去 AI 分析需要联网' },
-  { file: 'app/contacts/graph.tsx', path: '/contacts/graph', title: '联系人分析（结构分段）', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph', offline: '「截至」' },
-  { file: 'app/contacts/analysis/[dimension]/[bucketId].tsx', path: '/contacts/analysis/:dimension/:bucketId', title: '分组详情', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131）', offline: '「截至」' },
+  { file: 'app/contacts/dashboard.tsx', path: '/contacts/dashboard', title: '人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b）', classification: 'local-first', sprint: 'R11b', reads: '页面副本 network-analysis（/api/network/analysis）；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute', offline: '离线提示条；显示上次保存的分析；見立て显示「読み込めませんでした」；見直す需要联网；从没打开过时显示可重试的「人数を読み込めませんでした」' },
+  { file: 'app/contacts/graph.tsx', path: '/contacts/graph', title: '旧关系图链接，跳到人脈分析「構造」（R11b）', classification: 'device-only', reads: '无（目标页见 app/contacts/dashboard.tsx）', offline: '跳到 /contacts/dashboard?tab=structure' },
+  { file: 'app/contacts/analysis/[dimension]/[bucketId].tsx', path: '/contacts/analysis/:dimension/:bucketId', title: '人脈分析の名簿（段階の内訳、並び順、R11b）', classification: 'local-first', sprint: 'R11b', reads: '页面副本：每个分组和顺序的第一页（/api/network/analysis/people）；さらに表示读下一页；10人未満读 /api/network/analysis 显示锁定', offline: '离线提示条；显示上次保存的第一页；さらに表示需要联网；没打开过的显示可重试状态' },
   { file: 'app/events/[id].tsx', path: '/events/:id', title: 'イベント詳細（R27）', classification: 'online-only', reasonCategory: 'server-computed', reason: '评估分数与「会えそうな人」按当前计划在服务器计算', reads: '/api/events/:id/overview', offline: NEEDS_NETWORK },
   { file: 'app/events/[id]/live.tsx', path: '/events/:id/live', title: '会場モード（R27）', classification: 'online-only', reasonCategory: 'server-computed', reason: '席・ラウンド・推荐由主办方发布的结果在服务器组合；名刺交換是写入', reads: '/api/events/:id/venue', offline: NEEDS_NETWORK },
   { file: 'app/(app)/schedule.tsx', path: '/schedule', title: '旧日历入口，跳到 Task 的カレンダー段（R05）', classification: 'device-only', reads: '无（目标页见 app/task.tsx）', offline: '跳到 /task?seg=calendar（可离线）' },

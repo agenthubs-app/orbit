@@ -7,14 +7,14 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 39 |
+| 能断网看（本地优先） | 38 |
 | └ 由 Sprint 0108 实现 | 8 |
-| └ 由 Sprint 0117 实现 | 4 |
+| └ 由 Sprint 0117 实现 | 1 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 13 |
 | 只能在线 | 52 |
-| 不读账号数据（布局、跳转、本机设置） | 27 |
+| 不读账号数据（布局、跳转、本机设置） | 28 |
 | 合计（路由文件） | 118 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
@@ -37,9 +37,8 @@
 | `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进本机队列 |
 | `/contacts/edit/:id` | 連絡先の編集（R11a） | R11a | 域 contacts | 「截至」；保存需要联网；删除进本机队列 |
 | `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131） | 「截至」；重新计算、运行审计需要联网 |
-| `/contacts/dashboard` | 联系人分析 | 0117 | 域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis | 「截至」；去 AI 分析需要联网 |
-| `/contacts/graph` | 联系人分析（结构分段） | 0117 | 域 dashboard-graph | 「截至」 |
-| `/contacts/analysis/:dimension/:bucketId` | 分组详情 | 0117 | 域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131） | 「截至」 |
+| `/contacts/dashboard` | 人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b） | R11b | 页面副本 network-analysis（/api/network/analysis）；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute | 离线提示条；显示上次保存的分析；見立て显示「読み込めませんでした」；見直す需要联网；从没打开过时显示可重试的「人数を読み込めませんでした」 |
+| `/contacts/analysis/:dimension/:bucketId` | 人脈分析の名簿（段階の内訳、並び順、R11b） | R11b | 页面副本：每个分组和顺序的第一页（/api/network/analysis/people）；さらに表示读下一页；10人未満读 /api/network/analysis 显示锁定 | 离线提示条；显示上次保存的第一页；さらに表示需要联网；没打开过的显示可重试状态 |
 | `/schedule/personal/:id` | 个人日程详情 | 0108 | 域 personal-schedule | 「截至」；编辑、改期需要联网 |
 | `/schedule/personal/:id/edit` | 编辑个人日程 | 0108 | 域 personal-schedule | 表单显示本机内容；保存需要联网 |
 | `/schedule/personal/new` | 新建个人日程 | 0108 | 域 personal-schedule（关联选项读本机联系人、笔记） | 保存需要联网 |
@@ -145,6 +144,7 @@
 | `/followups` | 旧跟进入口，跳到 Task 的 To-do 段「关系」分组 | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo&scope=relationship（可离线） |
 | `/settings` | 设置（语言、主题、本地镜像状态、通知权限） | 本机设置；通知投递和发现偏好读 /api/inbox/delivery/preferences、/api/inbox/discovery/preferences | 本机设置照常可用；两块通知偏好显示「需要联网」 |
 | `/settings/api` | 服务器地址设置 | 本机保存的服务器地址；「检查连接」按需读 /api/health | 可以改地址；检查连接会显示连不上 |
+| `/contacts/graph` | 旧关系图链接，跳到人脈分析「構造」（R11b） | 无（目标页见 app/contacts/dashboard.tsx） | 跳到 /contacts/dashboard?tab=structure |
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
 | `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
 | `/tasks` | 旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
@@ -184,10 +184,10 @@
 | `app/chat/[id].tsx` | `/chat/:id` | local-first (0119) |
 | `app/contacts/[id].tsx` | `/contacts/:id` | local-first (R11a) |
 | `app/contacts/all-actions.tsx` | `/contacts/all-actions` | local-first (0131) |
-| `app/contacts/analysis/[dimension]/[bucketId].tsx` | `/contacts/analysis/:dimension/:bucketId` | local-first (0117) |
-| `app/contacts/dashboard.tsx` | `/contacts/dashboard` | local-first (0117) |
+| `app/contacts/analysis/[dimension]/[bucketId].tsx` | `/contacts/analysis/:dimension/:bucketId` | local-first (R11b) |
+| `app/contacts/dashboard.tsx` | `/contacts/dashboard` | local-first (R11b) |
 | `app/contacts/edit/[id].tsx` | `/contacts/edit/:id` | local-first (R11a) |
-| `app/contacts/graph.tsx` | `/contacts/graph` | local-first (0117) |
+| `app/contacts/graph.tsx` | `/contacts/graph` | device-only |
 | `app/contacts/list.tsx` | `/contacts/list` | local-first (R11a) |
 | `app/contacts/new.tsx` | `/contacts/new` | online-only |
 | `app/contacts/new/drafts.tsx` | `/contacts/new/drafts` | online-only |

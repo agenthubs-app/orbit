@@ -1,4 +1,5 @@
-import { ContactsDashboardScreen } from "../../src/screens/contacts/ContactsDashboardScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
+import { NetworkAnalysisScreen } from "../../src/screens/network-analysis/NetworkAnalysisScreen";
 
-export default withOrbitPrivateRoute(ContactsDashboardScreen);
+// R11b 人脈分析 (?tab=structure|opportunities|insight).
+export default withOrbitPrivateRoute(NetworkAnalysisScreen);

@@ -73,6 +73,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/dashboard/network-gaps') || path.startsWith('/api/audit/provenance')) return 'sources';
   if (path.startsWith('/api/dashboard')) return 'dashboard';
   if (path.startsWith('/api/mobile/contacts-dashboard')) return 'home';
+  // R11b 人脈分析: the deterministic view, its drill-down lists and the iOrbit snapshot (read + 見直す).
+  if (path.startsWith('/api/network/')) return 'network-analysis';
   if (path.startsWith('/api/today')) return 'today';
   if (path.startsWith('/api/permissions')) return 'preferences';
   if (path.startsWith('/api/health')) return 'account';
@@ -665,10 +667,13 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/page"],
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/summary"],
   ["src/screens/network/useNetworkMerge.ts","GET","/api/contacts/goal-related-ids"],
-  ["src/screens/contacts/ContactsDashboardScreen.tsx","POST","/api/dashboard/opportunities/recompute"],
-  ["src/screens/contacts/ContactsDashboardScreen.tsx","GET","/api/mobile/contacts-dashboard"],
+  // R11b 人脈分析 (src/screens/network-analysis, all through analysis-api.ts): the view and the first list page are kept
+  // in the page snapshot store for offline reading; the snapshot is read online only; 見直す is an online write.
+  ["src/screens/network-analysis/analysis-api.ts","GET","/api/network/analysis"],
+  ["src/screens/network-analysis/analysis-api.ts","GET","/api/network/analysis/people"],
+  ["src/screens/network-analysis/analysis-api.ts","GET","/api/network/snapshot"],
+  ["src/screens/network-analysis/analysis-api.ts","POST","/api/network/snapshot/recompute"],
   ["src/screens/search/search-api.ts","GET","/api/search/global"],
-  ["src/screens/contacts/ContactStructureDetailScreen.tsx","GET","/api/dashboard/structure/:id/:id"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/audit/provenance"],
   ["src/screens/dashboard/DashboardScreen.tsx","POST","/api/audit/provenance/run"],
   ["src/screens/dashboard/DashboardScreen.tsx","GET","/api/dashboard"],

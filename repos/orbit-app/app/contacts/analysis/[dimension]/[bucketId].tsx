@@ -1,4 +1,5 @@
 import { withOrbitPrivateRoute } from "../../../../src/components/OrbitRouteAccessBoundary";
-import { ContactStructureDetailScreen } from "../../../../src/screens/contacts/ContactStructureDetailScreen";
+import { NetworkAnalysisListScreen } from "../../../../src/screens/network-analysis/NetworkAnalysisListScreen";
 
-export default withOrbitPrivateRoute(ContactStructureDetailScreen);
+// R11b 人脈分析の名簿 (dimension = industry | seniority | region | met | opportunity).
+export default withOrbitPrivateRoute(NetworkAnalysisListScreen);
