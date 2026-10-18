@@ -6,6 +6,8 @@
 
 2026-10-19 02:11 检查点：主线上游接入 D 至 `2b95b1ac1` 后，C 在干净树上重新 rebase 65 个提交，现 `79d7ef01f`，ahead 65 / behind 0，`git diff --check` exit 0。四处冲突按来源合并：契约导出保留 D 的 Todo / calendar 与 C 的 account；三语注册同时保留 Todo 和 me；离线读取面删除已退役的旧 Profile 路径，保留新 me 与 D 的 Task / Todo 路径；live 能力和 503 路由清单同时纳入 D 与 C 条目。Web 版本 / live 路由 / 认证 / FAQ 目标组 **35/35**，App 契约 / 版本 / account / 离线读取面 **39/39**。全量不在此时重跑；两端 typecheck 因本机内置盘降至约 4.1 GiB 暂缓，不能借用上一个上游的通过记录。R18a 原生重试报告已随 C 线保留（现 `3143ad390`），Metro `load-native` 阻断与设计认可门禁不变。
 
+2026-10-19 02:18 检查点：B 线 R11b 接入 `origin/redesign bf1aac746` 后，C 再从干净树 rebase；重复的页面清单文档提交被 Git 自动略去，现 C ahead 65 / behind 0。冲突中同时保留 B 的 `networkAnalysis` 与 C 的 `me` 三语／copy-qa 注册及 live 能力；离线页面清单由仓库生成器重建为 **121 条**，对应测试通过。最终上游的 Web 版本 / 合同路由 / FAQ **24/24**；App 契约及页面清单等 **13/14**，唯一失败是已有的拆分前字典固定键数锁（现 2902，固定值 2253），三语键集一致性本身通过。Web `typecheck:app` 在这次 B rebase 之前 exit0，不能算最终树验证；最终树 App `typecheck` 因同机 B / A2 并行检查使内存降到 5%、内置盘约 4.45 GiB，由本线主动中断 **exit130**，未通过也未失败于类型诊断。待资源恢复重跑，未重跑全量。
+
 ## 当前检查点
 
 | SC | 状态 | 实际证据 / 未完依赖 |
