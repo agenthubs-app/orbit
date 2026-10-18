@@ -78,8 +78,8 @@ function useAutoClose(visible: boolean, close: () => void, keyboardUp: boolean) 
   typing.current = keyboardUp;
   useEffect(() => { openedOn.current = visible ? route : null; }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps -- remember the route the sheet opened on
   useEffect(() => {
-    if (visible && sheetShouldAutoClose({ openedOn: openedOn.current, route, keyboardUp: typing.current })) close();
-  }, [close, route, visible]);
+    if (visible && sheetShouldAutoClose({ openedOn: openedOn.current, route, keyboardUp })) close();
+  }, [close, keyboardUp, route, visible]);
   useEffect(() => {
     if (!visible) return;
     const subscription = AppState.addEventListener("change", (appState) => {

@@ -98,6 +98,18 @@ test("a sheet closes itself when its page loses focus (route change)", async () 
   await page.close();
 });
 
+test("a sheet that stayed open during typing closes when the keyboard hides after navigation", async () => {
+  const page = await openScenario(browser, script, { scenario: "overlays", overlay: "routedSheet" });
+  await page.evaluate(() => (window as any).fireKeyboard(336));
+  await page.evaluate(() => (window as any).setRoute("/contacts/contact-matsui"));
+  await page.waitForTimeout(50);
+  assert.deepEqual(await events(page), [], "typing keeps the sheet open during the route change");
+  await page.evaluate(() => (window as any).fireKeyboard(0));
+  await page.waitForTimeout(50);
+  assert.deepEqual(await events(page), ["sheet-auto-close"], "keyboard dismissal rechecks the stored route");
+  await page.close();
+});
+
 test("with the keyboard up a tall sheet fits above it: handle and first field stay on screen", async () => {
   assert.equal(sheetMaxHeight(844), 675);
   assert.equal(sheetMaxHeight(844, 336, 47), 844 - 336 - 47 - SHEET_KEYBOARD_GAP);

@@ -172,3 +172,4 @@
 
 - **M3：** 按 REVIEW 提供的第二种收口方式，将 PLANNER SC-07 的开发状态开关验收改为“正式包不可启用”。`addDesignMock` 要求 `__DEV__` 为真；`ui-r31a-new-components.test.tsx` 覆盖 `__DEV__=false` 时 `open-path` 不生效。现有证据不证明开关代码未进入正式 bundle，故不再使用“不进正式构建”的表述。
 - **m：** 按 RD-32 更新 PLANNER SC-09：GitNexus 已停用，本轮不运行或要求 `detect-changes`；复核以代码差异、测试和门禁证据记录。
+- **S2：** `BottomSheet` 的路由失焦 effect 现把 `keyboardUp` 列为依赖。输入中换路由时仍延后关闭；键盘收起时重新检查开 sheet 时的路由，随即关闭。新增“键盘弹出 → 换路由 → 键盘收起”测试，修前失败、修后 `ui-overlays` 9 / 9 通过；App `tsc --noEmit` 通过。
