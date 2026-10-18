@@ -9,6 +9,7 @@ import test from "node:test";
 type TestOptions = { skip?: string | boolean };
 
 import { InviteCodeError } from "../../features/invite-codes/contract";
+import { inviteProfileFromPayload } from "../../features/invite-codes/profile-reader";
 import { createInviteCodeService, type InviteConnectedNotice } from "../../features/invite-codes/service";
 import { migrateConfiguredTestDatabase } from "../support/migrated-configured-database";
 import {
@@ -46,6 +47,16 @@ async function expectError(promise: Promise<unknown>, code: InviteCodeError["cod
 }
 
 const key = (value: string) => ({ idempotencyKey: value });
+
+test("invite profile reader preserves saved visibility and fails closed on malformed visibility", () => {
+  const base = { displayName: "Alice", publicProfile: { offering: ["Offer"] } };
+  const at = "2026-10-01T00:00:00.000Z";
+  assert.equal(inviteProfileFromPayload(ALICE, base, at)?.publicFields, undefined, "legacy profiles remain visible");
+  assert.deepEqual(inviteProfileFromPayload(ALICE, { ...base, publicFields: { companyRole: false, offeringSeeking: true, intro: false } }, at)?.publicFields,
+    { companyRole: false, offeringSeeking: true, intro: false });
+  assert.deepEqual(inviteProfileFromPayload(ALICE, { ...base, publicFields: { companyRole: "false" } }, at)?.publicFields,
+    { companyRole: false, offeringSeeking: false, intro: false });
+});
 
 function suite(name: string, options: TestOptions, withHarness: (run: (harness: InviteHarness, planCalls: () => Promise<PlanMatchCall[]>) => Promise<void>) => Promise<void>) {
   test(`${name}: issuing a code supersedes the old one, replays by key, and reads shared values from the profile only`, options, async () => {
@@ -109,6 +120,26 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
       await service.revoke(ALICE, fresh);
       await expectError(service.preview(fresh, null), "UNAVAILABLE");
       await expectError(service.redeem(BOB, fresh, { sharedKeys: [], ...key("r-1") }), "UNAVAILABLE");
+    });
+  });
+
+  test(`${name}: public visibility narrows only the pre-redemption preview`, options, async () => {
+    await withHarness(async (harness) => {
+      await harness.setProfile(profile(ALICE, {
+        publicFields: { companyRole: false, offeringSeeking: false, intro: false },
+      }));
+      await harness.setProfile(profile(BOB));
+      const { service } = setup(harness);
+      const code = (await service.create(ALICE, {
+        maxUses: 10, sharedKeys: ["organization", "offering", "seeking", "email"], ...key("private-preview"),
+      })).code;
+      assert.deepEqual((await service.preview(code, null)).shared, { displayName: "Alice Example" });
+      assert.deepEqual((await service.preview(code, BOB)).shared, { displayName: "Alice Example" });
+      const redeemed = await service.redeem(BOB, code, { sharedKeys: [], ...key("private-redeem") });
+      assert.deepEqual(redeemed.peer, {
+        displayName: "Alice Example", email: "alice@example.invalid", offering: ["alice offers advice"],
+        organization: "alice Inc", role: "CEO", seeking: ["alice seeks investors"],
+      }, "explicit invite sharing still controls redeemed contacts");
     });
   });
 

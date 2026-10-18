@@ -5,6 +5,7 @@
  * 对外契约在 `shared/contract/invite-codes.ts`（只加不改）；这里是服务端自己的行、端口与错误。
  */
 import type { InviteSharedFieldKey } from "../../shared/contract/invite-codes";
+import type { ProfilePublicFieldsContract } from "../../shared/contract/profile";
 
 /** 码的有效期：7 天（DESIGN §2.4）。 */
 export const INVITE_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -41,6 +42,7 @@ export class InviteCodeError extends Error {
 export interface InviteProfile {
   actorId: string;
   displayName: string;
+  publicFields?: ProfilePublicFieldsContract;
   organization: string | null;
   role: string | null;
   offering: string[];

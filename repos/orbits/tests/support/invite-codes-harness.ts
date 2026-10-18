@@ -109,6 +109,7 @@ async function upsertProfileRecord(store: LiveRecordStoreLike<Record<string, unk
       id,
       ...(value.organization ? { organization: value.organization } : {}),
       publicProfile: { offering: value.offering, seeking: value.seeking },
+      ...(value.publicFields ? { publicFields: value.publicFields } : {}),
       ...(value.role ? { role: value.role } : {}),
       updatedAt: value.updatedAt,
     },

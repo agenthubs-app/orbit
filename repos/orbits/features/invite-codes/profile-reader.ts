@@ -7,6 +7,7 @@
  * 邮箱 / 电话在 `handles` 里。资料还没确认名字（`displayNameConfirmed === false`）或没有资料 → null。
  */
 import type { TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import { profilePublicFieldsSchema } from "../../shared/api-schema/profile-account";
 import { createProfileActorPostgresReader } from "../profile/storage/profile-actor-postgres-reader";
 import type { InviteProfile } from "./contract";
 import { cleanList } from "./invite-fields";
@@ -25,9 +26,11 @@ export function inviteProfileFromPayload(actorId: string, payload: Record<string
   if (!displayName) return null;
   const publicProfile = (payload.publicProfile ?? {}) as Record<string, unknown>;
   const handles = (payload.handles ?? {}) as Record<string, unknown>;
+  const visibility = payload.publicFields === undefined ? null : profilePublicFieldsSchema.safeParse(payload.publicFields);
   return {
     actorId,
     displayName,
+    ...(visibility ? { publicFields: visibility.success ? visibility.data : { companyRole: false, offeringSeeking: false, intro: false } } : {}),
     email: text(handles.email, 254),
     offering: cleanList(publicProfile.offering),
     organization: text(payload.organization, 120),

@@ -442,11 +442,15 @@ export function createInviteCodeService({
         const profile = await unit.profiles.read(row.actorId);
         if (!profile) throw unavailable();
         const status = codeStatus(row, at) as "active" | "expired" | "full";
+        const visibility = profile.publicFields ?? { companyRole: true, offeringSeeking: true, intro: true };
+        const publicKeys = row.sharedKeys.filter((key) =>
+          key === "organization" ? visibility.companyRole
+            : key === "offering" || key === "seeking" ? visibility.offeringSeeking : true);
         const preview: InviteCodePreview = {
           code: formatInviteCode(row.code)!,
           expiresAt: row.expiresAt,
-          // 公开预览：永远不含邮箱和电话（§6 第 6 条）。
-          shared: sharedFieldsFromProfile(profile, row.sharedKeys, { includeContact: false }),
+          // 兑换前的公开预览还要遵守资料可见性；邮箱和电话始终不出现（§6 第 6 条）。
+          shared: sharedFieldsFromProfile(profile, publicKeys, { includeContact: false }),
           status,
         };
         if (viewerActorId) {

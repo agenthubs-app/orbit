@@ -242,6 +242,8 @@
 | R15-02 | **已定（2026-10-12）** P1 / P2 | 按实现先做（P1 现在是重新发码） | P1 照稿做：补「修改当前招待码的分享内容」接口，码不变，由加人会话实现；P2 App 接收页去掉「アプリは不要」、Web 保留（用户认可的例外，b11「④ 受け取った側 · 登録」画板已改）；DESIGN §10 #7 兑换只记「可能同一人」仍按 add-and-invite DESIGN | DEC §9-3、§9-4；`R15-invite-codes/REPORT.md`:70–77 |
 | R15-03 | App「コピー」 | 弹系统分享面板 | 用 `expo-clipboard` 直接复制（R24 同） | DEC D44 |
 | R15-04 | 门禁没跑成的画面（期限切れ / 满员、注册后资料页、App 说明页、App 日语） | 本机没数据 | 造数据补跑 | `R15-invite-codes/REVIEW.md`:123 |
+
+**通知甲（RD-30，R18a→R15）：** C 线已在兑换前 `/i/<code>` 预览中按 `publicFields` 收窄公司／役職与提供／求め字段；兑换后联系人仍只按招待 `sharedKeys` 共享，R15 后续调整预览或共享流程时须保留这两个独立边界。
 | R16-01 | 两端导入界面 | **已做（2026-10-14）**：Web `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → 列の対応 → まとめて確認 → 完成），App `contacts/new/import`（連絡先 / LinkedIn）；旧 `network-import*` 已删，`?method=` / `?import=` 重定向 | Web `Chip` apricot 字色（G23b）与 App `Segmented` 高度（G23）在组件库轮修，修完补跑 W-R16-08 浅、A-R16-02 | `R16-import-and-completion/REPORT.md` 界面部分  **R31a 2026-10-18：R31a：A-R16-02 分段区已对齐，余带为页面自身（列表尾部行偏移、头像色 [data]）→ 交还 R16（见 R31a REPORT）** |
 | R16-02 | 每天一问题型 | 两种 | 本期两种；b9「字段冲突 · 転職」下一期，不进门禁 | DEC D34 |
 | R16-03 | **已定（2026-10-12）** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 作加入时间；当天导入后当天可以出题（维持现状）；活动选项来源见 R26-07 | DEC §9-5、§9-6；`R16-import-and-completion/REPORT.md`:32–36 |
