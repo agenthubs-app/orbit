@@ -744,3 +744,7 @@ source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native 
 タスク一覧／完了履歴の read 失敗と完了 mutation 失敗は、API の任意言語の `error.message` をそのまま表示していた。日本語画面に中国語が出る mounted Chromium 用例を先に RED とし、画面境界で三言語の短い失敗文言へ写した。アカウント／version が未確認の page は既存の「タスクデータを利用できません」を維持し、端末 outbox の読取失敗は通常 read と区別して既存の同期失敗文言にした。未確認 page と outbox の回帰も各 RED→GREEN。失敗時の行、再試行、書込の有無は従来のまま。
 
 関連四テストファイルの定向実行 `_evidence-d/R20a/run-01/d-app-task-list-locale-focused-all.log` は **94/94 pass**。App `typecheck` と `git diff --check` は exit0。App 全量 `_evidence-d/R20a/run-01/d-app-full-task-list-locale-unconfirmed-outbox.log` は **3,255 total / 3,241 pass / 12 fail / 0 cancelled / 2 skip、exit1**。今回の追加用例は全量でも pass。失敗12件は R12 card 九件、旧辞書 exact-key pin 一件、shared compute rule 一件、invite history click timeout 一件で、全量 gate は引き続き赤。SC-09 の native 操作・pixel は OPEN。C 線の approval、production／実 Google／paid AI、push には触れていない。
+
+## 2026-10-19　App タスク詳細の読取失敗文言（SC-13 部分）
+
+日本語のタスク詳細で読取が失敗すると、API の中国語原文「连接暂时失败」がそのまま見えた。mounted Chromium 用例は修正前 **RED 0/1**、画面境界で三言語の短い `taskDetail.readFailed` に写した `dbdd646e5` 後 **GREEN 1/1**。詳細の交互作用全体 `_evidence-d/R20a/run-01/d-app-task-detail-read-locale-interactions.log` は **30/30 pass**、App `typecheck` と差分 check は exit0。読取・端末副本・書込の分岐は変えていない。App 全量は `_evidence-d/R20a/run-01/d-app-full-task-detail-read-locale.log` へ共有 heavy queue に登録済みで、現時点では**未開始・結果なし**。SC-13 全体、native / pixel、全量 gate は OPEN のまま。
