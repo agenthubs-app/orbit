@@ -38,6 +38,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/integrations/oauth-state-store.ts": { policy: "non-sync", statements: 1, collections: "integrationOAuthStates" },
   "features/notifications/canonical-reminder-wake.ts": { policy: "non-sync", statements: 4, collections: "canonical_reminder_wakes" },
   "features/notifications/delivery-service.ts": { policy: "non-sync", statements: 3, collections: "notificationDeliveries" },
+  "features/notifications/delivery-policy-repository.ts": { policy: "non-sync", statements: 1, collections: "notificationDeliveries and notificationDeliveryReservations (typed push state, never synced)" },
   "features/notifications/discovery/discovery-repository.ts": { policy: "non-sync", statements: 2, collections: "notification discovery work" },
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
   "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
