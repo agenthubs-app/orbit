@@ -867,6 +867,10 @@ test("personal contact selection uses bounded formal search and refuses unavaila
 
 test("reschedule focus opens time editing and permits explicit cross-day end dates", async t => {
   const p = await open(t, { focus: "time" });
+  const timePicker = p.getByRole("dialog", { name: "时间", exact: true });
+  await timePicker.waitFor();
+  await timePicker.getByRole("button", { name: "取消", exact: true }).click();
+  await timePicker.waitFor({ state: "detached" });
   await fill(p, "结束日期", "2026-09-18"); await fill(p, "结束时间", "00:15"); await press(p, "保存日程");
   assert.equal((await writes(p))[0].body.patch.endsAt, "2026-09-17T15:15:00.000Z");
 });
