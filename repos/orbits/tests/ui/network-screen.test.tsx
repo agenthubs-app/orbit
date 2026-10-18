@@ -169,6 +169,21 @@ test("390 dark: no 🔍 in the page (G12), the list still renders without errors
   assert.equal(await page.locator("[data-orbit-2026-search]:visible").count(), 0);
 });
 
+test("人脈分析 entry (RD-33): 390 below 10 people shows 「10人から使えます · あと N人」 → /app/contacts/dashboard; 10 or more has none; 1440 keeps 「人脈分析 ›」", async (t) => {
+  const few = await screen(t, { handlers: [{ method: "GET", url: "^/api/contacts/summary$", reply: ok({ ...SUMMARY, total: 5, densityCounts: { 1: 3, 2: 1, 3: 1 }, addedThisMonth: 3, tabCounts: { goalRelated: 2, needsFollowUp: 0 } }) }, ...HANDLERS] }, { width: 390 });
+  await few.locator("[data-network-row='c-ito']").waitFor();
+  const locked = few.locator("[data-network-analysis-locked]");
+  await locked.getByText("10人から使えます · あと 5人", { exact: true }).waitFor();
+  assert.equal(await locked.getAttribute("href"), "/app/contacts/dashboard");
+  const many = await screen(t, {}, { width: 390 });
+  await many.locator("[data-network-row='c-ito']").waitFor();
+  assert.equal(await many.locator("[data-network-analysis-locked]").count(), 0);
+  const wide = await screen(t, { handlers: [{ method: "GET", url: "^/api/contacts/summary$", reply: ok({ ...SUMMARY, total: 5 }) }, ...HANDLERS] });
+  await wide.locator("[data-network-row='c-ito']").waitFor();
+  assert.equal(await wide.locator("[data-network-analysis-locked]").count(), 0);
+  assert.equal(await wide.getByRole("link", { name: "人脈分析" }).getAttribute("href"), "/app/contacts/dashboard");
+});
+
 test("model: ?industry= preselects, the query carries tab / filters, 最終接点 wording", () => {
   assert.deepEqual(filtersFromSearch(new URLSearchParams("industry=finance_investment.venture_capital")).industries, ["finance_investment.venture_capital"]);
   assert.equal(networkQuery({ query: " x ", tab: "goal", filters: { statuses: ["nurture"], industries: [], regions: [], mets: ["visit"], densities: ["1"] }, facets: null, limit: 30 }),

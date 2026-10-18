@@ -155,7 +155,10 @@ test("the list renders from the device copy: header, tabs with counts, chips; no
   await page.getByText("本人入力", { exact: true }).waitFor();
   await page.getByText("会社・役職 未登録", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-invite-card").count(), 1, "fewer than 10 people: the invite card (app.html #7)");
-  assert.equal(await page.getByTestId("network-analysis-locked").count(), 1);
+  // 人脈分析 entry below 10 people (RD-33, app.html:469): 「10人から使えます · あと N人」 → the locked page; N from the header total.
+  await page.getByTestId("network-analysis-locked").getByText("10人から使えます · あと 5人", { exact: true }).waitFor();
+  await page.getByTestId("network-analysis-locked").click();
+  assert.deepEqual(await navigation(page), ["/contacts/dashboard"]);
   const reads = await requests(page);
   assert.deepEqual(reads.filter((path) => /\/api\/contacts\/(page|summary)/.test(path)), []);
   assert.deepEqual(reads.filter((path) => path.startsWith("get:")), ["get:/api/contacts/goal-related-ids"]);
@@ -244,6 +247,9 @@ test("ten or more people: the density card with 身元だけ / 名刺レベル /
   for (const label of ["身元だけ", "名刺レベル", "関係まで"]) await page.getByText(label, { exact: true }).waitFor();
   await page.getByText("12人 · 今月 +0", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-invite-card").count(), 0);
+  assert.equal(await page.getByTestId("network-analysis-locked").count(), 0, "10 or more: the normal 人脈分析 › entry in the density card");
+  await page.getByRole("link", { name: "人脈分析" }).click();
+  assert.deepEqual(await navigation(page), ["/contacts/dashboard"]);
 });
 
 test("detail (app.html #29): head card, the type confirm card, why (value line), next step, offering / seeking, interactions, 以前の値", async (t) => {

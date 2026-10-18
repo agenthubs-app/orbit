@@ -17,7 +17,7 @@ import { FilterOption, Icon, Orbit2026Scope, Popover, SampleTag, Skeleton, Toast
 import { ContactAvatar, ContactDrawer, useNetworkT, type NetworkT } from "./ContactDrawer";
 import { networkApi } from "./network-api";
 import {
-  DENSITY_OPTIONS, EMPTY_FILTERS, MET_OPTIONS, PAGE_SIZE, STAGE_OPTIONS, TOP_INDUSTRIES, TOP_REGIONS, filterCount, filtersFromSearch, headerCounts,
+  DENSITY_OPTIONS, EMPTY_FILTERS, MET_OPTIONS, NETWORK_ANALYSIS_UNLOCK_CONTACTS, PAGE_SIZE, STAGE_OPTIONS, TOP_INDUSTRIES, TOP_REGIONS, filterCount, filtersFromSearch, headerCounts,
   industryOptionLabel, lastTouch, networkQuery, networkRow, regionLabel, toggle, topFacetOptions, type NetworkCityKey, type NetworkFilters, type NetworkRow, type NetworkTab,
 } from "./network-model";
 import styles from "./network.module.css";
@@ -186,6 +186,14 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                   ) : <p className={styles.lbl} style={{ marginTop: 16 }}>{t("noMatchTitle")} · {t("noMatchBody")}</p>}
                   {cursor ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (matched ?? 0) - rows.length) })}</button></div> : null}
                 </div>
+                {narrow && (header?.total ?? 0) < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? (
+                  // 390（b6 / b8 人脈 少量）: the locked 人脈分析 entry under the list; 1440 keeps 「人脈分析 ›」 in つながり (web.html, the page itself is locked).
+                  <a className={`${styles.card} ${styles.flat} ${styles.span12} ${styles.anal}`} href="/app/contacts/dashboard" data-network-analysis-locked="">
+                    <span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`} aria-hidden>📊</span>
+                    <span className={styles.grow}><b className={styles.analTitle}>{t("analysis")}</b><span className={styles.lbl} style={{ display: "block" }}>{t("analysisLocked", { n: NETWORK_ANALYSIS_UNLOCK_CONTACTS - (header?.total ?? 0) })}</span></span>
+                    <span className={styles.muted}><Icon name="right" size={16} /></span>
+                  </a>
+                ) : null}
               </div>
             )}
       <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchor={filterAnchor} label={t("filterTitle")} width={420}>

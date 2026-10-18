@@ -25,8 +25,10 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useNetworkMerge } from "./useNetworkMerge";
 
-/** Below this many people the page shows the invite card and the locked analysis card (app.html #7), not the density card (#8). */
-export const NETWORK_ANALYSIS_MIN = 10;
+/** 人脈分析 opens from this many people: below it the page shows the invite card and the locked 「人脈分析 · 10人から使えます · あと N人」 card
+ *  (app.html #7, :469) instead of the density card (#8). Same name as R11b's features/network-analysis/page-lock.ts export (the App cannot
+ *  import server files; keep the two equal). Not the 3-person analysis-threshold. */
+export const NETWORK_ANALYSIS_UNLOCK_CONTACTS = 10;
 
 /** A-R05-10: the list keeps its tab, filters and search while a detail is open (the main tab unmounts when unfocused); AppScreen keeps the scroll. */
 const memory = new Map<string, { tab: NetworkTab; filters: NetworkFilters; query: string }>();
@@ -89,12 +91,12 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
               <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholder")} accessibilityLabel={t("network.searchPlaceholder")} /></View>
               <IconButton icon="sliders" accessibilityLabel={t("network.filter")} onPress={() => setFilterOpen(true)} />
             </View>
-            {total >= NETWORK_ANALYSIS_MIN ? <DensityCard summary={summary} onAnalysis={() => router.push("/contacts/dashboard" as Href)} /> : null}
+            {total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <DensityCard summary={summary} onAnalysis={() => router.push("/contacts/dashboard" as Href)} /> : null}
             <View style={styles.tabs} testID="network-tabs">
               <CategoryTabs accessibilityLabel={t("network.tabsLabel")} value={tab} onChange={setTab}
                 options={[{ key: "all", label: t("network.tabAll"), count: counts.all }, { key: "goal", label: t("network.tabGoal"), count: counts.goal }, { key: "followUp", label: t("network.tabFollowUp"), count: counts.followUp }]} />
             </View>
-            {total < NETWORK_ANALYSIS_MIN ? <InviteCard onInvite={() => router.push("/contacts/new/invite" as Href)} /> : null}
+            {total < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <InviteCard onInvite={() => router.push("/contacts/new/invite" as Href)} /> : null}
             {rows.length ? (
               <View style={styles.listCard} testID="network-list">
                 {rows.map((row, index) => <NetworkListRow key={row.id} row={row} first={index === 0} onPress={() => openContact(row.id)} />)}
@@ -103,7 +105,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
             ) : (
               <View style={styles.gapTop}><EmptyState title={t("network.noMatchTitle")} message={t("network.noMatchBody")} /></View>
             )}
-            {total < NETWORK_ANALYSIS_MIN ? <AnalysisLockedCard missing={NETWORK_ANALYSIS_MIN - total} onPress={() => router.push("/contacts/dashboard" as Href)} /> : null}
+            {total < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <AnalysisLockedCard missing={NETWORK_ANALYSIS_UNLOCK_CONTACTS - total} onPress={() => router.push("/contacts/dashboard" as Href)} /> : null}
           </>
         )}
       </View>

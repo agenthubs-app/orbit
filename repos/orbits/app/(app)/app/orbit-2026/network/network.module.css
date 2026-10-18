@@ -74,6 +74,10 @@
 .a_apricot { background: var(--mac-apricot); color: var(--mac-apricot-text); }
 .avatarLg { width: 56px; height: 56px; font-size: var(--fs-title-xs); }
 .moreRow { display: flex; margin-top: 12px; }
+/* .card.flat.row.k-anal (b6 / b8 人脈 少量 390) */
+.flat { background: var(--surface-2); }
+.anal { flex-direction: row; align-items: center; gap: 10px; padding: 12px 14px; color: inherit; text-decoration: none; }
+.analTitle { font-size: var(--fs-body-sm); }
 
 .btn.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-height: 0; padding: 0 16px; border: 0; border-radius: var(--r-pill); font-weight: var(--fw-bold); font-size: var(--fs-body-sm); line-height: 1.5; background: var(--surface-2); color: var(--ink); white-space: nowrap; cursor: pointer; text-decoration: none; }
 .btn.primary { background: var(--ink); color: var(--bg); }
