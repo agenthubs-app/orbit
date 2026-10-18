@@ -4,6 +4,8 @@
 
 2026-10-19 01:34 检查点：三份公开页 / 异常态画板草案以 `88424a08f` 单独提交，仍待主会话设计认可。C 线随后把 62 个提交无冲突 rebase 到 `origin/redesign` 的 `6ea769085`，再接入隔离原生重试报告；重试交接点 `715a8478a` 干净，ahead 63 / behind 0，`git diff --check` exit 0。该代码的 Web `typecheck:app` 和 App `typecheck` 均 exit 0；rebase 后 Web 版本接口 / 认证服务 / FAQ 目标测试 17/17，App 版本策略 / 读取 / FAQ / 认证 view-model 15/15。全量测试没有因 rebase 重跑，旧全量红色结果仍在下文。R18a 报告已写清 Metro `load-native` 阻断、非已证实的签名故障，原生 SC03–06 / 像素留待 DEFERRED；R18b 继续，不能据此关闭任何 UI 门禁。主会话需把 R18a DEFERRED 文案转入中央清单。
 
+2026-10-19 02:11 检查点：主线上游接入 D 至 `2b95b1ac1` 后，C 在干净树上重新 rebase 65 个提交，现 `79d7ef01f`，ahead 65 / behind 0，`git diff --check` exit 0。四处冲突按来源合并：契约导出保留 D 的 Todo / calendar 与 C 的 account；三语注册同时保留 Todo 和 me；离线读取面删除已退役的旧 Profile 路径，保留新 me 与 D 的 Task / Todo 路径；live 能力和 503 路由清单同时纳入 D 与 C 条目。Web 版本 / live 路由 / 认证 / FAQ 目标组 **35/35**，App 契约 / 版本 / account / 离线读取面 **39/39**。全量不在此时重跑；两端 typecheck 因本机内置盘降至约 4.1 GiB 暂缓，不能借用上一个上游的通过记录。R18a 原生重试报告已随 C 线保留（现 `3143ad390`），Metro `load-native` 阻断与设计认可门禁不变。
+
 ## 当前检查点
 
 | SC | 状态 | 实际证据 / 未完依赖 |
