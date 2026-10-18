@@ -112,7 +112,8 @@ function stoppedDesign(): ScanDesign {
 
 /** R12-13 · b12 #112 N08b 確認待ちの下書き：`contacts/new/drafts?eventId=…&design=n08b` 时用画板的 3 条草稿与活动名（不读服务器）。 */
 export function draftsDesignFor(design: string | null, enabled: boolean = addDesignMock("add-scan")): { eventTitle: string; drafts: ContactDraftRow[] } | null {
-  if (!enabled || design !== "n08b") return null;
+  // R31a: n09 (b12 #114 破棄の確認) draws over the same three board drafts.
+  if (!enabled || (design !== "n08b" && design !== "n09")) return null;
   return {
     drafts: S.drafts.map(([displayName, organization, role], index) => ({ createdAt: "2026-10-07T12:00:00.000Z", displayName, id: `design-draft-${index + 1}`, organization, role, sourceLabel: S.draftsEvent })),
     eventTitle: S.draftsEvent,
