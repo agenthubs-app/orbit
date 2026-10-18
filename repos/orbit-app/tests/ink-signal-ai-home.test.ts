@@ -181,6 +181,16 @@ test("R21 history search sends the final query to the server", async t => {
   assert.deepEqual(await writes(p), []);
 });
 
+test("R21 a failed history read stays retryable instead of claiming an empty list", async t => {
+  const p = await open(t, { failPaths: ["/api/ai/conversations/sessions"] });
+  await press(p, "会話リスト");
+  await p.getByText("历史记录未能读取").waitFor();
+  assert.equal(await p.getByText("まだ会話はありません").count(), 0);
+  await update(p, { failPaths: [] });
+  await press(p, "重试历史记录");
+  await p.getByRole("button", { name: "产品试点讨论", exact: true }).first().waitFor();
+});
+
 test("R21 history deletion requires confirmation and starts one server write", async t => {
   const p = await open(t, { holdWrites: true });
   await press(p, "会話リスト");
