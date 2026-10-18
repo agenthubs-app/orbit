@@ -46,8 +46,8 @@ function useWhy() {
   return { open, id, toggle: () => setOpen((value) => !value) };
 }
 
-function WhyToggle({ why, label }: { why: ReturnType<typeof useWhy>; label: string }) {
-  return <button type="button" className={`btn ${styles.why}`} aria-expanded={why.open} aria-controls={why.id} aria-label={label} title={label} onClick={why.toggle}>?</button>;
+function WhyToggle({ why, label, push = false }: { why: ReturnType<typeof useWhy>; label: string; push?: boolean }) {
+  return <button type="button" className={`btn ${styles.why} ${push ? styles.pushRight : ""}`} aria-expanded={why.open} aria-controls={why.id} aria-label={label} title={label} onClick={why.toggle}>?</button>;
 }
 
 /* ---------- 锁定 (b5 #38) ---------- */
@@ -199,7 +199,7 @@ function OpportunityCard({ card, onOpen }: { card: NetworkAnalysisOpportunity; o
       <div className={styles.oppFoot}>
         <div className={styles.avs}>{card.preview.map((person) => <Avatar key={person.id} name={person.name} size="sm" />)}</div>
         {card.preview[0] ? <span className={styles.lbl}>{card.count > 1 ? t("others", { name: card.preview[0].name }) : card.preview[0].name}</span> : null}
-        <span className={styles.pushRight}><WhyToggle why={why} label={t(look.why)} /></span>
+        <WhyToggle push why={why} label={t(look.why)} />
         <Button size="sm" label={t("openList")} onClick={() => onOpen({ dimension: "opportunity", bucketId: card.kind })} />
       </div>
       {why.open ? <div id={why.id} className={styles.whyBody}>{t(look.why)}</div> : null}
@@ -228,7 +228,7 @@ function InsightCard({ insight }: { insight: NetworkAnalysisInsight }) {
     const top = Math.max(1, insight.eventRate ?? 0, insight.referralRate ?? 0);
     return (
       <div className={`${styles.card} ${styles.span4}`} data-analysis-insight="met_path">
-        <div className={styles.row}><span className={styles.chip}>{t("insightMetChip")}</span><span className={styles.pushRight}><WhyToggle why={why} label={t("insightMetWhy", { industry, n: insight.sample ?? 0 })} /></span></div>
+        <div className={styles.row}><span className={styles.chip}>{t("insightMetChip")}</span><WhyToggle push why={why} label={t("insightMetWhy", { industry, n: insight.sample ?? 0 })} /></div>
         <b className={styles.headline}>{t("insightMetHeadline", { industry, share: insight.eventShare ?? 0, referral: insight.referralRate ?? 0, event: insight.eventRate ?? 0 })}</b>
         <div className={styles.cmp}><span>{t("metEvent")}</span><div className={`${styles.bar} ${styles.barRose}`}><i style={{ width: `${((insight.eventRate ?? 0) / top) * 100}%` }} /></div><b className={styles.score}>{insight.eventRate}%</b></div>
         <div className={styles.cmp}><span>{t("metReferral")}</span><div className={styles.bar}><i style={{ width: `${((insight.referralRate ?? 0) / top) * 100}%` }} /></div><b className={styles.score}>{insight.referralRate}%</b></div>
@@ -242,7 +242,7 @@ function InsightCard({ insight }: { insight: NetworkAnalysisInsight }) {
   const headline = t("insightGrowthHeadline", { industry, n: insight.added ?? 0 });
   return (
     <div className={`${styles.card} ${styles.span4}`} data-analysis-insight="growth">
-      <div className={styles.row}><span className={styles.chip}>{t("insightGrowthChip")}</span><span className={styles.pushRight}><WhyToggle why={why} label={t("insightGrowthWhy", { industry })} /></span></div>
+      <div className={styles.row}><span className={styles.chip}>{t("insightGrowthChip")}</span><WhyToggle push why={why} label={t("insightGrowthWhy", { industry })} /></div>
       <b className={styles.headline}>{insight.planNeedTitle ? t("insightGrowthPlan", { headline, title: insight.planNeedTitle }) : headline}</b>
       <div className={styles.minibars} aria-hidden>{months.map((month, index) => <i key={month.month} className={index === months.length - 1 ? styles.hi : ""} style={{ height: `${Math.max(4, (month.added / max) * 96)}%` }} />)}</div>
       {months.length ? <div className={`${styles.between} ${styles.lbl}`}><span>{monthLabel(months[0]!.month, t, language)}</span><span>{monthLabel(months.at(-1)!.month, t, language)}</span></div> : null}
