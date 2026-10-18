@@ -3,6 +3,7 @@ import type { ProfileDocumentExtractionDraft } from "../../../../../features/pro
 import type { ProfileSignalSourceKind, ProfileUpdateSuggestion } from "../../../../../features/profile/signal-contract";
 import { profileBioWithinLimit } from "../../../../../shared/api-schema/profile-bio";
 import type { ManualProfileContract } from "../../../../../shared/contract/profile";
+import { normalizeProfileTagValues } from "./profile-tag-normalization";
 
 export type SuggestionSource = ProfileSignalSourceKind | "business-card" | "resume";
 export type SuggestionDecision = "pending" | "yes" | "no";
@@ -100,8 +101,10 @@ export function selectedProfilePatch(cards: readonly SuggestionCard[]): ManualPr
     if (row.field === "bio" && typeof row.suggestedValue === "string" && !profileBioWithinLimit(row.suggestedValue)) {
       throw new Error("bio exceeds the profile limit");
     }
-    if (row.field in patch && !sameValue(patch[row.field], row.suggestedValue)) throw new Error(`Conflicting ${row.field} suggestions`);
-    patch[row.field] = row.suggestedValue;
+    const value = (row.field === "offering" || row.field === "seeking") && Array.isArray(row.suggestedValue)
+      ? normalizeProfileTagValues(row.suggestedValue) : row.suggestedValue;
+    if (row.field in patch && !sameValue(patch[row.field], value)) throw new Error(`Conflicting ${row.field} suggestions`);
+    patch[row.field] = value;
   }
   return patch as ManualProfileUpdateInput;
 }

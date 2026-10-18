@@ -17,7 +17,7 @@ function record(value: unknown): value is Record<string, unknown> {
 
 function same(a: unknown, b: unknown): boolean { return JSON.stringify(a) === JSON.stringify(b); }
 
-function validSaveReceipt(value: unknown, previous: ManualProfileContract, patch: object, mutationId: string): boolean {
+export function validSaveReceipt(value: unknown, previous: ManualProfileContract, patch: object, mutationId: string): boolean {
   if (!record(value) || value.state !== "success" || value.mutationId !== mutationId || !record(value.profile) || !record(value.editor) || !record(value.onboarding)) return false;
   const next = value.profile;
   const editor = value.editor;

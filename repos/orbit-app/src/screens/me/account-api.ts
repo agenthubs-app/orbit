@@ -4,6 +4,7 @@ import { accountScreenResponseSchema } from "./account-response";
 import { hostCenterSummarySchema } from "../../api/schema/host-events";
 import type { HostCenterSummary } from "../../api/contract/host-events";
 import type { AccountProfileData } from "./MyPageContent";
+import { SEEK_OPTIONS } from "../../view-models/profile-onboarding";
 
 type Profile = NonNullable<AccountProfileData["profile"]>;
 const count = z.number().int().nonnegative();
@@ -35,7 +36,8 @@ export function createAccountApi(client: OrbitApiClient, profilePath = "/api/pro
       return { unread: inbox?.unreadCount ?? null, going: events?.upcomingCount ?? null, host };
     },
     async seekCandidates(language: string, signal?: AbortSignal): Promise<string[]> {
-      const result = await client.post<unknown>("/api/profile/seek-suggestions", { body: { language }, ...(signal ? { signal } : {}) });
+      if (language !== "en" && language !== "zh") return [];
+      const result = await client.post<unknown>("/api/profile/seek-suggestions", { body: { language, candidates: SEEK_OPTIONS.map(option => option[language]) }, ...(signal ? { signal } : {}) });
       const parsed = result.success ? z.object({ suggestions: z.array(z.string()) }).safeParse(result.data) : null;
       return parsed?.success ? parsed.data.suggestions.filter(value => value.trim()).slice(0, 5) : [];
     },

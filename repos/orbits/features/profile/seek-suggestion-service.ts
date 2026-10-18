@@ -11,7 +11,7 @@ import {
 
 export const SEEK_SUGGESTION_MAX = 4;
 const CANDIDATE_LIMIT = 60;
-const CANDIDATE_LENGTH = 24;
+const CANDIDATE_LENGTH = 32;
 
 export type SeekSuggestionErrorCode =
   | "ACTOR_REQUIRED"

@@ -65,6 +65,13 @@ test("all-adopt affects one card; only checked fields enter the profile patch", 
   assert.throws(() => selectedProfilePatch(selectCard(conflict, "live:activity:b")), /headline/);
 });
 
+test("selected seeking tags match the live profile service's normalized save value", () => {
+  const suggestion = { ...live("tags", "chat", "bio", "unused"), targetProfileField: "seeking" as const,
+    currentValue: [], suggestedValue: ["ＡＢＣ", "ＡＢＣ"] };
+  const cards = selectCard(buildLiveCards([suggestion]), "live:chat:tags");
+  assert.deepEqual(selectedProfilePatch(cards), { seeking: ["ABC"] });
+});
+
 test("confirmed apply writes selected fields with CAS before recording decisions", async () => {
   const calls: { url: string; method: string; body?: Record<string, unknown> }[] = [];
   const fetcher = async (url: string, init?: RequestInit) => {

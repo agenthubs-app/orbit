@@ -25,7 +25,7 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
   // R18a profile path optionally carries only the development design query; all mutations still target profile.
-  'src/screens/me/account-api.ts:45': ['/api/profile'],
+  'src/screens/me/account-api.ts:47': ['/api/profile'],
   'src/screens/me/suggestions-api.ts:31': ['/api/profile'],
   'src/screens/profile/useProfileEditSessionScreen.ts:45': ['/api/profile'],
   'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id'],

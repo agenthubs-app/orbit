@@ -40,3 +40,18 @@ test("R18a candidate receipt rejects wrong actor/profile or stale revision", asy
   const client = createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl: async () => Response.json({ success: true, data: demoAccountProfiles.regular }) });
   assert.equal(await module.createAccountApi(client).acceptCandidate(demoAccountProfiles.regular.profile!, "協業", "candidate-1"), null);
 });
+
+test("R18a live candidate request supplies the existing seeker labels in the requested language", async () => {
+  const module = await import("../src/screens/me/account-api");
+  const requests: Record<string, unknown>[] = [];
+  const client = createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl: async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return Response.json({ success: true, data: { suggestions: ["Investors"] } });
+  } });
+  assert.deepEqual(await module.createAccountApi(client).seekCandidates("en"), ["Investors"]);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]?.language, "en");
+  assert.ok(Array.isArray(requests[0]?.candidates));
+  assert.ok((requests[0]?.candidates as string[]).includes("Investors"));
+  assert.ok(!(requests[0]?.candidates as string[]).includes("投资人"));
+});

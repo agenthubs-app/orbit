@@ -6,13 +6,16 @@ import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../fe
 import { profileBioWithinLimit } from "../../../../../shared/api-schema/profile-bio";
 import type { ManualProfileContract, ProfilePublicFieldsContract } from "../../../../../shared/contract/profile";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { SEEK_OPTIONS } from "../../profile/profile-tag-options";
 import { eventsApi } from "../events/events-api";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { InviteCodeModal } from "../add/invite/InviteCodeModal";
 import { Button } from "../ui";
 import { AccountLayout, type AccountSection } from "./AccountLayout";
+import { validSaveReceipt } from "./SuggestionsApi";
 import { cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
+import { normalizeProfileTagValues } from "./profile-tag-normalization";
 import s from "./AccountProfilePage.module.css";
 
 type Envelope = { success: boolean; data?: ProfilePayload };
@@ -30,7 +33,7 @@ function draftOf(profile: ManualProfileContract): Draft {
 }
 
 function lines(value: string): string[] {
-  return value.split("\n").map(part => part.trim()).filter(Boolean).slice(0, 5);
+  return normalizeProfileTagValues(value.split("\n")).slice(0, 5);
 }
 
 function editOf(draft: Draft): ManualProfileUpdateInput {
@@ -73,28 +76,40 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const [saveError, setSaveError] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dismissed, setDismissed] = useState<readonly string[]>([]);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [attendingCount, setAttendingCount] = useState<number | null | undefined>(eventSummary?.attending);
   const [hostedCount, setHostedCount] = useState<number | null | undefined>(eventSummary?.hosted);
   const [activeCount, setActiveCount] = useState<number>(eventSummary?.active ?? 0);
   const openedFromRoute = useRef(false);
   const pendingSave = useRef<{ fingerprint: string; id: string } | null>(null);
+  const readVersion = useRef(0);
 
   const profileUrl = design ? `/api/profile?design=${design}` : "/api/profile";
   const load = useCallback(async () => {
+    const version = ++readVersion.current;
     setLoading(true);
     setReadError(null);
+    setPayload(null);
+    setDraft(null);
+    setSaved(false);
+    pendingSave.current = null;
     try {
       const response = await fetch(profileUrl, { cache: "no-store" });
-      const envelope = await response.json() as Envelope;
-      if (!response.ok || !envelope.success || !envelope.data?.profile) {
+      if (version !== readVersion.current) return;
+      if (!response.ok) {
         setReadError(response.status === 401 ? "unauthorized" : "failed");
-      } else setPayload(envelope.data);
-    } catch { setReadError("failed"); }
-    finally { setLoading(false); }
+        return;
+      }
+      const envelope = await response.json() as Envelope;
+      if (version !== readVersion.current) return;
+      if (!envelope.success || !envelope.data?.profile) setReadError("failed");
+      else setPayload(envelope.data);
+    } catch { if (version === readVersion.current) setReadError("failed"); }
+    finally { if (version === readVersion.current) setLoading(false); }
   }, [profileUrl]);
 
-  useEffect(() => { if (!initialPayload) void load(); }, [initialPayload, load]);
+  useEffect(() => { if (!initialPayload) void load(); return () => { readVersion.current += 1; }; }, [initialPayload, load]);
   useEffect(() => {
     if (eventSummary) return;
     let alive = true;
@@ -113,6 +128,26 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   }, [eventSummary]);
 
   const profile = payload?.profile;
+  const profileId = profile?.id;
+  const needsCandidates = Boolean(profile?.offering?.length && !profile.seeking?.length);
+  useEffect(() => {
+    if (!profileId || !needsCandidates || design || suggestions.length || language === "ja") {
+      setLiveSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLiveSuggestions([]);
+    void fetch("/api/profile/seek-suggestions", {
+      method: "POST", headers: { "content-type": "application/json" }, signal: controller.signal,
+      body: JSON.stringify({ language, candidates: SEEK_OPTIONS.map(option => option[language]) }),
+    }).then(async response => {
+      const envelope = await response.json() as { success?: boolean; data?: { suggestions?: unknown } };
+      if (!controller.signal.aborted && response.ok && envelope.success && Array.isArray(envelope.data?.suggestions)) {
+        setLiveSuggestions(envelope.data.suggestions.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).slice(0, 5));
+      }
+    }).catch(() => { if (!controller.signal.aborted) setLiveSuggestions([]); });
+    return () => controller.abort();
+  }, [profileId, needsCandidates, design, suggestions.length, language]);
   useEffect(() => {
     if (profile && edit && !openedFromRoute.current) {
       openedFromRoute.current = true;
@@ -135,7 +170,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         body: JSON.stringify(profileSaveInput(profile, edit, pendingSave.current.id)),
       });
       const envelope = await response.json() as Envelope;
-      if (!response.ok || !envelope.success || !envelope.data?.profile) throw new Error("save failed");
+      if (!response.ok || !envelope.success || !validSaveReceipt(envelope.data, profile, edit, pendingSave.current.id)) throw new Error("save failed");
       setPayload(envelope.data);
       pendingSave.current = null;
       setSaved(true);
@@ -155,6 +190,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   }
 
   const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} /> : null;
+  const visibleSuggestions = suggestions.length ? suggestions : liveSuggestions;
   return <AccountLayout active={active} title={t("profile")} subtitle={t("profileIntro")} rightRail={preview}>
     {loading && !payload ? <div className={s.status} aria-busy="true">{t("profile")}</div> : null}
     {readError ? <div className={s.status} role="alert"><p>{readError === "unauthorized" ? t("profileLogin") : t("readError")}</p><Button label={t("retry")} size="sm" onClick={() => void load()} /></div> : null}
@@ -175,9 +211,9 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         <div className={s.chips}>{profile.offering?.length ? profile.offering.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
         <strong>{t("whatSeek")}</strong>
         <div className={s.chips}>{profile.seeking?.length ? profile.seeking.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
-        {!profile.seeking?.length && suggestions.some(value => !dismissed.includes(value)) ? <div className={s.suggestions}>
+        {!profile.seeking?.length && visibleSuggestions.some(value => !dismissed.includes(value)) ? <div className={s.suggestions}>
           <span className={s.suggestionHeading}>{t("suggested")}</span>
-          {suggestions.filter(value => !dismissed.includes(value)).map(value => <div className={s.suggestion} key={value}>
+          {visibleSuggestions.filter(value => !dismissed.includes(value)).map(value => <div className={s.suggestion} key={value}>
             <span>{value}</span>
             <button type="button" aria-label={`${t("suggestAccept")}: ${value}`} disabled={saving} onClick={() => void acceptSuggestion(value)}>✓</button>
             <button type="button" aria-label={`${t("suggestDismiss")}: ${value}`} onClick={() => setDismissed([...dismissed, value])}>×</button>

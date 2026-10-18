@@ -121,3 +121,10 @@ test("seek suggestions keep only candidate labels and require a saved goal", asy
   assert.equal(noGoal.success === false && noGoal.error.code, "PROFILE_REQUIRED");
   assert.equal(fake.calls.length, 1);
 });
+
+test("seek suggestions admit the existing long English seeker labels but reject oversized input", async () => {
+  const { normalizeSeekCandidates } = await import("../../features/profile/seek-suggestion-service");
+  const labels = ["Overseas expansion partners", "Enterprise decision-makers"];
+  assert.deepEqual(normalizeSeekCandidates(labels), labels);
+  assert.deepEqual(normalizeSeekCandidates(["x".repeat(33)]), []);
+});
