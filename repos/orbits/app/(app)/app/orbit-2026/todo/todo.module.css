@@ -3,6 +3,8 @@
 .decisions { grid-column: span 7; }
 .nextMoves { grid-column: span 5; min-width: 0; }
 .followups { grid-column: span 12; }
+.followupRow { display: flex; align-items: center; gap: var(--space-8); }
+.followupMain { flex: 1; min-width: 0; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); }
 .heading { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .row { display: flex; align-items: center; gap: var(--space-8); }

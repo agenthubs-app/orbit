@@ -75,3 +75,20 @@ test("lifecycle rows open task-addressed completion only when a handler exists; 
   assert.ok(root!.root.findAllByType("button").every(node => !contents(node).includes("Sample follow-up")));
   assert.ok(!text(root!).includes("フォローの詳細はまだ開けません"));
 });
+
+test("real follow-up rows expose separate completion checks for plain and lifecycle tasks", async t => {
+  const plain = demoTodoPage.followups.items.find(row => row.kind === "task")!;
+  const lifecycle = demoTodoPage.followups.items.find(row => row.kind === "lifecycle")!;
+  const sample = demoTodoPage.followups.items.find(row => row.kind === "task" && row.key !== plain.key)!;
+  const page = { ...demoTodoPage, followups: { next: {}, items: [{ ...plain!, sample: undefined }, { ...lifecycle!, sample: undefined }, sample!] } };
+  const selected: string[] = [];
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(page)} onTaskComplete={key => selected.push(`task:${key}`)} onFollowup={key => selected.push(`lifecycle:${key}`)} />); });
+  t.after(() => act(() => root.unmount()));
+  const checks = root!.root.findAllByProps({ role: "checkbox" });
+  assert.equal(checks.length, 2, "sample follow-up must not expose a write control");
+  assert.ok(checks.every(check => check.props["aria-checked"] === false));
+  await act(async () => checks[0]!.props.onClick());
+  await act(async () => checks[1]!.props.onClick());
+  assert.deepEqual(selected, [`task:${plain!.key}`, `lifecycle:${lifecycle!.key}`]);
+});

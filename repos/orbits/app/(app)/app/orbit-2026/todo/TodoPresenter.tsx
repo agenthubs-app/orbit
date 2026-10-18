@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
-import { Avatar, Button, Card, Chip, EmptyState, IconButton, ListRow, MacTile, RetryCard, SampleTag, Skeleton, WhyDisclosure, useScopeLanguage, type RowAction } from "../ui";
+import { Avatar, Button, Card, CheckCircle, Chip, EmptyState, IconButton, ListRow, MacTile, RetryCard, SampleTag, Skeleton, WhyDisclosure, useScopeLanguage, type RowAction } from "../ui";
 import type { DecisionAction, TodoPageView, TodoSectionView } from "./todo-view-model";
 import styles from "./todo.module.css";
 
@@ -13,13 +13,14 @@ export const todoSourceCopy = {
   agent_signal: taskCopy.sourceSignal, plan_today_chance: taskCopy.sourcePlanChance, relationship_task: taskCopy.sourceLifecycle, task: taskCopy.sourceTask,
 };
 
-export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFollowup, onMore }: {
+export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFollowup, onTaskComplete, onMore }: {
   state: "idle" | "loading" | "ready" | "failed" | "not_implemented";
   view: TodoPageView | null;
   onRetry: () => void;
   onDecision: (key: string, action: DecisionAction) => void;
   onDraft?: (key: string) => void;
   onFollowup?: (key: string) => void;
+  onTaskComplete?: (key: string) => void;
   onMore: (section: "decisions" | "nextMoves" | "followups") => void;
 }) {
   const language = useScopeLanguage();
@@ -69,7 +70,7 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
     {view.followups.state !== "hidden" ? <Card className={styles.followups} aria-label={t(taskCopy.todoFollowups)}>
       {header(t(taskCopy.todoFollowups), view.followups, "followups", <span className={styles.note}>{t(taskCopy.todoDueOrder)}</span>)}
       {issues(view.followups)}
-      {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.map(row => <div key={row.key}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.overdue ? <Chip label={t(taskCopy.todoOverdue)} tone="coral" /> : row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} /> : null}</>} />{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
+      {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.map(row => <div key={row.key}><div className={styles.followupRow}>{!row.sample && (row.kind === "lifecycle" ? onFollowup : onTaskComplete) ? <CheckCircle checked={false} label={t(taskCopy.taskListComplete).replace("{title}", row.title)} onChange={() => row.kind === "lifecycle" ? onFollowup?.(row.key) : onTaskComplete?.(row.key)} /> : null}<div className={styles.followupMain}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.overdue ? <Chip label={t(taskCopy.todoOverdue)} tone="coral" /> : row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} /> : null}</>} /></div></div>{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
       {view.followups.more.length ? <Button label={t(taskCopy.todoAll)} variant="ghost" size="sm" onClick={() => onMore("followups")} /> : null}
     </Card> : null}
     <a className={styles.taskListLink} href="/app/tasks?tab=todo&view=all">{t(taskCopy.taskListTitle)} →</a>

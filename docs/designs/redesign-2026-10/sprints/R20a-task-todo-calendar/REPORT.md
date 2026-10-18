@@ -646,3 +646,9 @@ clean D tree で `ORBIT_EVENT_DATABASE_URL` をローカルの `orbit_line_d_tes
 別途、同 D source の隔離 `orbit_line_d_test` Web 全量は **7,807 tests / 7,534 pass / 182 fail / 2 cancelled / 89 skip、exit1**。新しい Task key 用例は full 内でも pass。ただしこの全量は多数の PostgreSQL / read-cost timeout と広域失敗が発生し、直前の 18 failure baseline と failure 集合・実行負荷が大きく異なるため、Task 変更の green 判定にも baseline 比の単純な増減にも使わない。失敗した用例が作った非 system schema が test DB に 7 件残留したことも確認し、他の所有者の作業を消さないよう自動削除していない。全量 gate は未収束のまま。
 
 実行環境にも比較不能な差がある。今回の full は `ORBIT_EVENT_DATABASE_URL` に加え `ORBIT_DATABASE_TARGET=local` と `ORBIT_LOCAL_DATABASE_URL` を設定しており、直前の可比 run より skip が約 1,000 件少ない。少なくとも「未設定の live store は 503」の referral 用例は `ORBIT_LIVE_DATABASE_URL` / `ORBIT_DATABASE_URL` だけを消すため、local target が残ると 200 になって失敗する。同じ現行 D ソースで local target / local URL も環境から除き、loopback event DB のみ指定した単独再実行は **1/1 pass**。これは当該一件の環境帰属であり、182 件全体の説明ではない。次の可比 full は環境変数集合を先に固定し、残る timeout / failure を別途追う。
+
+## 2026-10-19　Web フォロー行の完了 check（SC-07 / SC-09 部分）
+
+W-R20-02 の画板はフォロー行に丸い完了 check を置くが、現 Web presenter は行への移動だけだった。実行前の presenter 回帰は check 0 件で RED、実 lifecycle / plain task に独立した check を置き、sample には書込 control を出さず **6/6 pass**。行本体の link / button 内に checkbox を入れない。plain task は現行 task client の `complete` PATCH を source / account / ready guard の下で呼び、lifecycle は既存の task-addressed 確認 Modal を開く。HTTPS origin の実 Chromium 替身 fixture は両 check と page refresh、note failure・resolver mismatch・account change を **6/6 pass**。Web `typecheck` と `typecheck:app` は exit0、差分 check は exit0。これは局所 UI / client 経路の検証であり、実 DB・全量・pixel の合格ではない。
+
+画板の「完了行は当日中、打ち消し線で残す」部分は未実装のまま明示しておく。現 `/api/todo/page` の followup source は open のみ返し、成功後 refresh で完了行が消える。永続的な当日 receipt をどの source 契約で返し、timezone / paging / offline mirror と整合させるかを別途詰める必要がある。SC-07 / SC-09 / SC-15 は OPEN。

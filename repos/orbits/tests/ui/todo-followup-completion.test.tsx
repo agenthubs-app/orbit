@@ -15,7 +15,7 @@ test.before(async () => {
     import { applyRelationshipTaskCompletion } from "./features/connections/lifecycle/transition";
     const at = "2026-10-18T00:00:00.000Z";
     const first = { actorId: "a", connectionId: "c", contactId: "contact", taskId: "first", title: "First remains open", status: "open", purpose: "follow_up", dueAt: at, version: 1, createdAt: at, updatedAt: at };
-    window.followup = { calls: [], failNote: false, failComplete: false, wrongMapping: false, holdResolver: false, resolverWaiting: false, account: "a",
+    window.followup = { calls: [], failNote: false, failComplete: false, wrongMapping: false, holdResolver: false, resolverWaiting: false, account: "a", plainOpen: true,
       snapshot: { connection: { actorId: "a", connectionId: "c", contactId: "contact", stage: "needs_follow_up", activeGoal: null, version: 1, createdAt: at, updatedAt: at }, tasks: [first, { ...first, taskId: "second", title: "Selected second follow-up" }] } };
     const state = window.followup;
     window.fetch = async (url, init = {}) => {
@@ -24,8 +24,14 @@ test.before(async () => {
       if (state.account !== "a") return Response.json({ success: false }, { status: 401 });
       if (url.startsWith("/api/todo/page")) {
         const rows = state.snapshot.tasks.filter(task => task.status === "open");
-        return Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", timeZone: "UTC", counts: { ...demoTodoPage.counts, followups: rows.length, overdue: rows.length },
-          followups: { next: {}, items: rows.map(task => ({ key: "relationship_task:"+task.taskId, kind: "lifecycle", source: "relationship_task", sourceId: task.taskId, createdAt: at, status: "open", taskId: task.taskId, contactId: "contact", titlePreview: task.title, dueAt: at, overdue: true })) } } });
+        const plain = state.plainOpen ? [{ key: "task:plain", kind: "task", source: "task", sourceId: "plain", createdAt: at, status: "open", taskId: "plain", titlePreview: "Plain task", dueAt: at, overdue: true }] : [];
+        return Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", timeZone: "UTC", counts: { ...demoTodoPage.counts, followups: rows.length + plain.length, overdue: rows.length + plain.length },
+          followups: { next: {}, items: [...plain, ...rows.map(task => ({ key: "relationship_task:"+task.taskId, kind: "lifecycle", source: "relationship_task", sourceId: task.taskId, createdAt: at, status: "open", taskId: task.taskId, contactId: "contact", titlePreview: task.title, dueAt: at, overdue: true }))] } } });
+      }
+      if (url === "/api/tasks/plain" && init.method === "PATCH") {
+        if (body.action !== "complete") throw Error("Unexpected task action");
+        state.plainOpen = false;
+        return Response.json({ success: true, data: { task: { id: "plain", title: "Plain task", status: "completed", category: "relationship", priority: "normal", updatedAt: at } } });
       }
       if (url.endsWith("/resolve")) {
         if (state.holdResolver) { state.resolverWaiting = true; await new Promise(resolve => { state.releaseResolver = resolve; }); }
@@ -75,7 +81,7 @@ test("functional browser fixture provides secure-context UUID generation", async
 test("actual Todo row completes the addressed second follow-up, then refreshes without changing the first", async t => {
   const page = await open(browser, code, { origin: "https://orbit.fixture.test/" });
   t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
-  await page.getByRole("button", { name: /Selected second follow-up/ }).click();
+  await page.getByRole("checkbox", { name: "Selected second follow-upを完了" }).click();
   await selectActive(page);
   await page.getByRole("button", { name: "完了して次へ", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "detached" });
@@ -84,6 +90,18 @@ test("actual Todo row completes the addressed second follow-up, then refreshes w
   assert.equal(state.snapshot.tasks.find((row: any) => row.taskId === "first").status, "open");
   assert.equal(state.snapshot.tasks.find((row: any) => row.taskId === "second").status, "completed");
   assert.deepEqual(state.calls.filter((row: any) => row.method === "POST").map((row: any) => row.body.taskId), ["second"]);
+  assert.equal(state.calls.filter((row: any) => row.url.startsWith("/api/todo/page")).length, 2);
+});
+
+test("plain follow-up checkbox completes its task and refreshes without opening the lifecycle dialog", async t => {
+  const page = await open(browser, code, { origin: "https://orbit.fixture.test/" });
+  t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
+  await page.getByRole("checkbox", { name: "Plain taskを完了" }).click();
+  await page.getByRole("checkbox", { name: "Plain taskを完了" }).waitFor({ state: "detached" });
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  const state = await page.evaluate(() => ({ calls: (window as any).followup.calls, plainOpen: (window as any).followup.plainOpen }));
+  assert.equal(state.plainOpen, false);
+  assert.deepEqual(state.calls.filter((row: any) => row.method === "PATCH").map((row: any) => [row.url, row.body.action]), [["/api/tasks/plain", "complete"]]);
   assert.equal(state.calls.filter((row: any) => row.url.startsWith("/api/todo/page")).length, 2);
 });
 
