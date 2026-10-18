@@ -600,3 +600,7 @@ SC-02 の runtime 根因・回帰証拠を後続の R20a 完了確認時に参�
 C 線 R18b Web 全量で `web personal client requests the editable collection rather than the legacy aggregate` が新たに失敗し、D 線で単独再現した。テストの予定日時が `2026-09-17T00:00:00Z` に固定されていた一方、Web client の `personalScheduleWindow()` は実行日の前 31 日から検索するため、2026-10-19 には予定が窓外になり `[]` が返った。製品の検索窓や actor 検証を変えず、本テストだけで現在時刻を一度捕捉して翌日の予定を作り、service clock と legacy projection に同じ日時を渡した。変更前は対象ファイル 9/10（当該 1 件失敗）、変更後は 10/10、`TZ=America/Los_Angeles` でも 10/10。隣接 client / route 19/19、Web typecheck / lint exit 0、`git diff --check` exit 0。
 
 同じ D tree の全量 `_evidence-d/R20a/run-01/d-web-full-after-window-test-fix.log` は **7,790 tests / 6,717 pass / 39 fail / 0 cancelled / 1,034 skip、exit 1**。修正対象は全量中 pass。前回有効な `d-web-full-stale-read-fix.log` の 40 件と失敗名を比較すると新規 0 件、旧「手入力…元に戻す」だけ今回は再現せず、その他 39 件は同名。従ってこの修正は時間経過で崩れるテスト fixture を直した局所結果であり、R20a 全量・SC-10・画面門禁の合格ではない。C tree にはまだ未統合で、C 全量の 33 件目を消した証拠にもならない。
+
+## 2026-10-19　面談提案 Sheet の現行 browser 回帰（SC-11 は未収束）
+
+clean D `f7dc2c118` の現行ソースで、共有重タスク枠を通して `tests/meeting-proposal-browser.test.tsx` を再実行し、**8/8 pass / 0 fail / 0 skip、exit 0**。利用不可 authority、initial / reschedule の close→reopen と同 key retry、接続復帰後の同 key retry、独立 readback 不一致、actor / server 切替時の旧送信 abort と private state 破棄を含む。App `npm run typecheck` も exit 0。上記「八件未実行」は当時の記録であり、この再実行により現在の browser fixture 範囲では解消した。ただし fixture は React Native Web と替身 fetch であり、実 iOS simulator の面談操作、実 API / PostgreSQL readback、画板 pixel、全量 suite は未検証。SC-11 の完成判定は引き続き OPEN とする。
