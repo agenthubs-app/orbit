@@ -13145,6 +13145,20 @@
         "MyEventStatus",
         "MyEventsRange",
         "MyEventsResponse",
+        "NetworkAnalysisBucket",
+        "NetworkAnalysisDimension",
+        "NetworkAnalysisDistribution",
+        "NetworkAnalysisGap",
+        "NetworkAnalysisInsight",
+        "NetworkAnalysisInsightKind",
+        "NetworkAnalysisLock",
+        "NetworkAnalysisOpportunity",
+        "NetworkAnalysisOpportunityKind",
+        "NetworkAnalysisPeopleDTO",
+        "NetworkAnalysisPeopleSort",
+        "NetworkAnalysisPersonRef",
+        "NetworkAnalysisPersonRow",
+        "NetworkAnalysisViewDTO",
         "NoteContract",
         "NoteDetailContract",
         "NoteTaskCardContract",
@@ -14279,6 +14293,389 @@
           "optional": false,
           "kind": "text",
           "type": "'undone'"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisDimension": {
+      "kind": "enum",
+      "values": [
+        "'industry'",
+        "'met'",
+        "'opportunity'",
+        "'region'",
+        "'seniority'"
+      ]
+    },
+    "network-analysis-view.ts::NetworkAnalysisBucket": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisDistribution": {
+      "kind": "object",
+      "members": {
+        "dimension": {
+          "optional": false,
+          "kind": "text",
+          "type": "'industry' | 'met' | 'seniority' | 'region'"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "buckets": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisBucket[]"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisGap": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "needId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "linkedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisOpportunityKind": {
+      "kind": "enum",
+      "values": [
+        "'reconnect'",
+        "'stalled'"
+      ]
+    },
+    "network-analysis-view.ts::NetworkAnalysisPersonRef": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisOpportunity": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisOpportunityKind"
+        },
+        "count": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "preview": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisPersonRef[]"
+        },
+        "averageDays": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisInsightKind": {
+      "kind": "enum",
+      "values": [
+        "'growth'",
+        "'met_path'"
+      ]
+    },
+    "network-analysis-view.ts::NetworkAnalysisInsight": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisInsightKind"
+        },
+        "industryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "sample": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventShare": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "eventRate": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "referralRate": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "months": {
+          "optional": true,
+          "kind": "array",
+          "readonly": false,
+          "element": {
+            "kind": "object",
+            "members": {
+              "month": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "added": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              }
+            }
+          }
+        },
+        "added": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "planNeedTitle": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisLock": {
+      "kind": "alias",
+      "type": "NetworkAnalysisLock"
+    },
+    "network-analysis-view.ts::NetworkAnalysisViewDTO": {
+      "kind": "object",
+      "members": {
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "lock": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisLock"
+        },
+        "structure": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "industries": {
+              "optional": false,
+              "kind": "text",
+              "type": "NetworkAnalysisDistribution"
+            },
+            "seniority": {
+              "optional": false,
+              "kind": "text",
+              "type": "NetworkAnalysisDistribution"
+            },
+            "regions": {
+              "optional": false,
+              "kind": "text",
+              "type": "NetworkAnalysisDistribution"
+            },
+            "mets": {
+              "optional": false,
+              "kind": "text",
+              "type": "NetworkAnalysisDistribution"
+            },
+            "gaps": {
+              "optional": false,
+              "kind": "text",
+              "type": "NetworkAnalysisGap[] | null"
+            },
+            "hasPlan": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "opportunities": {
+          "optional": true,
+          "kind": "text",
+          "type": "NetworkAnalysisOpportunity[]"
+        },
+        "insights": {
+          "optional": true,
+          "kind": "text",
+          "type": "NetworkAnalysisInsight[]"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisPeopleSort": {
+      "kind": "enum",
+      "values": [
+        "'goal'",
+        "'name'",
+        "'recent'"
+      ]
+    },
+    "network-analysis-view.ts::NetworkAnalysisPersonRow": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "name": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "organization": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "role": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "stage": {
+          "optional": false,
+          "kind": "text",
+          "type": "'active' | 'nurture'"
+        },
+        "needsFollowUp": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "goalRelated": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "nextActionPreview": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "primaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "lastInteractionAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisPeopleDTO": {
+      "kind": "object",
+      "members": {
+        "asOf": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "dimension": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisDimension"
+        },
+        "bucketId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "total": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "stages": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "active": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "nurture": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        },
+        "sort": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisPeopleSort"
+        },
+        "sorts": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisPeopleSort[]"
+        },
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "NetworkAnalysisPersonRow[]"
+        },
+        "nextCursor": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
