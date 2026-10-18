@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { InviteQr } from "../add/invite/InviteQr";
-import { Avatar, Icon, Modal, useToast } from "../ui";
+import { Avatar, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi, type HostPeopleQuery } from "./host-api";
 import { consoleHref, hostTranslator, type HostT } from "./host-model";
 import s from "./host.module.css";
@@ -116,11 +116,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
     <>
       <div className={`${s.card} ${m.span9}`} data-host-people={query.bucket}>
         <div className={`${s.row} ${s.between} ${m.peopleHead}`}>
-          <div className={s.seg} role="tablist" aria-label={t("pBuckets")}>
-            {BUCKETS.map((bucket) => (
-              <button key={bucket} type="button" role="tab" aria-selected={bucket === query.bucket} className={`btn ${s.segBtn} ${bucket === query.bucket ? s.segOn : ""}`} onClick={() => props.onBucket?.(bucket)}>{t(BUCKET_LABEL[bucket], { n: data.counts[bucket] })}</button>
-            ))}
-          </div>
+          <Segmented variant="seg" label={t("pBuckets")} value={query.bucket} onChange={(bucket) => props.onBucket?.(bucket)} segments={BUCKETS.map((bucket) => ({ key: bucket, label: t(BUCKET_LABEL[bucket], { n: data.counts[bucket] }) }))} />
           <div className={s.row} style={{ gap: 8 }}>
             <label className={`${m.input} ${m.searchSm}`}><Icon name="search" size={16} /><input type="search" aria-label={t("pSearch")} placeholder={t("pSearchPh")} defaultValue={query.q} onChange={(event) => props.onSearch?.(event.target.value)} /></label>
             <button type="button" className={`btn ${s.btn} ${s.sm} ${query.incomplete ? m.filterOn : ""}`} aria-pressed={query.incomplete} onClick={props.onIncomplete}><Icon name="filter" size={16} />{t("pIncomplete")}</button>

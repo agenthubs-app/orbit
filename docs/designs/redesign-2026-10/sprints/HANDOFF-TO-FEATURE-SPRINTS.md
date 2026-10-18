@@ -306,6 +306,15 @@
 | R30-05 | 意味検索 | **lite 已打开（2026-10-17，决定表 §50）**：静态同义词表，live `semantic.available=true`，不调 AI | 用户在 Vercel 设好 OpenAI key 后：按 DESIGN §5.2 接 embedding（provider、`search-embeddings` 迁移、账本用途 `search_semantic`），lite 留作无 key 退路；补 #58 / #55 live 回归 | DESIGN §5.1b / §5.2；决定表 §50 |
 | R30-06 | 设定里的「意味検索」开关界面（R18） | 两端已读本机偏好 `orbit.search.semantic`（"off" → 送 `semantic=0`、底部 OFF、说明行隐藏）；没有设定页画板，开关界面未做 | R18 设定页加开关（写同一个键：Web localStorage / App AsyncStorage），先补画板 | DESIGN §2.1；决定表 §50 |
 
+## R31b Web 组件库像素轮（乙，2026-10-18）
+
+**通知甲（RD-30）**：以下改动落在甲名下的页面，只换组件 / 改调用参数，不改页面布局；页面自身的剩余差异写在 R31b REPORT「交还」。
+- 计划：`PlanOverview` 前提を見る 弹窗改用 Modal `icon`（📌 teal）+ `subtitle` + `titleSize={18}`；`PlanTypeDialogs` 記録 弹窗 `size={380}` + `subtitle`，スキップ確認 `icon`（🧠 apricot）+ `closable={false}`，介绍 / 面談を提案 抽屉 `titleSize={18}`；`BackgroundBlocks` メンバーを追加 的手写分段换成 `Segmented variant="seg" wide`。
+- 活动：`EventsScreen` 参加コード 弹窗 `size={380}`、副标题改为正文第一行（b12 #320 标题行下 4px）；活动页签手写分段 → `Segmented variant="seg"`；`EventDetail` 手写 `.utabs` → `UnderlineTabs`；`VenuePage` 会場页签 → `Segmented variant="seg"`（新文案键 `venueTabs` 作 tablist 名）。
+- 主办：`HostCohosts` 改用组件 Drawer 的标题 + 副标题 + 白色圆底 ✕（520、内边距 22；`HostCohostsView` 加 `head={false}`，b6 #20 画板按 RD-27 改 520）；`HostConsole` 手写 `.htabs` → `UnderlineTabs variant="host"`；`HostCenter` / `HostPeople` / `HostMatching` / `HostSetup` 手写分段 → `Segmented variant="seg"`（`HostCenter` 新文案键 `fLabel` 作 tablist 名）。
+- ConfirmDialog 全站改 Web 版式（01-system ②：图标块在标题左、无 ✕、Esc 提示）：主办 HostMatching / HostSetup / HostConsole、加人 InviteCodeModal 的确认框随之变化。
+- 未换（交还）：`HostConsole` レポート「すべて / 自分の視点」是链接分段（Segmented 没有 href）；`SearchPanel` 类型 chip 是带 `aria-controls` 的 tablist（CategoryTabs 是 radiogroup，换了语义会变）。
+
 ## 合回前与真机（不归某个功能 Sprint，列在 README 合回前清单）
 
 staging `VERCEL_ENV` / 展示页开关；真机触感、真推送、Dynamic Type、相机权限被拒态、BottomSheet 叠 ActionSheet；本地与 staging 配 `ORBIT_SYNC_CURSOR_SECRET`；R15 生产迁移与 `ORBIT_INVITE_RATE_SECRET` / `ORBIT_PUBLIC_ORIGIN` / 通用链接；R16 `expo-contacts` 与通讯录权限文案的 TestFlight；`OrbitTopNav` 登录后分支清理；App 底栏转场（D07 已定照 iOS 惯例）。详见 [README「合回前总验收」](README.md#合回-chat-agent-前总验收r09-写入全部打勾才合回rd-03--rd-24) 和各 REPORT。

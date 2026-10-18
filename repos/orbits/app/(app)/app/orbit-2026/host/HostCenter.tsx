@@ -10,7 +10,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { HostCenterEventRow, HostCenterFilter, HostCenterResponse, HostNextStep, HostTodoItem } from "../../../../../shared/contract/host-events";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
-import { Icon, Modal, Orbit2026Scope, ToastProvider } from "../ui";
+import { Icon, Modal, Orbit2026Scope, Segmented, ToastProvider } from "../ui";
 import { hostApi } from "./host-api";
 import { CREATE_HREF, JOIN_HREF, checkInHref, consoleHref, eventTone, fillPercent, hostDateDay, hostDateLong, hostTranslator, rowNote, statusChip, type HostT, type HostTone } from "./host-model";
 import s from "./host.module.css";
@@ -224,13 +224,8 @@ export function HostCenterView({ data, filter, query, language, newestFirst = fa
             ) : null}
             {!inactiveView ? <TodoStrip items={data.todo} t={t} /> : null}
             <div className={`${s.span12} ${s.row} ${inactiveView ? s.toolbarInactive : `${s.between} ${s.toolbar}`}`}>
-              <div className={s.seg} role="tablist" data-host-filters="">
-                {tabs.map((key) => (
-                  <button key={key} type="button" role="tab" aria-selected={filter === key} className={`btn ${s.segBtn} ${filter === key ? s.segOn : ""}`} onClick={() => onFilter?.(key)}>
-                    {inactiveView ? t(FILTER_LABEL[key]) : `${t(FILTER_LABEL[key])} ${data.filterCounts[key]}`}
-                  </button>
-                ))}
-              </div>
+              <Segmented variant="seg" label={t("fLabel")} data-host-filters="" value={filter} onChange={(key) => onFilter?.(key)}
+                segments={tabs.map((key) => ({ key, label: inactiveView ? t(FILTER_LABEL[key]) : `${t(FILTER_LABEL[key])} ${data.filterCounts[key]}` }))} />
               {!inactiveView ? (
                 <div className={s.row} style={{ gap: 8 }}>
                   <label className={s.search}><Icon name="search" size={16} /><input type="search" value={query} placeholder={t("searchPh")} aria-label={t("searchLabel")} onChange={(ev) => onQuery?.(ev.target.value)} /></label>

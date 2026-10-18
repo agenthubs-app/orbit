@@ -8,11 +8,8 @@
 .coverBody { padding: 18px 20px; }
 .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .facts b { font-size: var(--fs-row); }
-.utabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); margin: 14px 0 0; }
-.utabs > button.tab { padding: 9px 0; height: auto; min-height: 0; border: 0; background: transparent; font-weight: var(--fw-bold); color: var(--ink-3); font-size: var(--fs-body-sm); position: relative; white-space: nowrap; cursor: pointer; }
-.utabs > button.tab.on { color: var(--ink); }
-.utabs > button.tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px; border-radius: var(--r-hair); background: var(--ink); }
-.utabs small { font-family: var(--font-num); color: var(--ink-3); margin-left: 3px; }
+/* R31b：下线页签换成组件 UnderlineTabs（b2 .utabs），这里只留外边距。 */
+.utabs { margin: 14px 0 0; }
 .intro { line-height: var(--lh-letter); margin-top: 12px; }
 .scoreCard { text-align: center; }
 .scoreRing { width: 120px; margin: 12px auto 8px; }

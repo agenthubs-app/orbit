@@ -333,6 +333,7 @@ export const eventsJourneyCopy = {
   liveTitle: { ja: "会場モード", zh: "会场模式", en: "Venue mode", kind: "pageTitle" },
   checkInQr: { ja: "受付 QR", zh: "签到二维码", en: "Check-in QR", kind: "label" },
   segNow: { ja: "現場", zh: "现场", en: "Now", kind: "tab" },
+  venueTabs: { ja: "会場の表示", zh: "会场视图", en: "Venue view", kind: "label" },
   segRecs: { ja: "おすすめ", zh: "推荐", en: "For you", kind: "tab" },
   segGroups: { ja: "グループ", zh: "分组", en: "Groups", kind: "tab" },
   segMap: { ja: "マップ", zh: "关系图", en: "Map", kind: "tab" },

@@ -142,11 +142,8 @@
 .headRight { display: flex; gap: 8px; align-items: center; }
 .tabs { margin: -6px 0 18px; }
 /* b6 / b12 の下線タブ（.htabs） */
-.htabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -8px 0 20px; }
-.htab { padding: 10px 16px 12px; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: var(--lh-body); color: var(--ink-3); position: relative; text-decoration: none; white-space: nowrap; }
-.htabOn { color: var(--ink); }
-.htabOn::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: var(--r-bar); background: var(--plum-700); }
-.cntB { font-size: var(--fs-tiny); padding: 1px 6px; border-radius: var(--r-pill); background: var(--coral-soft); color: var(--coral); margin-left: 4px; }
+/* R31b：样式在组件 UnderlineTabs（variant="host"）里，这里只留外边距。 */
+.htabs { margin: -8px 0 20px; }
 
 /* 申込の推移（kit .bars） */
 .bars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }

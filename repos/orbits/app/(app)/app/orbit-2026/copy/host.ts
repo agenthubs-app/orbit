@@ -68,6 +68,7 @@ export const hostCopy = {
 
   // 一覧
   fAll: { ja: "すべて", zh: "全部", en: "All", kind: "chip" },
+  fLabel: { ja: "表示するイベント", zh: "显示的活动", en: "Events to show", kind: "label" },
   fUpcoming: { ja: "開催前", zh: "未开始", en: "Upcoming", kind: "chip" },
   fLive: { ja: "開催中", zh: "进行中", en: "Live", kind: "chip" },
   fEnded: { ja: "終了", zh: "已结束", en: "Ended", kind: "chip" },

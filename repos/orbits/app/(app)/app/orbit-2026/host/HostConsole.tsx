@@ -13,7 +13,7 @@ import type { HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { HostNoticePreview } from "../../../../../shared/contract/host-notices";
 import { ShellPage } from "../shell/slots";
-import { ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { ConfirmDialog, Icon, Modal, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
 import { failureOf, hostApi, hostEventApi, type HostApiFailure, type HostApiResult } from "./host-api";
 import { CancelEventConfirm, PublishEventConfirm } from "./HostEventForm";
 import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
@@ -274,13 +274,9 @@ export function HostConsoleView({ data, tab, language, now = new Date(), busy = 
   return (
     <>
       <ShellPage title={event.title} subtitle={consoleSubtitle(event, language, t, now, tab, formPublished)} left={back} right={right} rightRail={false} />
-      <div className={s.htabs} role="tablist" data-host-tabs="underline">
-        {HOST_CONSOLE_TABS.map((key) => {
-          const href = key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key);
-          const badge = key === "people" && tab !== "people" && data.pendingReview > 0;
-          return <a key={key} role="tab" aria-selected={tab === key} className={`${s.htab} ${tab === key ? s.htabOn : ""}`} href={href}>{t(TAB_LABEL[key])}{badge ? <span className={s.cntB}>{data.pendingReview}</span> : null}</a>;
-        })}
-      </div>
+      {/* R31b：运营台下线页签换成组件 UnderlineTabs（host 变体 = b6 / b12 .htabs）；外边距仍由 .htabs 给。 */}
+      <UnderlineTabs variant="host" className={s.htabs} data-host-tabs="underline" value={tab}
+        tabs={HOST_CONSOLE_TABS.map((key) => ({ key, label: t(TAB_LABEL[key]), href: key === "checkin" ? checkInHref(event.eventId) : consoleHref(event.eventId, key), badge: key === "people" && tab !== "people" && data.pendingReview > 0 ? data.pendingReview : undefined }))} />
       <div className={s.wgrid} data-host-console={tab}>
         <StatusBanner event={event} t={t} busy={busy} onPublish={() => onPublish?.()} onArchive={(archived) => onArchive?.(archived)} />
         {tab === "overview" ? <HostOverviewView data={data} t={t} /> : content ?? <HostTabPlaceholder tab={tab} t={t} />}

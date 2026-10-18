@@ -43,6 +43,8 @@ const callName = (name: string) => name.trim().split(/[\s　]+/u)[0] ?? name;
 
 export type HostCohostsViewProps = {
   data: HostCohostsResponse;
+  /** R31b: false when the Drawer draws the head (title + subtitle + ✕). */
+  head?: boolean;
   t: HostT;
   busy?: boolean;
   inviteRole: HostCohostRole;
@@ -118,10 +120,12 @@ export function HostCohostsView(props: HostCohostsViewProps) {
   const tones = new Map(data.members.map((member) => [member.actorId, member.role === "owner" ? "a_c1" : TONES[index++ % TONES.length]!]));
   return (
     <div data-host-cohosts="">
-      <div className={`${s.row} ${m.drawerHead}`}>
-        <div><div className={m.drawerTitle}>{t("coTitle")}</div><div className={s.lbl}>{t("coSub", { event: data.eventTitle, n: data.members.length })}</div></div>
-        <button type="button" className={`btn ${m.rbtn}`} aria-label={t("close")} onClick={props.onClose}><Icon name="x" size={20} /></button>
-      </div>
+      {props.head === false ? null : (
+        <div className={`${s.row} ${m.drawerHead}`}>
+          <div><div className={m.drawerTitle}>{t("coTitle")}</div><div className={s.lbl}>{t("coSub", { event: data.eventTitle, n: data.members.length })}</div></div>
+          <button type="button" className={`btn ${m.rbtn}`} aria-label={t("close")} onClick={props.onClose}><Icon name="x" size={20} /></button>
+        </div>
+      )}
       {data.canManage ? (
         <div className={`${s.card} ${m.coCard}`} data-cohost-invite="">
           <b>{t("coInvite")}</b>
@@ -243,10 +247,11 @@ export function HostCohostsDrawer({ eventId, language, onClose, onChanged }: { e
   };
 
   return (
-    <Drawer open onClose={onClose} title={t("coTitle")} size="md" bare>
+    // R31b（R17-17 / RD-27）：共同運営者 = 组件 Drawer 的标题 + 副标题 + 白色圆底 ✕，520 宽、内边距 22（b6 #20）。
+    <Drawer open onClose={onClose} title={t("coTitle")} subtitle={data ? t("coSub", { event: data.eventTitle, n: data.members.length }) : undefined} size="md">
       <div>
         {data ? (
-          <HostCohostsView data={data} t={t} busy={busy} inviteRole={inviteRole} target={target} issued={issued} edit={edit} reason={reason}
+          <HostCohostsView head={false} data={data} t={t} busy={busy} inviteRole={inviteRole} target={target} issued={issued} edit={edit} reason={reason}
             onClose={onClose} onTarget={setTarget} onInviteRole={setInviteRole} onInvite={() => void invite()} onCopy={(text) => void copy(text)} onRevoke={(inviteId) => void revoke(inviteId)}
             onEdit={(next) => { setEdit(next); setReason(""); }} onReason={(value) => setReason(value.slice(0, REASON_MAX))} onSave={() => void save()} />
         ) : null}

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 
 import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion, HostSetupResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { ConfirmDialog, Icon, useToast } from "../ui";
+import { ConfirmDialog, Icon, Segmented, useToast } from "../ui";
 import { failureOf, hostApi } from "./host-api";
 import { eventTone, hostDateDay, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import {
@@ -91,9 +91,7 @@ function Preview({ data, draft, t, language, mode, onMode }: { data: HostSetupRe
     <div className={u.pv} data-host-setup-preview={mode}>
       <div className={`${s.row} ${s.between} ${u.pvHead}`}>
         <b>{t("suPreview")}</b>
-        <div className={s.seg} role="tablist" aria-label={t("suPreview")}>
-          {(["phone", "pc"] as const).map((key) => <button key={key} type="button" role="tab" aria-selected={mode === key} className={`btn ${s.segBtn} ${mode === key ? s.segOn : ""}`} onClick={() => onMode?.(key)}>{t(key === "phone" ? "pvPhone" : "pvPc")}</button>)}
-        </div>
+        <Segmented<"phone" | "pc"> variant="seg" label={t("suPreview")} value={mode} onChange={(key) => onMode?.(key)} segments={(["phone", "pc"] as const).map((key) => ({ key, label: t(key === "phone" ? "pvPhone" : "pvPc") }))} />
       </div>
       <div className={`${u.pvBody} ${mode === "pc" ? u.pvPc : ""}`}>
         <span className={`${s.emo} ${s[`e_${eventTone(event.emoji, event.eventId)}`]}`}>{event.emoji ?? "📅"}</span>

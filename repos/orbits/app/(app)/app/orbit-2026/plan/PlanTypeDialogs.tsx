@@ -96,7 +96,7 @@ export function RecordModal({ open, detail, initialMode, initialContactId, match
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title={t(c.recordTitle)} description={`${detail.shortLabel} · ${detail.roleSituation}`} size={420}
+    <Modal open={open} onClose={onClose} title={t(c.recordTitle)} subtitle={`${detail.shortLabel} · ${detail.roleSituation}`} size={380}
       actions={<><Button label={copy.action.cancel} variant="secondary" onClick={onClose} />{showMatches && createFailed
         ? <Button label={t(c.recordAnonymous)} variant="primary" disabled={busy} onClick={() => saveRecord(withAt({ kind: "anonymous" as const }))} data-plan-record-anonymous="" />
         : <Button label={t(c.recordSubmit)} variant="primary" disabled={!canSubmit} loading={busy} onClick={submit} />}</>}>
@@ -174,7 +174,7 @@ export function SkipDialog({ open, label, points, busy, t, onCancel, onConfirm }
   // Modal focuses `initialFocus` after its own first-focusable rule: point it at the primary button.
   const primary = useRef<{ readonly current: HTMLElement | null }>({ get current() { return wrap.current?.querySelector("button") ?? null; } }).current;
   return (
-    <Modal open={open} onClose={onCancel} title={t(c.skipTitle)} description={t(c.skipBodyV2, { label, points })} size={480} initialFocus={primary}
+    <Modal open={open} onClose={onCancel} title={t(c.skipTitle)} description={t(c.skipBodyV2, { label, points })} icon={<MacTile emoji="🧠" tone="apricot" />} closable={false} size={480} initialFocus={primary}
       hint={<><Kbd>Esc</Kbd> {copy.action.cancel}　<Kbd>↵</Kbd> {t(c.skipConfirm)}</>}
       actions={<><Button label={copy.action.cancel} variant="secondary" onClick={onCancel} /><span ref={wrap} data-plan-skip-confirm=""><Button label={t(c.skipConfirm)} variant="primary" loading={busy} onClick={onConfirm} /></span></>} />
   );
@@ -213,7 +213,7 @@ export function IntroDraftDrawer({ draft, typeLabel, roleSituation, t, onClose }
   const body = draft ? (tone === "formal" ? draft.body : draft.shortBody ?? t(c.introShortBody, { name: draft.viaName, role: roleSituation })) : "";
   const subject = draft ? (tone === "formal" ? draft.subject : draft.shortSubject ?? t(c.introShortSubject)) : "";
   return (
-    <Drawer open={Boolean(draft)} onClose={onClose} title={t(c.introTitle)} size="md">
+    <Drawer open={Boolean(draft)} onClose={onClose} title={t(c.introTitle)} titleSize={18} size="md">
       {draft ? (
         <div data-plan-intro-draft="">
           <div className={k.lbl}>{t(c.introVia, { label: typeLabel, name: draft.viaName })}</div>
@@ -259,7 +259,7 @@ export function ProposalDrawer({ open, people, t, onClose, onPropose }: {
   const ready = isoSlots.every((value): value is string => Boolean(value));
   const set = (index: number, part: "date" | "time", value: string) => setSlots(slots.map((slot, at) => (at === index ? { ...slot, [part]: value } : slot)));
   return (
-    <Drawer open={open} onClose={onClose} title={t(c.proposalTitle)} size="md">
+    <Drawer open={open} onClose={onClose} title={t(c.proposalTitle)} titleSize={18} size="md">
       <div data-plan-proposal="">
         <div className={k.lbl} style={{ display: "block" }}>{t(c.proposalSlots)}</div>
         {slots.map((slot, index) => (

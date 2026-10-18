@@ -8,7 +8,7 @@ import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../.
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventJoinCancelResultSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Icon, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { feeText, journeyTranslator, rowTone, toneClass, type JourneyT } from "./DiscoverTab";
 import { CancelDialog } from "./CancelDialog";
@@ -266,13 +266,8 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
             <div><div className={styles.lbl}>{t("fFee")}</div><b>{feeText(data.priceYen, t) ?? "—"}</b></div>
             <div><div className={styles.lbl}>{t("fCapacity")}</div><b>{capacity}</b></div>
           </div>
-          <div className={x.utabs} role="tablist">
-            {(["intro", "agenda", "host", "people"] as const).map((key) => (
-              <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.tab} ${tab === key ? x.on : ""}`} onClick={() => choose(key)}>
-                {t(key === "intro" ? "tabIntro" : key === "agenda" ? "tabAgenda" : key === "host" ? "tabHost" : "tabPeople")}{key === "people" ? <small>{data.attendeeCounts.all}</small> : null}
-              </button>
-            ))}
-          </div>
+          <UnderlineTabs className={x.utabs} value={tab} onChange={choose}
+            tabs={(["intro", "agenda", "host", "people"] as const).map((key) => ({ key, label: t(key === "intro" ? "tabIntro" : key === "agenda" ? "tabAgenda" : key === "host" ? "tabHost" : "tabPeople"), count: key === "people" ? data.attendeeCounts.all : undefined }))} />
           <div className={`${styles.sub} ${x.intro}`}>{data.description}</div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 
 import type { HostMatchingConditions, HostMatchingMember, HostMatchingMove, HostMatchingResponse, HostMatchingTable } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { Avatar, ConfirmDialog, ContextMenu, Icon, Modal, useToast } from "../ui";
+import { Avatar, ConfirmDialog, ContextMenu, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi } from "./host-api";
 import { consoleHref, hostTime, hostTranslator, type HostT } from "./host-model";
 import { matchingSampleTables } from "./matching-sample";
@@ -308,13 +308,8 @@ export function HostMatchingView(props: HostMatchingViewProps) {
     <>
       <div className={`${s.card} ${s.span12} ${m.barCard}`} data-host-matching={data.state}>
         <div className={`${s.row} ${m.barRow}`}>
-          <div className={s.seg} role="tablist" aria-label={t("mRoundsLabel")}>
-            {rounds.map((round) => (
-              <button key={round.index} type="button" role="tab" aria-selected={round.index === data.round} className={`btn ${s.segBtn} ${round.index === data.round ? s.segOn : ""}`} onClick={() => props.onRound?.(round.index)}>
-                {round.startsAt ? t("mRound", { from: hostTime(round.startsAt), n: round.index, to: hostTime(round.endsAt) }) : t("mRoundShort", { n: round.index })}
-              </button>
-            ))}
-          </div>
+          <Segmented variant="seg" label={t("mRoundsLabel")} value={String(data.round)} onChange={(key) => props.onRound?.(Number(key))}
+            segments={rounds.map((round) => ({ key: String(round.index), label: round.startsAt ? t("mRound", { from: hostTime(round.startsAt), n: round.index, to: hostTime(round.endsAt) }) : t("mRoundShort", { n: round.index }) }))} />
           <span className={`${s.chip} ${published ? s.c_teal : s.c_apricot}`}>{published ? t("mPublishedChip") : t("mDraftChip")}</span>
           <span className={s.lbl}>{t("mStats", { p: data.participantCount, size: tableSizeText(data.tableSizeMin, data.tableSizeMax), t: data.tableCount })}</span>
           <div className={`${s.row} ${m.barActs}`}>

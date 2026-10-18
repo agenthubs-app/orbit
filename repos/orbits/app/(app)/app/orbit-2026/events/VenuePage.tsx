@@ -10,7 +10,7 @@ import type { EventVenuePerson, EventVenueResponse } from "../../../../../shared
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { eventVenueMemoResultSchema } from "../../../../../shared/api-schema/event-venue";
 import { ShellPage } from "../shell/slots";
-import { Drawer, Icon, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Drawer, Icon, Orbit2026Scope, Segmented, ToastProvider, useToast } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { WEEK, parts, useWide } from "./EventDetail";
@@ -319,9 +319,7 @@ function VenueInner({ eventId, language }: { eventId: string; language: OrbitLan
       {!wide && rail ? <Drawer open={drawer} onClose={() => setDrawer(false)} title={t("detailTitle")} size="sm">{rail}</Drawer> : null}
       <div className={styles.wgrid} data-venue={eventId}>
         <div className={styles.span12}>
-          <div className={styles.seg} role="tablist">
-            {TABS.map((item) => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={`btn ${styles.segBtn} ${tab === item.key ? styles.segOn : ""}`} onClick={() => setTab(item.key)}>{t(item.label)}</button>)}
-          </div>
+          <Segmented<Tab> variant="seg" label={t("venueTabs")} value={tab} onChange={setTab} segments={TABS.map((item) => ({ key: item.key, label: t(item.label) }))} />
         </div>
         {tab === "now" ? (
           <>

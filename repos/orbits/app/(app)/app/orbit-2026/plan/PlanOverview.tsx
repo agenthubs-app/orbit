@@ -834,7 +834,7 @@ function PremiseModal({ open, detail, t, language, onClose, onChange }: { open: 
   const left = detail.quota.reviewLeftThisMonth;
   const std = useStandardCopy();
   return (
-    <Modal open={open} onClose={onClose} title={t(c.premiseTitle)} description={t(c.premiseMeta, { date, n: detail.premise.length })} size={560}
+    <Modal open={open} onClose={onClose} title={t(c.premiseTitle)} subtitle={t(c.premiseMeta, { date, n: detail.premise.length })} icon={<MacTile emoji="📌" tone="teal" />} titleSize={18} size={560}
       hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
       actions={<><button type="button" className={`btn ${styles.btn}`} onClick={onClose}>{std.action.close}</button><button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onChange} data-plan-premise-change=""><Icon name="refresh" size={16} />{t(c.premiseChange)}<span className={styles.v22q} style={{ background: "color-mix(in srgb, var(--bg) 18%, transparent)", color: "var(--bg)" }}>{left > 0 ? t(c.reviewLeft, { n: left }) : t(c.reviewUsedUp)}</span></button></>}>
       <div className={styles.premRows} data-plan-premise="">

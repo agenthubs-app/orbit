@@ -12,7 +12,7 @@ import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
-import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, ToastProvider, useStandardCopy, useToast } from "../ui";
+import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { Assessing, FillThree, LoginRequired, NotEventPage, PasteText } from "./AssessFlow";
 import { AssessmentPage, AssessmentRail, ScoreRing, translator, verdictLabel, type Translate } from "./AssessmentDetail";
 import { DiscoverHelpRail, DiscoverRail, DiscoverTab, type DiscoverRailState } from "./DiscoverTab";
@@ -182,13 +182,8 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       : assessedCount >= 3 ? t("subtitle", { assessed: assessedCount, going: upcomingCount, month }) : t("subtitleGoing", { going: upcomingCount, month });
 
   const segmentFor = (full: boolean) => (
-    <div className={`${styles.seg} ${full ? styles.segFull : ""}`} role="tablist" aria-label={t("tabsLabel")} data-events-tabs="">
-      {(["assess", "going", "discover"] as const).map((key) => (
-        <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${styles.segBtn} ${tab === key ? styles.segOn : ""}`} onClick={() => choose(key)}>
-          {key === "assess" ? t("tabAssess") : key === "going" ? (tier === "wide" || upcomingCount === 0 || (tier === "narrow" && tab === "discover") ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount })) : t("tabDiscover")}
-        </button>
-      ))}
-    </div>
+    <Segmented<"assess" | "going" | "discover"> variant="seg" wide={full} label={t("tabsLabel")} data-events-tabs="" value={tab} onChange={choose}
+      segments={(["assess", "going", "discover"] as const).map((key) => ({ key, label: key === "assess" ? t("tabAssess") : key === "going" ? (tier === "wide" || upcomingCount === 0 || (tier === "narrow" && tab === "discover") ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount })) : t("tabDiscover") }))} />
   );
   const segment = segmentFor(false);
   const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
@@ -476,8 +471,10 @@ function ParticipationCodeModal({ open, onClose, t, onCode }: { open: boolean; o
   const std = useStandardCopy();
   // b12 #320 W-R26-31：8 格（32×44）居中 · 「Esc 閉じる」· キャンセル / 開く。
   return (
-    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} description={t("codeDialogSub")} hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
+    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} size={380} hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
       actions={<><button type="button" className={`btn ${styles.btn}`} onClick={onClose}>{std.action.cancel}</button><button type="button" className={`btn ${styles.btn} ${styles.primary}`} disabled={!valid} onClick={() => onCode(code)}>{t("codeNext")}</button></>}>
+      {/* b12 #320：副标题在标题行（17 + ✕ 34）之下 4px（kit .lbl），不在标题块里。 */}
+      <div className={styles.lbl} style={{ marginTop: 4 }}>{t("codeDialogSub")}</div>
       <div className={styles.codeBoxes} data-events-code-input="">
         {Array.from({ length: 9 }, (_, index) => (index === 4
           ? <span key="dash" className={styles.codeDash}>-</span>

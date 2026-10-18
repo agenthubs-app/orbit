@@ -8,7 +8,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { planFlowCopy } from "../copy/plan";
 import type { OrbitCopyEntry } from "../copy/types";
 import { standardCopyFor } from "../copy/standard";
-import { Icon } from "../ui";
+import { Icon, Segmented } from "../ui";
 import { DialogActs, FlowDialog } from "./FlowParts";
 import { planApi, rankCandidates, searchNetwork, type PersonCandidate } from "./plan-api";
 import {
@@ -355,11 +355,8 @@ function AddMemberModal({ open, onClose, intake, t, language, onAddMembers, gaps
         <div className={k.grow}><b className={k.addTitle}>{t(planFlowCopy.addMemberTitle)}</b><div className={k.lbl}>{t(planFlowCopy.addMemberSub)}</div></div>
         <button type="button" className={`btn ${k.lbtn}`} aria-label={std.action.close} onClick={onClose}><Icon name="x" size={16} /></button>
       </div>
-      <div className={`${k.seg} ${k.segFull} ${k.addTabs}`} role="tablist" aria-label={t(planFlowCopy.addMemberTabs)}>
-        {(["network", "manual"] as const).map((key) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${k.segBtn} ${tab === key ? k.segOn : ""}`} onClick={() => setTab(key)}>{t(key === "network" ? planFlowCopy.tabNetwork : planFlowCopy.tabManual)}</button>
-        ))}
-      </div>
+      <Segmented<"network" | "manual"> variant="seg" wide className={k.addTabs} label={t(planFlowCopy.addMemberTabs)} value={tab} onChange={setTab}
+        segments={(["network", "manual"] as const).map((key) => ({ key, label: t(key === "network" ? planFlowCopy.tabNetwork : planFlowCopy.tabManual) }))} />
       {tab === "network" ? (
         <div data-plan-add="network">
           <label className={k.input}><Icon name="search" size={16} /><input aria-label={t(planFlowCopy.searchPlaceholder)} placeholder={t(planFlowCopy.searchPlaceholder)} value={query} onChange={(event) => setQuery(event.target.value)} data-autofocus="" /></label>

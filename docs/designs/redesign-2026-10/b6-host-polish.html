@@ -1342,7 +1342,7 @@ function report(s, view = 'all') {
 }
 
 /* ============ A7 共同運営者 抽屉 ============ */
-const cohostDrawer = `<div class="overlay"></div><div class="drawer" style="width:540px">
+const cohostDrawer = `<div class="overlay"></div><div class="drawer" style="width:520px"><!-- RD-27（用户 2026-10-18）：540 → 520，Web Drawer 只有 520 / 380 两档 -->
   <div class="row between"><div><div style="font-size:20px;font-weight:800">共同運営者</div><div class="lbl">${HE[0].n} · 4名</div></div><button class="rbtn">${ic('x')}</button></div>
   <div class="card" style="margin-top:16px;padding:16px"><b style="font-size:13px">招待する</b><div class="row" style="gap:8px;margin-top:10px"><div class="input" style="flex:1;height:42px">${ic('mail', 'sm')}メールアドレス または Orbit ID</div><div class="seg"><button>管理者</button><button class="on">受付</button><button>閲覧</button></div></div>
     <div class="row" style="margin-top:10px;gap:8px"><span class="lbl">招待リンクは 7日間有効です。Orbit ユーザーにはアプリ内でお知らせします</span><button class="btn sm primary" style="margin-left:auto">招待リンクを発行</button></div></div>
