@@ -123,6 +123,16 @@ test("R21 start shows four direct-send suggestions, an editable composer, and no
   assert.deepEqual(await writes(p), []);
 });
 
+test("R21 start title and composer remain inside a narrow viewport at large text", async t => {
+  const p = await open(t, { width: 320, fontScale: 1.8 });
+  for (const item of [p.getByRole("heading", { name: "iOrbit" }), p.getByRole("heading", { name: "何をお手伝いしましょう？" }), p.getByRole("textbox", { name: "iOrbit に聞く" })]) {
+    const box = await item.boundingBox();
+    assert.ok(box);
+    assert.ok(box.x >= -1 && box.x + box.width <= 321, `control stays inside 320px: ${await item.getAttribute("aria-label") ?? await item.textContent()}`);
+  }
+  assert.deepEqual(await writes(p), []);
+});
+
 test("R21 starter sends one explicit intent even when tapped twice", async t => {
   const p = await open(t);
   await p.getByRole("button", { name: "今天先处理哪些事？" }).waitFor();
