@@ -52,8 +52,9 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [draft, setDraft] = useState("");
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const inShell = useInShell();
-  const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor), JSON.stringify([filter, query.trim(), openCursor, "open"]));
-  const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor), JSON.stringify([filter, query.trim(), doneCursor, "completed"]));
+  const context = { today: date, timeZone };
+  const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor, context), JSON.stringify([filter, query.trim(), openCursor, "open", date, timeZone]));
+  const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor, context), JSON.stringify([filter, query.trim(), doneCursor, "completed", date, timeZone]));
   const detail = useTasksResource<TaskView | null>(() => selectedId ? client.loadTask(selectedId) : Promise.resolve(null), selectedId ?? "none");
   const mutation = useTasksMutation();
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");

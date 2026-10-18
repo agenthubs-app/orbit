@@ -24,11 +24,19 @@ test("task page accepts the personal scope without falling back to all tasks",as
   assert.equal((await handler(request("?scope=personal"))).status,200);
   assert.deepEqual(calls,[["a",{status:"open",scope:"personal",query:"",limit:30,cursor:null}]]);
 });
+test("task page forwards the viewer's local-day paging context",async()=>{
+  const calls:unknown[]=[];
+  const handler=createTaskPageGetHandler({resolveActor:async()=>actor,reader:()=>({
+    read:async(id,query)=>{calls.push([id,query]);return page;},readToday:async()=>{throw Error("unused");},
+  })});
+  assert.equal((await handler(request("?today=2026-09-25&timeZone=Asia%2FTokyo"))).status,200);
+  assert.deepEqual(calls,[["a",{status:"open",scope:"all",query:"",limit:30,cursor:null,today:"2026-09-25",timeZone:"Asia/Tokyo"}]]);
+});
 test("task page rejects unauthenticated and malformed requests without accessing data",async()=>{
   const reader=()=>{throw Error("must not read");};
   assert.equal((await createTaskPageGetHandler({resolveActor:async()=>null,reader})(request())).status,401);
   const handler=createTaskPageGetHandler({resolveActor:async()=>actor,reader});
-  for(const query of ["?actorId=b","?status=cancelled","?status=open&status=completed","?scope=foreign","?limit=0","?limit=51","?limit=","?limit=1.5","?cursor=","?cursor=a&cursor=b",`?query=${"x".repeat(241)}`]) {
+  for(const query of ["?actorId=b","?status=cancelled","?status=open&status=completed","?scope=foreign","?limit=0","?limit=51","?limit=","?limit=1.5","?cursor=","?cursor=a&cursor=b","?today=2026-02-30","?timeZone=Mars%2FOlympus",`?query=${"x".repeat(241)}`]) {
     assert.equal((await handler(request(query))).status,400,query);
   }
 });

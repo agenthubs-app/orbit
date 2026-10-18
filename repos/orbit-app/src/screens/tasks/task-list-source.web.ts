@@ -28,11 +28,13 @@ export function useTaskListSource(input: TaskListSourceInput): TaskListSource {
   const outbox = useOfflineTaskOutbox(synced, false);
   const selection=input.selection??{scope:"all",view:"open"};
   const params=new URLSearchParams({status:selection.view,scope:selection.scope,limit:"30"});
+  if(input.today&&input.timeZone){params.set("today",input.today);params.set("timeZone",input.timeZone);}
   // A browser can lose mirror capability. Its local offset is not a signed
   // server cursor; start a fresh network page instead of sending that offset.
   if(input.cursor&&!input.cursor.startsWith("local:"))params.set("cursor",input.cursor);
   const state = useApiResource<unknown>(`/api/tasks/page?${params}`, () => false, { scopeKey: JSON.stringify([input.scopeKey,params.toString()]), cachePolicy: "network-only", enabled: input.ready && !mirrorActive });
   const completedParams=new URLSearchParams({status:"completed",scope:selection.scope,limit:"30"});
+  if(input.today&&input.timeZone){completedParams.set("today",input.today);completedParams.set("timeZone",input.timeZone);}
   if(input.completedCursor&&!input.completedCursor.startsWith("local:"))completedParams.set("cursor",input.completedCursor);
   const completedEnabled=Boolean(input.ready&&!mirrorActive&&input.completedExpanded&&selection.view==="open");
   const completedState=useApiResource<unknown>(`/api/tasks/page?${completedParams}`,()=>false,{scopeKey:JSON.stringify([input.scopeKey,completedParams.toString()]),cachePolicy:"network-only",enabled:completedEnabled});

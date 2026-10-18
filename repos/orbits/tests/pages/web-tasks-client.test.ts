@@ -130,6 +130,8 @@ test("new scoped page is additive: legacy URL stays unchanged and a hidden conta
   assert.equal(scoped.items[0]?.relationship, true);
   assert.equal(paths[0], "/api/tasks/page?status=open&query=&limit=30");
   assert.equal(paths[1], "/api/tasks/page?status=open&scope=relationship&query=&limit=30");
+  await client.loadScopedPage("open", "relationship", "", null, { today: "2026-09-25", timeZone: "Asia/Tokyo" });
+  assert.equal(paths[2], "/api/tasks/page?status=open&scope=relationship&query=&limit=30&today=2026-09-25&timeZone=Asia%2FTokyo");
 });
 
 test("Web date/location patches use canonical null clearing and validate the echoed fields", async () => {

@@ -86,9 +86,10 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       });
     },
     /** New Task-list source. The legacy loadPage URL and row shape stay unchanged. */
-    loadScopedPage: (status: "open" | "completed", scope: "all" | "relationship" | "personal", query = "", cursor: string | null = null) => {
+    loadScopedPage: (status: "open" | "completed", scope: "all" | "relationship" | "personal", query = "", cursor: string | null = null, context?: { today: string; timeZone: string }) => {
       const params = new URLSearchParams({ status, scope, query: query.trim(), limit: "30" });
       if (cursor) params.set("cursor", cursor);
+      if (context) { params.set("today", context.today); params.set("timeZone", context.timeZone); }
       return request(`/api/tasks/page?${params}`, value => {
         const page = taskPageSchema.parse(value);
         if (page.status !== status || page.scope !== scope || page.query !== query.trim()) throw new Error("Task page scope mismatch");

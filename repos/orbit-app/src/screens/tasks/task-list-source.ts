@@ -21,6 +21,8 @@ export interface TaskListSourceInput {
   actorId: string;
   ready: boolean;
   scopeKey: string;
+  today?: string;
+  timeZone?: string;
   selection?: TaskListSelection;
   cursor?: string | null;
   completedExpanded?: boolean;

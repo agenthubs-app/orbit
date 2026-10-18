@@ -59,25 +59,25 @@ export function TasksScreen() {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [displayScope, setDisplayScope] = useState(scope);
   if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); }
-  const pageScope=JSON.stringify([scopeKey,selection]);
+  const now = new Date();
+  const today = tokyoDateKey(now, timeZone);
+  const pageScope=JSON.stringify([scopeKey,selection,today,timeZone]);
   const [position,setPosition]=useState<{scope:string;cursor:string|null}>({scope:pageScope,cursor:null});
   const cursor=position.scope===pageScope?position.cursor:null;
   // Both sources expose one window: native/browser mirror reads locally;
   // online-only browsers use SQL pages instead of fetching the full task list.
-  const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor, completedExpanded, completedCursor });
+  const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor, completedExpanded, completedCursor, today, timeZone });
   const refreshTasks=()=>{setPosition({scope:pageScope,cursor:null});setCompletedPosition({scope:foldScope,cursor:null});source.refresh();};
   const loaded = ready && !source.loading && !source.failure;
   const canonical = source.canonical;
   const foldedCanonical = source.completedSection?.canonical;
   const contactsState=useContactLabels([...(canonical??[]),...(foldedCanonical??[])].flatMap(task=>task.relatedContactId?[task.relatedContactId]:[]),JSON.stringify([scopeKey,selection,cursor,completedCursor,completedExpanded]),ready);
   const contacts = new Map(contactsState.items.map(contact => [contact.id, contact]));
-  const now = new Date();
   // The authoritative source already filters scope before paging. A card may
   // hide an unauthorized contact, which must not make its owned task disappear.
   const open = canonical ? tasksToListView({ tasks: canonical }, "open", now, timeZone, locale.language).items : null;
   const completed = canonical ? tasksToListView({ tasks: canonical }, "completed", now, timeZone, locale.language).items : null;
   const foldedCompleted = foldedCanonical ? tasksToListView({ tasks: foldedCanonical }, "completed", now, timeZone, locale.language).items : null;
-  const today = tokyoDateKey(now, timeZone);
   const groups: TaskGroup[] = open && completed ? [
     ...(mode === "open" ? [
       { label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" as const },

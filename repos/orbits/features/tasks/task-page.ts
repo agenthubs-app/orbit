@@ -5,6 +5,7 @@ import { taskCardSchema, taskDueWindowSchema, taskPageSchema } from "../../share
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
+import { calendarDate, localParts, validTimeZone } from "./local-date-time";
 
 export interface TaskPageQuery {
   status: "open" | "completed";
@@ -13,6 +14,8 @@ export interface TaskPageQuery {
   limit?: number;
   cursor?: string | null;
   dueWindow?: TaskPageContract["dueWindow"];
+  today?: string;
+  timeZone?: string;
 }
 
 export interface TodayTaskSignals {
@@ -53,6 +56,7 @@ export function taskTimestampSql(value: string): string {
 ) at time zone 'UTC'`;
 }
 const dueInstant = `(case when t ? 'dueAt' then ${taskTimestampSql("t->>'dueAt'")} end)`;
+const taskDay = `(case when t ? 'dueAt' then to_char(${dueInstant} at time zone $14::text,'YYYY-MM-DD') else t->>'plannedDate' end)`;
 const relationshipTask = `(t->>'category'='relationship' or coalesce(${nonblank("t->'relatedContactId'")},false))`;
 
 // This is a read model, not a shortened TaskRecordPayload. Audit histories and
@@ -105,15 +109,17 @@ export function taskRecordsValidityCte(includeDeleted = false, noteSourceFilter 
 
 const SQL = `with ${taskRecordsValidityCte()}, filtered as materialized (
   select *, case when $3='completed' then t->>'updatedAt'
-    when $10::text is not null then coalesce(t->>'dueAt',(t->>'plannedDate')||'T23:59:59','9999')
-    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key from valid where ($4='all' or ($4='relationship' and ${relationshipTask}) or ($4='personal' and not ${relationshipTask}))
+    when ${taskDay} is null then '3:9999-12-31'
+    when ${taskDay}<$13::text then '0:'||${taskDay}
+    when ${taskDay}=$13::text then '1:'||${taskDay}
+    else '2:'||${taskDay} end as sort_key from valid where ($4='all' or ($4='relationship' and ${relationshipTask}) or ($4='personal' and not ${relationshipTask}))
     and ($5='' or strpos(lower((t->>'title') || ' ' || coalesce(t->>'notes','') collate pg_catalog."und-x-icu"),lower($5 collate pg_catalog."und-x-icu"))>0)
     and ($10::text is null or (t->>'plannedDate') collate "C"<=$10 collate "C" or ${dueInstant}<$11::timestamptz)
 ), page as (
   select * from filtered where t->>'status'=$3 and ($6::text is null
-    or case when $3='completed' then sort_key collate "C"<$6 collate "C" else sort_key collate "C">$6 collate "C" end
-    or (sort_key=$6 and ((t->>'updatedAt') collate "C"<$7 collate "C" or (t->>'updatedAt'=$7 and record_id collate "C">$8 collate "C"))))
-  order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C" limit $9
+    or ($3='completed' and (sort_key collate "C"<$6 collate "C" or (sort_key=$6 and ((t->>'updatedAt') collate "C"<$7 collate "C" or (t->>'updatedAt'=$7 and record_id collate "C">$8 collate "C")))))
+    or ($3<>'completed' and (sort_key collate "C">$6 collate "C" or (sort_key=$6 and record_id collate "C">$8 collate "C"))))
+  order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",case when $3='completed' then t->>'updatedAt' end collate "C" desc,record_id collate "C" limit $9
 ), cards as (
   select p.*, jsonb_build_object('id',record_id,'titlePreview',left(t->>'title',240),'locationPreview',left(t->>'location',120),
     'status',t->>'status','category',t->>'category','priority',t->>'priority','plannedDate',t->>'plannedDate','dueAt',t->>'dueAt','updatedAt',t->>'updatedAt','completedAt',t->>'completedAt','relationship',${relationshipTask},
@@ -129,7 +135,7 @@ select case when exists(select 1 from filtered where octet_length(record_id)>204
   then jsonb_build_object('ok',false)
   else jsonb_build_object('ok',true,
   'counts',jsonb_build_object('open',(select count(*) from filtered where t->>'status'='open'),'completed',(select count(*) from filtered where t->>'status'='completed')),
-  'items',coalesce((select jsonb_agg(card order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C") from cards),'[]'::jsonb))
+  'items',coalesce((select jsonb_agg(card order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",case when $3='completed' then t->>'updatedAt' end collate "C" desc,record_id collate "C") from cards),'[]'::jsonb))
   || case when $12::timestamptz is null then '{}'::jsonb else jsonb_build_object('todaySignals',jsonb_build_object(
     'urgentTask',exists(select 1 from filtered where t->>'status'='open' and (t->>'priority'='high' or (t ? 'dueAt' and ${dueInstant}<=$12::timestamptz))),
     'relationshipTask',exists(select 1 from filtered where t->>'status'='open' and t->>'category'='relationship')
@@ -144,11 +150,17 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
       || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || search.length > 240) throw Error("TASK_PAGE_INPUT_INVALID");
     if (todaySignalsNow !== undefined && (query.status !== "open" || scope !== "all" || search !== "" || !query.dueWindow || !Number.isFinite(Date.parse(todaySignalsNow)))) throw Error("TODAY_TASK_PAGE_INPUT_INVALID");
     if (Buffer.byteLength(input.secret) < 32) throw Error("READ_CURSOR_SECRET_MISSING");
+    const timeZone = query.timeZone ?? "Asia/Tokyo";
+    if (!validTimeZone(timeZone)) throw Error("TASK_PAGE_INPUT_INVALID");
+    const today = query.today ?? localParts(input.now?.() ?? new Date(), timeZone).date;
+    if (!calendarDate(today)) throw Error("TASK_PAGE_INPUT_INVALID");
     const parsedWindow = query.dueWindow === undefined ? undefined : taskDueWindowSchema.safeParse(query.dueWindow);
     if (parsedWindow && !parsedWindow.success) throw Error("TASK_PAGE_INPUT_INVALID");
     const dueWindow = parsedWindow?.success ? parsedWindow.data : undefined;
-    // Keep existing unfiltered cursors compatible; date-filtered cursors bind both cutoffs.
-    const identity = JSON.stringify(["task-page:v1",input.workspaceId,actorId,query.status,scope,search,...(dueWindow ? [dueWindow.plannedThrough,dueWindow.dueBefore] : [])]);
+    // Open order changed from raw strings to local-day groups: reject old v1
+    // cursors rather than silently skip/duplicate a task after deployment.
+    const identity = JSON.stringify([`task-page:${query.status === "open" ? "v2" : "v1"}`,input.workspaceId,actorId,query.status,scope,search,
+      ...(query.status === "open" ? [today,timeZone] : []),...(dueWindow ? [dueWindow.plannedThrough,dueWindow.dueBefore] : [])]);
     const sign = (value: string) => createHmac("sha256",input.secret).update(identity).update(value).digest();
     let after: z.infer<typeof position> | null = null;
     if (query.cursor) try {
@@ -159,7 +171,7 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
       if (actual.length !== expected.length || actual.toString("base64url") !== signature || !timingSafeEqual(actual,expected)) throw Error();
       after = position.parse(JSON.parse(Buffer.from(payload,"base64url").toString("utf8")));
     } catch { throw Error("TASK_PAGE_CURSOR_INVALID"); }
-    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null,todaySignalsNow ?? null]);
+    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null,todaySignalsNow ?? null,today,timeZone]);
     const result = z.object({ ok: z.literal(true), counts: z.object({open:z.number().int().nonnegative().safe(),completed:z.number().int().nonnegative().safe()}).strict(),
       items:z.array(taskCardSchema.extend({position})).max(51), todaySignals: todayTaskSignalsSchema.optional() }).strict().parse(response.rows[0]?.result);
     const items = result.items.slice(0,limit), hasMore = result.items.length > limit, last = items.at(-1);
