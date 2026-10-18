@@ -42,7 +42,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const client = useMemo(() => createTasksClient(), []);
   const [filter, setFilter] = useState<TaskListFilter>("all");
   const [query, setQuery] = useState("");
-  const [openCursor, setOpenCursor] = useState<string | null>(null);
+  const openContext = JSON.stringify([date, timeZone]);
+  const [openPosition, setOpenPosition] = useState<{ context: string; cursor: string | null }>({ context: openContext, cursor: null });
+  const openCursor = openPosition.context === openContext ? openPosition.cursor : null;
+  const setOpenCursor = (cursor: string | null) => setOpenPosition({ context: openContext, cursor });
   const [doneCursor, setDoneCursor] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(initialCompleted);
   const [showOpen, setShowOpen] = useState(!initialCompleted);

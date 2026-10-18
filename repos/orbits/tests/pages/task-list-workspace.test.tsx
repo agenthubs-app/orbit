@@ -76,6 +76,39 @@ test("task list uses exact server scopes and keeps completed tasks behind an exp
   assert.match(content(root!), /済んだ用事/);
 });
 
+test("a local-day change starts a fresh open page without discarding its scope", async t => {
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: string) => {
+    const path = String(input);
+    paths.push(path);
+    const params = new URL(path, "https://orbit.test").searchParams;
+    const status = params.get("status") as "open" | "completed";
+    const item = task("今日の資料", status);
+    return Response.json({ success: true, data: {
+      actorId: "a", status, scope: params.get("scope"), query: params.get("query") ?? "",
+      items: [card(item)], counts: { open: 1, completed: 1 }, total: 1,
+      hasMore: status === "open" && !params.has("cursor"),
+      nextCursor: status === "open" && !params.has("cursor") ? "signed-next" : null, asOf: at,
+    } });
+  });
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "つながり")[0]!.props.onClick());
+  await act(async () => buttons(root!, "次のページ")[0]!.props.onClick());
+  assert.ok(paths.some(path => path.includes("status=open") && path.includes("cursor=signed-next")));
+  await act(async () => { root!.update(<TaskListWorkspace language="ja" date="2026-10-18" timeZone="Asia/Tokyo" />); });
+  const latest = paths.filter(path => path.includes("status=open")).at(-1)!;
+  assert.match(latest, /scope=relationship/u);
+  assert.match(latest, /today=2026-10-18/u);
+  assert.doesNotMatch(latest, /cursor=/u);
+  await act(async () => buttons(root!, "次のページ")[0]!.props.onClick());
+  await act(async () => { root!.update(<TaskListWorkspace language="ja" date="2026-10-18" timeZone="UTC" />); });
+  const afterZoneChange = paths.filter(path => path.includes("status=open")).at(-1)!;
+  assert.match(afterZoneChange, /timeZone=UTC/u);
+  assert.doesNotMatch(afterZoneChange, /cursor=/u);
+});
+
 test("legacy completed intent starts on completed tasks, not the open list", async t => {
   const { fetcher } = fixture();
   t.mock.method(globalThis, "fetch", fetcher);
