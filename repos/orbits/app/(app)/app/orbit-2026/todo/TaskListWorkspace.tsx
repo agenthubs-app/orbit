@@ -133,7 +133,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <ShellPage title={t(taskCopy.taskListTitle)} rightRail={rail} phoneFold />
     <main className={styles.page}>
       <div className={styles.top}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
-      <button type="button" hidden data-task-add="" onClick={() => setAdding(true)}>{t(taskCopy.taskListAdd)}</button>
+      <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
       <div className={styles.toolbar}><CategoryTabs<TaskListFilter> label={t(taskCopy.taskListFilter)} value={filter} onChange={setScope} options={(["all", "relationship", "personal"] as const).map(key => ({ key, label: t(key === "all" ? taskCopy.taskListAll : key === "relationship" ? taskCopy.taskListRelationship : taskCopy.taskListPersonal) }))} />
         <SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} />{!showOpen ? <Button label={t(taskCopy.taskListShowOpen)} onClick={() => setShowOpen(true)} /> : null}</div>
       {mutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}

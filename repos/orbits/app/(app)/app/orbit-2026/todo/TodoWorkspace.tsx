@@ -107,7 +107,7 @@ function Workspace({ actorId, language, timeZone, date, initialAdd }: { actorId?
   if (resource.state === "not_implemented") return <ShellPage rightRail={false} />;
   return <>
     <ShellPage rightRail={<TodoNextMovesRail account={account} language={language} state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDraft={openDraft} />} />
-    <button type="button" hidden data-task-add="" onClick={() => { setAdding(true); setError(false); }}>{t(taskCopy.todoAdd)}</button>
+    <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.todoAdd)} onClick={() => { setAdding(true); setError(false); }} />
     <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} onFollowup={openFollowup} />
     {followup && ready && !resource.denied ? <FollowupCompletionModal open {...followup} {...(actorId ? { actorId } : {})} timeZone={timeZone} onClose={() => setFollowup(null)} onCompleted={taskId => { if (activeScope.current === "unmounted" || taskId !== followup.taskId) return; setFollowup(null); toast.success(t(taskCopy.followupCompleted)); void resource.refresh(); }} /> : null}
     {draft ? <TodoDraftDrawer key={`${epoch}:${draftKey}`} open title={draft.title} reason={draft.reason} value={draft.value} canHandoff={canHandoff} scopeKey={`${draftScope}:${epoch}`} onChange={value => { if (draftEpoch.current !== epoch) return; setDrafts(current => current[draftKey!] ? { ...current, [draftKey!]: { ...current[draftKey!]!, value } } : current); }} onClose={() => { if (draftEpoch.current !== epoch) return; draftEpoch.current++; setDraftKey(null); }} /> : null}

@@ -185,3 +185,18 @@ test("failed detail refresh does not keep stale detail actions beside the retry 
   assert.equal(root!.root.findAllByType("h3").some(node => nodeText(node) === "今日の資料"), false);
   assert.equal(calls.filter(call => call.method === "PATCH").length, 1);
 });
+
+test("task-list global add entry stays hidden and uses the designed button while opening the add form", async t => {
+  const restore = setupDocument();
+  const { fetcher } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  const trigger = root!.root.findAllByType("button").find(node => node.props["data-task-add"] === "")!;
+  assert.match(trigger.props.className ?? "", /\bbtn\b/u);
+  assert.equal(trigger.props.hidden, true);
+  assert.equal(trigger.props.style?.display, "none");
+  await act(async () => trigger.props.onClick());
+  assert.equal(root!.root.findAllByType("form").length, 1);
+});

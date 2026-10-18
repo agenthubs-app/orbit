@@ -14,6 +14,7 @@ function RailProbe() { return <aside data-rail-probe="">{useShellSlots().rightRa
 
 const contents = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : contents(child)).join("");
 const button = (root: ReactTestRenderer, label: string) => root.root.findAllByType("button").find(node => node.props["aria-label"] === label || contents(node) === label)!;
+const addTrigger = (root: ReactTestRenderer) => root.root.findAllByType("button").find(node => node.props["data-task-add"] === "")!;
 const setupDocument = () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
@@ -39,6 +40,20 @@ test("Task next-move rail reuses the page read and guarded draft, then restores 
   assert.equal(root!.root.findAllByType("textarea").length, 1);
   await act(async () => root.update(render(false)));
   assert.equal(contents(rail()), "Generic rail");
+});
+
+test("To-do global add entry stays hidden and uses the designed button while opening the add form", async t => {
+  const restore = setupDocument();
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }));
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" />); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  const trigger = addTrigger(root!);
+  assert.match(trigger.props.className ?? "", /\bbtn\b/u);
+  assert.equal(trigger.props.hidden, true);
+  assert.equal(trigger.props.style?.display, "none");
+  await act(async () => trigger.props.onClick());
+  assert.equal(root!.root.findAllByType("form").length, 1);
 });
 
 test("Task rail drops account data while the next account loads and hides whole-page NOT_IMPLEMENTED", async t => {
@@ -107,7 +122,7 @@ test("Task add opens a real form; failed writes keep its draft and valid retries
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-12-31" />); });
   t.after(() => { act(() => root.unmount()); restoreDocument(); });
-  await act(async () => root.root.findByProps({ "data-task-add": "" }).props.onClick());
+  await act(async () => addTrigger(root).props.onClick());
   const field = () => root.root.findByType("input");
   await act(async () => field().props.onChange({ target: { value: "Call back" } }));
   await act(async () => root.root.findByType("form").props.onSubmit({ preventDefault() {} }));
@@ -150,7 +165,7 @@ test("local midnight preserves an unsaved task draft, but changing accounts clea
   let root: ReactTestRenderer;
   await act(async () => { root = create(render("a", "2026-10-18")); });
   t.after(() => { act(() => root.unmount()); restoreDocument(); });
-  await act(async () => root.root.findByProps({ "data-task-add": "" }).props.onClick());
+  await act(async () => addTrigger(root).props.onClick());
   await act(async () => root.root.findByType("input").props.onChange({ target: { value: "Unsaved task" } }));
   await act(async () => root.update(render("a", "2026-10-19")));
   assert.equal(root!.root.findByType("input").props.value, "Unsaved task");
