@@ -15,7 +15,7 @@ export const notifications = {
   "notifications.end":'结束',
   "notifications.saveTime":'保存时间',
   "notifications.invalidTime":'请输入不同的 HH:MM 开始和结束时间。',
-  "notifications.meeting":'面谈前 30 分钟例外',
+  "notifications.meeting":'面谈前30分钟例外',
   "notifications.meetingHint":'仅已确认的面谈可在免打扰时段推送。',
   "notifications.lock":'锁屏显示',
   "notifications.private":'隐藏内容',
