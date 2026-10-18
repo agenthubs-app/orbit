@@ -18,3 +18,19 @@ test("local task mirror exposes a 30 item window and exact counts without anothe
   const empty=mirrorTaskListSource(state,{...input,selection:{scope:"all",view:"completed"}});
   assert.deepEqual(empty.canonical,[]);assert.equal(empty.counts?.open,65);
 });
+
+test("completed fold pages the same local mirror without replacing open rows",()=>{
+  const completed=Array.from({length:35},(_,n)=>({payload:{...records[n]!.payload,id:`done:${String(n).padStart(3,"0")}`,status:"completed"}}));
+  const mixed={...state,records:[...records,...completed]} as unknown as Parameters<typeof mirrorTaskListSource>[0];
+  const collapsed=mirrorTaskListSource(mixed,input);
+  assert.equal(collapsed.completedSection,null);
+  const first=mirrorTaskListSource(mixed,{...input,completedExpanded:true});
+  assert.equal(first.canonical?.length,30);
+  assert.equal(first.completedSection?.canonical?.length,30);
+  assert.equal(first.completedSection?.nextCursor,"local:30");
+  const second=mirrorTaskListSource(mixed,{...input,completedExpanded:true,completedCursor:first.completedSection?.nextCursor});
+  assert.equal(second.canonical?.[0]?.id,first.canonical?.[0]?.id);
+  assert.equal(second.completedSection?.canonical?.length,5);
+  assert.equal(second.completedSection?.nextCursor,null);
+  assert.equal(new Set([...(first.completedSection?.canonical??[]),...(second.completedSection?.canonical??[])].map(task=>task.id)).size,35);
+});

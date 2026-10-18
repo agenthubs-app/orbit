@@ -10,6 +10,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native"
 
 import { taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
+import { Icon } from "../../components/ui/Icon";
 import { EmptyState } from "../../components/EmptyState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { ErrorState } from "../../components/ErrorState";
@@ -27,6 +28,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 
 type TaskListMode = "open" | "completed";
+type TaskGroup = { label: string; items: TaskListRowView[]; tone: "danger" | "today" | "muted" | "completed"; fold?: boolean };
 
 function mutationKey(action: string) {
   return `ios:${action}:${Crypto.randomUUID()}`;
@@ -48,6 +50,11 @@ export function TasksScreen() {
   const currentScope = useRef(scope); currentScope.current = scope;
   const [selection, setSelection] = useState(requested);
   const mode = selection.view;
+  const foldScope = JSON.stringify([scopeKey, selection.scope]);
+  const [fold, setFold] = useState({ scope: foldScope, expanded: false });
+  const completedExpanded = mode === "open" && fold.scope === foldScope && fold.expanded;
+  const [completedPosition, setCompletedPosition] = useState<{ scope: string; cursor: string | null }>({ scope: foldScope, cursor: null });
+  const completedCursor = completedPosition.scope === foldScope ? completedPosition.cursor : null;
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [displayScope, setDisplayScope] = useState(scope);
@@ -57,26 +64,31 @@ export function TasksScreen() {
   const cursor=position.scope===pageScope?position.cursor:null;
   // Both sources expose one window: native/browser mirror reads locally;
   // online-only browsers use SQL pages instead of fetching the full task list.
-  const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor });
-  const refreshTasks=()=>{setPosition({scope:pageScope,cursor:null});source.refresh();};
+  const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor, completedExpanded, completedCursor });
+  const refreshTasks=()=>{setPosition({scope:pageScope,cursor:null});setCompletedPosition({scope:foldScope,cursor:null});source.refresh();};
   const loaded = ready && !source.loading && !source.failure;
   const canonical = source.canonical;
-  const contactsState=useContactLabels(canonical?.flatMap(task=>task.relatedContactId?[task.relatedContactId]:[])??[],JSON.stringify([scopeKey,selection,cursor]),ready);
+  const foldedCanonical = source.completedSection?.canonical;
+  const contactsState=useContactLabels([...(canonical??[]),...(foldedCanonical??[])].flatMap(task=>task.relatedContactId?[task.relatedContactId]:[]),JSON.stringify([scopeKey,selection,cursor,completedCursor,completedExpanded]),ready);
   const contacts = new Map(contactsState.items.map(contact => [contact.id, contact]));
   const now = new Date();
   // The authoritative source already filters scope before paging. A card may
   // hide an unauthorized contact, which must not make its owned task disappear.
   const open = canonical ? tasksToListView({ tasks: canonical }, "open", now, timeZone, locale.language).items : null;
   const completed = canonical ? tasksToListView({ tasks: canonical }, "completed", now, timeZone, locale.language).items : null;
+  const foldedCompleted = foldedCanonical ? tasksToListView({ tasks: foldedCanonical }, "completed", now, timeZone, locale.language).items : null;
   const today = tokyoDateKey(now, timeZone);
-  const groups = open && completed ? [
+  const groups: TaskGroup[] = open && completed ? [
     ...(mode === "open" ? [
-      { label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" },
-      { label: locale.t("tasks.groupToday"), items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" },
-      { label: locale.t("tasks.groupLater"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" },
-      { label: locale.t("tasks.groupUnscheduled"), items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" },
+      { label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" as const },
+      { label: locale.t("tasks.groupToday"), items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" as const },
+      { label: locale.t("tasks.groupLater"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" as const },
+      { label: locale.t("tasks.groupUnscheduled"), items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" as const },
     ] : [{ label: locale.t("tasks.groupCompleted"), items: completed, tone: "completed" }]),
-  ].filter(group => group.items.length > 0) : [];
+    ...(mode === "open" && (open.length > 0 || (source.counts?.completed ?? 0) > 0)
+      ? [{ label: locale.t("tasks.groupCompleted"), items: foldedCompleted ?? [], tone: "completed" as const, fold: true }]
+      : []),
+  ].filter(group => group.items.length > 0 || group.fold) as TaskGroup[] : [];
 
   useEffect(() => setSelection(requested), [requested.scope, requested.view]);
   useEffect(() => {
@@ -86,7 +98,7 @@ export function TasksScreen() {
   }, [scope]);
 
   async function toggleTask(item: TaskListRowView) {
-    const baseline = canonical?.find(task => task.id === item.id);
+    const baseline = canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id);
     if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return;
     scope.busy = true;
     setUpdatingId(item.id);
@@ -109,6 +121,7 @@ export function TasksScreen() {
           createdAt,
         }));
         setPosition({ scope: pageScope, cursor: null });
+        setCompletedPosition({ scope: foldScope, cursor: null });
         return;
       }
       const intent = JSON.stringify([item.id, action, baseline.updatedAt]);
@@ -120,7 +133,7 @@ export function TasksScreen() {
       if (!scope.active || currentScope.current !== scope) return;
       if (!result.success) setMutationError(result.error.message);
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); }
+      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null}); }
       else setMutationError(locale.t("sync.mutationPending"));
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
@@ -166,12 +179,25 @@ export function TasksScreen() {
       <View style={styles.groups}>
       {groups.map(group => (
         <View key={group.label} style={styles.list}>
-          <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length}`} style={styles.groupHeading}>
+          {group.fold ? <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={locale.t(completedExpanded ? "tasks.collapseCompleted" : "tasks.expandCompleted")}
+            accessibilityState={{ expanded: completedExpanded }}
+            onPress={() => { setFold({ scope: foldScope, expanded: !completedExpanded }); if (completedExpanded) setCompletedPosition({ scope: foldScope, cursor: null }); }}
+            style={styles.groupHeading}
+          >
+            <Text style={[styles.groupTitle, styles.muted]}>{group.label}</Text>
+            <Text style={styles.groupCount}>{source.counts?.completed ?? 0}</Text>
+            <Icon name="down" size={16} color={colors.ink3Text} />
+          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length}`} style={styles.groupHeading}>
             <Text style={[styles.groupTitle, group.tone === "completed" && styles.muted]}>{group.label}</Text>
             <Text style={[styles.groupCount, group.tone === "today" && styles.todayCount, group.tone === "danger" && styles.danger]}>{group.items.length}</Text>
-          </View>
+          </View>}
+          {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
+          {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t("tasks.unavailable")} message={source.completedSection.failure} /> : null}
+          {group.fold && completedExpanded && foldedCompleted?.length === 0 ? <Text style={styles.rowDetail}>{locale.t("tasks.emptyCompletedTitle")}</Text> : null}
           {group.items.map(item => {
-            const contactId = canonical?.find(task => task.id === item.id)?.relatedContactId;
+            const contactId = (canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id))?.relatedContactId;
             const contact = contactId ? contacts.get(contactId) : null;
             return <View key={item.id}><View
               style={styles.row}
@@ -210,6 +236,8 @@ export function TasksScreen() {
             {contact ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.viewContact", { name: contact.name })} onPress={() => router.push(`/contacts/${encodeURIComponent(contact.id)}` as Href)} style={styles.contactLink}><Text style={styles.contactText}>{[contact.name, contact.organization].filter(Boolean).join(" · ")}</Text></Pressable> : contactId ? <Text style={styles.rowDetail}>{locale.t("tasks.contactUnavailable")}</Text> : null}
             </View>;
           })}
+          {group.fold && completedExpanded && source.completedSection?.nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedNextPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: source.completedSection?.nextCursor ?? null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedNextPage")}</Text></Pressable> : null}
+          {group.fold && completedExpanded && completedCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedFirstPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedFirstPage")}</Text></Pressable> : null}
         </View>
       ))}
       </View>

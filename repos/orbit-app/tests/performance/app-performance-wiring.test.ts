@@ -258,3 +258,77 @@ test("RootLayout records first commit and auth restoration after assigning the a
     baseUrl: "https://api.example.test",
   });
 });
+
+test("RootLayout does not expose the shell tabs or reserve their toast space on signed-out /home", async (t) => {
+  const fixture = `
+    import React from "react";
+    export const state = window.authFixture = { signedIn: false, ready: false, pathname: "/home" };
+    export function Wrapper({ children }) { return <>{children}</>; }
+    export const OrbitTimeZoneProvider = Wrapper;
+    export const SafeAreaProvider = Wrapper;
+    export const OrbitAuthSessionProvider = Wrapper;
+    export const OrbitApiBaseUrlProvider = Wrapper;
+    export const AppErrorBoundary = Wrapper;
+    export const OrbitLocaleProvider = Wrapper;
+    export const GestureHandlerRootView = Wrapper;
+    export const UiPortalHost = Wrapper;
+    export function ToastProvider({ children, hasTabBar }) { return <div data-shell-toast data-has-tab-bar={String(hasTabBar)}>{children}</div>; }
+    export function ShellTabBar() { return <nav aria-label="main tabs" />; }
+    export function UiFeedbackHost() { return null; }
+    export function usePathname() { return state.pathname; }
+    export function mainTabForPath(pathname) { return pathname === "/home" ? "home" : null; }
+    export function useOrbitAuthSession() { return { actorId: state.signedIn ? "actor:one" : null, ready: state.ready, signedIn: state.signedIn }; }
+    export function useOrbitApiBaseUrl() { return { baseUrl: "https://api.example.test" }; }
+    export function useMobileViewport() { return { keyboardVisible: false }; }
+    export function useOrbitTheme() { return { scheme: "light" }; }
+    export function AppErrorScreen() { return null; }
+    export function OrbitRouteAccessBoundary() { return null; }
+    export function DevOpenPath() { return null; }
+    export function OrbitNotificationsCoordinator() { return null; }
+    export function OrbitNotificationLifecycle() { return null; }
+    export function StatusBar() { return null; }
+    export default { getItem: async () => null, setItem: async () => undefined };
+    export async function loadAppearancePreference() {}
+    export function applyStoredAppearanceSync() { return false; }
+    export function isAppPerformanceEnabled() { return false; }
+    export function appPerformanceInput() { return {}; }
+    export function markAppPerformance() {}
+    export function setAppPerformanceScope() {}
+  `;
+  const plugin: Plugin = {
+    name: "root-auth-shell-boundaries",
+    setup(buildApi) {
+      buildApi.onResolve({ filter: /.*/ }, (args) => {
+        if (!args.importer.endsWith("/app/_layout.tsx")) return null;
+        if (args.path === "react" || args.path === "react/jsx-runtime") return null;
+        return { path: "fixture", namespace: "root-auth-shell" };
+      });
+      buildApi.onLoad(
+        { filter: /.*/, namespace: "root-auth-shell" },
+        () => ({ contents: fixture, loader: "tsx", resolveDir: process.cwd() }),
+      );
+    },
+  };
+  const page = await openBundle(
+    t,
+    `import React from "react";
+     import { createRoot } from "react-dom/client";
+     import RootLayout from "./app/_layout";
+     const root = createRoot(document.getElementById("root"));
+     window.rerenderRoot = () => root.render(<RootLayout />);
+     window.rerenderRoot();`,
+    [plugin],
+  );
+
+  await page.locator("[data-shell-toast]").waitFor({ state: "attached" });
+  assert.equal(await page.getByRole("navigation", { name: "main tabs" }).count(), 0);
+  assert.equal(await page.locator("[data-shell-toast]").getAttribute("data-has-tab-bar"), "false");
+
+  await page.evaluate(() => { (window as any).authFixture.ready = true; (window as any).authFixture.signedIn = true; (window as any).rerenderRoot(); });
+  await page.getByRole("navigation", { name: "main tabs" }).waitFor({ state: "attached" });
+  assert.equal(await page.locator("[data-shell-toast]").getAttribute("data-has-tab-bar"), "true");
+
+  await page.evaluate(() => { (window as any).authFixture.signedIn = false; (window as any).rerenderRoot(); });
+  await page.getByRole("navigation", { name: "main tabs" }).waitFor({ state: "detached" });
+  assert.equal(await page.locator("[data-shell-toast]").getAttribute("data-has-tab-bar"), "false");
+});

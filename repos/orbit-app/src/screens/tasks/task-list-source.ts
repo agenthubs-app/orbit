@@ -23,12 +23,22 @@ export interface TaskListSourceInput {
   scopeKey: string;
   selection?: TaskListSelection;
   cursor?: string | null;
+  completedExpanded?: boolean;
+  completedCursor?: string | null;
+}
+
+export interface CompletedTaskSection {
+  canonical: TaskListEntry[] | null;
+  nextCursor: string | null;
+  loading: boolean;
+  failure: string | null;
 }
 
 export interface TaskListSource {
   canonical: TaskListEntry[] | null;
   counts: {open:number;completed:number} | null;
   nextCursor: string | null;
+  completedSection?: CompletedTaskSection | null;
   /** Nothing readable yet (first sync still running). */
   loading: boolean;
   failure: string | null;

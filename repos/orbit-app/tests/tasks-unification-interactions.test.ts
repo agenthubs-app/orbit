@@ -167,6 +167,18 @@ test("personal list tab reads the owned complement and never treats contact-link
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
+test("completed section expands below open groups without replacing the open task list", async t => {
+  const page = await open(t);
+  await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: "恢复：事项 1", exact: true }).count(), 0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/tasks/page" && request.method === "GET").length), 1);
+  await page.getByRole("button", { name: "展开已完成任务", exact: true }).click();
+  await page.getByRole("checkbox", { name: "恢复：事项 1", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).count(), 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/tasks/page" && request.method === "GET").length), 2);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+});
+
 test("route parameters use first values and preserve a distinct contact navigation target", async t => {
   const page = await open(t, { params: { scope: ["relationship", "all"], view: ["completed", "open"] } });
   await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();

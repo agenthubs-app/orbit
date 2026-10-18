@@ -52,10 +52,20 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
     :compare(a.dueAt??a.plannedDate??"9999",b.dueAt??b.plannedDate??"9999")||compare(b.updatedAt,a.updatedAt)||compare(a.id,b.id));
   const offset=input.cursor?.match(/^local:([0-9]+)$/)?Number(input.cursor.slice(6)):0;
   const validOffset=Number.isSafeInteger(offset)&&offset>=0?offset:0;
+  const completedOffset=input.completedCursor?.match(/^local:([0-9]+)$/)?Number(input.completedCursor.slice(6)):0;
+  const validCompletedOffset=Number.isSafeInteger(completedOffset)&&completedOffset>=0?completedOffset:0;
+  const completedRows=input.completedExpanded&&selection.view==="open"&&completed
+    ? [...completed].sort((a,b)=>compare(b.updatedAt,a.updatedAt)||compare(a.id,b.id)) : null;
   return {
     canonical:selected?.slice(validOffset,validOffset+30)??null,
     counts:open&&completed?{open:open.length,completed:completed.length}:null,
     nextCursor:selected&&validOffset+30<selected.length?`local:${validOffset+30}`:null,
+    completedSection:input.completedExpanded&&selection.view==="open"?{
+      canonical:completedRows?.slice(validCompletedOffset,validCompletedOffset+30)??null,
+      nextCursor:completedRows&&validCompletedOffset+30<completedRows.length?`local:${validCompletedOffset+30}`:null,
+      loading:input.ready&&!everSynced,
+      failure:state.status==="failure"&&!readable?state.error??"sync.failure":null,
+    }:null,
     loading: input.ready && !everSynced && state.status !== "failure",
     failure: (state.status === "failure" && !readable ? state.error ?? "sync.failure" : null) ?? outbox?.queueFailure ?? null,
     refreshing: state.status === "syncing",
