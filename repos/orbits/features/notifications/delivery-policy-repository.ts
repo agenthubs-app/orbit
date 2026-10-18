@@ -4,6 +4,7 @@ import {createPostgresLiveRecordStore} from '../../shared/storage/postgres-live-
 import type {InboxDeliveryOwnerDTO,InboxDeliveryPreferencesDTO,InboxDeliveryPreferencesInput} from '../../shared/contract/notification-delivery-policy';
 import {defaultDeliveryPreferences,deliveryQuotaUsage,type DeliveryQuotaReservation} from './delivery-policy';
 export class DeliveryPolicyConflict extends Error {}
+export class DeliveryPolicyInvalid extends Error {}
 export const deliveryPolicyId=(...parts:string[])=>createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 
 const HISTORICAL_SUPPRESSIONS = 'notificationHistoricalSuppressions';
@@ -80,23 +81,35 @@ export function createDeliveryPolicyRepository(input:{client:TransactionalPostgr
    const p=await prefs(db,actorId);if(p.revision!==patch.expectedRevision)throw new DeliveryPolicyConflict('Refresh preferences');
    const muted=new Set(p.mutedConversationIds);if(patch.muteConversation){if(!await authorizeConversation(patch.muteConversation.conversationId))throw new DeliveryPolicyConflict('Conversation unavailable');if(patch.muteConversation.muted)muted.add(patch.muteConversation.conversationId);else muted.delete(patch.muteConversation.conversationId);if(muted.size>1000)throw new DeliveryPolicyConflict('Mute limit reached');}
    const {expectedRevision:_revision,muteConversation:_mute,...changes}=patch;const next={...p,...changes,mutedConversationIds:[...muted],revision:p.revision+1};
+   if(next.quietStart===next.quietEnd)throw new DeliveryPolicyInvalid('Quiet hours need distinct start and end');
    const legacy=await get<{entity:Record<string,unknown>}>(db,'notificationPreferences',actorId);const entity=legacy?.entity??{accountId:actorId,ownerUserId:actorId,inAppEnabled:true,iosPushEnabled:true};
-   await save(db,'notificationPreferences',actorId,actorId,{entity:{...entity,lockScreenContent:next.lockScreenContent,quietHours:{enabled:next.quietHoursEnabled,start:'22:00',end:'08:00',timeZone:next.timeZone},updatedAt:now()}});
-   await save(db,'notificationChannelPreferences',actorId,actorId,next);return next;
+   await save(db,'notificationPreferences',actorId,actorId,{entity:{...entity,lockScreenContent:next.lockScreenContent,quietHours:{enabled:next.quietHoursEnabled,start:next.quietStart,end:next.quietEnd,timeZone:next.timeZone},updatedAt:now()}});
+   await save(db,'notificationChannelPreferences',actorId,actorId,next);
+   // A changed preference must re-evaluate already-held typed candidates now,
+   // rather than keeping an availableAt computed from the previous revision.
+   const changedAt=now();await db.query(`update orbit_records set payload=jsonb_set(payload,'{delivery,availableAt}',to_jsonb($3::text)),updated_at=$4::timestamptz
+     where workspace_id=$1 and user_id=$2 and collection_name='notificationDeliveries' and lifecycle_state='active'
+     and payload->'delivery'->'policySource' is not null and payload->'delivery'->>'status'='retry_scheduled'
+     and (payload->'delivery'->>'scheduledFor')::timestamptz <= $4::timestamptz
+     and (payload->'delivery'->>'availableAt')::timestamptz > $4::timestamptz`,[input.workspaceId,actorId,changedAt,changedAt]);
+   return next;
   });},
   cutover:(actorId:string)=>get<{enabled:boolean;legacyBlocked?:boolean;generation:number;since:string;batchId:string}>(input.client,'notificationCutover',actorId),
   async owner(actorId:string,deviceId:string):Promise<InboxDeliveryOwnerDTO>{const cutover=await repository.cutover(actorId),saved=await get<InboxDeliveryOwnerDTO>(input.client,'notificationDeliveryOwners',deliveryPolicyId(actorId,deviceId));return {actorId,deviceId,cutover:!!cutover?.enabled,generation:cutover?.generation??0,owner:cutover?.enabled&&saved?.generation===cutover.generation?'server':'local'};},
   async acknowledgeOwner(actorId:string,deviceId:string,generation:number,localCancelled:boolean){return tx(actorId,async db=>{const cutover=await get<{enabled:boolean;generation:number}>(db,'notificationCutover',actorId);if(!localCancelled||!cutover?.enabled||cutover.generation!==generation)throw new DeliveryPolicyConflict('Delivery ownership changed');const owner:InboxDeliveryOwnerDTO={actorId,deviceId,generation,cutover:true,owner:'server'};await save(db,'notificationDeliveryOwners',deliveryPolicyId(actorId,deviceId),actorId,owner);return owner;});},
-  async reserve(actorId:string,value:{deliveryId:string;eventKey:string;deviceId:string;automatic:boolean;suggestion:boolean;conversationId?:string;expectedPreferenceRevision:number}) {
+  async reserve(actorId:string,value:{deliveryId:string;eventKey:string;digestKey?:string;deviceId:string;automatic:boolean;suggestion:boolean;conversationId?:string;expectedPreferenceRevision:number}) {
    return tx(actorId,async db=>{
     if (await readHistoricalNotificationSuppression({ executor: db, workspaceId: input.workspaceId, actorId, eventKey: value.eventKey })) return { allowed: false as const, reason: 'historical_backfill' };
     const p=await prefs(db,actorId);if(p.revision!==value.expectedPreferenceRevision)return {allowed:false as const,reason:'preferences_changed'};
     const cutover=await get<{enabled:boolean;generation:number}>(db,'notificationCutover',actorId),owner=await get<InboxDeliveryOwnerDTO>(db,'notificationDeliveryOwners',deliveryPolicyId(actorId,value.deviceId));if(!cutover?.enabled||owner?.generation!==cutover.generation||owner.owner!=='server')return {allowed:false as const,reason:'local_owner'};
     const attemptId=deliveryPolicyId(actorId,value.deliveryId),attempt=await get<{state:string;receiptId?:string}>(db,'notificationDeliveryAttempts',attemptId);if(attempt&&attempt.state!=='rejected')return {allowed:false as const,reason:'dispatch_already_started',receiptId:attempt.receiptId,receiptVerified:attempt.state==='sent'};
+    const guardId=value.digestKey?deliveryPolicyId(actorId,value.digestKey,value.deviceId):null;
+    if(guardId){const guard=await get<{deliveryId:string}>(db,'notificationDigestGuards',guardId);if(guard&&guard.deliveryId!==value.deliveryId){const prior=await get<{state:string}>(db,'notificationDeliveryAttempts',deliveryPolicyId(actorId,guard.deliveryId));if(prior&&prior.state!=='rejected')return {allowed:false as const,reason:'digest_duplicate'};}}
     const eventId=deliveryPolicyId(actorId,value.eventKey),reservation=await get<DeliveryQuotaReservation>(db,'notificationDeliveryReservations',eventId);
-    if(value.automatic&&!reservation){const rows=await db.query<{payload:DeliveryQuotaReservation}>(`select payload from orbit_records where workspace_id=$1 and user_id=$2 and collection_name='notificationDeliveryReservations' and (payload->>'at')::timestamptz >= $3::timestamptz`,[input.workspaceId,actorId,new Date(Date.parse(now())-48*3600000).toISOString()]);const usage=deliveryQuotaUsage(rows.rows.map(r=>r.payload),now(),p.timeZone);if(usage.automatic>=2||(value.suggestion&&usage.suggestions>=1))return {allowed:false as const,reason:'daily_quota'};await save(db,'notificationDeliveryReservations',eventId,actorId,{eventKey:value.eventKey,at:now(),timeZone:p.timeZone,suggestion:value.suggestion});}
+    if(!reservation){const rows=await db.query<{payload:DeliveryQuotaReservation}>(`select payload from orbit_records where workspace_id=$1 and user_id=$2 and collection_name='notificationDeliveryReservations' and (payload->>'at')::timestamptz >= $3::timestamptz`,[input.workspaceId,actorId,new Date(Date.parse(now())-48*3600000).toISOString()]);const usage=deliveryQuotaUsage(rows.rows.map(r=>r.payload),now(),p.timeZone);if(usage.total>=(p.dailyCap??3))return {allowed:false as const,reason:'daily_quota'};await save(db,'notificationDeliveryReservations',eventId,actorId,{eventKey:value.eventKey,at:now(),timeZone:p.timeZone,suggestion:value.suggestion});}
     let sound=true;
     if(value.conversationId){const key=deliveryPolicyId(actorId,value.conversationId),last=await get<{at:string}>(db,'notificationConversationSound',key);sound=!last||Date.parse(now())-Date.parse(last.at)>=60000;if(sound)await save(db,'notificationConversationSound',key,actorId,{at:now(),eventKey:value.eventKey});}
+    if(guardId)await save(db,'notificationDigestGuards',guardId,actorId,{deliveryId:value.deliveryId,digestKey:value.digestKey,deviceId:value.deviceId,at:now()});
     await save(db,'notificationDeliveryAttempts',attemptId,actorId,{state:'started',deliveryId:value.deliveryId,eventKey:value.eventKey,deviceId:value.deviceId,at:now(),sound});
     return {allowed:true as const,sound,preferences:p};
    });
