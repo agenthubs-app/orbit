@@ -160,3 +160,51 @@ test("form modal widths 760 / 860 / 1000 are added and the existing 420 stays 42
     assert.equal(Math.round(box?.width ?? 0), size, `Modal size ${size}`);
   }
 });
+
+// R31b（SC-R31b-02 / 04）：closable={false} 不画 ✕，但 Esc 仍关、焦点回到打开它的按钮；标题左侧图标块是装饰，
+// 不进 Tab 顺序；Web ConfirmDialog 同样无 ✕、破坏性时焦点先在キャンセル、非破坏性时在主按钮。
+test("a modal without ✕ still closes on Escape and gives focus back; its icon tile is not in the Tab order", async (t) => {
+  const iconCode = await bundle(`
+    import React, { useState } from "react";
+    import { createRoot } from "react-dom/client";
+    import { Button, ConfirmDialog, MacTile, Modal, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      const [confirm, setConfirm] = useState<null | "danger" | "plain">(null);
+      return <Orbit2026Scope language="ja">
+        <button type="button" onClick={() => setOpen(true)}>open</button>
+        <button type="button" onClick={() => setConfirm("danger")}>danger</button>
+        <button type="button" onClick={() => setConfirm("plain")}>plain</button>
+        <Modal open={open} onClose={() => setOpen(false)} title="スキップしますか？" description="あとで取り消せます。" icon={<MacTile emoji="🧠" tone="apricot" />} closable={false} size={380}
+          actions={<><Button label="キャンセル" onClick={() => setOpen(false)} /><Button label="スキップする" variant="primary" /></>} />
+        <ConfirmDialog open={confirm !== null} title="削除しますか？" message="元に戻せません。" confirmLabel="削除する" destructive={confirm === "danger"} onConfirm={() => setConfirm(null)} onCancel={() => setConfirm(null)} />
+      </Orbit2026Scope>;
+    }
+    createRoot(document.getElementById("root")).render(<Demo />);
+  `);
+  const page = await open(browser, iconCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.getByRole("button", { name: "open" }).click();
+  const dialog = page.getByRole("dialog", { name: "スキップしますか？" });
+  await dialog.waitFor();
+  await page.waitForTimeout(400);
+  assert.equal(await dialog.getByRole("button", { name: "閉じる" }).count(), 0, "no ✕");
+  assert.equal(Math.round((await dialog.boundingBox())?.width ?? 0), 380);
+  const order: string[] = [];
+  for (let index = 0; index < 3; index++) { order.push(await active(page)); await page.keyboard.press("Tab"); }
+  assert.deepEqual(order, ["キャンセル", "スキップする", "キャンセル"], "only the two actions take focus (the tile does not)");
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await active(page), "open", "focus returns to the opener");
+  await page.getByRole("button", { name: "danger" }).click();
+  const danger = page.getByRole("alertdialog", { name: "削除しますか？" });
+  await danger.waitFor();
+  assert.equal(await danger.getByRole("button", { name: "閉じる" }).count(), 0);
+  assert.equal(await active(page), "キャンセル", "destructive: focus starts on キャンセル");
+  await page.keyboard.press("Escape");
+  await danger.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "plain" }).click();
+  await page.getByRole("alertdialog", { name: "削除しますか？" }).waitFor();
+  await page.waitForTimeout(100);
+  assert.equal(await active(page), "削除する", "not destructive: focus starts on the main action");
+});
