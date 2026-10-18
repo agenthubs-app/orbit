@@ -115,6 +115,18 @@ test("探す: planFit uses the given scores (never changed), dismissed / registe
   assert.deepEqual(reordered.planFit.map((row) => [row.eventId, row.score]), [["d", 70], ["b", 78]]);
 });
 
+test("secretary candidates keep every eligible row and rank by raw score then eventId", () => {
+  const events = [
+    candidate("z", { ...judged(90), startsAt: "2026-10-10T19:00:00+09:00", organizerId: "org-x", title: "資金調達 ナイト" }),
+    candidate("b", { ...judged(89), startsAt: "2026-10-11T19:00:00+09:00" }),
+    candidate("c", { ...judged(88), startsAt: "2026-10-12T19:00:00+09:00" }),
+    candidate("a", { ...judged(90), startsAt: "2026-10-20T19:00:00+09:00" }),
+  ];
+  const input = { ...base, candidates: events, feedback: [{ eventId: "dismissed", organizerId: "org-x", reason: "content" as const, themes: ["funding" as const] }], query: q() };
+  assert.deepEqual(buildDiscover(input).planFit.map(row => row.eventId), ["a", "b", "c"]);
+  assert.deepEqual(buildDiscover(input, { dailyCandidates: true }).planFit.map(row => row.eventId), ["a", "z", "b", "c"]);
+});
+
 test("探す: no plan / signed out → popularity order, no scores, no community; signed out never sees organizer ids", () => {
   const events = [candidate("a", { ...judged(82), registrationCount: 10 }), candidate("b", { ...judged(60), registrationCount: 90 })];
   const noPlan = buildDiscover({ ...base, candidates: events, hasPlan: false, query: q() });

@@ -7,13 +7,13 @@
 import { canSeeRoster } from "./roster-policy";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../shared/contract/event-after";
-import type { EventDiscoverResponse } from "../../../shared/contract/event-discover";
+import type { EventDiscoverResponse, EventDiscoverRow } from "../../../shared/contract/event-discover";
 import type { EventOverviewResponse } from "../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../shared/contract/event-prep";
 import type { EventSearchResponse } from "../../../shared/contract/event-search";
 import type { EventVenueMemoResult, EventVenueResponse } from "../../../shared/contract/event-venue";
 import type { OrganizerFollowResult } from "../../../shared/contract/organizer-follow";
-import type { EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
+import { eventDiscoverQueryObject, type EventDiscoverParsedQuery } from "../../../shared/api-schema/event-discover";
 import { buildAfter } from "./after-core";
 import type { createEventFeedbackService, createOrganizerFollowService, createPrepChecklistService, createVenueMemoService } from "./attendee-records";
 import { buildDiscover, eventArea, eventThemes, type DiscoverCandidate } from "./discover-core";
@@ -31,6 +31,8 @@ export interface JourneyRecords {
 
 export interface JourneyService {
   discover(actorId: string | null, query: EventDiscoverParsedQuery, language: JourneyLanguage): Promise<EventDiscoverResponse>;
+  /** Internal secretary source: every scored candidate, before the public three-row limit or feedback rank penalty. */
+  dailyCandidates(actorId: string, language: JourneyLanguage): Promise<readonly EventDiscoverRow[]>;
   search(actorId: string, query: string, limit: number): Promise<EventSearchResponse>;
   /** `platform`: which client asks (the sample world shows each board's own text; live ignores it). */
   /** `allAttendees`：「すべて見る」—— 公开资料的参加者全部返回（上限 200），否则前 8 人。 */
@@ -87,8 +89,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
     venue: event.venue,
   });
 
-  return {
-    async discover(actorId, query, language) {
+  async function discoverRows(actorId: string | null, query: EventDiscoverParsedQuery, language: JourneyLanguage, forDaily = false): Promise<EventDiscoverResponse> {
       const at = now();
       const events = await ports.catalogue(at);
       const candidates = events.map(candidateOf);
@@ -97,15 +98,27 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       }
       const [mine, followed, feedback] = await Promise.all([ports.myEvents(actorId), records.follows.followed(actorId), records.feedback.entries(actorId)]);
       // 只给最近的 40 场判分（有界读取）；其余照样出现在すべて，只是没有分。
-      const scoredIds = candidates.filter((item) => Date.parse(item.startsAt) >= at.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)).slice(0, 40).map((item) => item.eventId);
-      const judged = await ports.judge(actorId, scoredIds, language);
+      const scoredIds = candidates.filter((item) => Date.parse(item.startsAt) >= at.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)).map((item) => item.eventId);
+      const judged = await ports.judge(actorId, scoredIds.slice(0, 40), language);
+      if (forDaily && judged.hasPlan) {
+        for (let index = 40; index < scoredIds.length; index += 40) {
+          const batch = await ports.judge(actorId, scoredIds.slice(index, index + 40), language);
+          Object.assign(judged.results, batch.results);
+        }
+      }
       for (const candidate of candidates) {
         const result = judged.results[candidate.eventId];
         if (result) candidate.judge = { knownAttendees: result.knownAttendees, meetCandidates: result.meetCandidates, reason: result.reason, reasonDetail: result.reasonDetail, score: result.score, verdict: result.verdict };
       }
       const attended = new Set(mine.filter((item) => item.status === "attended" && item.organizerKey).map((item) => item.organizerKey!));
       const myIds = new Set(mine.filter((item) => item.status !== "cancelled" && item.status !== "rejected" && item.status !== "planned").map((item) => item.eventId));
-      return buildDiscover({ attendedOrganizers: attended, candidates, feedback, followedOrganizers: followed, hasPlan: judged.hasPlan, hrefFor, myEventIds: myIds, now: at, planGoal: judged.goal, query, signedIn: true });
+      return buildDiscover({ attendedOrganizers: attended, candidates, feedback, followedOrganizers: followed, hasPlan: judged.hasPlan, hrefFor, myEventIds: myIds, now: at, planGoal: judged.goal, query, signedIn: true }, forDaily ? { dailyCandidates: true } : undefined);
+  }
+
+  return {
+    discover: (actorId, query, language) => discoverRows(actorId, query, language),
+    async dailyCandidates(actorId, language) {
+      return (await discoverRows(actorId, eventDiscoverQueryObject.parse({ sort: 'recommended' }), language, true)).planFit;
     },
 
     async search(actorId, query, limit) {

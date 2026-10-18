@@ -75,6 +75,10 @@ export function createJourneyMockService(): JourneyService {
       const planFit = data.planFit.filter((row) => !dismissed.has(row.eventId));
       return { ...data, community, planFit, planFitTotal: Math.max(0, data.planFitTotal - (data.planFit.length - planFit.length)) };
     },
+    async dailyCandidates(actorId) {
+      const dismissed = new Set((await feedback.entries(actorId)).map((entry) => entry.eventId));
+      return journeyDiscover(state().discover).planFit.filter(row => !dismissed.has(row.eventId));
+    },
     async search(_actorId, query) {
       return journeySearch(query);
     },

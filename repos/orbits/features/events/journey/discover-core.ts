@@ -193,7 +193,7 @@ function matches(item: Enriched, query: EventDiscoverParsedQuery, window: { from
   return true;
 }
 
-export function buildDiscover(input: DiscoverInput): EventDiscoverResponse {
+export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?: boolean } = {}): EventDiscoverResponse {
   const href = input.hrefFor ?? ((eventId: string) => `/events/${eventId}`);
   const enriched = input.candidates.map(enrich);
   const window = periodWindow(input.query, input.now);
@@ -234,7 +234,10 @@ export function buildDiscover(input: DiscoverInput): EventDiscoverResponse {
 
   // すべて：日付順；没有计划 / 未登录 → 人气順（DESIGN §9 #13）；planFirst 且有分 → 分数顺。
   const allSorted = [...matched].sort(!scored ? popularity : input.query.planFirst && input.query.sort === "recommended" ? (a, b) => rank(b) - rank(a) || byDate(a, b) : byDate);
-  const planFitAll = scored ? matched.filter((item) => recommendable(item) && item.candidate.judge && item.candidate.judge.verdict !== "skip").sort((a, b) => rank(b) - rank(a) || byDate(a, b)) : [];
+  const planFitAll = scored ? matched.filter((item) => recommendable(item) && item.candidate.judge && item.candidate.judge.verdict !== "skip")
+    .sort(options.dailyCandidates
+      ? (a, b) => (b.candidate.judge!.score - a.candidate.judge!.score) || a.candidate.eventId.localeCompare(b.candidate.eventId)
+      : (a, b) => rank(b) - rank(a) || byDate(a, b)) : [];
   const community = input.signedIn
     ? matched
       .filter((item) => recommendable(item) && item.candidate.organizerId && (input.followedOrganizers.has(item.candidate.organizerId) || input.attendedOrganizers.has(item.candidate.organizerId)))
@@ -268,7 +271,7 @@ export function buildDiscover(input: DiscoverInput): EventDiscoverResponse {
   return {
     all: allSorted.slice(0, ALL_ROWS).map((item) => toRow(item)),
     community,
-    planFit: planFitAll.slice(0, PLAN_FIT_ROWS).map((item) => toRow(item)),
+    planFit: (options.dailyCandidates ? planFitAll : planFitAll.slice(0, PLAN_FIT_ROWS)).map((item) => toRow(item)),
     planFitTotal: planFitAll.length,
     planGoal: scored ? input.planGoal ?? null : null,
     popularityFallback: !scored,

@@ -340,7 +340,7 @@ export function createConfiguredMaintenanceTasks({
             );
             return rows.rows.map(row => row.actor_id);
           },
-          recommendations: async (actorId: string) => (await journey.discover(actorId, { sort: 'recommended' }, 'ja')).planFit,
+          recommendations: (actorId: string) => journey.dailyCandidates(actorId, 'ja'),
           write: (actorId: string, winner: import("../../../shared/contract/event-discover").EventDiscoverRow, day: string, at: string) => writeDailySlot(repository, actorId, winner, day, at),
           clear: (actorId: string, day: string, at: string) => clearDailySlot(repository, actorId, day, at),
         };
