@@ -14,6 +14,7 @@ export function IconButton({
   onPress,
   size = 40,
   soft = false,
+  solid = false,
   dot = false,
   disabled = false,
 }: {
@@ -22,6 +23,8 @@ export function IconButton({
   onPress: () => void;
   size?: 40 | 34;
   soft?: boolean;
+  /** R31a: kit topbar confirm button (b5 #42 編集 ✓): ink circle, bg-coloured icon. */
+  solid?: boolean;
   dot?: boolean;
   disabled?: boolean;
 }) {
@@ -37,8 +40,8 @@ export function IconButton({
       pressedScale={0.9}
       style={[styles.target, { padding: (44 - size) / 2, margin: -(44 - size) / 2 }, disabled && styles.disabled]}
     >
-      <View style={[styles.base, { width: size, height: size, backgroundColor: soft || size === 34 ? colors.surface2 : colors.surface }]}>
-        <Icon name={icon} size={size === 34 ? 16 : 20} color={colors.ink2} />
+      <View style={[styles.base, { width: size, height: size, backgroundColor: solid ? colors.ink : soft || size === 34 ? colors.surface2 : colors.surface }]}>
+        <Icon name={icon} size={size === 34 ? 16 : 20} color={solid ? colors.bg : colors.ink2} />
         {dot ? <View style={styles.dot} /> : null}
       </View>
     </UiPressable>

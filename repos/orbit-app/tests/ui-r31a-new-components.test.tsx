@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import React from "react";
 
@@ -48,4 +49,23 @@ test("Popover: the anchored .gmenu panel with rows (current one selected), nothi
   assert.match(html, /data-testid="pop"/u);
   assert.match(html, /aria-checked="true"/u);
   assert.equal(renderToHtml(<Popover visible={false} onClose={() => undefined} anchor={{ top: 0, left: 0, right: 0 }}><PopoverDivider /></Popover>), "");
+});
+
+// R31a (R11a requests): Chip leading icon, SearchField trailing slot, IconButton solid, the full-page form container.
+test("Chip draws a 12pt leading icon before the label; SearchField keeps a trailing slot; IconButton solid", () => {
+  const { Chip, SearchField, IconButton } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const chip = renderToHtml(<Chip label="名刺" icon="scan" />);
+  assert.match(chip, /<svg[^>]*width="12"/u);
+  assert.ok(chip.indexOf("<svg") < chip.indexOf("名刺"), "icon first");
+  assert.doesNotMatch(renderToHtml(<Chip label="名刺" />), /<svg/u);
+  const field = renderToHtml(<SearchField value="" onChangeText={() => undefined} placeholder="検索" trailing={<IconButton icon="sliders" size={34} accessibilityLabel="絞り込み" onPress={() => undefined} />} />);
+  assert.match(field, /aria-label="絞り込み"/u);
+  assert.ok(renderToHtml(<IconButton icon="check" solid accessibilityLabel="保存" onPress={() => undefined} />).includes('aria-label="保存"'));
+});
+
+test("FormScreen is AppScreen on the kit inset with ✕ cancel and a solid ✓ save", () => {
+  const source = readFileSync(new URL("../src/components/FormScreen.tsx", import.meta.url), "utf8");
+  assert.match(source, /inset="kit"/u);
+  assert.match(source, /backIcon="x"/u);
+  assert.match(source, /icon="check" solid/u);
 });

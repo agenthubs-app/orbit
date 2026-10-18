@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
@@ -6,7 +7,9 @@ import { Icon } from "./Icon";
 import { UiPressable } from "./Pressable";
 
 // kit .search: 44 tall pill on surface, search icon, clear button when not empty.
-export function SearchField({ value, onChangeText, placeholder, accessibilityLabel }: { value: string; onChangeText: (value: string) => void; placeholder: string; accessibilityLabel?: string }) {
+// R31a (R11a request): `trailing` = the slot at the pill's right end (app.html #7–#8 人脈: the sliders filter button,
+// kit `margin-left: auto`), after the clear button.
+export function SearchField({ value, onChangeText, placeholder, accessibilityLabel, trailing }: { value: string; onChangeText: (value: string) => void; placeholder: string; accessibilityLabel?: string; trailing?: ReactNode }) {
   const { colors, styles } = useStyles();
   const copy = useStandardCopy();
   return (
@@ -26,6 +29,7 @@ export function SearchField({ value, onChangeText, placeholder, accessibilityLab
           <Icon name="x-circle" size={16} color={colors.ink3Text} />
         </UiPressable>
       ) : null}
+      {trailing ?? null}
     </View>
   );
 }
