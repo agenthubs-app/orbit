@@ -89,6 +89,18 @@ export function noteVersion(value: unknown): number {
   return Number(value);
 }
 
+export function noteKind(value: unknown): "free" | "meeting" | "voice" | undefined {
+  if (value === undefined) return undefined;
+  if (value === "free" || value === "meeting" || value === "voice") return value;
+  throw new AppError("VALIDATION_ERROR", "noteKind is invalid.");
+}
+
+export function noteUsedForPlan(value: unknown): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  throw new AppError("VALIDATION_ERROR", "usedForPlan is invalid.");
+}
+
 export function noteContactIds(value: unknown): readonly string[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string" && item.trim())) {
@@ -97,18 +109,31 @@ export function noteContactIds(value: unknown): readonly string[] | undefined {
   return value;
 }
 
-export function noteMentions(value: unknown): readonly NoteMentionContract[] | undefined {
+export function noteMentions(value: unknown, allowStoredUnknown = false): readonly NoteMentionContract[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value)) throw new AppError("VALIDATION_ERROR", "mentions must be an array.");
   return value.map((item) => {
+    const mention = item as Record<string, unknown>;
     if (
       typeof item !== "object" || item === null || Array.isArray(item) ||
-      typeof (item as Record<string, unknown>).contactId !== "string" ||
-      typeof (item as Record<string, unknown>).displayText !== "string" ||
-      !Number.isSafeInteger((item as Record<string, unknown>).start) ||
-      !Number.isSafeInteger((item as Record<string, unknown>).end)
+      typeof mention.displayText !== "string" || !mention.displayText.trim() ||
+      !Number.isSafeInteger(mention.start) || !Number.isSafeInteger(mention.end)
     ) throw new AppError("VALIDATION_ERROR", "mentions contains an invalid item.");
-    const mention = item as unknown as NoteMentionContract;
-    return { ...mention };
+    const knownType = mention.entityType === undefined || mention.entityType === "contact" || mention.entityType === "event";
+    if (knownType && Object.keys(mention).some((key) => !["entityType", "contactId", "eventId", "start", "end", "displayText"].includes(key))) {
+      throw new AppError("VALIDATION_ERROR", "mentions contains an unsupported field.");
+    }
+    if (mention.entityType === undefined || mention.entityType === "contact") {
+      if (typeof mention.contactId !== "string" || !mention.contactId.trim() || mention.eventId !== undefined) {
+        throw new AppError("VALIDATION_ERROR", "mentions contains an invalid contact.");
+      }
+    } else if (mention.entityType === "event") {
+      if (typeof mention.eventId !== "string" || !mention.eventId.trim() || mention.contactId !== undefined) {
+        throw new AppError("VALIDATION_ERROR", "mentions contains an invalid event.");
+      }
+    } else if (!allowStoredUnknown || typeof mention.entityType !== "string" || !mention.entityType.trim()) {
+      throw new AppError("VALIDATION_ERROR", "mentions contains an unknown type.");
+    }
+    return { ...mention } as NoteMentionContract;
   });
 }

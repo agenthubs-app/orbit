@@ -8,6 +8,7 @@ import {
 import { authenticatedApiActorRequiredResponse } from "../_shared/authenticated-actor";
 import {
   readTaskJsonObject,
+  parseTaskPlanLink,
   requireExactKeys,
   requireString,
   taskErrorResponse,
@@ -25,6 +26,7 @@ const createKeys = [
   "dueAt",
   "idempotencyKey",
   "notes",
+  "planLink",
   "location",
   "plannedDate",
   "priority",
@@ -69,6 +71,7 @@ function parseCreateBody(body: Record<string, unknown>) {
   const relatedMeetingId = optionalString(body, "relatedMeetingId");
   const relatedConversationId = optionalString(body, "relatedConversationId");
   const suggestionId = optionalString(body, "suggestionId");
+  const planLink = body.planLink == null ? undefined : parseTaskPlanLink(body.planLink);
 
   return {
     category,
@@ -84,6 +87,7 @@ function parseCreateBody(body: Record<string, unknown>) {
     ...(relatedMeetingId ? { relatedMeetingId } : {}),
     ...(relatedConversationId ? { relatedConversationId } : {}),
     ...(suggestionId ? { suggestionId } : {}),
+    ...(planLink ? { planLink } : {}),
   };
 }
 
@@ -100,23 +104,32 @@ export function createTaskCollectionHandlers(
         const searchParams = new URL(request.url).searchParams;
         const rawStatus = searchParams.get("status");
         const rawCategory = searchParams.get("category");
+        const rawPlanId = searchParams.get("planId");
+        const rawTypeItemId = searchParams.get("typeItemId");
+        if ((rawPlanId === null) !== (rawTypeItemId === null)) {
+          throw new AppError("VALIDATION_ERROR", "planId and typeItemId must be supplied together.");
+        }
         if (rawStatus && !TASK_STATUSES.includes(rawStatus as TaskStatus)) {
           throw new AppError("VALIDATION_ERROR", "status is invalid.");
         }
         if (rawCategory && !TASK_CATEGORIES.includes(rawCategory as TaskCategory)) {
           throw new AppError("VALIDATION_ERROR", "category is invalid.");
         }
+        const read = async () => {
+          const tasks = await taskRouteService(dependencies).list({
+            actorId: actor.id,
+            ...(rawStatus ? { status: rawStatus as TaskStatus } : {}),
+            ...(rawCategory ? { category: rawCategory as TaskCategory } : {}),
+            ...(rawPlanId !== null ? { planId: requireString(rawPlanId, "planId"), typeItemId: requireString(rawTypeItemId, "typeItemId") } : {}),
+          });
+          return taskSuccessResponse({ tasks });
+        };
+        // Plan validity lives outside the task-record watermark. Filtered type reads must recheck it.
+        if (rawPlanId !== null) return await read();
         return await conditionalJsonRead(
           { routeKey: "tasks.list", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: ["tasks"], userScoped: true },
           dependencies?.conditionalRead ?? defaultConditionalReadDependencies(),
-          async () => {
-            const tasks = await taskRouteService(dependencies).list({
-              actorId: actor.id,
-              ...(rawStatus ? { status: rawStatus as TaskStatus } : {}),
-              ...(rawCategory ? { category: rawCategory as TaskCategory } : {}),
-            });
-            return taskSuccessResponse({ tasks });
-          },
+          read,
         );
       } catch (error) {
         return taskErrorResponse(error);

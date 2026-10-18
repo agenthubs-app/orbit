@@ -1,4 +1,5 @@
 export type { TaskCardContract, TaskPageContract } from "../../shared/contract/task-page";
+import type { TaskPlanLink } from "../../shared/contract/tasks";
 
 export const TASK_CATEGORIES = [
   "relationship",
@@ -53,6 +54,7 @@ export interface TaskItemDTO {
   updatedAt: string;
   /** Derived from user date edits in activities; absent from stored task payloads. */
   deferralCount?: number;
+  planLink?: TaskPlanLink;
 }
 
 export type TaskActivityType =

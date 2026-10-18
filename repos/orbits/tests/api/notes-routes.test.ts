@@ -143,3 +143,79 @@ test("HTTP accepts v2 note fields while legacy PATCH preserves omitted associati
   assert.deepEqual(updated.manualContactIds, ["contact:lin"]);
   assert.deepEqual(updated.eventIds, ["event:launch"]);
 });
+
+test("HTTP persists event mentions and memo flags while keeping old omitted fields absent", async () => {
+  const deps = dependencies();
+  const collection = createNoteCollectionHandlers(deps);
+  const createdResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
+    body: JSON.stringify({
+      body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+      mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+      idempotencyKey: "api:create:event",
+    }), method: "POST",
+  }));
+  assert.equal(createdResponse.status, 201);
+  const created = (await json(createdResponse)).data.note;
+  assert.deepEqual(created.contactIds, []);
+  assert.deepEqual(created.eventIds, ["event:launch"]);
+  assert.equal(created.noteKind, "meeting");
+  assert.equal(created.usedForPlan, true);
+  const detail = createNoteDetailHandlers(deps);
+  const updatedResponse = await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    body: JSON.stringify({ noteKind: "free", usedForPlan: false, expectedVersion: 1, idempotencyKey: "api:update:event" }),
+    method: "PATCH",
+  }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(updatedResponse.status, 200);
+  const updated = (await json(updatedResponse)).data.note;
+  assert.equal(updated.noteKind, "free");
+  assert.equal(updated.usedForPlan, false);
+  assert.deepEqual(updated.mentions, created.mentions);
+
+  const oldResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
+    body: JSON.stringify({ body: "Old client", idempotencyKey: "api:create:old" }), method: "POST",
+  }));
+  assert.equal(oldResponse.status, 201);
+  const old = (await json(oldResponse)).data.note;
+  assert.equal(Object.hasOwn(old, "noteKind"), false);
+  assert.equal(Object.hasOwn(old, "usedForPlan"), false);
+  const meetingPage = await collection.GET(new Request("https://orbit.local/api/notes?noteKind=meeting"));
+  assert.equal(meetingPage.status, 200);
+  assert.deepEqual((await json(meetingPage)).data.notes.map((item: { id: string }) => item.id), []);
+  const freePage = await collection.GET(new Request("https://orbit.local/api/notes?noteKind=free"));
+  assert.equal(freePage.status, 200);
+  assert.equal((await json(freePage)).data.total, 2);
+  const invalidKind = await collection.GET(new Request("https://orbit.local/api/notes?noteKind=other"));
+  assert.equal(invalidKind.status, 400);
+});
+
+test("HTTP PATCH echoes a stored future token unchanged but rejects a rewritten token", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createNoteRepository({ store, workspaceId });
+  const noteId = "note:future";
+  const future = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };
+  await repository.saveIfAbsent({
+    schemaVersion: 2,
+    note: {
+      id: noteId, accountId: actorId, ownerUserId: actorId, title: "Future", body: "Note for later",
+      manualContactIds: [], mentions: [future as never], contactIds: [], eventIds: [], version: 1,
+      createdAt: now, updatedAt: now,
+    }, operations: [],
+  });
+  const detail = createNoteDetailHandlers({ ...dependencies(), service: createNoteService({ repository }) });
+  const context = { params: Promise.resolve({ id: noteId }) };
+  const kept = await detail.PATCH(new Request(`https://orbit.local/api/notes/${noteId}`, {
+    method: "PATCH", body: JSON.stringify({ mentions: [future], noteKind: "meeting", expectedVersion: 1, idempotencyKey: "future:keep" }),
+  }), context);
+  assert.equal(kept.status, 200);
+  assert.deepEqual((await json(kept)).data.note.mentions, [future]);
+  const forged = await detail.PATCH(new Request(`https://orbit.local/api/notes/${noteId}`, {
+    method: "PATCH", body: JSON.stringify({ mentions: [{ ...future, futureId: "future:fake" }], expectedVersion: 2, idempotencyKey: "future:fake" }),
+  }), context);
+  assert.equal(forged.status, 400);
+  const newUnknown = await createNoteCollectionHandlers({ ...dependencies(), service: createNoteService({ repository }) }).POST(
+    new Request("https://orbit.local/api/notes", {
+      method: "POST", body: JSON.stringify({ body: "Note for later", mentions: [future], idempotencyKey: "future:new" }),
+    }),
+  );
+  assert.equal(newUnknown.status, 400);
+});

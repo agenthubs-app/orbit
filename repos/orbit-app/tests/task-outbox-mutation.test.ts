@@ -24,6 +24,20 @@ test("task outbox freezes a personal create request and validates its receipt ke
   }));
 });
 
+test("planLink survives the frozen task outbox request and explicit unlink survives update", () => {
+  const planLink = { planId: "plan:mine", typeItemId: "type:mine" };
+  const created = buildOfflineTaskMutation({ mutationId: "task-plan-create", entityId: localId,
+    operation: "create", baseRevision: null, createdAt,
+    requestBody: { title: "会う準備", category: "work", planLink, idempotencyKey: "task-plan-create" } });
+  assert.deepEqual(parseOfflineTaskRequest(created).mutation.patch.planLink, planLink);
+  assert.deepEqual((JSON.parse(created.requestJson!) as Record<string, unknown>).planLink, planLink);
+  const unlinked = buildOfflineTaskMutation({ mutationId: "task-plan-unlink", entityId: "task:server",
+    operation: "update", baseRevision: "rev:1", createdAt,
+    requestBody: { action: "update", expectedUpdatedAt: createdAt,
+      idempotencyKey: "task-plan-unlink", patch: { planLink: null } } });
+  assert.equal(parseOfflineTaskRequest(unlinked).mutation.patch.planLink, null);
+});
+
 test("task outbox accepts all six task operations and keeps stale-delete versions in the frozen request", () => {
   const actions = ["complete", "reopen", "cancel", "delete"] as const;
   for (const operation of actions) {

@@ -26,7 +26,6 @@ function readMentions(value: unknown, body: string): readonly NoteMentionContrac
   for (const item of value) {
     if (
       !isRecord(item) ||
-      !nonEmpty(item.contactId) ||
       !Number.isSafeInteger(item.start) ||
       !Number.isSafeInteger(item.end) ||
       Number(item.start) < 0 ||
@@ -35,13 +34,15 @@ function readMentions(value: unknown, body: string): readonly NoteMentionContrac
       !nonEmpty(item.displayText) ||
       body.slice(Number(item.start), Number(item.end)) !== item.displayText
     ) return null;
-    mentions.push({
-      contactId: item.contactId,
-      start: Number(item.start),
-      end: Number(item.end),
-      displayText: item.displayText,
-    });
+    if (item.entityType === undefined || item.entityType === "contact") {
+      if (!nonEmpty(item.contactId) || item.eventId !== undefined) return null;
+    } else if (item.entityType === "event") {
+      if (!nonEmpty(item.eventId) || item.contactId !== undefined) return null;
+    } else if (!nonEmpty(item.entityType)) return null;
+    mentions.push({ ...item, start: Number(item.start), end: Number(item.end) } as unknown as NoteMentionContract);
   }
+  const ranges = [...mentions].sort((a, b) => a.start - b.start);
+  if (ranges.some((item, index) => index > 0 && item.start < ranges[index - 1]!.end)) return null;
   return mentions;
 }
 
@@ -86,8 +87,9 @@ function readNote(value: unknown, actorId: string, schemaVersion: 1 | 2): NoteDT
   if (!mentions) return null;
   const manualContactIds = [...new Set(value.manualContactIds as string[])].sort();
   const eventIds = [...new Set(value.eventIds as string[])].sort();
-  const canonical = [...new Set([...manualContactIds, ...mentions.map((item) => item.contactId)])].sort();
+  const canonical = [...new Set([...manualContactIds, ...mentions.filter((item) => (item.entityType ?? "contact") === "contact").map((item) => item.contactId!)])].sort();
   if (canonical.length !== contactIds.length || canonical.some((id, index) => id !== contactIds[index])) return null;
+  if (mentions.some((item) => item.entityType === "event" && !eventIds.includes(item.eventId!))) return null;
   return {
     ...(value as unknown as NoteDTO),
     title: value.title.trim(),

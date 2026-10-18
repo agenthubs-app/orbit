@@ -7,12 +7,14 @@ import {
   noteContactIds,
   noteError,
   noteExactKeys,
+  noteKind,
   noteMentions,
   noteNow,
   noteOptionalString,
   noteService,
   noteString,
   noteSuccess,
+  noteUsedForPlan,
   noteVersion,
   type NoteRouteContext,
   type NoteRouteDependencies,
@@ -36,7 +38,7 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
       try {
         const { id } = await context.params;
         const body = await noteBody(request);
-        noteExactKeys(body, ["title", "body", "contactIds", "manualContactIds", "mentions", "eventIds", "expectedVersion", "idempotencyKey"]);
+        noteExactKeys(body, ["title", "body", "contactIds", "manualContactIds", "mentions", "eventIds", "noteKind", "usedForPlan", "expectedVersion", "idempotencyKey"]);
         const note = await noteService(dependencies).update({
           actorId: actor.id,
           noteId: id,
@@ -44,8 +46,10 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
           ...(body.body === undefined ? {} : { body: noteString(body.body, "body") }),
           ...(body.contactIds === undefined ? {} : { contactIds: noteContactIds(body.contactIds) }),
           ...(body.manualContactIds === undefined ? {} : { manualContactIds: noteContactIds(body.manualContactIds) }),
-          ...(body.mentions === undefined ? {} : { mentions: noteMentions(body.mentions) }),
+          ...(body.mentions === undefined ? {} : { mentions: noteMentions(body.mentions, true) }),
           ...(body.eventIds === undefined ? {} : { eventIds: noteContactIds(body.eventIds) }),
+          ...(body.noteKind === undefined ? {} : { noteKind: noteKind(body.noteKind) }),
+          ...(body.usedForPlan === undefined ? {} : { usedForPlan: noteUsedForPlan(body.usedForPlan) }),
           expectedVersion: noteVersion(body.expectedVersion),
           idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
           now: noteNow(dependencies),

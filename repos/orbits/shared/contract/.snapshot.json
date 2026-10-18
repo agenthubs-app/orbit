@@ -14351,7 +14351,7 @@
       "kind": "object",
       "members": {
         "contactId": {
-          "optional": false,
+          "optional": true,
           "kind": "text",
           "type": "string"
         },

@@ -6,12 +6,17 @@ const optionalText = z.string().max(10_000)
   .refine((value) => value.trim().length > 0).optional();
 const nullableText = z.string().max(10_000).nullable().optional();
 const idList = z.array(nonEmpty).max(100);
-const mention = z.object({
-  contactId: nonEmpty,
+const mentionRange = {
   start: z.number().int().nonnegative(),
   end: z.number().int().positive(),
   displayText: nonEmpty,
-}).strict().refine((value) => value.end > value.start);
+};
+const mention = z.union([
+  z.object({ ...mentionRange, entityType: z.literal("contact").optional(), contactId: nonEmpty }).strict(),
+  z.object({ ...mentionRange, entityType: z.literal("event"), eventId: nonEmpty }).strict(),
+]).refine((value) => value.end > value.start);
+const storedUnknownMention = z.object({ ...mentionRange, entityType: nonEmpty }).passthrough()
+  .refine((value) => value.entityType !== "contact" && value.entityType !== "event" && value.end > value.start);
 
 const notePatch = z.object({
   title: z.string().max(200).optional(),
@@ -20,6 +25,11 @@ const notePatch = z.object({
   manualContactIds: idList.optional(),
   mentions: z.array(mention).max(100).optional(),
   eventIds: idList.optional(),
+  noteKind: z.enum(["free", "meeting", "voice"]).optional(),
+  usedForPlan: z.boolean().optional(),
+}).strict();
+const noteUpdatePatch = notePatch.extend({
+  mentions: z.array(z.union([mention, storedUnknownMention])).max(100).optional(),
 }).strict();
 
 const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).refine((value) => {
@@ -38,9 +48,10 @@ const taskPatch = z.object({
   priority: z.enum(["normal", "high"]).optional(),
   relatedContactId: nonEmpty.nullable().optional(),
   relatedConversationId: nonEmpty.nullable().optional(),
+  planLink: z.object({ planId: nonEmpty, typeItemId: nonEmpty }).strict().nullable().optional(),
 }).strict();
 
-const followupPatch = taskPatch.omit({ category: true }).extend({
+const followupPatch = taskPatch.omit({ category: true, planLink: true }).extend({
   relatedContactId: nonEmpty.optional(),
 }).strict();
 
@@ -69,7 +80,7 @@ function parsePatch(kind: z.infer<typeof base>["kind"], operation: z.infer<typeo
     return patch;
   }
   if (kind === "note") {
-    const parsed = notePatch.parse(patch);
+    const parsed = (operation === "update" ? noteUpdatePatch : notePatch).parse(patch);
     if (Object.keys(parsed).length === 0) throw new Error("mutation-patch-required");
     if (operation === "create" && (typeof parsed.body !== "string" || !parsed.body.trim())) throw new Error("note-body-required");
     if (parsed.body === "") throw new Error("note-body-required");
@@ -78,6 +89,12 @@ function parsePatch(kind: z.infer<typeof base>["kind"], operation: z.infer<typeo
         if (item.end > parsed.body.length || parsed.body.slice(item.start, item.end) !== item.displayText) {
           throw new Error("note-mention-invalid");
         }
+      }
+    }
+    if (parsed.mentions !== undefined) {
+      const ranges = [...parsed.mentions].sort((a, b) => a.start - b.start);
+      for (let index = 1; index < ranges.length; index += 1) {
+        if (ranges[index]!.start < ranges[index - 1]!.end) throw new Error("note-mention-overlap");
       }
     }
     return parsed;

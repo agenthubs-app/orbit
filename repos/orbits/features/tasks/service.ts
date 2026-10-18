@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { TaskPlanLink } from "../../shared/contract/tasks";
 
 import type {
   TaskActivityActorType,
@@ -18,7 +19,12 @@ import { countTaskDeferrals } from "./task-record";
 export type TaskServiceErrorCode =
   | "TASK_NOT_FOUND"
   | "TASK_VERSION_CONFLICT"
-  | "TASK_INVALID_TRANSITION";
+  | "TASK_INVALID_TRANSITION"
+  | "TASK_INVALID_PLAN_LINK";
+
+export interface TaskPlanLinkReader {
+  isActiveTypeLink(input: { actorId: string; planId: string; typeItemId: string }): Promise<boolean>;
+}
 
 export class TaskServiceError extends Error {
   constructor(
@@ -52,6 +58,7 @@ export interface TaskCreateInput {
   suggestionId?: string;
   sourceNoteId?: string;
   sourceNoteVersion?: number;
+  planLink?: TaskPlanLink;
   idempotencyKey: string;
   now: string;
 }
@@ -68,6 +75,7 @@ export interface TaskUpdatePatch {
   relatedEventId?: string;
   relatedMeetingId?: string;
   relatedConversationId?: string;
+  planLink?: TaskPlanLink | null;
 }
 
 export interface TaskService {
@@ -79,6 +87,8 @@ export interface TaskService {
     actorId: string;
     status?: TaskStatus;
     category?: TaskCategory;
+    planId?: string;
+    typeItemId?: string;
   }) => Promise<readonly TaskItemDTO[]>;
   history: (input: {
     actorId: string;
@@ -224,6 +234,7 @@ function transitionActorType(
 
 export function createTaskService(input: {
   repository: TaskRepository;
+  planLinkReader?: TaskPlanLinkReader;
   insideMutation?: boolean;
   onTaskTerminated?: (input: {
     actorId: string;
@@ -236,7 +247,7 @@ export function createTaskService(input: {
     const run = async <K extends "create" | "update" | "complete" | "reopen" | "cancel" | "delete">(action: K, command: Parameters<TaskService[K]>[0]) => {
       let termination: Parameters<NonNullable<typeof input.onTaskTerminated>>[0] | undefined;
       const result = await input.repository.mutate(action, command, repository => {
-        const service = createTaskService({ repository, insideMutation: true, onTaskTerminated: async value => { termination = value; } });
+        const service = createTaskService({ repository, insideMutation: true, planLinkReader: input.planLinkReader, onTaskTerminated: async value => { termination = value; } });
         return service[action](command as never);
       });
       if (termination) await input.onTaskTerminated?.(termination);
@@ -247,22 +258,44 @@ export function createTaskService(input: {
       complete: command => run("complete", command), reopen: command => run("reopen", command),
       cancel: command => run("cancel", command), delete: command => run("delete", command) };
   }
+  async function visibleTask(task: TaskItemDTO): Promise<TaskItemDTO> {
+    if (!task.planLink) return task;
+    if (await input.planLinkReader?.isActiveTypeLink({ actorId: task.ownerUserId, ...task.planLink })) return task;
+    const { planLink: _planLink, ...withoutLink } = task;
+    return withoutLink;
+  }
+
+  async function requirePlanLink(actorId: string, link: TaskPlanLink): Promise<void> {
+    if (!link || typeof link !== "object" || Array.isArray(link) || Object.keys(link).length !== 2 ||
+      typeof link.planId !== "string" || !link.planId.trim() ||
+      typeof link.typeItemId !== "string" || !link.typeItemId.trim() ||
+      !await input.planLinkReader?.isActiveTypeLink({ actorId, planId: link.planId, typeItemId: link.typeItemId })) {
+      throw new TaskServiceError("TASK_INVALID_PLAN_LINK", "Plan link is invalid");
+    }
+  }
   return {
     async get(query) {
       const stored = await input.repository.get(query.actorId, query.taskId);
-      return stored?.payload.task ?? null;
+      return stored ? visibleTask(stored.payload.task) : null;
     },
 
     async list(query) {
+      if ((query.planId === undefined) !== (query.typeItemId === undefined) ||
+        (query.planId !== undefined && (!query.planId.trim() || !query.typeItemId?.trim()))) {
+        throw new TaskServiceError("TASK_INVALID_PLAN_LINK", "Plan and type IDs must be supplied together");
+      }
       const records = await input.repository.list(query.actorId);
-      return records
+      const tasks = await Promise.all(records
         .map((record) => record.payload.task)
         .filter(
           (task) =>
             (query.status === undefined || task.status === query.status) &&
             (query.category === undefined || task.category === query.category),
         )
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        .map(visibleTask));
+      return query.planId === undefined ? tasks : tasks.filter((task) =>
+        task.planLink?.planId === query.planId && task.planLink?.typeItemId === query.typeItemId);
     },
 
     async history(query) {
@@ -283,6 +316,7 @@ export function createTaskService(input: {
     },
 
     async create(createInput) {
+      if (createInput.planLink) await requirePlanLink(createInput.actorId, createInput.planLink);
       const taskId = stableId(
         "task",
         createInput.actorId,
@@ -343,6 +377,7 @@ export function createTaskService(input: {
         ...(createInput.sourceNoteVersion !== undefined
           ? { sourceNoteVersion: createInput.sourceNoteVersion }
           : {}),
+        ...(createInput.planLink ? { planLink: createInput.planLink } : {}),
         createdAt: createInput.now,
         updatedAt: createInput.now,
         deferralCount: 0,
@@ -391,6 +426,7 @@ export function createTaskService(input: {
           "Cancelled tasks cannot be edited",
         );
       }
+      if (updateInput.patch.planLink) await requirePlanLink(updateInput.actorId, updateInput.patch.planLink);
 
       const oldTask = stored.payload.task;
       const previousDates = {
@@ -405,7 +441,7 @@ export function createTaskService(input: {
         updatedAt: new Date(Math.max(Date.parse(updateInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
         deferralCount: countTaskDeferrals(stored.payload.activities) + (Object.keys(previousDates).length > 0 ? 1 : 0),
       };
-      for (const field of ["plannedDate", "dueAt", "location"] as const) {
+      for (const field of ["plannedDate", "dueAt", "location", "planLink"] as const) {
         if (updateInput.patch[field] === null) delete task[field];
       }
       const activity = taskActivity({

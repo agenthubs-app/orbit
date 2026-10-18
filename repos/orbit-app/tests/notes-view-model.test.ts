@@ -7,6 +7,7 @@ import {
   buildNoteUpdateRequest,
   confirmedNote,
   noteFromPayload,
+  notesPageFromPayload,
   notesFromPayload,
 } from "../src/view-models/notes";
 
@@ -93,4 +94,34 @@ test("a write clears draft state only after an exact actor, body and relation ac
       noteId: "note:one",
     }), null);
   }
+});
+
+test("App keeps event and unknown tokens readable, skips one bad note, and preserves page total", () => {
+  const eventMention = { entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" };
+  const unknownMention = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };
+  const eventNote = {
+    ...normalizedNote, id: "note:event", body: "Meet @Launch", contactIds: [], manualContactIds: [],
+    eventIds: ["event:launch"], mentions: [eventMention], noteKind: "meeting", usedForPlan: true,
+  };
+  const unknownNote = {
+    ...normalizedNote, id: "note:future", body: "Note for future", contactIds: [], manualContactIds: [],
+    mentions: [unknownMention], noteKind: "future-kind",
+  };
+  const badMention = { ...normalizedNote, id: "note:bad-token", body: "@Bad", contactIds: [], manualContactIds: [], mentions: [{ entityType: "event", eventId: "event:1", start: 0, end: 9, displayText: "@Bad" }] };
+  const page = notesPageFromPayload({ notes: [eventNote, { ...normalizedNote, id: "note:bad", body: "" }, badMention, unknownNote], total: 19 }, "account:one");
+  assert.equal(page?.total, 19);
+  assert.deepEqual(page?.notes.map((item) => item.id), ["note:event", "note:future"]);
+  assert.deepEqual(page?.notes[0]?.mentions, [eventMention]);
+  assert.deepEqual(page?.notes[1]?.mentions, [unknownMention]);
+  assert.equal(page?.notes[1]?.noteKind, "free");
+});
+
+test("memo acknowledgement includes event token identity and optional plan flags", () => {
+  const mention = { entityType: "event" as const, eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" };
+  const saved = { ...normalizedNote, body: "Meet @Launch", contactIds: [], manualContactIds: [], eventIds: ["event:launch"], mentions: [mention], noteKind: "meeting", usedForPlan: true };
+  const expected = { actorId: "account:one", body: saved.body, contactIds: [], eventIds: ["event:launch"], mentions: [mention], noteKind: "meeting" as const, usedForPlan: true };
+  assert.deepEqual(confirmedNote({ note: saved }, expected), saved);
+  assert.equal(confirmedNote({ note: { ...saved, noteKind: "free" } }, expected), null);
+  assert.equal(confirmedNote({ note: { ...saved, usedForPlan: false } }, expected), null);
+  assert.equal(confirmedNote({ note: { ...saved, mentions: [{ ...mention, eventId: "event:other" }] } }, expected), null);
 });

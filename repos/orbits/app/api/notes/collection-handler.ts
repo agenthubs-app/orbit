@@ -8,12 +8,14 @@ import {
   noteContactIds,
   noteError,
   noteExactKeys,
+  noteKind,
   noteMentions,
   noteNow,
   noteOptionalString,
   noteService,
   noteString,
   noteSuccess,
+  noteUsedForPlan,
   type NoteRouteDependencies,
 } from "./route-support";
 
@@ -27,8 +29,10 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
         const contactId = params.get("contactId")?.trim();
         const q = params.get("q")?.trim();
         const association = params.get("association")?.trim();
+        const requestedKind = params.get("noteKind")?.trim();
         const sort = params.get("sort")?.trim();
         if (association && !["all", "contacts", "events", "unlinked"].includes(association)) throw new AppError("VALIDATION_ERROR", "Unsupported association filter");
+        if (requestedKind && !["all", "meeting", "free"].includes(requestedKind)) throw new AppError("VALIDATION_ERROR", "Unsupported note kind filter");
         if (sort && !["updated_desc", "updated_asc"].includes(sort)) throw new AppError("VALIDATION_ERROR", "Unsupported note sort");
         const cursor = params.get("cursor")?.trim();
         const limitValue = params.get("limit");
@@ -44,6 +48,7 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
               ...(contactId ? { contactId } : {}),
               ...(q ? { q } : {}),
               ...(association ? { association: association as "all" | "contacts" | "events" | "unlinked" } : {}),
+              ...(requestedKind ? { noteKind: requestedKind as "all" | "meeting" | "free" } : {}),
               ...(sort ? { sort: sort as "updated_desc" | "updated_asc" } : {}),
               ...(cursor ? { cursor } : {}),
               ...(limit === undefined ? {} : { limit }),
@@ -58,7 +63,7 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
       if (!actor) return authenticatedApiActorRequiredResponse(resolveFeatureMode());
       try {
         const body = await noteBody(request);
-        noteExactKeys(body, ["title", "body", "contactIds", "manualContactIds", "mentions", "eventIds", "idempotencyKey"]);
+        noteExactKeys(body, ["title", "body", "contactIds", "manualContactIds", "mentions", "eventIds", "noteKind", "usedForPlan", "idempotencyKey"]);
         const note = await noteService(dependencies).create({
           actorId: actor.id,
           title: noteOptionalString(body.title, "title"),
@@ -67,6 +72,8 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
           manualContactIds: noteContactIds(body.manualContactIds),
           mentions: noteMentions(body.mentions),
           eventIds: noteContactIds(body.eventIds),
+          noteKind: noteKind(body.noteKind),
+          usedForPlan: noteUsedForPlan(body.usedForPlan),
           idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
           now: noteNow(dependencies),
         });

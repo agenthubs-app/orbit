@@ -55,7 +55,7 @@ async function host(t: TestContext) {
   const handlersFor = (actor: string) => createSyncDomainHandlers({
     resolveActor: async () => ({ id: actor, userId: actor, workspaceId: W }), createService: () => service, now: () => Date.parse(clock),
   });
-  return { pool, store, notes, tasks, schedule, handlersFor };
+  return { pool, client, store, notes, tasks, schedule, handlersFor };
 }
 
 type Host = Awaited<ReturnType<typeof host>>;
@@ -110,6 +110,49 @@ test("isolation: each account's device holds only its own notes and personal sch
     assert.ok(!JSON.stringify([...notes.rows.values()]).includes(actor === A ? "actor:b" : "actor:a"), "no other account's text reaches the device");
     for (const payload of schedules.rows.values()) assert.equal(personalScheduleSchema.safeParse(payload).success, true, "mirror rows are the App's personal DTO");
   }
+});
+
+test("memo kind, plan flag and event token survive a local PostgreSQL device mirror pull", options, async (t) => {
+  const h = await host(t);
+  const saved = await h.notes.create({
+    actorId: A, body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    idempotencyKey: "note:event-mirror", now: clock,
+  });
+  const mirror = device(h, A, "notes");
+  await mirror.pull();
+  const pulled = mirror.rows.get(saved.id);
+  assert.equal(pulled?.noteKind, "meeting");
+  assert.equal(pulled?.usedForPlan, true);
+  assert.deepEqual(pulled?.mentions, saved.mentions);
+  assert.deepEqual(pulled?.contactIds, []);
+  assert.deepEqual(pulled?.eventIds, ["event:launch"]);
+  const other = device(h, B, "notes");
+  await other.pull();
+  assert.equal(other.rows.has(saved.id), false);
+});
+
+test("a linked task reaches only its owner's device with plan and type IDs", options, async (t) => {
+  const h = await host(t);
+  const planLink = { planId: "plan:mine", typeItemId: "type:mine" };
+  const tasks = createTaskService({
+    repository: createTaskRepository({ store: h.store, workspaceId: W, transactionClient: h.client }),
+    planLinkReader: { isActiveTypeLink: async ({ actorId, planId, typeItemId }) =>
+      actorId === A && planId === planLink.planId && typeItemId === planLink.typeItemId },
+  });
+  const saved = await tasks.create({ actorId: A, title: "会う準備", category: "relationship",
+    planLink, idempotencyKey: "task:linked", now: clock });
+  const own = device(h, A, "tasks");
+  await own.pull();
+  assert.deepEqual(own.rows.get(saved.task.id)?.planLink, planLink);
+  const other = device(h, B, "tasks");
+  await other.pull();
+  assert.equal(other.rows.has(saved.task.id), false);
+  clock = "2026-09-27T01:01:00.000Z";
+  await tasks.update({ actorId: A, taskId: saved.task.id, expectedUpdatedAt: saved.task.updatedAt,
+    patch: { planLink: null }, idempotencyKey: "task:unlink", now: clock });
+  assert.deepEqual(await own.pull(), { upserts: 1, deletes: 0 });
+  assert.equal(own.rows.get(saved.task.id)?.planLink, undefined);
 });
 
 test("incremental: first pull is complete, one edit transfers one row, the next pull transfers none", options, async (t) => {

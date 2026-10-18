@@ -38,16 +38,22 @@ function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage
     ? contactIds(value.manualContactIds)
     : canonicalIds;
   const mentions = Array.isArray(value.mentions) ? value.mentions.filter((item): item is NoteMentionContract => {
-    if (!isRecord(item) || !nonEmpty(item.contactId) || !nonEmpty(item.displayText)) return false;
-    return Number.isSafeInteger(item.start) && Number.isSafeInteger(item.end)
+    if (!isRecord(item) || !nonEmpty(item.displayText)) return false;
+    const branch = item.entityType === undefined || item.entityType === "contact"
+      ? nonEmpty(item.contactId) && item.eventId === undefined
+      : item.entityType === "event"
+        ? nonEmpty(item.eventId) && item.contactId === undefined
+        : nonEmpty(item.entityType);
+    return branch && Number.isSafeInteger(item.start) && Number.isSafeInteger(item.end)
       && Number(item.start) >= 0 && Number(item.end) > Number(item.start)
       && Number(item.end) <= body.length && body.slice(Number(item.start), Number(item.end)) === item.displayText;
   }) : [];
+  if (Array.isArray(value.mentions) && mentions.length !== value.mentions.length) return null;
   const eventIds = Array.isArray(value.eventIds) && value.eventIds.every(nonEmpty) ? contactIds(value.eventIds) : [];
   const title = nonEmpty(value.title)
     ? value.title.trim()
     : body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? createTranslator(language)("notes.untitled");
-  const expectedCanonical = contactIds([...manualContactIds, ...mentions.map((item) => item.contactId)]);
+  const expectedCanonical = contactIds([...manualContactIds, ...mentions.filter((item) => (item.entityType ?? "contact") === "contact").map((item) => item.contactId!).filter(Boolean)]);
   if (!sameIds(expectedCanonical, canonicalIds)) return null;
   return {
     ...(value as unknown as NoteContract),
@@ -57,6 +63,7 @@ function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage
     mentions,
     contactIds: canonicalIds,
     eventIds,
+    ...(value.noteKind === undefined ? {} : { noteKind: ["free", "meeting", "voice"].includes(String(value.noteKind)) ? value.noteKind : "free" }),
   };
 }
 
@@ -72,9 +79,9 @@ function sameIds(left: readonly string[], right: readonly string[]): boolean {
 
 export function notesFromPayload(data: unknown, actorId: string, language: OrbitLanguage = "zh"): NoteView[] | null {
   if (!isRecord(data) || !Array.isArray(data.notes)) return null;
-  const notes = data.notes.map((item) => normalizedNote(item, actorId, language));
-  if (notes.some((item) => item === null)) return null;
-  return (notes as NoteView[]).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  if (data.notes.some((item) => isRecord(item) && (item.accountId !== actorId || item.ownerUserId !== actorId))) return null;
+  const notes = data.notes.map((item) => normalizedNote(item, actorId, language)).filter((item): item is NoteView => item !== null);
+  return notes.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
 export interface NotesPageView {
@@ -108,6 +115,8 @@ export interface RichNoteDraft {
   manualContactIds: readonly string[];
   mentions: readonly NoteMentionContract[];
   eventIds: readonly string[];
+  noteKind?: "free" | "meeting" | "voice";
+  usedForPlan?: boolean;
 }
 
 export function buildRichNoteCreateRequest(
@@ -128,6 +137,8 @@ export function buildRichNoteCreateRequest(
       manualContactIds: contactIds(draft.manualContactIds),
       mentions: draft.mentions.map((mention) => ({ ...mention })),
       eventIds: contactIds(draft.eventIds),
+      ...(draft.noteKind === undefined ? {} : { noteKind: draft.noteKind }),
+      ...(draft.usedForPlan === undefined ? {} : { usedForPlan: draft.usedForPlan }),
       idempotencyKey,
     },
   };
@@ -181,6 +192,8 @@ export function confirmedNote(data: unknown, expected: {
   mentions?: readonly NoteMentionContract[];
   noteId?: string;
   title?: string;
+  noteKind?: "free" | "meeting" | "voice";
+  usedForPlan?: boolean;
 }, language: OrbitLanguage = "zh"): NoteView | null {
   if (!isRecord(data)) return null;
   const note = normalizedNote(data.note, expected.actorId, language);
@@ -192,6 +205,8 @@ export function confirmedNote(data: unknown, expected: {
       const wanted = expected.mentions![index];
       return wanted !== undefined
         && mention.contactId === wanted.contactId
+        && mention.entityType === wanted.entityType
+        && mention.eventId === wanted.eventId
         && mention.start === wanted.start
         && mention.end === wanted.end
         && mention.displayText === wanted.displayText;
@@ -199,6 +214,8 @@ export function confirmedNote(data: unknown, expected: {
   );
   return note.body === expected.body
     && (expected.title === undefined || note.title === expected.title)
+    && (expected.noteKind === undefined || note.noteKind === expected.noteKind)
+    && (expected.usedForPlan === undefined || note.usedForPlan === expected.usedForPlan)
     && sameIds(note.contactIds, expected.contactIds)
     && (expected.manualContactIds === undefined || sameIds(note.manualContactIds, expected.manualContactIds))
     && (expected.eventIds === undefined || sameIds(note.eventIds, expected.eventIds))

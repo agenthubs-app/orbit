@@ -235,6 +235,93 @@ test("v2 notes derive canonical contacts from manual links and checked UTF-16 me
   );
 });
 
+test("event mention and memo fields persist without inventing a contact association", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createNoteRepository({ store, workspaceId: "workspace:test" });
+  const service = createNoteService({
+    repository,
+    associationReader: {
+      async accessibleContactIds() { return []; },
+      async accessibleEventIds({ actorId, ids }) { return actorId === "account:one" ? ids.filter((id) => id === "event:launch") : []; },
+      async searchContactIds() { return []; },
+    },
+  });
+  const created = await service.create({
+    actorId: "account:one", body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    idempotencyKey: "create:event", now: "2026-10-18T00:00:00.000Z",
+  });
+  assert.deepEqual(created.contactIds, []);
+  assert.deepEqual(created.eventIds, ["event:launch"]);
+  assert.equal(created.noteKind, "meeting");
+  assert.equal(created.usedForPlan, true);
+  assert.deepEqual((await service.get({ actorId: "account:one", noteId: created.id }))?.mentions, created.mentions);
+
+  const updated = await service.update({
+    actorId: "account:one", noteId: created.id, body: "Meet @Launch again", noteKind: "free", usedForPlan: false,
+    expectedVersion: 1, idempotencyKey: "update:event", now: "2026-10-18T00:01:00.000Z",
+  });
+  assert.deepEqual(updated.eventIds, ["event:launch"]);
+  assert.equal(updated.noteKind, "free");
+  assert.equal(updated.usedForPlan, false);
+  await assert.rejects(service.create({
+    actorId: "account:two", body: "Meet @Launch",
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    idempotencyKey: "create:event:foreign", now: "2026-10-18T00:02:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  const emoji = await service.create({
+    actorId: "account:one", body: "😀 @Launch",
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" }],
+    idempotencyKey: "create:event:emoji", now: "2026-10-18T00:03:00.000Z",
+  });
+  assert.equal(emoji.mentions[0]?.start, 3, "offsets count UTF-16 code units, not visible glyphs");
+  await assert.rejects(service.create({
+    actorId: "account:one", body: "😀 @Launch",
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 2, end: 9, displayText: "@Launch" }],
+    idempotencyKey: "create:event:bad-offset", now: "2026-10-18T00:04:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  await assert.rejects(service.create({
+    actorId: "account:one", body: "Meet @Launch",
+    mentions: [{ entityType: "event", contactId: "contact:fake", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    idempotencyKey: "create:event:wrong-branch", now: "2026-10-18T00:05:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  await assert.rejects(service.create({
+    actorId: "account:one", body: "Meet @Launch",
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: 42 as never }],
+    idempotencyKey: "create:event:wrong-type", now: "2026-10-18T00:06:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+});
+
+test("a future mention survives an unchanged edit but cannot be forged or rewritten", async () => {
+  const { repository, service } = fixture();
+  const future = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };
+  const noteId = "note:future-token";
+  await repository.saveIfAbsent({
+    schemaVersion: 2,
+    note: {
+      id: noteId, accountId: "account:one", ownerUserId: "account:one", title: "Future", body: "Note for later",
+      manualContactIds: [], mentions: [future as never], contactIds: [], eventIds: [], version: 1,
+      createdAt: "2026-10-18T00:00:00.000Z", updatedAt: "2026-10-18T00:00:00.000Z",
+    },
+    operations: [],
+  });
+  const read = await service.get({ actorId: "account:one", noteId });
+  assert.deepEqual(read?.mentions, [future]);
+  const updated = await service.update({
+    actorId: "account:one", noteId, noteKind: "meeting", mentions: read!.mentions,
+    expectedVersion: 1, idempotencyKey: "future:keep", now: "2026-10-18T00:01:00.000Z",
+  });
+  assert.deepEqual(updated.mentions, [future]);
+  await assert.rejects(service.update({
+    actorId: "account:one", noteId, mentions: [{ ...future, futureId: "future:forged" } as never],
+    expectedVersion: 2, idempotencyKey: "future:forge", now: "2026-10-18T00:02:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  await assert.rejects(service.update({
+    actorId: "account:one", noteId, mentions: [],
+    expectedVersion: 2, idempotencyKey: "future:drop", now: "2026-10-18T00:03:00.000Z",
+  }), (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+});
+
 test("legacy contactIds remain manual links and omitted v2 fields survive old-client patches", async () => {
   const { service } = fixture();
   const created = await service.create({
@@ -323,4 +410,25 @@ test("note list searches title, body and actor-scoped contact matches with stabl
   assert.equal(second.notes.length, 1);
   assert.notEqual(second.notes[0]?.id, first.notes[0]?.id);
   assert.equal(second.nextCursor, undefined);
+});
+
+test("memo kind filter counts and cursors belong to the filtered actor-owned query", async () => {
+  const { service } = fixture();
+  for (const [id, kind] of [["old", undefined], ["meeting", "meeting"], ["voice", "voice"], ["free", "free"]] as const) {
+    await service.create({
+      actorId: "account:one", body: `Memo ${id}`, ...(kind === undefined ? {} : { noteKind: kind }),
+      idempotencyKey: `kind:${id}`, now: `2026-10-18T00:0${id.length}:00.000Z`,
+    });
+  }
+  const free = await service.search({ actorId: "account:one", noteKind: "free", limit: 2 });
+  assert.equal(free.total, 3);
+  assert.equal(free.notes.length, 2);
+  assert.ok(free.nextCursor);
+  const next = await service.search({ actorId: "account:one", noteKind: "free", limit: 2, cursor: free.nextCursor });
+  assert.equal(next.notes.length, 1);
+  assert.deepEqual([...free.notes, ...next.notes].map((item) => item.body).sort(), ["Memo free", "Memo old", "Memo voice"]);
+  await assert.rejects(service.search({ actorId: "account:one", noteKind: "meeting", limit: 2, cursor: free.nextCursor }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+  assert.equal((await service.search({ actorId: "account:one", noteKind: "meeting" })).total, 1);
+  assert.equal((await service.search({ actorId: "account:two", noteKind: "free" })).total, 0);
 });

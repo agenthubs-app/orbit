@@ -2,6 +2,7 @@ import type { ConditionalReadDependencies } from "../_shared/conditional-read";
 import { NextResponse } from "next/server";
 
 import type { TaskService } from "../../../features/tasks/service";
+import type { TaskPlanLink } from "../../../shared/contract/tasks";
 import { TaskServiceError } from "../../../features/tasks/service";
 import { createConfiguredTaskService } from "../../../features/tasks/service-factory";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
@@ -57,6 +58,8 @@ export function taskErrorResponse(error: unknown): Response {
       appError = new AppError("NOT_FOUND", "Task not found.");
     } else if (error.code === "TASK_VERSION_CONFLICT") {
       appError = new AppError("CONFLICT", "Task has changed. Reload and try again.");
+    } else if (error.code === "TASK_INVALID_PLAN_LINK") {
+      appError = new AppError("VALIDATION_ERROR", "Plan link is invalid.");
     } else {
       appError = new AppError("CONFLICT", error.message);
     }
@@ -110,4 +113,13 @@ export function requireString(value: unknown, field: string): string {
     throw new AppError("VALIDATION_ERROR", `${field} is required.`);
   }
   return value;
+}
+
+export function parseTaskPlanLink(value: unknown): TaskPlanLink {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new AppError("VALIDATION_ERROR", "planLink must be an object.");
+  }
+  const link = value as Record<string, unknown>;
+  requireExactKeys(link, ["planId", "typeItemId"]);
+  return { planId: requireString(link.planId, "planId"), typeItemId: requireString(link.typeItemId, "typeItemId") };
 }

@@ -80,6 +80,15 @@ function isTaskCategory(value: unknown): value is TaskCategory {
   return TASK_CATEGORIES.includes(value as TaskCategory);
 }
 
+function isTaskPlanLink(value: unknown): boolean {
+  return value === undefined || (
+    isRecord(value) &&
+    Object.keys(value).length === 2 &&
+    isNonEmptyString(value.planId) &&
+    isNonEmptyString(value.typeItemId)
+  );
+}
+
 function readTask(value: unknown, actorId: string): TaskItemDTO | null {
   if (!isRecord(value)) {
     return null;
@@ -115,6 +124,7 @@ function readTask(value: unknown, actorId: string): TaskItemDTO | null {
     !isOptionalString(value.relatedConversationId) ||
     !isOptionalString(value.suggestionId) ||
     !isOptionalString(value.sourceNoteId) ||
+    !isTaskPlanLink(value.planLink) ||
     (value.sourceNoteVersion !== undefined &&
       (!Number.isInteger(value.sourceNoteVersion) || Number(value.sourceNoteVersion) < 1)) ||
     !isIsoDateTime(value.createdAt) ||

@@ -181,6 +181,8 @@ function mapNotePayload(row: SyncReadRow, actorId: string) {
   result.contactIds = [...note.contactIds];
   result.eventIds = [...note.eventIds];
   result.mentions = note.mentions.map((mention) => ({ ...mention }));
+  if (note.noteKind !== undefined) result.noteKind = note.noteKind;
+  if (note.usedForPlan !== undefined) result.usedForPlan = note.usedForPlan;
   return result;
 }
 
@@ -293,6 +295,7 @@ function mapTaskPayload(row: SyncReadRow, actorId: string) {
     "completedBy",
     "completionSource",
   ] as const) put(result, field, task[field]);
+  put(result, "planLink", task.planLink);
   put(result, "sourceNoteVersion", task.sourceNoteVersion);
   put(result, "deferralCount", task.deferralCount);
   return result;

@@ -13,11 +13,12 @@ export type NoteAssociationFilter = "all" | "contacts" | "events" | "unlinked";
 
 export interface NotesMirrorQuery {
   association: NoteAssociationFilter;
+  noteKind?: "all" | "meeting" | "free";
   contactId?: string | undefined;
   q: string;
 }
 
-/** Null when any mirrored note is malformed: the page reports it rather than hiding rows. */
+/** A foreign actor row invalidates the mirror; malformed same-actor rows are skipped. */
 export function notesFromMirror(records: readonly { payload: unknown }[], actorId: string, language: OrbitLanguage): NoteView[] | null {
   return notesFromPayload({ notes: records.map((record) => record.payload) }, actorId, language);
 }
@@ -56,7 +57,11 @@ export function overlayQueuedNotes(
     const mentions = Array.isArray(patch.mentions) ? patch.mentions : base.mentions;
     const contactIds = [...new Set([
       ...(manualContactIds as string[]),
-      ...(mentions as { contactId: string }[]).map((mention) => mention.contactId),
+      ...(mentions as { entityType?: string; contactId?: string }[]).filter((mention) => (mention.entityType ?? "contact") === "contact").map((mention) => mention.contactId).filter((id): id is string => typeof id === "string"),
+    ])].sort();
+    const eventIds = [...new Set([
+      ...(Array.isArray(patch.eventIds) ? patch.eventIds : base.eventIds) as string[],
+      ...(mentions as { entityType?: string; eventId?: string }[]).filter((mention) => mention.entityType === "event").map((mention) => mention.eventId).filter((id): id is string => typeof id === "string"),
     ])].sort();
     const projected = notesFromPayload({ notes: [{
       ...base,
@@ -67,6 +72,7 @@ export function overlayQueuedNotes(
       manualContactIds,
       mentions,
       contactIds,
+      eventIds,
       version: base.version + 1,
       updatedAt: mutation.createdAt,
     }] }, actorId, language);
@@ -88,6 +94,8 @@ export function selectMirrorNotes(notes: readonly NoteView[], query: NotesMirror
   const search = query.q.trim().toLocaleLowerCase();
   return notes
     .filter((note) => !query.contactId || note.contactIds.includes(query.contactId))
+    .filter((note) => query.noteKind === undefined || query.noteKind === "all" ||
+      (query.noteKind === "meeting" ? note.noteKind === "meeting" : note.noteKind !== "meeting"))
     .filter((note) => {
       if (query.association === "contacts") return note.contactIds.length > 0;
       if (query.association === "events") return note.eventIds.length > 0;

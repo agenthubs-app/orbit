@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 import type { NoteMentionContract } from "../../shared/contract/notes";
 import type { NoteDTO, NoteOperationKind, NoteOperationReceipt, NoteRecordPayload } from "./contract";
@@ -40,6 +41,7 @@ export interface NoteSearchInput {
   q?: string;
   contactId?: string;
   association?: NoteAssociationFilter;
+  noteKind?: "all" | "meeting" | "free";
   sort?: NoteSort;
   cursor?: string;
   limit?: number;
@@ -59,6 +61,8 @@ export interface NoteCreateInput {
   manualContactIds?: readonly string[];
   mentions?: readonly NoteMentionContract[];
   eventIds?: readonly string[];
+  noteKind?: "free" | "meeting" | "voice";
+  usedForPlan?: boolean;
   idempotencyKey: string;
   now: string;
 }
@@ -72,6 +76,8 @@ export interface NoteUpdateInput {
   manualContactIds?: readonly string[];
   mentions?: readonly NoteMentionContract[];
   eventIds?: readonly string[];
+  noteKind?: "free" | "meeting" | "voice";
+  usedForPlan?: boolean;
   expectedVersion: number;
   idempotencyKey: string;
   now: string;
@@ -117,24 +123,58 @@ function normalizedIds(values: readonly string[] | undefined): string[] {
 }
 
 function canonicalContactIds(manualContactIds: readonly string[], mentions: readonly NoteMentionContract[]): string[] {
-  return [...new Set([...manualContactIds, ...mentions.map((item) => item.contactId)])].sort();
+  return [...new Set([...manualContactIds, ...mentions.filter((item) => (item.entityType ?? "contact") === "contact").map((item) => item.contactId!).filter(Boolean)])].sort();
 }
 
-function normalizedMentions(values: readonly NoteMentionContract[] | undefined, body: string): NoteMentionContract[] {
-  return (values ?? []).map((item) => {
-    const contactId = item.contactId.trim();
+function canonicalEventIds(manualEventIds: readonly string[], mentions: readonly NoteMentionContract[]): string[] {
+  return [...new Set([...manualEventIds, ...mentions.filter((item) => item.entityType === "event").map((item) => item.eventId!).filter(Boolean)])].sort();
+}
+
+function normalizedMentions(values: readonly NoteMentionContract[] | undefined, body: string, existing: readonly NoteMentionContract[] = []): NoteMentionContract[] {
+  const mentions = (values ?? []).map((item) => {
     if (
-      !contactId ||
+      typeof item !== "object" || item === null ||
       !Number.isSafeInteger(item.start) ||
       !Number.isSafeInteger(item.end) ||
       item.start < 0 ||
       item.end <= item.start ||
       item.end > body.length ||
+      typeof item.displayText !== "string" ||
       !item.displayText.trim() ||
       body.slice(item.start, item.end) !== item.displayText
     ) throw new NoteServiceError("NOTE_INVALID_INPUT", "Note mention range is invalid");
-    return { ...item, contactId };
+    if (item.entityType === undefined || item.entityType === "contact") {
+      const contactId = typeof item.contactId === "string" ? item.contactId.trim() : undefined;
+      if (!contactId || item.eventId !== undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "Contact mention is invalid");
+      return { ...item, contactId };
+    }
+    if (item.entityType === "event") {
+      const eventId = typeof item.eventId === "string" ? item.eventId.trim() : undefined;
+      if (!eventId || item.contactId !== undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "Event mention is invalid");
+      return { ...item, eventId };
+    }
+    if (existing.some((old) => isDeepStrictEqual(old, item))) return { ...item };
+    throw new NoteServiceError("NOTE_INVALID_INPUT", "Unknown mention must remain unchanged");
   });
+  const ranges = [...mentions].sort((a, b) => a.start - b.start);
+  if (ranges.some((item, index) => index > 0 && item.start < ranges[index - 1]!.end)) {
+    throw new NoteServiceError("NOTE_INVALID_INPUT", "Note mention ranges overlap");
+  }
+  if (existing.some((old) => old.entityType !== undefined && old.entityType !== "contact" && old.entityType !== "event" &&
+    !mentions.some((item) => isDeepStrictEqual(item, old)))) {
+    throw new NoteServiceError("NOTE_INVALID_INPUT", "Unknown mention must remain unchanged");
+  }
+  return mentions;
+}
+
+function noteKind(value: unknown): "free" | "meeting" | "voice" | undefined {
+  if (value === undefined || value === "free" || value === "meeting" || value === "voice") return value as "free" | "meeting" | "voice" | undefined;
+  throw new NoteServiceError("NOTE_INVALID_INPUT", "Note kind is invalid");
+}
+
+function usedForPlan(value: unknown): boolean | undefined {
+  if (value === undefined || typeof value === "boolean") return value;
+  throw new NoteServiceError("NOTE_INVALID_INPUT", "Plan use flag is invalid");
 }
 
 async function requireAccessibleIds(
@@ -155,6 +195,7 @@ function cursorScope(input: Omit<NoteSearchInput, "cursor" | "limit">): string {
     q: input.q?.trim().toLocaleLowerCase() ?? "",
     contactId: input.contactId?.trim() ?? "",
     association: input.association ?? "all",
+    noteKind: input.noteKind ?? "all",
     sort: input.sort ?? "updated_desc",
   }).slice(0, 20);
 }
@@ -220,6 +261,8 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const notes = records
         .map((record) => record.note)
         .filter((note) => !query.contactId || note.contactIds.includes(query.contactId))
+        .filter((note) => query.noteKind === undefined || query.noteKind === "all" ||
+          (query.noteKind === "meeting" ? note.noteKind === "meeting" : note.noteKind !== "meeting"))
         .filter((note) => {
           const association = query.association ?? "all";
           if (association === "contacts" && note.contactIds.length === 0) return false;
@@ -250,12 +293,14 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const title = normalizedTitle(createInput.title, body);
       const manualContactIds = normalizedIds(createInput.manualContactIds ?? createInput.contactIds);
       const mentions = normalizedMentions(createInput.mentions, body);
-      const eventIds = normalizedIds(createInput.eventIds);
+      const eventIds = canonicalEventIds(normalizedIds(createInput.eventIds), mentions);
       const contactIds = canonicalContactIds(manualContactIds, mentions);
+      const nextNoteKind = noteKind(createInput.noteKind);
+      const nextUsedForPlan = usedForPlan(createInput.usedForPlan);
       await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: createInput.actorId, ids }), "contactIds");
       await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: createInput.actorId, ids }), "eventIds");
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
-      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds });
+      const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
         const note: NoteDTO = {
           id: noteId,
@@ -267,6 +312,8 @@ export function createNoteService(input: { repository: NoteRepository; associati
           mentions,
           contactIds,
           eventIds,
+          ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
+          ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
           version: 1,
           createdAt: createInput.now,
           updatedAt: createInput.now,
@@ -286,7 +333,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
     },
     async update(updateInput) {
       const body = updateInput.body === undefined ? undefined : normalizedBody(updateInput.body);
-      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
+      if (body === undefined && updateInput.title === undefined && updateInput.contactIds === undefined && updateInput.manualContactIds === undefined && updateInput.mentions === undefined && updateInput.eventIds === undefined && updateInput.noteKind === undefined && updateInput.usedForPlan === undefined) throw new NoteServiceError("NOTE_INVALID_INPUT", "At least one note field is required");
       return withMutationLock(`${updateInput.actorId}\u0000${updateInput.noteId}`, async () => {
         const stored = requirePayload(await input.repository.get(updateInput.actorId, updateInput.noteId), updateInput.noteId);
         const nextBody = body ?? stored.note.body;
@@ -296,14 +343,14 @@ export function createNoteService(input: { repository: NoteRepository; associati
           : updateInput.contactIds !== undefined
             ? normalizedIds(updateInput.contactIds)
             : [...stored.note.manualContactIds];
-        const mentions = updateInput.mentions === undefined
-          ? normalizedMentions(stored.note.mentions, nextBody)
-          : normalizedMentions(updateInput.mentions, nextBody);
-        const eventIds = updateInput.eventIds === undefined ? [...stored.note.eventIds] : normalizedIds(updateInput.eventIds);
+        const mentions = normalizedMentions(updateInput.mentions ?? stored.note.mentions, nextBody, stored.note.mentions);
+        const eventIds = canonicalEventIds(updateInput.eventIds === undefined ? stored.note.eventIds : normalizedIds(updateInput.eventIds), mentions);
         const contactIds = canonicalContactIds(manualContactIds, mentions);
+        const nextNoteKind = noteKind(updateInput.noteKind);
+        const nextUsedForPlan = usedForPlan(updateInput.usedForPlan);
         await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: updateInput.actorId, ids }), "contactIds");
         await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: updateInput.actorId, ids }), "eventIds");
-        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, expectedVersion: updateInput.expectedVersion });
+        const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion });
         const replay = checkReplay(stored, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
         if (replay) return replay;
         if (stored.note.version !== updateInput.expectedVersion) {
@@ -317,6 +364,8 @@ export function createNoteService(input: { repository: NoteRepository; associati
           mentions,
           contactIds,
           eventIds,
+          ...(nextNoteKind === undefined ? {} : { noteKind: nextNoteKind }),
+          ...(nextUsedForPlan === undefined ? {} : { usedForPlan: nextUsedForPlan }),
           version: stored.note.version + 1,
           updatedAt: updateInput.now,
         };

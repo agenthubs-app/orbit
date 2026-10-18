@@ -1,5 +1,5 @@
 export interface NoteMentionContract {
-  contactId: string;
+  contactId?: string;
   start: number;
   end: number;
   displayText: string;

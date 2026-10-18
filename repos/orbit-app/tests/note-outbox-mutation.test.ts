@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
+import { buildOfflineNoteMutation, parseOfflineNoteRequest } from "../src/data/sync/note-outbox-mutation";
 
 test("offline note create freezes the complete POST body while keeping parser fields separate", () => {
   const requestBody = {
@@ -35,4 +35,18 @@ test("offline note mutation builder rejects a mismatched receipt ID and unsuppor
     mutationId: "mutation-1", entityId: "note:canonical", operation: "delete",
     baseRevision: "r1", requestBody: { idempotencyKey: "mutation-1" }, createdAt: "2026-09-28T00:00:00.000Z",
   }));
+});
+
+test("offline note outbox freezes and revalidates event token, kind and plan flag", () => {
+  const requestBody = {
+    body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }],
+    idempotencyKey: "mutation-event",
+  };
+  const mutation = buildOfflineNoteMutation({
+    mutationId: "mutation-event", entityId: "local:123e4567-e89b-42d3-a456-426614174000",
+    operation: "create", baseRevision: null, requestBody, createdAt: "2026-10-18T00:00:00.000Z",
+  });
+  assert.deepEqual(parseOfflineNoteRequest(mutation).requestBody, requestBody);
+  assert.deepEqual(mutation.patch, { body: requestBody.body, noteKind: "meeting", usedForPlan: true, mentions: requestBody.mentions });
 });

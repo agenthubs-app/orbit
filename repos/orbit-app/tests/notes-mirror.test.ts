@@ -37,6 +37,16 @@ test("local selection matches the server's filters, search and newest-first orde
   assert.equal(mirrorNote(notes, "missing"), null);
 });
 
+test("offline memo tabs group voice and legacy notes with free memos", () => {
+  const notes = notesFromMirror([
+    note("old"), note("meeting", { noteKind: "meeting" }),
+    note("voice", { noteKind: "voice" }), note("free", { noteKind: "free" }),
+  ], "a", "ja")!;
+  const ids = (kind: "free" | "meeting") => selectMirrorNotes(notes, { association: "all", noteKind: kind, q: "" }).map((item) => item.id).sort();
+  assert.deepEqual(ids("free"), ["free", "old", "voice"]);
+  assert.deepEqual(ids("meeting"), ["meeting"]);
+});
+
 test("pending note creates and edits overlay the server mirror without mutating it", () => {
   const server = notesFromMirror([note("n1", { body: "Server body", version: 4 })], "a", "en")!;
   const queued = (overrides: Partial<LocalSyncQueuedMutation>): LocalSyncQueuedMutation => ({
@@ -56,6 +66,23 @@ test("pending note creates and edits overlay the server mirror without mutating 
     { id: "n1", title: "Edited", body: "Pending edit", version: 5 },
   ]);
   assert.equal(server[0]?.body, "Server body");
+});
+
+test("queued event mention projects only into event IDs, never contact IDs", () => {
+  const mutation: LocalSyncQueuedMutation = {
+    actorId: "a", workspaceId: "w", domainId: "notes", mutationId: "m-event", kind: "note",
+    id: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
+    patch: { title: "Launch", body: "Meet @Launch", noteKind: "meeting", usedForPlan: true,
+      mentions: [{ entityType: "event", eventId: "event:launch", start: 5, end: 12, displayText: "@Launch" }] },
+    requestJson: "{}", baseRevision: null, dependsOn: null, createdAt: "2026-10-18T00:00:00.000Z",
+    retryCount: 0, nextRetryAt: null, lastErrorCode: null, state: "queued", attemptCount: 0,
+    firstAttemptAt: null, serverSnapshot: null,
+  };
+  const projected = overlayQueuedNotes([], [mutation], "a", "en");
+  assert.deepEqual(projected?.[0]?.contactIds, []);
+  assert.deepEqual(projected?.[0]?.eventIds, ["event:launch"]);
+  assert.equal(projected?.[0]?.noteKind, "meeting");
+  assert.equal(projected?.[0]?.usedForPlan, true);
 });
 
 test("failed note creates and edits stay visible with their local content", () => {

@@ -38,6 +38,8 @@ test("legacy agent action pages return to To-do while iOrbit pages return to iOr
 });
 
 test("list decoding keeps canonical tasks and rejects malformed or foreign-owner records visibly", () => {
+  const linked = { ...task(0), planLink: { planId: "plan:mine", typeItemId: "type:mine" } };
+  assert.deepEqual(readTaskListItems({ tasks: [linked] }, "owner")?.[0]?.planLink, linked.planLink);
   assert.deepEqual(readTaskListItems({ tasks: [task(0), task(0), { taskId: "candidate", title: "Review first" }] }, "owner"), [task(0)]);
   assert.deepEqual(readTaskListItems({ tasks: [] }, "owner"), []);
   for (const payload of [{}, { tasks: null }, { tasks: [null] }, { tasks: [{ ...task(0), updatedAt: "bad" }] }, { tasks: [{ ...task(0), ownerUserId: "other" }] }, { tasks: [{ ...task(0), accountId: "other" }] }]) {

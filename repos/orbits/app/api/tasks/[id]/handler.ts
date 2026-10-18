@@ -4,6 +4,7 @@ import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
 import { authenticatedApiActorRequiredResponse } from "../../_shared/authenticated-actor";
 import {
   readTaskJsonObject,
+  parseTaskPlanLink,
   requireExactKeys,
   requireString,
   taskErrorResponse,
@@ -24,6 +25,7 @@ const patchKeys = [
   "notes",
   "location",
   "plannedDate",
+  "planLink",
   "priority",
   "relatedContactId",
   "relatedConversationId",
@@ -38,9 +40,11 @@ function parsePatch(value: unknown): TaskUpdatePatch {
   }
   const patch = value as Record<string, unknown>;
   requireExactKeys(patch, patchKeys);
-  const parsed: Record<string, string | null> = {};
+  const parsed: Record<string, unknown> = {};
   for (const key of Object.keys(patch)) {
-    parsed[key] = patch[key] === null && ["plannedDate", "dueAt", "location"].includes(key) ? null : requireString(patch[key], key);
+    parsed[key] = key === "planLink"
+      ? patch[key] === null ? null : parseTaskPlanLink(patch[key])
+      : patch[key] === null && ["plannedDate", "dueAt", "location"].includes(key) ? null : requireString(patch[key], key);
   }
   return parsed as TaskUpdatePatch;
 }

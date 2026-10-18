@@ -57,6 +57,17 @@ test("offline date deferrals increment locally and canonical reconciliation repl
   assert.equal(overlayQueuedTasks([task], [mutation({ patch: { plannedDate: "2026-09-19" } })], actorId)?.[0]?.deferralCount, 1);
 });
 
+test("plan-linked offline task intent remains visible until canonical sync and null unlinks it", () => {
+  const planLink = { planId: "plan:mine", typeItemId: "type:mine" };
+  const localId = "local:123e4567-e89b-42d3-a456-426614174001";
+  const queued = overlayQueuedTasks([], [mutation({ id: localId, operation: "create", baseRevision: null,
+    patch: { title: "Prepare", category: "work", planLink } })], actorId);
+  assert.deepEqual(queued?.[0]?.planLink, planLink);
+  const canonical = { ...serverTask, category: "work" as const, planLink };
+  assert.deepEqual(overlayQueuedTasks([canonical], [], actorId)?.[0]?.planLink, planLink);
+  assert.equal(overlayQueuedTasks([canonical], [mutation({ patch: { planLink: null } })], actorId)?.[0]?.planLink, undefined);
+});
+
 test("relationship follow-up mirror permits only completion and later-date deferral", () => {
   const followup = { ...serverTask, category: "relationship" as const, plannedDate: "2026-09-20", deferralCount: 1 };
   const later = overlayQueuedTasks([followup], [mutation({ patch: { plannedDate: "2026-09-21" } })], actorId);

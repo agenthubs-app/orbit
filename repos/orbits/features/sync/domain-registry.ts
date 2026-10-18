@@ -209,7 +209,7 @@ export const RECORD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
     ownership: OWNER_COLUMN,
     visibilityInputs: ["user_id", "collection_name"],
     attachments: [],
-    fields: ["id", "accountId", "ownerUserId", "title", "body", "version", "createdAt", "updatedAt", "manualContactIds", "contactIds", "eventIds", "mentions"],
+    fields: ["id", "accountId", "ownerUserId", "title", "body", "version", "createdAt", "updatedAt", "manualContactIds", "contactIds", "eventIds", "mentions", "noteKind", "usedForPlan"],
     source: { kind: "orbit_records", collectionName: "notes", changeKind: "note" },
   },
   {
@@ -221,7 +221,7 @@ export const RECORD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
     fields: [
       "id", "accountId", "ownerUserId", "title", "status", "category", "priority", "source", "createdAt", "updatedAt",
       "notes", "location", "plannedDate", "dueAt", "relatedContactId", "relatedEventId", "relatedMeetingId",
-      "relatedConversationId", "suggestionId", "sourceNoteId", "sourceNoteVersion", "completedAt", "completedBy", "completionSource",
+      "relatedConversationId", "suggestionId", "sourceNoteId", "sourceNoteVersion", "completedAt", "completedBy", "completionSource", "planLink",
     ],
     source: { kind: "orbit_records", collectionName: "tasks", changeKind: "task" },
   },

@@ -2,6 +2,12 @@ import type { TaskItemContract } from "../api/contract/tasks";
 import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
 import { isOfflineRelationshipFollowupMutation, isOfflineTaskCategory } from "../data/sync/task-outbox-mutation";
 
+function isPlanLink(value: unknown): value is NonNullable<TaskItemContract["planLink"]> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) &&
+    Object.keys(value).length === 2 && "planId" in value && typeof value.planId === "string" && !!value.planId.trim() &&
+    "typeItemId" in value && typeof value.typeItemId === "string" && !!value.typeItemId.trim();
+}
+
 export type TaskMutationState = "queued" | "conflict" | "failed";
 export type MirroredTask = TaskItemContract & { localMutationState?: TaskMutationState };
 
@@ -16,6 +22,7 @@ export function overlayQueuedTasks(
     if (mutation.domainId !== "tasks" || mutation.kind !== "task" || mutation.actorId !== actorId || mutation.requestJson === null ||
         !["create", "update", "complete", "reopen", "cancel", "delete"].includes(mutation.operation) ||
         typeof mutation.patch !== "object" || mutation.patch === null || Array.isArray(mutation.patch)) return null;
+    if ("planLink" in mutation.patch && mutation.patch.planLink !== null && !isPlanLink(mutation.patch.planLink)) return null;
     const prior = tasks.get(mutation.id);
     if (mutation.operation === "create") {
       if (prior || !mutation.id.startsWith("local:")) return null;
@@ -28,6 +35,7 @@ export function overlayQueuedTasks(
         ...(typeof patch.location === "string" ? { location: patch.location } : {}),
         ...(typeof patch.plannedDate === "string" ? { plannedDate: patch.plannedDate } : {}),
         ...(typeof patch.dueAt === "string" ? { dueAt: patch.dueAt } : {}), localMutationState: mutationState(mutation.state),
+        ...(isPlanLink(patch.planLink) ? { planLink: patch.planLink } : {}),
       });
       continue;
     }
