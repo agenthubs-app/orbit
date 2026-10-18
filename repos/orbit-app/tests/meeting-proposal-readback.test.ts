@@ -6,7 +6,7 @@ import * as flow from "../src/screens/calendar/meeting-proposal-flow";
 const now = Date.parse("2026-10-18T00:00:00Z"), at = "2026-10-18T00:00:00.000Z";
 const medium = { kind: "in_person", location: "Tokyo" } as const;
 const candidates = [19, 20, 21].map(day => ({ startsAt: `2026-10-${day}T01:00:00.000Z`, endsAt: `2026-10-${day}T01:30:00.000Z` }));
-const proposed = (revision: number) => ({ createdAt: at, durationMinutes: 30, medium, note: "", proposedBy: "you", revision, timezone: "Asia/Tokyo", candidateTimes: candidates.map((row, index) => ({ candidateId: `candidate:${revision}:${index}`, startsAtUtc: row.startsAt })) });
+const proposed = (revision: number) => ({ createdAt: at, durationMinutes: 30, medium, note: "", proposedBy: "you" as const, revision, timezone: "Asia/Tokyo", candidateTimes: candidates.map((row, index) => ({ candidateId: `candidate:${revision}:${index}`, startsAtUtc: row.startsAt })) });
 const originalProposal = { ...proposed(1), candidateTimes: [15, 16, 17].map((day, index) => ({ candidateId: `candidate:1:${index}`, startsAtUtc: `2026-10-${day}T01:00:00.000Z` })) };
 const confirmed = {
   appointmentId: "appointment:one", contactId: "contact:one", eventId: "accepted-event", title: "Meeting", details: "", detailsUpdatedAt: null, detailsUpdatedBy: null,

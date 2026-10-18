@@ -42,6 +42,8 @@ export const calendar = {
   "calendar.proposal.phoneHint": "Phone contact (optional)",
   "calendar.proposal.placeRequired": "Enter where you'll meet.",
   "calendar.proposal.reviewNotice": "Sending this proposes a new time. The confirmed time stays until the other person chooses.",
+  "calendar.proposal.initialReviewNotice": "Sending these times does not confirm the meeting. The other person still needs to choose a time.",
+  "calendar.proposal.initialSend": "Propose these times",
   "calendar.proposal.zoneUnavailable": "Can't verify your device time zone. Your times are still here.",
   "calendar.proposal.send": "Propose a new time",
   "calendar.proposal.invalid": "Check the times or place. Your proposal wasn't submitted.",

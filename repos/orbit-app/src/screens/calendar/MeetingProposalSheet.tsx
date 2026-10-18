@@ -1,5 +1,5 @@
 import * as Crypto from "expo-crypto";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -11,7 +11,7 @@ import { radius, spacing, textStyles } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
-import { loadRescheduleTarget, postRescheduleProposal, seedMeetingCandidates, validateMeetingCandidates, type MeetingCandidate } from "./meeting-proposal-flow";
+import { loadInitialProposalAvailability, loadRescheduleTarget, postInitialProposal, postRescheduleProposal, seedMeetingCandidates, validateMeetingCandidates, type MeetingCandidate } from "./meeting-proposal-flow";
 
 export interface MeetingProposalSheetProps {
   open: boolean;
@@ -23,30 +23,21 @@ export interface MeetingProposalSheetProps {
 }
 
 export function MeetingProposalSheet({ open, contactId, onClose, onSent, appointmentId, initialCandidates }: MeetingProposalSheetProps) {
-  const { t } = useOrbitLocale();
-  const { styles } = useStyles();
-  return <BottomSheet visible={open} onClose={onClose} accessibilityLabel={t("calendar.proposal.title")}>
-    <View style={styles.body}>
-      <UiText accessibilityRole="header" style={styles.title}>{t("calendar.proposal.title")}</UiText>
-      <View style={styles.stepTrack}>
-        <UiText style={styles.step}>{t("calendar.proposal.candidates")}</UiText>
-        <UiText style={styles.step}>{t("calendar.proposal.format")}</UiText>
-        <UiText style={styles.step}>{t("calendar.proposal.review")}</UiText>
-      </View>
-      {appointmentId ? <RescheduleProposal key={`${contactId}:${appointmentId}`} contactId={contactId} appointmentId={appointmentId} onClose={onClose} {...(initialCandidates ? { initialCandidates } : {})} {...(onSent ? { onSent } : {})} />
-        : <UiText accessibilityRole="alert" style={styles.notice}>{t("calendar.proposal.contactOnlyUnavailable")}</UiText>}
-    </View>
-  </BottomSheet>;
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const scopeKey = JSON.stringify([auth.actorId, auth.accountId, auth.ready, auth.signedIn, server.ready, server.baseUrl, contactId, appointmentId]);
+  return <ProposalSession key={scopeKey} scopeKey={scopeKey} open={open} contactId={contactId} {...(appointmentId ? { appointmentId } : {})} onClose={onClose} {...(initialCandidates ? { initialCandidates } : {})} {...(onSent ? { onSent } : {})} />;
 }
 
-function RescheduleProposal({ contactId, appointmentId, initialCandidates, onClose, onSent }: Required<Pick<MeetingProposalSheetProps, "contactId" | "appointmentId" | "onClose">> & Pick<MeetingProposalSheetProps, "initialCandidates" | "onSent">) {
+function ProposalSession({ scopeKey, open, contactId, appointmentId, initialCandidates, onClose, onSent }: MeetingProposalSheetProps & { scopeKey: string }) {
   const { t, language } = useOrbitLocale();
   const { styles } = useStyles();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const zone = useOrbitTimeZone();
-  const client = useOrbitApiClient({ scopeKey: JSON.stringify([contactId, appointmentId]) });
+  const client = useOrbitApiClient({ scopeKey });
   const [meeting, setMeeting] = useState<MeetingDetailsContract | null>(null);
+  const [available, setAvailable] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [readError, setReadError] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -56,23 +47,40 @@ function RescheduleProposal({ contactId, appointmentId, initialCandidates, onClo
   const [place, setPlace] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const pending = useRef(false);
   const retry = useRef<{ fingerprint: string; key: string } | null>(null);
-  const ready = auth.ready && auth.signedIn && !auth.offline && server.ready;
+  const ready = auth.ready && auth.signedIn && Boolean(auth.actorId) && !auth.offline && server.ready;
+  const active = ready && open;
+  const requestScope = useMemo(() => ({ active, busy: false, controller: new AbortController() }), [client, active]);
+  const currentScope = useRef(requestScope);
+  currentScope.current = requestScope;
+  const current = () => requestScope.active && currentScope.current === requestScope && !requestScope.controller.signal.aborted;
 
   useEffect(() => {
+    requestScope.active = active;
+    if (requestScope.controller.signal.aborted) requestScope.controller = new AbortController();
+    setBusy(false);
+    return () => { requestScope.active = false; requestScope.controller.abort(); };
+  }, [active, requestScope]);
+
+  useEffect(() => {
+    if (!open) return;
     if (!ready) { setLoading(false); setReadError(true); return; }
     const controller = new AbortController();
     setLoading(true);
     setReadError(false);
-    void loadRescheduleTarget(client, appointmentId, contactId, controller.signal).then(value => {
-      if (controller.signal.aborted) return;
-      setMeeting(value);
-      setReadError(!value);
-    }).catch(() => { if (!controller.signal.aborted) setReadError(true); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    // Keep the original CAS baseline while retrying a lost acknowledgement with its original key.
+    if (retry.current) { setError(t("calendar.proposal.unconfirmed")); setLoading(false); return; }
+    const read = appointmentId
+      ? loadRescheduleTarget(client, appointmentId, contactId, controller.signal).then(value => {
+        if (!controller.signal.aborted && current()) { setMeeting(value); setReadError(!value); }
+      })
+      : loadInitialProposalAvailability(client, contactId, controller.signal).then(value => {
+        if (!controller.signal.aborted && current()) { setAvailable(value); setReadError(value === null); }
+      });
+    void read.catch(() => { if (!controller.signal.aborted && current()) setReadError(true); })
+      .finally(() => { if (!controller.signal.aborted && current()) setLoading(false); });
     return () => controller.abort();
-  }, [appointmentId, client, contactId, ready, revision]);
+  }, [appointmentId, client, contactId, open, ready, requestScope, revision]);
 
   const selection = validateMeetingCandidates(candidates, Date.now());
   const medium: MeetingDetailsMedium = format === "in_person" ? { kind: "in_person", location: place.trim() }
@@ -93,15 +101,18 @@ function RescheduleProposal({ contactId, appointmentId, initialCandidates, onClo
   }]);
 
   async function send() {
-    if (!meeting || !ready || !zone.canSave || !mediumValid || selection.error || pending.current) return;
-    const fingerprint = JSON.stringify([meeting.appointmentId, meeting.version, candidates, medium, zone.timeZone]);
+    if (!current() || !ready || (appointmentId ? !meeting : available !== true) || !zone.canSave || !mediumValid || selection.error || requestScope.busy) return;
+    const fingerprint = JSON.stringify([appointmentId ?? contactId, meeting?.version, candidates, medium, zone.timeZone]);
     const key = retry.current?.fingerprint === fingerprint ? retry.current.key : `ios:meeting-proposal:${Crypto.randomUUID()}`;
     retry.current = { fingerprint, key };
-    pending.current = true;
+    requestScope.busy = true;
     setBusy(true);
     setError("");
     try {
-      const result = await postRescheduleProposal(client, meeting, candidates, medium, zone.timeZone, key);
+      const result = appointmentId && meeting
+        ? await postRescheduleProposal(client, meeting, candidates, medium, zone.timeZone, key, Date.now(), requestScope.controller.signal)
+        : await postInitialProposal(client, contactId, candidates, medium, zone.timeZone, key, Date.now(), requestScope.controller.signal);
+      if (!current()) return;
       if (result.status === "sent") {
         retry.current = null;
         onSent?.(result.appointmentId);
@@ -110,14 +121,26 @@ function RescheduleProposal({ contactId, appointmentId, initialCandidates, onClo
         const key = result.status === "invalid" ? "calendar.proposal.invalid" : result.status === "conflict" ? "calendar.proposal.conflict" : result.status === "unconfirmed" ? "calendar.proposal.unconfirmed" : "calendar.proposal.failed";
         setError(t(key));
       }
-    } catch { setError(t("calendar.proposal.failed")); }
-    finally { pending.current = false; setBusy(false); }
+    } catch { if (current()) setError(t("calendar.proposal.failed")); }
+    finally { requestScope.busy = false; if (current()) setBusy(false); }
   }
 
-  if (!ready) return <UiText accessibilityRole="alert" style={styles.notice}>{t(auth.offline ? "calendar.proposal.offline" : "calendar.proposal.readFailed")}</UiText>;
-  if (loading && !meeting) return <UiText style={styles.hint}>{t("calendar.proposal.loading")}</UiText>;
-  if (readError || !meeting) return <View style={styles.body}><UiText accessibilityRole="alert" style={styles.notice}>{t("calendar.proposal.readFailed")}</UiText><Button label={t("calendar.proposal.reload")} onPress={() => setRevision(value => value + 1)} /></View>;
-  return <View style={styles.body}>
+  const renderSheet = (content: ReactNode) => <BottomSheet visible={open} onClose={onClose} accessibilityLabel={t("calendar.proposal.title")}>
+    <View style={styles.body}>
+      <UiText accessibilityRole="header" style={styles.title}>{t("calendar.proposal.title")}</UiText>
+      <View style={styles.stepTrack}>
+        <UiText style={styles.step}>{t("calendar.proposal.candidates")}</UiText>
+        <UiText style={styles.step}>{t("calendar.proposal.format")}</UiText>
+        <UiText style={styles.step}>{t("calendar.proposal.review")}</UiText>
+      </View>
+      {content}
+    </View>
+  </BottomSheet>;
+  if (!ready) return renderSheet(<UiText accessibilityRole="alert" style={styles.notice}>{t(auth.offline ? "calendar.proposal.offline" : "calendar.proposal.readFailed")}</UiText>);
+  if (loading) return renderSheet(<UiText style={styles.hint}>{t("calendar.proposal.loading")}</UiText>);
+  if (!appointmentId && available === false) return renderSheet(<UiText accessibilityRole="alert" style={styles.notice}>{t("calendar.proposal.contactOnlyUnavailable")}</UiText>);
+  if (readError || (appointmentId ? !meeting : available !== true)) return renderSheet(<View style={styles.body}><UiText accessibilityRole="alert" style={styles.notice}>{t("calendar.proposal.readFailed")}</UiText><Button label={t("calendar.proposal.reload")} onPress={() => setRevision(value => value + 1)} /></View>);
+  return renderSheet(<View style={styles.body}>
     {step === "candidates" ? <>
       <UiText style={styles.hint}>{t("calendar.proposal.tentative")}</UiText>
       {candidates.map((candidate, index) => <View key={index} style={styles.candidate}>
@@ -143,15 +166,15 @@ function RescheduleProposal({ contactId, appointmentId, initialCandidates, onClo
       <View style={styles.actions}><Button label={t("calendar.proposal.back")} onPress={() => setStep("candidates")} /><Button variant="primary" label={t("calendar.proposal.continue")} disabled={!mediumValid} onPress={() => { setError(""); setStep("review"); }} /></View>
     </> : null}
     {step === "review" ? <>
-      <UiText style={styles.hint}>{t("calendar.proposal.reviewNotice")}</UiText>
+      <UiText style={styles.hint}>{t(appointmentId ? "calendar.proposal.reviewNotice" : "calendar.proposal.initialReviewNotice")}</UiText>
       {candidates.map((candidate, index) => <UiText key={index} style={styles.candidateTime}>{t("calendar.proposal.option", { number: index + 1 })} · {displayTime(candidate)}</UiText>)}
       <UiText style={styles.candidateTime}>{t("calendar.proposal.format")} · {format === "in_person" ? t("calendar.proposal.inPerson") : format === "video" ? t("calendar.proposal.video") : t("calendar.proposal.phone")}{place.trim() ? ` · ${place.trim()}` : ""}</UiText>
       {!zone.canSave ? <UiText accessibilityRole="alert" style={styles.error}>{t("calendar.proposal.zoneUnavailable")}</UiText> : null}
       {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
-      <View style={styles.actions}><Button label={t("calendar.proposal.back")} disabled={busy} onPress={() => setStep("format")} /><Button variant="primary" label={t("calendar.proposal.send")} loading={busy} disabled={!zone.canSave || Boolean(selection.error)} onPress={() => void send()} /></View>
-      {error === t("calendar.proposal.conflict") ? <Button label={t("calendar.proposal.reload")} onPress={() => setRevision(value => value + 1)} /> : null}
+      <View style={styles.actions}><Button label={t("calendar.proposal.back")} disabled={busy} onPress={() => setStep("format")} /><Button variant="primary" label={t(appointmentId ? "calendar.proposal.send" : "calendar.proposal.initialSend")} loading={busy} disabled={!zone.canSave || Boolean(selection.error)} onPress={() => void send()} /></View>
+      {error === t("calendar.proposal.conflict") ? <Button label={t("calendar.proposal.reload")} onPress={() => { retry.current = null; setRevision(value => value + 1); }} /> : null}
     </> : null}
-  </View>;
+  </View>);
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({

@@ -42,6 +42,8 @@ export const calendar = {
   "calendar.proposal.phoneHint": "電話の連絡先（任意）",
   "calendar.proposal.placeRequired": "対面で会う場所を入力してください。",
   "calendar.proposal.reviewNotice": "送ると改期の提案になります。今の確定日時は相手が選ぶまで変わりません。",
+  "calendar.proposal.initialReviewNotice": "候補を送っても、面談はまだ確定しません。相手が日時を選ぶのを待ちます。",
+  "calendar.proposal.initialSend": "候補を提案",
   "calendar.proposal.zoneUnavailable": "端末のタイムゾーンを確認できません。候補は送っていません。",
   "calendar.proposal.send": "改期を提案",
   "calendar.proposal.invalid": "候補か場所を確認してください。送信していません。",

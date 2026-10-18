@@ -17,10 +17,11 @@ import {
 } from "../src/screens/calendar/meeting-proposal-flow";
 
 const originalLoad = (Module as unknown as { _load: (request: string, ...rest: unknown[]) => unknown })._load;
+const identity = { ready: true, signedIn: true, offline: false, actorId: "actor:one", accountId: "account:one" };
 (Module as unknown as { _load: (request: string, ...rest: unknown[]) => unknown })._load = function(request: string, ...rest: unknown[]) {
   if (request === "expo-crypto") return { randomUUID: () => "test-key" };
-  if (request === "../../api/AuthSessionProvider") return { useOrbitAuthSession: () => ({ ready: true, signedIn: true, offline: false }) };
-  if (request === "../../api/ApiBaseUrlProvider") return { useOrbitApiBaseUrl: () => ({ ready: true }) };
+  if (request === "../../api/AuthSessionProvider") return { useOrbitAuthSession: () => identity };
+  if (request === "../../api/ApiBaseUrlProvider") return { useOrbitApiBaseUrl: () => ({ ready: true, baseUrl: "https://orbit.example" }) };
   if (request === "../../hooks/useOrbitApiClient") return { useOrbitApiClient: () => ({ get: async () => ({ success: false, status: 503 }), post: async () => ({ success: false, status: 503 }) }) };
   if (request === "../../time/OrbitTimeZoneProvider") return { useOrbitTimeZone: () => ({ timeZone: "Asia/Tokyo", canSave: true, error: false }) };
   return originalLoad.call(this, request, ...rest);
@@ -53,10 +54,31 @@ test("closed meeting proposal renders no sheet", () => {
   assert.equal(renderToHtml(sheet("ja", { open: false })), "");
 });
 
-test("contact-only entry explains why sending is unavailable instead of pretending to send", () => {
+test("initial entry waits for server-verified bilateral authority before exposing candidates or send", () => {
   const html = renderToHtml(sheet("ja"));
-  assert.match(html, /この連絡先からはまだ面談を送れません/u);
+  assert.match(html, /面談を読み込んでいます/u);
+  assert.doesNotMatch(html, /この連絡先からはまだ面談を送れません/u);
   assert.doesNotMatch(html, /候補 1/u);
+});
+
+test("offline initial entry is read-only and does not claim authority was verified", () => {
+  identity.offline = true;
+  try {
+    const html = renderToHtml(sheet("ja"));
+    assert.match(html, /面談の提案には接続が必要です/u);
+    assert.doesNotMatch(html, /候補 1/u);
+  } finally { identity.offline = false; }
+});
+
+test("missing actor identity fails closed before loading either proposal mode", () => {
+  identity.actorId = "";
+  try {
+    for (const props of [{}, { appointmentId: "appointment:one" }]) {
+      const html = renderToHtml(sheet("ja", props));
+      assert.match(html, /面談を確認できません/u);
+      assert.doesNotMatch(html, /面談を読み込んでいます/u);
+    }
+  } finally { identity.actorId = "actor:one"; }
 });
 
 const monday = "2026-10-19T01:00:00.000Z";

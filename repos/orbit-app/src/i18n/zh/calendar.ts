@@ -42,6 +42,8 @@ export const calendar = {
   "calendar.proposal.phoneHint": "电话联系方式（选填）",
   "calendar.proposal.placeRequired": "请填写见面地点。",
   "calendar.proposal.reviewNotice": "发送后会成为改期提议。对方做出选择前，已确认的时间不会改变。",
+  "calendar.proposal.initialReviewNotice": "发出候选时间并不代表会面已确认，还需等待对方选择时间。",
+  "calendar.proposal.initialSend": "提议这些时间",
   "calendar.proposal.zoneUnavailable": "无法确认设备时区。候选时间尚未发送。",
   "calendar.proposal.send": "提议改期",
   "calendar.proposal.invalid": "请检查候选时间或地点，尚未发送。",

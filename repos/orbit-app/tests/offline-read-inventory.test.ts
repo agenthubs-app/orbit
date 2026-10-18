@@ -124,6 +124,21 @@ test('To-do decisions have explicit online-only write policies', () => {
   assert.equal(encounter?.binaryPolicy, 'never_local');
 });
 
+test('initial proposal authority and send are exact private online-only surfaces, never a cached appointment ID', () => {
+  for (const method of ['GET', 'POST']) {
+    const surface = surfaces.find(row => row.consumerFile === 'src/screens/calendar/meeting-proposal-flow.ts'
+      && row.method === method && row.endpointTemplate === '/api/appointments/initial-proposal');
+    assert.ok(surface, `${method} initial-proposal needs an explicit registration`);
+    assert.equal(surface.domainId, 'appointments');
+    assert.equal(surface.readPersistence, 'online_only_secret');
+    assert.equal(surface.mutationPolicy, 'online_only');
+    assert.equal(surface.binaryPolicy, 'never_local');
+    assert.equal(resolveReadSurface(method, '/api/appointments/initial-proposal?contactId=contact-1'), surface,
+      'literal authority route must win over the older /appointments/:id GET');
+  }
+  assert.equal(surfaces.some(row => row.endpointTemplate === '/api/appointments/initial-proposal' && row.method !== 'GET' && row.method !== 'POST'), false);
+});
+
 test('exact-task lifecycle resolution stays actor-scoped and never persists locally', () => {
   const surface = surfaces.find(row => row.consumerFile === 'src/screens/todo/TodoScreen.tsx'
     && row.method === 'GET' && row.endpointTemplate === '/api/relationship-tasks/:id/resolve');
@@ -150,6 +165,8 @@ test('the actual native consumers all have explicit versioned policies', async (
   assert.ok(extracted.calls.some(row => row.endpointTemplate.includes('/messages')));
   const actual = new Set(extracted.calls.map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`));
   for (const expected of [
+    'src/screens/calendar/meeting-proposal-flow.ts GET /api/appointments/initial-proposal',
+    'src/screens/calendar/meeting-proposal-flow.ts POST /api/appointments/initial-proposal',
     'src/screens/inbox/NotificationDetailScreen.tsx GET /api/inbox/notifications/:id',
     'src/screens/inbox/NotificationDetailScreen.tsx POST /api/inbox/notifications/:id/actions',
     'src/screens/settings/NotificationDeliverySettings.tsx GET /api/inbox/delivery/preferences',

@@ -101,6 +101,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Provider calendar rows are live/private; never persist them via the read inventory.
     || endpointTemplate.startsWith('/api/calendar/external-events')
     || endpointTemplate === '/api/encounters'
+    // Proposal authority and initial send receipts remain private, online-only and never cached.
+    || endpointTemplate === '/api/appointments/initial-proposal'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
@@ -609,6 +611,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   // R20: meeting negotiation uses live participant visibility and has no device snapshot.
   ["src/screens/calendar/meeting-detail-actions.ts","POST","/api/appointments/:id/commands"],
   ["src/screens/calendar/meeting-proposal-flow.ts","GET","/api/appointments/:id"],
+  ["src/screens/calendar/meeting-proposal-flow.ts","GET","/api/appointments/initial-proposal"],
+  ["src/screens/calendar/meeting-proposal-flow.ts","POST","/api/appointments/initial-proposal"],
   ["src/screens/calendar/meeting-proposal-flow.ts","POST","/api/appointments/:id/commands"],
   ["src/screens/calendar/useCalendarExternalEvents.ts","GET","/api/calendar/external-events"],
   ["src/screens/ai/AgentActionsScreen.tsx","GET","/api/agent/actions"],
