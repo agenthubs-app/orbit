@@ -1,0 +1,20 @@
+{
+  "_note": "R13 existing approved boards only. b5 #7 and b11 #27/#51 include D-16 mail summary and cannot be gates. 1024/390 and most dark boards are absent; see R13 preflight-checklist.",
+  "defaults": {
+    "app-origin": "http://localhost:3300",
+    "login": "qa@orbit.test",
+    "grid": 30,
+    "wait": 4000,
+    "attribution": "scripts/visual/attribution-redesign-R13.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/inbox/**",
+    "repos/orbits/features/notifications/secretary/**"
+  ],
+  "views": [
+    { "id": "W-R13-01", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 5, "width": 1440, "themes": ["light"], "note": "Empty account; requires matching local actor data." },
+    { "id": "W-R13-02", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 6, "width": 1440, "themes": ["light"], "note": "Few notifications; requires matching local actor data." },
+    { "id": "W-R13-04", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 8, "width": 1440, "themes": ["light"], "note": "Message list, read pane and rail; requires matching authorized threads." },
+    { "id": "W-R13-04d", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 69, "width": 1440, "themes": ["dark"], "note": "Dark message list; requires matching authorized threads." }
+  ]
+}

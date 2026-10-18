@@ -1,0 +1,16 @@
+{
+  "_note": "R13 existing mail-free boards only. b5 #2 and b11 #26 contain D-16 mail summary and cannot be gates. App dark/Orbit send boards are absent; see R13 preflight-checklist.",
+  "defaults": { "grid": 30, "wait": 20000, "attribution": "scripts/visual/attribution-redesign-R13.json" },
+  "sources": [
+    "repos/orbit-app/src/screens/inbox/**",
+    "repos/orbit-app/src/i18n/*/typedInbox.ts"
+  ],
+  "views": [
+    { "id": "A-R13-01", "path": "/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 0, "themes": ["light"], "note": "Empty account; requires matching local actor data." },
+    { "id": "A-R13-02", "path": "/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 1, "themes": ["light"], "note": "Few notifications; requires matching local actor data." },
+    { "id": "A-R13-04", "path": "/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 3, "themes": ["light"], "note": "Message list; requires matching authorized threads." },
+    { "id": "A-R13-05", "path": "/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 4, "themes": ["light"], "note": "Thread interaction after opening a real item; no synthetic send." },
+    { "id": "A-R13-07", "path": "/inbox?tab=notifications&filter=secretary", "design": "b11-nav-v3.html", "board-index": 29, "themes": ["light"], "note": "Deadline detail requires an eligible live event." },
+    { "id": "A-R13-08", "path": "/inbox?tab=notifications&filter=secretary", "design": "b11-nav-v3.html", "board-index": 30, "themes": ["light"], "note": "Recommendation detail requires an eligible live event; unsupported chips stay hidden." }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "_schema": {
+    "<grid-view>": {
+      "<band>": "Only a reviewed [data], [raster], or [contrast] difference with its concrete reason belongs here."
+    }
+  }
+}
