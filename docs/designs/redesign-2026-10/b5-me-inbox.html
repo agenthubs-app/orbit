@@ -1281,11 +1281,12 @@ const INS = [
 ];
 const insCard = ([k, t, viz, w], web) => `<div class="card ${web ? 'span4' : ''}" data-why-box><div class="row"><span class="chip">${k}</span><span class="why" style="margin-left:auto">?</span></div><b style="display:block;font-size:14px;line-height:1.6;margin-top:8px">${t}</b>${viz}<div class="why-body" hidden>根拠：${w}</div></div>`;
 const anaTabs = (on, w) => `<div class="seg anatab" style="${w ? '' : 'width:100%;display:grid;grid-template-columns:repeat(3,1fr)'}">${[['str', '構造'], ['opp', '機会'], ['ins', 'インサイト']].map(([k, l]) => `<button class="${k === on ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+// R11b PLANNER §2 B-1 / B-2（主会话代定，2026-10-18，RD-33）：10 人即解锁，「10人を超えると」改为「10人から」；≥30 人去「参考値」，「30人を超えると」改为「30人から」（说明，不是第二道锁）。
 function anaApp(s, tab = 'str') {
   const head = topbar('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : '286人 · 10/7 更新', back, `<button class="rbtn">${ic('sliders')}</button>`);
   if (s === 'empty') return head + `
     <div class="guide rise" style="text-align:center;padding:24px 20px"><div class="lockring" style="width:120px;margin:0 auto">${ring(120, 12, [{ v: 5, c: 'var(--plum-700)', max: 10 }], `<div class="big" style="font-size:30px">${num(5)}<small>/10</small></div>`)}</div>
-      <div style="font-size:18px;font-weight:800;margin-top:12px">あと5人で分析が始まります</div><div class="sub" style="margin:6px 0 16px">10人を超えると、業界の偏りや足りない人が見えてきます。</div>
+      <div style="font-size:18px;font-weight:800;margin-top:12px">あと5人で分析が始まります</div><div class="sub" style="margin:6px 0 16px">10人から、業界の偏りや足りない人が見えてきます。</div>
       <button class="btn primary block" style="height:46px">${ic('scan', 'sm')}名刺を追加する</button></div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>解放されると見えるもの</h3></div>
       <div class="ghost-row"><i></i>構造：業界・役職層・地域・出会った場所</div><div class="ghost-row"><i></i>機会：再会すべき人・紹介を頼める人</div><div class="ghost-row"><i></i>インサイト：あなたの人脈の傾向と理由</div></div>
@@ -1293,7 +1294,7 @@ function anaApp(s, tab = 'str') {
   const few = s === 'few';
   if (tab === 'opp') return head + anaTabs('opp') + `<div style="margin-top:14px">${OPP.map(o => oppCard(o)).join('')}</div>`;
   if (tab === 'ins') return head + anaTabs('ins') + `<div style="margin-top:14px">${INS.map(o => insCard(o)).join('')}</div><div class="lbl" style="text-align:center;margin-top:12px">インサイトは毎週月曜に更新されます</div>`;
-  return head + anaTabs('str') + (few ? `<div class="banner">${ic('chart', 'sm')}<span>14人のため参考値です。30人を超えると「機会」「インサイト」が安定します</span></div>` : '') + `<div style="margin-top:14px">${indCard(few)}${gapCard(few)}${DIMS[few ? 'few' : 'many'].map((d, k) => dimCard(d, k)).join('')}</div>`;
+  return head + anaTabs('str') + (few ? `<div class="banner">${ic('chart', 'sm')}<span>14人のため参考値です。30人から「機会」「インサイト」が安定します</span></div>` : '') + `<div style="margin-top:14px">${indCard(few)}${gapCard(few)}${DIMS[few ? 'few' : 'many'].map((d, k) => dimCard(d, k)).join('')}</div>`;
 }
 function drillApp() {
   const L = [C[0], C[7], C[2], X[0], X[1], X[2]];
@@ -1306,12 +1307,12 @@ function drillApp() {
 function anaWeb(s, tab = 'str') {
   const head = mainhead('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : '286人 · 10/7 更新 · 毎週月曜に再計算', `<button class="rbtn">${ic('left')}</button>`, s === 'empty' ? '' : anaTabs(tab, true));
   if (s === 'empty') return head + `<div class="wgrid">
-    <div class="card span12 guide" style="padding:28px"><div class="row" style="gap:28px">${ring(140, 13, [{ v: 5, c: 'var(--plum-700)', max: 10 }], `<div class="big" style="font-size:34px">${num(5)}<small>/10</small></div>`)}<div style="flex:1"><div style="font-size:24px;font-weight:800">あと5人で分析が始まります</div><div class="sub" style="margin-top:6px">10人を超えると、業界の偏り・足りない人・再会すべき人が見えてきます。名刺の画像をまとめてドロップできます。</div><div class="row" style="gap:10px;margin-top:16px"><button class="btn primary" style="height:46px">${ic('scan', 'sm')}名刺を追加</button><button class="btn">${ic('share', 'sm')}CSV を取り込む</button></div></div></div></div>
+    <div class="card span12 guide" style="padding:28px"><div class="row" style="gap:28px">${ring(140, 13, [{ v: 5, c: 'var(--plum-700)', max: 10 }], `<div class="big" style="font-size:34px">${num(5)}<small>/10</small></div>`)}<div style="flex:1"><div style="font-size:24px;font-weight:800">あと5人で分析が始まります</div><div class="sub" style="margin-top:6px">10人から、業界の偏り・足りない人・再会すべき人が見えてきます。名刺の画像をまとめてドロップできます。</div><div class="row" style="gap:10px;margin-top:16px"><button class="btn primary" style="height:46px">${ic('scan', 'sm')}名刺を追加</button><button class="btn">${ic('share', 'sm')}CSV を取り込む</button></div></div></div></div>
     ${[['🧱', 'lav', '構造', '業界・役職層・地域・出会った場所'], ['🔭', 'teal', '機会', '再会すべき人・紹介を頼める人'], ['💡', 'apricot', 'インサイト', '人脈の傾向と、その理由']].map(([e, c, t, d]) => `<div class="card span4 row" style="gap:12px"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="lbl">${d}</div></div></div>`).join('')}
     <div class="card span12"><div class="card-h"><h3>分析の例 ${SAMPLE}</h3></div><div class="faded grid2" style="gap:30px">${IND.map(([l, v]) => `<div class="dim"><span>${l}</span>${bar(v / 105 * 100, 'thin')}<b class="score">${v}</b><span></span></div>`).join('')}</div></div></div>`;
   const few = s === 'few';
   if (tab === 'opp') return head + `<div class="wgrid">${OPP.map(o => oppCard(o, true)).join('')}<div class="span12 card-h" style="margin:6px 0 -6px"><h3>インサイトから</h3></div>${INS.map(o => insCard(o, true)).join('')}</div>`;
-  return head + `<div class="wgrid">${few ? `<div class="span12 banner" style="margin:0">${ic('chart', 'sm')}<span>14人のため参考値です。30人を超えると「機会」「インサイト」が安定します</span></div>` : ''}${indCard(few, true)}${gapCard(few, true)}${DIMS[few ? 'few' : 'many'].map((d, k) => dimCard(d, k, true)).join('')}</div>`;
+  return head + `<div class="wgrid">${few ? `<div class="span12 banner" style="margin:0">${ic('chart', 'sm')}<span>14人のため参考値です。30人から「機会」「インサイト」が安定します</span></div>` : ''}${indCard(few, true)}${gapCard(few, true)}${DIMS[few ? 'few' : 'many'].map((d, k) => dimCard(d, k, true)).join('')}</div>`;
 }
 const drillRail = (title, n, L) => `<h4>${ic('users', 'sm')}${title}<span class="lbl" style="margin-left:auto;font-weight:500">${n}人</span></h4>
   <div class="seg"><button class="on">目標に近い順</button><button>最終接点</button></div>
