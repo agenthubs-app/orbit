@@ -19,6 +19,10 @@ Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,0
 
 同じ commit 群に対する後段 full gate：Web `d-web-full-after-closeout.log` は **7,693 tests / 6,634 pass / 31 fail / 1,028 skip、exit 1**。失敗名集合は pristine D Web の31件と完全一致し、新規名0。App `d-app-full-after-closeout.log` は **3,453 tests / 3,448 pass / 3 fail / 2 skip、exit 1**。辞書 key-count と joined-person overlay click は pristine の2件だが、plan overview skip→undo click が追加で失敗した。後者はオーバーレイが「スキップを取り消す」クリックを遮る timeout で、同一 plan file の隔離実行は **25 pass / 1 skip / 0 fail**。C 線 full でも同名失敗が反復しており、D の Task 変更箇所ではないが、App full 新規失敗として OPEN のまま引き継ぐ。計画画面は本線の編集禁止範囲なので、この結果を全量成功として扱わず、D 線で plan source/test を改変しない。
 
+SC-09 Web タスク一覧の後続局所実装は、既存 To-do から `view=all` / `view=completed` で新 list に入る。server の actor-owned signed-cursor page に `personal` scope と `relationship` 真偽を追加し、隠れた連絡先でも関係 task を個人扱いしない。画面は期限の五群、三つの scope、検索、次ページ、完了開閉、右側 detail read、version 条件付き削除確認を備える。編集はまだ legacy detail link であり、hover action・二回延期 warning・App 同等 list・native / pixel は **OPEN**。旧 `loadPage` URL / shape は変更せず additive client を使用。Web product browser **2/2**、local PostgreSQL personal / hidden-contact / growth **3/3**、Web contract / scope focused **9/9**、App 契約同期 focused **5/5**、両端 typecheck exit0。copy QA は Web 26 件の既存 issue、今回の `web.task.taskList*` は0。production DB / real provider は使用していない。
+
+この局所実装後の sanitized Web full `d-web-full-task-list-after.log` は **7,705 tests / 6,646 pass / 31 fail / 1,028 skip、exit 1**。失敗名集合は `d-web-full-after-closeout.log` と一致し、新規名0だが suite-green ではない。fresh Web lint は exit0（`d-web-lint-task-list.log`）。App full `d-app-full-task-list.log` は **3,454 tests / 3,439 pass / 13 fail / 2 skip、exit 1**。既知の辞書・joined-person 二件に加え、拍照導入9件、personal-schedule click1件、tasks-unification paging1件が失敗した。新11件を含む三つの App files の隔離実行 `d-app-unrelated-isolation-task-list.log` は **114 tests / 105 pass / 9 fail**：後二件は pass、拍照導入9件は再現。App の今回の変更は task-page 契約 / schema と focused test のみで、拍照導入 source/test は触れていない。ただし原因未確定の9件を「単なる並列 flaky」や full pass とせず、越線未解決として保持する。
+
 ## SC 対照
 
 | SC | 現在の結果 |
@@ -33,12 +37,12 @@ Web full `d-web-full-current.log` は **7,693 tests / 6,630 pass / 35 fail / 1,0
 | SC-06 Task container | 現行 HEAD で App 容器／navigation **15/15**（seg 切替・連打・＋・再表示時の scroll 位置を含む）、Web 容器／To-do rail **21/21**（←→、`?tab=`、plan hash、rail の同一読取・最大3件・account scope を含む）を再実行。App native device 操作記録と Web 二級ページ往復時の scroll 復元の実操作証拠は OPEN。plan / memo の内部は変更しない。Calendar rail・recent-history・Later / ask の残余は SC-06 のこの定向テスト合格だけでは閉じない別 UI 課題として扱う。 |
 | SC-07 判断待ち | 支持する source-native actions / per-source paging は接続。未検証の persisted conversation deep link を出さない accepted partial を維持。ひとこと保存と全 source flow の収口は OPEN。 |
 | SC-08 draft / sent | 両端 manual-only editor、AI unavailable は実装。App sent/encounter の実ブラウザ2/2、fresh typecheck0、full は上記の既存2失敗のみ。Web はまだ manual-only。日本語 AI / tone / rewrite と native handoff 完全性は OPEN。 |
-| SC-09 詳細 | 承認済み B helper を再利用した exact resolver / App exact-task entry は提出済み。Web Modal `5ff2b01b9` と To-do host `f6bd5b21a` は後続 fresh mounted30/30・実ブラウザ follow-up4/4、secure fixture3/3。target list / detail / delete / defer-two warning は OPEN。 |
+| SC-09 詳細 | 承認済み B helper を再利用した exact resolver / App exact-task entry は提出済み。Web Modal `5ff2b01b9` と To-do host `f6bd5b21a` は fresh mounted30/30・実ブラウザ follow-up4/4、secure fixture3/3。Web list は source scope / 期限群 / 検索 / paging / detail read / version 付き delete confirm を局所実装し、product browser2/2・local PG3/3。legacy detail edit・hover actions・defer-two warning・App list・native / pixel は OPEN。 |
 | SC-10 カレンダー | selected-window recurrence / carry-over / external read と CRUD を実装。Web calendar browser 2/2、source 定向・compiler 証拠あり。最終双方操作 / 繰り返し sheet / simulator / pixel の収口は OPEN。 |
 | SC-13 failure / NI | source 別 retry、unknown partial count、whole-page NOT_IMPLEMENTED hide、App stale/offline guard を実装・定向検証。最新追加を含む両端統合確認は OPEN。 |
 | SC-14 old routes | App Today / Followups の orphan 退役と Web personal redirect は提出済み。App agent entry / target focus は主会話担当、Web task / lifecycle / agent retirement と E 消費先交接は OPEN。 |
 | SC-15 pixel | user 指示により R31b 待ち。library width API の利用確認を pixel 完了とは扱わない。 |
-| SC-16 full / review | 後段 Web full7693 / 6634 pass / 31 pristine fail / 1028 skip、exit1、新規名0。後段 App full3453 / 3448 pass / 3 fail / 2 skip、exit1：pristine2件と越線 plan overlay click 1件。plan file 隔離25 pass / 1 skip、full の新規失敗は OPEN。両端 typecheck0、Web lint0。copy global218 issues / Web26 / App calendar0、独立 review・native/pixel は OPEN。 |
+| SC-16 full / review | SC-09 list 後の Web full7705 / 6646 pass / 31 pristine fail / 1028 skip、exit1、新規名0。App full3454 / 3439 pass / 13 fail / 2 skip、exit1；隔離で拍照導入9件が再現し、原因未確定。以前の plan overlay full failure も履歴として OPEN。両端 typecheck0、Web lint0、copy Web26 issues / 今回の list copy0。独立 review・native/pixel は OPEN。 |
 
 ## フォロー 根因
 

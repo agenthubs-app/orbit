@@ -52,6 +52,7 @@ test("canonical task pages are owned, globally filtered, signed, compact and do 
     const search = await reader.read("a", { status: "open", query: "東京" });
     assert.equal(search.total, 1); assert.equal(search.items[0]?.titlePreview, "Task 064");
     assert.equal((await reader.read("a", { status: "open", scope: "relationship" })).total, 32);
+    assert.equal((await reader.read("a", { status: "open", scope: "personal" })).total, 33);
     for (const query of [{ status: "completed" as const }, { status: "open" as const, scope: "relationship" as const }, { status: "open" as const, query: "東京" }])
       await assert.rejects(reader.read("a", { ...query, cursor: first.nextCursor }), /CURSOR/);
     await assert.rejects(reader.read("b", { status: "open", cursor: first.nextCursor }), /CURSOR/);
@@ -133,6 +134,8 @@ test("task page matches valid canonical records and never exposes another owner'
     assert.equal(linked.total,5);
     assert.equal(linked.items.find(item=>item.id==="linked:own")?.relatedContact?.namePreview,"PRIVATE own");
     for(const id of ["foreign","conflicting","arrayAccount","missing"]) assert.equal(linked.items.find(item=>item.id===`linked:${id}`)?.relatedContact,null,id);
+    assert.equal((await reader.read("a",{status:"open",scope:"relationship",query:"linked:"})).total,5);
+    assert.equal((await reader.read("a",{status:"open",scope:"personal",query:"linked:"})).total,0);
     await pool.query("update orbit_records set user_id='b' where collection_name='contacts' and record_id='own'");
     assert.equal((await reader.read("a",{status:"open",query:"linked:own"})).items[0]?.relatedContact,null);
     const handler=createTaskPageGetHandler({resolveActor:async()=>({id:"a",workspaceId:"w"}),reader:()=>reader});

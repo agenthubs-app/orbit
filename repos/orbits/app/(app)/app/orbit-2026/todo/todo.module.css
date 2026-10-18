@@ -18,4 +18,6 @@
 .rail { display: grid; gap: var(--space-10); }
 .rail .header { margin-bottom: 0; }
 .railCard { border-radius: var(--r-bubble); padding: var(--space-14); }
+.taskListLink { align-self: start; color: var(--accent-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); grid-column: span 12; text-decoration: none; }
+.taskListLink:hover { text-decoration: underline; }
 @media (max-width: 1023px) { .decisions, .nextMoves { grid-column: span 12; } }

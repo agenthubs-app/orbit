@@ -24,7 +24,10 @@ export interface TaskSuggestionView {
 }
 
 /** Display-only list row. It must never be used as a full task edit baseline. */
-export type TaskRowView = Pick<TaskView, "id" | "title" | "status" | "category" | "plannedDate" | "dueAt" | "href">;
+export type TaskRowView = Pick<TaskView, "id" | "title" | "status" | "category" | "plannedDate" | "dueAt" | "href"> & {
+  relatedContact?: { id: string; namePreview: string; organizationPreview: string } | null;
+  relationship?: boolean;
+};
 
 export interface TaskActivityView {
   id: string;

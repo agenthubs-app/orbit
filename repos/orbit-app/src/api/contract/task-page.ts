@@ -12,12 +12,14 @@ export interface TaskCardContract {
   completedAt?: string | null;
   deferralCount?: number;
   relatedContact: { id: string; namePreview: string; organizationPreview: string } | null;
+  /** True even when a linked contact cannot be displayed. */
+  relationship?: boolean;
 }
 
 export interface TaskPageContract {
   actorId: string;
   status: "open" | "completed";
-  scope: "all" | "relationship";
+  scope: "all" | "relationship" | "personal";
   query: string;
   /** When requested: planned on/before this date OR due before this UTC instant. */
   dueWindow?: { plannedThrough: string; dueBefore: string };

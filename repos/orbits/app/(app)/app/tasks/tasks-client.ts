@@ -85,6 +85,19 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
         return { ...page, items };
       });
     },
+    /** New Task-list source. The legacy loadPage URL and row shape stay unchanged. */
+    loadScopedPage: (status: "open" | "completed", scope: "all" | "relationship" | "personal", query = "", cursor: string | null = null) => {
+      const params = new URLSearchParams({ status, scope, query: query.trim(), limit: "30" });
+      if (cursor) params.set("cursor", cursor);
+      return request(`/api/tasks/page?${params}`, value => {
+        const page = taskPageSchema.parse(value);
+        if (page.status !== status || page.scope !== scope || page.query !== query.trim()) throw new Error("Task page scope mismatch");
+        const items: TaskRowView[] = page.items.map(item => ({ id: item.id, title: item.titlePreview, status: item.status, category: item.category,
+          ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}), ...(item.dueAt ? { dueAt: item.dueAt } : {}),
+          relatedContact: item.relatedContact, relationship: item.relationship ?? (item.category === "relationship" || Boolean(item.relatedContact)), href: `/app/tasks/${encodeURIComponent(item.id)}` }));
+        return { ...page, items };
+      });
+    },
     loadTask: (id: string) => request(pathFor(id), single),
     loadSuggestions: () => request("/api/task-suggestions", suggestionsToView),
     loadActivities: (id: string) => request(`${pathFor(id)}/activities`, activitiesToView),
@@ -123,6 +136,12 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       action: completed ? "complete" : "reopen", idempotencyKey: key(),
     }),
     remove: (id: string) => request(pathFor(id), ignore, "DELETE", { idempotencyKey: key() }),
+    /** New task-list delete: stale details cannot silently delete a changed task. */
+    removeWithVersion: (id: string, expectedUpdatedAt: string) => request(pathFor(id), data => {
+      const removed = single(data);
+      if (removed.id !== id) throw new Error("Task delete receipt mismatch");
+      return removed;
+    }, "DELETE", { expectedUpdatedAt, idempotencyKey: key() }),
     resolveSuggestion: (id: string, action: "accept" | "dismiss") => request<TaskView | void>(
       `/api/task-suggestions/${encodeURIComponent(id)}/${action}`, action === "accept" ? single : dismissed(id),
       "POST", { idempotencyKey: key() },

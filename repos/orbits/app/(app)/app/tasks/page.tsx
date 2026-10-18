@@ -8,13 +8,12 @@ import { taskTabFrom } from "../orbit-2026/task/task-tabs";
 import { TodoTaskSlot } from "../orbit-2026/todo/TodoTaskSlot";
 import { CalendarTaskSlot } from "../orbit-2026/calendar/CalendarTaskSlot";
 import type { LifecyclePageSearchParams } from "./lifecycle-pages-route-service";
-import { TasksPageContent } from "./tasks-page-content";
 
 export const dynamic = "force-dynamic";
 
 // R07: /app/tasks is the Task container — カレンダー / To-do / プラン / メモ (`?tab=`).
-// R20a: To-do reads the new source aggregate. The explicit completed view stays
-// on its existing task list until the independent SC-09 list replacement lands.
+// R20a: To-do reads the new source aggregate; the legacy completed view opens
+// the new task list with its completed group expanded.
 // Calendar reads the selected native window and a read-only external source. プラン is the
 // plan v2 overview / goal input / 以前のプラン (`plan-slot.tsx`), read only when that
 // tab is asked for: switching tabs on the client re-requests the page with ?tab=.
@@ -44,7 +43,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
   return <TaskContainer
     initialTab={tab}
     calendar={actor ? <CalendarTaskSlot actorId={actor.id} initialDate={date} initialAdd={tab === "calendar" && params?.new === "1"} /> : null}
-    todo={params?.view === "completed" ? <TasksPageContent initialStatus="completed" /> : actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} /> : null}
+    todo={actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} initialList={params?.view === "all" || params?.view === "completed"} initialCompleted={params?.view === "completed"} /> : null}
     plan={plan}
     planStartHref={planStartHref()}
   />;

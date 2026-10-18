@@ -72,5 +72,6 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
       {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.map(row => <div key={row.key}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.overdue ? <Chip label={t(taskCopy.todoOverdue)} tone="coral" /> : row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} /> : null}</>} />{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
       {view.followups.more.length ? <Button label={t(taskCopy.todoAll)} variant="ghost" size="sm" onClick={() => onMore("followups")} /> : null}
     </Card> : null}
+    <a className={styles.taskListLink} href="/app/tasks?tab=todo&view=all">{t(taskCopy.taskListTitle)} →</a>
   </div>;
 }

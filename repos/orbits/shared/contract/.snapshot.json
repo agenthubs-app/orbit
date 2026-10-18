@@ -21643,6 +21643,11 @@
           "optional": false,
           "kind": "text",
           "type": "{ id: string; namePreview: string; organizationPreview: string; } | null"
+        },
+        "relationship": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },
@@ -21662,7 +21667,7 @@
         "scope": {
           "optional": false,
           "kind": "text",
-          "type": "'all' | 'relationship'"
+          "type": "'all' | 'relationship' | 'personal'"
         },
         "query": {
           "optional": false,

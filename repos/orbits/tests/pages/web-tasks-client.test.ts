@@ -80,6 +80,17 @@ test("Web edits retain server conflict protection and deletion remains actor-sco
   assert.deepEqual((await client.loadPage("open")).items, []);
 });
 
+test("new task-list deletion rejects a stale detail version and keeps the task", async () => {
+  const { client, tick, requests } = taskHarness();
+  const original = await client.create("Keep this");
+  tick();
+  await client.update(original, "Changed elsewhere", "");
+  await assert.rejects(client.removeWithVersion(original.id, original.updatedAt), (error: any) => error.code === "CONFLICT");
+  assert.equal((await client.loadTask(original.id)).title, "Changed elsewhere");
+  const deletion = requests.find(request => request.method === "DELETE")!;
+  assert.equal((await deletion.json()).expectedUpdatedAt, original.updatedAt);
+});
+
 test("invalid input and unsupported note clearing never pretend to save", async () => {
   const { client, requests } = taskHarness();
   await assert.rejects(client.create("   "));
@@ -100,6 +111,25 @@ test("malformed envelopes and task pages fail visibly instead of becoming empty 
   await assert.rejects(unauthorized.loadPage("open"), (error: any) => error.code === "UNAUTHORIZED");
   const offline = createTasksClient(async () => { throw new TypeError("Failed to fetch"); });
   await assert.rejects(offline.loadPage("open"), (error: any) => error.code === "NETWORK_ERROR");
+});
+
+test("new scoped page is additive: legacy URL stays unchanged and a hidden contact still classifies as a connection", async () => {
+  const paths: string[] = [];
+  const client = createTasksClient(async (input) => {
+    const path = String(input);
+    paths.push(path);
+    const scope = new URL(path, "https://orbit.test").searchParams.get("scope") ?? "all";
+    return Response.json({ success: true, data: { actorId: "a", status: "open", scope, query: "", total: 1,
+      counts: { open: 1, completed: 0 }, hasMore: false, nextCursor: null, asOf: "2026-10-17T00:00:00Z",
+      items: [{ id: "linked", titlePreview: "Reply", locationPreview: null, status: "open", category: "work", priority: "normal",
+        plannedDate: null, dueAt: null, updatedAt: "2026-10-17T00:00:00Z", relatedContact: null, relationship: true }] } });
+  });
+  const legacy = await client.loadPage("open");
+  assert.equal(legacy.items[0]?.relationship, undefined);
+  const scoped = await client.loadScopedPage("open", "relationship");
+  assert.equal(scoped.items[0]?.relationship, true);
+  assert.equal(paths[0], "/api/tasks/page?status=open&query=&limit=30");
+  assert.equal(paths[1], "/api/tasks/page?status=open&scope=relationship&query=&limit=30");
 });
 
 test("Web date/location patches use canonical null clearing and validate the echoed fields", async () => {

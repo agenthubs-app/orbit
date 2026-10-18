@@ -15,6 +15,15 @@ test("task page resolves server identity once and passes only bounded filters",a
   assert.equal(auth,1);assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');
   assert.deepEqual(calls,[["a",{status:"open",scope:"relationship",limit:20,query:"abc",cursor:"signed"}]]);
 });
+test("task page accepts the personal scope without falling back to all tasks",async()=>{
+  const calls:unknown[]=[];
+  const handler=createTaskPageGetHandler({resolveActor:async()=>actor,reader:()=>({
+    read:async(id,query)=>{calls.push([id,query]);return {...page,scope:"personal" as const};},
+    readToday:async()=>{throw Error("unused");},
+  })});
+  assert.equal((await handler(request("?scope=personal"))).status,200);
+  assert.deepEqual(calls,[["a",{status:"open",scope:"personal",query:"",limit:30,cursor:null}]]);
+});
 test("task page rejects unauthenticated and malformed requests without accessing data",async()=>{
   const reader=()=>{throw Error("must not read");};
   assert.equal((await createTaskPageGetHandler({resolveActor:async()=>null,reader})(request())).status,401);

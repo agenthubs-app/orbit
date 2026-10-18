@@ -43,6 +43,16 @@ test("Task Todo route mounts the new slot without legacy follow-up reads and pre
   assert.equal(plan.props.plan, "plan");
   assert.equal(runtime.planReads(), 1);
 });
+test("legacy completed view opens the new task list with completed rows expanded", async () => {
+  const runtime = loadPage();
+  const completed = await runtime.page({ searchParams: Promise.resolve({ tab: "todo", view: "completed" }) });
+  assert.equal(completed.props.todo.type, runtime.todo);
+  assert.equal(completed.props.todo.props.initialList, true);
+  assert.equal(completed.props.todo.props.initialCompleted, true);
+  const all = await runtime.page({ searchParams: Promise.resolve({ tab: "todo", view: "all" }) });
+  assert.equal(all.props.todo.props.initialList, true);
+  assert.equal(all.props.todo.props.initialCompleted, false);
+});
 
 test("Task calendar mounts the selected-window calendar with canonical actor and validated linked date", async () => {
   const runtime = loadPage();

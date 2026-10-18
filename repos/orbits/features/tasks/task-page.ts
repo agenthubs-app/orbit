@@ -8,7 +8,7 @@ import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
 
 export interface TaskPageQuery {
   status: "open" | "completed";
-  scope?: "all" | "relationship";
+  scope?: "all" | "relationship" | "personal";
   query?: string;
   limit?: number;
   cursor?: string | null;
@@ -53,6 +53,7 @@ export function taskTimestampSql(value: string): string {
 ) at time zone 'UTC'`;
 }
 const dueInstant = `(case when t ? 'dueAt' then ${taskTimestampSql("t->>'dueAt'")} end)`;
+const relationshipTask = `(t->>'category'='relationship' or coalesce(${nonblank("t->'relatedContactId'")},false))`;
 
 // This is a read model, not a shortened TaskRecordPayload. Audit histories and
 // note bodies are validated/searched inside PG and never sent with list cards.
@@ -105,7 +106,7 @@ export function taskRecordsValidityCte(includeDeleted = false, noteSourceFilter 
 const SQL = `with ${taskRecordsValidityCte()}, filtered as materialized (
   select *, case when $3='completed' then t->>'updatedAt'
     when $10::text is not null then coalesce(t->>'dueAt',(t->>'plannedDate')||'T23:59:59','9999')
-    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key from valid where ($4='all' or t->>'category'='relationship' or ${nonblank("t->'relatedContactId'")})
+    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key from valid where ($4='all' or ($4='relationship' and ${relationshipTask}) or ($4='personal' and not ${relationshipTask}))
     and ($5='' or strpos(lower((t->>'title') || ' ' || coalesce(t->>'notes','') collate pg_catalog."und-x-icu"),lower($5 collate pg_catalog."und-x-icu"))>0)
     and ($10::text is null or (t->>'plannedDate') collate "C"<=$10 collate "C" or ${dueInstant}<$11::timestamptz)
 ), page as (
@@ -115,7 +116,7 @@ const SQL = `with ${taskRecordsValidityCte()}, filtered as materialized (
   order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C" limit $9
 ), cards as (
   select p.*, jsonb_build_object('id',record_id,'titlePreview',left(t->>'title',240),'locationPreview',left(t->>'location',120),
-    'status',t->>'status','category',t->>'category','priority',t->>'priority','plannedDate',t->>'plannedDate','dueAt',t->>'dueAt','updatedAt',t->>'updatedAt','completedAt',t->>'completedAt',
+    'status',t->>'status','category',t->>'category','priority',t->>'priority','plannedDate',t->>'plannedDate','dueAt',t->>'dueAt','updatedAt',t->>'updatedAt','completedAt',t->>'completedAt','relationship',${relationshipTask},
     'deferralCount',(select count(*) from jsonb_array_elements(p.activities) a where a->>'actorType'='user' and a->>'type' in ('updated','rescheduled')
       and (a->'changes' ? 'previousPlannedDate' or a->'changes' ? 'previousDueAt')),
     'relatedContact',(select jsonb_build_object('id',c.record_id,'namePreview',left(c.payload->>'displayName',120),'organizationPreview',left(coalesce(c.payload->>'organization',''),120))
@@ -139,7 +140,7 @@ const todayTaskSignalsSchema = z.object({ urgentTask: z.boolean(), relationshipT
 export function createTaskPageReader(input: { client: LiveRecordSqlClient; workspaceId: string; secret: string; now?: () => string }) {
   async function readInternal(actorId: string, query: TaskPageQuery, todaySignalsNow?: string): Promise<TaskPageContract | TodayTaskPageResult> {
     const limit = query.limit ?? 30, scope = query.scope ?? "all", search = (query.query ?? "").trim();
-    if (!actorId.trim() || actorId.length > 2048 || !["open","completed"].includes(query.status) || !["all","relationship"].includes(scope)
+    if (!actorId.trim() || actorId.length > 2048 || !["open","completed"].includes(query.status) || !["all","relationship","personal"].includes(scope)
       || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || search.length > 240) throw Error("TASK_PAGE_INPUT_INVALID");
     if (todaySignalsNow !== undefined && (query.status !== "open" || scope !== "all" || search !== "" || !query.dueWindow || !Number.isFinite(Date.parse(todaySignalsNow)))) throw Error("TODAY_TASK_PAGE_INPUT_INVALID");
     if (Buffer.byteLength(input.secret) < 32) throw Error("READ_CURSOR_SECRET_MISSING");

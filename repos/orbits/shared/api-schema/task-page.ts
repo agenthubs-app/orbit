@@ -19,10 +19,11 @@ export const taskCardSchema = z.object({
   priority: z.enum(["normal", "high"]), plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   dueAt: instant.nullable(), updatedAt: instant, completedAt: instant.nullable().optional(), deferralCount: z.number().int().nonnegative().safe().optional(),
   relatedContact: z.object({ id: key, namePreview: z.string().max(240), organizationPreview: z.string().max(240) }).strict().nullable(),
+  relationship: z.boolean().optional(),
 }).strict();
 
 export const taskPageSchema = z.object({
-  actorId: key, status: z.enum(["open", "completed"]), scope: z.enum(["all", "relationship"]), query: z.string().max(240),
+  actorId: key, status: z.enum(["open", "completed"]), scope: z.enum(["all", "relationship", "personal"]), query: z.string().max(240),
   dueWindow: taskDueWindowSchema.optional(),
   items: z.array(taskCardSchema).max(50),
   counts: z.object({ open: z.number().int().nonnegative().safe(), completed: z.number().int().nonnegative().safe() }).strict(),
