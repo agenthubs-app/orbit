@@ -119,7 +119,10 @@ const loadEarlier = (p: Page) => p.getByRole("button", { name: "加载更早的�
 test("opening shows only the latest 20 messages, and each tap loads the 20 before them until everything is shown", async t => {
   const p = await open(t);
   assert.deepEqual(await shownIndexes(p), Array.from({ length: 20 }, (_, i) => 130 + i));
-  assert.deepEqual(await p.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests), ["GET /api/ai/conversations/sessions/session%3Apaging-150"]);
+  assert.deepEqual(await p.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests), [
+    "GET /api/ai/conversations/sessions/session%3Apaging-150",
+    "GET /api/ai/entity-drafts?conversationId=session%3Apaging-150",
+  ]);
   for (let pageNumber = 1; pageNumber <= 7; pageNumber += 1) {
     await loadEarlier(p).click();
     await p.waitForFunction((count) => document.body.innerText.match(/第\d+条(问题|回答)/g)?.length === count, Math.min(150, 20 + pageNumber * 20));
@@ -129,7 +132,7 @@ test("opening shows only the latest 20 messages, and each tap loads the 20 befor
   const shown = await shownIndexes(p);
   assert.deepEqual(shown, Array.from({ length: 150 }, (_, i) => i), "oldest first, no repeat, no gap");
   const requests = await p.evaluate(() => (window as unknown as { fixture: { requests: string[] } }).fixture.requests);
-  assert.deepEqual(requests.slice(1), ["c130", "c110", "c90", "c70", "c50", "c30", "c10"].map(c => `GET /api/ai/conversations/sessions/session%3Apaging-150?cursor=${c}`));
+  assert.deepEqual(requests.filter(request => request.includes("?cursor=")), ["c130", "c110", "c90", "c70", "c50", "c30", "c10"].map(c => `GET /api/ai/conversations/sessions/session%3Apaging-150?cursor=${c}`));
 });
 
 test("loading earlier messages keeps the message the reader was looking at in place", async t => {

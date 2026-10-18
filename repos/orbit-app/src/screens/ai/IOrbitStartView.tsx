@@ -5,6 +5,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import { ActionSheet, BottomSheet, Button, Card, ConfirmDialog, FullDrawer, Icon, IconButton, MacTile, SearchField, TextField, UiPressable, UiText } from "../../components/ui";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { iorbitR21Copy } from "../../i18n/iorbitR21";
 
 export type IOrbitHistoryItem = {
   groupId: string | null;
@@ -14,24 +16,24 @@ export type IOrbitHistoryItem = {
   preview: string;
   source: "conversation" | "session";
   title: string;
-  updatedAt?: string;
+  updatedAt: string;
   when: string;
 };
 
 export type IOrbitPlanIntake = { intakeId: string; goal: string };
 export type IOrbitPlanGoal = { planId: string; goal: string; status: "active" | "achieved" };
 
-function tokyoGroup(item: IOrbitHistoryItem, now = new Date()): "ピン留め" | "今日" | "今週" | "それ以前" {
-  if (item.pinned) return "ピン留め";
+function tokyoGroup(item: IOrbitHistoryItem, now = new Date()): "pinned" | "today" | "week" | "older" {
+  if (item.pinned) return "pinned";
   const date = new Date(item.updatedAt ?? "");
-  if (Number.isNaN(date.getTime())) return "それ以前";
+  if (Number.isNaN(date.getTime())) return "older";
   const format = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" });
   const day = format.format(date);
   const today = format.format(now);
-  if (day === today) return "今日";
+  if (day === today) return "today";
   const todayDate = new Date(`${today}T00:00:00Z`);
   const monday = new Date(todayDate.getTime() - ((todayDate.getUTCDay() + 6) % 7) * 86_400_000);
-  return new Date(`${day}T00:00:00Z`) >= monday ? "今週" : "それ以前";
+  return new Date(`${day}T00:00:00Z`) >= monday ? "week" : "older";
 }
 
 function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
@@ -41,6 +43,7 @@ function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
   styles: ReturnType<typeof useStyles>["styles"];
   colors: ReturnType<typeof useStyles>["colors"];
 }) {
+  const copy = iorbitR21Copy[useOrbitLocale().language];
   const swipeDistance = useRef(0);
   const swipeStartX = useRef<number | null>(null);
   const swipeActions = useMemo(() => PanResponder.create({
@@ -57,7 +60,7 @@ function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
     <UiPressable accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} onLongPress={() => onSelect(item)} style={styles.historyMain}>
       <Icon name={item.pinned ? "pin" : "chat"} size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{item.title}</UiText><UiText style={styles.recentMeta}>{item.when}</UiText></View>
     </UiPressable>
-    {item.source === "session" ? <IconButton icon="more" accessibilityLabel={`${item.title} の操作`} size={34} onPress={() => onSelect(item)} /> : null}
+    {item.source === "session" ? <IconButton icon="more" accessibilityLabel={`${item.title}${copy.actionsFor}`} size={34} onPress={() => onSelect(item)} /> : null}
   </View>;
 }
 
@@ -106,6 +109,8 @@ export function IOrbitStartView({
   undoAvailable: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
+  const copy = iorbitR21Copy[locale.language];
   const [selected, setSelected] = useState<IOrbitHistoryItem | null>(null);
   const [renaming, setRenaming] = useState<IOrbitHistoryItem | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -114,88 +119,88 @@ export function IOrbitStartView({
     onPanResponderRelease: (_event, gesture) => { if (gesture.x0 < 54 && gesture.dx > 64) onClose(); },
   }), [onClose]);
   const groups = useMemo(() => {
-    const result = new Map<string, IOrbitHistoryItem[]>([["ピン留め", []], ["今日", []], ["今週", []], ["それ以前", []]]);
+    const result = new Map<ReturnType<typeof tokyoGroup>, IOrbitHistoryItem[]>([["pinned", []], ["today", []], ["week", []], ["older", []]]);
     for (const item of history) result.get(tokyoGroup(item))!.push(item);
     return [...result].filter(([, items]) => items.length > 0);
   }, [history]);
   const recent = history.slice(0, 3);
   return <View {...edgeExit.panHandlers} style={styles.root}>
     <AppScreen inset="kit" title="iOrbit" showBack={false} header={<View style={styles.header}>
-      <IconButton icon="menu" accessibilityLabel="会話リスト" onPress={onHistoryOpen} />
+      <IconButton icon="menu" accessibilityLabel={copy.conversations} onPress={onHistoryOpen} />
       <UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.headerTitle}>iOrbit</UiText>
-      <IconButton icon="x" accessibilityLabel="閉じる" onPress={onClose} />
+      <IconButton icon="x" accessibilityLabel={copy.close} onPress={onClose} />
     </View>}>
       <View style={styles.body}>
         <View style={styles.greeting}>
           <MacTile emoji="✨" tone="lav" />
-          <UiText accessibilityRole="header" style={styles.title}>何をお手伝いしましょう？</UiText>
-          <UiText style={styles.subtitle}>人脈やイベント、プランのこと。iOrbit に聞いてください。</UiText>
+          <UiText accessibilityRole="header" style={styles.title}>{copy.greeting}</UiText>
+          <UiText style={styles.subtitle}>{copy.subtitle}</UiText>
         </View>
         {contactCount === 0 ? <Card variant="flat"><View style={styles.emptyCard}>
-          <MacTile emoji="📇" tone="apricot" /><UiText style={styles.cardTitle}>名刺を追加すると、もっと具体的に答えられます</UiText>
-          <Button label="スキャン" variant="primary" onPress={onScan} />
+          <MacTile emoji="📇" tone="apricot" /><UiText style={styles.cardTitle}>{copy.addCard}</UiText>
+          <Button label={copy.scan} variant="primary" onPress={onScan} />
         </View></Card> : null}
         <View style={styles.starters}>
           {suggestions.slice(0, 4).map((item) => <UiPressable key={item.key} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => onSend(item.label)} style={styles.starter}>
             <MacTile emoji={item.emoji} tone="lav" size="sm" /><UiText style={styles.starterText}>{item.label}</UiText><Icon name="right" size={16} color={colors.ink3Text} />
           </UiPressable>)}
         </View>
-        {recent.length ? <Card><View style={styles.sectionHead}><UiText style={styles.cardTitle}>最近の会話</UiText><Button label="すべて" variant="ghost" size="sm" onPress={onHistoryOpen} /></View>
+        {recent.length ? <Card><View style={styles.sectionHead}><UiText style={styles.cardTitle}>{copy.recent}</UiText><Button label={copy.all} variant="ghost" size="sm" onPress={onHistoryOpen} /></View>
           {recent.map((item) => <UiPressable key={`${item.source}:${item.id}`} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} style={styles.recentRow}>
             <View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{item.title}</UiText><UiText numberOfLines={1} style={styles.recentMeta}>{item.when}</UiText></View><Icon name="right" size={16} color={colors.ink3Text} />
           </UiPressable>)}
         </Card> : null}
-        {offline ? <UiText accessibilityRole="alert" style={styles.muted}>オフライン · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} 時点の履歴` : "保存済みの履歴"}</UiText> : null}
+        {offline ? <UiText accessibilityRole="alert" style={styles.muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.historyAt}` : copy.savedHistory}</UiText> : null}
         <View style={styles.composer}>
-          <TextInput accessibilityLabel="iOrbit に聞く" autoCorrect multiline={false} onChangeText={onDraftChange} onSubmitEditing={() => onSend()} placeholder="iOrbit に聞く…" placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.input} value={draft} />
-          <IconButton icon="send" accessibilityLabel="送信" onPress={() => onSend()} disabled={!draft.trim() || offline} solid />
+          <TextInput accessibilityLabel={copy.ask} autoCorrect multiline={false} onChangeText={onDraftChange} onSubmitEditing={() => onSend()} placeholder={copy.askPlaceholder} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.input} value={draft} />
+          <IconButton icon="send" accessibilityLabel={copy.send} onPress={() => onSend()} disabled={!draft.trim() || offline} solid />
         </View>
         {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
-        {undoAvailable ? <Button label="削除を元に戻す" variant="ghost" icon="undo" onPress={onUndo} /> : null}
-        <UiText style={styles.muted}>送信はあなたが行います。</UiText>
+        {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
+        <UiText style={styles.muted}>{copy.manualSend}</UiText>
       </View>
     </AppScreen>
-    <FullDrawer visible={historyOpen} title="会話リスト" onClose={onHistoryClose}>
-      <Button label="新しい会話" icon="plus" variant="primary" onPress={onNew} block />
-      <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder="タイトルと本文を検索" />
-      {historyLoading && !history.length ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>会話を読み込み中…</UiText> : null}
-      {historyNotice ? <View style={styles.notice}><UiText accessibilityRole="alert" style={styles.error}>{historyNotice.message}</UiText>{historyNotice.onRetry ? <Button label={historyNotice.retryLabel ?? "再試行"} variant="ghost" size="sm" onPress={historyNotice.onRetry} /> : null}</View> : null}
+    <FullDrawer visible={historyOpen} title={copy.conversations} onClose={onHistoryClose}>
+      <Button label={copy.newConversation} icon="plus" variant="primary" onPress={onNew} block />
+      <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder={copy.searchHistory} />
+      {historyLoading && !history.length ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.loading}</UiText> : null}
+      {historyNotice ? <View style={styles.notice}><UiText accessibilityRole="alert" style={styles.error}>{historyNotice.message}</UiText>{historyNotice.onRetry ? <Button label={historyNotice.retryLabel ?? copy.retry} variant="ghost" size="sm" onPress={historyNotice.onRetry} /> : null}</View> : null}
       {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
-      {undoAvailable ? <Button label="削除を元に戻す" variant="ghost" icon="undo" onPress={onUndo} /> : null}
-      {!history.length && !historyLoading && !historyNotice ? <UiText style={styles.muted}>{historyQuery ? "一致する会話はありません" : "まだ会話はありません"}</UiText> : null}
-      {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{label}</UiText>
+      {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
+      {!history.length && !historyLoading && !historyNotice ? <UiText style={styles.muted}>{historyQuery ? copy.noMatch : copy.noHistory}</UiText> : null}
+      {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{copy[label]}</UiText>
         {items.map((item) => <HistoryItemRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} onSelect={setSelected} styles={styles} colors={colors} />)}
       </View>)}
-      <View style={styles.group}><UiText style={styles.groupTitle}>プランを作る</UiText>
+      <View style={styles.group}><UiText style={styles.groupTitle}>{copy.plan}</UiText>
         {planIntakes.map((intake) => <UiPressable key={intake.intakeId} accessibilityRole="button" accessibilityLabel={intake.goal} onPress={() => onOpenIntake(intake)} style={styles.historyMain}>
-          <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{intake.goal}</UiText><UiText style={styles.recentMeta}>作成中のプランを続ける</UiText></View>
+          <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{intake.goal}</UiText><UiText style={styles.recentMeta}>{copy.continuePlan}</UiText></View>
         </UiPressable>)}
         {planGoals.map((goal) => <View key={goal.planId} style={styles.historyRow}>
           <UiPressable accessibilityRole="button" accessibilityLabel={goal.goal} onPress={() => onOpenGoal(goal, "overview")} style={styles.historyMain}>
-            <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{goal.goal}</UiText><UiText style={styles.recentMeta}>{goal.status === "achieved" ? "完了した目標" : "進行中の目標"}</UiText></View>
+            <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{goal.goal}</UiText><UiText style={styles.recentMeta}>{goal.status === "achieved" ? copy.achieved : copy.active}</UiText></View>
           </UiPressable>
-          <Button label={goal.status === "achieved" ? "完了を見る" : "振り返る"} variant="ghost" size="sm" onPress={() => onOpenGoal(goal, goal.status === "achieved" ? "done" : "review")} />
+          <Button label={goal.status === "achieved" ? copy.viewDone : copy.review} variant="ghost" size="sm" onPress={() => onOpenGoal(goal, goal.status === "achieved" ? "done" : "review")} />
         </View>)}
-        <Button label="新しい目標" icon="plus" variant="ghost" size="sm" onPress={onNewGoal} />
+        <Button label={copy.newGoal} icon="plus" variant="ghost" size="sm" onPress={onNewGoal} />
       </View>
-      {historyHasMore ? <Button label={historyLoading ? "読み込み中…" : "もっと見る"} variant="ghost" onPress={onLoadMore} disabled={historyLoading} block /> : null}
+      {historyHasMore ? <Button label={historyLoading ? copy.loadingMore : copy.more} variant="ghost" onPress={onLoadMore} disabled={historyLoading} block /> : null}
     </FullDrawer>
-    <ActionSheet visible={selected !== null} title="会話の操作" onClose={() => setSelected(null)} options={selected?.source === "session" ? [
-      { key: "pin", label: selected.pinned ? "ピン留めを外す" : "ピン留め" },
-      { key: "rename", label: "名前を変更" },
-      { key: "delete", label: "削除", destructive: true },
-      { key: "cancel", label: "キャンセル" },
-    ] : [{ key: "cancel", label: "キャンセル" }]} onSelect={(key) => {
+    <ActionSheet visible={selected !== null} title={copy.conversationActions} onClose={() => setSelected(null)} options={selected?.source === "session" ? [
+      { key: "pin", label: selected.pinned ? copy.unpin : copy.pin },
+      { key: "rename", label: copy.rename },
+      { key: "delete", label: copy.delete, destructive: true },
+      { key: "cancel", label: copy.cancel },
+    ] : [{ key: "cancel", label: copy.cancel }]} onSelect={(key) => {
       const item = selected; setSelected(null); if (!item) return;
       if (key === "pin") onPin(item);
       if (key === "rename") { setRenameDraft(item.title); setRenaming(item); }
       if (key === "delete") onDelete(item);
     }} />
-    <BottomSheet visible={renaming !== null} onClose={() => setRenaming(null)} accessibilityLabel="名前を変更"><View style={styles.renameEditor}>
-      <TextField label="会話の名前" autoFocus value={renameDraft} onChangeText={setRenameDraft} />
-      <Button label="保存" variant="primary" disabled={!renameDraft.trim()} onPress={() => { if (renaming && renameDraft.trim()) onRename(renaming, renameDraft.trim()); setRenaming(null); }} />
+    <BottomSheet visible={renaming !== null} onClose={() => setRenaming(null)} accessibilityLabel={copy.rename}><View style={styles.renameEditor}>
+      <TextField label={copy.conversationName} autoFocus value={renameDraft} onChangeText={setRenameDraft} />
+      <Button label={copy.save} variant="primary" disabled={!renameDraft.trim()} onPress={() => { if (renaming && renameDraft.trim()) onRename(renaming, renameDraft.trim()); setRenaming(null); }} />
     </View></BottomSheet>
-    <ConfirmDialog visible={confirmDelete !== null} title="この会話を削除しますか？" message="会話内で追加したタスクや予定は削除されません。" confirmLabel={deleting ? "削除中…" : "削除"} destructive icon="trash" onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+    <ConfirmDialog visible={confirmDelete !== null} title={copy.confirmDelete} message={copy.deleteDetail} confirmLabel={deleting ? copy.deleting : copy.delete} destructive icon="trash" onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
   </View>;
 }
 

@@ -10,6 +10,7 @@ import {
   normalizeOrbitApiBaseUrl
 } from "./base-url";
 import { notifySessionExpired } from "./session-expiry";
+import { PIN_LIMIT_ERROR_MESSAGE } from "./copy/iorbit-r21-error";
 
 export type FetchLike = (
   input: RequestInfo | URL,
@@ -79,7 +80,7 @@ const NON_JSON_RESPONSE_MESSAGE =
   "Orbit 服务返回了无法识别的内容，请稍后重试。";
 const API_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   CONFLICT: "当前状态已经变化，请刷新后再试。",
-  PIN_LIMIT: "最多只能固定 5 个会话。请先取消固定一个会话。",
+  PIN_LIMIT: PIN_LIMIT_ERROR_MESSAGE,
   FORBIDDEN: "当前账号没有权限完成这项操作。",
   INTERNAL_ERROR: "Orbit 服务暂时出了问题，请稍后重试。",
   NOT_FOUND: "没有找到对应内容，它可能已被移除或不可用。",

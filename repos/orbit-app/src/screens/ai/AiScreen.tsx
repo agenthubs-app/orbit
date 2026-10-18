@@ -55,6 +55,7 @@ import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { iorbitR21Copy } from "../../i18n/iorbitR21";
 import type { MessageKey } from "../../i18n/messages";
 import { mobileUserDisplayName } from "../../view-models/mobile-profile";
 import { todayTaskSummaryModeSchema } from "../../api/schema/today";
@@ -642,7 +643,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       }
       setHistoryAttempt(value => value + 1);
     } else {
-      setOrganizationError(result.code === "PIN_LIMIT" ? "ピン留めは5件までです。別の会話のピン留めを外してください。" : result.error);
+      setOrganizationError(result.code === "PIN_LIMIT" ? iorbitR21Copy[locale.language].pinLimit : result.error);
       if (result.code === "PIN_LIMIT" || result.code === "CONFLICT") setHistoryAttempt(value => value + 1);
     }
     organizationOperation.current = null;
@@ -720,7 +721,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       if (result.value.undoToken) {
         const token = result.value.undoToken;
         setPendingUndo({ id: item.id, token });
-        toast.success("削除しました", { undo: () => { void restoreDeletion(item.id, token); } });
+        toast.success(iorbitR21Copy[locale.language].deleted, { undo: () => { void restoreDeletion(item.id, token); } });
       }
       setConfirmDelete(null);
       setHistoryAttempt(value => value + 1);
@@ -741,7 +742,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setHistoryAttempt(value => value + 1);
       if (localSessions.available) void localSessions.refresh();
     } else {
-      setHistoryDeleteError("元に戻せませんでした。削除期限が過ぎた可能性があります。");
+      setHistoryDeleteError(iorbitR21Copy[locale.language].undoFailed);
     }
   }
 

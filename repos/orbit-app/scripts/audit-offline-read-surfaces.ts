@@ -19,7 +19,7 @@ const unique = (values: string[]) => [...new Set(values)];
 const usedComputedPathKeys = new Set<string>();
 
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
-  'src/screens/ai/AiConversationScreen.tsx:462': ['/api/ai/conversations', '/api/ai/conversations/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:483': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:216': ['/api/relationship-communication/conversations/:id/messages'],
   // Sprint 0140: the hub's source form is QR only; card scan and manual add moved to their own pages.
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],

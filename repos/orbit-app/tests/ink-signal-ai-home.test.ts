@@ -115,17 +115,17 @@ async function twice(p: Page, label: string) { await p.evaluate(label => { const
 
 test("R21 start shows four direct-send suggestions, an editable composer, and no implicit write", async t => {
   const p = await open(t);
-  await p.getByRole("heading", { name: "何をお手伝いしましょう？" }).waitFor();
+  await p.getByRole("heading", { name: "有什么可以帮你？" }).waitFor();
   for (const name of ["今天先处理哪些事？", "最近有哪些活动适合我？", "回看与某位人脉的讨论", "帮我规划新目标"]) {
     assert.equal(await p.getByRole("button", { name, exact: true }).count(), 1);
   }
-  assert.equal(await p.getByRole("textbox", { name: "iOrbit に聞く" }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "询问 iOrbit" }).count(), 1);
   assert.deepEqual(await writes(p), []);
 });
 
 test("R21 start title and composer remain inside a narrow viewport at large text", async t => {
   const p = await open(t, { width: 320, fontScale: 1.8 });
-  for (const item of [p.getByRole("heading", { name: "iOrbit" }), p.getByRole("heading", { name: "何をお手伝いしましょう？" }), p.getByRole("textbox", { name: "iOrbit に聞く" })]) {
+  for (const item of [p.getByRole("heading", { name: "iOrbit" }), p.getByRole("heading", { name: "有什么可以帮你？" }), p.getByRole("textbox", { name: "询问 iOrbit" })]) {
     const box = await item.boundingBox();
     assert.ok(box);
     assert.ok(box.x >= -1 && box.x + box.width <= 321, `control stays inside 320px: ${await item.getAttribute("aria-label") ?? await item.textContent()}`);
@@ -143,10 +143,10 @@ test("R21 starter sends one explicit intent even when tapped twice", async t => 
 
 test("R21 composer keeps an edited draft and submits it only after a user action", async t => {
   const p = await open(t);
-  const input = p.getByRole("textbox", { name: "iOrbit に聞く" });
+  const input = p.getByRole("textbox", { name: "询问 iOrbit" });
   await input.fill("  我自己修改的问题  ");
   assert.deepEqual(await navigation(p), []);
-  await twice(p, "送信");
+  await twice(p, "发送");
   assert.equal(await input.inputValue(), "  我自己修改的问题  ");
   assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: "new", initialMessage: "我自己修改的问题", sendIntent: "test-send-intent" } }]);
   assert.deepEqual(await writes(p), []);
@@ -154,14 +154,14 @@ test("R21 composer keeps an edited draft and submits it only after a user action
 
 test("R21 composer retains a draft if the device cannot create a send intent", async t => {
   const p = await open(t, { failIntent: true });
-  const input = p.getByRole("textbox", { name: "iOrbit に聞く" });
+  const input = p.getByRole("textbox", { name: "询问 iOrbit" });
   await input.fill("这条问题不能丢");
-  await press(p, "送信");
+  await press(p, "发送");
   assert.equal(await input.inputValue(), "这条问题不能丢");
   assert.deepEqual(await navigation(p), []);
   assert.deepEqual(await writes(p), []);
   await update(p, { failIntent: false });
-  await press(p, "送信");
+  await press(p, "发送");
   assert.equal((await navigation(p)).length, 1);
 });
 
@@ -175,16 +175,16 @@ test("R21 history requests one page and loads its cursor only when asked", async
   const initial = await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/ai/conversations/sessions"));
   assert.equal(initial.length, 1);
   assert.equal(new URL(initial[0].url).searchParams.get("limit"), "20");
-  await press(p, "会話リスト");
-  await press(p, "もっと見る");
+  await press(p, "会话列表");
+  await press(p, "查看更多");
   await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "page-two"));
   assert.ok(await p.getByRole("button", { name: "第 51 条会话", exact: true }).count() >= 1);
 });
 
 test("R21 history search sends the final query to the server", async t => {
   const p = await open(t);
-  await press(p, "会話リスト");
-  await p.getByPlaceholder("タイトルと本文を検索").pressSequentially("产品试点", { delay: 25 });
+  await press(p, "会话列表");
+  await p.getByPlaceholder("搜索标题和正文").pressSequentially("产品试点", { delay: 25 });
   await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("q") === "产品试点"));
   const queries = await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/ai/conversations/sessions").map((request: any) => new URL(request.url).searchParams.get("q")).filter(Boolean));
   assert.deepEqual(queries, ["产品试点"]);
@@ -193,9 +193,9 @@ test("R21 history search sends the final query to the server", async t => {
 
 test("R21 a failed history read stays retryable instead of claiming an empty list", async t => {
   const p = await open(t, { failPaths: ["/api/ai/conversations/sessions"] });
-  await press(p, "会話リスト");
+  await press(p, "会话列表");
   await p.getByText("历史记录未能读取").waitFor();
-  assert.equal(await p.getByText("まだ会話はありません").count(), 0);
+  assert.equal(await p.getByText("还没有会话").count(), 0);
   await update(p, { failPaths: [] });
   await press(p, "重试历史记录");
   await p.getByRole("button", { name: "产品试点讨论", exact: true }).first().waitFor();
@@ -203,18 +203,18 @@ test("R21 a failed history read stays retryable instead of claiming an empty lis
 
 test("R21 history deletion requires confirmation and starts one server write", async t => {
   const p = await open(t, { holdWrites: true });
-  await press(p, "会話リスト");
-  await press(p, "产品试点讨论 の操作");
-  await press(p, "削除");
+  await press(p, "会话列表");
+  await press(p, "产品试点讨论的操作");
+  await press(p, "删除");
   assert.deepEqual(await writes(p), []);
-  await p.getByRole("heading", { name: "この会話を削除しますか？" }).waitFor();
-  await twice(p, "削除");
+  await p.getByRole("heading", { name: "删除这个会话？" }).waitFor();
+  await twice(p, "删除");
   assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: null }]);
 });
 
 test("R21 swiping a stored history row left opens its actions without writing", async t => {
   const p = await open(t);
-  await press(p, "会話リスト");
+  await press(p, "会话列表");
   const row = p.getByRole("button", { name: "产品试点讨论", exact: true }).last();
   const box = await row.boundingBox();
   assert.ok(box);
@@ -223,15 +223,15 @@ test("R21 swiping a stored history row left opens its actions without writing", 
   await p.mouse.down();
   await p.mouse.move(x - 90, y, { steps: 6 });
   await p.mouse.up();
-  await p.getByRole("heading", { name: "会話の操作" }).waitFor();
+  await p.getByRole("heading", { name: "会话操作" }).waitFor();
   assert.deepEqual(await writes(p), []);
 });
 
 test("R21 sixth pin shows the distinct server PIN_LIMIT message", async t => {
   const p = await open(t, { holdWrites: true });
-  await press(p, "会話リスト");
-  await press(p, "产品试点讨论 の操作");
-  await press(p, "ピン留め");
+  await press(p, "会话列表");
+  await press(p, "产品试点讨论的操作");
+  await press(p, "置顶");
   const patch = await writes(p);
   assert.deepEqual(patch, [{ method: "PATCH", path: "/api/ai/conversations/sessions/session%3A1", body: { expectedRevision: 2, mutationId: "test-send-intent", patch: { pinned: true } } }]);
   await p.evaluate(() => {
@@ -239,7 +239,7 @@ test("R21 sixth pin shows the distinct server PIN_LIMIT message", async t => {
     const index = s.requests.findLastIndex((request: any) => request.method === "PATCH");
     s.pending[index](new Response(JSON.stringify({ success: false, error: { code: "PIN_LIMIT", message: "Only five conversations can be pinned" } }), { status: 409, headers: { "Content-Type": "application/json" } }));
   });
-  await p.getByText("ピン留めは5件までです。別の会話のピン留めを外してください。").first().waitFor();
+  await p.getByText("最多置顶 5 个会话。请先取消一个置顶。").first().waitFor();
 });
 
 test("R21 private route makes no reads before auth, focus, or server readiness", async t => {

@@ -49,6 +49,7 @@ import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { iorbitR21Copy } from "../../i18n/iorbitR21";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { useNotesWriteStatus } from "../notes/notes-source";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
@@ -347,9 +348,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const visibleDraft = focusedDraftId && currentDraft?.draftId !== focusedDraftId ? null : currentDraft;
   const draftLinkNotice = focusedDraftId && !visibleDraft
     ? draftRead.kind === "failure" || draftRead.kind === "offline"
-      ? "下書きを確認できません。もう一度お試しください。"
+      ? iorbitR21Copy[locale.language].draftUnavailable
       : draftRead.kind === "success" || draftRead.kind === "empty"
-        ? "この会話に確認待ちの下書きはありません。"
+        ? iorbitR21Copy[locale.language].noPendingDraft
         : null
     : null;
 
@@ -713,8 +714,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 
   if (!thread) return <AppScreen inset="kit" title="iOrbit" backIcon="x" onBack={() => { if (router.canGoBack()) router.back(); else router.replace("/ai" as Href); }}>
     {!isDraftConversation && state.kind === "loading" && !localSession ? <Skeleton onRetry={refresh} /> : null}
-    {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? <RetryCard title="会話を開けませんでした" message={locale.t("sync.notOnDevice")} onRetry={refresh} /> : null}
-    {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? <RetryCard title="会話を開けませんでした" message={state.error.message} onRetry={refresh} /> : null}
+    {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? <RetryCard title={iorbitR21Copy[locale.language].cannotOpen} message={locale.t("sync.notOnDevice")} onRetry={refresh} /> : null}
+    {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? <RetryCard title={iorbitR21Copy[locale.language].cannotOpen} message={state.error.message} onRetry={refresh} /> : null}
     {readInvalid ? <RetryCard title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} onRetry={refresh} /> : null}
     {state.kind === "empty" ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
   </AppScreen>;
@@ -910,14 +911,15 @@ function ConversationThread({
     : null;
 
   const router = useRouter();
+  const copy = iorbitR21Copy[locale.language];
   return (
     <AppScreen inset="kit" title="iOrbit" showBack={false}
       header={<View style={styles.r21Header}>
-        <UiIconButton icon="menu" accessibilityLabel="会話リスト" onPress={() => onOpenHref("/ai?drawer=1")} />
+        <UiIconButton icon="menu" accessibilityLabel={copy.conversations} onPress={() => onOpenHref("/ai?drawer=1")} />
         <View style={styles.r21TitleBlock}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.r21Title}>iOrbit</UiText><UiText numberOfLines={1} style={styles.r21Subtitle}>{thread.title}</UiText></View>
-        <UiIconButton icon="x" accessibilityLabel="閉じる" onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />
+        <UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />
       </View>}>
-      {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>オフライン · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} 時点の会話` : "保存済みの会話"}</UiText> : null}
+      {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
       <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
@@ -975,7 +977,7 @@ function ConversationThread({
         {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
         {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
         {saveError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{saveError}</UiText><UiButton label={locale.t("aiConversation.retrySave")} onPress={onRetrySave} disabled={saving} /></View></UiCard> : null}
-        {sending || saving ? <View style={styles.r21Actions}><UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText>{sending ? <UiButton label="停止" variant="ghost" size="sm" onPress={onStopResponse} /> : null}</View> : null}
+        {sending || saving ? <View style={styles.r21Actions}><UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText>{sending ? <UiButton label={copy.stop} variant="ghost" size="sm" onPress={onStopResponse} /> : null}</View> : null}
         {saveNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{saveNotice}</UiText> : null}
       </ScrollView>
       <View testID="conversation-composer" style={styles.r21Composer}>

@@ -85,7 +85,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const cover = readFileSync("../orbits/public/orbit-covers/meeting.jpg");
   await p.route("**/*", r => r.request().url().endsWith("/orbit-covers/meeting.jpg") ? r.fulfill({ contentType: "image/jpeg", body: cover }) : r.abort());
   await p.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
-  await p.evaluate(patch => { (window as any).initialFixture = patch; }, { holdWrites: true, intentSequence: 0, payloads: conversationReadPayloads, ...patch }); await p.addScriptTag({ content: script }); await settle(p); assert.deepEqual(errors, [], "route must render without runtime errors"); await p.evaluate(() => document.fonts.ready); return p;
+  await p.evaluate(patch => { (window as any).initialFixture = patch; }, { holdWrites: true, intentSequence: 0, payloads: conversationReadPayloads, ...patch }); await p.addScriptTag({ content: "window.global = window;" }); await p.addScriptTag({ content: script }); await settle(p); assert.deepEqual(errors, [], "route must render without runtime errors"); await p.evaluate(() => document.fonts.ready); return p;
 }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function openAndSend(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown>) {
@@ -136,7 +136,7 @@ test("ordinary AI chat does not prefetch unrelated business collections, includi
   await p.evaluate(() => (window as any).fixture.refresh());
   await settle(p);
   assert.deepEqual(await auxiliaryReads(), []);
-  await press(p, "提及联系人");
+  await press(p, "@");
   await p.getByText("没有匹配的联系人。", { exact: true }).waitFor();
   assert.deepEqual(await auxiliaryReads(), ["/api/contacts/page"]);
   assert.deepEqual(await writes(p), []);
@@ -262,7 +262,7 @@ async function replyLastWrite(p: Page, data: unknown, status = 200) {
 
 test("AI home click issues a scoped one-use intent and continues without another send", async t => {
   const p = await open(t, { screen: "home", followNavigation: true });
-  await p.getByRole("textbox", { name: "消息", exact: true }).fill("  首页明确发送的问题  ");
+  await p.getByRole("textbox", { name: "询问 iOrbit", exact: true }).fill("  首页明确发送的问题  ");
   await twice(p, "发送");
   const target = (await navigation(p))[0];
   assert.equal((await navigation(p)).length, 1);
@@ -277,7 +277,7 @@ test("AI home click issues a scoped one-use intent and continues without another
 
 test("AI home submitted question retains explicit unknown-result recovery after route remount", async t => {
   const p = await open(t, { screen: "home", followNavigation: true });
-  await p.getByRole("textbox", { name: "消息", exact: true }).fill("结果需要确认的问题");
+  await p.getByRole("textbox", { name: "询问 iOrbit", exact: true }).fill("结果需要确认的问题");
   await press(p, "发送");
   assert.equal(await p.evaluate(() => (window as any).fixture.params.initialMessageConsumed), "1");
   await replyLastWrite(p, undefined, 503);
@@ -292,7 +292,7 @@ test("AI home submitted question retains explicit unknown-result recovery after 
 
 for (const replacement of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI deferred home navigation never transfers its draft across identity " + JSON.stringify(replacement), async t => {
   const p = await open(t, { screen: "home" });
-  await p.getByRole("textbox", { name: "消息", exact: true }).fill("原账号待发送的背景");
+  await p.getByRole("textbox", { name: "询问 iOrbit", exact: true }).fill("原账号待发送的背景");
   await press(p, "发送");
   const target = (await navigation(p))[0];
   await update(p, { ...replacement, screen: "conversation", params: target.params });
@@ -436,7 +436,7 @@ test("mention picker disambiguates same-name contacts and sends the selected sta
   ];
   const page = { items: contacts.map(contact => ({ ...contact, sourceType: "manual", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-12T03:00:00Z" })), nextCursor: null, hasMore: false, asOf: "2026-09-12T03:00:00Z" };
   const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts/page": page } });
-  await press(p, "提及联系人");
+  await press(p, "@");
   await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("商贸");
   await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/contacts/page" && new URL(r.url).searchParams.get("query") === "商贸"));
   await press(p, "选择联系人：林悦，云间商贸，采购");
@@ -447,12 +447,12 @@ test("mention picker disambiguates same-name contacts and sends the selected sta
 
 test("mention picker explains empty and unavailable contact sources without blocking ordinary questions", async t => {
   const empty = await open(t, { params: { id: "new" } });
-  await press(empty, "提及联系人");
+  await press(empty, "@");
   await empty.getByText("没有匹配的联系人。", { exact: true }).waitFor();
   assert.deepEqual(await writes(empty), []);
 
   const unavailable = await open(t, { params: { id: "new" }, failPaths: ["/api/contacts/page"] });
-  await press(unavailable, "提及联系人");
+  await press(unavailable, "@");
   await unavailable.getByText("联系人暂时不可用，问题仍可不关联联系人发送。", { exact: true }).waitFor();
   await unavailable.getByRole("textbox", { name: "消息", exact: true }).fill("不关联联系人也可以继续");
   await press(unavailable, "发送消息");
@@ -464,7 +464,7 @@ test("mention picker follows a server cursor and resets it when the search chang
   const first = { items: [card("contact:first", "第一页联系人")], hasMore: true, nextCursor: "signed-next-page", asOf: "2026-09-12T03:00:00Z" };
   const second = { items: [card("contact:second", "第二页联系人")], hasMore: false, nextCursor: null, asOf: first.asOf };
   const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts/page": first } });
-  await press(p, "提及联系人"); await p.getByText("第一页联系人", { exact: true }).waitFor();
+  await press(p, "@"); await p.getByText("第一页联系人", { exact: true }).waitFor();
   await update(p, { payloads: { ...conversationReadPayloads, "/api/contacts/page": second } });
   await press(p, "下一页"); await p.getByText("第二页联系人", { exact: true }).waitFor();
   assert.equal(await p.getByText("第一页联系人", { exact: true }).count(), 0);
@@ -481,7 +481,7 @@ test("mention picker follows a server cursor and resets it when the search chang
 test("mention picker ignores an old search response and clears private rows when the actor changes", async t => {
   const page = (name: string) => ({ items: [{ id: "contact:scoped", displayName: name, organization: "测试", role: "负责人", status: "active", sourceType: "manual", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-12T03:00:00Z" }], hasMore: false, nextCursor: null, asOf: "2026-09-12T03:00:00Z" });
   const p = await open(t, { params: { id: "new" }, holdReads: true });
-  await press(p, "提及联系人");
+  await press(p, "@");
   const first = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/contacts/page"));
   await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("新查询");
   await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/contacts/page" && new URL(r.url).searchParams.get("query") === "新查询"));
@@ -625,13 +625,13 @@ for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]
   assert.deepEqual(await writes(p), []);
 });
 
-test("AI conversation uses the source hierarchy with flat messages and retained shortcuts", async t => {
+test("AI conversation keeps flat messages and opens its history route without writing", async t => {
   const p = await open(t);
   assert.equal(await p.getByText("你", { exact: true }).count(), 1);
-  assert.equal(await p.getByText("IORBIT", { exact: true }).count(), 2);
+  assert.equal(await p.getByRole("heading", { name: "iOrbit", exact: true }).count(), 1);
   const user = p.getByLabel("我的消息", { exact: true });
   assert.equal(await user.evaluate(el => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
-  await press(p, "更多对话选项"); await press(p, "活动"); assert.deepEqual(await navigation(p), ["/events"]);
+  await press(p, "会话列表"); assert.deepEqual(await navigation(p), ["/ai?drawer=1"]);
   assert.deepEqual(await writes(p), []);
 });
 test("AI conversation preserves actual multilingual title and markdown business text", async t => {
@@ -828,12 +828,14 @@ test("AI verified event cards retain navigation without fetching the event colle
   assert.match(String((await navigation(p))[0]), /^\/events\//);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/events")), false);
 });
-test("AI conversation fits the supplied compact header with its centered brand", async t => {
+test("AI conversation fits its kit header and keeps both exit controls reachable", async t => {
   const p = await open(t, { payloads: sourceReadPayloads });
   if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-390.png" });
-  const header = await p.getByLabel("对话导航", { exact: true }).boundingBox(); assert.equal(header?.height, 52);
-  const brand = p.getByTestId("iorbit-brand-mark"); assert.equal(await brand.count(), 1); assert.equal((await brand.boundingBox())?.width, 18);
-  const title = await p.getByText("交流会准备", { exact: true }).boundingBox(); assert.ok(title && Math.abs(title.x + title.width / 2 - 195) < 1);
+  const brand = await p.getByRole("heading", { name: "iOrbit", exact: true }).boundingBox(); assert.ok(brand && brand.x >= 0 && brand.x + brand.width <= 390);
+  const menu = await p.getByRole("button", { name: "会话列表", exact: true }).boundingBox();
+  const close = await p.getByRole("button", { name: "关闭", exact: true }).boundingBox();
+  const title = await p.getByText("交流会准备", { exact: true }).boundingBox();
+  assert.ok(menu && close && title && menu.x < brand.x && close.x > brand.x && title.x >= 0 && title.x + title.width <= 390);
 });
 test("AI conversation displays readable numbered steps with aligned supporting paragraphs", async t => {
   const p = await open(t, { payloads: sourceReadPayloads }); const number = p.getByText("1", { exact: true });
@@ -849,15 +851,17 @@ test("AI conversation preserves the full answer without adding keyword-derived p
   assert.equal(await p.getByText("相关活动", { exact: true }).count(), 0);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => ["/api/events", "/api/tasks"].includes(r.path))), false);
 });
-test("AI conversation composer stays compact then grows without covering the send control", async t => {
-  const p = await open(t); const input = p.getByRole("textbox", { name: "消息", exact: true }); assert.equal((await input.boundingBox())?.height, 44);
-  await input.fill("第一行\n第二行\n第三行\n第四行\n第五行\n第六行"); const box = await input.boundingBox(), send = await p.getByRole("button", { name: "发送消息", exact: true }).boundingBox();
-  assert.ok(box && box.height > 44 && box.height <= 120 && send && send.y >= box.y + box.height && send.height >= 44);
+test("AI conversation composer stays on one line with a reachable send control", async t => {
+  const p = await open(t); const input = p.getByRole("textbox", { name: "消息", exact: true });
+  const initial = await input.boundingBox(); assert.ok(initial && initial.height >= 44);
+  await input.fill("第一行 第二行 第三行 第四行 第五行 第六行");
+  const box = await input.boundingBox(), send = await p.getByRole("button", { name: "发送消息", exact: true }).boundingBox();
+  assert.ok(box && send && box.height === initial.height && send.x >= box.x + box.width && send.height >= 44);
 });
 test("AI failure identifies the assistant and keeps the question editable", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
   if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-failure-390.png" });
-  assert.equal(await p.getByText("IORBIT", { exact: true }).count(), 2); await press(p, "编辑问题"); assert.equal(await p.getByRole("textbox").inputValue(), sourceQuestion);
+  assert.equal(await p.getByRole("heading", { name: "iOrbit", exact: true }).count(), 1); await press(p, "编辑问题"); assert.equal(await p.getByRole("textbox").inputValue(), sourceQuestion);
 });
 test("AI failed generation stops showing a pending answer and puts recovery beside the question", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
@@ -872,13 +876,15 @@ test("AI suggestion acceptance recognizes the backend completed task status", as
 });
 for (const variant of [{ width: 320, fontScale: 1.6, suffix: "320" }, { width: 820, fontScale: 1, suffix: "820" }, { width: 390, fontScale: 1, dark: true, suffix: "dark" }]) test("AI conversation remains readable with reachable controls " + variant.suffix, async t => {
   const p = await open(t, { ...variant, payloads: sourceReadPayloads }); const input = p.getByRole("textbox", { name: "消息", exact: true });
-  await input.fill("第一行草稿\n第二行草稿\n第三行草稿\n第四行草稿\n第五行草稿\n第六行草稿");
-  for (const label of ["返回 Orbit AI", "更多对话选项", "打开快捷入口", "发送消息"]) {
-    const box = await p.getByRole("button", { name: label, exact: true }).boundingBox(); assert.ok(box && box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= variant.width && box.y + box.height <= 820);
+  await input.fill("第一行草稿 第二行草稿 第三行草稿 第四行草稿 第五行草稿 第六行草稿");
+  for (const label of ["会话列表", "关闭", "@", "发送消息"]) {
+    const box = await p.getByRole("button", { name: label, exact: true }).boundingBox();
+    const minimum = label === "@" ? 32 : 44; // kit sm Button adds 6px hitSlop around its 32px visual control.
+    assert.ok(box && box.width >= minimum && box.height >= minimum && box.x >= 0 && box.x + box.width <= variant.width && box.y + box.height <= 820, `${label}: ${JSON.stringify(box)}`);
   }
   await p.getByTestId("conversation-history").evaluate(el => { el.scrollTop = el.scrollHeight; }); await settle(p);
   if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-" + variant.suffix + ".png" });
-  await press(p, "打开快捷入口"); await press(p, "打开快捷入口"); assert.equal(await input.inputValue(), "第一行草稿\n第二行草稿\n第三行草稿\n第四行草稿\n第五行草稿\n第六行草稿"); assert.deepEqual(await writes(p), []);
+  await press(p, "@"); await press(p, "@"); assert.equal(await input.inputValue(), "第一行草稿 第二行草稿 第三行草稿 第四行草稿 第五行草稿 第六行草稿"); assert.deepEqual(await writes(p), []);
 });
 test("AI saved initial reply and newer draft survive a focus round trip", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("尚未发送的新草稿"); await replyLastWrite(p, replyPayload());
@@ -915,7 +921,7 @@ test("AI truncated session persistence is visibly limited and does not silently 
   const expected = (await writes(p))[1].body.session;
   await replyLastWrite(p, { session: { ...expected, messages: expected.messages.map((m: any) => ({ ...m, text: m.text.slice(0, 12000) })) }, storage: aiSessionListPayload.storage });
   assert.equal(await p.getByText("会话已保存，但超出上限的内容已截断。服务最多保留最近 100 条消息，每条 12,000 字、标题 120 字。", { exact: true }).count(), 1);
-  const notice = await p.getByText(/会话已保存，但超出上限的内容已截断/).boundingBox(); assert.ok(notice && notice.y >= 100 && notice.y + notice.height < 714);
+  const notice = await p.getByText(/会话已保存，但超出上限的内容已截断/).boundingBox(); assert.ok(notice && notice.x >= 0 && notice.x + notice.width <= 390);
   assert.deepEqual(await navigation(p), []); assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 0);
   await update(p, { focused: false }); await update(p, { focused: true });
   assert.equal(await p.getByText(/会话已保存，但超出上限的内容已截断/).count(), 1);
