@@ -2171,6 +2171,14 @@
     .hist .hrow { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; align-items: baseline; }
     .hist s { color: var(--ink-3); font-weight: 600; }
   }
+  /* g11 · R11b 人脈分析 Web インサイト补画（2026-10-18，主会话代定 RD-33）：值照 b5 .cmp / .minibars / .leg（b12 的 .cmp 是表格，这里限定在 .g11 内） */
+  .g11 {
+    .cmp { display: grid; grid-template-columns: 70px 1fr 40px; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink-3); margin-top: 6px; width: auto; border-collapse: separate; }
+    .cmp .bar { margin: 0; }
+    .minibars { display: flex; align-items: flex-end; gap: 5px; height: 54px; margin-top: 10px; }
+    .minibars i { flex: 1; border-radius: 6px 6px 3px 3px; background: var(--plum-300); }
+    .minibars i.hi { background: var(--plum-700); }
+  }
 </style>
 </head>
 <body>
@@ -8347,6 +8355,37 @@ g += WP('W-R11-01-390 連絡先詳細 · 招待でつながった人 · 390', ''
   ['.k-pchip', 0, '同期停止的项与 1440 相同写法'],
 ], 'b9 #20 · b8 #14' + REF, 390);
 h += group('g10', g);
+})();
+/* ===================== 补画 · 2026-10-18：R11b 人脈分析 · Web インサイト（主会话代定，RD-33）=====================
+   Web 独立「インサイト」页（§B-3：b5 #41 的「インサイトから」并入此页，三段内容各只出现一次）。卡片照 App b5 #36 的
+   出会い方 / 伸び（span4，与 #41 底部同一画法），「返信」卡无数据源 → 不画（主会话代定：只画真实存在的，决定表 §15-1 先例）；
+   末尾 span12「iOrbit の見立て」= 快照的诊断句 + 依据人名 + 生成日期 + 見直す（快照 GET /api/network/snapshot，§B-7 / §B-8）。
+   右栏 = 与 b5 #40 相同的下钻名单（目前选中的 投資・金融）。头部副标题不写「毎週月曜に再計算」（无此机制）。 */
+(() => {
+const S11 = (t, sub) => `<div class="section-title"><h2>${t}</h2><span>${sub}</span></div>`;
+const REF = ' · 补画 2026-10-18';
+const seg = `<div class="seg anatab"><button>構造</button><button>機会</button><button class="on">インサイト</button></div>`;
+const head = mainhead('人脈分析', '286人 · 10/7 更新', `<button class="rbtn">${ic('left')}</button>`, seg);
+const insMet = `<div class="card span4 k-insmet" data-why-box><div class="row"><span class="chip">出会い方</span><span class="why" style="margin-left:auto">?</span></div><b style="display:block;font-size:14px;line-height:1.6;margin-top:8px">投資・金融との出会いの 68% はイベント経由。「関係構築」まで進んだ割合は、紹介経由が 21%、イベント経由が 9%</b><div class="cmp"><span>イベント</span><div class="bar thin rose"><i style="width:42.9%"></i></div><b class="score" style="color:var(--ink)">9%</b></div><div class="cmp"><span>紹介</span><div class="bar thin"><i style="width:100%"></i></div><b class="score" style="color:var(--ink)">21%</b></div><div class="lbl" style="margin-top:4px">「関係構築」への移行率（投資・金融 105人）</div><div class="why-body" hidden>根拠：投資・金融 105人の「出会った場所」と段階。相関であり、因果ではありません</div></div>`;
+const insGrow = `<div class="card span4 k-insgrow" data-why-box><div class="row"><span class="chip">伸び</span><span class="why" style="margin-left:auto">?</span></div><b style="display:block;font-size:14px;line-height:1.6;margin-top:8px">製造業が今月 +9人。プラン「製造業の新規顧客開拓」に追い風です</b><div class="minibars"><i style="height:36%"></i><i style="height:46%"></i><i style="height:26%"></i><i style="height:56%"></i><i style="height:46%"></i><i class="hi" style="height:96%"></i></div><div class="row between lbl" style="margin-top:4px"><span>5月</span><span>10月</span></div><div class="why-body" hidden>根拠：製造業の月別の新規登録数（直近6か月）</div></div>`;
+const insAi = `<div class="card span12 k-insai"><div class="card-h"><h3>iOrbit の見立て</h3><span class="lbl">10/7 時点</span></div><div style="font-size:13px;line-height:1.6">投資・金融の方が多く、製造業との接点が増えています。</div><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><span class="lbl">根拠：</span><span class="lbl" style="color:var(--ink-2);text-decoration:underline">高橋 美咲</span><span class="lbl" style="color:var(--ink-2);text-decoration:underline">山本 彩</span><span class="lbl" style="color:var(--ink-2);text-decoration:underline">伊藤 直子</span></div><button class="btn sm" style="margin-top:10px;align-self:flex-start">見直す</button></div>`;
+const person = (i, c, n, sub, chip, note) => `<div class="card" style="padding:12px 14px"><div class="row" style="gap:10px"><div class="av sm ${c}">${i}</div><div style="flex:1;min-width:0"><b style="font-size:13px">${n}</b><div class="lbl" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div></div>${chip}</div><div class="lbl" style="margin-top:6px;color:var(--ink-2)">${note}</div></div>`;
+const rail = `<h4>${ic('users', 'sm')}投資・金融<span class="lbl" style="margin-left:auto;font-weight:500">105人</span></h4>
+  <div class="seg"><button class="on">目標に近い順</button><button>最終接点</button></div>`
+  + person('高', 'c2', '高橋 美咲', '青葉ベンチャーズ · パートナー', '<span class="chip lav">推進中</span>', '💼 シリーズAのリード投資家候補。SaaS領域に年8社出資')
+  + person('山', 'c4', '山本 彩', '東都キャピタル · シニアアソシエイト', '<span class="chip pink">要フォロー</span>', '💼 前回の面談で資料の再送を依頼されたまま')
+  + person('森', 'c1', '森 隆之', 'みらい創業キャピタル · 代表パートナー', '<span class="chip apricot">知り合い</span>', '💼 シード〜シリーズA の製造業テックに出資')
+  + person('石', 'c5', '石井 恵', '日東銀行 成長企業支援部 · 調査役', '<span class="chip blue">関係構築</span>', '🏦 ベンチャーデットの相談窓口')
+  + person('藤', 'c3', '藤田 亮介', 'セントラル重工 CVC · 投資担当', '<span class="chip apricot">知り合い</span>', '🏭 事業会社の投資担当。製造業 SaaS に関心')
+  + `<button class="btn block">${ic('users', 'sm')}105人を人脈一覧で開く</button>`;
+let g = '';
+g += S11('补画 · 2026-10-18 · R11b 人脈分析（Web インサイト）', '主会话代定（RD-33）：Web 独立インサイト页 1440 浅 / 深；1024 / 390 = 设计稿无（结构照 1440，颜色只用 token，登记 DEFERRED）');
+g += WP('W-R11b-05 人脈分析 · Web · インサイト大量数据', 'many', () => ({ nav: 1, body: head + `<div class="wgrid">${insMet}${insGrow}${insAi}</div>`, rail }), [
+  ['.k-insmet', 0, '出会い方：最大的业界里 イベント / 紹介 两组各 ≥5 人才显示；比较的是进入「関係構築」的比例（段階只有 知り合い / 関係構築，§B-2）；? = 根拠，写明相関であり、因果ではありません'],
+  ['.k-insgrow', 0, '伸び：近 6 个月按东京月份的新加入人数；今月增长最多的业界 ≥3 人才显示；计划里有同业界的需要时补一句'],
+  ['.k-insai', 0, 'iOrbit の見立て = 快照（诊断 / 洞察句 + 可点的依据人名 + 生成日期）；更新中 / 明日更新 / まだありません / 読み込めません 各一行状态；日文快照没有日文句时不显示句子（不回退成别的语言）'],
+], 'b5 #36 · #41 · #40 右栏' + REF);
+h += group('g11', g);
 })();
 /* ===================== 出力 ===================== */
 document.getElementById('out').innerHTML = `<div class="card" style="margin-bottom:8px"><h3>画板索引（${INDEX.length}）</h3><div class="idx">${INDEX.map(([id, t]) => `<a href="#b-${id}"><b>${id}</b>${t}</a>`).join('')}</div></div>` + h;
