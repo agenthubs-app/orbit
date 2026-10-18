@@ -325,17 +325,13 @@
       "hardcoded": 1,
       "missingJa": 90
     },
-    "app/(app)/app/inbox/bounded-contact-messages-tab.tsx": {
-      "hardcoded": 0,
-      "missingJa": 20
-    },
     "app/(app)/app/inbox/inbox-demo-localization.ts": {
       "hardcoded": 33,
       "missingJa": 0
     },
     "app/(app)/app/inbox/relationship-inbox-panel.tsx": {
       "hardcoded": 0,
-      "missingJa": 52
+      "missingJa": 46
     },
     "app/(app)/app/orbit-account-auth-route-view-model.ts": {
       "hardcoded": 15,
