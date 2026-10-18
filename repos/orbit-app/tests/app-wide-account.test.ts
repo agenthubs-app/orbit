@@ -120,10 +120,9 @@ async function inflate(page: Page) {
 }
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: final inset access note has a 12pt visible boundary`, async t => {
-    const page = await open(t, "admin&surface=access", scheme);
-    const note = page.getByText("邀请成员、调整角色和撤销访问都需要再次确认。", { exact: true }).locator("..");
-    assert.equal(await note.evaluate(el => getComputedStyle(el).borderRadius), "24px", "accessNote");
+  test(`${scheme}: public admin entry does not load private records`, async t => {
+    const page = await open(t, "adminLogin&guest", scheme);
+    await page.getByText("登录不会授予管理员角色；数据访问仍由服务端按当前账号决定。", { exact: true }).waitFor();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
 }
@@ -199,12 +198,12 @@ test("server draft and account navigation retain actions without configuration o
 });
 
 test("admin surfaces and public platform retain readable data and only existing navigation", async t => {
-  for (const surface of ["dashboard", "access", "events"]) {
+  for (const surface of ["dashboard", "events"]) {
     const page = await open(t, `admin&surface=${surface}`, "dark");
-    const nav = page.getByRole("button", { name: "访问管理", exact: true }); await fits(nav);
-    await nav.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), "/admin/access");
-    if (surface !== "access") { const event = page.getByRole("button", { name: new RegExp(eventTitle) }); await fits(event); await event.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), "/events/event%3A1"); }
-    await inflate(page); await fits(nav);
+    const nav = page.getByRole("button", { name: surface === "dashboard" ? "活动" : "概览", exact: true }); await fits(nav, 40);
+    await nav.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), surface === "dashboard" ? "/admin/events" : "/admin");
+    const event = page.getByRole("button", { name: eventTitle, exact: true }); await fits(event); await event.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), "/events/event%3A1");
+    await inflate(page); await fits(nav, 40);
     const clipped = await page.locator("[dir='auto']").evaluateAll(nodes => nodes.filter(n => n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1).map(n => n.textContent));
     assert.deepEqual(clipped, [], "admin statistics, activity details and access notes remain complete");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
@@ -214,7 +213,7 @@ test("admin surfaces and public platform retain readable data and only existing 
   assert.equal(await platform.getByRole("button", { name: /批准|驳回|发布|认证/ }).count(), 0);
   for (const guest of [true, false]) {
     const login = await open(t, `adminLogin${guest ? "&guest" : ""}`);
-    const action = login.getByRole("button", { name: guest ? "登录后检查访问权限" : "打开只读后台", exact: true }); await fits(action, 50); await action.click();
+    const action = login.getByRole("button", { name: guest ? "登录后检查访问权限" : "打开只读后台", exact: true }); await fits(action, 40); await action.click();
     assert.deepEqual(await login.evaluate(() => (window as any).fixture.navigation), [guest ? "/account/login?next=%2Fadmin" : "/admin"]);
     assert.deepEqual(await login.evaluate(() => (window as any).fixture.requests), []);
   }

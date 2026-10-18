@@ -14,23 +14,25 @@ test("admin events screen does not advertise an unwired creation flow", () => {
   assert.doesNotMatch(screenSource, /CreateEventDraftCard/u);
   assert.doesNotMatch(screenSource, />新建活动</u);
   assert.doesNotMatch(screenSource, /创建活动草稿/u);
-  assert.match(screenSource, /移动端这里只做核对和跳转/u);
+  assert.match(screenSource, /view\.boundary/u);
+  assert.doesNotMatch(screenSource, /inviteMember|createEvent|updateRole/u);
 });
 
-test("admin events screen renders managed events as image-backed modules", () => {
-  assert.match(screenSource, /ImageBackground/u);
+test("admin events screen uses sourced events in kit cards", () => {
+  assert.match(screenSource, /UiPressable/u);
+  assert.match(screenSource, /<Card variant="flat"/u);
   assert.match(screenSource, /useOrbitApiBaseUrl/u);
   assert.match(screenSource, /event\.coverPath/u);
-  assert.match(screenSource, /styles\.eventThumbFrame/u);
-  assert.match(screenSource, /styles\.eventMetaLine/u);
+  assert.match(screenSource, /assetUrl\(baseUrl, event\.coverPath\)/u);
+  assert.match(screenSource, /inset="kit"/u);
   assert.doesNotMatch(
     screenSource,
     /<Text style=\{styles\.eventIconText\}>\{event\.title\.slice\(0,\s*1\)\}<\/Text>/u
   );
 });
 
-test("admin access copy avoids backend implementation wording", () => {
-  assert.match(screenSource, /邀请成员、调整角色和撤销访问都需要再次确认。/u);
-  assert.match(screenSource, /当前不会推断或生成成员信息/u);
+test("admin profile avoids inferred team roles", () => {
+  assert.match(screenSource, /admin\.profile\.emailUnknown/u);
+  assert.doesNotMatch(screenSource, /团队成员|邀请成员/u);
   assert.doesNotMatch(screenSource, /后端权限接口|权限接口/u);
 });

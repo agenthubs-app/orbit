@@ -1,4 +1,6 @@
 import { eventsToSummaries, type EventSummary } from "./events";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator } from "../i18n/messages";
 
 export type PlatformEventState = "active" | "ended" | "upcoming";
 
@@ -93,7 +95,7 @@ function hasMixedLanguageTitle(value: string): boolean {
   return /[\u3040-\u30ff]/u.test(value) || /\s\/\s*[A-Za-z]/u.test(value);
 }
 
-function eventTitle(event: UnknownRecord): string {
+function eventTitle(event: UnknownRecord, language: OrbitLanguage): string {
   const rawTitle = stringField(event, "title") || stringField(event, "name");
   const title = cleanText(rawTitle, "");
   const source = nestedRecord(event, "sourceMetadata");
@@ -103,15 +105,15 @@ function eventTitle(event: UnknownRecord): string {
     return sourceLabel;
   }
 
-  return title || sourceLabel || "未命名活动";
+  return title || sourceLabel || createTranslator(language)("admin.event.nameUnknown");
 }
 
-function eventLocation(event: UnknownRecord): string {
+function eventLocation(event: UnknownRecord, language: OrbitLanguage): string {
   return cleanText(
     stringField(event, "venue") ||
       stringField(event, "location") ||
       stringField(event, "locationLabel"),
-    "地点待定"
+    createTranslator(language)("admin.event.placeUnknown")
   );
 }
 
@@ -145,72 +147,48 @@ function eventState(event: UnknownRecord, now: number): PlatformEventState {
   return "upcoming";
 }
 
-function stateLabel(state: PlatformEventState): string {
+function stateLabel(state: PlatformEventState, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (state === "active") {
-    return "进行中";
+    return t("admin.event.active");
   }
 
   if (state === "ended") {
-    return "已结束";
+    return t("admin.event.ended");
   }
 
-  return "即将开始";
+  return t("admin.event.upcoming");
 }
 
-const enWeekdayToZh: Record<string, string> = {
-  Fri: "周五",
-  Mon: "周一",
-  Sat: "周六",
-  Sun: "周日",
-  Thu: "周四",
-  Tue: "周二",
-  Wed: "周三"
-};
-
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, language: OrbitLanguage): string {
   const parsed = Date.parse(value);
 
   if (!Number.isFinite(parsed)) {
-    return value || "时间待定";
+    return value || createTranslator(language)("admin.event.dateUnknown");
   }
 
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "numeric",
+  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
     timeZone: "Asia/Tokyo",
-    weekday: "short"
-  }).formatToParts(new Date(parsed));
-  const partValue = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-  const time = [partValue("hour"), partValue("minute")]
-    .filter(Boolean)
-    .join(":");
-
-  return `${partValue("month")}月${partValue("day")}日 ${
-    enWeekdayToZh[partValue("weekday")] ?? ""
-  } ${time}`.trim();
+  }).format(new Date(parsed));
 }
 
-function detailForEvent(event: UnknownRecord): string {
+function detailForEvent(event: UnknownRecord, language: OrbitLanguage): string {
   const detail = cleanText(
     stringField(event, "relationshipValue") ||
       stringField(event, "description") ||
-      stringField(event, "summary") ||
-      stringField(event, "nextAction"),
+      stringField(event, "summary"),
     ""
   );
 
-  return segmentLooksChinese(detail)
-    ? detail
-    : "确认活动信息、目标人群和主办方承接安排。";
+  return detail || createTranslator(language)("admin.event.detailUnknown");
 }
 
 function eventToReviewItem(
   event: UnknownRecord,
   now: number,
+  language: OrbitLanguage,
   summary?: EventSummary
 ): PlatformReviewItemView {
   const id = stringField(event, "id", "event");
@@ -218,23 +196,26 @@ function eventToReviewItem(
 
   return {
     ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
-    detail: detailForEvent(event),
+    detail: detailForEvent(event, language),
     id,
-    location: eventLocation(event),
+    location: eventLocation(event, language),
     state,
-    stateLabel: stateLabel(state),
-    submitted: formatDateTime(stringField(event, "startsAt")),
-    title: eventTitle(event)
+    stateLabel: stateLabel(state, language),
+    submitted: formatDateTime(stringField(event, "startsAt"), language),
+    title: eventTitle(event, language)
   };
 }
 
 export function platformToView({
   events,
+  language = "zh",
   now = new Date()
 }: {
   events: unknown;
+  language?: OrbitLanguage;
   now?: Date;
 }): PlatformView {
+  const t = createTranslator(language);
   const rawEvents = listFromPayload(events);
   const nowTime = now.getTime();
   const summaryById = new Map(
@@ -245,56 +226,30 @@ export function platformToView({
       eventToReviewItem(
         event,
         nowTime,
+        language,
         summaryById.get(stringField(event, "id", "event"))
       )
-    )
-    .filter((event) => event.state !== "ended")
-    .slice(0, 8);
-  const upcomingCount = reviewQueue.filter((event) => event.state === "upcoming").length;
-  const activeCount = reviewQueue.filter((event) => event.state === "active").length;
-  const endedCount = rawEvents.length - reviewQueue.length;
+    );
   const summary =
     reviewQueue.length > 0
-      ? `公开目录中有 ${reviewQueue.length} 场尚未结束的活动；移动端仅核对来源和公开内容。`
-      : "公开目录当前没有尚未结束的活动。";
+      ? t("admin.platform.summaryCount", { count: reviewQueue.length })
+      : t("admin.platform.summaryEmpty");
 
   return {
-    boundary:
-      "当前数据来自公开活动目录；没有平台账号目录或具备身份校验的审核写接口。",
-    emptyReviewMessage: "公开目录有新活动后，这里会展示来源和公开内容供核对。",
-    emptyReviewTitle: "暂无近期公开活动",
+    boundary: t("admin.platform.boundary"),
+    emptyReviewMessage: t("admin.platform.emptyMessage"),
+    emptyReviewTitle: t("admin.platform.emptyTitle"),
     reviewQueue,
     stats: [
       {
         id: "events",
-        label: "公开活动",
-        note: "目录记录",
+        label: t("admin.platform.catalogue"),
+        note: t("admin.source.readOnly"),
         tone: "accent",
         value: String(rawEvents.length)
-      },
-      {
-        id: "upcoming",
-        label: "即将开始",
-        note: "近期活动",
-        tone: "green",
-        value: String(upcomingCount)
-      },
-      {
-        id: "active",
-        label: "进行中",
-        note: "当前活动",
-        tone: "amber",
-        value: String(activeCount)
-      },
-      {
-        id: "ended",
-        label: "已结束",
-        note: "目录历史",
-        tone: "blue",
-        value: String(endedCount)
       }
     ],
     summary,
-    title: "平台总览"
+    title: t("admin.platform.title")
   };
 }

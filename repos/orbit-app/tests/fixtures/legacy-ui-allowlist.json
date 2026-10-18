@@ -1,14 +1,6 @@
 {
   "_comment": "R04 / RD-14（修订）/ RD-24：旧屏里的旧写法（Alert.alert、直接 <Modal>、手写 accessibilityRole=\"tablist\"、旧公用组件、design/controls），文件 → 各类条数。只减不增：重写旧屏时改用 src/components/ui 并把条数改小或删行；不得新增文件或调大。规则见 tests/legacy-ui-ratchet.test.ts。",
   "files": {
-    "src/screens/admin/AdminLoginScreen.tsx": {
-      "oldComponent": 2,
-      "controls": 1
-    },
-    "src/screens/admin/AdminScreen.tsx": {
-      "oldComponent": 4,
-      "controls": 1
-    },
     "src/screens/agent/AgentLedgerContent.tsx": {
       "oldComponent": 2,
       "controls": 1
@@ -74,9 +66,6 @@
     "src/screens/notes/NotesScreen.tsx": {
       "oldComponent": 4,
       "tablist": 1
-    },
-    "src/screens/platform/PlatformScreen.tsx": {
-      "oldComponent": 4
     },
     "src/screens/profile/AccountAuthScreen.tsx": {
       "controls": 1

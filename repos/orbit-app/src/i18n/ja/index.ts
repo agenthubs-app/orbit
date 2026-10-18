@@ -60,6 +60,7 @@ import { network } from "./network";
 import { todo } from "./todo";
 import { networkAnalysis } from "./networkAnalysis";
 import { me } from "./me";
+import { admin } from "./admin";
 
 export const ja = {
   ...inbox,
@@ -123,4 +124,5 @@ export const ja = {
   ...todo,
   ...networkAnalysis,
   ...me,
+  ...admin,
 } as const satisfies MessageDictionary;

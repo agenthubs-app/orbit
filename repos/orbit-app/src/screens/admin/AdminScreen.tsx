@@ -1,564 +1,142 @@
-import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import {
-  ImageBackground,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View
-} from "react-native";
-import {
-  dashboardAggregatePath,
-  ORBIT_API_ENDPOINTS
-} from "../../api/endpoints";
+import { Image, RefreshControl, StyleSheet, View } from "react-native";
+
+import { dashboardAggregatePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, textStyles, typography } from "../../design/tokens";
-import { createControlStyles } from "../../design/controls";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Icon } from "../../components/ui/Icon";
+import { UiPressable } from "../../components/ui/Pressable";
+import { EmptyState, RetryCard, Skeleton } from "../../components/ui/States";
+import { UiText } from "../../components/ui/Text";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { radius, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
-import {
-  adminToView,
-  type AdminEventView,
-  type AdminMemberView,
-  type AdminStatView,
-  type AdminSurface
-} from "../../view-models/admin";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { adminToView, type AdminEventView, type AdminSurface } from "../../view-models/admin";
 
 function assetUrl(baseUrl: string, path: string): string {
-  if (/^https?:\/\//iu.test(path)) {
-    return path;
-  }
-
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+  if (/^https?:\/\//iu.test(path)) return path;
+  return `${baseUrl.replace(/\/+$/u, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function AdminScreen({ surface = "dashboard" }: { surface?: AdminSurface }) {
   const { colors } = useOrbitTheme();
-  const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
-    (data) => adminToView({ events: data }).events.length === 0
-  );
-  const profileState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
-    () => false
-  );
-  const dashboardState = useApiResource<unknown>(
-    dashboardAggregatePath(4),
-    () => false
-  );
-
+  const { language, t } = useOrbitLocale();
+  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, (data) => adminToView({ events: data }).events.length === 0);
+  const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false);
+  const dashboardState = useApiResource<unknown>(dashboardAggregatePath(4), () => false);
   function refreshAll() {
     eventsState.refresh();
     profileState.refresh();
     dashboardState.refresh();
   }
 
-  const title = surface === "events"
-    ? "活动管理"
-    : surface === "access"
-      ? "访问管理"
-      : "主办方后台";
-
   return (
     <AppScreen
-      eyebrow="管理员"
-      refreshControl={
-        <RefreshControl
-          onRefresh={refreshAll}
-          refreshing={
-            eventsState.refreshing ||
-            profileState.refreshing ||
-            dashboardState.refreshing
-          }
-          tintColor={colors.accentText}
-        />
-      }
-      title={title}
+      eyebrow={t("admin.label")}
+      inset="kit"
+      refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={eventsState.refreshing || profileState.refreshing || dashboardState.refreshing} tintColor={colors.accentText} />}
+      title={surface === "events" ? t("admin.events.title") : t("admin.dashboard.title")}
     >
-      {eventsState.kind === "loading" ? <LoadingState /> : null}
-      {eventsState.kind === "offline" ? (
-        <ErrorState message={eventsState.error.message} title="服务器连不上" />
-      ) : null}
-      {eventsState.kind === "failure" ? (
-        <ErrorState message={eventsState.error.message} />
+      {eventsState.kind === "loading" ? <Skeleton onRetry={refreshAll} /> : null}
+      {eventsState.kind === "offline" || eventsState.kind === "failure" ? (
+        <RetryCard title={eventsState.kind === "offline" ? t("admin.state.offline") : t("admin.state.failure")} onRetry={refreshAll} />
       ) : null}
       {eventsState.kind === "empty" ? (
-        <EmptyState
-          message="活动导入或创建后，后台会显示报名、签到和匹配状态。"
-          title="暂无活动记录"
-        />
+        <EmptyState title={t("admin.event.emptyTitle")} message={t("admin.event.emptyMessage")} action={{ label: t("admin.state.retry"), onPress: refreshAll }} />
       ) : null}
       {eventsState.kind === "success" ? (
-        <AdminContent
-          dashboard={
-            dashboardState.kind === "success" ? dashboardState.data : null
-          }
-          events={eventsState.data}
-          profile={profileState.kind === "success" ? profileState.data : null}
-          surface={surface}
-        />
+        <>
+          {surface === "dashboard" && (profileState.kind === "offline" || profileState.kind === "failure") ? (
+            <RetryCard title={profileState.kind === "offline" ? t("admin.state.offline") : t("admin.profile.failure")} onRetry={refreshAll} />
+          ) : null}
+          <AdminContent
+            dashboard={dashboardState.kind === "success" ? dashboardState.data : null}
+            events={eventsState.data}
+            profile={profileState.kind === "success" ? profileState.data : null}
+            profileAvailable={profileState.kind === "success"}
+            surface={surface}
+            language={language}
+          />
+        </>
       ) : null}
     </AppScreen>
   );
 }
 
-function AdminContent({
-  dashboard,
-  events,
-  profile,
-  surface
-}: {
+function AdminContent({ dashboard, events, profile, profileAvailable, surface, language }: {
   dashboard: unknown;
   events: unknown;
   profile: unknown;
+  profileAvailable: boolean;
   surface: AdminSurface;
+  language: "ja" | "zh" | "en";
 }) {
-  const { styles } = useStyles();
   const router = useRouter();
-  const view = adminToView({
-    dashboard,
-    events,
-    profile,
-    surface
-  });
-
-  function navigateTo(href: Href) {
-    router.push(href);
-  }
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const { t } = useOrbitLocale();
+  const { styles } = useStyles();
+  const view = adminToView({ dashboard, events, profile, surface, language });
 
   return (
     <>
-      <DataCard detail={view.summary} title={`${view.org.name} · ${view.org.owner}`}>
-        <AdminNav
-          activeTab={view.activeTab}
-          nav={view.nav}
-          onNavigate={(href) => navigateTo(href as Href)}
-        />
-        <StatGrid stats={view.stats} />
-      </DataCard>
+      <Card style={styles.section}>
+        {profileAvailable ? <UiText style={styles.heading}>{view.org.name} · {view.org.owner}</UiText> : null}
+        <UiText style={styles.body}>{view.summary}</UiText>
+        <View style={styles.actions}>
+          {view.nav.map((item) => <Button key={item.id} label={item.label} onPress={() => router.push(item.href as Href)} variant={item.id === surface ? "primary" : "secondary"} />)}
+        </View>
+      </Card>
 
-      {surface === "access" ? (
-        <AccessCard boundary={view.boundary} members={view.members} />
-      ) : (
-        <EventsCard
-          emptyMessage={view.emptyEventMessage}
-          emptyTitle={view.emptyEventTitle}
-          events={view.events}
-          onOpenEvent={(href) => navigateTo(href as Href)}
-          title={surface === "events" ? "活动组合" : "近期活动"}
-        />
-      )}
-
-      {surface === "dashboard" ? <MembersCard members={view.members} /> : null}
-      {surface !== "access" ? (
-        <DataCard detail={view.boundary} title="移动端边界">
-          <Text style={styles.bodyText}>
-            后台写操作先保留在正式管理流程中；移动端这里只做核对和跳转。
-          </Text>
-        </DataCard>
+      {surface === "dashboard" ? (
+        <Card style={styles.section}>
+          <UiText style={styles.heading}>{t("admin.event.count")}</UiText>
+          <View style={styles.statRow}>
+            {view.stats.map((stat) => <View key={stat.id} style={styles.stat}><UiText style={styles.statValue}>{stat.value}</UiText><UiText style={styles.statLabel}>{stat.label}</UiText></View>)}
+          </View>
+        </Card>
       ) : null}
+
+      <Card style={styles.section}>
+        <UiText style={styles.heading}>{t("admin.events.title")}</UiText>
+        <UiText style={styles.body}>{t("admin.event.listCount", { count: view.events.length })}</UiText>
+        {view.events.map((event: AdminEventView) => (
+          <UiPressable accessibilityRole="button" accessibilityLabel={event.title} key={event.id} onPress={() => router.push(event.href as Href)}>
+            <Card variant="flat" style={styles.eventRow}>
+              {event.coverPath ? <Image source={{ uri: assetUrl(baseUrl, event.coverPath) }} style={styles.cover} /> : <Icon name="calendar" size={24} />}
+              <View style={styles.eventCopy}>
+                <UiText style={styles.itemTitle}>{event.title}</UiText>
+                <UiText style={styles.body}>{event.stateLabel} · {event.startsAt} · {event.location}</UiText>
+              </View>
+            </Card>
+          </UiPressable>
+        ))}
+      </Card>
+
+      {surface === "dashboard" && profileAvailable ? (
+        <Card style={styles.section}>
+          <UiText style={styles.heading}>{t("admin.profile.title")}</UiText>
+          {view.members.length > 0 ? view.members.map((member) => <View key={member.id}><UiText style={styles.itemTitle}>{member.name}</UiText><UiText style={styles.body}>{member.email}</UiText></View>) : <UiText style={styles.body}>{t("admin.profile.emailUnknown")}</UiText>}
+        </Card>
+      ) : null}
+      <Card variant="flat"><UiText style={styles.body}>{view.boundary}</UiText></Card>
     </>
   );
 }
 
-function AdminNav({
-  activeTab,
-  nav,
-  onNavigate
-}: {
-  activeTab: AdminSurface;
-  nav: {
-    href: "/admin" | "/admin/access" | "/admin/events";
-    id: AdminSurface;
-    label: string;
-  }[];
-  onNavigate: (href: string) => void;
-}) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.navRow}>
-      {nav.map((item) => {
-        const active = item.id === activeTab;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            key={item.id}
-            onPress={() => onNavigate(item.href)}
-            style={({ pressed }) => [
-              styles.navPill,
-              active ? styles.navPillActive : null,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Text style={[styles.navText, active ? styles.navTextActive : null]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function StatGrid({ stats }: { stats: AdminStatView[] }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.statGrid}>
-      {stats.map((stat) => (
-        <View key={stat.id} style={styles.statCell}>
-          <Text style={styles.statValue}>
-            {stat.value}
-          </Text>
-          <Text style={styles.statLabel}>
-            {stat.label}
-          </Text>
-          <Text style={styles.statNote}>
-            {stat.note}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function EventsCard({
-  emptyMessage,
-  emptyTitle,
-  events,
-  onOpenEvent,
-  title
-}: {
-  emptyMessage: string;
-  emptyTitle: string;
-  events: AdminEventView[];
-  onOpenEvent: (href: AdminEventView["href"]) => void;
-  title: string;
-}) {
-  const { colors, styles } = useStyles();
-  const { baseUrl } = useOrbitApiBaseUrl();
-
-  if (events.length === 0) {
-    return <EmptyState message={emptyMessage} title={emptyTitle} />;
-  }
-
-  return (
-    <DataCard detail={`${events.length} 场活动记录`} title={title}>
-      <View style={styles.list}>
-        {events.map((event) => (
-          <Pressable
-            accessibilityRole="button"
-            key={event.id}
-            onPress={() => onOpenEvent(event.href)}
-            style={({ pressed }) => [
-              styles.eventRow,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            {event.coverPath ? (
-              <ImageBackground
-                imageStyle={styles.eventThumbImage}
-                source={{ uri: assetUrl(baseUrl, event.coverPath) }}
-                style={styles.eventThumbFrame}
-              >
-                <View style={styles.eventThumbOverlay} />
-              </ImageBackground>
-            ) : (
-              <View style={styles.eventIcon}>
-                <Text style={styles.eventFallbackText}>
-                  {event.title.slice(0, 1)}
-                </Text>
-              </View>
-            )}
-            <View style={styles.eventCopy}>
-              <View style={styles.eventTitleRow}>
-                <Text style={styles.itemTitle}>
-                  {event.title}
-                </Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>{event.stateLabel}</Text>
-                </View>
-              </View>
-              <View style={styles.eventMetaStack}>
-                <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.ink3Text} name="time-outline" size={14} />
-                  <Text style={styles.metaText}>
-                    {event.startsAt}
-                  </Text>
-                </View>
-                <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.ink3Text} name="location-outline" size={14} />
-                  <Text style={styles.metaText}>
-                    {event.location}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.detailText}>
-                {event.detail}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
-    </DataCard>
-  );
-}
-
-function MembersCard({ members }: { members: AdminMemberView[] }) {
-  return (
-    <DataCard detail="后台成员和角色只读展示。" title="团队成员">
-      <MemberList members={members} />
-    </DataCard>
-  );
-}
-
-function AccessCard({
-  boundary,
-  members
-}: {
-  boundary: string;
-  members: AdminMemberView[];
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <DataCard detail={boundary} title="访问成员">
-      <MemberList members={members} />
-      <View style={styles.accessNote}>
-        <Ionicons color={colors.accentText} name="lock-closed" size={18} />
-        <Text style={styles.bodyText}>
-          邀请成员、调整角色和撤销访问都需要再次确认。
-        </Text>
-      </View>
-    </DataCard>
-  );
-}
-
-function MemberList({ members }: { members: AdminMemberView[] }) {
-  const { styles } = useStyles();
-  if (members.length === 0) {
-    return (
-      <Text style={styles.bodyText}>
-        接口未返回可验证的后台成员邮箱；当前不会推断或生成成员信息。
-      </Text>
-    );
-  }
-
-  return (
-    <View style={styles.list}>
-      {members.map((member) => (
-        <View key={member.id} style={styles.memberRow}>
-          <View style={styles.memberIcon}>
-            <Text style={styles.memberIconText}>{member.initial}</Text>
-          </View>
-          <View style={styles.memberCopy}>
-            <Text style={styles.itemTitle}>
-              {member.name}
-            </Text>
-            <Text style={styles.metaText}>
-              {member.email}
-            </Text>
-          </View>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{member.role}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  accessNote: {
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.xl,
-    flexDirection: "row",
-    gap: spacing.sm,
-    padding: spacing.md
-  },
-  bodyText: {
-    ...textStyles.body,
-    color: colors.ink2,
-    flex: 1,
-  },
-  detailText: {
-    ...textStyles.small,
-    color: colors.ink2,
-  },
-  eventCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  eventFallbackText: {
-    color: colors.accentText,
-    fontSize: typography.cardTitle,
-    fontWeight: "700"
-  },
-  eventIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: "center",
-    width: 48
-  },
-  eventMetaLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    maxWidth: "100%",
-    minWidth: 0
-  },
-  eventMetaStack: {
-    gap: spacing.xxs
-  },
-  eventRow: {
-    alignItems: "flex-start",
-    borderBottomColor: colors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 94,
-    paddingVertical: spacing.md
-  },
-  eventThumbFrame: {
-    backgroundColor: colors.surface3,
-    borderRadius: radius.md,
-    height: 76,
-    overflow: "hidden",
-    width: 76
-  },
-  eventThumbImage: {
-    borderRadius: radius.md
-  },
-  eventThumbOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.line
-  },
-  eventTitleRow: {
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  itemTitle: {
-    ...textStyles.listTitle,
-    color: colors.ink,
-    flexShrink: 1,
-  },
-  list: {
-    gap: spacing.sm
-  },
-  memberCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  memberIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentText,
-    borderRadius: radius.md,
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
-  memberIconText: {
-    color: colors.onAccent,
-    fontSize: typography.cardTitle,
-    fontWeight: "700"
-  },
-  memberRow: {
-    alignItems: "center",
-    borderBottomColor: colors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-    paddingVertical: spacing.md
-  },
-  metaText: {
-    ...textStyles.small,
-    color: colors.ink3Text,
-    flexShrink: 1
-  },
-  navPill: {
-    ...createControlStyles(colors).chip,
-    flexGrow: 1,
-    maxWidth: "100%"
-  },
-  navPillActive: {
-    ...createControlStyles(colors).selectedChip
-  },
-  navRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  navText: {
-    ...createControlStyles(colors).chipText
-  },
-  navTextActive: {
-    ...createControlStyles(colors).selectedChipText
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ translateY: 0.5 }]
-  },
-  roleBadge: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    flexShrink: 0,
-    maxWidth: 110,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
-  },
-  roleText: {
-    color: colors.accentText,
-    fontSize: typography.label,
-    fontWeight: "700"
-  },
-  statCell: {
-    gap: spacing.xs,
-    flexBasis: 128,
-    flexGrow: 1,
-    paddingVertical: spacing.md
-  },
-  statGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  statLabel: {
-    ...textStyles.small,
-    color: colors.ink,
-    fontWeight: "600"
-  },
-  statNote: {
-    ...textStyles.caption,
-    color: colors.ink3Text,
-  },
-  statValue: {
-    ...textStyles.pageTitle,
-    color: colors.ink,
-  },
-  statusBadge: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    flexShrink: 0,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
-  },
-  statusText: {
-    color: colors.accentText,
-    fontSize: typography.label,
-    fontWeight: "700"
-  }
+  section: { gap: 10 },
+  heading: { color: colors.ink, fontSize: typography.dialogTitle, fontWeight: "800" },
+  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  statRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  stat: { flexBasis: 128, flexGrow: 1, gap: 2 },
+  statValue: { color: colors.ink, fontSize: typography.number, fontWeight: "800" },
+  statLabel: { color: colors.ink3Text, fontSize: typography.meta },
+  cover: { width: 48, height: 48, borderRadius: radius.row },
+  eventRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 },
+  eventCopy: { flex: 1, minWidth: 0, gap: 4 },
+  itemTitle: { color: colors.ink, fontSize: typography.body, fontWeight: "700" },
 }));

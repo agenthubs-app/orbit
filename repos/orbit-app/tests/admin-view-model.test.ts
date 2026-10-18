@@ -52,7 +52,7 @@ test("adminLoginToView routes through real account auth without simulating mail"
   );
   assert.equal(signedInView.primaryLabel, "打开只读后台");
   assert.equal(signedInView.primaryHref, "/admin");
-  assert.match(signedOutView.boundary, /不会修改管理员权限/);
+  assert.match(signedOutView.boundary, /不会授予管理员角色/);
   assert.doesNotMatch(flattenedText(signedOutView), /发送登录邮件|已发送/u);
 });
 
@@ -83,7 +83,7 @@ test("adminToView builds a Chinese organizer admin dashboard", () => {
       ["活动记录", "2"],
       ["进行中", "0"],
       ["即将开始", "1"],
-      ["关系资产", "66"]
+      ["已结束", "1"]
     ]
   );
   assert.equal(view.events[0]?.title, "东京 AI 落地伙伴报名会");
@@ -124,7 +124,7 @@ test("adminToView only exposes explicit member emails and rejects storage labels
 
   assert.equal(view.members.length, 1);
   assert.equal(view.members[0]?.email, "owner@example.com");
-  assert.equal(view.events[0]?.detail, "确认报名、签到、匹配和现场承接安排。");
+  assert.equal(view.events[0]?.detail, "来源未提供简介。");
   assert.doesNotMatch(flattenedText(view), /storage-backed|orbit\.local/iu);
 });
 
@@ -144,9 +144,9 @@ test("adminToView switches copy for events and access surfaces", () => {
     surface: "access"
   });
 
-  assert.equal(eventsView.title, "活动管理");
+  assert.equal(eventsView.title, "活动来源记录");
   assert.equal(eventsView.activeTab, "events");
-  assert.equal(accessView.title, "访问管理");
+  assert.equal(accessView.title, "访问入口");
   assert.equal(accessView.activeTab, "access");
 });
 

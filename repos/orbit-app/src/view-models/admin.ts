@@ -1,4 +1,6 @@
 import { eventsToSummaries, type EventSummary } from "./events";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator } from "../i18n/messages";
 
 export type AdminSurface = "access" | "dashboard" | "events";
 export type AdminEventState = "active" | "ended" | "upcoming";
@@ -127,7 +129,8 @@ function hasMixedLanguageTitle(value: string): boolean {
   return /[\u3040-\u30ff]/u.test(value) || /\s\/\s*[A-Za-z]/u.test(value);
 }
 
-function eventTitle(event: UnknownRecord): string {
+function eventTitle(event: UnknownRecord, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   const rawTitle = stringField(event, "title") || stringField(event, "name");
   const title = cleanText(rawTitle, "");
   const source = nestedRecord(event, "sourceMetadata");
@@ -137,7 +140,7 @@ function eventTitle(event: UnknownRecord): string {
     return sourceLabel;
   }
 
-  return title || sourceLabel || "未命名活动";
+  return title || sourceLabel || t("admin.event.nameUnknown");
 }
 
 function timestamp(value: string): number | null {
@@ -170,77 +173,56 @@ function eventState(event: UnknownRecord, now: number): AdminEventState {
   return "upcoming";
 }
 
-function stateLabel(state: AdminEventState): string {
+function stateLabel(state: AdminEventState, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (state === "active") {
-    return "进行中";
+    return t("admin.event.active");
   }
 
   if (state === "ended") {
-    return "已结束";
+    return t("admin.event.ended");
   }
 
-  return "即将开始";
+  return t("admin.event.upcoming");
 }
 
-const enWeekdayToZh: Record<string, string> = {
-  Fri: "周五",
-  Mon: "周一",
-  Sat: "周六",
-  Sun: "周日",
-  Thu: "周四",
-  Tue: "周二",
-  Wed: "周三"
-};
-
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, language: OrbitLanguage): string {
   const parsed = Date.parse(value);
 
   if (!Number.isFinite(parsed)) {
-    return value || "时间待定";
+    return value || createTranslator(language)("admin.event.dateUnknown");
   }
 
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "numeric",
+  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
     timeZone: "Asia/Tokyo",
-    weekday: "short"
-  }).formatToParts(new Date(parsed));
-  const partValue = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-  const time = [partValue("hour"), partValue("minute")]
-    .filter(Boolean)
-    .join(":");
-
-  return `${partValue("month")}月${partValue("day")}日 ${
-    enWeekdayToZh[partValue("weekday")] ?? ""
-  } ${time}`.trim();
+  }).format(new Date(parsed));
 }
 
-function eventLocation(event: UnknownRecord): string {
+function eventLocation(event: UnknownRecord, language: OrbitLanguage): string {
   return cleanText(
     stringField(event, "venue") ||
       stringField(event, "location") ||
       stringField(event, "locationLabel"),
-    "地点待定"
+    createTranslator(language)("admin.event.placeUnknown")
   );
 }
 
-function eventDetail(event: UnknownRecord): string {
+function eventDetail(event: UnknownRecord, language: OrbitLanguage): string {
   return cleanText(
     stringField(event, "relationshipValue") ||
       stringField(event, "nextAction") ||
       stringField(event, "description") ||
       stringField(event, "summary"),
-    "确认报名、签到、匹配和现场承接安排。"
+    createTranslator(language)("admin.event.detailUnknown")
   );
 }
 
 function eventToView(
   event: UnknownRecord,
   now: number,
+  language: OrbitLanguage,
   summary?: EventSummary
 ): AdminEventView {
   const id = stringField(event, "id", "event");
@@ -248,14 +230,14 @@ function eventToView(
 
   return {
     ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
-    detail: eventDetail(event),
+    detail: eventDetail(event, language),
     href: `/events/${encodeURIComponent(id)}`,
     id,
-    location: eventLocation(event),
+    location: eventLocation(event, language),
     state,
-    stateLabel: stateLabel(state),
-    startsAt: formatDateTime(stringField(event, "startsAt")),
-    title: eventTitle(event)
+    stateLabel: stateLabel(state, language),
+    startsAt: formatDateTime(stringField(event, "startsAt"), language),
+    title: eventTitle(event, language)
   };
 }
 
@@ -268,57 +250,52 @@ function profileRecord(data: unknown): UnknownRecord {
   return isRecord(profile) ? profile : data;
 }
 
-function relationshipAssetCount(dashboard: unknown): number {
-  if (!isRecord(dashboard)) {
-    return 0;
-  }
-
-  const totals = nestedRecord(dashboard, "relationshipAssetTotals");
-  return numberField(totals, "contacts");
-}
-
-function titleForSurface(surface: AdminSurface): string {
+function titleForSurface(surface: AdminSurface, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (surface === "events") {
-    return "活动管理";
+    return t("admin.events.title");
   }
 
   if (surface === "access") {
-    return "访问管理";
+    return t("admin.access.title");
   }
 
-  return "主办方后台";
+  return t("admin.dashboard.title");
 }
 
 export function adminLoginToView({
-  signedIn = false
+  signedIn = false,
+  language = "zh",
 }: {
   signedIn?: boolean;
+  language?: OrbitLanguage;
 } = {}): AdminLoginView {
+  const t = createTranslator(language);
   return {
-    boundary:
-      "移动端没有独立管理员邮件登录，也不会修改管理员权限；后台数据访问由服务端按当前账号决定。",
+    boundary: t("admin.login.boundary"),
     primaryHref: signedIn ? "/admin" : "/account/login?next=%2Fadmin",
-    primaryLabel: signedIn ? "打开只读后台" : "登录后检查访问权限",
-    summary: signedIn
-      ? "使用当前已登录账号打开只读后台，核对该账号能够访问的活动和资料。"
-      : "请先登录个人账号；登录完成后，服务端会检查该账号可访问的后台数据。",
-    title: "后台入口"
+    primaryLabel: signedIn ? t("admin.login.open") : t("admin.login.signIn"),
+    summary: signedIn ? t("admin.login.summaryIn") : t("admin.login.summaryOut"),
+    title: t("admin.login.title")
   };
 }
 
 export function adminToView({
   dashboard,
   events,
+  language = "zh",
   now = new Date(),
   profile,
   surface = "dashboard"
 }: {
   dashboard?: unknown;
   events: unknown;
+  language?: OrbitLanguage;
   now?: Date;
   profile?: unknown;
   surface?: AdminSurface;
 }): AdminView {
+  const t = createTranslator(language);
   const rawEvents = listFromPayload(events);
   const nowTime = now.getTime();
   const summaryById = new Map(
@@ -328,6 +305,7 @@ export function adminToView({
     eventToView(
       event,
       nowTime,
+      language,
       summaryById.get(stringField(event, "id", "event"))
     )
   );
@@ -339,19 +317,19 @@ export function adminToView({
   );
   const owner = cleanText(
     stringField(profileView, "fullName") || stringField(profileView, "name"),
-    "后台负责人"
+    t("admin.profile.ownerUnknown")
   );
-  const role = cleanText(stringField(profileView, "title"), "管理员");
+  const role = cleanText(stringField(profileView, "title"), t("admin.profile.roleUnknown"));
   const ownerEmail = stringField(profileView, "email");
   const activeCount = eventViews.filter((event) => event.state === "active").length;
   const upcomingCount = eventViews.filter((event) => event.state === "upcoming").length;
+  const endedCount = eventViews.filter((event) => event.state === "ended").length;
 
   return {
     activeTab: surface,
-    boundary:
-      "移动端只读后台数据；新建活动、运行匹配、邀请成员和权限修改仍需正式管理接口。",
-    emptyEventMessage: "活动导入或创建后，这里会显示报名、签到和匹配状态。",
-    emptyEventTitle: "暂无活动记录",
+    boundary: t("admin.source.boundary"),
+    emptyEventMessage: t("admin.event.emptyMessage"),
+    emptyEventTitle: t("admin.event.emptyTitle"),
     events: eventViews,
     members: ownerEmail
       ? [
@@ -368,17 +346,12 @@ export function adminToView({
       {
         href: "/admin",
         id: "dashboard",
-        label: "仪表盘"
+        label: t("admin.nav.dashboard")
       },
       {
         href: "/admin/events",
         id: "events",
-        label: "活动管理"
-      },
-      {
-        href: "/admin/access",
-        id: "access",
-        label: "访问管理"
+        label: t("admin.nav.events")
       }
     ],
     org: {
@@ -389,33 +362,32 @@ export function adminToView({
     stats: [
       {
         id: "events",
-        label: "活动记录",
-        note: "全部活动",
+        label: t("admin.event.count"),
+        note: t("admin.event.all"),
         value: String(eventViews.length)
       },
       {
         id: "active",
-        label: "进行中",
-        note: "现场状态",
+        label: t("admin.event.active"),
+        note: t("admin.source.readOnly"),
         value: String(activeCount)
       },
       {
         id: "upcoming",
-        label: "即将开始",
-        note: "待准备",
+        label: t("admin.event.upcoming"),
+        note: t("admin.source.readOnly"),
         value: String(upcomingCount)
       },
       {
-        id: "relationships",
-        label: "关系资产",
-        note: "人脉覆盖",
-        value: String(relationshipAssetCount(dashboard))
+        id: "ended",
+        label: t("admin.event.ended"),
+        note: t("admin.source.readOnly"),
+        value: String(endedCount)
       }
     ],
-    summary:
-      eventViews.length > 0
-        ? `当前有 ${eventViews.length} 场活动记录，先看报名、签到和匹配准备是否清楚。`
-        : "当前没有活动记录，先确认主办方资料和访问权限。",
-    title: titleForSurface(surface)
+    summary: eventViews.length > 0
+      ? t("admin.source.summaryCount", { count: eventViews.length })
+      : t("admin.source.summaryEmpty"),
+    title: titleForSurface(surface, language)
   };
 }

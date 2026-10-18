@@ -11,8 +11,8 @@ const screenSource = readFileSync(
 
 test("platform screen is a public-catalogue source review without fake decisions", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
-  assert.match(screenSource, /公开活动来源核对/u);
-  assert.match(screenSource, /没有具备身份校验的平台审核写接口/u);
+  assert.match(screenSource, /admin\.platform\.title/u);
+  assert.match(screenSource, /view\.boundary/u);
   assert.doesNotMatch(screenSource, /decidedReviewIds|decisionFeedback/u);
   assert.doesNotMatch(screenSource, />批准并发布|>驳回/u);
   assert.doesNotMatch(
@@ -25,12 +25,12 @@ test("platform screen is a public-catalogue source review without fake decisions
   );
 });
 
-test("platform review activities render as image-backed event modules", () => {
-  assert.match(screenSource, /ImageBackground/u);
+test("platform public activities render as source cards", () => {
+  assert.match(screenSource, /<Card key=\{item\.id\} variant="flat"/u);
   assert.match(screenSource, /useOrbitApiBaseUrl/u);
   assert.match(screenSource, /item\.coverPath/u);
-  assert.match(screenSource, /styles\.eventThumbFrame/u);
-  assert.match(screenSource, /styles\.eventMetaLine/u);
+  assert.match(screenSource, /assetUrl\(baseUrl, item\.coverPath\)/u);
+  assert.match(screenSource, /inset="kit"/u);
   assert.doesNotMatch(
     screenSource,
     /<Text style=\{styles\.eventIconText\}>\{item\.title\.slice\(0,\s*1\)\}<\/Text>/u

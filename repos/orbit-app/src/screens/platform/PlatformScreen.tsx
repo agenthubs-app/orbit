@@ -1,325 +1,77 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  ImageBackground,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View
-} from "react-native";
+import { Image, RefreshControl, StyleSheet } from "react-native";
+
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, textStyles, typography } from "../../design/tokens";
+import { Card } from "../../components/ui/Card";
+import { Icon } from "../../components/ui/Icon";
+import { EmptyState, RetryCard, Skeleton } from "../../components/ui/States";
+import { UiText } from "../../components/ui/Text";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { radius, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
-import {
-  platformToView,
-  type PlatformReviewItemView,
-  type PlatformStatView
-} from "../../view-models/platform";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { platformToView } from "../../view-models/platform";
 
 function assetUrl(baseUrl: string, path: string): string {
-  if (/^https?:\/\//iu.test(path)) {
-    return path;
-  }
-
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+  if (/^https?:\/\//iu.test(path)) return path;
+  return `${baseUrl.replace(/\/+$/u, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function PlatformScreen() {
   const { colors } = useOrbitTheme();
-  const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.publicEvents,
-    (data) => platformToView({ events: data }).reviewQueue.length === 0
-  );
-
-  function refreshEvents() {
-    eventsState.refresh();
-  }
+  const { language, t } = useOrbitLocale();
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const { styles } = useStyles();
+  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.publicEvents, (data) => platformToView({ events: data }).reviewQueue.length === 0);
+  const refresh = () => eventsState.refresh();
+  const view = eventsState.kind === "success" ? platformToView({ events: eventsState.data, language }) : null;
 
   return (
     <AppScreen
-      eyebrow="平台工作台"
-      refreshControl={
-        <RefreshControl
-          onRefresh={refreshEvents}
-          refreshing={eventsState.refreshing}
-          tintColor={colors.accentText}
-        />
-      }
-      title="平台总览"
+      eyebrow={t("admin.platform.catalogue")}
+      inset="kit"
+      refreshControl={<RefreshControl onRefresh={refresh} refreshing={eventsState.refreshing} tintColor={colors.accentText} />}
+      title={t("admin.platform.title")}
     >
-      {eventsState.kind === "loading" ? <LoadingState /> : null}
-      {eventsState.kind === "offline" ? (
-        <ErrorState message={eventsState.error.message} title="服务器连不上" />
-      ) : null}
-      {eventsState.kind === "failure" ? (
-        <ErrorState message={eventsState.error.message} />
+      {eventsState.kind === "loading" ? <Skeleton onRetry={refresh} /> : null}
+      {eventsState.kind === "offline" || eventsState.kind === "failure" ? (
+        <RetryCard title={eventsState.kind === "offline" ? t("admin.state.offline") : t("admin.platform.failure")} onRetry={refresh} />
       ) : null}
       {eventsState.kind === "empty" ? (
-        <EmptyState
-          message="公开目录有新活动后，这里会展示来源和公开内容供核对。"
-          title="暂无近期公开活动"
-        />
+        <EmptyState title={t("admin.platform.emptyTitle")} message={t("admin.platform.emptyMessage")} action={{ label: t("admin.state.retry"), onPress: refresh }} />
       ) : null}
-      {eventsState.kind === "success" ? (
-        <PlatformContent events={eventsState.data} />
+      {view ? (
+        <>
+          <Card style={styles.section}>
+            <UiText style={styles.heading}>{t("admin.platform.catalogue")}</UiText>
+            <UiText style={styles.body}>{view.summary}</UiText>
+            <UiText style={styles.stat}>{view.stats[0]?.value} {t("admin.event.count")}</UiText>
+          </Card>
+          <Card style={styles.section}>
+            <UiText style={styles.heading}>{t("admin.platform.title")}</UiText>
+            <UiText style={styles.body}>{t("admin.platform.listCount", { count: view.reviewQueue.length })}</UiText>
+            {view.reviewQueue.map((item) => (
+              <Card key={item.id} variant="flat" style={styles.eventRow}>
+                {item.coverPath ? <Image source={{ uri: assetUrl(baseUrl, item.coverPath) }} style={styles.cover} /> : <Icon name="calendar" size={24} />}
+                <UiText style={styles.itemTitle}>{item.title}</UiText>
+                <UiText style={styles.body}>{item.stateLabel} · {item.submitted} · {item.location}</UiText>
+              </Card>
+            ))}
+          </Card>
+          <Card variant="flat"><UiText style={styles.body}>{view.boundary}</UiText></Card>
+        </>
       ) : null}
     </AppScreen>
   );
 }
 
-function PlatformContent({
-  events
-}: {
-  events: unknown;
-}) {
-  const { styles } = useStyles();
-  const view = platformToView({ events });
-
-  return (
-    <>
-      <DataCard detail={view.summary} title="平台健康">
-        <StatGrid stats={view.stats} />
-      </DataCard>
-
-      {view.reviewQueue.length > 0 ? (
-        <ReviewQueueCard items={view.reviewQueue} />
-      ) : (
-        <EmptyState
-          message={view.emptyReviewMessage}
-          title={view.emptyReviewTitle}
-        />
-      )}
-
-      <DataCard detail={view.boundary} title="平台边界">
-        <Text style={styles.bodyText}>
-          当前没有具备身份校验的平台审核写接口，因此不会在移动端显示批准、驳回、发布或账号认证操作。
-        </Text>
-      </DataCard>
-    </>
-  );
-}
-
-function StatGrid({ stats }: { stats: PlatformStatView[] }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.statGrid}>
-      {stats.map((stat) => (
-        <View key={stat.id} style={styles.statCell}>
-          <View style={[styles.toneDot, styles[`tone_${stat.tone}`]]} />
-          <Text style={styles.statValue}>
-            {stat.value}
-          </Text>
-          <Text style={styles.statLabel}>
-            {stat.label}
-          </Text>
-          <Text style={styles.statNote}>
-            {stat.note}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function ReviewQueueCard({
-  items
-}: {
-  items: PlatformReviewItemView[];
-}) {
-  const { colors, styles } = useStyles();
-  const { baseUrl } = useOrbitApiBaseUrl();
-
-  return (
-    <DataCard detail={`${items.length} 场近期公开活动`} title="公开活动来源核对">
-      <View style={styles.list}>
-        {items.map((item) => (
-          <View key={item.id} style={styles.eventRow}>
-            {item.coverPath ? (
-              <ImageBackground
-                imageStyle={styles.eventThumbImage}
-                source={{ uri: assetUrl(baseUrl, item.coverPath) }}
-                style={styles.eventThumbFrame}
-              >
-                <View style={styles.eventThumbOverlay} />
-              </ImageBackground>
-            ) : (
-              <View style={styles.eventIcon}>
-                <Text style={styles.eventFallbackText}>
-                  {item.title.slice(0, 1)}
-                </Text>
-              </View>
-            )}
-            <View style={styles.eventCopy}>
-              <View style={styles.eventTitleRow}>
-                <Text style={styles.itemTitle}>
-                  {item.title}
-                </Text>
-                <View style={styles.stateBadge}>
-                  <Text style={styles.stateText}>{item.stateLabel}</Text>
-                </View>
-              </View>
-              <View style={styles.eventMetaStack}>
-                <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.ink3Text} name="time-outline" size={14} />
-                  <Text style={styles.metaText}>
-                    {item.submitted}
-                  </Text>
-                </View>
-                <View style={styles.eventMetaLine}>
-                  <Ionicons color={colors.ink3Text} name="location-outline" size={14} />
-                  <Text style={styles.metaText}>
-                    {item.location}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.detailText}>
-                {item.detail}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </DataCard>
-  );
-}
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  bodyText: {
-    ...textStyles.body,
-    color: colors.ink2,
-  },
-  detailText: {
-    ...textStyles.small,
-    color: colors.ink2,
-  },
-  eventCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  eventFallbackText: {
-    color: colors.accentText,
-    fontSize: typography.cardTitle,
-    fontWeight: "700"
-  },
-  eventIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: "center",
-    width: 48
-  },
-  eventMetaLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    maxWidth: "100%",
-    minWidth: 0
-  },
-  eventMetaStack: {
-    gap: spacing.xxs
-  },
-  eventRow: {
-    alignItems: "flex-start",
-    borderBottomColor: colors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 92,
-    paddingVertical: spacing.md
-  },
-  eventThumbFrame: {
-    backgroundColor: colors.surface3,
-    borderRadius: radius.md,
-    height: 76,
-    overflow: "hidden",
-    width: 76
-  },
-  eventThumbImage: {
-    borderRadius: radius.md
-  },
-  eventThumbOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.line
-  },
-  eventTitleRow: {
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  itemTitle: {
-    ...textStyles.listTitle,
-    color: colors.ink,
-    flexShrink: 1,
-  },
-  list: {
-    gap: spacing.sm
-  },
-  metaText: {
-    ...textStyles.small,
-    color: colors.ink3Text,
-    flexShrink: 1
-  },
-  statCell: {
-    gap: spacing.xs,
-    flexBasis: 128,
-    flexGrow: 1,
-    paddingVertical: spacing.md
-  },
-  statGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  statLabel: {
-    ...textStyles.small,
-    color: colors.ink,
-    fontWeight: "600"
-  },
-  statNote: {
-    ...textStyles.caption,
-    color: colors.ink3Text,
-  },
-  statValue: {
-    ...textStyles.pageTitle,
-    color: colors.ink,
-  },
-  stateBadge: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    flexShrink: 0,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
-  },
-  stateText: {
-    color: colors.accentText,
-    fontSize: typography.label,
-    fontWeight: "700"
-  },
-  tone_accent: {
-    backgroundColor: colors.accentText
-  },
-  tone_amber: {
-    backgroundColor: colors.macApricotText
-  },
-  tone_blue: {
-    backgroundColor: colors.macBlueText
-  },
-  tone_green: {
-    backgroundColor: colors.okText
-  },
-  toneDot: {
-    borderRadius: radius.pill,
-    height: 8,
-    width: 8
-  }
+  section: { gap: 10 },
+  heading: { color: colors.ink, fontSize: typography.dialogTitle, fontWeight: "800" },
+  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  stat: { color: colors.ink, fontSize: typography.number, fontWeight: "800" },
+  cover: { width: 48, height: 48, borderRadius: radius.row },
+  eventRow: { gap: 6 },
+  itemTitle: { color: colors.ink, fontSize: typography.body, fontWeight: "700" },
 }));
