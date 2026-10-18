@@ -31,8 +31,8 @@ test('denied OS permission never claims push is enabled',async()=>{
 test('turning push off revokes the device after disabling registration, even if revocation fails',async()=>{
  const calls:string[]=[];let fail=true;
  const adapter={
-  getPermission:async()=> 'granted',requestPermission:async()=> 'granted',
-  setOptIn:async value=>{calls.push('set:'+value);},
+  getPermission:async():Promise<'granted'>=> 'granted',requestPermission:async():Promise<'granted'>=> 'granted',
+  setOptIn:async (value:boolean)=>{calls.push('set:'+value);},
   revoke:async()=>{calls.push('revoke');if(fail){fail=false;return false;}return true;},
  } as const;
  const result=await changeNotificationOptIn(false,adapter);
