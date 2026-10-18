@@ -310,6 +310,8 @@
 | R12-13 | 加人手入力 / 草稿的演示数据 fixture | 未做：会社候补、重複候补、活动 chip、草稿、样本账号都读真实库 | 补 add-scan 同类的只读 fixture 后重跑 A-R12-17 / 18（数据部分）/ N08b / N12；A-R12-b9-04 由 A-R16-04 覆盖，不再单独比 | R12 REWORK-REPORT-app §10 |
 | R31a-H4 | **R31a 交还（2026-10-18，RD-33）**：A-R25-11 目標切替画板（b4 A6 #28）是 `.gmenu` 弹出菜单，实现是 BottomSheet；行结构也不同（emo 方块 + 完了した目標 / 目標を追加 / この目標を編集 行） | 组件库已有 `Popover` / `PopoverRow` / `PopoverDivider`（R31a） | R32：PlanGoalSwitcher 改用 Popover 并按画板重排行，重跑 A-R25-11 | R31a REPORT |
 | R31a-H5 | **R31a 交还（2026-10-18）**：开发开关（`design=premise / review / achieve / edit / skip / record / propose`）已能到达各 sheet / 对话框 | A-R24-05 前提 sheet（画板：emo 方块标题头 + ✕、键值行右侧 推定 chip / Q 编号、lav 说明卡、深色主按钮）、A-R24-13 / 16 记录 / 提案 sheet、A-R25-01 見直し sheet（今月の作り直し卡）、A-R25-12 编辑 sheet 的内容结构与画板不同；A-R24-12 / A-R25-08 换 `.dic.emo` 图标后余文案差（skip 正文、fixture 分数 45 vs 128） | R32：按画板改 sheet 内容后重跑 app-plan-A / C 对应 id | R31a REPORT |
+| R32-P14 契约核对 | **R32 页面检查（2026-10-19）**：A-R24-13 / b4 #0 画了面谈种类、日期时间、memo；现有 `PlanRecordSheet` 的网络计分走 `award`，线下计分走 `talkedOffline`，其请求只承载人、`at` 与幂等键，没有种类或 memo 字段 | 计划域接口／Bridge 协调者确认这些字段应映射到既有面谈记录或新增契约；乙继续核对本页能修的布局与状态，不把未持久化的输入画成已保存 | `PlanRecordSheet.tsx`、`plan-v2.ts` 的 `PlanAwardRequest` / `PlanTalkedOfflineRequest`；R32 REPORT SC-P14 待像素证据 |
+| R32-P16 数据核对 | A-R25-01 / b4 #19 的「分析に使うデータ」画了面談记录、自己申告、活动、人脈四类数；现有 `PlanV2Detail.sinceConfirmed` / `PlanReviewView.sinceConfirmed` 只有聊过人数、活动数、已完成 Step 数 | 计划域确认缺少的面談 memo／自己申告／人脈统计是否需扩展读契约；乙已按现有三项事实调整卡片结构，不能将画板示例数当成服务返回数 | `PlanReviewEntrySheet.tsx`、`plan-v2.ts`；R32 REPORT SC-P16 待像素证据 |
 
 ---
 
