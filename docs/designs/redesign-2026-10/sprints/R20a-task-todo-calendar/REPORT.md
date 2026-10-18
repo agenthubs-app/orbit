@@ -527,6 +527,8 @@ SC-09 の Web タスク一覧と App の online-only Web source は同じ `/api/
 
 SC-09 App の過期色も full-screen 置換時に照合が要る。PLANNER §2 / SC-09 は「過期行を赤」とするが、b3 画板の `.grp.over` と `dueChip(x,'over')` は heading / 期限 chip のみ coral、`.tk .meta b/span` は ink のまま。現行旧 TasksScreen は期限 chip がないため、今回の暫定行タイトル・詳細 coral は保つ。候補 A（推奨）：新画面で画板どおり期限 chip を coral、タイトル・詳細を ink に戻すことを明記して pixel 比較する。候補 B：PLANNER の「行を赤」を優先し、画板を修正承認してから pixel 比較する。どちらも承認前に旧画面の局所色を SC-09 / SC-15 の最終画板一致とはしない。
 
+SC-09 の「明日」quick action / App「まとめて明日へ」は future-dated task の意味が未定。b3 は各行に「明日」を描くが、App 既存 `laterTaskDatePatch` は元の日付より後でない選択を延期と扱わず、日付なしにも延期を作らない。将来期日の行を明日に動かすと予定を前倒しし、`deferralCount` / 二回延期 warning と名称がずれる。候補 A（推奨）：期日が今日以前の dated task だけ quick「明日」を出し、future / undated 行は日付編集へ送り、まとめて処理も対象件数を明示する。候補 B：全行を翌日に設定し、前倒し / 初回日付付与の挙動と warning 判定を別途定義する。決定まで Web の hover は既存「完了」だけ、App の batch / swipe「明日」は OPEN とする。
+
 SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only を維持し、未初期化を exact zero としない。A-owned read-only projection 要求を上に記録した。entity_draft も対応未検証の深いリンクは出さず、SC-07 partial を維持する。いずれも解決前に同等 / 完了とはしない。
 
 ## 待用户授权
