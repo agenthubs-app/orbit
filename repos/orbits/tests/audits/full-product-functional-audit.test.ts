@@ -467,9 +467,8 @@ test("route query parameters come from route-local URL consumers, not transitive
     "next",
     "orbitVisualSeed",
   ]);
-  assert.deepEqual(routeParameters("web:/app/contacts/dashboard"), [
-    "orbitVisualSeed",
-  ]);
+  // R11b：人脈分析换成新屏（不再挂 OrbitVisualFreezeRuntime），?tab= 在服务端页面读取。
+  assert.deepEqual(routeParameters("web:/app/contacts/dashboard"), []);
   assert.deepEqual(routeParameters("web:/app/home"), []);
   assert.deepEqual(routeParameters("web:/app/home/events"), [
     "orbitVisualSeed",
