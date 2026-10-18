@@ -34,7 +34,7 @@ const fixture = `<div id="root"></div><script>
       const start = Number(query.get("cursor") || 0), limit = Number(query.get("limit") || 30);
       return Response.json({ success: true, data: { actorId: "a", status, scope, query: search, items: items.slice(start, start + limit).map(row => ({
         id: row.id, titlePreview: row.title, locationPreview: null, status: row.status, category: row.category, priority: "normal",
-        plannedDate: "2026-10-17", dueAt: null, updatedAt: stamp, completedAt: row.status === "completed" ? stamp : null,
+        plannedDate: row.plannedDate || "2026-10-17", dueAt: null, updatedAt: stamp, completedAt: row.status === "completed" ? stamp : null,
         relatedContact: null, relationship: row.category === "relationship",
       })), counts: { open: status === "open" ? items.length : 0, completed: status === "completed" ? items.length : 0 },
         total: items.length, hasMore: start + limit < items.length, nextCursor: start + limit < items.length ? String(start + limit) : null, asOf: stamp } });
@@ -103,6 +103,23 @@ test("arrow keys move task-list selection and focus without writing", async t =>
   await current.waitForFunction(() => document.querySelector('[aria-label="山本さんへ返信の詳細"]')?.getAttribute("aria-current") === "true");
   assert.equal(await first.evaluate(element => element === document.activeElement), true);
   assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method !== "GET").length, 0);
+});
+
+test("overdue task rows use the warning color while today's rows do not", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").plannedDate = "2026-10-16"; });
+  await current.getByRole("radio", { name: "つながり" }).click();
+  await current.getByRole("heading", { name: "期限超過 1" }).waitFor();
+  await current.getByRole("radio", { name: "すべて" }).click();
+  const colors = await current.evaluate(() => {
+    return {
+      heading: getComputedStyle(document.querySelector("h2[class*=overdue]")!).color,
+      overdue: getComputedStyle(document.querySelector('[aria-label="山本さんへ返信の詳細"] strong')!).color,
+      today: getComputedStyle(document.querySelector('[aria-label="今日の資料の詳細"] strong')!).color,
+    };
+  });
+  assert.equal(colors.overdue, colors.heading);
+  assert.notEqual(colors.today, colors.heading);
 });
 
 test("deleting the only row on a later page returns to remaining tasks rather than showing the global empty state", async t => {

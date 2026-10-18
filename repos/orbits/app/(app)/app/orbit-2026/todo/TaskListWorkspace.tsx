@@ -106,7 +106,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const openGroups = groupTaskRows(visibleOpen, date, timeZone, filter);
   const doneGroups = groupTaskRows(visibleDone, date, timeZone, filter);
   const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
-  const renderRows = (items: TaskRowView[]) => items.map(item => <div key={item.id} className={`${styles.taskRow} ${item.id === selectedId ? styles.selected : ""}`}>
+  const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <div key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} />
     <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} ref={element => { if (element) rowButtons.current.set(item.id, element); else rowButtons.current.delete(item.id); }} onClick={() => setSelectedId(item.id)} onKeyDown={event => {
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -123,7 +123,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   </div>);
   const renderGroup = (group: ReturnType<typeof groupTaskRows>[number]) => <section key={group.key} className={styles.group}>
     <h2 className={group.key === "overdue" ? styles.overdue : ""}>{t(taskCopy[groups[group.key]])} <span>{group.items.length}</span></h2>
-    <div className={styles.rows}>{renderRows(group.items)}</div>
+    <div className={styles.rows}>{renderRows(group.items, group.key === "overdue")}</div>
   </section>;
 
   return <>

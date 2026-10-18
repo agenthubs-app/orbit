@@ -18,6 +18,7 @@
 .rowMain strong { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rowMain small, .rowDate { color: var(--ink-3); font-size: var(--fs-caption); }
 .rowDate { white-space: nowrap; }
+.taskRowOverdue .rowMain strong, .taskRowOverdue .rowDate { color: var(--coral-text); }
 .pager { display: flex; gap: var(--space-8); justify-content: flex-end; margin-top: var(--space-12); }
 .rail h2 { font-size: var(--fs-card-title); margin: 0 0 var(--space-16); }
 .detailTitle { font-size: var(--fs-body); line-height: var(--lh-body); margin: 0 0 var(--space-8); overflow-wrap: anywhere; }
