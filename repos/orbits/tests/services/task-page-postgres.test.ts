@@ -35,6 +35,28 @@ test("open task pages keep Tokyo overdue, today, upcoming and undated groups in 
     assert.deepEqual(titles, ["Overdue", "Today", "Upcoming", "Undated"]);
   } finally { await pool.query(`drop schema if exists ${schema} cascade`); await pool.end(); }
 });
+test("fixed-offset task paging uses the same local day as Intl", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+  const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
+  assert.ok(["localhost", "127.0.0.1"].includes(url.hostname)); assert.equal(url.search, "");
+  const schema = "task_offset_order_" + randomUUID().replaceAll("-", "");
+  const pool = new Pool({ connectionString: url.toString(), max: 1, options: `-c search_path=${schema} -c statement_timeout=15000` });
+  try {
+    await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    for (const [id, date] of [["a-today", { plannedDate: "2026-09-25" }], ["b-negative", { dueAt: "2026-09-25T04:00:00Z" }], ["z-offset", { dueAt: "2026-09-24T17:00:00Z" }]] as const) {
+      const task = { id, accountId: "a", ownerUserId: "a", title: id, status: "open", category: "work", priority: "normal", source: "manual", createdAt: at, updatedAt: at, ...date };
+      await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+        values('w','tasks',$1,'a','manual','test',$2::jsonb,now(),now())`, [id, JSON.stringify({ version: 1, task, activities: [] })]);
+    }
+    const reader = createTaskPageReader({ client: pool, workspaceId: "w", secret: "local-secret-".repeat(4) });
+    for (const [timeZone, expected] of [["Asia/Tokyo", ["a-today", "b-negative", "z-offset"]], ["+09:00", ["a-today", "b-negative", "z-offset"]], ["+09", ["a-today", "b-negative", "z-offset"]], ["-05:00", ["b-negative", "z-offset", "a-today"]]] as const) {
+      const context = { status: "open" as const, today: "2026-09-25", timeZone, limit: 1 };
+      let page = await reader.read("a", context);
+      const ids = [page.items[0]?.id];
+      while (page.nextCursor) { page = await reader.read("a", { ...context, cursor: page.nextCursor }); ids.push(page.items[0]?.id); }
+      assert.deepEqual(ids, expected, timeZone);
+    }
+  } finally { await pool.query(`drop schema if exists ${schema} cascade`); await pool.end(); }
+});
 test("task page derives deferral counts from user history in PostgreSQL", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
   const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
   assert.ok(["localhost", "127.0.0.1"].includes(url.hostname));

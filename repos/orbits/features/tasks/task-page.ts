@@ -152,6 +152,10 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
     if (Buffer.byteLength(input.secret) < 32) throw Error("READ_CURSOR_SECRET_MISSING");
     const timeZone = query.timeZone ?? "Asia/Tokyo";
     if (!validTimeZone(timeZone)) throw Error("TASK_PAGE_INPUT_INVALID");
+    // Intl's "+09:00" is east of UTC; PostgreSQL parses bare signed zones
+    // with POSIX's opposite sign. Named zones have the same semantics.
+    const fixedOffset = /^([+-])(\d{2}:\d{2})$/.exec(new Intl.DateTimeFormat("en-US", { timeZone }).resolvedOptions().timeZone);
+    const sqlTimeZone = fixedOffset ? `${fixedOffset[1] === "+" ? "-" : "+"}${fixedOffset[2]}` : timeZone;
     const today = query.today ?? localParts(input.now?.() ?? new Date(), timeZone).date;
     if (!calendarDate(today)) throw Error("TASK_PAGE_INPUT_INVALID");
     const parsedWindow = query.dueWindow === undefined ? undefined : taskDueWindowSchema.safeParse(query.dueWindow);
@@ -171,7 +175,7 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
       if (actual.length !== expected.length || actual.toString("base64url") !== signature || !timingSafeEqual(actual,expected)) throw Error();
       after = position.parse(JSON.parse(Buffer.from(payload,"base64url").toString("utf8")));
     } catch { throw Error("TASK_PAGE_CURSOR_INVALID"); }
-    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null,todaySignalsNow ?? null,today,timeZone]);
+    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null,todaySignalsNow ?? null,today,sqlTimeZone]);
     const result = z.object({ ok: z.literal(true), counts: z.object({open:z.number().int().nonnegative().safe(),completed:z.number().int().nonnegative().safe()}).strict(),
       items:z.array(taskCardSchema.extend({position})).max(51), todaySignals: todayTaskSignalsSchema.optional() }).strict().parse(response.rows[0]?.result);
     const items = result.items.slice(0,limit), hasMore = result.items.length > limit, last = items.at(-1);
