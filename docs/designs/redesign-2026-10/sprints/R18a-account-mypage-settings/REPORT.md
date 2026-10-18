@@ -118,6 +118,8 @@ The Node 22 environment cause is now isolated without changing Homebrew or the r
 
 Read-only resource checks found the exact C schema `r18a_native_20261018_26f7f50d8edc` absent in `orbit_line_c_test`, the nonce-owned `.next-r18a-native-26f7f50d8edc` view absent, the C simulator Shutdown, and ports 3400 / 8084 free. No local fixture, account, server, or native installation was created by this preflight. The prior bounded resource-scope approval remains documented, but the changed source and remaining harness constraints require a fresh guarded check before any write or private native operation.
 
+A separate guest-only C Web probe used sanitized development/mock settings and the global heavy lock, with no DB URL, real account, or fixture write. Its raw outputs are `_evidence-c/R18a/run-01/c-web-guest-profile-{server.log,api.json,page.html}`. `GET /api/profile?design=25` returned **401 UNAUTHORIZED**; `GET /app/profile?design=25` returned **307** to `/app/account/login?next=%2Fapp%2Fprofile%3Fdesign%3D25`. The Next process exited and port 3400 was free afterward. Thus `design=` does not bypass actor authentication; guest capture is not a valid R18a SC12 profile pixel gate. The C-only identity/source-version decision remains necessary before private native or authenticated pixel evidence. No pixel comparison was run or claimed.
+
 ## Baseline and evidence
 
 - C Web pristine: 7475 tests, 6428 pass, 32 fail, 1015 skip. 25 failures explicitly require a missing DB URL; six other failure categories match D. The extra `tests/ui/add-contact-screens.test.tsx` doors assertion (`kit .wmodal.w560`) subsequently passed the correct targeted rerun (2/2, 3.26s). This supports timing sensitivity, not a full-suite pass.
