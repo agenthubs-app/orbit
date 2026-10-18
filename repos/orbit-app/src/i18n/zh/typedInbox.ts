@@ -1,9 +1,12 @@
 export const typedInbox = {
   "typedInbox.all": "全部",
+  "typedInbox.secretary": "秘书",
   "typedInbox.reminder": "提醒",
   "typedInbox.suggestion": "建议",
   "typedInbox.update": "动态",
   "typedInbox.source": "来源",
+  "typedInbox.related": "关联内容",
+  "typedInbox.openItem": "打开内容",
   "typedInbox.due": "截止时间",
   "typedInbox.scheduled": "提醒时间",
   "typedInbox.occurred": "发生时间",

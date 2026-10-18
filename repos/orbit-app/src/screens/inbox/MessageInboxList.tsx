@@ -1,7 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { EmptyState, ListRow, SearchField, UiText } from '../../components/ui';
 import { useOrbitTheme } from '../../design/theme';
 import { useOrbitLocale } from '../../i18n/OrbitLocaleContext';
 import type { RelationshipConversationView } from '../../view-models/relationship-inbox';
+import { filterMessageConversations } from '../../view-models/message-search';
 
 export function MessageInboxList({ conversations, onOpen }: {
   conversations: readonly RelationshipConversationView[];
@@ -9,30 +12,24 @@ export function MessageInboxList({ conversations, onOpen }: {
 }) {
   const { colors } = useOrbitTheme();
   const { t } = useOrbitLocale();
-  if (!conversations.length) return <View style={styles.empty}>
-    <Text style={{ color: colors.ink }}>{t('inbox.noMessages')}</Text>
-    <Text style={{ color: colors.ink3Text }}>{t('inbox.messagesHint')}</Text>
+  const [query, setQuery] = useState('');
+  const visible = filterMessageConversations(conversations, query);
+  return <View style={styles.root}>
+    <SearchField value={query} onChangeText={setQuery} placeholder={t('inbox.searchCompact')} />
+    {!visible.length ? <EmptyState title={t(query.trim() ? 'inbox.noSearchResults' : 'inbox.noMessages')}
+      message={t(query.trim() ? 'inbox.searchHint' : 'inbox.messagesHint')} /> : null}
+    {visible.map(conversation => <ListRow key={conversation.id} title={conversation.name}
+      subtitle={[conversation.subject, conversation.preview].filter(Boolean).join(' · ')}
+      accessibilityLabel={`${conversation.name}, ${conversation.preview}`}
+      onPress={() => onOpen(conversation.id)}
+      leading={<View accessibilityElementsHidden style={[styles.avatar, { backgroundColor: colors.surface2 }]}><UiText>{Array.from(conversation.name)[0] || '?'}</UiText></View>}
+      trailing={<View style={styles.trailing}><UiText style={{ color: colors.ink3Text, fontSize: 11 }}>{conversation.lastAt}</UiText>
+        {conversation.unreadCount > 0 ? <UiText style={[styles.count, { color: colors.onAccent, backgroundColor: colors.accentText }]}>{conversation.unreadCount}</UiText> : null}</View>} />)}
   </View>;
-  return <View>{conversations.map(conversation => <Pressable key={conversation.id}
-    accessibilityRole="button"
-    accessibilityLabel={`${conversation.name}, ${conversation.preview}${conversation.unreadCount ? `, ${t('inboxVm.newMessages', { count: conversation.unreadCount })}` : ''}`}
-    onPress={() => onOpen(conversation.id)}
-    style={[styles.row, { borderBottomColor: colors.line }]}>
-    <View accessibilityElementsHidden style={[styles.avatar, { backgroundColor: colors.surface2 }]}>
-      <Text style={{ color: colors.ink }}>{Array.from(conversation.name)[0] || '?'}</Text>
-    </View>
-    <View style={styles.copy}>
-      <Text style={[styles.name, { color: colors.ink }]}>{conversation.name}</Text>
-      <Text numberOfLines={2} style={{ color: colors.ink3Text }}>{conversation.preview}</Text>
-      <Text style={[styles.time, { color: colors.ink3Text }]}>{conversation.lastAt}</Text>
-    </View>
-    {conversation.unreadCount > 0 ? <Text style={[styles.count, { color: colors.onAccent, backgroundColor: colors.accentText }]}>{conversation.unreadCount}</Text> : null}
-  </Pressable>)}</View>;
 }
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  root: { gap: 8 },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, minWidth: 0, gap: 5 }, name: { fontSize: 16, fontWeight: '600' },
-  time: { fontSize: 12 }, count: { minWidth: 22, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 12, textAlign: 'center' },
-  empty: { alignItems: 'center', padding: 32, gap: 8 },
+  trailing: { alignItems: 'flex-end', gap: 5 },
+  count: { minWidth: 22, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 12, textAlign: 'center' },
 });

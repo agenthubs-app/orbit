@@ -9,6 +9,7 @@ import type {InboxNotificationDTO,InboxNotificationAction,InboxNotificationActio
 import {notificationDetailData,notificationDetailPath} from '../../api/inbox-notifications';
 import {emitMessageStateInvalidation} from '../../api/message-state';
 import {AppScreen} from '../../components/AppScreen';
+import {Button} from '../../components/ui';
 import {useOrbitLocale} from '../../i18n/OrbitLocaleContext';
 import {useOrbitTheme} from '../../design/theme';
 import {useInboxRequests} from './RelationshipInboxScreen';
@@ -16,18 +17,22 @@ import {notificationKindIcons} from './NotificationInboxList';
 import {OfflineNotice} from '../../components/OfflineNotice';
 import {useLocalInbox} from '../../hooks/useLocalInbox';
 import {localInboxDetail} from '../../view-models/inbox-local';
+import {inboxAppTargetHref} from '../../view-models/inbox-target';
+import {withoutMailSummary} from '../../api/compute/secretary-source';
 export function NotificationDetailScreen(){
- const auth=useOrbitAuthSession(),server=useOrbitApiBaseUrl(),params=useLocalSearchParams<{id?:string|string[]}>();const id=Array.isArray(params.id)?params.id[0]??'':params.id??'';
+ const auth=useOrbitAuthSession(),server=useOrbitApiBaseUrl(),params=useLocalSearchParams<{id?:string|string[];filter?:string|string[]}>();const id=Array.isArray(params.id)?params.id[0]??'':params.id??'';
+ const filter=Array.isArray(params.filter)?params.filter[0]:params.filter;
  const key=JSON.stringify([server.baseUrl,auth.actorId,auth.cookieHeader,id]);
- return auth.actorId?<NotificationDetail key={key} actorId={auth.actorId} id={id} scopeKey={key}/>:null;
+ return auth.actorId?<NotificationDetail key={key} actorId={auth.actorId} id={id} scopeKey={key} filter={filter==='secretary'?'secretary':null}/>:null;
 }
-function NotificationDetail({actorId,id,scopeKey}:{actorId:string;id:string;scopeKey:string}) {
+function NotificationDetail({actorId,id,scopeKey,filter}:{actorId:string;id:string;scopeKey:string;filter:'secretary'|null}) {
  const {t,language}=useOrbitLocale(),{colors}=useOrbitTheme(),router=useRouter(),{clientGet,clientPost,isCurrent}=useInboxRequests(scopeKey);
  const [snapshot,setSnapshot]=useState<{scope:typeof isCurrent;record:InboxNotificationDTO}|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false);
  const pending=useRef<InboxNotificationActionInput|null>(null),lock=useRef(false);
+ const autoReadKey=useRef('');
  // Sprint 0118: the device copy is the source where the mirror holds the inbox; an action's receipt shows until the next sync.
  const local=useLocalInbox(),fromDevice=local.available&&local.freshness.readable,offline=fromDevice&&local.freshness.offline;
- const localRecord=fromDevice?localInboxDetail(local.rows,{actorId,id,language,nowMs:Date.now()}):null;
+ const localRecord=fromDevice?withoutMailSummary([localInboxDetail(local.rows,{actorId,id,language,nowMs:Date.now()})].filter((row):row is InboxNotificationDTO=>row!==null))[0]??null:null;
  const receipt=isCurrent()&&snapshot?.scope===isCurrent?snapshot.record:null;
  const record=receipt&&(!localRecord||receipt.revision>=localRecord.revision)?receipt:localRecord??(local.available?null:receipt);
  const deviceMissing=fromDevice&&!localRecord&&!receipt;
@@ -40,8 +45,16 @@ function NotificationDetail({actorId,id,scopeKey}:{actorId:string;id:string;scop
     pending.current=null;setSnapshot({scope:isCurrent,record:n});setError('');emitMessageStateInvalidation();if(local.available)void local.refresh();
   }catch{if(isCurrent())setError(t('typedInbox.conflict'));}finally{lock.current=false;if(isCurrent())setBusy(false);}
  }
+ useEffect(()=>{
+  if(!record||record.readAt||!record.actions.includes('read')||offline||!isCurrent())return;
+  const key=`${record.id}:${record.revision}`;
+  if(autoReadKey.current===key)return;
+  autoReadKey.current=key;
+  void act('read');
+ },[record?.id,record?.revision,record?.readAt,offline,isCurrent]);
  const stateKeys={open:'openState',handled:'handledState',dismissed:'dismissedState',accepted:'acceptedState',expired:'expiredState',archived:'archivedState'} as const;
- return <AppScreen title={t('typedInbox.detail')} backLabel={t('inbox.back')}>
+ return <AppScreen inset="kit" title={t('typedInbox.detail')} backLabel={t('inbox.back')}
+   onBack={()=>router.canGoBack()?router.back():router.replace(`/inbox?tab=notifications${filter?'&filter=secretary':''}` as Href)}>
   {error?<View><Text accessibilityRole="alert" style={{color:colors.ink}}>{error}</Text><Pressable accessibilityRole="button" onPress={()=>pending.current?void act(pending.current.action):setAttempt(n=>n+1)} style={{padding:16,minHeight:44}}><Text style={{color:colors.accentText}}>{t(pending.current?'typedInbox.retry':'common.retry')}</Text></Pressable></View>:null}
   {offline?<OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt}/>:null}
   {deviceMissing&&!error?<Text style={{color:colors.ink3Text}}>{t('typedInbox.unavailable')}</Text>:null}
@@ -53,9 +66,9 @@ function NotificationDetail({actorId,id,scopeKey}:{actorId:string;id:string;scop
     {record.dueAt?<Text style={{color:colors.ink3Text}}>{t('typedInbox.due')} · {new Date(record.dueAt).toLocaleString(language)}</Text>:null}
     {record.scheduledFor?<Text style={{color:colors.ink3Text}}>{t('typedInbox.scheduled')} · {new Date(record.scheduledFor).toLocaleString(language)}</Text>:null}
     <Text style={{color:colors.ink3Text}}>{t('typedInbox.occurred')} · {new Date(record.occurredAt).toLocaleString(language)}</Text>
-    <View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.ink,fontWeight:'600'}}>{t('typedInbox.source')}</Text>{record.sources.map((s,i)=><View key={i} style={{gap:6}}>{s.excerpt?<Text style={{color:colors.ink,lineHeight:23}}>{s.excerpt}</Text>:null}<Text style={{color:colors.ink3Text}}>{new Date(s.occurredAt).toLocaleString(language)}</Text></View>)}</View>
-    {record.target.href&&record.target.status==='available'?<Pressable accessibilityRole="button" onPress={()=>router.push(record.target.href as Href)} style={{padding:16,borderRadius:12,backgroundColor:colors.accentText}}><Text style={{color:colors.onAccent,textAlign:'center'}}>{t('typedInbox.open')}</Text></Pressable>:null}
-    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{record.actions.filter(a=>a!=='read'||!record.readAt).map(action=><Pressable key={action} accessibilityRole="button" accessibilityState={{disabled:offline||busy||!!pending.current}} disabled={offline||busy||!!pending.current} onPress={()=>void act(action)} style={{padding:14,borderRadius:12,backgroundColor:colors.surface2,minHeight:44}}><Text style={{color:offline?colors.ink3Text:colors.ink}}>{offline?`${t(`typedInbox.${action}`)} · ${t('sync.needsNetwork')}`:t(`typedInbox.${action}`)}</Text></Pressable>)}</View>
+    <View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.ink,fontWeight:'600'}}>{t('typedInbox.related')}</Text>{record.sources.map((s,i)=><View key={i} style={{gap:6}}>{s.excerpt?<Text style={{color:colors.ink,lineHeight:23}}>{s.excerpt}</Text>:null}<Text style={{color:colors.ink3Text}}>{new Date(s.occurredAt).toLocaleString(language)}</Text></View>)}</View>
+    {record.target.status==='available'&&inboxAppTargetHref(record.target.href)?<Button label={t('typedInbox.openItem')} disabled={busy||(!record.readAt&&record.actions.includes('read'))} onPress={()=>router.push(inboxAppTargetHref(record.target.href)! as Href)} variant="primary" />:null}
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{record.actions.filter(a=>a!=='read'||!record.readAt).map(action=><Button key={action} label={offline?`${t(`typedInbox.${action}`)} · ${t('sync.needsNetwork')}`:t(`typedInbox.${action}`)} disabled={offline||busy||!!pending.current} onPress={()=>void act(action)} variant="secondary" />)}</View>
     {busy?<Text style={{color:colors.ink3Text}}>{t('typedInbox.pending')}</Text>:null}
   </View>:null}
  </AppScreen>;

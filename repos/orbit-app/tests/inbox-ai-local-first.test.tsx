@@ -108,7 +108,7 @@ export const useIsFocused = () => true;
 export const useGlobalSearchParams = () => ({});
 export const useLocalSearchParams = () => state.params ?? {};
 export const usePathname = () => "/";
-export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); } });
+export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, setParams() {} });
 export const Redirect = () => null;
 export const Stack = () => null;
 export const randomUUID = () => "00000000-0000-4000-8000-000000000001";
@@ -143,6 +143,10 @@ test.before(async () => {
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
         plugin.onResolve({ filter: /\/usePendingWriteCounts$/ }, () => ({ path: `${process.cwd()}/src/hooks/usePendingWriteCounts.ts` }));
+        plugin.onResolve({ filter: /^react-native-gesture-handler$/ }, () => ({ path: "gesture", namespace: "inbox-ai-gesture" }));
+        plugin.onLoad({ filter: /.*/, namespace: "inbox-ai-gesture" }, () => ({ contents: "const chain = new Proxy({}, { get: () => () => chain }); export const Gesture = { Pan: () => chain }; export const GestureDetector = ({children}) => children;", loader: "jsx" }));
+        plugin.onResolve({ filter: /^react-native-reanimated$/ }, () => ({ path: "animated", namespace: "inbox-ai-animated" }));
+        plugin.onLoad({ filter: /.*/, namespace: "inbox-ai-animated" }, () => ({ contents: "import {View} from 'react-native-web'; export default {View}; export const useSharedValue = value => ({value}); export const useAnimatedStyle = fn => fn(); export const withTiming = value => value; export const runOnJS = fn => fn;", loader: "js", resolveDir: process.cwd() }));
         plugin.onResolve({ filter: /^react-native-svg($|\/)|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-haptics$/ }, () => ({ path: "icons", namespace: "inbox-ai-icons" }));
         plugin.onLoad({ filter: /.*/, namespace: "inbox-ai-icons" }, () => ({ contents: "const Stub=()=>null; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Mask=Stub; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false}); export const setStringAsync=async()=>true; export const impactAsync=async()=>{}; export const ImpactFeedbackStyle={};", loader: "js" }));
         plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|^react-native-safe-area-context($|\/)|\/(useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useMirrorProbe)$/ }, () => ({ path: "fixture", namespace: "inbox-ai" }));
@@ -184,7 +188,7 @@ test("inbox: the notification list, filters and unread count come from the devic
   await page.getByText("提醒 n1", { exact: true }).waitFor();
   await page.getByText("提醒 n2", { exact: true }).waitFor();
   assert.equal(await page.getByText("来源已不可用", { exact: true }).count(), 0, "an unavailable notification is not in the default list");
-  await page.getByRole("tab", { name: /^通知 2/ }).waitFor();
+  await page.getByRole("tab", { name: /^通知 · 9/ }).waitFor();
   await page.getByRole("tab", { name: "历史" }).click();
   await page.getByText("来源已不可用", { exact: true }).waitFor();
   assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/inbox/notifications")), [], "no inbox list read");

@@ -1,24 +1,63 @@
-import {Ionicons} from '@expo/vector-icons';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
-import type {InboxNotificationKind,InboxNotificationListDTO} from '../../api/contract/inbox-notifications';
-import {useOrbitTheme} from '../../design/theme';
-import {useOrbitLocale} from '../../i18n/OrbitLocaleContext';
-export const notificationKindIcons:Record<InboxNotificationKind,'time-outline'|'sparkles-outline'|'swap-horizontal-outline'>={reminder:'time-outline',suggestion:'sparkles-outline',update:'swap-horizontal-outline'};
-export function NotificationInboxList({data,onOpen,onMore,onRefresh,onFilter,filter,busy,error}:{data:InboxNotificationListDTO;onOpen:(id:string)=>void;onMore:()=>void;onRefresh:()=>void;onFilter:(kind:'all'|InboxNotificationKind|'history')=>void;filter:'all'|InboxNotificationKind|'history';busy:boolean;error:string}) {
- const {colors}=useOrbitTheme(),{t,language}=useOrbitLocale();
- return <View style={styles.container}>
-  <View style={styles.filters}>{(['all','reminder','suggestion','update','history'] as const).map(kind=><Pressable key={kind} accessibilityRole="tab" aria-selected={filter===kind} accessibilityState={{selected:filter===kind}} onPress={()=>onFilter(kind)} style={[styles.filter,{backgroundColor:filter===kind?colors.surface2:'transparent'}]}><Text style={{color:filter===kind?colors.accentText:colors.ink3Text}}>{t(`typedInbox.${kind}`)}</Text></Pressable>)}</View>
-  {error?<View><Text accessibilityRole="alert" style={{color:colors.ink}}>{error}</Text><Pressable accessibilityRole="button" onPress={onRefresh} style={styles.filter}><Text style={{color:colors.accentText}}>{t('common.retry')}</Text></Pressable></View>:null}
-  {!data.items.length?<Text style={[styles.empty,{color:colors.ink3Text}]}>{t('typedInbox.empty')}</Text>:null}
-  {data.items.map(n=><Pressable key={n.id} accessibilityRole="button" onPress={()=>onOpen(n.id)} style={[styles.row,{borderBottomColor:colors.line}]}>
-    <View style={[styles.icon,{backgroundColor:colors.surface2}]}><Ionicons name={notificationKindIcons[n.kind]} size={21} color={n.kind==='reminder'?colors.accentText:colors.ink}/></View>
-    <View style={styles.content}><View style={styles.meta}><Text style={{color:colors.accentText,fontSize:12}}>{t(`typedInbox.${n.kind}`)}</Text>{!n.readAt&&n.disposition==='open'?<View accessibilityLabel={t('typedInbox.unreadState')} style={[styles.dot,{backgroundColor:colors.accentText}]}/>:null}</View>
-      <Text style={[styles.title,{color:colors.ink}]}>{n.title}</Text><Text numberOfLines={2} style={{color:colors.ink3Text,lineHeight:21}}>{n.reason}</Text>
-      {n.sources[0]?.excerpt?<Text numberOfLines={2} style={{color:colors.ink3Text,fontSize:12}}>{t('typedInbox.source')} · {n.sources[0].excerpt}</Text>:null}
-      <Text style={{color:colors.ink3Text,fontSize:12}}>{t(n.dueAt?'typedInbox.due':n.scheduledFor?'typedInbox.scheduled':'typedInbox.occurred')} · {new Date(n.dueAt??n.scheduledFor??n.occurredAt).toLocaleString(language)}</Text>
-    </View>
-  </Pressable>)}
-  {data.nextCursor?<Pressable accessibilityRole="button" disabled={busy} onPress={onMore} style={styles.filter}><Text style={{color:colors.accentText}}>{t('typedInbox.more')}</Text></Pressable>:null}
- </View>;
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import type { InboxNotificationKind, InboxNotificationListDTO, InboxNotificationDTO } from '../../api/contract/inbox-notifications';
+import { secretaryKind } from '../../api/compute/secretary-source';
+import { CategoryTabs, EmptyState, ListRow, SwipeRow, UiText, Button, type SwipeAction } from '../../components/ui';
+import { useOrbitTheme } from '../../design/theme';
+import { useOrbitLocale } from '../../i18n/OrbitLocaleContext';
+
+export const notificationKindIcons: Record<InboxNotificationKind, 'time-outline' | 'sparkles-outline' | 'swap-horizontal-outline'> = {
+  reminder: 'time-outline', suggestion: 'sparkles-outline', update: 'swap-horizontal-outline',
+};
+
+export type NotificationFilter = 'all' | 'secretary' | InboxNotificationKind | 'history';
+
+export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilter, onAction, filter, busy, error }: {
+  data: InboxNotificationListDTO;
+  onOpen: (id: string) => void;
+  onMore: () => void;
+  onRefresh: () => void;
+  onFilter: (kind: NotificationFilter) => void;
+  onAction?: (item: InboxNotificationDTO, action: 'read' | 'accept' | 'snooze') => void;
+  filter: NotificationFilter;
+  busy: boolean;
+  error: string;
+}) {
+  const { colors } = useOrbitTheme();
+  const { t, language } = useOrbitLocale();
+  const { fontScale } = useWindowDimensions();
+  const options: { key: NotificationFilter; label: string }[] = (['all', 'secretary', 'reminder', 'suggestion', 'update', 'history'] as const)
+    .map(key => ({ key, label: t(`typedInbox.${key}`) }));
+  let previousDay = '';
+  return <View style={styles.container}>
+    <CategoryTabs options={options} value={filter} onChange={onFilter} accessibilityLabel={t('inbox.alertsTab')} />
+    {error ? <View><UiText accessibilityRole="alert" style={{ color: colors.ink }}>{error}</UiText><Button label={t('common.retry')} onPress={onRefresh} variant="secondary" /></View> : null}
+    {!data.items.length ? <EmptyState title={t('typedInbox.empty')} /> : null}
+    {data.items.map(item => {
+      const day = new Date(item.occurredAt).toLocaleDateString(language, { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric' });
+      const heading = day !== previousDay;
+      previousDay = day;
+      const kind = secretaryKind(item);
+      const subtitle = item.reason || item.sources[0]?.excerpt || '';
+      const actions: SwipeAction[] = onAction && item.target.status === 'available' && !busy && fontScale <= 1.2
+        ? (['read', 'accept', 'snooze'] as const).filter(action => item.actions.includes(action) && !(action === 'read' && item.readAt))
+          .map(action => ({ key: action, label: t(`typedInbox.${action}`), icon: action === 'read' ? 'check' : action === 'accept' ? 'plus' : 'clock', tone: action === 'read' ? 'lav' : action === 'accept' ? 'ok' : 'teal', onPress: () => onAction(item, action) }))
+        : [];
+      const row = <ListRow title={item.title} subtitle={subtitle} onPress={() => onOpen(item.id)}
+        leading={<View style={[styles.icon, { backgroundColor: colors.surface2 }]}><UiText>{kind ? '✦' : item.kind === 'reminder' ? '◷' : item.kind === 'suggestion' ? '✧' : '↗'}</UiText></View>}
+        titleAddon={!item.readAt && item.disposition === 'open' ? <View accessibilityLabel={t('typedInbox.unreadState')} style={[styles.dot, { backgroundColor: colors.accentText }]} /> : undefined}
+        trailing={fontScale <= 1.2 ? <UiText style={{ color: colors.ink3Text, fontSize: 11 }}>{new Date(item.occurredAt).toLocaleTimeString(language, { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' })}</UiText> : undefined} />;
+      return <View key={item.id}>
+        {heading ? <UiText style={[styles.day, { color: colors.ink3Text }]}>{day}</UiText> : null}
+        {actions.length ? <SwipeRow actions={actions}>{row}</SwipeRow> : row}
+      </View>;
+    })}
+    {data.nextCursor ? <Button label={t('typedInbox.more')} disabled={busy} onPress={onMore} variant="secondary" /> : null}
+  </View>;
 }
-const styles=StyleSheet.create({container:{gap:8},filters:{flexDirection:'row',flexWrap:'wrap',gap:2,paddingHorizontal:12},filter:{paddingHorizontal:12,paddingVertical:13,borderRadius:18,minHeight:44},row:{flexDirection:'row',gap:12,paddingHorizontal:20,paddingVertical:18,borderBottomWidth:StyleSheet.hairlineWidth},icon:{width:38,height:38,borderRadius:12,alignItems:'center',justifyContent:'center'},content:{flex:1,minWidth:0,gap:7},title:{fontSize:16,fontWeight:'600',lineHeight:23},meta:{flexDirection:'row',alignItems:'center',gap:8},dot:{width:6,height:6,borderRadius:3},empty:{padding:32,textAlign:'center'}});
+
+const styles = StyleSheet.create({
+  container: { gap: 8 },
+  day: { fontSize: 12, fontWeight: '700', marginTop: 12 },
+  dot: { borderRadius: 3, height: 6, width: 6 },
+  icon: { alignItems: 'center', borderRadius: 12, height: 38, justifyContent: 'center', width: 38 },
+});

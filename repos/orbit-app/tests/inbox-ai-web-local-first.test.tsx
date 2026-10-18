@@ -17,6 +17,8 @@ const require = createRequire(import.meta.url);
 let browser: Browser;
 let server: Server;
 let url: string;
+const pageErrors = new WeakMap<Page, string[]>();
+const errorsFor = (page: Page) => pageErrors.get(page) ?? [];
 
 const fixtures = JSON.parse(readFileSync(new URL("./helpers/ai-entity-artifact-fixtures.json", import.meta.url), "utf8")) as Record<string, {
   taskKind: string; presentation: Record<string, unknown>; sections: Array<{ items: Array<Record<string, unknown>> }>;
@@ -93,7 +95,7 @@ export const useIsFocused = () => true;
 export const useGlobalSearchParams = () => ({});
 export const useLocalSearchParams = () => state.params ?? {};
 export const usePathname = () => "/";
-export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); } });
+export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, setParams() {} });
 export const Redirect = () => null;
 export const Stack = () => null;
 export const randomUUID = () => "00000000-0000-4000-8000-000000000001";
@@ -152,6 +154,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: "zh-CN" });
   page.setDefaultTimeout(4000);
   const errors: string[] = [];
+  pageErrors.set(page, errors);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript((initialFixture) => { (window as any).global = window; (window as any).initialFixture = initialFixture; }, patch);
   t.after(async () => { await page.close(); assert.deepEqual(errors, [], "no page errors"); });
@@ -163,7 +166,7 @@ const fixtureValue = (page: Page, key: string) => page.evaluate((name) => (windo
 
 test("with the browser mirror active: the inbox and the AI list read the device copy; offline says 截至 and reads no list", async (t) => {
   const page = await open(t, { status: "stale" });
-  await page.getByRole("tab", { name: /^通知/ }).click();
+  await page.getByRole("tab", { name: /^通知/ }).click().catch(error => { throw new Error(`${String(error)}; page errors: ${errorsFor(page).join("; ")}`); });
   await page.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
   await page.getByText("提醒 n1", { exact: true }).waitFor();
   const ai = await open(t, { screen: "ai", status: "stale" });

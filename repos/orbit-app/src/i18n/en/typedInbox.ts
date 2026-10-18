@@ -1,9 +1,12 @@
 export const typedInbox = {
   "typedInbox.all": "All",
+  "typedInbox.secretary": "Secretary",
   "typedInbox.reminder": "Reminders",
   "typedInbox.suggestion": "Suggestions",
   "typedInbox.update": "Updates",
   "typedInbox.source": "Source",
+  "typedInbox.related": "Related item",
+  "typedInbox.openItem": "Open item",
   "typedInbox.due": "Due",
   "typedInbox.scheduled": "Reminder time",
   "typedInbox.occurred": "Occurred",

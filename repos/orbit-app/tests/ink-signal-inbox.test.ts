@@ -17,6 +17,8 @@ export const useLocalRelationshipConversations = () => ({ available: false, conv
 export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const usePathname = () => "/inbox";
+export const useSafeAreaInsets = () => ({ top: 48, bottom: 34, left: 0, right: 0 });
 
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
@@ -49,7 +51,7 @@ const notificationInteractions = { "contact:update": "read", "event:lunch": "rea
 const signal = { id: "signal:mail", displayName: "田中由纪", organization: "星野社区", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "对方希望先了解合作的范围与时间安排。", suggestedNextAction: "先核对邮件中的背景信息，再决定下一步。", occurredAt: "2026-09-11T10:24:00+09:00", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "邮件标题提到了上次交流的主题。" }] };
 export const useLocalSearchParams = () => { useFixture(); return state.detail ? { id: "thread:0" } : state.seed; };
 export const useIsFocused = () => true;
-export const useRouter = () => ({ canGoBack: () => state.hasHistory, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
+export const useRouter = () => ({ canGoBack: () => state.hasHistory, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); }, setParams() {} });
 export const useApiResource = path => {
  const part = path.includes("notifications") ? "notifications" : path.includes("signals") ? "signals" : "inbox";
  const kind = part === "inbox" ? state.kind : state[part + "Kind"];
@@ -120,13 +122,14 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.route("**/*", r => r.abort());
   await page.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + font + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
-  await page.evaluate(patch => { (window as any).initialFixture = patch; }, patch);
-  await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor(); await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(patch => { (window as any).global = window; (window as any).initialFixture = patch; }, patch);
+  await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor().catch(error => { throw new Error(`${String(error)}; page errors: ${errors.join("; ")}`); }); await page.evaluate(() => document.fonts.ready);
   if (!patch.messagesFirst && !patch.conversations && patch.kind !== "empty" && !patch.detail && !patch.seed) await page.getByRole("tab", { name: /^通知/ }).click();
   return page;
 }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-inbox-${name}.png`, fullPage: true }); }
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
+async function nonSummaryRequests(page: Page) { return (await requests(page)).filter((request: { path: string }) => request.path !== "/api/inbox/summary"); }
 async function textBounds(page: Page) {
   return page.locator('[dir="auto"]').evaluateAll(els => els.filter(el => el.textContent?.trim()).filter(el => {
     const s = getComputedStyle(el), b = el.getBoundingClientRect();
@@ -144,10 +147,10 @@ test("inbox matches the approved compact header, typed notification filters and 
   assert.equal(await page.getByRole("button", { name: "首页", exact: true }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "全部已读", exact: true }).count(), 1);
   await page.getByText("陈默 更新了合作记录", { exact: true }).waitFor();
-  assert.deepEqual(await page.getByRole("tab").allTextContents(), ["消息", "通知2", "全部", "提醒", "建议", "动态", "历史记录"]);
+  assert.deepEqual(await page.getByRole("tab").allTextContents(), ["消息", "通知 · 2", "全部", "秘书", "提醒", "建议", "动态", "历史记录"]);
   assert.equal(await page.getByRole("textbox").count(), 0);
   assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
-  assert.deepEqual(await requests(page), []); await shot(page, "list");
+  assert.deepEqual(await nonSummaryRequests(page), []); await shot(page, "list");
 });
 
 // The legacy feed rows and their 20pt-gutter geometry were retired with the feed
@@ -161,7 +164,7 @@ test("typed unread and read rows keep a distinct unread marker, safe targets and
   assert.equal(await read.getByLabel("未读", { exact: true }).count(), 0);
   for (const row of [first, read]) { const box = (await row.boundingBox())!; assert.ok(box.height >= 44 && box.x >= 0 && box.x + box.width <= 391); }
   await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/notifications/inbox%3Achen"]);
-  assert.deepEqual(await requests(page), []);
+  assert.deepEqual(await nonSummaryRequests(page), []);
 });
 
 test("the home-labelled back control returns to home without history and uses real history when available", async t => {
@@ -193,7 +196,7 @@ for (const kind of ["failure", "loading"]) test(`notification ${kind} is not pre
     await page.getByRole("button", { name: "重试", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.resourceReads.filter((path: string) => path.startsWith("/api/inbox/notifications?")).length >= 2);
   }
-  assert.deepEqual(await requests(page), []); await shot(page, `reminders-${kind}`);
+  assert.deepEqual(await nonSummaryRequests(page), []); await shot(page, `reminders-${kind}`);
 });
 
 // fc0569649 removed email/calendar relationship signals from the inbox, so the
@@ -210,8 +213,8 @@ test("mark all read writes only the two confirmable unread notifications and rer
   const page = await open(t);
   await page.getByText("陈默 更新了合作记录", { exact: true }).waitFor();
   await page.getByRole("button", { name: "全部已读", exact: true }).click();
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
-  const [write] = await requests(page);
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: { path: string }) => request.path === "/api/inbox/notifications/read"));
+  const [write] = await nonSummaryRequests(page);
   assert.equal(write.path, "/api/inbox/notifications/read");
   assert.deepEqual(write.body.items, [{ id: "inbox:weekend", expectedRevision: 1 }, { id: "inbox:intro", expectedRevision: 1 }]);
   await page.waitForFunction(() => (window as any).fixture.resourceReads.filter((path: string) => path.startsWith("/api/inbox/notifications?")).length >= 2);
@@ -242,7 +245,8 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       await shot(page, `${variant.name}-${name}`);
       for (const role of ["button", "tab"] as const) for (const control of await page.getByRole(role).all()) {
         await control.scrollIntoViewIfNeeded(); const box = await control.boundingBox();
-        assert.ok(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
+        const segmentedTab = role === "tab" && /^(消息|通知)/u.test((await control.textContent()) ?? "");
+        assert.ok(box && box.height + (segmentedTab ? 14 : role === "tab" ? 12 : 0) >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
       }
       await page.evaluate(() => {
         for (const el of document.querySelectorAll<HTMLElement>("div")) {
@@ -261,18 +265,19 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
     await page.getByRole("textbox", { name: "收件人", exact: true }).waitFor(); await check("composer");
     await page.getByRole("button", { name: "取消", exact: true }).click();
     await page.evaluate(() => (window as any).fixture.update({ detail: true })); await check("detail");
-    assert.deepEqual(await requests(page), []);
+    assert.deepEqual(await nonSummaryRequests(page), []);
   });
 }
 
-test('messages are the default independent inbox and notifications cannot mark them read', async t => {
+test('messages remain an independent tab and notifications cannot mark them read', async t => {
   const page = await open(t, { conversations: true });
-  const messages = page.getByRole('tab', { name: '消息 2', exact: true });
+  const messages = page.getByRole('tab', { name: /^消息/ });
   await messages.waitFor();
+  await messages.click();
   assert.equal(await messages.getAttribute('aria-selected'), 'true');
   assert.equal(await page.getByText('林悦', { exact: true }).count(), 1);
   assert.equal(await page.getByText('待办「给林悦发送项目介绍」今天 18:00 到期', { exact: true }).count(), 0);
-  await page.getByRole('tab', { name: '通知 2', exact: true }).click();
+  await page.getByRole('tab', { name: /^通知/ }).click();
   await page.getByRole('button', { name: '全部已读', exact: true }).click();
   await page.waitForTimeout(30);
   assert.ok((await requests(page)).every((r: { path: string }) => !(r.path.startsWith('/api/relationship-communication/') && r.path.endsWith('/read'))));

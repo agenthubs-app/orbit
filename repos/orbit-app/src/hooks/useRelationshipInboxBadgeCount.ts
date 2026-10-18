@@ -7,6 +7,7 @@ import { subscribeInboxBadge } from "../api/inbox-badge-resource";
 import { useOrbitApiClient } from "./useOrbitApiClient";
 import { useLocalInbox } from "./useLocalInbox";
 import { localInboxUnreadCount } from "../view-models/inbox-local";
+import { withoutMailSummary } from "../api/compute/secretary-source";
 import { useLocalRelationshipConversations } from "./useLocalRelationshipMessages";
 import { localRelationshipUnreadTotal } from "../view-models/relationship-local";
 
@@ -62,7 +63,7 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
 
   const summary = scope.ready && snapshot?.scope === scope ? snapshot : null;
   if (scope.ready && local.available && local.freshness.readable) {
-    const notices = localInboxUnreadCount(local.rows, Date.now());
+    const notices = localInboxUnreadCount(withoutMailSummary(local.rows), Date.now());
     const messages = threads.available && threads.freshness.readable ? localRelationshipUnreadTotal(threads.conversations) : summary?.messages;
     if (messages !== undefined) return capped(messages + notices);
     if (local.freshness.offline || summary) return capped(notices);

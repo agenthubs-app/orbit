@@ -1,4 +1,6 @@
-import { RelationshipChatScreen } from "../src/screens/chat/RelationshipChatScreen";
+import { Redirect } from "expo-router";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(RelationshipChatScreen);
+function LegacyChatRedirect() { return <Redirect href="/inbox?tab=messages" />; }
+
+export default withOrbitPrivateRoute(LegacyChatRedirect);

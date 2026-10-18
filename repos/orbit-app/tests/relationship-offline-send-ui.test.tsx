@@ -81,7 +81,7 @@ export const useIsFocused = () => true;
 export const useGlobalSearchParams = () => ({});
 export const useLocalSearchParams = () => state.params ?? {};
 export const usePathname = () => "/";
-export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); } });
+export const useRouter = () => ({ canGoBack: () => false, back() {}, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, setParams() {} });
 export const Redirect = () => null;
 export const Stack = () => null;
 let uuid = 0;
@@ -115,6 +115,10 @@ test.before(async () => {
       name: "relationship-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, (args) => args.importer.endsWith("native-shim.js") ? { path: require.resolve("react-native-web") } : { path: "native-shim.js", namespace: "native-shim" });
+        plugin.onResolve({ filter: /^react-native-gesture-handler$/ }, () => ({ path: "gesture", namespace: "relationship-gesture" }));
+        plugin.onLoad({ filter: /.*/, namespace: "relationship-gesture" }, () => ({ contents: "const chain = new Proxy({}, { get: () => () => chain }); export const Gesture = { Pan: () => chain }; export const GestureDetector = ({children}) => children;", loader: "jsx" }));
+        plugin.onResolve({ filter: /^react-native-reanimated$/ }, () => ({ path: "animated", namespace: "relationship-animated" }));
+        plugin.onLoad({ filter: /.*/, namespace: "relationship-animated" }, () => ({ contents: "import {View} from 'react-native-web'; export default {View}; export const useSharedValue = value => ({value}); export const useAnimatedStyle = fn => fn(); export const withTiming = value => value; export const runOnJS = fn => fn;", loader: "js", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /.*/, namespace: "native-shim" }, () => ({ contents: 'export * from "react-native"; import { Platform as WebPlatform } from "react-native"; export const Platform = { ...WebPlatform, OS: "ios", select: (options) => options.ios ?? options.native ?? options.default };', loader: "js", resolveDir: process.cwd() }));
         plugin.onResolve({ filter: /^react-native-svg($|\/)|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-haptics$/ }, () => ({ path: "icons", namespace: "relationship-icons" }));
         plugin.onLoad({ filter: /.*/, namespace: "relationship-icons" }, () => ({ contents: "const Stub=()=>null; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Mask=Stub; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false}); export const setStringAsync=async()=>true; export const impactAsync=async()=>{}; export const ImpactFeedbackStyle={};", loader: "js" }));
@@ -142,7 +146,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   page.setDefaultTimeout(4000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript((initialFixture) => { (window as any).initialFixture = initialFixture; }, patch);
+  await page.addInitScript((initialFixture) => { (window as any).global = window; (window as any).initialFixture = initialFixture; }, patch);
   t.after(async () => { await page.close(); assert.deepEqual(errors, [], "no page errors"); });
   await page.goto(url);
   return page;
@@ -214,7 +218,7 @@ test("inbox: a queued message whose conversation left the device is one top line
   await page.getByText(/给王小明的待发送/).first().waitFor();
   const names = await page.getByText(/^(李雷|王小明)$/).allTextContents();
   assert.deepEqual(names, ["王小明", "李雷"], "the conversation with the newest queued message moves up");
-  await page.getByRole("tab", { name: /^消息 3/ }).waitFor();
+  await page.getByRole("tab", { name: /^消息.*3/ }).waitFor();
   await page.getByRole("button", { name: "放弃" }).click();
   await page.waitForFunction(() => (window as any).fixture.discarded.length === 1);
   assert.deepEqual(await fixtureValue(page, "discarded"), ["ended-1"]);

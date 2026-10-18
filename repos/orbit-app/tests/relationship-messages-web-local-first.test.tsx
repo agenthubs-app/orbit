@@ -103,6 +103,7 @@ test.before(async () => {
       name: "relationship-web-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+        plugin.onResolve({ filter: /^react-native-reanimated$|^react-native-gesture-handler$/ }, args => ({ path: `${process.cwd()}/tests/helpers/stubs/${args.path}.js` }));
         plugin.onResolve({ filter: /^react-native-svg($|\/)|^expo-camera$|^expo-image-picker$|^expo-clipboard$|^expo-haptics$/ }, () => ({ path: "icons", namespace: "relationship-icons" }));
         plugin.onLoad({ filter: /.*/, namespace: "relationship-icons" }, () => ({ contents: "const Stub=()=>null; export default Stub; export const Svg=Stub, Path=Stub, Circle=Stub, G=Stub, Rect=Stub, Line=Stub, Defs=Stub, LinearGradient=Stub, Stop=Stub, Text=Stub, Ellipse=Stub, Polygon=Stub, Polyline=Stub, ClipPath=Stub, Mask=Stub; export const CameraView=Stub; export const useCameraPermissions=()=>[null,async()=>null]; export const launchImageLibraryAsync=async()=>({canceled:true}); export const requestMediaLibraryPermissionsAsync=async()=>({granted:false}); export const setStringAsync=async()=>true; export const impactAsync=async()=>{}; export const ImpactFeedbackStyle={};", loader: "js" }));
         plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|^react-native-safe-area-context($|\/)|\/(useSyncedCollection|useWebMirrorStatus|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "relationship" }));
@@ -142,7 +143,7 @@ const B_ID = "relationship-conversation:wang";
 test("browser mirror active: the threads and the conversation read the device copy; offline 截至 and sending needs the network", async (t) => {
   const page = await open(t);
   await page.getByText("李雷", { exact: true }).waitFor();
-  await page.getByRole("tab", { name: /^消息 3/ }).waitFor();
+  await page.getByRole("tab", { name: /^消息 · 3/ }).waitFor();
   assert.deepEqual(messageReads(await requests(page)), [], "no conversation list or unread read");
   assert.ok(((await fixtureValue(page, "syncs")) as Record<string, number>).relationship_conversation >= 1, "opening probes for changes");
   const offline = await open(t, { screen: "thread", status: "stale", params: { id: B_ID } });

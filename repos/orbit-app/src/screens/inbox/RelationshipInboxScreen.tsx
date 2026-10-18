@@ -23,7 +23,8 @@ import {
   useWindowDimensions,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../../components/AppScreen";
+import { Button, Segmented } from "../../components/ui";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { NotificationDeliveryContract } from "../../api/contract/notifications";
@@ -57,6 +58,7 @@ import { resultToRouteState, type RouteState } from "../../view-models/route-sta
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
+import { inboxSummarySchema } from "../../api/schema/inbox-summary";
 import { useLocalRelationshipConversations, useLocalRelationshipThread, type LocalRelationshipConversationsState } from "../../hooks/useLocalRelationshipMessages";
 import { localConversationSummaryPage, localRelationshipMessagePage, localRelationshipUnreadTotal } from "../../view-models/relationship-local";
 import {
@@ -289,18 +291,22 @@ export function RelationshipInboxScreen() {
     deliveryId?: string | string[];
     organization?: string | string[];
     participantName?: string | string[];
+    tab?: string | string[];
+    filter?: string | string[];
   }>();
   const seedContactId = firstParam(params.contactId);
   const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
+  const requestedSection = firstParam(params.tab) === 'notifications' ? 'alerts' : firstParam(params.tab) === 'messages' ? 'threads' : null;
+  const requestedNotificationFilter = firstParam(params.filter) === 'secretary' ? 'secretary' : null;
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
   if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
-  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
+  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} requestedSection={requestedSection} requestedNotificationFilter={requestedNotificationFilter} />;
 }
 
-function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
-  actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
+function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization, requestedSection, requestedNotificationFilter }: {
+  actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string; requestedSection: InboxSection | null; requestedNotificationFilter: 'secretary' | null;
 }) {
   const renderStartedAt = isAppPerformanceEnabled()
     ? globalThis.performance.now()
@@ -318,21 +324,23 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const router = useRouter();
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
   const server = useOrbitApiBaseUrl();
-  const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent);
-  const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : "threads");
+  const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent, requestedNotificationFilter);
+  const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : requestedSection ?? "threads");
   const selectionChanged = useRef(false);
+  useEffect(() => { if (requestedSection) setActiveSection(requestedSection); }, [requestedSection]);
   const preferenceKey = JSON.stringify(["orbit.inbox.tab", server.baseUrl, actorId]);
   useEffect(() => {
     let current = true;
     void AsyncStorage.getItem(preferenceKey).then(value => {
-      if (current && !selectionChanged.current && !deliveryId && (value === "alerts" || value === "threads")) setActiveSection(value);
+      if (current && !selectionChanged.current && !deliveryId && !requestedSection && (value === "alerts" || value === "threads")) setActiveSection(value);
     }).catch(() => {});
     return () => { current = false; };
-  }, [preferenceKey, deliveryId]);
+  }, [preferenceKey, deliveryId, requestedSection]);
   function selectSection(section: InboxSection) {
     if (!isCurrent()) return;
     selectionChanged.current = true;
     setActiveSection(section);
+    router.setParams({ tab: section === 'alerts' ? 'notifications' : 'messages' });
     void AsyncStorage.setItem(preferenceKey, section).catch(() => {});
   }
   const [deliveryAttempt, setDeliveryAttempt] = useState(0);
@@ -379,8 +387,15 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     enabled: !localThreads.available,
   });
   const unread = relationshipUnreadSummarySchema.safeParse(unreadState.kind === "success" ? unreadState.data : null);
-  const messagesUnread = threadsFromDevice ? localRelationshipUnreadTotal(localThreads.conversations)
+  const unifiedState = useInboxResource('/api/inbox/summary', () => false, clientGet, isCurrent, {
+    isValid: data => { const parsed = inboxSummarySchema.safeParse(data); return parsed.success && parsed.data.actorId === actorId; },
+    refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+    enabled: !threadsOffline && !typedInbox.offline,
+  });
+  const unified = inboxSummarySchema.safeParse(unifiedState.kind === 'success' ? unifiedState.data : null);
+  const messagesUnread = !threadsOffline && unified.success ? unified.data.messagesUnread : threadsFromDevice ? localRelationshipUnreadTotal(localThreads.conversations)
     : unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
+  const notificationsUnread = !typedInbox.offline && unified.success ? unified.data.notificationsUnread : typedInbox.data?.unreadCount ?? 0;
   const localThreadsRefresh = localThreads.refresh;
   useEffect(() => {
     if (!localThreads.available || !isCurrent()) return;
@@ -554,12 +569,12 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {activeSection === "threads" && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedInbox.data?.unreadCount ?? 0} messageCount={messagesUnread} onChange={selectSection} /> : null}
+      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={notificationsUnread} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
       {activeSection === "threads" && threadsOffline && !composing && !createdThread ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
       {activeSection === "threads" && !composing && !createdThread ? <UnsentEndedNotice messages={endedOutbox} onDiscard={ids => { void outbox.discard(ids).catch(() => undefined); }} /> : null}
-      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
+      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}${typedInbox.filter==='secretary'?'?filter=secretary':''}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
           onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
@@ -601,6 +616,7 @@ export function RelationshipInboxThreadScreen() {
 
 function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey }: { actorId: string; conversationId: string; scopeKey: string }) {
   const locale = useOrbitLocale();
+  const router = useRouter();
   const { colors } = useOrbitTheme();
   const { clientGet, clientPost, clientPut, isCurrent } = useInboxRequests(scopeKey);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
@@ -710,6 +726,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         />
       }
       title={locale.t("inbox.messageTitle")}
+      onBack={() => router.canGoBack() ? router.back() : router.replace('/inbox?tab=messages' as Href)}
     >
       {!conversationId ? (
         <ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} />
@@ -764,57 +781,11 @@ function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllRe
   hideBack?: boolean;
 }>) {
   const locale = useOrbitLocale();
-  const { colors, styles } = useStyles();
-  const router = useRouter();
-  const canGoBack = router.canGoBack();
-  return (
-    <SafeAreaView edges={["top"]} style={styles.inboxSafeArea}>
-      <View style={styles.mailToolbar}>
-        <View style={styles.toolbarSide}>
-          {!hideBack ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={locale.t(onMarkAllRead ? "inbox.home" : onBack || canGoBack ? "inbox.back" : "inbox.home")}
-              onPress={onBack ?? (() => canGoBack
-                ? router.back()
-                : router.replace("/home" as Href))}
-              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
-            >
-              <Ionicons color={colors.accentText} name="chevron-back" size={18} />
-              <Text style={styles.toolbarText}>{locale.t(onMarkAllRead ? "inbox.home" : onBack || canGoBack ? "inbox.back" : "inbox.home")}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-        <Text accessibilityRole="header" style={styles.mailTitle}>
-          {title}
-        </Text>
-        <View style={[styles.toolbarSide, styles.toolbarEnd]}>
-          {onMarkAllRead ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")}
-              accessibilityState={{ disabled: markAllReadDisabled }}
-              disabled={markAllReadDisabled}
-              onPress={onMarkAllRead}
-              style={({ pressed }) => [styles.toolbarButton, markAllReadDisabled && styles.disabled, pressed && styles.pressed]}
-            >
-              <Text style={styles.toolbarComposeText}>{markAllReadLabel ?? locale.t("inbox.markAllRead")}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-      <ScrollView
-        automaticallyAdjustKeyboardInsets
-        contentContainerStyle={styles.inboxCanvas}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-        refreshControl={refreshControl}
-        style={styles.inboxScroll}
-      >
-        {children}
-      </ScrollView>
-    </SafeAreaView>
-  );
+  return <AppScreen inset="kit" title={title} headerVariant="compact" backLabel={locale.t("inbox.home")} showBack={!hideBack} {...(onBack ? { onBack } : {})}
+    {...(refreshControl ? { refreshControl } : {})}
+    headerActions={onMarkAllRead ? <Button label={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : undefined}>
+    {children}
+  </AppScreen>;
 }
 
 function NotificationDeliveryCard({
@@ -1026,61 +997,9 @@ function InboxSegmentedControl({
   onChange: (section: InboxSection) => void;
 }) {
   const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  return (
-    <View accessibilityRole="tablist" style={styles.segmentedControl}>
-      <SegmentButton
-        active={activeSection === "threads"}
-        count={messageCount}
-        label={locale.t("inbox.messagesTab")}
-        onPress={() => onChange("threads")}
-      />
-      <SegmentButton
-        active={activeSection === "alerts"}
-        count={alertCount}
-        label={locale.t("inbox.alertsTab")}
-        onPress={() => onChange("alerts")}
-      />
-    </View>
-  );
-}
-
-function SegmentButton({
-  active,
-  count = 0,
-  label,
-  onPress
-}: {
-  active: boolean;
-  count?: number;
-  label: string;
-  onPress: () => void;
-}) {
-  const { styles } = useStyles();
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityLabel={count ? `${label} ${count}` : label}
-      accessibilityState={{ selected: active }}
-      aria-selected={active}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.segmentButton,
-        active ? styles.segmentButtonActive : null,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <Text
-        style={[
-          styles.segmentButtonText,
-          active ? styles.segmentButtonTextActive : null
-        ]}
-      >
-        {label}
-      </Text>
-      {count > 0 ? <Text style={styles.segmentCount}>{count}</Text> : null}
-    </Pressable>
-  );
+  return <Segmented accessibilityLabel={locale.t("inbox.title")} value={activeSection} onChange={onChange}
+    segments={[{ key: "threads", label: `${locale.t("inbox.messagesTab")}${messageCount ? ` · ${messageCount}` : ""}` },
+      { key: "alerts", label: `${locale.t("inbox.alertsTab")}${alertCount ? ` · ${alertCount}` : ""}` }]} />;
 }
 
 function ConversationList({

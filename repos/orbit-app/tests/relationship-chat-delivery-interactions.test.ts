@@ -8,8 +8,8 @@ const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
 
-// Exercise the real private route, screen, resource/client and view-model. Only
-// device/auth boundaries, local snapshots and external HTTP are replaced.
+// Keep the retired chat components' delivery and paging behavior covered while
+// /chat routes redirect to the unified inbox. Only external boundaries are replaced.
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
@@ -47,7 +47,7 @@ export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/chat/[id]"; import ListRoute from "./app/chat"; import { useFixture } from "fixture"; function App() { const state = useFixture(); return state.listMode ? <ListRoute /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', resolveDir: process.cwd(), loader: "tsx" },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { RelationshipChatDetailScreen as Route } from "./src/screens/chat/RelationshipChatDetailScreen"; import { RelationshipChatScreen as ListRoute } from "./src/screens/chat/RelationshipChatScreen"; import { useFixture } from "fixture"; function App() { const state = useFixture(); return state.listMode ? <ListRoute /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', resolveDir: process.cwd(), loader: "tsx" },
     bundle: true,
     write: false,
     format: "iife",

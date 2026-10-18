@@ -1,12 +1,13 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {randomUUID} from 'expo-crypto';
 import type {ApiResult} from '../../api/types';
-import type {InboxNotificationKind,InboxNotificationListDTO} from '../../api/contract/inbox-notifications';
-import {INBOX_NOTIFICATIONS_PATH,notificationInboxData} from '../../api/inbox-notifications';
+import type {InboxNotificationKind,InboxNotificationListDTO,InboxNotificationDTO} from '../../api/contract/inbox-notifications';
+import {INBOX_NOTIFICATIONS_PATH,notificationInboxData,notificationDetailData} from '../../api/inbox-notifications';
 import {useOrbitLocale} from '../../i18n/OrbitLocaleContext';
 import {emitMessageStateInvalidation} from '../../api/message-state';
 import {useLocalInbox} from '../../hooks/useLocalInbox';
 import {localInboxListData} from '../../view-models/inbox-local';
+import {scanSecretaryNotificationPage,secretaryKind,withoutMailSummary} from '../../api/compute/secretary-source';
 type Get=(path:string,options?:{signal?:AbortSignal})=>Promise<ApiResult<unknown>>;
 type Post=(path:string,body:unknown)=>Promise<ApiResult<unknown>>;
 /**
@@ -16,35 +17,42 @@ type Post=(path:string,body:unknown)=>Promise<ApiResult<unknown>>;
  * manifest read when nothing moved) instead of a page download. Marking read
  * needs the network; offline the list keeps showing the copy "as of" its sync.
  */
-export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:()=>boolean) {
- const {language,t}=useOrbitLocale();const [filter,setFilter]=useState<'all'|'history'|InboxNotificationKind>('all'),[attempt,setAttempt]=useState(0);
+export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:()=>boolean,requestedFilter:'secretary'|null=null) {
+ const {language,t}=useOrbitLocale();const [filter,setFilter]=useState<'all'|'secretary'|'history'|InboxNotificationKind>(requestedFilter??'all'),[attempt,setAttempt]=useState(0);
+ useEffect(()=>{if(requestedFilter)setFilter(requestedFilter);},[requestedFilter]);
  const local=useLocalInbox();
  const fromDevice=local.available&&local.freshness.readable;
  const offline=fromDevice&&local.freshness.offline;
- const [snapshot,setSnapshot]=useState<{scope:typeof isCurrent;query:string;data:InboxNotificationListDTO}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [snapshot,setSnapshot]=useState<{scope:typeof isCurrent;query:string;filter:typeof filter;data:InboxNotificationListDTO}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  // The parent remounts on account, credentials or server changes. Retain only
  // rollout capability across foreground refreshes, never notification content.
  const [enabled,setEnabled]=useState<boolean|undefined>(undefined);
- const query=`language=${language}${filter==='history'?'&history=true':filter==='all'?'':'&kind='+filter}`;
+ const query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
  const pageLock=useRef(false),mutationLock=useRef(false),lifetime=useRef<AbortController|null>(null);
- const networkData=isCurrent()&&snapshot?.scope===isCurrent&&snapshot.query===query?snapshot.data:null;
- const data=fromDevice?localInboxListData(local.rows,{actorId,filter,language,nowMs:Date.now()}):local.available?null:networkData;
+ const pendingAction=useRef<{id:string;action:'read'|'accept'|'snooze';expectedRevision:number;idempotencyKey:string;scheduledFor?:string}|null>(null);
+ const networkData=isCurrent()&&snapshot?.scope===isCurrent&&snapshot.query===query&&snapshot.filter===filter?snapshot.data:null;
+ const localData=fromDevice?localInboxListData(withoutMailSummary(local.rows),{actorId,filter:filter==='secretary'?'all':filter,language,nowMs:Date.now()}):null;
+ const data=fromDevice?(filter==='secretary'&&localData?{...localData,items:localData.items.filter(item=>secretaryKind({...item,actorId})!==null&&item.target.status==='available')}:localData):local.available?null:networkData;
  const localRefresh=local.refresh;
  const refresh=useCallback(()=>{if(!isCurrent())return;if(local.available)void localRefresh();else setAttempt(n=>n+1);},[isCurrent,local.available,localRefresh]);
  useEffect(()=>{
   if(!isCurrent()||local.available)return;const controller=new AbortController();lifetime.current=controller;setSnapshot(null);setError('');
-  void get(INBOX_NOTIFICATIONS_PATH+'?'+query,{signal:controller.signal}).then(result=>{
-   if(controller.signal.aborted||!isCurrent())return;const next=result.success?notificationInboxData(result.data,actorId):null;
-   if(next){setEnabled(next.enabled);setSnapshot({scope:isCurrent,query,data:next});}else setError(t('typedInbox.error'));
+  const load=async(cursor?:string)=>{
+   const result=await get(INBOX_NOTIFICATIONS_PATH+'?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{signal:controller.signal});
+   const next=result.success?notificationInboxData(result.data,actorId):null;if(!next)throw new Error('Invalid notification page');return {...next,items:withoutMailSummary(next.items)};
+  };
+  void (filter==='secretary'?scanSecretaryNotificationPage(load):load()).then(next=>{
+   if(controller.signal.aborted||!isCurrent())return;
+   if(next){setEnabled(next.enabled);setSnapshot({scope:isCurrent,query,filter,data:next});}else setError(t('typedInbox.error'));
   }).catch(()=>{if(!controller.signal.aborted&&isCurrent())setError(t('typedInbox.error'));});
   return()=>controller.abort();
- },[actorId,get,isCurrent,query,attempt,local.available]);
+ },[actorId,get,isCurrent,query,filter,attempt,local.available]);
  useEffect(()=>{if(!isCurrent())return;const timer=setInterval(refresh,15000);return()=>clearInterval(timer);},[isCurrent,refresh]);
  const latest=useRef(networkData);latest.current=networkData;
  async function more(){
   const page=networkData,controller=lifetime.current;if(fromDevice||!page?.nextCursor||pageLock.current||!controller||controller.signal.aborted)return;
   pageLock.current=true;setBusy(true);
-  try{const result=await get(INBOX_NOTIFICATIONS_PATH+'?'+query+'&cursor='+encodeURIComponent(page.nextCursor),{signal:controller.signal});if(controller.signal.aborted||!isCurrent()||latest.current!==page)return;const next=result.success?notificationInboxData(result.data,actorId):null;if(!next)throw new Error();setSnapshot({scope:isCurrent,query,data:{...next,items:[...new Map([...page.items,...next.items].map(n=>[n.id,n])).values()]}});setError('');}catch{if(isCurrent()&&!controller.signal.aborted)setError(t('typedInbox.error'));}finally{pageLock.current=false;if(isCurrent())setBusy(false);}
+  try{const load=async(cursor?:string)=>{const result=await get(INBOX_NOTIFICATIONS_PATH+'?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{signal:controller.signal});const next=result.success?notificationInboxData(result.data,actorId):null;if(!next)throw new Error();return {...next,items:withoutMailSummary(next.items)};};const next=filter==='secretary'?await scanSecretaryNotificationPage(load,page.nextCursor):await load(page.nextCursor);if(controller.signal.aborted||!isCurrent()||latest.current!==page)return;setSnapshot({scope:isCurrent,query,filter,data:{...next,items:[...new Map([...page.items,...next.items].map(n=>[n.id,n])).values()]}});setError('');}catch{if(isCurrent()&&!controller.signal.aborted)setError(t('typedInbox.error'));}finally{pageLock.current=false;if(isCurrent())setBusy(false);}
  }
  async function markRead(){
   if(!data||mutationLock.current||!isCurrent())return;
@@ -56,6 +64,21 @@ export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:
    setError('');emitMessageStateInvalidation();refresh();
   }catch{if(scope())setError(t('typedInbox.conflict'));}finally{mutationLock.current=false;if(scope())setBusy(false);}
  }
+ async function act(item:InboxNotificationDTO,action:'read'|'accept'|'snooze'){
+  if(!item.actions.includes(action)||item.target.status!=='available'||mutationLock.current||!isCurrent())return;
+  if(offline){setError(t('sync.needsNetwork'));return;}
+  const previous=pendingAction.current;
+  if(previous&&previous.id!==item.id)return;
+  const intent=previous??{id:item.id,action,expectedRevision:item.revision,idempotencyKey:randomUUID(),...(action==='snooze'?{scheduledFor:new Date(Date.now()+3_600_000).toISOString()}:{})};
+  pendingAction.current=intent;mutationLock.current=true;setBusy(true);
+  try{
+   const result=await post(`${INBOX_NOTIFICATIONS_PATH}/${encodeURIComponent(item.id)}/actions?language=${language}`,intent);
+   if(!isCurrent())return;
+   const receipt=result.success?notificationDetailData((result.data as {notification?:unknown})?.notification,actorId,item.id):null;
+   if(!receipt){if([409,410,404].includes(result.status))pendingAction.current=null;throw new Error('Unconfirmed notification action');}
+   pendingAction.current=null;setError('');emitMessageStateInvalidation();refresh();
+  }catch{if(isCurrent())setError(t('typedInbox.conflict'));}finally{mutationLock.current=false;if(isCurrent())setBusy(false);}
+ }
  const deviceError=local.available&&local.freshness.failure?t('typedInbox.error'):'';
- return {data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null};
+ return {data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,act,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null};
 }

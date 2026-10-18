@@ -42,7 +42,7 @@ const state = window.fixture = { requests: [], navigation: [], detail: false, fa
 export const useLocalSearchParams = () => { rerender(); return state.detail ? { id: "thread:wei" } : state.seed; };
 export const useIsFocused = () => true;
 export const usePathname = () => "/inbox";
-export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
+export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); }, setParams() {} });
 export const useApiResource = path => {
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", occurredAt: "2026-09-15T0" + i + ":00:00+09:00", dueAt: "2026-09-16T13:00:00+09:00", href: "/tasks/task%3A" + i })) }
@@ -95,6 +95,7 @@ export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, account
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const randomUUID = () => "inbox-test-" + (++uuid);
 export const SafeAreaView = ({ children, edges, ...props }) => <div>{children}</div>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const Ionicons = () => <span aria-hidden="true" />;
 `;
 
@@ -105,6 +106,10 @@ test.before(async () => {
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "inbox-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+      plugin.onResolve({ filter: /^react-native-gesture-handler$/ }, () => ({ path: "gesture", namespace: "inbox-gesture" }));
+      plugin.onLoad({ filter: /.*/, namespace: "inbox-gesture" }, () => ({ contents: "const chain = new Proxy({}, { get: () => () => chain }); export const Gesture = { Pan: () => chain }; export const GestureDetector = ({children}) => children;", loader: "jsx" }));
+      plugin.onResolve({ filter: /^react-native-reanimated$/ }, () => ({ path: "animated", namespace: "inbox-animated" }));
+      plugin.onLoad({ filter: /.*/, namespace: "inbox-animated" }, () => ({ contents: "import {View} from 'react-native-web'; export default {View}; export const useSharedValue = value => ({value}); export const useAnimatedStyle = fn => fn(); export const withTiming = value => value; export const runOnJS = fn => fn;", loader: "js", resolveDir: process.cwd() }));
       plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
@@ -129,6 +134,7 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   const page = await browser.newPage({ viewport: { width: 402, height: 874 }, locale: "zh-CN" });
   page.setDefaultTimeout(2000);
   t.after(() => page.close());
+  await page.addInitScript(() => { (window as any).global = window; });
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(url);
   await page.getByRole("heading", { name: "收件箱", exact: true }).waitFor();
@@ -139,10 +145,10 @@ test("inbox lists only summary pages and retains a global unread count", async t
   const page = await openScreen(t);
   await page.evaluate(() => (window as any).fixture.update({ large: true }));
   await page.getByText('分页会话 0', { exact: true }).waitFor();
-  await page.getByRole('tab', {name:'消息 90',exact:true}).waitFor();
+  await page.getByRole('tab', {name:/^消息.*90$/}).waitFor();
   await page.getByRole('button', { name: '下一页会话', exact: true }).click();
   await page.getByText('分页会话 20', { exact: true }).waitFor();
-  await page.getByRole('tab', {name:'消息 90',exact:true}).waitFor();
+  await page.getByRole('tab', {name:/^消息.*90$/}).waitFor();
   assert.equal(await page.getByText('分页会话 0', { exact: true }).count(), 0);
   await page.getByRole('button', { name: '下一页会话', exact: true }).click();
   await page.getByText('分页会话 40', { exact: true }).waitFor();
@@ -260,9 +266,9 @@ for (const kind of ["loading", "offline", "failure"]) {
   test(`${kind} inbox always leaves a way back and cannot enter an invisible composer`, async t => {
     const page = await openScreen(t);
     await page.evaluate(kind => (window as any).fixture.update({ kind, seed: { participantName: "王明" } }), kind);
-    await page.getByRole("button", { name: "返回", exact: true }).waitFor();
+    await page.getByRole("button", { name: "首页", exact: true }).waitFor();
     assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
-    await page.getByRole("button", { name: "返回", exact: true }).click();
+    await page.getByRole("button", { name: "首页", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["back"]);
   });
 }

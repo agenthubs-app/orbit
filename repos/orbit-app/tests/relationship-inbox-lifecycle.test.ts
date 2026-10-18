@@ -63,7 +63,7 @@ export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseR
 export const useLocalSearchParams = () => { observe(); return state.typedDetail ? {id:"inbox:one"} : state.detail ? { id: state.conversationId } : state.seed; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => state.detail ? "/inbox/" + encodeURIComponent(state.conversationId) : "/inbox";
-export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
+export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, setParams() {} });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
@@ -76,6 +76,7 @@ export const measureAppPerformance = async (input, work) => { const result = awa
 export const markAppPerformance = sample => state.measurements.push(sample);
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
@@ -106,7 +107,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
   if (patch.clock) await p.clock.install();
-  await p.evaluate(patch => { (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script }); await settle(p); return p;
+  await p.evaluate(patch => { (window as any).global = window; (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script }); await settle(p); return p;
 }
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
@@ -150,9 +151,9 @@ for (const detail of [false, true]) {
   test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
     const p = await open(t, { detail, holdReads: true });
     const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
-    // List: conversation summaries, unread summary and the typed inbox. The
+    // List: conversation summaries, unread summary, typed inbox and unified summary. The
     // legacy /api/notifications and relationship-signal reads were retired (fc0569649).
-    assert.equal(oldCount, detail ? 2 : 3);
+    assert.equal(oldCount, detail ? 2 : 4);
     await update(p, { actor: "actor:two" });
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
     await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
@@ -398,7 +399,7 @@ for (const detail of [false, true]) {
     await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-    const count = detail ? 2 : 3;
+    const count = detail ? 2 : 4;
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
@@ -409,9 +410,9 @@ for (const detail of [false, true]) {
   test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
     const p = await open(t, { detail });
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 8);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 8);
   });
 
   test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
@@ -419,9 +420,9 @@ for (const detail of [false, true]) {
     await update(p, { focused: false });
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 3);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 4);
     await update(p, { focused: true });
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 8);
     assert.match(await p.locator("body").innerText(), /已有消息/u);
   });
 }
@@ -658,7 +659,7 @@ test('typed inbox source-only navigation never manufactures a task and account c
 });
 test('typed detail retries an uncertain action with the same key and rejects an old-account receipt',async t=>{
  const p=await open(t,{typedInbox:typedPage,typedDetail:true});
- await p.getByRole('button',{name:'标为已读',exact:true}).click();await settle(p);
+ await p.waitForFunction(() => (window as any).fixture.requests.some((request:any) => request.method === 'POST'));await settle(p);
  const first=(await writes(p))[0]!;
  await p.evaluate(()=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),503);});await settle(p);
  await p.getByRole('button',{name:'重试操作',exact:true}).click();await settle(p);assert.deepEqual((await writes(p))[1]?.body,first.body);
@@ -680,7 +681,7 @@ test('typed inbox keeps the server unread total for an unrecognized item and off
 test('typed inbox filter tabs expose which one is selected', async t => {
  const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
  const selected=async()=>p.evaluate(()=>[...document.querySelectorAll('[role="tab"][aria-selected="true"]')].map(el=>(el.textContent||'').trim()));
- assert.ok((await selected()).includes('全部'),'the default filter is announced as selected');
+ assert.ok((await selected()).includes('全部'),`the default filter is announced as selected: ${JSON.stringify(await selected())}`);
  await p.getByRole('tab',{name:'提醒',exact:true}).click();await settle(p);
  assert.equal(await p.getByRole('tab',{name:'提醒',exact:true}).getAttribute('aria-selected'),'true');
  assert.equal(await p.getByRole('tab',{name:'全部',exact:true}).getAttribute('aria-selected'),'false');
