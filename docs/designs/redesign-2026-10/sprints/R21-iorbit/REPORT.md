@@ -1,6 +1,6 @@
 # R21 iOrbit · E 线执行报告
 
-状态：E 线已实现 R21 的本端主链，但 Web/App 全量与像素门禁仍未全部通过；SC-11/12 依赖 B 的 inbox 服务与 Web 选中深链，SC-13/14 的左侧抽屉/正式 token 依赖 A。原生截图链已恢复，逐图差异和余项如下。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`、`run-02/`、`run-03/`、`run-04/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
+状态：E 线已实现 R21 的本端主链，但 Web/App 全量与像素门禁仍未全部通过；SC-11/12 依赖 B 的 inbox 服务与 Web 选中深链，SC-13/14 的左侧抽屉/正式 token 依赖 A。原生截图链已恢复，逐图差异和余项如下。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`、`run-02/`、`run-03/`、`run-04/`、`run-05/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
 
 ## 基线与提交
 
@@ -14,7 +14,20 @@
 
 - 按主会话要求在干净的 `line-e` 执行 `git pull --rebase origin redesign`，将 50 个本线提交重放到 `d8e6dafb7`。冲突只有两处：Web canonical actor 测试同时保留上游个人日程 stub、本线 live `IOrbit2026` 与 demo `IOrbitShell` stub（重放提交 `0169d93dd`）；App `sync-coordinator.ts` 同时保留 D 线 `isOfflineRelationshipFollowupMutation` 与 E 线 AI 会话 outbox 解析/操作（重放提交 `e987931d1`）。没有跳过提交；冲突文件无残留标记。
 - 定向回归：App 离线会话与 task/follow-up outbox 23/23，coordinator lease 20/20；Web canonical actor 与 agent 路由 40/40，均 exit 0。日志在 `run-04/app-rebase-focused.log`、`app-sync-coordinator-lease.log`、`web-rebase-focused.log`。
-- 重放后的 App `npm run typecheck`、Web `npm run typecheck:app` 均 exit 0，经 `heavy.sh e` 运行；日志在 `run-04/app-typecheck.log` 和 `web-typecheck.log`。本轮按主会话范围只做冲突交汇点与两端类型检查；下文的全量测试和 Web 六图/App 五图像素结论是 rebase 前证据，**未作为新基底的门禁通过结果**。像素收口另排一轮，本轮未启动服务、Metro 或模拟器。
+- 重放后的 App `npm run typecheck`、Web `npm run typecheck:app` 均 exit 0，经 `heavy.sh e` 运行；日志在 `run-04/app-typecheck.log` 和 `web-typecheck.log`。该轮按主会话范围只做冲突交汇点与两端类型检查；`run-03/` 的全量测试和 Web 六图/App 五图像素结论是 rebase 前证据，**未作为新基底的门禁通过结果**。像素收口另排一轮，该轮未启动服务、Metro 或模拟器。
+
+## 2026-10-19 REVIEW 修复与同基底复核
+
+- 在干净的 `line-e` 上 `git pull --rebase origin redesign`，快进到 `382265a47` 后阅读 `REVIEW.md`。本轮只修 REVIEW 的四项代码问题，按路径分别提交：`5891fde62` 修离线 PATCH ACK 顶层字段污染和历史消失；`b582ec11b` 修在线全文搜索失败时的静默本地回退，增加错误与重试，明确离线才展示标旧镜像；`7e283c30e` 修 App 会话列表响应宽进与逐项跳过坏记录，`2a6a99226` 保持契约副本同步，并让服务端写出继续逐项校验；`27925a50f` 让两端 DELETE 带组织 `expectedRevision`，PostgreSQL 在事务内持有 actor 组织锁后核对版本，陈旧删除回 409 `CONFLICT`，App 保留历史并提示。请求体仍严格校验。五个提交均含规定的 Co-Authored-By trailer，未推送。
+- 先红后绿的定向证据在 `run-05/`：ACK → 镜像读取 11/11；在线搜索浏览器整文件 10/10；响应 schema 6/6，契约同步 6/6、快照检查 exit 0；DELETE 的 App API/outbox 10/10、App 起始页整文件 15/15、Web 路由 8/8、Web 历史 15/15，隔离 PostgreSQL 组织 CAS 1/1、消息分页删除 1/1。定向 PostgreSQL 明确使用本机 `orbit_line_e_test`，未连 Neon/生产。
+- 两端同基底全量均经 `heavy.sh e` 执行。以下「新失败」按测试名称比较 `run-05/{app,web}-{baseline,final}-full.log`，对照文件为 `run-05/{app,web}-failure-comparison.json`；新增测试改变总数，不以总失败数单独推断回归。
+
+| 端 | 干净基线 `382265a47` | 修复后 `27925a50f` | 新失败名称 | 门禁 |
+| --- | --- | --- | --- | --- |
+| App | 3,155 项：通过 3,140、失败 13、取消 0、跳过 2，exit 1 | 3,160 项：通过 3,146、失败 12、取消 0、跳过 2，exit 1 | 0；基线任务界面超时本次通过 | **未过**，仍有 12 项既有失败 |
+| Web | 7,662 项：通过 6,637、失败 16、取消 3、跳过 1,006，exit 1 | 7,662 项：通过 6,640、失败 16、取消 0、跳过 1,006，exit 1 | 0；基线 3 项 PostgreSQL 超时/取消本次通过 | **未过**，仍有 16 项既有失败 |
+
+- 当前提交的 App `npm run typecheck` 与 Web `npm run typecheck:app` 均 exit 0，日志 `run-05/app-final-typecheck.log`、`web-final-typecheck.log`。本轮未重新运行 Web 六图/App 五图像素、生产构建或原生编译；SC-13/14 的 `run-03/` 未过结果仍有效，不能写成当前基底的通过证据。未启动服务、Metro 或模拟器。
 
 ## SC 对照
 
@@ -22,8 +35,8 @@
 | --- | --- | --- |
 | 01 App 全屏 | `/ai` 用 `AppScreen inset="kit"` 和新起始页，≡/✕、单行输入、左缘手势、历史入口已接；浏览器窄屏 320px、字体放大 1.8 倍下标题与输入不越界 1/1；路由仍保留原会话 controller。签名 iPhone 16e Simulator 登录后，AX 实测起始页、历史抽屉、本人存储会话导航；历史首读超时后「Retry」恢复。原生浅深截图已由比较脚本捕获并逐板对照。 | 像素门禁尚未通过、返回焦点链尚未验；A 的 FullDrawer 只从右侧进入。 |
 | 02 Web 起始 | 登录后 1440/1024/390 浅深、日文布局实拍；有本人历史的宽屏默认展开左栏，未登录重定向 `/app/account/login?next=%2Fapp%2Fagent`。六视图正式像素对比在 `run-03/web-pixel-final/`，均为有效截图；起始 W-R21-03 raw 0.0599、20 带超阈。 | 起始页正式像素门禁未过；目前 QA actor 内容及字形/几何与画板混合不符，逐带见下表。 |
-| 03 历史读搜 | 本人分页、标题/8,000 字后正文命中和 actor 隔离有定向测试；Web/App 历史搜索、东京分组、App 离线副本标旧已接。App 离线改名/置顶会覆盖本地镜像，删除会隐藏待上传会话；重连按冻结请求上传并将回执合入镜像。真实 SQLite + coordinator 的 actor 隔离、重连上传、冲突/丢弃有定向测试；App 冻结请求 → 实际 Web handler → 本人列表回读的置顶/改名/删除内存集成测试 3/3。 | 两台真实设备的离线/跨设备操作链及多页录屏仍待验；测试替身不冒充真机。 |
-| 04 历史操作 | 服务端事务最多 5 个置顶，第 6 个 HTTP 409 `PIN_LIMIT`；App 解码/提示；版本冲突仍 `CONFLICT`；服务端 5 秒 token 撤销。Web/App 改名、置顶、删除/撤销视图已接；两端页内撤销控件按服务端 `undoUntil` 失效。App 离线删除进 outbox，创建后延迟 5 秒上传；此期间本机可撤销未上传请求，冲突可见并可丢弃。定向测试覆盖冻结请求、PIN_LIMIT、ACK 与本机撤销。两个同 actor 本机浏览器上下文：旧 revision 改名得 409 `CONFLICT`，另一端回读新标题；A 删除/B 5 秒内恢复、A 回读恢复，日志在 `manual/two-client-session-{cas,undo}.log`。 | 真正两个设备实操和 b4/b11 像素证据未完；App kit Toast 的在线撤销按固定 5 秒自收到回执展示，迟到回执时可能晚于服务端期限，点击仍由服务端拒绝；A 需提供截至绝对时间的 Toast 能力。 |
+| 03 历史读搜 | 本人分页、标题/8,000 字后正文命中和 actor 隔离有定向测试；Web/App 历史搜索、东京分组、App 离线副本标旧已接。App 在线全文搜索失败现在显示错误与重试，不再展示摘要镜像的伪完整命中；会话列表响应丢弃未来字段和单条坏记录。App 离线改名/置顶会覆盖本地镜像，删除会隐藏待上传会话；重连 ACK 仅更新 `organization`，历史仍可读。真实 SQLite + coordinator 的 actor 隔离、重连上传、冲突/丢弃有定向测试；App 冻结请求 → 实际 Web handler → 本人列表回读的置顶/改名/删除内存集成测试 3/3。 | 两台真实设备的离线/跨设备操作链及多页录屏仍待验；测试替身不冒充真机。 |
+| 04 历史操作 | 服务端事务最多 5 个置顶，第 6 个 HTTP 409 `PIN_LIMIT`；App 解码/提示；版本冲突仍 `CONFLICT`；服务端 5 秒 token 撤销。Web/App 改名、置顶、删除/撤销视图已接；两端页内撤销控件按服务端 `undoUntil` 失效。App 离线删除进 outbox，创建后延迟 5 秒上传；此期间本机可撤销未上传请求。现在 DELETE 带组织版本前提，陈旧版回 409，App 保留镜像行并提示；PostgreSQL 事务核对与 App/Web 路由有定向测试。两个同 actor 本机浏览器上下文：旧 revision 改名得 409 `CONFLICT`，另一端回读新标题；A 删除/B 5 秒内恢复、A 回读恢复，日志在 `manual/two-client-session-{cas,undo}.log`。 | 真正两个设备实操和 b4/b11 像素证据未完；App kit Toast 的在线撤销按固定 5 秒自收到回执展示，迟到回执时可能晚于服务端期限，点击仍由服务端拒绝；A 需提供截至绝对时间的 Toast 能力。 |
 | 05 90 日 | 东京日 89/90/91、活动变更、置顶/解除、他人隔离、幂等测试通过。本机 `orbit_line_e_test` 执行两轮：首轮扫描 4/删除 `r21-day92`，次轮扫描 3/删除 0；之前 `r21-day91` 与消息软删，day89/day90/pinned/他人保持 active。生产调度未启用。 | 生产任务属于单独授权。 |
 | 06 会话中 | Web/App 停止与继续、可靠请求重试和单击防重入已接；Web 停止后迟到的完整响应不覆盖状态；建议卡直接发送，手工双击拦截见 1 个 POST；App 保留联系人 @ picker 和来源/草稿卡。定向测试以假的 HTTP 429 模型响应模拟额度耗尽：同一 request ID 重放，两次发送仅一次 provider HTTP 尝试（`run-02/targeted-quota-provider-429.log`）。两端新视图没有语音入口。 | 真流式与跨设备回执依 RD-33 推迟；实际配额服务耗尽链和 App 原生录屏仍待验。 |
 | 07 Web pageContext | 仅允许 `/app/contacts` 的行业筛选，服务端按 actor 重算 count 并校验；开关默认关、一次发送后复位。实抓关闭时 POST 无字段，开启时含 `route=/app/contacts`、行业筛选和 `count=3`，双击只 1 POST；捕获在 `manual/page-context-capture.json`。延迟结果数请求在新建会话后返回的竞态已修：单元测试先红后绿 4/4；生产构建浏览器演练延迟摘要、新建会话后截获发送，证实不含 `pageContext`（`run-03/context-race-probe.log`，无 AI 调用）。 | 其他列表筛选未列入 allowlist；b4 #54 像素门禁未完。 |
@@ -65,7 +78,7 @@
 
 - 定向：Web 会话/组织/搜索 50/50、App 解码 4/4、Web 搜索/置顶 27/27、PostgreSQL 摘要全文 1/1 与并发置顶 1/1、Web 停止/聊天 19/19、App 会话 22/22、Web 实体草稿和 retention 10/10、App 草稿 9/9、90 日服务 1/1。App 历史分页、App 全局搜索、Web 上下文等定向测试也通过；具体日志在证据目录。
 - 本机 PostgreSQL 清理首轮非零、次轮 0；查询 `orbit_records` 显示被删会话与消息 `deleted`，其他本人/他人记录 `active`。不涉及生产配置。
-- App 离线历史编辑：冻结 PATCH/DELETE 请求、镜像覆盖、5 秒本机删除撤销、真实 SQLite coordinator 的 actor/镜像校验与重连上传、409 `PIN_LIMIT` 可见冲突和丢弃操作均先红后绿；定向测试 21/21，加上起始页 pending/discard 渲染 7/7。该实现本轮重放为 `e987931d1`，App typecheck exit 0；线上 DELETE 仍按 actor 校验但不接受 `expectedRevision`，因此离线排队期间另一端修改同一会话时，删除不会像 PATCH 那样报版本冲突，需在下一轮补服务端 CAS 或主会话明确删除语义。
+- App 离线历史编辑：冻结 PATCH/DELETE 请求、镜像覆盖、5 秒本机删除撤销、真实 SQLite coordinator 的 actor/镜像校验与重连上传、409 `PIN_LIMIT` 可见冲突和丢弃操作均先红后绿；定向测试 21/21，加上起始页 pending/discard 渲染 7/7。该实现本轮重放为 `e987931d1`；`run-05/` 又补上 DELETE `expectedRevision` CAS、409 冲突保留镜像与在线提示，类型检查和同基底全量结果见上节。真实双设备离线时序尚未实测。
 - 收口 App 全量首轮 `run-03/app-full-final.log` 为 3,135 项中通过 3,102、失败 31、跳过 2。离线写入新增的 PATCH/DELETE 原生策略登记缺失是 E 引入失败，现已修复，读取面审计整文件 21/21（`run-03/app-offline-inventory-fixed.log`）。两份网络路径夹具漏 `queuedMutations`，修正后 App 工作区与 iOrbit 起始文件串行 61/61（`run-03/app-r21-fixture-fixed.log`）。另一份离线镜像夹具每次渲染都造新数组，导致队列刷新循环和输入/点击超时；让静态镜像引用稳定后整文件 10/10（`run-03/app-local-first-stable-fixture.log`）。个人资料与邀请码两个首轮失败在串行整文件 51/51 通过（`run-03/app-adjacent-serial-final.log`）。最终全量复跑结果另列；首轮失败不抹掉。
 - 修复后的 App 全量 `run-03/app-full-postfix.log`：3,135 项中通过 3,120、失败 12、取消 1、跳过 2，exit 1。全部 iOrbit 起始/历史/离线策略用例在全量中通过；剩余失败为既有加联系人相机/批量 9、旧 i18n 快照 1、邀请码提示层遮挡 1、加载时限断言 1，另有通知注册用例超时取消。邀请码整文件串行 51/51；通知注册和加载时限两文件串行 21/21（`run-03/app-adjacent-serial-final.log`、`app-extra-failures-serial.log`）。后两类与 iOrbit 无调用关联；全量仍按失败记录。App 最终 typecheck `run-03/app-typecheck-final.log` exit 0。
 - 收口 Web 全量 `run-03/web-full-final.log`：7,552 项中通过 6,554、失败 7、取消 1、跳过 990，exit 1。与 r3 相同的 6 项仍在 manifest P0 候选、名片合并、设计夹具检查、加联系人两例及全站按钮 ratchet；新增个人日程列表断言失败，临时 schema CLI 超过 120 秒取消。上述失败的测试与相关源码相对本轮基底 `6ea769085` 均无 E 线改动；当前 `origin/redesign` 已前进，不能拿移动的远端指针当作本轮改动基线。它们不属于新 iOrbit 通过证据，Web 全量门禁仍失败。
@@ -99,6 +112,6 @@ RD-33 已决定：kit/01-system 优先，Web demo 和旧 actions 本 Sprint 保�
 
 - E 线把 pageContext 范围收紧为本人联系人列表的行业筛选；其他页面未有可验证的筛选摘要契约，按服务端拒绝处理。历史抽屉在 Web 1200px 以下改用 R31 kit Drawer，宽屏保持本人历史侧栏；kit 目前从右侧进入，与 b4/b8 左侧抽屉板不同。
 - 待主会话协调 A 的左侧 FullDrawer、绝对截止时间 Toast 和正式 token，B 的 inbox 本人会话读取/Web 选中深链，D 的 `entity_draft` 入口；这些交付到位后重验对应 SC-04/09/11/12/13/14。生产任务与发布动作需另行授权。未收到上述交付前，不将相关 SC 记为完成。
-- 待主会话决定离线删除的并发语义：当前服务器 DELETE 校验 actor，但无 `expectedRevision` CAS；离线排队期间另一端若修改同一会话，重连删除会以删除优先。若产品要求改动冲突优先，下一轮须给 DELETE 增加版本前提并回传可处理的冲突。此项不影响已验的在线五秒服务端撤销，但阻止将跨设备离线删除记为完整验收。
+- 离线删除的并发语义已由主会话定为版本冲突优先，并在 `27925a50f` 实现；跨设备实操证据仍待下一轮，不将 SC-04 的真机链标为已验。
 
 SC-06 当前 Gemini provider 在 `features/orbit-ai/gemini-provider.ts` 使用 `stream: false`，Web/App 收到最终响应；App 尚无录音依赖。完整响应的停止和迟到抑制证据不能代替流式事件或按住录音。E 线 Next dev server（3700）与 Metro（8086）已停止，两端口无监听；`Orbit Line E` 模拟器已关机。未触碰 3000 端口。
