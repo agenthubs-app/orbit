@@ -222,11 +222,11 @@ export function TasksScreen() {
                 style={({ pressed }) => [styles.rowBody, pressed ? styles.pressed : null]}
               >
                 <Text
-                  style={[styles.rowTitle, item.status === "completed" ? styles.completedTitle : null]}
+                  style={[styles.rowTitle, item.status === "completed" ? styles.completedTitle : null, group.tone === "danger" && styles.danger]}
                 >
                   {item.title}
                 </Text>
-                <Text style={styles.rowDetail}>
+                <Text style={[styles.rowDetail, group.tone === "danger" && styles.danger]}>
                   {[item.categoryLabel, item.dateLabel, item.location].filter(Boolean).join(" · ")}
                 </Text>
                 {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}

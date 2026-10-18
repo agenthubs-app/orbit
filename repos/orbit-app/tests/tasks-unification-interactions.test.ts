@@ -88,7 +88,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(async () => { backends.get(page)?.release?.(); await page.unrouteAll({ behavior: "wait" }); await page.close(); assert.deepEqual(errors, []); });
   const repository = createTaskRepository({ store: createMemoryLiveRecordStore(), workspaceId: "test:c0022" });
   const service = createTaskService({ repository });
-  for (const task of tasks) await repository.save({ version: 1, task, activities: [] });
+  for (const task of tasks) await repository.save({ version: 1, task: patch.overdueTask && task.id === "task:0" ? { ...task, plannedDate: "2020-01-01" } : task, activities: [] });
   await repository.save({ version: 1, task: { ...tasks[0], id: "task:actor2", title: "其他账号的事项", ownerUserId: "other", accountId: "other" }, activities: [] });
   const control = { repository, service, failWrites: false, holdWrites: false, wrongReceipt: false } as NonNullable<ReturnType<typeof backends.get>>;
   backends.set(page, control);
@@ -152,6 +152,18 @@ test("actual list keeps 61 task IDs in four scope/status combinations without ca
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 1);
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+});
+
+test("an overdue task row uses the warning color without coloring ordinary rows", async t => {
+  const page = await open(t, { overdueTask: true });
+  await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).waitFor();
+  const overdue = page.getByText("已逾期", { exact: true });
+  await overdue.waitFor();
+  const warningColor = await overdue.locator("..").getByText("1", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const overdueColor = await page.getByText("事项 0", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const ordinaryColor = await page.getByText("事项 2", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  assert.equal(overdueColor, warningColor);
+  assert.notEqual(ordinaryColor, warningColor);
 });
 
 test("personal list tab reads the owned complement and never treats contact-linked work as personal", async t => {
