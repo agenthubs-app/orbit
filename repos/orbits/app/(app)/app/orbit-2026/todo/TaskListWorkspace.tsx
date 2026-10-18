@@ -65,6 +65,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
 
   function toggle(item: TaskRowView | TaskView) {
     void mutation.run(() => client.setCompleted(item.id, item.status !== "completed"), () => {
+      setOpenCursor(null); setDoneCursor(null);
       refresh();
       toast.success(t(item.status === "completed" ? taskCopy.taskListReopenedToast : taskCopy.taskListCompletedToast));
     }, "");
@@ -73,8 +74,14 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     if (!selectedId || detail.data?.id !== selectedId) return;
     const id = selectedId;
     const expectedUpdatedAt = detail.data.updatedAt;
-    void mutation.run(() => client.removeWithVersion(id, expectedUpdatedAt), () => {
-      setConfirmDelete(false); setSelectedId(null); open.refresh(); completed.refresh();
+    void mutation.run(async () => {
+      try { return await client.removeWithVersion(id, expectedUpdatedAt); }
+      catch (error) {
+        if (error instanceof TasksClientError && error.code === "CONFLICT") { setConfirmDelete(false); detail.refresh(); }
+        throw error;
+      }
+    }, () => {
+      setConfirmDelete(false); setSelectedId(null); setOpenCursor(null); setDoneCursor(null); open.refresh(); completed.refresh();
       toast.success(t(taskCopy.taskListDeleted));
     }, "");
   }
@@ -91,7 +98,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       <div className={styles.detailActions}>
         <Button label={t(detail.data.status === "completed" ? taskCopy.taskListReopen : taskCopy.todoDone).replace("{title}", detail.data.title)} disabled={mutation.busy} onClick={() => toggle(detail.data!)} />
         <a className={styles.editLink} href={detail.data.href}>{t(taskCopy.taskListEdit)}</a>
-        <Button label={t(taskCopy.taskListDelete)} aria-label={t(taskCopy.taskListDelete)} variant="dangerGhost" disabled={mutation.busy} onClick={() => setConfirmDelete(true)} />
+        <Button label={t(taskCopy.taskListDelete)} aria-label={t(taskCopy.taskListDelete)} variant="dangerGhost" disabled={mutation.busy || detail.loading || Boolean(detail.error)} onClick={() => setConfirmDelete(true)} />
       </div>
     </> : !selectedId ? <p className={styles.hint}>{t(taskCopy.taskListNoSelection)}</p> : null}
   </Card>;
@@ -144,7 +151,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       </section>
       {!inShell && !blocked ? <aside className={styles.inlineRail}>{rail}</aside> : null}
     </main>
-    <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(mutation.error ? taskCopy.todoWriteFailed : taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
+    <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
     <Modal open={adding} title={t(taskCopy.taskListAdd)} onClose={() => { if (!mutation.busy) setAdding(false); }}>
       <form className={styles.addForm} onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; void mutation.run(() => client.create(draft, date), () => { setDraft(""); setAdding(false); setFilter("all"); setOpenCursor(null); open.refresh(); toast.success(t(taskCopy.todoSaved)); }, ""); }}>
         <TextField label={t(taskCopy.todoTitle)} value={draft} onChange={event => setDraft(event.target.value)} disabled={mutation.busy} autoFocus />

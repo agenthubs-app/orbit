@@ -25,24 +25,31 @@ const fixture = `<div id="root"></div><script>
   ];
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
-    window.taskCalls.push({ path, method });
+    window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
     const stamp = "2026-10-17T00:00:00.000Z";
     if (path.startsWith("/api/tasks/page?")) {
       const query = new URL(path, location.href).searchParams;
       const status = query.get("status"), scope = query.get("scope"), search = query.get("query") || "";
       const items = window.taskRows.filter(row => row.status === status && row.title.includes(search) && (scope === "all" || (scope === "relationship") === (row.category === "relationship")));
-      return Response.json({ success: true, data: { actorId: "a", status, scope, query: search, items: items.map(row => ({
+      const start = Number(query.get("cursor") || 0), limit = Number(query.get("limit") || 30);
+      return Response.json({ success: true, data: { actorId: "a", status, scope, query: search, items: items.slice(start, start + limit).map(row => ({
         id: row.id, titlePreview: row.title, locationPreview: null, status: row.status, category: row.category, priority: "normal",
         plannedDate: "2026-10-17", dueAt: null, updatedAt: stamp, completedAt: row.status === "completed" ? stamp : null,
         relatedContact: null, relationship: row.category === "relationship",
       })), counts: { open: status === "open" ? items.length : 0, completed: status === "completed" ? items.length : 0 },
-        total: items.length, hasMore: false, nextCursor: null, asOf: stamp } });
+        total: items.length, hasMore: start + limit < items.length, nextCursor: start + limit < items.length ? String(start + limit) : null, asOf: stamp } });
     }
     const id = decodeURIComponent(path.slice("/api/tasks/".length));
     const row = window.taskRows.find(item => item.id === id);
     if (!row) return Response.json({ success: false, error: { code: "NOT_FOUND" } }, { status: 404 });
-    const task = { ...row, notes: "", accountId: "a", ownerUserId: "a", priority: "normal", plannedDate: "2026-10-17", updatedAt: stamp };
+    const task = { ...row, notes: "", accountId: "a", ownerUserId: "a", priority: "normal", plannedDate: "2026-10-17", updatedAt: row.updatedAt || stamp };
+    if (method === "PATCH") {
+      row.status = JSON.parse(init.body).action === "complete" ? "completed" : "open";
+      return Response.json({ success: true, data: { task: { ...task, status: row.status } } });
+    }
     if (method === "DELETE") {
+      if (window.forceDeleteConflictOnce) { row.updatedAt = "2026-10-17T00:00:01.000Z"; window.forceDeleteConflictOnce = false; }
+      if (JSON.parse(init.body).expectedUpdatedAt !== (row.updatedAt || stamp)) return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
       window.taskRows = window.taskRows.filter(item => item.id !== id);
       return Response.json({ success: true, data: { task } });
     }
@@ -96,4 +103,45 @@ test("arrow keys move task-list selection and focus without writing", async t =>
   await current.waitForFunction(() => document.querySelector('[aria-label="山本さんへ返信の詳細"]')?.getAttribute("aria-current") === "true");
   assert.equal(await first.evaluate(element => element === document.activeElement), true);
   assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method !== "GET").length, 0);
+});
+
+test("deleting the only row on a later page returns to remaining tasks rather than showing the global empty state", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).taskRows = Array.from({ length: 31 }, (_, index) => ({ id: `many-${index}`, title: `タスク ${index}`, status: "open", category: "work" })); });
+  await current.getByRole("radio", { name: "つながり" }).click();
+  await current.getByRole("radio", { name: "すべて" }).click();
+  await current.getByRole("button", { name: "次のページ" }).click();
+  await current.getByRole("button", { name: "タスク 30の詳細" }).click();
+  await current.getByRole("button", { name: "タスクを削除" }).click();
+  await current.getByRole("button", { name: "削除する" }).click();
+  await current.getByRole("button", { name: "タスク 0の詳細" }).waitFor();
+  assert.equal(await current.getByText("タスクはまだありません", { exact: true }).count(), 0);
+});
+
+test("completing the only open row on a later page returns to remaining open tasks", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).taskRows = Array.from({ length: 31 }, (_, index) => ({ id: `many-${index}`, title: `タスク ${index}`, status: "open", category: "work" })); });
+  await current.getByRole("radio", { name: "つながり" }).click();
+  await current.getByRole("radio", { name: "すべて" }).click();
+  await current.getByRole("button", { name: "次のページ" }).click();
+  await current.getByRole("checkbox", { name: "タスク 30を完了" }).click();
+  await current.getByRole("button", { name: "タスク 0の詳細" }).waitFor({ timeout: 5000 });
+  assert.equal(await current.getByText("タスクはまだありません", { exact: true }).count(), 0);
+});
+
+test("a stale delete closes confirmation, reloads the detail, and retries only with the new version", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).forceDeleteConflictOnce = true; });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "タスクを削除" }).click();
+  await current.getByRole("button", { name: "削除する" }).click();
+  await current.getByRole("alertdialog").waitFor({ state: "detached" });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor();
+  assert.equal(await current.getByRole("button", { name: "今日の資料の詳細" }).count(), 1, "a conflict keeps the task");
+  await current.getByRole("button", { name: "タスクを削除" }).click();
+  assert.equal(await current.getByRole("alertdialog").getByText("メモとやりとりは残ります。", { exact: true }).count(), 1);
+  await current.getByRole("button", { name: "削除する" }).click();
+  await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor({ state: "detached" });
+  const deletes = await current.evaluate(() => (window as any).taskCalls.filter((call: { method: string }) => call.method === "DELETE"));
+  assert.deepEqual(deletes.map((call: { body: { expectedUpdatedAt: string } }) => call.body.expectedUpdatedAt), ["2026-10-17T00:00:00.000Z", "2026-10-17T00:00:01.000Z"]);
 });
