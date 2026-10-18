@@ -2,7 +2,7 @@
 
 2026-10-18，C 线 `line-c`。本 Sprint 的入口、认证、帮助、异常与像素验收均未收口；以下只记录已验证的独立工作项，避免把局部测试误写成 SC 全通过。不推送、不触碰生产环境。
 
-2026-10-19 01:34 检查点：三份公开页 / 异常态画板草案以 `88424a08f` 单独提交，仍待主会话设计认可。C 线随后把 62 个提交无冲突 rebase 到 `origin/redesign` 的 `6ea769085`，再接入隔离原生重试报告；重试交接点 `715a8478a` 干净，ahead 63 / behind 0，`git diff --check` exit 0。该代码的 Web `typecheck:app` 和 App `typecheck` 均 exit 0；全量测试没有因 rebase 重跑，旧全量红色结果仍在下文。R18a 报告已写清 Metro `load-native` 阻断、非已证实的签名故障，原生 SC03–06 / 像素留待 DEFERRED；R18b 继续，不能据此关闭任何 UI 门禁。主会话需把 R18a DEFERRED 文案转入中央清单。
+2026-10-19 01:34 检查点：三份公开页 / 异常态画板草案以 `88424a08f` 单独提交，仍待主会话设计认可。C 线随后把 62 个提交无冲突 rebase 到 `origin/redesign` 的 `6ea769085`，再接入隔离原生重试报告；重试交接点 `715a8478a` 干净，ahead 63 / behind 0，`git diff --check` exit 0。该代码的 Web `typecheck:app` 和 App `typecheck` 均 exit 0；rebase 后 Web 版本接口 / 认证服务 / FAQ 目标测试 17/17，App 版本策略 / 读取 / FAQ / 认证 view-model 15/15。全量测试没有因 rebase 重跑，旧全量红色结果仍在下文。R18a 报告已写清 Metro `load-native` 阻断、非已证实的签名故障，原生 SC03–06 / 像素留待 DEFERRED；R18b 继续，不能据此关闭任何 UI 门禁。主会话需把 R18a DEFERRED 文案转入中央清单。
 
 ## 当前检查点
 
