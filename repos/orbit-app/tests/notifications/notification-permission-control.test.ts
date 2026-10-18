@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {changeNotificationOptIn} from '../../src/screens/settings/notifications/notification-permission-control';
+import {changeNotificationOptIn,effectiveNotificationOptIn} from '../../src/screens/settings/notifications/notification-permission-control';
+
+test('a stored opt-in does not display as active after OS permission is revoked',()=>{
+ assert.equal(effectiveNotificationOptIn(true,'denied'),false);
+ assert.equal(effectiveNotificationOptIn(true,'undetermined'),false);
+ assert.equal(effectiveNotificationOptIn(true,'granted'),true);
+});
 
 test('opt-in requests an undetermined OS permission before enabling registration',async()=>{
  const calls:string[]=[];

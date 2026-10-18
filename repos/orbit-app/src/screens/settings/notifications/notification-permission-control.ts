@@ -1,5 +1,7 @@
 type PermissionStatus='granted'|'denied'|'undetermined';
 
+export const effectiveNotificationOptIn=(stored:boolean,permission:PermissionStatus)=>stored&&permission==='granted';
+
 export async function changeNotificationOptIn(enabled:boolean,adapter:{
  getPermission:()=>Promise<PermissionStatus>;
  requestPermission:()=>Promise<PermissionStatus>;

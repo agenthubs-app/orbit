@@ -7,7 +7,7 @@ import {useOrbitTheme} from '../../../design/theme';
 import {useOrbitApiClient} from '../../../hooks/useOrbitApiClient';
 import {useOrbitLocale} from '../../../i18n/OrbitLocaleContext';
 import {isPushNotificationsOptedIn,revokeRegisteredPushDevice,setPushNotificationsOptIn} from '../../../notifications/push-device-session';
-import {changeNotificationOptIn} from './notification-permission-control';
+import {changeNotificationOptIn,effectiveNotificationOptIn} from './notification-permission-control';
 
 export function PushPermissionSettings(){
  const auth=useOrbitAuthSession();
@@ -24,7 +24,8 @@ function ScopedPushPermissionSettings(){
   const refresh=async()=>{
    try{
     const [opted,result]=await Promise.all([isPushNotificationsOptedIn(),Notifications.getPermissionsAsync()]);
-    if(live.current){setOptedIn(opted);setPermission(result.status==='granted'?'granted':result.status==='denied'?'denied':'undetermined');setError(false);}
+    const status=result.status==='granted'?'granted':result.status==='denied'?'denied':'undetermined';
+    if(live.current&&!lock.current){setOptedIn(effectiveNotificationOptIn(opted,status));setPermission(status);setError(false);}
    }catch{if(live.current)setError(true);}
   };
   void refresh();
