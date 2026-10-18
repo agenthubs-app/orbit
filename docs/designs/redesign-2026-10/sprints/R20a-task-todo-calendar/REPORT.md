@@ -2,9 +2,9 @@
 
 2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
 
-2026-10-19 独立 REVIEW の M3 対応：OAuth callback の交換処理が投げた例外文を公開 502 に返していた。内部情報を含む例外で HTTP 回帰を先に追加し、既存実装は **3 pass / 1 fail**、固定文言に修正後 **4/4 pass**。`6bed02f54` は callback handler とそのテストの 2 ファイルだけで、署名 state・`returnTo` の許可リスト・502 status は変更していない。現行全量や pixel の合格は示さず、D の他の REVIEW 指摘も OPEN。
+2026-10-19 独立 REVIEW の M3 対応：OAuth callback の交換処理が投げた例外文を公開 502 に返していた。内部情報を含む例外で HTTP 回帰を先に追加し、既存実装は **3 pass / 1 fail**、固定文言に修正後 **4/4 pass**。`9e3d3bbe0` は callback handler とそのテストの 2 ファイルだけで、署名 state・`returnTo` の許可リスト・502 status は変更していない。現行全量や pixel の合格は示さず、D の他の REVIEW 指摘も OPEN。
 
-同 REVIEW の M4 対応：App と Web の task-page **応答** schema は未知の追加フィールドを全 5 階層で拒否していた。両端の回帰を先に追加してそれぞれ 1 件 RED、`3f3188b4f` で応答側だけ余分なフィールドを読み飛ばすようにした。App **2/2**、Web 応答 / HTTP **5/5**、App `typecheck` と Web `typecheck:app` は exit0。未知の task status はなお拒否し、API 入力に使う日付窓 schema の `.strict()` も残した。Web 全範囲 typecheck は本修正後に未実行、全量・実機・pixel は引き続き OPEN。
+同 REVIEW の M4 対応：App と Web の task-page **応答** schema は未知の追加フィールドを全 5 階層で拒否していた。両端の回帰を先に追加してそれぞれ 1 件 RED、`32e7390c2` で応答側だけ余分なフィールドを読み飛ばすようにした。App **2/2**、Web 応答 / HTTP **5/5**、App `typecheck` と Web `typecheck:app` は exit0。未知の task status はなお拒否し、API 入力に使う日付窓 schema の `.strict()` も残した。Web 全範囲 typecheck は本修正後に未実行、全量・実機・pixel は引き続き OPEN。
 
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
 
