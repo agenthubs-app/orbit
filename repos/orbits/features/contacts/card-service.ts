@@ -2,7 +2,7 @@ import { resolveModuleMode } from "../../shared/services/module-mode";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { AppError } from "../../shared/errors/app-error";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
-import { createPostgresContactCardReader, GOAL_RELATED_IDS_LIMIT, INVITE_LINKED_IDS_LIMIT } from "./storage/contact-list-postgres-reader";
+import { createPostgresContactCardReader, GOAL_RELATED_IDS_LIMIT, GOAL_RELATED_READ_IDS_LIMIT, INVITE_LINKED_IDS_LIMIT } from "./storage/contact-list-postgres-reader";
 import type { ContactsListSearchFilterInput } from "./contract";
 
 export type ContactCardService = ReturnType<typeof createPostgresContactCardReader>;
@@ -49,6 +49,18 @@ export function boundedGoalRelatedIds(ids: readonly string[]): { ids: string[]; 
   return { ids: unique.slice(0, GOAL_RELATED_IDS_LIMIT), truncated: unique.length > GOAL_RELATED_IDS_LIMIT };
 }
 
+/**
+ * R11a REVIEW M2: goal-related ids for the server's own reads (list, summary, tabs, density, filters) — the whole set,
+ * sorted and de-duplicated. Only an absurd input beyond GOAL_RELATED_READ_IDS_LIMIT is cut, and that is logged.
+ */
+export function internalGoalRelatedIds(ids: readonly string[]): string[] {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.trim() !== ""))].sort();
+  if (unique.length > GOAL_RELATED_READ_IDS_LIMIT) {
+    console.warn(JSON.stringify({ event: "contact_network_goal_related_truncated", count: unique.length, limit: GOAL_RELATED_READ_IDS_LIMIT }));
+  }
+  return unique.slice(0, GOAL_RELATED_READ_IDS_LIMIT);
+}
+
 /** Product loaders and HTTP share this bounded reader; no legacy graph fallback. */
 export function createContactCardService(actor: ContactCardActor, merge: ContactNetworkMergeSources = defaultContactNetworkMergeSources): ContactCardService {
   if (resolveModuleMode() !== "live") throw new AppError("SERVICE_UNAVAILABLE", "Contact pages require a live provider.");
@@ -73,7 +85,8 @@ export function wrapContactCardReader(reader: ContactCardService, actor: Contact
   };
   const merged = async (query: ContactsListSearchFilterInput, actorId: string): Promise<ContactsListSearchFilterInput> => {
     const [goal, invite] = await Promise.all([merge.goalRelatedIds(actorId), merge.inviteLinkedIds(actorId)]);
-    return { ...query, goalRelatedContactIds: boundedGoalRelatedIds(goal).ids,
+    // R11a REVIEW M2：内部读取用完整集合（页签 / 浓度 / 筛选不漏人）；500 上限只用于公开的 goal-related-ids 接口。
+    return { ...query, goalRelatedContactIds: internalGoalRelatedIds(goal),
       inviteLinkedContactIds: [...new Set(invite)].slice(0, INVITE_LINKED_IDS_LIMIT) };
   };
   return {

@@ -298,6 +298,8 @@ function sortTimestampSql(value: string): string {
 // ($4) are read, so an owner-less or foreign source never reaches a device.
 /** R11a：一次请求最多带这么多「计划相关」id（GET /api/contacts/goal-related-ids 同一上限）。 */
 export const GOAL_RELATED_IDS_LIMIT = 500;
+/** R11a REVIEW M2：服务端内部读取（列表 / 汇总 / 分析）带的计划相关 id 上限——远大于一个人的计划名单，只防异常输入。 */
+export const GOAL_RELATED_READ_IDS_LIMIT = 10_000;
 /** R11a：招待连接的人一次最多带这么多（远大于一个人的生效连接数）。 */
 export const INVITE_LINKED_IDS_LIMIT = 2000;
 export const CONTACT_MET_FILTERS = ["event", "referral", "visit", "other"] as const;
@@ -321,7 +323,7 @@ function validNetworkFilters(input: ContactsListSearchFilterInput): boolean {
   return bounded(selectedValues(input.industryFilters)) && bounded(selectedValues(input.regionFilters))
     && selectedValues(input.metFilters).every((value) => (CONTACT_MET_FILTERS as readonly string[]).includes(value))
     && selectedValues(input.densityFilters).every((value) => (CONTACT_DENSITY_FILTERS as readonly string[]).includes(value))
-    && (input.goalRelatedContactIds?.length ?? 0) <= GOAL_RELATED_IDS_LIMIT
+    && (input.goalRelatedContactIds?.length ?? 0) <= GOAL_RELATED_READ_IDS_LIMIT
     && (input.inviteLinkedContactIds?.length ?? 0) <= INVITE_LINKED_IDS_LIMIT;
 }
 
