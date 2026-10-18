@@ -1,6 +1,12 @@
 # R20b — 実装記録（進行中）
 
-2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。`origin/redesign` への push や rebase は行わない（統合後に rebase する主会話指定）。
+2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。20:30 のチェックポイントで `origin/redesign` に rebase した。push はしていない。
+
+## 20:30 統合チェックポイント
+
+`line-d` の clean `5e0419cdc` を `origin/redesign 324218dda` へ rebase し、HEAD は `c06741285` になった。157 commits の replay で止まったのは `add-contact-screens.test.tsx` の dialog entrance wait 一箇所だけ。上流 `936a7289d` が同じ待機を実装済みなので、その実装を残し、D 側の重複を入れなかった。rebase は exit0、直後の `git diff --check` は exit0。R20a / R20b の product source をこの衝突解消で変更していない。
+
+rebase 後の軽量確認は Web notes route/service と task planLink route/service **29/29 pass**、App notes view-model/mirror/search と旧 local-first 画面 **28/28 pass**（各 `node --import tsx --test …`、exit0）。App の render test は `notes-native:fixture` の `useSafeAreaInsets` 未定義 export warning を出した。今回の 28 件に失敗はないが、warning は消していない。これは新しい upstream 上での定向結果で、rebase 前の full 40/11 failures、typecheck exit0、native/pixel 未完を上書きしない。新 upstream の full/typecheck は別に再実行する。
 
 ## 18:22 主会話継続の検証キュー（結果待ち）
 
