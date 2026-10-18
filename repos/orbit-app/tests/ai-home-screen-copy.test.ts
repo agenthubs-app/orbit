@@ -6,7 +6,7 @@ import test from "node:test";
 const repoRoot = new URL("..", import.meta.url).pathname;
 const view = readFileSync(join(repoRoot, "src/screens/ai/IOrbitStartView.tsx"), "utf8");
 const controller = readFileSync(join(repoRoot, "src/screens/ai/AiScreen.tsx"), "utf8");
-const japanese = readFileSync(join(repoRoot, "src/i18n/ja/iorbitR21.ts"), "utf8");
+const japanese = readFileSync(join(repoRoot, "src/i18n/iorbit-r21/ja.ts"), "utf8");
 
 test("R21 App start owns one kit screen with a one-line full-screen header", () => {
   assert.match(view, /<AppScreen inset="kit"/u);

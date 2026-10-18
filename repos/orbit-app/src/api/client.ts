@@ -10,7 +10,7 @@ import {
   normalizeOrbitApiBaseUrl
 } from "./base-url";
 import { notifySessionExpired } from "./session-expiry";
-import { PIN_LIMIT_ERROR_MESSAGE } from "./copy/iorbit-r21-error";
+import { PIN_LIMIT_ERROR_MESSAGE } from "./iorbit-r21-error";
 
 export type FetchLike = (
   input: RequestInfo | URL,

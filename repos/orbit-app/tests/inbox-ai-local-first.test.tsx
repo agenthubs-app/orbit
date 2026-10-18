@@ -208,17 +208,17 @@ test("AI home: the session list comes from the device copy (pinned first) withou
   await page.getByText("东京投资人名单").first().waitFor();
   assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/ai/conversations/sessions")), [], "no session list read");
   const offline = await open(t, { screen: "ai", status: "stale" });
-  await offline.getByText(/^オフライン · .+時点の履歴$/).first().waitFor();
+  await offline.getByText(/^离线 · .+时的历史记录$/).first().waitFor();
   await offline.getByText("东京投资人名单").first().waitFor();
   await offline.getByRole("textbox").first().fill("明天见谁");
-  assert.equal(await offline.getByRole("button", { name: "送信" }).first().isDisabled(), true);
+  assert.equal(await offline.getByRole("button", { name: "发送" }).first().isDisabled(), true);
   assert.deepEqual(await fixtureValue(offline, "navigation"), [], "no conversation is started offline");
 });
 
 test("AI conversation offline: the opened session shows its device messages and the cached cards; sending needs the network", async (t) => {
   const cards = { turns: [{ sessionId: "s1", requestId: "request:1", userMessageId: "user:0", assistantMessageId: "assistant:request:1", status: "ready", artifacts: [CARD] }], truncated: false };
   const page = await open(t, { status: "stale", screen: "conversation", params: { id: "s1", source: "session" }, cards });
-  await page.getByText(/^オフライン · .+時点の会話$/).waitFor();
+  await page.getByText(/^离线 · .+时的会话$/).waitFor();
   await page.getByText("已列出 3 位东京投资人").waitFor();
   await page.getByText("本机缓存的候选人").waitFor();
   await page.getByText(/发送.* · 需要联网/).first().waitFor();
@@ -261,12 +261,12 @@ test("AI conversation online: the server page replaces the device copy and its c
 
 test("AI history search asks the server for full message text online and stays local offline (R21)", async (t) => {
   const page = await open(t, { screen: "ai" });
-  await page.getByRole("button", { name: "会話リスト" }).click();
-  await page.getByPlaceholder("タイトルと本文を検索").fill("投资人");
+  await page.getByRole("button", { name: "会话列表" }).click();
+  await page.getByPlaceholder("搜索标题和正文").fill("投资人");
   await page.waitForFunction(() => (window as any).fixture.requests.some((request: string) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")));
   const offline = await open(t, { screen: "ai", status: "stale" });
-  await offline.getByRole("button", { name: "会話リスト" }).click();
-  await offline.getByPlaceholder("タイトルと本文を検索").fill("投资人");
+  await offline.getByRole("button", { name: "会话列表" }).click();
+  await offline.getByPlaceholder("搜索标题和正文").fill("投资人");
   await offline.waitForTimeout(350);
   assert.deepEqual((await requests(offline)).filter((request) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")), []);
 });

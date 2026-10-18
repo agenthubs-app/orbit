@@ -32,8 +32,8 @@ test("app destinations live in a stack group without bottom tabs", () => {
 
 test("R21 iOrbit owns a full-screen header and leaves inbox navigation to the app shell", () => {
   assert.match(aiStartSource, /<AppScreen inset="kit"/u);
-  assert.match(aiStartSource, /accessibilityLabel="会話リスト"/u);
-  assert.match(aiStartSource, /accessibilityLabel="閉じる"/u);
+  assert.match(aiStartSource, /accessibilityLabel=\{copy\.conversations\}/u);
+  assert.match(aiStartSource, /accessibilityLabel=\{copy\.close\}/u);
   assert.doesNotMatch(aiStartSource, /drawerInboxDot|inboxBadge/u);
 });
 

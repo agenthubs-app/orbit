@@ -76,8 +76,8 @@ test("reading canvas uses the iOrbit full-screen header and shows the real conve
   const html = renderToHtml(<AiConversationScreen />);
   assert.match(html, /聊聊合作/u);
   assert.match(html, /可以先说说正在做的产品/u);
-  assert.match(html, /aria-label="会話リスト"/u);
-  assert.match(html, /aria-label="閉じる"/u);
+  assert.match(html, /aria-label="会话列表"/u);
+  assert.match(html, /aria-label="关闭"/u);
   assert.equal((html.match(/>iOrbit</gu) ?? []).length, 1);
   assert.doesNotMatch(html, />对话<|2026-09-06|>我</u);
 });
@@ -177,9 +177,9 @@ test("a draft deep link reopens its actor-scoped pending card in the selected se
   routeParams = { ...routeParams, draftId: "draft:other" };
   const otherDraft = renderToHtml(<AiConversationScreen />);
   assert.doesNotMatch(otherDraft, /确认创建Follow up with Sato/u);
-  assert.match(otherDraft, /この会話に確認待ちの下書きはありません/u);
+  assert.match(otherDraft, /此会话没有待确认的草稿/u);
   draftResource = { kind: "failure", error: { message: "unavailable" }, status: 503, refreshing: false, refresh() {} };
-  assert.match(renderToHtml(<AiConversationScreen />), /下書きを確認できません/u);
+  assert.match(renderToHtml(<AiConversationScreen />), /无法查看草稿，请重试/u);
 });
 
 test("same-kind record links are visibly distinct and unsupported links explain the boundary", () => {

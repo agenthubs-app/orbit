@@ -237,12 +237,12 @@ for (const scheme of ["light", "dark"] as const) {
 
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: R21 AI history keeps an unsent draft and fits the phone`, async t => {
-    const page = await open(t, "ai", scheme); const draft = page.getByRole("textbox", { name: "iOrbit に聞く", exact: true }); await draft.fill("先核对合作资料");
+    const page = await open(t, "ai", scheme); const draft = page.getByRole("textbox", { name: "询问 iOrbit", exact: true }); await draft.fill("先核对合作资料");
     await fits(draft);
-    await page.getByRole("button", { name: "会話リスト", exact: true }).click();
-    await fits(page.getByPlaceholder("タイトルと本文を検索").locator(".."));
+    await page.getByRole("button", { name: "会话列表", exact: true }).click();
+    await fits(page.getByPlaceholder("搜索标题和正文").locator(".."));
     await fits(page.getByRole("button", { name: "讨论合作时间", exact: true }).last());
-    await fits(page.getByRole("button", { name: "讨论合作时间 の操作", exact: true }));
+    await fits(page.getByRole("button", { name: "讨论合作时间的操作", exact: true }));
     await page.getByRole("button", { name: "关闭", exact: true }).last().click();
     assert.equal(await draft.inputValue(), "先核对合作资料"); await noWrites(page);
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-ai-${scheme}.png`, fullPage: true });
@@ -298,7 +298,7 @@ test("chat list and detail retain navigation, messages and a failed real deliver
 });
 test("iOrbit start offers four direct-send prompts without implicit writes", async t => {
   const page = await open(t, "ai");
-  await page.getByText("何をお手伝いしましょう？", { exact: true }).waitFor();
+  await page.getByText("有什么可以帮你？", { exact: true }).waitFor();
   for (const prompt of ["今天先处理哪些事？", "最近有哪些活动适合我？", "回看与某位人脉的讨论", "帮我规划新目标"]) {
     await page.getByRole("button", { name: prompt, exact: true }).waitFor();
   }
