@@ -22,7 +22,7 @@ export const network = {
   "network.density2": "Card level",
   "network.density3": "Relationship",
   "network.dailyHintBold": "One question a day",
-  "network.dailyHintRest": "fills the gaps bit by bit · it shows up in Home's \"Needs your call\"",
+  "network.dailyHintRest": " fills the gaps bit by bit · it shows up in Home's \"Needs your call\"",
   "network.goalCountLine": "Goal-related {goal} · +{added} this month",
   "network.sources": "Where they came from",
   "network.chipMeishi": "Card",

@@ -115,24 +115,24 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
           <TextField label={t("network.edit.company")} value={value.organization} onChangeText={(text) => set({ organization: text })} />
           <TextField label={t("network.edit.role")} value={value.role} onChangeText={(text) => set({ role: text })} />
           <View style={styles.fld}>
-            <UiText style={styles.lbl}>{t("network.edit.industrySeniority")}</UiText>
+            <UiText style={styles.fieldLabel}>{t("network.edit.industrySeniority")}</UiText>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("network.edit.industrySeniority")} onPress={() => setPickerOpen(true)} style={styles.pick} testID="network-edit-industry">
               <UiText style={[styles.pickText, styles.grow]} numberOfLines={1}>{pickLine}</UiText><Icon name="right" size={16} color={colors.ink3} />
             </UiPressable>
           </View>
           <View style={styles.fld}>
-            <UiText style={styles.lbl}>{t("network.edit.stage")}</UiText>
+            <UiText style={styles.fieldLabel}>{t("network.edit.stage")}</UiText>
             <Segmented accessibilityLabel={t("network.edit.stage")} value={value.status === "nurture" ? "nurture" : "active"} onChange={(status) => set({ status })}
               segments={[{ key: "active", label: t("network.stageActive") }, { key: "nurture", label: t("network.stageNurture") }]} />
           </View>
           <TextField label={t("network.edit.email")} value={value.email} onChangeText={(text) => set({ email: text })} keyboardType="email-address" autoCapitalize="none" />
           <TextField label={t("network.edit.phone")} value={value.phone} onChangeText={(text) => set({ phone: text })} keyboardType="phone-pad" />
           <View style={styles.fld}>
-            <UiText style={styles.lbl}>{t("network.edit.met")}</UiText>
+            <UiText style={styles.fieldLabel}>{t("network.edit.met")}</UiText>
             <View style={styles.pick}><UiText style={styles.pickText}>{met ?? t("network.edit.metUnknown")}</UiText></View>
           </View>
           <View style={styles.fld}>
-            <UiText style={styles.lbl}>{t("network.edit.tags")}</UiText>
+            <UiText style={styles.fieldLabel}>{t("network.edit.tags")}</UiText>
             <View style={styles.chips}>
               {value.tags.map((tag) => (
                 <UiPressable key={tag} accessibilityRole="button" accessibilityLabel={tag} onPress={() => set({ tags: value.tags.filter((item) => item !== tag) })}><Chip label={tag} tone="lav" /></UiPressable>
@@ -213,6 +213,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   form: { gap: 12 },
   fld: { gap: 6 },
   lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500" },
+  // Same as the TextField label above the text fields (picker / segmented / tag rows read as one form).
+  fieldLabel: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
   pick: { minHeight: 44, borderRadius: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 8 },
   pickText: { color: colors.ink, fontSize: 14 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },

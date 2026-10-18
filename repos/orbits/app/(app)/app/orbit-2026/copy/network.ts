@@ -25,7 +25,7 @@ export const networkCopy = {
   density2: { ja: "名刺レベル", zh: "名片级", en: "Card level", kind: "label" },
   density3: { ja: "関係まで", zh: "有关系", en: "Relationship", kind: "label" },
   dailyHintBold: { ja: "1日1問", zh: "每天一问", en: "One question a day", kind: "label" },
-  dailyHintRest: { ja: "で少しずつ補えます · ホームの「判断待ち」に出ます", zh: "可以一点点补上 · 出现在首页「待判断」", en: "fills the gaps bit by bit · it shows up in Home's \"Needs your call\"", kind: "label" },
+  dailyHintRest: { ja: "で少しずつ補えます · ホームの「判断待ち」に出ます", zh: "可以一点点补上 · 出现在首页「待判断」", en: " fills the gaps bit by bit · it shows up in Home's \"Needs your call\"", kind: "label" },
   goalCountLine: { ja: "目標に関係する人 {goal} · 今月 +{added}", zh: "与目标相关的人{goal} · 本月+{added}", en: "Goal-related {goal} · +{added} this month", kind: "label" },
   sources: { ja: "出どころ", zh: "来源", en: "Where they came from", kind: "label" },
   chipMeishi: { ja: "名刺", zh: "名片", en: "Card", kind: "chip" },
