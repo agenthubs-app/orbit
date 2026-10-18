@@ -10,15 +10,15 @@ import { networkAnalysisPeopleSchema } from "../../../../../shared/api-schema/ne
 import type { NetworkAnalysisDimension, NetworkAnalysisPeopleDTO, NetworkAnalysisPeopleSort, NetworkAnalysisPersonRow } from "../../../../../shared/contract/network-analysis-view";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Avatar, Icon, RetryCard, Segmented, Skeleton } from "../ui";
-import { SORT_KEY, bucketLabel, networkListHref, useAnalysisT, type AnalysisT } from "./analysis-labels";
+import { SORT_KEY, analysisListHref, bucketLabel, networkListHref, useAnalysisT, type AnalysisT } from "./analysis-labels";
 import styles from "./network-analysis.module.css";
 
 export interface DrillSelection { dimension: NetworkAnalysisDimension; bucketId: string }
 
 type State = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; data: NetworkAnalysisPeopleDTO; loadingMore: boolean };
 
-async function readPeople(selection: DrillSelection, sort: NetworkAnalysisPeopleSort | null, cursor: string | null, signal?: AbortSignal): Promise<NetworkAnalysisPeopleDTO> {
-  const params = new URLSearchParams({ dimension: selection.dimension, bucket: selection.bucketId, limit: "30" });
+async function readPeople(selection: DrillSelection, sort: NetworkAnalysisPeopleSort | null, cursor: string | null, limit: number, signal?: AbortSignal): Promise<NetworkAnalysisPeopleDTO> {
+  const params = new URLSearchParams({ dimension: selection.dimension, bucket: selection.bucketId, limit: String(limit) });
   if (sort) params.set("sort", sort);
   if (cursor) params.set("cursor", cursor);
   const response = await fetch(`/api/network/analysis/people?${params}`, { signal, cache: "no-store" });
@@ -27,7 +27,11 @@ async function readPeople(selection: DrillSelection, sort: NetworkAnalysisPeople
   return networkAnalysisPeopleSchema.parse(body.data) as NetworkAnalysisPeopleDTO;
 }
 
-export function usePeople(selection: DrillSelection | null) {
+/** The 1440 rail shows the first five (b5 #40), then the list button / the full page; the full page pages by 30. */
+export const RAIL_LIMIT = 5;
+const PAGE_LIMIT = 30;
+
+export function usePeople(selection: DrillSelection | null, limit: number = PAGE_LIMIT) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [sort, setSort] = useState<NetworkAnalysisPeopleSort | null>(null);
   const key = selection ? `${selection.dimension}:${selection.bucketId}` : "";
@@ -37,7 +41,7 @@ export function usePeople(selection: DrillSelection | null) {
     if (!selection) return () => undefined;
     const controller = new AbortController();
     setState({ kind: "loading" });
-    readPeople(selection, sort, null, controller.signal).then((data) => setState({ kind: "ready", data, loadingMore: false })).catch((error: unknown) => {
+    readPeople(selection, sort, null, limit, controller.signal).then((data) => setState({ kind: "ready", data, loadingMore: false })).catch((error: unknown) => {
       if ((error as { name?: string })?.name !== "AbortError") setState({ kind: "failed" });
     });
     return () => controller.abort();
@@ -47,7 +51,7 @@ export function usePeople(selection: DrillSelection | null) {
     if (!selection || state.kind !== "ready" || !state.data.nextCursor || state.loadingMore) return;
     const current = state.data;
     setState({ kind: "ready", data: current, loadingMore: true });
-    readPeople(selection, current.sort, current.nextCursor).then((next) => setState({ kind: "ready", data: { ...next, items: [...current.items, ...next.items] }, loadingMore: false }))
+    readPeople(selection, current.sort, current.nextCursor, limit).then((next) => setState({ kind: "ready", data: { ...next, items: [...current.items, ...next.items] }, loadingMore: false }))
       .catch(() => setState({ kind: "ready", data: current, loadingMore: false }));
   }, [selection, state]);
   return { state, sort, setSort, reload: load, more };
@@ -84,7 +88,7 @@ export function PersonCard({ person, onOpen }: { person: NetworkAnalysisPersonRo
 export function DrillList({ selection, compact, onOpenPerson, onTotal }: { selection: DrillSelection; compact: boolean; onOpenPerson: (id: string) => void; onTotal?: (total: number) => void }) {
   const t = useAnalysisT();
   const { language } = useOrbitLanguage();
-  const { state, setSort, reload, more } = usePeople(selection);
+  const { state, setSort, reload, more } = usePeople(selection, compact ? RAIL_LIMIT : PAGE_LIMIT);
   const label = bucketLabel(selection.dimension, selection.bucketId, t, language);
   const loadedTotal = state.kind === "ready" ? state.data.total : null;
   useEffect(() => { if (loadedTotal !== null) onTotal?.(loadedTotal); }, [loadedTotal, onTotal]);
@@ -112,11 +116,12 @@ export function DrillList({ selection, compact, onOpenPerson, onTotal }: { selec
         </div>
       ) : null}
       {sorts.length > 1 ? (
-        <Segmented variant="seg" wide label={t("sortLabel")} value={sorts.includes(data.sort) ? data.sort : sorts[0]!} onChange={(sort) => setSort(sort)}
+        <Segmented variant="seg" label={t("sortLabel")} value={sorts.includes(data.sort) ? data.sort : sorts[0]!} onChange={(sort) => setSort(sort)}
           segments={sorts.map((sort) => ({ key: sort, label: t(SORT_KEY[sort]) }))} />
       ) : null}
       {data.items.length === 0 ? <p className={styles.lbl}>{t("listEmpty")}</p> : data.items.map((person) => <PersonCard key={person.id} person={person} onOpen={onOpenPerson} />)}
-      {data.nextCursor ? <button type="button" className={`btn ${styles.btn} ${styles.btnBlock}`} disabled={state.loadingMore} onClick={more}>{t("more")}</button> : null}
+      {data.nextCursor && !compact ? <button type="button" className={`btn ${styles.btn} ${styles.btnBlock}`} disabled={state.loadingMore} onClick={more}>{t("more")}</button> : null}
+      {data.nextCursor && compact && !listHref ? <Link href={analysisListHref(selection.dimension, selection.bucketId)} className={`btn ${styles.btn} ${styles.btnBlock}`}>{t("more")}</Link> : null}
       {listHref && data.total > 0 ? (
         <Link href={listHref} className={`btn ${styles.btn} ${styles.btnBlock}`} data-analysis-open-list><Icon name="users" size={16} />{t("openInNetwork", { n: data.total })}</Link>
       ) : null}

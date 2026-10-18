@@ -47,13 +47,13 @@ function many286(): NetworkAnalysisRow[] {
     // 止まっている関係: 18 of the nurture people untouched for 30–62 days (average 46).
     const stalledIndex = i >= 120 && i < 138 ? i - 120 : -1;
     // 再会すべき人: 12 plan-related people untouched for 90+ days; 30 plan-related in all.
-    const goalRelated = (i >= 1 && i < 31) || i === 6;
+    const goalRelated = i < 31;
     const reconnect = [1, 3, 5, 6, 9, 11, 13, 15, 17, 19, 21, 23].includes(i);
     const lastTouch = reconnect ? 95 + (i % 40) : stalledIndex >= 0 ? 30 + ((stalledIndex * 7) % 33) : 1 + (i % 25);
     // Joiners: 9 manufacturing people this month (伸び), the rest spread over the past months.
     const added = i >= 105 && i < 114 ? 2 + (i % 5) : 40 + ((i * 13) % 300);
     // Board names: the finance list (#37 / #40) and the stalled card's 鈴木 / 中村 / 高田 (#35 / #41).
-    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 120 ? BOARD_PEOPLE[8] : i === 121 ? BOARD_PEOPLE[9] : i === 122 ? BOARD_PEOPLE[10] : undefined;
+    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 120 ? BOARD_PEOPLE[8] : i === 125 ? BOARD_PEOPLE[9] : i === 130 ? BOARD_PEOPLE[10] : undefined;
     const [name, organization, role] = named ?? [`名前 ${i + 1}`, `会社 ${(i % 40) + 1}`, "担当"];
     rows.push({
       id: `design-person-${String(i + 1).padStart(3, "0")}`, name, organization, role,

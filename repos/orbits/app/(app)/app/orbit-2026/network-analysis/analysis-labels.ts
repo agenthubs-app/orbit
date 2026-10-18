@@ -1,5 +1,3 @@
-"use client";
-
 // R11b 人脈分析（Web）: copy hook and the labels of buckets / sorts / months. Industry names come from the shared catalogue,
 // city names from R11a's 人脈 copy (same keys as the list's 絞り込み), so the analysis and the list say the same thing.
 import { useCallback } from "react";
