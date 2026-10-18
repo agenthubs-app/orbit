@@ -27,9 +27,10 @@ test("handwritten contact handoff asks after leaving and records one actor-scope
   await page.getByRole("button", { name: "手書きする" }).click();
   await page.getByRole("textbox", { name: "メッセージ本文" }).fill("こんにちは");
   await page.getByRole("button", { name: "閉じる" }).click();
-  await page.getByText("送りましたか？").waitFor();
+  await page.getByText("送りましたか？").waitFor({ timeout: 3_000 });
   await page.reload();
   await page.getByText("送りましたか？").waitFor();
+  await page.getByRole("button", { name: "はい" }).waitFor({ timeout: 3_000 });
   await page.getByRole("button", { name: "はい" }).click();
   await page.getByText("送りましたか？").waitFor({ state: "detached" });
   const requests = await requestsOf(page);
@@ -49,6 +50,7 @@ test("a task-linked encounter failure keeps one task completion and retries the 
   await page.getByRole("button", { name: "手書きする" }).click();
   await page.getByRole("textbox", { name: "メッセージ本文" }).fill("こんにちは");
   await page.getByRole("button", { name: "閉じる" }).click();
+  await page.getByText("送りましたか？").waitFor({ timeout: 3_000 });
   await page.getByRole("button", { name: "はい" }).click();
   await page.getByRole("button", { name: "記録をもう一度試す" }).waitFor();
   await page.getByRole("button", { name: "記録をもう一度試す" }).click();

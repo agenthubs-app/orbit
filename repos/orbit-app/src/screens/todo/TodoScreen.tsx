@@ -443,7 +443,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { void openFollowup(item); }}
       handoffFor={item => handoffRecords && !visibleManualDraft && auth.ready && auth.signedIn && server.ready
-        ? pendingTodoHandoff(handoffRecords, item, now.toISOString()) : null}
+        ? pendingTodoHandoff(handoffRecords, item, new Date().toISOString()) : null}
       orphanedHandoffs={handoffRecords && !visibleManualDraft && auth.ready && auth.signedIn && server.ready
         ? orphanedTodoHandoffs(handoffRecords, page.nextMoves.items) : []}
       onSentYes={item => { void confirmHandoff(item); }} onSentNotYet={item => { void dismissHandoff(item); }}
