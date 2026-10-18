@@ -210,6 +210,7 @@
 | R27-03 | 受付「画面を明るくしました」与 メモ的设备端语音转文字 | 本轮没加原生模块：受付卡只写受付番号，🎙 聚焦输入框（系统键盘听写） | 懒加载 expo-brightness 与语音识别模块 + 权限文案 + 重建 dev client，再重跑 A-R27-26 / 33 | DEFERRED-A §3 |
 | R27-04 | `legacy-ui-ratchet` 三处手写件（DiscoverPage 全屏搜索 `<Modal>`、詳細 `.utabs`、会場 livebar） | 主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`（带注释，条数须等于实际） | 组件库补 UnderlineTabs / 可配置 TabBar / 全屏搜索页后替换并删白名单行 | R27 REPORT §6  **R31a 2026-10-18：done（`ef8ecc9d1`）：DiscoverPage → FullScreenSearch overlay、詳細 → UnderlineTabs、会場 → TabBar variant="live"，legacy-ui-deferred.json 清空** |
 | R27-05 | App 新详情 / 会う準備 / 会場 / 会後是 online-only | 旧屏的离线副本随旧屏删除 | 产品定是否给新屏补离线副本（0115 / 0131 的做法） | R27 REPORT §6 |
+| R31a-H1 | **R31a 交还（2026-10-18，页面自身）**：Segmented / FilterOption / Toast / 会場底栏组件修好后在 16e 重比，A-R27-06 / 07 / 08 / 09 / 29 / 31 / 33 / 34 / 35 分段区不再超阈，余带为页面自身 | 探す 社区卡 chip（メンバー限定 / 先行申込）比画板低 3；轮播卡底部 4；搜索框 placeholder 用 ink-3-text（画板 ink-3，可走 `[contrast]`）；其余为字形 [raster] 待逐带归因 | R32 交还清理轮：修页面后逐带归因并重跑；证据与做法见 R31a REPORT §4 / §9 | R31a REPORT |
 
 ## R28 引导
 
@@ -244,6 +245,8 @@
 | R16-01 | 两端导入界面 | **已做（2026-10-14）**：Web `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → 列の対応 → まとめて確認 → 完成），App `contacts/new/import`（連絡先 / LinkedIn）；旧 `network-import*` 已删，`?method=` / `?import=` 重定向 | Web `Chip` apricot 字色（G23b）与 App `Segmented` 高度（G23）在组件库轮修，修完补跑 W-R16-08 浅、A-R16-02 | `R16-import-and-completion/REPORT.md` 界面部分  **R31a 2026-10-18：R31a：A-R16-02 分段区已对齐，余带为页面自身（列表尾部行偏移、头像色 [data]）→ 交还 R16（见 R31a REPORT）** |
 | R16-02 | 每天一问题型 | 两种 | 本期两种；b9「字段冲突 · 転職」下一期，不进门禁 | DEC D34 |
 | R16-03 | **已定（2026-10-12）** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 作加入时间；当天导入后当天可以出题（维持现状）；活动选项来源见 R26-07 | DEC §9-5、§9-6；`R16-import-and-completion/REPORT.md`:32–36 |
+| R31a-H2 | **R31a 交还（2026-10-18）**：A-R12-N09 用开发开关 `design=n09` 到达破棄确认，ConfirmDialog 本体已与画板一致 | 草稿卡来源 chip 画板带 🥂（「🥂 CFO Night Tokyo vol.18 から」），实现无；「参加者から取り込む」卡图标不同 | R32：改 ContactDraftsScreen 后重跑 N09 | R31a REPORT |
+| R31a-H3 | **R31a 交还（2026-10-18）**：A-R16-02 分段区已对齐 | 列表尾部行偏移 1–2、尾部渐隐区域内容不同；头像底色 [data] | R32：改导入选择页后逐带归因重跑 | R31a REPORT |
 
 ## R22–R25 计划 v2.2 的界面返工与遗留
 
@@ -283,6 +286,8 @@
 | R12-11 | **done（2026-10-17，A-R12-04 浅深重跑通过，见 DEFERRED-A）**：b11 #4 一处文字口径（App 加人像素门禁，待画板） | 04 深 PASS；04 浅只剩 1 条带：画板重複行「今回：高橋 美咲（青葉ベンチャーズ）」与既存同社仍写社名，实现照 b9 #4（「今回：Sho Watanabe」同社不重复写） | b11 #4 该行改为「今回：高橋 美咲」后重跑 `app-add-R12.json` 的 A-R12-04 浅；fixture `design-failed` 已照画板（17件 · 2 / 1 / 13，sheet 自动打开）。N10 / N10d / 18 已通过 | R12 REWORK-REPORT-app §10 |
 | R12-12 | 待 R20 / 待组件库的加人画面 | 未过，暂缓 | A-R12-16（メモ @人 token，R20）；A-R12-N09（ConfirmDialog 无图标位，组件库 G23）；做完后重跑 `app-add-R12.json` 对应 id | R12 REWORK-REPORT-app §10  **R31a 2026-10-18：R31a：ConfirmDialog 图标位 / .dic.emo 已加（`7457b4cc0`），N12 调用点已用 🧪 + ghost；A-R12-N09 需点「破棄」到状态，未重比（见 REPORT）** |
 | R12-13 | 加人手入力 / 草稿的演示数据 fixture | 未做：会社候补、重複候补、活动 chip、草稿、样本账号都读真实库 | 补 add-scan 同类的只读 fixture 后重跑 A-R12-17 / 18（数据部分）/ N08b / N12；A-R12-b9-04 由 A-R16-04 覆盖，不再单独比 | R12 REWORK-REPORT-app §10 |
+| R31a-H4 | **R31a 交还（2026-10-18，RD-33）**：A-R25-11 目標切替画板（b4 A6 #28）是 `.gmenu` 弹出菜单，实现是 BottomSheet；行结构也不同（emo 方块 + 完了した目標 / 目標を追加 / この目標を編集 行） | 组件库已有 `Popover` / `PopoverRow` / `PopoverDivider`（R31a） | R32：PlanGoalSwitcher 改用 Popover 并按画板重排行，重跑 A-R25-11 | R31a REPORT |
+| R31a-H5 | **R31a 交还（2026-10-18）**：开发开关（`design=premise / review / achieve / edit / skip / record / propose`）已能到达各 sheet / 对话框 | A-R24-05 前提 sheet（画板：emo 方块标题头 + ✕、键值行右侧 推定 chip / Q 编号、lav 说明卡、深色主按钮）、A-R24-13 / 16 记录 / 提案 sheet、A-R25-01 見直し sheet（今月の作り直し卡）、A-R25-12 编辑 sheet 的内容结构与画板不同；A-R24-12 / A-R25-08 换 `.dic.emo` 图标后余文案差（skip 正文、fixture 分数 45 vs 128） | R32：按画板改 sheet 内容后重跑 app-plan-A / C 对应 id | R31a REPORT |
 
 ---
 
