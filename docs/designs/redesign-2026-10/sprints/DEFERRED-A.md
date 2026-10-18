@@ -27,17 +27,17 @@
 | R27（App） | App `Toast`：带关闭 ✕（标题被挤成两行），位置不知道页面自带的会场 5 tab 底栏；kit `.toast.pos` 无 ✕、bottom 100 | 重跑 A-R27-35 交換成功 toast（开发回放 `approve=` 常驻） |
 | R27（App） | `src/components/ui` 缺 UnderlineTabs、可配置 TabBar（会場玻璃底栏）、全屏搜索页容器：App 探す搜索页用 RN `<Modal>`、詳細 `.utabs` 与会場 livebar 手写 tablist（主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`，注释「R27 · 待组件库 · DEFERRED-A §1」，不去掉 tablist 角色） | 乙的组件库轮补件后替换这 3 处并删掉 legacy-ui-deferred.json 对应行（测试要求条数与实际一致，替换后不删行会失败） |
 | R30（App） | `src/components/ui` 缺全屏搜索页容器（同上一行） | `src/screens/search/GlobalSearchScreen.tsx` 手写（SafeArea + ShellBackground + 搜索行 + chip 行）；组件库补件后替换，重跑 A-R30-P05–P08 |
-| R11-16 | R11a 像素收口：R31b（Web）未合入、R31a 合了两批 | 跑 `web-R11a.json` / `app-R11a.json`（预检已在 `R11a-network-list-detail/preflight-*.md`）、`app-R05.json` A-R05-02 / A-R05-10，再重跑本表 §2 两行「待 R11」；交 `attribution-redesign-R11a.json` |
+| R11-16 | R11a 像素收口：组件库已合入（2026-10-18），差人脈设计 fixture 与门禁本身 | 跑 `web-R11a.json` / `app-R11a.json`（预检已在 `R11a-network-list-detail/preflight-*.md`）、`app-R05.json` A-R05-02 / A-R05-10，再重跑本表 §2 两行「待 R11」；交 `attribution-redesign-R11a.json` |
 
 ## 2. 待其他 Sprint（乙）
 
 | 交接表 # | 卡在什么 | 解锁后做什么 |
 | --- | --- | --- |
 | R12-12 | R20 Task 的メモ @人 token | 重跑 A-R12-16 |
-| R15 / R16 「待 R11」 | **接线 done（R11a，2026-10-18）**：人脈「＋」弹 `AddContactSheet` / W-R12-01 弹窗压在列表上；剩重跑，等组件库（见 §1 R11-16） | 重跑 R15 / R16 REPORT 里标「待 R11」的画面 |
+| R15 / R16 「待 R11」 | **接线 done（R11a，2026-10-18）**：人脈「＋」弹 `AddContactSheet` / W-R12-01 弹窗压在列表上；剩重跑，随 R11a 像素收口一起（见 §1 R11-16） | 重跑 R15 / R16 REPORT 里标「待 R11」的画面 |
 | R24-07 | Task 1024 标题区多出「目標を追加」（壳 / Task） | 去掉以后重跑 W-R24-01 1024 |
 | R30 / R21-09 | R21 的会话搜索接口（R30 本体已完成 2026-10-17，live 暂不画「会話」chip） | 接 `searchConversations` 到 `features/search/global/live.ts` 的 `conversations`，补 live 四 chip 回归，重跑 W-R30-P01 / A-R30-P06 |
-| R30 / R11-15 | **接线 done（R11a，2026-10-18）**：两端读 `?industry=` 预选，🔍 进 App `/search?q=` / Web 派发 `orbit:open-palette`；剩重跑，等组件库（见 §1 R11-16） | 重跑 W-R30-P03 / A-R30-P08，点「近い条件なら」确认落地 |
+| R30 / R11-15 | **接线 done（R11a，2026-10-18）**：两端读 `?industry=` 预选，🔍 进 App `/search?q=` / Web 派发 `orbit:open-palette`；剩重跑，随 R11a 像素收口一起（见 §1 R11-16） | 重跑 W-R30-P03 / A-R30-P08，点「近い条件なら」确认落地 |
 | R30-02 | 比对工具两侧同一区域，Web 1024 面板比不了 | 工具支持分侧区域后加 P01b–P04b 重比 |
 | R30-03 | b12 #495 横幅缺样式 | **done（2026-10-17，R30 收口提交）**：本会话照 b5 #55 补上，A-R30-P07d 通过 |
 
