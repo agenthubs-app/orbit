@@ -99,6 +99,35 @@ test("adminToView builds a Chinese organizer admin dashboard", () => {
   );
 });
 
+test("admin source records link to their canonical public event when the source supplies it", () => {
+  const view = adminToView({
+    events: {
+      events: [
+        {
+          id: "iorbit-qa-actor:event_signup_03",
+          sourceMetadata: {
+            provider: "iorbit-account-agent-pressure-fixtures",
+            providerRecordId: "event_signup_03",
+          },
+          title: "日中投资人与创业者沙龙",
+        },
+        {
+          id: "private-calendar-record",
+          sourceMetadata: {
+            provider: "calendar-provider",
+            providerRecordId: "external-calendar-id",
+          },
+          title: "Private calendar event",
+        },
+      ],
+    },
+  });
+
+  assert.equal(view.events[0]?.id, "iorbit-qa-actor:event_signup_03");
+  assert.equal(view.events[0]?.href, "/events/event_signup_03");
+  assert.equal(view.events[1]?.href, "/events/private-calendar-record");
+});
+
 test("adminToView only exposes explicit member emails and rejects storage labels", () => {
   const view = adminToView({
     events: {

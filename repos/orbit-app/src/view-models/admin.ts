@@ -226,12 +226,18 @@ function eventToView(
   summary?: EventSummary
 ): AdminEventView {
   const id = stringField(event, "id", "event");
+  const source = nestedRecord(event, "sourceMetadata");
+  // QA account records have actor-scoped storage IDs; their provenance keeps
+  // the published Event Core ID required by the existing detail route.
+  const detailId = stringField(source, "provider") === "iorbit-account-agent-pressure-fixtures"
+    ? stringField(source, "providerRecordId", id)
+    : id;
   const state = eventState(event, now);
 
   return {
     ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
     detail: eventDetail(event, language),
-    href: `/events/${encodeURIComponent(id)}`,
+    href: `/events/${encodeURIComponent(detailId)}`,
     id,
     location: eventLocation(event, language),
     state,
