@@ -18,17 +18,17 @@ export const taskCardSchema = z.object({
   category: z.enum(["relationship", "meeting", "event", "work", "personal", "other"]),
   priority: z.enum(["normal", "high"]), plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   dueAt: instant.nullable(), updatedAt: instant, completedAt: instant.nullable().optional(), deferralCount: z.number().int().nonnegative().safe().optional(),
-  relatedContact: z.object({ id: key, namePreview: z.string().max(240), organizationPreview: z.string().max(240) }).strict().nullable(),
+  relatedContact: z.object({ id: key, namePreview: z.string().max(240), organizationPreview: z.string().max(240) }).nullable(),
   relationship: z.boolean().optional(),
-}).strict();
+});
 
 export const taskPageSchema = z.object({
   actorId: key, status: z.enum(["open", "completed"]), scope: z.enum(["all", "relationship", "personal"]), query: z.string().max(240),
-  dueWindow: taskDueWindowSchema.optional(),
+  dueWindow: taskDueWindowSchema.strip().optional(),
   items: z.array(taskCardSchema).max(50),
-  counts: z.object({ open: z.number().int().nonnegative().safe(), completed: z.number().int().nonnegative().safe() }).strict(),
+  counts: z.object({ open: z.number().int().nonnegative().safe(), completed: z.number().int().nonnegative().safe() }),
   total: z.number().int().nonnegative().safe(), hasMore: z.boolean(), nextCursor: z.string().min(1).max(8000).nullable(), asOf: instant,
-}).strict().superRefine((page, ctx) => {
+}).superRefine((page, ctx) => {
   if (page.hasMore !== (page.nextCursor !== null) || page.items.some(item => item.status !== page.status)
     || new Set(page.items.map(item => item.id)).size !== page.items.length || page.total !== page.counts[page.status]) {
     ctx.addIssue({ code: "custom", message: "Inconsistent task page" });
