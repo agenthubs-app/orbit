@@ -108,7 +108,8 @@ test("App keeps event and unknown tokens readable, skips one bad note, and prese
     mentions: [unknownMention], noteKind: "future-kind",
   };
   const badMention = { ...normalizedNote, id: "note:bad-token", body: "@Bad", contactIds: [], manualContactIds: [], mentions: [{ entityType: "event", eventId: "event:1", start: 0, end: 9, displayText: "@Bad" }] };
-  const page = notesPageFromPayload({ notes: [eventNote, { ...normalizedNote, id: "note:bad", body: "" }, badMention, unknownNote], total: 19 }, "account:one");
+  const badFlag = { ...normalizedNote, id: "note:bad-flag", usedForPlan: "yes" };
+  const page = notesPageFromPayload({ notes: [eventNote, { ...normalizedNote, id: "note:bad", body: "" }, badMention, badFlag, unknownNote], total: 19 }, "account:one");
   assert.equal(page?.total, 19);
   assert.deepEqual(page?.notes.map((item) => item.id), ["note:event", "note:future"]);
   assert.deepEqual(page?.notes[0]?.mentions, [eventMention]);

@@ -30,7 +30,8 @@ function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage
     && nonEmpty(value.createdAt)
     && Number.isFinite(Date.parse(value.createdAt))
     && nonEmpty(value.updatedAt)
-    && Number.isFinite(Date.parse(value.updatedAt));
+    && Number.isFinite(Date.parse(value.updatedAt))
+    && (value.usedForPlan === undefined || typeof value.usedForPlan === "boolean");
   if (!valid) return null;
   const body = value.body as string;
   const canonicalIds = contactIds(value.contactIds as string[]);
@@ -55,6 +56,8 @@ function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage
     : body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? createTranslator(language)("notes.untitled");
   const expectedCanonical = contactIds([...manualContactIds, ...mentions.filter((item) => (item.entityType ?? "contact") === "contact").map((item) => item.contactId!).filter(Boolean)]);
   if (!sameIds(expectedCanonical, canonicalIds)) return null;
+  const rawKind = value.noteKind;
+  const decodedKind = rawKind === "meeting" || rawKind === "voice" || rawKind === "free" ? rawKind : "free";
   return {
     ...(value as unknown as NoteContract),
     title,
@@ -63,7 +66,7 @@ function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage
     mentions,
     contactIds: canonicalIds,
     eventIds,
-    ...(value.noteKind === undefined ? {} : { noteKind: ["free", "meeting", "voice"].includes(String(value.noteKind)) ? value.noteKind : "free" }),
+    ...(rawKind === undefined ? {} : { noteKind: decodedKind }),
   };
 }
 
