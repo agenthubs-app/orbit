@@ -42,6 +42,7 @@ export const admin = {
   "admin.platform.emptyMessage": "公开目录新增活动后，可在这里核对来源。",
   "admin.platform.catalogue": "公开目录",
   "admin.platform.listCount": "{count}场公开活动记录",
+  "admin.platform.offline": "需要联网查看公开活动",
   "admin.platform.failure": "公开活动暂时无法读取",
   "admin.nav.dashboard": "概览",
   "admin.nav.events": "活动",

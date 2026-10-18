@@ -42,6 +42,7 @@ export const admin = {
   "admin.platform.emptyMessage": "New public events will appear here for source checks.",
   "admin.platform.catalogue": "Public catalogue",
   "admin.platform.listCount": "Public event records: {count}",
+  "admin.platform.offline": "Connect to view public events",
   "admin.platform.failure": "Public events could not be loaded",
   "admin.nav.dashboard": "Overview",
   "admin.nav.events": "Events",

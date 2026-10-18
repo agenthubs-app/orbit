@@ -36,7 +36,7 @@ export function PlatformScreen() {
     >
       {eventsState.kind === "loading" ? <Skeleton onRetry={refresh} /> : null}
       {eventsState.kind === "offline" || eventsState.kind === "failure" ? (
-        <RetryCard title={eventsState.kind === "offline" ? t("admin.state.offline") : t("admin.platform.failure")} onRetry={refresh} />
+        <RetryCard title={eventsState.kind === "offline" ? t("admin.platform.offline") : t("admin.platform.failure")} onRetry={refresh} />
       ) : null}
       {eventsState.kind === "empty" ? (
         <EmptyState title={t("admin.platform.emptyTitle")} message={t("admin.platform.emptyMessage")} action={{ label: t("admin.state.retry"), onPress: refresh }} />

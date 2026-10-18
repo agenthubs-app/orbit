@@ -42,6 +42,7 @@ export const admin = {
   "admin.platform.emptyMessage": "公開イベントが追加されると、ここで確認できます。",
   "admin.platform.catalogue": "公開ディレクトリ",
   "admin.platform.listCount": "公開イベントの記録 {count} 件",
+  "admin.platform.offline": "公開イベントを確認するには接続が必要です",
   "admin.platform.failure": "公開イベントを読み込めませんでした",
   "admin.nav.dashboard": "概要",
   "admin.nav.events": "イベント",

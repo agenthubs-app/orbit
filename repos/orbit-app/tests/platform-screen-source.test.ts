@@ -36,3 +36,12 @@ test("platform public activities render as source cards", () => {
     /<Text style=\{styles\.eventIconText\}>\{item\.title\.slice\(0,\s*1\)\}<\/Text>/u
   );
 });
+
+test("platform offline state describes the public catalogue", () => {
+  assert.match(screenSource, /eventsState\.kind === "offline" \? t\("admin\.platform\.offline"\)/u);
+  assert.doesNotMatch(screenSource, /eventsState\.kind === "offline" \? t\("admin\.state\.offline"\)/u);
+  for (const language of ["en", "ja", "zh"]) {
+    const copy = readFileSync(join(repoRoot, "src", "i18n", language, "admin.ts"), "utf8");
+    assert.match(copy, /"admin\.platform\.offline":/u);
+  }
+});
