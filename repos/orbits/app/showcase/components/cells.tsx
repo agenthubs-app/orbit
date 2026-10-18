@@ -14,7 +14,7 @@ import styles from "./cells.module.css";
 
 // R31b（U02）：01-system 规格格 ↔ 展示页小节。每格 = 一个渲染函数 + 固定宽度（= 规格格宽）。
 // 浮层格（Modal 等）在视口里按组件自己的定位画，清单的 region 按 1440×900 视口换算（见 views/web-R31b-components.json）。
-type Cell = { width: number; render: () => ReactNode; /** 打开后把焦点移走（设计稿没画焦点环的弹出层）。 */ blur?: boolean };
+type Cell = { width: number; render: () => ReactNode; /** 打开后把焦点移走（设计稿没画焦点环的弹出层）。 */ blur?: boolean; /** 画在 (left, 0)：Popover 离视口边至少 8，锚点贴边时整格右移 8（清单 region 同步）。 */ left?: number };
 
 const S = samples;
 
@@ -177,7 +177,7 @@ function TextCell({ kind }: { kind: 0 | 1 | 2 }) {
 const CELLS: Record<CellId, Cell> = {
   "c-toast-0": { width: 359, render: () => <ToastCell /> },
   "c-confirm-2": { width: 446, render: () => <ConfirmCell /> },
-  "c-layer-2": { width: 340, render: () => <PopoverCell />, blur: true },
+  "c-layer-2": { width: 340, render: () => <PopoverCell />, blur: true, left: 8 },
   "c-ai-0": { width: 280, render: () => <AiCell state="pending" /> },
   "c-ai-1": { width: 280, render: () => <AiCell state="success" /> },
   "c-ai-2": { width: 300, render: () => <AiCell state="failure" /> },
@@ -206,7 +206,7 @@ export function ComponentCell({ id, language, theme }: { id: CellId; language: O
   }, [cell.blur]);
   return (
     <Orbit2026Scope language={language} as="main" className={styles.page} reducedMotion>
-      <div className={styles.cell} style={{ width: cell.width }} data-showcase-cell={id}>{cell.render()}</div>
+      <div className={styles.cell} style={{ width: cell.width, left: cell.left ?? 0 }} data-showcase-cell={id}>{cell.render()}</div>
     </Orbit2026Scope>
   );
 }

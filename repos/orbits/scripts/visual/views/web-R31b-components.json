@@ -44,7 +44,8 @@
     {
      "keys": "Tab"
     }
-   ]
+   ],
+   "wait-for": "[role=alertdialog]"
   },
   {
    "id": "W-R31b-c-confirm-2L",
@@ -62,7 +63,8 @@
     {
      "keys": "Tab"
     }
-   ]
+   ],
+   "wait-for": "[role=alertdialog]"
   },
   {
    "id": "W-R31b-c-layer-2",
@@ -70,8 +72,10 @@
    "section": "c-layer",
    "cell": 2,
    "app": "/showcase/components/c-layer-2?theme={theme}",
-   "region": "0,0,340,247",
-   "width": 1440
+   "region": "8,0,340,247",
+   "width": 1440,
+   "design-region": "0,0,340,247",
+   "wait-for": "[role=dialog]"
   },
   {
    "id": "W-R31b-c-layer-2L",
@@ -79,8 +83,10 @@
    "section": "c-layer",
    "cell": 2,
    "app": "/showcase/components/c-layer-2?theme={theme}&env=legacy",
-   "region": "0,0,340,247",
-   "width": 1440
+   "region": "8,0,340,247",
+   "width": 1440,
+   "design-region": "0,0,340,247",
+   "wait-for": "[role=dialog]"
   },
   {
    "id": "W-R31b-c-ai-0",

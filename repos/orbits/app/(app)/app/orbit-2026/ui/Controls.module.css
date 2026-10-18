@@ -22,10 +22,8 @@
 .on .knob { transform: translateX(18px); }
 .toggle:disabled { opacity: 0.5; }
 
-/* R31b: the mark is the box (kit .ckr 22 / .cbx 20 / .rad 18 sit in rows at their own size); the 44 × 44 hit area
-   is an invisible ring around it, so rows lay out like the boards and the target stays 44. */
-.hit { position: relative; display: inline-grid; place-items: center; flex: none; border-radius: var(--r-pill); }
-.hit::before { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); border-radius: var(--r-pill); }
+/* 44 × 44 hit area around the small marks (R31b kept it: table columns on the R16 boards are laid out around it). */
+.hit { width: 44px; height: 44px; display: inline-grid; place-items: center; flex: none; border-radius: var(--r-pill); }
 
 .circleMark {
   width: 22px;
@@ -111,7 +109,7 @@
 .fopt:global(.btn), .cat:global(.btn) { gap: 4px; height: auto; padding: 7px 12px; border-radius: var(--r-pill); font-size: var(--fs-control); font-weight: var(--fw-bold); letter-spacing: normal; }
 .fopt:global(.btn) { border: 1.5px solid transparent; }
 .foptOn:global(.btn) { border-color: var(--plum-500); }
-.hit:global(.btn) { gap: 0; width: auto; height: auto; padding: 0; border: 0; border-radius: var(--r-pill); }
+.hit:global(.btn) { gap: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .toggle:global(.btn) { gap: 0; width: 44px; height: 26px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .segOption:global(.btn) { gap: 0; height: auto; min-height: 32px; padding: 6px 14px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-control); font-weight: var(--fw-bold); letter-spacing: normal; }
 .foptOn { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
