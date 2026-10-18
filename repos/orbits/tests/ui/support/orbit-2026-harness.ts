@@ -39,13 +39,18 @@ export async function launch(): Promise<Browser> {
   return chromium.launch({ headless: true });
 }
 
-export async function open(browser: Browser, code: { js: string; css: string }, options: { width?: number; dark?: boolean; reducedMotion?: boolean; html?: string } = {}): Promise<Page> {
+export async function open(browser: Browser, code: { js: string; css: string }, options: { width?: number; dark?: boolean; reducedMotion?: boolean; html?: string; origin?: string } = {}): Promise<Page> {
+  const origin = options.origin ? new URL(options.origin) : null;
+  if (origin && (origin.protocol !== "https:" || origin.username || origin.password)) throw Error("Invalid secure fixture origin");
   const page = await browser.newPage({ viewport: { width: options.width ?? 1440, height: 900 }, colorScheme: options.dark ? "dark" : "light", reducedMotion: options.reducedMotion ? "reduce" : "no-preference" });
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   (page as Page & { errors: string[] }).errors = errors;
-  await page.route("**/*", (route) => route.abort());
-  await page.setContent(`<!doctype html><html lang="ja"><head><style>body{margin:0;background:var(--bg)}</style></head><body>${options.html ?? '<div id="root"></div>'}</body></html>`);
+  const html = `<!doctype html><html lang="ja"><head><style>body{margin:0;background:var(--bg)}</style></head><body>${options.html ?? '<div id="root"></div>'}</body></html>`;
+  await page.route("**/*", route => origin && route.request().isNavigationRequest() && route.request().url() === origin.href
+    ? route.fulfill({ status: 200, contentType: "text/html", body: html }) : route.abort());
+  if (origin) await page.goto(origin.href);
+  else await page.setContent(html);
   await page.addStyleTag({ path: `${root}/app/(app)/app/orbit-2026/tokens.css` });
   if (code.css) await page.addStyleTag({ content: code.css });
   await page.addScriptTag({ content: code.js });

@@ -39,7 +39,7 @@ test.before(async () => {
 test.after(async () => { await browser?.close(); });
 
 for (const tamper of [false, true]) test(`first proposal browser: ${tamper ? "changed readback keeps draft open" : "verified readback confirms and closes"}`, async t => {
-  const page = await open(browser, code);
+  const page = await open(browser, code, { origin: "https://orbit.fixture.test/" });
   t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
   await page.getByRole("button", { name: "次へ", exact: true }).click();
   await page.getByRole("textbox", { name: "場所", exact: true }).fill("Browser room");
