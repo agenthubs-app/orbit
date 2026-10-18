@@ -21,6 +21,8 @@ rebase 後の Web full `d-web-full-sc14-201bf7d86.log` は **7,715 tests / 6,654
 
 現行 D App の sanitized full `d-app-full-after-kit-db219315a.log` は **3,473 tests / 3,460 pass / 11 fail / 2 skip、exit 1**。失敗名は R12 拍照・追加の9件と、pristine D にある辞書 key-count / joined-person overlay click の2件。新しい fold、root auth guard、kit inset の失敗名はこの run にない。R12 の9件は C 線 full にも出ているが、未解決のままであり D の full を pass とは扱わない。ログは NUL byte なし、runner の exit 1 を末尾に保存した。
 
+R12 の9件は日付固定 fixture に起因する。`tests/helpers/add-fixtures.ts` の `FUTURE` は `2026-10-18T01:00:00Z`、この検証時刻は `03:54Z`。実行時に `ingestExpired(batchFixture)` は true、境界の1ms前は false、境界以後は true と確認した。`uploadPendingPass` は期限切れ batch を terminal と判定して PUT を始めないため、fake server の batch は `collecting` のまま finalize されず、camera / reading の9件が同じ入口で止まる。R12 ファイル単独でも `r12-add-contact-isolated-1254.log` が **20 tests / 11 pass / 9 fail**、全量の9件と一致した。D の製品コードや R12 fixture は変更しない。R12 owner に時計を固定するか fixture 期限を安定化する修正と再実行を依頼する。D App full 自体は引き続き exit1。
+
 Modal テスト補正後の sanitized Web full は **7,715 tests / 6,655 pass / 32 fail / 1,028 skip、exit 1**（`d-web-full-after-modal-fixture-clean-2b706926f.log`）。直前の33失敗名から面談の誤った Modal 選択だけが消え、残る追加1件は A-owned `non-.btn <button>` ratchet。pristine の31件は残る。最初の同内容 run はキャンセルされた重複 runner が同じログ先を開き、58,669 NUL bytes の欠損を生んだため raw 証拠として採らない。別名で再実行した上記ログは NUL 0、集計と失敗名を再確認した。suite-green ではない。
 
 同じ Web source の fresh typecheck は `d-web-typecheck-meeting-fixture-after-rebase.log` で exit 0、`npm run lint` は `d-web-lint-current-2b706926f.log` で exit 0。型・lint の成功を full-suite の成功とはしない。
