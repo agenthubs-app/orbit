@@ -5,6 +5,8 @@ test('delivery policy rejects client identity, unknown fields and non-acknowledg
  assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({expectedRevision:0,actorId:'other'}).success,false);
  assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({expectedRevision:0,messageAnalysisEnabled:false}).success,false);
  assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({expectedRevision:0,muteConversation:{conversationId:'c',muted:true}}).success,true);
+ assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({expectedRevision:0,quietStart:'23:00',quietEnd:'23:00'}).success,false);
+ assert.equal(inboxDeliveryPreferencesInputSchema.safeParse({expectedRevision:0,quietStart:'23:00',quietEnd:'07:30',dailyCap:1}).success,true);
  assert.equal(inboxDeliveryOwnerInputSchema.safeParse({deviceId:'d',generation:1,localCancelled:false}).success,false);
  const handler=createDeliveryPolicyHandler({resolveActor:async()=>null});assert.equal((await handler(new Request('http://localhost/api/inbox/delivery/preferences'))).status,401);
 });
