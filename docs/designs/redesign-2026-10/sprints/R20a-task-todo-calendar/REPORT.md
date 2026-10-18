@@ -17,6 +17,8 @@ SC-09 App の完了済み fold は、未完了の期限群を残したまま、�
 
 その後の clean `git pull --rebase origin redesign` は D の96パッチを上流 R31a / R31b に重ねた。range-diff で内容差が出たのは App root の1コミットだけ：上流 `UiPortalHost routeKey={pathname}` と本線の `auth.signedIn` bottom-bar guard を両方保持して解決した。現 hash は root `98afb412e`、App fold `9738cb711`、Web 旧 task 入口 `201bf7d86`。rebase 後の軽量 root / mirror **3/3** と Web route / list **13/13** は pass。新規全面画面 Todo / Calendar の `AppScreen inset="kit"` 守衛は RED 0/1 → GREEN 1/1、fresh App typecheck は **exit0**（`d-app-typecheck-after-rebase-kit.log`）。browser / full の再検証と pixel 判定はまだない。
 
+rebase 後の Web full `d-web-full-sc14-201bf7d86.log` は **7,715 tests / 6,654 pass / 33 fail / 1,028 skip、exit 1**。前回の31失敗名に二つ追加された。一つは `non-.btn <button>` ratchet：R31b `ui/Button.tsx:14` の新しいコメント中の字面 `<button>` を古いテキスト scanner がタグとして数え、79の上限に対して80と報告する false positive。A-owned kit / 共通 ratchet は本線では変更しない。もう一つは D の `meeting-proposal-flow` テストが旧 `findByType(Modal)` で、R31b 後に閉じた確認 Modal も数えること。開いている `form` Modal を対象に直し、当該8件を **8/8 pass** で再確認した（`d-web-meeting-proposal-after-r31b-fixture.log`）。fresh Web typecheck は **exit0**（`d-web-typecheck-meeting-fixture-after-rebase.log`）。full 自体の33失敗は未修正の記録であり、新 test-only 修正後の全量値はまだない。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
@@ -469,6 +471,7 @@ inventory handback 後、initial-proposal の exact GET / POST を `meeting-prop
 - draft source owner：日本語と tone の明示的サポート、および対応する生成 contract / tests が必要。en / zh を日本語として扱わない。
 - encounter / next-move source owner：`POST /api/encounters` は authoritative contactId / observedAt / privacy / talked / idempotency key を要求するが、TodoNextMoveItem の contactId / taskId は optional。source の signal kind と対応する contact / canonical task を検証できる projection が必要。「送りましたか」から fake encounter や task mutation を作らず、D-10 は mapping が立つまで fail-closed にする。
 - A の Web kit owner：SC-11 Modal 1000 / 760 の additive API は `2569ad835` で提供され、D の clean rebase + fresh compiler で確認済み。D は library を変更していない。pixel review / final fidelity は別 gate として残す。
+- A の Web kit / 共通 ratchet owner：R31b `orbit-2026/ui/Button.tsx:14` のコメント内 `<button>` が `tests/ui/orbit-button-ratchet.test.ts` の本文 scanner に実要素として数えられ、現行 Web full に false-positive 1 件を追加した。コメント表記か scanner を owner 側で直して再検証してほしい。D は A-owned kit / 共通テストを変更しない。
 - `contacts/new/drafts` のサーバー側破棄要求は SC-07 の交接で記録する。
 
 ## 待主会话代定
