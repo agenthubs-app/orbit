@@ -385,7 +385,7 @@ async function request<TData>(
       response.status,
       meta,
       "ORBIT_APP_INVALID_JSON",
-      payload.message
+      "message" in payload ? payload.message : "Invalid JSON response"
     );
   }
 

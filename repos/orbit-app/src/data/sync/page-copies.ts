@@ -96,7 +96,7 @@ export function assertPageCopyKey(id: string, variant: string): PageCopyDefiniti
 
 /** 0 (no connection) and 5xx keep a copy on screen; any other answer is the server's word. */
 export function keepsPageCopy(result: { success: true } | { success: false; status: number; error: { code: string } }): "unreachable" | "unavailable" | null {
-  if (result.success) return null;
+  if (result.success || !("error" in result)) return null;
   if (result.status === 0 || result.error.code === "ORBIT_APP_NETWORK_ERROR") return "unreachable";
   return result.status >= 500 ? "unavailable" : null;
 }

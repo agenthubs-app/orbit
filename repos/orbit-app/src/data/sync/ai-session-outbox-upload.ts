@@ -35,7 +35,7 @@ export function createAiSessionOutboxUploader(input: {
         try { parseOfflineAiSessionDelete(row as OfflineAiSessionDeleteInput); }
         catch { return { status: 400 }; }
         const response = await input.writeClient.delete<unknown>(aiConversationSessionPath(row.id), { signal });
-        if (!response.success) return { status: response.status, errorCode: response.error.code };
+        if (!response.success && "error" in response) return { status: response.status, errorCode: response.error.code };
         if (!aiSessionDeleteReceiptSchema.safeParse(response.data).success) return { status: 0 };
         const previous = await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "ai_session", id: row.id });
         if (!previous || previous.actorId !== input.actorId || previous.deletedAt !== null) return { status: 0 };
@@ -45,7 +45,7 @@ export function createAiSessionOutboxUploader(input: {
       try { requestBody = parseOfflineAiSessionRequest(row as OfflineAiSessionMutationInput).requestBody; }
       catch { return { status: 400 }; }
       const response = await input.writeClient.patch<unknown>(aiConversationSessionPath(row.id), { body: requestBody, signal });
-      if (!response.success) return { status: response.status, errorCode: response.error.code,
+      if (!response.success && "error" in response) return { status: response.status, errorCode: response.error.code,
         ...(response.error.context ? { snapshot: response.error.context } : {}) };
       const parsed = aiSessionOrganizationReceiptSchema.safeParse(response.data);
       if (!parsed.success || parsed.data.session.id !== row.id ||
