@@ -476,6 +476,8 @@ SSR entry 三件は **RED 3 → GREEN**（stdout 証拠）、helper / rendering 
 
 inventory handback 後、initial-proposal の exact GET / POST を `meeting-proposal-flow.ts` consumer として追加し、両方とも `online_only_secret` / `never_local` / `online_only` とした。新 regression は登録欠落で **RED 1 → GREEN**、既存 provider policy を含む scoped policy **2/2 pass**（`sc11-app-inventory-{red,green}.log`）。literal route が旧 `/appointments/:id` より優先されることも確認。実 source の AST extraction / full inventory audit は TypeScript program を使う heavy gate のため未実行で、private registration の unit pass と区別する。audit script の computed path / To-do lines は変更していない。
 
+後続 clean D `8c126ddbc` で、上記の未実行 gate を sanitized env / global heavy lock 下で fresh 実行した。`./node_modules/.bin/tsx scripts/audit-offline-read-surfaces.ts` は **runner exit 0**、実 App source の TypeScript AST 抽出と登録表比較の結果は `unregistered: []` / `invalid: []` / `uncovered: 0` / `invalidCount: 0`。原始 JSON は `_evidence-d/R20a/run-01/d-app-offline-read-audit-current-8c126ddbc.json`。これは現在の route 登録 / 静的呼び出し監査が通った証拠であり、端末の実際の offline / secret 非保存 / signed-in 操作や SC-11 pixel の証拠ではない。
+
 ### D 専用 iOS simulator の bounded binary / public-launch 証拠（SC-05 / SC-06 / SC-15 は OPEN）
 
 clean D `6b921aff2` で、既存の local Expo template を使う iOS `prebuild --no-install` は exit 0（`native-prebuild-6b921aff2.log`）。続く `pod install --project-directory=ios` も exit 0、124 dependencies / 127 Pods（`native-pods-6b921aff2.log`）。生成物は ignored の D `ios/` のみで、`package.json` / `package-lock.json` / `app.config.ts` / `.gitignore` の SHA-256 prefix `86aa0371` / `fc3bc0fe` / `944898d9` / `6ede6ca5` は前後で不変、tracked status は空。production / cloud / real Google / TestFlight / signing / deploy は使っていない。
