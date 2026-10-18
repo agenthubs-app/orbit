@@ -26,6 +26,7 @@ export const ai = {
   "ai.noConversations": "No conversations yet",
   "ai.recentTimedOut": "Recent conversations timed out",
   "ai.discussionPrompt": "Review a discussion with a contact",
+  "ai.planPrompt": "Help me plan a new goal",
   "ai.enterQuestion": "Enter a question first.",
   "ai.sendFailed": "Unable to send. Your question is preserved. Try again.",
   "ai.deleteUnconfirmed": "Deletion could not be confirmed. Try again.",

@@ -26,6 +26,7 @@ export const ai = {
   "ai.noConversations": "还没有会话",
   "ai.recentTimedOut": "读取最近会话超时",
   "ai.discussionPrompt": "回看与某位人脉的讨论",
+  "ai.planPrompt": "帮我规划新目标",
   "ai.enterQuestion": "先输入问题。",
   "ai.sendFailed": "暂时无法发送，问题已保留，请重试。",
   "ai.deleteUnconfirmed": "尚未确认删除，请重试。",

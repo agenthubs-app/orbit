@@ -26,6 +26,7 @@ export const ai = {
   "ai.noConversations": "会話はまだありません",
   "ai.recentTimedOut": "最近の会話の読み込みがタイムアウトしました",
   "ai.discussionPrompt": "連絡先との話し合いを振り返る",
+  "ai.planPrompt": "新しいプランを考えたい",
   "ai.enterQuestion": "質問を入力してください。",
   "ai.sendFailed": "送信できませんでした。質問は保持されています。もう一度お試しください。",
   "ai.deleteUnconfirmed": "削除を確認できませんでした。もう一度お試しください。",

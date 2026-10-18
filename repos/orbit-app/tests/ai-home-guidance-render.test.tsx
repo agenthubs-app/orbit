@@ -29,7 +29,7 @@ const originalLoad = loader._load;
 loader._load = (name, ...args) => {
   if (name === "expo-crypto") return { randomUUID };
   if (name === "expo-router") return {
-    useLocalSearchParams: () => ({}), useRouter: () => ({ push() {} })
+    useLocalSearchParams: () => ({}), usePathname: () => "/ai", useRouter: () => ({ push() {}, canGoBack: () => false, back() {}, replace() {} })
   };
   if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, accountId: "guidance-reader", actorId: "guidance-reader", user: { id: "guidance-reader", name: "测试读者", email: "reader@example.test", emailVerified: true, image: null } }) };
   if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
@@ -49,16 +49,15 @@ loader._load = originalLoad;
 
 test.beforeEach(() => { today = summary(); todayKind = "success"; conversation = emptyAiConversationPayload; });
 
-test("home offers three distinct editable questions before the composer", () => {
+test("R21 start offers four distinct sendable questions before the composer", () => {
   const html = renderToHtml(<AiScreen />);
-  assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
-  assert.match(html, /今天先处理哪些事？/u);
-  assert.match(html, /最近有哪些活动适合我？/u);
-  assert.ok(html.indexOf("可以从这里开始") < html.indexOf('placeholder="询问 IORBIT"'));
-  assert.match(html, /aria-disabled="true"[^>]*aria-label="发送"|aria-label="发送"[^>]*aria-disabled="true"/u);
+  for (const label of ["今天先处理哪些事？", "最近有哪些活动适合我？", "回看与某位人脉的讨论", "帮我规划新目标"]) {
+    assert.match(html, new RegExp(`aria-label="${label}"`, "u"));
+  }
+  assert.ok(html.indexOf("今日は") < html.indexOf('placeholder="iOrbit に聞く…"') || html.indexOf("何をお手伝いしましょう？") < html.indexOf('placeholder="iOrbit に聞く…"'));
 });
 
-test("home replaces only the known bootstrap welcome, without rendering its timestamp", () => {
+test("R21 start does not show a bootstrap reply as a live conversation", () => {
   conversation = {
     ...aiConversationPayload,
     activeConversationId: "live-orbit-agent-conversation",
@@ -67,15 +66,15 @@ test("home replaces only the known bootstrap welcome, without rendering its time
     messages: [{ ...aiConversationPayload.messages[1], messageId: "orbit-agent-live-ready", conversationId: "live-orbit-agent-conversation", role: "assistant", content: "Orbit Agent is ready for a natural-language request.", createdAt: "2026-06-27T00:00:00Z" }]
   };
   const html = renderToHtml(<AiScreen />);
-  assert.match(html, /可以从这里开始/u);
-  assert.doesNotMatch(html, /有什么需要我做的吗|09:00/u);
+  assert.match(html, /何をお手伝いしましょう/u);
+  assert.doesNotMatch(html, /Orbit Agent is ready for a natural-language request|09:00/u);
 });
 
-test("home preserves genuine assistant messages instead of treating them as invitations", () => {
+test("R21 start keeps previous answer text inside its conversation", () => {
   conversation = { ...aiConversationPayload, activeConversationId: "real", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "real", title: "讨论" }], messages: [{ ...aiConversationPayload.messages[1], messageId: "real-reply", conversationId: "real", role: "assistant", content: "有什么需要我做的吗？", createdAt: "2026-09-07T01:00:00Z" }] };
   const html = renderToHtml(<AiScreen />);
-  assert.match(html, /有什么需要我做的吗？/u);
-  assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
+  assert.doesNotMatch(html, /有什么需要我做的吗？/u);
+  assert.match(html, /何をお手伝いしましょう/u);
 });
 
 test("relationship work offers follow-up planning alongside activity discovery", () => {
@@ -104,7 +103,7 @@ for (const kind of ["empty", "loading", "failure", "offline"]) {
     todayKind = kind;
     today = null;
     const html = renderToHtml(<AiScreen />);
-    assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
+    assert.match(html, /aria-label="帮我规划新目标"/u);
     assert.match(html, /今天先处理哪些事？/u);
     assert.doesNotMatch(html, /哪些人值得先跟进？|接下来的会面或活动/u);
   });

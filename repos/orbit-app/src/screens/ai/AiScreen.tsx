@@ -486,7 +486,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     refreshing: todayState.refreshing
   });
   if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
-  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todaySummaryQuestions(null, locale.language)), { kind: "discussion", label: locale.t("ai.discussionPrompt") }];
+  const suggestedPrompts = [
+    ...(nextQuestionSnapshot.questions ?? todaySummaryQuestions(null, locale.language)),
+    { kind: "discussion", label: locale.t("ai.discussionPrompt") },
+    { kind: "plan", label: locale.t("ai.planPrompt") },
+  ];
   const todayError =
     todayState.kind === "offline"
       ? locale.t("sync.notOnDevice")
