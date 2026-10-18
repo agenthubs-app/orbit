@@ -33,4 +33,5 @@ export const typedInbox = {
   "typedInbox.archivedState": "Archived",
   "typedInbox.readState": "Read",
   "typedInbox.unreadState": "Unread",
+  "typedInbox.markPageReadShort": "Mark shown read",
 } as const;

@@ -24,6 +24,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["typedInbox.open", "button"],
   ["typedInbox.more", "button"],
   ["typedInbox.retry", "button"],
+  ["typedInbox.markPageReadShort", "button"],
   ["typedInbox.*", "label"],
   ["notes.planUseRequiresOneContact", "sentence"],
   ["tasks.scopePersonal", "tab"],

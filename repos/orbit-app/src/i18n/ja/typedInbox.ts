@@ -33,4 +33,5 @@ export const typedInbox = {
   "typedInbox.archivedState": "アーカイブ済み",
   "typedInbox.readState": "既読",
   "typedInbox.unreadState": "未読",
+  "typedInbox.markPageReadShort": "表示分を既読",
 } as const;

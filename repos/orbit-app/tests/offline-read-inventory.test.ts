@@ -164,7 +164,7 @@ test('the actual native consumers all have explicit versioned policies', async (
   assert.ok(extracted.calls.some(row => row.endpointTemplate === '/api/notes' && row.method === 'GET'));
   assert.ok(extracted.calls.some(row => row.endpointTemplate.includes('/messages')));
   const actual = new Set(extracted.calls.map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`));
-  for (const expected of [
+  const expectedCalls = [
     'src/screens/calendar/meeting-proposal-flow.ts GET /api/appointments/initial-proposal',
     'src/screens/calendar/meeting-proposal-flow.ts POST /api/appointments/initial-proposal',
     'src/screens/inbox/NotificationDetailScreen.tsx GET /api/inbox/notifications/:id',
@@ -177,8 +177,6 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/relationship-communication/conversations/:id/draft',
     'src/screens/inbox/RelationshipInboxScreen.tsx PUT /api/relationship-communication/conversations/:id/draft',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/relationship-inbox',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/messages',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
     'src/screens/inbox/useNotificationInbox.ts POST /api/inbox/notifications/read',
     'src/api/inbox-summary.ts GET /api/inbox/summary',
@@ -199,7 +197,8 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/data/sync/message-outbox-upload.ts POST /api/relationship-communication/conversations/:id/messages',
     'src/data/sync/ai-session-outbox-upload.ts PATCH /api/ai/conversations/sessions/:id',
     'src/data/sync/ai-session-outbox-upload.ts DELETE /api/ai/conversations/sessions/:id',
-  ]) assert.ok(actual.has(expected), expected);
+  ];
+  assert.deepEqual(expectedCalls.filter(expected => !actual.has(expected)), []);
   assert.deepEqual(await auditReadSurfaces(root), { unregistered: [], invalid: [] });
   assert.ok(surfaces.some(row => row.readPersistence === 'device_only' && row.mutationPolicy === 'local_only'));
   assert.deepEqual(surfaces.filter(row => row.mutationPolicy === 'offline_queue').map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`).sort(), [

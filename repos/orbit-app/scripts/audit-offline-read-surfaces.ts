@@ -22,8 +22,6 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/ai/AiConversationScreen.tsx:483': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:216': ['/api/relationship-communication/conversations/:id/messages'],
   // Sprint 0140: the hub's source form is QR only; card scan and manual add moved to their own pages.
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
   // R18a profile path optionally carries only the development design query; all mutations still target profile.
   'src/screens/me/account-api.ts:47': ['/api/profile'],
   'src/screens/me/suggestions-api.ts:31': ['/api/profile'],

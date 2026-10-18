@@ -37,7 +37,12 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
       const heading = day !== previousDay;
       previousDay = day;
       const kind = secretaryKind(item);
-      const subtitle = item.reason || item.sources[0]?.excerpt || '';
+      const timestamp = item.dueAt ?? item.scheduledFor;
+      const subtitle = fontScale > 1.2
+        ? item.reason || item.sources[0]?.excerpt || ''
+        : [item.reason, item.sources[0]?.excerpt ? `${t('typedInbox.source')} · ${item.sources[0].excerpt}` : null,
+          timestamp ? `${t(item.dueAt ? 'typedInbox.due' : 'typedInbox.scheduled')} · ${new Date(timestamp).toLocaleString(language, { timeZone: 'Asia/Tokyo' })}` : null]
+          .filter(Boolean).join(' · ');
       const actions: SwipeAction[] = onAction && item.target.status === 'available' && !busy && fontScale <= 1.2
         ? (['read', 'accept', 'snooze'] as const).filter(action => item.actions.includes(action) && !(action === 'read' && item.readAt))
           .map(action => ({ key: action, label: t(`typedInbox.${action}`), icon: action === 'read' ? 'check' : action === 'accept' ? 'plus' : 'clock', tone: action === 'read' ? 'lav' : action === 'accept' ? 'ok' : 'teal', onPress: () => onAction(item, action) }))

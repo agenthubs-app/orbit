@@ -549,6 +549,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
       onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" ? typedInbox.markRead() : markAllRead()) : undefined}
       markAllReadLabel={activeSection === "threads" ? threadsOffline ? `${locale.t("inbox.markPageRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
+      markAllReadVisibleLabel={activeSection === "threads" ? locale.t("typedInbox.markPageReadShort") : undefined}
       markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : threadsOffline || batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
@@ -771,11 +772,12 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onMarkAllRead?: (() => void) | undefined;
   markAllReadLabel?: string;
+  markAllReadVisibleLabel?: string | undefined;
   markAllReadDisabled?: boolean;
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
@@ -783,7 +785,7 @@ function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllRe
   const locale = useOrbitLocale();
   return <AppScreen inset="kit" title={title} headerVariant="compact" backLabel={locale.t("inbox.home")} showBack={!hideBack} {...(onBack ? { onBack } : {})}
     {...(refreshControl ? { refreshControl } : {})}
-    headerActions={onMarkAllRead ? <Button label={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : undefined}>
+    headerActions={onMarkAllRead ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : undefined}>
     {children}
   </AppScreen>;
 }

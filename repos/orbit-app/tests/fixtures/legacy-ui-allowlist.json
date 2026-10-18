@@ -48,8 +48,7 @@
     },
     "src/screens/inbox/RelationshipInboxScreen.tsx": {
       "oldComponent": 5,
-      "controls": 1,
-      "tablist": 1
+      "controls": 1
     },
     "src/screens/notes/EditNoteScreen.tsx": {
       "oldComponent": 4
