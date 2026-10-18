@@ -17,14 +17,15 @@ import styles from "./todo.module.css";
 import { TodoDraftDrawer, type ManualTodoDraft } from "./TodoDraftDrawer";
 import { ShellPage } from "../shell/slots";
 import { TodoNextMovesRail } from "./TodoNextMovesRail";
+import { FollowupCompletionModal } from "./FollowupCompletionModal";
 
 export function TodoWorkspace({ actorId, language, timeZone, date, initialAdd = false }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
   const { account, ready } = useSharedReadAccount();
   const origin = typeof window === "undefined" ? "same-origin" : window.location?.origin ?? "same-origin";
-  return <Orbit2026Scope language={language}><ToastProvider><Workspace key={JSON.stringify([actorId ?? account, account, ready, origin])} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} /></ToastProvider></Orbit2026Scope>;
+  return <Orbit2026Scope language={language}><ToastProvider><Workspace key={JSON.stringify([actorId ?? account, account, ready, origin])} {...(actorId ? { actorId } : {})} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} /></ToastProvider></Orbit2026Scope>;
 }
 
-function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLanguage; timeZone: string; date: string; initialAdd: boolean }) {
+function Workspace({ actorId, language, timeZone, date, initialAdd }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd: boolean }) {
   const resource = useTodoPage(timeZone, date);
   const { account, ready } = useSharedReadAccount();
   const view = resource.page ? todoPageView(resource.page) : null;
@@ -36,6 +37,7 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [all, setAll] = useState<TodoSectionKey | null>(null);
+  const [followup, setFollowup] = useState<{ taskId: string; contactName?: string } | null>(null);
   const [draftKey, setDraftKey] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { title: string; reason?: string; value: ManualTodoDraft }>>({});
   const scope = JSON.stringify([account, date, timeZone]);
@@ -50,7 +52,7 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   useEffect(() => { operation.current = null; setBusy(false); setError(false); setAll(null); }, [scope]);
   useEffect(() => { if (initialAdd) setAdding(true); }, [initialAdd]);
   useEffect(() => () => { activeScope.current = "unmounted"; operation.current = null; draftEpoch.current++; }, []);
-  useEffect(() => { if (!ready || resource.denied || resource.state === "not_implemented") { draftEpoch.current++; setDraftKey(null); setDrafts({}); setAdding(false); setTitle(""); } }, [ready, resource.denied, resource.state]);
+  useEffect(() => { if (!ready || resource.denied || resource.state === "not_implemented") { draftEpoch.current++; setDraftKey(null); setDrafts({}); setFollowup(null); setAdding(false); setTitle(""); } }, [ready, resource.denied, resource.state]);
 
   async function mutate(write: () => Promise<unknown>, message: string, settled?: () => void) {
     if (operation.current) return;
@@ -93,6 +95,12 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
     setDrafts(current => current[key] ? current : { ...current, [key]: { title: row.titlePreview, reason: row.reasonPreview, value: { to: "", subject: row.titlePreview, body: "" } } });
     setDraftKey(key);
   }
+  function openFollowup(key: string) {
+    const row = currentPage.current?.followups.items.find(item => item.key === key);
+    if (!row || row.kind !== "lifecycle" || row.sample || !ready || resource.denied || resource.state !== "ready" || activeScope.current !== scope) return;
+    setAll(null);
+    setFollowup({ taskId: row.taskId, ...(row.contactNamePreview ? { contactName: row.contactNamePreview } : {}) });
+  }
   const draft = ready && !resource.denied && resource.state !== "not_implemented" && draftKey ? drafts[draftKey] : null;
   const binding = resource.page?.nextMoves.items.find(item => item.key === draftKey);
   const canHandoff = Boolean(resource.state === "ready" && binding && !binding.sample && resource.page?.sources[binding.source] === "ok");
@@ -100,7 +108,8 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
   return <>
     <ShellPage rightRail={<TodoNextMovesRail account={account} language={language} state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDraft={openDraft} />} />
     <button type="button" hidden data-task-add="" onClick={() => { setAdding(true); setError(false); }}>{t(taskCopy.todoAdd)}</button>
-    <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} />
+    <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} onFollowup={openFollowup} />
+    {followup && ready && !resource.denied ? <FollowupCompletionModal open {...followup} {...(actorId ? { actorId } : {})} timeZone={timeZone} onClose={() => setFollowup(null)} onCompleted={taskId => { if (activeScope.current === "unmounted" || taskId !== followup.taskId) return; setFollowup(null); toast.success(t(taskCopy.followupCompleted)); void resource.refresh(); }} /> : null}
     {draft ? <TodoDraftDrawer key={`${epoch}:${draftKey}`} open title={draft.title} reason={draft.reason} value={draft.value} canHandoff={canHandoff} scopeKey={`${draftScope}:${epoch}`} onChange={value => { if (draftEpoch.current !== epoch) return; setDrafts(current => current[draftKey!] ? { ...current, [draftKey!]: { ...current[draftKey!]!, value } } : current); }} onClose={() => { if (draftEpoch.current !== epoch) return; draftEpoch.current++; setDraftKey(null); }} /> : null}
     {error && !adding ? <p role="alert" className={styles.note}>{t(taskCopy.todoWriteFailed)}</p> : null}
     <Modal open={adding} title={t(taskCopy.todoAdd)} onClose={() => { if (!busy) setAdding(false); }}>
@@ -112,7 +121,7 @@ function Workspace({ language, timeZone, date, initialAdd }: { language: OrbitLa
     </Modal>
     <Modal open={all !== null} title={all ? sectionTitle(all) : ""} size={680} onClose={() => setAll(null)}>
       {all && view ? <>
-        {view[all].items.map(row => <ListRow key={row.key} title={row.title} subtitle={row.subtitle ?? row.contactName} href={"href" in row ? row.href : undefined} hoverActions={"actions" in row && !busy ? row.actions.map(action => ({ key: action, label: t(action === "accept" ? taskCopy.todoDone : action === "dismiss" ? taskCopy.todoDismiss : taskCopy.todoLater), icon: action === "accept" ? "check" : action === "dismiss" ? "x" : "clock", onSelect: () => decide(row.key, action) })) : []} />)}
+        {view[all].items.map(row => <ListRow key={row.key} title={row.title} subtitle={row.subtitle ?? row.contactName} href={"kind" in row && (row.sample || row.kind === "lifecycle") ? undefined : "href" in row ? row.href : undefined} onSelect={"kind" in row && row.kind === "lifecycle" && !row.sample ? () => openFollowup(row.key) : undefined} hoverActions={"actions" in row && !busy ? row.actions.map(action => ({ key: action, label: t(action === "accept" ? taskCopy.todoDone : action === "dismiss" ? taskCopy.todoDismiss : taskCopy.todoLater), icon: action === "accept" ? "check" : action === "dismiss" ? "x" : "clock", onSelect: () => decide(row.key, action) })) : []} />)}
         {view[all].more.map(source => <div key={source} className={styles.moveFoot}><Button label={t(todoSourceCopy[source])} loading={resource.paging[source] === "loading"} onClick={() => { void resource.loadMore(all, source); }} />{resource.paging[source] === "failed" ? <span role="alert" className={styles.note}>{t(taskCopy.todoUnavailable)}</span> : null}</div>)}
       </> : null}
     </Modal>

@@ -67,6 +67,7 @@ function CompletionSession({ taskId, actorId, contactName, timeZone, onClose, on
     : kind === "archived" ? archiveConfirmed && others.length <= 1000 ? { kind, dismissTaskIds: others.map(row => row.taskId) } : null
       : nextTitle.trim() && nextTaskId.current && dueAt && Date.parse(dueAt) > Date.now() && (kind === "nurture" || detail && ["needs_follow_up", "nurture"].includes(detail.snapshot.connection.stage)) ? { kind, nextTask: { taskId: nextTaskId.current, title: nextTitle.trim(), dueAt } } : null;
   const canComplete = Boolean(state === "ready" && detail && !closed && outcome && !busy && (!note.trim() || savedNote));
+  const mediumLabel = (value: FollowupMedium | "") => t(value === "email" ? taskCopy.followupEmail : value === "phone" ? taskCopy.followupPhone : value === "met" ? taskCopy.followupMet : taskCopy.followupMessage);
   const edit = () => { dirty.current = true; setError(null); };
   const close = () => { if (!pending.current) { if (dirty.current && !closed) setDiscard(true); else onClose(); } };
   function denied(reason: unknown) {
@@ -91,7 +92,7 @@ function CompletionSession({ taskId, actorId, contactName, timeZone, onClose, on
       {state === "loading" ? <Skeleton lines={4} /> : state === "failed" || !detail || !task ? <RetryCard title={t(taskCopy.followupReadFailed)} onRetry={() => setRevision(value => value + 1)} /> : closed ? <p role="status">{t(taskCopy.followupClosed)}</p> : <>
         <header className={styles.header}><h3>{task.title}</h3>{contactName ? <p>{contactName}</p> : null}</header>
         <fieldset className={styles.columns} disabled={Boolean(busy)} aria-label={t(taskCopy.followupCompleteTitle)}>
-          <Card><h4 className={styles.heading}>{t(taskCopy.followupWhat)}</h4><div className={styles.options}>{(["email", "phone", "met", "message"] as const).map(value => <FilterOption key={value} selected={medium === value} label={t(value === "email" ? taskCopy.followupEmail : value === "phone" ? taskCopy.followupPhone : value === "met" ? taskCopy.followupMet : taskCopy.followupMessage)} onToggle={() => { if (!busy && !savedNote) { edit(); setMedium(value); } }} />)}</div>
+          <Card><h4 className={styles.heading}>{t(taskCopy.followupWhat)}</h4><div className={styles.options}>{savedNote ? <span>{mediumLabel(medium)}</span> : (["email", "phone", "met", "message"] as const).map(value => <FilterOption key={value} selected={medium === value} label={mediumLabel(value)} onToggle={() => { if (!busy) { edit(); setMedium(value); } }} />)}</div>
             <label className={styles.label}>{t(taskCopy.followupNote)}<textarea aria-label={t(taskCopy.followupNote)} className={styles.noteInput} maxLength={5000} value={note} disabled={Boolean(busy || savedNote)} onChange={event => { edit(); setNote(event.target.value); }} /></label>
             <p className={styles.note}>{t(taskCopy.followupSeparateSave)}</p><p className={styles.note}>{t(taskCopy.followupNotePrivate)}</p>
             {savedNote ? <p role="status" className={styles.note}>{t(taskCopy.followupNoteSaved)}</p> : <Button label={t(taskCopy.followupSaveNote)} size="sm" disabled={!medium || !note.trim() || Boolean(busy)} loading={busy === "note"} onClick={() => { void saveNote(); }} />}
@@ -112,7 +113,7 @@ function CompletionSession({ taskId, actorId, contactName, timeZone, onClose, on
         <footer className={styles.footer}><span className={styles.note}>{t(taskCopy.followupLaterHint)}</span><Button label={t(taskCopy.followupLater)} disabled={Boolean(busy)} onClick={close} /><Button label={t(taskCopy.followupCompleteNext)} variant="primary" loading={busy === "complete"} disabled={!canComplete} onClick={() => { void complete(); }} /></footer>
       </>}
     </Modal>
-    <ConfirmDialog open={discard} title={t(taskCopy.followupCloseTitle)} description={t(savedNote ? taskCopy.followupCloseSaved : taskCopy.followupCloseUnsaved)} confirmLabel={t(taskCopy.calendarDiscard)} destructive onConfirm={onClose} onCancel={() => setDiscard(false)} />
+    <ConfirmDialog open={discard} title={t(taskCopy.followupCloseTitle)} message={t(savedNote ? taskCopy.followupCloseSaved : taskCopy.followupCloseUnsaved)} confirmLabel={t(taskCopy.calendarDiscard)} destructive onConfirm={onClose} onCancel={() => setDiscard(false)} />
   </>;
 }
 

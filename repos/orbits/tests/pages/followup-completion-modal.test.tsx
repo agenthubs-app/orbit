@@ -62,6 +62,7 @@ test("note failure keeps input and retry identity; independently saved note surv
   controls.failNote = false;
   await act(async () => button(root!, "メモを保存").props.onClick());
   assert.equal(writes[0].key, writes[1].key); assert.equal(note().props.disabled, true);
+  assert.equal(root!.root.findAllByType("button").filter(node => contents(node) === "メール").length, 0, "saved medium is read-only text, not an active-looking no-op control");
   assert.ok(JSON.stringify(root!.toJSON()).includes("メモは別に保存済みです"));
   await act(async () => button(root!, "推進中へ").props.onClick());
   await act(async () => root!.root.findAllByType("input").find(node => node.props["aria-label"] === "関係の目標")!.props.onChange({ target: { value: "Plans" } }));
@@ -111,6 +112,21 @@ test("decide later closes without completing or writing an encounter", async t =
   t.after(() => { act(() => root.unmount()); restore(); });
   await act(async () => button(root!, "あとで決める").props.onClick());
   assert.equal(closes, 1); assert.equal(writes.length, 0);
+});
+
+for (const saved of [false, true]) test(`dirty close explains ${saved ? "separately saved note retention" : "unsaved input discard"}`, async t => {
+  const restore = documentStub(), { fetcher, writes } = fixture(); let closes = 0;
+  t.mock.method(globalThis, "fetch", fetcher); let root: ReactTestRenderer;
+  await act(async () => { root = create(<Orbit2026Scope language="ja"><FollowupCompletionModal open taskId="second" actorId="a" timeZone="UTC" onClose={() => { closes++; }} onCompleted={() => {}} /></Orbit2026Scope>); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  await act(async () => button(root!, "メール").props.onClick());
+  await act(async () => root!.root.findByType("textarea").props.onChange({ target: { value: "Keep this note" } }));
+  if (saved) await act(async () => button(root!, "メモを保存").props.onClick());
+  await act(async () => button(root!, "あとで決める").props.onClick());
+  const dialog = root!.root.findByProps({ role: "alertdialog" });
+  assert.ok(contents(dialog).includes(saved ? "保存済みのメモは残ります。次のステップの入力は破棄されます。" : "未保存の入力は破棄されます。"));
+  assert.equal(closes, 0);
+  assert.ok(writes.every(row => row.path === "/api/encounters"));
 });
 
 test("late resolver from an old account cannot load its private lifecycle into the new modal", async t => {

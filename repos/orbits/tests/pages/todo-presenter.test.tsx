@@ -61,3 +61,17 @@ test("whole capability NOT_IMPLEMENTED hides the page; whole failure offers retr
   assert.ok(root!.root.findAllByProps({ role: "alert" }).length > 0);
   assert.ok(text(root!).includes("To-do を読み込めませんでした"));
 });
+
+test("lifecycle rows open task-addressed completion only when a handler exists; sample rows never act", async t => {
+  const item = demoTodoPage.followups.items.find(row => row.kind === "lifecycle")!;
+  const page = { ...demoTodoPage, followups: { next: {}, items: [{ ...item, sample: undefined }, { ...item, key: "relationship_task:sample", titlePreview: "Sample follow-up", sample: true as const }] } };
+  const opened: string[] = []; let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(page)} onFollowup={key => opened.push(key)} />); });
+  t.after(() => act(() => root.unmount()));
+  const row = root!.root.findAllByType("button").find(node => contents(node).includes(item.titlePreview));
+  assert.ok(row, "real lifecycle row must be a task-addressed button, not a contact fallback");
+  await act(async () => row.props.onClick());
+  assert.deepEqual(opened, [item.key]);
+  assert.ok(root!.root.findAllByType("button").every(node => !contents(node).includes("Sample follow-up")));
+  assert.ok(!text(root!).includes("フォローの詳細はまだ開けません"));
+});

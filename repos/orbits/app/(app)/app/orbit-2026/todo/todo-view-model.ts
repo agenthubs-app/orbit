@@ -11,7 +11,7 @@ export interface TodoDecisionView extends TodoRowView {
   question: boolean;
 }
 export interface TodoNextMoveView extends TodoRowView { draftAvailable: boolean }
-export interface TodoFollowupView extends TodoRowView { href?: string; detailUnavailable: boolean; overdue: boolean; dueAt?: string; deferralCount?: number }
+export interface TodoFollowupView extends TodoRowView { kind: "lifecycle" | "task"; href?: string; detailUnavailable: boolean; overdue: boolean; dueAt?: string; deferralCount?: number }
 export interface TodoSectionView<T> {
   state: "ready" | "empty" | "partial" | "failed" | "hidden";
   count: { value: number | null; partial: boolean; capped: boolean };
@@ -62,7 +62,7 @@ export function todoPageView(page: TodoPageContract): TodoPageView {
     key: item.key, title: item.titlePreview, subtitle: item.reasonPreview, contactName: item.contactNamePreview, sample: Boolean(item.sample), draftAvailable: item.draftAvailable,
   })));
   const followups = sectionView(page, "followups", page.followups.items.map(item => ({
-    key: item.key, title: item.titlePreview, contactName: item.contactNamePreview, sample: Boolean(item.sample),
+    key: item.key, kind: item.kind, title: item.titlePreview, contactName: item.contactNamePreview, sample: Boolean(item.sample),
     // The legacy relationship/[id] route expects a connection ID, not taskId.
     href: item.kind === "lifecycle" ? item.contactId ? `/app/contacts/${encodeURIComponent(item.contactId)}` : undefined : `/app/tasks/${encodeURIComponent(item.taskId)}`,
     detailUnavailable: item.kind === "lifecycle",

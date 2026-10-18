@@ -13,12 +13,13 @@ export const todoSourceCopy = {
   agent_signal: taskCopy.sourceSignal, plan_today_chance: taskCopy.sourcePlanChance, relationship_task: taskCopy.sourceLifecycle, task: taskCopy.sourceTask,
 };
 
-export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onMore }: {
+export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFollowup, onMore }: {
   state: "idle" | "loading" | "ready" | "failed" | "not_implemented";
   view: TodoPageView | null;
   onRetry: () => void;
   onDecision: (key: string, action: DecisionAction) => void;
   onDraft?: (key: string) => void;
+  onFollowup?: (key: string) => void;
   onMore: (section: "decisions" | "nextMoves" | "followups") => void;
 }) {
   const language = useScopeLanguage();
@@ -68,7 +69,7 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onMor
     {view.followups.state !== "hidden" ? <Card className={styles.followups} aria-label={t(taskCopy.todoFollowups)}>
       {header(t(taskCopy.todoFollowups), view.followups, "followups", <span className={styles.note}>{t(taskCopy.todoDueOrder)}</span>)}
       {issues(view.followups)}
-      {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.map(row => <div key={row.key}><ListRow title={row.title} subtitle={row.contactName} href={row.href} trailing={row.overdue ? <Chip label={t(taskCopy.todoOverdue)} tone="coral" /> : row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} /> : undefined} />{row.detailUnavailable ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
+      {view.followups.state === "empty" ? <EmptyState title={t(taskCopy.todoFollowupsEmpty)} /> : view.followups.items.map(row => <div key={row.key}><ListRow title={row.title} subtitle={row.contactName} href={row.sample || (row.kind === "lifecycle" && onFollowup) ? undefined : row.href} onSelect={row.kind === "lifecycle" && !row.sample && onFollowup ? () => onFollowup(row.key) : undefined} trailing={<>{row.sample ? <SampleTag /> : null}{row.overdue ? <Chip label={t(taskCopy.todoOverdue)} tone="coral" /> : row.dueAt ? <Chip label={new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { month: "numeric", day: "numeric", timeZone: view.timeZone }).format(new Date(row.dueAt))} /> : null}</>} />{row.detailUnavailable && !onFollowup ? <p className={styles.note}>{t(taskCopy.todoLifecycleDetailPending)}</p> : null}</div>)}
       {view.followups.more.length ? <Button label={t(taskCopy.todoAll)} variant="ghost" size="sm" onClick={() => onMore("followups")} /> : null}
     </Card> : null}
   </div>;

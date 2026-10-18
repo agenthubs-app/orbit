@@ -6,6 +6,9 @@ import { demoTodoPage } from "../../shared/mock/demo-world/todo";
 import { SessionContext } from "next-auth/react";
 import { TodoDraftDrawer } from "../../app/(app)/app/orbit-2026/todo/TodoDraftDrawer";
 import { ShellPage, ShellSlotsProvider, useShellSlots } from "../../app/(app)/app/orbit-2026/shell/slots";
+import { MemoryRelationshipLifecycleRepository } from "../../features/connections/lifecycle/memory-repository";
+import { createRelationshipLifecycleHandlers } from "../../app/api/connections/[id]/lifecycle/handler";
+import { createRelationshipLifecycleService } from "../../features/connections/lifecycle/service";
 
 function RailProbe() { return <aside data-rail-probe="">{useShellSlots().rightRail}</aside>; }
 
@@ -234,4 +237,41 @@ test("denial or whole-page NOT_IMPLEMENTED erases a private draft instead of rev
     await act(async () => button(root!, "下書きを開く").props.onClick());
     assert.equal(root!.root.findByType("textarea").props.value, "");
   });
+});
+
+test("real Todo lifecycle row resolves its exact task, completes only that task, and refreshes aggregate counts", async t => {
+  const restore = setupDocument(), at = "2026-10-18T00:00:00.000Z";
+  const connection = { actorId: "a", connectionId: "c", contactId: "contact", stage: "needs_follow_up" as const, activeGoal: null, version: 1, createdAt: at, updatedAt: at };
+  const first = { actorId: "a", connectionId: "c", contactId: "contact", taskId: "first", title: "First remains open", status: "open" as const, purpose: "follow_up" as const, dueAt: at, version: 1, createdAt: at, updatedAt: at };
+  const second = { ...first, taskId: "second", title: "Selected second follow-up" };
+  const repository = new MemoryRelationshipLifecycleRepository({ connections: [connection], contacts: [{ actorId: "a", contactId: "contact" }], tasks: [first, second] });
+  const handlers = createRelationshipLifecycleHandlers({ resolveActor: async () => ({ id: "a" }), repository, service: createRelationshipLifecycleService(repository, () => at) });
+  let pageReads = 0; const resolved: string[] = [], writes: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+    if (url.startsWith("/api/todo/page")) {
+      pageReads++;
+      const snapshot = await repository.read("a", "c"), open = snapshot!.tasks.filter(row => row.status === "open");
+      return Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", timeZone: "UTC", counts: { ...demoTodoPage.counts, followups: open.length, overdue: open.length }, followups: { next: {}, items: open.map(row => ({ key: `relationship_task:${row.taskId}`, kind: "lifecycle", taskId: row.taskId, source: "relationship_task", sourceId: row.taskId, createdAt: at, status: "open", contactId: "contact", titlePreview: row.title, dueAt: at, overdue: true })) } } });
+    }
+    if (url.endsWith("/resolve")) { resolved.push(url); return Response.json({ success: true, data: { taskId: "second", connectionId: "c", contactId: "contact" } }); }
+    if (init?.method === "POST") writes.push(JSON.parse(String(init.body)).taskId);
+    const request = new Request(`https://orbit.local${url}`, init), context = { params: Promise.resolve({ id: "c" }) };
+    return init?.method === "POST" ? handlers.POST(request, context) : handlers.GET(request, context);
+  });
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoWorkspace actorId="a" language="ja" timeZone="UTC" date="2026-10-18" />); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  const row = root!.root.findAllByType("button").find(node => contents(node).includes(second.title));
+  assert.ok(row, "Todo host must mount the task-addressed modal from the actual row");
+  await act(async () => row.props.onClick());
+  assert.equal(resolved[0], "/api/relationship-tasks/second/resolve");
+  await act(async () => button(root!, "推進中へ").props.onClick());
+  await act(async () => root!.root.findAllByType("input").find(node => node.props["aria-label"] === "関係の目標")!.props.onChange({ target: { value: "Discuss plans" } }));
+  await act(async () => button(root!, "完了して次へ").props.onClick());
+  assert.deepEqual(writes, ["second"]); assert.equal(pageReads, 2);
+  const snapshot = await repository.read("a", "c");
+  assert.equal(snapshot?.tasks.find(row => row.taskId === "first")?.status, "open");
+  assert.equal(snapshot?.tasks.find(row => row.taskId === "second")?.status, "completed");
+  assert.ok(!JSON.stringify(root!.toJSON()).includes(second.title));
+  assert.ok(JSON.stringify(root!.toJSON()).includes(first.title));
 });
