@@ -1,109 +1,61 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import Module from "node:module";
 import test from "node:test";
 import React from "react";
 import { renderToHtml } from "./helpers/render";
-import { aiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
-
-/**
- * Sprint 0092: the two IORBIT home regions each have to land somewhere.
- *
- * "Still reading", "read it and there is nothing", and "could not read it" look
- * different and each has an assertion here. Before this, a request that never
- * answered left the region on the first one indefinitely, with nothing for the
- * user to act on — the same failure 0078 and 0087 fixed for other surfaces.
- */
-let todayKind = "success";
-let sessionsKind = "success";
-let conversationKind = "success";
-const todayDate = (() => {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const value = Object.fromEntries(parts.map(item => [item.type, item.value]));
-  return `${value.year}-${value.month}-${value.day}`;
-})();
-let today: unknown = {
-  taskMode: "summary",
-  date: todayDate,
-  timeZone: "Asia/Tokyo",
-  summary: { openTaskCount: 0, suggestionCount: 0 },
-  items: [],
-  questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
-};
-let overdue = false;
 
 const loader = Module as unknown as { _load: (name: string, ...args: unknown[]) => unknown };
 const originalLoad = loader._load;
-loader._load = (name, ...args) => {
-  if (name === "expo-crypto") return { randomUUID };
-  if (name === "expo-router") return { useLocalSearchParams: () => ({}), useRouter: () => ({ push() {} }) };
-  if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "读者", email: "reader@example.test", emailVerified: true, image: null } }) };
-  if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
-  if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
-  if (name.endsWith("/hooks/useRelationshipInboxBadgeCount")) return { useRelationshipInboxBadgeCount: () => 0 };
-  // Sprint 0118: the network path; the device mirror of the AI sessions is not available here.
-  if (name.endsWith("/hooks/useLocalAiSessions")) return { useLocalAiSessions: () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null }) };
-  // The ceiling's own timing is covered in use-loading-deadline.test.ts; this
-  // file is about what each region shows once it has or has not expired.
-  if (name.endsWith("/hooks/useLoadingDeadline")) return { LOADING_DEADLINE_MS: 8_000, useLoadingDeadline: () => overdue };
-  if (name.endsWith("/hooks/useApiResource") || name === "./useApiResource") return {
-    useApiResource: (path: string) => {
-      const kind = path.startsWith("/api/today") ? todayKind : path.includes("/sessions") ? sessionsKind : conversationKind;
-      return {
-        kind,
-        data: path.startsWith("/api/today") ? today : path.includes("/sessions") ? emptyAiSessionListPayload : aiConversationPayload,
-        error: { message: "连接暂不可用" }, refreshing: false, refresh() {},
-      };
-    },
-  };
-  return originalLoad(name, ...args);
-};
-const { AiScreen } = require("../src/screens/ai/AiScreen");
+loader._load = (name, ...args) => name === "expo-router"
+  ? { usePathname: () => "/ai", useRouter: () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} }) }
+  : originalLoad(name, ...args);
+const { IOrbitStartView } = require("../src/screens/ai/IOrbitStartView");
 loader._load = originalLoad;
 
-test.beforeEach(() => { todayKind = "success"; sessionsKind = "success"; conversationKind = "success"; today = {
-  taskMode: "summary", date: todayDate, timeZone: "Asia/Tokyo", summary: { openTaskCount: 0, suggestionCount: 0 }, items: [],
-  questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
-}; overdue = false; });
+const noop = () => {};
+function start(overrides: Record<string, unknown> = {}) {
+  return renderToHtml(<IOrbitStartView
+    contactCount={1} confirmDelete={null} deleting={false} draft="" error={null}
+    history={[]} historyHasMore={false} historyLoading={false} historyNotice={null}
+    historyOpen historyQuery="" offline={false} offlineAt={null}
+    onClose={noop} onCancelDelete={noop} onConfirmDelete={noop} onDelete={noop}
+    onDraftChange={noop} onHistoryClose={noop} onHistoryOpen={noop}
+    onHistoryQueryChange={noop} onLoadMore={noop} onNew={noop}
+    onNewGoal={noop} onOpen={noop} onOpenGoal={noop} onOpenIntake={noop}
+    onPin={noop} onRename={noop} onScan={noop} onSend={noop} onUndo={noop}
+    planGoals={[]} planIntakes={[]} suggestions={[]} undoAvailable={false}
+    {...overrides}
+  />);
+}
 
-test("still reading: each region says so while its request is in flight", () => {
-  todayKind = "loading"; sessionsKind = "loading"; conversationKind = "loading";
-  const html = renderToHtml(<AiScreen />);
-  assert.match(html, /正在读取最近会话/u);
-  assert.match(html, /正在核对下一步/u);
-  assert.doesNotMatch(html, /超时/u, "a load in flight is not a timeout");
+test("R21 history loading does not claim the list is empty", () => {
+  const html = start({ historyLoading: true });
+  assert.equal(html.includes("会話を読み込み中…"), true);
+  assert.equal(html.includes("まだ会話はありません"), false);
 });
 
-test("read it and there is nothing: an empty result is not the same as still reading", () => {
-  todayKind = "empty"; sessionsKind = "empty"; conversationKind = "empty";
-  const html = renderToHtml(<AiScreen />);
-  assert.match(html, /现在没有必须处理的事项/u);
-  assert.doesNotMatch(html, /正在核对下一步|正在读取最近会话/u);
-  assert.doesNotMatch(html, /超时/u);
+test("R21 a completed empty history has a distinct state", () => {
+  const html = start();
+  assert.equal(html.includes("まだ会話はありません"), true);
+  assert.equal(html.includes("会話を読み込み中…"), false);
 });
 
-test("could not read it: a failure offers a retry rather than an empty region", () => {
-  todayKind = "failure"; sessionsKind = "failure"; conversationKind = "failure";
-  const html = renderToHtml(<AiScreen />);
-  assert.match(html, /连接暂不可用/u, "the next-actions region shows why");
-  assert.match(html, /历史记录未能读取|会话记录未能读取/u);
-  assert.match(html, /aria-label="重试"|重试/u);
-  assert.doesNotMatch(html, /正在核对下一步|正在读取最近会话/u);
+test("R21 a failed history read offers retry and does not claim empty", () => {
+  const html = start({ historyNotice: { message: "履歴を読み込めません", retryLabel: "再読み込み", onRetry: noop } });
+  assert.equal(html.includes("履歴を読み込めません"), true);
+  assert.equal(html.includes("再読み込み"), true);
+  assert.equal(html.includes("まだ会話はありません"), false);
 });
 
-test("a load that never answers stops saying 'still reading' and offers a retry", () => {
-  todayKind = "loading"; sessionsKind = "loading"; conversationKind = "loading";
-  overdue = true;
-  const html = renderToHtml(<AiScreen />);
-  assert.match(html, /读取最近会话超时/u);
-  assert.match(html, /核对下一步超时/u);
-  assert.doesNotMatch(html, /正在读取最近会话/u, "the region must not claim to still be reading past its ceiling");
-  assert.doesNotMatch(html, /正在核对下一步/u);
-  assert.match(html, /重试/u, "a timeout the user cannot retry is no better than a spinner");
+test("R21 a completed search with no hits says so", () => {
+  const html = start({ historyQuery: "該当なし" });
+  assert.equal(html.includes("一致する会話はありません"), true);
+  assert.equal(html.includes("まだ会話はありません"), false);
 });
 
-test("an overdue next-actions region does not also claim there is nothing to do", () => {
-  todayKind = "loading"; overdue = true;
-  const html = renderToHtml(<AiScreen />);
-  assert.doesNotMatch(html, /现在没有必须处理的事项/u, "not having read it is not the same as there being nothing");
+test("R21 a later-page failure retains already loaded history", () => {
+  const history = [{ source: "session", id: "session:kept", title: "残った会話", when: "今日", updatedAt: "2026-10-18T00:00:00Z", groupId: null, pinned: false, organizationRevision: 1, preview: "" }];
+  const html = start({ history, historyNotice: { message: "続きを読み込めません", retryLabel: "再試行", onRetry: noop } });
+  assert.equal(html.includes("残った会話"), true);
+  assert.equal(html.includes("続きを読み込めません"), true);
 });

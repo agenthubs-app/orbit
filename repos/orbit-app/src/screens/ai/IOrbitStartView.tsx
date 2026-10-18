@@ -36,7 +36,7 @@ function tokyoGroup(item: IOrbitHistoryItem, now = new Date()): "ピン留め" |
 
 export function IOrbitStartView({
   contactCount, confirmDelete, deleting, draft, error, history, historyHasMore,
-  historyLoading, historyOpen, historyQuery, offline, offlineAt, onClose, onConfirmDelete,
+  historyLoading, historyNotice, historyOpen, historyQuery, offline, offlineAt, onClose, onConfirmDelete,
   onCancelDelete, onDelete, onDraftChange, onHistoryClose, onHistoryOpen, onHistoryQueryChange,
   onLoadMore, onNew, onNewGoal, onOpen, onOpenGoal, onOpenIntake, onPin, onRename, onScan, onSend, onUndo, planGoals, planIntakes, suggestions,
   undoAvailable,
@@ -49,6 +49,7 @@ export function IOrbitStartView({
   history: IOrbitHistoryItem[];
   historyHasMore: boolean;
   historyLoading: boolean;
+  historyNotice: { message: string; retryLabel?: string; onRetry?: () => void } | null;
   historyOpen: boolean;
   historyQuery: string;
   offline: boolean;
@@ -130,9 +131,11 @@ export function IOrbitStartView({
     <FullDrawer visible={historyOpen} title="会話リスト" onClose={onHistoryClose}>
       <Button label="新しい会話" icon="plus" variant="primary" onPress={onNew} block />
       <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder="タイトルと本文を検索" />
+      {historyLoading && !history.length ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>会話を読み込み中…</UiText> : null}
+      {historyNotice ? <View style={styles.notice}><UiText accessibilityRole="alert" style={styles.error}>{historyNotice.message}</UiText>{historyNotice.onRetry ? <Button label={historyNotice.retryLabel ?? "再試行"} variant="ghost" size="sm" onPress={historyNotice.onRetry} /> : null}</View> : null}
       {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
       {undoAvailable ? <Button label="削除を元に戻す" variant="ghost" icon="undo" onPress={onUndo} /> : null}
-      {!history.length && !historyLoading ? <UiText style={styles.muted}>{historyQuery ? "一致する会話はありません" : "まだ会話はありません"}</UiText> : null}
+      {!history.length && !historyLoading && !historyNotice ? <UiText style={styles.muted}>{historyQuery ? "一致する会話はありません" : "まだ会話はありません"}</UiText> : null}
       {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{label}</UiText>
         {items.map((item) => <View key={`${item.source}:${item.id}`} style={styles.historyRow}>
           <UiPressable accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} onLongPress={() => setSelected(item)} style={styles.historyMain}>
@@ -196,6 +199,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   input: { flex: 1, minWidth: 0, color: colors.ink, fontSize: typography.body, paddingHorizontal: spacing.sm, minHeight: 44 },
   error: { color: colors.coralText, fontSize: typography.bodySm },
   muted: { color: colors.ink3Text, fontSize: typography.label },
+  notice: { gap: spacing.xs },
   group: { gap: spacing.xs },
   groupTitle: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   historyRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },

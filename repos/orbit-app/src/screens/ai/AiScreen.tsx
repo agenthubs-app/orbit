@@ -759,6 +759,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       history={historyItems}
       historyHasMore={historyHasMore && historyQuerySettled}
       historyLoading={historyKind === "loading" || historyPaging || (serverSearchActive && serverSearchState.kind === "loading")}
+      historyNotice={historyNotices.find((notice) => notice.onRetry) ?? null}
       historyOpen={historyOpen}
       historyQuery={historyQuery}
       offline={aiOffline}

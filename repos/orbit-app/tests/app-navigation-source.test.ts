@@ -12,6 +12,10 @@ const aiScreenSource = readFileSync(
   join(repoRoot, "src", "screens", "ai", "AiScreen.tsx"),
   "utf8"
 );
+const aiStartSource = readFileSync(
+  join(repoRoot, "src", "screens", "ai", "IOrbitStartView.tsx"),
+  "utf8"
+);
 const badgeHookSource = readFileSync(
   join(repoRoot, "src", "hooks", "useRelationshipInboxBadgeCount.ts"),
   "utf8"
@@ -26,19 +30,18 @@ test("app destinations live in a stack group without bottom tabs", () => {
   assert.doesNotMatch(appLayoutSource, /Tabs|tabBar/u);
 });
 
-test("the Orbit AI drawer exposes the relationship inbox with its unread badge", () => {
-  assert.match(aiScreenSource, /accessibilityLabel=\{locale\.t\("ai\.openInbox"\)\}/u);
-  assert.match(aiScreenSource, /onOpenCapability\("\/inbox" as Href\)/u);
-  assert.match(aiScreenSource, /file-tray-full-outline/u);
-  assert.match(aiScreenSource, /useRelationshipInboxBadgeCount/u);
-  assert.match(aiScreenSource, /inboxBadge \? <View style=\{styles\.drawerInboxDot\}/u);
+test("R21 iOrbit owns a full-screen header and leaves inbox navigation to the app shell", () => {
+  assert.match(aiStartSource, /<AppScreen inset="kit"/u);
+  assert.match(aiStartSource, /accessibilityLabel="会話リスト"/u);
+  assert.match(aiStartSource, /accessibilityLabel="閉じる"/u);
+  assert.doesNotMatch(aiStartSource, /drawerInboxDot|inboxBadge/u);
 });
 
-test("the Orbit AI drawer links Today to its canonical open task count", () => {
-  assert.match(aiScreenSource, /href: "\/today" as Href/u);
-  assert.match(aiScreenSource, /todayBadge=\{todaySummaryView\.openTaskCount\}/u);
-  assert.match(aiScreenSource, /badge=\{entry\.href === "\/today" \? todayBadge : undefined\}/u);
-  assert.doesNotMatch(aiScreenSource, /entry\.href === "\/schedule"/u);
+test("R21 history separates plan intakes and goals from chat sessions", () => {
+  assert.match(aiStartSource, /planIntakes\.map/u);
+  assert.match(aiStartSource, /planGoals\.map/u);
+  assert.match(aiScreenSource, /planFlowHref\("app", intake\.intakeId\)/u);
+  assert.match(aiScreenSource, /planOverviewHref\("app", goal\.planId\)/u);
 });
 
 test("the inbox badge delegates native lifecycle wiring to the shared scoped resource", () => {
