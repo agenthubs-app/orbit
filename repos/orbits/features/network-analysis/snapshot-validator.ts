@@ -3,7 +3,7 @@
  *
  * - 只认契约字段（kind、zh／en 文字、依据 id、needId）；模型多给的字段（分数、覆盖度……）一律丢弃；
  * - 依据里不在本次输入中的联系人／记录 id（编造的）丢弃；剔完依据为空的块丢弃（处处有据）；
- * - 同一次调用必须产出 zh 与 en，任一语言为空的块丢弃；
+ * - 同一次调用必须产出 zh 与 en，任一语言为空的块丢弃；ja（R11b）可缺：缺或不安全时只丢日文那一句，块保留；
  * - 每种块按上限截取（diagnosis 1、insight 3、gap 6、plan 1）；gap 的 needId 只认本次输入里的需求；
  * - 关键块不足（没有 diagnosis，或 insight 少于 2 条）→ 整份失败（不写库）。
  * - 文字里出现原始 id（本次输入的任何 id、`前缀:值` 形式的记录引用、UUID）或模型别名（C1／R2／N3）的块丢弃
@@ -117,6 +117,7 @@ export function validateSnapshotOutput(content: unknown, allowed: SnapshotAllowe
     const textSource = isRecord(raw.text) ? raw.text : raw;
     const zh = cleanText(textSource.zh);
     const en = cleanText(textSource.en);
+    const jaCandidate = cleanText(textSource.ja);
     const evidenceSource = isRecord(raw.evidence) ? raw.evidence : raw;
     const contactCandidates = idList(evidenceSource.contactIds);
     const recordCandidates = idList(evidenceSource.recordIds);
@@ -136,12 +137,14 @@ export function validateSnapshotOutput(content: unknown, allowed: SnapshotAllowe
       dropped.unsafeText += 1;
       continue;
     }
+    const ja = jaCandidate && !snapshotTextLeaksIds(jaCandidate, allowed) && !snapshotTextHasStatistics(jaCandidate, allowed.phrases) ? jaCandidate : "";
+    if (jaCandidate && !ja) dropped.unsafeText += 1;
     kept[kind].push({
       evidence: { contactIds, recordIds },
       key: `${kind}-${kept[kind].length + 1}`,
       kind,
       ...(needId ? { needId } : {}),
-      text: { en, zh },
+      text: { en, zh, ...(ja ? { ja } : {}) },
     });
   }
   if (kept.diagnosis.length < 1 || kept.insight.length < SNAPSHOT_MIN_INSIGHTS) {

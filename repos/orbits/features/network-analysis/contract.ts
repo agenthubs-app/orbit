@@ -2,7 +2,7 @@
  * W0048a：共享人脉分析快照的契约（W0048b、W0049～W0055 共用；REPORT 交接最终名）。
  *
  * - 快照只存 AI 叙述与依据，**不存任何统计数字**（分布、档位人数、覆盖度、分数一律实时规则算）；
- * - 文字按语言分列存（zh／en），依据语言无关只存一份；页面视图只带请求语言；
+ * - 文字按语言分列存（zh／en；R11b 起加 ja，旧快照没有），依据语言无关只存一份；页面视图只带请求语言；
  * - `includedContactIds` 只在写入与阈值比较时读，页面读取路径不取。
  */
 export type SnapshotBlockKind = "diagnosis" | "insight" | "gap" | "plan";
@@ -17,7 +17,8 @@ export interface SnapshotEvidence {
 export interface SnapshotBlock {
   key: string;
   kind: SnapshotBlockKind;
-  text: { zh: string; en: string };
+  /** R11b（§2 B-7）：ja 与 zh / en 在同一次生成里产出；旧快照或模型没给日文时缺省，日文界面隐藏这一句。 */
+  text: { zh: string; en: string; ja?: string };
   evidence: SnapshotEvidence;
   needId?: string;
 }
@@ -44,7 +45,8 @@ export interface NetworkAnalysisSnapshot {
   generator: { provider: "deepseek" | "mock"; model: string; promptVersion: string };
 }
 
-export type SnapshotLanguage = "zh" | "en";
+export type SnapshotLanguage = "zh" | "en" | "ja";
+export const SNAPSHOT_LANGUAGES: readonly SnapshotLanguage[] = ["zh", "en", "ja"];
 
 export interface NetworkSnapshotViewBlock {
   key: string;
@@ -102,4 +104,5 @@ export const SNAPSHOT_TEXT_LIMIT = 600;
 export const SNAPSHOT_EVIDENCE_LIMIT = 12;
 
 /** 当前提示词版本：变了即视为来源变化（sourceDataVersion 覆盖）。 */
-export const SNAPSHOT_PROMPT_VERSION = "network-snapshot-2026-10-v3";
+/** R11b（§2 B-7）：v4 起同一次调用多产出日文；升版使未发布快照按现有后台限流全部重算。 */
+export const SNAPSHOT_PROMPT_VERSION = "network-snapshot-2026-10-v4-ja";

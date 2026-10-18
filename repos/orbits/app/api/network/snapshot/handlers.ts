@@ -17,7 +17,7 @@ import {
 /**
  * W0048a：人脉分析快照的两个接口。
  *
- * - `GET /api/network/snapshot?lang=zh|en` → `NetworkSnapshotView`（只带请求语言的块与依据、freshness、quota）。
+ * - `GET /api/network/snapshot?lang=zh|en|ja` → `NetworkSnapshotView`（只带请求语言的块与依据、freshness、quota）。
  *   判定为自动重算时只 upsert 一行 job（不预留），并在响应之外尝试领取；维护任务兜底。
  * - `POST /api/network/snapshot/recompute`：手动重新分析，用户主动池 1 次操作，请求内同步生成；
  *   第 4 次 429 `MANUAL_REFRESH_LIMIT`、用户池总熔断用满 429 `USER_DAILY_LIMIT`（两者 0 次调用）；
@@ -42,8 +42,10 @@ async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
   return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
 }
 
+/** R11b（§2 B-7）：`lang=ja` 读日文叙述（旧快照没有时块为空，不回退）；`en`；其余 zh（旧行为）。 */
 function language(request: Request): SnapshotLanguage {
-  return new URL(request.url).searchParams.get("lang") === "en" ? "en" : "zh";
+  const lang = new URL(request.url).searchParams.get("lang");
+  return lang === "en" ? "en" : lang === "ja" ? "ja" : "zh";
 }
 
 function isUndefinedTable(error: unknown): boolean {

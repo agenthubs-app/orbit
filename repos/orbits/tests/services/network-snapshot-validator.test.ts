@@ -156,3 +156,32 @@ test("SC-02 P2-3 prompt input carries only aliases; the response maps back to th
   assert.deepEqual(restored.blocks[0].recordIds, ["memo:n1"]);
   assert.equal(restored.blocks[0].needId, "need-1");
 });
+
+test("R11b B-7: one call also yields ja; a missing or unsafe ja drops only the Japanese sentence, never the block", () => {
+  const result = validateSnapshotOutput({
+    blocks: [
+      block("diagnosis", { ja: "診断の日本語です。" }),
+      block("insight", { ja: "" }),
+      block("insight", { contactIds: ["c2"], ja: "memo:n1 を見てください。" }),
+      block("insight", { contactIds: ["c3"], ja: "投資家が 5人 います。" }),
+    ],
+  }, allowed);
+  assert.equal(result.blocks.length, 4);
+  assert.equal(result.blocks[0]!.text.ja, "診断の日本語です。");
+  assert.equal(result.blocks[1]!.text.ja, undefined, "no ja from the model → none stored");
+  assert.equal(result.blocks[2]!.text.ja, undefined, "a record reference in ja drops the sentence");
+  assert.equal(result.blocks[3]!.text.ja, undefined, "a people count in ja drops the sentence");
+  assert.equal(result.dropped.unsafeText, 2);
+  for (const entry of result.blocks) assert.ok(entry.text.zh && entry.text.en, "zh / en stay required");
+});
+
+test("R11b B-7: the mock writes ja from the real input too, and the prompt asks for ja in the same call", async () => {
+  const result = validateSnapshotOutput((await createMockSnapshotGenerator().generate(INPUT)).content, allowed);
+  for (const entry of result.blocks) {
+    assert.ok(entry.text.ja && /[ぁ-んァ-ン]/.test(entry.text.ja), entry.text.ja);
+    assert.equal(snapshotTextHasStatistics(entry.text.ja!), false);
+  }
+  const { SNAPSHOT_SYSTEM_PROMPT } = await import("../../features/network-analysis/deepseek-snapshot-generator");
+  assert.match(SNAPSHOT_SYSTEM_PROMPT, /Japanese text \\"ja\\"|Japanese text "ja"/);
+  assert.match(SNAPSHOT_SYSTEM_PROMPT, /"ja":"\.\.\."/);
+});

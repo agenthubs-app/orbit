@@ -236,3 +236,24 @@ test("SC-04 recompute: the 4th manual run is 429 MANUAL_REFRESH_LIMIT and the fu
     assert.equal((await harness.pool.query(`select count(*)::int as n from ai_usage_ledger where actor_id = 'actor:carol'`)).rows[0].n, 0);
   });
 });
+
+test("R11b B-7: GET lang=ja reads the Japanese narrative written in the same generation; an older snapshot without ja shows no AI sentence (no fallback)", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 4);
+    const { handlers, runAfter } = routes(runtimeFor(harness, generatorOf(buildMockSnapshotContent)));
+    await getView(handlers);
+    await runAfter();
+    const ja = await getView(handlers, "ja");
+    assert.equal(ja.state, "ready");
+    assert.ok(ja.blocks.length >= 3);
+    assert.ok(ja.blocks.every((block) => /[ぁ-んァ-ン]/.test(block.text)), "Japanese text only");
+    const zh = await getView(handlers, "zh");
+    assert.deepEqual(ja.blocks.map((block) => block.key), zh.blocks.map((block) => block.key));
+    // A snapshot written before v4 (no narrative_ja): the ja view keeps the state but carries no sentence.
+    await harness.client.query("update network_analysis_snapshots set narrative_ja = null where actor_id = $1", [ALICE]);
+    const old = await getView(handlers, "ja");
+    assert.equal(old.state, "ready");
+    assert.deepEqual(old.blocks, []);
+    assert.ok((await getView(handlers, "en")).blocks.length >= 3, "zh / en untouched");
+  });
+});

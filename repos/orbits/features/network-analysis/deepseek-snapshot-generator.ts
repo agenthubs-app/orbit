@@ -20,9 +20,9 @@ export const SNAPSHOT_SYSTEM_PROMPT = [
   "Write short, concrete observations grounded only in the input. Never invent people, companies or ids.",
   "Every block must cite evidence: contactIds and/or recordIds copied exactly from the input aliases (C…, R…). A block without valid evidence is discarded.",
   "Return exactly: 1 block of kind \"diagnosis\" (overall state of the network relative to the goal), 2-3 blocks of kind \"insight\", 0-6 blocks of kind \"gap\" (what is missing for a plan need; set needId to that need's alias N…), and at most 1 block of kind \"plan\" (one suggested next move).",
-  "Each block has both a Simplified Chinese text \"zh\" and an English text \"en\" with the same meaning, each at most 2 short sentences. Write zh entirely in Chinese (translate industry names) and en entirely in English; keep people's and companies' names as given.",
+  "Each block has a Simplified Chinese text \"zh\", an English text \"en\" and a Japanese text \"ja\" with the same meaning, each at most 2 short sentences. Write zh entirely in Chinese, en entirely in English and ja in natural Japanese (polite です／ます; translate industry names); keep people's and companies' names as given.",
   "Never put aliases, ids, record references or field names in the text: refer to people by name. Do not write numbers of people, percentages, scores or other statistics in the text; describe qualitatively.",
-  'Respond with a single JSON object: {"blocks":[{"kind":"diagnosis","zh":"...","en":"...","contactIds":["C1"],"recordIds":["R1"],"needId":"optional N1"}]}.',
+  'Respond with a single JSON object: {"blocks":[{"kind":"diagnosis","zh":"...","en":"...","ja":"...","contactIds":["C1"],"recordIds":["R1"],"needId":"optional N1"}]}.',
 ].join(" ");
 
 /** 紧凑编码：空字段不出现。 */

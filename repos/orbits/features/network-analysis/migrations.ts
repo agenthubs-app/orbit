@@ -197,6 +197,16 @@ begin
 end;
 `,
   },
+  {
+    // R11b（PLANNER §2 B-7）：快照多存一列日文叙述（同一次生成产出）。旧行为 null = 没有日文，日文界面只显示确定性统计。
+    // 只加可空列，不改 zh / en；生产执行等合回授权。
+    name: "network-snapshot-narrative-ja",
+    version: 6,
+    sql: `
+alter table network_analysis_snapshots add column narrative_ja jsonb
+  check (narrative_ja is null or jsonb_typeof(narrative_ja) = 'array');
+`,
+  },
 ];
 
 function checksum(sql: string): string {

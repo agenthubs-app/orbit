@@ -50,9 +50,10 @@ export const SNAPSHOT_REFRESH_STATE_SQL = `/* network-snapshot:refresh-state */
   left join job on true`;
 
 function viewSql(language: SnapshotLanguage): string {
-  const column = language === "en" ? "narrative_en" : "narrative_zh";
+  // R11b：ja 列可为 null（旧快照）→ 空数组：日文界面不显示 AI 句，不回退成别的语言。
+  const column = language === "en" ? "s.narrative_en" : language === "ja" ? "coalesce(s.narrative_ja, '[]'::jsonb)" : "s.narrative_zh";
   return `/* network-snapshot:view:${language} */
-  select s.generated_at, s.contact_count, s.${column} as narrative, s.evidence,
+  select s.generated_at, s.contact_count, ${column} as narrative, s.evidence,
     array(
       select distinct ref.contact_id
       from jsonb_each(s.evidence) as e(block_key, value)
@@ -185,11 +186,13 @@ interface StoredNarrative {
 function snapshotFrom(row: Row, languages: readonly SnapshotLanguage[]): NetworkAnalysisSnapshot {
   const zh = languages.includes("zh") ? json<StoredNarrative[]>(row.narrative_zh, []) : [];
   const en = languages.includes("en") ? json<StoredNarrative[]>(row.narrative_en, []) : [];
+  const ja = languages.includes("ja") ? json<StoredNarrative[]>(row.narrative_ja, []) : [];
   const evidence = json<Record<string, SnapshotEvidence>>(row.evidence, {});
   const keys = (zh.length ? zh : en).map((block) => block.key);
   const byKey = (list: StoredNarrative[]) => new Map(list.map((block) => [block.key, block]));
   const zhByKey = byKey(zh);
   const enByKey = byKey(en);
+  const jaByKey = byKey(ja);
   return {
     actorId: String(row.actor_id),
     blocks: keys.map((key) => {
@@ -199,7 +202,7 @@ function snapshotFrom(row: Row, languages: readonly SnapshotLanguage[]): Network
         key,
         kind: base.kind,
         ...(base.needId ? { needId: base.needId } : {}),
-        text: { en: enByKey.get(key)?.text ?? "", zh: zhByKey.get(key)?.text ?? "" },
+        text: { en: enByKey.get(key)?.text ?? "", zh: zhByKey.get(key)?.text ?? "", ...(jaByKey.get(key)?.text ? { ja: jaByKey.get(key)!.text } : {}) },
       };
     }),
     contactCount: Number(row.contact_count ?? 0),
@@ -263,7 +266,8 @@ export function createPostgresNetworkAnalysisRepository(input: { client: Transac
         `/* network-snapshot:current */
         select id, actor_id, version, origin, plan_id, trigger, source_data_version, goal_digest, generated_at, contact_count,
           included_contact_ids, ${languages.includes("zh") ? "narrative_zh" : "'[]'::jsonb as narrative_zh"},
-          ${languages.includes("en") ? "narrative_en" : "'[]'::jsonb as narrative_en"}, evidence, provider, model, prompt_version
+          ${languages.includes("en") ? "narrative_en" : "'[]'::jsonb as narrative_en"},
+          ${languages.includes("ja") ? "narrative_ja" : "null::jsonb as narrative_ja"}, evidence, provider, model, prompt_version
         from network_analysis_snapshots where workspace_id = $1 and actor_id = $2 and status = 'current'`,
         [workspaceId, actorId],
       )).rows[0];
@@ -290,20 +294,25 @@ export function createPostgresNetworkAnalysisRepository(input: { client: Transac
           [workspaceId, snapshot.actorId],
         );
         const narrative = (language: SnapshotLanguage) =>
-          JSON.stringify(snapshot.blocks.map((block) => ({ key: block.key, kind: block.kind, ...(block.needId ? { needId: block.needId } : {}), text: block.text[language] })));
+          JSON.stringify(snapshot.blocks.flatMap((block) => {
+            const text = block.text[language];
+            return text ? [{ key: block.key, kind: block.kind, ...(block.needId ? { needId: block.needId } : {}), text }] : [];
+          }));
+        // R11b：没有任何一句日文时存 null（与旧快照同义）。
+        const narrativeJa = snapshot.blocks.some((block) => block.text.ja) ? narrative("ja") : null;
         const evidence = JSON.stringify(Object.fromEntries(snapshot.blocks.map((block) => [block.key, block.evidence])));
         const id = `nas_${randomUUID()}`;
         const inserted = (await tx.query<Row>(
           `insert into network_analysis_snapshots (
              workspace_id, id, actor_id, version, status, origin, plan_id, trigger, source_data_version, goal_digest,
-             included_contact_ids, contact_count, narrative_zh, narrative_en, evidence, provider, model, prompt_version, operation_id, generated_at)
-           values ($1, $2, $3, $4, 'current', $5, $6, $7, $8, $9, $10::text[], cardinality($10::text[]), $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16, $17, $18::timestamptz)
+             included_contact_ids, contact_count, narrative_zh, narrative_en, evidence, provider, model, prompt_version, operation_id, generated_at, narrative_ja)
+           values ($1, $2, $3, $4, 'current', $5, $6, $7, $8, $9, $10::text[], cardinality($10::text[]), $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16, $17, $18::timestamptz, $19::jsonb)
            returning version`,
           [
             workspaceId, id, snapshot.actorId, next, snapshot.origin, snapshot.planId, snapshot.trigger, snapshot.sourceDataVersion,
             snapshot.goalDigest, [...new Set(snapshot.includedContactIds)], narrative("zh"), narrative("en"), evidence,
             snapshot.generator.provider, snapshot.generator.model, snapshot.generator.promptVersion, snapshot.operationId,
-            snapshot.generatedAt.toISOString(),
+            snapshot.generatedAt.toISOString(), narrativeJa,
           ],
         )).rows[0]!;
         await tx.query(

@@ -88,6 +88,7 @@ function top<T>(items: readonly T[], key: (item: T) => string | null): { value: 
 }
 
 const SENIORITY_ZH: Record<string, string> = { decision: "决策层", manager: "管理层", other: "其他", staff: "执行层" };
+const SENIORITY_JA: Record<string, string> = { decision: "経営層", manager: "部長クラス", other: "その他", staff: "担当者" };
 
 /** 只由真实输入拼出的 mock 快照（开发、测试与生产默认；W48-9 生产仍为 mock）。 */
 export function buildMockSnapshotContent(input: SnapshotInput): string {
@@ -95,6 +96,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
   const ids = (list: readonly SnapshotInputContact[]) => list.slice(0, 5).map((contact) => contact.id);
   const names = (list: readonly SnapshotInputContact[]) => list.slice(0, 3).map((contact) => contact.name).join("、");
   const namesEn = (list: readonly SnapshotInputContact[]) => list.slice(0, 3).map((contact) => contact.name).join(", ");
+  const namesJa = (list: readonly SnapshotInputContact[]) => list.slice(0, 3).map((contact) => `${contact.name}さん`).join("、");
   const industry = top(contacts, (contact) => contact.industry);
   const seniority = top(contacts, (contact) => (contact.seniorityGroup !== "other" ? contact.seniorityGroup : null));
   const recent = contacts.filter((contact) => contact.records.length > 0);
@@ -105,6 +107,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
     en: industry ? `Most of your confirmed contacts are in ${industry.value}.` : "Your confirmed contacts have no industry recorded yet.",
     kind: "diagnosis",
     recordIds: [],
+    ja: industry ? `確認済みの人脈では「${industry.value}」の方がいちばん多いです。` : "確認済みの人脈には、まだ業界が登録されていません。",
     zh: industry ? `你已确认的联系人里，「${industry.value}」方向的人最多。` : "你已确认的联系人还没有记录行业。",
   });
   blocks.push(industry
@@ -113,6 +116,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
         en: `${namesEn(industry.members)} work in ${industry.value}.`,
         kind: "insight",
         recordIds: [],
+        ja: `${namesJa(industry.members)}は「${industry.value}」の方です。`,
         zh: `${names(industry.members)} 都在「${industry.value}」。`,
       }
     : {
@@ -120,6 +124,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
         en: `${namesEn(contacts)} have no industry recorded yet.`,
         kind: "insight",
         recordIds: [],
+        ja: `${namesJa(contacts)}は、まだ業界が登録されていません。`,
         zh: `${names(contacts)} 还没有记录行业。`,
       });
   blocks.push(seniority
@@ -128,6 +133,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
         en: `${namesEn(seniority.members)} are at the ${seniority.value} level.`,
         kind: "insight",
         recordIds: [],
+        ja: `${namesJa(seniority.members)}は${SENIORITY_JA[seniority.value] ?? seniority.value}の方です。`,
         zh: `${names(seniority.members)} 处在${SENIORITY_ZH[seniority.value] ?? seniority.value}。`,
       }
     : {
@@ -135,6 +141,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
         en: `${namesEn(contacts.slice(-3))} have no role level recorded yet.`,
         kind: "insight",
         recordIds: [],
+        ja: `${namesJa(contacts.slice(-3))}は、まだ役職層が登録されていません。`,
         zh: `${names(contacts.slice(-3))} 还没有记录职级。`,
       });
   if (recent.length) {
@@ -143,6 +150,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
       en: `Recent interactions: ${namesEn(recent)}.`,
       kind: "insight",
       recordIds: recent.slice(0, 3).map((contact) => contact.records[0]!.id),
+      ja: `最近やりとりがあったのは${namesJa(recent)}です。`,
       zh: `最近有往来的是 ${names(recent)}。`,
     });
   }
@@ -155,6 +163,7 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
       kind: "gap",
       needId: need.id,
       recordIds: [],
+      ja: `「${need.title}」は、まず${namesJa(related)}から始められます。`,
       zh: `「${need.title}」可以先从 ${names(related)} 入手。`,
     });
   }
