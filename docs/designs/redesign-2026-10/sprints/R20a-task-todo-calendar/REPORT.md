@@ -2,6 +2,8 @@
 
 2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
 
+2026-10-19 独立 REVIEW の M3 対応：OAuth callback の交換処理が投げた例外文を公開 502 に返していた。内部情報を含む例外で HTTP 回帰を先に追加し、既存実装は **3 pass / 1 fail**、固定文言に修正後 **4/4 pass**。`6bed02f54` は callback handler とそのテストの 2 ファイルだけで、署名 state・`returnTo` の許可リスト・502 status は変更していない。現行全量や pixel の合格は示さず、D の他の REVIEW 指摘も OPEN。
+
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
 
 19:54 追加の Task paging テスト安定化：C 線 full の `suggestion next page replaces twenty previews and rejects a foreign actor response` が `reads=['first','first','signed-next']` で落ち、同じ C source の単独では 1/1 pass した。D 所有の同テストは、初回 host の読取が完了する前に route override を登録して host を変え、後の読取回数を厳密に二回とする timing race があった。初回の「エラー表示」を待つ案は実画面が初回ゼロ件だったため **0/1 fail** (`d-task-suggestion-pagination-race-green.log`)、一時的な画面診断後にその案と診断出力を除去した。最終は初回の `待确认建议 0` 見出しを待ってから計数する二行だけを残す。定向 **1/1** (`d-task-suggestion-pagination-race-green2.log`)、同 file **22/22** (`d-task-unification-interactions-race-fix.log`)、App typecheck **exit0** (`d-app-tsc-task-race-fix.log`)。fresh App full は **3,342 tests / 3,329 pass / 11 fail / 0 cancelled / 2 skip、exit1** (`d-app-full-task-race-fix.log`)、同 paging ケースは full 内でも pass、直前の R20b 修正後 full と failure-name 差は空。11 件はそのまま残る。これは C 線へ未統合で、C の過去 full failure を遡って消さない。
