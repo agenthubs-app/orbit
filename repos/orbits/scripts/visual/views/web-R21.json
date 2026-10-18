@@ -8,6 +8,7 @@
   },
   "sources": [
     "repos/orbits/app/(app)/app/agent/iorbit-2026/**",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/iorbit.ts",
     "repos/orbits/app/(app)/app/agent/page.tsx"
   ],
   "views": [

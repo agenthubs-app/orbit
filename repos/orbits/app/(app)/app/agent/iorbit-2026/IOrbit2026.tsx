@@ -147,6 +147,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     setMessages: chat.setMessages, setPanel: chat.setPanel, setThinking: chat.setThinking,
   });
   const [historyOpen, setHistoryOpen] = useState(initialHistoryOpen);
+  const historyOpenChosen = useRef(initialHistoryOpen);
   const [narrow, setNarrow] = useState(false);
   const [contextEnabled, setContextEnabled] = useState(false);
   const [pageContext, setPageContext] = useState<AiPageContextContract | null>(null);
@@ -169,6 +170,13 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     update(); media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
+  useEffect(() => {
+    if (historyOpenChosen.current || history.storedHistory.length === 0) return;
+    if (window.matchMedia("(min-width: 1200px)").matches) {
+      historyOpenChosen.current = true;
+      setHistoryOpen(true);
+    }
+  }, [history.storedHistory.length]);
   useEffect(() => {
     const draftId = new URLSearchParams(window.location.search).get("draftId");
     setRequestedDraftId(draftId && draftId.length <= 160 ? draftId : null);
@@ -286,7 +294,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     <Orbit2026Scope language={language} className={styles.scope}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
       <ShellPage title="iOrbit" subtitle={t(inConversation ? iorbitCopy.inConversation : iorbitCopy.subtitle)}
-        left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen((open) => !open)} />}
+        left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => { historyOpenChosen.current = true; setHistoryOpen((open) => !open); }} />}
         right={<Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} />}
         rightRail={false} phoneFold />
       <div className={styles.layout}>
