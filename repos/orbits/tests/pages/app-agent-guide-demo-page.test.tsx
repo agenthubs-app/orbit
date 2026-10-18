@@ -85,6 +85,10 @@ function loadPage(t: TestContext, scenario: Scenario) {
     shellProps.push(props);
     return null;
   };
+  const IOrbit2026 = (props: Record<string, unknown>) => {
+    shellProps.push(props);
+    return null;
+  };
   const stub = (operation: string, result: unknown) => async (...args: unknown[]) => {
     calls.push({ input: args, operation });
     return result;
@@ -135,6 +139,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell },
+    [join(root, "app/(app)/app/orbit-2026/iorbit/IOrbit2026.tsx")]: { IOrbit2026 },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
       loadAppHomeRouteViewModel: async (...args: unknown[]) => {
         calls.push({ input: args, operation: "home" });
@@ -308,13 +313,14 @@ function shellPropsOf(tree: ReactElement): Record<string, unknown> {
   while (nodes.length) {
     const node = nodes.pop() as { props?: Record<string, unknown>; type?: unknown } | null;
     if (!node || typeof node !== "object") continue;
-    if (typeof node.type === "function" && (node.type as { name?: string }).name === "IOrbitShell") {
-      return node.props ?? {};
+    const screen = typeof node.type === "function" ? (node.type as { name?: string }).name : undefined;
+    if (screen === "IOrbitShell" || screen === "IOrbit2026") {
+      return { __screen: screen === "IOrbit2026" ? "live" : "demo", guide: null, ...node.props };
     }
     const children = node.props?.children;
     nodes.push(...(Array.isArray(children) ? children : [children]));
   }
-  assert.fail("IOrbitShell was not rendered");
+  assert.fail("An iOrbit screen was not rendered");
 }
 
 const GUIDE_OPERATIONS = ["guide-state", "contacts", "plan", "account", "grandfathered"];
@@ -322,6 +328,7 @@ const GUIDE_OPERATIONS = ["guide-state", "contacts", "plan", "account", "grandfa
 test("flag off: the shell gets no guide and not one guide source is read", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined });
   const props = shellPropsOf(await page());
+  assert.equal(props.__screen, "live");
   assert.equal(props.guide, null);
   assert.deepEqual(
     calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)),
@@ -338,6 +345,7 @@ test("flag set to anything but on / true / 1 still behaves as off", async (t) =>
 test("flag on + new user: the shell gets the demo view, read as the canonical actor", async (t) => {
   const { calls, guideRecords, page } = loadPage(t, { contacts: 0, flag: "on" });
   const props = shellPropsOf(await page());
+  assert.equal(props.__screen, "demo");
   assert.deepEqual(props.guide, {
     bannerCollapsed: false,
     completed: 0,
@@ -401,7 +409,7 @@ test("R25: ?plan=<id>&reveal=1 no longer reads a plan; the shell lands on the ov
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, plans: {} });
   const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:any", reveal: "1" }) }));
   assert.equal(props.guide, null);
-  assert.equal(props.initialDeepLink, false);
+  assert.equal("initialDeepLink" in props, false);
   assert.equal("initialPlanCard" in props, false);
   assert.equal(calls.filter((call) => call.operation === "plan-read").length, 0);
 });
@@ -445,7 +453,7 @@ test("W0014 flag off: the live path reads home, events, registrations and commun
   }
   assert.deepEqual(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)), []);
   // Sprint 0104: the welcome suggests come from the fixed starter view model, never from a server read.
-  assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
+  assert.equal("viewModel" in props, false);
 });
 
 /* ── W0035：首页第 4 步提醒删除后，hasAnyActiveRegistration 在任何情况下都是 0 次 ─────── */
@@ -458,7 +466,8 @@ const communityReads = (calls: Array<{ operation: string; input?: unknown }>) =>
 test("W0035 flag off: guideEnabled false, no guideStep4Pending prop, community read once, hasAnyActiveRegistration never called", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 4, flag: undefined, registeredAny: "throw" });
   const props = shellPropsOf(await page());
-  assert.equal(props.guideEnabled, false);
+  assert.equal(props.__screen, "live");
+  assert.equal("guideEnabled" in props, false);
   assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
   assert.equal(communityReads(calls).length, 1);
@@ -478,7 +487,8 @@ test("W0035 flag on, out of the demo, nothing joined or registered: guideEnabled
   const { calls, page } = loadPage(t, { ...LEGACY, homeEvents: ["ev-1"], registeredAny: "throw" });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
-  assert.equal(props.guideEnabled, true);
+  assert.equal(props.__screen, "live");
+  assert.equal("guideEnabled" in props, false);
   assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
   assert.deepEqual(communityReads(calls).map((call) => call.input), [[{ actorId: "account:canonical" }]]);
@@ -487,7 +497,8 @@ test("W0035 flag on, out of the demo, nothing joined or registered: guideEnabled
 test("W0035 flag on: joined or registered changes nothing about step-4 reads (still zero)", async (t) => {
   const joined = loadPage(t, { ...LEGACY, communityJoined: true });
   const joinedProps = shellPropsOf(await joined.page());
-  assert.equal(joinedProps.guideEnabled, true);
+  assert.equal(joinedProps.__screen, "live");
+  assert.equal("guideEnabled" in joinedProps, false);
   assert.ok(!("guideStep4Pending" in joinedProps));
   assert.equal(step4Reads(joined.calls).length, 0);
   assert.equal(communityReads(joined.calls).length, 1);
@@ -578,7 +589,7 @@ test("W0037 in the demo: the community state is read once for the canonical acto
     assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
     assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
     // 示例壳相对 W0036 只多收到 communityJoined。
-    assert.deepEqual(Object.keys(props).sort(), ["communityJoined", "demoEventCandidates", "guide", "home", "viewModel"]);
+    assert.deepEqual(Object.keys(props).sort(), ["__screen", "communityJoined", "demoEventCandidates", "guide", "home", "viewModel"]);
   }
 });
 

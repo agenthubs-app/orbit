@@ -320,7 +320,11 @@ export async function mountAgent(
       if (options.removePersisted === false) {
         return Response.json({ success: false, error: { code: "STORAGE_UNAVAILABLE" } }, { status: 503 });
       }
-      return Response.json({ success: true, data: { storage: { persisted: true } } });
+      return Response.json({ success: true, data: {
+        storage: { persisted: true },
+        undoToken: `undo:${sessionId}`,
+        undoUntil: new Date(Date.now() + 5_000).toISOString(),
+      } });
     }
     if (url.startsWith("/api/ai/conversations/sessions/") && options.sessionReader) {
       const parsed = new URL(url, "https://orbit.test");

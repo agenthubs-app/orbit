@@ -674,10 +674,10 @@ test("a cross-page pending ask lands in the chat and is sent once", async (t) =>
   );
   const asks = mounted.calls.filter((call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations");
   assert.equal(asks.length, 1, "the pending ask is sent exactly once");
-  assert.match(
-    String((asks[0]!.body as { message?: string }).message),
-    /帮我准备和她的下一次沟通[\s\S]*田中圭子的联系人页/,
-    "the context the user saw must travel inside the message",
+  assert.equal(
+    (asks[0]!.body as { message?: string }).message,
+    "帮我准备和她的下一次沟通",
+    "an untrusted page label must not be appended to the user's question",
   );
   assert.equal(mounted.sessionValues.has("orbit.ask.pending"), false, "the handoff is consumed");
 });
