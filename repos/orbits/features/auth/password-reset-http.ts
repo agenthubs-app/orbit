@@ -2,17 +2,35 @@ import { createConfiguredPasswordResetRuntime } from "./password-reset-factory";
 import type { PasswordResetResponse } from "../../shared/contract/password-reset";
 
 type ResetRuntime = ReturnType<typeof createConfiguredPasswordResetRuntime>;
+const MAX_REQUEST_BYTES = 4096;
 
 function response(status: number, body: unknown) {
   return Response.json(body, { status, headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" } });
 }
 
+async function readBoundedBody(request: Request): Promise<string | null> {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return Buffer.concat(chunks, total).toString("utf8");
+    total += value.byteLength;
+    if (total > MAX_REQUEST_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(Buffer.from(value));
+  }
+}
+
 export async function handlePasswordResetRequest(request: Request, operation: "request" | "reset", resolve: () => ResetRuntime = createConfiguredPasswordResetRuntime, wakeDelivery?: () => Promise<void>): Promise<Response> {
   if (!request.headers.get("content-type")?.startsWith("application/json")) return response(415, { success: false, error: { code: "UNSUPPORTED_MEDIA_TYPE", message: "请使用正确的表单重试。" } });
-  if (Number(request.headers.get("content-length") ?? 0) > 4096) return response(413, { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_REQUEST_BYTES) return response(413, { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
   try {
-    const raw = await request.text();
-    if (raw.length > 4096) return response(413, { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
+    const raw = await readBoundedBody(request);
+    if (raw === null) return response(413, { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
     const body = JSON.parse(raw) as Record<string, unknown> | null;
     if (!body || Array.isArray(body) || typeof body !== "object") return response(400, { success: false, error: { code: "VALIDATION_ERROR", message: "请检查输入后重试。" } });
     const runtime = resolve();

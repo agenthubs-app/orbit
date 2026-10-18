@@ -185,6 +185,47 @@ for (const operation of ["request", "reset"] as const) {
   }
 }
 
+test("reset HTTP rejects a multibyte body over 4096 UTF-8 bytes before service", async () => {
+  const body = JSON.stringify({ email: "あ".repeat(2000) });
+  assert.ok(body.length < 4096);
+  assert.ok(Buffer.byteLength(body, "utf8") > 4096);
+  let serviceCalls = 0;
+  const runtime = httpResetRuntime({
+    request: async () => { serviceCalls++; return { success: true }; },
+    reset: async () => { serviceCalls++; return { success: true }; },
+  });
+  for (const operation of ["request", "reset"] as const) {
+    const request = new Request(`https://orbit.example.com/api/auth/password-reset/${operation === "request" ? "request" : "confirm"}`, {
+      method: "POST", headers: { "content-type": "application/json", "content-length": "2", origin: runtime.origin }, body,
+    });
+    const result = await handlePasswordResetRequest(request, operation, () => runtime);
+    assert.equal(result.status, 413);
+    assert.deepEqual(await result.json(), { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
+  }
+  assert.equal(serviceCalls, 0);
+});
+
+test("reset HTTP stops reading an oversized streamed body before the whole upload arrives", async () => {
+  let pulls = 0;
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls++;
+      controller.enqueue(new Uint8Array(1024).fill(120));
+      if (pulls === 16) controller.close();
+    },
+    cancel() { cancelled = true; },
+  });
+  const request = new Request("https://orbit.example.com/api/auth/password-reset/request", {
+    method: "POST", headers: { "content-type": "application/json", "content-length": "2" }, body, duplex: "half",
+  } as RequestInit & { duplex: "half" });
+  const result = await handlePasswordResetRequest(request, "request", () => { throw new Error("service must not start"); });
+  assert.equal(result.status, 413);
+  assert.deepEqual(await result.json(), { success: false, error: { code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。" } });
+  assert.ok(pulls < 16, `oversized request should stop before all 16 chunks are read; read ${pulls}`);
+  assert.equal(cancelled, true);
+});
+
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 test("password recovery persists, retries, atomically consumes and revokes prior sessions in real Postgres", { skip: !databaseUrl && "ORBIT_EVENT_DATABASE_URL is not configured" }, async () => {
@@ -210,6 +251,22 @@ test("password recovery persists, retries, atomically consumes and revokes prior
     const row = async () => (await pool.query("SELECT payload FROM orbit_records WHERE workspace_id=$1 AND record_id=$2", [workspaceId, `auth_user:${email}`])).rows[0].payload;
     const firstResponses = await Promise.all([service.request(email), service.request(email.toUpperCase()), service.request("unknown@example.com"), service.request("oauth@example.com")]);
     assert.ok(firstResponses.every((result) => result.success));
+    const runtime = httpResetRuntime(service);
+    const httpRequest = (address: string) => new Request("https://orbit.example.com/api/auth/password-reset/request", {
+      method: "POST", headers: { "content-type": "application/json", origin: runtime.origin }, body: JSON.stringify({ email: address }),
+    });
+    const knownHttp = await handlePasswordResetRequest(httpRequest(email), "request", () => runtime);
+    const unknownHttp = await handlePasswordResetRequest(httpRequest("unknown@example.com"), "request", () => runtime);
+    const oauthHttp = await handlePasswordResetRequest(httpRequest("oauth@example.com"), "request", () => runtime);
+    assert.equal(knownHttp.status, 202);
+    assert.equal(unknownHttp.status, 202);
+    assert.equal(oauthHttp.status, 202);
+    assert.equal(knownHttp.headers.get("cache-control"), "no-store");
+    assert.equal(unknownHttp.headers.get("cache-control"), "no-store");
+    assert.equal(oauthHttp.headers.get("cache-control"), "no-store");
+    const knownReceipt = await knownHttp.json();
+    assert.deepEqual(knownReceipt, await unknownHttp.json(), "the public receipt must not reveal whether an account exists");
+    assert.deepEqual(knownReceipt, await oauthHttp.json(), "an OAuth-only account must have the same public receipt");
     const first = (await row()).passwordReset;
     assert.equal(first.attempts, 0);
     const token = openPasswordResetToken(first.sealedToken, secret);
