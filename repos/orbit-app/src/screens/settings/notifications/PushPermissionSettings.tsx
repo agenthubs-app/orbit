@@ -46,6 +46,7 @@ function ScopedPushPermissionSettings(){
    });
    if(!live.current)return;
    setOptedIn(result==='enabled');
+   if(result==='enabled')setPermission('granted');
    if(result==='denied')setPermission('denied');
    if(result==='revoke-failed')setError(true);
   }catch{if(live.current)setError(true);}finally{lock.current=false;if(live.current)setBusy(false);}
