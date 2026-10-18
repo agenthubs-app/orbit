@@ -179,89 +179,89 @@
       "id": "A-R24-05",
       "design": "b12-missing-states.html",
       "board-index": 198,
-      "url": "orbit://task?seg=plan",
       "fixture": "b12-206-premise",
       "note": "R32 来源 app-plan-A.json: 前提を見る sheet（D49）",
       "taps": "前提を見る",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/task?seg=plan&design=premise"
     },
     {
       "id": "A-R24-12",
       "design": "b4-plan-iorbit.html",
       "board-index": 9,
-      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-lawyer",
       "fixture": "b12-244-law",
       "note": "R32 来源 app-plan-A.json: スキップ ① 確認",
       "taps": "この分野はもう詳しい",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/plans/demo-plan-series-a/types/demo-plan-item-lawyer?design=skip"
     },
     {
       "id": "A-R24-13",
       "design": "b4-plan-iorbit.html",
       "board-index": 0,
-      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
       "fixture": "b4-11-type-vc",
       "note": "R32 来源 app-plan-A.json: 加点 ① 面談を記録 sheet",
       "taps": "すでに話した / 話したを記録",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/plans/demo-plan-series-a/types/demo-plan-item-vc_partner?design=record"
     },
     {
       "id": "A-R24-16",
       "design": "b4-plan-iorbit.html",
       "board-index": 6,
-      "url": "orbit://plans/demo-plan-series-a/types/demo-plan-item-vc_partner",
       "fixture": "b4-11-type-vc",
       "note": "R32 来源 app-plan-A.json: 面談を提案 sheet",
       "taps": "候補を選ぶ → 面談を提案",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/plans/demo-plan-series-a/types/demo-plan-item-vc_partner?design=propose"
     },
     {
       "id": "A-R25-01",
       "design": "b4-plan-iorbit.html",
       "board-index": 19,
-      "url": "orbit://task?seg=plan",
       "fixture": "c-review",
       "note": "R32 来源 app-plan-C.json: 作り直しの確認（見直し入口 sheet）",
       "taps": "方案を見直す",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/task?seg=plan&design=review"
     },
     {
       "id": "A-R25-08",
       "design": "b4-plan-iorbit.html",
       "board-index": 24,
-      "url": "orbit://task?seg=plan",
       "fixture": "c-goals",
       "note": "R32 来源 app-plan-C.json: 達成 ① 確認",
       "taps": "目標を達成した",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/task?seg=plan&design=achieve"
     },
     {
       "id": "A-R25-11",
       "design": "b4-plan-iorbit.html",
       "board-index": 28,
-      "url": "orbit://task?seg=plan",
       "fixture": "c-goals",
       "note": "R32 来源 app-plan-C.json: タイトルから目標を切替（popover）",
       "taps": "目標名 ▾",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/task?seg=plan"
     },
     {
       "id": "A-R25-12",
       "design": "b4-plan-iorbit.html",
       "board-index": 29,
-      "url": "orbit://task?seg=plan",
       "fixture": "c-edit",
       "note": "R32 来源 app-plan-C.json: 目標を編集",
       "taps": "▾ → この目標を編集",
       "grid": 30,
-      "wait": 12000
+      "wait": 12000,
+      "path": "/task?seg=plan&design=edit"
     }
   ]
 }
