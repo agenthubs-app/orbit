@@ -71,26 +71,29 @@
 | R10-07 | 首页「プラン スコア」 | `GET /api/agent/plans/v2/summary` 已 live | `current` 为 null 显示「目標を決める」空态；`segments` 里 `key=event` 是イベント枠 | `R22-plan-data-and-score/REPORT.md`:92 |
 | R10-08 | 「今日 +N」为负数 | 实现自加状态 | 照 b12 N13-A / N13-W | PA N13；DEC §4 |
 | R10-09 | 每天一问卡片挂首页 | 接口 live，`CompletionQuestionCard` 随 R16 界面做（未做） | 拿到组件后挂首页 | `R16-import-and-completion/REPORT.md`:41 |
+| R10-10 | 首页人脈组件点开联系人（R11a 交出） | — | Web 直接用 `orbit-2026/network/ContactDrawer.tsx` 的 `ContactDrawer`（props：`contactId`、`onClose`、可选 `initial` 已读详情、`onChanged({ kind: saved / deleted / unlinked })`、`goalLabel`、`inviteLinked`），不要另写详情；App 跳 `/contacts/[id]`。人数 / 今月 +N / 浓度 / 来源读 `/api/contacts/summary`（`addedThisMonth` 按 Asia/Tokyo 月界，`densityCounts` 已含计划合并），浓度与来源口径用 `shared/compute/contact-density.ts`（`mergeContactDensity`）、`contact-source-chip.ts`，不要各自推断 | `R11a-network-list-detail/REPORT.md` 交接节 |
 
 ## R11 人脈
 
 | # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
 | --- | --- | --- | --- | --- |
-| R11-01 | App「人脈を追加」入口 | 整页 `contacts/new`；`AddContactSheet` 只在展示页 | 人脈页「＋」弹底部弹层 `AddContactSheet` / `AddContactDoors` | DEC D19；`R12-add-cards-and-manual/REPORT.md`:114 |
-| R11-02 | App 人脈顶栏（A-R05-02）与 Web 人脈 / 連絡先詳細 | 旧屏 | 「🔍 · 人脈 +『286人 · 今月 +24』· ＋（白圆）」，去掉扫描钮；Web 整屏照 web.html 重写（含深色）；A-R05-10 二级页过门禁（返回恢复分段与滚动） | PA L620–629、L146、D09 |
-| R11-03 | 人脈空态小卡文案 | 设计稿已改 | App 用「氏名だけで登録可」（App 不做粘贴签名） | DEC §7（D28） |
-| R11-04 | 加人弹窗 / 手入力抽屉的背景页 | 背景是加人入口页 | 压在人脈列表页上（W-R12-01～04） | PA L323/340/350 |
-| R11-05 | 契约 2 字段 `density` / `sourceChip` / `densityCounts` / `addedThisMonth` | `/api/contacts/page` 没有 mock，只有 fixture `filterDemoContacts` | 接入真实字段；`goalRelated` 筛选 live 调 `planGoalRelatedContactIds` | `R08-contracts-and-mocks/REPORT.md`:14,57；`R22-plan-data-and-score/REPORT.md`:93 |
-| R11-06 | `contact-density.ts` | R12 先写；每天一问的浓度暂不计「计划已关联」 | R11 接管并补「计划已关联」 | `R12-add-cards-and-manual/REPORT.md`:114；`R16-import-and-completion/REVIEW.md`:131 |
-| R11-07 | 来源标签 `sourceChip` 统一 | 每天一问用临时推断，带 LinkedIn URL 列的汎用 CSV 会被误标 | 统一来源标签（放 `shared/compute`，或导入时把 `format` 记进 `source`） | `R16-import-and-completion/REVIEW.md`:94,132 |
-| R11-08 | 联系人详情显示 `fieldHistory`「以前の値」、转职冲突提示 | 写进 payload，没界面读 | 详情页显示 | `R12-add-cards-and-manual/REPORT.md`:114；`R16-import-and-completion/PLANNER.md`:59 |
-| R11-09 | 招待连接在联系人上的展示 | `InviteShareSheet` / `InviteUnlinkSheet` 只在展示页 | `inviteLinkedContactIds` → `sourceChip='self'`；两个 sheet（含「統合する / 別の人」）挂到联系人详情；显示 `publicProfile.offering / seeking`、同步暂停字段 `pausedFields` | `R15-invite-codes/REPORT.md`:82；`R15-invite-codes/REVIEW.md`:145 |
-| R11-10 | 人物类型虚线确认卡 | 接口 `contacts/[id]/fit` 和候补决定已就绪 | 画确认卡，✓/✕ 调候补决定接口 | `plan-v2.2/DESIGN.md`:398 |
-| R11-11 | 每天一问卡片挂人脈右栏 | 同 R10-09 | 挂上 | `R16-import-and-completion/PLANNER.md`:59 |
-| R11-12 | 删除 `contacts/pipeline`（两端） | 旧页仍在 | 删除 | 归属表 |
-| R11-13 | `/app/contacts` 390 深色开发模式水合警告 | 旧页不稳定复现 | 重写时消除 | README 合回前（R09 走查 W3） |
-| R11-14 | R25 改过乙的文件（`network-opportunities.tsx`、App `ContactsScreen` / `ContactDetailScreen` 等） | 用 REPORT 代替通知 | 开工时读 `R25-plan-review-goals-cleanup/REPORT.md`:132–136 | 同左 |
-| R11-15 | 人脈 🔍 与业界筛选参数（R30 交出） | Task 🔍 已接全局搜索（App `/search`、Web ⌘K）；人脈页 🔍 仍是旧行为；搜索空结果「近い条件なら」跳 App `/contacts?industry=<id>` / Web `/app/contacts?industry=<id>`（主 / 副业界 id），人脈页还不读这个参数 | 人脈页 🔍 → App `/search`（可带 `?q=` 把已输入的词带过去）/ Web 打开 ⌘K（派发 `orbit:open-palette`）；人脈列表读 `industry` 预选业界筛选；重跑 W-R30-P03 / A-R30-P08 并点「近い条件なら」确认落地 | `search/DESIGN.md` §2.2 / §4.4；`R30-global-search/REPORT.md` |
+| R11-01 | **done（R11a，2026-10-18，`c09e0b20f`）**：App「人脈を追加」入口 | 整页 `contacts/new`；`AddContactSheet` 只在展示页 | 人脈页「＋」弹底部弹层 `AddContactSheet` / `AddContactDoors` | DEC D19；`R12-add-cards-and-manual/REPORT.md`:114 |
+| R11-02 | **结构 done、像素待组件库（R11a，2026-10-18，`c09e0b20f` / `dd2621ed5` / `d3f43dbe6`）**：App 人脈顶栏（A-R05-02）与 Web 人脈 / 連絡先詳細 | 旧屏 | 「🔍 · 人脈 +『286人 · 今月 +24』· ＋（白圆）」，去掉扫描钮；Web 整屏照 web.html 重写（含深色）；A-R05-10 二级页过门禁（返回恢复分段与滚动） | PA L620–629、L146、D09 |
+| R11-03 | **done（R11a，2026-10-18）**：App 空态按改稿后的 app.html 板写「名前だけで保存」；人脈空态小卡文案 | 设计稿已改 | App 用「氏名だけで登録可」（App 不做粘贴签名） | DEC §7（D28） |
+| R11-04 | **done（R11a，2026-10-18，App `c09e0b20f`、Web `dd2621ed5`；W-R12-01～04 重比待组件库）**：加人弹窗 / 手入力抽屉的背景页 | 背景是加人入口页 | 压在人脈列表页上（W-R12-01～04） | PA L323/340/350 |
+| R11-05 | **done（R11a，2026-10-18，`82374f750` / `f49bd09a8`）**：字段在 `ContactCardDTO` 与 `ContactSyncPayload.card`，计划关系走 `GET /api/contacts/goal-related-ids`；契约 2 字段 `density` / `sourceChip` / `densityCounts` / `addedThisMonth` | `/api/contacts/page` 没有 mock，只有 fixture `filterDemoContacts` | 接入真实字段；`goalRelated` 筛选 live 调 `planGoalRelatedContactIds` | `R08-contracts-and-mocks/REPORT.md`:14,57；`R22-plan-data-and-score/REPORT.md`:93 |
+| R11-06 | **done（R11a，2026-10-18，`82374f750`）**：`mergeContactDensity` 读时合并计划；`contact-density.ts` | R12 先写；每天一问的浓度暂不计「计划已关联」 | R11 接管并补「计划已关联」 | `R12-add-cards-and-manual/REPORT.md`:114；`R16-import-and-completion/REVIEW.md`:131 |
+| R11-07 | **done（R11a，2026-10-18，`82374f750`）**：`shared/compute/contact-source-chip.ts`，导入写顶层 `importFormat`；来源标签 `sourceChip` 统一 | 每天一问用临时推断，带 LinkedIn URL 列的汎用 CSV 会被误标 | 统一来源标签（放 `shared/compute`，或导入时把 `format` 记进 `source`） | `R16-import-and-completion/REVIEW.md`:94,132 |
+| R11-08 | **「以前の値」done（R11a，2026-10-18，`0df2461de`）；转职冲突提示 → 下一期（PLANNER「不做」）**：联系人详情显示 `fieldHistory`「以前の値」、转职冲突提示 | 写进 payload，没界面读 | 详情页显示 | `R12-add-cards-and-manual/REPORT.md`:114；`R16-import-and-completion/PLANNER.md`:59 |
+| R11-09 | **done（R11a，2026-10-18，App `aeaa01d53`、Web `dd2621ed5`）**：招待连接在联系人上的展示 | `InviteShareSheet` / `InviteUnlinkSheet` 只在展示页 | `inviteLinkedContactIds` → `sourceChip='self'`；两个 sheet（含「統合する / 別の人」）挂到联系人详情；显示 `publicProfile.offering / seeking`、同步暂停字段 `pausedFields` | `R15-invite-codes/REPORT.md`:82；`R15-invite-codes/REVIEW.md`:145 |
+| R11-10 | **done（R11a，2026-10-18）**：人物类型虚线确认卡 | 接口 `contacts/[id]/fit` 和候补决定已就绪 | 画确认卡，✓/✕ 调候补决定接口 | `plan-v2.2/DESIGN.md`:398 |
+| R11-11 | **done（R11a，2026-10-18，`dd2621ed5`）**：每天一问卡片挂人脈右栏 | 同 R10-09 | 挂上 | `R16-import-and-completion/PLANNER.md`:59 |
+| R11-12 | **done（R11a，2026-10-18，`a96a9cfdf` / `48413352b`）**：删除 `contacts/pipeline`（两端） | 旧页仍在 | 删除 | 归属表 |
+| R11-13 | **done（R11a，2026-10-18）**：390 深色开发模式实测水合警告 0（证据 `_evidence-b/R11a/run-01/web/runtime.log`）；`/app/contacts` 390 深色开发模式水合警告 | 旧页不稳定复现 | 重写时消除 | README 合回前（R09 走查 W3） |
+| R11-14 | **done（R11a，2026-10-18）**：已读并在 R11a REPORT 补通知；R25 改过乙的文件（`network-opportunities.tsx`、App `ContactsScreen` / `ContactDetailScreen` 等） | 用 REPORT 代替通知 | 开工时读 `R25-plan-review-goals-cleanup/REPORT.md`:132–136 | 同左 |
+| R11-15 | **接线 done（R11a，2026-10-18）；W-R30-P03 / A-R30-P08 重跑待组件库**：人脈 🔍 与业界筛选参数（R30 交出） | Task 🔍 已接全局搜索（App `/search`、Web ⌘K）；人脈页 🔍 仍是旧行为；搜索空结果「近い条件なら」跳 App `/contacts?industry=<id>` / Web `/app/contacts?industry=<id>`（主 / 副业界 id），人脈页还不读这个参数 | 人脈页 🔍 → App `/search`（可带 `?q=` 把已输入的词带过去）/ Web 打开 ⌘K（派发 `orbit:open-palette`）；人脈列表读 `industry` 预选业界筛选；重跑 W-R30-P03 / A-R30-P08 并点「近い条件なら」确认落地 | `search/DESIGN.md` §2.2 / §4.4；`R30-global-search/REPORT.md` |
+| R11-16 | R11a 像素收口（SC-R11a-12 / 13） | 结构、数据、逻辑、两端界面已交；R31b（Web 组件）未合入、R31a 只合了两批，`web-R11a.json` / `app-R11a.json` 画面清单与预检已提交，门禁未跑 | 组件库合入后跑两份清单与 `app-R05.json` A-R05-02 / A-R05-10、W-R12-01～04、W-R15-14、R16「待 R11」画面、W-R30-P03 / A-R30-P08；交 `attribution-redesign-R11a.json` | `R11a-network-list-detail/REPORT.md` |
+| R11-17 | 「最近削除した項目」页与到期清除 | 只有软删 + 30 天内恢复（`DELETE /api/contacts/[id]`、`POST …/restore`），过期后数据仍在库里 | 设计稿无 / 下一期：画板 + 列表页 + 到期清除任务 | R11a PLANNER 代定 9；DEFERRED-A |
 
 ## R13 / R14 收件箱 · 秘書 · 推送
 

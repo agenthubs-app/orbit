@@ -1,0 +1,163 @@
+{
+ "_note": "R11a 人脈（App）。模拟器 Orbit Line B，Metro :8083，dev :3300。像素收口排在 R31a / R31b 合入之后（RD-31）。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R11a-app.json"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/network/**",
+  "repos/orbit-app/src/i18n/*/network.ts"
+ ],
+ "views": [
+  {
+   "id": "A-R11-01",
+   "design": "app.html",
+   "board-index": 6,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "人脈 空（app.html #6）"
+  },
+  {
+   "id": "A-R11-02",
+   "design": "app.html",
+   "board-index": 7,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "人脈 少量（#7）"
+  },
+  {
+   "id": "A-R11-03",
+   "design": "app.html",
+   "board-index": 8,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "人脈 大量（#8）"
+  },
+  {
+   "id": "A-R11-03d",
+   "design": "app.html",
+   "board-index": 34,
+   "themes": [
+    "dark"
+   ],
+   "path": "/contacts",
+   "note": "人脈 大量 深（#34）"
+  },
+  {
+   "id": "A-R11-04",
+   "design": "app.html",
+   "board-index": 9,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "「＋」人脈を追加（#9）"
+  },
+  {
+   "id": "A-R11-05",
+   "design": "app.html",
+   "board-index": 29,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/demo-c1",
+   "note": "連絡先詳細（#29）"
+  },
+  {
+   "id": "A-R11-06",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 20,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/demo-self",
+   "note": "本人入力カード + 確認カード（b9 #20）"
+  },
+  {
+   "id": "A-R11-06d",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 27,
+   "themes": [
+    "dark"
+   ],
+   "path": "/contacts/demo-self"
+  },
+  {
+   "id": "A-R11-07",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 21,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/demo-self",
+   "note": "資料の同期（b9 #21）"
+  },
+  {
+   "id": "A-R11-08",
+   "design": "b9-import-plan-v2.html",
+   "board-index": 22,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/demo-self",
+   "note": "つながりを解除（b9 #22）"
+  },
+  {
+   "id": "A-R11-09",
+   "design": "b5-me-inbox.html",
+   "board-index": 60,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "絞り込み · App（b5 #60）"
+  },
+  {
+   "id": "A-R11-10",
+   "design": "b5-me-inbox.html",
+   "board-index": 42,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/edit/demo-c1",
+   "note": "① 編集（b5 #42）"
+  },
+  {
+   "id": "A-R11-11",
+   "design": "b5-me-inbox.html",
+   "board-index": 43,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/edit/demo-c1",
+   "note": "② 業界・役職層（b5 #43）"
+  },
+  {
+   "id": "A-R11-12",
+   "design": "b5-me-inbox.html",
+   "board-index": 44,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts/edit/demo-c1",
+   "note": "③ 削除の確認（b5 #44）"
+  },
+  {
+   "id": "A-R11-13",
+   "design": "b1-onboarding-cards.html",
+   "board-index": 58,
+   "themes": [
+    "light"
+   ],
+   "path": "/contacts",
+   "note": "人脈 · 加载中（b1 #58）"
+  }
+ ]
+}

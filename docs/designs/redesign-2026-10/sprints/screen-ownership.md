@@ -28,7 +28,7 @@
 | 人脈 | `contacts/[id]` | `ContactDetailScreen` | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `contacts/dashboard`、`contacts/graph`、`contacts/analysis/[dimension]/[bucketId]` | `ContactsDashboardScreen`、`ContactStructureDetailScreen` | 人脈分析（構造 / 機会 / インサイト） | R11 | 重写 |
 | 人脈 | `contacts/intros` | `ContactIntrosScreen` | 无（邀请由招待コード、请人引荐由人物タイプ詳細「紹介ルート」承担） | R25 | 已处理：R25 删除（已确认，2026-10-10；理由见 [plan-v2.2/DESIGN.md](plan-v2.2/DESIGN.md) §9 #20）；屏、入口、`/api/contacts/intros/summary` 与契约已删（2026-10-11） |
-| 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 删除 |
+| 人脈 | `contacts/pipeline` | `ContactPipelineScreen` | 无 | R11 | 已处理：R11a 删除（2026-10-18，`a96a9cfdf`）；屏、路由、`useContactPipelinePages`、本机 pipeline 读模型与测试删掉，`ContactsDashboardScreen` 两处链接改到 `/contacts`；旧地址落到 `[...legacy]` |
 | 人脈 | `profile/suggestions` | `ProfileSuggestionsScreen` | 登録内容の更新提案 | R11 | 重写 |
 | 加人 | `contacts/new` | `ContactAcquisitionScreen` | 「＋」sheet | R12 / R15 / R16 | 已处理（R12：`AddContactScreen` / `AddContactSheet`；草稿队列 → `contacts/new/drafts`；招待 R15；その他 連絡先 / LinkedIn → `contacts/new/import` R16） |
 | 加人 | `contacts/new/scan`、`contacts/new/batch/[id]`、`contacts/new/batch2`、`contacts/new/batch2/[id]`、`contacts/new/import/[id]` | 名片扫描 / 批量 / 导入 5 屏 | A1 名刺スキャン（b1、b9） | R12 / R15 / R16 | 已处理（R12：`contacts/new/scan` + `scan/[batchId]`，旧路由删除、旧链接翻译） |
@@ -65,7 +65,7 @@
 | 人脈 | `/app/contacts` | `network-0918/network-all` | 人脈一覧 | R11 | 重写 |
 | 人脈 | `/app/contacts/[id]` | 联系人详情（W0059） | 連絡先詳細 | R11 | 重写 |
 | 人脈 | `/app/contacts/dashboard`、`/app/contacts/analysis/[dimension]/[bucketId]` | 人脉分析 | 人脈分析 | R11 | 重写 |
-| 人脈 | `/app/contacts/pipeline` | pipeline | 无 | R11 | 删除 |
+| 人脈 | `/app/contacts/pipeline` | pipeline | 无 | R11 | 已处理：R11a 删除（2026-10-18，`48413352b`）；页面、`/api/contacts/pipeline*`、读模型、契约 `contact-pipeline-page`（`BREAKING.md` 10 行）与 R11b 名下文件里的入口链接一并删掉（清单见 R11a REPORT） |
 | 加人 | `/app/contacts/new` | `card-batch-0918`、network-import | 「＋」/ 名刺スキャン / 手入力 / 取り込み | R12 / R15 / R16 | 已处理（R12：名片与手入力；R16：その他 → `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → まとめて確認），旧 network-import 已删，`?method=` / `?import=` 重定向） |
 | 加人 | `/app/invitations/[token]`；新增 `/i/[code]` | 一对一邀请 | A2 招待コード 受け取り側（响应式） | R12 / R15 / R16 | 重写 + 新建 |
 | iOrbit | `/app/agent` | `iorbit-0918`（含星空首页、历史抽屉） | iOrbit 起始屏 / 会話中 / 会話リスト（b4） | R21 | 重写 |

@@ -449,6 +449,7 @@
   - 新纯函数 `shared/compute/contact-density.ts`：●○○ 只有身份；●●○ 有联系方式且有相遇时间或场合；●●● 有目标关系或往来；本人入力直接 ●●●。
   - `ContactListItemContract` 加可选字段 `density?: 1|2|3`、`sourceChip?: 'meishi'|'linkedin'|'phone'|'manual'|'self'`，由服务端计算后返回。
   - `/api/contacts/page` 加筛选参数 `density=1`、`goalRelated=1`、`needsFollowUp=1`；`/summary` 加 `densityCounts`、`addedThisMonth`。
+  - **R11a 实际落点（2026-10-18）**：字段加在 `ContactCardDTO`（`shared/contract/contact-card-page.ts`，`/api/contacts/page` 的卡片）和同步镜像 `ContactSyncPayload.card`（list 与 sync 共用同一 SQL 映射），不在 `ContactListItemContract`。`sourceChip` 多一个 `event`（`tolerantEnum`），`self` 不落库、读时按 `inviteLinkedContactIds` 合并；卡片 `density` 不含计划，计划相关的人在读时合并为 3。另加 `primaryIndustryId` / `secondaryIndustryId` / `region` / `metKind` / `addedAt` / `lastInteractionAt` / `goalRelated`；`/page` 与 `/summary` 参数是 `goalRelated` / `needsFollowUp` / `industry` / `region` / `met` / `density` / `status`，`/summary` 另有 `tabCounts`、`sourceChips`、`industries`、`regions`、`metKinds`；计划关系走新只读接口 `GET /api/contacts/goal-related-ids`。见 `sprints/R11a-network-list-detail/REPORT.md`。
   - 连絡先导入的「仕事関係らしい」预选用规则：有公司名、或公司域名邮箱、或职称关键词，不调 AI。
 - **为什么**：现有字段（source、evidence、lastInteractionAt）足以推导，只差计算和筛选。
 - **规范**：只加可选字段、只加参数，契约同步。
