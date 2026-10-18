@@ -10,6 +10,7 @@ import { seniorityGroup, type SeniorityGroup } from "../../api/compute/seniority
 import type { IndustryIdCode } from "../../api/contract/industries";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../api/domain/industries";
 import { meetingNoteValue } from "../../api/compute/contact-source-chip";
+import { mergeEditedContactTags, userFacingContactTags } from "../../api/compute/contact-tags";
 import { AppScreen } from "../../components/AppScreen";
 import { Avatar, BottomSheet, Button, CategoryTabs, Chip, ConfirmDialog, Icon, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
@@ -41,7 +42,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   const initial: Draft | null = useMemo(() => contact ? {
     displayName: contact.displayName, organization: contact.organization, role: contact.role, email: contact.primaryEmail, phone: contact.primaryPhone,
     primaryIndustryId: contact.primaryIndustryId ?? null, secondaryIndustryId: contact.secondaryIndustryId ?? null, seniorityLevel: contact.seniorityLevel ?? null,
-    status: contact.status, tags: contact.tags,
+    status: contact.status, tags: userFacingContactTags(contact.tags),
   } : null, [contact]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const value = draft ?? initial;
@@ -83,7 +84,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
     }
     if (value.seniorityLevel !== initial.seniorityLevel) detail.seniorityLevel = value.seniorityLevel;
     if (value.status !== initial.status) detail.status = value.status;
-    if (JSON.stringify(value.tags) !== JSON.stringify(initial.tags)) detail.tags = value.tags;
+    if (JSON.stringify(value.tags) !== JSON.stringify(initial.tags)) detail.tags = mergeEditedContactTags(contact.tags, value.tags);
     const results = await Promise.all([
       Object.keys(fields).length ? client.patch(`/api/contacts/${encodeURIComponent(contactId)}/fields`, { body: { values: fields } }) : Promise.resolve({ success: true as const }),
       Object.keys(detail).length ? client.patch(`/api/contacts/${encodeURIComponent(contactId)}`, { body: detail }) : Promise.resolve({ success: true as const }),
@@ -130,7 +131,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
                 <UiPressable key={tag} accessibilityRole="button" accessibilityLabel={tag} onPress={() => set({ tags: value.tags.filter((item) => item !== tag) })}><Chip label={tag} tone="lav" /></UiPressable>
               ))}
               <TextInput accessibilityLabel={t("network.edit.tagPlaceholder")} value={tagInput} onChangeText={setTagInput} placeholder={t("network.edit.addTag")} placeholderTextColor={colors.ink3Text}
-                onSubmitEditing={() => { const tag = tagInput.trim(); if (tag && !value.tags.includes(tag)) set({ tags: [...value.tags, tag] }); setTagInput(""); }} style={styles.tagInput} />
+                onSubmitEditing={() => { const tag = tagInput.trim(); if (tag && !value.tags.includes(tag) && userFacingContactTags([tag]).length) set({ tags: [...value.tags, tag] }); setTagInput(""); }} style={styles.tagInput} />
             </View>
           </View>
         </View>

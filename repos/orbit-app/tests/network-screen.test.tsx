@@ -20,7 +20,7 @@ const row = (c, minute, extraDetail) => ({ id: c.id, card: c, tags: [], search: 
 const defaults = () => [
   row(card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO", { density: 3, sourceChip: "meishi", metKind: "event", addedAt: "2026-10-05T00:00:00.000Z", primaryIndustryId: "finance_investment", region: { countryCode: "JP", city: "Tokyo" } }), 5,
     { state: "success", contact: { id: "c-ito", displayName: "伊藤 直子", organization: "株式会社ハルモニア", role: "CFO", status: "nurture", primaryIndustryId: "finance_investment", primaryIndustryLabel: "金融・投資", region: { countryCode: "JP", city: "Tokyo" },
-      primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: ["CFO"], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
+      primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: ["source:external-import", "CFO", "会食"], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
       notes: [{ noteId: "n1", body: "DD の資料リストを受領", kind: "memo", createdAt: "2026-10-06T01:00:00.000Z" }],
       lastInteraction: { occurredAt: "2026-10-06T01:00:00.000Z", summary: "DD の資料リストを受領" },
       fieldHistory: [{ field: "role", previous: "経理部長", next: "CFO", source: "manual", at: "2026-10-02T00:00:00.000Z" }] } }),
@@ -338,11 +338,15 @@ test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage
   await page.getByRole("radio", { name: "経営層" }).click();
   await page.getByRole("button", { name: "決定" }).click();
   await page.getByRole("tab", { name: "知り合い" }).click();
+  // R11a 追补：导入写下的内部标签（source:external-import）不显示，删掉一个用户标签后保存仍原样带回。
+  assert.equal(await page.getByText("source:external-import").count(), 0);
+  await page.getByRole("button", { name: "会食" }).click();
   await page.getByRole("button", { name: "保存" }).click();
   await page.waitForFunction(() => (window as any).fixture.requests.some((path: string) => path.startsWith("patch:/api/contacts/c-ito/fields")));
   const patches = (await requests(page)).filter((path) => path.startsWith("patch:"));
   assert.ok(patches.some((path) => path.includes("/fields") && path.includes("CFO・取締役")));
   assert.ok(patches.some((path) => path.startsWith("patch:/api/contacts/c-ito {") && path.includes("finance_investment.venture_capital") && path.includes("c_level") && path.includes("\"status\":\"active\"")));
+  assert.ok(patches.some((path) => path.startsWith("patch:/api/contacts/c-ito {") && path.includes("\"tags\":[\"source:external-import\",\"CFO\"]")));
   const offline = await open(t, { screen: "edit", params: { id: "c-ito" }, status: "stale", online: false });
   await offline.getByText("編集にはインターネット接続が必要です", { exact: true }).waitFor();
   assert.equal(await offline.getByRole("button", { name: "保存" }).isDisabled(), true);
