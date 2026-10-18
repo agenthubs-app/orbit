@@ -37,7 +37,7 @@ SC-08 の新しい主会話判断（既存の対応済み生成 API があれば
 | --- | --- |
 | SC-02 フォロー | サーバー修正と回帰テスト済み。実 PostgreSQL で App 向け API は 503 → 200、Web loader は unavailable → success。画面操作とスクリーンショットは後続検証に残す。 |
 | SC-12 OAuth / 外部日历 API | 二つの固定 OAuth 戻り先と、只読 Google events API / schema / mock / App 契約同期、両端の読取 UI を実装。替身 provider の cache / 失効 / refresh / budget / 認証を検証。Google 実接続 / 像素は未検証。 |
-| SC-11a / SC-11 日程提案 | accepted bilateral context 限定の atomic service / HTTP / wide contract / Web Modal と App Sheet を提出。App Sheet / scope の fresh focused44/44・実ブラウザ8/8、Web first-proposal secure-origin browser2/2。一般 contact authority、native/pixel と独立 review は OPEN。 |
+| SC-11a / SC-11 日程提案 | accepted bilateral context 限定の atomic service / HTTP / wide contract / Web Modal と App Sheet を提出。上流 kit の 1000/760 幅を使い、Web Modal に `form` 表面を付けた `1aa42da3a` は RED→GREEN の mounted flow 8/8（全量・pixel は未再検証）。App Sheet / scope の fresh focused44/44・実ブラウザ8/8、Web first-proposal secure-origin browser2/2。一般 contact authority、native/pixel と独立 review は OPEN。 |
 | SC-03 延期回数 | 別 worker の `b5bfa026a` で task の各 read / sync / App mirror に派生値を追加。検証の詳細はその worker の証拠を参照。 |
 | SC-01 像素準備 | 主会話の `5bdad3d89` で App 48 / Web 24 view、attribution schema と preflight 記録を追加。像素検証自体は未実施。 |
 | SC-04 統一待辦 | live readonly 集約・署名 cursor・SQL 件数 / budgets は実装済み。未初期化 question を生成せず not_implemented、source 不可用時の件数は partial。既知の非同等性は主会話承認の partial として残す。 |
