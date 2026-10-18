@@ -693,7 +693,7 @@ function NewThreadForm({
 
       <button className="btn btn-ghost btn-sm" disabled={!recipient.trim() || busy !== "idle"} onClick={onGenerate} type="button">
         <Icon name="sparkle" size={15} />
-        {busy === "generating" ? t({ en: "AI is drafting…", zh: "AI 起草中…" }) : t({ en: "Draft with AI", zh: "AI 起草邮件" })}
+        {busy === "generating" ? t({ en: "AI is drafting…", zh: "AI 起草中…", ja: "AI が下書きを作成中…" }) : t({ en: "Draft with AI", zh: "AI 起草邮件", ja: "AI で下書きを作成" })}
       </button>
 
       <label className="ri-new-label">{t({ en: "Subject", zh: "主题" })}</label>
@@ -721,7 +721,7 @@ function NewThreadForm({
 
       <button className="btn btn-primary btn-sm" disabled={!canCreate} onClick={onCreate} type="button">
         <Icon name="mail" size={15} />
-        {busy === "creating" ? t({ en: "Creating…", zh: "创建中…" }) : t({ en: "Create thread (confirm)", zh: "创建对话（确认）" })}
+        {busy === "creating" ? t({ en: "Creating…", zh: "创建中…", ja: "作成中…" }) : t({ en: "Create thread (confirm)", zh: "创建对话（确认）", ja: "スレッドを作成（確認）" })}
       </button>
     </div>
   );
@@ -784,7 +784,7 @@ function ThreadsTab({
   };
 
   if (state === "loading" && !composing) {
-    return <EmptyState hint={t({ en: "Loading conversations…", zh: "正在加载对话…" })} icon="message" title={t({ en: "Loading", zh: "加载中" })} />;
+    return <EmptyState hint={t({ en: "Loading conversations…", zh: "正在加载对话…", ja: "会話を読み込み中…" })} icon="message" title={t({ en: "Loading", zh: "加载中", ja: "読み込み中" })} />;
   }
 
   if ((state === "error" || !viewModel) && !composing && created.length === 0) {

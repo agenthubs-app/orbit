@@ -3,6 +3,30 @@ import test from "node:test";
 import { chromium } from "playwright";
 import { bundle as bundleUi } from "../ui/support/orbit-2026-harness";
 
+test("Web empty messages use Japanese copy in a Japanese inbox", async () => {
+  const code = await bundleUi(`
+    import React from "react"; import {createRoot} from "react-dom/client";
+    import {OrbitLanguageProvider} from "./app/(app)/app/orbit-language-context";
+    import {BoundedContactMessagesTab} from "./app/(app)/app/inbox/bounded-contact-messages-tab";
+    window.fetch=async(url)=>String(url)==="/api/account/me"
+      ? Response.json({success:true,data:{account:{id:"a"}}})
+      : Response.json({success:true,data:{actorId:"a",items:[],hasMore:false,nextCursor:null,asOf:"2026-10-18T00:00:00Z"}});
+    createRoot(document.getElementById("root")).render(<OrbitLanguageProvider initialLanguage="ja"><BoundedContactMessagesTab actorId="a" onIdentityChanged={()=>{}} /></OrbitLanguageProvider>);
+  `);
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.route("https://orbit.test/", route => route.fulfill({ contentType: "text/html", body: '<div id="root"></div>' }));
+    await page.goto("https://orbit.test/");
+    if (code.css) await page.addStyleTag({ content: code.css });
+    await page.addScriptTag({ content: code.js });
+    await page.waitForTimeout(1200);
+    const content = await page.locator("body").innerText();
+    assert.match(content, /メッセージはまだありません/);
+    assert.doesNotMatch(content, /No messages yet/);
+  } finally { await browser.close(); }
+});
+
 test("Web reads previews first, one message window on selection, and retries sending with the same request identity", async () => {
   const code = await bundleUi(`
     import React from "react"; import {createRoot} from "react-dom/client";
