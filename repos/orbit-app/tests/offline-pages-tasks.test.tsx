@@ -41,6 +41,14 @@ test("the task list offline: 截至, local tasks, relationship follow-ups and su
   assert.deepEqual((await requestsOf(page)).filter((entry) => !entry.startsWith("get:") && !entry.startsWith("resource:")), []);
 });
 
+test("Japanese task list names a device outbox read failure as a sync failure", async (t) => {
+  const page = await harness.open(t, { screen: "tasks", language: "ja", platform: "ios", taskOutbox: true, outboxReadFails: true, syncStatus: "local-ready", records: { task: [task("t9", "回访佐藤")] } });
+  await page.getByText(/タスクを開けません|タスクデータを利用できません/u).waitFor();
+  assert.equal(await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).count(), 0);
+  await page.getByText("タスクデータを利用できません", { exact: true }).waitFor();
+  await page.getByText("同期できませんでした。もう一度お試しください。", { exact: true }).waitFor();
+});
+
 test("task detail offline comes from the device copy, read-only with 截至", async (t) => {
   const page = await harness.open(t, { screen: "detail", online: false, syncStatus: "stale", params: { id: "t9" }, records: { task: [task("t9", "回访佐藤")] } });
   await page.getByText(OFFLINE_BANNER).waitFor();

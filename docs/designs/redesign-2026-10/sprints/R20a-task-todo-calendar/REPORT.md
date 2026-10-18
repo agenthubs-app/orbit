@@ -738,3 +738,9 @@ Web component + legacy route **20/20 pass**、product-browser **10/10 pass**（3
 `3631f691f`（`fix(R20a): show offline-safe calendar meetings`）は、表示中の day/week/month のローカル日付範囲で actor 認証済み `/api/schedule-items?scope=calendar` を読み、確認済み面談の必要最小限の preview だけを App 専用 `calendar-meetings` 副本へ保存する。個人予定・イベント・外部 Google 行はこの副本に入れず、既存 mirror と merge して面談詳細の read-only route を使う。副本は actor/lease に束縛し、最大3範囲・各256KiB。過去日の読み取りには「以前の情報」、副本表示中はネットワーク待機中も時点を表示する。4xx は該当範囲を削除し、進行中の旧保存→削除を範囲ごとに順序付けて復活を防ぐ。認証の変化では旧 scope の delete を新 actor に適用しない。同 actor の別日へ移動しても denial delete は完了する。
 
 source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native loader 付き）**48/48 pass**、Calendar/hook/browser と隣接 locale **14/14 pass**、App `typecheck`・path-scoped diff check exit0。独立 read-only review の race と timestamp 指摘は各 RED→GREEN で修正され、最終 follow-up に残る具体的指摘はなかった。copy QA は上記と同じ **218既存 issues、exit1**、追加 calendar key に issue はない。Web/App 全量、native/pixel、push は sprint closure まで未実行。
+
+## 2026-10-19　App タスク一覧の失敗文言（SC-09 部分）
+
+タスク一覧／完了履歴の read 失敗と完了 mutation 失敗は、API の任意言語の `error.message` をそのまま表示していた。日本語画面に中国語が出る mounted Chromium 用例を先に RED とし、画面境界で三言語の短い失敗文言へ写した。アカウント／version が未確認の page は既存の「タスクデータを利用できません」を維持し、端末 outbox の読取失敗は通常 read と区別して既存の同期失敗文言にした。未確認 page と outbox の回帰も各 RED→GREEN。失敗時の行、再試行、書込の有無は従来のまま。
+
+関連四テストファイルの定向実行 `_evidence-d/R20a/run-01/d-app-task-list-locale-focused-all.log` は **94/94 pass**。App `typecheck` と `git diff --check` は exit0。App 全量 `_evidence-d/R20a/run-01/d-app-full-task-list-locale-unconfirmed-outbox.log` は **3,255 total / 3,241 pass / 12 fail / 0 cancelled / 2 skip、exit1**。今回の追加用例は全量でも pass。失敗12件は R12 card 九件、旧辞書 exact-key pin 一件、shared compute rule 一件、invite history click timeout 一件で、全量 gate は引き続き赤。SC-09 の native 操作・pixel は OPEN。C 線の approval、production／実 Google／paid AI、push には触れていない。

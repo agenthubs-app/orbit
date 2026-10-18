@@ -67,6 +67,8 @@ export function TasksScreen() {
   // Both sources expose one window: native/browser mirror reads locally;
   // online-only browsers use SQL pages instead of fetching the full task list.
   const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor, completedExpanded, completedCursor, today, timeZone });
+  const failureTitleKey = source.unconfirmed || source.queueFailure ? "tasks.dataUnavailable" : "tasks.unavailable";
+  const failureMessageKey = source.unconfirmed ? "tasks.dataUnavailableBody" : source.queueFailure ? "sync.failure" : "tasks.readFailed";
   const refreshTasks=()=>{setPosition({scope:pageScope,cursor:null});setCompletedPosition({scope:foldScope,cursor:null});source.refresh();};
   const loaded = ready && !source.loading && !source.failure;
   const canonical = source.canonical;
@@ -131,7 +133,7 @@ export function TasksScreen() {
         body: { action, idempotencyKey: key }, signal: scope.controller.signal,
       });
       if (!scope.active || currentScope.current !== scope) return;
-      if (!result.success) setMutationError(result.error.message);
+      if (!result.success) setMutationError(locale.t("tasks.operationFailed"));
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
       else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null}); }
       else setMutationError(locale.t("sync.mutationPending"));
@@ -166,7 +168,7 @@ export function TasksScreen() {
       {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} queues="tasks" /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
       {source.loading ? <LoadingState /> : null}
       {source.failure ? (
-        <ErrorState message={source.failure} title={locale.t("tasks.unavailable")} />
+        <ErrorState message={locale.t(failureMessageKey)} title={locale.t(failureTitleKey)} />
       ) : null}
       {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
       {ready && contactsState.failure ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
@@ -194,7 +196,7 @@ export function TasksScreen() {
             <Text style={[styles.groupCount, group.tone === "today" && styles.todayCount, group.tone === "danger" && styles.danger]}>{group.items.length}</Text>
           </View>}
           {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
-          {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t("tasks.unavailable")} message={source.completedSection.failure} /> : null}
+          {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailable" : "tasks.unavailable")} message={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailableBody" : "tasks.readFailed")} /> : null}
           {group.fold && completedExpanded && foldedCompleted?.length === 0 ? <Text style={styles.rowDetail}>{locale.t("tasks.emptyCompletedTitle")}</Text> : null}
           {group.items.map(item => {
             const contactId = (canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id))?.relatedContactId;

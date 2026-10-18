@@ -17,6 +17,7 @@ export const tasks = {
   "tasks.scopeRelationship": "People",
   "tasks.scopePersonal": "Personal",
   "tasks.unavailable": "Tasks unavailable",
+  "tasks.readFailed": "Couldn’t load tasks. Try again.",
   "tasks.dataUnavailable": "Task data unavailable",
   "tasks.dataUnavailableBody": "The task account or version could not be confirmed. Reload the list.",
   "tasks.contactsUnavailable": "People data unavailable",

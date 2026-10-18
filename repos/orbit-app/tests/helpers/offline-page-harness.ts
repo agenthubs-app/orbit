@@ -138,7 +138,7 @@ function currentSession() { return state.taskOutbox || state.scheduleOutbox ? ta
 // Sprint 0134: scheduleOutbox: true adds schedule enqueues and conflict resolution; queued rows are read per kind.
 const queuedRow = (mutation) => ({ ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null });
 const taskOutboxSession = {
-  async readOutboxOverlay(kind) { return { queuedMutations: kind === "personal_schedule" ? state.queuedSchedules ?? [] : kind === "note" ? state.queuedNotes ?? [] : state.queuedTasks ?? [] }; },
+  async readOutboxOverlay(kind) { if (state.outboxReadFails && kind === "task") throw Error("device outbox read failed"); return { queuedMutations: kind === "personal_schedule" ? state.queuedSchedules ?? [] : kind === "note" ? state.queuedNotes ?? [] : state.queuedTasks ?? [] }; },
   async enqueueOfflineScheduleMutation(mutation) {
     state.enqueuedSchedules = [...(state.enqueuedSchedules ?? []), mutation];
     state.queuedSchedules = [...(state.queuedSchedules ?? []), queuedRow(mutation)];

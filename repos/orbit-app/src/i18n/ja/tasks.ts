@@ -17,6 +17,7 @@ export const tasks = {
   "tasks.scopeRelationship": "つながり",
   "tasks.scopePersonal": "個人",
   "tasks.unavailable": "タスクを開けません",
+  "tasks.readFailed": "タスクを読み込めません。もう一度お試しください。",
   "tasks.dataUnavailable": "タスクデータを利用できません",
   "tasks.dataUnavailableBody": "タスクのアカウントまたはバージョンを確認できません。再読み込みしてください。",
   "tasks.contactsUnavailable": "つながり情報を利用できません",

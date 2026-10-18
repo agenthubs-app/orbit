@@ -31,7 +31,7 @@ let revision = 0, nextId = 0; const listeners = new Set();
 const state = window.fixture = { width: 390, fontScale: 1, screen: "list", navigation: [], requests: [], reads: [], httpReads: [], refreshes: [], permissionCalls: 0, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
-export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path.startsWith("/api/tasks/page?") ? taskPageFixture(state.tasks,"test",new URLSearchParams(path.split("?")[1])) : path.startsWith("/api/contacts/labels?") ? {actorId:"test",items:[],asOf:"2026-09-25T00:00:00Z"} : path === "/api/schedule-items?scope=personal" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
+export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path.startsWith("/api/tasks/page?") ? taskPageFixture(state.tasks,path.includes("status=completed") ? state.completedPageActorId ?? state.pageActorId ?? "test" : state.pageActorId ?? "test",new URLSearchParams(path.split("?")[1])) : path.startsWith("/api/contacts/labels?") ? {actorId:"test",items:[],asOf:"2026-09-25T00:00:00Z"} : path === "/api/schedule-items?scope=personal" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { async get(path, options) {
   const url = new URL(path, "https://orbit.example");
@@ -66,7 +66,7 @@ export const useSyncCoordinatorSession = () => null;
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.screen === "detail" ? <TaskDetailScreen /> : <TasksScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "task-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; import { useFixture } from "fixture"; function App() { const s = useFixture(); const screen = s.screen === "detail" ? <TaskDetailScreen /> : <TasksScreen />; return s.language === "ja" ? <OrbitLocaleContext.Provider value={{ language: "ja", t: createTranslator("ja") }}>{screen}</OrbitLocaleContext.Provider> : screen; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "task-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-tasks" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
     plugin.onResolve({ filter: /^(fixture|expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "ink-tasks" }));
@@ -89,7 +89,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   await page.route("**/*", r => r.abort());
   await page.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, { tasks, task, ...patch });
-  await page.addScriptTag({ content: script }); await page.getByRole("heading", { name: /待办/ }).waitFor(); await page.evaluate(() => document.fonts.ready);
+  await page.addScriptTag({ content: script }); await page.getByRole("heading", { name: patch.language === "ja" ? "タスク" : /待办/ }).waitFor(); await page.evaluate(() => document.fonts.ready);
   return page;
 }
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
@@ -151,10 +151,20 @@ test("list blocks same-turn double completion and keeps the row after a rejected
   await checkbox.evaluate(el => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   assert.equal((await requests(page)).length, 1);
   await page.evaluate(() => (window as any).fixture.release());
-  await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
+});
+
+test("Japanese task list keeps server error text out of a rejected completion", async t => {
+  const page = await open(t, { language: "ja", failure: true });
+  const checkbox = page.getByRole("checkbox", { name: "完了：给山田发介绍资料", exact: true });
+  await checkbox.click();
+  await page.getByRole("alert").first().waitFor();
+  assert.equal(await page.getByText("保存失败，请重试。", { exact: true }).count(), 0);
+  await page.getByRole("alert").filter({ hasText: "操作を完了できませんでした。もう一度お試しください。" }).waitFor();
+  assert.equal(await checkbox.getAttribute("aria-checked"), "false");
 });
 
 test("list transport rejection unlocks actions and visibly preserves the unchanged task", async t => {
@@ -191,6 +201,38 @@ test("completed deep link and list load failure do not invent zero counts or emp
   assert.equal(await page.getByText("暂无完成记录", { exact: true }).count(), 0);
 });
 
+test("Japanese task list does not show a server-language read failure", async t => {
+  const page = await open(t, { language: "ja", view: "completed", kinds: { [completedTaskPage]: "failure" } });
+  await page.getByText("タスクを開けません", { exact: true }).waitFor();
+  assert.equal(await page.getByText("暂时无法读取，请重试。", { exact: true }).count(), 0);
+  await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).waitFor();
+});
+
+test("Japanese task list identifies an unconfirmed account page separately from a read failure", async t => {
+  const page = await open(t, { language: "ja", pageActorId: "other" });
+  await page.getByText(/タスクを開けません|タスクデータを利用できません/u).waitFor();
+  assert.equal(await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).count(), 0);
+  await page.getByText("タスクデータを利用できません", { exact: true }).waitFor();
+  await page.getByText("タスクのアカウントまたはバージョンを確認できません。再読み込みしてください。", { exact: true }).waitFor();
+});
+
+test("Japanese collapsed completion history does not show a server-language read failure", async t => {
+  const page = await open(t, { language: "ja", kinds: { [completedTaskPage]: "failure" } });
+  await page.getByRole("button", { name: "完了したタスクを開く" }).click();
+  await page.getByText("タスクを開けません", { exact: true }).waitFor();
+  assert.equal(await page.getByText("暂时无法读取，请重试。", { exact: true }).count(), 0);
+  await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).waitFor();
+});
+
+test("Japanese completion history identifies an unconfirmed account page", async t => {
+  const page = await open(t, { language: "ja", completedPageActorId: "other" });
+  await page.getByRole("button", { name: "完了したタスクを開く" }).click();
+  await page.getByText(/タスクを開けません|タスクデータを利用できません/u).waitFor();
+  assert.equal(await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).count(), 0);
+  await page.getByText("タスクデータを利用できません", { exact: true }).waitFor();
+  await page.getByText("タスクのアカウントまたはバージョンを確認できません。再読み込みしてください。", { exact: true }).waitFor();
+});
+
 test("detail displays real metadata, source hierarchy and a pinned action area", async t => {
   const page = await open(t, { screen: "detail" });
   await page.getByText("手动创建", { exact: true }).waitFor();
@@ -217,7 +259,7 @@ test("detail checkbox completes the task and editor keeps failed drafts with exi
   let writes = await requests(page); assert.equal(writes[0].body.action, "complete");
   await page.evaluate(() => (window as any).fixture.update({ failure: true }));
   const title = page.getByRole("textbox", { name: "待办标题", exact: true }); await title.fill("修改后仍保留的标题"); await title.blur();
-  await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).waitFor();
   assert.equal(await title.inputValue(), "修改后仍保留的标题");
   writes = await requests(page); assert.equal(writes[1].body.action, "update");
   assert.equal(writes[1].body.expectedUpdatedAt, task.updatedAt);

@@ -17,6 +17,7 @@ export const tasks = {
   "tasks.scopeRelationship": "人脉",
   "tasks.scopePersonal": "个人",
   "tasks.unavailable": "待办暂时打不开",
+  "tasks.readFailed": "待办加载失败，请重试。",
   "tasks.dataUnavailable": "待办数据暂不可用",
   "tasks.dataUnavailableBody": "无法确认事项所属账号或版本，请重新读取。",
   "tasks.contactsUnavailable": "人脉信息暂不可用",

@@ -34,6 +34,7 @@ export interface CompletedTaskSection {
   nextCursor: string | null;
   loading: boolean;
   failure: string | null;
+  unconfirmed?: boolean;
 }
 
 export interface TaskListSource {
@@ -44,6 +45,8 @@ export interface TaskListSource {
   /** Nothing readable yet (first sync still running). */
   loading: boolean;
   failure: string | null;
+  /** A returned page failed the actor/version contract, distinct from a read error. */
+  unconfirmed?: boolean;
   refreshing: boolean;
   /** Mirror freshness label for the screen; null where there is no mirror (Web). */
   syncLabelKey: MessageKey | null;

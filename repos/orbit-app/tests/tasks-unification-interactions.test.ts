@@ -276,7 +276,7 @@ test("completion and reopen change one real route/service record with separate t
 test("failed completion retains the row and reuses its intent key on explicit retry", async t => {
   const page = await open(t), control = backends.get(page)!; control.failWrites = true;
   const checkbox = page.getByRole("checkbox", { name: "完成：事项 0", exact: true }); await checkbox.waitFor(); await checkbox.click();
-  await page.getByRole("alert").filter({ hasText: "暂时无法读取" }).waitFor();
+  await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   control.failWrites = false; await checkbox.click(); await page.getByRole("tab", { name: "未完成 30", exact: true }).waitFor();
   const writes = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH"));
