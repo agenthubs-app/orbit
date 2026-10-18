@@ -1,6 +1,17 @@
 /* web.html wTaskTodo: 7/5 top row and full-width follow-ups. */
 .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); align-items: stretch; }
 .decisions { grid-column: span 7; }
+.decisionRow { display: flex; align-items: center; min-height: 60px; padding: 11px 10px; border-top: 1px solid var(--line); }
+.decisionMain { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.decisionMain:hover { background: var(--surface-2); }
+.decisionAvatar { width: 30px; height: 30px; }
+.decisionMeta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.decisionTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.decisionSubtitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3-text); }
+.decisionTrailing { display: flex; align-items: center; flex: none; gap: var(--space-8); }
+.decisionActions { display: inline-flex; gap: var(--space-8); opacity: 0; pointer-events: none; }
+.decisionActionsShown, .decisionRow:hover .decisionActions, .decisionRow:focus-within .decisionActions { opacity: 1; pointer-events: auto; }
+@media (hover: none), (max-width: 390px) { .decisionActions { opacity: 1; pointer-events: auto; } }
 .nextMoves { grid-column: span 5; min-width: 0; }
 .followups { grid-column: span 12; }
 .followupRow { display: flex; align-items: center; gap: var(--space-8); }

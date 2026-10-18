@@ -43,14 +43,18 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
     {view.decisions.state !== "hidden" ? <Card className={styles.decisions} aria-label={t(taskCopy.todoDecisions)}>
       {header(t(taskCopy.todoDecisions), view.decisions, "decisions")}
       {issues(view.decisions)}
-      {view.decisions.state === "empty" ? <EmptyState title={t(taskCopy.todoDecisionsEmpty)} /> : view.decisions.items.slice(0, 2).map(row => {
+      {view.decisions.state === "empty" ? <EmptyState title={t(taskCopy.todoDecisionsEmpty)} /> : view.decisions.items.slice(0, 2).map((row, index) => {
         const actions: RowAction[] = row.actions.map(action => ({ key: action,
           label: t(action === "accept" ? taskCopy.todoDone : action === "dismiss" ? taskCopy.todoDismiss : row.source === "task_suggestion" ? taskCopy.todoTomorrow : taskCopy.todoLater),
           icon: action === "accept" ? "check" : action === "dismiss" ? "x" : "clock", tone: action === "accept" ? "ok" : action === "dismiss" ? "coral" : "lav",
           onSelect: () => onDecision(row.key, action),
         }));
+        const main = <><span className={styles.decisionAvatar}>{row.contactName ? <Avatar name={row.contactName} size="sm" /> : null}</span><span className={styles.decisionMeta}><b className={styles.decisionTitle}>{row.title}</b>{row.subtitle ? <span className={styles.decisionSubtitle}>{row.subtitle}</span> : null}</span></>;
         return <div key={row.key}>
-          <ListRow title={row.title} subtitle={row.subtitle} href={row.href} leading={row.contactName ? <Avatar name={row.contactName} size="sm" /> : undefined} trailing={row.sample ? <SampleTag /> : undefined} hoverActions={actions} />
+          <div className={styles.decisionRow}>
+            {row.href ? <a className={styles.decisionMain} href={row.href}>{main}</a> : <div className={styles.decisionMain}>{main}</div>}
+            <span className={styles.decisionTrailing}>{row.sample ? <SampleTag /> : null}{actions.length ? <span className={`${styles.decisionActions} ${index === 0 ? styles.decisionActionsShown : ""}`}>{actions.map(action => <Button key={action.key} label={action.label} aria-label={`${action.label} ${row.title}`} icon={action.icon} variant={action.key === "accept" ? "primary" : "secondary"} size="sm" onClick={action.onSelect} />)}</span> : null}</span>
+          </div>
           {row.unverifiedConversation || row.question ? <p className={styles.note}>{t(row.question ? taskCopy.todoQuestionSeparate : taskCopy.todoUnverifiedConversation)}</p> : null}
         </div>;
       })}
