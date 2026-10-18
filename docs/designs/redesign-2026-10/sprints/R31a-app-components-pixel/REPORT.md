@@ -171,3 +171,4 @@
 ## 12. 复核处理（2026-10-19）
 
 - **M3：** 按 REVIEW 提供的第二种收口方式，将 PLANNER SC-07 的开发状态开关验收改为“正式包不可启用”。`addDesignMock` 要求 `__DEV__` 为真；`ui-r31a-new-components.test.tsx` 覆盖 `__DEV__=false` 时 `open-path` 不生效。现有证据不证明开关代码未进入正式 bundle，故不再使用“不进正式构建”的表述。
+- **m：** 按 RD-32 更新 PLANNER SC-09：GitNexus 已停用，本轮不运行或要求 `detect-changes`；复核以代码差异、测试和门禁证据记录。

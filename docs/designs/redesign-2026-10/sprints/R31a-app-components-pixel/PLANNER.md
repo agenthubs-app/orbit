@@ -116,7 +116,7 @@
 | SC-R31a-06 调用点与交接 | 新参数的调用点已改（含 `KIT_PAGE_INSET`、`ignoreDismiss`、`useFocusEffect` 临时写法已删）；交接条目逐条有结果 | diff + REPORT 条目表 |
 | SC-R31a-07 待组件库画面重比 | 重比清单全部重跑；通过的已改 done；未过的有原因与去向；开发状态开关在正式包不可启用（`__DEV__` 门禁；不宣称 bundle 中无此代码） | 门禁总表 + 交还清单 + 测试 |
 | SC-R31a-08 不退步 | 每次组件改动后 R05 壳门禁通过；收口时 `pass-baseline-app.json` 全部仍通过 | 收口全量门禁输出 |
-| SC-R31a-09 测试与复核 | 两端全量对照基线零新增失败；`tsc` 通过；`detect-changes` 写进 REPORT；独立复核**自己重跑门禁** | 全量清单、REVIEW |
+| SC-R31a-09 测试与复核 | 两端全量对照基线零新增失败；`tsc` 通过；按 RD-32 停用 GitNexus，不要求 `detect-changes`；独立复核**自己重跑门禁** | 全量清单、REVIEW |
 
 ## 执行顺序
 
