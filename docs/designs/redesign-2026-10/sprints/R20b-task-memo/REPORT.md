@@ -10,6 +10,8 @@
 
 補助回帰として、新筆記の本文だけを変更すると新しい hash で再補掃され、再度の同一本文は実行されないことを実 PostgreSQL で確認した。終態、disabled、未来／到期 deferred の候補判定も同じ新筆記で確認し、保守ファイルは最終編集後 **7/7 pass**、隔離 `network_%` schema 残留 **0**。追加テストを含む作業ツリーで通常 Web `typecheck` を新規実行し **exit0**、Web `lint` も **exit0**。これは C11 の局所検証であり、Sprint 全量や E2E の合格ではない。
 
+同じ D の現行ソースで R24 の本機 PostgreSQL `S1: memo proposal → pending → accept (scores)` を単独再実行し **1/1 pass**、隔離 schema 残留 **0**。下流の提議・確認後計分が動く証拠であり、新筆記の保存後 hook からそこまで通した E2E 証拠ではない。SC-10 は OPEN のまま。
+
 ## 20:30 統合チェックポイント
 
 `line-d` の clean `5e0419cdc` を `origin/redesign 324218dda` へ rebase し、HEAD は `c06741285` になった。157 commits の replay で止まったのは `add-contact-screens.test.tsx` の dialog entrance wait 一箇所だけ。上流 `936a7289d` が同じ待機を実装済みなので、その実装を残し、D 側の重複を入れなかった。rebase は exit0、直後の `git diff --check` は exit0。R20a / R20b の product source をこの衝突解消で変更していない。
