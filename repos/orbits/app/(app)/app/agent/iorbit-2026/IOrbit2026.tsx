@@ -165,7 +165,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const oncePrefill = useRef(false);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 767px)");
+    const media = window.matchMedia("(max-width: 1199px)");
     const update = () => setNarrow(media.matches);
     update(); media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
@@ -346,7 +346,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
           <p className={styles.privacy}>{t(iorbitCopy.privacy)}</p>
         </main>
       </div>
-      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="lg" fullOnPhone><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
+      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="sm" fullOnPhone><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
       <ConfirmDialog open={Boolean(history.pendingDeleteHistory)} title={t(iorbitCopy.deleteTitle)} message={t(iorbitCopy.deleteMessage)} confirmLabel={t(iorbitCopy.delete)} cancelLabel={t(iorbitCopy.cancel)} destructive icon="trash" onConfirm={() => void history.confirmDeleteHistorySession()} onCancel={() => history.setPendingDeleteHistory(null)} />
       {history.historyDeleteError ? <p className={styles.error} role="alert">{history.historyDeleteError}</p> : null}
     </div>
