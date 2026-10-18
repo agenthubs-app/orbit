@@ -32,21 +32,22 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  const scope=useRef<AbortController|null>(null),pending=useRef<{id:string;request:{action:keyof typeof actions;expectedRevision:number;idempotencyKey:string;scheduledFor?:string}}|null>(null),lock=useRef(false),query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
  const changed=useRef(onIdentityChanged);changed.current=onIdentityChanged;
  const detailId=useRef<string|null>(null);detailId.current=detail?.id??null;
- async function request(path:string,options:RequestInit={},controller=scope.current){
+ async function request(path:string,options:RequestInit={},controller=scope.current,allowMissing=false){
   if(!controller||controller.signal.aborted)throw new Error();
   // Reads share the per-cycle identity confirmation; writes pass the fresh pre-write barrier (W0031).
   const write=!!options.method&&options.method.toUpperCase()!=='GET';
   if(await (write?readContactMessageActorForWrite:readContactMessageActor)(controller.signal)!==actorId){invalidateInboxActorConfirmation();changed.current();throw new Error();}
   let result:unknown;
   try{result=await communicationRequest(path,{...options,signal:controller.signal});}
-  catch(error){if(!controller.signal.aborted)invalidateInboxActorConfirmation();throw error;}
+  catch(error){if(!controller.signal.aborted&&!(allowMissing&&error instanceof Error&&error.message==='NOT_FOUND'))invalidateInboxActorConfirmation();throw error;}
   if(controller.signal.aborted)throw new Error();
   if(await readContactMessageActor(controller.signal)!==actorId){invalidateInboxActorConfirmation();changed.current();throw new Error();}
   return result;
  }
  useEffect(()=>{
   const controller=new AbortController();scope.current=controller;setData(null);setDetail(null);setTimeZone('Asia/Tokyo');let loading=false;
-  void request('/api/inbox/delivery/preferences',{},controller).then(raw=>{
+  // Optional time-zone preferences may be unavailable; a 404 does not invalidate the inbox read's shared identity confirmation.
+  void request('/api/inbox/delivery/preferences',{},controller,true).then(raw=>{
     const parsed=inboxDeliveryPreferencesSchema.safeParse(raw);
     if(!controller.signal.aborted&&parsed.success&&parsed.data.actorId===actorId)setTimeZone(notificationDisplayZone(parsed.data.timeZone));
   }).catch(()=>{});
