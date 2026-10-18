@@ -9,10 +9,6 @@
       "hardcoded": 0,
       "missingJa": 18
     },
-    "app/(app)/app/_demo/demo-network-analysis.ts": {
-      "hardcoded": 64,
-      "missingJa": 2
-    },
     "app/(app)/app/_demo/demo-network.ts": {
       "hardcoded": 285,
       "missingJa": 8
@@ -193,10 +189,6 @@
       "hardcoded": 14,
       "missingJa": 0
     },
-    "app/(app)/app/contacts/analysis/insights-tab.ts": {
-      "hardcoded": 0,
-      "missingJa": 3
-    },
     "app/(app)/app/contacts/analysis/network-copy.ts": {
       "hardcoded": 0,
       "missingJa": 66
@@ -285,18 +277,6 @@
       "hardcoded": 0,
       "missingJa": 11
     },
-    "app/(app)/app/contacts/network-0918/network-analysis-gate.tsx": {
-      "hardcoded": 0,
-      "missingJa": 8
-    },
-    "app/(app)/app/contacts/network-0918/network-analysis-structure.tsx": {
-      "hardcoded": 0,
-      "missingJa": 36
-    },
-    "app/(app)/app/contacts/network-0918/network-analysis.tsx": {
-      "hardcoded": 0,
-      "missingJa": 7
-    },
     "app/(app)/app/contacts/network-0918/network-cards.tsx": {
       "hardcoded": 0,
       "missingJa": 21
@@ -317,29 +297,13 @@
       "hardcoded": 0,
       "missingJa": 7
     },
-    "app/(app)/app/contacts/network-0918/network-insights.tsx": {
-      "hardcoded": 0,
-      "missingJa": 22
-    },
     "app/(app)/app/contacts/network-0918/network-model.ts": {
       "hardcoded": 0,
       "missingJa": 14
     },
-    "app/(app)/app/contacts/network-0918/network-opportunities.tsx": {
-      "hardcoded": 0,
-      "missingJa": 48
-    },
     "app/(app)/app/contacts/network-0918/network-overview-cockpit-model.ts": {
       "hardcoded": 3,
       "missingJa": 10
-    },
-    "app/(app)/app/contacts/network-0918/network-overview-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 8
-    },
-    "app/(app)/app/contacts/network-0918/network-overview.tsx": {
-      "hardcoded": 3,
-      "missingJa": 29
     },
     "app/(app)/app/contacts/network-0918/network-shell.tsx": {
       "hardcoded": 4,

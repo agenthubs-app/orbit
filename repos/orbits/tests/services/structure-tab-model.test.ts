@@ -16,7 +16,6 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import type { ContactsAnalysisView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
-import { loadContactsStructureDetail } from "../../app/(app)/app/contacts/analysis/contacts-structure-route-service";
 import {
   evidenceContactIds,
   healthTiles,
@@ -39,32 +38,6 @@ function structureOf(view: ContactsAnalysisView) {
   if (view.state !== "ready") throw new Error("not ready");
   return view.structure;
 }
-
-test("SC-02 main: four dimensions over 35 contacts each sum to 35 (not the 30-row list) and every group drills down to the same count", async () => {
-  const { service, view } = await analysisView();
-  const structure = structureOf(view);
-  for (const dimension of STRUCTURE_TAB_DIMENSIONS) {
-    const model = structureDimensionView(structure, dimension, null);
-    assert.ok(model);
-    assert.equal(model.total, 35, `${dimension} total`);
-    assert.equal(model.rows.reduce((sum, row) => sum + row.percentage, 0), 100, `${dimension} percentages (denominator 35)`);
-    assert.deepEqual(model.rows.map((row) => row.count), [...model.rows.map((row) => row.count)].sort((left, right) => right - left), `${dimension} sorted by count`);
-    for (const row of model.rows) {
-      const [, , , , dimensionInHref, bucketId] = row.href.split("/");
-      const detail = await loadContactsStructureDetail({ actorId: "actor:one", dimension: dimensionInHref!, bucketId: decodeURIComponent(bucketId!), language: "zh", service });
-      assert.equal(detail.state, "ready", `${dimension}/${row.id}`);
-      if (detail.state !== "ready") continue;
-      assert.equal(detail.count, row.count, `${dimension}/${row.id} count`);
-      assert.equal(detail.contacts.length, row.count, `${dimension}/${row.id} list`);
-      assert.equal(detail.label, row.label, `${dimension}/${row.id} label`);
-      for (const child of row.children ?? []) {
-        const childDetail = await loadContactsStructureDetail({ actorId: "actor:one", dimension: "industry_secondary", bucketId: child.id, language: "zh", service });
-        assert.equal(childDetail.state, "ready");
-        if (childDetail.state === "ready") assert.equal(childDetail.contacts.length, child.count, `secondary ${child.id}`);
-      }
-    }
-  }
-});
 
 test("SC-02: seniority derives 4 groups from the 6 levels plus empty; industry has a secondary Top list with 「未细分」; region and tier are bilingual", async () => {
   const zh = structureOf((await analysisView("zh")).view);
@@ -237,8 +210,10 @@ test("SC-01: no snapshot / insufficient → none (①④ hidden); read failure �
 test("SC-01 R-12 / SC-03 R-6 source scan: no language.zh/en or top-level stale reads; plans only via getCurrent()", () => {
   const files = [
     "app/(app)/app/contacts/analysis/structure-tab-model.ts",
-    "app/(app)/app/contacts/analysis/structure-tab-loader.ts",
-    "app/(app)/app/contacts/network-0918/network-analysis-structure.tsx",
+    // R11b：结构标签换成新屏与 features/network-analysis 的读取。
+    "app/(app)/app/orbit-2026/network-analysis/AnalysisViews.tsx",
+    "features/network-analysis/analysis-reader.ts",
+    "features/network-analysis/analysis-page-loader.ts",
     "app/(app)/app/contacts/dashboard/page.tsx",
     "features/network-analysis/evidence-contacts.ts",
   ];
@@ -248,8 +223,6 @@ test("SC-01 R-12 / SC-03 R-6 source scan: no language.zh/en or top-level stale r
     assert.doesNotMatch(code, /(?<!freshness)\.stale\b/, `${file}: top-level stale`);
     assert.doesNotMatch(code, /getCurrentView|enterCurrentPhase/, `${file}: plan write paths`);
   }
-  const loader = readFileSync(join(PROJECT_ROOT, "app/(app)/app/contacts/analysis/structure-tab-loader.ts"), "utf8");
-  assert.match(loader, /readCurrentPlanForSnapshot/);
   assert.match(readFileSync(join(PROJECT_ROOT, "features/network-analysis/runtime.ts"), "utf8"), /resolution\.service\.getCurrent\(\)/);
 });
 

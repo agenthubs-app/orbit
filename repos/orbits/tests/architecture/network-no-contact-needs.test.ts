@@ -14,12 +14,15 @@ import { fileURLToPath } from "node:url";
 const root = join(fileURLToPath(import.meta.url), "../../..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
+// R11b：机会标签换成新屏（orbit-2026/network-analysis）与它的读取（features/network-analysis/analysis-*）。
 const OPPORTUNITIES_PATH = [
-  "app/(app)/app/contacts/network-0918/network-analysis.tsx",
-  "app/(app)/app/contacts/network-0918/network-opportunities.tsx",
+  "app/(app)/app/orbit-2026/network-analysis/AnalysisViews.tsx",
+  "app/(app)/app/orbit-2026/network-analysis/NetworkAnalysisScreen.tsx",
+  "features/network-analysis/analysis-model.ts",
+  "features/network-analysis/analysis-reader.ts",
+  "features/network-analysis/analysis-page-loader.ts",
   "app/(app)/app/contacts/analysis/opportunities-view-model.ts",
   "app/(app)/app/contacts/analysis/opportunities-report-card.ts",
-  "app/(app)/app/contacts/analysis/opportunities-route-service.ts",
   "features/plans/coverage.ts",
 ];
 
@@ -34,16 +37,13 @@ test("the opportunities tab path never touches keyword need matching, the old re
   }
 });
 
-test("the loader reads the plan only through getCurrent + toOpportunityPlanView and the snapshot without enqueueing", () => {
-  const loader = read("app/(app)/app/contacts/analysis/opportunities-route-service.ts");
-  assert.match(loader, /readCurrentPlanForSnapshot/);
-  assert.match(loader, /toOpportunityPlanView\(/);
-  assert.match(loader, /readView\(actorId, language, \{ enqueue: false \}\)/);
-  assert.doesNotMatch(loader, /enqueuePlan|enqueueSnapshotJob|insert into|update |delete from/i);
+test("R11b: the analysis reads plan needs only through readActiveV2Needs and writes nothing", () => {
+  const reader = read("features/network-analysis/analysis-reader.ts");
+  assert.match(reader, /readActiveV2Needs\(actorId, "live"\)/);
+  assert.doesNotMatch(reader, /enqueuePlan|enqueueSnapshotJob|insert into|update |delete from|getCurrentView|enterCurrentPhase/i);
   const runtime = read("features/network-analysis/runtime.ts");
   assert.match(runtime, /export async function readCurrentPlanForSnapshot[\s\S]*?\.getCurrent\(\)/);
-  const page = read("app/(app)/app/contacts/dashboard/page.tsx");
-  // W0054：AI 块读取排在门槛读数之后（未达时不读快照）。
-  assert.match(page, /tab === "opportunities"\s*\?\s*thresholdPromise\.then\(\(threshold\) => loadOpportunitiesTab\(/, "only the opportunities tab loads opportunity data");
-  assert.match(page, /tab === "structure" \? thresholdPromise\.then\(\(threshold\) => loadStructureTabExtras\(/, "the structure tab does not load opportunity data");
+  const page = read("features/network-analysis/analysis-page-loader.ts");
+  // Below 10 people nothing after the count runs (no snapshot read).
+  assert.match(page, /if \(view\.lock\.state !== "open"\) return \{ view, snapshot: null, evidenceNames: \{\} \};/);
 });

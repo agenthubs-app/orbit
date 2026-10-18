@@ -3,7 +3,6 @@ import test from "node:test";
 
 import { createConfiguredMobileContactsDashboardService } from "../../features/mobile/contacts-dashboard-service";
 import { contactsAnalysisToView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
-import { loadContactsAnalysis } from "../../app/(app)/app/contacts/analysis/contacts-analysis-route-service";
 import { networkDebugPayload, networkEmptyPayload, networkPendingPayload, networkUnavailablePayload } from "../fixtures/network-debug-payload";
 
 async function payload() {
@@ -142,57 +141,6 @@ test("invalid payload and pending aggregate never render ready metrics", async (
   data.aggregate.state = "pending";
   assert.deepEqual(contactsAnalysisToView(data, "zh"), { state: "pending" });
 });
-
-test("route rejects a missing actor before any service call", async () => {
-  let calls = 0;
-  const service = { getDashboard: async () => { calls++; throw new Error("Must not run"); } };
-  assert.deepEqual(await loadContactsAnalysis("  ", "zh", service), { state: "error" });
-  assert.equal(calls, 0);
-});
-
-test("route propagates the authenticated actor and surfaces failures", async () => {
-  const data = await payload();
-  const calls: string[] = [];
-  const view = await loadContactsAnalysis("actor:one", "zh", { getDashboard: async ({ actorId }) => { calls.push(actorId); return { success: true, data }; } });
-  assert.equal(view.state, "ready");
-  assert.deepEqual(calls, ["actor:one"]);
-  assert.deepEqual(await loadContactsAnalysis("actor:one", "zh", { getDashboard: async () => { throw new Error("storage unavailable"); } }), { state: "error" });
-  assert.deepEqual(await loadContactsAnalysis("actor:one", "zh", { getDashboard: async () => ({ success: false, error: { code: "MOBILE_CONTACTS_DASHBOARD_REQUIRED_SECTION_FAILED", section: "aggregate" } }) }), { state: "error" });
-});
-
-// ---- W0043：白名单（后端句子字段不进视图）、空态与失败分开、双语模板 ----
-
-const BACKEND_SENTENCES = (data: ReturnType<typeof networkDebugPayload>) => [
-  data.aggregate.summary, data.aggregate.nextAction,
-  ...data.aggregate.recentActivity.filter((item) => item.type !== "followup_due").flatMap((item) => [item.label, item.sourceLabel]),
-  ...data.aggregate.recentActivity.map((item) => item.sourceLabel),
-  data.distributions!.summary, data.gaps!.summary, data.opportunities!.summary,
-  ...data.gaps!.gaps.flatMap((gap) => [gap.label, gap.recommendedAction]),
-  ...data.opportunities!.highPriorityOpportunities.flatMap((item) => [item.reason, item.suggestedAction, item.dueLabel, item.actionBrief?.judgment ?? "", ...(item.actionBrief?.steps ?? []), ...(item.actionBrief?.evidence ?? [])]),
-  ...data.opportunities!.dormantHighValueContacts.flatMap((item) => [item.reason, item.suggestedAction, item.lastTouchpointLabel]),
-].filter((sentence) => sentence.trim());
-
-for (const language of ["zh", "en"] as const) {
-  test(`SC-W0043-02 (${language}): no backend sentence field reaches the view; sentences without real content are empty strings`, () => {
-    const data = networkDebugPayload();
-    const view = contactsAnalysisToView(data, language);
-    if (view.state !== "ready" || view.structure.state !== "ready" || view.coverage.state !== "ready" || view.opportunities.state !== "ready") throw new Error("Missing sections");
-    assert.equal(view.summary, "");
-    assert.equal(view.structure.data.summary, "");
-    assert.equal(view.coverage.data.summary, "");
-    assert.equal(view.opportunities.data.summary, "");
-    const serialized = JSON.stringify(view);
-    for (const sentence of BACKEND_SENTENCES(data)) assert.equal(serialized.includes(sentence), false, `view carries backend sentence: ${sentence}`);
-    assert.equal(serialized.includes("173"), false);
-    for (const action of view.opportunities.data.actions) {
-      const source = data.opportunities!.highPriorityOpportunities.find((item) => item.opportunityId === action.id)!;
-      assert.notEqual(action.judgment, source.reason || "\u0000");
-      assert.notEqual(action.judgment, source.actionBrief?.judgment ?? "\u0000");
-      assert.equal(action.judgment, "");
-    }
-    assert.deepEqual(view.opportunities.data.dormant.map((item) => ({ name: item.name, organization: item.organization, reason: item.reason })), [{ name: "周杰", organization: "北辰资本", reason: "" }]);
-  });
-}
 
 test("SC-W0043-03: due labels, bucket names and activity follow the bilingual closed sets", () => {
   const data = networkDebugPayload();

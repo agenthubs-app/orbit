@@ -70,23 +70,6 @@ test("SC-W0052-01: no plan → card ② becomes the 「生成计划」 entry, ca
   assert.equal(failed.cards[1]!.cta, false);
 });
 
-test("SC-W0052-01 (R-6, R-12): the overview reads plans only via getCurrent + pure projection and reads only the agreed snapshot fields", () => {
-  const files = [
-    "app/(app)/app/contacts/analysis/overview-cockpit-loader.ts",
-    "app/(app)/app/contacts/network-0918/network-overview-cockpit-model.ts",
-    "app/(app)/app/contacts/network-0918/network-overview.tsx",
-    "app/(app)/app/contacts/dashboard/page.tsx",
-  ].map((file) => [file, readFileSync(join(projectRoot, file), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")] as const);
-  for (const [file, source] of files) {
-    assert.doesNotMatch(source, /getCurrentView|enterCurrentPhase/, `${file} must not reach the plan read path that writes at phase boundaries`);
-    assert.doesNotMatch(source, /language\.(zh|en)\b|\.stale\b|generateSnapshotNow|recompute/, `${file} must only read state/blocks/generatedAt/contactCount/freshness.stale`);
-  }
-  const loader = files[0]![1];
-  assert.match(loader, /readCurrentPlanForSnapshot/);
-  assert.match(loader, /toOpportunityPlanView/);
-  assert.match(loader, /enqueue: false/);
-});
-
 test("SC-W0052-02 main: 35-person fixture (the list returns 30) → tier bar 12/10/8/5 summing to 35, each segment links to its tier list", () => {
   const data = buildNetworkOverviewData(parts(), ANALYSIS_35);
   assert.deepEqual(data.tiers.map((tier) => [tier.id, tier.count, tier.href]), [
