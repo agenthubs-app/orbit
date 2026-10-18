@@ -294,6 +294,9 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
   ), "settings destinations remain counted as direct controls after the card-to-row migration");
   // R11a：关系推进看板（/contacts/pipeline）已删除（R11-12）。
   assert.equal(inventory.surfaces.some((surface) => surface.surfaceId === "mobile:/contacts/pipeline"), false);
+  // R11a REVIEW M3：运行证据表也不再登记已删的两个 pipeline surface。
+  assert.equal(inventory.surfaces.some((surface) => surface.surfaceId === "web:/app/contacts/pipeline"), false);
+  assert.doesNotMatch(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../scripts/generate-full-product-functional-audit.mjs"), "utf8"), /"(?:mobile:\/contacts\/pipeline|web:\/app\/contacts\/pipeline)"/);
 });
 
 test("literal route props exclude unreachable component branches", () => {

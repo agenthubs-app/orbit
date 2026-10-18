@@ -443,7 +443,6 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
     "mobile:/dashboard",
     "mobile:/contacts/dashboard",
     "mobile:/contacts/graph",
-    "mobile:/contacts/pipeline",
   ].map((surfaceId) => [
     surfaceId,
     {
@@ -825,21 +824,6 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
       verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-empty-relationship-graph",
-    },
-  ],
-  [
-    "web:/app/contacts/pipeline",
-    {
-      entryBehavior:
-        "authenticated-browser-actor-scoped-empty-read-only-pipeline-verified",
-      runtimeEvidence: [
-        "the pipeline reported zero source-backed contacts",
-        "pending, progressing, and collaborated groups all remained at zero",
-        "the page exposed no synthetic contact, stage mutation, reminder, draft, or follow-up action",
-      ],
-      verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-web-empty-read-only-pipeline",
     },
   ],
   [

@@ -154,11 +154,11 @@ test("auth return parameter ownership follows the matched route instead of globa
     "/contacts/list?id=query-owned-on-static-route&q=tokyo"
   );
   assert.equal(
-    mobileAuthReturnHref("/contacts/pipeline", {
+    mobileAuthReturnHref("/contacts/dashboard", {
       id: "query-owned-on-static-route",
       view: "all"
     }),
-    "/contacts/pipeline?id=query-owned-on-static-route&view=all"
+    "/contacts/dashboard?id=query-owned-on-static-route&view=all"
   );
 });
 

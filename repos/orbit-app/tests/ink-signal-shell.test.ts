@@ -172,7 +172,7 @@ test("secondary page has no tabs, prefers history and has a meaningful direct-op
 });
 
 test("a secondary page can localize its back label without changing navigation", async t => {
-  const page = await open(t, "/contacts/pipeline", "history&localizedBack");
+  const page = await open(t, "/contacts/dashboard", "history&localizedBack");
   const back = page.getByRole("button", { name: "Back to People", exact: true });
   assert.equal(await back.textContent(), "", "R05 rework: the kit's round ‹ button shows no text");
   await back.click();
