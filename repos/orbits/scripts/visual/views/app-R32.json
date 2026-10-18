@@ -152,9 +152,8 @@
       "themes": [
         "light"
       ],
-      "url": "orbit://contacts/new/drafts?eventId=event-cfo",
-      "taps": "点第 2 张的「破棄」",
-      "note": "R32 来源 app-add-R12.json: N09 下書きを破棄",
+      "path": "/contacts/new/drafts?eventId=event-cfo&design=n09",
+      "note": "R32 P10：开发开关直达第 2 张草稿的破棄确认；仅浅色画板，深色只做主题回归。",
       "grid": 30,
       "wait": 9000
     },
@@ -162,7 +161,7 @@
       "id": "A-R16-02",
       "design": "b9-import-plan-v2.html",
       "board-index": 2,
-      "url": "orbit://contacts/new/import/design-pick",
+      "path": "/contacts/new/import/design-pick",
       "note": "R32 来源 app-import-R16.json: 連絡先 ② 選ぶ（画板 1,284 件）",
       "grid": 30,
       "wait": 9000
@@ -171,7 +170,7 @@
       "id": "A-R16-04",
       "design": "b9-import-plan-v2.html",
       "board-index": 4,
-      "url": "orbit://contacts/new/import/design-review",
+      "path": "/contacts/new/import/design-review",
       "note": "R32 来源 app-import-R16.json: 連絡先 ④ まとめて確認",
       "grid": 30,
       "wait": 9000
