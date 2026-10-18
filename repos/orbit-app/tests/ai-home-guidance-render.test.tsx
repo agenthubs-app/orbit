@@ -54,7 +54,7 @@ test("R21 start offers four distinct sendable questions before the composer", ()
   for (const label of ["今天先处理哪些事？", "最近有哪些活动适合我？", "回看与某位人脉的讨论", "帮我规划新目标"]) {
     assert.match(html, new RegExp(`aria-label="${label}"`, "u"));
   }
-  assert.ok(html.indexOf("今日は") < html.indexOf('placeholder="iOrbit に聞く…"') || html.indexOf("何をお手伝いしましょう？") < html.indexOf('placeholder="iOrbit に聞く…"'));
+  assert.ok(html.indexOf("有什么可以帮你？") < html.indexOf('placeholder="询问 iOrbit…"'));
 });
 
 test("R21 start does not show a bootstrap reply as a live conversation", () => {
@@ -66,7 +66,7 @@ test("R21 start does not show a bootstrap reply as a live conversation", () => {
     messages: [{ ...aiConversationPayload.messages[1], messageId: "orbit-agent-live-ready", conversationId: "live-orbit-agent-conversation", role: "assistant", content: "Orbit Agent is ready for a natural-language request.", createdAt: "2026-06-27T00:00:00Z" }]
   };
   const html = renderToHtml(<AiScreen />);
-  assert.match(html, /何をお手伝いしましょう/u);
+  assert.match(html, /有什么可以帮你？/u);
   assert.doesNotMatch(html, /Orbit Agent is ready for a natural-language request|09:00/u);
 });
 
@@ -74,7 +74,7 @@ test("R21 start keeps previous answer text inside its conversation", () => {
   conversation = { ...aiConversationPayload, activeConversationId: "real", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "real", title: "讨论" }], messages: [{ ...aiConversationPayload.messages[1], messageId: "real-reply", conversationId: "real", role: "assistant", content: "有什么需要我做的吗？", createdAt: "2026-09-07T01:00:00Z" }] };
   const html = renderToHtml(<AiScreen />);
   assert.doesNotMatch(html, /有什么需要我做的吗？/u);
-  assert.match(html, /何をお手伝いしましょう/u);
+  assert.match(html, /有什么可以帮你？/u);
 });
 
 test("relationship work offers follow-up planning alongside activity discovery", () => {

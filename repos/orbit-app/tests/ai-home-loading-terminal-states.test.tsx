@@ -30,27 +30,27 @@ function start(overrides: Record<string, unknown> = {}) {
 
 test("R21 history loading does not claim the list is empty", () => {
   const html = start({ historyLoading: true });
-  assert.equal(html.includes("会話を読み込み中…"), true);
-  assert.equal(html.includes("まだ会話はありません"), false);
+  assert.equal(html.includes("正在加载会话…"), true);
+  assert.equal(html.includes("还没有会话"), false);
 });
 
 test("R21 a completed empty history has a distinct state", () => {
   const html = start();
-  assert.equal(html.includes("まだ会話はありません"), true);
-  assert.equal(html.includes("会話を読み込み中…"), false);
+  assert.equal(html.includes("还没有会话"), true);
+  assert.equal(html.includes("正在加载会话…"), false);
 });
 
 test("R21 a failed history read offers retry and does not claim empty", () => {
   const html = start({ historyNotice: { message: "履歴を読み込めません", retryLabel: "再読み込み", onRetry: noop } });
   assert.equal(html.includes("履歴を読み込めません"), true);
   assert.equal(html.includes("再読み込み"), true);
-  assert.equal(html.includes("まだ会話はありません"), false);
+  assert.equal(html.includes("还没有会话"), false);
 });
 
 test("R21 a completed search with no hits says so", () => {
   const html = start({ historyQuery: "該当なし" });
-  assert.equal(html.includes("一致する会話はありません"), true);
-  assert.equal(html.includes("まだ会話はありません"), false);
+  assert.equal(html.includes("没有匹配的会话"), true);
+  assert.equal(html.includes("还没有会话"), false);
 });
 
 test("R21 a later-page failure retains already loaded history", () => {
