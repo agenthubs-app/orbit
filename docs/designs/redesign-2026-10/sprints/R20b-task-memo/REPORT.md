@@ -90,4 +90,4 @@ D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-boa
 
 ## 未完と次の検証
 
-両端の fresh typecheck と画板 preflight を待ち、型エラーがあれば R20b 自身のものを修正する。R20a の未完 container / native / pixel に依存しない notes service・outbox の RED→GREEN を先行する。変更したファイル以外の D 線進行中の Task source／tests は他作業として保持し、この REPORT の成果に数えない。全量 suite・旧四画面・Web 新頁・cross-client readback・C11・SC-11 の失効 mirror と E 線相互検証は未検証／未実装。
+両端の fresh typecheck と Web `typecheck:app` / lint は上記のとおり exit0、画板 preflight runner も両端 exit0 だが七板の五項目確認は未通過。Web full は 39 fail / 1 件の新規 skip、App の限並列 full も 13 fail であり、いずれも green ではない。R20a の container / native / pixel が未収口で、b5 の AI・録音改稿と Web #19 右欄の操作出典も未確定のため、R20b の新 UI・旧四画面置換と像素門禁を開始済み扱いにしない。独立した notes service / outbox の RED→GREEN は先行したが、次に必要なのは主会話・所有者による plan-aware ETag と端末側失効 mirror、offline contact create / ID alias、C11 補掃・ログ本文境界の受け持ち決定である。cross-client readback、C11 提議から計分、E 線 UI 相互検証はなお未実施。変更したファイル以外の D 線 Task source / tests は他作業として保持し、この REPORT の成果に数えない。
