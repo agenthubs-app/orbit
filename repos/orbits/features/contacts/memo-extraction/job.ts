@@ -60,6 +60,8 @@ export interface MemoExtractionJobInput {
   contactId: string;
   noteId: string;
   body: string;
+  /** R20b: an opted-in meeting note needs the C11 plan-coverage hook on a rescan too. */
+  usedForPlan?: boolean;
   contact: { organization?: string | null; role?: string | null };
   /** R24（C11）：该联系人作为候补 / 已关联所在人物类型的 3 问（memo 打开「プランの話せた に使う」时才带）。 */
   planQuestions?: ReadonlyArray<{ itemId: string; questions: readonly string[] }>;
@@ -146,21 +148,18 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
 
   /**
    * 计分提议是派生的：失败不影响 memo 提取本身，但写结构化日志（复核 S1：原来静默吞掉，Postgres 上一直失败也没人知道）。
-   * 日志与 `store.ts` 的 `memo_extraction_error` 同一形状，不含 memo 正文。
+   * 日志与 `store.ts` 的 `memo_extraction_error` 同一形状，只含固定错误码。
    */
   const reportPlanCoverage = async (payload: Parameters<NonNullable<MemoExtractionJobDeps["onPlanCoverage"]>>[0]) => {
     if (!deps.onPlanCoverage) return;
     try {
       await deps.onPlanCoverage(payload);
-    } catch (error) {
+    } catch {
       console.error(JSON.stringify({
         event: "memo_extraction_error",
         stage: "plan_coverage_failed",
-        actorId: input.actorId,
-        contactId: input.contactId,
-        noteId: input.noteId,
+        code: "PLAN_COVERAGE_FAILED",
         manual: payload.manual,
-        error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
       }));
     }
   };
@@ -202,9 +201,9 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   let callId: string;
   try {
     ({ callId } = await deps.gate.beginCall(operationId, { provider: deps.provider.providerName, model: deps.provider.model }));
-  } catch (error) {
+  } catch {
     await deps.gate.finish(operationId, "failed").catch(() => undefined);
-    await advance({ status: "deferred", retryOn: clock().toISOString(), operationId, error: `BEGIN_CALL_FAILED: ${error instanceof Error ? error.message.slice(0, 120) : "unknown"}` });
+    await advance({ status: "deferred", retryOn: clock().toISOString(), operationId, error: "BEGIN_CALL_FAILED" });
     return current;
   }
 
@@ -250,16 +249,16 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   let writeError: string | undefined;
   try {
     writtenFields = values.length ? await deps.applyValues({ actorId: input.actorId, contactId: input.contactId, values, at }) : [];
-  } catch (error) {
+  } catch {
     // 提取本身已成功（计费已发生）：结果留在缓存里，写回失败如实记下，不再调用 provider。
-    writeError = error instanceof Error ? error.message.slice(0, 200) : "WRITE_BACK_FAILED";
+    writeError = "WRITE_BACK_FAILED";
   }
   await advance({
     status: "succeeded",
     usage,
     output,
     writtenFields,
-    ...(writeError ? { error: `WRITE_BACK_FAILED: ${writeError}` } : {}),
+    ...(writeError ? { error: writeError } : {}),
   });
   await deps.gate.finish(operationId, "succeeded");
   if (input.planQuestions?.length && deps.onPlanCoverage && output.questionCoverage) {

@@ -224,7 +224,7 @@ test("beginCall 失败：HTTP 未发出 → finish 释放、转为可重试；�
   let failBegin = true;
   const gate: AiQuotaGate = {
     async reserve() { log.push("reserve"); return { ok: true, operationId: `op-${log.length}`, owner: true, status: "reserved" }; },
-    async beginCall() { log.push("begin"); if (failBegin) throw new Error("ledger down"); return { callId: "call-x" }; },
+    async beginCall() { log.push("begin"); if (failBegin) throw new Error("private-ledger-detail"); return { callId: "call-x" }; },
     async endCall() { log.push("end"); },
     async finish(_id, outcome) { log.push(`finish:${outcome}`); },
   };
@@ -232,7 +232,7 @@ test("beginCall 失败：HTTP 未发出 → finish 释放、转为可重试；�
   const deps = { gate, provider, store, applyValues: async () => [] as const, now: () => new Date(clock) };
   const first = await runMemoExtraction(JOB, deps);
   assert.equal(first.status, "deferred");
-  assert.match(first.error ?? "", /^BEGIN_CALL_FAILED/);
+  assert.equal(first.error, "BEGIN_CALL_FAILED");
   assert.equal(provider.calls.length, 0);
   assert.deepEqual(log, ["reserve", "begin", "finish:failed"]);
   failBegin = false;
@@ -242,5 +242,19 @@ test("beginCall 失败：HTTP 未发出 → finish 释放、转为可重试；�
   assert.equal(provider.calls.length, 1);
   clock += 1000;
   await runMemoExtraction(JOB, deps);
+  assert.equal(provider.calls.length, 1);
+});
+
+test("write-back failure retains the extracted result but not private error text", async () => {
+  const store = memoryStore();
+  const provider = createMockMemoExtractionProvider(OUTPUT);
+  const { gate } = countingGate({ ok: true, operationId: "op-write", owner: true, status: "reserved" });
+  const record = await runMemoExtraction(JOB, {
+    gate, provider, store, now: () => NOW,
+    applyValues: async () => { throw new Error("private-contact-and-body-in-write-error"); },
+  });
+  assert.equal(record.status, "succeeded");
+  assert.equal(record.error, "WRITE_BACK_FAILED");
+  assert.deepEqual(record.output, OUTPUT);
   assert.equal(provider.calls.length, 1);
 });

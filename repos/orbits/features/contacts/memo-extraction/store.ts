@@ -102,19 +102,16 @@ export async function runConfiguredMemoExtraction(
   }
 }
 
-/** 结构化错误日志：只含 actorId／contactId／noteId 与错误类型，不含 memo 正文。 */
+/** 结构化错误日志只记固定阶段与代码；异常文本及可关联到人的 ID 均不写入。 */
 export function logMemoExtractionFailure(
   stage: "enqueue_failed" | "job_failed",
-  input: Pick<MemoExtractionJobInput, "actorId" | "contactId" | "noteId">,
-  error: unknown,
+  _input: Pick<MemoExtractionJobInput, "actorId" | "contactId" | "noteId">,
+  _error: unknown,
 ): void {
   console.error(JSON.stringify({
     event: "memo_extraction_error",
     stage,
-    actorId: input.actorId,
-    contactId: input.contactId,
-    noteId: input.noteId,
-    error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
+    code: stage === "enqueue_failed" ? "ENQUEUE_FAILED" : "JOB_FAILED",
   }));
 }
 
@@ -127,14 +124,11 @@ export async function planCoverageHooksOrSkip(
 ): Promise<PlanCoverageHooks | null> {
   try {
     return await hooks(input.actorId, input.contactId);
-  } catch (error) {
+  } catch {
     console.error(JSON.stringify({
       event: "memo_extraction_error",
       stage: "plan_hooks_failed",
-      actorId: input.actorId,
-      contactId: input.contactId,
-      noteId: input.noteId,
-      error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
+      code: "PLAN_HOOKS_FAILED",
     }));
     return null;
   }

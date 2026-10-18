@@ -21,7 +21,7 @@ import { runNewContactLayers } from "../../features/network-analysis/new-contact
 import { createNetworkAnalysisRuntime } from "../../features/network-analysis/runtime";
 import { createMockSnapshotGenerator } from "../../features/network-analysis/snapshot-generator";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
-import { ALICE, databaseTest, withNetworkDatabase, WORKSPACE, type NetworkHarness } from "../support/network-analysis-harness";
+import { ALICE, BOB, databaseTest, withNetworkDatabase, WORKSPACE, type NetworkHarness } from "../support/network-analysis-harness";
 
 const NOW = new Date("2026-10-02T03:00:00.000Z");
 const TOMORROW = new Date("2026-10-02T15:00:05.000Z");
@@ -119,6 +119,80 @@ test("SC-04 maintenance: bounded memo-extraction rescan runs memos without an ex
     assert.equal((second as Record<string, number>).memoRescanned, 0);
     assert.equal(providerCalls, 1);
     assert.deepEqual((await harness.pool.query(`select pool, purpose, status from ai_usage_ledger`)).rows, [{ pool: "background", purpose: "memo_extraction", status: "succeeded" }]);
+  });
+});
+
+test("R20b C11: a saved plan-use meeting note is rescanned once after its after-hook is missed", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await harness.addContact(ALICE, "c1", { organization: "Cloudline", role: "CTO" });
+    await harness.insertRecord({
+      collection: "notes", id: "note:meeting-1", userId: ALICE,
+      payload: {
+        schemaVersion: 2, operations: [],
+        note: {
+          id: "note:meeting-1", accountId: ALICE, ownerUserId: ALICE, title: "Meeting", body: "Discussed a SaaS partnership.",
+          manualContactIds: ["c1"], mentions: [], contactIds: ["c1"], eventIds: [], noteKind: "meeting", usedForPlan: true,
+          version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+        },
+      },
+    });
+    const pgStore = createPostgresLiveRecordStore({ client: harness.pool as never });
+    const memoStore = createLiveRecordMemoExtractionStore({ store: pgStore as never, workspaceId: WORKSPACE });
+    let providerCalls = 0;
+    const provider = {
+      model: "fake-memo", providerName: "deepseek-chat-completions",
+      async extract() { providerCalls += 1; return { output: { eventTypes: ["met"], offering: ["SaaS"], seeking: [], topics: [] }, usage: { inputTokens: 150, latencyMs: 2, outputTokens: 20 } }; },
+    } as unknown as MemoExtractionProvider;
+    const runtime = runtimeAt(harness, NOW);
+    const candidates = await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE });
+    assert.equal(candidates.length, 1);
+    assert.equal(candidates[0]?.usedForPlan, true);
+    const task = createNetworkSnapshotMaintenanceTask({
+      resolve: () => ({
+        layers: createNewContactLayersDeps({ enricher: null, runtime, store: pgStore }),
+        listMemoCandidates: (now) => listMemoExtractionRescanCandidates(harness.client, { now, workspaceId: WORKSPACE }),
+        runMemoExtraction: (job) => runMemoExtraction(job, { applyValues: async () => ["offering"], gate: runtime.ledger, now: () => NOW, provider, store: memoStore }),
+        runtime,
+      }),
+    });
+    const first = await task.run({ deadline: Date.now() + 30_000, now: () => NOW });
+    assert.equal((first as Record<string, number>).memoRescanned, 1);
+    assert.equal(providerCalls, 1);
+    const second = await task.run({ deadline: Date.now() + 30_000, now: () => NOW });
+    assert.equal((second as Record<string, number>).memoRescanned, 0);
+    assert.equal(providerCalls, 1);
+    assert.deepEqual((await harness.pool.query(`select pool, purpose, status from ai_usage_ledger`)).rows, [{ pool: "background", purpose: "memo_extraction", status: "succeeded" }]);
+  });
+});
+
+test("R20b C11: rescan ignores other actors, deleted contacts and ineligible note records", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await harness.addContact(ALICE, "own");
+    await harness.addContact(BOB, "foreign");
+    const insertNote = async (id: string, contactIds: string[], changes: Record<string, unknown> = {}, state = "active") => {
+      await harness.insertRecord({
+        collection: "notes", id, userId: ALICE, state,
+        payload: {
+          schemaVersion: 2, operations: [],
+          note: {
+            id, accountId: ALICE, ownerUserId: ALICE, title: "Meeting", body: "Discussed a partnership.",
+            manualContactIds: contactIds, mentions: [], contactIds, eventIds: [], noteKind: "meeting", usedForPlan: true,
+            version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(), ...changes,
+          },
+        },
+      });
+    };
+    await insertNote("note:eligible", ["own"]);
+    await insertNote("note:foreign-contact", ["foreign"]);
+    await insertNote("note:wrong-owner", ["own"], { ownerUserId: BOB });
+    await insertNote("note:not-opted-in", ["own"], { usedForPlan: false });
+    await insertNote("note:not-meeting", ["own"], { noteKind: "free" });
+    await insertNote("note:many-contacts", ["own", "foreign"]);
+    await insertNote("note:deleted", ["own"], {}, "deleted");
+    const candidates = await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE });
+    assert.deepEqual(candidates.map(({ noteId }) => noteId), ["note:eligible"]);
+    await harness.deleteRecord("contacts", "own");
+    assert.deepEqual(await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE }), []);
   });
 });
 

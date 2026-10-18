@@ -4,7 +4,8 @@
  *
  * 候选判定与 `memoExtractionKey` 完全一致：noteId + 当前正文（与 JS `trim()` 同一组空白字符）sha256 前 24 位，
  * 所以同一 memo 改了正文、而修改后的 after() 丢失时，旧正文的终态记录不会挡住新正文（review P2-5）。
- * 一条语句取至多 `limit` 条候选（按 memo 所在详情行最近更新倒序），逐条重跑幂等的 `runMemoExtraction`：
+ * 一条语句从旧详情 memo 与 R20b 的 plan-use 面谈笔记取至多 `limit` 条候选（按来源记录最近更新倒序），
+ * 逐条重跑幂等的 `runMemoExtraction`：
  * 作业自己做原子认领与终态判断，补扫与写 memo 后的 after() 并发也只会有一方发请求。
  * 只读候选；写入全部经作业与闸门（后台池满时作业记 deferred 到次日，0 次调用）。
  */
@@ -27,28 +28,58 @@ export interface MemoRescanSqlClient {
 export const MEMO_RESCAN_LIMIT = 10;
 
 export const MEMO_RESCAN_SQL = `/* memo-extraction:rescan */
-  select r.user_id as actor_id, r.payload->>'contactId' as contact_id, n->>'noteId' as note_id, n->>'body' as body,
-    c.payload->>'organization' as organization, c.payload->>'role' as role
-  from orbit_records r
-  cross join lateral jsonb_array_elements(case when jsonb_typeof(r.payload->'notes') = 'array' then r.payload->'notes' else '[]'::jsonb end) as n
-  join orbit_records c
-    on c.workspace_id = r.workspace_id and c.collection_name = 'contacts' and c.record_id = r.payload->>'contactId'
-    and c.user_id = r.user_id and c.lifecycle_state <> 'deleted'
-  where r.workspace_id = $1 and r.collection_name = 'contact_detail_states' and r.lifecycle_state <> 'deleted'
-    and r.payload->>'actorId' = r.user_id
-    and n->>'noteId' like '${MEMO_NOTE_ID_PREFIX}%'
-    and coalesce(trim(n->>'body'), '') <> ''
-    and not exists (
-      select 1 from orbit_records m
-      where m.workspace_id = $1 and m.collection_name = 'memo_extractions' and m.user_id = r.user_id
-        and m.lifecycle_state <> 'deleted' and m.payload->>'key' = ${memoExtractionKeySql("(n->>'noteId')", "(n->>'body')")}
-        and not (
-          m.payload->>'status' = 'disabled'
-          or (m.payload->>'status' = 'deferred' and coalesce(m.payload->>'retryOn', '') <= $2)
-          or (m.payload->>'status' = 'claimed' and coalesce(m.payload->>'leaseUntil', '') <= $2)
-        )
-    )
-  order by r.updated_at desc, n->>'noteId'
+  select actor_id, contact_id, note_id, body, organization, role, used_for_plan
+  from (
+    select r.user_id as actor_id, r.payload->>'contactId' as contact_id, n->>'noteId' as note_id, n->>'body' as body,
+      c.payload->>'organization' as organization, c.payload->>'role' as role,
+      false as used_for_plan, r.updated_at as source_updated_at
+    from orbit_records r
+    cross join lateral jsonb_array_elements(case when jsonb_typeof(r.payload->'notes') = 'array' then r.payload->'notes' else '[]'::jsonb end) as n
+    join orbit_records c
+      on c.workspace_id = r.workspace_id and c.collection_name = 'contacts' and c.record_id = r.payload->>'contactId'
+      and c.user_id = r.user_id and c.lifecycle_state <> 'deleted'
+    where r.workspace_id = $1 and r.collection_name = 'contact_detail_states' and r.lifecycle_state <> 'deleted'
+      and r.payload->>'actorId' = r.user_id
+      and n->>'noteId' like '${MEMO_NOTE_ID_PREFIX}%'
+      and coalesce(trim(n->>'body'), '') <> ''
+      and not exists (
+        select 1 from orbit_records m
+        where m.workspace_id = $1 and m.collection_name = 'memo_extractions' and m.user_id = r.user_id
+          and m.lifecycle_state <> 'deleted' and m.payload->>'key' = ${memoExtractionKeySql("(n->>'noteId')", "(n->>'body')")}
+          and not (
+            m.payload->>'status' = 'disabled'
+            or (m.payload->>'status' = 'deferred' and coalesce(m.payload->>'retryOn', '') <= $2)
+            or (m.payload->>'status' = 'claimed' and coalesce(m.payload->>'leaseUntil', '') <= $2)
+          )
+      )
+    union all
+    select r.user_id as actor_id, d.note->'contactIds'->>0 as contact_id, d.note->>'id' as note_id, d.note->>'body' as body,
+      c.payload->>'organization' as organization, c.payload->>'role' as role,
+      true as used_for_plan, r.updated_at as source_updated_at
+    from orbit_records r
+    cross join lateral (select r.payload->'note' as note) d
+    join orbit_records c
+      on c.workspace_id = r.workspace_id and c.collection_name = 'contacts' and c.record_id = d.note->'contactIds'->>0
+      and c.user_id = r.user_id and c.payload->>'accountId' = r.user_id and c.lifecycle_state <> 'deleted'
+    where r.workspace_id = $1 and r.collection_name = 'notes' and r.lifecycle_state <> 'deleted'
+      and r.payload->>'schemaVersion' = '2' and jsonb_typeof(d.note) = 'object'
+      and d.note->>'id' = r.record_id and d.note->>'ownerUserId' = r.user_id and d.note->>'accountId' = r.user_id
+      and d.note->>'noteKind' = 'meeting' and d.note->'usedForPlan' = 'true'::jsonb
+      and jsonb_array_length(case when jsonb_typeof(d.note->'contactIds') = 'array' then d.note->'contactIds' else '[]'::jsonb end) = 1
+      and jsonb_typeof(d.note->'contactIds'->0) = 'string'
+      and coalesce(trim(d.note->>'body'), '') <> ''
+      and not exists (
+        select 1 from orbit_records m
+        where m.workspace_id = $1 and m.collection_name = 'memo_extractions' and m.user_id = r.user_id
+          and m.lifecycle_state <> 'deleted' and m.payload->>'key' = ${memoExtractionKeySql("(d.note->>'id')", "(d.note->>'body')")}
+          and not (
+            m.payload->>'status' = 'disabled'
+            or (m.payload->>'status' = 'deferred' and coalesce(m.payload->>'retryOn', '') <= $2)
+            or (m.payload->>'status' = 'claimed' and coalesce(m.payload->>'leaseUntil', '') <= $2)
+          )
+      )
+  ) candidates
+  order by source_updated_at desc, note_id
   limit $3`;
 
 export async function listMemoExtractionRescanCandidates(
@@ -71,6 +102,7 @@ export async function listMemoExtractionRescanCandidates(
       },
       contactId,
       noteId,
+      ...(row.used_for_plan === true ? { usedForPlan: true } : {}),
     }];
   });
 }

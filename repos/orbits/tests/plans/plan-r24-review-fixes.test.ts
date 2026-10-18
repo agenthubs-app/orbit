@@ -11,7 +11,7 @@ import { planContactFitSchema, planPendingListResponseSchema } from "../../share
 import { DEMO_PLAN } from "../../shared/mock/demo-world";
 import { runMemoExtraction } from "../../features/contacts/memo-extraction/job";
 import { createMockMemoExtractionProvider } from "../../features/contacts/memo-extraction/provider";
-import { createLiveRecordMemoExtractionStore, planCoverageHooksOrSkip } from "../../features/contacts/memo-extraction/store";
+import { createLiveRecordMemoExtractionStore, logMemoExtractionFailure, planCoverageHooksOrSkip } from "../../features/contacts/memo-extraction/store";
 import { markPlanEventAttendedForActor } from "../../features/plans/event-attribution-runtime";
 import { INTRO_DRAFT_REASON } from "../../features/plans/v2/drafts";
 import { demoPlanEventFacts, livePlanEventFacts, PLAN_LIVE_EVENT_LIMIT } from "../../features/plans/v2/event-facts";
@@ -193,14 +193,21 @@ test("M4: a v2 plan scores the event slot through the real service even when v1 
 test("m1: a failing plan hook only skips the plan part (logged), it does not stop the memo extraction", async (t) => {
   const errors: string[] = [];
   t.mock.method(console, "error", (line: string) => errors.push(line));
-  const result = await planCoverageHooksOrSkip({ actorId: "a", contactId: "c", noteId: "n" }, async () => {
-    throw new Error("plans db down");
+  const result = await planCoverageHooksOrSkip({ actorId: "private-actor", contactId: "private-contact", noteId: "private-note" }, async () => {
+    throw new Error("private-plan-query-detail");
   });
   assert.equal(result, null);
   const logged = JSON.parse(errors[0]!);
-  assert.equal(logged.event, "memo_extraction_error");
-  assert.equal(logged.stage, "plan_hooks_failed");
-  assert.match(logged.error, /plans db down/);
+  assert.deepEqual(logged, { event: "memo_extraction_error", stage: "plan_hooks_failed", code: "PLAN_HOOKS_FAILED" });
+  assert.ok(!errors[0]!.includes("private-"));
+});
+
+test("C11: memo enqueue failure logs only a fixed error code, never note identifiers or error text", (t) => {
+  const errors: string[] = [];
+  t.mock.method(console, "error", (line: string) => errors.push(line));
+  logMemoExtractionFailure("enqueue_failed", { actorId: "private-actor", contactId: "private-contact", noteId: "private-note" }, new Error("private-body-in-error"));
+  assert.deepEqual(JSON.parse(errors[0]!), { event: "memo_extraction_error", stage: "enqueue_failed", code: "ENQUEUE_FAILED" });
+  assert.ok(!errors[0]!.includes("private-"));
 });
 
 test("S1: a failing plan proposal after the extraction is logged as structured JSON (no longer swallowed); the extraction still succeeds", async (t) => {
@@ -220,7 +227,7 @@ test("S1: a failing plan proposal after the extraction is logged as structured J
       gate,
       now: () => new Date("2026-10-07T03:00:00.000Z"),
       onPlanCoverage: async () => {
-        throw new Error('new row for relation "plan_log" violates check constraint');
+        throw new Error('private-note: メモ本文 in plan write failure');
       },
       provider,
       store: createLiveRecordMemoExtractionStore({ store: createMemoryLiveRecordStore(), workspaceId: "w" }),
@@ -230,8 +237,9 @@ test("S1: a failing plan proposal after the extraction is logged as structured J
   assert.equal(record.planPromptVersion, "memo-plan-coverage-2026-10-v1", "the C11 prompt version is kept on the call record (M5)");
   const logged = errors.map((line) => JSON.parse(line)).find((entry) => entry.stage === "plan_coverage_failed");
   assert.ok(logged, "the failure is logged");
-  assert.equal(logged.noteId, "note:s1");
+  assert.equal(logged.code, "PLAN_COVERAGE_FAILED");
   assert.equal(logged.manual, false);
+  for (const key of ["actorId", "contactId", "noteId", "error"]) assert.equal(Object.hasOwn(logged, key), false);
   assert.ok(!JSON.stringify(logged).includes("メモ本文"), "the memo body never goes to the log");
 });
 
