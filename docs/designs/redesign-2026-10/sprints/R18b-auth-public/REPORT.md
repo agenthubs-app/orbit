@@ -10,6 +10,8 @@
 
 02:28 复验：同一 B+D 上游的 C 工作树中，App `npm run typecheck`、Web `npm run typecheck:app`、Web `npm run typecheck` 及 Web `npm run lint` 均重跑 **exit0**。前述 App exit130 保留为资源中断记录；Web 全范围检查在内置盘再跌到约 3.8 GiB 时已经自行完成，停止指令到达后返回的原命令状态仍为 exit0，并无类型诊断。两端完整套件未在这次 rebase 后重跑；不能据此关闭 SC-16。
 
+02:38 补核 D 已合入的 App 根壳：`root-shell-auth-render`、认证 view-model、初始路由、me 路由与全 App 路由登记共 **30/30 pass**。其中根壳用例确认会话未成立时不挂底栏及底栏高度 Toast；邀请与重置入口的安全回跳仍通过。它是 C+D 合并后的源码／渲染目标回归，不包含真实注销→登录操作或原生像素，SC-15 仍未收口。
+
 ## 当前检查点
 
 | SC | 状态 | 实际证据 / 未完依赖 |
