@@ -42,10 +42,10 @@ export function dueEventNotifications(candidates: readonly EventNotificationCand
     if (!Number.isFinite(starts)) continue;
     if (item.status === "planned" && item.registrationClosesAt) {
       const closes = Date.parse(item.registrationClosesAt);
-      if (Number.isFinite(closes) && time >= closes - 48 * HOUR && time < closes) out.push({ actorId: item.actorId, at: now.toISOString(), eventId: item.eventId, semanticKey: `event_deadline:${item.eventId}`, sourceKind: "event_deadline" });
+      if (Number.isFinite(closes) && time >= closes - 48 * HOUR && time < closes) out.push({ actorId: item.actorId, at: new Date(closes).toISOString(), eventId: item.eventId, semanticKey: `event_deadline:${item.eventId}`, sourceKind: "event_deadline" });
     }
     if (item.status === "registered" && time >= tokyoEight(starts) && time < starts) {
-      out.push({ actorId: item.actorId, at: now.toISOString(), eventId: item.eventId, semanticKey: `event_prep:${item.eventId}`, sourceKind: "event_prep" });
+      out.push({ actorId: item.actorId, at: new Date(starts).toISOString(), eventId: item.eventId, semanticKey: `event_prep:${item.eventId}`, sourceKind: "event_prep" });
     }
   }
   return out;

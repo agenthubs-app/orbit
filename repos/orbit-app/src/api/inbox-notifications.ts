@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import type {InboxNotificationDTO,InboxNotificationListDTO} from './contract/inbox-notifications';
 import {inboxNotificationSchema} from './schema/inbox-notifications';
+import {withoutMailSummary} from './compute/secretary-source';
 export const INBOX_NOTIFICATIONS_PATH='/api/inbox/notifications';
 // The page envelope is validated strictly; items are validated one by one so a
 // notification type this build does not know yet (a newer server) or a single
@@ -22,9 +23,11 @@ export function notificationInboxData(raw:unknown,actorId:string):InboxNotificat
   skipped+=1;
  }
  if(skipped>0&&process.env.NODE_ENV!=='production')console.warn(`[inbox] skipped ${skipped} unrecognized notification item(s)`);
- return {...page.data,items};
+ return {...page.data,items:withoutMailSummary(items)};
 }
 export function notificationDetailData(raw:unknown,actorId:string,id:string):InboxNotificationDTO|null {
- const result=inboxNotificationSchema.safeParse(raw);return result.success&&result.data.actorId===actorId&&result.data.id===id?result.data:null;
+ const result=inboxNotificationSchema.safeParse(raw);
+ return result.success&&result.data.actorId===actorId&&result.data.id===id
+   ? withoutMailSummary([result.data])[0]??null : null;
 }
 export const notificationDetailPath=(id:string)=>INBOX_NOTIFICATIONS_PATH+'/'+encodeURIComponent(id);

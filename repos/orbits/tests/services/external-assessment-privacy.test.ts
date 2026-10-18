@@ -51,7 +51,7 @@ test("参加予定に追加（外部）→ 计划引用 assessment:<id>，不碰
   assert.deepEqual(await factsFor("actor:b"), []);
 });
 
-test("只有评估模块与「我的活动」读 event_assessments，且都按 actor_id 过滤（公开目录 / 名片归属窗口 / 主催中心 / 探す 不读）", () => {
+test("只有评估、我的活动与本人秘書来源核验读 event_assessments，且都按 actor_id 过滤", () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
   const files: string[] = [];
   const walk = (dir: string) => {
@@ -63,8 +63,12 @@ test("只有评估模块与「我的活动」读 event_assessments，且都按 a
     }
   };
   for (const dir of ["features", "app", "shared"]) walk(path.join(root, dir));
-  assert.deepEqual(files.filter((file) => !file.startsWith("features/events/assessment/")).sort(), ["features/events/mine/service.ts"]);
+  assert.deepEqual(files.filter((file) => !file.startsWith("features/events/assessment/")).sort(), ["features/events/mine/service.ts", "features/notifications/secretary/source-access.ts"]);
   const mine = readFileSync(path.join(root, "features/events/mine/service.ts"), "utf8");
   for (const statement of mine.match(/from event_assessments where[^`]*/g) ?? []) assert.match(statement, /actor_id = \$2/);
+  const secretary = readFileSync(path.join(root, "features/notifications/secretary/source-access.ts"), "utf8");
+  const secretaryReads = secretary.match(/from event_assessments\s+where[^`]*/g) ?? [];
+  assert.ok(secretaryReads.length > 0);
+  for (const statement of secretaryReads) assert.match(statement, /actor_id=\$2/);
   assert.ok(!readFileSync(path.join(root, "features/events/core/start-window.ts"), "utf8").includes("event_assessments"));
 });

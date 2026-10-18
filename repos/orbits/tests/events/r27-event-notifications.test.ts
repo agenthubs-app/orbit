@@ -13,6 +13,7 @@ test("event_deadline: from 48 hours before the deadline until it closes, only fo
   assert.deepEqual(dueEventNotifications([planned], at("2026-10-02T00:00:00+09:00")).map((item) => [item.sourceKind, item.semanticKey]), [["event_deadline", "event_deadline:e1"]]);
   assert.equal(dueEventNotifications([planned], at("2026-10-04T00:00:00+09:00")).length, 0, "closed");
   assert.equal(dueEventNotifications([{ ...planned, status: "registered" }], at("2026-10-02T12:00:00+09:00")).filter((item) => item.sourceKind === "event_deadline").length, 0);
+  assert.equal(dueEventNotifications([planned], at("2026-10-02T12:00:00+09:00"))[0]?.at, new Date(planned.registrationClosesAt!).toISOString());
 });
 
 test("event_prep: the event day from 08:00 Tokyo until it starts, only for registered", () => {
@@ -20,6 +21,7 @@ test("event_prep: the event day from 08:00 Tokyo until it starts, only for regis
   assert.deepEqual(dueEventNotifications([going], at("2026-10-07T08:00:00+09:00")).map((item) => item.semanticKey), ["event_prep:e2"]);
   assert.equal(dueEventNotifications([going], at("2026-10-07T19:00:00+09:00")).length, 0, "started");
   assert.equal(dueEventNotifications([{ ...going, status: "planned" }], at("2026-10-07T09:00:00+09:00")).length, 0);
+  assert.equal(dueEventNotifications([going], at("2026-10-07T09:00:00+09:00"))[0]?.at, new Date(going.startsAt).toISOString());
 });
 
 test("daily cap: per person per Tokyo day (default 2, user setting 1–3), earliest events first", () => {

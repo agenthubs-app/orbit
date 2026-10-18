@@ -23,6 +23,7 @@ import {createInboxProjectionWorkRepository,type InboxProjectionWriter} from './
 import {readCostAlertSourceState} from '../operations/read-cost/alerts';
 import {isReadCostAdmin} from '../operations/read-cost/config';
 import {eventContactRequestSourceState} from './event-contact-request-inbox';
+import {readEventSecretarySourceState} from './secretary/source-access';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -48,9 +49,8 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     if(source.sourceKind==='read_cost_alert')return readCostAlertSourceState(client,{actorId,sourceId:source.sourceId,sourceRevision:source.sourceRevision,isAdmin:id=>isReadCostAdmin(id)});
     // Business-card exchange (0129): the request row and the recipient's exchange contact decide.
     if(source.sourceKind==='event_contact_request')return eventContactRequestSourceState(client,input.workspaceId,actorId,source);
-    // R27：活动通知（申込締切 / 当日の準備 / R26 おすすめ）指向公开活动或本人的评估，没有需要逐条授权的私有源；
-    // 过时靠通知自己的 expiresAt 收起（之前落到下面的 collections 查表，一律读成 unavailable）。
-    if(source.sourceKind==='event_deadline'||source.sourceKind==='event_prep'||source.sourceKind==='event_pick')return 'available';
+    if(source.sourceKind==='event_deadline'||source.sourceKind==='event_prep'||source.sourceKind==='event_pick')
+      return readEventSecretarySourceState(client,input.workspaceId,actorId,source,now());
     // R17：主催の定型お知らせ（审核结果 / 中止 / 变更 / 共同运营邀请）只写给本人，指向活动页，没有逐条授权的私有源。
     if(source.sourceKind==='event_host_notice')return 'available';
     if(source.objectId==='discovery') {

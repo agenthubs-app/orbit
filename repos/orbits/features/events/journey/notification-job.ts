@@ -27,7 +27,7 @@ export async function readEventNotificationCandidates(query: Query, workspaceId:
          join event_ops_events e on e.workspace_id = i.workspace_id and e.event_id = i.linked_event_id
          join event_ops_admission_policy_heads head on head.workspace_id = e.workspace_id and head.event_id = e.event_id
          join event_ops_admission_policy_versions policy on policy.workspace_id = head.workspace_id and policy.event_id = head.event_id and policy.policy_version = head.policy_version
-        where i.workspace_id = $1 and i.kind = 'event' and e.lifecycle_state_v2 = 'published'
+        where i.workspace_id = $1 and i.kind = 'event' and i.status = 'recommended' and e.lifecycle_state_v2 = 'published'
           and policy.registration_closes_at > $2::timestamptz and policy.registration_closes_at <= $2::timestamptz + interval '48 hours'
           and not exists (select 1 from event_ops_membership_heads m where m.workspace_id = i.workspace_id and m.actor_id = i.actor_id and m.event_id = e.event_id and m.status = 'rsvped')
      )

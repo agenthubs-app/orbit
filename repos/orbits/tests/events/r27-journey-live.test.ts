@@ -277,12 +277,12 @@ test("会後確定：フォロー日 9:00 JST、标题、确定性的去重键",
   assert.equal(afterConfirmationIds.taskKey("e", "p1"), "r27-after:e:p1");
 });
 
-test("inboxUpsertFor：截止 = reminder（带 dueAt）、准备 = suggestion；通过收件箱写入校验", () => {
+test("inboxUpsertFor：截止与准备均为 reminder（带真实 dueAt）；通过收件箱写入校验", () => {
   const nowIso = "2026-10-14T00:00:00.000Z";
   for (const sourceKind of ["event_deadline", "event_prep"] as const) {
     const upsert = inboxUpsertFor("actor:me", { at: "2026-10-15T15:00:00.000Z", body: "申込締切は明日です", eventId: "evt-1", href: "/events/evt-1", semanticKey: `r27:${sourceKind}:evt-1`, sourceKind, title: "CFO Night" }, nowIso);
-    assert.equal(upsert.kind, sourceKind === "event_deadline" ? "reminder" : "suggestion");
-    assert.equal(Boolean(upsert.dueAt), sourceKind === "event_deadline");
+    assert.equal(upsert.kind, "reminder");
+    assert.equal(upsert.dueAt, "2026-10-15T15:00:00.000Z");
     const parsed = inboxNotificationWriteSchema.safeParse({ ...upsert, disposition: "open", id: inboxNotificationId("actor:me", upsert.semanticKey), readAt: null, revision: 1, updatedAt: nowIso });
     assert.ok(parsed.success, JSON.stringify(parsed.error?.issues));
   }

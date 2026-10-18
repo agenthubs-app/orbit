@@ -38,6 +38,10 @@ import { createInviteAttemptsCleanupMaintenanceTask, createInviteProfileSyncMain
 import { getConfiguredEventAssessmentRuntime } from "../../events/assessment/configured";
 import { createEventAssessmentReadingMaintenanceTask } from "../../events/assessment/job";
 import { createEventNotificationMaintenanceTask } from "../../events/journey/notification-job";
+import { configuredJourneyLiveService } from "../../events/journey/handlers";
+import { createPostgresInboxRecordRepository } from "../../notifications/storage/inbox-record-repository";
+import { createSecretaryDigestMaintenanceTask } from "../../notifications/secretary/digest-job";
+import { clearDailySlot, writeDailySlot } from "../../notifications/secretary/digest";
 import { createHostArchiveMaintenanceTask, createHostMatchingUsageMaintenanceTask, createHostNoticeMaintenanceTask } from "../../events/host/maintenance";
 import { createEventAssessmentRecomputeMaintenanceTask, eventPickNotification } from "../../events/assessment/recompute-job";
 import type { MaintenanceTask } from "./pass";
@@ -318,6 +322,27 @@ export function createConfiguredMaintenanceTasks({
             const { createJourneyLivePorts } = await import("../../events/journey/live");
             return (await createJourneyLivePorts()?.upsertInbox(actorId, item)) ?? false;
           },
+        };
+      },
+    }),
+    createSecretaryDigestMaintenanceTask({
+      resolve: async () => {
+        const runtime = getConfiguredEventAssessmentRuntime();
+        if (!runtime) return null;
+        const journey = await configuredJourneyLiveService();
+        if (!journey) return null;
+        const repository = createPostgresInboxRecordRepository({ client: runtime.client, workspaceId: runtime.workspaceId });
+        return {
+          actors: async (after: string, limit: number) => {
+            const rows = await runtime.client.query<{ actor_id: string }>(
+              `select distinct actor_id from plans where workspace_id=$1 and status='active' and actor_id>$2 order by actor_id limit $3`,
+              [runtime.workspaceId, after, limit],
+            );
+            return rows.rows.map(row => row.actor_id);
+          },
+          recommendations: async (actorId: string) => (await journey.discover(actorId, { sort: 'recommended' }, 'ja')).planFit,
+          write: (actorId: string, winner: import("../../../shared/contract/event-discover").EventDiscoverRow, day: string, at: string) => writeDailySlot(repository, actorId, winner, day, at),
+          clear: (actorId: string, day: string, at: string) => clearDailySlot(repository, actorId, day, at),
         };
       },
     }),

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import test from 'node:test';import Reac
 import {createRequire} from 'node:module';
 const {renderToHtml}=createRequire(import.meta.url)('./helpers/render.tsx') as {renderToHtml:(element:React.ReactElement)=>string};
 import {NotificationInboxList} from '../src/screens/inbox/NotificationInboxList';
-import {notificationInboxData} from '../src/api/inbox-notifications';
+import {notificationInboxData,notificationDetailData} from '../src/api/inbox-notifications';
 
 // Sprint 0104: an App build must keep its inbox usable when the server starts
 // sending a notification type it does not know yet (0100: read_cost_alert).
@@ -50,6 +50,14 @@ test('a foreign-account item or an invalid envelope still rejects the whole resp
  assert.equal(notificationInboxData({enabled:true,items:[row('n1','发送报价资料'),{...futureSource,actorId:'b'}],unreadCount:2,nextCursor:null,asOf:at},'a'),null);
  assert.equal(notificationInboxData({enabled:true,items:'nope',unreadCount:0,nextCursor:null,asOf:at},'a'),null);
  assert.equal(notificationInboxData({items:[],unreadCount:0,nextCursor:null,asOf:at},'a'),null);
+});
+
+test('D-16 mail summaries stay hidden in both the list and a direct detail link',()=>{
+ const dormant={...row('mail','メール要約'),sources:[{sourceKind:'mail_summary',sourceId:'mail-1',sourceRevision:'1',occurredAt:at,readAt:at}]};
+ const page=notificationInboxData({enabled:true,items:[dormant,row('n1','準備する')],unreadCount:2,nextCursor:null,asOf:at},'a');
+ assert.deepEqual(page?.items.map(item=>item.id),['n1']);
+ assert.equal(notificationDetailData(dormant,'a','mail'),null);
+ assert.equal(notificationDetailData(row('n1','準備する'),'a','n1')?.id,'n1');
 });
 
 // Sprint 0129: business-card exchange notifications (source kind

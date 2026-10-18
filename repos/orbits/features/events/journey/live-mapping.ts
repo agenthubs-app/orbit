@@ -391,13 +391,12 @@ export interface AfterConfirmationKeyRecord extends Record<string, unknown> { re
 export interface AfterConfirmationRowRecord extends Record<string, unknown> { attendeeId: string; contactId: string | null; taskId: string | null; followupDate: string; confirmedAt: string }
 export interface AfterConfirmationEventRecord extends Record<string, unknown> { eventId: string; confirmedAt: string }
 
-/** 秘书通知（SC-R27-13）→ 收件箱写入形状：截止 = reminder（带 dueAt），准备 = suggestion。 */
+/** 秘书通知（SC-R27-13）→ 收件箱写入形状：两类都是 reminder，dueAt 是真实截止/开场时刻。 */
 export function inboxUpsertFor(actorId: string, input: Parameters<JourneyLivePorts["upsertInbox"]>[1], nowIso: string): InboxNotificationUpsert {
-  const reminder = input.sourceKind === "event_deadline";
   return {
     actions: ["read", "dismiss", "handle"],
     actorId,
-    kind: reminder ? "reminder" : "suggestion",
+    kind: "reminder",
     occurredAt: nowIso,
     origin: "automation",
     reason: input.body,
@@ -405,6 +404,6 @@ export function inboxUpsertFor(actorId: string, input: Parameters<JourneyLivePor
     sources: [{ objectId: input.eventId, occurredAt: nowIso, readAt: nowIso, sourceId: input.eventId, sourceKind: input.sourceKind, sourceRevision: input.at }],
     target: { href: input.href, id: input.eventId, kind: "event", status: "available" },
     title: input.title,
-    ...(reminder ? { dueAt: input.at } : {}),
+    dueAt: input.at,
   };
 }
