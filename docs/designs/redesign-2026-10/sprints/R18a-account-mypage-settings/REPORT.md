@@ -1,4 +1,10 @@
-# R18a implementation report (in progress)
+# R18a implementation report (closed except pixel and native residuals)
+
+## 2026-10-19 main-session closure decision (RD-33)
+
+The main session accepted the current signed build and new-simulator run as evidence for native login, the sync entry, Settings, Integrations, and the 25% My page. The sync observation is specifically `GET /api/sync/lease 200`; the minimal fixture's manifest returned 503, so it is not a complete device-mirror pass. R18a is recorded as **closed except pixel and native residuals**, not as a full native or visual acceptance.
+
+**DEFERRED — 原生验收余项:** complete the native 50%/100% account chains and the unobserved edit/save, provider connect/disconnect, search, permission, logout and offline actions; retest manifest/device mirror with a complete isolated fixture. The minimal-fixture 503 remains a recorded limitation. **Pixel residual:** the §9.2 App light/dark matrix and dependent no-regression gates remain unpassed. These items are not counted as passing SC03–06 or SC12. The targeted PostgreSQL manifest result below diagnoses the fixture boundary but does not replace the deferred native run. No production service, paid model, push, or full-suite run was performed for this decision.
 
 ## 2026-10-19 current-source signed rebuild and native run-08 (partial SC03–06)
 
