@@ -17,6 +17,8 @@ const tasks = [task,
   { ...task, id: "done:1", title: "发送上次活动总结", status: "completed", completedAt: "2026-09-10T09:00:00Z" },
   { ...task, id: "cancel:1", title: "已取消的事项", status: "cancelled" },
 ];
+const openTaskPage = "/api/tasks/page?status=open&scope=all&limit=30&today=2026-09-11&timeZone=Asia%2FTokyo";
+const completedTaskPage = "/api/tasks/page?status=completed&scope=all&limit=30&today=2026-09-11&timeZone=Asia%2FTokyo";
 // Real screens, theme, view models and RNW. Only navigation/device and external
 // resource/client boundaries are replaced; this is not an HTTP/native QA claim.
 const fixture = `
@@ -165,7 +167,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", "/api/tasks/page?status=open&scope=all&limit=30"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", openTaskPage]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
@@ -182,7 +184,7 @@ test("list retains overdue and undated work, navigates canonical task IDs and ex
 test("completed deep link and list load failure do not invent zero counts or empty success", async t => {
   const page = await open(t, { view: "completed" });
   assert.equal(await page.getByRole("tab", { name: "已完成 1", exact: true }).getAttribute("aria-selected"), "true");
-  await page.evaluate(() => (window as any).fixture.update({ kinds: { "/api/tasks/page?status=completed&scope=all&limit=30": "failure" } }));
+  await page.evaluate(path => (window as any).fixture.update({ kinds: { [path]: "failure" } }), completedTaskPage);
   await page.getByText("待办暂时打不开", { exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 0);
   assert.equal(await page.getByRole("tab", { name: / 0$/ }).count(), 0);
