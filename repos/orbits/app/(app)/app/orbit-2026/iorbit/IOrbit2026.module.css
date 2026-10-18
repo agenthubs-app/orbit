@@ -18,6 +18,12 @@
 .historySection { display: grid; gap: var(--space-4); }
 .historySection h3 { color: var(--ink-3-text); font-size: var(--fs-label); margin: var(--space-8) 0 var(--space-4); font-weight: var(--fw-bold); }
 .historyRow { min-width: 0; }
+.planEntry { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+.planEntry > :first-child { flex: 1; min-width: 0; }
+.entityDraft { display: grid; gap: var(--space-8); }
+.entityDraft p { display: flex; gap: var(--space-8); margin: 0; }
+.entityDraft p small { color: var(--ink-3-text); min-width: 6em; }
+.entityDraftActions { display: flex; gap: var(--space-8); flex-wrap: wrap; }
 .historyRow :global(.btn) { min-width: 0; }
 .historyEntry { display: flex; align-items: center; gap: var(--space-4); }
 .scope .historyEntryMain { display: flex; align-items: center; flex: 1; gap: var(--space-8); min-width: 0; padding: var(--space-8); border: 0; border-radius: var(--r-sm); color: var(--ink); background: transparent; text-align: left; cursor: pointer; }

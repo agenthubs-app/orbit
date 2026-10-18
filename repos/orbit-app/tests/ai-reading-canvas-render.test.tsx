@@ -5,9 +5,11 @@ import React from "react";
 import { Appearance } from "react-native";
 import { renderToHtml } from "./helpers/render";
 import { aiConversationPayload } from "./helpers/ai-fixtures";
+import { aiSession } from "./helpers/ai-fixtures";
 
 let conversation: Record<string, unknown> = {};
 let apiState: Record<string, unknown> | null = null;
+let draftResource: Record<string, unknown> | null = null;
 let routeParams: Record<string, string> = { id: "reading-test" };
 let localConversationState = {
   messages: [] as readonly unknown[],
@@ -18,6 +20,7 @@ let localConversationState = {
 };
 const resetConversation = () => {
   apiState = null;
+  draftResource = null;
   routeParams = { id: "reading-test" };
   localConversationState = {
     messages: [],
@@ -55,7 +58,9 @@ moduleLoader._load = (name, ...args) => {
   if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, signedIn: true, accountId: "actor:reading", actorId: "actor:reading", user: { id: "actor:reading" }, cookieHeader: "" }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
   if (name.endsWith("/hooks/useApiResource")) return {
-    useApiResource: (path: string) => apiState ?? ({ kind: "success", data: path === "/api/ai/conversations/reading-test" ? conversation : {}, refreshing: false, refresh() {} })
+    useApiResource: (path: string) => path.startsWith("/api/ai/entity-drafts?")
+      ? draftResource ?? { kind: "empty", data: { draft: null }, refreshing: false, refresh() {} }
+      : apiState ?? ({ kind: "success", data: path === "/api/ai/conversations/reading-test" ? conversation : {}, refreshing: false, refresh() {} })
   };
   if (name.endsWith("/hooks/useLocalAiSessions")) return {
     useLocalAiConversation: () => localConversationState,
@@ -156,6 +161,21 @@ test("an unrelated server failure remains visible when the mirror is not offline
   const html = renderToHtml(<AiConversationScreen />);
   assert.match(html, /Orbit service unavailable/u);
   assert.doesNotMatch(html, /还没保存在这台设备上/u);
+});
+
+test("a draft deep link reopens its actor-scoped pending card in the selected session", () => {
+  routeParams = { id: "session:1", source: "session", draftId: "draft:1" };
+  apiState = { kind: "success", data: { session: aiSession, page: { hasMore: false, nextCursor: null, limit: 20 }, storage: { configured: true, persisted: true } }, refreshing: false, refresh() {} };
+  draftResource = { kind: "success", data: { draft: {
+    draftId: "draft:1", kind: "task", state: "pending_confirmation", revision: 1,
+    fields: { title: "Follow up with Sato" }, sourceRefs: [],
+    createdAt: "2026-09-11T01:00:00Z", updatedAt: "2026-09-11T01:00:00Z",
+  } }, refreshing: false, refresh() {} };
+  const html = renderToHtml(<AiConversationScreen />);
+  assert.match(html, /Follow up with Sato/u);
+  assert.match(html, /确认创建Follow up with Sato/u);
+  routeParams = { ...routeParams, draftId: "draft:other" };
+  assert.doesNotMatch(renderToHtml(<AiConversationScreen />), /确认创建Follow up with Sato/u);
 });
 
 test("same-kind record links are visibly distinct and unsupported links explain the boundary", () => {

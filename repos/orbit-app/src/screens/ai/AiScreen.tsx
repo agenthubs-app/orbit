@@ -30,8 +30,8 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, type AiSession } from "../../api/ai-history-contract";
 import { contactCardSummarySchema } from "../../api/schema/contact-card-page";
-import { planIntakeListResponseSchema } from "../../api/schema/plan-v2";
-import { planFlowHref, planNewGoalHref } from "../../api/compute/plan-href";
+import { planIntakeListResponseSchema, planV2SummaryResponseSchema } from "../../api/schema/plan-v2";
+import { planDoneHref, planFlowHref, planNewGoalHref, planOverviewHref, planReviewHref } from "../../api/compute/plan-href";
 import type { AiSessionEntryPointId, AiSessionGroupContract } from "../../api/contract/ai-sessions";
 import type { AiSessionSummaryItemContract } from "../../api/contract/ai-session-page";
 import type { OrbitLanguage } from "../../api/contract/language";
@@ -299,6 +299,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const planIntakes = validateApiResourceState(useApiResource<unknown>(
     "/api/agent/plans/intakes?platform=app", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
   ), planIntakeListResponseSchema);
+  const planSummary = validateApiResourceState(useApiResource<unknown>(
+    "/api/agent/plans/v2/summary", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
+  ), planV2SummaryResponseSchema);
   const todayNow = new Date();
   const todayDate = localDateKey("Asia/Tokyo", todayNow);
   // Sprint 0131 (coordinator item from 0118): the Today block is the page copy "today-summary" (today's only),
@@ -769,12 +772,14 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       onNewGoal={() => router.push(planNewGoalHref("app") as Href)}
       onOpen={openHistoryItem}
       onOpenIntake={intake => router.push(planFlowHref("app", intake.intakeId) as Href)}
+      onOpenGoal={(goal, destination) => router.push((destination === "done" ? planDoneHref("app", goal.planId) : destination === "review" ? planReviewHref("app", goal.planId) : planOverviewHref("app", goal.planId)) as Href)}
       onPin={item => { void mutateOrganization(item, { pinned: !item.pinned }); }}
       onRename={(item, title) => { void mutateOrganization(item, { customTitle: title }); }}
       onScan={() => openCapability("/contacts/new/scan" as Href)}
       onSend={sendMessage}
       onUndo={() => { void undoDelete(); }}
       planIntakes={planIntakes.kind === "success" || planIntakes.kind === "empty" ? planIntakes.data.intakes : []}
+      planGoals={planSummary.kind === "success" || planSummary.kind === "empty" ? planSummary.data.goals.filter(goal => !goal.sample) : []}
       suggestions={suggestedPrompts.slice(0, 4).map((item, index) => ({ key: String(item.kind), label: item.label, emoji: ["👥", "🎟️", "🎯", "✦"][index] ?? "✦" }))}
       undoAvailable={pendingUndo !== null}
     />

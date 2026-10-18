@@ -11,7 +11,7 @@ import { consumeAiTemplatePrefill, type AiTemplatePrefill } from "../../src/data
 const ProtectedConversation = withOrbitPrivateRoute<NonNullable<Parameters<typeof AiConversationScreen>[0]>>(AiConversationScreen);
 
 export default function AiConversationRoute() {
-  const params = useLocalSearchParams<{ id?: string; source?: string; initialMessage?: string | string[]; initialMessageConsumed?: string; sendIntent?: string | string[]; prefillIntent?: string | string[]; entryPointId?: string | string[]; initialGroupId?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string; source?: string; draftId?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string; sendIntent?: string | string[]; prefillIntent?: string | string[]; entryPointId?: string | string[]; initialGroupId?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[] }>();
   const initialMessage = (Array.isArray(params.initialMessage) ? params.initialMessage[0] : params.initialMessage)?.trim() ?? "";
   const sendIntent = Array.isArray(params.sendIntent) ? params.sendIntent[0] : params.sendIntent;
   const prefillIntent = Array.isArray(params.prefillIntent) ? params.prefillIntent[0] : params.prefillIntent;
@@ -21,7 +21,7 @@ export default function AiConversationRoute() {
   const server = useOrbitApiBaseUrl();
   const actorId = auth.actorId;
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
-  const intentKey = JSON.stringify([params.id, params.source, params.initialMessage, params.sendIntent, params.prefillIntent, params.entryPointId, params.initialGroupId, params.sourceNoteId, params.sourceNoteVersion]);
+  const intentKey = JSON.stringify([params.id, params.source, params.draftId, params.initialMessage, params.sendIntent, params.prefillIntent, params.entryPointId, params.initialGroupId, params.sourceNoteId, params.sourceNoteVersion]);
   // The navigation intent outlives an auth/focus remount. It must not replay an
   // inherited automatic write in a different identity scope.
   const intent = useMemo(() => {

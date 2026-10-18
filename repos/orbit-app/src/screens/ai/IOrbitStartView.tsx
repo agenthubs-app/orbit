@@ -19,6 +19,7 @@ export type IOrbitHistoryItem = {
 };
 
 export type IOrbitPlanIntake = { intakeId: string; goal: string };
+export type IOrbitPlanGoal = { planId: string; goal: string; status: "active" | "achieved" };
 
 function tokyoGroup(item: IOrbitHistoryItem, now = new Date()): "ピン留め" | "今日" | "今週" | "それ以前" {
   if (item.pinned) return "ピン留め";
@@ -37,7 +38,7 @@ export function IOrbitStartView({
   contactCount, confirmDelete, deleting, draft, error, history, historyHasMore,
   historyLoading, historyOpen, historyQuery, offline, offlineAt, onClose, onConfirmDelete,
   onCancelDelete, onDelete, onDraftChange, onHistoryClose, onHistoryOpen, onHistoryQueryChange,
-  onLoadMore, onNew, onNewGoal, onOpen, onOpenIntake, onPin, onRename, onScan, onSend, onUndo, planIntakes, suggestions,
+  onLoadMore, onNew, onNewGoal, onOpen, onOpenGoal, onOpenIntake, onPin, onRename, onScan, onSend, onUndo, planGoals, planIntakes, suggestions,
   undoAvailable,
 }: {
   contactCount: number;
@@ -65,12 +66,14 @@ export function IOrbitStartView({
   onNewGoal: () => void;
   onOpen: (item: IOrbitHistoryItem) => void;
   onOpenIntake: (intake: IOrbitPlanIntake) => void;
+  onOpenGoal: (goal: IOrbitPlanGoal, destination: "overview" | "review" | "done") => void;
   onPin: (item: IOrbitHistoryItem) => void;
   onRename: (item: IOrbitHistoryItem, title: string) => void;
   onScan: () => void;
   onSend: (text?: string) => void;
   onUndo: () => void;
   planIntakes: readonly IOrbitPlanIntake[];
+  planGoals: readonly IOrbitPlanGoal[];
   suggestions: { key: string; label: string; emoji: string }[];
   undoAvailable: boolean;
 }) {
@@ -142,6 +145,12 @@ export function IOrbitStartView({
         {planIntakes.map((intake) => <UiPressable key={intake.intakeId} accessibilityRole="button" accessibilityLabel={intake.goal} onPress={() => onOpenIntake(intake)} style={styles.historyMain}>
           <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{intake.goal}</UiText><UiText style={styles.recentMeta}>作成中のプランを続ける</UiText></View>
         </UiPressable>)}
+        {planGoals.map((goal) => <View key={goal.planId} style={styles.historyRow}>
+          <UiPressable accessibilityRole="button" accessibilityLabel={goal.goal} onPress={() => onOpenGoal(goal, "overview")} style={styles.historyMain}>
+            <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{goal.goal}</UiText><UiText style={styles.recentMeta}>{goal.status === "achieved" ? "完了した目標" : "進行中の目標"}</UiText></View>
+          </UiPressable>
+          <Button label={goal.status === "achieved" ? "完了を見る" : "振り返る"} variant="ghost" size="sm" onPress={() => onOpenGoal(goal, goal.status === "achieved" ? "done" : "review")} />
+        </View>)}
         <Button label="新しい目標" icon="plus" variant="ghost" size="sm" onPress={onNewGoal} />
       </View>
       {historyHasMore ? <Button label={historyLoading ? "読み込み中…" : "もっと見る"} variant="ghost" onPress={onLoadMore} disabled={historyLoading} block /> : null}

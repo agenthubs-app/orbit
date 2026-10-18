@@ -241,6 +241,37 @@ test("R21 user deletion can be undone for five seconds by the same actor and del
   assert.equal(await alice.getSession("session:undo"), null);
 });
 
+test("R21 retention expires only unpinned sessions after Tokyo day 90 and is idempotent", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "workspace:retention";
+  const aliceId = "actor:retention-alice";
+  const alice = createStorageOrbitAgentChatSessionProvider({ actorId: aliceId, store, workspaceId });
+  const bob = createStorageOrbitAgentChatSessionProvider({ actorId: "actor:retention-bob", store, workspaceId });
+  const now = new Date("2026-10-18T03:00:00.000Z"); // Tokyo: Oct 18, 12:00.
+  const activity = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86_400_000).toISOString();
+  for (const [id, daysAgo] of [["day89", 89], ["day90", 90], ["day91", 91], ["pinned91", 91], ["updated", 91]] as const) {
+    await alice.upsertSession({ id, title: id, createdAt: activity(daysAgo), updatedAt: activity(daysAgo), pinned: id === "pinned91", messages: [{ id: `${id}:user`, role: "user", text: id }] });
+  }
+  await alice.upsertSession({ id: "updated", title: "updated", createdAt: activity(91), updatedAt: activity(89), messages: [{ id: "updated:user", role: "user", text: "new activity" }] });
+  await bob.upsertSession({ id: "day91", title: "Bob private", createdAt: activity(91), updatedAt: activity(91), messages: [{ id: "bob:user", role: "user", text: "Bob private" }] });
+
+  assert.equal(await alice.deleteExpiredSession("day89", now, async () => false), false);
+  assert.equal(await alice.deleteExpiredSession("day90", now, async () => false), false);
+  assert.equal(await alice.deleteExpiredSession("updated", now, async () => false), false);
+  let pinned = true;
+  assert.equal(await alice.deleteExpiredSession("pinned91", now, async () => pinned), false);
+  assert.equal(await alice.deleteExpiredSession("day91", now, async () => false), true);
+  assert.equal(await alice.deleteExpiredSession("day91", now, async () => false), false);
+  pinned = false;
+  assert.equal(await alice.deleteExpiredSession("pinned91", now, async () => pinned), true);
+  assert.equal(await alice.deleteExpiredSession("pinned91", now, async () => pinned), false);
+
+  assert.deepEqual((await alice.listSessionSummariesPage({ limit: 50 })).items.map((item) => item.id).sort(), ["day89", "day90", "updated"]);
+  assert.equal(await alice.getSession("day91"), null);
+  assert.equal((await bob.getSession("day91"))?.title, "Bob private");
+  assert.equal(store.listRecords({ collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages, targetId: "day91", targetType: "conversation", workspaceId: orbitAgentChatSessionActorWorkspaceId(workspaceId, aliceId), limit: "unbounded" }).length, 0);
+});
+
 test("Orbit Agent chat session provider rejects a stale shorter snapshot without deleting newer messages", async () => {
   const provider = createStorageOrbitAgentChatSessionProvider({
     actorId: "account:stale-writer",

@@ -191,8 +191,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const viewport = useMobileViewport();
-  const { id, initialMessage, initialMessageConsumed, source, sourceNoteId, sourceNoteVersion } = useLocalSearchParams<{
-    id?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[];
+  const { id, draftId, initialMessage, initialMessageConsumed, source, sourceNoteId, sourceNoteVersion } = useLocalSearchParams<{
+    id?: string | string[]; draftId?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[];
   }>();
   const conversationId = firstParam(id);
   const initialPrompt = allowInitialPrompt ? optionalParam(initialMessage).trim() : "";
@@ -209,6 +209,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : isStoredAgentSession ? aiConversationSessionPath(conversationId) : aiConversationPath(conversationId);
   // Private artifact evidence must be reauthorized, not retained after a failed refresh.
   const state = useApiResource<unknown>(path, () => false, { ...readOptions, cachePolicy: "network-only" });
+  const draftRead = useApiResource<unknown>(`/api/ai/entity-drafts?conversationId=${encodeURIComponent(conversationId)}`, () => false, {
+    ...readOptions, cachePolicy: "network-only", enabled: isStoredAgentSession && !isDraftConversation,
+  });
   const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialDraft ?? initialPrompt : "");
   const draftValue = useRef(draftMessage);
   const draftRevision = useRef(journal.draftRevision ?? 0);
@@ -334,6 +337,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
   const thread = resolvedThread ? { ...resolvedThread, contactArtifacts: resultScopeReady ? resolvedThread.contactArtifacts ?? [] : [] } : null;
+  const pendingDraft = draftRead.kind === "success" || draftRead.kind === "empty"
+    ? readAiEntityDraft((draftRead.data as { draft?: unknown } | null)?.draft)
+    : null;
+  const focusedDraftId = optionalParam(draftId).trim();
+  const currentDraft = entityDraftOverride ?? pendingDraft ?? thread?.entityDraft ?? null;
+  const visibleDraft = focusedDraftId && currentDraft?.draftId !== focusedDraftId ? null : currentDraft;
 
   function changeDraft(value: string) {
     if (!owns()) return;
@@ -646,7 +655,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
    * first proposed.
    */
   async function resolveEntityDraft(action: "confirm" | "cancel") {
-    const draft = entityDraftOverride ?? thread?.entityDraft ?? null;
+    const draft = visibleDraft;
     if (!owns() || !draft || entityDraftBusy || taskOperation.current || sendOperation.current) return;
     const controller = new AbortController(); taskOperation.current = controller; requests.current.add(controller);
     setEntityDraftBusy(true); setActionError(null);
@@ -738,7 +747,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       taskInteractionResolution={taskInteractionResolution}
       entityDraftBusy={entityDraftBusy}
       entityDraftEdits={entityDraftEdits}
-      entityDraftOverride={entityDraftOverride}
+      entityDraftOverride={visibleDraft}
+      focusDraftId={focusedDraftId}
       onEditEntityDraftField={(field, value) => setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
       onResolveEntityDraft={resolveEntityDraft}
       thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
@@ -784,6 +794,7 @@ function ConversationThread({
   entityDraftBusy,
   entityDraftEdits,
   entityDraftOverride,
+  focusDraftId,
   onEditEntityDraftField,
   onResolveEntityDraft,
   thread
@@ -827,6 +838,7 @@ function ConversationThread({
   entityDraftBusy: boolean;
   entityDraftEdits: Record<string, string>;
   entityDraftOverride: AiEntityDraft | null;
+  focusDraftId: string;
   onEditEntityDraftField: (field: string, value: string) => void;
   onResolveEntityDraft: (action: "confirm" | "cancel") => void;
   thread: ConversationThreadView;
@@ -842,6 +854,11 @@ function ConversationThread({
   const [inputHeight, setInputHeight] = useState(44);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
+  useEffect(() => {
+    if (!focusDraftId || entityDraftOverride?.draftId !== focusDraftId) return;
+    followNewMessages.current = true;
+    requestAnimationFrame(() => historyScroll.current?.scrollToEnd({ animated: true }));
+  }, [focusDraftId, entityDraftOverride?.draftId]);
   // Sprint 0112: when earlier messages are prepended, keep what the reader sees in place.
   const contentHeight = useRef(0);
   const scrollOffset = useRef(0);
