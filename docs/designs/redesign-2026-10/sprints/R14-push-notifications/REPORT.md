@@ -88,6 +88,7 @@
 - Web 收口全量经 `heavy.sh b` 一次：**7,698 tests、6,673 pass、18 fail、1,007 skip，退出 1**（`web-full.log`）。与 R13 旧收口失败名对照，旧文案允许清单失败已消失；新增 3 项均由本线修复：共享日期助手违反 `compute-text` 审计（Web 架构/日期/写入审计 12/12、App 同步合同 7/7），偏好接口 404 误失效身份缓存（浏览器 1/1），typed 投递状态的非同步写入未列审计清单（同 12/12）。修复各按路径另提交，未再跑 Web 全量；旧 15 个失败仍不记通过。
 - App 全量经 `heavy.sh b` 一次：**3,174 tests、3,154 pass、18 fail、2 skip，退出 1**（`app-full.log`）。与 R13 `run-02/app-full-closeout.log` 按失败名对照，旧相机 9、字典钉版 1、A `CategoryTabs` 选中项 1 仍在；新增 7 项中，B 路由覆盖/私有门禁/离线页面清单 3 项已由静态路由登记修复（21/21，`app-route-manifest-fix.log`），偏好 GET 离线读取清单 1 项已登记为 `online_only_secret`（26/26，`app-offline-inventory-fix.log`），两项通知设置快捷按钮尺寸已改用 R31 `Button size="lg"`，浏览器窄屏与宽屏目标 2/2（`app-browser-fix.log`）。余下一项「discovery toggles」来自 A 线 R31 `Toggle` 在 RN Web 上未输出测试要求的 `aria-checked`；组件只给 `accessibilityState.checked`，B 线未越界修改。定向浏览器束总计 2 pass、1 fail；全量修复后未重跑，故只记录定向结果，不宣称全量通过。App 后续类型检查退出 0（`app-typecheck-after-full.log`）。
 - 模拟器手工 `openurl` 尝试停在运行门槛：`Orbit Line B` 已启动且安装有 `app.agenthubs.orbit`，但 `heavy.sh b` 在 Metro 启动前因内置盘可用空间低于 5 GiB 等待（`metro-openurl.log`）。没有打开链接或取得页面截图；结束该进程并关闭本线模拟器，SC-07/08/10/13 的真实设备操作不记通过。修复磁盘容量或由主会话安排可用运行槽后，需重新从安装版本、登录态和目标路由录取证据。
+- 收口时内置盘可用空间继续降至约 3.8 GiB，低于 `heavy.sh` 的 5 GiB 启动门槛；Web/App 修复后的第二轮全量和模拟器操作均不能在当前运行条件下启动。上列目标测试与两端类型检查是修复后的验证范围，不能替代第二轮全量结论。
 
 ## 画板门禁
 
