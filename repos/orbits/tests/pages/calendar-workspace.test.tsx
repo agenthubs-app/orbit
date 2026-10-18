@@ -4,6 +4,7 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from "rea
 import { SessionContext } from "next-auth/react";
 import { CalendarWorkspace } from "../../app/(app)/app/orbit-2026/calendar/CalendarWorkspace";
 import { CalendarTaskSlot } from "../../app/(app)/app/orbit-2026/calendar/CalendarTaskSlot";
+import { ShellSlotsProvider } from "../../app/(app)/app/orbit-2026/shell/slots";
 import type { PersonalScheduleContract } from "../../shared/contract/tasks";
 
 const at = "2030-03-01T00:00:00Z";
@@ -20,6 +21,9 @@ test("product calendar mode/navigation reads actual selected native windows", as
   await act(async () => { root = create(<CalendarWorkspace actorId="a" language="ja" timeZone="UTC" today="2030-04-01" />); });
   t.after(() => act(() => root.unmount()));
   assert.equal(ranges[0]?.get("scope"), "calendar");
+  assert.equal(ranges[0]?.get("from"), "2030-04-01T00:00:00.000Z", "the Task calendar opens on the board's week");
+  await act(async () => button(root!, "月").props.onClick());
+  assert.equal(ranges.at(-1)?.get("from"), "2030-03-31T00:00:00.000Z");
   await act(async () => button(root!, "週").props.onClick());
   assert.equal(ranges.at(-1)?.get("from"), "2030-04-01T00:00:00.000Z");
   await act(async () => button(root!, "次の期間").props.onClick());
@@ -62,6 +66,20 @@ test("Google detail stays read-only and calendar quick-add opens the native pers
   await act(async () => root!.root.findAllByType("button").find(node => node.props["data-task-add"] === "")!.props.onClick());
   assert.ok(root!.root.findAllByType("input").some(node => node.props["aria-label"] === "予定のタイトル"));
   assert.deepEqual(writes, []);
+});
+
+test("Task shell uses its header add button without showing a second calendar add button", async t => {
+  const restore = stubDocument();
+  t.mock.method(globalThis, "fetch", async (url: string) => url.includes("external-events") ? google() : Response.json({ success: true, data: { scheduleItems: [] } }));
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<ShellSlotsProvider><CalendarWorkspace actorId="a" language="ja" timeZone="UTC" today="2030-04-01" /></ShellSlotsProvider>); });
+  t.after(() => { act(() => root.unmount()); restore(); });
+  const add = root!.root.findAllByType("button").find(node => node.props["data-task-add"] === "");
+  assert.ok(add);
+  assert.equal(add.props.hidden, true);
+  assert.equal(add.parent?.parent?.props.style?.display, "none", "the hidden calendar add control must not reserve shell spacing");
+  await act(async () => add.props.onClick());
+  assert.ok(root!.root.findAllByType("input").some(node => node.props["aria-label"] === "予定のタイトル"));
 });
 
 test("midnight preserves an unsaved personal draft but account changes discard its private contents", async t => {
@@ -109,9 +127,9 @@ test("Task calendar slot follows the device local day and clears its clock on un
   t.mock.method(globalThis, "fetch", async (url: string) => { if (url.includes("external-events")) return google(); ranges.push(new URL(url, "http://localhost").searchParams.get("from")!); return Response.json({ success: true, data: { scheduleItems: [] } }); });
   let root: ReactTestRenderer;
   await act(async () => { root = create(<CalendarTaskSlot actorId="a" />); });
-  assert.equal(ranges.at(-1), "2030-03-31T00:00:00.000Z");
+  assert.equal(ranges.at(-1), "2030-04-29T00:00:00.000Z");
   await act(async () => { t.mock.timers.setTime(Date.parse("2030-05-01T00:00:00Z")); tick(); });
-  assert.equal(ranges.at(-1), "2030-04-28T00:00:00.000Z");
+  assert.equal(ranges.at(-1), "2030-04-29T00:00:00.000Z");
   await act(async () => root.unmount());
   assert.equal(cleared, true);
 });

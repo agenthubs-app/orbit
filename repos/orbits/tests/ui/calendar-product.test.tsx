@@ -48,12 +48,12 @@ test("browser: calendar quick add focuses the native form and create/edit/delete
   await title.fill("Browser created");
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.getByText("予定を保存しました", { exact: true }).waitFor();
-  await page.getByRole("button", { name: /Browser created/ }).click();
+  await page.getByRole("button", { name: /Browser created/ }).first().click();
   await page.getByRole("button", { name: "予定を編集", exact: true }).click();
   await page.getByRole("textbox", { name: "予定のタイトル", exact: true }).fill("Browser edited");
   await page.getByRole("button", { name: "保存", exact: true }).click();
-  await page.getByRole("button", { name: /Browser edited/ }).waitFor();
-  await page.getByRole("button", { name: /Browser edited/ }).click();
+  await page.getByRole("button", { name: /Browser edited/ }).first().waitFor();
+  await page.getByRole("button", { name: /Browser edited/ }).first().click();
   await page.getByRole("button", { name: "予定を編集", exact: true }).click();
   await page.getByRole("button", { name: "予定を削除", exact: true }).click();
   await page.getByRole("alertdialog").waitFor();
@@ -67,7 +67,7 @@ test("browser: calendar quick add focuses the native form and create/edit/delete
 test("browser: external detail is read-only and week/day controls read the selected range", async t => {
   const page = await open(browser, code);
   t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
-  await page.getByRole("button", { name: /Google reference/ }).click();
+  await page.getByRole("button", { name: "Google reference", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "予定を編集", exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "予定を削除", exact: true }).count(), 0);
   await page.getByRole("button", { name: "閉じる", exact: true }).click();
@@ -76,4 +76,17 @@ test("browser: external detail is read-only and week/day controls read the selec
   await page.getByRole("tab", { name: "日", exact: true }).click();
   await page.waitForFunction(() => window.calendar.calls.some(call => call.path.includes("from=2030-04-08T00%3A00%3A00.000Z") && call.path.includes("to=2030-04-09T00%3A00%3A00.000Z")));
   assert.equal(await page.evaluate(() => window.calendar.calls.filter(call => call.method !== "GET").length), 0);
+});
+
+test("browser: week summary and selected-day agenda cards share a baseline", async t => {
+  const page = await open(browser, code);
+  t.after(async () => { assert.deepEqual(errorsOf(page), []); await page.close(); });
+  const cards = page.locator('section[aria-label="カレンダー"] > section');
+  await cards.first().waitFor();
+  assert.equal(await cards.count(), 2);
+  const summary = await cards.nth(0).boundingBox();
+  const agenda = await cards.nth(1).boundingBox();
+  assert.ok(summary && agenda);
+  assert.ok(Math.abs(summary.y - agenda.y) < 1);
+  assert.ok(Math.abs(summary.height - agenda.height) < 1, "the two week cards should align at their bottoms");
 });

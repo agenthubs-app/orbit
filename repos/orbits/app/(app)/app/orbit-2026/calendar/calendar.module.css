@@ -5,6 +5,27 @@
 .note { font-size: var(--fs-caption); color: var(--ink-2); line-height: var(--lh-body); }
 .legend { margin: var(--space-12) 0; }
 .legendItem { padding: var(--space-4) var(--space-8); border-radius: var(--r-tag); font-size: var(--fs-caption); }
+.weekLayout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-8); align-items: stretch; }
+.weekCard, .agendaCard { min-width: 0; }
+.weekHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; margin-bottom: var(--space-12); }
+.weekGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-8); }
+.weekDay { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; min-height: 300px; padding: var(--space-8) var(--space-6); border-radius: var(--r-lg); background: var(--surface-2); }
+.weekDaySelected { box-shadow: inset 0 0 0 2px var(--ink); }
+.weekDayPast { opacity: .55; }
+.weekDayDate { display: flex; align-items: baseline; gap: var(--space-6); padding: var(--space-2) var(--space-4) var(--space-4); border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.weekDayDate small { color: var(--ink-3-text); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.weekDayDate b { font-family: var(--font-num); font-size: var(--fs-section); font-weight: var(--fw-heavy); }
+.weekEntry { display: block; width: 100%; padding: var(--space-6) var(--space-8); border: 0; border-radius: var(--r-sm); font-size: var(--fs-caption); text-align: left; cursor: pointer; }
+.weekEntry time, .weekEntry span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weekEntry time { font-family: var(--font-num); font-weight: var(--fw-bold); }
+.weekEntry span { font-weight: var(--fw-bold); }
+.agendaAllDay { margin-bottom: var(--space-8); }
+.agendaTimeline { position: relative; min-height: 360px; }
+.agendaHour { position: absolute; display: grid; grid-template-columns: 40px 1fr; gap: var(--space-8); width: 100%; border-top: 1px solid var(--line); }
+.agendaHour time { color: var(--ink-3-text); font-family: var(--font-num); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.agendaEntry { position: absolute; min-width: 0; padding: var(--space-2); }
+.agendaEntry .entry { height: 100%; }
+@media (max-width: 1100px) { .weekLayout { grid-template-columns: minmax(0, 1fr); } .weekGrid { overflow-x: auto; grid-template-columns: repeat(7, minmax(96px, 1fr)); } }
 .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .weekday { padding: var(--space-8); text-align: center; color: var(--ink-2); font-size: var(--fs-caption); }
 .monthDay { min-height: 132px; padding: var(--space-6); background: var(--surface); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
@@ -28,7 +49,7 @@
 .hour { position: absolute; width: 100%; height: 48px; border-top: 1px solid var(--line); }
 .hour time { display: inline-block; max-width: 56px; color: var(--ink-3-text); font-size: var(--fs-caption); font-family: var(--font-num); }
 .timeEntry { position: absolute; padding-right: var(--space-2); }
-.entry:focus-visible, .dayNumber:focus-visible, .columnDate:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.entry:focus-visible, .dayNumber:focus-visible, .columnDate:focus-visible, .weekDayDate:focus-visible, .weekEntry:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .formGrid { display: grid; gap: var(--space-12); margin-top: var(--space-12); }
 .formDates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-10); margin-top: var(--space-12); }
 .formLabel { display: grid; gap: var(--space-6); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }

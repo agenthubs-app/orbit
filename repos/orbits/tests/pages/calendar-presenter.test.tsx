@@ -23,12 +23,29 @@ test("month grid renders natural weeks and real date/mode/entry navigation witho
   await act(async () => root!.root.findAllByType("button").find(node => text(node).includes("Private schedule"))!.props.onClick());
   assert.deepEqual(actions, [1, "week", "personal:p"]);
 });
+test("week board shows seven day summaries beside the selected day's timed agenda", async t => {
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<Orbit2026Scope language="ja"><CalendarPresenter {...base} mode="week" days={days("week")} /></Orbit2026Scope>); });
+  t.after(() => act(() => root.unmount()));
+  const dates = root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"]));
+  assert.equal(dates.length, 8, "seven week summaries and one selected-day agenda");
+  assert.equal(dates.filter(node => node.props["data-calendar-date"] === base.date).length, 2);
+  assert.equal(root!.root.findAllByType("button").filter(node => text(node).includes("Private schedule")).length, 2);
+});
+test("week heading keeps the ending month when a week crosses a month boundary", async t => {
+  const date = "2026-10-30";
+  const boundaryDays = calendarDaysView({ date, mode: "week", timeZone: "UTC", language: "ja", internal: [], external: [] });
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<Orbit2026Scope language="ja"><CalendarPresenter {...base} date={date} mode="week" days={boundaryDays} /></Orbit2026Scope>); });
+  t.after(() => act(() => root.unmount()));
+  assert.ok(root!.root.findAllByType("h2").some(node => text(node).includes("10月26日–11月1日")));
+});
 test("week and day retain timed and all-day events, while external failures leave native entries visible", async t => {
   let root: ReactTestRenderer;
   const render = (mode: "week" | "day") => <Orbit2026Scope language="ja"><CalendarPresenter {...base} mode={mode} days={days(mode)} externalState="failed" connection="unavailable" partial /></Orbit2026Scope>;
   await act(async () => { root = create(render("week")); });
   t.after(() => act(() => root.unmount()));
-  assert.equal(root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"])).length, 7);
+  assert.equal(root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"])).length, 8);
   assert.ok(JSON.stringify(root!.toJSON()).includes("Private schedule"));
   assert.ok(JSON.stringify(root!.toJSON()).includes("読み取れない予定を除いて表示しています。"));
   assert.ok(root!.root.findAllByProps({ role: "alert" }).length > 0);

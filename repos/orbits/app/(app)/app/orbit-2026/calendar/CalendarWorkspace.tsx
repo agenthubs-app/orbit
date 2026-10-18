@@ -14,6 +14,7 @@ import { shiftCalendarDate, type CalendarMode } from "./calendar-range";
 import { CalendarPresenter } from "./CalendarPresenter";
 import { CalendarPersonalEditor } from "./CalendarPersonalEditor";
 import { useCalendarPage } from "./useCalendarPage";
+import { useInShell } from "../shell/slots";
 import styles from "./calendar.module.css";
 
 interface Props { actorId: string; language: OrbitLanguage; timeZone: string; today: string; initialDate?: string; initialAdd?: boolean }
@@ -22,9 +23,10 @@ export function CalendarWorkspace(props: Props) {
   return <Orbit2026Scope language={props.language}><ToastProvider><Workspace key={JSON.stringify([props.actorId, account])} {...props} /></ToastProvider></Orbit2026Scope>;
 }
 function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd = false }: Props) {
+  const inShell = useInShell();
   const { ready } = useSharedReadAccount();
   const [date, setDate] = useState(() => initialDate && calendarDate(initialDate) ? initialDate : today);
-  const [mode, setMode] = useState<CalendarMode>("month");
+  const [mode, setMode] = useState<CalendarMode>("week");
   const [localDenied, setLocalDenied] = useState(false);
   const resource = useCalendarPage(timeZone, date, mode, language);
   const toast = useToast();
@@ -58,7 +60,7 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
   const refresh = () => { setLocalDenied(false); void resource.refresh(); };
   const format = (value: string) => /^\d{4}-\d{2}-\d{2}$/u.test(value) ? value : new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { timeZone: selected?.item?.timeZone ?? timeZone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
   return <>
-    <div className={styles.status}><Button data-task-add="" label={t(taskCopy.calendarAdd)} icon="plus" variant="accent" disabled={!ready || denied} onClick={() => { closeDetail(); setEditor(null); }} /></div>
+    <div className={styles.status} style={inShell ? { display: "none" } : undefined}><Button hidden={inShell} data-task-add="" label={t(taskCopy.calendarAdd)} icon="plus" variant="accent" disabled={!ready || denied} onClick={() => { closeDetail(); setEditor(null); }} /></div>
     {denied ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={refresh} /> : <CalendarPresenter date={date} today={today} timeZone={timeZone} mode={mode} days={days} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onNavigate={direction => setDate(current => shiftCalendarDate(current, mode, direction))} onToday={() => setDate(today)} onModeChange={setMode} onDaySelect={setDate} onEntrySelect={entry => { void open(entry); }} onRetry={refresh} />}
     {ready && !denied && selected && editor === undefined ? <Modal open title={t(taskCopy.calendarDetail)} onClose={closeDetail} size={480}>
       {selected.state === "loading" ? <Skeleton lines={3} /> : selected.state === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={() => { void open(selected.entry); }} /> : <div className={styles.formGrid}><h3 className={styles.title}>{selected.item?.title ?? selected.entry.title}</h3><p className={styles.note}>{format(selected.item?.startsAt ?? selected.entry.startsAt)}{selected.item?.endsAt ?? selected.entry.endsAt ? ` – ${format((selected.item?.endsAt ?? selected.entry.endsAt)!)}` : ""}</p>{selected.item?.location ?? selected.entry.location ? <p className={styles.note}>{selected.item?.location ?? selected.entry.location}</p> : null}
