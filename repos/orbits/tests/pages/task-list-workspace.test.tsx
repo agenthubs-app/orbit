@@ -15,11 +15,14 @@ const card = (item: ReturnType<typeof task>) => ({
 });
 function fixture() {
   let tasks = [task("今日の資料"), task("山本さんへ返信", "open", "relationship"), task("済んだ用事", "completed")];
+  let failPageReads = false;
+  let failDetailReads = false;
   const calls: Array<{ path: string; method: string }> = [];
   const fetcher = async (input: string, init?: RequestInit) => {
     const path = String(input), method = init?.method ?? "GET";
     calls.push({ path, method });
     if (path.startsWith("/api/tasks/page?")) {
+      if (failPageReads) return Response.json({ success: false, error: { code: "UNAVAILABLE", message: "Read unavailable" } }, { status: 503 });
       const query = new URL(path, "https://orbit.test").searchParams;
       const status = query.get("status"), scope = query.get("scope"), search = query.get("query") ?? "";
       const matching = tasks.filter(item => item.status === status && item.title.includes(search) && (scope === "all" || (scope === "relationship") === (item.category === "relationship")));
@@ -28,6 +31,7 @@ function fixture() {
         hasMore: false, nextCursor: null, asOf: at } });
     }
     const id = decodeURIComponent(path.slice("/api/tasks/".length));
+    if (method === "GET" && failDetailReads) return Response.json({ success: false, error: { code: "UNAVAILABLE", message: "Detail unavailable" } }, { status: 503 });
     const item = tasks.find(current => current.id === id);
     if (!item) return Response.json({ success: false, error: { code: "NOT_FOUND" } }, { status: 404 });
     if (method === "DELETE") {
@@ -42,7 +46,7 @@ function fixture() {
     }
     return Response.json({ success: true, data: { task: item } });
   };
-  return { fetcher, calls };
+  return { fetcher, calls, failPageReads: () => { failPageReads = true; }, failDetailReads: () => { failDetailReads = true; } };
 }
 
 const nodeText = (node: { children: unknown[] }): string => node.children.map(child => typeof child === "string" ? child : child && typeof child === "object" && "children" in child ? nodeText(child as { children: unknown[] }) : "").join("");
@@ -136,4 +140,48 @@ test("task deletion requires confirmation and removes the row only after the ser
   await act(async () => buttons(root!, "削除する")[0]!.props.onClick());
   assert.equal(calls.filter(call => call.method === "DELETE").length, 1);
   assert.doesNotMatch(content(root!), /今日の資料/);
+});
+
+test("failed refresh after completion does not offer actions for an unverified stale task", async t => {
+  const { fetcher, calls, failPageReads } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  failPageReads();
+  await act(async () => buttons(root!, "今日の資料を完了")[0]!.props.onClick());
+  assert.match(content(root!), /タスクを読み込めませんでした/u);
+  assert.equal(buttons(root!, "今日の資料を完了").length, 0);
+  assert.equal(buttons(root!, "今日の資料の詳細").length, 0);
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 1);
+});
+
+test("failed completed-page refresh after reopening hides stale completed controls", async t => {
+  const { fetcher, calls, failPageReads } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialCompleted />); });
+  t.after(() => act(() => root.unmount()));
+  failPageReads();
+  await act(async () => buttons(root!, "済んだ用事を戻す")[0]!.props.onClick());
+  assert.match(content(root!), /タスクを読み込めませんでした/u);
+  assert.equal(buttons(root!, "済んだ用事を戻す").length, 0);
+  assert.equal(buttons(root!, "済んだ用事の詳細").length, 0);
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 1);
+});
+
+test("failed detail refresh does not keep stale detail actions beside the retry card", async t => {
+  const { fetcher, calls, failDetailReads } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "今日の資料の詳細")[0]!.props.onClick());
+  assert.equal(buttons(root!, "タスクを削除").length, 1);
+  failDetailReads();
+  await act(async () => buttons(root!, "今日の資料を完了")[0]!.props.onClick());
+  assert.match(content(root!), /タスクを読み込めませんでした/u);
+  assert.equal(buttons(root!, "タスクを削除").length, 0);
+  assert.equal(root!.root.findAllByType("h3").some(node => nodeText(node) === "今日の資料"), false);
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 1);
 });

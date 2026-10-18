@@ -57,8 +57,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const detail = useTasksResource<TaskView | null>(() => selectedId ? client.loadTask(selectedId) : Promise.resolve(null), selectedId ?? "none");
   const mutation = useTasksMutation();
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");
-  const visibleOpen = !denied ? open.data?.items ?? [] : [];
-  const visibleDone = !denied ? completed.data?.items ?? [] : [];
+  const visibleOpen = !denied && !open.error ? open.data?.items ?? [] : [];
+  const visibleDone = !denied && !completed.error ? completed.data?.items ?? [] : [];
   const setScope = (next: TaskListFilter) => { setFilter(next); setOpenCursor(null); setDoneCursor(null); setSelectedId(null); setConfirmDelete(false); };
   const search = (next: string) => { setQuery(next); setOpenCursor(null); setDoneCursor(null); setSelectedId(null); setConfirmDelete(false); };
   const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); };
@@ -90,7 +90,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <h2>{t(taskCopy.taskListDetail)}</h2>
     {selectedId && detail.loading && !detail.data ? <Skeleton lines={4} onRetry={detail.refresh} /> : null}
     {selectedId && detail.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={detail.refresh} /> : null}
-    {selectedId && !denied && detail.data ? <>
+    {selectedId && !denied && !detail.error && detail.data ? <>
       <h3 className={styles.detailTitle}>{detail.data.title}</h3>
       <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
       <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ?? detail.data.plannedDate, language, timeZone)}</dd></dl>
@@ -139,7 +139,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {mutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
       {blocked || showOpen && open.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={refresh} /> : null}
       {!blocked && showOpen && open.loading && !open.data ? <Skeleton lines={6} onRetry={refresh} /> : null}
-      {!blocked && showOpen && open.data ? <>
+      {!blocked && showOpen && !open.error && open.data ? <>
         <p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(open.data.total))}</p>
         {visibleOpen.length === 0 ? <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : openGroups.map(renderGroup)}
         {openCursor || open.data.nextCursor ? <div className={styles.pager}>{openCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setOpenCursor(null); setSelectedId(null); }} /> : null}{open.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setOpenCursor(open.data!.nextCursor); setSelectedId(null); }} /> : null}</div> : null}
@@ -148,7 +148,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         {showOpen ? <Button label={t(showCompleted ? taskCopy.taskListHideCompleted : taskCopy.taskListShowCompleted)} aria-expanded={showCompleted} onClick={() => setShowCompleted(current => !current)} variant="ghost" /> : null}
         {!blocked && showCompleted ? completed.loading && !completed.data ? <Skeleton lines={3} onRetry={completed.refresh} /> : <>
           {completed.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={completed.refresh} /> : null}
-          {completed.data ? <><p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(completed.data.total))}</p>{doneGroups.map(renderGroup)}
+          {!completed.error && completed.data ? <><p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(completed.data.total))}</p>{doneGroups.map(renderGroup)}
             {doneCursor || completed.data.nextCursor ? <div className={styles.pager}>{doneCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setDoneCursor(null); setSelectedId(null); }} /> : null}{completed.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setDoneCursor(completed.data!.nextCursor); setSelectedId(null); }} /> : null}</div> : null}</> : null}
         </> : null}
       </section>
