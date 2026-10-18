@@ -186,10 +186,14 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     if (!sessionId || chat.thinking) return;
     const controller = new AbortController();
     void fetch(`/api/ai/entity-drafts?conversationId=${encodeURIComponent(sessionId)}`, { credentials: "same-origin", signal: controller.signal })
-      .then((response) => response.ok ? response.json() as Promise<unknown> : null)
+      .then((response) => {
+        if (!response.ok) throw new Error("DRAFT_READ_FAILED");
+        return response.json() as Promise<unknown>;
+      })
       .then((body) => {
         if (controller.signal.aborted) return;
-        const raw = body && typeof body === "object" && "data" in body ? (body.data as { draft?: unknown } | null)?.draft : null;
+        if (!body || typeof body !== "object" || !("data" in body)) throw new Error("DRAFT_READ_INVALID");
+        const raw = (body.data as { draft?: unknown } | null)?.draft;
         setEntityDraft(readIOrbitEntityDraft(raw));
         setEntityDraftLoaded(true);
       }).catch(() => { if (!controller.signal.aborted) setEntityDraftError("下書きを確認できません。ページを更新してもう一度お試しください。"); });

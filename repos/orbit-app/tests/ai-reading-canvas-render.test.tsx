@@ -175,7 +175,11 @@ test("a draft deep link reopens its actor-scoped pending card in the selected se
   assert.match(html, /Follow up with Sato/u);
   assert.match(html, /确认创建Follow up with Sato/u);
   routeParams = { ...routeParams, draftId: "draft:other" };
-  assert.doesNotMatch(renderToHtml(<AiConversationScreen />), /确认创建Follow up with Sato/u);
+  const otherDraft = renderToHtml(<AiConversationScreen />);
+  assert.doesNotMatch(otherDraft, /确认创建Follow up with Sato/u);
+  assert.match(otherDraft, /この会話に確認待ちの下書きはありません/u);
+  draftResource = { kind: "failure", error: { message: "unavailable" }, status: 503, refreshing: false, refresh() {} };
+  assert.match(renderToHtml(<AiConversationScreen />), /下書きを確認できません/u);
 });
 
 test("same-kind record links are visibly distinct and unsupported links explain the boundary", () => {

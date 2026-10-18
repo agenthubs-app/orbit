@@ -341,8 +341,17 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     ? readAiEntityDraft((draftRead.data as { draft?: unknown } | null)?.draft)
     : null;
   const focusedDraftId = optionalParam(draftId).trim();
-  const currentDraft = entityDraftOverride ?? pendingDraft ?? thread?.entityDraft ?? null;
+  const currentDraft = focusedDraftId
+    ? entityDraftOverride ?? pendingDraft
+    : entityDraftOverride ?? pendingDraft ?? thread?.entityDraft ?? null;
   const visibleDraft = focusedDraftId && currentDraft?.draftId !== focusedDraftId ? null : currentDraft;
+  const draftLinkNotice = focusedDraftId && !visibleDraft
+    ? draftRead.kind === "failure" || draftRead.kind === "offline"
+      ? "下書きを確認できません。もう一度お試しください。"
+      : draftRead.kind === "success" || draftRead.kind === "empty"
+        ? "この会話に確認待ちの下書きはありません。"
+        : null
+    : null;
 
   function changeDraft(value: string) {
     if (!owns()) return;
@@ -749,6 +758,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       entityDraftEdits={entityDraftEdits}
       entityDraftOverride={visibleDraft}
       focusDraftId={focusedDraftId}
+      draftLinkNotice={draftLinkNotice}
       onEditEntityDraftField={(field, value) => setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
       onResolveEntityDraft={resolveEntityDraft}
       thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
@@ -795,6 +805,7 @@ function ConversationThread({
   entityDraftEdits,
   entityDraftOverride,
   focusDraftId,
+  draftLinkNotice,
   onEditEntityDraftField,
   onResolveEntityDraft,
   thread
@@ -839,6 +850,7 @@ function ConversationThread({
   entityDraftEdits: Record<string, string>;
   entityDraftOverride: AiEntityDraft | null;
   focusDraftId: string;
+  draftLinkNotice: string | null;
   onEditEntityDraftField: (field: string, value: string) => void;
   onResolveEntityDraft: (action: "confirm" | "cancel") => void;
   thread: ConversationThreadView;
@@ -887,7 +899,7 @@ function ConversationThread({
   // The override is what the user has been acting on; the thread value is what
   // the latest reply carried. A settled card stays visible so the transcript
   // still reads as a sequence of decisions.
-  const draft = entityDraftOverride ?? thread.entityDraft ?? null;
+  const draft = focusDraftId ? entityDraftOverride : entityDraftOverride ?? thread.entityDraft ?? null;
   const draftCardView = draft
     ? aiEntityDraftCardView(
         Object.keys(entityDraftEdits).length > 0
@@ -958,6 +970,7 @@ function ConversationThread({
         {thread.contactArtifactNotice && onRetryCards ? <UiButton label={locale.t("aiConversation.retryCards")} onPress={onRetryCards} variant="secondary" /> : null}
         {thread.taskInteraction ? <TaskInteractionCard busy={taskInteractionBusy} interaction={thread.taskInteraction} onResolve={onResolveTaskSuggestion} onOpenHref={onOpenHref} resolution={taskInteractionResolution} /> : null}
         {draftCardView ? <AiEntityDraftCard busy={entityDraftBusy} onCancel={() => onResolveEntityDraft("cancel")} onConfirm={() => onResolveEntityDraft("confirm")} onEditField={onEditEntityDraftField} onOpenRecord={onOpenHref} view={draftCardView} /> : null}
+        {draftLinkNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{draftLinkNotice}</UiText> : null}
         {thread.proposedToolIntents.length ? <UiCard variant="flat"><View style={styles.r21Stack}><UiText style={styles.r21Section}>{locale.t("aiConversation.suggestedActions")}</UiText>{thread.proposedToolIntents.map((intent) => <View key={intent.id}><UiText style={styles.r21Section}>{intent.label}</UiText><UiText style={styles.r21Muted}>{intent.reason}</UiText></View>)}</View></UiCard> : null}
         {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
         {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
