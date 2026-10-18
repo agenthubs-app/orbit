@@ -89,6 +89,30 @@ test("dark content drawers have no hairline border", async (t) => {
   assert.equal(await drawer.evaluate((el) => getComputedStyle(el).borderTopWidth), "0px");
 });
 
+test("subtitleBelowHead keeps a subtitle four pixels below the modal title row", async (t) => {
+  const subtitleCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { Modal, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    createRoot(document.getElementById("root")).render(<Orbit2026Scope language="ja">
+      <Modal open onClose={() => undefined} title="参加コード" subtitle="8 桁のコード" subtitleBelowHead size={380}>
+        <div data-code-boxes style={{marginTop:14}}>ABCD-EFGH</div>
+      </Modal>
+    </Orbit2026Scope>);
+  `);
+  const page = await open(browser, subtitleCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  const dialog = page.getByRole("dialog");
+  const geometry = await dialog.evaluate((el) => {
+    const subtitle = [...el.querySelectorAll("p")].find((p) => p.textContent === "8 桁のコード")!;
+    const head = el.querySelector('button[aria-label="閉じる"]')!.parentElement!;
+    const boxes = el.querySelector("[data-code-boxes]")!;
+    return { headBottom: head.getBoundingClientRect().bottom, subtitleTop: subtitle.getBoundingClientRect().top, subtitleBottom: subtitle.getBoundingClientRect().bottom, boxesTop: boxes.getBoundingClientRect().top };
+  });
+  assert.equal(Math.round(geometry.subtitleTop - geometry.headBottom), 4);
+  assert.equal(Math.round(geometry.boxesTop - geometry.subtitleBottom), 14);
+});
+
 test("a destructive confirm ignores the scrim; a plain modal closes on it", async (t) => {
   const page = await showcase(t);
   await page.getByRole("button", { name: "confirm (destructive)" }).click();

@@ -58,7 +58,7 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
 // `description` as well the head is the confirm layout (gap 14, top-aligned, the description under the title).
 // `subtitle` is the grey line right under the title. `closable={false}` drops the ✕: the dialog then needs a
 // cancel action — Esc still closes it and focus still returns to the opener.
-export function Modal({ open, onClose, title, header, description, subtitle, icon, titleSize = 17, closable = true, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, closeOnScrim, role, children }: {
+export function Modal({ open, onClose, title, header, description, subtitle, subtitleBelowHead = false, icon, titleSize = 17, closable = true, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, closeOnScrim, role, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -67,6 +67,8 @@ export function Modal({ open, onClose, title, header, description, subtitle, ico
   description?: string;
   /** R31b: grey line under the title (kit .lbl), inside the head. */
   subtitle?: string;
+  /** The code-entry board places its subtitle after the complete title row. */
+  subtitleBelowHead?: boolean;
   /** R31b: tile left of the title (MacTile / ModalIcon). */
   icon?: ReactNode;
   titleSize?: 17 | 18;
@@ -102,13 +104,14 @@ export function Modal({ open, onClose, title, header, description, subtitle, ico
             {icon ? <span className={styles.modalIcon} aria-hidden>{icon}</span> : null}
             <div className={styles.modalTitleBlock}>
               {titleEl}
-              {subtitle ? <p className={styles.modalSubtitle}>{subtitle}</p> : null}
+              {subtitle && !subtitleBelowHead ? <p className={styles.modalSubtitle}>{subtitle}</p> : null}
               {confirmLayout ? descEl : null}
             </div>
           </div>
           {closable ? <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={16} /></button> : null}
         </div>
       )}
+      {subtitle && subtitleBelowHead && !header ? <p className={`${styles.modalSubtitle} ${styles.modalSubtitleBelowHead}`}>{subtitle}</p> : null}
       {confirmLayout && !header ? null : descEl}
       {children}
       {actions || hint ? <div className={styles.actions}>{hint ? <span className={styles.hint}>{hint}</span> : null}{actions}</div> : null}

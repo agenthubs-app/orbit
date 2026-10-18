@@ -471,10 +471,8 @@ function ParticipationCodeModal({ open, onClose, t, onCode }: { open: boolean; o
   const std = useStandardCopy();
   // b12 #320 W-R26-31：8 格（32×44）居中 · 「Esc 閉じる」· キャンセル / 開く。
   return (
-    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} size={380} hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
+    <Modal open={open} onClose={onClose} title={t("codeDialogTitle")} subtitle={t("codeDialogSub")} subtitleBelowHead size={380} hint={<><Kbd>Esc</Kbd> {std.action.close}</>}
       actions={<><button type="button" className={`btn ${styles.btn}`} onClick={onClose}>{std.action.cancel}</button><button type="button" className={`btn ${styles.btn} ${styles.primary}`} disabled={!valid} onClick={() => onCode(code)}>{t("codeNext")}</button></>}>
-      {/* b12 #320：副标题在标题行（17 + ✕ 34）之下 4px（kit .lbl），不在标题块里。 */}
-      <div className={styles.lbl} style={{ marginTop: 4 }}>{t("codeDialogSub")}</div>
       <div className={styles.codeBoxes} data-events-code-input="">
         {Array.from({ length: 9 }, (_, index) => (index === 4
           ? <span key="dash" className={styles.codeDash}>-</span>

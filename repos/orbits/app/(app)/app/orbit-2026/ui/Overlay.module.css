@@ -50,6 +50,7 @@
 .modalTitleLg { font-size: var(--fs-title-xs); }
 /* kit .lbl */
 .modalSubtitle { font-size: var(--fs-label); color: var(--ink-3-text); font-weight: var(--fw-medium); }
+.modalSubtitleBelowHead { margin: 4px 0 0; }
 /* kit .sub, margin-top 6, line-height 1.65 (confirm layout) */
 .modalSub { font-size: var(--fs-control); color: var(--ink-2); line-height: 1.65; margin-top: 6px; }
 .modalText { font-size: var(--fs-body-sm); color: var(--ink-2); line-height: 1.6; margin-top: 6px; }
