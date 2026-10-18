@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { AiSessionSummaryItemContract, AiSessionSummaryPageContract } from "../../../shared/contract/ai-session-page";
 import type { AiSessionOrganizationContract } from "../../../shared/contract/ai-sessions";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
-import { aiSessionSummaryPageSchema } from "../../../shared/api-schema/ai-session-page";
+import { aiSessionSummaryPageWriteSchema } from "../../../shared/api-schema/ai-session-page";
 
 export interface OrbitAgentChatSessionSummaryQuery {
   cursor?: string | null;
@@ -161,7 +161,7 @@ export function pageOrbitAgentChatSessionSummaryCandidates(input: {
     nextCursor: hasMore && last ? codec.seal({ pinned: last.organization.pinned, createdAt: last.createdAt, id: last.id }) : null,
     storage: { configured: true, persisted: true },
   };
-  return aiSessionSummaryPageSchema.parse(result) as AiSessionSummaryPageContract;
+  return aiSessionSummaryPageWriteSchema.parse(result) as AiSessionSummaryPageContract;
 }
 
 const SUMMARY_SQL = `with owned_sessions as materialized (
@@ -261,7 +261,7 @@ export function createOrbitAgentChatSessionSummaryPageReader(input: {
       });
       const hasMore = rows.rows.length > query.limit;
       const last = items.at(-1);
-      return aiSessionSummaryPageSchema.parse({
+      return aiSessionSummaryPageWriteSchema.parse({
         items,
         hasMore,
         nextCursor: hasMore && last ? codec.seal({ pinned: last.organization.pinned, createdAt: last.createdAt, id: last.id }) : null,

@@ -20,19 +20,41 @@ export const aiSessionSummaryItemSchema = z.object({
     groupId: key.nullable(),
     pinned: z.boolean(),
     revision: z.number().int().nonnegative().safe(),
-  }).strict(),
-}).strict();
+  }),
+});
+
+const summaryItems = z.array(z.unknown()).max(50).transform((items) => {
+  const seen = new Set<string>();
+  return items.flatMap((item) => {
+    const parsed = aiSessionSummaryItemSchema.safeParse(item);
+    if (!parsed.success || seen.has(parsed.data.id)) return [];
+    seen.add(parsed.data.id);
+    return [parsed.data];
+  });
+});
 
 export const aiSessionSummaryPageSchema = z.object({
-  items: z.array(aiSessionSummaryItemSchema).max(50),
+  items: summaryItems,
   nextCursor: z.string().min(1).max(8000).nullable(),
   hasMore: z.boolean(),
   storage: z.object({
     configured: z.boolean(),
     persisted: z.boolean(),
     source: z.string().optional(),
-  }).strict(),
-}).strict().superRefine((page, context) => {
+  }),
+}).superRefine((page, context) => {
+  if (page.hasMore !== (page.nextCursor !== null)) {
+    context.addIssue({ code: "custom", message: "Inconsistent AI session summary page" });
+  }
+});
+
+/** Server writes must validate every generated item; only clients skip bad response rows. */
+export const aiSessionSummaryPageWriteSchema = z.object({
+  items: z.array(aiSessionSummaryItemSchema).max(50),
+  nextCursor: z.string().min(1).max(8000).nullable(),
+  hasMore: z.boolean(),
+  storage: z.object({ configured: z.boolean(), persisted: z.boolean(), source: z.string().optional() }),
+}).superRefine((page, context) => {
   if (page.hasMore !== (page.nextCursor !== null) || new Set(page.items.map((item) => item.id)).size !== page.items.length) {
     context.addIssue({ code: "custom", message: "Inconsistent AI session summary page" });
   }

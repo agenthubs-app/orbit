@@ -48,6 +48,18 @@ export const aiSessionSummaryPageSchema = z.object({
   }
 });
 
+/** Server writes must validate every generated item; only clients skip bad response rows. */
+export const aiSessionSummaryPageWriteSchema = z.object({
+  items: z.array(aiSessionSummaryItemSchema).max(50),
+  nextCursor: z.string().min(1).max(8000).nullable(),
+  hasMore: z.boolean(),
+  storage: z.object({ configured: z.boolean(), persisted: z.boolean(), source: z.string().optional() }),
+}).superRefine((page, context) => {
+  if (page.hasMore !== (page.nextCursor !== null) || new Set(page.items.map((item) => item.id)).size !== page.items.length) {
+    context.addIssue({ code: "custom", message: "Inconsistent AI session summary page" });
+  }
+});
+
 export const AI_SESSION_MESSAGE_PAGE_DEFAULT_LIMIT = 20;
 export const AI_SESSION_MESSAGE_PAGE_MAX_LIMIT = 50;
 

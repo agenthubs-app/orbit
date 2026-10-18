@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { aiSessionSummaryPageSchema } from "../src/api/schema/ai-session-page";
+import { aiSessionSummaryPageSchema, aiSessionSummaryPageWriteSchema } from "../src/api/schema/ai-session-page";
 
 const at = "2026-10-18T09:00:00.000Z";
 const item = {
@@ -28,4 +28,6 @@ test("AI session responses still reject broken page metadata and oversized raw p
     storage: { configured: true, persisted: true } };
   assert.equal(aiSessionSummaryPageSchema.safeParse(page).success, false);
   assert.equal(aiSessionSummaryPageSchema.safeParse({ ...page, hasMore: false, items: Array(51).fill(null) }).success, false);
+  assert.equal(aiSessionSummaryPageWriteSchema.safeParse({ ...page, hasMore: false, items: [null] }).success, false,
+    "server writes must not silently drop malformed rows");
 });
