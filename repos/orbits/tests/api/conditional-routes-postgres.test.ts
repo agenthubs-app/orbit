@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
+import { runPlanMigrations } from "../../features/plans/migrations";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 
 // End-to-end through the real configured wiring: env points every configured
@@ -46,6 +47,7 @@ test("six GET routes answer 304 with one watermark row when nothing changed, and
   const pool = new Pool({ connectionString: scoped.toString(), max: 1 });
   t.after(() => pool.end());
   await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+  await runPlanMigrations(pool);
   const INSERT = `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
     values ($1,$2,$3,$4,'manual','cond',$5::jsonb,$6,$6)`;
   const seedContact = async (owner: string, id: string, at: string) => {

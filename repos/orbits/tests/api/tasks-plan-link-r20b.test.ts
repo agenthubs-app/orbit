@@ -20,7 +20,9 @@ function handlers() {
   });
   const dependencies = { service, resolveActor: async () => ({ id: actorId, workspaceId }),
     now: () => "2026-10-18T08:00:00.000Z",
-    conditionalRead: { workspaceId, client: { query: async () => ({ rows: [{ max_updated_at: "2026-10-18T08:00:00.000Z", count: "2" }] }) } as any } };
+    conditionalRead: { workspaceId, client: { query: async () => ({ rows: [{ max_updated_at: "2026-10-18T08:00:00.000Z", count: "2",
+      task_updated_at: "2026-10-18T08:00:00.000Z", task_count: "2",
+      active_plan_id: active ? planLink.planId : null, type_digest: active ? planLink.typeItemId : "" }] }) } as any } };
   return { collection: createTaskCollectionHandlers(dependencies), detail: createTaskDetailHandlers(dependencies), setActive: (value: boolean) => { active = value; } };
 }
 
@@ -58,7 +60,7 @@ test("task HTTP writes a validated planLink, reads it, and accepts PATCH null to
   assert.equal(((await updated.json()) as any).data.task.planLink, undefined);
 });
 
-test.skip("general task list rechecks plan validity even when its task watermark is unchanged (plan-aware ETag pending)", async () => {
+test("general task list rechecks plan validity even when its task watermark is unchanged", async () => {
   const { collection, setActive } = handlers();
   const created = await collection.POST(post({ title: "会う準備", category: "relationship",
     idempotencyKey: "task-plan:general-list", planLink }));

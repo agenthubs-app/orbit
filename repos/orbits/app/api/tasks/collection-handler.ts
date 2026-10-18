@@ -1,4 +1,4 @@
-import { conditionalJsonRead, defaultConditionalReadDependencies } from "../_shared/conditional-read";
+import { defaultConditionalReadDependencies } from "../_shared/conditional-read";
 import {
   TASK_CATEGORIES,
   TASK_STATUSES,
@@ -20,6 +20,7 @@ import {
 } from "./route-support";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
 import { AppError } from "../../../shared/errors/app-error";
+import { conditionalTaskListRead } from "./plan-aware-conditional-read";
 
 const createKeys = [
   "category",
@@ -126,7 +127,7 @@ export function createTaskCollectionHandlers(
         };
         // Plan validity lives outside the task-record watermark. Filtered type reads must recheck it.
         if (rawPlanId !== null) return await read();
-        return await conditionalJsonRead(
+        return await conditionalTaskListRead(
           { routeKey: "tasks.list", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: ["tasks"], userScoped: true },
           dependencies?.conditionalRead ?? defaultConditionalReadDependencies(),
           read,
