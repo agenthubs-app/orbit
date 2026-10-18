@@ -752,3 +752,7 @@ source/copy/inventory **40/40 pass**、sign-out lifecycle（既存 React Native 
 同じ `75af0fcb6` source の App 全量 `_evidence-d/R20a/run-01/d-app-full-task-detail-read-locale.log` は **3,256 total / 3,227 pass / 26 fail / 1 cancelled / 2 skip、exit1**。今回の日本語読取失敗用例は全量でも pass。直前の12 failure 名との照合では11件が残り、旧 invite-history click timeout 一件は再現せず、新たに17件（カレンダー、通知、inbox、タスク一覧・詳細など）が出た。新たな失敗は browser timeout が中心で、`page.goto` や可視 button の `locator.click` も時間切れになった。全量中は test child が同時に複数走り、CPU を使用していたことを確認したが、負荷だけで新しい17 failure と1 cancelled の原因を確定していない。タスク詳細・日付・関連タスク一覧の三 file を共有 heavy queue へ定向再実行登録し、局所再現性を調べる。全量 gate は赤、SC-13 全体、native / pixel は OPEN のまま。
 
 その三 file の定向再実行 `_evidence-d/R20a/run-01/d-app-task-domain-post-full-timeouts.log` は **67/67 pass / 0 fail / 0 cancelled、exit0**。全量で timeout になった関連タスク一覧の遷移、タスク削除、日付 edit / save、完了 retry は定向では再現しなかった。これは当該三 file の現行 source を狭く確認した証拠であり、残る別領域の新 failure、全量の赤、native / pixel gate を解消した証拠ではない。全量時の資源競合は候補原因のまま、根因確定として扱わない。
+
+## 2026-10-19　Web タスク一覧の画面門禁入口（SC-15 準備）
+
+R20a visual suite の W-R20-07／08／09／09d は b3 のタスク一覧（空・少・多・深色）を指定していたが、実装 URL は四件とも `/app/tasks?tab=todo` で To-do 概要に着地した。現 `AppTasksPage` は `view=all` でのみ `TaskListWorkspace` を表示する。suite 読込を通した入口回帰を先に **RED 6/7**（07 の `view=null`）とし、四件だけを `?tab=todo&view=all` に揃えた後 **GREEN 7/7**。W-R20-02 の概要入口は変更していない。これは画板と実画面の種類を一致させる前提修正であり、空／少／多の同一データ fixture、操作状態、実スクリーンショット、style/pixel 帯の合格証拠ではない。SC-15 と Web 全量 gate は OPEN。

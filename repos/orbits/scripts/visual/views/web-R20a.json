@@ -82,7 +82,7 @@
     },
     {
       "id": "W-R20-07",
-      "app": "/app/tasks?tab=todo",
+      "app": "/app/tasks?tab=todo&view=all",
       "design": "b3-daily-actions.html",
       "board-index": 14,
       "width": 1440,
@@ -93,7 +93,7 @@
     },
     {
       "id": "W-R20-08",
-      "app": "/app/tasks?tab=todo",
+      "app": "/app/tasks?tab=todo&view=all",
       "design": "b3-daily-actions.html",
       "board-index": 15,
       "width": 1440,
@@ -104,7 +104,7 @@
     },
     {
       "id": "W-R20-09",
-      "app": "/app/tasks?tab=todo",
+      "app": "/app/tasks?tab=todo&view=all",
       "design": "b3-daily-actions.html",
       "board-index": 16,
       "width": 1440,
@@ -159,7 +159,7 @@
     },
     {
       "id": "W-R20-09d",
-      "app": "/app/tasks?tab=todo",
+      "app": "/app/tasks?tab=todo&view=all",
       "design": "b3-daily-actions.html",
       "board-index": 51,
       "width": 1440,

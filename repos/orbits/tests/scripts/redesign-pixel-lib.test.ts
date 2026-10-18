@@ -29,6 +29,21 @@ test("a suite expands every view per theme into the attribution keys", () => {
   assert.equal(runs[0].grid, 100, "defaults apply");
 });
 
+test("R20a task-list boards capture the list rather than the To-do overview", () => {
+  const runs = loadSuite(join(process.cwd(), "scripts/visual/views/web-R20a.json"));
+  for (const id of ["W-R20-07", "W-R20-08", "W-R20-09", "W-R20-09d"]) {
+    const view = runs.find((run: { id: string }) => run.id === id);
+    assert.ok(view, `${id} is registered`);
+    const route = new URL(view.app, "http://localhost:3500");
+    assert.equal(route.pathname, "/app/tasks", id);
+    assert.equal(route.searchParams.get("tab"), "todo", id);
+    assert.equal(route.searchParams.get("view"), "all", `${id} must open TaskListWorkspace`);
+  }
+  const overview = runs.find((run: { id: string }) => run.id === "W-R20-02");
+  assert.ok(overview);
+  assert.equal(new URL(overview.app, "http://localhost:3500").searchParams.has("view"), false);
+});
+
 test("--only matches an id across widths and themes, or one width", () => {
   const runs = loadSuite(suiteFile());
   assert.equal(selectOnly(runs, "W-R07-01L").length, 4);
