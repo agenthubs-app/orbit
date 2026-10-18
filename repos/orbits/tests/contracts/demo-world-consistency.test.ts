@@ -104,7 +104,7 @@ test("the people the fixtures name all exist, each with one name and one company
 const UNMARKED = new Set([
   "DEMO_ACTOR_ID", "demoHomeLayout", "demoContactSummaryExtras", "filterDemoContacts", "demoInviteRedeem", "demoDeliveryPreferences",
   "demoDismissResult", "demoAccountExport", "demoDeletionRequest", "demoAppVersion", "demoFixturePeopleRefs",
-  "DEMO_TODAY", "DEMO_TIME_ZONE", "demoPerson", "demoEvent", "DEMO_PLAN_NOW", "demoPlanAwards",
+  "DEMO_TODAY", "DEMO_TIME_ZONE", "demoPerson", "demoEvent", "DEMO_PLAN_NOW", "demoPlanAwards", "demoSecretaryPreview",
 ]);
 
 function records(value: unknown): Record<string, unknown>[] {

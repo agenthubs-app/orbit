@@ -17,6 +17,8 @@ import type { EventRecommendationDismissResult } from "../../contract/event-reco
 import type { HomeLayoutContract } from "../../contract/home-layout";
 import type { InboxDeliveryPreferencesDTO } from "../../contract/notification-delivery-policy";
 import type { InboxNotificationDTO } from "../../contract/inbox-notifications";
+import type { SecretaryPreviewDTO } from "../../contract/secretary-preview";
+import { buildSecretaryPreview } from "../../compute/secretary-source";
 import type { InviteCodeContract, InviteCodeHistoryItem, InviteCodePreview, InviteCodeRedeemResult, InviteConnectionView, InviteSharedFieldKey, InviteSharedFields } from "../../contract/invite-codes";
 import type { PlanPremiseRow, PlanV2Content, PlanV2Detail, PlanV2SummaryResponse } from "../../contract/plan-v2";
 import { nextAward, PLAN_EVENT_SEGMENT_KEY, skipAwardPoints, summarizePlanScore, type PlanScoreAward } from "../../compute/plan-score";
@@ -239,25 +241,24 @@ export const demoNotes = DEMO_NOTES.map((note, index) => ({
   sample: true,
 }) satisfies NoteContract);
 
-// 6 inbox — the four secretary sources.
+// 6 inbox — the three enabled event sources; D-16 mail summary stays hidden.
 const event = demoEvent("demo-event-saas-summit");
 const secretary = [
   { sourceKind: "event_deadline", title: `${event.title} の申込締切は明日です`, reason: "目標に合うイベントの締切が近づいています", target: { kind: "event", id: event.id, href: `/app/events/${event.id}` } },
   { sourceKind: "event_prep", title: `${demoEvent("demo-event-cfo-night").title} の準備`, reason: `${demoPerson("demo-person-kobayashi").name}さんと${demoPerson("demo-person-yamamoto").name}さんが参加します`, target: { kind: "event", id: "demo-event-cfo-night", href: "/app/events/demo-event-cfo-night" } },
-  { sourceKind: "event_pick", title: `今週のおすすめ：${demoEvent("demo-event-robotics-meetup").title}`, reason: "プランの「先に起業した人」に会えます", target: { kind: "event", id: "demo-event-robotics-meetup", href: "/app/events/demo-event-robotics-meetup" } },
-  { sourceKind: "mail_summary", title: `${demoPerson("demo-person-takahashi").name}さんから返信がありました`, reason: "資料の件への返信です", target: { kind: "conversation", id: "demo-conversation-takahashi", href: null } },
+  { sourceKind: "event_pick", title: `${demoEvent("demo-event-robotics-meetup").title} の参加者が更新されました`, reason: "参加者の変更により、評価スコアを再計算しました", target: { kind: "event", id: "demo-event-robotics-meetup", href: "/app/events/demo-event-robotics-meetup" } },
 ] as const;
 
-export const demoSecretaryNotifications: InboxNotificationDTO[] = secretary.map((item, index) => ({
+export const demoSecretaryNotifications: InboxNotificationDTO[] = secretary.map((item) => ({
   id: `demo-notification-${item.sourceKind}`,
   actorId: DEMO_ACTOR_ID,
   revision: 1,
-  kind: item.sourceKind === "event_pick" ? "suggestion" : item.sourceKind === "event_deadline" ? "reminder" : "update",
+  kind: item.sourceKind === "event_pick" ? "suggestion" : "reminder",
   origin: "automation",
   semanticKey: `demo:${item.sourceKind}`,
   title: item.title,
   reason: item.reason,
-  sources: [{ sourceKind: item.sourceKind, sourceId: `demo-source-${index}`, sourceRevision: "1", occurredAt: at("07:00:00"), readAt: at("07:00:00") }],
+  sources: [{ sourceKind: item.sourceKind, sourceId: item.target.id, objectId: item.target.id, sourceRevision: "1", occurredAt: at("07:00:00"), readAt: at("07:00:00") }],
   target: { ...item.target, status: "available" },
   actions: ["read", "dismiss"],
   occurredAt: at("07:00:00"),
@@ -266,6 +267,13 @@ export const demoSecretaryNotifications: InboxNotificationDTO[] = secretary.map(
   disposition: "open",
   sample: true,
 }));
+
+/** Read-only fixture; the signed-in mock actor owns every returned card. */
+export function demoSecretaryPreview(actorId: string): SecretaryPreviewDTO {
+  return buildSecretaryPreview(actorId, demoSecretaryNotifications.map(notification => ({
+    notification: { ...notification, actorId }, sourceState: "available" as const,
+  })), at("08:00:00"));
+}
 
 // 7 delivery preferences with the new optional fields.
 export const demoDeliveryPreferences: InboxDeliveryPreferencesDTO = {

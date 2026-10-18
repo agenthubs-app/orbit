@@ -13374,6 +13374,9 @@
         "SavedPortrait",
         "ScheduleItemContract",
         "SearchHighlight",
+        "SecretaryCardKind",
+        "SecretaryPreviewDTO",
+        "SecretaryPreviewItemDTO",
         "SeniorityLevelCode",
         "SourceReferenceContract",
         "SourceTypeCode",
@@ -21716,6 +21719,65 @@
           "type": "'active' | 'revoked' | 'invalid'"
         },
         "lastVerifiedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "secretary-preview.ts::SecretaryCardKind": {
+      "kind": "enum",
+      "values": [
+        "'daily_recommendation'",
+        "'event_deadline'",
+        "'event_pick'",
+        "'event_prep'"
+      ]
+    },
+    "secretary-preview.ts::SecretaryPreviewItemDTO": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "SecretaryCardKind"
+        },
+        "notification": {
+          "optional": false,
+          "kind": "text",
+          "type": "InboxNotificationDTO"
+        }
+      }
+    },
+    "secretary-preview.ts::SecretaryPreviewDTO": {
+      "kind": "object",
+      "members": {
+        "actorId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "items": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly SecretaryPreviewItemDTO[]"
+        },
+        "hasMore": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "asOf": {
           "optional": false,
           "kind": "text",
           "type": "string"

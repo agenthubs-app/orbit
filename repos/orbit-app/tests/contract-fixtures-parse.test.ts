@@ -9,6 +9,7 @@ import { eventAssessmentSchema } from "../src/api/schema/event-assessment";
 import { eventRecommendationDismissResultSchema } from "../src/api/schema/event-recommendation-feedback";
 import { homeLayoutSchema } from "../src/api/schema/home-layout";
 import { inboxNotificationSchema } from "../src/api/schema/inbox-notifications";
+import { parseSecretaryPreviewForActor } from "../src/api/schema/secretary-preview";
 import { inviteCodeHistoryResponseSchema, inviteCodePreviewSchema, inviteCodeRedeemResultSchema, inviteCodeSchema, inviteConnectionViewSchema } from "../src/api/schema/invite-codes";
 import { contactListItemSchema } from "../src/api/schema/mobile-contacts-dashboard";
 import { inboxDeliveryPreferencesSchema } from "../src/api/schema/notification-delivery-policy";
@@ -38,6 +39,9 @@ test("the App's synced schemas parse every redesign fixture", () => {
   }
   assert.equal(inviteConnectionViewSchema.parse(fixtures.demoInviteConnection).contactId, fixtures.demoInviteConnection.contactId);
   for (const item of fixtures.demoSecretaryNotifications) inboxNotificationSchema.parse(item);
+  const secretaryPreview = parseSecretaryPreviewForActor(fixtures.demoSecretaryPreview('app-demo-actor'), 'app-demo-actor');
+  assert.equal(secretaryPreview.items.length, 3);
+  assert.throws(() => parseSecretaryPreviewForActor(fixtures.demoSecretaryPreview('another-actor'), 'app-demo-actor'));
   inboxDeliveryPreferencesSchema.parse(fixtures.demoDeliveryPreferences);
   eventAssessmentSchema.parse(fixtures.demoEventAssessment);
   eventRecommendationDismissResultSchema.parse(fixtures.demoDismissResult);
