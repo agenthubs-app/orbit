@@ -4,6 +4,8 @@
 
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
 
+19:54 追加の Task paging テスト安定化：C 線 full の `suggestion next page replaces twenty previews and rejects a foreign actor response` が `reads=['first','first','signed-next']` で落ち、同じ C source の単独では 1/1 pass した。D 所有の同テストは、初回 host の読取が完了する前に route override を登録して host を変え、後の読取回数を厳密に二回とする timing race があった。初回の「エラー表示」を待つ案は実画面が初回ゼロ件だったため **0/1 fail** (`d-task-suggestion-pagination-race-green.log`)、一時的な画面診断後にその案と診断出力を除去した。最終は初回の `待确认建议 0` 見出しを待ってから計数する二行だけを残す。定向 **1/1** (`d-task-suggestion-pagination-race-green2.log`)、同 file **22/22** (`d-task-unification-interactions-race-fix.log`)、App typecheck **exit0** (`d-app-tsc-task-race-fix.log`)。fresh App full は **3,342 tests / 3,329 pass / 11 fail / 0 cancelled / 2 skip、exit1** (`d-app-full-task-race-fix.log`)、同 paging ケースは full 内でも pass、直前の R20b 修正後 full と failure-name 差は空。11 件はそのまま残る。これは C 線へ未統合で、C の過去 full failure を遡って消さない。
+
 - 開始 HEAD：`1524d3667`。主会話のナビゲーション修正 `56da437ef` は別作業。
 - PLANNER SHA256：`091e9e2ca8249a8e39aa7e87e0c7be3b1175b9a86c664c7939cb9eae5b6bc159`。
 - pristine 基線（主会話実行）：Web **7,475 tests / 31 fail / 1,015 skip**、App **3,324 tests / 4 fail / 2 skip**。ログは `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/orbit-cd-baseline.fk6V4SASy3/{d-orbits.log,d-app.log}`。SC-02 / OAuth 実装中は App 基線待ちのため App を変更せず、完了通知後に SC-11a の App 実装を開始した。

@@ -384,6 +384,8 @@ test("unavailable suggestion pages do not invent a zero or fall back to full tas
 test("suggestion next page replaces twenty previews and rejects a foreign actor response", async t => {
   const page = await open(t, { params: { scope: "relationship" } });
   await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
+  // Finish the initial default-host read before counting requests after the host change.
+  await page.getByRole("heading", { name: "待确认建议 0", exact: true }).waitFor();
   let wrongActor=false;
   const reads:string[]=[];
   await page.route("**/api/task-suggestions/page?*", async route => {
