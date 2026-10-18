@@ -12,6 +12,8 @@
 
 同じ D の現行ソースで R24 の本機 PostgreSQL `S1: memo proposal → pending → accept (scores)` を単独再実行し **1/1 pass**、隔離 schema 残留 **0**。下流の提議・確認後計分が動く証拠であり、新筆記の保存後 hook からそこまで通した E2E 証拠ではない。SC-10 は OPEN のまま。
 
+新筆記の HTTP / service 定向二ファイルも **25/25 pass**。保存済みの面談・単一 contact だけを C11 に引き渡すこと、同じ保存の重放で重複起動しないこと、後処理失敗でも筆記を戻さないことを含む。これは上の PostgreSQL 補掃と R24 計分をつなぐ**各境界の回帰**であり、構成済み quota/provider を含む一つの本機 E2E、確認カードの端末読回、UI はなお未実行。
+
 ## 20:30 統合チェックポイント
 
 `line-d` の clean `5e0419cdc` を `origin/redesign 324218dda` へ rebase し、HEAD は `c06741285` になった。157 commits の replay で止まったのは `add-contact-screens.test.tsx` の dialog entrance wait 一箇所だけ。上流 `936a7289d` が同じ待機を実装済みなので、その実装を残し、D 側の重複を入れなかった。rebase は exit0、直後の `git diff --check` は exit0。R20a / R20b の product source をこの衝突解消で変更していない。
