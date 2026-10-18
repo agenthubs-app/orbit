@@ -42,7 +42,7 @@
     "src/screens/notes/note-source-tasks-source.web.ts": 2,
     "src/screens/notes/notes-source-mirror.ts": 7,
     "src/screens/notes/notes-source.web.ts": 3,
-    "src/screens/profile/AccountAuthScreen.tsx": 3,
+    "src/screens/profile/AccountAuthScreen.tsx": 1,
     "src/screens/profile/AccountScreen.tsx": 10,
     "src/screens/settings/NotificationDeliverySettings.tsx": 26,
     "src/screens/tasks/PendingTaskSuggestions.tsx": 2,
