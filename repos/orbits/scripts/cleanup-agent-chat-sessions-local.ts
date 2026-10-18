@@ -1,5 +1,7 @@
 /** R21 local-only retention task. Production scheduling requires a separate authorization. */
 import { createStorageOrbitAgentChatSessionProvider } from "../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { expireOrbitAgentChatSessions } from "../features/orbit-ai/storage/orbit-agent-chat-session-retention";
+import { createTransactionalOrbitAgentChatOrganizationStore } from "../features/orbit-ai/storage/orbit-agent-chat-session-transactions";
 import { createPostgresLiveRecordStore } from "../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../shared/storage/transactional-postgres";
 
@@ -27,27 +29,15 @@ async function main() {
 
   const client = createTransactionalPostgresClient({ connectionString, max: 3 });
   try {
-  const provider = createStorageOrbitAgentChatSessionProvider({
-    actorId, workspaceId, store: createPostgresLiveRecordStore({ client }),
-    summaryPageClient: client, transactionClient: client,
-    summaryPageSecret: "R21-local-session-retention-cursor-secret",
-  });
-  let cursor: string | null = null;
-  let scanned = 0;
-  let deleted = 0;
-  let pages = 0;
-  do {
-    if (++pages > 1000) throw new Error("Retention page cap reached; work remains");
-    const page = await provider.listSessionSummariesPage({ cursor, limit: 50 });
-    for (const session of page.items) {
-      scanned += 1;
-      if (session.organization.pinned) continue;
-      if (await provider.deleteExpiredSession(session.id, now, async () => false)) deleted += 1;
-    }
-    cursor = page.hasMore ? page.nextCursor : null;
-    if (page.hasMore && !cursor) throw new Error("Retention cursor missing; work remains");
-  } while (cursor);
-  console.log(JSON.stringify({ actorId, workspaceId, scanned, deleted, pages, at: now.toISOString() }));
+    const provider = createStorageOrbitAgentChatSessionProvider({
+      actorId, workspaceId, store: createPostgresLiveRecordStore({ client }),
+      summaryPageClient: client, transactionClient: client,
+      summaryPageSecret: "R21-local-session-retention-cursor-secret",
+    });
+    const organization = createTransactionalOrbitAgentChatOrganizationStore({ actorId, client, workspaceId });
+    const result = await expireOrbitAgentChatSessions({ provider, organization, now });
+    console.log(JSON.stringify({ actorId, workspaceId, ...result, at: now.toISOString() }));
+    if (result.truncated) throw new Error("Retention scan cap reached; work remains");
   } finally {
     await client.close();
   }
