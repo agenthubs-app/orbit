@@ -1,6 +1,6 @@
 # R31a REPORT — App 组件库像素轮（A 线）
 
-**状态：** done（部分），待复核——SC-03 未收敛、SC-07 部分（余项已交还），SC-08 不退步通过（唯一退步已修）。**worktree：** `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a`（`line-a`）。**模拟器：** Orbit Line A 16e（iPhone 16e，ja-JP，RD-33）。**环境：** 本地库 `orbit_line_a`、mock 服务器 :3200（`ORBIT_REDESIGN_MOCK=all`，distDir `.next-line-a`）、Metro :8082（`open-path,no-keyboard,add-scan`）；没连 Neon、没部署、没调付费 AI。
+**状态：** done（部分），待复核——SC-03 未收敛、SC-07 部分（余项已交还），SC-08 不退步通过（唯一退步已修）。**worktree：** `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a`（`line-a`）。**模拟器：** Orbit Line A 16e（iPhone 16e，ja-JP，RD-33）。**环境：** 本地库 `orbit_line_a`、mock 服务器 :3200（`ORBIT_REDESIGN_MOCK=all`，distDir `.next-line-a`）、Metro :8082（`open-path,no-keyboard,add-scan`）；没连 Neon、没部署、没调付费 AI。**证据：** `/Volumes/ORICO/Dev/line-a-evidence/R31a/`（`it/` 各轮门禁输出：`comp4` 逐件对照、`r26*` / `r27` / `r17*` / `r16` / `r30` / `pa` / `pc` / `n09b` 重比、`nr` / `nr2` / `nr3` 不退步；`rerun.mjs` 重比驱动、`app-storage.mjs` 写模拟器 AsyncStorage）。
 
 ## 1. 提交（按时间）
 
