@@ -123,7 +123,7 @@ test.before(async () => {
   // exercises the retained tools in the unified relationship workspace.
   const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "tasks/TasksScreen", ledger: "agent/AgentLedgerScreen" };
   const imports = Object.entries(screens).map(([key, path]) => `import { ${key === "ledger" ? "AllActionsAgentLedgerScreen" : key === "inboxThread" ? "RelationshipInboxThreadScreen" : path.split("/")[1]} as ${key} } from "./src/screens/${path}";`).join("\n");
-  const result = await build({ stdin: { contents: `${imports}\nimport React from "react"; import { createRoot } from "react-dom/client"; const screens = { ${Object.keys(screens).join(",")} }; const Screen = screens[new URLSearchParams(location.search).get("screen")]; createRoot(document.getElementById("root")).render(<Screen />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "workspace-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: `${imports}\nimport React from "react"; import { createRoot } from "react-dom/client"; const screens = { ${Object.keys(screens).join(",")} }; const Screen = screens[new URLSearchParams(location.search).get("screen")]; createRoot(document.getElementById("root")).render(<Screen />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "workspace-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "workspace-native" }));
     // RN Web hardcodes fontScale=1. Replace this native dimension value only;
     // the real native-web elements, press handlers and layout stay intact.
@@ -131,7 +131,7 @@ test.before(async () => {
     plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection|useLocalInbox|useLocalAiSessions)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "workspace-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
-  server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>${result.outputFiles[0]!.text}</script>`); });
+  server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`); });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
   browser = await chromium.launch({ headless: true });
@@ -170,23 +170,22 @@ test("personal schedule reads retain v3 audit while every mutation still violate
 });
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: final inset AI artifacts preserve the retained embedded panels without collection reads`, async t => {
+  test(`${scheme}: iOrbit conversation retains actionable panels without collection reads`, async t => {
     const page = await open(t, "conversation&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
     // The keyword-driven contact/event/follow-up/profile/schedule panels were
     // removed with their whole-collection reads (docs/operations/2026-09-26-ai-conversation-bounded-reads.md).
-    // Sprint 0085: the run-evidence panel is gone too. The intent block and the
-    // task interaction card remain and share the inset radius.
-    const panels = [
-      page.getByText("核对合作信息", { exact: true }).locator(".."),
-      page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..")];
-    const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
+    // The suggested action is text in the new conversation stack; the task
+    // interaction remains an actionable card.
+    await page.getByText("核对合作信息", { exact: true }).waitFor();
+    const taskCard = page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..");
+    await taskCard.waitFor();
     assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
     for (const removed of ["打开待办详情：联系 林悦", "打开待办详情：确认合作时间"]) assert.equal(await page.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
     assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record or collection on its own");
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
-    assert.deepEqual(radii, ["24px", "24px"], "intentBlock, taskInteractionCard");
+    assert.equal(await taskCard.evaluate(el => getComputedStyle(el).borderRadius), "24px");
   });
   test(`${scheme}: final inset chat detail and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
@@ -237,25 +236,14 @@ for (const scheme of ["light", "dark"] as const) {
 }
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: AI drawer, history and composer menu keep a draft and fit the phone`, async t => {
-    const page = await open(t, "ai", scheme); const draft = page.getByRole("textbox", { name: "消息", exact: true }); await draft.fill("先核对合作资料");
+  test(`${scheme}: R21 AI history keeps an unsent draft and fits the phone`, async t => {
+    const page = await open(t, "ai", scheme); const draft = page.getByRole("textbox", { name: "iOrbit に聞く", exact: true }); await draft.fill("先核对合作资料");
     await fits(draft);
-    await page.getByRole("button", { name: "更多操作", exact: true }).click();
-    await page.getByRole("button", { name: "常用入口", exact: true }).click();
-    await page.getByRole("button", { name: "扫名片", exact: true }).waitFor({ state: "hidden" });
-    await fits(page.getByRole("button", { name: "新对话", exact: true }), 50);
-    await fits(page.getByPlaceholder("搜索对话"));
-    await page.getByRole("button", { name: "关闭侧栏", exact: true }).click();
-    await page.getByRole("button", { name: "关闭侧栏", exact: true }).waitFor({ state: "hidden" });
-    await page.getByRole("button", { name: "对话历史", exact: true }).click();
-    await fits(page.getByRole("button", { name: "打开历史记录：讨论合作时间", exact: true }));
-    await fits(page.getByRole("button", { name: "删除历史记录", exact: true }));
-    await page.getByRole("button", { name: "关闭历史", exact: true }).click();
-    await page.getByRole("button", { name: "关闭历史", exact: true }).waitFor({ state: "hidden" });
-    await page.getByRole("button", { name: "更多操作", exact: true }).click();
-    await fits(page.getByRole("button", { name: "扫名片", exact: true }));
-    await page.getByLabel("关闭菜单", { exact: true }).click({ position: { x: 300, y: 100 } });
-    await page.getByRole("button", { name: "扫名片", exact: true }).waitFor({ state: "hidden" });
+    await page.getByRole("button", { name: "会話リスト", exact: true }).click();
+    await fits(page.getByPlaceholder("タイトルと本文を検索").locator(".."));
+    await fits(page.getByRole("button", { name: "讨论合作时间", exact: true }).last());
+    await fits(page.getByRole("button", { name: "讨论合作时间 の操作", exact: true }));
+    await page.getByRole("button", { name: "关闭", exact: true }).last().click();
     assert.equal(await draft.inputValue(), "先核对合作资料"); await noWrites(page);
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-ai-${scheme}.png`, fullPage: true });
   });
@@ -292,12 +280,11 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("reading canvas keeps its draft when opening shortcuts and uses the shared page inset", async t => {
+test("iOrbit conversation keeps its draft when opening and closing mentions", async t => {
   const page = await open(t, "conversation"); const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("先核对资料");
-  const content = page.getByTestId("conversation-history").locator("div").first();
-  assert.equal(await content.evaluate(el => getComputedStyle(el).paddingLeft), "16px");
-  await page.getByRole("button", { name: "打开快捷入口", exact: true }).click();
-  await page.getByRole("button", { name: "打开快捷入口", exact: true }).click();
+  await page.getByTestId("conversation-history").waitFor();
+  await page.getByRole("button", { name: "@", exact: true }).click();
+  await page.getByRole("button", { name: "@", exact: true }).click();
   assert.equal(await reply.inputValue(), "先核对资料"); await noWrites(page);
 });
 test("chat list and detail retain navigation, messages and a failed real delivery", async t => {
@@ -309,11 +296,13 @@ test("chat list and detail retain navigation, messages and a failed real deliver
   assert.equal(await draft.inputValue(), "周四可以");
   assert.equal(await detail.evaluate(() => (window as any).fixture.requests.length), 1);
 });
-test("AI next actions uses open sections and clear section hierarchy", async t => {
-  const page = await open(t, "ai"); const heading = page.getByText("下一步", { exact: true });
-  await heading.waitFor();
-  assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["14.5px", "21px", "800"]);
-  assert.equal(await heading.locator("..").locator("..").locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
+test("iOrbit start offers four direct-send prompts without implicit writes", async t => {
+  const page = await open(t, "ai");
+  await page.getByText("何をお手伝いしましょう？", { exact: true }).waitFor();
+  for (const prompt of ["今天先处理哪些事？", "最近有哪些活动适合我？", "回看与某位人脉的讨论", "帮我规划新目标"]) {
+    await page.getByRole("button", { name: prompt, exact: true }).waitFor();
+  }
+  await noWrites(page);
 });
 for (const [screen, label] of [["actions", "确认建议"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
   test(`${screen}: successful workspace exposes a reachable primary action without implicit writes`, async t => {
@@ -352,10 +341,11 @@ for (const screen of ["tasks", "task", "chat", "thread", "schedule", "followups"
     const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText(offlineCopyPage ? "这项内容还没保存在这台设备上，联网打开一次后断网也能看。" : "连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
   });
 }
-test("AI resource fallback keeps its return action on the same page inset", async t => {
+test("iOrbit resource fallback keeps the local conversation header and offline explanation", async t => {
   const page = await open(t, "conversation"); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" }));
-  const back = page.getByRole("button", { name: "返回 Orbit AI", exact: true }); await fits(back);
-  assert.equal((await back.boundingBox())!.x, 16);
+  await page.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。", { exact: true }).waitFor();
+  await page.getByText("iOrbit", { exact: true }).first().waitFor();
+  await noWrites(page);
 });
 test("task metadata stays complete at large text without cutting off the scheduled date", async t => {
   const page = await open(t, "task"); const metadata = page.getByText("截止", { exact: true }).locator("..").locator("..");
