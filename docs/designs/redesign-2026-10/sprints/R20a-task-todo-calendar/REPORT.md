@@ -27,6 +27,10 @@ SC-09 App の追加子里程標 `a29dc69be` は、actor-owned personal scope の
 
 同里程標の sanitized App full は `_evidence-d/R20a/run-01/d-app-full-sc09-list-detail-after.log` に連続二回出力された。`heavy.sh` が開始直後に更新されたため、途中に `command not found: 个重任务最长` があり、一つの成功実行として扱わない。先の集計は **3460 tests / 3447 pass / 11 fail / 2 skip**、後の集計は **3461 / 3447 pass / 12 fail / 2 skip**、両方 exit1。後者の失敗は拍照導入9、辞書 exact-key1、personal-schedule click1、task-unification suite-level async `route.fulfill: Route is already handled!`1。joined-person は後の実行で通過した。task-unification は単独20/20だが、full の suite-level failure は消さず OPEN とする。前段 `d-app-full-task-list.log` の13失敗にあった拍照9、辞書、personal-schedule と同名で、今回新しく記録した failure 名は task-unification の非同期 suite-level 形態のみ（前段でも同 file の paging assertion が失敗）。拍照9は前段の隔離でも再現し、根因未確定のまま残す。runner を変えない fresh full の再実行・独立 review は OPEN。
 
+`origin/redesign` の R31b Web-only 三件（`5cd607085` / `c4039b166` / `f7da769ba`）を取り込む clean rebase は stash / autostash なしで完了。D の87パッチは range-diff すべて `=`、owned source の内容変更はない。上記旧 hash `a29dc69be` は現 `8aacb8384`、記録 commit `36edaf945` は現 `981bf2ac2`。rebase 後の App/Web compiler と browser / full の fresh 検証は別に必要で、前段の成功を現 HEAD の合格として流用しない。
+
+SC-08 の新しい主会話判断（既存の対応済み生成 API があれば再利用、なければ手書きのみ・AI ボタン非表示）に照らし、既存 `POST /api/message-drafts` と `POST /api/agent/plans/items/:itemId/draft` を source で確認した。前者は follow-up の rule-based English 草稿で NextMove の actor/source identity・日本語/tone を受け取らず、後者は plan item 専用の非 AI テンプレート。どちらも現行 `agent_signal` / `plan_today_chance` の日本語 AI 下書きエディタを source-bound に生成する契約ではないため、誤って「AI 下書き」として接続しない。両端は現在の手書き editor を維持し AI ボタンは非表示、生成は **DEFERRED**、この検証で paid AI call **0**。対応する source-bound・日本語/tone 契約ができれば改めて接続する。
+
 ## SC 対照
 
 | SC | 現在の結果 |
