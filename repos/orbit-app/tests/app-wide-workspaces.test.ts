@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { nativeUiStubs } from "./helpers/native-ui-stubs";
 import { chromium, type Browser, type Locator, type Page } from "playwright";
 
 const require = createRequire(import.meta.url);
@@ -130,7 +131,7 @@ test.before(async () => {
     plugin.onLoad({ filter: /.*/, namespace: "workspace-native" }, () => ({ contents: `export * from ${JSON.stringify(require.resolve("react-native-web"))}; import { useWindowDimensions as realDimensions } from ${JSON.stringify(require.resolve("react-native-web"))}; import { useSyncExternalStore } from "react"; export function useWindowDimensions() { const dimensions = realDimensions(); const fontScale = useSyncExternalStore(listener => { window.addEventListener("workspace-fontscale", listener); return () => window.removeEventListener("workspace-fontscale", listener); }, () => window.fixture?.fontScale || 1); return { ...dimensions, fontScale }; }`, loader: "js", resolveDir: process.cwd() }));
     plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection|useLocalInbox|useLocalAiSessions)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "workspace-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
-  } }] });
+  } }, nativeUiStubs] });
   server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`); });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
