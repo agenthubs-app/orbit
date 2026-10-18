@@ -70,7 +70,7 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
   /** 目標を編集（b4 #31）：背景（任意）/ ひとこと（重点）照画板（存在 plans.analysis）。 */
   "c-edit": fromDemo((state) => {
     for (const plan of state.plans ?? []) {
-      Object.assign(plan.analysis, { goalBackground: "製造業向け SaaS · ARR 1.2億円", goalNote: "リードは SaaS に強い VC。CVC も 1社入れたい" });
+      Object.assign(plan.analysis, { goalBackground: "製造業向け SaaS · シード 8,000万円済み · ARR 1.2億円", goalNote: "リードは SaaS に強い VC。CVC も 1社入れたい" });
     }
   }),
   /** 見直し（b4 #18 · b12 #254 #256）：前提 7 行照画板；先送 2 回 / 用完由门禁前的接口调用造出。 */

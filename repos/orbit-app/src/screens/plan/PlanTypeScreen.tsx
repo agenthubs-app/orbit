@@ -100,13 +100,13 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
   const plan = state.kind === "ready" ? state.plan : null;
   const selectedPeople = detail ? detail.candidates.filter((candidate) => selected.includes(candidate.contactId)) : [];
   // R31a (RD-28) dev-only gate states (b4 A2): skip = スキップ ① 確認, record = 加点 ① 面談を記録, propose = 面談を提案
-  // for the first candidate. `design` is null outside a dev build with open-path (designState).
+  // `design` is null outside a dev build with open-path (designState).
   const gateReady = detail !== null;
   useEffect(() => {
     if (!gateReady || !design || !detail) return;
     if (design === "skip") setSkipAsk(true);
     else if (design === "record") setRecordFor([]);
-    else if (design === "propose" && detail.candidates[0]) setProposalFor([{ contactId: detail.candidates[0].contactId, isOrbitUser: detail.candidates[0].isOrbitUser, name: detail.candidates[0].name }]);
+    else if (design === "propose" && detail.candidates[0]) setProposalFor(detail.candidates.slice(0, 2).map((candidate) => ({ contactId: candidate.contactId, isOrbitUser: candidate.isOrbitUser, name: candidate.name })));
   }, [design, gateReady]); // eslint-disable-line react-hooks/exhaustive-deps -- once, when the detail first arrives
 
   const steps = detail ? stepsOf(detail, plan, t("plan.types.stepSeparator")) : "";
@@ -168,7 +168,7 @@ export function PlanTypeScreen({ planId, itemId, design = null }: { planId: stri
         }}
       />
     ) : null}
-    <PlanProposalSheet visible={proposalFor !== null} onClose={() => setProposalFor(null)} planId={planId} itemId={itemId} people={proposalFor ?? []} />
+    <PlanProposalSheet visible={proposalFor !== null} onClose={() => setProposalFor(null)} planId={planId} itemId={itemId} people={proposalFor ?? []} designPreview={design === "propose"} />
     </View>
   );
 }
@@ -398,7 +398,7 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
         visible={skipAsk}
         icon={{ emoji: "\u{1F9E0}" }}
         title={t("plan.skip.title")}
-        message={t("plan.skip.body", { points: Math.max(0, detail.allocation - detail.earned) })}
+        message={t("plan.skip.body", { label: detail.shortLabel, points: Math.max(0, detail.allocation - detail.earned) })}
         confirmLabel={t("plan.skip.confirm")}
         onConfirm={() => { if (!busy) skip(); }}
         onCancel={() => onSkipAsk(false)}

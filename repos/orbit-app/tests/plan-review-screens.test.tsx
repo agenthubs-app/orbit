@@ -256,7 +256,9 @@ test("overview buttons: no 「まもなく」; 方案を見直す reads the quot
   assert.equal(await sheet.getByTestId("quota-used").count(), 0);
   await sheet.getByText(/毎月1日に 3回へ戻ります（次は \d+月\d+日）/).waitFor();
   const since = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data.sinceConfirmed!;
-  await sheet.getByText(`確定以降の記録：話した ${since.talkedPeople}人 · イベント ${since.events}回 · Step 完了 ${since.stepsDone}`).waitFor();
+  await sheet.getByText(`話した ${since.talkedPeople}人`).waitFor();
+  await sheet.getByText(`イベント ${since.events}回`).waitFor();
+  await sheet.getByText(`Step 完了 ${since.stepsDone}`).waitFor();
   assert.equal(await page.getByText("まもなく使えます").count(), 0);
   assert.equal(await page.getByText(PAID).count(), 0);
   assert.deepEqual(writes(calls), [], "opening the sheet writes nothing");
@@ -472,14 +474,17 @@ test("goal switcher: score, people, tick; switching calls open; achieved → 完
   await page.getByTestId("goal-switcher-open").click();
   const sheet = page.getByTestId("goal-switcher");
   await sheet.waitFor();
+  const menuBox = await sheet.boundingBox();
+  assert.deepEqual(menuBox && [Math.round(menuBox.x), Math.round(menuBox.y)], [18, 192], "the goal menu anchors below its title");
   const rows = sheet.getByTestId("goal-row");
   assert.equal(await rows.count(), 2);
   assert.equal(await rows.first().getAttribute("aria-checked"), "true");
   await rows.nth(1).getByText("スコア 72 · 話した人 14").waitFor();
-  await sheet.getByText("完了した目標 1件").waitFor();
+  await sheet.getByTestId("goal-achieved-summary").getByText("完了した目標").waitFor();
+  await sheet.getByTestId("goal-achieved-summary").getByText("1件").waitFor();
   assert.equal(await sheet.getByTestId("goal-legacy").count(), 0, "no v1 plan, no 以前のプラン");
   assert.equal(await sheet.getByRole("button", { name: "目標を追加" }).isDisabled(), true);
-  await sheet.getByText("同時に進められる目標は 2 つまでです。").waitFor();
+  await sheet.getByText("フリーは同時に 2つまで").waitFor();
   assert.equal(await page.getByText(PAID).count(), 0);
   const reads = calls.filter((call) => call.path.endsWith("/v2/summary")).length;
   await rows.nth(1).click();
@@ -487,6 +492,7 @@ test("goal switcher: score, people, tick; switching calls open; achieved → 完
   assert.deepEqual(writes(calls), ["POST /api/agent/plans/v2/demo-plan-second/open"]);
   assert.ok(calls.filter((call) => call.path.endsWith("/v2/summary")).length > reads, "the segment reads the summary again (home follows)");
   await page.getByTestId("goal-switcher-open").click();
+  await page.getByTestId("goal-achieved-summary").click();
   await page.getByTestId("goal-achieved").click();
   assert.deepEqual((await navigation(page)).navigation.at(-1), { href: "/plans/demo-plan-old/done", method: "push" });
   // With a v1 plan, 以前のプラン sits at the bottom of the sheet.
@@ -508,8 +514,8 @@ test("goal edit: unchanged cannot be saved; a change asks 作り直す / 目標�
   };
   await openEdit();
   assert.equal(await page.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
-  await page.getByTestId("goal-edit").getByLabel("目標", { exact: true }).fill("シリーズA 資金調達（5億円）");
-  await page.getByText(`元：${detail.goal}`).waitFor();
+  await page.getByTestId("goal-edit").getByLabel("金額").fill("5億円");
+  assert.equal(await page.getByTestId("goal-edit").getByLabel("目標", { exact: true }).inputValue(), "シリーズA 資金調達");
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.getByText("方案を作り直しますか？").waitFor();
   await page.getByText("獲得済みの点・面談の記録・スキップはそのまま残ります").waitFor();
@@ -526,7 +532,7 @@ test("goal edit: unchanged cannot be saved; a change asks 作り直す / 目標�
   await page.getByText("シリーズA 資金調達（5億円）").first().waitFor();
   // 作り直す: saves and opens the review page on the rebuild draft.
   await openEdit();
-  await page.getByTestId("goal-edit").getByLabel("目標", { exact: true }).fill("シリーズA 資金調達（6億円）");
+  await page.getByTestId("goal-edit").getByLabel("金額").fill("6億円");
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.getByRole("button", { name: "方案を作り直す" }).click();
   await page.getByTestId("premise-card").waitFor();
@@ -534,6 +540,27 @@ test("goal edit: unchanged cannot be saved; a change asks 作り直す / 目標�
   assert.deepEqual((await navigation(page)).navigation.at(-1), { href: `/plans/${PLAN}/review`, method: "push" });
   await page.getByTestId("premise-card").getByText("シリーズA 資金調達（6億円）").waitFor();
   assert.equal((await direct<PlanQuotaResponse>(server, "GET", "/api/agent/plans/v2/quota")).data.reviewLeftThisMonth, 3, "rebuilding opens a review; only sending uses one");
+});
+
+test("goal edit: background and focus note save directly without rebuilding", async (t) => {
+  const { page, calls, server } = await open(t, "/task?seg=plan");
+  await page.getByTestId("plan-overview").waitFor();
+  const detail = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data;
+  await page.getByTestId("goal-switcher-open").click();
+  await page.getByRole("button", { name: "この目標を編集" }).click();
+  const sheet = page.getByTestId("goal-edit");
+  await sheet.getByLabel("背景（任意）").fill("製造業向け SaaS · ARR 1.2億円");
+  await sheet.getByLabel("ひとこと（重点）").fill("リードは SaaS に強い VC");
+  await sheet.getByRole("button", { name: "保存", exact: true }).click();
+  await page.getByText("目標を保存しました").waitFor();
+  assert.equal(await page.getByText("方案を作り直しますか？").count(), 0);
+  const save = calls.find((call) => call.method === "PATCH")!.body as Record<string, unknown>;
+  assert.deepEqual({ background: save.goalBackground, note: save.goalNote, mode: save.mode, revision: save.expectedRevision }, {
+    background: "製造業向け SaaS · ARR 1.2億円",
+    note: "リードは SaaS に強い VC",
+    mode: "save_only",
+    revision: detail.revision,
+  });
 });
 
 test("new=1 opens the goal input directly; with two active goals it explains the limit and lists them", async (t) => {
@@ -624,7 +651,10 @@ test("optional server field: PlanV2Detail.sinceConfirmed gives the entry sheet i
     ? ok({ ...(reply.body as { data: object }).data, sinceConfirmed: { events: 2, stepsDone: 1, talkedPeople: 5 } }) : undefined) });
   await overview.page.getByTestId("plan-overview").waitFor();
   await overview.page.getByRole("button", { name: "方案を見直す" }).first().click();
-  await overview.page.getByTestId("review-entry").getByText("確定以降の記録：話した 5人 · イベント 2回 · Step 完了 1").waitFor();
+  const sheet = overview.page.getByTestId("review-entry");
+  await sheet.getByText("話した 5人").waitFor();
+  await sheet.getByText("イベント 2回").waitFor();
+  await sheet.getByText("Step 完了 1").waitFor();
 });
 
 test("optional server field: evidence summaries under a mark replace the bare count", async (t) => {
@@ -755,7 +785,7 @@ test("screenshots", { skip: !process.env.R25_SHOTS }, async (t) => {
     ["done", `/plans/${PLAN}/done`, async (page) => { await page.getByRole("button", { name: "次の目標を決める" }).click(); await page.getByTestId("next-candidate").first().waitFor(); }, { height: 1400, prepare: achieved }],
     ["done-goal-limit", `/plans/${PLAN}/done`, async (page) => { await page.getByRole("button", { name: "次の目標を決める" }).click(); await page.getByText("同時に進められる目標は 2 つまでです。").scrollIntoViewIfNeeded(); }, { height: 1400, prepare: achieved, rewrite: withGoals }],
     ["goal-switcher", "/task?seg=plan", async (page) => { await page.getByTestId("goal-switcher-open").click(); await page.getByTestId("goal-switcher").waitFor(); }, { rewrite: withGoals }],
-    ["goal-edit", "/task?seg=plan", async (page) => { await page.getByTestId("goal-switcher-open").click(); await page.getByRole("button", { name: "この目標を編集" }).click(); await page.getByTestId("goal-edit").getByLabel("目標", { exact: true }).fill("シリーズA 資金調達（5億円）"); await page.getByRole("button", { name: "保存", exact: true }).click(); await page.getByText("方案を作り直しますか？").waitFor(); }, {}],
+    ["goal-edit", "/task?seg=plan", async (page) => { await page.getByTestId("goal-switcher-open").click(); await page.getByRole("button", { name: "この目標を編集" }).click(); await page.getByTestId("goal-edit").getByLabel("金額").fill("5億円"); await page.getByRole("button", { name: "保存", exact: true }).click(); await page.getByText("方案を作り直しますか？").waitFor(); }, {}],
     ["legacy-card", "/task?seg=plan", async (page) => { await page.getByTestId("legacy-card").waitFor(); }, { rewrite: withLegacyOnly }],
     ["legacy-detail", "/plans/legacy/v1-plan-1", async (page) => { await page.getByTestId("legacy-detail").waitFor(); }, { height: 1200, rewrite: withLegacyOnly }],
   ];

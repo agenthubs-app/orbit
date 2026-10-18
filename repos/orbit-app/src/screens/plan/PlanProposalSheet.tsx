@@ -26,14 +26,16 @@ type Props = {
   planId: string;
   itemId: string;
   people: readonly ProposalPerson[];
+  designPreview?: boolean;
 };
 
-export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: Props) {
+export function PlanProposalSheet({ visible, onClose, planId, itemId, people, designPreview = false }: Props) {
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();
   const failureText = useFailureText();
   const api = usePlanApi();
-  const [slots, setSlots] = useState<Date[]>(() => defaultProposalSlots(new Date()));
+  const previewNow = designPreview ? new Date(2026, 9, 13) : null;
+  const [slots, setSlots] = useState<Date[]>(() => defaultProposalSlots(previewNow ?? new Date()));
   const [drafts, setDrafts] = useState<Record<string, NonNullable<PlanProposalResult["draft"]>>>({});
   const [requested, setRequested] = useState<Record<string, true>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -41,16 +43,16 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
 
   useEffect(() => {
     if (!visible) return;
-    setSlots(defaultProposalSlots(new Date()));
+    setSlots(defaultProposalSlots(previewNow ?? new Date()));
     setDrafts({});
     setRequested({});
     setProblem(null);
-  }, [visible]);
+  }, [designPreview, visible]);
 
   const locale = language === "en" ? "en-US" : language === "zh" ? "zh-CN" : "ja-JP";
   const dayText = (slot: Date) => slot.toLocaleDateString(locale, { day: "numeric", month: "numeric", weekday: "short" });
   const timeText = (slot: Date) => slot.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
-  const move = (index: number, unit: "day" | "time", delta: -1 | 1) => setSlots((list) => list.map((slot, at) => (at === index ? shiftSlot(slot, unit, delta, new Date()) : slot)));
+  const move = (index: number, unit: "day" | "time", delta: -1 | 1) => setSlots((list) => list.map((slot, at) => (at === index ? shiftSlot(slot, unit, delta, previewNow ?? new Date()) : slot)));
 
   const make = async (person: ProposalPerson) => {
     setBusy(person.contactId);
@@ -72,11 +74,13 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
           const number = index + 1;
           return (
             <View key={index} style={styles.slot}>
-              <UiText style={styles.slotLabel}>{t("plan.proposal.slot", { number })}</UiText>
-              <View style={styles.stepper}>
-                <IconButton icon="left" size={34} soft accessibilityLabel={t("plan.proposal.prevDay", { number })} onPress={() => move(index, "day", -1)} />
-                <UiText style={styles.value}>{dayText(slot)}</UiText>
-                <IconButton icon="right" size={34} soft accessibilityLabel={t("plan.proposal.nextDay", { number })} onPress={() => move(index, "day", 1)} />
+              <View style={styles.slotLine}>
+                <UiText style={styles.slotLabel}>{t("plan.proposal.slot", { number })}</UiText>
+                <View style={styles.stepper}>
+                  <IconButton icon="left" size={34} soft accessibilityLabel={t("plan.proposal.prevDay", { number })} onPress={() => move(index, "day", -1)} />
+                  <UiText style={styles.value}>{dayText(slot)}</UiText>
+                  <IconButton icon="right" size={34} soft accessibilityLabel={t("plan.proposal.nextDay", { number })} onPress={() => move(index, "day", 1)} />
+                </View>
               </View>
               <View style={styles.stepper}>
                 <IconButton icon="minus" size={34} soft accessibilityLabel={t("plan.proposal.earlier", { number })} onPress={() => move(index, "time", -1)} />
@@ -97,7 +101,7 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people }: 
               </View>
               <UiText style={styles.note}>{person.isOrbitUser ? t("plan.proposal.orbitUser") : t("plan.proposal.notOrbit")}</UiText>
               {requested[person.contactId] ? <UiText accessibilityRole="text" style={styles.requested} testID="proposal-requested">{t("plan.proposal.requested", { name: person.name })}</UiText> : draft ? <MailDraftView to={person.name} subject={draft.subject} body={draft.body} /> : (
-                <Button label={t("plan.proposal.make")} accessibilityLabel={t("plan.proposal.makeA11y", { name: person.name })} icon="pen" onPress={() => void make(person)} variant="primary" loading={busy === person.contactId} disabled={busy !== null} />
+                <Button block label={t("plan.proposal.make")} accessibilityLabel={t("plan.proposal.makeA11y", { name: person.name })} icon="pen" onPress={() => void make(person)} variant="primary" loading={busy === person.contactId} disabled={busy !== null} />
               )}
             </View>
           );
@@ -112,7 +116,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   body: { gap: 12, paddingBottom: 8 },
   title: { color: colors.ink, fontSize: 17, fontWeight: "800" },
   note: { color: colors.ink3Text, fontSize: 12, lineHeight: 17 },
-  slot: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", backgroundColor: colors.surface2, borderRadius: radius.md, padding: 8 },
+  slot: { gap: 6, backgroundColor: colors.surface2, borderRadius: radius.md, padding: 8 },
+  slotLine: { flexDirection: "row", alignItems: "center", gap: 8 },
   slotLabel: { color: colors.ink2, fontSize: 12, fontWeight: "700", minWidth: 52 },
   stepper: { flexDirection: "row", alignItems: "center", gap: 4 },
   value: { color: colors.ink, fontSize: 14, fontWeight: "700", minWidth: 64, textAlign: "center" },

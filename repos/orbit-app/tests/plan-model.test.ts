@@ -28,12 +28,32 @@ import {
   unusedTemplateSlots,
 } from "../src/screens/plan/plan-model";
 import { unitPoints } from "../src/api/compute/plan-allocation";
+import { goalEditChange, goalEditTextWithAmount } from "../src/screens/plan/plan-review-model";
 
 // R23 App plan screens: the pure rules the screens use (UI-SPEC ②③). The fixture is
 // the orbits mock service's own answers, read through the synced schemas.
 const mock = JSON.parse(readFileSync(new URL("./fixtures/plan-flow-mock.json", import.meta.url), "utf8"));
 const intake = planIntakeViewSchema.parse(mock.intakeBackground) as PlanIntakeView;
 const draft = planDraftViewSchema.parse(mock.draft) as PlanDraftView;
+
+test("goal edit saves changed background and focus note without changing the goal", () => {
+  const before = { goal: "シリーズA 資金調達（3億円）", goalKind: "fundraising", goalBackground: "old background", goalNote: "old note" };
+  assert.deepEqual(goalEditChange(before, { goalText: before.goal, goalKind: null, goalBackground: " 新しい背景 ", goalNote: "新しい重点" }), {
+    goalBackground: "新しい背景",
+    goalNote: "新しい重点",
+  });
+  assert.deepEqual(goalEditChange(before, { goalText: before.goal, goalKind: null, goalBackground: "", goalNote: before.goalNote }), { goalBackground: null });
+  assert.equal(goalEditChange(before, { goalText: before.goal, goalKind: null, goalBackground: before.goalBackground, goalNote: before.goalNote }), null);
+});
+
+test("goal edit keeps the amount field and saved goal text in sync", () => {
+  assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "3億円", "3億円"), "シリーズA 資金調達（3億円）");
+  assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "5億円", "3億円"), "シリーズA 資金調達（5億円）");
+  assert.equal(goalEditTextWithAmount("シリーズA 資金調達（3億円）", "5億円", "3億円"), "シリーズA 資金調達（5億円）");
+  assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "3億円", "3億円", "シリーズA 資金調達"), "シリーズA 資金調達");
+  assert.equal(goalEditTextWithAmount("新規顧客を開拓", "", ""), "新規顧客を開拓");
+  assert.equal(goalEditTextWithAmount("", "5億円", "3億円"), "");
+});
 
 test("progress: background → questions → first draft → AI revisions", () => {
   assert.equal(flowStage({ status: "background" }, null), 0);

@@ -3,6 +3,7 @@
 // numbers always come from the server (UI-SPEC「界面不自己算分、不自己算配额」).
 import type {
   PlanDraftTurn,
+  PlanGoalEditRequest,
   PlanGoalKind,
   PlanGoalListItem,
   PlanLegacyDetail,
@@ -106,13 +107,28 @@ export function goalGroups(goals: readonly PlanGoalListItem[]): { active: PlanGo
   return { achieved: goals.filter((goal) => goal.status === "achieved"), active: goals.filter((goal) => goal.status === "active") };
 }
 
-/** 目標を編集: what changed (trimmed text, kind). An unchanged form cannot be saved. */
-export function goalEditChange(before: { goal: string; goalKind: string }, after: { goalText: string; goalKind: PlanGoalKind | null }): { goalText?: string; goalKind?: PlanGoalKind } | null {
+/** 目標を編集: only changed fields are sent; an unchanged form cannot be saved. */
+export function goalEditChange(before: { goal: string; goalKind: string; goalBackground?: string | null; goalNote?: string | null }, after: { goalText: string; goalKind: PlanGoalKind | null; goalBackground?: string | null; goalNote?: string | null }): Pick<PlanGoalEditRequest, "goalText" | "goalKind" | "goalBackground" | "goalNote"> | null {
   const text = after.goalText.trim();
-  const change: { goalText?: string; goalKind?: PlanGoalKind } = {};
+  const change: Pick<PlanGoalEditRequest, "goalText" | "goalKind" | "goalBackground" | "goalNote"> = {};
   if (text && text !== before.goal) change.goalText = text;
   if (after.goalKind && after.goalKind !== before.goalKind) change.goalKind = after.goalKind;
-  return change.goalText !== undefined || change.goalKind !== undefined ? change : null;
+  const background = after.goalBackground?.trim() || null;
+  const note = after.goalNote?.trim() || null;
+  if (after.goalBackground !== undefined && background !== (before.goalBackground?.trim() || null)) change.goalBackground = background;
+  if (after.goalNote !== undefined && note !== (before.goalNote?.trim() || null)) change.goalNote = note;
+  return Object.keys(change).length ? change : null;
+}
+
+/** Keep the separate amount field in the persisted goal text. */
+export function goalEditTextWithAmount(label: string, amount: string, previousAmount: string, originalGoal?: string): string {
+  const text = label.trim();
+  if (!text) return "";
+  const value = amount.trim() || previousAmount;
+  if (originalGoal && value === previousAmount && text === originalGoal.replace(/\s*（\d+(?:[.,]\d+)?億円）/u, "").trim()) return originalGoal;
+  if (!value) return text;
+  const oldAmount = /\d+(?:[.,]\d+)?億円/u;
+  return oldAmount.test(text) ? text.replace(oldAmount, value) : `${text}（${value}）`;
 }
 
 /** 以前のプラン: items grouped by kind in a fixed order (行動 / 会いたい人 / 情報 / イベント). */

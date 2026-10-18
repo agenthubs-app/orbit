@@ -250,7 +250,7 @@
       "taps": "目標名 ▾",
       "grid": 30,
       "wait": 12000,
-      "path": "/task?seg=plan"
+      "path": "/task?seg=plan&design=goals"
     },
     {
       "id": "A-R25-12",

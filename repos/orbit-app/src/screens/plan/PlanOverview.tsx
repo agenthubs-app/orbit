@@ -16,7 +16,6 @@ import {
   BottomSheet,
   Button,
   Checkbox,
-  Chip,
   ConfirmDialog,
   Icon,
   UiPressable,
@@ -35,12 +34,13 @@ import { PlanGoalEditSheet, PlanGoalSwitcher } from "./PlanGoalSwitcher";
 import { PlanReviewEntrySheet } from "./PlanReviewEntrySheet";
 import { sinceConfirmedOf } from "./plan-review-model";
 import { InlineProblem, useFailureText } from "./plan-ui";
+import { KitButton, KitChip, KitEmo } from "./plan-kit";
 import { usePlanAwardToast } from "./usePlanAwardToast";
 
 export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = null }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void; design?: string | null }) {
   const shared = usePlanOverviewStyles().styles;
   const { styles } = useStyles();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
   const toast = useToast();
   const router = useRouter();
@@ -63,6 +63,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
     else if (design === "review") setReviewOpen(true);
     else if (design === "achieve") setAchieveOpen(true);
     else if (design === "edit") setEditOpen(true);
+    else if (design === "goals") setSwitcherOpen(true);
   }, [design]);
   const score = plan.score;
   const pending = groupPending(plan.pending ?? []);
@@ -167,18 +168,26 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
 
       <BottomSheet visible={premiseOpen} onClose={() => setPremiseOpen(false)} accessibilityLabel={t("plan.overview.premiseTitle")}>
         <View style={styles.sheet} testID="premise-sheet">
-          <UiText accessibilityRole="header" style={shared.heading}>{t("plan.overview.premiseTitle")}</UiText>
-          <UiText style={shared.meta}>{t("plan.overview.premiseNote")}</UiText>
-          {plan.premise.map((row) => (
-            <View key={row.key} style={styles.premiseRow}>
-              <View style={shared.row}>
-                <UiText style={shared.eyebrow}>{row.label}</UiText>
-                {row.guessed ? <Chip label={t("plan.overview.premiseGuessed")} tone="apricot" /> : null}
-              </View>
-              <UiText style={shared.body}>{row.value}</UiText>
+          <View style={styles.premiseHead}>
+            <KitEmo emoji="📌" tone="teal" sm />
+            <View style={styles.premiseHeadText}>
+              <UiText accessibilityRole="header" style={styles.premiseTitle}>{t("plan.overview.premiseTitle")}</UiText>
+              <UiText style={styles.premiseMeta}>{t("plan.overview.premiseMeta", { date: new Intl.DateTimeFormat(language, { day: "numeric", month: "long" }).format(new Date(`${plan.startsOn.slice(0, 10)}T00:00:00`)), count: plan.premise.length })}</UiText>
             </View>
-          ))}
-          <Button block icon="refresh" label={t("plan.overview.premiseChange")} onPress={() => { setPremiseOpen(false); setReviewOpen(true); }} variant="secondary" />
+            <UiPressable accessibilityRole="button" accessibilityLabel={copy.action.close} onPress={() => setPremiseOpen(false)} style={styles.premiseClose}><Icon name="x" size={16} color={styles.muted.color} /></UiPressable>
+          </View>
+          <View style={styles.premiseRows}>{plan.premise.map((row, index) => (
+            <View key={row.key} style={[styles.premiseRow, index > 0 && styles.premiseLine]}>
+              <UiText style={styles.premiseLabel}>{row.label}</UiText>
+              <View style={styles.premiseValueWrap}>
+                <UiText style={styles.premiseValue}>{row.value}</UiText>
+                {row.guessed ? <KitChip label={t("plan.overview.premiseGuessed")} tone="apricot" style={styles.premiseGuess} /> : null}
+              </View>
+              <View style={styles.premiseSource}><UiText style={styles.premiseSourceText}>{row.source === "background" ? t("plan.premise.sourceBackground") : row.source === "record" ? t("plan.premise.sourceRecord") : row.source.toUpperCase()}</UiText></View>
+            </View>
+          ))}</View>
+          <View style={styles.premiseNote}><UiText style={styles.premiseNoteText}>{t("plan.overview.premiseNote")}</UiText></View>
+          <KitButton icon="refresh" label={t("plan.overview.premiseChange")} badge={t("plan.overview.premiseReviewBadge", { count: plan.quota.reviewLeftThisMonth })} onPress={() => { setPremiseOpen(false); setReviewOpen(true); }} primary xl style={styles.premiseAction} />
         </View>
       </BottomSheet>
       <ConfirmDialog
@@ -209,7 +218,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onAdd={() => onAddGoal?.()}
         onEdit={() => setEditOpen(true)}
       />
-      <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} />
+      <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} {...(design === "edit" ? { previewAmount: "5億円" } : {})} />
     </View>
   );
 }
@@ -281,6 +290,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   typeChipText: { color: colors.macLavText, fontSize: 12, fontWeight: "700" },
   typePoints: { alignItems: "flex-end", gap: 4 },
   footnote: { color: colors.ink3Text, fontSize: 12, textAlign: "center", paddingVertical: 8 },
-  sheet: { gap: 12, paddingBottom: 8 },
-  premiseRow: { gap: 4, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  sheet: { paddingBottom: 8 },
+  premiseHead: { alignItems: "center", flexDirection: "row", gap: 10 },
+  premiseHeadText: { flex: 1 },
+  premiseTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  premiseMeta: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25 },
+  premiseClose: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, height: 34, justifyContent: "center", width: 34 },
+  premiseRows: { marginTop: 8 },
+  premiseRow: { alignItems: "flex-start", flexDirection: "row", gap: 8, paddingVertical: 8 },
+  premiseLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  premiseLabel: { color: colors.ink3, fontSize: 11.5, lineHeight: 19.38, width: 84 },
+  premiseValueWrap: { alignItems: "flex-start", flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4, minWidth: 0 },
+  premiseValue: { color: colors.ink, fontSize: 12.5, lineHeight: 19.38 },
+  premiseGuess: { paddingHorizontal: 6, paddingVertical: 1 },
+  premiseSource: { backgroundColor: colors.surface2, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+  premiseSourceText: { color: colors.ink3, fontSize: 10, fontWeight: "800", lineHeight: 15 },
+  premiseNote: { backgroundColor: colors.macLav, borderRadius: 16, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  premiseNoteText: { color: colors.ink, fontSize: 12, lineHeight: 19.2 },
+  premiseAction: { alignSelf: "stretch", marginTop: 12 },
 }));

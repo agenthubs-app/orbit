@@ -85,23 +85,25 @@ export function PlanReviewEntrySheet({ planId, visible, onClose, since: planSinc
           <>
             <UiText accessibilityRole="header" style={shared.heading}>{t("plan.review.entryTitle")}</UiText>
             <UiText style={shared.body2}>{t("plan.review.entryBody")}</UiText>
-            <View style={shared.softCard}>
-              <View style={shared.row}>
-                <UiText style={[shared.label, shared.grow]}>{t("plan.review.thisMonth")}</UiText>
-                <UiText style={shared.bigNumber}>{t("plan.review.left", { count: left })}</UiText>
+            <View style={styles.quotaCard}>
+              <View style={styles.quotaHead}>
+                <UiText style={styles.quotaTitle}>{t("plan.review.entryMonthTitle")}</UiText>
+                <UiText style={styles.quotaLeft}>{t("plan.review.entryLeft", { count: left })}</UiText>
               </View>
-              <QuotaBar left={left} limit={limit} />
+              <View style={styles.quotaBar}><QuotaBar left={left} limit={limit} /></View>
               <UiText style={shared.caption}>{t("plan.review.entryRules", { ...dateParts(ready.quota.resetsAt), limit })}</UiText>
             </View>
-            <View style={shared.softCard}>
-              <UiText style={shared.label}>{t("plan.review.dataTitle")}</UiText>
-              <UiText style={shared.body2}>{since ? t("plan.review.dataCounts", { events: since.events, steps: since.stepsCompleted, talked: since.talked }) : t("plan.review.dataKinds")}</UiText>
+            <View style={styles.dataBlock}>
+              <UiText style={styles.dataTitle}>{t("plan.review.dataTitle")}</UiText>
+              {since ? <View style={styles.dataChips}>
+                <UiText style={styles.dataChip}>{t("plan.review.dataTalked", { count: since.talked })}</UiText>
+                <UiText style={styles.dataChip}>{t("plan.review.dataEvents", { count: since.events })}</UiText>
+                <UiText style={styles.dataChip}>{t("plan.review.dataSteps", { count: since.stepsCompleted })}</UiText>
+              </View> : <UiText style={shared.body2}>{t("plan.review.dataKinds")}</UiText>}
             </View>
             {failure ? <FailureNote failure={failure} onReload={() => void load()} /> : null}
-            <View style={shared.footerRow}>
-              <Button label={t("plan.review.cancel")} onPress={onClose} variant="secondary" />
-              <View style={shared.grow}><Button block label={resume ? t("plan.review.resume") : t("plan.review.start")} loading={starting} onPress={() => void start()} variant="primary" /></View>
-            </View>
+            <Button block label={resume ? t("plan.review.resume") : t("plan.review.start")} loading={starting} onPress={() => void start()} variant="primary" />
+            <Button block label={t("plan.review.cancel")} onPress={onClose} variant="ghost" />
           </>
         ) : null}
       </View>
@@ -109,6 +111,15 @@ export function PlanReviewEntrySheet({ planId, visible, onClose, since: planSinc
   );
 }
 
-const useStyles = createThemedStyles(() => StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sheet: { gap: 12, paddingBottom: 8 },
+  quotaCard: { backgroundColor: colors.surface2, borderRadius: 18, gap: 9, padding: 13 },
+  quotaHead: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  quotaTitle: { color: colors.ink, fontSize: 13, fontWeight: "800" },
+  quotaLeft: { color: colors.plum700, fontSize: 11, fontWeight: "800" },
+  quotaBar: { width: 88 },
+  dataBlock: { gap: 8, paddingTop: 2 },
+  dataTitle: { color: colors.ink3Text, fontSize: 11.5 },
+  dataChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  dataChip: { backgroundColor: colors.surface2, borderRadius: 999, color: colors.ink2, fontSize: 11, paddingHorizontal: 9, paddingVertical: 5 },
 }));
