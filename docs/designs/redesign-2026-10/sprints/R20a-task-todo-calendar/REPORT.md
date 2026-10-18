@@ -501,6 +501,8 @@ D 専用 simulator にのみ install して、localhost:8085 の offline Metro �
 
 ## 待主会话代定
 
+SC-09 / SC-14 Web タスク「編集」入口に設計・動作の断点がある。`tasks-view-model.ts:taskToView` が `href=/app/tasks/<id>` を生成し、`TaskListWorkspace.tsx` の右欄「編集する」はその `detail.data.href` を開くが、`tasks/[id]/page.tsx` は同じ ID を `?tab=todo&view=all&task=<id>` として一覧に redirect するだけなので、選択中の右欄へ戻り編集 UI に入らない。route + mounted list の定向 7/7 は ID 引継ぎを検証したが「編集できる」を検証していない。b3 の Web Task 画板は詳細に「編集」chip を描く一方、編集状態・保存 / 取消の画框はない。候補 A（推奨）：右欄内の編集状態・保存/取消と日付/メモの範囲を補画 / 承認し、既存 actor-owned CAS API を使って実装・browser 検証してから旧 detail を退役する。候補 B：編集 affordance を外して read-only 詳細と明記するが、旧入口の編集機能は失われる。A/B の決定までは自己ループを完成済み SC-09 / SC-14 と扱わず、根拠のない私設編集 modal も足さない。SC-15 pixel にも影響する。
+
 SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only を維持し、未初期化を exact zero としない。A-owned read-only projection 要求を上に記録した。entity_draft も対応未検証の深いリンクは出さず、SC-07 partial を維持する。いずれも解決前に同等 / 完了とはしない。
 
 ## 待用户授权
