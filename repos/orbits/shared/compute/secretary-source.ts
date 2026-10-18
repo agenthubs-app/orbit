@@ -48,7 +48,8 @@ export function buildSecretaryPreview(actorId: string, candidates: readonly Secr
   const byEvent = new Map<string, SecretaryPreviewItemDTO>();
   for (const { notification, sourceState } of candidates) {
     const kind = secretaryKind(notification);
-    if (!kind || notification.actorId !== actorId || sourceState !== 'available' || notification.target.status !== 'available'
+    if (!kind || notification.sources.some(source => source.sourceKind === 'mail_summary')
+      || notification.actorId !== actorId || sourceState !== 'available' || notification.target.status !== 'available'
       || notification.target.kind !== 'event' || !notification.target.href || !isActiveInboxNotification(notification, nowMs)
       || (notification.expiresAt && parseTimestamp(notification.expiresAt) <= nowMs)) continue;
     const eventId = notification.target.id;

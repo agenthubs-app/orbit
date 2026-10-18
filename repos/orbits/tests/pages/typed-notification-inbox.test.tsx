@@ -11,8 +11,10 @@ test('category icons differ and readable source-only reminders do not invent tas
 });
 test('D-16 mail summaries stay hidden in the list and direct detail reader',()=>{
  const mail={...row,id:'mail',sources:[{...row.sources[0],sourceKind:'mail_summary'}]};
- assert.deepEqual(notificationInboxView({enabled:true,items:[row,mail],unreadCount:2,nextCursor:null,asOf:at},'a').items.map(item=>item.id),['n']);
+ const mixed={...row,id:'mixed',sources:[row.sources[0],{...row.sources[0],sourceKind:'mail_summary'}]};
+ assert.deepEqual(notificationInboxView({enabled:true,items:[row,mail,mixed],unreadCount:3,nextCursor:null,asOf:at},'a').items.map(item=>item.id),['n']);
  assert.throws(()=>notificationDetailView(mail,'a','mail'));
+ assert.throws(()=>notificationDetailView(mixed,'a','mixed'));
 });
 test('a foreign actor in an unreadable raw row rejects the whole page before tolerant parsing',()=>{
  const future={...row,id:'future',actorId:'other',sources:[{...row.sources[0],sourceKind:'future_source'}]};

@@ -54,9 +54,11 @@ test('a foreign-account item or an invalid envelope still rejects the whole resp
 
 test('D-16 mail summaries stay hidden in both the list and a direct detail link',()=>{
  const dormant={...row('mail','メール要約'),sources:[{sourceKind:'mail_summary',sourceId:'mail-1',sourceRevision:'1',occurredAt:at,readAt:at}]};
- const page=notificationInboxData({enabled:true,items:[dormant,row('n1','準備する')],unreadCount:2,nextCursor:null,asOf:at},'a');
+ const mixed={...row('mixed','混合通知'),sources:[row('mixed','混合通知').sources[0],dormant.sources[0]]};
+ const page=notificationInboxData({enabled:true,items:[dormant,mixed,row('n1','準備する')],unreadCount:3,nextCursor:null,asOf:at},'a');
  assert.deepEqual(page?.items.map(item=>item.id),['n1']);
  assert.equal(notificationDetailData(dormant,'a','mail'),null);
+ assert.equal(notificationDetailData(mixed,'a','mixed'),null);
  assert.equal(notificationDetailData(row('n1','準備する'),'a','n1')?.id,'n1');
 });
 

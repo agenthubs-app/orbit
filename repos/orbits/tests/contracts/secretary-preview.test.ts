@@ -23,8 +23,10 @@ test('secretary preview keeps an older valid card behind ordinary notifications 
 
 test('preview excludes unavailable, expired and mail sources, and response drops unknown entries', () => {
   const good = make('good', 'event_deadline', 'event-1');
+  const mixed = { ...make('mixed', 'event_prep', 'event-4'), sources: [...make('mixed', 'event_prep', 'event-4').sources, { ...base.sources[0]!, sourceKind: 'mail_summary' as const }] };
   const result = buildSecretaryPreview('actor', [
     { notification: good, sourceState: 'available' },
+    { notification: mixed, sourceState: 'available' },
     { notification: make('gone', 'event_prep', 'event-2'), sourceState: 'unavailable' },
     { notification: { ...make('expired', 'event_pick', 'event-3'), expiresAt: '2026-10-06T00:00:00Z' }, sourceState: 'available' },
   ], now);
