@@ -92,8 +92,9 @@ test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no 
     // R16：每天一问已有 live 实现（features/contacts/completion，测试见 tests/api/completion-question-routes.test.ts）。
     // R26：活动评估已有 live 实现（features/events/assessment，测试见 tests/api/event-assessment-routes.test.ts）。
     // R27：興味なし（契约 9）已有 live 实现（features/events/journey，测试见 tests/events/r27-journey-routes.test.ts）。
-    // R20a：todo/page is now actor-authenticated live (tested in todo-page.test.ts).
-    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events")) {
+    // R20a の todo/page・calendar/external-events と R18b の app/version は live。
+    // account-lifecycle の export/deletion は引き続き 503。
+    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events" && entry.file !== "app/version")) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);

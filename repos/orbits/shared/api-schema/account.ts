@@ -24,5 +24,11 @@ export const accountDeletionRequestSchema = accountDeletionRequestObject
   .refine((value) => Date.parse(value.purgeAfter) - Date.parse(value.requestedAt) === 30 * 86_400_000, { message: "purgeAfter is 30 days after the request" }) as unknown as z.ZodType<AccountDeletionRequestContract>;
 
 const semver = z.string().regex(/^\d+\.\d+\.\d+$/);
-export const appVersionObject = z.object({ minSupportedAppVersion: semver, latestAppVersion: semver });
+export const appVersionObject = z.object({
+  minSupportedAppVersion: semver,
+  latestAppVersion: semver,
+  enforceMinimum: z.boolean().optional(),
+  maintenance: z.object({ active: z.boolean(), until: instant.optional() }).optional(),
+  webBuildId: z.string().min(1).optional(),
+});
 export const appVersionSchema = appVersionObject as z.ZodType<AppVersionContract>;

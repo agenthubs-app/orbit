@@ -34,4 +34,10 @@ export interface AccountDeletionRequestContract {
 export interface AppVersionContract {
   minSupportedAppVersion: string;
   latestAppVersion: string;
+  /** Disabled until the first public App release. Old responses omit it. */
+  enforceMinimum?: boolean;
+  /** Only an explicit active signal represents planned maintenance. */
+  maintenance?: { active: boolean; until?: string };
+  /** A build identity, not an ordered version number. */
+  webBuildId?: string;
 }

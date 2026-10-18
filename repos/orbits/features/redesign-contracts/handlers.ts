@@ -15,6 +15,7 @@ import {
 import { AppError } from "../../shared/errors/app-error";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
 import { eventAssessmentLiveHandlers } from "../events/assessment/handlers";
+import { readLiveAppVersion } from "./app-version-live";
 import { redesignMock, type CompletionMockResult, type InviteFailure } from "./mock-service";
 import { readBody, redesignContractRoute, type ContractReply } from "./route";
 
@@ -195,7 +196,9 @@ export const getAccountExport = redesignContractRoute("account-lifecycle", accou
 export const getDeletionRequest = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), () => ({ data: redesignMock.deletionRequest() }));
 export const requestAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema, () => ({ data: redesignMock.requestDeletion(), status: 202 }));
 export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), () => ({ data: redesignMock.cancelDeletion() }));
-export const getAppVersion = redesignContractRoute("account-lifecycle", appVersionSchema, () => ({ data: redesignMock.appVersion() }));
+export const getAppVersion = redesignContractRoute("app-version", appVersionSchema, (_request, _params, { service }) => ({
+  data: service.mode === "live" ? readLiveAppVersion() : redesignMock.appVersion(),
+}));
 
 // 12 plan v2：R22 起由 features/plans/v2/handlers.ts 实现（mock 读演示世界，live 读真实计划）；
 // capability id「plan-v2-summary」仍用于 ORBIT_REDESIGN_MOCK 把这组接口切回 mock。

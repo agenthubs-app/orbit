@@ -126,6 +126,32 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "enforceMinimum": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "maintenance": {
+          "optional": true,
+          "kind": "object",
+          "members": {
+            "active": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "until": {
+              "optional": true,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "webBuildId": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
