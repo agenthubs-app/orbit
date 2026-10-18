@@ -55,7 +55,7 @@ export function useNotesWriteStatus(actorId: string): NotesWriteStatus {
 function useNetworkNotesList(input: NotesListSourceInput, enabled: boolean): NotesListSource {
   const locale = useOrbitLocale();
   const client = useOrbitApiClient({ scopeKey: input.scopeKey });
-  const query = { association: input.association, ...(input.contactId ? { contactId: input.contactId } : {}), noteKind: input.noteKind, q: input.q, limit: 20 };
+  const query = { association: input.association, ...(input.contactId ? { contactId: input.contactId } : {}), ...(input.noteKind === undefined ? {} : { noteKind: input.noteKind }), q: input.q, limit: 20 };
   const path = notesSearchPath(query);
   const state = useApiResource<unknown>(path, () => false, { scopeKey: input.scopeKey, cachePolicy: "network-only", enabled });
   const basePage = state.kind === "success" || state.kind === "empty" ? notesPageFromPayload(state.data, input.actorId, locale.language) : null;

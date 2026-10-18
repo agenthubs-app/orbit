@@ -182,7 +182,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const result = await client.patch<unknown>(notePath(targetNoteId), { body: request.body, signal: operation.signal });
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, ...noteAssociationsForReceipt(request.body), noteKind: request.body.noteKind, usedForPlan: request.body.usedForPlan, noteId: targetNoteId }, locale.language) : null;
+      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, ...noteAssociationsForReceipt(request.body), ...(request.body.noteKind === undefined ? {} : { noteKind: request.body.noteKind }), ...(request.body.usedForPlan === undefined ? {} : { usedForPlan: request.body.usedForPlan }), noteId: targetNoteId }, locale.language) : null;
     if (note) {
       autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);

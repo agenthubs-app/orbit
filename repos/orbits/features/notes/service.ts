@@ -176,7 +176,8 @@ function noteKind(value: unknown): "free" | "meeting" | "voice" | undefined {
 }
 
 function usedForPlan(value: unknown): boolean | undefined {
-  if (value === undefined || typeof value === "boolean") return value;
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
   throw new NoteServiceError("NOTE_INVALID_INPUT", "Plan use flag is invalid");
 }
 

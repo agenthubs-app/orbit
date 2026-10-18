@@ -79,6 +79,6 @@ test("an update can carry a future token unchanged for server validation, but cr
   const future = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };
   const base = { mutationId: "note:future", kind: "note", entityId: "note:existing", operation: "update", baseRevision: "revision:1", createdAt };
   const updated = parseOfflineMutation({ ...base, patch: { body: "Note for later", mentions: [future] } });
-  assert.deepEqual(updated.patch.mentions, [future]);
+  assert.deepEqual(updated.patch, { body: "Note for later", mentions: [future] });
   assert.throws(() => parseOfflineMutation({ ...base, entityId: localId, operation: "create", baseRevision: null, patch: { body: "Note for later", mentions: [future] } }));
 });

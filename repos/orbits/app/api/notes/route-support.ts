@@ -150,6 +150,7 @@ export function noteMentions(value: unknown, allowStoredUnknown = false): readon
     } else if (!allowStoredUnknown || typeof mention.entityType !== "string" || !mention.entityType.trim()) {
       throw new AppError("VALIDATION_ERROR", "mentions contains an unknown type.");
     }
-    return { ...mention } as NoteMentionContract;
+    // Stored future mention kinds keep their original fields for an unchanged update.
+    return { ...mention } as unknown as NoteMentionContract;
   });
 }

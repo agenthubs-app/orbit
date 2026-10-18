@@ -2,6 +2,24 @@
 
 2026-10-18、D 線 `line-d`、run-01。主会話指定の R20a「除像素外」失敗帰属チェックポイントを受け、同じ隔離 worktree で R20b の独立した契約・画板調査から着手した。R20a 自体は未完了であり、Task 容器／旧画面削除／native／pixel はこの時点で R20b の合格根拠にしない。`origin/redesign` への push や rebase は行わない（統合後に rebase する主会話指定）。
 
+## 18:22 主会話継続の検証キュー（結果待ち）
+
+D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-board-preflight.log` は **0 byte**、対応 runner PID も消えた。これは合格／失敗ではなく未実行として扱う。主会話は clean `66769b462` から独立した新規ログ名で App／Web `typecheck`、Web `typecheck:app`、App／Web 画板 preflight、Web full を全機 `heavy.sh` の公平キューへ再登録した。先に独立登録済みの App full も待機中。開始時の実際の source を確認してから成績を追記し、旧空ログを結果へ読み替えない。
+
+軽量 Web copy QA は `node --import tsx scripts/copy-qa/cli.mjs --web --json` で **3,514 entries / 26 issues、exit1** (`_evidence-d/R20b/run-01/d-web-copy-post-owner-exit-66769b462.json`)。`web.*memo*` の issue は **0**。26 件が残るため Web 全体を copy 合格とはしない。R20a の未完 UI/native/pixel と R20b の本体 SC は引き続き OPEN。
+
+19:08、fair queue の D App full が clean source HEAD `66769b462`（REPORT 追記のみ未コミット）で終わった。原始ログ `_evidence-d/R20b/run-01/app-full-after-note-offset-2272b8e48.log` は **3,342 tests / 3,328 pass / 12 fail / 0 cancelled / 2 skip**。前回 `R20a/run-01/d-app-full-post-rebase-1dad1a9a1.log` と失敗名を正規化して集合比較した `diff -u` は空で、今回の新規 failure name は **0**。12 件は R12 の期限切れ add/camera fixture 9 件、既知の辞書 key-count、joined-person click、plan overview overlay click 各 1 件と同名である。テスト増分 16 件が通っても全量 suite は赤のまま；D の App typecheck／Web full／両端 preflight は後続 queue の結果待ちで、SC-04/05/08 や R20a native/pixel の合格根拠にはしない。
+
+19:25、clean product source `66769b462` の D Web full は **7,772 tests / 6,698 pass / 41 fail / 0 cancelled / 1,033 skip、exit1** (`_evidence-d/R20b/run-01/d-web-full-post-owner-exit-66769b462.log`)。前回 R20a `d-web-full-stale-read-fix.log` の 40 failure names と正規化比較した差は、R20b 自身の `the entire project typechecks with zero errors` だけで、既存 40 件は消えていない。独立 typecheck の診断は Web production 2 件（HTTP mention cast、`usedForPlan` の `unknown` return）、Web tests 1 件（union patch の直接 property access）、App 5 件（省略可能値を明示 `undefined` にした receipt/query と union patch の test access）だった。production の二件と App の optional input は元の runtime 値・検証境界を維持する型修正、test access は同じ payload 全体の deep equality に強化した。修正後の定向 Web notes service/HTTP/schema **29/29**、App view/outbox/search **13/13** は各 exit0 (`d-{web,app}-focused-ts-repair-working-tree.log`)、`git diff --check` も exit0。ただし fresh Web `typecheck` / `typecheck:app` / App `typecheck` は fair queue 待ちであり、ratchet と full suite を green と呼ばない。
+
+画板 preflight の App / Web runner はそれぞれ exit0 (`{app,web}-board-preflight-post-owner-exit.{json,md,log}`) で、登録された原画を解析した。token 照合の内訳は Web exact 59 / near 2 / missing 1、App exact 255 / near 5 / missing 35。生成されたデータ出典表は空欄を含み、欠けた token も残るため、画板解析が走った証拠だけであって五項目のデータ出典・可達操作や pixel の合格ではない。
+
+19:34、修正後の fresh `npm run typecheck` は D Web / D App とも **exit0**、D Web `npm run typecheck:app` も **exit0** (`_evidence-d/R20b/run-01/d-{web,web-app,app}-tsc-ts-repair-working-tree.log`)。compiler の赤は解消したが、Web/App full はそれぞれ `d-{web,app}-full-ts-repair-working-tree.log` へ fair queue で再実行待ち；以前の full 41/12 件を消去しない。
+
+19:42、型修正後の fresh D Web full は **7,772 tests / 6,699 pass / 40 fail / 0 cancelled / 1,033 skip、exit1** (`_evidence-d/R20b/run-01/d-web-full-ts-repair-working-tree.log`)。`the entire project typechecks with zero errors` は同じ full 内で **pass**。前回 R20a の retained 40 failure names との正規化 `diff -u` は空で、今回の新規 failure name は 0。ただし 40 件が残るため全量 green とは言わない。D App full は同じ修正 source で後続 queue 実行中。
+
+19:46、その D App full は **3,342 tests / 3,329 pass / 11 fail / 0 cancelled / 2 skip、exit1** (`_evidence-d/R20b/run-01/d-app-full-ts-repair-working-tree.log`)。retained R20a 12 failure names と比較すると新規 0 件で、以前の plan overview `skip: the confirm focuses ...` timeout が今回は通った。他の R12 camera/add 9 件、辞書 exact-key、joined-person の 11 件は残る。App / Web とも定向・型検査は通ったが full は依然赤、SC-04/05/08 / native / pixel を閉じない。
+
 ## 開始時点と基線
 
 - D の開始 HEAD `6633cf27f`、worktree clean、`line-d` は `origin/redesign` に対し ahead 128 / behind 20。R31a / R31b の実際の App/Web kit export は両方ある。メモ用新画面はまだなく、R20a REPORT は「進行中」。

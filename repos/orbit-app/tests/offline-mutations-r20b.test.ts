@@ -14,8 +14,10 @@ test("App strict outbox parses event mentions and memo fields", () => {
       mentions: [{ entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" }],
     },
   });
-  assert.equal(parsed.patch.noteKind, "meeting");
-  assert.deepEqual(parsed.patch.mentions, [{ entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" }]);
+  assert.deepEqual(parsed.patch, {
+    body: "At @Launch", noteKind: "meeting", usedForPlan: true,
+    mentions: [{ entityType: "event", eventId: "event:launch", start: 3, end: 10, displayText: "@Launch" }],
+  });
 });
 
 test("App strict outbox parses planLink while preserving older task patches", () => {
@@ -29,6 +31,6 @@ test("App strict outbox parses planLink while preserving older task patches", ()
 test("App can queue a stored future mention on update, but cannot create a new future token", () => {
   const future = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };
   const update = { mutationId: "note:future", kind: "note", entityId: "note:existing", operation: "update", baseRevision: "revision:1", createdAt };
-  assert.deepEqual(parseOfflineMutation({ ...update, patch: { body: "Note for later", mentions: [future] } }).patch.mentions, [future]);
+  assert.deepEqual(parseOfflineMutation({ ...update, patch: { body: "Note for later", mentions: [future] } }).patch, { body: "Note for later", mentions: [future] });
   assert.throws(() => parseOfflineMutation({ ...update, entityId, operation: "create", baseRevision: null, patch: { body: "Note for later", mentions: [future] } }));
 });
