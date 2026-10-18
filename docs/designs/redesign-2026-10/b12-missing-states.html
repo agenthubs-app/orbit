@@ -8730,6 +8730,103 @@ for (const [label, body, rail, width, note] of screens) {
 g += PB('A-R18a-30 マイページ（100% · 参加するイベント）', '', () => ({ body: withGoing(myApp(100)), tab: -1 }), null, 'b5 #16 / #66（改稿后）+ 主催下面「参加するイベント · これから 2件」· ' + source);
 g += PB('A-R18a-31 iOrbit が使う情報（意味検索）', '', () => ({ body: aiInfoApp() + semantic(), tab: -1 }), null, 'b5 #25（改稿后）+ 意味検索；深色只换 token · ' + source);
 document.getElementById('out').insertAdjacentHTML('beforeend', group('g11 r18a-boards', g));
+/* 2026-10-18 主会话代定 · R18b：公开帮助 / 法务补画草案。正式法务正文与支持邮箱仍为发布门禁；主会话复核前不算通过。 */
+const r18bHelpItems = [
+  ['メールは自動で送信されますか？', 'いいえ。メール・メッセージは下書きまで。送信はあなたが行います。'],
+  ['Gmail 連携で読むのはどの範囲？', '件名・相手・日時のみです。本文は読みません。'],
+  ['名刺の読み取りが間違っているときは？', '確認画面で修正できます。すでに追加された名刺は、人脈から編集できます。'],
+];
+const r18bPublicContent = (kind, mobile = false, helpState = 'default') => {
+  const help = kind === 'help';
+  const title = help ? 'ヘルプセンター' : kind === 'terms' ? '利用規約' : 'プライバシー';
+  const intro = help ? '使い方で困ったときに' : '';
+  const content = help
+    ? `<div class="search" style="margin:20px 0 16px">${ic('search', 'sm')}${helpState === 'empty' ? '領収書' : '質問を入力（例：名刺）'}</div>${helpState === 'empty'
+      ? '<div class="card" style="text-align:left"><b>「領収書」に一致する質問はありません</b><div class="sub" style="margin-top:8px">言葉を変えてお試しください。</div></div>'
+      : `<div class="card" style="text-align:left"><h3 style="font-size:16px">よくある質問</h3>${r18bHelpItems.map(([q, a], index) => `<details ${helpState === 'expanded' && index === 0 ? 'open' : ''} style="padding:14px 0;border-top:1px solid var(--line)"><summary style="font-weight:700;cursor:pointer">${q}</summary><div class="sub" style="margin-top:8px;line-height:1.7">${a}</div></details>`).join('')}</div>`}<div class="card flat" style="margin-top:14px;text-align:left"><b>お問い合わせ</b><div class="sub" style="margin-top:6px">準備中 · 今はこの画面から送信できません。</div></div>`
+    : `<div class="card" style="margin-top:24px;text-align:left;padding:${mobile ? '22px' : '28px'}"><span class="chip apricot">公開前に掲載</span><p class="sub" style="line-height:1.8;margin:14px 0 0">正式な内容を準備しています。</p></div>`;
+  return `<div style="max-width:${mobile ? '100%' : '760px'};margin:${mobile ? '8px' : '40px auto'};padding:${mobile ? '0 16px' : '0 24px'}"><div class="lbl">公開ページ</div><h1 style="font-size:${mobile ? '24px' : '34px'};line-height:1.35;margin:8px 0 4px">${title}</h1>${intro ? `<div class="sub">${intro}</div>` : ''}${content}<div class="row" style="gap:10px;margin-top:22px;flex-wrap:wrap"><button class="btn primary">ホームへ</button>${help ? '' : '<button class="btn">ヘルプを見る</button>'}</div></div>`;
+};
+const r18bPublicWeb = (kind, width, theme, helpState = 'default', signedIn = false) => {
+  const accountAction = signedIn ? '設定へ' : 'ログイン';
+  if (width === 390) return m390({ body: `<div class="row between" style="padding:4px 16px 14px"><div class="row" style="gap:8px"><span class="lp-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px">O</span><b>Orbit</b></div><button class="btn sm ghost">${accountAction}</button></div>${r18bPublicContent(kind, true, helpState)}`, nav: -1, theme });
+  return `<div class="web no-rail bare ${width === 1024 ? 'w1024' : ''}" data-theme="${theme}" style="display:block;width:${width}px;height:900px"><nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div><div class="row" style="gap:18px"><span>ヘルプ</span><span>利用規約</span><span>プライバシー</span><button class="btn sm">${accountAction}</button></div></nav>${r18bPublicContent(kind, false, helpState)}</div>`;
+};
+const r18bPublicApp = (kind, helpState = 'default') => {
+  const title = kind === 'help' ? 'ヘルプ' : kind === 'terms' ? '利用規約' : 'プライバシー';
+  return topbar(title, '', `<button class="rbtn">${ic('left')}</button>`, '<span></span>') + r18bPublicContent(kind, true, helpState);
+};
+let r18b = S8('补画 · R18b 公开帮助 / 法务', 'b7 帮助风格 + b1 公开顶栏；未登录可达，无私有壳。正式正文 / 支持邮箱待用户授权，画板为待复核草案。');
+for (const [kind, suffix] of [['help', 'H'], ['terms', 'T'], ['privacy', 'P']]) {
+  for (const width of [1440, 1024, 390]) {
+    const baseId = `W-R18b-11${suffix}`;
+    const id = `${baseId}${width === 1440 ? '' : '-' + width}`;
+    INDEX.push([id, `${kind} · 公開 ${width}`]);
+    r18b += `<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-${id}">${baseId} ${kind} · 公開<span class="src">参照：R18b §2 S1 / M1 · 待复核</span></div><div class="pair ${width === 390 ? '' : 'col'}">${r18bPublicWeb(kind, width, 'light')}${r18bPublicWeb(kind, width, 'dark')}</div></div>`;
+  }
+  r18b += PB(`A-R18b-11${suffix} ${kind} · 公開`, '', () => ({ body: r18bPublicApp(kind), tab: -1 }), null, 'R18b §2 S1 · 待复核');
+}
+for (const [state, label] of [['expanded', 'FAQ 展開'], ['empty', '検索結果なし']]) {
+  for (const width of [1440, 1024, 390]) {
+    const baseId = `W-R18b-11H-${state}`;
+    const id = `${baseId}${width === 1440 ? '' : '-' + width}`;
+    INDEX.push([id, `help · ${label} ${width}`]);
+    r18b += `<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-${id}">${baseId} help · ${label}<span class="src">参照：R18b SC-09 · 待复核</span></div><div class="pair ${width === 390 ? '' : 'col'}">${r18bPublicWeb('help', width, 'light', state)}${r18bPublicWeb('help', width, 'dark', state)}</div></div>`;
+  }
+  r18b += PB(`A-R18b-11H-${state} help · ${label}`, '', () => ({ body: r18bPublicApp('help', state), tab: -1 }), null, 'R18b SC-09 · 待复核');
+}
+/* 2026-10-18 主会话代定 · R18b：已登录设置页进入公开路由时，顶栏不能继续显示「ログイン」。追加末尾，保留先前画板 index。 */
+for (const [kind, suffix] of [['help', 'H'], ['terms', 'T'], ['privacy', 'P']]) {
+  for (const width of [1440, 1024, 390]) {
+    const baseId = `W-R18b-11${suffix}-auth`;
+    const id = `${baseId}${width === 1440 ? '' : '-' + width}`;
+    INDEX.push([id, `${kind} · 設定から ${width}`]);
+    r18b += `<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-${id}">${baseId} ${kind} · 設定から<span class="src">参照：R18b SC-08 · 待复核</span></div><div class="pair ${width === 390 ? '' : 'col'}">${r18bPublicWeb(kind, width, 'light', 'default', true)}${r18bPublicWeb(kind, width, 'dark', 'default', true)}</div></div>`;
+  }
+}
+/* 2026-10-18 主会话代定 · R18b：b7 #54 / #59 の 404 を、公開 / 認証済みの双方で補画。公開態に私有ナビを出さない。 */
+const r18bNotFoundContent = (mobile = false) => `<div style="max-width:${mobile ? '100%' : '620px'};margin:${mobile ? '122px 18px 0' : '92px auto 0'};text-align:center"><div class="bigemo" style="font-size:64px;line-height:1.05">🧭</div><h1 style="font-size:${mobile ? '22px' : '28px'};font-weight:900;margin:18px 0 8px">このページは見つかりません</h1><div class="sub" style="line-height:1.7">${mobile ? 'リンクが古いか、URL が<br>間違っている可能性があります。' : 'リンクが古いか、URL が間違っている可能性があります。'}</div><div class="row" style="justify-content:center;gap:10px;margin-top:20px;${mobile ? 'flex-direction:column' : ''}"><button class="btn primary ${mobile ? 'block xl' : ''}">ホームへ戻る</button><button class="btn ${mobile ? 'block' : ''}">ヘルプを見る</button></div></div>`;
+const r18bPublicNotFoundWeb = (width, theme) => {
+  if (width === 390) return m390({ body: `<div class="row between" style="padding:4px 16px 14px"><div class="row" style="gap:8px"><span class="lp-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px">O</span><b>Orbit</b></div><button class="btn sm ghost">ログイン</button></div>${r18bNotFoundContent(true)}`, nav: -1, theme });
+  return `<div class="web no-rail bare ${width === 1024 ? 'w1024' : ''}" data-theme="${theme}" style="display:block;width:${width}px;height:900px"><nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div><div class="row" style="gap:18px"><span>ヘルプ</span><span>利用規約</span><span>プライバシー</span><button class="btn sm">ログイン</button></div></nav>${r18bNotFoundContent()}</div>`;
+};
+let r18b404 = S8('补画 · R18b 404', 'b7 #54 / #59 文案与出口；未登录不挂私有壳，已登录可保留导航。待主会话复核草案。');
+r18b404 += PB('A-R18b-08 404 · 公開', '', () => ({ body: r18bNotFoundContent(true), tab: -1 }), null, 'b7 #54 · R18b SC-10 · 待复核');
+for (const width of [1440, 1024, 390]) {
+  const id = `W-R18b-08-public${width === 1440 ? '' : '-' + width}`;
+  INDEX.push([id, `404 · 公開 ${width}`]);
+  r18b404 += `<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-${id}">W-R18b-08-public 404 · 公開<span class="src">参照：b7 #59 / R18b SC-10 · 待复核</span></div><div class="pair ${width === 390 ? '' : 'col'}">${r18bPublicNotFoundWeb(width, 'light')}${r18bPublicNotFoundWeb(width, 'dark')}</div></div>`;
+  r18b404 += WP(`W-R18b-08-private-${width} 404 · 認証済み`, '', () => ({ nav: 'home', body: r18bNotFoundContent(width === 390), tab: width === 390 ? 0 : -1 }), null, 'b7 #59 · R18b SC-10 · 待复核', width);
+}
+/* 2026-10-18 主会话代定 · R18b：b7 #55 / #60 の maintenance.active=true。until が有効な場合だけ時刻を表示する。時刻は画板 fixture。 */
+const r18bMaintenanceContent = (mobile = false, hasUntil = false) => `<div style="max-width:${mobile ? '100%' : '600px'};margin:${mobile ? '122px 18px 0' : '92px auto 0'};text-align:center"><div class="bigemo" style="font-size:64px;line-height:1.05">🛠️</div><h1 style="font-size:${mobile ? '22px' : '28px'};font-weight:900;margin:18px 0 8px">ただいまメンテナンス中です</h1><div class="sub">ご不便をおかけして申し訳ありません。</div><div class="card" style="margin-top:24px;text-align:${mobile ? 'center' : 'left'}"><div class="lbl">再開の予定</div><div class="sub" style="margin-top:6px">${hasUntil ? '10月19日 12:00（日本時間）' : '確認でき次第、お知らせします。'}</div></div><button class="btn ${mobile ? 'block' : ''}" style="margin-top:18px">${ic('refresh', 'sm')}再読み込み</button></div>`;
+const r18bMaintenanceWeb = (width, theme, hasUntil) => {
+  if (width === 390) return m390({ body: `<div class="row" style="padding:4px 16px 14px;gap:8px"><span class="lp-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px">O</span><b>Orbit</b></div>${r18bMaintenanceContent(true, hasUntil)}`, nav: -1, theme });
+  return `<div class="web no-rail bare ${width === 1024 ? 'w1024' : ''}" data-theme="${theme}" style="display:block;width:${width}px;height:900px"><nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div></nav>${r18bMaintenanceContent(false, hasUntil)}</div>`;
+};
+let r18bMaintenance = S8('补画 · R18b メンテナンス', 'b7 #55 / #60 の active=true。時刻あり画板は until=2026-10-19T03:00:00Z の表示 fixture。503 / オフラインは含めない。待主会话复核草案。');
+for (const [state, hasUntil] of [['unknown', false], ['until', true]]) {
+  r18bMaintenance += PB(`A-R18b-09-${state} メンテナンス`, '', () => ({ body: r18bMaintenanceContent(true, hasUntil), tab: -1 }), null, `b7 #55 · R18b SC-10 · ${hasUntil ? 'until fixture' : 'until なし'} · 待复核`);
+  for (const width of [1440, 1024, 390]) {
+    const id = `W-R18b-09-${state}${width === 1440 ? '' : '-' + width}`;
+    INDEX.push([id, `メンテナンス ${state} ${width}`]);
+    r18bMaintenance += `<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-${id}">W-R18b-09-${state} メンテナンス<span class="src">参照：b7 #60 / R18b SC-10 · ${hasUntil ? 'until fixture' : 'until なし'} · 待复核</span></div><div class="pair ${width === 390 ? '' : 'col'}">${r18bMaintenanceWeb(width, 'light', hasUntil)}${r18bMaintenanceWeb(width, 'dark', hasUntil)}</div></div>`;
+  }
+}
+/* 2026-10-18 · R18b A-10：b7 #56 の強制更新。実在する版番号 / 更新履歴 / データ保証は表示しない。 */
+const r18bForceUpdateContent = () => `<div style="margin:116px 18px 0;text-align:center"><div class="lp-logo" style="width:84px;height:84px;border-radius:20px;font-size:36px;margin:0 auto">O</div><h1 style="font-size:22px;font-weight:900;margin:20px 0 8px">アップデートが必要です</h1><div class="sub" style="line-height:1.7">このバージョンはサポートを終了しました。<br>最新版に更新すると、引き続きご利用いただけます。</div><div class="card" style="margin-top:20px;text-align:left"><div class="sub" style="line-height:1.8">更新後、アプリを開き直してください。</div></div></div><div class="foot" style="position:absolute;bottom:0;left:0;right:0;z-index:30;padding:22px 18px 34px;background:linear-gradient(to bottom,transparent,var(--bg) 26%)"><button class="btn primary block xl">${ic('out', 'sm')}App Store でアップデート</button></div>`;
+const r18bForceUpdate = S8('补画 · R18b 強制アップデート', 'b7 #56；enforceMinimum=true かつ現在の版が最低版未満の場合のみ。閉じる入口なし。待主会话复核草案。')
+  + PB('A-R18b-10 強制アップデート', '', () => ({ body: r18bForceUpdateContent(), tab: -1 }), null, 'b7 #56 · R18b SC-12 · 待复核');
+/* R18b W-10：両 build ID があり不一致の場合だけ。入力内容の保存は保証しない。 */
+const r18bVersionBanner = (width) => `<div class="pop" style="position:absolute;z-index:55;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-float);box-sizing:border-box;${width === 390 ? 'left:16px;right:16px;bottom:166px;padding:16px' : `left:50%;bottom:28px;transform:translateX(-50%);width:${width === 1024 ? '600px' : '640px'};padding:16px`}"><div class="row" style="align-items:flex-start;gap:12px"><span class="emo lav" style="flex:none">✨</span><div style="flex:1;min-width:0"><b style="font-size:14px">新しいバージョンがあります</b><div class="lbl" style="margin-top:4px;line-height:1.5;color:var(--ink-2)">入力中なら、内容を確認してから再読み込み。</div></div></div><div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn ghost">あとで</button><button class="btn primary">${ic('refresh', 'sm')}再読み込み</button></div></div>`;
+const r18bVersionBg390 = () => `<div style="padding:8px 18px"><h1 style="font-size:24px;text-align:center;margin:6px 0 24px">設定</h1><div class="card" style="padding:16px"><div class="row" style="gap:10px"><span class="emo sm lav">👤</span><b>プロフィール</b><span style="margin-left:auto">${ic('right', 'sm')}</span></div></div><div class="card" style="padding:16px;margin-top:12px"><div class="row" style="gap:10px"><span class="emo sm blue">⚙️</span><b>言語と外観</b><span style="margin-left:auto">${ic('right', 'sm')}</span></div></div><div class="card" style="padding:16px;margin-top:12px"><div class="row" style="gap:10px"><span class="emo sm teal">❔</span><b>ヘルプ</b><span style="margin-left:auto">${ic('right', 'sm')}</span></div></div></div>`;
+const r18bVersionBgDesktop = () => `<div style="max-width:960px;margin:40px auto;padding:0 24px"><h1 style="font-size:28px;margin:0 0 20px">設定</h1><div class="card" style="padding:24px"><div class="row" style="gap:14px"><span class="emo lav">👤</span><div><b style="font-size:17px">プロフィール</b><div class="lbl" style="margin-top:4px">公開する内容を確認</div></div></div></div><div class="row" style="gap:16px;align-items:stretch;margin-top:16px"><div class="card" style="flex:1;padding:24px"><div class="row" style="gap:12px"><span class="emo sm blue">⚙️</span><b>言語と外観</b></div></div><div class="card" style="flex:1;padding:24px"><div class="row" style="gap:12px"><span class="emo sm teal">❔</span><b>ヘルプ</b></div></div></div></div>`;
+let r18bWebUpdate = S8('补画 · R18b Web 新バージョン', 'b7 #61；現在ページ / API の build ID が両方あり不一致のときのみ。あとで閉じる。待主会话复核草案。');
+for (const width of [1440, 1024, 390]) {
+  r18bWebUpdate += WP(`W-R18b-10-${width} 新バージョン`, '', () => ({ nav: 'settings', body: width === 390 ? r18bVersionBg390() : r18bVersionBgDesktop(), tab: width === 390 ? 0 : -1, ov: r18bVersionBanner(width) }), null, 'b7 #61 · R18b SC-12 · 待复核', width);
+}
+r18b += r18b404 + r18bMaintenance + r18bForceUpdate + r18bWebUpdate;
+document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r18b-boards', r18b));
 document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 orbitChrome();
 

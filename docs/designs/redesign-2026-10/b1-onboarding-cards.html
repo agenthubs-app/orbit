@@ -1588,6 +1588,7 @@ const paper = (p, o = {}) => o.back
   : `<div class="paper" style="${o.style || ''}"><div class="p-co">${p[1]}</div><div class="p-r">${p[2]}</div><div class="p-n">${p[0]}</div><div class="p-m">${p[4] || 'info@example.jp'}<br>03-5555-0142</div></div>`;
 
 /* ===================== A1 落地页 / 欢迎页 ===================== */
+/* 2026-10-18 主会话代定 · R18b：b1 #0「最大3つ」→「最大2つ」。プラン v2 の上限と揃える。 */
 function landing() {
   return `<div class="lp">
     <nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div>
@@ -1611,15 +1612,16 @@ function landing() {
       </div>
     </div>
     <div class="lp-vals">
-      ${[['📇', 'apricot', '撮るだけで、名刺が人脈に', '連続撮影・表裏の自動ペア・重複の統合まで。確認は1枚5秒。'], ['🎯', 'lav', '目標から逆算した、次の一手', '資金調達・新規開拓など最大3つの目標ごとに、ステップ別に話すべき人を提案。'], ['✉️', 'pink', '下書きまで。送信はあなたが行います', 'お礼や紹介依頼のメールを下書きします。勝手に送ることはありません。']].map(([e, c, t, d]) => `<div class="card"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="sub" style="line-height:1.7">${d}</div></div></div>`).join('')}
+      ${[['📇', 'apricot', '撮るだけで、名刺が人脈に', '連続撮影・表裏の自動ペア・重複の統合まで。確認は1枚5秒。'], ['🎯', 'lav', '目標から逆算した、次の一手', '資金調達・新規開拓など最大2つの目標ごとに、ステップ別に話すべき人を提案。'], ['✉️', 'pink', '下書きまで。送信はあなたが行います', 'お礼や紹介依頼のメールを下書きします。勝手に送ることはありません。']].map(([e, c, t, d]) => `<div class="card"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="sub" style="line-height:1.7">${d}</div></div></div>`).join('')}
     </div></div>`;
 }
+/* 2026-10-18 主会话代定 · R18b：b1 #1 も「最大3つ」→「最大2つ」。公開入口の両端で同じ上限を案内する。 */
 function welcome() {
   const slide = (art, t, d) => `<section><div class="art">${art}</div><div class="h1" style="margin-top:22px">${t}</div><div class="sub" style="margin-top:8px;font-size:13.5px;line-height:1.75">${d}</div></section>`;
   return `<div class="row between" style="padding:6px 0 14px"><div class="row" style="gap:8px"><span class="lp-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px">O</span><b>Orbit</b></div><button class="btn sm ghost">スキップ</button></div>
     <div class="wel">
       ${slide(`<div style="left:30px;top:70px;transform:rotate(-10deg) scale(.95)">${paper(NEW[6])}</div><div style="left:60px;top:105px;transform:rotate(-2deg) scale(.95)">${paper(NEW[1])}</div><div style="left:84px;top:140px;transform:rotate(6deg) scale(.95)">${paper(NEW[0])}</div><span class="chip teal" style="right:22px;top:26px;font-size:12px;padding:5px 11px">✓ 12枚</span>`, '名刺は撮るだけ。<br>あとは Orbit が整理します', '連続撮影・表裏の自動ペア・重複の統合まで。会社や業界の情報も補います。')}
-      ${slide(`<div style="left:50%;top:40px;margin-left:-75px">${ring(150, 14, [{ v: 46, c: 'var(--plum-700)', max: 100 }], '<b style="font-family:var(--font-num);font-size:30px;font-weight:800">46</b><div class="lbl" style="text-align:center">スコア</div>')}</div><span class="chip pink" style="left:24px;top:220px">💰 シリーズA</span><span class="chip blue" style="right:24px;top:250px">🏭 新規開拓</span>`, '目標から逆算して、<br>会うべき人を提案', '最大3つの目標ごとに、ステップ別の「話すべき人のタイプ」と行くべきイベントを示します。')}
+      ${slide(`<div style="left:50%;top:40px;margin-left:-75px">${ring(150, 14, [{ v: 46, c: 'var(--plum-700)', max: 100 }], '<b style="font-family:var(--font-num);font-size:30px;font-weight:800">46</b><div class="lbl" style="text-align:center">スコア</div>')}</div><span class="chip pink" style="left:24px;top:220px">💰 シリーズA</span><span class="chip blue" style="right:24px;top:250px">🏭 新規開拓</span>`, '目標から逆算して、<br>会うべき人を提案', '最大2つの目標ごとに、ステップ別の「話すべき人のタイプ」と行くべきイベントを示します。')}
       ${slide(`<div class="card" style="left:24px;right:24px;top:60px;background:var(--surface-2)"><div class="lbl">下書き</div><div style="font-size:13px;line-height:1.7;margin-top:6px">山口様<br>昨日はありがとうございました。お話しした資料をお送りいたします。…</div><div class="lbl" style="margin-top:10px">メール・メッセージは下書きまで。送信はあなたが行います。</div></div>`, '下書きまで。<br>送信はあなたが行います', 'お礼や紹介依頼のメールを下書き。Orbit が勝手に送ることはありません。')}
     </div>
     <div class="dots" style="margin-top:18px"><i class="on"></i><i></i><i></i></div>`;

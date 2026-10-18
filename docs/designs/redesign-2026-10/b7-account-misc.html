@@ -1490,59 +1490,48 @@ const sugRail = (s) => `<h4><span class="emo sm teal">🔄</span>反映のルー
 /* =================================================================
    H. ヘルプ・404・メンテナンス・強制アップデート
    ================================================================= */
-const CATS = [['🚀', 'lav', 'はじめに'], ['📇', 'apricot', '名刺と人脈'], ['🧭', 'pink', 'プランと iOrbit'], ['🎟️', 'teal', 'イベント'], ['💳', 'blue', '料金・お支払い'], ['🔐', 'lav', 'アカウント・データ']];
-const FAQ = ['メールは自動で送信されますか？', '名刺の読み取りが間違っているときは？', 'Pro を解約するには？', 'Gmail 連携で読むのはどの範囲？', 'データを書き出すには？'];
+/* 2026-10-18 主会话代定 · R18b：未提供の Pro・本文読取・問い合わせ送信を案内しない。 */
+const CATS = [['🚀', 'lav', 'はじめに'], ['📇', 'apricot', '名刺と人脈'], ['🧭', 'pink', 'プランと iOrbit'], ['🎟️', 'teal', 'イベント'], ['🔐', 'blue', 'アカウント・データ']];
+const FAQ = ['メールは自動で送信されますか？', '名刺の読み取りが間違っているときは？', 'Gmail 連携で読むのはどの範囲？', 'データを書き出すには？'];
 function helpApp() {
   return topbar('ヘルプ', 'ヘルプセンター', back, '<span></span>') + `
-    <div class="search k-hs">${ic('search', 'sm')}質問を入力（例：解約）</div>
+    <div class="search k-hs">${ic('search', 'sm')}質問を入力（例：名刺）</div>
     <div class="cat6 k-cats" style="margin-top:14px">${CATS.map(([e, c, t]) => `<div><span class="emo sm ${c}">${e}</span>${t}</div>`).join('')}</div>
     <div class="card acc open k-faq" style="margin-top:14px"><div class="card-h"><h3>よくある質問</h3></div>
       <div class="faq" data-acc style="cursor:pointer"><span>${FAQ[0]}</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div><div class="sub" style="line-height:1.7;padding-bottom:10px">いいえ。メール・メッセージは下書きまで。送信はあなたが行います。</div></div></div>
       ${FAQ.slice(1).map(q => `<div class="faq"><span>${q}</span>${ic('right', 'sm')}</div>`).join('')}</div>
-    <div class="glbl">解決しないとき</div><div class="sgroup k-contact">${srow('mail', 'お問い合わせ', '通常 1営業日以内に返信します')}${srow('send', 'フィードバックを送る', '改善の要望・不具合の報告')}</div>`;
+    <div class="glbl">解決しないとき</div><div class="sgroup k-contact">${srow('mail', 'お問い合わせ', '準備中 · 連絡先を設定後にご案内します')}</div>`;
 }
 function fbApp() {
   return topbar('フィードバック', '', closeB, '<span></span>') + `
-    <div class="seg k-fbseg" style="width:100%;display:grid;grid-template-columns:1fr 1fr"><button>お問い合わせ</button><button class="on">フィードバック</button></div>
-    <div class="card" style="margin-top:14px"><span class="lbl">種類</span><div class="chips" style="margin-top:6px"><span class="cat on">要望</span><span class="cat">不具合</span><span class="cat">その他</span></div>
-      <div class="fld" style="margin-top:14px"><span class="lbl">内容</span><div class="input area" style="min-height:120px">イベント評価の結果を、同行するメンバーにも共有できるとうれしいです。<i class="caret"></i></div></div>
-      <div class="row" style="gap:8px;margin-top:12px"><div class="shot"></div><div class="attach">${ic('plus')}</div><span class="lbl" style="flex:1">スクリーンショット（任意）</span></div></div>
-    <div class="card k-diag"><div class="row between"><div><b style="font-size:13px">端末情報を添える</b><div class="lbl">OS・アプリのバージョンのみ · 人脈データは含みません</div></div>${tg(1)}</div></div>
-    <div class="mac blue k-to" style="font-size:12px;margin-top:14px">送信先：<b>Orbit サポート</b>（運営チーム）· 返信は不要なご意見として受け付けます</div>` +
-    foot(`<button class="btn primary block xl k-send">${ic('send', 'sm')}送信</button>`);
+    <div class="card k-fbseg" style="margin-top:22px"><b>フィードバックは準備中です</b><div class="sub" style="margin-top:8px;line-height:1.7">今はこの画面から送信できません。</div></div>
+    <div class="mac blue k-to" style="font-size:12px;margin-top:14px">送信先：準備中</div>`;
 }
-const nfApp = () => `<div class="center" style="margin-top:150px"><div class="bigemo">🧭</div><div class="h1" style="margin-top:18px">このページは見つかりません</div><div class="sub" style="margin-top:6px;line-height:1.7">リンクが古いか、項目が削除された可能性があります。<br>削除した連絡先は「最近削除した項目」から 30日間戻せます。</div>
-  <div style="display:grid;gap:8px;margin-top:24px"><button class="btn primary xl k-nfh">ホームへ戻る</button><button class="btn">最近削除した項目</button></div></div>`;
+const nfApp = () => `<div class="center" style="margin-top:150px"><div class="bigemo">🧭</div><div class="h1" style="margin-top:18px">このページは見つかりません</div><div class="sub" style="margin-top:6px;line-height:1.7">リンクが古いか、URL が間違っている可能性があります。</div>
+  <div style="display:grid;gap:8px;margin-top:24px"><button class="btn primary xl k-nfh">ホームへ戻る</button><button class="btn">ヘルプを見る</button></div></div>`;
+/* 2026-10-18 主会话代定 · R18b：until 未設定の画板。復旧時刻とオフライン撮影を保証しない。 */
 const mtApp = () => `<div class="center" style="margin-top:130px"><div class="bigemo">🛠️</div><div class="h1" style="margin-top:18px">ただいまメンテナンス中です</div><div class="sub" style="margin-top:6px">ご不便をおかけして申し訳ありません。</div>
-  <div class="card k-eta" style="margin-top:22px"><div class="lbl">再開の予定</div><div class="mid">10月8日（木）4:00</div><div class="lbl">開始 2:00 · 約2時間</div>${bar(40, 'thin')}</div>
-  <div class="card flat" style="font-size:12.5px;color:var(--ink-2);text-align:left;line-height:1.7">登録したデータは安全に保管されています。メンテナンス中に撮影した名刺は端末に保存され、再開後に読み取ります。</div>
+  <div class="card k-eta" style="margin-top:22px"><div class="lbl">再開の予定</div><div class="sub" style="margin-top:6px">確認でき次第、お知らせします。</div></div>
   <button class="btn block" style="margin-top:14px">${ic('refresh', 'sm')}再読み込み</button></div>`;
-const upApp = () => `<div class="center" style="margin-top:120px"><div class="appicon" style="margin:0 auto;width:84px;height:84px;font-size:36px;border-radius:20px">O</div><div class="h1" style="margin-top:20px">アップデートが必要です</div><div class="sub" style="margin-top:6px;line-height:1.7">このバージョン（3.0.2）はサポートを終了しました。<br>最新版にすると、引き続きご利用いただけます。</div>
-  <div class="card k-what" style="margin-top:20px;text-align:left"><div class="lbl">3.2.0 の主な変更</div><div class="sub" style="margin-top:6px;line-height:1.8">・名刺の読み取りの精度を改善<br>・データを守るための安全性の更新</div></div>
-  <div class="card flat" style="font-size:12px;color:var(--ink-2)">データは端末ではなく Orbit に保存されているため、アップデートしても消えません。</div></div>` +
+const upApp = () => `<div class="center" style="margin-top:120px"><div class="appicon" style="margin:0 auto;width:84px;height:84px;font-size:36px;border-radius:20px">O</div><div class="h1" style="margin-top:20px">アップデートが必要です</div><div class="sub" style="margin-top:6px;line-height:1.7">このバージョンはサポートを終了しました。<br>最新版に更新すると、引き続きご利用いただけます。</div>
+  <div class="card k-what" style="margin-top:20px;text-align:left"><div class="sub" style="line-height:1.8">アプリを更新してから、もう一度開いてください。</div></div></div>` +
   foot(`<button class="btn primary block xl k-upd">${ic('out', 'sm')}App Store でアップデート</button>`);
 function helpWeb() {
-  return setPage('help', 'ヘルプセンター', '使い方・料金・データについて', `<div class="wgrid">
-    <div class="span12"><div class="search k-whs" style="height:52px;font-size:14px">${ic('search')}質問を入力（例：解約、名刺の読み取り）</div></div>
-    ${CATS.map(([e, c, t], k) => `<div class="card span4 row ${k === 0 ? 'k-wcat' : ''}" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="lbl">${[6, 9, 8, 5, 4, 6][k]}件の記事</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}
-    <div class="card span7 acc open k-wfaq"><div class="card-h"><h3>よくある質問</h3></div><div class="faq" data-acc style="cursor:pointer"><span>${FAQ[0]}</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div><div class="sub" style="line-height:1.7;padding-bottom:10px">いいえ。メール・メッセージは下書きまで。送信はあなたが行います。Gmail 連携中は Gmail の下書きフォルダに保存されます。</div></div></div>${FAQ.slice(1).map(q => `<div class="faq"><span>${q}</span>${ic('right', 'sm')}</div>`).join('')}</div>
-    <div class="span5" style="display:grid;gap:18px;align-content:start"><div class="card"><b>お問い合わせ</b><div class="lbl" style="margin-top:2px">通常 1営業日以内に返信します</div><button class="btn sm primary" style="margin-top:10px">${ic('mail', 'sm')}フォームを開く</button></div>
-      <div class="card"><b>フィードバックを送る</b><div class="lbl" style="margin-top:2px">要望・不具合を運営チームへ</div><button class="btn sm" style="margin-top:10px">${ic('send', 'sm')}フィードバック</button></div></div></div>`);
+  return setPage('help', 'ヘルプセンター', '使い方・名刺・データについて', `<div class="wgrid">
+    <div class="span12"><div class="search k-whs" style="height:52px;font-size:14px">${ic('search')}質問を入力（例：名刺の読み取り）</div></div>
+    ${CATS.map(([e, c, t], k) => `<div class="card span4 row ${k === 0 ? 'k-wcat' : ''}" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div><b>${t}</b></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}
+    <div class="card span7 acc open k-wfaq"><div class="card-h"><h3>よくある質問</h3></div><div class="faq" data-acc style="cursor:pointer"><span>${FAQ[0]}</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div><div class="sub" style="line-height:1.7;padding-bottom:10px">いいえ。メール・メッセージは下書きまで。送信はあなたが行います。</div></div></div>${FAQ.slice(1).map(q => `<div class="faq"><span>${q}</span>${ic('right', 'sm')}</div>`).join('')}</div>
+    <div class="span5" style="display:grid;gap:18px;align-content:start"><div class="card"><b>お問い合わせ</b><div class="lbl" style="margin-top:2px">準備中 · 連絡先を設定後にご案内します</div></div></div></div>`);
 }
 const contactModal = `<div class="overlay"></div><div class="wmodal w560 k-wform"><div class="row between"><b style="font-size:19px">お問い合わせ</b><button class="lbtn">${ic('x', 'sm')}</button></div>
-  <div class="seg" style="margin-top:14px"><button class="on">お問い合わせ</button><button>フィードバック</button></div>
-  <div class="grid2" style="gap:12px;margin-top:14px">${fld('種類', '料金・お支払い', 'sel')}${fld('返信先メール', 'k.sato@minatolink.example')}</div>
-  <div class="fld" style="margin-top:12px"><span class="lbl">内容</span><div class="input area" style="min-height:110px">年払いに切り替えた場合の領収書の宛名を、途中で変更できますか？</div></div>
-  <div class="row" style="gap:10px;margin-top:12px">${ckb(1)}<span style="font-size:12.5px;font-weight:700;flex:1">ブラウザと Orbit のバージョン情報を添える（人脈データは含みません）</span></div>
-  <div class="macts"><span class="lbl hint k-wto">送信先：<b style="color:var(--ink)">Orbit サポート</b></span><button class="btn">キャンセル</button><button class="btn primary">${ic('send', 'sm')}送信</button></div></div>`;
-const nfWeb = () => mainhead('', '', '', '') + `<div style="max-width:560px;margin:80px auto 0;text-align:center"><div class="bigemo">🧭</div><div style="font-size:28px;font-weight:900;margin-top:18px">このページは見つかりません</div><div class="sub" style="margin-top:8px;line-height:1.8">URL が間違っているか、項目が削除された可能性があります。</div>
-  <div class="search k-wnfs" style="margin:22px auto 0;width:420px;background:var(--surface)">${ic('search', 'sm')}人脈・イベント・メモを検索 <span style="margin-left:auto"><span class="kbd">⌘</span><span class="kbd">K</span></span></div>
-  <div class="row" style="justify-content:center;gap:10px;margin-top:18px"><button class="btn">最近削除した項目</button><button class="btn primary">ホームへ</button></div></div>`;
+  <div class="sub" style="margin-top:14px;line-height:1.7">連絡先は準備中です。今はお問い合わせを送信できません。</div>
+  <div class="macts"><span class="lbl hint k-wto">送信先：準備中</span><button class="btn">閉じる</button></div></div>`;
+const nfWeb = () => mainhead('', '', '', '') + `<div style="max-width:560px;margin:80px auto 0;text-align:center"><div class="bigemo">🧭</div><div style="font-size:28px;font-weight:900;margin-top:18px">このページは見つかりません</div><div class="sub" style="margin-top:8px;line-height:1.8">リンクが古いか、URL が間違っている可能性があります。</div>
+  <div class="row" style="justify-content:center;gap:10px;margin-top:18px"><button class="btn">ヘルプを見る</button><button class="btn primary">ホームへ</button></div></div>`;
 const mtWeb = `<div style="max-width:600px;margin:70px auto 0;text-align:center"><div class="bigemo">🛠️</div><div style="font-size:28px;font-weight:900;margin-top:18px">ただいまメンテナンス中です</div><div class="sub" style="margin-top:6px">ご不便をおかけして申し訳ありません。</div>
-  <div class="card k-weta" style="margin-top:24px;text-align:left"><div class="row between"><div><div class="lbl">再開の予定</div><div class="mid">10月8日（木）4:00</div></div><div style="width:260px">${bar(40, 'thin')}<div class="row between lbl"><span>2:00 開始</span><span>約2時間</span></div></div></div></div>
-  <div class="card flat" style="margin-top:14px;text-align:left;font-size:13px;color:var(--ink-2);line-height:1.75">登録したデータは安全に保管されています。最新の状況は status.orbit.example でお知らせします。</div>
+  <div class="card k-weta" style="margin-top:24px;text-align:left"><div class="lbl">再開の予定</div><div class="sub" style="margin-top:6px">確認でき次第、お知らせします。</div></div>
   <button class="btn" style="margin-top:18px">${ic('refresh', 'sm')}再読み込み</button></div>`;
-const upWebBar = `<div class="pop k-wup" style="left:50%;bottom:28px;transform:translateX(-50%);width:640px;display:flex;gap:14px;align-items:center"><span class="emo lav">✨</span><div style="flex:1"><b style="font-size:14px">新しいバージョンがあります</b><div class="lbl">再読み込みすると反映されます · 入力中の内容は保存されます</div></div><button class="btn ghost">あとで</button><button class="btn primary">${ic('refresh', 'sm')}再読み込み</button></div>`;
+const upWebBar = `<div class="pop k-wup" style="left:50%;bottom:28px;transform:translateX(-50%);width:640px;display:flex;gap:14px;align-items:center"><span class="emo lav">✨</span><div style="flex:1"><b style="font-size:14px">新しいバージョンがあります</b><div class="lbl">入力中の内容を確認してから再読み込みしてください。</div></div><button class="btn ghost">あとで</button><button class="btn primary">${ic('refresh', 'sm')}再読み込み</button></div>`;
 
 /* =================================================================
    I. ライブアクティビティ / Dynamic Island
@@ -1695,19 +1684,19 @@ h += boards(['empty', 'few', 'many'].map(s => AP('更新の提案', s, { body: s
 });
 
 /* ---- H ---- */
-h += sec('H · ヘルプ・エラー・メンテナンス', 'App：設定 › ヘルプ；フィードバックは Orbit 运营（允许「送信」，写明送信先）；404 / 维护（预计恢复时间）/ 强制更新');
+h += sec('H · ヘルプ・エラー・メンテナンス', '2026-10-18 主会话代定 · R18b：FAQ 静态；連絡先・フィードバック送信は準備中；404 はホーム / ヘルプへ；復旧時刻は有効な until がある場合だけ。');
 h += boards([
-  AP('ヘルプセンター', '', { body: helpApp() }, [['.k-hs', 0, '搜索优先，输入即出文章'], ['.k-cats', 0, '6 个分类 emoji 方块'], ['.k-faq .faq', 0, 'FAQ 手风琴展开（0fr→1fr）'], ['.k-contact', 0, '解决不了 → お問い合わせ（需回复）/ フィードバック（无需回复）']]),
-  AP('フィードバック', '', { body: fbApp() }, [['.k-fbseg', 0, '同一表单两个模式切换'], ['.k-diag', 0, '附端末情報默认开，明确不含人脉数据'], ['.k-to', 0, '写明送信先：Orbit サポート'], ['.k-send', 0, '这是发给运营的反馈，允许「送信」（与「邮件止于草稿」不冲突）']]),
-  AP('404 · 見つかりません', '错误态', { body: nfApp() }, [['.k-nfh', 0, '深链指向已删除项时出现；提供回首页与「最近削除した項目」']]),
-  AP('メンテナンス中', '错误态', { body: mtApp() }, [['.k-eta', 0, '写明恢复时间与进度；维护中拍的名片存端末，恢复后再识别']]),
-  AP('強制アップデート', '错误态', { body: upApp() }, [['.k-what', 0, '说明为何必须更新 + 数据不丢'], ['.k-upd', 0, '唯一按钮跳 App Store，无法关闭']]),
+  AP('ヘルプセンター', '', { body: helpApp() }, [['.k-hs', 0, '搜索优先，输入即出文章'], ['.k-cats', 0, '5 个静态分类'], ['.k-faq .faq', 0, 'FAQ 手风琴展开（0fr→1fr）'], ['.k-contact', 0, '支持邮箱未配置时仅显示「準備中」，无发送入口']]),
+  AP('フィードバック', '', { body: fbApp() }, [['.k-fbseg', 0, '无反馈后端时仅显示准备中，不展示发送表单'], ['.k-to', 0, '无支持邮箱时不显示虚构地址']]),
+  AP('404 · 見つかりません', '错误态', { body: nfApp() }, [['.k-nfh', 0, '未知路由提供首页与帮助出口，不承诺最近删除恢复']]),
+  AP('メンテナンス中', '错误态', { body: mtApp() }, [['.k-eta', 0, '仅 maintenance.active=true 进入；本画板为无有效 until 的未知恢复时刻态']]),
+  AP('強制アップデート', '错误态', { body: upApp() }, [['.k-what', 0, '仅显式开关且当前版本低于最低版本时显示，不用虚构更新日志'], ['.k-upd', 0, '唯一按钮跳 App Store，无法关闭']]),
 ]);
-h += WB('Web · ヘルプセンター', '', { nav: 'settings', head: '', body: helpWeb() }, '', [['.k-whs', 0, '大搜索框'], ['.k-wcat', 0, '分类卡片 3×2'], ['.k-wfaq', 0, 'FAQ 手风琴']]);
-h += WB('Web · お問い合わせ', '', { nav: 'settings', head: '', body: helpWeb() }, contactModal, [['.k-wto', 0, '送信先：Orbit サポート；返信先メール可改']]);
-h += WB('Web · 404', '错误态', { nav: 0, head: '', body: nfWeb() }, '', [['.k-wnfs', 0, '给出 ⌘K 搜索作为出口']]);
-h += BB('Web · メンテナンス中', '错误态', { top: pubTop(''), body: mtWeb }, [['.k-weta', 0, '无导航的独立页；写恢复时间 + 状态页地址']]);
-h += WB('Web · 新バージョン（更新を促す）', '', { nav: 1, head: '', body: netBg() }, upWebBar, [['.k-wup', 0, 'Web 不强制：底部浮条「再読み込み」，入力中内容会保存；只有 API 不兼容时才变为全屏强制']]);
+h += WB('Web · ヘルプセンター', '', { nav: 'settings', head: '', body: helpWeb() }, '', [['.k-whs', 0, '静态 FAQ 搜索'], ['.k-wcat', 0, '分类卡片'], ['.k-wfaq', 0, 'FAQ 手风琴']]);
+h += WB('Web · お問い合わせ', '', { nav: 'settings', head: '', body: helpWeb() }, contactModal, [['.k-wto', 0, '支持邮箱未配置时为準備中，不显示发送表单']]);
+h += WB('Web · 404', '错误态', { nav: 0, head: '', body: nfWeb() }, '', [['.bigemo', 0, '未知路由给出首页与帮助出口']]);
+h += BB('Web · メンテナンス中', '错误态', { top: pubTop(''), body: mtWeb }, [['.k-weta', 0, '仅 maintenance.active=true 进入；无有效 until 时不显示恢复时刻']]);
+h += WB('Web · 新バージョン（更新を促す）', '', { nav: 1, head: '', body: netBg() }, upWebBar, [['.k-wup', 0, '仅页面与接口构建 ID 均存在且不同时显示；可关闭；提醒用户先处理未保存输入']]);
 
 /* ---- I ---- */
 h += sec('I · ライブアクティビティ / Dynamic Island', 'iOS 专属：活动当天 → 会场中 → 面谈 15 分前。锁屏 Live Activity（毛玻璃）、灵动岛紧凑态、长按展开态。点击整体深链进对应页');
