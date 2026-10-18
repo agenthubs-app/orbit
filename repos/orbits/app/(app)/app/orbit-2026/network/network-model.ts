@@ -15,9 +15,8 @@ export const TOP_INDUSTRIES = 5;
 export const TOP_REGIONS = 3;
 export const OTHER_KEY = "__other__";
 export const PAGE_SIZE = 30;
-/** 人脈分析 opens from this many people (b5:487 / app.html:469 「10人から使えます · あと N人」).
- *  TODO(R11b): import NETWORK_ANALYSIS_UNLOCK_CONTACTS from features/network-analysis/page-lock.ts once R11b lands; not the 3-person analysis-threshold. */
-export const NETWORK_ANALYSIS_UNLOCK_CONTACTS = 10;
+/** 人脈分析 opens from this many people (b5:487 / app.html:469 「10人から使えます · あと N人」); R11b page lock, not the 3-person analysis-threshold. */
+export { NETWORK_ANALYSIS_UNLOCK_CONTACTS } from "../../../../../features/network-analysis/page-lock";
 export const NETWORK_CITY_KEYS = ["Tokyo", "Osaka", "Nagoya", "Yokohama", "Kyoto", "Fukuoka", "Sapporo", "Kobe", "Sendai", "Shanghai", "Beijing", "Shenzhen", "Singapore", "Seoul"] as const;
 export type NetworkCityKey = (typeof NETWORK_CITY_KEYS)[number];
 

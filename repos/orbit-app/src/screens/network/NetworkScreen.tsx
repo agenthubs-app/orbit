@@ -24,11 +24,11 @@ import { cancelQueuedContactDelete, flushContactDeleteQueue, hiddenDeletedContac
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useNetworkMerge } from "./useNetworkMerge";
+import { NETWORK_ANALYSIS_UNLOCK_CONTACTS } from "../../api/compute/network-analysis-page-lock";
 
-/** 人脈分析 opens from this many people: below it the page shows the invite card and the locked 「人脈分析 · 10人から使えます · あと N人」 card
- *  (app.html #7, :469) instead of the density card (#8). Same name as R11b's features/network-analysis/page-lock.ts export (the App cannot
- *  import server files; keep the two equal). Not the 3-person analysis-threshold. */
-export const NETWORK_ANALYSIS_UNLOCK_CONTACTS = 10;
+/** 人脈分析 opens from NETWORK_ANALYSIS_UNLOCK_CONTACTS people: below it the page shows the invite card and the locked 「人脈分析 · 10人から使えます · あと N人」 card
+ *  (app.html #7, :469) instead of the density card (#8). R11b page-lock rule (shared/compute copy); not the 3-person analysis-threshold. */
+export { NETWORK_ANALYSIS_UNLOCK_CONTACTS };
 
 /** A-R05-10: the list keeps its tab, filters and search while a detail is open (the main tab unmounts when unfocused); AppScreen keeps the scroll. */
 const memory = new Map<string, { tab: NetworkTab; filters: NetworkFilters; query: string }>();
