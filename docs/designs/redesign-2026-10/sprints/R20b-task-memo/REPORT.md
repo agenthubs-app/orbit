@@ -10,6 +10,12 @@ rebase 後の軽量確認は Web notes route/service と task planLink route/ser
 
 20:51 の監視点で upstream がさらに `bd39989dd` まで 5 commits 進んだ。D は clean `11c093cda` から同じ `origin/redesign` へ 160 commits を衝突なしに再適用し、HEAD `917978ff9`、`git diff --check` exit0。追加の upstream は R31a の App-add kit no-regress と文書であり、D の product 差分を手修正していない。この HEAD の定向 Web notes/planLink は **29 pass / 1 skip / 0 fail**、App notes view-model/mirror/search は **18/18 pass**。Web の 1 skip は後述の一般 task-list stale plan ETag 回帰で、合格ではない。新 upstream の full/typecheck は公平キューの結果待ちで、旧 HEAD の結果を移用しない。
 
+21:01、同じ再適用済み product source（後続は文書だけ）で D App `npm run typecheck`、D Web `npm run typecheck` がいずれも診断なし **exit0**（実行 session `10023` / `81500`）。App full は公平キューから開始したが、この時点では結果待ち。Web full、Web `typecheck:app` / lint もまだ待機中で、compiler exit0 を全量合格へ拡大しない。
+
+21:12、再適用後の D App full (`_evidence-d/R20b/run-01/d-app-full-post-rebase-324218dda.log`) は **3,356 tests / 3,333 pass / 19 fail / 2 cancelled / 2 skip、exit1**。前回の 11 failure names は残り、正規化した失敗／取消名の差分は新たに 10 件。内訳は profile の旧 callback scope 5 件、通知登録競合 2 件、password reset 1 件、personal schedule 2 件。新 10 件の raw error はすべて Playwright の 1.8/2.5 秒操作待ち、または Node test の 5 秒 timeout であり、今回の full は約 669 秒かかった。ただし負荷による一過性と**まだ確定しない**。該当 test/source は R20b では変更しておらず、個別再実行で再現性を確認するまでは「新規 0」とせず、App full を赤として保持する。Web full はその後の公平キューで開始。
+
+21:19、再適用後の D Web full (`_evidence-d/R20b/run-01/d-web-full-post-rebase-324218dda.log`) は **7,789 tests / 6,716 pass / 39 fail / 0 cancelled / 1,034 skip、exit1**。前回 retained 40 failure names と正規化して比較すると新規名は 0、旧 R12 手入力 undo の 1 件だけ今回通過した。skip の 1 件増は一般 task-list の stale plan ETag 回帰を明示して止めたもの。39 fail とその skip は未解消であり、全量 green や SC-11 達成とは記さない。
+
 ## 18:22 主会話継続の検証キュー（結果待ち）
 
 D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-board-preflight.log` は **0 byte**、対応 runner PID も消えた。これは合格／失敗ではなく未実行として扱う。主会話は clean `66769b462` から独立した新規ログ名で App／Web `typecheck`、Web `typecheck:app`、App／Web 画板 preflight、Web full を全機 `heavy.sh` の公平キューへ再登録した。先に独立登録済みの App full も待機中。開始時の実際の source を確認してから成績を追記し、旧空ログを結果へ読み替えない。
