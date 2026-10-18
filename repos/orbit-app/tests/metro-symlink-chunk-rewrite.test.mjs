@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const appRoot = join(import.meta.dirname, '..');
 const metroConfig = require(join(appRoot, 'metro.config.js'));
+
+test('required sync cleanup modules load from the native entry bundle', () => {
+  const source = readFileSync(join(appRoot, 'src/data/sync/sync-lifecycle.ts'), 'utf8');
+  assert.ok(source.includes('require("expo-crypto")'), 'crypto is synchronously bundled');
+  assert.ok(source.includes('require("expo-secure-store")'), 'SecureStore is synchronously bundled');
+  assert.ok(!/(?<!typeof )import\("expo-(?:crypto|secure-store)"\)/.test(source), 'required modules are not lazy chunks');
+});
 
 test('namespaces transform cache entries by the physical project worktree', () => {
   const { getDefaultConfig } = require('expo/metro-config');

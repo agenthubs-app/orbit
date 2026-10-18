@@ -534,9 +534,10 @@ export const syncLifecycle = createSyncLifecycle({
   loadNative: async () => {
     // Cleanup state must remain readable even if the optional SQLite binary is
     // unavailable. Only inability to inspect device key state blocks identity.
-    const [crypto, secureStore] = await Promise.all([
-      import("expo-crypto"), import("expo-secure-store"),
-    ]);
+    // Synchronous require keeps these required modules in the entry bundle;
+    // a dynamic import can fail on a Metro async chunk before key inspection.
+    const crypto = require("expo-crypto") as typeof import("expo-crypto");
+    const secureStore = require("expo-secure-store") as typeof import("expo-secure-store");
     try {
       const [sqlite, fileSystem] = await Promise.all([import("expo-sqlite"), import("expo-file-system")]);
       return {
