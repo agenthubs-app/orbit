@@ -19,6 +19,16 @@ let nextOwner = 1;
 export function ToastProvider({ children, hasTabBar = false }: { children: ReactNode; hasTabBar?: boolean }) {
   const [current, setCurrent] = useState<ToastState | null>(null);
   const [pageBars, setPageBars] = useState(0);
+  const [pendingAction, setPendingAction] = useState<{ toastId: number; run: () => void } | null>(null);
+  const dismissWithAction = useCallback((toastId: number, run: () => void) => {
+    setPendingAction({ toastId, run });
+    setCurrent((value) => value?.id === toastId ? null : value);
+  }, []);
+  useEffect(() => {
+    if (!pendingAction || current?.id === pendingAction.toastId) return;
+    setPendingAction(null);
+    pendingAction.run();
+  }, [current, pendingAction]);
   const api = useMemo<ToastApi>(() => ({
     show: (input, owner) => setCurrent(createToast(input, owner)),
     dismiss: () => setCurrent(null),
@@ -28,7 +38,7 @@ export function ToastProvider({ children, hasTabBar = false }: { children: React
   return (
     <ToastContext.Provider value={api}>
       {children}
-      {current ? <ToastView key={current.id} toast={current} bottom={toastBottom(hasTabBar, pageBars)} onClose={api.dismiss} /> : null}
+      {current ? <ToastView key={current.id} toast={current} bottom={toastBottom(hasTabBar, pageBars)} onClose={api.dismiss} onAction={(run) => dismissWithAction(current.id, run)} /> : null}
     </ToastContext.Provider>
   );
 }
@@ -63,7 +73,7 @@ export function useToast() {
   }), [api, show]);
 }
 
-function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: number; onClose: () => void }) {
+function ToastView({ toast, bottom, onClose, onAction }: { toast: ToastState; bottom: number; onClose: () => void; onAction: (run: () => void) => void }) {
   const reduced = useReducedMotion();
   const enter = useRef(new Animated.Value(0)).current;
   const countdown = useRef(new Animated.Value(1)).current;
@@ -82,7 +92,7 @@ function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: numb
       pointerEvents="box-none"
       style={[styles.position, { bottom, opacity: enter, transform: [{ translateY }] }]}
     >
-      <ToastCapsule toast={toast} onClose={onClose} countdown={!reduced ? countdown : null} />
+      <ToastCapsule toast={toast} onClose={onClose} onAction={onAction} countdown={!reduced ? countdown : null} />
     </Animated.View>
   );
 }
@@ -92,7 +102,7 @@ function ToastView({ toast, bottom, onClose }: { toast: ToastState; bottom: numb
  * showcase (R31a) draws several side by side to match 01-system ① (`countdown` null = a still
  * full-width countdown line).
  */
-export function ToastCapsule({ toast, onClose, countdown = null }: { toast: ToastState; onClose: () => void; countdown?: Animated.Value | null }) {
+export function ToastCapsule({ toast, onClose, onAction, countdown = null }: { toast: ToastState; onClose: () => void; onAction?: (run: () => void) => void; countdown?: Animated.Value | null }) {
   const { colors, scheme } = useOrbitTheme();
   const copy = useStandardCopy();
   const reduced = useReducedMotion();
@@ -122,7 +132,7 @@ export function ToastCapsule({ toast, onClose, countdown = null }: { toast: Toas
           accessibilityRole="button"
           accessibilityLabel={toast.undo ? copy.action.undo : toast.action?.label}
           hitSlop={6}
-          onPress={() => { const run = toast.undo ?? toast.action?.onPress; onClose(); run?.(); }}
+          onPress={() => { const run = toast.undo ?? toast.action?.onPress; if (run && onAction) onAction(run); else onClose(); }}
           style={[styles.undo, { backgroundColor: dark ? colors.surface2 : mixHex(colors.bg, background, 0.16) }]}
         >
           {toast.undo ? <Icon name="undo" size={16} color={text} /> : toast.action?.icon ? <Icon name={toast.action.icon as IconName} size={16} color={text} /> : null}

@@ -41,6 +41,14 @@ test("元に戻す runs the undo once and closes the toast; a new toast replaces
   await page.close();
 });
 
+test("undo callback runs after the toast has disappeared from the rendered page", async () => {
+  const page = await openScenario(browser, script, { scenario: "toast" });
+  await page.evaluate(() => (window as any).ui.successObserved());
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).events), ["undo:gone"]);
+  await page.close();
+});
+
 test("success leaves after 5 s; errors and undo bars stay until closed", async () => {
   const page = await openScenario(browser, script, { scenario: "toast" });
   await page.clock.install();

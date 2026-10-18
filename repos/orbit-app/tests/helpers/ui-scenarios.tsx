@@ -30,6 +30,7 @@ function ToastScreen() {
   window.ui = {
     ...window.ui,
     success: () => toast.success("完了にしました", { undo: () => log("undo") }),
+    successObserved: () => toast.success("完了にしました", { undo: () => log(document.body.textContent?.includes("完了にしました") ? "undo:visible" : "undo:gone") }),
     successPlain: () => toast.success("コピーしました"),
     error: () => toast.error("保存できませんでした"),
     retry: () => toast.error("保存できませんでした", { action: { label: "再試行", onPress: () => log("retry") } }),
