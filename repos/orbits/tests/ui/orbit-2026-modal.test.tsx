@@ -78,6 +78,17 @@ test("Escape closes only the top layer: a confirm opened from a drawer closes fi
   assert.equal(await active(page), "drawer lg");
 });
 
+test("dark content drawers have no hairline border", async (t) => {
+  const page = await showcase(t);
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  await page.getByRole("button", { name: "drawer lg" }).click();
+  const drawer = page.getByRole("dialog");
+  assert.equal(await drawer.evaluate((el) => getComputedStyle(el).borderTopWidth), "0px");
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+  await page.emulateMedia({ colorScheme: "dark" });
+  assert.equal(await drawer.evaluate((el) => getComputedStyle(el).borderTopWidth), "0px");
+});
+
 test("a destructive confirm ignores the scrim; a plain modal closes on it", async (t) => {
   const page = await showcase(t);
   await page.getByRole("button", { name: "confirm (destructive)" }).click();
