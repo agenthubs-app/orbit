@@ -1,6 +1,6 @@
 # R21 iOrbit · E 线执行报告
 
-状态：进行中。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
+状态：因下列主会话决定项与跨线依赖暂停，SC-06/10/11/12/13/14 未达到验收。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
 
 ## 基线与提交
 
@@ -43,7 +43,7 @@
 - 本机 QA actor 通过 `POST /api/ai/conversations/sessions` 存四个演示会话，仅供 E 线像素和双端操作；没有 AI 提供方请求。1024/390 历史截图无 `pageerror`，且各出现四组日期分段。
 - 旧首页断言已迁至新路由行为：`ink-signal-ai-home` 12/12（左滑后；另有大字号窄屏 1/1）、`ai-home-loading-terminal-states` 5/5、`ai-home-guidance-render` 10/10；App workspace 浏览器全文件复跑 47/47。
 - 旧 Web iOrbit 用例已对齐 live `IOrbit2026` 和 demo `IOrbitShell` 两条路线、原文待发送问题及 DELETE 的 5 秒撤销回执；guide 页面 22/22、history 23/23、chat 17/17 分别复跑通过。原测试环境的 React SSR 警告仍见日志，不记作门禁通过。
-- 全量 Web/App 测试、Web/App typecheck、Web 像素 compare、Web build/App iOS export、Web lint 已经通过 `heavy.sh e -- …` 入公平队列，尚无结果。队列被 A 线从 16:43 JST 开始的视觉作业占用，不能提前宣称通过。
+- 全量 Web/App 测试、Web/App typecheck、Web 像素 compare/style-diff、Web build/App iOS export、Web lint 均已按规定通过 `heavy.sh e -- …` 入公平队列；至 18:17 JST 仍由 A 线从 16:43 JST 开始的视觉作业占锁，E 线一项也未开始。因主会话决定项阻塞本轮验收，并需停掉本线 dev server，已撤销 E 线待机票据；上述门禁均为**未执行**，不是通过。复跑仍须使用 `heavy.sh e -- …`，已做的定向证据见证据目录。
 - 预检 `b4`：near 26、missing 118、疑似功能 40；`b11`：missing 20、疑似功能 4；`b8`：near 2、missing 18、疑似功能 22。手机/浏览器装饰按规则排除。未在 E 样式中造近似 token。逐条见 `preflight-checklist.md`。
 
 ## 交接与待定
@@ -58,4 +58,4 @@
 
 待主会话决定：b4 与新 kit 的未定 token/间距冲突、Web demo 壳与旧 actions 的迁移范围、无录音依赖的 App 语音交互实现方案，以及 SC-06 真流式/跨设备回执验收所需的实际环境。生产调度、Neon/生产迁移、部署、TestFlight 和合回 `chat-agent` 均待用户另行授权。本轮未执行。
 
-SC-06 的实现基线与验收文字有冲突：当前 Gemini provider 在 `features/orbit-ai/gemini-provider.ts` 使用 `stream: false`，Web/App 收到的是最终响应；App 依赖表里没有录音包。因此现有 stop/重试只能验证完整响应的中止与迟到抑制，不能当作流式事件或按住录音已经实现。需要主会话确定流式响应契约和原生录音方案后再扩展这一链。
+SC-06 的实现基线与验收文字有冲突：当前 Gemini provider 在 `features/orbit-ai/gemini-provider.ts` 使用 `stream: false`，Web/App 收到的是最终响应；App 依赖表里没有录音包。因此现有 stop/重试只能验证完整响应的中止与迟到抑制，不能当作流式事件或按住录音已经实现。需要主会话确定流式响应契约和原生录音方案后再扩展这一链。本线 Next dev server 已停止，3700 端口无监听；`Orbit Line E` 模拟器已关机，未启 Metro。
