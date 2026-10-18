@@ -722,3 +722,7 @@ App 全量 `_evidence-d/R20a/run-01/d-app-full-meeting-detail-locale.log` は **
 個人予定詳細の再読取失敗でも `source.errorText` がそのまま alert に出て、日本語画面に中国語のネットワーク文言が混ざった。実 route / screen / client の Chromium 回帰で **RED 0/1**、既存 `schedule.readFailed` 辞書への画面境界変換後 **GREEN 1/1**。既存の typed errorKey と初期読み込み中の空表示は維持した。変更は `d9bd8da31` の二ファイルに限定し、個人予定交互作用 **78/78**、App `typecheck` / `git diff --check` は exit0。既存 harness の `OrbitLocaleContext` export warning は残る。
 
 App 全量 `_evidence-d/R20a/run-01/d-app-full-personal-detail-locale.log` は **3,227 total / 3,214 pass / 11 fail / 0 cancelled / 2 skip、exit1**。今回の詳細用例、先の個人予定編集二用例、面会詳細用例は全量でも pass。残る11件は R12 card 九件、旧辞書 exact-key pin 一件、shared compute rule 一件。前回の invite / notification timeout が今回は再現しなかったことを今回の修正効果とはみなさない。SC-10 の native 操作・画面全体の言語・pixel は OPEN のまま。別担当の Web Task 変更と未追跡計画／fixture は今回の commit に含めない。
+
+## 2026-10-19　App タスク詳細の保存失敗文言（SC-09 部分）
+
+タスク詳細の mutation 失敗は API の任意言語の `error.message` をそのまま alert に出していた。日本語画面に中国語「连接暂时失败」が表示される実 Chromium 用例で **RED 0/1** を確認し、既存の `taskDetail.operationFailed` 辞書へ画面境界で写した（`1b436dd9a`）。修正後は定向 **GREEN 1/1**、タスク詳細の交互作用全体 `_evidence-d/R20a/run-01/d-app-task-detail-locale-interactions-full.log` が **29/29 pass**。失敗時の下書き保持、同一 request key での再試行、離脱処理も通過し、App `typecheck` と `git diff --check` は exit0。今回の二ファイル以外の別担当の Web Task / App calendar・offline source は commit に含めない。App 全量はこの同時変更中には再実行せず、直近の全量 **11 fail** を green に読み替えない。SC-09 の native 操作・pixel と全量 gate は OPEN のまま。
