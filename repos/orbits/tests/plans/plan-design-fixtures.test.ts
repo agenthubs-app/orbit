@@ -57,7 +57,8 @@ test("only the dev route imports the design fixtures", () => {
     .filter((file) => /design-fixtures/.test(readFileSync(file, "utf8")))
     .map((file) => path.relative(ROOT, file));
   // R26: the events design fixtures have their own dev route (same rules: .dev.ts, mock only).
-  assert.deepEqual(offenders.filter((file) => !file.startsWith("app/api/dev/event-design-fixture/")), ["app/api/dev/plan-design-fixture/route.dev.ts"]);
+  // R11b: the 人脈分析 design fixtures have their own dev route too (app/api/dev/network-design-fixture/route.dev.ts).
+  assert.deepEqual(offenders.filter((file) => !file.startsWith("app/api/dev/event-design-fixture/") && !file.startsWith("app/api/dev/network-design-fixture/")), ["app/api/dev/plan-design-fixture/route.dev.ts"]);
 });
 
 test("every design fixture is plain data: read through the same service, it fits the same API schema", async () => {

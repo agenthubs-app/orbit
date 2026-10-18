@@ -13,8 +13,8 @@
 export type NetworkAnalysisDimension = "industry" | "seniority" | "region" | "met" | "opportunity";
 
 /**
- * One bucket of a distribution. `id`: industry → primary industry id, `other` (the rest, unset included);
- * seniority → `decision` | `manager` | `staff` | `unset`; region → canonical city, `other` (the rest, unset included);
+ * One bucket of a distribution. `id`: industry → primary industry id, `rest` (the rest, unset included);
+ * seniority → `decision` | `manager` | `staff` | `unset`; region → canonical city, `rest` (the rest, unset included);
  * met → `event` | `referral` | `visit` | `other`. Buckets of one dimension add up to `total`.
  */
 export interface NetworkAnalysisBucket {

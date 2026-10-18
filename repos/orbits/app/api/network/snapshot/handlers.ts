@@ -7,6 +7,7 @@ import { markContactInsightsGoalDirty } from "../../../../features/contacts/insi
 import type { SnapshotLanguage } from "../../../../features/network-analysis/contract";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
+import { redesignContractMode } from "../../../../features/redesign-contracts/route";
 import { AppError, getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import {
   authenticatedApiActorRequiredResponse,
@@ -79,6 +80,11 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
       const actor = await resolveActor();
       if (!actor?.id) return authenticatedApiActorRequiredResponse(mode);
       if (await isDemo(actor)) return NextResponse.json(success(unavailableSnapshotView()), { headers, status: 200 });
+      // R11b：人脈分析 mock（本机 ORBIT_REDESIGN_MOCK=network-analysis，非生产）读 fixture 世界的快照，不读库、不排队、不调 AI。
+      if (!dependencies.runtime && redesignContractMode("network-analysis") === "mock") {
+        const { fixtureNetworkSnapshotView } = await import("../../../../features/network-analysis/analysis-fixtures");
+        return NextResponse.json(success(fixtureNetworkSnapshotView(language(request))), { headers, status: 200 });
+      }
       const runtime = resolveRuntime();
       if (!runtime) return NextResponse.json(success(unavailableSnapshotView()), { headers, status: 200 });
       try {

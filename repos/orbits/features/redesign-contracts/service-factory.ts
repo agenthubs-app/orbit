@@ -21,6 +21,8 @@ export const REDESIGN_CONTRACT_CAPABILITIES = [
   "global-search",
   "todo-page",
   "calendar-external-events",
+  // R11b: 人脈分析（GET /api/network/analysis、…/people）——live 读 R11a 人脈数据；mock 为本机 fixture 世界（features/network-analysis/analysis-fixtures.ts）。
+  "network-analysis",
 ] as const;
 
 export type RedesignContractCapability = (typeof REDESIGN_CONTRACT_CAPABILITIES)[number];
@@ -34,7 +36,7 @@ export type RedesignContractService = RedesignMockService | RedesignLiveService;
 /** Capabilities with a live implementation (the rest answer NOT_IMPLEMENTED in live). */
 // R26: `event-assessment` has a live implementation (features/events/assessment).
 // R27: `event-recommendation-feedback` (興味なし) has a live implementation (features/events/journey).
-export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion", "event-assessment", "event-recommendation-feedback", "host-operations", "global-search", "todo-page", "calendar-external-events"];
+export const REDESIGN_CONTRACT_LIVE_CAPABILITIES: readonly RedesignContractCapability[] = ["contact-completion", "event-assessment", "event-recommendation-feedback", "host-operations", "global-search", "todo-page", "calendar-external-events", "network-analysis"];
 // R17: `host-operations` has a live implementation (features/events/host).
 
 export function resolveRedesignContract(capabilityId: RedesignContractCapability, mode?: ModuleMode | string): ServiceResolution<RedesignContractService> {

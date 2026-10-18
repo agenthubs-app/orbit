@@ -29,13 +29,13 @@ test("locked below 10: no structure, no opportunities, no insights — even when
 test("every distribution adds up to the total; the fourth industry / region row folds the rest and the unset people", () => {
   const rows = [
     ...many(6, { primaryIndustryId: "finance_investment", city: "Tokyo", metKind: "event", seniorityLevel: "c_level" }),
-    ...many(4, { primaryIndustryId: "manufacturing", city: "Osaka", metKind: "referral", seniorityLevel: "manager" }),
+    ...many(4, { primaryIndustryId: "manufacturing_supply_chain", city: "Osaka", metKind: "referral", seniorityLevel: "manager" }),
     ...many(3, { primaryIndustryId: "technology_internet", city: "Nagoya", metKind: "visit", seniorityLevel: "individual_contributor" }),
-    ...many(2, { primaryIndustryId: "retail_trade", city: "Kyoto" }),
+    ...many(2, { primaryIndustryId: "retail_consumer", city: "Kyoto" }),
     ...many(2, {}),
   ];
   const industries = distribution(rows, "industry");
-  assert.deepEqual(industries.buckets, [{ id: "finance_investment", count: 6 }, { id: "manufacturing", count: 4 }, { id: "technology_internet", count: 3 }, { id: "other", count: 4 }]);
+  assert.deepEqual(industries.buckets, [{ id: "finance_investment", count: 6 }, { id: "manufacturing_supply_chain", count: 4 }, { id: "technology_internet", count: 3 }, { id: "rest", count: 4 }]);
   for (const dimension of ["industry", "seniority", "region", "met"] as const) {
     const result = distribution(rows, dimension);
     assert.equal(result.buckets.reduce((sum, bucket) => sum + bucket.count, 0), rows.length, dimension);
@@ -44,7 +44,7 @@ test("every distribution adds up to the total; the fourth industry / region row 
   assert.deepEqual(distribution(rows, "seniority").buckets, [{ id: "decision", count: 6 }, { id: "manager", count: 4 }, { id: "staff", count: 3 }, { id: "unset", count: 4 }]);
   assert.deepEqual(distribution(rows, "met").buckets, [{ id: "event", count: 6 }, { id: "referral", count: 4 }, { id: "visit", count: 3 }, { id: "other", count: 4 }]);
   // Four named industries and nobody unset: four rows, no その他.
-  assert.deepEqual(distribution(rows.slice(0, 15), "industry").buckets.map((bucket) => bucket.id), ["finance_investment", "manufacturing", "technology_internet", "retail_trade"]);
+  assert.deepEqual(distribution(rows.slice(0, 15), "industry").buckets.map((bucket) => bucket.id), ["finance_investment", "manufacturing_supply_chain", "technology_internet", "retail_consumer"]);
 });
 
 test("plan gaps: target above linked only; null when the plan could not be read", () => {
@@ -85,15 +85,15 @@ test("insights: hidden below 30 people or with fewer than 5 on a side; computed 
     ...many(2, { primaryIndustryId: "finance_investment", metKind: "event", status: "nurture" }),
     ...many(3, { primaryIndustryId: "finance_investment", metKind: "referral", status: "active" }),
     ...many(3, { primaryIndustryId: "finance_investment", metKind: "referral", status: "nurture" }),
-    ...many(10, { primaryIndustryId: "manufacturing", addedAt: daysAgo(3) }),
-    ...many(4, { primaryIndustryId: "retail_trade" }),
+    ...many(10, { primaryIndustryId: "manufacturing_supply_chain", addedAt: daysAgo(3) }),
+    ...many(4, { primaryIndustryId: "retail_consumer" }),
   ];
   assert.equal(base.length, 30);
-  const result = insights(base, [{ planId: "p", needId: "n", title: "製造業の新規顧客開拓", primaryIndustryId: "manufacturing", targetCount: 3, linkedCount: 0, skipped: false }], NOW.getTime());
+  const result = insights(base, [{ planId: "p", needId: "n", title: "製造業の新規顧客開拓", primaryIndustryId: "manufacturing_supply_chain", targetCount: 3, linkedCount: 0, skipped: false }], NOW.getTime());
   const met = result.find((entry) => entry.kind === "met_path")!;
   assert.deepEqual(met, { kind: "met_path", industryId: "finance_investment", sample: 16, eventShare: 63, eventRate: 20, referralRate: 50 });
   const growth = result.find((entry) => entry.kind === "growth")!;
-  assert.equal(growth.industryId, "manufacturing");
+  assert.equal(growth.industryId, "manufacturing_supply_chain");
   assert.equal(growth.added, 10);
   assert.equal(growth.planNeedTitle, "製造業の新規顧客開拓");
   assert.equal(growth.months!.length, 6);
@@ -108,7 +108,7 @@ test("drill-down list: 段階の内訳 adds up; sorts offered only with data; pa
   const rows = [
     ...many(3, { primaryIndustryId: "finance_investment", status: "nurture", lastInteractionAt: daysAgo(3) }),
     ...many(4, { primaryIndustryId: "finance_investment", goalRelated: true }),
-    ...many(2, { primaryIndustryId: "manufacturing" }),
+    ...many(2, { primaryIndustryId: "manufacturing_supply_chain" }),
   ];
   const first = buildNetworkAnalysisPeople({ rows, needs: [], dimension: "industry", bucketId: "finance_investment", limit: 4, now: NOW })!;
   assert.equal(first.total, 7);

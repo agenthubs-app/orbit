@@ -97,14 +97,14 @@ function countBy(rows: readonly NetworkAnalysisRow[], dimension: Exclude<Network
   return counts;
 }
 
-/** Biggest first, ties by id; when more than four buckets, the top three plus `other` (the rest, unset included). */
+/** Biggest first, ties by id; when more than four buckets, the top three plus `rest` (the rest, unset included; `other` is a real industry id). */
 function topBuckets(counts: Map<string, number>): NetworkAnalysisBucket[] {
   const named = [...counts.entries()].filter(([key]) => key !== "none").sort(([a, x], [b, y]) => y - x || (a < b ? -1 : a > b ? 1 : 0));
   const unset = counts.get("none") ?? 0;
   if (named.length + (unset ? 1 : 0) <= TOP_BUCKETS && !unset) return named.map(([id, count]) => ({ id, count }));
   const keep = named.slice(0, TOP_BUCKETS - 1);
   const rest = named.slice(TOP_BUCKETS - 1).reduce((sum, [, count]) => sum + count, 0) + unset;
-  return [...keep.map(([id, count]) => ({ id, count })), ...(rest ? [{ id: "other", count: rest }] : [])];
+  return [...keep.map(([id, count]) => ({ id, count })), ...(rest ? [{ id: "rest", count: rest }] : [])];
 }
 
 export function distribution(rows: readonly NetworkAnalysisRow[], dimension: Exclude<NetworkAnalysisDimension, "opportunity">): NetworkAnalysisDistribution {
@@ -165,7 +165,7 @@ export function insights(rows: readonly NetworkAnalysisRow[], needs: NetworkAnal
   if (rows.length < NETWORK_ANALYSIS_STABLE_CONTACTS) return [];
   const result: NetworkAnalysisInsight[] = [];
   // 出会い方: in the biggest industry, events vs referrals and how many of each reached 関係構築 (a correlation, not a cause).
-  const biggest = distribution(rows, "industry").buckets.find((bucket) => bucket.id !== "other");
+  const biggest = distribution(rows, "industry").buckets.find((bucket) => bucket.id !== "rest");
   if (biggest) {
     const members = rows.filter((row) => bucketKey(row, "industry") === biggest.id);
     const events = members.filter((row) => bucketKey(row, "met") === "event");
@@ -225,8 +225,8 @@ export function bucketMembers(rows: readonly NetworkAnalysisRow[], dimension: Ne
     return bucketId === "reconnect" || bucketId === "stalled" ? opportunityMembers(rows, bucketId, context.nowMs, context.hasPlan) : null;
   }
   const shown = distribution(rows, dimension).buckets;
-  if (bucketId === "other" && dimension !== "met") {
-    const named = new Set(shown.filter((bucket) => bucket.id !== "other").map((bucket) => bucket.id));
+  if (bucketId === "rest" && dimension !== "met") {
+    const named = new Set(shown.filter((bucket) => bucket.id !== "rest").map((bucket) => bucket.id));
     return rows.filter((row) => !named.has(bucketKey(row, dimension)));
   }
   return rows.filter((row) => bucketKey(row, dimension) === bucketId);
