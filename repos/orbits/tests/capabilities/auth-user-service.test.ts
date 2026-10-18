@@ -292,6 +292,28 @@ test("registration input validation rejects bad email and short password", async
   assert.equal(shortPassword.error.code, "AUTH_INVALID_INPUT");
 });
 
+test("registration rejects passwords beyond bcrypt's 72-byte boundary without saving an account", async () => {
+  const service = serviceWithMemoryStore();
+  const withinLimit = await service.registerUser({
+    email: "within-limit@b.co",
+    password: "界".repeat(24),
+  });
+  const beyondLimit = await service.registerUser({
+    email: "beyond-limit@b.co",
+    password: "界".repeat(25),
+  });
+
+  assert.equal(withinLimit.state, "success");
+  assert.equal(beyondLimit.state, "failure");
+  if (beyondLimit.state !== "failure") return;
+  assert.equal(beyondLimit.error.code, "AUTH_INVALID_INPUT");
+  const login = await service.verifyCredentials({
+    email: "beyond-limit@b.co",
+    password: "界".repeat(25),
+  });
+  assert.equal(login.state, "failure");
+});
+
 test("oauth sign-in reuses an existing same-email account instead of forking", async () => {
   const service = serviceWithMemoryStore();
 

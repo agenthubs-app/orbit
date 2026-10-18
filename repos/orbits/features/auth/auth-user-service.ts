@@ -58,7 +58,8 @@ export function createAuthUserService({
       if (
         !isValidAuthEmail(input.email) ||
         typeof input.password !== "string" ||
-        input.password.length < AUTH_PASSWORD_MIN_LENGTH
+        input.password.length < AUTH_PASSWORD_MIN_LENGTH ||
+        Buffer.byteLength(input.password, "utf8") > 72
       ) {
         return authUserFailure("AUTH_INVALID_INPUT");
       }

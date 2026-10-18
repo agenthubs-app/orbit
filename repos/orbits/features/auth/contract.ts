@@ -32,7 +32,7 @@ export const AUTH_USER_ERROR_DEFINITIONS = {
   AUTH_INVALID_INPUT: {
     code: "AUTH_INVALID_INPUT",
     appCode: "VALIDATION_ERROR",
-    message: "Email and password are required; password needs at least 8 characters.",
+    message: "Enter a valid email and a password of at least 8 characters and no more than 72 UTF-8 bytes.",
   },
   AUTH_LIVE_STORE_UNCONFIGURED: {
     code: "AUTH_LIVE_STORE_UNCONFIGURED",
