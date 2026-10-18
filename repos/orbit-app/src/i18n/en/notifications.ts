@@ -36,4 +36,6 @@ export const notifications = {
   "notifications.permissionDenied":'System notifications are off for Orbit.',
   "notifications.openSystemSettings":'Open system settings',
   "notifications.pushError":'Could not update this device. Try again.',
+  "notifications.revokeError":'Could not remove this device. Push may continue until removal succeeds.',
+  "notifications.retryRevoke":'Retry device removal',
 } as const;

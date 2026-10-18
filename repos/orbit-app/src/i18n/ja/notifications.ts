@@ -36,4 +36,6 @@ export const notifications = {
   "notifications.permissionDenied":'Orbit のシステム通知がオフです。',
   "notifications.openSystemSettings":'システム設定を開く',
   "notifications.pushError":'この端末を更新できませんでした。もう一度お試しください。',
+  "notifications.revokeError":'この端末の登録を解除できませんでした。解除されるまでプッシュが届く可能性があります。',
+  "notifications.retryRevoke":'端末の解除を再試行',
 } as const;

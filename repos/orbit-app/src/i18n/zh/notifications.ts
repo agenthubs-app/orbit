@@ -36,4 +36,6 @@ export const notifications = {
   "notifications.permissionDenied":'系统已关闭 Orbit 通知。',
   "notifications.openSystemSettings":'打开系统设置',
   "notifications.pushError":'无法更新此设备，请重试。',
+  "notifications.revokeError":'无法移除此设备。移除成功前，推送可能继续到达。',
+  "notifications.retryRevoke":'重试移除设备',
 } as const;

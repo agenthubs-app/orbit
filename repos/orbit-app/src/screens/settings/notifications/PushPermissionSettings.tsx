@@ -17,15 +17,15 @@ export function PushPermissionSettings(){
 
 function ScopedPushPermissionSettings(){
  const {t}=useOrbitLocale(),{colors}=useOrbitTheme(),client=useOrbitApiClient();
- const [optedIn,setOptedIn]=useState(false),[permission,setPermission]=useState<'granted'|'denied'|'undetermined'|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(false);
- const live=useRef(true),lock=useRef(false);
+ const [optedIn,setOptedIn]=useState(false),[permission,setPermission]=useState<'granted'|'denied'|'undetermined'|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(false),[revokeFailed,setRevokeFailed]=useState(false);
+ const live=useRef(true),lock=useRef(false),revokeFailedRef=useRef(false);
  useEffect(()=>{
   live.current=true;
   const refresh=async()=>{
    try{
     const [opted,result]=await Promise.all([isPushNotificationsOptedIn(),Notifications.getPermissionsAsync()]);
     const status=result.status==='granted'?'granted':result.status==='denied'?'denied':'undetermined';
-    if(live.current&&!lock.current){setOptedIn(effectiveNotificationOptIn(opted,status));setPermission(status);setError(false);}
+    if(live.current&&!lock.current){setOptedIn(effectiveNotificationOptIn(opted,status));setPermission(status);if(!revokeFailedRef.current)setError(false);}
    }catch{if(live.current)setError(true);}
   };
   void refresh();
@@ -48,6 +48,7 @@ function ScopedPushPermissionSettings(){
    setOptedIn(result==='enabled');
    if(result==='enabled')setPermission('granted');
    if(result==='denied')setPermission('denied');
+   revokeFailedRef.current=result==='revoke-failed';setRevokeFailed(revokeFailedRef.current);
    if(result==='revoke-failed')setError(true);
   }catch{if(live.current)setError(true);}finally{lock.current=false;if(live.current)setBusy(false);}
  }
@@ -57,6 +58,6 @@ function ScopedPushPermissionSettings(){
    <Toggle value={optedIn} disabled={busy||permission===null} accessibilityLabel={t('notifications.pushOptIn')} onValueChange={value=>void change(value)}/>
   </View>
   {permission==='denied'?<View style={{gap:8,marginTop:8}}><UiText style={{color:colors.ink3Text}}>{t('notifications.permissionDenied')}</UiText><Button label={t('notifications.openSystemSettings')} onPress={()=>void Linking.openSettings().catch(()=>setError(true))}/></View>:null}
-  {error?<UiText accessibilityRole="alert" style={{color:colors.coralText,marginTop:8}}>{t('notifications.pushError')}</UiText>:null}
+  {error?<View style={{gap:8,marginTop:8}}><UiText accessibilityRole="alert" style={{color:colors.coralText}}>{t(revokeFailed?'notifications.revokeError':'notifications.pushError')}</UiText>{revokeFailed?<Button label={t('notifications.retryRevoke')} disabled={busy} onPress={()=>void change(false)}/>:null}</View>:null}
  </Card>;
 }
