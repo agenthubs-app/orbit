@@ -43,7 +43,7 @@ registerFeedbackPresenter(request => { if (request.kind === "confirm") { state.c
 window.fetch = async (input, init = {}) => { const index = state.requests.length; const url = new URL(String(input)); const headers = Object.fromEntries(new Headers(init.headers).entries());
   state.requests.push({ method: init.method ?? "GET", path: url.pathname, body: init.body ? JSON.parse(init.body) : null, headers });
   const response = new Promise(resolve => state.pending[index] = resolve);
-  if ((init.method ?? "GET") === "GET") queueMicrotask(() => state.reply(index));
+  if ((init.method ?? "GET") === "GET") queueMicrotask(() => state.reply(index, state.readStatus ?? 200));
   return response;
 };
 export const useFixture = () => { observe(); return state; };
@@ -64,7 +64,7 @@ export const useRelationshipInboxBadgeCount = () => 0;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/schedule/meetings/[id]"; createRoot(document.getElementById("root")).render(<Route />);', resolveDir: process.cwd(), loader: "tsx" },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/schedule/meetings/[id]"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; const language = window.initialFixture?.language; const route = <Route />; const locale = language && { choice: "system", deviceLanguage: language, error: null, language, preference: { mode: "system", language: null, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "device", syncState: "idle", t: createTranslator(language) }; createRoot(document.getElementById("root")).render(locale ? <OrbitLocaleContext.Provider value={locale}>{route}</OrbitLocaleContext.Provider> : route);', resolveDir: process.cwd(), loader: "tsx" },
     bundle: true,
     write: false,
     format: "iife",
@@ -123,6 +123,14 @@ async function replyLatestWrite(page: Page, status: number, data?: object) {
   await page.evaluate(({ status, data }) => { const state = (window as any).fixture; const index = state.requests.findLastIndex((request: any) => request.method === "PATCH"); state.reply(index, status, data); }, { status, data });
   await settle(page);
 }
+
+test("Japanese meeting detail does not show the server language after a failed refresh", async t => {
+  const page = await open(t, { language: "ja" });
+  await page.evaluate(() => { const state = (window as any).fixture; state.readStatus = 503; state.refresh(); });
+  await page.getByText(/Orbit 服务暂不可用|面会を読み込めませんでした。もう一度お試しください。/).waitFor();
+  assert.equal(await page.getByText("Orbit 服务暂不可用，请稍后再试。", { exact: true }).count(), 0);
+  await page.getByText("面会を読み込めませんでした。もう一度お試しください。", { exact: true }).waitFor();
+});
 
 test("meeting notes keep the draft and idempotency key across failure, then show the verified save", async t => {
   const page = await open(t);

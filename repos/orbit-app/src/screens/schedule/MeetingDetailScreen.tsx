@@ -100,7 +100,7 @@ function MeetingDetailEditor({ appointmentId, online, ready, scopeKey, source }:
         answered = true;
         if (!active || !requestScope.active) return;
         if (stored && reason) { setBaseline(stored.value); setLatest(stored.value); setDraft(stored.value.details); setEditing(false); setCopy({ lastSyncedAt: stored.syncedAt, offline: true, reason }); setError(""); return; }
-        setError(reason === "unreachable" ? locale.t("sync.notOnDevice") : result.success ? locale.t("meetingDetails.readUnconfirmed") : result.error.message);
+        setError(locale.t(reason === "unreachable" ? "sync.notOnDevice" : result.success ? "meetingDetails.readUnconfirmed" : "meetingDetails.readFailed"));
         return;
       }
       answered = true;
