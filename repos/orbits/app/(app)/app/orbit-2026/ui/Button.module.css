@@ -18,6 +18,7 @@
   transform: scale(0.96);
   filter: brightness(0.96);
 }
+.button:global(.btn):active:not(:disabled) { transform: scale(0.96); }
 
 .button:disabled {
   opacity: 0.5;
@@ -61,6 +62,14 @@
 /* Old pages load an unscoped legacy `.btn` (44 high, padding 0 20, 15 / 550, radius 10, 1px border; HANDOFF G13).
    A dialog or drawer over such a page (人脈を追加 over 人脈) would inherit it: two classes restate the kit values. */
 .button:global(.btn) { gap: 6px; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); letter-spacing: normal; }
+.button:global(.btn):disabled { cursor: default; box-shadow: none; }
+.primary:global(.btn):disabled { background: var(--ink); color: var(--bg); }
+.accent:global(.btn):disabled { background: var(--accent); color: var(--on-accent); }
+.secondary:global(.btn):disabled { background: var(--surface-2); color: var(--ink); }
+.ghost:global(.btn):disabled { background: transparent; color: var(--ink-2); }
+.danger:global(.btn):disabled { background: var(--coral-text); color: var(--on-accent); }
+.dangerGhost:global(.btn):disabled { background: transparent; color: var(--coral-text); }
+.dangerSoft:global(.btn):disabled { background: var(--coral-soft); color: var(--coral-text); }
 .sm:global(.btn) { height: 32px; padding: 0 12px; font-size: var(--fs-meta); }
 .icon:global(.btn) { gap: 0; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .iconSm:global(.btn) { width: 34px; height: 34px; }
@@ -80,6 +89,7 @@
 
 .icon:hover { background: var(--surface-2); }
 .icon:active { transform: scale(0.9); background: var(--accent-soft); }
+.icon:global(.btn):active:not(:disabled) { transform: scale(0.9); }
 .soft { background: var(--surface-2); }
 .iconSm { width: 34px; height: 34px; }
 
@@ -98,11 +108,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .button, .icon { transition: opacity var(--dur-press); }
-  .button:active:not(:disabled), .icon:active { transform: none; }
+  .button:active:not(:disabled), .icon:active, .button:global(.btn):active:not(:disabled), .icon:global(.btn):active:not(:disabled) { transform: none; }
   .spinner { animation: none; border-right-color: currentColor; opacity: 0.6; }
 }
 :global([data-motion="reduce"]) .button,
 :global([data-motion="reduce"]) .icon { transition: opacity var(--dur-press); }
 :global([data-motion="reduce"]) .button:active:not(:disabled),
-:global([data-motion="reduce"]) .icon:active { transform: none; }
+:global([data-motion="reduce"]) .icon:active,
+:global([data-motion="reduce"]) .button:global(.btn):active:not(:disabled),
+:global([data-motion="reduce"]) .icon:global(.btn):active:not(:disabled) { transform: none; }
 :global([data-motion="reduce"]) .spinner { animation: none; border-right-color: currentColor; opacity: 0.6; }

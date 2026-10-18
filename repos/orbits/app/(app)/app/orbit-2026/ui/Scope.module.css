@@ -25,6 +25,9 @@
   cursor: default;
 }
 
+/* The old page's unscoped .btn:active translates by 0.5px; new controls own their press effects. */
+.scope :global(.btn:active) { transform: none; }
+
 :where(.scope) :where(a) {
   color: inherit;
   text-decoration: none;

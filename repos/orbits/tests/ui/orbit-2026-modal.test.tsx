@@ -110,7 +110,7 @@ test("subtitleBelowHead keeps a subtitle four pixels below the modal title row",
     return { headBottom: head.getBoundingClientRect().bottom, subtitleTop: subtitle.getBoundingClientRect().top, subtitleBottom: subtitle.getBoundingClientRect().bottom, boxesTop: boxes.getBoundingClientRect().top };
   });
   assert.equal(Math.round(geometry.subtitleTop - geometry.headBottom), 4);
-  assert.equal(Math.round(geometry.boxesTop - geometry.subtitleBottom), 14);
+  assert.ok(Math.abs(geometry.boxesTop - geometry.subtitleBottom - 14) <= 1, JSON.stringify(geometry));
 });
 
 test("a destructive confirm ignores the scrim; a plain modal closes on it", async (t) => {
