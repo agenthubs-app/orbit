@@ -134,7 +134,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/settings", consumer: "AccountSettingsScreen", kind: "screen" },
   { route: "/settings/api", consumer: "ApiSettingsScreen", kind: "screen" },
   { route: "/admin", consumer: "AdminScreen (dashboard)", kind: "screen" },
-  { route: "/admin/access", consumer: "AdminScreen (access)", kind: "screen" },
+  { route: "/admin/access", consumer: "AdminLoginScreen", kind: "screen" },
   { route: "/admin/events", consumer: "AdminScreen (events)", kind: "screen" },
   { route: "/login-admin", consumer: "AdminLoginScreen", kind: "screen" },
   { route: "/platform", consumer: "PlatformScreen", kind: "screen" },
@@ -410,4 +410,10 @@ test("the final README records canonical status and concrete evidence for all 56
   assert.match(readme, /Acceptance status:\s*\*\*INCOMPLETE\*\*/u);
   assert.match(readme, /Runtime Dynamic Type:\s*\*\*OPEN\*\*/u);
   assert.match(readme, /Auth\/profile software keyboard:\s*\*\*UNPROVEN\*\*/u);
+});
+
+test("the public admin access route renders the login screen without mounting private admin reads", () => {
+  const source = readFileSync(join(appRoot, "admin/access.tsx"), "utf8");
+  assert.match(source, /AdminLoginScreen/u);
+  assert.doesNotMatch(source, /AdminScreen|ORBIT_API_ENDPOINTS|useApiResource/u);
 });

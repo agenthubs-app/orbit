@@ -12,6 +12,16 @@ import {
 
 const root = process.cwd();
 
+test('R29 admin access and platform inventory match their public read boundaries', () => {
+  const access = PAGE_OFFLINE_INVENTORY.find((entry) => entry.path === '/admin/access');
+  const platform = PAGE_OFFLINE_INVENTORY.find((entry) => entry.path === '/platform');
+  assert.equal(access?.reads, '/api/health（公开入口探测）；登录提交走既有 /api/auth/*');
+  assert.equal(access?.classification, 'online-only');
+  assert.equal(platform?.reads, '/api/events/public');
+  assert.match(platform?.title ?? '', /公开活动目录/u);
+  assert.doesNotMatch(`${platform?.title} ${platform?.reason}`, /审核队列|批准|驳回/u);
+});
+
 // Sprint 0131 (SC-0131-01): every route under app/ has an offline owner. A new
 // route that is not registered — or a registered route that no longer exists —
 // fails this test, and the committed docs/offline/page-inventory.md must be the

@@ -137,7 +137,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/settings` | `AccountSettingsScreen` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json` 为旧屏历史；R18a 新屏原生字号/键盘与像素验收未执行，见 REPORT | `tests/me-settings.test.tsx`：三语言、三外观、入口；`tests/appearance-preference.test.tsx`：共享外观状态 |
 | `/settings/api` | `ApiSettingsScreen` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 当前服务器与草稿控件；未保存/检查/重置 | `tests/app-wide-account.test.ts`: 服务器草稿与无配置写入 |
 | `/admin` | `AdminScreen (dashboard)` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 3 场活动、只读统计 | `tests/app-wide-account.test.ts`: 管理统计、导航和只读边界 |
-| `/admin/access` | `AdminScreen (access)` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 无可验证成员邮箱，未虚构成员成功态 | `tests/app-wide-account.test.ts`: access 空成员和反馈布局 |
+| `/admin/access` | `AdminLoginScreen` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json` 为 R29 前历史观察；当前公开登录屏见 R29 `app/A02-light.png`、`app/A02-dark.png`，真实退出再登录链仍待核 | `tests/app-wide-account.test.ts`: 未登录不读取后台资料；`tests/offline-pages-actions.test.tsx`: 公开入口健康探测 |
 | `/admin/events` | `AdminScreen (events)` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 3 场实际记录 | `tests/app-wide-account.test.ts`: 活动管理统计与已有导航 |
 | `/login-admin` | `AdminLoginScreen` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 当前账号只读后台入口 | `tests/app-wide-account.test.ts`: 只读入口且不授予角色 |
 | `/platform` | `PlatformScreen` | screen | `.tmp/app-wide-style/after/task5/native-route-observations.json`: 13 目录/1 公开活动；`.tmp/app-wide-style/after/task5/native-state-observations.json`: 深色冷启动大字 | `tests/app-wide-account.test.ts`: 公开活动、统计和大字完整性 |

@@ -79,10 +79,10 @@
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/forgot-password` | 忘记密码 | 涉及凭据或会话：发送重置邮件需要服务器 | /api/auth/password-reset/request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/reset-password` | 重置密码 | 涉及凭据或会话：重置令牌由服务器验证 | /api/auth/password-reset/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/login-admin` | 管理员登录 | 管理员工具：管理员凭据由服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/admin` | 管理后台 | 管理员工具：管理员工具，读全平台数据，不放进个人设备 | /api/dashboard、/api/events、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/admin/access` | 管理后台：权限 | 管理员工具：管理员工具 | 同 /admin | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/admin/events` | 管理后台：活动 | 管理员工具：管理员工具 | 同 /admin | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/login-admin` | 后台登录入口 | 涉及凭据或会话：公开入口先探测连接；登录走现有账号验证 | /api/health（公开入口探测）；登录提交走既有 /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/admin` | 当前账号后台概览 | 管理员工具：当前账号活动与资料从服务器只读获取，不保存为本机副本 | /api/dashboard、/api/events、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/admin/access` | 后台登录入口 | 涉及凭据或会话：公开入口先探测连接；登录走现有账号验证，不读取后台私有资料 | /api/health（公开入口探测）；登录提交走既有 /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/admin/events` | 当前账号活动记录 | 管理员工具：当前账号活动从服务器只读获取，不提供批准或驳回 | /api/events、/api/profile、/api/dashboard | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/center` | 運営センター（R17：主催イベント · 対応 · PC リンク） | 主办方实时运营：主办方视图，按实时权限由服务器计算行与待办 | /api/host/center | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/operations` | イベント運営（R17：概要 / マッチング / 参加者 / レポート摘要，?seg=） | 主办方实时运营：主办方实时运营（设计案 C 类，永不落地） | /api/host/events/:id/overview、/matching、/people | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/center/new` | イベントを作成 → 「PC が便利です」卡（R17，App 不建活动） | 主办方实时运营：PC 链接由服务器写进本人收件箱 | POST /api/host/desktop-link | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -117,7 +117,7 @@
 | `/plans/:planId/done` | 目标达成的完成页与下一目标候选（R25） | 需要服务器实时计算：完成页数字由服务器按定格的分数计算，下一目标候选由 AI 在服务器生成，选了要实时新建生成流程 | /api/agent/plans/v2/:planId/achievement、/api/agent/plans/v2/:planId/next-goals、/api/agent/plans/v2/quota | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/:planId/next` | 下一目标候选（R25，b4 #26 独立页） | 需要服务器实时计算：下一目标候选由 AI 在服务器生成，选了要实时新建生成流程 | /api/agent/plans/v2/:planId/next-goals、/api/agent/plans/v2/quota | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/plans/legacy/:planId` | 以前的计划：v1 计划只读详情（R25） | 需要服务器实时计算：旧计划只在服务器保存，不存本机；只读，不提供编辑 | /api/agent/plans/legacy/:planId | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/platform` | 平台工作台（公开活动审核队列） | 管理员工具：平台运营工具：审核导入的公开活动 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/platform` | 公开活动目录 | 需要服务器实时计算：公开活动由服务器实时提供，只读展示 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/o/:slug` | 公開主催者ページ（R17） | 公开访客页面（不属于账号）：公开主办方页面，不属于账号数据 | /api/organizers/by-slug/:slug | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/edit` | 编辑资料 | 涉及凭据或会话：编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写 | /api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/onboarding` | 新用户引导 | 付费 AI：引导里的名片扫描和自我介绍草稿用付费 AI；每一步都保存到服务器（0106 已支持断网继续填写、联网后保存） | /api/profile、/api/profile/intro-draft | 已填内容保留，显示「现在没有网络」提示，联网后继续（0106 行为） |
