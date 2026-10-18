@@ -342,6 +342,24 @@ test("business template prefill is one-use and sends its stable contact referenc
   assert.equal((await writes(p)).length, 2);
 });
 
+test("global search iOrbit entry only prefills and sends one edited question on tap", async t => {
+  const message = "半導体商社の人に会うには？";
+  const p = await open(t, { prefill: { entryPointId: "ai.new_chat", message, references: [],
+    template: { id: "search.ask_iorbit", version: 1 } } });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("半導体商社の人に会う方法を教えて");
+  await update(p, { focused: false });
+  await update(p, { focused: true });
+  assert.deepEqual(await writes(p), []);
+  await twice(p, "发送消息");
+  const sent = await writes(p);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].body.message, "半導体商社の人に会う方法を教えて");
+  assert.equal(sent[0].body.origin.entryPointId, "ai.new_chat");
+  assert.deepEqual(sent[0].body.origin.template, { id: "search.ask_iorbit", version: 1 });
+});
+
 test("contacts analysis prefill stays editable, cancels without generation and sends its source version only on user action", async t => {
   const sourceDataVersion = "a".repeat(64);
   const prefill = {
