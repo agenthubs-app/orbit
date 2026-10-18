@@ -13,7 +13,7 @@
  * plan-C 走 scripts/visual/plan-rework/c-all.sh（造状态有先后），python3 用 PATH 前面的 uv 包装（--pybin）。
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, value, index, all) => (value.startsWith("--") ? [...pairs, [value.slice(2), all[index + 1]]] : pairs), []));
@@ -35,6 +35,11 @@ if (args.keys) {
 
 const load = (suite) => JSON.parse(readFileSync(join(root, "scripts/visual/views", `${suite}.json`), "utf8"));
 const keysOf = (suiteJson, view) => (view.themes ?? suiteJson.defaults?.themes ?? ["light", "dark"]).map((theme) => `${view.id}-${view.width}-${theme}`);
+const expectedKeys = new Set(suites.flatMap((suite) => { const json = load(suite); return json.views.flatMap((view) => keysOf(json, view).filter((key) => !keyFilter || keyFilter.has(key))); }));
+const merged = {};
+let failed = false;
+mkdirSync(out, { recursive: true });
+rmSync(join(out, "all-summary.json"), { force: true });
 
 const sw = (kind, value) => {
   const script = kind === "plan" ? "features/plans/v2/design-fixtures/switch.mjs" : "features/events/design-fixtures/switch.mjs";
@@ -44,6 +49,7 @@ const sw = (kind, value) => {
     if (r.status === 0) return true;
   }
   console.error(`switch ${kind} ${value} FAILED`);
+  failed = true;
   return false;
 };
 
@@ -58,15 +64,35 @@ function prestep(suite, view) {
   return ["-", () => true];
 }
 
-function runCompare(suite, only, dir) {
+function runCompare(suite, only, dir, collect = true) {
   mkdirSync(dir, { recursive: true });
-  spawnSync("node", ["scripts/visual/compare-redesign.mjs", "--suite", `scripts/visual/views/${suite}.json`, "--only", only.join(","), "--app-origin", origin,
-    "--design-base", designBase, "--storage", storage, "--out", dir, "--workers", workers], { cwd: root, stdio: ["ignore", "ignore", "inherit"] });
+  const summary = join(dir, "summary.json");
+  rmSync(summary, { force: true });
+  const result = spawnSync("node", ["scripts/visual/compare-redesign.mjs", "--suite", `scripts/visual/views/${suite}.json`, "--only", only.join(","), "--app-origin", origin,
+    "--design-base", designBase, "--storage", storage, "--out", dir, "--workers", workers, ...(args.region && collect ? ["--region", args.region] : [])], { cwd: root, stdio: ["ignore", "ignore", "inherit"] });
+  if (result.error || result.status !== 0) {
+    console.error(`[${suite}] compare failed (${result.error?.message ?? result.status})`);
+    failed = true;
+  }
+  if (!existsSync(summary)) {
+    console.error(`[${suite}] missing fresh summary: ${summary}`);
+    failed = true;
+    return;
+  }
+  const rows = JSON.parse(readFileSync(summary, "utf8"));
+  const wanted = new Set(only);
+  const received = new Set(rows.map((row) => row.view));
+  for (const key of wanted) if (!received.has(key)) { console.error(`[${suite}] missing expected key: ${key}`); failed = true; }
+  if (!collect) return;
+  for (const row of rows) {
+    if (!wanted.has(row.view)) continue;
+    merged[row.view] = { pass: row.pass, raw: row.raw, over: row.overBands, unattributed: row.unattributed, missing: (row.missing ?? []).length, error: row.error, out: row.out, suite };
+  }
 }
 
 let group = 0;
 // 登录一次（门禁自己会登录并写 storage）。
-if (!existsSync(storage)) runCompare("web-R07", ["W-R07-01L-1440-light"], join(out, "_login"));
+if (!existsSync(storage)) runCompare("web-R07", ["W-R07-01L-1440-light"], join(out, "_login"), false);
 for (const suite of suites) {
   const json = load(suite);
   if (suite === "web-plan-C") {
@@ -75,9 +101,9 @@ for (const suite of suites) {
     const steps = { "W-R25-01": "modal", "W-R25-07": "modal", "W-R25-01M": "mm", "W-R25-07M": "mm", "W-R25-09M": "mgoals", "W-R25-10M": "medit", "W-R25-02M": "mused", "W-R25-10": "edit", "W-R25-02": "used", "W-R25-12": "legacy", "W-R25-13": "legacy", "W-R25-03": "r03", "W-R25-05": "r05", "W-R25-06a": "r06", "W-R25-08": "done", "W-R25-09": "goals" };
     // 同 scripts/visual/plan-rework/c-all.sh 的步骤（它不传 --design-base，所以这里照抄步骤、自己调 compare）。
     const env = { ...process.env, PLAN_ORIGIN: origin, PLAN_STORAGE: storage, PATH: `${args.pybin ?? ""}:${process.env.PATH}` };
-    const setup = (state) => spawnSync("python3", ["scripts/visual/plan-rework/setup.py", state], { cwd: root, env, stdio: "ignore" }).status === 0;
+    const setup = (state) => { const ok = spawnSync("python3", ["scripts/visual/plan-rework/setup.py", state], { cwd: root, env, stdio: "ignore" }).status === 0; if (!ok) failed = true; return ok; };
     const cookie = () => (JSON.parse(readFileSync(storage, "utf8")).cookies ?? []).filter((c) => ["localhost", "127.0.0.1"].includes(c.domain.replace(/^\./, ""))).map((c) => `${c.name}=${c.value}`).join("; ");
-    const warm = (path) => spawnSync("curl", ["-s", "-o", "/dev/null", "--max-time", "240", "-H", `cookie: ${cookie()}`, `${origin}${path}`]);
+    const warm = (path) => { const result = spawnSync("curl", ["-sf", "-o", "/dev/null", "--max-time", "240", "-H", `cookie: ${cookie()}`, `${origin}${path}`]); if (result.status !== 0) failed = true; return result.status === 0; };
     const plan = (name) => sw("plan", name);
     const recipes = {
       modal: [() => plan("c-review") && setup("one"), ["W-R25-01"], () => plan("b12-270-achieve"), ["W-R25-07"]],
@@ -110,7 +136,7 @@ for (const suite of suites) {
     continue;
   }
   if (suite === "web-plan-B") {
-    spawnSync("node", ["features/plans/v2/design-fixtures/seed-local-chats.mjs", "--origin", origin, "--storage", storage], { cwd: root, stdio: "ignore" });
+    if (spawnSync("node", ["features/plans/v2/design-fixtures/seed-local-chats.mjs", "--origin", origin, "--storage", storage], { cwd: root, stdio: "ignore" }).status !== 0) failed = true;
   }
   const groups = new Map();
   for (const view of json.views) {
@@ -133,10 +159,9 @@ for (const suite of suites) {
   if (suite.startsWith("web-plan")) sw("plan", "null");
 }
 
-// 合并。
-const merged = {};
-const walk = (dir) => { for (const entry of readdirSync(dir, { withFileTypes: true })) { const p = join(dir, entry.name); if (entry.isDirectory()) walk(p); else if (entry.name === "summary.json") for (const r of JSON.parse(readFileSync(p, "utf8"))) merged[r.view] = { pass: r.pass, raw: r.raw, over: r.overBands, unattributed: r.unattributed, missing: (r.missing ?? []).length, error: r.error, out: r.out, suite: p.slice(out.length + 1).split("/")[0] }; } };
-if (existsSync(out)) walk(out);
+// 只合并本次新摘要；失败子进程的新行仍供诊断，旧输出目录里的 summary 不参与。
+for (const key of expectedKeys) if (!(key in merged)) { console.error(`missing expected key: ${key}`); failed = true; }
 writeFileSync(join(out, "all-summary.json"), JSON.stringify(merged, null, 1));
 const values = Object.values(merged);
 console.log(`合计 ${values.length} 张：通过 ${values.filter((v) => v.pass).length}、不通过 ${values.filter((v) => !v.pass).length} → ${join(out, "all-summary.json")}`);
+if (failed) process.exitCode = 1;
