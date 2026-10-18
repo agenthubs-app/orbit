@@ -53,3 +53,19 @@ for (const provider of ["gmail", "google_calendar"] as const) test(`R18a native 
   assert.equal(module.integrationAuthorizePath(provider, true), "/app/settings/integrations");
   assert.equal(module.integrationAuthorizePath(provider), `/api/integrations/${provider}/authorize?returnTo=settings`);
 });
+
+test("R18a native settings transport works without the browser-only Response.json static", async () => {
+  const module = await import("../src/screens/me/settings-api");
+  const original = Response.json;
+  Object.defineProperty(Response, "json", { configurable: true, value: undefined });
+  try {
+    const fetchImpl = module.settingsFetch(async (_url, init) => init?.method === "DELETE"
+      ? new Response(null, { status: 204 })
+      : new Response(JSON.stringify({ data: [{ provider: "gmail", status: "unavailable", healthStatus: "unavailable" }] }), { headers: { "content-type": "application/json" } }));
+    const api = module.createAccountSettingsApi(createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl }));
+    assert.equal((await api.integrations())?.[0]?.provider, "gmail");
+    assert.equal(await api.removeMemory("m1"), true);
+  } finally {
+    Object.defineProperty(Response, "json", { configurable: true, value: original });
+  }
+});

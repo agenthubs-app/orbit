@@ -8,12 +8,12 @@ export function settingsFetch(fetcher: FetchLike): FetchLike {
     if (init?.signal?.aborted) throw new Error("Inactive settings request");
     const path = new URL(String(input)).pathname;
     if (!path.startsWith("/api/integrations") && !path.startsWith("/api/agent/memory")) return response;
-    if (response.status === 204) return Response.json({ success: true, data: null });
+    if (response.status === 204) return new Response(JSON.stringify({ success: true, data: null }), { headers: { "content-type": "application/json" } });
     const value: unknown = await response.clone().json().catch(() => null);
     if (!value || typeof value !== "object" || "success" in value) return response;
-    const headers = new Headers(response.headers); headers.delete("content-length");
-    if (response.ok && "data" in value) return Response.json({ success: true, data: value.data }, { status: response.status, headers });
-    if (!response.ok && "error" in value) return Response.json({ success: false, error: value.error }, { status: response.status, headers });
+    const headers = new Headers(response.headers); headers.delete("content-length"); headers.set("content-type", "application/json");
+    if (response.ok && "data" in value) return new Response(JSON.stringify({ success: true, data: value.data }), { status: response.status, headers });
+    if (!response.ok && "error" in value) return new Response(JSON.stringify({ success: false, error: value.error }), { status: response.status, headers });
     return response;
   };
 }
