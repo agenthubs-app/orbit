@@ -1,5 +1,5 @@
 // Scenario app for the R04 ui tests (bundled by tests/helpers/ui-harness.ts).
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -12,7 +12,7 @@ import {
   Accordion, ActionSheet, Avatar, AvatarStack, BottomSheet, Button, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog,
   CountUp, DegradedCard, EmptyState, FilterOption, IconButton, ListRow, MacTile, OfflineBar, ProgressBar, QuotaChip, Radio, ReducedMotionOverride,
   RetryCard, RingChart, SampleBar, SampleTag, SearchField, Segmented, Skeleton, SwipeRow, TextField, Toggle, ToastProvider, UiFeedbackHost,
-  UiPortalHost, WhyDisclosure, presentConfirm, useToast, Card, FullDrawer,
+  UiPortalHost, UiPressable, WhyDisclosure, presentConfirm, useToast, Card, FullDrawer,
 } from "../../src/components/ui";
 
 declare global { interface Window { uiFixture: Record<string, unknown>; events: string[]; ui: Record<string, unknown> } }
@@ -126,11 +126,13 @@ function RoutedSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
 // dialog, drawer, actionSheet is open (fixture.overlay); toasts can be fired over it.
 function Overlays() {
   const [open, setOpen] = useState(true);
+  const opener = useRef<View>(null);
   const overlay = String(fixture.overlay);
   const close = (event: string) => () => { log(event); setOpen(false); };
   return (
     <View style={{ padding: 16 }}>
       <ToastScreen />
+      <UiPressable ref={opener} accessibilityRole="button" accessibilityLabel="確認を開く" onPress={() => setOpen(true)} style={{ width: 44, height: 44 }} />
       <BottomSheet visible={open && overlay === "sheet"} onClose={close("sheet-close")} accessibilityLabel="シート">
         <TextField label="メモ" value="" onChangeText={() => undefined} />
         <Button label="保存" onPress={() => log("save")} />
@@ -142,7 +144,7 @@ function Overlays() {
       <ConfirmDialog visible={open && overlay === "dialog"} destructive title="このタスクを削除しますか？" message="元に戻せません。" confirmLabel="削除する" onConfirm={close("confirm")} onCancel={close("cancel")} />
       <FullDrawer visible={open && overlay === "drawer"} title="メニュー" onClose={close("drawer-close")}><Button label="設定" onPress={() => log("settings")} /></FullDrawer>
       {/* R31a: a confirm-style sheet (backdrop and drag do nothing) and a sheet on a route that can change (window.setRoute). */}
-      <BottomSheet visible={open && overlay === "lockedSheet"} dismissOnBackdrop={false} draggable={false} onClose={close("sheet-close")} accessibilityLabel="確認シート">
+      <BottomSheet visible={open && overlay === "lockedSheet"} dismissOnBackdrop={false} draggable={false} onClose={close("sheet-close")} returnFocusTo={opener} accessibilityLabel="確認シート">
         <Button label="キャンセル" onPress={close("cancel")} />
       </BottomSheet>
       <RoutedSheet visible={open && overlay === "routedSheet"} onClose={close("sheet-auto-close")} />

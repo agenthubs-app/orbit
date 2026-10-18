@@ -1,5 +1,5 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AppState, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { AccessibilityInfo, AppState, findNodeHandle, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -20,7 +20,7 @@ import { useBackHandler } from "./useBackHandler";
 // R31a (G23, R15 review m4 / :78): it closes itself when its page loses focus (route change, app to background), except
 // while the keyboard is up. `dismissOnBackdrop={false}`: a backdrop tap does nothing (Android back and the VoiceOver escape
 // gesture still close it). `draggable={false}`: the handle stays drawn but a drag does not close it (confirm sheets).
-export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean }) {
+export function BottomSheet({ visible, onClose, children, accessibilityLabel, dismissOnBackdrop = true, draggable = true, returnFocusTo }: { visible: boolean; onClose: () => void; children: ReactNode; accessibilityLabel?: string; dismissOnBackdrop?: boolean; draggable?: boolean; returnFocusTo?: RefObject<View | null> | undefined }) {
   const { styles } = useStyles();
   const reduced = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -31,7 +31,17 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel, di
   const [sheetHeight, setSheetHeight] = useState(maxHeight);
   const offset = useSharedValue(reduced ? 0 : height);
   const opacity = useSharedValue(reduced ? 0 : 1);
-  const close = useCallback(() => onClose(), [onClose]);
+  const close = useCallback(() => {
+    onClose();
+    if (!returnFocusTo) return;
+    requestAnimationFrame(() => {
+      const target = returnFocusTo.current;
+      if (!target) return;
+      if (Platform.OS === "web") (target as View & { focus?: () => void }).focus?.();
+      const handle = findNodeHandle(target);
+      if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
+    });
+  }, [onClose, returnFocusTo]);
   useBackHandler(visible, close);
   useAutoClose(visible, close, keyboard > 0);
   useEffect(() => {

@@ -4,7 +4,7 @@
 // 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开 R20a「面談の日程提案」。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
 import { useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
@@ -62,6 +62,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<View>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [unlinkOpen, setUnlinkOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -128,7 +129,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
 
   return (
     <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}
-      headerActions={<IconButton icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />}>
+      headerActions={<IconButton ref={menuButtonRef} icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />}>
       <View testID="network-contact">
         {local.freshness.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
 
@@ -288,7 +289,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         <>
           {shareOpen ? <InviteShareSheet visible={shareOpen} contactId={contactId} name={contact.displayName} onClose={() => setShareOpen(false)} onSaved={setConnection}
             onMerged={(merged) => { setShareOpen(false); router.replace(`/contacts/${encodeURIComponent(merged.contactId)}` as Href); }} /> : null}
-          {unlinkOpen ? <InviteUnlinkSheet visible={unlinkOpen} contactId={contactId} name={contact.displayName} onClose={() => setUnlinkOpen(false)}
+          {unlinkOpen ? <InviteUnlinkSheet visible={unlinkOpen} contactId={contactId} name={contact.displayName} onClose={() => setUnlinkOpen(false)} returnFocusTo={menuButtonRef}
             onUnlinked={() => { setUnlinkOpen(false); setConnection(null); local.refresh(); }} /> : null}
         </>
       ) : null}

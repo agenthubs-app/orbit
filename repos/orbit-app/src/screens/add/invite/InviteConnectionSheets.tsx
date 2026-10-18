@@ -10,7 +10,7 @@
 //     can stay), 「名前と会社だけの連絡先として残す」 on by default, POST …/unlink. A backdrop tap or a drag does
 //     not close it, and screen-reader focus starts on キャンセル. Android back and the VoiceOver escape
 //     gesture are キャンセル (复核 m4) — handled here, before the sheet's own (ignored) dismiss.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AccessibilityInfo, findNodeHandle, View } from "react-native";
 
 import type { InviteConnectionView, InviteSharedFieldKey, InviteSharedFields, InviteUnlinkResult } from "../../../api/contract/invite-codes";
@@ -134,12 +134,13 @@ export function InviteShareSheet({ visible, contactId, name, onClose, onSaved, o
   );
 }
 
-export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinked, api: injected }: {
+export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinked, returnFocusTo, api: injected }: {
   visible: boolean;
   contactId: string;
   name: string;
   onClose: () => void;
   onUnlinked?: (result: InviteUnlinkResult) => void;
+  returnFocusTo?: RefObject<View | null>;
   api?: InviteApi;
 }) {
   const fallbackApi = useInviteApi();
@@ -200,7 +201,7 @@ export function InviteUnlinkSheet({ visible, contactId, name, onClose, onUnlinke
   return (
     // Destructive confirm: a backdrop tap or a drag does not close it (DESIGN §9 #32; R31a dismissOnBackdrop / draggable);
     // キャンセル, Android back and the VoiceOver escape gesture do.
-    <BottomSheet visible={visible} onClose={cancelUnlessBusy} dismissOnBackdrop={false} draggable={false} accessibilityLabel={t("add.inviteConn.unlinkTitle", { name })}>
+    <BottomSheet visible={visible} onClose={cancelUnlessBusy} dismissOnBackdrop={false} draggable={false} returnFocusTo={busy ? undefined : returnFocusTo} accessibilityLabel={t("add.inviteConn.unlinkTitle", { name })}>
       <View style={styles.stack} testID="invite-unlink-sheet">
         <View style={styles.centered}>
           <UiText accessibilityRole="header" style={styles.title}>{t("add.inviteConn.unlinkTitle", { name })}</UiText>

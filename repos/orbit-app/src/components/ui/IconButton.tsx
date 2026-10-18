@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { createThemedStyles } from "../../design/theme";
@@ -8,16 +9,7 @@ import { UiPressable } from "./Pressable";
 // required (it is what VoiceOver reads). `dot` draws the unread marker (coral).
 // D01: the drawn circle keeps the kit size; the pressable around it is a real 44pt
 // target pulled back by a negative margin, so the layout footprint stays 40 / 34.
-export function IconButton({
-  icon,
-  accessibilityLabel,
-  onPress,
-  size = 40,
-  soft = false,
-  solid = false,
-  dot = false,
-  disabled = false,
-}: {
+export const IconButton = forwardRef<View, {
   icon: IconName;
   accessibilityLabel: string;
   onPress: () => void;
@@ -27,10 +19,20 @@ export function IconButton({
   solid?: boolean;
   dot?: boolean;
   disabled?: boolean;
-}) {
+}>(function IconButton({
+  icon,
+  accessibilityLabel,
+  onPress,
+  size = 40,
+  soft = false,
+  solid = false,
+  dot = false,
+  disabled = false,
+}, ref) {
   const { colors, styles } = useStyles();
   return (
     <UiPressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
@@ -46,7 +48,7 @@ export function IconButton({
       </View>
     </UiPressable>
   );
-}
+});
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   target: { borderRadius: 999 },

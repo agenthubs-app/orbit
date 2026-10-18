@@ -88,6 +88,29 @@ test("dismissOnBackdrop={false}: a backdrop tap does nothing, Android back still
   await page.close();
 });
 
+test("iOS accessibility escape closes a locked sheet and returns focus to its opener", async () => {
+  const page = await openScenario(browser, script, { scenario: "overlays", overlay: "lockedSheet" });
+  // React Native Web has no VoiceOver gesture. Invoke the View's native accessibility callback
+  // from its React fiber, then verify the same callback and focus path used by iOS.
+  const escaped = await page.evaluate(() => {
+    for (const element of document.querySelectorAll("*")) {
+      const key = Object.keys(element).find((name) => name.startsWith("__reactFiber$"));
+      let fiber = key ? (element as any)[key] : null;
+      while (fiber) {
+        const escape = fiber.memoizedProps?.onAccessibilityEscape;
+        if (typeof escape === "function") { escape(); return true; }
+        fiber = fiber.return;
+      }
+    }
+    return false;
+  });
+  assert.equal(escaped, true, "the sheet exposes the iOS escape callback");
+  await page.waitForFunction(() => (window as any).events.includes("sheet-close"));
+  await page.waitForFunction(() => (window as any).lastFocus?.getAttribute?.("aria-label") === "確認を開く");
+  assert.deepEqual(await events(page), ["sheet-close"]);
+  await page.close();
+});
+
 test("a sheet closes itself when its page loses focus (route change)", async () => {
   const page = await openScenario(browser, script, { scenario: "overlays", overlay: "routedSheet" });
   await page.waitForTimeout(50);
