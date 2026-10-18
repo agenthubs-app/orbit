@@ -27,6 +27,8 @@ Modal テスト補正後の sanitized Web full は **7,715 tests / 6,655 pass / 
 
 同じ Web source の fresh typecheck は `d-web-typecheck-meeting-fixture-after-rebase.log` で exit 0、`npm run lint` は `d-web-lint-current-2b706926f.log` で exit 0。型・lint の成功を full-suite の成功とはしない。
 
+後続の clean D `1c4cdfc78`（`105edd995` 以降は REPORT-only commits）で、§16 が別に要求する Web `npm run typecheck:app` を sanitized env / global heavy lock 下で fresh 実行し **exit 0**。原始ログは `_evidence-d/R20a/run-01/d-web-typecheck-app-current-1c4cdfc78.log`、`tsc --noEmit --incremental false -p tsconfig.build.json` の実行を記録する。この追加 compiler gate は red Web/App full、SC-14 の未移行入口、native / pixel の pass を意味しない。
+
 SC-14 の Agent 旧入口は、単純な行先変更で `?entry=` の特定行を失うため、まだ残す。Web の実リンク・参照は `agent-action-status-card.tsx`、`agent/iorbit-0918/{iorbit-home,iorbit-actions}.tsx`、`orbit-product-href.ts`、`orbit-global-ask/orbit-ask-routes.ts`。これらの消費先を E 線との交接リストにする。新しい To-do は現状「すべて」をローカル状態で開くが、URL の entry ID を読んで source 別 paging から正確に焦点を当てる契約はない。旧 `/app/agent/actions` をまだ新画面への等価な redirect と称さず、移行判断待ちとする。
 
 ## 2026-10-18 主会話の最新検証（部分）
