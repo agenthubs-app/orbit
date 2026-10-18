@@ -114,7 +114,7 @@
 | SC-R31a-04 组件行为 | `Toast` 点按先关后回调、无 ✕、出错可点关、按页底栏声明生效；sheet 失焦自动关但输入时不关、确认 sheet 不可拖关、`dismissOnBackdrop={false}` 时返回键和 VoiceOver 仍可退出；`Segmented` 纵向命中区 ≥44、相邻不重叠 | 渲染测试 + 模拟器操作记录 |
 | SC-R31a-05 新组件与替换 | 三个新组件进展示页并过对照；4 处手写件已替换；`legacy-ui-deferred.json` 清空 | 门禁 + `legacy-ui-ratchet` |
 | SC-R31a-06 调用点与交接 | 新参数的调用点已改（含 `KIT_PAGE_INSET`、`ignoreDismiss`、`useFocusEffect` 临时写法已删）；交接条目逐条有结果 | diff + REPORT 条目表 |
-| SC-R31a-07 待组件库画面重比 | 重比清单全部重跑；通过的已改 done；未过的有原因与去向；开发状态开关不进正式构建 | 门禁总表 + 交还清单 + 测试 |
+| SC-R31a-07 待组件库画面重比 | 重比清单全部重跑；通过的已改 done；未过的有原因与去向；开发状态开关在正式包不可启用（`__DEV__` 门禁；不宣称 bundle 中无此代码） | 门禁总表 + 交还清单 + 测试 |
 | SC-R31a-08 不退步 | 每次组件改动后 R05 壳门禁通过；收口时 `pass-baseline-app.json` 全部仍通过 | 收口全量门禁输出 |
 | SC-R31a-09 测试与复核 | 两端全量对照基线零新增失败；`tsc` 通过；`detect-changes` 写进 REPORT；独立复核**自己重跑门禁** | 全量清单、REVIEW |
 
