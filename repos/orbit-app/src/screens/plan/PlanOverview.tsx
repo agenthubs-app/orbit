@@ -7,7 +7,7 @@
 // entry sheet; 手動で編集 opens a review draft in the manual editor (greyed with
 // 「見直すと 1回つきます」 once used); 目標を達成した asks, achieves and opens 完了.
 import { useRouter, type Href } from "expo-router";
-import { useRef, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { PlanGoalListItem, PlanPendingItem, PlanV2Detail, PlanV2PersonType } from "../../api/contract/plan-v2";
@@ -37,7 +37,7 @@ import { sinceConfirmedOf } from "./plan-review-model";
 import { InlineProblem, useFailureText } from "./plan-ui";
 import { usePlanAwardToast } from "./usePlanAwardToast";
 
-export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void }) {
+export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = null }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void; design?: string | null }) {
   const shared = usePlanOverviewStyles().styles;
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
@@ -56,6 +56,14 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal }: { plan: Pl
   const [achieveOpen, setAchieveOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  // R31a (RD-28) dev-only gate states (b12 #198 前提 / b4 A3 #19 見直し / A5 #24 達成 / A6 #29 編集). `design` is null
+  // outside a dev build with open-path (PlanSegment → designState).
+  useEffect(() => {
+    if (design === "premise") setPremiseOpen(true);
+    else if (design === "review") setReviewOpen(true);
+    else if (design === "achieve") setAchieveOpen(true);
+    else if (design === "edit") setEditOpen(true);
+  }, [design]);
   const score = plan.score;
   const pending = groupPending(plan.pending ?? []);
   const activeGoals = goals.filter((goal) => goal.status === "active");

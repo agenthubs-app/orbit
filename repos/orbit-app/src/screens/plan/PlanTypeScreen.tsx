@@ -70,7 +70,7 @@ function stepsOf(detail: PlanPersonTypeDetail, plan: PlanV2Detail | null, separa
   return plan.content.steps.flatMap((step, index) => (detail.stepKeys.includes(step.key) ? [String(index + 1)] : [])).join(separator);
 }
 
-export function PlanTypeScreen({ planId, itemId }: { planId: string; itemId: string }) {
+export function PlanTypeScreen({ planId, itemId, design = null }: { planId: string; itemId: string; design?: string | null }) {
   const api = usePlanApi();
   const copy = useStandardCopy();
   const { t } = useOrbitLocale();
@@ -99,6 +99,15 @@ export function PlanTypeScreen({ planId, itemId }: { planId: string; itemId: str
   const detail = state.kind === "ready" ? state.detail : null;
   const plan = state.kind === "ready" ? state.plan : null;
   const selectedPeople = detail ? detail.candidates.filter((candidate) => selected.includes(candidate.contactId)) : [];
+  // R31a (RD-28) dev-only gate states (b4 A2): skip = スキップ ① 確認, record = 加点 ① 面談を記録, propose = 面談を提案
+  // for the first candidate. `design` is null outside a dev build with open-path (designState).
+  const gateReady = detail !== null;
+  useEffect(() => {
+    if (!gateReady || !design || !detail) return;
+    if (design === "skip") setSkipAsk(true);
+    else if (design === "record") setRecordFor([]);
+    else if (design === "propose" && detail.candidates[0]) setProposalFor([{ contactId: detail.candidates[0].contactId, isOrbitUser: detail.candidates[0].isOrbitUser, name: detail.candidates[0].name }]);
+  }, [design, gateReady]); // eslint-disable-line react-hooks/exhaustive-deps -- once, when the detail first arrives
 
   const steps = detail ? stepsOf(detail, plan, t("plan.types.stepSeparator")) : "";
   const title = detail ? detail.shortLabel : t("plan.type.title");

@@ -9,6 +9,7 @@
 // the read-only 「以前のプラン」 card and 「新しいプランを作る」; the overview gets the goal
 // list for the switcher, and achieved goals stay reachable when no goal is active.
 import { useIsFocused, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { designState } from "../add/design-state";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -46,7 +47,9 @@ export function PlanSegment() {
   const router = useRouter();
   const [state, setState] = useState<SegmentState>({ kind: "loading" });
   const [reloading, setReloading] = useState(false);
-  const params = useLocalSearchParams<{ new?: string | string[] }>();
+  const params = useLocalSearchParams<{ new?: string | string[]; design?: string | string[] }>();
+  // R31a (RD-28): dev-only gate states for the overview (premise / review / achieve / edit).
+  const design = designState(params.design);
   const newParam = Array.isArray(params.new) ? params.new[0] : params.new;
   const [adding, setAdding] = useState(newParam === "1");
   const sequence = useRef(0);
@@ -106,7 +109,7 @@ export function PlanSegment() {
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
       {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
-      {state.kind === "ready" && !adding && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} /> : null}
+      {state.kind === "ready" && !adding && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} design={design} /> : null}
       {state.kind === "ready" && !adding && state.current && !state.overview ? <ConfirmedPlanCard plan={state.current} /> : null}
       {state.kind === "ready" && !adding && !state.current && state.legacy.length > 0 ? <PlanLegacyCard plans={state.legacy} onCreate={() => setAdding(true)} /> : null}
       {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && state.intakes ? <PlanGoalInput intakes={state.intakes} goals={state.goals} /> : null}

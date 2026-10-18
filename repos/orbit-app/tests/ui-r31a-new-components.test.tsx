@@ -69,3 +69,15 @@ test("FormScreen is AppScreen on the kit inset with ✕ cancel and a solid ✓ s
   assert.match(source, /backIcon="x"/u);
   assert.match(source, /icon="check" solid/u);
 });
+
+// R31a (RD-28): the gate's mid-state switch (`?design=`) never exists outside a dev build with open-path.
+test("designState: only with the dev open-path switch, only short slug values", () => {
+  const { designState } = require("../src/screens/add/design-state") as typeof import("../src/screens/add/design-state");
+  const { addDesignMock } = require("../src/screens/add/add-design-mock") as typeof import("../src/screens/add/add-design-mock");
+  assert.equal(designState("premise", true), "premise");
+  assert.equal(designState(["n09", "x"], true), "n09");
+  assert.equal(designState("premise", false), null, "release build / switch off: ignored");
+  assert.equal(designState("<script>", true), null);
+  assert.equal(designState(undefined, true), null);
+  assert.equal(addDesignMock("open-path", "open-path", false), false, "a release build (__DEV__ false) never turns open-path on");
+});

@@ -14,6 +14,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useAddApi, type ContactDraftRow } from "./add-api";
 import { discardDraft, readDiscardedDrafts } from "./add-storage";
 import { DensityDots, FadeIn } from "./add-ui";
+import { designState } from "./design-state";
 import { KitChip, KitEmo, KitGradient } from "../plan/plan-kit";
 import { useJourneyApi } from "../events/v2/journey-api";
 import { draftsDesignFor } from "./scan-design-fixtures";
@@ -34,6 +35,10 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
   const [state, setState] = useState<State>({ kind: "loading" });
   const [busy, setBusy] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState<ContactDraftRow | null>(null);
+  // R31a (RD-28) dev-only gate state: `design=n09` opens 破棄 on the second draft (b12 N09; boards never draw the tap).
+  const gateState = designState(design ?? undefined);
+  const gateDraft = state.kind === "ready" && gateState === "n09" ? state.drafts[1] ?? null : null;
+  useEffect(() => { if (gateDraft) setDiscarding(gateDraft); }, [gateDraft]);
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
