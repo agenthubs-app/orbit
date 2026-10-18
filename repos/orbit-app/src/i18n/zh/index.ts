@@ -59,6 +59,7 @@ import { host } from "./host";
 import { calendar } from "./calendar";
 import { network } from "./network";
 import { todo } from "./todo";
+import { networkAnalysis } from "./networkAnalysis";
 
 export const zh = {
   ...inbox,
@@ -120,4 +121,5 @@ export const zh = {
   ...calendar,
   ...network,
   ...todo,
+  ...networkAnalysis,
 } as const;
