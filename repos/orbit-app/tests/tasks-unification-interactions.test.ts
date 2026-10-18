@@ -162,8 +162,16 @@ test("an overdue task row uses the warning color without coloring ordinary rows"
   const warningColor = await overdue.locator("..").getByText("1", { exact: true }).evaluate(element => getComputedStyle(element).color);
   const overdueColor = await page.getByText("事项 0", { exact: true }).evaluate(element => getComputedStyle(element).color);
   const ordinaryColor = await page.getByText("事项 2", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const overdueDetail = page.getByText("事项 0", { exact: true }).locator("..").locator(":scope > *").nth(1);
+  const ordinaryDetail = page.getByText("事项 2", { exact: true }).locator("..").locator(":scope > *").nth(1);
+  assert.match((await overdueDetail.textContent()) ?? "", /1月1日/);
+  assert.ok((await ordinaryDetail.textContent())?.trim());
+  const overdueDetailColor = await overdueDetail.evaluate(element => getComputedStyle(element).color);
+  const ordinaryDetailColor = await ordinaryDetail.evaluate(element => getComputedStyle(element).color);
   assert.equal(overdueColor, warningColor);
+  assert.equal(overdueDetailColor, warningColor);
   assert.notEqual(ordinaryColor, warningColor);
+  assert.notEqual(ordinaryDetailColor, warningColor);
 });
 
 test("personal list tab reads the owned complement and never treats contact-linked work as personal", async t => {
