@@ -2,6 +2,8 @@
 
 2026-10-19 04:25 checkpoint：D が clean な状態で 31 local commits を `origin/redesign d8e6dafb7`（R31a 復核修正）へ無衝突 rebase。新 HEAD `345c6659a`、ahead31 / behind0。rebase 後の Web task list / page API **16/16**、App task source / unification **24/24** は pass。直前の M2 PG **5/5**・Web compiler / lint exit0 は同じ D パッチだが上流差分を取り込む前の結果であり、rebase 後の PG growth / compiler / full suite に流用しない。push なし。
 
+同 REVIEW の minor route coverage 対応：App `/today` / `/followups` の現行 consumer は旧 screen ではなく私有 Task redirect。旧 2026-09 native 観測は歴史証拠と明記し、route coverage の consumer / kind と README の二行を現行 route に合わせた。既存の route・redirect・scope 定向 **18/18 pass**（変更前後とも）、`git diff --check` exit0。現行 redirect の新しい native 観測や R20a 全体の通過を意味しない。
+
 2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
 
 2026-10-19 独立 REVIEW の M3 対応：OAuth callback の交換処理が投げた例外文を公開 502 に返していた。内部情報を含む例外で HTTP 回帰を先に追加し、既存実装は **3 pass / 1 fail**、固定文言に修正後 **4/4 pass**。`9e3d3bbe0` は callback handler とそのテストの 2 ファイルだけで、署名 state・`returnTo` の許可リスト・502 status は変更していない。現行全量や pixel の合格は示さず、D の他の REVIEW 指摘も OPEN。

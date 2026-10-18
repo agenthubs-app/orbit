@@ -104,12 +104,11 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     consumer: "ScheduleEventPreviewScreen",
     kind: "screen"
   },
-  // Historical 2026-09 visual snapshot. The current route is a private Task
-  // redirect, independently checked by retired-today-screen.test.ts.
-  { route: "/today", consumer: "TodayScreen", kind: "screen" },
+  // The native observations are historical; these are the current route consumers.
+  { route: "/today", consumer: "LegacyTaskRedirect → /task?seg=todo", kind: "redirect" },
   { route: "/tasks", consumer: "TasksScreen", kind: "screen" },
   { route: "/tasks/[id]", consumer: "TaskDetailScreen", kind: "screen" },
-  { route: "/followups", consumer: "FollowupsScreen", kind: "screen" },
+  { route: "/followups", consumer: "LegacyTaskRedirect → /task?seg=todo&scope=relationship", kind: "redirect" },
   { route: "/profile", consumer: "MyPageScreen", kind: "screen" },
   { route: "/account", consumer: "AccountScreen", kind: "screen" },
   {
