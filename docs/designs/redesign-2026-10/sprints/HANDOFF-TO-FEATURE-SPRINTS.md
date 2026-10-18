@@ -200,6 +200,8 @@
 
 **R29 REVIEW S1 / R32 预通知：** 乙在本节接手后台来源活动 ID → 已有活动详情的原生打开/返回断链；先查清 ID 映射，只对已完成详情页面做有界修复，保持既有 API 与数据权限，修后记独立提交和本机证据。来源：R29 REVIEW S1、RD-30。
 
+**R29 REVIEW S1 结果（R32，乙）：** QA 来源列表记录的 `sourceMetadata.providerRecordId` 映射到 Event Core 详情 ID，其他来源 href 不变；代码提交 `6f00b4846`。本地同账号 13 条规范详情 overview 均 HTTP 200，原生 A03 → A04 → 详情 → A04 → A03 → 刷新已通过；证据 `/Volumes/ORICO/Dev/line-a-evidence/R32/run-01/app/native-navigation.json` 与 `event-source-probe.json`。R29 整体是否通过仍须按其余 REVIEW 项和全量基线单独验收。
+
 **R32 / 乙接手页面自身的像素交还，组件不动。** App R31a-H1 对应 A-R27-06/07/08/09/29/31/33/34/35；Web R31b §6-6 对应 W-R26-31 的七位码中途态与背景数据。二者逐屏重比，未过保留未完成。来源：R31a REPORT §9、R31b REPORT §6-6、R32 PLANNER SC-P01～09/W06。
 
 | # | 是什么 | 现在的临时做法 | 接手时必须做到 | 依据 |
