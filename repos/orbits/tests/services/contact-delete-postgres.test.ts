@@ -9,6 +9,7 @@ import { createContactDeleteHandlers } from "../../app/api/contacts/[id]/delete-
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { AppError } from "../../shared/errors/app-error";
+import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
 
 // R11a SC-10（代定 9）：软删除 → 列表消失、メモ（详情状态）原样；30 天内恢复 → 回到列表；过期 / 别人的 → NOT_FOUND。
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
@@ -21,13 +22,15 @@ test("R11a: soft delete hides the contact, keeps its memos, restores within 30 d
   try {
     await pool.query(`create schema ${schema}`);
     await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // contacts is a sync collection: the strict trigger refuses a write that does not hold the commit-order lock.
+    await pool.query(STRICT_SYNC_REVISION_SQL);
     const store = createPostgresLiveRecordStore({ client });
     const common = { workspaceId: "w", sourceType: "manual", sourceId: "s", evidenceIds: ["e"], createdAt: T, updatedAt: T, lifecycleState: "active" as const };
     for (const [id, user] of [["c1", "a"], ["c2", "a"], ["cb", "b"]] as const) {
       await store.upsertRecord({ ...common, userId: user, collectionName: "contacts", recordId: id, payload: { id, displayName: `n ${id}`, stage: "active", source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: T, updatedAt: T } });
     }
     await store.upsertRecord({ ...common, userId: "a", collectionName: "contact_detail_states", recordId: "contact-detail:a:c1", payload: { actorId: "a", contactId: "c1", status: "active", updatedAt: T, notes: [{ id: "n1", body: "メモ" }] } });
-    const revision = async () => (await pool.query("select updated_at::text as r from orbit_records where record_id = 'c1' and collection_name = 'contacts'")).rows[0]?.r as string | undefined;
+    const revision = async () => (await pool.query("select sync_revision::text as r from orbit_records where record_id = 'c1' and collection_name = 'contacts'")).rows[0]?.r as string | undefined;
     let clock = new Date("2026-10-18T00:00:00.000Z");
     const service = createContactDeleteService({ client, workspaceId: "w", now: () => clock });
     const reader = createPostgresContactCardReader({ client, workspaceId: "w", cursorSecret: "local-test-secret-".repeat(3) });
@@ -37,7 +40,7 @@ test("R11a: soft delete hides the contact, keeps its memos, restores within 30 d
     const deleted = await service.remove("a", "c1");
     assert.deepEqual(deleted, { contactId: "c1", deletedAt: "2026-10-18T00:00:00.000Z", restorableUntil: "2026-11-17T00:00:00.000Z" });
     assert.deepEqual(await listed(), ["c2"], "gone from the list");
-    if (before !== undefined) assert.notEqual(await revision(), before, "the write touches the row (sync_revision moves with every orbit_records write: the device gets a tombstone)");
+    assert.ok(before !== undefined && Number(await revision()) > Number(before), "sync_revision moves under the commit-order lock: the device gets a tombstone");
     const memo = (await pool.query("select lifecycle_state, payload from orbit_records where record_id = 'contact-detail:a:c1'")).rows[0];
     assert.equal(memo.lifecycle_state, "active", "memos are not moved or changed");
     assert.equal(memo.payload.notes[0].body, "メモ");

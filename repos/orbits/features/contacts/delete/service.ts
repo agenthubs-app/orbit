@@ -5,6 +5,7 @@
  * 「最近削除した項目」一览与到期清除 → 下一期（DEFERRED）。
  */
 import { AppError } from "../../../shared/errors/app-error";
+import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../../sync/commit-order-lock";
 import type { ContactDeleteResult, ContactRestoreResult } from "../../../shared/contract/contact-delete";
 
 export const CONTACT_RESTORE_WINDOW_DAYS = 30;
@@ -15,18 +16,24 @@ export interface ContactDeleteSqlClient {
 }
 
 /** 归属谓词与 completion/repository.ts 的 OWNED_CONTACTS 一致：本人的、accountId 为空或是本人。 */
-const OWNED = `workspace_id = $1 and collection_name = 'contacts' and record_id = $2 and user_id = $3
-  and (payload->'accountId' is null or payload->'accountId' = 'null'::jsonb or payload->'accountId' = to_jsonb($3::text))`;
+const OWNED = `orbit_records.workspace_id = $1 and orbit_records.collection_name = 'contacts' and orbit_records.record_id = $2 and orbit_records.user_id = $3
+  and (orbit_records.payload->'accountId' is null or orbit_records.payload->'accountId' = 'null'::jsonb or orbit_records.payload->'accountId' = to_jsonb($3::text))`;
 
-export const CONTACT_SOFT_DELETE_SQL = `update orbit_records
+// contacts is a sync collection (0116): every write takes the commit-order lock in the same statement (joins sync_write_lock),
+// so the new sync_revision commits in order and App mirrors see the tombstone / the restore (features/sync/commit-order-lock.ts).
+export const CONTACT_SOFT_DELETE_SQL = `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
+update orbit_records
   set lifecycle_state = 'deleted', deleted_at = $4::timestamptz, updated_at = $4::timestamptz
-  where ${OWNED} and lifecycle_state <> 'deleted'
-  returning record_id, deleted_at`;
+  from sync_write_lock
+  where ${OWNED} and orbit_records.lifecycle_state <> 'deleted'
+  returning orbit_records.record_id, orbit_records.deleted_at`;
 export const CONTACT_DELETED_STATE_SQL = `select record_id, lifecycle_state, deleted_at from orbit_records where ${OWNED}`;
-export const CONTACT_RESTORE_SQL = `update orbit_records
+export const CONTACT_RESTORE_SQL = `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
+update orbit_records
   set lifecycle_state = 'active', deleted_at = null, updated_at = $4::timestamptz
-  where ${OWNED} and lifecycle_state = 'deleted' and deleted_at is not null and deleted_at > $5::timestamptz
-  returning record_id`;
+  from sync_write_lock
+  where ${OWNED} and orbit_records.lifecycle_state = 'deleted' and orbit_records.deleted_at is not null and orbit_records.deleted_at > $5::timestamptz
+  returning orbit_records.record_id`;
 
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
