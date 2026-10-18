@@ -80,6 +80,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/today')) return 'today';
   if (path.startsWith('/api/permissions')) return 'preferences';
   if (path.startsWith('/api/health')) return 'account';
+  if (path === '/api/app/version') return 'app-version';
   // /api/sync 是喂养所有域镜像的传输通道，本身不是业务域；登记为独立 id 以便审计完整，
   // 其 durable_normalized 语义准确——响应就是要落成 canonical 镜像行的数据。
   if (path === '/api/sync' || path.startsWith('/api/sync/')) return 'sync';
@@ -94,7 +95,10 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   // Sprint 0135: the queued relationship message send (message plan M4).
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
+  // The version response is public, but changes on the server and is no-store;
+  // online_only_secret is this inventory's existing never-persisted read policy.
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
+    || endpointTemplate === '/api/app/version'
     || endpointTemplate.startsWith('/api/integrations') || endpointTemplate.startsWith('/api/agent/memory')
     || (consumerFile.startsWith('src/screens/me/') && ['/api/events/center', '/api/search/global', '/api/agent/plans/v2/summary'].includes(endpointTemplate))
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
@@ -541,6 +545,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/groups/:id"],
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/sessions/:id"],
   ["src/api/auth-session.ts","POST","/api/account/session/sign-out"],
+  ["src/api/app-version.ts","GET","/api/app/version"],
   ["src/data/sync/sync-client.ts","GET","/api/sync"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/lease"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/manifest"],

@@ -218,6 +218,13 @@ test('bounded private pages and badge summaries stay network-only until permissi
   }
 });
 
+test('the public app-version gate is never persisted as offline account data', () => {
+  const policy = resolveReadSurface('GET', '/api/app/version');
+  assert.equal(policy.domainId, 'app-version');
+  assert.equal(policy.readPersistence, 'online_only_secret');
+  assert.equal(policy.binaryPolicy, 'never_local');
+});
+
 test('wrapper aliases, generic requests and computed client methods are audited independently', async t => {
   const root = await fixture(t, {
     'src/api/wrappers.ts': 'export const clientGet = (path: string) => client.get(path);',

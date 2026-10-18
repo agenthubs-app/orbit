@@ -2,6 +2,7 @@ export const ORBIT_API_ENDPOINTS = {
   accountMe: "/api/account/me",
   accountStatus: "/api/account/status",
   accountSessionSignOut: "/api/account/session/sign-out",
+  appVersion: "/api/app/version",
   bootstrap: "/api/app/bootstrap",
   authCredentialsCallback: "/api/auth/callback/credentials",
   authCsrf: "/api/auth/csrf",
