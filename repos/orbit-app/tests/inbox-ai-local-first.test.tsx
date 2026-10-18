@@ -54,7 +54,12 @@ const messages = () => [
   { id: "s1:m1", payload: { sessionId: "s1", id: "assistant:request:1", role: "assistant", text: "已列出 3 位东京投资人", index: 1, createdAt: "2026-09-27T01:00:05.000Z" } },
 ];
 export const state = window.fixture = { requests: [], navigation: [], syncs: {}, opened: [], savedCards: [], status: "fresh", pendingNoteChanges: 0, ...window.initialFixture };
-const records = (kind) => kind === "inbox_notification" ? inbox().map(r => JSON.parse(JSON.stringify(r))) : kind === "ai_session" ? sessions() : kind === "ai_session_message" ? messages() : [];
+const mirrorRows = {
+  inbox_notification: inbox().map(r => JSON.parse(JSON.stringify(r))),
+  ai_session: sessions(),
+  ai_session_message: messages(),
+};
+const records = (kind) => mirrorRows[kind] ?? [];
 const session = { isCurrent: () => true,
   async openAiSession(id) { state.opened.push(id); return { opened: [id], evicted: [], added: false }; },
   async readAiSessionCards(id) { return state.cards ?? null; },

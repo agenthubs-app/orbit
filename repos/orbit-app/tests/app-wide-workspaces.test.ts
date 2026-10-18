@@ -12,7 +12,7 @@ let browser: Browser, server: Server, url: string;
 const fixture = `
 // Sprint 0118: this harness exercises the network path; the device mirror of the inbox and AI sessions is not available here.
 export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
-export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], queuedMutations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 
 import React, { useEffect, useSyncExternalStore } from "react";
