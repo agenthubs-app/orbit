@@ -95,6 +95,10 @@ test('canonical event and personal schedule consumers register exact domains wit
 });
 
 test('task-calendar provider events stay private and meeting proposals stay online-only', () => {
+  const meetings = surfaces.find(row => row.consumerFile === 'src/screens/calendar/useCalendarMeetings.ts');
+  assert.equal(meetings?.domainId, 'personal-schedule', 'the shared transport inventory keeps one route policy; calendar.read registers the filtered copy separately');
+  assert.equal(meetings?.readPersistence, 'durable_normalized');
+  assert.equal(meetings?.mutationPolicy, 'online_only');
   for (const [method, path] of [
     ['GET', '/api/calendar/external-events'],
     ['GET', '/api/appointments/appointment-1'],

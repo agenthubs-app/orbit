@@ -38,6 +38,7 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
     policy: policy("relationship_followup", "durable_normalized", "offline_queue"),
   })),
   { method: "GET", pathname: "/api/schedule-items", action: "read", policy: policy("personal_schedule", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/schedule-items", action: "calendar.read", policy: policy("calendar_meetings", "encrypted_ttl_snapshot", "online_only") },
   { method: "GET", pathname: "/api/schedule-items/:id", action: "read", policy: policy("personal_schedule", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/schedule-items", action: "create", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "PATCH", pathname: "/api/schedule-items/:id", action: "update", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },

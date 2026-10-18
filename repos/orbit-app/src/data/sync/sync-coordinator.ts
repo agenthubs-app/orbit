@@ -142,6 +142,7 @@ export interface SyncCoordinatorSession {
    */
   readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null>;
   savePageCopy(id: string, variant: string, data: unknown): Promise<void>;
+  deletePageCopy(id: string, variant: string): Promise<void>;
   /** Resolve an acknowledged local note id through the active actor/workspace alias table. */
   resolveNoteAlias(localId: string): Promise<string | null>;
   /** Test-only queue insertion; product domains remain closed until their own Sprint adapter exists. */
@@ -797,6 +798,13 @@ export function createSyncCoordinator(input: {
         const binding = pageCopyBinding(bound);
         if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
         try { await withRepository(bound, (repository) => repository.setPageCopy(binding, id, variant, { data, syncedAt: new Date(now()).toISOString() })); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
+      },
+      async deletePageCopy(id: string, variant: string): Promise<void> {
+        if (!findPageCopyDefinition(id)) throw new TypeError("page copy is not registered");
+        await bound.ready;
+        const binding = pageCopyBinding(bound);
+        if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
+        try { await withRepository(bound, (repository) => repository.deletePageCopy(binding, id, variant)); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
       async resolveNoteAlias(localId: string): Promise<string | null> {
         await bound.ready;

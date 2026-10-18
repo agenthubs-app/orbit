@@ -8,7 +8,7 @@ import { bundleScenarios, launch, openScenario } from "./helpers/ui-harness";
 const calendarBoundary: Plugin = {
   name: "calendar-failure-boundary",
   setup(plugin) {
-    plugin.onResolve({ filter: /^expo-router$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitTimeZoneProvider|schedule-calendar-source|useCalendarExternalEvents|AppScreen)$/ }, args => ({ path: args.path, namespace: "calendar-failure" }));
+    plugin.onResolve({ filter: /^expo-router$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitTimeZoneProvider|schedule-calendar-source|useCalendarExternalEvents|useCalendarMeetings|AppScreen)$/ }, args => ({ path: args.path, namespace: "calendar-failure" }));
     plugin.onLoad({ filter: /.*/, namespace: "calendar-failure" }, args => {
       const name = args.path.split("/").at(-1);
       if (name === "expo-router") return { contents: "export const useGlobalSearchParams = () => ({}); export const useRouter = () => ({ push() {} });", loader: "js" };
@@ -17,6 +17,7 @@ const calendarBoundary: Plugin = {
       if (name === "OrbitTimeZoneProvider") return { contents: "export const useOrbitTimeZone = () => ({ timeZone: 'Asia/Tokyo' });", loader: "js" };
       if (name === "schedule-calendar-source") return { contents: `export const useScheduleCalendarSource = () => { const part = { kind: "failure", data: null, message: window.uiFixture.message }; return { tasks: part, events: part, scheduleItems: part, refreshing: false, offline: null, refresh() {} }; };`, loader: "js" };
       if (name === "useCalendarExternalEvents") return { contents: "export const useCalendarExternalEvents = () => ({ view: null, refreshing: false, refresh() {} });", loader: "js" };
+      if (name === "useCalendarMeetings") return { contents: "export const useCalendarMeetings = () => ({ part: { kind: 'loading', data: null, message: '' }, copy: null, refreshing: false, refresh() {} });", loader: "js" };
       return { contents: "import React from 'react'; import { View } from 'react-native'; export const AppScreen = ({ children }) => <View>{children}</View>;", loader: "jsx", resolveDir: process.cwd() };
     });
   },

@@ -554,6 +554,21 @@ export function createLocalSyncRepository(input: {
       } catch { return null; }
     },
 
+    async deletePageCopy(binding: { workspaceId: string; authorizationEpoch: string }, id: string, variant: string): Promise<void> {
+      assertNonEmptyString(binding.workspaceId, "workspaceId");
+      assertNonEmptyString(binding.authorizationEpoch, "authorizationEpoch");
+      assertPageCopyKey(id, variant);
+      const key = pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, variant);
+      const indexKey = pageCopyIndexKey(binding.workspaceId, binding.authorizationEpoch, id);
+      const indexRow = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [indexKey]);
+      let index: string[] = [];
+      try { const value = indexRow ? JSON.parse(indexRow.value) as unknown : []; index = Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; } catch { index = []; }
+      await database.transaction(async () => {
+        await database.run("DELETE FROM sync_meta WHERE key = ?", [key]);
+        if (indexRow) await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [indexKey, JSON.stringify(index.filter(entry => entry !== variant))]);
+      });
+    },
+
     /** Sprint 0131: drop every page copy not bound to (workspaceId, keepAuthorizationEpoch); a revoked lease keeps none. */
     async retirePageCopies(keep: { workspaceId: string; authorizationEpoch: string } | null): Promise<number> {
       const rows = await database.all<{ key: string }>("SELECT key FROM sync_meta WHERE substr(key, 1, ?) = ? OR substr(key, 1, ?) = ?", [PAGE_COPY_PREFIX.length, PAGE_COPY_PREFIX, PAGE_COPY_INDEX_PREFIX.length, PAGE_COPY_INDEX_PREFIX]);

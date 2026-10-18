@@ -803,6 +803,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   // Sprint 0115: the calendar reads the device mirror; these are the browser's fallback reads when its mirror is unavailable.
   ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/events/public"],
   ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/schedule-items"],
+  // Transport inventory must agree across consumers of this route; the filtered native meeting copy has its own calendar.read action in offline-policy.ts.
+  ["src/screens/calendar/useCalendarMeetings.ts","GET","/api/schedule-items"],
   ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/tasks/page"],
   ["src/screens/settings/ApiSettingsScreen.tsx","GET","/api/health"],
   ["src/screens/settings/NotificationDeliverySettings.tsx","GET","/api/inbox/delivery/preferences"],

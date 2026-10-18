@@ -139,6 +139,34 @@ test("keyed copies keep the 20 most recently opened items; oversize and unregist
   assert.equal(await phone.session.readPageCopy("not-a-copy", "main"), null);
 });
 
+test("calendar meeting copies are account-only and keep at most three visible windows", async t => {
+  const definition = PAGE_COPY_DEFINITIONS.find(entry => entry.id === "calendar-meetings");
+  assert.deepEqual(definition && { audience: definition.audience, variants: definition.variants, maxVariants: definition.maxVariants, maxBytes: definition.maxBytes },
+    { audience: "account", variants: "keyed", maxVariants: 3, maxBytes: 256 * 1024 });
+  const host: Host = { epoch: "e1", granted: ["tasks"] };
+  const phone = await device(t, host);
+  await phone.sync();
+  for (let index = 0; index < 4; index += 1) await phone.session.savePageCopy("calendar-meetings", `window-${index}`, { from: "2026-10-01T00:00:00.000Z", to: "2026-11-01T00:00:00.000Z", language: "ja", readLocalDate: "2026-10-19", meetings: [] });
+  assert.equal(await phone.session.readPageCopy("calendar-meetings", "window-0"), null);
+  assert.ok(await phone.session.readPageCopy("calendar-meetings", "window-3"));
+  host.epoch = "e2";
+  await phone.sync();
+  assert.equal(await phone.session.readPageCopy("calendar-meetings", "window-3"), null);
+});
+
+test("an authoritative calendar denial removes only its matching window copy", async t => {
+  const host: Host = { epoch: "e1", granted: ["tasks"] };
+  const phone = await device(t, host);
+  await phone.sync();
+  await phone.session.savePageCopy("calendar-meetings", "window-a", { meetings: [{ title: "Private meeting" }] });
+  await phone.session.savePageCopy("calendar-meetings", "window-b", { meetings: [{ title: "Other window" }] });
+  await phone.session.deletePageCopy("calendar-meetings", "window-a");
+  assert.equal(await phone.session.readPageCopy("calendar-meetings", "window-a"), null);
+  assert.deepEqual((await phone.session.readPageCopy("calendar-meetings", "window-b"))?.data, { meetings: [{ title: "Other window" }] });
+  assert.equal((await phone.storedKeys()).some(row => row.key.includes("window-a")), false);
+  await assert.rejects(phone.session.deletePageCopy("not-a-copy", "main"), /not registered/u);
+});
+
 test("the browser mirror encrypts every copy and stores only whitelisted ids", async (t) => {
   const host: Host = { epoch: "e1", granted: ["tasks"] };
   const phone = await device(t, host, { payloadCodec: xorCodec, registeredPageCopyIds: WEB_MIRROR_PAGE_COPY_IDS.filter((id) => id !== "agent-ledger") });
@@ -150,6 +178,6 @@ test("the browser mirror encrypts every copy and stores only whitelisted ids", a
   assert.equal(stored.some((row) => row.key.includes("agent-ledger")), false);
   assert.deepEqual((await phone.session.readPageCopy("self-profile", "main"))?.data, { displayName: "Secret Name" });
   assert.equal(await phone.session.readPageCopy("agent-ledger", "page-1"), null);
-  // Every registered copy is argued in the threat model and whitelisted for the browser.
-  assert.deepEqual([...WEB_MIRROR_PAGE_COPY_IDS].sort(), PAGE_COPY_DEFINITIONS.map((entry) => entry.id).sort());
+  // Calendar meeting previews are native-only; the browser must reject them.
+  assert.deepEqual([...WEB_MIRROR_PAGE_COPY_IDS].sort(), PAGE_COPY_DEFINITIONS.filter(entry => entry.id !== "calendar-meetings").map((entry) => entry.id).sort());
 });

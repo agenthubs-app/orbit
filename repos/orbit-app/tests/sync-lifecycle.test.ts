@@ -132,6 +132,7 @@ test("logout closes the handle and purges all mirror, outbox, cursor, snapshot d
   const f = await lifecycle(t);
   await f.coordinator.setScope(scope);
   await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?, ?, ?, ?, ?)", ["workspace", "notes", "fixture-e1", "cursor", "2026-09-16T00:00:00Z", "complete", "complete", "g1"]));
+  await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO sync_meta(key,value) VALUES(?,?)", ["page_copy:calendar-meetings:fixture", "meeting-preview"]));
   const name = [...f.files.keys()][0]!;
   assert.equal(await f.coordinator.setScope(null), true);
   assert.equal(f.files.size, 0);

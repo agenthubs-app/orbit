@@ -14,8 +14,10 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { localParts } from "../../time/date-time";
 import { useScheduleCalendarSource } from "../schedule/schedule-calendar-source";
 import { CalendarContent } from "./CalendarContent";
+import { mergeCalendarScheduleItems } from "./calendar-meeting-source";
 import { calendarProjection, calendarSelectionFromRoute, shiftCalendarSelection, type CalendarMode } from "./calendar-projection";
 import { useCalendarExternalEvents } from "./useCalendarExternalEvents";
+import { useCalendarMeetings } from "./useCalendarMeetings";
 
 /** Task calendar body. TaskScreen owns its slot and the top-bar add action. */
 export function CalendarScreen() {
@@ -32,12 +34,13 @@ export function CalendarScreen() {
   const [now, setNow] = useState(() => new Date());
   const [dateKey, setDateKey] = useState(() => calendarSelectionFromRoute(routeDate, new Date(), timeZone));
   const [mode, setMode] = useState<CalendarMode>("month");
+  const meetings = useCalendarMeetings(dateKey, mode, timeZone, language);
   useEffect(() => setDateKey(calendarSelectionFromRoute(routeDate, new Date(), timeZone)), [routeDate, timeZone]);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
-  const parts = [source.tasks, source.events, source.scheduleItems];
+  const parts = [source.tasks, source.events, source.scheduleItems, meetings.part];
   const external = useCalendarExternalEvents(dateKey, mode, timeZone, !source.offline);
   const hasData = parts.some(part => part.kind === "ready");
   const loading = parts.some(part => part.kind === "loading");
@@ -45,7 +48,7 @@ export function CalendarScreen() {
     actorId: auth.actorId ?? "", dateKey,
     events: source.events.kind === "ready" ? source.events.data : { events: [] },
     language, mode, now,
-    scheduleItems: source.scheduleItems.kind === "ready" ? source.scheduleItems.data : { scheduleItems: [] },
+    scheduleItems: mergeCalendarScheduleItems(source.scheduleItems.kind === "ready" ? source.scheduleItems.data : null, meetings.part.kind === "ready" ? meetings.part.data : null),
     tasks: source.tasks.kind === "ready" ? source.tasks.data : { tasks: [] }, timeZone,
   }) : null;
   const create = () => router.push("/schedule/personal/new" as Href);
@@ -55,7 +58,7 @@ export function CalendarScreen() {
       void Linking.openURL(url).catch(() => toast.error(t("calendar.view.externalOpenFailed")));
     } catch { toast.error(t("calendar.view.externalOpenFailed")); }
   };
-  const refresh = () => { source.refresh(); external.refresh(); };
+  const refresh = () => { source.refresh(); meetings.refresh(); external.refresh(); };
   const syncedAt = source.offline?.lastSyncedAt;
   const syncTime = syncedAt && Number.isFinite(Date.parse(syncedAt))
     ? new Date(syncedAt).toLocaleString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -63,14 +66,20 @@ export function CalendarScreen() {
   const offlineMessage = Platform.OS !== "web"
     ? syncTime ? t("schedule.offlineQueuedSnapshot", { time: syncTime }) : t("schedule.offlineQueuedNoSnapshot")
     : syncTime ? t("sync.offlineSnapshot", { time: syncTime }) : t("sync.offlineNoSnapshot");
+  const meetingTime = meetings.copy?.lastSyncedAt && Number.isFinite(Date.parse(meetings.copy.lastSyncedAt))
+    ? new Date(meetings.copy.lastSyncedAt).toLocaleString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
   const failureMessage = (message: string) => t(message === "sync.failure" ? "sync.failure" : "calendar.view.invalid");
-  return <AppScreen inset="kit" title={t("schedule.title")} refreshControl={<RefreshControl refreshing={source.refreshing || external.refreshing} onRefresh={refresh} tintColor={colors.accentText} />}
+  return <AppScreen inset="kit" title={t("schedule.title")} refreshControl={<RefreshControl refreshing={source.refreshing || meetings.refreshing || external.refreshing} onRefresh={refresh} tintColor={colors.accentText} />}
     headerActions={<IconButton icon="plus" accessibilityLabel={t("schedule.newPersonal")} onPress={create} />}>
     {loading && !projection ? <Skeleton /> : null}
     {source.offline ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{offlineMessage}</UiText> : null}
+    {meetings.copy && meetingTime ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{t("calendar.view.meetingSnapshot", { time: meetingTime })}</UiText> : null}
+    {meetings.copy?.stale ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{t("calendar.view.meetingStale")}</UiText> : null}
     {source.tasks.kind === "failure" || source.tasks.kind === "offline" ? <RetryCard title={t("schedule.tasksFailed")} message={failureMessage(source.tasks.message)} onRetry={refresh} /> : null}
     {source.events.kind === "failure" || source.events.kind === "offline" ? <RetryCard title={t("schedule.eventsFailed")} message={failureMessage(source.events.message)} onRetry={refresh} /> : null}
     {source.scheduleItems.kind === "failure" || source.scheduleItems.kind === "offline" ? <RetryCard title={t("schedule.personalFailed")} message={failureMessage(source.scheduleItems.message)} onRetry={refresh} /> : null}
+    {meetings.part.kind === "failure" || meetings.part.kind === "offline" ? <RetryCard title={t("calendar.view.meetingsFailed")} message={failureMessage(meetings.part.message)} onRetry={refresh} /> : null}
     {projection?.kind === "invalid_schedule" ? <RetryCard title={t("schedule.personalFailed")} message={t("calendar.view.invalid")} onRetry={refresh} /> : null}
     {projection?.kind === "ready" ? <CalendarContent mode={mode} projection={projection} timeZone={timeZone} onConnectExternal={connectExternal}
       {...(external.view ? { external: external.view } : {})} onChangeMode={setMode} onSelectDate={setDateKey}
