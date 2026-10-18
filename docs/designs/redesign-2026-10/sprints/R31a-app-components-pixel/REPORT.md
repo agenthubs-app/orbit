@@ -1,6 +1,6 @@
 # R31a REPORT — App 组件库像素轮（A 线）
 
-**状态：** done（部分），待复核——SC-03 已按 §52-2 人工例外收敛（43 / 44 自动通过，1 张两带人工接受；见 §11）、SC-07 部分（余项已交还），SC-08 不退步通过（唯一退步已修）。**worktree：** 原轮 `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a`（`line-a`）；SC-03 补轮 `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a2`（`line-a2`）。**模拟器：** Orbit Line A 16e（iPhone 16e，ja-JP，RD-33）。**环境：** 本地库 `orbit_line_a`、mock 服务器 :3200（`ORBIT_REDESIGN_MOCK=all`）、Metro :8082（`open-path,no-keyboard,add-scan`）；没连 Neon、没部署、没调付费 AI。**证据：** 原轮 `/Volumes/ORICO/Dev/line-a-evidence/R31a/`；SC-03 补轮 `/Volumes/ORICO/Dev/line-a-evidence/R31a-sc03/`。
+**状态：** done（部分）——SC-03 已按 §52-2 人工例外收敛（43 / 44 自动通过，1 张两带人工接受；见 §11）、SC-07 部分（余项已交还），SC-08 复核已执行但像素门禁仍有两张旧失败和 R05 区域超阈，故列部分（见 §12）。**worktree：** 原轮 `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a`（`line-a`）；SC-03 补轮 `/Volumes/ORICO/Dev/worktrees/orbit/redesign-a2`（`line-a2`）。**模拟器：** Orbit Line A 16e（iPhone 16e，ja-JP，RD-33）。**环境：** 本地库 `orbit_line_a`、mock 服务器 :3200（`ORBIT_REDESIGN_MOCK=all`）、Metro :8082（`open-path,no-keyboard,add-scan`）；没连 Neon、没部署、没调付费 AI。**证据：** 原轮 `/Volumes/ORICO/Dev/line-a-evidence/R31a/`；SC-03 补轮 `/Volumes/ORICO/Dev/line-a-evidence/R31a-sc03/`；复核 `/Volumes/ORICO/Dev/line-a-evidence/R31a-review/`。
 
 ## 1. 提交（按时间）
 
@@ -27,11 +27,11 @@
 | SC-R31a-01 工具（里程碑） | done | 工具测试；两端 CLI；展示页小节路由（工具里程碑报告） |
 | SC-R31a-02 `[contrast]`（里程碑） | done | `tests/scripts/redesign-pixel-components.test.ts`（清单内通过 / 非清单失败 / 混真实缺陷失败 / 一致性） |
 | SC-R31a-03 组件全部对齐 | **收敛（§52-2 人工例外）** | 22 格 × 浅深 44 张：43 张自动通过、1 张 `c-ctl-0` 浅色的两条说明文字带按 §52-2 人工接受；其余 209 条超阈带已自动归因。旧基线 1 / 44 见 §3，新结果见 §11。|
-| SC-R31a-04 组件行为 | done（渲染测试） | Toast 无 ✕ / 点按关 / 先关后回调 / 按页底栏（ui-toast）；sheet 遮罩不关但返回键关、路由变化自动关（ui-overlays）、输入时不关（ui-logic）；Segmented 纵向 ≥44 且相邻不重叠（ui-components-render）。模拟器手势验证未做（无手势工具授权） |
-| SC-R31a-05 新组件与替换 | done | 4 处已替换；`legacy-ui-ratchet` 过；A-R30-P05–P08 8 / 8 通过（不退步） |
+| SC-R31a-04 组件行为 | done（渲染测试） | Toast 无 ✕ / 点按关 / 先关后回调 / 按页底栏（ui-toast）；sheet 遮罩不关但返回键关、路由变化自动关（ui-overlays）、输入时不关（ui-logic）；Segmented 纵向 ≥44 且相邻不重叠（ui-components-render）。M2 已测无障碍回调与焦点路径，真实 VoiceOver 双指手势未测（§12）。 |
+| SC-R31a-05 新组件与替换 | done（S1 补证） | 4 处已替换；`legacy-ui-ratchet` 过；UnderlineTabs、主 / 会場 TabBar、FullScreenSearch 已加展示与 b2 区域门禁，浅深 8 / 8 PASS（§12）；A-R30-P05–P08 原轮 8 / 8 通过。|
 | SC-R31a-06 调用点与交接 | done（大部分） | `KIT_PAGE_INSET`、`ignoreDismiss`、`useFocusEffect` 临时写法已删；R15 下書き sheet `inline`；N12 / skip / 達成确认框图标位；会場 `usePageBottomBar`。条目表见 §4 |
 | SC-R31a-07 重比 | **部分** | §4：R26-11 10 / 10、R17-17 2 / 2、R30 8 / 8 通过；其余余页面自身差异 → 交还 |
-| SC-R31a-08 不退步 | done（§6） | 107 个基线键：唯一 R31a 退步（导入三段 inset）已修；其余为新模拟器字形残差（已逐带看过并归因）或环境状态 |
+| SC-R31a-08 不退步 | **部分：复核完成，门禁未全绿**（§6、§12） | 9 个手势键 9 / 9 PASS；剩余 10 旧失败键中 8 键补状态后 PASS、`A-R16-04` 浅深 2 键仍 FAIL；R05 的 14 个基线键已用 22 张区域图逐图复核，但临时区域套件自动仅 1 / 22 PASS。不得写为 124 键或 R05 全量自动通过。|
 | SC-R31a-09 测试与复核 | 见 §5 | 待独立复核 |
 
 ## 3. SC-03 前逐件对照基线（App，16e，`views/app-R31a-components.json`）
@@ -122,9 +122,9 @@
 | **R31a 引起的退步，已修** | A-R16-03 / 04 / 05（6 键） | 导入「整理中 / LinkedIn / まとめて確認」三段原来也有 `KIT_PAGE_INSET`，删掉后没切 `inset="kit"`，整页下移 12 左移 2 → `6e6b997da` 修好，重跑位置回到 dx 0 / dy ≤2 |
 | 换模拟器后的字形残差，逐带看过后记 [raster] | 17 键 | R16-01 / 03 / 05、R12-00 / 03 / 46 / N10 / N11、R15-10 / 12、R24-09：位置 dx ≤3 / dy ≤3、底色字色一致，只差 iOS 与 Chrome 字形栅格化（基线是在另一台 16e 上测的，新模拟器 Orbit Line A 16e 残差略大，越过 0.02）；归因写进各自 `attribution-redesign-*-app.json`（`6e6b997da`），用同一张截图 `--shot` 复算全部 PASS |
 | 环境状态不同（非 R31a） | A-R12-15（名字没输入，保存钮灰）、A-R12-N10d（新模拟器没给相机权限，进了权限页）、A-R27-10（本机没有「最近の検索」历史）、A-R27-24（本机没存「名刺の残り」）、A-R25-03（见直し页接口在本环境加载超时） | 要么手势输入 / 授权，要么造本机状态；不属组件 |
-| 待查 | A-R16-04 浅深 | 「名前が似ているだけの 2件」标签没出现：条件渲染改动来自 `17358002b`（R12 返工，R16 通过之后），看起来与 R31a 无关，需 R16 / R12 页面方确认 |
+| 待查 | A-R16-04 浅深 | 旧记录称「名前が似ているだけの 2件」标签没出现，这是误判：`it/nr2` 的两张三联图中标签可见，缺块计数也为 0。页面仍有多处内容、头像和字形差异（浅色 19、深色 20 条超阈带），不能据此改判通过；复核处理见 §12。|
 
-结论：R31a 组件改动造成的退步只有导入三段一处，已修；其余失败为模拟器字形残差（已归因）或环境状态。
+阶段结论：已确认并修复导入三段 inset 退步；其余失败中有已归因的模拟器字形残差，也有当时未复核的环境状态与页面差异。这些待查项的本轮处理及 SC-08 最终状态见 §12。
 
 ## 7. 主会话代定（RD-33）
 
@@ -170,6 +170,28 @@
 
 ## 12. 复核处理（2026-10-19）
 
-- **M3：** 按 REVIEW 提供的第二种收口方式，将 PLANNER SC-07 的开发状态开关验收改为“正式包不可启用”。`addDesignMock` 要求 `__DEV__` 为真；`ui-r31a-new-components.test.tsx` 覆盖 `__DEV__=false` 时 `open-path` 不生效。现有证据不证明开关代码未进入正式 bundle，故不再使用“不进正式构建”的表述。
-- **m：** 按 RD-32 更新 PLANNER SC-09：GitNexus 已停用，本轮不运行或要求 `detect-changes`；复核以代码差异、测试和门禁证据记录。
-- **S2：** `BottomSheet` 的路由失焦 effect 现把 `keyboardUp` 列为依赖。输入中换路由时仍延后关闭；键盘收起时重新检查开 sheet 时的路由，随即关闭。新增“键盘弹出 → 换路由 → 键盘收起”测试，修前失败、修后 `ui-overlays` 9 / 9 通过；App `tsc --noEmit` 通过。
+- **S1：** 展示页新增 UnderlineTabs、主 TabBar、会場 livebar、FullScreenSearch 四个真实组件小节；`views/app-R31a-components.json` 分别指向 b2 画板 #15 / #6 / #27 / #10 的实测区域。搜索框首轮外圈内缩且上移，先把焦点圈改为 44 点输入框外侧的 2 点描边，再去掉多余左移，并用展示页 `topGap=3` 对齐 16e 安全区 47 点与画板 50 点的差。`b2-final/summary.json` 在 16e 浅深 **8 / 8 PASS**，12 条超阈带均有逐带 `[raster]` 归因，0 缺块；搜索框 raw 从约 0.127/0.128 降至 0.0206/0.0227。App `tsc --noEmit` 与定向组件测试 12 / 12 通过。证据在 `/Volumes/ORICO/Dev/line-a-evidence/R31a-review/b2-final/`。提交 `a1e4bae3a`。
+- **M1：** Toast 的动作回调改在关闭状态提交后的 effect 执行。新增测试在 Undo 回调发生时读取页面，要求 Toast 已从渲染树消失；修前得到 `undo:visible`，修后得到 `undo:gone`，定向测试 6 / 6 通过。提交 `4ee261bb3`。
+- **M3：** 按 REVIEW 提供的第二种收口方式，将 PLANNER SC-07 的开发状态开关验收改为“正式包不可启用”。`addDesignMock` 要求 `__DEV__` 为真；`ui-r31a-new-components.test.tsx` 覆盖 `__DEV__=false` 时 `open-path` 不生效。现有证据不证明开关代码未进入正式 bundle，故不再使用“不进正式构建”的表述。提交 `e7db98428`。
+- **m：** 按 RD-32 更新 PLANNER SC-09：GitNexus 已停用，本轮不运行或要求 `detect-changes`；复核以代码差异、测试和门禁证据记录。提交 `8ebd9cfce`。
+- **S2：** `BottomSheet` 的路由失焦 effect 现把 `keyboardUp` 列为依赖。输入中换路由时仍延后关闭；键盘收起时重新检查开 sheet 时的路由，随即关闭。新增“键盘弹出 → 换路由 → 键盘收起”测试，修前失败、修后 `ui-overlays` 9 / 9 通过；App `tsc --noEmit` 通过。提交 `31afac22e`。
+- **M2：** 锁定的 `BottomSheet` 在无障碍 escape 后先关闭，再于下一帧将焦点交回打开它的按钮；联系人详情的「⋯」按钮通过 ref 接到解除连接确认 sheet，忙碌时不转移焦点。浏览器测试从 React Native View 的 `onAccessibilityEscape` 原生回调入口触发，并检查关闭事件和 `AccessibilityInfo.setAccessibilityFocus` 的目标：修前等待焦点超时，修后 `ui-overlays` 10 / 10 通过，App `tsc --noEmit` 通过。测试覆盖回调与焦点路径；未在模拟器上执行真实双指 VoiceOver 手势。提交 `ede0af29f`。
+
+**S3 复核环境：** 16e 起初没有原生登录会话，R05 第一轮截图被重定向到登录页，不能据此判壳退步（`R31a-review/r05-regions-run1/`，发现后中止）。本地测试账号完成登录前，Metro 对共享软链 `node_modules` 生成的 `../../../redesign-a/.../expo-secure-store/...bundle` 异步请求返回 404；登录页因无法读取安全存储而明确拒绝继续。等价 `/node_modules/...bundle` 请求返回 200。仅用于诊断的 Metro URL 重写触发热更新解析错误，已原样还原、未提交；改为将同一依赖树克隆到本工作树本地并清空 Metro 缓存，原生登录成功且重启后会话可恢复。QA 结束后恢复原软链。随后 R05 单张探针表明冷启动 25 秒时仍可能显示加载动画，45 秒可得到完整主页；正式区域复核据此等待 45 秒。这些登录页和加载帧均不计为 R05 组件失败或通过。
+
+**S3：R05 壳区域。** `R31a-review/r05-regions-auth45/` 与 `r05-remaining-auth45/` 共取得 22 张有效的浅深裁区图，覆盖 14 个基线键（主页、人脉、活动、Task 三段、个人页；部分键分别检查顶栏和底栏）。一张 `A-R05-05-nav-app-dark` 首拍是纯白瞬态，已作废并重拍。没有为临时区域键添加新归因，因此自动结果只有 1 / 22 PASS；有效图 raw 为 0.0149–0.0847，30 条超阈带的投影偏移均为横向 ≤3 点、纵向 0 点。逐图复核的顶栏、选中胶囊和底栏几何对齐。主页日期／问候姓名、Task 日期、个人页完成度是本地账号与画板示例数据不同；Memo 底栏裁区最上缘还露出本机列表内容；其余超阈主要落在 iOS 字形、图标边缘。上述人工复核不写成自动通过。
+
+**S3：首轮剩余 10 键复跑。** `R31a-review/s3-rerun/` 使用本地 fixture、已登录 16e、45 秒冷启动等待；结果如下。`A-R12-15` 的直接路径首拍遇到模拟器交叉采集，作废；后续在真实手输入页填入画板姓名“石川 陽介”并另存截图。`A-R12-N10d` 首拍进入相机页，原因是本机首次引导计数已满；把 `orbit:add:scan-guide:v1` 设为首次状态后另存目标引导页截图。`A-R25-03` 首拍是“方案を見直しますか？”入口卡；点击“iOrbit で見直す”后另存目标前提页浅深截图。这 4 键的补状态截图随 9 个手势键一起重比。
+
+| 基线键 | 首轮复跑结果 | 处理 |
+| --- | --- | --- |
+| `A-R12-15` 浅 | 无效（交叉采集） | 真机输入姓名后保存有效图，最终 **PASS**（raw 0.0279） |
+| `A-R12-N10d` 深 | FAIL，错在已读引导状态 | 恢复首次引导后 **PASS**（raw 0.0372）；新过阈的 y=480–510 同色字形带由裁剪图核实后加 `[raster]`（`4459cc2fc`） |
+| `A-R16-04` 浅／深 | FAIL，raw 0.0639／0.0601，19／20 超阈带 | 与先前 `it/nr2` 相同；“名前が似ているだけの 2件”可见，0 缺块。头像配色和字形残差仍在，未重判通过 |
+| `A-R25-03` 浅／深 | FAIL，停在流程入口卡 | 点击进入目标前提页后 **PASS／PASS**（raw 0.0778／0.0742）；日期与剩余次数仍是 fixture 数据差异 |
+| `A-R27-10` 浅／深 | **PASS／PASS**，raw 0.0597／0.0558 | 写入正确的 `orbit.events.recentSearches` 本机键后，两条历史搜索出现；沿用已有逐带归因 |
+| `A-R27-24` 浅／深 | **PASS／PASS**，raw 0.0595／0.0594 | 写入正确的 `orbit.events.cardsLeft.demo-event-cfo-night-18=8`，目标“名刺の残り 8枚”出现；沿用已有逐带归因 |
+
+**S3：需操作的 9 键。** 在同一已登录模拟器中实际进入并保存 `R31a-review/gesture-shots/`：`A-R12-18` 深（填写姓名并保存）、`A-R12-04` 浅深（失败名刺 sheet）、`A-R15-06` 浅深（“使い方を見る”进入说明）、`A-R15-08` 浅深（“メッセージで送る”打开下书き sheet）、`A-R23-05` 浅深（确认“わたし”后进入“チーム”）。R15 mock 已有演示码，所以 `A-R15-06` 复现的是同一说明画面，不声称覆盖首次无当前码的产品路径。第一次 `A-R12-18` 截图在成功 Toast 消失后，虽被工具判 PASS 却与画板瞬态不同；又创建一名本地测试联系人，在保存回调出现 Toast 的当帧重拍并取代该图。最终 `R31a-review/gesture-compare-final/summary.json` 的 **13 / 13 PASS** 包括上述 9 个手势键和 4 个补状态键，0 未归因超阈带；7 张仍有缺块算法提示。三联图中，`A-R12-18` 的公司／活动示例字段与本地新联系人不同，成功 Toast 已可见；`A-R12-04` 为失败卡占位图与头像配色；`A-R15-08` 的 QR、邀请码、到期日及下书き姓名来自本地 mock；`A-R25-03` 的上次确认日期、回数与画板不同。归因和缺块提示只证明这些已记录的状态差，不能代替真实首访路径或未复核的业务数据一致性。
+
+**SC-08 结论：** REVIEW 指出的 9 个手势键、14 个 R05 壳基线键和剩余 10 个首轮失败键均有本轮结果；其余首轮 17 个字形归因键和 R30 8 键沿用 §6 的既有重比证据，没有在本轮重新采集整套 124 键。`A-R16-04` 浅深仍为 0.0639／0.0601 FAIL，且对应导入页与 Avatar 文件相对本线共同基点无差异；与旧截图相同，不把它冒称本轮修复或 PASS。R05 区域仅人工确认壳体几何，原始自动结果 1 / 22。故 SC-08 标“部分：复核完成，门禁未全绿”，保留这两类未自动收敛的证据与范围。
