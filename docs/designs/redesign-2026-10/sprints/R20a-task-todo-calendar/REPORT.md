@@ -6,7 +6,7 @@
 
 同 REVIEW の M4 対応：App と Web の task-page **応答** schema は未知の追加フィールドを全 5 階層で拒否していた。両端の回帰を先に追加してそれぞれ 1 件 RED、`32e7390c2` で応答側だけ余分なフィールドを読み飛ばすようにした。App **2/2**、Web 応答 / HTTP **5/5**、App `typecheck` と Web `typecheck:app` は exit0。未知の task status はなお拒否し、API 入力に使う日付窓 schema の `.strict()` も残した。Web 全範囲 `typecheck` は競合中の前回 exit130 を残し、現 D tree で再実行して **exit0**、`lint` も exit0。全量・実機・pixel は引き続き OPEN。
 
-同 REVIEW の M1 対応：未知の follow-up `kind` を `task` に変換すると、App が未理解の操作に「完了」を出せてしまう。両端の読み取りテストは旧実装でそれぞれ 1 件 RED（未知 kind を含む 2 行が残る）。`3c1c93658` で操作種別の `kind` だけを既知値必須とし、既存 `readableItems` が該当行を飛ばす。表示専用 `status` の安全なフォールバックは残す。修正後 Web 契約 / API **7/7**、App 契約 / 動作 / offline model **23/23**、App `typecheck` と Web `typecheck:app` / `lint` は exit0。Web 全範囲 `typecheck`、全量、native / pixel はこの commit 後に未実行。
+同 REVIEW の M1 対応：未知の follow-up `kind` を `task` に変換すると、App が未理解の操作に「完了」を出せてしまう。両端の読み取りテストは旧実装でそれぞれ 1 件 RED（未知 kind を含む 2 行が残る）。`3c1c93658` で操作種別の `kind` だけを既知値必須とし、既存 `readableItems` が該当行を飛ばす。表示専用 `status` の安全なフォールバックは残す。修正後 Web 契約 / API **7/7**、App 契約 / 動作 / offline model **23/23**、App `typecheck` と Web `typecheck:app` / `lint` は exit0。Web 全範囲 `typecheck` は後続の D tree で試したが、同機の負荷で約 4 分後にこちらから中断した（**exit130、診断なし**）。合格とは数えず、全量・native / pixel とともに OPEN。
 
 **主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
 
