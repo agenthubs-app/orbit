@@ -594,3 +594,9 @@ SC-02 の Web/API catch、最小の共通 follow-up runtime 修正、診断 help
 ## 文档更新请求
 
 SC-02 の runtime 根因・回帰証拠を後続の R20a 完了確認時に参照する。README / HANDOFF / DEFERRED / screen-ownership の変更は未実施。
+
+## 2026-10-19　個人予定テストの時間境界修正（SC-10 / 全量未収束）
+
+C 線 R18b Web 全量で `web personal client requests the editable collection rather than the legacy aggregate` が新たに失敗し、D 線で単独再現した。テストの予定日時が `2026-09-17T00:00:00Z` に固定されていた一方、Web client の `personalScheduleWindow()` は実行日の前 31 日から検索するため、2026-10-19 には予定が窓外になり `[]` が返った。製品の検索窓や actor 検証を変えず、本テストだけで現在時刻を一度捕捉して翌日の予定を作り、service clock と legacy projection に同じ日時を渡した。変更前は対象ファイル 9/10（当該 1 件失敗）、変更後は 10/10、`TZ=America/Los_Angeles` でも 10/10。隣接 client / route 19/19、Web typecheck / lint exit 0、`git diff --check` exit 0。
+
+同じ D tree の全量 `_evidence-d/R20a/run-01/d-web-full-after-window-test-fix.log` は **7,790 tests / 6,717 pass / 39 fail / 0 cancelled / 1,034 skip、exit 1**。修正対象は全量中 pass。前回有効な `d-web-full-stale-read-fix.log` の 40 件と失敗名を比較すると新規 0 件、旧「手入力…元に戻す」だけ今回は再現せず、その他 39 件は同名。従ってこの修正は時間経過で崩れるテスト fixture を直した局所結果であり、R20a 全量・SC-10・画面門禁の合格ではない。C tree にはまだ未統合で、C 全量の 33 件目を消した証拠にもならない。

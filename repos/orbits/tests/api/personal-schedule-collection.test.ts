@@ -23,9 +23,11 @@ test("explicit personal scope does not decode legacy display-only personal rows 
 
 test("web personal client requests the editable collection rather than the legacy aggregate", async () => {
   const { createPersonalScheduleClient } = await import("../../app/(app)/app/tasks/personal-schedule-client");
-  const service = createPersonalScheduleService({ store: createMemoryLiveRecordStore(), workspaceId: "s0042", now: () => "2026-09-16T00:00:00Z" });
-  const created = await service.create("actor:a", { title: "Owned review", startsAt: "2026-09-17T00:00:00Z", idempotencyKey: "web-read" });
-  const handler = createScheduleItemsGetHandler({ resolveActor: async () => ({ id: "actor:a" }), personalService: service, scheduleProvider: { async list() { return [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt: "2026-09-17T00:00:00Z", state: "upcoming" }]; } } });
+  const now = new Date();
+  const startsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const service = createPersonalScheduleService({ store: createMemoryLiveRecordStore(), workspaceId: "s0042", now: () => now.toISOString() });
+  const created = await service.create("actor:a", { title: "Owned review", startsAt, idempotencyKey: "web-read" });
+  const handler = createScheduleItemsGetHandler({ resolveActor: async () => ({ id: "actor:a" }), personalService: service, scheduleProvider: { async list() { return [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt, state: "upcoming" }]; } } });
   const client = createPersonalScheduleClient("actor:a", async input => handler(new Request(new URL(String(input), "https://orbit.test"))));
   assert.deepEqual(await client.list(), [created.scheduleItem]);
 });
