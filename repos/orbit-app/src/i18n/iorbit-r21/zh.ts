@@ -16,6 +16,7 @@ export const iorbitR21Zh = {
   deleteDetail: "会话中创建的任务和日程不会删除。", deleting: "正在删除…",
   pinLimit: "最多置顶 5 个会话。请先取消一个置顶。", deleted: "已删除",
   undoFailed: "无法撤销删除。撤销期限可能已过。",
+  syncPending: "更改待同步", syncConflict: "会话更改未同步，请重试。", discardChange: "放弃本次更改",
   draftUnavailable: "无法查看草稿，请重试。", noPendingDraft: "此会话没有待确认的草稿。",
   cannotOpen: "无法打开会话", conversationAt: "时的会话", savedConversation: "已保存的会话", stop: "停止",
 };

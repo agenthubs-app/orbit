@@ -16,6 +16,7 @@ export const iorbitR21En = {
   deleteDetail: "Tasks and events created from this conversation will remain.", deleting: "Deleting…",
   pinLimit: "You can pin up to 5 conversations. Unpin one first.", deleted: "Deleted",
   undoFailed: "Could not undo the deletion. The undo period may have ended.",
+  syncPending: "Changes waiting to sync", syncConflict: "Conversation changes did not sync. Please try again.", discardChange: "Discard this change",
   draftUnavailable: "Could not open the draft. Please try again.", noPendingDraft: "No drafts need review in this conversation.",
   cannotOpen: "Could not open the conversation", conversationAt: "conversation", savedConversation: "Saved conversation", stop: "Stop",
 };

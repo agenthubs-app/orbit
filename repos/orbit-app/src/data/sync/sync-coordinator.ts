@@ -19,6 +19,7 @@ import {
 import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
+import { parseOfflineAiSessionDelete, parseOfflineAiSessionRequest, type OfflineAiSessionDeleteInput, type OfflineAiSessionMutationInput } from "./ai-session-outbox-mutation";
 import { isOfflineRelationshipFollowupMutation, isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
 import { isOfflineScheduleEditable, localNoteIdsOfSchedule, parseOfflineScheduleRequest } from "./schedule-outbox-mutation";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
@@ -149,6 +150,10 @@ export interface SyncCoordinatorSession {
   enqueueOfflineNoteMutation(mutation: OfflineNoteMutationInput): Promise<void>;
   /** Sprint 0133: private personal task writes admitted to the native offline outbox. */
   enqueueOfflineTaskMutation(mutation: OfflineTaskMutationInput): Promise<void>;
+  /** R21: queue one revision-bound organization edit for an actor-owned mirrored iOrbit session. */
+  enqueueOfflineAiSessionMutation(mutation: OfflineAiSessionMutationInput | OfflineAiSessionDeleteInput): Promise<void>;
+  cancelOfflineAiSessionDelete(mutationId: string): Promise<boolean>;
+  discardOfflineAiSessionMutation(mutationId: string): Promise<boolean>;
   /** Sprint 0134: non-recurring personal schedule writes admitted to the native offline outbox. */
   enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void>;
   /** Sprint 0135: a text message into a conversation the device holds and that is active. */
@@ -915,6 +920,61 @@ export function createSyncCoordinator(input: {
           if (prior && !dependsOn) dependsOn = prior.mutationId;
           await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId!, dependsOn }, { notify: !mutation.requestAttemptedAt });
         });
+      },
+      async enqueueOfflineAiSessionMutation(mutation: OfflineAiSessionMutationInput | OfflineAiSessionDeleteInput): Promise<void> {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) throw new TypeError("outbox mutation is outside the active actor/workspace");
+        const sessionScope = readScopeFor(bound, "ai_session");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasGrant = Boolean(sessionScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === sessionScope.workspaceId && grant.domainId === sessionScope.domainId &&
+          grant.authorizationEpoch === sessionScope.authorizationEpoch));
+        if (!hasGrant) throw new TypeError("AI session mutation is not eligible");
+        if (mutation.operation === "delete") parseOfflineAiSessionDelete(mutation);
+        else parseOfflineAiSessionRequest(mutation);
+        await withRepository(bound, async repository => {
+          const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "ai_session", id: mutation.id });
+          const payload = record?.payload && typeof record.payload === "object" ? record.payload as Record<string, unknown> : null;
+          const organization = payload?.organization && typeof payload.organization === "object"
+            ? payload.organization as Record<string, unknown> : null;
+          if (!record || record.actorId !== bound.actorId || record.deletedAt !== null ||
+              organization?.revision !== Number(mutation.baseRevision)) {
+            throw new TypeError("offline AI session mutation requires a mirrored session at the expected revision");
+          }
+          const pending = await repository.readOutboxOverlay({ workspaceId: bound.workspaceId!, kind: "ai_session" });
+          if (pending.queuedMutations.some(item => item.id === mutation.id)) {
+            throw new TypeError("offline AI session already has a pending mutation");
+          }
+          await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId! });
+        });
+      },
+      async cancelOfflineAiSessionDelete(mutationId: string): Promise<boolean> {
+        await bound.ready;
+        const scope = readScopeFor(bound, "ai_session");
+        if (!isCurrent(bound) || !scope) throw new TypeError("AI session delete is outside the active lease");
+        const removed = await withRepository(bound, async repository => {
+          const rows = await repository.readOutboxOverlay({ workspaceId: scope.workspaceId, kind: "ai_session" });
+          const row = rows.queuedMutations.find(item => item.mutationId === mutationId);
+          if (!row || row.operation !== "delete" || row.state !== "queued" || row.attemptCount !== 0 ||
+              !row.nextRetryAt || now() >= Date.parse(row.nextRetryAt)) return 0;
+          parseOfflineAiSessionDelete(row as OfflineAiSessionDeleteInput);
+          return repository.discardOutboxMutations({ workspaceId: scope.workspaceId, domainId: "ai-sessions", mutationIds: [mutationId] });
+        });
+        if (removed) emitChange(bound, { type: "outbox", kind: "ai_session" });
+        return removed > 0;
+      },
+      async discardOfflineAiSessionMutation(mutationId: string): Promise<boolean> {
+        await bound.ready;
+        const scope = readScopeFor(bound, "ai_session");
+        if (!isCurrent(bound) || !scope) throw new TypeError("AI session discard is outside the active lease");
+        const removed = await withRepository(bound, async repository => {
+          const rows = await repository.readOutboxOverlay({ workspaceId: scope.workspaceId, kind: "ai_session" });
+          const row = rows.queuedMutations.find(item => item.mutationId === mutationId);
+          if (!row || (row.state !== "conflict" && row.state !== "failed")) return 0;
+          return repository.discardOutboxMutations({ workspaceId: scope.workspaceId, domainId: "ai-sessions", mutationIds: [mutationId] });
+        });
+        if (removed) emitChange(bound, { type: "outbox", kind: "ai_session" });
+        return removed > 0;
       },
       async enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void> {
         await bound.ready;

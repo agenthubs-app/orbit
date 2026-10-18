@@ -12,6 +12,7 @@ import { WEB_MIRROR_DOMAIN_IDS } from "../src/data/sync/web-mirror-storage";
 import { NodeTestDatabase } from "./helpers/node-sync-database";
 import { inboxDeviceRows, localInboxDetail, localInboxListData } from "../src/view-models/inbox-local";
 import { aiSessionMessages, aiSessionRows, localAiSessionPage } from "../src/view-models/ai-sessions-local";
+import { buildOfflineAiSessionMutation } from "../src/data/sync/ai-session-outbox-mutation";
 
 // Sprint 0118: the App side of the inbox and AI session domains — the real
 // coordinator and the real SQLite mirror (node:sqlite) against a scripted host
@@ -74,6 +75,7 @@ async function device(t: TestContext, host: Host) {
   t.after(() => session.deactivate());
   return {
     session,
+    database,
     async sync() { const request = session.synchronize("inbox_notification", { reason: "explicit" }); await request.started; return request.promise; },
     async records(kind: SyncChangeKind) { return ((await session.readCollection(kind))?.records ?? []) as never[]; },
   };
@@ -97,6 +99,52 @@ const sessionRow = (id: string, revision: number, pinned = false): DomainChange 
 const message = (sessionId: string, index: number, revision: number): DomainChange => ({
   id: `${sessionId}:m${index}`, revision: String(revision), operation: "upsert",
   payload: { sessionId, id: `${sessionId}:m${index}`, role: index % 2 ? "assistant" : "user", text: `${sessionId} text ${index}`, index, createdAt: NOW },
+});
+
+test("an offline iOrbit rename is queued only for a session in the actor's readable mirror", async (t) => {
+  const host: Host = { epoch: "e1", granted: [SESSIONS], calls: [], named: [], log: { [SESSIONS]: [sessionRow("s1", 1)] } };
+  const d = await device(t, host);
+  await d.sync();
+  const rename = buildOfflineAiSessionMutation({ mutationId: "rename-s1", sessionId: "s1", expectedRevision: 0,
+    patch: { customTitle: "After Osaka" }, createdAt: NOW });
+  assert.equal(typeof (d.session as any).enqueueOfflineAiSessionMutation, "function");
+  await (d.session as any).enqueueOfflineAiSessionMutation(rename);
+
+  const overlay = await d.session.readOutboxOverlay("ai_session");
+  assert.deepEqual(overlay?.queuedMutations.map((row) => [row.id, row.mutationId, row.state]), [["s1", "rename-s1", "queued"]]);
+  await assert.rejects((d.session as any).enqueueOfflineAiSessionMutation(buildOfflineAiSessionMutation({
+    mutationId: "rename-other", sessionId: "s2", expectedRevision: 0,
+    patch: { customTitle: "Wrong actor" }, createdAt: NOW,
+  })), /mirrored|session|eligible/i);
+});
+
+test("an offline iOrbit delete can be cancelled locally before its five-second send delay", async (t) => {
+  const host: Host = { epoch: "e1", granted: [SESSIONS], calls: [], named: [], log: { [SESSIONS]: [sessionRow("s1", 1)] } };
+  const d = await device(t, host);
+  await d.sync();
+  const { buildOfflineAiSessionDelete } = await import("../src/data/sync/ai-session-outbox-mutation");
+  await d.session.enqueueOfflineAiSessionMutation(buildOfflineAiSessionDelete({
+    mutationId: "delete-s1", sessionId: "s1", expectedRevision: 0, createdAt: NOW,
+  }));
+  assert.equal((await d.session.readOutboxOverlay("ai_session"))?.queuedMutations.length, 1);
+  assert.equal(await d.session.cancelOfflineAiSessionDelete("delete-s1"), true);
+  assert.equal((await d.session.readOutboxOverlay("ai_session"))?.queuedMutations.length, 0);
+  assert.equal(await d.session.cancelOfflineAiSessionDelete("delete-s1"), false);
+});
+
+test("a rejected iOrbit edit can be discarded without discarding another actor's mirror", async (t) => {
+  const host: Host = { epoch: "e1", granted: [SESSIONS], calls: [], named: [], log: { [SESSIONS]: [sessionRow("s1", 1)] } };
+  const d = await device(t, host);
+  await d.sync();
+  await d.session.enqueueOfflineAiSessionMutation(buildOfflineAiSessionMutation({
+    mutationId: "rename-s1", sessionId: "s1", expectedRevision: 0,
+    patch: { customTitle: "Wrong revision" }, createdAt: NOW,
+  }));
+  assert.equal(await (d.session as any).discardOfflineAiSessionMutation("rename-s1"), false, "an unsent edit needs an explicit undo path");
+  await d.database.run("UPDATE sync_outbox SET state = 'conflict', last_error_code = 'CONFLICT' WHERE mutation_id = ?", ["rename-s1"]);
+  assert.equal(await (d.session as any).discardOfflineAiSessionMutation("rename-s1"), true);
+  assert.equal((await d.session.readOutboxOverlay("ai_session"))?.queuedMutations.length, 0);
+  assert.equal((await d.records("ai_session")).length, 1);
 });
 
 test("the three domains are known to this build and mirrored in the browser too", () => {

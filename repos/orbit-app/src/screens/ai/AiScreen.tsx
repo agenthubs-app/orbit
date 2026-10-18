@@ -48,6 +48,7 @@ import type { TaskItemContract } from "../../api/contract/tasks";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
 import { useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { localAiSessionPage } from "../../view-models/ai-sessions-local";
+import { buildOfflineAiSessionDelete, buildOfflineAiSessionMutation } from "../../data/sync/ai-session-outbox-mutation";
 import { IOrbitStartView } from "./IOrbitStartView";
 import { useToast } from "../../components/ui";
 
@@ -216,6 +217,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const localSessions = useLocalAiSessions();
   const historyFromDevice = localSessions.available && localSessions.freshness.readable;
   const aiOffline = historyFromDevice && localSessions.freshness.offline;
+  const pendingAiWrites = localSessions.queuedMutations.some(item => item.state === "queued" || item.state === "sending");
+  const failedAiWrite = localSessions.queuedMutations.find(item => item.state === "conflict" || item.state === "failed");
   const historyState = validateApiResourceState(useApiResource<unknown>(
     historyPath,
     data => { const parsed = aiSessionSummaryPageSchema.safeParse(data); return parsed.success && parsed.data.items.length === 0; },
@@ -285,10 +288,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
-  const [pendingUndo, setPendingUndo] = useState<{ id: string; token: string; until: string } | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<({ id: string; token: string; until: string } | { id: string; mutationId: string; until: string }) | null>(null);
   useEffect(() => {
     if (!pendingUndo) return;
-    const timer = setTimeout(() => setPendingUndo(current => current?.token === pendingUndo.token ? null : current), Math.max(0, Date.parse(pendingUndo.until) - Date.now()));
+    const timer = setTimeout(() => setPendingUndo(current => current?.until === pendingUndo.until && current.id === pendingUndo.id ? null : current), Math.max(0, Date.parse(pendingUndo.until) - Date.now()));
     return () => clearTimeout(timer);
   }, [pendingUndo]);
   // The device mirror is partial. A nonempty online query must use the actor-scoped
@@ -554,7 +557,21 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     patch: { customTitle?: string | null; groupId?: string | null; pinned?: boolean },
   ) {
     if (!owns() || organizationOperation.current || item.source !== "session") return;
-    if (aiOffline) { setOrganizationError(locale.t("sync.needsNetwork")); return; }
+    if (aiOffline) {
+      setOrganizationBusy(true);
+      setOrganizationError(null);
+      try {
+        await localSessions.enqueueOfflineMutation(buildOfflineAiSessionMutation({
+          mutationId: randomUUID(), sessionId: item.id, expectedRevision: item.organizationRevision,
+          patch, createdAt: new Date().toISOString(),
+        }));
+      } catch {
+        if (owns()) setOrganizationError(iorbitR21Copy[locale.language].syncConflict);
+      } finally {
+        if (owns()) setOrganizationBusy(false);
+      }
+      return;
+    }
     const operation = new AbortController();
     organizationOperation.current = operation;
     setOrganizationBusy(true);
@@ -577,9 +594,13 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         } : current);
       }
       setHistoryAttempt(value => value + 1);
+      if (localSessions.available) void localSessions.refresh();
     } else {
       setOrganizationError(result.code === "PIN_LIMIT" ? iorbitR21Copy[locale.language].pinLimit : result.error);
-      if (result.code === "PIN_LIMIT" || result.code === "CONFLICT") setHistoryAttempt(value => value + 1);
+      if (result.code === "PIN_LIMIT" || result.code === "CONFLICT") {
+        setHistoryAttempt(value => value + 1);
+        if (localSessions.available) void localSessions.refresh();
+      }
     }
     organizationOperation.current = null;
     setOrganizationBusy(false);
@@ -642,7 +663,24 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   async function deleteHistoryItem(item: AiDrawerHistoryItem) {
     if (!owns() || deleteOperation.current || item.source !== "session" || confirmDelete?.id !== item.id
       || !historyItems.some(row => row.source === "session" && row.id === item.id)) return;
-    if (aiOffline) { setHistoryDeleteError(locale.t("sync.needsNetwork")); return; }
+    if (aiOffline) {
+      setDeletingHistoryId(item.id);
+      setHistoryDeleteError(null);
+      try {
+        const mutation = buildOfflineAiSessionDelete({ mutationId: randomUUID(), sessionId: item.id,
+          expectedRevision: item.organizationRevision, createdAt: new Date().toISOString() });
+        await localSessions.enqueueOfflineMutation(mutation);
+        if (!owns()) return;
+        setPendingUndo({ id: item.id, mutationId: mutation.mutationId, until: mutation.nextRetryAt! });
+        setConfirmDelete(null);
+        toast.success(iorbitR21Copy[locale.language].deleted, { undo: () => { void cancelOfflineDeletion(item.id, mutation.mutationId); } });
+      } catch {
+        if (owns()) setHistoryDeleteError(iorbitR21Copy[locale.language].syncConflict);
+      } finally {
+        if (owns()) setDeletingHistoryId(null);
+      }
+      return;
+    }
     const operation = new AbortController();
     deleteOperation.current = operation;
 
@@ -684,8 +722,22 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     }
   }
 
+  async function cancelOfflineDeletion(id: string, mutationId: string) {
+    if (!owns()) return;
+    try {
+      const cancelled = await localSessions.cancelOfflineDelete(mutationId);
+      if (!owns()) return;
+      setPendingUndo(null);
+      if (!cancelled) setHistoryDeleteError(iorbitR21Copy[locale.language].undoFailed);
+    } catch {
+      if (owns()) setHistoryDeleteError(iorbitR21Copy[locale.language].undoFailed);
+    }
+  }
+
   async function undoDelete() {
-    if (pendingUndo) await restoreDeletion(pendingUndo.id, pendingUndo.token);
+    if (!pendingUndo) return;
+    if ("mutationId" in pendingUndo) await cancelOfflineDeletion(pendingUndo.id, pendingUndo.mutationId);
+    else await restoreDeletion(pendingUndo.id, pendingUndo.token);
   }
 
   return (
@@ -694,8 +746,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       confirmDelete={confirmDelete}
       deleting={deletingHistoryId !== null}
       draft={draftMessage}
-      error={sendError ?? historyDeleteError ?? organizationError ?? activeHistoryPageError ?? (serverSearchActive && serverSearchState.kind === "failure" ? serverSearchState.error.message : null)}
+      error={sendError ?? historyDeleteError ?? organizationError ?? (failedAiWrite ? failedAiWrite.lastErrorCode === "PIN_LIMIT" ? iorbitR21Copy[locale.language].pinLimit : iorbitR21Copy[locale.language].syncConflict : null) ?? activeHistoryPageError ?? (serverSearchActive && serverSearchState.kind === "failure" ? serverSearchState.error.message : null)}
       history={historyItems}
+      hasPendingWrites={pendingAiWrites}
       historyHasMore={historyHasMore && historyQuerySettled}
       historyLoading={historyKind === "loading" || historyPaging || (serverSearchActive && serverSearchState.kind === "loading")}
       historyNotice={historyNotices.find((notice) => notice.onRetry) ?? null}
@@ -707,6 +760,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       onClose={() => { if (router.canGoBack()) router.back(); else router.replace("/home" as Href); }}
       onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
       onDelete={item => { if (owns()) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
+      onDiscardFailedWrite={failedAiWrite ? () => { void localSessions.discardFailedMutation(failedAiWrite.mutationId).then(discarded => {
+        if (owns() && discarded) { setOrganizationError(null); setHistoryDeleteError(null); void localSessions.refresh(); }
+      }).catch(() => { if (owns()) setOrganizationError(iorbitR21Copy[locale.language].syncConflict); }); } : undefined}
       onDraftChange={value => { if (owns()) { navigationLock.current = false; setDraftMessage(value); } }}
       onHistoryClose={() => setHistoryOpen(false)}
       onHistoryOpen={() => setHistoryOpen(true)}

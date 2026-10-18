@@ -2,6 +2,8 @@ import type { SyncRecord } from "../api/contract/sync";
 import type { AiSessionSummaryItemContract, AiSessionSummaryPageContract } from "../api/contract/ai-session-page";
 import type { AiSessionReferenceContract } from "../api/contract/ai-sessions";
 import { aiSessionSummaryItemSchema } from "../api/schema/ai-session-page";
+import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
+import { parseOfflineAiSessionDelete, parseOfflineAiSessionRequest, type OfflineAiSessionDeleteInput, type OfflineAiSessionMutationInput } from "../data/sync/ai-session-outbox-mutation";
 
 /**
  * Sprint 0118 (AI B3): the AI session list and the messages of opened
@@ -18,6 +20,31 @@ export function aiSessionRows(records: readonly SyncRecord<Record<string, unknow
     if (parsed.success && parsed.data.id === record.id) rows.push(parsed.data as AiSessionSummaryItemContract);
   }
   return rows;
+}
+
+/** Show a durable local organization edit until its acknowledgement replaces the mirror row. */
+export function overlayAiSessionMutations(
+  rows: readonly AiSessionSummaryItemContract[],
+  queued: readonly LocalSyncQueuedMutation[],
+): AiSessionSummaryItemContract[] {
+  const patches = new Map<string, ReturnType<typeof parseOfflineAiSessionRequest>["requestBody"]>();
+  const deleted = new Map<string, number>();
+  for (const mutation of queued) {
+    if (mutation.state !== "queued" && mutation.state !== "sending") continue;
+    if (mutation.operation === "delete") {
+      try { deleted.set(mutation.id, parseOfflineAiSessionDelete(mutation as OfflineAiSessionDeleteInput).expectedRevision); }
+      catch { /* Invalid stored request cannot hide a row. */ }
+      continue;
+    }
+    try { patches.set(mutation.id, parseOfflineAiSessionRequest(mutation as OfflineAiSessionMutationInput).requestBody); }
+    catch { /* An invalid stored request cannot alter the visible mirror. */ }
+  }
+  return rows.filter(row => deleted.get(row.id) !== row.organization.revision).map(row => {
+    const request = patches.get(row.id);
+    return request && request.expectedRevision === row.organization.revision
+      ? { ...row, organization: { ...row.organization, ...request.patch } }
+      : row;
+  });
 }
 
 function compare(left: AiSessionSummaryItemContract, right: AiSessionSummaryItemContract): number {

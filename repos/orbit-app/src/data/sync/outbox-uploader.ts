@@ -12,6 +12,7 @@ export interface OutboxUploadResponse {
   status: number;
   record?: SyncRecord;
   snapshot?: unknown;
+  errorCode?: string;
   retryAfterMs?: number | null;
 }
 
@@ -164,7 +165,7 @@ export function createOutboxUploader(input: {
         return { ...counts, success: false, terminal: false, permanentFailure: false, pauseDomain: true, unauthorized: false };
       }
       if (response.status === 409 || response.status === 404) {
-        await input.repository.markOutboxMutationFailure({ mutationId: mutation.mutationId, state: "conflict", nextRetryAt: null, errorCode: response.status === 409 ? "CONFLICT" : "TARGET_NOT_FOUND", serverSnapshot: response.snapshot });
+        await input.repository.markOutboxMutationFailure({ mutationId: mutation.mutationId, state: "conflict", nextRetryAt: null, errorCode: response.status === 409 ? response.errorCode === "PIN_LIMIT" ? "PIN_LIMIT" : "CONFLICT" : "TARGET_NOT_FOUND", serverSnapshot: response.snapshot });
         counts.conflicts += 1;
         return { ...counts, success: false, terminal: true, permanentFailure: false, pauseDomain: false, unauthorized: false };
       }

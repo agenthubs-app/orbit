@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AiSessionSummaryItemContract } from "../api/contract/ai-session-page";
 import { mirrorFreshness, type MirrorFreshness } from "../data/sync/mirror-freshness";
-import { aiSessionMessages, aiSessionRows, type LocalAiMessage } from "../view-models/ai-sessions-local";
+import { aiSessionMessages, aiSessionRows, overlayAiSessionMutations, type LocalAiMessage } from "../view-models/ai-sessions-local";
+import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
+import type { OfflineAiSessionDeleteInput, OfflineAiSessionMutationInput } from "../data/sync/ai-session-outbox-mutation";
 import { useMirrorProbe } from "./useMirrorProbe";
 import { useSyncedCollection } from "./useSyncedCollection";
 
@@ -14,17 +16,50 @@ export interface LocalAiSessionsState {
   available: boolean;
   rows: readonly AiSessionSummaryItemContract[];
   freshness: MirrorFreshness;
+  queuedMutations: readonly LocalSyncQueuedMutation[];
+  enqueueOfflineMutation(mutation: OfflineAiSessionMutationInput | OfflineAiSessionDeleteInput): Promise<void>;
+  cancelOfflineDelete(mutationId: string): Promise<boolean>;
+  discardFailedMutation(mutationId: string): Promise<boolean>;
+  refreshQueued(): Promise<void>;
   refresh(): Promise<unknown>;
 }
 
 export function useLocalAiSessionsSource(available: boolean, probe: boolean): LocalAiSessionsState {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "ai_session" });
   const refresh = state.refresh;
+  const [queuedMutations, setQueuedMutations] = useState<LocalSyncQueuedMutation[]>([]);
+  const refreshQueued = useCallback(async () => {
+    const session = state.currentSession();
+    if (!available || !session) { setQueuedMutations([]); return; }
+    const overlay = await session.readOutboxOverlay("ai_session");
+    setQueuedMutations([...(overlay?.queuedMutations ?? [])]);
+  }, [available, state.currentSession]);
+  useEffect(() => { void refreshQueued().catch(() => setQueuedMutations([])); }, [refreshQueued, state.lastSyncedAt, state.records, state.status]);
+  const enqueueOfflineMutation = useCallback(async (mutation: OfflineAiSessionMutationInput | OfflineAiSessionDeleteInput) => {
+    const session = state.currentSession();
+    if (!available || !session) throw new TypeError("AI session mirror is unavailable");
+    await session.enqueueOfflineAiSessionMutation(mutation);
+    await refreshQueued();
+  }, [available, refreshQueued, state.currentSession]);
+  const cancelOfflineDelete = useCallback(async (mutationId: string) => {
+    const session = state.currentSession();
+    if (!available || !session) return false;
+    const cancelled = await session.cancelOfflineAiSessionDelete(mutationId);
+    await refreshQueued();
+    return cancelled;
+  }, [available, refreshQueued, state.currentSession]);
+  const discardFailedMutation = useCallback(async (mutationId: string) => {
+    const session = state.currentSession();
+    if (!available || !session) return false;
+    const discarded = await session.discardOfflineAiSessionMutation(mutationId);
+    await refreshQueued();
+    return discarded;
+  }, [available, refreshQueued, state.currentSession]);
   useMirrorProbe(refresh, available && probe);
   const freshness = mirrorFreshness(state, available);
-  const rows = useMemo(() => (available ? aiSessionRows(state.records) : []), [available, state.records]);
-  return useMemo(() => ({ available, rows, freshness, refresh }),
-    [available, rows, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh]);
+  const rows = useMemo(() => (available ? overlayAiSessionMutations(aiSessionRows(state.records), queuedMutations) : []), [available, state.records, queuedMutations]);
+  return useMemo(() => ({ available, rows, freshness, queuedMutations, enqueueOfflineMutation, cancelOfflineDelete, discardFailedMutation, refreshQueued, refresh }),
+    [available, rows, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, queuedMutations, enqueueOfflineMutation, cancelOfflineDelete, discardFailedMutation, refreshQueued, refresh]);
 }
 
 /**

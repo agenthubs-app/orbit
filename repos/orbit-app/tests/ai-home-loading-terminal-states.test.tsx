@@ -59,3 +59,9 @@ test("R21 a later-page failure retains already loaded history", () => {
   assert.equal(html.includes("残った会話"), true);
   assert.equal(html.includes("続きを読み込めません"), true);
 });
+
+test("R21 an offline organization edit is visibly waiting to sync", () => {
+  assert.equal(start({ offline: true, hasPendingWrites: true }).includes("更改待同步"), true);
+  assert.equal(start({ offline: true, hasPendingWrites: false }).includes("更改待同步"), false);
+  assert.equal(start({ onDiscardFailedWrite: noop }).includes("放弃本次更改"), true);
+});

@@ -66,7 +66,7 @@ function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
 
 export function IOrbitStartView({
   contactCount, confirmDelete, deleting, draft, error, history, historyHasMore,
-  historyLoading, historyNotice, historyOpen, historyQuery, offline, offlineAt, onClose, onConfirmDelete,
+  historyLoading, historyNotice, historyOpen, historyQuery, offline, offlineAt, hasPendingWrites, onDiscardFailedWrite, onClose, onConfirmDelete,
   onCancelDelete, onDelete, onDraftChange, onHistoryClose, onHistoryOpen, onHistoryQueryChange,
   onLoadMore, onNew, onNewGoal, onOpen, onOpenGoal, onOpenIntake, onPin, onRename, onScan, onSend, onUndo, planGoals, planIntakes, suggestions,
   undoAvailable,
@@ -84,6 +84,8 @@ export function IOrbitStartView({
   historyQuery: string;
   offline: boolean;
   offlineAt: string | null;
+  hasPendingWrites?: boolean;
+  onDiscardFailedWrite?: (() => void) | undefined;
   onClose: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -142,20 +144,24 @@ export function IOrbitStartView({
         </View></Card> : null}
         <View style={styles.starters}>
           {suggestions.slice(0, 4).map((item) => <UiPressable key={item.key} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => onSend(item.label)} style={styles.starter}>
-            <MacTile emoji={item.emoji} tone="lav" size="sm" /><UiText style={styles.starterText}>{item.label}</UiText><Icon name="right" size={16} color={colors.ink3Text} />
+            <MacTile emoji={item.emoji} tone="lav" size="sm" /><UiText style={styles.starterText}>{item.label}</UiText>
           </UiPressable>)}
         </View>
         {recent.length ? <Card><View style={styles.sectionHead}><UiText style={styles.cardTitle}>{copy.recent}</UiText><Button label={copy.all} variant="ghost" size="sm" onPress={onHistoryOpen} /></View>
           {recent.map((item) => <UiPressable key={`${item.source}:${item.id}`} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => onOpen(item)} style={styles.recentRow}>
-            <View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{item.title}</UiText><UiText numberOfLines={1} style={styles.recentMeta}>{item.when}</UiText></View><Icon name="right" size={16} color={colors.ink3Text} />
+            <View style={styles.recentIcon}><Icon name="clock" size={16} color={colors.ink2} /></View>
+            <UiText numberOfLines={1} style={[styles.recentTitle, styles.recentRowTitle]}>{item.title}</UiText>
+            <UiText numberOfLines={1} style={styles.recentWhen}>{item.when}</UiText>
           </UiPressable>)}
         </Card> : null}
         {offline ? <UiText accessibilityRole="alert" style={styles.muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.historyAt}` : copy.savedHistory}</UiText> : null}
+        {hasPendingWrites ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.syncPending}</UiText> : null}
         <View style={styles.composer}>
           <TextInput accessibilityLabel={copy.ask} autoCorrect multiline={false} onChangeText={onDraftChange} onSubmitEditing={() => onSend()} placeholder={copy.askPlaceholder} placeholderTextColor={colors.ink3Text} returnKeyType="send" style={styles.input} value={draft} />
           <IconButton icon="send" accessibilityLabel={copy.send} onPress={() => onSend()} disabled={!draft.trim() || offline} solid />
         </View>
         {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
+        {onDiscardFailedWrite ? <Button label={copy.discardChange} variant="ghost" onPress={onDiscardFailedWrite} /> : null}
         {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
         <UiText style={styles.muted}>{copy.manualSend}</UiText>
       </View>
@@ -165,7 +171,9 @@ export function IOrbitStartView({
       <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder={copy.searchHistory} />
       {historyLoading && !history.length ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.loading}</UiText> : null}
       {historyNotice ? <View style={styles.notice}><UiText accessibilityRole="alert" style={styles.error}>{historyNotice.message}</UiText>{historyNotice.onRetry ? <Button label={historyNotice.retryLabel ?? copy.retry} variant="ghost" size="sm" onPress={historyNotice.onRetry} /> : null}</View> : null}
+      {hasPendingWrites ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.syncPending}</UiText> : null}
       {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
+      {onDiscardFailedWrite ? <Button label={copy.discardChange} variant="ghost" onPress={onDiscardFailedWrite} /> : null}
       {undoAvailable ? <Button label={copy.undo} variant="ghost" icon="undo" onPress={onUndo} /> : null}
       {!history.length && !historyLoading && !historyNotice ? <UiText style={styles.muted}>{historyQuery ? copy.noMatch : copy.noHistory}</UiText> : null}
       {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{copy[label]}</UiText>
@@ -209,20 +217,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: spacing.sm, paddingBottom: spacing.md },
   headerTitle: { color: colors.ink, fontSize: typography.titleSm, fontWeight: "800", flexShrink: 1 },
   body: { gap: spacing.lg, paddingBottom: spacing.xl },
-  greeting: { alignItems: "flex-start", gap: spacing.sm, paddingTop: spacing.xl },
+  greeting: { alignItems: "flex-start", gap: spacing.sm },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "800", flexShrink: 1, lineHeight: 30 },
   subtitle: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 21 },
   emptyCard: { gap: spacing.sm, alignItems: "flex-start" },
   cardTitle: { color: colors.ink, fontSize: typography.body, fontWeight: "800", flex: 1 },
-  starters: { gap: spacing.sm },
-  starter: { flexDirection: "row", alignItems: "center", minHeight: 64, gap: spacing.sm, padding: spacing.md, borderRadius: 20, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1 },
+  starters: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: spacing.sm },
+  starter: { width: "48%", minHeight: 106, alignItems: "flex-start", justifyContent: "space-between", gap: spacing.xs, padding: spacing.md, borderRadius: 20, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1 },
   starterText: { flex: 1, color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
   sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   recentRow: { flexDirection: "row", alignItems: "center", minHeight: 52, gap: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  recentIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
   recentCopy: { flex: 1, minWidth: 0, gap: spacing.xxs },
   recentTitle: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
+  recentRowTitle: { flex: 1 },
+  recentWhen: { color: colors.ink3Text, fontSize: typography.label },
   recentMeta: { color: colors.ink3Text, fontSize: typography.label },
-  composer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface, borderRadius: 22, borderColor: colors.line, borderWidth: 1, paddingHorizontal: spacing.sm, minHeight: 58 },
+  composer: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xl, backgroundColor: colors.surface, borderRadius: 22, borderColor: colors.line, borderWidth: 1, paddingHorizontal: spacing.sm, minHeight: 58 },
   input: { flex: 1, minWidth: 0, color: colors.ink, fontSize: typography.body, paddingHorizontal: spacing.sm, minHeight: 44 },
   error: { color: colors.coralText, fontSize: typography.bodySm },
   muted: { color: colors.ink3Text, fontSize: typography.label },

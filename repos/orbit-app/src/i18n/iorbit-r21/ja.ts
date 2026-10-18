@@ -16,6 +16,7 @@ export const iorbitR21Ja = {
   deleteDetail: "会話内で追加したタスクや予定は削除されません。", deleting: "削除中…",
   pinLimit: "ピン留めは5件までです。別の会話のピン留めを外してください。",
   deleted: "削除しました", undoFailed: "元に戻せませんでした。削除期限が過ぎた可能性があります。",
+  syncPending: "変更は未同期", syncConflict: "会話の変更を同期できませんでした。再試行してください。", discardChange: "この変更を破棄",
   draftUnavailable: "下書きを確認できません。もう一度お試しください。",
   noPendingDraft: "この会話に確認待ちの下書きはありません。",
   cannotOpen: "会話を開けませんでした", conversationAt: "時点の会話",
