@@ -16,6 +16,12 @@ rebase 後の軽量確認は Web notes route/service と task planLink route/ser
 
 21:19、再適用後の D Web full (`_evidence-d/R20b/run-01/d-web-full-post-rebase-324218dda.log`) は **7,789 tests / 6,716 pass / 39 fail / 0 cancelled / 1,034 skip、exit1**。前回 retained 40 failure names と正規化して比較すると新規名は 0、旧 R12 手入力 undo の 1 件だけ今回通過した。skip の 1 件増は一般 task-list の stale plan ETag 回帰を明示して止めたもの。39 fail とその skip は未解消であり、全量 green や SC-11 達成とは記さない。
 
+21:21 監視点で `origin/redesign` は R31a 独立 REVIEW の `805b2ee7c` に進んだ。D は REPORT を `3cae527b8` に確定してから 164 commits を衝突なしに rebase し、HEAD `0e61b13cc`、ahead 164 / behind 0、worktree clean、`git diff --check` exit0。追加 upstream は REVIEW 文書のみで、21:12／21:19 の full 結果を新しい product source の合格とは言い換えない。
+
+待機していた D Web `typecheck:app` / lint の旧 queue wrapper は双方 **exit137・出力 0 byte** で終了しており、実行済みとは扱わない。21:28、現 HEAD で独立ログ `d-web-app-tsc-post-rebase-805b2ee7c.log` と `d-web-lint-post-rebase-805b2ee7c.log` にそれぞれ再実行し、双方 **exit0**。前者は診断なし、後者もエラーなし。中断原因は未特定であり、App full の新規 timeout 10 件の再現確認はまだ必要。
+
+21:42、App full で新たに timeout した 10 件を同じ product source で絞って再実行した。通知登録競合 file は **16/16 pass** (`d-app-notification-race-focused-post-rebase-805b2ee7c.log`)、profile の旧 callback scope、password reset、personal schedule の name-filtered serial run は **43/43 pass** (`d-app-timeout-focused-post-rebase-805b2ee7c.log`)。前回の新 10 件はこの再実行ですべて通ったため、full 並列時の時間余裕が疑わしい。ただし 21:12 の full **19 fail / 2 cancelled** は依然として赤であり、この局所再実行だけで「全量新規 0」とはしない。`--test-concurrency=4` の App full を公平キューに再登録し、同じ HEAD で失敗名を再比較する。
+
 ## 18:22 主会話継続の検証キュー（結果待ち）
 
 D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-board-preflight.log` は **0 byte**、対応 runner PID も消えた。これは合格／失敗ではなく未実行として扱う。主会話は clean `66769b462` から独立した新規ログ名で App／Web `typecheck`、Web `typecheck:app`、App／Web 画板 preflight、Web full を全機 `heavy.sh` の公平キューへ再登録した。先に独立登録済みの App full も待機中。開始時の実際の source を確認してから成績を追記し、旧空ログを結果へ読み替えない。
