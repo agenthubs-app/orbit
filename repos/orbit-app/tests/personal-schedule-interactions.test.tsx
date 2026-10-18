@@ -145,6 +145,28 @@ test("personal list reads owned collection, opens detail and distinguishes failu
   await p.getByText("暂无个人日程", { exact: true }).waitFor();
   assert.equal(await p.getByText("个人日程加载失败", { exact: true }).count(), 0);
 });
+
+test("Japanese personal editor does not show the server language after a failed read", async t => {
+  const p = await open(t, { language: "ja" });
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ holdReads: true }); s.refresh(); });
+  await p.waitForFunction(() => (window as any).fixture.requests.length > 1);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
+  await p.getByText(/Orbit 服务暂不可用|予定を読み込めません。もう一度お試しください。/).waitFor();
+  assert.equal(await p.getByText("Orbit 服务暂不可用，请稍后再试。", { exact: true }).count(), 0);
+  await p.getByText("予定を読み込めません。もう一度お試しください。", { exact: true }).waitFor();
+});
+
+test("Japanese personal editor keeps the draft and does not show the server language after a failed save", async t => {
+  const p = await open(t, { language: "ja" });
+  await p.getByRole("textbox", { name: "予定名", exact: true }).fill("変更した予定");
+  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
+  await p.getByText(/Orbit 服务暂不可用|操作を完了できませんでした。下書きは保持されています。もう一度お試しください。/).waitFor();
+  assert.equal(await p.getByText("Orbit 服务暂不可用，请稍后再试。", { exact: true }).count(), 0);
+  await p.getByText("操作を完了できませんでした。下書きは保持されています。もう一度お試しください。", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("textbox", { name: "予定名", exact: true }).inputValue(), "変更した予定");
+});
 async function fill(p: Page, label: string, value: string) {
   const date = ["开始日期", "结束日期", "重复结束日期", "Repeat end date", "繰り返しの終了日"].includes(label);
   const time = ["开始时间", "结束时间"].includes(label);

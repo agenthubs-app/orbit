@@ -80,7 +80,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     if (!ready || !id) { setLoading(false); return; }
     setLoading(source.loading);
     const item = source.item;
-    if (!item) { if (!source.loading && (source.errorKey || source.errorText)) setError(source.errorKey ? locale.t(source.errorKey) : source.errorText); return; }
+    if (!item) { if (!source.loading && (source.errorKey || source.errorText)) setError(locale.t(source.errorKey ?? "schedule.readFailed")); return; }
     if (item.id !== id || item.ownerUserId !== actorId || item.accountId !== actorId) { setError(locale.t("schedule.readUnconfirmed")); return; }
     setLatest(item); setError("");
     if (!stateRef.current.baseline || stateRef.current.clean) { const savedZone = item.timeZone ?? stateRef.current.editZone; setEditZone(savedZone); setBaseline(item); setDraft(personalScheduleDraft(item, savedZone)); }
@@ -117,7 +117,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     try {
       const result = await client[method]<unknown>(path, { headers: { "x-orbit-personal-schedule-version": "3" }, body: { ...body, idempotencyKey: key }, signal: scope.controller.signal });
       if (!scope.active || current.current !== scope) return;
-      if (!result.success) { setError(result.error.message); return; }
+      if (!result.success) { setError(locale.t("schedule.operationFailed")); return; }
       const item = readPersonalSchedule(result.data);
       if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, receiptFields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }
       const readback = await client.get<unknown>(personalSchedulePath(item.id), { headers: { "x-orbit-personal-schedule-version": "3" }, signal: scope.controller.signal });
