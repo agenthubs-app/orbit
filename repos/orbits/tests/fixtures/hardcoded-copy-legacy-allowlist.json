@@ -629,10 +629,6 @@
       "hardcoded": 85,
       "missingJa": 0
     },
-    "app/(app)/app/tasks/personal/page.tsx": {
-      "hardcoded": 2,
-      "missingJa": 0
-    },
     "app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx": {
       "hardcoded": 11,
       "missingJa": 17

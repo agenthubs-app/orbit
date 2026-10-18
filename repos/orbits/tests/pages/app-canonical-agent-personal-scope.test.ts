@@ -21,7 +21,6 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
     [join(root, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => "zh", localizeOrbitTree: (tree: unknown) => tree },
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(root, "app/(app)/app/tasks/personal-schedule-workspace.tsx")]: { PersonalScheduleWorkspace: () => null },
     // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，页面挂的是 `IOrbitShell`。
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell: () => null },
     [join(root, "app/(app)/app/home/orbit-real-home.tsx")]: { OrbitRealHome: () => null },
@@ -50,7 +49,7 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
   return { calls, page: require(pagePath).default as () => Promise<ReactElement> };
 }
 
-for (const route of ["agent", "tasks/personal", "home/events"] as const) {
+for (const route of ["agent", "home/events"] as const) {
   test(`${route} resolves canonical ownership before reading or rendering private data`, async t => {
     const { page, calls } = loadPage(t, route);
     const tree = await page();
@@ -74,28 +73,28 @@ for (const route of ["agent", "tasks/personal", "home/events"] as const) {
     } else if (route === "home/events") {
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
-    } else {
-      const nodes: any[] = [tree];
-      const owners: string[] = [];
-      while (nodes.length) {
-        const node = nodes.pop();
-        if (!node?.props) continue;
-        if (node.props.actorId) owners.push(node.props.actorId);
-        nodes.push(...[node.props.children].flat());
-      }
-      assert.deepEqual(owners, ["account:canonical"]);
     }
   });
   test(`${route} fails closed without account membership`, async t => {
     const { page, calls } = loadPage(t, route, { missing: true });
-    await assert.rejects(page(), route === "tasks/personal"
-      ? /redirect:\/app\/account\/login/
-      : /Authenticated Orbit account membership is unavailable/);
+    await assert.rejects(page(), /Authenticated Orbit account membership is unavailable/);
     assert.deepEqual(calls.map(call => call.operation), ["auth", "identity"]);
   });
   test(`${route} redirects anonymous users before resolving or reading data`, async t => {
     const { page, calls } = loadPage(t, route, { anonymous: true });
     await assert.rejects(page(), /redirect:\/app\/account\/login/);
     assert.deepEqual(calls.map(call => call.operation), ["auth"]);
+  });
+}
+
+for (const [state, options] of [
+  ["member", {}],
+  ["missing membership", { missing: true }],
+  ["anonymous", { anonymous: true }],
+] as const) {
+  test(`tasks/personal redirects ${state} bookmarks to Task calendar without an old-route read`, t => {
+    const { page, calls } = loadPage(t, "tasks/personal", options);
+    assert.throws(() => page(), /redirect:\/app\/tasks\?tab=calendar/);
+    assert.deepEqual(calls, []);
   });
 }
