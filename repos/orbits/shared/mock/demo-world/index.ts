@@ -79,7 +79,10 @@ export const DEMO_PLAN = {
 
 export const DEMO_NOTES = [
   { id: "demo-note-watanabe", title: "渡辺さんと 30 分", body: "最初の2年は「作れるが売れない」。営業とデザインの仲間を入れて越えた。", personIds: ["demo-person-watanabe"], eventId: null, noteKind: "meeting", sample: true },
-  { id: "demo-note-cfo-night", title: "CFO Night のメモ", body: "山本さん：シリーズ A の資料は 12 枚まで。", personIds: ["demo-person-yamamoto"], eventId: "demo-event-cfo-night", noteKind: "free", sample: true },
+  { id: "demo-note-cfo-night", title: "CFO Night のメモ", body: "@CFO Night：山本さんはシリーズ A の資料を 12 枚までと助言。", personIds: ["demo-person-yamamoto"], eventId: "demo-event-cfo-night", mentions: [{ entityType: "event", eventId: "demo-event-cfo-night", start: 0, end: 10, displayText: "@CFO Night" }], noteKind: "free", sample: true },
+  { id: "demo-note-legacy", title: "創業メモ", body: "次の面談で聞くことを整理した。", personIds: [], eventId: null, sample: true },
+  { id: "demo-note-voice", title: "会場の音声メモ", body: "イベント後に要点を残した。", personIds: [], eventId: "demo-event-saas-summit", noteKind: "voice", sample: true },
+  { id: "demo-note-next-meeting", title: "次の面談で聞くこと", body: "技術と営業の優先順位を確認する。", personIds: ["demo-person-kobayashi"], eventId: null, noteKind: "free", sample: true },
 ] as const;
 
 export const DEMO_TODOS = [
