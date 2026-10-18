@@ -36,6 +36,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
   const pathname = usePathname() ?? "/app/tasks";
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<TaskTab>(initialTab);
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
   const choose = (next: TaskTab) => {
     setTab(next);
     // Keep the slot's own parameters (for example the To-do view) when switching tabs.

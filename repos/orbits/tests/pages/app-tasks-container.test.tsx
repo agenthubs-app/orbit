@@ -20,11 +20,14 @@ test.before(async () => {
     import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
     const f = window.shellFixture;
     const plan = f.plan === "screen" ? <main data-orbit-real-page="agent"><h2>my plan</h2><div style={{ height: 2400 }} /><p id="plan-action-a1">action a1</p></main> : f.plan === "none" ? null : undefined;
-    createRoot(document.getElementById("root")).render(<TaskContainer initialTab={f.tab} plan={plan} planStartHref="/app/start"
+    const root = createRoot(document.getElementById("root"));
+    const renderTab = (tab) => root.render(<TaskContainer initialTab={tab} plan={plan} planStartHref="/app/start"
       calendar={<main data-orbit-real-page="tasks"><p>personal schedule</p></main>}
       todo={<main data-orbit-real-page="tasks"><input aria-label="new to-do" /><p>to-do list</p>
         <div role="radiogroup" aria-label="view"><button type="button" role="radio" aria-checked="true">open</button><button type="button" role="radio" aria-checked="false">done</button></div>
         <div tabIndex={0} aria-label="board" style={{ overflowX: "auto" }}>wide board</div></main>} />);
+    window.renderTaskTab = renderTab;
+    renderTab(f.tab);
   `, SHELL_STUBS);
   browser = await launch();
 });
@@ -76,6 +79,14 @@ test("?tab= opens a tab directly; anything else is To-do", async (t) => {
   assert.equal(taskTabFrom(["calendar"]), "calendar");
   assert.equal(taskTabFrom("bogus"), "todo");
   assert.match(readFileSync("app/(app)/app/tasks/page.tsx", "utf8"), /<TaskContainer\n\s+initialTab=\{tab\}/u);
+});
+
+test("a same-page route update changes the selected Task tab without another navigation", async (t) => {
+  const page = await container(t, "todo");
+  await page.evaluate(() => (window as any).renderTaskTab("calendar"));
+  await page.getByText("personal schedule").waitFor();
+  assert.equal(await page.getByRole("tab", { selected: true }).textContent(), "カレンダー");
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), []);
 });
 
 // Product decision (a), R07 review M5: プラン shows the existing plan screen; the
