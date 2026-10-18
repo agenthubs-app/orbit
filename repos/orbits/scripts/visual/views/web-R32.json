@@ -173,7 +173,12 @@
       "width": 1440,
       "click": "[data-events-code] button",
       "wait-for": "[role=dialog]",
-      "note": "R32 来源 web-R26.json: 参加コード入力 Modal 380（fixture assess-empty）；Modal 定位属组件库（自定决定 7）",
+      "steps": [
+        { "click": "[data-events-code-input] input:first-child" },
+        { "type": "7QKMH4T" },
+        { "wait": 300 }
+      ],
+      "note": "R32 W06：b12 #320 为 8 格中的前 7 格 7QKMH4T，末格留空并保留焦点；不得输入第 8 格或触发提交。",
       "grid": 30
     },
     {
@@ -190,7 +195,8 @@
         "[data-cohost=\"demo-actor-kobayashi\"] [aria-haspopup=menu]",
         "[role=menu] [role=menuitem]"
       ],
-      "note": "R32 来源 web-R17.json: P26 共同運営者抽屉（b6 #20，背景 = 概要 進行中；画板小林 受付→管理者 编辑中 → 点小林 ⋮ →「管理者にする」）；未过（待组件库）：画板抽屉 540 宽、内边距 22，组件库 Drawer 只有 380 / 520 / 600、bare 内边距 20（G23）",
+      "region": "906,14,520,932",
+      "note": "R32 W07：按决定表 §52-1 只比 b6 #20 的 520 抽屉；906,14,520,932 已在 R31b 同宽三联图复核，当前截图仍须检查。背景柱高不计。",
       "grid": 30
     },
     {
