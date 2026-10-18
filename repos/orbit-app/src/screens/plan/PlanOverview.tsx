@@ -194,7 +194,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         title={t("plan.achieve.title")}
         message={t("plan.achieve.body", { people: talkedPeople, total: score.total })}
         confirmLabel={t("plan.achieve.confirm")}
-        stacked
+        icon={{ emoji: "\u{1F3C1}" }}
         onConfirm={achieve}
         onCancel={() => setAchieveOpen(false)}
       />

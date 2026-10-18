@@ -396,6 +396,7 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
       <MailDraftSheet visible={intro !== null} onClose={() => setIntro(null)} title={t("plan.mail.introTitle")} subtitle={intro ? t("plan.mail.introSub", { letter: detail.letter, name: intro.viaName }) : undefined} to={intro?.viaName} subject={intro?.subject ?? ""} body={intro?.body ?? ""} />
       <ConfirmDialog
         visible={skipAsk}
+        icon={{ emoji: "\u{1F9E0}" }}
         title={t("plan.skip.title")}
         message={t("plan.skip.body", { points: Math.max(0, detail.allocation - detail.earned) })}
         confirmLabel={t("plan.skip.confirm")}
