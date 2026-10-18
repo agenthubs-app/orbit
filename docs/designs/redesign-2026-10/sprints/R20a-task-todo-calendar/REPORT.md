@@ -528,6 +528,12 @@ D 専用 simulator にのみ install して、localhost:8085 の offline Metro �
 
 この screenshot は API localhost:3000 未起動の offline public screen であり、private To-do / calendar / proposal を操作していない。D-only local test identity / schema と actual native readback が未承認・未構築なので、C 用 identity を転用しない。SC-05 / SC-06 native operation と SC-15 pixel は OPEN のまま。ログイン画面の英語見出しに中国語 `暂时无法确认这台设备…` が混在する `AccountAuthScreen.tsx:291` も観測したが、R18a PLANNER §1 がこの screen を R18b / R18c 所有と明記するため、auth owner への文案 handoff とし、D / C は直さない。
 
+### App Task 週の月曜始まり修正（2026-10-18）
+
+既存の R20a 記録では Task 週は月曜始まり、月グリッドは日曜始まりとしているが、App `calendarDateKeys(..., "week")` は日曜始まりで、`scheduleToCalendarView` にも `weekStartsOn: 0` を渡していた。週の date keys と projection を月曜始まりに揃え、月グリッドは変更しなかった。これにより選択日 2026-10-07 の週は 10-05～10-11 となり、日曜 10-11 の予定が週末列に残る。外部予定の読取窓も同じ local week を使うため、東京では `2026-10-04T15:00:00.000Z`～`2026-10-11T15:00:00.000Z` となる。
+
+TDD: projection / external-range の変更後、product 修正前の RED は 3 件の期待どおりの不一致。product 修正後、正しい render-hooks harness を含む定向テストは **17/17 pass**、App typecheck は **exit 0**。App full は `_evidence-d/R20a/run-01/d-app-full-week-monday-working-tree.log` に **3343 total / 3330 pass / 11 fail / 2 skip、exit 1**。前回 `d-app-full-task-race-fix.log` の 3342 / 3329 / 11 / 2 と比べると新しい一件が pass、失敗 11 件の名前は完全一致（R12 camera / batch 九件、split-dictionary pin 一件、joined-person 一件）。full-green と呼ばず、既存 baseline failure を残す。今回の patch は App calendar projection / 対応 test と本記録のみで、面談 source gap、offline calendar、native / pixel gate を解決したとは扱わない。
+
 ## 请求
 
 - D native operation owner / 主会話：D-only localhost API、隔離 schema / workspace / fake actor の exact identity と作成・cleanup 境界を決めてほしい。C の `orbit_line_c_test` / actor / simulator / Metro receipt は D の SC-05 / SC-06 native 操作証拠に転用しない。決定前は public startup までとし、private To-do / calendar readback と SC-15 pixel を pass にしない。

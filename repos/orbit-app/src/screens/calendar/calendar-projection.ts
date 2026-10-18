@@ -18,8 +18,9 @@ export function calendarDateKeys(dateKey: string, mode: CalendarMode): string[] 
   if (!validDateKey(dateKey)) return [];
   if (mode === "day") return [dateKey];
   if (mode === "week") {
-    const sunday = shiftScheduleDateKey(dateKey, -new Date(`${dateKey}T00:00:00Z`).getUTCDay());
-    return Array.from({ length: 7 }, (_, index) => shiftScheduleDateKey(sunday, index));
+    const weekday = new Date(`${dateKey}T00:00:00Z`).getUTCDay();
+    const monday = shiftScheduleDateKey(dateKey, -((weekday + 6) % 7));
+    return Array.from({ length: 7 }, (_, index) => shiftScheduleDateKey(monday, index));
   }
   const year = Number(dateKey.slice(0, 4)), month = Number(dateKey.slice(5, 7));
   const first = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -102,7 +103,7 @@ export function calendarProjection(input: CalendarInput): CalendarProjection {
   if (!scheduleItems) return { kind: "invalid_schedule" };
   const view = scheduleToCalendarView({
     events: input.events, language: input.language, now: input.now, scheduleItems: { scheduleItems },
-    selectedDateKey: input.dateKey, tasks: input.tasks, timeZone: input.timeZone, weekStartsOn: 0,
+    selectedDateKey: input.dateKey, tasks: input.tasks, timeZone: input.timeZone, weekStartsOn: 1,
   });
   const today = localParts(input.now, input.timeZone).date;
   const formatter = new Intl.DateTimeFormat(input.language === "zh" ? "zh-CN" : input.language === "ja" ? "ja-JP" : "en-US", { timeZone: "UTC", weekday: "short" });

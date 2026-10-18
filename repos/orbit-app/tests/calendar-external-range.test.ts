@@ -9,6 +9,9 @@ test("external reads cover the selected local calendar window without crossing t
   const month = calendarExternalRanges("2026-02-12", "month", "Asia/Tokyo");
   assert.equal(month.length, 1);
   assert.equal((Date.parse(month[0]!.to) - Date.parse(month[0]!.from)) / 86_400_000, 28);
+  assert.deepEqual(calendarExternalRanges("2026-10-07", "week", "Asia/Tokyo"), [
+    { from: "2026-10-04T15:00:00.000Z", to: "2026-10-11T15:00:00.000Z" },
+  ]);
 });
 
 test("a six-week month spanning fall DST splits instead of dropping the final hour", () => {
