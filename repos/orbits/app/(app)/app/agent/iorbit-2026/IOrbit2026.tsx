@@ -13,7 +13,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
 import { standardCopyFor } from "../../orbit-2026/copy/standard";
 import { ShellPage } from "../../orbit-2026/shell/slots";
-import { Button, Card, Chip, ConfirmDialog, ContextMenu, Drawer, Icon, IconButton, ListRow, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
+import { Button, Card, ConfirmDialog, ContextMenu, Drawer, Icon, IconButton, ListRow, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
 import { AgentActionStatusCard } from "../agent-action-status-card";
 import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
 import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
@@ -67,7 +67,7 @@ function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; hi
     if (id && typeof window !== "undefined") void navigator.clipboard?.writeText(`${window.location.origin}/app/agent?session=${encodeURIComponent(id)}`);
   };
   return (
-    <div className={styles.historyRow}>
+    <div className={styles.historyRow} data-orbit-iorbit-history-row>
       {renaming ? (
         <form className={styles.rename} onSubmit={(event) => { event.preventDefault(); history.renameHistorySession(item, title); setRenaming(false); }}>
           <input autoFocus aria-label={t(iorbitCopy.name)} value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(false); }} />
@@ -311,10 +311,17 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
                 <span className={styles.suggestionIcon} aria-hidden>{suggestion.icon}</span><span>{suggestion.label}</span><Icon name="right" size={16} />
               </button>)}
             </div>
-            {recent.length ? <Card><div className={styles.recentHead}><b>{t(iorbitCopy.recent)}</b><Button label={t(iorbitCopy.all)} variant="ghost" size="sm" onClick={() => setHistoryOpen(true)} /></div>
+            {recent.length && (!historyOpen || narrow) ? <Card><div className={styles.recentHead}><b>{t(iorbitCopy.recent)}</b><Button label={t(iorbitCopy.all)} variant="ghost" size="sm" onClick={() => setHistoryOpen(true)} /></div>
               {recent.map((item) => <ListRow key={item.id} title={item.title} subtitle={item.date} leading={<Icon name="chat" size={16} />} onSelect={() => pick(item)} />)}
             </Card> : null}
-            <div className={styles.capabilities}><Chip label={fill(t(iorbitCopy.peopleCount), { n: home?.stats.people ?? 0 })} /><Chip label={fill(t(iorbitCopy.eventsCount), { n: home?.stats.events ?? 0 })} /><Chip label={t(iorbitCopy.plan)} /></div>
+            <Card className={styles.capabilities}><div className={styles.capabilityTitle}>{t(iorbitCopy.capabilitiesTitle)}</div><div className={styles.capabilityGrid}>
+              {([
+                ["home", iorbitCopy.homeCapability, iorbitCopy.homeCapabilityDetail],
+                ["users", iorbitCopy.peopleCapability, iorbitCopy.peopleCapabilityDetail],
+                ["calendar", iorbitCopy.eventsCapability, iorbitCopy.eventsCapabilityDetail],
+                ["target", iorbitCopy.plan, iorbitCopy.planCapabilityDetail],
+              ] as const).map(([icon, label, detail]) => <div className={styles.capability} key={icon}><Icon name={icon} size={16} /><b>{t(label)}</b><span>{t(detail)}</span></div>)}
+            </div></Card>
           </section> : <section className={styles.thread} aria-label={t(iorbitCopy.conversation)} data-orbit-iorbit-thread>
             {chat.earlier.hasMore || chat.earlier.status === "error" ? <Button label={t(chat.earlier.status === "error" ? iorbitCopy.earlierRetry : iorbitCopy.earlier)} variant="ghost" onClick={() => void chat.loadEarlier()} disabled={chat.earlier.status === "loading"} /> : null}
             {chat.messages.map((message, index) => message.role === "user" ?

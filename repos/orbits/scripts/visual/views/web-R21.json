@@ -14,13 +14,15 @@
   "views": [
     {
       "id": "W-R21-03",
-      "app": "/app/agent",
+      "app": "/app/agent?history=1",
       "design": "b4-plan-iorbit.html",
       "board-index": 37,
       "width": 1440,
       "height": 960,
       "themes": ["light"],
-      "wait-for": "aside[aria-label=\"会話リスト\"]",
+      "wait-for": "aside [data-orbit-iorbit-history-row]",
+      "steps": [{"waitFor": "aside [data-orbit-iorbit-history-row]", "wait": 0}],
+      "app-wait": 5000,
       "note": "Web start with QA account data; board has sample names and different counts."
     },
     {
