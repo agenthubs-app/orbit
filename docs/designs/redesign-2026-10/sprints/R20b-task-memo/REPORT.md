@@ -22,6 +22,8 @@ rebase 後の軽量確認は Web notes route/service と task planLink route/ser
 
 21:42、App full で新たに timeout した 10 件を同じ product source で絞って再実行した。通知登録競合 file は **16/16 pass** (`d-app-notification-race-focused-post-rebase-805b2ee7c.log`)、profile の旧 callback scope、password reset、personal schedule の name-filtered serial run は **43/43 pass** (`d-app-timeout-focused-post-rebase-805b2ee7c.log`)。前回の新 10 件はこの再実行ですべて通ったため、full 並列時の時間余裕が疑わしい。ただし 21:12 の full **19 fail / 2 cancelled** は依然として赤であり、この局所再実行だけで「全量新規 0」とはしない。`--test-concurrency=4` の App full を公平キューに再登録し、同じ HEAD で失敗名を再比較する。
 
+22:22、その限並列 App full (`_evidence-d/R20b/run-01/d-app-full-concurrency4-post-rebase-805b2ee7c.log`) は **3,356 tests / 3,341 pass / 13 fail / 0 cancelled / 2 skip、exit1**（約 425 秒）。前回 19 fail / 2 cancelled の新規 timeout／cancel 名 10 件はすべて今回は通った。一方、retained 11 failure names はすべて残り、以前は通っていた invite-code の「無効にする」sheet と plan overview の skip / undo が新たに 5 秒 click timeout になった。両者の Playwright raw log は背面ボタンへの overlay / scrim pointer-event interception で、R20b が変更した test/source ではない。この full は E 線 iOS xcodebuild と同時に重タスク 2 スロットで走ったため負荷の影響を疑うが、原因を断定しない。直後、同じ source と同じ E build 並走中にこの 2 名を serial name-filtered で再実行し、**2/2 pass / 0 skip / exit0** (`d-app-invite-plan-timeout-focused-post-rebase-805b2ee7c.log`)。よって R20b 新規恒常失敗の証拠はないが、全量 13 fail の赤はそのまま保持し、invite / plan の一時失敗も隠さない。
+
 ## 18:22 主会話継続の検証キュー（結果待ち）
 
 D 実行者の終了時に、旧 `app-typecheck-after-contract.log` と `app-board-preflight.log` は **0 byte**、対応 runner PID も消えた。これは合格／失敗ではなく未実行として扱う。主会話は clean `66769b462` から独立した新規ログ名で App／Web `typecheck`、Web `typecheck:app`、App／Web 画板 preflight、Web full を全機 `heavy.sh` の公平キューへ再登録した。先に独立登録済みの App full も待機中。開始時の実際の source を確認してから成績を追記し、旧空ログを結果へ読み替えない。
