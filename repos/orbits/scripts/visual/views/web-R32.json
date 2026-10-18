@@ -74,6 +74,9 @@
           "waitFor": "[data-plan-matches]"
         },
         {
+          "click": "[role=dialog] input"
+        },
+        {
           "wait": 600
         }
       ],
