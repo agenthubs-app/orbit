@@ -90,6 +90,11 @@ window.fetch = async (input, init) => {
   if (state.status === "stale") throw new TypeError("Network request failed");
   const ok = (data) => new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { "content-type": "application/json" } });
   if (u.pathname === "/api/inbox/summary") return ok({ actorId: ACTOR, messagesUnread: 1, notificationsUnread: 9, notificationMode: "typed", notificationRead: "ready", asOf: "2026-09-28T09:00:00Z" });
+  if (u.pathname === "/api/ai/conversations/sessions" && state.searchSuccess) return ok({ items: [{
+    id: "s3", title: "远端正文命中", firstUserText: "其他文字", lastMessagePreview: "远端答案",
+    createdAt: "2026-09-26T01:00:00.000Z", updatedAt: "2026-09-26T02:00:00.000Z", messageRevision: 3,
+    organization: { customTitle: null, groupId: null, pinned: false, revision: 0 },
+  }], nextCursor: null, hasMore: false, storage: { configured: true, persisted: true } });
   if (u.pathname.startsWith("/api/ai/conversations/sessions/s1")) return ok({ session: { id: "s1", title: "东京投资人名单", createdAt: "2026-09-27T01:00:00.000Z", updatedAt: "2026-09-27T02:00:00.000Z", messageRevision: 2, messages: [
     { id: "user:0", role: "user", text: "帮我列东京投资人" }, { id: "assistant:request:1", role: "assistant", text: "服务器上的最新回答" }] },
     page: { hasMore: false, nextCursor: null, limit: 20 }, artifactRecovery: { turns: [], truncated: false }, storage: { configured: true, persisted: true } });
@@ -269,10 +274,18 @@ test("AI history search asks the server for full message text online and stays l
   await page.getByRole("button", { name: "会话列表" }).click();
   await page.getByPlaceholder("搜索标题和正文").fill("投资人");
   await page.waitForFunction(() => (window as any).fixture.requests.some((request: string) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")));
+  await page.getByText("历史记录未能读取").waitFor();
+  assert.equal(await page.getByRole("button", { name: "东京投资人名单的操作" }).count(), 0,
+    "an online full-text failure must not masquerade as a complete local result");
+  await page.evaluate(() => { (window as any).fixture.searchSuccess = true; });
+  await page.getByRole("button", { name: "重试历史记录" }).click();
+  await page.getByRole("button", { name: "远端正文命中", exact: true }).first().waitFor();
   const offline = await open(t, { screen: "ai", status: "stale" });
   await offline.getByRole("button", { name: "会话列表" }).click();
   await offline.getByPlaceholder("搜索标题和正文").fill("投资人");
   await offline.waitForTimeout(350);
+  await offline.getByText(/^离线 · .+时的历史记录$/).first().waitFor();
+  await offline.getByRole("button", { name: "东京投资人名单", exact: true }).first().waitFor();
   assert.deepEqual((await requests(offline)).filter((request) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")), []);
 });
 

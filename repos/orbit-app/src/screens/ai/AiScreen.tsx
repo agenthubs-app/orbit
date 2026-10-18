@@ -304,7 +304,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   ), aiSessionSummaryPageSchema);
   const serverSearchPage = serverSearchActive && (serverSearchState.kind === "success" || serverSearchState.kind === "empty") ? serverSearchState.data : null;
   const firstHistoryPage = historyFromDevice
-    ? serverSearchPage ?? localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
+    ? serverSearchActive ? serverSearchPage : localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
     : !localSessions.available && (historyState.kind === "success" || historyState.kind === "empty")
       ? historyState.data
       : null;
@@ -381,7 +381,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const homeChat = { ...projectedHomeChat, messages: projectedHomeChat.messages.map(message => ({ ...message,
     content: state.kind === "success" ? state.data.messages.find(item => item.messageId === message.id)?.content ?? state.data.assistantMessage : message.content
   })) };
-  const historyItems = aiHistoryRows(state.kind === "success" || state.kind === "empty" ? state.data : null,
+  const historyItems = aiHistoryRows(!serverSearchActive && (state.kind === "success" || state.kind === "empty") ? state.data : null,
     displaySessionPage)
     .filter(item => {
       if (item.source === "session") return !deletedIds.includes(item.id);
@@ -392,6 +392,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     ? groupsState.data.groups
     : [];
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
+  if (serverSearchActive && (serverSearchState.kind === "failure" || serverSearchState.kind === "offline")) historyNotices.push({
+    message: locale.t("ai.historyUnreadable"), retryLabel: locale.t("ai.retryHistory"),
+    onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); },
+  });
   if (recentLoading && !recentOverdue) historyNotices.push({ message: locale.t("ai.loadingRecent") });
   if (recentOverdue) historyNotices.push({ message: locale.t("ai.recentTimedOut"), retryLabel: locale.t("common.retry"), onRetry: () => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } } });
   if (!aiOffline && (state.kind === "failure" || state.kind === "offline")) historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
