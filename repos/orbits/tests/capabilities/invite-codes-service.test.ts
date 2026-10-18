@@ -131,7 +131,7 @@ function suite(name: string, options: TestOptions, withHarness: (run: (harness: 
       await harness.setProfile(profile(BOB));
       const { service } = setup(harness);
       const code = (await service.create(ALICE, {
-        maxUses: 10, sharedKeys: ["organization", "offering", "seeking", "email"], ...key("private-preview"),
+        maxUses: 10, shared: { displayName: "ignored" }, sharedKeys: ["organization", "offering", "seeking", "email"], ...key("private-preview"),
       })).code;
       assert.deepEqual((await service.preview(code, null)).shared, { displayName: "Alice Example" });
       assert.deepEqual((await service.preview(code, BOB)).shared, { displayName: "Alice Example" });
