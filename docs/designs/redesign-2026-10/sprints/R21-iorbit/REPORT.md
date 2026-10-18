@@ -1,14 +1,20 @@
 # R21 iOrbit · E 线执行报告
 
-状态：E 线已实现 R21 的本端主链，但 Web/App 全量与像素门禁仍未全部通过；SC-11/12 依赖 B 的 inbox 服务与 Web 选中深链，SC-13/14 的左侧抽屉/正式 token 依赖 A。原生截图链已恢复，逐图差异和余项如下。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`、`run-02/`、`run-03/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
+状态：E 线已实现 R21 的本端主链，但 Web/App 全量与像素门禁仍未全部通过；SC-11/12 依赖 B 的 inbox 服务与 Web 选中深链，SC-13/14 的左侧抽屉/正式 token 依赖 A。原生截图链已恢复，逐图差异和余项如下。证据目录：`/Volumes/ORICO/Dev/worktrees/orbit/_evidence-e/R21/run-01/`、`run-02/`、`run-03/`、`run-04/`。本报告只覆盖 E 线当前提交，未推送、未合并、未连接 Neon/生产、未部署。付费 AI 真调用：**0 次**。
 
 ## 基线与提交
 
-- 开工、RD-33 续工及本轮继续前均在 `line-e` 执行 `git pull --rebase origin redesign`；本轮基底 `6ea769085`。仅修改 E 工作树；未改 A/D 组件、壳或 Bridge 台账。
-- 实现提交从 `1dad54dac` 到 `b770cdb17`（本报告提交另计），覆盖本人会话全文搜索、PIN_LIMIT、软删撤销、90 日边界、pageContext、R30 iOrbit 搜索，Web/App 起始与历史视图、App 离线历史编辑同步、停止与继续、计划与草稿深链、读取失败重试、旧 App 呈现清理、像素 smoke 清单及路由回归。完整列表以 `git log --oneline --reverse 6ea769085..HEAD` 为准；rebase 后旧 hash 已失效。各提交均含 `Co-Authored-By: Codex <noreply@openai.com>`；仅本地提交。
+- 开工、RD-33 续工及本轮继续前均在 `line-e` 执行 `git pull --rebase origin redesign`；前轮基底 `6ea769085`，本轮重放基底 `d8e6dafb7`。仅修改 E 工作树；未改 A/D 组件、壳或 Bridge 台账。
+- 实现提交从 `e9653180e` 到 `ad2930839`（其后有报告提交），覆盖本人会话全文搜索、PIN_LIMIT、软删撤销、90 日边界、pageContext、R30 iOrbit 搜索，Web/App 起始与历史视图、App 离线历史编辑同步、停止与继续、计划与草稿深链、读取失败重试、旧 App 呈现清理、像素 smoke 清单及路由回归。完整列表以 `git log --oneline --reverse d8e6dafb7..HEAD` 为准；rebase 后旧 hash 已失效。各提交均含 `Co-Authored-By: Codex <noreply@openai.com>`；仅本地提交。
 - RD-33 明确：真流式与跨设备回执推迟到下个 Sprint；本 Sprint 验完整响应的停止、迟到抑制、重试与配额耗尽。App 语音入口隐藏，待录音依赖。kit/01-system 优先于 b4；本报告列偏差。Web demo 保留旧实现，`/app/agent/actions?entry=` 保留旧链接，只迁 R21 画板入口。
 
 用户明确禁止运行 GitNexus，因此未做项目 AGENTS 要求的 graph impact / detect-changes。改动范围以源码调用点、定向测试和下述回归核查；不能把未做的图分析写成低风险证明。
+
+## 2026-10-19 上游 rebase 复核
+
+- 按主会话要求在干净的 `line-e` 执行 `git pull --rebase origin redesign`，将 50 个本线提交重放到 `d8e6dafb7`。冲突只有两处：Web canonical actor 测试同时保留上游个人日程 stub、本线 live `IOrbit2026` 与 demo `IOrbitShell` stub（重放提交 `0169d93dd`）；App `sync-coordinator.ts` 同时保留 D 线 `isOfflineRelationshipFollowupMutation` 与 E 线 AI 会话 outbox 解析/操作（重放提交 `e987931d1`）。没有跳过提交；冲突文件无残留标记。
+- 定向回归：App 离线会话与 task/follow-up outbox 23/23，coordinator lease 20/20；Web canonical actor 与 agent 路由 40/40，均 exit 0。日志在 `run-04/app-rebase-focused.log`、`app-sync-coordinator-lease.log`、`web-rebase-focused.log`。
+- 重放后的 App `npm run typecheck`、Web `npm run typecheck:app` 均 exit 0，经 `heavy.sh e` 运行；日志在 `run-04/app-typecheck.log` 和 `web-typecheck.log`。本轮按主会话范围只做冲突交汇点与两端类型检查；下文的全量测试和 Web 六图/App 五图像素结论是 rebase 前证据，**未作为新基底的门禁通过结果**。像素收口另排一轮，本轮未启动服务、Metro 或模拟器。
 
 ## SC 对照
 
@@ -59,7 +65,7 @@
 
 - 定向：Web 会话/组织/搜索 50/50、App 解码 4/4、Web 搜索/置顶 27/27、PostgreSQL 摘要全文 1/1 与并发置顶 1/1、Web 停止/聊天 19/19、App 会话 22/22、Web 实体草稿和 retention 10/10、App 草稿 9/9、90 日服务 1/1。App 历史分页、App 全局搜索、Web 上下文等定向测试也通过；具体日志在证据目录。
 - 本机 PostgreSQL 清理首轮非零、次轮 0；查询 `orbit_records` 显示被删会话与消息 `deleted`，其他本人/他人记录 `active`。不涉及生产配置。
-- App 离线历史编辑：冻结 PATCH/DELETE 请求、镜像覆盖、5 秒本机删除撤销、真实 SQLite coordinator 的 actor/镜像校验与重连上传、409 `PIN_LIMIT` 可见冲突和丢弃操作均先红后绿；定向测试 21/21，加上起始页 pending/discard 渲染 7/7。`7664d856a` 后 App typecheck exit 0；线上 DELETE 仍按 actor 校验但不接受 `expectedRevision`，因此离线排队期间另一端修改同一会话时，删除不会像 PATCH 那样报版本冲突，需在下一轮补服务端 CAS 或主会话明确删除语义。
+- App 离线历史编辑：冻结 PATCH/DELETE 请求、镜像覆盖、5 秒本机删除撤销、真实 SQLite coordinator 的 actor/镜像校验与重连上传、409 `PIN_LIMIT` 可见冲突和丢弃操作均先红后绿；定向测试 21/21，加上起始页 pending/discard 渲染 7/7。该实现本轮重放为 `e987931d1`，App typecheck exit 0；线上 DELETE 仍按 actor 校验但不接受 `expectedRevision`，因此离线排队期间另一端修改同一会话时，删除不会像 PATCH 那样报版本冲突，需在下一轮补服务端 CAS 或主会话明确删除语义。
 - 收口 App 全量首轮 `run-03/app-full-final.log` 为 3,135 项中通过 3,102、失败 31、跳过 2。离线写入新增的 PATCH/DELETE 原生策略登记缺失是 E 引入失败，现已修复，读取面审计整文件 21/21（`run-03/app-offline-inventory-fixed.log`）。两份网络路径夹具漏 `queuedMutations`，修正后 App 工作区与 iOrbit 起始文件串行 61/61（`run-03/app-r21-fixture-fixed.log`）。另一份离线镜像夹具每次渲染都造新数组，导致队列刷新循环和输入/点击超时；让静态镜像引用稳定后整文件 10/10（`run-03/app-local-first-stable-fixture.log`）。个人资料与邀请码两个首轮失败在串行整文件 51/51 通过（`run-03/app-adjacent-serial-final.log`）。最终全量复跑结果另列；首轮失败不抹掉。
 - 修复后的 App 全量 `run-03/app-full-postfix.log`：3,135 项中通过 3,120、失败 12、取消 1、跳过 2，exit 1。全部 iOrbit 起始/历史/离线策略用例在全量中通过；剩余失败为既有加联系人相机/批量 9、旧 i18n 快照 1、邀请码提示层遮挡 1、加载时限断言 1，另有通知注册用例超时取消。邀请码整文件串行 51/51；通知注册和加载时限两文件串行 21/21（`run-03/app-adjacent-serial-final.log`、`app-extra-failures-serial.log`）。后两类与 iOrbit 无调用关联；全量仍按失败记录。App 最终 typecheck `run-03/app-typecheck-final.log` exit 0。
 - 收口 Web 全量 `run-03/web-full-final.log`：7,552 项中通过 6,554、失败 7、取消 1、跳过 990，exit 1。与 r3 相同的 6 项仍在 manifest P0 候选、名片合并、设计夹具检查、加联系人两例及全站按钮 ratchet；新增个人日程列表断言失败，临时 schema CLI 超过 120 秒取消。上述失败的测试与相关源码相对本轮基底 `6ea769085` 均无 E 线改动；当前 `origin/redesign` 已前进，不能拿移动的远端指针当作本轮改动基线。它们不属于新 iOrbit 通过证据，Web 全量门禁仍失败。
@@ -81,8 +87,8 @@
 
 | 条目 | 本端版本 / 结果 | 另一端影响、未完事项及验证范围 | 来源 |
 | --- | --- | --- | --- |
-| R21-D18 | `3c634e5d3` 本机 90 日任务两轮已验；生产未启用 | 授权后由运行环境负责人配置生产任务并验首跑/回滚。 | SC-05 |
-| R21-R30 | `1dad54dac` 本人 iOrbit 搜索 + `searchLive` 跨端 href + live conversation chip | 重跑 W-R30-P01/A-R30-P06；Web/App 各打开 iOrbit/inbox 所选会话。当前只验 iOrbit 服务与映射。 | SC-11/12 |
+| R21-D18 | `7b896129f` 本机 90 日任务两轮已验；生产未启用 | 授权后由运行环境负责人配置生产任务并验首跑/回滚。 | SC-05 |
+| R21-R30 | `e9653180e` 本人 iOrbit 搜索 + `searchLive` 跨端 href + live conversation chip | 重跑 W-R30-P01/A-R30-P06；Web/App 各打开 iOrbit/inbox 所选会话。当前只验 iOrbit 服务与映射。 | SC-11/12 |
 | R21-B → R13 | E 侧 Web href 约定 `/app/inbox?conversationId=<id>`、App `/inbox/<id>` | B 线在 R13 交 inbox 本人只读会话服务、Web 选中态与权限测试，再接真实候选。 | SC-11/12 |
 | R21-A → R32 | E 页沿 R31a/b kit 编排，RD-33 指定 kit/01-system 优先；预检清单列 b4 token 差异 | A 线在 R32 定稿缺失 token、左侧 FullDrawer 变体；Toast 的 undo 需要按服务端绝对 `undoUntil` 消失，当前 kit 固定从展示起 5 秒。若交付再重跑对应像素/交互门禁。 | SC-01/04/13/14 |
 | R21-D → R20b | E 侧会话草稿深链 `draftId` 已接 | D 线从 R20b `entity_draft` 判断待ち接入会话；`contact_draft` 保持联系人落点，跨端验一次。 | SC-09 |
