@@ -2,6 +2,8 @@
 
 2026-10-18、run-01。承認済み PLANNER rev2 に沿って実行中。サーバー基盤に続き両端の To-do / カレンダー / 手動下書きと App 面談詳細の中間里程標を記録する。部分実装と未検証項目を含み、Sprint 完了を示さない。
 
+**主会話指定の「除像素外」失敗帰属チェックポイント（2026-10-18）：** fresh D App full の12失敗は pristine3件＋期限切れ R12 fixture9件、fresh D Web full の40失敗は pristine31件＋A-owned Button scanner誤報1件＋origin と同じ R11a browser stub欠落8件で、D 本線が導入した failure name は両端とも **0**。下記の raw、直列再実行、出所をもってユーザー指定の次 Sprint 移行条件を満たす。これは full suite green、SC 未実装部分の完了、native / pixel 合格ではなく、残項目と帰属者は本 REPORT に残す。push せず `line-d` を基に R20b を開始し、統合後に rebase する（主会話決定）。
+
 - 開始 HEAD：`1524d3667`。主会話のナビゲーション修正 `56da437ef` は別作業。
 - PLANNER SHA256：`091e9e2ca8249a8e39aa7e87e0c7be3b1175b9a86c664c7939cb9eae5b6bc159`。
 - pristine 基線（主会話実行）：Web **7,475 tests / 31 fail / 1,015 skip**、App **3,324 tests / 4 fail / 2 skip**。ログは `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/orbit-cd-baseline.fk6V4SASy3/{d-orbits.log,d-app.log}`。SC-02 / OAuth 実装中は App 基線待ちのため App を変更せず、完了通知後に SC-11a の App 実装を開始した。
