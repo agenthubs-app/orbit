@@ -31,16 +31,6 @@
    "note": "ConfirmDialog（居中，宽 296）；设计侧 .scrimbox 内容宽 286 < 对话框 296，网格居中溢出时贴左（对话框在格内 x=18，不是居中的 13），实现侧按 16e 上对话框 x=47 取 29"
   },
   {
-   "id": "A-R31a-c-confirm-1",
-   "design": "01-system.html",
-   "section": "c-confirm",
-   "cell": 1,
-   "path": "/showcase/components/c-confirm-1?theme={theme}",
-   "region": "c,b,380,390",
-   "placement": "overlay",
-   "note": "ActionSheet（贴底）"
-  },
-  {
    "id": "A-R31a-c-ai-0",
    "design": "01-system.html",
    "section": "c-ai",
@@ -248,6 +238,7 @@
   "c-load-2": "流式回答气泡属 iOrbit（R21）业务界面；按钮内 loading 由 Button 覆盖",
   "c-pay-2": "套餐对比表：App 无此组件（账户 R18 业务界面）",
   "c-push-0, c-push-1, c-push-2": "锁屏推送卡 / 长按菜单是 iOS 系统界面；深链落地高亮属各业务页",
-  "n-nav-0, n-home-0, n-home-1, n-task-0, n-io-0, n-add-0": "导航壳（R05 / D 线）、首页（R10）、Task（R20）、iOrbit（R21）、加人 sheet（R12）——业务 / 壳，不属组件库"
+  "n-nav-0, n-home-0, n-home-1, n-task-0, n-io-0, n-add-0": "导航壳（R05 / D 线）、首页（R10）、Task（R20）、iOrbit（R21）、加人 sheet（R12）——业务 / 壳，不属组件库",
+  "c-confirm-1": "文档示意的 .ds .asheet 固定宽 360（放在 380 的 .scrimbox 里），真机动作表是屏宽 − 16（16e 上 374），横向不可能 1:1；ActionSheet 的 1:1 对照走真实画板 b4 #19（A-R25-01 作り直しの確認）与 b12 动作表画面。展示页仍保留该小节（含 emoji 标题头）供目测"
  }
 }

@@ -12,11 +12,6 @@ import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 /** Fades the content in. Nothing slides or scales, so 「視差効果を減らす」 changes nothing here. */
-/**
- * AppScreen 的内容区比 kit `.scroll` 多出顶部 12、左右少 2（左右 16 vs 18）：加人各页先在页内抵消
- * （同计划页 PlanOverview 的 `page`）；乙改壳后删掉这里（交接表 G23）。
- */
-export const KIT_PAGE_INSET = { marginHorizontal: 2, marginTop: -12 } as const;
 
 export function FadeIn({ children, testID, style }: { children: ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
   const opacity = useRef(new Animated.Value(0)).current;

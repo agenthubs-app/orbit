@@ -28,7 +28,7 @@ import { reconcileBusinessCardReviewCard, type BusinessCardConflictField, type B
 import { ingestCards, type IngestCard } from "../../view-models/business-card-ingest";
 import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
-import { Body, Caption, CountTiles, DensityBar, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddStyles } from "./add-ui";
+import { Body, Caption, CountTiles, DensityBar, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
 import { KitChip, KitEmo } from "../plan/plan-kit";
 import { UnifiedReviewApp } from "./UnifiedReviewApp";
 import { KIT_FOOT_SPACE, KitBar, KitBigNums, KitCardRow, KitDensityStack, KitErrCard, KitFoot, KitNg, KitOk, KitSpin, useScanKitStyles } from "./scan-kit";
@@ -383,12 +383,12 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
   ) : null;
   return (
     <View style={{ flex: 1 }}>
-    <AppScreen title={title} subtitle={subtitle} backIcon={reviewing && stage === "review" ? "left" : "x"} onBack={reviewing && stage === "review" ? () => setStage("bridge") : close} showBack={view.phase !== "done"}
+    <AppScreen inset="kit" title={title} subtitle={subtitle} backIcon={reviewing && stage === "review" ? "left" : "x"} onBack={reviewing && stage === "review" ? () => setStage("bridge") : close} showBack={view.phase !== "done"}
       header={view.phase === "done" ? (
         // b11 #3: the top bar has only ✕ on the right (kit .topbar 6 / 14, 44 cells), inside the scroll like kit.
         <View style={readStyles.doneBar}><IconButton icon="x" accessibilityLabel={t("add.batch.viewNetwork")} onPress={close} /></View>
       ) : undefined}>
-      <FadeIn testID={`add-batch-phase-${view.phase}`} style={KIT_PAGE_INSET}>
+      <FadeIn testID={`add-batch-phase-${view.phase}`}>
         {view.phase === "loading" ? <Skeleton lines={6} /> : null}
         {view.phase === "missing" ? <RetryCard title={t("add.batch.loadFailed")} onRetry={() => void load()} /> : null}
         {view.phase === "uploading" && upload && !upload.finished ? (
@@ -540,10 +540,9 @@ const readNote = StyleSheet.create({ note: { textAlign: "center" } });
 // plan-kit KitChip sits at flex-start; in .prow2 (align-items: center) the chip is centred on the two-line meta.
 const rowChipStyles = StyleSheet.create({ rowChip: { alignSelf: "center" } });
 const doneBarStyles = StyleSheet.create({
-  // marginTop −12: AppScreen's content starts 12 lower than kit .scroll without a nav bar too (see KIT_PAGE_INSET).
-  // marginBottom −4: AppScreen's 16 gap after the header slot minus the panel's KIT_PAGE_INSET −12 leaves 4 more
-  // than kit (.topbar padding-bottom 14 straight into .center margin-top 6), which put 🎉 / h1 and all below 4pt low.
-  doneBar: { flexDirection: "row", justifyContent: "flex-end", marginTop: -12, marginBottom: -4, paddingTop: 6, paddingBottom: 14, paddingRight: 4, marginHorizontal: 2 },
+  // marginBottom −16: AppScreen's 16 gap after the header slot would sit between kit .topbar (padding-bottom 14) and
+  // .center (margin-top 6); R31a removed AppScreen's extra top 12 and the −12 / +2 page offsets.
+  doneBar: { flexDirection: "row", justifyContent: "flex-end", marginBottom: -16, paddingTop: 6, paddingBottom: 14, paddingRight: 4 },
 });
 
 // kit 数值（b11 #2）：.card.k-spbar padding 14 / 16；.card.k-splist padding 4 / 16；.card.flat.k-spnext padding 12 / 14。

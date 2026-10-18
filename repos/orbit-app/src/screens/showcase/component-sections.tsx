@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import {
   ActionSheet, Avatar, BottomSheet, Button, Card, CategoryTabs, CheckCircle, Checkbox, Chip, ConfirmCard, ConfirmDialog, DegradedCard,
@@ -37,9 +37,11 @@ function Stack({ gap = 10, children }: { gap?: number; children: ReactNode }) {
 function Row({ gap = 8, wrap = false, children }: { gap?: number; wrap?: boolean; children: ReactNode }) {
   return <View style={{ flexDirection: "row", alignItems: "center", gap, flexWrap: wrap ? "wrap" : "nowrap" }}>{children}</View>;
 }
+// kit .lbl; `…` marks a <code> run, which the cells draw in Chrome's default monospace (Courier, CDP-checked).
 function Label({ children }: { children: ReactNode }) {
   const { styles } = useStyles();
-  return <UiText style={styles.label}>{children}</UiText>;
+  if (typeof children !== "string" || !children.includes("`")) return <UiText style={styles.label}>{children}</UiText>;
+  return <UiText style={styles.label}>{children.split("`").map((part, index) => (index % 2 ? <Text key={index} style={styles.code}>{part}</Text> : part))}</UiText>;
 }
 
 const T = samples.titles as Record<string, string>;
@@ -98,7 +100,7 @@ const { confirm0, confirm1, participantSheet: ps, ai0, ai1, ai2, ai3, load1, err
 export const COMPONENT_SECTIONS: readonly ComponentSection[] = [
   section("c-toast-0", 359, "inline", () => <Stack>{TOASTS.map((toast) => <ToastCapsule key={toast.id} toast={toast} onClose={noop} />)}</Stack>),
   section("c-confirm-0", 322, "overlay", () => <ConfirmDialog visible destructive title={confirm0.title} message={confirm0.message} confirmLabel={confirm0.confirm} onConfirm={noop} onCancel={noop} />),
-  section("c-confirm-1", 380, "overlay", () => <ActionSheet visible title={confirm1.title} effects={confirm1.effects.map((text, index) => ({ icon: EFFECT_ICONS[index] ?? "bell", text }))} options={[{ key: "withdraw", label: confirm1.withdraw, destructive: true }, { key: "keep", label: confirm1.keep }]} defaultFocusKey="keep" onSelect={noop} onClose={noop} />),
+  section("c-confirm-1", 380, "overlay", () => <ActionSheet visible title={confirm1.title} emoji={confirm1.emoji} subtitle={confirm1.subtitle} effects={confirm1.effects.map((text, index) => ({ icon: EFFECT_ICONS[index] ?? "bell", text }))} options={[{ key: "withdraw", label: confirm1.withdraw, destructive: true }, { key: "keep", label: confirm1.keep }]} defaultFocusKey="keep" onSelect={noop} onClose={noop} />),
   section("c-layer-0", 290, "overlay", () => <BottomSheet visible onClose={noop} accessibilityLabel={samples.filterSheet.title}><FilterSheetBody /></BottomSheet>),
   section("c-layer-1", 290, "overlay", () => (
     <BottomSheet visible onClose={noop} accessibilityLabel={ps.name}>
@@ -137,5 +139,6 @@ export function findComponentSection(id: string | undefined): ComponentSection |
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  label: { color: colors.ink3Text, fontSize: 11.5 },
+  label: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+  code: { fontFamily: "Courier", fontSize: 11.5 },
 }));

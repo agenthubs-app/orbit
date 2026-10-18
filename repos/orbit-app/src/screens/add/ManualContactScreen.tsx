@@ -23,7 +23,7 @@ import type { MessageKey } from "../../i18n/messages";
 import { useAddApi } from "./add-api";
 import { addDesignMock } from "./add-design-mock";
 import { ManualSavedView, type ManualSaved } from "./ManualSavedView";
-import { Caption, DensityDots, FadeIn, KIT_PAGE_INSET, KitHeadAction } from "./add-ui";
+import { Caption, DensityDots, FadeIn, KitHeadAction } from "./add-ui";
 import {
   createBody,
   defaultChoices,
@@ -199,9 +199,9 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery) && orgChosen !== orgQuery;
   const sheetOpen = Boolean(candidate) && decision.kind === "none" && dismissed !== candidate?.contactId;
   return (
-    <AppScreen title={t("add.manual.title")} subtitle={t("add.manual.lead")} backIcon="x"
+    <AppScreen inset="kit" title={t("add.manual.title")} subtitle={t("add.manual.lead")} backIcon="x"
       headerActions={<KitHeadAction label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} testID="add-manual-save" />}>
-      <FadeIn testID="add-manual" style={KIT_PAGE_INSET}>
+      <FadeIn testID="add-manual">
         <Field label={t("add.manual.name")} required={t("add.manual.required")} hint={anyOpen ? undefined : t("add.manual.nameHint")} first>
           <FieldInput value={form.displayName} onChangeText={(value) => set("displayName", value)} autoFocus returnKeyType="done" accessibilityLabel={t("add.manual.name")} testID="add-manual-name" />
         </Field>

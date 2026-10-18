@@ -8,7 +8,8 @@ import { UiText } from "./Text";
 
 export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger" | "dangerGhost" | "dangerSoft";
 
-// kit/ui.css .btn: pill, 40 tall (sm 32 with a 44 hit area), 13/700. Variants map to
+// kit/ui.css .btn: pill, 40 tall (R31a: was 44; 2 of hit slop each side keep 44), sm 32 (hit area 44), lg 46 =
+// kit .actsheet .btn (action-sheet buttons), 13/700. Variants map to
 // token pairs that are in the contrast list (RD-05). danger = the final destructive
 // action in a confirm; dangerGhost = the entry point on a page; dangerSoft = menu item.
 export function Button({
@@ -25,7 +26,7 @@ export function Button({
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
-  size?: "md" | "sm";
+  size?: "md" | "sm" | "lg";
   block?: boolean;
   icon?: IconName;
   loading?: boolean;
@@ -43,7 +44,7 @@ export function Button({
       disabled={inactive}
       hitSlop={size === "sm" ? 6 : 2}
       onPress={onPress}
-      style={[styles.base, size === "sm" ? styles.sm : styles.md, block && styles.block, { backgroundColor: tone.background }, inactive && styles.inactive]}
+      style={[styles.base, size === "sm" ? styles.sm : size === "lg" ? styles.lg : styles.md, block && styles.block, { backgroundColor: tone.background }, inactive && styles.inactive]}
     >
       <View style={styles.row}>
         {loading ? <ActivityIndicator color={tone.text} size="small" /> : icon ? <Icon name={icon} size={16} color={tone.text} /> : null}
@@ -67,7 +68,8 @@ export function tones(colors: OrbitColors): Record<ButtonVariant, { background: 
 
 const useStyles = createThemedStyles(() => StyleSheet.create({
   base: { alignItems: "center", justifyContent: "center", borderRadius: 999, alignSelf: "flex-start" },
-  md: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10 },
+  md: { minHeight: 40, paddingHorizontal: 16, paddingVertical: 8 },
+  lg: { minHeight: 46, paddingHorizontal: 16, paddingVertical: 10 },
   sm: { minHeight: 32, paddingHorizontal: 12, paddingVertical: 6 },
   block: { alignSelf: "stretch" },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },

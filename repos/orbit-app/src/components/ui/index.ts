@@ -39,5 +39,6 @@ export { CountUp, ProgressBar, RingChart } from "./Progress";
 export { UnderlineTabs, type UnderlineTab } from "./UnderlineTabs";
 export { TabBar, type TabBarItem } from "./TabBar";
 export { FullScreenSearch } from "./FullScreenSearch";
+export { Popover, PopoverDivider, PopoverRow } from "./Popover";
 // states
 export { DegradedCard, EmptyState, OfflineBar, QuotaChip, RetryCard, SampleBar, SampleTag, Skeleton } from "./States";

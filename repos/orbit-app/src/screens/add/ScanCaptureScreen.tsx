@@ -24,7 +24,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { creationAttempt, type CreationAttempt, type IngestCardImage } from "../../view-models/business-card-ingest";
 import { useAddApi } from "./add-api";
 import { hideScanGuide, readScanGuide, recordScanGuideShown, shouldAutoShowGuide, type ScanGuideState } from "./add-storage";
-import { Body, Caption, FadeIn, KIT_PAGE_INSET, useAddStyles } from "./add-ui";
+import { Body, Caption, FadeIn, useAddStyles } from "./add-ui";
 import { KitChip } from "../plan/plan-kit";
 import { KIT_FOOT_SPACE, KitFoot } from "./scan-kit";
 import { newAddKey } from "./manual-model";
@@ -160,7 +160,7 @@ export function ScanCaptureScreen() {
   const guideOn = mode === "guide";
   return (
     <View style={{ flex: 1 }}>
-    <AppScreen title={t("add.scan.title")} subtitle={guideOn ? t("add.scan.guideSub") : undefined} backIcon={guideOn ? "x" : "left"} headerActions={guideOn ? undefined : helpButton}>
+    <AppScreen inset="kit" title={t("add.scan.title")} subtitle={guideOn ? t("add.scan.guideSub") : undefined} backIcon={guideOn ? "x" : "left"} headerActions={guideOn ? undefined : helpButton}>
       {fromLegacy && !guideOn ? <View style={styles.notice}><Body>{t("add.scan.legacyNotice")}</Body></View> : null}
       {mode === "loading" ? <Skeleton lines={4} /> : null}
       {mode === "guide" ? (
@@ -209,7 +209,7 @@ function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | n
     ["🔁", t("add.scan.tipBackTitle"), t("add.scan.tipBackBody")],
   ];
   return (
-    <FadeIn testID="add-scan-guide" style={KIT_PAGE_INSET}>
+    <FadeIn testID="add-scan-guide">
       {legacy ? (
         <View style={g.mybar} testID="add-scan-legacy">
           <Icon name="check" size={16} color={colors.macTealText} />

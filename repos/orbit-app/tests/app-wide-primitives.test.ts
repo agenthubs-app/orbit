@@ -237,8 +237,9 @@ for (const appearance of ["light", "dark"] as const) {
   test(`${appearance}: recovery screen keeps a full-size retry and readable error details at 320pt`, async t => {
     const page = await openScreen(t, "recovery", appearance);
     const retry = page.getByRole("button", { name: "重试", exact: true });
-    // R04: the retry is the component library's Button (md: 44pt, the HIG minimum).
-    await fits(retry, 320, 44);
+    // R04: the retry is the component library's Button. R31a: md is the kit .btn 40pt (RD-16), its 2pt hit slop on
+    // each side keeps the 44pt HIG touch target.
+    await fits(retry, 320, 40);
     await retry.click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ action: "retry", draft: "" }]);
     await fits(page.getByText("连接中断，请检查后重试", { exact: true }));

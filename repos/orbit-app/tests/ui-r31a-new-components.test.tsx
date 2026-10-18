@@ -35,3 +35,17 @@ test("FullScreenSearch: search row, chips and results in order; hidden when not 
   assert.doesNotMatch(html, /aria-label="クリア"/u, "no clear button while empty");
   assert.equal(renderToHtml(<FullScreenSearch overlay visible={false} value="" onChangeText={() => undefined} placeholder="検索" clearLabel="クリア" cancelLabel="キャンセル" onCancel={() => undefined} />), "");
 });
+
+test("Popover: the anchored .gmenu panel with rows (current one selected), nothing when closed", () => {
+  const { Popover, PopoverRow, PopoverDivider } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const html = renderToHtml(
+    <Popover visible onClose={() => undefined} anchor={{ top: 192, left: 18, right: 60 }} testID="pop">
+      <PopoverRow title="シリーズA 資金調達" subtitle="スコア 128 · 話した人 19" selected accessibilityRole="radio" onPress={() => undefined} />
+      <PopoverDivider />
+      <PopoverRow title="完了した目標" subtitle="1件" muted onPress={() => undefined} />
+    </Popover>,
+  );
+  assert.match(html, /data-testid="pop"/u);
+  assert.match(html, /aria-checked="true"/u);
+  assert.equal(renderToHtml(<Popover visible={false} onClose={() => undefined} anchor={{ top: 0, left: 0, right: 0 }}><PopoverDivider /></Popover>), "");
+});

@@ -12,7 +12,7 @@ import { ActionSheet, Avatar, Icon, IconButton, UiPressable, UiText } from "../.
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { KitChip, KitEmo } from "../plan/plan-kit";
-import { DensityDots, FadeIn, KIT_PAGE_INSET } from "./add-ui";
+import { DensityDots, FadeIn } from "./add-ui";
 import { densityMarks } from "./manual-model";
 
 export type ManualSaved = { contactId: string; name: string; organization: string; metLabel: string | null; density: ContactDensityLevel };
@@ -30,9 +30,9 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
     { key: "note", emoji: "📝", tone: "lav" as const, title: t("add.manual.enrichNote"), sub: t("add.manual.enrichNoteSub"), href: `/notes/new?contactId=${encodeURIComponent(saved.contactId)}` as Href },
   ];
   return (
-    <AppScreen title="" onBack={() => router.replace("/contacts" as Href)}
+    <AppScreen inset="kit" title="" onBack={() => router.replace("/contacts" as Href)}
       headerActions={<IconButton icon="more" accessibilityLabel={t("add.manual.savedMenu")} onPress={() => setMenu(true)} />}>
-      <FadeIn testID="add-manual-saved" style={KIT_PAGE_INSET}>
+      <FadeIn testID="add-manual-saved">
         <View style={styles.head}>
           <Avatar name={saved.name} size="lg" />
           <UiText style={styles.name}>{saved.name}</UiText>

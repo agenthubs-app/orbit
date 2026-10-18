@@ -23,7 +23,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { createTranslator, type OrbitTranslator } from "../../../i18n/messages";
 import { fillCopy, useStandardCopy } from "../../../i18n/standard-copy";
 import { markInviteGuideSeen, readInviteGuideSeen } from "../add-storage";
-import { Caption, DensityDots, FadeIn, KIT_PAGE_INSET, SectionTitle, useAddColors, useAddStyles } from "../add-ui";
+import { Caption, DensityDots, FadeIn, SectionTitle, useAddColors, useAddStyles } from "../add-ui";
 import { KIT_FOOT_SPACE, KitFoot } from "../scan-kit";
 import { KitChip, KitGuide, KitLink, KitXl, useInviteKit } from "./invite-kit";
 import { useInviteApi, type InviteApi } from "./invite-api";
@@ -196,9 +196,9 @@ export function InviteSenderScreen({ api: injected, now = Date.now }: { api?: In
 
   return (
     <View style={styles.grow}>
-      <AppScreen title={t("add.invite.title")} subtitle={t(intro ? "add.invite.introSub" : "add.invite.shareSub")}
+      <AppScreen inset="kit" title={t("add.invite.title")} subtitle={t(intro ? "add.invite.introSub" : "add.invite.shareSub")}
         headerActions={phase === "share" ? <View testID="invite-more"><IconButton icon="more" accessibilityLabel={t("add.invite.more")} onPress={() => setSheet("menu")} /></View> : undefined}>
-        <FadeIn testID="invite-sender" style={KIT_PAGE_INSET}>
+        <FadeIn testID="invite-sender">
           <View testID={`invite-phase-${phase}`} style={intro ? { paddingBottom: KIT_FOOT_SPACE } : null}>
             {phase === "loading" ? <Skeleton lines={4} /> : null}
             {phase === "failed" ? <RetryCard title={t("add.invite.loadFailed")} onRetry={() => void load()} /> : null}

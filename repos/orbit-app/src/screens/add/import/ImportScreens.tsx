@@ -17,7 +17,7 @@ import { ActionSheet, Avatar, FilterOption, Icon, RetryCard, Segmented, Skeleton
 import { createThemedStyles } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add-design-mock";
-import { DensityDots, FadeIn, KIT_PAGE_INSET } from "../add-ui";
+import { DensityDots, FadeIn } from "../add-ui";
 import { KIT_FOOT_SPACE, KitBigNums, KitFoot } from "../scan-kit";
 import { UnifiedReviewApp, type AppReviewDuplicateRow } from "../UnifiedReviewApp";
 import { newImportKey, useImportApi, utf8, type ImportApi } from "./import-api";
@@ -170,8 +170,8 @@ function PermissionStage({ denied, error, onAllow, onNotNow, onVcard, onBack }: 
   const rows: [MessageKey, "check" | "users" | "mail" | "settings"][] = [["add.import.perm1", "check"], ["add.import.perm2", "users"], ["add.import.perm3", "mail"], ["add.import.perm4", "settings"]];
   return (
     <View style={styles.fill}>
-      <AppScreen title="" backIcon="x" onBack={onBack}>
-        <FadeIn testID="add-import-permission" style={KIT_PAGE_INSET}>
+      <AppScreen inset="kit" title="" backIcon="x" onBack={onBack}>
+        <FadeIn testID="add-import-permission">
           <View style={styles.center}>
             <View style={styles.hero}><UiText style={styles.heroEmoji}>📱</UiText></View>
             <UiText accessibilityRole="header" style={[styles.h1, styles.heroTitle]}>{t("add.import.permTitle")}</UiText>
@@ -222,8 +222,8 @@ function PickStage({ people, error, onBack, onImport }: { people: PickPerson[]; 
   const toggle = (id: string) => setChosen((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   return (
     <View style={styles.fill}>
-      <AppScreen title={t("add.import.pickTitle")} subtitle={t("add.import.pickSub", { n: people.length.toLocaleString() })} onBack={onBack}>
-        <FadeIn testID="add-import-pick" style={KIT_PAGE_INSET}>
+      <AppScreen inset="kit" title={t("add.import.pickTitle")} subtitle={t("add.import.pickSub", { n: people.length.toLocaleString() })} onBack={onBack}>
+        <FadeIn testID="add-import-pick">
           <Segmented<"all" | "pick"> accessibilityLabel={t("add.import.pickTitle")} value={mode} onChange={setMode} segments={[{ key: "all", label: t("add.import.modeAll") }, { key: "pick", label: t("add.import.modePick") }]} />
           <View style={[styles.card, styles.suggest]}>
             <View style={styles.row10}>
@@ -277,7 +277,7 @@ function OrganizingStage({ count, preview, progress, onClose }: { count: number;
   return (
     <View style={styles.fill}>
       <AppScreen title={t("add.import.orgTitle")} subtitle={t("add.import.orgSub", { n: count })} backIcon="down" onBack={onClose}>
-        <FadeIn testID="add-import-organizing" style={KIT_PAGE_INSET}>
+        <FadeIn testID="add-import-organizing">
           <KitOrb />
           <View style={[styles.center, styles.orgHead]}>
             <UiText style={styles.b17}>{t("add.import.orgHead", { n: count })}</UiText>
@@ -354,7 +354,7 @@ export function LinkedInImportScreen() {
   return (
     <View style={styles.fill}>
       <AppScreen title={t("add.import.liTitle")} subtitle={t("add.import.liSub")} backIcon="x" onBack={back}>
-        <FadeIn testID="add-import-linkedin" style={KIT_PAGE_INSET}>
+        <FadeIn testID="add-import-linkedin">
           <View style={[styles.card, styles.flat, styles.liNote]}>
             <UiText style={styles.liNoteText}><UiText style={styles.liNoteLead}>{t("add.import.liNoteLead")}</UiText>{t("add.import.liNote")}</UiText>
           </View>
@@ -490,7 +490,7 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
   return (
     <View style={styles.fill}>
       <AppScreen title={title} subtitle={subtitle} onBack={close} showBack={!done}>
-        <FadeIn testID={`add-import-batch-${state.phase === "ready" ? (done ? "done" : "review") : state.phase}`} style={KIT_PAGE_INSET}>
+        <FadeIn testID={`add-import-batch-${state.phase === "ready" ? (done ? "done" : "review") : state.phase}`}>
           {state.phase === "loading" ? <Skeleton lines={6} /> : null}
           {state.phase === "missing" || state.phase === "expired" ? (
             <RetryCard title={t(state.phase === "expired" ? "add.import.expired" : "add.import.loadBatchFailed")} onRetry={() => router.replace(IMPORT_HREF as Href)} />

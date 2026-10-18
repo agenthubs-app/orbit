@@ -25,7 +25,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../../i18n/messages";
 import { useStandardCopy } from "../../../i18n/standard-copy";
 import { addDesignMock } from "../add-design-mock";
-import { Caption, FadeIn, KIT_PAGE_INSET, useAddColors, useAddStyles } from "../add-ui";
+import { Caption, FadeIn, useAddColors, useAddStyles } from "../add-ui";
 import { KIT_FOOT_SPACE, KitFoot } from "../scan-kit";
 import { KitChip, KitGhost, KitGuide, KitLink, KitXl, useInviteKit } from "./invite-kit";
 import { useInviteApi, type InviteApi } from "./invite-api";
@@ -118,8 +118,8 @@ export function InviteLandingScreen({ code: rawCode, api: injected, design }: { 
   const pinned = view.view === "confirm";
   return (
     <View style={styles.grow}>
-    <AppScreen title={t("add.inviteIn.title")} showBack={false} header={<LandingHead sub={head} />}>
-      <FadeIn key={view.view} testID={`invite-landing-${view.view}`} style={[KIT_PAGE_INSET, pinned ? { paddingBottom: KIT_FOOT_SPACE } : null]}>
+    <AppScreen inset="kit" title={t("add.inviteIn.title")} showBack={false} header={<LandingHead sub={head} />}>
+      <FadeIn key={view.view} testID={`invite-landing-${view.view}`} style={[pinned ? { paddingBottom: KIT_FOOT_SPACE } : null]}>
         <View style={styles.stack}>
           {view.view === "loading" || view.view === "checking" ? <Skeleton lines={4} /> : null}
           {view.view === "failed" ? <RetryCard title={t("add.inviteIn.loadFailed")} onRetry={() => void loadPreview()} /> : null}
@@ -514,7 +514,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   gap12: { marginTop: 12 },
   gap16: { marginTop: 16 },
   // head（b11：.row gap 10 · padding 6 0 14；.appic 28 / r 9）
-  head: { alignItems: "center", flexDirection: "row", gap: 10, marginHorizontal: 2, marginTop: -12, paddingBottom: 10, paddingTop: 6 },
+  // marginBottom −12: AppScreen's 16 gap after the header slot → kit 4 (R31a: AppScreen has no extra top 12 any more).
+  head: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: -12, paddingBottom: 10, paddingTop: 6 },
   headText: { flex: 1, minWidth: 0 },
   brand: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22.5 },
   appic: { alignItems: "center", borderRadius: 9, height: 28, justifyContent: "center", width: 28 },

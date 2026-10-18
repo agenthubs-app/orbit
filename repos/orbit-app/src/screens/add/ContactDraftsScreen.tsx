@@ -13,7 +13,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useAddApi, type ContactDraftRow } from "./add-api";
 import { discardDraft, readDiscardedDrafts } from "./add-storage";
-import { DensityDots, FadeIn, KIT_PAGE_INSET } from "./add-ui";
+import { DensityDots, FadeIn } from "./add-ui";
 import { KitChip, KitEmo, KitGradient } from "../plan/plan-kit";
 import { useJourneyApi } from "../events/v2/journey-api";
 import { draftsDesignFor } from "./scan-design-fixtures";
@@ -87,8 +87,8 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
 
   const count = state.kind === "ready" ? state.drafts.length : null;
   return (
-    <AppScreen title={t("add.drafts.title")} subtitle={count === null ? undefined : t("add.drafts.count", { n: count })}>
-      <FadeIn testID="add-drafts" style={KIT_PAGE_INSET}>
+    <AppScreen inset="kit" title={t("add.drafts.title")} subtitle={count === null ? undefined : t("add.drafts.count", { n: count })}>
+      <FadeIn testID="add-drafts">
         <UiText style={d.lead}>{t("add.drafts.lead")}</UiText>
         {eventId ? (
           <View style={[d.card, d.importCard]} testID="add-drafts-import">

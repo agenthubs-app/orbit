@@ -63,6 +63,8 @@
   /* 2026-10-18 主会话代定（RD-17 优先，RD-33）：深色模式 Toast 仍是深色胶囊——比背景亮一档的面色 --surface-3 + 浅色字 --ink；
      撤销钮 --surface-2 底。原稿深色 stage 里是 kit 默认的 --ink 底（深色下变成浅色胶囊），与 RD-17 矛盾，按 RD-17 改。 */
   .ds .stage[data-theme="dark"] .toast { background: var(--surface-3); color: var(--ink); }
+  /* 2026-10-18 主会话代定（RD-17「完成 = ok 绿」优先，RD-33）：⑮ 任务完成圆形勾原画 --plum-500，改为 --ok。 */
+  .ds .ckr.on.ok { background: var(--ok); border-color: var(--ok); }
   .ds .stage[data-theme="dark"] .toast .undo { background: var(--surface-2); color: var(--ink); }
   .ds .stage[data-theme="dark"] .toast .tbar { background: color-mix(in srgb, var(--ink) 40%, transparent); }
   .ds .stage[data-theme="dark"] .toast.info .tk { background: color-mix(in srgb, var(--ink) 22%, transparent); color: var(--ink); }
@@ -318,10 +320,10 @@ P += comp(`<div class="srow">
 /* ② 确认框 */
 const alertApp = `<div class="dialog static"><div class="dic">${ix('trash', 'lg')}</div><b class="dt">このタスクを削除しますか？</b>
   <div class="dd">「山本 彩さんに資料を再送」を削除します。<br>元になったメモとやりとりは残ります。</div>
-  <div class="dacts"><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+  <div class="dacts"><button class="btn">キャンセル</button><button class="btn danger">削除する</button></div></div>`; /* 2026-10-18 主会话代定（RD-33）：焦点环 .focus 只是「默认焦点在キャンセル」的示意，App 不适用（iOS 无可见焦点环），App 两格不画；Web 模态照画 */
 const actSheet = `<div class="asheet actsheet"><div class="grab"></div><div class="row" style="gap:12px;align-items:flex-start"><span class="emo lav">🥂</span><div style="flex:1;min-width:0"><b style="font-size:15px;line-height:1.4;display:block">CFO Night Tokyo の参加を取り消しますか？</b><div class="lbl">10月7日（水）19:00 · 渋谷ストリーム</div></div></div>
   <div style="margin:12px 0 14px"><div class="eff">${ic('bell', 'sm')}主催者に取り消しが通知されます</div><div class="eff">${ic('ticket', 'sm')}参加費 ¥5,000 の返金は主催者の規定によります</div><div class="eff">${ic('users', 'sm')}会いたい人リスト（6名）と準備メモは残ります</div></div>
-  <button class="btn danger block">参加を取り消す</button><button class="btn block focus">参加を続ける</button></div>`;
+  <button class="btn danger block">参加を取り消す</button><button class="btn block">参加を続ける</button></div>`; /* RD-33：App 不适用焦点环（同上） */
 const modalWeb = `<div class="wmodal static"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic">${ix('trash', 'lg')}</div><div style="min-width:0"><b style="font-size:17px">このタスクを削除しますか？</b>
   <div class="sub" style="margin-top:6px;line-height:1.65">「山本 彩さんに資料を再送」を削除します。元に戻せません。元になったメモとやりとりは残ります。</div></div></div>
   <div class="macts"><span class="lbl hint">${kbd('Esc')} キャンセル</span><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
@@ -592,7 +594,7 @@ P += `<div class="src" style="margin-top:10px">出处<span>b6 · E 长文案规�
 P += sec2('c-ctl', '⑮ 开关与选择控件', '各批共 6 种开关写法，统一为下列一套');
 P += comp(duo(`<div style="display:grid;gap:14px">
   <div class="row" style="gap:14px"><span class="tgl"></span><span class="tgl on"></span><span class="lbl">开关 44×26 · 开 = <code>--plum-700</code></span></div>
-  <div class="row" style="gap:14px"><span class="ckr"></span><span class="ckr on">${ic('check')}</span><span class="lbl">任务完成：圆形 22 · <code>--plum-500</code></span></div>
+  <div class="row" style="gap:14px"><span class="ckr"></span><span class="ckr on ok">${ic('check')}</span><span class="lbl">任务完成：圆形 22 · <code>--ok</code></span></div>
   <div class="row" style="gap:14px"><span class="cbx"></span><span class="cbx on">${ic('check')}</span><span class="lbl">多选（表格/批量）：方形 20 圆角 7</span></div>
   <div class="row" style="gap:14px"><span class="rad"></span><span class="rad on"></span><span class="lbl">单选：圆 18 + 内点</span></div>
   <div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">東京</span><span class="fopt">大阪</span><span class="cat on">すべて</span><span class="cat">通知</span><span class="lbl">多选 chip / 单选页签</span></div></div>`), {

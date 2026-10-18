@@ -30,6 +30,12 @@ interface AppScreenProps extends PropsWithChildren {
   header?: ReactNode;
   headerActions?: ReactNode;
   headerVariant?: "large" | "compact";
+  /**
+   * R31a (R12 REWORK-REPORT-app §5): "kit" = kit .scroll — content right under the top bar (no extra 12) with the 18
+   * gutter; the redesigned pages use it. "legacy" (default) keeps the old 12 / 16 for the old screens until their
+   * feature Sprint rewrites them (their tests and layouts assume it).
+   */
+  inset?: "kit" | "legacy";
   onBack?: () => void;
   refreshControl?: ReactElement<RefreshControlProps>;
   showBack?: boolean;
@@ -48,6 +54,7 @@ export function AppScreen({
   header,
   headerActions,
   headerVariant = "large",
+  inset = "legacy",
   onBack,
   refreshControl,
   showBack,
@@ -82,7 +89,7 @@ export function AppScreen({
       <ScrollView
         {...scroll.props}
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.content, styles.tabContent]}
+        contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, styles.tabContent]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
@@ -117,7 +124,7 @@ export function AppScreen({
       <ScrollView
         {...scroll.props}
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.content, mainTab && styles.tabContent]}
+        contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, mainTab && styles.tabContent]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -186,6 +193,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   tabContent: { paddingBottom: TAB_BAR_CLEARANCE },
+  // kit .scroll (inset="kit"): no extra top, 18 gutter.
+  kitContent: { paddingHorizontal: SHELL_GUTTER, paddingTop: 0 },
   eyebrow: {
     ...textStyles.caption,
     color: colors.ink3Text,
