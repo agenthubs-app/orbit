@@ -53,6 +53,8 @@ SC-09 App のタスク詳細で削除成功後に旧 `/tasks` へ戻すと、red
 
 2026-10-18 後続の clean no-autostash rebase で `line-d` を上流 `cb866e48f` に重ねた。共有 contract index / parity、App 三言語辞書 index、offline-read inventory は上流 R11a と本線 R20a の追加を両方残し、生成 snapshot は `node scripts/contract-snapshot.mjs --write` で再生成した。現 HEAD `9c4e13584`、worktree は clean。rebase 後の contract snapshot check と schema parity **2/2**、App `npm run typecheck` **exit 0**、task route / selection / source / To-do の定向 **32/32 pass**。別の App route / Today / i18n 定向では route と Today は通ったが、辞書 exact-key test は既知の旧 count 2253 に対し現 en count 2889 で失敗した。新画面・native / pixel・修正後 App full は未検証のままで、SC-09 / SC-14 完了とはしない。
 
+SC-13 Web タスク一覧の失敗境界を追加検証した。`useTasksResource` は refresh 失敗時に最後の成功 data を保持するが、`TaskListWorkspace` は retry card と一緒にその旧 open / completed 行や選択済み detail の操作を表示していた。完了・再開の 2xx 後に該当 page / detail の再読だけ 503 とする実 component test を先に追加し、旧行の操作が残ることを 3 ケースで RED 確認した。各 resource の error 中は該当行・件数・詳細操作を表示せず retry だけにした。近接の group / workspace / page は最新再実行も **14/14 pass、exit 0**（`_evidence-d/R20a/run-01/d-web-task-stale-read-focused.log`、別途主会話 stdout 再実行）。製品と回帰テストの二ファイルだけを `0341c2462` で提出した。これはブラウザ保存コピーの導入や、全画面 SC-13 完了ではない。Web `typecheck:app` と全量、D App の修正後全量は全機 heavy queue で待機中で、未実行・未通過として扱う。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
