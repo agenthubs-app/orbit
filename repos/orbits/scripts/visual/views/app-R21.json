@@ -1,0 +1,56 @@
+{
+  "_note": "R21 iOrbit App smoke views. Large-data start and history require an actor-owned QA session on the simulator; remaining board states need controlled native fixtures before pixel comparison.",
+  "defaults": {
+    "grid": 30,
+    "wait": 12000,
+    "attribution": "scripts/visual/attribution-redesign-R21-app.json"
+  },
+  "sources": [
+    "repos/orbit-app/app/(app)/ai.tsx",
+    "repos/orbit-app/src/screens/ai/IOrbitStartView.tsx",
+    "repos/orbit-app/src/screens/ai/AiScreen.tsx",
+    "repos/orbit-app/src/components/ui/**"
+  ],
+  "views": [
+    {
+      "id": "A-R21-03",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 34,
+      "path": "/ai",
+      "themes": ["light"],
+      "note": "Large-data start; requires local QA account data."
+    },
+    {
+      "id": "A-R21-04",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 38,
+      "path": "/ai?drawer=1",
+      "themes": ["light"],
+      "note": "History drawer; actor-owned local session fixture required."
+    },
+    {
+      "id": "A-R21-13",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 56,
+      "path": "/ai",
+      "themes": ["dark"],
+      "note": "Dark large-data start."
+    },
+    {
+      "id": "A-R21-14",
+      "design": "b4-plan-iorbit.html",
+      "board-index": 57,
+      "path": "/ai?drawer=1",
+      "themes": ["dark"],
+      "note": "Dark history drawer."
+    },
+    {
+      "id": "A-R21-N01",
+      "design": "b11-nav-v3.html",
+      "board-index": 41,
+      "path": "/ai",
+      "themes": ["light"],
+      "note": "Full-screen header supplement."
+    }
+  ]
+}
