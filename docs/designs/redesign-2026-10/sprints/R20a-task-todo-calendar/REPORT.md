@@ -7,6 +7,10 @@
 - pristine 基線（主会話実行）：Web **7,475 tests / 31 fail / 1,015 skip**、App **3,324 tests / 4 fail / 2 skip**。ログは `/var/folders/3q/sc3_n8917jn8w_j_jltbz_xr0000gn/T/orbit-cd-baseline.fk6V4SASy3/{d-orbits.log,d-app.log}`。SC-02 / OAuth 実装中は App 基線待ちのため App を変更せず、完了通知後に SC-11a の App 実装を開始した。
 - Web 失敗の 25 件は scrubbed 環境でローカル DB URL がない明示的な環境失敗。残る 6 件は manifest/new P0、business-card merge text、dev fixture route import、card-scan browser 3 件で、旧 R30 記録との差分か実際の未解決不具合かは未確定。App 4 件は dictionary key-count、joined-person click timeout、plan overview undo click timeout、tasks-unification ファイル失敗（assertion なし）。R30 の Web 7,443 / 7 fail、App 3,322 / 2 fail とは区別し、pass として扱わない。DB 設定付き追加診断は主会話が担当する。
 
+2026-10-18 の App shell 修正：未ログインの確認期間に `/home` の pathname だけで底栏が出ていた。`app/_layout.tsx` の `UiRoot` で `ShellTabBar` の mount と Toast の tab 分スペースを `auth.signedIn` に揃えた（`39a353303`、root と SSR 回帰の 2 paths）。実 markup の RED は未ログイン `/home` に `<nav aria-label="main tabs">` と `data-has-tab-bar="true"` が残る失敗。修正後の `node --test --import tsx tests/root-shell-auth-render.test.ts` は **1/1 pass、exit 0**。ログイン前・後・再ログアウトを操作するブラウザ回帰は heavy queue 待ちで、ここでは未検証。`app/index.tsx` と `app/[...legacy].tsx` は変更していない。
+
+Web task 行のキーボード操作を含む現行 D の全量 `d-web-full-after-task-arrows-fairqueue.log` は **7,709 tests / 6,650 pass / 31 fail / 1,028 skip、exit 1**。直前の `d-web-full-task-list-after.log` と失敗名集合は同一で、新しい失敗名は 0。追加 4 件は通ったが、31 件を pass と読み替えない。App の今回の修正と SC-09 fold はこの Web run の検証対象ではない。
+
 ## 2026-10-18 主会話の最新検証（部分）
 
 App の SC-08 / SC-11 追加分について、fixture の型を製品契約に合わせて修正した後、`npm run typecheck` は exit 0。実ブラウザでは Sheet 8/8、sent 2/2 が通った。sent の実ブラウザ RED は保存直後の時刻より前に画面が保持した `now` を使うため pending 表示が最大 60 秒遅れる不具合で、`TodoScreen` の handoff 判定時刻だけを現在時刻に変更して GREEN 2/2 を確認した。修正後の App full と fresh typecheck exit0 は下記。Web の secure-origin fixture / SC-09 / SC-11 ブラウザは 9/9、修正後の Web typecheck と lint は exit0。実 Google、simulator、pixel はこの検証に含めない。
