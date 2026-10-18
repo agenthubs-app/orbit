@@ -46,15 +46,16 @@ test("app-home-route renders the R07 home placeholder while the iOrbit workspace
   assert.match(agentUiSource, /<IOrbitHome/);
 });
 
-test("web root renders the Orbit_0918 landing with a session-aware entry", () => {
+test("web root redirects members and renders the landing only for anonymous visitors", () => {
   const pageSource = source("app/page.tsx");
 
   assert.match(pageSource, /OrbitLanding0918/);
   assert.match(pageSource, /auth\(\)/);
+  assert.match(pageSource, /if \(session\?\.user\?\.id\)\s*\{\s*redirect\("\/app\/home"\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
   assert.match(pageSource, /OrbitReferenceStyles/);
-  assert.match(pageSource, /authenticated=\{Boolean\(session\?\.user\?\.id\)\}/);
+  assert.match(pageSource, /authenticated=\{false\}/);
   assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
   assert.doesNotMatch(pageSource, /OrbitRealHome/);
 });

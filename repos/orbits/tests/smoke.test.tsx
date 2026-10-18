@@ -127,10 +127,11 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
-  // Orbit_0918 批次 0：`/` 与 `/app` 改渲染新 UI 落地页（纯视觉）。
+  // 未登录的 `/` 与 `/app` 渲染落地页；已登录的 `/` 进入个人首页。
+  assert.match(pageSource, /redirect\("\/app\/home"\)/);
   assert.match(
     pageSource,
-    /<OrbitLanding0918 authenticated=\{Boolean\(session\?\.user\?\.id\)\} \/>/,
+    /<OrbitLanding0918 authenticated=\{false\} \/>/,
   );
 
   // `app/page.tsx` now authenticates through Auth.js, so invoking the route
