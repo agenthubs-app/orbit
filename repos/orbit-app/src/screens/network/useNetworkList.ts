@@ -11,6 +11,7 @@ import { validateApiResourceState } from "../../api/validated-resource-state";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { withLegacyNetworkFields } from "../../view-models/contacts-local";
+import type { useNetworkDesignContacts } from "./network-design-fixture";
 
 export type NetworkListStatus = "loading" | "ready" | "failure";
 
@@ -45,12 +46,13 @@ export function networkServerQuery(query: LocalContactDirectoryQuery): string {
   return params.toString();
 }
 
-export function useNetworkList(query: LocalContactDirectoryQuery): NetworkListState {
+export function useNetworkList(query: LocalContactDirectoryQuery, fixture?: ReturnType<typeof useNetworkDesignContacts>): NetworkListState {
   const local = useLocalContacts();
-  const rows = useMemo(() => local.rows.map(withLegacyNetworkFields), [local.rows]);
+  const sourceRows = fixture?.enabled ? fixture.data?.rows ?? [] : local.rows;
+  const rows = useMemo(() => sourceRows.map(withLegacyNetworkFields), [sourceRows]);
   const merge = { goalRelatedIds: query.goalRelatedIds ?? null, followUpContactIds: query.followUpContactIds ?? null, monthStart: query.monthStart ?? null };
-  const deviceSummary = useMemo(() => (local.available ? { ...localContactDirectorySummary(rows, { ...merge, query: query.query ?? null }), asOf: local.freshness.lastSyncedAt ?? new Date(0).toISOString() } : null),
-    [local.available, rows, JSON.stringify(merge), query.query, local.freshness.lastSyncedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  const deviceSummary = useMemo(() => (local.available ? { ...localContactDirectorySummary(rows, { ...merge, query: query.query ?? null }), asOf: fixture?.enabled ? fixture.lastSyncedAt ?? new Date(0).toISOString() : local.freshness.lastSyncedAt ?? new Date(0).toISOString() } : null),
+    [local.available, rows, JSON.stringify(merge), query.query, local.freshness.lastSyncedAt, fixture?.enabled, fixture?.lastSyncedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   const deviceItems = useMemo(() => (local.available ? localContactDirectory(rows, query).flatMap((row) => (row.card ? [row.card] : [])) : []),
     [local.available, rows, JSON.stringify(query)]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -69,16 +71,19 @@ export function useNetworkList(query: LocalContactDirectoryQuery): NetworkListSt
   const matchedState = validateApiResourceState(rawMatched, contactCardSummarySchema);
   const localRefresh = local.refresh;
   const refresh = useCallback(() => {
-    if (local.available) localRefresh();
+    if (fixture?.enabled) fixture.refresh();
+    else if (local.available) localRefresh();
     else { setCursor({ query: serverQuery, value: null }); rawPage.refresh(); rawSummary.refresh(); rawMatched.refresh(); }
-  }, [local.available, localRefresh, serverQuery, rawPage.refresh, rawSummary.refresh, rawMatched.refresh]);
+  }, [fixture?.enabled, fixture?.refresh, local.available, localRefresh, serverQuery, rawPage.refresh, rawSummary.refresh, rawMatched.refresh]);
 
   if (local.available) {
-    const loading = local.freshness.loading && rows.length === 0;
+    const loading = fixture?.enabled ? fixture.loading : local.freshness.loading && rows.length === 0;
     return {
-      status: loading ? "loading" : local.freshness.failure !== null && rows.length === 0 ? "failure" : "ready",
+      status: loading ? "loading" : (fixture?.enabled ? fixture.failure : local.freshness.failure) !== null && rows.length === 0 ? "failure" : "ready",
       items: deviceItems, summary: deviceSummary, matched: deviceItems.length, hasMore: false, loadMore: () => undefined, refresh,
-      offline: local.freshness.offline, lastSyncedAt: local.freshness.lastSyncedAt, fromDevice: true, failure: local.freshness.failure,
+      offline: fixture?.enabled ? fixture.offline : local.freshness.offline,
+      lastSyncedAt: fixture?.enabled ? fixture.lastSyncedAt : local.freshness.lastSyncedAt,
+      fromDevice: true, failure: fixture?.enabled ? fixture.failure : local.freshness.failure,
     };
   }
   const page = pageState.kind === "success" || pageState.kind === "empty" ? pageState.data : null;

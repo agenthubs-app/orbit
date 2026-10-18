@@ -15,11 +15,14 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { recomputeNetworkSnapshot, useNetworkAnalysisView, useNetworkSnapshot, type CachedReadState, type NetworkSnapshotView } from "./analysis-api";
 import { ANALYSIS_TABS, ANALYSIS_TAB_KEY, analysisListHref, analysisTabFrom, contactHref, tokyoMonthDay, type AnalysisTab } from "./analysis-labels";
 import { InsightsView, LockedView, OpportunitiesView, SnapshotCard, StructureView, type DrillSelection, type EvidencePerson } from "./AnalysisViews";
+import { useNetworkDesignContacts } from "../network/network-design-fixture";
 
 /** Snapshot evidence names: record id → the contact (local mirror rows: `id` = record id, `card.id` = contact id). Unknown ids show nothing. */
 export function useEvidenceNames(): Record<string, EvidencePerson> {
   const local = useLocalContacts(false);
-  return useMemo(() => Object.fromEntries(local.rows.flatMap((row) => (row.card ? [[row.id, { contactId: row.card.id, name: row.card.displayName }]] : []))), [local.rows]);
+  const fixture = useNetworkDesignContacts();
+  const rows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
+  return useMemo(() => Object.fromEntries(rows.flatMap((row) => (row.card ? [[row.id, { contactId: row.card.id, name: row.card.displayName }]] : []))), [rows]);
 }
 
 export function NetworkAnalysisScreen() {

@@ -28,6 +28,7 @@ import { NETWORK_CHIP_COPY } from "./NetworkScreen";
 import { detailContactFrom, detailHeaderChips, fitCandidate, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
+import { useNetworkDesignContacts } from "./network-design-fixture";
 
 interface ValueLine { relation?: string | null; evidence?: string[] }
 
@@ -47,14 +48,16 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const client = useOrbitApiClient();
   const inviteApi = useInviteApi();
   const local = useLocalContacts();
+  const fixture = useNetworkDesignContacts();
+  const localRows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
   const merge = useNetworkMerge();
   const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: contactId, cachePolicy: "network-only", enabled: !local.available });
-  const row = useMemo(() => local.rows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [local.rows, contactId]);
+  const row = useMemo(() => localRows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [localRows, contactId]);
   const card = row ? withLegacyNetworkFields(row).card : null;
   const contact: DetailContact | null = useMemo(() => {
-    if (local.available) return detailContactFrom(localContactDetail(local.rows, contactId));
+    if (local.available) return detailContactFrom(localContactDetail(localRows, contactId));
     return remote.kind === "success" ? detailContactFrom(remote.data) : null;
-  }, [local.available, local.rows, contactId, remote]);
+  }, [local.available, localRows, contactId, remote]);
   const goalLink = merge.links.get(contactId) ?? null;
 
   const [valueLine, setValueLine] = useState<ValueLine | null>(null);
@@ -72,6 +75,14 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
 
   useEffect(() => {
     let live = true;
+    if (fixture.enabled) {
+      if (fixture.data) {
+        setValueLine(fixture.data.valueLines[contactId] ?? null);
+        setFit(fixture.data.fits[contactId] ?? null);
+        setConnection(fixture.data.connections[contactId] ?? null);
+      }
+      return () => { live = false; };
+    }
     const lang = language === "zh" ? "zh" : "en";
     void client.get<{ lines: (ValueLine & { contactId: string })[] }>(`/api/contacts/value-lines?ids=${encodeURIComponent(contactId)}&lang=${lang}`).then((result) => {
       if (!live || whenNotImplemented(result, { use: "hide" }) || !result.success) return;
@@ -84,7 +95,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
       if (live && result.ok) setConnection(result.data);
     });
     return () => { live = false; };
-  }, [client, inviteApi, contactId, language]);
+  }, [client, inviteApi, contactId, language, fixture.enabled, fixture.data]);
 
   const candidate = fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
@@ -104,11 +115,11 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const initialization = useContactInitialization(contactId, card?.pendingInitialization ? contact?.connectionId ?? null : undefined, `network:${contactId}`, () => true, () => local.refresh());
 
   if (!contact) {
-    const loading = local.available ? local.freshness.loading : remote.kind === "loading";
+    const loading = fixture.enabled ? fixture.loading : local.available ? local.freshness.loading : remote.kind === "loading";
     return (
       <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}>
         <View testID="network-contact">
-          {loading ? <View style={styles.card}><Skeleton lines={5} /></View> : <RetryCard title={local.available ? t("network.detail.notFound") : t("network.detail.loadFailed")} onRetry={() => (local.available ? local.refresh() : remote.refresh())} />}
+          {loading ? <View style={styles.card}><Skeleton lines={5} /></View> : <RetryCard title={local.available ? t("network.detail.notFound") : t("network.detail.loadFailed")} onRetry={() => (fixture.enabled ? fixture.refresh() : local.available ? local.refresh() : remote.refresh())} />}
         </View>
       </AppScreen>
     );
@@ -131,7 +142,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     <AppScreen inset="kit" title="" backAccessibilityLabel={t("network.detail.back")}
       headerActions={<IconButton ref={menuButtonRef} icon="more" accessibilityLabel={t("network.detail.more")} onPress={() => setMenuOpen(true)} />}>
       <View testID="network-contact">
-        {local.freshness.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
+        {(fixture.enabled ? fixture.offline : local.freshness.offline) ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
 
         <View style={[styles.card, styles.head]} testID="network-contact-head">
           <Avatar name={contact.displayName} size="lg" />
@@ -159,7 +170,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           ) : null}
         </View>
 
-        {card?.pendingInitialization && !local.freshness.offline ? <View style={styles.gapTop}><ContactRelationshipInitializer binding={initialization} /></View> : null}
+        {card?.pendingInitialization && !(fixture.enabled ? fixture.offline : local.freshness.offline) ? <View style={styles.gapTop}><ContactRelationshipInitializer binding={initialization} /></View> : null}
 
         {candidate ? (
           <View style={[styles.card, styles.confirm, styles.gapTop]} testID="network-fit-card">

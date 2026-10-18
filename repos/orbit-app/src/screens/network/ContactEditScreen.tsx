@@ -21,6 +21,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localContactDetail } from "../../view-models/contacts-local";
 import { detailContactFrom } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
+import { useNetworkDesignContacts } from "./network-design-fixture";
 
 const GROUP_LEVEL: Record<SeniorityGroup, string | null> = { decision: "c_level", manager: "manager", staff: "individual_contributor", other: null };
 const GROUP_COPY = { decision: "network.edit.seniorityDecision", manager: "network.edit.seniorityManager", staff: "network.edit.seniorityStaff", other: "network.edit.seniorityOther" } as const;
@@ -37,8 +38,10 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   const toast = useToast();
   const client = useOrbitApiClient();
   const local = useLocalContacts();
+  const fixture = useNetworkDesignContacts();
+  const localRows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
   const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: `edit:${contactId}`, cachePolicy: "network-only", enabled: !local.available });
-  const contact = useMemo(() => (local.available ? detailContactFrom(localContactDetail(local.rows, contactId)) : remote.kind === "success" ? detailContactFrom(remote.data) : null), [local.available, local.rows, contactId, remote]);
+  const contact = useMemo(() => (local.available ? detailContactFrom(localContactDetail(localRows, contactId)) : remote.kind === "success" ? detailContactFrom(remote.data) : null), [local.available, localRows, contactId, remote]);
   const initial: Draft | null = useMemo(() => contact ? {
     displayName: contact.displayName, organization: contact.organization, role: contact.role, email: contact.primaryEmail, phone: contact.primaryPhone,
     primaryIndustryId: contact.primaryIndustryId ?? null, secondaryIndustryId: contact.secondaryIndustryId ?? null, seniorityLevel: contact.seniorityLevel ?? null,
@@ -57,7 +60,7 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
     return (
       <FormScreen title={t("network.edit.title")} cancelLabel={t("network.edit.cancel")} saveLabel={t("network.edit.save")} onCancel={() => router.back()} onSave={() => undefined} saveDisabled>
         <View testID="network-edit">
-          {(local.available ? local.freshness.loading : remote.kind === "loading") ? <Skeleton lines={6} /> : <RetryCard title={t("network.detail.notFound")} onRetry={() => (local.available ? local.refresh() : remote.refresh())} />}
+          {(fixture.enabled ? fixture.loading : local.available ? local.freshness.loading : remote.kind === "loading") ? <Skeleton lines={6} /> : <RetryCard title={t("network.detail.notFound")} onRetry={() => (fixture.enabled ? fixture.refresh() : local.available ? local.refresh() : remote.refresh())} />}
         </View>
       </FormScreen>
     );

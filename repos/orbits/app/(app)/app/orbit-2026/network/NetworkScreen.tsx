@@ -57,6 +57,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const t = useNetworkT();
   const router = useRouter();
   const params = useSearchParams();
+  const designLoading = process.env.NODE_ENV !== "production" && params?.get("design") === "loading";
   const toast = useToast();
   const nowMs = useMemo(() => Date.parse(nowIso), [nowIso]);
   // G12：390 没有 🔍（手机 Web 搜人走本页搜索框）。
@@ -81,12 +82,22 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     if (result.ok) setSummary(result.data); else setFailed(true);
   }, []);
   useEffect(() => {
+    if (designLoading) return;
     void loadSummary();
     void networkApi.goalRelated().then((result) => { if (result.ok) setLinks(new Map((result.data.links ?? []).map((link) => [link.contactId, link]))); });
-  }, [loadSummary]);
+  }, [loadSummary, designLoading]);
+
+  // The controlled PX1 list and its drawer use the same design people and plan labels.
+  useEffect(() => {
+    if (!items?.some((item) => /^design-person-[0-9]{3}$/u.test(item.id))) return;
+    void networkApi.designContacts().then((result) => {
+      if (result.ok && Array.isArray(result.data.links)) setLinks(new Map(result.data.links.map((link) => [link.contactId, link])));
+    });
+  }, [items]);
 
   const pageQuery = useMemo(() => networkQuery({ query, tab, filters, facets: summary, limit: PAGE_SIZE }), [query, tab, filters, summary]);
   useEffect(() => {
+    if (designLoading) return;
     const current = ++generation.current;
     const handle = setTimeout(() => {
       void Promise.all([networkApi.page(pageQuery), networkApi.summary(networkQuery({ query, tab, filters, facets: summary }))]).then(([page, filtered]) => {
@@ -99,7 +110,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       });
     }, query ? 250 : 0);
     return () => clearTimeout(handle);
-  }, [pageQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageQuery, designLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = async () => {
     if (!cursor) return;

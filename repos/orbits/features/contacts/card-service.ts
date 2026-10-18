@@ -74,6 +74,50 @@ export function createContactCardService(actor: ContactCardActor, merge: Contact
   return wrapContactCardReader(reader, actor, merge);
 }
 
+/** PX1 design world: local development only, after an explicit variant switch. */
+export async function createDesignContactCardService(actor: ContactCardActor): Promise<ContactCardService | null> {
+  const listed = (process.env.ORBIT_REDESIGN_MOCK ?? "").split(",").map((item) => item.trim());
+  if (process.env.NODE_ENV === "production" || !listed.includes("network")) return null;
+  const [{ activeNetworkFixture, NETWORK_FIXTURE_NOW }, { designNetworkContactFixture }, directory] = await Promise.all([
+    import("../network-analysis/analysis-fixtures"), import("../network-analysis/design-fixtures/contacts"),
+    import("../../shared/api-schema/contact-local-directory"),
+  ]);
+  const variant = activeNetworkFixture().variant;
+  if (!variant) return null;
+  const fixture = designNetworkContactFixture(variant);
+  const asOf = NETWORK_FIXTURE_NOW.toISOString();
+  const asLocal = (query: ContactsListSearchFilterInput) => ({
+    query: query.query, sourceFilters: query.sourceFilters, statusFilters: query.statusFilters,
+    tagFilters: query.tagFilters, valueFilters: query.valueFilters,
+    goalRelated: query.goalRelated, needsFollowUp: query.needsFollowUp,
+    industryFilters: query.industryFilters, regionFilters: query.regionFilters,
+    metFilters: query.metFilters, densityFilters: query.densityFilters, sort: query.sort,
+    goalRelatedIds: fixture.goalRelatedIds, followUpContactIds: fixture.followUpContactIds,
+    monthStart: "2026-10-01T00:00:00.000Z",
+  });
+  const check = (actorId: string) => {
+    if (actorId !== actor.id) throw new AppError("FORBIDDEN", "Contact access is scoped to one account.");
+  };
+  return {
+    async page(query, actorId) {
+      check(actorId);
+      const limit = query.limit ?? 30;
+      const cursor = query.cursor ?? "0";
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || !/^(0|[1-9][0-9]*)$/.test(cursor)) throw new Error("CONTACT_PAGE_INPUT_INVALID");
+      const offset = Number(cursor);
+      if (!Number.isSafeInteger(offset)) throw new Error("CONTACT_PAGE_INPUT_INVALID");
+      const matched = directory.localContactDirectory(fixture.rows, asLocal(query));
+      const items = matched.slice(offset, offset + limit).flatMap((row) => row.card ? [row.card] : []);
+      const hasMore = offset + limit < matched.length;
+      return { items, hasMore, nextCursor: hasMore ? String(offset + limit) : null, asOf };
+    },
+    async summary(query, actorId) {
+      check(actorId);
+      return { ...directory.localContactDirectorySummary(fixture.rows, asLocal(query)), asOf };
+    },
+  };
+}
+
 /** The read-budget gate, scope check and R11a merge around a card reader (exported for tests). */
 export function wrapContactCardReader(reader: ContactCardService, actor: ContactCardActor, merge: ContactNetworkMergeSources): ContactCardService {
   const check = (actorId: string) => {

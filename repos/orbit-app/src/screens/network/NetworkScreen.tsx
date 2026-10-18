@@ -25,6 +25,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useNetworkMerge } from "./useNetworkMerge";
 import { NETWORK_ANALYSIS_UNLOCK_CONTACTS } from "../../api/compute/network-analysis-page-lock";
+import { useNetworkDesignContacts } from "./network-design-fixture";
 
 /** 人脈分析 opens from NETWORK_ANALYSIS_UNLOCK_CONTACTS people: below it the page shows the invite card and the locked 「人脈分析 · 10人から使えます · あと N人」 card
  *  (app.html #7, :469) instead of the density card (#8). R11b page-lock rule (shared/compute copy); not the 3-person analysis-threshold. */
@@ -38,7 +39,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
-  const params = useLocalSearchParams<{ industry?: string | string[] }>();
+  const params = useLocalSearchParams<{ industry?: string | string[]; design?: string | string[] }>();
   const remembered = memory.get(scopeKey);
   const [tab, setTab] = useState<NetworkTab>(remembered?.tab ?? "all");
   const [filters, setFilters] = useState<NetworkFilters>(() => {
@@ -48,14 +49,19 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const [query, setQuery] = useState(remembered?.query ?? "");
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const fixture = useNetworkDesignContacts();
+  const designLoading = fixture.enabled && params.design === "loading";
+  const visibleFixture = designLoading ? { ...fixture, data: null, loading: true } : fixture;
   const merge = useNetworkMerge();
   const monthStart = tokyoMonthStart(now());
 
   // その他 expands against the facets of the last summary (facets cover everyone, so they do not depend on the filters).
   const [facets, setFacets] = useState<ContactCardSummaryDTO | null>(null);
-  const directoryQuery = useMemo(() => networkDirectoryQuery({ query, tab, filters, summary: facets, merge: { goalIds: merge.goalIds, followUpIds: merge.followUpIds, monthStart } }),
-    [query, tab, filters, facets, merge.goalIds, merge.followUpIds, monthStart]);
-  const list = useNetworkList(directoryQuery);
+  const goalIds = fixture.enabled ? fixture.data?.goalRelatedIds ?? [] : merge.goalIds;
+  const followUpIds = fixture.enabled ? fixture.data?.followUpContactIds ?? [] : merge.followUpIds;
+  const directoryQuery = useMemo(() => networkDirectoryQuery({ query, tab, filters, summary: facets, merge: { goalIds, followUpIds, monthStart } }),
+    [query, tab, filters, facets, goalIds, followUpIds, monthStart]);
+  const list = useNetworkList(directoryQuery, visibleFixture);
   const deleted = useDeletedContacts(!list.offline);
   const summary: ContactCardSummaryDTO | null = list.summary ?? facets;
   useEffect(() => { if (list.summary && JSON.stringify(list.summary) !== JSON.stringify(facets)) setFacets(list.summary); }, [list.summary]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,9 +69,10 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const total = header?.total ?? 0;
   const empty = list.status === "ready" && total === 0;
   const rows = useMemo(() => {
-    const goalIds = new Set(merge.goalIds);
-    return list.items.filter((card) => !deleted.has(card.id)).map((card) => networkRow(card, merge.links, goalIds));
-  }, [list.items, merge.goalIds, merge.links, deleted]);
+    const goals = new Set(goalIds);
+    const links = fixture.enabled ? new Map((fixture.data?.links ?? []).map((link) => [link.contactId, link])) : merge.links;
+    return list.items.filter((card) => !deleted.has(card.id)).map((card) => networkRow(card, links, goals));
+  }, [list.items, goalIds, merge.links, fixture.enabled, fixture.data, deleted]);
 
   useEffect(() => { memory.set(scopeKey, { tab, filters, query }); }, [scopeKey, tab, filters, query]);
 

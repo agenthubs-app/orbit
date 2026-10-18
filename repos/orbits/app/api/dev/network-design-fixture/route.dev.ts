@@ -8,15 +8,25 @@ import { NextResponse } from "next/server";
 
 import { NETWORK_DESIGN_VARIANTS, activeNetworkFixture, installNetworkFixtureWorld, type NetworkDesignVariant } from "../../../../features/network-analysis/analysis-fixtures";
 import { designNetworkWorld } from "../../../../features/network-analysis/design-fixtures";
+import { designNetworkContactFixture } from "../../../../features/network-analysis/design-fixtures/contacts";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
+import { success } from "../../../../shared/api/envelope";
+import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 const HEADERS = { "Cache-Control": "no-store", "X-Orbit-Runtime-Boundary": "developer-local" } as const;
 const available = () => process.env.NODE_ENV !== "production" && redesignContractMode("network-analysis") === "mock";
 const notFound = () => NextResponse.json({ error: "not_found" }, { headers: HEADERS, status: 404 });
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!available()) return notFound();
+  if (new URL(request.url).searchParams.get("contacts") === "1") {
+    const actor = await resolveAuthenticatedApiActor();
+    if (!actor) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication is required." } }, { headers: HEADERS, status: 401 });
+    const variant = activeNetworkFixture().variant;
+    if (!variant) return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Select a design variant first." } }, { headers: HEADERS, status: 404 });
+    return NextResponse.json(success({ ...designNetworkContactFixture(variant), actorId: actor.id }), { headers: HEADERS });
+  }
   return NextResponse.json({ variants: NETWORK_DESIGN_VARIANTS, variant: activeNetworkFixture().variant }, { headers: HEADERS });
 }
 

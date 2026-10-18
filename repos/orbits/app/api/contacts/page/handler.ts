@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createContactCardService, readContactCardQuery, contactCardReadError, type ContactCardService } from "../../../../features/contacts/card-service";
+import { createContactCardService, createDesignContactCardService, readContactCardQuery, contactCardReadError, type ContactCardService } from "../../../../features/contacts/card-service";
 import { success, failure } from "../../../../shared/api/envelope";
 import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
@@ -37,7 +37,7 @@ export function createContactCardGetHandler(options: {
     try {
       const searchParams = new URL(request.url).searchParams;
       const query = readContactCardQuery(searchParams);
-      const service = (options.service ?? createContactCardService)(actor);
+      const service = options.service ? options.service(actor) : (await createDesignContactCardService(actor)) ?? createContactCardService(actor);
       if (options.summary) return NextResponse.json(success(contactCardSummarySchema.parse(await service.summary(query, actor.id))), { headers });
       const page = contactCardPageSchema.parse(await service.page(query, actor.id));
       if (searchParams.get("tiers") !== "1" || page.items.length === 0) return NextResponse.json(success(page), { headers });

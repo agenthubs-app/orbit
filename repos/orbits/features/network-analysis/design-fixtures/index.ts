@@ -53,12 +53,21 @@ function many286(): NetworkAnalysisRow[] {
     // Joiners: 9 manufacturing people this month (伸び), the rest spread over the past months.
     const added = i >= 105 && i < 114 ? 2 + (i % 5) : 40 + ((i * 13) % 300);
     // Board names: the finance list (#37 / #40) and the stalled card's 鈴木 / 中村 / 高田 (#35 / #41).
-    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 120 ? BOARD_PEOPLE[8] : i === 125 ? BOARD_PEOPLE[9] : i === 130 ? BOARD_PEOPLE[10] : undefined;
+    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 120 ? BOARD_PEOPLE[8] : i === 125 ? BOARD_PEOPLE[9] : i === 130 ? BOARD_PEOPLE[10]
+      : i === 150 ? ["森 恭平", "東雲キャピタル", "プリンシパル"] as const
+      : i === 151 ? ["岡田 紗希", "Sakura Growth Partners", "ヴァイスプレジデント"] as const
+      : i === 152 ? ["青木 里奈", "Kanade AI", "CTO"] as const
+      : i === 190 ? ["大野 真司", "大野商店", "店主"] as const
+      : i === 220 ? ["前田 隼人", "", ""] as const
+      : i === 260 ? ["石川 陽介", "石川デザイン事務所", "代表"] as const : undefined;
     const [name, organization, role] = named ?? [`名前 ${i + 1}`, `会社 ${(i % 40) + 1}`, "担当"];
+    // R11a and R11b share the same joined-at fact. The R11a board has 24 October joiners;
+    // the 12 added outside retail keep retail's nine joiners the largest R11b growth group.
+    const boardMonthJoiner = [2, 50, 51, 52, 53, 190, 200, 201, 202, 203, 260, 270, 271, 272, 273].includes(i);
     rows.push({
       id: `design-person-${String(i + 1).padStart(3, "0")}`, name, organization, role,
       status: nurture ? "nurture" : "active", primaryIndustryId: industry, city, metKind: met, seniorityLevel: seniority,
-      addedAt: ago(added), lastInteractionAt: ago(lastTouch), goalRelated, needsFollowUp: i === 0 || i === 1 || (i >= 40 && i < 52),
+      addedAt: ago(boardMonthJoiner ? 6 - (i % 5) : added), lastInteractionAt: ago(boardMonthJoiner ? Math.min(lastTouch, 1 + (i % 3)) : lastTouch), goalRelated, needsFollowUp: i === 0 || i === 1 || (i >= 40 && i < 52),
       nextActionPreview: i === 0 ? "💼 シリーズAのリード投資家候補。SaaS領域に年8社出資" : i === 1 ? "💼 前回の面談で資料の再送を依頼されたまま" : i === 2 ? "📊 資本政策の相談相手。VC 4社と面識あり" : i === 3 ? "💼 シード〜シリーズA の製造業テックに出資" : i === 4 ? "🏦 ベンチャーデットの相談窓口" : i === 5 ? "🏭 事業会社の投資担当。製造業 SaaS に関心" : "",
     });
   }
@@ -86,7 +95,10 @@ function few14(): NetworkAnalysisRow[] {
 export function designNetworkPeople(variant: NetworkDesignVariant): NetworkAnalysisRow[] {
   switch (variant) {
     case "empty": return [];
-    case "locked5": return few14().slice(0, 5);
+    // The locked board is the R11a five-person list: 伊藤・高橋・鈴木・大野・石川.
+    // R11b only renders the 5/10 lock at this size, so these same people can be
+    // projected by R11a without a second contact-only person table.
+    case "locked5": return [2, 0, 120, 190, 260].map((index) => many286()[index]!);
     case "few14": return few14();
     case "many286": return many286();
     default: return [];
