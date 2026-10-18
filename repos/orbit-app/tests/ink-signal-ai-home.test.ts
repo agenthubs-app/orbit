@@ -212,6 +212,27 @@ test("R21 history deletion requires confirmation and starts one server write", a
   assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: null }]);
 });
 
+test("R21 undo button expires at the server deadline after a delayed DELETE reply", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "会话列表");
+  await press(p, "产品试点讨论的操作");
+  await press(p, "删除");
+  await press(p, "删除");
+  await p.evaluate(() => {
+    const state = (window as any).fixture;
+    const index = state.requests.findIndex((request: { method: string }) => request.method === "DELETE");
+    state.reply(index, 200, {
+      deleted: true,
+      undoToken: "undo:deadline",
+      undoUntil: "2026-09-12T03:00:00.250Z",
+      storage: { configured: true, persisted: true },
+    });
+  });
+  await p.getByRole("button", { name: "撤销删除" }).first().waitFor();
+  await p.waitForTimeout(450);
+  assert.equal(await p.getByRole("button", { name: "撤销删除" }).count(), 0);
+});
+
 test("R21 swiping a stored history row left opens its actions without writing", async t => {
   const p = await open(t);
   await press(p, "会话列表");

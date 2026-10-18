@@ -104,7 +104,7 @@ export function useAgentHistory() {
 
   useEffect(() => {
     if (!pendingUndo) return;
-    const timer = window.setTimeout(() => setPendingUndo((current) => current?.undoToken === pendingUndo.undoToken ? null : current), 5_000);
+    const timer = window.setTimeout(() => setPendingUndo((current) => current?.undoToken === pendingUndo.undoToken ? null : current), Math.max(0, Date.parse(pendingUndo.undoUntil) - Date.now()));
     return () => window.clearTimeout(timer);
   }, [pendingUndo]);
 

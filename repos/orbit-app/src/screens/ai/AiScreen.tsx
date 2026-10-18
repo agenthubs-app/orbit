@@ -285,10 +285,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
-  const [pendingUndo, setPendingUndo] = useState<{ id: string; token: string } | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<{ id: string; token: string; until: string } | null>(null);
   useEffect(() => {
     if (!pendingUndo) return;
-    const timer = setTimeout(() => setPendingUndo(current => current?.token === pendingUndo.token ? null : current), 5_000);
+    const timer = setTimeout(() => setPendingUndo(current => current?.token === pendingUndo.token ? null : current), Math.max(0, Date.parse(pendingUndo.until) - Date.now()));
     return () => clearTimeout(timer);
   }, [pendingUndo]);
   // The device mirror is partial. A nonempty online query must use the actor-scoped
@@ -653,10 +653,13 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     if (!owns() || operation.signal.aborted || deleteOperation.current !== operation) return;
     if (result.ok) {
       setDeletedIds(ids => [...ids, item.id]);
-      if (result.value.undoToken) {
+      if (result.value.undoToken && result.value.undoUntil && Date.parse(result.value.undoUntil) > Date.now()) {
         const token = result.value.undoToken;
-        setPendingUndo({ id: item.id, token });
+        setPendingUndo({ id: item.id, token, until: result.value.undoUntil });
         toast.success(iorbitR21Copy[locale.language].deleted, { undo: () => { void restoreDeletion(item.id, token); } });
+      } else {
+        setPendingUndo(null);
+        toast.success(iorbitR21Copy[locale.language].deleted);
       }
       setConfirmDelete(null);
       setHistoryAttempt(value => value + 1);
