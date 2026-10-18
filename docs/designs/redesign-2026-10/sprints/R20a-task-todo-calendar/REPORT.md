@@ -716,3 +716,9 @@ D Task list 二件は production の `today` / `timeZone` 付き page request �
 面会詳細の再読取が HTTP 503 になると、日本語画面でも API client の中国語「Orbit 服务暂不可用，请稍后再试。」がそのまま alert に出た。実 route / screen / client を mount した Chromium で **RED 0/1** を確認。既存の offline copy がある場合と network unreachable / 成功応答の不正内容は従来どおりにし、server failure の原文だけ既存の `meetingDetails.readFailed` 辞書へ写した（`46cd9c66c`）。定向 **GREEN 1/1**、面会詳細の交互作用 **7/7**、App `typecheck` / `git diff --check` は exit0。fixture の既存 crypto export warning 二件は残る。
 
 App 全量 `_evidence-d/R20a/run-01/d-app-full-meeting-detail-locale.log` は **3,226 total / 3,209 pass / 12 fail / 3 cancelled / 2 skip、exit1**。新用例と前段の個人予定言語二用例は全量でも pass。失敗12件は R12 card 九件、旧辞書 exact-key pin、shared compute rule、invite history click timeout。通知 registry の三件は5秒 timeoutで cancelled した。前回との件数差を新たな機能回帰や安定化の証拠とはしない。SC-11 の native 操作 / pixel / 編集全体は OPEN、App 全量も赤のまま。別担当が作成中の `docs/superpowers/plans/2026-10-19-r20a-s{1,2}-*.md` は今回の変更・commit に含めない。
+
+## 2026-10-19　App 個人予定詳細の読取失敗文言（SC-10 部分）
+
+個人予定詳細の再読取失敗でも `source.errorText` がそのまま alert に出て、日本語画面に中国語のネットワーク文言が混ざった。実 route / screen / client の Chromium 回帰で **RED 0/1**、既存 `schedule.readFailed` 辞書への画面境界変換後 **GREEN 1/1**。既存の typed errorKey と初期読み込み中の空表示は維持した。変更は `d9bd8da31` の二ファイルに限定し、個人予定交互作用 **78/78**、App `typecheck` / `git diff --check` は exit0。既存 harness の `OrbitLocaleContext` export warning は残る。
+
+App 全量 `_evidence-d/R20a/run-01/d-app-full-personal-detail-locale.log` は **3,227 total / 3,214 pass / 11 fail / 0 cancelled / 2 skip、exit1**。今回の詳細用例、先の個人予定編集二用例、面会詳細用例は全量でも pass。残る11件は R12 card 九件、旧辞書 exact-key pin 一件、shared compute rule 一件。前回の invite / notification timeout が今回は再現しなかったことを今回の修正効果とはみなさない。SC-10 の native 操作・画面全体の言語・pixel は OPEN のまま。別担当の Web Task 変更と未追跡計画／fixture は今回の commit に含めない。
