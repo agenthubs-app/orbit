@@ -53,12 +53,13 @@ function DialogFrame({ onClose, closeOnScrim = true, labelledBy, describedBy, cl
 
 // kit .wmodal: centred dialog 380 / 420 / 480 / 560 (680 for the ⌘K panel; form modals 760 / 860 / 1000, b3 日程を提案 1000 · 送る前の確認 760 · フォロー完了 860), radius 28, padding 24;
 // `top` sits 96 from the top (⌘K); `form` uses --bg so cards inside keep their layer.
-// Head (R31b, boards b12 W-R24-03 / 09b / 11, #320, 01-system ②): title 17 (`titleSize` 18) bold, the ✕ is kit .lbtn
-// (34, surface-2). `icon` puts a tile left of the title (kit .emo / .dic; decoration, never focusable); with
+// New head (R31b, boards b12 W-R24-03 / 09b / 11, #320, 01-system ②): opt in via icon, subtitle, or titleSize;
+// it uses a 17px title (`titleSize` 18) and kit .lbtn ✕ (34, surface-2). The default keeps its pre-R31b look.
+// `icon` puts a tile left of the title (kit .emo / .dic; decoration, never focusable); with
 // `description` as well the head is the confirm layout (gap 14, top-aligned, the description under the title).
 // `subtitle` is the grey line right under the title. `closable={false}` drops the ✕: the dialog then needs a
 // cancel action — Esc still closes it and focus still returns to the opener.
-export function Modal({ open, onClose, title, header, description, subtitle, subtitleBelowHead = false, icon, titleSize = 17, closable = true, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, closeOnScrim, role, children }: {
+export function Modal({ open, onClose, title, header, description, subtitle, subtitleBelowHead = false, icon, titleSize, closable = true, size = 420, top = false, form = false, bare = false, actions, hint, initialFocus, closeOnScrim, role, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -91,7 +92,8 @@ export function Modal({ open, onClose, title, header, description, subtitle, sub
   const copy = useStandardCopy();
   if (!open) return null;
   const confirmLayout = Boolean(icon && description);
-  const titleEl = <h2 id={`${id}-title`} className={`${styles.modalTitle} ${titleSize === 18 ? styles.modalTitleLg : ""}`}>{title}</h2>;
+  const newHead = Boolean(icon || subtitle || titleSize !== undefined);
+  const titleEl = <h2 id={`${id}-title`} className={[styles.modalTitle, newHead ? styles.modalTitleNew : "", titleSize === 18 ? styles.modalTitleLg : ""].filter(Boolean).join(" ")}>{title}</h2>;
   const descEl = description ? <p id={`${id}-desc`} className={confirmLayout ? styles.modalSub : styles.modalText}>{description}</p> : null;
   return (
     <DialogFrame onClose={onClose} closeOnScrim={closeOnScrim} role={role} initialFocus={initialFocus} labelledBy={`${id}-title`} describedBy={description ? `${id}-desc` : undefined} scrimClassName={styles.scrim}
@@ -99,7 +101,7 @@ export function Modal({ open, onClose, title, header, description, subtitle, sub
       {header ? (
         <><span id={`${id}-title`} hidden>{title}</span>{header}</>
       ) : (
-        <div className={`${styles.modalHead} ${confirmLayout ? styles.modalHeadConfirm : ""}`}>
+        <div className={[styles.modalHead, newHead ? styles.modalHeadNew : "", confirmLayout ? styles.modalHeadConfirm : ""].filter(Boolean).join(" ")}>
           <div className={`${styles.modalHeadMain} ${confirmLayout ? styles.modalHeadMainConfirm : ""}`}>
             {icon ? <span className={styles.modalIcon} aria-hidden>{icon}</span> : null}
             <div className={styles.modalTitleBlock}>
@@ -108,7 +110,7 @@ export function Modal({ open, onClose, title, header, description, subtitle, sub
               {confirmLayout ? descEl : null}
             </div>
           </div>
-          {closable ? <button type="button" className={`btn ${styles.close}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={16} /></button> : null}
+          {closable ? <button type="button" className={`btn ${styles.close} ${newHead ? styles.closeNew : ""}`} aria-label={copy.action.close} onClick={onClose}><Icon name="x" size={newHead ? 16 : 20} /></button> : null}
         </div>
       )}
       {subtitle && subtitleBelowHead && !header ? <p className={`${styles.modalSubtitle} ${styles.modalSubtitleBelowHead}`}>{subtitle}</p> : null}

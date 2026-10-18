@@ -38,15 +38,17 @@
 .form { background: var(--bg); }
 /* R30：⌘K 面板（kit .cmdk）内边距 10，面板本体自己画分隔线与行。 */
 .bare { padding: var(--space-10); }
-/* R31b head (b12 W-R24-03 / 09b / 11, #320, 01-system ②): .row.between — title block + kit .lbtn ✕. */
-.modalHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Default head keeps the pre-R31b Modal appearance; new parameters opt in to the board head. */
+.modalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.modalHeadNew { align-items: center; }
 .modalHeadConfirm { align-items: flex-start; }
 .modalHeadMain { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
 .modalHeadMainConfirm { gap: 14px; align-items: flex-start; }
 .modalIcon { display: inline-flex; flex: none; }
 .modalTitleBlock { min-width: 0; }
-/* The boards' <b style="font-size:17px"> (18 with the tile + subtitle head of W-R24-03); --fs-logo is the 17 step. */
-.modalTitle { font-size: var(--fs-logo); font-weight: var(--fw-bold); line-height: var(--lh-body); }
+/* Existing Modals are 16 / 800; the new board heads are 17 / 700 (18 with W-R24-03's tile). */
+.modalTitle { font-size: var(--fs-dialog-title); font-weight: var(--fw-heavy); line-height: var(--lh-title); }
+.modalTitleNew { font-size: var(--fs-logo); font-weight: var(--fw-bold); line-height: var(--lh-body); }
 .modalTitleLg { font-size: var(--fs-title-xs); }
 /* kit .lbl */
 .modalSubtitle { font-size: var(--fs-label); color: var(--ink-3-text); font-weight: var(--fw-medium); }
@@ -57,18 +59,20 @@
 .actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: var(--space-20); }
 /* kit .macts .lbl.hint: inline text (kbd, a space, the words), 11.5 / 500. */
 .hint { margin-right: auto; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3-text); }
-/* kit .lbtn: 34 round on surface-2 (the modal ✕ on every board). */
+/* Existing Modal ✕ stays 36 / transparent; new board heads use kit .lbtn, 34 / surface-2. */
 .close {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
+  margin: -6px -6px 0 0;
   border-radius: var(--r-pill);
   display: inline-grid;
   place-items: center;
-  background: var(--surface-2);
   color: var(--ink-2);
   flex: none;
 }
-.close:hover { background: var(--surface-3); }
+.close:hover { background: var(--surface-2); }
+.closeNew { width: 34px; height: 34px; margin: 0; background: var(--surface-2); }
+.closeNew:hover { background: var(--surface-3); }
 /* kit .rbtn: 40 white round — the drawer ✕ on --bg (b4 #12, b6 #20). */
 .drawerClose {
   width: 40px;
@@ -83,7 +87,8 @@
 .drawerClose:hover { background: var(--surface-2); }
 /* Over an old page's unscoped legacy .btn (HANDOFF G13): two classes restate the kit values. */
 .close:global(.btn), .drawerClose:global(.btn) { gap: 0; padding: 0; border: 0; border-radius: var(--r-pill); font-weight: inherit; letter-spacing: normal; }
-.close:global(.btn) { width: 34px; height: 34px; }
+.close:global(.btn) { width: 36px; height: 36px; }
+.closeNew:global(.btn) { width: 34px; height: 34px; }
 .drawerClose:global(.btn) { width: 40px; height: 40px; }
 .dialogIcon {
   width: 48px;

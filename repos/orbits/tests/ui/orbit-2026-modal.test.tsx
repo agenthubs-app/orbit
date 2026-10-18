@@ -196,6 +196,37 @@ test("form modal widths 760 / 860 / 1000 are added and the existing 420 stays 42
   }
 });
 
+test("default Modal keeps its pre-R31b title and close button; subtitle opts into the new head", async (t) => {
+  const appearanceCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { Modal, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    const root = createRoot(document.getElementById("root"));
+    (window as unknown as { show: (newHead: boolean) => void }).show = (newHead) => root.render(<Orbit2026Scope language="ja">
+      <Modal key={String(newHead)} open onClose={() => undefined} title={newHead ? "New head" : "Old default"} subtitle={newHead ? "Subtitle" : undefined}><p>Body</p></Modal>
+    </Orbit2026Scope>);
+    (window as unknown as { show: (newHead: boolean) => void }).show(false);
+  `);
+  const page = await open(browser, appearanceCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  const read = () => page.getByRole("dialog").evaluate((el) => {
+    const title = getComputedStyle(el.querySelector("h2")!);
+    const close = el.querySelector("button")!;
+    const button = getComputedStyle(close);
+    return { titleSize: title.fontSize, titleWeight: title.fontWeight, titleLineHeight: title.lineHeight, closeWidth: button.width, closeHeight: button.height, closeMarginRight: button.marginRight, closeBg: button.backgroundColor, iconWidth: getComputedStyle(close.querySelector("svg")!).width };
+  });
+  await page.getByRole("dialog", { name: "Old default" }).waitFor();
+  const old = await read();
+  assert.deepEqual(old, { titleSize: "16px", titleWeight: "800", titleLineHeight: "21.6px", closeWidth: "36px", closeHeight: "36px", closeMarginRight: "-6px", closeBg: "rgba(0, 0, 0, 0)", iconWidth: "20px" });
+  await page.evaluate(() => (window as unknown as { show: (newHead: boolean) => void }).show(true));
+  await page.getByRole("dialog", { name: "New head" }).waitFor();
+  const next = await read();
+  assert.equal(next.titleSize, "17px");
+  assert.equal(next.titleWeight, "700");
+  assert.equal(next.closeWidth, "34px");
+  assert.equal(next.iconWidth, "16px");
+});
+
 // R31b（SC-R31b-02 / 04）：closable={false} 不画 ✕，但 Esc 仍关、焦点回到打开它的按钮；标题左侧图标块是装饰，
 // 不进 Tab 顺序；Web ConfirmDialog 同样无 ✕、破坏性时焦点先在キャンセル、非破坏性时在主按钮。
 test("a modal without ✕ still closes on Escape and gives focus back; its icon tile is not in the Tab order", async (t) => {
