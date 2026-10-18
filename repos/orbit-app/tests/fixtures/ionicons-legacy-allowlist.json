@@ -5,7 +5,6 @@
     "src/screens/admin/AdminScreen.tsx",
     "src/screens/ai/AgentActionsScreen.tsx",
     "src/screens/ai/AiConversationScreen.tsx",
-    "src/screens/ai/AiScreen.tsx",
     "src/screens/ai/AiSessionOrganization.tsx",
     "src/screens/ai/OrbitNextActions.tsx",
     "src/screens/ai/cards/AiEntityCard.tsx",

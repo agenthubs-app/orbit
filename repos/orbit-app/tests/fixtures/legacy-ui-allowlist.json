@@ -27,11 +27,6 @@
       "oldComponent": 5,
       "controls": 1
     },
-    "src/screens/ai/AiScreen.tsx": {
-      "controls": 1,
-      "oldComponent": 1,
-      "modal": 3
-    },
     "src/screens/ai/AiSessionOrganization.tsx": {
       "modal": 1
     },
