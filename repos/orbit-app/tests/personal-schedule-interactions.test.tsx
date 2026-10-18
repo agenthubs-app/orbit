@@ -156,6 +156,16 @@ test("Japanese personal editor does not show the server language after a failed 
   await p.getByText("予定を読み込めません。もう一度お試しください。", { exact: true }).waitFor();
 });
 
+test("Japanese personal schedule detail does not show the server language after a failed refresh", async t => {
+  const p = await open(t, { detail: true, language: "ja" });
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ holdReads: true }); s.refresh(); });
+  await p.waitForFunction(() => (window as any).fixture.requests.length > 1);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
+  await p.getByText(/Orbit 服务暂不可用|予定を読み込めません。もう一度お試しください。/).waitFor();
+  assert.equal(await p.getByText("Orbit 服务暂不可用，请稍后再试。", { exact: true }).count(), 0);
+  await p.getByText("予定を読み込めません。もう一度お試しください。", { exact: true }).waitFor();
+});
+
 test("Japanese personal editor keeps the draft and does not show the server language after a failed save", async t => {
   const p = await open(t, { language: "ja" });
   await p.getByRole("textbox", { name: "予定名", exact: true }).fill("変更した予定");

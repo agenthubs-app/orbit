@@ -71,7 +71,7 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
   }
   useEffect(() => {
     const item = source.item;
-    if (!item) { setView(null); setRules(null); setError(source.errorKey ? locale.t(source.errorKey) : source.errorText); return; }
+    if (!item) { setView(null); setRules(null); setError(source.errorKey ? locale.t(source.errorKey) : source.errorText ? locale.t("schedule.readFailed") : ""); return; }
     if (item.state === "cancelled") { setView(null); setRules(null); setError(locale.t("schedule.readUnconfirmed")); return; }
     const next = personalScheduleDetail(item, timeZone);
     if (!next) { setView(null); setRules(null); setError(locale.t("schedule.timezoneUnavailable")); } else { setError(""); setView(next); setRules(personalScheduleDraft(item, next.zone)); }
