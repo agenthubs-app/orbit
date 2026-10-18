@@ -155,3 +155,15 @@ test("R20b receipt relations separate event mentions from contact mentions", () 
     eventIds: ["event:launch", "event:manual"],
   });
 });
+
+test("R20b plan-use requests require a meeting memo for exactly one person", () => {
+  const draft = { title: "面談", body: "@Launch で話した", manualContactIds: [] as string[],
+    mentions: [{ entityType: "event" as const, eventId: "event:launch", start: 0, end: 7, displayText: "@Launch" }],
+    eventIds: [] as string[], noteKind: "meeting" as const, usedForPlan: true };
+  assert.deepEqual(buildRichNoteCreateRequest(draft, "plan:zero", "en"), {
+    success: false, error: "To use this for your plan, link the meeting note to one person.",
+  });
+  assert.equal(buildRichNoteCreateRequest({ ...draft, manualContactIds: ["contact:a", "contact:b"] }, "plan:two", "en").success, false);
+  assert.equal(buildRichNoteCreateRequest({ ...draft, manualContactIds: ["contact:a"], noteKind: "free" }, "plan:free", "en").success, false);
+  assert.equal(buildRichNoteCreateRequest({ ...draft, manualContactIds: ["contact:a"] }, "plan:one", "en").success, true);
+});

@@ -131,6 +131,7 @@ export const notes = {
   "notes.untitled": "未命名笔记",
   "notes.titleRequired": "请输入笔记标题。",
   "notes.bodyRequired": "请输入笔记内容。",
+  "notes.planUseRequiresOneContact": "用于计划时，请把面谈笔记只关联一位联系人。",
   "notes.versionInvalid": "笔记版本无效，请重新读取。",
   "notes.aiTaskPrompt": "请根据这篇笔记整理一个待办，并明确标题和日期。",
 } as const;

@@ -131,6 +131,7 @@ export const notes = {
   "notes.untitled": "無題のメモ",
   "notes.titleRequired": "メモのタイトルを入力してください。",
   "notes.bodyRequired": "メモ本文を入力してください。",
+  "notes.planUseRequiresOneContact": "プランに使うには、面談メモに1人だけ紐づけてください。",
   "notes.versionInvalid": "メモのバージョンが無効です。再読み込みしてください。",
   "notes.aiTaskPrompt": "このメモからタスクを整理し、タイトルと日付を明確にしてください。",
 } as const;

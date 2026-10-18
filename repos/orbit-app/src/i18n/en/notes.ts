@@ -131,6 +131,7 @@ export const notes = {
   "notes.untitled": "Untitled note",
   "notes.titleRequired": "Enter a note title.",
   "notes.bodyRequired": "Enter note content.",
+  "notes.planUseRequiresOneContact": "To use this for your plan, link the meeting note to one person.",
   "notes.versionInvalid": "The note version is invalid. Reload it.",
   "notes.aiTaskPrompt": "Turn this note into a task with a clear title and date.",
 } as const;

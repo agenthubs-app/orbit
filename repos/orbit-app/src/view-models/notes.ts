@@ -147,6 +147,9 @@ export function buildRichNoteCreateRequest(
   const trimmedPrefixLength = draft.body.length - draft.body.trimStart().length;
   if (!title) return { success: false, error: t("notes.titleRequired") };
   if (!body) return { success: false, error: t("notes.bodyRequired") };
+  if (draft.usedForPlan === true && (draft.noteKind !== "meeting" || noteAssociationsForReceipt(draft).contactIds.length !== 1)) {
+    return { success: false, error: t("notes.planUseRequiresOneContact") };
+  }
   return {
     success: true,
     body: {
