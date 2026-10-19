@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { createTasksClient, TasksClientError } from "../../tasks/tasks-client";
@@ -56,6 +56,16 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "n" || event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey
+        || adding || confirmDelete || selectedId || (event.target as HTMLElement | null)?.closest?.("input, textarea, select, [contenteditable='true'], [role='textbox']")) return;
+      event.preventDefault();
+      setAdding(true);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [adding, confirmDelete, selectedId]);
   const context = { today: date, timeZone };
   const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor, context), JSON.stringify([filter, query.trim(), openCursor, "open", date, timeZone]));
   const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor, context), JSON.stringify([filter, query.trim(), doneCursor, "completed", date, timeZone]));

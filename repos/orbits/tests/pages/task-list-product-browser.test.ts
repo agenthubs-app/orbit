@@ -161,6 +161,22 @@ test("E completes the selected task row without opening its action button", asyn
   assert.equal(writes[0].body.action, "complete");
 });
 
+test("N opens the To-do add dialog without writing a task", async t => {
+  const current = await page(t);
+  await current.keyboard.press("n");
+  await current.getByRole("dialog", { name: "タスクを追加" }).waitFor({ timeout: 2000 });
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method !== "GET").length, 0);
+});
+
+test("typing N in task search does not open the add dialog", async t => {
+  const current = await page(t);
+  const search = current.getByRole("searchbox", { name: "タスクを検索" });
+  await search.focus();
+  await current.keyboard.press("n");
+  assert.equal(await search.inputValue(), "n");
+  assert.equal(await current.getByRole("dialog", { name: "タスクを追加" }).count(), 0);
+});
+
 test("overdue task rows use the warning color while today's rows do not", async t => {
   const current = await page(t);
   await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").plannedDate = "2026-10-16"; });
