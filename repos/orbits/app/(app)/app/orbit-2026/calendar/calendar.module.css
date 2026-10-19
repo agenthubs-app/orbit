@@ -71,7 +71,7 @@
 .single .columnDate { position: sticky; top: 0; z-index: var(--z-sticky); }
 .single .allDay { background: var(--surface); position: sticky; top: 40px; z-index: var(--z-sticky); }
 .column { min-width: 0; border-right: 1px solid var(--line); background: var(--surface); }
-.columnDate:global(.btn) { width: 100%; height: auto; padding: var(--space-10); border: 0; border-radius: 0; background: var(--surface); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.columnDate:global(.btn) { width: 100%; height: auto; padding: var(--space-10); border: 0; border-radius: var(--r-none); background: var(--surface); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .columnDate[aria-pressed="true"] { color: var(--accent-text); }
 .allDay { min-height: 54px; padding: var(--space-6); border-bottom: 1px solid var(--line); }
 .timeline { position: relative; min-width: 0; }
