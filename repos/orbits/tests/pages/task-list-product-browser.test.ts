@@ -750,7 +750,7 @@ test("typing N in task search does not open the add dialog", async t => {
   assert.equal(await current.getByRole("dialog", { name: "タスクを追加" }).count(), 0);
 });
 
-test("overdue task rows use the warning color while today's rows do not", async t => {
+test("overdue due chips use coral while task titles stay ink", async t => {
   const current = await page(t);
   await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").plannedDate = "2026-10-16"; });
   await current.getByRole("radio", { name: "つながり" }).click();
@@ -761,10 +761,11 @@ test("overdue task rows use the warning color while today's rows do not", async 
       heading: getComputedStyle(document.querySelector("h2[class*=overdue]")!).color,
       overdue: getComputedStyle(document.querySelector('[aria-label="山本さんへ返信の詳細"] strong')!).color,
       today: getComputedStyle(document.querySelector('[aria-label="今日の資料の詳細"] strong')!).color,
+      dueChip: getComputedStyle(document.querySelector('[aria-label="山本さんへ返信の詳細"]')!.closest('tr')!.querySelector('td:nth-child(4) span')!).color,
     };
   });
-  assert.equal(colors.overdue, colors.heading);
-  assert.notEqual(colors.today, colors.heading);
+  assert.equal(colors.overdue, colors.today);
+  assert.equal(colors.dueChip, colors.heading);
 });
 
 test("hover and keyboard focus expose a quick complete action that moves the task out of open rows", async t => {

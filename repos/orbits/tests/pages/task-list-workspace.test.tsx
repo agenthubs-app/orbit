@@ -135,7 +135,7 @@ test("the Tomorrow row shortcut saves a due-today task with the displayed actor-
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
   t.after(() => act(() => root.unmount()));
-  await act(async () => buttons(root!, "明日: 今日の資料")[0]!.props.onClick());
+  await act(async () => buttons(root!, "今日の資料: 明日")[0]!.props.onClick());
   const writes = calls.filter(call => call.method === "PATCH" && call.body?.action === "update");
   assert.equal(writes.length, 1);
   assert.equal(writes[0]!.body?.expectedUpdatedAt, at);
@@ -148,11 +148,11 @@ test("future and undated row actions open date editing without a write", async t
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
   t.after(() => act(() => root.unmount()));
-  assert.equal(buttons(root!, "明日: Future").length, 0);
-  await act(async () => buttons(root!, "日付を編集: Future")[0]!.props.onClick());
+  assert.equal(buttons(root!, "Future: 明日").length, 0);
+  await act(async () => buttons(root!, "Future: 日付を編集")[0]!.props.onClick());
   assert.ok(root!.root.findAllByType("input").some(input => input.props.type === "date" && input.props.value === "2026-10-20"));
   await act(async () => buttons(root!, "キャンセル")[0]!.props.onClick());
-  await act(async () => buttons(root!, "日付を編集: Undated")[0]!.props.onClick());
+  await act(async () => buttons(root!, "Undated: 日付を編集")[0]!.props.onClick());
   assert.ok(root!.root.findAllByType("input").some(input => input.props.type === "date" && input.props.value === ""));
   assert.equal(calls.filter(call => call.method === "PATCH").length, 0);
 });
@@ -163,7 +163,7 @@ test("a second Tomorrow move waits for a confirmation before writing", async t =
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
   t.after(() => act(() => root.unmount()));
-  await act(async () => buttons(root!, "明日: 今日の資料")[0]!.props.onClick());
+  await act(async () => buttons(root!, "今日の資料: 明日")[0]!.props.onClick());
   assert.equal(calls.filter(call => call.method === "PATCH").length, 0);
   assert.match(content(root!), /もう一度延期しますか/);
   await act(async () => buttons(root!, "延期する")[0]!.props.onClick());
