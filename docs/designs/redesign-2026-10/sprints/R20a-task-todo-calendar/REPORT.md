@@ -982,3 +982,99 @@ live `plan_today_chance` は Plan v2 `summary.current.todayChance` を読んで�
 停止条件按动作而非全 Sprint 扩大：W-R20-01 已到三轮像素上限，停止该画面返工；W-R20-07 的可点空态 tile 和 W-R20-02 的缺来源期日 chip 等待上述产品决定；SC-16 两端全量与 copy QA 仍失败，跨线失败不可在 D allowlist 内直接修复。下一轮可执行项仍包括其余画面的状态 fixture／像素操作和 App release bundle／更多深链验收，均未伪称已做。本轮已完成已授权的 REVIEW 修复复核与两项导航壳交接，未把局部定向测试或代码提交视为 Sprint 全部完成。
 
 App 根门禁的 D 专用模拟器实测：同一已安装签名包从本轮 Metro 8085 加载当前 JS；本机 3500 临时服务只回答公开 `/api/app/version`。`maintenance.active=true` 的冷启动显示维护页，`simctl openurl 'orbit://task?seg=todo'` 后仍显示维护页；`enforceMinimum=true` 且最低版本 `999.0.0` 显示强制更新页；相同最低版本在 `enforceMinimum=false` 时恢复正常公开 onboarding。四张定格图、SHA 与失败的首次 Metro TTY 启动诊断均在 `app-version-native-qa.md`；首次出现的 `No script URL provided` 是 Metro 未正常服务的环境失败，不计产品结果。该实测不覆盖所有深链、已登录内页、release bundle 或 production policy。捕捉时开发 warning banner 覆盖屏幕下方，截图只证明阻断状态而非像素门禁。验证后 app、stub、Metro 均终止，D 模拟器回到 Shutdown；没有重装或清除原有 app 数据。
+
+## 2026-10-20　RD-33 七项代定后的 D 线复核与收口
+
+本节覆盖并更新上方「待主会话代定」中 W-R20-02／07 的旧状态：用户已在 RD-33 明确选择候选 A，相关实现和画板注释已完成，不再等待同一决定。`origin/redesign` 于每次路径提交前 fetch；末次对比为本地领先 43、落后 0。未执行 push。预存的未跟踪 `HANDOFF-CLAUDE-2026-10-19.md` 保留且未提交。
+
+### 七项决定与验收边界
+
+| RD-33 | 本端结果 | 仍未闭合的验收 |
+| --- | --- | --- |
+| 1 App 面談 | 既有 `04e52dd95` 按账号／窗口／语言读取 calendar aggregate、校验行并与 mirror 按 sourceId 去重；只存确定面談的账号副本，离线只读并标「以前の情報」。先前定向 40/40、sign-out 48/48、Calendar 14/14。 | 本轮隔离 actor 没有真实面談行；长期离线、跨零点与不同账号的完整 iOS 操作仍需原生验收，不能把普通个人予定当面談证据。 |
+| 2 Web 任务编辑 | `0d864d72e` 已在详情右栏完成标题／日期／时间／备注的编辑、CAS 保存／取消与旧 detail 跳转收敛；原定向 20/20、browser 10/10。 | 全量仍红，不能由局部通过推出 SC-09／14 全部操作已过。 |
+| 3 本地日排序 | `96fc8fa1a`、`612dce933` 的 local day／timeZone 分类、稳定排序和签名 cursor 已复核；本轮日期草稿回归也在最终全量中通过。 | 旧服务端／App 全链及所有时区的 native 读回仍是 SC-03／09 的部分项。 |
+| 4 过期色 | `fb5338f1f` 把期限 chip 设为 coral、标题和详情保持 ink；`d609440b7` 同步校正过期色回归期待。 | 多主题画面未获像素门禁通过。 |
+| 5 「明日」 | `fb5338f1f` 只给有日期且期日不晚于本地今天的任务显示快捷；未来／无日期进入日期编辑，批量入口显示对象件数。相关 browser／component 合并定向 52/52。 | 完整 native 操作和大量数据的视觉门禁未过。 |
+| 6 期日 chip | 同提交从 dueAt／plannedDate 取本地日；无日期不显示。完成行立刻消失，已在 `b3-daily-actions.html` 写明与画板的有意差异。 | W-R20-02 三轮仍 FAIL，示例与真实来源数据不同。 |
+| 7 空态 | `55d2ec843` 加引导卡、真实手动入口和现存メモ入口；无真实入口的名片／语音／Calendar tile 隐藏，示例行只作装饰且不参加无障碍或操作。 | W-R20-07 三轮仍 FAIL；画板原有三个不可用 tile 的视觉差异需设计方承接。 |
+
+`13c320b5a` 让 Calendar 右栏显示选中日的真实日程；`06169804b` 收紧月格密度、日视图初开滚到工作时段；`a214666d3` 将 sticky 层级改用现有 token，并把 W-R20-19 门禁入口由 Calendar 修为对应的 To-do 列表。最后一项的画板 #46 明确为「タスクを読み込めませんでした」，所以原 Calendar 路由无法做有效比较。日历右栏／presenter 定向 11/11、日视图 browser 4/4、CSS token 定向 2/2、最终 Web `typecheck:app` exit 0。上述新增 UI 仍未获像素通过。
+
+### Web 全量、31 项基线和 copy
+
+证据目录为 `/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-02/`。RD-33 后首轮全量 `web-full-rd33.log` 为 **7,842 total / 6,765 pass / 36 fail / 1,041 skip**，与同源码前轮的 31 失败相比多五个 D 线任务表用例；`d609440b7` 修复后定向 71/71。随后 `web-full-final.log` 为 **7,845 / 6,771 / 33 / 1,041**：额外两项是本线新增的 Calendar CSS 裸 `z-index: 2`，及 Event 报名／Plan 同步。前者在 `a214666d3` 修为 token，CSS 定向 2/2；后者同一测试文件串行复跑 **5/5 pass**，本线未改该 Event 路径。
+
+最终同一源码全量 `web-full-final-after-css.log` 为 **7,845 total / 6,773 pass / 31 fail / 0 cancelled / 1,041 skip，exit 1**。`web-full-final-after-css-compare.json` 对每个失败名记录文件、pristine 与前一可比轮是否存在：相对前一可比轮 31 项 **新增 0、消失 0**；相对 pristine 31 项是 **新增 1、消失 1**。新增名为 `non-.btn <button> count in app/(app)/app does not increase`（85 > 79，前一可比轮已存在；D 线本轮未增加裸 button）；未复现的旧名为手动加人成功后的 `元に戻す`。因此本轮 D 线在最终全量中的新增失败名为 **0**，但全量门禁仍红。R12 `add-scan-flow` 的串行专跑 `web-r12-scan-serial.log` 是 **3 项／1 过／2 失败**，与 pristine 和全量的两个失败名相同；其中 `[data-scan-add-all]` 等待 30 秒仍超时，不能归咎于仅在并发时发生。
+
+最终 Web copy QA `web-copy-final-rerun.json` 为 **3,968 entries / 29 全局问题 / 0 个 task、todo、calendar 本线问题，exit 1**。本线文字已在 `copy/task.ts` 修正；剩余问题属于其他域，未跨线改写。全量、copy 和像素均不能标为通过。
+
+下列清单逐名列出最终 31 失败；1–30 与 pristine 同名，31 是上述旧基线差异。原始详情和文件路径见同目录的 JSON／完整日志。
+
+<!-- R20a final Web 31-name table follows; generated from web-full-final-after-css-compare.json -->
+
+| # | 最终失败名 | pristine 同名 |
+| ---: | --- | --- |
+| 1 | manifest generation writes the required repository artifacts | 是 |
+| 2 | merging fills empty fields, keeps existing values and appends the rest to notes | 是 |
+| 3 | queued delivery survives future retries and a crashed lease, then stops at the durable attempt limit | 是 |
+| 4 | /app/events/[id] does not render the retired deterministic registration guide | 是 |
+| 5 | /app/register resolves invite codes before redirecting to the canonical registration workspace | 是 |
+| 6 | app register route loader resolves only a reviewed public event code | 是 |
+| 7 | legacy register route does not load an unused profile form before redirecting | 是 |
+| 8 | /app/register redirects a reviewed code without propagating fixture controls | 是 |
+| 9 | /app/register uses first-value decoders and explicitly clears an inherited fragment | 是 |
+| 10 | app register page fails closed for an unknown public code without retrying the same route | 是 |
+| 11 | registered catalogue attendee access follows persisted registration lifecycle | 是 |
+| 12 | only the dev route imports the design fixtures | 是 |
+| 13 | Postgres dispatch scan recovers unpublished work with exact scope, due-time and approval fences | 是 |
+| 14 | Postgres workers recover a killed claimant without replaying a persisted receipt | 是 |
+| 15 | event access directory is event-scoped, shows only active assignments, and lets only the Event Core owner list current roles | 是 |
+| 16 | the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged | 是 |
+| 17 | main event access schema is cut over and missing-event reads stay non-mutating | 是 |
+| 18 | event access repository enforces owner authority, workspace isolation, transitions, CAS, and atomic audit | 是 |
+| 19 | event access readiness rejects migration evidence and role tables resolved from different schemas | 是 |
+| 20 | global canonical apply atomically migrates a diverse workspace and replays the immutable ledger | 是 |
+| 21 | global canonical apply rolls back ledger and every event when a later activation fails | 是 |
+| 22 | activation serialization and deadlock SQLSTATEs rebuild the whole reviewed plan on a fresh transaction | 是 |
+| 23 | replay rejects an internally inconsistent event ledger before reading manifest or source | 是 |
+| 24 | readiness rejects migration and ledger relations resolved from different schemas | 是 |
+| 25 | real canonical membership CLI reviews, rejects drift, applies, and replays a diverse PostgreSQL workspace | 是 |
+| 26 | isolated v11 canonical membership CLI is read-only and apply fails not-ready | 是 |
+| 27 | heartbeat commits between a terminal transaction snapshot and complete/fail without serialization failures | 是 |
+| 28 | the web runtime migration CLI initializes an empty database and preserves data on rerun | 是 |
+| 29 | e2e: upload 4 cards (one front + back) → read → auto into 人脈 → まとめて確認 → 完成 numbers match the network | 是 |
+| 30 | R12 review m9: when the duplicate lookup fails nothing is added automatically — every readable card waits in まとめて確認 | 是 |
+| 31 | non-.btn &lt;button&gt; count in app/(app)/app does not increase | 否（前轮已存在） |
+
+### SC-15 像素实测与逐画面去向
+
+所有下列正式比较均为 gate **FAIL／exit 5**，数字依次为 raw difference／超阈未归因带／缺块；截图、triptych、summary 在同名证据目录。`W-R20-01` 沿用上节已封顶的 0.0568／14／28，未再消耗轮次。本轮用本机独立 `orbit_line_d_r20a_rd33_20261020`、合成 actor 和 3500／3320 服务准备 Web 状态；真实 Google 账号未连接，Calendar 外部数据只用内建 demo provider。示例任务与画板的人物／事件／メモ数据不等价，不把源状态差异归因为可接受像素差。
+
+| 画面 | 本轮最后有效证据 | 后续所需条件 |
+| --- | --- | --- |
+| W-R20-02 | 第 3 轮 `pixel-w02-round3-mock`：0.0516／14／28，封顶 | 画板源人物、判断待ち和任务 chip 的同条件 fixture；完成行消失是已标注差异。 |
+| W-R20-07 | 第 3 轮 `pixel-rd33-round3`：0.0323／17／20，封顶 | 隐藏三个无入口 tile 后，画板与真实空态结构仍不同；需设计更新和组件位置核对。 |
+| W-R20-08 | 第 2 轮 `pixel-w08-round2`：0.0361／20／42 | 已选中真实任务，但画板右栏的联系人／活动／メモ关联在本 actor 中不存在；缺该来源 fixture。 |
+| W-R20-09 / 09d | 第 1 轮 `pixel-w09-round1`：light 0.0684／33／73，dark 0.0616／33／64 | 11 条本地任务已覆盖多组和超期，画板右栏富关联与来源例子仍缺；深色也需同条件数据。 |
+| W-R20-14 | 第 3 轮 `pixel-w14-round3`：0.0394／19／27，封顶 | 月空态连接引导已出现，但 shell、右栏与无真实 Google 的状态仍不同。 |
+| W-R20-15 | 第 3 轮 `pixel-w15-round3`：0.0380／12／27，封顶 | 新日程右栏使用 Oct 7 的本地予定；第三轮种子写入与截图重叠，不当成干净同条件胜出。 |
+| W-R20-16 / 16d | 第 3 轮 `pixel-w16-round3-mock`：light 0.1083／20／42，dark 0.1010／21／39，封顶 | 月大量数据与 mock 外部连接仍和画板事件分布／日程卡不同。 |
+| W-R20-17 | 第 3 轮 `pixel-w17-round3-mock`：0.2505／24／27，封顶 | 日视图现在初开滚至工作时段；画板是横线时间轴而当前产品用列表，结构门禁未过。 |
+| W-R20-18 | 第 2 轮 `pixel-w18-round2`：0.1469／26／46 | 本机编辑弹层输入与重叠提醒可见，但画板的准确事件／外部连接来源未取得；无新的可验证样式修正。 |
+| W-R20-19 | `pixel-w19-round2`：0.0334／14／12，**状态无效** | 已修 suite 路由，但当前错误注入太晚：client 在 mount 时捕获 fetch，截图仍有任务行。需 mount 前稳定 503 fixture，不能称错误画面门禁。 |
+
+W-R20-03～06、10～13 及剩余 App 画框的 modal／详情／草稿／面談操作没有可复用的同条件状态步骤；其中 1日1問和 entity draft 的真实 source 仍 `not_implemented`，普通 contact-only proposal authority 与完整已连接日程也未提供。仅重跑清单默认入口会把错误状态和目标画框比较，不构成有效门禁；未把这些画面写成已过或已试满三轮。1024／390 无对应正式画板的宽度也未编造 PASS。
+
+App 在 D 专用模拟器实际登录同一个合成 actor 后，首个 A-R20-01 截图因环境缺 `ORBIT_SYNC_CURSOR_SECRET` 显示三个读取错误；补 secret 后 lease 200 而 manifest 503，直接 service 诊断是专用库缺 `sync_revision` 列。只在该临时库运行 `db:migrate:sync-revision`，检查结果从 absent／51 null 变 strict／0 null，manifest 13 域通过，App 各域 HTTP 200，随后有条件读取 304。错误态／启动白屏截图不计日历像素通过。数据就绪的 A-R20-01 `app-pixel-a01-loaded` 为 **0.1584／19／17 FAIL**；人工选 Oct 7 的原生週／日截图另存 `app-a01-data-ready.png`、`app-a01-day-data2.png`，可见真实个人予定，但 header 当前日期、无 Google 连接与画板时间轴结构不同。A-R20-02 初轮 `app-pixel-a02-round1` **0.1147／23／21 FAIL**；把 App 设置从 English 改为日本語后的第二轮 `app-pixel-a02-round2-ja` **0.1161／23／21 FAIL**，说明主要差距不只是语言：当前 To-do 是来源分组列表／示例数据，画板是判断待ち、今日の一手、フォロー的特定卡片与人物数据。其余 App 画框缺精确操作状态，未当作完成。
+
+### SC 状态、交接和停点
+
+上一节 SC 01～16 的未闭合项继续有效；RD-33 七个**决定本身已落地**，不等于 SC-09／10／15／16 通过。SC-15 仍红，SC-16 的 Web 全量 31 失败、copy 全局 29 问题和上节 App 全量 13 失败仍红。Web 最终失败名与可比前轮逐名完全一致，不能把非本线失败当成全量绿。R31a／R31b 已合入，所以不写「等组件库」。本轮没有付费 AI 调用、真实 Google、Neon／生产、部署或 push。
+
+- **待主会话决定**：`completion_question` 的只读来源和真实 entity draft 会话 ID 仍缺；Web Agent `?entry=` 焦点契约及 E 线旧链接、App 元メモ不可变引用、各像素画框的精准 fixture／未画出的 responsive 状态见上节。推荐由对应来源／画板 owner 给出可重放数据和到达步骤，再做尚未封顶的门禁；不通过伪造无动作 UI 补图。
+- **请求／另一端影响**：Task Web 详情 CAS、App calendar aggregate 去重及本地日／签名 cursor 已是双端消费约束。请 Bridge 协调者把本节连同 `0d864d72e`、`04e52dd95`、`fb5338f1f`、`55d2ec843`、`13c320b5a`、`06169804b` 和 `a214666d3` 交给 R10／R11／R19、App Task 和 Calendar 相关 owner；本线未改共用 Bridge 台账。E 线 Agent 入口、其他域 copy／按钮 ratchet 与 R12 扫描超时归各自 owner，本线未越目录修复。
+- **待用户授权**：真实 Google 账号／生产源、TestFlight 或部署仍未在本轮执行；这些只能在另行授权和同条件环境下验收。
+- **越线自查**：本轮的新产品提交限 D 所有的 Task／Todo／Calendar、task copy、对应测试与允许的画板注释；没有改 A 线组件／token、B 线共用判定、E 线 iOrbit、其他 worktree 或共用台账。`a214666d3` 的 W19 suite 修正属于本 Sprint 门禁目录。先前 `e00017299` 的 Plan／Event 既有越线事项仍按上节保留 owner 审阅。
+
+清理证据：合成账号从 App 设置退出，返回登录页；自己的 Next 3500、设计 HTTP 3320、Metro 8085 全部停止且无 listener，D 模拟器 `3E4102CA-9714-4F37-AB7B-570D1E97E3EB` 为 Shutdown。Next 生成的 `next-env.d.ts`、`tsconfig.json` 只有 `.next-line-d` 自有差异，停服后按两个确切路径恢复，tracked diff 为零。删除前核对专用数据库精确名称、属主 `xzhao`、连接数 0、`orbit_records` 54 条全属 `workspace:r20a-rd33:20261020` 且外部 workspace 0；只删除该库，catalog 再查为 0。保留私有证据目录和已存在的未跟踪 HANDOFF，不清理他人进程或数据。
