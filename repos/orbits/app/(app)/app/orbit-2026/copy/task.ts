@@ -124,6 +124,8 @@ export const taskCopy = {
   taskListReminderInApp: { ja: "Orbit 内の通知です。スマートフォンのプッシュ通知は別の設定です。", zh: "这是 Orbit 站内提醒，不会开启手机推送。", en: "This is an in-app reminder; it does not enable phone push notifications.", kind: "body" },
   taskListRelatedEvent: { ja: "関連するイベント", zh: "相关活动", en: "Related event", kind: "label" },
   taskListRelatedEventReadFailed: { ja: "イベントを読み込めませんでした", zh: "无法读取相关活动", en: "Could not load the event", kind: "label" },
+  taskListSourceNote: { ja: "元になったメモ", zh: "来源备忘录", en: "Source note", kind: "label" },
+  taskListSourceNoteReadFailed: { ja: "元のメモを読み込めませんでした", zh: "无法读取来源备忘录", en: "Could not load the source note", kind: "label" },
   taskListHistory: { ja: "履歴", zh: "历史记录", en: "History", kind: "label" },
   taskListNoHistory: { ja: "履歴はまだありません", zh: "暂无记录", en: "No history yet", kind: "label" },
   taskListActivityCreated: { ja: "作成", zh: "创建", en: "Created", kind: "label" },

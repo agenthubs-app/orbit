@@ -134,6 +134,34 @@ test("Task detail preserves its event link and reads a verified event title", as
   assert.deepEqual(paths, ["/api/tasks/task-linked", "/api/events/event-linked"]);
 });
 
+test("Task detail preserves its source memo ID and reads only the actor-scoped memo response", async () => {
+  const paths: string[] = [];
+  const client = createTasksClient(async input => {
+    const path = String(input);
+    paths.push(path);
+    if (path.startsWith("/api/notes/")) return Response.json({ success: true, data: { note: {
+      id: "note-source", title: "Meeting memo", body: "Send the revised deck.", createdAt: "2026-09-13T09:00:00.000Z",
+    } } });
+    return Response.json({ success: true, data: { task: {
+      id: "task-linked", title: "Send notes", notes: "", status: "open", category: "meeting", priority: "normal",
+      updatedAt: "2026-09-18T00:00:00.000Z", sourceNoteId: "note-source",
+    } } });
+  });
+  const task = await client.loadTask("task-linked");
+  assert.equal(task.sourceNoteId, "note-source");
+  assert.deepEqual(await client.loadSourceNote(task.sourceNoteId!), {
+    id: "note-source", title: "Meeting memo", body: "Send the revised deck.", createdAt: "2026-09-13T09:00:00.000Z",
+  });
+  assert.deepEqual(paths, ["/api/tasks/task-linked", "/api/notes/note-source"]);
+});
+
+test("source memo read rejects an unrelated note ID", async () => {
+  const client = createTasksClient(async () => Response.json({ success: true, data: { note: {
+    id: "another-note", title: "Wrong memo", body: "Unrelated content", createdAt: "2026-09-13T09:00:00.000Z",
+  } } }));
+  await assert.rejects(client.loadSourceNote("note-source"), { code: "INVALID_RESPONSE" });
+});
+
 test("new scoped page is additive: legacy URL stays unchanged and a hidden contact still classifies as a connection", async () => {
   const paths: string[] = [];
   const client = createTasksClient(async (input) => {

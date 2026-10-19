@@ -102,6 +102,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const detail = useTasksResource<TaskView | null>(() => selectedId ? client.loadTask(selectedId) : Promise.resolve(null), selectedId ?? "none");
   const relatedEventId = detail.data?.id === selectedId ? detail.data.relatedEventId : undefined;
   const relatedEvent = useTasksResource(() => relatedEventId ? client.loadRelatedEvent(relatedEventId) : Promise.resolve(null), relatedEventId ?? "none");
+  const sourceNoteId = detail.data?.id === selectedId ? detail.data.sourceNoteId : undefined;
+  const sourceNote = useTasksResource(() => sourceNoteId ? client.loadSourceNote(sourceNoteId) : Promise.resolve(null), sourceNoteId ?? "none");
   const reminders = useTasksResource(() => selectedId ? client.loadReminders(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const activities = useTasksResource(() => selectedId ? client.loadActivities(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const mutation = useTasksMutation();
@@ -325,6 +327,13 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {detail.data.relatedEventId ? <section className={styles.relatedCard} aria-label={t(taskCopy.taskListRelatedEvent)}>
         <h4>{t(taskCopy.taskListRelatedEvent)}</h4>
         {relatedEvent.loading && !relatedEvent.data ? <Skeleton lines={1} /> : relatedEvent.error ? <RetryCard title={t(taskCopy.taskListRelatedEventReadFailed)} onRetry={relatedEvent.refresh} /> : relatedEvent.data ? <a className={styles.relatedEventLink} href={`/app/events/${encodeURIComponent(relatedEvent.data.id)}`}><span><strong>{relatedEvent.data.title}</strong><time dateTime={relatedEvent.data.startsAt}>{formatDate(relatedEvent.data.startsAt, language, timeZone)}</time></span><Icon name="right" size={16} /></a> : null}
+      </section> : null}
+      {detail.data.sourceNoteId ? <section className={styles.relatedCard} aria-label={t(taskCopy.taskListSourceNote)}>
+        <h4>{t(taskCopy.taskListSourceNote)}</h4>
+        {sourceNote.loading && !sourceNote.data ? <Skeleton lines={2} /> : sourceNote.error ? <RetryCard title={t(taskCopy.taskListSourceNoteReadFailed)} onRetry={sourceNote.refresh} /> : sourceNote.data ? <>
+          {sourceNote.data.body.trim() ? <blockquote className={styles.sourceNoteQuote}>{sourceNote.data.body}</blockquote> : null}
+          <div className={styles.sourceNoteMeta}><strong>{sourceNote.data.title}</strong><time dateTime={sourceNote.data.createdAt}>{formatDate(sourceNote.data.createdAt, language, timeZone)}</time></div>
+        </> : null}
       </section> : null}
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={`${styles.detailSection} ${styles.historyCard}`} data-task-detail-card="history">

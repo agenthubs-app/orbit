@@ -103,6 +103,13 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
     loadRelatedEvent: (id: string) => request(`/api/events/${encodeURIComponent(id)}`, value => z.object({ event: z.object({
       id: z.string().trim().min(1), title: z.string().trim().min(1), startsAt: z.string().refine(value => Number.isFinite(Date.parse(value))),
     }) }).parse(value).event),
+    loadSourceNote: (id: string) => request(`/api/notes/${encodeURIComponent(id)}`, value => {
+      const note = z.object({ note: z.object({
+        id: z.string().trim().min(1), title: z.string().trim().min(1), body: z.string(), createdAt: z.string().refine(value => Number.isFinite(Date.parse(value))),
+      }) }).parse(value).note;
+      if (note.id !== id) throw new Error("Source note ID mismatch");
+      return note;
+    }),
     loadSuggestions: () => request("/api/task-suggestions", suggestionsToView),
     loadActivities: (id: string) => request(`${pathFor(id)}/activities`, activitiesToView),
     loadReminders: (id: string) => request(`/api/reminders?${new URLSearchParams({ targetType: "task", targetId: id })}`, remindersToView),

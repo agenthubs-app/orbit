@@ -53,6 +53,10 @@
 .relatedEventLink span { display: grid; gap: var(--space-4); min-width: 0; }
 .relatedEventLink strong { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .relatedEventLink time { color: var(--ink-3); font-size: var(--fs-caption); }
+.sourceNoteQuote { border-left: 3px solid var(--accent); color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); margin: 0 0 var(--space-12); overflow-wrap: anywhere; padding-left: var(--space-12); white-space: pre-wrap; }
+.sourceNoteMeta { display: grid; font-size: var(--fs-caption); gap: var(--space-4); }
+.sourceNoteMeta strong { color: var(--ink); overflow-wrap: anywhere; }
+.sourceNoteMeta time { color: var(--ink-3); }
 .detailSchedule { margin: 0; }
 .scheduleRows { display: grid; }
 .scheduleRow { align-items: center; background: none; border: 0; border-bottom: 1px solid var(--surface-3); color: var(--ink); cursor: pointer; display: flex; gap: var(--space-8); justify-content: space-between; min-height: 42px; padding: var(--space-8) 0; text-align: left; width: 100%; }

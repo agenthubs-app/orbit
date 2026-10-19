@@ -50,6 +50,7 @@ const fixture = `<div id="root"></div><script>
   window.reminderFailNextPatch = false;
   window.dateFailNextPatch = false;
   window.eventFailNextGet = false;
+  window.noteFailNextGet = false;
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
     window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
@@ -80,6 +81,11 @@ const fixture = `<div id="root"></div><script>
       if (window.eventFailNextGet) { window.eventFailNextGet = false; return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 }); }
       const id = decodeURIComponent(path.slice("/api/events/".length));
       return Response.json({ success: true, data: { event: { id, title: "Japan Startup Night", startsAt: "2026-09-18T09:00:00.000Z" } } });
+    }
+    if (path.startsWith("/api/notes/")) {
+      if (window.noteFailNextGet) { window.noteFailNextGet = false; return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 }); }
+      const id = decodeURIComponent(path.slice("/api/notes/".length));
+      return Response.json({ success: true, data: { note: { id, title: "9/13 Meeting memo", body: window.sourceNoteBody || "Send the revised deck.", createdAt: "2026-09-13T09:00:00.000Z" } } });
     }
     if (path.startsWith("/api/tasks/page?")) {
       const query = new URL(path, location.href).searchParams;
@@ -301,6 +307,53 @@ test("a linked event read failure shows a retry without inventing event details"
   assert.equal(await related.getByRole("link", { name: "Japan Startup Night" }).count(), 0);
   await related.getByRole("button", { name: "再試行" }).click();
   await related.getByRole("link", { name: "Japan Startup Night" }).waitFor();
+});
+
+test("selected Task shows its source memo without a broken memo link and clears it on selection change", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").sourceNoteId = "note-source"; });
+  await current.getByRole("button", { name: "山本さんへ返信の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  const source = rail.getByRole("region", { name: "元になったメモ" });
+  await source.getByText("Send the revised deck.").waitFor({ timeout: 2000 });
+  await source.getByText("9/13 Meeting memo").waitFor();
+  assert.match(await source.locator('time[datetime="2026-09-13T09:00:00.000Z"]').textContent() ?? "", /9\/13/);
+  assert.equal(await source.getByRole("link").count(), 0);
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string }) => call.path === "/api/notes/note-source").length, 1);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  assert.equal(await rail.getByRole("region", { name: "元になったメモ" }).count(), 0);
+});
+
+test("source memo read failure offers retry without displaying stale memo text", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => {
+    (window as any).taskRows.find((row: { id: string }) => row.id === "linked").sourceNoteId = "note-source";
+    (window as any).noteFailNextGet = true;
+  });
+  await current.getByRole("button", { name: "山本さんへ返信の詳細" }).click();
+  const source = current.getByRole("complementary").getByRole("region", { name: "元になったメモ" });
+  await source.getByRole("alert").getByRole("heading", { name: "元のメモを読み込めませんでした" }).waitFor();
+  assert.equal(await source.getByText("Send the revised deck.").count(), 0);
+  await source.getByRole("button", { name: "再試行" }).click();
+  await source.getByText("Send the revised deck.").waitFor();
+});
+
+test("a long source memo stays fully readable when no memo detail route exists", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => {
+    (window as any).taskRows.find((row: { id: string }) => row.id === "linked").sourceNoteId = "note-source";
+    (window as any).sourceNoteBody = "The complete source memo must remain readable. ".repeat(30);
+  });
+  await current.getByRole("button", { name: "山本さんへ返信の詳細" }).click();
+  const quote = current.getByRole("region", { name: "元になったメモ" }).locator("blockquote");
+  await quote.waitFor();
+  assert.equal(await quote.evaluate(element => element.scrollHeight <= element.clientHeight + 1), true);
 });
 
 test("selected Task rail sets an in-app reminder for one hour and can cancel it", async t => {
