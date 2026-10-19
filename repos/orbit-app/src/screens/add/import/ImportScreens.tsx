@@ -15,6 +15,7 @@ import type { ContactImportBatchView, ContactImportRowView } from "../../../api/
 import { AppScreen } from "../../../components/AppScreen";
 import { ActionSheet, Avatar, FilterOption, Icon, RetryCard, Segmented, Skeleton, UiPressable, UiText } from "../../../components/ui";
 import { createThemedStyles } from "../../../design/theme";
+import previewSamples from "../../../fixtures/redesign-preview-samples.json";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add-design-mock";
 import { DensityDots, FadeIn } from "../add-ui";
@@ -206,10 +207,7 @@ function PermissionStage({ denied, error, onAllow, onNotNow, onVcard, onBack }: 
 }
 
 type PickFilter = "company" | "workMail";
-const PICK_PREVIEW_TONES: Record<string, "apricot" | "lav" | "blue" | "pink" | "teal"> = {
-  "青山 和也": "apricot", "阿部 さくら": "lav", "石田 剛": "blue",
-  "母": "pink", "上田 優子": "teal", "クリーニング中村": "pink",
-};
+const IMPORT_PICK_AVATAR_TONES = previewSamples.importPickAvatarTones as Record<string, "apricot" | "lav" | "blue" | "pink" | "teal">;
 
 /** b9 A2 ② 選ぶ: すべて / 選んで取り込む, the ✨ pre-selection with its 根拠, filters, the list, N人を取り込む. */
 function PickStage({ people, error, onBack, onImport, previewRows }: { people: PickPerson[]; error: string | null; onBack: () => void; onImport: (chosen: readonly PickPerson[], excluded: number) => void; previewRows?: number }) {
@@ -249,7 +247,7 @@ function PickStage({ people, error, onBack, onImport, previewRows }: { people: P
           <View style={[styles.card, styles.listCard]}>
             {(previewRows === undefined ? shown : shown.slice(0, previewRows)).map((person, index) => {
               const on = mode === "all" || chosen.has(person.id);
-              const avatarTone = previewRows === undefined ? undefined : PICK_PREVIEW_TONES[person.name];
+              const avatarTone = previewRows === undefined ? undefined : IMPORT_PICK_AVATAR_TONES[person.name];
               return (
                 <UiPressable key={person.id} accessibilityRole="checkbox" accessibilityLabel={t("add.import.selectRow", { name: person.name })} accessibilityState={{ checked: on, disabled: mode === "all" }} disabled={mode === "all"}
                   onPress={() => toggle(person.id)} style={[styles.xrow, index > 0 && styles.xrowLine]} testID={`add-import-person-${person.id}`}>
@@ -472,8 +470,8 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
       existingLine: t("add.batch.existingLine", { value: [candidate.organization, candidate.role].filter(Boolean).join(" · ") || candidate.displayName }),
       // Same company as the person in 人脈: only the name differs, so only the name is shown (R12 名刺 likewise).
       incomingLine: t("add.batch.incomingLine", { value: !row.fields.organization ? t("add.import.incomingNoCompany", { name }) : row.fields.organization === candidate.organization ? name : `${name} · ${row.fields.organization}` }),
-      ...(design === "design-review" && (candidate.displayName === "鈴木 大輔" || candidate.displayName === "渡辺 翔")
-        ? { avatarTone: candidate.displayName === "鈴木 大輔" ? "blue" as const : "apricot" as const }
+      ...(design === "design-review" && (candidate.displayName === previewSamples.reviewBlueAvatarName || candidate.displayName === previewSamples.reviewApricotAvatarName)
+        ? { avatarTone: candidate.displayName === previewSamples.reviewBlueAvatarName ? "blue" as const : "apricot" as const }
         : {}),
       selected: Boolean(choice[row.seq]) && !skipped.has(row.seq), problem: null,
     };

@@ -12,6 +12,7 @@ import { StyleSheet, View } from "react-native";
 
 import type { PlanGoalListItem, PlanPendingItem, PlanV2Detail, PlanV2PersonType } from "../../api/contract/plan-v2";
 import { planDoneHref, planDraftEditHref, planTypeHref } from "../../api/compute/plan-href";
+import previewSamples from "../../fixtures/redesign-preview-samples.json";
 import {
   BottomSheet,
   Button,
@@ -218,7 +219,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onAdd={() => onAddGoal?.()}
         onEdit={() => setEditOpen(true)}
       />
-      <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} {...(design === "edit" ? { previewAmount: "5億円" } : {})} />
+      <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} {...(design === "edit" ? { previewAmount: previewSamples.planEditPreviewAmount } : {})} />
     </View>
   );
 }

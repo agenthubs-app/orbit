@@ -194,7 +194,7 @@ async function moreAction(page: Page, option: string) {
   // The previous dialog / sheet fades out (~300 ms) and its scrim takes taps until it is gone.
   await page.waitForTimeout(600);
   await page.getByRole("button", { name: "その他の操作" }).click();
-  await page.getByRole("button", { name: option, exact: true }).last().click();
+  await page.getByRole("button", { name: option, exact: true }).locator('xpath=self::*[not(starts-with(@data-testid,"type-"))]').click();
 }
 
 test("overview: every field from GET /v2/[planId], the score equal to the home summary, and opening writes nothing", async (t) => {
@@ -347,7 +347,7 @@ test("offline with a name: 「この人ですか？」 first, nothing is scored 
 test("skip: the confirm focuses the main button; full points striped; 元に戻す and スキップを取り消す undo it", async (t) => {
   const { page, calls } = await open(t, `/plans/${PLAN}/types/${item("angel")}`);
   await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
-  await page.getByText("スキップすると満点（10 点）を記録します。あとで取り消せます。").waitFor();
+  await page.getByText(/10点を習熟済みとして加算し、斜線で分けて表示します。いつでも取り消せます。/).waitFor();
   assert.equal(await page.locator("[data-focus-target]").innerText(), "スキップする", "focus starts on the main button");
   await page.getByRole("button", { name: "スキップする" }).click();
   await page.getByText("10点を加算しました").waitFor();
@@ -355,12 +355,15 @@ test("skip: the confirm focuses the main button; full points striped; 元に戻�
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("スキップを取り消しました").waitFor();
   await page.getByRole("button", { name: "この分野はもう詳しい" }).waitFor();
+  await page.getByText("スキップを取り消しました").waitFor({ state: "hidden" });
   assert.deepEqual(writes(calls), [`POST /api/agent/plans/v2/${PLAN}/types/${item("angel")}/skip`, `DELETE /api/agent/plans/v2/${PLAN}/types/${item("angel")}/skip`]);
   // The skipped state's own button.
   await page.getByRole("button", { name: "この分野はもう詳しい" }).click();
   await page.getByRole("button", { name: "スキップする" }).click();
+  await page.getByRole("button", { name: "キャンセル" }).waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "スキップを取り消す" }).click();
   await page.getByRole("button", { name: "この分野はもう詳しい" }).waitFor();
+  await page.getByText("スキップを取り消しました").waitFor({ state: "hidden" });
   // The same through the top-right 「⋯」 (RD-16).
   await moreAction(page, "この分野はもう詳しい");
   await page.getByRole("button", { name: "スキップする" }).click();

@@ -10,6 +10,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { Avatar, ConfirmDialog, EmptyState, RetryCard, Skeleton, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
+import previewSamples from "../../fixtures/redesign-preview-samples.json";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useAddApi, type ContactDraftRow } from "./add-api";
 import { discardDraft, readDiscardedDrafts } from "./add-storage";
@@ -21,7 +22,7 @@ import { draftsDesignFor } from "./scan-design-fixtures";
 import { SmallButton } from "./UnifiedReviewApp";
 
 type State = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; drafts: ContactDraftRow[] };
-const N09_AVATAR_TONES: Record<string, "pink" | "blue" | "teal"> = { "松田 悠": "pink", "早川 誠一": "blue", "杉本 葵": "teal" };
+const N09_AVATAR_TONES = previewSamples.n09AvatarTones as Record<string, "pink" | "blue" | "teal">;
 
 export function ContactDraftsScreen({ eventId, design = null }: { eventId: string | null; design?: string | null }) {
   const api = useAddApi();
