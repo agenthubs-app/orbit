@@ -26,7 +26,7 @@
 | 12 R13/R10/R19 交接 | **部分** | R13 来源、宽进逐条跳过、账号时区分组已回归；未改同步 DTO。活动维护任务已完整写站内通知，保留 semanticKey 幂等；R10/R19 只应消费站内通知，见交接表。 |
 | 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。App 通知上限和秘書静音入口已用模拟器点按，Web 窄屏保存读回已手工验证。 |
 | 14 演示世界/i18n | **部分** | mock 偏好改为 07:30/3/mail=false，样本来源仅真实可用种类；App 通知域 copy QA 39/39、Web 通知域零问题，App 三语键一致、硬编码允许清单缩减。中途态 `design=` 与生产不可达证明依赖改稿画板/fixture，未实现。 |
-| 15 全量/像素 | **未通过** | 最后 Web 全量 15 失败、2 cancelled；两项取消的迁移测试串行 4/4 通过。App 全量 38 失败、3 cancelled；针对其失败文件串行 496 例中 484 pass、12 fail，原 41 个未通过/取消名称中 29 个串行恢复，稳定失败为旧相机 9、旧 i18n 1、A `Toggle`/`CategoryTabs` 2，确认 B 新失败 0。三个修订板的像素比较均未通过，不能建立 R14 PASS。 |
+| 15 全量/像素 | **未通过；RD-25 M2 转像素余项轮** | 最后 Web 全量 15 失败、2 cancelled；两项取消的迁移测试串行 4/4 通过。App 全量 38 失败、3 cancelled；仅对失败涉及的 18 个文件串行复跑：496 例中 484 pass、12 fail，原 41 个未通过/取消名称中 29 个串行恢复，剩余为旧相机 9、旧 i18n 1、A `Toggle`/`CategoryTabs` 2。该集合未见 B 新增稳定失败，不能据此证明全量零新增。三个修订板像素门禁均未通过；三板对齐、门禁及全量重跑归入像素余项轮。 |
 | 16 报告/交接 | **本报告** | 已列 SC、按路径提交、源代码范围、测试与请求；主会话独立复核后处理后续整合。 |
 
 ## PLANNER §3 逐条接手
@@ -90,7 +90,7 @@
 - App 首轮收口全量经 `heavy.sh b`：**3,174 tests、3,154 pass、18 fail、2 skip，退出 1**（`app-full.log`）。与 R13 `run-02/app-full-closeout.log` 按失败名对照，旧相机 9、字典钉版 1、A `CategoryTabs` 选中项 1 仍在；新增 7 项中，B 路由覆盖/私有门禁/离线页面清单 3 项已由静态路由登记修复（21/21，`app-route-manifest-fix.log`），偏好 GET 离线读取清单 1 项已登记为 `online_only_secret`（26/26，`app-offline-inventory-fix.log`），两项通知设置快捷按钮尺寸已改用 R31 `Button size="lg"`，浏览器窄屏与宽屏目标 2/2（`app-browser-fix.log`）。余下一项「discovery toggles」来自 A 线 R31 `Toggle` 在 RN Web 上未输出测试要求的 `aria-checked`；组件只给 `accessibilityState.checked`，B 线未越界修改。定向浏览器束总计 2 pass、1 fail；复跑结果见下，App 后续类型检查退出 0（`app-typecheck-after-full.log`）。
 - 首次模拟器 `openurl` 尝试停在运行门槛：`heavy.sh b` 因内置盘空间低于 5 GiB 等待（`metro-openurl.log`）。重启后空间恢复，Metro 在 `:8083` 成功打包，`simctl openurl orbit:///task?seg=todo` 成功进入 To-do（`metro-openurl-task-retry.png`）；截图显示本机 API 不可用的 Task 重试卡。`orbit:///settings/notifications` 与 `/secretary` 也打开了 App，但只显示在线边界（`metro-notifications-retry.png`、`metro-secretary-retry.png`），不能据此验证表单或像素。首次截图直写证据盘被 CoreSimulator 拒绝，改为写 `/tmp` 再复制后成功；原始命令与日志为 `metro-*-retry.zsh` / `metro-*-retry.log`。操作后已停 Metro 并关闭 B 模拟器。系统通知点击、远程 delivery、在线设置交互和 VoiceOver 仍未做手工验收。
 - 重启前修复后的最后一轮全量：Web **7,738 tests、6,712 pass、15 fail、1,011 skip**（`web-full-review-final.log`），15 个失败名与旧 Web 基线相同；App **3,216 tests、3,173 pass、38 fail、3 cancelled、2 skip**（`app-full-review-final.log`）。App 失败包含既有相机 9、旧 i18n 钉版 1、A 线 `Toggle`；并发浏览器压力下还出现多个 1.5–5 秒等待超时，不能把这轮全量记为通过。随后定向重跑 workspace 2/2、通知注册竞态 15/15、收件箱焦点恢复 1/1；收件箱筛选选中语义 0/1，原因是 A 线 `CategoryTabs` 仅传 `accessibilityState.selected`，RN Web 未输出测试所需的 `aria-selected`（`app-workspace-timeout-review.log`、`app-notification-races-review.log`、`app-inbox-timeout-review.log`）。其余超时未逐个重跑，不宣称已排除。重启后再跑 Web/App 类型检查均退出 0（`*-typecheck-postrestart.log`）。
-- 本轮对上述 41 个失败/取消名称所涉的 18 个 App 测试文件用 `--test-concurrency=1` 串行复核（`app-serial-review.log`）：496 tests、484 pass、12 fail、0 cancelled。41 个名称中 29 个转为通过；剩余为 R12 相机/名片 9、旧字典钉版 1、A 线 `Toggle` 1、A 线 `CategoryTabs` 1。与 R13 基线的 11 个稳定失败及已知 A Toggle 对照，**确认 B 本轮新增稳定失败 0**。并行全量本身仍为失败，不以这次串行结果冒充全量通过。
+- 本轮对上述 41 个失败/取消名称所涉的 18 个 App 测试文件用 `--test-concurrency=1` 串行复核（`app-serial-review.log`）：496 tests、484 pass、12 fail、0 cancelled。41 个名称中 29 个转为通过；剩余为 R12 相机/名片 9、旧字典钉版 1、A 线 `Toggle` 1、A 线 `CategoryTabs` 1。与 R13 基线的 11 个稳定失败及已知 A Toggle 对照，**该集合未见 B 新增稳定失败**；未覆盖全量其他文件，不能推出全量零新增。并行全量本身仍为失败。
 - RD-30 活动来源修复先加 RED：cap 满时两个 due 站内记录写入 0/2；移除站内提前截断及旧 cap helper 后，R27 目标测试 4/4、Web `tsc --noEmit` 退出 0。push 统一配额逻辑未动，活动站内记录仍靠 semanticKey 幂等；证据见本轮终端记录与本报告交接表。
 - 活动修复后 Web 再做一轮收口全量（`web-full-after-event.log`）：**7,738 tests、6,710 pass、15 fail、2 cancelled、1,011 skip，退出 1**。15 个失败名称与前轮完全一致；两项新取消是本机 PostgreSQL canonical membership 迁移用例在并发套件里达到 60/120 秒等待限时。随后只跑这两个文件的串行复核 `web-migration-serial-review.log`：4/4 pass、0 fail、0 cancelled；因此无证据表明事件改动新增稳定 Web 失败。全量本身仍未通过。
 - 额外一次本机在线截图：`online-settings-check2.log` 以 `buildStackEnv(..., noPaidAi:true)` 将数据库固定为 localhost、付费 provider key 置空，在 B 线 `:3300` 启动 Web、`:8083` 启动 Metro；模拟器深链分别进入通知和秘書表单，截图 `online-notifications.png`、`online-secretary.png`。首次探针使用 `127.0.0.1:8083`，而 Metro 只监听 `localhost`，故 `online-settings-check.log` 超时；更正探针后成功。该次截图拍摄时画板尚未改稿，且通知截图含开发调试提示，**不作像素 PASS**；后续干净截图与门禁见下一节。未手工验证保存读回、系统通知点击或 VoiceOver；这些仍由定向自动测试及后续独立验收承担。结束时已停本轮 Next/Metro，关闭 B 模拟器，并将 Next 启动自动改写的 `next-env.d.ts` / `tsconfig.json` 精确恢复到本轮前内容。
@@ -107,10 +107,12 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 - M1：写入 schema 拒绝 `secretaryMail:true`，仍接受显式 `false`；即使旧偏好已存为 `true`，typed 投递也拒绝纯邮件及混合 `mail_summary` 来源。先 RED 复现 schema、HTTP PUT 和投递层三项失败，修复后 Web 定向 14/14、App 契约同步 3/3、两端 `tsc` 退出 0。修复提交 `deece153b`。
 - m：缺关系消息表的 typed delivery 警告只记事件名，不再含原始 `actorId`。本机 PostgreSQL 负例先检出泄露，修复后该文件 2/2、Web `tsc` 退出 0。修复提交 `e0c2ff994`。
 - M3：主会话已于 **2026-10-19 23:10** 按 RD-30 明确批准 B 线跨入活动域修复站内通知提前截断；对应提交 `42281428d`。R26/R27 交接补在下表，勿把该批准扩展到其他活动文件。
+- M2：三板像素与两端全量归入像素余项轮。本轮未重跑像素或全量，沿用上文失败结果，SC-15 仍未通过。
 
 ## 待主会话决定
 
 - A-R14-P01 第三轮、A-R14-P02 第二轮、W-R14-P01 第二轮像素门禁仍失败；B 线未继续单方改动画板。请主会话依据逐带报告决定后续版面对齐与独立复核安排；当前 SC-08～10 的像素部分及 SC-15 不能标完成。
+- RD-25 M2 的三板对齐、门禁及两端全量已交像素余项轮；该轮需按同一基线逐名比较，不能将先前 18 个失败文件的串行结果写成全量零新增。
 - R31 `Toggle` / `CategoryTabs` 的浏览器选中语义已交 A 线 R32；修复合入后需要复跑对应浏览器用例，B 线未越界改组件。
 - 生产 worker、Neon、部署、真实设备推送及 TestFlight 均为 DEFERRED「待用户授权」。系统通知点击、远程 delivery、VoiceOver 与真实多 worker 重启链也未在本机验证范围内完成；是否另排验收由主会话决定。
 
