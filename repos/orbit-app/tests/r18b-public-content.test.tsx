@@ -34,6 +34,14 @@ test("local FAQ empty query state and legal placeholder do not invent results or
   }
 });
 
+test("FAQ keyword search still finds the same item across its existing Japanese, Chinese and English terms", () => {
+  for (const query of ["下書き", "草稿", "draft"]) {
+    const text = renderedText(<PublicInfoContent kind="help" t={t} query={query} onQueryChange={noop} onOpen={noop} contactEmail={null} onOpenEmail={noop} />);
+    assert.match(text, /メールは自動で送信されますか？/);
+    assert.doesNotMatch(text, /Gmail 連携で読むのはどの範囲？/);
+  }
+});
+
 test("configured contact state offers the mail app only, without a sent confirmation", () => {
   const text = renderedText(<PublicInfoContent kind="help" t={t} query="" onQueryChange={noop} onOpen={noop} contactEmail="help@example.com" onOpenEmail={noop} />);
   assert.match(text, /メールアプリを開く/);

@@ -10,9 +10,9 @@ import { filterPublicFaq } from "../../view-models/public-faq-search";
 export type PublicInfoKind = "help" | "terms" | "privacy";
 
 const faqKeys = [
-  { id: "send", question: "publicInfo.sendQuestion", answer: "publicInfo.sendAnswer", searchKeywords: ["draft", "下書き", "草稿"] },
-  { id: "gmail", question: "publicInfo.gmailQuestion", answer: "publicInfo.gmailAnswer", searchKeywords: ["metadata", "メタデータ", "元数据"] },
-  { id: "card", question: "publicInfo.cardQuestion", answer: "publicInfo.cardAnswer", searchKeywords: ["scan", "名刺", "名片"] },
+  { id: "send", question: "publicInfo.sendQuestion", answer: "publicInfo.sendAnswer", searchKeywords: "publicInfo.sendSearchKeywords" },
+  { id: "gmail", question: "publicInfo.gmailQuestion", answer: "publicInfo.gmailAnswer", searchKeywords: "publicInfo.gmailSearchKeywords" },
+  { id: "card", question: "publicInfo.cardQuestion", answer: "publicInfo.cardAnswer", searchKeywords: "publicInfo.cardSearchKeywords" },
 ] as const;
 
 export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, contactEmail, onOpenEmail }: {
@@ -31,7 +31,7 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
     id,
     question: t(question),
     answer: t(answer),
-    searchKeywords,
+    searchKeywords: t(searchKeywords).split("|"),
   })), query);
 
   return <View style={styles.content}>

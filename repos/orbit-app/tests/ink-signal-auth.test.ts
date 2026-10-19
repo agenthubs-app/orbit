@@ -166,6 +166,20 @@ test("recovery and registration links preserve next without implicit writes", as
   await forgot.getByText("申请已受理，请查看邮箱。", { exact: true }).waitFor(); await shot(forgot, "forgot");
 });
 
+test("signup opens public legal pages without submitting or clearing the draft", async t => {
+  const page = await open(t, { mode: "signup", next: "/i/invite-123" });
+  await fill(page);
+  await page.getByRole("link", { name: "使用条款", exact: true }).click();
+  await page.getByRole("link", { name: "隐私政策", exact: true }).click();
+  assert.deepEqual(await navigation(page), ["/legal/terms", "/legal/privacy"]);
+  assert.deepEqual(await requests(page), []);
+  assert.equal(await page.getByRole("textbox", { name: "邮箱", exact: true }).inputValue(), "cheng.chuan@example.test");
+  assert.equal(await page.locator("input[type=password]").inputValue(), "fixture8");
+  const login = await open(t);
+  assert.equal(await login.getByRole("link", { name: "使用条款", exact: true }).count(), 0);
+  assert.equal(await login.getByRole("link", { name: "隐私政策", exact: true }).count(), 0);
+});
+
 test("double-size signup has a short complete action title", async t => {
   const page = await open(t, { mode: "signup", width: 320, fontScale: 2 });
   await page.getByRole("heading", { name: "创建账号", exact: true }).waitFor();

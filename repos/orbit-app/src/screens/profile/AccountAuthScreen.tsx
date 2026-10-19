@@ -395,6 +395,18 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               ))}
             </View>
           ) : null}
+          {mode === "signup" ? <View style={styles.signupLegal}>
+            <Text style={styles.signupLegalText}>{locale.t("publicInfo.signupLegalPrefix")}</Text>
+            <View style={styles.signupLegalLinks}>
+              <Pressable accessibilityRole="link" accessibilityLabel={locale.t("publicInfo.signupTerms")} onPress={() => navigateTo("/legal/terms")} style={({ pressed }) => [styles.signupLegalLink, pressed ? styles.pressed : null]}>
+                <Text style={styles.signupLegalLinkText}>{locale.t("publicInfo.signupTerms")}</Text>
+              </Pressable>
+              <Text style={styles.signupLegalText}>{locale.t("publicInfo.signupLegalAnd")}</Text>
+              <Pressable accessibilityRole="link" accessibilityLabel={locale.t("publicInfo.signupPrivacy")} onPress={() => navigateTo("/legal/privacy")} style={({ pressed }) => [styles.signupLegalLink, pressed ? styles.pressed : null]}>
+                <Text style={styles.signupLegalLinkText}>{locale.t("publicInfo.signupPrivacy")}</Text>
+              </Pressable>
+            </View>
+          </View> : null}
           </View>
           </View>
         )}
@@ -646,6 +658,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   primaryButtonText: {
     ...createControlStyles(colors).primaryButtonText
   },
+  signupLegal: { alignItems: "center", marginTop: 4 },
+  signupLegalText: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  signupLegalLinks: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
+  signupLegalLink: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
+  signupLegalLinkText: { color: colors.accentText, fontSize: 12, lineHeight: 18, textDecorationLine: "underline" },
   footer: { marginTop: "auto", paddingTop: 36, paddingBottom: 4 },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
   switchText: { color: colors.ink2, fontSize: 14, lineHeight: 20, textAlign: "center" },
