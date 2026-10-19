@@ -139,6 +139,15 @@
           "waitFor": "[data-plan-proposal-person] button"
         },
         {
+          "fill": [":nth-match([data-plan-proposal] input[type=date], 1)", "2026-10-14"]
+        },
+        {
+          "fill": [":nth-match([data-plan-proposal] input[type=date], 2)", "2026-10-15"]
+        },
+        {
+          "fill": [":nth-match([data-plan-proposal] input[type=date], 3)", "2026-10-16"]
+        },
+        {
           "click": "[data-plan-proposal-person] button:has-text(\"下書きをつくる\")"
         },
         {
