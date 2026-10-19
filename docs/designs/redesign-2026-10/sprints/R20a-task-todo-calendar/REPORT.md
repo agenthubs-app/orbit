@@ -888,6 +888,12 @@ D `975fefe90` の実 `/app/tasks?tab=todo&view=all` を、nonce `30b80c75d623` �
 
 本 run の loopback design server 3320 と Next 3500 は停止し、両 port の listener 不在を確認。Next が生成した `next-env.d.ts` / `tsconfig.json` の差分のみ元に戻した。exact DB 名・owner `xzhao`・active connection 0 を確認して nonce DB だけを drop し、catalog count 0 を再確認した。synthetic capture は証拠として保持し、既存 QA actor・他 DB・production・実 Google・paid AI・push には触れていない。
 
+## 2026-10-19　D native Task 空／少／多の機能マトリクス（SC-09 部分）
+
+D 専用の新規 nonce DB `orbit_line_d_native_matrix_20261019_f1e8c0493d12` と合成 actor を使い、既存の signed D simulator app + 現行 JS でタスク **0 → 3 → 35 件**を段階的に実走した。0 件では `Open 0 / Completed 0 / Up to date / No tasks`、3 件では native pull-to-refresh 後に三行、35 件では `Open 35` と第1頁 `Unscheduled 30` が表示された。頁末の `Next task page` で残り5行だけへ進み、`First task page` で先頭30行へ戻ることを確認。独立した service / DB 読み戻しも35件の open task と seed 由来の create mutation 35件に一致した。画像5枚の hash、初回の `AUTH_SECRET` / live mode / sync cursor secret 不足による 503→401→sync 503 の fixture 診断、所有権・清掃境界は `_evidence-d/R20a/native-task-matrix-f1e8c0493d12/OWNERSHIP.md`。これで SC-09 の空／少／大に対する**限定 native 表示・頁送り**の未実測部分を補ったが、全操作、旧 screen 退役、offline/conflict、画板 pixel と SC-09 全体は OPEN。開発 warning toast が撮影に重なるため画像を pixel 合格に流用しない。
+
+合成 account は Settings で sign out（session API 200）。通知 device DELETE は 400、Metro も清掃未確認を警告したため完全な通知登録解除とは言わない。所有 API / Metro と app を停止し、3500/8085 が空、D simulator が元の Shutdown、Next 生成2 file の scoped 差分が0であることを確認。DB の exact 名・owner・接続0・全行が nonce workspace 内・他 workspace 行0を確認してその新規 DB だけ drop、catalog 残0。既存 app/container、他線、元から dirty の14 Plan/Event paths は保持。production / 実 Google / paid AI / push / deploy なし。
+
 ## 2026-10-19　To-do の Plan 今日の一手 source 接線（SC-07 部分）
 
 live `plan_today_chance` は Plan v2 `summary.current.todayChance` を読んでいたが、`summary()` はこの optional field を実際には埋めない。したがって活性 Plan に次の機会があっても常に `not_implemented` になっていた。Plan v2 の既存 `overview(planId)` が会える活動・候補から `todayChance` を算出するため、To-do の受限読取 adapter は同じ活性 Plan に対して overview を読み、live では既存 Plan と同じ有界活動事実（最大20件 / 60日）を接続した。Plan の書込や paid AI は追加していない。活動事実の前に共有 read-budget gate を通し、そこで拒否された場合は Plan 側の「活動なし」降級を精確な 0 とせず、To-do の当該 source だけ `unavailable` にする。Plan が存在しない場合は 0 件として扱う。
