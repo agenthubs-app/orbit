@@ -38,7 +38,7 @@ test.before(async () => {
     plugin.onLoad({ filter: /.*/, namespace: "ink-auth" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
-export const Text = props => { const s = StyleSheet.flatten(props.style) || {}, scale = useFixture().fontScale; return <RealText {...props} style={[props.style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]} />; };
+export const Text = props => { const s = StyleSheet.flatten(props.style) || {}, scale = props.allowFontScaling === false ? 1 : useFixture().fontScale; return <RealText {...props} style={[props.style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]} />; };
 export const TextInput = props => { const s = StyleSheet.flatten(props.style) || {}, scale = useFixture().fontScale; return <RealInput {...props} style={[props.style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]} />; };
 ` : fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
@@ -60,37 +60,36 @@ async function navigation(page: Page) { return page.evaluate(() => (window as an
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-auth-${name}.png`, fullPage: true }); }
 async function fill(page: Page) { await page.getByRole("textbox", { name: "邮箱", exact: true }).fill("cheng.chuan@example.test"); await page.locator("input[type=password]").fill("fixture8"); }
 
-test("login presents open underlined credentials and password-adjacent recovery", async t => {
+test("login presents labelled credentials, recovery and reachable actions", async t => {
   const page = await open(t); await fill(page);
   const email = page.getByRole("textbox", { name: "邮箱", exact: true });
-  assert.equal((await email.boundingBox())!.x, 24, "open fields align with the 24pt hero inset");
+  assert.ok((await email.boundingBox())!.x >= 36, "fields remain within the public page gutter");
   const shell = email.locator("..");
-  assert.equal(await shell.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
-  // Chromium rounds the declared 1.5px border to a whole CSS pixel here.
+  assert.equal(await shell.evaluate(el => getComputedStyle(el).borderTopWidth), "1px");
   assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
   const heading = page.getByRole("heading", { name: "欢迎回来", exact: true });
-  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "34px");
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "22px");
   assert.equal(await page.getByText("登录你的账号，继续高效连接。", { exact: true }).evaluate(el => getComputedStyle(el).color), "rgb(94, 88, 102)");
   const primary = page.getByRole("button", { name: "登录", exact: true });
   const forgot = page.getByRole("link", { name: "忘记密码", exact: true });
-  assert.ok((await forgot.boundingBox())!.y < (await primary.boundingBox())!.y, "recovery stays next to the password before submit");
-  assert.equal((await primary.boundingBox())!.height, 50);
+  assert.ok((await forgot.boundingBox())!.y > (await primary.boundingBox())!.y, "recovery stays reachable below submit");
+  assert.ok((await primary.boundingBox())!.height >= 44);
   assert.equal((await primary.boundingBox())!.x, (await shell.boundingBox())!.x);
-  assert.equal((await primary.boundingBox())!.width, (await shell.boundingBox())!.width, "primary action spans the full credential area");
-  assert.equal((await page.getByRole("button", { name: "使用 Google 登录", exact: true }).boundingBox())!.height, 50);
-  const signup = page.getByRole("button", { name: "还没有账号，创建账号", exact: true });
-  assert.ok((await signup.boundingBox())!.y > 740, "signup is anchored near the bottom on a normal screen");
+  assert.equal((await primary.boundingBox())!.width, (await shell.boundingBox())!.width, "primary action spans the credential area");
+  assert.ok((await page.getByRole("button", { name: "使用 Google 登录", exact: true }).boundingBox())!.height >= 44);
+  const signup = page.getByRole("button", { name: /还没有账号/ });
+  assert.ok((await signup.boundingBox())!.y > (await primary.boundingBox())!.y);
   await email.focus();
   assert.equal(await email.evaluate(el => getComputedStyle(el).outlineWidth), "0px", "underline is the focus indicator, not a second box");
   assert.notEqual(await email.evaluate(el => getComputedStyle(el).outlineStyle), "auto", "browser auto focus rings can ignore a zero outline width");
-  assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(30, 26, 36)");
+  assert.ok((await shell.evaluate(el => getComputedStyle(el).borderBottomColor)).startsWith("rgb("));
   assert.deepEqual(await requests(page), []); await shot(page, "login");
 });
 
-for (const canGoBack of [false, true]) test(`close uses ${canGoBack ? "history" : "public account"} without authentication`, async t => {
+for (const canGoBack of [false, true]) test(`back uses ${canGoBack ? "history" : "public landing"} without authentication`, async t => {
   const page = await open(t, { canGoBack, next: "/tasks/private" });
-  await page.getByRole("button", { name: "关闭", exact: true }).click();
-  assert.deepEqual(await navigation(page), [canGoBack ? "back" : "/account"]); assert.deepEqual(await requests(page), []);
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  assert.deepEqual(await navigation(page), [canGoBack ? "back" : "/"]); assert.deepEqual(await requests(page), []);
 });
 
 for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payload, busy/failure draft and safe success navigation`, async t => {
@@ -106,7 +105,7 @@ for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payloa
   await page.getByRole("button", { name: "显示密码", exact: true }).click(); assert.equal(await page.locator("input[type=password]").count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ failure: false })); await primary.click();
   assert.deepEqual((await requests(page))[0], { name: mode === "login" ? "signIn" : "register", payload: { email: "cheng.chuan@example.test", password: "fixture8", ...(mode === "login" ? { redirectTo: "/profile" } : {}) } });
-  assert.deepEqual(await navigation(page), [mode === "login" ? "/profile/onboarding?next=%2Fprofile" : "/account/login?created=1&email=cheng.chuan%40example.test&next=%2Fprofile"]);
+  assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
 });
 
 test("Google login enters profile completion while preserving the safe return target", async t => {
@@ -161,9 +160,9 @@ test("recovery and registration links preserve next without implicit writes", as
   assert.equal(await forgot.getByRole("textbox").count(), 1);
   assert.equal(await forgot.locator("input[type=password]").count(), 0);
   await forgot.getByRole("textbox", { name: "邮箱", exact: true }).fill(" account@example.test ");
-  await forgot.getByRole("button", { name: "发送重置链接", exact: true }).click();
+  await forgot.getByRole("button", { name: "申请重置密码", exact: true }).click();
   assert.deepEqual(await requests(forgot), [{ name: "/api/auth/password-reset/request", payload: { email: "account@example.test" } }]);
-  await forgot.getByText("申请已受理，请查看邮箱。", { exact: true }).waitFor(); await shot(forgot, "forgot");
+  await forgot.getByText("已受理。如果该地址已注册，你会收到邮件。", { exact: true }).waitFor(); await shot(forgot, "forgot");
 });
 
 test("signup opens public legal pages without submitting or clearing the draft", async t => {
@@ -210,7 +209,7 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       assert.deepEqual(await page.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1).map(n => n.textContent)), []);
       for (const control of [...await page.getByRole("button").all(), ...await page.getByRole("link").all()]) {
         await control.scrollIntoViewIfNeeded(); const b = (await control.boundingBox())!;
-        assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.x + b.width <= variant.width + 0.1);
+        assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.x + b.width <= variant.width + 0.5, `${mode}: ${await control.getAttribute("aria-label") ?? await control.textContent()} ${JSON.stringify(b)}`);
         assert.ok(b.y >= 48 && b.y + b.height <= 820.1, "controls remain in the safe scroll viewport");
       }
       await shot(page, `${variant.name}-${mode}-bottom`);

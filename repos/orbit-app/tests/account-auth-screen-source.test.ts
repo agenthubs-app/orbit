@@ -97,8 +97,8 @@ test("mobile Google broker route falls back to the native login screen", () => {
 });
 
 test("account auth screen is brand-first without explainer or status cards", () => {
-  assert.match(screenSource, /function OrbitAuthLogo/u);
-  assert.match(screenSource, /<OrbitAuthLogo \/>/u);
+  assert.match(screenSource, /<View style=\{styles\.brand\}>/u);
+  assert.match(screenSource, /<Text allowFontScaling=\{false\} style=\{styles\.brandMark\}>O<\/Text>/u);
   assert.doesNotMatch(
     screenSource,
     /title="登录说明"|title="账号状态"|SessionPreview|accountSessionToView|ORBIT_API_ENDPOINTS\.accountMe/u

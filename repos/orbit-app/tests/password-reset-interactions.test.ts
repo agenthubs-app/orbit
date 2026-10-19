@@ -8,6 +8,7 @@ import { chromium, type Browser, type Page } from "playwright";
 
 const require = createRequire(import.meta.url);
 const requestMessage = "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接；未收到时请稍后重试。";
+const acceptedMessage = "已受理。如果该地址已注册，你会收到邮件。";
 const resetMessage = "密码已更新，请使用新密码登录。";
 let browser: Browser;
 let server: Server;
@@ -24,7 +25,7 @@ const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
   mode: "forgot", actor: "one", baseUrl: "https://orbit.example", ready: true, baseReady: true, mounted: true,
-  params: {}, requests: [], replies: [], rejects: [], navigation: [], expirations: 0, presses: {}, holdFragment: false,
+  params: {}, deepLink: null, requests: [], replies: [], rejects: [], navigation: [], expirations: 0, presses: {}, holdFragment: false,
   token: "a".repeat(43), password: "A".repeat(12),
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   fragment() { state.update({ params: { "#": "token=" + state.token } }); },
@@ -53,6 +54,8 @@ export const useOrbitApiBaseUrl = () => { observe(); return { baseUrl: state.bas
 const authResult = async () => { state.update({ actor: "authenticated" }); return { success: true }; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, user: { id: state.actor }, cookieHeader: "", googleEnabled: true, signIn: authResult, register: authResult, startGoogleSignIn: authResult, expireSession() { state.expirations++; } }; };
 export const useLocalSearchParams = () => { observe(); return state.params; };
+export const useLinkingURL = () => { observe(); return state.deepLink; };
+export const clearInitialURL = () => {};
 export const usePathname = () => "/account/" + state.mode;
 const router = { canGoBack: () => false, back() {}, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); state.update({ params: {} }); }, setParams(params) { if (!state.holdFragment) state.update({ params: { ...state.params, ...params } }); } };
 export const useRouter = () => router;
@@ -67,7 +70,7 @@ test.before(async () => {
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "recovery-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "recovery" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "recovery" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-linking|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "recovery" }));
       plugin.onLoad({ filter: /.*/, namespace: "recovery" }, args => ({ contents: args.path === "native" ? `import React from "react"; import { Pressable as NativePressable } from "react-native-web"; export * from "react-native-web"; export const Pressable = props => { if (props.accessibilityLabel) window.fixture.presses[props.accessibilityLabel] = props.onPress; return <NativePressable {...props} />; };` : fixture, loader: "jsx", resolveDir: process.cwd() }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
     } }]
@@ -126,12 +129,14 @@ async function duplicate(page: Page, label: string) {
 test("request form sends email only, locks same-tick duplicates and stays on generic acceptance", async t => {
   const page = await open(t);
   await fill(page, "邮箱", "  account@example.test  ");
-  await duplicate(page, "发送重置链接");
+  await duplicate(page, "申请重置密码");
   assert.ok(await page.evaluate(() => { const s = (window as any).fixture; const r = s.requests[0]; return s.requests.length === 1 && r.method === "POST" && r.url.pathname === "/api/auth/password-reset/request" && Object.keys(r.body).join() === "email" && r.body.email === "account@example.test"; }));
   await reply(page, 0);
-  await page.getByText(requestMessage, { exact: true }).waitFor();
+  await page.getByText(acceptedMessage, { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => (window as any).fixture.navigation.length), 0);
-  assert.equal(await page.getByRole("link", { name: "使用重置链接" }).count(), 1);
+  await page.getByRole("heading", { name: "已受理" }).waitFor();
+  await page.getByRole("button", { name: "登录" }).click();
+  assert.ok(await page.evaluate(() => (window as any).fixture.navigation.at(-1) === "/account/login?next=%2Fhome"));
 });
 
 test("request unavailable and malformed successes stay retryable with visible failures", async t => {
@@ -139,13 +144,13 @@ test("request unavailable and malformed successes stay retryable with visible fa
   await fill(page, "邮箱", "unknown@example.test");
   const failures = ["unavailable", "missing", "object", "null", "empty", "http-error", "network"];
   for (const [index, kind] of failures.entries()) {
-    await page.getByRole("button", { name: "发送重置链接", exact: true }).click();
+    await page.getByRole("button", { name: "申请重置密码", exact: true }).click();
     await reply(page, index, kind);
     await page.getByRole("alert").waitFor();
   }
-  await page.getByRole("button", { name: "发送重置链接", exact: true }).click();
+  await page.getByRole("button", { name: "申请重置密码", exact: true }).click();
   await reply(page, failures.length);
-  await page.getByText(requestMessage, { exact: true }).waitFor();
+  await page.getByText(acceptedMessage, { exact: true }).waitFor();
 });
 
 test("reset mismatch makes no request; success clears fields/token/fragment without expiring current account", async t => {
@@ -162,6 +167,12 @@ test("reset mismatch makes no request; success clears fields/token/fragment with
   assert.equal(await page.getByLabel("新密码", { exact: true }).count(), 0);
 });
 
+test("native reset deep link captures a fragment omitted by router params", async t => {
+  const page = await open(t, "reset", { deepLink: "orbit://account/reset-password#token=" + "a".repeat(43), params: {} });
+  await page.getByLabel("新密码", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("重置链接", { exact: true }).count(), 0);
+});
+
 test("reset invalid token offers a new request; service and malformed success preserve secrets for retry", async t => {
   const page = await open(t, "reset");
   await capture(page);
@@ -175,7 +186,9 @@ test("reset invalid token offers a new request; service and malformed success pr
   }
   await page.getByRole("button", { name: "重置密码", exact: true }).click();
   await reply(page, failures.length, "invalid");
-  await page.getByRole("link", { name: "重新申请重置链接" }).click();
+  assert.equal(await page.getByRole("alert").count(), 0, "invalid link uses one generic explanation");
+  assert.equal(await page.getByRole("link", { name: "重新申请重置链接" }).count(), 0, "no duplicate request action");
+  await page.getByRole("button", { name: "申请重置密码" }).click();
   assert.ok(await page.evaluate(() => (window as any).fixture.navigation.at(-1) === "/account/forgot-password"));
 });
 
@@ -185,7 +198,7 @@ for (const mode of ["forgot", "reset"]) {
       const page = await open(t, mode);
       if (mode === "reset") { await page.evaluate(() => (window as any).fixture.fragment()); await passwords(page); }
       else await fill(page, "邮箱", "old@example.test");
-      const submit = mode === "reset" ? "重置密码" : "发送重置链接";
+      const submit = mode === "reset" ? "重置密码" : "申请重置密码";
       await page.getByRole("button", { name: submit, exact: true }).click();
       await page.evaluate(change => { const s = (window as any).fixture; s.update(change === "server" ? { baseUrl: "https://new.example" } : change === "account" ? { actor: "two" } : { mounted: false }); }, change);
       await settle(page);
@@ -200,10 +213,10 @@ for (const mode of ["forgot", "reset"]) {
       }
       await page.getByRole("button", { name: submit, exact: true }).click();
       await reply(page, 0);
-      assert.equal(await page.getByText(mode === "reset" ? resetMessage : requestMessage, { exact: true }).count(), 0);
+      assert.equal(await page.getByText(mode === "reset" ? resetMessage : acceptedMessage, { exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: submit, exact: true }).isDisabled(), true, "old finally cannot unlock new submit");
       await reply(page, 1);
-      await page.getByText(mode === "reset" ? resetMessage : requestMessage, { exact: true }).waitFor();
+      await page.getByText(mode === "reset" ? resetMessage : acceptedMessage, { exact: true }).waitFor();
     });
   }
 }
@@ -271,12 +284,13 @@ test("a superseding fragment invalidates the old reset response and its synchron
 test("invalid and query-carried tokens never expose password controls or send requests", async t => {
   const page = await open(t, "reset");
   await page.getByRole("button", { name: "使用重置链接", exact: true }).click();
-  await page.getByRole("alert").waitFor();
+  await page.getByRole("heading", { name: "此链接无法使用" }).waitFor();
   await page.evaluate(() => { const s = (window as any).fixture; s.update({ params: { token: s.token } }); });
   await settle(page);
   assert.equal(await page.getByLabel("新密码", { exact: true }).count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ params: { "#": "token=invalid" } }));
-  await page.getByRole("alert").waitFor();
+  await page.getByRole("heading", { name: "此链接无法使用" }).waitFor();
+  assert.equal(await page.getByRole("alert").count(), 0);
   assert.equal(await page.getByLabel("新密码", { exact: true }).count(), 0);
   assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0);
 });
@@ -305,6 +319,6 @@ test("existing login, signup and Google still navigate after intentional auth id
     await fill(page, mode === "signup" ? "设置密码" : "密码", "password");
     await page.getByRole("button", { name: mode === "google" ? "使用 Google 登录" : mode === "signup" ? "创建账号" : "登录", exact: true }).click();
     await settle(page);
-    assert.ok(await page.evaluate(mode => { const s = (window as any).fixture; return s.actor === "authenticated" && s.navigation.length === 1 && s.navigation[0].startsWith(mode === "signup" ? "/account/login?created=1" : "/profile/onboarding?next=%2Fhome"); }, mode));
+    assert.ok(await page.evaluate(() => { const s = (window as any).fixture; return s.actor === "authenticated" && s.navigation.length === 1 && s.navigation[0].startsWith("/profile/onboarding?next=%2Fhome"); }));
   }
 });

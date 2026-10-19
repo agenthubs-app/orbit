@@ -8,6 +8,24 @@ export function passwordResetTokenFromFragment(fragment: string | undefined): st
   return tokens.length === 1 && token !== undefined && /^[A-Za-z0-9_-]{43}$/u.test(token) ? token : null;
 }
 
+export function passwordResetFragmentFromAppLink(link: string | null): string | undefined {
+  if (!link) return undefined;
+  try {
+    const url = new URL(link);
+    const resetRoute = url.protocol === "orbit:" && !url.search && (
+      (url.hostname === "account" && url.pathname === "/reset-password") ||
+      (!url.hostname && url.pathname === "/account/reset-password")
+    );
+    return resetRoute ? url.hash : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function passwordResetTokenFromAppLink(link: string | null): string | null {
+  return passwordResetTokenFromFragment(passwordResetFragmentFromAppLink(link));
+}
+
 export function passwordResetTokenFromLink(link: string, baseUrl: string): string | null {
   try {
     const url = new URL(link.trim());

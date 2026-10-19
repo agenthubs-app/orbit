@@ -21,7 +21,6 @@
     "src/screens/notes/NotesScreen.tsx",
     "src/screens/profile/AccountAuthScreen.tsx",
     "src/screens/profile/AccountScreen.tsx",
-    "src/screens/profile/PasswordResetScreen.tsx",
     "src/screens/profile/onboarding/OnboardingParts.tsx",
     "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx",
     "src/screens/schedule/MeetingDetailScreen.tsx",

@@ -137,15 +137,15 @@ for (const theme of ["light", "dark"] as const) {
       await email.fill("lin@example.com");
       const password = page.locator("input[type=password]"); await password.fill("safe-fixture-password");
       const submit = page.getByRole("button", { name: mode === "login" ? "登录" : "创建账号", exact: true });
-      await fits(submit, 50);
+      await fits(submit, 44);
       await page.evaluate(() => (window as any).fixture.update({ ready: false }));
       assert.equal(await submit.isDisabled(), true);
       assert.equal(await page.getByRole("button", { name: "使用 Google 登录", exact: true }).isDisabled(), true);
       assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
       await page.evaluate(() => (window as any).fixture.update({ ready: true }));
       const field = email.locator("..");
-      assert.equal(await field.evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "credentials use the approved open form");
-      assert.ok(Number.parseFloat(await field.evaluate(el => getComputedStyle(el).borderBottomWidth)) >= 1, "each credential retains its visible underline");
+      assert.equal(await field.evaluate(el => getComputedStyle(el).borderTopWidth), "1px", "credentials use the approved bordered form");
+      assert.ok(Number.parseFloat(await field.evaluate(el => getComputedStyle(el).borderBottomWidth)) >= 1, "each credential retains its visible border");
       await page.evaluate(() => (window as any).fixture.update({ pending: true }));
       await submit.click(); assert.equal(await submit.isDisabled(), true);
       assert.equal(await submit.innerText(), mode === "login" ? "登录中..." : "创建中...");
@@ -156,7 +156,7 @@ for (const theme of ["light", "dark"] as const) {
       await fits(page.getByRole("button", { name: "显示密码", exact: true }));
       await page.getByRole("button", { name: "显示密码", exact: true }).click();
       assert.equal(await page.locator("input[type=password]").count(), 0);
-      await inflate(page); await fits(submit, 50);
+      await inflate(page); await fits(submit, 44);
       for (const link of await page.getByRole("link").all()) await fits(link);
       if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-auth-${mode}-${theme}.png`, fullPage: true });
     });
@@ -169,7 +169,7 @@ test("forgot mode and signed-out profile/permission/account preserve public boun
   assert.equal(await forgot.getByRole("textbox").count(), 1);
   await forgot.getByRole("textbox").fill("account@example.test");
   assert.equal(await forgot.locator("input[type=password]").count(), 0);
-  await fits(forgot.getByRole("button", { name: "发送重置链接", exact: true }), 50);
+  await fits(forgot.getByRole("button", { name: "申请重置密码", exact: true }), 44);
   const returnAction = forgot.getByRole("button", { name: /返回登录/ }); await fits(returnAction, 44); await returnAction.click();
   assert.deepEqual(await forgot.evaluate(() => (window as any).fixture.requests), []);
   for (const screen of ["account"]) {

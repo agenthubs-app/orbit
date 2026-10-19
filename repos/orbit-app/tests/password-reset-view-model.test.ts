@@ -30,6 +30,16 @@ test("installed Expo Router stores the actual hash under # for the native reset 
   assert.equal(parse(queryOnly["#"]), null);
 });
 
+test("native reset links accept only the reset route and fragment bearer", async () => {
+  const { passwordResetTokenFromAppLink: parse } = await helpers();
+  assert.equal(parse(`orbit://account/reset-password#token=${token}`), token);
+  assert.equal(parse(`orbit:///account/reset-password#token=${token}`), token);
+  for (const link of [null, `orbit://account/login#token=${token}`, `orbit://account/reset-password?token=${token}`,
+    `orbit://account/reset-password#token=${token}&token=${token}`, `https://other.example/app/account/reset-password#token=${token}`]) {
+    assert.equal(parse(link), null);
+  }
+});
+
 test("pasted links require exact server origin and path without query or credentials", async () => {
   const { passwordResetTokenFromLink: parse } = await helpers();
   const base = "https://orbit.example";
