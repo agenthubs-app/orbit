@@ -162,6 +162,50 @@ test("few tasks render in the board's five-column table with local-date groups",
   await personal.getByRole("cell", { name: "個人", exact: true }).waitFor();
 });
 
+test("Task list and detail keep the board's card hierarchy at wide width", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "personal").notes = "Keep this note"; });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const card = current.locator("[data-task-list-card]");
+  await card.getByRole("radio", { name: "すべて" }).waitFor();
+  await card.getByRole("table", { name: "タスク一覧" }).waitFor();
+  await card.getByRole("button", { name: "完了したタスクを表示" }).waitFor();
+  await card.getByRole("button", { name: "完了したタスクを表示" }).click();
+  await card.getByRole("heading", { name: "完了 1" }).waitFor();
+  assert.ok(await card.getByText("1件", { exact: true }).evaluate(element => element.getBoundingClientRect().width > 20));
+  const rail = current.getByRole("complementary");
+  await rail.locator('[data-task-detail-card="identity"]').getByRole("heading", { name: "今日の資料" }).waitFor();
+  await rail.locator('[data-task-detail-card="schedule"]').getByRole("button", { name: /日付を編集/ }).waitFor();
+  await rail.locator('[data-task-detail-card="history"]').getByRole("heading", { name: "履歴" }).waitFor();
+  await rail.getByText("Keep this note").waitFor();
+  assert.equal(await rail.locator('[data-task-detail-card="schedule"]').getByText("Keep this note").count(), 0);
+  assert.ok(await rail.locator('[data-task-detail-card="identity"]').evaluate(element => {
+    const following = element.nextElementSibling;
+    return following !== null && element.getBoundingClientRect().bottom < following.getBoundingClientRect().top;
+  }));
+  assert.ok(await card.evaluate(element => getComputedStyle(element).borderRadius !== "0px"));
+  assert.equal(await current.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test("the middle-width Task table keeps due dates readable", async t => {
+  const html = fixture.replace('id: "personal", title:', 'id: "personal", dueAt: "2026-10-17T10:30:00.000Z", title:')
+    .replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 768 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  const row = current.getByRole("table", { name: "タスク一覧" }).getByRole("row").filter({ has: current.getByRole("button", { name: "今日の資料の詳細" }) });
+  const dateCell = row.locator("td").nth(3);
+  await dateCell.waitFor();
+  const clipped: number[] = [];
+  for (const width of [768, 850, 851, 900, 959, 960, 1000, 1001, 1024]) {
+    await current.setViewportSize({ width, height: 900 });
+    if (!await dateCell.evaluate(element => element.scrollWidth <= element.clientWidth)) clipped.push(width);
+    assert.equal(await current.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `page overflow at ${width}px`);
+  }
+  assert.deepEqual(clipped, [], `due date clipped at ${clipped.join(", ")}px`);
+});
+
 test("wide Task list opens selected details in the shell rail, not a covering drawer", async t => {
   const current = await open(browser, shellCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture, width: 1440 });
   t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
@@ -358,6 +402,7 @@ test("the real 390 shell keeps Task search and add usable inside the page", asyn
   await current.getByRole("button", { name: "タスクを追加" }).click();
   await current.getByRole("dialog", { name: "タスクを追加" }).waitFor();
   assert.equal(await current.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  assert.ok(await current.locator("[data-task-list-card]").getByText("1件", { exact: true }).evaluate(element => element.getBoundingClientRect().width > 20));
 });
 
 test("a deep-linked Task does not flash a covering drawer before its wide rail appears", async t => {

@@ -284,8 +284,11 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {editing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListConflict)}</p> : null}
       <div className={styles.editActions}><Button label={t(taskCopy.todoSave)} type="submit" variant="primary" disabled={!editing.title.trim() || notesClearUnsupported || editing.conflict || mutation.busy} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => setEditing(null)} /></div>
     </form> : selectedId && !denied && !detail.error && detail.data ? <>
-      <h3 className={styles.detailTitle}>{detail.data.title}</h3>
-      <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
+      <div className={styles.identityCard} data-task-detail-card="identity">
+        <h3 className={styles.detailTitle}>{detail.data.title}</h3>
+        <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
+      </div>
+      <div className={styles.scheduleCard} data-task-detail-card="schedule">
       <div className={styles.detailSchedule}>
         {dateEditing?.task.id !== selectedId ? <div className={styles.scheduleRows}>
           <button type="button" className={`btn ${styles.scheduleRow}`} aria-label={`${t(taskCopy.taskListEditDate)}: ${detailDate}`} ref={element => { dateRowRefs.current.date = element; focusDateRowIfReady("date", element); }} disabled={mutation.busy || detail.loading} onClick={() => openDateEdit(detail.data!, "date")}><span>{t(taskCopy.taskListDate)}</span><span>{detailDate}<Icon name="right" size={16} /></span></button>
@@ -301,7 +304,6 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         {dateFailureTaskId === selectedId && mutation.error && !dateEditing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListDateTimeSaveFailed)}</p> : null}
         <div className={styles.editActions}><Button label={t(taskCopy.taskListSaveDateTime)} type="submit" variant="primary" disabled={mutation.busy || dateEditing.conflict} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => { const draft = dateEditing; setDateEditing(null); setDateValidation(""); restoreDateFocus(draft); }} /></div>
       </form> : null}
-      {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={styles.detailSection}>
         <h4>{t(taskCopy.taskListReminder)}</h4>
         {reminders.loading && !reminders.data ? <Skeleton lines={1} /> : reminders.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={reminders.refresh} /> : reminders.data?.length ? <ul className={styles.detailTimeline}>{reminders.data.map(reminder => <li key={reminder.id}><time dateTime={reminder.fireAt}>{formatDate(reminder.fireAt, language, timeZone)}</time><Button label={t(taskCopy.taskListCancel)} aria-label={`${t(taskCopy.taskListReminderCancel)}: ${formatDate(reminder.fireAt, language, timeZone)}`} size="sm" variant="ghost" disabled={reminderMutation.busy || mutation.busy} onClick={() => cancelReminder(reminder.id)} /></li>)}</ul> : <p className={styles.hint}>{t(taskCopy.taskListNoReminder)}</p>}
@@ -317,7 +319,9 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         {reminderValidation ? <p role="alert" className={styles.error}>{reminderValidation}</p> : null}
         {reminderFailureTaskId === selectedId && reminderMutation.error ? <p role="alert" className={styles.error}>{t(reminderErrorCopy)}</p> : null}
       </section>
-      <section className={styles.detailSection}>
+      </div>
+      {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
+      <section className={`${styles.detailSection} ${styles.historyCard}`} data-task-detail-card="history">
         <h4>{t(taskCopy.taskListHistory)}</h4>
         {activities.loading && !activities.data ? <Skeleton lines={2} /> : activities.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={activities.refresh} /> : activities.data?.length ? <ol className={styles.detailTimeline}>{activities.data.slice(0, 10).map(activity => <li key={activity.id}><time dateTime={activity.occurredAt}>{formatDate(activity.occurredAt, language, timeZone)}</time><span>{t(taskCopy[activityCopy[activity.type] ?? "taskListActivityUpdated"])}</span></li>)}</ol> : <p className={styles.hint}>{t(taskCopy.taskListNoHistory)}</p>}
       </section>
@@ -373,9 +377,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       left={<a href="/app/tasks?tab=todo" className={`btn ${styles.shellBack}`} aria-label={t(taskCopy.taskListBack)}><Icon name="left" size={20} /></a>}
       right={<div className={styles.shellActions}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>}
       rightRail={wideShell === true && selectedId ? detailRail : false} phoneFold />
-    <main className={styles.page}>
+    <main className={`${styles.page} ${inShell ? styles.pageInShell : ""}`}>
       <div className={`${styles.top} ${inShell ? styles.topInShell : ""}`}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
+      <div className={styles.listCard} data-task-list-card>
       <div className={styles.toolbar}><CategoryTabs<TaskListFilter> label={t(taskCopy.taskListFilter)} value={filter} onChange={setScope} options={(["all", "relationship", "personal"] as const).map(key => ({ key, label: t(key === "all" ? taskCopy.taskListAll : key === "relationship" ? taskCopy.taskListRelationship : taskCopy.taskListPersonal) }))} />
         {inShell ? <div className={styles.mobileSearch}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /></div> : <SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} />}{!showOpen ? <Button label={t(taskCopy.taskListShowOpen)} onClick={() => setShowOpen(true)} /> : null}</div>
       {mutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
@@ -394,6 +399,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
             {doneCursor || completed.data.nextCursor ? <div className={styles.pager}>{doneCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setDoneCursor(null); selectTask(null); }} /> : null}{completed.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setDoneCursor(completed.data!.nextCursor); selectTask(null); }} /> : null}</div> : null}</> : null}
         </> : null}
       </section>
+      </div>
     </main>
     <Drawer open={Boolean(selectedId && (!inShell || wideShell === false))} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
     <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
