@@ -202,7 +202,7 @@
 
 **R29 REVIEW S1 / R32 预通知：** 乙在本节接手后台来源活动 ID → 已有活动详情的原生打开/返回断链；先查清 ID 映射，只对已完成详情页面做有界修复，保持既有 API 与数据权限，修后记独立提交和本机证据。来源：R29 REVIEW S1、RD-30。
 
-**R29 REVIEW S1 结果（R32，乙）：** QA 来源列表记录的 `sourceMetadata.providerRecordId` 映射到 Event Core 详情 ID，其他来源 href 不变；代码提交 `6f00b4846`。本地同账号 13 条规范详情 overview 均 HTTP 200，原生 A03 → A04 → 详情 → A04 → A03 → 刷新已通过；证据 `/Volumes/ORICO/Dev/line-a-evidence/R32/run-01/app/native-navigation.json` 与 `event-source-probe.json`。R29 整体是否通过仍须按其余 REVIEW 项和全量基线单独验收。
+**R29 REVIEW S1 结果（R32，乙）：** QA 来源列表记录的 `sourceMetadata.providerRecordId` 映射到 Event Core 详情 ID，其他来源 href 不变；代码提交 `dffab6063`。本地同账号 13 条规范详情 overview 均 HTTP 200，原生 A03 → A04 → 详情 → A04 → A03 → 刷新已通过；证据 `/Volumes/ORICO/Dev/line-a-evidence/R32/run-01/app/native-navigation.json` 与 `event-source-probe.json`。R29 整体是否通过仍须按其余 REVIEW 项和全量基线单独验收。
 
 **R32 / 乙接手页面自身的像素交还，组件不动。** App R31a-H1 对应 A-R27-06/07/08/09/29/31/33/34/35；Web R31b §6-6 对应 W-R26-31 的七位码中途态与背景数据。二者逐屏重比，未过保留未完成。来源：R31a REPORT §9、R31b REPORT §6-6、R32 PLANNER SC-P01～09/W06。
 
@@ -265,8 +265,8 @@
 | R16-01 | 两端导入界面 | **已做（2026-10-14）**：Web `/app/contacts/new/import`（选门 / vCard / LinkedIn / CSV / イベントから → 列の対応 → まとめて確認 → 完成），App `contacts/new/import`（連絡先 / LinkedIn）；旧 `network-import*` 已删，`?method=` / `?import=` 重定向 | Web `Chip` apricot 字色（G23b）与 App `Segmented` 高度（G23）在组件库轮修，修完补跑 W-R16-08 浅、A-R16-02 | `R16-import-and-completion/REPORT.md` 界面部分  **R31a 2026-10-18：R31a：A-R16-02 分段区已对齐，余带为页面自身（列表尾部行偏移、头像色 [data]）→ 交还 R16（见 R31a REPORT）** |
 | R16-02 | 每天一问题型 | 两种 | 本期两种；b9「字段冲突 · 転職」下一期，不进门禁 | DEC D34 |
 | R16-03 | **已定（2026-10-12）** | 现做法见左 | LinkedIn 导入的人用 `connectedOn` 作加入时间；当天导入后当天可以出题（维持现状）；活动选项来源见 R26-07 | DEC §9-5、§9-6；`R16-import-and-completion/REPORT.md`:32–36 |
-| R31a-H2 | **R31a 交还（2026-10-18）**：A-R12-N09 用开发开关 `design=n09` 到达破棄确认，ConfirmDialog 本体已与画板一致 | 草稿卡来源 chip 画板带 🥂（「🥂 CFO Night Tokyo vol.18 から」），实现无；「参加者から取り込む」卡图标不同 | R32 `26b65c483` 已补设计 fixture 来源 chip；图标与整屏浅色门禁仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
-| R31a-H3 | **R31a 交还（2026-10-18）**：A-R16-02 分段区已对齐 | 列表尾部行偏移 1–2、尾部渐隐区域内容不同；头像底色 [data] | R32 `08ab1e446` 已把设计预览可见行限为六条，真实导入计数保留；浅深逐带及头像数据仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
+| R31a-H2 | **R31a 交还（2026-10-18）**：A-R12-N09 用开发开关 `design=n09` 到达破棄确认，ConfirmDialog 本体已与画板一致 | 草稿卡来源 chip 画板带 🥂（「🥂 CFO Night Tokyo vol.18 から」），实现无；「参加者から取り込む」卡图标不同 | R32 `5c9aaf892` 已补设计 fixture 来源 chip；图标与整屏浅色门禁仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
+| R31a-H3 | **R31a 交还（2026-10-18）**：A-R16-02 分段区已对齐 | 列表尾部行偏移 1–2、尾部渐隐区域内容不同；头像底色 [data] | R32 `9a5da61df` 已把设计预览可见行限为六条，真实导入计数保留；浅深逐带及头像数据仍待重拍，未完成 | R31a REPORT；R32 REPORT / run-01 待补 |
 
 ## R22–R25 计划 v2.2 的界面返工与遗留
 
@@ -295,6 +295,7 @@
 | R23-06 | **计划页像素返工（2026-10-12）未过的生成流程画面** | W-R23-11～15、17、18 未过：引用只能取真实库、题库文字（D35）、方案名由数据推出，长度不同整体下移；17 / 18 画板是改到一半的状态；W-R23-06 mock 候补来自 `mock-flow-context` 写死的演示联系人（最多 20 人，画板 3 人且已勾选一人） | 结构已逐块对齐；要过线需让 mock 候补读 fixture 联系人（服务端 mock 文件，先 impact），或由用户确认这几张按数据差异放行 | `R25-plan-review-goals-cleanup/REWORK-REPORT-web.md` |
 | R24-05 | **待组件库**（计划页返工发现，R04 / R06 组件库轮做） | 调用方用现有 Modal / Drawer | Web Modal 加 380 宽一档、标题左侧可放图标块、可不带 ✕（W-R24-03 / 09b / 11）；Drawer 的 ✕ 白色圆底、标题下副标题（W-R24-12）；Chip 字色 kit 用 `-ink`，实现用 `-text` | REWORK-REPORT-web → R31a / R31b（2026-10-18） |
 | R24-05b | 组件库轮做完后重比（Web 计划页像素门禁） | 未过，待组件库 | 重跑 `web-plan-A.json` 的 W-R24-03 / 09b / 11 / 12 与 `web-plan-B.json` 的 W-R23-06（弹窗整体约 3px 位移），过了把 REWORK-REPORT-web §2 改成通过 | REWORK-REPORT-web §10 第 4 轮 |
+| R32-W01 | W-R24-03 概要背景示例数据与页高（R31b §6-1） | **页面部分已修、像素未过**：`c2f5e60be` 让设计 fixture 的背景待确认数为 0，VC 候补仍为 4；定向红／绿及重放后绿测记录在 R32 `run-01` | 等预热后的 1440 浅深有效截图，逐带核对页高与 Modal，未取得有效截图前保持未完成 | R32 REPORT SC-W01；`run-01/w01-fixture-rebased-green.log` |
 | R24-06 | **done（R26 收尾，2026-10-15）**：推荐活动行、今日のチャンス、Step ↔ 活动、「最近の加点」含スキップ、最终接点相对时间、依頼文两种语气由服务端给、「いつ」传 at、見分け方 / 人物像键值行全部完成 | — | 概要推荐活动列表；Step ↔ 活动；「最近の加点」含スキップ；今日のチャンス依据与按钮文案；最终接点相对时间；依頼文两种语气由服务端给；记录弹窗「いつ」传 at（服务端已支持，界面待接）；見分け方分类与人物像键值行 | DEC D53；REWORK-REPORT-web |
 | R24-06b | R26 做完后重比（Web 计划页像素门禁） | 2026-10-15 重比：01 / 02（1440 / 1024 / 390）/ 04a / 04c 通过（`[data]` 归因见 attribution-redesign-R23-25.json）；05–08 未过（候补行接点说明 / 根拠多行 / 推薦度属数据来源，契约无接点来源字段）；C 组整屏背景页不同，暂缓 | 重跑 `web-plan-A.json` 的 W-R24-01、02（1440 / 1024 / 390）、04a、04c、05、06、07、08，以及背景是概要页的 C 组 W-R25-01 / 02 / 07 / 09 / 10 整屏 | REWORK-REPORT-web §10 第 4 轮 |
 | R24-07 | **待壳**：Task 1024 标题区多出「目標を追加」 | TaskContainer 自加的按钮（b8 只有「次の一手」） | 去掉；另一会话在改 `orbit-2026/task/TaskContainer.tsx` | REWORK-REPORT-web |
