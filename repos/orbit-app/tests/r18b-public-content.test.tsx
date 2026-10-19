@@ -22,6 +22,12 @@ test("public help renders local FAQ and a non-actionable contact state when no a
   assert.doesNotMatch(text, /メールアプリを開く|送信しました/);
 });
 
+test("public FAQ rows expose collapsed controls with the board's disclosure marker", () => {
+  const html = renderToHtml(<PublicInfoContent kind="help" t={t} query="" onQueryChange={noop} onOpen={noop} contactEmail={null} onOpenEmail={noop} />);
+  assert.match(html, /role="button"/);
+  assert.match(html, /▶/);
+});
+
 test("local FAQ empty query state and legal placeholder do not invent results or legal text", () => {
   const empty = renderedText(<PublicInfoContent kind="help" t={t} query="領収書" onQueryChange={noop} onOpen={noop} contactEmail={null} onOpenEmail={noop} />);
   assert.match(empty, /一致する質問はありません/);

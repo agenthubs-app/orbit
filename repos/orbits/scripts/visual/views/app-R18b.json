@@ -1,0 +1,25 @@
+{
+  "_note": "R18b approved public App slices only; auth, feedback, maintenance, force update and Help interaction states are pending separate prerequisites.",
+  "defaults": {
+    "design-base": "http://localhost:3420/redesign-2026-10/",
+    "grid": 100,
+    "attribution": "scripts/visual/attribution-redesign-R18b-app.json",
+    "wait": 12000
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/public/PublicInfoContent.tsx",
+    "repos/orbit-app/src/screens/public/PublicInfoScreen.tsx",
+    "repos/orbit-app/src/screens/public/NotFoundContent.tsx",
+    "repos/orbit-app/src/screens/public/NotFoundScreen.tsx"
+  ],
+  "views": [
+    { "id": "A-R18b-11H-public", "path": "/help", "design": "b12-missing-states.html", "board-index": 556, "themes": ["light"] },
+    { "id": "A-R18b-11H-public", "path": "/help", "design": "b12-missing-states.html", "board-index": 557, "themes": ["dark"] },
+    { "id": "A-R18b-11T-public", "path": "/legal/terms", "design": "b12-missing-states.html", "board-index": 564, "themes": ["light"] },
+    { "id": "A-R18b-11T-public", "path": "/legal/terms", "design": "b12-missing-states.html", "board-index": 565, "themes": ["dark"] },
+    { "id": "A-R18b-11P-public", "path": "/legal/privacy", "design": "b12-missing-states.html", "board-index": 572, "themes": ["light"] },
+    { "id": "A-R18b-11P-public", "path": "/legal/privacy", "design": "b12-missing-states.html", "board-index": 573, "themes": ["dark"] },
+    { "id": "A-R18b-08-public", "path": "/removed-page", "design": "b12-missing-states.html", "board-index": 608, "themes": ["light"] },
+    { "id": "A-R18b-08-public", "path": "/removed-page", "design": "b12-missing-states.html", "board-index": 609, "themes": ["dark"] }
+  ]
+}
