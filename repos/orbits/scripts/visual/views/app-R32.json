@@ -194,7 +194,7 @@
       "note": "R32 来源 app-plan-A.json: スキップ ① 確認",
       "taps": "この分野はもう詳しい",
       "grid": 30,
-      "wait": 12000,
+      "wait": 18000,
       "path": "/plans/demo-plan-series-a/types/demo-plan-item-lawyer?design=skip"
     },
     {
