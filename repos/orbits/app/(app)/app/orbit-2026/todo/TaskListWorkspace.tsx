@@ -13,7 +13,7 @@ import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptySt
 import { standardCopyFor } from "../copy/standard";
 import { ShellPage, useInShell } from "../shell/slots";
 import { groupTaskRows, type TaskListFilter, type TaskListGroupKey } from "./task-list-groups";
-import { taskDateChange, taskDateDraft, taskDatePatchMovesLater, type TaskDatePatch } from "./task-list-date-time";
+import { taskDateChange, taskDateDraft, taskDatePatchMovesLater, taskTomorrowPatch, type TaskDatePatch } from "./task-list-date-time";
 import { nextMorningReminderAt } from "./task-list-reminder-time";
 import styles from "./task-list.module.css";
 
@@ -72,6 +72,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const selectedIdRef = useRef<string | null>(initialSelectedId ?? null);
   const dateRowRefs = useRef<{ date: HTMLButtonElement | null; time: HTMLButtonElement | null }>({ date: null, time: null });
   const pendingDateFocus = useRef<{ taskId: string; focus: "date" | "time" } | null>(null);
+  const pendingDateEdit = useRef<string | null>(null);
   const [editing, setEditing] = useState<{ task: TaskView; title: string; notes: string; conflict: boolean } | null>(null);
   const [dateEditing, setDateEditing] = useState<{ task: TaskView; date: string; time: string; timeZone: string; focus: "date" | "time"; conflict: boolean } | null>(null);
   const [dateValidation, setDateValidation] = useState("");
@@ -83,6 +84,9 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [reminderFailureTaskId, setReminderFailureTaskId] = useState<string | null>(null);
   const [reminderAction, setReminderAction] = useState<"add" | "cancel">("add");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmTomorrowTask, setConfirmTomorrowTask] = useState<TaskView | null>(null);
+  const [bulkTomorrowRows, setBulkTomorrowRows] = useState<TaskRowView[] | null>(null);
+  const [bulkFailures, setBulkFailures] = useState("");
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -127,6 +131,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const selectTask = (id: string | null) => {
     selectedIdRef.current = id;
     pendingDateFocus.current = null;
+    pendingDateEdit.current = null;
     setSelectedId(id);
     setEditing(null);
     setDateEditing(null);
@@ -134,6 +139,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     setDateFailureTaskId(null);
     setConfirmDateDeferral(false);
     setConfirmDelete(false);
+    setConfirmTomorrowTask(null);
+    setBulkTomorrowRows(null);
     setCustomReminder(false);
     setCustomReminderAt("");
     setReminderValidation("");
@@ -195,6 +202,61 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     setDateValidation("");
     setDateFailureTaskId(null);
     setDateEditing({ task, ...taskDateDraft(task, timeZone), timeZone, focus, conflict: false });
+  }
+  useEffect(() => {
+    if (pendingDateEdit.current !== selectedId || detail.data?.id !== selectedId || !selectedId) return;
+    pendingDateEdit.current = null;
+    openDateEdit(detail.data, "date");
+  }, [selectedId, detail.data?.id]);
+  function editRowDate(item: TaskRowView) {
+    selectTask(item.id);
+    if (detail.data?.id === item.id) openDateEdit(detail.data, "date");
+    else pendingDateEdit.current = item.id;
+  }
+  function savedTomorrow() {
+    setOpenCursor(null); setDoneCursor(null); refresh();
+    toast.success(t(taskCopy.taskListDateTimeSaved));
+  }
+  function moveTomorrow(item: TaskRowView) {
+    void mutation.run(async () => {
+      const task = await client.loadTask(item.id);
+      const patch = task.status === "open" ? taskTomorrowPatch(task, date, timeZone) : null;
+      if (!patch) throw new TasksClientError("CONFLICT", "Task date changed");
+      if ((task.deferralCount ?? 0) >= 1) return { kind: "confirm" as const, task };
+      return { kind: "saved" as const, task: await client.updateSchedule(task, patch) };
+    }, result => result.kind === "confirm" ? setConfirmTomorrowTask(result.task) : savedTomorrow(), "");
+  }
+  function confirmMoveTomorrow() {
+    const baseline = confirmTomorrowTask;
+    setConfirmTomorrowTask(null);
+    if (!baseline) return;
+    void mutation.run(async () => {
+      const task = await client.loadTask(baseline.id);
+      const patch = task.updatedAt === baseline.updatedAt && task.status === "open" ? taskTomorrowPatch(task, date, timeZone) : null;
+      if (!patch) throw new TasksClientError("CONFLICT", "Task date changed");
+      return client.updateSchedule(task, patch);
+    }, savedTomorrow, "");
+  }
+  function moveOverduePage(rows: TaskRowView[]) {
+    setBulkTomorrowRows(null);
+    setBulkFailures("");
+    void mutation.run(async () => {
+      let saved = 0, failed = 0;
+      for (const row of rows) {
+        try {
+          const task = await client.loadTask(row.id);
+          const patch = task.status === "open" ? taskTomorrowPatch(task, date, timeZone) : null;
+          if (!patch) { failed++; continue; }
+          await client.updateSchedule(task, patch);
+          saved++;
+        } catch { failed++; }
+      }
+      return { saved, failed };
+    }, result => {
+      setOpenCursor(null); setDoneCursor(null); refresh();
+      if (result.failed) setBulkFailures(t(taskCopy.taskListMoveOverdueResult).replace("{saved}", String(result.saved)).replace("{failed}", String(result.failed)));
+      else if (result.saved) toast.success(t(taskCopy.taskListDateTimeSaved));
+    }, "");
   }
   function restoreDateFocus(draft: NonNullable<typeof dateEditing>) {
     pendingDateFocus.current = { taskId: draft.task.id, focus: draft.focus };
@@ -356,6 +418,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const doneGroups = groupTaskRows(visibleDone, date, timeZone, filter);
   const todayCount = openGroups.find(group => group.key === "today")?.items.length ?? 0;
   const shellSubtitle = open.data ? t(taskCopy.taskListSubtitle).replace("{total}", String(open.data.total)).replace("{today}", String(todayCount)) : undefined;
+  const emptyGuide = filter === "all" && !query.trim() && !openCursor && open.data?.total === 0 && completed.data?.total === 0;
   const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
   const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <tr key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <td className={styles.checkCell}><CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} /></td>
@@ -376,13 +439,13 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       <strong>{item.title}</strong><small>{item.relatedContact?.namePreview ?? t(item.relationship ? taskCopy.taskListRelationship : taskCopy.taskListPersonal)}</small>
     </button></td>
     <td className={styles.relatedCell}><Chip label={t(item.relationship ? taskCopy.taskListRelationship : taskCopy.taskListPersonal)} tone={item.relationship ? "lav" : "teal"} /></td>
-    <td className={styles.rowDate}>{formatDate(item.dueAt ?? item.plannedDate, language, timeZone)}</td>
+    <td className={styles.rowDate}>{item.dueAt || item.plannedDate ? <Chip label={formatDate(item.dueAt ?? item.plannedDate, language, timeZone)} tone={overdue ? "coral" : undefined} /> : t(taskCopy.taskListUndated)}</td>
     <td className={styles.actionCell}>
-      {item.status === "open" ? <Button label={t(taskCopy.taskListCompleted)} aria-label={t(taskCopy.taskListComplete).replace("{title}", item.title)} size="sm" variant="primary" className={styles.quickComplete} disabled={mutation.busy} onClick={() => toggle(item)} /> : null}
+      {item.status === "open" ? <span className={styles.quickActions}><Button label={taskTomorrowPatch(item, date, timeZone) ? t(taskCopy.todoTomorrow) : t(taskCopy.taskListEditDate)} aria-label={`${taskTomorrowPatch(item, date, timeZone) ? t(taskCopy.todoTomorrow) : t(taskCopy.taskListEditDate)}: ${item.title}`} size="sm" className={styles.quickComplete} disabled={mutation.busy} onClick={() => taskTomorrowPatch(item, date, timeZone) ? moveTomorrow(item) : editRowDate(item)} /><Button label={t(taskCopy.taskListCompleted)} aria-label={t(taskCopy.taskListComplete).replace("{title}", item.title)} size="sm" variant="primary" className={styles.quickComplete} disabled={mutation.busy} onClick={() => toggle(item)} /></span> : null}
     </td>
   </tr>);
   const renderGroup = (group: ReturnType<typeof groupTaskRows>[number]) => <tbody key={group.key}>
-    <tr className={styles.groupRow}><th colSpan={5} scope="rowgroup"><h2 className={group.key === "overdue" ? styles.overdue : ""}>{t(taskCopy[groups[group.key]])} <span>{group.items.length}</span></h2></th></tr>
+    <tr className={styles.groupRow}><th colSpan={5} scope="rowgroup"><div className={styles.groupHeading}><h2 className={group.key === "overdue" ? styles.overdue : ""}>{t(taskCopy[groups[group.key]])} <span>{group.items.length}</span></h2>{group.key === "overdue" ? <Button label={t(taskCopy.taskListMoveOverdueCount).replace("{count}", String(group.items.length))} size="sm" disabled={mutation.busy} onClick={() => setBulkTomorrowRows([...group.items])} /> : null}</div></th></tr>
     {renderRows(group.items, group.key === "overdue")}
   </tbody>;
   const tableHead = <thead><tr><th scope="col" className={styles.checkCell}></th><th scope="col">{t(taskCopy.taskListColumnTask)}</th><th scope="col" className={styles.relatedCell}>{t(taskCopy.taskListColumnRelated)}</th><th scope="col">{t(taskCopy.taskListColumnDue)}</th><th scope="col" className={styles.actionCell}></th></tr></thead>;
@@ -395,15 +458,20 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <main className={`${styles.page} ${inShell ? styles.pageInShell : ""}`}>
       <div className={`${styles.top} ${inShell ? styles.topInShell : ""}`}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
+      {emptyGuide ? <div className={styles.emptyGrid}>
+        <section className={styles.emptyGuide}><span className={styles.emptyMark} aria-hidden="true">✅</span><div><h2>{t(taskCopy.taskListEmptyGuide)}</h2><p>{t(taskCopy.taskListEmptyGuideBody)}</p><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="primary" onClick={() => setAdding(true)} /></div></section>
+        <div className={styles.emptySources}><button type="button" className={`btn ${styles.emptySource}`} data-task-source="manual" onClick={() => setAdding(true)}><span className={styles.emptySourceIcon} aria-hidden="true">＋</span><span><strong>{t(taskCopy.taskListManualSource)}</strong><small>{t(taskCopy.taskListManualSourceHint)}</small></span><Icon name="right" size={16} /></button></div>
+      </div> : null}
       <div className={styles.listCard} data-task-list-card>
       <div className={styles.toolbar}><CategoryTabs<TaskListFilter> label={t(taskCopy.taskListFilter)} value={filter} onChange={setScope} options={(["all", "relationship", "personal"] as const).map(key => ({ key, label: t(key === "all" ? taskCopy.taskListAll : key === "relationship" ? taskCopy.taskListRelationship : taskCopy.taskListPersonal) }))} />
         {inShell ? <div className={styles.mobileSearch}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /></div> : <SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} />}{!showOpen ? <Button label={t(taskCopy.taskListShowOpen)} onClick={() => setShowOpen(true)} /> : null}</div>
       {mutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
+      {bulkFailures ? <p role="alert" className={styles.error}>{bulkFailures}</p> : null}
       {blocked || showOpen && open.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={refresh} /> : null}
       {!blocked && showOpen && open.loading && !open.data ? <Skeleton lines={6} onRetry={refresh} /> : null}
       {!blocked && showOpen && !open.error && open.data ? <>
         <p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(open.data.total))}</p>
-        {visibleOpen.length === 0 ? <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : <div className={styles.tableCard}><table className={styles.taskTable} aria-label={t(taskCopy.taskListTitle)}>{tableHead}{openGroups.map(renderGroup)}</table></div>}
+        {visibleOpen.length === 0 ? emptyGuide ? <div className={styles.emptyRows} aria-hidden="true"><p>{t(taskCopy.taskListToday)} 0</p><i /><i /><i /></div> : <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : <div className={styles.tableCard}><table className={styles.taskTable} aria-label={t(taskCopy.taskListTitle)}>{tableHead}{openGroups.map(renderGroup)}</table></div>}
         {openCursor || open.data.nextCursor ? <div className={styles.pager}>{openCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setOpenCursor(null); selectTask(null); }} /> : null}{open.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setOpenCursor(open.data!.nextCursor); selectTask(null); }} /> : null}</div> : null}
       </> : null}
       <section className={styles.group}>
@@ -419,6 +487,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <Drawer open={Boolean(selectedId && (!inShell || wideShell === false))} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
     <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
     <ConfirmDialog open={confirmDateDeferral} title={t(taskCopy.taskListDeferAgainTitle)} message={t(taskCopy.taskListDeferAgainMessage)} confirmLabel={t(taskCopy.taskListDeferAgainConfirm)} cancelLabel={t(taskCopy.taskListCancel)} onCancel={() => setConfirmDateDeferral(false)} onConfirm={() => { setConfirmDateDeferral(false); saveDateEdit(true); }} />
+    <ConfirmDialog open={Boolean(confirmTomorrowTask)} title={t(taskCopy.taskListDeferAgainTitle)} message={t(taskCopy.taskListDeferAgainMessage)} confirmLabel={t(taskCopy.taskListDeferAgainConfirm)} cancelLabel={t(taskCopy.taskListCancel)} onCancel={() => setConfirmTomorrowTask(null)} onConfirm={confirmMoveTomorrow} />
+    <ConfirmDialog open={Boolean(bulkTomorrowRows)} title={t(taskCopy.taskListMoveOverdueTitle)} message={t(taskCopy.taskListMoveOverdueMessage).replace("{count}", String(bulkTomorrowRows?.length ?? 0))} confirmLabel={t(taskCopy.taskListMoveOverdueConfirm)} cancelLabel={t(taskCopy.taskListCancel)} onCancel={() => setBulkTomorrowRows(null)} onConfirm={() => { if (bulkTomorrowRows) moveOverduePage(bulkTomorrowRows); }} />
     <Modal open={adding} title={t(taskCopy.taskListAdd)} onClose={() => { if (!mutation.busy) setAdding(false); }}>
       <form className={styles.addForm} onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; void mutation.run(() => client.create(draft, date), () => { setDraft(""); setAdding(false); setFilter("all"); setOpenCursor(null); open.refresh(); toast.success(t(taskCopy.todoSaved)); }, ""); }}>
         <TextField label={t(taskCopy.todoTitle)} value={draft} onChange={event => setDraft(event.target.value)} disabled={mutation.busy} autoFocus />

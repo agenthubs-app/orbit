@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { taskDateDraft, taskDateChange, taskDatePatchMovesLater } from "../../app/(app)/app/orbit-2026/todo/task-list-date-time";
+import { taskDateDraft, taskDateChange, taskDatePatchMovesLater, taskTomorrowPatch } from "../../app/(app)/app/orbit-2026/todo/task-list-date-time";
 import type { TaskView } from "../../app/(app)/app/tasks/tasks-view-model";
 
 const task: TaskView = {
@@ -58,4 +58,12 @@ test("invalid or ambiguous local dates and times never produce a write", () => {
   assert.deepEqual(taskDateChange({ ...task, plannedDate: "2026-03-08", dueAt: undefined }, { date: "2026-03-08", time: "02:30" }, "America/New_York"), { kind: "invalid", reason: "localTime" });
   assert.deepEqual(taskDateChange({ ...task, plannedDate: "2026-11-01", dueAt: undefined }, { date: "2026-11-01", time: "01:30" }, "America/New_York"), { kind: "invalid", reason: "localTime" });
   assert.deepEqual(taskDateChange(task, { date: "2026-10-17", time: "19:30" }, "Bad/Zone"), { kind: "invalid", reason: "timeZone" });
+});
+
+test("tomorrow is offered only for dated tasks due on or before the local day", () => {
+  assert.deepEqual(taskTomorrowPatch(task, "2026-10-17", "Asia/Tokyo"), { plannedDate: "2026-10-18", dueAt: "2026-10-18T10:30:00.000Z" });
+  assert.deepEqual(taskTomorrowPatch({ ...task, plannedDate: undefined, dueAt: "2026-10-16T16:00:00.000Z" }, "2026-10-17", "Asia/Tokyo"), { dueAt: "2026-10-17T16:00:00.000Z" });
+  assert.equal(taskTomorrowPatch({ ...task, plannedDate: "2026-10-20", dueAt: undefined }, "2026-10-17", "Asia/Tokyo"), null);
+  assert.equal(taskTomorrowPatch({ ...task, plannedDate: undefined, dueAt: undefined }, "2026-10-17", "Asia/Tokyo"), null);
+  assert.equal(taskTomorrowPatch({ ...task, dueAt: "2026-10-17T16:00:00.000Z" }, "2026-10-17", "Asia/Tokyo"), null, "the instant is tomorrow in Tokyo");
 });

@@ -18,7 +18,7 @@ test("To-do presenter renders its three independent blocks and browsing callback
   t.after(() => act(() => root.unmount()));
   for (const title of ["あなたの判断待ち", "今日の一手", "フォロー"]) assert.ok(text(root!).includes(title));
   assert.ok(text(root!).includes("山本 彩さんに資料を再送"));
-  assert.ok(text(root!).includes("期限超過"));
+  assert.ok(text(root!).includes("10/6"));
   const button = (label: string) => root.root.findAllByType("button").find(item => item.props["aria-label"] === label || contents(item).includes(label))!;
   await act(async () => button("下書きを開く").props.onClick());
   await act(async () => button("すべて").props.onClick());
@@ -91,4 +91,18 @@ test("real follow-up rows expose separate completion checks for plain and lifecy
   await act(async () => checks[0]!.props.onClick());
   await act(async () => checks[1]!.props.onClick());
   assert.deepEqual(selected, [`task:${plain!.key}`, `lifecycle:${lifecycle!.key}`]);
+});
+
+test("follow-up due chips show the local due day, including overdue dates, and omit undated rows", async t => {
+  const plain = demoTodoPage.followups.items.find(row => row.kind === "task")!;
+  const page = { ...demoTodoPage, followups: { next: {}, items: [
+    { ...plain, key: "task:overdue-date", titlePreview: "Overdue dated", dueAt: "2026-10-17T14:59:59.999Z", overdue: true, sample: undefined },
+    { ...plain, key: "task:undated", titlePreview: "Undated", dueAt: undefined, overdue: false, sample: undefined },
+  ] } };
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TodoPresenter {...props} state="ready" view={todoPageView(page)} />); });
+  t.after(() => act(() => root.unmount()));
+  assert.match(text(root!), /10\/17/);
+  assert.doesNotMatch(text(root!), /期限超過/);
+  assert.equal(root!.root.findAllByProps({ title: "10/17" }).length, 1);
 });

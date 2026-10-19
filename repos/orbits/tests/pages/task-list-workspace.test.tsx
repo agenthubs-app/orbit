@@ -8,13 +8,16 @@ const task = (id: string, status: "open" | "completed" = "open", category = "wor
   id, title: id, notes: "", accountId: "a", ownerUserId: "a", status, category, priority: "normal",
   source: "manual", plannedDate: "2026-10-17", createdAt: at, updatedAt: at,
 });
-const card = (item: ReturnType<typeof task>) => ({
+type FixtureTask = Omit<ReturnType<typeof task>, "plannedDate"> & { plannedDate?: string; deferralCount?: number };
+const card = (item: FixtureTask) => ({
   id: item.id, titlePreview: item.title, locationPreview: null, status: item.status, category: item.category,
-  priority: item.priority, plannedDate: item.plannedDate, dueAt: null, updatedAt: item.updatedAt,
+  priority: item.priority, plannedDate: item.plannedDate ?? null, dueAt: null, updatedAt: item.updatedAt, deferralCount: item.deferralCount,
   completedAt: item.status === "completed" ? at : null, relatedContact: null, relationship: item.category === "relationship",
 });
-function fixture(options: { initialNotes?: string } = {}) {
-  let tasks = [{ ...task("今日の資料"), notes: options.initialNotes ?? "" }, task("山本さんへ返信", "open", "relationship"), task("済んだ用事", "completed")];
+function fixture(options: { initialNotes?: string; empty?: boolean; plannedDate?: string; futureAndUndated?: boolean; deferralCount?: number } = {}) {
+  let tasks: FixtureTask[] = options.empty ? [] : options.futureAndUndated ? [
+    { ...task("Future"), plannedDate: "2026-10-20" }, { ...task("Undated"), plannedDate: undefined },
+  ] : [{ ...task("今日の資料"), notes: options.initialNotes ?? "" }, task("山本さんへ返信", "open", "relationship"), task("済んだ用事", "completed")].map(item => ({ ...item, plannedDate: options.plannedDate ?? item.plannedDate, deferralCount: options.deferralCount ?? 0 }));
   let failPageReads = false;
   let failDetailReads = false;
   let conflictOnce = false;
@@ -95,6 +98,19 @@ test("opening and closing a task uses the detail drawer and changes only the tas
   assert.deepEqual(Object.fromEntries(location.current().searchParams), { tab: "todo", view: "all", foo: "keep" });
 });
 
+test("empty task list offers a real manual creation entry without dead source tiles", async t => {
+  const { fetcher } = fixture({ empty: true });
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  assert.match(content(root!), /やることを、ここに集めます/);
+  assert.ok(root!.root.findAllByProps({ "data-task-source": "manual" }).length === 1);
+  assert.doesNotMatch(content(root!), /名刺から作る|音声メモから|カレンダー連携/);
+  await act(async () => root!.root.findAllByProps({ "data-task-source": "manual" })[0]!.props.onClick());
+  assert.ok(root!.root.findAllByType("form").some(form => form.props.onSubmit));
+});
+
 test("task list uses exact server scopes and keeps completed tasks behind an explicit disclosure", async t => {
   const { fetcher, calls } = fixture();
   t.mock.method(globalThis, "fetch", fetcher);
@@ -111,6 +127,60 @@ test("task list uses exact server scopes and keeps completed tasks behind an exp
   assert.ok(calls.some(call => call.path.includes("scope=personal")));
   await act(async () => buttons(root!, "完了したタスクを表示")[0]!.props.onClick());
   assert.match(content(root!), /済んだ用事/);
+});
+
+test("the Tomorrow row shortcut saves a due-today task with the displayed actor-owned version", async t => {
+  const { fetcher, calls } = fixture();
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "明日: 今日の資料")[0]!.props.onClick());
+  const writes = calls.filter(call => call.method === "PATCH" && call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0]!.body?.expectedUpdatedAt, at);
+  assert.deepEqual(writes[0]!.body?.patch, { plannedDate: "2026-10-18" });
+});
+
+test("future and undated row actions open date editing without a write", async t => {
+  const { fetcher, calls } = fixture({ futureAndUndated: true });
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  assert.equal(buttons(root!, "明日: Future").length, 0);
+  await act(async () => buttons(root!, "日付を編集: Future")[0]!.props.onClick());
+  assert.ok(root!.root.findAllByType("input").some(input => input.props.type === "date" && input.props.value === "2026-10-20"));
+  await act(async () => buttons(root!, "キャンセル")[0]!.props.onClick());
+  await act(async () => buttons(root!, "日付を編集: Undated")[0]!.props.onClick());
+  assert.ok(root!.root.findAllByType("input").some(input => input.props.type === "date" && input.props.value === ""));
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 0);
+});
+
+test("a second Tomorrow move waits for a confirmation before writing", async t => {
+  const { fetcher, calls } = fixture({ deferralCount: 1 });
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "明日: 今日の資料")[0]!.props.onClick());
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 0);
+  assert.match(content(root!), /もう一度延期しますか/);
+  await act(async () => buttons(root!, "延期する")[0]!.props.onClick());
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 1);
+});
+
+test("bulk Tomorrow names the two visible overdue tasks before writing either one", async t => {
+  const { fetcher, calls } = fixture({ plannedDate: "2026-10-16" });
+  t.mock.method(globalThis, "fetch", fetcher);
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => buttons(root!, "まとめて明日へ（2件）")[0]!.props.onClick());
+  assert.equal(calls.filter(call => call.method === "PATCH").length, 0);
+  assert.match(content(root!), /このページの期限超過 2件/);
+  await act(async () => buttons(root!, "明日へ変更")[0]!.props.onClick());
+  assert.equal(calls.filter(call => call.method === "PATCH" && call.body?.action === "update").length, 2);
 });
 
 test("a local-day change starts a fresh open page without discarding its scope", async t => {
