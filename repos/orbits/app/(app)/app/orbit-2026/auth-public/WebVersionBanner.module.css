@@ -8,7 +8,7 @@
   padding: var(--space-16);
   transform: translateX(-50%);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-float);
   color: var(--ink);
@@ -21,7 +21,7 @@
 }
 
 .heading strong {
-  font-size: 14px;
+  font-size: var(--fs-body);
 }
 
 .heading p {
@@ -37,9 +37,9 @@
   place-items: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: var(--r-row);
   background: var(--plum-100);
-  font-size: 20px;
+  font-size: var(--fs-title-sm);
 }
 
 .actions {
