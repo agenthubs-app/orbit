@@ -44,6 +44,8 @@ const fixture = `<div id="root"></div><script>
   ];
   window.taskActivityRows = { personal: [{ id: "activity-personal", type: "created", occurredAt: "2026-10-15T01:00:00.000Z" }] };
   window.taskReminderRows = { personal: [{ id: "reminder-personal", fireAt: "2026-10-18T00:00:00.000Z", status: "scheduled" }] };
+  window.reminderFailNextPost = false;
+  window.reminderFailNextPatch = false;
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
     window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
@@ -53,6 +55,7 @@ const fixture = `<div id="root"></div><script>
       return Response.json({ success: true, data: { reminders: window.taskReminderRows[id] || [] } });
     }
     if (path === "/api/reminders" && method === "POST") {
+      if (window.reminderFailNextPost) { window.reminderFailNextPost = false; return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 }); }
       const input = JSON.parse(init.body);
       const id = input.targetId;
       const reminder = { id: "added-reminder", fireAt: input.fireAt, status: "scheduled" };
@@ -60,6 +63,7 @@ const fixture = `<div id="root"></div><script>
       return Response.json({ success: true, data: { reminder } });
     }
     if (path.startsWith("/api/reminders/") && method === "PATCH") {
+      if (window.reminderFailNextPatch) { window.reminderFailNextPatch = false; return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 }); }
       const id = decodeURIComponent(path.split("/")[3]);
       for (const rows of Object.values(window.taskReminderRows)) for (const row of rows) if (row.id === id) row.status = "cancelled";
       return Response.json({ success: true, data: {} });
@@ -255,6 +259,80 @@ test("tomorrow reminder button sends 8:00 in the task page's time zone", async t
   const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Tokyo" }).formatToParts(new Date(post.body.fireAt));
   assert.equal(parts.find(part => part.type === "hour")?.value, "08");
   assert.equal(parts.find(part => part.type === "minute")?.value, "00");
+});
+
+test("failed reminder creation keeps the scheduled list and retries the same hour request", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "1時間後" }).waitFor();
+  await current.evaluate(() => { (window as any).reminderFailNextPost = true; });
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByText("リマインダーを設定できませんでした。もう一度お試しください。").waitFor({ timeout: 2000 });
+  assert.ok(await rail.locator('time[datetime="2026-10-18T00:00:00.000Z"]').isVisible());
+  assert.equal(await current.getByText("リマインダーを設定しました").count(), 0);
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
+  const posts = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[0].body.fireAt, posts[1].body.fireAt);
+  assert.equal(posts[0].body.idempotencyKey, posts[1].body.idempotencyKey);
+});
+
+test("choosing one hour after a failed custom reminder does not reuse the custom time", async t => {
+  const futureYear = new Date().getUTCFullYear() + 10;
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "カスタム…" }).click();
+  await rail.getByLabel("通知する日時").fill(`${futureYear}-01-02T12:30`);
+  await current.evaluate(() => { (window as any).reminderFailNextPost = true; });
+  await rail.getByRole("button", { name: "設定する" }).click();
+  await rail.getByText("リマインダーを設定できませんでした。もう一度お試しください。").waitFor();
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
+  const posts = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
+  assert.equal(posts.length, 2);
+  assert.equal(posts[0].body.fireAt, `${futureYear}-01-02T03:30:00.000Z`);
+  assert.ok(Date.parse(posts[1].body.fireAt) < Date.now() + 2 * 60 * 60 * 1000);
+  assert.notEqual(posts[0].body.idempotencyKey, posts[1].body.idempotencyKey);
+});
+
+test("failed reminder cancellation leaves the schedule visible and reports that it was not cancelled", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  const cancel = rail.getByRole("button", { name: /通知を取り消す/ });
+  await cancel.waitFor();
+  await current.evaluate(() => { (window as any).reminderFailNextPatch = true; });
+  await cancel.click();
+  await rail.getByText("通知を取り消せませんでした。予約は残っています。").waitFor({ timeout: 2000 });
+  assert.ok(await rail.locator('time[datetime="2026-10-18T00:00:00.000Z"]').isVisible());
+  assert.equal(await current.getByText("リマインダーを取り消しました").count(), 0);
+  await cancel.click();
+  await rail.locator('time[datetime="2026-10-18T00:00:00.000Z"]').waitFor({ state: "detached" });
+});
+
+test("an expired uncertain one-hour reminder explains how to recover instead of silently retiming it", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "1時間後" }).waitFor();
+  await current.evaluate(() => { (window as any).reminderFailNextPost = true; (window as any).qaNow = Date.now(); Date.now = () => (window as any).qaNow; });
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByText("リマインダーを設定できませんでした。もう一度お試しください。").waitFor({ timeout: 2000 });
+  await current.evaluate(() => { (window as any).qaNow += 2 * 60 * 60 * 1000; });
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByText("前の通知時刻を過ぎました。ページを再読み込みして予約を確認し、改めて設定してください。").waitFor({ timeout: 2000 });
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST").length, 1);
 });
 
 test("the real 390 shell keeps Task search and add usable inside the page", async t => {

@@ -29,7 +29,7 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
   // Retain an uncertain operation within this mounted client. A changed payload
   // is new intent; a successful operation releases its key for intentional repeats.
   const pending = new Map<string, { fingerprint: string; key: string }>();
-  const reminderTimes = new Map<string, string>();
+  const reminderTimes = new Map<string, { kind: "one_hour" | "explicit"; fireAt: string }>();
   async function request<T>(path: string, decode: (value: unknown) => T, method = "GET", body?: object): Promise<T> {
     const slot = `${method}:${path}`;
     let operation: { fingerprint: string; key: string } | undefined;
@@ -148,10 +148,12 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       "POST", { idempotencyKey: key() },
     ),
     async addReminder(task: TaskView, fireAt?: string, timeZone = "Asia/Tokyo", title = "待办提醒") {
-      fireAt ??= reminderTimes.get(task.id) ?? new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const kind = fireAt === undefined ? "one_hour" : "explicit";
+      const previous = reminderTimes.get(task.id);
+      fireAt ??= previous?.kind === "one_hour" ? previous.fireAt : new Date(Date.now() + 60 * 60 * 1000).toISOString();
       if (!Number.isFinite(Date.parse(fireAt)) || Date.parse(fireAt) <= Date.now()) throw new TasksClientError("INVALID_REMINDER", "Invalid reminder time");
       if (!validTimeZone(timeZone)) throw new TasksClientError("INVALID_TIME_ZONE", "Invalid time zone");
-      reminderTimes.set(task.id, fireAt);
+      reminderTimes.set(task.id, { kind, fireAt });
       await request("/api/reminders", ignore, "POST", {
         targetType: "task", targetId: task.id, fireAt, timeZone, channels: ["in_app"],
         title, body: task.title, deepLink: `/tasks/${encodeURIComponent(task.id)}`,

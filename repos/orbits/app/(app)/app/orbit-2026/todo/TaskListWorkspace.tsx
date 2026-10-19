@@ -74,6 +74,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [customReminderAt, setCustomReminderAt] = useState("");
   const [reminderValidation, setReminderValidation] = useState("");
   const [reminderFailureTaskId, setReminderFailureTaskId] = useState<string | null>(null);
+  const [reminderAction, setReminderAction] = useState<"add" | "cancel">("add");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
@@ -108,6 +109,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     setCustomReminderAt("");
     setReminderValidation("");
     setReminderFailureTaskId(null);
+    setReminderAction("add");
     if (typeof window === "undefined" || !window.location?.href || !window.history?.replaceState) return;
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("task", id); else url.searchParams.delete("task");
@@ -164,6 +166,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     if (!task || task.id !== selectedId || reminderMutation.busy || mutation.busy) return;
     setReminderValidation("");
     setReminderFailureTaskId(task.id);
+    setReminderAction("add");
     void reminderMutation.run(() => client.addReminder(task, fireAt, timeZone, t(taskCopy.taskListReminder)), () => {
       if (selectedIdRef.current !== task.id) return;
       reminders.refresh();
@@ -182,6 +185,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     const taskId = selectedId;
     if (!taskId || reminderMutation.busy || mutation.busy) return;
     setReminderFailureTaskId(taskId);
+    setReminderAction("cancel");
     void reminderMutation.run(() => client.cancelReminder(id), () => {
       if (selectedIdRef.current !== taskId) return;
       reminders.refresh();
@@ -190,6 +194,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   }
   const selectedRow = [...visibleOpen, ...visibleDone].find(item => item.id === selectedId);
   const notesClearUnsupported = Boolean(editing?.task.notes && !editing.notes.trim());
+  const reminderErrorCopy = reminderMutation.error instanceof TasksClientError && reminderMutation.error.code === "INVALID_REMINDER"
+    ? taskCopy.taskListReminderExpired : reminderAction === "cancel" ? taskCopy.taskListReminderCancelFailed : taskCopy.taskListReminderSaveFailed;
   const detailContent = <div className={styles.rail}>
     {selectedId && detail.loading && !detail.data ? <Skeleton lines={4} onRetry={detail.refresh} /> : null}
     {selectedId && detail.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={detail.refresh} /> : null}
@@ -217,7 +223,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
           <p className={styles.hint}>{t(taskCopy.taskListReminderInApp)}</p>
         </div> : null}
         {reminderValidation ? <p role="alert" className={styles.error}>{reminderValidation}</p> : null}
-        {reminderFailureTaskId === selectedId && reminderMutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
+        {reminderFailureTaskId === selectedId && reminderMutation.error ? <p role="alert" className={styles.error}>{t(reminderErrorCopy)}</p> : null}
       </section>
       <section className={styles.detailSection}>
         <h4>{t(taskCopy.taskListHistory)}</h4>

@@ -47,6 +47,24 @@ test("a task reminder carries the page's time zone instead of a fixed Tokyo zone
   assert.equal(body.timeZone, "America/New_York");
 });
 
+test("after a failed custom reminder, one-hour is a new intent, not a retry of the custom time", async (t) => {
+  const now = Date.parse("2026-10-17T00:00:00.000Z");
+  t.mock.method(Date, "now", () => now);
+  const bodies: any[] = [];
+  const client = createTasksClient(async (_path, init) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    if (bodies.length === 1) throw new TypeError("response lost");
+    return Response.json({ success: true, data: {} });
+  });
+  const task = { id: "task:intent", title: "Follow up", notes: "", status: "open" as const, category: "work" as const, priority: "normal" as const, updatedAt: "2026-10-17T00:00:00Z", href: "/app/tasks/task%3Aintent" };
+  const customAt = "2026-10-18T03:30:00.000Z";
+  await assert.rejects(client.addReminder(task, customAt));
+  await client.addReminder(task);
+  assert.equal(bodies[0].fireAt, customAt);
+  assert.equal(bodies[1].fireAt, "2026-10-17T01:00:00.000Z");
+  assert.notEqual(bodies[0].idempotencyKey, bodies[1].idempotencyKey);
+});
+
 test("canonical App task links open Web task details without changing legacy reminder links", () => {
   const hrefs = ["/tasks/task%3Aone%2Ftwo", "/app/contacts/person", "https://evil.test", "/tasks/../settings"];
   const alerts = toReminderAlerts({ reminders: hrefs.map((href, index) => ({ reminderId: String(index), title: "待办提醒", contactName: "待办提醒", organization: "Orbit", dueAt: "2026-09-07T00:00:00Z", recommendedWindow: "2026-09-07T00:00:00Z", priority: "normal", href })) } as any);
