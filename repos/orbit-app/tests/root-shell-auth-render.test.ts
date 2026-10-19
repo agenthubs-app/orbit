@@ -13,20 +13,34 @@ test("the root shell omits tab navigation and tab-height toast placement until s
     export function Wrapper({ children }) { return children; }
     export const OrbitTimeZoneProvider = Wrapper;
     export const SafeAreaProvider = Wrapper;
+    export const SafeAreaView = Wrapper;
+    export const View = Wrapper;
+    export const ScrollView = Wrapper;
+    export const ActivityIndicator = Wrapper;
+    export const UiText = Wrapper;
+    export const Linking = { openURL: async () => undefined };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
     export const OrbitLocaleProvider = Wrapper;
     export const GestureHandlerRootView = Wrapper;
     export const UiPortalHost = Wrapper;
+    export function RootVersionGate({ children }) { return React.createElement("div", { "data-root-version-gate": "" }, children(true)); }
     export function ToastProvider({ children, hasTabBar }) { return React.createElement("div", { "data-has-tab-bar": String(hasTabBar) }, children); }
     export function ShellTabBar() { return React.createElement("nav", { "aria-label": "main tabs" }); }
     export function usePathname() { return globalThis.__rootShellAuthFixture.pathname; }
     export function mainTabForPath(pathname) { return pathname === "/home" ? "home" : null; }
     export function useOrbitAuthSession() { return globalThis.__rootShellAuthFixture; }
+    export function useOrbitLocale() { return { language: "ja", t: (key) => key }; }
+    export function useOrbitApiClient() { return {}; }
+    export async function loadAppVersionGate() { return { kind: "allow" }; }
+    export function ForceUpdateContent() { return null; }
+    export function MaintenanceContent() { return null; }
+    export function validAppStoreUrl() { return null; }
+    export function formatMaintenanceUntil() { return null; }
     export function useOrbitApiBaseUrl() { return { baseUrl: "https://api.example.test" }; }
     export function useMobileViewport() { return { keyboardVisible: false }; }
-    export function useOrbitTheme() { return { scheme: "light" }; }
+    export function useOrbitTheme() { return { scheme: "light", colors: { bg: "white", accentText: "black" } }; }
     export function UiFeedbackHost() { return null; }
     export function AppErrorScreen() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
@@ -77,6 +91,7 @@ test("the root shell omits tab navigation and tab-height toast placement until s
   };
 
   const signedOutHome = render(false, "/home");
+  assert.match(signedOutHome, /data-root-version-gate/u, "the route tree passes through the root version gate");
   assert.doesNotMatch(signedOutHome, /<nav aria-label="main tabs"/u);
   assert.match(signedOutHome, /data-has-tab-bar="false"/u);
 
