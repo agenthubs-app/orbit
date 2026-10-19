@@ -39,3 +39,15 @@ export const publicCopy = {
   reload: { ja: "再読み込み", zh: "重新加载", en: "Reload", kind: "button" },
   checkingStatus: { ja: "状態を確認しています…", zh: "正在检查服务状态…", en: "Checking service status…", kind: "body" },
 } satisfies OrbitCopyTable;
+
+export const publicFaqSearchKeywords = {
+  send: { ja: "下書き", zh: "草稿", en: "draft" },
+  gmail: { ja: "メタデータ", zh: "元数据", en: "metadata" },
+  card: { ja: "名刺", zh: "名片", en: "scan" },
+} as const;
+
+export const maintenanceDateParts = {
+  month: { ja: "月", zh: "月", en: "" },
+  day: { ja: "日", zh: "日", en: "" },
+  zone: { ja: "（日本時間）", zh: "（日本时间）", en: "" },
+} as const;

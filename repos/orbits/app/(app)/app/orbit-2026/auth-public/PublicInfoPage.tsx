@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { supportEmail } from "../../../../../shared/config/support";
-import { publicCopy } from "../copy/public";
+import { publicCopy, publicFaqSearchKeywords } from "../copy/public";
 import { pickCopy } from "../copy/types";
 import { Icon, Orbit2026Scope } from "../ui";
 import { filterPublicFaq } from "./public-faq-search";
@@ -13,9 +13,9 @@ import s from "./PublicInfoPage.module.css";
 export type PublicInfoKind = "help" | "terms" | "privacy";
 
 const faqKeys = [
-  { id: "send", question: "sendQuestion", answer: "sendAnswer", searchKeywords: ["draft", "下書き", "草稿"] },
-  { id: "gmail", question: "gmailQuestion", answer: "gmailAnswer", searchKeywords: ["metadata", "メタデータ", "元数据"] },
-  { id: "card", question: "cardQuestion", answer: "cardAnswer", searchKeywords: ["scan", "名刺", "名片"] },
+  { id: "send", question: "sendQuestion", answer: "sendAnswer" },
+  { id: "gmail", question: "gmailQuestion", answer: "gmailAnswer" },
+  { id: "card", question: "cardQuestion", answer: "cardAnswer" },
 ] as const;
 
 export function PublicInfoPage({ kind, language, signedIn, contactEmail = supportEmail }: {
@@ -28,11 +28,11 @@ export function PublicInfoPage({ kind, language, signedIn, contactEmail = suppor
   const t = (key: keyof typeof publicCopy) => pickCopy(publicCopy[key], language);
   const help = kind === "help";
   const title = t(kind === "help" ? "helpTitle" : kind === "terms" ? "termsTitle" : "privacyTitle");
-  const faq = filterPublicFaq(faqKeys.map(({ id, question, answer, searchKeywords }) => ({
+  const faq = filterPublicFaq(faqKeys.map(({ id, question, answer }) => ({
     id,
     question: t(question),
     answer: t(answer),
-    searchKeywords,
+    searchKeywords: Object.values(publicFaqSearchKeywords[id]),
   })), query);
 
   return <Orbit2026Scope language={language} className={s.page}>

@@ -14,9 +14,8 @@ export function NotFoundPage({ language, signedIn, insideApp }: {
   const shellVisible = signedIn && insideApp;
   const home = signedIn ? "/app/home" : "/";
   const description = t("notFoundBody");
-  const mobileBreakAt = language === "ja" && description.includes("URL が")
-    ? description.indexOf("URL が") + "URL が".length
-    : 0;
+  const breakPhrase = language === "ja" ? /URL\s\S/u.exec(description) : null;
+  const mobileBreakAt = breakPhrase ? breakPhrase.index + breakPhrase[0].length : 0;
   return <Orbit2026Scope language={language} className={shellVisible ? s.inside : s.public}>
     {!shellVisible ? <header className={`${p.header} ${s.publicHeader}`}>
       <a className={p.brand} href="/" aria-label="Orbit"><span className={p.logo}>O</span><strong>Orbit</strong></a>

@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { publicCopy } from "../copy/public";
+import { maintenanceDateParts, publicCopy } from "../copy/public";
 import { pickCopy } from "../copy/types";
 import { Icon, Orbit2026Scope } from "../ui";
 import p from "./PublicInfoPage.module.css";
@@ -26,7 +26,7 @@ export function formatMaintenanceUntil(until: string | undefined, language: Orbi
     const monthName = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", month: "short" }).format(date);
     return `${monthName} ${day}, ${time} (JST)`;
   }
-  return `${month}月${day}日 ${time}${language === "zh" ? "（日本时间）" : "（日本時間）"}`;
+  return `${month}${maintenanceDateParts.month[language]}${day}${maintenanceDateParts.day[language]} ${time}${maintenanceDateParts.zone[language]}`;
 }
 
 export function maintenanceFromVersionResponse(value: unknown): { until?: string } | null {
