@@ -1,0 +1,18 @@
+{
+  "_runtime": "Local Web server must use ORBIT_MODULE_MODE=live and ORBIT_APP_MAINTENANCE_ACTIVE=true, with ORBIT_APP_MAINTENANCE_UNTIL unset. Verify /api/app/version returns maintenance.active=true without until before running. Pass --design-base http://localhost:3420/redesign-2026-10/ explicitly.",
+  "defaults": { "app-origin": "http://localhost:3400", "grid": 100 },
+  "sources": [
+    "repos/orbits/app/maintenance/page.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/MaintenanceGate.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/MaintenanceView.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/MaintenanceView.module.css"
+  ],
+  "views": [
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 624, "width": 1440, "height": 900, "themes": ["light"], "viewport": true, "wait-for": "h1" },
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 625, "width": 1440, "height": 900, "themes": ["dark"], "viewport": true, "wait-for": "h1" },
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 626, "width": 1024, "height": 900, "themes": ["light"], "viewport": true, "wait-for": "h1" },
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 627, "width": 1024, "height": 900, "themes": ["dark"], "viewport": true, "wait-for": "h1" },
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 628, "width": 390, "themes": ["light"], "viewport": true, "wait-for": "h1" },
+    { "id": "W-R18b-09-unknown", "app": "/maintenance", "design": "b12-missing-states.html", "board-index": 629, "width": 390, "themes": ["dark"], "viewport": true, "wait-for": "h1" }
+  ]
+}
