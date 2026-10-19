@@ -173,7 +173,8 @@
       "path": "/contacts/new/import/design-review",
       "note": "R32 来源 app-import-R16.json: 連絡先 ④ まとめて確認",
       "grid": 30,
-      "wait": 9000
+      "themes": ["dark", "light"],
+      "wait": 18000
     },
     {
       "id": "A-R24-05",
