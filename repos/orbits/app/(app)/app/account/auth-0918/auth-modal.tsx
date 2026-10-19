@@ -133,13 +133,14 @@ export const AUTH_STYLES = `
   height: auto; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
 [data-orbit-real-page="auth-0918"] .btn.au-google:hover { border-color: #B9BCEB; background: #F7F7FD; }
 [data-orbit-real-page="auth-0918"] .btn.au-google:active { transform: none; }
-/* ── 切换行（设计 367 / 391）与 条款行（389；链接渲染为无 href 的 span）── */
+/* ── 切换行（设计 367 / 391）与 条款行（389；公开法务链接）── */
 [data-orbit-real-page="auth-0918"] .au-switch { margin: 0; text-align: center; font-size: 14px; color: #6B6F99; }
 [data-orbit-real-page="auth-0918"] .au-switch-link { color: #4B4FC7; font-weight: 500; border-bottom: 1px solid #B9BCEB; }
 /* 同 .au-forgot:hover：钉回设计的内联链接色，抵消作用域 a:hover */
 [data-orbit-real-page="auth-0918"] .au-switch-link:hover { color: #4B4FC7; }
 [data-orbit-real-page="auth-0918"] .au-terms { margin: 0; text-align: center; font-size: 13px; line-height: 1.6; color: #8A8DB0; }
-[data-orbit-real-page="auth-0918"] .au-terms-link { color: #6B6F99; border-bottom: 1px solid #DDDEFA; }
+[data-orbit-real-page="auth-0918"] .au-terms-link { color: #6B6F99; border-bottom: 1px solid #DDDEFA; text-decoration: none; }
+[data-orbit-real-page="auth-0918"] .au-terms-link:hover { color: #6B6F99; }
 /* ── 找回（设计 401–404 成功卡 / 415 提示 / 418 返回行；返回行 432 / 461 与 新密码屏同类）── */
 [data-orbit-real-page="auth-0918"] .au-success { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 12px; background: #ECEEFB; color: #2E3270; font-size: 14px; line-height: 1.6; }
 [data-orbit-real-page="auth-0918"] .au-success-title { font-size: 15px; }

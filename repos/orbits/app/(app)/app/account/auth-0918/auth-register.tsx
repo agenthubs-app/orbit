@@ -4,7 +4,7 @@
  * 注册屏（Orbit_0918）：设计 docs/designs/Orbit_0918/Orbit 首页.dc.html 371–392 行逐元素。
  * 真实行为来自 `useAccountAuth`（mode="signup" + defaultNext；注册 → /api/auth/register → 自动登录 → continuation，
  * 失败回退 `/app/account/login?…&created=1&email=` 全在 hook）。409 → 设计 527「该邮箱已注册，请直接登录。」。
- * 条款行（389）：仓库无 legal 路由 → 「服务条款」「隐私政策」渲染为无 href 的同样式 `<span>`（记偏差）。
+ * 条款行（389）：在新标签打开公开法务页，保留当前注册表单输入。
  * 设计外（记偏差）：眼睛钮、Google 钮。「直接登录」= 真实路由导航（带 ?next=）。
  */
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -34,9 +34,9 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Continue with Google", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       <p className="au-terms">
         {t({ en: "By signing up you agree to the ", zh: "注册即表示同意 " })}
-        <span className="au-terms-link">{t({ en: "Terms of Service", zh: "服务条款" })}</span>
+        <a className="au-terms-link" href="/terms" rel="noopener noreferrer" target="_blank">{t({ en: "Terms of Service", zh: "服务条款" })}</a>
         {t({ en: " and ", zh: " 与 " })}
-        <span className="au-terms-link">{t({ en: "Privacy Policy", zh: "隐私政策" })}</span>
+        <a className="au-terms-link" href="/privacy" rel="noopener noreferrer" target="_blank">{t({ en: "Privacy Policy", zh: "隐私政策" })}</a>
         {t({ en: ".", zh: "。" })}
       </p>
       <p className="au-switch">

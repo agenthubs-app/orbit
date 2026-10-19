@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { chromium } from "playwright";
 
 import { AuthModal, AUTH_STYLES, type AuthModalView } from "../../app/(app)/app/account/auth-0918/auth-modal";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
@@ -177,17 +178,32 @@ test("login SSR: scope, dialog a11y, ×, wordmark, design copy, fields, forgot l
   assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
 });
 
-test("register SSR: design copy, 至少 8 位 placeholder, au-btn-primary, terms as spans without legal routes, switch to login; no Google without provider", () => {
+test("register SSR: legal links open public pages without replacing the typed registration form", () => {
   const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={[]} view="register" />);
   assert.match(html, /aria-labelledby="au-title-register"/u);
   assert.match(html, /<h2 class="au-h2" id="au-title-register">创建账号<\/h2><p class="au-sub">从零散的联系人，到对的关系。<\/p>/u);
   assert.match(html, /<label for="au-password">密码<\/label><span class="au-field-wrap"><input autoComplete="new-password" class="au-input" id="au-password" maxLength="72" minLength="8" placeholder="至少 8 位" required="" type="password" value=""\/>/u);
   assert.match(html, /<button class="btn au-btn-primary" style="opacity:1" type="submit">创建账号<\/button>/u);
-  assert.match(html, /<p class="au-terms">注册即表示同意 <span class="au-terms-link">服务条款<\/span> 与 <span class="au-terms-link">隐私政策<\/span>。<\/p>/u);
+  assert.match(html, /<p class="au-terms">注册即表示同意 <a class="au-terms-link" href="\/terms" rel="noopener noreferrer" target="_blank">服务条款<\/a> 与 <a class="au-terms-link" href="\/privacy" rel="noopener noreferrer" target="_blank">隐私政策<\/a>。<\/p>/u);
   assert.match(html, /<p class="au-switch">已有账号？ <a class="au-switch-link" href="\/app\/account\/login\?next=%2Fapp%2Fhome">直接登录<\/a><\/p>/u);
   const body = html.slice(html.indexOf("</style>"));
   assert.doesNotMatch(body, /au-google|au-forgot|au-label-row|taken@orbit\.app|failfail/u);
   assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
+});
+
+test("register legal links keep their designed colour on hover", async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<div data-orbit-real-page="auth-0918"><a class="au-terms-link" href="/terms">Terms</a></div>');
+    await page.addStyleTag({ content: AUTH_STYLES });
+    const link = page.locator(".au-terms-link");
+    assert.equal(await link.evaluate((element) => getComputedStyle(element).color), "rgb(107, 111, 153)");
+    await link.hover();
+    assert.equal(await link.evaluate((element) => getComputedStyle(element).color), "rgb(107, 111, 153)");
+  } finally {
+    await browser.close();
+  }
 });
 
 test("AUTH_STYLES: scoped to auth-0918, design declarations verbatim, .btn neutralisation incl. [disabled] (审阅修订 6/7)", () => {
