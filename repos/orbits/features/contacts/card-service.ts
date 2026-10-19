@@ -82,7 +82,7 @@ export async function createDesignContactCardService(actor: ContactCardActor): P
     import("../network-analysis/analysis-fixtures"), import("../network-analysis/design-fixtures/contacts"),
     import("../../shared/api-schema/contact-local-directory"),
   ]);
-  const variant = activeNetworkFixture().variant;
+  const variant = activeNetworkFixture(actor.id).variant;
   if (!variant) return null;
   const fixture = designNetworkContactFixture(variant);
   const asOf = NETWORK_FIXTURE_NOW.toISOString();

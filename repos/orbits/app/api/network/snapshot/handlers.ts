@@ -83,7 +83,7 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
       // R11b：人脈分析 mock（本机 ORBIT_REDESIGN_MOCK=network-analysis，非生产）读 fixture 世界的快照，不读库、不排队、不调 AI。
       if (!dependencies.runtime && redesignContractMode("network-analysis") === "mock") {
         const { fixtureNetworkSnapshotView } = await import("../../../../features/network-analysis/analysis-fixtures");
-        return NextResponse.json(success(fixtureNetworkSnapshotView(language(request))), { headers, status: 200 });
+        return NextResponse.json(success(fixtureNetworkSnapshotView(actor.id, language(request))), { headers, status: 200 });
       }
       const runtime = resolveRuntime();
       if (!runtime) return NextResponse.json(success(unavailableSnapshotView()), { headers, status: 200 });

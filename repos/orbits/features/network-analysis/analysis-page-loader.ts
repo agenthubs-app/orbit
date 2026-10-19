@@ -36,9 +36,9 @@ export async function defaultNetworkAnalysisPageDeps(): Promise<NetworkAnalysisP
     const { activeNetworkFixture, fixtureNetworkSnapshotView } = await import("./analysis-fixtures");
     return {
       readDeps: resolveNetworkAnalysisReadDeps,
-      readSnapshot: async (_actorId, language) => fixtureNetworkSnapshotView(language),
-      readNames: async (_actorId, ids) => {
-        const rows = new Map(activeNetworkFixture().rows.map((row) => [row.id, row.name]));
+      readSnapshot: async (actorId, language) => fixtureNetworkSnapshotView(actorId, language),
+      readNames: async (actorId, ids) => {
+        const rows = new Map(activeNetworkFixture(actorId).rows.map((row) => [row.id, row.name]));
         return Object.fromEntries(ids.flatMap((id) => (rows.has(id) ? [[id, { contactId: id, name: rows.get(id)! }]] : [])));
       },
     };

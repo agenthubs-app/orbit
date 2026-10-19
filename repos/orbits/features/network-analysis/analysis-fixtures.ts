@@ -4,7 +4,7 @@
  * - Default: the demo world (shared/mock/demo-world/network-analysis.ts — its 10 people, the demo plan's needs).
  * - Design variants for the pixel gates live in a separate module next to this one (imported only by the dev route
  *   app/api/dev/network-design-fixture/route.dev.ts, so production bundles carry no design data); the route installs
- *   the chosen world here. The world lives on globalThis (Next dev bundles each route separately).
+ *   the chosen world here for the authenticated account. The map lives on globalThis (Next dev bundles each route separately).
  */
 import {
   DEMO_NETWORK_ANALYSIS_FOLLOW_UP_IDS,
@@ -26,15 +26,16 @@ const DAY = 86_400_000;
 const ago = (days: number) => new Date(NETWORK_FIXTURE_NOW.getTime() - days * DAY).toISOString();
 
 export interface NetworkFixtureWorld { variant: NetworkDesignVariant | null; rows: NetworkAnalysisRow[]; needs: NetworkAnalysisNeed[] }
-type FixtureState = { world: NetworkFixtureWorld | null };
+type FixtureState = { worlds: Map<string, NetworkFixtureWorld> };
 const STATE_KEY = "__orbitNetworkAnalysisFixture";
 function state(): FixtureState {
   const holder = globalThis as unknown as Record<string, FixtureState | undefined>;
-  return (holder[STATE_KEY] ??= { world: null });
+  return (holder[STATE_KEY] ??= { worlds: new Map() });
 }
-/** Installed only by the dev route (it owns the design data); null restores the demo world. */
-export function installNetworkFixtureWorld(world: NetworkFixtureWorld | null): NetworkDesignVariant | null {
-  state().world = world;
+/** Installed only by the dev route (it owns the design data); null restores this actor's demo world. */
+export function installNetworkFixtureWorld(actorId: string, world: NetworkFixtureWorld | null): NetworkDesignVariant | null {
+  if (world) state().worlds.set(actorId, world);
+  else state().worlds.delete(actorId);
   return world?.variant ?? null;
 }
 
@@ -50,23 +51,22 @@ function demoRows(): NetworkAnalysisRow[] {
 }
 
 /** The people and needs in effect: the design world the dev route installed, else the demo world. */
-export function activeNetworkFixture(): NetworkFixtureWorld {
-  return state().world ?? { variant: null, rows: demoRows(), needs: DEMO_NETWORK_ANALYSIS_NEEDS.map(({ sample: _sample, ...need }) => need) };
+export function activeNetworkFixture(actorId: string): NetworkFixtureWorld {
+  return state().worlds.get(actorId) ?? { variant: null, rows: demoRows(), needs: DEMO_NETWORK_ANALYSIS_NEEDS.map(({ sample: _sample, ...need }) => need) };
 }
 
 export function fixtureNetworkAnalysisReadDeps(): NetworkAnalysisReadDeps {
-  const world = activeNetworkFixture();
   return {
-    readTotal: async () => world.rows.length,
-    readRows: async () => world.rows,
-    readNeeds: async () => world.needs,
+    readTotal: async (actor) => activeNetworkFixture(actor.id).rows.length,
+    readRows: async (actor) => activeNetworkFixture(actor.id).rows,
+    readNeeds: async (actorId) => activeNetworkFixture(actorId).needs,
     now: () => NETWORK_FIXTURE_NOW,
   };
 }
 
 /** GET /api/network/snapshot in the mock world: a ready snapshot whose sentences cite fixture people (many286 carries the 不足 sentence). */
-export function fixtureNetworkSnapshotView(language: "zh" | "en" | "ja"): NetworkSnapshotView {
-  const { variant, rows } = activeNetworkFixture();
+export function fixtureNetworkSnapshotView(actorId: string, language: "zh" | "en" | "ja"): NetworkSnapshotView {
+  const { variant, rows } = activeNetworkFixture(actorId);
   const base: NetworkSnapshotView = {
     blocks: [], contactCount: rows.length, freshness: { job: "none", newContactCount: 0, stale: false }, generatedAt: null,
     quota: { background: { limit: 60, usedToday: 0 }, manual: { limit: 3, usedToday: 0 }, user: { limit: 10, usedToday: 0 } }, state: "none",

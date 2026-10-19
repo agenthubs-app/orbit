@@ -11,31 +11,40 @@ import { designNetworkWorld } from "../../../../features/network-analysis/design
 import { CONTACT_FIXTURE_NOW, designNetworkContactFixture } from "../../../../features/network-analysis/design-fixtures/contacts";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
 import { success } from "../../../../shared/api/envelope";
-import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
+import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 const HEADERS = { "Cache-Control": "no-store", "X-Orbit-Runtime-Boundary": "developer-local" } as const;
 const available = () => process.env.NODE_ENV !== "production" && redesignContractMode("network-analysis") === "mock";
 const notFound = () => NextResponse.json({ error: "not_found" }, { headers: HEADERS, status: 404 });
 
-export async function GET(request: Request) {
-  if (!available()) return notFound();
-  if (new URL(request.url).searchParams.get("contacts") === "1") {
-    const actor = await resolveAuthenticatedApiActor();
-    if (!actor) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication is required." } }, { headers: HEADERS, status: 401 });
-    const variant = activeNetworkFixture().variant;
-    if (!variant) return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Select a design variant first." } }, { headers: HEADERS, status: 404 });
-    return NextResponse.json(success({ ...designNetworkContactFixture(variant), actorId: actor.id, asOf: CONTACT_FIXTURE_NOW.toISOString() }), { headers: HEADERS });
-  }
-  return NextResponse.json({ variants: NETWORK_DESIGN_VARIANTS, variant: activeNetworkFixture().variant }, { headers: HEADERS });
+export function createNetworkDesignFixtureHandlers(resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor) {
+  return {
+    async GET(request: Request) {
+      if (!available()) return notFound();
+      const actor = await resolveActor();
+      if (!actor) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication is required." } }, { headers: HEADERS, status: 401 });
+      if (new URL(request.url).searchParams.get("contacts") !== "1") {
+        return NextResponse.json({ variants: NETWORK_DESIGN_VARIANTS, variant: activeNetworkFixture(actor.id).variant }, { headers: HEADERS });
+      }
+      const variant = activeNetworkFixture(actor.id).variant;
+      if (!variant) return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Select a design variant first." } }, { headers: HEADERS, status: 404 });
+      return NextResponse.json(success({ ...designNetworkContactFixture(variant), actorId: actor.id, asOf: CONTACT_FIXTURE_NOW.toISOString() }), { headers: HEADERS });
+    },
+
+    async POST(request: Request) {
+      if (!available()) return notFound();
+      const actor = await resolveActor();
+      if (!actor) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication is required." } }, { headers: HEADERS, status: 401 });
+      const body = (await request.json().catch(() => null)) as { variant?: unknown } | null;
+      const variant = body?.variant;
+      if (variant !== null && !(NETWORK_DESIGN_VARIANTS as readonly unknown[]).includes(variant)) {
+        return NextResponse.json({ error: "unknown_variant" }, { headers: HEADERS, status: 400 });
+      }
+      return NextResponse.json({ variant: installNetworkFixtureWorld(actor.id, variant === null ? null : designNetworkWorld(variant as NetworkDesignVariant)) }, { headers: HEADERS });
+    },
+  };
 }
 
-export async function POST(request: Request) {
-  if (!available()) return notFound();
-  const body = (await request.json().catch(() => null)) as { variant?: unknown } | null;
-  const variant = body?.variant;
-  if (variant !== null && !(NETWORK_DESIGN_VARIANTS as readonly unknown[]).includes(variant)) {
-    return NextResponse.json({ error: "unknown_variant" }, { headers: HEADERS, status: 400 });
-  }
-  return NextResponse.json({ variant: installNetworkFixtureWorld(variant === null ? null : designNetworkWorld(variant as NetworkDesignVariant)) }, { headers: HEADERS });
-}
+export const GET = createNetworkDesignFixtureHandlers().GET;
+export const POST = createNetworkDesignFixtureHandlers().POST;

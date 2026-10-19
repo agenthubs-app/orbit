@@ -52,13 +52,14 @@ test("few14 reproduces b5 #33 / #39; locked5 and empty stay locked", () => {
   assert.deepEqual(view("empty").lock, { state: "locked", total: 0, required: 10, missing: 10 });
 });
 
-test("the installed world is process-wide and null restores the demo world; the mock snapshot cites fixture people", async () => {
-  installNetworkFixtureWorld(designNetworkWorld("locked5"));
+test("the installed world is actor-scoped and null restores that actor's demo world; the mock snapshot cites fixture people", async () => {
+  installNetworkFixtureWorld("a", designNetworkWorld("locked5"));
   assert.equal(await fixtureNetworkAnalysisReadDeps().readTotal({ id: "a" }), 5);
-  assert.equal(fixtureNetworkSnapshotView("ja").state, "insufficient");
-  installNetworkFixtureWorld(designNetworkWorld("many286"));
-  const snapshot = fixtureNetworkSnapshotView("ja");
+  assert.equal(await fixtureNetworkAnalysisReadDeps().readTotal({ id: "b" }), 10);
+  assert.equal(fixtureNetworkSnapshotView("a", "ja").state, "insufficient");
+  installNetworkFixtureWorld("a", designNetworkWorld("many286"));
+  const snapshot = fixtureNetworkSnapshotView("a", "ja");
   assert.equal(snapshot.blocks.find((block) => block.kind === "gap")?.needId, "design-need-cvc");
-  installNetworkFixtureWorld(null);
+  installNetworkFixtureWorld("a", null);
   assert.equal(await fixtureNetworkAnalysisReadDeps().readTotal({ id: "a" }), 10);
 });
