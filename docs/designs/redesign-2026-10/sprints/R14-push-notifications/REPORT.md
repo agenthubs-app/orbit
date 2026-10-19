@@ -102,6 +102,12 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 
 单板门禁都经 `heavy.sh b` 使用本地 Web `:3300`、设计稿 `:3350` 与在线 App 截图运行。A-R14-P01 初次诊断比较 `pixel-revised-app-notifications`：raw 0.1282、24 条未归因超阈带，开发截图含 Expo 警告覆盖。随后在模拟器中用 `idb ui tap` 关闭开发警告，重截 `online-notifications-clean.png` 并复比 `pixel-revised-app-notifications-clean`：raw 0.0844、24 条未归因带；第三轮按真实卡片重排后以同一干净截图复比 `pixel-app-notifications-last`：raw 0.0821、21 条未归因带、17 处缺块，**FAIL**。A-R14-P02 初轮 `pixel-revised-app-secretary`：raw 0.1057、15 条未归因带，开发截图仍有警告；次轮卡片重排并重截无警告的 `online-secretary-clean.png` 后，`pixel-app-secretary-last` raw 0.0567、12 条未归因带、11 处缺块，**FAIL**。W-R14-P01 初轮 `pixel-revised-web-notifications`：raw 0.0301、18 条未归因带；发现板缺实际自動発見卡后改稿，复比 `pixel-revised-web-notifications-v2`：raw 0.0348、23 条未归因带、38 处缺块，**FAIL**。未给数据文字外的差异强行标 `[data]`；未修改归因规则，三板均不得标 PASS。App 截图与 Web triptych、`result.json`、逐带报告均在证据目录。
 
+## 待主会话决定
+
+- A-R14-P01 第三轮、A-R14-P02 第二轮、W-R14-P01 第二轮像素门禁仍失败；B 线未继续单方改动画板。请主会话依据逐带报告决定后续版面对齐与独立复核安排；当前 SC-08～10 的像素部分及 SC-15 不能标完成。
+- R31 `Toggle` / `CategoryTabs` 的浏览器选中语义已交 A 线 R32；修复合入后需要复跑对应浏览器用例，B 线未越界改组件。
+- 生产 worker、Neon、部署、真实设备推送及 TestFlight 均为 DEFERRED「待用户授权」。系统通知点击、远程 delivery、VoiceOver 与真实多 worker 重启链也未在本机验证范围内完成；是否另排验收由主会话决定。
+
 ## 给主会话/其他线的四栏交接
 
 ### 待主会话接手
