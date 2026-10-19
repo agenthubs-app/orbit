@@ -78,3 +78,13 @@ test("R20a narrow relationship follow-up exception never admits lifecycle, renam
   assert.equal(isOfflineRelationshipFollowupMutation(task, "update", { title: "Changed" }), false);
   assert.equal(isOfflineRelationshipFollowupMutation(task, "delete", {}), false);
 });
+
+test("an existing event task with a contact can complete or move later offline but cannot be renamed", () => {
+  const task = { kind: "task", category: "event", relatedContactId: "contact:1", status: "open",
+    plannedDate: "2026-10-18", deletedAt: null };
+  assert.equal(isOfflineRelationshipFollowupMutation(task, "complete", {}), true);
+  assert.equal(isOfflineRelationshipFollowupMutation(task, "update", { plannedDate: "2026-10-19" }), true);
+  assert.equal(isOfflineRelationshipFollowupMutation(task, "update", { title: "Changed" }), false);
+  assert.equal(isOfflineRelationshipFollowupMutation({ ...task, relatedContactId: null }, "complete", {}), false);
+  assert.equal(isOfflineRelationshipFollowupMutation({ ...task, status: "completed" }, "complete", {}), false);
+});

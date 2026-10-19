@@ -135,6 +135,7 @@ test("offline task writes require the accepted tasks lease and allow only existi
   const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [
     { id: "task:1", revision: "r1", payload: { id: "task:1" } },
     { id: "task:followup", revision: "r2", payload: { id: "task:followup", accountId: A, ownerUserId: A, title: "Follow up", status: "open", category: "relationship", plannedDate: "2026-10-03", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
+    { id: "task:event-followup", revision: "r4", payload: { id: "task:event-followup", accountId: A, ownerUserId: A, title: "Event follow up", status: "open", category: "event", relatedContactId: "contact:1", plannedDate: "2026-10-03", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
     { id: "task:work", revision: "r3", payload: { id: "task:work", accountId: A, ownerUserId: A, title: "Send deck", status: "open", category: "work", priority: "normal", source: "manual", createdAt: new Date(T0).toISOString(), updatedAt: new Date(T0).toISOString() } },
   ] } };
   const { database, lifecycle } = device(t);
@@ -167,6 +168,12 @@ test("offline task writes require the accepted tasks lease and allow only existi
   });
   await session.enqueueOfflineTaskMutation(followupDefer);
   await session.enqueueOfflineTaskMutation(followupComplete);
+  const eventComplete = buildOfflineTaskMutation({
+    mutationId: "123e4567-e89b-42d3-a456-426614174009", entityId: "task:event-followup", operation: "complete", baseRevision: "r4",
+    requestBody: { action: "complete", idempotencyKey: "123e4567-e89b-42d3-a456-426614174009" }, createdAt: new Date(T0 + 3).toISOString(),
+  });
+  await session.enqueueOfflineTaskMutation(eventComplete);
+  assert.ok((await session.readOutboxOverlay("task"))?.queuedMutations.some(item => item.id === "task:event-followup" && item.operation === "complete"));
   const followupRename = buildOfflineTaskMutation({
     mutationId: "123e4567-e89b-42d3-a456-426614174008", entityId: "task:followup", operation: "update", baseRevision: "r2",
     requestBody: { action: "update", expectedUpdatedAt: new Date(T0).toISOString(), idempotencyKey: "123e4567-e89b-42d3-a456-426614174008", patch: { title: "Changed offline" } },

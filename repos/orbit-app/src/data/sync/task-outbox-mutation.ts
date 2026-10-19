@@ -1,4 +1,5 @@
 import { parseMutation } from "./mutation-adapters";
+import { isOpenFollowUpTask, type FollowUpTaskInput } from "../../api/compute/follow-up-task";
 import type { OfflineTaskMutationInput } from "./sync-coordinator";
 
 const taskOperations = new Set(["create", "update", "complete", "reopen", "cancel", "delete"]);
@@ -6,19 +7,18 @@ const taskOperations = new Set(["create", "update", "complete", "reopen", "cance
 /**
  * A personal task for offline writes is the actor's own task in one of the shared offline contract's task categories
  * (personal / work / other). Relationship, meeting and event task creation stays online (design D6);
- * R20a permits only existing open relationship task completion or moving a date later.
+ * R20a permits only existing open follow-up task completion or moving a date later.
  */
 export const OFFLINE_TASK_CATEGORIES = ["personal", "work", "other"] as const;
 export function isOfflineTaskCategory(category: unknown): boolean {
   return typeof category === "string" && (OFFLINE_TASK_CATEGORIES as readonly string[]).includes(category);
 }
 
-/** R20a: only an existing open relationship follow-up may be completed or moved later offline. */
+/** R20a: only an existing open follow-up may be completed or moved later offline. */
 export function isOfflineRelationshipFollowupMutation(
   task: Record<string, unknown>, operation: string, patch: Record<string, unknown>,
 ): boolean {
-  if (task.kind === "lifecycle" || task.category !== "relationship" || task.status !== "open" || task.deleted === true || task.lifecycleState === "deleted" ||
-      typeof task.deletedAt === "string" && task.deletedAt.trim() !== "") return false;
+  if (task.kind === "lifecycle" || typeof task.status !== "string" || !isOpenFollowUpTask(task as unknown as FollowUpTaskInput)) return false;
   if (operation === "complete") return Object.keys(patch).length === 0;
   if (operation !== "update") return false;
   const keys = Object.keys(patch);
