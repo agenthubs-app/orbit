@@ -1,0 +1,22 @@
+{
+  "_note": "R18b SC-14 initial public-404 slice only. Other approved public, authenticated, maintenance and auth views remain to be registered and verified; this is not the full matrix.",
+  "defaults": {
+    "design-base": "http://localhost:3420/redesign-2026-10/",
+    "app-origin": "http://localhost:3400",
+    "grid": 100,
+    "attribution": "scripts/visual/attribution-redesign-R18b.json"
+  },
+  "sources": [
+    "repos/orbits/app/not-found.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/NotFoundPage.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/NotFoundPage.module.css"
+  ],
+  "views": [
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 610, "width": 1440, "themes": ["light"] },
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 611, "width": 1440, "themes": ["dark"] },
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 614, "width": 1024, "themes": ["light"] },
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 615, "width": 1024, "themes": ["dark"] },
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 618, "width": 390, "themes": ["light"] },
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 619, "width": 390, "themes": ["dark"] }
+  ]
+}

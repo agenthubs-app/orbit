@@ -8,7 +8,7 @@
 }
 
 .content {
-  max-width: 620px;
+  max-width: 656px;
   margin: 92px auto 0;
   padding: 0 18px 48px;
   text-align: center;
@@ -27,7 +27,12 @@
 
 .description {
   color: var(--ink-2);
+  font-size: var(--fs-control);
   line-height: 1.7;
+}
+
+.mobileBreak {
+  display: none;
 }
 
 .actions {
@@ -60,12 +65,32 @@
 }
 
 @media (max-width: 600px) {
+  .public {
+    padding-inline: var(--space-18);
+    background: radial-gradient(420px 320px at 0% 0%, var(--fog-a), transparent 70%),
+      radial-gradient(380px 300px at 100% 8%, var(--fog-b), transparent 70%),
+      var(--bg);
+  }
+
+  .publicHeader {
+    min-height: 0;
+  }
+
   .content {
     margin-top: 122px;
   }
 
   .content h1 {
     font-size: var(--fs-number);
+  }
+
+  .description {
+    max-width: 190px;
+    margin-inline: auto;
+  }
+
+  .mobileBreak {
+    display: initial;
   }
 
   .actions {
