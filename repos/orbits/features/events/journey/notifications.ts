@@ -3,11 +3,10 @@
  * - `event_deadline`：申込締切 48 小时前起（直到締切），对「加进了参加予定、还没报名」的人；
  * - `event_prep`：活动当天东京 8:00 起（到开场前），对已报名的人；
  * - 幂等：semanticKey = 类型 + 活动（同人同活动同类只一次；收件箱写入方按 semanticKey 去重，重放不重置已读）；
- * - 频控：同一个人同一东京日最多 `dailyCap` 条（用户设置 1–3，缺省 2），按开场时间早的优先。
+ * - 站内通知写入不受推送配额限制；推送频控由投递 worker 在发送前执行。
  */
 import { tokyoParts } from "../../../shared/compute/event-score-input";
 
-export const EVENT_NOTIFICATION_DEFAULT_DAILY_CAP = 2;
 const HOUR = 3_600_000;
 
 export interface EventNotificationCandidate {
@@ -33,7 +32,7 @@ function tokyoEight(startsAt: number): number {
   return tokyoParts(startsAt).dayIndex * DAY - 9 * HOUR + 8 * HOUR;
 }
 
-/** Which notifications are due now (before the daily cap). */
+/** Which inbox notifications are due now. */
 export function dueEventNotifications(candidates: readonly EventNotificationCandidate[], now: Date): PlannedEventNotification[] {
   const time = now.getTime();
   const out: PlannedEventNotification[] = [];
@@ -51,19 +50,6 @@ export function dueEventNotifications(candidates: readonly EventNotificationCand
   return out;
 }
 
-/** Applies the per-person daily cap: `sentToday` = event notifications already written today (Tokyo). */
-export function capEventNotifications(planned: readonly PlannedEventNotification[], input: { sentToday: Readonly<Record<string, number>>; dailyCap: Readonly<Record<string, 1 | 2 | 3 | undefined>>; startsAt: Readonly<Record<string, string>> }): PlannedEventNotification[] {
-  const byActor = new Map<string, PlannedEventNotification[]>();
-  for (const item of planned) byActor.set(item.actorId, [...(byActor.get(item.actorId) ?? []), item]);
-  const out: PlannedEventNotification[] = [];
-  for (const [actorId, items] of byActor) {
-    const cap = input.dailyCap[actorId] ?? EVENT_NOTIFICATION_DEFAULT_DAILY_CAP;
-    const left = Math.max(0, cap - (input.sentToday[actorId] ?? 0));
-    out.push(...[...items].sort((a, b) => Date.parse(input.startsAt[a.eventId] ?? "") - Date.parse(input.startsAt[b.eventId] ?? "")).slice(0, left));
-  }
-  return out;
-}
-
 export function eventNotificationCopy(kind: "event_deadline" | "event_prep", title: string, language: "ja" | "zh" | "en" = "ja"): { title: string; body: string } {
   if (kind === "event_deadline") {
     return language === "zh" ? { body: "报名截止前 48 小时。要参加的话现在报名。", title: `${title} 即将截止报名` } : language === "en" ? { body: "Registration closes within 48 hours.", title: `${title}: registration closes soon` } : { body: "申込締切まで 48時間を切りました。参加するなら今のうちに申し込みましょう。", title: `${title} の申込締切が近づいています` };
@@ -71,23 +57,17 @@ export function eventNotificationCopy(kind: "event_deadline" | "event_prep", tit
   return language === "zh" ? { body: "看看今天想见的人和准备清单。", title: `今天是 ${title}` } : language === "en" ? { body: "Check who to meet and your prep list.", title: `${title} is today` } : { body: "会いたい人と準備リストを確認しましょう。", title: `今日は ${title}` };
 }
 
-/** One run: plan → cap → write (the writer is idempotent by semantic key). */
+/** One run: plan → write every due inbox record (the writer is idempotent by semantic key). */
 export async function runEventNotifications(deps: {
   candidates: () => Promise<EventNotificationCandidate[]>;
-  sentToday: (actorIds: readonly string[], now: Date) => Promise<Record<string, number>>;
-  dailyCap: (actorIds: readonly string[]) => Promise<Record<string, 1 | 2 | 3 | undefined>>;
   write: (notification: PlannedEventNotification & { title: string; body: string; href: string }) => Promise<boolean>;
   now: Date;
 }): Promise<{ planned: number; written: number }> {
   const candidates = await deps.candidates();
   const due = dueEventNotifications(candidates, deps.now);
   if (!due.length) return { planned: 0, written: 0 };
-  const actors = [...new Set(due.map((item) => item.actorId))];
-  const [sentToday, dailyCap] = await Promise.all([deps.sentToday(actors, deps.now), deps.dailyCap(actors)]);
-  const startsAt = Object.fromEntries(candidates.map((item) => [item.eventId, item.startsAt]));
-  const capped = capEventNotifications(due, { dailyCap, sentToday, startsAt });
   let written = 0;
-  for (const item of capped) {
+  for (const item of due) {
     const event = candidates.find((candidate) => candidate.eventId === item.eventId && candidate.actorId === item.actorId);
     if (!event) continue;
     const copy = eventNotificationCopy(item.sourceKind, event.title);

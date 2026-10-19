@@ -1,7 +1,7 @@
 /**
  * R27 SC-R27-13：活动通知的维护任务（每 10 分钟最多一次；规则见 notifications.ts）。Owner: 甲 (R27).
  * - 候选（有界 ≤500）：已报名（membership rsvped / 审核中）且 24 小时内开场的活动；加进计划但没报名、48 小时内截止的活动。
- * - 写入走收件箱 upsert（semanticKey 幂等）；频控按人每天 dailyCap（缺省 2）。同一批确定性排序，重复跑不会多写。
+ * - 写入走收件箱 upsert（semanticKey 幂等）；推送配额由投递 worker 检查，不在写收件箱前截断。
  */
 import type { MaintenanceTask } from "../../operations/maintenance/pass";
 import { runEventNotifications, type EventNotificationCandidate } from "./notifications";
@@ -52,10 +52,7 @@ export function createEventNotificationMaintenanceTask(input: { resolve: () => {
       try {
         return await runEventNotifications({
           candidates: () => readEventNotificationCandidates(deps.query, deps.workspaceId, at),
-          // 用户的 dailyCap 设置界面属 R13；在那之前一律缺省 2。确定性排序 + 幂等写入 → 重复跑不会超过上限。
-          dailyCap: async () => ({}),
           now: at,
-          sentToday: async () => ({}),
           write: (item) => deps.write(item.actorId, { at: item.at, body: item.body, eventId: item.eventId, href: item.href, semanticKey: item.semanticKey, sourceKind: item.sourceKind, title: item.title }),
         });
       } catch (error) {
