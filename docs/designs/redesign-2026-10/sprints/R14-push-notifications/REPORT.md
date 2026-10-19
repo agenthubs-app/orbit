@@ -5,7 +5,7 @@
 - 2026-10-19 在 `line-b` 先拉取 `origin/redesign`，起点 `ee87af742`；R13、R18a、R31a/b 的已交代码均可读取。后续按路径提交后再次 `git pull --rebase origin redesign`，已合到 `ec83ac5a0`；收口修复后再次拉取，分支仍为最新。**没有 push、Neon/生产连接、部署或 TestFlight。**
 - 本轮复用 `orbit_records` 已有集合；**新增数据库迁移编号：无**。本机 PostgreSQL 仅为 `127.0.0.1/orbit_line_b`。没有真实付费 AI 调用。
 - R13 REVIEW 的 M 项先修并分别提交：外人原始 owner 过滤、混合 `mail_summary` 整行过滤、Top-1 全局原始候选排序、账号时区分组；其 REPORT 已写复核记录。R13 像素及离线首页项依 README 规则 11 交主会话，没有宣称通过。
-- 10 月 19 日重启后确认工作树干净，再次 `git fetch` 和 `git pull --rebase origin redesign`，结果为 up to date。本轮补交的 R13 跨账号秘書预览过滤和 R11b 四项复核各有独立提交；没有重做已完成的全量。
+- 10 月 19 日重启后确认工作树干净，再次 `git fetch` 和 `git pull --rebase origin redesign`，当时结果为 up to date。本轮补交的 R13 跨账号秘書预览过滤和 R11b 四项复核各有独立提交；没有重做已完成的全量。
 - 证据目录：`../_evidence-b/R14/run-01/`（相对本 worktree）。
 
 ## SC 对照
@@ -19,12 +19,12 @@
 | 05 面談例外 | **定向通过** | 仅当前已确认预约聚合体的 30 分钟提醒越过静音，仍走共享配额；取消/过期/他人不例外。 |
 | 06 邀请双方 | **定向通过** | 邀请人、受邀人各自产生本人联系人通知，同一连接幂等；本机 PostgreSQL 目标归属测试通过。 |
 | 07 落地白名单 | **部分** | 本地联系人/扫描/Task To-do 合法地址开放；保留段、穿越、编码斜杠、外链和多余查询安全回退；冷启动未登录远程 delivery 进入受保护收件箱，由服务端再验 owner。重启后模拟器 `openurl orbit:///task?seg=todo` 实际进入 To-do，截图可查；本机 API 未运行，Task 数据为重试态。系统通知点击与远程 delivery 未做手工链。 |
-| 08 App 通知页 | **功能定向通过，像素失败** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。b5 #13 已改稿；第三轮以清掉 Expo 开发警告的真实模拟器截图比对仍有 21 条未归因超阈带，不能标 PASS。没有手工点按读回。 |
-| 09 Web 通知页 | **功能定向通过，像素失败** | 静态受保护路由、账号设置壳、真实偏好保存、三语 copy、响应式双列/单列。b5 #29 已改稿并补实际自動発見卡；1440 门禁初轮 18 条未归因带，修订后重比结果见画板节。1024/390/dark 无板截图待补。 |
-| 10 秘書设置 | **功能定向通过，像素失败** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。b11 #32 已改稿，清掉 Expo 开发警告后的浅色门禁仍有 12 条未归因超阈带；没有手工点按读回。 |
+| 08 App 通知页 | **功能定向通过，像素失败** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。b5 #13 已改稿；第三轮干净模拟器截图仍有 21 条未归因超阈带，不能标 PASS。手工将上限从 3 改为 2，离开再返回读回 2，恢复 3 后再返回读回 3；深色无板截图已留证。 |
+| 09 Web 通知页 | **功能定向通过，像素失败** | 静态受保护路由、账号设置壳、真实偏好保存、三语 copy、响应式双列/单列。b5 #29 已改稿并补实际自動発見卡；1440 修订门禁结果见画板节。1024/390 浅色及 1440 深色无板截图已人工查看；390 下上限 3→2 保存并刷新读回 2，恢复 3 并刷新读回 3。 |
+| 10 秘書设置 | **功能定向通过，像素失败** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。b11 #32 已改稿，干净浅色门禁仍有 12 条未归因超阈带；深色无板截图已留证，手工点击「静かな時間帯を変更」进入通知设置。秘書开关的手工保存读回未测。 |
 | 11 注册/权限/旧屏 | **定向通过** | App OS 拒绝时不显示生效的 opt-in；关闭先禁止注册再撤销设备，撤销失败可见；账号切换隔离，旧组件的外部使用点保留并改用 R31。R18a 其他动态段仍在；真实设备 token 注册未实测。 |
 | 12 R13/R10/R19 交接 | **部分** | R13 来源、宽进逐条跳过、账号时区分组已回归；未改同步 DTO。活动维护任务已完整写站内通知，保留 semanticKey 幂等；R10/R19 只应消费站内通知，见交接表。 |
-| 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。 |
+| 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。App 通知上限和秘書静音入口已用模拟器点按，Web 窄屏保存读回已手工验证。 |
 | 14 演示世界/i18n | **部分** | mock 偏好改为 07:30/3/mail=false，样本来源仅真实可用种类；App 通知域 copy QA 39/39、Web 通知域零问题，App 三语键一致、硬编码允许清单缩减。中途态 `design=` 与生产不可达证明依赖改稿画板/fixture，未实现。 |
 | 15 全量/像素 | **未通过** | 最后 Web 全量 15 失败、2 cancelled；两项取消的迁移测试串行 4/4 通过。App 全量 38 失败、3 cancelled；针对其失败文件串行 496 例中 484 pass、12 fail，原 41 个未通过/取消名称中 29 个串行恢复，稳定失败为旧相机 9、旧 i18n 1、A `Toggle`/`CategoryTabs` 2，确认 B 新失败 0。三个修订板的像素比较均未通过，不能建立 R14 PASS。 |
 | 16 报告/交接 | **本报告** | 已列 SC、按路径提交、源代码范围、测试与请求；主会话独立复核后处理后续整合。 |
@@ -43,11 +43,11 @@
 | G08 | demo-world 为只读 `sample:true`，未调用付费 AI。 |
 | G09 | 改稿门禁未使用 `[data]` 为结构缺块归因；三板均 FAIL。 |
 | G10 | Web 复用 `AccountLayout` 的 ShellPage 插槽。 |
-| G11 | Web 390 仍有账号壳标题；无板截图待做。 |
+| G11 | Web 390 保留账号壳标题；`web-390-light.png` 已人工查看。 |
 | G12 | Web 设置页未新增搜索入口。 |
-| G13 | 页面 CSS module/Scope 隔离；窄屏底部和叠层实测待做。 |
+| G13 | 页面 CSS module/Scope 隔离；390 浅色、1024 浅色和 1440 深色无板截图已人工查看，系统叠层仍待实测。 |
 | G14 | Web server route 和 App 私有 route 均有登录守卫。 |
-| G15 | 一级壳未动；App 二级路由与返回目标真机核对待做。 |
+| G15 | 一级壳未动；B 模拟器上通知页离开再返回、秘書静音入口跳转通知页已核对，真实设备仍待验。 |
 | G16 | App 页面由 `AppScreen` 承接底栏转场。 |
 | G17 | 两个 App 新屏均使用 `AppScreen inset="kit"`。 |
 | G18 | 503/离线显示错误或在线边界；来源服务 unavailable 的真机状态待补。 |
@@ -94,6 +94,7 @@
 - RD-30 活动来源修复先加 RED：cap 满时两个 due 站内记录写入 0/2；移除站内提前截断及旧 cap helper 后，R27 目标测试 4/4、Web `tsc --noEmit` 退出 0。push 统一配额逻辑未动，活动站内记录仍靠 semanticKey 幂等；证据见本轮终端记录与本报告交接表。
 - 活动修复后 Web 再做一轮收口全量（`web-full-after-event.log`）：**7,738 tests、6,710 pass、15 fail、2 cancelled、1,011 skip，退出 1**。15 个失败名称与前轮完全一致；两项新取消是本机 PostgreSQL canonical membership 迁移用例在并发套件里达到 60/120 秒等待限时。随后只跑这两个文件的串行复核 `web-migration-serial-review.log`：4/4 pass、0 fail、0 cancelled；因此无证据表明事件改动新增稳定 Web 失败。全量本身仍未通过。
 - 额外一次本机在线截图：`online-settings-check2.log` 以 `buildStackEnv(..., noPaidAi:true)` 将数据库固定为 localhost、付费 provider key 置空，在 B 线 `:3300` 启动 Web、`:8083` 启动 Metro；模拟器深链分别进入通知和秘書表单，截图 `online-notifications.png`、`online-secretary.png`。首次探针使用 `127.0.0.1:8083`，而 Metro 只监听 `localhost`，故 `online-settings-check.log` 超时；更正探针后成功。该次截图拍摄时画板尚未改稿，且通知截图含开发调试提示，**不作像素 PASS**；后续干净截图与门禁见下一节。未手工验证保存读回、系统通知点击或 VoiceOver；这些仍由定向自动测试及后续独立验收承担。结束时已停本轮 Next/Metro，关闭 B 模拟器，并将 Next 启动自动改写的 `next-env.d.ts` / `tsconfig.json` 精确恢复到本轮前内容。
+- 后续在线手工复核：Web 的 `web-1024-light.png`、`web-390-light.png`、`web-1440-dark.png` 均为无板页面，已人工查看路由和布局；390 下将推送上限 3→2 并保存，刷新后仍为 2，再恢复 3 并刷新读回 3（`web-settings-readback.log`）。B 模拟器通知页将上限 3→2，离开返回后仍为 2（`app-cap2-after-return.png`），恢复 3 后再次离开返回仍为 3（`app-cap3-restored.png`）；秘書页点按「静かな時間帯を変更」后，辅助功能树出现通知页标题。App 两页深色无板截图为 `online-notifications-dark.png`、`online-secretary-dark.png`，均已人工查看。以上验证不替代失败的像素门禁；系统通知点击、远程 delivery、VoiceOver 和秘書来源开关保存读回仍未手工验收。
 
 ## 画板门禁
 
@@ -105,7 +106,7 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 
 ### 待主会话接手
 
-- b5 #13/#29、b11 #31/#32 已按代定改稿；三个页面门禁都失败。需按实际屏幕继续对齐布局、重截无 Expo 覆盖的 App 图并复跑门禁，不可标 PASS。
+- b5 #13/#29、b11 #31/#32 已按代定改稿；三个页面门禁都失败。已有无 Expo 覆盖的 App 截图，仍需按实际屏幕继续对齐布局并复跑门禁，不可标 PASS。
 - 活动通知写站内前的截断已移除。事件线接手时保留「站内逐条幂等、推送端统一限额」边界，勿恢复旧 `dailyCap` 截断。
 - 生产推送、Neon 配置/迁移、部署、真机送达与 TestFlight 保留为独立授权项；本轮仅本机验证。
 
@@ -113,7 +114,7 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 | --- | --- | --- | --- |
 | 1. 活动来源站内截断 | `notification-job.ts` 和 `notifications.ts` 已移除写入前 cap；R27 回归断言两个 due 记录都写入，Web 类型检查退出 0。 | 事件线继续保持站内逐条 semanticKey upsert；push 只在 typed worker reserve 时受 cap。 | RD-30、SC-03/12；`r27-event-notifications.test.ts`。 |
 | 2. R10 首页/R19 小组件 | 站内通知 DTO 与 R13 preview 已交，R14 开关只管 push；未触碰两页。 | 只读 R13 站内来源；核对过滤、时区、离线行为，避免把 push 开关当作隐藏来源。 | R13 REPORT 的 M0 合同 `306f32224`；SC-12。 |
-| 3. b5/b11 改稿 | 四板已在原文件改稿且完成预检；三个页面像素门禁均 FAIL。 | 主会话复核版面并协调页面布局对齐、无覆盖的新 App 截图、重新门禁；缺口不得用虚假归因掩盖。 | 本报告「画板门禁」及 `pixel-revised-*` 证据。 |
+| 3. b5/b11 改稿 | 四板已在原文件改稿且完成预检；三个页面像素门禁均 FAIL。 | 主会话复核版面并协调页面布局对齐、重跑门禁；缺口不得用虚假归因掩盖。 | 本报告「画板门禁」及 `pixel-revised-*` / `pixel-app-*-last` 证据。 |
 | 4. 生产推送 | 仅本机 DB/provider 替身验证；没有外部发送。 | 主会话登记 DEFERRED「待用户授权」：生产 worker 开关、凭据、Neon 迁移/配置、部署、APNs/Expo 真机送达、TestFlight；授权后逐项执行并留回执。 | PLANNER B-14-10、§10。 |
 | 5. Gmail `mail_summary` | R13 客户端整行隐藏，R14 默认关闭且不展示入口。 | 仅在 D-16 restricted scope 获单独授权和真实来源/权限设计后重新立项；不要打开现有偏好字段冒充可用。 | B-14-5、R13 REVIEW M。 |
 | 6. R31 开关浏览器语义 | App 全量中既有发现开关用例的 `getByRole('switch')` 可找到控件，但 `aria-checked` 返回 null；R31 `Toggle` 只设 `accessibilityState.checked`。 | A 线核对 `UiPressable`/RN Web 的属性透传，给 `Toggle` 输出真实选中状态，并重跑 `ink-signal-settings-account`；B 线通知设置复测同一控件。 | `app-full.log`、`app-browser-fix.log`；SC-13/15。 |
