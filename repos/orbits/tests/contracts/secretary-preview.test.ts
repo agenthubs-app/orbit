@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { demoSecretaryNotifications } from '../../shared/mock/demo-world/fixtures';
-import { secretaryPreviewSchema } from '../../shared/api-schema/secretary-preview';
+import { parseSecretaryPreviewForActor, secretaryPreviewSchema } from '../../shared/api-schema/secretary-preview';
 import { buildSecretaryPreview } from '../../shared/compute/secretary-source';
 
 const now = '2026-10-07T08:00:00+09:00';
@@ -43,4 +43,10 @@ test('response rejects a different actor and caps after deduplication', () => {
   assert.deepEqual(result.items.map(item => item.eventId), ['e4', 'e3', 'e2']);
   assert.equal(result.hasMore, true);
   assert.throws(() => secretaryPreviewSchema.parse({ ...result, actorId: '' }));
+});
+
+test('a foreign owner in an unknown preview card rejects the raw page', () => {
+  const result = buildSecretaryPreview('actor', [{ notification: make('good', 'event_pick', 'event-1'), sourceState: 'available' }], now);
+  const foreignUnknown = { ...result.items[0]!, kind: 'future', notification: { ...result.items[0]!.notification, actorId: 'other-actor' } };
+  assert.throws(() => parseSecretaryPreviewForActor({ ...result, items: [...result.items, foreignUnknown] }, 'actor'), /owner mismatch/i);
 });
