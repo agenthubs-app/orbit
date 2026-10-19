@@ -36,6 +36,7 @@ async function openBundle(
       "process.env.EXPO_PUBLIC_ORBIT_BUILD_SHA": '"baseline-sha"',
       "process.env.EXPO_PUBLIC_ORBIT_PERFORMANCE_RUN": '"1"',
       "process.env.EXPO_PUBLIC_ORBIT_PERFORMANCE_RUN_NUMBER": '"1"',
+      "process.env.EXPO_PUBLIC_ORBIT_APP_STORE_URL": '""',
       "process.env.NODE_ENV": '"test"',
     },
     format: "iife",
@@ -189,6 +190,12 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function Wrapper({ children }) { return <>{children}</>; }
     export const OrbitTimeZoneProvider = Wrapper;
     export const SafeAreaProvider = Wrapper;
+    export const SafeAreaView = Wrapper;
+    export const View = Wrapper;
+    export const ScrollView = Wrapper;
+    export const ActivityIndicator = Wrapper;
+    export const UiText = Wrapper;
+    export const Linking = { openURL: async () => undefined };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
@@ -196,6 +203,7 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export const GestureHandlerRootView = Wrapper;
     export const UiPortalHost = Wrapper;
     export const ToastProvider = Wrapper;
+    export function RootVersionGate({ children }) { return children(true); }
     export function UiFeedbackHost() { return null; }
     export function usePathname() { return "/home"; }
     export function mainTabForPath() { return "home"; }
@@ -205,7 +213,14 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function OrbitNotificationsCoordinator() { return null; }
     export function OrbitNotificationLifecycle() { return null; }
     export function StatusBar() { return null; }
-    export function useOrbitTheme() { return { scheme: "light" }; }
+    export function useOrbitTheme() { return { scheme: "light", colors: { bg: "white", accentText: "black" } }; }
+    export function useOrbitLocale() { return { language: "ja", t: (key) => key }; }
+    export function useOrbitApiClient() { return {}; }
+    export async function loadAppVersionGate() { return { kind: "allow" }; }
+    export function ForceUpdateContent() { return null; }
+    export function MaintenanceContent() { return null; }
+    export function validAppStoreUrl() { return null; }
+    export function formatMaintenanceUntil() { return null; }
     export default { getItem: async () => null, setItem: async () => undefined };
     export async function loadAppearancePreference() {}
     export function applyStoredAppearanceSync() { return false; }
@@ -266,12 +281,19 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export function Wrapper({ children }) { return <>{children}</>; }
     export const OrbitTimeZoneProvider = Wrapper;
     export const SafeAreaProvider = Wrapper;
+    export const SafeAreaView = Wrapper;
+    export const View = Wrapper;
+    export const ScrollView = Wrapper;
+    export const ActivityIndicator = Wrapper;
+    export const UiText = Wrapper;
+    export const Linking = { openURL: async () => undefined };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
     export const OrbitLocaleProvider = Wrapper;
     export const GestureHandlerRootView = Wrapper;
     export const UiPortalHost = Wrapper;
+    export function RootVersionGate({ children }) { return children(true); }
     export function ToastProvider({ children, hasTabBar }) { return <div data-shell-toast data-has-tab-bar={String(hasTabBar)}>{children}</div>; }
     export function ShellTabBar() { return <nav aria-label="main tabs" />; }
     export function UiFeedbackHost() { return null; }
@@ -280,7 +302,14 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export function useOrbitAuthSession() { return { actorId: state.signedIn ? "actor:one" : null, ready: state.ready, signedIn: state.signedIn }; }
     export function useOrbitApiBaseUrl() { return { baseUrl: "https://api.example.test" }; }
     export function useMobileViewport() { return { keyboardVisible: false }; }
-    export function useOrbitTheme() { return { scheme: "light" }; }
+    export function useOrbitTheme() { return { scheme: "light", colors: { bg: "white", accentText: "black" } }; }
+    export function useOrbitLocale() { return { language: "ja", t: (key) => key }; }
+    export function useOrbitApiClient() { return {}; }
+    export async function loadAppVersionGate() { return { kind: "allow" }; }
+    export function ForceUpdateContent() { return null; }
+    export function MaintenanceContent() { return null; }
+    export function validAppStoreUrl() { return null; }
+    export function formatMaintenanceUntil() { return null; }
     export function AppErrorScreen() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
     export function DevOpenPath() { return null; }
