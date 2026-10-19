@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { taskPageSchema } from "../../../../shared/api-schema/task-page";
-import { calendarDate } from "../../../../features/tasks/local-date-time";
+import { calendarDate, validTimeZone } from "../../../../features/tasks/local-date-time";
 import {
   activitiesToView, remindersToView, suggestionsToView, taskToView,
   type TaskView, type TaskRowView,
@@ -147,13 +147,14 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       `/api/task-suggestions/${encodeURIComponent(id)}/${action}`, action === "accept" ? single : dismissed(id),
       "POST", { idempotencyKey: key() },
     ),
-    async addReminder(task: TaskView, fireAt?: string) {
+    async addReminder(task: TaskView, fireAt?: string, timeZone = "Asia/Tokyo", title = "待办提醒") {
       fireAt ??= reminderTimes.get(task.id) ?? new Date(Date.now() + 60 * 60 * 1000).toISOString();
       if (!Number.isFinite(Date.parse(fireAt)) || Date.parse(fireAt) <= Date.now()) throw new TasksClientError("INVALID_REMINDER", "Invalid reminder time");
+      if (!validTimeZone(timeZone)) throw new TasksClientError("INVALID_TIME_ZONE", "Invalid time zone");
       reminderTimes.set(task.id, fireAt);
       await request("/api/reminders", ignore, "POST", {
-        targetType: "task", targetId: task.id, fireAt, timeZone: "Asia/Tokyo", channels: ["in_app"],
-        title: "待办提醒", body: task.title, deepLink: `/tasks/${encodeURIComponent(task.id)}`,
+        targetType: "task", targetId: task.id, fireAt, timeZone, channels: ["in_app"],
+        title, body: task.title, deepLink: `/tasks/${encodeURIComponent(task.id)}`,
         createdBy: "user", idempotencyKey: key(),
       });
       reminderTimes.delete(task.id);

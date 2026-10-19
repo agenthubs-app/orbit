@@ -39,6 +39,14 @@ test("one-hour reminder retry preserves both its time and idempotency key", asyn
   assert.notEqual(bodies[1].idempotencyKey, bodies[2].idempotencyKey);
 });
 
+test("a task reminder carries the page's time zone instead of a fixed Tokyo zone", async () => {
+  let body: any;
+  const client = createTasksClient(async (_path, init) => { body = JSON.parse(String(init?.body)); return Response.json({ success: true, data: {} }); });
+  const task = { id: "task:zone", title: "Follow up", notes: "", status: "open" as const, category: "work" as const, priority: "normal" as const, updatedAt: "2026-09-07T00:00:00Z", href: "/app/tasks/task%3Azone" };
+  await client.addReminder(task, new Date(Date.now() + 3_600_000).toISOString(), "America/New_York");
+  assert.equal(body.timeZone, "America/New_York");
+});
+
 test("canonical App task links open Web task details without changing legacy reminder links", () => {
   const hrefs = ["/tasks/task%3Aone%2Ftwo", "/app/contacts/person", "https://evil.test", "/tasks/../settings"];
   const alerts = toReminderAlerts({ reminders: hrefs.map((href, index) => ({ reminderId: String(index), title: "待办提醒", contactName: "待办提醒", organization: "Orbit", dueAt: "2026-09-07T00:00:00Z", recommendedWindow: "2026-09-07T00:00:00Z", priority: "normal", href })) } as any);

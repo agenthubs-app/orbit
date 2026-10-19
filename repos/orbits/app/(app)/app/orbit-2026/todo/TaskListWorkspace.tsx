@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { resolveLocalDateTime } from "../../../../../features/tasks/local-date-time";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { createTasksClient, TasksClientError } from "../../tasks/tasks-client";
@@ -12,6 +13,7 @@ import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptySt
 import { standardCopyFor } from "../copy/standard";
 import { ShellPage, useInShell } from "../shell/slots";
 import { groupTaskRows, type TaskListFilter, type TaskListGroupKey } from "./task-list-groups";
+import { nextMorningReminderAt } from "./task-list-reminder-time";
 import styles from "./task-list.module.css";
 
 const groups: Record<TaskListGroupKey, keyof typeof taskCopy> = {
@@ -68,6 +70,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const selectedIdRef = useRef<string | null>(initialSelectedId ?? null);
   const [editing, setEditing] = useState<{ task: TaskView; title: string; notes: string; conflict: boolean } | null>(null);
+  const [customReminder, setCustomReminder] = useState(false);
+  const [customReminderAt, setCustomReminderAt] = useState("");
+  const [reminderValidation, setReminderValidation] = useState("");
+  const [reminderFailureTaskId, setReminderFailureTaskId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(initialAdd);
   const [draft, setDraft] = useState("");
@@ -89,6 +95,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const reminders = useTasksResource(() => selectedId ? client.loadReminders(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const activities = useTasksResource(() => selectedId ? client.loadActivities(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const mutation = useTasksMutation();
+  const reminderMutation = useTasksMutation();
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");
   const visibleOpen = !denied && !open.error ? open.data?.items ?? [] : [];
   const visibleDone = !denied && !completed.error ? completed.data?.items ?? [] : [];
@@ -97,6 +104,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     setSelectedId(id);
     setEditing(null);
     setConfirmDelete(false);
+    setCustomReminder(false);
+    setCustomReminderAt("");
+    setReminderValidation("");
+    setReminderFailureTaskId(null);
     if (typeof window === "undefined" || !window.location?.href || !window.history?.replaceState) return;
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("task", id); else url.searchParams.delete("task");
@@ -148,6 +159,35 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       toast.success(t(taskCopy.taskListSaved));
     }, "");
   }
+  function addReminder(fireAt?: string) {
+    const task = detail.data;
+    if (!task || task.id !== selectedId || reminderMutation.busy || mutation.busy) return;
+    setReminderValidation("");
+    setReminderFailureTaskId(task.id);
+    void reminderMutation.run(() => client.addReminder(task, fireAt, timeZone, t(taskCopy.taskListReminder)), () => {
+      if (selectedIdRef.current !== task.id) return;
+      reminders.refresh();
+      setCustomReminder(false);
+      setCustomReminderAt("");
+      toast.success(t(taskCopy.taskListReminderSaved));
+    }, "");
+  }
+  function addCustomReminder() {
+    const [localDate, localTime] = customReminderAt.split("T");
+    const fireAt = localDate && localTime ? resolveLocalDateTime(localDate, localTime, timeZone) : null;
+    if (!fireAt || Date.parse(fireAt) <= Date.now()) { setReminderValidation(t(taskCopy.taskListReminderInvalid)); return; }
+    addReminder(fireAt);
+  }
+  function cancelReminder(id: string) {
+    const taskId = selectedId;
+    if (!taskId || reminderMutation.busy || mutation.busy) return;
+    setReminderFailureTaskId(taskId);
+    void reminderMutation.run(() => client.cancelReminder(id), () => {
+      if (selectedIdRef.current !== taskId) return;
+      reminders.refresh();
+      toast.success(t(taskCopy.taskListReminderCancelled));
+    }, "");
+  }
   const selectedRow = [...visibleOpen, ...visibleDone].find(item => item.id === selectedId);
   const notesClearUnsupported = Boolean(editing?.task.notes && !editing.notes.trim());
   const detailContent = <div className={styles.rail}>
@@ -166,7 +206,18 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={styles.detailSection}>
         <h4>{t(taskCopy.taskListReminder)}</h4>
-        {reminders.loading && !reminders.data ? <Skeleton lines={1} /> : reminders.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={reminders.refresh} /> : reminders.data?.length ? <ul className={styles.detailTimeline}>{reminders.data.map(reminder => <li key={reminder.id}><time dateTime={reminder.fireAt}>{formatDate(reminder.fireAt, language, timeZone)}</time></li>)}</ul> : <p className={styles.hint}>{t(taskCopy.taskListNoReminder)}</p>}
+        {reminders.loading && !reminders.data ? <Skeleton lines={1} /> : reminders.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={reminders.refresh} /> : reminders.data?.length ? <ul className={styles.detailTimeline}>{reminders.data.map(reminder => <li key={reminder.id}><time dateTime={reminder.fireAt}>{formatDate(reminder.fireAt, language, timeZone)}</time><Button label={t(taskCopy.taskListCancel)} aria-label={`${t(taskCopy.taskListReminderCancel)}: ${formatDate(reminder.fireAt, language, timeZone)}`} size="sm" variant="ghost" disabled={reminderMutation.busy || mutation.busy} onClick={() => cancelReminder(reminder.id)} /></li>)}</ul> : <p className={styles.hint}>{t(taskCopy.taskListNoReminder)}</p>}
+        {detail.data.status === "open" && !reminders.error ? <div className={styles.reminderControls}>
+          <div className={styles.reminderPresets}>
+            <Button label={t(taskCopy.taskListReminderHour)} size="sm" disabled={reminderMutation.busy || mutation.busy || reminders.loading} onClick={() => addReminder()} />
+            <Button label={t(taskCopy.taskListReminderTomorrow)} size="sm" disabled={reminderMutation.busy || mutation.busy || reminders.loading} onClick={() => { const next = nextMorningReminderAt(new Date(), timeZone); if (next) addReminder(next); else setReminderValidation(t(taskCopy.taskListReminderInvalid)); }} />
+            <Button label={t(taskCopy.taskListReminderCustom)} size="sm" disabled={reminderMutation.busy || mutation.busy || reminders.loading} onClick={() => { setCustomReminder(current => !current); setReminderValidation(""); }} />
+          </div>
+          {customReminder ? <form className={styles.customReminder} onSubmit={event => { event.preventDefault(); addCustomReminder(); }}><TextField label={t(taskCopy.taskListReminderAt)} type="datetime-local" value={customReminderAt} onChange={event => setCustomReminderAt(event.target.value)} disabled={reminderMutation.busy} /><Button label={t(taskCopy.taskListReminderSet)} type="submit" variant="primary" size="sm" disabled={reminderMutation.busy || !customReminderAt} /></form> : null}
+          <p className={styles.hint}>{t(taskCopy.taskListReminderInApp)}</p>
+        </div> : null}
+        {reminderValidation ? <p role="alert" className={styles.error}>{reminderValidation}</p> : null}
+        {reminderFailureTaskId === selectedId && reminderMutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
       </section>
       <section className={styles.detailSection}>
         <h4>{t(taskCopy.taskListHistory)}</h4>

@@ -52,6 +52,18 @@ const fixture = `<div id="root"></div><script>
       const id = new URL(path, location.href).searchParams.get("targetId");
       return Response.json({ success: true, data: { reminders: window.taskReminderRows[id] || [] } });
     }
+    if (path === "/api/reminders" && method === "POST") {
+      const input = JSON.parse(init.body);
+      const id = input.targetId;
+      const reminder = { id: "added-reminder", fireAt: input.fireAt, status: "scheduled" };
+      window.taskReminderRows[id] = [...(window.taskReminderRows[id] || []), reminder];
+      return Response.json({ success: true, data: { reminder } });
+    }
+    if (path.startsWith("/api/reminders/") && method === "PATCH") {
+      const id = decodeURIComponent(path.split("/")[3]);
+      for (const rows of Object.values(window.taskReminderRows)) for (const row of rows) if (row.id === id) row.status = "cancelled";
+      return Response.json({ success: true, data: {} });
+    }
     if (/^\\/api\\/tasks\\/[^/]+\\/activities$/.test(path)) {
       const id = decodeURIComponent(path.split("/")[3]);
       return Response.json({ success: true, data: { activities: window.taskActivityRows[id] || [] } });
@@ -190,6 +202,59 @@ test("selected Task rail reads reminder and history for that task", async t => {
   const reads = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string }) => call.path.endsWith("/activities") || call.path.startsWith("/api/reminders?"));
   assert.equal(reads.length, 2);
   assert.ok(reads.every((call: { path: string }) => call.path.includes("personal")));
+});
+
+test("selected Task rail sets an in-app reminder for one hour and can cancel it", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "1時間後" }).click();
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
+  const calls = await current.evaluate(() => (window as any).taskCalls);
+  const post = calls.find((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
+  assert.equal(post.body.targetId, "personal");
+  assert.deepEqual(post.body.channels, ["in_app"]);
+  assert.equal(post.body.title, "リマインダー");
+  assert.equal(post.body.timeZone, "Asia/Tokyo");
+  assert.ok(Date.parse(post.body.fireAt) > Date.now());
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().click();
+  assert.ok((await current.evaluate(() => (window as any).taskCalls)).some((call: { path: string; method: string }) => call.path === "/api/reminders/added-reminder" && call.method === "PATCH"));
+});
+
+test("custom Task reminder rejects the past and saves an unambiguous local time", async t => {
+  const futureYear = new Date().getUTCFullYear() + 10;
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "カスタム…" }).click();
+  await rail.getByLabel("通知する日時").fill("2020-01-01T12:30");
+  await rail.getByRole("button", { name: "設定する" }).click();
+  await rail.getByText("これからの有効な日時を選んでください。").waitFor();
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST").length, 0);
+  await rail.getByLabel("通知する日時").fill(`${futureYear}-01-02T12:30`);
+  await rail.getByRole("button", { name: "設定する" }).click();
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
+  const posts = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].body.fireAt, `${futureYear}-01-02T03:30:00.000Z`);
+});
+
+test("tomorrow reminder button sends 8:00 in the task page's time zone", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("button", { name: "明日の朝 8:00" }).click();
+  await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
+  const post = (await current.evaluate(() => (window as any).taskCalls)).find((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
+  const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Tokyo" }).formatToParts(new Date(post.body.fireAt));
+  assert.equal(parts.find(part => part.type === "hour")?.value, "08");
+  assert.equal(parts.find(part => part.type === "minute")?.value, "00");
 });
 
 test("the real 390 shell keeps Task search and add usable inside the page", async t => {
