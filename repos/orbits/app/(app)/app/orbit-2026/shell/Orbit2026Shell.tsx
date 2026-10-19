@@ -24,6 +24,7 @@ import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
 import { SHELL_NAV, shellAppliesTo, shellNavKeyFor, shellShowsRail, type ShellNavKey } from "./shell-routes";
 import { ShellSlotsProvider, useShellSlots } from "./slots";
+import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
 import styles from "./shell.module.css";
 
 // R07 Orbit2026Shell (RD-02 / RD-19): the one frame of every signed-in page, mounted
@@ -34,12 +35,12 @@ import styles from "./shell.module.css";
 // are new-scope islands next to the page content — the old pages keep their own
 // [data-orbit-real-page] scope, siblings, never nested (RD-18). Navigation uses
 // next/link, so the shell stays mounted across pages.
-export function Orbit2026Shell({ language, signedIn, children }: { language: OrbitLanguage; signedIn: boolean; children: ReactNode }) {
+export function Orbit2026Shell({ language, signedIn, currentBuildId, children }: { language: OrbitLanguage; signedIn: boolean; currentBuildId?: string; children: ReactNode }) {
   const pathname = usePathname() ?? "";
   if (!shellAppliesTo(pathname, signedIn)) return <>{children}</>;
   return (
     <ShellSlotsProvider>
-      <ShellFrame language={language} pathname={pathname}>{children}</ShellFrame>
+      <ShellFrame language={language} pathname={pathname} currentBuildId={currentBuildId}>{children}</ShellFrame>
     </ShellSlotsProvider>
   );
 }
@@ -50,7 +51,7 @@ export function Orbit2026Shell({ language, signedIn, children }: { language: Orb
 type ShellChrome = { openPalette: () => void; openRail: () => void; inboxDot: boolean; rail: boolean };
 const ShellChromeContext = createContext<ShellChrome | null>(null);
 
-function ShellFrame({ language, pathname, children }: { language: OrbitLanguage; pathname: string; children: ReactNode }) {
+function ShellFrame({ language, pathname, currentBuildId, children }: { language: OrbitLanguage; pathname: string; currentBuildId?: string; children: ReactNode }) {
   const slots = useShellSlots();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [railDrawer, setRailDrawer] = useState(false);
@@ -112,6 +113,9 @@ function ShellFrame({ language, pathname, children }: { language: OrbitLanguage;
       ) : null}
       <Orbit2026Scope language={language} className={styles.bottomScope}>
         <ShellBottomBar active={active} />
+      </Orbit2026Scope>
+      <Orbit2026Scope language={language}>
+        <WebVersionBannerGate currentBuildId={currentBuildId} language={language} />
       </Orbit2026Scope>
     </div>
     </ShellChromeContext.Provider>

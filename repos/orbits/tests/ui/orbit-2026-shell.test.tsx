@@ -275,5 +275,5 @@ test("the old signed-in top bar and the floating ask are gone, with no reference
   for (const [file, component] of [[`${A}/events/page.tsx`, "PublicEventList"], [`${A}/events/[id]/page.tsx`, "PublicEventDetail"]] as const) {
     assert.match(readFileSync(file, "utf8"), new RegExp(`if \\(!session\\?\\.user\\?\\.id\\) return <${component}\\b`, "u"), file);
   }
-  assert.match(readFileSync(`${A}/layout.tsx`, "utf8"), /<Orbit2026Shell language=\{language\} signedIn=\{Boolean\(session\?\.user\)\}>/u);
+  assert.match(readFileSync(`${A}/layout.tsx`, "utf8"), /<Orbit2026Shell language=\{language\} signedIn=\{Boolean\(session\?\.user\)\} currentBuildId=\{currentBuildId\}>/u);
 });

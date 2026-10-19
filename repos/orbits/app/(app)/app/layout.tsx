@@ -31,6 +31,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     cookie: cookieStore.get("orbit-lang")?.value,
     acceptLanguage: requestHeaders.get("accept-language"),
   });
+  // Capture the build that produced this page, before the live endpoint can change.
+  const build = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+  const currentBuildId = build && /^[a-f\d]{7,40}$/iu.test(build) ? build : undefined;
 
   return (
     <SessionProvider refetchOnWindowFocus={false} session={session}>
@@ -43,7 +46,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitAskProvider>
           {/* R07 (RD-19)：所有已登录页面由新壳 Orbit2026Shell 统一挂导航（左栏、主标题区、右栏、⌘K）；
               页面不再自己挂顶栏。壳自己按路由决定是否出现（公开页、登录页、管理台不出现）。 */}
-          <Orbit2026Shell language={language} signedIn={Boolean(session?.user)}>
+          <Orbit2026Shell language={language} signedIn={Boolean(session?.user)} currentBuildId={currentBuildId}>
             {children}
           </Orbit2026Shell>
           {/* 全站名片解析提醒：上传/识别在后台继续，完成后在任意页面弹出（新用户引导.dc.html 621–650）。 */}
