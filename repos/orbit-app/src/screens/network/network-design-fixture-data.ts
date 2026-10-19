@@ -1,4 +1,5 @@
 import type { ContactSyncPayload } from "../../api/contract/contact-local-directory";
+import { contactCardSchema } from "../../api/schema/contact-card-page";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 
@@ -19,13 +20,30 @@ export function networkDesignEnabled(env: string | undefined = process.env.EXPO_
   return dev && Boolean(env?.split(",").map((entry) => entry.trim()).some((entry) => entry === "network" || entry === "all"));
 }
 
+function parseContactRow(value: unknown): ContactSyncPayload | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== "string" || !row.id) return null;
+  const card = contactCardSchema.safeParse(row.card);
+  if (!card.success || card.data.id !== row.id) return null;
+  if (!Array.isArray(row.tags) || !row.tags.every((tag) => typeof tag === "string")) return null;
+  const search = row.search;
+  if (!search || typeof search !== "object" || Array.isArray(search)) return null;
+  const fields = search as Record<string, unknown>;
+  if (typeof fields.text !== "string" || typeof fields.occurredAt !== "string" || typeof fields.updatedAt !== "string" || (fields.error !== null && typeof fields.error !== "string")) return null;
+  if (row.detail !== null && (!row.detail || typeof row.detail !== "object" || Array.isArray(row.detail))) return null;
+  return { ...row, card: card.data } as ContactSyncPayload;
+}
+
 export function parseNetworkDesignContacts(value: unknown, actorId: string): NetworkDesignContacts | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const item = value as Record<string, unknown>;
   if (item.actorId !== actorId || !["empty", "locked5", "few14", "many286"].includes(String(item.variant))) return null;
   if (!Array.isArray(item.rows) || !Array.isArray(item.goalRelatedIds) || !Array.isArray(item.followUpContactIds) || !Array.isArray(item.links)) return null;
   if (!item.fits || !item.connections || !item.valueLines) return null;
-  if (!item.rows.every((row) => row && typeof row === "object" && typeof row.id === "string" && row.card && row.card.id === row.id)) return null;
   if (![...item.goalRelatedIds, ...item.followUpContactIds].every((id) => typeof id === "string")) return null;
-  return item as unknown as NetworkDesignContacts;
+  return { ...item, rows: item.rows.flatMap((row) => {
+    const parsed = parseContactRow(row);
+    return parsed ? [parsed] : [];
+  }) } as unknown as NetworkDesignContacts;
 }
