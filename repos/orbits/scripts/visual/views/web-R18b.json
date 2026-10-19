@@ -1,5 +1,5 @@
 {
-  "_note": "R18b SC-14 initial public-404 slice only. Other approved public, authenticated, maintenance and auth views remain to be registered and verified; this is not the full matrix.",
+  "_note": "R18b SC-14 public 404, Help default and legal-placeholder slices only. Other approved states, authenticated, maintenance and auth views remain to be registered and verified; this is not the full matrix.",
   "defaults": {
     "design-base": "http://localhost:3420/redesign-2026-10/",
     "app-origin": "http://localhost:3400",
@@ -9,7 +9,12 @@
   "sources": [
     "repos/orbits/app/not-found.tsx",
     "repos/orbits/app/(app)/app/orbit-2026/auth-public/NotFoundPage.tsx",
-    "repos/orbits/app/(app)/app/orbit-2026/auth-public/NotFoundPage.module.css"
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/NotFoundPage.module.css",
+    "repos/orbits/app/help/page.tsx",
+    "repos/orbits/app/terms/page.tsx",
+    "repos/orbits/app/privacy/page.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/PublicInfoPage.tsx",
+    "repos/orbits/app/(app)/app/orbit-2026/auth-public/PublicInfoPage.module.css"
   ],
   "views": [
     { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 610, "width": 1440, "themes": ["light"] },
@@ -17,6 +22,24 @@
     { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 614, "width": 1024, "themes": ["light"] },
     { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 615, "width": 1024, "themes": ["dark"] },
     { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 618, "width": 390, "themes": ["light"] },
-    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 619, "width": 390, "themes": ["dark"] }
+    { "id": "W-R18b-08-public", "app": "/removed-page", "design": "b12-missing-states.html", "board-index": 619, "width": 390, "themes": ["dark"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 550, "width": 1440, "themes": ["light"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 551, "width": 1440, "themes": ["dark"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 552, "width": 1024, "themes": ["light"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 553, "width": 1024, "themes": ["dark"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 554, "width": 390, "themes": ["light"] },
+    { "id": "W-R18b-11H-public", "app": "/help", "design": "b12-missing-states.html", "board-index": 555, "width": 390, "themes": ["dark"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 558, "width": 1440, "themes": ["light"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 559, "width": 1440, "themes": ["dark"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 560, "width": 1024, "themes": ["light"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 561, "width": 1024, "themes": ["dark"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 562, "width": 390, "themes": ["light"] },
+    { "id": "W-R18b-11T-public", "app": "/terms", "design": "b12-missing-states.html", "board-index": 563, "width": 390, "themes": ["dark"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 566, "width": 1440, "themes": ["light"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 567, "width": 1440, "themes": ["dark"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 568, "width": 1024, "themes": ["light"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 569, "width": 1024, "themes": ["dark"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 570, "width": 390, "themes": ["light"] },
+    { "id": "W-R18b-11P-public", "app": "/privacy", "design": "b12-missing-states.html", "board-index": 571, "width": 390, "themes": ["dark"] }
   ]
 }

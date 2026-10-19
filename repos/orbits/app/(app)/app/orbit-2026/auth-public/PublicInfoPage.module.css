@@ -131,6 +131,10 @@
   font-size: var(--fs-dialog-title);
 }
 
+.contactCard h2 {
+  font-size: var(--fs-body-sm);
+}
+
 .faqCard > p {
   margin-top: var(--space-8);
 }
@@ -138,10 +142,6 @@
 .faqItem {
   padding: var(--space-14) 0;
   border-top: 1px solid var(--line);
-}
-
-.faqItem:first-of-type {
-  margin-top: var(--space-12);
 }
 
 .faqItem summary {
@@ -161,8 +161,11 @@
 
 .contactCard p,
 .contactCard a {
-  display: inline-block;
   margin-top: var(--space-6);
+}
+
+.contactCard p {
+  display: block;
 }
 
 .legalCard {
@@ -210,9 +213,16 @@
 }
 
 @media (max-width: 600px) {
+  .page {
+    padding-inline: var(--space-18);
+    background: radial-gradient(420px 320px at 0% 0%, var(--fog-a), transparent 70%),
+      radial-gradient(380px 300px at 100% 8%, var(--fog-b), transparent 70%),
+      var(--bg);
+  }
+
   .header {
     height: auto;
-    min-height: 64px;
+    min-height: 0;
     padding: var(--space-4) var(--space-16) var(--space-14);
   }
 
@@ -240,7 +250,7 @@
   }
 
   .body {
-    margin-top: var(--space-8);
+    margin: var(--space-8) var(--space-8) 0;
     padding: 0 var(--space-16) var(--space-48);
   }
 
