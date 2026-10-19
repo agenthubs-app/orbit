@@ -1,12 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { personalScheduleDraft, buildPersonalScheduleChange } from "../src/view-models/personal-schedule-editor";
+import { personalScheduleDraft, buildPersonalScheduleChange, applyPersonalScheduleDuration, type PersonalScheduleDraft } from "../src/view-models/personal-schedule-editor";
 import { personalScheduleReceiptMatches, readPersonalSchedule } from "../src/api/personal-schedule";
 const item = { id: "personal:1", sourceId: "personal:1", accountId: "owner", ownerUserId: "owner", kind: "personal" as const, category: "personal" as const, state: "upcoming" as const, title: "Review", startsAt: "2026-09-14T00:30:42Z", endsAt: "2026-09-14T01:30:00Z", location: "Tokyo", createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
 test("personal editor preserves seconds, clears optional fields and rejects ambiguous wall time", () => {
   const draft = personalScheduleDraft(item, "America/Los_Angeles"); assert.equal(draft.startDate, "2026-09-13"); assert.equal(draft.startTime, "17:30");
   assert.deepEqual(buildPersonalScheduleChange(item, { ...draft, location: "", endDate: "", endTime: "" }, "America/Los_Angeles"), { kind: "ready", fields: { location: null, endsAt: null } });
   assert.equal(buildPersonalScheduleChange(null, { ...draft, startDate: "2026-11-01", startTime: "01:30", endDate: "", endTime: "" }, "America/New_York").kind, "invalid");
+});
+
+test("personal editor validation returns translatable errors for every local rejection", () => {
+  const valid = { ...personalScheduleDraft(null, "Asia/Tokyo"), title: "Review", startDate: "2026-10-19", startTime: "10:00" };
+  const cases: Array<[PersonalScheduleDraft, string, string]> = [
+    [valid, "Invalid/Zone", "schedule.timezoneUnavailable"],
+    [{ ...valid, title: "" }, "Asia/Tokyo", "personal60.titleRequired"],
+    [{ ...valid, startDate: "" }, "Asia/Tokyo", "personal60.startInvalid"],
+    [{ ...valid, allDay: true, startDate: "2026-10-27", endDate: "2026-10-26" }, "Asia/Tokyo", "personal60.allDayEndInvalid"],
+    [{ ...valid, endDate: "2026-10-19", endTime: "09:00" }, "Asia/Tokyo", "personal60.timedEndInvalid"],
+    [{ ...valid, meetingUrl: "javascript:alert(1)" }, "Asia/Tokyo", "personal60.meetingUrlInvalid"],
+    [{ ...valid, contactIds: ["contact:1", "contact:1"] }, "Asia/Tokyo", "personal60.associationsInvalid"],
+  ];
+  for (const [draft, zone, key] of cases) {
+    const result = buildPersonalScheduleChange(null, draft, zone);
+    assert.equal(result.kind, "invalid", key);
+    if (result.kind === "invalid") assert.equal(result.messageKey, key);
+  }
+  const duration = applyPersonalScheduleDuration(personalScheduleDraft(null, "Asia/Tokyo"), "Asia/Tokyo", 30);
+  assert.equal(duration.kind, "invalid");
+  if (duration.kind === "invalid") assert.equal(duration.messageKey, "personal60.durationStartRequired");
 });
 test("personal receipts must match actor, id, changed fields and deletion acknowledgement", () => {
   const data = { scheduleItem: item };

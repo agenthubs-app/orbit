@@ -1,4 +1,11 @@
 export const personal60 = {
+  "personal60.titleRequired": "Enter a title for this event.",
+  "personal60.startInvalid": "Check the start date and time. A nonexistent or repeated local time cannot be saved.",
+  "personal60.durationStartRequired": "Set the start date and time first.",
+  "personal60.allDayEndInvalid": "Check the all-day end date.",
+  "personal60.timedEndInvalid": "Enter a complete end date and time after the start.",
+  "personal60.meetingUrlInvalid": "Enter a complete http or https meeting link.",
+  "personal60.associationsInvalid": "Check the linked contacts and notes.",
   "personal60.invalidReminder": "Choose a valid reminder time.",
   "personal60.invalidUntil": "Enter a valid repeat end date on or after the start date.",
   "personal60.done": "Done",

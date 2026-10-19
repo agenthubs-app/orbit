@@ -74,7 +74,6 @@
     "src/view-models/home-dashboard.ts": 17,
     "src/view-models/meeting-details.ts": 1,
     "src/view-models/organizer-public.ts": 30,
-    "src/view-models/personal-schedule-editor.ts": 11,
     "src/view-models/profile-onboarding.ts": 166,
     "src/view-models/profile.ts": 84,
     "src/view-models/relationship-chat-pages.ts": 11,

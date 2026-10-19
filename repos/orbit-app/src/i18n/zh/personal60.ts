@@ -1,4 +1,11 @@
 export const personal60 = {
+  "personal60.titleRequired": "请填写日程标题。",
+  "personal60.startInvalid": "请检查开始日期和时间。不存在或重复的当地时间无法保存。",
+  "personal60.durationStartRequired": "请先填写开始日期和时间。",
+  "personal60.allDayEndInvalid": "请检查全天日程的结束日期。",
+  "personal60.timedEndInvalid": "请完整填写结束日期和时间，且须晚于开始时间。",
+  "personal60.meetingUrlInvalid": "请填写完整的 http 或 https 会议链接。",
+  "personal60.associationsInvalid": "请检查关联的联系人和笔记。",
   "personal60.invalidReminder": "请选择有效的提醒时间。",
   "personal60.invalidUntil": "重复结束日期需有效，且不能早于开始日期。",
   "personal60.done": "完成",

@@ -1,4 +1,11 @@
 export const personal60 = {
+  "personal60.titleRequired": "予定のタイトルを入力してください。",
+  "personal60.startInvalid": "開始日時を確認してください。存在しない時刻や重複する時刻は保存できません。",
+  "personal60.durationStartRequired": "先に開始日時を指定してください。",
+  "personal60.allDayEndInvalid": "終日予定の終了日を確認してください。",
+  "personal60.timedEndInvalid": "終了日時をすべて入力し、開始日時より後にしてください。",
+  "personal60.meetingUrlInvalid": "http または https の完全な会議リンクを入力してください。",
+  "personal60.associationsInvalid": "関連付ける連絡先やメモを確認してください。",
   "personal60.invalidReminder": "有効な通知時刻を選択してください。",
   "personal60.invalidUntil": "繰り返しの終了日は、開始日以降の有効な日付を入力してください。",
   "personal60.done": "完了",

@@ -156,6 +156,27 @@ test("Japanese personal editor does not show the server language after a failed 
   await p.getByText("予定を読み込めません。もう一度お試しください。", { exact: true }).waitFor();
 });
 
+test("Japanese personal editor explains an unset start date in Japanese without writing", async t => {
+  const p = await open(t, { taskId: "", language: "ja" });
+  await p.getByRole("textbox", { name: "予定名", exact: true }).fill("Review");
+  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  await p.getByText("開始日時を確認してください。存在しない時刻や重複する時刻は保存できません。", { exact: true }).waitFor();
+  assert.equal(await p.getByText("请填写明确的开始日期和时间；此当地时间可能不存在或重复。", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("Japanese all-day editor rejects an end before the start in Japanese without writing", async t => {
+  const item = { ...initialItem, allDay: true, startsAt: "2026-09-16T15:00:00Z", endsAt: "2026-09-18T15:00:00Z", timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item, language: "ja" });
+  await p.getByRole("button", { name: "日時を調整", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "2026-09-19", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完了", exact: true }).click();
+  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  await p.getByText("終日予定の終了日を確認してください。", { exact: true }).waitFor();
+  assert.equal(await p.getByText("全天结束日期无效。", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
 test("Japanese personal schedule detail does not show the server language after a failed refresh", async t => {
   const p = await open(t, { detail: true, language: "ja" });
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ holdReads: true }); s.refresh(); });

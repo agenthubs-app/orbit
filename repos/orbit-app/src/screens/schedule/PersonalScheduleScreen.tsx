@@ -92,7 +92,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     if (baseline?.recurrence && !mutationScope) { setError(locale.t("personal60.scopeRequired")); return; }
     if (!remove && !canSave) { setError(locale.t("schedule.timezoneUnavailable")); return; }
     const change = remove ? { kind: "ready" as const, fields: {} } : buildPersonalScheduleChange(baseline, draft, editZone);
-    if (change.kind === "invalid") { setError(change.messageKey ? locale.t(change.messageKey) : change.message); return; } if (change.kind === "unchanged") return;
+    if (change.kind === "invalid") { setError(locale.t(change.messageKey)); return; } if (change.kind === "unchanged") return;
     const receiptFields = { ...(baseline ? { recurrence: baseline.recurrence ?? null, reminderMinutes: baseline.reminderMinutes ?? null } : {}), ...change.fields };
     const body = baseline ? { expectedUpdatedAt: baseline.updatedAt, ...(baseline.recurrence ? { scope: mutationScope } : {}), ...(remove ? {} : { patch: change.fields }) } : change.fields;
     const method = remove ? "delete" : baseline ? "patch" : "post";
