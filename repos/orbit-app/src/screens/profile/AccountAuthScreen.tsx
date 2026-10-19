@@ -21,6 +21,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
+  accountAuthPasswordError,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
   type AccountAuthFieldView,
@@ -164,6 +165,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       return;
     }
     if (!ready || authPending.current) return;
+    const passwordError = accountAuthPasswordError(values.password);
+    if (passwordError) {
+      setError(locale.t(passwordError === "too-long" ? "reset.tooLong" : "reset.tooShort"));
+      return;
+    }
     authPending.current = true;
     const requestAuthScope = authScopeKey;
     const isCurrent = () => mounted.current && authScopeRef.current === requestAuthScope;
@@ -184,13 +190,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           return;
         }
 
-        router.replace(
-          nextHrefForAccountAuthSubmit({
-            email: values.email,
-            mode,
-            next
-          }) as Href
-        );
+        const signedIn = await auth.signIn({ email: values.email, password: values.password, redirectTo: next });
+        if (!isCurrent()) return;
+        router.replace(nextHrefForAccountAuthSubmit({ email: values.email, mode: signedIn.success ? "login" : "signup", next }) as Href);
         return;
       }
 
@@ -265,7 +267,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         <Pressable
           accessibilityLabel={locale.t("auth.close")}
           accessibilityRole="button"
-          onPress={() => router.canGoBack() ? router.back() : router.replace("/account")}
+          onPress={() => router.canGoBack() ? router.back() : router.replace("/")}
           style={({ pressed }) => [styles.closeButton, pressed ? styles.pressed : null]}
         >
           <Ionicons color={colors.accentText} name="chevron-back" size={18} />

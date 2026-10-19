@@ -43,6 +43,12 @@ interface AccountAuthOptions {
 }
 
 const defaultNext = "/home";
+
+export function accountAuthPasswordError(password: string): "too-short" | "too-long" | null {
+  if (password.length < 8) return "too-short";
+  if (new TextEncoder().encode(password).byteLength > 72) return "too-long";
+  return null;
+}
 const authEntryPaths = new Set([
   "/account/forgot-password",
   "/account/reset-password",
