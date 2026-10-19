@@ -2499,6 +2499,8 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["publicInfo.seeHelp", "button"],
   ["publicInfo.openMail", "button"],
   ["publicInfo.legalPlaceholder", "chip"],
+  ["publicInfo.notFoundBody", "sentence"],
+  ["publicInfo.backHome", "button"],
   ["publicInfo.*", "label"],
   ["me.offline", "sentence"],
   ["me.saveError", "sentence"],

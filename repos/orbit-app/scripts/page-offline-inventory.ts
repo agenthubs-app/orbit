@@ -66,7 +66,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/legal/terms.tsx', path: '/legal/terms', title: '公开利用規約占位（R18b）', classification: 'device-only', reads: '静态发布前占位；正式正文待授权', offline: '占位照常可读；不代表发布就绪' },
   { file: 'app/legal/privacy.tsx', path: '/legal/privacy', title: '公开プライバシー占位（R18b）', classification: 'device-only', reads: '静态发布前占位；正式正文待授权', offline: '占位照常可读；不代表发布就绪' },
   { file: 'app/start.tsx', path: '/start', title: '引导入口跳转（Web /app/start → App 引导 /profile/onboarding）', classification: 'device-only', reads: '无', offline: '跳到引导页' },
-  { file: 'app/[...legacy].tsx', path: '/*（旧链接）', title: '旧深链接跳转', classification: 'device-only', reads: '无', offline: '跳到对应新页面' },
+  { file: 'app/[...legacy].tsx', path: '/*（旧链接或未知路由）', title: '已知旧深链跳转；未知路由显示 404（R18b）', classification: 'device-only', reads: '无', offline: '已知路由跳到对应新页面；未知路由提供首页与帮助出口' },
   { file: 'app/account/mobile-google.tsx', path: '/account/mobile-google', title: '旧 Google 登录链接跳转', classification: 'device-only', reads: '无', offline: '跳到登录页' },
   { file: 'app/events/[id]/attendees.tsx', path: '/events/:id/attendees', title: '旧参会者链接跳转到现场页', classification: 'device-only', reads: '无', offline: '跳到现场页（0115 可离线）' },
   { file: 'app/events/[id]/participants/[participantId].tsx', path: '/events/:id/participants/:participantId', title: '旧参会者链接跳转到现场资料面板', classification: 'device-only', reads: '无', offline: '跳到现场页（0115 可离线）' },

@@ -139,7 +139,7 @@
 | `/legal/terms` | 公开利用規約占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
 | `/legal/privacy` | 公开プライバシー占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
 | `/start` | 引导入口跳转（Web /app/start → App 引导 /profile/onboarding） | 无 | 跳到引导页 |
-| `/*（旧链接）` | 旧深链接跳转 | 无 | 跳到对应新页面 |
+| `/*（旧链接或未知路由）` | 已知旧深链跳转；未知路由显示 404（R18b） | 无 | 已知路由跳到对应新页面；未知路由提供首页与帮助出口 |
 | `/account/mobile-google` | 旧 Google 登录链接跳转 | 无 | 跳到登录页 |
 | `/events/:id/attendees` | 旧参会者链接跳转到现场页 | 无 | 跳到现场页（0115 可离线） |
 | `/events/:id/participants/:participantId` | 旧参会者链接跳转到现场资料面板 | 无 | 跳到现场页（0115 可离线） |
@@ -176,7 +176,7 @@
 | `app/(app)/inbox.tsx` | `/inbox` | local-first (0119) |
 | `app/(app)/profile.tsx` | `/profile` | local-first (0131) |
 | `app/(app)/schedule.tsx` | `/schedule` | device-only |
-| `app/[...legacy].tsx` | `/*（旧链接）` | device-only |
+| `app/[...legacy].tsx` | `/*（旧链接或未知路由）` | device-only |
 | `app/+html.tsx` | `(浏览器外壳)` | device-only |
 | `app/account.tsx` | `/account` | online-only |
 | `app/account/forgot-password.tsx` | `/account/forgot-password` | online-only |

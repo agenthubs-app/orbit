@@ -29,4 +29,7 @@ export const publicCopy = {
   legalBody: { ja: "正式な内容を準備しています。", zh: "正式内容仍在准备中。", en: "The full text is being prepared.", kind: "body" },
   home: { ja: "ホームへ", zh: "返回首页", en: "Home", kind: "button" },
   seeHelp: { ja: "ヘルプを見る", zh: "查看帮助", en: "See help", kind: "button" },
+  notFoundTitle: { ja: "このページは見つかりません", zh: "找不到这个页面", en: "Page not found", kind: "title" },
+  notFoundBody: { ja: "リンクが古いか、URL が間違っている可能性があります。", zh: "链接可能已过期，或网址有误。", en: "The link may be old, or the URL may be incorrect.", kind: "body" },
+  backHome: { ja: "ホームへ戻る", zh: "返回首页", en: "Back to home", kind: "button" },
 } satisfies OrbitCopyTable;

@@ -22,4 +22,7 @@ export const publicInfo = {
   "publicInfo.legalBody": "正式内容仍在准备中。",
   "publicInfo.home": "返回首页",
   "publicInfo.seeHelp": "查看帮助",
+  "publicInfo.notFoundTitle": "找不到这个页面",
+  "publicInfo.notFoundBody": "链接可能已过期，或网址有误。",
+  "publicInfo.backHome": "返回首页",
 } as const;

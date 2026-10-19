@@ -22,4 +22,7 @@ export const publicInfo = {
   "publicInfo.legalBody": "The full text is being prepared.",
   "publicInfo.home": "Home",
   "publicInfo.seeHelp": "See help",
+  "publicInfo.notFoundTitle": "Page not found",
+  "publicInfo.notFoundBody": "The link may be old, or the URL may be incorrect.",
+  "publicInfo.backHome": "Back to home",
 } as const;

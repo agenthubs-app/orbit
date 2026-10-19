@@ -22,4 +22,7 @@ export const publicInfo = {
   "publicInfo.legalBody": "正式な内容を準備しています。",
   "publicInfo.home": "ホームへ",
   "publicInfo.seeHelp": "ヘルプを見る",
+  "publicInfo.notFoundTitle": "このページは見つかりません",
+  "publicInfo.notFoundBody": "リンクが古いか、URL が間違っている可能性があります。",
+  "publicInfo.backHome": "ホームへ戻る",
 } as const;
