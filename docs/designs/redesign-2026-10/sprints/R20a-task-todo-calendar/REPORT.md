@@ -853,3 +853,11 @@ Calendar の native form から 2026-10-19 の終日個人予定 `QA online` を
 最初の全量 `_evidence-d/R20a/run-01/d-app-full-post-calendar-native-ebc982ff3.log` は exit1（3,254 tests / 3,235 pass / 15 fail / 2 cancelled / 2 skip）。ただし 08:44 の開始後、共有 D checkout が 08:46 に rebase され App source が変わったため、単一 source の full gate として使わない。旧 run との差分にあった D Task 三件は rebase 後の二 file 定向で pass したが、その定向は別の UI locator timeout 五件が出て **53/48 pass/5 fail**。さらに checkout が 08:59:19 に `e176a1dd3` へ fast-forward した後、二 file を逐次実行すると **53/53 pass、0 skip**。timeout の単一根因は断定せず、製品修正や全量 green と扱わない。
 
 clean `e176a1dd3` で 09:00:38 に起動した fresh App `npm test` は、実行中に HEAD / tracked source が変わらず、原始ログ `_evidence-d/R20a/run-01/d-app-full-current-e176a1dd3.log` に **3,214 tests / 3,199 pass / 13 fail / 0 cancelled / 2 skip、exit1**。前述の Task 三件、Calendar meeting copy、個人予定の主要 case はこの全量内で pass。残る13 failure 名は R12 camera/batch 九件、旧辞書 exact-key pin、R14 discovery toggle、joined-person、typed inbox 各一件で、R20a Task/Calendar の failure 名はない。異なる upstream source の旧全量との単純な増減を「新規失敗ゼロ」の証明にしない。SC-16 の全量 gate、SC-15 pixel、残る native 操作と独立復核は OPEN。
+
+## 2026-10-19　Web タスク一覧・空状態の実画面 pixel 診断（SC-15）
+
+D `975fefe90` の実 `/app/tasks?tab=todo&view=all` を、nonce `30b80c75d623` の本機隔離 PostgreSQL / 合成 actor（タスク0件）で login して b3 #14 と 1440px・light で比較した。design/app/diff/triptych と機械判定は `_evidence-d/R20a/web-task-pixel-30b80c75d623/gate-w07-live/W-R20-07-1440-light/` に保存。**pixel gate は FAIL（exit5）**、raw difference 0.0404、許容超過15帯はすべて未帰属、missing block 29件。style diff も design keyed 102件中 app match 26件のみ。実画面は一般的な EmptyState だが、画板は案内 card・3つの作成元 tile・例示行・右 rail card の構成であり、微細な余白調整では閉じない構造差である。入口 URL を修正した前段の GREEN は pixel 合格ではない。
+
+画板の「名刺から作る」「音声メモから」「カレンダー連携」は押せる入口として描かれる一方、現 TaskListWorkspace にこの三動作の宛先・権限・失敗時の振る舞いはない。見た目だけの無反応な tile は追加せず、既存機能へ結ぶか、画板差として明示するかの決定を保留する。W-R20-08/09（少量/大量）、dark、App pixel と SC-15 全体も未検証・OPEN。診断で変更した製品 source はない。
+
+本 run の loopback design server 3320 と Next 3500 は停止し、両 port の listener 不在を確認。Next が生成した `next-env.d.ts` / `tsconfig.json` の差分のみ元に戻した。exact DB 名・owner `xzhao`・active connection 0 を確認して nonce DB だけを drop し、catalog count 0 を再確認した。synthetic capture は証拠として保持し、既存 QA actor・他 DB・production・実 Google・paid AI・push には触れていない。
