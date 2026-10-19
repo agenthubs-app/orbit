@@ -50,6 +50,15 @@ test("week and day preserve the same selected agenda and switch controls", () =>
   }
 });
 
+test("calendar view switcher gives its labels intrinsic width on narrow screens", () => {
+  const html = renderToHtml(view("day"));
+  for (const label of ["日", "週", "月"]) {
+    const tab = html.match(new RegExp(`<[^>]+aria-label="${label}"[^>]*>`, "u"))?.[0];
+    assert.ok(tab, `${label} tab is rendered`);
+    assert.doesNotMatch(tab, /r-flex-13awgt0/u, `${label} tab must not flex-shrink to its horizontal padding`);
+  }
+});
+
 test("empty month offers manual creation without pretending Google is connected", () => {
   const text = renderedText(view("month", { scheduleItems: [] }));
   assert.match(text, /個人予定を作成/u);

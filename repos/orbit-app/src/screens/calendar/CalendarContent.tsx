@@ -44,7 +44,7 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
     </Card> : null}
     {external?.connection === "unavailable" ? <Card variant="flat" style={styles.externalNotice}><UiText style={styles.externalNoticeText}>{t("calendar.view.externalUnavailable")}</UiText></Card> : null}
     <View style={styles.controlRow}>
-      <Segmented<CalendarMode> accessibilityLabel={t("schedule.title")} segments={[
+      <Segmented<CalendarMode> accessibilityLabel={t("schedule.title")} inline segments={[
         { key: "day", label: t("schedule.viewDay") }, { key: "week", label: t("schedule.viewWeek") }, { key: "month", label: t("schedule.viewMonth") },
       ]} value={mode} onChange={onChangeMode} />
       <Button size="sm" label={t("schedule.backToday")} onPress={onToday} />
