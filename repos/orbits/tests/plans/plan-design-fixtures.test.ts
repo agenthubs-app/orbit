@@ -124,3 +124,11 @@ test("b12-206 premise keeps tonight's CFO Night chance available late in the day
   const overview = await service.overview(state.plans![0]!.id);
   assert.match(overview?.todayChance?.label ?? "", /CFO Night Tokyo/);
 });
+
+test("b12-244 lawyer record preview retains the two lawyer event examples", () => {
+  const events = PLAN_DESIGN_EVENT_FACTS["b12-244-law"]!();
+  assert.deepEqual(events.filter((event) => event.facts.expected.lawyer).map((event) => event.eventId), [
+    "fx-a-ev-saas-summit",
+    "fx-a-ev-cfo-night",
+  ]);
+});

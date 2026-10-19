@@ -294,7 +294,7 @@ const PREMISE_EVENTS = (): PlanEventFact[] => SERIES_A_EVENTS().map((event) =>
   event.eventId === "fx-a-ev-cfo-night" ? { ...event, startsAt: jst(today(), "23:30") } : event);
 
 /**
- * b12 W-R24-07（弁護士 · スキップ中）：右栏「このタイプに会えるイベント」列 Summit / CFO Night 2 场，类型统计「会える活動 2」
+ * b12 W-R24-07／11（弁護士 · スキップ中／スキップ确认）：右栏「このタイプに会えるイベント」列 Summit / CFO Night 2 场，类型统计「会える活動 2」
  * （用户 2026-10-13：标题数字 = 列出的行数）。只在这两场的事实里补弁護士的预计人数，其余同 SERIES_A_EVENTS。
  */
 const LAW_EVENTS = (): PlanEventFact[] => SERIES_A_EVENTS().map((event) => (event.eventId === "fx-a-ev-saas-summit" || event.eventId === "fx-a-ev-cfo-night" ? { ...event, facts: { ...event.facts, expected: { ...event.facts.expected, lawyer: 1 } } } : event));
@@ -313,7 +313,7 @@ export const eventFactsA: Record<string, PlanDesignEventFacts> = {
   "b12-214-step-done": SERIES_A_EVENTS,
   "b12-222-law-skipped": LAW_EVENTS,
   "b12-270-achieve": SERIES_A_EVENTS,
-  "b12-244-law": SERIES_A_EVENTS,
+  "b12-244-law": LAW_EVENTS,
   "b4-11-type-vc": SERIES_A_EVENTS,
   "b4-13-type-cvc": CVC_EVENTS,
   "w16-overview-few": SERIES_A_EVENTS,
