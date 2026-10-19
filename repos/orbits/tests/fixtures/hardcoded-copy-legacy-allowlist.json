@@ -17,14 +17,6 @@
       "hardcoded": 11,
       "missingJa": 53
     },
-    "app/(app)/app/account/mobile-google/mobile-google-auth.tsx": {
-      "hardcoded": 3,
-      "missingJa": 0
-    },
-    "app/(app)/app/account/mobile-google/page.tsx": {
-      "hardcoded": 3,
-      "missingJa": 0
-    },
     "app/(app)/app/account/reset-password/page.tsx": {
       "hardcoded": 1,
       "missingJa": 0

@@ -218,6 +218,8 @@ test("Google broker page decodes repeated request values with first-value semant
   );
 
   assert.match(html, /Google 登录暂时不可用/);
+  assert.match(html, /data-orbit-2026/u);
+  assert.doesNotMatch(html, /orbit-account-auth-|data-orbit-real-page/u);
   assert.doesNotMatch(html, /data-orbit-mobile-google-auth/u);
 });
 
