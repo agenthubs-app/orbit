@@ -1,0 +1,87 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.content {
+  max-width: 600px;
+  margin: 92px auto 0;
+  padding: 0 18px 48px;
+  text-align: center;
+}
+
+.icon {
+  font-size: var(--fs-display-xl);
+  line-height: 1.05;
+}
+
+.content h1 {
+  margin: 18px 0 8px;
+  font-size: var(--fs-emoji-lg);
+  font-weight: 900;
+}
+
+.description,
+.scheduleValue {
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+
+.schedule {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: var(--r-card-web);
+  background: var(--surface);
+  text-align: left;
+}
+
+.scheduleLabel {
+  color: var(--ink-3-text);
+  font-size: var(--fs-label);
+  font-weight: 700;
+}
+
+.scheduleValue {
+  margin: 6px 0 0;
+}
+
+.retry {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-body-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retry:focus-visible {
+  outline: 2px solid var(--plum-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .content {
+    margin-top: 122px;
+  }
+
+  .content h1 {
+    font-size: var(--fs-number);
+  }
+
+  .schedule {
+    text-align: center;
+  }
+
+  .retry {
+    width: 100%;
+  }
+}

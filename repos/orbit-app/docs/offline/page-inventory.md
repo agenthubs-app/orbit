@@ -13,9 +13,9 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 15 |
-| 只能在线 | 53 |
+| 只能在线 | 55 |
 | 不读账号数据（布局、跳转、本机设置） | 36 |
-| 合计（路由文件） | 129 |
+| 合计（路由文件） | 131 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -69,6 +69,8 @@
 
 | 路由 | 页面 | 原因 | 读取 | 断网时 |
 | --- | --- | --- | --- | --- |
+| `/maintenance` | 公开维护状态（R18b） | 需要服务器实时计算：必须从公开版本接口实时确认 maintenance.active；不能凭缓存或网络错误展示维护 | GET /api/app/version | 读取失败时不显示维护，返回安全首页 |
+| `/force-update` | 强制更新状态（R18b） | 需要服务器实时计算：必须从公开版本接口实时确认 enforceMinimum 和最低版本，不能凭缓存或网络错误阻断 | GET /api/app/version；本地 App 版本；发布前配置的 App Store 链接 | 读取失败时安全放行，返回首页；正式强制更新开关保持关闭 |
 | `/settings/notifications` | 通知设置（R14） | 涉及凭据或会话：读取本账号实时推送偏好与设备状态；版本写入和撤销设备须联网 | /api/inbox/delivery/preferences、/api/inbox/discovery/preferences、/api/devices/push | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -231,6 +233,7 @@
 | `app/events/center/profiles.tsx` | `/events/center/profiles` | online-only |
 | `app/events/center/profiles/[id].tsx` | `/events/center/profiles/:id` | online-only |
 | `app/followups.tsx` | `/followups` | device-only |
+| `app/force-update.tsx` | `/force-update` | online-only |
 | `app/help.tsx` | `/help` | device-only |
 | `app/home.tsx` | `/home` | local-first (0131) |
 | `app/home/events.tsx` | `/home/events` | local-first (0131) |
@@ -245,6 +248,7 @@
 | `app/legal/privacy.tsx` | `/legal/privacy` | device-only |
 | `app/legal/terms.tsx` | `/legal/terms` | device-only |
 | `app/login-admin.tsx` | `/login-admin` | online-only |
+| `app/maintenance.tsx` | `/maintenance` | online-only |
 | `app/notes/[id].tsx` | `/notes/:id` | local-first (0108) |
 | `app/notes/[id]/edit.tsx` | `/notes/:id/edit` | local-first (0108) |
 | `app/notes/index.tsx` | `/notes` | local-first (0108) |

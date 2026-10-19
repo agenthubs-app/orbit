@@ -171,6 +171,8 @@ const integratedFeatureRoutes = [
   "/help",
   "/legal/terms",
   "/legal/privacy",
+  "/maintenance",
+  "/force-update",
   "/settings/help",
   "/settings/terms",
   "/settings/privacy",

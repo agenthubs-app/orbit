@@ -65,6 +65,8 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/help.tsx', path: '/help', title: '公开帮助与本地 FAQ（R18b）', classification: 'device-only', reads: '本地静态 FAQ；支持邮箱未配置', offline: '帮助、搜索与法务入口照常可用' },
   { file: 'app/legal/terms.tsx', path: '/legal/terms', title: '公开利用規約占位（R18b）', classification: 'device-only', reads: '静态发布前占位；正式正文待授权', offline: '占位照常可读；不代表发布就绪' },
   { file: 'app/legal/privacy.tsx', path: '/legal/privacy', title: '公开プライバシー占位（R18b）', classification: 'device-only', reads: '静态发布前占位；正式正文待授权', offline: '占位照常可读；不代表发布就绪' },
+  { file: 'app/maintenance.tsx', path: '/maintenance', title: '公开维护状态（R18b）', classification: 'online-only', reasonCategory: 'server-computed', reason: '必须从公开版本接口实时确认 maintenance.active；不能凭缓存或网络错误展示维护', reads: 'GET /api/app/version', offline: '读取失败时不显示维护，返回安全首页' },
+  { file: 'app/force-update.tsx', path: '/force-update', title: '强制更新状态（R18b）', classification: 'online-only', reasonCategory: 'server-computed', reason: '必须从公开版本接口实时确认 enforceMinimum 和最低版本，不能凭缓存或网络错误阻断', reads: 'GET /api/app/version；本地 App 版本；发布前配置的 App Store 链接', offline: '读取失败时安全放行，返回首页；正式强制更新开关保持关闭' },
   { file: 'app/start.tsx', path: '/start', title: '引导入口跳转（Web /app/start → App 引导 /profile/onboarding）', classification: 'device-only', reads: '无', offline: '跳到引导页' },
   { file: 'app/[...legacy].tsx', path: '/*（旧链接或未知路由）', title: '已知旧深链跳转；未知路由显示 404（R18b）', classification: 'device-only', reads: '无', offline: '已知路由跳到对应新页面；未知路由提供首页与帮助出口' },
   { file: 'app/account/mobile-google.tsx', path: '/account/mobile-google', title: '旧 Google 登录链接跳转', classification: 'device-only', reads: '无', offline: '跳到登录页' },

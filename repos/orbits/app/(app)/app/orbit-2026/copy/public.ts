@@ -32,4 +32,10 @@ export const publicCopy = {
   notFoundTitle: { ja: "このページは見つかりません", zh: "找不到这个页面", en: "Page not found", kind: "title" },
   notFoundBody: { ja: "リンクが古いか、URL が間違っている可能性があります。", zh: "链接可能已过期，或网址有误。", en: "The link may be old, or the URL may be incorrect.", kind: "body" },
   backHome: { ja: "ホームへ戻る", zh: "返回首页", en: "Back to home", kind: "button" },
+  maintenanceTitle: { ja: "ただいまメンテナンス中です", zh: "正在维护", en: "Orbit is under maintenance", kind: "title" },
+  maintenanceBody: { ja: "ご不便をおかけして申し訳ありません。", zh: "给您带来不便，十分抱歉。", en: "Sorry for the interruption.", kind: "body" },
+  maintenanceSchedule: { ja: "再開の予定", zh: "预计恢复时间", en: "Expected return", kind: "label" },
+  maintenanceUnknown: { ja: "確認でき次第、お知らせします。", zh: "确认后会尽快通知。", en: "Orbit will post an update when a time is confirmed.", kind: "body" },
+  reload: { ja: "再読み込み", zh: "重新加载", en: "Reload", kind: "button" },
+  checkingStatus: { ja: "状態を確認しています…", zh: "正在检查服务状态…", en: "Checking service status…", kind: "body" },
 } satisfies OrbitCopyTable;
