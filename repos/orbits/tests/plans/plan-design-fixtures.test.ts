@@ -10,7 +10,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 
-import { PLAN_DESIGN_FIXTURES } from "../../features/plans/v2/design-fixtures";
+import { PLAN_DESIGN_EVENT_FACTS, PLAN_DESIGN_FIXTURES } from "../../features/plans/v2/design-fixtures";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
 import { createPlanV2Service } from "../../features/plans/v2/service";
 import { planV2DetailSchema, planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
@@ -94,8 +94,25 @@ test("b12-206 premise modal keeps the four VC candidates without a background pe
   const scope = { actorId: "actor:premise-example", workspaceId: "workspace:premise-example" };
   const state = PLAN_DESIGN_FIXTURES["b12-206-premise"]!();
   repository.seed(scope, state);
-  const service = createPlanV2Service({ now: () => new Date("2026-10-07T00:00:00Z"), references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] }, repository, sample: true, scope });
+  const service = createPlanV2Service({ now: () => new Date(), references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] }, repository, sample: true, scope });
   const overview = await service.overview(state.plans![0]!.id);
   assert.equal(overview?.pending?.length, 0);
   assert.equal(overview?.typeStats?.find((item) => item.itemId === "demo-plan-item-vc_partner")?.candidates, 4);
+  assert.equal(overview?.quota.reviewLeftThisMonth, 2);
+});
+
+test("b12-206 premise keeps tonight's CFO Night chance available late in the day", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const scope = { actorId: "actor:premise-tonight", workspaceId: "workspace:premise-tonight" };
+  const state = PLAN_DESIGN_FIXTURES["b12-206-premise"]!();
+  repository.seed(scope, state);
+  const day = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10);
+  const service = createPlanV2Service({
+    now: () => new Date(`${day}T23:00:00+09:00`),
+    events: async () => PLAN_DESIGN_EVENT_FACTS["b12-206-premise"]!(),
+    references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] },
+    repository, sample: true, scope,
+  });
+  const overview = await service.overview(state.plans![0]!.id);
+  assert.match(overview?.todayChance?.label ?? "", /CFO Night Tokyo/);
 });

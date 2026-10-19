@@ -17,6 +17,7 @@
  */
 import type { PlanPremiseRow } from "../../../../shared/contract/plan-v2";
 import { PLAN_EVENT_SEGMENT_KEY } from "../../../../shared/compute/plan-score";
+import { tokyoUsageMonth } from "../../../ai-quota/constants";
 import type { MemoryPlanV2State } from "../repository";
 import type { PlanAwardPayload, PlanV2ContactView, PlanV2LogEntry, PlanV2MatchCandidate } from "../types";
 import { fromDemo, type PlanDesignFixture } from "./base";
@@ -257,7 +258,12 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     seriesA({ awards: S128, candidates: [], extraLog: dismissSteps(["demo-step-1", "demo-step-2", "demo-step-3", "demo-step-4"]), linked: OVERVIEW_LINKED, manualEditAvailable: true })(state);
     state.contacts = [...state.contacts!, ...MET_PEOPLE];
   }),
-  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: [], linked: [...OVERVIEW_LINKED, ...OVERVIEW_CANDIDATES], extraLog: [dismissStep4], manualEditAvailable: true })),
+  "b12-206-premise": fromDemo((state) => {
+    seriesA({ awards: S46, candidates: [], linked: [...OVERVIEW_LINKED, ...OVERVIEW_CANDIDATES], extraLog: [dismissStep4], manualEditAvailable: true })(state);
+    // The board shows two monthly reviews left; usage does not rewrite the plan.
+    const month = tokyoUsageMonth(new Date());
+    state.log!.push({ author: "system", body: `review ${month} #1`, createdAt: new Date().toISOString(), event: "review_used", id: "fx-a-review-used-1", idempotencyKey: `fx-a:review:${month}`, itemId: null, linkedContactIds: [], linkedEventId: null, payload: { draftId: "fx-a-prior-review", month }, planId: PLAN_ID });
+  }),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b12-222-law-skipped": fromDemo(seriesA({ awards: S46.map((award) => (award.key === "lawyer" ? { ...award, at: jst("2026-10-07") } : award)), candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
@@ -282,6 +288,11 @@ const SERIES_A_EVENTS = (): PlanEventFact[] => [
   fact("fx-a-ev-founders", "SaaS 創業者ミートアップ", jst("2026-10-20", "19:00"), "渋谷", { attendeeSource: "past", expected: { angel: 2, funded_founder: 6 }, fee: 0, firstDegree: 1, networkingMinutes: 60, travelMinutes: 20 }),
 ];
 
+// W-R24-03 says 今夜の CFO Night. A fixed 19:00 start falls outside the
+// three-hour opportunity window when the pixel gate runs late at night.
+const PREMISE_EVENTS = (): PlanEventFact[] => SERIES_A_EVENTS().map((event) =>
+  event.eventId === "fx-a-ev-cfo-night" ? { ...event, startsAt: jst(today(), "23:30") } : event);
+
 /**
  * b12 W-R24-07（弁護士 · スキップ中）：右栏「このタイプに会えるイベント」列 Summit / CFO Night 2 场，类型统计「会える活動 2」
  * （用户 2026-10-13：标题数字 = 列出的行数）。只在这两场的事实里补弁護士的预计人数，其余同 SERIES_A_EVENTS。
@@ -297,7 +308,7 @@ const CVC_EVENTS = (): PlanEventFact[] => [
 
 /** 同名 fixture 的会える活動事实（键与上面的 fixture 名一致）。 */
 export const eventFactsA: Record<string, PlanDesignEventFacts> = {
-  "b12-206-premise": SERIES_A_EVENTS,
+  "b12-206-premise": PREMISE_EVENTS,
   "b12-208-pending": SERIES_A_EVENTS,
   "b12-214-step-done": SERIES_A_EVENTS,
   "b12-222-law-skipped": LAW_EVENTS,
