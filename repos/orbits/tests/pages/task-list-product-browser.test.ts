@@ -405,14 +405,17 @@ test("task drawer conflict keeps the draft without a second write", async t => {
 test("task detail edits its date and time through one versioned schedule write", async t => {
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
-  assert.equal(await current.getByRole("button", { name: "日付と時刻を編集" }).count(), 0);
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
+  assert.equal(await current.getByRole("button", { name: /^日付を編集/ }).count(), 0);
   await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.getByLabel("時刻", { exact: true }).fill("09:30");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
-  const facts = current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl");
-  await facts.getByText("10/18", { exact: true }).waitFor();
-  assert.deepEqual((await facts.locator("dt, dd").allTextContents()).map(value => value.trim()), ["日付", "10/18", "時刻", "09:30"]);
+  const facts = current.getByRole("dialog", { name: "タスクの詳細" });
+  const dateRow = facts.getByRole("button", { name: /^日付を編集/ });
+  await dateRow.getByText("10/18", { exact: true }).waitFor();
+  await current.waitForFunction(() => document.activeElement?.getAttribute("aria-label")?.startsWith("日付を編集"));
+  assert.equal(await dateRow.evaluate(element => element === document.activeElement), true, "save returns focus to the opening row");
+  assert.match(await facts.getByRole("button", { name: /^時刻を編集/ }).textContent() ?? "", /09:30/);
   const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
   assert.equal(writes.length, 1);
   assert.equal(writes[0].body.expectedUpdatedAt, "2026-10-17T00:00:00.000Z");
@@ -420,16 +423,44 @@ test("task detail edits its date and time through one versioned schedule write",
   assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string; path: string }) => call.method !== "GET" && call.path.startsWith("/api/reminders")).length, 0);
 });
 
+test("task detail date and time rows open the shared editor with the chosen field focused", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  assert.match(await current.getByRole("button", { name: /^日付を編集/ }).getAttribute("aria-label") ?? "", /10\/17/);
+  assert.match(await current.getByRole("button", { name: /^時刻を編集/ }).getAttribute("aria-label") ?? "", /指定なし/);
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
+  assert.equal(await current.getByLabel("日付", { exact: true }).evaluate(element => element === document.activeElement), true);
+  await current.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal(await current.getByRole("button", { name: /^日付を編集/ }).evaluate(element => element === document.activeElement), true, "cancel returns focus to the opening row");
+  await current.getByRole("button", { name: /^時刻を編集/ }).click();
+  assert.equal(await current.getByLabel("時刻", { exact: true }).evaluate(element => element === document.activeElement), true);
+  await current.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal(await current.getByRole("button", { name: /^時刻を編集/ }).evaluate(element => element === document.activeElement), true, "time cancel returns focus to its row");
+  const writes = await current.evaluate(() => (window as any).taskCalls.filter((call: { method: string }) => call.method !== "GET"));
+  assert.equal(writes.length, 0);
+});
+
+test("wide Task rail returns keyboard focus to the visible schedule row", async t => {
+  const current = await open(browser, shellCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary", { name: "Task rail" });
+  await rail.getByRole("button", { name: /^時刻を編集/ }).click();
+  await rail.getByRole("button", { name: "キャンセル" }).click();
+  await current.waitForFunction(() => document.activeElement?.getAttribute("aria-label")?.startsWith("時刻を編集"));
+  assert.equal(await rail.getByRole("button", { name: /^時刻を編集/ }).evaluate(element => element === document.activeElement), true);
+});
+
 test("date draft keeps its opening time zone when the page time zone changes", async t => {
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
   await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.getByLabel("時刻", { exact: true }).fill("19:30");
   await current.evaluate(() => (window as any).setTaskListTimeZone("America/New_York"));
   assert.equal(await current.getByLabel("時刻", { exact: true }).inputValue(), "19:30");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).waitFor();
+  await current.getByRole("button", { name: /^日付を編集/ }).waitFor();
   const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
   assert.equal(writes.length, 1);
   assert.equal(writes[0].body.patch.dueAt, "2026-10-18T10:30:00.000Z");
@@ -443,12 +474,12 @@ test("clearing a split task's time keeps its visible date and removes dueAt", as
     row.dueAt = "2026-10-17T10:30:00.000Z";
   });
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^時刻を編集/ }).click();
   await current.getByLabel("時刻", { exact: true }).fill("");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
-  const facts = current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl");
-  await facts.getByText("指定なし").waitFor();
-  assert.deepEqual((await facts.locator("dt, dd").allTextContents()).map(value => value.trim()), ["日付", "10/17", "時刻", "指定なし"]);
+  const facts = current.getByRole("dialog", { name: "タスクの詳細" });
+  await facts.getByRole("button", { name: /^時刻を編集/ }).getByText("指定なし").waitFor();
+  assert.match(await facts.getByRole("button", { name: /^日付を編集/ }).textContent() ?? "", /10\/17/);
   const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
   assert.deepEqual(writes[0].body.patch, { plannedDate: "2026-10-17", dueAt: null });
 });
@@ -461,10 +492,10 @@ test("moving a due-only task does not create a planned date", async t => {
     row.dueAt = "2026-10-17T10:30:00.000Z";
   });
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
   await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).waitFor();
+  await current.getByRole("button", { name: /^日付を編集/ }).waitFor();
   const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
   assert.deepEqual(writes[0].body.patch, { dueAt: "2026-10-18T10:30:00.000Z" });
   assert.equal(await current.evaluate(async () => "plannedDate" in (await (await fetch("/api/tasks/personal")).json()).data.task), false);
@@ -473,10 +504,10 @@ test("moving a due-only task does not create a planned date", async t => {
 test("clearing a task date remains cleared on the next read", async t => {
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
   await current.getByLabel("日付", { exact: true }).fill("");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
-  await current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl").getByText("日付なし").waitFor();
+  await current.getByRole("dialog", { name: "タスクの詳細" }).getByRole("button", { name: /^日付を編集/ }).getByText("日付なし").waitFor();
   const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
   assert.deepEqual(writes[0].body.patch, { plannedDate: null });
   assert.equal(await current.evaluate(async () => "plannedDate" in (await (await fetch("/api/tasks/personal")).json()).data.task), false);
@@ -486,7 +517,7 @@ test("second task date deferral needs confirmation before writing", async t => {
   const current = await page(t);
   await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "personal").deferralCount = 1; });
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
   await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
   await current.getByRole("alertdialog", { name: "もう一度延期しますか？" }).waitFor();
@@ -499,7 +530,7 @@ test("second task date deferral needs confirmation before writing", async t => {
 test("date edit conflict preserves the draft and blocks a stale retry", async t => {
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
-  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByRole("button", { name: /^日付を編集/ }).click();
   await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.evaluate(() => { (window as any).forceEditConflictOnce = true; });
   await current.getByRole("button", { name: "日付と時刻を保存" }).click();
@@ -513,7 +544,7 @@ test("failed date save keeps the draft and retries the same request", async t =>
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
   const detail = current.getByRole("dialog", { name: "タスクの詳細" });
-  await detail.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await detail.getByRole("button", { name: /^日付を編集/ }).click();
   await detail.getByLabel("日付", { exact: true }).fill("2026-10-18");
   await current.evaluate(() => { (window as any).dateFailNextPatch = true; });
   await detail.getByRole("button", { name: "日付と時刻を保存" }).click();

@@ -94,6 +94,8 @@ export const taskCopy = {
   taskListDate: { ja: "日付", zh: "日期", en: "Date", kind: "label" },
   taskListTime: { ja: "時刻", zh: "时间", en: "Time", kind: "label" },
   taskListNoTime: { ja: "指定なし", zh: "未指定", en: "Not set", kind: "label" },
+  taskListEditDate: { ja: "日付を編集", zh: "编辑日期", en: "Edit date", kind: "button" },
+  taskListEditTime: { ja: "時刻を編集", zh: "编辑时间", en: "Edit time", kind: "button" },
   taskListEditDateTime: { ja: "日付と時刻を編集", zh: "编辑日期和时间", en: "Edit date and time", kind: "button" },
   taskListSaveDateTime: { ja: "日付と時刻を保存", zh: "保存日期和时间", en: "Save date and time", kind: "button" },
   taskListDateTimeSaved: { ja: "日付と時刻を保存しました", zh: "日期和时间已保存", en: "Date and time saved", kind: "toast" },

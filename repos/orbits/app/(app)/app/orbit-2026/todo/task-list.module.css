@@ -40,12 +40,14 @@
 .railClose { align-items: center; display: inline-flex; justify-content: center; min-height: 32px; min-width: 32px; }
 .detailTitle { font-size: var(--fs-body); line-height: var(--lh-body); margin: 0 0 var(--space-8); overflow-wrap: anywhere; }
 .detailMeta { align-items: center; display: flex; gap: var(--space-8); }
-.detailFacts { border-top: 1px solid var(--surface-3); display: grid; gap: var(--space-6); margin: var(--space-16) 0; padding-top: var(--space-14); }
-.detailFacts dt, .detailNotes h4 { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
-.detailFacts dd { font-size: var(--fs-body-sm); margin: 0; }
+.detailNotes h4 { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
 .detailSchedule { border-top: 1px solid var(--surface-3); margin-top: var(--space-16); padding-top: var(--space-14); }
-.detailSchedule .detailFacts { border: 0; grid-template-columns: auto 1fr; margin: 0 0 var(--space-8); padding: 0; }
-.detailSchedule .detailFacts dd { text-align: right; }
+.scheduleRows { display: grid; }
+.scheduleRow { align-items: center; background: none; border: 0; border-bottom: 1px solid var(--surface-3); color: var(--ink); cursor: pointer; display: flex; gap: var(--space-8); justify-content: space-between; min-height: 42px; padding: var(--space-8) 0; text-align: left; width: 100%; }
+.scheduleRow > span:first-child { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.scheduleRow > span:last-child { align-items: center; display: flex; font-size: var(--fs-body-sm); gap: var(--space-6); text-align: right; }
+.scheduleRow:hover, .scheduleRow:focus-visible { color: var(--accent-text); }
+.scheduleRow:disabled { cursor: default; opacity: .6; }
 .dateEditForm { display: grid; gap: var(--space-8); margin-top: var(--space-12); }
 .dateEditForm > :first-child, .dateEditForm > :nth-child(2) { min-width: 0; }
 .detailNotes p { font-size: var(--fs-body-sm); overflow-wrap: anywhere; }

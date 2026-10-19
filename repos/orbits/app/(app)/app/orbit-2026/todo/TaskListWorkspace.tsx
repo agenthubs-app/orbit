@@ -70,8 +70,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [showOpen, setShowOpen] = useState(!initialCompleted);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const selectedIdRef = useRef<string | null>(initialSelectedId ?? null);
+  const dateRowRefs = useRef<{ date: HTMLButtonElement | null; time: HTMLButtonElement | null }>({ date: null, time: null });
+  const pendingDateFocus = useRef<{ taskId: string; focus: "date" | "time" } | null>(null);
   const [editing, setEditing] = useState<{ task: TaskView; title: string; notes: string; conflict: boolean } | null>(null);
-  const [dateEditing, setDateEditing] = useState<{ task: TaskView; date: string; time: string; timeZone: string; conflict: boolean } | null>(null);
+  const [dateEditing, setDateEditing] = useState<{ task: TaskView; date: string; time: string; timeZone: string; focus: "date" | "time"; conflict: boolean } | null>(null);
   const [dateValidation, setDateValidation] = useState("");
   const [dateFailureTaskId, setDateFailureTaskId] = useState<string | null>(null);
   const [confirmDateDeferral, setConfirmDateDeferral] = useState(false);
@@ -102,11 +104,25 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const activities = useTasksResource(() => selectedId ? client.loadActivities(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const mutation = useTasksMutation();
   const reminderMutation = useTasksMutation();
+  const focusDateRowIfReady = (focus: "date" | "time", row: HTMLButtonElement | null) => {
+    const target = pendingDateFocus.current;
+    if (!row || row.disabled || !target || target.focus !== focus || selectedIdRef.current !== target.taskId || dateEditing || mutation.busy || detail.data?.id !== target.taskId) return;
+    row.focus();
+    pendingDateFocus.current = null;
+  };
+  useEffect(() => {
+    const target = pendingDateFocus.current;
+    if (!target || dateEditing || mutation.busy || selectedId !== target.taskId || detail.data?.id !== target.taskId) return;
+    const row = dateRowRefs.current[target.focus];
+    if (!row || row.disabled) return;
+    focusDateRowIfReady(target.focus, row);
+  }, [dateEditing, mutation.busy, selectedId, detail.data?.id]);
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");
   const visibleOpen = !denied && !open.error ? open.data?.items ?? [] : [];
   const visibleDone = !denied && !completed.error ? completed.data?.items ?? [] : [];
   const selectTask = (id: string | null) => {
     selectedIdRef.current = id;
+    pendingDateFocus.current = null;
     setSelectedId(id);
     setEditing(null);
     setDateEditing(null);
@@ -170,11 +186,14 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       toast.success(t(taskCopy.taskListSaved));
     }, "");
   }
-  function openDateEdit(task: TaskView) {
+  function openDateEdit(task: TaskView, focus: "date" | "time") {
     setEditing(null);
     setDateValidation("");
     setDateFailureTaskId(null);
-    setDateEditing({ task, ...taskDateDraft(task, timeZone), timeZone, conflict: false });
+    setDateEditing({ task, ...taskDateDraft(task, timeZone), timeZone, focus, conflict: false });
+  }
+  function restoreDateFocus(draft: NonNullable<typeof dateEditing>) {
+    pendingDateFocus.current = { taskId: draft.task.id, focus: draft.focus };
   }
   function writeDateEdit(draft: NonNullable<typeof dateEditing>, patch: TaskDatePatch) {
     setDateFailureTaskId(draft.task.id);
@@ -194,6 +213,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       setDateEditing(null);
       setDateFailureTaskId(null);
       setConfirmDateDeferral(false);
+      restoreDateFocus(draft);
       toast.success(t(taskCopy.taskListDateTimeSaved));
     }, "");
   }
@@ -209,7 +229,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       setDateValidation(t(change.reason === "date" ? taskCopy.taskListDateTimeInvalid : change.reason === "timeZone" ? taskCopy.taskListTimeZoneInvalid : taskCopy.taskListLocalTimeInvalid));
       return;
     }
-    if (change.kind === "unchanged") { setDateEditing(null); return; }
+    if (change.kind === "unchanged") { setDateEditing(null); restoreDateFocus(draft); return; }
     setDateValidation("");
     if (!confirmed && (draft.task.deferralCount ?? 0) >= 1 && taskDatePatchMovesLater(draft.task, change.patch)) {
       setConfirmDateDeferral(true);
@@ -252,6 +272,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const notesClearUnsupported = Boolean(editing?.task.notes && !editing.notes.trim());
   const reminderErrorCopy = reminderMutation.error instanceof TasksClientError && reminderMutation.error.code === "INVALID_REMINDER"
     ? taskCopy.taskListReminderExpired : reminderAction === "cancel" ? taskCopy.taskListReminderCancelFailed : taskCopy.taskListReminderSaveFailed;
+  const detailDate = detail.data ? formatDate(detail.data.dueAt ? localParts(detail.data.dueAt, timeZone).date : detail.data.plannedDate, language, timeZone) : "";
+  const detailTime = detail.data ? detail.data.dueAt ? new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(detail.data.dueAt)) : t(taskCopy.taskListNoTime) : "";
   const detailContent = <div className={styles.rail}>
     {selectedId && detail.loading && !detail.data ? <Skeleton lines={4} onRetry={detail.refresh} /> : null}
     {selectedId && detail.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={detail.refresh} /> : null}
@@ -265,17 +287,19 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       <h3 className={styles.detailTitle}>{detail.data.title}</h3>
       <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
       <div className={styles.detailSchedule}>
-        <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ? localParts(detail.data.dueAt, timeZone).date : detail.data.plannedDate, language, timeZone)}</dd><dt>{t(taskCopy.taskListTime)}</dt><dd>{detail.data.dueAt ? new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(detail.data.dueAt)) : t(taskCopy.taskListNoTime)}</dd></dl>
-        {dateEditing?.task.id !== selectedId ? <Button label={t(taskCopy.taskListEditDateTime)} size="sm" variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => openDateEdit(detail.data!)} /> : null}
+        {dateEditing?.task.id !== selectedId ? <div className={styles.scheduleRows}>
+          <button type="button" className={`btn ${styles.scheduleRow}`} aria-label={`${t(taskCopy.taskListEditDate)}: ${detailDate}`} ref={element => { dateRowRefs.current.date = element; focusDateRowIfReady("date", element); }} disabled={mutation.busy || detail.loading} onClick={() => openDateEdit(detail.data!, "date")}><span>{t(taskCopy.taskListDate)}</span><span>{detailDate}<Icon name="right" size={16} /></span></button>
+          <button type="button" className={`btn ${styles.scheduleRow}`} aria-label={`${t(taskCopy.taskListEditTime)}: ${detailTime}`} ref={element => { dateRowRefs.current.time = element; focusDateRowIfReady("time", element); }} disabled={mutation.busy || detail.loading} onClick={() => openDateEdit(detail.data!, "time")}><span>{t(taskCopy.taskListTime)}</span><span>{detailTime}<Icon name="right" size={16} /></span></button>
+        </div> : null}
       </div>
       {dateEditing?.task.id === selectedId ? <form className={styles.dateEditForm} onSubmit={event => { event.preventDefault(); saveDateEdit(); }}>
-        <TextField label={t(taskCopy.taskListDate)} type="date" value={dateEditing.date} onChange={event => { setDateEditing({ ...dateEditing, date: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} />
-        <TextField label={t(taskCopy.taskListTime)} type="time" value={dateEditing.time} onChange={event => { setDateEditing({ ...dateEditing, time: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} />
+        <TextField label={t(taskCopy.taskListDate)} type="date" value={dateEditing.date} onChange={event => { setDateEditing({ ...dateEditing, date: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} autoFocus={dateEditing.focus === "date"} />
+        <TextField label={t(taskCopy.taskListTime)} type="time" value={dateEditing.time} onChange={event => { setDateEditing({ ...dateEditing, time: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} autoFocus={dateEditing.focus === "time"} />
         <p className={styles.hint}>{dateEditing.timeZone} · {t(taskCopy.taskListReminderDateNote)}</p>
         {dateValidation ? <p role="alert" className={styles.error}>{dateValidation}</p> : null}
         {dateEditing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListConflict)}</p> : null}
         {dateFailureTaskId === selectedId && mutation.error && !dateEditing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListDateTimeSaveFailed)}</p> : null}
-        <div className={styles.editActions}><Button label={t(taskCopy.taskListSaveDateTime)} type="submit" variant="primary" disabled={mutation.busy || dateEditing.conflict} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => { setDateEditing(null); setDateValidation(""); }} /></div>
+        <div className={styles.editActions}><Button label={t(taskCopy.taskListSaveDateTime)} type="submit" variant="primary" disabled={mutation.busy || dateEditing.conflict} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => { const draft = dateEditing; setDateEditing(null); setDateValidation(""); restoreDateFocus(draft); }} /></div>
       </form> : null}
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={styles.detailSection}>
