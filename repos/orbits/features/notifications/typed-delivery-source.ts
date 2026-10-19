@@ -11,7 +11,7 @@ import type {AppointmentAggregate} from '../appointments/contract';
 import type {InboxNotificationDTO} from '../../shared/contract/inbox-notifications';
 import type {InboxDeliveryPreferencesDTO} from '../../shared/contract/notification-delivery-policy';
 export function secretaryPushAllowed(sources:InboxNotificationDTO['sources'],p:InboxDeliveryPreferencesDTO):boolean {
- return sources.every(source=>source.sourceKind==='mail_summary'?p.secretaryMail===true:
+ return sources.every(source=>source.sourceKind==='mail_summary'?false:
   source.sourceKind==='event_deadline'||source.sourceKind==='event_prep'?p.secretaryDeadline!==false:
   source.sourceKind==='event_pick'?p.secretaryPick!==false:true);
 }

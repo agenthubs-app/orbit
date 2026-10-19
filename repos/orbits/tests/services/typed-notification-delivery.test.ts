@@ -21,6 +21,8 @@ test('secretary switches only mute matching push sources',()=>{
  assert.equal(secretaryPushAllowed([{sourceKind:'event_prep'}] as never,p),false);
  assert.equal(secretaryPushAllowed([{sourceKind:'event_pick'}] as never,p),false);
  assert.equal(secretaryPushAllowed([{sourceKind:'mail_summary'}] as never,defaultDeliveryPreferences('a')),false);
+ assert.equal(secretaryPushAllowed([{sourceKind:'mail_summary'}] as never,{...p,secretaryMail:true}),false);
+ assert.equal(secretaryPushAllowed([{sourceKind:'contact'},{sourceKind:'mail_summary'}] as never,{...p,secretaryMail:true}),false);
  assert.equal(secretaryPushAllowed([{sourceKind:'contact'}] as never,p),true);
 });
 test('quiet and 07:30–07:50 candidates become one private digest per device',async()=>{
