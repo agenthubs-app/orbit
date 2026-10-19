@@ -92,3 +92,7 @@ M0 `306f32224` 已在 `origin/redesign`。本轮 rebase 后提交依次为：`19
 ### R14 全量联动补记（2026-10-19）
 
 R14 在新集成基线上的 Web 全量为 7,698 tests、18 fail；相对上文 R13 run-02 的 16 fail，旧文案清单失败已消失，另有 3 个由 B 线新增的架构/缓存/写入清单失败。`inbox-notification-day` 的日期运算已移入共享 `compute-text` 并同步 App（`687c5949e`），可选偏好接口 404 不再误失效 R13 共用身份缓存（`856704906`），typed 投递状态的非同步写入已列审计清单（`99fa0a541`）。对应 Web 架构/日期/清单 12/12、App 合同副本 7/7、浏览器身份缓存 1/1 均通过，Web/App 类型检查也退出 0。全量没有在这些定向修复后重跑，因此仍保留其原始失败记录与上文像素/离线缺口；证据在 `_evidence-b/R14/run-01/`。
+
+### 原始秘書预览账号复核（2026-10-19）
+
+上文 `536b0aad3` 先验原始 owner 的修复落在普通受信箱 `notificationInboxView`，没有覆盖秘書预览的包裹项。`parseSecretaryPreviewForActor` 曾先用 `readableItems` 丢弃未知 kind，再检查剩余 `notification.actorId`，因此「异账号 + 未知 kind」会被漏过。现改为先扫描原始 `items[*].notification.actorId`，任一异账号即整页拒绝，再宽进解析；共享 schema 与 App 副本同一提交 `64288a7ab`。新回归用例先以“未抛错”失败，再修复为通过；Web 预览 route/契约 7/7、App 合同/fixture 7/7，两端类型检查均退出 0。普通受信箱先验逻辑仍保留。
