@@ -2,7 +2,7 @@
 
 范围：PLANNER rev 2（§2「主会话代定」B-1～B-8）+ GOAL，外加主会话 RD-33 补充代定（R11a 两项追补、R11a 复核修复、`sort=added`、add-contact-screens、b12 g11 只补 Web インサイト、无数据源的块不画）。B 线 worktree `redesign-b`（`line-b`），Web :3300（`.next-line-b`）、Metro :8083、本机库 `orbit_line_b`、模拟器 `Orbit Line B`。没连 Neon、没部署、没推送；**付费 AI 真调 0 次**（快照用 mock 生成器与 fixture；本机 live 页面只读快照并排队，没有跑 worker）；没用 GitNexus。
 
-**结论**：契约 / 服务端 / 两端界面 / 旧屏退役 / 测试已交（SC-01～09、11、12）；Web 像素门禁 5 张通过、W-R11b-04 未过（SC-10 Web，复核修正见 §4）；两端全量对照基线零新增失败。**App 像素门禁未跑**（§4：模拟器里的开发包没连到本线 :3300，接口地址要在 App 设置里改，记交接 R11-18），App 行为以 14 条真实渲染测试覆盖。待主会话独立复核（SC-13）。
+**结论**：契约 / 服务端 / 两端界面 / 旧屏退役 / 测试已交（SC-01～09、11、12）；Web 像素门禁 5 张通过、W-R11b-04 未过（SC-10 Web，复核修正见 §4）；两端全量对照基线零新增失败。**App 像素门禁未跑**（§4：模拟器里的开发包没连到本线 :3300，接口地址要在 App 设置里改，记交接 R11-18），App 行为复核后以 16 条真实渲染测试覆盖。待主会话独立复核（SC-13）。
 
 ## 1. 提交（`line-b`，已 rebase 到 `origin/redesign`，未推送）
 
@@ -44,7 +44,7 @@
 
 | | 基线 | 收口 | 新增失败 |
 | --- | --- | --- | --- |
-| orbits 全量（`LANG=en_US.UTF-8`） | 7511 / 6508 过 / 14 败 / 989 跳 | 7423 / 6432 过 / 7 败 / 984 跳 | 0（1 条 `personal-schedule-collection` 不在基线名单：日期跨到 10-19 后在基线副本和 origin 副本上同样失败，与本线无关） |
+| orbits 全量（`LANG=en_US.UTF-8`） | 7511 / 6508 过 / 14 败 / 989 跳 | 7423 / 6432 过 / 7 败 / 984 跳 | 0（`personal-schedule-collection` 的同日基线复现见下） |
 | App 全量 | 3190 / 3175 过 / 12 败 | 3185 / 3173 过 / 10 败 | 0 |
 | orbits `typecheck` / `typecheck:app` / `lint` | 0 / 0 / 0 | 0 / 0 / 0 | — |
 | App `tsc --noEmit` | 0 | 0 | — |
@@ -52,6 +52,8 @@
 | 联系人 PG（6 文件） | 3 败（ICU / 时区既有） | 同 3 条 | 0 |
 
 orbits 总数变少：删了旧分析屏的测试（约 90 条）。第一轮收口（rebase 前）跑出 4 条新增并已修（`bbda669a6`）：CSS 圆角没用 token、0918 链接自检下限（旧分析屏整屏删除后链接从 ≥60 降到 42）、审计里 dashboard 的路由参数（新屏不再挂 OrbitVisualFreezeRuntime）、App `plan-overview-screens` 一条（rebase 前 A 线的中间状态，rebase 后不再失败）。
+
+**复核 m1（2026-10-19，同日期同命令）**：对原基线源码副本和当前工作树分别运行 `env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test --import tsx tests/api/personal-schedule-collection.test.ts`。基线 10 条中 9 过、1 败，失败名为 `web personal client requests the editable collection rather than the legacy aggregate`；当前 10/10 过。基线该例把 `startsAt` 固定在 2026-09-17，跨日期后被读取过滤；当前例使用当前时间加一天。证据 `_evidence-b/R11b/review-m1-{baseline,current}.log`；基线展开副本已归档为 `_evidence-b/baseline-source-trees-20261019.tar.gz`。这项同日复现支持“日期相关的旧测试失败”，不把基线失败写成当前通过，也不将旧全量日志中未重跑的项算作已验证。
 
 ## 4. 像素门禁（RD-16 / RD-29）
 
@@ -108,4 +110,11 @@ Web（`compare-redesign.mjs --suite views/web-R11b.json`，`ORBIT_REDESIGN_MOCK=
 
 ## 10. 清理
 
-dev :3300（本线 PID）、画板服务 :3331、Metro :8083 已停；模拟器 `Orbit Line B` 已关机（系统语言改成日文，留给像素轮）；`next dev` 改写的 `tsconfig.json` / `next-env.d.ts` 已还原；证据在 ORICO `_evidence-b/R11b/`（`~/orbit-sprint-evidence/redesign/R11b` 是软链）。
+dev :3300（本线 PID）、画板服务 :3331 / 复核用 :3352、Metro :8083 已停；模拟器 `Orbit Line B` 已关机（系统语言改成日文，留给像素轮）；`next dev` 改写的 `tsconfig.json` / `next-env.d.ts` 已还原；复核 fixture 恢复默认，临时开发路由已移除。证据在 ORICO `_evidence-b/R11b/`（`~/orbit-sprint-evidence/redesign/R11b` 是软链）。
+
+## 11. 主会话复核修复（2026-10-19）
+
+- **S1** `acaad6d94`：App 缓存视图只有最新人数确认解锁后才发快照 GET；名单收到 `409 LOCKED` 立即隐藏旧名单并清除对应缓存。先红后绿；页面测试 16/16，App typecheck 0。证据 `_evidence-b/R11b/review-s1-{red2,green,full}.log`。
+- **M1** `2869b7ad9`：b5 #41 原地按真实可见块改稿，移除 W-R11b-04 旧的整块 `[data]` 归因。第三轮重比仍 FAIL，详见 §4。
+- **M2** `baa8e4996`：分析读取异常日志只保留事件、错误类别及安全码；含私密邮箱的异常消息不出现在日志。路由测试 4/4，Web typecheck 0。证据 `_evidence-b/R11b/review-m2-routes.log`、`review-m2-web-typecheck.log`。
+- **m1**：同日同命令的基线与当前日志详见 §3；本次文档提交单独保存结论。
