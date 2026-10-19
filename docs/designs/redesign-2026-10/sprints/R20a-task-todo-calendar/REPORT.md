@@ -899,3 +899,86 @@ D 専用の新規 nonce DB `orbit_line_d_native_matrix_20261019_f1e8c0493d12` �
 live `plan_today_chance` は Plan v2 `summary.current.todayChance` を読んでいたが、`summary()` はこの optional field を実際には埋めない。したがって活性 Plan に次の機会があっても常に `not_implemented` になっていた。Plan v2 の既存 `overview(planId)` が会える活動・候補から `todayChance` を算出するため、To-do の受限読取 adapter は同じ活性 Plan に対して overview を読み、live では既存 Plan と同じ有界活動事実（最大20件 / 60日）を接続した。Plan の書込や paid AI は追加していない。活動事実の前に共有 read-budget gate を通し、そこで拒否された場合は Plan 側の「活動なし」降級を精確な 0 とせず、To-do の当該 source だけ `unavailable` にする。Plan が存在しない場合は 0 件として扱う。
 
 実 PostgreSQL adapter 回帰は活性 Plan / 将来活動で **RED 0/1**（`not_implemented`）→ **GREEN 1/1**（`ok`、nextMoves 1、指定 eventId）；活動 read-budget 拒否でも **RED 0/1**（誤って `ok`）→ **GREEN 1/1**（`unavailable`）。両反例を含む To-do/Plan 隣接四 file は **20/20 pass**、Web `typecheck:app` / lint / diff check は exit0。最終 source の Web 全量 `_evidence-d/R20a/run-01/d-web-full-plan-chance-final.log` は **7,738 tests / 7,173 pass / 20 fail / 0 cancelled / 545 skip、exit1**。同輪の修正前全量 `d-web-full-plan-chance-precommit.log` と failure 名20件は一致し、この新回帰は全量でも pass。ただし全量 gate は赤のまま。日次 1 問 `completion_question` は未生成の actor でなお `not_implemented`、三块の完全件数・native / pixel・SC-07 / 15 / 16 全体を合格とはしない。実 live HTTP / native 再撮影も未実施。
+
+## 2026-10-20　接手轮结果与验收状态
+
+本轮先核对 14 个已有未提交路径，再按路径提交为 `e00017299`；随后在 clean tracked tree 上 `git pull --rebase origin redesign` 到 `c62feb4b8`，没有 stash、整树 reset、push 或冲突。`HANDOFF-CLAUDE-2026-10-19.md` 是接手前已有的未跟踪文件，未纳入任何提交。提交 `6ca235176` 将 Web 版本浮条接到 `Orbit2026Shell`，`e16a3903e` 将 App 的强制更新／维护判定接到根布局；App 全量揭示旧性能测试替身不兼容后，`706b96282` 仅更新该夹具。跟踪文件在本节写入前 clean，`origin/redesign` 再次 pull 确认为 up to date。
+
+### REVIEW 与导航壳逐项复核
+
+| 项 | 当前结果与局限 |
+| --- | --- |
+| S1 | `0d864d72e` 已在 To-do 详情抽屉内接入 `?task=ID` 编辑、保存／取消与版本校验；原记录的 Web component / route 20/20、browser 10/10 通过。未把旧 `/app/tasks/[id]` 的跳转当成编辑功能。 |
+| S2 | `04e52dd95` 已接 App 按账号和窗口读取面談、离线账号副本及跨日「以前の情報」；source / copy / inventory 40/40、sign-out 48/48、Calendar 隣接 14/14。实 iOS 长期离线与全部画面 pixel 仍未过。 |
+| M1 | `be2ba022f` 对未知 follow-up `kind` 跳过整条；不回退为可操作普通 task。 |
+| M2 | `96fc8fa1a`、`612dce933` 将本地日期分类与服务端分页 cursor 对齐，并处理固定时区；跨页回归已有记录。 |
+| M3 | `ed29fc122` 将 OAuth callback 异常改为固定公开错误，不返回异常原文。 |
+| M4 | `42a6df51c` 放宽 App task-page **响应**新增字段读取，写入／请求仍按原校验。 |
+| m | Today / Followups 已删除屏幕的 route-coverage consumer 行现为零；`app/_layout.tsx` 的旧越线疑点由本轮用户明确要求的 R18b 根门禁覆盖，改动与新夹具单列提交。 |
+| App R18b S1 | `RootVersionGate` 在根布局的所有路径上先判定，再开放可见导航；冷启动和 pathname / actor / base URL 变化均重检，强制更新与维护遮挡页面，`enforceMinimum=false` 放行。Expo Router 的 navigator 保持挂载但在检查／拦截时不可见、无指针／无无障碍焦点，防止首帧无 navigator 的路由错误。定向根布局／policy 12/12、App typecheck exit0；现有签名 D 包加载当前 JS 的模拟器已验证三种本机策略与一个 Task 深链，范围见下。 |
+| Web R18b 浮条 | `Orbit2026Shell` 传入服务端初始 build ID 并在已登录 shell 挂载 C 线私有 `WebVersionBannerGate`；shell/banner 定向 25/25、Web `typecheck:app` exit0。 |
+
+### SC 对照（通过只指明所列证据）
+
+| SC | 状态与未闭合条件 |
+| --- | --- |
+| 01 | 预检与 App 48 / Web 24 画面清单已登记；实际画面状态步骤和最终门禁未闭合。 |
+| 02 | PostgreSQL 18 的フォロー根因、双端读路径 RED→GREEN 已记录；完整两端画面操作未补齐。 |
+| 03 | 延期计数服务／契约／App mirror 与离线逻辑已有定向证据；最终同账号端到端与全量 gate 未过。 |
+| 04 | `todo/page` 只读聚合、签名 cursor、来源降级和 Plan 今日机会已接；`completion_question` 的只读 projection 未提供，三块完整件数仍为 partial。 |
+| 05 | App To-do / Calendar 账号副本及有限 API 停机／重连操作有证据；飞行模式、长期 offline、别账号与所有操作未闭合。 |
+| 06 | 四段切换、返回滚动、1024 Plan 标题的局部 Web/App 操作已有证据；全部宽度／主题与像素未过。 |
+| 07 | 来源动作与单来源分页局部可用；entity draft 会话映射、1日1問及全部来源完成链缺口仍在。 |
+| 08 | 两端手写 draft、AI unavailable、部分 sent handoff 有证据；日语 AI、重写、持久送达确认与完整 native 链未过。 |
+| 09 | Web S1 编辑已修，App 任务 0/3/35 件 native 显示／分页已补；全部任务／フォロー操作、旧屏退役、元メモ不可变引用和像素未过。 |
+| 10 | Calendar 月／週／日、个人予定与面談来源局部可用；全状态 native 和像素未过。 |
+| 11a | 双端日程提案组件骨架已有独立里程碑提交与测试，维持已交。 |
+| 11 | 双端 proposal / reschedule 的服务与 UI 局部验证已有记录；实际 native 全链、普通 contact 权威及像素未过。 |
+| 12 | Google 只读 API、OAuth 白名单、替身 provider 有证据；真实 Google 明确不在本轮授权内，native 各状态未完整验收。 |
+| 13 | 重试、离线与未实现状态有局部实现；两端所有指定画面与截图未齐。 |
+| 14 | Today / Followups 孤儿屏已退役，Web personal redirect 已接；Agent `?entry=` 精确焦点契约未完成，按主会话已有决定保留旧入口，Web lifecycle / E 线旧链接尚未退役。 |
+| 15 | R31a/R31b 已合入；下表三块 Web 正式门禁仍 FAIL，App 与其余清单未通过，不能写「等组件库」代替现状。 |
+| 16 | 两端全量和 Web copy QA 仍红，独立复核未对本轮新版本自行重跑；结果见下。 |
+
+### 像素门禁与不退步
+
+| 画面 | 最新正式结果 | 下一条件 |
+| --- | --- | --- |
+| W-R20-01 1440 light | 第 3 轮 exit5，raw 0.0568，14 个超阈值带均未归因、28 missing；日期与 Google mock 已匹配，但本机内部予定为 0，和画板的数据状态不一致。 | 已达每画面三轮上限，依 PLANNER §0 停止此画面的调整；需要同一内部予定 fixture、shell 横位核对后由后续像素轮处理。 |
+| W-R20-02 1440 light | 最近一次 exit5，raw 0.0515，14 带未归因、27 missing；最终文字微调后尚无新截图。 | 画板期日 chip 缺来源；完成行按用户决定立即消失，是有意画板差异。需同条件数据及取舍后再测。 |
+| W-R20-07 1440 light | exit5，raw 0.0404，15 带未归因、29 missing；画板的四块空态结构与当前 EmptyState 不同。 | 三个可点来源 tile 的目标／权限／失败行为须先代定，不能用无动作装饰 tile 冒充完成。 |
+
+其余 W-R20 与 A-R20、R05 / R07 / W-R24-01 不退步清单无本轮通过证据。Web 1024 / 390、缺画板主题、Calendar 週和 Web 面談抽屉按 PLANNER 代定 7 仅记录实现截图，不列像素通过。以上失败不可归因为 `[data]` 后放行：结构、位置和缺块尚未解释。
+
+### 本轮验证、失败归属和证据
+
+证据新目录：`/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-01/`；旧 native / pixel 原始证据在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-d/R20a/`。本轮只启动 D 专用模拟器、临时 3500 版本策略 stub 与 8085 Metro；已终止自己启动的进程并将模拟器还原 Shutdown，3500 / 8085 最终无 listener。未启动 Web dev server，没有 Neon／生产、真实 Google、付费 AI、部署或 push。
+
+- Web 完整 `npm test`（`LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`、清空外部环境、`heavy.sh d`）：**7,835 total / 6,763 pass / 31 fail / 0 cancelled / 1,041 skip，exit1**，原始 `web-full-closure.log`。与本线 pristine baseline 逐失败名比较：原 31、现 31，新增 `non-.btn <button> count in app/(app)/app does not increase` 一件，旧「手入力 ... 元に戻す」一次未复现；详情 `web-full-closure-baseline-compare.json`。新按钮审计现 85 > 79，涉及 D-owned 旧 Task 编辑器，也涉及 E / Event / Search / Host 等线；不能把新增失败抹成零，或只改全局阈值。
+- Web `typecheck`、`typecheck:app`、lint 各 exit0；`copy:qa` **7,455 entries / 245 issues，exit1**，本次日志未列 R20a task / todo / calendar copy 项，不能说全局 copy gate 通过。
+- App 根门禁性能夹具在旧版根布局下能编译，本轮新增依赖使两用例打包失败。定向 **2/4 RED → 4/4 GREEN**；连同 policy / root shell 的最终定向 **12/12**，App `typecheck` exit0。`tasks-unification-interactions` 在首轮全量中为 suite-level 失败，单独重跑 **22/22 pass**；这不能代替全量。最终 App 全量结果在下方追加。
+
+### 自定决定、交接与等待决定
+
+- 自定决定：沿既有 App offline 账号副本与跨日「以前の情報」口径实现 S2；Web 版本浮条复用 C 线组件；App 根布局让 navigator 保持挂载以满足 Expo Router 首帧要求，拦截期间隐藏并禁用交互。没有改动服务端默认 `enforceMinimum=false`。
+- 待主会话决定：W-R20-07 空态的名片／语音／Calendar 三 tile，推荐先把每项映射到真实入口、权限、错误状态再实现；若作为纯示意，需显式修画板并接受差异。影响 SC-09/15。
+- 待主会话决定：W-R20-02 的期日 chip 来源与已决定的完成后立即消失如何在画板标注；推荐按已批准 open-only 行为修画板、期日字段另定义。影响 SC-07/09/15。
+- 待主会话决定：`completion_question` read-only source、entity draft 的真实会话 ID、Web Agent `?entry=` 精确焦点与 E 线消费链接、App 元メモ不可变引用、任务跨页本地日语义以外的旧编辑器退役余项，详见上文「请求」「待主会话代定」；没有为缺来源伪造功能或数据。
+- 请求／越线自查：接手的 `e00017299` 包含 Plan v2 与 Event 内部 7 个产品路径及相关测试，超出 R20a PLANNER §1 的 D 线允许路径；这是用户要求先按路径保存的既有 14 个未提交变更，需 Plan/Event owner 审阅，不把它们当成 R20a 全 SC 验收。根布局和性能测试夹具属本轮明确交接所需的例外；组件库、token、共用 follow-up helper、汇总文档及其他线工作树未改。`git diff --stat origin/redesign...HEAD` 应由主会话逐文件再核。
+
+交接表追加（仅供 Bridge 协调者转录；本线不写共用台账）：
+
+| 本端版本 | 另一端影响 | 未完成事项 | 验证范围 |
+| --- | --- | --- | --- |
+| App `e16a3903e` + `706b96282` | Web 版本策略无契约改动；C 线 Web 浮条仍独立显示 | release bundle 与更多受支持深链、全量红项 | 根门禁 12/12、App typecheck exit0；现有签名包＋当前 JS 的 D 模拟器三策略／一个深链截图；全量结果见下 |
+| Web `6ca235176` | App 根门禁独立处理，不能以 Web banner 代替强制更新 | 正式布局截图与跨端同 build policy 读回 | shell / banner 25/25、Web typecheck:app exit0 |
+| R20a S1 `0d864d72e`、S2 `04e52dd95` | 任务详情 URL 和面談窗口／账号副本为两端消费约束 | 同账号 Web/App 写读、native offline 长期恢复、像素 | Web S1 20/20 + 10/10；App S2 40/40 + 48/48 + 14/14；没有双端业务验收完成声明 |
+| 既有 Plan/Event `e00017299` | Web To-do `plan_today_chance` 引用 Plan overview 和 Event facts，影响 Plan/Event owner | owner 审阅跨线代码；缺真实 actor 与同日 fixture 的本机 UI 重测 | 接手后 focused 36/36、Web typecheck:app exit0；不代表跨线全量通过 |
+
+没有更新 README／HANDOFF／DEFERRED-A／screen-ownership／Bridge 台账；请主会话按本节和上文「文档更新请求」转录。整体 SC-15 与 SC-16 未通过，R20a 不能标完成或可发布。
+
+最终 App 全量在提交夹具修正后以同一 sanitized environment / `heavy.sh d` 重跑：`app-full-after-harness-fix.log` **3,260 total / 3,245 pass / 13 fail / 0 cancelled / 2 skip，exit1**。首轮 `app-full-closure.log` 是 3,261 / 3,244 pass / 15 fail / 2 skip，含新根布局导致的性能夹具两件打包失败和 Task suite-level 失败；最终全量中这些名字都消失。最终失败为 R12 camera/batch 九件、discovery toggle 一件、joined-person 一件、typed inbox 一件、Plan `step reopen: a second confirm...` 一件。Plan 同 file 单独 **25 pass / 0 fail / 1 skip**，Task unification 单独 **22/22**；这只能说明局部无法复现，不能删去全量中的 timeout。与开工的 pristine App baseline（3,324 / 3,318 pass / 4 fail / 2 skip）逐名比较见 `app-full-closure-baseline-compare.json`：本轮当前源码中 12 个失败名称为该旧基线未见，3 个旧名称未复现；源码／上游和测试数都不同，不能将全部差额归因于本轮 D 线，也不能声称零新增失败。根门禁定向 **12/12** 与 App typecheck exit0 只支持该局部功能。
+
+停止条件按动作而非全 Sprint 扩大：W-R20-01 已到三轮像素上限，停止该画面返工；W-R20-07 的可点空态 tile 和 W-R20-02 的缺来源期日 chip 等待上述产品决定；SC-16 两端全量与 copy QA 仍失败，跨线失败不可在 D allowlist 内直接修复。下一轮可执行项仍包括其余画面的状态 fixture／像素操作和 App release bundle／更多深链验收，均未伪称已做。本轮已完成已授权的 REVIEW 修复复核与两项导航壳交接，未把局部定向测试或代码提交视为 Sprint 全部完成。
+
+App 根门禁的 D 专用模拟器实测：同一已安装签名包从本轮 Metro 8085 加载当前 JS；本机 3500 临时服务只回答公开 `/api/app/version`。`maintenance.active=true` 的冷启动显示维护页，`simctl openurl 'orbit://task?seg=todo'` 后仍显示维护页；`enforceMinimum=true` 且最低版本 `999.0.0` 显示强制更新页；相同最低版本在 `enforceMinimum=false` 时恢复正常公开 onboarding。四张定格图、SHA 与失败的首次 Metro TTY 启动诊断均在 `app-version-native-qa.md`；首次出现的 `No script URL provided` 是 Metro 未正常服务的环境失败，不计产品结果。该实测不覆盖所有深链、已登录内页、release bundle 或 production policy。捕捉时开发 warning banner 覆盖屏幕下方，截图只证明阻断状态而非像素门禁。验证后 app、stub、Metro 均终止，D 模拟器回到 Shutdown；没有重装或清除原有 app 数据。
