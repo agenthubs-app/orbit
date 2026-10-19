@@ -256,7 +256,7 @@ export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: Eve
                 {index ? <View style={styles.liLine} /> : null}
                 <Avatar initial={person.initial} tone={toneOf(person)} />
                 <View style={styles.grow}><UiText style={styles.metaTitle} numberOfLines={1}>{person.name}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[person.org, person.role].filter(Boolean).join(" · ")}</UiText></View>
-                {exchangeChip(person, t)}
+                {person.exchange !== "none" ? <View style={v.peopleStatus}>{exchangeChip(person, t)}</View> : null}
               </UiPressable>
             ))}
           </View>
@@ -461,6 +461,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchInput: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
   filters: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12, marginTop: 10 },
   listCard: { paddingHorizontal: 16, paddingVertical: 6 },
+  peopleStatus: { alignSelf: "center" },
   mapCard: { alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 },
   legendCard: { paddingHorizontal: 16, paddingVertical: 14 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
