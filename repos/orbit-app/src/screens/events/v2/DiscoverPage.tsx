@@ -141,7 +141,8 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
           <View style={[styles.card, styles.guide]} testID="events-discover-empty">
             <View pointerEvents="none" style={styles.guideGlow}>
               <Svg width={220} height={220}>
-                <Defs><RadialGradient id="events-discover-guide-glow" cx={110} cy={110} r={110} gradientUnits="userSpaceOnUse"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
+                {/* CSS radial-gradient(circle) uses the farthest corner of this 220px square. */}
+                <Defs><RadialGradient id="events-discover-guide-glow" cx={110} cy={110} r={156} gradientUnits="userSpaceOnUse"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
                 <Rect x={0} y={0} width={220} height={220} fill="url(#events-discover-guide-glow)" />
               </Svg>
             </View>
