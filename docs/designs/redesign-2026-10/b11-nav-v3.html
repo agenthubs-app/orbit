@@ -247,6 +247,17 @@
   .srw .meta b { display: block; font-size: 13.5px; }
   .srw .meta span { display: block; font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
   .glbl { font-size: 11.5px; font-weight: 800; color: var(--ink-3); margin: 16px 6px 6px; }
+  /* 2026-10-19 主会话代定 · R14 第三轮：秘書設定板を実装の説明・カード・操作順に合わせる。 */
+  .r14sec { padding-top: 12px; }
+  .r14sec .ss-intro { color: var(--ink-3); font-size: 14px; line-height: 1.6; margin: 0 0 20px; }
+  .r14sec .ss-card { border-radius: 24px; padding: 18px 16px; margin-bottom: 16px; }
+  .r14sec .ss-row { display: flex; align-items: center; min-height: 74px; gap: 10px; }
+  .r14sec .ss-row .meta { flex: 1; min-width: 0; }
+  .r14sec .ss-row .meta b { display: block; font-size: 14px; }
+  .r14sec .ss-row .meta span { display: block; color: var(--ink-3); font-size: 12px; line-height: 1.5; margin-top: 2px; }
+  .r14sec .ss-cap { background: var(--surface-2); }
+  .r14sec .ss-cap b { display: block; font-size: 14px; }
+  .r14sec .ss-never { font-size: 13px; color: var(--ink-3); line-height: 1.6; margin: 18px 0; }
   /* ---- E · Task ---- */
   .tsw-clip { overflow: hidden; margin: 0 -18px; padding: 0 18px; position: relative; }
   .tsw-track { display: flex; gap: 36px; width: calc(200% + 36px); transform: translateX(-34%); }
@@ -1364,14 +1375,13 @@ function lockScr() {
     <div style="height:110px"></div></div>`;
 }
 function secSettings() {
-  /* 2026-10-19 主会话代定 · R14：秘書は期限とおすすめのみ。上限は通知設定と共有し、メール要約を表示しない。 */
-  return topbar('秘書', '設定 · 通知', back) + `
-    <div class="glbl">秘書がやること</div>
-    <div class="sgroup k-ssdo">${[['⏰', '期限のお知らせ', '参加予定・評価済みイベントの締切と会前準備', 1], ['🎯', 'イベントのおすすめ', 'プロフィール · 目標 · 人脈の傾向から', 1]].map(([e, t, d, on]) => `<div class="srw"><span style="font-size:20px">${e}</span><div class="meta"><b>${t}</b><span>${d}</span></div>${tg(on)}</div>`).join('')}</div>
-    <div class="glbl">通知の上限</div>
-    <div class="sgroup k-sslimit"><div class="srw"><span class="lbtn">${ic('bell', 'sm')}</span><div class="meta"><b>1日の上限 · 3件</b><span>Orbit 全体のプッシュと同じ上限です</span></div></div></div>
-    <button class="btn sm" style="margin-top:12px">静かな時間帯を変更</button>
-    <div class="card flat k-ssnever" style="margin-top:12px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">🔒 秘書はあなたの代わりにメール・メッセージを<b style="color:var(--ink)">送りません</b>。</div>`;
+  /* 2026-10-19 主会话代定 · R14：実装済みの二つの切替、共有上限、代行送信なし、静音設定への入口を同じ順序で描く。 */
+  return topbar('秘書の設定', '', back) + `<div class="r14sec">
+    <p class="ss-intro">秘書が知らせる内容を選べます。</p>
+    <div class="card ss-card k-ssdo">${[['期限のお知らせ', '参加予定・評価済みイベントの締切と会前準備をお知らせします。'], ['イベントのおすすめ', 'プロフィール・目標・人脈から選びます。']].map(([t, d]) => `<div class="ss-row"><div class="meta"><b>${t}</b><span>${d}</span></div>${tg(1)}</div>`).join('')}</div>
+    <div class="card ss-card ss-cap k-sslimit"><b>1日の上限 · 3</b><span class="lbl">Orbit 全体のプッシュと同じ上限です。</span></div>
+    <p class="ss-never k-ssnever">秘書はあなたの代わりにメールやメッセージを送りません。</p>
+    <button class="btn sm">静かな時間帯を変更</button></div>`;
 }
 
 /* ===================== E · Task ===================== */

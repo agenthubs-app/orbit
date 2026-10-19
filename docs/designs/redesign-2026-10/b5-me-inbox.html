@@ -76,6 +76,17 @@
   .hl { box-shadow: 0 0 0 2px var(--plum-500), 0 0 0 9px color-mix(in srgb, var(--plum-500) 16%, transparent); animation: hlPulse 2.4s var(--ease) 3; }
   @keyframes hlPulse { 50% { box-shadow: 0 0 0 2px var(--plum-500), 0 0 0 16px color-mix(in srgb, var(--plum-500) 4%, transparent); } }
   .timepill { font-family: var(--font-num); font-weight: 800; font-size: 13px; padding: 6px 12px; border-radius: 12px; background: var(--surface-2); }
+  /* 2026-10-19 主会话代定 · R14 第三轮：通知板のカード構造を実装画面の縦組みに合わせる。 */
+  .r14app { padding-top: 12px; }
+  .r14app .na-card { border-radius: 24px; padding: 18px 16px; margin-bottom: 16px; }
+  .r14app .na-card h3 { font-size: 15px; margin: 0 0 10px; }
+  .r14app .na-row { display: flex; align-items: center; min-height: 54px; gap: 12px; }
+  .r14app .na-row .meta { flex: 1; min-width: 0; }
+  .r14app .na-row b { display: block; font-size: 14px; }
+  .r14app .na-row .lbl { display: block; margin-top: 2px; line-height: 1.5; }
+  .r14app .na-intro { color: var(--ink-3); font-size: 14px; line-height: 1.6; margin: 20px 0 16px; }
+  .r14app .na-hours { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .r14app .na-hours .timepill { background: var(--surface); border: 1px solid var(--line); font-weight: 500; }
 
   /* マイページ */
   .mycard { border-radius: 24px; padding: 16px 18px; min-height: 200px; display: flex; flex-direction: column; position: relative; overflow: hidden;
@@ -1100,20 +1111,18 @@ function landMeet() {
     <div class="card"><div class="card-h"><h3>前回までのやりとり</h3></div>${[['10/6', '2回目の面談', 'DD の資料リストを受領'], ['9/24', 'メール', '事業計画書 v2 を送付']].map(([d, t, m]) => `<div class="row" style="gap:10px;padding:6px 0;font-size:12.5px"><b class="score" style="width:36px">${d}</b><div><b>${t}</b><div class="lbl">${m}</div></div></div>`).join('')}</div>`;
 }
 function notifSettingsApp() {
-  /* 2026-10-19 主会话代定 · R14：按已实现的四类推送、1/2/3 上限、双档锁屏和设备权限改稿。 */
-  return topbar('通知', 'プッシュは「見逃すと困るもの」だけ', back, '<span></span>') + `
-    ${glbl('この端末')}<div class="sgroup">${srow('bell', 'この端末でプッシュを許可', 'システムの許可を確認してから、この端末を登録します', tg(1), false)}</div>
-    ${glbl('プッシュするもの')}<div class="sgroup">
-      ${srow('mail', '連絡先のメッセージ', '', tg(1), false)}
-      ${srow('clock', 'リマインダー', '面談の30分前 · 締切の当日', tg(1), false)}
-      ${srow('sparkle', 'おすすめ', 'イベントのおすすめ', tg(1), false)}
-      ${srow('refresh', '更新', '', tg(1), false)}</div>
-    ${glbl('1日の上限')}<div class="sgroup" style="padding:14px 16px"><div class="seg lim" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button>1件</button><button>2件</button><button class="on">3件</button></div><div class="lbl" style="margin-top:8px">上限を超えた分は受信箱で確認できます</div></div>
-    ${glbl('静かな時間帯')}<div class="sgroup quiet"><div class="srow"><span class="lbtn">${ic('moon', 'sm')}</span><div class="meta"><b>静かな時間帯</b><span>この間はプッシュしません</span></div>${tg(1)}</div>
-      <div class="srow"><span class="lbtn" style="opacity:0"></span><div class="row" style="gap:8px;flex:1"><span class="timepill">開始 22:00</span><span class="timepill">終了 7:30</span></div></div>
-      <div style="padding:0 16px 10px"><button class="btn sm">時間を保存</button></div>
-      <div class="srow"><span class="lbtn">${ic('flag', 'sm')}</span><div class="meta"><b>面談30分前は例外</b><span>静かな時間帯でも通知します</span></div>${tg(1)}</div></div>
-    ${glbl('ロック画面での表示')}<div class="sgroup" style="padding:14px 16px"><div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(2,1fr)"><button class="on">内容を隠す</button><button>内容を表示</button></div></div>`;
+  /* 2026-10-19 主会话代定 · R14：実装の AppScreen に合わせて余分な見出し・アイコンを外し、四分類／共有上限／二択だけを描く。 */
+  return topbar('通知', '', back, '<span></span>') + `<div class="r14app">
+    <div class="card na-card"><div class="na-row"><div class="meta"><b>この端末でプッシュを許可</b><span class="lbl">システムの許可を確認してから、この端末を登録します。</span></div>${tg(0)}</div></div>
+    <p class="na-intro">プッシュは見逃すと困るものだけ。受信箱の通知は残ります。</p>
+    <div class="card na-card"><h3>プッシュするもの</h3>
+      ${['連絡先のメッセージ', 'リマインダー', 'おすすめ', '更新'].map(t => `<div class="na-row"><div class="meta"><b>${t}</b></div>${tg(1)}</div>`).join('')}</div>
+    <div class="card na-card"><h3>1日の上限</h3><div class="seg lim" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button>1</button><button>2</button><button class="on">3</button></div><div class="lbl" style="margin-top:12px">上限を超えた分は受信箱で確認できます。</div></div>
+    <div class="card na-card quiet"><h3>静かな時間帯</h3><div class="na-row"><div class="meta"><b>静かな時間帯</b><span class="lbl">この間の通知はまとめて届きます。</span></div>${tg(1)}</div>
+      <div class="na-hours"><div><span class="lbl">開始</span><span class="timepill">22:00</span></div><div><span class="lbl">終了</span><span class="timepill">07:30</span></div></div><button class="btn sm">時間を保存</button>
+      <div class="na-row"><div class="meta"><b>面談30分前は例外</b><span class="lbl">確認済みの面談だけ、静かな時間帯にも通知します。</span></div>${tg(1)}</div></div>
+    <div class="card na-card"><h3>ロック画面での表示</h3><div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(2,1fr)"><button class="on">内容を隠す</button><button>内容を表示</button></div></div>
+    <div class="card na-card"><h3>自動で見つける</h3><div class="lbl">保存された情報から通知や提案を見つけます。</div></div></div>`;
 }
 
 /* =================== C. マイページ =================== */
@@ -1546,7 +1555,7 @@ h += boards([
   ['③ 着地：早割', '', phone({ body: landEarly(), tab: 3, pins: P(1, '.hl') + P(2, '.deep') + P(3, '.hl .btn.primary') }), ['目标卡片紫色外圈脉冲 3 次后静止（hlPulse），页面自动滚到该卡', '顶部「通知から開きました」条：说明来源，3 秒后淡出', '申请在外部网站由用户完成；Orbit 不代为报名/付款']],
   ['③\' 着地：面談準備', '', phone({ body: landMeet(), tab: -1, pins: P(1, '.hl') + P(2, '.hl .why') }), ['高亮「話すこと 3点」卡；会议链接放在头卡里，一键打开', '「?」展开依据（面談メモ · 今朝的邮件 · 计划第 6 周）']],
   /* 2026-10-19 主会话代定 · R14：#13 説明を実装済みの端末許可・四分類・共有上限へ更新。 */
-  ['通知設定', '', phone({ body: notifSettingsApp(), tab: -1, pins: P(1, '.sgroup') + P(2, '.seg.lim') + P(3, '.quiet') }), ['端末許可と四分類のプッシュ設定；受信箱の通知は残る', '1 日上限は 1 / 2 / 3 件、既定 3 件；超過分は受信箱で確認', '静かな時間帯 22:00–7:30、面談 30 分前の例外、ロック画面は二択']],
+  ['通知設定', '', phone({ body: notifSettingsApp(), tab: -1, pins: P(1, '.r14app .na-card') + P(2, '.seg.lim') + P(3, '.quiet') }), ['端末許可と四分類のプッシュ設定；受信箱の通知は残る', '1 日上限は 1 / 2 / 3 件、既定 3 件；超過分は受信箱で確認', '静かな時間帯 22:00–7:30、面談 30 分前の例外、ロック画面は二択']],
 ]);
 
 /* ---- C マイページ ---- */
