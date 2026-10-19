@@ -21,11 +21,15 @@ export const taskCardSchema = z.object({
   relatedContact: z.object({ id: key, namePreview: z.string().max(240), organizationPreview: z.string().max(240) }).nullable(),
   relationship: z.boolean().optional(),
 });
+const taskCardsSchema = z.array(z.unknown()).max(50).transform(items => items.flatMap(item => {
+  const parsed = taskCardSchema.safeParse(item);
+  return parsed.success ? [parsed.data] : [];
+}));
 
 export const taskPageSchema = z.object({
   actorId: key, status: z.enum(["open", "completed"]), scope: z.enum(["all", "relationship", "personal"]), query: z.string().max(240),
   dueWindow: taskDueWindowSchema.strip().optional(),
-  items: z.array(taskCardSchema).max(50),
+  items: taskCardsSchema,
   counts: z.object({ open: z.number().int().nonnegative().safe(), completed: z.number().int().nonnegative().safe() }),
   total: z.number().int().nonnegative().safe(), hasMore: z.boolean(), nextCursor: z.string().min(1).max(8000).nullable(), asOf: instant,
 }).superRefine((page, ctx) => {

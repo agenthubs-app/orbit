@@ -24,3 +24,14 @@ test("task-page response parser accepts additive fields at every nested level", 
   assert.equal(taskPageSchema.safeParse({ ...response, status: "archived" }).success, false);
   assert.equal(taskDueWindowSchema.safeParse(response.dueWindow).success, false, "request-side window validation stays strict");
 });
+
+test("task-page parser skips an unknown category row and keeps the server total", () => {
+  const card = { id: "known", titlePreview: "Call back", locationPreview: null, status: "open", category: "work",
+    priority: "normal", plannedDate: null, dueAt: null, updatedAt: "2026-10-17T00:00:00Z", relatedContact: null };
+  const page = taskPageSchema.parse({ actorId: "a", status: "open", scope: "all", query: "",
+    counts: { open: 2, completed: 0 }, total: 2, hasMore: false, nextCursor: null,
+    asOf: "2026-10-17T00:00:00Z", items: [card, { ...card, id: "future", category: "future-category" }] });
+  assert.deepEqual(page.items.map(item => item.id), ["known"]);
+  assert.equal(page.total, 2);
+  assert.equal(page.counts.open, 2);
+});

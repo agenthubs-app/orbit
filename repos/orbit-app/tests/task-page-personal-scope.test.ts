@@ -35,3 +35,14 @@ test("App task-page responses accept newer fields but still reject unknown task 
   assert.equal("futureWindowField" in page.dueWindow!, false);
   assert.equal(taskPageSchema.safeParse({ ...response, status: "archived" }).success, false);
 });
+
+test("App skips an unknown task category without losing the page total", () => {
+  const card = { id: "known", titlePreview: "Call back", locationPreview: null, status: "open", category: "work",
+    priority: "normal", plannedDate: null, dueAt: null, updatedAt: "2026-10-17T00:00:00Z", relatedContact: null };
+  const page = taskPageSchema.parse({ actorId: "a", status: "open", scope: "all", query: "",
+    counts: { open: 2, completed: 0 }, total: 2, hasMore: false, nextCursor: null,
+    asOf: "2026-10-17T00:00:00Z", items: [card, { ...card, id: "future", category: "future-category" }] });
+  assert.deepEqual(page.items.map(item => item.id), ["known"]);
+  assert.equal(page.total, 2);
+  assert.equal(page.counts.open, 2);
+});
