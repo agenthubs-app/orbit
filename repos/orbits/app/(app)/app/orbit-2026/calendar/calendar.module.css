@@ -64,8 +64,8 @@
 .external { background: var(--surface-2); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
 .columns { display: grid; grid-template-columns: repeat(7, minmax(160px, 1fr)); overflow-x: auto; max-height: 720px; }
 .single { grid-template-columns: minmax(280px, 1fr); overflow-y: auto; }
-.single .columnDate { position: sticky; top: 0; z-index: 2; }
-.single .allDay { background: var(--surface); position: sticky; top: 40px; z-index: 2; }
+.single .columnDate { position: sticky; top: 0; z-index: var(--z-sticky); }
+.single .allDay { background: var(--surface); position: sticky; top: 40px; z-index: var(--z-sticky); }
 .column { min-width: 0; border-right: 1px solid var(--line); background: var(--surface); }
 .columnDate { width: 100%; padding: var(--space-10); border: 0; background: var(--surface); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .columnDate[aria-pressed="true"] { color: var(--accent-text); }

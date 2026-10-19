@@ -225,7 +225,7 @@
     },
     {
       "id": "W-R20-19",
-      "app": "/app/tasks?tab=calendar",
+      "app": "/app/tasks?tab=todo&view=all",
       "design": "b3-daily-actions.html",
       "board-index": 46,
       "width": 1440,
