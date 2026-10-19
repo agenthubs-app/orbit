@@ -1078,3 +1078,34 @@ App 在 D 专用模拟器实际登录同一个合成 actor 后，首个 A-R20-01
 - **越线自查**：本轮的新产品提交限 D 所有的 Task／Todo／Calendar、task copy、对应测试与允许的画板注释；没有改 A 线组件／token、B 线共用判定、E 线 iOrbit、其他 worktree 或共用台账。`a214666d3` 的 W19 suite 修正属于本 Sprint 门禁目录。先前 `e00017299` 的 Plan／Event 既有越线事项仍按上节保留 owner 审阅。
 
 清理证据：合成账号从 App 设置退出，返回登录页；自己的 Next 3500、设计 HTTP 3320、Metro 8085 全部停止且无 listener，D 模拟器 `3E4102CA-9714-4F37-AB7B-570D1E97E3EB` 为 Shutdown。Next 生成的 `next-env.d.ts`、`tsconfig.json` 只有 `.next-line-d` 自有差异，停服后按两个确切路径恢复，tracked diff 为零。删除前核对专用数据库精确名称、属主 `xzhao`、连接数 0、`orbit_records` 54 条全属 `workspace:r20a-rd33:20261020` 且外部 workspace 0；只删除该库，catalog 再查为 0。保留私有证据目录和已存在的未跟踪 HANDOFF，不清理他人进程或数据。
+
+## 2026-10-20　RD-25 第二次复核修复
+
+本轮开工先在干净的 tracked tree 上 `git pull --rebase origin redesign`，快进到带第二次 `REVIEW.md` 的 `4f63a2f48`。各项分别按确切路径提交，提交前 fetch 核对远端落后数为 0；没有 push、stash、整树 reset、Neon／生产连接或部署。接手前已有的未跟踪 `HANDOFF-CLAUDE-2026-10-19.md` 未改、未提交。本轮未启动 dev server、Metro 或模拟器，因而没有自建进程需要停止；3000 端口未触碰。
+
+| 复核项 | 提交与改动 | 验证与边界 |
+| --- | --- | --- |
+| S1 外部日历旧账号缓存 | `73f5e24f6`：OAuth 交换生成连接版本，刷新保留；授权带出版本，外部事件缓存键包含 actor、连接版本和窗口。 | 撤销再连接、直接换号均先 RED 复现 `old → old`，后 GREEN 读新账号事件；Calendar external 6/6、Integration security 11/11。旧 token 缺版本时有 legacy 回退；真实 Google 未连接。 |
+| M1 App 离线フォロー | `fd7600f29`：已有任务调用 App 同步副本的 `isOpenFollowUpTask`，包含有联系人的非 relationship 类别；离线动作仍只允许完成／改晚。 | event 类别回归先 RED 后 GREEN；outbox 6/6、sync lease 20/20、To-do model 8/8。完整飞行模式原生链仍未验收。 |
+| M2 双端任务分页 | `7fe4e061a`：Web／App 两份 schema 对最多 50 条卡片逐条解析；未知 category 只跳过该条，保留服务端 total／counts，页状态仍严格校验。 | 双端未知类别用例先 RED 后 GREEN；Web schema／parity 4/4、App schema 3/3、contract sync 3/3、Web route/page 7/7。 |
+| M3 App Agent 旧入口 | `541caaff2`：三个旧 route 均转至 `/task?seg=todo&section=decisions&entry=...`；进入决策段时清除旧滚动，当前页中匹配 sourceId 的条目置顶并显示焦点；route coverage 与离线页面清单更新。 | 路由／离线／焦点回归先 RED 后 GREEN，定向 28/28、App Task browser 10/10、initial／shell 32/32。旧屏源码仍供既有夹具使用，但 runtime route 已退役；不在当前决策页的历史 entry 尚不能精确定位，Web `?entry=` 和 E 线旧链接仍待相应 owner。 |
+| M4 Web 日历按钮 | `b742ad2df`：CalendarPresenter 三处按钮及同域 proposal slot 换组件库 Button，并清理 D 所有的 shell／旧 task editor 原生按钮。`1ebbc43cc` 把日历列头的裸 `border-radius: 0` 换为现有 `--r-none` token。 | 按钮 ratchet 从上轮 85＞开工基线 79 回到 79≤79；Calendar／CSS／ratchet 最终定向 13/13、proposal browser 5/5。首轮全量暴露 CSS token 新失败，定向修复后最终全量该名消失。没有新的像素通过证据。 |
+
+M3 的 route 改动使 `TodoScreen.tsx` 两处 transport 调用下移一行；首轮 App 全量以 `STALE_COMPUTED_PATH_KEY` 明确揭露离线读取审计登记键失效。`f5f383532` 仅更新该审计表的两个精确行号，离线审计 27/27、App TypeScript 检查 exit 0，最终 App 全量该用例通过。两个全量才暴露的本线回归均已修复，没有把首轮红项掩作通过。
+
+### m 归属结论与跨端交接
+
+主会话本轮明确核准：`repos/orbit-app/app/_layout.tsx` 是 **D 线导航壳自有文件**，其 R20a 改动合规；`e00017299` 中的 Plan／Event 改动是主会话按 **RD-30** 对甲名下已完成页面的批准。此结论更新上文仍写「等待 owner 审阅」的历史状态；不再把这两项列为待审批越线。批准归属不代表 Plan／Event 或 R20a 的业务／像素门禁已过。
+
+Bridge 交接请求：Calendar／Integrations owner 需沿用连接版本的缓存失效语义；App Task 与 Web Task owner 需保持分页逐条宽进及 total／counts 不变的契约；Agent／Task owner 需处理不在当前决策页的 `entry` 焦点、Web 旧链接和 E 线旧入口。本端只写本 Sprint REPORT，未改根 Bridge 台账；先前 RD-33 的跨端交接继续有效。
+
+### 最终测试、开工基线和 SC 状态
+
+原始日志与逐名比对为 `/Users/xzhao/orbit-sprint-evidence/redesign/R20a/run-03/` 下的 `web-full-rd25-after-css.log`、`app-full-rd25-after-audit.log`、`full-rd25-compare.json`；均使用 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 和 D 线 `heavy.sh` 跑全量。Web `typecheck`、最终 `typecheck:app` 和 App 最终 `typecheck` 均 **exit 0**。Web copy QA **3,968 条／29 个全局问题／0 个本线 Task、To-do、Calendar 问题，exit 1**；全域 copy QA **7,477 条／245 问题，exit 1**。文案全局门禁仍红。
+
+| 全量 | 最终结果 | 与上一可比轮逐名比较 | 与开工 pristine 基线逐名比较 |
+| --- | --- | --- | --- |
+| Web | **7,850 total / 6,779 pass / 30 fail / 1,041 skip，exit 1** | 上轮 31 项；**新增 0、消失 1**，消失项是已修按钮 ratchet。 | 开工 31 项；**新增 0、未复现 1**，未复现的是手动加人成功后「元に戻す」；不可因此声称该业务已修复。R12 扫描等 30 项仍红。 |
+| App | **3,263 total / 3,249 pass / 12 fail / 2 skip，exit 1** | 上轮 13 项；**新增 0、消失 1**，本轮未复现 Plan `step reopen` 超时。 | 开工 4 项；**新增 11 个失败名、未复现 3 个旧名**。新增名为 R12 camera／batch 九项、discovery toggle 一项、typed inbox 一项；不是本次 RD-25 的新增，但源码／测试集已变化，不能把差额一概归因或宣告零新增。 |
+
+SC-05 的离线フォロー判定、SC-09 的分页兼容、SC-12 的日历缓存和 SC-14 的 **App** 旧路由已完成本次复核修复；各 SC 的剩余原生操作、真实来源或另一端入口仍按上文保留。SC-15 像素画面仍全部 FAIL 或缺同条件 fixture，已封顶画面未重开；SC-16 两端全量与 copy QA 仍红，R20a 不标完成／可发布。本轮没有新增产品决定；缺 `completion_question` 来源、entity draft 会话 ID、精确画板 fixture 等仍列「待主会话决定」。
