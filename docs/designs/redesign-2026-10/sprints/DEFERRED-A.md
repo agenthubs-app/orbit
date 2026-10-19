@@ -16,16 +16,24 @@
 | --- | --- | --- |
 | R26-11 | App `Segmented` 高 38，kit `.seg` 是 30 | 重跑 app-R26 的 13 / 14 / 15 / 30 / 30e，浅色和深色共 10 张。用 `R26-app-agate.sh`；临时补丁下这 10 张全部能过  **R31a 2026-10-18：done：A-R26-13 / 14 / 15 / 30 / 30e 浅深 10 张在 iPhone 16e（Orbit Line A 16e）重比全部通过（Segmented `7457b4cc0`）** |
 | R24-05b | Web Modal 缺 380 宽一档和标题图标块；Drawer 的 ✕ 和副标题 | **组件部分 done（2026-10-18，R31b `e3048764c` 组件 / `d5f27962c` 调用点）**：Modal 380 / icon / subtitle / closable、Drawer 白圆 ✕ / 副标题 / titleSize 已用上，弹层框体与头部对齐；五个画面仍未过，剩余全是页面自身原因 → 交还甲（R31b REPORT「交还」1–5：概要背景数据与页高、記録弹窗正文、スキップ文案与焦点、面談を提案 抽屉的下書き状态、メンバーを追加 的手写 FlowDialog 约 3px 位移） |
-| R32-W01 | W-R24-03 概要背景数据与页高 | **页面部分已修、像素未过**：`c2f5e60be` 调整只读设计 fixture，待确认数 0、VC 候补 4；红／绿与重放后绿测已记录。浅深门禁尚无有效截图，下一责任人为 R32 页面轮；HANDOFF R32-W01、R32 REPORT SC-W01 |
-| R24-05c | App Sheet / Dialog / Popover | 重跑 app-plan-A 的 A-R24-05 / 12 / 13 / 16、app-plan-C 的 A-R25-01 / 08 / 11 / 12  **R31a 2026-10-18：Popover 已新建（`a37d0f551`）；A-R25-11 目標切替是 .gmenu 弹出菜单、行结构不同 → 改页面结构，交还计划页（RD-33）；其余 A-R24-05 / 12 / 13 / 16、A-R25-01 / 08 / 12 需中途状态开关，R31a 未重比（见 REPORT）** |
-| R32-P14 | A-R24-13 面谈记录画板有种类、日期时间、memo，现有计分请求只承载人和 `at` | **待计划域接口／Bridge 核对字段归属**；页面可独立改的布局继续做，未持久化字段不假装保存。HANDOFF `R32-P14 契约核对`；像素 SC-P14 保持未完 |
-| R32-P16 | A-R25-01 見直し画板的面談 memo／自己申告／人脈统计，现有 `sinceConfirmed` 只含聊过人数、活动、完成 Step | **待计划域读契约确认**；页面用现有三项事实呈现，画板额外数值不硬编码。HANDOFF `R32-P16 数据核对`；SC-P16 仍需像素重比 |
-| R16-01 | Web `Chip` 用 apricot 字色（G23b）；App `Segmented` 高度 | **Web 部分 done（2026-10-18，R31b `e3048764c` / `3193238b5`）**：W-R16-08 浅深重跑都通过（raw 0.0003，杏色字按 RD-26 保留加深版）；App 分段区 R31a 已对齐。**R32 页面部分待验**：`9a5da61df` 修正 A-R16-02 设计预览的尾部可见行，浅深像素与头像数据仍须重拍；HANDOFF R31a-H3。 |
-| R12-12 | ConfirmDialog 没有图标位 | R31a `7457b4cc0` 已补 ConfirmDialog 图标位，N12 调用点已用 🧪 + ghost。**R32 页面部分待验**：`5c9aaf892` 补 A-R12-N09 草稿来源 chip，导入卡图标与浅色画板仍须重拍；HANDOFF R31a-H2。 |
+| R32-W01 | W-R24-03 概要背景数据与页高 | **页面部分已修、像素未过**：`b56122a2e`、`abb81937d` 调整只读 fixture，待确认 0、VC 候补 4、CFO Night 今夜、見直し余 2；定向绿测 2/2。第三轮 1440 浅深有效图仍 FAIL（raw 0.0215／0.0184，未归因 6／5 带）；底部活动卡与弹窗残差交后续页面复核。HANDOFF R32-W01、R32 REPORT SC-W01 |
+| R32-W02 | W-R24-09b 记录弹窗正文 | `fbb733be1` 已调整间距；首轮有效 1440 浅深 raw 0.0557／0.0425，各 9 条未归因带。画板候补行角色／LinkedIn 来源不在 `PlanTalkedOfflineResult.matches` 读契约中；计划域补字段及同板背景只读样本后再重比。现未过；HANDOFF R32-W02、R32 REPORT SC-W02、`run-01/W-R24-09b/compare.html` |
+| R32-W03 | W-R24-11 跳过确认 | 日文目标句在源码、主按钮焦点环可见；`d47a80438` 修 b12 弁護士活动只读 fixture，浅深 raw 0.0264／0.0205、各 3 未归因带（原 0.0315／0.0253、各 5 带）。画板正文完整「弁護士（投資契約）」而读契约只有短标签，少折一行；计划域补完整标签字段后再重比。原图被重拍覆盖，仅原指标留存；现未过。HANDOFF R32-W03、R32 REPORT SC-W03、`run-01/W-R24-11/compare.html` |
+| R32-W04 | W-R24-12 提案抽屉 | `8cc113e9d` 第二轮用正常日期输入框对齐画板 10/14～16，草稿同更新；1440 浅深 raw 仍 0.0444／0.0396、10／9 条未归因带。同 fixture 的计划服务算候补 95／80／65／65，画板 88／78／61／52 不在当前评分分档内；计划域／主会话核评分与样本，抽屉正文另有实差。仍 FAIL；HANDOFF R32-W04、R32 REPORT SC-W04、首轮 `run-01/W-R24-12-pre-fixed-dates/`、当前 `W-R24-12/compare.html` |
+| R32-W05 | W-R23-06 成员弹窗 | 首轮有效 1440 浅深 raw 0.0175／0.0157，各 2 条未归因带。Modal 520 档 X01a 未交付，不能将现有 FlowDialog 视觉近似记 done；HANDOFF R32-W05、R32 REPORT SC-W05、`run-01/W-R23-06/compare.html` |
+| R24-05c | App Sheet / Dialog / Popover | R32 已重比 P12/P13/P15～19 的 16e 浅深目标图，各自仍 FAIL；P14 只到旧候补选择，目标图无效。P12 `e7a115293`、`24d19ed98`；P13 `e7a115293`、`6d9881a42` 已修页面/fixture，但仍有未归因带；P15 受 X01e 高度冲突。P18 在 `d47a80438` 只读 fixture 改后用 18 秒启动等待取得最终有效浅深 raw 0.0703／0.0552、13／12 未归因带，仍与 Web W03 共缺完整类型标签读字段；中间空白浅色帧已排除，旧图归档。P19 `eb2ecc949` 去掉确认框画板未写的 19 人事实、标题按板断行，第三轮 raw 0.0770／0.0649 仍各 18 条未归因带；背景 128 分的分项口径与画板不合，见 `run-01/A-R25-08/compare.html`、`A-R25-08-pre-copy/`。HANDOFF R24-05c / R31a-H4/H5 / R32-P18-W03 与 R32 REPORT SC-P12～19，均未记 done |
+| R32-P14 | A-R24-13 面谈记录画板有种类、日期时间、memo，现有计分请求只承载人和 `at` | 16e 浅深打开的是旧「話した人を記録」候补选择，目标状态未到；诊断 raw 0.2904／0.1561 不计有效图。**待计划域接口／Bridge 核对字段归属**，不伪装保存。HANDOFF `R32-P14 契约核对`；SC-P14 未完 |
+| R32-P09 | A-R27-35 交換 Toast 画板有「元に戻す」，服务端无交換撤回契约 | **待 R27 域／Bridge 明确撤回语义**；不得只回滚本地状态。16e 浅深 raw 0.0531／0.0856、16／17 条未归因带，均 FAIL；HANDOFF R32-P09、R32 REPORT SC-P09 |
+| R32-P16 | A-R25-01 見直し画板的面談 memo／自己申告／人脈统计，现有 `sinceConfirmed` 只含聊过人数、活动、完成 Step | 16e 浅深目标 sheet 有效但 FAIL，raw 0.1721／0.1438、各 21 带；服务分数 45 与画板 128 不同。**待计划域读契约确认**，不硬编码画板额外数值。HANDOFF `R32-P16 数据核对`；SC-P16 未完 |
+| R16-01 | Web `Chip` 用 apricot 字色（G23b）；App `Segmented` 高度 | **Web done（2026-10-18，R31b `e3048764c` / `3193238b5`）**：W-R16-08 浅深重跑都通过（raw 0.0003，杏色字按 RD-26 保留加深版）。**App A-R16-02 done（R32 `d093e7f15`）**：R31a 对齐分段，R32 `8077160d5` 六行预览、`022eeccd0` 样本头像；新 16e 浅深 raw 0.0311／0.0303、各 10 条超阈带已逐图核实 `[raster]`、0 未归因、0 缺块、自动 PASS。筛选 chip 浅暗填充均与画板同 token，2px 边界差见 HANDOFF R31a-H3、`run-01/A-R16-02-filter-chip-pixels.txt`、`A-R16-02/compare.html`。 |
+| R32-P20 | A-R16-04「名前が似ているだけの N件」与头像数据 | **done（`022eeccd0`、`2c0e1a6f6`）**：16e 浅深标签、头像、238 与 6／14／218 同板；raw 0.0615／0.0604、19／20 带均逐项归因，0 未归因、0 缺块，两键 PASS。旧 FAIL 与同截图历史 R16 suite 重算分别见 `run-01/A-R16-04-pre-attribution/`、`app-r16-04-static-attributed/`；HANDOFF R32-P20。 |
+| R12-12 | ConfirmDialog 没有图标位 | R31a `7457b4cc0` 已补 ConfirmDialog 图标位，N12 调用点已用 🧪 + ghost。**R32 的 N09 浅色画板已过**：`34da94d14` 补来源 chip、`022eeccd0` 对齐只读头像，`6d5b7288c` 对 16e 新图 9 带逐项核实 `[raster]`；raw 0.0270、0 未归因、0 缺块、自动 PASS，见 HANDOFF R31a-H2、`run-01/A-R12-N09/compare.html`。本行其他 R12-16 事项仍独立未完，不把整行记 done。 |
 | R15（REWORK-REPORT） | 两端「待组件库」剩下的画面 | **Web 部分 done（2026-10-18，R31b）**：Web 没有标「待组件库」的画面 id；§5 的 Avatar lg 19 已改（`e3048764c`）；重跑 W-R15-14m 浅深通过、W-R15-12 浅深与开工时相同（2 带：QA 邮箱长度少折一行，页面数据，非组件）；R15 其余已通过画面在「不退步」里全部仍通过 |
+| R32-W08 | W-R15-12 受邀连接页的只读 QA 邮箱 | **done（R32 `d21086c26`、`1567084ac`）**：本机 mock `?design=confirm` 对齐画板姓名／头像，邮箱仍同长度；390 浅深 raw 均 0.0013、0 带、0 缺块、自动 PASS。HANDOFF R32-W08、`run-01/W-R15-12/compare.html`；旧首拍指标在 `W-R15-12-pre-design-confirm/summary.json`，原图被重拍覆盖。 |
 | W-R26-31 | Web Modal 380 宽和关闭钮 | **组件部分 done（2026-10-18，R31b `d5f27962c`）**：参加コード弹窗改 380 档、✕ 改 kit .lbtn、副标题按 #320 放在标题行下 4px；带数 10 / 7 → 7 / 4，剩余 → 交还甲（R31b REPORT「交还」6：画板是已输入 7 位码的状态而清单步骤只点开弹窗；背景イベント页本身的差异） |
+| R32-W06 | W-R26-31 七位参加コード中途态 | `24d19ed98` 修正点击后等待，重拍无超时；`7QKMH4T` 和空白第八格可见，1440 浅深 raw 0.0254／0.0152、8／4 条未归因带。画板七位态的「開く」激活与已定八位参加码契约相冲突；主会话修目标状态或定例外，背景活动页残差也待页面复核。现未过。HANDOFF R32-W06、R32 REPORT SC-W06、`run-01/W-R26-31/compare.html` |
 | W-R27-13 | FilterOption 上下差 7、Toggle 44×26 | **done（2026-10-18，R31b `e3048764c`）**：FilterOption 7 / 12 + ✓ 字形、Toggle 旧样式下仍 44×26；W-R27-13 浅深重跑通过 |
-| R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08 / 16 / 29 / 31 / 33 / 34（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1、d3、v2seg）  **R31a 2026-10-18：Segmented 已对齐（`7457b4cc0`）；A-R27-16u 深通过；06 / 07 / 08 / 29 / 31 / 33 / 34 分段区不再超阈，剩余为页面自身差异（chip 位置、轮播卡高度、搜索框 placeholder 色 [contrast] 等）→ 交还 R27（见 R31a REPORT 交还清单）；A-R27-26 另卡 expo-brightness** |
+| R27（App） | App `Segmented` 高 38 vs kit `.seg` 30（同 R26-11） | 重跑 app-R27 的 A-R27-06 / 07 / 08 / 16 / 29 / 31 / 33 / 34（浅深）；seg 临时补丁下各带 dy ≤4、只差字形（证据 R27/run-01/app/a6、p1、d3、v2seg）。**R31a 2026-10-18：** Segmented 已对齐（`7457b4cc0`）；A-R27-16u 深通过，其他页面差交还 R27。**R32 部分 done（`61567ddaf`、`c842b2ef4`、`341885b8c`、`e72ec97c5`）：** H1 的 P02/P03/P05/P06/P07/P08 浅深 12/18 自动 PASS、0 未归因；P05/P07/P08 真 chip 偏位由页面修复，同截图重算的来源见 `run-01/app-h1-final-18/PROVENANCE.md`。P01/P04/P09 共 6 键仍 FAIL；A-R27-26 另卡 expo-brightness。 |
 | R27（App） | App `FilterOption` 上下内边距、`Toggle` 尺寸（同 W-R27-13） | 重跑 A-R27-09 筛选弹层  **R31a 2026-10-18：已对齐（`7457b4cc0`），A-R27-09 余页面差异 → 交还** |
 | R27（App） | App `Toast`：带关闭 ✕（标题被挤成两行），位置不知道页面自带的会场 5 tab 底栏；kit `.toast.pos` 无 ✕、bottom 100 | 重跑 A-R27-35 交換成功 toast（开发回放 `approve=` 常驻）  **R31a 2026-10-18：Toast 去 ✕、会場 usePageBottomBar（`7457b4cc0`）；A-R27-35 余页面差异 → 交还** |
 | R27（App） | `src/components/ui` 缺 UnderlineTabs、可配置 TabBar（会場玻璃底栏）、全屏搜索页容器：App 探す搜索页用 RN `<Modal>`、詳細 `.utabs` 与会場 livebar 手写 tablist（主会话 10-15 定：记入 `tests/fixtures/legacy-ui-deferred.json`，注释「R27 · 待组件库 · DEFERRED-A §1」，不去掉 tablist 角色） | 乙的组件库轮补件后替换这 3 处并删掉 legacy-ui-deferred.json 对应行（测试要求条数与实际一致，替换后不删行会失败）  **done（R31a `ef8ecc9d1`）** |
@@ -35,6 +43,8 @@
 | R32-X01b | `HostConsole` 报表链接分段需要 `href`、焦点与当前页语义，现有 `Segmented` 不支持 | **待 A 线组件维护**：保留链接语义的参数；乙在交付后替换调用点并测键盘、href。请求见 HANDOFF G23 |
 | R32-X01c | `SearchPanel` 类型 chip 是 tablist + `aria-controls`，现有 `CategoryTabs` 为 radiogroup | **待 A 线组件维护**：提供同语义参数，或确认保留页面控件；乙不改变现有语义。请求见 HANDOFF G23 |
 | R32-X01d | App A-R25-11 的目标切换 Popover 达上限时「目標を追加」需真实禁用，现有 `PopoverRow` 只有 `muted` | **待 A 线组件维护**：补 `disabled` 参数、交互与无障碍禁用态及 kit 禁用色；乙后续换页面并重比 SC-P12。请求见 HANDOFF G23；未交付不记 done |
+| R32-X01e | App A-R24-16 画板提案 sheet 高约 87% 屏幕，kit `BottomSheet` 明定 80% 上限并让内容内滚；页面增底部 padding 后顶界仍约 y161、目标 y104 | **待主会话核定画板与 kit 冲突**；若允许此屏例外，由 A 线组件维护只加可选高度参数，默认 80% 不动。页面无效 padding 已撤销，SC-P15 保持 FAIL；HANDOFF G23 X01e、`run-01/A-R24-16/compare.html` |
+| R32-X01f | App A-R24-05 的长前提值第二行末应内嵌「推測」chip；现有 `KitChip` 为 `View`，与 `UiText` 并列 flex wrap 会落到第三行 | **待 A 线组件维护**：提供同 token、可访问的行内 chip 形态，页面接入后再重比 SC-P13。请求见 HANDOFF G23 X01f；当前 P13 仍 FAIL |
 | R32-X02 c-ai-3 | Web ✓/✕ 与建议 chip 规格格缺组件 | **待 A 线组件维护**：按 01-system c-ai-3 补件并单格重比；R32 页面数不含本项 |
 | R32-X02 c-load-1 | Web 分步清单规格格缺组件 | **待 A 线组件维护**：按 01-system c-load-1 补件并单格重比 |
 | R32-X02 c-err-0 | Web 同步恢复横条及标准文案键缺组件 | **待 A 线组件维护**：按 01-system c-err-0 补件；标准文案键实施时同步 App，不由 R32 页面私加 |
@@ -58,7 +68,9 @@
 
 ## 3. 待甲自己后面的 Sprint
 
-**R32 区域门禁登记（G15 / G17）：** R05 旧整屏清单保留历史；乙已准备 `app-R05-regions.json` 的 11 个裁区视图，待 16e 浅深 22 张重跑及逐带归因。R31a 的 1/22 自动通过仅作基线，未完成前不写 done。若为真实壳回归，按 HANDOFF G15 / G17 给 D 线壳责任人具体证据；乙不改壳实现。
+**R32 区域门禁登记（G15 / G17）：** R05 旧整屏清单保留历史；`app-R05-regions.json` 已在本线 16e 取得 22 张有效裁区图：完整一次拍摄的首张浅色首页是启动空白帧，以此前同版本已登录原生首页的有效单屏图替换，派生索引及来源见 `run-01/r05-valid-22/`。`5daf5c487` 对 S02/S03/S04/S06/S08 五张浅色底栏逐带核栅格残差，再用保存的同一原生截图重算为 PASS；有效 22 键现自动 **6 过、16 未过**，不能记整组 done。原 FAIL 图见 `r05-full/`，重算图见 `r05-tabs-light-static-attributed/`。深色底栏有 ΔE3.8～4.8 背景差，S10 有 Memo 正文露入，S11 的副标题缺失已转 HANDOFF R32-S11 给 R18 页面；其余未归因带按 R32 REPORT 逐项保留。公共壳差异另按 G15 / G17 向壳责任人交证据；乙不改壳实现。
+
+**R32-S11 页面交还：** 首轮 16e 的 A-R05-11 顶栏浅深 raw 0.0528／0.0525、各 2 条未归因带；`MyPageScreen` 只传标题，画板副标题「プロフィール完成」缺失且标题约下移 7px。此项属于 R18 页面调用而非公共壳实现，已在 HANDOFF R32-S11 给 R18 责任人；R32 区域键保持未过，证据为 `run-01/r05-full/A-R05-S11-app-{light,dark}/`。
 
 | 交接表 # | 卡在什么 | 解锁后做什么 |
 | --- | --- | --- |
@@ -86,6 +98,7 @@
 | R17-15 | 公开主催页「通報する」无表单 | **跳过**：依赖 R29 运营后台 / 反馈表单 |
 | R17-16 | App `/e/[slug]` 靠跟随网页重定向取 id | **done（2026-10-17，`cb02fda4f`）**：`GET /api/events/by-slug/[slug]`（只认已公开、可未登录、proxy 放行），App `/e/[slug]` 改调它 |
 | R17-17 | P26 Drawer 540/22、App P05 Segmented 30（G23） | **Web 部分组件 done（2026-10-18，R31b `d5f27962c`）**：b6 #20 画板改 520（RD-27）、共同運営者改用组件 Drawer 头部（标题 + 副标题 + 白圆 ✕、内边距 22）；W-R17-P26 带数 25 / 19 → 7 / 12，剩余为背景「申込の推移」柱高（数据）与抽屉正文 dy 0 的文字栅格同带，未过 → 交还 / 待主会话定归因（R31b REPORT「交还」7）；App P05 归 R31a  **R31a 2026-10-18：App P05 done（R31a 重比，归因见 attribution-redesign-R17-app.json）** |
+| R32-W07 | W-R17-P26 共同運営者抽屉仅 520 裁区 | **done（R32 `e44f7edef`）**：1440 浅深 raw 0.0525／0.0506、7／6 带逐项核同字同位并记 `[raster]`，0 未归因、0 缺块、自动 PASS；背景柱高不计。HANDOFF R32-W07、R32 REPORT SC-W07、`run-01/W-R17-P26/compare.html`；原 FAIL `W-R17-P26-pre-attribution/`。 |
 | R17-18 | 编组发布后通知另开事务，失败补不上 | **done（2026-10-17，`571c0d6f6`）**：同一 generation 已发布时不再发布、只补写通知（幂等键不重复）；Web 失败后公開按钮仍在，重试即补；回环库测试 |
 | R11-17 | 「最近削除した項目」页与到期清除：设计稿无 / 下一期（R11a 代定 9） | 补画板后做列表页与到期清除；现在只有软删 + 30 天内恢复 |
 | R11a 设计稿无 | Web 1024 / 390 除列表、详情外的画面（目標に関係 / 要フォロー / 絞り込み / 編集 / 招待连接 / 确认卡 / 以前の値）、App 全部深色画面没有画板（R11a 代定 2） | 结构照浅色 / 1440 画板、颜色只用 token；有画板后再进门禁 |
