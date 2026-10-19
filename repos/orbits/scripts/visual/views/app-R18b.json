@@ -1,5 +1,5 @@
 {
-  "_note": "R18b approved public App slices only; auth, feedback, maintenance, force update and Help interaction states are pending separate prerequisites.",
+  "_note": "R18b public and RD-33 auth boards. Auth entries name real native routes; stateful pending, existing-address, accepted, and 72-byte variants need controlled fixtures before a pixel verdict. Registration does not imply a pass.",
   "defaults": {
     "design-base": "http://localhost:3420/redesign-2026-10/",
     "grid": 100,
@@ -10,7 +10,11 @@
     "repos/orbit-app/src/screens/public/PublicInfoContent.tsx",
     "repos/orbit-app/src/screens/public/PublicInfoScreen.tsx",
     "repos/orbit-app/src/screens/public/NotFoundContent.tsx",
-    "repos/orbit-app/src/screens/public/NotFoundScreen.tsx"
+    "repos/orbit-app/src/screens/public/NotFoundScreen.tsx",
+    "repos/orbit-app/src/screens/public/WelcomeScreen.tsx",
+    "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+    "repos/orbit-app/src/screens/profile/PasswordResetScreen.tsx",
+    "repos/orbit-app/src/view-models/password-reset.ts"
   ],
   "views": [
     { "id": "A-R18b-11H-public", "path": "/help", "design": "b12-missing-states.html", "board-index": 556, "themes": ["light"] },
@@ -20,6 +24,40 @@
     { "id": "A-R18b-11P-public", "path": "/legal/privacy", "design": "b12-missing-states.html", "board-index": 572, "themes": ["light"] },
     { "id": "A-R18b-11P-public", "path": "/legal/privacy", "design": "b12-missing-states.html", "board-index": 573, "themes": ["dark"] },
     { "id": "A-R18b-08-public", "path": "/removed-page", "design": "b12-missing-states.html", "board-index": 608, "themes": ["light"] },
-    { "id": "A-R18b-08-public", "path": "/removed-page", "design": "b12-missing-states.html", "board-index": 609, "themes": ["dark"] }
+    { "id": "A-R18b-08-public", "path": "/removed-page", "design": "b12-missing-states.html", "board-index": 609, "themes": ["dark"] },
+    { "id": "A-R18b-01-no-google-light", "path": "/", "design": "b12-missing-states.html", "board-index": 732, "themes": ["light"], "note": "Requires disabled Google provider in local fixture." },
+    { "id": "A-R18b-01-no-google-dark", "path": "/", "design": "b12-missing-states.html", "board-index": 733, "themes": ["dark"], "note": "Requires disabled Google provider in local fixture." },
+    { "id": "A-R18b-02-no-google-light", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 736, "themes": ["light"], "note": "Requires disabled Google provider and design sample inputs." },
+    { "id": "A-R18b-02-no-google-dark", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 737, "themes": ["dark"], "note": "Requires disabled Google provider and design sample inputs." },
+    { "id": "A-R18b-03-no-google-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 744, "themes": ["light"], "note": "Requires disabled Google provider and design sample inputs." },
+    { "id": "A-R18b-03-no-google-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 745, "themes": ["dark"], "note": "Requires disabled Google provider and design sample inputs." },
+    { "id": "A-R18b-04-light", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 754, "themes": ["light"] },
+    { "id": "A-R18b-04-dark", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 755, "themes": ["dark"] },
+    { "id": "A-R18b-05-valid-light", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 758, "themes": ["light"], "note": "Synthetic bearer and design sample inputs only." },
+    { "id": "A-R18b-05-valid-dark", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 759, "themes": ["dark"], "note": "Synthetic bearer and design sample inputs only." },
+    { "id": "A-R18b-05-invalid-light", "path": "/account/reset-password#token=invalid", "design": "b12-missing-states.html", "board-index": 760, "themes": ["light"] },
+    { "id": "A-R18b-05-invalid-dark", "path": "/account/reset-password#token=invalid", "design": "b12-missing-states.html", "board-index": 761, "themes": ["dark"] },
+    { "id": "A-R18b-01-google-light", "path": "/", "design": "b12-missing-states.html", "board-index": 730, "themes": ["light"], "note": "Requires enabled Google provider." },
+    { "id": "A-R18b-01-google-dark", "path": "/", "design": "b12-missing-states.html", "board-index": 731, "themes": ["dark"], "note": "Requires enabled Google provider." },
+    { "id": "A-R18b-02-google-light", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 734, "themes": ["light"], "note": "Requires enabled Google provider and design sample inputs." },
+    { "id": "A-R18b-02-google-dark", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 735, "themes": ["dark"], "note": "Requires enabled Google provider and design sample inputs." },
+    { "id": "A-R18b-02-pending-count-light", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 738, "themes": ["light"], "note": "Requires anonymous local pending-count fixture." },
+    { "id": "A-R18b-02-pending-count-dark", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 739, "themes": ["dark"], "note": "Requires anonymous local pending-count fixture." },
+    { "id": "A-R18b-02-pending-unknown-light", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 740, "themes": ["light"], "note": "Requires local pending-read-failure fixture." },
+    { "id": "A-R18b-02-pending-unknown-dark", "path": "/account/login", "design": "b12-missing-states.html", "board-index": 741, "themes": ["dark"], "note": "Requires local pending-read-failure fixture." },
+    { "id": "A-R18b-03-google-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 742, "themes": ["light"], "note": "Requires enabled Google provider and design sample inputs." },
+    { "id": "A-R18b-03-google-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 743, "themes": ["dark"], "note": "Requires enabled Google provider and design sample inputs." },
+    { "id": "A-R18b-03-existing-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 746, "themes": ["light"], "note": "Requires isolated local 409 response fixture." },
+    { "id": "A-R18b-03-existing-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 747, "themes": ["dark"], "note": "Requires isolated local 409 response fixture." },
+    { "id": "A-R18b-03-success-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 748, "themes": ["light"], "note": "Requires isolated registration and auto-sign-in fixture." },
+    { "id": "A-R18b-03-success-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 749, "themes": ["dark"], "note": "Requires isolated registration and auto-sign-in fixture." },
+    { "id": "A-R18b-03-auto-failed-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 750, "themes": ["light"], "note": "Requires isolated auto-sign-in-failure fixture." },
+    { "id": "A-R18b-03-auto-failed-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 751, "themes": ["dark"], "note": "Requires isolated auto-sign-in-failure fixture." },
+    { "id": "A-R18b-03-password-72-light", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 752, "themes": ["light"], "note": "Requires 73-byte password input fixture." },
+    { "id": "A-R18b-03-password-72-dark", "path": "/account/signup", "design": "b12-missing-states.html", "board-index": 753, "themes": ["dark"], "note": "Requires 73-byte password input fixture." },
+    { "id": "A-R18b-04-accepted-light", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 756, "themes": ["light"], "note": "Requires isolated 202 response fixture." },
+    { "id": "A-R18b-04-accepted-dark", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 757, "themes": ["dark"], "note": "Requires isolated 202 response fixture." },
+    { "id": "A-R18b-05-password-72-light", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 762, "themes": ["light"], "note": "Requires synthetic token and 73-byte password input fixture." },
+    { "id": "A-R18b-05-password-72-dark", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 763, "themes": ["dark"], "note": "Requires synthetic token and 73-byte password input fixture." }
   ]
 }
