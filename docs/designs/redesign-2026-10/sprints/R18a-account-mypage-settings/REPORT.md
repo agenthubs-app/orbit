@@ -1,5 +1,7 @@
 # R18a implementation report (closed except pixel and native residuals)
 
+2026-10-19 09:11 current-source fixture recheck: on clean C `3e5abb6e2`, the production sync handler's isolated real-PostgreSQL manifest case in `sync-event-domains-postgres.test.ts` passed **1/1, exit0** with the complete event and relationship migrations. Independent catalog query after the test found **0** `event_domains_%` schemas; C HEAD stayed unchanged during the run. An initial heavy-wrapper attempt never started Node because macOS stripped the Node 22 `DYLD_LIBRARY_PATH` through system Perl, despite the wrapper's misleading exit0; only the corrected rerun (setting the path inside the wrapper command) counts. Subsequent C `5d0a8f5b1` changes add R18b public/help pages and do not touch the tested sync handler or manifest test. This is backend fixture evidence, not a current signed native device-mirror retest; the residual remains open.
+
 ## 2026-10-19 main-session closure decision (RD-33)
 
 The main session accepted the current signed build and new-simulator run as evidence for native login, the sync entry, Settings, Integrations, and the 25% My page. The sync observation is specifically `GET /api/sync/lease 200`; the minimal fixture's manifest returned 503, so it is not a complete device-mirror pass. R18a is recorded as **closed except pixel and native residuals**, not as a full native or visual acceptance.
