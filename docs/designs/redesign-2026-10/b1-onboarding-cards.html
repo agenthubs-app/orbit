@@ -1588,11 +1588,11 @@ const paper = (p, o = {}) => o.back
   : `<div class="paper" style="${o.style || ''}"><div class="p-co">${p[1]}</div><div class="p-r">${p[2]}</div><div class="p-n">${p[0]}</div><div class="p-m">${p[4] || 'info@example.jp'}<br>03-5555-0142</div></div>`;
 
 /* ===================== A1 落地页 / 欢迎页 ===================== */
-/* 2026-10-18 主会话代定 · R18b：b1 #0「最大3つ」→「最大2つ」。プラン v2 の上限と揃える。 */
+/* 2026-10-20 主会话代定 · R18b：b1 #0 は既存の「登録は1分」を保ち、未計測の「確認は1枚5秒」を削除。挿絵はサンプル、公開リンクは実在する宛先だけにする。 */
 function landing() {
   return `<div class="lp">
     <nav class="lp-nav"><div class="row" style="gap:10px"><span class="lp-logo">O</span><b style="font-size:18px">Orbit</b></div>
-      <div class="row lp-links"><a>機能</a><a>使い方</a><a>セキュリティ</a><a>よくある質問</a></div>
+      <div class="row lp-links"><a href="#features">機能</a><a href="/help">よくある質問</a></div>
       <div class="row" style="gap:8px"><button class="btn ghost lp-login">ログイン</button><button class="btn primary">無料で始める</button></div></nav>
     <div class="lp-hero">
       <div class="lp-copy">
@@ -1602,22 +1602,22 @@ function landing() {
         <div class="row" style="gap:10px;margin-top:28px"><button class="btn primary lp-cta tap-demo">無料で始める ${ic('right', 'sm')}</button><button class="gbtn" style="width:auto;padding:0 22px;height:52px"><span class="g">G</span>Google で続ける</button></div>
         <div class="lbl" style="margin-top:12px">登録は1分 · クレジットカード不要</div>
       </div>
-      <div class="lp-art">
+      <div class="lp-art"><span class="chip lav" style="position:absolute;z-index:5;right:4px;top:-18px">サンプル</span>
         <div style="left:10px;top:150px;transform:rotate(-9deg)">${paper(NEW[6])}</div>
         <div style="left:40px;top:182px;transform:rotate(-3deg)">${paper(NEW[1])}</div>
         <div style="left:74px;top:214px;transform:rotate(4deg)">${paper(NEW[0])}</div>
-        <div class="card float" style="right:0;top:20px;width:300px;background:linear-gradient(140deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日の一手</b></div><div style="font-size:14px;font-weight:700;line-height:1.6;margin-top:8px">山口さん（Kibo Ventures）へ、昨日のお礼と資料のご案内を。</div><div class="row" style="gap:6px;margin-top:10px"><span class="btn sm primary">下書きを開く</span><span class="lbl">送信はあなたが行います</span></div></div>
+        <div class="card float" style="right:0;top:20px;width:300px;background:linear-gradient(140deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日の一手</b></div><div style="font-size:14px;font-weight:700;line-height:1.6;margin-top:8px">山口さん（Kibo Ventures）へ、昨日のお礼と資料のご案内を。</div><div class="row" style="gap:6px;margin-top:10px"><span class="chip lav">下書きの例</span><span class="lbl">送信はあなたが行います</span></div></div>
         <div class="card float d2" style="right:30px;top:250px;width:250px"><div class="row between"><div class="lbl">プラン スコア</div><span class="v2chance">今日 +10</span></div><div class="row" style="gap:10px;align-items:baseline;margin-top:2px"><b style="font-family:var(--font-num);font-size:34px;font-weight:800;line-height:1.1">46</b><b style="font-size:13px">シリーズA 資金調達</b></div>${HV3.V2.sbar('s46', { thin: true })}</div>
         <div class="card float d3 row" style="left:150px;top:390px;gap:10px;padding:12px 16px"><span class="emo sm teal">✓</span><div><b style="font-size:13px">12枚を読み取りました</b><div class="lbl">うち3人がプランに合いそうです</div></div></div>
       </div>
     </div>
-    <div class="lp-vals">
-      ${[['📇', 'apricot', '撮るだけで、名刺が人脈に', '連続撮影・表裏の自動ペア・重複の統合まで。確認は1枚5秒。'], ['🎯', 'lav', '目標から逆算した、次の一手', '資金調達・新規開拓など最大2つの目標ごとに、ステップ別に話すべき人を提案。'], ['✉️', 'pink', '下書きまで。送信はあなたが行います', 'お礼や紹介依頼のメールを下書きします。勝手に送ることはありません。']].map(([e, c, t, d]) => `<div class="card"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="sub" style="line-height:1.7">${d}</div></div></div>`).join('')}
+    <div class="lp-vals" id="features">
+      ${[['📇', 'apricot', '撮るだけで、名刺が人脈に', '連続撮影・表裏の自動ペア・重複の統合まで。'], ['🎯', 'lav', '目標から逆算した、次の一手', '資金調達・新規開拓など最大2つの目標ごとに、ステップ別に話すべき人を提案。'], ['✉️', 'pink', '下書きまで。送信はあなたが行います', 'お礼や紹介依頼のメールを下書きします。勝手に送ることはありません。']].map(([e, c, t, d]) => `<div class="card"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="sub" style="line-height:1.7">${d}</div></div></div>`).join('')}
     </div></div>`;
 }
-/* 2026-10-18 主会话代定 · R18b：b1 #1 も「最大3つ」→「最大2つ」。公開入口の両端で同じ上限を案内する。 */
+/* 2026-10-20 主会话代定 · R18b：b1 #1 の挿絵はサンプル。「スキップ」は同じ歓迎フローのログイン / 登録選択へ進む。 */
 function welcome() {
-  const slide = (art, t, d) => `<section><div class="art">${art}</div><div class="h1" style="margin-top:22px">${t}</div><div class="sub" style="margin-top:8px;font-size:13.5px;line-height:1.75">${d}</div></section>`;
+  const slide = (art, t, d) => `<section><div class="art"><span class="chip lav" style="position:absolute;right:12px;top:8px;z-index:5">サンプル</span>${art}</div><div class="h1" style="margin-top:22px">${t}</div><div class="sub" style="margin-top:8px;font-size:13.5px;line-height:1.75">${d}</div></section>`;
   return `<div class="row between" style="padding:6px 0 14px"><div class="row" style="gap:8px"><span class="lp-logo" style="width:30px;height:30px;border-radius:10px;font-size:13px">O</span><b>Orbit</b></div><button class="btn sm ghost">スキップ</button></div>
     <div class="wel">
       ${slide(`<div style="left:30px;top:70px;transform:rotate(-10deg) scale(.95)">${paper(NEW[6])}</div><div style="left:60px;top:105px;transform:rotate(-2deg) scale(.95)">${paper(NEW[1])}</div><div style="left:84px;top:140px;transform:rotate(6deg) scale(.95)">${paper(NEW[0])}</div><span class="chip teal" style="right:22px;top:26px;font-size:12px;padding:5px 11px">✓ 12枚</span>`, '名刺は撮るだけ。<br>あとは Orbit が整理します', '連続撮影・表裏の自動ペア・重複の統合まで。会社や業界の情報も補います。')}
@@ -1628,31 +1628,31 @@ function welcome() {
 }
 
 /* ===================== A2 认证 ===================== */
+/* 2026-10-20 主会话代定 · R18b：Google は provider 有効時のみ。存在しない保持設定・強度判定・メール送達保証・失効理由・メール回填を画面から除く。 */
 function authWeb(kind) {
   const close = `<button class="lbtn">${ic('x', 'sm')}</button>`;
   if (kind === 'login') return `<div class="row between"><div class="mt">ログイン</div>${close}</div><div class="sub">おかえりなさい。</div>
     <div style="margin-top:20px">${gbtn('Google でログイン')}</div><div class="or">またはメールアドレスで</div>
     ${fld('メールアドレス', 'k.sato@minatolink.example')}
     ${fld('パスワード', '••••••••••', { cls: 'err', end: '<span class="tail">表示</span>', msg: 'メールアドレスまたはパスワードが正しくありません。もう一度お試しください。' })}
-    <div class="row between" style="margin-top:14px"><span class="ckl"><span class="cbx on">${ic('check')}</span>ログイン状態を保持</span><a class="lnk" style="font-size:12.5px">パスワードをお忘れですか？</a></div>
+    <div style="text-align:right;margin-top:14px"><a class="lnk" style="font-size:12.5px">パスワードをお忘れですか？</a></div>
     <button class="btn primary block xl" style="margin-top:18px">ログイン</button>
     <div class="lbl center" style="margin-top:14px">アカウントをお持ちでない方は <a class="lnk">新規登録</a></div>`;
   if (kind === 'register') return `<div class="row between"><div class="mt">アカウントを作成</div>${close}</div><div class="sub">1分で完了します。名刺の取り込みはこのあとすぐ。</div>
     <div style="margin-top:20px">${gbtn('Google で登録')}</div><div class="or">またはメールアドレスで</div>
     ${fld('メールアドレス', 'k.sato@minatolink.example')}
     ${fld('パスワード', '••••••••', { cls: 'focus', caret: true, end: '<span class="tail">表示</span>' })}
-    ${bar(62, 'thin')}<div class="reqs" style="grid-template-columns:1fr 1fr"><div class="ok">${ic('check', 'sm')}8文字以上</div><div class="ok">${ic('check', 'sm')}英字と数字</div><div>${ic('check', 'sm')}記号を含む（推奨）</div><div>強さ：ふつう</div></div>
+    <div class="reqs"><div class="ok">${ic('check', 'sm')}8文字以上</div></div>
     <div style="margin-top:14px"><span class="ckl"><span class="cbx on">${ic('check')}</span><span><a class="lnk">利用規約</a>と<a class="lnk">プライバシーポリシー</a>に同意します</span></span></div>
     <button class="btn primary block xl" style="margin-top:16px">登録する</button>
-    <div class="lbl center" style="margin-top:12px">確認メールをお送りします · すでにお持ちの方は <a class="lnk">ログイン</a></div>`;
-  if (kind === 'forgot') return `<div class="row between"><button class="lbtn">${ic('left', 'sm')}</button>${close}</div><div class="mt" style="margin-top:10px">パスワードの再設定</div><div class="sub" style="margin-top:4px;line-height:1.7">登録済みのメールアドレスに、再設定用のリンクをお送りします。</div>
+    <div class="lbl center" style="margin-top:12px">すでにお持ちの方は <a class="lnk">ログイン</a></div>`;
+  if (kind === 'forgot') return `<div class="row between"><button class="lbtn">${ic('left', 'sm')}</button>${close}</div><div class="mt" style="margin-top:10px">パスワードの再設定</div><div class="sub" style="margin-top:4px;line-height:1.7">メールアドレスを入力してください。登録済みのアドレスであれば、再設定リンクが届きます。</div>
     ${fld('メールアドレス', 'k.sato@minatolink.example', { cls: 'focus', caret: true })}
     <button class="btn primary block xl" style="margin-top:18px">再設定リンクを送る</button>
     <div class="lbl center" style="margin-top:14px">Google で登録した方は <a class="lnk">Google でログイン</a></div>`;
   return `<div class="row between"><span></span>${close}</div><div class="center"><span class="emo apricot" style="width:64px;height:64px;font-size:32px;border-radius:20px;margin:0 auto">⏳</span>
-    <div class="mt" style="margin-top:14px">リンクの有効期限が切れています</div><div class="sub" style="margin-top:6px;line-height:1.7">安全のため、再設定リンクは発行から30分で無効になります。<br>お手数ですが、もう一度リンクを受け取ってください。</div></div>
-    ${fld('メールアドレス', 'k.sato@minatolink.example', { hint: '入力済み', hc: 'teal' })}
-    <button class="btn primary block xl" style="margin-top:18px">新しいリンクを送る</button>
+    <div class="mt" style="margin-top:14px">このリンクは使えません</div><div class="sub" style="margin-top:6px;line-height:1.7">リンクが無効か、すでに使われている可能性があります。<br>もう一度、再設定をお申し込みください。</div></div>
+    <button class="btn primary block xl" style="margin-top:18px">再設定を申し込む</button>
     <div class="lbl center" style="margin-top:14px"><a class="lnk">ログインに戻る</a></div>`;
 }
 function authApp(kind) {
@@ -1665,19 +1665,19 @@ function authApp(kind) {
   if (kind === 'registered') return topbar('新規登録', '', back) + `<div class="h1" style="margin-top:6px">アカウントを作成</div><div class="sub">1分で完了します。</div>
     <div style="margin-top:22px">${gbtn('Google で登録')}</div><div class="or">またはメールアドレスで</div>
     ${fld('メールアドレス', 'k.sato@minatolink.example', { cls: 'info', msg: `<b style="color:var(--ink)">このメールアドレスは登録済みです。</b><br>以前 Google で登録された可能性があります。<div class="row" style="gap:6px;margin-top:8px"><span class="btn sm primary">ログインする</span><span class="btn sm" style="background:var(--surface)">パスワードを再設定</span></div>` })}
-    ${fld('パスワード', '8文字以上・英字と数字', { ph: true })}` +
-    foot(`<button class="btn primary block xl" style="opacity:.4">登録する</button><div class="lbl center">登録すると <a class="lnk">利用規約</a> に同意したものとみなします</div>`);
+    ${fld('パスワード', '8文字以上', { ph: true })}` +
+    foot(`<button class="btn primary block xl" style="opacity:.4">登録する</button><div class="lbl center">登録すると <a class="lnk">利用規約</a> と <a class="lnk">プライバシーポリシー</a> に同意したものとみなします</div>`);
   if (kind === 'sent') return topbar('', '', back) + `<div class="center" style="margin-top:40px"><span class="emo lav" style="width:110px;height:110px;font-size:52px;border-radius:34px;margin:0 auto">✉️</span>
-    <div class="h1" style="margin-top:22px">メールを確認してください</div><div class="sub" style="margin-top:8px;line-height:1.8"><b style="color:var(--ink)">k.sato@minatolink.example</b> 宛に<br>パスワード再設定用のリンクを送りました。<br>リンクの有効期限は30分です。</div></div>
-    <div class="card flat" style="margin-top:26px"><b style="font-size:13px">届かないときは</b><div class="sub" style="margin-top:6px;line-height:1.8">・迷惑メールフォルダをご確認ください<br>・アドレスに誤りがないかご確認ください</div><div class="row between" style="margin-top:10px"><span class="lbl">再送できるまで</span><b class="count" style="font-size:15px">0:42</b></div></div>` +
-    foot(`<button class="btn primary block xl">${ic('mail', 'sm')}メールアプリを開く</button><button class="btn ghost block">ログインに戻る</button>`);
+    <div class="h1" style="margin-top:22px">受け付けました</div><div class="sub" style="margin-top:8px;line-height:1.8">登録済みのアドレスであればメールが届きます。<br>届いたリンクから新しいパスワードを設定してください。</div></div>
+    <div class="card flat" style="margin-top:26px"><b style="font-size:13px">届かないときは</b><div class="sub" style="margin-top:6px;line-height:1.8">・迷惑メールフォルダをご確認ください<br>・アドレスを確認して、必要ならもう一度お申し込みください</div></div>` +
+    foot(`<button class="btn primary block xl">ログインに戻る</button><button class="btn ghost block">もう一度申し込む</button>`);
   /* 2026-10-19 主会话代定：b1 #9 只画真实存在的密码要求；删去英数字混合与不同旧密码两条实时校验，不新增密码策略。 */
-  return topbar('新しいパスワード', '', xbtn) + `<div class="h1" style="margin-top:6px">新しいパスワードを<br>設定してください</div><div class="sub" style="margin-top:6px">k.sato@minatolink.example</div>
+  return topbar('新しいパスワード', '', xbtn) + `<div class="h1" style="margin-top:6px">新しいパスワードを<br>設定してください</div><div class="sub" style="margin-top:6px">メールで受け取ったリンクから設定します。</div>
     ${fld('新しいパスワード', '••••••••••', { cls: 'focus', caret: true, end: '<span class="tail">表示</span>' })}
-    ${bar(84)}<div class="reqs"><div class="ok">${ic('check', 'sm')}8文字以上</div></div>
+    <div class="reqs"><div class="ok">${ic('check', 'sm')}8文字以上</div></div>
     ${fld('もう一度入力', '••••••••••', { msg: '一致しています', end: `<span style="color:var(--ok)">${ic('check', 'sm')}</span>` })}
     <div class="lbl" style="margin-top:14px">変更すると、ほかの端末からは自動でログアウトします。</div>` +
-    foot(`<button class="btn primary block xl">変更してログイン</button>`);
+    foot(`<button class="btn primary block xl">変更してログインへ</button>`);
 }
 
 /* ===================== A3 资料 onboarding ===================== */
@@ -2042,27 +2042,27 @@ let h = '';
 /* ---- A1 ---- */
 h += sec('A1 · 落地页 / 欢迎页', '未登录入口。Web 一屏 hero + 3 价值点；App 1–3 张横滑介绍 + 注册/登录');
 h += board('① 落地页 → ② 登录弹窗', '', bare({ body: landing(), pins: pin(1, '.lp-cta') + pin(2, '.lp-login') + pin(3, '.lp-art .card', 0) + pin(4, '.lp-vals .card', 2) }),
-  ['「無料で始める」→ 居中注册弹窗（②b）；「Google で続ける」直接走 OAuth，回来后进入 onboarding ①', '「ログイン」→ 同一弹窗的登录态；弹窗在落地页上方出现，背景模糊变暗（对标 Notion / Linear 的 auth modal）', '右侧作品图三张浮卡缓慢上下漂浮（6s 循环），只是演示，不可点', '第三条价值点直接写明「下書きまで。送信はあなたが」—— 产品硬约束前置到首屏']);
+  ['2026-10-20 主会话代定： 「無料で始める」→ 注册弹窗；Google 只在 provider 启用时出现，成功后进入资料补全', '「ログイン」→ 同一弹窗的登录态；「機能」跳本页价值点，「よくある質問」到公开 /help；无对应区块的顶栏项删除', '右侧名片、得分、今日任务均标「サンプル」，下書き仅是不可点击的演示，不读访客数据', '保留跨屏既有「登録は1分」，删除无计时依据的「確認は1枚5秒」']);
 h += boards([
   ['① 欢迎页（App）', '', P({ body: welcome(), overlay: foot(`<button class="btn primary block xl">はじめる（無料）</button>${gbtn('Google で続ける')}<div class="lbl center">アカウントをお持ちの方は <a class="lnk">ログイン</a></div>`), pins: pin(1, '.wel') + pin(2, '.dots') + pin(3, '.foot .btn.primary') }),
-    ['3 张介绍横滑（scroll-snap 居中吸附）：①名刺撮るだけ ②目標から逆算 ③下書きまで送信はあなた', '指示点随滑动变长；右上「スキップ」直接跳到最后一张', '「はじめる」→ 注册全屏页；Google → OAuth → onboarding ①；「ログイン」→ 登录全屏页']],
+    ['2026-10-20 主会话代定：3 张介绍横滑；所有名片、得分、邮件插画标「サンプル」', '右上「スキップ」进入同一欢迎流程的登录 / 注册选择，不进入私有首页；已认证与明确深链不被欢迎拦截', '「はじめる」→ 注册全屏页；Google 仅 provider 启用时显示；「ログイン」→ 登录全屏页']],
 ]);
 
 /* ---- A2 ---- */
 h += sec('A2 · 登录 / 注册 / 忘记密码 / 重置', 'Web 为落地页上的居中弹窗，App 为全屏；覆盖：Google 登录、密码错误、已注册邮箱、发送成功、链接过期');
 h += board('② 登录 · 密码错误', '错误态', bare({ body: landing(), overlay: modal(authWeb('login')), pins: pin(1, '.modal .gbtn') + pin(2, '.modal .fld.err') + pin(3, '.modal .lnk', 0) }),
   ['Google 放最上：一键登录是多数用户路径（对标 Notion / Figma 顺序）', '错误不区分「邮箱不存在 / 密码错」，统一文案防账号枚举（OWASP 惯例）；输入框珊瑚描边 + 下方说明，输入时立即清除', '「パスワードをお忘れですか？」→ 弹窗内切换到 ④ 忘记密码，邮箱自动带入']);
-h += board('② 注册（Web）', '', bare({ body: landing(), overlay: modal(authWeb('register')), pins: pin(1, '.modal .bar') + pin(2, '.modal .ckl') }),
-  ['密码强度细条实时变化 + 要求清单逐条打勾（对标 1Password / Stripe 注册）', '同意条款为显式勾选；「登録する」→ 发送确认邮件 → 回到应用直接进入 onboarding ①']);
+h += board('② 注册（Web）', '', bare({ body: landing(), overlay: modal(authWeb('register')), pins: pin(1, '.modal .reqs') + pin(2, '.modal .ckl') }),
+  ['2026-10-20 主会话代定：只要求 8 文字以上，超过 72 UTF-8 字节时给错误提示；不画强度条、英数字必填或实时复杂度勾选', '同意条款为显式勾选；注册成功尝试自动登录，失败则回登录，不承诺发送确认邮件']);
 h += board('③ 忘记密码（Web）', '', bare({ body: landing(), overlay: modal(authWeb('forgot')), pins: pin(1, '.modal .btn.primary') }),
   ['「再設定リンクを送る」→ 弹窗切换为发送成功态（同 App ③）；无论邮箱是否存在都显示成功，防枚举']);
-h += board('④ 重置链接已过期（Web）', '错误态', bare({ body: landing(), overlay: modal(authWeb('expired')), pins: pin(1, '.modal .fld') + pin(2, '.modal .btn.primary') }),
-  ['从邮件点开过期链接直接落到此态；邮箱已从链接参数回填（只回填到页面，不放进新的 URL）', '「新しいリンクを送る」→ 发送成功态；30 分钟有效期写在文案里']);
+h += board('④ 重置链接不可用（Web）', '错误态', bare({ body: landing(), overlay: modal(authWeb('expired')), pins: pin(1, '.modal .mt') + pin(2, '.modal .btn.primary') }),
+  ['2026-10-20 主会话代定：过期、已用、错误 token 均显示通用「このリンクは使えません」；不从链接回填邮箱', '「再設定を申し込む」→ 找回表单，用户重新输入邮箱；不声称知道失效原因']);
 h += boards([
   ['① 登录（App）', '', P({ body: authApp('login'), pins: pin(1, '.gbtn') + pin(2, '.fld.focus') }), ['Google 置顶，邮箱登录次之', '聚焦输入框灰紫描边 + 光标闪烁；键盘弹起时底部按钮跟随上移（foot 吸底）']],
-  ['② 注册 · 已注册邮箱（App）', '错误态', P({ body: authApp('registered'), pins: pin(1, '.fld.info') + pin(2, '.foot .btn') }), ['失焦即检查：邮箱已注册时给出两个出口「ログインする / パスワードを再設定」，并提示可能用 Google 注册过', '条件不满足时主按钮 40% 透明不可点']],
-  ['③ 发送成功（App）', '', P({ body: authApp('sent'), pins: pin(1, '.count') + pin(2, '.foot .btn.primary') }), ['重发倒计时 60 秒，结束后变为「もう一度送る」', '「メールアプリを開く」用系统邮件 App 打开收件箱（这里是系统邮件，不是代发用户邮件）']],
-  ['④ 设定新密码（App）', '', P({ body: authApp('reset'), pins: pin(1, '.reqs') + pin(2, '.foot .btn') }), ['要求逐条实时打勾；两次一致后右侧出现绿色勾', '「変更してログイン」→ 其他设备登出 → 直接进入 ホーム（若 onboarding 未完成则进入「続きから再開」）']],
+  ['② 注册 · 已注册邮箱（App）', '错误态', P({ body: authApp('registered'), pins: pin(1, '.fld.info') + pin(2, '.foot .btn') }), ['2026-10-20 主会话代定：注册提交收到已注册回执时给「ログインする / パスワードを再設定」两个出口，不保证找回邮件送达', '只要求 8 文字以上，超过 72 UTF-8 字节时明确报错；条件不满足时主按钮不可点']],
+  ['③ 找回受理（App）', '', P({ body: authApp('sent'), pins: pin(1, '.center .h1') + pin(2, '.foot .btn.primary') }), ['2026-10-20 主会话代定：已注册 / 未注册邮箱同响应「受け付けました。登録済みのアドレスであればメールが届きます」', '无伪精确倒计时或邮件 App 按钮；重新申请由用户主动发起']],
+  ['④ 设定新密码（App）', '', P({ body: authApp('reset'), pins: pin(1, '.reqs') + pin(2, '.foot .btn') }), ['2026-10-20 主会话代定：不从 token 猜邮箱，8 文字以上与两次一致；72 UTF-8 字节错误另画', '「変更してログインへ」→ 旧会话失效，返回登录；不承诺自动进入首页']],
 ]);
 
 /* ---- A3 ---- */

@@ -8830,7 +8830,142 @@ r18b += r18b404 + r18bMaintenance + r18bForceUpdate + r18bWebUpdate;
 document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r18b-boards', r18b));
 document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 orbitChrome();
+window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
 
 })();
 </script>
 <!-- 2026-10-20 R18b：主会话本轮批准 preflight-checklist 的补画，包括 W-R18b-10 六幅；2026-10-19 注释中的「Web 新版浮条不在本次认可清单」是当时状态。设计获准不等于浮条已挂壳或通过像素门禁。 -->
+<!-- 2026-10-20 主会话代定 · R18b：以下只在末尾追加 b1 #0–#9 / #60 的断点、主题与真实认证中途态。原稿就地改稿见 b1。 -->
+<style>
+.rd33 { box-sizing:border-box; min-height:100%; background:var(--bg); color:var(--ink); font-family:var(--font); }
+.rd33 * { box-sizing:border-box; }
+.rd33-nav { min-height:78px; display:flex; align-items:center; gap:28px; padding:0 40px; border-bottom:1px solid var(--line); }
+.rd33-brand { display:flex; align-items:center; gap:10px; font-size:19px; font-weight:900; white-space:nowrap; }
+.rd33-brand i { width:36px; height:36px; border-radius:12px; background:var(--ink); color:var(--bg); display:grid; place-items:center; font-style:normal; }
+.rd33-links { display:flex; gap:24px; margin:auto; font-size:13px; font-weight:700; }
+.rd33-links a { color:var(--ink-2); text-decoration:none; }
+.rd33-links a:focus-visible,.rd33 button:focus-visible { outline:3px solid var(--plum-500); outline-offset:3px; }
+.rd33-hero { max-width:1260px; margin:0 auto; padding:72px 48px 48px; display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:center; }
+.rd33-copy h1 { font-size:clamp(36px,4vw,56px); line-height:1.2; letter-spacing:-.01em; margin:18px 0; font-weight:900; }
+.rd33-copy p { color:var(--ink-2); line-height:1.8; font-size:17px; max-width:540px; }
+.rd33-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:26px; }
+.rd33-art { min-height:390px; border-radius:34px; background:linear-gradient(135deg,var(--mac-lav),var(--surface) 62%,var(--mac-apricot)); padding:26px; position:relative; }
+.rd33-art small { font-size:11.5px; }
+.rd33-art .card { margin:18px 0; max-width:330px; box-shadow:var(--shadow-float); }
+.rd33-art .card:nth-child(3) { margin-left:auto; }
+.rd33-values { max-width:1260px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:0 48px 48px; }
+.rd33-values .card { min-height:132px; }
+.rd33-scrim { position:absolute; inset:0; z-index:55; display:flex; align-items:center; justify-content:center; background:var(--scrim); backdrop-filter:blur(3px); }
+.rd33-modal { width:min(440px,calc(100% - 32px)); max-height:calc(100% - 32px); overflow:auto; background:var(--surface); color:var(--ink); border-radius:24px; box-shadow:var(--shadow-float); padding:26px; }
+.rd33-modal h2 { font-size:26px; line-height:1.35; margin:8px 0; }
+.rd33-app h2 { font-size:22px; line-height:1.35; margin:8px 0; }
+.rd33-modal p,.rd33-app p { color:var(--ink-2); line-height:1.7; margin:8px 0; }
+.rd33-field { margin:16px 0 0; }
+.rd33-field label { display:block; font-size:12px; font-weight:800; margin-bottom:6px; }
+.rd33-field .in { min-height:48px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface-2); font-size:14px; }
+.rd33-field .err { border-color:var(--coral); color:var(--coral); }
+.rd33-error { color:var(--coral); font-size:12px; line-height:1.6; margin-top:6px; }
+.rd33-modal .btn.block,.rd33-app .btn.block { width:100%; margin-top:14px; }
+.rd33-or { text-align:center; color:var(--ink-3); font-size:12px; margin:16px 0; }
+.rd33-fine { font-size:12px; color:var(--ink-3); line-height:1.6; margin-top:12px; }
+.rd33-fine a { color:var(--plum-700); text-decoration:underline; }
+.rd33-app { padding:10px 18px 34px; min-height:690px; }
+.rd33-app .rd33-brand { margin-bottom:28px; }
+.rd33-app .rd33-card { margin:24px 0; padding:22px; border:1px solid var(--line); border-radius:22px; background:var(--surface); }
+.rd33-app .rd33-footer { position:absolute; left:18px; right:18px; bottom:34px; }
+.rd33-app .rd33-footer .btn { width:100%; margin-top:10px; }
+.rd33-app .rd33-demo { min-height:305px; padding:20px; background:linear-gradient(140deg,var(--mac-lav),var(--surface)); border-radius:26px; }
+.rd33-app .rd33-demo .card { margin:20px 0; }
+.rd33-app .rd33-dots { text-align:center; margin-top:18px; color:var(--plum-700); letter-spacing:8px; }
+.rd33 .chip,.rd33-app .chip { display:inline-flex; }
+.rd33-390 .rd33-nav { min-height:62px; padding:0 18px; }
+.rd33-390 .rd33-nav .rd33-links { display:none; }
+.rd33-390 .rd33-nav .btn.primary { display:none; }
+.rd33-390 .rd33-hero { padding:34px 18px 22px; display:block; }
+.rd33-390 .rd33-copy h1 { font-size:32px; }
+.rd33-390 .rd33-copy p { font-size:14px; }
+.rd33-390 .rd33-art { min-height:245px; padding:12px; margin-top:24px; }
+.rd33-390 .rd33-art .card { margin:8px 0; padding:10px; font-size:11px; max-width:210px; }
+.rd33-390 .rd33-values { display:block; padding:0 18px 40px; }
+.rd33-390 .rd33-values .card { min-height:0; margin:10px 0; }
+.rd33-390 .rd33-modal { padding:18px; max-height:calc(100% - 110px); }
+.rd33-390 .rd33-modal h2 { font-size:21px; }
+</style>
+<script>
+(function () {
+  const { S8, INDEX, PB, group, m390 } = window.__r18bBoardKit;
+  const rd33Brand = '<span class="rd33-brand"><i>O</i>Orbit</span>';
+  const rd33Field = (label, value, error) => '<div class="rd33-field"><label>' + label + '</label><div class="in' + (error ? ' err' : '') + '">' + value + '</div>' + (error ? '<div class="rd33-error">' + error + '</div>' : '') + '</div>';
+  const rd33Landing = (width, googleEnabled = true) => '<div class="rd33 rd33-' + width + '"><nav class="rd33-nav">' + rd33Brand + '<div class="rd33-links"><a href="#features">機能</a><a href="/help">よくある質問</a></div><button class="btn ghost">ログイン</button><button class="btn primary">無料で始める</button></nav><section class="rd33-hero"><div class="rd33-copy"><span class="chip lav">名刺から始まる、人脈の作戦室</span><h1>名刺の束を、<br>次に会うべき人の<br>リストに。</h1><p>撮るだけで名刺を整理。あなたの目標から逆算して、話すべき人のタイプ・行くべきイベント・お礼メールの下書きまで用意します。</p><div class="rd33-actions"><button class="btn primary xl">無料で始める</button>' + (googleEnabled ? '<button class="btn">Google で続ける</button>' : '') + '</div><div class="rd33-fine">登録は1分 · クレジットカード不要</div></div><div class="rd33-art"><span class="chip lav">サンプル</span><div class="card">📇 名刺を12枚読み取りました<br><small>うち3人がプランに合いそうです</small></div><div class="card">🎯 プラン スコア <b>46</b> · 今日 +10</div><div class="card">✨ 山口さんへのお礼と資料のご案内<br><span class="chip lav">下書きの例</span></div></div></section><section class="rd33-values" id="features"><div class="card"><b>撮るだけで、名刺が人脈に</b><p>連続撮影・表裏の自動ペア・重複の統合まで。</p></div><div class="card"><b>目標から逆算した、次の一手</b><p>最大2つの目標ごとに提案。</p></div><div class="card"><b>下書きまで。送信はあなたが行います</b><p>勝手に送ることはありません。</p></div></section></div>';
+  const rd33ModalContent = (state) => {
+    const head = '<div class="row between"><b>Orbit</b><button class="btn sm ghost" aria-label="閉じる">×</button></div>';
+    const foot = '<div class="rd33-fine"><a href="/terms">利用規約</a> · <a href="/privacy">プライバシーポリシー</a></div>';
+    if (state === 'login-error' || state === 'login-no-google') return head + '<h2>ログイン</h2><p>おかえりなさい。</p>' + (state === 'login-no-google' ? '' : '<button class="btn block">Google でログイン</button><div class="rd33-or">またはメールアドレスで</div>') + rd33Field('メールアドレス', 'k.sato@minatolink.example') + rd33Field('パスワード', '••••••••', state === 'login-error' ? 'メールアドレスまたはパスワードが正しくありません。' : '') + '<div class="rd33-fine">パスワードをお忘れですか？</div><button class="btn primary block">ログイン</button><div class="rd33-fine">アカウントをお持ちでない方は 新規登録</div>';
+    if (state === 'signup' || state === 'signup-no-google' || state === 'signup-existing' || state === 'signup-auto-success' || state === 'signup-auto-failed' || state === 'password-72') return head + '<h2>アカウントを作成</h2><p>1分で完了します。</p>' + (state === 'signup' ? '<button class="btn block">Google で登録</button><div class="rd33-or">またはメールアドレスで</div>' : '') + rd33Field('メールアドレス', 'k.sato@minatolink.example', state === 'signup-existing' ? 'このメールアドレスは登録済みです。ログイン / パスワードを再設定' : '') + rd33Field('パスワード', '••••••••', state === 'password-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + (state === 'signup-auto-success' ? '<div class="card">登録しました。プロフィール設定へ進みます。</div>' : '') + (state === 'signup-auto-failed' ? '<div class="card">登録しました。ログインして続けてください。</div>' : '') + '<button class="btn primary block">' + (state === 'signup-auto-failed' ? 'ログインへ' : '登録する') + '</button>' + foot;
+    if (state === 'forgot') return head + '<h2>パスワードの再設定</h2><p>メールアドレスを入力してください。</p>' + rd33Field('メールアドレス', 'k.sato@minatolink.example') + '<button class="btn primary block">再設定を申し込む</button>';
+    if (state === 'forgot-accepted') return head + '<h2>受け付けました</h2><p>登録済みのアドレスであればメールが届きます。</p><button class="btn primary block">ログインに戻る</button>';
+    if (state === 'reset') return head + '<h2>新しいパスワード</h2><p>メールで受け取ったリンクから設定します。</p>' + rd33Field('新しいパスワード', '••••••••') + '<div class="rd33-fine">8文字以上</div>' + rd33Field('もう一度入力', '••••••••') + '<button class="btn primary block">変更してログインへ</button>';
+    return head + '<h2>このリンクは使えません</h2><p>リンクが無効か、すでに使われている可能性があります。</p><button class="btn primary block">再設定を申し込む</button>';
+  };
+  const rd33WebFrame = (width, theme, state) => {
+    const body = rd33Landing(width, state !== 'landing-no-google' && state !== 'login-no-google' && state !== 'signup-no-google');
+    const overlay = state && state !== 'landing-no-google' ? '<div class="rd33-scrim"><div class="rd33-modal">' + rd33ModalContent(state) + '</div></div>' : '';
+    if (width === 390) return m390({ body, overlay, nav: -1, theme });
+    return '<div class="web no-rail bare ' + (width === 1024 ? 'w1024' : '') + '" data-theme="' + theme + '" style="display:block;width:' + width + 'px;height:900px;position:relative;overflow:hidden">' + body + overlay + '</div>';
+  };
+  const rd33WebStates = [
+    ['W-R18b-01', '公開ランディング', ''],
+    ['W-R18b-01-no-google', '公開 · Google なし', 'landing-no-google'],
+    ['W-R18b-02-error', 'ログイン · エラー', 'login-error'],
+    ['W-R18b-02-no-google', 'ログイン · Google なし', 'login-no-google'],
+    ['W-R18b-03', '登録', 'signup'],
+    ['W-R18b-03-no-google', '登録 · Google なし', 'signup-no-google'],
+    ['W-R18b-03-existing', '登録済みメール', 'signup-existing'],
+    ['W-R18b-03-auto-success', '登録後自動ログイン成功', 'signup-auto-success'],
+    ['W-R18b-03-auto-failed', '登録後ログインへ', 'signup-auto-failed'],
+    ['W-R18b-03-password-72', '72バイト超過', 'password-72'],
+    ['W-R18b-04', '再設定申込', 'forgot'],
+    ['W-R18b-04-accepted', '再設定受付', 'forgot-accepted'],
+    ['W-R18b-05', '新パスワード', 'reset'],
+    ['W-R18b-05-invalid', '使えないリンク', 'invalid']
+  ];
+  let rd33Boards = S8('补画 · R18b b1 公開 / 認証', '2026-10-20 主会话代定。元画板 b1 #0–#9 / #60 を基に、幅・テーマ・実在する中途態を補う。');
+  for (const [id, title, state] of rd33WebStates) {
+    for (const width of [1440, 1024, 390]) {
+      const fullId = id + '-' + width;
+      INDEX.push([fullId, title + ' ' + width]);
+      rd33Boards += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + fullId + '">' + fullId + ' ' + title + '<span class="src">参照：b1 #0–#5 / #60 · 2026-10-20 主会话代定</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + rd33WebFrame(width, 'light', state) + rd33WebFrame(width, 'dark', state) + '</div></div>';
+    }
+  }
+  const rd33AppContent = (state) => {
+    const header = '<div class="row between">' + rd33Brand + '<button class="btn sm ghost">戻る</button></div>';
+    if (state === 'welcome' || state === 'welcome-no-google') return '<div class="rd33-app">' + rd33Brand + '<div class="rd33-demo"><span class="chip lav">サンプル</span><div class="card">📇 12枚を読み取りました</div><div class="card">🎯 プラン スコア 46</div><div class="card">✉️ お礼メールの下書き例</div></div><h2>名刺は撮るだけ。<br>あとは Orbit が整理します</h2><p>連続撮影・表裏の自動ペア・重複の統合まで。</p><div class="rd33-dots">● ○ ○</div><div class="rd33-footer"><button class="btn ghost">スキップして選択へ</button><button class="btn primary">はじめる（無料）</button>' + (state === 'welcome' ? '<button class="btn">Google で続ける</button>' : '') + '<div class="rd33-fine">ログイン · 登録を選ぶ</div></div></div>';
+    if (state === 'login' || state === 'login-no-google' || state === 'pending-count' || state === 'pending-unknown') return '<div class="rd33-app">' + header + '<h2>おかえりなさい</h2><p>名刺と人脈は、どの端末からでも同じです。</p>' + (state === 'login-no-google' ? '' : '<button class="btn block">Google でログイン</button>') + (state === 'login-no-google' ? '' : '<div class="rd33-or">またはメールアドレスで</div>') + rd33Field('メールアドレス', 'k.sato@minato') + rd33Field('パスワード', '••••••••') + (state === 'pending-count' ? '<div class="rd33-card">この端末に未同期の変更が2件あります。アカウント情報は表示しません。</div>' : '') + (state === 'pending-unknown' ? '<div class="rd33-card">この端末の未同期の変更を確認できませんでした。</div>' : '') + '<div class="rd33-footer"><button class="btn primary">ログイン</button><div class="rd33-fine">パスワードをお忘れですか？ · 新規登録</div></div></div>';
+    if (state === 'signup' || state === 'signup-no-google' || state === 'signup-existing' || state === 'signup-success' || state === 'signup-auto-failed' || state === 'password-72') return '<div class="rd33-app">' + header + '<h2>アカウントを作成</h2><p>1分で完了します。</p>' + (state === 'signup' ? '<button class="btn block">Google で登録</button><div class="rd33-or">またはメールアドレスで</div>' : '') + rd33Field('メールアドレス', 'k.sato@minatolink.example', state === 'signup-existing' ? 'このメールアドレスは登録済みです。' : '') + (state === 'signup-existing' ? '<div class="rd33-fine">ログイン · パスワードを再設定</div>' : '') + rd33Field('パスワード', '••••••••', state === 'password-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + (state === 'signup-success' ? '<div class="rd33-card">登録しました。プロフィール設定へ進みます。</div>' : '') + (state === 'signup-auto-failed' ? '<div class="rd33-card">登録しました。ログインして続けてください。</div>' : '') + '<div class="rd33-footer"><button class="btn primary">' + (state === 'signup-auto-failed' ? 'ログインへ' : '登録する') + '</button><div class="rd33-fine">利用規約 · プライバシーポリシー</div></div></div>';
+    if (state === 'forgot' || state === 'accepted') return '<div class="rd33-app">' + header + '<h2>' + (state === 'accepted' ? '受け付けました' : 'パスワードの再設定') + '</h2><p>' + (state === 'accepted' ? '登録済みのアドレスであればメールが届きます。' : 'メールアドレスを入力してください。') + '</p>' + (state === 'forgot' ? rd33Field('メールアドレス', 'k.sato@minatolink.example') : '') + '<div class="rd33-footer"><button class="btn primary">' + (state === 'accepted' ? 'ログインに戻る' : '再設定を申し込む') + '</button></div></div>';
+    return '<div class="rd33-app">' + header + '<h2>' + (state === 'invalid' ? 'このリンクは使えません' : '新しいパスワードを設定してください') + '</h2><p>' + (state === 'invalid' ? 'もう一度、再設定をお申し込みください。' : 'メールで受け取ったリンクから設定します。') + '</p>' + (state === 'invalid' ? '' : rd33Field('新しいパスワード', '••••••••', state === 'reset-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + rd33Field('もう一度入力', '••••••••')) + '<div class="rd33-footer"><button class="btn primary">' + (state === 'invalid' ? '再設定を申し込む' : '変更してログインへ') + '</button></div></div>';
+  };
+  const rd33AppStates = [
+    ['A-R18b-01', '歓迎', 'welcome'],
+    ['A-R18b-01-no-google', '歓迎 · Google なし', 'welcome-no-google'],
+    ['A-R18b-02', 'ログイン', 'login'],
+    ['A-R18b-02-no-google', 'Google なし', 'login-no-google'],
+    ['A-R18b-02-pending-count', '端末未同期 · 件数', 'pending-count'],
+    ['A-R18b-02-pending-unknown', '端末未同期 · 読取失敗', 'pending-unknown'],
+    ['A-R18b-03', '登録', 'signup'],
+    ['A-R18b-03-no-google', '登録 · Google なし', 'signup-no-google'],
+    ['A-R18b-03-existing', '登録済みメール', 'signup-existing'],
+    ['A-R18b-03-success', '登録後自動ログイン', 'signup-success'],
+    ['A-R18b-03-auto-failed', '登録後ログインへ', 'signup-auto-failed'],
+    ['A-R18b-03-password-72', '72バイト超過', 'password-72'],
+    ['A-R18b-04', '再設定申込', 'forgot'],
+    ['A-R18b-04-accepted', '再設定受付', 'accepted'],
+    ['A-R18b-05', '新パスワード', 'reset'],
+    ['A-R18b-05-invalid', '使えないリンク', 'invalid'],
+    ['A-R18b-05-password-72', '72バイト超過', 'reset-72']
+  ];
+  for (const [id, title, state] of rd33AppStates) rd33Boards += PB(id + ' ' + title, '', () => ({ body: rd33AppContent(state), tab: -1 }), null, 'b1 #1 / #6–#9 · 2026-10-20 主会话代定');
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('r18b-rd33', rd33Boards));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>
