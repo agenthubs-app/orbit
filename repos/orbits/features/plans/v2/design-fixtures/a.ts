@@ -10,7 +10,7 @@
  * - "w16-overview-few"：web.html #16（s0：今日つくったプラン，0 分）
  * - "b12-208-pending"：b12 W-R24-04a（s56c：CFO 1 · memo 提议 山本 彩 + 候补 佐々木 / 鈴木）
  * - "b12-214-step-done"：b12 W-R24-04c（s56c：CFO 1 / 1 达标，规则在 Step 1 下出「完了しましたか？」· 確認待ち只有候补 佐々木）
- * - "b12-206-premise"：b12 W-R24-03（s46，前提 6 件 · 9月14日に確定）
+ * - "b12-206-premise"：b12 W-R24-03（s46，前提 6 件 · 9月14日に確定；背景没有待确认卡）
  * - "b4-11-type-vc"：b4 ① VC（候补 4 · 話した人 2 · 伊藤さん経由）；W-R24-12 / W-R24-09b 也用它
  * - "b4-13-type-cvc"：b4 ② CVC（人脈にいない · 人物像 · 開口一番 · 小林さん経由）
  * - "b12-222-law-skipped" / "b12-244-law"：b12 弁護士（スキップ中 / スキップ前）
@@ -257,7 +257,7 @@ export const fixturesA: Record<string, PlanDesignFixture> = {
     seriesA({ awards: S128, candidates: [], extraLog: dismissSteps(["demo-step-1", "demo-step-2", "demo-step-3", "demo-step-4"]), linked: OVERVIEW_LINKED, manualEditAvailable: true })(state);
     state.contacts = [...state.contacts!, ...MET_PEOPLE];
   }),
-  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: OVERVIEW_CANDIDATES, linked: OVERVIEW_LINKED, extraLog: [dismissStep4], manualEditAvailable: true })),
+  "b12-206-premise": fromDemo(seriesA({ awards: S46, candidates: [], linked: [...OVERVIEW_LINKED, ...OVERVIEW_CANDIDATES], extraLog: [dismissStep4], manualEditAvailable: true })),
   "b4-11-type-vc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b4-13-type-cvc": fromDemo(seriesA({ awards: S46, candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),
   "b12-222-law-skipped": fromDemo(seriesA({ awards: S46.map((award) => (award.key === "lawyer" ? { ...award, at: jst("2026-10-07") } : award)), candidates: ALL_CANDIDATES, extraLog: [dismissStep4] })),

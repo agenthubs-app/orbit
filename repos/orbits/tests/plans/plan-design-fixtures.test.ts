@@ -88,3 +88,14 @@ test("c-goals keeps the 128-point achievement example consistent with the goal s
   const goals = await service.listGoals();
   assert.deepEqual(goals.filter((goal) => goal.status === "active").map((goal) => [goal.total, goal.talkedPeople]), [[128, 19], [72, 14]]);
 });
+
+test("b12-206 premise modal keeps the four VC candidates without a background pending card", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const scope = { actorId: "actor:premise-example", workspaceId: "workspace:premise-example" };
+  const state = PLAN_DESIGN_FIXTURES["b12-206-premise"]!();
+  repository.seed(scope, state);
+  const service = createPlanV2Service({ now: () => new Date("2026-10-07T00:00:00Z"), references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] }, repository, sample: true, scope });
+  const overview = await service.overview(state.plans![0]!.id);
+  assert.equal(overview?.pending?.length, 0);
+  assert.equal(overview?.typeStats?.find((item) => item.itemId === "demo-plan-item-vc_partner")?.candidates, 4);
+});
