@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Browser, Page } from "playwright";
 import { bundle, errorsOf, launch, open } from "../ui/support/orbit-2026-harness";
+import { SHELL_STUBS } from "../ui/support/orbit-2026-shell-harness";
 
 let browser: Browser;
 let code: { js: string; css: string };
+let shellCode: { js: string; css: string };
+let framedCode: { js: string; css: string };
 test.before(async () => {
   code = await bundle(`
     import React from "react";
@@ -12,6 +15,22 @@ test.before(async () => {
     import { TaskListWorkspace } from "./app/(app)/app/orbit-2026/todo/TaskListWorkspace";
     createRoot(document.getElementById("root")).render(<TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />);
   `, { "^next-auth/react$": `import React from "react"; export const SessionContext = React.createContext(null);` });
+  shellCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { TaskListWorkspace } from "./app/(app)/app/orbit-2026/todo/TaskListWorkspace";
+    import { ShellSlotsProvider, useShellSlots } from "./app/(app)/app/orbit-2026/shell/slots";
+    function RailProbe() { return <aside aria-label="Task rail">{useShellSlots().rightRail}</aside>; }
+    createRoot(document.getElementById("root")).render(<ShellSlotsProvider><TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" /><RailProbe /></ShellSlotsProvider>);
+  `, { "^next-auth/react$": `import React from "react"; export const SessionContext = React.createContext(null);` });
+  framedCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { OrbitAskProvider } from "./app/(app)/app/orbit-global-ask/orbit-ask-context";
+    import { Orbit2026Shell } from "./app/(app)/app/orbit-2026/shell/Orbit2026Shell";
+    import { TaskListWorkspace } from "./app/(app)/app/orbit-2026/todo/TaskListWorkspace";
+    createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language="ja" signedIn><TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId={new URLSearchParams(location.search).get("task") || undefined} /></Orbit2026Shell></OrbitAskProvider>);
+  `, { ...SHELL_STUBS, "^next-auth/react$": `${SHELL_STUBS["^next-auth/react$"]}\nexport const SessionContext = React.createContext(null);` });
   browser = await launch();
 });
 test.after(async () => { await browser?.close(); });
@@ -23,10 +42,20 @@ const fixture = `<div id="root"></div><script>
     { id: "linked", title: "\\u5c71\\u672c\\u3055\\u3093\\u3078\\u8fd4\\u4fe1", status: "open", category: "relationship" },
     { id: "done", title: "\\u6e08\\u3093\\u3060\\u7528\\u4e8b", status: "completed", category: "work" },
   ];
+  window.taskActivityRows = { personal: [{ id: "activity-personal", type: "created", occurredAt: "2026-10-15T01:00:00.000Z" }] };
+  window.taskReminderRows = { personal: [{ id: "reminder-personal", fireAt: "2026-10-18T00:00:00.000Z", status: "scheduled" }] };
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
     window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
     const stamp = "2026-10-17T00:00:00.000Z";
+    if (path.startsWith("/api/reminders?")) {
+      const id = new URL(path, location.href).searchParams.get("targetId");
+      return Response.json({ success: true, data: { reminders: window.taskReminderRows[id] || [] } });
+    }
+    if (/^\\/api\\/tasks\\/[^/]+\\/activities$/.test(path)) {
+      const id = decodeURIComponent(path.split("/")[3]);
+      return Response.json({ success: true, data: { activities: window.taskActivityRows[id] || [] } });
+    }
     if (path.startsWith("/api/tasks/page?")) {
       const query = new URL(path, location.href).searchParams;
       const status = query.get("status"), scope = query.get("scope"), search = query.get("query") || "";
@@ -103,6 +132,89 @@ test("few tasks render in the board's five-column table with local-date groups",
   await table.getByRole("heading", { name: "今後 1" }).waitFor();
   const personal = table.getByRole("row").filter({ has: current.getByRole("button", { name: "今日の資料の詳細" }) });
   await personal.getByRole("cell", { name: "個人", exact: true }).waitFor();
+});
+
+test("wide Task list opens selected details in the shell rail, not a covering drawer", async t => {
+  const current = await open(browser, shellCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary", { name: "Task rail" });
+  await rail.getByRole("heading", { name: "タスクの詳細" }).waitFor();
+  await rail.getByRole("heading", { name: "今日の資料" }).waitFor();
+  assert.equal(await current.getByRole("dialog", { name: "タスクの詳細" }).count(), 0);
+  assert.equal(new URL(current.url()).searchParams.get("task"), "personal");
+  await rail.getByRole("button", { name: "閉じる" }).click();
+  assert.equal(new URL(current.url()).searchParams.has("task"), false);
+});
+
+test("narrow Task list keeps selected details in a drawer", async t => {
+  const current = await open(browser, shellCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html: fixture, width: 1024 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("dialog", { name: "タスクの詳細" }).waitFor();
+  assert.equal(await current.getByRole("complementary", { name: "Task rail" }).getByRole("heading", { name: "タスクの詳細" }).count(), 0);
+});
+
+test("the real 1440 shell keeps the task detail rail beside the list", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.locator('[data-orbit-2026-shell][data-rail="true"]').waitFor();
+  await current.getByRole("complementary").getByRole("heading", { name: "タスクの詳細" }).waitFor();
+  assert.equal(await current.getByRole("dialog", { name: "タスクの詳細" }).count(), 0);
+  assert.ok(await current.getByRole("table", { name: "タスク一覧" }).isVisible());
+});
+
+test("wide Task header lives in the shell without a second page title", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  const header = current.locator("[data-orbit-2026-mainhead]");
+  await header.getByRole("heading", { name: "タスク", exact: true }).waitFor();
+  await header.getByRole("searchbox", { name: "タスクを検索" }).waitFor();
+  await header.getByRole("button", { name: "タスクを追加" }).waitFor();
+  assert.equal(await current.locator("main").getByRole("heading", { name: "タスク一覧" }).count(), 0);
+});
+
+test("selected Task rail reads reminder and history for that task", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  await rail.getByRole("heading", { name: "リマインダー" }).waitFor({ timeout: 2000 });
+  await rail.getByRole("heading", { name: "履歴" }).waitFor();
+  await rail.locator('time[datetime="2026-10-18T00:00:00.000Z"]').waitFor();
+  await rail.getByText("作成", { exact: true }).waitFor();
+  const reads = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string }) => call.path.endsWith("/activities") || call.path.startsWith("/api/reminders?"));
+  assert.equal(reads.length, 2);
+  assert.ok(reads.every((call: { path: string }) => call.path.includes("personal")));
+});
+
+test("the real 390 shell keeps Task search and add usable inside the page", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 390 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.locator("main").getByRole("heading", { name: "タスク一覧" }).waitFor();
+  const search = current.getByRole("searchbox", { name: "タスクを検索" });
+  await search.fill("今日");
+  await current.getByRole("button", { name: "今日の資料の詳細" }).waitFor();
+  await current.getByRole("button", { name: "タスクを追加" }).click();
+  await current.getByRole("dialog", { name: "タスクを追加" }).waitFor();
+  assert.equal(await current.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+});
+
+test("a deep-linked Task does not flash a covering drawer before its wide rail appears", async t => {
+  const html = fixture.replace("<script>", `<script>
+    window.taskDrawerSeen = false;
+    new MutationObserver(() => { if (document.querySelector('[role="dialog"]')) window.taskDrawerSeen = true; }).observe(document.body, { childList: true, subtree: true });
+    window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };
+  `);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&task=personal", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("complementary").getByRole("heading", { name: "今日の資料" }).waitFor();
+  assert.equal(await current.evaluate(() => (window as any).taskDrawerSeen), false);
 });
 
 test("task drawer edits title and notes with one versioned write", async t => {

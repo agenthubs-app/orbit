@@ -8,14 +8,19 @@ import { useTasksMutation, useTasksResource } from "../../tasks/tasks-hooks";
 import type { TaskRowView, TaskView } from "../../tasks/tasks-view-model";
 import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
-import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useToast } from "../ui";
-import { ShellPage } from "../shell/slots";
+import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptyState, Icon, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useToast } from "../ui";
+import { standardCopyFor } from "../copy/standard";
+import { ShellPage, useInShell } from "../shell/slots";
 import { groupTaskRows, type TaskListFilter, type TaskListGroupKey } from "./task-list-groups";
 import styles from "./task-list.module.css";
 
 const groups: Record<TaskListGroupKey, keyof typeof taskCopy> = {
   overdue: "taskListOverdue", today: "taskListToday", upcoming: "taskListUpcoming",
   undated: "taskListUndated", completed: "taskListCompleted",
+};
+const activityCopy: Record<string, keyof typeof taskCopy> = {
+  created: "taskListActivityCreated", updated: "taskListActivityUpdated", rescheduled: "taskListActivityRescheduled",
+  completed: "taskListActivityCompleted", reopened: "taskListActivityReopened", cancelled: "taskListActivityCancelled", deleted: "taskListActivityDeleted",
 };
 
 function formatDate(value: string | undefined, language: OrbitLanguage, timeZone: string): string {
@@ -38,6 +43,17 @@ export function TaskListWorkspace({ actorId, language, date, timeZone, initialCo
 
 function TaskList({ language, date, timeZone, initialCompleted, initialAdd, initialSelectedId }: { language: OrbitLanguage; date: string; timeZone: string; initialCompleted: boolean; initialAdd: boolean; initialSelectedId?: string }) {
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
+  const inShell = useInShell();
+  const [wideShell, setWideShell] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!inShell || typeof window === "undefined") return;
+    if (!window.matchMedia) { setWideShell(false); return; }
+    const media = window.matchMedia("(min-width: 1280px)");
+    const update = () => setWideShell(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [inShell]);
   const toast = useToast();
   const client = useMemo(() => createTasksClient(), []);
   const [filter, setFilter] = useState<TaskListFilter>("all");
@@ -70,6 +86,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor, context), JSON.stringify([filter, query.trim(), openCursor, "open", date, timeZone]));
   const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor, context), JSON.stringify([filter, query.trim(), doneCursor, "completed", date, timeZone]));
   const detail = useTasksResource<TaskView | null>(() => selectedId ? client.loadTask(selectedId) : Promise.resolve(null), selectedId ?? "none");
+  const reminders = useTasksResource(() => selectedId ? client.loadReminders(selectedId) : Promise.resolve([]), selectedId ?? "none");
+  const activities = useTasksResource(() => selectedId ? client.loadActivities(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const mutation = useTasksMutation();
   const denied = [open.error, completed.error, detail.error].some(error => error instanceof TasksClientError && error.code === "UNAUTHORIZED");
   const visibleOpen = !denied && !open.error ? open.data?.items ?? [] : [];
@@ -86,7 +104,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   };
   const setScope = (next: TaskListFilter) => { setFilter(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
   const search = (next: string) => { setQuery(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
-  const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); };
+  const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); reminders.refresh(); activities.refresh(); };
 
   function toggle(item: TaskRowView | TaskView) {
     void mutation.run(() => client.setCompleted(item.id, item.status !== "completed"), () => {
@@ -123,7 +141,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         throw error;
       }
     }, updated => {
-      open.refresh(); completed.refresh();
+      open.refresh(); completed.refresh(); activities.refresh();
       if (selectedIdRef.current !== draft.task.id) return;
       detail.replace(updated);
       setEditing(null);
@@ -146,6 +164,14 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
       <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ?? detail.data.plannedDate, language, timeZone)}</dd></dl>
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
+      <section className={styles.detailSection}>
+        <h4>{t(taskCopy.taskListReminder)}</h4>
+        {reminders.loading && !reminders.data ? <Skeleton lines={1} /> : reminders.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={reminders.refresh} /> : reminders.data?.length ? <ul className={styles.detailTimeline}>{reminders.data.map(reminder => <li key={reminder.id}><time dateTime={reminder.fireAt}>{formatDate(reminder.fireAt, language, timeZone)}</time></li>)}</ul> : <p className={styles.hint}>{t(taskCopy.taskListNoReminder)}</p>}
+      </section>
+      <section className={styles.detailSection}>
+        <h4>{t(taskCopy.taskListHistory)}</h4>
+        {activities.loading && !activities.data ? <Skeleton lines={2} /> : activities.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={activities.refresh} /> : activities.data?.length ? <ol className={styles.detailTimeline}>{activities.data.slice(0, 10).map(activity => <li key={activity.id}><time dateTime={activity.occurredAt}>{formatDate(activity.occurredAt, language, timeZone)}</time><span>{t(taskCopy[activityCopy[activity.type] ?? "taskListActivityUpdated"])}</span></li>)}</ol> : <p className={styles.hint}>{t(taskCopy.taskListNoHistory)}</p>}
+      </section>
       <div className={styles.detailActions}>
         <Button label={t(detail.data.status === "completed" ? taskCopy.taskListReopen : taskCopy.todoDone).replace("{title}", detail.data.title)} disabled={mutation.busy} onClick={() => toggle(detail.data!)} />
         <Button label={t(taskCopy.taskListEdit)} variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => setEditing({ task: detail.data!, title: detail.data!.title, notes: detail.data!.notes ?? "", conflict: false })} />
@@ -153,9 +179,15 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       </div>
     </> : !selectedId ? <p className={styles.hint}>{t(taskCopy.taskListNoSelection)}</p> : null}
   </div>;
+  const detailRail = selectedId ? <div className={styles.railPanel}>
+    <div className={styles.railHeader}><h2>{t(taskCopy.taskListDetail)}</h2><button type="button" className={`btn ${styles.railClose}`} aria-label={standardCopyFor(language).action.close} onClick={() => selectTask(null)}><Icon name="x" size={20} /></button></div>
+    {detailContent}
+  </div> : null;
   const blocked = denied;
   const openGroups = groupTaskRows(visibleOpen, date, timeZone, filter);
   const doneGroups = groupTaskRows(visibleDone, date, timeZone, filter);
+  const todayCount = openGroups.find(group => group.key === "today")?.items.length ?? 0;
+  const shellSubtitle = open.data ? t(taskCopy.taskListSubtitle).replace("{total}", String(open.data.total)).replace("{today}", String(todayCount)) : undefined;
   const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
   const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <tr key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <td className={styles.checkCell}><CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} /></td>
@@ -188,12 +220,15 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const tableHead = <thead><tr><th scope="col" className={styles.checkCell}></th><th scope="col">{t(taskCopy.taskListColumnTask)}</th><th scope="col" className={styles.relatedCell}>{t(taskCopy.taskListColumnRelated)}</th><th scope="col">{t(taskCopy.taskListColumnDue)}</th><th scope="col" className={styles.actionCell}></th></tr></thead>;
 
   return <>
-    <ShellPage title={t(taskCopy.taskListTitle)} phoneFold />
+    <ShellPage title={t(taskCopy.sourceTask)} subtitle={shellSubtitle}
+      left={<a href="/app/tasks?tab=todo" className={`btn ${styles.shellBack}`} aria-label={t(taskCopy.taskListBack)}><Icon name="left" size={20} /></a>}
+      right={<div className={styles.shellActions}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>}
+      rightRail={wideShell === true && selectedId ? detailRail : false} phoneFold />
     <main className={styles.page}>
-      <div className={styles.top}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
+      <div className={`${styles.top} ${inShell ? styles.topInShell : ""}`}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
       <div className={styles.toolbar}><CategoryTabs<TaskListFilter> label={t(taskCopy.taskListFilter)} value={filter} onChange={setScope} options={(["all", "relationship", "personal"] as const).map(key => ({ key, label: t(key === "all" ? taskCopy.taskListAll : key === "relationship" ? taskCopy.taskListRelationship : taskCopy.taskListPersonal) }))} />
-        <SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} />{!showOpen ? <Button label={t(taskCopy.taskListShowOpen)} onClick={() => setShowOpen(true)} /> : null}</div>
+        {inShell ? <div className={styles.mobileSearch}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /></div> : <SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} />}{!showOpen ? <Button label={t(taskCopy.taskListShowOpen)} onClick={() => setShowOpen(true)} /> : null}</div>
       {mutation.error ? <p role="alert" className={styles.error}>{t(taskCopy.todoWriteFailed)}</p> : null}
       {blocked || showOpen && open.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={refresh} /> : null}
       {!blocked && showOpen && open.loading && !open.data ? <Skeleton lines={6} onRetry={refresh} /> : null}
@@ -211,7 +246,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         </> : null}
       </section>
     </main>
-    <Drawer open={Boolean(selectedId)} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
+    <Drawer open={Boolean(selectedId && (!inShell || wideShell === false))} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
     <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
     <Modal open={adding} title={t(taskCopy.taskListAdd)} onClose={() => { if (!mutation.busy) setAdding(false); }}>
       <form className={styles.addForm} onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; void mutation.run(() => client.create(draft, date), () => { setDraft(""); setAdding(false); setFilter("all"); setOpenCursor(null); open.refresh(); toast.success(t(taskCopy.todoSaved)); }, ""); }}>

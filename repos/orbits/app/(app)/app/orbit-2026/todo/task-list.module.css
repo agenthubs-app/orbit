@@ -1,10 +1,15 @@
 .page { min-width: 0; padding: var(--space-20) 0 var(--space-48); }
+.shellBack { align-items: center; background: var(--surface); border-radius: var(--r-pill); color: var(--ink-2); display: inline-flex; height: 40px; justify-content: center; width: 40px; }
+.shellActions { align-items: center; display: flex; gap: var(--space-8); }
+.shellActions > :first-child { width: 220px; }
 .top { align-items: center; display: flex; gap: var(--space-14); margin-bottom: var(--space-20); }
+.topInShell { display: none; }
 .top h1 { flex: 1; font-size: var(--fs-title); margin: 0; }
 .back { color: var(--ink-2); font-size: var(--fs-body-sm); text-decoration: none; }
 .back:hover { text-decoration: underline; }
 .toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-16); justify-content: space-between; margin-bottom: var(--space-18); }
 .toolbar > :last-child { min-width: 220px; }
+.mobileSearch { display: none; }
 .count, .hint { color: var(--ink-3); font-size: var(--fs-body-sm); margin: var(--space-12) 0; }
 .tableCard { background: var(--surface); border-radius: var(--r-card-web); overflow: hidden; padding: var(--space-12) var(--space-20); }
 .taskTable { border-collapse: collapse; table-layout: fixed; width: 100%; }
@@ -29,12 +34,21 @@
 @media (hover: none) { .quickComplete { opacity: 1; pointer-events: auto; } }
 .taskRowOverdue .rowMain strong, .taskRowOverdue .rowDate { color: var(--coral-text); }
 .pager { display: flex; gap: var(--space-8); justify-content: flex-end; margin-top: var(--space-12); }
+.railPanel { display: grid; gap: var(--space-14); }
+.railHeader { align-items: center; display: flex; justify-content: space-between; }
+.railHeader h2 { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); margin: 0; }
+.railClose { align-items: center; display: inline-flex; justify-content: center; min-height: 32px; min-width: 32px; }
 .detailTitle { font-size: var(--fs-body); line-height: var(--lh-body); margin: 0 0 var(--space-8); overflow-wrap: anywhere; }
 .detailMeta { align-items: center; display: flex; gap: var(--space-8); }
 .detailFacts { border-top: 1px solid var(--surface-3); display: grid; gap: var(--space-6); margin: var(--space-16) 0; padding-top: var(--space-14); }
 .detailFacts dt, .detailNotes h4 { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
 .detailFacts dd { font-size: var(--fs-body-sm); margin: 0; }
 .detailNotes p { font-size: var(--fs-body-sm); overflow-wrap: anywhere; }
+.detailSection { border-top: 1px solid var(--surface-3); margin-top: var(--space-16); padding-top: var(--space-14); }
+.detailSection h4 { color: var(--ink-2); font-size: var(--fs-body-sm); margin: 0 0 var(--space-8); }
+.detailTimeline { display: grid; gap: var(--space-8); list-style: none; margin: 0; padding: 0; }
+.detailTimeline li { display: flex; font-size: var(--fs-caption); gap: var(--space-10); }
+.detailTimeline time { color: var(--ink-3); flex: none; }
 .detailActions { align-items: flex-start; display: grid; gap: var(--space-8); margin-top: var(--space-18); }
 .editForm { display: grid; gap: var(--space-14); }
 .editNotes { color: var(--ink-2); display: grid; font-size: var(--fs-body-sm); gap: var(--space-6); }
@@ -42,4 +56,4 @@
 .editActions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .error { color: var(--coral-text); }
 .addForm { display: grid; gap: var(--space-14); }
-@media (max-width: 767px) { .top { flex-wrap: wrap; } .top h1 { order: -1; width: 100%; } .toolbar > :last-child { width: 100%; } .tableCard { padding: var(--space-8); } .relatedCell, .actionCell { display: none; } .taskTable thead th:nth-child(2) { width: auto; } .taskTable thead th:nth-child(4) { width: 74px; } .taskRow td { padding: var(--space-6) var(--space-4); } }
+@media (max-width: 767px) { .topInShell { display: flex; } .top { flex-wrap: wrap; } .top h1 { order: -1; width: 100%; } .mobileSearch { display: block; width: 100%; } .toolbar > :last-child { width: 100%; } .tableCard { padding: var(--space-8); } .relatedCell, .actionCell { display: none; } .taskTable thead th:nth-child(2) { width: auto; } .taskTable thead th:nth-child(4) { width: 74px; } .taskRow td { padding: var(--space-6) var(--space-4); } }

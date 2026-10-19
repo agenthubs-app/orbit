@@ -23,6 +23,8 @@ function fixture(options: { initialNotes?: string } = {}) {
     const path = String(input), method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
     calls.push({ path, method, body });
+    if (path.startsWith("/api/reminders?")) return Response.json({ success: true, data: { reminders: [] } });
+    if (path.endsWith("/activities")) return Response.json({ success: true, data: { activities: [] } });
     if (path.startsWith("/api/tasks/page?")) {
       if (failPageReads) return Response.json({ success: false, error: { code: "UNAVAILABLE", message: "Read unavailable" } }, { status: 503 });
       const query = new URL(path, "https://orbit.test").searchParams;
