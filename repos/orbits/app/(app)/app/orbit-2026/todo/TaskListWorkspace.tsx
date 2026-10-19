@@ -419,6 +419,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const todayCount = openGroups.find(group => group.key === "today")?.items.length ?? 0;
   const shellSubtitle = open.data ? t(taskCopy.taskListSubtitle).replace("{total}", String(open.data.total)).replace("{today}", String(todayCount)) : undefined;
   const emptyGuide = filter === "all" && !query.trim() && !openCursor && open.data?.total === 0 && completed.data?.total === 0;
+  const emptyRail = <div className={styles.emptyRail} data-task-empty-rail="">
+    <h2><span aria-hidden="true">✨</span> iOrbit</h2>
+    <div><h3>{t(taskCopy.taskListEmptyRailTitle)}</h3><p>{t(taskCopy.taskListEmptyRailBody)}</p></div>
+  </div>;
   const orderedRows = [...(showOpen ? openGroups : []), ...(showCompleted ? doneGroups : [])].flatMap(group => group.items);
   const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <tr key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <td className={styles.checkCell}><CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} /></td>
@@ -454,12 +458,12 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     <ShellPage title={t(taskCopy.sourceTask)} subtitle={shellSubtitle}
       left={<a href="/app/tasks?tab=todo" className={`btn ${styles.shellBack}`} aria-label={t(taskCopy.taskListBack)}><Icon name="left" size={20} /></a>}
       right={<div className={styles.shellActions}><SearchField value={query} onChange={search} placeholder={t(taskCopy.taskListSearch)} /><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>}
-      rightRail={wideShell === true && selectedId ? detailRail : false} phoneFold />
+      rightRail={wideShell === true ? selectedId ? detailRail : emptyGuide ? emptyRail : false : false} phoneFold />
     <main className={`${styles.page} ${inShell ? styles.pageInShell : ""}`}>
       <div className={`${styles.top} ${inShell ? styles.topInShell : ""}`}><a href="/app/tasks?tab=todo" className={styles.back}>{t(taskCopy.taskListBack)}</a><h1>{t(taskCopy.taskListTitle)}</h1><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="accent" onClick={() => setAdding(true)} /></div>
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
       {emptyGuide ? <div className={styles.emptyGrid}>
-        <section className={styles.emptyGuide}><span className={styles.emptyMark} aria-hidden="true">✅</span><div><h2>{t(taskCopy.taskListEmptyGuide)}</h2><p>{t(taskCopy.taskListEmptyGuideBody)}</p><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="primary" onClick={() => setAdding(true)} /></div></section>
+        <section className={styles.emptyGuide}><div className={styles.emptyIntro}><span className={styles.emptyMark} aria-hidden="true">✅</span><div><h2>{t(taskCopy.taskListEmptyGuide)}</h2><p>{t(taskCopy.taskListEmptyGuideBody)}</p></div></div><div className={styles.emptyGuideActions}><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="primary" onClick={() => setAdding(true)} /><span>{t(taskCopy.taskListEmptyShortcut)} <kbd>N</kbd></span></div></section>
         <div className={styles.emptySources}><button type="button" className={`btn ${styles.emptySource}`} data-task-source="manual" onClick={() => setAdding(true)}><span className={styles.emptySourceIcon} aria-hidden="true">＋</span><span><strong>{t(taskCopy.taskListManualSource)}</strong><small>{t(taskCopy.taskListManualSourceHint)}</small></span><Icon name="right" size={16} /></button></div>
       </div> : null}
       <div className={styles.listCard} data-task-list-card>
@@ -470,8 +474,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       {blocked || showOpen && open.error ? <RetryCard title={t(taskCopy.taskListReadFailed)} onRetry={refresh} /> : null}
       {!blocked && showOpen && open.loading && !open.data ? <Skeleton lines={6} onRetry={refresh} /> : null}
       {!blocked && showOpen && !open.error && open.data ? <>
-        <p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(open.data.total))}</p>
-        {visibleOpen.length === 0 ? emptyGuide ? <div className={styles.emptyRows} aria-hidden="true"><p>{t(taskCopy.taskListToday)} 0</p><i /><i /><i /></div> : <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : <div className={styles.tableCard}><table className={styles.taskTable} aria-label={t(taskCopy.taskListTitle)}>{tableHead}{openGroups.map(renderGroup)}</table></div>}
+        {!emptyGuide ? <p className={styles.count}>{t(taskCopy.taskListCount).replace("{count}", String(open.data.total))}</p> : null}
+        {visibleOpen.length === 0 ? emptyGuide ? <div className={styles.emptyRows} aria-hidden="true"><p>{t(taskCopy.taskListToday)} 0</p>{[taskCopy.taskListEmptyExampleOne, taskCopy.taskListEmptyExampleTwo, taskCopy.taskListEmptyExampleThree].map((example, index) => <div className={styles.emptyExample} key={index}><i />{t(example)} <span>{t(taskCopy.taskListEmptySample)}</span></div>)}</div> : <EmptyState title={query.trim() ? t(taskCopy.taskListNoMatches) : t(taskCopy.taskListEmpty)} action={!query.trim() ? { label: t(taskCopy.taskListAdd), onSelect: () => setAdding(true) } : undefined} ghostRows={!query.trim() ? 2 : 0} /> : <div className={styles.tableCard}><table className={styles.taskTable} aria-label={t(taskCopy.taskListTitle)}>{tableHead}{openGroups.map(renderGroup)}</table></div>}
         {openCursor || open.data.nextCursor ? <div className={styles.pager}>{openCursor ? <Button label={t(taskCopy.taskListFirstPage)} onClick={() => { setOpenCursor(null); selectTask(null); }} /> : null}{open.data.nextCursor ? <Button label={t(taskCopy.taskListNextPage)} onClick={() => { setOpenCursor(open.data!.nextCursor); selectTask(null); }} /> : null}</div> : null}
       </> : null}
       <section className={styles.group}>

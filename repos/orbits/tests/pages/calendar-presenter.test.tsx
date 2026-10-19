@@ -7,7 +7,7 @@ import { Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
 
 const text = (node: ReactTestInstance): string => node.children.map(child => typeof child === "string" ? child : text(child)).join("");
 const noop = () => {};
-const base = { date: "2026-10-18", today: "2026-10-18", timeZone: "UTC", mode: "month" as const, internalState: "ready" as const, externalState: "ready" as const, connection: "connected" as const, partial: false, onNavigate: noop, onToday: noop, onModeChange: noop, onDaySelect: noop, onEntrySelect: noop, onRetry: noop };
+const base = { date: "2026-10-18", today: "2026-10-18", timeZone: "UTC", mode: "month" as const, internalState: "ready" as const, externalState: "ready" as const, connection: "connected" as const, partial: false, onNavigate: noop, onToday: noop, onModeChange: noop, onDaySelect: noop, onEntrySelect: noop, onAddPersonal: noop, onRetry: noop };
 const days = (mode: "month" | "week" | "day") => calendarDaysView({ date: base.date, mode, timeZone: "UTC", language: "ja", internal: [{ id: "p", sourceId: "p", kind: "personal", category: "personal", title: "Private schedule", state: "upcoming", startsAt: "2026-10-18T09:00:00Z", endsAt: "2026-10-18T10:00:00Z" }], external: [{ id: "g", titlePreview: "Google read-only", startsAt: "2026-10-18", allDay: true }] });
 
 test("month grid renders natural weeks and real date/mode/entry navigation without fetching", async t => {
@@ -64,4 +64,21 @@ test("not-connected/reconnect shows only whitelisted OAuth entry; unavailable so
   await act(async () => root.update(render("unavailable", true)));
   assert.equal(root!.root.findAllByType("a").length, 0);
   assert.ok(!JSON.stringify(root!.toJSON()).includes("この期間に予定はありません"));
+});
+
+test("a readable empty month offers connection and personal schedule actions without masking failures", async t => {
+  const empty = calendarDaysView({ date: base.date, mode: "month", timeZone: "UTC", language: "ja", internal: [], external: [] });
+  let added = 0;
+  const render = (connection: "not_connected" | "unavailable", internalState: "ready" | "failed" = "ready") => <Orbit2026Scope language="ja"><CalendarPresenter {...base} days={empty} connection={connection} internalState={internalState} onAddPersonal={() => { added++; }} /></Orbit2026Scope>;
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(render("not_connected")); });
+  t.after(() => act(() => root.unmount()));
+  assert.equal(root!.root.findAllByProps({ "data-calendar-empty-guide": "" }).length, 1);
+  assert.ok(root!.root.findAllByType("a").some(node => text(node).includes("Google と連携") && node.props.href === "/api/integrations/google_calendar/authorize?returnTo=calendar"));
+  await act(async () => root!.root.findAllByType("button").find(node => text(node).includes("個人の予定を追加"))!.props.onClick());
+  assert.equal(added, 1);
+  await act(async () => root.update(render("unavailable")));
+  assert.equal(root!.root.findAllByProps({ "data-calendar-empty-guide": "" }).length, 0);
+  await act(async () => root.update(render("not_connected", "failed")));
+  assert.equal(root!.root.findAllByProps({ "data-calendar-empty-guide": "" }).length, 0);
 });

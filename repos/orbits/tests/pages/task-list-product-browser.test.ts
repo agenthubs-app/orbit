@@ -250,6 +250,18 @@ test("the real 1440 shell keeps the task detail rail beside the list", async t =
   assert.ok(await current.getByRole("table", { name: "タスク一覧" }).isVisible());
 });
 
+test("an empty Task list keeps the guide beside its explanatory rail", async t => {
+  const emptyFixture = fixture.replace(/window\.taskRows = \[[\s\S]*?\];/, "window.taskRows = [];");
+  const html = emptyFixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.getByRole("heading", { name: "やることを、ここに集めます" }).waitFor();
+  await current.locator('[data-orbit-2026-shell][data-rail="true"]').waitFor();
+  await current.getByRole("complementary").getByRole("heading", { name: "タスクはどこから来る？" }).waitFor();
+  assert.equal(await current.locator("[data-task-source]").count(), 1);
+  assert.equal(await current.locator('[data-task-source="manual"]').count(), 1);
+});
+
 test("wide Task header lives in the shell without a second page title", async t => {
   const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
   const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
