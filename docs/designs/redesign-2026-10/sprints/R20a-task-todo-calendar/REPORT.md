@@ -805,3 +805,9 @@ Calendar の native form から 2026-10-19 の終日個人予定 `QA online` を
 `Couldn't load Google Calendar events` は前回と同じ sanitized fixture の制約で、実 Google の認可・取り込み結果ではない。面談 source の native 表示、反復予定、変更・削除、端末再起動後の outbox、衝突、別 actor、長期 offline、empty/small/large、SC-15 pixel と全量 green はこの実測で閉じない。特に API 停止中の verification error banner と native Calendar last-seen の併存は観測事実として残す。
 
 合成 account は Settings で sign out し login 画面を確認。Metro に通知 cleanup 未完全確認 warning が一件あり、通知登録の完全清掃は主張しない。所有 API / Metro 停止、app terminate、D simulator は元の Shutdown、Next 生成の二 tracked 差分は scoped 復元。drop 前に exact DB name / owner / active connection 0 と全8 `orbit_records` が nonce workspace 内であることを確認し、その DB のみ drop、catalog count 0。既存 simulator app / data は保持。push なし。
+
+## 2026-10-19　App 全量の現行 source 再測定
+
+最初の全量 `_evidence-d/R20a/run-01/d-app-full-post-calendar-native-ebc982ff3.log` は exit1（3,254 tests / 3,235 pass / 15 fail / 2 cancelled / 2 skip）。ただし 08:44 の開始後、共有 D checkout が 08:46 に rebase され App source が変わったため、単一 source の full gate として使わない。旧 run との差分にあった D Task 三件は rebase 後の二 file 定向で pass したが、その定向は別の UI locator timeout 五件が出て **53/48 pass/5 fail**。さらに checkout が 08:59:19 に `e176a1dd3` へ fast-forward した後、二 file を逐次実行すると **53/53 pass、0 skip**。timeout の単一根因は断定せず、製品修正や全量 green と扱わない。
+
+clean `e176a1dd3` で 09:00:38 に起動した fresh App `npm test` は、実行中に HEAD / tracked source が変わらず、原始ログ `_evidence-d/R20a/run-01/d-app-full-current-e176a1dd3.log` に **3,214 tests / 3,199 pass / 13 fail / 0 cancelled / 2 skip、exit1**。前述の Task 三件、Calendar meeting copy、個人予定の主要 case はこの全量内で pass。残る13 failure 名は R12 camera/batch 九件、旧辞書 exact-key pin、R14 discovery toggle、joined-person、typed inbox 各一件で、R20a Task/Calendar の failure 名はない。異なる upstream source の旧全量との単純な増減を「新規失敗ゼロ」の証明にしない。SC-16 の全量 gate、SC-15 pixel、残る native 操作と独立復核は OPEN。
