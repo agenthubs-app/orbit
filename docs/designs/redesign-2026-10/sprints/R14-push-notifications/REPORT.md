@@ -19,9 +19,9 @@
 | 05 面談例外 | **定向通过** | 仅当前已确认预约聚合体的 30 分钟提醒越过静音，仍走共享配额；取消/过期/他人不例外。 |
 | 06 邀请双方 | **定向通过** | 邀请人、受邀人各自产生本人联系人通知，同一连接幂等；本机 PostgreSQL 目标归属测试通过。 |
 | 07 落地白名单 | **部分** | 本地联系人/扫描/Task To-do 合法地址开放；保留段、穿越、编码斜杠、外链和多余查询安全回退；冷启动未登录远程 delivery 进入受保护收件箱，由服务端再验 owner。重启后模拟器 `openurl orbit:///task?seg=todo` 实际进入 To-do，截图可查；本机 API 未运行，Task 数据为重试态。系统通知点击与远程 delivery 未做手工链。 |
-| 08 App 通知页 | **功能定向通过，像素待板** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。模拟器深链打开后仅呈现离线边界，未看到设置表单。b5 #13 未改稿，浅色门禁不能通过；在线操作截图待补。 |
+| 08 App 通知页 | **功能定向通过，像素待板** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。重启后的本机在线模拟器截图已看到「通知」表单、来源开关和 1/2/3 上限；没有手工点按读回。b5 #13 未改稿，浅色门禁不能通过。 |
 | 09 Web 通知页 | **功能定向通过，像素待板** | 静态受保护路由、账号设置壳、真实偏好保存、三语 copy、响应式双列/单列。未实现浏览器 push 伪开关。b5 #29 未改稿，1440 门禁不能通过；1024/390/dark 无板截图待补。 |
-| 10 秘書设置 | **功能定向通过，像素待板** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。模拟器深链只呈现离线边界，未看到设置表单；b11 #32 未改稿，门禁待板。 |
+| 10 秘書设置 | **功能定向通过，像素待板** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。本机在线模拟器截图已看到期限/推荐开关、共享上限 3 和静音入口；没有手工点按读回，b11 #32 未改稿，门禁待板。 |
 | 11 注册/权限/旧屏 | **定向通过** | App OS 拒绝时不显示生效的 opt-in；关闭先禁止注册再撤销设备，撤销失败可见；账号切换隔离，旧组件的外部使用点保留并改用 R31。R18a 其他动态段仍在；真实设备 token 注册未实测。 |
 | 12 R13/R10/R19 交接 | **部分** | R13 来源、宽进逐条跳过、账号时区分组已回归；未改同步 DTO。活动维护任务站内提前截断归事件线；R10/R19 只应消费站内通知，见请求 1/2。 |
 | 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。 |
@@ -90,6 +90,7 @@
 - App 首轮收口全量经 `heavy.sh b`：**3,174 tests、3,154 pass、18 fail、2 skip，退出 1**（`app-full.log`）。与 R13 `run-02/app-full-closeout.log` 按失败名对照，旧相机 9、字典钉版 1、A `CategoryTabs` 选中项 1 仍在；新增 7 项中，B 路由覆盖/私有门禁/离线页面清单 3 项已由静态路由登记修复（21/21，`app-route-manifest-fix.log`），偏好 GET 离线读取清单 1 项已登记为 `online_only_secret`（26/26，`app-offline-inventory-fix.log`），两项通知设置快捷按钮尺寸已改用 R31 `Button size="lg"`，浏览器窄屏与宽屏目标 2/2（`app-browser-fix.log`）。余下一项「discovery toggles」来自 A 线 R31 `Toggle` 在 RN Web 上未输出测试要求的 `aria-checked`；组件只给 `accessibilityState.checked`，B 线未越界修改。定向浏览器束总计 2 pass、1 fail；复跑结果见下，App 后续类型检查退出 0（`app-typecheck-after-full.log`）。
 - 首次模拟器 `openurl` 尝试停在运行门槛：`heavy.sh b` 因内置盘空间低于 5 GiB 等待（`metro-openurl.log`）。重启后空间恢复，Metro 在 `:8083` 成功打包，`simctl openurl orbit:///task?seg=todo` 成功进入 To-do（`metro-openurl-task-retry.png`）；截图显示本机 API 不可用的 Task 重试卡。`orbit:///settings/notifications` 与 `/secretary` 也打开了 App，但只显示在线边界（`metro-notifications-retry.png`、`metro-secretary-retry.png`），不能据此验证表单或像素。首次截图直写证据盘被 CoreSimulator 拒绝，改为写 `/tmp` 再复制后成功；原始命令与日志为 `metro-*-retry.zsh` / `metro-*-retry.log`。操作后已停 Metro 并关闭 B 模拟器。系统通知点击、远程 delivery、在线设置交互和 VoiceOver 仍未做手工验收。
 - 重启前修复后的最后一轮全量：Web **7,738 tests、6,712 pass、15 fail、1,011 skip**（`web-full-review-final.log`），15 个失败名与旧 Web 基线相同；App **3,216 tests、3,173 pass、38 fail、3 cancelled、2 skip**（`app-full-review-final.log`）。App 失败包含既有相机 9、旧 i18n 钉版 1、A 线 `Toggle`；并发浏览器压力下还出现多个 1.5–5 秒等待超时，不能把这轮全量记为通过。随后定向重跑 workspace 2/2、通知注册竞态 15/15、收件箱焦点恢复 1/1；收件箱筛选选中语义 0/1，原因是 A 线 `CategoryTabs` 仅传 `accessibilityState.selected`，RN Web 未输出测试所需的 `aria-selected`（`app-workspace-timeout-review.log`、`app-notification-races-review.log`、`app-inbox-timeout-review.log`）。其余超时未逐个重跑，不宣称已排除。重启后再跑 Web/App 类型检查均退出 0（`*-typecheck-postrestart.log`）。
+- 额外一次本机在线截图：`online-settings-check2.log` 以 `buildStackEnv(..., noPaidAi:true)` 将数据库固定为 localhost、付费 provider key 置空，在 B 线 `:3300` 启动 Web、`:8083` 启动 Metro；模拟器深链分别进入通知和秘書表单，截图 `online-notifications.png`、`online-secretary.png`。首次探针使用 `127.0.0.1:8083`，而 Metro 只监听 `localhost`，故 `online-settings-check.log` 超时；更正探针后成功。截图是开发态，含调试提示，且画板未改稿，**不作像素 PASS**。未手工验证保存读回、系统通知点击或 VoiceOver；这些仍由定向自动测试及后续独立验收承担。结束时已停本轮 Next/Metro，关闭 B 模拟器，并将 Next 启动自动改写的 `next-env.d.ts` / `tsconfig.json` 精确恢复到本轮前内容。
 
 ## 画板门禁
 
