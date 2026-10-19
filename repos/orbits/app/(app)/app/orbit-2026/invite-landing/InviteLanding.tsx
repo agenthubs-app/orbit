@@ -34,7 +34,7 @@ import {
   type InviteLandingInitial,
   type InviteLandingView,
 } from "./landing-model";
-import { INVITE_CONFIRM_SAMPLE_INVITER, INVITE_CONFIRM_SAMPLE_PROFILE } from "./confirm-design-fixture";
+import { INVITE_CONFIRM_SAMPLE_INVITER, INVITE_CONFIRM_SAMPLE_PROFILE } from "../../../../i/_landing/confirm-design-sample";
 import styles from "./invite-landing.module.css";
 
 type T = (entry: OrbitCopyEntry, values?: Readonly<Record<string, string | number>>) => string;

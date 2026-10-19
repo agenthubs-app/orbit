@@ -1,4 +1,4 @@
-import type { InviteProfileRead } from "../add/invite/invite-api";
+import type { InviteProfileRead } from "../../(app)/app/orbit-2026/add/invite/invite-api";
 
 /** b11 #12's read-only sample, used only by the local-mock ?design=confirm state. */
 export const INVITE_CONFIRM_SAMPLE_PROFILE: InviteProfileRead["profile"] = {
