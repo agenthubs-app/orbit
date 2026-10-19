@@ -102,6 +102,12 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 
 单板门禁都经 `heavy.sh b` 使用本地 Web `:3300`、设计稿 `:3350` 与在线 App 截图运行。A-R14-P01 初次诊断比较 `pixel-revised-app-notifications`：raw 0.1282、24 条未归因超阈带，开发截图含 Expo 警告覆盖。随后在模拟器中用 `idb ui tap` 关闭开发警告，重截 `online-notifications-clean.png` 并复比 `pixel-revised-app-notifications-clean`：raw 0.0844、24 条未归因带；第三轮按真实卡片重排后以同一干净截图复比 `pixel-app-notifications-last`：raw 0.0821、21 条未归因带、17 处缺块，**FAIL**。A-R14-P02 初轮 `pixel-revised-app-secretary`：raw 0.1057、15 条未归因带，开发截图仍有警告；次轮卡片重排并重截无警告的 `online-secretary-clean.png` 后，`pixel-app-secretary-last` raw 0.0567、12 条未归因带、11 处缺块，**FAIL**。W-R14-P01 初轮 `pixel-revised-web-notifications`：raw 0.0301、18 条未归因带；发现板缺实际自動発見卡后改稿，复比 `pixel-revised-web-notifications-v2`：raw 0.0348、23 条未归因带、38 处缺块，**FAIL**。未给数据文字外的差异强行标 `[data]`；未修改归因规则，三板均不得标 PASS。App 截图与 Web triptych、`result.json`、逐带报告均在证据目录。
 
+## RD-25 REVIEW 修复
+
+- M1：写入 schema 拒绝 `secretaryMail:true`，仍接受显式 `false`；即使旧偏好已存为 `true`，typed 投递也拒绝纯邮件及混合 `mail_summary` 来源。先 RED 复现 schema、HTTP PUT 和投递层三项失败，修复后 Web 定向 14/14、App 契约同步 3/3、两端 `tsc` 退出 0。修复提交 `deece153b`。
+- m：缺关系消息表的 typed delivery 警告只记事件名，不再含原始 `actorId`。本机 PostgreSQL 负例先检出泄露，修复后该文件 2/2、Web `tsc` 退出 0。修复提交 `e0c2ff994`。
+- M3：主会话已于 **2026-10-19 23:10** 按 RD-30 明确批准 B 线跨入活动域修复站内通知提前截断；对应提交 `42281428d`。R26/R27 交接补在下表，勿把该批准扩展到其他活动文件。
+
 ## 待主会话决定
 
 - A-R14-P01 第三轮、A-R14-P02 第二轮、W-R14-P01 第二轮像素门禁仍失败；B 线未继续单方改动画板。请主会话依据逐带报告决定后续版面对齐与独立复核安排；当前 SC-08～10 的像素部分及 SC-15 不能标完成。
@@ -118,11 +124,11 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 
 | 是什么 | 当前状态 | 接手必须做到 | 依据 |
 | --- | --- | --- | --- |
-| 1. 活动来源站内截断 | `notification-job.ts` 和 `notifications.ts` 已移除写入前 cap；R27 回归断言两个 due 记录都写入，Web 类型检查退出 0。 | 事件线继续保持站内逐条 semanticKey upsert；push 只在 typed worker reserve 时受 cap。 | RD-30、SC-03/12；`r27-event-notifications.test.ts`。 |
+| 1. R26/R27 活动来源站内截断 | `notification-job.ts` 和 `notifications.ts` 已移除写入前 cap；R27 回归断言两个 due 记录都写入，Web 类型检查退出 0。主会话 2026-10-19 23:10 按 RD-30 批准 B 线提交 `42281428d` 跨线修复。 | 事件线继续保持站内逐条 semanticKey upsert；push 只在 typed worker reserve 时受 cap；R26/R27 接手时勿恢复旧 `dailyCap` 站内截断。 | RD-30、SC-03/12；`r27-event-notifications.test.ts`。 |
 | 2. R10 首页/R19 小组件 | 站内通知 DTO 与 R13 preview 已交，R14 开关只管 push；未触碰两页。 | 只读 R13 站内来源；核对过滤、时区、离线行为，避免把 push 开关当作隐藏来源。 | R13 REPORT 的 M0 合同 `306f32224`；SC-12。 |
 | 3. b5/b11 改稿 | 四板已在原文件改稿且完成预检；三个页面像素门禁均 FAIL。 | 主会话复核版面并协调页面布局对齐、重跑门禁；缺口不得用虚假归因掩盖。 | 本报告「画板门禁」及 `pixel-revised-*` / `pixel-app-*-last` 证据。 |
 | 4. 生产推送 | 仅本机 DB/provider 替身验证；没有外部发送。 | 主会话登记 DEFERRED「待用户授权」：生产 worker 开关、凭据、Neon 迁移/配置、部署、APNs/Expo 真机送达、TestFlight；授权后逐项执行并留回执。 | PLANNER B-14-10、§10。 |
-| 5. Gmail `mail_summary` | R13 客户端整行隐藏，R14 默认关闭且不展示入口。 | 仅在 D-16 restricted scope 获单独授权和真实来源/权限设计后重新立项；不要打开现有偏好字段冒充可用。 | B-14-5、R13 REVIEW M。 |
+| 5. Gmail `mail_summary` | R13 客户端整行隐藏，R14 默认关闭且不展示入口；RD-25 M1 后 API 拒绝开启，typed 投递对旧 `true` 偏好仍拒发。 | 仅在 D-16 restricted scope 获单独授权和真实来源/权限设计后重新立项；不要打开现有偏好字段冒充可用。 | B-14-5、R14 REVIEW M1；`deece153b`。 |
 | 6. R31 开关浏览器语义 | App 全量中既有发现开关用例的 `getByRole('switch')` 可找到控件，但 `aria-checked` 返回 null；R31 `Toggle` 只设 `accessibilityState.checked`。 | A 线核对 `UiPressable`/RN Web 的属性透传，给 `Toggle` 输出真实选中状态，并重跑 `ink-signal-settings-account`；B 线通知设置复测同一控件。 | `app-full.log`、`app-browser-fix.log`；SC-13/15。 |
 | 7. R31 类别标签浏览器语义 | 受信箱筛选测试稳定失败：默认「全部」缺 `aria-selected=true`，切换状态无法从 DOM 宣告；A 线 `Filters.tsx` 的 `CategoryTabs` 只传 `accessibilityState.selected`。 | A 线为 `CategoryTabs` 的每个 tab 输出对应 `aria-selected`（可参照同库 `Segmented`），重跑 `relationship-inbox-lifecycle` 的筛选语义用例；B 线复测通知筛选。 | `app-inbox-timeout-review.log`；SC-13/15。 |
 
