@@ -14,6 +14,7 @@ type Fixture = {
   view?: "landing" | "entry";
   lang?: string;
   initial?: unknown;
+  initialView?: { view: "confirm" };
   signedIn?: boolean;
   accountName?: string | null;
   handlers?: Handler[];
@@ -61,7 +62,7 @@ test.before(async () => {
     const navigate = (href) => f.navigations.push(href);
     createRoot(document.getElementById("root")).render(f.view === "entry"
       ? <InviteCodeEntry language={f.lang} navigate={navigate} legacyLink={Boolean(f.legacy)} />
-      : <InviteLanding language={f.lang} initial={f.initial} signedIn={f.signedIn} accountName={f.accountName} navigate={navigate} />);
+      : <InviteLanding language={f.lang} initial={f.initial} initialView={f.initialView} signedIn={f.signedIn} accountName={f.accountName} navigate={navigate} />);
   `);
   browser = await launch();
 });
@@ -75,6 +76,15 @@ async function landing(t: { after: (fn: () => Promise<void>) => void }, fixture:
 
 const fetches = (page: Page): Promise<Call[]> => page.evaluate(() => (window as any).landingFixture.fetches);
 const state = (page: Page) => page.locator("[data-invite-landing]").getAttribute("data-invite-landing");
+
+test("design confirm sample cannot redeem an invitation when clicked", async (t) => {
+  const page = await landing(t, { signedIn: true, initialView: { view: "confirm" } });
+  const connect = page.locator("[data-invite-connect]");
+  await connect.waitFor();
+  await connect.click();
+  assert.deepEqual((await fetches(page)).filter((call) => call.method === "POST"), []);
+  assert.equal(await state(page), "confirm");
+});
 
 test("signed out: the inviter's card (no e-mail / phone), code and date, 登録 / ログイン come back to /i/<code>", async (t) => {
   const page = await landing(t, {});

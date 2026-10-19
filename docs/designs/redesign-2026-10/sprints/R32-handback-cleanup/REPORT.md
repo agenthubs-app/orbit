@@ -179,3 +179,7 @@ M3 过滤测试文件改动后另启的 App typecheck 在 B/D 线全量测试并
 已用满单屏三轮仍 FAIL 的 P01/P04/P15/P19 与 W01 不再在本线重复空拍。P09 需撤回契约，P14/P16/W02/W03/P18 需计划域读写字段，W04 与 P17/P19 需计分样本口径，W06 需七位画板状态决定；X01/X02 和 R05 壳、S11 R18 页面由相应责任线处理。其余未过键仍需按 SC 表逐带复核；本线不把无法归因的色差和缺块改判通过。主会话独立复核与业务回读均未执行，所有这些均保留未完成状态。
 
 本线仅作本地路径提交，未推送、未连接 Neon／生产、未部署；付费 AI 调用 **0**。本线启动的 3210、3211、8087、3200 服务及 16e 模拟器在最后原生门禁退出时关闭，Metro 地址读回 `localhost:8082`。收口全量以 `app-full-closeout-final4.log`、`web-full-closeout-final4.log` 为准；App typecheck `app-typecheck-final4.log`、Web typecheck:app／lint／typecheck 的 `*-final4.log` 均退出 0。
+
+## RD-25 主会话复核修复
+
+M1：见上方 P20 新浅深原生三联图与重写的逐带归因；两次浅色启动过渡帧没有计入门禁。M2：`design=confirm` 的只读样本保留画板外观，点击「つながる」不会发出兑换 POST；普通登录后确认流程仍照常兑换。浏览器点击回归 `invite-landing.test.tsx` 先红后绿，最终 17/17。Web `npm run typecheck` 退出 0。

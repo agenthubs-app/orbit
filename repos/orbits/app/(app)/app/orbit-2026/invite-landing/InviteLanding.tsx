@@ -128,6 +128,7 @@ function LandingBody({ language, initial, signedIn, accountName, accountEmail = 
         ) : null}
         {view.view === "confirm" && confirmPreview ? (
           <ConfirmStep t={t} language={language} preview={confirmPreview} profile={profile} accountName={accountName} accountEmail={accountEmail}
+            readOnly={designConfirm}
             onResult={(next, keys) => { setSharedByMe(keys); if (next === "login") navigate(inviteAuthHref("login", preview.code)); else setView(next); }}
             onNotNow={() => navigate("/app/home")} />
         ) : null}
@@ -275,13 +276,14 @@ function ProfileStep({ t, profile, accountName, onSaved, onError }: {
   );
 }
 
-function ConfirmStep({ t, language, preview, profile, accountName, accountEmail, onResult, onNotNow }: {
+function ConfirmStep({ t, language, preview, profile, accountName, accountEmail, readOnly, onResult, onNotNow }: {
   t: T;
   language: OrbitLanguage;
   preview: InviteCodePreview;
   profile: InviteProfileRead["profile"];
   accountName: string | null;
   accountEmail: string | null;
+  readOnly: boolean;
   onResult: (next: InviteLandingView | "login", sharedKeys: InviteSharedFieldKey[]) => void;
   onNotNow: () => void;
 }) {
@@ -296,6 +298,7 @@ function ConfirmStep({ t, language, preview, profile, accountName, accountEmail,
   const callName = inviteCallName(inviter);
 
   const connect = async () => {
+    if (readOnly) return;
     setBusy(true);
     setFailed(false);
     const result = await redeemInviteCode(preview.code, { idempotencyKey: redeemKey.current, sharedKeys: orderedInviteKeys(keys) });
