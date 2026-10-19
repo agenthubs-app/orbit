@@ -297,7 +297,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   premiseMeta: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25 },
   premiseClose: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, height: 34, justifyContent: "center", width: 34 },
   premiseRows: { marginTop: 8 },
-  premiseRow: { alignItems: "flex-start", flexDirection: "row", gap: 8, paddingVertical: 8 },
+  premiseRow: { alignItems: "flex-start", flexDirection: "row", gap: 8, paddingVertical: 6 },
   premiseLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   premiseLabel: { color: colors.ink3, fontSize: 11.5, lineHeight: 19.38, width: 84 },
   premiseValueWrap: { alignItems: "flex-start", flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4, minWidth: 0 },
