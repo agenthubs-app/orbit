@@ -1,3 +1,14 @@
 {
-  "_schema": "<grid-view>: { <band>: [data] / [raster] / [contrast] with a checked reason }"
+  "_schema": "<grid-view>: { <band>: [data] / [raster] / [contrast] with a checked reason }",
+  "A-R12-N09-app-light": {
+    "2": "[raster] 顶栏同字同位置，设计和 16e 的标题／3件只有 iOS 3x 缩图与浏览器字形边缘差；dx 0 dy 0，背景与字色相同",
+    "4": "[raster] y120-150 说明句逐字同文且同折行；dx 0 dy 0，采样细字 ΔE3.3 来自抗锯齿，底色相同",
+    "6": "[raster] y180-210 参加者卡的 🥂 与文字同内容同框，emoji／假名原生栅格不同；dy -1，底色相同",
+    "14": "[raster] y420-450 确认框正文同文同折行，dx 0 dy 1，背景和字色 ΔE0，只有字形边缘差",
+    "15": "[raster] y450-480 确认框第二行同文，dx 0 dy 0，背景和字色 ΔE0，假名边缘差",
+    "17": "[raster] y510-540 取消／破棄按钮文字与底沿同位置，dx 0 dy 0，背景和字色 ΔE0，原生文字及圆角阴影边缘差",
+    "18": "[raster] y540-570 遮罩后第二草稿操作文字同文，dx 0 dy 0，背景和字色 ΔE0，字形边缘差",
+    "22": "[raster] y660-690 杉本 葵行同名同副标题和来源，dx 2 dy 1，背景和字色 ΔE0；缩图字形及 🥂 emoji 边缘差",
+    "23": "[raster] y690-720 CFO Night 来源 chip 与操作文字同内容，dx 0 dy 0，背景和字色 ΔE0；字形边缘差"
+  }
 }
