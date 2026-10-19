@@ -199,7 +199,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
         <section className={s.businessCard}>
           <div className={s.cardTop}><span className={s.orbitMark}>O</span><strong>{t("card")}</strong><Button label={t("editProfile")} size="sm" data-profile-edit onClick={() => setDraft(draftOf(profile))} /></div>
           <div className={s.identity}><div className={s.avatar}>{profile.displayName.slice(0, 1)}</div><div><strong>{profile.displayName}</strong><span>{profile.organization && profile.role ? `${profile.organization} · ${profile.role}` : t("missingCompany")}</span></div></div>
-          {profile.handles.email ? <span className={s.email}>{profile.handles.email}</span> : null}
+          {profile.handles?.email ? <span className={s.email}>{profile.handles.email}</span> : null}
         </section>
         <section className={s.progressCard}>
           <div className={s.progressHead}><div className={s.ring} style={{ "--score": `${progress.score}%` } as CSSProperties}><strong>{progress.score}%</strong></div><div><small>{t("completeness")}</small><strong>{progress.score === 100 ? t("complete") : t("missingMany").replace("{n}", String(progress.missing.length))}</strong></div></div>

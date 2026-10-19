@@ -28,6 +28,15 @@ test("account profile renders server card states and live-filtered preview", () 
   assert.ok(!html.includes(hidden.profile.bio ?? "sample-bio"));
 });
 
+test("account profile renders a sparse live profile without optional contact handles", () => {
+  const payload = structuredClone(createAccountDesignFixtureStore().read("actor", "25").data);
+  if (!payload.profile) throw new Error("missing test profile");
+  delete payload.profile.handles;
+
+  const html = render(payload);
+  assert.ok(html.includes(payload.profile.displayName));
+});
+
 test("only the review state shows unaccepted design candidates", () => {
   const store = createAccountDesignFixtureStore();
   const regular = renderToStaticMarkup(createElement(OrbitLanguageProvider, {
