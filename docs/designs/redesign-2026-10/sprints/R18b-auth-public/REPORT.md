@@ -1,4 +1,93 @@
-# R18b 执行记录（进行中；不是收口报告）
+# Sprint R18b-auth-public 收口报告（C 线；未通过总验收）
+
+**收口日期：**2026-10-20。**分支：**`line-c`，已按要求从 `origin/redesign` rebase；本轮仅在 C 工作树执行，未 push、未连接 Neon / 生产、未部署。下方旧执行记录保留为逐次证据；本节是最终状态。`HANDOFF-CLAUDE-2026-10-19.md` 为开工前已存在的未跟踪文件，本轮未修改或提交。
+
+## 结论与 SC 对照
+
+R18b **未达到全部 SC**，停在设计事实 / 动作代定、跨线壳接线、App 像素门禁三轮上限以及两端全量红灯。主会话已批准 `preflight-checklist.md` 的补画并删除 b1 #9 两条不真实的密码实时检查；批准只解决相应画板使用权，不代表操作链或像素通过。本轮 C 线 App 公开页最小调整在最终 rebase 后为 `d7b0f9b94`，Web W-10 浮条组件 / 状态为 `042d58c73`；两项都没有把失败门禁记成通过。
+
+收口源码还包括 W-10 kit token 修正 `d1cb185fa` 与 App 维护卡 / 重试排版 `0e2711e31`。本轮基于 `origin/redesign e4c7172f3` 重放 C 提交；提交号随 rebase 改写。Web 全量复验早于最后的 CSS token 修正，App 全量早于维护排版修正，不能把旧日志称作最终树全量通过。
+
+| SC | 本轮收口状态 | 已有证据 / 未完成条件 |
+| --- | --- | --- |
+| 01 开工与预检 | 部分 | 开工 rebase、b1/b7 改稿与 b12 补画已有记录；本轮批准补画已更新预检表。b1 欢迎 / 认证的真实数据、导航目的地、异态与 token 仍待主会话代定及补画。 |
+| 02 Web 落地 | 部分 | `/`、`/app` 会话路由目标测试有记录；未登录仍跑旧落地，W-01 新画面与全矩阵未做。 |
+| 03 Web 认证四态 | 部分 | 注册重名与找回邮件枚举边界、现有注册法务链接通过定向 / 浏览器验证；新 b1 弹层、四态直链和 W-02～05 未完成。 |
+| 04 App 欢迎 / 认证 | 部分 | 注册法务链接原生返回保留草稿已有证据；未登录仍走旧入口，A-01～05 与完整原生链未完成。 |
+| 05 重置与邮件 | 部分 | 本地隔离库 HTTP 目标组 46/46；实际邮件投递、新 UI 与完整回跳未验证。 |
+| 06 深链 / 邀请 | 部分 | Web 安全 `next` 与 App 路由目标组通过；新认证 UI 上的邀请完整操作链未实走。 |
+| 07 Google broker | 部分 | App 成功回跳缺陷已修，broker 目标组通过；真实 Google 成功 / 取消原生链未实走。 |
+| 08 公开帮助 / 法务 / 设置 | 部分 | 两端公开路由、Web 已登录设置往返、App 法务返回及 404→Help 有操作证据；正式正文待用户授权，App 公开页像素未过。 |
+| 09 FAQ / 联系反馈 | 部分 | 静态 FAQ 搜索与展开、邮箱 `null` 时准备中有定向与 Web 门禁；真实邮箱 / 邮件 App 出口待用户授权和配置，App 像素未过。 |
+| 10 404 / 维护 | 部分 | 已知 / 未知路由、显式维护信号与 503 区分，Web 维护两态矩阵通过；App 404 及维护未知 / 有效 `until` 浅深实拍均 FAIL，根级维护拦截未证实。 |
+| 11 live 版本接口 | 功能切片完成，总验收未关 | 独立 `app-version` live、可选字段、服务端变量、`no-store`、匿名 HTTP 200 与默认关态已证；全量仍红，生产变量未写。 |
+| 12 强制更新 / 浮条 | 部分 | App 判定和公开更新页已测；C 线 Web 浮条组件、live 响应读取、目标构建关闭持久化与目标变化重显在隔离浏览器通过。A-10 浅深实拍因无真实商店地址呈禁用态而 FAIL；App 全局不可绕过拦截、商店出口、D Web 壳挂载及 W-10 像素仍未完成。 |
+| 13 旧屏与 R18a 回归 | 未完成 | 旧认证 / 落地组件仍有运行时引用，跨线 view model 亦有引用；不能按清单删除。静态路由与注销局部回归不代替完整清理。 |
+| 14 像素收口 | 未过 | Web 公开 404、帮助 / 法务及维护指定切片通过；App Help / 404 / 法务本轮均 FAIL，认证、已登录态与更新浮条等缺矩阵。详见下表。 |
+| 15 导航 / 可访问 | 部分 | D 根壳 `5bd066aad` 的已登录底栏条件与 Toast 条件目标测试通过；真实全局版本门禁、认证全链、全尺寸键盘 / 无障碍仍缺。 |
+| 16 全量与交接 | 未过 | 两端全量 exit 1；本报告逐项交接，未声称零新增失败或独立复核完成。 |
+
+### SC-13 旧屏保留 / 删除条件
+
+| 文件或目录 | 本轮引用核对与处理 |
+| --- | --- |
+| `account/auth-0918/**` | login、signup、forgot-password、reset-password 仍在运行时导入 `AuthModal`；新 b1 四态链未接，不删除。 |
+| `orbit-landing-0918.tsx` | 根 `/`、`/app` 和四条认证路由仍导入；新落地 / 背景未接，不删除。 |
+| `orbit-real-landing-page.tsx` | 未找到当前运行时 import，但还有旧拷贝允许清单与文档引用；PLANNER 要求新链路接通后才清理，未提前删除或缩小允许清单。 |
+| `orbit-landing-route-view-model.ts` | 首页、活动页的 adapter 与类型仍导入；先由归属线迁移消费者后才可删除。 |
+| `OrbitReferenceStyles` | 根落地、认证、联系人、活动等页仍导入；只在 C 新链路接通后解除本线引用，共享文件不能由 C 删除。 |
+
+## 门禁总表与未过重比
+
+| 画面 / 范围 | 最新证据 | 结果 |
+| --- | --- | --- |
+| Web 公开 404 + Help 默认 + Terms / Privacy 占位 | `_evidence-c/R18b/visual-public-24-20261019/summary.json` | 同批 24/24 PASS；只覆盖这些公开默认态。 |
+| Web Help FAQ 展开与无结果 | `_evidence-c/R18b/visual-help-states-final-20261019/summary.json` | 12/12 PASS；与上一行不是同一次 36 张全量。 |
+| Web 维护：未知与有效 `until` | `_evidence-c/R18b/maintenance-{unknown-6-final,until-6}-20261019/summary.json` | 各 6/6 PASS；本地显式 live 维护信号。 |
+| App 公开 Help | `_evidence-c/R18b/app-public-gate-20261020/help-{light-03,dark-01}/` | 浅色第 3 轮 raw 4.37%，深色首轮 4.32%；仍有 5 条超阈 / 未归因带，FAIL。浅色达到三轮上限。 |
+| App 公开 404 | `_evidence-c/R18b/app-public-gate-20261020/not-found-{light-03,dark-01}/` | 浅色第 3 轮 raw 1.78%，深色首轮 1.78%；各有 2 条超阈 / 未归因带，FAIL。raw 小于 2% 也不能改写成通过。 |
+| App Terms / Privacy 占位 | `_evidence-c/R18b/app-public-gate-20261020/{terms,privacy}-{light,dark}-*/` | Terms 浅 / 深 raw 1.66% / 1.62%，Privacy 1.58% / 1.52%；各有 3 条超阈 / 未归因带，FAIL。Terms 浅色达到三轮上限。 |
+| App 维护 A-09 未知 / 有效 `until` | `_evidence-c/R18b/app-version-gate-20261020/maintenance-*/` | 正确标题画板下，未知浅色第 3 轮 raw 2.67%、3 条未归因（随后全宽按钮 / 卡片纵距改动未再重比，三轮上限已到）；未知深色 raw 2.59%、2 条；有效 `until` 浅色第 2 轮 2.39%、深色 2.30%，各 2 条，均 FAIL。首个 `maintenance-unknown-light-01` 错选 Web 私有 404 画板，属于工具定位错误，不计 A-09 设计轮次，也不当作产品失败。 |
+| App 强制更新 A-10 | `_evidence-c/R18b/app-version-gate-20261020/force-update-{light,dark}-01/` | 浅 / 深 raw 11.35% / 11.36%，各 5 条未归因及 1 缺块，FAIL。未配置真实 App Store 地址时按钮按既定安全逻辑禁用并显示准备中；画板是可用底部商店按钮。不得以假链接通过发布门禁。 |
+| W-10 Web 新版浮条 | `042d58c73`、`web-version-banner-browser.test.tsx` | C 私有组件 / 行为目标通过；D 壳未挂，六幅补画尚无产品页面实拍 / 像素门禁，**未验**。 |
+| 其余 W/A-R18b 画面与状态 | `preflight-checklist.md` 及各 views JSON | 缺设计事实代定、C/D 壳接线或实拍；**未验**，不是「待组件库」通过。A 线 kit 若需补值，由主会话协调，不在 C 线私改。 |
+
+本轮 App 视觉从已验签的 C Debug 构建加载当前 Metro JS，在新建 iPhone 16e 模拟器实拍；图片、triptych、`result.json` 均保留在上述目录。Help FAQ marker、404 换行和法务间距按画板做了 C 私有改动；相邻渲染测试先红后绿、App typecheck 与定向测试通过。各条残余差异保持**未归因**，不能用主观「字体误差」消除门禁。用完的模拟器已按 UUID 删除；旧 C 模拟器未动。
+
+A-09 本轮只在 C 私有 `MaintenanceContent` 调整卡片文字居中、重试图标 / 全宽按钮与卡片纵距；浅色未知态的末次截图早于最后两项布局微调，故不为最终源码补写像素结论。有效 `until` 的后续截图和深色未知态使用了相应新源码，仍是 FAIL。A-10 的商店地址未提供，未动强制更新屏以伪造可点击状态。
+
+## 测试与基线
+
+- Web 在 `042d58c73` 前以 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 ORBIT_EVENT_DATABASE_URL=postgresql://xzhao@127.0.0.1:5432/orbit_line_c_test heavy.sh c -- npm test` 收到 **7,764 tests / 7,204 pass / 15 fail / 545 skip / 0 cancelled，exit 1**；完整日志 `_evidence-c/R18b/web-full-final-20261020.log`。失败为 manifest 生成、联系人合并、R20b 会面卡、dashboard 只读两项、design fixture import、R16 每日一问 PostgreSQL 三项、跨账号并发、cloud facts drain、R12 名片两项、`*-0918` 链接颜色旧计数、按钮数量 ratchet。后两项实扫分别 34 对旧下限 40、85 对旧上限 79；按钮列表包含 C `MaintenanceView.tsx:74`，不能把它说成全属他线，也不能直接放宽门槛。W-10 新增源码后的全量复验记录追加在本节末尾。
+- Web W-10 源码加入后的全量：**7,768 tests / 7,208 pass / 15 fail / 545 skip，exit 1**，日志 `_evidence-c/R18b/web-full-after-w10-20261020.log`。新 CSS token 门槛在该轮失败；把 W-10 的圆角和字号全部改用已有 kit token 后，`orbit-2026-css-tokens` 与 W-10 四组定向 **8/8 pass**，修复提交 `d1cb185fa`。该轮先前的跨账号并发失败未复现，不能因失败总数仍是 15 就称失败清单不变。修复后未再做第三轮 Web 全量；当前全量结论仍为红，不宣称最终树零新增失败。
+- App `heavy.sh c -- npm test`：**3,246 tests / 3,232 pass / 12 fail / 2 skip / 0 cancelled，exit 1**；完整日志 `_evidence-c/R18b/app-full-final-20261020.log`。失败为 R12 相机 / 名片流程 9 项（共同等待 `add-batch-reading` 超时）、拆分字典旧固定键数（实际 2872 对 2253）、settings discovery toggles 迟到回执、typed inbox filter 选中态。上述目标与本轮 C 公开视图改动无共同执行路径，但没有同一 HEAD 的 pristine 全量对照，不能以此断言零新增失败。
+- 本轮 App 公开页改动后的 `npm run typecheck` exit 0；12/12 相关目标测试、56/56 App 版本 / 公开 / 认证 / 路由扩展组通过。Web 公开 / 版本等目标按项目 runner 79 pass、1 skip（缺独立数据库参数的用例）；该 skip 未当作通过。
+- App 当前源码 `npm run typecheck` exit 0。Web 在 W-10 新源码上 `npm run typecheck` / `typecheck:app` / `lint` 均 exit 0，日志在 `_evidence-c/R18b/{web-typecheck,web-typecheck-app,web-lint}-after-w10-20261020.log`。W-10 新增纯逻辑、静态渲染与隔离 Chromium 操作共 6/6；先红后绿日志 `web-version-banner-{red,view-red}-20261020.log`。`copy:qa -- --web` 为 3899 条 / 29 个旧告警、exit 1；本轮 `webVersion*` 无告警，不称 copy-qa 通过。Web lint 是固定清单，不能代替新文件覆盖。
+- A-09 最终源码的维护 / 强制更新目标组 **8/8 pass**，App `npm run typecheck` exit 0；新增卡片居中渲染断言先红后绿。App 全量是在这次 A-09 排版微调前执行，不能作为最终源码的零新增失败证明；按收口重任务限制未重复全量。
+
+## 改稿、工程决定与越线自查
+
+- 已沿 RD-33 把 b1 目标上限改为 2、移除 b7 的 Pro / 虚构邮箱 / Gmail 正文与草稿 / 假反馈成功，支持邮箱保持 `null`，法务仅公开前占位；b1 #9 两条虚构实时密码检查已从画板删除。W-10 补画按本轮批准更新预检状态，其 C 私有 UI / 状态已交；D 壳页面未挂载。
+- 本轮 App Help 使用 C 私有可访问 disclosure 控件绘制画板的三角标记；404 只调整公开文案换行及 C 页面布局，没有改 A kit、D 根壳或 R28 / R18c 页面。未因视觉失败扩散新 token 或写宽松归因。
+- Web / App 跨端用户可见路由与版本契约的既有变更已按 `bridge/status.md` 和 `bridge/handoffs.md` 对照。C 无权改桥根台账，交接原文在下表；路由 / 类型测试通过不标作业务对齐完成。
+
+## 交接表追加（四栏原文）
+
+| 本端版本 | 另一端影响 | 未完成事项 / 下一责任方 | 验证范围 |
+| --- | --- | --- | --- |
+| C `line-c`（本报告提交前 `042d58c73`；`app-version` live、公开路由、App 视图、W-10 浮条） | Web 版本响应加可选 `enforceMinimum` / `maintenance` / `webBuildId`，App 同步契约消费；R18c 的 `account-lifecycle` 仍 mock | D 线根布局需挂不可绕过的 App 版本门禁，并在 Web 壳以页面初始构建 ID 挂 C 的 `WebVersionBannerGate`；主会话在 Bridge 台账登记并独立复核 | 匿名 live HTTP / no-store、App 纯策略、D 底栏目标测试、W-10 隔离 Chromium 关闭 / 变更重显；未验生产配置、全局拦截或真实壳像素 |
+| C 公开 Help / 404 / 法务路由与设置跳转 | Web 和 App 的公开页可在未登录访问，已登录设置需要安全返回；旧认证 / 落地仍在运行时 | C 线待 b1 事实代定后完成新入口并删本线旧屏；R28 负责引导页 `1〜3個まで`→2；R17 负责公开主办页顶栏 | Web 已登录设置与 404 浏览器链、App 签名 Debug 公开 / 已登录 404 与法务链接；不含全尺寸像素、发布法务文本或真实 OAuth |
+
+## 请求 / 待主会话决定 / 待用户授权
+
+- **待主会话决定：** b1 #0/#1 的「登録は1分」「確認は1枚5秒」可信口径、演示插画是否标明样例及其按钮、前三个顶栏链接真实目标、App 欢迎页「スキップ」目的地；b1 认证画板中的 Google 未启用态、设备待恢复提示、密码与重置页面的无来源演示邮箱 / 倒计时 / 错误分型。逐项事实、推荐和影响 SC 见 `preflight-checklist.md` §「b1 #0 / #1 逐元素复核的新停点」及认证来源表。按用户指示跳过受影响 UI，不向离线用户发问。
+- **请求 D：** 在 D 文件边界接 App 根级版本 / 维护拦截并证实深链不可绕过、更新页无底栏与 Toast 偏移；Web 壳以初始页面构建 ID 挂 `WebVersionBannerGate` 并实走 W-10 全矩阵。本轮 D 已交 `5bd066aad` 仅解决登录态底栏，不把它当作全局版本门禁。C 不直接改 D 壳。
+- **请求 A / 组件库：** 若剩余 App 门禁差异最终定位到 kit 字号、Chip 或顶栏，A 线对照 triptych 评估；当前差异仍未归因，不能预记「待组件库」豁免。组件合入后重新跑对应视图。
+- **请求共享测试归属线：** 按实际来源复核 34/40 旧链接色计数和 85/79 按钮计数；后者包括 C 维护页，C 应在画面视觉复核时确认按钮风格，而非抬高上限。Web 另外 13 个全量失败交各模块所有者按完整日志复查；App 失败清单见下方追加。
+- **待用户授权（发布门禁）：** 正式支持邮箱、法律正文、生产强制更新开关、真实 OAuth / 邮件、商店地址及正式发布。未配置、未触发、未以假数据宣称已发布。
+- **文档更新请求：** 主会话在 README / HANDOFF / DEFERRED-A / 决定表 / screen-ownership 登记本报告未完成项、R28 目标上限改稿及跨线旧屏引用；C 线未越界编辑这些汇总文件。
+
+## 历史执行记录（保留原文；以下日期对应当时源码）
 
 2026-10-19 22:45 C Web 维护页视觉矩阵：先读公开版本接口，发现本地默认 mock 返回演示版本（不含维护信号）；改用 C 专用本地服务 `ORBIT_MODULE_MODE=live`，分别验证无 `until` 与 `until=2026-10-19T03:00:00Z` 的 HTTP 200 响应确有 `maintenance.active=true`，再访问真实 `/maintenance`。手机首轮画面对照揭示缺少公开页雾面背景与 18px 边距，以及说明／日程字号和卡片内边距差异；按画板修 CSS 后，手机第三轮通过。桌面首次清单把 900px 画板与工具默认 960／880px 视口相配，导致 raw 偏高和误报缺块；清单改为显式 900px，并去掉桌面内容区多余横向内边距。两套独立清单 `web-R18b-maintenance-{unknown,until}.json` 分别记录运行前提和 6 张画板；最终各 **6/6 PASS，0 超阈、0 未归因、0 缺块**，raw 最大 0.0005，摘要分别在 `_evidence-c/R18b/maintenance-unknown-6-final-20261019/summary.json` 与 `_evidence-c/R18b/maintenance-until-6-20261019/summary.json`。版本接口／维护组件目标测试 **6/6**，其中普通 503／离线不进入维护态；这不证明全局自动拦截、App 矩阵或发布环境开关，SC-10 / 14 / 16 仍 OPEN。无真实账号、生产配置或数据库修改。
 
