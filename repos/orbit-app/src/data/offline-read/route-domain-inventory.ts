@@ -4,6 +4,7 @@ type SurfaceKey = readonly [consumerFile: string, method: string, endpointTempla
 
 function domainFor(path: string): string {
   if (path.startsWith('/device/note-drafts')) return 'notes';
+  if (path === '/api/dev/network-design-fixture') return 'network-design-fixture';
   if (path.startsWith('/api/auth/') || path === '/api/account/session/sign-out') return 'account';
   if (path === '/api/account/me' || path === '/api/account/status') return 'account';
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
@@ -99,6 +100,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   // The version response is public, but changes on the server and is no-store;
   // online_only_secret is this inventory's existing never-persisted read policy.
+  // PX1's development-only fixture has an actor-partitioned, versioned snapshot in network-design-fixture.ts.
+  // Keep its exact route in this inventory; the normal contacts policies must not absorb it.
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate === '/api/app/version'
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
@@ -707,6 +710,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/network/useDeleteContact.ts","DELETE","/api/contacts/:id"],
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/page"],
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/summary"],
+  ["src/screens/network/network-design-fixture.ts","GET","/api/dev/network-design-fixture"],
   ["src/screens/network/useNetworkMerge.ts","GET","/api/contacts/goal-related-ids"],
   // R11b 人脈分析 (src/screens/network-analysis, all through analysis-api.ts): the view and the first list page are kept
   // in the page snapshot store for offline reading; the snapshot is read online only; 見直す is an online write.

@@ -233,6 +233,16 @@ test('the public app-version gate is never persisted as offline account data', (
   assert.equal(policy.binaryPolicy, 'never_local');
 });
 
+test('PX1 development contact fixture read has an explicit versioned policy', () => {
+  const surface = resolveReadSurface('GET', '/api/dev/network-design-fixture?contacts=1');
+  assert.equal(surface.consumerFile, 'src/screens/network/network-design-fixture.ts');
+  assert.equal(surface.domainId, 'network-design-fixture');
+  assert.equal(surface.schemaVersion, 1);
+  assert.equal(surface.readPersistence, 'durable_normalized');
+  assert.equal(surface.mutationPolicy, 'online_only');
+  assert.equal(surface.binaryPolicy, 'metadata_only');
+});
+
 test('wrapper aliases, generic requests and computed client methods are audited independently', async t => {
   const root = await fixture(t, {
     'src/api/wrappers.ts': 'export const clientGet = (path: string) => client.get(path);',
