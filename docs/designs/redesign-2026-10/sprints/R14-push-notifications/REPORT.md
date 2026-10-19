@@ -19,9 +19,9 @@
 | 05 面談例外 | **定向通过** | 仅当前已确认预约聚合体的 30 分钟提醒越过静音，仍走共享配额；取消/过期/他人不例外。 |
 | 06 邀请双方 | **定向通过** | 邀请人、受邀人各自产生本人联系人通知，同一连接幂等；本机 PostgreSQL 目标归属测试通过。 |
 | 07 落地白名单 | **部分** | 本地联系人/扫描/Task To-do 合法地址开放；保留段、穿越、编码斜杠、外链和多余查询安全回退；冷启动未登录远程 delivery 进入受保护收件箱，由服务端再验 owner。重启后模拟器 `openurl orbit:///task?seg=todo` 实际进入 To-do，截图可查；本机 API 未运行，Task 数据为重试态。系统通知点击与远程 delivery 未做手工链。 |
-| 08 App 通知页 | **功能定向通过，像素失败** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。b5 #13 已改稿；清掉 Expo 开发警告后的真实模拟器截图比对仍有 24 条未归因超阈带，不能标 PASS。没有手工点按读回。 |
+| 08 App 通知页 | **功能定向通过，像素失败** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。b5 #13 已改稿；第三轮以清掉 Expo 开发警告的真实模拟器截图比对仍有 21 条未归因超阈带，不能标 PASS。没有手工点按读回。 |
 | 09 Web 通知页 | **功能定向通过，像素失败** | 静态受保护路由、账号设置壳、真实偏好保存、三语 copy、响应式双列/单列。b5 #29 已改稿并补实际自動発見卡；1440 门禁初轮 18 条未归因带，修订后重比结果见画板节。1024/390/dark 无板截图待补。 |
-| 10 秘書设置 | **功能定向通过，像素失败** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。b11 #32 已改稿，浅色门禁仍有 15 条未归因超阈带；没有手工点按读回。 |
+| 10 秘書设置 | **功能定向通过，像素失败** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。b11 #32 已改稿，清掉 Expo 开发警告后的浅色门禁仍有 12 条未归因超阈带；没有手工点按读回。 |
 | 11 注册/权限/旧屏 | **定向通过** | App OS 拒绝时不显示生效的 opt-in；关闭先禁止注册再撤销设备，撤销失败可见；账号切换隔离，旧组件的外部使用点保留并改用 R31。R18a 其他动态段仍在；真实设备 token 注册未实测。 |
 | 12 R13/R10/R19 交接 | **部分** | R13 来源、宽进逐条跳过、账号时区分组已回归；未改同步 DTO。活动维护任务已完整写站内通知，保留 semanticKey 幂等；R10/R19 只应消费站内通知，见交接表。 |
 | 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。 |
@@ -97,9 +97,9 @@
 
 ## 画板门禁
 
-PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html #29`，A-R14-P02=`b11-nav-v3.html #32`；`#31` 是系统锁屏参考。原稿预检和数据来源清单保存在 `b5-preflight.*`、`b11-preflight.*`。按本轮主会话授权，直接在 b5/b11 文件改稿，每处均附 `2026-10-19 主会话代定` 注释：四类推送、1/2/3 上限、二档锁屏、端末许可、静音编辑和保存、Web 自動発見、秘書仅期限/推荐、共享 cap，移除邮件摘要、浏览器 push 伪开关和固定上限提示。`#31` 的示例只保留事件来源。最终修订预检在 `*-preflight-revised-final.{md,json}`；疑似不自洽和疑似无功能项为 0。手机框半径、阴影、黑岛等缺 token 为画板装饰，未记作产品组件缺口。
+PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html #29`，A-R14-P02=`b11-nav-v3.html #32`；`#31` 是系统锁屏参考。原稿预检和数据来源清单保存在 `b5-preflight.*`、`b11-preflight.*`。按本轮主会话授权，直接在 b5/b11 文件改稿，每处均附 `2026-10-19 主会话代定` 注释：四类推送、1/2/3 上限、二档锁屏、端末许可、静音编辑和保存、Web 自動発見、秘書仅期限/推荐、共享 cap，移除邮件摘要、浏览器 push 伪开关和固定上限提示。`#31` 的示例只保留事件来源。App 第三轮再按真实卡片顺序去掉原板多余的标签和图标。最终修订预检在 `b5-preflight-final-pass.*`、`b11-preflight-final-pass.*`，两组均退出 0，疑似不自洽和疑似无功能项为 0。手机框半径、阴影、黑岛等缺 token 为画板装饰，未记作产品组件缺口。
 
-单板门禁都经 `heavy.sh b` 使用本地 Web `:3300`、设计稿 `:3350` 与在线 App 截图运行。A-R14-P01 初次诊断比较 `pixel-revised-app-notifications`：raw 0.1282、24 条未归因超阈带，开发截图含 Expo 警告覆盖。随后在模拟器中用 `idb ui tap` 关闭开发警告，重截 `online-notifications-clean.png` 并复比 `pixel-revised-app-notifications-clean`：raw 0.0844、24 条未归因带、20 处缺块，**FAIL**。A-R14-P02 `pixel-revised-app-secretary`：raw 0.1057、15 条未归因带、5 处缺块，**FAIL**。W-R14-P01 初轮 `pixel-revised-web-notifications`：raw 0.0301、18 条未归因带；发现板缺实际自動発見卡后改稿，复比 `pixel-revised-web-notifications-v2`：raw 0.0348、23 条未归因带、38 处缺块，**FAIL**。未给数据文字外的差异强行标 `[data]`；未修改归因规则，三板均不得标 PASS。App 截图与 Web triptych、`result.json`、逐带报告均在证据目录。
+单板门禁都经 `heavy.sh b` 使用本地 Web `:3300`、设计稿 `:3350` 与在线 App 截图运行。A-R14-P01 初次诊断比较 `pixel-revised-app-notifications`：raw 0.1282、24 条未归因超阈带，开发截图含 Expo 警告覆盖。随后在模拟器中用 `idb ui tap` 关闭开发警告，重截 `online-notifications-clean.png` 并复比 `pixel-revised-app-notifications-clean`：raw 0.0844、24 条未归因带；第三轮按真实卡片重排后以同一干净截图复比 `pixel-app-notifications-last`：raw 0.0821、21 条未归因带、17 处缺块，**FAIL**。A-R14-P02 初轮 `pixel-revised-app-secretary`：raw 0.1057、15 条未归因带，开发截图仍有警告；次轮卡片重排并重截无警告的 `online-secretary-clean.png` 后，`pixel-app-secretary-last` raw 0.0567、12 条未归因带、11 处缺块，**FAIL**。W-R14-P01 初轮 `pixel-revised-web-notifications`：raw 0.0301、18 条未归因带；发现板缺实际自動発見卡后改稿，复比 `pixel-revised-web-notifications-v2`：raw 0.0348、23 条未归因带、38 处缺块，**FAIL**。未给数据文字外的差异强行标 `[data]`；未修改归因规则，三板均不得标 PASS。App 截图与 Web triptych、`result.json`、逐带报告均在证据目录。
 
 ## 给主会话/其他线的四栏交接
 
@@ -123,6 +123,6 @@ PLANNER 定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me-inbox.html 
 
 R14 主提交：`3c04b86ea`（contract）、`0093e3e87`（服务端）、`4fe758d47`（邀请）、`40a58f5c6`（App）、`849d270bc`（Web）、`8c4f01345`（深链）、`4540d2eaa`（权限）、`7253b471b`（旧 worker）、`c9e629000`（fixture）、`f6fbb6018`/`45e0e66d1`（copy）、`9cf11f955`（允许清单）、`5501ba06f`（digest 件数）、`c79b39c1e`（OS 撤权展示）、`022c182d2`（PG cutover lane 测试）、`430e8c5e7`/`98806776c`（权限状态/撤销重试）、`e000ab9ce`（Web 错误色）、`944338364`（重判/配额释放）、`1cfc9135f`（测试类型修正）、`99fa0a541`（非同步写入清单）、`7f1b932fe`（静态路由清单）、`51e4ad20c`（在线偏好读取清单）、`684afc0c7`（快捷按钮触控尺寸）。共享日期/身份缓存收口提交 `687c5949e`/`856704906` 属 R13 联动修复。后续 R13 跨账号预览过滤 `2a321f50c`、复核记录 `ce5c61361`；R11b 按 S1/M1/M2/m1 顺序为 `de06e64b3`、`cfb2b8c86`、`0d32ea4fd`、`18d11dbbe`。R13 REVIEW 的其他独立修复提交与结果见 R13 REPORT。所有提交含 `Co-Authored-By: Codex <noreply@openai.com>`，均未 push。
 
-本轮 R14 补交：`a783e3022`（活动站内通知写入不再受推送 cap 截断）、`08646b68b`（b5/b11 画板原地改稿）。本报告后续按路径单独提交；仍不 push。
+本轮 R14 补交：`a783e3022`（活动站内通知写入不再受推送 cap 截断）、`08646b68b`（b5/b11 画板原地改稿）、`7215967aa`（App 两板按真实模拟器卡片结构再对齐）。本报告后续按路径单独提交；仍不 push。
 
 改动仅在 B 线 worktree；R13 文件改动来自用户在本轮明确要求先修 REVIEW。未碰 A/D/C 的组件库、token、导航壳或主会话 README/HANDOFF/DEFERRED 台账。最终差异以 `git diff --stat origin/redesign...HEAD` 核对。
