@@ -91,6 +91,20 @@ test("product task list filters on server scopes and discloses completed tasks",
   assert.ok((await current.evaluate(() => (window as any).taskCalls)).some((call: { path: string }) => call.path.includes("scope=personal")));
 });
 
+test("few tasks render in the board's five-column table with local-date groups", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").plannedDate = "2026-10-18"; });
+  await current.getByRole("radio", { name: "つながり" }).click();
+  await current.getByRole("radio", { name: "すべて" }).click();
+  const table = current.getByRole("table", { name: "タスク一覧" });
+  await table.waitFor({ timeout: 2000 });
+  assert.deepEqual((await table.locator("thead th").allTextContents()).map(value => value.trim()), ["", "タスク", "関連", "期限", ""]);
+  await table.getByRole("heading", { name: "今日 1" }).waitFor();
+  await table.getByRole("heading", { name: "今後 1" }).waitFor();
+  const personal = table.getByRole("row").filter({ has: current.getByRole("button", { name: "今日の資料の詳細" }) });
+  await personal.getByRole("cell", { name: "個人", exact: true }).waitFor();
+});
+
 test("task drawer edits title and notes with one versioned write", async t => {
   const current = await page(t);
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
