@@ -609,6 +609,20 @@ test("delete requires an independent current-state read and preserves the draft 
   assert.equal(await p.getByRole("textbox", { name: "日程标题", exact: true }).inputValue(), "Original title");
 });
 
+test("deleting a one-off personal schedule returns to Calendar after its independent read is 404", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "删除个人日程");
+  await press(p, "确认删除个人日程");
+  await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
+  const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
+  assert.equal(last.method, "GET");
+  assert.equal(last.path, "/api/schedule-items/personal%3Aedit");
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 404); });
+  await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule");
+});
+
 test("an unrelated series edit cannot accept ACK and GET that erase omitted rules", async t => {
   const item = { ...initialItem, reminderMinutes: 30, recurrence: { frequency: "weekly" }, timeZone: "Asia/Tokyo" };
   const p = await open(t, { item });

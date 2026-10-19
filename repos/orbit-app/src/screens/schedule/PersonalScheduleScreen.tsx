@@ -124,8 +124,8 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
       if (!scope.active || current.current !== scope) return;
       const verified = readback.success ? readPersonalSchedule(readback.data) : null;
       if (remove) {
-        const confirmed = baseline?.seriesId ? !readback.success && readback.status === 404 && readback.error.code === "NOT_FOUND"
-          : verified && verified.updatedAt === item.updatedAt && personalScheduleReceiptMatches({ scheduleItem: verified, deleted: true }, actorId, item.id, {}, true);
+        const confirmed = !readback.success && readback.status === 404 && readback.error.code === "NOT_FOUND"
+          || !!verified && verified.updatedAt === item.updatedAt && personalScheduleReceiptMatches({ scheduleItem: verified, deleted: true }, actorId, item.id, {}, true);
         if (!confirmed) { setError(locale.t("schedule.saveUnconfirmed")); return; }
         scope.keys.delete(fingerprint);
         if (!await writeStatus.confirmSaved()) { if (scope.active && current.current === scope) setError(locale.t("sync.mutationPending")); return; }
