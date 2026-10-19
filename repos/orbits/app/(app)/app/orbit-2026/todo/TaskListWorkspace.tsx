@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resolveLocalDateTime } from "../../../../../features/tasks/local-date-time";
+import { localParts, resolveLocalDateTime } from "../../../../../features/tasks/local-date-time";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { createTasksClient, TasksClientError } from "../../tasks/tasks-client";
@@ -13,6 +13,7 @@ import { Button, CategoryTabs, CheckCircle, Chip, ConfirmDialog, Drawer, EmptySt
 import { standardCopyFor } from "../copy/standard";
 import { ShellPage, useInShell } from "../shell/slots";
 import { groupTaskRows, type TaskListFilter, type TaskListGroupKey } from "./task-list-groups";
+import { taskDateChange, taskDateDraft, taskDatePatchMovesLater, type TaskDatePatch } from "./task-list-date-time";
 import { nextMorningReminderAt } from "./task-list-reminder-time";
 import styles from "./task-list.module.css";
 
@@ -70,6 +71,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const selectedIdRef = useRef<string | null>(initialSelectedId ?? null);
   const [editing, setEditing] = useState<{ task: TaskView; title: string; notes: string; conflict: boolean } | null>(null);
+  const [dateEditing, setDateEditing] = useState<{ task: TaskView; date: string; time: string; timeZone: string; conflict: boolean } | null>(null);
+  const [dateValidation, setDateValidation] = useState("");
+  const [dateFailureTaskId, setDateFailureTaskId] = useState<string | null>(null);
+  const [confirmDateDeferral, setConfirmDateDeferral] = useState(false);
   const [customReminder, setCustomReminder] = useState(false);
   const [customReminderAt, setCustomReminderAt] = useState("");
   const [reminderValidation, setReminderValidation] = useState("");
@@ -104,6 +109,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     selectedIdRef.current = id;
     setSelectedId(id);
     setEditing(null);
+    setDateEditing(null);
+    setDateValidation("");
+    setDateFailureTaskId(null);
+    setConfirmDateDeferral(false);
     setConfirmDelete(false);
     setCustomReminder(false);
     setCustomReminderAt("");
@@ -161,6 +170,53 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       toast.success(t(taskCopy.taskListSaved));
     }, "");
   }
+  function openDateEdit(task: TaskView) {
+    setEditing(null);
+    setDateValidation("");
+    setDateFailureTaskId(null);
+    setDateEditing({ task, ...taskDateDraft(task, timeZone), timeZone, conflict: false });
+  }
+  function writeDateEdit(draft: NonNullable<typeof dateEditing>, patch: TaskDatePatch) {
+    setDateFailureTaskId(draft.task.id);
+    void mutation.run(async () => {
+      try { return await client.updateSchedule(draft.task, patch); }
+      catch (error) {
+        if (error instanceof TasksClientError && error.code === "CONFLICT" && selectedIdRef.current === draft.task.id) {
+          setDateEditing(current => current?.task.id === draft.task.id ? { ...current, conflict: true } : current);
+          detail.refresh();
+        }
+        throw error;
+      }
+    }, updated => {
+      open.refresh(); completed.refresh(); activities.refresh();
+      if (selectedIdRef.current !== draft.task.id) return;
+      detail.replace(updated);
+      setDateEditing(null);
+      setDateFailureTaskId(null);
+      setConfirmDateDeferral(false);
+      toast.success(t(taskCopy.taskListDateTimeSaved));
+    }, "");
+  }
+  function saveDateEdit(confirmed = false) {
+    const draft = dateEditing;
+    if (!draft || draft.conflict || mutation.busy || detail.data?.id !== draft.task.id) return;
+    if (detail.data.updatedAt !== draft.task.updatedAt) {
+      setDateEditing({ ...draft, conflict: true });
+      return;
+    }
+    const change = taskDateChange(draft.task, { date: draft.date, time: draft.time }, draft.timeZone);
+    if (change.kind === "invalid") {
+      setDateValidation(t(change.reason === "date" ? taskCopy.taskListDateTimeInvalid : change.reason === "timeZone" ? taskCopy.taskListTimeZoneInvalid : taskCopy.taskListLocalTimeInvalid));
+      return;
+    }
+    if (change.kind === "unchanged") { setDateEditing(null); return; }
+    setDateValidation("");
+    if (!confirmed && (draft.task.deferralCount ?? 0) >= 1 && taskDatePatchMovesLater(draft.task, change.patch)) {
+      setConfirmDateDeferral(true);
+      return;
+    }
+    writeDateEdit(draft, change.patch);
+  }
   function addReminder(fireAt?: string) {
     const task = detail.data;
     if (!task || task.id !== selectedId || reminderMutation.busy || mutation.busy) return;
@@ -208,7 +264,19 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     </form> : selectedId && !denied && !detail.error && detail.data ? <>
       <h3 className={styles.detailTitle}>{detail.data.title}</h3>
       <div className={styles.detailMeta}><Chip label={t(detail.data.status === "completed" ? taskCopy.taskListCompleted : taskCopy.taskListOpen)} tone={detail.data.status === "completed" ? "ok" : "lav"} />{selectedRow?.relatedContact ? <span>{selectedRow.relatedContact.namePreview}</span> : null}</div>
-      <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ?? detail.data.plannedDate, language, timeZone)}</dd></dl>
+      <div className={styles.detailSchedule}>
+        <dl className={styles.detailFacts}><dt>{t(taskCopy.taskListDate)}</dt><dd>{formatDate(detail.data.dueAt ? localParts(detail.data.dueAt, timeZone).date : detail.data.plannedDate, language, timeZone)}</dd><dt>{t(taskCopy.taskListTime)}</dt><dd>{detail.data.dueAt ? new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(detail.data.dueAt)) : t(taskCopy.taskListNoTime)}</dd></dl>
+        {dateEditing?.task.id !== selectedId ? <Button label={t(taskCopy.taskListEditDateTime)} size="sm" variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => openDateEdit(detail.data!)} /> : null}
+      </div>
+      {dateEditing?.task.id === selectedId ? <form className={styles.dateEditForm} onSubmit={event => { event.preventDefault(); saveDateEdit(); }}>
+        <TextField label={t(taskCopy.taskListDate)} type="date" value={dateEditing.date} onChange={event => { setDateEditing({ ...dateEditing, date: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} />
+        <TextField label={t(taskCopy.taskListTime)} type="time" value={dateEditing.time} onChange={event => { setDateEditing({ ...dateEditing, time: event.target.value }); setDateValidation(""); }} disabled={mutation.busy || dateEditing.conflict} />
+        <p className={styles.hint}>{dateEditing.timeZone} · {t(taskCopy.taskListReminderDateNote)}</p>
+        {dateValidation ? <p role="alert" className={styles.error}>{dateValidation}</p> : null}
+        {dateEditing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListConflict)}</p> : null}
+        {dateFailureTaskId === selectedId && mutation.error && !dateEditing.conflict ? <p role="alert" className={styles.error}>{t(taskCopy.taskListDateTimeSaveFailed)}</p> : null}
+        <div className={styles.editActions}><Button label={t(taskCopy.taskListSaveDateTime)} type="submit" variant="primary" disabled={mutation.busy || dateEditing.conflict} /><Button label={t(taskCopy.taskListCancel)} type="button" variant="ghost" disabled={mutation.busy} onClick={() => { setDateEditing(null); setDateValidation(""); }} /></div>
+      </form> : null}
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={styles.detailSection}>
         <h4>{t(taskCopy.taskListReminder)}</h4>
@@ -231,7 +299,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       </section>
       <div className={styles.detailActions}>
         <Button label={t(detail.data.status === "completed" ? taskCopy.taskListReopen : taskCopy.todoDone).replace("{title}", detail.data.title)} disabled={mutation.busy} onClick={() => toggle(detail.data!)} />
-        <Button label={t(taskCopy.taskListEdit)} variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => setEditing({ task: detail.data!, title: detail.data!.title, notes: detail.data!.notes ?? "", conflict: false })} />
+        <Button label={t(taskCopy.taskListEdit)} variant="ghost" disabled={mutation.busy || detail.loading} onClick={() => { setDateEditing(null); setEditing({ task: detail.data!, title: detail.data!.title, notes: detail.data!.notes ?? "", conflict: false }); }} />
         <Button label={t(taskCopy.taskListDelete)} aria-label={t(taskCopy.taskListDelete)} variant="dangerGhost" disabled={mutation.busy || detail.loading || Boolean(detail.error)} onClick={() => setConfirmDelete(true)} />
       </div>
     </> : !selectedId ? <p className={styles.hint}>{t(taskCopy.taskListNoSelection)}</p> : null}
@@ -305,6 +373,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
     </main>
     <Drawer open={Boolean(selectedId && (!inShell || wideShell === false))} onClose={() => selectTask(null)} title={t(taskCopy.taskListDetail)} size="md">{detailContent}</Drawer>
     <ConfirmDialog open={confirmDelete} title={t(taskCopy.taskListDeleteQuestion)} message={t(taskCopy.taskListDeleteMessage)} confirmLabel={t(taskCopy.taskListDeleteConfirm)} cancelLabel={t(taskCopy.taskListCancel)} destructive onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
+    <ConfirmDialog open={confirmDateDeferral} title={t(taskCopy.taskListDeferAgainTitle)} message={t(taskCopy.taskListDeferAgainMessage)} confirmLabel={t(taskCopy.taskListDeferAgainConfirm)} cancelLabel={t(taskCopy.taskListCancel)} onCancel={() => setConfirmDateDeferral(false)} onConfirm={() => { setConfirmDateDeferral(false); saveDateEdit(true); }} />
     <Modal open={adding} title={t(taskCopy.taskListAdd)} onClose={() => { if (!mutation.busy) setAdding(false); }}>
       <form className={styles.addForm} onSubmit={event => { event.preventDefault(); if (!draft.trim()) return; void mutation.run(() => client.create(draft, date), () => { setDraft(""); setAdding(false); setFilter("all"); setOpenCursor(null); open.refresh(); toast.success(t(taskCopy.todoSaved)); }, ""); }}>
         <TextField label={t(taskCopy.todoTitle)} value={draft} onChange={event => setDraft(event.target.value)} disabled={mutation.busy} autoFocus />

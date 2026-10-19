@@ -13,7 +13,9 @@ test.before(async () => {
     import React from "react";
     import { createRoot } from "react-dom/client";
     import { TaskListWorkspace } from "./app/(app)/app/orbit-2026/todo/TaskListWorkspace";
-    createRoot(document.getElementById("root")).render(<TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />);
+    const root = createRoot(document.getElementById("root"));
+    window.setTaskListTimeZone = timeZone => root.render(<TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone={timeZone} />);
+    window.setTaskListTimeZone("Asia/Tokyo");
   `, { "^next-auth/react$": `import React from "react"; export const SessionContext = React.createContext(null);` });
   shellCode = await bundle(`
     import React from "react";
@@ -38,14 +40,15 @@ test.after(async () => { await browser?.close(); });
 const fixture = `<div id="root"></div><script>
   window.taskCalls = [];
   window.taskRows = [
-    { id: "personal", title: "\\u4eca\\u65e5\\u306e\\u8cc7\\u6599", status: "open", category: "work" },
-    { id: "linked", title: "\\u5c71\\u672c\\u3055\\u3093\\u3078\\u8fd4\\u4fe1", status: "open", category: "relationship" },
-    { id: "done", title: "\\u6e08\\u3093\\u3060\\u7528\\u4e8b", status: "completed", category: "work" },
+    { id: "personal", title: "\\u4eca\\u65e5\\u306e\\u8cc7\\u6599", status: "open", category: "work", plannedDate: "2026-10-17" },
+    { id: "linked", title: "\\u5c71\\u672c\\u3055\\u3093\\u3078\\u8fd4\\u4fe1", status: "open", category: "relationship", plannedDate: "2026-10-17" },
+    { id: "done", title: "\\u6e08\\u3093\\u3060\\u7528\\u4e8b", status: "completed", category: "work", plannedDate: "2026-10-17" },
   ];
   window.taskActivityRows = { personal: [{ id: "activity-personal", type: "created", occurredAt: "2026-10-15T01:00:00.000Z" }] };
   window.taskReminderRows = { personal: [{ id: "reminder-personal", fireAt: "2026-10-18T00:00:00.000Z", status: "scheduled" }] };
   window.reminderFailNextPost = false;
   window.reminderFailNextPatch = false;
+  window.dateFailNextPatch = false;
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
     window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
@@ -79,7 +82,7 @@ const fixture = `<div id="root"></div><script>
       const start = Number(query.get("cursor") || 0), limit = Number(query.get("limit") || 30);
       return Response.json({ success: true, data: { actorId: "a", status, scope, query: search, items: items.slice(start, start + limit).map(row => ({
         id: row.id, titlePreview: row.title, locationPreview: null, status: row.status, category: row.category, priority: "normal",
-        plannedDate: row.plannedDate || "2026-10-17", dueAt: null, updatedAt: stamp, completedAt: row.status === "completed" ? stamp : null,
+        plannedDate: row.plannedDate ?? null, dueAt: row.dueAt || null, updatedAt: stamp, completedAt: row.status === "completed" ? stamp : null,
         relatedContact: null, relationship: row.category === "relationship",
       })), counts: { open: status === "open" ? items.length : 0, completed: status === "completed" ? items.length : 0 },
         total: items.length, hasMore: start + limit < items.length, nextCursor: start + limit < items.length ? String(start + limit) : null, asOf: stamp } });
@@ -87,10 +90,14 @@ const fixture = `<div id="root"></div><script>
     const id = decodeURIComponent(path.slice("/api/tasks/".length));
     const row = window.taskRows.find(item => item.id === id);
     if (!row) return Response.json({ success: false, error: { code: "NOT_FOUND" } }, { status: 404 });
-    const task = { ...row, notes: row.notes || "", accountId: "a", ownerUserId: "a", priority: "normal", plannedDate: "2026-10-17", updatedAt: row.updatedAt || stamp };
+    const task = { ...row, notes: row.notes || "", accountId: "a", ownerUserId: "a", priority: "normal", updatedAt: row.updatedAt || stamp };
     if (method === "PATCH") {
       const body = JSON.parse(init.body);
       if (body.action === "update") {
+        if (window.dateFailNextPatch && ("plannedDate" in body.patch || "dueAt" in body.patch)) {
+          window.dateFailNextPatch = false;
+          return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 });
+        }
         if (window.forceEditConflictOnce) {
           window.forceEditConflictOnce = false;
           row.title = "\\u30b5\\u30fc\\u30d0\\u30fc\\u7248";
@@ -98,10 +105,15 @@ const fixture = `<div id="root"></div><script>
           return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
         }
         if (body.expectedUpdatedAt !== (row.updatedAt || stamp)) return Response.json({ success: false, error: { code: "CONFLICT" } }, { status: 409 });
-        row.title = body.patch.title;
-        row.notes = body.patch.notes || row.notes || "";
+        for (const [field, value] of Object.entries(body.patch)) {
+          if (value === null) delete row[field]; else row[field] = value;
+        }
+        row.notes ||= "";
         row.updatedAt = "2026-10-17T00:00:02.000Z";
-        return Response.json({ success: true, data: { task: { ...task, ...row } } });
+        const updatedTask = { ...task, ...row };
+        if (body.patch.plannedDate === null) delete updatedTask.plannedDate;
+        if (body.patch.dueAt === null) delete updatedTask.dueAt;
+        return Response.json({ success: true, data: { task: updatedTask } });
       }
       row.status = body.action === "complete" ? "completed" : "open";
       return Response.json({ success: true, data: { task: { ...task, status: row.status } } });
@@ -388,6 +400,130 @@ test("task drawer conflict keeps the draft without a second write", async t => {
   assert.equal(writes.length, 1);
   await current.getByRole("button", { name: "キャンセル" }).click();
   await current.getByRole("heading", { name: "サーバー版" }).waitFor();
+});
+
+test("task detail edits its date and time through one versioned schedule write", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  assert.equal(await current.getByRole("button", { name: "日付と時刻を編集" }).count(), 0);
+  await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.getByLabel("時刻", { exact: true }).fill("09:30");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  const facts = current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl");
+  await facts.getByText("10/18", { exact: true }).waitFor();
+  assert.deepEqual((await facts.locator("dt, dd").allTextContents()).map(value => value.trim()), ["日付", "10/18", "時刻", "09:30"]);
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].body.expectedUpdatedAt, "2026-10-17T00:00:00.000Z");
+  assert.deepEqual(writes[0].body.patch, { plannedDate: "2026-10-18", dueAt: "2026-10-18T00:30:00.000Z" });
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string; path: string }) => call.method !== "GET" && call.path.startsWith("/api/reminders")).length, 0);
+});
+
+test("date draft keeps its opening time zone when the page time zone changes", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.getByLabel("時刻", { exact: true }).fill("19:30");
+  await current.evaluate(() => (window as any).setTaskListTimeZone("America/New_York"));
+  assert.equal(await current.getByLabel("時刻", { exact: true }).inputValue(), "19:30");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).waitFor();
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].body.patch.dueAt, "2026-10-18T10:30:00.000Z");
+});
+
+test("clearing a split task's time keeps its visible date and removes dueAt", async t => {
+  const current = await page(t);
+  await current.evaluate(() => {
+    const row = (window as any).taskRows.find((item: { id: string }) => item.id === "personal");
+    row.plannedDate = "2026-10-16";
+    row.dueAt = "2026-10-17T10:30:00.000Z";
+  });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("時刻", { exact: true }).fill("");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  const facts = current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl");
+  await facts.getByText("指定なし").waitFor();
+  assert.deepEqual((await facts.locator("dt, dd").allTextContents()).map(value => value.trim()), ["日付", "10/17", "時刻", "指定なし"]);
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.deepEqual(writes[0].body.patch, { plannedDate: "2026-10-17", dueAt: null });
+});
+
+test("moving a due-only task does not create a planned date", async t => {
+  const current = await page(t);
+  await current.evaluate(() => {
+    const row = (window as any).taskRows.find((item: { id: string }) => item.id === "personal");
+    delete row.plannedDate;
+    row.dueAt = "2026-10-17T10:30:00.000Z";
+  });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).waitFor();
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.deepEqual(writes[0].body.patch, { dueAt: "2026-10-18T10:30:00.000Z" });
+  assert.equal(await current.evaluate(async () => "plannedDate" in (await (await fetch("/api/tasks/personal")).json()).data.task), false);
+});
+
+test("clearing a task date remains cleared on the next read", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("日付", { exact: true }).fill("");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await current.getByRole("dialog", { name: "タスクの詳細" }).locator("dl").getByText("日付なし").waitFor();
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.deepEqual(writes[0].body.patch, { plannedDate: null });
+  assert.equal(await current.evaluate(async () => "plannedDate" in (await (await fetch("/api/tasks/personal")).json()).data.task), false);
+});
+
+test("second task date deferral needs confirmation before writing", async t => {
+  const current = await page(t);
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "personal").deferralCount = 1; });
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await current.getByRole("alertdialog", { name: "もう一度延期しますか？" }).waitFor();
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update").length, 0);
+  await current.getByRole("button", { name: "延期する" }).click();
+  await current.getByRole("dialog", { name: "タスクの詳細" }).getByText("10/18", { exact: true }).waitFor();
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update").length, 1);
+});
+
+test("date edit conflict preserves the draft and blocks a stale retry", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  await current.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await current.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.evaluate(() => { (window as any).forceEditConflictOnce = true; });
+  await current.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await current.getByText(/ほかの画面で変更されました/).waitFor();
+  assert.equal(await current.getByLabel("日付", { exact: true }).inputValue(), "2026-10-18");
+  assert.equal(await current.getByRole("button", { name: "日付と時刻を保存" }).isDisabled(), true);
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update").length, 1);
+});
+
+test("failed date save keeps the draft and retries the same request", async t => {
+  const current = await page(t);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  const detail = current.getByRole("dialog", { name: "タスクの詳細" });
+  await detail.getByRole("button", { name: "日付と時刻を編集" }).click();
+  await detail.getByLabel("日付", { exact: true }).fill("2026-10-18");
+  await current.evaluate(() => { (window as any).dateFailNextPatch = true; });
+  await detail.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await detail.getByText("日付と時刻を保存できませんでした。もう一度お試しください。").waitFor();
+  assert.equal(await detail.getByLabel("日付", { exact: true }).inputValue(), "2026-10-18");
+  await detail.getByRole("button", { name: "日付と時刻を保存" }).click();
+  await detail.getByText("10/18", { exact: true }).waitFor();
+  const writes = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { body: { action?: string } }) => call.body?.action === "update");
+  assert.equal(writes.length, 2);
+  assert.equal(writes[0].body.idempotencyKey, writes[1].body.idempotencyKey);
 });
 
 test("product task list deletion is cancelled safely and only disappears after confirmation", async t => {
