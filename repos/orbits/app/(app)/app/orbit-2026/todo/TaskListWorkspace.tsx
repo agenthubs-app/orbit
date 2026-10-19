@@ -150,6 +150,11 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const renderRows = (items: TaskRowView[], overdue: boolean) => items.map(item => <div key={item.id} className={`${styles.taskRow} ${overdue ? styles.taskRowOverdue : ""} ${item.id === selectedId ? styles.selected : ""}`}>
     <CheckCircle checked={item.status === "completed"} label={t(item.status === "completed" ? taskCopy.taskListReopen : taskCopy.taskListComplete).replace("{title}", item.title)} onChange={() => toggle(item)} />
     <button type="button" className={`btn ${styles.rowMain}`} aria-label={t(taskCopy.taskListOpenDetail).replace("{title}", item.title)} aria-current={item.id === selectedId ? "true" : undefined} ref={element => { if (element) rowButtons.current.set(item.id, element); else rowButtons.current.delete(item.id); }} onClick={() => selectTask(item.id)} onKeyDown={event => {
+      if (event.key.toLowerCase() === "e" && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && item.status === "open" && item.id === selectedId && !mutation.busy) {
+        event.preventDefault();
+        toggle(item);
+        return;
+      }
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
       const index = orderedRows.findIndex(row => row.id === item.id);
       const next = orderedRows[index + (event.key === "ArrowDown" ? 1 : -1)];

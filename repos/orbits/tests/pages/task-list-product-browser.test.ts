@@ -149,6 +149,18 @@ test("arrow keys move task-list selection and focus without writing", async t =>
   assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { method: string }) => call.method !== "GET").length, 0);
 });
 
+test("E completes the selected task row without opening its action button", async t => {
+  const current = await page(t);
+  const row = current.getByRole("button", { name: "今日の資料の詳細" });
+  await row.click();
+  await row.press("e");
+  await row.waitFor({ state: "detached" });
+  const writes = await current.evaluate(() => (window as any).taskCalls.filter((call: { method: string }) => call.method !== "GET"));
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].method, "PATCH");
+  assert.equal(writes[0].body.action, "complete");
+});
+
 test("overdue task rows use the warning color while today's rows do not", async t => {
   const current = await page(t);
   await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").plannedDate = "2026-10-16"; });
