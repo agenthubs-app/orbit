@@ -1,0 +1,28 @@
+import type { OrbitCopyTable } from "./types";
+
+export const memoCopy = {
+  add: { ja: "メモを追加", zh: "添加备忘录", en: "Add memo", kind: "button" },
+  all: { ja: "すべて", zh: "全部", en: "All", kind: "label" },
+  meeting: { ja: "面談", zh: "面谈", en: "Meetings", kind: "label" },
+  free: { ja: "自由メモ", zh: "自由备忘录", en: "Free notes", kind: "label" },
+  search: { ja: "メモを検索", zh: "搜索备忘录", en: "Search memos", kind: "label" },
+  empty: { ja: "メモはまだありません", zh: "还没有备忘录", en: "No memos yet", kind: "label" },
+  emptyBody: { ja: "気づいたことを残しましょう。", zh: "记下你注意到的事。", en: "Keep track of what you notice.", kind: "body" },
+  noResult: { ja: "一致するメモはありません", zh: "没有匹配的备忘录", en: "No matching memos", kind: "label" },
+  retry: { ja: "メモを読み込めませんでした", zh: "无法读取备忘录", en: "Could not load memos", kind: "label" },
+  edit: { ja: "編集", zh: "编辑", en: "Edit", kind: "button" },
+  save: { ja: "保存", zh: "保存", en: "Save", kind: "button" },
+  cancel: { ja: "キャンセル", zh: "取消", en: "Cancel", kind: "button" },
+  title: { ja: "タイトル", zh: "标题", en: "Title", kind: "label" },
+  body: { ja: "本文", zh: "正文", en: "Body", kind: "label" },
+  loadMore: { ja: "続きを見る", zh: "加载更多", en: "Load more", kind: "button" },
+  saved: { ja: "メモを保存しました", zh: "备忘录已保存", en: "Memo saved", kind: "body" },
+  saveFailed: { ja: "保存できませんでした。入力は残っています。もう一度お試しください。", zh: "未能保存。输入已保留，请重试。", en: "Could not save. Your draft is kept for another try.", kind: "body" },
+  conflict: { ja: "メモが更新されました。入力を残しました。最新の内容を確認してください。", zh: "备忘录已更新。输入已保留，请查看最新内容。", en: "The memo changed. Your draft is kept; check the latest version.", kind: "body" },
+  needsNetwork: { ja: "接続してから追加してください", zh: "连接网络后再添加", en: "Connect to add a memo", kind: "body" },
+  voice: { ja: "音声由来", zh: "语音来源", en: "Voice source", kind: "label" },
+  planUse: { ja: "プランの話せたに使う", zh: "用于计划的已交流项", en: "Use for plan conversation", kind: "label" },
+  planNeedsOne: { ja: "面談メモと連絡先1人が必要です", zh: "需要一位联系人和面谈备忘录", en: "Requires a meeting memo and one contact", kind: "body" },
+  eventUnlink: { ja: "@イベントを消しても、関連付けは残ります。関連イベントは別に解除してください。", zh: "删除 @活动不会取消关联；请单独移除关联活动。", en: "Removing an @event token keeps its event link. Remove the linked event separately.", kind: "body" },
+  tokenEdit: { ja: "この関連トークンはそのまま残してください。変更するには元のメモで操作してください。", zh: "请保留这个关联标记；需要修改时请在原备忘录中操作。", en: "Keep this linked token unchanged. Edit it in its original memo.", kind: "body" },
+} satisfies OrbitCopyTable;

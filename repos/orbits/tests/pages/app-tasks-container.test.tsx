@@ -49,6 +49,26 @@ test("four tabs in the frozen order; the To-do and calendar slots are the existi
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [{ replace: "/app/tasks?tab=calendar" }]);
 });
 
+test("memo slot opens its add flow from the Task header without changing the selected tab", async (t) => {
+  const memoCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { ShellSlotsProvider, useShellSlots } from "./app/(app)/app/orbit-2026/shell/slots";
+    import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
+    function Page() {
+      const slots = useShellSlots();
+      return <><div data-shell-right>{slots.right}</div><TaskContainer initialTab="memo" calendar={null} todo={null} memo={<main><p>memo workspace</p><button data-task-add onClick={() => document.body.dataset.added = "yes"}>add memo</button></main>} /></>;
+    }
+    createRoot(document.getElementById("root")).render(<ShellSlotsProvider><Page /></ShellSlotsProvider>);
+  `, SHELL_STUBS);
+  const page = await open(browser, memoCode, { html: '<div id="root"></div><script>window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]}</script>' });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.getByText("memo workspace").waitFor();
+  await page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" }).click();
+  assert.equal(await page.evaluate(() => document.body.dataset.added), "yes");
+  assert.equal(await page.locator("[data-task-slot=memo]").count(), 1);
+});
+
 test("← → switch tabs from the page, but not while typing in a field", async (t) => {
   const page = await container(t, "todo");
   await page.mouse.click(5, 600);

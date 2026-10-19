@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
+import { memoCopy } from "../copy/memo";
 import { Button, EmptyState, Orbit2026Scope, Segmented, Skeleton, ToastProvider, useStandardCopy } from "../ui";
 import { monthHeading } from "../shell/month-heading";
 import { ShellPage, useInShell } from "../shell/slots";
@@ -30,7 +31,7 @@ import styles from "./task.module.css";
  * `undefined` while it has not been read — the server reads it only for ?tab=plan,
  * and switching to the tab re-requests the page.
  */
-export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref = "/app/agent" }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null; planStartHref?: string }) {
+export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStartHref = "/app/agent" }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null; memo?: ReactNode; planStartHref?: string }) {
   const { language } = useOrbitLanguage();
   const router = useRouter();
   const pathname = usePathname() ?? "/app/tasks";
@@ -69,7 +70,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
   const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
   // プラン: 「目標を追加」 only at ≥1280; b8 #6 / #16 (1024) keep just 「次の一手」 on the right.
   const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} />
-    : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
+    : tab === "calendar" || tab === "todo" || tab === "memo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : tab === "todo" ? shellCopy.taskAddTodo : memoCopy.add, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>
       <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail phoneFold />
@@ -80,7 +81,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, planStartHref 
         </div>
       </Orbit2026Scope>
       <div data-task-slot={tab}>
-        {tab === "calendar" ? calendar : tab === "todo" ? todo : tab === "plan" && plan ? <PlanSlot>{plan}</PlanSlot> : (
+        {tab === "calendar" ? calendar : tab === "todo" ? todo : tab === "memo" && memo ? memo : tab === "plan" && plan ? <PlanSlot>{plan}</PlanSlot> : (
           <Orbit2026Scope language={language} className={styles.empty}>
             <ToastProvider>{tab === "plan" ? (plan === undefined ? <Skeleton lines={4} /> : <PlanEmpty href={planStartHref} />) : <EmptyState title={pickCopy(shellCopy.memoEmptyTitle, language)} message={pickCopy(shellCopy.memoEmptyBody, language)} />}</ToastProvider>
           </Orbit2026Scope>
