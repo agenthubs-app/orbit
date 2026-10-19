@@ -523,7 +523,7 @@ export const plan = {
   "plan.overview.manualLocked": "手动编辑已用过 · 审视后会再给1次",
   "plan.overview.manualUsed": "手动编辑已经用过了。审视后会再给1次。",
   "plan.achieve.title": "要把目标记为已达成吗？",
-  "plan.achieve.body": "以分数{total} · 聊过{people}人确定，并完成这个计划。达成后分数不再增加。完成的计划随时可以回看。",
+  "plan.achieve.body": "以分数 {total} 确定，并完成这个计划。之后的记录不再加分。完成的计划随时可以回看。",
   "plan.achieve.confirm": "记为达成",
   "plan.done.title": "达成",
   "plan.done.achieved": "达成{goal}",

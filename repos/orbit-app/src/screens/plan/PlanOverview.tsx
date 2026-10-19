@@ -70,7 +70,6 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
   const pending = groupPending(plan.pending ?? []);
   const activeGoals = goals.filter((goal) => goal.status === "active");
   const goalIndex = activeGoals.findIndex((goal) => goal.planId === plan.planId);
-  const talkedPeople = goals.find((goal) => goal.planId === plan.planId)?.talkedPeople ?? 0;
   const openType = (itemId: string) => router.push(planTypeHref("app", plan.planId, itemId) as Href);
 
   // One write at a time (R24 review m11: a second tap while a request runs does nothing).
@@ -202,7 +201,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
       <ConfirmDialog
         visible={achieveOpen}
         title={t("plan.achieve.title")}
-        message={t("plan.achieve.body", { people: talkedPeople, total: score.total })}
+        message={t("plan.achieve.body", { total: score.total })}
         confirmLabel={t("plan.achieve.confirm")}
         icon={{ emoji: "\u{1F3C1}" }}
         onConfirm={achieve}

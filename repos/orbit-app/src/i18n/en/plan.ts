@@ -523,7 +523,7 @@ export const plan = {
   "plan.overview.manualLocked": "Manual edit used · a review gives one more",
   "plan.overview.manualUsed": "The manual edit is used. A review gives one more.",
   "plan.achieve.title": "Record this goal as achieved?",
-  "plan.achieve.body": "The score is fixed at {total} with {people} people talked to, and this plan is completed. After that, the score no longer grows. You can look back at it any time.",
+  "plan.achieve.body": "The score is fixed at {total}, and this plan is completed. Further activity will not increase the score. You can look back at the completed plan any time.",
   "plan.achieve.confirm": "Record as achieved",
   "plan.done.title": "Achieved",
   "plan.done.achieved": "Achieved: {goal}",

@@ -414,8 +414,10 @@ test("achieve: the question → 完了 (three numbers, best move, skipped) → n
   const summary = await direct<PlanV2SummaryResponse>(server, "GET", "/api/agent/plans/v2/summary");
   const goal = summary.data.goals[0]!;
   await page.getByRole("button", { name: "目標を達成した" }).click();
-  await page.getByText("目標を達成したとして記録しますか？").waitFor();
-  await page.getByText(`スコア ${goal.total} · 話した人 ${goal.talkedPeople}人で確定し、このプランを完了にします。達成にすると点数はこれ以上増えません。完了したプランはいつでも見返せます。`).waitFor();
+  const confirmationTitle = page.getByRole("heading", { name: /目標を達成したとして\s*記録しますか？/ });
+  await confirmationTitle.waitFor();
+  assert.equal(await confirmationTitle.textContent(), "目標を達成したとして\n記録しますか？");
+  await page.getByText(`スコア ${goal.total} で確定し、このプランを完了にします。以後の記録は加算されません。完了したプランはいつでも見返せます。`).waitFor();
   assert.deepEqual(writes(calls), [], "asking writes nothing");
   await page.getByRole("button", { name: "達成を記録" }).click();
   await page.getByTestId("done-hero").waitFor();
