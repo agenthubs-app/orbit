@@ -1,3 +1,18 @@
 {
-  "_schema": "<grid-view>: { <band>: [data] / [raster] / [contrast] with a checked reason }"
+  "_schema": "<grid-view>: { <band>: [data] / [raster] / [contrast] with a checked reason }",
+  "A-R05-S02-app-light": {
+    "0": "[raster] ホーム底栏五枚图标与标签同文同位；dx 0 dy 0，背景 #fcfcfc、字色 #9c94a4 两侧相同，原生线条及假名字形边缘差"
+  },
+  "A-R05-S03-app-light": {
+    "0": "[raster] 人脈底栏选中框、五枚图标与标签同位；dx 0 dy 0，背景 #fcfcfc、字色 #9c94a4 两侧相同，原生图标笔画和假名边缘差"
+  },
+  "A-R05-S04-app-light": {
+    "0": "[raster] イベント底栏选中框及五个图标、标签同位；dx 0 dy 0，背景 #fcfcfc、字色 #9c94a4 两侧相同，原生线条与文字边缘差"
+  },
+  "A-R05-S06-app-light": {
+    "0": "[raster] Task 日历底栏选中框、图标和标签同位；dx 0 dy 0，背景 #fcfcfc、字色 #9c94a4 两侧相同，原生轮廓与字形边缘差"
+  },
+  "A-R05-S08-app-light": {
+    "0": "[raster] Task To-do 底栏与设计同内容同位置；dx 0 dy 0，背景 #fcfcfc、字色 #9c94a4 两侧相同，原生图标轮廓与字形边缘差"
+  }
 }
