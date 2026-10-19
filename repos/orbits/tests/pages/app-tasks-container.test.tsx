@@ -89,6 +89,30 @@ test("a same-page route update changes the selected Task tab without another nav
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), []);
 });
 
+test("the Plan header hides 目標を追加 at 1024 but keeps it at 1440", async (t) => {
+  const shellCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { ShellSlotsProvider, useShellSlots } from "./app/(app)/app/orbit-2026/shell/slots";
+    import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
+    function Page() {
+      const slots = useShellSlots();
+      return <><div data-shell-right>{slots.right}</div><TaskContainer initialTab="plan" plan={<main>my plan</main>} calendar={null} todo={null} /></>;
+    }
+    createRoot(document.getElementById("root")).render(<ShellSlotsProvider><Page /></ShellSlotsProvider>);
+  `, SHELL_STUBS);
+  const page = await open(browser, shellCode, {
+    width: 1024,
+    html: '<div id="root"></div><script>window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]}</script>',
+  });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  const addGoal = page.locator("[data-shell-right] button").filter({ hasText: "目標を追加" });
+  await addGoal.waitFor({ state: "attached" });
+  assert.equal(await addGoal.isVisible(), false);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  assert.equal(await addGoal.isVisible(), true);
+});
+
 test("leaving after a tab URL change saves scroll under the current Task address", async (t) => {
   const page = await open(browser, code, {
     origin: "https://task-scroll.test/app/tasks?tab=calendar",
