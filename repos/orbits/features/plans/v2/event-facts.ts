@@ -62,14 +62,16 @@ export function livePlanEventFacts(input: {
   window?: () => EventStartWindowReader | null;
   now?: () => Date;
   sources?: () => Promise<LivePlanEventSources | null>;
+  strict?: boolean;
 } = {}): () => Promise<PlanEventFact[]> {
   return async () => {
     if (!(input.ready ?? PLAN_LIVE_EVENT_FACTS_READY)) return [];
     const now = (input.now ?? (() => new Date()))();
     const from = new Date(now.getTime() + 1).toISOString();
     const until = new Date(now.getTime() + PLAN_LIVE_EVENT_WINDOW_DAYS * 86_400_000).toISOString();
-    const window = { from, limit: PLAN_LIVE_EVENT_LIMIT, until };
-    const sources = input.sources ? await input.sources().catch(() => null) : null;
+    const window = { from, limit: input.strict ? PLAN_LIVE_EVENT_LIMIT + 1 : PLAN_LIVE_EVENT_LIMIT, until };
+    const sources = input.sources ? input.strict ? await input.sources() : await input.sources().catch(() => null) : null;
+    if (input.strict && !sources) throw Error("EVENT_PROVIDER_UNAVAILABLE");
     const out: PlanEventFact[] = [];
     const seen = new Set<string>();
     const push = (fact: PlanEventFact) => {
@@ -78,10 +80,16 @@ export function livePlanEventFacts(input: {
       out.push(fact);
     };
     if (sources) {
-      for (const fact of await sources.myExternal(window)) push(fact);
+      const external = await sources.myExternal(window);
+      if (input.strict && external.length > PLAN_LIVE_EVENT_LIMIT) throw Error("EVENT_WINDOW_OVER_LIMIT");
+      for (const fact of external) push(fact);
     }
     const reader = (input.window ?? createConfiguredEventStartWindowReader)();
-    const published = reader ? await reader.listPublishedStartingBetween(from, until) : [];
+    if (input.strict && !reader) throw Error("EVENT_WINDOW_UNAVAILABLE");
+    const published = reader ? await reader.listPublishedStartingBetween(from, until, input.strict ? PLAN_LIVE_EVENT_LIMIT + 1 : undefined) : [];
+    if (input.strict && (published.length > PLAN_LIVE_EVENT_LIMIT || out.length + published.filter(event => !seen.has(event.eventId)).length > PLAN_LIVE_EVENT_LIMIT)) {
+      throw Error("EVENT_WINDOW_OVER_LIMIT");
+    }
     const mine = sources ? new Set(await sources.myEventIds(window)) : new Set<string>();
     const ordered = [...published.filter((event) => mine.has(event.eventId)), ...published.filter((event) => !mine.has(event.eventId))].slice(0, Math.max(0, PLAN_LIVE_EVENT_LIMIT - out.length));
     if (sources && ordered.length) {

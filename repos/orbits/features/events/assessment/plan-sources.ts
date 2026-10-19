@@ -12,7 +12,8 @@ import { eventEmoji } from "../../../shared/compute/event-emoji";
 import type { LivePlanEventSources } from "../../plans/v2/event-facts";
 import type { PlanEventFact } from "../../plans/v2/overview";
 import { createPostgresMyEventsReader } from "../mine/service";
-import { getConfiguredEventAssessmentRuntime, listContactsForAssessment, readPreferencesForAssessment } from "./configured";
+import { getConfiguredEventAssessmentRuntime, listContactsForAssessment, readPreferencesForAssessment, type ConfiguredEventAssessmentRuntime } from "./configured";
+import { createPostgresEventAssessmentRepository } from "./repository";
 
 /** 读失败时计划页少显示活动而不是报错；但要留日志（复核：不能静默）。 */
 function logged<T>(event: string, fallback: T): (error: unknown) => T {
@@ -22,20 +23,24 @@ function logged<T>(event: string, fallback: T): (error: unknown) => T {
   };
 }
 
-export async function createLivePlanEventSources(actorId: string): Promise<LivePlanEventSources | null> {
-  const runtime = getConfiguredEventAssessmentRuntime();
+export async function createLivePlanEventSources(actorId: string, options: { strict?: boolean; runtime?: ConfiguredEventAssessmentRuntime } = {}): Promise<LivePlanEventSources | null> {
+  const runtime = options.runtime ?? getConfiguredEventAssessmentRuntime();
   if (!runtime) return null;
   const query = (sql: string, values?: readonly unknown[]) => runtime.client.query(sql, values as unknown[]) as Promise<{ rows: Array<Record<string, unknown>> }>;
+  // The configured repository runs schema migrations before reads. To-do's
+  // strict source must remain read-only, including when the schema is absent.
+  const externalRepository = options.strict ? createPostgresEventAssessmentRepository({ client: runtime.client, workspaceId: runtime.workspaceId }) : runtime.repository;
   let person: { contacts: { id: string; name: string }[]; homeArea: string | null } | null = null;
   const personFacts = async () => {
     if (person) return person;
-    const [contacts, prefs] = await Promise.all([listContactsForAssessment(query, runtime.workspaceId, actorId), readPreferencesForAssessment(query, runtime.workspaceId, actorId)]);
+    const [contacts, prefs] = await Promise.all([listContactsForAssessment(query, runtime.workspaceId, actorId), readPreferencesForAssessment(query, runtime.workspaceId, actorId, { strict: options.strict })]);
     person = { contacts, homeArea: prefs.homeArea };
     return person;
   };
   return {
     async myExternal(window) {
-      const rows = await runtime.repository.listAddedExternal(actorId, window).catch(logged("plan_event_sources_external_failed", [] as Awaited<ReturnType<typeof runtime.repository.listAddedExternal>>));
+      const rows = options.strict ? await externalRepository.listAddedExternal(actorId, window) :
+        await externalRepository.listAddedExternal(actorId, window).catch(logged("plan_event_sources_external_failed", [] as Awaited<ReturnType<typeof externalRepository.listAddedExternal>>));
       if (rows.length === 0) return [];
       const { contacts, homeArea } = await personFacts();
       return rows.flatMap((row): PlanEventFact[] => {
@@ -56,15 +61,18 @@ export async function createLivePlanEventSources(actorId: string): Promise<LiveP
       });
     },
     async myEventIds(window) {
-      const reader = createPostgresMyEventsReader({ query, workspaceId: runtime.workspaceId });
-      const rows = await reader.rows(actorId, window).catch(logged("plan_event_sources_mine_failed", [] as Awaited<ReturnType<typeof reader.rows>>));
+      const reader = createPostgresMyEventsReader({ query, workspaceId: runtime.workspaceId, strict: options.strict });
+      const rows = options.strict ? await reader.rows(actorId, window) :
+        await reader.rows(actorId, window).catch(logged("plan_event_sources_mine_failed", [] as Awaited<ReturnType<typeof reader.rows>>));
       return [...new Set(rows.filter((row) => !row.external && row.status !== "cancelled" && row.status !== "rejected").map((row) => row.eventId))];
     },
     async orbitFacts(events) {
       const person = await personFacts();
       const out: PlanEventFact[] = [];
       for (const event of events) {
-        const fact = await runtime.orbitEvents.planEventFact(event.eventId, person).catch(logged("plan_event_sources_fact_failed", null));
+        const fact = options.strict ? await runtime.orbitEvents.planEventFact(event.eventId, person) :
+          await runtime.orbitEvents.planEventFact(event.eventId, person).catch(logged("plan_event_sources_fact_failed", null));
+        if (options.strict && !fact) throw Error("EVENT_FACT_UNAVAILABLE");
         if (fact) out.push(fact);
       }
       // 评估过的库内活动带评估链接。

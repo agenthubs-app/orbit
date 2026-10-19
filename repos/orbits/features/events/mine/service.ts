@@ -95,7 +95,7 @@ type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array
 const iso = (value: unknown): string | null => (value === null || value === undefined ? null : value instanceof Date ? value.toISOString() : String(value));
 
 /** live：报名 / 审核 / 签到（event_ops_*）+ 计划活动条目（plan_items）+ 我的外部评估（event_assessments）。 */
-export function createPostgresMyEventsReader(input: { query: Query; workspaceId: string; assessmentsReady?: () => Promise<void> }): MyEventsReader {
+export function createPostgresMyEventsReader(input: { query: Query; workspaceId: string; assessmentsReady?: () => Promise<void>; strict?: boolean }): MyEventsReader {
   return {
     async rows(actorId, window) {
       const registrations = await input.query(
@@ -121,7 +121,7 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
          where e.lifecycle_state_v2 in ('published', 'cancelled') and e.starts_at >= $3::timestamptz and e.starts_at < $4::timestamptz
          order by e.starts_at limit $5`,
         [input.workspaceId, actorId, window.from, window.until, window.limit],
-      ).catch((error: { code?: string }) => (error?.code === "42P01" ? { rows: [] } : Promise.reject(error)));
+      ).catch((error: { code?: string }) => (error?.code === "42P01" && !input.strict ? { rows: [] } : Promise.reject(error)));
       const out: MyEventSourceRow[] = registrations.rows.flatMap((row) => {
         const startsAt = iso(row.starts_at);
         if (!startsAt) return [];
@@ -140,12 +140,15 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
         return statuses.map((status) => ({ ...base, status }));
       });
       // 我的外部评估（加入计划的）：只对本人。
-      if (input.assessmentsReady) await input.assessmentsReady().catch(() => undefined);
+      if (input.assessmentsReady) {
+        if (input.strict) await input.assessmentsReady();
+        else await input.assessmentsReady().catch(() => undefined);
+      }
       const external = await input.query(
         `select id, facts, total from event_assessments where workspace_id = $1 and actor_id = $2 and user_decision = 'added' and event_id is null
            and (facts->>'startsAt') >= $3 and (facts->>'startsAt') < $4 order by facts->>'startsAt' limit $5`,
         [input.workspaceId, actorId, window.from, window.until, window.limit],
-      ).catch((error: { code?: string }) => (error?.code === "42P01" ? { rows: [] } : Promise.reject(error)));
+      ).catch((error: { code?: string }) => (error?.code === "42P01" && !input.strict ? { rows: [] } : Promise.reject(error)));
       for (const row of external.rows) {
         const facts = (row.facts ?? {}) as { title?: string; startsAt?: string; endsAt?: string; venue?: string };
         if (!facts.startsAt) continue;
@@ -154,8 +157,8 @@ export function createPostgresMyEventsReader(input: { query: Query; workspaceId:
       // 库内活动的评估分（参加予定卡上不显示分，但给 R10 / 详情用）。
       const ids = [...new Set(out.filter((row) => !row.external).map((row) => row.eventId))];
       if (ids.length) {
-        const scores = await input.query(`select id, event_id, total from event_assessments where workspace_id = $1 and actor_id = $2 and event_id = any($3::text[])`, [input.workspaceId, actorId, ids])
-          .catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
+        const scoresRead = input.query(`select id, event_id, total from event_assessments where workspace_id = $1 and actor_id = $2 and event_id = any($3::text[])`, [input.workspaceId, actorId, ids]);
+        const scores = input.strict ? await scoresRead : await scoresRead.catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
         const byEvent = new Map(scores.rows.map((row) => [String(row.event_id), { assessmentId: String(row.id), score: Number(row.total ?? 0) }]));
         for (const row of out) { const found = byEvent.get(row.eventId); if (found && !row.external) { row.assessmentId = found.assessmentId; row.score = found.score; } }
       }

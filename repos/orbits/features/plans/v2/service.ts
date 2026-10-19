@@ -233,6 +233,7 @@ export interface PlanV2Service {
 export interface PlanViewOptions {
   language?: PlanCopyLanguage;
   platform?: PlanHrefPlatform;
+  timeZone?: string;
 }
 
 /** 生效中的 v2 计划（概要）与它们的人物类型（人脉分析、覆盖度、联系人计划说明合并读取用）。 */
@@ -529,7 +530,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     // 「最近の加点」的活动名：这份计划记下的参加活动（eventItems.title）。
     const eventTitles = new Map((await reader.eventItems(plan.id)).map((item) => [item.eventId, item.title]));
     // R26：有原始参加者事实的活动按这份计划的人物类型补每类预计人数（与评估页同一规则）。
-    return { awards, candidates, contacts, eventTitles, events: resolveTypedEvents(events, types), language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", types };
+    return { awards, candidates, contacts, eventTitles, events: resolveTypedEvents(events, types), language: view.language ?? "ja", log, plan, platform: view.platform ?? "web", timeZone: view.timeZone, types };
   }
 
   /** 把联系人关联到类型（linked；已 established 的不降级）。 */

@@ -32,8 +32,8 @@ export function createTodoLiveRuntime(actor: AuthenticatedApiActor) {
           return Object.fromEntries(reply.rows.map(row => [row.id, row.created]));
         } }) } : {}),
         ...(plans.success && plans.service.pool && plans.service.workspaceId === workspaceId ? createTodoPlanReaders({ pool: plans.service.pool, workspaceId, assertAllowed,
-          events: actorId => livePlanEventFacts({ actorId, workspaceId,
-            sources: async () => (await import("../events/assessment/plan-sources")).createLivePlanEventSources(actorId),
+          events: (actorId, at) => livePlanEventFacts({ actorId, workspaceId, strict: true, now: () => at,
+            sources: async () => (await import("../events/assessment/plan-sources")).createLivePlanEventSources(actorId, { strict: true }),
           })(),
         }) : {}),
       } }),

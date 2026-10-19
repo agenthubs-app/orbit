@@ -25,7 +25,7 @@ export interface EventStartWindowRecord {
 
 export interface EventStartWindowReader {
   /** 已发布、开始时间落在 [fromIso, toIso) 的活动，按开始时间、event_id 正序。 */
-  listPublishedStartingBetween(fromIso: string, toIso: string): Promise<EventStartWindowRecord[]>;
+  listPublishedStartingBetween(fromIso: string, toIso: string, limit?: number): Promise<EventStartWindowRecord[]>;
 }
 
 export const EVENT_START_WINDOW_SQL = `select event_id, title, starts_at
@@ -68,11 +68,16 @@ export function createPostgresEventStartWindowReader(input: {
 }): EventStartWindowReader {
   const { client, workspaceId } = input;
   return {
-    async listPublishedStartingBetween(fromIso, toIso) {
+    async listPublishedStartingBetween(fromIso, toIso, limit) {
       const from = isoInstant(fromIso, "from");
       const to = isoInstant(toIso, "to");
+      if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1)) {
+        throw new EventCoreDataError("EVENT_CORE_INVALID_TIME_RANGE", "Event start window limit must be a positive safe integer.");
+      }
       if (Date.parse(from) >= Date.parse(to)) return [];
-      const result = await client.query<Record<string, unknown>>(EVENT_START_WINDOW_SQL, [workspaceId, from, to]);
+      const result = limit === undefined
+        ? await client.query<Record<string, unknown>>(EVENT_START_WINDOW_SQL, [workspaceId, from, to])
+        : await client.query<Record<string, unknown>>(`${EVENT_START_WINDOW_SQL}\n limit $4`, [workspaceId, from, to, limit]);
       return result.rows.map(recordFromRow);
     },
   };

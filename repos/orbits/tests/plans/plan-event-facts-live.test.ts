@@ -4,7 +4,7 @@ import test from "node:test";
 import { DEFAULT_EVENT_SCORE_PREFERENCES } from "../../shared/compute/event-score";
 import { toEventScoreFacts } from "../../shared/compute/event-score-input";
 import { livePlanEventFacts, PLAN_LIVE_EVENT_FACTS_READY, PLAN_LIVE_EVENT_LIMIT, type LivePlanEventSources } from "../../features/plans/v2/event-facts";
-import { eventChance, eventsFor, resolveTypedEvents, type OverviewInput, type PlanEventFact } from "../../features/plans/v2/overview";
+import { chanceWhen, eventChance, eventsFor, resolveTypedEvents, type OverviewInput, type PlanEventFact } from "../../features/plans/v2/overview";
 import { judgeEvent } from "../../features/events/assessment/judge";
 import type { PlanV2TypeItem } from "../../features/plans/v2/types";
 
@@ -20,6 +20,83 @@ test("常量已打开；ready: false 时不读任何东西", async () => {
   const off = await livePlanEventFacts({ ready: false, sources: async () => { opened += 1; return null; }, window: () => { opened += 1; return null; } })();
   assert.deepEqual(off, []);
   assert.equal(opened, 0);
+});
+
+test("strict event facts reject a failed or missing provider instead of returning an exact empty list", async () => {
+  const failed = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => { throw Error("EVENT_PROVIDER_FAILED"); },
+    window: () => ({ listPublishedStartingBetween: async () => [] }),
+  });
+  await assert.rejects(failed(), /EVENT_PROVIDER_FAILED/);
+  const missing = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => null,
+    window: () => ({ listPublishedStartingBetween: async () => [] }),
+  });
+  await assert.rejects(missing(), /EVENT_PROVIDER_UNAVAILABLE/);
+  const bestEffort = livePlanEventFacts({ ready: true, now: () => NOW,
+    sources: async () => { throw Error("EVENT_PROVIDER_FAILED"); },
+    window: () => ({ listPublishedStartingBetween: async () => [] }),
+  });
+  assert.deepEqual(await bestEffort(), [], "ordinary Plan overview keeps its existing best-effort fallback");
+});
+
+test("strict event facts reject a missing published-event window", async () => {
+  const sources: LivePlanEventSources = { myExternal: async () => [], myEventIds: async () => [], orbitFacts: async () => [] };
+  const read = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => sources, window: () => null,
+  });
+  await assert.rejects(read(), /EVENT_WINDOW_UNAVAILABLE/);
+});
+
+test("strict event facts request one overflow row and reject an incomplete published window", async () => {
+  const sources: LivePlanEventSources = { myExternal: async () => [], myEventIds: async () => [], orbitFacts: async () => [] };
+  let requestedLimit: number | undefined;
+  const read = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => sources,
+    window: () => ({ listPublishedStartingBetween: async (_from, _until, limit) => {
+      requestedLimit = limit;
+      return Array.from({ length: PLAN_LIVE_EVENT_LIMIT + 1 }, (_, index) => ({
+        eventId: `e${index}`, title: `Event ${index}`, startsAt: "2026-10-20T10:00:00.000Z",
+      }));
+    } }),
+  });
+  await assert.rejects(read(), /EVENT_WINDOW_OVER_LIMIT/);
+  assert.equal(requestedLimit, PLAN_LIVE_EVENT_LIMIT + 1);
+});
+
+test("strict event facts reject a combined external and published window over 20", async () => {
+  const sources: LivePlanEventSources = {
+    myExternal: async () => Array.from({ length: PLAN_LIVE_EVENT_LIMIT }, (_, index) => fact(`assessment:${index}`)),
+    myEventIds: async () => [], orbitFacts: async () => [],
+  };
+  const read = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => sources,
+    window: () => ({ listPublishedStartingBetween: async () => [{ eventId: "published", title: "Published", startsAt: "2026-10-20T10:00:00.000Z" }] }),
+  });
+  await assert.rejects(read(), /EVENT_WINDOW_OVER_LIMIT/);
+});
+
+test("strict event facts ask for one external overflow row before accepting 20", async () => {
+  let requestedLimit = 0;
+  const sources: LivePlanEventSources = {
+    myExternal: async window => {
+      requestedLimit = window.limit;
+      return Array.from({ length: PLAN_LIVE_EVENT_LIMIT + 1 }, (_, index) => fact(`assessment:${index}`));
+    },
+    myEventIds: async () => [], orbitFacts: async () => [],
+  };
+  const read = livePlanEventFacts({ ready: true, strict: true, now: () => NOW,
+    sources: async () => sources,
+    window: () => ({ listPublishedStartingBetween: async () => [] }),
+  });
+  await assert.rejects(read(), /EVENT_WINDOW_OVER_LIMIT/);
+  assert.equal(requestedLimit, PLAN_LIVE_EVENT_LIMIT + 1);
+});
+
+test("chance wording uses the requested local time zone rather than Tokyo", () => {
+  const now = "2026-10-17T23:00:00.000Z", startsAt = "2026-10-18T01:00:00.000Z";
+  assert.equal(chanceWhen(startsAt, now, "ja", "America/Los_Angeles"), "今夜");
+  assert.equal(chanceWhen(startsAt, now, "ja"), "今日");
 });
 
 test("合并顺序：我的外部评估 → 我的活动 → 公开补足；总数 ≤20；窗口 ≤60 天；我的活动不被公开活动挤掉", async () => {
@@ -79,4 +156,5 @@ test("三处同分：评估页（judge）与概要 / 类型详情（eventsFor + 
   assert.match(chance?.label ?? "", /^今夜の CFO Night Tokyo vol\.18 に VC が 2人来ます。1人と話せば \+10。$/);
   assert.equal(chance?.actionLabel, "会う準備をする");
   assert.equal(chance?.progressLabel, "VC · 0 / 3人");
+  assert.match(eventChance({ ...input, timeZone: "America/Los_Angeles" }, NOW.toISOString())?.label ?? "", /^明日の/);
 });

@@ -3,6 +3,7 @@ import type { PlanPoolLike } from "../plans/repository";
 import { createPostgresPlanV2Repository } from "../plans/v2/repository";
 import { createPlanV2Service } from "../plans/v2/service";
 import type { PlanEventFact } from "../plans/v2/overview";
+import { localParts } from "../tasks/local-date-time";
 import type { TodoSourceReader } from "./service";
 
 export const TODO_PLAN_ROWS_PER_QUERY = 100;
@@ -34,11 +35,11 @@ function boundedReadPool(pool: PlanPoolLike): PlanPoolLike {
   } };
 }
 
-export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: string; now?: () => Date; assertAllowed: (collection: string) => void; events?: (actorId: string) => Promise<PlanEventFact[]> }): { plan_pending: TodoSourceReader; plan_today_chance: TodoSourceReader } {
-  const makeService = (actorId: string, events?: () => Promise<PlanEventFact[]>) => {
+export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: string; now?: () => Date; assertAllowed: (collection: string) => void; events?: (actorId: string, at: Date) => Promise<PlanEventFact[]> }): { plan_pending: TodoSourceReader; plan_today_chance: TodoSourceReader } {
+  const makeService = (actorId: string, events?: () => Promise<PlanEventFact[]>, now = input.now) => {
     for (const collection of collections) input.assertAllowed(collection);
     return createPlanV2Service({ repository: createPostgresPlanV2Repository({ pool: boundedReadPool(input.pool) }),
-      scope: { actorId, workspaceId: input.workspaceId }, now: input.now,
+      scope: { actorId, workspaceId: input.workspaceId }, now,
       ...(events ? { events } : {}),
     });
   };
@@ -58,16 +59,18 @@ export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: 
     },
     plan_today_chance: async query => {
       let facts: PlanEventFact[] = [];
-      const service = makeService(query.actorId, async () => facts);
+      const at = input.now?.() ?? new Date();
+      const service = makeService(query.actorId, async () => facts, () => at);
       const current = (await service.summary()).current;
       if (!current) return { entries: [], total: 0, hasMore: false, notImplemented: true };
-      if (input.events) { input.assertAllowed("events"); facts = await input.events(query.actorId); }
-      const chance = (await service.overview(current.planId, { language: "ja", platform: "web" }))?.todayChance;
+      if (localParts(at, query.timeZone).date !== query.date) return { entries: [], total: 0, hasMore: false };
+      if (input.events) { input.assertAllowed("events"); facts = await input.events(query.actorId, at); }
+      const chance = (await service.overview(current.planId, { language: "ja", platform: "web", timeZone: query.timeZone }))?.todayChance;
       if (!chance) return { entries: [], total: 0, hasMore: false };
       const id = `${current.planId}:${query.date}`;
       return { total: 1, hasMore: false, entries: query.cursor ? [] : [{ cursor: JSON.stringify(id), item: {
         key: `plan_today_chance:${id}`, source: "plan_today_chance", sourceId: id, titlePreview: chance.label.slice(0, 240),
-        createdAt: (input.now?.() ?? new Date()).toISOString(), draftAvailable: chance.kind === "candidate", ...(chance.basis ? { reasonPreview: chance.basis.slice(0, 320) } : {}),
+        createdAt: at.toISOString(), draftAvailable: chance.kind === "candidate", ...(chance.basis ? { reasonPreview: chance.basis.slice(0, 320) } : {}),
         ...(chance.eventId ? { eventId: chance.eventId } : {}),
       } }] };
     },

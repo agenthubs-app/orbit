@@ -35,10 +35,31 @@ test("bounded read-only plan sources expose a real next move and reject incomple
   assert.deepEqual(errors, []);
   assert.ok(checked.has("plans")); assert.ok(checked.has("plan_items")); assert.ok(checked.has("plan_log")); assert.ok(checked.has("contacts"));
   assert.ok(checked.has("events"), "event facts for today's chance must pass the read budget gate");
+  const otherDay = await live.read({ ...input, date: "2026-10-17" });
+  assert.equal(otherDay.sources.plan_pending, "ok");
+  assert.equal(otherDay.sources.plan_today_chance, "ok");
+  assert.equal(otherDay.nextMoves.items.length, 0, "a page for yesterday cannot show today's chance");
+  const losAngeles = await live.read({ ...input, date: "2026-10-17", timeZone: "America/Los_Angeles" });
+  assert.equal(losAngeles.sources.plan_today_chance, "ok");
+  assert.match(losAngeles.nextMoves.items[0]?.titlePreview ?? "", /10月21日/, "chance wording uses the requested zone's event date");
+  let clockReads = 0;
+  let eventReadAt: Date | undefined;
+  const crossing = createTodoPlanReaders({ pool, workspaceId: WORKSPACE, assertAllowed() {}, events: async (_actorId, at) => { eventReadAt = at; return demoPlanEventFacts(); },
+    now: () => new Date(clockReads++ === 0 ? "2026-10-18T14:59:59.000Z" : "2026-10-18T15:00:01.000Z") });
+  const beforeMidnight = await crossing.plan_today_chance({ ...input, cursor: null, limit: 3 });
+  assert.equal(beforeMidnight.total, 1, "one read keeps the opening local date across midnight");
+  assert.equal(eventReadAt?.toISOString(), "2026-10-18T14:59:59.000Z", "event facts share the same read instant");
   const noPlan = await live.read({ ...input, actorId: "actor-without-plan" });
   assert.equal(noPlan.sources.plan_pending, "ok");
   assert.equal(noPlan.sources.plan_today_chance, "not_implemented", "no current plan is not an exact zero chance");
   assert.equal(noPlan.nextMoves.items.length, 0);
+  const failedEvents = createTodoPageService({ workspaceId: WORKSPACE, secret: "local-secret-".repeat(4),
+    readers: createTodoPlanReaders({ pool, workspaceId: WORKSPACE, now, assertAllowed() {},
+      events: async () => { throw Error("EVENT_PROVIDER_FAILED"); } }), onError() {} });
+  const unavailable = await failedEvents.read(input);
+  assert.equal(unavailable.sources.plan_pending, "ok");
+  assert.equal(unavailable.sources.plan_today_chance, "unavailable", "event failure affects only the chance source");
+  assert.equal(unavailable.nextMoves.items.length, 0);
   const eventBudgetClosed = createTodoPageService({ workspaceId: WORKSPACE, secret: "local-secret-".repeat(4),
     readers: createTodoPlanReaders({ pool, workspaceId: WORKSPACE, now, events: async () => demoPlanEventFacts(),
       assertAllowed(collection) { if (collection === "events") throw Error("READ_BUDGET_EXCEEDED"); } }), onError() {} });

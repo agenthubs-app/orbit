@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
-import { PlanV2Error } from "../../features/plans/v2/service";
-import { draftInput, SCOPE, serviceFor } from "./v2-fixture";
+import { createPlanV2Service, PlanV2Error } from "../../features/plans/v2/service";
+import { UNKNOWN_EVENT_FACTS } from "../../features/plans/v2/event-facts";
+import { ANY_REFERENCES, draftInput, SCOPE, serviceFor } from "./v2-fixture";
 
 // R22 SC-R22-05 / SC-R22-09（内存仓储；Postgres 版的并发与唯一键见 tests/capabilities/plans-v2-service-postgres.test.ts）。
 async function setup() {
@@ -14,6 +15,17 @@ async function setup() {
   const typeId = (key: string) => plan.content.personTypes.find((type) => type.key === key)!.itemId;
   return { plan, repository, service, typeId };
 }
+
+test("overview passes its requested zone to today's event chance", async () => {
+  const service = createPlanV2Service({ repository: createMemoryPlanV2Repository(), scope: SCOPE,
+    now: () => new Date("2026-10-17T23:00:00.000Z"), references: ANY_REFERENCES,
+    events: async () => [{ eventId: "event:night", title: "Night", startsAt: "2026-10-18T01:00:00.000Z", venue: null,
+      facts: { ...UNKNOWN_EVENT_FACTS, attendeeSource: "none", expected: { vc_partner: 3 }, timeslot: "evening" } }],
+  });
+  const { plan } = await service.createPlanFromDraft(draftInput());
+  assert.match((await service.overview(plan.planId, { timeZone: "America/Los_Angeles" }))?.todayChance?.label ?? "", /^今夜の/);
+  assert.match((await service.overview(plan.planId))?.todayChance?.label ?? "", /^今日の/);
+});
 
 test("createPlanFromDraft: one plan per draft, archives the v1 plan, a goal limit of 2", async () => {
   const repository = createMemoryPlanV2Repository();

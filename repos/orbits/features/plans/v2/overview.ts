@@ -74,6 +74,7 @@ export interface OverviewInput {
   eventTitles?: ReadonlyMap<string, string>;
   language: PlanCopyLanguage;
   platform: PlanHrefPlatform;
+  timeZone?: string;
 }
 
 const tri = (language: PlanCopyLanguage, text: Record<PlanCopyLanguage, string>) => text[language];
@@ -313,10 +314,18 @@ export function recentAwards(input: OverviewInput): PlanRecentAward[] {
 export const TODAY_CHANCE_EVENT_DAYS = 14;
 const WEEKDAYS: Record<PlanCopyLanguage, readonly string[]> = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ja: ["日", "月", "火", "水", "木", "金", "土"], zh: ["日", "一", "二", "三", "四", "五", "六"] };
 
-/** 「今夜 / 今日 / 明日 / 10月16日（金）」（东京时间）。 */
-export function chanceWhen(startsAt: string, now: string, language: PlanCopyLanguage): string {
-  const start = tokyoParts(Date.parse(startsAt));
-  const today = tokyoParts(Date.parse(now));
+/** 「今夜 / 今日 / 明日 / 10月16日（金）」（指定がなければ東京時間）。 */
+export function chanceWhen(startsAt: string, now: string, language: PlanCopyLanguage, timeZone = "Asia/Tokyo"): string {
+  const parts = (value: string) => {
+    const instant = Date.parse(value);
+    if (timeZone === "Asia/Tokyo") return tokyoParts(instant);
+    const fields = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(instant);
+    const number = (type: Intl.DateTimeFormatPartTypes) => Number(fields.find(field => field.type === type)?.value);
+    const dayIndex = Math.floor(Date.UTC(number("year"), number("month") - 1, number("day")) / 86_400_000);
+    return { dayIndex, day: (((dayIndex + 4) % 7) + 7) % 7, minute: number("hour") * 60 + number("minute") };
+  };
+  const start = parts(startsAt);
+  const today = parts(now);
   if (start.dayIndex === today.dayIndex) return start.minute >= 18 * 60 ? tri(language, { en: "tonight", ja: "今夜", zh: "今晚" }) : tri(language, { en: "today", ja: "今日", zh: "今天" });
   if (start.dayIndex === today.dayIndex + 1) return tri(language, { en: "tomorrow", ja: "明日", zh: "明天" });
   const date = new Date(start.dayIndex * 86_400_000);
@@ -357,7 +366,7 @@ export function eventChance(input: OverviewInput, now: string): PlanTodayChance 
   }
   if (!best) return null;
   const { event, type, expected, met, points } = best;
-  const when = chanceWhen(event.startsAt, now, input.language);
+  const when = chanceWhen(event.startsAt, now, input.language, input.timeZone);
   const source = event.facts.attendeeSource === "registrants"
     ? tri(input.language, { en: `the attendee tag “${type.shortLabel}”: ${expected}`, ja: `参加者タグ「${type.shortLabel}」${expected}名`, zh: `参会者标签「${type.shortLabel}」${expected} 位` })
     : tri(input.language, { en: `about ${expected} estimated from speakers and exhibitors`, ja: `登壇者・出展から推定 約${expected}名`, zh: `由演讲者与展商推测约 ${expected} 位` });

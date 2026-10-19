@@ -47,7 +47,7 @@ export async function listContactsForAssessment(query: Query, workspaceId: strin
 }
 
 /** `eventPreferences` 集合（R18 做设置界面；现在只读、没有就缺省）。 */
-export async function readPreferencesForAssessment(query: Query, workspaceId: string, actorId: string) {
+export async function readPreferencesForAssessment(query: Query, workspaceId: string, actorId: string, options: { strict?: boolean } = {}) {
   try {
     const row = (await query(
       `select payload from orbit_records where workspace_id = $1 and collection_name = 'eventPreferences' and user_id = $2 and lifecycle_state <> 'deleted' order by updated_at desc limit 1`,
@@ -63,7 +63,8 @@ export async function readPreferencesForAssessment(query: Query, workspaceId: st
         weekdayEvening: typeof row.weekdayEvening === "boolean" ? row.weekdayEvening : DEFAULT_EVENT_SCORE_PREFERENCES.weekdayEvening,
       },
     };
-  } catch {
+  } catch (error) {
+    if (options.strict) throw error;
     return { homeArea: null, preferences: DEFAULT_EVENT_SCORE_PREFERENCES };
   }
 }
