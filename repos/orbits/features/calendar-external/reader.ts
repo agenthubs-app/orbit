@@ -3,7 +3,7 @@ import { calendarExternalEventsQuerySchema } from "../../shared/api-schema/calen
 import type { ExternalCalendarEventSummary, IntegrationAuthorization } from "../integrations/contract";
 import type { ReadBudgetGate } from "../sync/read-budget-gate";
 
-type CalendarAuthorization = Pick<IntegrationAuthorization, "provider" | "status" | "capabilities">;
+type CalendarAuthorization = Pick<IntegrationAuthorization, "provider" | "status" | "capabilities" | "connectionVersion">;
 interface CalendarProvider {
   listAuthorizations(): Promise<readonly CalendarAuthorization[]>;
   listCalendarEvents(input: { provider: "google_calendar"; timeMin: string; timeMax: string }): Promise<readonly ExternalCalendarEventSummary[]>;
@@ -38,7 +38,7 @@ export function createCalendarExternalReader(input: {
       if ((authorization.status === "active" || authorization.status === "expired") && !authorization.capabilities.includes("calendar.read")) return empty("needs_reconnect");
       if (authorization.status !== "active" && authorization.status !== "expired") return empty("unavailable");
 
-      const key = JSON.stringify([actorId, interval.from, interval.to]);
+      const key = JSON.stringify([actorId, authorization.connectionVersion ?? "legacy", interval.from, interval.to]);
       const cached = cache.get(key);
       if (authorization.status === "active" && cached && now() < cached.expiresAt) return { connection: "connected", provider: "google_calendar", events: cached.events, asOf: cached.asOf };
       if (cached) cache.delete(key);

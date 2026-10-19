@@ -38,6 +38,8 @@ export const ORBIT_INTEGRATION_SCOPES = {
 
 export interface IntegrationAuthorization {
   authorizationId: string;
+  /** Opaque generation for one OAuth connection; rotates on a new authorization. */
+  connectionVersion?: string;
   provider: OrbitIntegrationProvider;
   scopes: readonly string[];
   status: "pending" | "active" | "revoked" | "expired" | "unavailable";
@@ -60,6 +62,7 @@ export interface IntegrationHealthRecord {
 
 export interface IntegrationToken {
   accessToken: string;
+  connectionVersion?: string;
   refreshToken?: string;
   expiresAt?: string;
   scopes: readonly string[];

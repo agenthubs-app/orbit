@@ -28,6 +28,37 @@ test("connected Google events are read only and cached by actor and interval for
   assert.equal(reads, 4);
 });
 
+test("revoking and reconnecting Google does not reuse the former account's cached events", async () => {
+  let connection: "old" | "revoked" | "new" = "old";
+  let reads = 0;
+  const reader = createCalendarExternalReader({ serviceForActor: () => ({
+    listAuthorizations: async () => [{ ...active, status: connection === "revoked" ? "revoked" as const : "active" as const,
+      connectionVersion: connection }],
+    listCalendarEvents: async () => { reads++; return [{ providerRecordId: connection, title: connection,
+      startsAt: "2026-10-18T10:00:00Z", attendeeCount: 0, evidenceId: connection }]; },
+  }) });
+  assert.equal((await reader.read("actor-a", range)).events[0]?.id, "old");
+  connection = "revoked";
+  assert.equal((await reader.read("actor-a", range)).connection, "not_connected");
+  connection = "new";
+  assert.equal((await reader.read("actor-a", range)).events[0]?.id, "new");
+  assert.equal(reads, 2);
+});
+
+test("switching Google accounts without an intervening read invalidates the event cache", async () => {
+  let version = "old";
+  let reads = 0;
+  const reader = createCalendarExternalReader({ serviceForActor: () => ({
+    listAuthorizations: async () => [{ ...active, connectionVersion: version }],
+    listCalendarEvents: async () => { reads++; return [{ providerRecordId: version, title: version,
+      startsAt: "2026-10-18T10:00:00Z", attendeeCount: 0, evidenceId: version }]; },
+  }) });
+  assert.equal((await reader.read("actor-a", range)).events[0]?.id, "old");
+  version = "new";
+  assert.equal((await reader.read("actor-a", range)).events[0]?.id, "new");
+  assert.equal(reads, 2);
+});
+
 test("missing authorization skips the provider and a failed expired-token refresh requests reconnection", async () => {
   let reads = 0;
   const serviceForActor = (actorId: string) => ({

@@ -7,7 +7,7 @@ import type {
   OrbitIntegrationCapability,
   OrbitIntegrationProvider,
 } from "./contract";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { ORBIT_INTEGRATION_PROVIDERS } from "./contract";
 import {
   createMemoryIntegrationHealthStore,
@@ -239,6 +239,7 @@ export function createOrbitIntegrationService(input: {
       typeof body.expires_in === "number" ? body.expires_in : undefined;
     const refreshed: IntegrationToken = {
       accessToken,
+      connectionVersion: value.connectionVersion,
       refreshToken: text(body.refresh_token) ?? value.refreshToken,
       expiresAt: expiresIn
         ? new Date(Date.now() + expiresIn * 1_000).toISOString()
@@ -313,6 +314,7 @@ export function createOrbitIntegrationService(input: {
               "Connected. Run a read-only health check to verify provider access.";
     return {
       authorizationId: `integration:${provider}`,
+      connectionVersion: providerToken?.connectionVersion,
       provider,
       scopes:
         providerToken?.scopes ?? input.configs[provider]?.scopes ?? [],
@@ -390,6 +392,7 @@ export function createOrbitIntegrationService(input: {
         typeof body.expires_in === "number" ? body.expires_in : undefined;
       const integrationToken: IntegrationToken = {
         accessToken,
+        connectionVersion: randomUUID(),
         refreshToken: text(body.refresh_token),
         expiresAt: expiresIn
           ? new Date(Date.parse(now) + expiresIn * 1_000).toISOString()

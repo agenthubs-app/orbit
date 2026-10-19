@@ -546,6 +546,41 @@ test("expired provider tokens refresh and email signals never expose message bod
   }
 });
 
+test("a new Google authorization rotates the calendar cache connection version", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "integration-reconnect";
+  const userId = "user:integration-reconnect";
+  const vault = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64: randomBytes(32).toString("base64"), store, workspaceId, userId,
+  });
+  const service = createOrbitIntegrationService({
+    oauthStates: createIntegrationOAuthStateStore({ store, workspaceId, userId }), vault,
+    configs: { google_calendar: {
+      authorizationEndpoint: "https://provider.example/authorize",
+      tokenEndpoint: "https://provider.example/token",
+      apiBaseUrl: "https://provider.example/api",
+      clientId: "client", clientSecret: "secret", redirectUri: "https://orbit.example/callback",
+      scopes: ["calendar.events.readonly"],
+    } },
+  });
+  let account = "old";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ access_token: account, token_type: "Bearer" });
+  try {
+    await service.exchangeCode({ provider: "google_calendar", code: "old-code", now: "2026-10-18T00:00:00Z" });
+    const oldVersion = (await service.listAuthorizations())[0]?.connectionVersion;
+    assert.ok(oldVersion);
+    await service.revoke("google_calendar", "2026-10-18T00:01:00Z");
+    account = "new";
+    await service.exchangeCode({ provider: "google_calendar", code: "new-code", now: "2026-10-18T00:02:00Z" });
+    const newVersion = (await service.listAuthorizations())[0]?.connectionVersion;
+    assert.ok(newVersion);
+    assert.notEqual(newVersion, oldVersion);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("calendar replay uses a deterministic provider id derived from the Action idempotency key", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "integration-calendar-idempotency";
