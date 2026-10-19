@@ -1,8 +1,45 @@
 # Sprint R18b-auth-public 收口报告（C 线；未通过总验收）
 
-## 2026-10-20 RD-33 续工记录（最新结论）
+## 2026-10-20 RD-25 复核修复（当前结论）
 
-本节覆盖下方原「收口日期」到「历史执行记录」的旧阶段快照：旧表中「主会话尚未代定」、旧认证 / 落地仍在运行时等描述已经过时。保留旧快照是为了追溯当时证据，当前状态以本节为准。工作树 `line-c`，已拉取复核 `origin/redesign 044c401b7`，该提交仍为本轮 C 提交的祖先；未推送、未连接 Neon / 生产、未部署。开工前未跟踪的 `HANDOFF-CLAUDE-2026-10-19.md` 保持原样。
+开工在 `line-c` 执行 `git pull --rebase origin redesign`，从 `52af0d076` 快进到含独立 [REVIEW](REVIEW.md) 的 `383eb80e2`；每次后续提交前均确认 `origin/redesign` 是当前 HEAD 祖先。只改本 worktree，未推送、未连接 Neon / 生产、未部署；原有未跟踪 `HANDOFF-CLAUDE-2026-10-19.md` 未碰。以下为本轮已核实的增量；下方 RD-33 记录是此前阶段的证据快照。
+
+| RD-25 项 | 本轮结果与提交 | 验证边界 |
+| --- | --- | --- |
+| M1 | `a509632f6`：三语各 32 个新增 `auth.*` 键从 `account.ts` 移至 `auth.ts`；R03 快照改为只选当时 2,253 个键，保留三语同键 / 单域检查；`MaintenanceView` 重试改用 kit `Button`。 | App 字典 3/3；维护组件 3/3。旧按钮全局 ratchet 从 86 降至 **85 / 上限 79，仍 FAIL**，但维护页已不在未迁列表。W-09 两种维护时间态各 6/6 像素回归通过，见下文。 |
+| M2 | `76ec6f67d`：Web 注册自动登录失败时在当前标签页保存一次性、120 秒有效邮箱状态；App 仅在当前进程保存同样状态。登录页取出后即清除；URL 仅带 `created=1` 与规范化的安全 `next`，直接拼入 URL 的 `email` 不再预填。`39688f1c4` 随后删除路由审计中该入口的旧 `email` 期望。 | App 认证 / 路由 / 字典 33/33；Web 认证 / 维护 54/54；已有 Google 回跳与安全 `next` 用例包含在这些定向组。路由审计修订后 101 项中 97 通过、4 跳过、0 失败。未把模拟 OAuth 当作真实授权链。 |
+| m1 | `40fdca360`：按主会话已给的批准，把 `5e26aef60` 的稀疏资料读取修复记为 **R18a 页面复核补修随 R18b 提交**；归属和证据见下方专节及四栏交接。 | 原提交定向 12/12 与已登录设置→公开页返回局部链；不扩写为 R18b 总验收。 |
+| S1 | `784380ba0`：全局强制更新 / 维护拦截明确 **转 D 线**，根壳冷启动与任意受支持深链不可绕过的验收要求见下方专节。 | C 的直达更新页 / 维护页和纯策略测试不能代替 D 根 `app/_layout.tsx` 集成。生产开关继续关闭。 |
+
+### 最终源码验证与逐名基线差分
+
+以 REVIEW 引用的 RD-33 收口全量日志为**同一 C 线最近全量基线**，按失败用例名的多重集比较；完整 `new`、`resolved`、`persisting` 原名分别写在 `/Users/xzhao/orbit-sprint-evidence/redesign/R18b/run-01/app-failure-name-diff-rd25.json` 和同目录 `web-failure-name-diff-rd25.json`，原始日志同目录 `app-full-rd25-final.log`、`web-full-rd25-final.log`。这些 JSON 是逐名差分，不以总数推断归属。
+
+| 端 | RD-33 基线 | 本轮各一次全量 | 逐名差分 |
+| --- | --- | --- | --- |
+| App | 3,252 项 / 29 fail / 0 cancelled / 2 skip | **3,254 项 / 3,240 pass / 12 fail / 0 cancelled / 2 skip，exit 1** | 新增 **0**；旧失败消失 17；持续 12（R12 名片链 9 项、设置迟到回执、人脈合并提示、收件箱筛选选中态）。 |
+| Web | 7,769 项 / 23 fail / 0 cancelled / 545 skip | **7,769 项 / 7,210 pass / 14 fail / 0 cancelled / 545 skip，exit 1**，按要求设 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 并只连本地 `orbit_line_c_test` | 旧失败消失 11；持续 12；新增 **2**，名称和后续处理见下。 |
+
+Web 新增的 `route query parameters come from route-local URL consumers, not transitive get/set calls` 是 M2 去掉 `email` URL 读取后的旧审计断言；`39688f1c4` 只删除该入口的 `email` 期望，整份审计定向 97 pass / 4 skip / 0 fail。另一个新增名 `saved cloud facts drain in bounded batches; daily quota and ignored identities persist across workers` 在全量中 `20 !== 0`，相同本地测试库的独立文件复跑 **3/3 pass**；通知发现源码及该测试文件从 RD-33 基线到本轮没有 C 线修改。并发 / 本机状态导致波动只是推断，交通知归属方复核，**仍按全量失败记录**。本轮遵守两端全量各一次：审计修正后只做定向复验，没有第二次 Web 全量；因此不能声称修正后整树全量已通过或全部新增失败已消失。
+
+最终源码 App `typecheck`、Web `typecheck` / `typecheck:app` / `lint`、`git diff --check` 均 exit 0；Web lint 日志在同一证据目录 `web-type-lint-rd25-final.log`。M1/M2 定向测试先红后绿，Web 新审计断言在全量红后修订并定向通过。全量仍为红灯，SC-16 未通过。
+
+### 像素回归、SC 余项与交接
+
+M1 换按钮后，以本地显式 `maintenance.active=true` 的匿名 live 版本响应分别实拍 `until` 缺失和合法时间两态：W-R18b-09 的 1440 / 1024 / 390 × 浅 / 深 **12/12 PASS**，每张 0 超阈带、0 未归因、0 缺块，raw 最大 **0.0005**；triptych 与摘要在 `/Users/xzhao/orbit-sprint-evidence/redesign/R18b/run-01/rd25-maintenance-button-unknown/`、`rd25-maintenance-button-until/`。这只覆盖维护页按钮回归。认证 W/A-01～05 的既有 FAIL 与单屏三轮上限、A-04 画板缺邮箱字段仍见下文，SC-14 总门禁未通过。
+
+SC-03/04/06 的 M2 隐私回退及安全目标定向通过，真实 Google / 邮件 / 邀请全链仍待集成验收；SC-08 的 R18a 设置页补修按 m1 归属，不扩大本 Sprint 范围；SC-10/12/15 的全局版本拦截与 Web 浮条挂壳等 D 线依赖仍 OPEN；SC-16 的全量及按钮 ratchet 仍红。发布支持邮箱、法务正文、商店地址、真实 OAuth / 邮件及生产开关继续待用户授权。
+
+| 本端版本 | 另一端影响 | 未完成事项 / 下一责任方 | 验证范围 |
+| --- | --- | --- | --- |
+| C `a509632f6`、`76ec6f67d`、`39688f1c4`（RD-25 M1/M2） | Web/App 注册失败回退不再把邮箱放进 URL；安全 `next` 和 Google callback 仍使用原规范化路径；无共享契约字段变化 | 主会话在 Bridge 台账登记；通知归属方调查仅全量复现的 cloud facts drain；共享 UI / 审计归属方继续收 85/79 按钮 ratchet | App 33/33、Web 54/54、审计 97 pass / 4 skip；W-09 12/12 PASS；App 全量 12 fail、Web 全量 14 fail，修订后未重复 Web 全量 |
+| C `784380ba0`（RD-25 S1 请求） | C 的版本响应 / 公共更新页已可供两端消费，深链阻断尚未由根壳保证 | D 线独立提交 App 根全局版本 / 维护门禁与 Web 浮条挂载，核底栏及 Toast；主会话集成后重验 SC-10/12/15 | C 直达页与纯策略证据；未验 D 壳、任意深链全局阻断或正式发布 |
+
+本轮各项按路径单独提交，追加路由审计修复仍只含 M2 的一条断言；`git show --stat HEAD` 已核路径。无可归因的像素豁免未填写，未触 D 壳 / 其他线源文件；自启动的 3400、3420 服务已停，8084 未启动，未停 3000。
+
+## 2026-10-20 RD-33 续工记录（历史基线；以上 RD-25 结论优先）
+
+本节覆盖其下原「收口日期」到「历史执行记录」的更旧阶段快照。它记录 RD-33 当时证据；其中 i18n、按钮和全量数字均早于上方 RD-25 修复，当前状态以 RD-25 节为准。工作树 `line-c` 当时已拉取复核 `origin/redesign 044c401b7`；未推送、未连接 Neon / 生产、未部署。开工前未跟踪的 `HANDOFF-CLAUDE-2026-10-19.md` 保持原样。
 
 ### RD-25 m1：R18a 设置页补修归属
 
