@@ -9,6 +9,7 @@ import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, Event
 import type { EventSearchResponse } from "../../../api/contract/event-search";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
@@ -50,7 +51,10 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
   const [results, setResults] = useState<EventSearchResponse | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
   const [sheet, setSheet] = useState(openFilters);
-  const [draft, setDraft] = useState<EventDiscoverQuery>(initialQuery);
+  // The design-review deep link captures selections in the sheet before they are applied to the results.
+  const [draft, setDraft] = useState<EventDiscoverQuery>((): EventDiscoverQuery => openFilters && addDesignMock("open-path")
+    ? { ...initialQuery, themes: ["funding", "saas"], formats: ["networking"] }
+    : initialQuery);
   const [page, setPage] = useState(0);
   const [whyOpen, setWhyOpen] = useState<string | null>(null);
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
@@ -135,6 +139,12 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
       {data?.popularityFallback ? (
         <>
           <View style={[styles.card, styles.guide]} testID="events-discover-empty">
+            <View pointerEvents="none" style={styles.guideGlow}>
+              <Svg width={220} height={220}>
+                <Defs><RadialGradient id="events-discover-guide-glow" cx={110} cy={110} r={110} gradientUnits="userSpaceOnUse"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
+                <Rect x={0} y={0} width={220} height={220} fill="url(#events-discover-guide-glow)" />
+              </Svg>
+            </View>
             <UiText style={styles.lbl}>{t("noPlanLbl")}</UiText>
             <UiText style={styles.guideTitle}>{`${t("noPlanTitleShort")}\n${t("noPlanTitleRest")}`}</UiText>
             <UiText style={styles.guideSub}>{t("noPlanSubShort")}</UiText>
@@ -397,18 +407,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
   dotOn: { backgroundColor: colors.ink2, width: 18 },
   all: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8 },
-  sheet: { paddingBottom: 8 },
+  sheet: { paddingBottom: 0 },
   sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   fgrp: { gap: 8, marginTop: 12 },
   fchips: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   toggleRow: { justifyContent: "space-between", marginTop: 14 },
   toggleText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
-  showBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 16 },
+  showBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 8 },
   ghostBtn: { alignItems: "center", borderRadius: radius.pill, height: 32, justifyContent: "center", paddingHorizontal: 12 },
   ghostBtnText: { color: colors.ink2, fontSize: 12, fontWeight: "700", lineHeight: 18 },
   btnPrimaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
   btnBlock46: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 46, justifyContent: "center" },
   guide: { marginTop: 14, overflow: "hidden", padding: 20 },
+  guideGlow: { height: 220, opacity: 0.9, position: "absolute", right: -80, top: -90, width: 220 },
   guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 26.6, marginVertical: 4 },
   guideSub: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75, marginBottom: 14 },
   grid3: { flexDirection: "row", gap: 10, marginTop: 14 },
