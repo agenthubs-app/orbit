@@ -62,3 +62,16 @@ test("errors: sign-in required, strict list query, unknown bucket 404, an unread
   assert.equal(failed.status, 503);
   assert.equal((await failed.json()).success, false);
 });
+
+test("an analysis read error logs only a safe category and code", async () => {
+  const privateDetail = "private-contact@example.test";
+  const handlers = createNetworkAnalysisRouteHandlers({ resolveActor: actor, deps: () => deps("few14", { rows: 0, needs: 0 }, { readTotal: async () => { throw new TypeError(privateDetail); } }) });
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => { lines.push(args.join(" ")); };
+  try { assert.equal((await handlers.GET()).status, 503); }
+  finally { console.error = original; }
+  assert.equal(lines.length, 1);
+  assert.deepEqual(JSON.parse(lines[0]!), { event: "network_analysis_read_failed", errorCategory: "TypeError", errorCode: "SERVICE_UNAVAILABLE" });
+  assert.equal(lines[0]!.includes(privateDetail), false);
+});

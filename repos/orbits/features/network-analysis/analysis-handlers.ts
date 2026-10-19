@@ -28,8 +28,8 @@ export async function resolveNetworkAnalysisReadDeps(): Promise<NetworkAnalysisR
 }
 
 function unavailable(error: unknown): Response {
-  if (!(error instanceof AppError)) console.error(JSON.stringify({ event: "network_analysis_read_failed", error: error instanceof Error ? error.message.slice(0, 80) : "unknown" }));
   const safe = error instanceof AppError ? error : new AppError("SERVICE_UNAVAILABLE", "The network analysis is temporarily unavailable.");
+  if (!(error instanceof AppError)) console.error(JSON.stringify({ event: "network_analysis_read_failed", errorCategory: error instanceof TypeError ? "TypeError" : error instanceof Error ? "Error" : "unknown", errorCode: safe.code }));
   return NextResponse.json(failure(safe), { status: getHttpStatusForAppErrorCode(safe.code), headers: HEADERS });
 }
 
