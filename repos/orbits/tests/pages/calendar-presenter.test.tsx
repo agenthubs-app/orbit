@@ -11,6 +11,17 @@ const noop = () => {};
 const base = { date: "2026-10-18", today: "2026-10-18", timeZone: "UTC", mode: "month" as const, internalState: "ready" as const, externalState: "ready" as const, connection: "connected" as const, partial: false, onNavigate: noop, onToday: noop, onModeChange: noop, onDaySelect: noop, onEntrySelect: noop, onAddPersonal: noop, onRetry: noop };
 const days = (mode: "month" | "week" | "day") => calendarDaysView({ date: base.date, mode, timeZone: "UTC", language: "ja", internal: [{ id: "p", sourceId: "p", kind: "personal", category: "personal", title: "Private schedule", state: "upcoming", startsAt: "2026-10-18T09:00:00Z", endsAt: "2026-10-18T10:00:00Z" }], external: [{ id: "g", titlePreview: "Google read-only", startsAt: "2026-10-18", allDay: true }] });
 
+test("calendar date and entry controls render through the kit button system", async t => {
+  let root: ReactTestRenderer;
+  const render = (mode: "month" | "day") => <Orbit2026Scope language="ja"><CalendarPresenter {...base} mode={mode} days={days(mode)} /></Orbit2026Scope>;
+  await act(async () => { root = create(render("month")); });
+  t.after(() => act(() => root.unmount()));
+  const allKitButtons = () => root!.root.findAllByType("button").every(node => String(node.props.className ?? "").split(/\s+/u).includes("btn"));
+  assert.equal(allKitButtons(), true);
+  await act(async () => root!.update(render("day")));
+  assert.equal(allKitButtons(), true);
+});
+
 test("month grid renders natural weeks and real date/mode/entry navigation without fetching", async t => {
   const actions: unknown[] = [];
   t.mock.method(globalThis, "fetch", async () => { throw Error("PRESENTER_MUST_NOT_FETCH"); });

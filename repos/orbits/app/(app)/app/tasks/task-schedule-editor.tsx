@@ -43,7 +43,7 @@ export function TaskScheduleEditor({ task, client, onSaved }: { task: TaskView; 
       {([["plannedDate", "安排日期", "date"], ["dueDate", "截止日期", "date"], ["dueTime", "截止时间", "time"], ["location", "地点", "text"]] as const).map(([field, label, type]) => <label key={field}>{label}<input aria-label={label} type={type} value={draft[field]} disabled={mutation.busy || task.status === "cancelled"} onChange={event => { const value = event.target.value; setDraft(previous => ({ ...previous, [field]: value })); }} /></label>)}
       <button className="btn btn-primary" type="submit" disabled={mutation.busy || stale || clean || task.status === "cancelled"}>保存日期和地点</button>
     </form>
-    {stale ? <div role="alert">事项已更新，草稿已保留。<button type="button" onClick={discard}>放弃日期草稿并载入最新内容</button></div> : null}
+    {stale ? <div role="alert">事项已更新，草稿已保留。<button type="button" className="btn btn-secondary" onClick={discard}>放弃日期草稿并载入最新内容</button></div> : null}
     {validation ? <p role="alert">{validation}</p> : null}<TasksFeedback error={mutation.error} message={mutation.message} />
   </section>;
 }

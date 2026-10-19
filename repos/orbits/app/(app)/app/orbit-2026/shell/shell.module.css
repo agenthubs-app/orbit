@@ -203,6 +203,7 @@
 .demoSlot { display: contents; }
 /* b1 .spill: the sample-mode pill (apricot, 11.5 / 800). */
 .headScope .spill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 9px; border-radius: var(--r-pill); background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: var(--fs-label); font-weight: var(--fw-heavy); line-height: 1.5; white-space: nowrap; }
+.headScope .spill:global(.btn) { height: auto; min-height: 0; border: 0; }
 
 /* b12 .amenu rows (b4 .pop .op), separators, group labels and segmented controls. */
 /* Block flow on purpose: the separators' margins collapse with the segmented controls' as in b12. */

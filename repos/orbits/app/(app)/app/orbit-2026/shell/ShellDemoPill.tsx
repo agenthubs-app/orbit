@@ -22,7 +22,7 @@ export function ShellDemoPill() {
   const completed = demo?.view.completed ?? 0;
   const setCollapsed = demo?.setCollapsed;
   const pill = useMemo(() => (collapsed && setCollapsed ? (
-    <button type="button" data-orbit-guide-demo-pill className={styles.spill}
+    <button type="button" data-orbit-guide-demo-pill className={`btn ${styles.spill}`}
       aria-label={pickCopy(completed === 0 ? shellCopy.demoPillStart : shellCopy.demoPillContinue, language)} onClick={() => setCollapsed(false)}>
       <span aria-hidden>🧪</span>{pickCopy(shellCopy.demoPill, language)}<Icon name="down" size={16} />
     </button>
