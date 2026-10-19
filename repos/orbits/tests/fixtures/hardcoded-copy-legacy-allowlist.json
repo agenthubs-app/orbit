@@ -17,42 +17,6 @@
       "hardcoded": 11,
       "missingJa": 53
     },
-    "app/(app)/app/account/auth-0918/auth-forgot.tsx": {
-      "hardcoded": 0,
-      "missingJa": 9
-    },
-    "app/(app)/app/account/auth-0918/auth-form.tsx": {
-      "hardcoded": 0,
-      "missingJa": 6
-    },
-    "app/(app)/app/account/auth-0918/auth-login.tsx": {
-      "hardcoded": 0,
-      "missingJa": 6
-    },
-    "app/(app)/app/account/auth-0918/auth-modal.tsx": {
-      "hardcoded": 1,
-      "missingJa": 1
-    },
-    "app/(app)/app/account/auth-0918/auth-model.ts": {
-      "hardcoded": 0,
-      "missingJa": 17
-    },
-    "app/(app)/app/account/auth-0918/auth-register.tsx": {
-      "hardcoded": 0,
-      "missingJa": 11
-    },
-    "app/(app)/app/account/auth-0918/auth-reset.tsx": {
-      "hardcoded": 0,
-      "missingJa": 13
-    },
-    "app/(app)/app/account/auth-0918/use-account-auth.ts": {
-      "hardcoded": 0,
-      "missingJa": 3
-    },
-    "app/(app)/app/account/auth-0918/use-password-reset.ts": {
-      "hardcoded": 0,
-      "missingJa": 3
-    },
     "app/(app)/app/account/mobile-google/mobile-google-auth.tsx": {
       "hardcoded": 3,
       "missingJa": 0
@@ -369,10 +333,6 @@
       "hardcoded": 17,
       "missingJa": 0
     },
-    "app/(app)/app/orbit-landing-0918.tsx": {
-      "hardcoded": 19,
-      "missingJa": 145
-    },
     "app/(app)/app/orbit-landing-route-view-model.ts": {
       "hardcoded": 9,
       "missingJa": 0
@@ -384,10 +344,6 @@
     "app/(app)/app/orbit-public-shell.tsx": {
       "hardcoded": 2,
       "missingJa": 36
-    },
-    "app/(app)/app/orbit-real-landing-page.tsx": {
-      "hardcoded": 0,
-      "missingJa": 24
     },
     "app/(app)/app/orbit-reference-primitives.tsx": {
       "hardcoded": 4,

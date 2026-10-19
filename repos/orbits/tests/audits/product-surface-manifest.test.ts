@@ -436,7 +436,7 @@ const SCANNER_CROSS_COMPONENT =
   "scanner false positive across a component boundary; recovery: the scanner resolves it (then delete the entry)";
 const ONBOARDING_PREVIEWS = "repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx";
 const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>([
-  ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
+  ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
   ...["button {t(item.cta)}", "button Scan business cards", "button Register", "button See people worth meeting →", "button Match after setup", "button Continue setup →"]
     .map((trigger) => [`${ONBOARDING_PREVIEWS}#${trigger}`, `${SCANNER_CROSS_COMPONENT}: click delegated to PreviewFrame onClick via data-ob-goto`] as const),
 ]);

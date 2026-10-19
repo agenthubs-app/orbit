@@ -31,7 +31,7 @@ function source(path: string): string {
 }
 
 const MODAL_SHELL_PATH = "app/(app)/app/orbit-account-shell.tsx";
-const ACCOUNT_AUTH_PATH = "app/(app)/app/account/auth-0918/auth-modal.tsx";
+const ACCOUNT_AUTH_PATH = "app/(app)/app/orbit-2026/auth-public/auth-modal.tsx";
 const EVENTS_MODAL_FRAME_PATH = "app/(app)/app/events/events-0918/event-modal-frame.tsx";
 const ADMIN_PATHS = [
   "app/(app)/app/admin/orbit-real-admin-login.tsx",

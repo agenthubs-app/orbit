@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
+import { AuthModal } from "../../app/(app)/app/orbit-2026/auth-public/auth-modal";
 
 // 特征化渲染测试（认证弹窗 任务 1）：锁定 设置新密码 的 hash token 读取（43 位 [A-Za-z0-9_-]）、
 // 不合法 token 的 role=alert 提示、两次密码不一致提示、/api/auth/password-reset/confirm 的

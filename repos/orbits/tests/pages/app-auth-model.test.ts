@@ -9,7 +9,7 @@ import {
   validateEmail,
   validatePassword,
   validateResetPair,
-} from "../../app/(app)/app/account/auth-0918/auth-model";
+} from "../../app/(app)/app/orbit-2026/auth-public/auth-model";
 
 // 认证弹窗 任务 2：auth-model 纯函数（设计 renderVals 496 validEmail / 526–529 校验文案 / 517–520 按钮文案）。
 

@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { OrbitStarfieldHome } from "../app/(app)/app/orbit-starfield-home";
-import { OrbitLanding0918 } from "../app/(app)/app/orbit-landing-0918";
+import { LandingPage } from "../app/(app)/app/orbit-2026/auth-public/LandingPage";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -131,7 +131,7 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.match(pageSource, /redirect\("\/app\/home"\)/);
   assert.match(
     pageSource,
-    /<OrbitLanding0918 authenticated=\{false\} \/>/,
+    /<LandingPage googleEnabled=/,
   );
 
   // `app/page.tsx` now authenticates through Auth.js, so invoking the route
@@ -170,16 +170,15 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   await withUnconfiguredLiveStorage(async () => {
     await assert.doesNotReject(async () => {
       landingHtml = renderToStaticMarkup(
-        <OrbitLanding0918 authenticated={false} />,
+        <LandingPage googleEnabled={false} />,
       );
     });
   });
 
   assert.match(landingHtml, /<main/);
-  assert.match(landingHtml, /data-orbit-real-page="landing-0918"/);
-  assert.match(landingHtml, /href="\/app\/events/);
-  assert.match(landingHtml, /href="\/app\/contacts/);
-  assert.match(landingHtml, /href="\/app\/agent/);
-  assert.match(landingHtml, /href="\/app\/account\/signup\?next=%2Fapp%2Fhome/);
+  assert.match(landingHtml, /data-orbit-2026/);
+  assert.match(landingHtml, /href="\/app\/account\/login"/);
+  assert.match(landingHtml, /href="\/help"/);
+  assert.match(landingHtml, /href="\/app\/account\/signup"/);
   assert.doesNotMatch(landingHtml, /JA:|ZH:|EN:/);
 });

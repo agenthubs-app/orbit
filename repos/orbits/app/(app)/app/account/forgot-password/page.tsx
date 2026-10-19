@@ -9,15 +9,14 @@ import { auth } from "../../../../../auth";
 import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
   loadAppAccountAuthRouteViewModel,
   type AppAccountAuthRouteStateViewModel,
   type AppAccountAuthSearchParams,
 } from "../compose-app-account-auth-from-previously-approved-mock-first-capabilities/account-auth-route-view-model";
-import { OrbitLanding0918 } from "../../orbit-landing-0918";
-import { AuthModal } from "../auth-0918/auth-modal";
+import { LandingPage } from "../../orbit-2026/auth-public/LandingPage";
+import { AuthModal } from "../../orbit-2026/auth-public/auth-modal";
 
 async function getAccountForgotPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -81,11 +80,10 @@ export default async function AppAccountForgotPasswordPage({
 
   return (
     <>
-      <OrbitReferenceStyles />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-forgot-route">
           {/* 认证弹窗 任务 3：落地页在下（未登录态）、找回弹窗在上（设计 394–420）；view model 只取 defaultNext（标题 / 描述 / 按钮文案由弹窗内 t() 给出设计文案）。 */}
-          <OrbitLanding0918 authenticated={false} />
+          <LandingPage googleEnabled={false} />
           <AuthModal
             defaultNext={localizeOrbitTree(routeModel.auth, language).defaultNext}
             view="forgot"

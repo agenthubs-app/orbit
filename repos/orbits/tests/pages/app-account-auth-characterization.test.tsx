@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
+import { AuthModal } from "../../app/(app)/app/orbit-2026/auth-public/auth-modal";
 import { getOrbitAccountAuthViewModel } from "../../app/(app)/app/orbit-account-auth-route-view-model";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
@@ -360,7 +360,7 @@ test("forgot: POST /api/auth/password-reset/request {email} and announce accepta
     assert.equal(request.headers["content-type"], "application/json");
     assert.deepEqual(JSON.parse(String(request.body)), { email: "owner@example.invalid" });
     assert.deepEqual(byRole(renderer, "status"), [
-      "✦ 重置链接已发送请查看 owner@example.invalid 的收件箱。链接 30 分钟内有效。如果该邮箱支持密码恢复，链接会很快送达。",
+      "✦ 申请已受理如果 owner@example.invalid 对应账号，请查看收件箱。链接有效期为 30 分钟。",
     ]);
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.deepEqual(harness.navigation.assigned, []);

@@ -51,7 +51,7 @@ export function AuthEmailField({ session }: { session: AccountAuthSession }) {
   const { t } = useOrbitLanguage();
   return (
     <div className="au-label">
-      <label htmlFor={AUTH_EMAIL_ID}>{t({ en: "Email", zh: "邮箱" })}</label>
+      <label htmlFor={AUTH_EMAIL_ID}>{t({ en: "Email", ja: "メールアドレス", zh: "邮箱" })}</label>
       <input
         autoComplete="email"
         className="au-input"
@@ -79,7 +79,7 @@ export function AuthPasswordField({
   session: AccountAuthSession;
 }) {
   const { t } = useOrbitLanguage();
-  const label = <label htmlFor={AUTH_PASSWORD_ID}>{t({ en: "Password", zh: "密码" })}</label>;
+  const label = <label htmlFor={AUTH_PASSWORD_ID}>{t({ en: "Password", ja: "パスワード", zh: "密码" })}</label>;
   return (
     <div className="au-label">
       {labelExtra ? <span className="au-label-row">{label}{labelExtra}</span> : label}
@@ -97,7 +97,7 @@ export function AuthPasswordField({
           value={session.password}
         />
         <button
-          aria-label={session.showPassword ? t({ en: "Hide password", zh: "隐藏密码" }) : t({ en: "Show password", zh: "显示密码" })}
+          aria-label={session.showPassword ? t({ en: "Hide password", ja: "パスワードを隠す", zh: "隐藏密码" }) : t({ en: "Show password", ja: "パスワードを表示", zh: "显示密码" })}
           aria-pressed={session.showPassword}
           className="btn au-eye"
           onClick={() => session.setShowPassword((current) => !current)}
@@ -145,7 +145,7 @@ export function AuthBackToLogin({ next = "" }: { next?: string }) {
   const { t } = useOrbitLanguage();
   return (
     <p className="au-back">
-      <a className="au-back-link" href={authRoutePath("login", next)}>{t({ en: "← Back to sign in", zh: "← 返回登录" })}</a>
+      <a className="au-back-link" href={authRoutePath("login", next)}>{t({ en: "← Back to sign in", ja: "← ログインに戻る", zh: "← 返回登录" })}</a>
     </p>
   );
 }
@@ -161,7 +161,7 @@ export function AuthGoogleButton({ "aria-label": ariaLabel, onClick }: { "aria-l
         <path d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" fill="#FBBC05" />
         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.97 10.97 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
       </svg>
-      {t({ en: "Continue with Google", zh: "使用 Google 登录" })}
+      {t({ en: "Continue with Google", ja: "Google でログイン", zh: "使用 Google 登录" })}
     </button>
   );
 }

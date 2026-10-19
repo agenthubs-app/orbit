@@ -33,10 +33,10 @@ export function AuthReset() {
     return (
       <div className="au-view">
         <div className="au-head">
-          <h2 className="au-h2" id={titleId}>{t({ en: "Link expired", zh: "链接已失效" })}</h2>
-          <p className="au-sub" role="alert">{t({ en: "This reset link is invalid or has expired. Reset links are only valid for 30 minutes.", zh: "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。" })}</p>
+          <h2 className="au-h2" id={titleId}>{t({ en: "Link expired", ja: "リンクが無効です", zh: "链接已失效" })}</h2>
+          <p className="au-sub" role="alert">{t({ en: "This reset link is invalid or has expired. Reset links are only valid for 30 minutes.", ja: "このリンクは無効か期限切れです。再設定リンクの有効期限は30分です。", zh: "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。" })}</p>
         </div>
-        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a new reset link", zh: "重新申请重置链接" })}</a>
+        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a new reset link", ja: "新しいリンクを申請", zh: "重新申请重置链接" })}</a>
         <AuthBackToLogin />
       </div>
     );
@@ -59,17 +59,17 @@ export function AuthReset() {
   return (
     <div className="au-view">
       <div className="au-head">
-        <h2 className="au-h2" id={titleId}>{session.done ? t({ en: "Password updated", zh: "密码已更新" }) : t({ en: "Set a new password", zh: "设置新密码" })}</h2>
-        <p className="au-sub">{session.done ? t({ en: "Your password has been reset. You can sign in with the new password now.", zh: "你的密码已重置，现在可以用新密码登录。" }) : t({ en: "Choose a new password of at least 8 characters.", zh: "请设置一个至少 8 位的新密码。" })}</p>
-        {session.done ? <p className="au-sub">{t({ en: "Sessions on other devices have been signed out and need to sign in again.", zh: "其他设备上的旧会话已失效，需要重新登录。" })}</p> : null}
+        <h2 className="au-h2" id={titleId}>{session.done ? t({ en: "Password updated", ja: "パスワードを更新しました", zh: "密码已更新" }) : t({ en: "Set a new password", ja: "新しいパスワードを設定", zh: "设置新密码" })}</h2>
+        <p className="au-sub">{session.done ? t({ en: "Your password has been reset. You can sign in with the new password now.", ja: "新しいパスワードでログインできます。", zh: "你的密码已重置，现在可以用新密码登录。" }) : t({ en: "Choose a new password of at least 8 characters.", ja: "8文字以上の新しいパスワードを設定してください。", zh: "请设置一个至少 8 位的新密码。" })}</p>
+        {session.done ? <p className="au-sub">{t({ en: "Sessions on other devices have been signed out and need to sign in again.", ja: "他の端末のセッションは無効になりました。再度ログインしてください。", zh: "其他设备上的旧会话已失效，需要重新登录。" })}</p> : null}
       </div>
       {session.done ? (
-        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("login", "")}>{t({ en: "Sign in with the new password", zh: "用新密码登录" })}</a>
+        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("login", "")}>{t({ en: "Sign in with the new password", ja: "新しいパスワードでログイン", zh: "用新密码登录" })}</a>
       ) : (
         <form className="au-view" noValidate onSubmit={onSubmit}>
           <div className="au-fields">
             <div className="au-label">
-              <label htmlFor={AUTH_NEW_PASSWORD_ID}>{t({ en: "New password", zh: "新密码" })}</label>
+              <label htmlFor={AUTH_NEW_PASSWORD_ID}>{t({ en: "New password", ja: "新しいパスワード", zh: "新密码" })}</label>
               <input
                 autoComplete="new-password"
                 className="au-input"
@@ -77,14 +77,14 @@ export function AuthReset() {
                 maxLength={AUTH_PASSWORD_MAX_LENGTH}
                 minLength={AUTH_PASSWORD_MIN_LENGTH}
                 onChange={(event) => session.setPassword(event.target.value)}
-                placeholder={t({ en: "At least 8 characters", zh: "至少 8 位" })}
+                placeholder={t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })}
                 required
                 type="password"
                 value={session.password}
               />
             </div>
             <div className="au-label">
-              <label htmlFor={AUTH_CONFIRM_PASSWORD_ID}>{t({ en: "Confirm new password", zh: "确认新密码" })}</label>
+              <label htmlFor={AUTH_CONFIRM_PASSWORD_ID}>{t({ en: "Confirm new password", ja: "新しいパスワードを確認", zh: "确认新密码" })}</label>
               <input
                 autoComplete="new-password"
                 className="au-input"
@@ -92,7 +92,7 @@ export function AuthReset() {
                 maxLength={AUTH_PASSWORD_MAX_LENGTH}
                 minLength={AUTH_PASSWORD_MIN_LENGTH}
                 onChange={(event) => session.setConfirmation(event.target.value)}
-                placeholder={t({ en: "Enter it again", zh: "再输入一次" })}
+                placeholder={t({ en: "Enter it again", ja: "もう一度入力", zh: "再输入一次" })}
                 required
                 type="password"
                 value={session.confirmation}

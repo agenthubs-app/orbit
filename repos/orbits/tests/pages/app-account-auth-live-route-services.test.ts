@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import React from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
+import { AuthModal } from "../../app/(app)/app/orbit-2026/auth-public/auth-modal";
 import { getOrbitAccountAuthViewModel } from "../../app/(app)/app/orbit-account-auth-route-view-model";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
@@ -199,7 +199,7 @@ test("/app/account auth pages use the real NextAuth session as their entry guard
   }
   for (const page of ["login", "signup", "forgot-password"]) {
     const pageSource = source(`app/(app)/app/account/${page}/page.tsx`);
-    assert.match(pageSource, /<OrbitLanding0918 authenticated=\{false\} \/>/);
+    assert.match(pageSource, /<LandingPage googleEnabled=/);
     assert.doesNotMatch(pageSource, /OrbitRealAccountAuth/);
   }
 });
@@ -269,9 +269,9 @@ test("account auth loader preserves one canonical safe return path across login 
 // 标记（role="status" / role="alert"）与已删旧结构的否定断言留在 JSX 文件（否定断言两侧都查）。
 // 任务 3：JSX 侧改指 Orbit_0918 屏——错误卡 / created 提示在 auth-form.tsx，找回成功卡在 auth-forgot.tsx；
 // 「受理 ≠ 送达」的文案由 hook（旧 "Request accepted." notice）移到找回屏（设计 401–404 + 补句）。
-const ACCOUNT_AUTH_HOOK_PATH = "app/(app)/app/account/auth-0918/use-account-auth.ts";
-const ACCOUNT_AUTH_FORM_PATH = "app/(app)/app/account/auth-0918/auth-form.tsx";
-const ACCOUNT_AUTH_FORGOT_PATH = "app/(app)/app/account/auth-0918/auth-forgot.tsx";
+const ACCOUNT_AUTH_HOOK_PATH = "app/(app)/app/orbit-2026/auth-public/use-account-auth.ts";
+const ACCOUNT_AUTH_FORM_PATH = "app/(app)/app/orbit-2026/auth-public/auth-form.tsx";
+const ACCOUNT_AUTH_FORGOT_PATH = "app/(app)/app/orbit-2026/auth-public/auth-forgot.tsx";
 
 test("client account auth normalizes the hydrated next query with the shared auth boundary", () => {
   const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
@@ -297,8 +297,8 @@ test("forgot password submits a recovery request and announces acceptance separa
   );
   // 受理只置位（不宣称送达）；送达语义由找回屏成功卡的补句给出。
   assert.match(hookSource, /setResetSent\(true\)/);
-  assert.match(forgotSource, /If this email supports password recovery, the link will arrive shortly\./);
-  assert.match(forgotSource, /如果该邮箱支持密码恢复，链接会很快送达。/);
+  assert.match(forgotSource, /If \$\{session\.email\} has an account/);
+  assert.match(forgotSource, /申請を受け付けました/);
   assert.match(forgotSource, /role="status"/);
   assert.match(formSource, /role="alert"/);
   for (const accountAuthSource of [hookSource, forgotSource, formSource]) {

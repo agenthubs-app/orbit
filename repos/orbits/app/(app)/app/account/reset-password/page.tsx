@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { OrbitLanding0918 } from "../../orbit-landing-0918";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
+import { LandingPage } from "../../orbit-2026/auth-public/LandingPage";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import { AuthModal } from "../auth-0918/auth-modal";
+import { AuthModal } from "../../orbit-2026/auth-public/auth-modal";
 
 export const metadata: Metadata = { title: "重置密码 · Orbit", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
@@ -12,9 +11,8 @@ export const metadata: Metadata = { title: "重置密码 · Orbit", robots: { in
 export default function PasswordResetPage() {
   return (
     <>
-      <OrbitReferenceStyles />
       <div data-orbit-route="app-account-reset-route">
-        <OrbitLanding0918 authenticated={false} />
+        <LandingPage googleEnabled={false} />
         <AuthModal view="reset" />
       </div>
       <OrbitVisualFreezeRuntime />

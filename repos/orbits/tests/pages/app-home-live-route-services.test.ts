@@ -49,13 +49,12 @@ test("app-home-route renders the R07 home placeholder while the iOrbit workspace
 test("web root redirects members and renders the landing only for anonymous visitors", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitLanding0918/);
+  assert.match(pageSource, /LandingPage/);
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /if \(session\?\.user\?\.id\)\s*\{\s*redirect\("\/app\/home"\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
-  assert.match(pageSource, /OrbitReferenceStyles/);
-  assert.match(pageSource, /authenticated=\{false\}/);
+  assert.match(pageSource, /enabledOAuthProviders/);
   assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
   assert.doesNotMatch(pageSource, /OrbitRealHome/);
 });
@@ -72,10 +71,10 @@ test("starfield journey mounts dedicated desktop and mobile trees", () => {
 
 test("landing navigation links to concrete product routes", () => {
   const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
-  const landing = source("app/(app)/app/orbit-landing-0918.tsx");
+  const landing = source("app/(app)/app/orbit-2026/auth-public/LandingPage.tsx");
 
-  assert.match(landing, /<OrbitTopNav/);
-  assert.match(landing, /authenticatedFallback=\{authenticated\}/);
+  assert.match(landing, /href="\/help"/);
+  assert.match(landing, /const signup = "\/app\/account\/signup"/);
   assert.match(shellSource, /href=\{preserveHref\("\/app\/agent"\)\}/);
   assert.match(shellSource, /\["\/events"/);
   assert.match(shellSource, /\["\/contacts"/);
@@ -100,12 +99,12 @@ test("starfield account actions branch only on server-owned authentication", () 
 test("/app mirrors the anonymous landing entry and redirects members", () => {
   const appPageSource = source("app/(app)/app/page.tsx");
 
-  assert.match(appPageSource, /OrbitLanding0918/);
+  assert.match(appPageSource, /LandingPage/);
   assert.match(appPageSource, /await auth\(\)/);
   // Signed-in members are redirected to the personal console; the landing
   // stays the anonymous-only entry.
   assert.match(appPageSource, /redirect\("\/app\/home"\)/);
-  assert.match(appPageSource, /authenticated=\{false\}/);
+  assert.match(appPageSource, /enabledOAuthProviders/);
   assert.doesNotMatch(appPageSource, /loadAppHomeRouteViewModel/);
 });
 

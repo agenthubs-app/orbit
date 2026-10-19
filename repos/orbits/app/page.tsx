@@ -2,10 +2,10 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 
-import { OrbitLanding0918 } from "./(app)/app/orbit-landing-0918";
+import { LandingPage } from "./(app)/app/orbit-2026/auth-public/LandingPage";
 import { OrbitLanguageProvider } from "./(app)/app/orbit-language-context";
 import { resolveRequestOrbitLanguage } from "./(app)/app/orbit-language-core";
-import { OrbitReferenceStyles } from "./(app)/app/orbit-reference-styles";
+import { enabledOAuthProviders } from "../features/auth/oauth-providers";
 import { auth } from "../auth";
 
 // 匿名访客在 `/` 与 `/app` 看到同一落地页；已登录用户进入个人首页。
@@ -27,10 +27,9 @@ export default async function Page() {
 
   return (
     <>
-      <OrbitReferenceStyles />
       <SessionProvider refetchOnWindowFocus={false} session={session}>
         <OrbitLanguageProvider initialLanguage={language}>
-          <OrbitLanding0918 authenticated={false} />
+          <LandingPage googleEnabled={enabledOAuthProviders().includes("google")} />
         </OrbitLanguageProvider>
       </SessionProvider>
     </>

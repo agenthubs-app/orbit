@@ -21,25 +21,26 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
   return (
     <form className="au-view" noValidate onSubmit={onSubmit}>
       <div className="au-head">
-        <h2 className="au-h2" id={authTitleId("login")}>{t({ en: "Welcome back", zh: "欢迎回来" })}</h2>
-        <p className="au-sub">{t({ en: "Sign in to reach your events and your universal business profile.", zh: "登录后进入你的活动和通用商务画像。" })}</p>
+        <h2 className="au-h2" id={authTitleId("login")}>{t({ en: "Sign in", ja: "ログイン", zh: "登录" })}</h2>
+        <p className="au-sub">{t({ en: "Welcome back.", ja: "おかえりなさい。", zh: "欢迎回来。" })}</p>
       </div>
       <AuthNoticeCard notice={session.message} />
+      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Continue with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
         <AuthEmailField session={session} />
         <AuthPasswordField
           autoComplete="current-password"
-          labelExtra={<a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", zh: "忘记密码？" })}</a>}
+          labelExtra={<a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>}
           placeholder="••••••••"
           session={session}
         />
       </div>
       <AuthErrorCard error={error} />
       <AuthPrimaryButton className="au-btn-login" label={label} submitting={session.submitting} />
-      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Continue with Google", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       <p className="au-switch">
-        {t({ en: "No account yet? ", zh: "还没有账号？ " })}
-        <a className="au-switch-link" href={authRoutePath("register", next)}>{t({ en: "Create one", zh: "创建账号" })}</a>
+        {t({ en: "No account yet? ", ja: "アカウントをお持ちでない方は ", zh: "还没有账号？ " })}
+        <a className="au-switch-link" href={authRoutePath("register", next)}>{t({ en: "Sign up", ja: "新規登録", zh: "创建账号" })}</a>
       </p>
     </form>
   );

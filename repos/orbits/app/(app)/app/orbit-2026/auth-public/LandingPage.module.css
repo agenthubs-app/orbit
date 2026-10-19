@@ -1,0 +1,30 @@
+.page { min-height: 100vh; background: var(--bg); }
+.header { height: 78px; padding: 0 40px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 900; white-space: nowrap; }
+.brand strong { font-weight: 900; }
+.logo { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--ink); color: var(--surface); font-weight: 900; }
+.nav { display: flex; gap: 28px; margin: auto; color: var(--ink-2); font-size: 13px; font-weight: 700; }
+.nav a:hover, .account > a:first-child:hover { color: var(--accent-text); }
+.account { display: flex; align-items: center; gap: 40px; white-space: nowrap; color: var(--ink-2); font-size: 13px; font-weight: 700; }
+.primary { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 18px; border-radius: 999px; background: var(--ink); color: var(--surface) !important; font-size: 14px; font-weight: 700; }
+.primary:hover { opacity: .88; }
+.body { max-width: 1164px; margin: auto; padding: 72px 0 100px; }
+.hero { display: grid; grid-template-columns: 1fr 562px; align-items: center; gap: 62px; }
+.copy { min-width: 0; }
+.eyebrow, .sampleLabel { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--plum-100); color: var(--accent-text); font-size: 11px; font-weight: 700; }
+.copy h1 { margin: 16px 0 18px; font-size: 56px; line-height: 1.2; letter-spacing: -.01em; font-weight: 900; }
+.copy > p { max-width: 550px; color: var(--ink-2); font-size: 17px; line-height: 1.8; }
+.ctas { display: flex; gap: 10px; margin-top: 24px; }
+.google { min-height: 40px; padding: 0 18px; border-radius: 999px; background: var(--surface-2) !important; font-size: 14px; font-weight: 700; }
+.copy small { display: block; margin-top: 12px; color: var(--ink-3-text); font-size: 12px; }
+.sample { min-height: 390px; padding: 26px; border-radius: 34px; background: linear-gradient(125deg, var(--plum-100), var(--surface) 70%, var(--mac-apricot)); }
+.sampleLabel { background: transparent; }
+.sampleCard { width: 330px; max-width: 80%; min-height: 60px; margin-top: 18px; padding: 18px 20px; border-radius: 22px; background: var(--surface); font-size: 14px; line-height: 1.65; }
+.sampleCard small { color: var(--ink-2); font-size: 12px; }
+.sampleCard .draft { padding: 2px 9px; border-radius: 999px; background: var(--plum-100); color: var(--accent-text); }
+.sampleOffset { width: 330px; margin-left: auto; }
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 52px; }
+.features article { min-height: 132px; padding: 23px 20px; border-radius: 22px; background: var(--surface); font-size: 14px; line-height: 1.55; }
+.features p { color: var(--ink-2); }
+@media (max-width: 1220px) { .body { padding-inline: 40px; } .hero { grid-template-columns: 1fr 45%; gap: 36px; } }
+@media (max-width: 700px) { .header { height: 66px; padding: 0 20px; } .brand { font-size: 18px; } .logo { width: 32px; height: 32px; } .nav { display: none; } .account { margin-left: auto; gap: 14px; font-size: 12px; } .account .primary { display: none; } .body { padding: 46px 20px 60px; } .hero { display: flex; flex-direction: column; align-items: stretch; gap: 34px; } .copy h1 { font-size: 42px; } .copy > p { font-size: 15px; } .sample { min-height: 340px; padding: 20px; } .sampleCard { width: 80%; } .features { grid-template-columns: 1fr; margin-top: 34px; } .features article { min-height: 100px; } }

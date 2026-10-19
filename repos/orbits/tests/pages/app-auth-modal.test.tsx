@@ -3,9 +3,9 @@ import test from "node:test";
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { chromium } from "playwright";
+import { readFileSync } from "node:fs";
 
-import { AuthModal, AUTH_STYLES, type AuthModalView } from "../../app/(app)/app/account/auth-0918/auth-modal";
+import { AuthModal, type AuthModalView } from "../../app/(app)/app/orbit-2026/auth-public/auth-modal";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
 // 认证弹窗 任务 2：登录 / 注册 弹窗（设计 342–392 行）。SSR 结构 + 行为（本地校验零网络 / 提交走 hook 路径（fetch 层桩
@@ -157,69 +157,31 @@ const NEXT = "/app/contacts/new?eventId=e_1&source=auth";
 
 // ---- SSR 结构 ----
 
-test("login SSR: scope, dialog a11y, ×, wordmark, design copy, fields, forgot link, two btn classes, switch link, no design mock", () => {
+test("redesigned auth dialog has an accessible route-preserving shell", () => {
   const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={["google"]} view="login" />);
-  assert.match(html, /^<div data-orbit-real-page="auth-0918"><style>/u);
-  assert.match(html, /<div class="au-overlay"><div aria-labelledby="au-title-login" aria-modal="true" class="au-panel" role="dialog" tabindex="-1">/u);
-  assert.match(html, /<button aria-label="关闭" class="btn au-close" type="button">×<\/button><span class="au-wordmark">Orbit<\/span>/u);
-  assert.match(html, /<form class="au-view" novalidate="">/u);
-  assert.match(html, /<h2 class="au-h2" id="au-title-login">欢迎回来<\/h2><p class="au-sub">登录后进入你的活动和通用商务画像。<\/p>/u);
-  assert.match(html, /<label for="au-email">邮箱<\/label><input autoComplete="email" class="au-input" id="au-email" inputMode="email" placeholder="you@company.com" required="" type="email" value=""\/>/u);
-  assert.match(html, /<span class="au-label-row"><label for="au-password">密码<\/label><a class="au-forgot" href="\/app\/account\/forgot-password\?next=%2Fapp%2Fhome">忘记密码？<\/a><\/span>/u);
-  assert.match(html, /<input autoComplete="current-password" class="au-input" id="au-password" maxLength="72" minLength="8" placeholder="••••••••" required="" type="password" value=""\/>/u);
-  assert.match(html, /<button aria-label="显示密码" aria-pressed="false" class="btn au-eye" type="button">/u);
-  assert.match(html, /<button class="btn au-btn-login" style="opacity:1" type="submit">登录<\/button>/u);
-  // 审计 P1 `accessible-name-unresolved`：调用点显式传 aria-label（与钮内可见文案同字），
-  // 否则扫描器从调用点解析不出可及名。断言仍然锁死可见文案与类名，并额外锁住两者一致。
-  assert.match(html, /<button aria-label="使用 Google 登录" class="btn au-google" type="button">.*使用 Google 登录<\/button>/u);
-  assert.match(html, /<p class="au-switch">还没有账号？ <a class="au-switch-link" href="\/app\/account\/signup\?next=%2Fapp%2Fhome">创建账号<\/a><\/p>/u);
-  const body = html.slice(html.indexOf("</style>"));
-  assert.doesNotMatch(body, /role="alert"|role="status"|au-notice|taken@orbit\.app|failfail|演示/u);
-  assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
+  assert.match(html, /data-orbit-2026/);
+  assert.match(html, /aria-labelledby="au-title-login" aria-modal="true"/);
+  assert.match(html, /href="\/app\/account\/forgot-password\?next=%2Fapp%2Fhome"/);
+  assert.match(html, /href="\/app\/account\/signup\?next=%2Fapp%2Fhome"/);
+  assert.match(html, /au-google/);
+  assert.match(html, /au-divider/);
+  assert.doesNotMatch(html, /data-orbit-real-page="auth-0918"/);
 });
 
-test("register SSR: legal links open public pages without replacing the typed registration form", () => {
-  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={[]} view="register" />);
-  assert.match(html, /aria-labelledby="au-title-register"/u);
-  assert.match(html, /<h2 class="au-h2" id="au-title-register">创建账号<\/h2><p class="au-sub">从零散的联系人，到对的关系。<\/p>/u);
-  assert.match(html, /<label for="au-password">密码<\/label><span class="au-field-wrap"><input autoComplete="new-password" class="au-input" id="au-password" maxLength="72" minLength="8" placeholder="至少 8 位" required="" type="password" value=""\/>/u);
-  assert.match(html, /<button class="btn au-btn-primary" style="opacity:1" type="submit">创建账号<\/button>/u);
-  assert.match(html, /<p class="au-terms">注册即表示同意 <a class="au-terms-link" href="\/terms" rel="noopener noreferrer" target="_blank">服务条款<\/a> 与 <a class="au-terms-link" href="\/privacy" rel="noopener noreferrer" target="_blank">隐私政策<\/a>。<\/p>/u);
-  assert.match(html, /<p class="au-switch">已有账号？ <a class="au-switch-link" href="\/app\/account\/login\?next=%2Fapp%2Fhome">直接登录<\/a><\/p>/u);
-  const body = html.slice(html.indexOf("</style>"));
-  assert.doesNotMatch(body, /au-google|au-forgot|au-label-row|taken@orbit\.app|failfail/u);
-  assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
+test("registration keeps legal links in separate tabs and the typed form in place", () => {
+  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="register" />);
+  assert.match(html, /href="\/terms" rel="noopener noreferrer" target="_blank"/);
+  assert.match(html, /href="\/privacy" rel="noopener noreferrer" target="_blank"/);
+  assert.match(html, /id="au-email"/);
+  assert.match(html, /id="au-password"/);
 });
 
-test("register legal links keep their designed colour on hover", async () => {
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const page = await browser.newPage();
-    await page.setContent('<div data-orbit-real-page="auth-0918"><a class="au-terms-link" href="/terms">Terms</a></div>');
-    await page.addStyleTag({ content: AUTH_STYLES });
-    const link = page.locator(".au-terms-link");
-    assert.equal(await link.evaluate((element) => getComputedStyle(element).color), "rgb(107, 111, 153)");
-    await link.hover();
-    assert.equal(await link.evaluate((element) => getComputedStyle(element).color), "rgb(107, 111, 153)");
-  } finally {
-    await browser.close();
-  }
-});
-
-test("AUTH_STYLES: scoped to auth-0918, design declarations verbatim, .btn neutralisation incl. [disabled] (审阅修订 6/7)", () => {
-  for (const line of AUTH_STYLES.split("\n").filter((entry) => entry.trim() && !entry.trim().startsWith("/*") && !entry.trim().startsWith("`"))) {
-    assert.ok(line.startsWith('[data-orbit-real-page="auth-0918"]') || line.startsWith("  "), `unscoped rule: ${line}`);
-  }
-  assert.match(AUTH_STYLES, /\.au-overlay \{ position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba\(14,18,37,0\.45\); backdrop-filter: blur\(6px\); \}/u);
-  assert.match(AUTH_STYLES, /\.au-panel \{ position: relative; width: 100%; max-width: 440px; max-height: calc\(100vh - 48px\); overflow: auto; background: #FFFFFF; border-radius: 24px; padding: 40px; box-shadow: 0 30px 80px rgba\(14,18,37,0\.3\); display: flex; flex-direction: column; gap: 24px; \}/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-close \{ position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #F7F7FD; color: #6B6F99; font-size: 18px; line-height: 1; cursor: pointer; font-family: inherit;/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-login \{ display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; border: 0; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit;/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-primary \{ padding: 16px; border: 0; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit;/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-login\[disabled\], \[data-orbit-real-page="auth-0918"\] \.btn\.au-btn-primary\[disabled\] \{ background: #0E1225; color: #FFFFFF; cursor: pointer; box-shadow: none; \}/u);
-  assert.match(AUTH_STYLES, /\.au-input:focus \{ border-color: #4B4FC7; background: #FFFFFF; \}/u);
-  for (const cls of ["au-close", "au-eye", "au-btn-login", "au-btn-primary", "au-google"]) {
-    assert.match(AUTH_STYLES, new RegExp(`\\.btn\\.${cls}:active \\{ transform: none; \\}`, "u"), `${cls} :active neutralised`);
-  }
+test("redesigned auth CSS uses shared theme tokens for light and dark", () => {
+  const css = readFileSync(new URL("../../app/(app)/app/orbit-2026/auth-public/AuthDialog.module.css", import.meta.url), "utf8");
+  assert.match(css, /var\(--surface\)/);
+  assert.match(css, /var\(--ink\)/);
+  assert.match(css, /var\(--z-modal\)/);
+  assert.doesNotMatch(css, /#0E1225|#FFFFFF/);
 });
 
 // ---- 行为 ----
@@ -413,13 +375,12 @@ async function fillReset(renderer: ReactTestRenderer, password: string, confirma
 
 // ---- SSR 结构 ----
 
-test("forgot SSR: design head, single email field directly under the form (gap 24), au-btn-primary, 30-minute hint, ← 返回登录 with next; no password/eye/google/status", () => {
-  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" oauthProviders={["google"]} view="forgot" />);
-  assert.match(html, /aria-labelledby="au-title-forgot"/u);
-  assert.match(html, /<div class="au-view"><div class="au-head"><h2 class="au-h2" id="au-title-forgot">重置密码<\/h2><p class="au-sub">输入注册邮箱，我们会发送一条重置链接。<\/p><\/div><form class="au-view" novalidate=""><div class="au-label"><label for="au-email">邮箱<\/label><input autoComplete="email" class="au-input" id="au-email" inputMode="email" placeholder="you@company.com" required="" type="email" value=""\/><\/div><button class="btn au-btn-primary" style="opacity:1" type="submit">申请重置链接<\/button><span class="au-hint">重置链接有效期 30 分钟。<\/span><\/form><p class="au-back"><a class="au-back-link" href="\/app\/account\/login\?next=%2Fapp%2Fhome">← 返回登录<\/a><\/p><\/div>/u);
-  const body = html.slice(html.indexOf("</style>"));
-  assert.doesNotMatch(body, /au-password|au-eye|au-google|au-fields|role="alert"|role="status"|au-success|重新申请|taken@orbit\.app|failfail|演示/u);
-  assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
+test("forgot SSR exposes a recoverable request form without account enumeration", () => {
+  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="forgot" />);
+  assert.match(html, /aria-labelledby="au-title-forgot"/);
+  assert.match(html, /href="\/app\/account\/login\?next=%2Fapp%2Fhome"/);
+  assert.match(html, /id="au-email"/);
+  assert.doesNotMatch(html, /id="au-password"|au-google|role="status"/);
 });
 
 test("reset SSR (审阅修订 11): tokenValid branch first with the submit disabled until ready; invalid branch never in the server markup", () => {
@@ -432,18 +393,6 @@ test("reset SSR (审阅修订 11): tokenValid branch first with the submit disab
   const body = html.slice(html.indexOf("</style>"));
   assert.doesNotMatch(body, /链接已失效|重新申请重置链接|密码已更新|用新密码登录|au-eye|au-google|role="alert"|role="status"|failfail|演示/u);
   assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
-});
-
-test("AUTH_STYLES (任务 3): success card 401, hint 415, back row 418 verbatim; primary :hover carries only the design background; link-shaped primary neutralised", () => {
-  assert.match(AUTH_STYLES, /\.au-success \{ display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 12px; background: #ECEEFB; color: #2E3270; font-size: 14px; line-height: 1\.6; \}/u);
-  assert.match(AUTH_STYLES, /\.au-success-title \{ font-size: 15px; \}/u);
-  assert.match(AUTH_STYLES, /\.au-hint \{ text-align: center; font-size: 13px; color: #8A8DB0; \}/u);
-  assert.match(AUTH_STYLES, /\.au-back \{ margin: 0; text-align: center; font-size: 14px; \}/u);
-  assert.match(AUTH_STYLES, /\.au-back-link \{ color: #3B3F7A; border-bottom: 1px solid #B9BCEB; \}/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-login:hover \{ background: #2E3270; \}/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-primary:hover \{ background: #2E3270; \}/u);
-  assert.match(AUTH_STYLES, /\.btn\.au-btn-link:active \{ transform: none; \}/u);
-  assert.doesNotMatch(AUTH_STYLES, /\] button \{ font-family: inherit; \}/u, "redundant button{font-family:inherit} rule dropped (每个 .btn.au-* 已自带)");
 });
 
 // ---- 找回 ----
@@ -465,7 +414,7 @@ test("forgot: POST /api/auth/password-reset/request {email} → success card rep
     assert.equal(hasForm(renderer), false);
     const card = renderer.root.find((node) => node.type === "div" && node.props.className === "au-success");
     assert.equal(card.props.role, "status");
-    assert.equal(textOf(card as never), "✦ 重置链接已发送请查看 owner@example.invalid 的收件箱。链接 30 分钟内有效。如果该邮箱支持密码恢复，链接会很快送达。");
+    assert.equal(textOf(card as never), "✦ 申请已受理如果 owner@example.invalid 对应账号，请查看收件箱。链接有效期为 30 分钟。");
     assert.deepEqual(alerts(renderer), []);
     // 审阅修订 10：成功卡下「未收到？可在一分钟后 重新申请」；「← 返回登录」带 next。
     const resend = renderer.root.find((node) => node.type === "a" && node.children.includes("重新申请"));

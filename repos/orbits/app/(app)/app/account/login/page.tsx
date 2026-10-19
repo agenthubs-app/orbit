@@ -9,7 +9,6 @@ import { auth } from "../../../../../auth";
 import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-auth-routing";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { enabledOAuthProviders } from "../../../../../features/auth/oauth-providers";
 import {
@@ -17,8 +16,8 @@ import {
   type AppAccountAuthRouteStateViewModel,
   type AppAccountAuthSearchParams,
 } from "../compose-app-account-auth-from-previously-approved-mock-first-capabilities/account-auth-route-view-model";
-import { OrbitLanding0918 } from "../../orbit-landing-0918";
-import { AuthModal } from "../auth-0918/auth-modal";
+import { LandingPage } from "../../orbit-2026/auth-public/LandingPage";
+import { AuthModal } from "../../orbit-2026/auth-public/auth-modal";
 
 async function getAccountLoginPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -82,11 +81,10 @@ export default async function AppAccountLoginPage({
 
   return (
     <>
-      <OrbitReferenceStyles />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-login-route">
           {/* 认证弹窗 任务 2：落地页在下（未登录态）、弹窗在上（设计 342–346）；view model 只取 defaultNext（标题 / 描述 / 按钮文案改由弹窗内 t() 给出设计文案）。 */}
-          <OrbitLanding0918 authenticated={false} />
+          <LandingPage googleEnabled={enabledOAuthProviders().includes("google")} />
           <AuthModal
             defaultNext={localizeOrbitTree(routeModel.auth, language).defaultNext}
             oauthProviders={enabledOAuthProviders()}

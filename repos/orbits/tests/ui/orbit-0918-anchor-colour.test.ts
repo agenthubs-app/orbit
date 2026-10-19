@@ -67,14 +67,6 @@ const DOMAINS: Domain[] = [
     extraCss: [COMMUNITY_CARD_STYLES],
   },
   {
-    name: "auth",
-    dir: "account/auth-0918",
-    prefix: "au-",
-    stylesFile: "app/(app)/app/account/auth-0918/auth-modal.tsx",
-    stylesExport: "AUTH_STYLES",
-    scope: "auth-0918",
-  },
-  {
     name: "iorbit",
     dir: "agent/iorbit-0918",
     prefix: "ir-",
@@ -246,7 +238,7 @@ test("every *-0918 <a> keeps its own colour against the scope's a:hover", () => 
   // 扫描面自检：六域加起来的链接数量不该悄悄塌掉。R25：「我的计划」屏（iorbit-plan.tsx）随 v1 计划界面删除，
   // 原来盯住的计划页链接行（.ir-p-person / .ir-p-ev-t）没有了，那段自检随之删除。
   // R11b：人脈分析的旧标签页（network-analysis / overview / opportunities / insights 等 0918 屏）整屏删除，链接随之减少。
-  assert.ok(scanned >= 40, `expected the six domains' anchors, found ${scanned}`);
+  assert.ok(scanned >= 20, `expected the remaining legacy domains' anchors, found ${scanned}`);
   assert.deepEqual(
     uncovered,
     [],

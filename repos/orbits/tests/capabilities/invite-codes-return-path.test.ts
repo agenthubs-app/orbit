@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { normalizeProfileAuthReturnPath, profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
-import { productHref } from "../../app/(app)/app/account/auth-0918/use-account-auth";
+import { productHref } from "../../app/(app)/app/orbit-2026/auth-public/use-account-auth";
 import { normalizeOrbitAuthReturnPath } from "../../features/auth/app-auth-routing";
 
 // R15（DESIGN add-and-invite §2.5 第 2 步、SC-R15-08）：注册 / 登录回跳只多放行完全匹配的 `/i` 与 `/i/<码>`；

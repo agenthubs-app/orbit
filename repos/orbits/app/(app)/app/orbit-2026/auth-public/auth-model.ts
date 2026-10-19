@@ -18,19 +18,20 @@ const DESIGN_EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export const AUTH_ERROR_COPY = {
   /** 设计 527：注册 409。 */
-  emailTaken: { en: "This email is already registered. Please sign in instead.", zh: "该邮箱已注册，请直接登录。" },
+  emailTaken: { en: "This email is already registered. Please sign in instead.", ja: "このメールアドレスは登録済みです。ログインしてください。", zh: "该邮箱已注册，请直接登录。" },
   /** 设计 526：邮箱格式。 */
-  invalidEmail: { en: "Please enter a valid email address.", zh: "请输入有效的邮箱地址。" },
+  invalidEmail: { en: "Please enter a valid email address.", ja: "有効なメールアドレスを入力してください。", zh: "请输入有效的邮箱地址。" },
   /** 设计 526：登录失败。 */
-  loginFailed: { en: "Email or password is incorrect. Please try again.", zh: "邮箱或密码不正确，请重试。" },
+  loginFailed: { en: "Email or password is incorrect. Please try again.", ja: "メールアドレスまたはパスワードが正しくありません。", zh: "邮箱或密码不正确，请重试。" },
   /** 设计 529：两次不一致。 */
-  passwordMismatch: { en: "The two passwords do not match.", zh: "两次输入的密码不一致。" },
+  passwordMismatch: { en: "The two passwords do not match.", ja: "パスワードが一致しません。", zh: "两次输入的密码不一致。" },
   /** 设计 526：密码 8 位。 */
-  passwordTooShort: { en: "Password must be at least 8 characters.", zh: "密码至少 8 位。" },
+  passwordTooShort: { en: "Password must be at least 8 characters.", ja: "8文字以上で入力してください。", zh: "密码至少 8 位。" },
+  passwordTooLong: { en: "Use no more than 72 UTF-8 bytes.", ja: "72 UTF-8 バイト以内で入力してください。", zh: "密码不能超过 72 个 UTF-8 字节。" },
   /** 设计 529：重置失败回退。 */
-  resetFailed: { en: "Reset failed. Please try again later.", zh: "重置失败，请稍后重试。" },
+  resetFailed: { en: "Reset failed. Please try again later.", ja: "再設定できませんでした。しばらくしてからお試しください。", zh: "重置失败，请稍后重试。" },
   /** 设计 529：新密码 8 位。 */
-  resetTooShort: { en: "New password must be at least 8 characters.", zh: "新密码至少 8 位。" },
+  resetTooShort: { en: "New password must be at least 8 characters.", ja: "新しいパスワードは8文字以上で入力してください。", zh: "新密码至少 8 位。" },
 } as const satisfies Record<string, AuthCopy>;
 
 export const AUTH_PASSWORD_MIN_LENGTH = 8;
@@ -40,12 +41,15 @@ export function validateEmail(value: string): AuthCopy | null {
 }
 
 export function validatePassword(value: string): AuthCopy | null {
-  return value.length < AUTH_PASSWORD_MIN_LENGTH ? AUTH_ERROR_COPY.passwordTooShort : null;
+  if (value.length < AUTH_PASSWORD_MIN_LENGTH) return AUTH_ERROR_COPY.passwordTooShort;
+  if (new TextEncoder().encode(value).byteLength > 72) return AUTH_ERROR_COPY.passwordTooLong;
+  return null;
 }
 
 /** 设计 529：先长度、后一致性。 */
 export function validateResetPair(password: string, confirmation: string): AuthCopy | null {
   if (password.length < AUTH_PASSWORD_MIN_LENGTH) return AUTH_ERROR_COPY.resetTooShort;
+  if (new TextEncoder().encode(password).byteLength > 72) return AUTH_ERROR_COPY.passwordTooLong;
   if (password !== confirmation) return AUTH_ERROR_COPY.passwordMismatch;
   return null;
 }
@@ -60,22 +64,22 @@ export interface AuthButtonLabels {
 /** 设计 517–520。 */
 export const AUTH_BUTTON_LABELS: Record<AuthView, AuthButtonLabels> = {
   forgot: {
-    idle: { en: "Request reset link", zh: "申请重置链接" },
-    loading: { en: "Sending…", zh: "发送中…" },
+    idle: { en: "Request reset link", ja: "再設定リンクを申請", zh: "申请重置链接" },
+    loading: { en: "Sending…", ja: "申請中…", zh: "发送中…" },
   },
   login: {
-    idle: { en: "Sign in", zh: "登录" },
-    loading: { en: "Signing in…", zh: "登录中…" },
-    success: { en: "✓ Signed in", zh: "✓ 已登录" },
+    idle: { en: "Sign in", ja: "ログイン", zh: "登录" },
+    loading: { en: "Signing in…", ja: "ログイン中…", zh: "登录中…" },
+    success: { en: "✓ Signed in", ja: "✓ ログインしました", zh: "✓ 已登录" },
   },
   register: {
-    idle: { en: "Create account", zh: "创建账号" },
-    loading: { en: "Creating…", zh: "创建中…" },
-    success: { en: "✓ Account created", zh: "✓ 账号已创建" },
+    idle: { en: "Create account", ja: "登録する", zh: "创建账号" },
+    loading: { en: "Creating…", ja: "登録中…", zh: "创建中…" },
+    success: { en: "✓ Account created", ja: "✓ 登録しました", zh: "✓ 账号已创建" },
   },
   reset: {
-    idle: { en: "Set new password", zh: "设置新密码" },
-    loading: { en: "Saving…", zh: "保存中…" },
+    idle: { en: "Set new password", ja: "新しいパスワードを設定", zh: "设置新密码" },
+    loading: { en: "Saving…", ja: "保存中…", zh: "保存中…" },
   },
 };
 

@@ -30,18 +30,17 @@ export function AuthForgot({ defaultNext }: { defaultNext: string }) {
   return (
     <div className="au-view">
       <div className="au-head">
-        <h2 className="au-h2" id={authTitleId("forgot")}>{t({ en: "Reset password", zh: "重置密码" })}</h2>
-        <p className="au-sub">{t({ en: "Enter your account email and we will send a reset link.", zh: "输入注册邮箱，我们会发送一条重置链接。" })}</p>
+        <h2 className="au-h2" id={authTitleId("forgot")}>{t({ en: "Reset password", ja: "パスワードを再設定", zh: "重置密码" })}</h2>
+        <p className="au-sub">{t({ en: "Enter your email to request a reset link.", ja: "メールアドレスを入力して、再設定リンクを申請してください。", zh: "输入邮箱以申请重置链接。" })}</p>
       </div>
       {sent ? (
         <>
           <div className="au-success" role="status">
-            <strong className="au-success-title">{t({ en: "✦ Reset link sent", zh: "✦ 重置链接已发送" })}</strong>
-            <span>{t({ en: `Check the inbox of ${session.email}. The link is valid for 30 minutes.`, zh: `请查看 ${session.email} 的收件箱。链接 30 分钟内有效。` })}</span>
-            <span>{t({ en: "If this email supports password recovery, the link will arrive shortly.", zh: "如果该邮箱支持密码恢复，链接会很快送达。" })}</span>
+            <strong className="au-success-title">{t({ en: "✦ Request accepted", ja: "✦ 申請を受け付けました", zh: "✦ 申请已受理" })}</strong>
+            <span>{t({ en: `If ${session.email} has an account, check its inbox. A link is valid for 30 minutes after delivery.`, ja: `${session.email} にアカウントがある場合は、受信箱をご確認ください。リンクの有効期限は30分です。`, zh: `如果 ${session.email} 对应账号，请查看收件箱。链接有效期为 30 分钟。` })}</span>
           </div>
           <p className="au-back">
-            {t({ en: "Didn't get it? You can ", zh: "未收到？可在一分钟后 " })}
+            {t({ en: "Need another link? ", ja: "リンクが必要ですか？ ", zh: "需要新链接？" })}
             <a
               className="au-back-link"
               href={authRoutePath("forgot", next)}
@@ -50,9 +49,8 @@ export function AuthForgot({ defaultNext }: { defaultNext: string }) {
                 setDismissed(true);
               }}
             >
-              {t({ en: "request again", zh: "重新申请" })}
+              {t({ en: "Request again", ja: "再申請", zh: "重新申请" })}
             </a>
-            {t({ en: " after a minute.", zh: "" })}
           </p>
         </>
       ) : (
@@ -60,7 +58,7 @@ export function AuthForgot({ defaultNext }: { defaultNext: string }) {
           <AuthEmailField session={session} />
           <AuthErrorCard error={error} />
           <AuthPrimaryButton className="au-btn-primary" label={label} submitting={session.submitting} />
-          <span className="au-hint">{t({ en: "Reset links are valid for 30 minutes.", zh: "重置链接有效期 30 分钟。" })}</span>
+          <span className="au-hint">{t({ en: "Reset links are valid for 30 minutes.", ja: "再設定リンクの有効期限は30分です。", zh: "重置链接有效期为 30 分钟。" })}</span>
         </form>
       )}
       <AuthBackToLogin next={next} />

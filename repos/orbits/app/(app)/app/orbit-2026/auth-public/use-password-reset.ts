@@ -49,7 +49,7 @@ export function usePasswordReset(): PasswordResetSession {
     if (sending.current || done) return;
     setError("");
     if (password !== confirmation) {
-      setError(t({ zh: "两次输入的密码不一致。", en: "The passwords do not match." }));
+      setError(t({ zh: "两次输入的密码不一致。", ja: "パスワードが一致しません。", en: "The passwords do not match." }));
       return;
     }
     sending.current = true;
@@ -61,7 +61,7 @@ export function usePasswordReset(): PasswordResetSession {
       });
       const body = await response.json().catch(() => null) as { success?: boolean; error?: { message?: string } } | null;
       if (!response.ok || !body?.success) {
-        setError(body?.error?.message ?? t({ zh: "重置失败，请稍后重试。", en: "Password reset failed. Please try again." }));
+        setError(body?.error?.message ?? t({ zh: "重置失败，请稍后重试。", ja: "再設定できませんでした。もう一度お試しください。", en: "Password reset failed. Please try again." }));
         return;
       }
       token.current = "";
@@ -70,7 +70,7 @@ export function usePasswordReset(): PasswordResetSession {
       setConfirmation("");
       setDone(true);
     } catch {
-      setError(t({ zh: "网络异常，请重试；如果链接已使用，请尝试用新密码登录。", en: "Connection failed. Retry, or try signing in with the new password if the link has already been used." }));
+      setError(t({ zh: "网络异常，请重试；如果链接已使用，请尝试用新密码登录。", ja: "通信エラーです。再試行するか、新しいパスワードでログインしてください。", en: "Connection failed. Retry, or try signing in with the new password if the link has already been used." }));
     } finally {
       sending.current = false;
       setBusy(false);
