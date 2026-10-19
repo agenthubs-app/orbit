@@ -5,6 +5,7 @@
 - 2026-10-19 在 `line-b` 先拉取 `origin/redesign`，起点 `ee87af742`；R13、R18a、R31a/b 的已交代码均可读取。后续按路径提交后再次 `git pull --rebase origin redesign`，已合到 `ec83ac5a0`；收口修复后再次拉取，分支仍为最新。**没有 push、Neon/生产连接、部署或 TestFlight。**
 - 本轮复用 `orbit_records` 已有集合；**新增数据库迁移编号：无**。本机 PostgreSQL 仅为 `127.0.0.1/orbit_line_b`。没有真实付费 AI 调用。
 - R13 REVIEW 的 M 项先修并分别提交：外人原始 owner 过滤、混合 `mail_summary` 整行过滤、Top-1 全局原始候选排序、账号时区分组；其 REPORT 已写复核记录。R13 像素及离线首页项依 README 规则 11 交主会话，没有宣称通过。
+- 10 月 19 日重启后确认工作树干净，再次 `git fetch` 和 `git pull --rebase origin redesign`，结果为 up to date。本轮补交的 R13 跨账号秘書预览过滤和 R11b 四项复核各有独立提交；没有重做已完成的全量。
 - 证据目录：`../_evidence-b/R14/run-01/`（相对本 worktree）。
 
 ## SC 对照
@@ -17,15 +18,15 @@
 | 04 7:50 合并 | **部分** | 默认静音、提前/延后结束、同日 digest key、私密正文、合并件数与每设备幂等；数据库并发守卫与失败回执定向测试通过。持有候选的偏好 revision 变化会重新延后重判，未发送的拒绝预留释放配额。候选扫描达 500 条或来源读取失败时使用不报数的私密正文；未做真实多 worker 重启链及系统锁屏截图。 |
 | 05 面談例外 | **定向通过** | 仅当前已确认预约聚合体的 30 分钟提醒越过静音，仍走共享配额；取消/过期/他人不例外。 |
 | 06 邀请双方 | **定向通过** | 邀请人、受邀人各自产生本人联系人通知，同一连接幂等；本机 PostgreSQL 目标归属测试通过。 |
-| 07 落地白名单 | **部分** | 本地联系人/扫描/Task To-do 合法地址开放；保留段、穿越、编码斜杠、外链和多余查询安全回退；冷启动未登录远程 delivery 进入受保护收件箱，由服务端再验 owner。模拟器 `openurl` 手动证据未取得：Metro 经 `heavy.sh b` 排队后，内置盘不足脚本的 5 GiB 门槛，未启动服务；已终止排队并关闭 B 模拟器。 |
-| 08 App 通知页 | **功能定向通过，像素待板** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。b5 #13 未改稿，浅色门禁不能通过；真机操作截图待补。 |
+| 07 落地白名单 | **部分** | 本地联系人/扫描/Task To-do 合法地址开放；保留段、穿越、编码斜杠、外链和多余查询安全回退；冷启动未登录远程 delivery 进入受保护收件箱，由服务端再验 owner。重启后模拟器 `openurl orbit:///task?seg=todo` 实际进入 To-do，截图可查；本机 API 未运行，Task 数据为重试态。系统通知点击与远程 delivery 未做手工链。 |
+| 08 App 通知页 | **功能定向通过，像素待板** | 静态私有路由、R31 控件、真实偏好 CAS、系统权限与 opt-in/设备撤销；拒绝态可打开系统设置，离线交给已有在线边界。模拟器深链打开后仅呈现离线边界，未看到设置表单。b5 #13 未改稿，浅色门禁不能通过；在线操作截图待补。 |
 | 09 Web 通知页 | **功能定向通过，像素待板** | 静态受保护路由、账号设置壳、真实偏好保存、三语 copy、响应式双列/单列。未实现浏览器 push 伪开关。b5 #29 未改稿，1440 门禁不能通过；1024/390/dark 无板截图待补。 |
-| 10 秘書设置 | **功能定向通过，像素待板** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。b11 #32 未改稿，门禁待板。 |
+| 10 秘書设置 | **功能定向通过，像素待板** | App 静态子页仅提供 R13 已交期限/推荐来源开关，邮件摘要不可见，全局 cap 只读且静音返回同一源。模拟器深链只呈现离线边界，未看到设置表单；b11 #32 未改稿，门禁待板。 |
 | 11 注册/权限/旧屏 | **定向通过** | App OS 拒绝时不显示生效的 opt-in；关闭先禁止注册再撤销设备，撤销失败可见；账号切换隔离，旧组件的外部使用点保留并改用 R31。R18a 其他动态段仍在；真实设备 token 注册未实测。 |
 | 12 R13/R10/R19 交接 | **部分** | R13 来源、宽进逐条跳过、账号时区分组已回归；未改同步 DTO。活动维护任务站内提前截断归事件线；R10/R19 只应消费站内通知，见请求 1/2。 |
-| 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 缺失使既有发现开关浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。 |
+| 13 异常/无障碍 | **部分** | 401/503/409、无 token、未知回执、源撤销、OS 拒绝、午夜/DST 定向测试；控件带可读 label/alert。R31 `Toggle` 的 RN Web `aria-checked` 和 `CategoryTabs` 的 `aria-selected` 缺失使浏览器用例失败；A 线组件修复与 VoiceOver/键盘、异常态真实截图待补。 |
 | 14 演示世界/i18n | **部分** | mock 偏好改为 07:30/3/mail=false，样本来源仅真实可用种类；App 通知域 copy QA 39/39、Web 通知域零问题，App 三语键一致、硬编码允许清单缩减。中途态 `design=` 与生产不可达证明依赖改稿画板/fixture，未实现。 |
-| 15 全量/像素 | **未通过** | 两端类型检查为 0；全量分别有 18 个失败，R14 新增的 B 线失败已定向修复，剩余新增项为 A 线 `Toggle` 浏览器语义；完整套件/原板预检结果见下。主会话尚未交 b5/b11 改稿，按 README 规则 11，不能建立 R14 的像素 PASS 或归因。 |
+| 15 全量/像素 | **未通过** | 修复后 Web 全量 15 失败、App 全量 38 失败；App 多项浏览器超时在定向重跑通过，但 `Toggle` 与 `CategoryTabs` 的浏览器选中语义仍失败。两端类型检查重启后仍退出 0。主会话尚未交 b5/b11 改稿，按 README 规则 11，不能建立 R14 的像素 PASS 或归因。 |
 | 16 报告/交接 | **本报告** | 已列 SC、按路径提交、源代码范围、测试与请求；主会话独立复核后处理后续整合。 |
 
 ## PLANNER §3 逐条接手
@@ -85,10 +86,10 @@
 - App `no-hardcoded-copy` 5/5；App 通知域 `copy:qa --app notifications` 39 条、0 问题；Web 通知域问题 0。全域 copy QA 为 7,277 条、218 个其他域既有问题，退出 1，不记作通过（证据 `copy-qa-full.json`）。
 - Web `npm run lint` 退出 0；本机 PostgreSQL 的 cutover lane 负例 1/1（legacy 领 0、typed 领 1）。
 - App `i18n-domain-split` 的旧 R03 pre-split 数量快照仍失败：en 2919 vs 2253；同测试的三语键集合、无空值及文件域结构通过。此旧快照失败在 R14 新域之前已存在，不将其记为 R14 通过。
-- Web 收口全量经 `heavy.sh b` 一次：**7,698 tests、6,673 pass、18 fail、1,007 skip，退出 1**（`web-full.log`）。与 R13 旧收口失败名对照，旧文案允许清单失败已消失；新增 3 项均由本线修复：共享日期助手违反 `compute-text` 审计（Web 架构/日期/写入审计 12/12、App 同步合同 7/7），偏好接口 404 误失效身份缓存（浏览器 1/1），typed 投递状态的非同步写入未列审计清单（同 12/12）。修复各按路径另提交，未再跑 Web 全量；旧 15 个失败仍不记通过。
-- App 全量经 `heavy.sh b` 一次：**3,174 tests、3,154 pass、18 fail、2 skip，退出 1**（`app-full.log`）。与 R13 `run-02/app-full-closeout.log` 按失败名对照，旧相机 9、字典钉版 1、A `CategoryTabs` 选中项 1 仍在；新增 7 项中，B 路由覆盖/私有门禁/离线页面清单 3 项已由静态路由登记修复（21/21，`app-route-manifest-fix.log`），偏好 GET 离线读取清单 1 项已登记为 `online_only_secret`（26/26，`app-offline-inventory-fix.log`），两项通知设置快捷按钮尺寸已改用 R31 `Button size="lg"`，浏览器窄屏与宽屏目标 2/2（`app-browser-fix.log`）。余下一项「discovery toggles」来自 A 线 R31 `Toggle` 在 RN Web 上未输出测试要求的 `aria-checked`；组件只给 `accessibilityState.checked`，B 线未越界修改。定向浏览器束总计 2 pass、1 fail；全量修复后未重跑，故只记录定向结果，不宣称全量通过。App 后续类型检查退出 0（`app-typecheck-after-full.log`）。
-- 模拟器手工 `openurl` 尝试停在运行门槛：`Orbit Line B` 已启动且安装有 `app.agenthubs.orbit`，但 `heavy.sh b` 在 Metro 启动前因内置盘可用空间低于 5 GiB 等待（`metro-openurl.log`）。没有打开链接或取得页面截图；结束该进程并关闭本线模拟器，SC-07/08/10/13 的真实设备操作不记通过。修复磁盘容量或由主会话安排可用运行槽后，需重新从安装版本、登录态和目标路由录取证据。
-- 收口时内置盘可用空间继续降至约 3.8 GiB，低于 `heavy.sh` 的 5 GiB 启动门槛；Web/App 修复后的第二轮全量和模拟器操作均不能在当前运行条件下启动。上列目标测试与两端类型检查是修复后的验证范围，不能替代第二轮全量结论。
+- Web 首轮收口全量经 `heavy.sh b`：**7,698 tests、6,673 pass、18 fail、1,007 skip，退出 1**（`web-full.log`）。与 R13 旧收口失败名对照，旧文案允许清单失败已消失；新增 3 项均由本线修复：共享日期助手违反 `compute-text` 审计（Web 架构/日期/写入审计 12/12、App 同步合同 7/7），偏好接口 404 误失效身份缓存（浏览器 1/1），typed 投递状态的非同步写入未列审计清单（同 12/12）。修复各按路径另提交；复跑结果见下，旧 15 个失败仍不记通过。
+- App 首轮收口全量经 `heavy.sh b`：**3,174 tests、3,154 pass、18 fail、2 skip，退出 1**（`app-full.log`）。与 R13 `run-02/app-full-closeout.log` 按失败名对照，旧相机 9、字典钉版 1、A `CategoryTabs` 选中项 1 仍在；新增 7 项中，B 路由覆盖/私有门禁/离线页面清单 3 项已由静态路由登记修复（21/21，`app-route-manifest-fix.log`），偏好 GET 离线读取清单 1 项已登记为 `online_only_secret`（26/26，`app-offline-inventory-fix.log`），两项通知设置快捷按钮尺寸已改用 R31 `Button size="lg"`，浏览器窄屏与宽屏目标 2/2（`app-browser-fix.log`）。余下一项「discovery toggles」来自 A 线 R31 `Toggle` 在 RN Web 上未输出测试要求的 `aria-checked`；组件只给 `accessibilityState.checked`，B 线未越界修改。定向浏览器束总计 2 pass、1 fail；复跑结果见下，App 后续类型检查退出 0（`app-typecheck-after-full.log`）。
+- 首次模拟器 `openurl` 尝试停在运行门槛：`heavy.sh b` 因内置盘空间低于 5 GiB 等待（`metro-openurl.log`）。重启后空间恢复，Metro 在 `:8083` 成功打包，`simctl openurl orbit:///task?seg=todo` 成功进入 To-do（`metro-openurl-task-retry.png`）；截图显示本机 API 不可用的 Task 重试卡。`orbit:///settings/notifications` 与 `/secretary` 也打开了 App，但只显示在线边界（`metro-notifications-retry.png`、`metro-secretary-retry.png`），不能据此验证表单或像素。首次截图直写证据盘被 CoreSimulator 拒绝，改为写 `/tmp` 再复制后成功；原始命令与日志为 `metro-*-retry.zsh` / `metro-*-retry.log`。操作后已停 Metro 并关闭 B 模拟器。系统通知点击、远程 delivery、在线设置交互和 VoiceOver 仍未做手工验收。
+- 重启前修复后的最后一轮全量：Web **7,738 tests、6,712 pass、15 fail、1,011 skip**（`web-full-review-final.log`），15 个失败名与旧 Web 基线相同；App **3,216 tests、3,173 pass、38 fail、3 cancelled、2 skip**（`app-full-review-final.log`）。App 失败包含既有相机 9、旧 i18n 钉版 1、A 线 `Toggle`；并发浏览器压力下还出现多个 1.5–5 秒等待超时，不能把这轮全量记为通过。随后定向重跑 workspace 2/2、通知注册竞态 15/15、收件箱焦点恢复 1/1；收件箱筛选选中语义 0/1，原因是 A 线 `CategoryTabs` 仅传 `accessibilityState.selected`，RN Web 未输出测试所需的 `aria-selected`（`app-workspace-timeout-review.log`、`app-notification-races-review.log`、`app-inbox-timeout-review.log`）。其余超时未逐个重跑，不宣称已排除。重启后再跑 Web/App 类型检查均退出 0（`*-typecheck-postrestart.log`）。
 
 ## 画板门禁
 
@@ -110,9 +111,10 @@ PLANNER 原稿预检定位：A-R14-P01=`b5-me-inbox.html #13`，W-R14-P01=`b5-me
 | 4. 生产推送 | 仅本机 DB/provider 替身验证；没有外部发送。 | 主会话登记 DEFERRED「待用户授权」：生产 worker 开关、凭据、Neon 迁移/配置、部署、APNs/Expo 真机送达、TestFlight；授权后逐项执行并留回执。 | PLANNER B-14-10、§10。 |
 | 5. Gmail `mail_summary` | R13 客户端整行隐藏，R14 默认关闭且不展示入口。 | 仅在 D-16 restricted scope 获单独授权和真实来源/权限设计后重新立项；不要打开现有偏好字段冒充可用。 | B-14-5、R13 REVIEW M。 |
 | 6. R31 开关浏览器语义 | App 全量中既有发现开关用例的 `getByRole('switch')` 可找到控件，但 `aria-checked` 返回 null；R31 `Toggle` 只设 `accessibilityState.checked`。 | A 线核对 `UiPressable`/RN Web 的属性透传，给 `Toggle` 输出真实选中状态，并重跑 `ink-signal-settings-account`；B 线通知设置复测同一控件。 | `app-full.log`、`app-browser-fix.log`；SC-13/15。 |
+| 7. R31 类别标签浏览器语义 | 受信箱筛选测试稳定失败：默认「全部」缺 `aria-selected=true`，切换状态无法从 DOM 宣告；A 线 `Filters.tsx` 的 `CategoryTabs` 只传 `accessibilityState.selected`。 | A 线为 `CategoryTabs` 的每个 tab 输出对应 `aria-selected`（可参照同库 `Segmented`），重跑 `relationship-inbox-lifecycle` 的筛选语义用例；B 线复测通知筛选。 | `app-inbox-timeout-review.log`；SC-13/15。 |
 
 ## 提交与越线检查
 
-R14 主提交：`3c04b86ea`（contract）、`0093e3e87`（服务端）、`4fe758d47`（邀请）、`40a58f5c6`（App）、`849d270bc`（Web）、`8c4f01345`（深链）、`4540d2eaa`（权限）、`7253b471b`（旧 worker）、`c9e629000`（fixture）、`f6fbb6018`/`45e0e66d1`（copy）、`9cf11f955`（允许清单）、`5501ba06f`（digest 件数）、`c79b39c1e`（OS 撤权展示）、`022c182d2`（PG cutover lane 测试）、`430e8c5e7`/`98806776c`（权限状态/撤销重试）、`e000ab9ce`（Web 错误色）、`944338364`（重判/配额释放）、`1cfc9135f`（测试类型修正）、`99fa0a541`（非同步写入清单）、`7f1b932fe`（静态路由清单）、`51e4ad20c`（在线偏好读取清单）、`684afc0c7`（快捷按钮触控尺寸）。共享日期/身份缓存收口提交 `687c5949e`/`856704906` 属 R13 联动修复。R13 REVIEW 的独立修复提交与结果见 R13 REPORT。所有提交含 `Co-Authored-By: Codex <noreply@openai.com>`，均未 push。
+R14 主提交：`3c04b86ea`（contract）、`0093e3e87`（服务端）、`4fe758d47`（邀请）、`40a58f5c6`（App）、`849d270bc`（Web）、`8c4f01345`（深链）、`4540d2eaa`（权限）、`7253b471b`（旧 worker）、`c9e629000`（fixture）、`f6fbb6018`/`45e0e66d1`（copy）、`9cf11f955`（允许清单）、`5501ba06f`（digest 件数）、`c79b39c1e`（OS 撤权展示）、`022c182d2`（PG cutover lane 测试）、`430e8c5e7`/`98806776c`（权限状态/撤销重试）、`e000ab9ce`（Web 错误色）、`944338364`（重判/配额释放）、`1cfc9135f`（测试类型修正）、`99fa0a541`（非同步写入清单）、`7f1b932fe`（静态路由清单）、`51e4ad20c`（在线偏好读取清单）、`684afc0c7`（快捷按钮触控尺寸）。共享日期/身份缓存收口提交 `687c5949e`/`856704906` 属 R13 联动修复。后续 R13 跨账号预览过滤 `2a321f50c`、复核记录 `ce5c61361`；R11b 按 S1/M1/M2/m1 顺序为 `de06e64b3`、`cfb2b8c86`、`0d32ea4fd`、`18d11dbbe`。R13 REVIEW 的其他独立修复提交与结果见 R13 REPORT。所有提交含 `Co-Authored-By: Codex <noreply@openai.com>`，均未 push。
 
 改动仅在 B 线 worktree；R13 文件改动来自用户在本轮明确要求先修 REVIEW。未碰 A/D/C 的组件库、token、导航壳或主会话 README/HANDOFF/DEFERRED 台账。最终差异以 `git diff --stat origin/redesign...HEAD` 核对。
