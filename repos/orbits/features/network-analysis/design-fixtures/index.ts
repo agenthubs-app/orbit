@@ -53,7 +53,8 @@ function many286(): NetworkAnalysisRow[] {
     // Joiners: 9 manufacturing people this month (伸び), the rest spread over the past months.
     const added = i >= 105 && i < 114 ? 2 + (i % 5) : 40 + ((i * 13) % 300);
     // Board names: the finance list (#37 / #40) and the stalled card's 鈴木 / 中村 / 高田 (#35 / #41).
-    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 120 ? BOARD_PEOPLE[8] : i === 125 ? BOARD_PEOPLE[9] : i === 130 ? BOARD_PEOPLE[10]
+    const named = i <= 6 ? BOARD_PEOPLE[i] : i === 31 ? ["松井 遥", "株式会社ソラノテ", "取締役 COO"] as const
+      : i === 120 ? BOARD_PEOPLE[8] : i === 125 ? BOARD_PEOPLE[9] : i === 130 ? BOARD_PEOPLE[10]
       : i === 150 ? ["森 恭平", "東雲キャピタル", "プリンシパル"] as const
       : i === 151 ? ["岡田 紗希", "Sakura Growth Partners", "ヴァイスプレジデント"] as const
       : i === 152 ? ["青木 里奈", "Kanade AI", "CTO"] as const

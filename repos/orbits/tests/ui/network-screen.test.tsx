@@ -4,7 +4,7 @@ import type { Browser, Page } from "playwright";
 
 import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 import { SHELL_STUBS } from "./support/orbit-2026-shell-harness";
-import { filtersFromSearch, lastTouch, networkQuery } from "../../app/(app)/app/orbit-2026/network/network-model";
+import { filtersFromSearch, lastTouch, networkQuery, PAGE_SIZE } from "../../app/(app)/app/orbit-2026/network/network-model";
 
 // R11a SC-07 / SC-08 / SC-09 / SC-10（Web 人脈）：新人脈页在壳里渲染（ShellPage + 右栏今日の 1問），页签 / 絞り込み / 搜索都走
 // 有界接口的参数；联系人抽屉（可复用组件）显示なぜこの人か、人物タイプの確認カード、招待连接（同期停止、解除），删除后可撤回。
@@ -24,7 +24,8 @@ const DETAIL = { state: "success", contact: { id: "c-ito", displayName: "伊藤 
   primaryEmail: "ito@example.test", primaryPhone: "", nextAction: "決算資料のお礼を送る", tags: [], publicProfile: { offering: ["資本政策の助言"], seeking: ["製造業 SaaS"] },
   notes: [{ noteId: "n1", body: "DD の資料リストを受領", createdAt: "2026-10-06T01:00:00.000Z" }], lastInteraction: null, updatedAt: "2026-10-06T00:00:00.000Z",
   fieldHistory: [{ field: "offering", previous: "資本政策", next: "資本政策の助言", source: "invite_sync", at: "2026-10-12T00:00:00.000Z" }] } };
-const SELF_DETAIL = { state: "success", contact: { ...DETAIL.contact, id: "c-matsui", displayName: "松井 遥", organization: "株式会社ソラノテ", role: "取締役 COO", fieldHistory: [] } };
+const SELF_DETAIL = { state: "success", contact: { ...DETAIL.contact, id: "c-matsui", displayName: "松井 遥", organization: "株式会社ソラノテ", role: "取締役 COO",
+  fieldHistory: [{ field: "role", previous: "取締役 COO", next: "代表取締役", source: "invite_sync", at: "2026-10-12T00:00:00.000Z" }] } };
 
 const HANDLERS: { method: string; url: string; reply: Reply }[] = [
   { method: "GET", url: "^/api/contacts/summary$", reply: ok(SUMMARY) },
@@ -88,6 +89,8 @@ test("1440: header counts in the shell, three cards, tabs with counts, table row
   assert.match(ito, /今日/u);
   assert.match(await page.locator("[data-network-row='c-mori']").innerText(), /2024年3月につながる/u);
   await page.locator("[data-network-rail]").getByRole("heading", { name: /今日の 1問/ }).waitFor();
+  await page.locator("[data-network-rail]").getByText("伊藤さんがプランの候補です", { exact: true }).waitFor();
+  assert.equal(await page.locator("[data-network-rail]").getByRole("link", { name: "プランで見る" }).getAttribute("href"), "/app/tasks?tab=plan");
   await page.getByRole("button", { name: "さらに表示（283人）" }).waitFor();
   assert.ok((await fetches(page)).every((call) => !call.url.startsWith("/api/contacts?")), "no legacy /api/contacts read");
 });
@@ -116,6 +119,7 @@ test("tabs, search and 絞り込み go to the bounded page / summary with the ne
 test("the contact drawer: why (value line), the type confirm card → decision, next step, offering / seeking with 以前の値, interactions; delete → undo restores", async (t) => {
   const page = await screen(t);
   await page.locator("[data-network-row='c-ito']").click();
+  assert.equal(await page.locator("[data-network-row='c-ito']").getAttribute("data-selected"), "true");
   const drawer = page.locator("[data-contact-drawer='c-ito']");
   await drawer.getByText("Led two Series A raises as CFO.", { exact: true }).waitFor();
   await drawer.getByText("プランの「CFO 経験者」に当てはまりそうです", { exact: true }).waitFor();
@@ -154,19 +158,42 @@ test("an invite-linked person: 本人入力, 同期停止 on the field I changed
   await page.waitForFunction(() => (window as any).shellFixture.fetches.some((call: any) => call.url.endsWith("/unlink") && call.body.keepAsContact === true));
 });
 
+test("a recent invite update shows changed fields and can be dismissed without changing the contact", async (t) => {
+  const page = await screen(t);
+  await page.locator("[data-network-row='c-matsui']").click();
+  await page.locator("[data-network-self-update]").getByText("取締役 COO").waitFor();
+  await page.locator("[data-network-self-update]").getByText("代表取締役").waitFor();
+  await page.locator("[data-network-self-update] button[aria-label='閉じる']").click();
+  assert.equal(await page.locator("[data-network-self-update]").count(), 0);
+  await page.locator("[data-network-contact-ready]").getByText("松井 遥").waitFor();
+});
+
 test("no contacts yet: the guide, four doors and the sample table (web.html #4); the rail suggests the invite code", async (t) => {
   const page = await screen(t, { handlers: [{ method: "GET", url: "^/api/contacts/summary", reply: ok({ ...SUMMARY, total: 0, densityCounts: { 1: 0, 2: 0, 3: 0 }, addedThisMonth: 0, tabCounts: { goalRelated: 0, needsFollowUp: 0 }, sourceChips: {} }) },
     { method: "GET", url: "^/api/contacts/page\\?", reply: ok({ items: [], nextCursor: null, hasMore: false, asOf: "2026-10-18T00:00:00.000Z" }) }] });
   await page.locator("[data-network-empty]").waitFor();
   await page.getByText("最初のつながりを追加", { exact: true }).waitFor();
+  assert.equal(await page.locator("[data-network-sample-skeleton]").count(), 2);
   for (const label of ["招待コード", "手入力", "連絡先から", "LinkedIn"]) await page.locator("[data-network-empty]").getByText(label, { exact: true }).first().waitFor();
   await page.locator("[data-network-rail]").getByRole("heading", { name: /いちばん早い方法/ }).waitFor();
 });
 
 test("390 dark: no 🔍 in the page (G12), the list still renders without errors", async (t) => {
   const page = await screen(t, {}, { width: 390, dark: true });
+  await page.locator("[data-network-mobile-overview]").waitFor();
   await page.locator("[data-network-row='c-ito']").waitFor();
+  const heading = page.locator("[data-network-mobile-heading]");
+  assert.match(await heading.innerText(), /人脈\s*286人.*今月 \+24/u);
+  const headingBox = await heading.boundingBox();
+  assert.ok(headingBox && headingBox.x < 30, "the phone heading starts at the left page inset");
   assert.equal(await page.locator("[data-orbit-2026-search]:visible").count(), 0);
+  assert.equal(await page.locator("[data-network-mobile-card='c-ito']").count(), 1);
+  assert.equal(await page.locator("[data-network-table]:visible").count(), 0);
+  assert.equal(await page.locator("[data-network-sources]").count(), 0);
+  const search = await page.getByRole("textbox", { name: "名前・会社・「投資家」などで検索" }).boundingBox();
+  const overview = await page.locator("[data-network-mobile-overview]").boundingBox();
+  const list = await page.locator("[data-network-mobile-list]").boundingBox();
+  assert.ok(search && overview && list && search.y < overview.y && overview.y < list.y);
 });
 
 test("人脈分析 entry (RD-33): 390 below 10 people shows 「10人から使えます · あと N人」 → /app/contacts/dashboard; 10 or more has none; 1440 keeps 「人脈分析 ›」", async (t) => {
@@ -185,6 +212,7 @@ test("人脈分析 entry (RD-33): 390 below 10 people shows 「10人から使え
 });
 
 test("model: ?industry= preselects, the query carries tab / filters, 最終接点 wording", () => {
+  assert.equal(PAGE_SIZE, 9, "the controlled list starts with the nine board people before さらに表示");
   assert.deepEqual(filtersFromSearch(new URLSearchParams("industry=finance_investment.venture_capital")).industries, ["finance_investment.venture_capital"]);
   assert.equal(networkQuery({ query: " x ", tab: "goal", filters: { statuses: ["nurture"], industries: [], regions: [], mets: ["visit"], densities: ["1"] }, facets: null, limit: 30 }),
     "query=x&status=nurture&met=visit&density=1&goalRelated=1&limit=30");

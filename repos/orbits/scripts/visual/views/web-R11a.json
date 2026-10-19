@@ -1,7 +1,7 @@
 {
- "_note": "R11a 人脈（Web）。像素收口排在 R31a / R31b 合入之后（RD-31）；本清单先用于 board-preflight。dev :3300（distDir .next-line-b，库 orbit_line_b）。b12 #500–#513 为 2026-10-18 补画。",
+ "_note": "PX1 人脈（Web）。本轮 :3800 / .next-line-e / orbit_line_e；四态 fixture 由 PX1 运行记录逐组切换。b12 #500–#513 为 2026-10-18 补画。",
  "defaults": {
-  "app-origin": "http://localhost:3300",
+  "app-origin": "http://localhost:3800",
   "login": "qa@orbit.test",
   "grid": 30,
   "attribution": "scripts/visual/attribution-redesign-R11a.json"
@@ -14,6 +14,7 @@
  "views": [
   {
    "id": "W-R11-01",
+   "fixture": "empty",
    "app": "/app/contacts",
    "design": "web.html",
    "board-index": 4,
@@ -21,10 +22,12 @@
    "themes": [
     "light"
    ],
-   "note": "人脈 空（web.html #4）"
+   "note": "人脈 空（web.html #4）",
+   "wait-for": "[data-network-empty]"
   },
   {
    "id": "W-R11-01d",
+   "fixture": "empty",
    "app": "/app/contacts",
    "design": "b12-missing-states.html",
    "board-index": 511,
@@ -32,10 +35,12 @@
    "themes": [
     "dark"
    ],
-   "note": "人脈 空 深（b12 #511）"
+   "note": "人脈 空 深（b12 #511）",
+   "wait-for": "[data-network-empty]"
   },
   {
    "id": "W-R11-02",
+   "fixture": "locked5",
    "app": "/app/contacts",
    "design": "web.html",
    "board-index": 5,
@@ -43,10 +48,12 @@
    "themes": [
     "light"
    ],
-   "note": "人脈 少量（web.html #5）"
+   "note": "人脈 少量（web.html #5）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-02d",
+   "fixture": "locked5",
    "app": "/app/contacts",
    "design": "b12-missing-states.html",
    "board-index": 509,
@@ -54,10 +61,12 @@
    "themes": [
     "dark"
    ],
-   "note": "人脈 少量 深（b12 #509）"
+   "note": "人脈 少量 深（b12 #509）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-03",
+   "fixture": "many286",
    "app": "/app/contacts",
    "design": "web.html",
    "board-index": 6,
@@ -65,10 +74,12 @@
    "themes": [
     "light"
    ],
-   "note": "人脈 大量（web.html #6）"
+   "note": "人脈 大量（web.html #6）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-03-1024",
+   "fixture": "many286",
    "app": "/app/contacts",
    "design": "b6-host-polish.html",
    "board-index": 36,
@@ -76,10 +87,12 @@
    "themes": [
     "light"
    ],
-   "note": "人脈 · 1024（b6 #36）"
+   "note": "人脈 · 1024（b6 #36）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-03-390",
+   "fixture": "many286",
    "app": "/app/contacts",
    "design": "b6-host-polish.html",
    "board-index": 38,
@@ -87,158 +100,214 @@
    "themes": [
     "light"
    ],
-   "note": "人脈 · 390（b6 #38）"
+   "note": "人脈 · 390（b6 #38）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-06",
-   "app": "/app/contacts?contact=demo-c1",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-001",
    "design": "web.html",
    "board-index": 7,
    "width": 1440,
    "themes": [
     "light"
    ],
-   "note": "連絡先詳細（抽屉）（web.html #7）"
+   "note": "連絡先詳細（抽屉）（web.html #7）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-06d",
-   "app": "/app/contacts?contact=demo-c1",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-001",
    "design": "b6-host-polish.html",
    "board-index": 41,
    "width": 1440,
    "themes": [
     "dark"
    ],
-   "note": "人脈 + 連絡先抽屉 深（b6 #41）"
+   "note": "人脈 + 連絡先抽屉 深（b6 #41）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-06-1024",
-   "app": "/app/contacts?contact=demo-c1",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-001",
    "design": "b8-responsive.html",
    "board-index": 13,
    "width": 1024,
    "themes": [
     "light"
    ],
-   "note": "連絡先詳細 · 1024（b8 #13）"
+   "note": "連絡先詳細 · 1024（b8 #13）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-06-390",
-   "app": "/app/contacts?contact=demo-c1",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-001",
    "design": "b8-responsive.html",
    "board-index": 14,
    "width": 390,
    "themes": [
     "light"
    ],
-   "note": "連絡先詳細 · 390 全屏（b8 #14）"
+   "note": "連絡先詳細 · 390 全屏（b8 #14）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-07",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=fit",
    "design": "b12-missing-states.html",
    "board-index": 500,
    "width": 1440,
    "themes": [
     "light"
    ],
-   "note": "招待でつながった人（b12 #500）"
+   "note": "招待でつながった人（b12 #500）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-07d",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=fit",
    "design": "b12-missing-states.html",
    "board-index": 501,
    "width": 1440,
    "themes": [
     "dark"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-07-390",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=fit",
    "design": "b12-missing-states.html",
    "board-index": 512,
    "width": 390,
    "themes": [
     "light"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-07-390d",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=fit",
    "design": "b12-missing-states.html",
    "board-index": 513,
    "width": 390,
    "themes": [
     "dark"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-08",
-   "app": "/app/contacts?contact=demo-fit",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-151",
    "design": "b12-missing-states.html",
    "board-index": 502,
    "width": 1440,
    "themes": [
     "light"
    ],
-   "note": "人物タイプの確認カード（b12 #502）"
+   "note": "人物タイプの確認カード（b12 #502）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-08d",
-   "app": "/app/contacts?contact=demo-fit",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-151",
    "design": "b12-missing-states.html",
    "board-index": 503,
    "width": 1440,
    "themes": [
     "dark"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-09",
-   "app": "/app/contacts?contact=demo-history",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=sync",
    "design": "b12-missing-states.html",
    "board-index": 504,
    "width": 1440,
+   "steps": [
+    {
+     "click": "[data-network-previous] button"
+    }
+   ],
    "themes": [
     "light"
    ],
-   "note": "以前の値（b12 #504）"
+   "note": "以前の値（b12 #504）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-09d",
-   "app": "/app/contacts?contact=demo-history",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=sync",
    "design": "b12-missing-states.html",
    "board-index": 505,
    "width": 1440,
+   "steps": [
+    {
+     "click": "[data-network-previous] button"
+    }
+   ],
    "themes": [
     "dark"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-09u",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=sync",
    "design": "b12-missing-states.html",
    "board-index": 506,
    "width": 1440,
+   "steps": [
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('つながりを解除')"
+    }
+   ],
    "themes": [
     "light"
    ],
-   "note": "つながりを解除 · 確認（b12 #506）"
+   "note": "つながりを解除 · 確認（b12 #506）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-09ud",
-   "app": "/app/contacts?contact=demo-self",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-032&design=sync",
    "design": "b12-missing-states.html",
    "board-index": 507,
    "width": 1440,
+   "steps": [
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('つながりを解除')"
+    }
+   ],
    "themes": [
     "dark"
-   ]
+   ],
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-10",
+   "fixture": "many286",
    "app": "/app/contacts",
    "design": "b5-me-inbox.html",
    "board-index": 61,
@@ -251,22 +320,34 @@
      "click": "[data-network-filter]"
     }
    ],
-   "note": "絞り込み · Web（b5 #61）"
+   "note": "絞り込み · Web（b5 #61）",
+   "wait-for": "[data-network-row]"
   },
   {
    "id": "W-R11-11",
-   "app": "/app/contacts?contact=demo-c1",
+   "fixture": "many286",
+   "app": "/app/contacts?contact=design-person-001",
    "design": "b5-me-inbox.html",
    "board-index": 45,
    "width": 1440,
+   "steps": [
+    {
+     "click": "[data-contact-drawer] button[aria-label='その他の操作']"
+    },
+    {
+     "click": "[role='menu'] button:has-text('編集')"
+    }
+   ],
    "themes": [
     "light"
    ],
-   "note": "連絡先の編集 · Web（b5 #45）"
+   "note": "連絡先の編集 · Web（b5 #45）",
+   "wait-for": "[data-network-contact-ready]"
   },
   {
    "id": "W-R11-12",
-   "app": "/app/contacts",
+   "fixture": "loading",
+   "app": "/app/contacts?design=loading",
    "design": "b1-onboarding-cards.html",
    "board-index": 59,
    "width": 1440,

@@ -1,8 +1,8 @@
 {
- "_note": "R11a 人脈（App）。模拟器 Orbit Line B，Metro :8083，dev :3300。像素收口排在 R31a / R31b 合入之后（RD-31）。",
+ "_note": "PX1 人脈（App）。Orbit PX1 16e，Metro :8088，Web API :3800。先按 fixture 字段切换四态，再用 path 到达。",
  "defaults": {
   "grid": 30,
-  "wait": 20000,
+  "wait": 30000,
   "attribution": "scripts/visual/attribution-redesign-R11a-app.json"
  },
  "sources": [
@@ -12,6 +12,7 @@
  "views": [
   {
    "id": "A-R11-01",
+   "fixture": "empty",
    "design": "app.html",
    "board-index": 6,
    "themes": [
@@ -22,6 +23,7 @@
   },
   {
    "id": "A-R11-02",
+   "fixture": "locked5",
    "design": "app.html",
    "board-index": 7,
    "themes": [
@@ -32,6 +34,7 @@
   },
   {
    "id": "A-R11-03",
+   "fixture": "many286",
    "design": "app.html",
    "board-index": 8,
    "themes": [
@@ -42,6 +45,7 @@
   },
   {
    "id": "A-R11-03d",
+   "fixture": "many286",
    "design": "app.html",
    "board-index": 34,
    "themes": [
@@ -52,111 +56,125 @@
   },
   {
    "id": "A-R11-04",
+   "fixture": "many286",
    "design": "app.html",
    "board-index": 9,
    "themes": [
     "light"
    ],
-   "path": "/contacts",
+   "path": "/contacts?design=add",
    "note": "「＋」人脈を追加（#9）"
   },
   {
    "id": "A-R11-05",
+   "fixture": "many286",
    "design": "app.html",
    "board-index": 29,
    "themes": [
     "light"
    ],
-   "path": "/contacts/demo-c1",
+   "path": "/contacts/design-person-001",
    "note": "連絡先詳細（#29）"
   },
   {
    "id": "A-R11-06",
+   "fixture": "many286",
    "design": "b9-import-plan-v2.html",
    "board-index": 20,
    "themes": [
     "light"
    ],
-   "path": "/contacts/demo-self",
+   "path": "/contacts/design-person-032?design=fit",
    "note": "本人入力カード + 確認カード（b9 #20）"
   },
   {
    "id": "A-R11-06d",
+   "fixture": "many286",
    "design": "b9-import-plan-v2.html",
    "board-index": 27,
    "themes": [
     "dark"
    ],
-   "path": "/contacts/demo-self"
+   "path": "/contacts/design-person-032?design=fit"
   },
   {
    "id": "A-R11-07",
+   "fixture": "many286",
    "design": "b9-import-plan-v2.html",
    "board-index": 21,
    "themes": [
     "light"
    ],
-   "path": "/contacts/demo-self",
+   "path": "/contacts/design-person-032?design=sync",
    "note": "資料の同期（b9 #21）"
   },
   {
    "id": "A-R11-08",
+   "fixture": "many286",
    "design": "b9-import-plan-v2.html",
    "board-index": 22,
    "themes": [
     "light"
    ],
-   "path": "/contacts/demo-self",
+   "path": "/contacts/design-person-032?design=unlink",
+   "wait": 60000,
    "note": "つながりを解除（b9 #22）"
   },
   {
    "id": "A-R11-09",
+   "fixture": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 60,
    "themes": [
     "light"
    ],
-   "path": "/contacts",
+   "path": "/contacts?design=filter",
+   "wait": 60000,
    "note": "絞り込み · App（b5 #60）"
   },
   {
    "id": "A-R11-10",
+   "fixture": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 42,
    "themes": [
     "light"
    ],
-   "path": "/contacts/edit/demo-c1",
+   "path": "/contacts/edit/design-person-001",
    "note": "① 編集（b5 #42）"
   },
   {
    "id": "A-R11-11",
+   "fixture": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 43,
    "themes": [
     "light"
    ],
-   "path": "/contacts/edit/demo-c1",
+   "path": "/contacts/edit/design-person-001?design=industry",
    "note": "② 業界・役職層（b5 #43）"
   },
   {
    "id": "A-R11-12",
+   "fixture": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 44,
    "themes": [
     "light"
    ],
-   "path": "/contacts/edit/demo-c1",
+   "path": "/contacts/edit/design-person-001?design=delete",
    "note": "③ 削除の確認（b5 #44）"
   },
   {
    "id": "A-R11-13",
+   "fixture": "loading",
    "design": "b1-onboarding-cards.html",
    "board-index": 58,
    "themes": [
     "light"
    ],
-   "path": "/contacts",
+   "path": "/contacts?design=loading",
+   "wait": 45000,
    "note": "人脈 · 加载中（b1 #58）"
   }
  ]

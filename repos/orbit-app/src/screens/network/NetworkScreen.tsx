@@ -9,7 +9,7 @@ import { StyleSheet, View } from "react-native";
 import type { ContactCardSummaryDTO } from "../../api/contract/contact-card-page";
 import { AppScreen } from "../../components/AppScreen";
 import { ShellTopBar } from "../../components/ShellTopBar";
-import { Avatar, BottomSheet, Button, CategoryTabs, Chip, EmptyState, FilterOption, Icon, IconButton, OfflineBar, RetryCard, SampleTag, SearchField, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
+import { Avatar, BottomSheet, Button, CategoryTabs, Chip, EmptyState, FilterOption, Icon, IconButton, OfflineBar, RetryCard, SampleTag, SearchField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { AddContactSheet } from "../add/AddContactSheet";
@@ -40,6 +40,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const { t } = useOrbitLocale();
   const router = useRouter();
   const params = useLocalSearchParams<{ industry?: string | string[]; design?: string | string[] }>();
+  const fixture = useNetworkDesignContacts();
   const remembered = memory.get(scopeKey);
   const [tab, setTab] = useState<NetworkTab>(remembered?.tab ?? "all");
   const [filters, setFilters] = useState<NetworkFilters>(() => {
@@ -47,9 +48,13 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
     return fromParams.industries.length ? fromParams : remembered?.filters ?? EMPTY_NETWORK_FILTERS;
   });
   const [query, setQuery] = useState(remembered?.query ?? "");
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const fixture = useNetworkDesignContacts();
+  const [filterOpen, setFilterOpen] = useState(fixture.enabled && params.design === "filter");
+  const [addOpen, setAddOpen] = useState(fixture.enabled && params.design === "add");
+  useEffect(() => {
+    if (!fixture.enabled) return;
+    setFilterOpen(params.design === "filter");
+    setAddOpen(params.design === "add");
+  }, [fixture.enabled, params.design]);
   const designLoading = fixture.enabled && params.design === "loading";
   const visibleFixture = designLoading ? { ...fixture, data: null, loading: true } : fixture;
   const merge = useNetworkMerge();
@@ -76,7 +81,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
 
   useEffect(() => { memory.set(scopeKey, { tab, filters, query }); }, [scopeKey, tab, filters, query]);
 
-  const subtitle = empty ? t("network.subtitleEmpty") : header ? t("network.subtitle", { total: header.total, added: header.added }) : undefined;
+  const subtitle = list.status === "loading" ? t("common.loading") : empty ? t("network.subtitleEmpty") : header ? t("network.subtitle", { total: header.total, added: header.added }) : undefined;
   const openSearch = () => router.push((query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : "/search") as Href);
   const openContact = (id: string) => router.push(`/contacts/${encodeURIComponent(id)}` as Href);
   const counts = networkTabCounts(summary);
@@ -85,7 +90,8 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
     <AppScreen inset="kit" title={t("network.title")}
       header={<ShellTopBar title={t("network.title")} subtitle={subtitle}
         left={<IconButton icon="search" accessibilityLabel={t("network.globalSearch")} onPress={openSearch} />}
-        right={<IconButton icon="plus" accessibilityLabel={t("network.addPeople")} onPress={() => setAddOpen(true)} />} />}>
+        right={list.status === "loading" ? <IconButton icon="sliders" accessibilityLabel={t("network.filter")} onPress={() => setFilterOpen(true)} />
+          : <IconButton icon="plus" accessibilityLabel={t("network.addPeople")} onPress={() => setAddOpen(true)} />} />}>
       <View testID="network-screen">
         {list.offline ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
         {list.status === "loading" ? <NetworkLoading /> : list.status === "failure" && rows.length === 0 && !empty ? (
@@ -105,7 +111,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
             </View>
             {total < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <InviteCard onInvite={() => router.push("/contacts/new/invite" as Href)} /> : null}
             {rows.length ? (
-              <View style={styles.listCard} testID="network-list">
+              <View style={[styles.listCard, total < NETWORK_ANALYSIS_UNLOCK_CONTACTS && styles.listAfterInvite]} testID="network-list">
                 {rows.map((row, index) => <NetworkListRow key={row.id} row={row} first={index === 0} onPress={() => openContact(row.id)} />)}
                 {list.hasMore ? <View style={styles.more}><Button variant="secondary" size="sm" label={t("network.loadMore", { n: Math.max(0, list.matched - rows.length) })} onPress={list.loadMore} /></View> : null}
               </View>
@@ -197,7 +203,7 @@ function DensityCard({ summary, onAnalysis }: { summary: ContactCardSummaryDTO |
   const counts = summary?.densityCounts ?? { 1: 0, 2: 0, 3: 0 };
   const header = networkHeaderCounts(summary);
   return (
-    <View style={[styles.card, styles.gapTop]} testID="network-density-card">
+    <View style={[styles.card, styles.gapTop, styles.densityCard]} testID="network-density-card">
       <View style={styles.between}>
         <View>
           <View style={styles.rowCenter}>
@@ -237,7 +243,7 @@ function InviteCard({ onInvite }: { onInvite: () => void }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
   return (
-    <View style={[styles.card, styles.gapTop, styles.rowCenter]} testID="network-invite-card">
+    <View style={[styles.card, styles.gapTop, styles.rowCenter, styles.inviteCard]} testID="network-invite-card">
       <View style={[styles.emo, styles.emoPink]}><UiText style={styles.emoText}>🤝</UiText></View>
       <View style={styles.grow}><UiText style={styles.cardTitle}>{t("network.inviteTitle")}</UiText><UiText style={styles.lbl}>{t("network.inviteSub")}</UiText></View>
       <Button variant="secondary" size="sm" label={t("network.inviteButton")} onPress={onInvite} />
@@ -265,12 +271,12 @@ function NetworkEmpty({ onOpen }: { onOpen: (href: string) => void }) {
     { id: "sample-2", name: t("network.sampleName2"), subtitle: t("network.sampleSub2"), goal: { label: t("network.sampleGoal2"), talked: false }, density: 1, chip: "linkedin" },
   ];
   return (
-    <View testID="network-empty">
-      <View style={[styles.card, styles.guide]}>
+    <View testID="network-empty" style={styles.empty}>
+      <View style={[styles.card, styles.guide]} testID="network-guide">
         <UiText style={styles.guideEmoji}>🪐</UiText>
         <UiText style={styles.guideTitle}>{t("network.guideTitle")}</UiText>
         <UiText style={styles.guideBody}>{t("network.guideBody")}</UiText>
-        <Button variant="primary" label={t("network.scanCard")} onPress={() => onOpen("/contacts/new/scan")} />
+        <View style={styles.guideAction}><Button variant="primary" size="lg" block icon="scan" label={t("network.scanCard")} onPress={() => onOpen("/contacts/new/scan")} /></View>
       </View>
       <View style={[styles.grid2, styles.gapTop]}>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("network.macInvite")} onPress={() => onOpen("/contacts/new/invite")} style={[styles.mac, styles.macPink]}>
@@ -285,7 +291,7 @@ function NetworkEmpty({ onOpen }: { onOpen: (href: string) => void }) {
         <UiPressable accessibilityRole="button" accessibilityLabel={t("network.otherContacts")} onPress={() => onOpen("/contacts/new/import?kind=contacts")}><Chip label={t("network.otherContacts")} /></UiPressable>
         <UiPressable accessibilityRole="button" accessibilityLabel={t("network.otherLinkedin")} onPress={() => onOpen("/contacts/new/import?kind=linkedin")}><Chip label={t("network.otherLinkedin")} /></UiPressable>
       </View>
-      <View style={[styles.card, styles.gapTop]}>
+      <View style={[styles.card, styles.sampleCard]}>
         <View style={styles.rowCenter}><UiText style={styles.cardTitle}>{t("network.sampleTitle")}</UiText><SampleTag /></View>
         <View style={styles.faded}>{sample.map((row, index) => <NetworkListRow key={row.id} row={row} first={index === 0} onPress={() => undefined} />)}</View>
         <UiText style={styles.lbl}>{t("network.sampleDotsBefore")}<UiText style={[styles.lbl, styles.hintBold]}>{t("network.sampleDotsBold")}</UiText>{t("network.sampleDotsAfter")}</UiText>
@@ -296,7 +302,28 @@ function NetworkEmpty({ onOpen }: { onOpen: (href: string) => void }) {
 
 function NetworkLoading() {
   const { styles } = useStyles();
-  return <View style={[styles.card, styles.gapTop]} testID="network-loading"><Skeleton lines={6} /></View>;
+  return <View style={styles.loadingRoot} testID="network-loading">
+    <View style={styles.loadingSearch} testID="network-loading-search" />
+    <View style={[styles.card, styles.loadingSummary]} testID="network-loading-summary">
+      <View style={[styles.loadingBar, { width: 60, height: 9 }]} />
+      <View style={[styles.loadingBar, { width: 110, height: 37 }]} />
+      <View style={[styles.loadingBar, { width: "100%", height: 9 }]} />
+      <View style={[styles.loadingBar, { width: "70%", height: 9 }]} />
+    </View>
+    <View style={styles.loadingTabs} testID="network-loading-tabs">
+      {[80, 100, 80].map((width, index) => <View key={index} style={[styles.loadingBar, { width, height: 27, borderRadius: 16 }]} />)}
+    </View>
+    <View style={styles.loadingList}>
+      {Array.from({ length: 6 }, (_, index) => <View key={index} style={styles.loadingRow} testID={`network-loading-row-${index}`}>
+        <View style={[styles.loadingBar, styles.loadingAvatar]} />
+        <View style={styles.loadingRowLines}>
+          <View style={[styles.loadingBar, { width: `${40 + index * 6}%`, height: 11 }]} />
+          <View style={[styles.loadingBar, { width: `${54 + index * 4}%`, height: 9 }]} />
+        </View>
+        <View style={[styles.loadingBar, { width: 52, height: 23 }]} />
+      </View>)}
+    </View>
+  </View>;
 }
 
 export function NetworkFilterSheet({ visible, onClose, summary, filters, onChange, matched }: {
@@ -337,11 +364,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   gapTop: { marginTop: 12 },
   gapBottom: { marginBottom: 12 },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: -16 },
   tabs: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },
+  densityCard: { paddingBottom: 27 },
   flatCard: { backgroundColor: colors.surface2 },
   listCard: { backgroundColor: colors.surface, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 16, marginTop: 12 },
+  listAfterInvite: { marginTop: 20 },
+  inviteCard: { paddingVertical: 24 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },
   right: { alignItems: "flex-end" },
@@ -352,14 +382,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bigUnit: { color: colors.ink3, fontSize: 15, fontWeight: "700", marginLeft: 3 },
   mid: { color: colors.ink, fontSize: 22, fontWeight: "800", letterSpacing: -0.22 },
   stack: { flexDirection: "row", height: 12, borderRadius: 6, overflow: "hidden", gap: 2, marginTop: 10 },
-  grid3: { flexDirection: "row", gap: 6, marginTop: 10 },
+  grid3: { flexDirection: "row", gap: 6, marginTop: 18 },
   densityLabel: { color: colors.ink3, fontSize: 11, marginTop: 3 },
   densityCount: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  dailyHint: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.macLav },
+  dailyHint: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 23, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.macLav },
   hintEmoji: { fontSize: 12 },
   hintText: { color: colors.ink, fontSize: 12 },
   hintBold: { fontWeight: "700" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13.5 },
   divider: { position: "absolute", top: 0, left: 50, right: 0, height: 1, backgroundColor: colors.line },
   meta: { flex: 1, minWidth: 0 },
   name: { color: colors.ink, fontSize: 14, fontWeight: "700" },
@@ -373,16 +403,28 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   emoLav: { backgroundColor: colors.macLav },
   emoText: { fontSize: 17 },
   cardTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "700" },
-  guide: { alignItems: "center", gap: 8, paddingVertical: 24 },
-  guideEmoji: { fontSize: 40 },
-  guideTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  empty: { marginTop: -16 },
+  guide: { alignItems: "center", gap: 8, paddingTop: 24, paddingBottom: 30 },
+  guideEmoji: { fontSize: 50, lineHeight: 50 },
+  guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800" },
   guideBody: { color: colors.ink2, fontSize: 13, textAlign: "center", marginBottom: 6 },
+  guideAction: { alignSelf: "stretch", marginTop: 16 },
   grid2: { flexDirection: "row", gap: 10 },
   mac: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 16 },
   macPink: { backgroundColor: colors.macPink },
   macLav: { backgroundColor: colors.macLav },
-  faded: { opacity: 0.55, marginVertical: 6 },
+  sampleCard: { marginTop: 20, paddingBottom: 33 },
+  faded: { opacity: 0.55, marginVertical: 14 },
   sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  loadingBar: { borderRadius: 8, backgroundColor: colors.surface3 },
+  loadingRoot: { marginTop: -16 },
+  loadingSearch: { height: 44, borderRadius: 22, backgroundColor: colors.surface2 },
+  loadingSummary: { height: 131, marginTop: 12, gap: 7 },
+  loadingTabs: { flexDirection: "row", gap: 6, marginTop: 12 },
+  loadingList: { backgroundColor: colors.surface, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 5 },
+  loadingRow: { height: 63, flexDirection: "row", alignItems: "center", gap: 12 },
+  loadingAvatar: { width: 38, height: 38, borderRadius: 19 },
+  loadingRowLines: { flex: 1, gap: 5 },
   fgrp: { marginTop: 14, gap: 8 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
 }));

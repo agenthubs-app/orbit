@@ -2,7 +2,7 @@
   "_note": "R21 iOrbit App smoke views. Large-data start and history require an actor-owned QA session on the simulator; remaining board states need controlled native fixtures before pixel comparison.",
   "defaults": {
     "grid": 30,
-    "wait": 12000,
+    "wait": 30000,
     "attribution": "scripts/visual/attribution-redesign-R21-app.json"
   },
   "sources": [

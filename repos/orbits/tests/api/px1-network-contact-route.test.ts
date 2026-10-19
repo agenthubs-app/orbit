@@ -31,9 +31,10 @@ test("PX1 contacts page and summary read the selected analysis world for the sig
 });
 
 test("PX1 design contact reads are unavailable in production", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const mutableEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = mutableEnv.NODE_ENV;
   const previousMock = process.env.ORBIT_REDESIGN_MOCK;
-  process.env.NODE_ENV = "production";
+  mutableEnv.NODE_ENV = "production";
   process.env.ORBIT_REDESIGN_MOCK = "network,network-analysis";
   try {
     installNetworkFixtureWorld(designNetworkWorld("locked5"));
@@ -42,7 +43,7 @@ test("PX1 design contact reads are unavailable in production", async () => {
     assert.equal(response.status, 404);
   } finally {
     installNetworkFixtureWorld(null);
-    process.env.NODE_ENV = previousNodeEnv;
+    mutableEnv.NODE_ENV = previousNodeEnv;
     if (previousMock === undefined) delete process.env.ORBIT_REDESIGN_MOCK;
     else process.env.ORBIT_REDESIGN_MOCK = previousMock;
   }

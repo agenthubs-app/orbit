@@ -40,7 +40,7 @@ async function call<T>(url: string, init: RequestInit | undefined, schema: ZodTy
 const key = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 const id = (value: string) => encodeURIComponent(value);
 const designId = (value: string) => /^design-person-[0-9]{3}$/u.test(value);
-type DesignContacts = { rows: ContactSyncPayload[]; goalRelatedIds: string[]; followUpContactIds: string[]; links: ContactGoalRelatedIdsDTO["links"];
+type DesignContacts = { rows: ContactSyncPayload[]; goalRelatedIds: string[]; followUpContactIds: string[]; links: ContactGoalRelatedIdsDTO["links"]; asOf?: string;
   fits: Record<string, PlanContactFit>; connections: Record<string, InviteConnectionView>;
   valueLines: Record<string, { relation: string; evidence: string[] }> };
 const designContacts = () => call<DesignContacts>("/api/dev/network-design-fixture?contacts=1", undefined, anything as ZodType<DesignContacts>);

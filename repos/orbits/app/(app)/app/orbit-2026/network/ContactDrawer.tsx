@@ -90,9 +90,11 @@ export interface ContactDrawerProps {
   goalLabel?: string | null;
   /** List card says whether this is an invite-linked contact; false skips the connection read (it answers 404 for plain contacts). Unknown (direct URL) reads it. */
   inviteLinked?: boolean;
+  /** Development-only fixture moment for the before/after invite update boards. */
+  designMoment?: string | null;
 }
 
-export function ContactDrawer({ contactId, onClose, initial = null, onChanged, goalLabel = null, inviteLinked }: ContactDrawerProps) {
+export function ContactDrawer({ contactId, onClose, initial = null, onChanged, goalLabel = null, inviteLinked, designMoment = null }: ContactDrawerProps) {
   const t = useNetworkT();
   const { language } = useOrbitLanguage();
   const toast = useToast();
@@ -109,6 +111,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const [shareOpen, setShareOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async (id: string) => {
@@ -117,7 +120,7 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   }, []);
   useEffect(() => {
     if (!contactId) return;
-    setValueLine(null); setFit(null); setConnection(null); setWhyOpen(false);
+    setValueLine(null); setFit(null); setConnection(null); setWhyOpen(false); setUpdateDismissed(false);
     if (!initial) void load(contactId);
     const lang = language === "zh" ? "zh" : "en";
     void networkApi.valueLine(contactId, lang).then((result) => { if (result.ok) setValueLine(result.data.lines.find((line) => line.contactId === contactId) ?? null); });
@@ -126,7 +129,9 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   }, [contactId, initial, language, load, inviteLinked]);
 
   const contact = useMemo(() => drawerContactFrom(payload), [payload]);
-  const candidate = fit?.fits.find((item) => item.status === "candidate") ?? null;
+  const syncMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "sync";
+  const fitMoment = process.env.NODE_ENV !== "production" && contactId === "design-person-032" && designMoment === "fit";
+  const candidate = syncMoment ? null : fit?.fits.find((item) => item.status === "candidate") ?? null;
   if (!contactId) return null;
   const title = contact?.displayName ?? t("detailLoadFailed");
   const history = (field: string) => (contact?.fieldHistory ?? []).filter((entry) => entry.field === field && entry.previous !== null).slice().reverse();
@@ -146,6 +151,11 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
     onClose();
   };
   const self = connection !== null;
+  const recentUpdates = contact?.fieldHistory.filter((entry) => entry.source === "invite_sync" && Date.now() - Date.parse(entry.at) <= 30 * 86_400_000) ?? [];
+  const updateAt = recentUpdates.reduce((latest, entry) => entry.at > latest ? entry.at : latest, "");
+  const selfUpdate = self && !fitMoment && !updateDismissed && updateAt ? recentUpdates.filter((entry) => entry.at === updateAt) : [];
+  const stagedRole = syncMoment ? "代表取締役" : contact?.role ?? "";
+  const stagedOffering = syncMoment ? [...(contact?.offering ?? []), "製造業向けの PoC 先の紹介"] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
   const draftHref = contact ? `/app/agent?prefill=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
 
@@ -162,11 +172,11 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
           </div>
           {!contact ? (failed ? <p className={styles.lbl}>{t("detailLoadFailed")}</p> : null) : (
             <>
-              <div className={styles.row}>
+              <div className={styles.row} data-network-contact-ready="">
                 <ContactAvatar name={contact.displayName} large />
                 <div className={styles.grow}>
                   <div className={styles.name}>{contact.displayName}</div>
-                  {contact.organization || contact.role ? <div className={styles.sub}>{[contact.organization, contact.role].filter(Boolean).join(" · ")}</div> : null}
+                  {contact.organization || stagedRole ? <div className={styles.sub}>{[contact.organization, stagedRole].filter(Boolean).join(" · ")}</div> : null}
                   {self ? (
                     <div className={styles.chips}><span className={styles.dn} aria-hidden><i className={styles.on} /><i className={styles.on} /><i className={styles.on} /></span><span className={`${styles.chip} ${styles.chipTeal}`}>{t("chipSelf")}</span></div>
                   ) : (
@@ -207,10 +217,37 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                 </div>
               ) : null}
 
+              {selfUpdate.length ? (
+                <div className={`${styles.card} ${styles.syncCard}`} data-network-self-update="">
+                  <div className={styles.row}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>🔄</span>
+                    <div className={styles.grow}><b>{t("detailSyncTitle", { name: contact.displayName })}</b><div className={styles.lbl}>{t("detailSyncSub", { date: tokyoMonthDay(updateAt) })}</div></div>
+                    <button type="button" className={styles.rbtn} aria-label={t("drawerClose")} onClick={() => setUpdateDismissed(true)}><Icon name="x" size={16} /></button>
+                  </div>
+                  {selfUpdate.map((entry) => <div className={styles.frow} key={`${entry.field}-${entry.at}`}>
+                    <span className={styles.frowKey}>{t(FIELD_KEY[entry.field] ?? "detailFieldRole")}</span>
+                    <span className={styles.frowValue}>{entry.field === "offering" || entry.field === "seeking" ? `＋ ${entry.next ?? ""}` : <><span className={styles.strike}>{entry.previous ?? ""}</span>{` → ${entry.next ?? ""}`}</>}</span>
+                  </div>)}
+                  <div className={styles.lbl}>{t("detailSyncKeep")}</div>
+                </div>
+              ) : null}
+
+              {contact.offering.length || contact.seeking.length ? (
+                <div className={styles.grid2}>
+                  {(["offering", "seeking"] as const).map((field) => (
+                    <div key={field} className={styles.card}>
+                      <div className={styles.lbl}>{t(field === "offering" ? "detailOffering" : "detailSeeking")}</div>
+                      <b>{(field === "offering" ? stagedOffering : contact.seeking).join(" · ") || "—"}</b>
+                      {history(field).length ? <button type="button" className={styles.more} onClick={() => setOpenHistory(openHistory === field ? null : field)}>{t("previousLink")}</button> : null}
+                      {openHistory === field ? <PreviousList entries={history(field)} t={t} /> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               {self && connection ? (
                 <div className={styles.card} data-network-invite="">
                   {(["organization", "role", "email", "offering", "seeking"] as const).map((field) => {
-                    const value = field === "organization" ? contact.organization : field === "role" ? contact.role : field === "email" ? contact.primaryEmail : field === "offering" ? contact.offering.join(" · ") : contact.seeking.join(" · ");
+                    const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
                     if (!value) return null;
                     const paused = (connection.pausedFields as readonly string[]).includes(field);
                     return (
@@ -224,19 +261,6 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
                   <div className={styles.frow}><span className={styles.frowKey}>{t("detailConnectedVia")}</span><span className={styles.frowValue}>{t("detailConnectedViaValue", { code: connection.via.code, date: tokyoMonthDay(connection.connectedAt) })}</span></div>
                   <div className={styles.frow}><span className={styles.frowKey}>{t("sharedByYou")}</span><span className={styles.frowValue}>{connection.sharedByMe.map((key) => t(`shareKey_${key}` as Key)).join(" · ") || "—"}</span>
                     <button type="button" className={styles.more} onClick={() => setShareOpen(true)}>{t("shareChange")}</button></div>
-                </div>
-              ) : null}
-
-              {contact.offering.length || contact.seeking.length ? (
-                <div className={styles.grid2}>
-                  {(["offering", "seeking"] as const).map((field) => (
-                    <div key={field} className={styles.card}>
-                      <div className={styles.lbl}>{t(field === "offering" ? "detailOffering" : "detailSeeking")}</div>
-                      <b>{(field === "offering" ? contact.offering : contact.seeking).join(" · ") || "—"}</b>
-                      {history(field).length ? <button type="button" className={styles.more} onClick={() => setOpenHistory(openHistory === field ? null : field)}>{t("previousLink")}</button> : null}
-                      {openHistory === field ? <PreviousList entries={history(field)} t={t} /> : null}
-                    </div>
-                  ))}
                 </div>
               ) : null}
 

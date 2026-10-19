@@ -2,7 +2,7 @@
 // ✕ · 連絡先の編集 · ✓（保存）。氏名・会社・役職・メール・電話 → PATCH /api/contacts/:id/fields（旧值进「以前の値」）；
 // 業界・役職層・段階・タグ → PATCH /api/contacts/:id。段階只有 知り合い / 関係構築（代定 12）。出会った場所只显示。
 // 编辑需要联网（离线时 ✓ 不可用并说明）；删除确认后软删，离线进队列（useDeleteContact）。
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
@@ -35,13 +35,14 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
+  const params = useLocalSearchParams<{ design?: string | string[] }>();
   const toast = useToast();
   const client = useOrbitApiClient();
   const local = useLocalContacts();
   const fixture = useNetworkDesignContacts();
   const localRows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
-  const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: `edit:${contactId}`, cachePolicy: "network-only", enabled: !local.available });
-  const contact = useMemo(() => (local.available ? detailContactFrom(localContactDetail(localRows, contactId)) : remote.kind === "success" ? detailContactFrom(remote.data) : null), [local.available, localRows, contactId, remote]);
+  const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: `edit:${contactId}`, cachePolicy: "network-only", enabled: !fixture.enabled && !local.available });
+  const contact = useMemo(() => (fixture.enabled || local.available ? detailContactFrom(localContactDetail(localRows, contactId)) : remote.kind === "success" ? detailContactFrom(remote.data) : null), [fixture.enabled, local.available, localRows, contactId, remote]);
   const initial: Draft | null = useMemo(() => contact ? {
     displayName: contact.displayName, organization: contact.organization, role: contact.role, email: contact.primaryEmail, phone: contact.primaryPhone,
     primaryIndustryId: contact.primaryIndustryId ?? null, secondaryIndustryId: contact.secondaryIndustryId ?? null, seniorityLevel: contact.seniorityLevel ?? null,
@@ -49,12 +50,12 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   } : null, [contact]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const value = draft ?? initial;
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(fixture.enabled && params.design === "industry");
+  const [deleteOpen, setDeleteOpen] = useState(fixture.enabled && params.design === "delete");
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
   const deletion = useDeleteContact();
-  const offline = local.freshness.offline;
+  const offline = fixture.enabled ? fixture.offline : local.freshness.offline;
 
   if (!contact || !value || !initial) {
     return (

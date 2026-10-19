@@ -44,7 +44,7 @@ export const useFocusEffect = () => undefined;
 export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
-  lastSyncedAt: "2026-10-18T05:40:00.000Z", workspaceId: "workspace:one",
+  lastSyncedAt: state.lastSyncedAt === undefined ? "2026-10-18T05:40:00.000Z" : state.lastSyncedAt, workspaceId: "workspace:one",
   records: kind === "contact" ? contacts() : kind === "task" ? tasks() : [],
   refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession: () => null,
 });
@@ -148,6 +148,8 @@ test("the list renders from the device copy: header, tabs with counts, chips; no
   await page.getByText("伊藤 直子", { exact: true }).waitFor();
   await page.getByText("5人 · 今月 +3", { exact: true }).waitFor();
   assert.deepEqual(await listNames(page), ["c-ito", "c-takahashi", "c-suzuki", "c-ishikawa", "c-legacy"]);
+  const firstRow = await page.getByTestId("network-row-c-ito").boundingBox();
+  assert.ok(firstRow && firstRow.height >= 65, "a contact row has the board's 66-point touch height");
   await page.getByRole("tab", { name: "すべて" }).waitFor();
   assert.equal(await page.getByRole("tab", { name: "目標に関係" }).innerText().then((text) => text.replace(/\s+/g, "")), "目標に関係1");
   assert.equal(await page.getByRole("tab", { name: "要フォロー" }).innerText().then((text) => text.replace(/\s+/g, "")), "要フォロー2", "the task mirror (c-ishikawa) + cached lifecycle ids (c-suzuki)");
@@ -162,6 +164,16 @@ test("the list renders from the device copy: header, tabs with counts, chips; no
   const reads = await requests(page);
   assert.deepEqual(reads.filter((path) => /\/api\/contacts\/(page|summary)/.test(path)), []);
   assert.deepEqual(reads.filter((path) => path.startsWith("get:")), ["get:/api/contacts/goal-related-ids"]);
+});
+
+test("the loading screen keeps the search, summary, tabs, and six contact placeholders", async (t) => {
+  const page = await open(t, { status: "loading", lastSyncedAt: null, contacts: [] });
+  await page.getByTestId("network-loading").waitFor();
+  await page.getByText("読み込み中…", { exact: true }).waitFor();
+  assert.equal(await page.getByTestId("network-loading-search").count(), 1);
+  assert.equal(await page.getByTestId("network-loading-summary").count(), 1);
+  assert.equal(await page.getByTestId("network-loading-tabs").count(), 1);
+  assert.equal(await page.locator("[data-testid^='network-loading-row-']").count(), 6);
 });
 
 test("tabs: 目標に関係 keeps the plan-related people, 要フォロー the people with an open follow-up", async (t) => {
@@ -214,6 +226,7 @@ test("「＋」 opens 人脈を追加 over the list; rows open the contact", asy
   assert.deepEqual(await navigation(fresh), ["/contacts/c-ito"]);
 });
 
+
 test("offline (airplane mode): the list, tabs and search still work from the device copy and the last cached plan ids", async (t) => {
   const page = await open(t, { status: "stale", online: false });
   await page.getByText("伊藤 直子", { exact: true }).waitFor();
@@ -236,7 +249,11 @@ test("no contacts yet: the guide, the two tiles and the sample rows (app.html #6
   await page.getByTestId("network-empty").waitFor();
   await page.getByText("最初のつながりを追加", { exact: true }).waitFor();
   await page.getByText("まだ登録がありません", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "名刺をスキャン" }).click();
+  const scan = page.getByRole("button", { name: "名刺をスキャン" });
+  const guide = await page.getByTestId("network-empty").locator("[data-testid='network-guide']").boundingBox();
+  const scanBox = await scan.boundingBox();
+  assert.ok(guide && scanBox && scanBox.width >= guide.width - 45, "the primary scan action spans the guide card");
+  await scan.click();
   assert.deepEqual(await navigation(page), ["/contacts/new/scan"]);
 });
 

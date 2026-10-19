@@ -12,7 +12,7 @@ export interface NetworkDesignContacts {
   links: { contactId: string; label: string; talked: boolean }[];
   fits: Record<string, PlanContactFit>;
   connections: Record<string, InviteConnectionView>;
-  valueLines: Record<string, { relation: string; evidence: string[] }>;
+  valueLines: Record<string, { relation: string; evidence: string[]; meetingCount?: number }>;
 }
 
 export function networkDesignEnabled(env: string | undefined = process.env.EXPO_PUBLIC_ORBIT_REDESIGN_MOCK, dev: boolean = typeof __DEV__ !== "undefined" && __DEV__): boolean {

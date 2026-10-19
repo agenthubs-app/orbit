@@ -3,7 +3,7 @@
 // 求めていること · やりとり。招待でつながった人：本人入力 chip、本人入力的项目、同期停止的项目、⋯ 里的共有 / 解除（R15 sheet）。
 // 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开 R20a「面談の日程提案」。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
-import { useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
@@ -30,7 +30,7 @@ import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
 import { useNetworkDesignContacts } from "./network-design-fixture";
 
-interface ValueLine { relation?: string | null; evidence?: string[] }
+interface ValueLine { relation?: string | null; evidence?: string[]; meetingCount?: number }
 
 const STATUS_COPY = { active: "network.status.active", nurture: "network.status.nurture", needs_follow_up: "network.status.needs_follow_up", archived: "network.status.archived" } as const;
 const FIELD_COPY: Record<string, "network.detail.fieldName" | "network.detail.fieldCompany" | "network.detail.fieldRole" | "network.detail.fieldEmail" | "network.detail.fieldPhone" | "network.detail.fieldOffering" | "network.detail.fieldSeeking"> = {
@@ -43,6 +43,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   const router = useRouter();
+  const params = useLocalSearchParams<{ design?: string | string[] }>();
   const toast = useToast();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
@@ -51,14 +52,14 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const fixture = useNetworkDesignContacts();
   const localRows = fixture.enabled ? fixture.data?.rows ?? [] : local.rows;
   const merge = useNetworkMerge();
-  const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: contactId, cachePolicy: "network-only", enabled: !local.available });
+  const remote = useApiResource<Record<string, unknown>>(`/api/contacts/${encodeURIComponent(contactId)}`, () => false, { scopeKey: contactId, cachePolicy: "network-only", enabled: !fixture.enabled && !local.available });
   const row = useMemo(() => localRows.find((candidate) => candidate.card?.id === contactId || candidate.id === contactId) ?? null, [localRows, contactId]);
   const card = row ? withLegacyNetworkFields(row).card : null;
   const contact: DetailContact | null = useMemo(() => {
-    if (local.available) return detailContactFrom(localContactDetail(localRows, contactId));
+    if (fixture.enabled || local.available) return detailContactFrom(localContactDetail(localRows, contactId));
     return remote.kind === "success" ? detailContactFrom(remote.data) : null;
-  }, [local.available, localRows, contactId, remote]);
-  const goalLink = merge.links.get(contactId) ?? null;
+  }, [fixture.enabled, local.available, localRows, contactId, remote]);
+  const goalLink = fixture.enabled ? fixture.data?.links.find((link) => link.contactId === contactId) ?? null : merge.links.get(contactId) ?? null;
 
   const [valueLine, setValueLine] = useState<ValueLine | null>(null);
   const [fit, setFit] = useState<PlanContactFit | null>(null);
@@ -67,11 +68,13 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [unlinkOpen, setUnlinkOpen] = useState(fixture.enabled && params.design === "unlink");
+  useEffect(() => { if (fixture.enabled) setUnlinkOpen(params.design === "unlink"); }, [fixture.enabled, params.design]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -97,7 +100,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     return () => { live = false; };
   }, [client, inviteApi, contactId, language, fixture.enabled, fixture.data]);
 
-  const candidate = fitCandidate(fit);
+  const candidate = fixture.enabled && params.design === "sync" ? null : fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
     if (!candidate || deciding) return;
     setDeciding(true);
@@ -128,7 +131,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`));
   const self = card?.sourceChip === "self" || connection !== null;
   const nextStep = contact.nextAction.trim();
-  const selfUpdate = recentSelfUpdates(contact.fieldHistory, now());
+  const selfUpdate = fixture.enabled && params.design === "fit" || updateDismissed ? null : recentSelfUpdates(contact.fieldHistory, now());
+  const stagedRole = fixture.enabled && params.design === "sync" ? "代表取締役" : contact.role;
+  const stagedOffering = fixture.enabled && params.design === "sync" ? [...contact.offering, "製造業向けの PoC 先の紹介"] : contact.offering;
   const linkedNotes = [...contact.notes].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1));
   const openDraft = () => router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent: t("network.detail.draftIntent", { name: contact.displayName, step: nextStep }) } } as unknown as Href);
   const menuOptions = [
@@ -144,10 +149,10 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
       <View testID="network-contact">
         {(fixture.enabled ? fixture.offline : local.freshness.offline) ? <View style={styles.gapBottom}><OfflineBar offline pending={0} /></View> : null}
 
-        <View style={[styles.card, styles.head]} testID="network-contact-head">
+        <View style={[styles.card, styles.head, self ? styles.headSelf : styles.headPerson]} testID="network-contact-head">
           <Avatar name={contact.displayName} size="lg" />
           <UiText style={styles.name}>{contact.displayName}</UiText>
-          {[contact.organization, contact.role].filter(Boolean).length ? <UiText style={styles.sub}>{[contact.organization, contact.role].filter(Boolean).join(" · ")}</UiText> : null}
+          {[contact.organization, stagedRole].filter(Boolean).length ? <UiText style={styles.sub}>{[contact.organization, stagedRole].filter(Boolean).join(" · ")}</UiText> : null}
           {self ? (
             <>
               <View style={styles.rowCenter}><DensityDots level={3} /><Chip label={t("network.chipSelf")} tone="teal" /></View>
@@ -162,10 +167,10 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           )}
           {!self ? (
             <View style={styles.actions}>
-              <IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => { if (contact.primaryEmail) void Linking.openURL(`mailto:${contact.primaryEmail}`); }} />
-              <IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => { if (contact.primaryPhone) void Linking.openURL(`tel:${contact.primaryPhone}`); }} />
-              <IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => setProposalOpen(true)} />
-              <IconButton icon="pen" accessibilityLabel={t("network.detail.edit")} onPress={() => router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href)} />
+              <View style={styles.actionCircle}><IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => { if (contact.primaryEmail) void Linking.openURL(`mailto:${contact.primaryEmail}`); }} /></View>
+              <View style={styles.actionCircle}><IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => { if (contact.primaryPhone) void Linking.openURL(`tel:${contact.primaryPhone}`); }} /></View>
+              <View style={styles.actionCircle}><IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => setProposalOpen(true)} /></View>
+              <View style={styles.actionCircle}><IconButton icon="pen" accessibilityLabel={t("network.detail.edit")} onPress={() => router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href)} /></View>
             </View>
           ) : null}
         </View>
@@ -181,17 +186,18 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             </View>
             {whyOpen && candidate.reason ? <UiText style={styles.lbl}>{t("network.detail.whyBasis", { basis: candidate.reason })}</UiText> : null}
             <View style={styles.rowCenter}>
-              <Button variant="primary" size="sm" label={t("network.detail.fitYes")} onPress={() => void decide("accept")} disabled={deciding} />
-              <Button variant="secondary" size="sm" label={t("network.detail.fitNo")} onPress={() => void decide("dismiss")} disabled={deciding} />
+              <Button variant="primary" size="sm" icon="check" label={t("network.detail.fitYes")} onPress={() => void decide("accept")} disabled={deciding} />
+              <Button variant="secondary" size="sm" icon="x" label={t("network.detail.fitNo")} onPress={() => void decide("dismiss")} disabled={deciding} />
             </View>
           </View>
         ) : null}
 
         {selfUpdate ? (
-          <View style={[styles.card, styles.gapTop]} testID="network-self-update">
+          <View style={[styles.card, styles.gapTop, styles.syncCard]} testID="network-self-update">
             <View style={styles.rowCenter}>
               <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>🔄</UiText></View>
               <View style={styles.grow}><UiText style={styles.cardTitle}>{t("network.detail.syncTitle", { name: contact.displayName })}</UiText><UiText style={styles.lbl}>{t("network.detail.syncSub", { date: tokyoMonthDay(selfUpdate.at) })}</UiText></View>
+              <IconButton icon="x" accessibilityLabel={t("network.detail.dismissUpdate")} onPress={() => setUpdateDismissed(true)} />
             </View>
             {selfUpdate.entries.map((entry) => <FieldChange key={`${entry.field}-${entry.at}`} entry={entry} />)}
             <UiText style={styles.lbl}>{t("network.detail.syncKeep")}</UiText>
@@ -199,22 +205,26 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         ) : null}
 
         {!self && (valueLine?.relation || goalLink) ? (
-          <View style={[styles.card, styles.gapTop]} testID="network-why-card">
+          <View style={[styles.card, styles.whyCard, styles.gapTop]} testID="network-why-card">
             <View style={styles.rowCenter}>
               <View style={[styles.emo, { backgroundColor: colors.macPink }]}><UiText style={styles.emoText}>🎯</UiText></View>
               <UiText style={[styles.cardTitle, styles.grow]}>{t("network.detail.whyTitle", { name: contact.displayName })}</UiText>
               {valueLine?.evidence?.length ? <IconButton icon="info" accessibilityLabel={t("network.detail.whyBasis", { basis: "" })} onPress={() => setWhyOpen((value) => !value)} /> : null}
             </View>
-            {valueLine?.relation ? <UiText style={styles.body}>{valueLine.relation}</UiText> : null}
+            {valueLine?.relation ? <UiText style={[styles.body, styles.whyBody]}>{valueLine.relation}</UiText> : null}
             {whyOpen && valueLine?.evidence?.length ? <UiText style={styles.lbl}>{t("network.detail.whyBasis", { basis: valueLine.evidence.map((label) => evidenceLabel(label, t)).join(" · ") })}</UiText> : null}
-            {goalLink ? <View style={styles.chips}><Chip label={t("network.detail.planChip", { label: goalLink.label })} tone="lav" /></View> : null}
+            {goalLink || valueLine?.meetingCount ? <View style={styles.whyChips}>
+              {goalLink ? <Chip label={t("network.detail.planChip", { label: goalLink.label })} tone="lav" /> : null}
+              {valueLine?.meetingCount ? <Chip label={t("network.detail.meetingChip", { count: valueLine.meetingCount })} /> : null}
+            </View> : null}
           </View>
         ) : null}
 
         {connection ? (
           <View style={[styles.card, styles.gapTop]} testID="network-invite-fields">
             {(["organization", "role", "email", "offering", "seeking"] as const).map((field) => {
-              const value = field === "organization" ? contact.organization : field === "role" ? contact.role : field === "email" ? contact.primaryEmail : field === "offering" ? contact.offering.join(" · ") : contact.seeking.join(" · ");
+              if (fixture.enabled && contactId === "design-person-032" && field === "email") return null;
+              const value = field === "organization" ? contact.organization : field === "role" ? stagedRole : field === "email" ? contact.primaryEmail : field === "offering" ? stagedOffering.join(" · ") : contact.seeking.join(" · ");
               if (!value) return null;
               const paused = connection.pausedFields.includes(field as never);
               return (
@@ -358,11 +368,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   gapBottom: { marginBottom: 12 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },
   head: { alignItems: "center", gap: 6 },
-  confirm: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, gap: 10 },
+  headPerson: { paddingBottom: 24 },
+  headSelf: { paddingBottom: 34 },
+  confirm: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, gap: 10, paddingVertical: 14 },
+  syncCard: { borderWidth: 1.5, borderColor: colors.plum300, paddingBottom: 24 },
   name: { color: colors.ink, fontSize: 19, fontWeight: "800", marginTop: 6 },
   sub: { color: colors.ink3, fontSize: 12.5 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 6 },
   actions: { flexDirection: "row", gap: 12, marginTop: 12 },
+  actionCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  whyCard: { backgroundColor: colors.macPink },
+  whyBody: { fontSize: 14.5, lineHeight: 21, fontWeight: "700" },
+  whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   emo: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },

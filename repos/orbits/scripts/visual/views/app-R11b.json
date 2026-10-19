@@ -1,8 +1,8 @@
 {
- "_note": "R11b 人脈分析（App）。模拟器 Orbit Line B，Metro :8083，dev :3300（ORBIT_REDESIGN_MOCK=network-analysis，设计稿 fixture 变体见 variant）。像素收口在 R31a 合入后；App 深色锁定 / 少量 / 機会 / インサイト / 下钻（b12 g11）尚未补画 → 设计稿无。",
+ "_note": "PX1 人脈分析（App）。Orbit PX1 16e，Metro :8088，Web API :3800；设计稿 fixture 变体见 variant。未画的深色组合不进门禁。",
  "defaults": {
   "grid": 30,
-  "wait": 20000,
+  "wait": 30000,
   "attribution": "scripts/visual/attribution-redesign-R11b-app.json"
  },
  "sources": [
@@ -12,6 +12,7 @@
  "views": [
   {
    "id": "A-R11b-01",
+   "fixture": "locked5",
    "variant": "locked5",
    "design": "b5-me-inbox.html",
    "board-index": 32,
@@ -19,10 +20,12 @@
     "light"
    ],
    "path": "/contacts/dashboard",
+   "wait": 60000,
    "note": "锁定 5/10（b5 #32）"
   },
   {
    "id": "A-R11b-02",
+   "fixture": "few14",
    "variant": "few14",
    "design": "b5-me-inbox.html",
    "board-index": 33,
@@ -34,6 +37,7 @@
   },
   {
    "id": "A-R11b-03",
+   "fixture": "many286",
    "variant": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 34,
@@ -45,6 +49,7 @@
   },
   {
    "id": "A-R11b-03D",
+   "fixture": "many286",
    "variant": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 67,
@@ -56,6 +61,7 @@
   },
   {
    "id": "A-R11b-04",
+   "fixture": "many286",
    "variant": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 35,
@@ -67,6 +73,7 @@
   },
   {
    "id": "A-R11b-05",
+   "fixture": "many286",
    "variant": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 36,
@@ -78,6 +85,7 @@
   },
   {
    "id": "A-R11b-06",
+   "fixture": "many286",
    "variant": "many286",
    "design": "b5-me-inbox.html",
    "board-index": 37,

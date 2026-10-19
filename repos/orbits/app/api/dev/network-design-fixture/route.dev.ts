@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 
 import { NETWORK_DESIGN_VARIANTS, activeNetworkFixture, installNetworkFixtureWorld, type NetworkDesignVariant } from "../../../../features/network-analysis/analysis-fixtures";
 import { designNetworkWorld } from "../../../../features/network-analysis/design-fixtures";
-import { designNetworkContactFixture } from "../../../../features/network-analysis/design-fixtures/contacts";
+import { CONTACT_FIXTURE_NOW, designNetworkContactFixture } from "../../../../features/network-analysis/design-fixtures/contacts";
 import { redesignContractMode } from "../../../../features/redesign-contracts/route";
 import { success } from "../../../../shared/api/envelope";
 import { resolveAuthenticatedApiActor } from "../../_shared/authenticated-actor";
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     if (!actor) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Authentication is required." } }, { headers: HEADERS, status: 401 });
     const variant = activeNetworkFixture().variant;
     if (!variant) return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Select a design variant first." } }, { headers: HEADERS, status: 404 });
-    return NextResponse.json(success({ ...designNetworkContactFixture(variant), actorId: actor.id }), { headers: HEADERS });
+    return NextResponse.json(success({ ...designNetworkContactFixture(variant), actorId: actor.id, asOf: CONTACT_FIXTURE_NOW.toISOString() }), { headers: HEADERS });
   }
   return NextResponse.json({ variants: NETWORK_DESIGN_VARIANTS, variant: activeNetworkFixture().variant }, { headers: HEADERS });
 }

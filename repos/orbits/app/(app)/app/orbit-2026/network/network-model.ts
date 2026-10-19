@@ -14,7 +14,7 @@ export const DENSITY_OPTIONS = ["1", "2", "3"] as const;
 export const TOP_INDUSTRIES = 5;
 export const TOP_REGIONS = 3;
 export const OTHER_KEY = "__other__";
-export const PAGE_SIZE = 30;
+export const PAGE_SIZE = 9;
 /** 人脈分析 opens from this many people (b5:487 / app.html:469 「10人から使えます · あと N人」); R11b page lock, not the 3-person analysis-threshold. */
 export { NETWORK_ANALYSIS_UNLOCK_CONTACTS } from "../../../../../features/network-analysis/page-lock";
 export const NETWORK_CITY_KEYS = ["Tokyo", "Osaka", "Nagoya", "Yokohama", "Kyoto", "Fukuoka", "Sapporo", "Kobe", "Sendai", "Shanghai", "Beijing", "Shenzhen", "Singapore", "Seoul"] as const;

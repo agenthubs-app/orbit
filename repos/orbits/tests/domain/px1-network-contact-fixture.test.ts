@@ -48,7 +48,22 @@ test("PX1 controlled detail samples use real detail fields and keep account data
   }
   assert.ok(world.rows.some((row) => Array.isArray(row.detail?.fieldHistory) && row.detail.fieldHistory.length > 0));
   assert.ok(world.rows.some((row) => row.card?.sourceChip === "self"));
-  assert.equal(world.fits["design-person-003"]?.fits[0]?.status, "candidate");
-  assert.deepEqual(world.connections["design-person-121"]?.pausedFields, ["email"]);
-  assert.equal(world.valueLines["design-person-003"]?.evidence[0], "card");
+  const byId = new Map(world.rows.map((row) => [row.id, row]));
+  assert.equal(byId.get("design-person-032")?.card?.displayName, "松井 遥");
+  assert.equal(byId.get("design-person-032")?.card?.sourceChip, "self");
+  assert.equal(byId.get("design-person-151")?.card?.displayName, "森 恭平");
+  assert.deepEqual([...world.rows].sort((a, b) => String(b.card?.updatedAt).localeCompare(String(a.card?.updatedAt))).slice(0, 9).map((row) => row.id),
+    ["design-person-001", "design-person-003", "design-person-032", "design-person-151", "design-person-121", "design-person-221", "design-person-153", "design-person-152", "design-person-261"]);
+  assert.equal(world.fits["design-person-151"]?.fits[0]?.status, "candidate");
+  assert.equal(world.fits["design-person-032"]?.fits[0]?.shortLabel, "調達経験のある起業家");
+  assert.deepEqual(world.connections["design-person-032"]?.pausedFields, ["email"]);
+  const matsui = byId.get("design-person-032")!;
+  assert.ok(Date.parse(world.connections["design-person-032"]!.connectedAt) <= Date.parse(matsui.card!.updatedAt));
+  assert.ok((matsui.detail!.fieldHistory as { at: string }[]).every((entry) => Date.parse(entry.at) <= Date.parse(matsui.card!.updatedAt)));
+  assert.equal(world.valueLines["design-person-001"]?.evidence[0], "card");
+  assert.equal((world.valueLines["design-person-001"] as { meetingCount?: number })?.meetingCount, 2);
+  assert.equal(world.links.find((link) => link.contactId === "design-person-001")?.label, "VC パートナー");
+  assert.equal(byId.get("design-person-001")?.card?.nextActionPreview, "昨日の面談のお礼と、事業計画書 v3 の送付");
+  assert.equal(matsui.card?.nextActionPreview, "つながったお礼と、来週のお茶のお誘い");
+  assert.ok((byId.get("design-person-032")?.detail?.fieldHistory as unknown[])?.length);
 });

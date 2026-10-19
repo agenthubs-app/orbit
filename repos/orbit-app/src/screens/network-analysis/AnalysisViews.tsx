@@ -3,6 +3,7 @@
 // sentence is a snapshot block with its evidence; a card without data is left out (§2 B-5).
 import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
+import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 
 import type { NetworkAnalysisDistribution, NetworkAnalysisGap, NetworkAnalysisInsight, NetworkAnalysisOpportunity, NetworkAnalysisViewDTO } from "../../api/contract/network-analysis-view";
 import { AvatarStack, Button, Card, Chip, Icon, MacTile, RingChart, SampleTag, Skeleton, UiPressable, UiText } from "../../components/ui";
@@ -13,6 +14,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import type { CachedReadState, NetworkSnapshotBlock, NetworkSnapshotView } from "./analysis-api";
 import { bucketLabel, industryName, monthLabel, tokyoMonthDay } from "./analysis-labels";
+import { LinearGradient } from "../plan/plan-svg";
 
 /** A snapshot evidence person: keyed by the snapshot's record id; `contactId` opens the contact. */
 export interface EvidencePerson { contactId: string; name: string }
@@ -24,10 +26,17 @@ const ringColors = (colors: OrbitColors) => [colors.plum900, colors.plum700, col
 
 /** kit .bar.thin (.rose): 4 tall on surface-3; first row plum, the rest rose. */
 function ThinBar({ value, rose }: { value: number; rose?: boolean }) {
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
+  const [width, setWidth] = useState(0);
+  const fill = Math.max(0, Math.min(1, value)) * width;
+  const from = rose ? colors.rose300 : colors.plum300;
+  const to = rose ? colors.rose700 : colors.plum700;
   return (
-    <View style={styles.barTrack}>
-      <View style={[styles.barFill, rose ? styles.barRose : null, { width: `${Math.max(0, Math.min(1, value)) * 100}%` }]} />
+    <View style={styles.barTrack} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      {fill > 0 ? <Svg width={fill} height={4} style={StyleSheet.absoluteFill}>
+        <Defs><LinearGradient id="analysisBar" x1={0} y1={0} x2={fill} y2={0} gradientUnits="userSpaceOnUse"><Stop offset={0} stopColor={from} /><Stop offset={1} stopColor={to} /></LinearGradient></Defs>
+        <Rect x={0} y={0} width={fill} height={4} rx={2} fill="url(#analysisBar)" />
+      </Svg> : null}
     </View>
   );
 }
@@ -108,13 +117,13 @@ export function LockedView({ total, required, missing, onAddCards }: { total: nu
 
 /* ---------- 構造 (b5 #33 / #34) ---------- */
 
-function DimensionCard({ title, distribution, onOpen }: { title: string; distribution: NetworkAnalysisDistribution; onOpen: (selection: DrillSelection) => void }) {
+function DimensionCard({ title, distribution, onOpen, compactTop = false }: { title: string; distribution: NetworkAnalysisDistribution; onOpen: (selection: DrillSelection) => void; compactTop?: boolean }) {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
   if (distribution.buckets.length === 0) return null;
   const max = Math.max(1, ...distribution.buckets.map((bucket) => bucket.count));
   return (
-    <Card style={styles.gapTop}>
+    <Card style={compactTop ? styles.afterGap : styles.gapTop}>
       <View testID={`analysis-dimension-${distribution.dimension}`}>
         <CardHead title={title} right={<Icon name="right" size={16} color={colors.ink3} />} />
         {distribution.buckets.map((bucket, index) => {
@@ -197,7 +206,7 @@ export function StructureView({ view, snapshot, names, onOpen, onOpenPerson }: {
       {gap ? <GapCard gap={gap} total={industries.total} block={gapBlock} names={names} onOpenPerson={onOpenPerson} /> : structure.gaps === null ? (
         <View style={styles.gapCard} testID="analysis-gap-unavailable"><UiText style={styles.gapBodyPlain}>{t("networkAnalysis.gapUnavailable")}</UiText></View>
       ) : null}
-      <DimensionCard title={t("networkAnalysis.seniority")} distribution={structure.seniority} onOpen={onOpen} />
+      <DimensionCard title={t("networkAnalysis.seniority")} distribution={structure.seniority} onOpen={onOpen} compactTop />
       <DimensionCard title={t("networkAnalysis.region")} distribution={structure.regions} onOpen={onOpen} />
       <DimensionCard title={t("networkAnalysis.met")} distribution={structure.mets} onOpen={onOpen} />
     </View>
@@ -359,6 +368,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
   between: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
   gapTop: { marginTop: 14 },
+  afterGap: { marginTop: 2 },
   lbl: { fontSize: 11.5, color: colors.ink3Text, fontWeight: "500" },
   lblBody: { fontSize: 12.5, color: colors.ink3Text, lineHeight: 20 },
   caption: { marginTop: 4 },
@@ -366,8 +376,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 },
   // kit .bar.thin
   barTrack: { height: 4, borderRadius: 4, backgroundColor: colors.surface3, overflow: "hidden" },
-  barFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 4, backgroundColor: colors.plum500 },
-  barRose: { backgroundColor: colors.rose500 },
   // kit .why / .why-body
   why: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   whyMark: { fontSize: 10.5, fontWeight: "800", color: colors.ink3Text },
@@ -388,7 +396,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ghostText: { flex: 1, fontSize: 12, color: colors.ink3Text },
   faded: { opacity: 0.5 },
   // kit .dim (74 · bar · 34 · 16)
-  dim: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 5, minHeight: 32 },
+  dim: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 5, minHeight: 30 },
   dimLabel: { width: 74, fontSize: 12, color: colors.ink3Text },
   dimCount: { width: 34, textAlign: "right", fontSize: 12, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   chevronSlot: { width: 16 },

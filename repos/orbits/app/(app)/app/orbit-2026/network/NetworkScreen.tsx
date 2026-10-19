@@ -68,6 +68,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const [summary, setSummary] = useState<ContactCardSummaryDTO | null>(null);
   const [matched, setMatched] = useState<number | null>(null);
   const [items, setItems] = useState<ContactCardDTO[] | null>(null);
+  const [fixtureNowMs, setFixtureNowMs] = useState<number | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [links, setLinks] = useState<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>(new Map());
@@ -91,7 +92,11 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   useEffect(() => {
     if (!items?.some((item) => /^design-person-[0-9]{3}$/u.test(item.id))) return;
     void networkApi.designContacts().then((result) => {
-      if (result.ok && Array.isArray(result.data.links)) setLinks(new Map(result.data.links.map((link) => [link.contactId, link])));
+      if (result.ok && Array.isArray(result.data.links)) {
+        setLinks(new Map(result.data.links.map((link) => [link.contactId, link])));
+        const asOf = Date.parse(result.data.asOf ?? "");
+        if (Number.isFinite(asOf)) setFixtureNowMs(asOf);
+      }
     });
   }, [items]);
 
@@ -119,6 +124,9 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   };
   const refresh = () => { void loadSummary(); setFilters((current) => ({ ...current })); };
   const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links)), [items, links]);
+  const planCandidates = rows.filter((row) => row.goal).slice(0, 2);
+  const planCandidateNames = planCandidates.map((row) => language === "ja" ? `${row.name.split(/\s+/u)[0]}さん` : row.name)
+    .join(language === "ja" ? "・" : ", ");
   const header = headerCounts(summary);
   const empty = header !== null && header.total === 0;
   const subtitle = empty ? t("subtitleEmpty") : header ? t("subtitle", { total: header.total, added: header.added }) : undefined;
@@ -144,6 +152,14 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
         <>
           <h4><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>💬</span>{t("railQuestion")}</h4>
           <TodayQuestionCard />
+          {planCandidates.length ? <>
+            <h4><Icon name="sparkle" size={16} />{t("railNext")}</h4>
+            <div className={styles.card}>
+              <b>{t("railPlanTitle", { names: planCandidateNames })}</b>
+              <div className={styles.lbl}>{t("railPlanBody")}</div>
+              <a className={`btn ${styles.btn} ${styles.sm}`} style={{ marginTop: 10, alignSelf: "flex-start" }} href="/app/tasks?tab=plan">{t("railPlanButton")}</a>
+            </div>
+          </> : null}
         </>
       )}
     </div>
@@ -152,13 +168,25 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   return (
     <>
       <ShellPage title={t("title")} subtitle={subtitle} left={narrow ? undefined : <ShellSearchButton />}
-        right={<a className={`btn ${styles.btn} ${styles.accent}`} href="/app/contacts/new" data-network-add="">{t("addPeople")}</a>}
-        rightRail={rail} />
+        right={narrow ? undefined : <a className={`btn ${styles.btn} ${styles.accent}`} href="/app/contacts/new" data-network-add=""><span aria-hidden="true">＋</span>{t("addPeople")}</a>}
+        rightRail={narrow ? undefined : rail} phoneFold={narrow} />
+      {narrow ? <div className={styles.mobileHeading} data-network-mobile-heading="">
+        <h1>{t("title")}</h1>{subtitle ? <span className={styles.lbl}>{subtitle}</span> : null}
+        <a className={styles.mobileAdd} href="/app/contacts/new" aria-label={t("addPeople")} data-network-add=""><Icon name="plus" size={20} /></a>
+      </div> : null}
       {summary === null && !failed ? <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>
         : failed && summary === null ? <div className={styles.card} role="alert"><p>{t("loadFailed")}</p><button type="button" className={`btn ${styles.btn}`} onClick={refresh}>{t("filterClear")}</button></div>
           : empty ? <NetworkEmpty t={t} nowMs={nowMs} />
             : (
+              <>
+              {narrow ? <div className={styles.mobileTools}>
+                <label className={styles.search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
+                <button ref={filterAnchor} type="button" className={`btn ${styles.lbtn}`} onClick={() => setFilterOpen(true)} aria-label={t("filter")} data-network-filter=""><Icon name="sliders" size={20} />{filterCount(filters) ? <span className={styles.badge}>{filterCount(filters)}</span> : null}</button>
+              </div> : null}
               <div className={styles.wgrid} data-network-list="">
+                {narrow ? (header && header.total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS
+                  ? <NetworkMobileOverview summary={summary} header={header} t={t} />
+                  : <div className={`${styles.card} ${styles.span12} ${styles.mobileInvite}`}><span className={`${styles.emo} ${styles.emoSm} ${styles.t_pink}`}>🤝</span><span className={styles.grow}><b>{t("inviteTitle")}</b><span className={styles.lbl}>{t("inviteSub")}</span></span><a className={`btn ${styles.btn} ${styles.sm}`} href="/app/contacts/new?add=invite">{t("inviteButton")}</a></div>) : <>
                 <div className={`${styles.card} ${styles.span4}`}>
                   <div className={`${styles.row} ${styles.between}`}><span className={styles.lbl}>{t("connections")}</span><a className={styles.more} href="/app/contacts/dashboard">{t("analysis")}<Icon name="right" size={16} /></a></div>
                   <div className={styles.big}>{header?.total ?? 0}<small>{t("peopleUnit")}</small></div>
@@ -178,8 +206,14 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                     <div key={key} className={styles.srcRow}><span className={`${styles.chip} ${key === "self" ? styles.chipTeal : ""}`}>{chipLabel(key, t)}</span><b>{summary?.sourceChips?.[key]}</b></div>
                   ))}
                 </div>
-                <div className={`${styles.card} ${styles.span12}`}>
-                  <div className={`${styles.row} ${styles.between}`} style={{ flexWrap: "wrap" }}>
+                </>}
+                {narrow ? <div className={`${styles.cats} ${styles.mobileTabs} ${styles.span12}`} role="tablist" aria-label={t("tabsLabel")} data-network-tabs="">
+                  {([["all", "tabAll", header?.total ?? 0], ["goal", "tabGoal", header?.goal ?? 0], ["followUp", "tabFollowUp", header?.followUp ?? 0]] as const).map(([key, copy, count]) => (
+                    <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${styles.cat} ${tab === key ? styles.catOn : ""}`} onClick={() => setTab(key)}>{t(copy)} <small>{count}</small></button>
+                  ))}
+                </div> : null}
+                <div className={`${styles.card} ${styles.span12} ${narrow ? styles.mobileListCard : ""}`}>
+                  {!narrow ? <div className={`${styles.row} ${styles.between}`} style={{ flexWrap: "wrap" }}>
                     <div className={styles.cats} role="tablist" aria-label={t("tabsLabel")} data-network-tabs="">
                       {([["all", "tabAll", header?.total ?? 0], ["goal", "tabGoal", header?.goal ?? 0], ["followUp", "tabFollowUp", header?.followUp ?? 0]] as const).map(([key, copy, count]) => (
                         <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${styles.cat} ${tab === key ? styles.catOn : ""}`} onClick={() => setTab(key)}>{t(copy)} <small>{count}</small></button>
@@ -191,9 +225,10 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                         <Icon name="sliders" size={20} />{filterCount(filters) ? <span className={styles.badge}>{filterCount(filters)}</span> : null}
                       </button>
                     </div>
-                  </div>
+                  </div> : null}
                   {items === null ? <Skeleton lines={6} /> : rows.length ? (
-                    <NetworkTable rows={rows} t={t} nowMs={nowMs} onOpen={open} />
+                    narrow ? <NetworkMobileList rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} onOpen={open} />
+                      : <NetworkTable rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} selectedId={openContact} onOpen={open} />
                   ) : <p className={styles.lbl} style={{ marginTop: 16 }}>{t("noMatchTitle")} · {t("noMatchBody")}</p>}
                   {cursor ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (matched ?? 0) - rows.length) })}</button></div> : null}
                 </div>
@@ -206,11 +241,13 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                   </a>
                 ) : null}
               </div>
+              </>
             )}
       <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchor={filterAnchor} label={t("filterTitle")} width={420}>
         <FilterPanel t={t} language={language} summary={summary} filters={filters} onChange={setFilters} matched={matched} total={header?.total ?? 0} onDone={() => setFilterOpen(false)} />
       </Popover>
       {openContact ? <ContactDrawer contactId={openContact} onClose={() => open(null)} goalLabel={links.get(openContact)?.label ?? null}
+        designMoment={process.env.NODE_ENV !== "production" ? params?.get("design") : null}
         inviteLinked={(() => { const card = items?.find((item) => item.id === openContact); return card ? card.sourceChip === "self" : undefined; })()}
         onChanged={(event) => {
           if (event.kind === "deleted") {
@@ -231,33 +268,63 @@ function Dots({ level }: { level: 1 | 2 | 3 }) {
   return <span className={styles.dn} aria-hidden>{[1, 2, 3].map((index) => <i key={index} className={index <= level ? styles.on : undefined} />)}</span>;
 }
 
-function NetworkTable({ rows, t, nowMs, onOpen }: { rows: NetworkRow[]; t: NetworkT; nowMs: number; onOpen?: (id: string) => void }) {
-  const touchText = (row: NetworkRow) => {
-    const touch = lastTouch(row, nowMs);
-    if (!touch) return "";
-    if (touch.kind === "today") return t("touchToday");
-    if (touch.kind === "yesterday") return t("touchYesterday");
-    if (touch.kind === "daysAgo") return t("touchDaysAgo", { n: touch.n });
-    if (touch.kind === "connected") return t("touchConnected", { year: touch.year, month: touch.month });
-    return t("touchAdded", { date: touch.date });
-  };
+function touchText(row: NetworkRow, t: NetworkT, nowMs: number): string {
+  const touch = lastTouch(row, nowMs);
+  if (!touch) return "";
+  if (touch.kind === "today") return t("touchToday");
+  if (touch.kind === "yesterday") return t("touchYesterday");
+  if (touch.kind === "daysAgo") return t("touchDaysAgo", { n: touch.n });
+  if (touch.kind === "connected") return t("touchConnected", { year: touch.year, month: touch.month });
+  return t("touchAdded", { date: touch.date });
+}
+
+function NetworkTable({ rows, t, nowMs, selectedId, onOpen }: { rows: NetworkRow[]; t: NetworkT; nowMs: number; selectedId: string | null; onOpen?: (id: string) => void }) {
   return (
     <table className={styles.table} data-network-table="">
       <thead><tr><th>{t("colName")}</th><th>{t("colCompany")}</th><th>{t("colDensity")}</th><th>{t("colSource")}</th><th>{t("colGoal")}</th><th>{t("colLastTouch")}</th></tr></thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.id} onClick={() => onOpen?.(row.id)} data-network-row={row.id}>
+          <tr key={row.id} onClick={() => onOpen?.(row.id)} data-network-row={row.id} data-selected={row.id === selectedId}>
             <td><div className={styles.row}><ContactAvatar name={row.name} /><b>{row.name}</b></div></td>
             <td>{row.organization || row.role ? <><span className={styles.sub}>{row.organization}</span><div className={styles.lbl}>{row.role}</div></> : <span className={styles.lbl}>{t("unset")}</span>}</td>
             <td><Dots level={row.density} /></td>
             <td><span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{chipLabel(row.chip, t)}</span></td>
             <td>{row.goal ? goalText(row.goal, t) : <span className={styles.lbl}>—</span>}</td>
-            <td className={styles.muted}>{touchText(row)}</td>
+            <td className={styles.muted}>{touchText(row, t, nowMs)}</td>
           </tr>
         ))}
       </tbody>
     </table>
   );
+}
+
+function NetworkMobileList({ rows, t, nowMs, onOpen }: { rows: NetworkRow[]; t: NetworkT; nowMs: number; onOpen: (id: string) => void }) {
+  return <div className={styles.mobileList} data-network-mobile-list="">
+    {rows.map((row) => <button key={row.id} type="button" className={styles.mobileCard} data-network-row={row.id} data-network-mobile-card={row.id} onClick={() => onOpen(row.id)}>
+      <ContactAvatar name={row.name} />
+      <span className={styles.mobilePerson}>
+        <span className={styles.mobileTop}><b>{row.name}</b><Dots level={row.density} /></span>
+        <span className={styles.sub}>{[row.organization, row.role].filter(Boolean).join(" · ") || t("unset")}</span>
+        <span className={styles.mobileBottom}><span>{row.goal ? goalText(row.goal, t) : ""}</span><span className={styles.muted}>{touchText(row, t, nowMs)}</span></span>
+      </span>
+      <span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{chipLabel(row.chip, t)}</span>
+    </button>)}
+  </div>;
+}
+
+function NetworkMobileOverview({ summary, header, t }: {
+  summary: ContactCardSummaryDTO | null; header: { total: number; added: number }; t: NetworkT;
+}) {
+  return <div className={`${styles.card} ${styles.span12} ${styles.mobileOverview}`} data-network-mobile-overview="">
+    <div className={`${styles.row} ${styles.between}`}>
+      <div><div className={styles.row}><span className={styles.lbl}>{t("connections")}</span><a className={styles.more} href="/app/contacts/dashboard">{t("analysis")}<Icon name="right" size={16} /></a></div>
+        <div className={styles.big}>{header.total}<small>{t("peopleUnit")}</small></div></div>
+      <div className={styles.mobileMonth}><span className={styles.lbl}>{t("thisMonth")}</span><b>+{header.added}</b></div>
+    </div>
+    <div className={styles.stack3}>{([1, 2, 3] as const).map((level) => (summary?.densityCounts?.[level] ?? 0) > 0 ? <i key={level} className={styles[`s${level}`]} style={{ flex: summary!.densityCounts![level] }} /> : null)}</div>
+    <div className={styles.mobileDensityStats}>{([1, 2, 3] as const).map((level) => <div key={level}><Dots level={level} /><span className={styles.muted}>{t(`density${level}`)}</span><b>{summary?.densityCounts?.[level] ?? 0}</b></div>)}</div>
+    <div className={styles.mobileDaily}><span aria-hidden="true">💬</span><span><b>{t("dailyHintBold")}</b>{t("dailyHintRest")}</span></div>
+  </div>;
 }
 
 function FilterPanel({ t, language, summary, filters, onChange, matched, total, onDone }: {
@@ -304,7 +371,12 @@ function NetworkEmpty({ t, nowMs }: { t: NetworkT; nowMs: number }) {
       ))}
       <div className={`${styles.card} ${styles.span12}`}>
         <div className={styles.cardH}><h3>{t("sampleTitle")} <SampleTag /></h3></div>
-        <div className={styles.faded}><NetworkTable rows={sample} t={t} nowMs={nowMs} /></div>
+        <div className={styles.faded}>
+          <NetworkTable rows={sample} t={t} nowMs={nowMs} selectedId="" />
+          {[0, 1].map((index) => <div key={index} className={styles.sampleSkeleton} data-network-sample-skeleton="" aria-hidden="true">
+            {[18, 22, 7, 10, 18, 8].map((width, column) => <span key={column} style={{ width: `${width}%` }} />)}
+          </div>)}
+        </div>
       </div>
     </div>
   );
