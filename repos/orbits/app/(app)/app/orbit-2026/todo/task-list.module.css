@@ -40,13 +40,19 @@
 .pager { display: flex; gap: var(--space-8); justify-content: flex-end; margin-top: var(--space-12); }
 .railPanel { display: grid; gap: var(--space-14); }
 .rail { display: grid; gap: var(--space-14); }
-.identityCard, .scheduleCard, .historyCard, .detailNotes { background: var(--surface); border: 0; border-radius: var(--r-card-web); margin: 0; padding: var(--space-16); }
+.identityCard, .scheduleCard, .relatedCard, .historyCard, .detailNotes { background: var(--surface); border: 0; border-radius: var(--r-card-web); margin: 0; padding: var(--space-16); }
 .railHeader { align-items: center; display: flex; justify-content: space-between; }
 .railHeader h2 { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); margin: 0; }
 .railClose { align-items: center; display: inline-flex; justify-content: center; min-height: 32px; min-width: 32px; }
 .detailTitle { font-size: var(--fs-body); line-height: var(--lh-body); margin: 0 0 var(--space-8); overflow-wrap: anywhere; }
 .detailMeta { align-items: center; display: flex; gap: var(--space-8); }
 .detailNotes h4 { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.relatedCard h4 { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); margin: 0 0 var(--space-12); }
+.relatedEventLink { align-items: center; color: var(--ink); display: flex; gap: var(--space-8); justify-content: space-between; text-decoration: none; }
+.relatedEventLink:hover, .relatedEventLink:focus-visible { color: var(--accent-text); }
+.relatedEventLink span { display: grid; gap: var(--space-4); min-width: 0; }
+.relatedEventLink strong { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.relatedEventLink time { color: var(--ink-3); font-size: var(--fs-caption); }
 .detailSchedule { margin: 0; }
 .scheduleRows { display: grid; }
 .scheduleRow { align-items: center; background: none; border: 0; border-bottom: 1px solid var(--surface-3); color: var(--ink); cursor: pointer; display: flex; gap: var(--space-8); justify-content: space-between; min-height: 42px; padding: var(--space-8) 0; text-align: left; width: 100%; }

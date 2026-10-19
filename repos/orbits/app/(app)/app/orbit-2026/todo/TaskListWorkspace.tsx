@@ -100,6 +100,8 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   const open = useTasksResource(() => client.loadScopedPage("open", filter, query, openCursor, context), JSON.stringify([filter, query.trim(), openCursor, "open", date, timeZone]));
   const completed = useTasksResource(() => client.loadScopedPage("completed", filter, query, doneCursor, context), JSON.stringify([filter, query.trim(), doneCursor, "completed", date, timeZone]));
   const detail = useTasksResource<TaskView | null>(() => selectedId ? client.loadTask(selectedId) : Promise.resolve(null), selectedId ?? "none");
+  const relatedEventId = detail.data?.id === selectedId ? detail.data.relatedEventId : undefined;
+  const relatedEvent = useTasksResource(() => relatedEventId ? client.loadRelatedEvent(relatedEventId) : Promise.resolve(null), relatedEventId ?? "none");
   const reminders = useTasksResource(() => selectedId ? client.loadReminders(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const activities = useTasksResource(() => selectedId ? client.loadActivities(selectedId) : Promise.resolve([]), selectedId ?? "none");
   const mutation = useTasksMutation();
@@ -142,7 +144,7 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
   };
   const setScope = (next: TaskListFilter) => { setFilter(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
   const search = (next: string) => { setQuery(next); setOpenCursor(null); setDoneCursor(null); selectTask(null); };
-  const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); reminders.refresh(); activities.refresh(); };
+  const refresh = () => { open.refresh(); completed.refresh(); detail.refresh(); relatedEvent.refresh(); reminders.refresh(); activities.refresh(); };
 
   function toggle(item: TaskRowView | TaskView) {
     void mutation.run(() => client.setCompleted(item.id, item.status !== "completed"), () => {
@@ -320,6 +322,10 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
         {reminderFailureTaskId === selectedId && reminderMutation.error ? <p role="alert" className={styles.error}>{t(reminderErrorCopy)}</p> : null}
       </section>
       </div>
+      {detail.data.relatedEventId ? <section className={styles.relatedCard} aria-label={t(taskCopy.taskListRelatedEvent)}>
+        <h4>{t(taskCopy.taskListRelatedEvent)}</h4>
+        {relatedEvent.loading && !relatedEvent.data ? <Skeleton lines={1} /> : relatedEvent.error ? <RetryCard title={t(taskCopy.taskListRelatedEventReadFailed)} onRetry={relatedEvent.refresh} /> : relatedEvent.data ? <a className={styles.relatedEventLink} href={`/app/events/${encodeURIComponent(relatedEvent.data.id)}`}><span><strong>{relatedEvent.data.title}</strong><time dateTime={relatedEvent.data.startsAt}>{formatDate(relatedEvent.data.startsAt, language, timeZone)}</time></span><Icon name="right" size={16} /></a> : null}
+      </section> : null}
       {detail.data.notes ? <section className={styles.detailNotes}><h4>{t(taskCopy.taskListNotes)}</h4><p>{detail.data.notes}</p></section> : null}
       <section className={`${styles.detailSection} ${styles.historyCard}`} data-task-detail-card="history">
         <h4>{t(taskCopy.taskListHistory)}</h4>

@@ -113,6 +113,27 @@ test("malformed envelopes and task pages fail visibly instead of becoming empty 
   await assert.rejects(offline.loadPage("open"), (error: any) => error.code === "NETWORK_ERROR");
 });
 
+test("Task detail preserves its event link and reads a verified event title", async () => {
+  const paths: string[] = [];
+  const client = createTasksClient(async input => {
+    const path = String(input);
+    paths.push(path);
+    if (path.startsWith("/api/events/")) return Response.json({ success: true, data: { event: {
+      id: "event-linked", title: "Japan Startup Night", startsAt: "2026-09-18T09:00:00.000Z",
+    } } });
+    return Response.json({ success: true, data: { task: {
+      id: "task-linked", title: "Send notes", notes: "", status: "open", category: "event", priority: "normal",
+      updatedAt: "2026-09-18T00:00:00.000Z", relatedEventId: "event-linked",
+    } } });
+  });
+  const task = await client.loadTask("task-linked");
+  assert.equal(task.relatedEventId, "event-linked");
+  assert.deepEqual(await client.loadRelatedEvent(task.relatedEventId!), {
+    id: "event-linked", title: "Japan Startup Night", startsAt: "2026-09-18T09:00:00.000Z",
+  });
+  assert.deepEqual(paths, ["/api/tasks/task-linked", "/api/events/event-linked"]);
+});
+
 test("new scoped page is additive: legacy URL stays unchanged and a hidden contact still classifies as a connection", async () => {
   const paths: string[] = [];
   const client = createTasksClient(async (input) => {

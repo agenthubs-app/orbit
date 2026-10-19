@@ -49,6 +49,7 @@ const fixture = `<div id="root"></div><script>
   window.reminderFailNextPost = false;
   window.reminderFailNextPatch = false;
   window.dateFailNextPatch = false;
+  window.eventFailNextGet = false;
   window.fetch = async (input, init = {}) => {
     const path = String(input), method = init.method || "GET";
     window.taskCalls.push({ path, method, body: init.body ? JSON.parse(init.body) : null });
@@ -74,6 +75,11 @@ const fixture = `<div id="root"></div><script>
     if (/^\\/api\\/tasks\\/[^/]+\\/activities$/.test(path)) {
       const id = decodeURIComponent(path.split("/")[3]);
       return Response.json({ success: true, data: { activities: window.taskActivityRows[id] || [] } });
+    }
+    if (path.startsWith("/api/events/")) {
+      if (window.eventFailNextGet) { window.eventFailNextGet = false; return Response.json({ success: false, error: { code: "UNAVAILABLE" } }, { status: 503 }); }
+      const id = decodeURIComponent(path.slice("/api/events/".length));
+      return Response.json({ success: true, data: { event: { id, title: "Japan Startup Night", startsAt: "2026-09-18T09:00:00.000Z" } } });
     }
     if (path.startsWith("/api/tasks/page?")) {
       const query = new URL(path, location.href).searchParams;
@@ -262,6 +268,39 @@ test("selected Task rail reads reminder and history for that task", async t => {
   const reads = (await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string }) => call.path.endsWith("/activities") || call.path.startsWith("/api/reminders?"));
   assert.equal(reads.length, 2);
   assert.ok(reads.every((call: { path: string }) => call.path.includes("personal")));
+});
+
+test("selected Task shows a linked event and removes it when selection changes", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => { (window as any).taskRows.find((row: { id: string }) => row.id === "linked").relatedEventId = "event-linked"; });
+  await current.getByRole("button", { name: "山本さんへ返信の詳細" }).click();
+  const rail = current.getByRole("complementary");
+  const related = rail.getByRole("region", { name: "関連するイベント" });
+  await related.getByRole("link", { name: "Japan Startup Night" }).waitFor({ timeout: 2000 });
+  assert.equal(await related.getByRole("link", { name: "Japan Startup Night" }).getAttribute("href"), "/app/events/event-linked");
+  const eventTime = related.locator('time[datetime="2026-09-18T09:00:00.000Z"]');
+  assert.match(await eventTime.textContent() ?? "", /9\/18.*18:00/);
+  assert.equal((await current.evaluate(() => (window as any).taskCalls)).filter((call: { path: string }) => call.path === "/api/events/event-linked").length, 1);
+  await current.getByRole("button", { name: "今日の資料の詳細" }).click();
+  assert.equal(await rail.getByRole("region", { name: "関連するイベント" }).count(), 0);
+});
+
+test("a linked event read failure shows a retry without inventing event details", async t => {
+  const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
+  const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
+  t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
+  await current.evaluate(() => {
+    (window as any).taskRows.find((row: { id: string }) => row.id === "linked").relatedEventId = "event-linked";
+    (window as any).eventFailNextGet = true;
+  });
+  await current.getByRole("button", { name: "山本さんへ返信の詳細" }).click();
+  const related = current.getByRole("complementary").getByRole("region", { name: "関連するイベント" });
+  await related.getByRole("alert").getByRole("heading", { name: "イベントを読み込めませんでした" }).waitFor();
+  assert.equal(await related.getByRole("link", { name: "Japan Startup Night" }).count(), 0);
+  await related.getByRole("button", { name: "再試行" }).click();
+  await related.getByRole("link", { name: "Japan Startup Night" }).waitFor();
 });
 
 test("selected Task rail sets an in-app reminder for one hour and can cancel it", async t => {

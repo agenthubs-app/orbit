@@ -100,6 +100,9 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       });
     },
     loadTask: (id: string) => request(pathFor(id), single),
+    loadRelatedEvent: (id: string) => request(`/api/events/${encodeURIComponent(id)}`, value => z.object({ event: z.object({
+      id: z.string().trim().min(1), title: z.string().trim().min(1), startsAt: z.string().refine(value => Number.isFinite(Date.parse(value))),
+    }) }).parse(value).event),
     loadSuggestions: () => request("/api/task-suggestions", suggestionsToView),
     loadActivities: (id: string) => request(`${pathFor(id)}/activities`, activitiesToView),
     loadReminders: (id: string) => request(`/api/reminders?${new URLSearchParams({ targetType: "task", targetId: id })}`, remindersToView),
