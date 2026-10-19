@@ -155,7 +155,7 @@
       "path": "/contacts/new/drafts?eventId=event-cfo&design=n09",
       "note": "R32 P10：开发开关直达第 2 张草稿的破棄确认；仅浅色画板，深色只做主题回归。",
       "grid": 30,
-      "wait": 9000
+      "wait": 18000
     },
     {
       "id": "A-R16-02",
@@ -164,7 +164,7 @@
       "path": "/contacts/new/import/design-pick",
       "note": "R32 来源 app-import-R16.json: 連絡先 ② 選ぶ（画板 1,284 件）",
       "grid": 30,
-      "wait": 9000
+      "wait": 18000
     },
     {
       "id": "A-R16-04",
@@ -183,7 +183,7 @@
       "note": "R32 来源 app-plan-A.json: 前提を見る sheet（D49）",
       "taps": "前提を見る",
       "grid": 30,
-      "wait": 12000,
+      "wait": 20000,
       "path": "/task?seg=plan&design=premise"
     },
     {
@@ -245,11 +245,11 @@
       "id": "A-R25-11",
       "design": "b4-plan-iorbit.html",
       "board-index": 28,
-      "fixture": "c-goals",
+      "fixture": "c-goals-b4-menu",
       "note": "R32 来源 app-plan-C.json: タイトルから目標を切替（popover）",
       "taps": "目標名 ▾",
       "grid": 30,
-      "wait": 12000,
+      "wait": 20000,
       "path": "/task?seg=plan&design=goals"
     },
     {

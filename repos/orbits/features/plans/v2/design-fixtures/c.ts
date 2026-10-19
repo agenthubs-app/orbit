@@ -133,6 +133,12 @@ export const fixturesC: Record<string, PlanDesignFixture> = {
     state.legacy = [{ ...structuredClone(LEGACY_SERIES_A), goal: "展示会で代理店を見つける", planId: "design-legacy-fair", status: "archived", archivedAt: "2026-06-01T00:00:00.000Z" }];
     return state;
   },
+  /** b4 #28 の Popover は現行 2 件と完了 1 件まで。b12 #274 の旧プラン行は別の参照状態に残す。 */
+  "c-goals-b4-menu": () => {
+    const state = fixturesC["c-goals"]!();
+    state.legacy = [];
+    return state;
+  },
 };
 
 /** 同名 fixture 的会える活動事实（可选；键与上面的 fixture 名一致）。 */

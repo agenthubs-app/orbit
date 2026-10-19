@@ -89,6 +89,14 @@ test("c-goals keeps the 128-point achievement example consistent with the goal s
   assert.deepEqual(goals.filter((goal) => goal.status === "active").map((goal) => [goal.total, goal.talkedPeople]), [[128, 19], [72, 14]]);
 });
 
+test("b4 goal menu preview omits the older plan without changing the goals", () => {
+  const complete = PLAN_DESIGN_FIXTURES["c-goals"]!();
+  const preview = PLAN_DESIGN_FIXTURES["c-goals-b4-menu"]!();
+  assert.equal(complete.legacy?.length, 1);
+  assert.equal(preview.legacy?.length, 0);
+  assert.deepEqual(preview.plans, complete.plans);
+});
+
 test("b12-206 premise modal keeps the four VC candidates without a background pending card", async () => {
   const repository = createMemoryPlanV2Repository();
   const scope = { actorId: "actor:premise-example", workspaceId: "workspace:premise-example" };

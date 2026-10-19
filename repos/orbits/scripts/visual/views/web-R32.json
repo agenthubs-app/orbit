@@ -190,8 +190,9 @@
       "board-index": 320,
       "width": 1440,
       "click": "[data-events-code] button",
-      "wait-for": "[role=dialog]",
+      "wait-for": "[data-events-code] button",
       "steps": [
+        { "waitFor": "[role=dialog]" },
         { "click": "[data-events-code-input] input:first-child" },
         { "type": "7QKMH4T" },
         { "wait": 300 }
