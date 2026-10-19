@@ -20,7 +20,7 @@ export const publicCopy = {
   gmailAnswer: { ja: "件名・相手・日時のみです。本文は読みません。", zh: "只读取主题、联系人和时间，不读取邮件正文。", en: "Only the subject, people, and date. Orbit does not read the message body.", kind: "body" },
   cardQuestion: { ja: "名刺の読み取りが間違っているときは？", zh: "名片识别有误怎么办？", en: "What if a business card was read incorrectly?", kind: "body" },
   cardAnswer: { ja: "確認画面で修正できます。すでに追加された名刺は、人脈から編集できます。", zh: "可以在确认时修改；已经添加的名片也可以在人脉中编辑。", en: "You can correct it during review. For an added card, edit it in your network.", kind: "body" },
-  noResults: { ja: "一致する質問はありません", zh: "没有匹配的问题", en: "No matching questions", kind: "body" },
+  noResults: { ja: "に一致する質問はありません", zh: "没有匹配的问题", en: "No matching questions", kind: "body" },
   tryAnother: { ja: "言葉を変えてお試しください。", zh: "换个关键词试试。", en: "Try another search term.", kind: "body" },
   contactTitle: { ja: "お問い合わせ", zh: "联系我们", en: "Contact", kind: "title" },
   contactUnavailable: { ja: "準備中 · 今はこの画面から送信できません。", zh: "正在准备 · 暂时无法从此页面发送消息。", en: "Coming soon · You cannot send a message from this page yet.", kind: "body" },

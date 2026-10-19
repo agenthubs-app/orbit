@@ -29,7 +29,7 @@ test("public FAQ filters locally, expands answers, and stays usable on a phone i
     await page.getByText("メールは自動で送信されますか？").click();
     assert.equal(await page.getByText("いいえ。メール・メッセージは下書きまで。送信はあなたが行います。").isVisible(), true);
     await search.fill("領収書");
-    assert.equal(await page.getByText("「領収書」一致する質問はありません").count(), 1);
+    assert.equal(await page.getByText("「領収書」に一致する質問はありません").count(), 1);
     assert.equal(await page.getByText("メールは自動で送信されますか？").count(), 0);
     await search.fill("名刺");
     assert.equal(await page.getByText("名刺の読み取りが間違っているときは？").count(), 1);
