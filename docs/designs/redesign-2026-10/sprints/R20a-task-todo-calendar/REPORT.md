@@ -1,5 +1,9 @@
 # R20a — 実装記録（進行中）
 
+2026-10-19 09:20 の D native Calendar 再起動追試：新規の D 専用ローカル DB / 合成 actor で、オンライン終日予定 `R1` を保存後、API を停止して終日 `R2` を offline 作成した。詳細は `Not synced`、DB は1件のまま。API 停止中に app process を terminate / relaunch しても Calendar は `R1` / `R2` の2件を保持し、DB はなお1件。元の API を再開すると `POST /api/schedule-items 201`、DB は2件となり、`R2` を再度開くと pending 表示が消えた。Home は再起動後 offline 時に last-seen `R1` のみを表示し、Calendar の pending `R2` とは異なる。これは API-stop の限定 offline 操作であり、OS 飛行機モード、繰返し・面談・Google、長期 offline、別 actor、pixel、full-suite green を証明しない。証拠・exact cleanup は `_evidence-d/R20a/native-calendar-restart-ce47823a5f69/OWNERSHIP.md` と画像3枚。合成 actor は logout、run-owned API / Metro は停止、simulator は Shutdown、nonce DB は帰属確認後 drop して catalog 残留0。Metro に通知 cleanup 未確認の警告があり、device-registration cleanup 完了は主張しない。
+
+同じ clean D `545ddc576` で Web Task drawer / 旧 detail route の component 定向を再実行し、**20/20 pass、exit0**。初回の CSS loader なし実行は loader 未設定で fail したため未算入し、repository の test-only CSS stub を指定した再実行を判定した。上記 S1 実装の現在 source における狭い証拠であり、実 browser / native・全量 gate の代わりではない。
+
 2026-10-19 04:25 checkpoint：D が clean な状態で 31 local commits を `origin/redesign d8e6dafb7`（R31a 復核修正）へ無衝突 rebase。新 HEAD `345c6659a`、ahead31 / behind0。rebase 後の Web task list / page API **16/16**、App task source / unification **24/24** は pass。直前の M2 PG **5/5**・Web compiler / lint exit0 は同じ D パッチだが上流差分を取り込む前の結果であり、rebase 後の PG growth / compiler / full suite に流用しない。push なし。
 
 04:35 の rebase 後再測定：同じ D task-page source を共有 heavy lock 下で、本機 `orbit_line_d_test` の隔離 schema に対して実行。`tests/services/task-page-postgres.test.ts` **5/5 pass、exit0**、10万件成長値は total 100,062 / 1 query / 12,888 bytes、約14.3秒。対象 prefix の残留 schema **0**。Web 全範囲 `npm run typecheck` と `npm run lint` も当該 D tree で **exit0**。これは M2 の現行局所証拠であり、App / Web 全量、native / pixel、S1 / S2 は OPEN のまま。
