@@ -125,8 +125,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const refresh = () => { void loadSummary(); setFilters((current) => ({ ...current })); };
   const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links)), [items, links]);
   const planCandidates = rows.filter((row) => row.goal).slice(0, 2);
-  const planCandidateNames = planCandidates.map((row) => language === "ja" ? `${row.name.split(/\s+/u)[0]}さん` : row.name)
-    .join(language === "ja" ? "・" : ", ");
+  const planCandidateNames = planCandidates.map((row) => language === "ja" ? t("railPersonName", { name: row.name.split(/\s+/u)[0] }) : row.name)
+    .join(t("railPersonSeparator"));
   const header = headerCounts(summary);
   const empty = header !== null && header.total === 0;
   const subtitle = empty ? t("subtitleEmpty") : header ? t("subtitle", { total: header.total, added: header.added }) : undefined;

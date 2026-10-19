@@ -300,19 +300,20 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
   const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
+  const activeTitle = history.storedHistory.find((item) => item.sessionId === chat.activeSessionId)?.title;
   const recent = history.storedHistory.slice(0, 3);
   const panelLanguage = language === "zh" ? "zh" : "en";
   return (
     <Orbit2026Scope language={language} className={`${styles.scope} ${inConversation ? styles.conversationScope : ""}`}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
-      <ShellPage title="iOrbit" subtitle={t(inConversation ? iorbitCopy.inConversation : iorbitCopy.subtitle)}
+      <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || t(iorbitCopy.inConversation) : t(iorbitCopy.subtitle)}
         left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => { historyOpenChosen.current = true; setHistoryOpen((open) => !open); }} />}
         right={<Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} />}
         rightRail={false} phoneFold phoneBare={inConversation} />
       <div className={styles.layout}>
         {historyOpen && !narrow ? <aside className={styles.sidebar} aria-label={t(iorbitCopy.list)}><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></aside> : null}
         <main className={styles.main}>
-          <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><strong>iOrbit</strong><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
+          <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><div className={styles.phoneHeaderTitle}><strong>iOrbit</strong>{inConversation && activeTitle ? <small>{activeTitle}</small> : null}</div><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
             <div className={styles.star} aria-hidden><Icon name="sparkle" size={24} /></div>
             <h1><span>{home?.account.fullName ? fill(t(iorbitCopy.greetingName), { name: home.account.fullName.split(/\s+/u)[0] }) : t(iorbitCopy.greeting)}</span><br />{t(iorbitCopy.heading)}</h1>

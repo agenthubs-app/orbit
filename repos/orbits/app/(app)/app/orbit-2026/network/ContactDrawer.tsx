@@ -154,8 +154,8 @@ export function ContactDrawer({ contactId, onClose, initial = null, onChanged, g
   const recentUpdates = contact?.fieldHistory.filter((entry) => entry.source === "invite_sync" && Date.now() - Date.parse(entry.at) <= 30 * 86_400_000) ?? [];
   const updateAt = recentUpdates.reduce((latest, entry) => entry.at > latest ? entry.at : latest, "");
   const selfUpdate = self && !fitMoment && !updateDismissed && updateAt ? recentUpdates.filter((entry) => entry.at === updateAt) : [];
-  const stagedRole = syncMoment ? "代表取締役" : contact?.role ?? "";
-  const stagedOffering = syncMoment ? [...(contact?.offering ?? []), "製造業向けの PoC 先の紹介"] : contact?.offering ?? [];
+  const stagedRole = syncMoment ? t("detailSyncSampleRole") : contact?.role ?? "";
+  const stagedOffering = syncMoment ? [...(contact?.offering ?? []), t("detailSyncSampleOffering")] : contact?.offering ?? [];
   const nextStep = contact?.nextAction.trim() ?? "";
   const draftHref = contact ? `/app/agent?prefill=${encodeURIComponent(t("detailDraftIntent", { name: contact.displayName, step: nextStep }))}` : "#";
 

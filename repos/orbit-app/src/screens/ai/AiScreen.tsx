@@ -162,7 +162,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const params = useLocalSearchParams<{ drawer?: string | string[]; entryPointId?: string | string[] }>();
+  const params = useLocalSearchParams<{ drawer?: string | string[]; menu?: string | string[]; entryPointId?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [historyAttempt, setHistoryAttempt] = useState(0);
@@ -753,6 +753,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       draft={draftMessage}
       error={sendError ?? historyDeleteError ?? organizationError ?? (failedAiWrite ? failedAiWrite.lastErrorCode === "PIN_LIMIT" ? iorbitR21Copy[locale.language].pinLimit : iorbitR21Copy[locale.language].syncConflict : null) ?? activeHistoryPageError ?? (serverSearchActive && serverSearchState.kind === "failure" ? serverSearchState.error.message : null)}
       history={historyItems}
+      designMenu={typeof __DEV__ !== "undefined" && __DEV__ && process.env.EXPO_PUBLIC_ORBIT_REDESIGN_MOCK?.includes("open-path") === true && optionalParam(params.menu) === "1"}
       hasPendingWrites={pendingAiWrites}
       historyHasMore={historyHasMore && historyQuerySettled}
       historyLoading={historyKind === "loading" || historyPaging || (serverSearchActive && serverSearchState.kind === "loading")}

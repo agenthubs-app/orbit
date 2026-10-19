@@ -13,6 +13,7 @@ import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
+import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -23,6 +24,7 @@ import { DensityDots } from "../add/add-ui";
 import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
 import { useInviteApi } from "../add/invite/invite-api";
 import { MeetingProposalSheet } from "../calendar/MeetingProposalSheet";
+import { LinearGradient } from "../plan/plan-svg";
 import { ContactRelationshipInitializer, useContactInitialization } from "../contacts/ContactRelationshipInitializer";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
 import { detailContactFrom, detailHeaderChips, fitCandidate, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
@@ -132,8 +134,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const self = card?.sourceChip === "self" || connection !== null;
   const nextStep = contact.nextAction.trim();
   const selfUpdate = fixture.enabled && params.design === "fit" || updateDismissed ? null : recentSelfUpdates(contact.fieldHistory, now());
-  const stagedRole = fixture.enabled && params.design === "sync" ? "代表取締役" : contact.role;
-  const stagedOffering = fixture.enabled && params.design === "sync" ? [...contact.offering, "製造業向けの PoC 先の紹介"] : contact.offering;
+  const stagedRole = fixture.enabled && params.design === "sync" ? t("network.detail.syncSampleRole") : contact.role;
+  const stagedOffering = fixture.enabled && params.design === "sync" ? [...contact.offering, t("network.detail.syncSampleOffering")] : contact.offering;
   const linkedNotes = [...contact.notes].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1));
   const openDraft = () => router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent: t("network.detail.draftIntent", { name: contact.displayName, step: nextStep }) } } as unknown as Href);
   const menuOptions = [
@@ -206,6 +208,10 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
 
         {!self && (valueLine?.relation || goalLink) ? (
           <View style={[styles.card, styles.whyCard, styles.gapTop]} testID="network-why-card">
+            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Defs><LinearGradient id="networkWhyGradient" x1="0%" y1="0%" x2="100%" y2="100%"><Stop offset="0%" stopColor={colors.macPink} /><Stop offset="65%" stopColor={colors.surface} /></LinearGradient></Defs>
+              <Rect x={0} y={0} width="100%" height="100%" fill="url(#networkWhyGradient)" />
+            </Svg>
             <View style={styles.rowCenter}>
               <View style={[styles.emo, { backgroundColor: colors.macPink }]}><UiText style={styles.emoText}>🎯</UiText></View>
               <UiText style={[styles.cardTitle, styles.grow]}>{t("network.detail.whyTitle", { name: contact.displayName })}</UiText>
@@ -377,7 +383,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 6 },
   actions: { flexDirection: "row", gap: 12, marginTop: 12 },
   actionCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  whyCard: { backgroundColor: colors.macPink },
+  whyCard: { overflow: "hidden" },
   whyBody: { fontSize: 14.5, lineHeight: 21, fontWeight: "700" },
   whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },

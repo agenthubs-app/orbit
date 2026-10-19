@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PanResponder, StyleSheet, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
@@ -65,7 +65,7 @@ function HistoryItemRow({ item, onOpen, onSelect, styles, colors }: {
 }
 
 export function IOrbitStartView({
-  contactCount, confirmDelete, deleting, draft, error, history, historyHasMore,
+  contactCount, confirmDelete, deleting, designMenu = false, draft, error, history, historyHasMore,
   historyLoading, historyNotice, historyOpen, historyQuery, offline, offlineAt, hasPendingWrites, onDiscardFailedWrite, onClose, onConfirmDelete,
   onCancelDelete, onDelete, onDraftChange, onHistoryClose, onHistoryOpen, onHistoryQueryChange,
   onLoadMore, onNew, onNewGoal, onOpen, onOpenGoal, onOpenIntake, onPin, onRename, onScan, onSend, onUndo, planGoals, planIntakes, suggestions,
@@ -74,6 +74,7 @@ export function IOrbitStartView({
   contactCount: number;
   confirmDelete: IOrbitHistoryItem | null;
   deleting: boolean;
+  designMenu?: boolean;
   draft: string;
   error: string | null;
   history: IOrbitHistoryItem[];
@@ -114,6 +115,9 @@ export function IOrbitStartView({
   const locale = useOrbitLocale();
   const copy = iorbitR21Copy[locale.language];
   const [selected, setSelected] = useState<IOrbitHistoryItem | null>(null);
+  useEffect(() => {
+    if (designMenu && historyOpen) setSelected((current) => current ?? history.find((item) => item.source === "session" && !item.pinned) ?? null);
+  }, [designMenu, history, historyOpen]);
   const [renaming, setRenaming] = useState<IOrbitHistoryItem | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const edgeExit = useMemo(() => PanResponder.create({

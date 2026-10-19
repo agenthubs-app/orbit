@@ -40,7 +40,7 @@
       "id": "A-R21-14",
       "design": "b4-plan-iorbit.html",
       "board-index": 57,
-      "path": "/ai?drawer=1",
+      "path": "/ai?drawer=1&menu=1",
       "themes": ["dark"],
       "note": "Dark history drawer."
     },
