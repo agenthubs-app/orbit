@@ -19,6 +19,7 @@ test("valid maintenance ETA uses the real instant in Tokyo and unknown ETA stays
   assert.match(unknown, /ただいまメンテナンス中です/);
   assert.match(unknown, /確認でき次第、お知らせします。/);
   assert.match(unknown, /再読み込み/);
+  assert.match(unknown, /<button[^>]*class="btn [^"]*"/);
   assert.doesNotMatch(unknown, /10月19日 12:00/);
   const scheduled = renderToStaticMarkup(<MaintenanceView language="ja" untilText="10月19日 12:00（日本時間）" onRetry={() => undefined} />);
   assert.match(scheduled, /10月19日 12:00（日本時間）/);

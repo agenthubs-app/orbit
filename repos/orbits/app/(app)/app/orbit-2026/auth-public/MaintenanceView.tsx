@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { maintenanceDateParts, publicCopy } from "../copy/public";
 import { pickCopy } from "../copy/types";
-import { Icon, Orbit2026Scope } from "../ui";
+import { Button, Orbit2026Scope } from "../ui";
 import p from "./PublicInfoPage.module.css";
 import s from "./MaintenanceView.module.css";
 
@@ -71,7 +71,7 @@ export function MaintenanceView({ language, untilText, onRetry }: {
         <div className={s.scheduleLabel}>{t("maintenanceSchedule")}</div>
         <p className={s.scheduleValue}>{untilText ?? t("maintenanceUnknown")}</p>
       </section>
-      <button type="button" className={s.retry} onClick={onRetry}><Icon name="refresh" size={16} />{t("reload")}</button>
+      <Button className={s.retry} icon="refresh" label={t("reload")} onClick={onRetry} />
     </main>
   </Orbit2026Scope>;
 }

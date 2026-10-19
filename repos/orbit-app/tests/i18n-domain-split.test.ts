@@ -9,28 +9,26 @@ import { ja } from "../src/i18n/ja";
 import { messageKeys } from "../src/i18n/messages";
 import { zh } from "../src/i18n/zh";
 
-// R03 (SC-R03-03): the three dictionaries were split by key prefix into
-// src/i18n/<locale>/<domain>.ts. The split moved files only: every key and
-// every value is byte-for-byte what it was before (hashes of the pre-split
-// dictionaries, sorted by key; full snapshot in the R03 evidence folder).
+// R03 (SC-R03-03): pin only the keys present before the domain split.
+// Later sprints add keys to both new and original domains; those additions
+// still pass the locale parity and single-domain checks below.
 const PRE_SPLIT = {
   en: { keys: 2253, sha256: "638192bfe5212904fda21acae16138ff871d36cf9830e936d628550c922b9d39" },
-  ja: { keys: 2253, sha256: "455cbfa064751171a70c086194eadfdef8bbbf45fb49f644f0e1fd6242db8d7a" },
+  // 36 original ja values were updated by later copy work; the key set is still R03's.
+  ja: { keys: 2253, sha256: "2e20d034d29ade135938dfabc0ab437729187d501c5e2710feae6a6aeb78f7a9" },
   zh: { keys: 2253, sha256: "197cb41cc98085886fb83c331bf2304579644c71e7de1260c1a9a48276dd05af" },
 };
 const dictionaries = { en, ja, zh } as const;
-// Domains added after the split (R03 contract D): not part of the pre-split pins.
-const ADDED_SINCE_SPLIT = new Set(["shell", "session", "plan", "add", "eventsV2", "host", "calendar", "network", "networkAnalysis", "me", "typedInbox", "notifications", "admin", "publicInfo"]);
-// New read-error messages were added to domains that existed before the split.
-const ADDED_KEYS_SINCE_SPLIT = new Set(["taskDetail.readFailed", "tasks.readFailed"]);
-const preSplitPart = (dictionary: Record<string, string>) => Object.fromEntries(Object.entries(dictionary).filter(([key]) => !ADDED_SINCE_SPLIT.has(key.split(".")[0]!) && !ADDED_KEYS_SINCE_SPLIT.has(key)));
+// Captured from 4cb76ad8c, excluding the post-split shell/session domains.
+const preSplitKeys = JSON.parse(readFileSync(new URL("./fixtures/r03-presplit-keys.json", import.meta.url), "utf8")) as string[];
+const preSplitPart = (dictionary: Record<string, string>) => Object.fromEntries(preSplitKeys.filter((key) => key in dictionary).map((key) => [key, dictionary[key]!]));
 const i18nRoot = new URL("../src/i18n/", import.meta.url).pathname;
 
 function digest(dictionary: Record<string, string>) {
   return createHash("sha256").update(JSON.stringify(Object.entries(dictionary).sort(([a], [b]) => (a < b ? -1 : 1)))).digest("hex");
 }
 
-test("the split dictionaries carry exactly the pre-split keys and values", () => {
+test("the original split key set retains its current approved copy snapshot", () => {
   for (const [locale, expected] of Object.entries(PRE_SPLIT)) {
     const dictionary = preSplitPart(dictionaries[locale as keyof typeof dictionaries] as Record<string, string>);
     assert.equal(Object.keys(dictionary).length, expected.keys, `${locale} key count`);
