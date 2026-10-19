@@ -5,16 +5,11 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { AuthModal } from "../../app/(app)/app/orbit-2026/auth-public/auth-modal";
 
-// 特征化渲染测试（认证弹窗 任务 1）：锁定 设置新密码 的 hash token 读取（43 位 [A-Za-z0-9_-]）、
+// 特征化渲染测试（认证弹窗）：锁定 hash token 读取（43 位 [A-Za-z0-9_-]）、
 // 不合法 token 的 role=alert 提示、两次密码不一致提示、/api/auth/password-reset/confirm 的
 // POST 体 {token,password}、成功后 history.replaceState 清 hash + done 态、双提交保护，
-// 使逻辑搬进 use-password-reset 时零变化可证。
-// 任务 3（旧 reset-password-form.tsx 已删）：改指 `AuthModal view="reset"`，意图不变；逐条改动：输入 id
-// `reset-password|confirmation` → `au-new-password|confirm-password`；按钮文案「更新密码 / 更新中…」→ 设计 520
-// 「设置新密码 / 保存中…」；不合法 token 的 `<p role=alert>`「重置链接不完整…」→ 设计 426–433「链接已失效」分支
-// （h2 + 副标 `<p class=au-sub role=alert>`（合并前终审修正：活动区语义回归）+ 主按钮形链接「重新申请重置链接」）；done 的 `<p role=status>` → 设计 445–447 标题「密码已更新」
-// + 副标 + 会话失效补句（无 role=status）+「用新密码登录」；链接集合：合法态 [login]（「重新申请链接」只在失效态）、
-// 失效态 [forgot, login]、done [login ×2]；window 桩补 `document`（弹窗壳 `useOrbitModalA11y` 需要）。
+// 双提交保护、成功后 history.replaceState 清 hash、RD-33 通用失效链接提示与登录出口。
+// window 桩补 `document`，供弹窗壳 `useOrbitModalA11y` 使用。
 
 const VALID_TOKEN = "A".repeat(21) + "b".repeat(21) + "_";
 
@@ -137,7 +132,7 @@ function heading(renderer: ReactTestRenderer): string {
   return renderer.root.findByType("h2").children.join("");
 }
 
-test("valid hash token: form renders, button enabled once ready, links to login", async () => {
+test("valid hash token: form renders and button enabled once ready", async () => {
   const harness = install(`#token=${VALID_TOKEN}`, () => Response.json({ success: true }));
   let renderer: ReactTestRenderer | undefined;
   try {
@@ -146,10 +141,10 @@ test("valid hash token: form renders, button enabled once ready, links to login"
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.deepEqual(byRole(renderer, "status"), []);
     assert.equal(submitButton(renderer).props.disabled, false);
-    assert.equal(submitButton(renderer).children.join(""), "设置新密码");
-    assert.equal(heading(renderer), "设置新密码");
+    assert.equal(submitButton(renderer).children.join(""), "修改密码并返回登录");
+    assert.equal(heading(renderer), "新密码");
     const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
-    assert.deepEqual(hrefs, ["/app/account/login"]);
+    assert.deepEqual(hrefs, []);
     assert.equal(harness.observed.length, 0);
   } finally {
     await unmount(renderer);
@@ -157,17 +152,17 @@ test("valid hash token: form renders, button enabled once ready, links to login"
   }
 });
 
-test("invalid or missing hash token: the 链接已失效 branch replaces the form and offers a fresh request", async () => {
+test("invalid or missing hash token offers one generic reapplication path", async () => {
   for (const hash of ["", "#token=short", `#token=${VALID_TOKEN}!`, "#other=1"]) {
     const harness = install(hash, () => Response.json({ success: true }));
     let renderer: ReactTestRenderer | undefined;
     try {
       renderer = await mount();
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
-      assert.equal(heading(renderer), "链接已失效");
-      assert.deepEqual(byRole(renderer, "alert"), ["这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。"]);
+      assert.equal(heading(renderer), "此链接无法使用");
+      assert.deepEqual(byRole(renderer, "alert"), ["请重新申请密码重置。"]);
       const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
-      assert.deepEqual(hrefs, ["/app/account/forgot-password", "/app/account/login"]);
+      assert.deepEqual(hrefs, ["/app/account/forgot-password"]);
     } finally {
       await unmount(renderer);
       harness.restore();
@@ -224,13 +219,9 @@ test("confirm: POST /api/auth/password-reset/confirm {token,password}; success �
     assert.deepEqual(harness.replaced, [{ data: null, url: "/app/account/reset-password" }]);
     assert.equal(hasForm(renderer), false);
     assert.equal(heading(renderer), "密码已更新");
-    assert.deepEqual(renderer.root.findAllByProps({ className: "au-sub" }).map((node) => node.children.join("")), [
-      "你的密码已重置，现在可以用新密码登录。",
-      "其他设备上的旧会话已失效，需要重新登录。",
-    ]);
+    assert.deepEqual(renderer.root.findAllByProps({ className: "au-sub" }).map((node) => node.children.join("")), ["请使用新密码登录。"]);
     assert.deepEqual(byRole(renderer, "alert"), []);
-    // 完成后只剩「用新密码登录」+「← 返回登录」（都指向登录），不再提供「重新申请链接」。
-    assert.deepEqual(renderer.root.findAllByType("a").map((node) => node.props.href), ["/app/account/login", "/app/account/login"]);
+    assert.deepEqual(renderer.root.findAllByType("a").map((node) => node.props.href), ["/app/account/login"]);
   } finally {
     await unmount(renderer);
     harness.restore();

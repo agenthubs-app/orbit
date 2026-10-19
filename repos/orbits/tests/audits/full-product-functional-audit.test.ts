@@ -390,9 +390,8 @@ test("navigation replay credits only its 26 exact route occurrences", () => {
   // 「非 /app/settings 的同源控件一律 inventoried-static-only」——计数只是它的分母。
   // R07：32 → 9。删除 AccountTopNav 后，只有仍挂 PublicTopNav/OrbitTopNav 的公开页
   // （/、/app、account/*、/app/events、/app/events/[id]、/app/o/[slug]）还带这个控件。
-  // R27 / R17：9 → 6。/app/events、/app/events/[id] 换成新壳页（R27），/app/o/[slug] 改为跳转到 /o/<slug>（R17），
-  // 只剩 /、/app、account 四页带这个控件。
-  assert.equal(siblingSignOuts.length, 6);
+  // R18b：/、/app 与 account 四态均已换到新版公开入口，不再挂旧公开壳账号控件。
+  assert.equal(siblingSignOuts.length, 0);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",

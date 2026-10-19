@@ -350,7 +350,7 @@ test("forgot: POST /api/auth/password-reset/request {email} and announce accepta
   try {
     renderer = await mount("forgot");
     assert.equal(renderer.root.findAllByType("input").some((node) => node.props.id === "au-password"), false);
-    assert.equal(submitLabel(renderer), "申请重置链接");
+    assert.equal(submitLabel(renderer), "申请重置密码");
     await fill(renderer, "owner@example.invalid");
     await submit(renderer);
 
@@ -359,9 +359,7 @@ test("forgot: POST /api/auth/password-reset/request {email} and announce accepta
     assert.equal(request.method, "POST");
     assert.equal(request.headers["content-type"], "application/json");
     assert.deepEqual(JSON.parse(String(request.body)), { email: "owner@example.invalid" });
-    assert.deepEqual(byRole(renderer, "status"), [
-      "✦ 申请已受理如果 owner@example.invalid 对应账号，请查看收件箱。链接有效期为 30 分钟。",
-    ]);
+    assert.deepEqual(byRole(renderer, "status"), ["如果该地址已注册，你会收到邮件。"]);
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.deepEqual(harness.navigation.assigned, []);
     // 找回态的返回链接带 next；无 Google 按钮。
@@ -455,12 +453,17 @@ test("?next= normalisation: unsafe next falls back to the view-model default in 
 });
 
 test("?next= normalisation: a safe next is threaded through forgot/switch hrefs and the auth-page next is rejected", async () => {
-  const safe = install(`?next=${encodeURIComponent(NEXT)}`);
+  const safe = install(`?next=${encodeURIComponent(NEXT)}`, {
+    register: Response.json({ success: false, error: { message: "already registered" } }, { status: 409 }),
+  });
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("signup");
+    await fill(renderer, "owner@example.invalid", "password-123");
+    await submit(renderer);
     const hrefs = anchorHrefs(renderer);
     assert.ok(hrefs.includes(`/app/account/login?next=${encodeURIComponent(NEXT)}`), hrefs.join(","));
+    assert.ok(hrefs.includes(`/app/account/forgot-password?next=${encodeURIComponent(NEXT)}`), hrefs.join(","));
   } finally {
     await unmount(renderer);
     safe.restore();

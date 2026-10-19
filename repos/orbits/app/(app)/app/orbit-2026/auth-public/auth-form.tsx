@@ -1,15 +1,10 @@
 "use client";
 
-/**
- * 认证弹窗（Orbit_0918）登录 / 注册 / 找回 共用的表单件：邮箱字段（设计 354–356 / 408–410）、密码字段（357–360 / 381–383，
- * 含设计外的 显示/隐藏 眼睛钮 `btn au-eye`，审阅修订 9）、错误卡（363 / 385 / 412 / 453）、created 提示（设计外蓝色 notice）、
- * 「← 返回登录」行（418 / 432 / 461）、Google 钮（设计外 `btn au-google`）与 提交流程 hook（`<form noValidate>` + 本地校验，审阅修订 8）。
- * 文件不在计划的文件结构清单内（记录）：多屏共享的部分抽出，避免各屏各抄一份。
- */
+/** 认证四态共用的邮箱、密码、错误提示和提交控件。 */
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { Icon } from "../../orbit-reference-primitives";
+import { Icon } from "../ui/Icon";
 import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, validateEmail, validatePassword, type AuthView } from "./auth-model";
 import type { AccountAuthSession } from "./use-account-auth";
 
@@ -103,7 +98,7 @@ export function AuthPasswordField({
           onClick={() => session.setShowPassword((current) => !current)}
           type="button"
         >
-          <Icon name="eye" size={17} />
+          <Icon name="eye" size={16} />
         </button>
       </span>
     </div>

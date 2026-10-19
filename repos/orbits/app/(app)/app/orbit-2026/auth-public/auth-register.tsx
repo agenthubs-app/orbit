@@ -1,12 +1,6 @@
 "use client";
 
-/**
- * 注册屏（Orbit_0918）：设计 docs/designs/Orbit_0918/Orbit 首页.dc.html 371–392 行逐元素。
- * 真实行为来自 `useAccountAuth`（mode="signup" + defaultNext；注册 → /api/auth/register → 自动登录 → continuation，
- * 失败回退 `/app/account/login?…&created=1&email=` 全在 hook）。409 → 设计 527「该邮箱已注册，请直接登录。」。
- * 条款行（389）：在新标签打开公开法务页，保留当前注册表单输入。
- * 设计外（记偏差）：眼睛钮、Google 钮。「直接登录」= 真实路由导航（带 ?next=）。
- */
+/** b1 / b12 注册态；条款在新标签打开，注册后尝试自动登录。 */
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { AuthEmailField, AuthErrorCard, AuthGoogleButton, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
@@ -32,15 +26,15 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
         <AuthPasswordField autoComplete="new-password" placeholder={t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })} session={session} />
       </div>
       <AuthErrorCard error={error} />
+      {session.emailTaken ? <p className="au-recovery-links">
+        <a href={authRoutePath("login", next)}>{t({ en: "Sign in", ja: "ログイン", zh: "登录" })}</a>
+        <a href={authRoutePath("forgot", next)}>{t({ en: "Reset password", ja: "パスワードを再設定", zh: "重置密码" })}</a>
+      </p> : null}
       <AuthPrimaryButton className="au-btn-primary" label={label} submitting={session.submitting} />
       <p className="au-terms">
         <a className="au-terms-link" href="/terms" rel="noopener noreferrer" target="_blank">{t({ en: "Terms of Use", ja: "利用規約", zh: "使用条款" })}</a>
         {" · "}
         <a className="au-terms-link" href="/privacy" rel="noopener noreferrer" target="_blank">{t({ en: "Privacy Policy", ja: "プライバシーポリシー", zh: "隐私政策" })}</a>
-      </p>
-      <p className="au-switch">
-        {t({ en: "Already have an account? ", ja: "アカウントをお持ちですか？ ", zh: "已有账号？ " })}
-        <a className="au-switch-link" href={authRoutePath("login", next)}>{t({ en: "Sign in", ja: "ログイン", zh: "直接登录" })}</a>
       </p>
     </form>
   );

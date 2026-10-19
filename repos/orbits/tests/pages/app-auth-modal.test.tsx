@@ -378,7 +378,7 @@ async function fillReset(renderer: ReactTestRenderer, password: string, confirma
 test("forgot SSR exposes a recoverable request form without account enumeration", () => {
   const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="forgot" />);
   assert.match(html, /aria-labelledby="au-title-forgot"/);
-  assert.match(html, /href="\/app\/account\/login\?next=%2Fapp%2Fhome"/);
+  assert.match(html, /申请重置密码/);
   assert.match(html, /id="au-email"/);
   assert.doesNotMatch(html, /id="au-password"|au-google|role="status"/);
 });
@@ -386,10 +386,10 @@ test("forgot SSR exposes a recoverable request form without account enumeration"
 test("reset SSR (审阅修订 11): tokenValid branch first with the submit disabled until ready; invalid branch never in the server markup", () => {
   const html = renderToStaticMarkup(<AuthModal view="reset" />);
   assert.match(html, /aria-labelledby="au-title-reset"/u);
-  assert.match(html, /<div class="au-view"><div class="au-head"><h2 class="au-h2" id="au-title-reset">设置新密码<\/h2><p class="au-sub">请设置一个至少 8 位的新密码。<\/p><\/div><form class="au-view" novalidate=""><div class="au-fields">/u);
-  assert.match(html, /<div class="au-label"><label for="au-new-password">新密码<\/label><input autoComplete="new-password" class="au-input" id="au-new-password" maxLength="72" minLength="8" placeholder="至少 8 位" required="" type="password" value=""\/><\/div>/u);
-  assert.match(html, /<div class="au-label"><label for="au-confirm-password">确认新密码<\/label><input autoComplete="new-password" class="au-input" id="au-confirm-password" maxLength="72" minLength="8" placeholder="再输入一次" required="" type="password" value=""\/><\/div><\/div>/u);
-  assert.match(html, /<button class="btn au-btn-primary" disabled="" style="opacity:1" type="submit">设置新密码<\/button><\/form><p class="au-back"><a class="au-back-link" href="\/app\/account\/login">← 返回登录<\/a><\/p><\/div>/u);
+  assert.match(html, /id="au-title-reset">新密码<\/h2>/u);
+  assert.match(html, /id="au-new-password" maxLength="72" minLength="8"/u);
+  assert.match(html, /id="au-confirm-password" maxLength="72" minLength="8"/u);
+  assert.match(html, /<button class="btn au-btn-primary" disabled=""[^>]*>修改密码并返回登录<\/button>/u);
   const body = html.slice(html.indexOf("</style>"));
   assert.doesNotMatch(body, /链接已失效|重新申请重置链接|密码已更新|用新密码登录|au-eye|au-google|role="alert"|role="status"|failfail|演示/u);
   assert.doesNotMatch(body, /<button(?![^>]*class="btn )/u, "every button carries the btn token");
@@ -406,59 +406,30 @@ test("forgot: local validation shows 请输入有效的邮箱地址。 with zero
   });
 });
 
-test("forgot: POST /api/auth/password-reset/request {email} → success card replaces the form; 重新申请 returns to the form and a later success shows the card again", async () => {
+test("forgot: POST /api/auth/password-reset/request {email} shows generic acceptance and a safe login path", async () => {
   await withModal("forgot", `?next=${encodeURIComponent(NEXT)}`, {}, async (renderer, harness) => {
     await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "owner@example.invalid" } }); });
     await submit(renderer);
     assert.deepEqual(harness.observed.map((call) => [call.method, call.url, call.body]), [["POST", "/api/auth/password-reset/request", JSON.stringify({ email: "owner@example.invalid" })]]);
     assert.equal(hasForm(renderer), false);
-    const card = renderer.root.find((node) => node.type === "div" && node.props.className === "au-success");
-    assert.equal(card.props.role, "status");
-    assert.equal(textOf(card as never), "✦ 申请已受理如果 owner@example.invalid 对应账号，请查看收件箱。链接有效期为 30 分钟。");
+    assert.deepEqual(statuses(renderer), ["如果该地址已注册，你会收到邮件。"]);
     assert.deepEqual(alerts(renderer), []);
-    // 审阅修订 10：成功卡下「未收到？可在一分钟后 重新申请」；「← 返回登录」带 next。
-    const resend = renderer.root.find((node) => node.type === "a" && node.children.includes("重新申请"));
-    assert.equal(resend.props.href, `/app/account/forgot-password?next=${encodeURIComponent(NEXT)}`);
-    assert.ok(hrefs(renderer).includes(`/app/account/login?next=${encodeURIComponent(NEXT)}`));
-    let prevented = 0;
-    await act(async () => { resend.props.onClick({ preventDefault() { prevented += 1; } }); });
-    assert.equal(prevented, 1);
-    assert.ok(hasForm(renderer));
-    assert.deepEqual(statuses(renderer), []);
-    assert.equal(input(renderer, "au-email").props.value, "owner@example.invalid");
-    await submit(renderer);
-    assert.equal(harness.observed.length, 2);
-    assert.equal(hasForm(renderer), false);
-    assert.equal(statuses(renderer).length, 1);
+    assert.deepEqual(hrefs(renderer), [`/app/account/login?next=${encodeURIComponent(NEXT)}`]);
     assert.deepEqual(harness.navigation.assigned, []);
   });
 });
 
-test("forgot (终审修正): after 重新申请, an invalid email submit shows the error card with zero requests and does not resurrect the success card", async () => {
-  await withModal("forgot", "", {}, async (renderer, harness) => {
-    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "owner@example.invalid" } }); });
-    await submit(renderer);
-    assert.equal(harness.observed.length, 1);
-    assert.equal(hasForm(renderer), false);
-    assert.equal(statuses(renderer).length, 1);
-    const resend = renderer.root.find((node) => node.type === "a" && node.children.includes("重新申请"));
-    await act(async () => { resend.props.onClick({ preventDefault() {} }); });
-    assert.ok(hasForm(renderer));
-    assert.deepEqual(statuses(renderer), []);
-    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "nope" } }); });
-    await submit(renderer);
-    assert.equal(harness.observed.length, 1, "invalid email must not issue a request");
-    assert.deepEqual(alerts(renderer), ["请输入有效的邮箱地址。"]);
-    assert.ok(hasForm(renderer), "form stays");
-    assert.deepEqual(statuses(renderer), [], "success card must not reappear without a new accepted request");
-    // 修正后再输入合法邮箱：第二次请求 → 成功卡回来，错误卡清空。
-    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "owner@example.invalid" } }); });
-    await submit(renderer);
-    assert.equal(harness.observed.length, 2);
-    assert.equal(hasForm(renderer), false);
-    assert.equal(statuses(renderer).length, 1);
-    assert.deepEqual(alerts(renderer), []);
-  });
+test("forgot: different addresses receive identical acceptance copy without exposing either address", async () => {
+  for (const email of ["owner@example.invalid", "other@example.invalid"]) {
+    await withModal("forgot", "", {}, async (renderer, harness) => {
+      await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: email } }); });
+      await submit(renderer);
+      assert.equal(harness.observed.length, 1);
+      assert.equal(hasForm(renderer), false);
+      assert.deepEqual(statuses(renderer), ["如果该地址已注册，你会收到邮件。"]);
+      assert.equal(textOf(renderer.root as never).includes(email), false);
+    });
+  }
 });
 
 test("forgot: server message wins, fallback copy otherwise, pending state reads 发送中… with inline opacity 0.6", async () => {
@@ -497,22 +468,22 @@ test("forgot: server message wins, fallback copy otherwise, pending state reads 
 
 // ---- 新密码 ----
 
-test("reset: missing / short / malformed / absent token → 链接已失效 branch after mount (copy in a role=alert live region, 终审修正) with the primary-shaped link to forgot and ← 返回登录", async () => {
+test("reset: missing / short / malformed / absent token has one generic reapplication path", async () => {
   for (const hash of ["", "#token=short", `#token=${VALID_TOKEN}!`, "#other=1"]) {
     await withModal("reset", "", { hash }, async (renderer, harness) => {
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
       const h2 = renderer.root.findByType("h2");
       assert.equal(h2.props.id, "au-title-reset");
-      assert.equal(h2.children.join(""), "链接已失效");
+      assert.equal(h2.children.join(""), "此链接无法使用");
       const copy = renderer.root.findByProps({ className: "au-sub" });
       assert.equal(copy.type, "p");
       assert.equal(copy.props.role, "alert");
-      assert.equal(copy.children.join(""), "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。");
+      assert.equal(copy.children.join(""), "请重新申请密码重置。");
       const again = renderer.root.find((node) => node.type === "a" && node.props.className === "btn au-btn-primary au-btn-link");
       assert.equal(again.props.href, "/app/account/forgot-password");
-      assert.equal(again.children.join(""), "重新申请重置链接");
-      assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password", "/app/account/login"]);
-      assert.deepEqual(alerts(renderer), ["这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。"]);
+      assert.equal(again.children.join(""), "申请重置密码");
+      assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password"]);
+      assert.deepEqual(alerts(renderer), ["请重新申请密码重置。"]);
       assert.deepEqual(statuses(renderer), []);
       assert.equal(harness.observed.length, 0);
     });
@@ -523,7 +494,7 @@ test("reset: valid token → form enabled after mount; local validation 新密�
   await withModal("reset", "", { hash: `#token=${VALID_TOKEN}` }, async (renderer, harness) => {
     assert.ok(hasForm(renderer));
     assert.equal(submitButton(renderer).props.disabled, false);
-    assert.equal(submitLabel(renderer), "设置新密码");
+    assert.equal(submitLabel(renderer), "修改密码并返回登录");
     await fillReset(renderer, "1234567", "1234567");
     await submit(renderer);
     assert.deepEqual(alerts(renderer), ["新密码至少 8 位。"]);
@@ -531,7 +502,7 @@ test("reset: valid token → form enabled after mount; local validation 新密�
     await submit(renderer);
     assert.deepEqual(alerts(renderer), ["两次输入的密码不一致。"]);
     assert.equal(harness.observed.length, 0);
-    assert.deepEqual(hrefs(renderer), ["/app/account/login"]);
+    assert.deepEqual(hrefs(renderer), []);
   });
 });
 
@@ -543,14 +514,11 @@ test("reset: confirm POST {token,password} (other hash keys ignored) → replace
     assert.deepEqual(harness.replaced, [{ data: null, url: "/app/account/reset-password" }]);
     assert.equal(hasForm(renderer), false);
     assert.equal(renderer.root.findByType("h2").children.join(""), "密码已更新");
-    assert.deepEqual(renderer.root.findAllByProps({ className: "au-sub" }).map((node) => node.children.join("")), [
-      "你的密码已重置，现在可以用新密码登录。",
-      "其他设备上的旧会话已失效，需要重新登录。",
-    ]);
+    assert.deepEqual(renderer.root.findAllByProps({ className: "au-sub" }).map((node) => node.children.join("")), ["请使用新密码登录。"]);
     const login = renderer.root.find((node) => node.type === "a" && node.props.className === "btn au-btn-primary au-btn-link");
     assert.equal(login.props.href, "/app/account/login");
     assert.equal(login.children.join(""), "用新密码登录");
-    assert.deepEqual(hrefs(renderer), ["/app/account/login", "/app/account/login"]);
+    assert.deepEqual(hrefs(renderer), ["/app/account/login"]);
     assert.deepEqual(alerts(renderer), []);
   });
 });

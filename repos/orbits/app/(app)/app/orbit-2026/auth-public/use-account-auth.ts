@@ -75,6 +75,7 @@ function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery
 
 export interface AccountAuthSession {
   email: string;
+  emailTaken: boolean;
   error: string;
   /** 注册成功但自动登录未建立会话时（?created=1）的登录页提示；否则空串。 */
   message: string;
@@ -102,6 +103,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [emailTaken, setEmailTaken] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
@@ -132,6 +134,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setEmailTaken(false);
     setResetSent(false);
     setSucceeded(false);
     setSubmitting(true);
@@ -149,6 +152,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
         } | null;
 
         if (!response.ok || payload?.success !== true) {
+          setEmailTaken(response.status === 409);
           setError(
             response.status === 409
               ? t(AUTH_ERROR_COPY.emailTaken)
@@ -221,6 +225,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
 
   return {
     email,
+    emailTaken,
     error,
     message,
     onGoogleSignIn,

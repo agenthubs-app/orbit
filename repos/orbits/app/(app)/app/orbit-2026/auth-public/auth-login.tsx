@@ -1,11 +1,6 @@
 "use client";
 
-/**
- * 登录屏（Orbit_0918）：设计 docs/designs/Orbit_0918/Orbit 首页.dc.html 348–369 行逐元素。
- * 真实行为来自 `useAccountAuth`（本屏自己调用一次，viewModel 只取 mode="login" + defaultNext；
- * 标题 / 描述 / 按钮文案改由 auth-model + t() 给出设计文案，view model 的 copy 字段不再渲染）。
- * 设计外（记偏差）：`?created=1` 蓝色 notice、眼睛钮、Google 钮；「忘记密码？」/「创建账号」= 真实路由导航（带 ?next=）。
- */
+/** b1 / b12 登录态；认证请求和安全 next 由 useAccountAuth 处理。 */
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { AuthEmailField, AuthErrorCard, AuthGoogleButton, AuthNoticeCard, AuthPasswordField, AuthPrimaryButton, useAuthSubmit } from "./auth-form";
@@ -31,11 +26,11 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
         <AuthEmailField session={session} />
         <AuthPasswordField
           autoComplete="current-password"
-          labelExtra={<a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>}
           placeholder="••••••••"
           session={session}
         />
       </div>
+      <a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>
       <AuthErrorCard error={error} />
       <AuthPrimaryButton className="au-btn-login" label={label} submitting={session.submitting} />
       <p className="au-switch">

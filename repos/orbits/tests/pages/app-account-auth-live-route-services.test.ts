@@ -35,7 +35,7 @@ interface AuthRenderOptions {
   mode: AuthMode;
   next: string;
   oauthProviders?: readonly string[];
-  registerResult?: "failure" | "success";
+  registerResult?: "conflict" | "failure" | "success";
 }
 
 async function settleAuth() {
@@ -108,7 +108,9 @@ function installAuthFetch(options: AuthRenderOptions) {
     calls.push({ init, url });
 
     if (url === "/api/auth/register") {
-      return options.registerResult === "failure"
+      return options.registerResult === "conflict"
+        ? Response.json({ success: false, error: { message: "Address already registered" } }, { status: 409 })
+        : options.registerResult === "failure"
         ? Response.json({ success: false, error: { message: "Registration failed" } }, { status: 422 })
         : Response.json({ success: true });
     }
@@ -264,7 +266,7 @@ test("account auth loader preserves one canonical safe return path across login 
 });
 
 // 认证弹窗 任务 1：orbit-real-account-auth.tsx 的状态 / 提交 / Google / 导航逻辑原样搬入
-// account/auth-0918/use-account-auth.ts；以下源码正则按「hook 侧 / JSX 侧」拆分——
+// orbit-2026/auth-public/use-account-auth.ts；以下源码正则按「hook 侧 / JSX 侧」拆分——
 // 逻辑（normalize、fetch、signIn、callbackUrl、created 文案）指向 hook 文件，
 // 标记（role="status" / role="alert"）与已删旧结构的否定断言留在 JSX 文件（否定断言两侧都查）。
 // 任务 3：JSX 侧改指 Orbit_0918 屏——错误卡 / created 提示在 auth-form.tsx，找回成功卡在 auth-forgot.tsx；
@@ -295,10 +297,11 @@ test("forgot password submits a recovery request and announces acceptance separa
     hookSource,
     /\/api\/auth\/password-reset\/request/,
   );
-  // 受理只置位（不宣称送达）；送达语义由找回屏成功卡的补句给出。
+  // 受理只置位；成功页对已注册与未知地址使用同一条件文案。
   assert.match(hookSource, /setResetSent\(true\)/);
-  assert.match(forgotSource, /If \$\{session\.email\} has an account/);
-  assert.match(forgotSource, /申請を受け付けました/);
+  assert.match(forgotSource, /登録済みのアドレスであればメールが届きます/);
+  assert.match(forgotSource, /受け付けました/);
+  assert.doesNotMatch(forgotSource, /session\.email\} にアカウント/);
   assert.match(forgotSource, /role="status"/);
   assert.match(formSource, /role="alert"/);
   for (const accountAuthSource of [hookSource, forgotSource, formSource]) {
@@ -306,6 +309,16 @@ test("forgot password submits a recovery request and announces acceptance separa
     assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);
     assert.doesNotMatch(accountAuthSource, /orbit-auth-new-password/);
   }
+});
+
+test("a registered address offers sign-in and reset routes without promising delivery", async (t) => {
+  const { root } = await renderAuth(t, { mode: "signup", next: "/app/home", registerResult: "conflict" });
+  await fillAuthForm(root, "registered@example.test", "password123");
+  await submitAuthForm(root);
+  const links = root.root.findAllByType("a").map((link) => String(link.props.href));
+  assert.ok(links.some((href) => href.startsWith("/app/account/login")));
+  assert.ok(links.some((href) => href.startsWith("/app/account/forgot-password")));
+  assert.ok(!JSON.stringify(root.toJSON()).includes("メールが届きます"));
 });
 
 test("signup signs the new account in with the same credentials mechanism as login instead of bouncing to the login form", () => {

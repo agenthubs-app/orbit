@@ -206,17 +206,11 @@ test("starfield is retired from routes after the Orbit_0918 landing cutover", ()
   );
 });
 
-test("starfield navigation belongs to shared React OrbitTopNav and its language toggle", () => {
+test("R18b public entry routes no longer credit the legacy OrbitTopNav", () => {
   for (const route of ["/", "/app"]) {
     const actions = allActions.filter((action) => action.route === route &&
       action.sourceFile === "repos/orbits/app/(app)/app/orbit-public-shell.tsx");
-    for (const label of ["t(entry.aria)", 'menuOpen ? t({ en: "Close menu", zh: "关闭菜单" }) : t({ en: "Open menu", zh: "打开菜单" })']) {
-      const controls = actions.filter((action) => action.label === label);
-      assert.equal(controls.length, 1, `${route}: ${label}`);
-      assert.deepEqual(controls[0].handlers, ["onclick"]);
-      assert.equal(controls[0].behaviorEvidence, "present-static");
-      assert.deepEqual(controls[0].imperativeBehaviorEvidence, []);
-    }
+    assert.equal(actions.length, 0, `${route}: legacy public-shell actions`);
   }
 });
 

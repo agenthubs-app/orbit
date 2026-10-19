@@ -1,21 +1,10 @@
 "use client";
 
-/**
- * 新密码屏（Orbit_0918）：设计 docs/designs/Orbit_0918/Orbit 首页.dc.html 422–463 行逐元素。
- * 真实行为来自 `usePasswordReset`（token 从 `location.hash` `#token=` 读取（43 位 `[A-Za-z0-9_-]`）、`sending` ref
- * 双提交保护、`POST /api/auth/password-reset/confirm`、成功后 `history.replaceState` 清 hash + `done`，全在 hook）。
- * 审阅修订 11 **SSR 形状**：先渲染 tokenValid 分支（主按钮 `disabled` 直到 `ready`），`useEffect` 读完 hash 后才切
- * 「链接已失效」分支（避免 hydration mismatch；无 token 链接会闪一帧，记录）。
- * 成功态：标题「密码已更新」+ 副标设计文案 + 第三行 t()「其他设备上的旧会话已失效，需要重新登录。」（保留旧实现的会话失效告知）。
- * 设计 431 / 445 是 button 元素（onClick=goForgot / goLogin），应用里是真实导航 → `<a class="btn au-btn-primary au-btn-link">`（记录）。
- * 本地校验（审阅修订 8）：`validateResetPair` 先长度「新密码至少 8 位。」后一致「两次输入的密码不一致。」，通过才 `submit`
- * （hook 内仍有不一致守卫，原样）。设计外的眼睛钮只在 登录 / 注册（hook 有 `showPassword`），本屏无（记录）。
- * 终审修正：「链接已失效」分支的副标 `<p class="au-sub">` 加 `role="alert"`（旧 `<p role=alert>` 的活动区语义回归；结构不变）。
- */
+/** Reset token comes from the URL fragment and is cleared by usePasswordReset after confirmation. */
 import { useState, type FormEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { AuthBackToLogin, AuthErrorCard, AuthPrimaryButton, AUTH_PASSWORD_MAX_LENGTH } from "./auth-form";
+import { AuthErrorCard, AuthPrimaryButton, AUTH_PASSWORD_MAX_LENGTH } from "./auth-form";
 import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, authTitleId, validateResetPair } from "./auth-model";
 import { usePasswordReset } from "./use-password-reset";
 
@@ -33,11 +22,10 @@ export function AuthReset() {
     return (
       <div className="au-view">
         <div className="au-head">
-          <h2 className="au-h2" id={titleId}>{t({ en: "Link expired", ja: "リンクが無効です", zh: "链接已失效" })}</h2>
-          <p className="au-sub" role="alert">{t({ en: "This reset link is invalid or has expired. Reset links are only valid for 30 minutes.", ja: "このリンクは無効か期限切れです。再設定リンクの有効期限は30分です。", zh: "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。" })}</p>
+          <h2 className="au-h2" id={titleId}>{t({ en: "This link cannot be used", ja: "このリンクは使えません", zh: "此链接无法使用" })}</h2>
+          <p className="au-sub" role="alert">{t({ en: "Request another password reset.", ja: "もう一度、再設定をお申し込みください。", zh: "请重新申请密码重置。" })}</p>
         </div>
-        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a new reset link", ja: "新しいリンクを申請", zh: "重新申请重置链接" })}</a>
-        <AuthBackToLogin />
+        <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })}</a>
       </div>
     );
   }
@@ -59,9 +47,8 @@ export function AuthReset() {
   return (
     <div className="au-view">
       <div className="au-head">
-        <h2 className="au-h2" id={titleId}>{session.done ? t({ en: "Password updated", ja: "パスワードを更新しました", zh: "密码已更新" }) : t({ en: "Set a new password", ja: "新しいパスワードを設定", zh: "设置新密码" })}</h2>
-        <p className="au-sub">{session.done ? t({ en: "Your password has been reset. You can sign in with the new password now.", ja: "新しいパスワードでログインできます。", zh: "你的密码已重置，现在可以用新密码登录。" }) : t({ en: "Choose a new password of at least 8 characters.", ja: "8文字以上の新しいパスワードを設定してください。", zh: "请设置一个至少 8 位的新密码。" })}</p>
-        {session.done ? <p className="au-sub">{t({ en: "Sessions on other devices have been signed out and need to sign in again.", ja: "他の端末のセッションは無効になりました。再度ログインしてください。", zh: "其他设备上的旧会话已失效，需要重新登录。" })}</p> : null}
+        <h2 className="au-h2" id={titleId}>{session.done ? t({ en: "Password updated", ja: "パスワードを更新しました", zh: "密码已更新" }) : t({ en: "New password", ja: "新しいパスワード", zh: "新密码" })}</h2>
+        <p className="au-sub">{session.done ? t({ en: "Sign in with your new password.", ja: "新しいパスワードでログインできます。", zh: "请使用新密码登录。" }) : t({ en: "Set it from the link in your email.", ja: "メールで受け取ったリンクから設定します。", zh: "通过邮件中的链接设置密码。" })}</p>
       </div>
       {session.done ? (
         <a className="btn au-btn-primary au-btn-link" href={authRoutePath("login", "")}>{t({ en: "Sign in with the new password", ja: "新しいパスワードでログイン", zh: "用新密码登录" })}</a>
@@ -77,14 +64,15 @@ export function AuthReset() {
                 maxLength={AUTH_PASSWORD_MAX_LENGTH}
                 minLength={AUTH_PASSWORD_MIN_LENGTH}
                 onChange={(event) => session.setPassword(event.target.value)}
-                placeholder={t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })}
+                placeholder="••••••••"
                 required
                 type="password"
                 value={session.password}
               />
+              <span className="au-hint">{t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })}</span>
             </div>
             <div className="au-label">
-              <label htmlFor={AUTH_CONFIRM_PASSWORD_ID}>{t({ en: "Confirm new password", ja: "新しいパスワードを確認", zh: "确认新密码" })}</label>
+              <label htmlFor={AUTH_CONFIRM_PASSWORD_ID}>{t({ en: "Enter it again", ja: "もう一度入力", zh: "再次输入" })}</label>
               <input
                 autoComplete="new-password"
                 className="au-input"
@@ -100,10 +88,9 @@ export function AuthReset() {
             </div>
           </div>
           <AuthErrorCard error={error} />
-          <AuthPrimaryButton className="au-btn-primary" disabled={!session.ready} label={session.busy ? t(labels.loading) : t(labels.idle)} submitting={session.busy} />
+          <AuthPrimaryButton className="au-btn-primary" disabled={!session.ready} label={session.busy ? t(labels.loading) : t({ en: "Change password and return to sign in", ja: "変更してログインへ", zh: "修改密码并返回登录" })} submitting={session.busy} />
         </form>
       )}
-      <AuthBackToLogin />
     </div>
   );
 }
