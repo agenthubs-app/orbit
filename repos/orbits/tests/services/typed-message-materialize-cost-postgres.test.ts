@@ -63,7 +63,7 @@ test('typed delivery materialization keeps notifications flowing when the messag
   assert.ok(url);
   const schema='message_tables_missing_'+randomUUID().replaceAll('-','');
   const pool=new Pool({connectionString:url,max:3,options:`-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000`});
-  const client=createTransactionalPostgresClient({connectionString:url,pool}),workspaceId='w',actorId='a',now=()=>at;
+  const client=createTransactionalPostgresClient({connectionString:url,pool}),workspaceId='w',actorId='private-actor-id-for-log-test',now=()=>at;
   const repository=createDeliveryPolicyRepository({client,workspaceId,now});
   const devices={listActive:async()=>[],revoke:async()=>null,register:async()=>{throw Error('unused');}};
   const runtime=createTypedDeliveryRuntime({client,workspaceId,actorId,now,devices,push:null});
@@ -77,5 +77,7 @@ test('typed delivery materialization keeps notifications flowing when the messag
     assert.deepEqual(await runtime.materialize(),{notifications:0,messages:0});
     assert.deepEqual((await repository.get<{messages:unknown}>(client,'notificationDeliveryCursor',actorId))?.messages,{at:since,id:'kept'},'the message cursor waits for the tables');
     assert.ok(warnings.some(line=>line.includes('typed_delivery_message_tables_missing')),'the skip is logged');
+    assert.ok(warnings.every(line=>!line.includes(actorId)),'the raw account identifier stays out of logs');
+    assert.ok(warnings.every(line=>!Object.hasOwn(JSON.parse(line),'actorId')),'the account identifier field stays out of logs');
   }finally{console.warn=warn;await pool.query(`drop schema if exists ${schema} cascade`);await client.close();}
 });
