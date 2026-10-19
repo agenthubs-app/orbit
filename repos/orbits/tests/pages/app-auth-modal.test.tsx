@@ -250,13 +250,13 @@ test("login: while the request is pending the button is disabled, reads 登录�
   });
 });
 
-test("login: ?created=1&email= renders the blue status notice and prefills the email; forgot/switch links carry the safe next", async () => {
+test("login: created notice ignores URL email and forgot/switch links carry the safe next", async () => {
   await withModal("login", `?next=${encodeURIComponent(NEXT)}&created=1&email=${encodeURIComponent("new@example.invalid")}`, {}, async (renderer) => {
     const status = renderer.root.findAll((node) => node.props.role === "status" && typeof node.type === "string");
     assert.equal(status.length, 1);
     assert.equal(status[0].props.className, "au-notice");
     assert.equal(status[0].children.join(""), "账号已创建，但自动登录未完成。请用刚设置的密码登录。");
-    assert.equal(input(renderer, "au-email").props.value, "new@example.invalid");
+    assert.equal(input(renderer, "au-email").props.value, "");
     const hrefs = renderer.root.findAllByType("a").map((node) => String(node.props.href));
     assert.deepEqual(hrefs, [
       `/app/account/forgot-password?next=${encodeURIComponent(NEXT)}`,

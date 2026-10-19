@@ -43,6 +43,17 @@ interface AccountAuthOptions {
 }
 
 const defaultNext = "/home";
+let signupFallback: { email: string; next: string; expiresAt: number } | null = null;
+
+export function rememberSignupFallbackEmail(email: string, next: string): void {
+  signupFallback = { email: email.trim(), next: normalizedNext(next), expiresAt: Date.now() + 120_000 };
+}
+
+export function takeSignupFallbackEmail(next: string): string {
+  const fallback = signupFallback;
+  signupFallback = null;
+  return fallback?.next === normalizedNext(next) && fallback.expiresAt > Date.now() ? fallback.email : "";
+}
 
 export function accountAuthPasswordError(password: string): "too-short" | "too-long" | null {
   if (password.length < 8) return "too-short";
@@ -160,20 +171,16 @@ export function accountAuthToView(
 }
 
 export function nextHrefForAccountAuthSubmit({
-  email,
   mode,
   next
 }: {
-  email: string;
   mode: AccountAuthMode;
   next?: string;
 }): string {
   const safeNext = normalizedNext(next);
 
   if (mode === "signup") {
-    return `/account/login?created=1&email=${encodeURIComponent(
-      email.trim()
-    )}&next=${encodeURIComponent(safeNext)}`;
+    return `/account/login?created=1&next=${encodeURIComponent(safeNext)}`;
   }
 
   if (mode === "forgot") {

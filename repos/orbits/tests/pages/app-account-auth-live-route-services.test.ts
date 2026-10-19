@@ -336,12 +336,14 @@ test("signup signs the new account in with the same credentials mechanism as log
   );
   assert.doesNotMatch(signupBranch, /\/api\/auth\/csrf/);
   assert.doesNotMatch(signupBranch, /\/api\/auth\/callback\/credentials/);
-  // 自动登录成功经过 profile continuation；失败才退回登录页并预填邮箱。
+  // 自动登录成功经过 profile continuation；失败才退回登录页并短暂保存邮箱。
   assert.match(signupBranch, /navigate\(profileContinuationPath\(query\.next\)\)/);
-  assert.match(signupBranch, /\/account\/login\?next=.*&created=1&email=/);
+  assert.match(signupBranch, /rememberSignupFallbackEmail\(email, query\.next\)/);
+  assert.match(signupBranch, /\/account\/login\?next=.*&created=1/);
+  assert.doesNotMatch(signupBranch, /&email=/);
   assert.ok(
     signupBranch.indexOf("profileContinuationPath(query.next)") <
-      signupBranch.indexOf("&created=1&email="),
+      signupBranch.indexOf("&created=1"),
     "auto sign-in must be attempted before falling back to the login redirect",
   );
 });
@@ -425,7 +427,7 @@ test("successful signup posts credentials, auto-signs in, and enters profile con
   assert.equal(calls.filter((call) => call.url.includes("/callback/credentials")).length, 1);
 });
 
-test("failed signup auto-sign-in falls back to created login with the email prefill", async (t) => {
+test("failed signup auto-sign-in falls back without putting email in the login URL", async (t) => {
   const next = "/app/contacts/new?eventId=signup_fallback";
   const email = "fallback-owner@example.invalid";
   const { navigation, root } = await renderAuth(t, {
@@ -439,7 +441,7 @@ test("failed signup auto-sign-in falls back to created login with the email pref
 
   assert.equal(
     navigation.href,
-    `/app/account/login?next=${encodeURIComponent(next)}&created=1&email=${encodeURIComponent(email)}`,
+    `/app/account/login?next=${encodeURIComponent(next)}&created=1`,
   );
 });
 

@@ -24,6 +24,8 @@ import {
   accountAuthPasswordError,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
+  rememberSignupFallbackEmail,
+  takeSignupFallbackEmail,
   type AccountAuthFieldView,
   type AccountAuthMode
 } from "../../view-models/account-auth";
@@ -50,7 +52,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
     created?: string | string[];
-    email?: string | string[];
     next?: string | string[];
   }>();
   const router = useRouter();
@@ -97,16 +98,21 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     );
     return () => { active = false; };
   }, [auth.readPendingWritesOnDevice, mode, ready, server.baseUrl]);
-  const [values, setValues] = useState<Record<AccountAuthFieldView["name"], string>>({
-    email: firstParam(params.email),
-    password: ""
-  });
   const view = useMemo(
     () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled, t: locale.t }),
     [auth.googleEnabled, locale.t, mode]
   );
   const next = normalizedNext(firstParam(params.next, view.defaultNext));
   const created = firstParam(params.created) === "1";
+  const [values, setValues] = useState<Record<AccountAuthFieldView["name"], string>>({
+    email: "",
+    password: ""
+  });
+  useEffect(() => {
+    if (mode !== "login" || !created) return;
+    const fallbackEmail = takeSignupFallbackEmail(next);
+    if (fallbackEmail) setValues((current) => current.email ? current : { ...current, email: fallbackEmail });
+  }, [created, mode, next]);
   const accepted = mode === "forgot" && notice !== null;
 
   if (authScopeRef.current !== authScopeKey) {
@@ -193,7 +199,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
         const signedIn = await auth.signIn({ email: values.email, password: values.password, redirectTo: next });
         if (!isCurrent()) return;
-        router.replace(nextHrefForAccountAuthSubmit({ email: values.email, mode: signedIn.success ? "login" : "signup", next }) as Href);
+        if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
+        router.replace(nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next }) as Href);
         return;
       }
 
@@ -211,7 +218,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       router.replace(
         nextHrefForAccountAuthSubmit({
-          email: values.email,
           mode,
           next
         }) as Href
@@ -249,7 +255,6 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       // Google completes a session even when launched from the signup screen.
       router.replace(
         nextHrefForAccountAuthSubmit({
-          email: values.email,
           mode: "login",
           next
         }) as Href
@@ -362,7 +367,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           {accepted ? <Pressable
             accessibilityRole="button"
             accessibilityLabel={locale.t("auth.loginPrimary")}
-            onPress={() => router.replace(nextHrefForAccountAuthSubmit({ email: values.email, mode: "forgot", next }) as Href)}
+            onPress={() => router.replace(nextHrefForAccountAuthSubmit({ mode: "forgot", next }) as Href)}
             style={styles.primaryButton}
           ><Text style={styles.primaryButtonText}>{locale.t("auth.loginPrimary")}</Text></Pressable> : <Pressable
             accessibilityLabel={mode === "forgot" ? locale.t("auth.forgotRequest") : view.primaryLabel}

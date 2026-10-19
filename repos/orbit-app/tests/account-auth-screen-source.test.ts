@@ -88,6 +88,12 @@ test("account auth screen normalizes next before every post-auth navigation", ()
   assert.doesNotMatch(screenSource, /router\.replace\(next as Href\)/u);
 });
 
+test("native signup fallback passes the email through one-use state, not route params", () => {
+  assert.match(screenSource, /rememberSignupFallbackEmail\(values\.email, next\)/u);
+  assert.match(screenSource, /takeSignupFallbackEmail\(next\)/u);
+  assert.doesNotMatch(screenSource, /params\.email|email=\$\{/u);
+});
+
 test("mobile Google broker route falls back to the native login screen", () => {
   assert.ok(existsSync(mobileGoogleRoutePath));
 

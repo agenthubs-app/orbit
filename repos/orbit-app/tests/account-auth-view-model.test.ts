@@ -5,6 +5,8 @@ import {
   accountAuthToView,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
+  rememberSignupFallbackEmail,
+  takeSignupFallbackEmail,
   type AccountAuthMode
 } from "../src/view-models/account-auth";
 
@@ -111,7 +113,6 @@ test("accountAuthToView exposes Google when the mobile auth provider is enabled"
 test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () => {
   assert.equal(
     nextHrefForAccountAuthSubmit({
-      email: "xinyi@example.com",
       mode: "login",
       next: "/profile"
     }),
@@ -119,20 +120,27 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
   );
   assert.equal(
     nextHrefForAccountAuthSubmit({
-      email: "xinyi@example.com",
       mode: "signup",
       next: "/events"
     }),
-    "/account/login?created=1&email=xinyi%40example.com&next=%2Fevents"
+    "/account/login?created=1&next=%2Fevents"
   );
   assert.equal(
     nextHrefForAccountAuthSubmit({
-      email: "xinyi@example.com",
       mode: "forgot",
       next: "/dashboard"
     }),
     "/account/login?next=%2Fdashboard"
   );
+});
+
+test("registration fallback email is one-use page state tied to a safe next", () => {
+  rememberSignupFallbackEmail("xinyi@example.com", "/events");
+  assert.equal(takeSignupFallbackEmail("/profile"), "");
+  assert.equal(takeSignupFallbackEmail("/events"), "");
+  rememberSignupFallbackEmail("xinyi@example.com", "/events");
+  assert.equal(takeSignupFallbackEmail("/events"), "xinyi@example.com");
+  assert.equal(takeSignupFallbackEmail("/events"), "");
 });
 
 test("normalizedNext accepts supported app routes and rejects redirect or route-policy bypasses", () => {

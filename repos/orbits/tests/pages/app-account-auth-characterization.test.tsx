@@ -33,6 +33,7 @@ interface Observed {
 interface Harness {
   navigation: { href: string; assigned: string[]; reloads: number };
   observed: Observed[];
+  storage: Map<string, string>;
   restore: () => void;
 }
 
@@ -41,6 +42,7 @@ interface Responses {
   google?: string;
   register?: Response | (() => Response);
   resetRequest?: Response | (() => Response);
+  storage?: Map<string, string>;
 }
 
 function install(search: string, responses: Responses = {}): Harness {
@@ -48,6 +50,7 @@ function install(search: string, responses: Responses = {}): Harness {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const observed: Observed[] = [];
+  const storage = responses.storage ?? new Map<string, string>();
   const navigation = { assigned: [] as string[], href: `http://localhost/app/account/login${search}`, reloads: 0 };
   let href = navigation.href;
   const location = {
@@ -112,7 +115,11 @@ function install(search: string, responses: Responses = {}): Harness {
 
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: { addEventListener() {}, location, removeEventListener() {} },
+    value: { addEventListener() {}, location, removeEventListener() {}, sessionStorage: {
+      getItem(key: string) { return storage.get(key) ?? null; },
+      setItem(key: string, value: string) { storage.set(key, value); },
+      removeItem(key: string) { storage.delete(key); },
+    } },
   });
   Object.defineProperty(globalThis, "document", {
     configurable: true,
@@ -122,6 +129,7 @@ function install(search: string, responses: Responses = {}): Harness {
   return {
     navigation,
     observed,
+    storage,
     restore() {
       globalThis.fetch = originalFetch;
       if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
@@ -304,8 +312,9 @@ test("signup success: POST /api/auth/register {email,password}, auto signIn(cred
   }
 });
 
-test("signup auto sign-in failure: falls back to the created login URL with next and email prefill", async () => {
+test("signup auto sign-in failure keeps email in one-use page state and preserves safe next", async () => {
   const email = "fallback-owner@example.invalid";
+  const storage = new Map<string, string>();
   const harness = install(`?next=${encodeURIComponent(NEXT)}`, { credentials: "failure" });
   let renderer: ReactTestRenderer | undefined;
   try {
@@ -313,12 +322,26 @@ test("signup auto sign-in failure: falls back to the created login URL with next
     await fill(renderer, email, "password-123");
     await submit(renderer);
     assert.deepEqual(harness.navigation.assigned, [
-      `/app/account/login?next=${encodeURIComponent(NEXT)}&created=1&email=${encodeURIComponent(email)}`,
+      `/app/account/login?next=${encodeURIComponent(NEXT)}&created=1`,
     ]);
+    assert.doesNotMatch(harness.navigation.href, /fallback-owner|email=/);
+    for (const [key, value] of harness.storage) storage.set(key, value);
+    assert.ok([...storage.values()].some((value) => value.includes(email)));
     assert.deepEqual(byRole(renderer, "alert"), []);
   } finally {
     await unmount(renderer);
     harness.restore();
+  }
+
+  const login = install(`?next=${encodeURIComponent(NEXT)}&created=1`, { storage });
+  let loginRenderer: ReactTestRenderer | undefined;
+  try {
+    loginRenderer = await mount("login");
+    assert.equal(input(loginRenderer, "au-email").props.value, email);
+    assert.equal(storage.size, 0, "prefill is consumed after one login mount");
+  } finally {
+    await unmount(loginRenderer);
+    login.restore();
   }
 });
 
@@ -479,12 +502,12 @@ test("?next= normalisation: a safe next is threaded through forgot/switch hrefs 
   }
 });
 
-test("?created=1&email= prefills the email after mount and shows the auto sign-in fallback notice (role=status, 审阅修订 12)", async () => {
+test("a URL email is ignored while created=1 still shows the fallback notice", async () => {
   const harness = install(`?next=${encodeURIComponent(NEXT)}&created=1&email=${encodeURIComponent("made@example.invalid")}`);
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("login");
-    assert.equal(input(renderer, "au-email").props.value, "made@example.invalid");
+    assert.equal(input(renderer, "au-email").props.value, "");
     assert.deepEqual(notices(renderer), ["账号已创建，但自动登录未完成。请用刚设置的密码登录。"]);
     assert.deepEqual(byRole(renderer, "status"), ["账号已创建，但自动登录未完成。请用刚设置的密码登录。"]);
     assert.deepEqual(byRole(renderer, "alert"), []);

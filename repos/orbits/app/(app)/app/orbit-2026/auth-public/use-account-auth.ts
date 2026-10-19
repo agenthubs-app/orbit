@@ -14,7 +14,7 @@ import { AUTH_ERROR_COPY } from "./auth-model";
 
 // 原样抽自 account/orbit-real-account-auth.tsx（15–57 行：productHref / navigate /
 // AccountAuthQuery / SSR 安全回退 / 从 location 读 query；68–78 行：状态；83–87 行：
-// 挂载后读取真实 ?next=/?email=/?created=；101–120 行：isSignup / isForgot / created
+// 挂载后读取真实 ?next=/?created=；101–120 行：isSignup / isForgot / created
 // 提示 / 主按钮文案 / 切换链接；122–208 行：onSubmit（注册 → /api/auth/register +
 // 自动 signIn("credentials")；找回 → /api/auth/password-reset/request；登录 →
 // signIn("credentials") + profile continuation）与 onGoogleSignIn）。
@@ -41,7 +41,31 @@ export function navigate(prototypeHref: string) {
   window.location.href = productHref(prototypeHref);
 }
 
-export type AccountAuthQuery = { created: boolean; email: string; next: string };
+export type AccountAuthQuery = { created: boolean; next: string };
+
+const signupFallbackKey = "orbit:auth:signup-fallback";
+
+function rememberSignupFallbackEmail(email: string, next: string) {
+  try {
+    window.sessionStorage.setItem(signupFallbackKey, JSON.stringify({ email, next, expiresAt: Date.now() + 120_000 }));
+  } catch {
+    // Login still works when browser storage is unavailable; the address must be reentered.
+  }
+}
+
+function takeSignupFallbackEmail(next: string): string {
+  try {
+    const stored = window.sessionStorage.getItem(signupFallbackKey);
+    window.sessionStorage.removeItem(signupFallbackKey);
+    if (!stored) return "";
+    const value = JSON.parse(stored) as { email?: unknown; next?: unknown; expiresAt?: unknown };
+    return value.next === next && typeof value.expiresAt === "number" && value.expiresAt > Date.now() && typeof value.email === "string"
+      ? value.email
+      : "";
+  } catch {
+    return "";
+  }
+}
 
 // Server-safe fallback: no window access, so this returns the exact same
 // value during SSR and during the client's first (pre-hydration) render.
@@ -53,7 +77,6 @@ export type AccountAuthQuery = { created: boolean; email: string; next: string }
 function accountAuthQueryFallback(defaultNext: string): AccountAuthQuery {
   return {
     created: false,
-    email: "",
     next: normalizeProfileAuthReturnPath(defaultNext),
   };
 }
@@ -68,7 +91,6 @@ function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery
 
   return {
     created: searchParams.get("created") === "1",
-    email: searchParams.get("email") ?? "",
     next,
   };
 }
@@ -99,7 +121,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   const [query, setQuery] = useState<AccountAuthQuery>(() =>
     accountAuthQueryFallback(viewModel.defaultNext),
   );
-  const [email, setEmail] = useState(query.email);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -110,13 +132,16 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
 
   // Post-hydration update (legal — it runs after the first paint matches
   // SSR): now that we're definitely on the client, read the real ?next=/
-  // ?email=/?created= from the URL and correct the state that was seeded
+  // ?created= from the URL and correct the state that was seeded
   // with the server-safe fallback above.
   useEffect(() => {
     const real = readAccountAuthQueryFromLocation(viewModel.defaultNext);
     setQuery(real);
-    setEmail((current) => current || real.email);
-  }, [viewModel.defaultNext]);
+    if (viewModel.mode === "login" && real.created) {
+      const fallbackEmail = takeSignupFallbackEmail(real.next);
+      setEmail((current) => current || fallbackEmail);
+    }
+  }, [viewModel.defaultNext, viewModel.mode]);
 
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
@@ -176,9 +201,8 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
           return;
         }
 
-        navigate(
-          `/account/login?next=${encodeURIComponent(query.next)}&created=1&email=${encodeURIComponent(email)}`,
-        );
+        rememberSignupFallbackEmail(email, query.next);
+        navigate(`/account/login?next=${encodeURIComponent(query.next)}&created=1`);
         return;
       }
 

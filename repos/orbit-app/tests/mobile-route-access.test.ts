@@ -33,7 +33,7 @@ test("R12 scan batch login completion handoff preserves context and omits the pa
   assert.equal(next, `${path}?tab=review#card`);
   assert.equal(normalizedNext(next), next);
   assert.equal(
-    nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }),
+    nextHrefForAccountAuthSubmit({ mode: "login", next }),
     `/profile/onboarding?next=${encodeURIComponent(next)}`
   );
 });
@@ -189,7 +189,6 @@ test("party query, duplicate values and fragment survive the login completion ha
   assert.equal(normalizedNext(encodedNext ?? undefined), expected);
   assert.equal(
     nextHrefForAccountAuthSubmit({
-      email: "party-return@example.invalid",
       mode: "login",
       next: encodedNext ?? undefined
     }),
