@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 import { CalendarPresenter } from "../../app/(app)/app/orbit-2026/calendar/CalendarPresenter";
+import { CalendarAgendaRail } from "../../app/(app)/app/orbit-2026/calendar/CalendarAgendaRail";
 import { calendarDaysView } from "../../app/(app)/app/orbit-2026/calendar/calendar-view-model";
 import { Orbit2026Scope } from "../../app/(app)/app/orbit-2026/ui";
 
@@ -81,4 +82,27 @@ test("a readable empty month offers connection and personal schedule actions wit
   assert.equal(root!.root.findAllByProps({ "data-calendar-empty-guide": "" }).length, 0);
   await act(async () => root.update(render("not_connected", "failed")));
   assert.equal(root!.root.findAllByProps({ "data-calendar-empty-guide": "" }).length, 0);
+});
+
+test("calendar rail shows only readable selected-day entries and does not call an incomplete window empty", async t => {
+  const selectedDay = days("month").find(day => day.date === base.date)!;
+  const opened: string[] = [];
+  const render = (internalState: "ready" | "failed", externalState: "ready" | "failed") => <Orbit2026Scope language="ja"><CalendarAgendaRail date={base.date} day={selectedDay} today={base.today} internalState={internalState} externalState={externalState} connection="connected" partial={false} onEntrySelect={entry => opened.push(entry.key)} /></Orbit2026Scope>;
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(render("ready", "ready")); });
+  t.after(() => act(() => root.unmount()));
+  assert.ok(JSON.stringify(root!.toJSON()).includes("Private schedule"));
+  assert.ok(JSON.stringify(root!.toJSON()).includes("Google read-only"));
+  await act(async () => root!.root.findAllByType("button").find(node => text(node).includes("Private schedule"))!.props.onClick());
+  assert.deepEqual(opened, ["personal:p"]);
+  await act(async () => root.update(render("failed", "failed")));
+  const failed = JSON.stringify(root!.toJSON());
+  assert.ok(!failed.includes("Private schedule") && !failed.includes("Google read-only"));
+  assert.ok(failed.includes("予定を読み込めませんでした"));
+  assert.ok(!failed.includes("この期間に予定はありません"));
+  const emptyDay = calendarDaysView({ date: base.date, mode: "day", timeZone: "UTC", language: "ja", internal: [], external: [] })[0]!;
+  await act(async () => root.update(<Orbit2026Scope language="ja"><CalendarAgendaRail date={base.date} day={emptyDay} today={base.today} internalState="ready" externalState="ready" connection="not_connected" partial={false} onEntrySelect={() => {}} /></Orbit2026Scope>));
+  const unconnected = JSON.stringify(root!.toJSON());
+  assert.ok(unconnected.includes("Google カレンダーは未連携です"));
+  assert.ok(!unconnected.includes("この期間に予定はありません"));
 });

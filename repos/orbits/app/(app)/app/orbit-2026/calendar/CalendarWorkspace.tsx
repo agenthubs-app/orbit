@@ -12,11 +12,12 @@ import { Button, ConfirmDialog, Modal, Orbit2026Scope, RetryCard, Skeleton, Toas
 import { calendarDaysView, type CalendarEntry } from "./calendar-view-model";
 import { shiftCalendarDate, type CalendarMode } from "./calendar-range";
 import { CalendarPresenter } from "./CalendarPresenter";
+import { CalendarAgendaRail } from "./CalendarAgendaRail";
 import { CalendarPersonalEditor } from "./CalendarPersonalEditor";
 import { MeetingProposalModal } from "./MeetingProposalModal";
 import { createMeetingProposalClient, MeetingProposalError, type MeetingProposalTarget } from "./meeting-proposal-client";
 import { useCalendarPage } from "./useCalendarPage";
-import { useInShell } from "../shell/slots";
+import { ShellPage, useInShell } from "../shell/slots";
 import styles from "./calendar.module.css";
 
 interface Props { actorId: string; language: OrbitLanguage; timeZone: string; today: string; initialDate?: string; initialAdd?: boolean }
@@ -86,6 +87,7 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
   const detailStart = confirmed?.startsAtUtc ?? selected?.item?.startsAt ?? selected?.entry.startsAt;
   const detailEnd = confirmed ? new Date(Date.parse(confirmed.startsAtUtc) + confirmed.durationMinutes * 60_000).toISOString() : selected?.item?.endsAt ?? selected?.entry.endsAt;
   return <>
+    <ShellPage rightRail={<CalendarAgendaRail date={date} today={today} day={days.find(day => day.date === date)} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onEntrySelect={entry => { void open(entry); }} />} />
     <div className={styles.status} style={inShell ? { display: "none" } : undefined}><Button hidden={inShell} data-task-add="" label={t(taskCopy.calendarAdd)} icon="plus" variant="accent" disabled={!ready || denied} onClick={() => { closeDetail(); setEditor(null); }} /></div>
     {denied ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={refresh} /> : <CalendarPresenter date={date} today={today} timeZone={timeZone} mode={mode} days={days} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onNavigate={direction => setDate(current => shiftCalendarDate(current, mode, direction))} onToday={() => setDate(today)} onModeChange={setMode} onDaySelect={setDate} onEntrySelect={entry => { void open(entry); }} onAddPersonal={() => { if (!ready || denied) return; closeDetail(); setEditor(null); }} onRetry={refresh} />}
     {ready && !denied && selected && editor === undefined ? <Modal open title={t(taskCopy.calendarDetail)} onClose={closeDetail} size={480}>

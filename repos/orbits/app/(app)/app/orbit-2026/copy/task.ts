@@ -200,6 +200,7 @@ export const taskCopy = {
   calendarPrevious: { ja: "前の期間", zh: "上一时段", en: "Previous period", kind: "label" },
   calendarNext: { ja: "次の期間", zh: "下一时段", en: "Next period", kind: "label" },
   calendarReadFailed: { ja: "予定を読み込めませんでした", zh: "未能读取日程", en: "Could not load schedules", kind: "label" },
+  calendarLoading: { ja: "予定を読み込み中", zh: "正在读取日程", en: "Loading schedules", kind: "label" },
   calendarPartial: { ja: "読み取れない予定を除いて表示しています。", zh: "未能读取的日程未显示。", en: "Some schedules could not be read and are not shown.", kind: "body" },
   calendarEmpty: { ja: "この期間に予定はありません", zh: "此时段没有日程", en: "No schedules in this period", kind: "label" },
   calendarEmptyMonthTitle: { ja: "予定はまだありません", zh: "还没有日程", en: "No events yet", kind: "label" },

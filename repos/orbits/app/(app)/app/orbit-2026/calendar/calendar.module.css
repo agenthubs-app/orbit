@@ -3,6 +3,16 @@
 .title { margin: 0 var(--space-8) 0 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .status { margin: var(--space-12) 0; }
 .note { font-size: var(--fs-caption); color: var(--ink-2); line-height: var(--lh-body); }
+.railAgenda { display: grid; align-content: start; gap: var(--space-12); }
+.railAgendaTitle { font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); margin: 0; }
+.railAgendaCard { background: var(--surface); border-radius: var(--r-lg); display: grid; gap: var(--space-2); padding: var(--space-12); }
+.railAgendaItem { align-items: start; background: transparent; border: 0; border-radius: var(--r-md); color: var(--ink); display: flex; gap: var(--space-8); padding: var(--space-8); text-align: left; width: 100%; }
+.railAgendaItem:hover, .railAgendaItem:focus-visible { background: var(--surface-2); }
+.railAgendaMarker { border-radius: var(--r-pill); flex: none; height: 9px; margin-top: var(--space-4); width: 9px; }
+.railAgendaContent { display: grid; gap: var(--space-2); min-width: 0; }
+.railAgendaContent strong { font-size: var(--fs-body-sm); overflow-wrap: anywhere; }
+.railAgendaTime, .railAgendaNote { color: var(--ink-2); font-size: var(--fs-caption); line-height: var(--lh-body); }
+.railAgendaNote { margin: 0; }
 .legend { margin: var(--space-12) 0; }
 .legendItem { padding: var(--space-4) var(--space-8); border-radius: var(--r-tag); font-size: var(--fs-caption); }
 .weekLayout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-8); align-items: stretch; }
