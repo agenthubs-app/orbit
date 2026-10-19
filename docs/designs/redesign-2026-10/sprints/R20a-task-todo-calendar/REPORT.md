@@ -861,3 +861,9 @@ D `975fefe90` の実 `/app/tasks?tab=todo&view=all` を、nonce `30b80c75d623` �
 画板の「名刺から作る」「音声メモから」「カレンダー連携」は押せる入口として描かれる一方、現 TaskListWorkspace にこの三動作の宛先・権限・失敗時の振る舞いはない。見た目だけの無反応な tile は追加せず、既存機能へ結ぶか、画板差として明示するかの決定を保留する。W-R20-08/09（少量/大量）、dark、App pixel と SC-15 全体も未検証・OPEN。診断で変更した製品 source はない。
 
 本 run の loopback design server 3320 と Next 3500 は停止し、両 port の listener 不在を確認。Next が生成した `next-env.d.ts` / `tsconfig.json` の差分のみ元に戻した。exact DB 名・owner `xzhao`・active connection 0 を確認して nonce DB だけを drop し、catalog count 0 を再確認した。synthetic capture は証拠として保持し、既存 QA actor・他 DB・production・実 Google・paid AI・push には触れていない。
+
+## 2026-10-19　To-do の Plan 今日の一手 source 接線（SC-07 部分）
+
+live `plan_today_chance` は Plan v2 `summary.current.todayChance` を読んでいたが、`summary()` はこの optional field を実際には埋めない。したがって活性 Plan に次の機会があっても常に `not_implemented` になっていた。Plan v2 の既存 `overview(planId)` が会える活動・候補から `todayChance` を算出するため、To-do の受限読取 adapter は同じ活性 Plan に対して overview を読み、live では既存 Plan と同じ有界活動事実（最大20件 / 60日）を接続した。Plan の書込や paid AI は追加していない。活動事実の前に共有 read-budget gate を通し、そこで拒否された場合は Plan 側の「活動なし」降級を精確な 0 とせず、To-do の当該 source だけ `unavailable` にする。Plan が存在しない場合は 0 件として扱う。
+
+実 PostgreSQL adapter 回帰は活性 Plan / 将来活動で **RED 0/1**（`not_implemented`）→ **GREEN 1/1**（`ok`、nextMoves 1、指定 eventId）；活動 read-budget 拒否でも **RED 0/1**（誤って `ok`）→ **GREEN 1/1**（`unavailable`）。両反例を含む To-do/Plan 隣接四 file は **20/20 pass**、Web `typecheck:app` / lint / diff check は exit0。最終 source の Web 全量 `_evidence-d/R20a/run-01/d-web-full-plan-chance-final.log` は **7,738 tests / 7,173 pass / 20 fail / 0 cancelled / 545 skip、exit1**。同輪の修正前全量 `d-web-full-plan-chance-precommit.log` と failure 名20件は一致し、この新回帰は全量でも pass。ただし全量 gate は赤のまま。日次 1 問 `completion_question` は未生成の actor でなお `not_implemented`、三块の完全件数・native / pixel・SC-07 / 15 / 16 全体を合格とはしない。実 live HTTP / native 再撮影も未実施。

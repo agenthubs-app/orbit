@@ -3,6 +3,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/co
 import { validTimeZone } from "../tasks/local-date-time";
 import { createConfiguredTaskSuggestionPageReader } from "../tasks/suggestion-page";
 import { resolvePlanBackend } from "../plans/service-factory";
+import { livePlanEventFacts } from "../plans/v2/event-facts";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
 import { createTodoFollowupReaders } from "./followups";
 import { createTodoPlanReaders } from "./plan-sources";
@@ -30,7 +31,11 @@ export function createTodoLiveRuntime(actor: AuthenticatedApiActor) {
             where workspace_id=$1 and collection_name='taskSuggestions' and user_id=$2 and lifecycle_state<>'deleted' and record_id=any($3::text[]) limit 30`, [workspaceId, actorId, ids]);
           return Object.fromEntries(reply.rows.map(row => [row.id, row.created]));
         } }) } : {}),
-        ...(plans.success && plans.service.pool && plans.service.workspaceId === workspaceId ? createTodoPlanReaders({ pool: plans.service.pool, workspaceId, assertAllowed }) : {}),
+        ...(plans.success && plans.service.pool && plans.service.workspaceId === workspaceId ? createTodoPlanReaders({ pool: plans.service.pool, workspaceId, assertAllowed,
+          events: actorId => livePlanEventFacts({ actorId, workspaceId,
+            sources: async () => (await import("../events/assessment/plan-sources")).createLivePlanEventSources(actorId),
+          })(),
+        }) : {}),
       } }),
     async accountTimeZone(): Promise<string> {
       assertAllowed("profiles");
