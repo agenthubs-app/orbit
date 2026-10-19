@@ -60,7 +60,7 @@ export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: 
       let facts: PlanEventFact[] = [];
       const service = makeService(query.actorId, async () => facts);
       const current = (await service.summary()).current;
-      if (!current) return { entries: [], total: 0, hasMore: false };
+      if (!current) return { entries: [], total: 0, hasMore: false, notImplemented: true };
       if (input.events) { input.assertAllowed("events"); facts = await input.events(query.actorId); }
       const chance = (await service.overview(current.planId, { language: "ja", platform: "web" }))?.todayChance;
       if (!chance) return { entries: [], total: 0, hasMore: false };

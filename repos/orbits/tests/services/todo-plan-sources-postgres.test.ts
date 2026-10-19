@@ -35,6 +35,10 @@ test("bounded read-only plan sources expose a real next move and reject incomple
   assert.deepEqual(errors, []);
   assert.ok(checked.has("plans")); assert.ok(checked.has("plan_items")); assert.ok(checked.has("plan_log")); assert.ok(checked.has("contacts"));
   assert.ok(checked.has("events"), "event facts for today's chance must pass the read budget gate");
+  const noPlan = await live.read({ ...input, actorId: "actor-without-plan" });
+  assert.equal(noPlan.sources.plan_pending, "ok");
+  assert.equal(noPlan.sources.plan_today_chance, "not_implemented", "no current plan is not an exact zero chance");
+  assert.equal(noPlan.nextMoves.items.length, 0);
   const eventBudgetClosed = createTodoPageService({ workspaceId: WORKSPACE, secret: "local-secret-".repeat(4),
     readers: createTodoPlanReaders({ pool, workspaceId: WORKSPACE, now, events: async () => demoPlanEventFacts(),
       assertAllowed(collection) { if (collection === "events") throw Error("READ_BUDGET_EXCEEDED"); } }), onError() {} });
