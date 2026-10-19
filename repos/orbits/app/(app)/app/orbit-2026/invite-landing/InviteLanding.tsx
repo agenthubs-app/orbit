@@ -34,6 +34,7 @@ import {
   type InviteLandingInitial,
   type InviteLandingView,
 } from "./landing-model";
+import { INVITE_CONFIRM_SAMPLE_INVITER, INVITE_CONFIRM_SAMPLE_PROFILE } from "./confirm-design-fixture";
 import styles from "./invite-landing.module.css";
 
 type T = (entry: OrbitCopyEntry, values?: Readonly<Record<string, string | number>>) => string;
@@ -78,10 +79,12 @@ function LandingBody({ language, initial, signedIn, accountName, accountEmail = 
   const t: T = useCallback((entry, values) => (values ? fillCopy(pickCopy(entry, language), values) : pickCopy(entry, language)), [language]);
   const toast = useToast();
   const preview = initial.kind === "preview" ? initial.preview : null;
+  const designConfirm = initialView?.view === "confirm";
+  const confirmPreview = designConfirm && preview ? { ...preview, shared: { ...preview.shared, displayName: INVITE_CONFIRM_SAMPLE_INVITER } } : preview;
   const [view, setView] = useState<InviteLandingView>(() => initialView ?? initialLandingView(initial, signedIn));
   // Whether this visit went through the short profile (a newcomer): the done page then says 登録が完了しました.
   const [newcomer, setNewcomer] = useState(initialView?.view === "done");
-  const [profile, setProfile] = useState<InviteProfileRead["profile"]>(null);
+  const [profile, setProfile] = useState<InviteProfileRead["profile"]>(designConfirm ? INVITE_CONFIRM_SAMPLE_PROFILE : null);
   const [profileFailed, setProfileFailed] = useState(false);
   const [sharedByMe, setSharedByMe] = useState<InviteSharedFieldKey[]>(initialSharedByMe ?? []);
 
@@ -123,8 +126,8 @@ function LandingBody({ language, initial, signedIn, accountName, accountEmail = 
         {view.view === "profile" && preview ? (
           <ProfileStep t={t} profile={profile} accountName={accountName} onSaved={() => { setNewcomer(true); setView({ view: "checking" }); }} onError={(message) => toast.error(message)} />
         ) : null}
-        {view.view === "confirm" && preview ? (
-          <ConfirmStep t={t} language={language} preview={preview} profile={profile} accountName={accountName} accountEmail={accountEmail}
+        {view.view === "confirm" && confirmPreview ? (
+          <ConfirmStep t={t} language={language} preview={confirmPreview} profile={profile} accountName={accountName} accountEmail={accountEmail}
             onResult={(next, keys) => { setSharedByMe(keys); if (next === "login") navigate(inviteAuthHref("login", preview.code)); else setView(next); }}
             onNotNow={() => navigate("/app/home")} />
         ) : null}

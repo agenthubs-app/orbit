@@ -16,13 +16,14 @@ test("the fixture is on only with ORBIT_REDESIGN_MOCK naming invite-codes (or al
   assert.equal(inviteDesignFixturesEnabled({ ...MOCK, VERCEL_ENV: "production" }), false, "never on the production deployment");
 });
 
-test("?design=done opens 完了 with the inviter's shared fields; anything else, or no preview, opens nothing", () => {
+test("local mock exposes the design confirm and done views without a redeem request", () => {
   const view = inviteDesignView("done", preview, MOCK);
   assert.equal(view?.view, "done");
   assert.deepEqual(view?.view === "done" ? view.result.peer : null, { displayName: "松井 遥" });
-  assert.equal(inviteDesignView("confirm", preview, MOCK), undefined);
+  assert.deepEqual(inviteDesignView("confirm", preview, MOCK), { view: "confirm" });
   assert.equal(inviteDesignView(undefined, preview, MOCK), undefined);
   assert.equal(inviteDesignView("done", { kind: "unavailable", limited: false }, MOCK), undefined);
   assert.equal(inviteDesignView("done", preview, { ...MOCK, NODE_ENV: "production" }), undefined);
+  assert.equal(inviteDesignView("confirm", preview, { ...MOCK, NODE_ENV: "production" }), undefined);
   assert.equal(inviteDesignView("done", preview, { NODE_ENV: "development" }), undefined);
 });

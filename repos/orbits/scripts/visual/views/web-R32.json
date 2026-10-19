@@ -220,7 +220,7 @@
     },
     {
       "id": "W-R15-12",
-      "app": "/i/H8MW-4QZT",
+      "app": "/i/H8MW-4QZT?design=confirm",
       "design": "b11-nav-v3.html",
       "board-index": 12,
       "width": 390,

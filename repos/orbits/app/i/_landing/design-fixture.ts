@@ -1,6 +1,7 @@
 /**
  * R15 像素门禁的只读演示（同 R12 `scan-design-fixture-gate.ts` 的做法）：本机 mock（`ORBIT_REDESIGN_MOCK` 含
- * `invite-codes` 或 `all`）下，`/i/<码>?design=done` 直接打开「つながりました」（b11 #10），不兑换、不写任何数据。
+ * `invite-codes` 或 `all`）下，`/i/<码>?design=confirm` / `?design=done` 直接打开画板状态，
+ * 不兑换、不写任何数据。
  * 生产与 live 永远关闭。
  */
 import type { InviteLandingInitial, InviteLandingView } from "../../(app)/app/orbit-2026/invite-landing/landing-model";
@@ -16,7 +17,9 @@ export const INVITE_DESIGN_SHARED_BY_ME = ["organization", "offering"] as const;
 
 /** The view to open on, or undefined (no fixture asked, fixtures off, or nothing to show it with). */
 export function inviteDesignView(design: string | undefined, initial: InviteLandingInitial, env: Record<string, string | undefined> = process.env): InviteLandingView | undefined {
-  if (design !== "done" || !inviteDesignFixturesEnabled(env) || initial.kind !== "preview") return undefined;
+  if (!inviteDesignFixturesEnabled(env) || initial.kind !== "preview") return undefined;
+  if (design === "confirm") return { view: "confirm" };
+  if (design !== "done") return undefined;
   const { shared } = initial.preview;
   return { view: "done", result: { outcome: "connected", contactId: "demo-design-fixture", peer: shared } };
 }
