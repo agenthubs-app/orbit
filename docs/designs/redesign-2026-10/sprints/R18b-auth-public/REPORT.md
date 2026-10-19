@@ -26,7 +26,7 @@
 | 06–07 | 局部通过 | 两端安全 `next`、邀请目标与 provider 隐藏有定向回归；真实 Google broker 完整成功 / 取消链、邀请接入后全链未在本轮实走。 |
 | 08–09 | 仍部分 | 公开帮助 / 法务 / FAQ 和设置跳转沿用先前证据；正式法律正文、支持邮箱与 App 像素仍为发布 / 门禁余项。 |
 | 10–12 | 仍部分 | live 版本接口和 C 浮条状态保留；D 根壳的全局不可绕过版本拦截与 Web 浮条挂载、真实商店地址和 A-10 / W-10 实拍未关。 |
-| 13 | 主要旧屏已清，余项未关 | `account/auth-0918/**`、`orbit-landing-0918.tsx`、`orbit-real-landing-page.tsx` 已不在 tracked runtime；新 `/`、`/app` 与认证四态不导入它们。`orbit-landing-route-view-model.ts` 仍供首页 / 活动跨线类型使用，`OrbitReferenceStyles` 仍被多个跨线页使用；C `mobile-google` 回调 / 失败页也仍借该旧样式，需迁到新公开样式后才算本线引用归零。 |
+| 13 | 本线旧屏清理完成，跨线保留 | `account/auth-0918/**`、`orbit-landing-0918.tsx`、`orbit-real-landing-page.tsx` 已不在 tracked runtime；新 `/`、`/app`、认证四态及 `mobile-google` 回调 / 失败页均不导入旧参考样式。`orbit-landing-route-view-model.ts` 仍供首页 / 活动跨线类型使用，`OrbitReferenceStyles` 仍被多个跨线页使用；按条件保留共享文件与跨线消费者并交接。 |
 | 14 | FAIL | Web 认证 25 张本轮复比 0 PASS；App A-01～05 已实拍代表屏均 FAIL，若单张满三轮则停止该屏改动。不得用空归因表消除未归因带。 |
 | 15–16 | 未关 | D 已提交的登录态底栏条件需与新增认证 / 强制更新实走；全量复验及 Bridge 交接见下文。 |
 
@@ -42,6 +42,7 @@ App 使用独立已签名 Debug 构建、C 模拟器和 Metro JS 实拍。A-01 �
 
 - 收口时两端全量各跑一次，使用 `_runs/heavy.sh c`；Web 带 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 与本机 `orbit_line_c_test` 数据库参数。App 日志 `/Users/xzhao/orbit-sprint-evidence/redesign/R18b/run-01/app-full-rd33-closure.log`：**3,252 tests / 3,221 pass / 29 fail / 2 skip，exit 1**。失败中本线旧表征测试仍断言旧按钮、旧开放式输入框、注册成功回登录、旧关闭标签，另有硬编码文案和 Ionicons 清单；随后已按 RD-33 与新画板做有界修复，App 认证 / 重置 / 宽屏 / 大字 / 静态门槛定向 **78/78 pass**，`npm run typecheck` exit 0。其余全量还含 R12 扫描链、邀请提示拦截、设置迟到回执、收件箱选中态与旧字典快照；**未再跑第二次全量，不称最终树全量通过或零新增失败**。
 - Web 日志 `/Users/xzhao/orbit-sprint-evidence/redesign/R18b/run-01/web-full-rd33-closure.log`：**7,769 tests / 7,201 pass / 23 fail / 545 skip，exit 1**。本线旧 auth modal 断言、root 旧导航审计、认证 CSS token / legacy icon 引用随后修复，按新 UI 的 HTTP / hash / 409 / 安全 `next` 重写相应表征断言；相关定向 **37/37、28/28、2/2 pass**。最终源码 `typecheck`、`typecheck:app`、`lint`、`git diff --check` exit 0。其余全量还含 Host / Search 审计候选、联系人和 R12、R16 本机 PostgreSQL、Dashboard、设计 fixture 扫描及按钮数旧上限（本轮实扫 86 对 79）；不调高上限或修改跨线源码。**未再跑第二次全量**。
+- 在唯一一次 Web 全量之后，SC-13 检查又定位到 C `mobile-google` 对共享旧参考样式的最后一个引用。`3a95c0797` 将回调 / 不可用态改为 `Orbit2026Scope` 的新样式，保留 request 首值、provider 关闭、Google 回跳与邮箱登录出口；旧硬编码文案允许清单只减。本次后续定向 `mobile-auth-routes` + Web hardcoded-copy **17/17 pass**，`typecheck` / `typecheck:app` exit 0。该提交晚于上面的全量日志，不以它证明最终全量通过。
 - 字典 `i18n-domain-split` 仍按 R03 的 2,253 个原始键和「键前缀须等于目录名」检查：当前 R18b 在 `account.ts` 增加的 `auth.*` 新键违反后者，且全仓已有大量 R03 后新键使旧固定总数失效。本 Sprint 的 PLANNER 仅授权在三语 `account.ts` 加键；不能把 `auth.ts` 和旧全仓快照测试当作 C 线私有文件改写。请求主会话协调 i18n 所有者迁移新增键至正确域，并把测试改成只锁定 R03 原始集合、继续验证三语同键 / 单域归属；在此之前 SC-16 维持红灯。
 - CSS token 改写使用已有 `--fs-*` / `--r-*` / `--shadow-float`，legacy eye 图标改用 `orbit-2026/ui/Icon`。字重 / 布局数字未放宽；浮层阴影和眼睛图标确有视觉变化，前述认证 triptych 生成时间早于该修复，所以它们只说明此前失败，**不代表最终源码重比**。对应画面在 A 线 kit / D 壳集成与像素余项收口时必须重新比，且单屏不得越过已记三轮上限。
 
@@ -51,11 +52,11 @@ App 使用独立已签名 Debug 构建、C 模拟器和 Metro JS 实拍。A-01 �
 
 | 本端版本 | 另一端影响 | 未完成事项 / 下一责任方 | 验证范围 |
 | --- | --- | --- | --- |
-| C `line-c`：RD-33 b1/b12、Web 新落地 / 四态、App 欢迎 / 四态、C 版本状态；最终提交号见本节后的提交记录 | Web 与 App 的公开入口、认证文案、Google provider 开关、重置 hash 与 8 字符 / 72 字节语义对齐；live `app-version` 契约继续供两端消费 | D 挂 Web 浮条与 App 根全局版本门禁；主会话在 Bridge 台账登记并审查；R28 改引导画板目标上限；R17 公开主办顶栏按新公开规范评估；i18n 所有者处理域归属；C 后续收 mobile-google 旧样式与像素余项 | Web 认证相关定向 37/37、App 78/78、两端类型检查；Web 25 张认证代表画面及 App 已实拍代表屏 FAIL；未验生产、真实 Google / 邮件、全矩阵、D 壳或最终像素 |
+| C `line-c`：RD-33 b1/b12、Web 新落地 / 四态、App 欢迎 / 四态、C 版本状态；最终提交号见本节后的提交记录 | Web 与 App 的公开入口、认证文案、Google provider 开关、重置 hash 与 8 字符 / 72 字节语义对齐；live `app-version` 契约继续供两端消费 | D 挂 Web 浮条与 App 根全局版本门禁；主会话在 Bridge 台账登记并审查；R28 改引导画板目标上限；R17 公开主办顶栏按新公开规范评估；i18n 所有者处理域归属；C 后续收像素余项 | Web 认证相关定向 37/37、移动 Google / 文案 17/17、App 78/78、两端类型检查；Web 25 张认证代表画面及 App 已实拍代表屏 FAIL；未验生产、真实 Google / 邮件、全矩阵、D 壳或最终像素 |
 
 **待主会话决定：**A-04 找回请求画板无邮箱输入，与真实请求行为冲突；建议保留字段并修画板，影响 A-04 / SC-14。其他十二项已按 RD-33 代定，不再重复提问。**待用户授权的发布门禁：**正式支持邮箱、法务正文、生产更新开关、商店地址、真实 OAuth / 邮件及发布。**越线自查：**未改 D 壳、A kit、R28 / R18c、桥根台账或根汇总文档；未推送、未触生产、未停 3000。C 的 3400 / 3420 / 8084 和专用模拟器已停；Next dev 自动生成的 `next-env.d.ts`、`tsconfig.json` 差异已逐项还原，用户原有未跟踪文件未碰。
 
-**本轮路径提交（均未 push）：**`3ade8271f` App 认证 / 重置、`8cf5371c9` Web 认证 / token 样式、`1dd230b3d` 两端视觉清单。本报告按独立文档路径提交；三次 `git show --stat HEAD` 均已逐项核对。此前设计与入口提交 `f1db93a17`、`35de43719`、`fd78542fa` 仍在同一 `line-c` 链上。
+**本轮路径提交（均未 push）：**`3ade8271f` App 认证 / 重置、`8cf5371c9` Web 认证 / token 样式、`1dd230b3d` 两端视觉清单、`3a95c0797` Web 移动 Google 回调旧样式清理。本报告分别以 `426b41e2f` 和本次增补文档提交记录收口状态；每次 `git show --stat HEAD` 均已逐项核对。此前设计与入口提交 `f1db93a17`、`35de43719`、`fd78542fa` 仍在同一 `line-c` 链上。
 
 **收口日期：**2026-10-20。**分支：**`line-c`，已按要求从 `origin/redesign` rebase；本轮仅在 C 工作树执行，未 push、未连接 Neon / 生产、未部署。下方旧执行记录保留为逐次证据；本节是最终状态。`HANDOFF-CLAUDE-2026-10-19.md` 为开工前已存在的未跟踪文件，本轮未修改或提交。
 
