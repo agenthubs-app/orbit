@@ -81,10 +81,12 @@ interface RouteParityResult {
   exceptionProblems: string[];
 }
 
-// R18a approved preparing family only: do not let [id] routes or global catch-alls conceal a missing feature.
+// Only the named settings family and R18b's two unknown-route handlers pair;
+// a catch-all must never conceal a missing feature route.
 const accountSettingsSections = new Set(["appearance", "integrations", "iorbit", "notifications", "account", "permissions", "export", "help", "terms", "privacy"]);
 function nativeParityRoute(route: string, nativeRoutes: ReadonlySet<string>): string | null {
   if (nativeRoutes.has(route)) return route;
+  if (route === "/[...missing]" && nativeRoutes.has("/[...legacy]")) return "/[...legacy]";
   const section = /^\/settings\/([^/]+)$/u.exec(route)?.[1];
   return section && accountSettingsSections.has(section) && nativeRoutes.has("/settings/[section]") ? "/settings/[section]" : null;
 }
@@ -225,6 +227,19 @@ test("a new web page without a native route still fails when exceptions exist", 
       ]);
 
       assert.deepEqual(result.missingRoutes, ["/brand-new"]);
+    }
+  );
+});
+
+test("R18b web and native unknown-route catch-alls pair without hiding missing pages", () => {
+  withFixture(
+    ["[...missing]/page.tsx", "brand-new/page.tsx"],
+    ["[...legacy].tsx"],
+    (webRoot, nativeRoot) => {
+      const result = checkRouteParity(webRoot, nativeRoot, []);
+
+      assert.deepEqual(result.missingRoutes, ["/brand-new"]);
+      assert.deepEqual(result.exceptionProblems, []);
     }
   );
 });
