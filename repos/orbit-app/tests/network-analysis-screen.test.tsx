@@ -19,7 +19,7 @@ import { View } from "react-native";
 const card = (id, name, org, role) => ({ id, displayName: name, organization: org, role, sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z" });
 const row = (recordId, c) => ({ id: recordId, payload: { id: recordId, card: c, tags: [], search: { text: c.displayName, occurredAt: "2026-10-01T00:00:00.000000Z", updatedAt: "2026-10-01T00:00:00.000000Z", error: null }, detail: null } });
 const contacts = () => [row("rec-ito", card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO")), row("rec-kobayashi", card("c-kobayashi", "小林 健", "丸の内イノベーションラボ", "代表"))];
-export const state = window.fixture = { requests: [], navigation: [], writes: [], online: true, answers: {}, cache: {}, pathname: "/contacts/dashboard", ...window.initialFixture };
+export const state = window.fixture = { requests: [], navigation: [], writes: [], retired: [], release: {}, online: true, answers: {}, cache: {}, pathname: "/contacts/dashboard", ...window.initialFixture };
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => state.pathname;
@@ -31,6 +31,7 @@ export const useSyncedCollection = ({ kind }) => ({ status: "fresh", error: null
   refresh: async () => null, invalidate: async () => null, currentSession: () => null });
 export const readSnapshot = async (_baseUrl, _actorId, path) => state.cache[path] ? { result: { success: true, status: 200, data: state.cache[path], meta: {} }, syncedAt: "2026-10-17T00:00:00.000Z" } : null;
 export const writeSnapshot = async (_baseUrl, _actorId, path) => { state.writes.push(path); };
+export const retireSnapshot = async (_baseUrl, _actorId, path) => { state.retired.push(path); delete state.cache[path]; };
 const answer = (path) => {
   if (!state.online) return { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "offline" }, meta: {} };
   const found = state.answers[path];
@@ -39,7 +40,7 @@ const answer = (path) => {
   return { success: true, status: 200, data: found, meta: {} };
 };
 const client = {
-  async get(path) { state.requests.push("get:" + path); return answer(path); },
+  async get(path) { state.requests.push("get:" + path); if (state.holdPaths?.includes(path)) await new Promise(resolve => { state.release[path] = resolve; }); return answer(path); },
   async post(path, options) { state.requests.push("post:" + path + " " + JSON.stringify(options?.body ?? null)); return answer("post:" + path); },
 };
 export const useOrbitApiClient = () => client;
@@ -332,6 +333,14 @@ test("offline: the kept view shows with the offline bar; the snapshot says it co
   assert.equal((await online.evaluate(() => (window as any).fixture.writes as string[])).some((path) => path.includes("snapshot")), false, "the AI snapshot is never kept");
 });
 
+test("a cached open dashboard waits for the latest count before requesting a snapshot", async (t) => {
+  const page = await openPage(t, { cache: { [VIEW]: many286 }, answers: { [VIEW]: locked(9), [SNAPSHOT]: snapshot(blocks) }, holdPaths: [VIEW], params: { tab: "insight" } });
+  await text(page, "製造・サプライチェーンが今月 +9人。プラン「製造業の新規顧客開拓」に追い風です").waitFor();
+  await page.evaluate((path) => (window as any).fixture.release[path](), VIEW);
+  await page.getByTestId("analysis-locked").waitFor();
+  assert.equal((await requests(page)).some((path) => path.includes("/api/network/snapshot")), false);
+});
+
 /* ---------- 下钻名单 (b5 #37) ---------- */
 
 test("the list (b5 #37): bucket title, N人 · 人脈分析から, 段階の内訳 (two stages), three orders, rows with chips; paging; order change; row → contact; 人脈一覧で開く", async (t) => {
@@ -387,6 +396,15 @@ test("the list: 人脈一覧で開く only for an industry; a direct link below 
   const failed = await openPage(t, { screen: "list", params: { dimension: "met", bucketId: "event" }, answers: { [peoplePath("met", "event")]: { __status: 503, code: "SERVICE_UNAVAILABLE" } } });
   await text(failed, "読み込めませんでした").waitFor();
   await failed.getByRole("button", { name: "再試行" }).waitFor();
+});
+
+test("a 409 LOCKED answer replaces and retires a cached people page", async (t) => {
+  const path = peoplePath("industry", "finance_investment");
+  const page = await openPage(t, { screen: "list", params: { dimension: "industry", bucketId: "finance_investment" }, cache: { [path]: peoplePage([person("private", "私有姓名", "active")]) }, answers: { [path]: { __status: 409, context: { reason: "LOCKED" } }, [VIEW]: locked(9) } });
+  await page.getByTestId("analysis-locked").waitFor();
+  assert.equal(await page.getByText("私有姓名", { exact: true }).count(), 0);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.retired), [path]);
+  assert.equal(await page.evaluate((key) => (window as any).fixture.cache[key], path), undefined);
 });
 
 test("routes: /contacts/dashboard and the list route render the new screens; /contacts/graph redirects to 構造", () => {

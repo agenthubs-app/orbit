@@ -32,11 +32,13 @@ export function NetworkAnalysisScreen() {
   const [tab, setTab] = useState<AnalysisTab>(() => analysisTabFrom(params.tab));
   const view = useNetworkAnalysisView();
   const data = view.status === "ready" ? view.data : null;
-  const open = data?.lock.state === "open";
+  const open = view.status === "ready" && view.verified === true && data?.lock.state === "open";
   const snapshotRead = useNetworkSnapshot(language, open);
   const [recomputed, setRecomputed] = useState<NetworkSnapshotView | null>(null);
   const [recomputing, setRecomputing] = useState(false);
-  const snapshot: CachedReadState<NetworkSnapshotView> = recomputed ? { status: "ready", data: recomputed, offline: false } : snapshotRead;
+  const snapshot: CachedReadState<NetworkSnapshotView> = recomputed ? { status: "ready", data: recomputed, offline: false }
+    : view.status === "ready" && view.offline && !open ? { status: "failed", error: { code: "ORBIT_APP_NETWORK_ERROR", message: "offline" }, httpStatus: 0, offline: true }
+    : snapshotRead;
   const readySnapshot = snapshot.status === "ready" ? snapshot.data : null;
   const names = useEvidenceNames();
 

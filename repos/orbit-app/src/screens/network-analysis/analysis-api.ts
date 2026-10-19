@@ -15,7 +15,7 @@ import type { NetworkAnalysisDimension, NetworkAnalysisPeopleDTO, NetworkAnalysi
 import { networkAnalysisPeopleSchema, networkAnalysisViewSchema, networkSnapshotViewSchema } from "../../api/schema/network-analysis-view";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { ApiErrorBody, ApiResult } from "../../api/types";
-import { readSnapshot, writeSnapshot } from "../../data/snapshot-store";
+import { readSnapshot, retireSnapshot, writeSnapshot } from "../../data/snapshot-store";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { z } from "zod";
 
@@ -41,7 +41,7 @@ type Schema<T> = { safeParse: (input: unknown) => { success: true; data: T } | {
 export type CachedReadState<T> =
   | { status: "loading" }
   /** `offline`: the network could not be reached and this is the last kept copy. */
-  | { status: "ready"; data: T; offline: boolean }
+  | { status: "ready"; data: T; offline: boolean; verified?: boolean }
   | { status: "failed"; error: ApiErrorBody; httpStatus: number; offline: boolean };
 
 const CONTRACT_MISMATCH: ApiErrorBody = { code: "ORBIT_APP_CONTRACT_MISMATCH", message: "contract mismatch" };
@@ -53,7 +53,8 @@ function isOffline(result: ApiResult<unknown> | null): boolean {
 
 /**
  * One GET with the page snapshot store in front of it (`keep`): the kept copy shows at once, the network answer replaces it,
- * and a failed request keeps the copy (offline = unreachable). `read` is null while the page must not ask (locked / not yet).
+ * and an unavailable request keeps the copy (offline = unreachable). A server LOCKED answer retires the copy.
+ * `read` is null while the page must not ask (locked / not yet).
  */
 function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => Promise<ApiResult<unknown>>, schema: Schema<T>, keep: boolean): CachedReadState<T> & { refresh: () => void } {
   const auth = useOrbitAuthSession();
@@ -72,20 +73,28 @@ function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => P
       if (keep && actorId) {
         const record = await readSnapshot<unknown>(baseUrl, actorId, path).catch(() => null);
         const parsed = record?.result.success ? schema.safeParse(record.result.data) : null;
-        if (parsed?.success) { kept = parsed.data; set({ status: "ready", data: kept, offline: false }); }
+        if (parsed?.success) { kept = parsed.data; set({ status: "ready", data: kept, offline: false, verified: false }); }
       }
       const result = await read(client).catch(() => null);
       if (!live) return;
       if (result?.success && result.status >= 200 && result.status < 300) {
         const parsed = schema.safeParse(result.data);
         if (parsed.success) {
-          set({ status: "ready", data: parsed.data, offline: false });
+          set({ status: "ready", data: parsed.data, offline: false, verified: true });
           if (keep && actorId) void writeSnapshot(baseUrl, actorId, path, result).catch(() => undefined);
         } else set({ status: "failed", error: CONTRACT_MISMATCH, httpStatus: result.status, offline: false });
         return;
       }
+      if (result && !result.success && result.status === 409 && result.error.context?.reason === "LOCKED") {
+        set({ status: "failed", error: result.error, httpStatus: result.status, offline: false });
+        if (keep && actorId) {
+          try { await retireSnapshot(baseUrl, actorId, path); }
+          catch { console.error("NETWORK_ANALYSIS_CACHE_RETIRE_FAILED"); }
+        }
+        return;
+      }
       const offline = isOffline(result);
-      if (kept !== null) set({ status: "ready", data: kept, offline });
+      if (kept !== null) set({ status: "ready", data: kept, offline, verified: false });
       else set({ status: "failed", error: result && !result.success ? result.error : UNREACHABLE, httpStatus: result?.status ?? 0, offline });
     })();
     return () => { live = false; };
