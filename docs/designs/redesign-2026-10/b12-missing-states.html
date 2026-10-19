@@ -8825,6 +8825,7 @@ let r18bWebUpdate = S8('补画 · R18b Web 新バージョン', 'b7 #61；現在
 for (const width of [1440, 1024, 390]) {
   r18bWebUpdate += WP(`W-R18b-10-${width} 新バージョン`, '', () => ({ nav: 'settings', body: width === 390 ? r18bVersionBg390() : r18bVersionBgDesktop(), tab: width === 390 ? 0 : -1, ov: r18bVersionBanner(width) }), null, 'b7 #61 · R18b SC-12 · 待复核', width);
 }
+/* 2026-10-19 主会话代定 · RD-33：本文件末尾的 R18b 公开帮助 / 法务、404、维护、App 强制更新补画及预检获准作 UI 实施依据；上方「待复核」为绘制时的历史标记，不代表 UI、操作链或像素已通过。Web 新版浮条不在本次认可清单。 */
 r18b += r18b404 + r18bMaintenance + r18bForceUpdate + r18bWebUpdate;
 document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r18b-boards', r18b));
 document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');

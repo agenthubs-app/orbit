@@ -1671,9 +1671,10 @@ function authApp(kind) {
     <div class="h1" style="margin-top:22px">メールを確認してください</div><div class="sub" style="margin-top:8px;line-height:1.8"><b style="color:var(--ink)">k.sato@minatolink.example</b> 宛に<br>パスワード再設定用のリンクを送りました。<br>リンクの有効期限は30分です。</div></div>
     <div class="card flat" style="margin-top:26px"><b style="font-size:13px">届かないときは</b><div class="sub" style="margin-top:6px;line-height:1.8">・迷惑メールフォルダをご確認ください<br>・アドレスに誤りがないかご確認ください</div><div class="row between" style="margin-top:10px"><span class="lbl">再送できるまで</span><b class="count" style="font-size:15px">0:42</b></div></div>` +
     foot(`<button class="btn primary block xl">${ic('mail', 'sm')}メールアプリを開く</button><button class="btn ghost block">ログインに戻る</button>`);
+  /* 2026-10-19 主会话代定：b1 #9 只画真实存在的密码要求；删去英数字混合与不同旧密码两条实时校验，不新增密码策略。 */
   return topbar('新しいパスワード', '', xbtn) + `<div class="h1" style="margin-top:6px">新しいパスワードを<br>設定してください</div><div class="sub" style="margin-top:6px">k.sato@minatolink.example</div>
     ${fld('新しいパスワード', '••••••••••', { cls: 'focus', caret: true, end: '<span class="tail">表示</span>' })}
-    ${bar(84)}<div class="reqs"><div class="ok">${ic('check', 'sm')}8文字以上</div><div class="ok">${ic('check', 'sm')}英字と数字を含む</div><div class="ok">${ic('check', 'sm')}以前と異なるパスワード</div></div>
+    ${bar(84)}<div class="reqs"><div class="ok">${ic('check', 'sm')}8文字以上</div></div>
     ${fld('もう一度入力', '••••••••••', { msg: '一致しています', end: `<span style="color:var(--ok)">${ic('check', 'sm')}</span>` })}
     <div class="lbl" style="margin-top:14px">変更すると、ほかの端末からは自動でログアウトします。</div>` +
     foot(`<button class="btn primary block xl">変更してログイン</button>`);
