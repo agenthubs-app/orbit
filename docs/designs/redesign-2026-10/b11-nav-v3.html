@@ -1355,21 +1355,23 @@ function recDetail() {
     <div class="card flat k-recno" style="padding:14px"><b style="font-size:13px">興味なし</b><div class="lbl" style="margin-top:2px">理由を選ぶと、次からの推薦が変わります</div><div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="fopt">日程が合わない</span><span class="fopt">遠い</span><span class="fopt">内容が合わない</span><span class="fopt">もう知っている</span></div></div>`;
 }
 function lockScr() {
+  /* 2026-10-19 主会话代定 · R14：メール要約の例示を取り除き、実在するイベント由来の受信箱通知に合わせる。 */
   return `<div class="lockwall"></div><div class="lock"><div class="date">10月8日 木曜日</div><div class="time">18:30</div>
     <div style="flex:1"></div>
     <div class="ntf k-lknext"><span class="appic">O</span><div class="meta"><div class="row between"><b>Orbit · 期限</b><small>18:30</small></div>あと 30分で CFO Night Tokyo（19:00）· 会いたい人 6名<div><small>前日に予約したお知らせ · 今日 2 / 3件</small></div></div></div>
-    <div class="ntf stack k-lkmain"><span class="appic">O</span><div class="meta"><div class="row between"><b>Orbit · 秘書</b><small>7:50</small></div>おはようございます。今日の 3件：高橋さんのメール要約 · SaaS Summit の早割は明後日まで · 今夜の CFO Night の準備<div><small>まとめて 1通 · 今日 1 / 3件</small></div></div></div>
+    <div class="ntf stack k-lkmain"><span class="appic">O</span><div class="meta"><div class="row between"><b>Orbit · 秘書</b><small>7:50</small></div>おはようございます。今日の 2件：SaaS Summit の申込締切 · 今夜の CFO Night の準備<div><small>まとめて 1通 · 今日 1 / 3件</small></div></div></div>
     <span class="quiet k-lkquiet">${ic('moon', 'sm')}22:00–7:30 は通知しません · その間の分は 7:50 にまとめて</span>
     <div style="height:110px"></div></div>`;
 }
 function secSettings() {
+  /* 2026-10-19 主会话代定 · R14：秘書は期限とおすすめのみ。上限は通知設定と共有し、メール要約を表示しない。 */
   return topbar('秘書', '設定 · 通知', back) + `
     <div class="glbl">秘書がやること</div>
-    <div class="sgroup k-ssdo">${[['📨', 'メールの要約', 'Gmail 連携中 · 人脈に登録した相手のスレッドだけ', 1], ['⏰', '期限のお知らせ', '参加予定・評価済みイベントの締切と会前準備', 1], ['🎯', 'イベントのおすすめ', 'プロフィール · 目標 · 人脈の傾向から', 1]].map(([e, t, d, on]) => `<div class="srw"><span style="font-size:20px">${e}</span><div class="meta"><b>${t}</b><span>${d}</span></div>${tg(on)}</div>`).join('')}</div>
+    <div class="sgroup k-ssdo">${[['⏰', '期限のお知らせ', '参加予定・評価済みイベントの締切と会前準備', 1], ['🎯', 'イベントのおすすめ', 'プロフィール · 目標 · 人脈の傾向から', 1]].map(([e, t, d, on]) => `<div class="srw"><span style="font-size:20px">${e}</span><div class="meta"><b>${t}</b><span>${d}</span></div>${tg(on)}</div>`).join('')}</div>
     <div class="glbl">通知の上限</div>
-    <div class="sgroup k-sslimit"><div class="srw"><span class="lbtn">${ic('bell', 'sm')}</span><div class="meta"><b>1日 3件まで</b><span>Orbit 全体の通知と合わせて 3件（超えた分は受信箱だけ）</span></div><span class="chip">固定</span></div>
-      <div class="srw"><span class="lbtn">${ic('moon', 'sm')}</span><div class="meta"><b>静かな時間帯 22:00–7:30</b><span>その間の分は 7:50 にまとめて 1通</span></div><span class="lbl">変更 ›</span></div></div>
-    <div class="card flat k-ssnever" style="margin-top:12px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">🔒 秘書はあなたの代わりにメール・メッセージを<b style="color:var(--ink)">送りません</b>。要約はあなただけが見られます。</div>`;
+    <div class="sgroup k-sslimit"><div class="srw"><span class="lbtn">${ic('bell', 'sm')}</span><div class="meta"><b>1日の上限 · 3件</b><span>Orbit 全体のプッシュと同じ上限です</span></div></div></div>
+    <button class="btn sm" style="margin-top:12px">静かな時間帯を変更</button>
+    <div class="card flat k-ssnever" style="margin-top:12px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">🔒 秘書はあなたの代わりにメール・メッセージを<b style="color:var(--ink)">送りません</b>。</div>`;
 }
 
 /* ===================== E · Task ===================== */
@@ -1724,15 +1726,16 @@ h += boards([
   ]),
 ]);
 h += boards([
+  /* 2026-10-19 主会话代定 · R14：#31/#32 の説明を実装済みのイベント通知と共有設定へ更新。 */
   AP('④ プッシュ（ロック画面）', '', { body: lockScr(), theme: 'dark' }, [
     ['.k-lknext', 0, '活动前 30 分钟提醒（预约型，算进当天 3 件）'],
     ['.k-lkmain', 0, '早上 7:50 一条汇总（静音时段积累的合并为 1 通）；写明「今日 1 / 3件」'],
     ['.k-lkquiet', 0, '22:00–7:30 不推送，只进受信箱'],
   ]),
   AP('⑤ 秘書の設定', '', { body: secSettings() }, [
-    ['.k-ssdo', 0, '三项服务可单独开关（邮件摘要需 Gmail 连携）'],
-    ['.k-sslimit', 0, '1 日 3 件为全 App 上限（固定）；静音时段可改'],
-    ['.k-ssnever', 0, '底线写明：不代发、不代报名；摘要只给本人看'],
+    ['.k-ssdo', 0, '期限のお知らせ・イベントのおすすめを個別に切替'],
+    ['.k-sslimit', 0, '1 日の上限は全 App で共有；静音時段は通知設定から変更'],
+    ['.k-ssnever', 0, 'メール・メッセージの代行送信はしない'],
   ]),
 ]);
 
