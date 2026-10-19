@@ -38,6 +38,9 @@ export const publicCopy = {
   maintenanceUnknown: { ja: "確認でき次第、お知らせします。", zh: "确认后会尽快通知。", en: "Orbit will post an update when a time is confirmed.", kind: "body" },
   reload: { ja: "再読み込み", zh: "重新加载", en: "Reload", kind: "button" },
   checkingStatus: { ja: "状態を確認しています…", zh: "正在检查服务状态…", en: "Checking service status…", kind: "body" },
+  webVersionTitle: { ja: "新しいバージョンがあります", zh: "有新版本可用", en: "A new version is available", kind: "title" },
+  webVersionBody: { ja: "入力中なら、内容を確認してから再読み込み。", zh: "如果正在输入，请确认内容后再重新加载。", en: "If you are entering anything, check it before reloading.", kind: "body" },
+  webVersionLater: { ja: "あとで", zh: "稍后", en: "Later", kind: "button" },
 } satisfies OrbitCopyTable;
 
 export const publicFaqSearchKeywords = {
