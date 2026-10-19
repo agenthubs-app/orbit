@@ -5,7 +5,7 @@ import React from "react";
 import { createTranslator } from "../src/i18n/messages";
 import { MaintenanceContent } from "../src/screens/public/MaintenanceContent";
 import { formatMaintenanceUntil, maintenanceRouteTarget } from "../src/view-models/maintenance-view";
-import { renderedText } from "./helpers/render";
+import { renderToHtml, renderedText } from "./helpers/render";
 
 test("a real UTC recovery instant is shown as Tokyo time, not a hard-coded promise", () => {
   assert.equal(formatMaintenanceUntil("2026-10-19T03:00:00Z", "ja"), "10月19日 12:00（日本時間）");
@@ -26,6 +26,12 @@ test("maintenance screen differentiates unknown ETA from a valid scheduled time"
   const scheduled = renderedText(<MaintenanceContent t={t} untilText="10月19日 12:00（日本時間）" onRetry={() => undefined} />);
   assert.match(scheduled, /10月19日 12:00（日本時間）/);
   assert.doesNotMatch(scheduled, /確認でき次第、お知らせします。/);
+});
+
+test("the phone maintenance schedule centers its label and value as drawn", () => {
+  const html = renderToHtml(<MaintenanceContent t={createTranslator("ja")} untilText={null} onRetry={() => undefined} />);
+  assert.match(html, /class="[^"]*r-textAlign-[^"]*"[^>]*>再開の予定/);
+  assert.match(html, /class="[^"]*r-textAlign-[^"]*"[^>]*>確認でき次第、お知らせします。/);
 });
 
 test("only a maintenance decision stays on the maintenance route", () => {
