@@ -467,7 +467,6 @@ test("route query parameters come from route-local URL consumers, not transitive
   ]);
   assert.deepEqual(routeParameters("web:/app/account/login"), [
     "created",
-    "email",
     "next",
     "orbitVisualSeed",
   ]);
