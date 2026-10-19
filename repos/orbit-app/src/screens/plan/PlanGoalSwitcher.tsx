@@ -173,7 +173,7 @@ export function PlanGoalEditSheet({ visible, onClose, plan, reviewLeft, onSaved,
     setFailure(null);
   }, [amountBefore, labelBefore, plan.goalBackground, plan.goalKind, plan.goalNote, previewAmount, visible]);
 
-  const amountChanged = Boolean(amountBefore && amount.trim() && amount.trim() !== amountBefore);
+  const amountChanged = Boolean(amountBefore && amount.trim() !== amountBefore);
   const goalText = goalEditTextWithAmount(text, amount, amountBefore, plan.goal);
   const change = goalEditChange(plan, { goalBackground: background, goalKind: kind, goalNote: note, goalText });
   const rebuildChoice = Boolean(change?.goalText || change?.goalKind);

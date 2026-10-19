@@ -124,7 +124,8 @@ export function goalEditChange(before: { goal: string; goalKind: string; goalBac
 export function goalEditTextWithAmount(label: string, amount: string, previousAmount: string, originalGoal?: string): string {
   const text = label.trim();
   if (!text) return "";
-  const value = amount.trim() || previousAmount;
+  const value = amount.trim();
+  if (!value) return text.replace(/\s*（?\d+(?:[.,]\d+)?億円）?/gu, "").trim();
   if (originalGoal && value === previousAmount && text === originalGoal.replace(/\s*（\d+(?:[.,]\d+)?億円）/u, "").trim()) return originalGoal;
   if (!value) return text;
   const oldAmount = /\d+(?:[.,]\d+)?億円/u;

@@ -51,6 +51,8 @@ test("goal edit keeps the amount field and saved goal text in sync", () => {
   assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "5億円", "3億円"), "シリーズA 資金調達（5億円）");
   assert.equal(goalEditTextWithAmount("シリーズA 資金調達（3億円）", "5億円", "3億円"), "シリーズA 資金調達（5億円）");
   assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "3億円", "3億円", "シリーズA 資金調達"), "シリーズA 資金調達");
+  assert.equal(goalEditTextWithAmount("シリーズA 資金調達", "", "3億円", "シリーズA 資金調達（3億円）"), "シリーズA 資金調達");
+  assert.deepEqual(goalEditChange({ goal: "シリーズA 資金調達（3億円）", goalKind: "fundraising" }, { goalText: goalEditTextWithAmount("シリーズA 資金調達", "", "3億円", "シリーズA 資金調達（3億円）"), goalKind: "fundraising" }), { goalText: "シリーズA 資金調達" });
   assert.equal(goalEditTextWithAmount("新規顧客を開拓", "", ""), "新規顧客を開拓");
   assert.equal(goalEditTextWithAmount("", "5億円", "3億円"), "");
 });
