@@ -14,8 +14,8 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 15 |
 | 只能在线 | 53 |
-| 不读账号数据（布局、跳转、本机设置） | 30 |
-| 合计（路由文件） | 123 |
+| 不读账号数据（布局、跳转、本机设置） | 36 |
+| 合计（路由文件） | 129 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -135,6 +135,9 @@
 | `/showcase/icons` | 图标展示页（开发包和 TestFlight，R02） | 无（图标源打包在 App 里） | 照常显示 |
 | `(浏览器外壳)` | 浏览器版 HTML 外壳 | 无 | 照常加载 |
 | `/` | 入口跳转 | 无 | 跳到首页或登录页 |
+| `/help` | 公开帮助与本地 FAQ（R18b） | 本地静态 FAQ；支持邮箱未配置 | 帮助、搜索与法务入口照常可用 |
+| `/legal/terms` | 公开利用規約占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
+| `/legal/privacy` | 公开プライバシー占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
 | `/start` | 引导入口跳转（Web /app/start → App 引导 /profile/onboarding） | 无 | 跳到引导页 |
 | `/*（旧链接）` | 旧深链接跳转 | 无 | 跳到对应新页面 |
 | `/account/mobile-google` | 旧 Google 登录链接跳转 | 无 | 跳到登录页 |
@@ -145,7 +148,10 @@
 | `/party/graph` | 旧派对关系图跳转 | 无 | 跳到现场页 |
 | `/profile/continue` | 补资料后继续跳转 | 无 | 跳到目标页 |
 | `/followups` | 旧跟进入口，跳到 Task 的 To-do 段「关系」分组 | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo&scope=relationship（可离线） |
-| `/settings/:section` | 设置准备中（通知、帮助、导出、条款；R18a） | 无 | 照常显示；后续静态路由优先 |
+| `/settings/:section` | 尚未替换的设置占位（R18a） | 无 | 照常显示；静态路由优先 |
+| `/settings/help` | 设置中的公开帮助跳转（R18b） | 无 | 跳到 /help（可离线） |
+| `/settings/terms` | 设置中的公开利用規約跳转（R18b） | 无 | 跳到 /legal/terms（可离线） |
+| `/settings/privacy` | 设置中的公开プライバシー跳转（R18b） | 无 | 跳到 /legal/privacy（可离线） |
 | `/settings/api` | 服务器地址设置 | 本机保存的服务器地址；「检查连接」按需读 /api/health | 可以改地址；检查连接会显示连不上 |
 | `/contacts/graph` | 旧关系图链接，跳到人脈分析「構造」（R11b） | 无（目标页见 app/contacts/dashboard.tsx） | 跳到 /contacts/dashboard?tab=structure |
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
@@ -225,6 +231,7 @@
 | `app/events/center/profiles.tsx` | `/events/center/profiles` | online-only |
 | `app/events/center/profiles/[id].tsx` | `/events/center/profiles/:id` | online-only |
 | `app/followups.tsx` | `/followups` | device-only |
+| `app/help.tsx` | `/help` | device-only |
 | `app/home.tsx` | `/home` | local-first (0131) |
 | `app/home/events.tsx` | `/home/events` | local-first (0131) |
 | `app/host/join.tsx` | `/host/join` | online-only |
@@ -235,6 +242,8 @@
 | `app/inbox/notifications/[id].tsx` | `/inbox/notifications/:id` | local-first (0118) |
 | `app/inbox/sources/[id].tsx` | `/inbox/sources/:id` | local-first (0118) |
 | `app/index.tsx` | `/` | device-only |
+| `app/legal/privacy.tsx` | `/legal/privacy` | device-only |
+| `app/legal/terms.tsx` | `/legal/terms` | device-only |
 | `app/login-admin.tsx` | `/login-admin` | online-only |
 | `app/notes/[id].tsx` | `/notes/:id` | local-first (0108) |
 | `app/notes/[id]/edit.tsx` | `/notes/:id/edit` | local-first (0108) |
@@ -270,10 +279,13 @@
 | `app/settings.tsx` | `/settings` | local-first (0131) |
 | `app/settings/[section].tsx` | `/settings/:section` | device-only |
 | `app/settings/api.tsx` | `/settings/api` | device-only |
+| `app/settings/help.tsx` | `/settings/help` | device-only |
 | `app/settings/integrations.tsx` | `/settings/integrations` | online-only |
 | `app/settings/iorbit.tsx` | `/settings/iorbit` | local-first (0131) |
 | `app/settings/notifications.tsx` | `/settings/notifications` | online-only |
 | `app/settings/notifications/secretary.tsx` | `/settings/notifications/secretary` | online-only |
+| `app/settings/privacy.tsx` | `/settings/privacy` | device-only |
+| `app/settings/terms.tsx` | `/settings/terms` | device-only |
 | `app/showcase/components/[section].tsx` | `/showcase/components/[section]` | device-only |
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |

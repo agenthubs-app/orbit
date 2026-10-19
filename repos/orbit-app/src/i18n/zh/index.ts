@@ -63,6 +63,7 @@ import { todo } from "./todo";
 import { networkAnalysis } from "./networkAnalysis";
 import { me } from "./me";
 import { admin } from "./admin";
+import { publicInfo } from "./publicInfo";
 
 export const zh = {
   ...inbox,
@@ -128,4 +129,5 @@ export const zh = {
   ...networkAnalysis,
   ...me,
   ...admin,
+  ...publicInfo,
 } as const;

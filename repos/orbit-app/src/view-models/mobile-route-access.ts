@@ -23,7 +23,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   "/tasks"
 ] as const;
 
-const PUBLIC_ROUTE_EXCEPTIONS = new Set(["/admin/access"]);
+const PUBLIC_ROUTE_EXCEPTIONS = new Set(["/admin/access", "/settings/help", "/settings/terms", "/settings/privacy"]);
 const NO_PATH_PARAM_KEYS = new Set<string>();
 const ID_PATH_PARAM_KEYS = new Set(["id"]);
 const CODE_PATH_PARAM_KEYS = new Set(["code"]);

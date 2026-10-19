@@ -167,6 +167,13 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // These functional routes were integrated after the 58-route visual snapshot.
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
+  // R18b public help/legal and settings aliases; no authenticated workspace content.
+  "/help",
+  "/legal/terms",
+  "/legal/privacy",
+  "/settings/help",
+  "/settings/terms",
+  "/settings/privacy",
   // R11a 連絡先の編集（b5 #42–#44）。
   "/contacts/edit/[id]",
   "/settings/[section]",

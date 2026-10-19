@@ -20,7 +20,7 @@ const PRE_SPLIT = {
 };
 const dictionaries = { en, ja, zh } as const;
 // Domains added after the split (R03 contract D): not part of the pre-split pins.
-const ADDED_SINCE_SPLIT = new Set(["shell", "session", "plan", "add", "eventsV2", "host", "calendar", "network", "networkAnalysis", "me", "typedInbox", "notifications", "admin"]);
+const ADDED_SINCE_SPLIT = new Set(["shell", "session", "plan", "add", "eventsV2", "host", "calendar", "network", "networkAnalysis", "me", "typedInbox", "notifications", "admin", "publicInfo"]);
 // New read-error messages were added to domains that existed before the split.
 const ADDED_KEYS_SINCE_SPLIT = new Set(["taskDetail.readFailed", "tasks.readFailed"]);
 const preSplitPart = (dictionary: Record<string, string>) => Object.fromEntries(Object.entries(dictionary).filter(([key]) => !ADDED_SINCE_SPLIT.has(key.split(".")[0]!) && !ADDED_KEYS_SINCE_SPLIT.has(key)));

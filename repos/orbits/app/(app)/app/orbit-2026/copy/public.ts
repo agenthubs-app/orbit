@@ -1,0 +1,32 @@
+import type { OrbitCopyTable } from "./types";
+
+// R18b public help and legal pages. Legal text and a contact address are release gates.
+export const publicCopy = {
+  publicPage: { ja: "公開ページ", zh: "公开页面", en: "Public page", kind: "label" },
+  helpNav: { ja: "ヘルプ", zh: "帮助", en: "Help", kind: "menu" },
+  termsNav: { ja: "利用規約", zh: "使用条款", en: "Terms", kind: "menu" },
+  privacyNav: { ja: "プライバシー", zh: "隐私", en: "Privacy", kind: "menu" },
+  login: { ja: "ログイン", zh: "登录", en: "Sign in", kind: "button" },
+  settings: { ja: "設定へ", zh: "返回设置", en: "Settings", kind: "button" },
+  helpTitle: { ja: "ヘルプセンター", zh: "帮助中心", en: "Help center", kind: "title" },
+  helpIntro: { ja: "使い方で困ったときに", zh: "使用中遇到问题？", en: "Help with using Orbit", kind: "body" },
+  termsTitle: { ja: "利用規約", zh: "使用条款", en: "Terms of Use", kind: "title" },
+  privacyTitle: { ja: "プライバシー", zh: "隐私", en: "Privacy", kind: "title" },
+  searchPlaceholder: { ja: "質問を入力（例：名刺）", zh: "搜索问题（例如：名片）", en: "Search questions (e.g. business cards)", kind: "label" },
+  faqTitle: { ja: "よくある質問", zh: "常见问题", en: "Common questions", kind: "title" },
+  sendQuestion: { ja: "メールは自動で送信されますか？", zh: "邮件会自动发送吗？", en: "Does Orbit send emails automatically?", kind: "body" },
+  sendAnswer: { ja: "いいえ。メール・メッセージは下書きまで。送信はあなたが行います。", zh: "不会。Orbit 只准备邮件或消息草稿，发送由你决定。", en: "No. Orbit prepares a draft; you choose when to send it.", kind: "body" },
+  gmailQuestion: { ja: "Gmail 連携で読むのはどの範囲？", zh: "连接 Gmail 后会读取哪些信息？", en: "What does the Gmail connection read?", kind: "body" },
+  gmailAnswer: { ja: "件名・相手・日時のみです。本文は読みません。", zh: "只读取主题、联系人和时间，不读取邮件正文。", en: "Only the subject, people, and date. Orbit does not read the message body.", kind: "body" },
+  cardQuestion: { ja: "名刺の読み取りが間違っているときは？", zh: "名片识别有误怎么办？", en: "What if a business card was read incorrectly?", kind: "body" },
+  cardAnswer: { ja: "確認画面で修正できます。すでに追加された名刺は、人脈から編集できます。", zh: "可以在确认时修改；已经添加的名片也可以在人脉中编辑。", en: "You can correct it during review. For an added card, edit it in your network.", kind: "body" },
+  noResults: { ja: "一致する質問はありません", zh: "没有匹配的问题", en: "No matching questions", kind: "body" },
+  tryAnother: { ja: "言葉を変えてお試しください。", zh: "换个关键词试试。", en: "Try another search term.", kind: "body" },
+  contactTitle: { ja: "お問い合わせ", zh: "联系我们", en: "Contact", kind: "title" },
+  contactUnavailable: { ja: "準備中 · 今はこの画面から送信できません。", zh: "正在准备 · 暂时无法从此页面发送消息。", en: "Coming soon · You cannot send a message from this page yet.", kind: "body" },
+  contactEmail: { ja: "メールアプリを開く", zh: "打开邮件应用", en: "Open mail app", kind: "button" },
+  legalPlaceholder: { ja: "公開前に掲載", zh: "发布前提供", en: "Before launch", kind: "label" },
+  legalBody: { ja: "正式な内容を準備しています。", zh: "正式内容仍在准备中。", en: "The full text is being prepared.", kind: "body" },
+  home: { ja: "ホームへ", zh: "返回首页", en: "Home", kind: "button" },
+  seeHelp: { ja: "ヘルプを見る", zh: "查看帮助", en: "See help", kind: "button" },
+} satisfies OrbitCopyTable;

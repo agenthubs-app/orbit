@@ -99,6 +99,13 @@ test("mobile discovery, account and admin entry routes stay public", () => {
   }
 });
 
+test("public help and legal routes, including settings jump aliases, do not require a session", () => {
+  for (const pathname of ["/help", "/legal/terms", "/legal/privacy", "/settings/help", "/settings/terms", "/settings/privacy"]) {
+    assert.equal(isPrivateMobileRoute(pathname), false, pathname);
+  }
+  assert.equal(isPrivateMobileRoute("/settings/account"), true);
+});
+
 test("auth return href preserves query controls without duplicating route params", () => {
   assert.equal(
     mobileAuthReturnHref("/events/center", { id: "owned" }),
