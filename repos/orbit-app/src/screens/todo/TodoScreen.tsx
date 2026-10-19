@@ -35,7 +35,7 @@ import { useTodoPage } from "./useTodoPage";
 
 /** Until SC09 replaces the general task list, retain it as an explicit second view. */
 export function TodoTaskSlot() {
-  const params = useGlobalSearchParams<{ view?: string | string[] }>();
+  const params = useGlobalSearchParams<{ view?: string | string[]; entry?: string | string[] }>();
   const router = useRouter();
   const { t } = useOrbitLocale();
   const [view, setView] = useState(() => todoInitialView(params.view));
@@ -44,11 +44,12 @@ export function TodoTaskSlot() {
     <View style={slotStyles.back}><Button label={t("todo.backToTodo")} onPress={() => { setView("home"); router.setParams({ view: "open" }); }} variant="ghost" /></View>
     <TasksScreen />
   </View>;
-  return <TodoScreen onShowTasks={() => { setView("tasks"); router.setParams({ view: "all" }); }} />;
+  return <TodoScreen focusedEntryId={Array.isArray(params.entry) ? params.entry[0] : params.entry}
+    onShowTasks={() => { setView("tasks"); router.setParams({ view: "all" }); }} />;
 }
 
 /** The first To-do page is a read-only aggregate; actions still use their owning source. */
-export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
+export function TodoScreen({ onShowTasks, focusedEntryId }: { onShowTasks?: () => void; focusedEntryId?: string | undefined }) {
   const { timeZone } = useOrbitTimeZone();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(timer); }, []);
@@ -434,7 +435,7 @@ export function TodoScreen({ onShowTasks }: { onShowTasks?: () => void }) {
   if (!page && todoAggregateHidden(todo.state)) return null;
 
   return <AppScreen inset="kit" title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
-    {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds}
+    {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds} focusedEntryId={focusedEntryId}
       onRefresh={refresh} canOpen={item => "actions" in item ? todoDecisionHref(item) !== null : true}
       onMore={section => { void loadMore(section); }}
       canOpenFollowup={item => item.kind === "lifecycle"

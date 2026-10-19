@@ -20,7 +20,7 @@ const page: TodoPageContract = {
   sources: { task_suggestion: "ok", task: "ok", relationship_task: "ok", completion_question: "not_implemented" },
 };
 
-function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; nextMove?: boolean; sentPrompt?: boolean; orphaned?: boolean; lifecycleOpen?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action" } = {}) {
+function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: boolean; more?: boolean; snooze?: boolean; nextMove?: boolean; sentPrompt?: boolean; orphaned?: boolean; lifecycleOpen?: boolean; decisionSource?: "task_suggestion" | "plan_pending" | "agent_action"; focusedEntryId?: string; secondDecision?: boolean } = {}) {
   const value: OrbitLocaleContextValue = {
     choice: "ja", deviceLanguage: "ja", error: null, language: "ja", preference: { mode: "system", language: null, updatedAt: null },
     retryLanguageSave: async () => undefined, setLanguage: async () => undefined, source: "device", syncState: "idle", t: createTranslator("ja"),
@@ -34,7 +34,8 @@ function tree(props: { offline?: boolean; staleDay?: boolean; decisionSample?: b
       if (props.decisionSample !== false) return changed;
       const { sample: _sample, ...withoutSample } = item;
       return { ...withoutSample, key: changed.key, source, actions };
-    }) } },
+    }).concat(props.secondDecision ? [{ key: "agent_action:action:one", source: "agent_action" as const, sourceId: "action:one", titlePreview: "対象の判断", createdAt: "2026-10-17T00:00:00Z", actions: ["accept" as const] }] : []) } },
+    focusedEntryId: props.focusedEntryId,
     offline: props.offline ?? false, staleDay: props.staleDay ?? false, busy: false, mirroredTaskIds: new Set(["t1"]),
     onRefresh() {}, onMore() {}, canOpen: () => true, canOpenFollowup: item => item.kind === "task" || Boolean(props.lifecycleOpen), canDefer: () => true, onOpen() {}, onOpenFollowup() {}, onComplete() {}, onDefer() {}, onDecide() {},
     handoffFor: () => props.sentPrompt ? { sourceId: "signal-1", handedOffAt: "2026-10-18T00:00:00Z" } : null,
@@ -51,6 +52,11 @@ test("a returned handoff asks if the message was sent beside the original signal
   const offline = renderToHtml(tree({ nextMove: true, sentPrompt: true, offline: true }));
   assert.ok(offline.includes("送りましたか？"), "the pending question stays visible without network");
   assert.match(offline, /<[^>]+(?=[^>]*aria-label="はい")(?=[^>]*aria-disabled="true")[^>]*>/u);
+});
+
+test("a legacy Agent entry is positioned first in 判断待ち", () => {
+  const html = renderToHtml(tree({ focusedEntryId: "action:one", secondDecision: true }));
+  assert.ok(html.indexOf("対象の判断") < html.indexOf("提案を確認"));
 });
 
 test("a vanished signal still exposes its unfinished encounter retry without an invented signal row", () => {

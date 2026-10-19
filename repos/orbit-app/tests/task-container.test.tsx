@@ -214,6 +214,9 @@ test("old addresses and notifications land on the matching segment", () => {
   assert.equal(legacyTaskRedirect("/today"), "/task?seg=todo");
   assert.equal(legacyTaskRedirect("/tasks", { scope: "relationship", view: "completed" }), "/task?seg=todo&scope=relationship&view=completed");
   assert.equal(legacyTaskRedirect("/followups"), "/task?seg=todo&scope=relationship");
+  assert.equal(legacyTaskRedirect("/agent"), "/task?seg=todo&section=decisions");
+  assert.equal(legacyTaskRedirect("/agent/actions", { entry: "action:one" }), "/task?seg=todo&section=decisions&entry=action%3Aone");
+  assert.equal(legacyTaskRedirect("/contacts/all-actions", { entry: "action:two" }), "/task?seg=todo&section=decisions&entry=action%3Atwo");
   assert.equal(legacyTaskRedirect("/notes"), "/task?seg=memo");
   assert.equal(legacyTaskRedirect("/notes", { contactId: "c1" }), null, "one contact's notes stay their own page");
   assert.equal(taskHref("plan"), "/task?seg=plan");

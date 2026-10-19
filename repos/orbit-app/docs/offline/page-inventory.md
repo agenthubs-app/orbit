@@ -7,14 +7,14 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 40 |
+| 能断网看（本地优先） | 37 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0117 实现 | 1 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
-| └ 由 Sprint 0131 实现 | 15 |
+| └ 由 Sprint 0131 实现 | 12 |
 | 只能在线 | 55 |
-| 不读账号数据（布局、跳转、本机设置） | 36 |
+| 不读账号数据（布局、跳转、本机设置） | 39 |
 | 合计（路由文件） | 131 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
@@ -56,9 +56,6 @@
 | `/profile` | マイページ（R18a） | 0131 | 页面副本 self-profile（/api/profile）；主办、参加、收件箱独立读真实摘要接口，失败隐藏该行 | 「截至」；编辑、上传名片或简历、建议需要联网 |
 | `/profile/preview` | 资料预览 | 0131 | 页面副本 self-profile | 「截至」 |
 | `/profile/tags` | 资料标签 | 0131 | 页面副本 self-profile | 「截至」；保存标签需要联网 |
-| `/agent` | Agent 动作中心 | 0131 | 页面副本 agent-actions（/api/agent/actions） | 「截至」；确认、忽略需要联网 |
-| `/agent/actions` | All Actions 账本 | 0131 | 页面副本 agent-ledger（/api/agent/ledger 最近 3 页） | 「截至」；可以翻看本机保存的 3 页；确认、撤销需要联网 |
-| `/contacts/all-actions` | All Actions 账本（联系人入口） | 0131 | 页面副本 agent-ledger | 同 /agent/actions |
 | `/schedule/meetings/:id` | 约谈详情 | 0131 | 页面副本 meeting-details（按约谈保存最近打开的 20 个） | 「截至」；打开过的约谈显示本机副本；修改需要联网；没打开过的显示「需要联网」 |
 | `/schedule/events/:id` | 日历里的活动预览 | 0131 | 已报名的活动直接跳到 /events/:id（域 registered-events）；其他活动读 /api/events/public/:id | 已报名的活动跳转后可离线；其他活动显示「需要联网」 |
 | `/events` | 活动标签：活动列表和推荐 | 0131 | 页面副本 public-events（公开活动目录）和 event-recommendations | 「截至」；显示最近一次看到的列表；报名需要联网 |
@@ -159,6 +156,9 @@
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
 | `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
 | `/tasks` | 旧待办入口，跳到 Task 的 To-do 段（R05，保留 scope / view） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
+| `/agent` | 旧 Agent 动作入口，跳到 Task 的判断待ち | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo&section=decisions（可离线） |
+| `/agent/actions` | 旧 All Actions 入口，跳到 Task 的判断待ち | 无（目标页见 app/task.tsx） | 保留 entry 定位，跳到 /task?seg=todo&section=decisions（可离线） |
+| `/contacts/all-actions` | 旧联系人 All Actions 入口，跳到 Task 的判断待ち | 无（目标页见 app/task.tsx） | 保留 entry 定位，跳到 /task?seg=todo&section=decisions（可离线） |
 | `/account/permissions` | 旧权限页 → 设置（R18a） | 无 | 跳到 /settings 内联系统权限 |
 | `/events/:id/operations/admission` | 旧报名审核链接跳转到イベント運営「参加者」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/operations/experience` | 旧活动体验配置链接跳转到イベント運営「概要」段（R17） | 无 | 跳到运营台（运营台需要联网） |
@@ -190,13 +190,13 @@
 | `app/admin.tsx` | `/admin` | online-only |
 | `app/admin/access.tsx` | `/admin/access` | online-only |
 | `app/admin/events.tsx` | `/admin/events` | online-only |
-| `app/agent.tsx` | `/agent` | local-first (0131) |
-| `app/agent/actions.tsx` | `/agent/actions` | local-first (0131) |
+| `app/agent.tsx` | `/agent` | device-only |
+| `app/agent/actions.tsx` | `/agent/actions` | device-only |
 | `app/ai/[id].tsx` | `/ai/:id` | local-first (0118) |
 | `app/chat.tsx` | `/chat` | local-first (0119) |
 | `app/chat/[id].tsx` | `/chat/:id` | local-first (0119) |
 | `app/contacts/[id].tsx` | `/contacts/:id` | local-first (R11a) |
-| `app/contacts/all-actions.tsx` | `/contacts/all-actions` | local-first (0131) |
+| `app/contacts/all-actions.tsx` | `/contacts/all-actions` | device-only |
 | `app/contacts/analysis/[dimension]/[bucketId].tsx` | `/contacts/analysis/:dimension/:bucketId` | local-first (R11b) |
 | `app/contacts/dashboard.tsx` | `/contacts/dashboard` | local-first (R11b) |
 | `app/contacts/edit/[id].tsx` | `/contacts/edit/:id` | local-first (R11a) |

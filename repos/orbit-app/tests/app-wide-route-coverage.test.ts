@@ -30,7 +30,7 @@ const readmePath = join(
 const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/ai", consumer: "AiScreen", kind: "screen" },
   { route: "/ai/[id]", consumer: "AiConversationScreen", kind: "screen" },
-  { route: "/agent", consumer: "AgentActionsScreen", kind: "screen" },
+  { route: "/agent", consumer: "LegacyTaskRedirect → /task?seg=todo&section=decisions", kind: "redirect" },
   { route: "/contacts", consumer: "NetworkScreen", kind: "screen" },
   { route: "/contacts/list", consumer: "Redirect", kind: "alias" },
   { route: "/contacts/[id]", consumer: "NetworkContactScreen", kind: "screen" },
@@ -45,8 +45,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   },
   {
     route: "/contacts/all-actions",
-    consumer: "AllActionsAgentLedgerScreen",
-    kind: "screen"
+    consumer: "LegacyTaskRedirect → /task?seg=todo&section=decisions",
+    kind: "redirect"
   },
   { route: "/events", consumer: "EventsHome", kind: "screen" },
   { route: "/events/[id]", consumer: "EventDetailPage", kind: "screen" },

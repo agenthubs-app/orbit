@@ -99,7 +99,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | --- | --- | --- | --- | --- |
 | `/ai` | `AiScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 已登录 AI 首页与真实待办 | `tests/app-wide-workspaces.test.ts`: AI 下一步、共享布局和大字动作 |
 | `/ai/[id]` | `AiConversationScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 已存会话；`.tmp/app-wide-style/after/task4/native-state-observations.json`: 深色冷启动大字 | `tests/app-wide-workspaces.test.ts`: 阅读画布、草稿与快捷入口 |
-| `/agent` | `AgentActionsScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 0 条待确认空态 | `tests/app-wide-workspaces.test.ts`: 页面层级、动作大字边界 |
+| `/agent` | `LegacyTaskRedirect → /task?seg=todo&section=decisions` | redirect | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 旧屏历史空态；R20a 新跳转原生待验 | `tests/task-container.test.tsx`: 跳转参数契约 |
 | `/contacts` | `NetworkScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11a 换为人脈一覧：页签 / 絞り込み / 本机搜索；门禁见 app-R11a） | `tests/network-screen.test.tsx`: 本机列表、页签、絞り込み、离线 |
 | `/contacts/list` | `Redirect` | alias | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11a 起跳到 `/contacts`） | `tests/network-screen.test.tsx`: 列表在 `/contacts` |
 | `/contacts/[id]` | `NetworkContactScreen` | screen | `.tmp/app-wide-style/after/task2/native-detail-observation.json`: success（R11a 换为連絡先詳細） | `tests/network-screen.test.tsx`: 详情、招待连接、删除与撤回 |
@@ -107,7 +107,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/contacts/dashboard` | `NetworkAnalysisScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11b 换为人脈分析：锁定 / 構造 / 機会 / インサイト；新原生走查待 R11b 模拟器走查） | `tests/network-analysis-screen.test.tsx`: 锁定、参考値、構造数字与下钻、機会、インサイト与見立て、离线 |
 | `/contacts/graph` | `Redirect → /contacts/dashboard?tab=structure` | redirect | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success（R11b 起跳到人脈分析「構造」） | `tests/network-analysis-screen.test.tsx`: 旧链接跳到 `?tab=structure` |
 | `/contacts/analysis/[dimension]/[bucketId]` | `NetworkAnalysisListScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: NOT_FOUND，未冒充成功（R11b 换为人脈分析の名簿，新原生走查待 R11b） | `tests/network-analysis-screen.test.tsx`: 段階の内訳、並び順、翻页、行打开連絡先、锁定深链 |
-| `/contacts/all-actions` | `AllActionsAgentLedgerScreen` | screen | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 0 条账本记录空态 | `tests/app-wide-workspaces.test.ts`: workspace 标题/动作；`tests/agent-ledger-screen-render.test.tsx`: 受控内容 |
+| `/contacts/all-actions` | `LegacyTaskRedirect → /task?seg=todo&section=decisions` | redirect | `.tmp/app-wide-style/after/task4/native-route-observations.json`: 旧屏历史空态；R20a 新跳转原生待验 | `tests/task-container.test.tsx`: entry 参数跳转契约 |
 | `/events` | `EventsHome` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success（R26 / R27 换为 イベント主页：評価 / 参加予定 / 探す；门禁见 app-R26 / app-R27） | `tests/shell-back-restore.test.tsx`: 根布局画唯一底栏，イベント主页不自画 |
 | `/events/[id]` | `EventDetailPage` | screen | `build/harness-state/evidence/redesign-R27/run-01/native-route-observations.json`: success（A-R27-14/15/16） | `tests/r27-journey-routes.test.ts`: 路由指向 R27 新屏 |
 | `/events/[id]/register` | `RegisterPage` | screen | `build/harness-state/evidence/redesign-R27/run-01/native-route-observations.json`: success（A-R27-20/21/22） | `tests/r27-journey-routes.test.ts`: 路由指向 R27 新屏 |

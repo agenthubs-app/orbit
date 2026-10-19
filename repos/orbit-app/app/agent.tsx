@@ -1,4 +1,4 @@
-import { AgentActionsScreen } from "../src/screens/ai/AgentActionsScreen";
+import { LegacyTaskRedirect } from "../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(AgentActionsScreen);
+export default withOrbitPrivateRoute(LegacyTaskRedirect);

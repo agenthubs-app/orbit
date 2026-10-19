@@ -8,7 +8,7 @@ const repoRoot = new URL("..", import.meta.url).pathname;
 // Route modules require Expo navigation/auth providers and cannot be rendered
 // in the static component harness. This source assertion is limited to the
 // route-to-screen wiring; behavior is covered by the rendered component tests.
-test("native Today uses the task workspace while All Actions keeps the Agent Ledger", () => {
+test("native Today and the legacy All Actions entry use Task redirects", () => {
   const today = readFileSync(join(repoRoot, "app", "today.tsx"), "utf8");
   const allActions = readFileSync(
     join(repoRoot, "app", "contacts", "all-actions.tsx"),
@@ -19,20 +19,19 @@ test("native Today uses the task workspace while All Actions keeps the Agent Led
   assert.match(today, /LegacyTaskRedirect/u);
   assert.doesNotMatch(today, /TodayAgentLedgerScreen/u);
   assert.doesNotMatch(today, /ScheduleScreen/u);
-  assert.match(allActions, /AllActionsAgentLedgerScreen/u);
+  assert.match(allActions, /LegacyTaskRedirect/u);
+  assert.doesNotMatch(allActions, /AllActionsAgentLedgerScreen/u);
   assert.doesNotMatch(allActions, /AgentActionsScreen/u);
 });
 
-test("agent actions compatibility route reuses the actor-scoped All Actions ledger", () => {
+test("agent actions compatibility route preserves private access through the Task redirect", () => {
   const route = readFileSync(
     join(repoRoot, "app", "agent", "actions.tsx"),
     "utf8"
   );
 
-  assert.match(route, /AllActionsAgentLedgerScreen/u);
-  assert.match(route, /useLocalSearchParams/u);
-  assert.match(route, /firstAgentLedgerEntryId/u);
-  assert.match(route, /selectedEntryId/u);
+  assert.match(route, /LegacyTaskRedirect/u);
+  assert.doesNotMatch(route, /AllActionsAgentLedgerScreen/u);
   assert.match(route, /withOrbitPrivateRoute/u);
   assert.doesNotMatch(route, /AgentActionsScreen/u);
 });

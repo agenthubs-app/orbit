@@ -8,7 +8,7 @@ import { TodoSentPrompt } from "./TodoSentPrompt";
 import { retryTodoHandoffItem, type TodoHandoffRecord } from "./todo-handoff-state";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide, handoffFor, orphanedHandoffs, onSentYes, onSentNotYet }: {
+export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, focusedEntryId, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide, handoffFor, orphanedHandoffs, onSentYes, onSentNotYet }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
@@ -16,6 +16,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
   pagingSection?: TodoSectionKey | null;
   pagingFailedSection?: TodoSectionKey | null;
   mirroredTaskIds: ReadonlySet<string>;
+  focusedEntryId?: string | undefined;
   onRefresh: () => void;
   onMore?: (section: TodoSectionKey) => void;
   canOpen: (item: TodoDecisionItem | TodoNextMoveItem) => boolean;
@@ -34,6 +35,10 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
   const { t } = useOrbitLocale();
   const { styles } = useStyles();
   const readOnly = offline || staleDay;
+  const focusedDecision = page.decisions.items.find(item => item.source === "agent_action" && item.sourceId === focusedEntryId);
+  const decisionItems = focusedDecision
+    ? [focusedDecision, ...page.decisions.items.filter(item => item !== focusedDecision)]
+    : page.decisions.items;
   const countLabel = (section: TodoSectionKey) => {
     const count = todoSectionCount(page, section);
     return count.accuracy === "unknown" ? t("todo.countUnknown")
@@ -67,7 +72,8 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
       {sectionHead("decisions")}
       {partial("decisions")}
       {empty("decisions", page.decisions.items.length)}
-      {page.decisions.items.map(item => <View key={item.key} style={styles.row}>
+      {decisionItems.map(item => <View key={item.key} style={[styles.row, item === focusedDecision && styles.focusedRow]}
+        accessibilityState={item === focusedDecision ? { selected: true } : undefined}>
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
           {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
@@ -152,6 +158,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   headingText: { color: colors.ink, fontSize: 16, fontWeight: "700" },
   count: { color: colors.ink2, fontSize: 12 },
   row: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: 8, paddingTop: 12 },
+  focusedRow: { borderLeftColor: colors.accentText, borderLeftWidth: 3, paddingLeft: 8 },
   rowBody: { flex: 1, gap: 3 },
   title: { color: colors.ink, fontSize: 14, fontWeight: "600" },
   muted: { color: colors.ink2, fontSize: 12 },

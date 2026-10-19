@@ -48,6 +48,9 @@ export function legacyTaskRedirect(pathname: string, params: Readonly<Record<str
     // The list selection is normalised the same way as everywhere else (taskListHref).
     case "/tasks": return taskListHref({ scope: params.scope, view: params.view });
     case "/followups": return taskListHref({ scope: "relationship", view: params.view });
+    case "/agent":
+    case "/agent/actions":
+    case "/contacts/all-actions": return taskHref("todo", { section: "decisions", entry: params.entry });
     case "/notes": return params.contactId ? null : taskHref("memo");
     default: return null;
   }
