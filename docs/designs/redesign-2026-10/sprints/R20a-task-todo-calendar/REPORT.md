@@ -665,6 +665,8 @@ SC-09 の「明日」quick action / App「まとめて明日へ」は future-dat
 
 SC-04 の每日一問は主会話が決定済み：aggregate GET は read-only を維持し、未初期化を exact zero としない。A-owned read-only projection 要求を上に記録した。entity_draft も対応未検証の深いリンクは出さず、SC-07 partial を維持する。いずれも解決前に同等 / 完了とはしない。
 
+2026-10-19 SC-09 App b3 #17「元になったメモ」：画板は、タスクを生んだ原文の一節と面談メモの日時／タイトルを表示し、その一節へ戻ることを要求する。現 Task 契約は `sourceNoteId` / `sourceNoteVersion` のみ、`GET /api/notes/[id]` と App の note mirror は最新版のみで、引用範囲・作成時本文の snapshot を持たない。試作では actor / note ID / version 一致時に本文を表示したが、通常のメモ編集で version が上がると引用が消え、長文では全文が card を占有する。独立レビューは Important 2 件（永続する引用と正確な引用範囲の欠落）として受入不可と判定。試作の App source / test / copy / audit 差分はすべて撤回し、既存の元メモへのリンクだけを維持した。候補 A（推奨）：提案生成時に actor-owned の該当 note version と本文中の引用範囲を照合し、短い immutable `sourceNoteExcerpt`（必要なら元の日時／タイトルも）を Task 側の追加契約・同期 payload に保存する。iOrbit の提案生成（E）と notification 由来提案（B）を含む全 creation path の owner 連携と、旧 task の snapshot 不在 fallback が必要。候補 B：最新版のメモを「現在の内容」と明示して表示するが、画板の原文引用・履歴の要件を満たさない。A の cross-line 契約と引用範囲を決めるまで SC-09 / A-R20-14 / SC-15 を OPEN とする。撤回前の App full log `_evidence-d/R20a/run-01/d-app-full-task-source-memo.log` は **3220 total / 3203 pass / 15 fail / 2 skip、exit1**；直前の13件に加え、試作 import が audit の行番号表をずらした1件（定向 RED→GREEN 後撤回）、別 owner の Plan overlay click timeout1件。Task の新 browser 用例はその full 内で pass したが、撤回済みなので現 HEAD の合格証拠にはしない。
+
 ## 待用户授权
 
 SC-09 の二つの B-owned helper 例外は上記のとおり user 承認済み。従来の六つの untracked paths / SQL stub という状態は前回 full 時点の履歴であり、承認後の API 子里程標で stub を実装し関連 route と合わせて path-specific に提出する。Neon / production / deploy / real Google / TestFlight は未使用。
