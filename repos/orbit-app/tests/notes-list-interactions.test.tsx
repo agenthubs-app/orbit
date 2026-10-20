@@ -114,11 +114,12 @@ test("notes list searches, filters, follows stable ids and appends the next page
   assert.match((await page.evaluate(() => (window as any).fixture.requests[0])) as string, /cursor=page%3A2/);
   await page.getByRole("button", { name: "查看笔记 预算确认" }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3A2"]);
+  await page.getByRole("tab", { name: "面谈" }).click();
+  assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
+  await page.getByText("预算确认", { exact: true }).waitFor();
   await page.getByRole("textbox", { name: "搜索笔记" }).fill("预算");
   await page.waitForFunction(() => (window as any).fixture.latestPath.includes("q=%E9%A2%84%E7%AE%97"));
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "面谈" }).click();
-  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("noteKind=meeting"));
 });
 
 test("notes list creates through the new-note route without writing on navigation", async (t) => {
