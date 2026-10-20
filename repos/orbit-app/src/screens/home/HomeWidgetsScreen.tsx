@@ -1,6 +1,7 @@
 import { type Href, useRouter } from "expo-router";
+import { BlurView } from "expo-blur";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { Animated, PanResponder, StyleSheet, TextInput, View } from "react-native";
+import { Animated, PanResponder, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
 import { z } from "zod";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -15,9 +16,12 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { IconButton } from "../../components/ui/IconButton";
 import { UiPressable } from "../../components/ui/Pressable";
+import { UiPortal } from "../../components/ui/Portal";
 import { UiText } from "../../components/ui/Text";
 import { useToast } from "../../components/ui/Toast";
-import { createThemedStyles } from "../../design/theme";
+import { useBackHandler } from "../../components/ui/useBackHandler";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { floatShadow, radius } from "../../design/tokens";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -56,6 +60,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const [draft, setDraft] = useState<HomeWidgetSlot[] | null>(null);
   const [editRevision, setEditRevision] = useState<number | null>(null);
   const [library, setLibrary] = useState(false);
+  const [menu, setMenu] = useState<HomeWidgetKey | null>(null);
   const [hintHidden, setHintHidden] = useState(false);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const badge = useRelationshipInboxBadgeCount(actorId);
@@ -64,6 +69,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const date = shellHeaderDate(now, language, timeZone, t);
   const greeting = shellGreeting(now, timeZone, auth.user?.name, t);
   const items = editing ? draft ?? [...layout.app] : layout.app;
+  const menuSlot = menu ? layout.app.find(slot => slot.key === menu) : null;
   const navigate = (target: string) => {
     const href = homeAppTargetHref(target);
     if (!href) return;
@@ -80,6 +86,20 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const remove = (key: HomeWidgetKey) => {
     const before = [...items]; setDraft(removeWidget(before, key));
     toast.info(t(TITLE[key]), { undo: () => setDraft(before) });
+  };
+  const contextSize = async (key: HomeWidgetKey, size: "s" | "m") => {
+    setMenu(null);
+    const next = resizeWidget(layout.app, key, size);
+    if (JSON.stringify(next) === JSON.stringify(layout.app)) return;
+    const result = await save(next);
+    if (result === "error") toast.error(t("home.widgetUnavailable"));
+  };
+  const contextRemove = async (key: HomeWidgetKey) => {
+    setMenu(null);
+    const before = [...layout.app];
+    const result = await save(removeWidget(before, key));
+    if (result === "saved" || result === "queued") toast.info(t(TITLE[key]), { undo: () => { void save(before); } });
+    else if (result === "error") toast.error(t("home.widgetUnavailable"));
   };
   const dismissHint = async () => {
     setHintHidden(true);
@@ -100,7 +120,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
       {editing ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetDragHint")}</UiText></View> : null}
       <View style={styles.grid}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} count={items.length} editing={editing}
         small={slot.size === "s"} dropTarget={dropTarget === index} onTarget={setDropTarget} onDrop={(key, to) => setDraft(moveWidgetTo(items, key, to))}>
-        <UiPressable accessible={false} onLongPress={begin} delayLongPress={400} style={styles.widgetPress}>
+        <UiPressable accessible={false} onLongPress={() => { if (!editing) setMenu(slot.key); }} delayLongPress={400} style={styles.widgetPress}>
           <Card style={styles.widget}><View style={[styles.widgetHead, editing && styles.widgetHeadEditing]}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText>
             {editing ? <View style={styles.controls}>
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetMoveUp")}`} text="↑" disabled={index === 0} press={() => setDraft(moveWidget(items, slot.key, -1))} />
@@ -117,7 +137,41 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     <BottomSheet visible={library} onClose={() => setLibrary(false)} accessibilityLabel={t("home.widgetAdd")}>
       <WidgetLibrary slots={items} onClose={() => setLibrary(false)} onAdd={slot => { setDraft(addWidget(items, slot)); setLibrary(false); }} />
     </BottomSheet>
+    {menuSlot && !editing ? <HomeWidgetContextMenu slot={menuSlot} client={client} actorId={actorId} navigate={navigate}
+      guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} onClose={() => setMenu(null)}
+      onEdit={() => { setMenu(null); begin(); }} onSize={size => void contextSize(menuSlot.key, size)} onRemove={() => void contextRemove(menuSlot.key)} /> : null}
   </AppScreen>;
+}
+
+function HomeWidgetContextMenu({ slot, client, actorId, navigate, guide, onClose, onEdit, onSize, onRemove }: {
+  slot: HomeWidgetSlot; client: OrbitApiClient; actorId: string; navigate: (target: string) => void;
+  guide: Extract<z.infer<typeof guideSchema>, { kind: "progress" }> | null;
+  onClose: () => void; onEdit: () => void; onSize: (size: "s" | "m") => void; onRemove: () => void;
+}) {
+  const { t } = useOrbitLocale(); const { colors, styles } = useStyles(); const { scheme } = useOrbitTheme();
+  const { height } = useWindowDimensions();
+  const menuBottom = Math.max(96, height * .145);
+  useBackHandler(true, onClose);
+  return <UiPortal><View accessibilityViewIsModal onAccessibilityEscape={onClose} style={StyleSheet.absoluteFill}>
+    <BlurView intensity={25} tint={scheme === "dark" ? "dark" : "light"} style={[StyleSheet.absoluteFill, styles.contextBackdrop]} />
+    <UiPressable accessible={false} onPress={onClose} style={[StyleSheet.absoluteFill, styles.contextBackdrop, { backgroundColor: colors.scrim }]} />
+    <UiPressable accessible={false} onPress={onClose} style={styles.contextTabDismiss} />
+    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.contextPreview, { bottom: menuBottom + 136 }]}><Card style={styles.contextPreviewCard}>
+      <UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText>
+      <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guide} />
+    </Card></View>
+    <View style={[styles.contextMenu, floatShadow(colors), { bottom: menuBottom }]}>
+      <UiPressable accessibilityRole="button" onPress={onEdit} style={styles.contextRow}><UiText style={styles.contextText}>✎  {t("home.widgetEditHome")}</UiText></UiPressable>
+      <View style={styles.contextLine} />
+      <View style={styles.contextRow}><UiText style={[styles.contextText, styles.contextGrow]}>▦  {t("home.widgetSizeShort")}</UiText>
+        {(["s", "m"] as const).map(size => <UiPressable key={size} accessibilityRole="radio" accessibilityState={{ checked: slot.size === size }}
+          accessibilityLabel={`${t(TITLE[slot.key])} ${t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}`} hitSlop={9} onPress={() => onSize(size)}
+          style={[styles.contextSize, slot.size === size && styles.contextSizeOn]}><UiText style={[styles.contextSizeText, slot.size === size && styles.contextSizeTextOn]}>{t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}</UiText></UiPressable>)}
+      </View>
+      <View style={styles.contextLine} />
+      <UiPressable accessibilityRole="button" onPress={onRemove} style={styles.contextRow}><UiText style={styles.contextRemove}>×  {t("home.widgetRemoveFromHome")}</UiText></UiPressable>
+    </View>
+  </View></UiPortal>;
 }
 
 function iconFor(key: HomeWidgetKey): string {
@@ -189,4 +243,10 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   libraryCards: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }, libraryCard: { width: "48%", minHeight: 130, padding: 10, borderRadius: 14, backgroundColor: colors.surface2 }, libraryIcon: { fontSize: 17 }, libraryName: { color: colors.ink, fontSize: 12, fontWeight: "700", marginTop: 3 }, librarySizes: { flexDirection: "row", alignItems: "center", marginTop: "auto", gap: 4 },
   librarySize: { width: 27, height: 27, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }, librarySizeSelected: { backgroundColor: colors.ink }, librarySizeText: { color: colors.ink3Text, fontSize: 10, fontWeight: "700" }, librarySizeTextSelected: { color: colors.surface }, libraryPlus: { marginLeft: "auto", width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.ink }, libraryPlusText: { color: colors.surface, fontSize: 20, lineHeight: 23 },
   libraryExisting: { backgroundColor: colors.surface2, borderRadius: 14, minHeight: 52, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 },
+  contextPreview: { position: "absolute", right: 18, width: 178 }, contextPreviewCard: { minHeight: 184, gap: 8 },
+  contextBackdrop: { bottom: 88 }, contextTabDismiss: { position: "absolute", left: 0, right: 0, bottom: 0, height: 88 },
+  contextMenu: { position: "absolute", right: 18, width: 216, borderRadius: radius.menu, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 5 },
+  contextRow: { minHeight: 39, flexDirection: "row", alignItems: "center", gap: 5 }, contextText: { color: colors.ink, fontSize: 13, fontWeight: "600" }, contextGrow: { flex: 1 },
+  contextLine: { height: 1, backgroundColor: colors.line }, contextSize: { width: 23, height: 23, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, contextSizeOn: { backgroundColor: colors.ink },
+  contextSizeText: { color: colors.ink3Text, fontSize: 10, fontWeight: "700" }, contextSizeTextOn: { color: colors.surface }, contextRemove: { color: colors.coralText, fontSize: 13, fontWeight: "600" },
 }));

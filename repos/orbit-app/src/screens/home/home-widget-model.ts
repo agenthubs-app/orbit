@@ -22,8 +22,8 @@ export function dragTargetIndex(from: number, count: number, cellHeight: number,
   const horizontal = dx > 100 ? 1 : dx < -100 ? -1 : 0;
   return Math.max(0, Math.min(count - 1, from + vertical + horizontal));
 }
-export function resizeWidget(slots: readonly HomeWidgetSlot[], key: HomeWidgetKey): HomeWidgetSlot[] {
-  return slots.map(slot => slot.key === key ? { ...slot, size: slot.size === "s" ? "m" : "s" } : slot);
+export function resizeWidget(slots: readonly HomeWidgetSlot[], key: HomeWidgetKey, size?: "s" | "m"): HomeWidgetSlot[] {
+  return slots.map(slot => slot.key === key ? { ...slot, size: size ?? (slot.size === "s" ? "m" : "s") } : slot);
 }
 export function addWidget(slots: readonly HomeWidgetSlot[], slot: HomeWidgetSlot): HomeWidgetSlot[] {
   return slots.length >= 10 || slots.some(item => item.key === slot.key) || !HOME_WIDGETS.some(item => item.key === slot.key) ? [...slots] : [...slots, slot];

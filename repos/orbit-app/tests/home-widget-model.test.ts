@@ -37,3 +37,12 @@ test("App next event only selects a future registration and preserves negative s
   assert.equal(signedDelta(10), "+10");
   assert.equal(signedDelta(0), "0");
 });
+
+test("long-press size choice sets the requested size without toggling a matching card", () => {
+  const initial = DEFAULT_HOME_LAYOUT.app;
+  const medium = resizeWidget(initial, "today", "m");
+  assert.equal(medium.find(slot => slot.key === "today")?.size, "m");
+  assert.deepEqual(medium.filter(slot => slot.key !== "today"), initial.filter(slot => slot.key !== "today"));
+  const small = resizeWidget(medium, "today", "s");
+  assert.equal(small.find(slot => slot.key === "today")?.size, "s");
+});
