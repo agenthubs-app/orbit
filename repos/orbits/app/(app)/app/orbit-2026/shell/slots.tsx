@@ -25,6 +25,7 @@ export type ShellSlots = {
   right?: ReactNode;
   demoPill?: ReactNode;
   rightRail?: ReactNode | false;
+  railCount?: number;
   phoneFold?: boolean;
   /** < 768: a full-screen page (no brand bar, no bottom capsule) — R27 会場モード (b12 #364). */
   phoneBare?: boolean;
@@ -37,7 +38,7 @@ const SlotsContext = createContext<ShellSlots | null>(null);
 // re-render (and re-run its effect) every time the slots change.
 const SetSlotsContext = createContext<SetSlots | null>(null);
 
-const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "phoneFold", "phoneBare"] as const;
+const SLOT_KEYS = ["title", "subtitle", "left", "right", "demoPill", "rightRail", "railCount", "phoneFold", "phoneBare"] as const;
 const sameSlots = (a: ShellSlots, b: ShellSlots) => SLOT_KEYS.every((key) => Object.is(a[key], b[key]));
 
 export function ShellSlotsProvider({ children }: { children: ReactNode }) {
@@ -76,11 +77,11 @@ export function useInShell(): boolean {
 export function ShellPage(props: ShellSlots) {
   const id = useId();
   const set = useContext(SetSlotsContext);
-  const { title, subtitle, left, right, demoPill, rightRail, phoneFold, phoneBare } = props;
+  const { title, subtitle, left, right, demoPill, rightRail, railCount, phoneFold, phoneBare } = props;
   useEffect(() => {
     if (!set) return;
-    set(id, { title, subtitle, left, right, demoPill, rightRail, phoneFold, phoneBare });
-  }, [set, id, title, subtitle, left, right, demoPill, rightRail, phoneFold, phoneBare]);
+    set(id, { title, subtitle, left, right, demoPill, rightRail, railCount, phoneFold, phoneBare });
+  }, [set, id, title, subtitle, left, right, demoPill, rightRail, railCount, phoneFold, phoneBare]);
   useEffect(() => (set ? () => set(id, null) : undefined), [set, id]);
   return null;
 }

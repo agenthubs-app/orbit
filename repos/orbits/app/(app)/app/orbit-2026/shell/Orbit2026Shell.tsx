@@ -83,7 +83,7 @@ function ShellFrame({ language, pathname, currentBuildId, children }: { language
                 </div>
                 <div className={`${styles.headSide} ${styles.headRight}`}>
                   {slots.right}
-                  {rail ? <ShellRailButton open={railDrawer} /> : null}
+                  {rail ? <ShellRailButton count={slots.railCount} open={railDrawer} /> : null}
                 </div>
               </header>
             ) : null}
