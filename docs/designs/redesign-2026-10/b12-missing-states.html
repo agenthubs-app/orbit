@@ -8969,3 +8969,112 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
+<!-- 2026-10-20 主会话代定 §C-3 · R18c：只在末尾补画数据导出与退会的宽度、主题和中途态。草案待主会话复核；不作为像素通过证据。 -->
+<style>
+.r18c-draft { box-sizing:border-box; color:var(--ink); background:var(--bg); min-height:100%; font-family:var(--font); }
+.r18c-draft * { box-sizing:border-box; }
+.r18c-draft .r18c-bar { display:flex; align-items:center; gap:14px; min-height:66px; padding:0 22px; border-bottom:1px solid var(--line); }
+.r18c-draft .r18c-bar b { font-size:17px; }
+.r18c-draft .r18c-bar span { margin-left:auto; font-size:12px; color:var(--ink-3); }
+.r18c-draft .r18c-main { max-width:980px; margin:0 auto; padding:34px 30px; }
+.r18c-draft h2 { margin:0 0 7px; font-size:27px; line-height:1.3; }
+.r18c-draft p { margin:0 0 18px; color:var(--ink-2); line-height:1.7; font-size:14px; }
+.r18c-draft .r18c-card { background:var(--surface); border:1px solid var(--line); border-radius:22px; padding:20px; margin:12px 0; }
+.r18c-draft .r18c-card b { font-size:15px; }
+.r18c-draft .r18c-row { display:flex; align-items:center; gap:12px; min-height:52px; border-top:1px solid var(--line); font-size:13px; }
+.r18c-draft .r18c-row:first-of-type { border-top:0; }
+.r18c-draft .r18c-row span:last-child { margin-left:auto; color:var(--ink-3); text-align:right; }
+.r18c-draft .r18c-note { background:var(--mac-lav); border-radius:16px; padding:14px 16px; font-size:13px; line-height:1.65; margin:14px 0; }
+.r18c-draft .r18c-warn { background:var(--coral-soft); color:var(--coral-text); border-radius:16px; padding:14px 16px; font-size:13px; line-height:1.65; margin:14px 0; }
+.r18c-draft .r18c-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+.r18c-draft .r18c-actions .btn { min-height:44px; }
+.r18c-draft .r18c-check { width:18px; height:18px; border:2px solid var(--plum-700); border-radius:5px; flex:none; }
+.r18c-draft .r18c-progress { height:9px; background:var(--surface-2); border-radius:20px; overflow:hidden; margin:12px 0; }
+.r18c-draft .r18c-progress i { display:block; width:66.7%; height:100%; background:var(--plum-700); }
+.r18c-draft .r18c-seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px; }
+.r18c-draft .r18c-seg small { padding:5px 9px; border-radius:7px; }
+.r18c-draft .r18c-seg small:first-child { background:var(--surface-2); font-weight:800; }
+.r18c-draft.r18c-phone .r18c-main { padding:20px 18px 112px; }
+.r18c-draft.r18c-phone .r18c-bar { min-height:54px; padding:0 18px; }
+.r18c-draft.r18c-phone h2 { font-size:21px; }
+.r18c-draft.r18c-phone .r18c-card { padding:15px; border-radius:18px; }
+.r18c-draft.r18c-phone .r18c-actions { display:grid; position:absolute; left:18px; right:18px; bottom:28px; }
+.r18c-draft.r18c-phone .r18c-actions .btn { width:100%; }
+.r18c-draft.r18c-web390 .r18c-main { padding:20px 18px 88px; }
+.r18c-draft.r18c-web390 h2 { font-size:21px; }
+.r18c-draft.r18c-web390 .r18c-card { padding:15px; }
+.r18c-draft.r18c-web390 .r18c-actions { justify-content:stretch; }
+.r18c-draft.r18c-web390 .r18c-actions .btn { width:100%; }
+</style>
+<script>
+(function () {
+  const { S8, INDEX, PB, group, m390 } = window.__r18bBoardKit;
+  const row = (name, detail) => '<div class="r18c-row"><b>' + name + '</b><span>' + detail + '</span></div>';
+  const button = (label, type = 'primary') => '<button class="btn ' + type + '">' + label + '</button>';
+  const card = content => '<div class="r18c-card">' + content + '</div>';
+  const note = text => '<div class="r18c-note">' + text + '</div>';
+  const warn = text => '<div class="r18c-warn">' + text + '</div>';
+  const actions = (...items) => '<div class="r18c-actions">' + items.join('') + '</div>';
+  const content = (state) => {
+    if (state === 'account') return ['アカウント', 'このアカウントのデータと退会を管理します。', card(row('ログイン方法', '現在の方法を表示') + row('データの書き出し', 'CSV・vCard・JSON') + row('退会する', '申請から30日間は取り消せます')), ''];
+    if (state === 'delete-overview') return ['退会 · 削除されるもの', 'アカウントと本人のデータを削除します。', card(row('人脈・名刺画像', '連絡先と取り込み原稿') + row('メモ・Task・予定', '本人の内容') + row('プラン・iOrbit', '進捗と会話') + row('イベント・連携', '参加履歴と接続')), note('先にデータを書き出せます。申請後は通常の画面を開けません。'), actions(button('データを書き出す', ''), button('本人確認へ', 'danger-ghost'))];
+    if (state === 'delete-verify') return ['退会 · 本人確認', 'ログインに使っている方法で、もう一度確認します。', card(row('ログイン方法', 'パスワード') + row('パスワード', '••••••••') + '<div class="r18c-row"><i class="r18c-check"></i>削除されるものを確認しました</div>'), note('申請から30日以内は、ログインして削除を取り消せます。'), actions(button('退会を申請する', 'danger'))];
+    if (state === 'pending') return ['退会の手続き中です', '削除予定日は11月6日です。', card('<b>削除まで 30日</b><div class="r18c-progress"><i style="width:3%"></i></div><span>申請日 10月7日 · 削除予定 11月6日</span>'), note('いまはデータを閲覧・編集できません。取り消すとデータに再びアクセスできます。連携は再接続してください。'), actions(button('削除を取り消す'), button('ログアウト', 'ghost'))];
+    if (state === 'deleted') return ['アカウントを削除しました', 'データの削除が完了しました。', card('これまでご利用いただき、ありがとうございました。'), actions(button('はじめの画面へ'))];
+    if (state === 'export-select') return ['データの書き出し', '書き出す範囲を選んでください。', card(row('☑ 人脈', '<span class="r18c-seg"><small>CSV</small><small>vCard</small></span>') + row('☑ メモ', 'CSV') + row('☑ プラン・ログ', 'CSV') + row('□ イベント履歴', 'CSV') + row('□ すべて（JSON）', 'ほかの選択を置き換えます')), note('完成した ZIP は7日間保管します。1日3回まで。'), actions(button('3項目を書き出す'))];
+    if (state === 'export-running') return ['準備しています', '画面を閉じても準備は続きます。', card('<b>2 / 3 項目の準備が完了</b><div class="r18c-progress"><i></i></div>' + row('人脈', '完了') + row('メモ', '完了') + row('プラン・ログ', '処理中')), note('準備ができたら通知でお知らせします。'), ''];
+    if (state === 'export-ready') return ['準備ができました', 'ファイルをこの画面からダウンロードできます。', card(row('orbit-export.zip', 'ZIP') + row('保管期限', '完成から7日間') + button('ダウンロード')), card('<b>これまでの書き出し</b>' + row('9月2日 · すべて（JSON）', '期限切れ')), ''];
+    if (state === 'host-blocked') return ['退会を申請できません', '本人が主催するイベントに、ほかの方の申込が残っています。', warn('先にイベントを中止するか、共同運営者へ引き継いでください。申込者の情報はここで削除できません。'), actions(button('主催イベントを確認'), button('戻る', 'ghost'))];
+    if (state === 'export-failed') return ['書き出しに失敗しました', 'ファイルは作成されていません。', warn('準備中に問題が起きました。時間をおいて、もう一度お試しください。'), actions(button('履歴を更新'))];
+    if (state === 'export-quota') return ['今日の上限に達しました', '書き出しは東京の日付で1日3回までです。', warn('新しい書き出しは、日付が変わってからお試しください。'), actions(button('履歴に戻る'))];
+    if (state === 'export-expired') return ['ファイルの期限が切れました', '完成から7日を過ぎたファイルはダウンロードできません。', note('必要なら、もう一度範囲を選んで書き出してください。'), actions(button('もう一度書き出す'))];
+    if (state === 'cancelled') return ['退会を取り消しました', 'アカウントのデータに再びアクセスできます。', note('Gmail とカレンダーの連携は、必要に応じて再接続してください。'), actions(button('アカウントへ'))];
+    if (state === 'too-late') return ['取り消し期間が終了しました', '削除処理が始まった申請は取り消せません。', warn('現在の状態を確認してください。'), actions(button('状態を更新'))];
+    if (state === 'notification-failed') return ['準備ができました', 'ZIP はこの画面からダウンロードできます。', card(row('orbit-export.zip', 'ZIP') + button('ダウンロード')), warn('通知の一部を送れませんでした。ファイルの準備には影響ありません。'), ''];
+    return ['接続できません', '状態を読み込めませんでした。', warn('通信状態を確認してから、もう一度お試しください。'), actions(button('再読み込み'))];
+  };
+  const frame = (state, width, theme, app) => {
+    const [title, description, primary = '', secondary = '', controls = ''] = content(state);
+    const inner = '<div class="r18c-draft ' + (app ? 'r18c-phone' : width === 390 ? 'r18c-web390' : '') + '"><div class="r18c-bar"><b>‹ ' + (app ? '設定' : 'Orbit · 設定') + '</b><span>アカウント</span></div><main class="r18c-main"><h2>' + title + '</h2><p>' + description + '</p>' + primary + secondary + controls + '</main></div>';
+    if (app) return inner;
+    if (width === 390) return m390({ body: inner, nav: -1, theme });
+    return '<div class="web no-rail bare ' + (width === 1024 ? 'w1024' : '') + '" data-theme="' + theme + '" style="display:block;width:' + width + 'px;height:900px;overflow:hidden">' + inner + '</div>';
+  };
+  const appStates = [
+    ['P01', 'account', 'アカウント'], ['P02', 'delete-overview', '削除されるもの'],
+    ['P03', 'delete-verify', '本人確認'], ['P04', 'pending', '申請済み'],
+    ['P05', 'deleted', '削除完了'], ['P06', 'export-select', '書き出し選択'],
+    ['P07', 'export-running', '準備中'], ['P08', 'export-ready', '準備完了'],
+    ['P09', 'delete-verify', '本人確認 · 深色'],
+    ['S01', 'host-blocked', '主催イベントに申込あり'], ['S02', 'export-failed', '書き出し失敗'],
+    ['S03', 'export-quota', '日次上限'], ['S04', 'export-expired', '期限切れ'],
+    ['S05', 'cancelled', '取消成功'], ['S06', 'too-late', '取消期限切れ'],
+    ['S07', 'notification-failed', '通知失敗'], ['S08', 'network-error', '通信エラー']
+  ];
+  const webStates = [
+    ['P01', 'delete-overview', '削除されるもの'], ['P02', 'delete-verify', '本人確認'],
+    ['P03', 'pending', '申請済み'], ['P04', 'deleted', '削除完了'],
+    ['P05', 'export-select', '書き出し選択'], ['P06', 'export-ready', '準備完了'],
+    ['P07', 'delete-verify', '本人確認 · 深色'],
+    ['S01', 'host-blocked', '主催イベントに申込あり'], ['S02', 'export-failed', '書き出し失敗'],
+    ['S03', 'export-quota', '日次上限'], ['S04', 'export-expired', '期限切れ'],
+    ['S05', 'cancelled', '取消成功'], ['S06', 'too-late', '取消期限切れ'],
+    ['S07', 'notification-failed', '通知失敗'], ['S08', 'network-error', '通信エラー'],
+    ['S09', 'account', 'アカウント'], ['S10', 'export-running', '準備中']
+  ];
+  let html = S8('补画 · R18c データ権利', '§C-3 主会话代定。b7 #19–#32 / #74 / #81 の不足する幅・テーマ・中途態。差分は主会话复核前の草案。');
+  for (const [code, state, title] of appStates) {
+    const appId = 'A-R18c-' + code + '-d';
+    html += PB(appId + ' ' + title, 'state', () => ({ body: frame(state, 390, 'light', true), tab: -1 }), null, 'b7 R18c / §C-3 · 待主会话复核');
+  }
+  for (const [code, state, title] of webStates) {
+    for (const width of [1440, 1024, 390]) {
+      const webId = 'W-R18c-' + code + '-' + width;
+      INDEX.push([webId, title + ' ' + width]);
+      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + webId + '">' + webId + ' ' + title + '<span class="src">b7 R18c / §C-3 · 待主会话复核</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frame(state, width, 'light', false) + frame(state, width, 'dark', false) + '</div></div>';
+    }
+  }
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('r18c-draft-boards', html));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>
