@@ -387,7 +387,7 @@
     },
     "app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx": {
       "hardcoded": 6,
-      "missingJa": 80
+      "missingJa": 76
     },
     "app/(app)/app/profile/onboarding-0918/onboarding-styles.ts": {
       "hardcoded": 1,

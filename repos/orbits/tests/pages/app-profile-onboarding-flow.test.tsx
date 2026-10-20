@@ -3,6 +3,7 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import { OnboardingFlow } from "../../app/(app)/app/profile/onboarding-0918/onboarding-flow";
 import {
   ONBOARDING_STEPS,
@@ -14,7 +15,7 @@ import {
   seekOptionsFromLabels,
   toggleValue,
 } from "../../app/(app)/app/profile/onboarding-0918/onboarding-model";
-import { firstIncompleteStep } from "../../app/(app)/app/profile/onboarding-0918/onboarding-previews";
+import { OnboardingHomePreview, OnboardingNetworkPreview, firstIncompleteStep } from "../../app/(app)/app/profile/onboarding-0918/onboarding-previews";
 import { profileOnboardingFlowPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
 test("onboarding has five steps with the AI introduction between persona and import", () => {
@@ -46,6 +47,27 @@ test("preview clicks fall through to the first unfinished step", () => {
   assert.equal(firstIncompleteStep({ ...done, profileDone: false }), "profile");
   assert.equal(firstIncompleteStep({ ...done, personaDone: false }), "persona");
   assert.equal(firstIncompleteStep(done), "import");
+});
+
+test("the Japanese onboarding preview keeps its sample labels and actions in Japanese", () => {
+  const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="ja">
+    <OnboardingHomePreview complete={false} firstGoal="" focus="" initial="山" name="" onEnter={() => {}} onGo={() => {}}
+      progress={{ profileDone: false, goalsDone: false, personaDone: false, introDone: false }} todayLabel="2026年10月20日" />
+  </OrbitLanguageProvider>);
+  assert.match(html, /最初の1週間/);
+  assert.match(html, /設定を続ける/);
+  assert.match(html, /サンプル/);
+  assert.doesNotMatch(html, /First-week plan|Continue setup|Sample/);
+});
+
+test("the Japanese network preview keeps its empty state and scan action in Japanese", () => {
+  const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="ja">
+    <OnboardingNetworkPreview complete={false} firstGoal="" focus="" initial="山" name="" onEnter={() => {}} onGo={() => {}}
+      progress={{ profileDone: false, goalsDone: false, personaDone: false, introDone: false }} todayLabel="2026年10月20日" />
+  </OrbitLanguageProvider>);
+  assert.match(html, /あなたのつながり/);
+  assert.match(html, /名刺を読み取る/);
+  assert.doesNotMatch(html, /Your network|Scan business cards/);
 });
 
 test("gate target is the onboarding route and keeps a safe next", () => {

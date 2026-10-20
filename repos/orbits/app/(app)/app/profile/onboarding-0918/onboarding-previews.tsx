@@ -9,7 +9,16 @@
 import type { MouseEvent, ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { ONBOARDING_JA } from "../../orbit-2026/copy/onboarding-ja";
+import { ONBOARDING_PREVIEW_JA } from "../../orbit-2026/copy/onboarding-preview-ja";
 import type { Copy, OnboardingStep } from "./onboarding-model";
+
+function usePreviewCopy() {
+  const { language, t } = useOrbitLanguage();
+  return (copy: Copy) => t(language === "ja"
+    ? { ...copy, ja: copy.ja ?? ONBOARDING_PREVIEW_JA[copy.en] ?? ONBOARDING_JA[copy.en] }
+    : copy);
+}
 
 export interface PreviewProgress {
   profileDone: boolean;
@@ -50,7 +59,7 @@ export function firstIncompleteStep(progress: PreviewProgress): OnboardingStep {
 }
 
 function PreviewFrame({ children, props, screen }: { children: ReactNode; props: OnboardingPreviewProps; screen: "home" | "network" }) {
-  const { t } = useOrbitLanguage();
+  const t = usePreviewCopy();
   function onClick(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
     const target = readGoto(event);
@@ -80,7 +89,7 @@ function PreviewFrame({ children, props, screen }: { children: ReactNode; props:
 }
 
 function SectionHead({ icon, title, note, sample, right }: { icon: string; title: string; note?: string; sample?: boolean; right?: ReactNode }) {
-  const { t } = useOrbitLanguage();
+  const t = usePreviewCopy();
   return (
     <div className="ob-sec-head">
       <span className="ob-sec-title">
@@ -126,7 +135,7 @@ const SAMPLE_PEOPLE: readonly { ch: string; name: string; org: Copy; why: Copy }
 ];
 
 export function OnboardingHomePreview(props: OnboardingPreviewProps) {
-  const { t } = useOrbitLanguage();
+  const t = usePreviewCopy();
   const plan: { title: Copy; hint: Copy; done: boolean; cta: Copy; step: OnboardingStep }[] = [
     { title: { zh: "完善个人资料", en: "Complete your profile" }, hint: { zh: "别人在活动中看到的第一眼", en: "The first thing people see at events" }, done: props.progress.profileDone, cta: { zh: "去完善", en: "Complete" }, step: "profile" },
     { title: { zh: "设定当前目标", en: "Set your current goal" }, hint: { zh: "决定 iOrbit 为你推荐什么", en: "Decides what iOrbit recommends" }, done: props.progress.goalsDone, cta: { zh: "去设定", en: "Set goal" }, step: "goals" },
@@ -140,7 +149,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
     <PreviewFrame props={props} screen="home">
       <div className="ob-preview-top">
         <div className="ob-col-tight">
-          <h1 className="ob-preview-h1">{props.name ? t({ zh: `欢迎，${props.name}`, en: `Welcome, ${props.name}` }) : t({ zh: "欢迎来到 iOrbit", en: "Welcome to iOrbit" })}</h1>
+          <h1 className="ob-preview-h1">{props.name ? t({ zh: `欢迎，${props.name}`, en: `Welcome, ${props.name}`, ja: `ようこそ、${props.name}さん` }) : t({ zh: "欢迎来到 iOrbit", en: "Welcome to iOrbit" })}</h1>
           <p className="ob-p ob-p-lg">{t({ zh: "你的轨道还是空的——这很正常。我们从你的目标开始。", en: "Your orbit is empty — that's normal. Let's start from your goal." })}</p>
         </div>
         <span className="ob-date">{props.todayLabel}</span>
@@ -149,7 +158,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
       <div className="ob-col-ask">
         <div className="ob-ask" {...goto("goals")}>
           <span className="ob-spark" aria-hidden>✦</span>
-          <span className="ob-ask-text">{focus ? t({ zh: `继续：${focus}`, en: `Continue: ${focus}` }) : t({ zh: "告诉我你想推进什么，我帮你找到该认识的人", en: "Tell me what you want to move forward and I'll find who to meet" })}</span>
+          <span className="ob-ask-text">{focus ? t({ zh: `继续：${focus}`, en: `Continue: ${focus}`, ja: `続ける：${focus}` }) : t({ zh: "告诉我你想推进什么，我帮你找到该认识的人", en: "Tell me what you want to move forward and I'll find who to meet" })}</span>
           <span className="ob-ask-go" aria-hidden>→</span>
         </div>
         <div className="ob-chips">
@@ -161,7 +170,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
 
       <div className="ob-two">
         <section className="ob-sec">
-          <SectionHead icon="◎" title={t({ zh: "第一周计划", en: "First-week plan" })} right={<span className="ob-note">{t({ zh: `${done} / ${plan.length} 完成`, en: `${done} / ${plan.length} done` })}</span>} />
+          <SectionHead icon="◎" title={t({ zh: "第一周计划", en: "First-week plan" })} right={<span className="ob-note">{t({ zh: `${done} / ${plan.length} 完成`, en: `${done} / ${plan.length} done`, ja: `${done} / ${plan.length} 完了` })}</span>} />
           <span className="ob-track"><span style={{ width: `${(done / plan.length) * 100}%` }} /></span>
           <div>
             {plan.map(item => (
@@ -197,7 +206,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
                 <span className="ob-event-date"><small>{t(event.month)}</small><strong>{event.day}</strong></span>
                 <span className="ob-event-copy"><strong>{t(event.title)}</strong><span>{t(event.meta)}</span></span>
               </span>
-              <span className="ob-reason"><span className="ob-spark" aria-hidden>✦</span><span>{props.firstGoal ? t({ zh: `会按你的目标「${props.firstGoal}」解释为什么推荐。`, en: `Will explain why it fits your goal “${props.firstGoal}”.` }) : t(event.reason)}</span></span>
+              <span className="ob-reason"><span className="ob-spark" aria-hidden>✦</span><span>{props.firstGoal ? t({ zh: `会按你的目标「${props.firstGoal}」解释为什么推荐。`, en: `Will explain why it fits your goal “${props.firstGoal}”.`, ja: `目標「${props.firstGoal}」に合う理由をお伝えします。` }) : t(event.reason)}</span></span>
               <span className="ob-event-foot"><span>{t(event.people)}</span><button className="btn ob-btn-dark ob-btn-dark-sm" type="button">{t({ zh: "报名", en: "Register" })}</button></span>
             </div>
           ))}
@@ -226,7 +235,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
 }
 
 export function OnboardingNetworkPreview(props: OnboardingPreviewProps) {
-  const { t } = useOrbitLanguage();
+  const t = usePreviewCopy();
   return (
     <PreviewFrame props={props} screen="network">
       <div className="ob-net-top">
