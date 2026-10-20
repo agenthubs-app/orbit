@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const PERSONAL_COLLECTIONS = ["notes", "memo_extractions", "tasks", "task_mutations", "personal_schedule_items",
   "personal_schedule_mutations", "personal_schedule_occurrence_exceptions", "reminderPlans", "meetings"];
@@ -11,6 +11,7 @@ async function remove(sql: TransactionalSqlExecutor, statement: string, values: 
 
 export async function purgeAccountNotes(db: TransactionalPostgresClient, workspaceId: string, actorId: string): Promise<{ deleted: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   return db.transaction(async sql => {
     // The current appointment schema requires both account IDs. Keeping the

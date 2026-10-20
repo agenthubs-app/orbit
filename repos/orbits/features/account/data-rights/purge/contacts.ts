@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 type Context = { db: TransactionalPostgresClient; workspaceId: string; actorId: string; eraseObject: (key: string) => Promise<void> };
 
@@ -12,6 +12,7 @@ async function countDelete(sql: TransactionalSqlExecutor, statement: string, val
  * idempotent and reject keys outside its private card-image roots. */
 export async function purgeAccountContacts({ db, workspaceId, actorId, eraseObject }: Context): Promise<{ deleted: number; objects: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   const keys = await db.query<{ key: string }>(`select distinct key from (
     select i.derivative_object_key as key from bc_ingest_items i join bc_ingest_batches b

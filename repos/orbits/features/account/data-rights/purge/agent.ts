@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const BASE_COLLECTIONS = [
   "agent_entity_drafts", "agentActions", "aiAnalyses", "interactionMemories",
@@ -10,6 +10,7 @@ const BASE_COLLECTIONS = [
 
 export async function purgeAccountAgentData(db: TransactionalPostgresClient, workspaceId: string, actorId: string): Promise<{ deleted: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   const personalSpaces = [`${workspaceId}:agent-actor:${actorId}`, `${workspaceId}:actor:${encodeURIComponent(actorId)}`];
   return db.transaction(async sql => {

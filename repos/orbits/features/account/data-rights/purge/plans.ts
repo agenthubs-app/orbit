@@ -1,5 +1,5 @@
 import type { TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 // Child rows precede parents because some plan FKs intentionally do not cascade.
 const PLAN_TABLES = [
@@ -10,6 +10,7 @@ const PLAN_TABLES = [
 
 export async function purgeAccountPlans(sql: TransactionalSqlExecutor, workspaceId: string, actorId: string): Promise<{ deleted: number; tables: Record<string, number> }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(sql);
   const tables: Record<string, number> = {};
   let deleted = 0;
   const calls = await sql.query<{ removed: string }>(`with removed as (delete from ai_usage_calls c using ai_usage_ledger l

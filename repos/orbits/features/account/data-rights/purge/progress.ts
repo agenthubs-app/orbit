@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { TransactionalPostgresClient } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const REQUESTS = "account_deletion_requests";
 const STEPS = "account_purge_steps";
@@ -29,6 +29,7 @@ export function createAccountPurgeProgressStore(input: { db: TransactionalPostgr
   return {
     async get(actorId: string, step: string): Promise<AccountPurgeStep | null> {
       assertLocalAccountPurgeTarget();
+      await assertLocalAccountPurgeDatabase(db);
       const result = await db.query<{ payload: AccountPurgeStep | string }>(`select payload from orbit_records
         where workspace_id=$1 and collection_name=$2 and record_id=$3 and user_id=$4 and payload->>'status'='done'`,
       [workspaceId, STEPS, stepId(actorId, step), actorId]);
@@ -36,6 +37,7 @@ export function createAccountPurgeProgressStore(input: { db: TransactionalPostgr
     },
     async complete(actorId: string, leaseToken: string, step: string, result: Record<string, number>): Promise<AccountPurgeStep> {
       assertLocalAccountPurgeTarget();
+      await assertLocalAccountPurgeDatabase(db);
       if (!workspaceId || !actorId || !leaseToken || !/^[a-z][a-z0-9-]*$/.test(step)) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
       return db.transaction(async sql => {
         const current = await sql.query<{ payload: Record<string, unknown> | string }>(`select payload from orbit_records

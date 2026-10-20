@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const PERSONAL_COLLECTIONS = ["inboxNotifications", "inboxSourceCheckMarks", "notification_interactions",
   "notificationCutover", "notificationDeliveryCursor", "notificationDeliveryOwners", "notifications",
@@ -14,6 +14,7 @@ async function remove(sql: TransactionalSqlExecutor, statement: string, values: 
 
 export async function purgeAccountInbox(db: TransactionalPostgresClient, workspaceId: string, actorId: string): Promise<{ deleted: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   return db.transaction(async sql => {
     const scope = [workspaceId, actorId];

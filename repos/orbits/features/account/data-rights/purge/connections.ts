@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 type Context = {
   db: TransactionalPostgresClient;
@@ -12,6 +12,7 @@ type Context = {
 
 export async function purgeAccountConnections({ db, workspaceId, actorId, userId, revokeToken }: Context): Promise<{ deleted: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId || !userId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   const tokens = await db.query<{ source_id: string; payload: unknown }>(`select source_id,payload from orbit_records
     where workspace_id=$1 and collection_name='integrationTokens' and user_id=$2 order by record_id`, [workspaceId, actorId]);

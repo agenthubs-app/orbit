@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const PERSONAL_COLLECTIONS = ["attendees", "eventParticipantIntents", "eventPreferences",
   "eventAfterConfirmations", "eventHostAnswers", "organizerFollows"];
@@ -13,6 +13,7 @@ const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
  */
 export async function purgeAccountEvents(db: TransactionalPostgresClient, workspaceId: string, actorId: string): Promise<{ deleted: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   return db.transaction(async sql => {
     const tables = await sql.query<{ table_name: string }>(`select distinct c.table_name from information_schema.columns c

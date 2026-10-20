@@ -1,5 +1,5 @@
 import type { TransactionalPostgresClient } from "../../../../shared/storage/transactional-postgres";
-import { assertLocalAccountPurgeTarget } from "./local-gate";
+import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 export async function purgeAccountExports(input: {
   db: TransactionalPostgresClient;
@@ -8,6 +8,7 @@ export async function purgeAccountExports(input: {
   storage: { delete(actorId: string, key: string): Promise<void> };
 }): Promise<{ deleted: number; objects: number }> {
   assertLocalAccountPurgeTarget();
+  await assertLocalAccountPurgeDatabase(input.db);
   const { db, workspaceId, actorId, storage } = input;
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   const files = await db.query<{ file_key: string | null }>(`select distinct payload->>'fileKey' as file_key from orbit_records
