@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { PlanGoalKind } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_KINDS } from "../../api/compute/plan-templates";
 import { firstProfileGoalForPlan } from "../../api/compute/profile-onboarding-goal";
-import { readAppGuideProgress, type AppGuideProgress } from "../../api/guide-progress";
+import { readAppGuideEntry, type AppGuideProgress } from "../../api/guide-progress";
 import { resumeOrCreateAppOnboardingIntake } from "../../api/onboarding-plan-intake";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
@@ -41,16 +41,21 @@ export function StartGuideScreen() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const result = await readAppGuideProgress(client);
-    if (result.ok) {
-      setGuide(result.data);
-      const first = firstProfileGoalForPlan(result.data.relationshipGoal);
+    setGuide(null);
+    const result = await readAppGuideEntry(client);
+    if (result.kind === "onboarding") {
+      router.replace("/profile/onboarding?next=%2Fstart" as Href);
+      return;
+    }
+    if (result.kind === "ready") {
+      setGuide(result.guide);
+      const first = firstProfileGoalForPlan(result.guide.relationshipGoal);
       setGoalText(first.text);
       setKind(null);
       setError("");
     } else setError(c.failed);
     setLoading(false);
-  }, [client, c.failed]);
+  }, [client, c.failed, router]);
   useFocusEffect(useCallback(() => { void reload(); }, [reload]));
 
   async function openPlan() {

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { OrbitApiClient } from "./client";
 import type { GuideProgressContract } from "./contract/guide";
+import { readOnboardingProfile } from "./profile-onboarding";
 
 export const GUIDE_PROGRESS_PATH = "/api/guide/progress";
 
@@ -30,4 +31,14 @@ export async function readAppGuideProgress(client: OrbitApiClient): Promise<AppG
   }
   const parsed = guideProgressSchema.safeParse(result.data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, kind: "failed" };
+}
+
+export async function readAppGuideEntry(client: OrbitApiClient): Promise<
+  { kind: "ready"; guide: AppGuideProgress } | { kind: "onboarding" | "failed" }
+> {
+  const profile = await readOnboardingProfile(client);
+  if (!profile.ok) return { kind: "failed" };
+  if (profile.detail.onboarding?.status !== "complete") return { kind: "onboarding" };
+  const progress = await readAppGuideProgress(client);
+  return progress.ok ? { kind: "ready", guide: progress.data } : { kind: "failed" };
 }
