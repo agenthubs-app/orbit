@@ -9,6 +9,7 @@ import {
   takeSignupFallbackEmail,
   type AccountAuthMode
 } from "../src/view-models/account-auth";
+import { safeProfileContinuationNext } from "../src/view-models/profile-continuation-route";
 
 function flattenedText(value: unknown): string {
   return JSON.stringify(value);
@@ -132,6 +133,16 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
     }),
     "/account/login?next=%2Fdashboard"
   );
+});
+
+test("App invite destination survives signup, login and incomplete profile setup", () => {
+  const invite = "/i/ABCD-EFGH";
+  assert.equal(normalizedNext(invite), invite);
+  assert.equal(nextHrefForAccountAuthSubmit({ mode: "signup", next: invite }),
+    "/account/login?created=1&next=%2Fi%2FABCD-EFGH");
+  assert.equal(nextHrefForAccountAuthSubmit({ mode: "login", next: invite }),
+    "/profile/onboarding?next=%2Fi%2FABCD-EFGH");
+  assert.equal(safeProfileContinuationNext(invite), invite);
 });
 
 test("registration fallback email is one-use page state tied to a safe next", () => {
