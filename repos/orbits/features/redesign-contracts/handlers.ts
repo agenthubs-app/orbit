@@ -17,6 +17,7 @@ import { accountExportLiveHandlers } from "../account/data-rights/handlers";
 import { accountDeletionLiveHandlers } from "../account/data-rights/deletion-handlers";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
 import { eventAssessmentLiveHandlers } from "../events/assessment/handlers";
+import { homeLayoutLiveHandlers } from "../home-layout/handlers";
 import { readLiveAppVersion } from "./app-version-live";
 import { redesignMock, type CompletionMockResult, type InviteFailure } from "./mock-service";
 import { readBody, redesignContractRoute, type ContractReply } from "./route";
@@ -25,13 +26,16 @@ const notFound = () => ({ error: new AppError("NOT_FOUND", "Not found.") });
 const keyOnly = z.object({ idempotencyKey: z.string().min(1).max(200) }).strict();
 
 // 1 home layout
-export const getHomeLayout = redesignContractRoute("home-layout", homeLayoutSchema, () => ({ data: redesignMock.homeLayout() }));
-export const putHomeLayout = redesignContractRoute("home-layout", homeLayoutSchema, async (request) => {
+export const getHomeLayout = redesignContractRoute("home-layout", homeLayoutSchema, (request, _params, { service }) =>
+  service.mode === "live" ? homeLayoutLiveHandlers().get() : { data: redesignMock.homeLayout() });
+export const putHomeLayout = redesignContractRoute("home-layout", homeLayoutSchema, async (request, _params, { service }) => {
+  if (service.mode === "live") return homeLayoutLiveHandlers().put(request);
   const body = await readBody(request, homeLayoutUpdateInputSchema);
   if (body.ok === false) return body.reply;
   const result = redesignMock.putHomeLayout(body.value);
-  return result.conflict === true
-    ? { error: new AppError("CONFLICT", "The layout was changed on another device."), context: { currentRevision: String(result.current.revision) } }
+  if ("reused" in result) return { error: new AppError("CONFLICT", "The mutation ID was used for another layout."), context: { reason: "MUTATION_REUSED" } };
+  return "current" in result
+    ? { error: new AppError("CONFLICT", "The layout was changed on another device."), context: { currentRevision: String(result.current.revision), currentLayout: JSON.stringify(result.current), reason: "REVISION_CONFLICT" } }
     : { data: result.layout };
 });
 

@@ -32,8 +32,8 @@ const at = (time: string) => `${DEMO_TODAY}T${time}+09:00`;
 // 1 home layout — the defaults with a revision.
 export const demoHomeLayout: HomeLayoutContract = {
   revision: 3,
-  app: [{ key: "today", size: "m" }, { key: "planScore", size: "s" }, { key: "nextEvent", size: "s" }, { key: "secretary", size: "m" }, { key: "network", size: "s" }, { key: "memo", size: "s" }],
-  web: [{ key: "today", size: "m" }, { key: "planScore", size: "s" }, { key: "network", size: "s" }, { key: "secretary", size: "m" }, { key: "week", size: "m" }, { key: "nextEvent", size: "s" }, { key: "eventPick", size: "s" }],
+  app: [{ key: "today", size: "m" }, { key: "planScore", size: "s" }, { key: "nextEvent", size: "s" }, { key: "network", size: "s" }, { key: "secretary", size: "m" }],
+  web: [{ key: "today", size: "m" }, { key: "planScore", size: "s" }, { key: "nextEvent", size: "s" }, { key: "network", size: "s" }, { key: "secretary", size: "m" }],
 };
 
 // 2 contacts — list rows with density / source chip (the shape R11 fills), and the summary extras.

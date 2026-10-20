@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { redesignMock } from "../../features/redesign-contracts/mock-service";
+import { resolveRedesignContract } from "../../features/redesign-contracts/service-factory";
 import { redesignContractRoute } from "../../features/redesign-contracts/route";
 import { isNotImplemented } from "../../shared/compute/not-implemented";
 import { DEFAULT_HOME_LAYOUT, homeLayoutSchema } from "../../shared/api-schema/home-layout";
@@ -94,7 +95,7 @@ test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no 
     // R27：興味なし（契约 9）已有 live 实现（features/events/journey，测试见 tests/events/r27-journey-routes.test.ts）。
     // R20a の todo/page・calendar/external-events と R18b の app/version は live。
     // R18c rights capability is live, but without a configured runtime these routes still fail closed at 503.
-    for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events" && entry.file !== "app/version")) {
+    for (const item of CASES.filter((entry) => entry.file !== "home/layout" && !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events" && entry.file !== "app/version")) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);
@@ -119,6 +120,11 @@ test("PUT home layout: a stale revision is a 409; a fresh one bumps the revision
     const replay = await put(3, "m-1");
     assert.equal(replay.status, 200, "a retry after a timeout is not a conflict");
     assert.equal(homeLayoutSchema.parse((await replay.json()).data).revision, 4);
+    const reused = await call({ file: "home/layout", method: "PUT", body: {
+      expectedRevision: 3, mutationId: "m-1", app: [], web: DEFAULT_HOME_LAYOUT.web,
+    } });
+    assert.equal(reused.status, 409);
+    assert.equal((await reused.json()).error.context.reason, "MUTATION_REUSED");
     const stale = await put(3, "m-2");
     assert.equal(stale.status, 409);
     assert.equal((await stale.json()).error.context.currentRevision, "4");
@@ -168,7 +174,7 @@ test("ORBIT_REDESIGN_MOCK turns the demo world on per contract outside productio
       assert.equal((await call({ file: "home/layout", method: "GET" })).status, 200);
       assert.equal((await call({ file: "account/exports", method: "GET" })).status, 503, "contracts not listed stay live");
       (process.env as Record<string, string>).NODE_ENV = "production";
-      assert.equal((await call({ file: "home/layout", method: "GET" })).status, 503, "production ignores the switch");
+      assert.equal(resolveRedesignContract("home-layout", "live").success, true, "production resolves the live provider");
     });
   } finally {
     if (previous.mock === undefined) delete process.env.ORBIT_REDESIGN_MOCK; else process.env.ORBIT_REDESIGN_MOCK = previous.mock;

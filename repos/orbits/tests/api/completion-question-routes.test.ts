@@ -38,11 +38,11 @@ async function routeFile(file: string, method: string): Promise<Handler> {
 const json = (body: unknown, headers: Record<string, string> = {}) => ({ body: JSON.stringify(body), headers: { "content-type": "application/json", ...headers }, method: "POST" });
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 
-test("service factory: contact-completion resolves live; the other R08 contracts still answer NOT_IMPLEMENTED in live", () => {
+test("service factory: contact-completion and home-layout resolve live", () => {
   const live = resolveRedesignContract("contact-completion", "live");
   assert.equal(live.success, true);
   assert.equal(live.success && live.service.mode, "live");
-  assert.equal(resolveRedesignContract("home-layout", "live").success, false);
+  assert.equal(resolveRedesignContract("home-layout", "live").success, true);
   const mock = resolveRedesignContract("contact-completion", "mock");
   assert.equal(mock.success && mock.service.mode, "mock");
 });

@@ -48,7 +48,7 @@ function completionOptions(question: ContactCompletionQuestion): CompletionOptio
   }));
 }
 
-type LayoutResult = { conflict: true; current: HomeLayoutContract } | { conflict: false; layout: HomeLayoutContract };
+type LayoutResult = { conflict: true; current: HomeLayoutContract } | { conflict: false; layout: HomeLayoutContract } | { reused: true };
 
 // ── R15 招待コード（DESIGN §4.2 mock）。演示世界里只有一个人（演示账号）：发码的是我，兑换的也是我
 // （兑换的是别人发给我的码，fixtures 的 demoInviteFromPeer / demoInviteAlreadyConnected）。时钟固定在演示世界的
@@ -133,7 +133,7 @@ function freshInviteState() {
 function freshState() {
   return {
     layout: demoHomeLayout as HomeLayoutContract,
-    layoutMutations: new Map<string, LayoutResult>(),
+    layoutMutations: new Map<string, { fingerprint: string; result: LayoutResult }>(),
     invite: freshInviteState(),
     // R26: plus the failure-state fixtures (login required / not an event page / poster 1 of 3 / filled-in range).
     assessments: new Map<string, EventAssessmentContract>([demoEventAssessment, demoEventAssessmentLoginRequired, demoEventAssessmentNotEventPage, demoEventAssessmentNeedsInput, demoEventAssessmentRange].map((item) => [item.id, item])),
@@ -196,13 +196,14 @@ export const redesignMock = {
   homeLayout: () => state.layout,
   /** 409 when the expected revision is stale; the same mutationId again returns the first result. */
   putHomeLayout(input: HomeLayoutUpdateInput): LayoutResult {
+    const fingerprint = JSON.stringify(input);
     const replay = state.layoutMutations.get(input.mutationId);
-    if (replay) return replay;
+    if (replay) return replay.fingerprint === fingerprint ? replay.result : { reused: true };
     const result: LayoutResult = input.expectedRevision !== state.layout.revision
       ? { conflict: true, current: state.layout }
       : { conflict: false, layout: { revision: state.layout.revision + 1, app: input.app, web: input.web, ...(input.hintDismissedAt ? { hintDismissedAt: input.hintDismissedAt } : {}) } };
-    if (result.conflict === false) state.layout = result.layout;
-    state.layoutMutations.set(input.mutationId, result);
+    if ("layout" in result) state.layout = result.layout;
+    state.layoutMutations.set(input.mutationId, { fingerprint, result });
     return result;
   },
   /** 今天的题：答过 / 跳过任何一题后当天 null（与 live 一天一题同口径）。 */
