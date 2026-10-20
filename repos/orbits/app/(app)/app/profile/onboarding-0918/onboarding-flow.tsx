@@ -10,6 +10,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 
 import type { ProfilePayload } from "../../../../../features/profile/contract";
+import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
+import { PROFILE_ONBOARDING_GOALS, composeProfileOnboardingGoal, parseProfileOnboardingGoal } from "../../../../../shared/compute/profile-onboarding-goal";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import {
   INDUSTRY_CATALOG,
@@ -24,8 +26,10 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { visibleCharacterCount } from "../profile-save-model";
 import {
   fetchProfile,
+  fetchOnboardingProgress,
   generateIntroDraft,
   saveProfileFields,
+  updateOnboardingProgress,
   fetchSeekSuggestions,
   scanOwnBusinessCard,
   type ProfileFields,
@@ -45,9 +49,7 @@ import {
   TOPIC_OPTIONS,
   addCustomValue,
   clearOnboardingDraft,
-  composeRelationshipGoal,
   optionMatches,
-  parseRelationshipGoal,
   readOnboardingDraft,
   seekOptionsFromLabels,
   toggleValue,
@@ -56,7 +58,6 @@ import {
   type OnboardingStep,
   type OnboardingView,
 } from "./onboarding-model";
-import { GoalEditor, GoalReminder } from "../goal-editor/goal-editor";
 import { horizonOption, type GoalHorizon } from "../goal-editor/goal-editor-model";
 import { OnboardingHomePreview, OnboardingNetworkPreview, type PreviewProgress } from "./onboarding-previews";
 import { ONBOARDING_STYLES } from "./onboarding-styles";
@@ -135,6 +136,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [complete, setComplete] = useState(false);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [goalText, setGoalText] = useState("");
+  const [goalChoices, setGoalChoices] = useState<string[]>([]);
   const [horizon, setHorizon] = useState<GoalHorizon | "">("");
   const [savedGoal, setSavedGoal] = useState("");
   const [offer, setOffer] = useState<string[]>([]);
@@ -153,6 +155,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
   const [saving, setSaving] = useState(false);
+  const progressRef = useRef<ProfileOnboardingProgressContract | null>(null);
+  const initMutationRef = useRef<string | null>(null);
+  const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
+  const pendingFieldsRef = useRef<string | null>(null);
+  const finishMutationRef = useRef<string | null>(null);
+  const introActionKeyRef = useRef<string | null>(null);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [toast, setToast] = useState("");
@@ -163,8 +171,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const isStep = stepIndex >= 0;
   const name = basic.name.trim();
   const initial = name ? Array.from(name)[0]!.toUpperCase() : t({ zh: "你", en: "Y" });
-  // 未选期限时默认 3 个月内（与旧版默认「本季度」同档）。
-  const effectiveHorizon: GoalHorizon = horizon || "quarter";
+  const effectiveHorizon = horizon;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -182,8 +189,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     let active = true;
     void (async () => {
       try {
-        const payload = await fetchProfile();
+        const [payload, flow] = await Promise.all([fetchProfile(), fetchOnboardingProgress()]);
         if (!active) return;
+        progressRef.current = flow;
         const profile = payload.profile;
         setBasic(basicFromPayload(payload));
         setExpectedUpdatedAt(profile?.updatedAt ?? null);
@@ -198,17 +206,19 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         const draft = readOnboardingDraft(actorKey);
         if (draft) {
           setGoalText(draft.goalText);
+          setGoalChoices(draft.goalChoices ?? []);
           setHorizon(draft.horizon);
           setIntroRegenerations(draft.introRegenerations);
           setCardBatchId(draft.cardBatchId);
-          setView(draft.view);
+          if (!flow) setView(draft.view);
         }
-        if (!draft?.goalText.trim() && profile?.relationshipGoal?.trim()) {
-          // 本地草稿没了或没有目标（换设备/清缓存）：从已保存的目标文本还原正文与期限（旧格式的方向前缀并入正文）。
-          const restored = parseRelationshipGoal(profile.relationshipGoal);
-          setGoalText(restored.text);
-          setHorizon(restored.horizon);
+        if ((flow?.lastConfirmedScreen ?? 0) >= 2 || !draft?.goalText.trim()) {
+          const restored = parseProfileOnboardingGoal(profile?.relationshipGoal ?? "");
+          setGoalText(restored.focus);
+          setGoalChoices(restored.choices);
         }
+        if (flow?.currentScreen) setView(ONBOARDING_STEPS[flow.currentScreen - 1]!);
+        if (flow?.finishedAt) window.location.assign(next);
         setLoaded(true);
       } catch {
         if (!active) return;
@@ -224,8 +234,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { cardBatchId, goalText, horizon, introRegenerations, view });
-  }, [actorKey, cardBatchId, goalText, horizon, introRegenerations, loaded, view]);
+    writeOnboardingDraft(actorKey, { cardBatchId, goalText, goalChoices, horizon, introRegenerations, view });
+  }, [actorKey, cardBatchId, goalText, goalChoices, horizon, introRegenerations, loaded, view]);
 
   function flash(text: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -252,9 +262,25 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     window.location.assign(href);
   }
 
-  function finish() {
-    clearOnboardingDraft(actorKey);
-    window.location.assign(next);
+  async function finish() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await ensureProgress();
+      if ((progressRef.current?.lastConfirmedScreen ?? 0) < 5) await confirmScreen(5);
+      const flow = progressRef.current!;
+      if (!flow.finishedAt) {
+        finishMutationRef.current ??= crypto.randomUUID();
+        progressRef.current = await updateOnboardingProgress({ action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
+      }
+      clearOnboardingDraft(actorKey);
+      window.location.assign(next);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not finish onboarding. Please retry.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const progress: PreviewProgress = {
@@ -267,18 +293,57 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // ── 校验 ──
   const industryValid = Boolean(basic.primaryIndustryId && basic.secondaryIndustryId)
     && validateIndustrySelection({ primaryIndustryId: basic.primaryIndustryId, secondaryIndustryId: basic.secondaryIndustryId }).valid;
-  const birthValid = isValidProfileBirthDate(basic.birthDate, todayIso);
+  const birthValid = !basic.birthDate || isValidProfileBirthDate(basic.birthDate, todayIso);
   const profileValid = Boolean(name) && industryValid && birthValid;
   const bioCount = bioCounter(bio);
   const introValid = !bioCount.over && visibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
 
-  async function save(fields: ProfileFields): Promise<boolean> {
+  async function ensureProgress(): Promise<ProfileOnboardingProgressContract> {
+    if (progressRef.current) return progressRef.current;
+    initMutationRef.current ??= crypto.randomUUID();
+    const flow = await updateOnboardingProgress({ action: "initialize", expectedRevision: null, mutationId: initMutationRef.current });
+    progressRef.current = flow;
+    return flow;
+  }
+
+  async function confirmScreen(screen: 1 | 2 | 3 | 4 | 5): Promise<void> {
+    const flow = await ensureProgress();
+    if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; pendingFieldsRef.current = null; return; }
+    if (!pendingConfirmRef.current || pendingConfirmRef.current.action !== "confirm" || pendingConfirmRef.current.screen !== screen) {
+      pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: crypto.randomUUID() };
+    }
+    try {
+      progressRef.current = await updateOnboardingProgress(pendingConfirmRef.current);
+      pendingConfirmRef.current = null;
+      pendingFieldsRef.current = null;
+    } catch (error) {
+      const latest = await fetchOnboardingProgress().catch(() => null);
+      if (latest && latest.lastConfirmedScreen >= screen) {
+        progressRef.current = latest;
+        pendingConfirmRef.current = null;
+        pendingFieldsRef.current = null;
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async function save(screen: 1 | 2 | 3 | 4, fields: ProfileFields): Promise<boolean> {
     setSaving(true);
     setError("");
     try {
-      const payload = await saveProfileFields(fields, expectedUpdatedAt);
-      setExpectedUpdatedAt(payload.profile?.updatedAt ?? null);
-      setComplete(payload.onboarding?.status === "complete");
+      await ensureProgress(); // Must persist the flow before the first profile PUT.
+      const fingerprint = JSON.stringify(fields);
+      const pendingScreen = pendingConfirmRef.current?.action === "confirm" ? pendingConfirmRef.current.screen : null;
+      if (pendingScreen && (pendingScreen !== screen || pendingFieldsRef.current !== fingerprint)) await confirmScreen(pendingScreen);
+      const samePending = pendingConfirmRef.current?.action === "confirm" && pendingConfirmRef.current.screen === screen && pendingFieldsRef.current === fingerprint;
+      if (!samePending) {
+        const payload = await saveProfileFields(fields, expectedUpdatedAt);
+        setExpectedUpdatedAt(payload.profile?.updatedAt ?? null);
+        setComplete(payload.onboarding?.status === "complete");
+        pendingFieldsRef.current = fingerprint;
+      }
+      await confirmScreen(screen);
       return true;
     } catch (caught) {
       setError(caught instanceof Error && caught.message
@@ -294,8 +359,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     if (saving) return;
     if (view === "profile") {
       if (!profileValid) return;
-      const ok = await save({
-        birthDate: basic.birthDate,
+      const ok = await save(1, {
+        birthDate: basic.birthDate || null,
         displayName: name,
         organization: basic.company.trim(),
         primaryIndustryId: basic.primaryIndustryId as IndustryIdCode,
@@ -306,9 +371,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       return;
     }
     if (view === "goals") {
-      if (!goalText.trim()) return;
-      const relationshipGoal = composeRelationshipGoal({ horizon: effectiveHorizon, text: goalText }, lang);
-      const ok = await save({ relationshipGoal });
+      if (!goalText.trim() && !goalChoices.length) return;
+      const relationshipGoal = composeProfileOnboardingGoal(goalChoices, goalText, lang);
+      const ok = await save(2, { relationshipGoal });
       if (ok) {
         setSavedGoal(relationshipGoal);
         go("persona");
@@ -316,13 +381,13 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       return;
     }
     if (view === "persona") {
-      const ok = await save({ offering: offer, seeking: seek, topics });
+      const ok = await save(3, { offering: offer, seeking: seek, topics });
       if (ok) go("intro");
       return;
     }
     if (view === "intro") {
       if (!introValid || introStatus === "generating") return;
-      const ok = await save({ bio: bio.trim(), headline: headline.trim() });
+      const ok = await save(4, { bio: bio.trim(), headline: headline.trim() });
       if (ok) {
         setSavedIntro(Boolean(bio.trim() || headline.trim()));
         go("import");
@@ -344,12 +409,16 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setIntroStatus("generating");
     setIntroError("");
     try {
-      const draft = await generateIntroDraft(lang);
+      if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) introActionKeyRef.current = crypto.randomUUID();
+      introActionKeyRef.current ??= `web:onboarding:intro:first:${actorKey}:${expectedUpdatedAt ?? "new"}`;
+      const draft = await generateIntroDraft(lang, introActionKeyRef.current);
+      introActionKeyRef.current = null;
       setHeadline(draft.headline);
       setBio(draft.bio);
       setIntroStatus("ready");
       if (kind === "regenerate") setIntroRegenerations(count => count + 1);
     } catch (caught) {
+      if (caught instanceof Error && "code" in caught && caught.code) introActionKeyRef.current = null;
       const message = caught instanceof Error && caught.message ? caught.message : "";
       if (kind === "regenerate" && (previous.bio.trim() || previous.headline.trim())) {
         // 换一版失败：保留上一版，不扣次数。
@@ -407,7 +476,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   const nextDisabled = saving || !loaded
     || (view === "profile" && !profileValid)
-    || (view === "goals" && !goalText.trim())
+    || (view === "goals" && !goalText.trim() && !goalChoices.length)
     || (view === "intro" && (!introValid || introStatus === "generating"));
 
   const nextLabel = saving ? t({ zh: "保存中…", en: "Saving…" }) : t({ zh: "继续", en: "Continue" });
@@ -472,9 +541,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 ) : null}
                 {view === "goals" ? (
                   <GoalsStep
-                    horizon={effectiveHorizon}
+                    goals={goalChoices}
+                    setGoals={setGoalChoices}
                     setGoalText={setGoalText}
-                    setHorizon={setHorizon}
                     t={t}
                     text={goalText}
                   />
@@ -522,7 +591,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                             ? t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })
                             : t({ zh: "可以先完成设置，上传和解析会在后台继续，完成后提醒你", en: "Go ahead — upload and reading continue in the background; we'll let you know" })}</span>
                         ) : null}
-                        <button className="btn ob-btn-dark" onClick={finish} type="button">
+                        <button className="btn ob-btn-dark" disabled={saving} onClick={() => void finish()} type="button">
                           {importedCount > 0 ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : cardBatchId ? t({ zh: "先完成设置", en: "Finish setup for now" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
                         </button>
                       </span>
@@ -792,21 +861,27 @@ function ChipGroup({
   );
 }
 
-function GoalsStep({
-  horizon, setGoalText, setHorizon, t, text,
-}: {
-  horizon: GoalHorizon;
+function GoalsStep({ goals, setGoals, setGoalText, t, text }: {
+  goals: string[];
+  setGoals: (value: string[]) => void;
   setGoalText: (value: string) => void;
-  setHorizon: (value: GoalHorizon) => void;
   t: T;
   text: string;
 }) {
-  // D7：去掉 16 个方向 chip，与资料页「我的目标」用同一个编辑器（示例句填入 + 期限卡片）。
   return (
     <div className="ob-stack" data-screen-label="03 目标">
-      <StepHead title={t({ zh: "你最近想推进什么？", en: "What do you want to move forward?" })} sub={t({ zh: "没有联系人时，目标就是 iOrbit 最重要的线索——它决定推荐哪些活动、哪些人。", en: "With no contacts yet, your goal is iOrbit's most important lead — it decides which events and people to recommend." })} />
-      <GoalReminder />
-      <GoalEditor horizon={horizon} onHorizonChange={setHorizon} onTextChange={setGoalText} text={text} />
+      <StepHead title={t({ zh: "最想达成什么？", en: "What matters most now?" })} sub={t({ zh: "最多选 2 项，按选择顺序优先。", en: "Choose up to two, in priority order." })} />
+      <div className="ob-group"><span className="ob-label">{t({ zh: "当前目标", en: "Current goals" })} <span className="ob-label-note">{goals.length} / 2</span></span>
+        <div className="ob-chips">{PROFILE_ONBOARDING_GOALS.map((option) => {
+          const selected = goals.find((value) => value === option.zh || value === option.en || value === option.ja);
+          return <button aria-pressed={Boolean(selected)} className={`btn ob-chip${selected ? " ob-chip-on" : ""}`} disabled={!selected && goals.length >= 2} key={option.id}
+            onClick={() => setGoals(selected ? goals.filter((value) => value !== selected) : [...goals, t(option)])} type="button">{selected ? `${goals.indexOf(selected) + 1}. ` : ""}{t(option)}</button>;
+        })}</div>
+      </div>
+      <label className="ob-field"><span className="ob-field-label">{t({ zh: "用一句话补充（可选）", en: "Add one sentence (optional)" })}</span>
+        <textarea className="ob-input" maxLength={80} onChange={(event) => setGoalText(event.target.value)} rows={3} value={text} />
+      </label>
+      <p className="ob-label-note">{t({ zh: "不默认设置期限。", en: "No deadline is set automatically." })}</p>
     </div>
   );
 }
@@ -946,7 +1021,7 @@ function UnderstandingAside({
   basic: BasicDraft;
   goalText: string;
   headline: string;
-  horizon: GoalHorizon;
+  horizon: GoalHorizon | "";
   initial: string;
   language: "zh" | "en" | "ja";
   offer: string[];
@@ -978,7 +1053,7 @@ function UnderstandingAside({
       </span>
       <span className="ob-aside-sec">
         <span className="ob-aside-label">{t({ zh: "当前目标", en: "Current goal" })}</span>
-        {goal ? <span className="ob-aside-val ob-aside-focus">“{goal}” · {t(horizonOption(horizon).label)}</span>
+        {goal ? <span className="ob-aside-val ob-aside-focus">“{goal}”{horizon ? ` · ${t(horizonOption(horizon).label)}` : ""}</span>
           : savedGoal.trim()
             ? <span className="ob-aside-val">{savedGoal.trim()}</span>
             : <span className="ob-aside-val ob-aside-empty">{t({ zh: "待填写", en: "Not set" })}</span>}

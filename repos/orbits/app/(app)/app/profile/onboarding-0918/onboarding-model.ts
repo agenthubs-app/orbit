@@ -9,7 +9,7 @@ import {
   parseRelationshipGoal,
   type GoalHorizon,
 } from "../goal-editor/goal-editor-model";
-import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../profile-0918/profile-model";
+import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../profile-tag-options";
 import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 
 export type Copy = { zh: string; en: string };
@@ -73,13 +73,14 @@ export function addCustomValue(values: readonly string[], raw: string, limit?: n
   return [...values, value];
 }
 
-// 「换一版」次数上限（自动生成的第一版与失败的尝试不计）。
-export const INTRO_REGENERATE_LIMIT = 3;
+// 最初の成功 1 回 + 再生成の成功 2 回。失敗は回数に含めない。
+export const INTRO_REGENERATE_LIMIT = 2;
 
 // ── 本地草稿：刷新/中途离开后回到同一步，目标正文与期限不丢；只在完成引导时清除 ──
 export interface OnboardingDraft {
   view: OnboardingView;
   goalText: string;
+  goalChoices?: string[];
   horizon: GoalHorizon | "";
   introRegenerations: number;
   /** 第 5 步名片批次（名片 V2）；刷新/返回后接着显示解析进度或确认界面。 */
@@ -109,6 +110,7 @@ export function readOnboardingDraft(actorKey: string): OnboardingDraft | null {
       view: isOnboardingView(parsed.view) ? parsed.view : "welcome",
       // 不截断：旧草稿（3 个 24 字 chip + 80 字一句话）可能超过 GOAL_TEXT_LIMIT；上限只约束新输入。
       goalText: goalTextFromDraft(parsed),
+      goalChoices: Array.isArray(parsed.goalChoices) ? parsed.goalChoices.filter((item): item is string => typeof item === "string").slice(0, 2) : [],
       horizon: typeof parsed.horizon === "string" ? horizonFromText(parsed.horizon) ?? "" : "",
       introRegenerations: typeof parsed.introRegenerations === "number" && parsed.introRegenerations >= 0
         ? Math.min(Math.floor(parsed.introRegenerations), INTRO_REGENERATE_LIMIT)

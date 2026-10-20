@@ -14,6 +14,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../api/domain/industries";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
 import type { ProfileDetail } from "../../../api/profile-detail-contract";
+import type { ProfileOnboardingProgressCommandContract } from "../../../api/contract/profile";
+import {
+  readProfileOnboardingProgress,
+  updateProfileOnboardingProgress,
+  type AppProfileOnboardingProgress,
+} from "../../../api/profile-onboarding-progress";
 import {
   generateOnboardingIntro,
   readOnboardingImportSummary,
@@ -34,7 +40,6 @@ import {
   GOAL_GROUPS,
   GOAL_LIMIT,
   HEADLINE_LIMIT,
-  HORIZONS,
   INTRO_REGENERATE_LIMIT,
   OFFER_LIMIT,
   OFFER_OPTIONS,
@@ -52,7 +57,6 @@ import {
   isKnownOption,
   isValidProfileBirthDate,
   onboardingDestination,
-  onboardingEntry,
   optionLabel,
   optionMatches,
   parseRelationshipGoal,
@@ -109,22 +113,30 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const [notice, setNotice] = useState<Notice>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const flowRef = useRef<AppProfileOnboardingProgress | null>(null);
+  const initMutationRef = useRef<string | null>(null);
+  const flowFailureRef = useRef<"offline" | "failed">("failed");
+  const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
+  const pendingFieldsRef = useRef<string | null>(null);
+  const finishMutationRef = useRef<string | null>(null);
+  const introActionKeyRef = useRef<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [importSince, setImportSince] = useState<number | null>(null);
   const [importSummary, setImportSummary] = useState<OnboardingImportSummary | null>(null);
   const [importReadFailed, setImportReadFailed] = useState(false);
   const today = localToday();
-  const effectiveHorizon = horizon || optionLabel(HORIZONS[1]!, locale.language);
 
   const routerRef = useRef(router); routerRef.current = router;
   const destinationRef = useRef(destination); destinationRef.current = destination;
   const load = useCallback(async () => {
     setView("loading");
-    const result = await readOnboardingProfile(client);
+    const [result, progress] = await Promise.all([readOnboardingProfile(client), readProfileOnboardingProgress(client)]);
     if (!mounted.current) return;
-    if (!result.ok) { setView("loadError"); return; }
-    const entry = onboardingEntry(result.detail);
-    if (entry.kind === "done") { routerRef.current.replace(destinationRef.current as Href); return; }
+    if (!result.ok || !progress.ok) { setView("loadError"); return; }
+    flowRef.current = progress.progress;
+    if (progress.progress?.finishedAt || (!progress.progress && result.detail.onboarding?.status === "complete")) {
+      routerRef.current.replace(destinationRef.current as Href); return;
+    }
     const profile = result.detail.profile;
     setDetail(result.detail);
     setBasic(basicDraftFromProfile(profile));
@@ -132,8 +144,10 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     setGoals([...restored.goals]); setFocus(restored.focus); setHorizon(restored.horizon);
     setOffer([...(profile?.offering ?? [])]); setSeek([...(profile?.seeking ?? [])]); setTopics([...(profile?.topics ?? [])]);
     setBio(profile?.bio ?? ""); setHeadline(profile?.headline ?? "");
-    if (entry.kind === "resume") { setResume({ completed: entry.completed, step: entry.step }); setView("resume"); }
-    else setView("welcome");
+    if (progress.progress?.currentScreen) {
+      const step = ONBOARDING_STEPS[progress.progress.currentScreen - 1]!;
+      setResume({ completed: progress.progress.lastConfirmedScreen, step }); setView("resume");
+    } else setView("welcome");
   }, [client]);
 
   // Read once per mount (and per signed-in client); later edits stay local until 「继续」.
@@ -143,16 +157,93 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     setNotice(null); setMessage(null); setView(target);
     if (target === "import" && importSince === null) setImportSince(Date.now() - 5000);
   }
-  function leave() { router.replace(destination as Href); }
+  async function ensureFlow(): Promise<AppProfileOnboardingProgress | null> {
+    if (flowRef.current) return flowRef.current;
+    initMutationRef.current ??= `ios:onboarding:init:${Crypto.randomUUID()}`;
+    const result = await updateProfileOnboardingProgress(client, { action: "initialize", expectedRevision: null, mutationId: initMutationRef.current });
+    if (!result.ok || !result.progress) {
+      flowFailureRef.current = result.ok ? "failed" : result.kind;
+      return null;
+    }
+    flowRef.current = result.progress;
+    return result.progress;
+  }
+
+  async function confirmScreen(screen: 1 | 2 | 3 | 4 | 5): Promise<boolean> {
+    const flow = await ensureFlow();
+    if (!flow) return false;
+    if (flow.lastConfirmedScreen >= screen) { pendingConfirmRef.current = null; pendingFieldsRef.current = null; return true; }
+    if (!pendingConfirmRef.current || pendingConfirmRef.current.action !== "confirm" || pendingConfirmRef.current.screen !== screen) {
+      pendingConfirmRef.current = { action: "confirm", screen, expectedRevision: flow.revision, mutationId: `ios:onboarding:screen:${Crypto.randomUUID()}` };
+    }
+    const result = await updateProfileOnboardingProgress(client, pendingConfirmRef.current);
+    if (!result.ok || !result.progress) {
+      flowFailureRef.current = result.ok ? "failed" : result.kind;
+      const latest = await readProfileOnboardingProgress(client);
+      if (latest.ok && latest.progress && latest.progress.lastConfirmedScreen >= screen) {
+        flowRef.current = latest.progress;
+        pendingConfirmRef.current = null;
+        pendingFieldsRef.current = null;
+        return true;
+      }
+      return false;
+    }
+    flowRef.current = result.progress;
+    pendingConfirmRef.current = null;
+    pendingFieldsRef.current = null;
+    return true;
+  }
+
+  async function leave() {
+    if (saving) return;
+    setSaving(true);
+    const flow = await ensureFlow();
+    const result = flow && await updateProfileOnboardingProgress(client, {
+      action: "defer", expectedRevision: flow.revision, mutationId: `ios:onboarding:defer:${Crypto.randomUUID()}`,
+    });
+    if (result && result.ok && result.progress) {
+      flowRef.current = result.progress;
+      router.replace(destination as Href);
+    } else setNotice({ kind: "failed" });
+    if (mounted.current) setSaving(false);
+  }
+
+  async function finish() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (!await confirmScreen(5)) { setNotice({ kind: "failed" }); return; }
+      const flow = flowRef.current!;
+      finishMutationRef.current ??= `ios:onboarding:finish:${Crypto.randomUUID()}`;
+      const result = await updateProfileOnboardingProgress(client, { action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
+      if (!result.ok || !result.progress) { setNotice({ kind: "failed" }); return; }
+      flowRef.current = result.progress;
+      router.replace(destination as Href);
+    } finally {
+      if (mounted.current) setSaving(false);
+    }
+  }
 
   async function save(fields: OnboardingProfileFields, then: OnboardingStep | "finish"): Promise<void> {
     if (!detail || saving) return;
     setSaving(true); setNotice(null); setMessage(null);
     try {
-      const result = await saveOnboardingFields(client, fields, detail, () => `ios:onboarding:${Crypto.randomUUID()}`);
+      if (!await ensureFlow()) { setNotice({ kind: flowFailureRef.current }); return; }
+      const screen = ONBOARDING_STEPS.indexOf(view as OnboardingStep) + 1 as 1 | 2 | 3 | 4;
+      const fingerprint = JSON.stringify(fields);
+      const pendingScreen = pendingConfirmRef.current?.action === "confirm" ? pendingConfirmRef.current.screen : null;
+      if (pendingScreen && (pendingScreen !== screen || pendingFieldsRef.current !== fingerprint)) {
+        if (!await confirmScreen(pendingScreen)) { setNotice({ kind: flowFailureRef.current }); return; }
+      }
+      const samePending = pendingConfirmRef.current?.action === "confirm" && pendingConfirmRef.current.screen === screen && pendingFieldsRef.current === fingerprint;
+      const result = samePending
+        ? { ok: true as const, detail }
+        : await saveOnboardingFields(client, fields, detail, () => `ios:onboarding:${Crypto.randomUUID()}`);
       if (!mounted.current) return;
       if (!result.ok) { setNotice({ kind: result.kind }); return; }
       setDetail(result.detail);
+      if (!samePending) pendingFieldsRef.current = fingerprint;
+      if (!await confirmScreen(screen)) { setNotice({ kind: flowFailureRef.current }); return; }
       if (then === "finish") leave(); else go(then);
     } catch {
       if (mounted.current) setNotice({ kind: "failed" });
@@ -168,12 +259,12 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   function onContinue() {
     if (view === "profile" && profileValid) {
       void save({
-        birthDate: basic.birthDate, displayName: basic.name.trim(), organization: basic.company.trim(),
+        birthDate: basic.birthDate || null, displayName: basic.name.trim(), organization: basic.company.trim(),
         primaryIndustryId: basic.primaryIndustryId as IndustryIdCode, role: basic.title.trim(),
         secondaryIndustryId: basic.secondaryIndustryId as SecondaryIndustryIdCode
       }, "goals");
     } else if (view === "goals" && goals.length) {
-      void save({ relationshipGoal: composeRelationshipGoal({ goals, focus, horizon: effectiveHorizon }, locale.language) }, "persona");
+      void save({ relationshipGoal: composeRelationshipGoal({ goals, focus, horizon }, locale.language) }, "persona");
     } else if (view === "persona") {
       void save({ offering: offer, seeking: seek, topics }, "intro");
     } else if (view === "intro" && introValid && introStatus !== "generating") {
@@ -191,15 +282,22 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     generating.current = true;
     setIntroStatus("generating"); setMessage(null);
     try {
-      const result = await generateOnboardingIntro(client, introDraftLanguage(locale.language));
+      if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) {
+        introActionKeyRef.current = `ios:onboarding:intro:${Crypto.randomUUID()}`;
+      }
+      introActionKeyRef.current ??= `ios:onboarding:intro:first:${detail?.profile?.updatedAt ?? "new"}`;
+      const result = await generateOnboardingIntro(client, introDraftLanguage(locale.language), introActionKeyRef.current);
       if (!mounted.current) return;
       if (result.ok) {
+        introActionKeyRef.current = null;
         setBio(result.bio); setHeadline(result.headline); setIntroStatus("ready");
         if (kind === "regenerate") setRegenerations(count => count + 1);
       } else if (kind === "regenerate" && hadDraft) {
+        if (result.kind !== "offline") introActionKeyRef.current = null;
         setIntroStatus(previousStatus === "error" ? "ready" : previousStatus);
         setMessage(t("onboarding.regenerateFailed"));
       } else {
+        if (result.kind !== "offline") introActionKeyRef.current = null;
         setIntroStatus("error");
       }
     } finally {
@@ -268,7 +366,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
       <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
         <View style={styles.center}>
           <Banner actionLabel={t("onboarding.retry")} kind="failed" message={t("onboarding.loadFailed")} onAction={() => void load()} />
-          <SecondaryButton grow={false} label={t("onboarding.later")} onPress={leave} />
+          <SecondaryButton grow={false} label={t("onboarding.later")} onPress={() => void load()} />
         </View>
       </SafeAreaView>
     );
@@ -297,7 +395,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
               <View style={styles.spacer} />
               <View style={styles.actions}>
                 <PrimaryButton label={t("onboarding.start")} onPress={() => go("profile")} />
-                <Pressable accessibilityLabel={t("onboarding.browse")} accessibilityRole="button" onPress={leave} style={styles.textButton}>
+                <Pressable accessibilityLabel={t("onboarding.browse")} accessibilityRole="button" onPress={() => void leave()} style={styles.textButton}>
                   <Text style={styles.textButtonText}>{t("onboarding.browse")}</Text>
                 </Pressable>
               </View>
@@ -310,7 +408,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
               </View>
               <View style={styles.resumeActions}>
                 <View style={{ flex: 1 }}><PrimaryButton label={t("onboarding.continue")} onPress={() => go(resume.step)} /></View>
-                <SecondaryButton grow={false} label={t("onboarding.later")} onPress={leave} />
+                <SecondaryButton grow={false} label={t("onboarding.later")} onPress={() => void leave()} />
               </View>
             </View>
           ) : null}
@@ -333,7 +431,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     <>
       {banner}
       <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push("/contacts/new/scan" as Href)} />
-      <PrimaryButton label={t("onboarding.finish")} onPress={leave} />
+      <PrimaryButton label={t("onboarding.finish")} onPress={() => void finish()} />
     </>
   ) : (
     <>
@@ -345,7 +443,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   return (
     <StepFrame backLabel={t(index === 0 ? "onboarding.backWelcome" : "onboarding.back")} footer={footer} index={index} onBack={back} total={ONBOARDING_STEPS.length}>
       {view === "profile" ? <ProfileStep basic={basic} disabled={saving} message={message} onScan={startScan} scanning={scanning} setBasic={setBasic} today={today} /> : null}
-      {view === "goals" ? <GoalsStep focus={focus} goals={goals} horizon={effectiveHorizon} setFocus={setFocus} setGoals={setGoals} setHorizon={setHorizon} /> : null}
+      {view === "goals" ? <GoalsStep focus={focus} goals={goals} setFocus={setFocus} setGoals={setGoals} /> : null}
       {view === "persona" ? <PersonaStep offer={offer} seek={seek} setOffer={setOffer} setSeek={setSeek} setTopics={setTopics} topics={topics} /> : null}
       {view === "intro" ? (
         <IntroStep bio={bio} bioCount={bioCount} headline={headline} message={message} onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")}
@@ -469,13 +567,11 @@ function ChipSet({ limit, options, setValues, values }: { limit?: number; option
   );
 }
 
-function GoalsStep({ focus, goals, horizon, setFocus, setGoals, setHorizon }: {
+function GoalsStep({ focus, goals, setFocus, setGoals }: {
   focus: string;
   goals: string[];
-  horizon: string;
   setFocus: (value: string) => void;
   setGoals: (update: (current: string[]) => string[]) => void;
-  setHorizon: (value: string) => void;
 }) {
   const { colors, styles } = useOnboardingStyles();
   const locale = useOrbitLocale();
@@ -505,12 +601,6 @@ function GoalsStep({ focus, goals, horizon, setFocus, setGoals, setHorizon }: {
       <View style={styles.chips}>
         {custom.map(goal => <Chip key={goal} label={goal} onPress={() => setGoals(current => current.filter(item => item !== goal))} removable selected />)}
         <CustomChip disabled={full} onAdd={value => setGoals(current => addCustomValue(current, value, GOAL_LIMIT))} />
-      </View>
-      <View style={styles.horizonRow}>
-        <Text style={styles.groupName}>{t("onboarding.horizon")}</Text>
-        <View accessibilityRole="radiogroup" style={styles.horizonChips}>
-          {HORIZONS.map(option => <Chip key={option.zh} label={optionLabel(option, locale.language)} onPress={() => setHorizon(optionLabel(option, locale.language))} selected={optionMatches(option, horizon)} />)}
-        </View>
       </View>
       <Field label={t("onboarding.focus")} optional>
         <TextInput accessibilityLabel={t("onboarding.focus")} maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />

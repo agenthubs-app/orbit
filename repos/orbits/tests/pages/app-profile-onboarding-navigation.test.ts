@@ -104,6 +104,8 @@ type ProfileContinueOptions = {
   actor?: Record<string, unknown> | null;
   actorThrows?: boolean;
   profileService: { getProfile: (input: { actorId: string }) => unknown };
+  progress?: { finishedAt: string | null } | null;
+  progressThrows?: boolean;
   signedIn?: boolean;
 };
 
@@ -160,6 +162,15 @@ function loadProfileContinuePage(
         return options.profileService;
       },
     },
+    [join(projectRoot, "features/profile/onboarding-progress-factory.ts")]: {
+      resolveProfileOnboardingProgressService: (actorId: string) => {
+        calls.push({ operation: "progressService", input: actorId });
+        return { get: async () => {
+          if (options.progressThrows) throw new Error("test progress read failure");
+          return options.progress ?? null;
+        } };
+      },
+    },
   };
   const pagePath = join(projectRoot, "app/(app)/app/profile/continue/page.tsx");
   const ids = [...Object.keys(modules), pagePath, onboardingAccessPath].map((id) => testRequire.resolve(id));
@@ -204,7 +215,7 @@ function loadProfileContinuePage(
 
   const page = testRequire(pagePath).default as (input?: {
     searchParams?: Promise<{ next?: string | string[] }>;
-  }) => Promise<never>;
+  }) => Promise<unknown>;
   return { calls, page, redirected };
 }
 
@@ -322,7 +333,24 @@ test("continuation reads the live profile with the canonical actor and preserves
   }, "live");
 });
 
-test("continuation sends missing or failed membership back to profile onboarding", async (t) => {
+test("a complete profile with an unfinished flow resumes onboarding; progress read failure shows retry", async (t) => {
+  const { accountId, store } = profileMembershipFixture();
+  const service = createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId: profileFixtureWorkspace }) });
+  assert.equal((await service.updateProfile({ displayName: "Alice", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.enterprise_software" }, { actorId: accountId })).success, true);
+  await withProfileEnvironment(async () => {
+    const { page, calls, redirected } = loadProfileContinuePage(t, { profileService: service, progress: { finishedAt: null } });
+    await assert.rejects(page(), (error) => error === redirected);
+    assert.equal(calls.at(-1)?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
+  }, "live");
+  await withProfileEnvironment(async () => {
+    const { page, calls } = loadProfileContinuePage(t, { profileService: service, progressThrows: true });
+    const result = await page() as { props?: { role?: string } };
+    assert.equal(result.props?.role, "alert");
+    assert.ok(!calls.some((call) => call.operation === "redirect"));
+  }, "live");
+});
+
+test("continuation shows a retry state when membership is unavailable", async (t) => {
   await withProfileEnvironment(async () => {
     const { calls, page, redirected } = loadProfileContinuePage(t, {
       actor: null,
@@ -332,17 +360,17 @@ test("continuation sends missing or failed membership back to profile onboarding
         },
       },
     });
-    await assert.rejects(page(), (error) => error === redirected);
+    const result = await page() as { props?: { role?: string } };
+    assert.equal(result.props?.role, "alert");
     assert.deepEqual(calls.map((call) => call.operation), [
       "auth",
       "resolveActor",
-      "redirect",
     ]);
-    assert.equal(calls.at(-1)?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
+    assert.ok(!calls.some((call) => call.operation === "redirect"));
   }, "live");
 });
 
-test("continuation sends actor resolution errors back to profile onboarding", async (t) => {
+test("continuation shows a retry state after actor resolution errors", async (t) => {
   await withProfileEnvironment(async () => {
     const { calls, page, redirected } = loadProfileContinuePage(t, {
       actorThrows: true,
@@ -352,11 +380,11 @@ test("continuation sends actor resolution errors back to profile onboarding", as
         },
       },
     });
-    await assert.rejects(page(), (error) => error === redirected);
+    const result = await page() as { props?: { role?: string } };
+    assert.equal(result.props?.role, "alert");
     assert.deepEqual(calls.map((call) => call.operation), [
       "auth",
       "resolveActor",
-      "redirect",
     ]);
   }, "live");
 });
@@ -386,7 +414,7 @@ test("continuation keeps an incomplete real store profile on onboarding in produ
   }, undefined, "production");
 });
 
-test("continuation returns a failed real store to onboarding in production", async (t) => {
+test("continuation shows a retry state for a failed real profile read in production", async (t) => {
   const baseStore = createMemoryLiveRecordStore<Record<string, unknown>>();
   const failingStore = {
     ...baseStore,
@@ -405,12 +433,10 @@ test("continuation returns a failed real store to onboarding in production", asy
     const { calls, page, redirected } = loadProfileContinuePage(t, {
       profileService: service,
     });
-    await assert.rejects(page(), (error) => error === redirected);
+    const result = await page() as { props?: { role?: string } };
+    assert.equal(result.props?.role, "alert");
     assert.equal(calls.find((call) => call.operation === "createProfileService")?.input, "live");
-    assert.equal(
-      calls.find((call) => call.operation === "redirect")?.input,
-      "/app/profile/onboarding?next=%2Fapp%2Fhome",
-    );
+    assert.ok(!calls.some((call) => call.operation === "redirect"));
   }, undefined, "production");
 });
 
@@ -423,8 +449,8 @@ test("continuation does not construct a profile service when no feature mode is 
         },
       },
     });
-    await assert.rejects(page(), (error) => error === redirected);
-    assert.deepEqual(calls.map((call) => call.operation), ["auth", "redirect"]);
-    assert.equal(calls[1]?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
+    const result = await page() as { props?: { role?: string } };
+    assert.equal(result.props?.role, "alert");
+    assert.deepEqual(calls.map((call) => call.operation), ["auth"]);
   });
 });

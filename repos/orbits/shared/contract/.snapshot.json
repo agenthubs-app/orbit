@@ -9238,6 +9238,107 @@
         }
       }
     },
+    "guide.ts::GuideProgressSnapshotContract": {
+      "kind": "object",
+      "members": {
+        "completedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "confirmedContacts": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "currentStep": {
+          "optional": false,
+          "kind": "text",
+          "type": "1 | 2 | 3 | null"
+        },
+        "grandfathered": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "hasActivePlan": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "step1Skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "contactSamples": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "displayName": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "organization": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "role": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        }
+      }
+    },
+    "guide.ts::GuideProgressContract": {
+      "kind": "object",
+      "members": {
+        "snapshot": {
+          "optional": false,
+          "kind": "text",
+          "type": "GuideProgressSnapshotContract"
+        },
+        "relationshipGoal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "flags": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "contacts": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "goal": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            },
+            "plan": {
+              "optional": false,
+              "kind": "text",
+              "type": "boolean"
+            }
+          }
+        },
+        "completed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
     "home-layout.ts::HomeWidgetKey": {
       "kind": "enum",
       "values": [
@@ -13115,6 +13216,8 @@
         "GlobalSearchSemantic",
         "GlobalSearchSuggestion",
         "GlobalSearchType",
+        "GuideProgressContract",
+        "GuideProgressSnapshotContract",
         "HomeLayoutContract",
         "HomeLayoutUpdateInput",
         "HomeWidgetKey",
@@ -13478,6 +13581,8 @@
         "ProfileCompletenessFieldCode",
         "ProfileCompletenessStatusCode",
         "ProfileEditorStateContract",
+        "ProfileOnboardingProgressCommandContract",
+        "ProfileOnboardingProgressContract",
         "ProfilePublicFieldsContract",
         "ProfileViewStateCode",
         "PushDeviceContract",
@@ -20115,6 +20220,45 @@
           "type": "readonly ProfileOnboardingFieldCode[]"
         }
       }
+    },
+    "profile.ts::ProfileOnboardingProgressContract": {
+      "kind": "object",
+      "members": {
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "1"
+        },
+        "currentScreen": {
+          "optional": false,
+          "kind": "text",
+          "type": "1 | 2 | 3 | 4 | 5 | null"
+        },
+        "lastConfirmedScreen": {
+          "optional": false,
+          "kind": "text",
+          "type": "0 | 1 | 2 | 3 | 4 | 5"
+        },
+        "finishedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "deferred": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "profile.ts::ProfileOnboardingProgressCommandContract": {
+      "kind": "alias",
+      "type": "ProfileOnboardingProgressCommandContract"
     },
     "profile.ts::ProfileSaveConcurrencyContract": {
       "kind": "object",

@@ -9,6 +9,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 import type { ProfileDetail } from "../api/profile-detail-contract";
 import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
+import { PROFILE_ONBOARDING_GOALS } from "../api/compute/profile-onboarding-goal";
 import { ingestCards } from "./business-card-ingest";
 import { safeProfileContinuationNext } from "./profile-continuation-route";
 
@@ -18,7 +19,7 @@ export type OnboardingStep = "profile" | "goals" | "persona" | "intro" | "import
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = ["profile", "goals", "persona", "intro", "import"];
 
 // Same limits as the web model (and the server's ink-signal validation for offering/seeking).
-export const GOAL_LIMIT = 3;
+export const GOAL_LIMIT = 2;
 export const OFFER_LIMIT = 5;
 export const SEEK_LIMIT = 5;
 export const TOPIC_LIMIT = 8;
@@ -34,48 +35,24 @@ export function bioCounter(bio: string): { count: number; limit: number; over: b
 export const HEADLINE_LIMIT = 80;
 export const CUSTOM_TAG_LIMIT = 24;
 // 「换一版」 attempts; the automatic first draft and failed attempts do not count.
-export const INTRO_REGENERATE_LIMIT = 3;
+export const INTRO_REGENERATE_LIMIT = 2;
 
 export interface GoalGroup {
   readonly title: Copy;
   readonly options: readonly Copy[];
 }
 
-export const GOAL_GROUPS: readonly GoalGroup[] = [
-  {
-    title: { zh: "业务增长", en: "Business growth", ja: "事業の成長" },
-    options: [
-      { zh: "获取客户", en: "Win customers", ja: "顧客獲得" },
-      { zh: "寻找合作伙伴", en: "Find partners", ja: "パートナー探し" },
-      { zh: "开拓新市场", en: "Enter a new market", ja: "新市場の開拓" },
-      { zh: "出海拓展", en: "Expand overseas", ja: "海外展開" },
-      { zh: "寻找供应商", en: "Source suppliers", ja: "仕入れ先探し" },
-      { zh: "提升品牌曝光", en: "Build brand awareness", ja: "ブランド認知の向上" }
-    ]
-  },
-  {
-    title: { zh: "资金与团队", en: "Funding & team", ja: "資金とチーム" },
-    options: [
-      { zh: "寻找投资", en: "Raise funding", ja: "資金調達" },
-      { zh: "寻找投资机会", en: "Find deals to invest in", ja: "投資先探し" },
-      { zh: "招聘人才", en: "Hire talent", ja: "人材採用" },
-      { zh: "寻找联合创始人", en: "Find a co-founder", ja: "共同創業者探し" }
-    ]
-  },
-  {
-    title: { zh: "人脉与成长", en: "Network & growth", ja: "人脈と成長" },
-    options: [
-      { zh: "拓展行业人脉", en: "Grow my industry network", ja: "業界人脈の拡大" },
-      { zh: "学习行业趋势", en: "Learn industry trends", ja: "業界トレンドの学習" },
-      { zh: "寻找导师", en: "Find a mentor", ja: "メンター探し" },
-      { zh: "职业发展", en: "Advance my career", ja: "キャリアアップ" },
-      { zh: "组织活动与社群", en: "Build a community", ja: "イベント・コミュニティ運営" },
-      { zh: "探索新方向", en: "Explore a new direction", ja: "新しい方向性の模索" }
-    ]
-  }
-];
+export const GOAL_GROUPS: readonly GoalGroup[] = [{
+  title: { zh: "当前目标", en: "Current goal", ja: "今の目標" },
+  options: PROFILE_ONBOARDING_GOALS.map(({ zh, en, ja }) => ({ zh, en, ja })),
+}];
 
 const GOAL_OPTIONS_FLAT: readonly Copy[] = GOAL_GROUPS.flatMap(group => group.options);
+const LEGACY_GOAL_LABELS = new Set([
+  "开拓新市场", "出海拓展", "寻找供应商", "寻找投资机会", "寻找联合创始人", "拓展行业人脉", "寻找导师", "职业发展", "组织活动与社群", "探索新方向",
+  "Enter a new market", "Expand overseas", "Source suppliers", "Find deals to invest in", "Find a co-founder", "Grow my industry network", "Find a mentor", "Advance my career", "Build a community", "Explore a new direction",
+  "顧客獲得", "パートナー探し", "新市場の開拓", "海外展開", "仕入れ先探し", "ブランド認知の向上", "投資先探し", "人材採用", "共同創業者探し", "業界人脈の拡大", "業界トレンドの学習", "メンター探し", "キャリアアップ", "イベント・コミュニティ運営", "新しい方向性の模索"
+]);
 
 export const HORIZONS: readonly Copy[] = [
   { zh: "本月", en: "This month", ja: "今月" },
@@ -216,9 +193,9 @@ export function parseRelationshipGoal(text: string): GoalDraft {
   const head = split ? split[1]! : rest;
   const focus = split ? split[2]!.trim() : "";
   const candidates = head.split(/、|, /u).map(item => item.trim()).filter(Boolean);
-  const known = candidates.length > 0 && candidates.length <= GOAL_LIMIT && candidates.every(item => isKnownOption(GOAL_OPTIONS_FLAT, item));
-  if (known) return { goals: candidates, focus: focus.slice(0, FOCUS_LIMIT), horizon };
-  return { goals: [], focus: rest.slice(0, FOCUS_LIMIT), horizon };
+  const known = candidates.length > 0 && candidates.length <= GOAL_LIMIT && candidates.every(item => isKnownOption(GOAL_OPTIONS_FLAT, item) || LEGACY_GOAL_LABELS.has(item));
+  if (known) return { goals: candidates, focus, horizon };
+  return { goals: [], focus: rest, horizon };
 }
 
 // Same rule as the server's completion policy: calendar strings, never a local instant.
@@ -260,7 +237,7 @@ export function basicIndustryValid(draft: BasicDraft): boolean {
 }
 
 export function basicDraftValid(draft: BasicDraft, today: string): boolean {
-  return Boolean(draft.name.trim()) && basicIndustryValid(draft) && isValidProfileBirthDate(draft.birthDate, today);
+  return Boolean(draft.name.trim()) && basicIndustryValid(draft) && (!draft.birthDate || isValidProfileBirthDate(draft.birthDate, today));
 }
 
 export interface OnboardingProgress {
@@ -308,8 +285,8 @@ export function onboardingDestination(next: string | string[] | undefined): stri
 }
 
 /** The intro-draft endpoint writes Chinese or English (web sends "en" for every non-zh language). */
-export function introDraftLanguage(language: OrbitLanguage): "zh" | "en" {
-  return language === "zh" ? "zh" : "en";
+export function introDraftLanguage(language: OrbitLanguage): "zh" | "en" | "ja" {
+  return language;
 }
 
 export interface OnboardingImportSummary {

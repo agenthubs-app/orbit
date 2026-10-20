@@ -159,13 +159,13 @@ const fail = (status: number, code: string) => new Response(JSON.stringify({ suc
 
 test("intro draft posts the language and accepts only a complete draft", async () => {
   const good = aiServer(() => ok({ bio: "做 AI 会议纪要的产品负责人。", headline: "产品负责人" }));
-  assert.deepEqual(await generateOnboardingIntro(good.client, "zh"), { ok: true, bio: "做 AI 会议纪要的产品负责人。", headline: "产品负责人" });
-  assert.deepEqual(good.requests, [{ path: "/api/profile/intro-draft", body: { language: "zh" } }]);
+  assert.deepEqual(await generateOnboardingIntro(good.client, "zh", "intro-1"), { ok: true, bio: "做 AI 会议纪要的产品负责人。", headline: "产品负责人" });
+  assert.deepEqual(good.requests, [{ path: "/api/profile/intro-draft", body: { language: "zh", idempotencyKey: "intro-1" } }]);
   for (const reply of [() => ok({ bio: 3 }), () => fail(422, "MODEL_FAILED"), () => fail(503, "MODEL_API_KEY_MISSING")]) {
-    assert.equal((await generateOnboardingIntro(aiServer(reply).client, "en")).ok, false);
+    assert.equal((await generateOnboardingIntro(aiServer(reply).client, "en", "intro-2")).ok, false);
   }
   const offline = aiServer(() => { throw new TypeError("offline"); });
-  assert.deepEqual(await generateOnboardingIntro(offline.client, "en"), { ok: false, kind: "offline" });
+  assert.deepEqual(await generateOnboardingIntro(offline.client, "en", "intro-3"), { ok: false, kind: "offline" });
 });
 
 test("own business card scan maps the reviewed draft to name, company and title only", async () => {

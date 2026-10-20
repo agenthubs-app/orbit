@@ -78,10 +78,12 @@ test("relationship goal round-trips in zh, en and ja; foreign text becomes the o
   const en = composeRelationshipGoal({ goals: ["Win customers"], focus: "", horizon: "This year" }, "en");
   assert.equal(en, "Win customers (This year)");
   assert.deepEqual(parseRelationshipGoal(en), { goals: ["Win customers"], focus: "", horizon: "This year" });
-  const ja = composeRelationshipGoal({ goals: ["顧客獲得"], focus: "日本で試験導入先を探す", horizon: "今月" }, "ja");
-  assert.equal(ja, "顧客獲得：日本で試験導入先を探す（今月）");
-  assert.deepEqual(parseRelationshipGoal(ja), { goals: ["顧客獲得"], focus: "日本で試験導入先を探す", horizon: "今月" });
+  const ja = composeRelationshipGoal({ goals: ["新規顧客開拓"], focus: "日本で試験導入先を探す", horizon: "今月" }, "ja");
+  assert.equal(ja, "新規顧客開拓：日本で試験導入先を探す（今月）");
+  assert.deepEqual(parseRelationshipGoal(ja), { goals: ["新規顧客開拓"], focus: "日本で試験導入先を探す", horizon: "今月" });
   assert.deepEqual(parseRelationshipGoal("认识可以一起做产品的同行"), { goals: [], focus: "认识可以一起做产品的同行", horizon: "" });
+  const unknown = "旧格式：" + "自由文字".repeat(20);
+  assert.deepEqual(parseRelationshipGoal(unknown), { goals: [], focus: unknown, horizon: "" });
   assert.equal(composeRelationshipGoal({ goals: [], focus: " ", horizon: "本月" }, "zh"), "");
 });
 
@@ -110,21 +112,22 @@ test("birth date validation uses calendar strings and rejects future or impossib
   assert.equal(isValidProfileBirthDate("1990/01/01", "2026-09-27"), false);
 });
 
-test("basic draft requires name, a valid industry pair and a birth date", () => {
+test("basic draft requires name and a valid industry pair; birthday is optional", () => {
   const base = basicDraftFromProfile(detail({ displayName: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: null, birthDate: null }).profile);
   assert.equal(base.name, "林晓");
   assert.equal(basicDraftValid(base, "2026-09-27"), false);
   const secondary = "technology_internet.enterprise_software";
+  assert.equal(basicDraftValid({ ...base, secondaryIndustryId: secondary }, "2026-09-27"), true);
   assert.equal(basicDraftValid({ ...base, secondaryIndustryId: secondary, birthDate: "1990-01-01" }, "2026-09-27"), true);
   assert.equal(basicDraftValid({ ...base, secondaryIndustryId: "food_hospitality.restaurants", birthDate: "1990-01-01" }, "2026-09-27"), false);
   assert.equal(basicDraftValid({ ...base, name: " ", secondaryIndustryId: secondary, birthDate: "1990-01-01" }, "2026-09-27"), false);
 });
 
-test("intro drafts use the two languages the server supports", () => {
+test("intro drafts preserve Japanese and allow two alternatives after the first", () => {
   assert.equal(introDraftLanguage("zh"), "zh");
   assert.equal(introDraftLanguage("en"), "en");
-  assert.equal(introDraftLanguage("ja"), "en");
-  assert.equal(INTRO_REGENERATE_LIMIT, 3);
+  assert.equal(introDraftLanguage("ja"), "ja");
+  assert.equal(INTRO_REGENERATE_LIMIT, 2);
 });
 
 function item(cardId: string, status: IngestItemContract["status"], seq: number, side: "front" | "back" = "front"): IngestItemContract {

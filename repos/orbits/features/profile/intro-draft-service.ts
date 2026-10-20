@@ -44,6 +44,7 @@ export type ProfileIntroDraftResult =
   | { success: false; error: { code: ProfileIntroDraftErrorCode; message: string } };
 
 export interface ProfileIntroDraftServiceOptions {
+  beforeModelCall?: () => Promise<void>;
   modelConfig?: GeminiOrbitAgentProviderConfig;
   readProfile?: (actorId: string) => Promise<ProfileResult>;
   runModel?: typeof runOrbitAgentModelText;
@@ -57,7 +58,7 @@ function clean(value: unknown): string {
     : "";
 }
 
-export function parseProfileIntroDraft(text: string): { bio: string; headline: string } | null {
+export function parseProfileIntroDraft(text: string, language?: "zh" | "en" | "ja"): { bio: string; headline: string } | null {
   const unwrapped = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   let parsed: unknown;
   try {
@@ -73,6 +74,7 @@ export function parseProfileIntroDraft(text: string): { bio: string; headline: s
   if (!profileBioWithinLimit(bio) || visibleLength(headline) > PROFILE_INTRO_HEADLINE_LIMIT) {
     return null;
   }
+  if (language === "ja" && !/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(`${headline} ${bio}`)) return null;
   return { bio, headline };
 }
 
@@ -87,7 +89,7 @@ function describeRejection(text: string): string {
 }
 
 /** 模型输入：只含用户自己填写的资料字段，空字段省略。 */
-export function profileIntroModelInput(profile: ManualProfile, language: "zh" | "en"): string {
+export function profileIntroModelInput(profile: ManualProfile, language: "zh" | "en" | "ja"): string {
   const primary = isIndustryIdCode(profile.primaryIndustryId) ? industryLabel(profile.primaryIndustryId, language) : "";
   const secondary = profile.secondaryIndustryId
     ? secondaryIndustryLabel(profile.secondaryIndustryId as SecondaryIndustryIdCode, language)
@@ -105,18 +107,18 @@ export function profileIntroModelInput(profile: ManualProfile, language: "zh" | 
   const compact = Object.fromEntries(
     Object.entries(record).filter(([, value]) => (Array.isArray(value) ? value.length > 0 : Boolean(value))),
   );
-  return JSON.stringify({ outputLanguage: language === "en" ? "English" : "Simplified Chinese", profile: compact }, null, 2);
+  return JSON.stringify({ outputLanguage: language === "en" ? "English" : language === "ja" ? "Japanese" : "Simplified Chinese", profile: compact }, null, 2);
 }
 
 // 模型常把「关于我」写到 82–93 字（实测 10 次中 2 次超 80）。提示里给更紧的目标长度，
 // 硬上限仍由 parseProfileIntroDraft 按可见字符校验。英文上限 200，目标约 160，仍是一两句话。
 const HEADLINE_TARGET = 28;
-const BIO_TARGET = { en: 160, zh: 60 } as const;
-const BIO_LIMIT = { en: PROFILE_BIO_NON_CJK_LIMIT, zh: PROFILE_BIO_CJK_LIMIT } as const;
+const BIO_TARGET = { en: 160, ja: 60, zh: 60 } as const;
+const BIO_LIMIT = { en: PROFILE_BIO_NON_CJK_LIMIT, ja: PROFILE_BIO_CJK_LIMIT, zh: PROFILE_BIO_CJK_LIMIT } as const;
 const MAX_ATTEMPTS = 3;
 
-function systemInstruction(language: "zh" | "en"): string {
-  const units = language === "en" ? "characters" : "Chinese characters";
+function systemInstruction(language: "zh" | "en" | "ja"): string {
+  const units = language === "en" ? "characters" : language === "ja" ? "Japanese characters" : "Chinese characters";
   return [
     "You write the self-introduction shown on a business networking profile, in the first person.",
     "Use only facts from the supplied profile. Do not invent employers, achievements, numbers, years of experience, clients or credentials.",
@@ -125,6 +127,7 @@ function systemInstruction(language: "zh" | "en"): string {
     ...(language === "en"
       ? [`Write every name in Latin letters: any Chinese, Japanese or Korean character lowers the "bio" limit to ${PROFILE_BIO_CJK_LIMIT}.`]
       : []),
+    ...(language === "ja" ? ["Write both fields in natural Japanese. Include Japanese kana in the introduction. Do not translate Japanese industry terms into Chinese."] : []),
     "Plain, specific and friendly; no emoji, no hashtags, no marketing superlatives.",
     'Return strict JSON only: {"headline":"...","bio":"..."}.',
   ].join(" ");
@@ -141,7 +144,7 @@ export function createProfileIntroDraftService(options: ProfileIntroDraftService
       if (!actorId) {
         return { success: false, error: { code: "ACTOR_REQUIRED", message: "Sign in before generating an introduction." } };
       }
-      const language = input.language === "en" ? "en" : "zh";
+      const language = input.language === "en" || input.language === "ja" ? input.language : "zh";
       const profileResult = await readProfile(actorId);
       const profile = profileResult.success ? profileResult.data.profile : null;
       if (!profile || !profile.displayName.trim()) {
@@ -156,6 +159,7 @@ export function createProfileIntroDraftService(options: ProfileIntroDraftService
       let lastRejection = "";
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
         // 超长或非 JSON：带上被拒原因重试，不截断半句话。
+        if (options.beforeModelCall) await options.beforeModelCall();
         const modelResult: OrbitAgentModelTextResult = await runModel({
           config: modelConfig,
           systemInstruction: attempt === 1
@@ -167,7 +171,7 @@ export function createProfileIntroDraftService(options: ProfileIntroDraftService
           console.warn("[profile-intro-draft] model_failed", { attempt, code: modelResult.error.code });
           return { success: false, error: { code: modelResult.error.code, message: modelResult.error.message } };
         }
-        const draft = parseProfileIntroDraft(modelResult.text);
+        const draft = parseProfileIntroDraft(modelResult.text, language);
         if (draft) {
           return { success: true, data: { ...draft, model: modelResult.model, provider: modelResult.provider } };
         }

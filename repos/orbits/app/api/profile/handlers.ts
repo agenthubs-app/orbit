@@ -5,8 +5,9 @@ import {
   success,
 } from "../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
 import { createProfileService } from "../../../features/profile/service-factory";
+import { isSampleWrite } from "../../../features/guide/sample-write";
 import type {
   ManualProfileUpdateInput,
   ProfileScenario,
@@ -134,6 +135,11 @@ export function createProfileRouteHandlers(
       const mode = resolveFeatureMode();
       const actor = await resolveActor();
       if (!actor) return authenticatedApiActorRequiredResponse(mode);
+      if (isSampleWrite(request, actor.id)) {
+        return NextResponse.json(failure(new AppError("FORBIDDEN", "SAMPLE_READ_ONLY"), { reason: "SAMPLE_READ_ONLY" }), {
+          headers: runtimeBoundaryHeaders(mode), status: 403,
+        });
+      }
 
       const design = designFixturesEnabled ? accountDesignVariant(request) : null;
       if (design) {

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
+import { resolveProfileOnboardingProgressService } from "../../../../../features/profile/onboarding-progress-factory";
+import type { ProfileOnboardingProgress } from "../../../../../features/profile/onboarding-progress";
 import { readProfileOnboardingAccess } from "../profile-onboarding-access.server";
 import {
   normalizeProfileOnboardingNext,
@@ -41,9 +43,19 @@ export default async function AppProfileContinuePage({
   } catch {
   }
 
-  if (access.status === "complete") {
-    redirect(next);
+  if (access.status === "unavailable" || !access.actorId) {
+    return <main role="alert">プロフィールを読み込めませんでした。ページを再読み込みしてください。</main>;
   }
+
+  let flow: ProfileOnboardingProgress | null;
+  try {
+    const service = resolveProfileOnboardingProgressService(access.actorId);
+    if (!service) throw new Error("Progress storage unavailable");
+    flow = await service.get();
+  } catch {
+    return <main role="alert">設定の進捗を読み込めませんでした。ページを再読み込みしてください。</main>;
+  }
+  if (access.status === "complete" && (!flow || flow.finishedAt)) redirect(next);
 
   redirect(profileOnboardingFlowPath(next));
 }

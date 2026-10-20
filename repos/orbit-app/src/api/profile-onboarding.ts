@@ -74,9 +74,10 @@ export async function saveOnboardingFields(
 
 export async function generateOnboardingIntro(
   client: OrbitApiClient,
-  language: "zh" | "en"
+  language: "zh" | "en" | "ja",
+  idempotencyKey: string,
 ): Promise<{ ok: true; bio: string; headline: string } | OnboardingFailure> {
-  const result = await client.post<unknown>(PROFILE_INTRO_DRAFT_PATH, { body: { language } });
+  const result = await client.post<unknown>(PROFILE_INTRO_DRAFT_PATH, { body: { language, idempotencyKey } });
   if (!succeeded(result) || !result.success) return failure(result);
   const data = result.data as { bio?: unknown; headline?: unknown } | null;
   if (typeof data?.bio !== "string" || typeof data.headline !== "string") return { ok: false, kind: "failed" };

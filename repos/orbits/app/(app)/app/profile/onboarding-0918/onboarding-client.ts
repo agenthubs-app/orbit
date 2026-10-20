@@ -3,6 +3,7 @@
  * 名片识别自动填写、AI 起草介绍。与个人中心编辑器同一套接口与核验口径。
  */
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
+import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
 import { profileEditorReadbackMatches } from "../profile-editor-adapter";
 
 interface ApiEnvelope<TData> {
@@ -34,6 +35,32 @@ export async function fetchProfile(): Promise<ProfilePayload> {
     throw new OnboardingRequestError(envelope.error?.message ?? "Profile read failed", envelope.error?.code);
   }
   return envelope.data;
+}
+
+export async function fetchOnboardingProgress(): Promise<ProfileOnboardingProgressContract | null> {
+  const response = await fetch("/api/profile/onboarding-progress", { cache: "no-store" });
+  const envelope = await readJson<ProfileOnboardingProgressContract | null>(response);
+  if (!response.ok || envelope.success !== true || envelope.data === undefined) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Onboarding progress read failed", envelope.error?.code);
+  }
+  return envelope.data;
+}
+
+export async function updateOnboardingProgress(command: ProfileOnboardingProgressCommandContract): Promise<ProfileOnboardingProgressContract> {
+  const response = await fetch("/api/profile/onboarding-progress", {
+    body: JSON.stringify(command),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const envelope = await readJson<ProfileOnboardingProgressContract>(response);
+  if (!response.ok || envelope.success !== true || !envelope.data) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Onboarding progress update failed", envelope.error?.code);
+  }
+  const readback = await fetchOnboardingProgress();
+  if (!readback || readback.revision !== envelope.data.revision) {
+    throw new OnboardingRequestError("Onboarding progress could not be verified by reading it back.");
+  }
+  return readback;
 }
 
 function newMutationId(): string {
@@ -103,9 +130,9 @@ export async function scanOwnBusinessCard(file: File): Promise<CardAutofill> {
   return { company: draft.organization?.trim() ?? "", name: draft.displayName?.trim() ?? "", title: draft.role?.trim() ?? "" };
 }
 
-export async function generateIntroDraft(language: "zh" | "en"): Promise<{ bio: string; headline: string }> {
+export async function generateIntroDraft(language: "zh" | "en" | "ja", idempotencyKey: string): Promise<{ bio: string; headline: string }> {
   const response = await fetch("/api/profile/intro-draft", {
-    body: JSON.stringify({ language }),
+    body: JSON.stringify({ language, idempotencyKey }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });

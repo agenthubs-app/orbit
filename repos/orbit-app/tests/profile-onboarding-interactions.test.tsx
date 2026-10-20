@@ -23,8 +23,13 @@ import { ja } from "./src/i18n/ja";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 const listeners = new Set(); let revision = 0; let uuid = 0; let tick = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
-const state = window.fixture = { language: "zh", next: "/events/e1", navigation: [], requests: [], detail: null, put: "ok", network: false, ai: "ok", aiCalls: 0, ...window.initialFixture,
+const state = window.fixture = { language: "zh", next: "/events/e1", navigation: [], requests: [], detail: null, put: "ok", flowConfirm: "ok", network: false, ai: "ok", aiCalls: 0, flow: undefined, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
+if (state.flow === undefined) {
+  const p = state.detail?.profile;
+  const completed = p?.headline || p?.bio ? 4 : p?.offering?.length || p?.seeking?.length ? 3 : p?.relationshipGoal ? 2 : p?.displayName ? 1 : 0;
+  state.flow = completed > 0 && completed < 4 ? { version: 1, currentScreen: completed + 1, lastConfirmedScreen: completed, finishedAt: null, deferred: false, revision: "flow:1" } : null;
+}
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 function onboarding(p) { const missing = []; if (!p || !String(p.displayName || "").trim()) missing.push("displayName"); if (!p || !p.primaryIndustryId) missing.push("primaryIndustryId"); if (!p || !p.secondaryIndustryId) missing.push("secondaryIndustryId"); if (!p || !p.birthDate) missing.push("birthDate"); return { policyVersion: 1, status: missing.length ? "incomplete" : "complete", missingFields: missing }; }
 window.fetch = async (input, init = {}) => {
@@ -32,6 +37,21 @@ window.fetch = async (input, init = {}) => {
   state.requests.push({ method, path: url.pathname, body });
   if (state.network) throw new TypeError("Network request failed");
   const d = state.detail;
+  if (url.pathname === "/api/profile/onboarding-progress" && method === "GET") return json(200, { success: true, data: state.flow });
+  if (url.pathname === "/api/profile/onboarding-progress" && method === "POST") {
+    if (body.action === "initialize") {
+      state.flow ||= { version: 1, currentScreen: 1, lastConfirmedScreen: 0, finishedAt: null, deferred: false, revision: "flow:1" };
+      return json(200, { success: true, data: state.flow });
+    }
+    if (body.action === "confirm" && state.flowConfirm === "fail") return json(503, { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } });
+    if (!state.flow || body.expectedRevision !== state.flow.revision) return json(409, { success: false, error: { code: "CONFLICT", message: "stale" } });
+    const last = body.action === "confirm" ? body.screen : state.flow.lastConfirmedScreen;
+    state.flow = { ...state.flow, lastConfirmedScreen: last, currentScreen: last < 5 ? last + 1 : null,
+      deferred: body.action === "defer" ? true : body.action === "finish" ? false : state.flow.deferred,
+      finishedAt: body.action === "finish" ? "2026-10-20T00:00:00.000Z" : state.flow.finishedAt,
+      revision: "flow:" + ++tick };
+    return json(200, { success: true, data: state.flow });
+  }
   if (url.pathname === "/api/profile" && method === "GET") return json(200, { success: true, data: { ...d, onboarding: onboarding(d.profile) } });
   if (url.pathname === "/api/profile" && method === "PUT") {
     if (state.put === "fail") return json(503, { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } });
@@ -133,25 +153,25 @@ test("a new account walks welcome → profile, saves with a receipt and a readba
   await page.getByRole("heading", { name: "你最近想推进什么？" }).waitFor();
   await page.getByText("2 / 5", { exact: true }).waitFor();
   const { requests, profile } = await fx(page);
-  const writes = requests.filter((r: any) => r.method !== "GET" || r.path === "/api/profile");
+  const writes = requests.filter((r: any) => r.path === "/api/profile");
   assert.deepEqual(writes.map((r: any) => r.method), ["GET", "PUT", "GET"], "initial read, save, readback");
   assert.deepEqual({ ...writes[1].body, mutationId: undefined }, { birthDate: "1990-05-20", displayName: "林晓", organization: "", primaryIndustryId: "technology_internet", role: "产品负责人", secondaryIndustryId: "technology_internet.ai_data", expectedUpdatedAt: null, mutationId: undefined });
   assert.equal(profile.displayName, "林晓");
 });
 
-test("goals: up to three, horizon defaults to this quarter, saved in the web format", async t => {
+test("goals: at most two in selection order with no default deadline", async t => {
   const page = await open(t, withProfile({ ...complete, ...blank }));
   await page.getByRole("button", { name: "继续" }).click();
   await page.getByRole("heading", { name: "你最近想推进什么？" }).waitFor();
-  for (const goal of ["获取客户", "开拓新市场", "寻找投资"]) await page.getByRole("button", { name: goal, exact: true }).click();
-  assert.equal(await page.getByRole("button", { name: "招聘人才", exact: true }).isDisabled(), true, "a fourth goal is blocked");
-  await page.getByText("3 / 3", { exact: true }).waitFor();
+  for (const goal of ["获取客户", "寻找投资"]) await page.getByRole("button", { name: goal, exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "招聘人才", exact: true }).isDisabled(), true, "a third goal is blocked");
+  await page.getByText("2 / 2", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "获取客户", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "selected chip is black");
   await page.getByRole("textbox", { name: "具体想做成什么" }).fill("先找到 5 家试用企业");
   await shot(page, "03-goals");
   await page.getByRole("button", { name: "继续" }).click();
   await page.getByRole("heading", { name: /你能提供什么/u }).waitFor();
-  assert.equal((await fx(page)).profile.relationshipGoal, "获取客户、开拓新市场、寻找投资：先找到 5 家试用企业（本季度）");
+  assert.equal((await fx(page)).profile.relationshipGoal, "获取客户、寻找投资：先找到 5 家试用企业");
 });
 
 test("a failed save keeps every value and retries from the banner", async t => {
@@ -172,6 +192,22 @@ test("a failed save keeps every value and retries from the banner", async t => {
   await page.getByRole("heading", { name: /iOrbit 帮你/u }).waitFor();
   const saved = (await fx(page)).profile;
   assert.deepEqual([saved.offering, saved.seeking], [["客户引荐"], ["潜在客户"]]);
+});
+
+test("a failed progress confirmation retains the saved step but does not drop later edits", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "开始设置" }).click();
+  await fillProfileStep(page);
+  await set(page, { flowConfirm: "fail" });
+  await page.getByRole("button", { name: "继续" }).click();
+  await page.getByText("没有保存成功，已填内容都还在。").waitFor();
+  await page.getByRole("textbox", { name: "姓名" }).fill("林晓二");
+  await set(page, { flowConfirm: "ok" });
+  await page.getByRole("button", { name: "重试" }).click();
+  await page.getByRole("heading", { name: "你最近想推进什么？" }).waitFor();
+  const writes = (await fx(page)).requests.filter((request: any) => request.path === "/api/profile" && request.method === "PUT");
+  assert.deepEqual(writes.map((request: any) => request.body.displayName), ["林晓", "林晓二"]);
+  assert.equal((await fx(page)).profile.displayName, "林晓二");
 });
 
 test("no network shows the amber notice and keeps the typed values", async t => {
@@ -196,6 +232,7 @@ test("re-entry shows the resume card at the first unfinished step; 稍后 leaves
   await page.getByText("已完成 2 / 5，从「你能提供什么、在找什么」继续。").waitFor();
   await shot(page, "09-resume");
   await page.getByRole("button", { name: "稍后" }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
   assert.deepEqual((await fx(page)).navigation, ["replace:/events/e1"]);
   const second = await open(t, withProfile({ ...complete, ...blank, relationshipGoal: "获取客户（本季度）" }));
   await second.getByRole("button", { name: "继续", exact: true }).click();
@@ -208,7 +245,7 @@ test("an account with steps 1–4 saved goes straight to next and writes nothing
   await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
   const { navigation, requests } = await fx(page);
   assert.deepEqual(navigation, ["replace:/events/e1"]);
-  assert.deepEqual(requests.map((r: any) => r.method), ["GET"]);
+  assert.deepEqual(requests.map((r: any) => r.method), ["GET", "GET"]);
 });
 
 test("intro: auto-drafts once on entry, failure keeps the fields editable, 换一版 counts only successes", async t => {
@@ -221,27 +258,27 @@ test("intro: auto-drafts once on entry, failure keeps the fields editable, 换�
   await set(page, { ai: "ok" });
   await page.getByRole("button", { name: "重新生成 ›" }).click();
   await page.getByText("AI 草稿 · 可以直接修改").waitFor();
-  await page.getByRole("button", { name: "换一版（剩 3 次）" }).waitFor();
-  assert.equal(await page.getByRole("textbox", { name: "自我介绍" }).inputValue(), "第2版：做 AI 会议纪要的产品负责人。");
-  await page.getByRole("button", { name: "换一版（剩 3 次）" }).click();
   await page.getByRole("button", { name: "换一版（剩 2 次）" }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "自我介绍" }).inputValue(), "第2版：做 AI 会议纪要的产品负责人。");
+  await page.getByRole("button", { name: "换一版（剩 2 次）" }).click();
+  await page.getByRole("button", { name: "换一版（剩 1 次）" }).waitFor();
   await page.getByText("AI 草稿 · 可以直接修改").waitFor();
   await set(page, { ai: "fail" });
-  await page.getByRole("button", { name: "换一版（剩 2 次）" }).click();
+  await page.getByRole("button", { name: "换一版（剩 1 次）" }).click();
   await page.getByText("这次没换成功，保留了上一版，可以再试一次").waitFor();
   assert.equal(await page.getByRole("textbox", { name: "自我介绍" }).inputValue(), "第3版：做 AI 会议纪要的产品负责人。", "previous version kept");
-  await page.getByRole("button", { name: "换一版（剩 2 次）" }).waitFor();
+  await page.getByRole("button", { name: "换一版（剩 1 次）" }).waitFor();
   await shot(page, "05-intro");
   await page.getByRole("button", { name: "用这段介绍" }).click();
   await page.getByRole("heading", { name: /带入你已有/u }).waitFor();
   const { profile, aiCalls, requests } = await fx(page);
   assert.equal(aiCalls, 4);
-  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body), Array(4).fill({ language: "zh" }));
+  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body.language), Array(4).fill("zh"));
   assert.equal(profile.bio, "第3版：做 AI 会议纪要的产品负责人。");
 });
 
 test("import: 拍名片 opens the existing batch import and 完成设置 goes to next", async t => {
-  const page = await open(t, withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" }));
+  const page = await open(t, { ...withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" }), flow: { version: 1, currentScreen: 3, lastConfirmedScreen: 2, finishedAt: null, deferred: false, revision: "flow:1" } });
   await page.getByRole("button", { name: "继续", exact: true }).click();
   await page.getByRole("heading", { name: /你能提供什么/u }).waitFor();
   await page.getByRole("button", { name: "继续", exact: true }).click();
@@ -252,6 +289,7 @@ test("import: 拍名片 opens the existing batch import and 完成设置 goes to
   await shot(page, "06-import");
   await page.getByRole("button", { name: "拍名片" }).click();
   await page.getByRole("button", { name: "完成设置" }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length === 2);
   assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/scan", "replace:/events/e1"]);
 });
 
@@ -264,10 +302,10 @@ test("English and Japanese render the whole welcome and step copy", async t => {
   const japanese = await open(t, { language: "ja", ...withProfile({ ...complete, ...blank }) });
   await japanese.getByText("5 中 1 完了。「最近進めたいこと」から続けます。").waitFor();
   await japanese.getByRole("button", { name: "続ける" }).click();
-  await japanese.getByRole("button", { name: "顧客獲得", exact: true }).click();
+  await japanese.getByRole("button", { name: "新規顧客開拓", exact: true }).click();
   await japanese.getByRole("button", { name: "続ける" }).click();
   await japanese.getByRole("heading", { name: /探しているものは/u }).waitFor();
-  assert.equal((await fx(japanese)).profile.relationshipGoal, "顧客獲得（今四半期）");
+  assert.equal((await fx(japanese)).profile.relationshipGoal, "新規顧客開拓");
 });
 
 test("step 3 groups show 8 options plus selected extras, expand to all, and toggle in both states", async t => {
@@ -323,5 +361,5 @@ test("English intro: a 180-character draft fits the 200 cap, saves, and CJK text
   await page.getByRole("heading", { name: /Bring in the people/u }).waitFor();
   const { profile, requests } = await fx(page);
   assert.equal(profile.bio, englishBio);
-  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body), [{ language: "en" }]);
+  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body.language), ["en"]);
 });

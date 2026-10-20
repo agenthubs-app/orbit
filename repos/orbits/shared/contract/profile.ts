@@ -33,6 +33,21 @@ export interface ProfileOnboardingContract {
   missingFields: readonly ProfileOnboardingFieldCode[];
 }
 
+// GET/POST /api/profile/onboarding-progress. The server owns the actor and all
+// derived fields; clients send only an action, CAS cursor and mutation id.
+export interface ProfileOnboardingProgressContract {
+  version: 1;
+  currentScreen: 1 | 2 | 3 | 4 | 5 | null;
+  lastConfirmedScreen: 0 | 1 | 2 | 3 | 4 | 5;
+  finishedAt: string | null;
+  deferred: boolean;
+  revision: string;
+}
+
+export type ProfileOnboardingProgressCommandContract =
+  | { action: "initialize" | "defer" | "finish"; expectedRevision: string | null; mutationId: string }
+  | { action: "confirm"; screen: 1 | 2 | 3 | 4 | 5; expectedRevision: string | null; mutationId: string };
+
 // New clients send both fields; omitting both preserves the legacy update API.
 export interface ProfileSaveConcurrencyContract {
   expectedUpdatedAt?: string | null;

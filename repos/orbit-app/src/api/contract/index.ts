@@ -3,6 +3,7 @@
 // 新增领域时在这里补一行 export，并同步 repos/orbit-app 的契约副本。
 
 export type { OrbitLanguage } from "./language";
+export type { GuideProgressContract, GuideProgressSnapshotContract } from "./guide";
 export type {
   PortraitAnswerProof,
   PortraitField,
@@ -81,6 +82,8 @@ export type {
   ProfileCompletenessContract,
   ProfileCompletenessFieldCode,
   ProfileCompletenessStatusCode,
+  ProfileOnboardingProgressCommandContract,
+  ProfileOnboardingProgressContract,
   ProfileEditorStateContract,
   ProfileViewStateCode,
   SeniorityLevelCode

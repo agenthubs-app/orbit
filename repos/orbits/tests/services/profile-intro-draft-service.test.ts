@@ -74,6 +74,15 @@ test("createDraft returns a reviewable draft without writing the profile", async
   assert.match(fake.calls[0]!.systemInstruction, /Do not invent/);
 });
 
+test("Japanese request uses Japanese industry labels and instructions", async () => {
+  const fake = model('{"headline":"AI事業のプロダクト担当","bio":"OrbitでAI製品を担当し、日本市場で協業先を探しています。"}');
+  const result = await createProfileIntroDraftService({ readProfile: readOk(profile()), runModel: fake.run }).createDraft({ actorId: "u1", language: "ja" });
+  assert.equal(result.success, true);
+  assert.equal(JSON.parse(fake.calls[0]!.userText).outputLanguage, "Japanese");
+  assert.match(fake.calls[0]!.systemInstruction, /Japanese/);
+  assert.match(fake.calls[0]!.userText, /AI・データ/);
+});
+
 test("createDraft retries over-length answers up to three attempts in total, then fails closed", async () => {
   const tooLong = `{"headline":"h","bio":"${"长".repeat(90)}"}`;
   const recovered = model(tooLong, '{"headline":"h","bio":"短介绍"}');

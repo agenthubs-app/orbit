@@ -103,12 +103,21 @@ function stubWindow(t: { after: (fn: () => void) => void }, store: Map<string, s
   });
 }
 
-function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}) {
+function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0) {
   const puts: Record<string, unknown>[] = [];
   let profile: Record<string, unknown> = { displayName: "张三", relationshipGoal, offering: [], seeking: [], topics: [], bio: "", headline: "", updatedAt: "2026-09-28T00:00:00.000Z", ...extra };
   let mutationId: string | undefined;
+  let revision = 0;
+  let flow: Record<string, unknown> | null = initialConfirmed ? { version: 1, lastConfirmedScreen: initialConfirmed, currentScreen: initialConfirmed + 1, deferred: false, finishedAt: null, revision: "flow:1" } : null;
   t.mock.method(globalThis, "fetch", async (input: unknown, init?: RequestInit) => {
     const url = String(input);
+    if (url === "/api/profile/onboarding-progress" && !init?.method) return Response.json({ success: true, data: flow });
+    if (url === "/api/profile/onboarding-progress" && init?.method === "POST") {
+      const command = JSON.parse(String(init.body)) as { action: string; screen?: number };
+      if (command.action === "initialize") flow ??= { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null, revision: "flow:1" };
+      if (command.action === "confirm" && flow) flow = { ...flow, lastConfirmedScreen: command.screen, currentScreen: (command.screen ?? 0) + 1, revision: `flow:${++revision + 1}` };
+      return Response.json({ success: true, data: flow });
+    }
     if (url === "/api/profile" && init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
       puts.push(body);
@@ -138,46 +147,27 @@ async function mountFlow(actorKey: string) {
   return root;
 }
 
-const goalInput = (root: ReactTestRenderer) => root.root.findByProps({ "aria-label": "你的目标", className: "ge-input" });
-const pressed = (root: ReactTestRenderer, className: string) => root.root
-  .findAll(node => node.type === "button" && node.props.className === className && node.props["aria-pressed"] === true)
-  .map(node => node.props["aria-label"] ?? node.children.join(""));
+const goalInput = (root: ReactTestRenderer) => root.root.findByProps({ className: "ob-input" });
 const DRAFT_KEY = (actor: string) => `orbit.onboarding.v1:${actor}`;
 
-test("goals step uses the shared editor with the reminder and no direction chips; an old local draft folds its chips into the text", async (t) => {
+test("goals step preserves an old local draft and presents six choices with no default deadline", async (t) => {
   const store = new Map([[DRAFT_KEY("u-old"), JSON.stringify({ view: "goals", goals: ["寻找合作伙伴", "开拓新市场"], focus: "先找 5 家试用企业", horizon: "本季度", introRegenerations: 0, cardBatchId: null })]]);
   stubWindow(t, store);
-  const api = stubProfileApi(t, "");
+  stubProfileApi(t, "", {}, 1);
   const root = await mountFlow("u-old");
 
   assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "03 目标").length, 1);
-  assert.equal(root.root.findAll(node => typeof node.props.className === "string" && /\bob-chip\b/.test(node.props.className)).length, 0, "no direction chips");
-  assert.ok(root.root.findAll(node => node.props.className === "ge-reminder").length === 1, "reminder above the editor");
+  assert.equal(root.root.findAll(node => node.type === "button" && node.props.className === "btn ob-chip").length, 6);
   assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：先找 5 家试用企业");
-  assert.deepEqual(pressed(root, "btn ge-horizon"), ["3 个月内"]);
-  assert.deepEqual(readOnboardingDraft("u-old"), { view: "goals", goalText: "寻找合作伙伴、开拓新市场：先找 5 家试用企业", horizon: "quarter", introRegenerations: 0, cardBatchId: null });
-
-  // 点示例 → 整句替换 + 自动选期限 → 继续 → 保存「正文（期限）」
-  const example = root.root.findAll(node => node.type === "button" && node.props.className === "btn ge-example" && node.children.join("") === "＋ 一个月内见 10 位关注我们赛道的投资人")[0];
-  assert.ok(example);
-  await act(async () => { example.props.onClick(); });
-  assert.equal(goalInput(root).props.value, "一个月内见 10 位关注我们赛道的投资人");
-  assert.deepEqual(pressed(root, "btn ge-horizon"), ["一个月内"]);
-  const next = root.root.findAll(node => node.type === "button" && node.children.join("") === "继续")[0];
-  assert.ok(next);
-  await act(async () => { await next.props.onClick(); });
-  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
-  assert.deepEqual(api.puts.map(body => body.relationshipGoal), ["一个月内见 10 位关注我们赛道的投资人（一个月内）"]);
-  assert.equal(api.saved(), "一个月内见 10 位关注我们赛道的投资人（一个月内）");
+  assert.match(JSON.stringify(readOnboardingDraft("u-old")), /寻找合作伙伴、开拓新市场：先找 5 家试用企业/);
   act(() => root.unmount());
 });
 
 test("without a local goal draft the goals step reads the saved text back, including old chip-prefixed goals", async (t) => {
   stubWindow(t, new Map([[DRAFT_KEY("u-saved"), JSON.stringify({ view: "goals" })]]));
-  stubProfileApi(t, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）");
+  stubProfileApi(t, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）", {}, 1);
   const root = await mountFlow("u-saved");
-  assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：把产品推到日本市场");
-  assert.deepEqual(pressed(root, "btn ge-horizon"), ["3 个月内"]);
+  assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）");
   act(() => root.unmount());
 });
 
@@ -194,7 +184,7 @@ test("a max-length legacy draft (3 × 24-char chips + 80-char focus + 本季度)
   assert.deepEqual(parseRelationshipGoal(`${expected}（本季度）`), { text: expected, horizon: "quarter" });
 });
 
-test("SC-W0002-04 onboarding: the goal saved on the goals step reads back into the editor after a reload with no local draft", async (t) => {
+test("onboarding goal choices and sentence read back after reload without a local draft", async (t) => {
   const store = new Map<string, string>();
   stubWindow(t, store);
   const api = stubProfileApi(t, "", {
@@ -217,20 +207,22 @@ test("SC-W0002-04 onboarding: the goal saved on the goals step reads back into t
 
   const first = await mountFlow("u-reload");
   await enterGoals(first);
-  await act(async () => { goalInput(first).props.onChange({ target: { value: "年内找到 2 家稳定的日本供应商，先谈大阪" } }); });
-  const yearCard = first.root.findAll(node => node.type === "button" && node.props["aria-label"] === "一年内")[0];
-  await act(async () => { yearCard.props.onClick(); });
+  const choice = first.root.findAll(node => node.type === "button" && node.children.join("") === "寻找合作伙伴")[0];
+  assert.ok(choice);
+  await act(async () => { choice.props.onClick(); });
+  await act(async () => { goalInput(first).props.onChange({ target: { value: "先谈大阪的两家供应商" } }); });
   await clickText(first, "继续");
-  assert.equal(api.puts.at(-1)?.relationshipGoal, "年内找到 2 家稳定的日本供应商，先谈大阪（一年内）");
-  assert.equal(api.saved(), "年内找到 2 家稳定的日本供应商，先谈大阪（一年内）");
+  assert.equal(api.puts.at(-1)?.relationshipGoal, "寻找合作伙伴：先谈大阪的两家供应商");
+  assert.equal(api.saved(), "寻找合作伙伴：先谈大阪的两家供应商");
   act(() => first.unmount());
 
   // 刷新：本地草稿清空，接口返回刚保存的值
   store.clear();
   const second = await mountFlow("u-reload");
-  await enterGoals(second);
-  assert.equal(goalInput(second).props.value, "年内找到 2 家稳定的日本供应商，先谈大阪");
-  assert.deepEqual(pressed(second, "btn ge-horizon"), ["一年内"]);
+  assert.equal(second.root.findAll(node => node.props["data-screen-label"] === "04 商务画像").length, 1);
+  await clickText(second, "← 上一步");
+  assert.equal(goalInput(second).props.value, "先谈大阪的两家供应商");
+  assert.equal(second.root.findAll(node => node.type === "button" && node.props["aria-pressed"] === true && node.children.join("").includes("寻找合作伙伴")).length, 1);
   act(() => second.unmount());
 });
 
