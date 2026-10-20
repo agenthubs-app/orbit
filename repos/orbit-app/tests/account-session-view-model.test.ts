@@ -204,11 +204,8 @@ test("accountSessionToView preserves the actual name even for a formerly aliased
 });
 
 test("account screen renders the signed-out boundary before API failure states", () => {
-  assert.match(accountScreenSource, /auth\.ready && !auth\.signedIn/u);
-  assert.match(
-    accountScreenSource,
-    /accountSessionToView\(null,\s*\{\s*authenticated: false/u
-  );
+  assert.match(accountScreenSource, /auth\.ready && \(!auth\.signedIn \|\| state\.kind === "success"/u);
+  assert.match(accountScreenSource, /authenticated: auth\.signedIn/u);
   assert.match(
     accountScreenSource,
     /auth\.signedIn && state\.kind === "failure"/u

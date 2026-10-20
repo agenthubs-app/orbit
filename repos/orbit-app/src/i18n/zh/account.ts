@@ -1,5 +1,8 @@
 export const account = {
   "account.title": "账号与工作区",
+  "account.overviewTitle": "账户",
+  "account.loginSection": "登录",
+  "account.dataSection": "数据",
   "account.workspace": "工作区",
   "account.plan": "方案",
   "account.timeZone": "时区",

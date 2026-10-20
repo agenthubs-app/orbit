@@ -1,5 +1,8 @@
 export const account = {
   "account.title": "アカウントとワークスペース",
+  "account.overviewTitle": "アカウント",
+  "account.loginSection": "ログイン",
+  "account.dataSection": "データ",
   "account.workspace": "ワークスペース",
   "account.plan": "プラン",
   "account.timeZone": "タイムゾーン",

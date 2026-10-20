@@ -192,7 +192,7 @@ test("server draft and account navigation retain actions without configuration o
   assert.equal(await web.getByRole("button", { name: /保存|检查|重置/ }).count(), 0);
   assert.deepEqual(await web.evaluate(() => (window as any).fixture.requests), []);
   const account = await open(t, "account"); await fits(account.getByRole("button", { name: "退出登录", exact: true }));
-  await account.getByRole("button", { name: /权限中心/ }).click();
+  await account.getByRole("button", { name: /权限/ }).click();
   assert.deepEqual(await account.evaluate(() => (window as any).fixture.navigation), ["/account/permissions"]);
   assert.deepEqual(await account.evaluate(() => (window as any).fixture.requests), [
     { action: "GET", payload: { path: "/api/account/deletion-request" } }

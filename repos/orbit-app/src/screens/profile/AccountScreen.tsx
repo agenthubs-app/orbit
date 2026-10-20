@@ -1,31 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, RefreshControl, StyleSheet, View } from "react-native";
+
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, rowRoleStyles, spacing, textStyles, typography } from "../../design/tokens";
-import { createControlStyles } from "../../design/controls";
+import { Card } from "../../components/ui/Card";
+import { ListRow } from "../../components/ui/ListRow";
+import { UiText } from "../../components/ui/Text";
+import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
-import {
-  accountSessionToView,
-  type AccountSessionView
-} from "../../view-models/account-session";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { clearProfileEditSession } from "../../data/profile-edit-session";
-import { createAccountRightsApi } from "../account-rights/api";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { accountSessionToView, type AccountSessionView } from "../../view-models/account-session";
+import { createAccountRightsApi } from "../account-rights/api";
 
 export function AccountScreen() {
   const router = useRouter();
   const { colors } = useOrbitTheme();
-  const { fontScale } = useWindowDimensions();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
@@ -37,73 +34,21 @@ export function AccountScreen() {
       if (request?.status === "pending" || request?.status === "purging") router.replace("/account/pending");
     }).catch(() => undefined);
   }, [auth.signedIn, auth.offline, rights, router]);
-  const state = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.accountMe,
-    (data) =>
-      accountSessionToView(data, {
-        authenticated: auth.signedIn,
-        authUser: auth.user,
-        t: locale.t
-      }).statusLabel !== locale.t("account.signedIn")
-  );
-
-  return (
-    <AppScreen
-      refreshControl={
-        <RefreshControl
-          onRefresh={state.refresh}
-          refreshing={state.refreshing}
-          tintColor={colors.accentText}
-        />
-      }
-      title={fontScale > 1.3 && locale.language === "zh" ? locale.t("account.title").replace("与", "与\n") : locale.t("account.title")}
-    >
-      {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
-      {auth.ready && !auth.signedIn ? (
-        <AccountContent
-          onRefresh={state.refresh}
-          signedIn={false}
-          view={accountSessionToView(null, {
-            authenticated: false,
-            authUser: null,
-            t: locale.t
-          })}
-        />
-      ) : null}
-      {auth.signedIn && state.kind === "loading" ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
-      {auth.signedIn && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title={locale.t("account.serverOffline")} />
-      ) : null}
-      {auth.signedIn && state.kind === "failure" ? (
-        <ErrorState message={state.error.message} title={locale.t("account.unavailable")} />
-      ) : null}
-      {auth.signedIn &&
-      (state.kind === "success" || state.kind === "empty") ? (
-        <AccountContent
-          onRefresh={state.refresh}
-          signedIn={auth.signedIn}
-          view={accountSessionToView(state.data, {
-            authenticated: auth.signedIn,
-            authUser: auth.user,
-            t: locale.t
-          })}
-        />
-      ) : null}
-    </AppScreen>
-  );
+  const state = useApiResource<unknown>(ORBIT_API_ENDPOINTS.accountMe,
+    data => accountSessionToView(data, { authenticated: auth.signedIn, authUser: auth.user, t: locale.t }).statusLabel !== locale.t("account.signedIn"));
+  const view = accountSessionToView(state.kind === "success" || state.kind === "empty" ? state.data : null,
+    { authenticated: auth.signedIn, authUser: auth.user, t: locale.t });
+  return <AppScreen inset="kit" title={locale.t("account.overviewTitle")}
+    refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accentText} />}>
+    {!auth.ready || auth.signedIn && state.kind === "loading" ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
+    {auth.signedIn && state.kind === "offline" ? <ErrorState message={state.error.message} title={locale.t("account.serverOffline")} /> : null}
+    {auth.signedIn && state.kind === "failure" ? <ErrorState message={state.error.message} title={locale.t("account.unavailable")} /> : null}
+    {auth.ready && (!auth.signedIn || state.kind === "success" || state.kind === "empty") ? <AccountOverview view={view} onRefresh={state.refresh} /> : null}
+  </AppScreen>;
 }
 
-function AccountContent({
-  onRefresh,
-  signedIn,
-  view
-}: {
-  onRefresh: () => void;
-  signedIn: boolean;
-  view: AccountSessionView;
-}) {
+function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefresh: () => void }) {
   const { colors, styles } = useStyles();
-  const { fontScale } = useWindowDimensions();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
@@ -111,356 +56,100 @@ function AccountContent({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [debugPendingCount, setDebugPendingCount] = useState<number | null>(null);
   const [debugPendingIds, setDebugPendingIds] = useState<readonly string[]>([]);
-
+  const open = (href: string) => router.push(href as Href);
   useEffect(() => {
-    if (!__DEV__ || Platform.OS === "web" || !signedIn) {
-      setDebugPendingCount(null);
-      setDebugPendingIds([]);
-      return;
-    }
+    if (!__DEV__ || Platform.OS === "web" || !auth.signedIn) return;
     let active = true;
     void Promise.all([auth.readPendingWritesOnDevice(), auth.listDebugPendingWriteIds()]).then(([count, ids]) => {
-      if (active) {
-        setDebugPendingCount(count);
-        setDebugPendingIds(ids);
-      }
-    }).catch(() => {
-      if (active) setFeedback("无法读取这台设备上的待同步修改数量。");
-    });
+      if (active) { setDebugPendingCount(count); setDebugPendingIds(ids); }
+    }).catch(() => { if (active) setFeedback("无法读取这台设备上的待同步修改数量。"); });
     return () => { active = false; };
-  }, [auth.listDebugPendingWriteIds, auth.readPendingWritesOnDevice, signedIn]);
-
+  }, [auth.signedIn, auth.readPendingWritesOnDevice, auth.listDebugPendingWriteIds]);
   async function signOut() {
     setFeedback(null);
     const result = await auth.signOut();
-
-    if (!result.success) {
-      setFeedback(result.message ?? locale.t("account.signOutFailure"));
-      return;
-    }
-
+    if (!result.success) { setFeedback(result.message ?? locale.t("account.signOutFailure")); return; }
     if (auth.actorId) clearProfileEditSession({ actorId: auth.actorId, apiOrigin: server.baseUrl });
-
     onRefresh();
   }
-
   async function addDebugPendingWrite() {
     try {
-      const count = await auth.enqueueDebugPendingWrite();
-      setDebugPendingCount(count);
+      setDebugPendingCount(await auth.enqueueDebugPendingWrite());
       setDebugPendingIds(await auth.listDebugPendingWriteIds());
       setFeedback(null);
-    } catch {
-      setFeedback("Debug 测试修改未能写入本机队列。");
-    }
+    } catch { setFeedback("Debug 测试修改未能写入本机队列。"); }
   }
-
   async function clearDebugPendingWrites() {
     try {
       for (const mutationId of debugPendingIds) {
-        const deleted = await auth.deleteDebugPendingWrite(mutationId);
-        if (deleted === null) throw new Error("DEBUG_OUTBOX_SCOPE_CHANGED");
+        if (await auth.deleteDebugPendingWrite(mutationId) === null) throw new Error("DEBUG_OUTBOX_SCOPE_CHANGED");
       }
       setDebugPendingIds(await auth.listDebugPendingWriteIds());
       setDebugPendingCount(await auth.readPendingWritesOnDevice());
       setFeedback(null);
-    } catch {
-      setFeedback("Debug 测试修改未能全部清理，请保留队列并检查设备。");
-    }
+    } catch { setFeedback("Debug 测试修改未能全部清理，请保留队列并检查设备。"); }
   }
-
-  return (
-    <>
-      {signedIn ? (
-        <>
-          <View style={[styles.identity, fontScale > 1.3 && styles.identityLarge]}>
-            <View style={styles.identityMain}>
-              <View style={styles.avatar}><Text style={styles.avatarText}>{Array.from(view.displayName)[0]}</Text></View>
-              <View style={styles.identityCopy}>
-                <Text style={styles.identityName}>{view.displayName}</Text>
-                {auth.user?.email ? <Text style={styles.identityEmail}>{auth.user.email}</Text> : null}
-              </View>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.editProfile")}
-              onPress={() => router.push("/profile/edit" as Href)} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
-              <Text style={styles.editText}>{locale.t("account.editProfile")}</Text>
-              <Ionicons color={colors.accentText} name="chevron-forward" size={14} />
-            </Pressable>
-          </View>
-
-          <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("account.workspace")}</Text>
-            <View style={styles.workspace}>
-              <View style={styles.workspaceIcon}><Text style={styles.workspaceInitial}>{view.workspaceName === locale.t("account.workspaceMissing") ? "—" : Array.from(view.workspaceName)[0]}</Text></View>
-              <View style={styles.workspaceCopy}>
-                <Text style={styles.workspaceName}>{view.workspaceName}</Text>
-                <Text style={styles.workspaceDetail}>{view.roleLabel}</Text>
-              </View>
-              {view.workspaceName !== locale.t("account.workspaceMissing") ? <View style={styles.currentBadge}><Text style={styles.currentText}>{locale.t("common.current")}</Text></View> : null}
-            </View>
-            <View style={[styles.infoGrid, fontScale > 1.3 && styles.infoGridLarge]}>
-              <InfoCell label={locale.t("account.plan")} value={view.planLabel} />
-              <InfoCell label={locale.t("account.timeZone")} value={view.timezoneLabel} />
-              <InfoCell label={locale.t("account.status")} value={view.statusLabel} />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("account.goal")}</Text>
-            <View style={styles.goalContent}>
-              <Text style={styles.bodyText}>{view.goal}</Text>
-              <Text style={styles.workspaceDetail}>{view.nextAction}</Text>
-            </View>
-          </View>
-        </>
-      ) : (
-        <DataCard detail={view.summary} title={locale.t("account.signedOutTitle")}>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusBadge, styles.statusBadgeMuted]}>
-              <Ionicons
-                color={colors.ink3Text}
-                name="person-circle-outline"
-                size={18}
-              />
-              <Text style={[styles.statusText, styles.statusTextMuted]}>
-                {view.statusLabel}
-              </Text>
-            </View>
-          </View>
-        </DataCard>
-      )}
-
-      {feedback ? <Text accessibilityRole="alert" style={styles.feedbackText}>{feedback}</Text> : null}
-
-      <View style={styles.accessRows}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={locale.t("account.serverSettings")}
-          accessibilityHint={locale.t("account.serverHint")}
-          onPress={() => router.push("/settings/api" as Href)}
-          style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}
-        >
-          <Text style={styles.accessText}>{locale.t("account.serverSettings")}</Text>
-          <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
-        </Pressable>
-        {signedIn ? (
-          <>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.rights.export")}
-            onPress={() => router.push("/account/exports" as Href)}
-            style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
-            <Text style={styles.accessText}>{locale.t("account.rights.export")}</Text>
-            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.rights.delete")}
-            onPress={() => router.push("/account/deletion" as Href)}
-            style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
-            <Text style={styles.accessText}>{locale.t("account.rights.delete")}</Text>
-            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.permissions")}
-            accessibilityHint={locale.t("account.permissionsHint")}
-            onPress={() => router.push("/account/permissions" as Href)}
-            style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
-            <Text style={styles.accessText}>{locale.t("account.permissions")}</Text>
-            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
-          </Pressable>
-          </>
-        ) : null}
+  const chevron = <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />;
+  return <View style={styles.page}>
+    {/* 主会话代定 §R18c-2: #19 shows only supported account facts and keeps existing routes. */}
+    <Card style={styles.identity}>
+      <View style={styles.avatar}><UiText style={styles.avatarText}>{Array.from(view.displayName)[0] ?? "?"}</UiText></View>
+      <View style={styles.identityCopy}>
+        <UiText style={styles.identityName}>{view.displayName}</UiText>
+        <UiText style={styles.muted}>{auth.user?.email ?? view.summary}</UiText>
       </View>
-
-      {view.authActions.length > 0 ? (
-        <DataCard detail={locale.t("account.entryDetail")} title={locale.t("account.entry")}>
-          <View style={styles.actionRow}>
-            {view.authActions.map((action, index) => (
-              <Pressable
-                accessibilityRole="button"
-                key={action.href}
-                onPress={() => router.push(action.href as Href)}
-                style={({ pressed }) => [
-                  styles.actionButton,
-                  index > 0 ? styles.secondaryActionButton : null,
-                  pressed ? styles.pressed : null
-                ]}
-              >
-                <Text style={index === 0 ? styles.actionButtonText : styles.secondaryActionText}>{action.label}</Text>
-                <Ionicons color={index === 0 ? colors.onAccent : colors.ink} name="arrow-forward" size={16} />
-              </Pressable>
-            ))}
-          </View>
-        </DataCard>
-      ) : null}
-
-      {signedIn ? (
-        <View style={styles.signOutSection}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={signOut}
-            style={({ pressed }) => [
-              styles.signOutButton,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Text style={styles.signOutText}>{locale.t("account.signOut")}</Text>
-          </Pressable>
-          <Text style={styles.workspaceDetail}>{locale.t("account.signOutDetail")}</Text>
-        </View>
-      ) : null}
-      {__DEV__ && Platform.OS !== "web" && signedIn ? (
-        <View style={styles.signOutSection}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="加入一条 Debug 待同步修改"
-            onPress={() => { void addDebugPendingWrite(); }}
-            style={({ pressed }) => [styles.signOutButton, pressed ? styles.pressed : null]}
-          >
-            <Text style={styles.signOutText}>
-              加入一条 Debug 待同步修改{debugPendingCount === null ? "" : ` · ${debugPendingCount}`}
-            </Text>
-          </Pressable>
-          <Text style={styles.workspaceDetail}>仅写入 test-offline-write 测试域，不会调用服务器。</Text>
-          {debugPendingIds.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="清理本轮 Debug 测试修改"
-              onPress={() => { void clearDebugPendingWrites(); }}
-              style={({ pressed }) => [styles.accessRow, pressed ? styles.pressed : null]}
-            >
-              <Text style={styles.accessText}>清理本轮 Debug 测试修改 · {debugPendingIds.length}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-    </>
-  );
+    </Card>
+    {auth.signedIn ? <>
+      <UiText style={styles.heading}>{locale.t("account.loginSection")}</UiText>
+      <Card style={styles.group}>
+        <ListRow title={locale.t("account.status")} subtitle={view.statusLabel} leading={<Ionicons color={colors.ink2} name="person-outline" size={20} />} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.editProfile")} subtitle={view.displayName} leading={<Ionicons color={colors.ink2} name="create-outline" size={20} />} trailing={chevron} onPress={() => open("/profile/edit")} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.workspace")} subtitle={`${view.workspaceName} · ${view.roleLabel}`} leading={<Ionicons color={colors.ink2} name="people-outline" size={20} />} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.goal")} subtitle={view.goal} leading={<Ionicons color={colors.ink2} name="flag-outline" size={20} />} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.timeZone")} subtitle={view.timezoneLabel} leading={<Ionicons color={colors.ink2} name="time-outline" size={20} />} />
+      </Card>
+      <UiText style={styles.heading}>{locale.t("account.dataSection")}</UiText>
+      <Card style={styles.group}>
+        <ListRow title={locale.t("account.rights.export")} subtitle={locale.t("account.rights.exportIntro")} leading={<Ionicons color={colors.ink2} name="share-outline" size={20} />} trailing={chevron} onPress={() => open("/account/exports")} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.rights.delete")} leading={<Ionicons color={colors.coralText} name="close-outline" size={20} />} trailing={chevron} onPress={() => open("/account/deletion")} />
+      </Card>
+      <Card style={styles.group}>
+        <ListRow title={locale.t("account.permissions")} subtitle={locale.t("account.permissionsHint")} accessibilityLabel={locale.t("account.permissions")} trailing={chevron} onPress={() => open("/account/permissions")} />
+        <View style={styles.rule} />
+        <ListRow title={locale.t("account.signOut")} accessibilityLabel={locale.t("account.signOut")} trailing={chevron} onPress={() => { void signOut(); }} />
+      </Card>
+    </> : <Card style={styles.group}>
+      <UiText style={styles.muted}>{locale.t("account.signedOutTitle")}</UiText>
+      <UiText style={styles.muted}>{view.emptyMessage}</UiText>
+      {view.authActions.map(action => <ListRow key={action.href} title={action.label} trailing={chevron} onPress={() => open(action.href)} />)}
+    </Card>}
+    {__DEV__ ? <Card style={styles.group}>
+      <ListRow title={locale.t("account.serverSettings")} subtitle={locale.t("account.serverHint")} trailing={chevron} onPress={() => open("/settings/api")} />
+      {Platform.OS !== "web" && auth.signedIn ? <>
+        <View style={styles.rule} />
+        <ListRow title={`Debug 待同步修改 · ${debugPendingCount ?? "—"}`} onPress={() => { void addDebugPendingWrite(); }} />
+        {debugPendingIds.length > 0 ? <ListRow title={`清理 Debug 测试修改 · ${debugPendingIds.length}`} onPress={() => { void clearDebugPendingWrites(); }} /> : null}
+      </> : null}
+    </Card> : null}
+    {feedback ? <UiText accessibilityRole="alert" style={styles.feedback}>{feedback}</UiText> : null}
+  </View>;
 }
 
-function InfoCell({ label, value }: { label: string; value: string }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.infoCell}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  identity: { flexDirection: "row", alignItems: "center", gap: 14, paddingTop: 8, paddingBottom: 8 },
-  identityLarge: { flexDirection: "column", alignItems: "stretch" },
-  identityMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
-  avatar: { width: 56, minHeight: 56, borderRadius: 28, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: colors.onAccent, fontSize: 22, lineHeight: 28, fontWeight: "800" },
-  identityCopy: { flex: 1, minWidth: 0, gap: 2 },
-  identityName: { color: colors.ink, fontSize: 18, lineHeight: 24, fontWeight: "900", letterSpacing: -0.18 },
-  identityEmail: { color: colors.ink2, fontSize: 13, lineHeight: 20 },
-  editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
-  editText: { color: colors.accentText, fontSize: 13, lineHeight: 20, fontWeight: "700" },
-  section: { gap: 6 },
-  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.ink3Text },
-  workspace: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, borderTopColor: colors.line, borderTopWidth: 1, borderBottomColor: colors.line, borderBottomWidth: 1, paddingVertical: 14 },
-  workspaceIcon: { width: 36, minHeight: 36, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  workspaceInitial: { color: colors.onAccent, fontSize: 14, lineHeight: 20, fontWeight: "800" },
-  workspaceCopy: { flex: 1, minWidth: 110, gap: 1 },
-  workspaceName: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "700" },
-  workspaceDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  currentBadge: { backgroundColor: colors.accentText, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  currentText: { color: colors.onAccent, fontSize: 11, lineHeight: 16, fontWeight: "700" },
-  goalContent: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14, gap: 8 },
-  accessRows: { borderTopColor: colors.line, borderTopWidth: 1 },
-  accessRow: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 50, paddingVertical: 13.5, borderBottomColor: colors.line, borderBottomWidth: 1 },
-  accessText: { ...rowRoleStyles.navLabel, flex: 1, color: colors.ink },
-  signOutSection: { gap: 8, paddingTop: 12 },
-  signOutButton: { ...createControlStyles(colors).secondaryButton, borderColor: colors.line },
-  signOutText: { ...rowRoleStyles.navLabel, color: colors.coralText },
-  bodyText: {
-    ...textStyles.body,
-    color: colors.ink,
-  },
-  feedbackText: {
-    backgroundColor: colors.coralSoft,
-    borderColor: colors.line,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    color: colors.coralText,
-    fontSize: typography.bodySm,
-    lineHeight: 19,
-    padding: spacing.md
-  },
-  actionButton: {
-    ...createControlStyles(colors).primaryButton,
-    flexDirection: "row",
-    flexGrow: 1,
-    maxWidth: "100%",
-    gap: spacing.sm
-  },
-  actionButtonText: {
-    ...createControlStyles(colors).primaryButtonText
-  },
-  actionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  infoCell: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 128
-  },
-  infoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  infoGridLarge: { flexDirection: "column", flexWrap: "nowrap" },
-  infoLabel: {
-    color: colors.ink3Text,
-    fontSize: typography.label,
-    lineHeight: 16
-  },
-  infoValue: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
-  },
-  pressed: {
-    opacity: 0.84,
-    transform: [{ translateY: 0.5 }]
-  },
-  statusBadge: {
-    alignItems: "center",
-    backgroundColor: colors.okSoft,
-    borderRadius: radius.md,
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  statusBadgeMuted: {
-    backgroundColor: colors.surface2
-  },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  statusText: {
-    color: colors.okText,
-    fontSize: typography.label,
-    fontWeight: "700",
-    lineHeight: 16
-  },
-  statusTextMuted: {
-    color: colors.ink3Text
-  },
-  secondaryActionButton: {
-    ...createControlStyles(colors).secondaryButton
-  },
-  secondaryActionText: {
-    ...createControlStyles(colors).secondaryButtonText
-  },
+const useStyles = createThemedStyles(colors => StyleSheet.create({
+  page: { gap: 12, paddingBottom: 24 },
+  identity: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: colors.accentText, fontSize: 16, fontWeight: "700" },
+  identityCopy: { flex: 1, minWidth: 0 },
+  identityName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  muted: { color: colors.ink3Text, fontSize: 12, marginTop: 3 },
+  heading: { color: colors.ink3Text, fontSize: 12, marginTop: 9, marginLeft: 6 },
+  group: { paddingVertical: 2, paddingHorizontal: 16 },
+  rule: { height: 1, backgroundColor: colors.line, marginLeft: 30 },
+  feedback: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: 24, fontSize: 13, padding: 12 },
 }));

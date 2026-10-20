@@ -1,5 +1,8 @@
 export const account = {
   "account.title": "Account & workspace",
+  "account.overviewTitle": "Account",
+  "account.loginSection": "Sign-in",
+  "account.dataSection": "Data",
   "account.workspace": "Workspace",
   "account.plan": "Plan",
   "account.timeZone": "Time zone",
