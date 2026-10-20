@@ -129,3 +129,53 @@ SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror �
 ## 未完と次の検証
 
 両端の typecheck と Web `typecheck:app` / lint は各記録時点では exit0、画板 preflight runner も両端 exit0 だが七板の五項目確認は未通過。上記の full はすべて記載した source 時点の赤い結果で、現 HEAD の green を意味しない。一般 task list の plan-aware ETag は actor scope と一行 304 を保って修正済みだが、端末側の計画失効 mirror と E 線 UI 連動は OPEN。2026-10-19 の RD-33 により、offline contact create / ID alias は B 線後続 DEFERRED、R20b はオンライン作成済み連絡先を参照する offline note に絞る。C11 補掃・PII 不記録は D 線の部分実装と上記の局所回帰まで完了したが、保存から計画提議・確認後の計分、端末読回までは未検証。R20a の残項、b5 の AI・録音改稿、Web #19 右欄の操作出典と七板 preflight はなお UI／pixel 門禁を閉じない。cross-client readback と E 線 UI 相互検証も未実施。変更したファイル以外の D 線 Task source / tests は他作業として保持し、この REPORT の成果に数えない。
+
+## 2026-10-20 R20b run-02 收口核对（覆盖上文旧快照的“未实装／未读回”叙述）
+
+范围是 `line-d`、本 worktree 与隔离本机 `orbit_line_d` 的合成账号／workspace。开工按要求 `git pull --rebase origin redesign`；本轮产品提交为 `2994e9038`（Web Memo）、`9b202c0d2`（App 四屏）、`9343807be`（手入力接线）、`16a57f868`（失效对象只读）、`847327ccf`（Web token／关联／旧 URL）、`0c093f4e7`（App 分类卡）、`df89e77f8`（Web 标题按钮／详情卡）、`bfa580172`（Web token／可访问名）；画板预检记录为 `9a032983c`。均按 D 线确切路径和 `Co-Authored-By: Codex <noreply@openai.com>` 提交，未 push。随后 clean worktree 上再次 `git pull --rebase origin redesign` 为 up to date。未跟踪的 `HANDOFF-CLAUDE-2026-10-19.md` 是预存文件，未修改、未纳入提交。
+
+### SC-01～16 对照
+
+| SC | 本轮已取得的证据 | 当前结论／具体缺项 |
+| --- | --- | --- |
+| 01 开工／预检 | R20a 已在基线；隔离 Web 3500、Metro 8085、模拟器与本机 actor；七板 token 和数据来源写入 `preflight-checklist.md`。 | **未通过**五项预检：b5 AI／录音板未改，Web #19 右栏动作无来源，App 数量与可见卡 fixture 不一致。 |
+| 02 契约／离线 RED | 上文 BREAKING、共享／App schema 副本、旧 token 和 event 分支、strict outbox RED→GREEN。 | D 数据契约局部完成；跨端真实 `@イベント` 操作仍列 05／08。 |
+| 03 持久化／镜像 | 上文 notes HTTP／PG、同步注册表、actor 隔离与 App 镜像回归；本轮 App→Web→App、Web→App→Web 对同 actor 真实笔记各完成一次创建、编辑和版本读回。 | 本轮双向主体读写通过；活动 token 的真实设备读回仍缺已报名活动 fixture。 |
+| 04 App 列表／详情 | 新四屏接到 Task › メモ；三类、搜索／分页、详情和有效对象跳转的渲染回归；App 列表／交互定向 **41/41**，typecheck exit0；模拟器实际进入列表和详情。 | 功能局部通过；A01 像素失败，滚动保持／全部画板操作不能据此称全过。 |
+| 05 @人／@イベント | App 本机候选、UTF-16 偏移、未知 token、软删对象不可点的定向回归；模拟器输入 `@` 后可见并可选联系人；Web token 保存／重开／跳转与旧 URL 定向 **11/11**，其中已删联系人不生成链接。 | `@人` 有实际候选和双端读写；设备真实 `@イベント` 候选／保存／跨端回读未闭项，A-R12-16 需画面归属方重比。 |
+| 06 历史 voice | 旧 `voice` 保持 `free` 分类、来源 chip、编辑后 kind 不变；本期新 UI 隐藏录音入口，未增加原生录音依赖。 | 数据和新 UI 局部通过；b5 #47／#48 与 #51 回放／AI 元素需主会话改稿及 DEFERRED 登记。 |
+| 07 Web Memo | `?tab=memo` 列表、三类、详情、搜索、编辑、新建、旧深链、标题「＋ メモを追加」；容器／Memo 定向 **15/15**，修正后浏览器 Memo **5/5**；R07 标题和左栏浅／深区域 raw 0。 | 功能局部通过；W01 整屏三轮仍失败，R07 整屏浅／深仍失败。 |
+| 08 离线 | 本机 App 对已在线保存联系人的离线新建、离线编辑：停本端 loopback API 后显示未同期，恢复后同 ID、关联、正文和 v1→v2 两次读回；Web API 不可用时标题按钮禁用回归。 | **部分**：这是 API 中断演练，未执行设备飞行模式、event token 离线实操或 409 草稿演练。RD-33 已将临时联系人 ID 依赖出队转 B 线后续。 |
+| 09 手入力 | 模拟器手输入并保存合成联系人，选择「メモ」进入带已保存 `contactId` 的新 Memo；保存后联系人范围与 Task 全局指向同一记录。 | 主路径通过；失败／undo 不产生孤儿的定向回归已覆盖，实设备逐分支未重演。 |
+| 10 C11 | 上文本机隔离 PG 的保存→固定 provider／quota→一张确认卡→确认后一次计分、去重和 actor 隔离；补扫与无 PII 任意错误文局部回归。 | **未闭项**：没有配置真实本机 provider＋quota ledger 的成功调用，也无确认卡设备读回；未调用 E3。不得将固定 provider 计作真实 AI 账本验证。 |
+| 11 planLink | 上文 POST/PATCH、actor/type 校验、失效隐藏、一般 list plan-aware ETag、隔离 PG 回归。 | **未闭项**：device task-domain manifest／page 对计划失效不增版，已证实 RED 并理由化 SKIP；E 线「プランに追加」和类型详情联验未到。 |
+| 12 旧屏删除 | 四个旧实现已删，四 route 保留兼容着陆；`notes-source*` 保留，允许清单／路由和离线目录按新屏更新，旧 scoped URL 回归。 | D 实现及局部回归完成；主会话独立复核仍待。 |
+| 13 App 像素 | A01 两轮 raw 0.1181／0.1241；A02 两轮 0.0838／0.0843，第三张取到候选出现前旧截图的“PASS”无效；A03 0.6684，A05 0.1351，A06 0.0792，A07 0.1105。实际 `@` 候选另有截图。 | **未过**：board 状态／真实数据不一致，AI／录音改稿未到；不扩大三轮上限。App 深色无板。 |
+| 14 Web 像素 | W01 三轮 raw 0.0907→0.0805→0.0772，末轮仍缺 32 块；R07 Memo 标题／左栏浅深区域 raw 0 通过，整屏浅／深 0.0627／0.0587 失败；1024／390 无横向溢出截图。 | **未过**；Web #19 右栏按钮和状态来源待主会话定，1024／390／深色无板只作交接截图。 |
+| 15 全量／跨端 | 两端真实同 actor 双向创建／编辑／重开，联系人的离线同步见下；Web normal tsc、app tsc、lint 与 App tsc 均 exit0。 | 全量 Web **33 fail**、App **14 fail**，copy QA 仍红；详见下。不能标零新增失败或 Sprint done。 |
+| 16 REPORT／复核 | 本节逐项登记结果、原始证据、越线请求和决定；所有本轮实现均在 PLANNER §1 D 线归属路径内。 | 本 REPORT 可提交；主会话独立 REVIEW、已通过图至少 20% 重比、汇总文档和 DEFERRED 更新仍待。 |
+
+### 收口测试、逐名基线与来源
+
+- Web full 在 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 下通过 D 线 `heavy.sh` 仅运行一次：**7,862 total / 6,788 pass / 33 fail / 1,041 skip，exit1**。原始 `/Users/xzhao/orbit-sprint-evidence/redesign/R20b/run-02/web-full-final.log`；与本 Sprint 上游 39 fail 基线的逐名集合见同目录 `web-full-failure-comparison.json`：30 retained、9 gone、3 new。三个新名分别为 `visible controls have static accessible-name evidence`、`no product file declares or reads an old CSS variable name`、`orbit-2026 CSS Modules use only design tokens for colour, stacking, radius and type size`，均定位 D 的 Memo 新 UI；`bfa580172` 修复后对应定向 accessibility **97 pass / 4 既有 skip / 0 fail**、token **6/6**、Memo 浏览器 **5/5**，但遵守“收口全量一次”，**未以第二次 full 证明 33 个旧失败以外零新增**。
+- App full 同样在 locale 与 D `heavy.sh` 下限并发 4 一次：**3,272 total / 3,256 pass / 14 fail / 2 skip，exit1**。原始同目录 `app-full-final.log`；与 13 fail 可比基线的逐名集合 `app-full-failure-comparison.json`：10 retained、3 gone、4 new。新名为 R13 discovery toggle、R13 typed inbox selected tab、旧 split 字典 snapshot 的新命名断言、Toast undo；前两项隔离复现，Toast 隔离通过，字典是同一旧 key-count 风险的换名断言。D 本轮未改这些模块，但不能从归属推断 full 通过，需各 owner 复核。
+- Web `typecheck`、`typecheck:app`、`lint` 与 App `typecheck` 均在本轮最终产品改动后 **exit0**。Web `copy:qa --web` 为 **3,998 entries / 29 issues、exit1**，Memo issue **0**；全域 copy QA **7,507 entries / 245 issues、exit1**。App notes copy QA **146 entries / 162 issues、exit1**，新增的 11 个 kind 元数据项归 `src/i18n/copy-kinds.ts`，超 D allowlist；不能写成 copy gate 通过。
+- Web 独立画面证据位于同目录 `pixel-web-w01-r1`／`r2`／`r3`、`pixel-web-r07-memo-3500`；App 位于 `pixel-app-a01-r1`／`r2`、`pixel-app-a02-*`、`pixel-app-a03-*`、`pixel-app-a05-*`／`a06-*`／`a07-*`。Web 1024／390／1440 dark 原图同目录 `web-memo-{1024-light,390-light,1440-dark}.png`。具体预检阻断与非有效第三张 A02 已写 `preflight-checklist.md`；无归因充分的超阈值图被伪作通过。
+
+### 实际读回、活动 fixture 的边界
+
+`/Users/xzhao/orbit-sprint-evidence/redesign/R20b/run-02/cross-end-local.json` 记录同一合成 actor 的 App 建 `note:2e6648b4b5446a0df43b5a74` v1→Web UI 编辑 v2→App 重开 v2，以及 Web UI 建 `note:620fcfe3e659a58b6d4f0184` v1→App 编辑 v2→Web UI 重开 v2。手入力后的新笔记在联系人独立列表 **1/1** 与 Task 全局列表 **9/9** 是同一 ID。App 对已存在线联系人离线建新 Memo 并在线重开 v1，再离线改正文且恢复后在线重开 v2，联系人关联保持；此处通过停／启**本端**本机 API 模拟中断，未接触生产或外部账号。
+
+为核对 App 的 `@イベント` 本机条件，读取了新屏的数据源：它只从设备 `registered_event` 镜像形成候选，而非任意个人日程。隔离 actor 的活动创建 `POST /api/events` 为 **201**，同 ID 详情 GET 为 **200**，但 `GET /api/events/{id}/registration?questions=false` 与报名 POST 均为 **404 NOT_FOUND**（`registered-event-check.log`、`seed-registered-event.mjs`，同目录）。因此本机没有可按正常 API 报名并进入该镜像的活动，不把单元 fixture 或未报名的私人活动冒充设备真实候选；需 Event owner 提供可报名的隔离 fixture／建置步骤后再走 App 输入→Web 读回→编辑→App 重开。合成活动仅留在本机隔离 workspace。
+
+### 交接、待主会话决定与停点
+
+| 对象／归属 | 交接内容与验收范围 |
+| --- | --- |
+| 主会话／画板 owner | 按 RD-33 重绘 b5 #46/#49/#50/#51 的 AI／录音／回放片段，保留可验的手写内容；明确 Web #19 右栏 `お礼の下書きを作る`、To-do、下一步按钮的可达服务、状态与错误回执。七板五项预检未过，W01 已到三轮上限；新画板版本需重新定 fixture 与门禁。A-R20b-02 的录音文案也需改。 |
+| B／Event owner | RD-33 的离线新建联系人 temporary ID alias／依赖 note 出队移入 DEFERRED；提供可报名且可进 `registered_event` 镜像的隔离活动 fixture，复走 SC-05／08 的 `@イベント` 实设备链。A-R12-16 的 token 状态交 R11a 画面归属方重比。 |
+| C11／R24／E 线 | 为 SC-10 配置**隔离本机** provider＋quota ledger 并取得确认卡设备读回；D 已有固定 provider 单本机链和无 PII 补扫回归。SC-11 的 task-domain manifest / page 失效投影与 cursor reset 超 D §1，需 sync owner 接；E 线类型详情与「プランに追加」用 D 的 `{planId,typeItemId}` 契约联验。 |
+| A／R13 与 copy owner | 核对 App full 新的 discovery、typed inbox、Toast 时序和字典 snapshot；`src/i18n/copy-kinds.ts` 中 notes kind 元数据、全域 copy QA 的既有 issue 由归属方处理。Web full 保留的 30 名及 App 10 名也仍是红色基线，不得从 D 的定向绿推为全量绿。 |
+| 主会话文档／独立复核 | 把 #47 录音、#48 E3、面談の記録合并判定与临时联系人 ID 写 DEFERRED-A；注明 W-R20b-02 废稿。更新 README/HANDOFF/决定表时记本端版本 `2994e9038`、`9b202c0d2`、`df89e77f8`、`bfa580172`、双向本机读回和未过门禁；独立重跑测试、SC-10/11 联验及至少 20% 已过图。D 不越权改根台账。 |
+
+本轮没有自行扩大 D allowlist，也没有新的产品代定；执行的是 PLANNER D-1～D-11、RD-33 和既有 R20a 基线。需主会话决定的是**新画板的数据／操作来源和对应版本的重新门禁**，以及跨线 C11／sync／Event fixture 的归属排期。没有用户级发布授权需求；未 push、未部署、未连 Neon／生产。已停止自己启动的 Next 3500、设计服务 3320、Metro 8085，关闭自己的 `Orbit Line D` 模拟器；Next 自动生成的 `next-env.d.ts`／`tsconfig.json` 仅按自己产生的差异恢复。
