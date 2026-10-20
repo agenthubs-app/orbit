@@ -12,14 +12,16 @@ const state = (patch: Partial<GuideState> = {}): GuideState => ({
 
 function sources(input: { contacts?: number; goal?: string | null; plan?: boolean; state?: GuideState; fail?: string } = {}) {
   let current = input.state ?? state();
+  const writes = { completed: 0, grandfathered: 0 };
   const guide: GuideStateService = {
     get: async () => { if (input.fail === "state") throw Error("unavailable"); return current; },
-    markCompleted: async () => { current = { ...current, completedAt: "2026-10-20T00:00:00Z" }; return current; },
-    recordGrandfathered: async (value) => { current = { ...current, grandfathered: value }; return current; },
+    markCompleted: async () => { writes.completed += 1; current = { ...current, completedAt: "2026-10-20T00:00:00Z" }; return current; },
+    recordGrandfathered: async (value) => { writes.grandfathered += 1; current = { ...current, grandfathered: value }; return current; },
     setBannerCollapsed: async () => current,
     update: async () => current,
   };
   return {
+    writes,
     guideState: () => guide,
     countContacts: async () => { if (input.fail === "contacts") throw Error("unavailable"); return input.contacts ?? 0; },
     readGoal: async () => { if (input.fail === "goal") throw Error("unavailable"); return input.goal ?? null; },
@@ -29,7 +31,7 @@ function sources(input: { contacts?: number; goal?: string | null; plan?: boolea
   };
 }
 
-test("home reads real guide facts at 0/3, 1/3, 2/3, 3/3 and latches completion", async () => {
+test("home GET reads real guide facts at 0/3, 1/3, 2/3, 3/3 without writing a latch", async () => {
   const empty = sources();
   const zero = await readHomeGuideProgress({ actorId: actor, userId: "user:home" }, empty);
   assert.equal(zero.kind, "progress");
@@ -44,9 +46,12 @@ test("home reads real guide facts at 0/3, 1/3, 2/3, 3/3 and latches completion",
     if (result.kind === "progress") assert.deepEqual([result.completed, result.nextStep], expected);
   }
   const complete = sources({ contacts: 3, goal: "協業を増やす", plan: true });
-  await readHomeGuideProgress({ actorId: actor, userId: "user:home" }, complete);
+  assert.equal((await readHomeGuideProgress({ actorId: actor, userId: "user:home" }, complete)).kind, "progress");
+  assert.deepEqual(complete.writes, { completed: 0, grandfathered: 0 });
+  await complete.guideState(actor).markCompleted();
   assert.deepEqual(await readHomeGuideProgress({ actorId: actor, userId: "user:home" }, complete),
     { kind: "hidden", reason: "completed" });
+  assert.deepEqual(complete.writes, { completed: 1, grandfathered: 0 }, "only the explicit state write latches completion");
 });
 
 test("demo switch does not affect the home projection; old users stay hidden", async () => {
@@ -70,9 +75,11 @@ test("an unavailable required source never becomes a false 0/3", async () => {
   }
 });
 
-test("the first old-user decision persists before the projection can be used", async () => {
+test("GET derives the old-user decision without persisting it", async () => {
   const old = sources({ contacts: 3, state: state({ grandfathered: null }) });
   old.readAccountCreatedAt = async () => "2025-01-01T00:00:00Z";
   assert.deepEqual(await readHomeGuideProgress({ actorId: actor, userId: "user:old" }, old),
     { kind: "hidden", reason: "grandfathered" });
+  assert.deepEqual(old.writes, { completed: 0, grandfathered: 0 });
+  assert.equal((await old.guideState(actor).get()).grandfathered, null);
 });

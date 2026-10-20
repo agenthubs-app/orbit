@@ -73,8 +73,8 @@ export async function readHomeGuideProgress(
         accountCreatedAt: createdAt, confirmedContacts,
         since: sources.since === undefined ? readGuideDemoConfig().since : sources.since,
       });
-      grandfathered = (await resolution.recordGrandfathered(decided)).grandfathered;
-      if (grandfathered === null) return { kind: "unavailable" };
+      // 主会话代定 §R10-11：GET 只按稳定事实推导老用户，不写首次判定。
+      grandfathered = decided;
     }
     if (grandfathered) return { kind: "hidden", reason: "grandfathered" };
     const [relationshipGoal, hasActivePlan] = await Promise.all([
@@ -85,7 +85,7 @@ export async function readHomeGuideProgress(
       completedAt: state.completedAt, confirmedContacts, grandfathered, hasActivePlan,
       relationshipGoal, step1Skipped: state.step1Skipped,
     });
-    if (progress.kind === "progress" && progress.completed === 3) await resolution.markCompleted();
+    // 完成闩锁只由明确的状态写操作持久化；这里可读派生的 3/3 或已存 completedAt。
     return progress;
   } catch {
     return { kind: "unavailable" };
