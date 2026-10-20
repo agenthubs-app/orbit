@@ -13,6 +13,22 @@ test("memo page keeps valid rows and the server total when one row is unfamiliar
   assert.equal(memoTabForKind("meeting"), "meeting");
 });
 
+test("memo page skips malformed mention rows without losing valid or future-token notes", () => {
+  const valid = { ...first, id: "valid", body: "Meet @会", mentions: [{ entityType: "contact", contactId: "c1", start: 5, end: 7, displayText: "@会" }] };
+  const future = { ...first, id: "future", body: "Meet @会", mentions: [{ entityType: "future", start: 5, end: 7, displayText: "@会" }] };
+  const notes = [
+    valid,
+    { ...valid, id: "null", mentions: [null] },
+    { ...valid, id: "range", mentions: [{ ...valid.mentions[0], end: 8 }] },
+    { ...valid, id: "event", mentions: [{ entityType: "event", start: 5, end: 7, displayText: "@会" }] },
+    { ...valid, id: "overlap", mentions: [valid.mentions[0], valid.mentions[0]] },
+    future,
+  ];
+  assert.deepEqual(memoPage({ notes, total: 9, nextCursor: "more" }), {
+    notes: [valid, future], total: 9, nextCursor: "more",
+  });
+});
+
 test("memo write carries explicit kind and plan use, and refuses an ambiguous plan contact", () => {
   assert.deepEqual(memoRequest({ title: "Meeting", body: "Body", kind: "meeting", contactIds: ["c1"], eventIds: [], usedForPlan: true }), {
     title: "Meeting", body: "Body", noteKind: "meeting", usedForPlan: true,

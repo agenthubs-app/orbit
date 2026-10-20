@@ -11,6 +11,24 @@ function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function validMentions(value: unknown, body: string): value is NoteMentionContract[] {
+  if (!Array.isArray(value)) return false;
+  for (const mention of value) {
+    if (!record(mention) || typeof mention.start !== "number" || !Number.isSafeInteger(mention.start)
+      || typeof mention.end !== "number" || !Number.isSafeInteger(mention.end)
+      || mention.start < 0 || mention.end <= mention.start || mention.end > body.length
+      || typeof mention.displayText !== "string" || !mention.displayText.trim()
+      || body.slice(mention.start, mention.end) !== mention.displayText) return false;
+    if (mention.entityType === undefined || mention.entityType === "contact") {
+      if (typeof mention.contactId !== "string" || !mention.contactId.trim() || mention.eventId !== undefined) return false;
+    } else if (mention.entityType === "event") {
+      if (typeof mention.eventId !== "string" || !mention.eventId.trim() || mention.contactId !== undefined) return false;
+    } else if (typeof mention.entityType !== "string" || !mention.entityType.trim()) return false;
+  }
+  const sorted = [...value].sort((left, right) => left.start - right.start);
+  return sorted.every((mention, index) => index === 0 || mention.start >= sorted[index - 1]!.end);
+}
+
 export function memoTabForKind(kind: unknown): Exclude<MemoTab, "all"> {
   return kind === "meeting" ? "meeting" : "free";
 }
@@ -72,7 +90,7 @@ export function memoPage(value: unknown): { notes: MemoRow[]; total: number; nex
     && Array.isArray(row.contactIds) && row.contactIds.every((id: unknown) => typeof id === "string")
     && Array.isArray(row.eventIds) && row.eventIds.every((id: unknown) => typeof id === "string")
     && Array.isArray(row.manualContactIds) && row.manualContactIds.every((id: unknown) => typeof id === "string")
-    && Array.isArray(row.mentions));
+    && validMentions(row.mentions, row.body));
   if (Number(value.total) < notes.length) return null;
   return { notes, total: Number(value.total), ...(value.nextCursor ? { nextCursor: value.nextCursor as string } : {}) };
 }
