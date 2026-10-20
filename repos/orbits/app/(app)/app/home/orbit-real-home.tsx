@@ -799,8 +799,8 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
     <main data-orbit-real-page="home">
       <HubDesktop language={language} t={t} viewModel={viewModel} />
       <HubMobile language={language} t={t} viewModel={viewModel} />
+      {/* 主会话代定 §R10-12：AgentDock 对齐壳主区中心（左栏 84/72，右栏 360；手机无侧栏）。 */}
       <style dangerouslySetInnerHTML={{ __html: `
-/* 主会话代定 §R10-12：AgentDock 对齐壳主区中心（左栏 84/72，右栏 360；手机无侧栏）。 */
 [data-orbit-real-page="home"] .orbit-agent-dock { left:50%; }
 [data-orbit-2026-shell][data-rail="false"] [data-orbit-real-page="home"] .orbit-agent-dock { left:calc(50% + 42px); }
 [data-orbit-2026-shell][data-rail="true"] [data-orbit-real-page="home"] .orbit-agent-dock { left:calc(50% - 138px); }
