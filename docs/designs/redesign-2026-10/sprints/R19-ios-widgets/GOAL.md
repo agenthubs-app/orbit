@@ -1,6 +1,6 @@
 # Sprint R19 — iOS 主屏与锁屏小组件
 
-**状态：待主会话审阅。** **档位：H。** **负责：D 线**（/Volumes/ORICO/Dev/worktrees/orbit/redesign-d，line-d）。承接 R10 的首页读模型与布局，实施和验收以 [PLANNER.md](PLANNER.md) 为准。本轮只起草文档，不启动产品实现。
+**状态：主会话已批准（2026-10-20）。** **档位：H。** **负责：D 线**（/Volumes/ORICO/Dev/worktrees/orbit/redesign-d，line-d）。承接 R10 的首页读模型与布局，实施和验收以 [PLANNER.md](PLANNER.md) 为准。本轮只起草文档，不启动产品实现。
 
 ## 一句话目标
 

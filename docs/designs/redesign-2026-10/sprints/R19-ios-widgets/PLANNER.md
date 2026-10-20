@@ -1,6 +1,6 @@
 # Sprint R19 — iOS 主屏小组件与锁屏 WidgetKit
 
-**Plan revision:** 0（2026-10-20，待主会话审阅）。**模式：** existing-codebase / single-generator。**档位：** H。**执行：** D 线 /Volumes/ORICO/Dev/worktrees/orbit/redesign-d（line-d），R10 后。事实基线为 origin/redesign@2151f7839；实施前重新核对远端与签名环境。**本轮只提交 GOAL / PLANNER，不写产品代码、不构建或发布。**
+**Plan revision:** 1（2026-10-20，主会话已审阅批准；§2 追加 §R19-8/9）。**模式：** existing-codebase / single-generator。**档位：** H。**执行：** D 线 /Volumes/ORICO/Dev/worktrees/orbit/redesign-d（line-d），R10 后。事实基线为 origin/redesign@2151f7839；实施前重新核对远端与签名环境。**本轮只提交 GOAL / PLANNER，不写产品代码、不构建或发布。**
 
 **单一目标：** App 将 R10 已有首页数据写入账号隔离的 App Group 快照，WidgetKit extension 只读该快照，在 iOS 主屏／锁屏显示设计稿已有尺寸，并让点击经 R18b 根级门禁进入正确页面。验收按 §8；本文件是待审执行契约，不是完成报告。
 
@@ -39,6 +39,8 @@ RD-31 / RD-32 的较新 D 线分工为 Task → 首页 → 小组件；IMPLEMENT
 | 主会话代定 §R19-5 Q5 冲突 | widgets.html:210-211,234 的中尺寸秘書仍画 Gmail 邮件摘要；R10 REPORT 与已定 Q5 已从首页 App/Web 画板删该行。按数据自洽和已定规则，R19 只显示 R13 合法期限／会前准备／推荐，不读 Gmail 正文；本轮不改设计源。执行前请主会话按 Q5 更新 widgets.html 的中尺寸画板并重新 --list／预检；更新前含该行的 #0/#3 不能记像素通过。 | SC-07 / 11；向主会话交明确改稿请求，不把邮件行归因成数据差异。 |
 | 主会话代定 §R19-6 点击与版本门禁 | 每种 widget 生成白名单 orbit 深链：今日→/task?seg=todo，人脈→/contacts 或经已授权 ID 到 /contacts/:id，秘書→/inbox?filter=secretary，计划→/task?seg=plan，活动→R10 返回的安全 App href。冷启动和热启动都经过 app/_layout.tsx 的 R18b RootVersionGate；强制更新／维护时不呈目标内容，未登录进既有认证流程。无可验证目标退回相应一级页。 | SC-10；强制更新、维护、离线、未登录和恶意/未知 URL 测试。 |
 | 主会话代定 §R19-7 原生／发布边界 | 本期 WidgetKit，不含 IMPLEMENTATION-PLAN D-24 所并列的 Live Activity／灵动岛（Q9 放后期）及远程推送更新。只在模拟器试 App Group；真机和正式 App Group 配置／签名、TestFlight、EAS 生产构建待用户授权。锁屏内容按隐私敏感处理，人员与秘書详情不得在未解锁时无条件明文展示。 | SC-01 / 09 / 12；DEFERRED 明列授权，锁屏隐私回归。 |
+| 主会话代定 §R19-8 Q5 改稿归属 | 覆盖 §R19-5 的「本轮不改设计源」：主会话授权 D 线在执行开头直接改 widgets.html 中尺寸秘書画板，删去 Gmail 邮件摘要行（同 R10 §R10-10 做法），记原／新／理由，再 --list／预检；改后的 #0/#3 为正式基准。 | SC-07 / 11。 |
+| 主会话代定 §R19-9 登出／切号清空钩子 | 主会话授权 D 线在 C 线认证流程的登出、切号、会话失效出口**只加不改**地调用小组件快照清空函数（单一导出、失败不阻断登出、有测试），REPORT 越线自查点名并写交接给 C；不改 R18b 版本判定或账号写规则。 | SC-04 / 11。 |
 
 ## 3. 交接条目与依赖映射
 
