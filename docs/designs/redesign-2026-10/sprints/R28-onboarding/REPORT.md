@@ -4,7 +4,7 @@
 
 ## 版本与做成的链路
 
-- 起点 `8862ccce4`（含 R10 投影 `8eaf86733`）；设计 `50c708543`，契约兼容 `b987287e1`，政策 v2 `0881931f2`，资料流程和介绍额度 `90a346202`，真实指南与 intake `04d6bbe76`，原生界面 `7bffccbbd`，Web 资料和 B 扫描入口 `1073f9ea9`，Web 指南三语与布局 `3902a452d`，文案审计修正 `f41c94d4a`，像素视图清单 `c7025e429`，App 契约与读取注册 `11db421e9`，旧资料标签兼容导出清理 `f1e98a2b9`，介绍失败文案收口 `f718ea48d`，App `/start` 续接允许表 `f377525f4`。上述提交均留在本地。
+- 起点 `8862ccce4`（含 R10 投影 `8eaf86733`）；设计 `50c708543`，契约兼容 `b987287e1`，政策 v2 `0881931f2`，资料流程和介绍额度 `90a346202`，真实指南与 intake `04d6bbe76`，原生界面 `7bffccbbd`，Web 资料和 B 扫描入口 `1073f9ea9`，Web 指南三语与布局 `3902a452d`，文案审计修正 `f41c94d4a`，像素视图清单 `c7025e429`，App 契约与读取注册 `11db421e9`，旧资料标签兼容导出清理 `f1e98a2b9`，介绍失败文案收口 `f718ea48d`，App `/start` 续接允许表 `f377525f4`，两端资料冲突防覆盖 `204814b18`。上述提交均留在本地。
 - 资料政策 v2 允许空生日，姓名／行业仍必填；App 先兼容 v1/v2／未知新版再切服务端。共享契约 snapshot 已更新，App 副本已同步。首次资料 PUT 前建 actor 流程；每屏 PUT、GET 复读、进度确认，失败不推进。跨端使用同一进度记录。
 - 目标最多 2 个、保序、无默认期限；保留旧文本。介绍可用 ja/zh/en，首次流程每 actor 成功总额 3 次；幂等键、并发额度与失败重放由服务端持久记录，手写可继续。该本地运行未配置付费 provider，因此实际付费模型调用 **0**。
 - Web `/app/start` 去掉演示开关门禁；App `/start` 已成为真实三步页。两端从 R10 共享投影读取 3 个条件，步骤 3 显示保存的第一目标并要求用户选 `goalKind`；仅恢复 `source:onboarding`、类型相符的 intake，不把同名其他来源当续接。Web 用 Web href，App 校验 App href 后进入原生计划流程。
@@ -16,19 +16,19 @@
 | --- | --- | --- |
 | 01 开工／预检 | 部分 | `preflight-checklist.md`、b1/b12 清单和两块 b12 定向预检；整份 b12 变体预检因耗时中断，未记通过。起点与 R18c/R10 基线见下。 |
 | 02 入口／next | 部分 | Web 本地实际注册保留 `/app/start` 到资料页；匿名继续与指南 307 到登录，完整账号安全 next 到 `/app/start`，外站与嵌套循环回 `/app/home`。App 实机发现 `/start` 未列入启动允许表导致续接误落 Home，已修复并复测 guide 与外站回退；有效邀请和双端登录整张实机矩阵未完成。 |
-| 03 资料五屏／D28-2 | 部分 | BREAKING 登记、App 先兼容、v2、CAS/幂等/API、两端五屏操作链与服务端完成回读已做；跨设备双标签、完整回读矩阵及各屏像素尚未验。 |
+| 03 资料五屏／D28-2 | 部分 | BREAKING 登记、App 先兼容、v2、CAS/幂等/API、两端五屏操作链与服务端完成回读已做；两端 409 不再用旧草稿覆盖另一标签页／设备已确认字段，定向测试通过。跨设备双标签实机矩阵、完整回读矩阵及各屏像素尚未验。 |
 | 04 目标／文案 | 部分 | 上限 2、第三项限制、保序、三语与显式类型选择的定向测试；旧 R18a 编辑器重开与各版位像素尚未全验。 |
 | 05 AI 介绍 | 部分 | 服务额度、重放、并发、三语测试与两端失败手写链；Web 失败页不再显示 provider 配置/密钥名，额度耗尽不再给重试按钮。没有授权的付费正例，日文实际模型输出未运行。 |
 | 06 名片入口 | 部分 | C 的旧 card-batch UI 已迁往 B 的扫描/导入路由；Web/App 跳过导入的完成链已实测，B 回程仍依赖浏览器返回和服务端续填，0/3/10 张真实批次未全验。 |
 | 07 硬顺序 | 部分 | R10 共享投影、0/2/3 联系人及锁定／`?step` 定向测试，server 写拒绝；双设备、active v1/v2 的完整事实矩阵未全验。 |
 | 08 App 指南 | 部分 | 原生 `/start`、锁定、2/3、计划续接已实机；active plan 缺付费 AI 正例，不能声明 3/3。 |
 | 09 指南到 v2.2 | 部分 | 双端显式类型、onboarding intake 恢复同 ID；Web AI 初版失败后只显示恢复出口，四阶段→Task 未到达。 |
-| 10 示例模式 | 部分 | C 的 profile、flow、intro 服务端样本写 403 早退测试；C 页前端拦截、plan intake 与 A/D 拥有的示例横条/药丸未联验。 |
+| 10 示例模式 | 部分 | C 的 profile、flow、intro 服务端样本写 403 早退测试；资料页的内嵌预览仅返回填写步骤，没有示例数据写入口。`/start` 是脱离预览的真实指南，新用户可在此写真资料；不能仅凭「仍在示例期」把该入口拦住。B 的 plan intake 示例写拒绝、A/D 拥有的示例横条/药丸及其写入口仍未联验。 |
 | 11 D 线 Task | 待 D | 本线未修改 Task。状态契约与具体请求在下表；没有 D 提交和回传，Task 链不能报通过。 |
 | 12 旧引用 | 部分 | C 的旧 `card-batch-ui` 使用与 `profile-model` re-export 已清理；Web 资料仍挂在 `onboarding-0918`，尚未达到新目录的文案审计零例外要求。 |
 | 13 资料像素 | 未过 | W01 1440 浅和 A01 深各有 triptych；超阈值带仍未归因，其他宽／主题及资料屏没有完整 fixture。 |
 | 14 指南／示例像素 | 未过 | A07、W07、W08 门禁失败；A08 首次比较用了错误路由，随后 `/contacts` 数据读失败，不能判通过；A/D 组件与 fixture 缺口见下。 |
-| 15 失败／兼容／离线 | 部分 | v1/v2/未知契约、资料／进度重试、无网络和 intake 错误定向测试；跨端换号和完整离线同步审计未完成。 |
+| 15 失败／兼容／离线 | 部分 | v1/v2/未知契约、资料／进度重试、无网络和 intake 错误定向测试；资料 409 不再自动读新版重发，保留当前输入并提示复核。跨端换号和完整离线同步审计未完成。 |
 | 16 收口 | 部分 | 本地代码、视图清单、REPORT／REVIEW、全量与基线对照均已收口；全量与像素门禁仍红，跨线依赖未回传，Sprint 保持开放。 |
 
 R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口待接。R28-02→SC11：Task 请求待 D。R28-03→SC09：已改为严格 onboarding intake。R28-04→SC07/08/12：App 真实指南已接，C 的旧 B 名片 UI 使用和资料标签旧导出已清理；Web 资料旧目录仍待迁移。试移 `orbit-2026/onboarding` 时，既有新目录审计检出 hard-coded 8/6/1、缺 ja 120/80；该试移已局部撤回，文案迁移与壳接入保留为未完成项。
@@ -82,5 +82,7 @@ App 单次全量（`heavy.sh c`，仅 LANG/LC_ALL）：3291 项，3267 过／22 
 Web `typecheck:app` exit 0、lint exit 0、contract snapshot `--check` exit 0。`copy:qa` 7601 条、249 项问题，exit 1；介绍失败文案修改后再次运行，输出与 `web-copy-qa-closeout.log` 逐字相同，R28 键 0 项新增，故这项保留为既有质量门禁失败，不写成通过。日志分别为 `web-lint-closeout.log`、`contract-snapshot-closeout.log`、`web-copy-qa-closeout.log`、`web-copy-qa-after-errorcopy.log`。
 
 R28 定向 Web 指南 28/28、资料路由 35/35、App 资料交互和指南相关定向均绿；两端 typecheck 在 UI 提交前后已各通过。App 修后受影响定向、route parity、contract sync 共 69/69，typecheck exit 0。独立复核另跑 Web 关键服务／路由／指南 40/40、App route parity／contract sync／intake 16/16，contract snapshot exit 0；介绍失败 UI 定向 15/15、文案审计 7/7、Web 资料编辑服务契约 10/10、App 离线读取与目标模型 47/47、App 续接／初始路由／route parity 31/31、Web typecheck/typecheck:app 与 App typecheck exit 0。Web 资料目录试迁又局部撤回后的复核见 REVIEW。
+
+`204814b18` 后追加定向复核：Web 并发保存／资料五屏／指南／文案审计 43/43、Web typecheck exit 0；App 资料 API 与组件交互 22/22、路由和 intake 13/13、App typecheck exit 0。App 字典域检查 3 项中 2 项通过；唯一失败「original split key set」与 R10fix 基线同名，新增 `guide.*` 域已使「each locale is a folder」恢复通过。一次误用 App `npm test -- <file>` 触发全仓 glob 后已立即中断，**不是一次完成的全量验证**，不能用其结果改写上述单次收口全量结论；随后改用直接 `node --test` 定向运行。
 
 独立复核细节见 `REVIEW.md`。全量仍为 exit 1，像素超带仍未归因；定向通过没有覆盖整套注册／邀请、付费计划和 Task 回程。
