@@ -183,3 +183,83 @@ SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror �
 ### RD-25 M5 归属与批准更正
 
 REVIEW 指出的 `c823cceaf` 确实改动了 PLANNER §1 原清单外的 `repos/orbits/features/sync/read-service.ts` 和 `repos/orbit-app/src/view-models/tasks-mirror.ts`。上表旧版“所有实现均在 §1 内”的说法错误，不能用路径提交或定向测试替代所有权批准。主会话在本轮 RD-25 指令中明确追认这两处是 `planLink` 同步所需，并批准 D 线为 M1 在 sync read-service 做加法修复。`504ad51e8` 因 task 域的实际读路径，同项还新增 actor-scoped 计划快照，并加法接入 `domain-read-service.ts` 的 generation／page 及 `domain-handlers.ts` 的条件 manifest 键；旧 v1 投影在未提供计划快照时维持原行为。此处记录批准依据和越出原 §1 的范围，不把旧记录改写成“原本就属于 D allowlist”。E 线 UI 联验及独立复核仍未完成。
+
+## 2026-10-20 RD-25 复核修复与最终树全量
+
+本轮开工先 `git pull --rebase origin redesign`，从 `ca990b5e6` 快进至 `2fc2e9dce`（REVIEW 文档）；本轮未改动预存未跟踪的 `HANDOFF-CLAUDE-2026-10-19.md`。RD-25 每项独立按路径提交，提交均带 `Co-Authored-By: Codex <noreply@openai.com>`，未 push。
+
+| 项 | 提交、RED→GREEN 与实现边界 |
+| --- | --- |
+| M1 设备失效链接 | `504ad51e8`。隔离本机 PostgreSQL 原回归从 SKIP 放开后先因 plan-only 归档不改变 task watermark/generation **RED**；加 actor-scoped active v2 plan/type 快照，task generation 与 manifest ETag 随它变化，旧 cursor 返回 `SYNC_RESET_REQUIRED`，新 page 保留 task 并隐藏 raw 失效 `planLink`。旧 v1 read-service 的无快照调用仍原样投影。plan-link PostgreSQL **4/4**，相邻 sync route／拓扑共 **21/21**、skip0；归档不改 task 记录，actor B 的快照不变。App coordinator 的既有 409 reset 分支会重建该域；没有宣称真实设备归档后的 UI 已实测。 |
+| M2 补扫日志 | `d30bc0957`。enqueue 失败由 actor/contact/note ID 与错误名改为固定 `stage=enqueue_failed`、`code=ENQUEUE_FAILED`；ID、正文、任意错误文不进入这条日志。notes service **17/17**。旧 `contacts/memo-extraction` 其它日志路径不由此证明。 |
+| M3 Web 可达性 | `8514799f8`。Memo「＋」在 `navigator.onLine=true` 但 notes API 返回 503 时禁用，并在进入页、聚焦、恢复联网和间隔探测后更新；点击前再校验以防陈旧状态。浏览器容器回归 **10/10**。 |
+| M4 宽进坏行 | `33e02650f`。Memo 每行验证 mention 对象、范围、所属 ID 与非重叠；混合页只跳坏 note 并保留服务端总数。定向 **7/7**。 |
+| M5 归属 | `ca5c83684`，更正上文 SC-16 的越线自查和 C11／E 交接，记录主会话对 `c823cceaf` 及 M1 sync read-side 的追认和限定批准。 |
+| m 旧链接 | `06a09fa09`。SSR 实际执行四个兼容 route 与新屏着陆，覆盖 `/notes`、带 `contactId` 的范围列表、新建、详情和编辑；**1/1**。 |
+
+最终产品树上 Web `npm run typecheck`、`npm run typecheck:app`、App `npm run typecheck` 均 **exit0**。两端全量各仅执行一次，均设置 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`，通过 D 线 `heavy.sh`；全量不接生产或 Neon，也没有调用付费 AI。开工可比基线是本次 REVIEW 修复前的 `run-02/{web,app}-full-final.log`，而非更早 R20a／R20b 编制快照。
+
+| 端 | 开工失败名 | 最终 total / pass / fail / skip | 同名保留 | 消失 | 新增 | 结果 |
+| --- | ---: | --- | ---: | ---: | ---: | --- |
+| Web | 33 | 7,864 / 6,793 / 30 / 1,041 | 30 | 3 | **0** | exit1，仍红 |
+| App | 14 | 3,272 / 3,257 / 13 / 2 | 13 | 1 | **0** | exit1，仍红 |
+
+原始日志：`/Users/xzhao/orbit-sprint-evidence/redesign/R20b/run-02/web-full-rd25.log`、`app-full-rd25.log`。逐名机器可读对照：同目录 `web-full-rd25-comparison.json`、`app-full-rd25-comparison.json`；每份列出 `retained`、`gone`、`new` 的完整名字，且 `currentCount` 分别与原始 fail 30／13 一致。Web 消失的三名是上轮 D Memo 的旧 CSS 变量、CSS token、静态可访问名；App 消失的是 Toast undo。所有其他失败名均逐名保留，没有本线新增失败名；下表保留完整名字以便主会话不依赖失败总数复核。
+
+### RD-25 SC／跨端交接与剩余门禁
+
+M1 使 SC-11 的**服务端设备同步协议**从 RED／SKIP 转为隔离 PG GREEN：manifest 的条件 304 失效、cursor 重建和 page 投影同用 actor-scoped 计划状态。E 线人物类型详情／「プランに追加」仍未与真实 App 设备读回联验，SC-11 **未闭项**。M2–M4 和 m 的指定复核点已修复并定向验证；SC-10 的真实 provider＋quota 账本、SC-05／08 的真实可报名活动 token、SC-13／14 的七板 preflight 与整屏 pixel 仍按上文记录为未通过。SC-15 两端全量 exit1；**零新增失败名不等于全量通过**。copy QA 本轮未重跑，沿用上文 245 个既有全域 issue 的红色记录，不声称本轮通过。
+
+Bridge 交接：Web sync/API 版本 `504ad51e8`，App 旧 URL 测试版本 `06a09fa09`，Web Memo 可达性版本 `8514799f8`。App 的 task mirror 消费 task generation 改变后应按既有 `SYNC_RESET_REQUIRED` 路径清除旧域并拉取同 task ID 的无链接投影；本机 PostgreSQL 验证了协议响应，没有真实 App 设备完成计划归档后的 UI 截图。另一端需联验 E 线读写与 UI，不以类型检查替代业务对齐。主会话仍需提供活动 fixture、C11 本机 provider／ledger 前提和改稿后画板，并更新根 README／HANDOFF／DEFERRED 与决定表；D 本轮只写本 REPORT。没有新产品代定；未启动 dev server、Metro 或模拟器，不涉及停服，3000 端口未触碰。
+
+### 最终全量失败逐名对照
+
+| 端 | 与开工基线 | 测试名 |
+| --- | --- | --- |
+| Web | 保留 | /app/events/[id] does not render the retired deterministic registration guide |
+| Web | 保留 | /app/register redirects a reviewed code without propagating fixture controls |
+| Web | 保留 | /app/register resolves invite codes before redirecting to the canonical registration workspace |
+| Web | 保留 | /app/register uses first-value decoders and explicitly clears an inherited fragment |
+| Web | 保留 | Postgres dispatch scan recovers unpublished work with exact scope, due-time and approval fences |
+| Web | 保留 | Postgres workers recover a killed claimant without replaying a persisted receipt |
+| Web | 保留 | R12 review m9: when the duplicate lookup fails nothing is added automatically — every readable card waits in まとめて確認 |
+| Web | 保留 | activation serialization and deadlock SQLSTATEs rebuild the whole reviewed plan on a fresh transaction |
+| Web | 保留 | app register page fails closed for an unknown public code without retrying the same route |
+| Web | 保留 | app register route loader resolves only a reviewed public event code |
+| Web | 保留 | e2e: upload 4 cards (one front + back) → read → auto into 人脈 → まとめて確認 → 完成 numbers match the network |
+| Web | 保留 | event access directory is event-scoped, shows only active assignments, and lets only the Event Core owner list current roles |
+| Web | 保留 | event access readiness rejects migration evidence and role tables resolved from different schemas |
+| Web | 保留 | event access repository enforces owner authority, workspace isolation, transitions, CAS, and atomic audit |
+| Web | 保留 | global canonical apply atomically migrates a diverse workspace and replays the immutable ledger |
+| Web | 保留 | global canonical apply rolls back ledger and every event when a later activation fails |
+| Web | 保留 | heartbeat commits between a terminal transaction snapshot and complete/fail without serialization failures |
+| Web | 保留 | isolated v11 canonical membership CLI is read-only and apply fails not-ready |
+| Web | 保留 | legacy register route does not load an unused profile form before redirecting |
+| Web | 保留 | main event access schema is cut over and missing-event reads stay non-mutating |
+| Web | 保留 | manifest generation writes the required repository artifacts |
+| Web | 保留 | merging fills empty fields, keeps existing values and appends the rest to notes |
+| Web | 保留 | only the dev route imports the design fixtures |
+| Web | 保留 | queued delivery survives future retries and a crashed lease, then stops at the durable attempt limit |
+| Web | 保留 | readiness rejects migration and ledger relations resolved from different schemas |
+| Web | 保留 | real canonical membership CLI reviews, rejects drift, applies, and replays a diverse PostgreSQL workspace |
+| Web | 保留 | registered catalogue attendee access follows persisted registration lifecycle |
+| Web | 保留 | replay rejects an internally inconsistent event ledger before reading manifest or source |
+| Web | 保留 | the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged |
+| Web | 保留 | the web runtime migration CLI initializes an empty database and preserves data on rerun |
+| Web | 消失 | no product file declares or reads an old CSS variable name |
+| Web | 消失 | orbit-2026 CSS Modules use only design tokens for colour, stacking, radius and type size |
+| Web | 消失 | visible controls have static accessible-name evidence |
+| App | 保留 | R12 review m7: leaving the camera page while photos go up does not drop the batch — it is uploaded and read |
+| App | 保留 | R12 review m9: when the duplicate lookup fails nothing is added automatically |
+| App | 保留 | S1 これまでのコード: 「同じ人かも」 under a joined person — 統合する merges (the name then opens the existing contact), 別の人 dismisses |
+| App | 保留 | W0015: cards with an event candidate wait in そのまま追加; the batch's 会った場所 goes with their confirmation |
+| App | 保留 | camera permission: explained before asking; turned off → three steps, 設定を開く, 写真から選ぶ, and back from Settings opens the camera |
+| App | 保留 | camera: [表面][裏面], a back pairs with the last front, 裏なし, the counter and the tray; 完了 uploads and opens the batch |
+| App | 保留 | discovery toggles are persisted independently and a late old-account receipt cannot overwrite the new account |
+| App | 保留 | the original split key set retains its current approved copy snapshot |
+| App | 保留 | typed inbox filter tabs expose which one is selected |
+| App | 保留 | 付けない: no 会った場所 is written; 要確認 opens the fields; a pending batch says when plan candidates appear |
+| App | 保留 | 衔接 確認せずに N人を追加: never merges a 重複 unseen; a card it could not add says why in まとめて確認 |
+| App | 保留 | 読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 4 cards (identical, similar, unreadable, clean front+back) |
+| App | 保留 | 読み取れず: 手入力で補う pre-fills what was read and confirms through manual-entry; 撮り直す replaces the photo |
+| App | 消失 | 元に戻す runs the undo once and closes the toast; a new toast replaces the old one |
