@@ -133,3 +133,14 @@ export async function isPasswordSessionCurrent(input: SessionCheckInput, databas
   if (!user) return false;
   return isSessionCurrent(user.lifecycleState, user.payload, input);
 }
+
+/** A deletion application invalidates JWTs issued before it, including rotated cookies. */
+export async function isPreDeletionSessionCurrent(input: SessionCheckInput, database: Pick<SessionCheckDatabase, "store" | "workspaceId"> | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
+  if (!database) return process.env.NODE_ENV !== "production";
+  const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName: "auth_users", recordId: authUserRecordId(input.email) });
+  if (!user || user.lifecycleState !== "active" || user.payload.id !== input.userId) return false;
+  const requestedAt = user.payload.deletionRequestedAt;
+  if (typeof requestedAt !== "string") return true;
+  const requestedMs = Date.parse(requestedAt);
+  return Number.isFinite(requestedMs) && requestedMs < input.authenticatedAt;
+}

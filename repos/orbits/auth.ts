@@ -7,7 +7,7 @@ import Google from "next-auth/providers/google";
 
 import { enabledOAuthProviders } from "./features/auth/oauth-providers";
 import { resolveAuthUserService } from "./features/auth/service-factory";
-import { isPasswordSessionCurrent } from "./features/auth/session-revocation";
+import { isPasswordSessionCurrent, isPreDeletionSessionCurrent } from "./features/auth/session-revocation";
 
 function authUserService() {
   return resolveAuthUserService(
@@ -65,7 +65,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (!user && token.email && token.sub) {
         const authenticatedAt = typeof token.authenticatedAt === "number"
           ? token.authenticatedAt : (token.iat ?? 0) * 1000;
-        if (!await isPasswordSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt })) return null;
+        if (!await isPasswordSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt }) ||
+            !await isPreDeletionSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt })) return null;
         // Keep the original authentication time as Auth.js rotates iat on refresh.
         token.authenticatedAt = authenticatedAt;
       }

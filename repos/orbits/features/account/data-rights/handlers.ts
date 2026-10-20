@@ -8,7 +8,7 @@ import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/st
 import { readBody, type ContractReply } from "../../redesign-contracts/route";
 import { createAccountExportRecordStore } from "./records";
 import { createAccountExportService } from "./service";
-import { createPrivateAccountExportStore } from "./storage/private-zip";
+import { createConfiguredAccountExportFileStore } from "./storage/configured";
 
 type ExportService = Pick<ReturnType<typeof createAccountExportService>, "create" | "list" | "get">;
 type Claims = { userId: string; authenticatedAt: number };
@@ -26,7 +26,7 @@ export function createConfiguredAccountExportService(): ReturnType<typeof create
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!runtime || !secret) return null;
   const records = createAccountExportRecordStore({ db: runtime.client, workspaceId: runtime.workspaceId });
-  return createAccountExportService({ records, storage: createPrivateAccountExportStore({ workspaceId: runtime.workspaceId }),
+  return createAccountExportService({ records, storage: createConfiguredAccountExportFileStore(runtime.workspaceId),
     secret, publicBaseUrl: process.env.AUTH_URL ?? process.env.NEXTAUTH_URL });
 }
 

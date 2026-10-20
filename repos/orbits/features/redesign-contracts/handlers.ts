@@ -14,6 +14,7 @@ import {
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { accountExportLiveHandlers } from "../account/data-rights/handlers";
+import { accountDeletionLiveHandlers } from "../account/data-rights/deletion-handlers";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
 import { eventAssessmentLiveHandlers } from "../events/assessment/handlers";
 import { readLiveAppVersion } from "./app-version-live";
@@ -197,13 +198,12 @@ export const getAccountExport = redesignContractRoute("account-lifecycle", accou
   const found = redesignMock.accountExport(params.id ?? "");
   return found ? { data: found } : notFound();
 });
-const deletionUnavailable = () => ({ error: new AppError("SERVICE_UNAVAILABLE", "Account deletion is unavailable.") });
-export const getDeletionRequest = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (_request, _params, { service }) =>
-  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.deletionRequest() });
-export const requestAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema, (_request, _params, { service }) =>
-  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.requestDeletion(), status: 202 });
-export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (_request, _params, { service }) =>
-  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.cancelDeletion() });
+export const getDeletionRequest = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (request, _params, { service }) =>
+  service.mode === "live" ? accountDeletionLiveHandlers().get(request) : { data: redesignMock.deletionRequest() });
+export const requestAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema, (request, _params, { service }) =>
+  service.mode === "live" ? accountDeletionLiveHandlers().request(request) : { data: redesignMock.requestDeletion(), status: 202 });
+export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (request, _params, { service }) =>
+  service.mode === "live" ? accountDeletionLiveHandlers().cancel(request) : { data: redesignMock.cancelDeletion() });
 export const getAppVersion = redesignContractRoute("app-version", appVersionSchema, (_request, _params, { service }) => ({
   data: service.mode === "live" ? readLiveAppVersion() : redesignMock.appVersion(),
 }));
