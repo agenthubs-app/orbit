@@ -15,6 +15,34 @@ export function memoTabForKind(kind: unknown): Exclude<MemoTab, "all"> {
   return kind === "meeting" ? "meeting" : "free";
 }
 
+export type MemoMentionCandidate = { id: string; label: string; kind: "contact" | "event" };
+
+export function activeMemoMentionQuery(body: string, cursor: number, mentions: readonly NoteMentionContract[]): { start: number; end: number; query: string } | null {
+  if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > body.length) return null;
+  const match = body.slice(0, cursor).match(/(?:^|\s)@([^\s@]{0,30})$/u);
+  if (!match || match.index === undefined) return null;
+  const start = match.index + (match[0].startsWith("@") ? 0 : 1);
+  if (mentions.some(mention => mention.start < cursor && mention.end > start)) return null;
+  return { start, end: cursor, query: match[1]! };
+}
+
+export function insertMemoMention(body: string, mentions: readonly NoteMentionContract[], active: { start: number; end: number; query: string }, candidate: MemoMentionCandidate): { body: string; mentions: NoteMentionContract[] } {
+  if (!candidate.id.trim() || !candidate.label.trim() || body.slice(active.start, active.end) !== `@${active.query}`
+    || mentions.some(mention => mention.start < active.end && mention.end > active.start)) throw new Error("Invalid memo mention insertion");
+  const displayText = `@${candidate.label.trim()}`;
+  const nextBody = `${body.slice(0, active.start)}${displayText} ${body.slice(active.end)}`;
+  const delta = displayText.length + 1 - (active.end - active.start);
+  const inserted: NoteMentionContract = candidate.kind === "event"
+    ? { entityType: "event", eventId: candidate.id, start: active.start, end: active.start + displayText.length, displayText }
+    : { entityType: "contact", contactId: candidate.id, start: active.start, end: active.start + displayText.length, displayText };
+  return { body: nextBody, mentions: [...mentions.map(mention => mention.start >= active.end
+    ? { ...mention, start: mention.start + delta, end: mention.end + delta } : mention), inserted].sort((left, right) => left.start - right.start) };
+}
+
+export function memoContactIds(manualContactIds: readonly string[], mentions: readonly NoteMentionContract[]): string[] {
+  return [...new Set([...manualContactIds, ...mentions.filter(mention => (mention.entityType ?? "contact") === "contact").map(mention => mention.contactId).filter((id): id is string => Boolean(id))])];
+}
+
 export function rebaseMemoMentions(previousBody: string, nextBody: string, mentions: readonly NoteMentionContract[]): NoteMentionContract[] | null {
   let prefix = 0;
   while (prefix < previousBody.length && prefix < nextBody.length && previousBody[prefix] === nextBody[prefix]) prefix++;
@@ -53,9 +81,9 @@ export function memoRequest(input: {
   title: string; body: string; kind: "meeting" | "free" | "voice"; contactIds: readonly string[]; eventIds: readonly string[];
   mentions?: readonly NoteMentionContract[]; usedForPlan: boolean;
 }) {
-  const title = input.title.trim(), body = input.body.trim();
-  if (!title || !body) throw new Error("A title and body are required");
-  if (input.usedForPlan && (input.kind !== "meeting" || input.contactIds.length !== 1)) throw new Error("Plan use requires one contact in a meeting memo");
+  const title = input.title.trim(), body = input.body;
+  if (!title || !body.trim()) throw new Error("A title and body are required");
+  if (input.usedForPlan && (input.kind !== "meeting" || memoContactIds(input.contactIds, input.mentions ?? []).length !== 1)) throw new Error("Plan use requires one contact in a meeting memo");
   return { title, body, noteKind: input.kind, usedForPlan: input.usedForPlan,
     manualContactIds: [...new Set(input.contactIds)], eventIds: [...new Set(input.eventIds)], mentions: [...(input.mentions ?? [])] };
 }

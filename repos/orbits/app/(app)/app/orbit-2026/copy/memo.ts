@@ -25,4 +25,10 @@ export const memoCopy = {
   planNeedsOne: { ja: "面談メモと連絡先1人が必要です", zh: "需要一位联系人和面谈备忘录", en: "Requires a meeting memo and one contact", kind: "body" },
   eventUnlink: { ja: "@イベントを消しても、関連付けは残ります。関連イベントは別に解除してください。", zh: "删除 @活动不会取消关联；请单独移除关联活动。", en: "Removing an @event token keeps its event link. Remove the linked event separately.", kind: "body" },
   tokenEdit: { ja: "この関連トークンはそのまま残してください。変更するには元のメモで操作してください。", zh: "请保留这个关联标记；需要修改时请在原备忘录中操作。", en: "Keep this linked token unchanged. Edit it in its original memo.", kind: "body" },
+  mentionChoice: { ja: "@ のあとに入れる相手を選ぶ", zh: "选择 @ 后要提及的人或活动", en: "Choose who or what to mention", kind: "body" },
+  linkSearch: { ja: "関連する人・イベントを探す", zh: "搜索关联的人或活动", en: "Find a person or event to link", kind: "label" },
+  people: { ja: "人", zh: "联系人", en: "People", kind: "label" },
+  events: { ja: "イベント", zh: "活动", en: "Events", kind: "label" },
+  removeLink: { ja: "関連を解除", zh: "取消关联", en: "Remove link", kind: "button" },
+  optionsFailed: { ja: "候補を読み込めませんでした。もう一度お試しください。", zh: "无法读取候选项，请重试。", en: "Could not load choices. Please try again.", kind: "body" },
 } satisfies OrbitCopyTable;
