@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
+import { appendWebGuideReturnTo, type WebGuideReturnTo } from "../../../../../features/guide/return-to";
 import { addScanCopy as s } from "../copy/add";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Icon, IconButton, MacTile, Orbit2026Scope, Segmented, ToastProvider } from "../ui";
@@ -52,7 +52,7 @@ export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, acti
   onStart: (cards: readonly StagedCard[]) => Promise<ScanStartResult>;
   /** A batch still being read on this device (the site-wide host yields on this page). */
   activeBatchId?: string | null;
-  returnTo?: "/app/start" | null;
+  returnTo?: WebGuideReturnTo | null;
 }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();

@@ -23,7 +23,7 @@ import { ja } from "./src/i18n/ja";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 const listeners = new Set(); let revision = 0; let uuid = 0; let tick = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
-const state = window.fixture = { language: "zh", next: "/events/e1", navigation: [], requests: [], detail: null, put: "ok", flowConfirm: "ok", network: false, ai: "ok", aiCalls: 0, flow: undefined, ...window.initialFixture,
+const state = window.fixture = { language: "zh", next: "/events/e1", screen: undefined, navigation: [], requests: [], detail: null, put: "ok", flowConfirm: "ok", network: false, ai: "ok", aiCalls: 0, flow: undefined, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 if (state.flow === undefined) {
   const p = state.detail?.profile;
@@ -87,7 +87,7 @@ test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture";
 import { ProfileOnboardingScreen } from "./src/screens/profile/onboarding/ProfileOnboardingScreen";
-function App(){ const s = useFixture(); return <ProfileOnboardingScreen key={s.language} next={s.next} />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
+function App(){ const s = useFixture(); return <ProfileOnboardingScreen key={s.language} next={s.next} screen={s.screen} />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "onboarding-fixture", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
@@ -290,7 +290,16 @@ test("import: 拍名片 opens the existing batch import and 完成设置 goes to
   await page.getByRole("button", { name: "拍名片" }).click();
   await page.getByRole("button", { name: "完成设置" }).click();
   await page.waitForFunction(() => (window as any).fixture.navigation.length === 2);
-  assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/scan", "replace:/events/e1"]);
+  assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/scan?returnTo=%2Fprofile%2Fonboarding%3Fscreen%3D5", "replace:/events/e1"]);
+});
+
+test("returning from scan or import opens the unfinished fifth screen directly", async t => {
+  const profile = withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" });
+  const flow = { version: 1, currentScreen: 5, lastConfirmedScreen: 4, finishedAt: null, deferred: false, revision: "flow:5" };
+  const page = await open(t, { ...profile, flow, screen: "5" });
+  await page.getByRole("heading", { name: /带入你已有/u }).waitFor();
+  await page.getByRole("button", { name: "通讯录" }).click();
+  assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/import?kind=contacts&returnTo=%2Fprofile%2Fonboarding%3Fscreen%3D5"]);
 });
 
 test("English and Japanese render the whole welcome and step copy", async t => {

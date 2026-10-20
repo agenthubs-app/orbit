@@ -94,9 +94,9 @@ export function startStepStatus(flags: StartGuideFlags, step: GuideStartStep): S
   return firstIncompleteStartStep(flags) === step ? "current" : "locked";
 }
 
-/** 能不能切到这一步：锁定的不行，其余（已完成、进行中）都可以。 */
+/** 能不能切到这一步只看所有前置步骤；本步是否已有资料与解锁无关。 */
 export function canOpenStartStep(flags: StartGuideFlags, step: GuideStartStep): boolean {
-  return startStepStatus(flags, step) !== "locked";
+  return step === 1 || (flags.contacts && (step === 2 || flags.goal));
 }
 
 /** 页面主体：某一步的模块，或 3 步都完成后的「完成」卡片。 */

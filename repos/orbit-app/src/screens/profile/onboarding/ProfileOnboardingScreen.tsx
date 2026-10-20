@@ -67,6 +67,7 @@ import {
   type OnboardingStep
 } from "../../../view-models/profile-onboarding";
 import { batchRoutePath } from "../../../view-models/business-card-ingest";
+import { appendAppGuideReturnTo } from "../../../view-models/guide-return-to";
 import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFrame, StepHead, useOnboardingStyles } from "./OnboardingParts";
 
 type View_ = "loading" | "loadError" | "welcome" | "resume" | OnboardingStep;
@@ -86,7 +87,7 @@ function localToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-export function ProfileOnboardingScreen({ next }: { next?: string | string[] | undefined }) {
+export function ProfileOnboardingScreen({ next, screen }: { next?: string | string[] | undefined; screen?: string | string[] | undefined }) {
   const { styles } = useOnboardingStyles();
   const locale = useOrbitLocale();
   const t = locale.t;
@@ -146,9 +147,10 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
     setBio(profile?.bio ?? ""); setHeadline(profile?.headline ?? "");
     if (progress.progress?.currentScreen) {
       const step = ONBOARDING_STEPS[progress.progress.currentScreen - 1]!;
-      setResume({ completed: progress.progress.lastConfirmedScreen, step }); setView("resume");
+      if (screen === "5" && step === "import" && progress.progress.lastConfirmedScreen >= 4) go("import");
+      else { setResume({ completed: progress.progress.lastConfirmedScreen, step }); setView("resume"); }
     } else setView("welcome");
-  }, [client]);
+  }, [client, screen]);
 
   // Read once per mount (and per signed-in client); later edits stay local until 「继续」.
   useEffect(() => { void load(); }, [load]);
@@ -431,7 +433,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const footer = view === "import" ? (
     <>
       {banner}
-      <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push("/contacts/new/scan" as Href)} />
+      <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/scan", "/profile/onboarding?screen=5") as Href)} />
+      <SecondaryButton label={t("add.doors.otherContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
       <PrimaryButton label={t("onboarding.finish")} onPress={() => void finish()} />
     </>
   ) : (
@@ -451,7 +454,7 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
           regenerationsLeft={INTRO_REGENERATE_LIMIT - regenerations} setBio={setBio} setHeadline={setHeadline} status={introStatus} />
       ) : null}
       {view === "import" ? (
-        <ImportStep failed={importReadFailed} onReview={id => router.push(batchRoutePath("current", id) as Href)} summary={importSummary} />
+        <ImportStep failed={importReadFailed} onReview={id => router.push(appendAppGuideReturnTo(batchRoutePath("current", id), "/profile/onboarding?screen=5") as Href)} summary={importSummary} />
       ) : null}
     </StepFrame>
   );

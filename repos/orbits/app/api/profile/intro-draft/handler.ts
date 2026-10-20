@@ -12,7 +12,19 @@ type Language = "zh" | "en" | "ja";
 const error = (status: number, code: string, message: string) => NextResponse.json({ success: false, error: { code, message } }, { status });
 function resultStatus(result: ProfileIntroDraftResult): number {
   if (result.success === true) return 200;
-  return result.error.code === "PROFILE_REQUIRED" ? 409 : result.error.code === "MODEL_API_KEY_MISSING" ? 503 : 422;
+  return result.error.code === "PROFILE_REQUIRED" ? 409 : result.error.code === "MODEL_REQUEST_FAILED" ? 503 : 422;
+}
+
+function publicResult(result: ProfileIntroDraftResult): ProfileIntroDraftResult {
+  if (result.success === true) return result;
+  if (result.error.code === "ACTOR_REQUIRED") return { success: false, error: { code: "ACTOR_REQUIRED", message: "Sign in before generating an introduction." } };
+  if (result.error.code === "PROFILE_REQUIRED") return { success: false, error: { code: "PROFILE_REQUIRED", message: "Save your name and basic profile before generating an introduction." } };
+  return { success: false, error: { code: "MODEL_REQUEST_FAILED", message: "The introduction could not be generated. Please retry later." } };
+}
+
+function draftResponse(result: ProfileIntroDraftResult): Response {
+  const safe = publicResult(result);
+  return NextResponse.json(safe, { status: resultStatus(safe) });
 }
 
 export function createProfileIntroDraftHandler(dependencies: {
@@ -49,11 +61,11 @@ export function createProfileIntroDraftHandler(dependencies: {
       if (!flow) {
         // Existing accounts without a first onboarding flow keep the settings draft path.
         const direct = await createDraftService({}).createDraft({ actorId: actor.id, language });
-        return NextResponse.json(direct, { status: resultStatus(direct) });
+        return draftResponse(direct);
       }
       if (typeof key !== "string" && flow.finishedAt) {
         const direct = await createDraftService({}).createDraft({ actorId: actor.id, language });
-        return NextResponse.json(direct, { status: resultStatus(direct) });
+        return draftResponse(direct);
       }
       if (typeof key !== "string") return error(400, "VALIDATION_ERROR", "An idempotency key is required during onboarding.");
       const quota = quotaForActor(actor.id);
@@ -62,7 +74,7 @@ export function createProfileIntroDraftHandler(dependencies: {
       if (reservation.kind === "limit") return error(409, "INTRO_LIMIT_REACHED", "Three introduction drafts have already been generated. You can write your own.");
       if (reservation.kind === "busy") return error(409, "INTRO_REQUEST_IN_PROGRESS", "This draft request is still running.");
       if (reservation.kind === "success" || reservation.kind === "failure") {
-        return NextResponse.json(reservation.result, { status: resultStatus(reservation.result) });
+        return draftResponse(reservation.result);
       }
       let result;
       try {
@@ -71,7 +83,7 @@ export function createProfileIntroDraftHandler(dependencies: {
         result = { success: false as const, error: { code: "MODEL_REQUEST_FAILED" as const, message: "The draft could not be generated. Start a new request to retry." } };
       }
       const persisted = await quota.complete(key, result);
-      return NextResponse.json(persisted, { status: resultStatus(persisted) });
+      return draftResponse(persisted);
     } catch (caught) {
       if (caught instanceof Error && caught.message === "MUTATION_CONFLICT") return error(409, "IDEMPOTENCY_CONFLICT", "This request key was already used for a different draft.");
       return error(503, "SERVICE_UNAVAILABLE", "The draft request could not be saved. Please retry later.");

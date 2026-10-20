@@ -26,6 +26,7 @@ import { BlockButton, GenRow, GhostButton, KitCheck, KitIll, KitOrb, KitStep, Xl
 import { addCount, commitPlan, defaultMergeChoice, serverSkipped, splitImportRows, type ImportIssueGroup } from "./import-model";
 import { IMPORT_DESIGN, type ImportDesignName } from "./import-design";
 import { prepareLinkedInFile, toDeviceEntry, toPickPerson, type PickPerson } from "./import-device";
+import type { AppGuideReturnTo } from "../../../view-models/guide-return-to";
 
 export const IMPORT_HREF = "/contacts/new/import";
 const LINKEDIN_EXPORT_URL = "https://www.linkedin.com/mypreferences/d/download-my-data";
@@ -81,7 +82,7 @@ type ContactsStage =
   | { kind: "organizing"; count: number; preview: PickPerson[]; progress?: { matched: number; normalized: number } };
 
 /** `/contacts/new/import?kind=contacts` (b9 A2 ① ② ③). */
-export function ContactsImportScreen({ design, returnTo = null }: { design?: ImportDesignName; returnTo?: "/start" | null }) {
+export function ContactsImportScreen({ design, returnTo = null }: { design?: ImportDesignName; returnTo?: AppGuideReturnTo | null }) {
   const { t } = useOrbitLocale();
   const router = useRouter();
   const api = useImportApi();
@@ -326,7 +327,7 @@ function OrganizingStage({ count, preview, progress, onClose }: { count: number;
 }
 
 /** `/contacts/new/import?kind=linkedin` (b9 A3 ① App): the 3 steps, 取り込めるもの, CSV を選ぶ / LinkedIn を開く. */
-export function LinkedInImportScreen({ returnTo = null }: { returnTo?: "/start" | null } = {}) {
+export function LinkedInImportScreen({ returnTo = null }: { returnTo?: AppGuideReturnTo | null } = {}) {
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
@@ -403,7 +404,7 @@ const GROUP_KEY: Record<ImportIssueGroup, MessageKey> = { email: "add.import.gro
 type BatchState = { phase: "loading" } | { phase: "missing" | "expired" } | { phase: "ready"; batch: ContactImportBatchView; rows: ContactImportRowView[] };
 
 /** `/contacts/new/import/[importId]` (b9 A2 ④ App, 統一): まとめて確認 → N人を人脈に追加 → 完成. */
-export function ImportBatchScreen({ batchId, excluded = 0, design, returnTo = null }: { batchId: string; excluded?: number; design?: ImportDesignName; returnTo?: "/start" | null }) {
+export function ImportBatchScreen({ batchId, excluded = 0, design, returnTo = null }: { batchId: string; excluded?: number; design?: ImportDesignName; returnTo?: AppGuideReturnTo | null }) {
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();

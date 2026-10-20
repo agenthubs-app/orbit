@@ -1,6 +1,8 @@
-/** R28 card flows carry only the guide's internal return target. */
-export function webGuideReturnTo(value: unknown): "/app/start" | null {
-  return value === "/app/start" ? "/app/start" : null;
+/** R28 card flows carry only exact internal guide or fifth-screen return targets. */
+export type WebGuideReturnTo = "/app/start" | "/app/profile/onboarding?screen=5";
+
+export function webGuideReturnTo(value: unknown): WebGuideReturnTo | null {
+  return value === "/app/start" || value === "/app/profile/onboarding?screen=5" ? value : null;
 }
 
 export function appendWebGuideReturnTo(href: string, value: unknown): string {

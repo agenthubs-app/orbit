@@ -48,3 +48,34 @@ test("sample draft is rejected before quota or model access", async () => {
   assert.equal(response.status, 403);
   assert.equal(accessed, false);
 });
+
+test("provider configuration errors are generic on direct, first-flow, and replay responses", async () => {
+  const providerFailure = { success: false as const, error: {
+    code: "MODEL_API_KEY_MISSING" as const,
+    message: "Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY before retrying.",
+  } };
+  const service = () => ({ createDraft: async () => providerFailure });
+  const direct = createProfileIntroDraftHandler({
+    resolveActor: async () => ({ id: "direct" }),
+    flowForActor: () => ({ get: async () => null }) as never,
+    createDraftService: service,
+  });
+  const store = createMemoryLiveRecordStore<ProfileIntroQuotaPayload>();
+  const firstFlow = createProfileIntroDraftHandler({
+    resolveActor: async () => ({ id: "first-flow" }),
+    flowForActor: () => ({ get: async () => ({ finishedAt: null }) }) as never,
+    quotaForActor: (actorId) => createStorageProfileIntroQuota({ actorId, store, workspaceId: "r28-intro-sanitize" }),
+    createDraftService: service,
+  });
+  for (const response of [
+    await direct(post({ language: "ja" })),
+    await firstFlow(post({ language: "ja", idempotencyKey: "same" })),
+    await firstFlow(post({ language: "ja", idempotencyKey: "same" })),
+  ]) {
+    const body = await response.text();
+    assert.doesNotMatch(body, /GEMINI_|DEEPSEEK_|OPENAI_/);
+    const parsed = JSON.parse(body);
+    assert.equal(parsed.error.code, "MODEL_REQUEST_FAILED");
+    assert.equal(parsed.error.message, "The introduction could not be generated. Please retry later.");
+  }
+});

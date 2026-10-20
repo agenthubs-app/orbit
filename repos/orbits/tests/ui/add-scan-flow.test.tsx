@@ -119,6 +119,7 @@ test.before(async () => {
     import { Orbit2026Shell } from "./app/(app)/app/orbit-2026/shell/Orbit2026Shell";
     import { ScanUploadClient } from "./app/(app)/app/contacts/new/_add/scan-upload-client";
     import { ScanBatchClient } from "./app/(app)/app/contacts/new/_add/scan-batch-client";
+    import { webGuideReturnTo } from "./features/guide/return-to";
     ${FAKE_SERVER}
     // about:blank is not a secure context: give the page the two crypto calls a real https page has.
     if (!crypto.randomUUID) crypto.randomUUID = () => "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16));
@@ -130,8 +131,10 @@ test.before(async () => {
       const [path, setPath] = useState(window.shellFixture.path);
       useEffect(() => { const go = (event) => setPath(event.detail); window.addEventListener("test-nav", go); return () => window.removeEventListener("test-nav", go); }, []);
       window.shellFixture.path = path;
-      const batch = path.match(/^\\/app\\/contacts\\/new\\/scan\\/(.+)$/);
-      return batch ? <ScanBatchClient batchId={batch[1]} /> : <ScanUploadClient available />;
+      const url = new URL(path, "https://orbit.test");
+      const batch = url.pathname.match(/^\\/app\\/contacts\\/new\\/scan\\/(.+)$/);
+      const returnTo = webGuideReturnTo(url.searchParams.get("returnTo"));
+      return batch ? <ScanBatchClient batchId={batch[1]} returnTo={returnTo} /> : <ScanUploadClient available returnTo={returnTo} />;
     }
     createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language="ja" signedIn><App /></Orbit2026Shell></OrbitAskProvider>);
   `, {
@@ -158,6 +161,18 @@ test.before(async () => {
   browser = await launch();
 });
 test.after(async () => { await browser?.close(); });
+
+test("R28 fifth-screen scan returns to the exact onboarding target after completion", { timeout: 60_000 }, async (t) => {
+  const returnTo = "/app/profile/onboarding?screen=5";
+  const entry = "/app/contacts/new/scan?returnTo=" + encodeURIComponent(returnTo);
+  const page = await open(browser, code, { html: '<div id="root"></div><script>window.shellFixture=' + JSON.stringify({ calls: [], lang: "ja", path: entry, unread: false }) + '</script>' });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.locator("[data-scan-input]").setInputFiles({ name: "normal.jpg", mimeType: "image/jpeg", buffer: Buffer.from("normal.jpg") });
+  await page.locator("[data-scan-start]").click();
+  await page.locator('[data-scan-phase="done"]').waitFor({ timeout: 30_000 });
+  await page.locator("[data-done-guide]").click();
+  assert.equal(await page.evaluate(() => (window as any).shellFixture.path), returnTo);
+});
 
 test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → まとめて確認 → 完成 numbers match the network", { timeout: 90_000 }, async (t) => {
   const page = await open(browser, code, { html: `<div id="root"></div><script>window.shellFixture=${JSON.stringify({ calls: [], lang: "ja", path: "/app/contacts/new/scan", unread: false })}</script>` });

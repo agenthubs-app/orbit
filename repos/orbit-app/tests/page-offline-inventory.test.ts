@@ -12,6 +12,14 @@ import {
 
 const root = process.cwd();
 
+test('R28 /start is an online guide that reads profile policy and live guide progress', () => {
+  const start = PAGE_OFFLINE_INVENTORY.find((entry) => entry.path === '/start');
+  assert.equal(start?.classification, 'online-only');
+  assert.equal(start?.reasonCategory, 'server-computed');
+  assert.match(start?.reads ?? '', /\/api\/profile/);
+  assert.match(start?.reads ?? '', /\/api\/guide\/progress/);
+});
+
 test('R29 admin access and platform inventory match their public read boundaries', () => {
   const access = PAGE_OFFLINE_INVENTORY.find((entry) => entry.path === '/admin/access');
   const platform = PAGE_OFFLINE_INVENTORY.find((entry) => entry.path === '/platform');

@@ -115,6 +115,9 @@ test("steps 1–3 unlock strictly in order; there is no 'open' status any more",
     ["current", "done", "locked"],
   );
   assert.equal(firstIncompleteStartStep(goalFirst), 1);
+  assert.equal(canOpenStartStep(goalFirst, 2), false, "a saved goal does not bypass unfinished contacts");
+  assert.equal(resolveRequestedStartView(goalFirst, null, 2), 1, "?step=2 remains locked");
+  assert.equal(resolveRequestedStartView(goalFirst, 2, null), 1, "a stale recorded step remains locked");
 
   const legacy = flagsOf({ grandfathered: true });
   assert.deepEqual(

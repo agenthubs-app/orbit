@@ -168,8 +168,8 @@ export function createProfileIntroDraftService(options: ProfileIntroDraftService
           userText,
         });
         if (modelResult.success === false) {
-          console.warn("[profile-intro-draft] model_failed", { attempt, code: modelResult.error.code });
-          return { success: false, error: { code: modelResult.error.code, message: modelResult.error.message } };
+          console.warn("[profile-intro-draft] model_failed", { attempt, code: "MODEL_REQUEST_FAILED" });
+          return { success: false, error: { code: "MODEL_REQUEST_FAILED", message: "The introduction could not be generated. Please retry later." } };
         }
         const draft = parseProfileIntroDraft(modelResult.text, language);
         if (draft) {

@@ -13,8 +13,8 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 58 |
-| 不读账号数据（布局、跳转、本机设置） | 40 |
+| 只能在线 | 59 |
+| 不读账号数据（布局、跳转、本机设置） | 39 |
 | 合计（路由文件） | 135 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
@@ -68,6 +68,7 @@
 | --- | --- | --- | --- | --- |
 | `/maintenance` | 公开维护状态（R18b） | 需要服务器实时计算：必须从公开版本接口实时确认 maintenance.active；不能凭缓存或网络错误展示维护 | GET /api/app/version | 读取失败时不显示维护，返回安全首页 |
 | `/force-update` | 强制更新状态（R18b） | 需要服务器实时计算：必须从公开版本接口实时确认 enforceMinimum 和最低版本，不能凭缓存或网络错误阻断 | GET /api/app/version；本地 App 版本；发布前配置的 App Store 链接 | 读取失败时安全放行，返回首页；正式强制更新开关保持关闭 |
+| `/start` | 原生三步引导（R28） | 需要服务器实时计算：资料门禁和联系人／目标／计划进度需要服务端实时确认 | GET /api/profile、GET /api/guide/progress | 读取失败时显示重试卡，不猜测已完成进度 |
 | `/settings/notifications` | 通知设置（R14） | 涉及凭据或会话：读取本账号实时推送偏好与设备状态；版本写入和撤销设备须联网 | /api/inbox/delivery/preferences、/api/inbox/discovery/preferences、/api/devices/push | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -140,7 +141,6 @@
 | `/help` | 公开帮助与本地 FAQ（R18b） | 本地静态 FAQ；支持邮箱未配置 | 帮助、搜索与法务入口照常可用 |
 | `/legal/terms` | 公开利用規約占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
 | `/legal/privacy` | 公开プライバシー占位（R18b） | 静态发布前占位；正式正文待授权 | 占位照常可读；不代表发布就绪 |
-| `/start` | 引导入口跳转（Web /app/start → App 引导 /profile/onboarding） | 无 | 跳到引导页 |
 | `/*（旧链接或未知路由）` | 已知旧深链跳转；未知路由显示 404（R18b） | 无 | 已知路由跳到对应新页面；未知路由提供首页与帮助出口 |
 | `/account/mobile-google` | 旧 Google 登录链接跳转 | 无 | 跳到登录页 |
 | `/events/:id/attendees` | 旧参会者链接跳转到现场页 | 无 | 跳到现场页（0115 可离线） |
@@ -302,7 +302,7 @@
 | `app/showcase/components/index.tsx` | `/showcase/components` | device-only |
 | `app/showcase/copy.tsx` | `/showcase/copy` | device-only |
 | `app/showcase/icons.tsx` | `/showcase/icons` | device-only |
-| `app/start.tsx` | `/start` | device-only |
+| `app/start.tsx` | `/start` | online-only |
 | `app/task.tsx` | `/task` | local-first (R05) |
 | `app/tasks.tsx` | `/tasks` | device-only |
 | `app/tasks/[id].tsx` | `/tasks/:id` | local-first (0131) |

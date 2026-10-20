@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { PlanGoalKind } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_KINDS } from "../../api/compute/plan-templates";
 import { firstProfileGoalForPlan } from "../../api/compute/profile-onboarding-goal";
-import { readAppGuideEntry, type AppGuideProgress } from "../../api/guide-progress";
+import { nextAppGuideStep, readAppGuideEntry, type AppGuideProgress } from "../../api/guide-progress";
 import { resumeOrCreateAppOnboardingIntake } from "../../api/onboarding-plan-intake";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
@@ -72,7 +72,7 @@ export function StartGuideScreen() {
     }
   }
 
-  const nextStep = !guide?.flags.contacts ? "contacts" : !guide.flags.goal ? "goal" : !guide.flags.plan ? "plan" : null;
+  const nextStep = guide ? nextAppGuideStep(guide.flags) : null;
 
   return (
     <View style={[styles.page, { backgroundColor: colors.bg }]}>

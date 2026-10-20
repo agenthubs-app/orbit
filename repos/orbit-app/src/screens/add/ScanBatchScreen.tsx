@@ -26,6 +26,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { reconcileBusinessCardReviewCard, type BusinessCardConflictField, type BusinessCardReviewCardDraft, type BusinessCardReviewFields } from "../../view-models/business-card-batch";
 import { ingestCards, type IngestCard } from "../../view-models/business-card-ingest";
+import type { AppGuideReturnTo } from "../../view-models/guide-return-to";
 import { EMPTY_ATTRIBUTION, useAddApi, type BatchAttribution } from "./add-api";
 import { EMPTY_LEDGER, readScanLedger, writeScanLedger, type ScanLedger } from "./add-storage";
 import { Body, Caption, CountTiles, DensityBar, FadeIn, SectionTitle, useAddStyles } from "./add-ui";
@@ -104,7 +105,7 @@ const EDIT_FIELDS = ["displayName", "organization", "role", "email", "phone"] as
 
 const activeCard = (card: IngestCard) => card.items.some((item) => ["extracted", "terminal_failed", "queued", "processing"].includes(item.status));
 
-export function ScanBatchScreen({ batchId, returnTo = null }: { batchId: string; returnTo?: "/start" | null }) {
+export function ScanBatchScreen({ batchId, returnTo = null }: { batchId: string; returnTo?: AppGuideReturnTo | null }) {
   // 本机像素门禁的只读演示（scan-design-fixtures）：开发包 + 开关下 design-* 用示例数据，不读服务器。
   const design = useMemo(() => scanDesignFor(batchId), [batchId]);
   const { styles: kitStyles } = useScanKitStyles();

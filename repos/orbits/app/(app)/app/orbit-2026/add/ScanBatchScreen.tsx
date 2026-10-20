@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
-import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
+import { appendWebGuideReturnTo, type WebGuideReturnTo } from "../../../../../features/guide/return-to";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { INDUSTRY_CATALOG, isIndustryIdCode, listSecondaryIndustries } from "../../../../../shared/domain/industries";
 import { regionDisplayName } from "../../../../../shared/domain/regions";
@@ -116,7 +116,7 @@ function dayLabel(iso: string | null, language: OrbitLanguage): string {
  * 読み取れず with 撮り直す / 手入力で補う / スキップ) → 完成 (new / merged / unreadable).
  * Keyboard: ↵ confirm · → next card · S skip.
  */
-export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult>; returnTo?: "/app/start" | null }) {
+export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult>; returnTo?: WebGuideReturnTo | null }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const t = translator(language);
@@ -589,7 +589,7 @@ function EnrichmentChoice({ label, t, options, onClear }: { label: string; t: Tr
   );
 }
 
-function DonePanel({ view, t, language, go, returnTo }: { view: ScanBatchView; t: Translate; language: OrbitLanguage; go: (href: string) => void; returnTo: "/app/start" | null }) {
+function DonePanel({ view, t, language, go, returnTo }: { view: ScanBatchView; t: Translate; language: OrbitLanguage; go: (href: string) => void; returnTo: WebGuideReturnTo | null }) {
   const eventTitle = view.events.find((event) => view.writtenEventIds.includes(event.eventId))?.title;
   const scene = [t(b.doneScene, { n: view.cards.length, date: dayLabel(view.createdAt, language) }), eventTitle].filter(Boolean).join(" · ");
   const density = view.density;

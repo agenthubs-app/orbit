@@ -29,6 +29,7 @@ import { AddContactScreen } from "./src/screens/add/AddContactScreen";
 import { AddContactSheet } from "./src/screens/add/AddContactSheet";
 import { ScanCaptureScreen } from "./src/screens/add/ScanCaptureScreen";
 import { ScanBatchScreen } from "./src/screens/add/ScanBatchScreen";
+import { appGuideReturnTo } from "./src/view-models/guide-return-to";
 import { ManualContactScreen } from "./src/screens/add/ManualContactScreen";
 import { ContactDraftsScreen } from "./src/screens/add/ContactDraftsScreen";
 import { ToastProvider, UiPortalHost } from "./src/components/ui";
@@ -37,7 +38,7 @@ function Screen({ path }) {
   const [pathname, query = ""] = path.split("?");
   const params = new URLSearchParams(query);
   const batch = pathname.match(/^\\/contacts\\/new\\/scan\\/([^/]+)$/);
-  if (batch) return <ScanBatchScreen key={path} batchId={decodeURIComponent(batch[1])} />;
+  if (batch) return <ScanBatchScreen key={path} batchId={decodeURIComponent(batch[1])} returnTo={appGuideReturnTo(params.get("returnTo"))} />;
   if (pathname === "/contacts/new/scan") return <ScanCaptureScreen key={path} />;
   if (pathname === "/contacts/new/manual") return <ManualContactScreen now={fixedNow} />;
   if (pathname === "/contacts/new/drafts") return <ContactDraftsScreen key={path} eventId={params.get("eventId")} />;
@@ -300,8 +301,8 @@ test("camera: [表面][裏面], a back pairs with the last front, 裏なし, the
 });
 
 /** A ready batch built through the real capture flow (upload included), then read by the fake server. */
-async function batchPage(t: { after: (fn: () => Promise<void>) => void }, photos: number, options: OpenOptions & { readings: FakeAddServer["readings"]; twoSidedAt?: number }) {
-  const opened = await open(t, "/contacts/new/scan", { deviceStore: GUIDE_DONE, ...options });
+async function batchPage(t: { after: (fn: () => Promise<void>) => void }, photos: number, options: OpenOptions & { readings: FakeAddServer["readings"]; twoSidedAt?: number; returnTo?: string }) {
+  const opened = await open(t, options.returnTo ? `/contacts/new/scan?returnTo=${encodeURIComponent(options.returnTo)}` : "/contacts/new/scan", { deviceStore: GUIDE_DONE, ...options });
   const { page, server } = opened;
   server.readings = options.readings;
   await page.getByTestId("add-scan-camera").waitFor();
@@ -315,6 +316,22 @@ async function batchPage(t: { after: (fn: () => Promise<void>) => void }, photos
   const batchId = [...server.batches.keys()][0]!;
   return { ...opened, batchId };
 }
+
+test("R28 scan completion returns to onboarding screen 5", async (t) => {
+  const returnTo = "/profile/onboarding?screen=5";
+  const { page, server, batchId } = await batchPage(t, 2, {
+    returnTo,
+    readings: [
+      { fields: { name: "林 悦", organization: "星野" }, kind: "read" },
+      { fields: { name: "森 恭平", organization: "海風" }, kind: "read" },
+    ],
+  });
+  assert.match((await nav(page)).stack.at(-1)!, /returnTo=%2Fprofile%2Fonboarding%3Fscreen%3D5$/);
+  server.completeReading(batchId);
+  await page.getByTestId("add-batch-done-panel").waitFor({ timeout: 10000 });
+  await page.getByRole("button", { name: "ガイドを続ける" }).click();
+  assert.deepEqual((await nav(page)).navigation.at(-1), { href: returnTo, method: "replace" });
+});
 
 test("読み取り中 → 自動で人脈へ → まとめて確認 → 完成: 4 cards (identical, similar, unreadable, clean front+back)", async (t) => {
   const people = [

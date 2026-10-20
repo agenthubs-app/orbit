@@ -115,6 +115,17 @@ test("createDraft requires a saved profile with a name and never calls the model
   assert.equal(fake.calls.length, 0);
 });
 
+test("model provider errors are normalized before entering the onboarding quota", async () => {
+  const service = createProfileIntroDraftService({
+    readProfile: readOk(profile()),
+    runModel: async () => ({ success: false, error: { code: "MODEL_API_KEY_MISSING", message: "Set GEMINI_API_KEY or DEEPSEEK_API_KEY." } }) as never,
+  });
+  const result = await service.createDraft({ actorId: "u1", language: "ja" });
+  assert.deepEqual(result, { success: false, error: {
+    code: "MODEL_REQUEST_FAILED", message: "The introduction could not be generated. Please retry later.",
+  } });
+});
+
 test("seek suggestions keep only candidate labels and require a saved goal", async () => {
   const { createSeekSuggestionService, parseSeekSuggestions } = await import("../../features/profile/seek-suggestion-service");
   const candidates = ["投资人", "渠道合作伙伴", "潜在客户"];

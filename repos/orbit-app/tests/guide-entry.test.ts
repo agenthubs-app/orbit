@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createOrbitApiClient } from "../src/api/client";
-import { readAppGuideEntry } from "../src/api/guide-progress";
+import { nextAppGuideStep, readAppGuideEntry } from "../src/api/guide-progress";
 import { profilePayload } from "./helpers/profile-detail-fixtures";
 
 const guide = {
@@ -10,6 +10,12 @@ const guide = {
     hasActivePlan: false, step1Skipped: false, contactSamples: [] },
   relationshipGoal: "", flags: { contacts: false, goal: false, plan: false }, completed: 0,
 };
+
+test("App guide keeps contacts first when a goal is already saved", () => {
+  assert.equal(nextAppGuideStep({ contacts: false, goal: true, plan: false }), "contacts");
+  assert.equal(nextAppGuideStep({ contacts: true, goal: true, plan: false }), "plan");
+  assert.equal(nextAppGuideStep({ contacts: true, goal: true, plan: true }), null);
+});
 
 function entryServer(onboarding: unknown, profileStatus = 200) {
   const paths: string[] = [];

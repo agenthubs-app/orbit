@@ -22,6 +22,7 @@ import {
   validateIndustrySelection,
 } from "../../../../../shared/domain/industries";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
+import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { visibleCharacterCount } from "../../profile/profile-save-model";
 import {
@@ -164,6 +165,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const pendingConfirmRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
   const pendingFieldsRef = useRef<string | null>(null);
   const finishMutationRef = useRef<string | null>(null);
+  const deferCommandRef = useRef<ProfileOnboardingProgressCommandContract | null>(null);
   const introActionKeyRef = useRef<string | null>(null);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -255,6 +257,32 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // 中途离开（跳过、先进入 Orbit）保留草稿，回来还能接着填；只有走完最后一步才清除。
   function leaveTo(href: string) {
     window.location.assign(href);
+  }
+
+  async function deferAndLeave(destination: "preview" | "leave") {
+    if (saving || !loaded) return;
+    setSaving(true);
+    setLoadError("");
+    try {
+      const flow = await ensureProgress();
+      if (!flow.deferred) {
+        deferCommandRef.current ??= { action: "defer", expectedRevision: flow.revision, mutationId: crypto.randomUUID() };
+        const updated = await updateOnboardingProgress(deferCommandRef.current);
+        if (!updated.deferred) throw new Error("Onboarding defer was not confirmed.");
+        progressRef.current = updated;
+        deferCommandRef.current = null;
+      } else {
+        const readback = await fetchOnboardingProgress();
+        if (!readback?.deferred) throw new Error("Onboarding defer was not confirmed.");
+        progressRef.current = readback;
+      }
+      if (destination === "preview") go("home");
+      else leaveTo(next);
+    } catch {
+      setLoadError(t({ zh: "暂时无法保存进度，请重试。", en: "Could not save your progress. Please retry.", ja: "進捗を保存できませんでした。もう一度お試しください。" }));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function finish() {
@@ -466,7 +494,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     focus: goalText.trim(),
     initial,
     name,
-    onEnter: () => leaveTo(next),
+    onEnter: () => void deferAndLeave("leave"),
     onGo: (step: OnboardingStep) => go(step),
     progress,
     todayLabel: todayLabel(todayIso, t),
@@ -498,7 +526,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
             <button className="btn ob-lang" onClick={() => setLanguage(language === "zh" ? "en" : language === "en" ? "ja" : "zh")} type="button">
               {t({ zh: "中文", en: "English", ja: "日本語" })} <span className="ob-caret" aria-hidden>⌄</span>
             </button>
-            {isStep ? <button className="btn ob-header-skip" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">{t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" })}</button> : null}
+            {isStep ? <button className="btn ob-header-skip" disabled={saving} onClick={() => void deferAndLeave(complete ? "leave" : "preview")} type="button">{t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" })}</button> : null}
             <button aria-label={t(ONBOARDING_COPY.flow029)} className="btn ob-avatar-sm" onClick={() => go("profile")} type="button">{initial}</button>
           </div>
         </div>
@@ -508,7 +536,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         {loadError ? <div className="ob-notice ob-notice-error" role="alert">{loadError}</div> : null}
 
         {view === "welcome" ? (
-          <Welcome onStart={() => go("profile")} onBrowse={() => go("home")} t={t} />
+          <Welcome onStart={() => go("profile")} onBrowse={() => void deferAndLeave("preview")} t={t} />
         ) : null}
 
         {isStep ? (
@@ -520,7 +548,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   {ONBOARDING_STEPS.map((step, index) => <span className={`ob-bar${index <= stepIndex ? " ob-bar-on" : ""}`} key={step} />)}
                 </span>
               </span>
-              <button className="btn ob-link-plain" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">
+              <button className="btn ob-link-plain" disabled={saving} onClick={() => void deferAndLeave(complete ? "leave" : "preview")} type="button">
                 {complete ? t(ONBOARDING_COPY.flow030) : t(ONBOARDING_COPY.flow031)}
               </button>
             </div>
@@ -572,8 +600,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.import}>
                     <StepHead title={t(ONBOARDING_COPY.flow032)} sub={t(ONBOARDING_COPY.flow033)} />
                     <div className="ob-import-links">
-                      {cardScanAvailable ? <a className="btn ob-btn-dark" href="/app/contacts/new/scan">{t(ONBOARDING_COPY.flow034)}</a> : null}
-                      <a className="btn ob-btn-ghost" href="/app/contacts/new?method=csv">{t(ONBOARDING_COPY.flow035)}</a>
+                      {cardScanAvailable ? <a className="btn ob-btn-dark" href={appendWebGuideReturnTo("/app/contacts/new/scan", "/app/profile/onboarding?screen=5")}>{t(ONBOARDING_COPY.flow034)}</a> : null}
+                      <a className="btn ob-btn-ghost" href={appendWebGuideReturnTo("/app/contacts/new/import?method=csv", "/app/profile/onboarding?screen=5")}>{t(ONBOARDING_COPY.flow035)}</a>
                       <p>{t(ONBOARDING_COPY.flow036)}</p>
                     </div>
                   </div>

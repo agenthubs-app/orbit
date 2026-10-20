@@ -101,12 +101,13 @@ test("saved goal text round-trips into the editor; old chip-prefixed text keeps 
 // ── 设目标步接线（D7）：同一个编辑器、没有方向 chip、保存写「正文（期限）」 ──
 
 function stubWindow(t: { after: (fn: () => void) => void }, store: Map<string, string>) {
+  const assignments: string[] = [];
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       addEventListener() {},
-      location: { assign() {} },
+      location: { assign(href: string) { assignments.push(href); } },
       localStorage: {
         getItem: (key: string) => store.get(key) ?? null,
         removeItem: (key: string) => { store.delete(key); },
@@ -123,21 +124,27 @@ function stubWindow(t: { after: (fn: () => void) => void }, store: Map<string, s
     if (previous) Object.defineProperty(globalThis, "window", previous);
     else delete (globalThis as { window?: unknown }).window;
   });
+  return assignments;
 }
 
-function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0, introFailureMessage?: string, introFailureCode = "MODEL_REQUEST_FAILED") {
+function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0, introFailureMessage?: string, introFailureCode = "MODEL_REQUEST_FAILED", deferFailures = 0) {
   const puts: Record<string, unknown>[] = [];
+  const commands: Record<string, unknown>[] = [];
+  let progressReads = 0;
   let profile: Record<string, unknown> = { displayName: "张三", relationshipGoal, offering: [], seeking: [], topics: [], bio: "", headline: "", updatedAt: "2026-09-28T00:00:00.000Z", ...extra };
   let mutationId: string | undefined;
   let revision = 0;
   let flow: Record<string, unknown> | null = initialConfirmed ? { version: 1, lastConfirmedScreen: initialConfirmed, currentScreen: initialConfirmed + 1, deferred: false, finishedAt: null, revision: "flow:1" } : null;
   t.mock.method(globalThis, "fetch", async (input: unknown, init?: RequestInit) => {
     const url = String(input);
-    if (url === "/api/profile/onboarding-progress" && !init?.method) return Response.json({ success: true, data: flow });
+    if (url === "/api/profile/onboarding-progress" && !init?.method) { progressReads += 1; return Response.json({ success: true, data: flow }); }
     if (url === "/api/profile/onboarding-progress" && init?.method === "POST") {
       const command = JSON.parse(String(init.body)) as { action: string; screen?: number };
+      commands.push(command);
+      if (command.action === "defer" && deferFailures-- > 0) return Response.json({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "down" } }, { status: 503 });
       if (command.action === "initialize") flow ??= { version: 1, lastConfirmedScreen: 0, currentScreen: 1, deferred: false, finishedAt: null, revision: "flow:1" };
       if (command.action === "confirm" && flow) flow = { ...flow, lastConfirmedScreen: command.screen, currentScreen: (command.screen ?? 0) + 1, revision: `flow:${++revision + 1}` };
+      if (command.action === "defer" && flow) flow = { ...flow, deferred: true, revision: `flow:${++revision + 1}` };
       return Response.json({ success: true, data: flow });
     }
     if (url === "/api/profile" && init?.method === "PUT") {
@@ -155,7 +162,7 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
     if (url === "/api/profile/intro-draft" && introFailureMessage) return Response.json({ success: false, error: { code: introFailureCode, message: introFailureMessage } }, { status: 503 });
     return Response.json({ success: false }, { status: 404 });
   });
-  return { puts, saved: () => String(profile.relationshipGoal) };
+  return { puts, commands, progressReads: () => progressReads, progress: () => flow, saved: () => String(profile.relationshipGoal) };
 }
 
 async function mountFlow(actorKey: string) {
@@ -191,6 +198,37 @@ test("without a local goal draft the goals step reads the saved text back, inclu
   stubProfileApi(t, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）", {}, 1);
   const root = await mountFlow("u-saved");
   assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：把产品推到日本市场（本季度）");
+  act(() => root.unmount());
+});
+
+test("fifth-screen scan and CSV import carry the exact return to unfinished onboarding", async (t) => {
+  stubWindow(t, new Map());
+  stubProfileApi(t, "資金調達", {}, 4);
+  const root = await mountFlow("u-import-return");
+  const hrefs = root.root.findAll(node => node.type === "a").map(node => node.props.href);
+  assert.ok(hrefs.includes("/app/contacts/new/scan?returnTo=%2Fapp%2Fprofile%2Fonboarding%3Fscreen%3D5"));
+  assert.ok(hrefs.includes("/app/contacts/new/import?method=csv&returnTo=%2Fapp%2Fprofile%2Fonboarding%3Fscreen%3D5"));
+  act(() => root.unmount());
+});
+
+test("Set up later defers with CAS and readback; failure keeps the step for retry", async (t) => {
+  const assignments = stubWindow(t, new Map());
+  const api = stubProfileApi(t, "", {}, 1, undefined, "MODEL_REQUEST_FAILED", 1);
+  const root = await mountFlow("u-defer-retry");
+  const later = () => root.root.findAll(node => node.type === "button" && node.children.join("") === "稍后设置")[0]!;
+  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
+  await act(async () => { await later().props.onClick(); });
+  assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
+  assert.deepEqual(assignments, [], "failed defer does not navigate");
+  assert.equal(api.progress()?.deferred, false);
+  const readsBeforeRetry = api.progressReads();
+  await act(async () => { await later().props.onClick(); });
+  assert.deepEqual(assignments, ["/app/home"]);
+  assert.equal(api.progress()?.deferred, true);
+  assert.ok(api.progressReads() > readsBeforeRetry, "successful write is read back");
+  const defers = api.commands.filter(command => command.action === "defer");
+  assert.equal(defers.length, 2);
+  assert.deepEqual(defers[0], defers[1], "retry reuses the CAS mutation");
   act(() => root.unmount());
 });
 

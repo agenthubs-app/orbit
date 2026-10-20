@@ -15,8 +15,9 @@ import { useOrbitLanguage } from "../../../orbit-language-context";
 import { useCardBatch } from "../../card-batch-0918/use-card-batch";
 import { replaceItemContent } from "../../ingest-v2/ingest-v2-client";
 import { buildScanBatchView } from "./scan-batch-view";
+import type { WebGuideReturnTo } from "../../../../../../features/guide/return-to";
 
-export function ScanBatchClient({ batchId, returnTo }: { batchId: string; returnTo?: "/app/start" | null }) {
+export function ScanBatchClient({ batchId, returnTo }: { batchId: string; returnTo?: WebGuideReturnTo | null }) {
   const { t } = useOrbitLanguage();
   const batch = useCardBatch(batchId, t);
   const view = buildScanBatchView(batch);

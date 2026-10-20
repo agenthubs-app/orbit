@@ -3,8 +3,8 @@ import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoun
 import { ProfileOnboardingScreen } from "../../src/screens/profile/onboarding/ProfileOnboardingScreen";
 
 function ProfileOnboardingRoute() {
-  const params = useLocalSearchParams<{ next?: string | string[] }>();
-  return <ProfileOnboardingScreen next={params.next} />;
+  const params = useLocalSearchParams<{ next?: string | string[]; screen?: string | string[] }>();
+  return <ProfileOnboardingScreen next={params.next} screen={params.screen} />;
 }
 
 export default withOrbitPrivateRoute(ProfileOnboardingRoute);

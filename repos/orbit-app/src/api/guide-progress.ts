@@ -24,6 +24,11 @@ const guideProgressSchema = z.object({
 export type AppGuideProgress = GuideProgressContract;
 export type AppGuideProgressResult = { ok: true; data: AppGuideProgress } | { ok: false; kind: "offline" | "failed" };
 
+/** A saved later step never skips an unfinished earlier step. */
+export function nextAppGuideStep(flags: AppGuideProgress["flags"]): "contacts" | "goal" | "plan" | null {
+  return !flags.contacts ? "contacts" : !flags.goal ? "goal" : !flags.plan ? "plan" : null;
+}
+
 export async function readAppGuideProgress(client: OrbitApiClient): Promise<AppGuideProgressResult> {
   const result = await client.get<unknown>(GUIDE_PROGRESS_PATH);
   if (!result.success || result.status < 200 || result.status >= 300) {

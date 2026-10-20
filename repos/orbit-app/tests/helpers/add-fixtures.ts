@@ -3,7 +3,7 @@
 import type { BusinessCardStructuredExtractionContract, IngestBatchContract, IngestBatchDetailContract, IngestContactCandidateContract, IngestItemContract } from "../../src/api/contract/business-card-batch";
 
 export const T0 = "2026-10-11T01:00:00.000Z";
-export const FUTURE = "2026-10-18T01:00:00.000Z";
+export const FUTURE = "2099-10-18T01:00:00.000Z";
 /** 64 hex chars from a seed (FNV-1a per 8-char block): distinct seeds give distinct digests. */
 export const hex = (seed: string) => Array.from({ length: 8 }, (_, block) => {
   let hash = 0x811c9dc5 ^ block;
