@@ -1,13 +1,22 @@
 // R08 contract 11 — data export, account deletion request, minimum app version.
 // Owner: 乙 (R18). Used by: settings, App start-up.
 export type AccountExportScope = "contacts" | "notes" | "tasks" | "events" | "plans";
+export type AccountExportMode = "selected" | "all-json";
+export type AccountContactsFormat = "csv" | "vcard";
 
 export interface AccountExportContract {
   id: string;
   scope: readonly AccountExportScope[];
   status: "queued" | "running" | "ready" | "failed" | "expired";
   requestedAt: string;
-  /** The download link works for 7 days once ready. */
+  mode?: AccountExportMode;
+  contactsFormat?: AccountContactsFormat;
+  completedItems?: number;
+  totalItems?: number;
+  readyAt?: string;
+  fileName?: string;
+  fileSizeBytes?: number;
+  /** Generated when read. This URL expires in five minutes; the file lasts seven days after ready. */
   downloadUrl?: string;
   expiresAt?: string;
 }
@@ -16,6 +25,14 @@ export interface AccountExportContract {
 export interface AccountExportCreateInput {
   scope: readonly AccountExportScope[];
   idempotencyKey: string;
+  mode?: AccountExportMode;
+  contactsFormat?: AccountContactsFormat;
+}
+
+/** POST /api/account/deletion-request. A fresh, single-use receipt is mandatory in live mode. */
+export interface AccountDeletionCreateInput {
+  reauthReceipt: string;
+  confirmed: true;
 }
 
 export interface AccountDeletionRequestContract {
@@ -23,6 +40,7 @@ export interface AccountDeletionRequestContract {
   /** requestedAt + 30 days; cancelling before then keeps the account. */
   purgeAfter: string;
   cancelledAt?: string;
+  status?: "pending" | "purging" | "deleted" | "cancelled";
 }
 
 /**

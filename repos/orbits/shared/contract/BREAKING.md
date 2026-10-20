@@ -23,6 +23,7 @@
 
 | 日期 | id | 改动 | 原因 | 甲乙同意 | App 跟进 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-20 | `POST /api/account/deletion-request` 请求语义 | R08 mock 原先接受空 body；R18c live 改为严格要求 `{ reauthReceipt, confirmed: true }`，receipt 绑定同一账号与删除用途、十分钟内一次性消费 | 退会不能只凭旧会话或重复请求执行；首次正式发布前两端同版落地 | 主会话 R18c PLANNER rev2 §6.1 / RD-33 代定；C 线执行，未冒称甲乙分别签字 | `AccountDeletionCreateInput` / schema 同提交同步 App；App 申请页改送 receipt 后再接 live |
 | 2026-10-18 | `notes.ts::NoteMentionContract.contactId` | R20b 把 `contactId` 从必填改为可选；`entityType=event` 时必须给 `eventId` 且不得给 `contactId`，旧 `entityType` 缺省仍按 contact 处理 | 活动提及不能伪造联系人 ID；现有必填字段阻止无联系人的活动 token 正确跨端读写 | 主会话按 R20b PLANNER rev2 D-4 / RD-33 代定；未冒称甲乙分别签字 | 同一 `contract:` 提交同步 App 类型和 strict 离线 schema；App reader/edit 与服务端写入按分支校验后再开放 UI |
 | 2026-10-10 | `index.ts::(exports)=PlanV2Summary` | R22 计划 v2.2 契约定稿：`PlanV2Summary` 改为 `PlanV2HomeSummary`；`PlanV2SummaryResponse` 从 `{ summary, score }` 改为 `{ current, goals }`；`PlanScoreView.total` 不再限 ≤100（不封顶）、`byType` 改为 `segments`；`PlanV2Step` 的 `id / personTypeKey` 改为 `key / personTypeKeys[]`；`PlanV2PersonType` 字段整套更换（`plan-v2.ts` 在 R08 是 `@draft`，不在快照里，这里一并记录） | R08 草案只定了顶层，R22 按 plan-v2.2/DESIGN.md 定全字段；分数按设计不封顶 | 甲（执行）、乙（用户 2026-10-10「都按推荐，开工 R22」） | 同一提交带 App 同步副本；App 尚无计划界面，只有 `tests/contract-fixtures-parse.test.ts` 读它 |
 | 2026-10-10 | `index.ts::(exports)=PlanIntakeSummary` | R22 删除 `PlanIntakeSummary`，生成流程的形状由 R23 的 `PlanIntakeView` 取代 | 草案里的 intake 摘要不够表达背景三块、≤5 问与前提（DESIGN §3.2） | 甲（执行）、乙（用户 2026-10-10「都按推荐，开工 R22」） | 同上；App 没有使用方 |

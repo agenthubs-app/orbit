@@ -44,6 +44,20 @@
         "'tasks'"
       ]
     },
+    "account.ts::AccountExportMode": {
+      "kind": "enum",
+      "values": [
+        "'all-json'",
+        "'selected'"
+      ]
+    },
+    "account.ts::AccountContactsFormat": {
+      "kind": "enum",
+      "values": [
+        "'csv'",
+        "'vcard'"
+      ]
+    },
     "account.ts::AccountExportContract": {
       "kind": "object",
       "members": {
@@ -66,6 +80,41 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "mode": {
+          "optional": true,
+          "kind": "text",
+          "type": "AccountExportMode"
+        },
+        "contactsFormat": {
+          "optional": true,
+          "kind": "text",
+          "type": "AccountContactsFormat"
+        },
+        "completedItems": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "totalItems": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
+        },
+        "readyAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fileName": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "fileSizeBytes": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         },
         "downloadUrl": {
           "optional": true,
@@ -91,6 +140,31 @@
           "optional": false,
           "kind": "text",
           "type": "string"
+        },
+        "mode": {
+          "optional": true,
+          "kind": "text",
+          "type": "AccountExportMode"
+        },
+        "contactsFormat": {
+          "optional": true,
+          "kind": "text",
+          "type": "AccountContactsFormat"
+        }
+      }
+    },
+    "account.ts::AccountDeletionCreateInput": {
+      "kind": "object",
+      "members": {
+        "reauthReceipt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "confirmed": {
+          "optional": false,
+          "kind": "text",
+          "type": "true"
         }
       }
     },
@@ -111,6 +185,11 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "status": {
+          "optional": true,
+          "kind": "text",
+          "type": "'pending' | 'purging' | 'deleted' | 'cancelled'"
         }
       }
     },
@@ -1088,7 +1167,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending' | 'cancelled'"
+          "type": "'cancelled' | 'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending'"
         },
         "title": {
           "optional": false,
@@ -1228,7 +1307,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending' | 'cancelled'"
+          "type": "'cancelled' | 'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending'"
         },
         "title": {
           "optional": false,
@@ -1363,7 +1442,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending' | 'cancelled'"
+          "type": "'cancelled' | 'completed' | 'draft' | 'awaiting_response' | 'negotiating' | 'confirmed' | 'reschedule_pending'"
         },
         "title": {
           "optional": false,
@@ -12801,8 +12880,12 @@
     "index.ts::(exports)": {
       "kind": "enum",
       "values": [
+        "AccountContactsFormat",
+        "AccountDeletionCreateInput",
         "AccountDeletionRequestContract",
         "AccountExportContract",
+        "AccountExportCreateInput",
+        "AccountExportMode",
         "AccountExportScope",
         "AccountLanguagePreferenceSaveContract",
         "AccountLanguagePreferenceSaveReceiptContract",
@@ -14768,7 +14851,7 @@
         "status": {
           "optional": false,
           "kind": "text",
-          "type": "'completed' | 'cancelled' | 'open'"
+          "type": "'cancelled' | 'completed' | 'open'"
         },
         "sourceNoteVersion": {
           "optional": false,
