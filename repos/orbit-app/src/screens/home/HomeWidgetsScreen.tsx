@@ -115,7 +115,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
       {editing ? <Button label={t("home.widgetAdd")} icon="plus" onPress={() => setLibrary(true)} variant="surface" /> : null}
     </> : null}
     <BottomSheet visible={library} onClose={() => setLibrary(false)} accessibilityLabel={t("home.widgetAdd")}>
-      <WidgetLibrary slots={items} onAdd={slot => { setDraft(addWidget(items, slot)); setLibrary(false); }} />
+      <WidgetLibrary slots={items} onClose={() => setLibrary(false)} onAdd={slot => { setDraft(addWidget(items, slot)); setLibrary(false); }} />
     </BottomSheet>
   </AppScreen>;
 }
@@ -157,16 +157,22 @@ function DraggableWidget({ widget, index, count, editing, small, dropTarget, onT
     style={[styles.widgetWrap, small && styles.widgetSmall, dropTarget && styles.dropTarget, { transform: pan.getTranslateTransform(), zIndex: dropTarget ? 2 : 1 }]}>{children}</Animated.View>;
 }
 
-function WidgetLibrary({ slots, onAdd }: { slots: readonly HomeWidgetSlot[]; onAdd: (slot: HomeWidgetSlot) => void }) {
+function WidgetLibrary({ slots, onAdd, onClose }: { slots: readonly HomeWidgetSlot[]; onAdd: (slot: HomeWidgetSlot) => void; onClose: () => void }) {
   const { t } = useOrbitLocale(); const { colors, styles } = useStyles();
   const [category, setCategory] = useState("all"); const [query, setQuery] = useState("");
+  const [sizes, setSizes] = useState<Partial<Record<HomeWidgetKey, "s" | "m">>>({});
   const categories = ["all", "today", "network", "event", "plan", "secretary"] as const;
   const categoryLabels = ["home.widgetAll", "home.today", "home.widgetNetwork", "home.events", "home.widgetPlan", "home.widgetSecretary"] as const;
   const available = HOME_WIDGETS.filter(item => !slots.some(slot => slot.key === item.key) && (category === "all" || item.category === category)
     && t(TITLE[item.key]).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
-  return <View style={styles.library}><UiText style={styles.date}>{t("home.widgetAdd")}</UiText><TextInput accessibilityLabel={t("home.widgetSearch")} placeholder={t("home.widgetSearch")} placeholderTextColor={colors.ink3Text} value={query} onChangeText={setQuery} style={styles.search} />
+  const descriptions = { pending: "home.widgetPendingDescription", week: "home.widgetWeekDescription", eventPick: "home.widgetEventPickDescription", memo: "home.widgetMemoDescription" } as const;
+  return <View style={styles.library}><View style={styles.libraryHeader}><View style={styles.libraryHeading}><UiText style={styles.date}>{t("home.widgetAdd")}</UiText><UiText style={styles.hintText}>{t("home.widgetLibraryHint")}</UiText></View><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={styles.libraryClose}><UiText style={styles.hintText}>×</UiText></UiPressable></View><TextInput accessibilityLabel={t("home.widgetSearch")} placeholder={t("home.widgetSearch")} placeholderTextColor={colors.ink3Text} value={query} onChangeText={setQuery} style={styles.search} />
     <View style={styles.categories}>{categories.map((item, index) => <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: category === item }} onPress={() => setCategory(item)} style={[styles.category, category === item && styles.categoryOn]}><UiText style={styles.hintText}>{t(categoryLabels[index]!)}</UiText></UiPressable>)}</View>
-    {available.map(item => <View key={item.key} style={styles.libraryRow}><UiText style={styles.libraryName}>{t(TITLE[item.key])}</UiText><Control label={`${t(TITLE[item.key])} ${t("home.widgetSmall")}`} text={`+ ${t("home.widgetSmall")}`} disabled={slots.length >= 10} press={() => onAdd({ key: item.key, size: "s" })} /><Control label={`${t(TITLE[item.key])} ${t("home.widgetMedium")}`} text={`+ ${t("home.widgetMedium")}`} disabled={slots.length >= 10} press={() => onAdd({ key: item.key, size: "m" })} /></View>)}
+    <View style={styles.libraryCards}>{available.map(item => {
+      const selected = sizes[item.key] ?? (item.key === "memo" ? "s" : "m");
+      return <View key={item.key} style={styles.libraryCard}><UiText style={styles.libraryIcon}>{iconFor(item.key)}</UiText><UiText style={styles.libraryName}>{t(TITLE[item.key])}</UiText><UiText numberOfLines={2} style={styles.hintText}>{item.key in descriptions ? t(descriptions[item.key as keyof typeof descriptions]) : t(TITLE[item.key])}</UiText><View style={styles.librarySizes}>{(["s", "m"] as const).map(size => <UiPressable key={size} accessibilityRole="button" accessibilityLabel={`${t(TITLE[item.key])} ${t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}`} accessibilityState={{ selected: selected === size }} hitSlop={6} onPress={() => setSizes(current => ({ ...current, [item.key]: size }))} style={[styles.librarySize, selected === size && styles.librarySizeSelected]}><UiText style={[styles.librarySizeText, selected === size && styles.librarySizeTextSelected]}>{t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}</UiText></UiPressable>)}<UiPressable accessibilityRole="button" accessibilityLabel={`${t(TITLE[item.key])} ${t("home.widgetAdd")}`} disabled={slots.length >= 10} hitSlop={5} onPress={() => onAdd({ key: item.key, size: selected })} style={[styles.libraryPlus, slots.length >= 10 && styles.disabled]}><UiText style={styles.libraryPlusText}>＋</UiText></UiPressable></View></View>;
+    })}</View>
+    <View style={styles.libraryExisting}><UiText style={styles.hintText}>{t("home.widgetOnHome")} {slots.length}</UiText><UiText numberOfLines={2} style={styles.hintText}>{slots.map(slot => t(TITLE[slot.key])).join(" · ")}</UiText></View>
   </View>;
 }
 
@@ -178,5 +184,9 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   dropTarget: { borderColor: colors.accentText, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
   widgetHeadEditing: { flexDirection: "column", alignItems: "stretch" },
   controls: { flexDirection: "row", gap: 3, justifyContent: "flex-end", marginTop: 8 }, control: { paddingHorizontal: 5, minHeight: 29, minWidth: 26, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, controlText: { color: colors.accentText, fontSize: 11 }, disabled: { opacity: .35 },
-  library: { paddingHorizontal: 20, paddingBottom: 30, gap: 12 }, search: { borderWidth: 1, borderColor: colors.line, color: colors.ink, borderRadius: 9, minHeight: 40, paddingHorizontal: 12 }, categories: { flexDirection: "row", flexWrap: "wrap", gap: 5 }, category: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14 }, categoryOn: { backgroundColor: colors.surface2 }, libraryRow: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 5 }, libraryName: { flex: 1, color: colors.ink, fontSize: 12 },
+  library: { minHeight: 500, paddingBottom: 20, gap: 12 }, libraryHeader: { flexDirection: "row", alignItems: "center" }, libraryHeading: { flex: 1, gap: 3 }, libraryClose: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
+  search: { borderWidth: 1, borderColor: colors.line, color: colors.ink, borderRadius: 18, minHeight: 40, paddingHorizontal: 12 }, categories: { flexDirection: "row", flexWrap: "wrap", gap: 5 }, category: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14 }, categoryOn: { backgroundColor: colors.surface2 },
+  libraryCards: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }, libraryCard: { width: "48%", minHeight: 130, padding: 10, borderRadius: 14, backgroundColor: colors.surface2 }, libraryIcon: { fontSize: 17 }, libraryName: { color: colors.ink, fontSize: 12, fontWeight: "700", marginTop: 3 }, librarySizes: { flexDirection: "row", alignItems: "center", marginTop: "auto", gap: 4 },
+  librarySize: { width: 27, height: 27, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }, librarySizeSelected: { backgroundColor: colors.ink }, librarySizeText: { color: colors.ink3Text, fontSize: 10, fontWeight: "700" }, librarySizeTextSelected: { color: colors.surface }, libraryPlus: { marginLeft: "auto", width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.ink }, libraryPlusText: { color: colors.surface, fontSize: 20, lineHeight: 23 },
+  libraryExisting: { backgroundColor: colors.surface2, borderRadius: 14, minHeight: 52, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 },
 }));
