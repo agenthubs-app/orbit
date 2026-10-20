@@ -171,11 +171,21 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
         onOpenContact={id => router.push(`/contacts/${encodeURIComponent(id)}` as Href)} onOpenEvent={id => router.push(`/events/${encodeURIComponent(id)}` as Href)} /></View>
       {note.contactIds.length ? <View style={styles.section}>
         <Text style={styles.sectionTitle}>{locale.t("notes.relatedPeople")}</Text>
-        <View style={styles.chips}>{note.contactIds.map((contactId) => <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedPerson", { name: contactNames.get(contactId) ?? contactId })} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{(contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")).slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")}</Text>
-        </Pressable>)}</View>
+        <View style={styles.chips}>{note.contactIds.map((contactId) => {
+          const available = contactSummaries.has(contactId);
+          const name = available ? contactNames.get(contactId) ?? contactId : locale.t("notes.deletedContact");
+          const content = <><View style={styles.avatar}><Text style={styles.avatarText}>{name.slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{name}</Text></>;
+          return available
+            ? <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedPerson", { name })} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>{content}</Pressable>
+            : <View key={contactId} style={styles.chip}>{content}</View>;
+        })}</View>
       </View> : null}
-      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Icon color={colors.accentText} name="calendar" size={20} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Icon color={colors.ink3Text} name="right" size={20} /></Pressable>)}</View> : null}
+      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => {
+        const name = eventNames.get(eventId);
+        return name
+          ? <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Icon color={colors.accentText} name="calendar" size={20} /><Text style={styles.linkText}>{name}</Text><Icon color={colors.ink3Text} name="right" size={20} /></Pressable>
+          : <View key={eventId} style={styles.linkRow}><Icon color={colors.ink3Text} name="calendar" size={20} /><Text style={styles.disabledMention}>{eventId.replace(/^event:/, "")}</Text></View>;
+      })}</View> : null}
       <NoteSourceTasks key={JSON.stringify([scopeKey, actorId, noteId, taskRefresh])} actorId={actorId} noteId={noteId} scopeKey={scopeKey} />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" accessibilityLabel={source.offline && Platform.OS === "web" ? `${locale.t("notes.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.edit")} accessibilityState={{ disabled: source.offline && Platform.OS === "web" }} disabled={source.offline && Platform.OS === "web"} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={[styles.editLarge, source.offline && Platform.OS === "web" && styles.disabled]}><Text style={styles.editText}>{locale.t(source.offline && Platform.OS === "web" ? "sync.needsNetwork" : "notes.edit")}</Text></Pressable>

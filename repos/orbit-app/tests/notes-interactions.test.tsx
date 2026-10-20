@@ -326,6 +326,20 @@ test("an offline edit without a local note shows the needs-network message", asy
   assert.equal(await value.getByText("未找到这篇笔记。", { exact: true }).count(), 0);
 });
 
+test("deleted related people and unavailable events stay readable without dead links", async (t) => {
+  const value = await page(t, "detail");
+  await value.evaluate(() => (window as any).fixture.update({ note: {
+    ...(window as any).fixture.note,
+    body: "@退会",
+    mentions: [{ entityType: "contact", contactId: "contact:deleted", start: 0, end: 3, displayText: "@退会" }],
+    contactIds: ["contact:deleted"], eventIds: ["event:deleted"],
+  } }));
+  await value.getByText("已删除的联系人", { exact: true }).first().waitFor();
+  assert.equal(await value.getByRole("button", { name: /打开相关人脉.*退会/u }).count(), 0);
+  assert.equal(await value.getByRole("button", { name: /打开相关活动/u }).count(), 0);
+  assert.equal(await value.getByText("已删除的联系人", { exact: true }).count(), 2);
+});
+
 test("conflicted notes show both versions and offer keep, use-server, and save-as-new choices", async (t) => {
   for (const [choice, label] of [["keep-local", "保留本机版本"], ["server", "使用服务器版本"], ["save-as-new", "另存为新笔记"]] as const) {
     const value = await page(t, "detail");
