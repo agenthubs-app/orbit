@@ -57,7 +57,7 @@ test("memo slot opens its add flow from the Task header without changing the sel
     import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
     function Page() {
       const slots = useShellSlots();
-      return <><div data-shell-right>{slots.right}</div><TaskContainer initialTab="memo" calendar={null} todo={null} memo={<main><p>memo workspace</p><button data-task-add onClick={() => document.body.dataset.added = "yes"}>add memo</button></main>} /></>;
+      return <><div data-shell-right>{slots.right}</div><TaskContainer initialTab="memo" calendar={null} todo={null} memo={<main><p>memo workspace</p></main>} /></>;
     }
     createRoot(document.getElementById("root")).render(<ShellSlotsProvider><Page /></ShellSlotsProvider>);
   `, SHELL_STUBS);
@@ -65,8 +65,11 @@ test("memo slot opens its add flow from the Task header without changing the sel
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   await page.getByText("memo workspace").waitFor();
   await page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" }).click();
-  assert.equal(await page.evaluate(() => document.body.dataset.added), "yes");
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [{ push: "/app/tasks?tab=memo&new=1" }]);
   assert.equal(await page.locator("[data-task-slot=memo]").count(), 1);
+  await page.context().setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  assert.equal(await page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" }).isDisabled(), true);
 });
 
 test("← → switch tabs from the page, but not while typing in a field", async (t) => {

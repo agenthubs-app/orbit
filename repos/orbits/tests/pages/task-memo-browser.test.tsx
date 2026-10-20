@@ -12,7 +12,7 @@ test.before(async () => {
     import React from "react";
     import { createRoot } from "react-dom/client";
     import { MemoWorkspace } from "./app/(app)/app/orbit-2026/memo/MemoWorkspace";
-    createRoot(document.getElementById("root")).render(<MemoWorkspace language="ja" initialSelectedId={window.memoInitialSelected} />);
+    createRoot(document.getElementById("root")).render(<MemoWorkspace language="ja" initialAdd={window.memoInitialAdd} initialSelectedId={window.memoInitialSelected} />);
   `, SHELL_STUBS);
   browser = await launch();
 });
@@ -37,7 +37,7 @@ test("memo editor resolves @people and @events into persisted, navigable tokens"
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   page.setDefaultTimeout(3000);
-  await page.getByText("会議の後").waitFor();
+  await page.locator("section[aria-label='会ったこと']").getByText("会議の後").waitFor();
   await page.getByRole("button", { name: "編集" }).click();
   const body = page.getByLabel("本文");
   await body.fill("会議の後 @秋");
@@ -70,9 +70,9 @@ test("a memo selected by URL opens when it is beyond the first page", async t =>
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   page.setDefaultTimeout(3000);
-  await page.getByText("Older").waitFor({ timeout: 3000 });
+  await page.locator("section[aria-label='以前']").getByText("Older @退会").waitFor({ timeout: 3000 });
   assert.ok((await page.evaluate(() => (window as any).memoReads)).includes("/api/notes/memo%3Aolder"));
-  await page.getByText("@退会").waitFor();
+  await page.locator("section[aria-label='以前']").getByText("@退会", { exact: true }).waitFor();
   assert.equal(await page.getByRole("link", { name: "@退会" }).count(), 0, "a deleted contact token stays readable without a dead link");
 });
 test.after(async () => { await browser?.close(); });
@@ -100,12 +100,15 @@ test("memo search, kind filter, selection and versioned edit read back through t
     };
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
-  await page.getByText("Discussed plans").waitFor();
+  await page.locator("section[aria-label='面談の要点']").getByText("Discussed plans").waitFor();
+  await page.getByRole("radio", { name: "すべて 2" }).waitFor();
+  await page.getByRole("radio", { name: "面談 1" }).waitFor();
+  await page.getByRole("radio", { name: "自由メモ 1" }).waitFor();
   await page.getByRole("button", { name: "アイデア" }).click();
-  await page.getByText("A free note").waitFor();
+  await page.locator("section[aria-label='アイデア']").getByText("A free note").waitFor();
   assert.match(page.url(), /memo=memo%3A2/u);
-  await page.getByRole("radio", { name: "面談", exact: true }).click();
-  await page.getByText("Discussed plans").waitFor();
+  await page.locator("section[aria-label='すべて']").getByRole("radio", { name: /^面談/u }).click();
+  await page.locator("section[aria-label='面談の要点']").getByText("Discussed plans").waitFor();
   await page.getByRole("button", { name: "編集" }).click();
   await page.getByLabel("本文").fill("Discussed next month");
   await page.getByRole("button", { name: "保存" }).click();
@@ -117,6 +120,7 @@ test("memo search, kind filter, selection and versioned edit read back through t
 test("a new meeting memo links one person and an event before opting into plan use", async t => {
   const page = await open(browser, code, { html: `<div id="root"></div><script>
     window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoInitialAdd=true;
     window.memoWrites=[];
     window.memoRows=[];
     window.fetch=async (url,init={})=>{
@@ -133,7 +137,7 @@ test("a new meeting memo links one person and an event before opting into plan u
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   page.setDefaultTimeout(3000);
-  await page.getByRole("button", { name: "メモを追加" }).click();
+  await page.getByRole("dialog").waitFor();
   await page.getByLabel("タイトル").fill("面談メモ");
   await page.getByLabel("本文").fill("来週の予定");
   await page.getByRole("dialog").getByRole("radio", { name: "面談", exact: true }).click();
@@ -147,9 +151,10 @@ test("a new meeting memo links one person and an event before opting into plan u
     ["面談メモ", "来週の予定", "meeting", ["contact:aki"], ["event:cfo"], [], true]);
 });
 
-test("a saved memo remains selected when the current filtered page omits it", async t => {
+test("a saved memo remains selected when the first page omits it", async t => {
   const page = await open(browser, code, { html: `<div id="root"></div><script>
     window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoInitialAdd=true;
     const note={id:"memo:new",title:"保存した自由メモ",body:"Saved body",version:1,noteKind:"free",manualContactIds:[],contactIds:[],eventIds:[],mentions:[],updatedAt:"2026-10-20T10:00:00Z"};
     window.fetch=async (url,init={})=>{
       if(String(url)==="/api/notes"&&init.method==="POST")return Response.json({data:{note}});
@@ -159,11 +164,10 @@ test("a saved memo remains selected when the current filtered page omits it", as
   </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   page.setDefaultTimeout(3000);
-  await page.getByRole("radio", { name: "面談", exact: true }).click();
-  await page.getByRole("button", { name: "メモを追加" }).click();
+  await page.getByRole("dialog").waitFor();
   await page.getByLabel("タイトル").fill("保存した自由メモ");
   await page.getByLabel("本文").fill("Saved body");
   await page.getByRole("button", { name: "保存" }).click();
-  await page.getByText("Saved body").waitFor();
+  await page.locator("section[aria-label='保存した自由メモ']").getByText("Saved body").waitFor();
   assert.match(page.url(), /memo=memo%3Anew/u);
 });

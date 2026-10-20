@@ -19,7 +19,7 @@ import styles from "./task.module.css";
 //   todo     → R20 (now the existing To-do workspace)
 //   plan     → R25 (now the existing plan screen; 「目標を決める」 only without a plan —
 //              product decision (a), R07 review M5)
-//   memo     → R20 (the Web has no notes page yet: an empty state)
+//   memo     → R20b Memo workspace
 // Tabs, ← → keys (outside text fields) and `?tab=` are the container's.
 // Header (web.html wTaskHead): the tabs at the left, 「Task」 over the month's range,
 // and the tab's ＋ add button at the right — only where the slot has an add flow
@@ -38,7 +38,15 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
   const searchParams = useSearchParams();
   useTaskHistoryScroll(`${pathname}?${searchParams?.toString() ?? ""}`);
   const [tab, setTab] = useState<TaskTab>(initialTab);
+  const [memoOnline, setMemoOnline] = useState(true);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
+  useEffect(() => {
+    const update = () => setMemoOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
   const choose = (next: TaskTab) => {
     setTab(next);
     // Keep the slot's own parameters (for example the To-do view) when switching tabs.
@@ -70,7 +78,8 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
   const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
   // プラン: 「目標を追加」 only at ≥1280; b8 #6 / #16 (1024) keep just 「次の一手」 on the right.
   const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} />
-    : tab === "calendar" || tab === "todo" || tab === "memo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : tab === "todo" ? shellCopy.taskAddTodo : memoCopy.add, language)} onSelect={startSlotAdd} /> : undefined;
+    : tab === "memo" ? <TaskAddButton label={pickCopy(memoCopy.add, language)} onSelect={() => router.push(`${pathname}?tab=memo&new=1`)} disabled={!memoOnline} title={!memoOnline ? pickCopy(memoCopy.needsNetwork, language) : undefined} />
+    : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>
       <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail phoneFold />
@@ -140,8 +149,8 @@ function useTaskHistoryScroll(routeKey: string) {
 }
 
 // kit .btn.accent with ＋ (web.html k-wtadd).
-function TaskAddButton({ label, onSelect, className }: { label: string; onSelect: () => void; className?: string }) {
-  return <Button label={label} variant="accent" icon="plus" onClick={onSelect} className={className} />;
+function TaskAddButton({ label, onSelect, className, disabled, title }: { label: string; onSelect: () => void; className?: string; disabled?: boolean; title?: string }) {
+  return <Button label={label} variant="accent" icon="plus" onClick={onSelect} className={className} disabled={disabled} title={title} />;
 }
 
 // カレンダー / To-do: the slot's own add flow, marked `data-task-add` (the schedule's

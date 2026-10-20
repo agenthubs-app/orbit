@@ -51,6 +51,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   const [settledQuery, setSettledQuery] = useState("");
   const [notes, setNotes] = useState<MemoRow[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Record<MemoTab, number | null>>({ all: null, meeting: null, free: null });
   const [cursor, setCursor] = useState<string | undefined>();
   const [selected, setSelected] = useState(initialSelectedId ?? "");
   const [loading, setLoading] = useState(false);
@@ -114,6 +115,19 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     }
   }, [cursor, settledQuery, tab]);
   useEffect(() => { setNotes(null); setCursor(undefined); void read(); return () => { generation.current++; }; }, [tab, settledQuery]); // read is intentionally triggered only by the query, not each page cursor
+  useEffect(() => {
+    const controller = new AbortController();
+    setCounts({ all: null, meeting: null, free: null });
+    for (const kind of ["all", "meeting", "free"] as const) {
+      const params = new URLSearchParams({ limit: "20", noteKind: kind });
+      if (settledQuery) params.set("q", settledQuery);
+      void fetch(`/api/notes?${params}`, { credentials: "same-origin", signal: controller.signal })
+        .then(async response => { if (!response.ok) throw new Error(String(response.status)); return memoPage(dataOf(await response.json())); })
+        .then(page => { if (!controller.signal.aborted && page) setCounts(previous => ({ ...previous, [kind]: page.total })); })
+        .catch(() => { /* The current list keeps its own retry state. */ });
+    }
+    return () => controller.abort();
+  }, [settledQuery]);
   const select = (id: string) => {
     pinnedId.current = id;
     setSelected(id);
@@ -215,13 +229,12 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
       patch({ eventIds: editor.draft.eventIds.includes(option.id) ? editor.draft.eventIds.filter(id => id !== option.id) : [...editor.draft.eventIds, option.id] });
     }
   };
-  const options: { key: MemoTab; label: string }[] = (["all", "meeting", "free"] as const).map(key => ({ key, label: t(memoCopy[key]) }));
+  const options: { key: MemoTab; label: string }[] = (["all", "meeting", "free"] as const).map(key => ({ key, label: `${t(memoCopy[key])}${counts[key] === null ? "" : ` ${counts[key]}`}` }));
   const kindOptions: { key: "meeting" | "free"; label: string }[] = (["meeting", "free"] as const).map(key => ({ key, label: t(memoCopy[key]) }));
   const shownContacts = contactOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language)));
   const shownEvents = eventOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language))).slice(0, 20);
   const draftContactCount = editor ? memoContactIds(editor.draft.contactIds, editor.draft.mentions).length : 0;
   return <main className={styles.page}>
-    <div className={styles.heading}><h2>{t(memoCopy.all)}</h2><Button label={t(memoCopy.add)} icon="plus" variant="accent" data-task-add="" disabled={!online} title={!online ? t(memoCopy.needsNetwork) : undefined} onClick={() => openEditor()} /></div>
     <div className={styles.grid}>
       <section className={styles.list} aria-label={t(memoCopy.all)}>
         <SearchField value={query} onChange={setQuery} placeholder={t(memoCopy.search)} />
@@ -229,8 +242,13 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
         {loading && notes === null ? <Skeleton lines={5} /> : null}
         {failed && notes === null ? <RetryCard title={t(memoCopy.retry)} onRetry={() => { void read(); }} /> : null}
         {notes?.length === 0 ? <EmptyState title={query ? t(memoCopy.noResult) : t(memoCopy.empty)} message={t(memoCopy.emptyBody)} /> : null}
-        {notes ? <div className={styles.count} aria-live="polite">{notes.length} / {total}</div> : null}
-        {notes?.map(row => <Button key={row.id} label={row.title} className={`${styles.row} ${current?.id === row.id ? styles.selected : ""}`} aria-pressed={current?.id === row.id} onClick={() => select(row.id)} />)}
+        {notes ? <div className={styles.srOnly} aria-live="polite">{notes.length} / {total}</div> : null}
+        {notes?.map(row => <Button key={row.id} label={row.title} aria-label={row.title} className={`${styles.row} ${current?.id === row.id ? styles.selected : ""}`} aria-pressed={current?.id === row.id} onClick={() => select(row.id)} trailing={<>
+          <span className={styles.rowIcon} aria-hidden>{row.noteKind === "meeting" ? "🤝" : row.noteKind === "voice" ? "🎙️" : "✍️"}</span>
+          <time className={styles.rowDate}>{new Date(row.updatedAt).toLocaleDateString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { month: "numeric", day: "numeric" })}</time>
+          <span className={styles.rowBody}>{row.body.replace(/\s+/gu, " ")}</span>
+          <span className={styles.rowTags}><span>{t(memoCopy[memoTabForKind(row.noteKind)])}</span>{row.noteKind === "voice" ? <span>{t(memoCopy.voice)}</span> : null}</span>
+        </>} />)}
         {cursor ? <Button label={t(memoCopy.loadMore)} loading={moreLoading} onClick={() => { void read(true); }} /> : null}
         {failed && notes ? <RetryCard title={t(memoCopy.retry)} onRetry={() => { void read(Boolean(cursor)); }} /> : null}
       </section>
