@@ -20,6 +20,7 @@ Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPO
 - `features/guide/start-steps.ts` 与 `progress.ts` import R10 的同一份 `computeGuideRealProgress`；指南与首页的三步完成事实不靠客户端 `currentStep` 猜测。资料进度是 actor 级 CAS；未知服务端资料政策不误判已完成。
 - `/api/profile`、资料进度和介绍草稿的示例请求在构造存储或模型前返回 403。C 的计划入口仍依赖 R22–25 的写 API 提供同等保护；Web 资料/指南前端也尚未接一个可统一拦截的示例上下文，因此 SC10 保留部分。
 - 本地合成账号走过 App 空生日、双目标、介绍失败后手填、导入跳过；Web 确认三个联系人，创建 onboarding intake；App 恢复同一个 intake。付费 provider 留空，计划 AI 初版失败，没有 active plan；3/3、Task 回程和日文真实 AI 正例无证据。
+- 另一个 Web 新账号完成了基本→目标→画像→介绍失败后手写→导入跳过，服务端读回五屏确认与结束时间；之后 `continue` 落回 `/app/start`。逐屏操作截图在 `_evidence-c/R28/web-five-screen/`，不替代像素门禁。实机截图发现原介绍失败提示暴露 `API_KEY` 配置名；`f718ea48d` 改为按错误码给可操作的用户文案，重试/额度用尽定向 15/15、文案审计 7/7、Web typecheck/typecheck:app exit 0，修后本地截图不再含配置名。
 - 浏览器补核 Web 新注册与匿名／合法／恶意 `next` 的实际路由，结果记于 REPORT。有效邀请、跨设备同标签和 App 登录链仍需同态环境。
 - 全仓 import 检索显示 C 指南和资料不再调用 B 的旧 `card-batch-ui`；`profile-0918/profile-model.ts` 无生产引用后由 `f1e98a2b9` 删除。`onboarding-0918` 仍为 Web 资料实现路径。试迁到 `orbit-2026/onboarding` 触发该目录更严格的文案审计：内联硬编码 8/6/1、缺 ja 120/80。已局部撤回试迁，未放宽审计或留下新失败。
 
