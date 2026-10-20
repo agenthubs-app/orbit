@@ -8,8 +8,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try { response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init }); }
   catch { throw new AccountRightsApiError(0, "NETWORK"); }
-  const body = await response.json().catch(() => null) as { success?: boolean; data?: T; context?: { reason?: string }; error?: unknown } | null;
-  if (!response.ok || !body || body.success !== true) throw new AccountRightsApiError(response.status, body?.context?.reason ?? "UNAVAILABLE");
+  const body = await response.json().catch(() => null) as { success?: boolean; data?: T; context?: { reason?: string }; error?: { code?: string; context?: { reason?: string } } } | null;
+  if (!response.ok || !body || body.success !== true) throw new AccountRightsApiError(response.status, body?.error?.context?.reason ?? body?.context?.reason ?? body?.error?.code ?? "UNAVAILABLE");
   return body.data as T;
 }
 
@@ -17,7 +17,7 @@ const json = (value: unknown): RequestInit => ({ method: "POST", headers: { "con
 
 export const accountRightsApi = {
   listExports: () => request<AccountExportContract[]>("/api/account/exports"),
-  createExport: (input: { scope: string[]; mode: "selected" | "all-json"; contactsFormat: "csv" | "vcard"; idempotencyKey: string }) =>
+  createExport: (input: { scope: string[]; mode: "selected" | "all-json"; contactsFormat?: "csv" | "vcard"; idempotencyKey: string }) =>
     request<AccountExportContract>("/api/account/exports", json(input)),
   getDeletion: () => request<AccountDeletionRequestContract | null>("/api/account/deletion-request"),
   method: async (): Promise<"credentials" | "google"> => {

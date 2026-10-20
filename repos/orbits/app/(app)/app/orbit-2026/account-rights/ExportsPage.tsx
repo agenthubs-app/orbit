@@ -48,7 +48,7 @@ export function ExportsPage() {
     requestKey.current ??= crypto.randomUUID();
     const scope = all ? ["contacts", "notes", "plans", "tasks", "events"] : selected.flatMap(item => item === "plans" ? ["plans", "tasks"] : [item]);
     try {
-      await accountRightsApi.createExport({ scope, mode: all ? "all-json" : "selected", contactsFormat: format, idempotencyKey: requestKey.current });
+      await accountRightsApi.createExport({ scope, mode: all ? "all-json" : "selected", ...(!all ? { contactsFormat: format } : {}), idempotencyKey: requestKey.current });
       requestKey.current = null;
       await refresh();
     } catch (error) {

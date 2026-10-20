@@ -56,7 +56,7 @@ export function ExportsScreen() {
     setBusy(true); setProblem(null);
     key.current ??= `app-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const scope = all ? ["contacts", "notes", "plans", "tasks", "events"] : selected.flatMap(choice => choice === "plans" ? ["plans", "tasks"] : [choice]);
-    try { await api.createExport({ scope, mode: all ? "all-json" : "selected", contactsFormat: format, idempotencyKey: key.current }); key.current = null; await load(); }
+    try { await api.createExport({ scope, mode: all ? "all-json" : "selected", ...(!all ? { contactsFormat: format } : {}), idempotencyKey: key.current }); key.current = null; await load(); }
     catch (error) {
       const reason = error instanceof RightsApiError ? error.reason : "UNAVAILABLE";
       setProblem(t(reason === "DAILY_EXPORT_LIMIT" ? "account.rights.quota" : reason === "EXPORT_IN_PROGRESS" ? "account.rights.active" :

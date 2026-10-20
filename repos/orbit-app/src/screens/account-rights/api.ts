@@ -23,7 +23,7 @@ export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: s
   const baseUrl = input.baseUrl.replace(/\/$/u, "");
   return {
     async exports() { return unwrap<AccountExportContract[]>(await client.get("/api/account/exports")); },
-    async createExport(body: { scope: string[]; mode: "selected" | "all-json"; contactsFormat: "csv" | "vcard"; idempotencyKey: string }) {
+    async createExport(body: { scope: string[]; mode: "selected" | "all-json"; contactsFormat?: "csv" | "vcard"; idempotencyKey: string }) {
       return unwrap<AccountExportContract>(await client.post("/api/account/exports", { body }));
     },
     async deletion() { return unwrap<AccountDeletionRequestContract | null>(await client.get("/api/account/deletion-request")); },
