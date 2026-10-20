@@ -1,0 +1,28 @@
+{
+  "_note": "R10 App home board inventory. Capture only with the matching actor, edit state and scroll position; fixture mismatch remains an open gate.",
+  "defaults": {
+    "grid": 30,
+    "wait": 2500,
+    "attribution": "scripts/visual/attribution-redesign-R10.json"
+  },
+  "sources": [
+    "repos/orbit-app/app/home.tsx",
+    "repos/orbit-app/src/screens/home/**",
+    "repos/orbit-app/src/i18n/*/home.ts"
+  ],
+  "views": [
+    { "id": "A-R10-01", "design": "app.html", "board-index": 0, "path": "/home", "themes": ["light"], "note": "Empty actor" },
+    { "id": "A-R10-02", "design": "app.html", "board-index": 1, "path": "/home", "themes": ["light"], "note": "Few-data actor" },
+    { "id": "A-R10-03", "design": "app.html", "board-index": 2, "path": "/home", "themes": ["light"], "note": "Populated actor" },
+    { "id": "A-R10-03S", "design": "app.html", "board-index": 3, "path": "/home", "themes": ["light"], "note": "Populated actor after scrolling" },
+    { "id": "A-R10-04", "design": "app.html", "board-index": 4, "path": "/home", "themes": ["light"], "note": "Enter edit mode before comparison" },
+    { "id": "A-R10-05", "design": "app.html", "board-index": 5, "path": "/home", "themes": ["light"], "note": "Open widget library sheet before comparison" },
+    { "id": "A-R10-03D", "design": "app.html", "board-index": 33, "path": "/home?theme=dark", "themes": ["dark"], "note": "Populated actor, dark" },
+    { "id": "A-R10-06", "design": "b11-nav-v3.html", "board-index": 20, "path": "/home", "themes": ["light"], "note": "Long press widget 400 ms" },
+    { "id": "A-R10-07", "design": "b11-nav-v3.html", "board-index": 21, "path": "/home", "themes": ["light"], "note": "Drag placeholder" },
+    { "id": "A-R10-08", "design": "b11-nav-v3.html", "board-index": 22, "path": "/home", "themes": ["light"], "note": "Remove widget and show undo toast" },
+    { "id": "A-R10-09", "design": "b11-nav-v3.html", "board-index": 23, "path": "/home", "themes": ["light"], "note": "Library category and search" },
+    { "id": "A-R10-10", "design": "b11-nav-v3.html", "board-index": 24, "path": "/home", "themes": ["light"], "note": "Select size" },
+    { "id": "A-R10-07D", "design": "b11-nav-v3.html", "board-index": 48, "path": "/home?theme=dark", "themes": ["dark"], "note": "Dark drag placeholder" }
+  ]
+}

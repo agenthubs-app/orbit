@@ -1,0 +1,27 @@
+{
+  "_note": "R10 home boards. Populated and edit views require an actor fixture and interaction steps; do not call a mismatched capture a pixel pass.",
+  "defaults": {
+    "app-origin": "http://localhost:3510",
+    "themes": ["light"],
+    "grid": 30,
+    "wait": 2500,
+    "attribution": "scripts/visual/attribution-redesign-R10.json"
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/home/**",
+    "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+    "repos/orbits/app/(app)/app/home/**"
+  ],
+  "views": [
+    { "id": "W-R10-01", "app": "/app/home", "design": "web.html", "board-index": 0, "width": 1440, "note": "Empty actor, light" },
+    { "id": "W-R10-02", "app": "/app/home", "design": "web.html", "board-index": 1, "width": 1440, "note": "Few-data actor, light" },
+    { "id": "W-R10-03", "app": "/app/home", "design": "web.html", "board-index": 2, "width": 1440, "note": "Populated actor, light" },
+    { "id": "W-R10-04", "app": "/app/home", "design": "web.html", "board-index": 3, "width": 1440, "click": "button:has-text('編集')", "note": "Edit mode from populated actor" },
+    { "id": "W-R10-03D", "app": "/app/home", "design": "web.html", "board-index": 21, "width": 1440, "themes": ["dark"], "note": "Populated actor, dark" },
+    { "id": "W-R10-05", "app": "/app/home", "design": "b11-nav-v3.html", "board-index": 25, "width": 1440, "click": "button:has-text('編集')", "note": "Edit and library; open size menu before comparison" },
+    { "id": "W-R10-06", "app": "/app/home", "design": "b12-missing-states.html", "board-index": 86, "width": 1024, "region": "72,0,952,90", "note": "N07 title and collapsed rail, light" },
+    { "id": "W-R10-06D", "app": "/app/home", "design": "b12-missing-states.html", "board-index": 87, "width": 1024, "themes": ["dark"], "region": "72,0,952,90", "note": "N07 title and collapsed rail, dark" },
+    { "id": "W-R10-07", "app": "/app/home", "design": "b12-missing-states.html", "board-index": 88, "width": 1024, "region": "630,14,380,852", "click": "[data-orbit-2026-rail-button]", "note": "N07b open rail, light" },
+    { "id": "W-R10-07D", "app": "/app/home", "design": "b12-missing-states.html", "board-index": 89, "width": 1024, "themes": ["dark"], "region": "630,14,380,852", "click": "[data-orbit-2026-rail-button]", "note": "N07b open rail, dark" }
+  ]
+}
