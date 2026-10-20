@@ -1,0 +1,445 @@
+{
+  "_note": "R18c registry includes b7 approved originals and b12 draft variants. Drafts require main-session review; state fixtures/native captures are pending and no pixel result is claimed.",
+  "defaults": {
+    "design-base": "http://127.0.0.1:3340/redesign-2026-10/",
+    "app-origin": "http://127.0.0.1:3400",
+    "grid": 100
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/profile/AccountScreen.tsx",
+    "repos/orbit-app/src/screens/account-rights/**",
+    "repos/orbit-app/src/i18n/*/account.ts"
+  ],
+  "views": [
+    {
+      "id": "A-R18c-P01-original",
+      "design": "b7-account-misc.html",
+      "board-index": 19,
+      "themes": [
+        "light"
+      ],
+      "path": "/account",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P02-original",
+      "design": "b7-account-misc.html",
+      "board-index": 20,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P03-original",
+      "design": "b7-account-misc.html",
+      "board-index": 21,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P04-original",
+      "design": "b7-account-misc.html",
+      "board-index": 22,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/pending",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P05-original",
+      "design": "b7-account-misc.html",
+      "board-index": 23,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deleted",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P06-original",
+      "design": "b7-account-misc.html",
+      "board-index": 28,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P07-original",
+      "design": "b7-account-misc.html",
+      "board-index": 29,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P08-original",
+      "design": "b7-account-misc.html",
+      "board-index": 30,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P09-original",
+      "design": "b7-account-misc.html",
+      "board-index": 74,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Original approved light board or existing dark confirmation; runtime state fixture and native capture pending."
+    },
+    {
+      "id": "A-R18c-P01-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 764,
+      "themes": [
+        "light"
+      ],
+      "path": "/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P01-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 765,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P02-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 766,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P02-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 767,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P03-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 768,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P03-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 769,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P04-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 770,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P04-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 771,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P05-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 772,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P05-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 773,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P06-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 774,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P06-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 775,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P07-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 776,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P07-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 777,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P08-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 778,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P08-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 779,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P09-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 780,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-P09-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 781,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S01-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 782,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S01-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 783,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S02-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 784,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S02-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 785,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S03-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 786,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S03-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 787,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S04-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 788,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S04-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 789,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S05-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 790,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S05-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 791,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S06-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 792,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S06-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 793,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/deletion",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S07-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 794,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S07-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 795,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S08-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 796,
+      "themes": [
+        "light"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "A-R18c-S08-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 797,
+      "themes": [
+        "dark"
+      ],
+      "path": "/account/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    }
+  ]
+}

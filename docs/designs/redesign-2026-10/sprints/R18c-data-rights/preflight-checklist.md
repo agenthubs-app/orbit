@@ -27,4 +27,5 @@
 
 - 工具原稿汇总：16 板、近似 token 5、缺 token 71、疑似数字冲突 0、疑似无功能元素 8。缺项大多落在画框、系统状态栏和 Safari 外壳；这些不由产品页面绘制。内容里的 letter spacing、Web 输入焦点阴影和键帽行高需与 R31a/b 组件逐一核对，不能在本线补 token。`#20` 的「音声メモを含む」等内容来源还需与领域读取 adapter 核对。
 - §C-3 改稿已经在 b7 的 R18c 段标注，`--list` 和改稿后 `board-preflight` 均 exit 0。Web 账户/导出示例的设置菜单不再显示 Pro；旧的付费画板属本期作废范围，未用来验收。
-- b12 缺屏、正式 `views/{web,app}-R18c.json` 与改稿后 b12 预检尚待完成。新增板须经主会话复核认可后才可作为像素基准；未有板或未验的组合记「设计稿无」/OPEN。
+- b12 末尾现有 68 组 R18c 草案：App P01–P09 / S01–S08 各浅/深；Web P01–P07 / S01–S10 各 1440/1024/390 浅/深。`scripts/visual/views/{app,web}-R18c.json` 已登记原稿和草案，共 43 个 App frame、109 个 Web frame。App Google 再确认草案已与原稿的 Google 账号示例一致；Web 示范密码账号。草案差异和组件缺口仍待主会话复核，不能用作已批准像素基准。
+- 补画后对两份登记分别执行 `board-preflight --suite --no-variants`，均 exit 0；152 frame 的数字自洽警告 0。App 近似 token 66、缺 token 257、疑似无功能 1；Web 近似 token 263、缺 token 346、疑似无功能 7。相同草案组件跨宽度与主题重复计数，缺口集中在新草案的自定义字体行高、卡片与外壳样式；这些数目不是组件库已对齐的证据。JSON 和逐项数据来源清单在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-{app,web}-board-preflight.{json,md,txt}`。两个 suite 使用 `--no-variants`，宽度/主题覆盖由本登记和 b12 board list 逐项核对；主会话复核仍是正式门禁前置条件。

@@ -1,0 +1,1214 @@
+{
+  "_note": "R18c registry includes b7 approved originals and b12 draft variants. Drafts require main-session review; authenticated state captures are pending and no pixel result is claimed.",
+  "defaults": {
+    "design-base": "http://127.0.0.1:3340/redesign-2026-10/",
+    "app-origin": "http://127.0.0.1:3400",
+    "grid": 100
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/account-rights/**",
+    "repos/orbits/app/(app)/app/settings/account/**",
+    "repos/orbits/app/(app)/app/settings/exports/**"
+  ],
+  "views": [
+    {
+      "id": "W-R18c-P01-original",
+      "design": "b7-account-misc.html",
+      "board-index": 24,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P02-original",
+      "design": "b7-account-misc.html",
+      "board-index": 25,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P03-original",
+      "design": "b7-account-misc.html",
+      "board-index": 26,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/pending",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P04-original",
+      "design": "b7-account-misc.html",
+      "board-index": 27,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P05-original",
+      "design": "b7-account-misc.html",
+      "board-index": 31,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P06-original",
+      "design": "b7-account-misc.html",
+      "board-index": 32,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P07-original",
+      "design": "b7-account-misc.html",
+      "board-index": 81,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Original approved board; authenticated runtime state capture pending."
+    },
+    {
+      "id": "W-R18c-P01-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 798,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P01-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 799,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P01-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 800,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P01-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 801,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P01-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 802,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P01-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 803,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 804,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 805,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 806,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 807,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 808,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P02-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 809,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 810,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 811,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 812,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 813,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 814,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P03-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 815,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/pending",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 816,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 817,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 818,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 819,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 820,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P04-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 821,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/account/deleted",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 822,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 823,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 824,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 825,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 826,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P05-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 827,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 828,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 829,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 830,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 831,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 832,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P06-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 833,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 834,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 835,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 836,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 837,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 838,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-P07-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 839,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 840,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 841,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 842,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 843,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 844,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S01-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 845,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 846,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 847,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 848,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 849,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 850,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S02-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 851,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 852,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 853,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 854,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 855,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 856,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S03-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 857,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 858,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 859,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 860,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 861,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 862,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S04-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 863,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 864,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 865,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 866,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 867,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 868,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S05-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 869,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 870,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 871,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 872,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 873,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 874,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S06-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 875,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 876,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 877,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 878,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 879,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 880,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S07-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 881,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 882,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 883,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 884,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 885,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 886,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S08-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 887,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 888,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 889,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 890,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 891,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 892,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S09-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 893,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/account",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-1440-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 894,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-1440-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 895,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-1024-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 896,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-1024-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 897,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-390-draft-light",
+      "design": "b12-missing-states.html",
+      "board-index": 898,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    },
+    {
+      "id": "W-R18c-S10-390-draft-dark",
+      "design": "b12-missing-states.html",
+      "board-index": 899,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "app": "/app/settings/exports",
+      "note": "Draft for main-session review; not an approved pixel baseline."
+    }
+  ]
+}

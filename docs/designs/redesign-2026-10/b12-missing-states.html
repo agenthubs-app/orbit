@@ -9015,10 +9015,10 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
   const note = text => '<div class="r18c-note">' + text + '</div>';
   const warn = text => '<div class="r18c-warn">' + text + '</div>';
   const actions = (...items) => '<div class="r18c-actions">' + items.join('') + '</div>';
-  const content = (state) => {
+  const content = (state, app) => {
     if (state === 'account') return ['アカウント', 'このアカウントのデータと退会を管理します。', card(row('ログイン方法', '現在の方法を表示') + row('データの書き出し', 'CSV・vCard・JSON') + row('退会する', '申請から30日間は取り消せます')), ''];
     if (state === 'delete-overview') return ['退会 · 削除されるもの', 'アカウントと本人のデータを削除します。', card(row('人脈・名刺画像', '連絡先と取り込み原稿') + row('メモ・Task・予定', '本人の内容') + row('プラン・iOrbit', '進捗と会話') + row('イベント・連携', '参加履歴と接続')), note('先にデータを書き出せます。申請後は通常の画面を開けません。'), actions(button('データを書き出す', ''), button('本人確認へ', 'danger-ghost'))];
-    if (state === 'delete-verify') return ['退会 · 本人確認', 'ログインに使っている方法で、もう一度確認します。', card(row('ログイン方法', 'パスワード') + row('パスワード', '••••••••') + '<div class="r18c-row"><i class="r18c-check"></i>削除されるものを確認しました</div>'), note('申請から30日以内は、ログインして削除を取り消せます。'), actions(button('退会を申請する', 'danger'))];
+    if (state === 'delete-verify') return ['退会 · 本人確認', 'ログインに使っている方法で、もう一度確認します。', card(row('ログイン方法', app ? 'Google' : 'パスワード') + (app ? row('再確認', 'Google で確認') : row('パスワード', '••••••••')) + '<div class="r18c-row"><i class="r18c-check"></i>削除されるものを確認しました</div>'), note('申請から30日以内は、ログインして削除を取り消せます。'), actions(button('退会を申請する', 'danger'))];
     if (state === 'pending') return ['退会の手続き中です', '削除予定日は11月6日です。', card('<b>削除まで 30日</b><div class="r18c-progress"><i style="width:3%"></i></div><span>申請日 10月7日 · 削除予定 11月6日</span>'), note('いまはデータを閲覧・編集できません。取り消すとデータに再びアクセスできます。連携は再接続してください。'), actions(button('削除を取り消す'), button('ログアウト', 'ghost'))];
     if (state === 'deleted') return ['アカウントを削除しました', 'データの削除が完了しました。', card('これまでご利用いただき、ありがとうございました。'), actions(button('はじめの画面へ'))];
     if (state === 'export-select') return ['データの書き出し', '書き出す範囲を選んでください。', card(row('☑ 人脈', '<span class="r18c-seg"><small>CSV</small><small>vCard</small></span>') + row('☑ メモ', 'CSV') + row('☑ プラン・ログ', 'CSV') + row('□ イベント履歴', 'CSV') + row('□ すべて（JSON）', 'ほかの選択を置き換えます')), note('完成した ZIP は7日間保管します。1日3回まで。'), actions(button('3項目を書き出す'))];
@@ -9034,7 +9034,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     return ['接続できません', '状態を読み込めませんでした。', warn('通信状態を確認してから、もう一度お試しください。'), actions(button('再読み込み'))];
   };
   const frame = (state, width, theme, app) => {
-    const [title, description, primary = '', secondary = '', controls = ''] = content(state);
+    const [title, description, primary = '', secondary = '', controls = ''] = content(state, app);
     const inner = '<div class="r18c-draft ' + (app ? 'r18c-phone' : width === 390 ? 'r18c-web390' : '') + '"><div class="r18c-bar"><b>‹ ' + (app ? '設定' : 'Orbit · 設定') + '</b><span>アカウント</span></div><main class="r18c-main"><h2>' + title + '</h2><p>' + description + '</p>' + primary + secondary + controls + '</main></div>';
     if (app) return inner;
     if (width === 390) return m390({ body: inner, nav: -1, theme });
