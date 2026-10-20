@@ -10,9 +10,9 @@ import { WEB_MIRROR_DOMAIN_IDS } from "../src/data/sync/web-mirror-storage";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("notes screens read through notes-source; native is the mirror, the browser is mirror-first like tasks (0125)", () => {
-  for (const screen of ["NotesScreen", "NoteDetailScreen", "EditNoteScreen", "NewNoteScreen"]) {
-    const source = read(`src/screens/notes/${screen}.tsx`);
-    assert.match(source, /from "\.\/notes-source"/, screen);
+  for (const screen of ["MemoListScreen", "MemoDetailScreen", "EditMemoScreen", "NewMemoScreen"]) {
+    const source = read(`src/screens/memo/${screen}.tsx`);
+    assert.match(source, /from "\.\.\/notes\/notes-source"/, screen);
     assert.doesNotMatch(source, /useSyncedCollection|notePath\(noteId\), \(\) => false/, `${screen} reads no transport directly`);
   }
   const mirror = read("src/screens/notes/notes-source-mirror.ts");

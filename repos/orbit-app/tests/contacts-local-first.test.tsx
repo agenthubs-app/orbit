@@ -66,20 +66,21 @@ export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: tru
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
+        import { MemoDetailScreen } from "./src/screens/memo/MemoDetailScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const which = window.initialFixture?.screen;
         // R11a: the list and the detail moved to src/screens/network (tests/network-screen.test.tsx); the note still names its contacts from the device copy.
-        const screen = <NoteDetailScreen actorId="account:one" noteId="note:1" scopeKey="scope" />;
+        const screen = <MemoDetailScreen actorId="account:one" noteId="note:1" scopeKey="scope" />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -91,6 +92,7 @@ test.before(async () => {
       name: "contacts-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "contacts-native" }));
+        plugin.onResolve({ filter: /^react-native-reanimated$|^react-native-gesture-handler$|^expo-haptics$|^expo-blur$/ }, args => ({ path: `${process.cwd()}/tests/helpers/stubs/${args.path}.js` }));
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "contacts-native" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-crypto$|^expo-camera$|^expo-image-picker$/ }, () => ({ path: "icons", namespace: "contacts-native" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "contacts-native" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
@@ -101,7 +103,7 @@ test.before(async () => {
   });
   server = createServer((_request, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
+    response.end(`<div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;

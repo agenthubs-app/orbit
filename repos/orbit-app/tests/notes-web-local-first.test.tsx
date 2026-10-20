@@ -50,26 +50,27 @@ export const useApiResource = (path, _validate, options = {}) => {
   return { kind: "empty", data: [], refreshing: false, refresh() {} };
 };
 const apiClient = { async get(path) { state.requests.push("get:" + path); return { success: false, status: 0, error: { message: "offline" } }; }, async post(path, options) { state.requests.push("post:" + path); if (path !== "/api/notes" || state.status === "stale") return { success: false, status: 0, error: { message: "offline" } };
-  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body }); return { success: true, status: 201, data: { note: state.created } }; } };
+  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body, noteKind: body.noteKind, usedForPlan: body.usedForPlan }); return { success: true, status: 201, data: { note: state.created } }; } };
 export const useOrbitApiClient = () => { state.apiClientRefs.push(apiClient); return apiClient; };
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NotesScreen } from "./src/screens/notes/NotesScreen";
-        import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
-        import { NewNoteScreen } from "./src/screens/notes/NewNoteScreen";
+        import { MemoListScreen } from "./src/screens/memo/MemoListScreen";
+        import { MemoDetailScreen } from "./src/screens/memo/MemoDetailScreen";
+        import { NewMemoScreen } from "./src/screens/memo/NewMemoScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const which = window.initialFixture?.screen;
-        const screen = which === "detail" ? <NoteDetailScreen actorId="account:one" noteId={window.initialFixture.noteId} scopeKey="scope" /> : which === "new" ? <NewNoteScreen actorId="account:one" scopeKey="scope" /> : <NotesScreen actorId="account:one" scopeKey="scope" />;
+        const screen = which === "detail" ? <MemoDetailScreen actorId="account:one" noteId={window.initialFixture.noteId} scopeKey="scope" /> : which === "new" ? <NewMemoScreen actorId="account:one" scopeKey="scope" /> : <MemoListScreen actorId="account:one" scopeKey="scope" />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -91,7 +92,7 @@ test.before(async () => {
   });
   server = createServer((_request, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
+    response.end(`<div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
@@ -146,7 +147,7 @@ test("the list's 「首页」 button goes home even when there is history, onlin
   }
 });
 
-test("browser mirror active: the detail and its source tasks read the mirrors; offline 编辑 and the AI entry need the network", async (t) => {
+test("browser mirror active: the detail and its source tasks read the mirrors; offline editing needs the network", async (t) => {
   const tasks = [{ id: "task:from-note", accountId: "account:one", ownerUserId: "account:one", title: "发资料", status: "open", category: "work", priority: "normal", source: "manual", sourceNoteId: "note:1", createdAt: "2026-09-27T00:00:00.000Z", updatedAt: "2026-09-27T00:00:00.000Z" }];
   const { page: online } = await open(t, { screen: "detail", noteId: "note:1", tasks });
   await online.getByText("发布会准备", { exact: true }).waitFor();
@@ -157,7 +158,8 @@ test("browser mirror active: the detail and its source tasks read the mirrors; o
   await offline.getByText("发布会准备", { exact: true }).waitFor();
   await offline.getByText(/^无法连接 · 显示截至/).waitFor();
   assert.equal(await offline.getByRole("button", { name: "编辑笔记，需要联网" }).isDisabled(), true);
-  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 2, "编辑 and AI 总结 are both disabled");
+  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 1, "the edit entry is disabled");
+  assert.equal(await offline.getByRole("button", { name: /AI 总结/ }).count(), 0, "the deferred AI entry is absent");
 });
 
 test("browser mirror active: an online save pulls the new note into the mirror before opening it", async (t) => {

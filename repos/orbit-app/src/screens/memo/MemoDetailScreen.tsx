@@ -1,33 +1,36 @@
-import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Platform, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 
+import type { NoteMentionContract } from "../../api/contract/notes";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
-import { OfflineNotice } from "../../components/OfflineNotice";
-import { NotesOfflineNotice } from "./NotesOfflineNotice";
 import { AppScreen } from "../../components/AppScreen";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
-import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { Chip, EmptyState, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { Icon } from "../../components/ui/Icon";
+import { MemoOfflineNotice } from "./MemoOfflineNotice";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { buildNoteSuggestionNavigation } from "../../view-models/note-suggestions";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { noteFromPayload } from "../../view-models/notes";
-import { useNoteContactSummaries } from "./useNoteContactSummaries";
-import { NoteSourceTasks } from "./NoteSourceTasks";
-import { useNoteDetailSource } from "./notes-source";
+import { useNoteContactSummaries } from "../notes/useNoteContactSummaries";
+import { NoteSourceTasks } from "../notes/NoteSourceTasks";
+import { useNoteDetailSource } from "../notes/notes-source";
 
-function MentionedBody({ body, mentions, mentionStyle, textStyle }: {
+function MentionedBody({ body, mentions, mentionStyle, textStyle, disabledStyle, contactIds, eventIds, deletedContact, onOpenContact, onOpenEvent }: {
   body: string;
-  mentions: readonly { start: number; end: number; displayText: string }[];
+  mentions: readonly NoteMentionContract[];
   mentionStyle: object;
   textStyle: object;
+  disabledStyle: object;
+  contactIds: ReadonlySet<string>;
+  eventIds: ReadonlySet<string>;
+  deletedContact: string;
+  onOpenContact: (id: string) => void;
+  onOpenEvent: (id: string) => void;
 }) {
   if (!mentions.length) return <Text selectable style={textStyle}>{body}</Text>;
   const ordered = [...mentions].sort((left, right) => left.start - right.start);
@@ -35,14 +38,20 @@ function MentionedBody({ body, mentions, mentionStyle, textStyle }: {
   const parts: ReactNode[] = [];
   ordered.forEach((mention, index) => {
     if (mention.start > cursor) parts.push(body.slice(cursor, mention.start));
-    parts.push(<Text key={`${mention.start}:${index}`} style={mentionStyle}>{mention.displayText}</Text>);
+    const isContact = (mention.entityType ?? "contact") === "contact";
+    const contactId = isContact ? mention.contactId : undefined;
+    const eventId = mention.entityType === "event" ? mention.eventId : undefined;
+    const active = contactId ? contactIds.has(contactId) : eventId ? eventIds.has(eventId) : false;
+    parts.push(<Text key={`${mention.start}:${index}`} accessibilityRole={active ? "link" : undefined}
+      onPress={active ? () => contactId ? onOpenContact(contactId) : eventId ? onOpenEvent(eventId) : undefined : undefined}
+      style={active ? mentionStyle : disabledStyle}>{contactId && !active ? deletedContact : mention.displayText}</Text>);
     cursor = mention.end;
   });
   if (cursor < body.length) parts.push(body.slice(cursor));
   return <Text selectable style={textStyle}>{parts}</Text>;
 }
 
-export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: string; noteId: string; scopeKey: string }) {
+export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: string; noteId: string; scopeKey: string }) {
   const router = useRouter();
   const locale = useOrbitLocale();
   const source = useNoteDetailSource({ actorId, noteId, scopeKey });
@@ -84,7 +93,8 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
     : null;
   const contactSummaries = useNoteContactSummaries(note?.contactIds ?? [], scopeKey);
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
-  const contactNames = new Map(note?.mentions.map((mention) => [mention.contactId, mention.displayText.replace(/^@/, "")]) ?? []);
+  const contactNames = new Map(note?.mentions.filter(mention => (mention.entityType ?? "contact") === "contact" && mention.contactId)
+    .map(mention => [mention.contactId!, mention.displayText.replace(/^@/, "")] as const) ?? []);
   contactSummaries.forEach((contact, id) => contactNames.set(id, contact.name));
   const eventNames = new Map(events.map((event) => [event.id, event.title]));
   const { styles, colors } = useStyles();
@@ -125,15 +135,16 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
       setConflictBusy(false);
     }
   }
-  return <AppScreen title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={() => { setTaskRefresh(value => value + 1); source.refresh(); }} />}>
-    {source.offline ? Platform.OS === "web" ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : <NotesOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
-    {source.loading ? <LoadingState /> : null}
-    {source.failure ? <ErrorState message={source.failure} /> : null}
-    {source.missing && source.offline ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} /> : source.missing ? <ErrorState message={locale.t("notes.missing")} /> : null}
+  return <AppScreen inset="kit" title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={() => { setTaskRefresh(value => value + 1); source.refresh(); }} />}>
+    {source.offline ? <MemoOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
+    {source.loading ? <Skeleton /> : null}
+    {source.failure ? <RetryCard title={source.failure} onRetry={source.refresh} /> : null}
+    {source.missing && source.offline ? <EmptyState title={locale.t("sync.notOnDevice")} /> : source.missing ? <EmptyState title={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
-        <View style={styles.privatePill}><Ionicons color={colors.ink3Text} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
+        <View style={styles.privatePill}><Icon color={colors.ink3Text} name="lock" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
         <Text style={styles.title}>{note.title}</Text>
+        {note.noteKind === "voice" ? <Chip label={locale.t("notes.voiceSource")} /> : null}
         <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
       {note.localMutationState ? <Text accessibilityLiveRegion="polite" style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as "notes.outboxQueued" | "notes.outboxConflict" | "notes.outboxFailed")}</Text> : null}
       </View>
@@ -155,18 +166,19 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
         </View>
         {conflictError ? <Text accessibilityRole="alert" style={styles.conflictError}>{conflictError}</Text> : null}
       </View> : null}
-      <View style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} textStyle={styles.body} /></View>
+      <View style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} disabledStyle={styles.disabledMention} textStyle={styles.body}
+        contactIds={new Set(contactSummaries.keys())} eventIds={new Set(events.map(event => event.id))} deletedContact={locale.t("notes.deletedContact")}
+        onOpenContact={id => router.push(`/contacts/${encodeURIComponent(id)}` as Href)} onOpenEvent={id => router.push(`/events/${encodeURIComponent(id)}` as Href)} /></View>
       {note.contactIds.length ? <View style={styles.section}>
         <Text style={styles.sectionTitle}>{locale.t("notes.relatedPeople")}</Text>
         <View style={styles.chips}>{note.contactIds.map((contactId) => <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedPerson", { name: contactNames.get(contactId) ?? contactId })} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{(contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")).slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")}</Text>
         </Pressable>)}</View>
       </View> : null}
-      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accentText} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.ink3Text} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Icon color={colors.accentText} name="calendar" size={20} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Icon color={colors.ink3Text} name="right" size={20} /></Pressable>)}</View> : null}
       <NoteSourceTasks key={JSON.stringify([scopeKey, actorId, noteId, taskRefresh])} actorId={actorId} noteId={noteId} scopeKey={scopeKey} />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" accessibilityLabel={source.offline && Platform.OS === "web" ? `${locale.t("notes.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.edit")} accessibilityState={{ disabled: source.offline && Platform.OS === "web" }} disabled={source.offline && Platform.OS === "web"} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={[styles.editLarge, source.offline && Platform.OS === "web" && styles.disabled]}><Text style={styles.editText}>{locale.t(source.offline && Platform.OS === "web" ? "sync.needsNetwork" : "notes.edit")}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("notes.aiSummary")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.aiSummary")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push(buildNoteSuggestionNavigation(note, locale.language))} style={[styles.iorbit, source.offline && styles.disabled]}><View style={styles.orbitMark}><Ionicons color={colors.onAccent} name="sparkles" size={16} /></View><Text style={styles.iorbitTitle}>{locale.t("notes.aiSummary")}</Text></Pressable>
       </View>
     </> : null}
   </AppScreen>;
@@ -192,6 +204,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   paper: { borderBottomColor: colors.line, borderBottomWidth: 1, minHeight: 230, paddingBottom: spacing.xl, paddingTop: spacing.md },
   body: { color: colors.ink, fontSize: 17, lineHeight: 29 },
   mention: { backgroundColor: colors.accentSoft, color: colors.accentText, fontWeight: "800" },
+  disabledMention: { color: colors.ink3Text, fontWeight: "700" },
   section: { gap: spacing.sm },
   sectionTitle: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800", letterSpacing: 0.3 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

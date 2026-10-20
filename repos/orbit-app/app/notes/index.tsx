@@ -5,7 +5,7 @@ import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { LegacyTaskRedirect } from "../../src/components/LegacyTaskRedirect";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
-import { NotesScreen } from "../../src/screens/notes/NotesScreen";
+import { MemoListScreen } from "../../src/screens/memo/MemoListScreen";
 
 function NotesRoute() {
   const focused = useIsFocused(); const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl();
@@ -13,7 +13,7 @@ function NotesRoute() {
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const sequence = useRef(0);
   const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, actorId, auth.cookieHeader, server.baseUrl]);
-  return enabled ? <NotesScreen key={scope.key} actorId={actorId} scopeKey={scope.key} /> : null;
+  return enabled ? <MemoListScreen key={scope.key} actorId={actorId} scopeKey={scope.key} /> : null;
 }
 
 // R05: /notes → /task?seg=memo; notes for one contact (?contactId=) stay their own page.

@@ -50,21 +50,8 @@
       "oldComponent": 5,
       "controls": 1
     },
-    "src/screens/notes/EditNoteScreen.tsx": {
-      "oldComponent": 4
-    },
-    "src/screens/notes/NewNoteScreen.tsx": {
-      "oldComponent": 1
-    },
-    "src/screens/notes/NoteDetailScreen.tsx": {
-      "oldComponent": 4
-    },
     "src/screens/notes/NoteSourceTasks.tsx": {
       "oldComponent": 1
-    },
-    "src/screens/notes/NotesScreen.tsx": {
-      "oldComponent": 4,
-      "tablist": 1
     },
     "src/screens/profile/AccountAuthScreen.tsx": {
       "controls": 1

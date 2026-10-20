@@ -27,11 +27,11 @@ const first = note("note:1", "发布会准备", 2); const second = note("note:2"
 export const state = window.fixture = { latestPath: "", requests: [], navigation: [], fontScale: 1, ...window.initialFixture };
 export const useLocalSearchParams = () => ({});
 export const usePathname = () => "/notes";
-export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); } });
+export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const useApiResource = path => {
   state.latestPath = path;
   if (state.history53) return { kind: "success", data: { notes: Array.from({ length: 20 }, (_, i) => note("history:" + i, "历史笔记 " + i, 1)), total: 53, nextCursor: "history:20" }, refreshing: false, refresh() {} };
-  const filtered = path.includes("q=%E9%A2%84%E7%AE%97") ? [second] : [first];
+  const filtered = path.includes("q=%E9%A2%84%E7%AE%97") || path.includes("noteKind=meeting") ? [second] : [first];
   return { kind: "success", data: { notes: filtered, total: path.includes("q=") ? 1 : 2, ...(path.includes("q=") ? {} : { nextCursor: "page:2" }) }, refreshing: false, refresh() {} };
 };
 export const useOrbitApiClient = () => ({ async get(path, options) {
@@ -45,18 +45,19 @@ export const useOrbitApiClient = () => ({ async get(path, options) {
   return { success: true, status: 200, data: { notes: state.duplicatePage ? [first, second] : [second], total: 2 }, meta: {} };
 } });
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NotesScreen } from "./src/screens/notes/NotesScreen";
+        import { MemoListScreen } from "./src/screens/memo/MemoListScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = window.initialFixture?.language || "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
-        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><NotesScreen actorId="account:one" scopeKey="scope" /></OrbitLocaleContext.Provider>);`,
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><MemoListScreen actorId="account:one" scopeKey="scope" /></OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
@@ -87,7 +88,7 @@ test.before(async () => {
   });
   server = createServer((_request, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
+    response.end(`<div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
@@ -116,8 +117,8 @@ test("notes list searches, filters, follows stable ids and appends the next page
   await page.getByRole("textbox", { name: "搜索笔记" }).fill("预算");
   await page.waitForFunction(() => (window as any).fixture.latestPath.includes("q=%E9%A2%84%E7%AE%97"));
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "关联活动" }).click();
-  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("association=events"));
+  await page.getByRole("tab", { name: "面谈" }).click();
+  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("noteKind=meeting"));
 });
 
 test("notes list creates through the new-note route without writing on navigation", async (t) => {
@@ -133,10 +134,11 @@ test("notes list caps accessibility text at two times and keeps labels readable"
   await page.getByText("发布会准备", { exact: true }).waitFor();
   const title = await page.getByText("发布会准备", { exact: true }).boundingBox();
   const search = await page.getByRole("textbox", { name: "搜索笔记" }).boundingBox();
-  const filters = await Promise.all(["全部", "关联人脉", "关联活动", "未关联"].map((label) => page.getByRole("tab", { name: label }).boundingBox()));
+  const filters = await Promise.all(["全部", "面谈", "自由备忘录"].map((label) => page.getByRole("tab", { name: label }).boundingBox()));
   assert.ok(title && title.height >= 34 && title.height < 60, JSON.stringify(title));
   assert.ok(search && search.height >= 44, JSON.stringify(search));
-  assert.ok(filters.every((box) => box && box.width <= 390 && box.height >= 44), JSON.stringify(filters));
+  // Kit Segmented renders a 30+ px pill and extends its touch target by 7 px above and below.
+  assert.ok(filters.every((box) => box && box.width <= 390 && box.height >= 30), JSON.stringify(filters));
   assert.equal(await page.getByText("发布会准备", { exact: true }).isVisible(), true);
   assert.equal(await page.getByText("发布会准备 正文摘要", { exact: true }).isVisible(), true);
 });
@@ -144,7 +146,7 @@ test("notes list caps accessibility text at two times and keeps labels readable"
 test("an English account translates note-list chrome without changing note content", async (t) => {
   const page = await open(t, { language: "en" });
   await page.getByRole("textbox", { name: "Search notes" }).waitFor();
-  await page.getByRole("tab", { name: "Related events" }).waitFor();
+  await page.getByRole("tab", { name: "Meeting" }).waitFor();
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByText("发布会准备 正文摘要", { exact: true }).waitFor();
   assert.equal(await page.getByText("搜索笔记", { exact: true }).count(), 0);

@@ -88,6 +88,7 @@ const OPENING_COUNT = OPENING.size;
 // Feature Sprints add their new screen directories here as they create them.
 const NEW_CODE = [
   /^src\/screens\/me\//,
+  /^src\/screens\/memo\//,
   /^src\/components\/ui\//,
   /^src\/components\/OrbitNavigationIcon\.tsx$/,
   /^src\/components\/OrbitTabBar\.tsx$/,

@@ -20,7 +20,7 @@ const note = (id, title, minute, extra = {}) => ({ id, accountId: "account:one",
   createdAt: "2026-09-27T00:0" + minute + ":00.000Z", updatedAt: "2026-09-27T00:0" + minute + ":00.000Z", ...extra });
 const records = () => (window.fixture.notes ?? [
   note("note:1", "发布会准备", 3, { manualContactIds: ["contact:a"], contactIds: ["contact:a"] }),
-  note("note:2", "预算确认", 2, { eventIds: ["event:a"] }),
+  note("note:2", "预算确认", 2, { noteKind: "meeting", eventIds: ["event:a"] }),
   note("note:3", "午餐 @林玫", 1, { body: "和 @林玫 午餐", contactIds: ["contact:lin"], mentions: [{ contactId: "contact:lin", displayText: "@林玫", start: 2, end: 5 }] }),
 ]).map(payload => ({ id: payload.id, payload }));
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, invalidations: 0, status: "fresh", ...window.initialFixture };
@@ -38,25 +38,26 @@ export const useSyncedCollection = ({ kind }) => ({
 });
 export const useApiResource = path => { state.requests.push("resource:" + path); return { kind: "empty", data: [], refreshing: false, refresh() {} }; };
 export const useOrbitApiClient = () => ({ async get(path) { state.requests.push("get:" + path); return { success: false, status: 0, error: { message: "offline" } }; }, async post(path, options) { state.requests.push("post:" + path); if (path !== "/api/notes" || !state.online) return { success: false, status: 0, error: { message: "offline" } };
-  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body }); return { success: true, status: 201, data: { note: state.created } }; } });
+  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body, noteKind: body.noteKind, usedForPlan: body.usedForPlan }); return { success: true, status: 201, data: { note: state.created } }; } });
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NotesScreen } from "./src/screens/notes/NotesScreen";
-        import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
-        import { NewNoteScreen } from "./src/screens/notes/NewNoteScreen";
+        import { MemoListScreen } from "./src/screens/memo/MemoListScreen";
+        import { MemoDetailScreen } from "./src/screens/memo/MemoDetailScreen";
+        import { NewMemoScreen } from "./src/screens/memo/NewMemoScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const which = window.initialFixture?.screen;
-        const screen = which === "detail" ? <NoteDetailScreen actorId="account:one" noteId={window.initialFixture.noteId} scopeKey="scope" /> : which === "new" ? <NewNoteScreen actorId="account:one" scopeKey="scope" /> : <NotesScreen actorId="account:one" scopeKey="scope" />;
+        const screen = which === "detail" ? <MemoDetailScreen actorId="account:one" noteId={window.initialFixture.noteId} scopeKey="scope" /> : which === "new" ? <NewMemoScreen actorId="account:one" scopeKey="scope" /> : <MemoListScreen actorId="account:one" scopeKey="scope" />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -68,6 +69,7 @@ test.before(async () => {
       name: "notes-native-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "notes-native" }));
+        plugin.onResolve({ filter: /^react-native-reanimated$|^react-native-gesture-handler$|^expo-haptics$|^expo-blur$/ }, args => ({ path: `${process.cwd()}/tests/helpers/stubs/${args.path}.js` }));
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "notes-native" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-crypto$/ }, () => ({ path: "icons", namespace: "notes-native" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-native" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
@@ -78,7 +80,7 @@ test.before(async () => {
   });
   server = createServer((_request, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
+    response.end(`<div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
@@ -103,7 +105,7 @@ test("the notes list renders from the mirror, filters and searches locally, and 
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByText("预算确认", { exact: true }).waitFor();
   assert.equal(await page.getByText("已是最新内容", { exact: true }).count(), 1, "the mirror's sync label is shown");
-  await page.getByRole("tab", { name: "关联活动" }).click();
+  await page.getByRole("tab", { name: "面谈" }).click();
   await page.getByText("预算确认", { exact: true }).waitFor();
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
   await page.getByRole("tab", { name: "全部" }).click();
@@ -137,7 +139,7 @@ test("a mirrored row owned by another account is refused, not shown", async (t) 
   assert.equal(await page.getByText("别人的笔记", { exact: true }).count(), 0);
 });
 
-test("the detail reads the mirror; offline it disables 编辑 and the AI entry with 需要联网", async (t) => {
+test("the detail reads the mirror; offline it disables editing", async (t) => {
   const online = await open(t, { screen: "detail", noteId: "note:1", tasks: [{ id: "task:from-note", accountId: "account:one", ownerUserId: "account:one", title: "发资料", status: "open", category: "work", priority: "normal", source: "manual", sourceNoteId: "note:1", createdAt: "2026-09-27T00:00:00.000Z", updatedAt: "2026-09-27T00:00:00.000Z" }] });
   await online.getByText("发布会准备", { exact: true }).waitFor();
   await online.getByText("发资料", { exact: true }).waitFor();
@@ -147,7 +149,8 @@ test("the detail reads the mirror; offline it disables 编辑 and the AI entry w
   await offline.getByText("发布会准备", { exact: true }).waitFor();
   await offline.getByText(/^无法连接 · 显示截至/).waitFor();
   assert.equal(await offline.getByRole("button", { name: "编辑笔记，需要联网" }).isDisabled(), true);
-  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 2);
+  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 1);
+  assert.equal(await offline.getByRole("button", { name: /AI 总结/ }).count(), 0);
 });
 
 test("a note the mirror does not hold is reported missing after a sync", async (t) => {

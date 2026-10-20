@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { useOrbitApiBaseUrl } from "../../../src/api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../../src/api/AuthSessionProvider";
 import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
-import { EditNoteScreen } from "../../../src/screens/notes/EditNoteScreen";
+import { EditMemoScreen } from "../../../src/screens/memo/EditMemoScreen";
 
 function EditNoteRoute() {
   const focused = useIsFocused(); const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl();
@@ -16,7 +16,7 @@ function EditNoteRoute() {
   const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, actorId, auth.cookieHeader, server.baseUrl, noteId]);
   const latest = useRef(scope); latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  return enabled ? <EditNoteScreen key={scope.key} actorId={actorId} draftServer={server.baseUrl} noteId={noteId} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} /> : null;
+  return enabled ? <EditMemoScreen key={scope.key} actorId={actorId} draftServer={server.baseUrl} noteId={noteId} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} /> : null;
 }
 
 export default withOrbitPrivateRoute(EditNoteRoute);

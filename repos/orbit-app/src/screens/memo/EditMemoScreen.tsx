@@ -1,16 +1,13 @@
 import { useRouter } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
 
 import { notePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
-import { OfflineNotice } from "../../components/OfflineNotice";
-import { NotesOfflineNotice } from "./NotesOfflineNotice";
 import type { NoteMentionContract } from "../../api/contract/notes";
 import { AppScreen } from "../../components/AppScreen";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
-import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { EmptyState, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { MemoOfflineNotice } from "./MemoOfflineNotice";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -24,13 +21,14 @@ import { contactsToSummaries, type ContactSummary } from "../../view-models/cont
 import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteUpdateRequest, confirmedNote, noteAssociationsForReceipt, type NoteView } from "../../view-models/notes";
-import { NoteContactPicker } from "./NoteContactPicker";
-import { NoteMentionEditor } from "./NoteMentionEditor";
-import { NoteEventPicker } from "./NoteEventPicker";
-import { useNoteContactSummaries } from "./useNoteContactSummaries";
-import { useNoteDetailSource, useNotesWriteStatus } from "./notes-source";
+import { NoteContactPicker } from "../notes/NoteContactPicker";
+import { MemoMentionEditor } from "./MemoMentionEditor";
+import { NoteEventPicker } from "../notes/NoteEventPicker";
+import { useNoteContactSummaries } from "../notes/useNoteContactSummaries";
+import { useNoteDetailSource, useNotesWriteStatus } from "../notes/notes-source";
+import { MemoKindPlanControls } from "./MemoKindPlanControls";
 
-export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKey, isScopeCurrent = () => true }: {
+export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKey, isScopeCurrent = () => true }: {
   actorId: string;
   draftServer?: string;
   noteId: string;
@@ -59,6 +57,8 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<ContactSummary[]>([]);
+  const [noteKind, setNoteKind] = useState<"free" | "meeting" | "voice">("free");
+  const [usedForPlan, setUsedForPlan] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -81,6 +81,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     setMentions([...current.mentions]);
     setEventIds([...current.eventIds]);
     setSelectedIds([...current.manualContactIds]);
+    setNoteKind(current.noteKind ?? "free"); setUsedForPlan(current.usedForPlan === true);
   }, [current, dirty]);
   useEffect(() => {
     setSelectedContacts(selectedIds.flatMap((id) => {
@@ -94,7 +95,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const requestedMutationKey = mutationKey.current;
     void noteDraftStorage.load({ accountId: actorId, server: draftServer, noteId }).then((stored) => {
       if (!stored || !mounted.current || !autosaveAllowed.current || !isScopeCurrent() || mutationKey.current !== requestedMutationKey) return;
-      setTitle(stored.title); setDraft(stored.body); setSelectedIds([...stored.manualContactIds]); setMentions([...stored.mentions]); setEventIds([...stored.eventIds]); setDirty(true); setDraftStatus(locale.t("notes.restoredDraft"));
+      setTitle(stored.title); setDraft(stored.body); setSelectedIds([...stored.manualContactIds]); setMentions([...stored.mentions]); setEventIds([...stored.eventIds]); setNoteKind(stored.noteKind ?? current.noteKind ?? "free"); setUsedForPlan(stored.usedForPlan ?? current.usedForPlan ?? false); setDirty(true); setDraftStatus(locale.t("notes.restoredDraft"));
     });
   }, [actorId, current, draftServer, locale, noteId]);
   useEffect(() => {
@@ -102,12 +103,12 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const timer = setTimeout(() => {
       if (!autosaveAllowed.current || !mounted.current || !isScopeCurrent()) return;
       setDraftStatus(locale.t("notes.autosaving"));
-      void noteDraftStorage.save({ accountId: actorId, server: draftServer, noteId }, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() })
+      void noteDraftStorage.save({ accountId: actorId, server: draftServer, noteId }, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan, savedAt: new Date().toISOString() })
         .then(() => { if (mounted.current) setDraftStatus(locale.t("notes.autosaved")); })
         .catch(() => { if (mounted.current) setDraftStatus(locale.t("notes.autosaveFailed")); });
     }, 500);
     return () => clearTimeout(timer);
-  }, [actorId, dirty, draft, draftServer, eventIds, locale, mentions, noteId, selectedIds, title]);
+  }, [actorId, dirty, draft, draftServer, eventIds, locale, mentions, noteId, noteKind, selectedIds, title, usedForPlan]);
   const owns = () => mounted.current && isScopeCurrent();
   const markChanged = () => { autosaveAllowed.current = true; setDirty(true); setSaved(false); setError(""); mutationKey.current = Crypto.randomUUID(); };
   const toggle = (id: string, contact?: ContactSummary) => {
@@ -132,9 +133,11 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   }, [client, locale, localContactSummaries]);
 
   const draftScope = { accountId: actorId, server: draftServer, noteId };
+  const contactCount = noteAssociationsForReceipt({ manualContactIds: selectedIds, mentions, eventIds }).contactIds.length;
+  const planEnabled = noteKind === "meeting" && contactCount === 1 && usedForPlan;
   async function preserveAndExit() {
     try {
-      await noteDraftStorage.save(draftScope, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() });
+      await noteDraftStorage.save(draftScope, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan, savedAt: new Date().toISOString() });
       if (owns()) { autosaveAllowed.current = false; router.back(); }
     } catch {
       if (owns()) { setShowExitPrompt(false); setError(locale.t("notes.draftSaveFailed")); }
@@ -154,7 +157,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   async function save() {
     if (!owns() || pending || !current || (Platform.OS === "web" && source.offline)) return;
     const targetNoteId = current.id;
-    const request = buildRichNoteUpdateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, current.version, mutationKey.current, locale.language);
+    const request = buildRichNoteUpdateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan: planEnabled }, current.version, mutationKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError(""); setSaved(false);
     if (Platform.OS !== "web") {
@@ -187,7 +190,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
       autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);
       if (!owns()) return;
-      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true);
+      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setNoteKind(note.noteKind ?? "free"); setUsedForPlan(note.usedForPlan === true); setDirty(false); setDraftStatus(""); setSaved(true);
       // Pull the change into the device copy the list and detail read from.
       if (!await source.confirmSaved(targetNoteId, note.version) && owns()) setError(locale.t("sync.mutationPending"));
     } else setError(result.success ? locale.t("notes.updateUnconfirmed") : result.error.message);
@@ -196,7 +199,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   }
 
   const saveDisabled = pending || !dirty || !title.trim() || !draft.trim() || (Platform.OS === "web" && source.offline);
-  return <AppScreen title={locale.t("notes.edit")} onBack={() => { if (!pending && owns()) dirty ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
+  return <AppScreen inset="kit" title={locale.t("notes.edit")} onBack={() => { if (!pending && owns()) dirty ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
       <Text style={styles.exitTitle}>{locale.t("notes.keepChangesTitle")}</Text><Text style={styles.notice}>{locale.t("notes.keepDraftBody")}</Text>
       <View style={styles.exitActions}>
@@ -205,17 +208,18 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
       </View>
     </View> : null}
-    {source.offline ? Platform.OS === "web" ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : <NotesOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
-    {source.loading && !current ? <LoadingState /> : null}
-    {source.failure ? <ErrorState message={source.failure} /> : null}
-    {source.missing && !current ? source.offline ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} /> : <ErrorState message={locale.t("notes.missing")} /> : null}
+    {source.offline ? <MemoOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
+    {source.loading && !current ? <Skeleton /> : null}
+    {source.failure ? <RetryCard title={source.failure} onRetry={source.refresh} /> : null}
+    {source.missing && !current ? <EmptyState title={source.offline ? locale.t("sync.notOnDevice") : locale.t("notes.missing")} /> : null}
     {current ? <>
       <Text style={styles.private}>{locale.t("notes.privateVersion", { version: current.version })}</Text>
       <View style={styles.paper}>
         <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} value={title} onChangeText={(value) => { setTitle(value); markChanged(); }} style={styles.titleInput} />
         <View style={styles.rule} />
-        <NoteMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { setDraft(value); setMentions([...nextMentions]); markChanged(); }} search={searchContacts} />
+        <MemoMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { setDraft(value); setMentions([...nextMentions]); markChanged(); }} searchContacts={searchContacts} events={events} />
       </View>
+      <MemoKindPlanControls kind={noteKind} usedForPlan={planEnabled} contactCount={contactCount} disabled={pending} onKindChange={kind => { setNoteKind(kind); if (kind !== "meeting") setUsedForPlan(false); markChanged(); }} onPlanChange={value => { setUsedForPlan(value); markChanged(); }} />
       <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
       <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => { setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]); markChanged(); }} />
       {draftStatus ? <Text accessibilityLiveRegion="polite" style={draftStatus === locale.t("notes.autosaveFailed") ? styles.error : styles.notice}>{draftStatus}</Text> : null}

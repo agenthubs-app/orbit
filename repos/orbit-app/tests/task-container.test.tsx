@@ -34,7 +34,7 @@ export const TaskQuickAdd = forwardRef(function TaskQuickAdd(_props, ref) {
 const SLOTS: Record<string, string> = {
   "calendar/CalendarScreen": "CalendarScreen",
   "todo/TodoScreen": "TodoTaskSlot",
-  "notes/NotesScreen": "NotesScreen",
+  "memo/MemoListScreen": "MemoListScreen",
   // R23: the プラン slot is PlanSegment (its own behaviour: tests/plan-*.test.tsx).
   "plan/PlanSegment": "PlanSegment",
   "TaskQuickAdd": "TaskQuickAdd",
@@ -100,11 +100,11 @@ test("four frozen segments in order; ?seg= opens one directly and only the shown
   const page = await open(t, { seg: "memo" });
   assert.deepEqual(await page.getByRole("tab").allTextContents(), ["カレンダー", "To-do", "プラン", "メモ"]);
   assert.equal(await selected(page), "メモ");
-  assert.equal(await visible(page, "NotesScreen page"), true);
+  assert.equal(await visible(page, "MemoListScreen page"), true);
   assert.equal(await page.getByText("CalendarScreen page").count(), 0, "unvisited segments are not mounted yet");
   // Embedded pages draw only their content: no own title, header actions or tab bar.
-  assert.equal(await page.getByText("NotesScreen title").count(), 0);
-  assert.equal(await page.getByText("NotesScreen header action").count(), 0);
+  assert.equal(await page.getByText("MemoListScreen title").count(), 0);
+  assert.equal(await page.getByText("MemoListScreen header action").count(), 0);
   assert.equal(await page.getByRole("tablist", { name: "メインナビゲーション" }).count(), 0);
 });
 

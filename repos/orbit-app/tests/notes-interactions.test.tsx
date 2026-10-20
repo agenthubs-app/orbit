@@ -51,7 +51,7 @@ function result(kind, body) {
   if (state.response === "network") return { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "network unavailable" }, meta: {} };
   if (state.response === "mismatch") return { success: true, status: 200, data: { note: { ...original, body: "其他正文" } }, meta: {} };
   if (kind === "create") return { success: true, status: 201, data: { note: {
-    ...original, id: "note:created", title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, contactIds: body.manualContactIds, eventIds: body.eventIds, version: 1,
+    ...original, id: "note:created", title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, contactIds: [...new Set([...body.manualContactIds, ...body.mentions.filter(item => (item.entityType ?? "contact") === "contact").map(item => item.contactId)])], eventIds: [...new Set([...body.eventIds, ...body.mentions.filter(item => item.entityType === "event").map(item => item.eventId)])], noteKind: body.noteKind, usedForPlan: body.usedForPlan, version: 1,
     createdAt: "2026-09-15T00:02:00.000Z", updatedAt: "2026-09-15T00:02:00.000Z"
   } }, meta: {} };
   if (kind === "unlink") return { success: true, status: 200, data: { note: {
@@ -59,7 +59,7 @@ function result(kind, body) {
     updatedAt: "2026-09-15T00:03:00.000Z"
   } }, meta: {} };
   return { success: true, status: 200, data: { note: {
-    ...state.note, title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, eventIds: body.eventIds, contactIds: [...new Set([...body.manualContactIds, ...body.mentions.map(item => item.contactId)])], version: state.note.version + 1,
+    ...state.note, title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, eventIds: [...new Set([...body.eventIds, ...body.mentions.filter(item => item.entityType === "event").map(item => item.eventId)])], contactIds: [...new Set([...body.manualContactIds, ...body.mentions.filter(item => (item.entityType ?? "contact") === "contact").map(item => item.contactId)])], noteKind: body.noteKind, usedForPlan: body.usedForPlan, version: state.note.version + 1,
     updatedAt: "2026-09-15T00:03:00.000Z"
   } }, meta: {} };
 }
@@ -118,27 +118,28 @@ export const useRouter = () => ({
   replace(href) { state.navigation.push(href); }
 });
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 `;
 
 test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NewNoteScreen } from "./src/screens/notes/NewNoteScreen";
-        import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
-        import { EditNoteScreen } from "./src/screens/notes/EditNoteScreen";
-        import { NotesScreen } from "./src/screens/notes/NotesScreen";
+        import { NewMemoScreen } from "./src/screens/memo/NewMemoScreen";
+        import { MemoDetailScreen } from "./src/screens/memo/MemoDetailScreen";
+        import { EditMemoScreen } from "./src/screens/memo/EditMemoScreen";
+        import { MemoListScreen } from "./src/screens/memo/MemoListScreen";
         import { AppScreen } from "./src/components/AppScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const params = new URLSearchParams(location.search); const mode = params.get("mode") || "new"; const language = params.get("language") || "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{mode === "new"
-          ? <NewNoteScreen actorId="account:one" scopeKey="scope" />
-          : mode === "list" ? <NotesScreen actorId="account:one" scopeKey="scope" />
+          ? <NewMemoScreen actorId="account:one" scopeKey="scope" />
+          : mode === "list" ? <MemoListScreen actorId="account:one" scopeKey="scope" />
           : mode === "default" || mode === "fallback" ? <AppScreen title="Default screen" />
-          : mode === "edit" ? <EditNoteScreen actorId="account:one" noteId={window.fixture.routeNoteId} scopeKey="scope" />
-          : <NoteDetailScreen actorId="account:one" noteId={window.fixture.routeNoteId} scopeKey="scope" />}</OrbitLocaleContext.Provider>);`,
+          : mode === "edit" ? <EditMemoScreen actorId="account:one" noteId={window.fixture.routeNoteId} scopeKey="scope" />
+          : <MemoDetailScreen actorId="account:one" noteId={window.fixture.routeNoteId} scopeKey="scope" />}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -152,18 +153,18 @@ test.before(async () => {
       name: "note-screen-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "react-native", namespace: "notes-test" }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|^\.\/notes-source$|\/(useApiResource|useOrbitApiClient|useLocalContacts|useLocalEventDay|note-draft-storage|useWebMirrorStatus|useSyncedCollection)$/ }, args => ({ path: args.path === "./notes-source" ? "notes-source" : "fixture", namespace: "notes-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|notes-source$|\/(useApiResource|useOrbitApiClient|useLocalContacts|useLocalEventDay|note-draft-storage|useWebMirrorStatus|useSyncedCollection)$/ }, args => ({ path: args.path.endsWith("notes-source") ? "notes-source" : "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^react-native$/, namespace: "notes-test" }, () => ({ contents: `export * from "react-native-web"; export const Platform = { get OS() { return new URLSearchParams(location.search).has("native") ? "ios" : "web"; } };`, loader: "js", resolveDir: process.cwd() }));
-        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = () => ({ notes: [window.fixture.note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }); export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, failedMutation: window.fixture.failedMutation ?? null, async retryFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["retry", id]]; }, async discardFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["discard", id]]; }, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
-        plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
+        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = (input) => { window.fixture.listInput = input; return { notes: [window.fixture.note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }; }; export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, failedMutation: window.fixture.failedMutation ?? null, async retryFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["retry", id]]; }, async discardFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["discard", id]]; }, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
+        plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'import React from "react"; export const Ionicons=({size=18})=>React.createElement("span",{style:{display:"inline-block",width:size,height:size}});', loader: "js", resolveDir: process.cwd() }));
       },
     }],
   });
   server = createServer((_request, response) => {
     response.setHeader("content-type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${result.outputFiles[0]!.text}</script>`);
+    response.end(`<div id="root"></div><script>window.global=window</script><script>${result.outputFiles[0]!.text}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -239,6 +240,69 @@ test("native note pickers use only mirrored contacts and registered events", asy
   assert.equal(await value.getByRole("checkbox", { name: /在线活动/ }).count(), 0);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/contacts/search" || request.path === "/api/events")), []);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.reads.filter((read: any) => read.path === "/api/events")), []);
+});
+
+test("native memo @event writes an event token and kind to the offline outbox", async (t) => {
+  const value = await nativePage(t);
+  await value.getByRole("textbox", { name: "笔记标题" }).fill("活动记录");
+  await value.getByRole("textbox", { name: "笔记内容" }).fill("@镜");
+  await value.getByRole("tab", { name: "活动" }).click();
+  await value.getByRole("button", { name: "提及活动「镜像活动」" }).click();
+  await value.getByRole("button", { name: "保存笔记" }).click();
+  await value.waitForFunction(() => (window as any).fixture.queued.length === 1);
+  const request = await value.evaluate(() => JSON.parse((window as any).fixture.queued[0].requestJson));
+  assert.equal(request.body, "@镜像活动");
+  assert.deepEqual(request.mentions, [{ entityType: "event", eventId: "event:local", start: 0, end: 5, displayText: "@镜像活动" }]);
+  assert.deepEqual(request.eventIds, []);
+  assert.equal(request.noteKind, "free");
+  assert.equal(request.usedForPlan, false);
+});
+
+test("native memo keeps @person and @event ranges after an emoji edit", async (t) => {
+  const value = await nativePage(t);
+  const body = value.getByRole("textbox", { name: "笔记内容" });
+  await value.getByRole("textbox", { name: "笔记标题" }).fill("会后记录");
+  await body.fill("@镜");
+  await value.getByRole("button", { name: "提及 镜像联系人" }).click();
+  await body.fill("🙂 @镜像联系人 ");
+  await body.fill("🙂 @镜像联系人 @镜");
+  await value.getByRole("tab", { name: "活动" }).click();
+  await value.getByRole("button", { name: "提及活动「镜像活动」" }).click();
+  await value.getByRole("button", { name: "保存笔记" }).click();
+  await value.waitForFunction(() => (window as any).fixture.queued.length === 1);
+  const request = await value.evaluate(() => JSON.parse((window as any).fixture.queued[0].requestJson));
+  assert.equal(request.body, "🙂 @镜像联系人 @镜像活动");
+  assert.deepEqual(request.mentions, [
+    { entityType: "contact", contactId: "contact:local", start: 3, end: 9, displayText: "@镜像联系人" },
+    { entityType: "event", eventId: "event:local", start: 10, end: 15, displayText: "@镜像活动" },
+  ]);
+});
+
+test("memo list switches three kinds without the old duplicate hero", async (t) => {
+  const value = await page(t, "list");
+  assert.equal(await value.getByRole("tab", { name: "全部" }).count(), 1);
+  await value.getByRole("tab", { name: "面谈" }).click();
+  assert.equal(await value.evaluate(() => (window as any).fixture.listInput.noteKind), "meeting");
+  await value.getByRole("tab", { name: "自由备忘录" }).click();
+  assert.equal(await value.evaluate(() => (window as any).fixture.listInput.noteKind), "free");
+  assert.equal(await value.getByText("我的笔记", { exact: true }).count(), 1);
+  assert.equal(await value.getByText("笔记", { exact: true }).count(), 0);
+});
+
+test("meeting memo exposes plan use only with one linked person and sends the explicit choice", async (t) => {
+  const value = await page(t, "edit");
+  const toggle = value.getByRole("switch", { name: "用于计划的已交流项" });
+  await value.getByRole("tab", { name: "面谈" }).click();
+  assert.equal(await toggle.isDisabled(), true);
+  await value.getByRole("button", { name: /移除相关人脉 佐藤/u }).click();
+  assert.equal(await toggle.isEnabled(), true);
+  await toggle.click();
+  await value.getByRole("button", { name: "保存修改" }).click();
+  await value.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
+  const body = await value.evaluate(() => (window as any).fixture.requests.find((request: any) => request.method === "PATCH").body);
+  assert.equal(body.noteKind, "meeting");
+  assert.equal(body.usedForPlan, true);
+  assert.deepEqual(body.manualContactIds, ["contact:a"]);
 });
 
 test("native edit note pickers do not search contacts or events over the network", async (t) => {
@@ -476,7 +540,7 @@ test("native offline notes can enter create and edit while browser writes stay o
   assert.equal(await edit.isEnabled(), true);
   await edit.click();
   assert.deepEqual(await nativeDetail.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Aone/edit"]);
-  assert.equal(await nativeDetail.getByRole("button", { name: /IORBIT 总结/ }).isDisabled(), true, "AI remains online-only");
+  assert.equal(await nativeDetail.getByRole("button", { name: /IORBIT 总结/ }).count(), 0, "R20b defers AI整理");
 });
 
 test("two native edits of one mirrored note keep one SQLite update at the original server version", async (t) => {
@@ -568,19 +632,12 @@ test("note task request failures are visible and retry restores the list", async
   await value.getByRole("button", { name: "打开来源待办 关联事项 0", exact: true }).waitFor();
 });
 
-test("note detail opens an editable IORBIT template without making a write request", async (t) => {
+test("memo detail keeps AI整理 hidden this sprint without making a write request", async (t) => {
   const value = await page(t, "detail");
-  await value.getByRole("button", { name: "IORBIT 总结" }).click();
+  await value.getByText("原始笔记").waitFor();
+  assert.equal(await value.getByRole("button", { name: "IORBIT 总结" }).count(), 0);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), [{
-    pathname: "/ai/[id]",
-    params: {
-      id: "new",
-      initialMessage: "请根据这篇笔记整理一个待办，并明确标题和日期。",
-      sourceNoteId: "note:one",
-      sourceNoteVersion: "2",
-    },
-  }]);
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), []);
 });
 
 test("English note create and detail translate controls while preserving note content", async (t) => {

@@ -1,26 +1,22 @@
-import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
+import { EmptyState, RetryCard, Segmented, Skeleton, UiText as Text } from "../../components/ui";
+import { Icon } from "../../components/ui/Icon";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
-import { OfflineNotice } from "../../components/OfflineNotice";
-import { NotesOfflineNotice } from "./NotesOfflineNotice";
-import { useNotesListSource } from "./notes-source";
+import { MemoOfflineNotice } from "./MemoOfflineNotice";
+import { useNotesListSource } from "../notes/notes-source";
 
-type Filter = "all" | "contacts" | "events" | "unlinked";
+type Filter = "all" | "meeting" | "free";
 const filters: readonly { value: Filter; labelKey: MessageKey }[] = [
-  { value: "all", labelKey: "notes.filterAll" },
-  { value: "contacts", labelKey: "notes.filterPeople" },
-  { value: "events", labelKey: "notes.filterEvents" },
-  { value: "unlinked", labelKey: "notes.unlinked" },
+  { value: "all", labelKey: "notes.kindAll" },
+  { value: "meeting", labelKey: "notes.kindMeeting" },
+  { value: "free", labelKey: "notes.kindFree" },
 ];
 
 function noteTime(value: string, language: "en" | "ja" | "zh"): string {
@@ -39,18 +35,18 @@ function noteGroup(value: string): "earlier" | "today" | "week" {
   return date >= start ? "week" : "earlier";
 }
 
-export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: string }) {
+export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKey: string }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ contactId?: string | string[] }>();
   const contactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>(contactId ? "contacts" : "all");
+  const [filter, setFilter] = useState<Filter>("all");
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => clearTimeout(timer);
   }, [query]);
-  const source = useNotesListSource({ actorId, scopeKey, association: filter, contactId, q: debouncedQuery });
+  const source = useNotesListSource({ actorId, scopeKey, association: "all", contactId, noteKind: filter, q: debouncedQuery });
   const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
   const notes = source.notes;
@@ -60,34 +56,32 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     { value: "week", label: locale.t("notes.groupWeek") },
     { value: "earlier", label: locale.t("notes.groupEarlier") },
   ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
-  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
+  return <AppScreen inset="kit" title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
     <Pressable accessibilityRole="button" accessibilityLabel={needsNetwork ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: needsNetwork }} disabled={needsNetwork} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, needsNetwork && styles.addDisabled]}>
-      <Ionicons color={colors.onAccent} name="add" size={24} />
+      <Icon color={colors.onAccent} name="plus" size={24} />
     </Pressable>
   }>
-    <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>{locale.t("notes.title")}</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{source.total ?? 0}</Text></View>
-    {source.offline ? Platform.OS === "web" ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : <NotesOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t(source.syncLabelKey)}</Text> : null}
+    {source.offline ? <MemoOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t(source.syncLabelKey)}</Text> : null}
     {contactId ? <View><Text style={styles.sort}>{locale.t("notes.contactScope")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => router.push("/notes")} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.allNotes")}</Text></Pressable></View> : null}
     {notes ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.loadedCount", { loaded: notes.length, total: source.total ?? notes.length })}</Text> : null}
     <View style={styles.searchBox}>
-      <Ionicons color={colors.ink3Text} name="search" size={19} />
+      <Icon color={colors.ink3Text} name="search" size={20} />
       <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
-      {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Ionicons color={colors.ink3Text} name="close-circle" size={19} /></Pressable> : null}
+      {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Icon color={colors.ink3Text} name="x-circle" size={20} /></Pressable> : null}
     </View>
-    {!contactId ? <><View accessibilityRole="tablist" style={styles.filters}>{filters.map((item) => <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: filter === item.value }} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterSelected]}>
-      <Text maxFontSizeMultiplier={2} style={[styles.filterText, filter === item.value && styles.filterTextSelected]}>{locale.t(item.labelKey)}</Text>
-    </Pressable>)}</View><Text maxFontSizeMultiplier={2} style={styles.sort}>{locale.t("notes.sortRecent")}</Text></> : null}
-    {source.loading ? <LoadingState /> : null}
-    {source.failure ? <ErrorState message={source.failure} /> : null}
-    {source.invalid ? <ErrorState message={locale.t("notes.invalidPayload")} /> : null}
-    {source.pageError ? <><ErrorState message={source.pageError} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={source.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
+    {!contactId ? <><Segmented segments={filters.map(item => ({ key: item.value, label: locale.t(item.labelKey) }))} value={filter} onChange={setFilter} accessibilityLabel={locale.t("notes.title")} /><Text maxFontSizeMultiplier={2} style={styles.sort}>{locale.t("notes.sortRecent")}</Text></> : null}
+    {source.loading ? <Skeleton /> : null}
+    {source.failure ? <RetryCard title={source.failure} onRetry={source.refresh} /> : null}
+    {source.invalid ? <RetryCard title={locale.t("notes.invalidPayload")} onRetry={source.refresh} /> : null}
+    {source.pageError ? <><RetryCard title={source.pageError} onRetry={source.refresh} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={source.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
     {notes?.length === 0 ? <EmptyState title={locale.t(query ? "notes.emptySearch" : contactId ? "notes.emptyLinked" : "notes.empty")} message={locale.t(query ? "notes.emptySearchBody" : "notes.emptyBody")} /> : null}
     <View style={styles.list}>{groups.map((group) => <View key={group.value}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text>{group.notes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.row}>
       <View style={styles.rowTop}><Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.title}>{note.title}</Text><Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt, locale.language)}</Text></View>
       <Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.summary}>{note.body.replace(/\s+/g, " ")}</Text>
       <View style={styles.metaRow}>
-        {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accentText} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
-        {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accentText} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
+        {note.contactIds.length ? <View style={styles.metaPill}><Icon color={colors.accentText} name="users" size={16} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
+        {note.eventIds.length ? <View style={styles.metaPill}><Icon color={colors.accentText} name="calendar" size={16} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
+        {note.noteKind === "voice" ? <Text style={styles.meta}>{locale.t("notes.voiceSource")}</Text> : null}
         {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.unlinked")}</Text> : null}
         {note.localMutationState ? <Text accessibilityLiveRegion="polite" maxFontSizeMultiplier={2} style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as MessageKey)}</Text> : null}
       </View>
