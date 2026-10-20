@@ -1058,7 +1058,7 @@ const BB = (label, tag, opts, list) => { const a = A(list); return board(label, 
 
 /* Web 设置菜单（在 b5 的基础上加入 ご利用プラン / データの書き出し / ヘルプ） */
 const SMENU = [['user', 'プロフィール', 'prof'], ['settings', 'アカウント', 'acct'], ['star', 'ご利用プラン', 'plan'], ['sparkle', 'iOrbit が使う情報', 'ai'], ['link', '連携', 'conn'], ['bell', '通知', 'notif'], ['grid', '言語と外観', 'lang'], ['share', 'データの書き出し', 'export'], ['book', 'ヘルプ', 'help']];
-const smenu = on => `<div class="smenu">${SMENU.map(([i, l, k]) => `<a class="${k === on ? 'on' : ''}">${ic(i, 'sm')}${l}</a>`).join('')}<hr><a class="danger">${ic('out', 'sm')}ログアウト</a></div>`;
+const smenu = on => `<div class="smenu">${SMENU.filter(([, , k]) => (on !== 'acct' && on !== 'export') || k !== 'plan').map(([i, l, k]) => `<a class="${k === on ? 'on' : ''}">${ic(i, 'sm')}${l}</a>`).join('')}<hr><a class="danger">${ic('out', 'sm')}ログアウト</a></div>`;
 const setPage = (on, title, sub, content, pre = '') => pre + mainhead('設定', '', '', '') + `<div class="setgrid">${smenu(on)}<div><div style="margin:0 0 16px"><b style="font-size:19px">${title}</b><div class="lbl">${sub}</div></div>${content}</div></div>`;
 
 /* =================================================================
@@ -1246,6 +1246,8 @@ const cancelModal = `<div class="overlay"></div><div class="wmodal w480 k-cmodal
 
 /* =================================================================
    C. 退会（アカウント削除）
+   2026-10-20 主会话代定 §C-3 · R18c：有料プランの行と解約・返金案内を除去。
+   ログイン方法での再確認、30 日間の取り消し、静的な削除完了を表示。
    ================================================================= */
 const DEL = [['👥', 'lav', '人脈', '286人 · 名刺画像 312枚 · やりとりの記録'], ['📝', 'apricot', 'メモ', '148件（音声メモを含む）'], ['🧭', 'pink', 'プラン', '2件 · 進捗ログ 64件 · タスク'], ['🔗', 'blue', '連携', 'Gmail・Google カレンダーの接続と取り込んだデータ'], ['🎟️', 'teal', 'イベント・主催', '参加履歴 24件 · 主催イベント 6件の公開ページ']];
 const delList = (w) => DEL.map(([e, c, t, d]) => `<div class="xrow"><span class="emo sm ${c}">${e}</span><div class="meta"><b>${t}</b><span class="lbl">${d}</span></div>${w ? '<span class="chip">削除</span>' : ''}</div>`).join('');
@@ -1253,7 +1255,7 @@ function acctApp() {
   return topbar('アカウント', '設定', back, '<span></span>') + `
     <div class="card row rise" style="gap:12px;padding:14px 16px"><div class="av c1">佐</div><div style="flex:1;min-width:0"><b>${ME.name}</b><div class="lbl">k.sato@minatolink.example</div></div></div>
     ${glbl('ログイン')}<div class="sgroup">${srow('user', 'ログイン方法', 'Google（k.sato@minatolink.example）')}${srow('settings', 'パスワード', '未設定 · Google でログイン中', '<span class="lbl">設定する</span>')}${srow('phone', 'ログイン中の端末', 'iPhone · Mac（Chrome）', '<span class="lbl">2台</span>')}</div>
-    ${glbl('プランとデータ')}<div class="sgroup">${srow('star', 'ご利用プラン', 'Pro · 次回更新 11月7日')}${srow('share', 'データの書き出し', '人脈・メモ・プランを CSV / JSON で')}</div>
+    ${glbl('データ')}<div class="sgroup">${srow('share', 'データの書き出し', '人脈・メモ・プランを CSV / JSON で')}</div>
     <div class="sgroup" style="margin-top:22px">${srow('x', '退会する', 'アカウントとすべてのデータを削除', '', true, 'danger k-quit')}</div>
     <div class="lbl center" style="margin-top:10px">退会の申請から 30日間は取り消せます</div>`;
 }
@@ -1262,15 +1264,15 @@ function delApp1() {
     <div class="h1" style="font-size:20px">退会すると、次のデータが<br>すべて削除されます</div>
     <div class="card k-dl" style="margin-top:14px;padding:4px 16px">${delList(0)}</div>
     <div class="mac lav k-exp" style="margin-top:14px;padding:14px 16px;border-radius:20px"><div class="row" style="gap:10px"><span style="font-size:20px">📦</span><div style="flex:1"><b style="font-size:13.5px">先にデータを書き出しませんか</b><div class="lbl">人脈は CSV / vCard で、ほかの名刺アプリにも移せます</div></div></div><button class="btn sm block" style="margin-top:10px;background:var(--surface)">${ic('share', 'sm')}データを書き出す</button></div>
-    <div class="paybar k-subw" style="margin-top:14px;align-items:flex-start"><span class="ngmark">${ALERT()}</span><span style="flex:1;font-weight:600;line-height:1.6"><b>Pro のサブスクリプションは自動で止まりません。</b>App Store で解約してください（11月7日に更新されます）<div style="margin-top:6px;color:var(--mac-blue-ink);font-weight:700">App Store のサブスクリプションを開く ${'›'}</div></span></div>` +
+    <div class="card flat" style="margin-top:14px;font-size:12.5px;line-height:1.7">申請後はログアウトします。30日以内にログインすると、退会を取り消せます。Google 連携は取り消した後に再接続してください。</div>` +
     foot(`<button class="btn primary block xl">次へ</button><button class="btn ghost block">やめる</button>`);
 }
 function delApp2() {
   return topbar('退会', '2 / 2 · 本人確認', back, '<span></span>') + steps(2, 2) + `
     <div class="card k-reauth"><b style="font-size:14px">本人確認</b><div class="lbl" style="margin-top:2px">ログインに使っている方法で、もう一度確認します</div>
-      <div class="seg" style="width:100%;display:grid;grid-template-columns:1fr 1fr;margin-top:12px"><button class="on">Google</button><button>パスワード</button></div>
+      <button class="btn block" style="margin-top:12px">Google で再確認</button>
       <div class="row" style="gap:10px;margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--mac-teal);color:var(--mac-teal-ink);font-size:12.5px;font-weight:700">${ic('check', 'sm')}<span style="flex:1">k.sato@minatolink.example で確認しました</span></div></div>
-    <div class="card k-30"><b style="font-size:14px">30日間は取り消せます</b><div style="margin-top:12px">${[['d', '今日 10月7日 · 退会を申請', 'ログインできなくなり、公開ページも非表示になります'], ['w', '30日間 · 取り消し期間', 'ログインして「削除を取り消す」で元どおりに'], ['', '11月6日 · 完全に削除', '以後は復元できません']].map(([c, t, d]) => `<div class="tline"><i class="${c}"></i><div><b>${t}</b><span class="lbl">${d}</span></div></div>`).join('')}</div></div>
+    <div class="card k-30"><b style="font-size:14px">30日間は取り消せます</b><div style="margin-top:12px">${[['d', '今日 10月7日 · 退会を申請', '通常の画面は開けなくなり、公開ページも非表示になります'], ['w', '30日間 · 取り消し期間', 'ログインして「削除を取り消す」で元どおりに'], ['', '11月6日 · 完全に削除', '以後は復元できません']].map(([c, t, d]) => `<div class="tline"><i class="${c}"></i><div><b>${t}</b><span class="lbl">${d}</span></div></div>`).join('')}</div></div>
     <div class="row k-ok" style="gap:10px;padding:4px 6px;font-size:13px;font-weight:700">${ckb(1)}<span>削除されるものを確認しました</span></div>` +
     foot(`<button class="btn danger block xl">退会を申請する</button><button class="btn ghost block">やめる</button>`);
 }
@@ -1284,8 +1286,7 @@ function delPendingApp() {
 }
 function delDoneApp() {
   return `<div class="center" style="margin-top:150px"><span class="emo" style="width:72px;height:72px;font-size:34px;border-radius:24px;margin:0 auto;background:var(--surface)">👋</span>
-    <div class="h1" style="margin-top:18px">アカウントを削除しました</div><div class="sub" style="margin-top:6px;line-height:1.7">これまでご利用いただき、ありがとうございました。<br>削除の完了をメールでお知らせしました。</div></div>
-    <div class="card flat k-fb" style="margin-top:24px;font-size:12.5px;color:var(--ink-2)">よろしければ、Orbit へのご意見をお聞かせください（任意・1分）<button class="btn sm block" style="margin-top:10px;background:var(--surface)">ひとこと送る</button></div>` +
+    <div class="h1" style="margin-top:18px">アカウントを削除しました</div><div class="sub" style="margin-top:6px;line-height:1.7">これまでご利用いただき、ありがとうございました。<br>データの削除が完了しました。</div></div>` +
     foot(`<button class="btn block xl">はじめの画面へ</button>`);
 }
 function delWeb() {
@@ -1293,39 +1294,41 @@ function delWeb() {
     <div class="card span7 k-wdl"><div class="card-h"><h3>削除されるもの</h3><span class="lbl">11月6日に完全に削除</span></div>${delList(1)}</div>
     <div class="span5" style="display:grid;gap:18px;align-content:start">
       <div class="mac lav k-wexp" style="padding:16px 18px;border-radius:22px"><div class="row" style="gap:10px"><span style="font-size:22px">📦</span><div style="flex:1"><b>先にデータを書き出す</b><div class="lbl">人脈 CSV / vCard · メモ · プラン · 全部 JSON</div></div></div><button class="btn sm" style="margin-top:12px;background:var(--surface)">${ic('share', 'sm')}データの書き出しへ</button></div>
-      <div class="card k-wsub" style="box-shadow:inset 0 0 0 1.5px var(--coral)"><b>Pro のサブスクリプション</b><div class="sub" style="margin-top:4px;line-height:1.7">退会を申請すると、Web で購入した Pro は同時に解約され、次回（11月7日）の請求は行われません。日割りの返金はありません。</div></div>
+      <div class="card flat"><b>ログインと連携</b><div class="sub" style="margin-top:4px;line-height:1.7">申請後はログアウトします。取り消した後、Gmail とカレンダーは再接続してください。</div></div>
       <div class="card flat"><b>30日間は取り消せます</b><div class="lbl" style="margin-top:4px">申請するとログアウトされ、11月6日まで「削除を取り消す」が使えます</div></div></div>
     <div class="span12 row" style="justify-content:flex-end;gap:10px"><button class="btn ghost">やめる</button><button class="btn danger-ghost xl">本人確認へ進む</button></div></div>`);
 }
 const reauthModal = `<div class="overlay"></div><div class="wmodal w560 k-wre">${steps(2, 2)}<b style="font-size:20px">本人確認</b><div class="sub" style="margin-top:4px">退会の申請には、もう一度ログインが必要です。</div>
-  <div class="seg" style="margin-top:14px"><button>Google</button><button class="on">パスワード</button></div>
+  <div class="lbl" style="margin-top:14px">このアカウントのログイン方法：パスワード</div>
   <div style="margin-top:12px">${fld('メールアドレス', 'k.sato@minatolink.example')}${fld('パスワード', '••••••••••', 'focus')}</div>
   <div class="row" style="gap:10px;margin-top:14px;font-size:13px;font-weight:700">${ckb(1)}<span>11月6日に完全に削除され、それ以後は復元できないことを理解しました</span></div>
   <div class="macts">${ESC}<button class="btn">キャンセル</button><button class="btn danger k-wapply">退会を申請する</button></div></div>`;
 const delPendingWeb = `<div style="max-width:620px;margin:40px auto 0;text-align:center"><span class="emo apricot" style="width:80px;height:80px;font-size:38px;border-radius:26px;margin:0 auto">⏳</span>
   <div style="font-size:28px;font-weight:900;margin-top:18px">退会の手続き中です</div><div class="sub" style="margin-top:6px">${ME.name} さんのアカウントは、2026年11月6日に削除されます。</div>
   <div class="card k-wleft" style="margin-top:24px;text-align:left"><div class="row between"><div><div class="lbl">削除まで</div><div class="big">${num(30)}<small>日</small></div></div><div style="width:300px">${bar(2, 'warn')}<div class="row between lbl"><span>10月7日 申請</span><span>11月6日 削除</span></div></div></div></div>
-  <div class="card flat" style="margin-top:14px;text-align:left;font-size:13px;color:var(--ink-2);line-height:1.75">取り消すと、人脈・メモ・プランはすべて元どおりになります。Gmail とカレンダーは再接続が必要です。Pro は解約済みのため、必要なら改めてお申し込みください。</div>
+  <div class="card flat" style="margin-top:14px;text-align:left;font-size:13px;color:var(--ink-2);line-height:1.75">取り消すと、人脈・メモ・プランはすべて元どおりになります。Gmail とカレンダーは再接続が必要です。</div>
   <div class="row" style="justify-content:center;gap:10px;margin-top:22px"><button class="btn ghost">ログアウト</button><button class="btn primary xl k-wundo">削除を取り消す</button></div></div>`;
 const delDoneWeb = `<div style="max-width:560px;margin:110px auto 0;text-align:center"><div class="bigemo">👋</div><div style="font-size:28px;font-weight:900;margin-top:18px">アカウントを削除しました</div>
-  <div class="sub" style="margin-top:8px;line-height:1.8">これまでご利用いただき、ありがとうございました。<br>データはすべて削除され、完了のお知らせをメールでお送りしました。</div>
-  <div class="row" style="justify-content:center;gap:10px;margin-top:26px"><button class="btn ghost k-wfb">ご意見を送る（任意）</button><button class="btn primary">トップへ</button></div></div>`;
+  <div class="sub" style="margin-top:8px;line-height:1.8">これまでご利用いただき、ありがとうございました。<br>データの削除が完了しました。</div>
+  <div class="row" style="justify-content:center;gap:10px;margin-top:26px"><button class="btn primary">トップへ</button></div></div>`;
 
 /* =================================================================
    D. データの書き出し
+   2026-10-20 主会话代定 §C-3 · R18c：全部 JSON は排他的選択、
+   進捗は実際に終わった項目数、ZIP 保管期限は ready から 7 日。
    ================================================================= */
-const EXP = [['👥', 'lav', '人脈', '286人 · 名刺画像は含みません', 1, 'fmt'], ['📝', 'apricot', 'メモ', '148件 · CSV', 1], ['🧭', 'pink', 'プラン・ログ', '目標 2件 · 進捗ログ 64件 · CSV', 1], ['🎟️', 'teal', 'イベント履歴', '参加・評価 24件 · CSV', 0], ['🗂️', 'blue', 'すべて（JSON）', '名刺画像を含む · ZIP 約 18MB', 0]];
+const EXP = [['👥', 'lav', '人脈', '286人 · 名刺画像は含みません', 1, 'fmt'], ['📝', 'apricot', 'メモ', '148件 · CSV', 1], ['🧭', 'pink', 'プラン・ログ', '目標 2件 · 進捗ログ 64件 · CSV', 1], ['🎟️', 'teal', 'イベント履歴', '参加・評価 24件 · CSV', 0], ['🗂️', 'blue', 'すべて（JSON）', 'これだけを選ぶと、全項目と名刺画像を ZIP にまとめます', 0]];
 const expRows = (web) => EXP.map(([e, c, t, d, on, f]) => `<div class="xrow ${f ? 'k-fmt' : ''}">${ckb(on)}<span class="emo sm ${c}">${e}</span><div class="meta"><b>${t}</b><span class="lbl">${d}</span></div>${f ? `<div class="seg" style="flex:none"><button class="on">CSV</button><button>vCard</button></div>` : ''}</div>`).join('');
 function expApp1() {
   return topbar('データの書き出し', '設定 › アカウント', back, '<span></span>') + `
     <div class="sub" style="margin:0 4px 12px;line-height:1.7">書き出したいものを選んでください。準備ができたら通知とメールでお知らせします。</div>
     <div class="card k-xsel" style="padding:4px 16px">${expRows()}</div>
-    <div class="card flat" style="font-size:12px;color:var(--ink-2);line-height:1.7">ダウンロードリンクは <b style="color:var(--ink)">7日間</b> 有効です。書き出しは 1日 3回まで。</div>` +
+    <div class="card flat" style="font-size:12px;color:var(--ink-2);line-height:1.7">ファイルは完成から <b style="color:var(--ink)">7日間</b> 保管します。書き出しは 1日 3回まで。</div>` +
     foot(`<button class="btn primary block xl k-xgo">3項目を書き出す</button>`);
 }
 function expApp2() {
   return topbar('データの書き出し', '準備しています', back, '<span></span>') + `<!-- 审计：准备在后台继续，左上统一为 ‹ 返回 -->
-    <div class="card center rise k-prog" style="padding:26px 18px">${ring(150, 13, [{ v: 64, c: 'var(--plum-700)', max: 100 }], `<div class="big" style="font-size:36px">${num(64)}<small>%</small></div><div class="lbl">あと 約1分</div>`)}</div>
+    <div class="card center rise k-prog" style="padding:26px 18px">${ring(150, 13, [{ v: 2, c: 'var(--plum-700)', max: 3 }], `<div class="big" style="font-size:36px">${num(2)}<small>/3</small></div><div class="lbl">2項目の準備が完了</div>`)}</div>
     <div class="card k-items">${[['人脈 286人', 'ok'], ['メモ 148件', 'ok'], ['プラン・ログ', 'run']].map(([t, s]) => `<div class="row between" style="padding:10px 0;border-top:1px solid var(--line);font-size:13px"><b>${t}</b>${s === 'ok' ? `<span class="chip teal">${ic('check', 'sm')}完了</span>` : '<span class="chip lav">処理中</span>'}</div>`).join('')}</div>
     <div class="mac blue" style="font-size:12.5px;line-height:1.7;margin-top:14px">この画面を閉じても大丈夫です。準備ができたら通知でお知らせします。</div>`;
 }
@@ -1333,17 +1336,17 @@ function expApp3() {
   return topbar('データの書き出し', '準備ができました', back, '<span></span>') + `
     <div class="card rise k-file"><div class="file"><span class="fi">ZIP</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">orbit-export-20261007.zip</b><div class="lbl">4.2MB · 人脈 · メモ · プラン・ログ</div></div></div>
       <button class="btn primary block xl" style="margin-top:12px">${ic('share', 'sm')}ダウンロード</button>
-      <div class="row between lbl k-exp7" style="margin-top:10px"><span>リンクの有効期限</span><b style="color:var(--ink)">10月14日 21:40 まで（7日間）</b></div></div>
-    <div class="card flat" style="font-size:12.5px;color:var(--ink-2);line-height:1.7">同じリンクを k.sato@minatolink.example にもお送りしました。期限が切れたら、もう一度書き出してください。</div>
+      <div class="row between lbl k-exp7" style="margin-top:10px"><span>ファイルの保管期限</span><b style="color:var(--ink)">10月14日 21:40 まで（7日間）</b></div></div>
+    <div class="card flat" style="font-size:12.5px;color:var(--ink-2);line-height:1.7">ダウンロードはログイン後にこの画面から行えます。期限が切れたら、もう一度書き出してください。</div>
     <div class="glbl">これまでの書き出し</div><div class="sgroup">${srow('share', '9月2日 · すべて（JSON）', '期限切れ', '', false)}${srow('share', '6月18日 · 人脈（vCard）', '期限切れ', '', false)}</div>`;
 }
-const expPush = `<div class="pn row" style="position:absolute;top:56px;left:12px;right:12px;z-index:45;gap:10px;align-items:flex-start"><span class="appicon sm">O</span><div style="flex:1"><div class="row between"><b style="font-size:13px">Orbit</b><span class="lbl">今</span></div><div style="font-size:12.5px;font-weight:600">書き出しの準備ができました（7日間有効）</div></div></div>`;
+const expPush = `<div class="pn row" style="position:absolute;top:56px;left:12px;right:12px;z-index:45;gap:10px;align-items:flex-start"><span class="appicon sm">O</span><div style="flex:1"><div class="row between"><b style="font-size:13px">Orbit</b><span class="lbl">今</span></div><div style="font-size:12.5px;font-weight:600">書き出しの準備ができました（ファイルは7日間保管）</div></div></div>`;
 function expWeb(st = 'sel') {
   const ready = st === 'ready';
   return setPage('export', 'データの書き出し', '人脈・メモ・プランを、いつでも手元に保存できます', `<div class="wgrid">
     <div class="card span7 k-wsel"><div class="card-h"><h3>書き出す範囲</h3><span class="lbl">3 / 5 項目</span></div>${expRows(1)}<div class="row push" style="justify-content:flex-end;gap:10px;margin-top:14px"><span class="lbl">準備ができたら、メールと通知でお知らせします</span><button class="btn primary ${ready ? '' : 'k-wgo'}">${ready ? 'もう一度書き出す' : '書き出しを準備'}</button></div></div>
     <div class="span5" style="display:grid;gap:18px;align-content:start">
-      <div class="card k-wstate">${ready ? `<div class="card-h"><h3>準備ができました</h3><span class="chip teal">${ic('check', 'sm')}完了</span></div><div class="file"><span class="fi">ZIP</span><div style="flex:1;min-width:0"><b style="font-size:13px">orbit-export-20261007.zip</b><div class="lbl">4.2MB</div></div><button class="btn sm primary">ダウンロード</button></div><div class="lbl" style="margin-top:10px">リンクは 10月14日 21:40 まで（7日間）有効です</div>` : `<div class="card-h"><h3>形式について</h3></div><div class="sub" style="line-height:1.8">CSV：Excel・スプレッドシートで開けます<br>vCard：iPhone・Google 連絡先に取り込めます<br>JSON：すべてのデータと名刺画像（ZIP）</div>`}</div>
+      <div class="card k-wstate">${ready ? `<div class="card-h"><h3>準備ができました</h3><span class="chip teal">${ic('check', 'sm')}完了</span></div><div class="file"><span class="fi">ZIP</span><div style="flex:1;min-width:0"><b style="font-size:13px">orbit-export-20261007.zip</b><div class="lbl">4.2MB</div></div><button class="btn sm primary">ダウンロード</button></div><div class="lbl" style="margin-top:10px">ファイルは 10月14日 21:40 まで保管します</div>` : `<div class="card-h"><h3>形式について</h3></div><div class="sub" style="line-height:1.8">CSV：Excel・スプレッドシートで開けます<br>vCard：iPhone・Google 連絡先に取り込めます<br>JSON：すべてのデータと名刺画像（ZIP）</div>`}</div>
       <div class="card"><div class="card-h"><h3>履歴</h3></div><table class="table"><tbody>${(ready ? [['10月7日', '人脈 · メモ · プラン', '有効', 'teal']] : []).concat([['9月2日', 'すべて（JSON）', '期限切れ', ''], ['6月18日', '人脈（vCard）', '期限切れ', '']]).map(([d, t, s, c]) => `<tr><td class="lbl">${d}</td><td><b>${t}</b></td><td><span class="chip ${c}">${s}</span></td></tr>`).join('')}</tbody></table></div></div></div>`);
 }
 
