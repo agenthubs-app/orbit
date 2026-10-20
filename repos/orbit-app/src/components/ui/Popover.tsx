@@ -39,7 +39,7 @@ export function Popover({ visible, onClose, anchor, children, accessibilityLabel
 }
 
 /** kit .gmenu .gi: one menu row (leading tile / icon, title + optional .lbl line, trailing mark). */
-export function PopoverRow({ title, subtitle, leading, trailing, selected = false, muted = false, onPress, accessibilityRole = "button", accessibilityLabel, testID }: {
+export function PopoverRow({ title, subtitle, leading, trailing, selected = false, muted = false, disabled = false, onPress, accessibilityRole = "button", accessibilityLabel, testID }: {
   title: string;
   subtitle?: string;
   leading?: ReactNode;
@@ -47,6 +47,7 @@ export function PopoverRow({ title, subtitle, leading, trailing, selected = fals
   selected?: boolean;
   /** title in ink-3 (kit: 完了した目標) */
   muted?: boolean;
+  disabled?: boolean;
   onPress: () => void;
   accessibilityRole?: "button" | "link" | "radio";
   accessibilityLabel?: string;
@@ -54,10 +55,10 @@ export function PopoverRow({ title, subtitle, leading, trailing, selected = fals
 }) {
   const { styles } = useStyles();
   return (
-    <UiPressable accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel ?? title} accessibilityState={{ selected, checked: accessibilityRole === "radio" ? selected : undefined }} {...(accessibilityRole === "radio" ? { "aria-checked": selected } : {})} onPress={onPress} style={[styles.row, selected && styles.rowOn]} {...(testID ? { testID } : {})}>
+    <UiPressable accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel ?? title} accessibilityState={{ selected, checked: accessibilityRole === "radio" ? selected : undefined, disabled }} {...(accessibilityRole === "radio" ? { "aria-checked": selected } : {})} disabled={disabled} onPress={onPress} style={[styles.row, selected && styles.rowOn]} {...(testID ? { testID } : {})}>
       {leading}
       <View style={styles.meta}>
-        <UiText numberOfLines={2} style={[styles.title, muted && styles.titleMuted]}>{title}</UiText>
+        <UiText numberOfLines={2} style={[styles.title, (muted || disabled) && styles.titleMuted]}>{title}</UiText>
         {subtitle ? <UiText numberOfLines={1} style={styles.sub}>{subtitle}</UiText> : null}
       </View>
       {trailing}

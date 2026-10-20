@@ -51,6 +51,44 @@ test("Popover: the anchored .gmenu panel with rows (current one selected), nothi
   assert.equal(renderToHtml(<Popover visible={false} onClose={() => undefined} anchor={{ top: 0, left: 0, right: 0 }}><PopoverDivider /></Popover>), "");
 });
 
+test("PopoverRow disabled state is announced and cannot receive a press", () => {
+  const { PopoverRow } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const html = renderToHtml(<PopoverRow title="完了した目標" disabled onPress={() => undefined} />);
+  assert.match(html, /aria-disabled="true"/u);
+  assert.match(html, /disabled=""/u);
+});
+
+test("Toggle and CategoryTabs expose the same selection as their visual state on RN Web", () => {
+  const { Toggle, CategoryTabs } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const on = renderToHtml(<Toggle value onValueChange={() => undefined} accessibilityLabel="通知" />);
+  const off = renderToHtml(<Toggle value={false} onValueChange={() => undefined} accessibilityLabel="通知" disabled />);
+  assert.match(on, /aria-checked="true"/u);
+  assert.match(off, /aria-checked="false"/u);
+  assert.match(off, /aria-disabled="true"/u);
+  const tabs = renderToHtml(<CategoryTabs options={[{ key: "all", label: "すべて" }, { key: "news", label: "通知" }]} value="news" onChange={() => undefined} accessibilityLabel="分類" />);
+  assert.match(tabs, /aria-label="すべて"[^>]*aria-selected="false"|aria-selected="false"[^>]*aria-label="すべて"/u);
+  assert.match(tabs, /aria-label="通知"[^>]*aria-selected="true"|aria-selected="true"[^>]*aria-label="通知"/u);
+});
+
+test("InlineChip stays in a text line after a wrapping value", () => {
+  const { InlineChip, UiText } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const html = renderToHtml(<UiText>長い前提の値 <InlineChip label="推測" tone="apricot" /></UiText>);
+  assert.match(html, /長い前提の値\s*<span[^>]*>推測<\/span>/u);
+  assert.doesNotMatch(html, /長い前提の値[^]*?<div[^>]*>推測/u);
+});
+
+test("FullDrawer left variant mirrors its entry and rounded edge", () => {
+  const { FullDrawer, UiText } = require("../src/components/ui") as typeof import("../src/components/ui");
+  const right = renderToHtml(<FullDrawer visible title="履歴" onClose={() => undefined}><UiText>本文</UiText></FullDrawer>);
+  const left = renderToHtml(<FullDrawer visible title="履歴" side="left" onClose={() => undefined}><UiText>本文</UiText></FullDrawer>);
+  const drawerClass = (html: string) => html.match(/<div class="([^"]*r-backgroundColor-[^"]*)" style="opacity:/u)?.[1] ?? "";
+  assert.match(drawerClass(right), /r-right-/u);
+  assert.match(drawerClass(right), /r-borderTopLeftRadius-/u);
+  assert.match(drawerClass(left), /r-left-/u);
+  assert.match(drawerClass(left), /r-borderTopRightRadius-/u);
+  assert.doesNotMatch(drawerClass(left), /r-right-|r-borderTopLeftRadius-/u);
+});
+
 // R31a (R11a requests): Chip leading icon, SearchField trailing slot, IconButton solid, the full-page form container.
 test("Chip draws a 12pt leading icon before the label; SearchField keeps a trailing slot; IconButton solid", () => {
   const { Chip, SearchField, IconButton } = require("../src/components/ui") as typeof import("../src/components/ui");

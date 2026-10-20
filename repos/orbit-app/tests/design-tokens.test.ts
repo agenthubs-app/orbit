@@ -55,6 +55,7 @@ test("geometry and type follow the design scale", () => {
   );
   assert.ok(typography.body >= 14);
   assert.ok(typography.title > typography.titleSm);
+  assert.equal(typography.titleLg, 28, "b7 account completion heading has a named 28px token");
   assert.ok(typography.titleSm > typography.body);
   assert.equal(textStyles.pageTitle.fontSize, typography.title);
   assert.equal(textStyles.body.fontSize, typography.body);

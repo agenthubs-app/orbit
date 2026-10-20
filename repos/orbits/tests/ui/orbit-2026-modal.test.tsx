@@ -178,7 +178,7 @@ test("a dialog can start on a chosen control instead of its first one", async (t
 });
 
 // R31b (D 线 R20a 依赖)：b3 表单型大模态 760 / 860 / 1000（日程を提案 1000 · 送る前の確認 760 · フォロー完了 860）只加不改，已有档位宽度不变。
-test("form modal widths 760 / 860 / 1000 are added and the existing 420 stays 420", async (t) => {
+test("modal widths 520 / 760 / 860 / 1000 are available and the existing 420 stays 420", async (t) => {
   const sizesCode = await bundle(`
     import React from "react";
     import { createRoot } from "react-dom/client";
@@ -188,11 +188,30 @@ test("form modal widths 760 / 860 / 1000 are added and the existing 420 stays 42
   `);
   const page = await open(browser, sizesCode);
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
-  for (const size of [420, 560, 760, 860, 1000]) {
+  for (const size of [420, 520, 560, 760, 860, 1000]) {
     await page.evaluate((value) => (window as unknown as { show: (size: number) => void }).show(value), size);
     await page.waitForTimeout(400);
     const box = await page.getByRole("dialog", { name: `size ${size}` }).boundingBox();
     assert.equal(Math.round(box?.width ?? 0), size, `Modal size ${size}`);
+  }
+});
+
+test("Drawer can enter from the left while the default stays on the right", async (t) => {
+  const drawerCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { Drawer, Orbit2026Scope } from "./app/(app)/app/orbit-2026/ui";
+    const root = createRoot(document.getElementById("root"));
+    (window as unknown as { show: (side: "left" | "right") => void }).show = (side) => root.render(<Orbit2026Scope language="ja"><Drawer key={side} open onClose={() => undefined} title="履歴" size="sm" side={side}>本文</Drawer></Orbit2026Scope>);
+  `);
+  const page = await open(browser, drawerCode);
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  for (const side of ["right", "left"] as const) {
+    await page.evaluate((value) => (window as unknown as { show: (side: "left" | "right") => void }).show(value), side);
+    await page.waitForTimeout(400);
+    const box = await page.getByRole("dialog", { name: "履歴" }).boundingBox();
+    assert.equal(Math.round(box?.width ?? 0), 380);
+    assert.equal(Math.round(box?.x ?? -1), side === "left" ? 14 : 1440 - 14 - 380);
   }
 });
 

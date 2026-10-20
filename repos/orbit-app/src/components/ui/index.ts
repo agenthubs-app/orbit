@@ -9,7 +9,7 @@ export { ReducedMotionOverride, useReducedMotion } from "./motion";
 export { Button, type ButtonVariant } from "./Button";
 export { IconButton } from "./IconButton";
 export { Card } from "./Card";
-export { Chip, type ChipTone } from "./Chip";
+export { Chip, InlineChip, type ChipTone } from "./Chip";
 export { Avatar, AvatarStack } from "./Avatar";
 export { MacTile } from "./MacTile";
 export { ListRow } from "./ListRow";

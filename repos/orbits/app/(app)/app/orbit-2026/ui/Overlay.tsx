@@ -75,7 +75,7 @@ export function Modal({ open, onClose, title, header, description, subtitle, sub
   titleSize?: 17 | 18;
   /** R31b: false = no ✕ (keep a cancel action; Esc still closes). */
   closable?: boolean;
-  size?: 380 | 420 | 480 | 560 | 680 | 760 | 860 | 1000;
+  size?: 380 | 420 | 480 | 520 | 560 | 680 | 760 | 860 | 1000;
   top?: boolean;
   form?: boolean;
   /** R30 (only added): the ⌘K panel body draws its own rows edge to edge — kit `.cmdk` padding 10 instead of 24. */
@@ -159,7 +159,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
 // screen (no margins, no radius) — for a form that is the whole task on a phone (R12 手入力, b8).
 // Head (R31b, b4 #12 / b6 #20): title (20 / 800, `titleSize` 18 = b4's 18 bold) with an optional grey `subtitle`
 // under it (long titles wrap, the ✕ keeps its size), the ✕ is kit .rbtn (40, white round on --bg).
-export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = "lg", children, footer, fullOnPhone = false, bare = false }: {
+export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = "lg", side = "right", children, footer, fullOnPhone = false, bare = false }: {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -167,6 +167,7 @@ export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = 
   subtitle?: string;
   titleSize?: 18 | 20;
   size?: "lg" | "md" | "sm";
+  side?: "left" | "right";
   children: ReactNode;
   footer?: ReactNode;
   fullOnPhone?: boolean;
@@ -177,7 +178,7 @@ export function Drawer({ open, onClose, title, subtitle, titleSize = 20, size = 
   const copy = useStandardCopy();
   if (!open) return null;
   return (
-    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}`}>
+    <DialogFrame onClose={onClose} labelledBy={`${id}-title`} scrimClassName={`${styles.scrim} ${styles.drawerScrim}`} className={`${styles.drawer} ${styles[`drawer_${size}`]}${side === "left" ? ` ${styles.drawerLeft}` : ""}${fullOnPhone ? ` ${styles.drawerFullPhone}` : ""}${bare ? ` ${styles.drawerBareFrame}` : ""}`}>
       {bare ? <h2 id={`${id}-title`} className={styles.srOnly}>{title}</h2> : (
         <div className={styles.drawerHead}>
           <div className={styles.drawerTitleBlock}>

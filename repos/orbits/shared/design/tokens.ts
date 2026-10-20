@@ -232,6 +232,7 @@ export const designFont = {
     display: 38,
     number: 22,
     title: 24,
+    titleLg: 28,
     titleSm: 20,
     cardTitle: 14.5,
     body: 14,

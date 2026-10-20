@@ -30,6 +30,13 @@ export function Chip({ label, tone = "neutral", icon, suggested = false, expand 
   );
 }
 
+/** A status chip that can follow wrapped text on the same line inside UiText. */
+export function InlineChip({ label, tone = "neutral" }: { label: string; tone?: ChipTone }) {
+  const { colors, styles } = useStyles();
+  const chip = chipColors(colors)[tone];
+  return <UiText style={[styles.inlineChip, { backgroundColor: chip.background, color: chip.text }]}>{label}</UiText>;
+}
+
 // The 01-system specimen uses the raw kit ink; product chips keep readable *Text tokens.
 function kitChipText(colors: OrbitColors): Record<ChipTone, string> {
   return {
@@ -62,6 +69,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   withIcon: { flexDirection: "row", alignItems: "center", gap: 4 },
   // kit .chip: 11 / 700 at the body line-height 1.5 → 22.5 tall with padding 3.
   label: { fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+  inlineChip: { borderRadius: 999, fontSize: 11, fontWeight: "700", lineHeight: 16.5, paddingHorizontal: 6, paddingVertical: 1 },
   suggested: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, paddingRight: 4 },
   suggestedCheck: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   suggestedCheckText: { color: colors.ink2, fontSize: 10, fontWeight: "700" },

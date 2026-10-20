@@ -29,7 +29,7 @@ export function CategoryTabs<Key extends string>({ options, value, onChange, acc
       {options.map((option) => {
         const selected = option.key === value;
         return (
-          <UiPressable key={option.key} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} hitSlop={CAT_HIT_SLOP} onPress={() => onChange(option.key)} style={[styles.cat, selected && styles.catOn]}>
+          <UiPressable key={option.key} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} aria-selected={selected} hitSlop={CAT_HIT_SLOP} onPress={() => onChange(option.key)} style={[styles.cat, selected && styles.catOn]}>
             <UiText numberOfLines={1} style={[styles.label, selected && styles.catLabelOn]}>{option.label}</UiText>
             {option.count !== undefined ? <UiText style={[styles.count, selected && styles.catLabelOn]}>{option.count}</UiText> : null}
           </UiPressable>

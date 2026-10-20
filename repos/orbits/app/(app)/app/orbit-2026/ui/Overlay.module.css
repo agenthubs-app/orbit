@@ -28,6 +28,7 @@
 .w380 { width: min(380px, calc(100vw - 32px)); }
 .w420 { width: min(420px, calc(100vw - 32px)); }
 .w480 { width: min(480px, calc(100vw - 32px)); }
+.w520 { width: min(520px, calc(100vw - 32px)); }
 .w560 { width: min(560px, calc(100vw - 32px)); }
 .w680 { width: min(680px, calc(100vw - 32px)); }
 /* b3 form modals (.wmodal.form with inline widths): 送る前の確認 760, フォロー完了 860, 日程を提案 1000. */
@@ -124,6 +125,7 @@
 .drawer_lg { width: min(600px, calc(100vw - 28px)); }
 .drawer_md { width: min(520px, calc(100vw - 28px)); }
 .drawer_sm { width: min(380px, calc(100vw - 28px)); }
+.drawerLeft { left: 14px; right: auto; animation-name: drawerInLeft; }
 @media (max-width: 1279px) {
   .drawer_lg { width: min(520px, calc(100vw - 28px)); }
 }
@@ -213,6 +215,7 @@
 @keyframes dialogIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } }
 @keyframes topIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
 @keyframes drawerIn { from { opacity: 0; transform: translateX(24px); } }
+@keyframes drawerInLeft { from { opacity: 0; transform: translateX(-24px); } }
 
 /* Reduce Motion: overlays only fade. */
 @media (prefers-reduced-motion: reduce) {
