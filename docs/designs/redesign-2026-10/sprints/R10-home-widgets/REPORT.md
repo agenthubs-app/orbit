@@ -16,7 +16,7 @@
 | 01 开工与归属 | **部分**。远端、依赖、画板和预检已确认；用户要求全量仅在收口跑一次，故采用 R20b 最终日志作开工可比基线，未声称开工时另跑全量。 |
 | 02 D-01 live | **通过定向**。本地 PG actor 隔离、A/B、CAS、幂等、同 ID 异体和 409 snapshot 测试；mock 仍 sample，live 无演示。`sync:contract` 生成 App 副本。证据 `d01-verified.log`、跨端 revision 回读。 |
 | 03 编辑全链 | **部分**。Web browser 验证首开五卡边界不跳变、排序/尺寸/移除撤销/库加回和保存；App 原生长按菜单（編集/小中/移除）、方向按钮与水平拖动重排、尺寸切换、移除后即时撤销、库按类/搜索、选择尺寸并加回均已操作。`native-edit-chain.json` revision 7 和 `native-drag-verified.json` revision 8 证实 App 数组保存而 Web 数组不变；`native-menu-chain.json` 记录菜单指定尺寸 revision 10、移除/撤销 revision 13→14；复开未重复添加。缺完整原生逐步录像及键盘/VoiceOver 全链。两端限制唯一 key、上限 10、库不展示 deadline。 |
-| 04 Web 首页 | **部分**。五卡/空态/右栏/链接已接；实测 1024 抽屉宽 380、Esc 归焦，390 搜索隐藏；1024 对板 light/dark 仍 FAIL。 |
+| 04 Web 首页 | **部分**。五卡/空态/右栏/链接已接；实测 1024 抽屉宽 380、Esc 归焦，390 搜索隐藏并留实屏；空态引导联系人、Task 计划、活动、受信箱入口逐一点入正确路由。少/多数据态与 1024 对板仍 FAIL。 |
 | 05 App 首页 | **部分**。新路由使用 `AppScreen inset="kit"` 和 UiText；原生登录后看到日期、问候、铃铛、编辑及五卡；Task 返回后首页首卡和本地布局刷新。铃铛点入受信箱、再点「ホーム」返回首页已实测，但隔离账号受信箱显示读取失败，滚动位置场景未证；旧 dashboard 62/62 回归。 |
 | 06 今日やること | **待上游与联验**。首页读同 actor 的 `todo/page`、`schedule-items`，问题卡复用 R16；R20a 最终 REPORT 的 Task 原生/scroll、像素和全量仍有未闭合项，首页↔Task 完成/回答后的同源回读未满足 SC 前置，不能记完成。 |
 | 07 プラン スコア | **部分**。`current=null` 显示目标入口；两端选择直接 summary，event 段文案为イベント枠；纯测试含 `−10/0/+10`，无三态同 actor 截图或撤销后刷新证据。N13 是 Task 参考板，未算首页门禁。 |
@@ -26,7 +26,7 @@
 | 11 组件库四块 | **部分**。Web/App 已实现判断待ち、今週、イベント推薦、メモ，只有卡片挂载时读对应源，类别与文本本地过滤；App 库原生选中尺寸并添加判断待ち已回读，事件分类只剩事件推荐、输入 `Xyz` 后列表过滤为空（`app-native-library-filter.png`）；全部四块逐项加回/移除重加操作证据不足；b11 #23 三轮像素 FAIL。 |
 | 12 三步与铃铛 | **部分**。共用纯投影独立提交 `08596eae5`，读联系人/目标/计划和 guideState v2 完成闩锁，不受示例开关影响；只读 API 来源失败 503，不猜 0/3。App/Web 空态实屏为 0/3；逐步到 3/3、老用户联验未全数完成。铃铛到受信箱再返回首页已实测，但隔离账号的受信箱读取失败。 |
 | 13 右栏与每天一问 | **部分**。Web 建议最多三条、去重且 count=可见数，1024 壳按钮接数；R16 问题卡挂在今日卡里。E 线会话摘要和 `AgentDock` 定位未在 D 所有权内完成，问题卡回答后跨端核对未做。 |
-| 14 离线/409/单源失败 | **部分**。App 缓存按 actor+baseURL 隔离，断网草稿保留 mutationId，恢复 PUT；纯测试证明 409 采用完整服务器版且不重写。真实同 actor Web/App CAS 链验证 revision 1→4、旧 revision 409、两数组独立；原生停止本端 Next→离线编辑→重启 App 草稿仍在→恢复 Next 后 revision 6 上传并解除离线标记，见 `native-offline-layout.json`。单源失败的两端实屏仍待核验。 |
+| 14 离线/409/单源失败 | **部分**。App 缓存按 actor+baseURL 隔离，断网草稿保留 mutationId，恢复 PUT；纯测试证明 409 采用完整服务器版且不重写。真实同 actor Web/App CAS 链验证 revision 1→4、旧 revision 409、两数组独立；原生停止本端 Next→离线编辑→重启 App 草稿仍在→恢复 Next 后 revision 6 上传并解除离线标记，见 `native-offline-layout.json`。Web 计划 summary 注入 503 的实屏显示该卡重试、其余四卡保留；App 单源失败实屏仍待核验。 |
 | 15 旧屏/像素/不退步 | **未过**。Web/App 首页、1024 壳、编辑、库和深色已比，均有未归因超阈与缺块；其他画面与 ≥20% 抽查仍需交接。组件库已交付，不能写「等组件库」。逐屏结果见下。 |
 | 16 全量与交接 | **部分**。Web 全量 7,934 中 10 fail、App 全量 3,285 中 24 fail；逐名新增分别 5、11，已作定向修复并保留全量红日志。跨端布局回读已完成，功能同源仍不等于全业务对齐。 |
 
@@ -71,7 +71,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 
 **清单中未取得可比结果的画面：** W-R10-02（`web.html` #1 少量）；A-R10-02/03/03S（`app.html` #1/#2/#3 少量、多量、滚动）。这些画面均为**未跑门禁**，不是通过或归因后的失败。少量/多量要求的同 actor 计划、活动和三种秘书提醒在隔离库中不存在。其余清单画面均已至少跑一轮但仍 FAIL；上表中的填充态运行也不能用不匹配的空 actor 获得 `[data]` 通过。重比需先补真实或明确标为 mock 的一致 fixture，再执行对应操作链；仍须逐带归因和通过画面 ≥20% 抽查。
 
-**设计稿无的状态：** Web 390 只留下 `web-home-shell-check.log` 的交互记录（搜索不显示），没有截图；App 原生离线编辑/重开/恢复有 `native-offline-layout.json` 的操作和回读记录，未取得独立截图；409、单源失败、首页负分及其他无板深色态均没有合格的实屏图。它们不进入像素分母，但对应的截图验收仍开放。
+**设计稿无的状态：** Web 390 已留 `web-390-no-board.png`（五卡可见、搜索隐藏）；Web 单来源失败已留 `web-one-source-failure-no-board.png`，计划 summary 503 时仅计划卡显示错误与重试，其余四卡仍在，探针回执见 `web-home-supplement.json`。空态引导联系人、Task 计划、活动、受信箱的逐个导航回执见 `web-home-links.json`；第一次链接探针误选今日卡的计划引导链接，修正为精确 href 后四项通过。App 原生离线编辑/重开/恢复有 `native-offline-layout.json` 的操作和回读记录，未取得独立截图；409、App 单源失败、首页负分及其他无板深色态仍没有合格实屏图。无板状态不进入像素分母。
 
 ## 通用口径 G01～G26 逐项
 
@@ -88,13 +88,13 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 | G09 | 预检与像素只看产品内业务界面；手机系统画框排除，**已按范围处理**。 |
 | G10 | Web 首页挂现有 `ShellPage` 插槽；1024 抽屉行为实测，视觉仍红，**部分**。 |
 | G11 | 首页沿用 `phoneFold` 右栏；1024 宽 380、Esc 与焦点回归实测，**部分**。 |
-| G12 | 390 实测搜索不可见，`web-home-shell-check.log`，**通过交互**。 |
+| G12 | 390 实测搜索不可见，`web-home-shell-check.log` 与 `web-390-no-board.png`，**通过交互并留实屏**。 |
 | G13 | 首页 CSS 修正 dark surface/text token；bottom inset/层级尚无全态画板通过，**部分**。 |
 | G14 | kiosk/公开页不属于本 Sprint；首页仍是已登录路由，未改公开入口，**范围外核对**。 |
 | G15 | 新 App `/home` 使用 `AppScreen inset="kit"`；原生浅/深实屏，**通过结构、像素未过**。 |
 | G16 | 一级底栏沿用 App 壳；二级转场与返回滚动缺完整原生操作链，**部分**。 |
 | G17 | 新 App 首页文本用 UiText，原生空态已看；字形像素仍红，**部分**。 |
-| G18 | 未实现/单源失败由各卡降级，D-01 503 fallback 分支有定向测试；两端实屏失败态未取得，**部分**。 |
+| G18 | 未实现/单源失败由各卡降级，D-01 503 fallback 分支有定向测试；Web 计划来源单独 503 实屏证实该卡重试而其余四卡保留，App 实屏未取得，**部分**。 |
 | G19 | D-01 响应宽进、PUT 严出，schema parity 与 `sync:contract` 定向通过，**通过契约**。 |
 | G20 | 旧 dashboard 和 view-model 尚有调用，因此未删文件或放宽 allowlist；旧屏不退步仅定向回归，**部分**。 |
 | G21 | Web 新首页使用 Orbit2026Scope/CSS Module；暗色 token 已修，像素未过，**部分**。 |
@@ -155,4 +155,4 @@ README、HANDOFF、DEFERRED-A、决定表和 screen-ownership 的汇总条目由
 - **收口命令：** Web 在 `repos/orbits` 以 `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` 经 `heavy.sh d` 跑一次完整 `npm test`（`web-full-final.log`，exit 1）、随后 `npm run typecheck`（`web-typecheck-all-final.log`，exit 0）、`npm run typecheck:app`（`web-typecheck-final.log`，exit 0）、`npm run lint`（`web-lint-final.log`，exit 0）及 copy QA（`web-copy-final.json`，exit 1）。App 在 `repos/orbit-app` 同 locale 经 `heavy.sh d` 跑一次完整测试（`app-full-final.log`，exit 1）、`npx tsc --noEmit`（`app-tsc-final.log`，exit 0）及 copy QA（`app-home-copy-final.json`，exit 1）。全域文案 QA `copy-global-final.json` exit 1。`heavy.sh` 的具体命令和输出均在本地证据目录；没有向全量测试传全局 DB URL。修复全量新失败后的定向日志与逐名比较见测试节，没有重跑第二次完整全量。
 - **结论：** SC-02 的本地 live 合约已定向通过；Web/App 类型检查和 Web lint 为 0；两端完整测试仍红，原全量日志各有 5/11 个新失败名，定向修复后逐名的新失败均通过，但完整全量没有二次确认。copy QA 全域仍红，新增首页文案问题为 0。所有已比画面仍有未归因超阈带和缺块，SC-15 **FAIL**；不能视作发布或业务验收完成。
 - **清理：** 本端启动的 Next `3510`、Metro `8085`、画板静态服务 `3357` 和 Orbit Line D 模拟器已停止；Next 生成的 `next-env.d.ts`、`tsconfig.json` 仅按这两个路径恢复。`3000/3500` 未操作。隔离库和外部证据保留；预先存在的未跟踪 `HANDOFF-CLAUDE-2026-10-19.md` 未改。
-- **停点：** 剩余的同 actor 业务验收需要 R20a Task 稳定交付、E 线摘要/定位、Q5 改稿和可复现的少/多数据 fixture；已有画面仍需视觉修正/逐带归因。SC-03～16 的开放项以上表为准。报告提交只交付本地审阅证据，不将开放项关闭，也不触发 push、生产或部署。
+- **停点：** 剩余的同 actor 业务验收需要 R20a Task 稳定交付、E 线摘要/定位、Q5 改稿和可复现的少/多数据 fixture；已有画面仍需视觉修正/逐带归因。SC-03～16 的开放项以上表为准。Web 390、四个空态入口和单来源失败已独立补证，不能替代少/多数据态、App 单源失败或像素通过。报告提交只交付本地审阅证据，不将开放项关闭，也不触发 push、生产或部署。
