@@ -65,7 +65,7 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
   await page.getByRole("searchbox", { name: "ウィジェットを検索" }).fill("メモ");
   await page.locator("[data-rail]").getByRole("button", { name: "+ 小" }).click();
   assert.equal(await page.locator("[data-widget=memo]").count(), 1);
-  await page.locator("[data-header]").getByRole("button", { name: "完了" }).click();
+  await page.locator("main").getByRole("button", { name: "完了" }).click();
   await page.waitForFunction(() => (window as any).writes.length === 1);
   const saved = await page.evaluate(() => (window as any).layout);
   assert.equal(saved.web[0].key, "planScore");

@@ -104,7 +104,7 @@ function HomeWorkspace() {
       {state === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
       {state !== "error" && state !== "loading" ? <>
         {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><Button label="×" aria-label={t("close")} variant="ghost" size="sm" onClick={() => void dismissHint()} /></div> : null}
-        {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><Button label={t("done")} variant="ghost" size="sm" onClick={() => setEditing(false)} /></div> : null}
+        {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><Button label={t("done")} variant="ghost" size="sm" onClick={() => void finish()} /></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
           {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small}`} data-widget={slot.key}
             draggable={editing} onDragStart={() => setDragged(slot.key)} onDragOver={(event) => { if (editing) event.preventDefault(); }}
