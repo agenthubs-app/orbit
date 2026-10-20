@@ -98,16 +98,21 @@ test("opening and closing a task uses the detail drawer and changes only the tas
   assert.deepEqual(Object.fromEntries(location.current().searchParams), { tab: "todo", view: "all", foo: "keep" });
 });
 
-test("empty task list offers a real manual creation entry without dead source tiles", async t => {
+test("empty task list links to the three existing sources and keeps manual creation in the main action", async t => {
   const { fetcher } = fixture({ empty: true });
   t.mock.method(globalThis, "fetch", fetcher);
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TaskListWorkspace language="ja" date="2026-10-17" timeZone="Asia/Tokyo" />); });
   t.after(() => act(() => root.unmount()));
   assert.match(content(root!), /やることを、ここに集めます/);
-  assert.ok(root!.root.findAllByProps({ "data-task-source": "manual" }).length === 1);
+  const links = root!.root.findAll(node => node.props["data-task-source"]);
+  assert.deepEqual(links.map(link => [link.props["data-task-source"], link.props.href]), [
+    ["contacts", "/app/contacts"],
+    ["memo", "/app/tasks?tab=memo"],
+    ["calendar", "/app/tasks?tab=calendar"],
+  ]);
   assert.doesNotMatch(content(root!), /名刺から作る|音声メモから|カレンダー連携/);
-  await act(async () => root!.root.findAllByProps({ "data-task-source": "manual" })[0]!.props.onClick());
+  await act(async () => buttons(root!, "タスクを追加")[0]!.props.onClick());
   assert.ok(root!.root.findAllByType("form").some(form => form.props.onSubmit));
 });
 

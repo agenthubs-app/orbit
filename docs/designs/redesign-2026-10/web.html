@@ -579,20 +579,19 @@ function wTaskTodo() {
       <table class="table"><tbody>${wtd('渡辺 翔さんに紹介のお礼', 'Nexa Robotics · 10/5 の紹介', '', '')}${wtd('加藤 健太さんへ 3社紹介のお礼', 'アクシス商事', '', '')}${wtd('森 恭平さんに 15分の紹介を依頼', 'プラン Step 3 · VC 候補', '', '')}</tbody></table></div></div>`;
 }
 const MEMOS = [
-  ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
+  ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。次回までに月次の推移を用意する。', [['tag', '面談']]],
+  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人に調達の進み具合を話す。', [['tag', '自由メモ']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
-  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
+  ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。', [['tag', '面談']]],
 ];
-const memoCard = ([k, e, c, t, d, p, tags], on) => `<div class="memo ${k}" ${on ? 'style="box-shadow:0 0 0 2px var(--plum-500)"' : ''}><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([y, v]) => y === 'p' ? `<span class="at"><span class="av ${v.c}">${v.i}</span>${v.n}</span>` : y === 'e' ? `<span class="at ev">@${v}</span>` : `<span class="chip">${v}</span>`).join('')}</div></div>`;
+const memoCard = ([k, e, c, t, d, p, tags], on) => `<div class="memo ${k}" ${on ? 'style="box-shadow:0 0 0 2px var(--plum-500)"' : ''}><div class="mh"><span class="emo sm ${c}">${e}</span><b>${t}</b><time>${d}</time></div><p>${p}</p><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${tags.map(([, v]) => `<span class="chip">${v}</span>`).join('')}</div></div>`;
 function wTaskMemo() {
   return wTaskHead(3) + `<div class="wgrid">
-    <div class="span5 k-wmlist" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:start;min-width:0"><div class="input" style="height:40px">${ic('search', 'sm')}メモを検索 · @人 · @イベント</div><div class="row k-wmcats" style="gap:6px"><span class="cat on">すべて <small>12</small></span><span class="cat">面談 <small>7</small></span><span class="cat">自由メモ <small>5</small></span></div>${MEMOS.map((m, i) => memoCard(m, i === 0)).join('')}</div>
+    <div class="span5 k-wmlist" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-content:start;min-width:0"><div class="input" style="height:40px">${ic('search', 'sm')}メモを検索</div><div class="row k-wmcats" style="gap:6px"><span class="cat on">すべて <small>4</small></span><span class="cat">面談 <small>2</small></span><span class="cat">自由メモ <small>2</small></span></div>${MEMOS.map((m, i) => memoCard(m, i === 0)).join('')}</div>
     <div class="card span7 k-wmopen"><div class="row between"><div class="row" style="gap:8px"><span class="emo sm apricot">🤝</span><b style="font-size:17px">高橋 美咲さん · 2回目の面談</b></div><span class="lbl">10/6 · 面談メモ</span></div>
-      <div class="row" style="gap:6px;margin-top:10px"><span class="at"><span class="av c2">高</span>高橋 美咲</span><span class="at ev">@青葉ベンチャーズ オフィス</span><span class="chip">面談</span></div>
-      <div style="font-size:13.5px;line-height:1.85;margin-top:14px;color:var(--ink)">DD の資料リストを受領。11月に IC 予定。<br>「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。<br>聞けたこと：① リードを取る条件（ARR・成長率）② 最近見送った案件の理由</div>
-      <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
-      <div class="lbl" style="margin-top:12px">記録済みの面談メモ · 編集はメモ詳細から</div></div></div>`;
+      <div class="row" style="gap:6px;margin-top:10px"><span class="chip">面談</span></div>
+      <div style="font-size:13.5px;line-height:1.85;margin-top:14px;color:var(--ink)">DD の資料リストを受領。11月に IC 予定。<br>次回までに月次の推移を用意する。</div>
+      <div class="lbl" style="margin-top:12px">保存済みの手入力メモ · 編集は詳細から</div></div></div>`;
 }
 /* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
@@ -694,7 +693,7 @@ h += WB('Task · カレンダー', 'many', { nav: 4, body: wTaskCal(), rail: ass
 h += WB('Task · To-do', 'many', { nav: 4, body: wTaskTodo(), rail: assistRail('many', 'Task') }, [
   ['.k-wtdpend', 0, '判断待ち（原首页卡）：行悬停出现「明日 / 完了」'],
   ['.k-wstack .nst-n', 0, '今日の一手（原首页堆叠卡）：点 › 切换，只到草稿'],
-  ['.k-wtdfollow', 0, 'フォロー：跟进任务按期限；勾选完成，完成的划线留到当天结束'],
+  ['.k-wtdfollow', 0, 'フォロー：只列未完成任务，完成后即时退出列表；无正式期日来源的行不画期日 chip'],
   ['.k-wtadd', 0, '右上「To-do を追加」（按页签变：予定 / To-do / 目標 / メモ）'],
 ]);
 h += WB('Task · プラン（目標入力）', '作废 · 以 b12 W-R23-01-1440 / 02a–c / 01-390 为准（2026-10-12）', { nav: 4, body: plan('empty'), rail: assistRail('empty') }, [
@@ -726,10 +725,10 @@ h += WB('人物タイプ詳細 · VC', 'few', { nav: 4, body: planType(), rail: 
   ['.k-wvroute', 0, '紹介ルート贴在表格下方：伊藤さん经由 VC パートナー 3 名；依頼文 = 草稿'],
   ['.k-wvevs .v22ev', 0, '右栏：这一类型能见到的活动（固定 5 项分数），参加也给イベント枠 +5'],
 ]);
-h += WB('Task · メモ', 'many', { nav: 4, body: wTaskMemo(), rail: assistRail('many', 'Task') }, [
-  ['.k-wmcats', 0, '分类 すべて / 面談 / 自由メモ + 搜索（@人 · @イベント）'],
-  ['.k-wmopen .at', 0, '打开的メモ：@人 / @イベント 是链接；面談メモ 关联到連絡先「やりとり」'],
-  ['.k-wmjudge', 0, '面談メモ 可作为プラン「話せた」判定的依据（3 问中 2 问以上）；开关由用户决定'],
+h += WB('Task · メモ', 'many', { nav: 4, body: wTaskMemo(), rail: assistRail('empty') }, [
+  ['.k-wmcats', 0, '分类 すべて / 面談 / 自由メモ + 标题/正文搜索；此示例四条均为手写且未绑定联系人或活动'],
+  ['.k-wmopen', 0, '详情只显示已保存的手写正文和分类；不按正文提到的人名推断关联或计划分数'],
+  ['.rail', 0, '当前没有真实下一步建议时只显示 iOrbit 说明，不画草稿或自动创建动作'],
 ]);
 h += sec('主催', '主办方运营台收进左栏「主催」');
 h += board('主催 · 運営', '', webFrame({ pins: pin(1, '.k-htabs') + pin(2, '.mainhead .btn'), nav: 'host', head: '', body: hostPage() }), ['运营台六页签（概要/マッチング/参加者/受付/申込設定/レポート）放在标题下方，与 ⑥ 主办运营台同构', '右上 共同運営者 头像 + 按钮 → 共同運営者抽屉（⑥ A）；左上 ‹ → 運営センター']);

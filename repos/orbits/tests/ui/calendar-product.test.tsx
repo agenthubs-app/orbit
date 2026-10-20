@@ -75,7 +75,7 @@ test("browser: external detail is read-only and week/day controls read the selec
   await page.getByRole("button", { name: "次の期間", exact: true }).click();
   await page.getByRole("tab", { name: "日", exact: true }).click();
   await page.waitForFunction(() => window.calendar.calls.some(call => call.path.includes("from=2030-04-08T00%3A00%3A00.000Z") && call.path.includes("to=2030-04-09T00%3A00%3A00.000Z")));
-  assert.ok(await page.locator("[data-calendar-day-viewport]").evaluate(node => node.scrollTop) >= 360, "a past selected day opens near the working hours");
+  assert.equal(await page.locator("[data-calendar-day-list]").getAttribute("data-calendar-date"), "2030-04-08");
   assert.equal(await page.evaluate(() => window.calendar.calls.filter(call => call.method !== "GET").length), 0);
 });
 

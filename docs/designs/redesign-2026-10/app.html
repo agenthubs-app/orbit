@@ -645,13 +645,12 @@ function taskTodo(s) {
       <div style="font-size:18px;font-weight:800;margin-top:8px">やることは、まだありません</div>
       <div class="sub" style="margin:6px 0 16px;line-height:1.6">人脈が入ると、<b>判断待ち</b>・<b>今日の一手</b>・<b>フォロー</b>がここに自動で並びます。自分で追加もできます。</div>
       <button class="btn primary block" style="height:48px">${ic('scan', 'sm')}名刺をスキャン</button><button class="btn ghost block" style="margin-top:8px">${ic('plus', 'sm')}To-do を追加</button></div>
-    <div class="card" style="margin-top:14px"><div class="card-h"><h3>並ぶとこう見えます <span class="sample-tag">サンプル</span></h3></div><div class="faded">${tdRow('鈴木さんに名刺交換のお礼', '今日の一手 · 下書きまで', '今日', 'apricot')}${tdRow('石川 陽介さんとは、どこで？', '判断待ち · ひとつ選ぶだけ', '1問', 'lav')}</div></div>`;
+    <div class="card" style="margin-top:14px"><div class="card-h"><h3>並ぶとこう見えます <span class="sample-tag">サンプル</span></h3></div><div class="faded">${tdRow('鈴木さんに名刺交換のお礼', '今日の一手 · 下書きまで', '', '')}${tdRow('石川 陽介さんとは、どこで？', '判断待ち · ひとつ選ぶだけ', '', '')}</div></div>`;
   return taskHead(1) + `<div class="td-h k-tdpend" style="margin-top:4px">判断待ち <span class="chip coral">4</span><span class="more">すべて${ic('right', 'sm')}</span></div>
-    <div class="stack">${swipeRow(`<div class="row"><div class="av sm c4">山</div><div style="flex:1;min-width:0"><b style="font-size:13px">山本 彩さんに資料を再送</b><div class="lbl">東都キャピタル · 24日間 未連絡</div></div><span class="chip coral">期限超過</span></div>`, true)}${swipeRow(`<div class="row"><div class="av sm c3">鈴</div><div style="flex:1;min-width:0"><b style="font-size:13px">鈴木さんと PoC 日程を確定</b><div class="lbl">候補 3枠を提案済み</div></div><span class="chip apricot">今日</span></div>`)}</div>
+    <div class="stack">${swipeRow(`<div class="row"><div class="av sm c4">山</div><div style="flex:1;min-width:0"><b style="font-size:13px">山本 彩さんに資料を再送</b><div class="lbl">東都キャピタル · 24日間 未連絡</div></div></div>`, true)}${swipeRow(`<div class="row"><div class="av sm c3">鈴</div><div style="flex:1;min-width:0"><b style="font-size:13px">鈴木さんと PoC 日程を確定</b><div class="lbl">候補 3枠を提案済み</div></div></div>`)}</div>
     <div class="td-h k-tdnexth">今日の一手 <span class="lbl">3件 · 下書きまで</span></div>${nstack(true, 'k-tdnext')}
-    <div class="td-h k-tdfollow">フォロー <span class="lbl">期限順</span></div>
-    <div class="card" style="padding:2px 14px">${tdRow('渡辺 翔さんに紹介のお礼', 'Nexa Robotics · 10/5 の紹介', '明日', 'apricot')}${tdRow('加藤 健太さんへ 3社紹介のお礼', 'アクシス商事', '今週', '')}${tdRow('森 恭平さんに 15分の紹介を依頼', 'プラン Step 3 · VC 候補', '10/12', '')}${tdRow('伊藤さんに面談の日程を送る', '完了 · 今日 8:40', '', '', true)}</div>
-    <div class="td-h">完了 <span class="lbl">今週 6件</span><span class="more">表示${ic('down', 'sm')}</span></div>`;
+    <div class="td-h k-tdfollow">フォロー</div>
+    <div class="card" style="padding:2px 14px">${tdRow('渡辺 翔さんに紹介のお礼', 'Nexa Robotics · 10/5 の紹介', '', '')}${tdRow('加藤 健太さんへ 3社紹介のお礼', 'アクシス商事', '', '')}${tdRow('森 恭平さんに 15分の紹介を依頼', 'プラン Step 3 · VC 候補', '', '')}</div>`;
 }
 const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
@@ -804,7 +803,7 @@ html += boards([
   AP('Task · To-do', 'many', { body: taskTodo('many'), tab: 4 }, [
     ['.k-tdpend', 0, '判断待ち（原首页卡）：行左滑 →「明日」「完了」，首行自动演示一次；「すべて」→ 判断待ち 一覧（③ 3）'],
     ['.k-tdnexth', 0, '今日の一手（原首页卡片堆叠）：点 › 或左右滑切换，按钮只到草稿，送信はあなたが行います'],
-    ['.k-tdfollow', 0, 'フォロー = 跟进任务（お礼・紹介依頼・資料送付），按期限排序，圆圈勾选完成；完成的划线留到当天结束'],
+    ['.k-tdfollow', 0, 'フォロー = 跟进任务（お礼・紹介依頼・資料送付）；来源未给出期日时不画期日 chip，完成项不混在 open 列表'],
     ['.k-tadd', 0, '右上「＋」= 当前段的新建（To-do / 予定 / メモ）'],
   ]),
   AP('Task · To-do', 'empty', { body: taskTodo('empty'), tab: 4 }, [

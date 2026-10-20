@@ -14,12 +14,13 @@
 .emptyIntro { align-items: flex-start; display: flex; gap: var(--space-20); }
 .emptyGuideActions { align-items: center; display: flex; gap: var(--space-10); margin-top: var(--space-18); }
 .emptyGuideActions > span { color: var(--ink-3); font-size: var(--fs-label); }
-.emptyGuideActions kbd { background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: var(--r-sm); padding: 1px var(--space-6); }
-.emptyGuide h2 { font-size: var(--fs-title); margin: 0; }
+.emptyGuideActions kbd { font-family: inherit; font-weight: 700; }
+.emptyGuideActions button { min-height: 46px; }
+.emptyGuide h2 { font-size: var(--fs-title); font-weight: 800; margin: 0; }
 .emptyGuide p { color: var(--ink-2); font-size: var(--fs-body-sm); margin: var(--space-4) 0 0; }
-.emptyMark { font-size: var(--fs-emoji-jumbo); line-height: var(--lh-body); }
-.emptySources { display: grid; }
-.emptySource { align-items: center; background: var(--surface); border-radius: var(--r-card-web); color: var(--ink); display: flex; gap: var(--space-12); min-width: 0; padding: var(--space-16); text-align: left; width: 100%; }
+.emptyMark { font-size: var(--fs-display-lg); line-height: 1.5; }
+.emptySources { display: grid; gap: var(--space-18); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+.emptySource { align-items: center; background: var(--surface); border-radius: var(--r-card-web); color: var(--ink); display: flex; gap: var(--space-12); min-width: 0; padding: var(--space-16); text-align: left; text-decoration: none; width: 100%; }
 .emptySource > span:nth-child(2) { display: grid; flex: 1; gap: var(--space-4); }
 .emptySource small { color: var(--ink-3); }
 .emptySourceIcon { align-items: center; background: var(--mac-lav); border-radius: var(--r-card-web); display: inline-flex; font-size: var(--fs-emoji-lg); height: 40px; justify-content: center; width: 40px; }

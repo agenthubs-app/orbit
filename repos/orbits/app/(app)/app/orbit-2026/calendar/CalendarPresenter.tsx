@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { Button, Card, Chip, EmptyState, IconButton, RetryCard, Segmented, Skeleton, useScopeLanguage } from "../ui";
 import { taskCopy } from "../copy/task";
 import { pickCopy } from "../copy/types";
@@ -35,13 +34,6 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   const googleStatus = externalState === "loading" ? <span role="status" className={styles.note}>{t(taskCopy.calendarLoadingGoogle)}</span> : failedGoogle ? <RetryCard title={t(taskCopy.calendarGoogleUnavailable)} onRetry={onRetry} /> : externalState === "ready" ? connect ? <div className={styles.row}><span className={styles.note}>{t(connection === "needs_reconnect" ? taskCopy.calendarGoogleReconnect : taskCopy.calendarGoogleNotConnected)}</span><a href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarGoogleConnect)}</a></div> : <><Chip label={t(taskCopy.calendarGoogleConnected)} tone="teal" /><span className={styles.note}>{t(taskCopy.calendarGoogleReadOnly)}</span></> : null;
   const readStatus = internalState === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={onRetry} /> : internalState === "loading" ? <Skeleton lines={2} onRetry={onRetry} /> : null;
   const controls = <Segmented label={t(taskCopy.calendarTitle)} value={mode} onChange={onModeChange} segments={[{ key: "day", label: t(taskCopy.calendarDay) }, { key: "week", label: t(taskCopy.calendarWeek) }, { key: "month", label: t(taskCopy.calendarMonth) }]} />;
-  const dayViewport = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (mode !== "day" || !dayViewport.current) return;
-    const localHour = Number(new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
-    const firstHour = date === today ? Math.max(8, Math.min(18, localHour - 1)) : 8;
-    dayViewport.current.scrollTop = firstHour * 60 * 0.8;
-  }, [date, mode, timeZone, today]);
   const emptyMonthGuide = mode === "month" && internalState === "ready" && externalState === "ready" && connection === "not_connected" && !partial && !visible.some(day => day.items.length);
   if (mode === "week") {
     const selected = visible.find(day => day.date === date) ?? visible[0];
@@ -70,6 +62,28 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
       {internalState === "ready" && externalState === "ready" && connection === "connected" && !partial && !visible.some(day => day.items.length) ? <EmptyState title={t(taskCopy.calendarEmpty)} /> : null}
     </section>;
   }
+  if (mode === "day") {
+    const selected = visible.find(day => day.date === date) ?? visible[0];
+    const timed = selected?.timed ?? [];
+    const groups = [
+      { label: t(taskCopy.calendarMorning), items: timed.filter(item => item.startMinute < 720) },
+      { label: t(taskCopy.calendarAfternoon), items: timed.filter(item => item.startMinute >= 720 && item.startMinute < 1080) },
+      { label: t(taskCopy.calendarEvening), items: timed.filter(item => item.startMinute >= 1080) },
+    ];
+    const overlap = timed.flatMap((item, index) => timed.slice(index + 1).filter(next => next.startMinute < item.endMinute).slice(0, 1).map(next => [item, next] as const))[0];
+    return <section aria-label={t(taskCopy.calendarTitle)}>
+      <header className={styles.toolbar}><div className={styles.row}><h2 className={styles.title}>{heading}</h2><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} /><Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /></div>{controls}</header>
+      <div className={styles.status}><span className={styles.note}>{timeZone}</span>{googleStatus}</div>
+      {readStatus}{partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}
+      <div className={styles.legend}>{(["personal", "meeting", "event", "external"] as const).map(kind => <span key={kind} className={`${styles.legendItem} ${styles[kind]}`}>{t(kind === "personal" ? taskCopy.calendarPersonal : kind === "meeting" ? taskCopy.calendarMeeting : kind === "event" ? taskCopy.calendarEvent : taskCopy.calendarGoogleReadOnly)}</span>)}</div>
+      <section data-calendar-day-list="" data-calendar-date={selected?.date} aria-label={heading} className={styles.dayList}>
+        {selected?.allDay.length ? <div className={styles.dayGroup}><h3>{t(taskCopy.calendarAllDay)}</h3>{selected.allDay.map(item => <button key={item.key} type="button" className={`btn ${styles.dayItem} ${styles.dayAllDay} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><strong>{item.title || t(taskCopy.calendarUntitled)}</strong>{item.location ? <span>{item.location}</span> : null}</button>)}</div> : null}
+        {groups.filter(group => group.items.length).map(group => <div key={group.label} className={styles.dayGroup}><h3>{group.label}</h3>{group.items.map(item => <button key={item.key} type="button" className={`btn ${styles.dayItem} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><time>{item.timeLabel}</time><strong>{item.title || t(taskCopy.calendarUntitled)}</strong>{item.location ? <span>{item.location}</span> : null}</button>)}</div>)}
+        {overlap ? <div data-calendar-overlap="" role="status" className={styles.dayOverlap}><strong>{t(taskCopy.calendarOverlap)}</strong><span>{overlap[0].timeLabel} {overlap[0].title} · {overlap[1].timeLabel} {overlap[1].title}</span></div> : null}
+      </section>
+      {internalState === "ready" && externalState === "ready" && connection === "connected" && !partial && !selected?.items.length ? <EmptyState title={t(taskCopy.calendarEmpty)} /> : null}
+    </section>;
+  }
   return <section aria-label={t(taskCopy.calendarTitle)}>
     <header className={styles.toolbar}><div className={styles.row}><h2 className={styles.title}>{heading}</h2><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} /><Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /></div>
       {controls}</header>
@@ -80,11 +94,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     {mode === "month" ? <div className={styles.monthFrame}><div className={styles.month}>{visible.slice(0, 7).map(day => <div className={styles.weekday} key={`weekday:${day.date}`}>{new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(at(day.date))}</div>)}{visible.map(day => <section key={day.date} data-calendar-date={day.date} aria-label={dayFormat.format(at(day.date))} className={`${styles.monthDay} ${!day.inMonth ? styles.outside : ""} ${day.date === date ? styles.selected : ""}`}>
       <Button variant="ghost" label={String(day.dayNumber)} aria-pressed={day.date === date} aria-current={day.date === today ? "date" : undefined} className={styles.dayNumber} onClick={() => onDaySelect(day.date)} />
       {day.items.slice(0, 3).map(item => <div key={item.key}>{entry(item, item.timeLabel)}</div>)}{day.items.length > 3 ? <Button size="sm" variant="ghost" label={t(taskCopy.calendarMore).replace("{count}", String(day.items.length - 3))} onClick={() => { onDaySelect(day.date); onModeChange("day"); }} /> : null}
-    </section>)}</div>{emptyMonthGuide ? <div className={styles.monthGuide} data-calendar-empty-guide=""><div className={styles.monthGuideIntro}><span aria-hidden="true">📅</span><div><h3>{t(taskCopy.calendarEmptyMonthTitle)}</h3><p>{t(taskCopy.calendarEmptyMonthBody)}</p></div></div><div className={styles.monthGuideActions}><a className={`btn ${styles.monthGuideConnect}`} href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarEmptyMonthConnect)}</a><Button label={t(taskCopy.calendarEmptyMonthAdd)} icon="plus" onClick={onAddPersonal} /></div><p className={styles.monthGuidePrivacy}>{t(taskCopy.calendarEmptyMonthPrivacy)}</p></div> : null}</div> : <div ref={dayViewport} data-calendar-day-viewport={mode === "day" ? "" : undefined} className={`${styles.columns} ${mode === "day" ? styles.single : ""}`}>{visible.map(day => <section key={day.date} data-calendar-date={day.date} className={styles.column} aria-label={dayFormat.format(at(day.date))}>
-      <Button variant="ghost" label={dayFormat.format(at(day.date))} className={styles.columnDate} aria-pressed={day.date === date} onClick={() => onDaySelect(day.date)} />
-      <div className={styles.allDay}><span className={styles.note}>{t(taskCopy.calendarAllDay)}</span>{day.allDay.map(item => <div key={item.key}>{entry(item)}</div>)}</div>
-      <div className={styles.timeline} style={{ height: day.minutes * 0.8 }}>{day.hours.map(hour => <div key={hour.minute} className={styles.hour} style={{ top: hour.minute * 0.8 }}><time>{hour.label}</time></div>)}{day.timed.map(item => <div key={item.key} className={styles.timeEntry} style={{ top: item.startMinute * 0.8, height: Math.max(24, (item.endMinute - item.startMinute) * 0.8), left: `calc(60px + (100% - 60px) * ${item.column / item.columns})`, width: `calc((100% - 60px) / ${item.columns})` }}>{entry(item, item.timeLabel)}</div>)}</div>
-    </section>)}</div>}
+    </section>)}</div>{emptyMonthGuide ? <div className={styles.monthGuide} data-calendar-empty-guide=""><div className={styles.monthGuideIntro}><span aria-hidden="true">📅</span><div><h3>{t(taskCopy.calendarEmptyMonthTitle)}</h3><p>{t(taskCopy.calendarEmptyMonthBody)}</p></div></div><div className={styles.monthGuideActions}><a className={`btn ${styles.monthGuideConnect}`} href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarEmptyMonthConnect)}</a><Button label={t(taskCopy.calendarEmptyMonthAdd)} icon="plus" onClick={onAddPersonal} /></div><p className={styles.monthGuidePrivacy}>{t(taskCopy.calendarEmptyMonthPrivacy)}</p></div> : null}</div> : null}
     {internalState === "ready" && externalState === "ready" && connection === "connected" && !partial && !visible.some(day => day.items.length) ? <EmptyState title={t(taskCopy.calendarEmpty)} /> : null}
   </section>;
 }

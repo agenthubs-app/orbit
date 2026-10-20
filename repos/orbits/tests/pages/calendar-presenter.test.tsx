@@ -64,6 +64,31 @@ test("week and day retain timed and all-day events, while external failures leav
   await act(async () => root.update(render("day")));
   assert.equal(root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"])).length, 1);
 });
+test("day view groups real entries by time and reports overlapping intervals without a move action", async t => {
+  const date = "2026-10-18";
+  const events = [
+    ["morning", "Morning meeting", "09:00", "10:00"],
+    ["visit", "Afternoon visit", "14:30", "15:30"],
+    ["call", "Overlapping call", "15:00", "15:20"],
+    ["night", "Evening event", "19:00", "20:00"],
+  ] as const;
+  const day = calendarDaysView({ date, mode: "day", timeZone: "UTC", language: "ja", internal: events.map(([id, title, start, end]) => ({ id, sourceId: id, kind: "personal" as const, category: "personal" as const, title, state: "upcoming" as const, startsAt: `${date}T${start}:00Z`, endsAt: `${date}T${end}:00Z` })), external: [] });
+  const opened: string[] = [];
+  let root: ReactTestRenderer;
+  await act(async () => { root = create(<Orbit2026Scope language="ja"><CalendarPresenter {...base} date={date} mode="day" days={day} onEntrySelect={item => opened.push(item.key)} /></Orbit2026Scope>); });
+  t.after(() => act(() => root.unmount()));
+  const list = root!.root.findByProps({ "data-calendar-day-list": "" });
+  const rendered = text(list);
+  assert.ok(rendered.indexOf("午前") < rendered.indexOf("Morning meeting"));
+  assert.ok(rendered.indexOf("午後") < rendered.indexOf("Afternoon visit"));
+  assert.ok(rendered.indexOf("夜") < rendered.indexOf("Evening event"));
+  assert.equal(root!.root.findAllByProps({ "data-calendar-day-viewport": "" }).length, 0);
+  assert.equal(root!.root.findAllByProps({ "data-calendar-overlap": "" }).length, 1);
+  assert.ok(rendered.indexOf("Afternoon visit") < rendered.indexOf("Overlapping call"));
+  assert.ok(!rendered.includes("動かす"));
+  await act(async () => root!.root.findAllByType("button").find(node => text(node).includes("Overlapping call"))!.props.onClick());
+  assert.deepEqual(opened, ["personal:call"]);
+});
 test("not-connected/reconnect shows only whitelisted OAuth entry; unavailable sources never look like a complete empty calendar", async t => {
   let root: ReactTestRenderer;
   const empty = calendarDaysView({ date: base.date, mode: "day", timeZone: "UTC", language: "ja", internal: [], external: [] });

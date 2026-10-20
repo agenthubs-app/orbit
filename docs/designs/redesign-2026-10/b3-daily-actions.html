@@ -1367,7 +1367,7 @@ function tasksWeb(s, o = {}) {
   // RD-33 / W-R20-07: the three source tiles below describe future task creation flows.
   // Product UI hides each until that source has a real creation entry; only manual task creation is linked today.
   if (s === 'empty') return head + `<div class="wgrid">
-    <div class="card span8 guide" style="padding:28px"><div class="row" style="gap:20px"><div style="font-size:58px">✅</div><div style="flex:1"><div style="font-size:23px;font-weight:800">やることを、ここに集めます</div><div class="sub" style="margin-top:4px">お礼・資料送付・再会の約束など。名刺やメモから iOrbit が候補を出し、あなたが確認して追加します。</div></div></div>
+    <div class="card span8 guide" style="padding:28px"><div class="row" style="gap:20px"><div style="font-size:58px">✅</div><div style="flex:1"><div style="font-size:23px;font-weight:800">やることを、ここに集めます</div><div class="sub" style="margin-top:4px">お礼・資料送付・再会の約束など。名刺やメモから候補が届いたら、確認して追加できます。</div></div></div>
       <div class="row" style="gap:10px;margin-top:18px"><button class="btn primary" style="height:46px">${ic('plus', 'sm')}タスクを追加</button><span class="lbl">ショートカット：<b>N</b></span></div></div>
     <div class="span4" style="display:grid;gap:18px">${[['📇', 'lav', '人脈を見る', '登録済みの人を確認', '/app/contacts'], ['📝', 'teal', 'メモを見る', '手入力したメモを確認', '/app/tasks?tab=memo'], ['📅', 'blue', 'カレンダーを見る', '予定と空き時間を確認', '/app/tasks?tab=calendar']].map(([e, c, t, d, href]) => `<a class="card row" href="${href}" style="gap:12px;padding:16px;color:inherit;text-decoration:none"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></a>`).join('')}</div>
     <div class="card span12">${tool(0, 0, 0)}<table class="table ttab"><tbody>
@@ -1386,8 +1386,7 @@ function tasksWeb(s, o = {}) {
   return head + `<div class="wgrid">${body}</div>`;
 }
 const taskRailDetail = () => `<div class="row between"><h4>${ic('check', 'sm')}タスクの詳細</h4><div class="row" style="gap:6px"><button class="lbtn">${ic('out', 'sm')}</button><button class="lbtn">${ic('x', 'sm')}</button></div></div>` + taskDetail(true);
-const railEmpty = `<h4><span class="emo sm lav">✨</span>iOrbit</h4><div class="card" style="padding:16px"><b>タスクはどこから来る？</b><div class="sub" style="margin-top:6px;line-height:1.7">名刺の登録、面談メモ、イベントの参加から「次にやること」を提案します。追加するかどうかは、毎回あなたが決めます。</div></div>
-  <div class="card confirm-card faded" style="padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">タスクに追加しますか？ ${ST}</b></div><div class="sub" style="margin:6px 0 10px">「高橋さんに面談のお礼」を今日に</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div>`;
+const railEmpty = `<h4><span class="emo sm lav">✨</span>iOrbit</h4><div class="card" style="padding:16px"><b>タスクはどこから来る？</b><div class="sub" style="margin-top:6px;line-height:1.7">名刺の登録、面談メモ、イベントの参加から「次にやること」を提案します。追加するかどうかは、毎回あなたが決めます。</div></div>`;
 const delModal = `<div class="overlay"></div><div class="modal wmodal"><div class="row" style="gap:14px;align-items:flex-start"><div class="err-ic" style="border-radius:16px;width:48px;height:48px;margin:0;flex:none">${ix('trash', 'lg')}</div><div style="min-width:0"><b style="font-size:17px">このタスクを削除しますか？</b>
   <div class="sub" style="margin-top:6px;line-height:1.65">「山本 彩さんに資料を再送」を削除します。元に戻せません。元になったメモとやりとりは残ります。</div></div></div>
   <div class="macts"><span class="lbl hint"><span class="kbd">Esc</span> キャンセル</span><button class="btn">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
@@ -1437,19 +1436,17 @@ const calRail = (s) => s === 'empty' ? `<h4>${ic('calendar', 'sm')}10月7日（�
   ${s === 'many' ? `<div class="conflict"><span class="ci">${ix('alert', 'sm')}</span><div style="flex:1"><b>14:30 訪問と 15:00 電話が重なっています</b><div class="muted">電話を 16:00 に動かせます</div></div><button class="btn sm">動かす</button></div>
   <div class="card" style="padding:14px 16px" data-why-box><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px;flex:1">空き 11:00–12:00</b><span class="why">?</span></div><div class="sub" style="margin-top:6px">高橋さんへのお礼メールをここで書けます</div><div class="why-body" hidden>今日の一手のうち、15分で終わるもの</div></div>` : ''}`;
 function dayWeb() {
-  const head = mainhead('10月7日（水）', '予定 6件 · 重複 1', `<button class="lbtn">${ic('left', 'sm')}</button><button class="lbtn">${ic('right', 'sm')}</button><button class="btn sm">今日</button>`, `<div class="seg dm"><button class="on">日</button><button>週</button><button>月</button></div><button class="btn accent" style="height:40px">${ic('plus', 'sm')}予定を追加</button>`);
-  return head + `<div class="row" style="gap:12px;margin-bottom:12px"><span class="lbl" style="width:44px">終日</span><span class="e ps" style="padding:7px 12px;border-radius:10px;font-size:12.5px;font-weight:700;flex:1">9月分 経費精算の締め</span></div>
-    <div class="card" style="padding:14px 18px 18px">
-      ${[['午前', AG.many[0]], ['午後', AG.many[1]], ['午後', AG.many[2]], ['夜', AG.many[3]]].map(([group, item], index) => `${index === 0 || group !== ['午前', '午後', '午後', '夜'][index - 1] ? `<div class="lbl cal-day-group" style="margin-top:${index ? 16 : 0}px;font-weight:700">${group}</div>` : ''}${agendaItem(...item)}`).join('')}
-      <div class="conflict" style="margin-top:16px"><span class="ci">${ix('alert', 'sm')}</span><div style="flex:1"><b>14:30 訪問と 15:00 電話が重なっています</b><div class="muted">電話を 16:00 に動かせます</div></div><button class="btn sm">動かす</button></div>
+  const head = HV3.W.wTaskHead(0) + mainhead('10月7日（水）', '', `<button class="lbtn">${ic('left', 'sm')}</button><button class="lbtn">${ic('right', 'sm')}</button><button class="btn sm">今日</button>`, `<div class="seg dm"><button class="on">日</button><button>週</button><button>月</button></div>`);
+  return head + `<div class="row" style="gap:8px;margin:0 0 12px"><span class="lbl">Asia/Tokyo</span><span class="chip teal">Google カレンダー連携中</span><span class="lbl">Google カレンダーの予定は読み取り専用です</span></div>
+    <div class="row" style="gap:8px;margin-bottom:12px"><span class="chip teal">個人の予定</span><span class="chip">面談</span><span class="chip">イベント</span><span class="chip">Google カレンダー</span></div>
+    <div style="display:grid;gap:16px;width:100%;max-width:880px">
+      ${[['午前', AG.many[0]], ['午後', AG.many[1]], ['午後', AG.many[2]], ['夜', AG.many[3]]].map(([group, item], index) => `${index === 0 || group !== ['午前', '午後', '午後', '夜'][index - 1] ? `<div class="lbl cal-day-group" style="margin-top:${index ? 12 : 0}px;font-weight:700">${group}</div>` : ''}<div class="row" style="gap:12px;margin-top:8px"><div class="cb ps" style="position:relative;display:flex;gap:12px;align-items:center;min-height:52px;flex:1;padding:10px 12px;border-radius:12px"><b style="font-family:var(--font-num);font-size:12.5px;width:64px">${item[1]}</b><b style="font-size:13px">${item[2]}</b></div></div>`).join('')}
+      <div class="conflict"><span class="ci">${ix('alert', 'sm')}</span><div style="flex:1"><b>この予定と前の予定が重なっています</b><div class="muted">14:30 北辰製作所 訪問 · 15:00 山本さんへ電話</div></div></div>
     </div>`;
 }
-const dayRail = `<h4>${ic('calendar', 'sm')}予定の詳細</h4>
-  <div class="card" style="padding:16px"><span class="chip blue">面談</span><b style="display:block;font-size:16px;margin-top:8px">伊藤 直子さんとオンライン面談</b><div class="lbl">10:00–10:45 · Google Meet</div>
-    <div class="row" style="gap:10px;margin-top:12px"><div class="av sm c4">伊</div><div style="flex:1"><b style="font-size:13px">伊藤 直子</b><div class="lbl">株式会社ハルモニア · CFO</div></div><span class="chip teal">協業中</span></div></div>
-  <div class="card" style="padding:16px" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">📊</span><b style="font-size:13px;flex:1">会う前に確認</b><span class="why">?</span></div>
-    <div style="display:grid;gap:6px;margin-top:8px;font-size:12.5px"><div>・種類株式の設計案（前回の宿題）</div><div>・VC 4社のうち、紹介をお願いできる先</div></div><div class="why-body" hidden>根拠：9/28 面談メモ · 伊藤さんの「力になれること」</div></div>
-  <div class="grid2"><button class="btn">${ix('note', 'sm')}メモ</button><button class="btn primary">会う準備</button></div>`;
+const dayRail = `<h4>10月7日（水）</h4><div class="card" style="padding:14px 16px">
+  ${AG.many.map(([, time, title]) => `<div class="row" style="gap:8px;margin:8px 0;font-size:12.5px"><b style="font-family:var(--font-num);width:40px">${time}</b><span>${title}</span></div>`).join('')}
+  </div><div class="grid2"><button class="btn">${ix('note', 'sm')}メモ</button><button class="btn primary">もっと見る</button></div>`;
 const editModal = `<div class="overlay"></div><div class="modal wmodal form" style="width:560px">
   <div class="row between"><b style="font-size:18px">予定を追加</b><button class="rbtn">${ic('x')}</button></div>
   <div class="input" style="margin-top:14px;color:var(--ink);font-size:15px;font-weight:700;background:var(--surface)">家族と夕食</div>
@@ -1511,7 +1508,7 @@ h += boards([
   ['タスク', 'many', phone({ body: tasksApp('many'), tab: -1, pins: pin(1, '.filt') + pin(2, '.grp.over') + pin(3, '.swipe.demo') + pin(4, '.ckr', 3) + pin(5, '.acc') }),
     ['筛选 seg：すべて / つながり（关联人）/ 個人；计数随筛选变化', '期限超過组珊瑚色标题；「まとめて明日へ」批量顺延（出 Toast 可撤销）', '左滑：明日 / 完了；首行自动演示一次', '圆形勾选框可点（可在此画板点击试）：勾上 → 划线 → .6s 后移入「完了」组', '完了组默认折叠，点标题展开（grid-rows 过渡）']],
 ]);
-h += wboard('Web タスク', 'empty', W({ body: tasksWeb('empty'), rail: railEmpty, pins: pin(1, '.guide .btn.primary') + pin(2, '.rail .confirm-card') }), ['主动作 + 快捷键 N；右侧三张卡仅打开现有的人脈、メモ、カレンダー，不自动创建任务', '三个入口仅已登录的同一 actor 可达；未登录时回登录页，读取失败时各目标页显示自身错误／重试态', '右栏说明任务来源；AI 建议一律是虚线确认卡（此处为サンプル淡化）']);
+h += wboard('Web タスク', 'empty', W({ body: tasksWeb('empty'), rail: railEmpty, pins: pin(1, '.guide .btn.primary') + pin(2, '.rail .card') }), ['主动作 + 快捷键 N；右侧三张卡仅打开现有的人脈、メモ、カレンダー，不自动创建任务', '三个入口仅已登录的同一 actor 可达；未登录时回登录页，读取失败时各目标页显示自身错误／重试态', '右栏只说明任务来源；当前无真实建议时不画可操作的确认卡']);
 h += wboard('Web タスク', 'few', W({ body: tasksWeb('few', { sel: 0 }), rail: taskRailDetail() }));
 h += wboard('Web タスク', 'many', W({ body: tasksWeb('many', { sel: 0, hov: 2 }), rail: taskRailDetail(), pins: pin(1, '.ttab tr.sel') + pin(2, '.hov.show') + pin(3, '.main .filt') }),
   ['点行 → 右栏切换为该任务详情（主从布局，不跳页）；↑↓ 键切换', '悬停出现 明日 / 完了 / …（移动・削除・日付変更）', '筛选与分组同 App；表头「関連」列区分 つながり / 個人']);
@@ -1564,7 +1561,7 @@ h += wboard('Web カレンダー 月', 'empty', W({ body: calMonthWeb('empty'), 
 h += wboard('Web カレンダー 月', 'few', W({ body: calMonthWeb('few'), rail: calRail('few') }));
 h += wboard('Web カレンダー 月', 'many', W({ body: calMonthWeb('many'), rail: calRail('many'), pins: pin(1, '.main .mgrid .d.sel') + pin(2, '.rail .conflict') + pin(3, '.rail [data-why-box] .why') }),
   ['点日期 → 右栏切换当日议程；格内最多 3 条 + n；拖动色块可改日期（出 Toast 可撤销）', '冲突在右栏顶部提示并给「動かす」', '空档建议是 AI 结论 → 带「?」依据；点击后放入时间也需确认']);
-h += wboard('Web カレンダー 日', '', W({ body: dayWeb(), rail: dayRail, pins: pin(1, '.main .cal-day-group') + pin(2, '.main .conflict') }), ['日视图按午前／午後／夜分时段列出实际日程；点行 → 右栏详情与「会う前に確認」', '重叠予定在列表下显示冲突提醒；新增予定走顶部按钮，不在空白处拖动']);
+h += wboard('Web カレンダー 日', '', W({ body: dayWeb(), rail: dayRail, pins: pin(1, '.main .cal-day-group') + pin(2, '.main .conflict') }), ['Task 页签与 Web 壳保持一致；日视图列出从个人予定读到的 4 件日程，Google 已连接但本地 fixture 无外部事件', '重叠予定只显示时间提醒；点日程打开详情，新增予定走顶部按钮']);
 h += wboard('Web 予定を追加（重複あり）', '', W({ body: calMonthWeb('many'), rail: calRail('many'), pins: editModal + pin(1, '.modal select') + pin(2, '.modal .conflict') }), ['Web 的重复规则用下拉菜单（桌面惯例），App 用底部弹层', '冲突提示不阻止保存']);
 
 /* 8. 系统状态 */

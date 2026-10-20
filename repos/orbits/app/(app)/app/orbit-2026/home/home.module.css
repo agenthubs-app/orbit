@@ -7,8 +7,8 @@
 .card.medium { grid-column: span 8; }.card.small { grid-column: span 4; }
 .opening .card:nth-child(1) { grid-column: span 5; }.opening .card:nth-child(2) { grid-column: span 4; }.opening .card:nth-child(3) { grid-column: span 3; }.opening .card:nth-child(4) { grid-column: span 5; }.opening .card:nth-child(5) { grid-column: span 7; }
 .opening .card:nth-child(n+4) { min-height: 152px; }
-.cardHead { display: flex; align-items: center; justify-content: space-between; min-height: 23px; margin-bottom: 15px; }.cardHead h2, .rail h2, .library h2 { font-size: var(--fs-body-sm); margin: 0; font-weight: 700; }
-.cardHead h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardHead { display: flex; align-items: center; justify-content: space-between; min-height: 23px; padding-top: 3px; margin-bottom: 7px; }.cardHead h2, .rail h2, .library h2 { font-size: var(--fs-body-sm); margin: 0; font-weight: 700; }
+.cardHead h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-size: var(--fs-label); font-weight: 800; }
 .cardHead h2:before { content: '✦'; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r-chip); margin-right: 9px; color: var(--accent-text); background: var(--accent-soft); }
 .card[data-widget='today'] .cardHead h2:before { content: '✅'; background: var(--mac-teal); }.card[data-widget='planScore'] .cardHead h2:before { content: '💰'; background: var(--mac-apricot); }.card[data-widget='nextEvent'] .cardHead h2:before { content: '🎟️'; background: var(--mac-pink); }.card[data-widget='network'] .cardHead h2:before { content: '👥'; background: var(--mac-blue); }.card[data-widget='secretary'] .cardHead h2:before { content: '🗂️'; background: var(--mac-lav); }
 .cardLink { display: inline-block; margin-top: auto; padding-top: 14px; text-decoration: none; color: var(--ink-2); font-size: var(--fs-meta); }.cardLink:hover, .item:hover, .lines a:hover { color: var(--accent-text); }

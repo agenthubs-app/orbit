@@ -464,7 +464,11 @@ function TaskList({ language, date, timeZone, initialCompleted, initialAdd, init
       <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.taskListAdd)} onClick={() => setAdding(true)} />
       {emptyGuide ? <div className={styles.emptyGrid}>
         <section className={styles.emptyGuide}><div className={styles.emptyIntro}><span className={styles.emptyMark} aria-hidden="true">✅</span><div><h2>{t(taskCopy.taskListEmptyGuide)}</h2><p>{t(taskCopy.taskListEmptyGuideBody)}</p></div></div><div className={styles.emptyGuideActions}><Button label={t(taskCopy.taskListAdd)} icon="plus" variant="primary" onClick={() => setAdding(true)} /><span>{t(taskCopy.taskListEmptyShortcut)} <kbd>N</kbd></span></div></section>
-        <div className={styles.emptySources}><button type="button" className={`btn ${styles.emptySource}`} data-task-source="manual" onClick={() => setAdding(true)}><span className={styles.emptySourceIcon} aria-hidden="true">＋</span><span><strong>{t(taskCopy.taskListManualSource)}</strong><small>{t(taskCopy.taskListManualSourceHint)}</small></span><Icon name="right" size={16} /></button></div>
+        <div className={styles.emptySources}>{([
+          ["contacts", "/app/contacts", "📇", taskCopy.taskListContactsSource, taskCopy.taskListContactsSourceHint],
+          ["memo", "/app/tasks?tab=memo", "📝", taskCopy.taskListMemoSource, taskCopy.taskListMemoSourceHint],
+          ["calendar", "/app/tasks?tab=calendar", "📅", taskCopy.taskListCalendarSource, taskCopy.taskListCalendarSourceHint],
+        ] as const).map(([source, href, mark, label, hint]) => <a key={source} className={styles.emptySource} data-task-source={source} href={href}><span className={styles.emptySourceIcon} aria-hidden="true">{mark}</span><span><strong>{t(label)}</strong><small>{t(hint)}</small></span><Icon name="right" size={16} /></a>)}</div>
       </div> : null}
       <div className={styles.listCard} data-task-list-card>
       <div className={styles.toolbar}><CategoryTabs<TaskListFilter> label={t(taskCopy.taskListFilter)} value={filter} onChange={setScope} options={(["all", "relationship", "personal"] as const).map(key => ({ key, label: t(key === "all" ? taskCopy.taskListAll : key === "relationship" ? taskCopy.taskListRelationship : taskCopy.taskListPersonal) }))} />

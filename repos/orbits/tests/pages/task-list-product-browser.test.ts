@@ -258,8 +258,9 @@ test("an empty Task list keeps the guide beside its explanatory rail", async t =
   await current.getByRole("heading", { name: "やることを、ここに集めます" }).waitFor();
   await current.locator('[data-orbit-2026-shell][data-rail="true"]').waitFor();
   await current.getByRole("complementary").getByRole("heading", { name: "タスクはどこから来る？" }).waitFor();
-  assert.equal(await current.locator("[data-task-source]").count(), 1);
-  assert.equal(await current.locator('[data-task-source="manual"]').count(), 1);
+  assert.deepEqual(await current.locator("[data-task-source]").evaluateAll(elements => elements.map(element => [element.getAttribute("data-task-source"), element.getAttribute("href")])), [
+    ["contacts", "/app/contacts"], ["memo", "/app/tasks?tab=memo"], ["calendar", "/app/tasks?tab=calendar"],
+  ]);
 });
 
 test("wide Task header lives in the shell without a second page title", async t => {

@@ -1,0 +1,27 @@
+{
+  "_note": "PX2 D controlled read-only Google state: browser fetch returns connected with zero external events; personal schedule stays on the isolated local API.",
+  "defaults": { "app-origin": "http://localhost:3510", "grid": 30 },
+  "sources": ["repos/orbits/app/(app)/app/orbit-2026/calendar/**"],
+  "views": [
+    {
+      "id": "W-R20-17",
+      "app": "/app/home",
+      "design": "b3-daily-actions.html",
+      "board-index": 40,
+      "width": 1440,
+      "themes": ["light"],
+      "steps": [
+        { "eval": "(() => { const original = window.fetch.bind(window); window.fetch = (input, init) => { const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input); if (url.includes('/api/calendar/external-events')) return Promise.resolve(new Response(JSON.stringify({ success: true, data: { provider: 'google_calendar', connection: 'connected', events: [], asOf: new Date().toISOString(), skipped: 0 } }), { status: 200, headers: { 'content-type': 'application/json' } })); return original(input, init); }; })()" },
+        { "waitFor": "a[href='/app/tasks']" },
+        { "click": "a[href='/app/tasks']", "wait": 1200 },
+        { "waitFor": "[data-task-bar] button[role='tab']" },
+        { "click": "[data-task-bar] button[role='tab']:first-child", "wait": 1200 },
+        { "waitFor": "[data-task-slot='calendar']" },
+        { "click": "button[aria-label='前の期間']" },
+        { "click": "button[aria-label='前の期間']" },
+        { "click": "button[role='tab']:text-is('日')", "wait": 1200 },
+        { "waitFor": "[data-calendar-day-list]" }
+      ]
+    }
+  ]
+}
