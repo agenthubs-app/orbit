@@ -28,7 +28,7 @@ test("R10 sources project bounded widget rows without credentials, Gmail or copi
     ] },
     secretary: { actorId: "actor-a", items: [
       { kind: "mail_summary", notification: { actorId: "actor-a", title: "Gmail 本文", target: { status: "available", href: "/inbox" }, sources: [{ sourceKind: "mail_summary" }] } },
-      { kind: "event_deadline", notification: { actorId: "actor-a", title: "早割は明後日まで", target: { status: "available", href: "/events/e1" }, sources: [{ sourceKind: "event_deadline" }] } },
+      { kind: "event_deadline", notification: { actorId: "actor-a", title: "早割は明後日まで", reason: "参加予定 · まだ申し込んでいません", target: { status: "available", href: "/events/e1" }, sources: [{ sourceKind: "event_deadline" }] } },
       { kind: "event_pick", notification: { actorId: "actor-a", title: "おすすめのイベント", target: { status: "available", href: "/events/e2" }, sources: [{ sourceKind: "event_pick" }] } },
     ] },
     plan: { current: { planId: "p1", goal: "シリーズA 資金調達", goalKind: "fundraising",
@@ -48,6 +48,8 @@ test("R10 sources project bounded widget rows without credentials, Gmail or copi
     ["高橋 花子", "伊藤 直子", "鈴木 太郎"]);
   assert.deepEqual(cards?.secretary.status === "ready" ? cards.secretary.display.items.map(item => item.title) : [],
     ["早割は明後日まで", "おすすめのイベント"]);
+  assert.equal(cards?.secretary.status === "ready" ? cards.secretary.display.items[0]?.reason : null,
+    "参加予定 · まだ申し込んでいません");
   assert.equal(cards?.plan.status === "ready" ? cards.plan.display.total : null, 128);
   assert.equal(cards?.plan.status === "ready" ? cards.plan.display.todayDelta : null, -10);
   assert.equal(cards?.event.status === "ready" ? cards.event.display.title : null, "CFO Night");

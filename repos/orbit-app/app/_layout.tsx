@@ -47,6 +47,7 @@ import {
   markAppPerformance,
   setAppPerformanceScope,
 } from "../src/performance/app-performance";
+import { widgetSnapshotRuntime } from "../src/widgets/native-runtime";
 
 // R05 (R01 review m3): the Settings appearance is applied before the first frame.
 applyStoredAppearanceSync();
@@ -85,6 +86,25 @@ function AppPerformanceRootObserver() {
     }
   }, [auth.actorId, auth.ready, baseUrl]);
 
+  return null;
+}
+
+function WidgetScopeObserver() {
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const observedServer = useRef(server.baseUrl);
+  useEffect(() => {
+    if (observedServer.current !== server.baseUrl) {
+      observedServer.current = server.baseUrl;
+      void widgetSnapshotRuntime.clear();
+      return;
+    }
+    if (!auth.ready || !server.ready || !auth.signedIn || !auth.actorId || auth.offline || auth.deletionPending) {
+      void widgetSnapshotRuntime.clear();
+      return;
+    }
+    void widgetSnapshotRuntime.activate(server.baseUrl, auth.actorId);
+  }, [auth.ready, auth.signedIn, auth.actorId, auth.offline, auth.deletionPending, server.ready, server.baseUrl]);
   return null;
 }
 
@@ -165,6 +185,7 @@ export default function RootLayout() {
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
             <AppPerformanceRootObserver />
+            <WidgetScopeObserver />
             <OrbitLocaleProvider>
               <OrbitTimeZoneProvider>
                 <RootVersionBoundary>{allowed => <UiRoot blocked={!allowed}>

@@ -27,6 +27,7 @@ const state = window.fixture = {
   alerts: [],
   writes: [],
   clears: [],
+  widgetClears: [],
   scopeChanges: [],
   keyDeleteFails: false,
   ...window.initialFixture,
@@ -117,6 +118,10 @@ export async function signOutOrbitSession(input) {
   if (state.holdSignOut) await new Promise(resolve => { state.releaseSignOut = resolve; });
   return { success: true };
 }
+export const widgetSnapshotRuntime = {
+  async clear() { state.widgetClears.push(state.baseUrl); return true; },
+  async activate() { return null; }
+};
 export function createOrbitApiClient(input) { return { async get(path) {
   state.accountRequests.push({ ...input, path });
   if (state.accountFailure) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "账号暂时不可用" } };
@@ -141,7 +146,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
     plugins: [{
       name: "auth-provider-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
+        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$|\/widgets\/native-runtime$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-crypto$/ }, () => ({ path: "crypto", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "router", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-web-browser$/ }, () => ({ path: "browser", namespace: "auth-race" }));
@@ -363,6 +368,7 @@ test("an accepted session exposes the raw login principal and canonical account 
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.user.id), "actor-first");
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.accountId), "account:canonical");
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:canonical");
+  assert.ok(await page.evaluate(() => (window as any).fixture.widgetClears.length >= 2), "new account clears the prior WidgetKit scope before exposure");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), [{
     baseUrl: "https://first.example",
     cookie: "session=first"
@@ -381,6 +387,7 @@ test("a pending deletion login keeps the validated session and clears local acco
   await page.evaluate(() => (window as any).fixture.release());
   await page.waitForFunction(() => (window as any).fixture.results.length === 1 && (window as any).fixture.auth?.deletionPending === true);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.results), [{ success: true, pendingDeletion: true }]);
+  assert.ok(await page.evaluate(() => (window as any).fixture.widgetClears.length >= 2), "pending deletion cannot expose the prior widget snapshot");
   assert.deepEqual(await page.evaluate(() => {
     const state = (window as any).fixture;
     return { accountId: state.auth.accountId, deletionPending: state.auth.deletionPending, userId: state.auth.user.id,
@@ -449,6 +456,7 @@ test("logout purges encrypted storage once and prevents a pending login from res
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), false);
   assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
+  assert.ok(await page.evaluate(() => (window as any).fixture.widgetClears.length >= 2), "restore and logout clear WidgetKit scope");
 });
 
 test("logout key deletion failure is visible and keeps the current session from switching", async t => {
@@ -463,6 +471,7 @@ test("session expiry uses one lifecycle purge", async t => {
   await page.evaluate(() => (window as any).fixture.expire());
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
+  assert.ok(await page.evaluate(() => (window as any).fixture.widgetClears.length >= 2), "restore and expiry clear WidgetKit scope");
 });
 
 test("an old server logout response cannot purge or clear the newly restored server session", async t => {

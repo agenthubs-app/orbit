@@ -31,6 +31,7 @@ import { HomeWidgetBody } from "./HomeWidgetCards";
 import { HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, removeWidget, resizeWidget } from "./home-widget-model";
 import { useHomeLayout } from "./use-home-layout";
 import { useHomeRead } from "./use-home-read";
+import { useHomeWidgetSnapshot } from "./use-home-widget-snapshot";
 
 const TITLE: Record<HomeWidgetKey, "home.widgetToday" | "home.widgetPending" | "home.widgetWeek" | "home.widgetPlan" | "home.widgetEvent" | "home.widgetEventPick" | "home.widgetNetwork" | "home.widgetSecretary" | "home.widgetMemo"> = {
   today: "home.widgetToday", pending: "home.widgetPending", week: "home.widgetWeek", planScore: "home.widgetPlan",
@@ -52,10 +53,13 @@ export function HomeWidgetsScreen() {
 }
 
 function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl: string; client: OrbitApiClient }) {
-  const router = useRouter(); const auth = useOrbitAuthSession(); const { t, language } = useOrbitLocale(); const { timeZone } = useOrbitTimeZone(); const toast = useToast();
+  const router = useRouter(); const auth = useOrbitAuthSession(); const { t, language } = useOrbitLocale(); const { timeZone, canSave: timeZoneConfirmed } = useOrbitTimeZone(); const toast = useToast();
   const { styles } = useStyles();
   const onConflict = useCallback(() => toast.error(t("home.widgetConflict")), [t, toast]);
   const { layout, state, saving, pending, fetchedAt, reload, save } = useHomeLayout({ actorId, baseUrl, client, onConflict });
+  const [widgetRefreshRevision, setWidgetRefreshRevision] = useState(0);
+  useHomeWidgetSnapshot({ actorId, baseUrl, client, timeZone, layoutRevision: layout.revision,
+    layoutReady: state === "ready" && !pending, offline: auth.offline || auth.deletionPending || !timeZoneConfirmed, refreshRevision: widgetRefreshRevision });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<HomeWidgetSlot[] | null>(null);
   const [editRevision, setEditRevision] = useState<number | null>(null);
@@ -128,7 +132,8 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetSize")}`} text={slot.size === "s" ? t("home.widgetSmall") : t("home.widgetMedium")} press={() => setDraft(resizeWidget(items, slot.key))} />
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} text="−" press={() => remove(slot.key)} />
             </View> : null}</View>
-            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
+            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null}
+              onDataSettled={() => setWidgetRefreshRevision(value => value + 1)} />
           </Card>
         </UiPressable>
       </DraggableWidget>)}</View>

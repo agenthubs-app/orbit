@@ -55,6 +55,7 @@ test("the root shell omits tab navigation and tab-height toast placement until s
     export function appPerformanceInput() { return {}; }
     export function markAppPerformance() {}
     export function setAppPerformanceScope() {}
+    export const widgetSnapshotRuntime = { clear: async () => true, activate: async () => null };
   `;
   const plugin: Plugin = {
     name: "root-shell-auth-ssr-boundaries",

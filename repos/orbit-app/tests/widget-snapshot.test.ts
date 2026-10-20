@@ -25,6 +25,10 @@ test("widget snapshot rejects another scope, future, damaged or extra private fi
   assert.equal(module?.readWidgetSnapshot(snapshot, "b".repeat(64), now), null);
   assert.equal(module?.readWidgetSnapshot(snapshot, scope, new Date("2026-10-20T07:59:59.000Z")), null);
   assert.equal(module?.readWidgetSnapshot("{broken", scope, now), null);
+  assert.equal(module?.readWidgetSnapshot({ ...snapshot, schemaVersion: 2 }, scope, now), null);
+  assert.equal(module?.readWidgetSnapshot({ ...snapshot, widgets: { ...emptyCards, secretary: { status: "ready", display: {
+    count: 1, items: [{ title: "not legal", kind: "email_draft", href: "/inbox" }],
+  } } } }, scope, now), null);
   assert.equal(module?.readWidgetSnapshot({ ...snapshot, cookieHeader: "private" }, scope, now), null);
 });
 

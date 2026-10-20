@@ -57,7 +57,7 @@ function GuideSteps({ progress, navigate }: { progress: GuideProgress; navigate:
     <UiPressable key={step.key} accessibilityRole="link" accessibilityLabel={step.label} onPress={() => navigate(step.href)} style={styles.guideStep}><UiText style={styles.guideText}>{progress.steps[step.key] ? "✓" : "○"}  {index + 1}. {step.label}</UiText></UiPressable>)}</View>;
 }
 
-function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProgress | null }) {
+function TodayWidget({ navigate, guide, onDataSettled }: { navigate: Navigate; guide: GuideProgress | null; onDataSettled?: (() => void) | undefined }) {
   const { timeZone } = useOrbitTimeZone(); const { styles } = useStyles(); const { t } = useOrbitLocale();
   const date = useMemo(() => todayKey(new Date(), timeZone), [timeZone]);
   const todo = useTodoPage(timeZone, date);
@@ -69,8 +69,9 @@ function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProg
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && (parsed.data.state === "upcoming" || parsed.data.state === "ongoing") ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard onSettled={todo.refresh} /></View>;
-  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard onSettled={todo.refresh} /></View>;
+  const settled = () => { todo.refresh(); onDataSettled?.(); };
+  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard onSettled={settled} /></View>;
+  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard onSettled={settled} /></View>;
   return <View>
     {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
     {todo.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {todo.copy.lastSyncedAt ?? ""}</UiText> : null}
@@ -79,7 +80,7 @@ function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProg
     {scheduleRows[0] ? <LinkRow label={scheduleRows[0].title} href="/task?seg=calendar" navigate={navigate} /> : null}
     {schedule.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {schedule.copy.lastSyncedAt ?? ""}</UiText> : null}
     {Object.values(todo.page.sources).some(source => source === "unavailable" || source === "not_implemented") ? <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText> : null}
-    <TodayQuestionCard onSettled={todo.refresh} />
+    <TodayQuestionCard onSettled={settled} />
     <LinkRow label={t("home.widgetMore")} href="/task?seg=todo" navigate={navigate} />
   </View>;
 }
@@ -171,9 +172,9 @@ function MemoWidget({ client, navigate, size }: { client: OrbitApiClient; naviga
     <LinkRow label={t("home.widgetMore")} href="/task?seg=memo" navigate={navigate} /></View>}</Resource>;
 }
 
-export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide }: { widget: HomeWidgetKey; size: "s" | "m"; client: OrbitApiClient; actorId: string; navigate: Navigate; guide: GuideProgress | null }) {
+export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide, onDataSettled }: { widget: HomeWidgetKey; size: "s" | "m"; client: OrbitApiClient; actorId: string; navigate: Navigate; guide: GuideProgress | null; onDataSettled?: () => void }) {
   switch (widget) {
-    case "today": return <TodayWidget navigate={navigate} guide={guide} />;
+    case "today": return <TodayWidget navigate={navigate} guide={guide} onDataSettled={onDataSettled} />;
     case "planScore": return <PlanWidget client={client} navigate={navigate} />;
     case "nextEvent": return <EventWidget client={client} navigate={navigate} />;
     case "network": return <NetworkWidget client={client} navigate={navigate} />;

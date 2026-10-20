@@ -59,6 +59,7 @@ import { revokePushDeviceRegistrations } from "../notifications/push-registratio
 import { clearKioskDevice } from "../screens/host/kiosk-store";
 import { clearProfileEditSession } from "../data/profile-edit-session";
 import { clearNativeAccountRightsData } from "../screens/account-rights/local-cleanup-runtime";
+import { widgetSnapshotRuntime } from "../widgets/native-runtime";
 
 interface AuthActionResult {
   message?: string;
@@ -236,6 +237,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         active = false;
       };
     }
+
+    // A different server must never inherit the previous server's WidgetKit scope.
+    void widgetSnapshotRuntime.clear();
 
     setReady(false);
     setAccountId(null);
@@ -460,6 +464,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         if (!await clearNativeAccountRightsData({ baseUrl, actorId: resolvedAccountId })) return { message: currentTranslator()("session.clearPreviousFailed"), success: false };
         if (!usesBrowserManagedSession) await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
         if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+        await widgetSnapshotRuntime.clear();
         setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
         setAccountId(resolvedAccountId);
         setUser(validation.data.user);
@@ -524,6 +529,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
 
       lastValidatedAt.current = validatedAt;
+      await widgetSnapshotRuntime.clear();
       setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
       setAccountId(identity.accountId);
       setUser(validation.data.user);
@@ -660,6 +666,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
     }
     if (user !== null) {
+      await widgetSnapshotRuntime.clear();
       if (!(await clearNotificationSession())) {
         console.warn("Orbit 通知清理未完全确认，继续注销；服务端可能仍保留设备注册");
       }
@@ -801,6 +808,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       // must retry its cleanup before another account can be accepted.
       const cleared = await syncLifecycle.setScope(null);
       if (!cleared || authEnvironment.current.revision !== requestRevision) return;
+      await widgetSnapshotRuntime.clear();
       await offlineIdentityStorage.clear(baseUrl).catch(() => console.warn("OFFLINE_IDENTITY_CLEAR_FAILED"));
       if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
       setAccountId(null);
@@ -888,6 +896,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           // Still unreachable and the 30 days are over: ask for login, erase nothing.
           active = false;
           authEnvironment.current.revision += 1;
+          await widgetSnapshotRuntime.clear();
           setAccountId(null);
           setCookieHeader("");
           setOffline(false);

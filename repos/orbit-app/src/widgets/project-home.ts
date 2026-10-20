@@ -9,7 +9,7 @@ import type { WidgetCards } from "./snapshot";
 type SecretaryItem = {
   kind: string;
   notification: {
-    actorId: string; title: string; sample?: true;
+    actorId: string; title: string; reason?: string; sample?: true;
     target: { status: string; href: string | null };
     sources: readonly { sourceKind: string }[];
   };
@@ -17,13 +17,13 @@ type SecretaryItem = {
 
 export type HomeWidgetSources = {
   actorId: string; now: Date;
-  todo?: TodoPageContract;
-  schedule?: { scheduleItems: readonly unknown[] };
-  networkSummary?: Pick<ContactCardSummaryDTO, "total" | "addedThisMonth">;
-  networkPage?: { items: readonly Pick<ContactCardDTO, "id" | "displayName">[] };
-  secretary?: { actorId: string; items: readonly SecretaryItem[] };
-  plan?: PlanV2SummaryResponse;
-  events?: MyEventsResponse;
+  todo?: TodoPageContract | undefined;
+  schedule?: { scheduleItems: readonly unknown[] } | undefined;
+  networkSummary?: Pick<ContactCardSummaryDTO, "total" | "addedThisMonth"> | undefined;
+  networkPage?: { items: readonly Pick<ContactCardDTO, "id" | "displayName">[] } | undefined;
+  secretary?: { actorId: string; items: readonly SecretaryItem[] } | undefined;
+  plan?: PlanV2SummaryResponse | undefined;
+  events?: MyEventsResponse | undefined;
 };
 
 const text = (value: string): string => value.trim().slice(0, 160);
@@ -67,7 +67,9 @@ export function projectHomeWidgetCards(input: HomeWidgetSources): WidgetCards {
         const href = homeAppTargetHref(item.notification.target.href);
         return legalSecretaryKinds.has(item.kind) && item.notification.sources.some(source => source.sourceKind === item.kind) &&
           !item.notification.sample && item.notification.target.status === "available" && href && text(item.notification.title)
-          ? [{ title: text(item.notification.title), kind: item.kind as "event_deadline" | "event_prep" | "event_pick", href }] : [];
+          ? [{ title: text(item.notification.title),
+            ...(item.notification.reason && text(item.notification.reason) ? { reason: text(item.notification.reason) } : {}),
+            kind: item.kind as "event_deadline" | "event_prep" | "event_pick", href }] : [];
       });
       return items.length ? { status: "ready" as const, display: { count: items.length, items: items.slice(0, 2) } } : empty;
     })();
