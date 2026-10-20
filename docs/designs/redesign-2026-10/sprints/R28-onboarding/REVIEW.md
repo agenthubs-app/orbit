@@ -30,6 +30,7 @@ Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPO
 - R28 双目标无期限文字经过 R18a 共用 GoalEditor 的解析、重开与复合写入后保持原文；定向 5/5。实际本地 Web 账号随后完成第 3～5 屏，AI 空 provider 手填继续，服务端五屏完成回读；资料页编辑弹窗的目标保存回读仍没有端到端证据。
 - 有效邀请的 Web 实链补核发现旧 W0006 `/app/start` 豁免绕开了 R28 资料门禁：邀请页匿名 200，注册后直回邀请并连接，但缺行业资料的新账号可进入真实指南。C 线移除这条精确豁免，保留邀请公开例外；代理测试先 RED 7/10、修后连同导航／指南 26/26。相同邀请账号再进指南被转到资料五屏且 `next=/app/start` 保留，完整账号仍能进入指南。截图 `_evidence-c/R28/valid-invite-{anonymous,profile-gate}.png`；App 邀请回程未实机验。
 - 相同邀请账号在 App 直接打开 `orbit://start` 也暴露 0/3 真实指南。C 线 App 入口现在先读取服务端 profile policy，完成才读指南，未知政策和读取失败不能放行；定向测试 RED 0/4→GREEN 4/4、App typecheck exit 0。重启 Metro 后实机深链落五屏首屏，前后截图 `_evidence-c/R28/app-invitee-{guide-bypass-before,profile-gate-after}.png`；仍未验 App 邀请回程。
+- App 注册→登录→资料五屏的邀请安全目标纯路由链 8/8，目标仍为 `/i/ABCD-EFGH`；未把这条纯函数验证算作实际兑换成功。
 - SC12 的新壳接入不能只靠移动 C 文件：D 线 `orbit-2026/shell/shell-routes.ts` 仍把 `/app/start` 列在 `NO_SHELL_EXACT`、把 `/app/profile/onboarding` 列在 `NO_SHELL_PREFIXES`。`ShellPage` 在无 `ShellSlotsProvider` 时不渲染插槽，C 不能改 D 壳路由；D 的明确映射与 A 的新表单组件回传后，C 才能完成旧目录迁移并复测像素。当前旧目录及审计余项如实保留。
 - 全仓 import 检索显示 C 指南和资料不再调用 B 的旧 `card-batch-ui`；`profile-0918/profile-model.ts` 无生产引用后由 `f1e98a2b9` 删除。`onboarding-0918` 仍为 Web 资料实现路径。试迁到 `orbit-2026/onboarding` 触发该目录更严格的文案审计：内联硬编码 8/6/1、缺 ja 120/80。已局部撤回试迁，未放宽审计或留下新失败。
 

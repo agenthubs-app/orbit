@@ -39,6 +39,8 @@ R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口
 
 同一未完成资料账号登录 App 后，修前直接深链 `orbit://start` 显示 0/3 真实指南；修后 App 先读取服务端 profile policy，再读取指南，不完整或未知政策都转 `/profile/onboarding?next=%2Fstart`，资料读取失败停在可重试态。RED 0/4→GREEN 4/4，App typecheck exit 0；重启 Metro bundle 后实机直接深链进入五屏首屏，截图 `_evidence-c/R28/app-invitee-{guide-bypass-before,profile-gate-after}.png`。这验证 App 直接指南入口，不代替 App 邀请链接回程全矩阵。
 
+App 邀请 `next` 的纯路由链追加复核：`/i/ABCD-EFGH` 经注册进入登录仍保留邀请目标，登录后先到资料五屏，流程完成的安全目标仍是该邀请页；`account-auth-view-model` 定向 8/8。尚未以另一个新 App 账号跑实际邀请兑换，因此 SC02 的 App 邀请回程保持部分。
+
 | 条件 | Web 落点 | App 落点 |
 | --- | --- | --- |
 | 未登录访问继续页 | `/app/account/login?next=...`，保留安全目标 | 账号登录入口，安全目标由原生路由解析 |
