@@ -43,6 +43,8 @@ test("deletion application consumes a same-actor, single-use receipt and cancell
   assert.deepEqual(attempts.map(item => item.kind).sort(), ["accepted", "existing"]);
   const request = await store.get("actor");
   assert.equal(request?.status, "pending");
+  const { readAccountRightsAccessState } = await import("../../features/account/data-rights/access-policy");
+  assert.equal(await readAccountRightsAccessState({ db, workspaceId, userId: "profile" }), "pending");
   assert.equal(request?.purgeAfter, "2026-11-19T00:00:00.000Z");
   const authRow = await db.query<{ payload: Record<string, unknown> }>(`select payload from orbit_records where workspace_id=$1 and collection_name='auth_users'`, [workspaceId]);
   assert.equal(authRow.rows[0]?.payload.deletionRequestedAt, request?.requestedAt);
@@ -53,6 +55,7 @@ test("deletion application consumes a same-actor, single-use receipt and cancell
   assert.equal(await store.get("other"), null);
   assert.equal((await store.request("another", "profile", receipt)).kind, "bad-receipt");
   assert.equal((await store.cancel("actor")).kind, "cancelled");
+  assert.equal(await readAccountRightsAccessState({ db, workspaceId, userId: "profile" }), "active");
   assert.equal((await store.cancel("actor")).kind, "existing");
   assert.equal((await store.request("actor", "profile", receipt)).kind, "bad-receipt");
   const newReceipt = await store.issueReceipt("actor", "profile", "deletion-request", now);

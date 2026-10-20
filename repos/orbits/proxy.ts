@@ -114,6 +114,22 @@ export const proxy = auth(async (request) => {
     return redirectResponse;
   }
 
+  if (request.auth?.user?.id &&
+      (request.nextUrl.pathname.startsWith("/api/") || request.nextUrl.pathname.startsWith("/app/")) &&
+      !request.nextUrl.pathname.startsWith("/api/auth/")) {
+    const { accountRightsAccessDecision, readConfiguredAccountRightsAccessState } = await import("./features/account/data-rights/access-policy");
+    const state = await readConfiguredAccountRightsAccessState(request.auth.user.id);
+    const decision = accountRightsAccessDecision(state, request.method, request.nextUrl.pathname);
+    if (decision === "reject-api") {
+      return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: "Account deletion is in progress.",
+        context: { reason: state === "unavailable" ? "ACCOUNT_STATUS_UNAVAILABLE" : "ACCOUNT_DELETION_PENDING" } } },
+      { status: state === "unavailable" ? 503 : 423, headers: { "cache-control": "private, no-store" } });
+    }
+    if (decision === "redirect-pending") {
+      return NextResponse.redirect(new URL("/app/account/pending", request.url), { headers: { "cache-control": "private, no-store" } });
+    }
+  }
+
   if (
     shouldGateProfileOnboardingRequest({
       authenticated: Boolean(request.auth?.user?.id),
