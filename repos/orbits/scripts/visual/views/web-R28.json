@@ -1,0 +1,806 @@
+{
+  "_note": "R28 board-to-route manifest. These entries map each amended b12 board; they are not pixel passes. Drive the documented server state before running a view.",
+  "defaults": {
+    "app-origin": "http://127.0.0.1:3400",
+    "design-base": "http://127.0.0.1:3420/redesign-2026-10/",
+    "grid": 30
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/profile/onboarding-0918/**",
+    "repos/orbits/app/(app)/app/start/**"
+  ],
+  "views": [
+    {
+      "id": "W-R28-01-1440-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 924,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-01-1440-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 925,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-01-1024-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 926,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-01-1024-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 927,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-01-390-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 928,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-01-390-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 929,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-1440-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 930,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-1440-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 931,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-1024-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 932,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-1024-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 933,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-390-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 934,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-02-390-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 935,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-1440-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 936,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-1440-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 937,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-1024-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 938,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-1024-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 939,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-390-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 940,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-03-390-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 941,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-1440-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 942,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-1440-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 943,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-1024-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 944,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-1024-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 945,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-390-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 946,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-04-390-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 947,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-1440-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 948,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-1440-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 949,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-1024-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 950,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-1024-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 951,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-390-light",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 952,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-05-390-dark",
+      "app": "/app/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 953,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and server flow screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-1440-light",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 954,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-1440-dark",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 955,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-1024-light",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 956,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-1024-dark",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 957,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-390-light",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 958,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-06-390-dark",
+      "app": "/app/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 959,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-1440-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 960,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-1440-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 961,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-1024-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 962,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-1024-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 963,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-390-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 964,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-locked-390-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 965,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-1440-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 966,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-1440-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 967,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-1024-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 968,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-1024-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 969,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-390-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 970,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-current-390-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 971,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and contact progress; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-1440-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 972,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-1440-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 973,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-1024-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 974,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-1024-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 975,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-390-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 976,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-plan-390-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 977,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-1440-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 978,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-1440-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 979,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-1024-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 980,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-1024-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 981,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-390-light",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 982,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-07-complete-390-dark",
+      "app": "/app/start",
+      "design": "b12-missing-states.html",
+      "board-index": 983,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and active plan; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-1440-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 984,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-1440-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 985,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-1024-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 986,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-1024-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 987,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-390-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 988,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-08-390-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 989,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample banner; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-1440-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 990,
+      "width": 1440,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-1440-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 991,
+      "width": 1440,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-1024-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 992,
+      "width": 1024,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-1024-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 993,
+      "width": 1024,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-390-light",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 994,
+      "width": 390,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    },
+    {
+      "id": "W-R28-09-390-dark",
+      "app": "/app/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 995,
+      "width": 390,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample write block; unverified until the fixture matches."
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "_note": "R28 board-to-route manifest. Basic profile light boards use amended b1; dark and guide boards use appended b12. Entries are not pixel passes. Drive the documented server state before running a view.",
+  "defaults": {
+    "design-base": "http://127.0.0.1:3420/redesign-2026-10/",
+    "grid": 100
+  },
+  "sources": [
+    "repos/orbit-app/src/screens/profile/onboarding/**",
+    "repos/orbit-app/src/screens/guide/StartGuideScreen.tsx"
+  ],
+  "views": [
+    {
+      "id": "A-R28-01-light",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 10,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and basic profile; server flow at screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-02-light",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 11,
+      "themes": ["light"],
+      "note": "Requires local signed actor and server flow at goal screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-02-dark",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 61,
+      "themes": ["dark"],
+      "note": "Requires local signed actor and server flow at goal screen 2; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-01-dark",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 901,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and basic profile; server flow at screen 1; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-03-light",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 12,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and strengths; server flow at screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-03-dark",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 903,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and strengths; server flow at screen 3; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-04-light",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 13,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and intro; server flow at screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-04-dark",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 905,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and intro; server flow at screen 4; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-05-light",
+      "path": "/profile/onboarding",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 14,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and import; server flow at screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-05-dark",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 907,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and import; server flow at screen 5; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-06-light",
+      "path": "/profile/continue",
+      "design": "b1-onboarding-cards.html",
+      "board-index": 15,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-06-dark",
+      "path": "/profile/continue",
+      "design": "b12-missing-states.html",
+      "board-index": 909,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and unfinished server flow; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-04-error-light",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 910,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and intro AI failure fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-04-error-dark",
+      "path": "/profile/onboarding",
+      "design": "b12-missing-states.html",
+      "board-index": 911,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and intro AI failure fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-locked-light",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 912,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-locked-dark",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 913,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 0 confirmed contacts; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-current-light",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 914,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and in progress contact fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-current-dark",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 915,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and in progress contact fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-plan-light",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 916,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-plan-dark",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 917,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and 3 contacts and saved goal; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-complete-light",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 918,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and active plan fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-07-complete-dark",
+      "path": "/start",
+      "design": "b12-missing-states.html",
+      "board-index": 919,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and active plan fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-08-light",
+      "path": "/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 920,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample banner fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-08-dark",
+      "path": "/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 921,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample banner fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-09-light",
+      "path": "/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 922,
+      "themes": [
+        "light"
+      ],
+      "note": "Requires local signed actor and sample write block fixture; unverified until the fixture matches."
+    },
+    {
+      "id": "A-R28-09-dark",
+      "path": "/contacts",
+      "design": "b12-missing-states.html",
+      "board-index": 923,
+      "themes": [
+        "dark"
+      ],
+      "note": "Requires local signed actor and sample write block fixture; unverified until the fixture matches."
+    }
+  ]
+}
