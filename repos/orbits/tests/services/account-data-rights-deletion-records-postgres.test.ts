@@ -82,3 +82,19 @@ test("host events with active registrations block deletion without consuming rec
   await db.query(`delete from orbit_records where workspace_id=$1 and collection_name='event_registrations'`, [workspaceId]);
   assert.equal((await store.request("actor", "profile", receipt)).kind, "accepted");
 }));
+
+test("deletion deadline uses the exact request instant when the clock advances between reads", {
+  skip: localTestDatabase ? false : "requires local orbit_line_c_test",
+}, async () => withRecords(async ({ db, workspaceId }) => {
+  const { createAccountDeletionRecordStore } = await import("../../features/account/data-rights/deletion-records");
+  let tick = Date.parse("2026-10-20T00:00:00.000Z");
+  const store = createAccountDeletionRecordStore({ db, workspaceId, now: () => new Date(tick++) });
+  await db.query(`insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+    values ($1,'auth_users',$2,'profile','test',$2,$3::jsonb,now(),now())`,
+  [workspaceId, authUserRecordId("clock@example.test"), JSON.stringify({ id: "profile", email: "clock@example.test" })]);
+  const receipt = await store.issueReceipt("actor", "profile", "deletion-request", new Date(tick));
+  assert.equal((await store.request("actor", "profile", receipt)).kind, "accepted");
+  const request = await store.get("actor");
+  assert.ok(request);
+  assert.equal(Date.parse(request.purgeAfter) - Date.parse(request.requestedAt), 30 * 86_400_000);
+}));

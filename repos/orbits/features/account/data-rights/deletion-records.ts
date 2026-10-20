@@ -91,7 +91,7 @@ export function createAccountDeletionRecordStore(input: { db: TransactionalPostg
         await sql.query(`update orbit_records set payload=jsonb_set(payload,'{consumedAt}',to_jsonb($5::text)),updated_at=$5::timestamptz
           where workspace_id=$1 and collection_name=$2 and record_id=$3 and user_id=$4`, [workspaceId, RECEIPTS, receiptId(receipt), actorId, at]);
         const record: AccountDeletionRecord = { id, actorId, userId, status: "pending", requestedAt: at,
-          purgeAfter: new Date(now().getTime() + THIRTY_DAYS).toISOString(), reauthAt: data.issuedAt, version: (existing?.version ?? 0) + 1 };
+          purgeAfter: new Date(Date.parse(at) + THIRTY_DAYS).toISOString(), reauthAt: data.issuedAt, version: (existing?.version ?? 0) + 1 };
         if (existing) {
           const saved = await sql.query<{ record_id: string }>(`update orbit_records set payload=$5::jsonb,updated_at=$6::timestamptz
             where workspace_id=$1 and collection_name=$2 and record_id=$3 and user_id=$4 and (payload->>'version')::int=$7 returning record_id`,

@@ -13,8 +13,8 @@
 | 05 Worker／ZIP／通知 | 部分 | Web 本机维护 pass 将三次任务逐个变 ready，生成私有 ZIP/manifest；邮件因本机无 redirect target 被明确跳过。离页自动调度和生产任务列 DEFERRED。 |
 | 06 下载／过期 | 部分 | Web 同源登录后真实下载三份 ZIP 并检查成员；本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试。App 原生打开/分享与实时时钟到期操作未留证。 |
 | 07 App 账户／导出 | 部分 | AccountScreen 已整屏换为 kit 行，保留 profile、workspace、目标、权限、登出及服务器入口；debug 仅 dev。App #19 三轮和其余 P 板像素未过。 |
-| 08 退会申请／再认证 | 部分 | 密码限次与用途绑定一次性 receipt；Google challenge + prompt=login/max_age=0 + auth_time ≤10 分钟、同账号校验已接，旧 503 已去。真实外部 Google 账号未联调；本机 handler/授权测试通过。 |
-| 09 pending／取消 | 部分 | 旧 JWT 失效、普通 API/sync 白名单、镜像清理、CAS 取消及 pending 登录路由有聚焦测试；两端真实整链未验。 |
+| 08 退会申请／再认证 | 部分 | Web 本机密码再认证、receipt、删除申请实操返回 202；Google challenge + prompt=login/max_age=0 + auth_time ≤10 分钟、同账号校验已接，旧 503 已去。真实外部 Google 账号及 App 原生整链未联调。 |
+| 09 pending／取消 | Web 本机通过，App 未验 | Web 本机申请后旧 JWT 失效，重新登录进入 pending，GET 200、取消 DELETE 200、返回账户设置；数据库记录为 cancelled。普通 API/sync 白名单、镜像清理、CAS 取消有聚焦测试；App 原生整链未验。 |
 | 10 本机到期清除 | **未通过** | 逐域 runner、失败续跑、共享面谈双账号、规范化共享事件双账号测试已过；但已有 immutable 事件角色／修复台账可能残留本人 ID。残留扫描会失败关闭，不能声称零残留。 |
 | 11 完成／异常态 | 部分 | RD-33 匿名完成邮件 outbox 与最终身份删除同事务，提交后投递；本机失败重试通过。#23/#27 像素三轮仍红。 |
 | 12 旧屏／路由 | 部分 | #19 整屏替换，R18a/R18b 路由保留；Web 言語と外観整板 6/6 红，需 A/集成轮复核。 |
@@ -35,6 +35,8 @@
 
 **Web 本机实操。** 使用 localhost:3400 与本机测试账号，从画面提交 selected CSV、selected vCard、all-json 各一次，均返回 202；每次手动执行一个维护 pass 后为 ready。三份浏览器下载分别为 894／833／786 字节，成员为四域 CSV + manifest、contacts.vcf + 其余 CSV + manifest、五域 JSON + manifest。第四次返回 429，画面显示「今日の書き出し回数に達しました。明日もう一度お試しください。」。实操发现 all-json UI 曾误传 contactsFormat 导致 400，以及 Web 错读 error.context.reason 导致限额时显示通用错误；两端 UI 已省略 all-json 格式字段，Web 错误解析已修复，复试上述 202/429 均正确。测试账号没有业务记录，文件为空/header-only，不能代表真实大账号。证据为 _evidence-c/R18c-web-local-export-observation.json、三份 R18c-live-local-export*.zip 和维护日志。127.0.0.1 与 localhost 是不同 cookie 主机，下载必须使用与签名 URL 同源的 localhost 登录；本机首轮跨主机点击 401，不将其归为生产验收通过。
 
+**Web 本机退会实操。** 首次密码再认证后申请已写入 pending，但响应为 500：`requestedAt` 与 `purgeAfter` 分别读取时钟，差 8ms，违反契约的精确 30 天约束。改为从同一 `requestedAt` 推导截止时间，并加入时钟逐毫秒前进的 PG 回归测试（3/3）。仅对本机测试账号的旧 pending 行修正截止时间后，画面 GET 200、取消 DELETE 200。再次从画面完成密码再认证，申请 POST 202；旧 JWT 随即失效，重新登录进入 pending，GET 200、取消 DELETE 200，最终数据库为 cancelled／version 4／精确 30 天。申请后重新登录是当前会话撤销契约的实际路径；画面会先跳到登录。证据见 _evidence-c/R18c-deletion-clock-targeted.log 和 R18c-web-local-deletion-observation.json。没有触发到期清除或生产服务。
+
 ## 画板与像素实测
 
 - b7 原稿与改稿预检 16 板、数字冲突 0；b12 App/Web 登记共 152 frame，预检数字冲突 0。认可基准不等于像素通过。
@@ -50,7 +52,7 @@
 | --- | --- |
 | Web 全量 | R18c-web-full-baseline-env-final.log：7,911 tests／6,811 pass／35 fail／1,065 skip，exit 1。R18b 基线 7,764／7,204 pass／15 fail／545 skip。逐名 30 新、10 消失，见 R18c-web-full-baseline-env-delta.json。新失败中 C 同步审计 5 项；加锁/分类后聚焦 3 项恢复，2 项保持红：共享 inbox owner 改写、immutable publication in-place 改写。其余新增名主要是新增 PG 集成测试在未配置本机库时直接失败，逐项原始堆栈在日志。 |
 | App 全量 | R18c-app-full-baseline-env-final.log：3,274 tests／3,246 pass／26 fail／2 skip，exit 1。R18b 基线 3,246／3,232 pass／12 fail／2 skip。逐名 15 新、1 消失，见 R18c-app-full-baseline-env-delta.json。#19 的 9 项画面/布局失败经聚焦修复 9/9；四项 C 静态登记/离线边界修复后 57/57。旧 i18n snapshot 改名仍红；invite 与 discovery 属邻接画面，未归为 C 成功。 |
-| 聚焦／类型 | Web 共享 purge PG 3/3、sync 审计 9/11（2 项架构冲突）、导出错误/契约 4/4、Web typecheck/lint exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
+| 聚焦／类型 | Web 共享 purge PG 3/3、删除时钟 PG 3/3、sync 审计 9/11（2 项架构冲突）、导出错误/契约 4/4、Web typecheck/lint exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
 | copy/契约 | Web copy:qa 原先 7,507 条／245 issues，exit 1，非 R18c 权利文案专属；Web/App 契约同步与 schema parity 聚焦通过。未把红门禁记为通过。 |
 
 ## DEFERRED、待主会话决定与四栏交接
