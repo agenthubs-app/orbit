@@ -36,7 +36,7 @@ test("agent actions compatibility route preserves private access through the Tas
   assert.doesNotMatch(route, /AgentActionsScreen/u);
 });
 
-test("profile continuation route is a private handoff and delegates completion to Profile", () => {
+test("profile continuation route checks the server flow before its private redirect", () => {
   const route = readFileSync(
     join(repoRoot, "app", "profile", "continue.tsx"),
     "utf8"
@@ -46,5 +46,7 @@ test("profile continuation route is a private handoff and delegates completion t
   assert.match(route, /useLocalSearchParams/u);
   assert.match(route, /Redirect/u);
   assert.match(route, /withOrbitPrivateRoute/u);
-  assert.doesNotMatch(route, /useOrbitApiClient|useApiResource|ProfileScreen/u);
+  assert.match(route, /readOnboardingProfile/u);
+  assert.match(route, /readProfileOnboardingProgress/u);
+  assert.doesNotMatch(route, /ProfileScreen|AgentActionsScreen/u);
 });

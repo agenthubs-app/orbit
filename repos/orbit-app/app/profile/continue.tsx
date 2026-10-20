@@ -6,11 +6,13 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { RetryCard, Skeleton } from "../../src/components/ui";
 import { useOrbitApiClient } from "../../src/hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../src/i18n/OrbitLocaleContext";
 import { profileContinuationHref, safeProfileContinuationNext } from "../../src/view-models/profile-continuation-route";
 
 function ProfileContinueRoute() {
   const params = useLocalSearchParams<{ next?: string | string[] }>();
   const client = useOrbitApiClient();
+  const { t } = useOrbitLocale();
   const [result, setResult] = useState<"loading" | "error" | "onboarding" | "next">("loading");
   const reload = useCallback(async () => {
     setResult("loading");
@@ -21,8 +23,8 @@ function ProfileContinueRoute() {
   useEffect(() => { void reload(); }, [reload]);
   if (result === "onboarding") return <Redirect href={profileContinuationHref(params.next) as Href} />;
   if (result === "next") return <Redirect href={safeProfileContinuationNext(params.next) as Href} />;
-  return <AppScreen inset="kit" title="プロフィールの設定">
-    {result === "loading" ? <Skeleton lines={3} /> : <RetryCard title="設定を読み込めませんでした" onRetry={() => void reload()} />}
+  return <AppScreen inset="kit" title={t("onboarding.resumeTitle")}>
+    {result === "loading" ? <Skeleton lines={3} /> : <RetryCard title={t("onboarding.loadFailed")} onRetry={() => void reload()} />}
   </AppScreen>;
 }
 

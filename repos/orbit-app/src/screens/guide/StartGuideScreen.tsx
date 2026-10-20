@@ -14,14 +14,13 @@ import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { guideCopy as enGuideCopy } from "../../i18n/en/guide";
+import { guideCopy as jaGuideCopy } from "../../i18n/ja/guide";
+import { guideCopy as zhGuideCopy } from "../../i18n/zh/guide";
 import { createPlanApi } from "../plan/plan-api";
 import { goalKindLabel } from "../plan/plan-model";
 
-const copy = {
-  zh: { title: "开始使用 Orbit", subtitle: "距离第一份计划只差几步", contacts: "确认 3 位联系人", goal: "写下当前目标", plan: "制定第一份计划", add: "添加名片", edit: "填写目标", make: "继续制定计划", failed: "进度暂时无法读取", choose: "确认计划类型", missing: "请选择计划类型", href: "计划入口暂时无法打开，请重试", saved: "当前目标", done: "已完成", locked: "先完成上一步", back: "返回首页", helpContacts: "先确认 3 位联系人。", helpGoal: "写下你现在最想推进的目标。", helpPlan: "确认目标和计划类型后继续。" },
-  en: { title: "Get started with Orbit", subtitle: "A few steps to your first plan", contacts: "Confirm 3 contacts", goal: "Set your current goal", plan: "Make your first plan", add: "Add a card", edit: "Set a goal", make: "Continue to plan", failed: "Could not load your progress", choose: "Choose a plan type", missing: "Choose a plan type", href: "Could not open the plan. Retry.", saved: "Current goal", done: "Done", locked: "Finish the previous step first", back: "Back to home", helpContacts: "Start by confirming 3 contacts.", helpGoal: "Set the goal you want to work on now.", helpPlan: "Confirm your goal and plan type to continue." },
-  ja: { title: "はじめのガイド", subtitle: "最初のプランまで、あと少し", contacts: "人脈をつくる", goal: "目標を決める", plan: "プランをつくる", add: "人脈を追加する", edit: "目標を書く", make: "プランを作る", failed: "進捗を読み込めませんでした", choose: "プランの種類を確認", missing: "プランの種類を選んでください", href: "プランを開けませんでした。もう一度お試しください", saved: "保存済みの目標", done: "完了", locked: "前のステップを先に完了", back: "ホームに戻る", helpContacts: "まずは人脈を 3 人確認しましょう。", helpGoal: "今の目標を決めましょう。", helpPlan: "目標に合うプランを選びましょう。" },
-} as const;
+const copy = { zh: zhGuideCopy, en: enGuideCopy, ja: jaGuideCopy } as const;
 
 export function StartGuideScreen() {
   const { styles, colors } = useStyles();

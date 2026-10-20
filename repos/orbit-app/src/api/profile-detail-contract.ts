@@ -13,10 +13,17 @@ export const profileOnboardingSchema = z.object({
   missingFields: z.array(z.enum(["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"])),
 }).refine(value => new Set(value.missingFields).size === value.missingFields.length
   && (value.status === "complete") === (value.missingFields.length === 0));
+const readableProfileOnboardingSchema = z.preprocess(value => {
+  if (value && typeof value === "object" && !Array.isArray(value) && "policyVersion" in value) {
+    const version = value.policyVersion;
+    if (typeof version === "number" && Number.isInteger(version) && version > 2) return undefined;
+  }
+  return value;
+}, profileOnboardingSchema.optional());
 export const profileDetailSchema = z.object({
   state: z.enum(["success", "empty", "pending"]),
   // A future policy never turns an otherwise readable profile into an inferred completion.
-  onboarding: profileOnboardingSchema.optional().catch(undefined),
+  onboarding: readableProfileOnboardingSchema,
   mutationId: z.string().min(1).optional(),
   profile: z.object({
     id: z.string().trim().min(1), displayName: z.string(), headline: z.string(), organization: z.string(), role: z.string(),

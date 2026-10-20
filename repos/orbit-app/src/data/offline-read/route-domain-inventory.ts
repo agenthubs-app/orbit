@@ -11,6 +11,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
   if (path.startsWith('/api/profile')) return 'profile';
+  if (path.startsWith('/api/guide/')) return 'guide';
   if (path.startsWith('/api/integrations')) return 'integrations';
   if (path.startsWith('/api/agent/memory')) return 'agent-memory';
   if (path.startsWith('/api/notes')) return 'notes';
@@ -107,6 +108,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     // Home layout and guide state have an actor-scoped owner cache; the generic read mirror must not persist either response.
     || endpointTemplate.startsWith('/api/home/')
+    || endpointTemplate === '/api/guide/progress' || endpointTemplate === '/api/profile/onboarding-progress'
     || endpointTemplate.startsWith('/api/account/exports') || endpointTemplate.startsWith('/api/account/deletion-request')
     || endpointTemplate === '/api/app/version'
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
@@ -127,6 +129,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     || endpointTemplate === '/api/appointments/initial-proposal'
     // R23: the plan flow is online-only (paid AI drafts, versioned intakes); nothing is kept on the device.
     || consumerFile.startsWith('src/screens/plan/')
+    || consumerFile === 'src/screens/guide/StartGuideScreen.tsx'
     // R15: invite codes, previews and connections are online-only; a code or a preview is never kept on the device.
     || endpointTemplate.startsWith('/api/invite-codes')
     // R16: import batches (the chosen people, merges to confirm) and the daily question are online-only; never kept on the device.
@@ -182,6 +185,31 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/suggestions-api.ts","PUT","/api/profile"],
   ["src/screens/me/useAccountEditor.ts","PUT","/api/profile"],
   ["src/screens/me/useAccountProfile.ts","GET","/api/profile"],
+  // R28: onboarding progress and guide are private, online-only actor state.
+  ["src/api/guide-progress.ts","GET","/api/guide/progress"],
+  ["src/api/profile-onboarding-progress.ts","GET","/api/profile/onboarding-progress"],
+  ["src/api/profile-onboarding-progress.ts","POST","/api/profile/onboarding-progress"],
+  // The native guide constructs the existing plan API; its transitive calls stay registered.
+  ["src/screens/guide/StartGuideScreen.tsx","DELETE","/api/agent/plans/v2/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","DELETE","/api/agent/plans/v2/:id/types/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/drafts/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/intakes"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/intakes/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/v2/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/v2/:id/types/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/guide/StartGuideScreen.tsx","PATCH","/api/agent/plans/intakes/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/drafts/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/goal-kind"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/intakes"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/intakes/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/v2/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/v2/:id/types/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","POST","/api/agent/plans/v2/pending/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/legacy"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/legacy/:id"],
+  ["src/screens/guide/StartGuideScreen.tsx","GET","/api/agent/plans/v2/quota"],
+  ["src/screens/guide/StartGuideScreen.tsx","PATCH","/api/agent/plans/v2/:id"],
   // R17 主催（App）：src/screens/host 的接口都经 host-api.ts。
   ["src/screens/host/host-api.ts","DELETE","/api/organizers/:id/follow"],
   ["src/screens/host/host-api.ts","GET","/api/events/by-slug/:id"],

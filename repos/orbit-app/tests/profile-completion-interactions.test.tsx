@@ -16,13 +16,17 @@ test("profile completion receipt accepts concurrency metadata outside the privat
 });
 
 for (const invalid of [
-  { ...onboarding, policyVersion: 2 },
   { ...onboarding, status: "complete" },
   { ...onboarding, missingFields: [] },
   { ...onboarding, missingFields: ["birthDate", "birthDate"] },
   { ...onboarding, missingFields: ["organization"] },
 ]) test("profile completion rejects an unusable server policy " + JSON.stringify(invalid), () => {
   assert.equal(profileDetailSchema.safeParse({ ...profilePayload, onboarding: invalid }).success, false);
+});
+
+test("v2 can report an invalid stored birthday as incomplete without certifying completion", () => {
+  const result = profileDetailSchema.parse({ ...profilePayload, onboarding: { ...onboarding, policyVersion: 2 } });
+  assert.equal(result.onboarding?.status, "incomplete");
 });
 
 test("profile completion never treats a misplaced mutation ID as a save acknowledgment", () => {
