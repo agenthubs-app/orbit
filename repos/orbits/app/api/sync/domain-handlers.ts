@@ -11,6 +11,7 @@ import { eventDomainSummaryKey } from "../../../features/sync/event-domain-reade
 import { aiSubspaceOf } from "../../../features/sync/ai-session-domain-reader";
 import { reconcileInboxSourceStates } from "../../../features/sync/inbox-domain-reader";
 import { relationshipDomainSummaryKey } from "../../../features/sync/relationship-message-domain-reader";
+import { readTaskPlanLinks } from "../../../features/sync/task-plan-links";
 import { createConfiguredInboxRuntime, isTypedInboxEnabled } from "../../../features/notifications/inbox-record-service-factory";
 
 // The conditional manifest fingerprints the orbit_records watermarks (the
@@ -76,6 +77,7 @@ function createConfiguredDomainReadService(): DomainReadService | null {
   const service = createDomainReadService({
     client: configured.client,
     cursorSecret,
+    taskPlanLinks: (scope) => readTaskPlanLinks(configured.client, scope),
     // Sprint 0118: the inbox's read-time source decisions reach devices through a write-back.
     inboxReconciler: async ({ actorId, workspaceId }) => {
       if (!isTypedInboxEnabled(actorId)) return { checked: 0, changed: 0 };
@@ -180,8 +182,9 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
         await service.reconcile({ actorId, workspaceId });
         const eventSummary = await service.eventSummary({ actorId, workspaceId });
         const relationshipSummary = await service.relationshipSummary({ actorId, workspaceId });
+        const taskPlanSummary = await service.taskPlanSummary({ actorId, workspaceId });
         const produce = async () => {
-          const manifest = await service.manifest({ actorId, workspaceId, eventSummary, relationshipSummary });
+          const manifest = await service.manifest({ actorId, workspaceId, eventSummary, relationshipSummary, taskPlanSummary });
           return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
         };
         if (!MANIFEST_IS_CONDITIONAL) return produce();
@@ -189,6 +192,7 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
           MANIFEST_ROUTE_KEY,
           ...(eventSummary ? [`events:${eventDomainSummaryKey(eventSummary)}`] : []),
           ...(relationshipSummary ? [`messages:${relationshipDomainSummaryKey(relationshipSummary)}`] : []),
+          ...(taskPlanSummary ? [`tasks:${taskPlanSummary.fingerprint}`] : []),
         ].join(":");
         return conditionalJsonRead(
           {

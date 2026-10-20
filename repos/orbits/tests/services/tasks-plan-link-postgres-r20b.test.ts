@@ -5,8 +5,10 @@ import { createPostgresPlanV2Repository } from "../../features/plans/v2/reposito
 import { createPlanV2Service } from "../../features/plans/v2/service";
 import { isActivePlanTypeLink } from "../../features/tasks/plan-link";
 import { createTaskCollectionHandlers } from "../../app/api/tasks/collection-handler";
+import { createSyncDomainHandlers } from "../../app/api/sync/domain-handlers";
 import { RECORD_SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
+import { readTaskPlanLinks } from "../../features/sync/task-plan-links";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService, TaskServiceError } from "../../features/tasks/service";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
@@ -131,8 +133,7 @@ test("archiving either of two active goals invalidates its linked task in the ge
   }, { syncRevision: true });
 });
 
-// Pending cross-line sync design: plans do not advance the task record's sync revision or task-domain generation.
-test.skip("archiving a linked plan invalidates the task device mirror without removing the task", databaseTest, async () => {
+test("archiving a linked plan invalidates the task device mirror without removing the task", databaseTest, async () => {
   await withNetworkDatabase(async ({ pool, client, insertRecord }) => {
     await insertRecord({ collection: "accounts", id: A, userId: A, payload: { id: A } });
     const plans = createPostgresPlanV2Repository({ pool });
@@ -147,16 +148,31 @@ test.skip("archiving a linked plan invalidates the task device mirror without re
     });
     const saved = await tasks.create({ actorId: A, title: "Mirror linked", category: "relationship", planLink,
       idempotencyKey: "task:mirror-linked", now: "2026-10-18T08:00:00.000Z" });
-    const sync = createDomainReadService({ client, cursorSecret: "r20b-mirror-plan-secret-0123456789abcdef", domains: RECORD_SYNC_DOMAINS });
+    const sync = createDomainReadService({ client, cursorSecret: "r20b-mirror-plan-secret-0123456789abcdef", domains: RECORD_SYNC_DOMAINS,
+      taskPlanLinks: (scope) => readTaskPlanLinks(client, scope) });
     const scope = { actorId: A, workspaceId: WORKSPACE };
+    const handlers = createSyncDomainHandlers({ resolveActor: async () => ({ id: A, userId: A, workspaceId: WORKSPACE }),
+      createService: () => sync, conditionalRead: { client, workspaceId: WORKSPACE, version: "r20b-device-plan" } });
+    const manifestUrl = "https://orbit.local/api/sync/manifest";
+    const routeBefore = await handlers.manifest(new Request(manifestUrl));
+    assert.equal(routeBefore.status, 200);
+    const routeEtag = routeBefore.headers.get("etag");
+    assert.ok(routeEtag);
+    assert.equal((await handlers.manifest(new Request(manifestUrl, { headers: { "if-none-match": routeEtag } }))).status, 304);
     const before = (await sync.manifest(scope)).domains.find((entry) => entry.domainId === "tasks")!;
+    const otherActorPlanFingerprint = (await readTaskPlanLinks(client, { actorId: B, workspaceId: WORKSPACE })).fingerprint;
     const first = await sync.readDomainPage({ ...scope, domainId: "tasks", limit: 10 });
     assert.deepEqual(first.changes.find((change) => change.id === saved.task.id)?.payload?.planLink, planLink);
     await pool.query("update plans set status = 'archived', archived_at = $3 where workspace_id = $1 and id = $2",
       [WORKSPACE, planLink.planId, "2026-10-18T08:01:00.000Z"]);
+    assert.equal((await handlers.manifest(new Request(manifestUrl, { headers: { "if-none-match": routeEtag } }))).status, 200,
+      "a plan-only change must invalidate the conditional manifest response");
+    assert.equal((await readTaskPlanLinks(client, { actorId: B, workspaceId: WORKSPACE })).fingerprint, otherActorPlanFingerprint);
     const after = (await sync.manifest(scope)).domains.find((entry) => entry.domainId === "tasks")!;
     assert.ok(after.watermark !== before.watermark || after.generation !== before.generation,
       "a plan-only change must invalidate the device's completed task cursor");
+    await assert.rejects(sync.readDomainPage({ ...scope, domainId: "tasks", cursor: first.nextCursor, limit: 10 }),
+      (error: unknown) => error instanceof Error && "code" in error && error.code === "SYNC_RESET_REQUIRED");
     const refreshed = await sync.readDomainPage({ ...scope, domainId: "tasks", limit: 10 });
     assert.equal(refreshed.changes.find((change) => change.id === saved.task.id)?.payload?.planLink, undefined);
     assert.ok(refreshed.changes.some((change) => change.id === saved.task.id), "the task remains available to the device");

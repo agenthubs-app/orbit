@@ -261,7 +261,7 @@ function legacyTaskFromPayload(
   } as LegacyTaskDTO;
 }
 
-function mapTaskPayload(row: SyncReadRow, actorId: string) {
+function mapTaskPayload(row: SyncReadRow, actorId: string, activePlanLink?: (planId: string, typeItemId: string) => boolean) {
   const payload = asRecord(row.payload);
   if (!payload) return null;
   const canonical = taskRecordFromLiveRecord(liveRecordFromRow(row, payload), actorId)?.task;
@@ -295,7 +295,9 @@ function mapTaskPayload(row: SyncReadRow, actorId: string) {
     "completedBy",
     "completionSource",
   ] as const) put(result, field, task[field]);
-  put(result, "planLink", task.planLink);
+  if (task.planLink && (!activePlanLink || activePlanLink(task.planLink.planId, task.planLink.typeItemId))) {
+    put(result, "planLink", task.planLink);
+  }
   put(result, "sourceNoteVersion", task.sourceNoteVersion);
   put(result, "deferralCount", task.deferralCount);
   return result;
@@ -376,7 +378,7 @@ function kindFor(collectionName: SyncReadRow["collection_name"]): SyncChangeKind
   return "personal_schedule";
 }
 
-export function changeFromRow(row: SyncReadRow, actorId: string): SyncChange {
+export function changeFromRow(row: SyncReadRow, actorId: string, activePlanLink?: (planId: string, typeItemId: string) => boolean): SyncChange {
   const common = {
     aiVisibility: "available_when_synced" as const,
     id: row.record_id,
@@ -393,7 +395,7 @@ export function changeFromRow(row: SyncReadRow, actorId: string): SyncChange {
   const mapped = row.collection_name === "notes"
     ? mapNotePayload(row, actorId)
     : row.collection_name === "tasks"
-      ? mapTaskPayload(row, actorId)
+      ? mapTaskPayload(row, actorId, activePlanLink)
       : mapSchedulePayload(row, actorId);
   if (!mapped) {
     throw new SyncReadError("SYNC_INVALID_RECORD", "A canonical sync record is invalid.");

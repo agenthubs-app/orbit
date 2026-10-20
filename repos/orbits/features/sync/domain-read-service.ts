@@ -18,6 +18,7 @@ import {
 import { issueOfflineReadLease } from "./offline-read-lease";
 import { readRelationshipDomainPage, readRelationshipDomainSummary, type RelationshipDomainSummary } from "./relationship-message-domain-reader";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
+import type { TaskPlanLinks } from "./task-plan-links";
 
 /**
  * Per-domain sync protocol: lease (grants), manifest (watermarks) and pages.
@@ -38,6 +39,8 @@ export interface DomainReadServiceOptions {
    * pages, but read-time invalidation never reaches a device.
    */
   inboxReconciler?: (input: { actorId: string; workspaceId: string }) => Promise<InboxReconcileResult>;
+  /** Plan status and type membership can change without a task record revision. */
+  taskPlanLinks?: (input: { actorId: string; workspaceId: string }) => Promise<TaskPlanLinks>;
 }
 
 export class DomainNotAuthorizedError extends Error {
@@ -179,7 +182,8 @@ export function domainGeneration(epoch: string, visibility?: string): string {
   return createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
 }
 
-function generationOf(domain: SyncDomainDefinition, epoch: string, summary: EventDomainSummary | null): string {
+function generationOf(domain: SyncDomainDefinition, epoch: string, summary: EventDomainSummary | null, taskPlans: TaskPlanLinks | null): string {
+  if (domain.domainId === "tasks" && taskPlans) return domainGeneration(epoch, `active-types:${taskPlans.fingerprint}`);
   if (domain.source.kind === "event_derived" && domain.source.view === "published-results") {
     if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
     return domainGeneration(epoch, `released:${summary.released}`);
@@ -196,7 +200,7 @@ function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
   };
 }
 
-export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS, inboxReconciler }: DomainReadServiceOptions) {
+export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS, inboxReconciler, taskPlanLinks }: DomainReadServiceOptions) {
   const cursors = createDomainCursorCodec({ secret: cursorSecret });
   // Production passes nothing and gets the device domains; a test adds the probe explicitly.
   const leased = [...domains];
@@ -209,6 +213,11 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
 
   const hasEventDomains = leased.some((domain) => domain.source.kind === "event_derived");
   const hasRelationshipDomains = leased.some((domain) => domain.source.kind === "relationship_messages");
+  const hasTaskDomain = leased.some((domain) => domain.domainId === "tasks");
+
+  async function taskPlanSummary(actorId: string, workspaceId: string): Promise<TaskPlanLinks | null> {
+    return hasTaskDomain && taskPlanLinks ? taskPlanLinks({ actorId, workspaceId }) : null;
+  }
 
   async function relationshipSummary(actorId: string, workspaceId: string): Promise<RelationshipDomainSummary | null> {
     return hasRelationshipDomains ? readRelationshipDomainSummary(client, { workspaceId, actorId }) : null;
@@ -286,14 +295,15 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
   }
   type PageRead = { changes: DomainChange[]; hasMore: boolean; lastRevision: string | null };
 
-  async function readRecordsPage(collectionName: string, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
+  async function readRecordsPage(collectionName: string, input: PageInput, afterRevision: string, high: string, taskPlans: TaskPlanLinks | null): Promise<PageRead> {
     const result = await client.query<SyncReadRow>(PAGE_SQL, [input.workspaceId, input.actorId, collectionName, afterRevision, high, input.limit + 1]);
     if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId || row.collection_name !== collectionName)) {
       throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
     }
     const pageRows = result.rows.slice(0, input.limit);
     return {
-      changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId))),
+      changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId,
+        collectionName === "tasks" && taskPlans ? taskPlans.has : undefined))),
       hasMore: result.rows.length > input.limit,
       lastRevision: pageRows.length ? String(pageRows.at(-1)!.sync_revision) : null,
     };
@@ -366,17 +376,23 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       return relationshipSummary(input.actorId, input.workspaceId);
     },
 
-    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null; relationshipSummary?: RelationshipDomainSummary | null }): Promise<DomainManifest> {
+    async taskPlanSummary(input: { actorId: string; workspaceId: string }): Promise<TaskPlanLinks | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return taskPlanSummary(input.actorId, input.workspaceId);
+    },
+
+    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null; relationshipSummary?: RelationshipDomainSummary | null; taskPlanSummary?: TaskPlanLinks | null }): Promise<DomainManifest> {
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) return { registryVersion: SYNC_REGISTRY_VERSION, domains: [] };
       const summary = input.eventSummary !== undefined && (input.eventSummary !== null || !hasEventDomains) ? input.eventSummary : await eventSummary(input.actorId, input.workspaceId);
       const messages = input.relationshipSummary !== undefined && (input.relationshipSummary !== null || !hasRelationshipDomains) ? input.relationshipSummary : await relationshipSummary(input.actorId, input.workspaceId);
+      const taskPlans = input.taskPlanSummary !== undefined ? input.taskPlanSummary : await taskPlanSummary(input.actorId, input.workspaceId);
       const entries = await Promise.all(leased.map(async (domain) => ({
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         workspaceId: input.workspaceId,
         authorizationEpoch: epoch.epoch,
-        generation: generationOf(domain, epoch.epoch, summary),
+        generation: generationOf(domain, epoch.epoch, summary, taskPlans),
         watermark: await highWatermark(input.actorId, input.workspaceId, domain, summary, messages),
         history: "complete" as const,
         membershipCursor: null,
@@ -404,9 +420,10 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       if (!epoch.authorized) throw new DomainNotAuthorizedError(input.domainId);
       const issuedAt = Date.parse(now());
       const summary = domain.source.kind === "event_derived" ? await eventSummary(input.actorId, input.workspaceId) : null;
+      const taskPlans = domain.domainId === "tasks" ? await taskPlanSummary(input.actorId, input.workspaceId) : null;
       const scope: DomainCursorScope = {
         actorId: input.actorId, workspaceId: input.workspaceId, domainId: domain.domainId,
-        authorizationEpoch: epoch.epoch, generation: generationOf(domain, epoch.epoch, summary),
+        authorizationEpoch: epoch.epoch, generation: generationOf(domain, epoch.epoch, summary, taskPlans),
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION, registryVersion: SYNC_REGISTRY_VERSION,
       };
       const decoded = input.cursor ? cursors.decode(input.cursor, scope, issuedAt) : null;
@@ -419,7 +436,7 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       if (!partitioned && input.partitions?.length) throw new SyncReadError("SYNC_SCOPE_MISMATCH", `Domain ${domain.domainId} is not partitioned.`);
       const opened = partitioned ? await readOpenedSessionMessages(input, decoded, afterRevision, high) : null;
       const read = opened ? opened.read : domain.source.kind === "orbit_records"
-        ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
+        ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high, taskPlans)
         : domain.source.kind === "event_derived"
           ? await readEventDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
           : domain.source.kind === "contact_graph"
