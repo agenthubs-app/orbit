@@ -9,7 +9,7 @@ import {
   saveOnboardingFields,
   scanOwnBusinessCard
 } from "../src/api/profile-onboarding";
-import { profileDetailSchema } from "../src/api/profile-detail-contract";
+import { profileDetailSchema, profileOnboardingSchema } from "../src/api/profile-detail-contract";
 import { emptyProfilePayload, profilePayload } from "./helpers/profile-detail-fixtures";
 
 // A small in-memory stand-in for the documented /api/profile HTTP contract: optimistic
@@ -96,6 +96,8 @@ test("v2 profile readback accepts an omitted birthday while an unknown policy ca
   if (!saved.ok) return;
   assert.deepEqual(saved.detail.onboarding, { policyVersion: 2, status: "complete", missingFields: [] });
   assert.equal(saved.detail.profile?.birthDate, null);
+  assert.equal(profileOnboardingSchema.parse({ policyVersion: 2, status: "incomplete", missingFields: ["birthDate"] }).status, "incomplete",
+    "an invalid legacy birthday cannot certify completion under v2");
   const future = profileDetailSchema.parse({ ...profilePayload,
     onboarding: { policyVersion: 99, status: "complete", missingFields: [] } });
   assert.equal(future.onboarding, undefined, "unknown policy must not grant completion or hide the profile");

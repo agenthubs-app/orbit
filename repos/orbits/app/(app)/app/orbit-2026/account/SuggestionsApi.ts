@@ -26,7 +26,7 @@ export function validSaveReceipt(value: unknown, previous: ManualProfileContract
   return next.id === previous.id && Number.isFinite(revision) && revision > Date.parse(previous.updatedAt)
     && editor.lastSavedAt === next.updatedAt && editor.canSave === true
     && Array.isArray(editor.dirtyFields) && Array.isArray(editor.validationMessages)
-    && onboarding.policyVersion === 1 && (onboarding.status === "complete" || onboarding.status === "incomplete")
+    && (onboarding.policyVersion === 1 || onboarding.policyVersion === 2) && (onboarding.status === "complete" || onboarding.status === "incomplete")
     && Array.isArray(onboarding.missingFields) && onboarding.missingFields.every((field) => typeof field === "string")
     && (onboarding.status === "complete") === (onboarding.missingFields.length === 0)
     && Object.entries(patch).every(([field, expected]) => same(next[field], expected));

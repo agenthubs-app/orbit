@@ -566,7 +566,7 @@ export async function loadAppProfileRouteViewModel(
   const serverOnboarding = profileState.data.onboarding;
   if (
     !serverOnboarding ||
-    serverOnboarding.policyVersion !== 1 ||
+    (serverOnboarding.policyVersion !== 1 && serverOnboarding.policyVersion !== 2) ||
     (serverOnboarding.status !== "complete" &&
       serverOnboarding.status !== "incomplete") ||
     !Array.isArray(serverOnboarding.missingFields)

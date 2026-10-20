@@ -65,7 +65,7 @@ test("birth date is private actor data, survives sparse updates, and is excluded
   assert.equal(cleared.success, true);
   if (!cleared.success) throw new Error("Clear failed");
   assert.equal(Reflect.get(cleared.data.profile!, "birthDate"), null);
-  assert.deepEqual(Reflect.get(cleared.data, "onboarding"), { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] });
+  assert.deepEqual(Reflect.get(cleared.data, "onboarding"), { policyVersion: 2, status: "complete", missingFields: [] });
 });
 
 test("private birth date stays the same calendar date in different process time zones", async (t) => {

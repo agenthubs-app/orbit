@@ -12,8 +12,7 @@ export const profileOnboardingSchema = z.object({
   policyVersion: z.union([z.literal(1), z.literal(2)]), status: z.enum(["incomplete", "complete"]),
   missingFields: z.array(z.enum(["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"])),
 }).refine(value => new Set(value.missingFields).size === value.missingFields.length
-  && (value.status === "complete") === (value.missingFields.length === 0)
-  && (value.policyVersion === 1 || !value.missingFields.includes("birthDate")));
+  && (value.status === "complete") === (value.missingFields.length === 0));
 export const profileDetailSchema = z.object({
   state: z.enum(["success", "empty", "pending"]),
   // A future policy never turns an otherwise readable profile into an inferred completion.

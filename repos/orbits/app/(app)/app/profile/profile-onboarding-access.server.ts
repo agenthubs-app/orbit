@@ -23,7 +23,7 @@ export function isProfileOnboardingContract(
   const onboarding = value as Partial<ProfileOnboardingContract>;
 
   return (
-    onboarding.policyVersion === 1 &&
+    (onboarding.policyVersion === 1 || onboarding.policyVersion === 2) &&
     (onboarding.status === "complete" || onboarding.status === "incomplete") &&
     Array.isArray(onboarding.missingFields)
   );

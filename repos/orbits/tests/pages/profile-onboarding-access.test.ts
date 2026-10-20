@@ -354,7 +354,7 @@ test("live gate failures resolve to unavailable instead of escaping or treating 
           data: {
             profile: {},
             onboarding: {
-              policyVersion: 2,
+              policyVersion: 99,
               status: "complete",
               missingFields: [],
             },
@@ -377,6 +377,17 @@ test("live gate failures resolve to unavailable instead of escaping or treating 
       },
     );
   }
+});
+
+test("live gate accepts a v2 complete profile while an unknown policy stays unavailable", async () => {
+  await withGateEnv({ schema: "unused", workspaceId: "unused", mode: "live" }, async () => {
+    const access = loadStubbedAccess({ profileResult: { success: true, data: {
+      profile: { displayName: "Member", birthDate: null },
+      onboarding: { policyVersion: 2, status: "complete", missingFields: [] },
+    } } });
+    assert.deepEqual(await access.readProfileOnboardingAccess({ userId: "profile:stub" }),
+      { actorId: "account:stub-canonical", status: "complete" });
+  });
 });
 
 test("live helper resolves a raw profile subject to the canonical account and complete status", { skip }, async t => {

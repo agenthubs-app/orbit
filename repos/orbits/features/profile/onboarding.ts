@@ -19,6 +19,8 @@ export function calculateProfileOnboarding(
   if (typeof profile?.displayName !== "string" || !profile.displayName.trim()) missingFields.push("displayName");
   if (!isIndustryIdCode(profile?.primaryIndustryId)) missingFields.push("primaryIndustryId");
   if (!profile?.secondaryIndustryId || !validateIndustrySelection(profile).valid) missingFields.push("secondaryIndustryId");
-  if (!isValidProfileBirthDate(profile?.birthDate, today)) missingFields.push("birthDate");
-  return { policyVersion: 1, status: missingFields.length ? "incomplete" : "complete", missingFields };
+  // R28 policy v2: an omitted birthday is optional; a supplied invalid date
+  // still cannot certify completion (including legacy stored values).
+  if (profile?.birthDate != null && !isValidProfileBirthDate(profile.birthDate, today)) missingFields.push("birthDate");
+  return { policyVersion: 2, status: missingFields.length ? "incomplete" : "complete", missingFields };
 }

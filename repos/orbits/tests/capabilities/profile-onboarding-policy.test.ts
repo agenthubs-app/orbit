@@ -22,13 +22,27 @@ test("empty profile reports authoritative missing fields without creating a reco
   if (!result.success) throw new Error("Profile read failed");
   assert.equal(result.data.profile, null);
   assert.deepEqual(Reflect.get(result.data, "onboarding"), {
-    policyVersion: 1, status: "incomplete",
-    missingFields: ["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"],
+    policyVersion: 2, status: "incomplete",
+    missingFields: ["displayName", "primaryIndustryId", "secondaryIndustryId"],
   });
   assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: "onboarding-policy", collectionName: "profiles" }), []);
 });
 
 for (const mode of ["live", "mock"] as const) {
+  test(`${mode} v2 lets a real name and two industry levels complete without a birthday`, async () => {
+    const service = mode === "live"
+      ? createLiveProfileService({ provider: createStorageProfileProvider({ store: createMemoryLiveRecordStore(), workspaceId: "onboarding-policy" }), now: () => "2026-09-14T00:00:00.000Z" })
+      : createMockProfileService();
+    const saved = await service.updateProfile({ ...required, birthDate: null }, { actorId: "actor-no-birthday" });
+    assert.equal(saved.success, true);
+    if (!saved.success) return;
+    assert.deepEqual(saved.data.onboarding, { policyVersion: 2, status: "complete", missingFields: [] });
+    assert.equal(saved.data.profile?.birthDate, null);
+    const invalid = await service.updateProfile({ ...required, birthDate: "2026-02-30" }, { actorId: "actor-no-birthday" });
+    assert.equal(invalid.success, false);
+    if (!invalid.success) assert.equal(invalid.error.code, "PROFILE_BIRTH_DATE_INVALID");
+  });
+
   test(`${mode} empty completeness keeps the required six fields`, () => {
     const service = mode === "live"
       ? createLiveProfileService({ provider: createStorageProfileProvider({ store: createMemoryLiveRecordStore(), workspaceId: "onboarding-policy" }) })
@@ -69,7 +83,7 @@ for (const mode of ["live", "mock"] as const) {
     if (!result.success) throw new Error("Profile save failed");
     assert.equal(result.data.completeness.score, 17);
     assert.equal(result.data.completeness.status, "action-needed");
-    assert.deepEqual(Reflect.get(result.data, "onboarding"), { policyVersion: 1, status: "complete", missingFields: [] });
+    assert.deepEqual(Reflect.get(result.data, "onboarding"), { policyVersion: 2, status: "complete", missingFields: [] });
     assert.equal(Reflect.get(result.data.profile!, "birthDate"), "2000-02-29");
 
     const rich = await service.updateProfile({
@@ -81,7 +95,7 @@ for (const mode of ["live", "mock"] as const) {
     if (!rich.success) throw new Error("Rich profile save failed");
     assert.equal(rich.data.completeness.score, 100);
     assert.deepEqual(Reflect.get(rich.data, "onboarding"), {
-      policyVersion: 1, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId"],
+      policyVersion: 2, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId"],
     });
   });
 
@@ -96,7 +110,7 @@ for (const mode of ["live", "mock"] as const) {
     assert.equal(result.success, true);
     if (!result.success) throw new Error("Profile save failed");
     assert.deepEqual(Reflect.get(result.data, "onboarding"), {
-      policyVersion: 1, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId", "birthDate"],
+      policyVersion: 2, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId"],
     });
   });
 }
