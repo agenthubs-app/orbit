@@ -9078,3 +9078,118 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
+
+<!-- 主会话代定 §R28-1～11（RD-33，2026-10-20）。本组只在 b12 末尾追加。
+     原 b1：A3 五屏多缺深色／Web 窄宽，/start 无整页，A4 固定 4/5。
+     新：资料五屏仍 1/5～5/5、目标上限 2、生日任意；指南独立三步，示例进度用真实 n/3 的只读 fixture。
+     理由：资料、指南、计划四阶段是三种计数；与 §2 服务契约和共用进度投影一致。 -->
+<style>
+.r28-draft { box-sizing:border-box; width:100%; height:100%; background:var(--bg); color:var(--ink); font-family:var(--font); overflow:hidden; }
+.r28-draft * { box-sizing:border-box; }
+.r28-draft .r28-top { height:55px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; border-bottom:1px solid var(--line); background:var(--surface); font-size:14px; font-weight:800; }
+.r28-draft .r28-top small { color:var(--ink-3); font-weight:600; }
+.r28-draft .r28-main { padding:24px 20px 104px; height:calc(100% - 55px); overflow:hidden; }
+.r28-draft .r28-step { display:flex; gap:5px; margin-bottom:11px; }
+.r28-draft .r28-step i { height:5px; flex:1; border-radius:6px; background:var(--line); }
+.r28-draft .r28-step i.done { background:var(--plum-700); }
+.r28-draft .r28-step i.now { background:var(--plum-300); }
+.r28-draft .r28-kicker { font-size:11px; color:var(--ink-3); font-weight:700; }
+.r28-draft h2 { font-size:24px; line-height:1.25; letter-spacing:-.015em; margin:13px 0 7px; }
+.r28-draft p { font-size:13px; line-height:1.65; color:var(--ink-2); margin:0 0 17px; }
+.r28-draft .r28-card { padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:18px; margin:10px 0; }
+.r28-draft .r28-row { min-height:40px; display:flex; align-items:center; justify-content:space-between; gap:10px; border-top:1px solid var(--line); font-size:13px; }
+.r28-draft .r28-row:first-child { border:0; }
+.r28-draft .r28-row span { color:var(--ink-3); text-align:right; }
+.r28-draft .r28-pills { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.r28-draft .r28-pill { display:inline-flex; align-items:center; min-height:36px; border-radius:11px; border:1px solid var(--line); padding:7px 10px; background:var(--surface); font-size:12px; font-weight:700; }
+.r28-draft .r28-pill.on { border-color:var(--plum-700); background:var(--mac-lav); }
+.r28-draft .r28-note { padding:12px 14px; background:var(--mac-lav); border-radius:13px; color:var(--ink-2); font-size:12px; line-height:1.6; margin:12px 0; }
+.r28-draft .r28-acts { display:flex; gap:9px; margin-top:18px; }
+.r28-draft .r28-acts .btn { min-height:44px; }
+.r28-draft .r28-error { background:var(--coral-soft); color:var(--coral-text); }
+.r28-draft.r28-phone .r28-main { padding:21px 18px 105px; }
+.r28-draft.r28-phone h2 { font-size:21px; }
+.r28-draft.r28-phone .r28-acts { position:absolute; left:18px; right:18px; bottom:27px; flex-direction:column; }
+.r28-draft.r28-phone .r28-acts .btn { width:100%; }
+.r28-draft.r28-web .r28-main { max-width:720px; margin:auto; }
+.r28-draft.r28-web390 .r28-main { padding:18px 17px 95px; }
+.r28-draft.r28-web390 h2 { font-size:20px; }
+.r28-draft.r28-web390 .r28-acts { flex-direction:column; }
+.r28-draft.r28-web390 .r28-acts .btn { width:100%; }
+.r28-draft .r28-demo { display:flex; align-items:center; gap:9px; background:var(--mac-lav); border-radius:12px; padding:11px; font-size:12px; }
+.r28-draft .r28-demo b { flex:1; }
+.r28-draft .r28-guide-item { opacity:.48; }
+.r28-draft .r28-guide-item.ready { opacity:1; }
+</style>
+<script>
+(function () {
+  const { S8, INDEX, PB, group, m390 } = window.__r18bBoardKit;
+  const row = (label, value) => '<div class="r28-row"><b>' + label + '</b><span>' + value + '</span></div>';
+  const card = value => '<div class="r28-card">' + value + '</div>';
+  const pill = (value, on = false) => '<span class="r28-pill' + (on ? ' on' : '') + '">' + value + '</span>';
+  const acts = (primary, secondary = '') => '<div class="r28-acts">' + (secondary ? '<button class="btn">' + secondary + '</button>' : '') + '<button class="btn primary">' + primary + '</button></div>';
+  const profiles = [
+    ['01', '基本情報', 'まずは、あなたのことを', '氏名・業界を確認してから次へ進みます。',
+      card(row('氏名', '佐藤 健一') + row('会社', '株式会社ミナトリンク') + row('役職', '代表取締役 CEO') + row('業界', 'IT・ソフトウェア › SaaS') + row('生年月日（任意）', '未入力')) + '<div class="r28-note">生年月日は入力しなくても続けられます。入力した場合も相手には公開されません。</div>', '次へ'],
+    ['02', '目標', 'いちばん達成したいことは？', '2個まで。選んだ順に優先します。',
+      '<div class="r28-pills">' + pill('① 資金調達', true) + pill('② 新規顧客開拓', true) + pill('採用') + pill('提携先探し') + pill('認知拡大') + pill('情報収集') + '</div>' + card(row('ひとことで', 'シリーズAで3億円を調達') + row('選択中', '2 / 2')) + '<div class="r28-note">期限は決めません。最初のプランでは優先 1 の目標を使い、目標の種類は作成前に確かめます。</div>', '次へ'],
+    ['03', '強み・ニーズ', 'あなたの強みと求めていること', '人と人を結ぶ手がかりになります。',
+      card('<b>提供できること</b><div class="r28-pills">' + pill('資本政策の知見', true) + pill('SaaS の営業組織づくり', true) + '</div>') + card('<b>求めていること</b><div class="r28-pills">' + pill('VC パートナー', true) + pill('製造業の決裁者', true) + '</div>') + card('<b>話せる話題</b><div class="r28-pills">' + pill('ゴルフ', true) + pill('サウナ', true) + '</div>'), '次へ'],
+    ['04', '自己紹介', '自己紹介文をつくりました', '内容を編集できます。自動で公開・送信されません。',
+      card('<div class="r28-pills">' + pill('ビジネス', true) + pill('やわらかめ') + pill('English') + '</div><p>株式会社ミナトリンク代表の佐藤です。製造業向けの業務 SaaS に取り組んでいます。</p>' + row('別の案', '残り 2回')) + '<div class="r28-note">AI が使えないときも、手書きして次へ進めます。</div>', 'この内容で保存'],
+    ['05', '名刺の取り込み', '手元の名刺を取り込みましょう', '何枚からでも始められます。あとから追加できます。',
+      card(row('まとめて撮影', '表と裏をペアに') + row('写真から選ぶ', '最大100枚') + row('CSV・Eight・vCard', 'Web で取り込み')) + '<div class="r28-note">取り込まずにスキップしても、3 ステップのガイドへ進めます。</div>', '取り込みへ'],
+    ['06', '続きから再開', '続きから設定できます', '保存済みの内容を確認してから再開します。',
+      card(row('基本情報', '確認済み') + row('目標', '確認済み') + row('強み・ニーズ', '次に設定') + row('自己紹介', 'まだ') + row('名刺の取り込み', 'まだ')) + '<div class="r28-note">あとで設定しても、ここから続きを始められます。</div>', '続きから再開'],
+  ];
+  function profile(i, app) {
+    const [id, step, title, subtitle, content, action] = profiles[i];
+    const bars = '<div class="r28-step">' + profiles.slice(0, 5).map((_, j) => '<i class="' + (j < i ? 'done' : j === i ? 'now' : '') + '"></i>').join('') + '</div>';
+    const kicker = id === '06' ? 'プロフィール設定 · 続きから' : 'ステップ ' + (i + 1) + ' / 5 · ' + step;
+    return '<div class="r28-draft ' + (app ? 'r28-phone' : 'r28-web') + '"><div class="r28-top"><b>‹ プロフィール設定</b><small>あとで</small></div><main class="r28-main">' + bars + '<div class="r28-kicker">' + kicker + '</div><h2>' + title + '</h2><p>' + subtitle + '</p>' + content + acts(action, i === 5 ? 'あとで' : '') + '</main></div>';
+  }
+  function guide(state, app) {
+    const completed = state === 'locked' ? 0 : state === 'current' ? 1 : state === 'plan' ? 2 : 3;
+    const status = state === 'locked' ? 'まずは人脈を 3 人確認しましょう。' : state === 'current' ? '次は目標を保存しましょう。' : state === 'plan' ? '目標とプランの種類を確かめてください。' : '最初のプランができました。';
+    const item = (n, title, detail, ready) => '<div class="r28-row r28-guide-item' + (ready ? ' ready' : '') + '"><b>' + n + ' ' + title + '</b><span>' + detail + '</span></div>';
+    return '<div class="r28-draft ' + (app ? 'r28-phone' : 'r28-web') + '"><div class="r28-top"><b>‹ ホーム</b><small>はじめのガイド</small></div><main class="r28-main"><div class="r28-kicker">はじめの 3 ステップ · ' + completed + ' / 3</div><h2>' + (state === 'complete' ? 'ガイドを終えました' : '最初のプランまで、あと少し') + '</h2><p>' + status + '</p>' + card(item('1', '人脈をつくる', state === 'locked' ? '0 / 3 人' : '3 / 3 人', true) + item('2', '目標を決める', state === 'locked' ? 'まだ開けません' : state === 'current' ? '今できること' : '完了', completed >= 1) + item('3', 'プランをつくる', completed < 2 ? '目標のあとで' : state === 'plan' ? '今できること' : '完了', completed >= 2)) + (state === 'plan' ? card(row('優先 1', 'シリーズAで3億円を調達') + row('プランの種類', '資金調達 · 変更できます')) : '') + acts(state === 'locked' ? '人脈を追加する' : state === 'current' ? '目標を設定する' : state === 'plan' ? 'プランをつくる' : 'プランを見る') + '</main></div>';
+  }
+  function sample(state, app) {
+    const modal = state === 'blocked' ? card('<b>これはサンプルです</b><p>サンプルの人物には書き込めません。ガイドを続けますか？</p>' + acts('ガイドを続ける · 1 / 3', 'サンプルを見る')) : card(row('佐藤 健一', 'サンプル') + row('高橋 美咲', 'サンプル') + row('渡辺 翔', 'サンプル'));
+    return '<div class="r28-draft ' + (app ? 'r28-phone' : 'r28-web') + '"><div class="r28-top"><b>人脈</b><small>サンプル</small></div><main class="r28-main"><div class="r28-demo"><b>🧪 サンプルを表示中</b><span>' + (state === 'blocked' ? '閉じる' : 'ガイドを続ける · 1 / 3') + '</span></div><h2>' + (state === 'blocked' ? '書き込みはできません' : '使い方を見てみましょう') + '</h2><p>この人物と数字はサンプルです。ガイドを終えると、あなたのデータに切り替わります。</p>' + modal + '</main></div>';
+  }
+  function webFrame(body, width, theme) {
+    const webBody = body.replace('r28-web"', width === 390 ? 'r28-web r28-web390"' : 'r28-web"');
+    if (width === 390) return m390({ body: webBody, nav: -1, theme });
+    return '<div class="web no-rail bare ' + (width === 1024 ? 'w1024' : '') + '" data-theme="' + theme + '" style="display:block;width:' + width + 'px;height:900px;overflow:hidden">' + webBody + '</div>';
+  }
+  let html = S8('补画 · R28 新用户引导', '主会话代定 §R28-1～11／RD-33：b1 A3/A4 的深色・窄幅和独立指南状态。原／新／理由见本组注释；正式基准，像素另验。');
+  for (const i of [0, 2, 3, 4, 5]) {
+    const [id, name] = profiles[i];
+    html += PB('A-R28-' + id + 'd ' + name + ' · 深色', 'state', () => ({ body: profile(i, true), tab: -1 }), null, 'b1 A3 / §R28-' + (i + 1) + ' · 正式基準');
+  }
+  html += PB('A-R28-04-error 自己紹介 · AI 利用不可', 'state', () => ({ body: profile(3, true).replace('AI が使えないときも、手書きして次へ進めます。', 'AI を使えません。手書きして次へ進めます。').replace('r28-note', 'r28-note r28-error'), tab: -1 }), null, 'b1#13 / §R28-11 · 正式基準');
+  for (const [state, title] of [['locked', '未解錠'], ['current', '進行中'], ['plan', 'プラン入口'], ['complete', '完了']]) {
+    html += PB('A-R28-07-' + state + ' ガイド · ' + title, 'state', () => ({ body: guide(state, true), tab: -1 }), null, 'b1 A3/A5 / §R28-4,8 · 正式基準');
+  }
+  for (const [state, id, title] of [['open', '08d', '示例横条'], ['blocked', '09d', '示例の書き込み停止']]) {
+    html += PB('A-R28-' + id + ' ' + title, 'state', () => ({ body: sample(state, true), tab: -1 }), null, 'b1#22/23 / §R28-6 · 正式基準');
+  }
+  const webStates = profiles.map((profileState, i) => ({ id: profileState[0], title: profileState[1], render: () => profile(i, false) }));
+  for (const [state, title] of [['locked', '未解錠'], ['current', '進行中'], ['plan', 'プラン入口'], ['complete', '完了']]) {
+    webStates.push({ id: '07-' + state, title: 'ガイド · ' + title, render: () => guide(state, false) });
+  }
+  for (const [state, id, title] of [['open', '08', '示例横条'], ['blocked', '09', '示例の書き込み停止']]) {
+    webStates.push({ id, title, render: () => sample(state, false) });
+  }
+  for (const state of webStates) {
+    for (const width of [1440, 1024, 390]) {
+      const id = 'W-R28-' + state.id + '-' + width;
+      INDEX.push([id, state.title + ' ' + width]);
+      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + id + '">' + id + ' ' + state.title + '<span class="src">b1 A3/A4 / §R28・RD-33 · 正式基準</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + webFrame(state.render(), width, 'light') + webFrame(state.render(), width, 'dark') + '</div></div>';
+    }
+  }
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('r28-draft-boards', html));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>

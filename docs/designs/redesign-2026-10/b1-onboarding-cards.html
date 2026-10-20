@@ -1681,6 +1681,7 @@ function authApp(kind) {
 }
 
 /* ===================== A3 资料 onboarding ===================== */
+/* 主会话代定 §R28-1/2/3（RD-33，2026-10-20）：原「1〜3個まで」「2 / 3 選択中」→「2個まで」「2 / 2 選択中」。资料仍有 5 屏；目标最多 2 个且不默认设期限，第一优先目标进入计划前仍须核对类型。 */
 const OBS = ['基本情報', '目標', '強み・ニーズ', '自己紹介', '名刺の取り込み'];
 const stepper = (k) => `<div class="stp">${OBS.map((t, i) => `<i class="${i < k ? 'd' : i === k ? 'n' : ''}"></i>`).join('')}</div><div class="row between lbl" style="margin:7px 0 16px"><span>ステップ ${k + 1} / 5 · ${OBS[k]}</span><span>${ic('check', 'sm')} 自動保存</span></div>`;
 const wstepper = (k) => `<div class="wstp">${OBS.map((t, i) => `<div class="${i < k ? 'd' : i === k ? 'n' : ''}"><span class="n">${i < k ? ic('check', 'sm') : i + 1}</span>${t}</div>`).join('<em></em>')}</div>`;
@@ -1701,11 +1702,11 @@ function obApp(k) {
     <div class="grid2" style="gap:8px">${fld('業界', 'IT・ソフトウェア', { end: ic('down', 'sm') })}${fld('詳細', 'SaaS', { end: ic('down', 'sm'), cls: 'focus' })}</div>
     ${fld('生年月日（任意）', '1986年4月12日', { end: ic('calendar', 'sm'), msg: '相手に公開されません。誕生日の挨拶リマインドにだけ使います。' })}` +
     foot(`<button class="btn primary block xl">次へ</button>`);
-  if (k === 1) return head + `<div class="h1">いちばん達成したいことは？</div><div class="sub" style="margin:4px 0 14px">1〜3個まで。選んだ順に優先します。</div>
+  if (k === 1) return head + `<div class="h1">いちばん達成したいことは？</div><div class="sub" style="margin:4px 0 14px">2個まで。選んだ順に優先します。</div>
     <div class="gt">${GOALS.map(([e, c, t, d, o]) => `<button class="${o ? 'on' : ''}">${o ? `<span class="ord">${o}</span>` : ''}<span class="emo sm ${c}">${e}</span>${t}<small>${d}</small></button>`).join('')}</div>
     <div class="card flat k-noperiod" style="margin-top:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);line-height:1.6">期限は決めません。目標から「誰と話すとよいか」を分析します。</div>
     ${fld('ひとことで（任意）', 'シリーズAで3億円を調達', { cls: 'focus', caret: true, msg: '金額などの数字が入ると、話すべき人が具体的になります' })}` +
-    foot(`<button class="btn primary block xl">次へ <span style="opacity:.6;font-weight:600">· 2 / 3 選択中</span></button>`);
+    foot(`<button class="btn primary block xl">次へ <span style="opacity:.6;font-weight:600">· 2 / 2 選択中</span></button>`);
   if (k === 2) return head + `<div class="h1">あなたの「強み」と「求めていること」</div><div class="sub" style="margin:4px 0 14px">人と人を結ぶ手がかりになります。あとから編集できます。</div>
     <div class="grp"><div class="grp-h"><span class="emo sm teal">🎁</span>提供できること</div>${togs(GIVE)}</div>
     <div class="grp" data-why-box><div class="grp-h"><span class="emo sm pink">🔎</span>求めていること<span class="why" style="margin-left:auto">?</span></div>${togs(NEED, '事業会社の経営企画')}<div class="why-body" hidden>点線の候補は、目標「資金調達」「新規顧客開拓」と業界「SaaS」から提案しています。タップで追加。</div></div>
@@ -1731,7 +1732,7 @@ function obWeb(k) {
     `<div class="mt">まずは、あなたのことを</div><div class="sub">相手のプロフィールにも表示される、基本の情報です。</div>
       <div class="row" style="gap:14px;margin-top:18px;padding:16px;border-radius:18px;border:1.6px dashed var(--plum-300);background:color-mix(in srgb,var(--accent-soft) 55%,transparent)"><span class="emo lav" style="background:var(--surface)">📇</span><div style="flex:1"><b>自分の名刺の画像をドロップして自動入力</b><div class="lbl">氏名・会社・役職・連絡先を読み取ります</div></div><button class="btn sm">${ic('phone', 'sm')}スマホで撮る（QR）</button></div>
       <div class="grid2" style="gap:14px">${fld('氏名', '佐藤 健一', { hint: '名刺から' })}${fld('会社', '株式会社ミナトリンク', { hint: '名刺から' })}${fld('役職', '代表取締役 CEO', { hint: '名刺から' })}${fld('生年月日（任意）', '1986/04/12', { end: ic('calendar', 'sm') })}${fld('業界', 'IT・ソフトウェア', { end: ic('down', 'sm') })}${fld('業界の詳細', 'SaaS', { cls: 'focus', end: ic('down', 'sm') })}</div>`,
-    `<div class="mt">いちばん達成したいことは？</div><div class="sub">1〜3個まで。選んだ順に優先します。</div>
+    `<div class="mt">いちばん達成したいことは？</div><div class="sub">2個まで。選んだ順に優先します。</div>
       <div class="gt w3" style="margin-top:18px">${GOALS.map(([e, c, t, d, o]) => `<button class="${o ? 'on' : ''}">${o ? `<span class="ord">${o}</span>` : ''}<span class="emo sm ${c}">${e}</span>${t}<small>${d}</small></button>`).join('')}</div>
       <div class="row" style="gap:14px;margin-top:6px;align-items:flex-end"><div style="flex:1">${fld('ひとことで（任意）', 'シリーズAで3億円を調達', { cls: 'focus', caret: true, msg: '期限は決めません。目標から「誰と話すとよいか」を分析します。' })}</div></div>`,
     `<div class="mt">あなたの「強み」と「求めていること」</div><div class="sub">人と人を結ぶ手がかりになります。</div>
@@ -1760,6 +1761,8 @@ function obWeb(k) {
 }
 
 /* ===================== A4 示例预览 ===================== */
+/* 主会话代定 §R28-4/6（RD-33）：原固定「4 / 5」是旧资料步数示例；改为真实指南三步的 fixture「1 / 3」。运行时仅在共用投影可读时显示 n / 3，读失败只显示「ガイドを続ける」。 */
+const SAMPLE_GUIDE_PROGRESS = '1 / 3';
 /* 审计：示例预览与 app.html 人脈 同源（HV3：濃さ三点 + 出どころ chip；顶栏 検索 / 絞り込み 与基准一致），人名后加「サンプル」角标 */
 function sampleNetApp() {
   return `<div class="samplebar"><span style="font-size:16px">🧪</span><div style="flex:1;min-width:0"><b>サンプルを表示中</b><div style="font-weight:500">ガイドを終えると、あなたのデータに切り替わります</div></div><button class="btn sm">続ける</button><button class="x">${ic('x', 'sm')}</button></div>` +
@@ -1774,10 +1777,10 @@ function sampleContactApp() {
 }
 const interceptApp = `<div class="sheet-scrim"></div><div class="dialog"><div class="dic emo">🧪</div>
   <b class="dt">これはサンプルです</b><div class="dd">サンプルの人には下書きを作成できません。ガイドを続けて、あなたの名刺を取り込みますか？</div>
-  <div class="dacts stack"><button class="btn primary block">ガイドを続ける（4 / 5）</button><button class="btn ghost block">サンプルを見続ける</button></div></div>`;
+  <div class="dacts stack"><button class="btn primary block">ガイドを続ける（${SAMPLE_GUIDE_PROGRESS}）</button><button class="btn ghost block">サンプルを見続ける</button></div></div>`;
 /* 审计：示例首页与 web.html NAV-V3 ホーム同源（组件网格：今日やること · プラン スコア · 次のイベント · 人脈 · 秘書から），顶栏 🔔 + 編集 与基准一致 */
 function sampleHomeWeb() {
-  return `<div class="wsample"><span style="font-size:18px">🧪</span><div style="flex:1"><b>サンプルデータを表示中</b> <span style="font-weight:500">— 画面の数字や人物はすべて架空です。ガイドを終えると、あなたのデータに切り替わります。</span></div><button class="btn sm" style="background:var(--surface)">ガイドを続ける · 4 / 5</button><button class="lbtn" style="background:transparent;color:inherit">${ic('x', 'sm')}</button></div>` +
+  return `<div class="wsample"><span style="font-size:18px">🧪</span><div style="flex:1"><b>サンプルデータを表示中</b> <span style="font-weight:500">— 画面の数字や人物はすべて架空です。ガイドを終えると、あなたのデータに切り替わります。</span></div><button class="btn sm" style="background:var(--surface)">ガイドを続ける · ${SAMPLE_GUIDE_PROGRESS}</button><button class="lbtn" style="background:transparent;color:inherit">${ic('x', 'sm')}</button></div>` +
     HV3.W.home('many').replace('<div class="lbl">人脈</div>', `<div class="lbl">人脈 ${ST}</div>`).replace('<div class="lbl">プラン スコア</div>', `<div class="lbl">プラン スコア ${ST}</div>`);
 }
 const guideRail = (k = 3) => `<h4><span class="emo sm lav">🧭</span>はじめかたガイド</h4>
@@ -1791,7 +1794,7 @@ function sampleNetWeb() {
     .replace(/(<td><div class="row"><div class="av sm [^"]*">[^<]*<\/div><b>[^<]*<\/b>)/, `$1${ST}<button class="lbtn press" style="background:var(--ink);color:var(--bg);margin-left:6px">${ic('mail', 'sm')}</button>`);
 }
 const interceptWeb = modal(`<div class="center"><span class="emo apricot" style="width:64px;height:64px;font-size:30px;border-radius:20px;margin:0 auto">🧪</span><div class="mt" style="margin-top:14px">これはサンプルです</div><div class="sub" style="margin-top:8px;line-height:1.75">高橋 美咲さんはサンプルの人物のため、下書きを作成できません。<br>ガイドを続けて、あなたの名刺を取り込みますか？</div></div>
-  <div class="row" style="gap:10px;margin-top:22px"><button class="btn block xl">サンプルを見続ける</button><button class="btn primary block xl">ガイドを続ける（4 / 5）</button></div>`, 460);
+  <div class="row" style="gap:10px;margin-top:22px"><button class="btn block xl">サンプルを見続ける</button><button class="btn primary block xl">ガイドを続ける（${SAMPLE_GUIDE_PROGRESS}）</button></div>`, 460);
 
 /* ===================== A5 方案生成（プラン v2.2「背景から具体化」· 画法同 ⑩ b10；数据 = シリーズA，共用块 V22F） ===================== */
 /* 引导上下文：目标来自 A3 ②「ひとことで」；わたし 来自 A3 ① 资料；チーム 成员可从 ⑤ 刚取り込んだ名刺选，或自己写 */
@@ -2069,7 +2072,7 @@ h += boards([
 h += sec('A3 · 资料 onboarding 5 步', '①基本资料 → ②目标 → ③能给/需要/话题 → ④AI 自我介绍 → ⑤批量导入（可跳过）。每步自动保存，可中途离开');
 h += boards([
   ['① 基本资料', '', P({ body: obApp(0), pins: pin(1, '.stp') + pin(2, '.mac.lav') + pin(3, '.fld label .chip') }), ['5 段进度条，当前段半填充；右上「あとで」可随时离开（进度已自动保存）', '「自分の名刺を撮って自動入力」→ 相机（单张模式）→ 读取后回填，卡片变为完成态 + 「撮り直す」', '自动填入的字段带「名刺から」小 chip，用户改动后 chip 消失']],
-  ['② 目标', '', P({ body: obApp(1), pins: pin(1, '.gt button.on') + pin(2, '.k-noperiod') + pin(3, '.foot .btn') }), ['点选目标卡：灰紫描边 + 右上序号（选择顺序 = 优先级），最多 3 个，第 4 个点击时轻微抖动并提示', '不选期间（计划 v2 不排期）：一行说明代替原「期間」三选一；优先 1 的目标在 A5 ① 预填', '按钮内显示已选数「2 / 3 選択中」；0 个时不可点']],
+  ['② 目标', '', P({ body: obApp(1), pins: pin(1, '.gt button.on') + pin(2, '.k-noperiod') + pin(3, '.foot .btn') }), ['点选目标卡：灰紫描边 + 右上序号（选择顺序 = 优先级），最多 2 个，第 3 个点击时提示', '不选期间（计划 v2 不排期）：一行说明代替原「期間」三选一；优先 1 的目标在 A5 ① 经用户核对文字与目标类型后预填', '按钮内显示已选数「2 / 2 選択中」；0 个时不可点']],
   ['③ 能给 / 需要 / 话题', '', P({ body: obApp(2), pins: pin(1, '.tog.ai') + pin(2, '.why') + pin(3, '.tog.add', 0) }), ['虚线 chip 是 AI 候选，点一下才变成已选（实线），不自动加入', '「?」展开候选依据（目标 + 业界）', '「＋追加」展开行内输入，回车生成新 chip']],
   ['④ AI 自我介绍', '', P({ body: obApp(3), pins: pin(1, '.seg') + pin(2, '.why') + pin(3, '.btn.block:not(.xl)') }), ['语气切换即重写（不消耗次数）；English 用于海外活动', '「?」显示用了哪些资料、哪些没用（如生日）', '「別の案をつくる」剩余次数 chip，用完后只能手动编辑']],
   ['⑤ 批量导入名片', '', P({ body: obApp(4), pins: pin(1, '.card .btn.primary') + pin(2, '.foot .btn') }), ['「撮影をはじめる」→ B1 相机权限说明 → B2 连拍', '「スキップしてサンプルで見てみる」→ 进入示例预览模式（A4），引导卡保持未完成']],
