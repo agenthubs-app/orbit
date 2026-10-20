@@ -104,24 +104,24 @@ test("v2 profile readback accepts an omitted birthday while an unknown policy ca
   assert.ok(future.profile);
 });
 
-test("a version conflict re-reads the latest version and resends the same fields once", async () => {
+test("a version conflict leaves the other device's confirmed goal untouched", async () => {
   const server = profileServer({ start: "filled" });
   const base = await read(server);
   server.bumpVersion();
   const result = await saveOnboardingFields(server.client, { relationshipGoal: "获取客户（本季度）" }, base, mutationId);
-  assert.equal(result.ok, true, JSON.stringify(result));
-  assert.equal(server.profile?.relationshipGoal, "获取客户（本季度）");
-  assert.deepEqual(server.requests.slice(1).map(r => r.method), ["PUT", "GET", "PUT", "GET"]);
+  assert.deepEqual(result, { ok: false, kind: "conflict" });
+  assert.equal(server.profile?.relationshipGoal, "changed elsewhere");
+  assert.deepEqual(server.requests.slice(1).map(r => r.method), ["PUT"]);
 });
 
-test("a second conflict is reported as a failure, not retried forever", async () => {
+test("a conflict is reported without resending the stale draft", async () => {
   const server = profileServer({ start: "filled" });
   const base = await read(server);
   server.bumpVersion();
   server.behaviour.onPut = () => { server.bumpVersion(); server.behaviour.conflictOnce = true; };
   const result = await saveOnboardingFields(server.client, { relationshipGoal: "x" }, base, mutationId);
-  assert.deepEqual(result, { ok: false, kind: "failed" });
-  assert.equal(server.requests.filter(r => r.method === "PUT").length, 2);
+  assert.deepEqual(result, { ok: false, kind: "conflict" });
+  assert.equal(server.requests.filter(r => r.method === "PUT").length, 1);
 });
 
 test("a server error, a missing receipt or a mismatching readback all fail visibly", async () => {

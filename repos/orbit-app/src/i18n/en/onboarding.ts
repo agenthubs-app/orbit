@@ -85,6 +85,7 @@ export const onboarding = {
   "onboarding.takeCards": "Snap cards",
   "onboarding.finish": "Finish setup",
   "onboarding.saveFailed": "Not saved. Everything you entered is still here.",
+  "onboarding.conflict": "Your profile changed on another device. Reopen setup to review the latest version before saving. Your entries stay here until you leave.",
   "onboarding.retry": "Retry",
   "onboarding.offline": "You're offline. Keep filling in and tap Continue to save once you're back online.",
   "onboarding.resumeTitle": "Continue setting up your profile",

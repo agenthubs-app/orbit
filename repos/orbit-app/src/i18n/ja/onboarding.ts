@@ -85,6 +85,7 @@ export const onboarding = {
   "onboarding.takeCards": "名刺を撮る",
   "onboarding.finish": "設定を完了",
   "onboarding.saveFailed": "保存できませんでした。入力内容はそのまま残っています。",
+  "onboarding.conflict": "別の端末でプロフィールが更新されました。設定を開き直し、最新の内容を確認してから保存してください。この画面を離れるまでは入力内容が残ります。",
   "onboarding.retry": "再試行",
   "onboarding.offline": "オフラインです。入力は続けられます。接続が戻ったら「続ける」で保存してください。",
   "onboarding.resumeTitle": "プロフィール設定の続き",

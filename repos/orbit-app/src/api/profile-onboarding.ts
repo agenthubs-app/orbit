@@ -1,7 +1,7 @@
 /**
  * HTTP layer for new-user onboarding. Same endpoints and checks as the web flow
  * (onboarding-0918/onboarding-client.ts): GET/PUT /api/profile with a verified mutation
- * receipt and a readback, one retry after a version conflict, the intro draft, the own
+ * receipt and a readback, a visible version conflict, the intro draft, the own
  * business-card scan, and the business-card batch v2 collection for the import step.
  */
 import type { OrbitApiClient } from "./client";
@@ -16,6 +16,7 @@ import { onboardingImportSummary, type OnboardingImportSummary } from "../view-m
 export const PROFILE_INTRO_DRAFT_PATH = "/api/profile/intro-draft";
 
 export type OnboardingFailure = { ok: false; kind: "offline" | "failed" };
+export type OnboardingSaveFailure = OnboardingFailure | { ok: false; kind: "conflict" };
 export type OnboardingProfileFields = Partial<Pick<ManualProfileContract,
   "birthDate" | "displayName" | "organization" | "primaryIndustryId" | "role" | "secondaryIndustryId"
   | "relationshipGoal" | "offering" | "seeking" | "topics" | "bio" | "headline">>;
@@ -42,34 +43,25 @@ function readbackMatches(fields: OnboardingProfileFields, detail: ProfileDetail)
 }
 
 /**
- * Save one step. The fields are exactly what the user just confirmed on screen, so a
- * version conflict (another device saved meanwhile) re-reads the latest version and
- * resends them once. The result is the readback, never the optimistic local copy.
+ * Save one step. A version conflict means another device may have confirmed the same
+ * fields. Keep this draft for review instead of resending it over that newer profile.
+ * The result is the readback, never the optimistic local copy.
  */
 export async function saveOnboardingFields(
   client: OrbitApiClient,
   fields: OnboardingProfileFields,
   base: ProfileDetail,
   mutationId: () => string
-): Promise<{ ok: true; detail: ProfileDetail } | OnboardingFailure> {
-  let latest = base;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const request = { ...fields, expectedUpdatedAt: latest.profile?.updatedAt ?? null, mutationId: mutationId() };
-    const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, { body: request });
-    if (result.status === 409 && attempt === 0) {
-      const reread = await readOnboardingProfile(client);
-      if (!reread.ok) return reread;
-      latest = reread.detail;
-      continue;
-    }
-    if (!succeeded(result)) return failure(result);
-    const receipt = profileSaveReceiptSchema(latest.profile?.id ?? null, request as ProfileSaveRequest).safeParse(result.success ? result.data : null);
-    if (!receipt.success) return { ok: false, kind: "failed" };
-    const readback = await readOnboardingProfile(client);
-    if (!readback.ok) return readback;
-    return readbackMatches(fields, readback.detail) ? readback : { ok: false, kind: "failed" };
-  }
-  return { ok: false, kind: "failed" };
+): Promise<{ ok: true; detail: ProfileDetail } | OnboardingSaveFailure> {
+  const request = { ...fields, expectedUpdatedAt: base.profile?.updatedAt ?? null, mutationId: mutationId() };
+  const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, { body: request });
+  if (result.status === 409) return { ok: false, kind: "conflict" };
+  if (!succeeded(result)) return failure(result);
+  const receipt = profileSaveReceiptSchema(base.profile?.id ?? null, request as ProfileSaveRequest).safeParse(result.success ? result.data : null);
+  if (!receipt.success) return { ok: false, kind: "failed" };
+  const readback = await readOnboardingProfile(client);
+  if (!readback.ok) return readback;
+  return readbackMatches(fields, readback.detail) ? readback : { ok: false, kind: "failed" };
 }
 
 export async function generateOnboardingIntro(

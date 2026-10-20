@@ -70,7 +70,7 @@ import { batchRoutePath } from "../../../view-models/business-card-ingest";
 import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFrame, StepHead, useOnboardingStyles } from "./OnboardingParts";
 
 type View_ = "loading" | "loadError" | "welcome" | "resume" | OnboardingStep;
-type Notice = { kind: "failed" | "offline" } | null;
+type Notice = { kind: "failed" | "offline" | "conflict" } | null;
 type IntroStatus = "idle" | "generating" | "ready" | "error";
 const COLLAPSED_OPTION_COUNT = 8;
 
@@ -420,8 +420,9 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   const index = ONBOARDING_STEPS.indexOf(view);
   const back = () => go(index === 0 ? "welcome" : ONBOARDING_STEPS[index - 1]!);
   const banner = notice ? (
-    <Banner actionLabel={notice.kind === "failed" ? t("onboarding.retry") : undefined} kind={notice.kind}
-      message={t(notice.kind === "failed" ? "onboarding.saveFailed" : "onboarding.offline")} onAction={notice.kind === "failed" ? onContinue : undefined} />
+    <Banner actionLabel={notice.kind === "failed" ? t("onboarding.retry") : undefined} kind={notice.kind === "conflict" ? "failed" : notice.kind}
+      message={t(notice.kind === "conflict" ? "onboarding.conflict" : notice.kind === "failed" ? "onboarding.saveFailed" : "onboarding.offline")}
+      onAction={notice.kind === "failed" ? onContinue : undefined} />
   ) : null;
   const continueDisabled = saving
     || (view === "profile" && !profileValid)

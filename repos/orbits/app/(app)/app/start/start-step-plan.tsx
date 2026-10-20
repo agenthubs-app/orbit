@@ -86,8 +86,10 @@ export function StepPlan({
       setGoalKind(null);
       actionRef.current = null;
       setEditing(false);
-    } catch {
-      setError(t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。" }));
+    } catch (caught) {
+      setError(caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT"
+        ? t({ en: "Your goal changed elsewhere. Refresh and review it before saving.", zh: "目标已在另一处更新。请刷新并核对后再保存。", ja: "別の画面で目標が更新されました。再読み込みして内容を確認してください。" })
+        : t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。" }));
     } finally {
       setSaving(false);
     }

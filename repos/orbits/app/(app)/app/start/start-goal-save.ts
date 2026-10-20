@@ -1,7 +1,7 @@
 /**
  * 引导页保存目标（W0006）：与资料页、onboarding 同一个接口与核验口径
  * （`onboarding-client.ts` 的 `saveProfileFields`：PUT /api/profile + 回执核验 + 复读核验，
- * 版本冲突时读最新版本重发一次）。存储仍是 `relationshipGoal` 一段文字。
+ * 版本冲突时保留草稿并提示复核）。存储仍是 `relationshipGoal` 一段文字。
  */
 import { saveProfileFields } from "../profile/onboarding-0918/onboarding-client";
 

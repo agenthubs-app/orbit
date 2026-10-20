@@ -341,9 +341,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       await confirmScreen(screen);
       return true;
     } catch (caught) {
-      setError(caught instanceof Error && caught.message
-        ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}`, ja: `保存できませんでした：${caught.message}` })
-        : t({ zh: "保存失败，请重试。", en: "Save failed. Please try again." }));
+      const conflict = caught instanceof Error && "code" in caught && caught.code === "PROFILE_VERSION_CONFLICT";
+      setError(conflict
+        ? t({ zh: "资料已在另一处更新。请刷新并核对后再保存。", en: "Your profile changed elsewhere. Refresh and review it before saving.", ja: "別の画面でプロフィールが更新されました。再読み込みして内容を確認してください。" })
+        : caught instanceof Error && caught.message
+          ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}`, ja: `保存できませんでした：${caught.message}` })
+          : t({ zh: "保存失败，请重试。", en: "Save failed. Please try again." }));
       return false;
     } finally {
       setSaving(false);

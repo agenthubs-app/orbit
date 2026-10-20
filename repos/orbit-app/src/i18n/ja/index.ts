@@ -49,6 +49,7 @@ import { discovery } from "./discovery";
 import { personal53 } from "./personal53";
 import { personal59 } from "./personal59";
 import { onboarding } from "./onboarding";
+import { guide } from "./guide";
 import { contactAdd } from "./contactAdd";
 import { plan } from "./plan";
 import { add } from "./add";
@@ -115,6 +116,7 @@ export const ja = {
   ...personal53,
   ...personal59,
   ...onboarding,
+  ...guide,
   ...contactAdd,
   ...plan,
   ...add,

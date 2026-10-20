@@ -14,18 +14,19 @@ import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { guideCopy as enGuideCopy } from "../../i18n/en/guide";
-import { guideCopy as jaGuideCopy } from "../../i18n/ja/guide";
-import { guideCopy as zhGuideCopy } from "../../i18n/zh/guide";
 import { createPlanApi } from "../plan/plan-api";
 import { goalKindLabel } from "../plan/plan-model";
 
-const copy = { zh: zhGuideCopy, en: enGuideCopy, ja: jaGuideCopy } as const;
-
 export function StartGuideScreen() {
   const { styles, colors } = useStyles();
-  const { language } = useOrbitLocale();
-  const c = copy[language];
+  const { language, t } = useOrbitLocale();
+  const c = {
+    title: t("guide.title"), subtitle: t("guide.subtitle"), contacts: t("guide.contacts"), goal: t("guide.goal"),
+    plan: t("guide.plan"), add: t("guide.add"), edit: t("guide.edit"), make: t("guide.make"),
+    failed: t("guide.failed"), choose: t("guide.choose"), missing: t("guide.missing"), href: t("guide.href"),
+    saved: t("guide.saved"), done: t("guide.done"), locked: t("guide.locked"), back: t("guide.back"),
+    helpContacts: t("guide.helpContacts"), helpGoal: t("guide.helpGoal"), helpPlan: t("guide.helpPlan"),
+  };
   const client = useOrbitApiClient();
   const insets = useSafeAreaInsets();
   const router = useRouter();

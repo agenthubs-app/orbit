@@ -69,7 +69,7 @@ function newMutationId(): string {
 
 async function putOnce(fields: ProfileFields, expectedUpdatedAt: string | null): Promise<
   | { ok: true; input: ManualProfileUpdateInput }
-  | { ok: false; conflict: boolean; message: string; code?: string }
+  | { ok: false; message: string; code?: string }
 > {
   const input: ManualProfileUpdateInput = { ...fields, expectedUpdatedAt, mutationId: newMutationId() };
   const response = await fetch("/api/profile", {
@@ -79,30 +79,25 @@ async function putOnce(fields: ProfileFields, expectedUpdatedAt: string | null):
   });
   const envelope = await readJson<ProfilePayload>(response);
   if (!response.ok || envelope.success !== true || !envelope.data) {
-    const code = envelope.error?.code;
+    const code = envelope.error?.code ?? (response.status === 409 ? "PROFILE_VERSION_CONFLICT" : undefined);
     return {
       ok: false,
-      conflict: response.status === 409 || code === "PROFILE_VERSION_CONFLICT",
       message: envelope.error?.message ?? "Profile save failed",
       code,
     };
   }
   if (envelope.data.mutationId !== input.mutationId) {
-    return { ok: false, conflict: false, message: "The save receipt could not be verified." };
+    return { ok: false, message: "The save receipt could not be verified." };
   }
   return { ok: true, input };
 }
 
 /**
- * 保存一步的字段。引导里这些字段就是用户刚在本屏确认的值，版本冲突（例如另一个标签页
- * 同时保存）时读最新版本后重发一次；随后复读核验，确保写进去的就是屏幕上的值。
+ * 保存一步的字段。版本冲突时保留本地输入并请用户复核，不能把旧标签页的值
+ * 无条件重发到另一标签页刚确认的新版本上。成功后复读核验屏幕上的值。
  */
 export async function saveProfileFields(fields: ProfileFields, expectedUpdatedAt: string | null): Promise<ProfilePayload> {
-  let attempt = await putOnce(fields, expectedUpdatedAt);
-  if (attempt.ok === false && attempt.conflict) {
-    const latest = await fetchProfile();
-    attempt = await putOnce(fields, latest.profile?.updatedAt ?? null);
-  }
+  const attempt = await putOnce(fields, expectedUpdatedAt);
   if (attempt.ok === false) throw new OnboardingRequestError(attempt.message, attempt.code);
   const readback = await fetchProfile();
   if (!profileEditorReadbackMatches(attempt.input, readback)) {

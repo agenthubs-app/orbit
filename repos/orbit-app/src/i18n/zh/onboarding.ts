@@ -85,6 +85,7 @@ export const onboarding = {
   "onboarding.takeCards": "拍名片",
   "onboarding.finish": "完成设置",
   "onboarding.saveFailed": "没有保存成功，已填内容都还在。",
+  "onboarding.conflict": "资料已在另一设备更新。重新进入设置并核对最新内容后再保存。离开前，当前输入会保留在此页。",
   "onboarding.retry": "重试",
   "onboarding.offline": "现在没有网络。可以继续填写，联网后点「继续」保存。",
   "onboarding.resumeTitle": "继续设置你的资料",
