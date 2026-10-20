@@ -5,7 +5,7 @@
 ## 版本与边界
 
 - 开工按用户修正先 `git pull --rebase origin redesign`；R20b `063c3c65d`、R18c `aada50950` 已在远端。D 线使用 Web `3510` / `.next-line-d`、Metro `8085`、隔离本地库 `orbit_line_d` 和 Orbit Line D 模拟器；未碰 `3000`、`3500`、Neon 或生产，也未 push。
-- 源码里程碑（已 rebase 的 SHA）：`e843f5b18` D-01 actor/CAS；`08596eae5` 共用真实 guide 纯投影；`17689f6f9` 首页只读 guide API；`e63eccef9` Web 首开几何标记；`da774c9c8` Web 首页；`96617497c` App 首页；`1f2cf4bb3` App 空态、可访问操作与文案；`b8758e23d` Web 空态与 Next guide route；`ea2035ea5` App 可选择组件库；`d0a6c6292` 画板清单；`d34d6c0f3` 首页暗色 token；`01170099c` App 首页 copy QA；`5419aac67` 仅新增字段的契约快照；`81402a6de` Web copy/Button 门禁；`b71a56740` App 离线读取清单和旧词条恢复。所有本线提交的 trailer 为用户指定的 `Co-Authored-By: Codex <noreply@openai.com>`。
+- 源码里程碑（已 rebase 的 SHA）：`e843f5b18` D-01 actor/CAS；`08596eae5` 共用真实 guide 纯投影；`17689f6f9` 首页只读 guide API；`e63eccef9` Web 首开几何标记；`da774c9c8` Web 首页；`96617497c` App 首页；`1f2cf4bb3` App 空态、可访问操作与文案；`b8758e23d` Web 空态与 Next guide route；`ea2035ea5` App 可选择组件库；`d0a6c6292` 画板清单；`d34d6c0f3` 首页暗色 token；`01170099c` App 首页 copy QA；`5419aac67` 仅新增字段的契约快照；`81402a6de` Web copy/Button 门禁；`b71a56740` App 离线读取清单和旧词条恢复；`c4c6a62cb` App 长按菜单与指定尺寸。所有本线提交的 trailer 为用户指定的 `Co-Authored-By: Codex <noreply@openai.com>`。
 - R11a 的 `ContactDrawer`、联系人 `sort=added&limit=4`（`a81954101`）、R13 秘書来源契约（`306f32224`）、R16 问题卡、R31a/b 组件可用。未改 B/C/E/A 线文件。`app/dashboard` 旧屏还有引用，因此保留；旧首页 view-model 仍被 agent/events 使用，也保留。E 线的 `AgentDock` 文件未释放，定位项留交接。
 - 画板预检和 `--list` 锁定保存在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-d/R10/run-01/` 的 `boards-*.txt`、`preflight-{app,web,b11,b12}.{json,md,log}`。其中结构自洽疑点 0；App #0/1 分别有 7/9 个无 token 值，Web #0/1 分别 2/4 个；系统手机外框从业务门禁排除。画板的 Gmail 行与 Q5 冲突，按 RD-33 不取邮件正文或开新 scope，需设计源修订后重比。
 
@@ -15,16 +15,16 @@
 | --- | --- |
 | 01 开工与归属 | **部分**。远端、依赖、画板和预检已确认；用户要求全量仅在收口跑一次，故采用 R20b 最终日志作开工可比基线，未声称开工时另跑全量。 |
 | 02 D-01 live | **通过定向**。本地 PG actor 隔离、A/B、CAS、幂等、同 ID 异体和 409 snapshot 测试；mock 仍 sample，live 无演示。`sync:contract` 生成 App 副本。证据 `d01-verified.log`、跨端 revision 回读。 |
-| 03 编辑全链 | **部分**。Web browser 验证首开五卡边界不跳变、排序/尺寸/移除撤销/库加回和保存；App 原生长按进编辑、库选择尺寸并加回 `pending:m`，服务端 revision 5 且复开未重复添加；缺完整原生逐步录像。两端限制唯一 key、上限 10、库不展示 deadline。 |
+| 03 编辑全链 | **部分**。Web browser 验证首开五卡边界不跳变、排序/尺寸/移除撤销/库加回和保存；App 原生长按菜单（編集/小中/移除）、方向按钮与水平拖动重排、尺寸切换、移除后即时撤销、库按类/搜索、选择尺寸并加回均已操作。`native-edit-chain.json` revision 7 和 `native-drag-verified.json` revision 8 证实 App 数组保存而 Web 数组不变；`native-menu-chain.json` 记录菜单指定尺寸 revision 10、移除/撤销 revision 13→14；复开未重复添加。缺完整原生逐步录像及键盘/VoiceOver 全链。两端限制唯一 key、上限 10、库不展示 deadline。 |
 | 04 Web 首页 | **部分**。五卡/空态/右栏/链接已接；实测 1024 抽屉宽 380、Esc 归焦，390 搜索隐藏；1024 对板 light/dark 仍 FAIL。 |
-| 05 App 首页 | **部分**。新路由使用 `AppScreen inset="kit"` 和 UiText；原生登录后看到日期、问候、铃铛、编辑及五卡；Task 返回后首页首卡和本地布局刷新。旧 dashboard 62/62 回归。铃铛返回保留滚动尚无完整操作证据。 |
+| 05 App 首页 | **部分**。新路由使用 `AppScreen inset="kit"` 和 UiText；原生登录后看到日期、问候、铃铛、编辑及五卡；Task 返回后首页首卡和本地布局刷新。铃铛点入受信箱、再点「ホーム」返回首页已实测，但隔离账号受信箱显示读取失败，滚动位置场景未证；旧 dashboard 62/62 回归。 |
 | 06 今日やること | **待上游与联验**。首页读同 actor 的 `todo/page`、`schedule-items`，问题卡复用 R16；R20a 最终 REPORT 的 Task 原生/scroll、像素和全量仍有未闭合项，首页↔Task 完成/回答后的同源回读未满足 SC 前置，不能记完成。 |
 | 07 プラン スコア | **部分**。`current=null` 显示目标入口；两端选择直接 summary，event 段文案为イベント枠；纯测试含 `−10/0/+10`，无三态同 actor 截图或撤销后刷新证据。N13 是 Task 参考板，未算首页门禁。 |
 | 08 次のイベント | **部分**。两端从 upcoming 选最早未来 `registered` 并使用返回 href、`meetCount=null` 不画人数；纯测试覆盖 planned 混入和先后顺序，尚缺同账号两端点击链。 |
 | 09 人脈 | **部分**。B 线已提供稳定 `sort=added`；本地真实 summary `total=78`、page 前四=4，Web 复用 `ContactDrawer`，App 走联系人详情。尚缺新增一人后的两端 +1/换号/抽屉滚动完整操作证据。 |
 | 10 秘書から | **部分**。只接受期限/会前准备/活动推荐三种合法来源，未知整条跳过；本地 live 源为空时为空态，不把样例写入库。三来源同时存在的 mock 截图和端到端回读待补；未调用 Gmail 或付费 AI。 |
-| 11 组件库四块 | **部分**。Web/App 已实现判断待ち、今週、イベント推薦、メモ，只有卡片挂载时读对应源，类别与文本本地过滤；App 库原生选中尺寸并添加判断待ち已回读，全部四块逐项加回/移除重加操作证据不足；b11 #23 三轮像素 FAIL。 |
-| 12 三步与铃铛 | **部分**。共用纯投影独立提交 `8eaf86733`，读联系人/目标/计划和 guideState v2 完成闩锁，不受示例开关影响；只读 API 来源失败 503，不猜 0/3。App/Web 空态实屏为 0/3；逐步到 3/3、老用户、铃铛返回操作未全数联验。 |
+| 11 组件库四块 | **部分**。Web/App 已实现判断待ち、今週、イベント推薦、メモ，只有卡片挂载时读对应源，类别与文本本地过滤；App 库原生选中尺寸并添加判断待ち已回读，事件分类只剩事件推荐、输入 `Xyz` 后列表过滤为空（`app-native-library-filter.png`）；全部四块逐项加回/移除重加操作证据不足；b11 #23 三轮像素 FAIL。 |
+| 12 三步与铃铛 | **部分**。共用纯投影独立提交 `08596eae5`，读联系人/目标/计划和 guideState v2 完成闩锁，不受示例开关影响；只读 API 来源失败 503，不猜 0/3。App/Web 空态实屏为 0/3；逐步到 3/3、老用户联验未全数完成。铃铛到受信箱再返回首页已实测，但隔离账号的受信箱读取失败。 |
 | 13 右栏与每天一问 | **部分**。Web 建议最多三条、去重且 count=可见数，1024 壳按钮接数；R16 问题卡挂在今日卡里。E 线会话摘要和 `AgentDock` 定位未在 D 所有权内完成，问题卡回答后跨端核对未做。 |
 | 14 离线/409/单源失败 | **部分**。App 缓存按 actor+baseURL 隔离，断网草稿保留 mutationId，恢复 PUT；纯测试证明 409 采用完整服务器版且不重写。真实同 actor Web/App CAS 链验证 revision 1→4、旧 revision 409、两数组独立；原生停止本端 Next→离线编辑→重启 App 草稿仍在→恢复 Next 后 revision 6 上传并解除离线标记，见 `native-offline-layout.json`。单源失败的两端实屏仍待核验。 |
 | 15 旧屏/像素/不退步 | **未过**。Web/App 首页、1024 壳、编辑、库和深色已比，均有未归因超阈与缺块；其他画面与 ≥20% 抽查仍需交接。组件库已交付，不能写「等组件库」。逐屏结果见下。 |
@@ -36,7 +36,7 @@
 | --- | --- |
 | R10-01 | Web HomePlaceholder 已替换为五卡、空态与编辑；像素仍红。 |
 | R10-02 | 首页真实建议和 ShellRailButton count 已接；最近会话只在 E 线摘要可用时出现，当前无源不伪造。1024 抽屉宽 380、Esc 归焦实测通过，视觉仍红。 |
-| R10-03 | 两端编辑链与库已实现，旧「近日公開」不再作为编辑回应；App 原生 long press、选尺寸、加回、复开已验，完整逐步操作链待补。 |
+| R10-03 | 两端编辑链与库已实现，旧「近日公開」不再作为编辑回应；App 原生 long press 菜单、方向按钮、实际水平拖动、换尺寸、移除/即时撤销、分类/搜索、加回/复开已验，键盘/VoiceOver 和完整逐步录像待补。 |
 | R10-04 | App 日期/问候/白铃铛/编辑按钮已换；#0 可见。 |
 | R10-05 | E 线持有 AgentDock 来源，D 未改；请求 E 线释放单点定位并给会话摘要接口。 |
 | R10-06 | home-layout live actor CAS、默认五卡、App 本地草稿可用；同账号跨端回读与原生断线重开后恢复上传已验证。 |
@@ -55,15 +55,21 @@
 | App #0 空态 | 两轮 `0.1303→0.1303`；`8/14` | `app-empty-round{1,2}`，第三轮没有可信的新增修正；原生日期为 10/20，画板为 10/7。 |
 | Web #2 填充态／#3 编辑 | #2 `0.0541→0.0545`，`6/35`；#3 `0.0563`，`7/42` | `web-populated-round{1,2}`、`web-edit-round1`；本地 actor 有 78 人，但无画板中的计划/活动事实，仍有布局差异。 |
 | Web #21 深色 | `0.3213→0.0503`；`7/34` | `web-populated-dark-round{1,2}`；修复未定义 surface/text CSS token 后改善，仍 FAIL；浅色 raw 持平。 |
+| b11 #25 Web 编辑库 | `0.0665`；`7/43` | `web-edit-b11-round1`；编辑右栏和小/中添加按钮可用，但本地 actor 缺板中计划、活动和三种秘书数据，结构缺块未归因，FAIL。 |
 | App #4 编辑／#5 库 | `0.1309`，`9/20`；`0.3375`，`8/18` | `app-edit-round1`、`app-library-round1`；空 actor 对填充画板，结构仍不合。 |
+| App #33 深色填充态 | `0.1184`；`9/12` | `app-populated-dark-round1`；深色真实实屏有五卡，但隔离 actor 是空态，画板要求计划、活动和人脈数据；仍 FAIL。 |
+| b11 #20 App 长按菜单 | 三轮 `0.7616→0.1722→0.2037`；`9/23` | `app-longpress-b11-round{1,2,3}`，三轮上限。首轮只有编辑态；后两轮真实长按浮出预览与編集/小中/移除菜单，菜单操作经原生回读；数据与背景结构仍不合，FAIL。 |
+| b11 #21/#22 App 拖动／撤销 | #21 `0.1423`、`9/20`；#22 `0.1377`、`9/18` | `app-drag-b11-round1`、`app-remove-b11-round1`；真机手势中途截图和移除后 Toast 截图，撤销即刻恢复，仍 FAIL。 |
 | b11 #23 App 库 | 三轮 `0.2359→0.1447→0.1402`；`8/23` | `app-library-b11-round{1,2,3}`，三轮上限；库已可搜索/分类/选尺寸，但右栏与画板元素仍缺。 |
+| b11 #24 App 选尺寸 | `0.2601`；`9/19` | `app-library-size-b11-round1`；原生库中小中可选，空 actor 对填充画板，仍 FAIL。 |
+| b11 #48 App 深色拖动 | `0.1253`；`9/16` | `app-drag-dark-b11-round1`；深色真实手势中途截图，填充数据缺失，仍 FAIL。 |
 | b12 1024 Web 壳 | light W06 `0.0192`、W07 `0.0647`；dark W06 `0.0191`、W07 `0.1517` | `web-1024-shell-valid/summary.json`；前一次使用错误 design base 的 `web-1024-shell` 为执行错误，不计门禁。1024 抽屉和 390 搜索行为单独实测。 |
 
 Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差异，其中结构/尺寸差异仍未归因通过。填充态真实数据不足不抵消实际超阈和缺块。
 
 无独立画板的 Web 390、App 非 #33 深色空/少/编辑、单源失败/离线/409、首页负分与 R13 live 空态均标「设计稿无」，只可留真实截图，不能计像素分母。N13-A/W 仅供负数字形参考，不属于首页整屏通过。
 
-**清单中未取得可比结果的画面：** W-R10-02（`web.html` #1 少量）、W-R10-05（`b11` #25 Web 编辑库）；A-R10-02/03/03S/03D（`app.html` #1/#2/#3/#33 少量、多量、滚动、深色）、A-R10-06/07/08/10/07D（`b11` #20/#21/#22/#24/#48 长按菜单、拖动占位、撤销、选尺寸、深色占位）。这些画面均为**未跑门禁**，不是通过或归因后的失败。少量/多量要求的同 actor 计划、活动和三种秘书提醒在隔离库中不存在；长按菜单、拖动占位、Toast 和选尺寸需要逐个操作态截图；深色板也不能拿浅色代替。W-R10-05 的 Web 编辑右栏已经运行，但未取得与 #25 相同的尺寸菜单状态。W-R10-06/06D/07/07D 四个 1024 画面已在上表实测。A-R10-09 即上表 `b11` #23 的三轮。重比需先补真实或明确标为 mock 的一致 fixture，再执行对应操作链；仍须逐带归因和通过画面 ≥20% 抽查。
+**清单中未取得可比结果的画面：** W-R10-02（`web.html` #1 少量）；A-R10-02/03/03S（`app.html` #1/#2/#3 少量、多量、滚动）。这些画面均为**未跑门禁**，不是通过或归因后的失败。少量/多量要求的同 actor 计划、活动和三种秘书提醒在隔离库中不存在。其余清单画面均已至少跑一轮但仍 FAIL；上表中的填充态运行也不能用不匹配的空 actor 获得 `[data]` 通过。重比需先补真实或明确标为 mock 的一致 fixture，再执行对应操作链；仍须逐带归因和通过画面 ≥20% 抽查。
 
 **设计稿无的状态：** Web 390 只留下 `web-home-shell-check.log` 的交互记录（搜索不显示），没有截图；App 原生离线编辑/重开/恢复有 `native-offline-layout.json` 的操作和回读记录，未取得独立截图；409、单源失败、首页负分及其他无板深色态均没有合格的实屏图。它们不进入像素分母，但对应的截图验收仍开放。
 
@@ -73,8 +79,8 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 | --- | --- |
 | G01 | 两端新首页标题与旧周条已替换；App #0、Web #0 实屏可见，**部分**（其余数据态未比）。 |
 | G02 | 首页次要字使用 kit 的弱化 ink/surface token；深色 W-R10-03D 已复比但未过，**部分**。 |
-| G03 | 编辑移除为中性减号和撤销操作；危险动作的 coral-text 全局口径未由本页触发，**本页适用项已处理**。 |
-| G04 | App 使用 A 线按钮与 UiText；本机点按可用，40 可见/44 触控的逐项量测未完成，**部分**。 |
+| G03 | 编辑移除为中性减号和撤销；长按菜单的「ホームから外す」用 coral-text，**本页适用项已处理**。 |
+| G04 | App 使用 A 线按钮与 UiText；长按菜单小中圆钮有 9pt hitSlop，原生点按可用，40 可见/44 触控的逐项量测仍未完成，**部分**。 |
 | G05 | `--list`、预检、真实截图与逐屏比较已做；有板画面仍红，**未过**。 |
 | G06 | Web/App 的定向快测、暗色和 1024 比对已做；没有通过画面可供 ≥20% 抽查，**未过**。 |
 | G07 | 使用较新 `b11`/`b12` 板；旧 b6 抽屉与 A-R05-12 过渡板不计分，**已按范围处理**。 |
@@ -85,7 +91,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 | G12 | 390 实测搜索不可见，`web-home-shell-check.log`，**通过交互**。 |
 | G13 | 首页 CSS 修正 dark surface/text token；bottom inset/层级尚无全态画板通过，**部分**。 |
 | G14 | kiosk/公开页不属于本 Sprint；首页仍是已登录路由，未改公开入口，**范围外核对**。 |
-| G15 | 新 App `/home` 使用 `AppScreen inset="kit"`；原生空态实屏，**通过结构、像素未过**。 |
+| G15 | 新 App `/home` 使用 `AppScreen inset="kit"`；原生浅/深实屏，**通过结构、像素未过**。 |
 | G16 | 一级底栏沿用 App 壳；二级转场与返回滚动缺完整原生操作链，**部分**。 |
 | G17 | 新 App 首页文本用 UiText，原生空态已看；字形像素仍红，**部分**。 |
 | G18 | 未实现/单源失败由各卡降级，D-01 503 fallback 分支有定向测试；两端实屏失败态未取得，**部分**。 |
@@ -105,6 +111,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 - Web 收口全量 `web-full-final.log`：**7,934 / 6,830 pass / 10 fail / 1,094 skip**，exit 1。逐名比较见 `web-failure-comparison.json`：较 R20b 旧集合少 28 名、新增 5 名。新增分别是合约快照未录 `webCustomizedAt`、HomeCards 直写日文引发 3 个扫描断言、13 个新原生 button 触发 ratchet；已改为快照仅新增字段、三语词典和系统 Button。全量日志保留修复前的红项；修复后只跑对应定向测试，不将全量记绿。其余 5 个失败名与基线同名。
 - App 收口全量 `app-full-final.log`：**3,285 / 3,259 pass / 24 fail / 2 skip**，exit 1。逐名比较见 `app-failure-comparison.json`：较 R20b 旧集合少 1 名、新增 11 名。其中 4 个旧 Home 断言与 6 个日程断言因修改 R03 受保护词条的中英文间距失败，已恢复旧词条；另 1 个离线读取清单漏登 R10 实际请求，已登记 21 个请求并把布局 PUT 改为可审计的 `client.put`。修复后明确指定文件的 App 定向 193 tests / 192 pass / 1 fail，唯一失败 `the original split key set retains its current approved copy snapshot` 也在 R20b 同名基线里；上述 11 个新增失败名定向均转绿。第一次尝试定向的 `npm test -- <files>` 会展开 App 固定全量 glob，发现后约 30 秒中断并清理其进程，不计为一次完成的全量。
 - 定向：D-01 PG、guide 开关/闩锁/不可用、Web 首开几何/编辑、App 布局模型/同步与旧仪表板通过。修复后 Web 契约/文案/Button/CSS/编辑 20/20；App 指定 7 个测试文件 193/192 pass/1 个 R20b 同名旧失败，原生读取清单及 11 个新增失败名均转绿。Web `typecheck:app`、App `tsc --noEmit`、Web `lint` exit 0；命令和日志见末节。
+- App 长按菜单是完整测试之后的本线补交：指定尺寸的 TDD `home-widget-model.test.ts` 先以 `s !== m` 失败，再 4/4 通过；菜单编辑/指定尺寸/移除与撤销在本机原生运行，revision 9→14 的服务端回读证实 Web 数组未动。补交后 `npx tsc --noEmit` exit 0，首页 copy QA 94 entries / 4 个同名 R03 旧问题 / 新菜单词条 0 问题（`app-home-copy-after-menu.json`，exit 1）。没有二次完整 App 全量，故最终提交版仍缺完整全量复核。
 - Web copy QA 最终读数为 3,998 entries、29 个既有全局问题、首页新增问题 0，exit 1；App 首页单域过去未纳入全域清单，此次补齐组件类型和新组件文案后 91 entries、4 issues（均为 R03 已批准旧词条），exit 1，且已列入全域清单。全域 `copy-global-final.json` 为 7,598 entries、249 issues，其中首页 4 个旧词条、R10 新词条 0，exit 1。通过定向不代表全量绿。
 
 ## 自定决定、待主会话决定与跨线输入
@@ -119,7 +126,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 
 | 本端版本 | 另一端影响 | 未完成事项 | 验证范围 |
 | --- | --- | --- | --- |
-| D-01 `e843f5b18`、schema/默认几何 `e63eccef9`、Web `da774c9c8` + `b8758e23d` + `d34d6c0f3` + `81402a6de`、App `96617497c` + `1f2cf4bb3` + `ea2035ea5` + `01170099c` + `b71a56740`。 | 同 actor `GET/PUT /api/home/layout` 返回 revision、App/Web 两数组、hint 和 Web 首次实际编辑标记；App 同步 schema 与本地草稿按 actor+baseURL 隔离。Web 编辑不会覆盖 App 数组，反向亦同；409 返回整版快照。 | Task 今日同源后续、E 线会话/AgentDock、Q5 改稿像素及部分跨端卡片回读。 | 本地隔离 PG：App 改 App 顺序→Web GET revision 1、Web 保持；Web 改 Web 顺序→revision 2，两数组保留；连续 CAS 中旧版 409，revision 4 恢复两端默认。App 原生离线编辑/重开/恢复服务后 revision 6 上传。Web 浏览器、App 原生空态、定向 PG/模型测试；首页新增词条 copy QA 0，新纳入的旧词条 4 条未过。无生产/Neon/发布验证。 |
+| D-01 `e843f5b18`、schema/默认几何 `e63eccef9`、Web `da774c9c8` + `b8758e23d` + `d34d6c0f3` + `81402a6de`、App `96617497c` + `1f2cf4bb3` + `ea2035ea5` + `01170099c` + `b71a56740` + `c4c6a62cb`。 | 同 actor `GET/PUT /api/home/layout` 返回 revision、App/Web 两数组、hint 和 Web 首次实际编辑标记；App 同步 schema 与本地草稿按 actor+baseURL 隔离。Web 编辑不会覆盖 App 数组，反向亦同；409 返回整版快照。 | Task 今日同源后续、E 线会话/AgentDock、Q5 改稿像素及部分跨端卡片回读。 | 本地隔离 PG：App 改 App 顺序→Web GET revision 1、Web 保持；Web 改 Web 顺序→revision 2，两数组保留；连续 CAS 中旧版 409，revision 4 恢复两端默认。App 原生离线编辑/重开/恢复服务后 revision 6 上传；随后原生重排、尺寸、移除撤销、库过滤与加回，revision 7→8；长按菜单指定尺寸 revision 10，移除/撤销 revision 13→14，Web 数组不变。Web 浏览器、App 原生浅/深、定向 PG/模型测试；首页新增词条 copy QA 0，新纳入的旧词条 4 条未过。无生产/Neon/发布验证。 |
 
 README、HANDOFF、DEFERRED-A、决定表和 screen-ownership 的汇总条目由主会话协调；D 线未覆盖共享台账或其他线未提交改动。
 
@@ -127,7 +134,7 @@ README、HANDOFF、DEFERRED-A、决定表和 screen-ownership 的汇总条目由
 
 | 目标台账 | 本端版本 | 另一端影响 | 未完成事项 | 验证范围 |
 | --- | --- | --- | --- | --- |
-| `README.md` Sprint R10 行 | D 线以上 15 个源码提交；REPORT 为本报告后续提交。 | Web/App 首页与同 actor D-01 布局已接入。 | SC-15 像素红、SC-06 Task 同源前置、E 线 `AgentDock`，SC-03/07～14 尚有逐态操作证据。 | 本地隔离 DB、Web 浏览器和 App 原生；生产未验。状态建议写「部分交付／待联验」，不要写完成。 |
+| `README.md` Sprint R10 行 | D 线以上 16 个源码提交；REPORT 为本报告及其后续提交。 | Web/App 首页与同 actor D-01 布局已接入。 | SC-15 像素红、SC-06 Task 同源前置、E 线 `AgentDock`，SC-03/07～14 尚有逐态操作证据。 | 本地隔离 DB、Web 浏览器和 App 原生；生产未验。状态建议写「部分交付／待联验」，不要写完成。 |
 | `HANDOFF-TO-FEATURE-SPRINTS.md` R10 行 | `08596eae5` guide、`e843f5b18` D-01、两端首页提交见版本段。 | R28 导入真实三步纯投影；R19 只消费已验证的首页读模型；E 线补会话摘要和单点定位。 | Q5 的 Gmail 行需改稿；R20a Task 前置仍开放。 | guide 纯测试与 D-01 PG/CAS、跨端 revision 1→6 回读；业务卡链路未全通过。 |
 | `DEFERRED-A.md` R10 行 | 同上。 | 不产生生产变更。 | 产品/设计：Q5 板、E 定位和 Task 联验；发布：生产迁移、Neon、部署和真机分发待用户另行授权。 | 本地-only 证据与红门禁；见下方分项草案。 |
 | `maintenance/2026-10-12-decisions.md` R10 记录 | 空态把三步放入今日卡，首开五卡几何固定到实际编辑，Web 只在实际改动后进编辑网格。 | 两端同 actor 仍各自保留布局数组；`webCustomizedAt` 仅实际改动后写。 | 以上决定不改变 Q5，Gmail 行仍需设计源决策。 | Web 首开前/中/后定向测试、原生空态及 CAS 回读。 |
