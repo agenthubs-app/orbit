@@ -1,7 +1,7 @@
 import { createTransactionalMailer } from "../../mail/transactional";
 import { createConfiguredExpoPushAdapter } from "../../notifications/push-adapter";
 import { createPushDeviceService } from "../../notifications/push-device-service";
-import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
+import { createConfiguredTransactionalPostgresRuntime, type TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 import { createAccountRightsOutbox, type AccountRightsMessage } from "./outbox";
 
 function detailPath(message: AccountRightsMessage): string {
@@ -36,14 +36,10 @@ export function createConfiguredAccountRightsOutbox() {
   const push = createConfiguredExpoPushAdapter();
   return createAccountRightsOutbox({ db, workspaceId, deliver: {
     async mail(message) {
-      const users = await db.query<{ email: string | null }>(`select a.payload->>'email' as email from orbit_records a
-        where a.workspace_id=$1 and a.collection_name='auth_users' and a.lifecycle_state='active' and
-        a.payload->>'id' in (select p.payload->>'id' from orbit_records p where p.workspace_id=$1
-          and p.collection_name='profiles' and p.user_id=$2 and p.payload->>'accountId'=$2 and p.lifecycle_state='active')
-        limit 2`, [workspaceId, message.actorId]);
-      if (users.rows.length !== 1 || !users.rows[0]?.email) return "unavailable";
+      const email = await resolveAccountRightsEmail(db, workspaceId, message.actorId);
+      if (!email) return "unavailable";
       const content = copy(message);
-      const delivered = await mailer.send({ to: users.rows[0].email, subject: content.subject, text: content.text,
+      const delivered = await mailer.send({ to: email, subject: content.subject, text: content.text,
         idempotencyKey: `account-rights:${message.id}:mail` });
       if (delivered.delivered) return "delivered";
       if (delivered.reason === "rejected") return "retry";
@@ -67,4 +63,14 @@ export function createConfiguredAccountRightsOutbox() {
       return "delivered";
     },
   } });
+}
+
+export async function resolveAccountRightsEmail(db: TransactionalSqlExecutor, workspaceId: string, actorId: string): Promise<string | null> {
+  const users = await db.query<{ email: string | null }>(`select a.payload->>'email' as email from orbit_records a
+    where a.workspace_id=$1 and a.collection_name='auth_users' and a.lifecycle_state='active' and
+    a.payload->>'id' in (select p.provider_record_id from orbit_records p where p.workspace_id=$1
+      and p.collection_name='profiles' and p.user_id=$2 and p.payload->>'accountId'=$2 and p.lifecycle_state='active'
+      and p.provider_record_id is not null)
+    limit 2`, [workspaceId, actorId]);
+  return users.rows.length === 1 && users.rows[0]?.email ? users.rows[0].email : null;
 }

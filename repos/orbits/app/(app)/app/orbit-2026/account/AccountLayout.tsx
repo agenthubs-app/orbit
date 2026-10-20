@@ -23,7 +23,7 @@ const menu: readonly { section: Exclude<AccountSection, "home">; href: string; i
   { section: "notifications", href: "/app/settings/notifications", icon: "bell" },
   { section: "appearance", href: "/app/settings/appearance", icon: "grid" },
   { section: "permissions", href: "/app/settings/permissions", icon: "layers" },
-  { section: "export", href: "/app/settings/export", icon: "share" },
+  { section: "export", href: "/app/settings/exports", icon: "share" },
   { section: "help", href: "/app/settings/help", icon: "book" },
 ];
 

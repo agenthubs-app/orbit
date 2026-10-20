@@ -21,6 +21,15 @@ test("account rights outbox delivers each channel once and retries only explicit
   try {
     await pool.query(`create schema ${schema}`);
     await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,provider_record_id,payload,created_at,updated_at)
+      values ('w','profiles','profile:user','actor','test','profile:user','user','{"id":"profile:user","accountId":"actor"}'::jsonb,now(),now()),
+      ('w','auth_users','auth:user','user','test','auth:user','user','{"id":"user","email":"person@example.com","provider":"credentials"}'::jsonb,now(),now())`);
+    const { resolveAccountRightsEmail } = await import("../../features/account/data-rights/configured-outbox");
+    assert.equal(await resolveAccountRightsEmail(db, "w", "actor"), "person@example.com");
+    assert.equal(await resolveAccountRightsEmail(db, "w", "other"), null);
+    const { readAccountDeletionMethod } = await import("../../features/account/data-rights/method-handler");
+    assert.equal(await readAccountDeletionMethod(db, "w", "actor", "user"), "credentials");
+    assert.equal(await readAccountDeletionMethod(db, "w", "other", "user"), null);
     const { createAccountRightsOutbox } = await import("../../features/account/data-rights/outbox");
     await pool.query(`insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
       values ('w','account_rights_outbox','export-ready:one','actor','account-rights','export-ready:one',

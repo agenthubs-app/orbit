@@ -13,7 +13,7 @@ test("account submenu contains the approved destinations without paid plan or te
     "/app/profile", "/app/settings/integrations", "/app/settings/iorbit",
     "/app/settings/appearance", "/app/settings/notifications",
     "/app/settings/account", "/app/settings/permissions",
-    "/app/settings/export", "/app/settings/help",
+    "/app/settings/exports", "/app/settings/help",
   ]) assert.ok(html.includes(`href="${href}"`), href);
   assert.ok(html.includes("profile content"));
   assert.ok(!html.includes("ご利用プラン"));
