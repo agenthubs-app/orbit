@@ -1,3 +1,4 @@
 import { PendingScreen } from "../../src/screens/account-rights/PendingScreen";
+import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
 
-export default PendingScreen;
+export default withOnlineOnlyRoute(PendingScreen);

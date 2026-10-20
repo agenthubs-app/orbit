@@ -790,6 +790,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/account-rights/api.ts","GET","/api/account/deletion-request"],
   ["src/screens/account-rights/api.ts","GET","/api/account/deletion-request/method"],
   ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request/reauth"],
+  ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request/reauth/google/start"],
   ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request"],
   ["src/screens/account-rights/api.ts","DELETE","/api/account/deletion-request"],
   ["src/screens/profile/PasswordResetScreen.tsx","POST","/api/auth/password-reset/confirm"],

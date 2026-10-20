@@ -96,7 +96,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       <View style={styles.avatar}><UiText style={styles.avatarText}>{Array.from(view.displayName)[0] ?? "?"}</UiText></View>
       <View style={styles.identityCopy}>
         <UiText style={styles.identityName}>{view.displayName}</UiText>
-        <UiText style={styles.muted}>{auth.user?.email ?? view.summary}</UiText>
+        <UiText style={styles.muted}>{auth.signedIn ? auth.user?.email ?? view.summary : view.summary}</UiText>
       </View>
     </Card>
     {auth.signedIn ? <>
@@ -128,14 +128,14 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       <UiText style={styles.muted}>{view.emptyMessage}</UiText>
       {view.authActions.map(action => <ListRow key={action.href} title={action.label} trailing={chevron} onPress={() => open(action.href)} />)}
     </Card>}
-    {__DEV__ ? <Card style={styles.group}>
-      <ListRow title={locale.t("account.serverSettings")} subtitle={locale.t("account.serverHint")} trailing={chevron} onPress={() => open("/settings/api")} />
-      {Platform.OS !== "web" && auth.signedIn ? <>
+    <Card style={styles.group}>
+      <ListRow title={locale.t("account.serverSettings")} trailing={chevron} onPress={() => open("/settings/api")} />
+      {__DEV__ && Platform.OS !== "web" && auth.signedIn ? <>
         <View style={styles.rule} />
         <ListRow title={`Debug 待同步修改 · ${debugPendingCount ?? "—"}`} onPress={() => { void addDebugPendingWrite(); }} />
         {debugPendingIds.length > 0 ? <ListRow title={`清理 Debug 测试修改 · ${debugPendingIds.length}`} onPress={() => { void clearDebugPendingWrites(); }} /> : null}
       </> : null}
-    </Card> : null}
+    </Card>
     {feedback ? <UiText accessibilityRole="alert" style={styles.feedback}>{feedback}</UiText> : null}
   </View>;
 }

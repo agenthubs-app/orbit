@@ -57,8 +57,7 @@
       "controls": 1
     },
     "src/screens/profile/AccountScreen.tsx": {
-      "oldComponent": 3,
-      "controls": 1
+      "oldComponent": 2
     },
     "src/screens/profile/onboarding/OnboardingParts.tsx": {
       "controls": 1
