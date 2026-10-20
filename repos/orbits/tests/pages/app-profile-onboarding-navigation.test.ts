@@ -171,6 +171,9 @@ function loadProfileContinuePage(
         } };
       },
     },
+    [join(projectRoot, "app/(app)/app/orbit-language-server.ts")]: {
+      getOrbitServerLanguage: async () => "ja",
+    },
   };
   const pagePath = join(projectRoot, "app/(app)/app/profile/continue/page.tsx");
   const ids = [...Object.keys(modules), pagePath, onboardingAccessPath].map((id) => testRequire.resolve(id));

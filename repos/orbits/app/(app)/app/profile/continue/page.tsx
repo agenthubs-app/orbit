@@ -4,6 +4,7 @@ import { auth } from "../../../../../auth";
 import { resolveProfileOnboardingProgressService } from "../../../../../features/profile/onboarding-progress-factory";
 import type { ProfileOnboardingProgress } from "../../../../../features/profile/onboarding-progress";
 import { readProfileOnboardingAccess } from "../profile-onboarding-access.server";
+import { getOrbitServerLanguage } from "../../orbit-language-server";
 import {
   normalizeProfileOnboardingNext,
   profileOnboardingFlowPath,
@@ -12,6 +13,19 @@ import {
 type ProfileContinueSearchParams = {
   next?: string | string[];
 };
+
+const RETRY_COPY = {
+  profile: {
+    en: "Could not load your profile. Reload this page to try again.",
+    zh: "无法读取资料。请刷新页面重试。",
+    ja: "プロフィールを読み込めませんでした。ページを再読み込みしてください。",
+  },
+  progress: {
+    en: "Could not load your setup progress. Reload this page to try again.",
+    zh: "无法读取设置进度。请刷新页面重试。",
+    ja: "設定の進捗を読み込めませんでした。ページを再読み込みしてください。",
+  },
+} as const;
 
 /**
  * The authenticated post-sign-in handoff. It reads only the actor-scoped
@@ -44,7 +58,8 @@ export default async function AppProfileContinuePage({
   }
 
   if (access.status === "unavailable" || !access.actorId) {
-    return <main role="alert">プロフィールを読み込めませんでした。ページを再読み込みしてください。</main>;
+    const language = await getOrbitServerLanguage();
+    return <main role="alert">{RETRY_COPY.profile[language]}</main>;
   }
 
   let flow: ProfileOnboardingProgress | null;
@@ -53,7 +68,8 @@ export default async function AppProfileContinuePage({
     if (!service) throw new Error("Progress storage unavailable");
     flow = await service.get();
   } catch {
-    return <main role="alert">設定の進捗を読み込めませんでした。ページを再読み込みしてください。</main>;
+    const language = await getOrbitServerLanguage();
+    return <main role="alert">{RETRY_COPY.progress[language]}</main>;
   }
   if (access.status === "complete" && (!flow || flow.finishedAt)) redirect(next);
 

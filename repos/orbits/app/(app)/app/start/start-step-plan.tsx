@@ -103,7 +103,7 @@ export function StepPlan({
       const href = await resumeOrCreateOnboardingIntake({ goalText: planText, goalKind, idempotencyKey: actionRef.current.key, language });
       window.location.assign(preserveHref(href));
     } catch {
-      setError(t({ en: "Couldn't open the plan. Please try again.", zh: "计划暂时无法打开，请重试。" }));
+      setError(t({ en: "Couldn't open the plan. Please try again.", zh: "计划暂时无法打开，请重试。", ja: "プランを開けませんでした。もう一度お試しください。" }));
     } finally {
       setSaving(false);
     }
@@ -183,14 +183,14 @@ export function StepPlan({
       </div>
 
       {!planDone ? <div className="sg-goalbox" data-start-plan-confirm>
-        <label>{t({ en: "Confirm your first goal", zh: "确认第一优先目标" })}
+        <label>{t({ en: "Confirm your first goal", zh: "确认第一优先目标", ja: "優先 1 の目標を確認" })}
           <input className="sg-input" onChange={(event) => { setPlanText(event.target.value); actionRef.current = null; }} value={planText} />
         </label>
-        <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型" })}>
+        <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型", ja: "プランの種類" })}>
           {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
             onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], language)}</button>)}
         </div>
-        {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。" })}</p> : null}
+        {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。", ja: "目標に合うプランの種類を選んでください。" })}</p> : null}
       </div> : null}
 
       <div className="sg-reads">
@@ -218,7 +218,7 @@ export function StepPlan({
           onClick={() => void startAnalysis()}
           type="button"
         >
-          {saving ? t({ en: "Opening…", zh: "正在打开…" }) : t({ en: "Continue to plan", zh: "继续制定计划" })}
+          {saving ? t({ en: "Opening…", zh: "正在打开…", ja: "開いています…" }) : t({ en: "Continue to plan", zh: "继续制定计划", ja: "プランをつくる" })}
         </button>
       </div>
       {error ? <p className="sg-error" role="alert">{error}</p> : null}

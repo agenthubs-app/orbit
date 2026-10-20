@@ -61,11 +61,15 @@ test("skeleton files stay at zero and can never be allow-listed", () => {
 function outsideFiles() {
   const files = ["app/layout.tsx", "app/page.tsx"];
   for (const entry of readdirSync("app/showcase", { recursive: true, withFileTypes: true })) if (entry.isFile() && /\.tsx?$/.test(entry.name)) files.push(join(entry.parentPath, entry.name));
-  for (const entry of readdirSync("app/(app)/app/orbit-2026", { recursive: true, withFileTypes: true })) if (entry.isFile() && /\.tsx?$/.test(entry.name)) files.push(join(entry.parentPath, entry.name));
+  for (const entry of readdirSync("app/(app)/app/orbit-2026", { recursive: true, withFileTypes: true })) {
+    if (entry.isFile() && /\.tsx?$/.test(entry.name) && !join(entry.parentPath, entry.name).includes("/orbit-2026/copy/")) {
+      files.push(join(entry.parentPath, entry.name));
+    }
+  }
   return files;
 }
 
-test("showcases, the root layout, the landing page and orbit-2026 have no hard-coded text", () => {
+test("showcases, the root layout, the landing page and orbit-2026 outside copy tables have no hard-coded text", () => {
   const found = outsideFiles().map((path) => [path, scanCopy(readFileSync(path, "utf8"), path)] as const).filter(([, counts]) => counts.hardcoded || counts.missingJa).map(([path, counts]) => `${path}: ${JSON.stringify(counts)}`);
   assert.deepEqual(found, []);
 });

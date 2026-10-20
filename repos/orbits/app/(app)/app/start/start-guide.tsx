@@ -319,7 +319,7 @@ export function StartGuide(props: StartGuideProps) {
                     Step <b>{viewNumber}</b> of 3
                   </>
                 ) : language === "ja" ? (
-                  <>ステップ <b>{viewNumber}</b> / 3</>
+                  <>{t({ en: "Step", zh: "第", ja: "ステップ" })} <b>{viewNumber}</b> / 3</>
                 ) : (
                   <>
                     第 <b>{viewNumber}</b> 步 / 共 3 步

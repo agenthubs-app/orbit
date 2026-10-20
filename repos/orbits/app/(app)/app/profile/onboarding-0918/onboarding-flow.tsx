@@ -59,7 +59,7 @@ import {
 import { horizonOption, type GoalHorizon } from "../goal-editor/goal-editor-model";
 import { OnboardingHomePreview, OnboardingNetworkPreview, type PreviewProgress } from "./onboarding-previews";
 import { ONBOARDING_STYLES } from "./onboarding-styles";
-import { ONBOARDING_JA } from "./onboarding-ja";
+import { ONBOARDING_JA } from "../../orbit-2026/copy/onboarding-ja";
 
 export interface OnboardingFlowProps {
   actorKey: string;
@@ -493,7 +493,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           </nav>}
           <div className="ob-header-right">
             <button className="btn ob-lang" onClick={() => setLanguage(language === "zh" ? "en" : language === "en" ? "ja" : "zh")} type="button">
-              {language === "zh" ? "中文" : language === "en" ? "English" : "日本語"} <span className="ob-caret" aria-hidden>⌄</span>
+              {t({ zh: "中文", en: "English", ja: "日本語" })} <span className="ob-caret" aria-hidden>⌄</span>
             </button>
             {isStep ? <button className="btn ob-header-skip" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">{t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" })}</button> : null}
             <button aria-label={t({ zh: "关于你", en: "About you" })} className="btn ob-avatar-sm" onClick={() => go("profile")} type="button">{initial}</button>

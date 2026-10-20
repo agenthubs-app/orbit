@@ -382,8 +382,8 @@
       "missingJa": 8
     },
     "app/(app)/app/profile/onboarding-0918/onboarding-flow.tsx": {
-      "hardcoded": 9,
-      "missingJa": 126
+      "hardcoded": 8,
+      "missingJa": 120
     },
     "app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx": {
       "hardcoded": 6,
@@ -403,11 +403,11 @@
     },
     "app/(app)/app/start/start-guide.tsx": {
       "hardcoded": 2,
-      "missingJa": 24
+      "missingJa": 19
     },
     "app/(app)/app/start/start-step-cards.tsx": {
       "hardcoded": 0,
-      "missingJa": 18
+      "missingJa": 8
     },
     "app/(app)/app/start/start-step-goal.tsx": {
       "hardcoded": 0,
@@ -415,7 +415,7 @@
     },
     "app/(app)/app/start/start-step-plan.tsx": {
       "hardcoded": 0,
-      "missingJa": 17
+      "missingJa": 14
     },
     "app/(app)/app/tasks/personal-schedule-association-sheet.tsx": {
       "hardcoded": 16,

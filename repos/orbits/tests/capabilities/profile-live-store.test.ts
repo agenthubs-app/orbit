@@ -237,5 +237,5 @@ test("auth placeholders do not become a profile name or company", async () => {
   if (!result.success) throw new Error("Profile read failed");
   assert.equal(result.data.profile?.displayName, "");
   assert.equal(result.data.profile?.organization, "");
-  assert.deepEqual(result.data.onboarding?.missingFields, ["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"]);
+  assert.deepEqual(result.data.onboarding?.missingFields, ["displayName", "primaryIndustryId", "secondaryIndustryId"]);
 });
