@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHomeGuideProgressHandler } from "../../app/api/home/guide-progress/route";
+import { createHomeGuideProgressHandler } from "../../app/api/home/guide-progress/handler";
 
 const actor = { id: "actor:home-guide-api", userId: "user:home-guide-api" };
 

@@ -91,8 +91,8 @@ function HomeWorkspace() {
   const holdEnd = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
 
   const rail = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
-    : <div className={styles.rail}><h2>✨ 次の一手</h2>{recommendations.length ? recommendations.map((item) =>
-      <Link key={item.key} href={item.href} className={styles.railItem}>{item.title}<small>✨ {t(item.source === "secretary" ? "secretary" : item.source === "today" ? "today" : item.source === "plan" ? "planScore" : "schedule")} · ホームから</small></Link>)
+    : <div className={styles.rail}><div className={styles.railBrand}>✨ iOrbit</div><div className={styles.railIntro}><strong>{t("railHello")}</strong><p>{t("railAbout")}</p></div><h2>✨ {t("nextMove")}</h2>{recommendations.length ? recommendations.map((item) =>
+      <Link key={item.key} href={item.href} className={styles.railItem}>{item.title}<small>✨ {t(item.source === "secretary" ? "secretary" : item.source === "today" ? "today" : item.source === "plan" ? "planScore" : "schedule")} · {t("fromHome")}</small></Link>)
       : <p className={styles.subtle}>{t("empty")}</p>}<Link href="/app/inbox" className={styles.cardLink}>{t("showAll")} →</Link></div>;
 
   return <>
@@ -103,8 +103,7 @@ function HomeWorkspace() {
       {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><button type="button" onClick={() => void reload()}>{t("retry")}</button></div> : null}
       {state === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
       {state !== "error" && state !== "loading" ? <>
-        {guide.kind === "ready" && guide.data.kind === "progress" ? <GuideCard progress={guide.data} t={t} /> : null}
-        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><button type="button" aria-label="閉じる" onClick={() => void dismissHint()}>×</button></div> : null}
+        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><button type="button" aria-label={t("close")} onClick={() => void dismissHint()}>×</button></div> : null}
         {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><button type="button" onClick={() => setEditing(false)}>{t("done")}</button></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
           {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small}`} data-widget={slot.key}
@@ -119,7 +118,7 @@ function HomeWorkspace() {
                 <button type="button" aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
               </div> : null}
             </header>
-            <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} />
+            <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
           </section>)}
         </div>
         {editing ? <div className={styles.mobileLibrary}><WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} /></div> : null}
@@ -127,15 +126,6 @@ function HomeWorkspace() {
     </main>
     {contact ? <ContactDrawer contactId={contact} onClose={() => setContact(null)} /> : null}
   </>;
-}
-
-function GuideCard({ progress, t }: { progress: { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } }; t: T }) {
-  const links = [
-    { key: "contacts", href: "/app/contacts", title: t("guideContacts") },
-    { key: "goal", href: "/app/tasks?tab=plan", title: t("guideGoal") },
-    { key: "plan", href: "/app/tasks?tab=plan", title: t("guidePlan") },
-  ] as const;
-  return <section className={styles.guide}><div><h2>{t("guide")}</h2><span>{progress.completed}/3</span></div><ol>{links.map((step) => <li key={step.key} data-done={progress.steps[step.key]}><Link href={step.href}>{progress.steps[step.key] ? "✓" : "○"} {step.title} →</Link></li>)}</ol></section>;
 }
 
 function WidgetLibrary({ slots, t, onAdd }: { slots: readonly HomeWidgetSlot[]; t: T; onAdd: (slot: HomeWidgetSlot) => void }) {

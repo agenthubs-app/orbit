@@ -38,7 +38,7 @@ async function home(t: { after: (fn: () => Promise<void>) => void }): Promise<Pa
         if(init.method==="PUT") {const input=JSON.parse(init.body);window.writes.push(input);window.layout={...window.layout,revision:window.layout.revision+1,app:input.app,web:input.web,...(input.hintDismissedAt?{hintDismissedAt:input.hintDismissedAt}:{}),webCustomizedAt:new Date().toISOString()};}
         return Response.json({success:true,data:window.layout});
       }
-      if(path==="/api/home/guide-progress") return Response.json({success:true,data:{kind:"hidden",reason:"completed"}});
+      if(path==="/api/home/guide-progress") return Response.json({success:true,data:{kind:"progress",completed:0,confirmedContacts:0,nextStep:"contacts",steps:{contacts:false,goal:false,plan:false}}});
       if(path==="/api/inbox/secretary/preview") return Response.json({success:false},{status:503});
       return Response.json({success:false},{status:503});
     };
@@ -72,4 +72,11 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
   assert.equal(saved.web.find((slot: { key: string }) => slot.key === "today").size, "s");
   assert.equal(saved.web.filter((slot: { key: string }) => slot.key === "memo").length, 1);
   assert.deepEqual(await page.locator("[data-widget]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-widget"))), saved.web.map((slot: { key: string }) => slot.key));
+});
+
+test("incomplete three-step guide belongs inside the Today card", async t => {
+  const page = await home(t);
+  await page.locator("[data-widget=today]").getByText("はじめの3ステップ").waitFor();
+  assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /名刺を3枚追加/ }).count(), 1);
+  assert.equal(await page.locator("main > section").filter({ hasText: "はじめの3ステップ" }).count(), 0);
 });

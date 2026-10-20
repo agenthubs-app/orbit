@@ -40,7 +40,7 @@ export const DEFAULT_HOME_LAYOUT: HomeLayoutContract = {
     { key: "today", size: "m" },
     { key: "planScore", size: "s" },
     { key: "nextEvent", size: "s" },
-    { key: "network", size: "s" },
+    { key: "network", size: "m" },
     { key: "secretary", size: "m" },
   ] satisfies HomeWidgetSlot[],
   web: [

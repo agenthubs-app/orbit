@@ -29,6 +29,7 @@ const scheduleRowSchema = z.object({ id: z.string(), title: z.string(), startsAt
 const scheduleSchema = z.object({ scheduleItems: z.array(z.unknown()) });
 
 type LabelKey = keyof typeof homeCopy;
+type GuideProgress = { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } };
 function useT() { const { language } = useOrbitLanguage(); return (key: LabelKey) => pickCopy(homeCopy[key], language); }
 
 function State<T>({ resource, children }: { resource: HomeResource<T> & { retry: () => void }; children: (data: T) => React.ReactNode }) {
@@ -40,7 +41,18 @@ function State<T>({ resource, children }: { resource: HomeResource<T> & { retry:
 
 function EmptyLink({ href, label }: { href: string; label: string }) { return <Link className={styles.cardLink} href={href}>{label} →</Link>; }
 
-function TodayCard() {
+function GuideSteps({ progress }: { progress: GuideProgress }) {
+  const t = useT();
+  const links = [
+    { key: "contacts", href: "/app/contacts", title: t("guideContacts") },
+    { key: "goal", href: "/app/tasks?tab=plan", title: t("guideGoal") },
+    { key: "plan", href: "/app/tasks?tab=plan", title: t("guidePlan") },
+  ] as const;
+  return <div className={styles.guideSteps}><div>{t("guide")} <span>{progress.completed}/3</span></div><ol>{links.map((step, index) =>
+    <li key={step.key} data-done={progress.steps[step.key]}><Link href={step.href}>{progress.steps[step.key] ? "✓" : "○"} {index + 1}. {step.title}</Link></li>)}</ol></div>;
+}
+
+function TodayCard({ guide }: { guide: GuideProgress | null }) {
   const t = useT();
   const resource = useHomeResource("/api/todo/page", todoPageSchema);
   const schedule = useHomeResource("/api/schedule-items", scheduleSchema);
@@ -48,7 +60,9 @@ function TodayCard() {
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && ["upcoming", "ongoing"].includes(parsed.data.state) ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  return <State resource={resource}>{(data) => <>
+  if (guide && resource.kind !== "ready") return <><GuideSteps progress={guide} />{resource.kind === "error" ? <State resource={resource}>{() => null}</State> : null}</>;
+  return <State resource={resource}>{(data) => guide && data.counts.nextMoves === 0 && data.counts.decisions === 0 && rows.length === 0 ? <GuideSteps progress={guide} /> : <>
+    {guide ? <GuideSteps progress={guide} /> : null}
     <div className={styles.statRow}>
       <Link href="/app/tasks?tab=todo" className={styles.stat}><strong>{data.counts.nextMoves}</strong><small>今日の一手</small></Link>
       <Link href="/app/tasks?tab=todo" className={styles.stat}><strong>{data.counts.decisions}</strong><small>{t("pending")}</small></Link>
@@ -71,7 +85,7 @@ function PlanCard() {
     <p className={styles.subtle}>{data.current.goal}</p>
     <div className={styles.segments}>{data.current.score.segments.map((segment) => <span key={segment.key}>{segment.key === "event" ? "イベント枠" : segment.shortLabel} {segment.earned}/{segment.allocation}</span>)}</div>
     {data.current.todayChance ? <EmptyLink href={data.current.todayChance.href} label={data.current.todayChance.actionLabel ?? data.current.todayChance.label} /> : <EmptyLink href="/app/tasks?tab=plan" label={t("showAll")} />}
-  </> : <><p className={styles.subtle}>{t("empty")}</p><EmptyLink href="/app/tasks?tab=plan" label={t("goal")} /></>}</State>;
+  </> : <><p className={styles.subtle}>{t("planEmptyDetail")}</p><Link className={styles.emptyAction} href="/app/tasks?tab=plan">＋ {t("goal")}</Link></>}</State>;
 }
 
 function EventCard() {
@@ -84,7 +98,7 @@ function EventCard() {
       <p className={styles.subtle}>{new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(event.startsAt))}{event.venue ? ` · ${event.venue}` : ""}</p>
       {event.meetCount != null ? <p className={styles.subtle}>会いたい人 {event.meetCount}人</p> : null}
       <EmptyLink href={event.href} label={t("prep")} />
-    </> : <><p className={styles.subtle}>{t("empty")}</p><EmptyLink href="/app/events" label={t("assess")} /></>;
+    </> : <><p className={styles.subtle}>{t("eventEmptyDetail")}</p><Link className={styles.emptyAction} href="/app/events">♧ {t("assess")}</Link></>;
   }}</State>;
 }
 
@@ -92,9 +106,9 @@ function NetworkCard({ onContact }: { onContact: (id: string) => void }) {
   const t = useT();
   const summary = useHomeResource("/api/contacts/summary", contactCardSummarySchema);
   const page = useHomeResource("/api/contacts/page?sort=added&limit=4", contactCardPageSchema);
-  return <><State resource={summary}>{(data) => <div className={styles.score}><strong>{data.total}</strong><span>人</span>{data.addedThisMonth !== undefined ? <b>+{data.addedThisMonth} {t("added")}</b> : null}</div>}</State>
-    <State resource={page}>{(data) => <div className={styles.people}>{data.items.slice(0, 4).map((person) => <button type="button" key={person.id} onClick={() => onContact(person.id)}><span className={styles.avatar}>{person.displayName.slice(0, 1)}</span><span>{person.displayName}</span></button>)}</div>}</State>
-    <EmptyLink href="/app/contacts" label={t("showAll")} />
+  return <><State resource={summary}>{(data) => data.total > 0 ? <div className={styles.score}><strong>{data.total}</strong><span>人</span>{data.addedThisMonth !== undefined ? <b>+{data.addedThisMonth} {t("added")}</b> : null}</div> : <p className={styles.subtle}>{t("networkEmptyDetail")}</p>}</State>
+    <State resource={page}>{(data) => <><div className={styles.people}>{data.items.slice(0, 4).map((person) => <button type="button" key={person.id} onClick={() => onContact(person.id)}><span className={styles.avatar}>{person.displayName.slice(0, 1)}</span><span>{person.displayName}</span></button>)}</div>
+      {data.items.length ? <EmptyLink href="/app/contacts" label={t("showAll")} /> : <Link className={styles.networkAction} href="/app/contacts/new/scan">▣ {t("scanCard")}</Link>}</>}</State>
   </>;
 }
 
@@ -102,7 +116,7 @@ function SecretaryCard({ resource }: { resource: HomeResource<SecretaryPreviewDT
   const t = useT();
   return <State resource={resource}>{(data) => {
     const items = visibleSecretaryItems(data);
-    return items.length ? <><div className={styles.lines}>{items.map((item) => <Link key={item.key} href={item.notification.target.href!}>{item.notification.title}{item.notification.sample ? <small>{t("sample")}</small> : null}<span>→</span></Link>)}</div><EmptyLink href="/app/inbox" label={t("showAll")} /></> : <><p className={styles.subtle}>{t("empty")}</p><EmptyLink href="/app/inbox" label={t("showAll")} /></>;
+    return items.length ? <><div className={styles.lines}>{items.map((item) => <Link key={item.key} href={item.notification.target.href!}>{item.notification.title}{item.notification.sample ? <small>{t("sample")}</small> : null}<span>→</span></Link>)}</div><EmptyLink href="/app/inbox" label={t("showAll")} /></> : <><p className={styles.subtle}>{t("secretaryEmptyDetail")}</p><EmptyLink href="/app/inbox" label={t("showAll")} /></>;
   }}</State>;
 }
 
@@ -142,10 +156,10 @@ function MemoCard() {
   return <State resource={resource}>{(data) => <>{data.notes.length ? data.notes.map((note) => <Link key={note.id} className={styles.item} href={`/app/tasks?tab=memo&memo=${encodeURIComponent(note.id)}`}>{note.title || t("memo")} →</Link>) : <p className={styles.subtle}>{t("empty")}</p>}<EmptyLink href="/app/tasks?tab=memo" label={t("showAll")} /></>}</State>;
 }
 
-export function HomeCardBody({ widget, onContact, secretary }: { widget: HomeWidgetKey; onContact: (id: string) => void; secretary: HomeResource<SecretaryPreviewDTO> & { retry: () => void } }) {
+export function HomeCardBody({ widget, onContact, secretary, guide }: { widget: HomeWidgetKey; onContact: (id: string) => void; secretary: HomeResource<SecretaryPreviewDTO> & { retry: () => void }; guide: GuideProgress | null }) {
   const t = useT();
   switch (widget) {
-    case "today": return <TodayCard />;
+    case "today": return <TodayCard guide={guide} />;
     case "planScore": return <PlanCard />;
     case "nextEvent": return <EventCard />;
     case "network": return <NetworkCard onContact={onContact} />;
