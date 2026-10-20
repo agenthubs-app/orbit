@@ -22,7 +22,7 @@ function sources(input: { contacts?: number; goal?: string | null; plan?: boolea
   };
   return {
     writes,
-    guideState: () => guide,
+    guideState: (_actorId: string) => guide,
     countContacts: async () => { if (input.fail === "contacts") throw Error("unavailable"); return input.contacts ?? 0; },
     readGoal: async () => { if (input.fail === "goal") throw Error("unavailable"); return input.goal ?? null; },
     hasActivePlan: async () => { if (input.fail === "plan") throw Error("unavailable"); return input.plan ?? false; },
