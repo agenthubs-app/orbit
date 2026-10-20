@@ -73,7 +73,8 @@ export async function buildAccountExportArchive(input: AccountExportArchiveInput
     add(name, bytes, rows.length);
     await input.onProgress?.(index + 1, scopes.length);
   }
-  if (input.mode === "all-json" && input.readImages) {
+  if (input.mode === "all-json") {
+    if (!input.readImages) throw new Error("Export domain unavailable: business-card-images");
     const images = await input.readImages();
     if (images === null) throw new Error("Export domain unavailable: business-card-images");
     for (const image of images) {

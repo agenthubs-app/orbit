@@ -5,6 +5,7 @@ import { AppError, SAFE_INTERNAL_ERROR_MESSAGE } from "../../../shared/errors/ap
 import { createConfiguredTransactionalPostgresRuntime } from "../../../shared/storage/transactional-postgres";
 import { readBody, type ContractReply } from "../../redesign-contracts/route";
 import { createAccountDeletionRecordStore, type AccountDeletionRecord } from "./deletion-records";
+import { createConfiguredAccountRightsOutbox } from "./configured-outbox";
 
 type Store = Pick<ReturnType<typeof createAccountDeletionRecordStore>, "get" | "request" | "cancel">;
 
@@ -17,7 +18,11 @@ function project(record: AccountDeletionRecord): AccountDeletionRequestContract 
   return { requestedAt: record.requestedAt, purgeAfter: record.purgeAfter, cancelledAt: record.cancelledAt, status: record.status };
 }
 
-export function createAccountDeletionLiveHandlers(deps: { resolveActor?: ResolveAuthenticatedApiActor; store?: Store | null } = {}) {
+export function createAccountDeletionLiveHandlers(deps: {
+  resolveActor?: ResolveAuthenticatedApiActor;
+  store?: Store | null;
+  notifyAccepted?: (actorId: string) => Promise<void>;
+} = {}) {
   const resolveActor = deps.resolveActor ?? resolveAuthenticatedApiActor;
   const store = () => deps.store !== undefined ? deps.store : createConfiguredAccountDeletionStore();
   const unavailable = (): ContractReply => ({ error: new AppError("SERVICE_UNAVAILABLE", "Account deletion is unavailable.") });
@@ -50,6 +55,15 @@ export function createAccountDeletionLiveHandlers(deps: { resolveActor?: Resolve
         const result = await resolved.request(principal.id, principal.userId, body.value.reauthReceipt);
         if (result.kind === "bad-receipt") return { error: new AppError("FORBIDDEN", "Reauthenticate to request deletion."), context: { reason: "REAUTH_REQUIRED" } };
         if (result.kind === "host-blocked") return { error: new AppError("CONFLICT", "Cancel or transfer events with registered participants first."), context: { reason: "HOST_EVENT_HAS_REGISTRATIONS" } };
+        if (result.kind === "accepted") {
+          try {
+            if (deps.notifyAccepted) await deps.notifyAccepted(principal.id);
+            else await createConfiguredAccountRightsOutbox()?.runOnce(principal.id);
+          } catch {
+            // The durable outbox remains pending or records an uncertain channel.
+            console.error(JSON.stringify({ event: "account_deletion_notification_dispatch_failed" }));
+          }
+        }
         return result.request ? { data: project(result.request), status: result.kind === "accepted" ? 202 : 200 } : internal();
       } catch { return internal(); }
     },

@@ -41,10 +41,15 @@ test("all-json reads five domains, excludes unrequested files, and fails visibly
   const archive = await buildAccountExportArchive({
     scope: ["contacts"], mode: "all-json", contactsFormat: "csv", generatedAt: "2026-10-20T00:00:00.000Z",
     read: async scope => { readScopes.push(scope); return [{ id: scope }]; },
+    readImages: async () => [],
   });
   assert.deepEqual(readScopes, ["contacts", "notes", "plans", "tasks", "events"]);
   const files = unzipSync(archive);
   assert.deepEqual(Object.keys(files).sort(), ["contacts.json", "events.json", "manifest.json", "notes.json", "plans.json", "tasks.json"]);
+  await assert.rejects(() => buildAccountExportArchive({
+    scope: ["contacts"], mode: "all-json", contactsFormat: "csv", generatedAt: "2026-10-20T00:00:00.000Z",
+    read: async () => [],
+  }), /Export domain unavailable: business-card-images/);
   await assert.rejects(() => buildAccountExportArchive({
     scope: ["contacts"], mode: "selected", contactsFormat: "csv", generatedAt: "2026-10-20T00:00:00.000Z",
     read: async () => null,
