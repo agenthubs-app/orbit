@@ -25,7 +25,7 @@
 | 09 指南到 v2.2 | 部分 | 双端显式类型、onboarding intake 恢复同 ID；Web AI 初版失败后只显示恢复出口，四阶段→Task 未到达。 |
 | 10 示例模式 | 部分 | C 的 profile、flow、intro 服务端样本写 403 早退测试；资料页的内嵌预览仅返回填写步骤，没有示例数据写入口。`/start` 是脱离预览的真实指南，新用户可在此写真资料；不能仅凭「仍在示例期」把该入口拦住。B 的 plan intake 示例写拒绝、A/D 拥有的示例横条/药丸及其写入口仍未联验。 |
 | 11 D 线 Task | 待 D | 本线未修改 Task。状态契约与具体请求在下表；没有 D 提交和回传，Task 链不能报通过。 |
-| 12 旧引用 | 部分 | C 的旧 `card-batch-ui` 使用与 `profile-model` re-export 已清理；Web 资料仍挂在 `onboarding-0918`，尚未达到新目录的文案审计零例外要求。 |
+| 12 旧引用 | 部分 | C 的旧 `card-batch-ui` 使用与 `profile-model` re-export 已清理；Web 资料仍挂在 `onboarding-0918`，尚未达到新目录的文案审计零例外要求。D 壳的 `shell-routes.ts` 仍把 `/app/start` 与 `/app/profile/onboarding` 列为 `NO_SHELL`，C 单方挂 `ShellPage` 不会产生插槽；需 D 先给可用壳边界。 |
 | 13 资料像素 | 未过 | W01 1440 浅和 A01 深各有 triptych；超阈值带仍未归因，其他宽／主题及资料屏没有完整 fixture。 |
 | 14 指南／示例像素 | 未过 | A07、W07、W08 门禁失败；A08 首次比较用了错误路由，随后 `/contacts` 数据读失败，不能判通过；A/D 组件与 fixture 缺口见下。 |
 | 15 失败／兼容／离线 | 部分 | v1/v2/未知契约、资料／进度重试、无网络和 intake 错误定向测试；资料 409 不再自动读新版重发，保留当前输入并提示复核。跨端换号和完整离线同步审计未完成。 |
@@ -66,7 +66,7 @@ R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口
 | --- | --- | --- | --- |
 | A 组件库 | C `7bffccbbd` 的 AppScreen kit／UiText 和 Web 自有 CSS；A01/A07 超带仍多 | 评估资料表单行高、输入、chip、指南卡与示例横条的 kit/token 对齐；给独立组件提交和 R28 状态 fixture 后按清单重比 | 未请求 C 越线修改 A 组件；手机系统外壳不实现 |
 | B 名片／计划服务 | C `1073f9ea9` 改扫卡到 `/app/contacts/new/scan`；`04d6bbe76` 两端仅续接 `source:onboarding` intake | 扫描/导入路由提供明确 return-to-guide；plan intake 写在示例期返 403 且无存储／AI 副作用；4 阶段失败恢复与 App 回 Task 正例由 B/R23–25 给回执 | 本地 blank AI provider 仅到问题阶段；未写 B API 文件 |
-| D Task／壳 | C 的指南显示 2/3 且未生成 active plan；A08/W08 画板与真实人脉页整屏不符 | 恢复 Task›プラン 空／有计划／示例横条、展开/药丸、写拦截、继续指南；回传独立 SHA、状态 props、同态 fixture、触控链 | 无 D 提交，未改 Task；首页首步文案在 3 联系人后仍说“追加 3 张名片”需 R10/D 对齐 |
+| D Task／壳 | C 的指南显示 2/3 且未生成 active plan；A08/W08 画板与真实人脉页整屏不符；`shell-routes.ts` 当前对 `/app/start` 和 `/app/profile/onboarding` 禁壳 | 恢复 Task›プラン 空／有计划／示例横条、展开/药丸、写拦截、继续指南；明确 R28 两页的新壳插槽方案并移除对应禁壳路由，再回传独立 SHA、状态 props、同态 fixture、触控链 | 无 D 提交，未改 Task／壳；首页首步文案在 3 联系人后仍说“追加 3 张名片”需 R10/D 对齐 |
 | 主会话／Bridge | 本地 contract v2、App 兼容、真实指南/intake；生产与付费均未动 | 在共同环境审阅安全 next 矩阵、跨端完整回读、active 计划 3/3、A/B/D 提交后重比；决定是否授权付费 AI/生产示例开关 | 没有请求或执行发布；`bridge/status.md`／`handoffs.md` 台账由 Bridge 协调者更新 |
 
 DEFERRED（待用户授权）：生产示例开关、生产 since 与迁移、Neon/生产数据库、付费 AI 正例、部署／推送。当前本地测试账号与合成联系人仅在 `orbit_line_c`。
