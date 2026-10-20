@@ -21,7 +21,7 @@ export type HomeWidgetSources = {
   schedule?: { scheduleItems: readonly unknown[] } | undefined;
   networkSummary?: Pick<ContactCardSummaryDTO, "total" | "addedThisMonth"> | undefined;
   networkPage?: { items: readonly Pick<ContactCardDTO, "id" | "displayName">[] } | undefined;
-  secretary?: { actorId: string; items: readonly SecretaryItem[] } | undefined;
+  secretary?: { actorId: string; hasMore?: boolean; items: readonly SecretaryItem[] } | undefined;
   plan?: PlanV2SummaryResponse | undefined;
   events?: MyEventsResponse | undefined;
 };
@@ -71,7 +71,9 @@ export function projectHomeWidgetCards(input: HomeWidgetSources): WidgetCards {
             ...(item.notification.reason && text(item.notification.reason) ? { reason: text(item.notification.reason) } : {}),
             kind: item.kind as "event_deadline" | "event_prep" | "event_pick", href }] : [];
       });
-      return items.length ? { status: "ready" as const, display: { count: items.length, items: items.slice(0, 2) } } : empty;
+      return items.length ? { status: "ready" as const, display: {
+        count: items.length, hasMore: secretary.hasMore === true, items: items.slice(0, 2),
+      } } : empty;
     })();
 
   const current = plan?.current;

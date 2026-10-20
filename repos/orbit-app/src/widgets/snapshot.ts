@@ -15,7 +15,7 @@ const widgetsSchema = z.object({
   today: card(z.object({ count: z.number().int().nonnegative(), rows: z.array(z.object({ title: label, href: target }).strict()).max(3) }).strict()),
   network: card(z.object({ total: z.number().int().nonnegative(), addedThisMonth: z.number().int().nonnegative().optional(),
     people: z.array(z.object({ id: label, name: label }).strict()).max(3) }).strict()),
-  secretary: card(z.object({ count: z.number().int().nonnegative(), items: z.array(z.object({
+  secretary: card(z.object({ count: z.number().int().nonnegative(), hasMore: z.boolean().optional(), items: z.array(z.object({
     title: label, reason: label.optional(), kind: z.enum(["event_deadline", "event_prep", "event_pick"]), href: target,
   }).strict()).max(2) }).strict()),
   plan: card(z.object({ goal: label, total: z.number().finite(), talked: z.number().finite(), skipped: z.number().finite(),

@@ -85,6 +85,14 @@
 
 收尾仅删除本轮外部证据目录下自建的 `DerivedData`（68 MB）和 `HostDerivedData`（5.1 GB），保留日志、fixture、PNG 与三轮差异图；两目录已核实不存在。Next 3510／Metro 8085 均无监听进程，D 模拟器 `3E4102CA-9714-4F37-AB7B-570D1E97E3EB` 为 Shutdown；3000／3400／3500 未触碰。既有未跟踪 `HANDOFF-CLAUDE-2026-10-19.md` 未修改。
 
+## 复核修复：主会话代定 §R19-13～14
+
+- **S1 清空失败。** 原生 `clear()` 现在先删除 `active-scope-v1`，再删除 `active-snapshot-v1.json` 与授权 scope；任一步失败就写独立的 `revoked-v1` 墓碑，墓碑写失败时以原位 truncate 把既有快照清空。扩展读到墓碑或缺少 active 指针立即返回空态；原生 `activate`／`write` 也拒绝墓碑状态。成功重试清空才删除墓碑。JS 清空失败保留 `WIDGET_SNAPSHOT_CLEAR_FAILED` 诊断且返回 `false`，认证仍继续；根壳在下次 App 启动的未就绪态再次调用清空，激活路径在写新账号前也先清空。mock 原生首轮失败、重建 runtime 后重试的测试通过；Swift 读侧用有效快照、墓碑、缺指针三态单测通过。真实 App Group 与签名仍缺，不能用单测代替登出实屏回读。若容器同时拒绝墓碑写入与快照截断，原生会抛错并记录诊断，这个操作系统级写入故障仍需现场处理。
+- **M1 默认自动链接。** `ORBIT_ENABLE_WIDGETS` 非 `1` 时配置插件把生成的 Podfile 改为 `use_expo_modules!(exclude: ['orbit-widget-snapshot'])`；显式 `1` 时保留原生链接。`run-02/prebuild-default-off.log` exit 0，生成 Podfile 第 28 行含 exclude；`pod-install-default-off.log` exit 0，为 **124 个 Podfile 依赖／127 个 Pod**，`Podfile.lock` 和 Expo autolinking JSON 均无 OrbitWidgetSnapshot。此前 §R19-10 默认构建是 125／128，差额恰为桥接 Pod。`005230b8b` 的 App `package.json`／锁文件与当前无 diff，旧树没有此模块；该提交没有跟踪 `ios/Podfile.lock`，故不能给出旧锁文件逐行比对。默认模块集在现有依赖下与旧树一致；JS 缺桥 no-op 的测试继续通过。证据在 `_evidence-d/R19/run-02/`。
+- **M2/M3。** 秘書投影透传现有 preview `hasMore`，快照字段向后兼容，Swift 件数显示 `N+件`；定向测试 `hasMore=true` 通过。锁屏分数字体加 `.privacySensitive()`；Swift 读侧单测及原生 store 源片段 typecheck exit 0。正式锁屏隐私外观仍未实测。
+- **m1 来源有效期。** 这七个现有 R10 GET 的整体响应契约没有给可复用的 `expiresAt`／TTL；秘書通知单条有效期不能代表整个投影的有效期。因此 SC02 的「来源更早到期」仅指 `buildWidgetSnapshot` 纯 helper 输入的测试，生产读取器目前没有传 `sourceExpiresAt`。线上快照仍按生成时起最多 30 分钟、本地日界失效；不能声称它已按来源提前过期。
+- **验证。** `node --test --import tsx` 三个定向文件 **13/13**，`sh tests/run-widget-reader-tombstone.sh` PASS，App `npm run typecheck` exit 0，`git diff --check` exit 0；Web 产品源码本节未改。后续 R28 收口会再跑两端类型检查及获授权的一次 App 全量，以最终结果为准。
+
 ## 交接与停止边界
 
 | 更新目标 | 本端版本 | 另一端影响 | 未完成事项 | 验证范围 |

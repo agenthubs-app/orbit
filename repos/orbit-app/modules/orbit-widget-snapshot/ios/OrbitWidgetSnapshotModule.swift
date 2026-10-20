@@ -19,6 +19,13 @@ private final class WidgetSnapshotStore {
     let url = file(name, in: container)
     if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
   }
+  private func truncateSnapshot(in root: URL) throws {
+    let url = file("active-snapshot-v1.json", in: root)
+    guard FileManager.default.fileExists(atPath: url.path) else { return }
+    let handle = try FileHandle(forWritingTo: url)
+    defer { try? handle.close() }
+    try handle.truncate(atOffset: 0)
+  }
   private func validHash(_ value: String) -> Bool {
     value.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
   }
@@ -29,6 +36,9 @@ private final class WidgetSnapshotStore {
     try queue.sync {
       guard validHash(scopeHash) else { throw NSError(domain: "OrbitWidgetSnapshot", code: 2) }
       let root = try container()
+      guard !FileManager.default.fileExists(atPath: file("revoked-v1", in: root).path) else {
+        throw NSError(domain: "OrbitWidgetSnapshot", code: 5, userInfo: [NSLocalizedDescriptionKey: "Widget scope revoked; retry clear"])
+      }
       let authorizedURL = file("authorized-scope-v1", in: root)
       if (try? String(contentsOf: authorizedURL, encoding: .utf8)) == scopeHash { return }
       // Fail closed before changing owner; a late write from the prior owner cannot reactivate it.
@@ -42,9 +52,19 @@ private final class WidgetSnapshotStore {
   func clear() throws {
     try queue.sync {
       let root = try container()
-      try remove("active-scope-v1", in: root)
-      try remove("authorized-scope-v1", in: root)
-      try remove("active-snapshot-v1.json", in: root)
+      do {
+        // Revoke the pointer first; no previously authorized snapshot may remain visible.
+        try remove("active-scope-v1", in: root)
+        try remove("active-snapshot-v1.json", in: root)
+        try remove("authorized-scope-v1", in: root)
+        try remove("revoked-v1", in: root)
+      } catch {
+        let deletionError = error
+        do { try "revoked".write(to: file("revoked-v1", in: root), atomically: true, encoding: .utf8) }
+        catch { try truncateSnapshot(in: root) }
+        WidgetCenter.shared.reloadAllTimelines()
+        throw deletionError
+      }
       WidgetCenter.shared.reloadAllTimelines()
     }
   }
@@ -58,6 +78,9 @@ private final class WidgetSnapshotStore {
         let scopeHash = object["scopeHash"] as? String, validHash(scopeHash)
       else { throw NSError(domain: "OrbitWidgetSnapshot", code: 3) }
       let root = try container()
+      guard !FileManager.default.fileExists(atPath: file("revoked-v1", in: root).path) else {
+        throw NSError(domain: "OrbitWidgetSnapshot", code: 5, userInfo: [NSLocalizedDescriptionKey: "Widget scope revoked; retry clear"])
+      }
       guard (try? String(contentsOf: file("authorized-scope-v1", in: root), encoding: .utf8)) == scopeHash else {
         throw NSError(domain: "OrbitWidgetSnapshot", code: 4, userInfo: [NSLocalizedDescriptionKey: "Widget scope changed"])
       }

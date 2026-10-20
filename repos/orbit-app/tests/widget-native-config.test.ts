@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 
 function configWith(flag?: string) {
@@ -19,8 +20,18 @@ test("WidgetKit extension generation defaults off and enables only with the expl
   const enabled = configWith("1");
   for (const config of [defaultConfig, explicitOff]) {
     assert.equal(config.plugins.includes("./plugins/with-orbit-widgetkit"), false);
+    assert.equal(config.plugins.includes("./plugins/with-orbit-widget-autolinking"), true);
     assert.equal(config.enabled, false);
   }
   assert.equal(enabled.plugins.includes("./plugins/with-orbit-widgetkit"), true);
+  assert.equal(enabled.plugins.includes("./plugins/with-orbit-widget-autolinking"), true);
   assert.equal(enabled.enabled, true);
+});
+
+test("the generated Podfile excludes the bridge only when widgets are disabled", async () => {
+  const { rewritePodfile } = createRequire(import.meta.url)("../plugins/with-orbit-widget-autolinking.js") as
+    { rewritePodfile: (contents: string, enabled: boolean) => string };
+  const input = "target 'Orbit' do\n  use_expo_modules!\nend\n";
+  assert.match(rewritePodfile(input, false), /use_expo_modules!\(exclude: \['orbit-widget-snapshot'\]\)/u);
+  assert.equal(rewritePodfile(input, true), input);
 });

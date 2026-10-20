@@ -26,7 +26,7 @@ test("R10 sources project bounded widget rows without credentials, Gmail or copi
       { id: "c1", displayName: "高橋 花子" }, { id: "c2", displayName: "伊藤 直子" },
       { id: "c3", displayName: "鈴木 太郎" }, { id: "c4", displayName: "社外 秘密" },
     ] },
-    secretary: { actorId: "actor-a", items: [
+    secretary: { actorId: "actor-a", hasMore: true, items: [
       { kind: "mail_summary", notification: { actorId: "actor-a", title: "Gmail 本文", target: { status: "available", href: "/inbox" }, sources: [{ sourceKind: "mail_summary" }] } },
       { kind: "event_deadline", notification: { actorId: "actor-a", title: "早割は明後日まで", reason: "参加予定 · まだ申し込んでいません", target: { status: "available", href: "/events/e1" }, sources: [{ sourceKind: "event_deadline" }] } },
       { kind: "event_pick", notification: { actorId: "actor-a", title: "おすすめのイベント", target: { status: "available", href: "/events/e2" }, sources: [{ sourceKind: "event_pick" }] } },
@@ -50,6 +50,7 @@ test("R10 sources project bounded widget rows without credentials, Gmail or copi
     ["早割は明後日まで", "おすすめのイベント"]);
   assert.equal(cards?.secretary.status === "ready" ? cards.secretary.display.items[0]?.reason : null,
     "参加予定 · まだ申し込んでいません");
+  assert.equal(cards?.secretary.status === "ready" ? cards.secretary.display.hasMore : null, true);
   assert.equal(cards?.plan.status === "ready" ? cards.plan.display.total : null, 128);
   assert.equal(cards?.plan.status === "ready" ? cards.plan.display.todayDelta : null, -10);
   assert.equal(cards?.event.status === "ready" ? cards.event.display.title : null, "CFO Night");

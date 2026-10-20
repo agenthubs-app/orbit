@@ -29,7 +29,7 @@ private struct TodayDisplay: Decodable { let count: Int; let rows: [TodayRow] }
 private struct Person: Decodable { let id: String; let name: String }
 private struct NetworkDisplay: Decodable { let total: Int; let addedThisMonth: Int?; let people: [Person] }
 private struct SecretaryRow: Decodable { let title: String; let reason: String?; let kind: String; let href: String }
-private struct SecretaryDisplay: Decodable { let count: Int; let items: [SecretaryRow] }
+private struct SecretaryDisplay: Decodable { let count: Int; let hasMore: Bool?; let items: [SecretaryRow] }
 private struct PlanSegment: Decodable {
   let key: String; let label: String; let allocation: Double; let earned: Double; let overflow: Double; let skipped: Bool
 }
@@ -66,6 +66,11 @@ private enum SnapshotReader {
 
   static func load(at now: Date) -> SnapshotState {
     guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return .empty }
+    return load(at: now, in: container)
+  }
+
+  static func load(at now: Date, in container: URL) -> SnapshotState {
+    guard !FileManager.default.fileExists(atPath: container.appendingPathComponent("revoked-v1").path) else { return .empty }
     let file = container.appendingPathComponent("active-snapshot-v1.json")
     guard let authorized = try? String(contentsOf: container.appendingPathComponent("authorized-scope-v1"), encoding: .utf8),
       let active = try? String(contentsOf: container.appendingPathComponent("active-scope-v1"), encoding: .utf8),
@@ -274,7 +279,7 @@ private struct OrbitWidgetView: View {
       VStack(alignment: .leading, spacing: 9) {
         HStack {
           Text("\(copy.secretary) · \(SnapshotReader.date(snapshot.lastUpdatedAt)?.formatted(.dateTime.month().day().weekday().locale(locale)) ?? "")")
-          Spacer(); Text("\(data.count)\(copy.items)")
+          Spacer(); Text("\(data.count)\(data.hasMore == true ? "+" : "")\(copy.items)")
         }
           .font(.system(size: 12, weight: .bold)).foregroundStyle(muted)
         ForEach(Array(data.items.prefix(2).enumerated()), id: \.offset) { _, item in
@@ -361,7 +366,7 @@ private struct OrbitWidgetView: View {
         Circle().trim(from: 0, to: min(1, max(0, data.total / 100)))
           .stroke(.primary, style: StrokeStyle(lineWidth: 5, lineCap: .round)).rotationEffect(.degrees(-90))
         VStack(spacing: 0) {
-          Text(data.total.formatted()).font(.system(size: 18, weight: .bold))
+          Text(data.total.formatted()).font(.system(size: 18, weight: .bold)).privacySensitive()
           Text(copy.score).font(.system(size: 8, weight: .semibold))
           updated(SnapshotReader.date(snapshot.lastUpdatedAt))
         }

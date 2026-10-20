@@ -48,6 +48,27 @@ test("an unavailable diagnostic cannot reject sign-out cleanup", async () => {
   assert.equal(await runtime.activate("https://first.example", "A"), null);
 });
 
+test("a failed native clear reports failure and a new runtime retries it at startup", async () => {
+  const { createWidgetSnapshotRuntime } = await import("../src/widgets/runtime");
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  let attempts = 0;
+  console.warn = (...args: unknown[]) => { warnings.push(args); };
+  try {
+    const native = { containerAvailable: async () => true, activateScope: async () => {},
+      writeSnapshot: async () => {}, clearSnapshot: async () => {
+        attempts += 1;
+        if (attempts === 1) throw Error("injected native deletion failure");
+      } };
+    const first = createWidgetSnapshotRuntime({ native, hashScope: async () => "a".repeat(64) });
+    assert.equal(await first.clear(), false);
+    assert.equal(warnings[0]?.[0], "WIDGET_SNAPSHOT_CLEAR_FAILED");
+    const restarted = createWidgetSnapshotRuntime({ native, hashScope: async () => "a".repeat(64) });
+    assert.equal(await restarted.clear(), true);
+    assert.equal(attempts, 2);
+  } finally { console.warn = originalWarn; }
+});
+
 test("a cleared or switched account cannot publish its late widget snapshot", async () => {
   const module = await import("../src/widgets/runtime").catch(() => null);
   let authorized = "";
