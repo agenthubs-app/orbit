@@ -57,12 +57,31 @@ test("canonical event participant is anonymized while another account stays read
     grouping: { roundOne: [{ members: [{ participantId: "participant-a" }, { participantId: "participant-b" }], memberPrompts: { "participant-a": ["Private Person", "x"] }, memberRationales: {} }], roundTwo: [] } };
     await pool.query(`insert into event_ops_publications(workspace_id,publication_id,event_id,generation_id,snapshot_hash,dto_hash,
       published_dto,published_by_actor_id,published_at) values('space','pub-1','event-1','gen-1','snapshot','hash',$1::jsonb,'host',now())`, [JSON.stringify(dto)]);
+    await pool.query(`insert into event_ops_publication_heads(workspace_id,event_id,publication_id,generation_id,revision,updated_at)
+      values('space','event-1','pub-1','gen-1',1,now())`);
+    await pool.query(`insert into event_ops_graph_nodes(workspace_id,publication_id,participant_id,node_payload)
+      values('space','pub-1','participant-a','{}'::jsonb),('space','pub-1','participant-b','{}'::jsonb)`);
+    await pool.query(`insert into event_ops_generations(workspace_id,generation_id,event_id,organizer_actor_id,idempotency_key,
+      configuration_version,snapshot_hash,status,expected_task_count,ai_request_fingerprint,created_at,updated_at)
+      values('space','gen-audit','event-1','host','key-audit',1,'snapshot','superseded',1,'fingerprint',now(),now())`);
+    await pool.query(`insert into event_ops_publications(workspace_id,publication_id,event_id,generation_id,snapshot_hash,dto_hash,
+      published_dto,published_by_actor_id,published_at) values('space','pub-audit','event-1','gen-audit','snapshot','hash','{}'::jsonb,'actor',now())`);
+    await pool.query(`insert into event_ops_data_repair_runs(workspace_id,repair_id,repair_type,schema_version,
+      plan_hash,expected_count,result_hash,applied_at) values('space','repair-audit',
+      'canonical_profile_empty_answer_v1',1,repeat('a',64),1,repeat('b',64),now()-interval '1 minute')`);
+    await pool.query(`insert into event_ops_data_repair_items(workspace_id,repair_id,event_id,actor_id,participant_id,
+      source_profile_version,target_profile_version,source_membership_version,target_membership_version,
+      before_profile_hash,after_profile_hash,before_membership_hash,after_membership_hash,removed_paths)
+      values('space','repair-audit','event-1','actor','participant-a',1,2,1,2,
+      repeat('a',64),repeat('b',64),repeat('c',64),repeat('d',64),array['registrationProfile.answers.industry'])`);
     await pool.query(`insert into event_reception_numbers(workspace_id,event_id,actor_id,sequence,reception_no,assigned_at)
       values('space','event-1','actor',1,'001',now())`);
     await pool.query(`insert into event_reception_numbers(workspace_id,event_id,actor_id,sequence,reception_no,assigned_at)
       values('space','event-1','other',2,'002',now())`);
     const { purgeAccountEvents } = await import("../../features/account/data-rights/purge/events");
-    assert.ok((await purgeAccountEvents(db, "space", "actor")).deleted > 0);
+    const first = await purgeAccountEvents(db, "space", "actor");
+    assert.ok(first.deleted > 0);
+    assert.equal(first.retainedPseudonymizedAuditRows, 2);
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_membership_heads where workspace_id='space' and actor_id='other'`)).rows[0]?.n, 1);
     const redacted = await pool.query<{ actor_id: string; profile_payload: unknown }>(`select h.actor_id,v.profile_payload
       from event_ops_membership_heads h join event_ops_profile_versions v on v.workspace_id=h.workspace_id
@@ -70,10 +89,15 @@ test("canonical event participant is anonymized while another account stays read
       where h.workspace_id='space' and h.participant_id='participant-a'`);
     assert.match(redacted.rows[0]?.actor_id ?? "", /^deleted-event:/);
     assert.deepEqual(redacted.rows[0]?.profile_payload, {});
-    const publication = (await pool.query<{ published_dto: unknown }>(`select published_dto from event_ops_publications
-      where workspace_id='space' and publication_id='pub-1'`)).rows[0]?.published_dto;
+    const publication = (await pool.query<{ published_dto: unknown }>(`select p.published_dto from event_ops_publication_heads h
+      join event_ops_publications p on p.workspace_id=h.workspace_id and p.publication_id=h.publication_id
+      where h.workspace_id='space' and h.event_id='event-1'`)).rows[0]?.published_dto;
     assert.ok(!JSON.stringify(publication).includes("Private Person"));
     assert.equal((publication as { directory: unknown[] }).directory.length, 1);
+    assert.equal((await pool.query(`select count(*)::int as n from event_ops_publications where publication_id='pub-1'`)).rows[0]?.n, 0);
+    assert.deepEqual((await pool.query(`select n.participant_id from event_ops_graph_nodes n
+      join event_ops_publication_heads h on h.workspace_id=n.workspace_id and h.publication_id=n.publication_id
+      where h.workspace_id='space' and h.event_id='event-1'`)).rows, [{ participant_id: "participant-b" }]);
     assert.deepEqual((await pool.query(`select participant_payload from event_ops_generation_participants
       where workspace_id='space' and participant_id='participant-a'`)).rows[0]?.participant_payload, {});
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_membership_versions where workspace_id='space' and actor_id='actor'`)).rows[0]?.n, 0);
@@ -100,6 +124,9 @@ test("canonical event participant is anonymized while another account stays read
     assert.ok((await purgeAccountEvents(db, "space", "actor")).deleted >= 4);
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_events where workspace_id='space' and event_id='host-empty'`)).rows[0]?.n, 0);
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_events where workspace_id='space' and event_id='event-1'`)).rows[0]?.n, 1);
+    await pool.query(`insert into event_ops_event_role_assignment_versions(workspace_id,event_id,subject_actor_id,
+      assignment_version,role,state,assigned_by_actor_id,reason) values('space','event-1','actor',1,'reviewer','revoked','host','Private Person')`);
+    await assert.rejects(purgeAccountEvents(db, "space", "actor"), /EVENT_OPS_PII_LEDGER/);
   } finally {
     await pool.query(`drop schema if exists ${schema} cascade`);
     await db.close();

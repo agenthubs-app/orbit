@@ -41,6 +41,8 @@ test("inbox purge removes the actor's messages and projections while preserving 
       await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,source_type,source_id,payload,created_at,updated_at)
         values('space','relationship_communication_messages',$1,'test',$1,$2::jsonb,now(),now())`, [`${actor}-legacy-message`, JSON.stringify({ senderAccountId: actor, body: `${actor} legacy` })]);
     }
+    await pool.query(`update orbit_records set payload=payload || jsonb_build_object('body','削除されたメッセージ')
+      where collection_name='relationship_communication_messages' and record_id='owner-legacy-message'`);
     await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,source_type,source_id,payload,created_at,updated_at)
       values('space','relationship_communication_conversations','legacy','test','legacy',$1::jsonb,now(),now())`,
       [JSON.stringify({ participantAccountIds: ["owner", "other"], participantDisplayNames: { owner: "Owner", other: "Other" }, contactId: "private", status: "active" })]);
@@ -48,18 +50,21 @@ test("inbox purge removes the actor's messages and projections while preserving 
     const first = await purgeAccountInbox(db, "space", "owner");
     assert.ok(first.deleted >= 7);
     assert.equal((await purgeAccountInbox(db, "space", "owner")).deleted, 0);
-    assert.deepEqual((await pool.query("select sender_account_id,body from relationship_messages")).rows, [{ sender_account_id: "other", body: "other message" }]);
+    assert.deepEqual((await pool.query("select sender_account_id,body from relationship_messages order by sender_account_id")).rows,
+      [{ sender_account_id: "deleted-account", body: "削除されたメッセージ" }, { sender_account_id: "other", body: "other message" }]);
     assert.deepEqual((await pool.query("select account_id from relationship_conversation_members")).rows, [{ account_id: "other" }]);
     const conversation = (await pool.query("select * from relationship_conversations")).rows[0];
-    assert.equal(conversation.inviter_account_id, "deleted-inviter");
+    assert.equal(conversation.inviter_account_id, "owner");
     assert.equal(conversation.invitee_account_id, "other");
     assert.equal(conversation.inviter_contact_id, "deleted-contact");
-    assert.equal(conversation.status, "revoked");
+    assert.equal(conversation.status, "active");
     const legacy = (await pool.query("select payload from orbit_records where collection_name='relationship_communication_conversations'")).rows[0]?.payload;
     assert.deepEqual(legacy.participantAccountIds, ["deleted-account", "other"]);
     assert.deepEqual(legacy.participantDisplayNames, { other: "Other" });
     assert.equal(legacy.contactId, undefined);
-    assert.equal((await pool.query("select count(*)::int as n from orbit_records where collection_name='relationship_communication_messages'")).rows[0]?.n, 1);
+    assert.equal(legacy.status, "active");
+    assert.equal((await pool.query("select count(*)::int as n from orbit_records where collection_name='relationship_communication_messages'")).rows[0]?.n, 2);
+    assert.equal((await pool.query("select payload->>'senderAccountId' as sender from orbit_records where record_id='owner-legacy-message'")).rows[0]?.sender, "deleted-account");
   } finally {
     await pool.query(`drop schema if exists ${schema} cascade`);
     await db.close();
