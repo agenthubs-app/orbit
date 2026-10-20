@@ -20,6 +20,12 @@ test("selected export contains safe CSV and vCard with a manifest", async () => 
   assert.equal(manifest.generatedAt, "2026-10-20T00:00:00.000Z");
   assert.equal(manifest.files[0].count, 1);
 
+  const plansZip = await buildAccountExportArchive({
+    scope: ["plans"], mode: "selected", contactsFormat: "csv", generatedAt: "2026-10-20T00:00:00.000Z",
+    read: async () => [{ id: "log1", kind: "log", title: "note", body: "progress", planId: "p1" }],
+  });
+  assert.match(strFromU8(unzipSync(plansZip)["plans.csv"]!), /"log","note","progress"/);
+
   const vcard = await buildAccountExportArchive({
     scope: ["contacts"], mode: "selected", contactsFormat: "vcard", generatedAt: "2026-10-20T00:00:00.000Z",
     read: async () => [{ id: "c1", displayName: "A;B, C\nD", email: "x@example.com" }],

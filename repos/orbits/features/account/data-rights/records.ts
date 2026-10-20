@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { AccountContactsFormat, AccountExportCreateInput, AccountExportMode, AccountExportScope } from "../../../shared/contract/account";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
@@ -6,6 +6,7 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../.
 const EXPORTS = "account_exports";
 const LOCKS = "account_export_locks";
 const SEVEN_DAYS = 7 * 86_400_000;
+const LEASE_MILLIS = 2 * 60_000;
 
 export interface AccountExportRecord {
   id: string;
@@ -27,6 +28,9 @@ export interface AccountExportRecord {
   fileName?: string;
   fileSizeBytes?: number;
   failureKind?: "system" | "content";
+  leaseToken?: string;
+  leaseUntil?: string;
+  attempts?: number;
 }
 
 type Created = { kind: "accepted" | "existing"; export: AccountExportRecord } | { kind: "active" | "quota" };
@@ -104,23 +108,50 @@ export function createAccountExportRecordStore(input: { db: TransactionalPostgre
     async get(actorId: string, id: string): Promise<AccountExportRecord | null> {
       return readOne(db, workspaceId, actorId, id);
     },
-    async markReady(actorId: string, id: string, file: { fileKey: string; checksum: string; fileName: string; fileSizeBytes: number }): Promise<boolean> {
+    async claimNext(): Promise<{ record: AccountExportRecord; leaseToken: string } | null> {
+      return db.transaction(async sql => {
+        const at = now().toISOString();
+        const found = await sql.query<{ user_id: string; payload: AccountExportRecord | string }>(`select user_id,payload from orbit_records
+          where workspace_id=$1 and collection_name=$2 and (payload->>'status'='queued' or
+            (payload->>'status'='running' and payload->>'leaseUntil'<=$3))
+          order by created_at,record_id for update skip locked limit 1`, [workspaceId, EXPORTS, at]);
+        const row = found.rows[0];
+        if (!row) return null;
+        const record = fromRow(row);
+        const leaseToken = randomUUID();
+        const next: AccountExportRecord = { ...record, status: "running", completedItems: 0,
+          leaseToken, leaseUntil: new Date(now().getTime() + LEASE_MILLIS).toISOString(),
+          attempts: (record.attempts ?? 0) + 1, version: record.version + 1 };
+        if (!await replaceCurrent(sql, workspaceId, row.user_id, next, record.version)) throw new Error("EXPORT_CLAIM_CONFLICT");
+        return { record: next, leaseToken };
+      }, { isolation: "read committed" });
+    },
+    async markProgress(actorId: string, id: string, leaseToken: string, completedItems: number): Promise<boolean> {
       return db.transaction(async sql => {
         const record = await readOne(sql, workspaceId, actorId, id, true);
-        if (!record || !["queued", "running"].includes(record.status)) return false;
+        if (!record || record.status !== "running" || record.leaseToken !== leaseToken || !record.leaseUntil || record.leaseUntil <= now().toISOString()) return false;
+        if (!Number.isInteger(completedItems) || completedItems < record.completedItems || completedItems > record.totalItems) return false;
+        return replaceCurrent(sql, workspaceId, actorId, { ...record, completedItems,
+          leaseUntil: new Date(now().getTime() + LEASE_MILLIS).toISOString(), version: record.version + 1 }, record.version);
+      }, { isolation: "read committed" });
+    },
+    async markReady(actorId: string, id: string, leaseToken: string, file: { fileKey: string; checksum: string; fileName: string; fileSizeBytes: number }): Promise<boolean> {
+      return db.transaction(async sql => {
+        const record = await readOne(sql, workspaceId, actorId, id, true);
+        if (!record || record.status !== "running" || record.leaseToken !== leaseToken || !record.leaseUntil || record.leaseUntil <= now().toISOString()) return false;
         const readyAt = now().toISOString();
         return replaceCurrent(sql, workspaceId, actorId, {
-          ...record, ...file, status: "ready", completedItems: record.totalItems, readyAt,
+          ...record, ...file, status: "ready", completedItems: record.totalItems, readyAt, leaseToken: undefined, leaseUntil: undefined,
           expiresAt: new Date(Date.parse(readyAt) + SEVEN_DAYS).toISOString(), version: record.version + 1,
         }, record.version);
       }, { isolation: "read committed" });
     },
-    async markFailed(actorId: string, id: string, failureKind: "system" | "content"): Promise<boolean> {
+    async markFailed(actorId: string, id: string, leaseToken: string, failureKind: "system" | "content"): Promise<boolean> {
       return db.transaction(async sql => {
         const record = await readOne(sql, workspaceId, actorId, id, true);
-        if (!record || !["queued", "running"].includes(record.status)) return false;
+        if (!record || record.status !== "running" || record.leaseToken !== leaseToken || !record.leaseUntil || record.leaseUntil <= now().toISOString()) return false;
         return replaceCurrent(sql, workspaceId, actorId, {
-          ...record, status: "failed", failureKind, quotaCharged: failureKind !== "system", version: record.version + 1,
+          ...record, status: "failed", failureKind, quotaCharged: failureKind !== "system", leaseToken: undefined, leaseUntil: undefined, version: record.version + 1,
         }, record.version);
       }, { isolation: "read committed" });
     },

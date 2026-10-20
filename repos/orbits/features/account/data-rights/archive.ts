@@ -6,7 +6,7 @@ const ALL_SCOPES: AccountExportScope[] = ["contacts", "notes", "plans", "tasks",
 const FIELDS: Record<AccountExportScope, string[]> = {
   contacts: ["id", "displayName", "email", "phone", "organization", "createdAt", "updatedAt"],
   notes: ["id", "title", "body", "createdAt", "updatedAt"],
-  plans: ["id", "title", "description", "status", "createdAt", "updatedAt"],
+  plans: ["id", "kind", "title", "body", "description", "status", "planId", "createdAt", "updatedAt"],
   tasks: ["id", "title", "description", "status", "dueAt", "createdAt", "updatedAt"],
   events: ["id", "title", "kind", "startsAt", "status", "createdAt", "updatedAt"],
 };
