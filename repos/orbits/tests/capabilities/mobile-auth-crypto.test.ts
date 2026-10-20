@@ -150,6 +150,7 @@ test("issued cookie decodes through the installed Auth.js JWT codec", async () =
 
   assert.equal(claims?.sub, "user_1");
   assert.equal(claims?.email, "person@example.com");
+  assert.equal(claims?.authenticatedAt, now.getTime());
   assert.equal(issued.user.id, "user_1");
   assert.ok(Date.parse(issued.expiresAt) > now.getTime());
 });

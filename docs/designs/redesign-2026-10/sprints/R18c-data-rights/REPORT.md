@@ -7,19 +7,19 @@
 | SC | 状态 | 主证据与缺项 |
 | --- | --- | --- |
 | 01 开工／预检 | 完成 | R18b 基线、现有 orbit_records CAS、b7 原稿／改稿 16 板与 b12 登记已核；preflight-checklist.md 及 _evidence-c 预检。 |
-| 02 改稿／入口 | 部分 | b7 去 Pro、虚假反馈和进度估计；RD-33 重画 #19、认可 b12，App/Web 权利入口已接。真实两端操作链与像素仍红。 |
-| 03 契约／存储 | 本机通过 | 严格 POST、确定性 recordId/CAS、契约 snapshot/schema parity 5/5、App 副本同步；无 DDL。真实端到端未验。 |
-| 04 创建／限额／历史 | Web 本机通过，App 未验 | Web 实操 CSV、vCard、all-json 三次 202、第四次 429 和专用文案；同键重放、单活动任务、失败返额度有 PG 测试。App 原生操作未留证。 |
-| 05 Worker／ZIP／通知 | 部分 | Web 本机维护 pass 将三次任务逐个变 ready，生成私有 ZIP/manifest；邮件因本机无 redirect target 被明确跳过。离页自动调度和生产任务列 DEFERRED。 |
-| 06 下载／过期 | 部分 | Web 同源登录后真实下载三份 ZIP 并检查成员；本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试。App 原生打开/分享与实时时钟到期操作未留证。 |
+| 02 改稿／入口 | 部分 | b7 去 Pro、虚假反馈和进度估计；RD-33 重画 #19、认可 b12，App/Web 权利入口已接，均走过本机导出及密码退会路径；像素仍红。 |
+| 03 契约／存储 | 本机通过 | 严格 POST、确定性 recordId/CAS、契约 snapshot/schema parity 5/5、App 副本同步；无 DDL。Web/App 本机各走过一条实操链，真实生产规模未验。 |
+| 04 创建／限额／历史 | 部分 | Web 实操 CSV、vCard、all-json 三次 202、第四次 429 和专用文案；App 原生 selected CSV 202、历史 queued→ready。同键重放、单活动任务、失败返额度有 PG 测试；App 三格式及限额未逐项实操。 |
+| 05 Worker／ZIP／通知 | 部分 | Web 本机三次、App 本机一次手动维护 pass 到 ready，生成私有 ZIP/manifest；邮件因本机无 redirect target 被明确跳过。离页自动调度和生产任务列 DEFERRED。 |
+| 06 下载／过期 | 部分 | Web 同源登录后三份 ZIP 成员已核；App 原生 signed ZIP GET 200，iOS 分享面板显示 894 字节 ZIP。本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试；实时时钟到期操作未留证。 |
 | 07 App 账户／导出 | 部分 | AccountScreen 已整屏换为 kit 行，保留 profile、workspace、目标、权限、登出及服务器入口；debug 仅 dev。App #19 三轮和其余 P 板像素未过。 |
 | 08 退会申请／再认证 | 部分 | Web 本机密码再认证、receipt、删除申请实操返回 202；Google challenge + prompt=login/max_age=0 + auth_time ≤10 分钟、同账号校验已接，旧 503 已去。真实外部 Google 账号及 App 原生整链未联调。 |
-| 09 pending／取消 | Web 本机通过，App 未验 | Web 本机申请后旧 JWT 失效，重新登录进入 pending，GET 200、取消 DELETE 200、返回账户设置；数据库记录为 cancelled。普通 API/sync 白名单、镜像清理、CAS 取消有聚焦测试；App 原生整链未验。 |
+| 09 pending／取消 | 部分（本机双端链通过） | Web 申请后旧 JWT 失效，重新登录进入 pending，GET 200、取消 DELETE 200；App 原生申请后返回登录，重新登录显示 pending 日期并取消，数据库为 cancelled。普通 API/sync 白名单、镜像清理、CAS 取消有聚焦测试；跨设备同步撤回和像素仍未通过。 |
 | 10 本机到期清除 | **未通过** | 逐域 runner、失败续跑、共享面谈双账号、规范化共享事件双账号测试已过；但已有 immutable 事件角色／修复台账可能残留本人 ID。残留扫描会失败关闭，不能声称零残留。 |
 | 11 完成／异常态 | 部分 | RD-33 匿名完成邮件 outbox 与最终身份删除同事务，提交后投递；本机失败重试通过。#23/#27 像素三轮仍红。 |
 | 12 旧屏／路由 | 部分 | #19 整屏替换，R18a/R18b 路由保留；Web 言語と外観整板 6/6 红，需 A/集成轮复核。 |
 | 13 像素全量 | **未通过** | RD-33 b12 已是正式基准；原稿 P、补画 P 与 R18a 整板矩阵均有失败。每 P 上限和转轮⑪见下。 |
-| 14 权限／可移植 | 部分 | actor 隔离、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦通过；Web 三种 ZIP 可打开且成员与 manifest 对齐。App 原生打开与共享域零残留未验。 |
+| 14 权限／可移植 | 部分 | actor 隔离、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦通过；Web 三种 ZIP 可打开且成员与 manifest 对齐，App 原生分享面板显示 ZIP。共享域零残留未验。 |
 | 15 交接／生产 | 部分 | 下方四栏交接和 DEFERRED 已登记；根台账与活跃 B/D/A/E 线由主会话协调，未越权发送或启用生产。 |
 | 16 全量／独立复核 | **未通过** | Web/App 按指定环境各跑一次仍有新失败；聚焦修复不能代替全量；主会话独立复核尚未执行。 |
 
@@ -37,6 +37,8 @@
 
 **Web 本机退会实操。** 首次密码再认证后申请已写入 pending，但响应为 500：`requestedAt` 与 `purgeAfter` 分别读取时钟，差 8ms，违反契约的精确 30 天约束。改为从同一 `requestedAt` 推导截止时间，并加入时钟逐毫秒前进的 PG 回归测试（3/3）。仅对本机测试账号的旧 pending 行修正截止时间后，画面 GET 200、取消 DELETE 200。再次从画面完成密码再认证，申请 POST 202；旧 JWT 随即失效，重新登录进入 pending，GET 200、取消 DELETE 200，最终数据库为 cancelled／version 4／精确 30 天。申请后重新登录是当前会话撤销契约的实际路径；画面会先跳到登录。证据见 _evidence-c/R18c-deletion-clock-targeted.log 和 R18c-web-local-deletion-observation.json。没有触发到期清除或生产服务。
 
+**App 原生实操。** 专用 iOS 模拟器上，测试账号从账户入口完成密码再认证和申请；申请后旧会话退出，重新登录看到 pending 日期，点取消回到账户页，数据库为 cancelled／version 6／精确 30 天。另一本机测试账号先在导出创建遇到 POST 401：移动端签发的 Auth.js cookie 缺少 `authenticatedAt`，而创建接口要求最近登录。签发时加入真实认证时刻，移动认证聚焦 15/15、Web typecheck 通过；重新登录后 selected CSV 创建 POST 202，手动维护到 ready，原生签名下载 GET 200，iOS 分享面板显示 894 字节 ZIP。证据见 _evidence-c/R18c-app-local-rights-observation.json、R18c-app-local-export-share.png、R18c-app-local-export-maintenance.log、R18c-mobile-cookie-auth-targeted-final.log。两个测试账号均无业务记录；真实 Google、邮件和到期时钟未实操。
+
 ## 画板与像素实测
 
 - b7 原稿与改稿预检 16 板、数字冲突 0；b12 App/Web 登记共 152 frame，预检数字冲突 0。认可基准不等于像素通过。
@@ -52,7 +54,7 @@
 | --- | --- |
 | Web 全量 | R18c-web-full-baseline-env-final.log：7,911 tests／6,811 pass／35 fail／1,065 skip，exit 1。R18b 基线 7,764／7,204 pass／15 fail／545 skip。逐名 30 新、10 消失，见 R18c-web-full-baseline-env-delta.json。新失败中 C 同步审计 5 项；加锁/分类后聚焦 3 项恢复，2 项保持红：共享 inbox owner 改写、immutable publication in-place 改写。其余新增名主要是新增 PG 集成测试在未配置本机库时直接失败，逐项原始堆栈在日志。 |
 | App 全量 | R18c-app-full-baseline-env-final.log：3,274 tests／3,246 pass／26 fail／2 skip，exit 1。R18b 基线 3,246／3,232 pass／12 fail／2 skip。逐名 15 新、1 消失，见 R18c-app-full-baseline-env-delta.json。#19 的 9 项画面/布局失败经聚焦修复 9/9；四项 C 静态登记/离线边界修复后 57/57。旧 i18n snapshot 改名仍红；invite 与 discovery 属邻接画面，未归为 C 成功。 |
-| 聚焦／类型 | Web 共享 purge PG 3/3、删除时钟 PG 3/3、sync 审计 9/11（2 项架构冲突）、导出错误/契约 4/4、Web typecheck/lint exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
+| 聚焦／类型 | Web 共享 purge PG 3/3、删除时钟 PG 3/3、移动认证 15/15、sync 审计 9/11（2 项架构冲突）、导出错误/契约 4/4、Web typecheck/lint exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
 | copy/契约 | Web copy:qa 原先 7,507 条／245 issues，exit 1，非 R18c 权利文案专属；Web/App 契约同步与 schema parity 聚焦通过。未把红门禁记为通过。 |
 
 ## DEFERRED、待主会话决定与四栏交接
@@ -63,7 +65,7 @@
 
 | 目标 | 本线版本／事实 | 另一端影响与请求 | 未完成／验证范围 |
 | --- | --- | --- | --- |
-| README 契约 11 | shared/contract/account.ts、BREAKING 与 App 副本同步；严格删除 POST | 主会话合并同版契约与根登记 | 聚焦契约；真实双端操作未验 |
+| README 契约 11 | shared/contract/account.ts、BREAKING 与 App 副本同步；严格删除 POST | 主会话合并同版契约与根登记 | 聚焦契约；本机 Web/App 各走过导出及密码退会，外部服务未验 |
 | HANDOFF／DEFERRED-A | 本机 export、pending、purge 与匿名完成 outbox；生产入口关闭 | 主会话登记 D-21 部分、D-22 未收口和生产授权 | PG/替身；无 Neon/生产 |
 | A 线组件／像素 | #19 kit 行已落，#23/#27 三轮上限；28px 标题无私有 token | A 线复核标题 token、ListRow/长文案；⑪ 接收残差 | 详见 triptych；P 矩阵红 |
 | B／E 数据 | 共享面谈、联系人/Blob、事件 DTO 与 inbox 占位方案 | 复核共享内容、不可变事件账本、Blob owner 和跨域生产者 | 双账号 PG 样本；immutable 残留失败关闭 |

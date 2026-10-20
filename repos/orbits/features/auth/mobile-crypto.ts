@@ -180,6 +180,7 @@ export async function issueAuthJsCookie({
     salt: cookieName,
     secret,
     token: {
+      authenticatedAt: now.getTime(),
       email: user.email,
       name: user.name,
       sub: user.id,
