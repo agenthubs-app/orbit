@@ -49,3 +49,27 @@ test("home layout is actor scoped, revisioned, and durable in PostgreSQL", datab
     assert.deepEqual(await service.get(bob), DEFAULT_HOME_LAYOUT);
   });
 });
+
+test("Web's five-card geometry remains in the opening preset until an actual Web edit", databaseTest, async () => {
+  await withNetworkDatabase(async ({ client }) => {
+    const service = createHomeLayoutService({ client, workspaceId: WORKSPACE });
+    const appOnly = await service.put(alice, { expectedRevision: 0, mutationId: "app-only", app: [], web: DEFAULT_HOME_LAYOUT.web });
+    assert.equal(appOnly.kind, "saved");
+    if (appOnly.kind !== "saved") return;
+    assert.equal(appOnly.layout.webCustomizedAt, undefined);
+    const hintOnly = await service.put(alice, { expectedRevision: 1, mutationId: "hint-only", app: [], web: DEFAULT_HOME_LAYOUT.web,
+      hintDismissedAt: "2026-10-20T00:00:00Z" });
+    assert.equal(hintOnly.kind, "saved");
+    if (hintOnly.kind !== "saved") return;
+    assert.equal(hintOnly.layout.webCustomizedAt, undefined);
+    const changed = await service.put(alice, { expectedRevision: 2, mutationId: "web-first", app: [], web: [...DEFAULT_HOME_LAYOUT.web].reverse() });
+    assert.equal(changed.kind, "saved");
+    if (changed.kind !== "saved") return;
+    assert.ok(changed.layout.webCustomizedAt);
+    const reverted = await service.put(alice, { expectedRevision: 3, mutationId: "web-revert", app: [], web: DEFAULT_HOME_LAYOUT.web });
+    assert.equal(reverted.kind, "saved");
+    if (reverted.kind !== "saved") return;
+    assert.equal(reverted.layout.webCustomizedAt, changed.layout.webCustomizedAt, "reverting the array does not reset the geometry mode");
+    assert.equal(reverted.layout.hintDismissedAt, hintOnly.layout.hintDismissedAt);
+  });
+});

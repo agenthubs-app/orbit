@@ -199,9 +199,12 @@ export const redesignMock = {
     const fingerprint = JSON.stringify(input);
     const replay = state.layoutMutations.get(input.mutationId);
     if (replay) return replay.fingerprint === fingerprint ? replay.result : { reused: true };
+    const webChanged = JSON.stringify(input.web) !== JSON.stringify(state.layout.web);
     const result: LayoutResult = input.expectedRevision !== state.layout.revision
       ? { conflict: true, current: state.layout }
-      : { conflict: false, layout: { revision: state.layout.revision + 1, app: input.app, web: input.web, ...(input.hintDismissedAt ? { hintDismissedAt: input.hintDismissedAt } : {}) } };
+      : { conflict: false, layout: { revision: state.layout.revision + 1, app: input.app, web: input.web,
+        ...((input.hintDismissedAt ?? state.layout.hintDismissedAt) ? { hintDismissedAt: input.hintDismissedAt ?? state.layout.hintDismissedAt } : {}),
+        ...(state.layout.webCustomizedAt || webChanged ? { webCustomizedAt: state.layout.webCustomizedAt ?? new Date().toISOString() } : {}) } };
     if ("layout" in result) state.layout = result.layout;
     state.layoutMutations.set(input.mutationId, { fingerprint, result });
     return result;

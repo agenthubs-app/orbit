@@ -14,6 +14,8 @@ export interface HomeLayoutContract {
   web: readonly HomeWidgetSlot[];
   /** When the person closed the 「長押しで並べ替え」 hint. */
   hintDismissedAt?: string;
+  /** First actual Web reorder or size change; entering edit mode alone does not set it. */
+  webCustomizedAt?: string;
 }
 
 /** PUT /api/home/layout — 409 when expectedRevision is stale. */

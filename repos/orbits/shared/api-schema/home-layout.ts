@@ -20,6 +20,7 @@ export const homeLayoutObject = z.object({
   app: slots,
   web: slots,
   hintDismissedAt: z.string().datetime({ offset: true }).optional(),
+  webCustomizedAt: z.string().datetime({ offset: true }).optional(),
 });
 export const homeLayoutSchema = homeLayoutObject as z.ZodType<HomeLayoutContract>;
 

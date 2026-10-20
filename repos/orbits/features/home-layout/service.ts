@@ -70,11 +70,13 @@ export function createHomeLayoutService({ client, workspaceId }: { client: Trans
         }
 
         const current = await readLayout(store, workspaceId, actorId);
+        const webChanged = JSON.stringify(input.web) !== JSON.stringify(current.web);
         const result: HomeLayoutPutResult = input.expectedRevision !== current.revision
           ? { kind: "conflict", current }
           : { kind: "saved", layout: {
             revision: current.revision + 1, app: input.app, web: input.web,
-            ...(input.hintDismissedAt ? { hintDismissedAt: input.hintDismissedAt } : {}),
+            ...((input.hintDismissedAt ?? current.hintDismissedAt) ? { hintDismissedAt: input.hintDismissedAt ?? current.hintDismissedAt } : {}),
+            ...(current.webCustomizedAt || webChanged ? { webCustomizedAt: current.webCustomizedAt ?? new Date().toISOString() } : {}),
           } };
         const at = new Date().toISOString();
         if (result.kind === "saved") {
