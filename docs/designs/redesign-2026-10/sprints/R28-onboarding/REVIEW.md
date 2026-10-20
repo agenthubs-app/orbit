@@ -25,6 +25,7 @@ Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPO
 - 浏览器补核 Web 新注册与匿名／合法／恶意 `next` 的实际路由，结果记于 REPORT。有效邀请、跨设备同标签和 App 登录链仍需同态环境。
 - C 模拟器实际暴露 `/start` 不在 App 初始路线允许表：深链继续误回 Home。`f377525f4` 只登记此 C 指南路由；RED 为 18/20，修后 App 初始路线／资料续接／route parity 31/31、typecheck exit 0，重启 bundle 后实机继续落到真实指南，恶意外站 next 回 Home。`simctl` 直接写入旁支证据目录遇到 macOS 权限拒绝；改为截图到 `/tmp` 后复制，未把首次截图失败算成 UI 失败。
 - 双标签复核发现 Web 和 App 的资料客户端在 409 后无条件读取新版本并重发旧输入，能覆盖另一端刚确认的同一字段。`204814b18` 改为停止写入、保留本屏输入并提示核对；Web RED 0/1→GREEN 1/1，资料／指南／文案审计组合 43/43；App API RED 7/9→GREEN 9/9，交互组合 22/22、route parity/intake 13/13，两端 typecheck exit 0。App 指南文案同时并入正式 `guide.*` 字典域，修复新增空域导致的目录校验失败；旧 pre-split 字典哈希仍与 R10fix 基线同名失败。
+- Web 资料内嵌预览在 ja 模式仍回退英文。`23b76c711` 为首页和人脉预览补日文表与动态句，RED 15/16→GREEN 17/17；文案审计 23/23、Web typecheck exit 0。只读示意仍不参与真实指南的联系人／计划计算。
 - 全仓 import 检索显示 C 指南和资料不再调用 B 的旧 `card-batch-ui`；`profile-0918/profile-model.ts` 无生产引用后由 `f1e98a2b9` 删除。`onboarding-0918` 仍为 Web 资料实现路径。试迁到 `orbit-2026/onboarding` 触发该目录更严格的文案审计：内联硬编码 8/6/1、缺 ja 120/80。已局部撤回试迁，未放宽审计或留下新失败。
 
 ## 边界与余项
