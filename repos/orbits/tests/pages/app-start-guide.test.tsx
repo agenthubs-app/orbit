@@ -115,6 +115,14 @@ function stubBrowser(
       bootstraps.push(JSON.parse(String(init.body)) as Record<string, unknown>);
       return Response.json({ success: false }, { status: 500 });
     }
+    if (url === "/api/agent/plans/intakes" && !init?.method) {
+      return Response.json({ success: true, data: { intakes: [] } });
+    }
+    if (url === "/api/agent/plans/intakes" && init?.method === "POST") {
+      return Response.json({ success: true, data: {
+        intakeId: "first-intake", goal: "获取客户", goalKind: "sales", source: "onboarding", href: "/app/plans/flow/first-intake",
+      } });
+    }
     return Response.json({ success: false }, { status: 404 });
   });
   return { assigned, bootstraps, patches, profilePuts, refreshes: () => refreshCount, requests };
@@ -474,7 +482,7 @@ test("step 2 with a goal from onboarding is already done, carries the goal in, a
   act(() => root.unmount());
 });
 
-test("step 2 saves a new goal through the profile API and advances to step 3", async (t) => {
+test("step 2 saves a new goal without an assumed time frame and advances to step 3", async (t) => {
   const api = stubBrowser(t);
   const root = await mount(props({ snapshot: { confirmedContacts: 3 } }));
   assert.equal(view(root), "2");
@@ -483,7 +491,7 @@ test("step 2 saves a new goal through the profile API and advances to step 3", a
     input.props.onChange({ target: { value: "年内找到 2 家稳定的日本供应商" } });
   });
   await click(one(root, "data-start-goal-save"));
-  assert.deepEqual(api.profilePuts.map((body) => body.relationshipGoal), ["年内找到 2 家稳定的日本供应商（3 个月内）"]);
+  assert.deepEqual(api.profilePuts.map((body) => body.relationshipGoal), ["年内找到 2 家稳定的日本供应商"]);
   assert.equal(view(root), "3");
   assert.deepEqual(api.patches, [{ currentStep: 3 }]);
   assert.ok(api.refreshes() >= 1, "server progress is re-read after the save");
@@ -526,17 +534,13 @@ test("step 3: edit the goal in place as a draft — cancel keeps the saved goal,
   act(() => root.unmount());
 });
 
-// R25 (v1 plan creation closed): step 3 no longer calls `POST /api/agent/plans/bootstrap`
-// (it answers 409 PLAN_V1_RETIRED now). The three W0008 / W0048b bootstrap tests (fixed
-// question + supplement sent to bootstrap, retry keys, 409 opens the existing v1 plan)
-// were replaced by this one: the button goes straight to the v2 goal input.
-test("step 3 'Start analysis' opens the v2 goal input (Task › プラン ?new=1) and never calls the v1 bootstrap", async (t) => {
+test("step 3 creates an onboarding intake and opens its Web flow href", async (t) => {
   const api = stubBrowser(t);
-  const root = await mount(props({ relationshipGoal: "找渠道（3 个月内）", snapshot: { confirmedContacts: 3 } }));
+  const root = await mount(props({ relationshipGoal: "获取客户", snapshot: { confirmedContacts: 3 } }));
   await click(one(root, "data-start-analyze"));
-  assert.deepEqual(api.assigned, ["/app/tasks?tab=plan&new=1"]);
+  assert.deepEqual(api.assigned, ["/app/plans/flow/first-intake"]);
   assert.deepEqual(api.bootstraps, [], "the retired v1 bootstrap is never called");
-  assert.ok(!api.requests.some((request) => request.includes("/api/agent/plans")), "no plan API call at all");
+  assert.ok(api.requests.includes("POST /api/agent/plans/intakes"));
   assert.deepEqual(api.patches, [], "no guide write either");
   act(() => root.unmount());
 });

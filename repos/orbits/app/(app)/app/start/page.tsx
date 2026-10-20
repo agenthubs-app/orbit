@@ -18,7 +18,6 @@ import { resolveBusinessCardCaptureAvailability } from "../../../../features/acq
 import { readStartGuideForActor } from "../../../../features/guide/progress";
 import { parseStartStepParam } from "../../../../features/guide/start-steps";
 import { createProfileService } from "../../../../features/profile/service-factory";
-import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
@@ -50,8 +49,6 @@ export default async function AppStartPage({
 }: {
   searchParams?: Promise<AppStartSearchParams>;
 } = {}) {
-  if (!readGuideDemoConfig().enabled) redirect("/app/agent");
-
   const session = await auth();
   if (!session?.user?.id) redirect("/app/account/login?next=%2Fapp%2Fstart");
   const actor = await resolveAuthenticatedApiActorFromSession({
@@ -69,8 +66,6 @@ export default async function AppStartPage({
         userId: session.user.id,
       })
     : ({ kind: "unavailable" } as const);
-  if (guide.kind === "disabled") redirect("/app/agent");
-
   const requestedStep = parseStartStepParam((await searchParams)?.step);
 
   let body;

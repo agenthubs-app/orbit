@@ -20,6 +20,7 @@
  * 渲染真实首页（宁可少给人看示例，也不把老用户误关进示例）。开关关闭时不做任何读取。
  */
 import { readGuideDemoConfig, type GuideDemoConfig } from "../../shared/config/guide-demo";
+import { computeGuideRealProgress } from "../../shared/compute/guide-real-progress";
 import { confirmedContactPredicate } from "../contacts/confirmed-contact-predicate";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
@@ -238,7 +239,6 @@ export async function readGuideStatusForActor(
   dependencies: GuideStatusDependencies = {},
 ): Promise<GuideStatus | null> {
   const config = dependencies.config ?? readGuideDemoConfig();
-  if (!config.enabled) return null;
   const actorId = input.actorId.trim();
   if (!actorId) return null;
 
@@ -284,12 +284,21 @@ export async function readGuideStatusForActor(
   const plan = await attempt(() => (dependencies.hasActivePlan ?? configuredHasActivePlan)(actorId));
   if (!plan.ok) return null;
 
-  const progress = deriveGuideProgress({
+  const projection = computeGuideRealProgress({
+    completedAt: state.value.completedAt,
     confirmedContacts: contacts.value,
+    grandfathered: false,
     hasActivePlan: plan.value,
     relationshipGoal: input.relationshipGoal,
     step1Skipped: state.value.step1Skipped,
   });
+  if (projection.kind !== "progress") return null;
+  const progress: GuideProgress = {
+    completed: projection.completed,
+    confirmedContacts: projection.confirmedContacts,
+    nextStep: projection.nextStep,
+    steps: projection.steps,
+  };
   if (progress.completed === GUIDE_STEP_ORDER.length) {
     // 首页路径第一次推导出 3 步完成时补写闩锁（没打开过 /app/start 的人也有 completedAt）。
     // 写失败不影响本次显示、不抛错，下次再写。
@@ -298,7 +307,7 @@ export async function readGuideStatusForActor(
   return {
     bannerCollapsed: state.value.bannerCollapsed,
     grandfathered: false,
-    inDemo: decideGuideDemo({ enabled: true, grandfathered: false, progress }),
+    inDemo: decideGuideDemo({ enabled: config.enabled, grandfathered: false, progress }),
     progress,
   };
 }
@@ -361,7 +370,6 @@ export interface StartGuideDependencies extends GuideStatusDependencies {
 }
 
 export type StartGuideRead =
-  | { kind: "disabled" }
   | { kind: "unavailable" }
   | { kind: "ready"; snapshot: StartGuideSnapshot };
 
@@ -382,7 +390,6 @@ export async function readStartGuideForActor(
   dependencies: StartGuideDependencies = {},
 ): Promise<StartGuideRead> {
   const config = dependencies.config ?? readGuideDemoConfig();
-  if (!config.enabled) return { kind: "disabled" };
   const actorId = input.actorId.trim();
   if (!actorId) return { kind: "unavailable" };
 

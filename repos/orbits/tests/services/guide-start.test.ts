@@ -366,26 +366,23 @@ function readerWorld() {
   return { calls, contacts, createdAt, plans, read, serviceFor, store };
 }
 
-test("flag off: disabled without a single read or write", async () => {
+test("flag off: the real guide remains readable", async () => {
   const w = readerWorld();
-  let resolved = false;
   const result = await readStartGuideForActor(
     { actorId: "actor:a", relationshipGoal: null },
     {
       config: { enabled: false, since: null },
+      guideState: w.serviceFor("actor:a"),
       countConfirmedContacts: async () => {
         w.calls.push("contacts");
         return 0;
       },
-      get guideState() {
-        resolved = true;
-        return null;
-      },
+      hasActivePlan: async () => false,
+      sampleConfirmedContacts: async () => [],
     },
   );
-  assert.deepEqual(result, { kind: "disabled" });
-  assert.deepEqual(w.calls, []);
-  assert.equal(resolved, false);
+  assert.equal(result.kind, "ready");
+  assert.deepEqual(w.calls, ["contacts"]);
 });
 
 test("a new user gets a snapshot starting at step 1; the D2 decision is persisted as false", async () => {

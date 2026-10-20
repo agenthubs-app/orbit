@@ -3,16 +3,18 @@
  *
  * - 显示当前目标，「修改」就地打开 W0002 的同一个编辑器，编辑的是草稿：取消不覆盖，
  *   保存才写资料里的 relationshipGoal；
- * - R25（v1 计划的创建入口关闭）：「开始分析」不再调 `POST /api/agent/plans/bootstrap`
- *   （它现在一律 409 PLAN_V1_RETIRED），直接带用户去 v2 的目標入力
- *   （Task › プラン `?new=1`，`planNewGoalHref`），在那里走计划 v2 的生成流程。
- *   原来的「补充一句」和 v1 回答结构说明一并去掉（v2 流程自己会问）。
+ * - 确认第一目标和计划类型后，续接或创建 source:onboarding 的 v2 intake，
+ *   只使用服务端返回并核验过的 Web href 进入计划流程。
  */
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { StartContactSample } from "../../../../features/guide/start-steps";
+import type { PlanGoalKind } from "../../../../shared/contract/plan-v2";
+import { firstProfileGoalForPlan } from "../../../../shared/compute/profile-onboarding-goal";
+import { PLAN_GOAL_KINDS } from "../../../../shared/compute/plan-templates";
+import { PLAN_GOAL_KIND_COPY, planCopy } from "../../../../shared/compute/plan-template-copy";
 import { GoalEditor } from "../profile/goal-editor/goal-editor";
 import {
   composeRelationshipGoal,
@@ -20,9 +22,9 @@ import {
   parseRelationshipGoal,
   type GoalHorizon,
 } from "../profile/goal-editor/goal-editor-model";
-import { planNewGoalHref } from "../../../../shared/compute/plan-href";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { saveGuideGoal } from "./start-goal-save";
+import { resumeOrCreateOnboardingIntake } from "./start-plan-intake";
 
 export const START_PLAN_QUESTION = {
   en: "Based on my goal and my network, how should I achieve my goal?",
@@ -47,17 +49,21 @@ export function StepPlan({
   const { language, preserveHref, t } = useOrbitLanguage();
   const lang = language === "en" ? "en" : "zh";
   const parsed = parseRelationshipGoal(goal);
+  const first = firstProfileGoalForPlan(goal);
 
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [draftHorizon, setDraftHorizon] = useState<GoalHorizon | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [planText, setPlanText] = useState(first.text);
+  const [goalKind, setGoalKind] = useState<PlanGoalKind | null>(first.suggestedKind);
+  const actionRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   function startEdit() {
     const current = parseRelationshipGoal(goal);
     setDraftText(current.text);
-    setDraftHorizon(current.text ? current.horizon : "quarter");
+    setDraftHorizon(current.horizon);
     setError("");
     setEditing(true);
   }
@@ -74,6 +80,10 @@ export function StepPlan({
     try {
       const saved = await saveGuideGoal(value, profileUpdatedAt);
       onGoalSaved(saved.relationshipGoal, saved.updatedAt);
+      const updated = firstProfileGoalForPlan(saved.relationshipGoal);
+      setPlanText(updated.text);
+      setGoalKind(updated.suggestedKind);
+      actionRef.current = null;
       setEditing(false);
     } catch {
       setError(t({ en: "Couldn't save your goal. Please try again.", zh: "目标没有保存成功，请再试一次。" }));
@@ -82,9 +92,20 @@ export function StepPlan({
     }
   }
 
-  function startAnalysis() {
-    if (editing || !parsed.text) return;
-    window.location.assign(preserveHref(planNewGoalHref("web")));
+  async function startAnalysis() {
+    if (editing || !planText.trim() || !goalKind || saving) return;
+    const fingerprint = JSON.stringify([planText.trim(), goalKind]);
+    if (actionRef.current?.fingerprint !== fingerprint) actionRef.current = { fingerprint, key: crypto.randomUUID() };
+    setSaving(true);
+    setError("");
+    try {
+      const href = await resumeOrCreateOnboardingIntake({ goalText: planText, goalKind, idempotencyKey: actionRef.current.key, language });
+      window.location.assign(preserveHref(href));
+    } catch {
+      setError(t({ en: "Couldn't open the plan. Please try again.", zh: "计划暂时无法打开，请重试。" }));
+    } finally {
+      setSaving(false);
+    }
   }
 
   const names = samples.map((sample) => sample.displayName).join(lang === "en" ? ", " : "、");
@@ -95,6 +116,7 @@ export function StepPlan({
         <span className="sg-pill">{t({ en: "Step 3 · Plan", zh: "第 3 步 · 计划" })}</span>
         {planDone ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成" })}</span> : null}
       </div>
+
       <h2>{t({ en: "Let iOrbit make your first plan", zh: "让 iOrbit 做你的第一份计划" })}</h2>
 
       <div className="sg-goalbox" data-editing={editing ? "true" : "false"} data-start-goalbox>
@@ -159,6 +181,17 @@ export function StepPlan({
         )}
       </div>
 
+      {!planDone ? <div className="sg-goalbox" data-start-plan-confirm>
+        <label>{t({ en: "Confirm your first goal", zh: "确认第一优先目标" })}
+          <input className="sg-input" onChange={(event) => { setPlanText(event.target.value); actionRef.current = null; }} value={planText} />
+        </label>
+        <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型" })}>
+          {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
+            onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], lang)}</button>)}
+        </div>
+        {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。" })}</p> : null}
+      </div> : null}
+
       <div className="sg-reads">
         <span>{t({ en: "iOrbit will read:", zh: "iOrbit 会读到：" })}</span>
         <span>
@@ -180,13 +213,14 @@ export function StepPlan({
         <button
           className="btn sg-primary"
           data-start-analyze
-          disabled={editing || !parsed.text}
-          onClick={startAnalysis}
+          disabled={editing || !planText.trim() || !goalKind || saving || planDone}
+          onClick={() => void startAnalysis()}
           type="button"
         >
-          {t({ en: "Start analysis", zh: "开始分析" })}
+          {saving ? t({ en: "Opening…", zh: "正在打开…" }) : t({ en: "Continue to plan", zh: "继续制定计划" })}
         </button>
       </div>
+      {error ? <p className="sg-error" role="alert">{error}</p> : null}
     </article>
   );
 }

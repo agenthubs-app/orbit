@@ -33,8 +33,8 @@ export function StepGoal({
   const lang = language === "en" ? "en" : "zh";
   const [initial] = useState(() => parseRelationshipGoal(goal));
   const [text, setText] = useState(initial.text);
-  // 新写目标默认 3 个月内（与 onboarding 一致）；已存的目标没写期限时不替用户预选。
-  const [horizon, setHorizon] = useState<GoalHorizon | "">(initial.text ? initial.horizon : "quarter");
+  // 期限只有用户明确选择时才写入；新目标不预设期限。
+  const [horizon, setHorizon] = useState<GoalHorizon | "">(initial.horizon);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const hadGoal = Boolean(goal.trim());

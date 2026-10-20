@@ -10,6 +10,7 @@
  * 严格按顺序解锁。引导记录里 W0035 之前写下的 `currentStep = 4` 不再是合法步骤：读取时按
  * 「没有记录」处理（`isGuideStartStep`），写入时拒绝。
  */
+import { computeGuideRealProgress } from "../../shared/compute/guide-real-progress";
 
 export type GuideStartStep = 1 | 2 | 3;
 export const GUIDE_START_STEPS: readonly GuideStartStep[] = [1, 2, 3];
@@ -54,11 +55,17 @@ export function goalStepDone(input: { grandfathered?: boolean; relationshipGoal:
 }
 
 export function deriveStartGuideFlags(input: StartGuideFlagInput): StartGuideFlags {
-  return {
-    contacts: contactsStepDone(input),
-    goal: goalStepDone(input),
-    plan: input.hasActivePlan,
-  };
+  // Legacy accounts can open the plan step even when their old goal is blank.
+  if (input.grandfathered) return { contacts: true, goal: true, plan: input.hasActivePlan };
+  const progress = computeGuideRealProgress({
+    completedAt: null,
+    confirmedContacts: input.confirmedContacts,
+    grandfathered: false,
+    hasActivePlan: input.hasActivePlan,
+    relationshipGoal: input.relationshipGoal,
+    step1Skipped: input.step1Skipped,
+  });
+  return progress.kind === "progress" ? progress.steps : { contacts: false, goal: false, plan: false };
 }
 
 const KEY_BY_STEP = { 1: "contacts", 2: "goal", 3: "plan" } as const;

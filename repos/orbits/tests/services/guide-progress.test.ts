@@ -157,20 +157,16 @@ function world() {
   return { calls, contacts, createdAt, plans, read, stateFor, store };
 }
 
-test("flag off: returns null without touching a single reader", async () => {
+test("flag off: real progress remains available without entering demo", async () => {
   const w = world();
-  let resolvedService = false;
   const status = await readGuideStatusForActor(
     { actorId: "actor:a", relationshipGoal: null },
     {
       config: { enabled: false, since: SINCE },
+      guideState: w.stateFor("actor:a"),
       countConfirmedContacts: async () => {
         w.calls.push("contacts");
         return 0;
-      },
-      get guideState() {
-        resolvedService = true;
-        return null;
       },
       hasActivePlan: async () => {
         w.calls.push("plan");
@@ -178,11 +174,10 @@ test("flag off: returns null without touching a single reader", async () => {
       },
     },
   );
-  assert.equal(status, null);
-  assert.deepEqual(w.calls, []);
-  assert.equal(resolvedService, false);
-  // 也没有写引导记录。
-  assert.deepEqual(await w.store.listRecords({ collectionName: GUIDE_STATE_COLLECTION, limit: 10, workspaceId: guideStateWorkspaceId(WORKSPACE, "actor:a") }), []);
+  assert.equal(status?.inDemo, false);
+  assert.equal(status?.progress?.completed, 0);
+  assert.equal(status?.progress?.nextStep, "contacts");
+  assert.deepEqual(w.calls, ["contacts", "plan"]);
 });
 
 test("a new user (0 contacts, no goal, no plan) enters the demo; the first decision is persisted as false", async () => {

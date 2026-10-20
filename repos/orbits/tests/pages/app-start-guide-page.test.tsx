@@ -150,10 +150,10 @@ function rendered(tree: ReactElement, component: unknown): Record<string, unknow
 }
 
 for (const flag of [undefined, "off"]) {
-  test(`flag ${flag ?? "unset"}: /app/start redirects to /app/agent without reading anything`, async (t) => {
-    const { calls, page } = loadPage(t, { flag });
-    await assert.rejects(page(), /redirect:\/app\/agent/);
-    assert.deepEqual(calls, []);
+  test(`flag ${flag ?? "unset"}: /app/start reads the real guide`, async (t) => {
+    const { calls, page, StartGuide } = loadPage(t, { flag });
+    assert.ok(rendered(await page(), StartGuide));
+    assert.equal(calls.filter((call) => call.operation === "guide").length, 1);
   });
 }
 
@@ -189,10 +189,7 @@ test("flag on: the guide snapshot and goal reach the client shell, read as the c
   assert.equal(wrapper.props["data-orbit-route"], "app-start-guide-route");
 });
 
-test("the reader saying disabled also redirects; an unreadable guide shows the unavailable state", async (t) => {
-  const disabled = loadPage(t, { flag: "on", guide: { kind: "disabled" } });
-  await assert.rejects(disabled.page(), /redirect:\/app\/agent/);
-
+test("an unreadable guide shows the unavailable state", async (t) => {
   const unavailable = loadPage(t, { flag: "on", guide: { kind: "unavailable" } });
   const tree = await unavailable.page();
   assert.ok(rendered(tree, unavailable.StartGuideUnavailable));
@@ -221,10 +218,10 @@ test("W0022/W0035: ?step=3 reaches the shell as requestedStep; ?step=4, invalid 
   }
 });
 
-test("W0022/W0035: flag off with ?step=3 or ?step=4 still redirects to /app/agent without reading anything", async (t) => {
-  for (const step of ["3", "4"]) {
-    const { calls, page } = loadPage(t, { flag: undefined });
-    await assert.rejects(page({ searchParams: Promise.resolve({ step }) }), /redirect:\/app\/agent/);
-    assert.deepEqual(calls, [], step);
+test("W0022/W0035: flag off still reads progress and validates ?step", async (t) => {
+  for (const [step, expected] of [["3", 3], ["4", null]] as const) {
+    const { calls, page, StartGuide } = loadPage(t, { flag: undefined });
+    assert.equal(rendered(await page({ searchParams: Promise.resolve({ step }) }), StartGuide)?.requestedStep, expected);
+    assert.equal(calls.filter((call) => call.operation === "guide").length, 1);
   }
 });
