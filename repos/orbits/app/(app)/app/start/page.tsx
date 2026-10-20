@@ -2,7 +2,7 @@
  * 引导页 `/app/start` route adapter（W0006，RW-04 / RW-05 第 3 步）。
  *
  * - 示例开关不限制真实指南读取；
- * - 资料门禁豁免这一条路径（`profile-onboarding-route-policy.ts`），资料未完成的新用户也能进；
+ * - 资料未完成时，私有路由门禁会先转到五屏资料引导，保留 `/app/start` 为安全 next；
  * - 进度由服务端从真实数据推导（`features/guide/progress.ts` 的 `readStartGuideForActor`），
  *   客户端只拿到可序列化的快照。W0035 删去「活动」一步后，本页不再读社群加入记录、公开
  *   活动目录和报名事实。

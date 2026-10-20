@@ -142,13 +142,13 @@ test("route policy gates only authenticated app GET/HEAD paths and keeps exact e
   // 新用户引导本身必须豁免，否则门禁会把未完成的用户无限重定向回自己。
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboarding"), true);
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboardingX"), false);
-  // W0006：引导页本身豁免（资料未完成的新用户也能进），只豁免这一条路径。
-  assert.equal(isProfileOnboardingNavigationExemptPath("/app/start"), true);
+  // R28：真实三步指南是资料完成后的私有页；未完成仍回五屏资料引导。
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/start"), false);
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/startX"), false);
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/start/anything"), false);
   assert.equal(
     shouldGateProfileOnboardingRequest({ authenticated: true, method: "GET", pathname: "/app/start" }),
-    false,
+    true,
   );
   assert.equal(
     shouldGateProfileOnboardingRequest({ authenticated: true, method: "GET", pathname: "/app/agent" }),
@@ -156,12 +156,12 @@ test("route policy gates only authenticated app GET/HEAD paths and keeps exact e
   );
 });
 
-test("W0006: an incomplete profile reaches /app/start through the real proxy while /app/agent stays gated", async () => {
+test("R28: an incomplete invitee is sent to profile onboarding before the real guide", async () => {
   const { proxy, accessCalls } = loadProxy("incomplete");
   const start = await proxy(request("/app/start"));
-  assert.equal(start.status, 200);
-  assert.equal(start.headers.get("x-middleware-next"), "1");
-  assert.equal(accessCalls(), 0, "the exempt guide page never loads onboarding access");
+  assert.equal(start.status, 307);
+  assert.equal(start.headers.get("location"), "https://test/app/profile/onboarding?next=%2Fapp%2Fstart");
+  assert.equal(accessCalls(), 1);
 
   const agent = await proxy(request("/app/agent"));
   assert.equal(agent.status, 307);
@@ -170,8 +170,8 @@ test("W0006: an incomplete profile reaches /app/start through the real proxy whi
     "https://test/app/profile/onboarding?next=%2Fapp%2Fagent",
   );
   const nested = await proxy(request("/app/start/elsewhere"));
-  assert.equal(nested.status, 307, "only the exact /app/start path is exempt");
-  assert.equal(accessCalls(), 2);
+  assert.equal(nested.status, 307);
+  assert.equal(accessCalls(), 3);
 });
 
 test("gate next preserves business query while removing RSC transport", () => {
@@ -266,6 +266,9 @@ test("complete profiles pass and preserve language cookie behavior", async () =>
   assert.equal(response.headers.get("x-middleware-next"), "1");
   assert.equal(accessCalls(), 1);
   assert.match(response.headers.get("set-cookie") ?? "", /orbit-lang=ja/);
+  const guide = await proxy(request("/app/start"));
+  assert.equal(guide.status, 200);
+  assert.equal(accessCalls(), 2, "a complete actor still reaches the guide through the profile gate");
 });
 
 test("missing sessions keep existing private-page login behavior without onboarding access", async () => {
