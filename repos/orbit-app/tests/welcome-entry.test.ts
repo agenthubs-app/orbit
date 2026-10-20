@@ -7,6 +7,7 @@ test("a new signed-out launch shows welcome only after session resolution", () =
   assert.equal(resolveWelcomeEntry({ ready: false, userId: null }), "pending");
   assert.equal(resolveWelcomeEntry({ ready: true, userId: null }), "welcome");
   assert.equal(resolveWelcomeEntry({ ready: true, userId: "member" }), "/home");
+  assert.equal(resolveWelcomeEntry({ ready: true, userId: "member", deletionPending: true }), "/account/pending");
 });
 
 test("an explicit supported initial target bypasses welcome", () => {

@@ -300,6 +300,12 @@ test("account status sends the stored cookie and distinguishes unverifiable stat
     }
   });
   assert.deepEqual(active, { success: true, data: { status: "active" } });
+  const pending = await fetchMobileAccountStatus({
+    baseUrl: "https://orbit.example",
+    cookieHeader: session.cookieHeader,
+    fetchImpl: async () => jsonResponse({ status: "pending", accountId: "account-1" })
+  });
+  assert.deepEqual(pending, { success: true, data: { status: "pending", accountId: "account-1" } });
   const unavailable = await fetchMobileAccountStatus({
     baseUrl: "https://orbit.example",
     cookieHeader: session.cookieHeader,

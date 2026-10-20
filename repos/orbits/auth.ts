@@ -84,6 +84,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.sub = result.data.user.id;
         token.email = result.data.user.email;
         token.name = result.data.user.displayName;
+        // Auth.js supplies validated ID token claims here. The deletion flow
+        // accepts only Google-provided auth_time; it never substitutes callback time.
+        token.googleAuthTime = typeof profile.auth_time === "number" ? profile.auth_time : null;
 
         return token;
       }

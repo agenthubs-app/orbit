@@ -15,9 +15,11 @@ const copy = {
 export function MobileGoogleAuth({
   brokerRequest,
   language,
+  reauth = false,
 }: {
   brokerRequest?: string;
   language: OrbitLanguage;
+  reauth?: boolean;
 }) {
   useEffect(() => {
     if (!brokerRequest) return;
@@ -25,8 +27,8 @@ export function MobileGoogleAuth({
       callbackUrl: `/api/auth/mobile/google/complete?request=${encodeURIComponent(
         brokerRequest,
       )}`,
-    });
-  }, [brokerRequest]);
+    }, reauth ? { prompt: "login", max_age: "0", claims: JSON.stringify({ id_token: { auth_time: { essential: true } } }) } : undefined);
+  }, [brokerRequest, reauth]);
 
   const text = copy[language];
   return (

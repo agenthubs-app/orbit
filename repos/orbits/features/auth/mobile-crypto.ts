@@ -58,7 +58,8 @@ export function validateMobileGoogleStart(
   if (
     !PKCE_PATTERN.test(input.codeChallenge) ||
     !STATE_PATTERN.test(input.state) ||
-    !isSafeNextPath(next)
+    !isSafeNextPath(next) ||
+    (input.purpose !== undefined && input.purpose !== "deletion-request")
   ) {
     return invalidInput();
   }
@@ -70,6 +71,7 @@ export function validateMobileGoogleStart(
       next,
       redirectUri: MOBILE_AUTH_CALLBACK_URI,
       state: input.state,
+      ...(input.purpose ? { purpose: input.purpose } : {}),
     },
   };
 }
@@ -113,6 +115,7 @@ export async function verifyMobileBrokerRequest(
       redirectUri:
         typeof payload.redirectUri === "string" ? payload.redirectUri : "",
       state: typeof payload.state === "string" ? payload.state : "",
+      purpose: payload.purpose === "deletion-request" ? "deletion-request" : undefined,
     });
 
     return result.success

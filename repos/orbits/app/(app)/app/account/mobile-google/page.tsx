@@ -3,6 +3,7 @@ import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { getOrbitServerLanguage } from "../../orbit-language-server";
 import { MobileGoogleAuth } from "./mobile-google-auth";
+import { verifyMobileBrokerRequest } from "../../../../../features/auth/mobile-crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ export default async function MobileGooglePage({
   const googleAvailable = resolveMobileAuthService(mode)
     .enabledProviders()
     .includes("google");
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  const broker = request && secret ? await verifyMobileBrokerRequest(request, secret) : null;
   let language: OrbitLanguage = "zh";
   try {
     language = await getOrbitServerLanguage();
@@ -26,5 +29,6 @@ export default async function MobileGooglePage({
     if (!(error instanceof Error && error.message.includes("outside a request scope"))) throw error;
   }
 
-  return <MobileGoogleAuth brokerRequest={request && googleAvailable ? request : undefined} language={language} />;
+  return <MobileGoogleAuth brokerRequest={request && googleAvailable && broker?.success ? request : undefined}
+    reauth={broker?.success && broker.data.purpose === "deletion-request"} language={language} />;
 }

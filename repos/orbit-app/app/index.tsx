@@ -10,6 +10,7 @@ export default function IndexRoute() {
   const entry = resolveWelcomeEntry({
     ready: auth.ready,
     userId: auth.user?.id ?? null,
+    deletionPending: auth.deletionPending,
     configuredRoute: process.env.EXPO_PUBLIC_ORBIT_INITIAL_ROUTE
   });
   if (entry === "pending") return <View />;

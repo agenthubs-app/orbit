@@ -200,7 +200,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         const signedIn = await auth.signIn({ email: values.email, password: values.password, redirectTo: next });
         if (!isCurrent()) return;
         if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
-        router.replace(nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next }) as Href);
+        router.replace((signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next })) as Href);
         return;
       }
 
@@ -216,7 +216,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      router.replace(
+      router.replace(result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode,
           next
@@ -253,7 +253,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       }
 
       // Google completes a session even when launched from the signup screen.
-      router.replace(
+      router.replace(result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode: "login",
           next

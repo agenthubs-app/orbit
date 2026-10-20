@@ -19,6 +19,7 @@ export interface MobileGoogleStartInput {
   next?: string;
   redirectUri: string;
   state: string;
+  purpose?: "deletion-request";
 }
 
 export interface MobileGoogleBrokerRequest {
@@ -26,6 +27,7 @@ export interface MobileGoogleBrokerRequest {
   next: string;
   redirectUri: typeof MOBILE_AUTH_CALLBACK_URI;
   state: string;
+  purpose?: "deletion-request";
 }
 
 export type MobileAuthErrorCode =

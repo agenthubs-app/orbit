@@ -30,6 +30,18 @@ test("account status rejects an unreadable or missing session without querying s
   assert.equal(lookedUp, false);
 });
 
+test("fresh login for a pending deletion returns the original account id", async () => {
+  const { createAccountStatusGetHandler } = await import("../../app/api/account/status/handler");
+  const handler = createAccountStatusGetHandler({
+    resolveClaims: async () => ({ email: "a@example.com", userId: "user-a", authenticatedAt: Date.now() }),
+    getStatus: async () => "active",
+    getDeletionState: async () => ({ status: "pending", accountId: "account-a" }),
+  });
+  const response = await handler(new Request("http://localhost/api/account/status"));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: "pending", accountId: "account-a" });
+});
+
 test("account status lookup maps lifecycle and password timestamps without hiding storage errors", async () => {
   const { getPasswordSessionStatus } = await import("../../features/auth/session-revocation");
   let row: any = { lifecycleState: "active", payload: { id: "user-1", passwordChangedAt: "1970-01-01T00:00:00.500Z" } };

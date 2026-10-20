@@ -57,10 +57,12 @@ import { cancelOrbitManagedNotifications } from "../notifications/native-notific
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 import { clearKioskDevice } from "../screens/host/kiosk-store";
+import { clearProfileEditSession } from "../data/profile-edit-session";
 
 interface AuthActionResult {
   message?: string;
   success: boolean;
+  pendingDeletion?: boolean;
 }
 
 interface RegisterInput {
@@ -83,6 +85,7 @@ interface AuthSessionContextValue {
   notificationSessionRevision: number;
   /** Entered from the last online-validated identity because the server was unreachable. */
   offline: boolean;
+  deletionPending: boolean;
   providers: readonly "google"[];
   ready: boolean;
   readPendingWritesOnDevice: () => Promise<number | null>;
@@ -91,7 +94,7 @@ interface AuthSessionContextValue {
   deleteDebugPendingWrite: (mutationId: string) => Promise<number | null>;
   register: (input: RegisterInput) => Promise<AuthActionResult>;
   signIn: (input: SignInInput) => Promise<AuthActionResult>;
-  signInWithGoogle: (next?: string) => Promise<AuthActionResult>;
+  signInWithGoogle: (next?: string, purpose?: "deletion-request") => Promise<AuthActionResult>;
   signOut: () => Promise<AuthActionResult>;
   signedIn: boolean;
   startGoogleSignIn: (input?: { redirectTo?: string }) => Promise<AuthActionResult>;
@@ -202,6 +205,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<MobileAuthUser | null>(null);
   const [notificationSessionRevision, setNotificationSessionRevision] = useState(0);
   const [offline, setOffline] = useState(false);
+  const [deletionPending, setDeletionPending] = useState(false);
   const lastValidatedAt = useRef(0);
   const authEnvironment = useRef({ baseUrl, baseUrlReady, revision: 0 });
 
@@ -236,6 +240,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setAccountId(null);
     setCookieHeader("");
     setOffline(false);
+    setDeletionPending(false);
     setProviders([]);
     setUser(null);
 
@@ -293,6 +298,20 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
             setAccountId(identity.accountId);
             setUser(result.data.user);
             setOffline(false);
+            setDeletionPending(false);
+            return;
+          }
+          const deletion = await fetchMobileAccountStatus({ baseUrl, cookieHeader: storedValue });
+          if (deletion.success && (deletion.data.status === "pending" || deletion.data.status === "purging") && deletion.data.accountId) {
+            if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: deletion.data.accountId }) || !current()) return;
+            await offlineIdentityStorage.clear(baseUrl);
+            clearProfileEditSession({ actorId: deletion.data.accountId, apiOrigin: baseUrl });
+            await clearKioskDevice();
+            setCookieHeader(storedValue);
+            setAccountId(deletion.data.accountId);
+            setUser(result.data.user);
+            setOffline(false);
+            setDeletionPending(true);
             return;
           }
           check = account.check === "rejected" ? "rejected" : "unreachable";
@@ -329,6 +348,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           setAccountId(null);
           setCookieHeader("");
           setOffline(false);
+          setDeletionPending(false);
           setUser(null);
         }
       }
@@ -427,13 +447,32 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         await discardUnacceptedSession(session);
         return obsoleteAuthActionResult();
       }
-      if (!identity) {
+      const deletion = !identity ? await fetchMobileAccountStatus({ baseUrl, cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader }) : null;
+      const pendingDeletion = Boolean(deletion?.success && (deletion.data.status === "pending" || deletion.data.status === "purging") && deletion.data.accountId);
+      const resolvedAccountId = identity?.accountId ?? (pendingDeletion && deletion?.success ? deletion.data.accountId : null);
+      if (!resolvedAccountId) {
         await discardUnacceptedSession(session);
         return {
           message: currentTranslator()("session.accountUnconfirmed"),
           success: false
         };
       }
+
+      if (pendingDeletion) {
+        if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: resolvedAccountId })) return { message: currentTranslator()("session.clearPreviousFailed"), success: false };
+        await offlineIdentityStorage.clear(baseUrl);
+        clearProfileEditSession({ actorId: resolvedAccountId, apiOrigin: baseUrl });
+        await clearKioskDevice();
+        if (!usesBrowserManagedSession) await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
+        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+        setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
+        setAccountId(resolvedAccountId);
+        setUser(validation.data.user);
+        setOffline(false);
+        setDeletionPending(true);
+        return { success: true, pendingDeletion: true };
+      }
+      if (!identity) return { message: currentTranslator()( "session.accountUnconfirmed"), success: false };
 
       if (!usesBrowserManagedSession) {
         try {
@@ -494,6 +533,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setAccountId(identity.accountId);
       setUser(validation.data.user);
       setOffline(false);
+      setDeletionPending(false);
       return { success: true };
     },
     [accountId, baseUrl, clearNotificationSession, discardUnacceptedSession, user]
@@ -528,13 +568,14 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signInWithGoogle = useCallback(
-    async (next = "/profile"): Promise<AuthActionResult> => {
+    async (next = "/profile", purpose?: "deletion-request"): Promise<AuthActionResult> => {
       const requestRevision = ++authEnvironment.current.revision;
       try {
         const attempt = await createGoogleOAuthAttempt({
           baseUrl,
           digest: sha256,
           next,
+          ...(purpose ? { purpose } : {}),
           randomBytes: Crypto.getRandomBytesAsync
         });
         const browserResult = await WebBrowser.openAuthSessionAsync(
@@ -667,6 +708,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setAccountId(null);
     setCookieHeader("");
     setOffline(false);
+    setDeletionPending(false);
     setUser(null);
     return { success: true };
   }, [accountId, baseUrl, clearNotificationSession, cookieHeader, user]);
@@ -769,6 +811,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setAccountId(null);
       setCookieHeader("");
       setOffline(false);
+      setDeletionPending(false);
       setUser(null);
       router.replace("/account/login" as Href);
     })().catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
@@ -831,6 +874,17 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
         if (statusProbeRequired && check === "rejected") {
           const accountStatus = await fetchMobileAccountStatus({ baseUrl, cookieHeader });
+          if (accountStatus.success && (accountStatus.data.status === "pending" || accountStatus.data.status === "purging") &&
+            accountStatus.data.accountId === signedInAccountId) {
+            if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: signedInAccountId }) || !current()) return;
+            await offlineIdentityStorage.clear(baseUrl);
+            clearProfileEditSession({ actorId: signedInAccountId, apiOrigin: baseUrl });
+            await clearKioskDevice();
+            setDeletionPending(true);
+            setOffline(false);
+            router.replace("/account/pending" as Href);
+            return;
+          }
           check = accountStatusConfirmsRejection(accountStatus) ? "rejected" : "unreachable";
         }
         if (check === "rejected") {
@@ -875,6 +929,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       googleEnabled: providers.includes("google"),
       notificationSessionRevision,
       offline,
+      deletionPending,
       providers,
       ready,
       readPendingWritesOnDevice,
@@ -895,6 +950,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       cookieHeader,
       notificationSessionRevision,
       offline,
+      deletionPending,
       providers,
       ready,
       enqueueDebugPendingWrite,

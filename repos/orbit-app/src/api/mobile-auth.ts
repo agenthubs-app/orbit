@@ -17,7 +17,7 @@ export interface MobileAuthSession {
   user: MobileAuthUser;
 }
 
-export type MobileAccountStatus = "active" | "disabled" | "password_changed";
+export type MobileAccountStatus = "active" | "disabled" | "password_changed" | "pending" | "purging";
 
 export interface MobileAuthFailure {
   error: {
@@ -315,11 +315,13 @@ export async function createGoogleOAuthAttempt({
   baseUrl,
   digest,
   next = "/profile",
+  purpose,
   randomBytes
 }: {
   baseUrl: string;
   digest: (value: Uint8Array) => Promise<Uint8Array>;
   next?: string;
+  purpose?: "deletion-request";
   randomBytes: (length: number) => Promise<Uint8Array>;
 }): Promise<GoogleOAuthAttempt> {
   const codeVerifier = base64Url(await randomBytes(32));
@@ -336,6 +338,7 @@ export async function createGoogleOAuthAttempt({
   startUrl.searchParams.set("next", safeNext);
   startUrl.searchParams.set("redirect_uri", MOBILE_AUTH_CALLBACK_URI);
   startUrl.searchParams.set("state", state);
+  if (purpose) startUrl.searchParams.set("purpose", purpose);
 
   return {
     codeVerifier,
@@ -495,7 +498,7 @@ export async function fetchMobileAccountStatus({
   baseUrl: string;
   cookieHeader: string;
   fetchImpl?: MobileAuthFetchLike;
-}): Promise<MobileAuthResult<{ status: MobileAccountStatus }>> {
+}): Promise<MobileAuthResult<{ status: MobileAccountStatus; accountId?: string }>> {
   let response: Response;
   const normalizedCookieHeader = cookieHeader.trim();
   try {
@@ -513,8 +516,9 @@ export async function fetchMobileAccountStatus({
   }
   const body = await readJson(response);
   const status = body?.status;
-  if (response.ok && (status === "active" || status === "disabled" || status === "password_changed")) {
-    return { success: true, data: { status } };
+  if (response.ok && (status === "active" || status === "disabled" || status === "password_changed" ||
+    (status === "pending" || status === "purging") && typeof body?.accountId === "string" && body.accountId.length > 0)) {
+    return { success: true, data: { status, ...(typeof body?.accountId === "string" ? { accountId: body.accountId } : {}) } };
   }
   return failure(
     response.status === 503 ? "ORBIT_APP_ACCOUNT_STATUS_UNAVAILABLE" : "ORBIT_APP_ACCOUNT_STATUS_REJECTED",

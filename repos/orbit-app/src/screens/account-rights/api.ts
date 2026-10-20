@@ -40,6 +40,23 @@ export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: s
       if (!response.ok || !data?.reauthReceipt) throw new RightsApiError(response.status, data?.error ?? "UNAVAILABLE");
       return data.reauthReceipt;
     },
+    async reauthGoogleStart(): Promise<string> {
+      const response = await fetcher(`${baseUrl}/api/account/deletion-request/reauth/google/start`, {
+        method: "POST", credentials: input.cookieHeader ? "omit" : "include", headers: { ...rawHeaders(input.cookieHeader), "Content-Type": "application/json" }, body: "{}",
+      });
+      const data = await response.json().catch(() => null) as { challenge?: string; error?: string } | null;
+      if (!response.ok || !data?.challenge) throw new RightsApiError(response.status, data?.error ?? "UNAVAILABLE");
+      return data.challenge;
+    },
+    async reauthGoogle(challenge: string): Promise<string> {
+      const response = await fetcher(`${baseUrl}/api/account/deletion-request/reauth`, {
+        method: "POST", credentials: input.cookieHeader ? "omit" : "include",
+        headers: { ...rawHeaders(input.cookieHeader), "Content-Type": "application/json" }, body: JSON.stringify({ method: "google", challenge }),
+      });
+      const data = await response.json().catch(() => null) as { reauthReceipt?: string; error?: string } | null;
+      if (!response.ok || !data?.reauthReceipt) throw new RightsApiError(response.status, data?.error ?? "UNAVAILABLE");
+      return data.reauthReceipt;
+    },
     async requestDeletion(receipt: string) { return unwrap<AccountDeletionRequestContract>(await client.post("/api/account/deletion-request", { body: { reauthReceipt: receipt, confirmed: true } })); },
     async cancelDeletion() { return unwrap<AccountDeletionRequestContract | null>(await client.delete("/api/account/deletion-request")); },
     async shareExport(item: AccountExportContract): Promise<void> {

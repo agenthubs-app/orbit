@@ -37,6 +37,17 @@ test("mobile Google start accepts the fixed callback and valid S256 input", () =
   );
 });
 
+test("deletion purpose survives the signed broker request", async () => {
+  const { validateMobileGoogleStart, signMobileBrokerRequest, verifyMobileBrokerRequest } = await import("../../features/auth/mobile-crypto");
+  const result = validateMobileGoogleStart({ codeChallenge: "c".repeat(43), redirectUri: "orbit://account/oauth", state: "s".repeat(32), purpose: "deletion-request" });
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  const token = await signMobileBrokerRequest(result.data, "local-test-secret");
+  const verified = await verifyMobileBrokerRequest(token, "local-test-secret");
+  assert.equal(verified.success, true);
+  if (verified.success) assert.equal(verified.data.purpose, "deletion-request");
+});
+
 test("mobile Google start rejects an untrusted callback and external next URL", () => {
   assert.equal(
     validateMobileGoogleStart({

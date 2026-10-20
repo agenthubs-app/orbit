@@ -24,6 +24,8 @@ export function DeletionScreen() {
   const [step, setStep] = useState<"overview" | "verify">("overview");
   const [method, setMethod] = useState<"credentials" | "google" | null>(null);
   const [password, setPassword] = useState("");
+  const [googleChallenge, setGoogleChallenge] = useState<string | null>(null);
+  const [googleReceipt, setGoogleReceipt] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [pendingWrites, setPendingWrites] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,6 +37,11 @@ export function DeletionScreen() {
       setPendingWrites(count === null || count > 0);
     }).catch(() => setProblem(t("account.rights.error")));
   }, [api, auth.offline, auth.readPendingWritesOnDevice, router, t]);
+  useEffect(() => {
+    if (!googleChallenge) return;
+    setGoogleChallenge(null);
+    void api.reauthGoogle(googleChallenge).then(setGoogleReceipt).catch(() => setProblem(t("account.rights.error")));
+  }, [api, googleChallenge, t]);
   const next = async () => {
     setBusy(true); setProblem(null);
     try { setMethod(await api.method()); setStep("verify"); }
@@ -42,10 +49,10 @@ export function DeletionScreen() {
     finally { setBusy(false); }
   };
   const submit = async () => {
-    if (busy || !confirmed || !password || method !== "credentials" || !auth.accountId) return;
+    if (busy || !confirmed || !auth.accountId || method === "credentials" && !password || method === "google" && !googleReceipt || !method) return;
     setBusy(true); setProblem(null);
     try {
-      const receipt = await api.reauthPassword(password);
+      const receipt = method === "google" ? googleReceipt! : await api.reauthPassword(password);
       await api.requestDeletion(receipt);
       setPassword("");
       const scope = { baseUrl: server.baseUrl, actorId: auth.accountId };
@@ -67,6 +74,18 @@ export function DeletionScreen() {
         reason === "HOST_EVENT_HAS_REGISTRATIONS" ? "account.rights.hostBlocked" : "account.rights.error"));
     } finally { setBusy(false); }
   };
+  const startGoogle = async () => {
+    if (busy || auth.offline) return;
+    setBusy(true); setProblem(null); setGoogleReceipt(null);
+    try {
+      // 主会话代定 §R18c-3: the broker requests fresh Google auth_time for this purpose.
+      const challenge = await api.reauthGoogleStart();
+      const result = await auth.signInWithGoogle("/account/deletion", "deletion-request");
+      if (!result.success) { setProblem(result.message ?? t("account.rights.error")); return; }
+      setGoogleChallenge(challenge);
+    } catch { setProblem(t("account.rights.error")); }
+    finally { setBusy(false); }
+  };
   return <AppScreen inset="kit" title={t("account.rights.delete")} onBack={() => router.replace("/account")}>
     <View style={styles.stack}>
       {step === "overview" ? <>
@@ -79,10 +98,11 @@ export function DeletionScreen() {
         <Button label={t("account.rights.continue")} variant="dangerGhost" disabled={auth.offline} loading={busy} onPress={() => void next()} />
       </> : <Card><UiText style={styles.heading}>{t("account.rights.verify")}</UiText>
         {method === "credentials" ? <TextField label={t("account.rights.password")} secureTextEntry autoComplete="current-password" value={password} onChangeText={setPassword} /> :
-          <UiText style={styles.warning}>{t("account.rights.googleUnavailable")}</UiText>}
+          <Button label={t("account.rights.verify")} variant="secondary" loading={busy} onPress={() => void startGoogle()} />}
         <View style={styles.confirm}><Checkbox checked={confirmed} accessibilityLabel={t("account.rights.confirm")} onChange={setConfirmed} />
           <UiText style={styles.body}>{t("account.rights.confirm")}</UiText></View>
-        <Button label={t("account.rights.request")} variant="danger" loading={busy} disabled={!confirmed || method !== "credentials" || !password || auth.offline} onPress={() => void submit()} />
+        <Button label={t("account.rights.request")} variant="danger" loading={busy}
+          disabled={!confirmed || method === "credentials" && !password || method === "google" && !googleReceipt || auth.offline} onPress={() => void submit()} />
       </Card>}
       {problem ? <UiText accessibilityRole="alert" style={styles.error}>{problem}</UiText> : null}
     </View>

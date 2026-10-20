@@ -41,7 +41,7 @@ export function useOrbitApiBaseUrl() {
   return { baseUrl: state.baseUrl, ready: state.baseUrlReady };
 }
 export async function fetchMobileAuthProviders() { return { success: true, data: { providers: state.providerValues ?? [] } }; }
-export async function fetchMobileAccountStatus() { return { success: false, error: { code: "UNAUTHENTICATED", message: "no", status: 401 } }; }
+export async function fetchMobileAccountStatus() { return state.accountStatus ?? { success: false, error: { code: "UNAUTHENTICATED", message: "no", status: 401 } }; }
 export async function signInWithMobileCredentials(input) {
   state.requests.push(input);
   return await new Promise(resolve => {
@@ -141,7 +141,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "auth-race" }));
         // R04: the provider's confirmations go through the component library's request module.
         plugin.onResolve({ filter: /feedback-requests$/ }, () => ({ path: "feedback", namespace: "auth-race" }));
-        plugin.onResolve({ filter: /^(\.\/client|\.\/auth-session|\.\/session-expiry|\.\/native-auth-session-storage|\.\/mobile-auth|\.\.\/data\/snapshot-store|\.\.\/notifications\/(native-notifications|push-device-session|push-registration-queue))$/ }, args => ({ path: args.path, namespace: "auth-race" }));
+        plugin.onResolve({ filter: /^(\.\/client|\.\/auth-session|\.\/session-expiry|\.\/native-auth-session-storage|\.\/mobile-auth|\.\.\/data\/snapshot-store|\.\.\/data\/profile-edit-session|\.\.\/screens\/host\/kiosk-store|\.\.\/notifications\/(native-notifications|push-device-session|push-registration-queue))$/ }, args => ({ path: args.path, namespace: "auth-race" }));
         plugin.onLoad({ filter: /.*/, namespace: "auth-race" }, args => {
           if (args.path === "fixture") return { contents: fixture, loader: "js", resolveDir: process.cwd() };
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
@@ -154,6 +154,8 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/push-registration-queue")) return { contents: "export async function revokePushDeviceRegistrations() { return true; }", loader: "js" };
           if (args.path.endsWith("/native-notifications")) return { contents: "export { cancelOrbitManagedNotifications } from 'fixture';", loader: "js", resolveDir: process.cwd() };
+          if (args.path.endsWith("/kiosk-store")) return { contents: "export async function clearKioskDevice() {}", loader: "js" };
+          if (args.path.endsWith("/profile-edit-session")) return { contents: "export function clearProfileEditSession() {}", loader: "js" };
           return { contents: "export async function clearSnapshots() {} export async function cancelOrbitManagedNotifications() {} export async function revokeNotificationDevice() {} export async function revokeRegisteredPushDevice() {}", loader: "js" };
         });
       }
@@ -358,6 +360,26 @@ test("an accepted session exposes the raw login principal and canonical account 
     baseUrl: "https://first.example",
     cookie: "session=first"
   }]);
+});
+
+test("a pending deletion login keeps the validated session and clears local account data", async t => {
+  const page = await open(t, {
+    accountFailure: true,
+    accountStatus: { success: true, data: { status: "pending", accountId: "account:pending" } },
+    offlineIdentity: { accountId: "account:old" },
+    currentScope: { baseUrl: "https://first.example", actorId: "account:old" }
+  });
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  await page.evaluate(() => (window as any).fixture.release());
+  await page.waitForFunction(() => (window as any).fixture.results.length === 1 && (window as any).fixture.auth?.deletionPending === true);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.results), [{ success: true, pendingDeletion: true }]);
+  assert.deepEqual(await page.evaluate(() => {
+    const state = (window as any).fixture;
+    return { accountId: state.auth.accountId, deletionPending: state.auth.deletionPending, userId: state.auth.user.id,
+      scope: state.currentScope, storedCookie: state.storedCookie, offlineIdentity: state.offlineIdentity };
+  }), { accountId: "account:pending", deletionPending: true, userId: "actor-first", scope: null,
+    storedCookie: "session=first", offlineIdentity: null });
 });
 
 test("account identity failure rejects the new session without raw-id fallback", async t => {

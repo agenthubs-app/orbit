@@ -16,6 +16,7 @@ export async function GET(request: Request): Promise<Response> {
     next: url.searchParams.get("next") ?? undefined,
     redirectUri: url.searchParams.get("redirect_uri") ?? "",
     state: url.searchParams.get("state") ?? "",
+    purpose: url.searchParams.get("purpose") === "deletion-request" ? "deletion-request" : undefined,
   });
 
   if (result.success === false) {
