@@ -21,3 +21,8 @@ REPORT 的“App 自身新增失败 0”仅有其逐名对照陈述，原始全�
 
 - verify `origin/redesign@d061c42b0`（含 R28 6f6b78da1、R19）两端全量，与 R10fix/R10/R18c 失败集合逐名比较：Web 5 fail、App 12 fail，**新增 0**。日志 `_evidence-main/r28-{web,app}-full.log`。上文「不能独立确认新增 0」由此关闭。
 - 跨线授权的书面记录：主会话按 RD-33 代定 §R28-a～h（原文 `_runs/msg-c-r28-2.md`）：§b 授权 C 只改 D 线 `shell-routes.ts` 两条路由；§d 授权 C 在 B 线扫描／导入路由只加不改 `returnTo` 白名单；§e 授权 C 只加不改地把 plan intake 接入示例写拦截；§f 授权 C 只改首页首步文案判定；§g Task›プラン 交 D 线（R19 修复后执行）。D/B 的事后复核由 D 线在 R28 `REPORT-D.md` 回传，B 线项并入⑪/⑫ 交叉验收。
+
+
+## 主会话收口核验（2026-10-21 00:25）
+
+verify `origin/redesign@12e290545`（含 R28 复核修复 9b2033e25、补修 ad52e374c、D 线 §R28-g，R19 复核修复）两端全量，与此前 R28/R10fix/R10/R18c 失败集合逐名比较：Web 5 fail、App 4 fail，**新增 0**。日志 `_evidence-main/r28d-{web,app}-full.log`。结论：本 Sprint 收口；像素→⑪；需用户授权的项见 REPORT DEFERRED。
