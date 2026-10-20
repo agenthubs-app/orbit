@@ -1,6 +1,6 @@
 // R12 `contacts/new/manual` 手入力 (DESIGN §2.3, b11 A3 ①–④, App):
 //   名前 (必須) and あるといいもの chips — 会社 (people's companies already in 人脈 as you
-//   type), 出会った場所 (参加予定 / recent events, 紹介, その他), メモ (the contact's note),
+//   type), 出会った場所 (参加予定 / recent events, 紹介, その他), メモ (opens a scoped Memo after save),
 //   連絡先 (メール / 電話); the density the save would give;
 //   duplicates checked as you type, a name alone included (same rule as cards + 同名):
 //   いま入力中 / 人脈にいる人 with 統合する（おすすめ） — only the differing fields, one
@@ -135,6 +135,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     setSaving(true);
     setProblem(null);
     const snapshot = form;
+    const wantsMemo = open.has("note");
     const result = await api.saveManual(createBody(form, decision, key.current.key));
     if (!mounted.current) return;
     setSaving(false);
@@ -157,7 +158,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     key.current = null;
     if (answer.outcome === "merged") {
       // Push (not replace): this page stays underneath.
-      router.push(`/contacts/${encodeURIComponent(contactId)}` as Href);
+      router.push((wantsMemo ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : `/contacts/${encodeURIComponent(contactId)}`) as Href);
       toast.success(t("add.manual.mergedToast"), { sub: t("add.manual.addedSub", { name: snapshot.displayName.trim() }) });
       return;
     }
@@ -168,6 +169,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
       sub: t("add.manual.addedSubLevel", { dots: densityMarks(level), name: snapshot.displayName.trim() }),
       undo: () => void undoSaved(contactId, snapshot),
     });
+    if (wantsMemo) router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}` as Href);
   }
 
   // 元に戻す (simulator walkthrough fix): the server can take a few seconds, so say so at once;
@@ -264,7 +266,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
 
         {open.has("note") ? (
           <Field label={t("add.manual.note")}>
-            <FieldInput value={form.note} multiline onChangeText={(value) => set("note", value)} accessibilityLabel={t("add.manual.note")} testID="add-manual-note" />
+            <UiText style={m.lbl}>{t("add.manual.enrichNoteSub")}</UiText>
           </Field>
         ) : null}
 

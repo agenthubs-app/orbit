@@ -238,6 +238,7 @@ test("手入力: a name alone is checked; 統合 lists only differing fields; th
   assert.deepEqual(createBody(form, { choices: defaultChoices(fields), contactId: "contact-ishikawa", kind: "merge" }, "k1"), {
     displayName: "石川 陽介", email: "ishikawa@example.jp", fieldChoices: { displayName: "incoming" }, idempotencyKey: "k1", mergeIntoContactId: "contact-ishikawa", organization: "ミライ精機",
   });
+  assert.equal("note" in createBody({ ...form, note: "Private meeting memo" }, { kind: "separate" }, "memo-intent"), false, "memo text is not stored as a contact remark");
   assert.deepEqual(createBody(form, { kind: "separate" }, "k2").allowDuplicate, true);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A" }), 1);
   assert.equal(formDensity({ ...form, met: { eventId: "e", kind: "event" } }), 2);

@@ -601,6 +601,27 @@ test("手入力: 保存 shows 保存したあと (b11 #18) with 「人脈に追�
   assert.equal(await page.getByRole("textbox", { name: "名前" }).inputValue(), "新井 光", "with what was typed");
 });
 
+test("手入力: choosing メモ saves the contact first, then opens a contact-scoped Memo draft", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/manual");
+  await page.getByRole("textbox", { name: "名前" }).fill("メモ 試験");
+  await page.getByTestId("add-manual-chip-note").click();
+  await page.getByText("Task › メモ に入ります").waitFor({ timeout: 2000 });
+  assert.equal(await page.getByRole("textbox", { name: "メモ" }).count(), 0, "memo text is entered after a canonical contact id exists");
+  await page.getByRole("button", { name: "保存" }).first().click();
+  await page.waitForFunction(() => (window as unknown as { addNav: { stack: string[] } }).addNav.stack.at(-1)?.startsWith("/notes/new?contactId="));
+  const route = (await nav(page)).stack.at(-1)!;
+  const savedId = server.people[0]?.id;
+  assert.equal(route, `/notes/new?contactId=${encodeURIComponent(savedId!)}`);
+  const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
+  assert.equal("note" in created, false);
+  assert.equal(server.calls.some((call) => call.path.startsWith("/api/notes")), false, "opening the editor does not create an orphan note");
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await page.getByText("追加を取り消しました").waitFor();
+  assert.equal(server.people.length, 0);
+  assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual");
+  assert.equal(server.calls.some((call) => call.path.startsWith("/api/notes")), false);
+});
+
 test("模拟器走查: 元に戻す says it is working at once, waits for the server, then returns to the form (not further back)", async (t) => {
   let release!: () => void;
   const { page, server } = await open(t, "/contacts/new/manual", { stack: ["/contacts/new", "/contacts/new/manual"], setup: (s) => { s.undoGate = new Promise((resolve) => { release = resolve; }); } });
@@ -635,9 +656,11 @@ test("模拟器走查: 元に戻す too late (409 UNDO_EXPIRED) says so and keep
 test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the page says so", async (t) => {
   const { page, server } = await open(t, "/contacts/new/manual", { setup: (s) => { s.sample = true; } });
   await page.getByRole("textbox", { name: "名前" }).fill("見本 太郎");
+  await page.getByTestId("add-manual-chip-note").click();
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByText("サンプル表示中は保存できません。", { exact: false }).waitFor();
+  assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual", "failed contact save cannot open a memo bound to a missing id");
   // b12 N12: 「これはサンプルです」 with サンプルを見続ける / ガイドを続ける.
   await page.getByText("これはサンプルです").waitFor();
   await page.getByRole("button", { name: "サンプルを見続ける" }).click();

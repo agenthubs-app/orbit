@@ -48,7 +48,7 @@ export type ManualDecision =
 /** Body of POST /api/contacts/manual for the form and the person's decision about a candidate. */
 export function createBody(form: ManualForm, decision: ManualDecision, idempotencyKey: string): ManualContactCreateInput {
   const body: ManualContactCreateInput = { displayName: clean(form.displayName), idempotencyKey };
-  for (const field of ["organization", "role", "email", "phone", "note"] as const) {
+  for (const field of ["organization", "role", "email", "phone"] as const) {
     if (clean(form[field])) body[field] = clean(form[field]);
   }
   if (form.met) {
