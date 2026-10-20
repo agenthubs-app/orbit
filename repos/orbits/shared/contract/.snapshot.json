@@ -9290,6 +9290,11 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "webCustomizedAt": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
         }
       }
     },
