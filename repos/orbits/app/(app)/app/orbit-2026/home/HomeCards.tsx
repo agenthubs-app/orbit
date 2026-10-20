@@ -15,7 +15,7 @@ import { pickCopy } from "../copy/types";
 import { TodayQuestionCard } from "../add/TodayQuestionCard";
 import { Button } from "../ui";
 import { homeCopy } from "./home-copy";
-import { homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
+import { homeContactCopyKeys, homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
 import { visibleSecretaryItems } from "./secretary-model";
 import { useHomeResource, type HomeResource } from "./use-home-resource";
 import styles from "./home.module.css";
@@ -30,7 +30,7 @@ const scheduleRowSchema = z.object({ id: z.string(), title: z.string(), startsAt
 const scheduleSchema = z.object({ scheduleItems: z.array(z.unknown()) });
 
 type LabelKey = keyof typeof homeCopy;
-type GuideProgress = { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } };
+type GuideProgress = { completed: number; nextStep?: "contacts" | "goal" | "plan" | null; steps: { contacts: boolean; goal: boolean; plan: boolean } };
 function useT() { const { language } = useOrbitLanguage(); return (key: LabelKey) => pickCopy(homeCopy[key], language); }
 
 function State<T>({ resource, children }: { resource: HomeResource<T> & { retry: () => void }; children: (data: T) => React.ReactNode }) {
@@ -45,7 +45,7 @@ function EmptyLink({ href, label }: { href: string; label: string }) { return <L
 function GuideSteps({ progress }: { progress: GuideProgress }) {
   const t = useT();
   const links = [
-    { key: "contacts", href: "/app/contacts", title: t("guideContacts") },
+    { key: "contacts", href: "/app/contacts", title: t(homeContactCopyKeys(progress).contacts) },
     { key: "goal", href: "/app/tasks?tab=plan", title: t("guideGoal") },
     { key: "plan", href: "/app/tasks?tab=plan", title: t("guidePlan") },
   ] as const;

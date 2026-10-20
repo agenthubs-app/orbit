@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveBusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
-import { OnboardingFlow } from "../onboarding-0918/onboarding-flow";
+import { OnboardingFlow } from "../../orbit-2026/onboarding/onboarding-flow";
+import { ShellPage } from "../../orbit-2026/shell/slots";
 import {
   normalizeProfileOnboardingNext,
   profileOnboardingFlowPath,
@@ -30,6 +31,7 @@ export default async function AppProfileOnboardingPage({
 
   return (
     <div data-r28-onboarding data-orbit-route="app-profile-onboarding-route">
+      <ShellPage rightRail={false} />
       <OnboardingFlow
         actorKey={session.user.id}
         cardScanAvailable={resolveBusinessCardCaptureAvailability().available}

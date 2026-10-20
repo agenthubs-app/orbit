@@ -17,7 +17,7 @@ import { Button, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { ContactDrawer } from "../network/ContactDrawer";
 import { HomeCardBody, useGuideProgress, useSecretaryPreview } from "./HomeCards";
 import { homeCopy } from "./home-copy";
-import { addHomeWidget, HOME_CATALOG, homeOpeningGeometry, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
+import { addHomeWidget, HOME_CATALOG, homeContactCopyKeys, homeOpeningGeometry, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
 import { useHomeLayout } from "./use-home-layout";
 import { homeRailSuggestions } from "./home-rail-model";
 import { useHomeResource } from "./use-home-resource";
@@ -78,6 +78,7 @@ function HomeWorkspace() {
   const railPlan = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const railEvents = useHomeResource("/api/schedule-items", railSchedule);
   const guide = useGuideProgress();
+  const contactCopy = homeContactCopyKeys(guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null);
   const items = editing ? draft ?? [...layout.web] : layout.web;
   const recommendations = homeRailSuggestions({
     secretary: secretary.kind === "ready" ? secretary.data : null,
@@ -111,7 +112,7 @@ function HomeWorkspace() {
   const holdEnd = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
 
   const rail = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
-    : <div className={styles.rail}><div className={styles.railBrand}>✨ iOrbit</div><div className={styles.railIntro}><strong>{t("railHello")}</strong><p>{t("railAbout")}</p></div><h2>✨ {t("nextMove")}</h2>{recommendations.length ? recommendations.map((item) =>
+    : <div className={styles.rail}><div className={styles.railBrand}>✨ iOrbit</div><div className={styles.railIntro}><strong>{t("railHello")}</strong><p>{t(contactCopy.intro)}</p></div><h2>✨ {t("nextMove")}</h2>{recommendations.length ? recommendations.map((item) =>
       <Link key={item.key} href={item.href} className={styles.railItem}>{item.title}<small>✨ {t(item.source === "secretary" ? "secretary" : item.source === "today" ? "today" : item.source === "plan" ? "planScore" : "schedule")} · {t("fromHome")}</small></Link>)
       : <p className={styles.subtle}>{t("empty")}</p>}<Link href="/app/inbox" className={styles.cardLink}>{t("showAll")} →</Link><RecentSessions /></div>;
 

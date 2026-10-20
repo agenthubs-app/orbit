@@ -8,8 +8,8 @@ import {
   horizonFromText,
   parseRelationshipGoal,
   type GoalHorizon,
-} from "../goal-editor/goal-editor-model";
-import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../profile-tag-options";
+} from "../../profile/goal-editor/goal-editor-model";
+import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../../profile/profile-tag-options";
 import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 
 export type Copy = { zh: string; en: string; ja?: string };

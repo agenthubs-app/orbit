@@ -4,10 +4,9 @@ import { allowsOrbitAsk } from "../../orbit-global-ask/orbit-ask-routes";
 export type ShellNavKey = "home" | "network" | "iorbit" | "events" | "task" | "inbox" | "host" | "settings" | "me";
 
 // Pages with their own frame: the public landing, sign-in, the admin host console,
-// the public organizer page, the guided demo start, registration hand-offs and the
-// onboarding flow (it has its own full-screen steps).
-const NO_SHELL_EXACT = new Set(["/app", "/app/start", "/app/platform"]);
-const NO_SHELL_PREFIXES = ["/app/account", "/app/login-admin", "/app/admin", "/app/o", "/app/register", "/app/profile/onboarding"];
+// the public organizer page and registration hand-offs.
+const NO_SHELL_EXACT = new Set(["/app", "/app/platform"]);
+const NO_SHELL_PREFIXES = ["/app/account", "/app/login-admin", "/app/admin", "/app/o", "/app/register"];
 
 function matches(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(prefix + "/");
@@ -22,6 +21,8 @@ export function shellAppliesTo(pathname: string, signedIn: boolean): boolean {
   if (!signedIn) return false;
   const path = pathname.replace(/\/+$/u, "") || "/";
   if (!matches(path, "/app") || NO_SHELL_EXACT.has(path)) return false;
+  // R28: the guide uses the shell, while the separate floating Ask remains excluded.
+  if (path === "/app/start") return true;
   return !NO_SHELL_PREFIXES.some((prefix) => matches(path, prefix)) && allowsOrbitAsk(path);
 }
 

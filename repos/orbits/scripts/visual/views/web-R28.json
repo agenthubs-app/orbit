@@ -6,7 +6,7 @@
     "grid": 30
   },
   "sources": [
-    "repos/orbits/app/(app)/app/profile/onboarding-0918/**",
+    "repos/orbits/app/(app)/app/orbit-2026/onboarding/**",
     "repos/orbits/app/(app)/app/start/**"
   ],
   "views": [

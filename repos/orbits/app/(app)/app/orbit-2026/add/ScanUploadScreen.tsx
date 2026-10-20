@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type DragEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
 import { addScanCopy as s } from "../copy/add";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Icon, IconButton, MacTile, Orbit2026Scope, Segmented, ToastProvider } from "../ui";
@@ -44,13 +45,14 @@ function readStorage(): Storage | null {
  * 「前の名刺の裏にする」, the bar 読み取りを開始). 読み取りを開始 creates the v2 batch through `onStart`
  * and opens `/app/contacts/new/scan/[batchId]`.
  */
-export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, activeBatchId = null }: {
+export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, activeBatchId = null, returnTo = null }: {
   available: boolean;
   maxPhotos: number;
   maxBytes: number;
   onStart: (cards: readonly StagedCard[]) => Promise<ScanStartResult>;
   /** A batch still being read on this device (the site-wide host yields on this page). */
   activeBatchId?: string | null;
+  returnTo?: "/app/start" | null;
 }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
@@ -62,7 +64,7 @@ export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, acti
   const photos = photoCount(cards);
   const start = async () => {
     const batchId = await stage.start(onStart);
-    if (batchId) go(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`);
+    if (batchId) go(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`, returnTo));
   };
   return (
     <Orbit2026Scope language={language} className={styles.page}>
@@ -81,7 +83,7 @@ export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, acti
                 {activeBatchId ? (
                   <p className={`${styles.notice} ${styles.noticeGap}`} data-scan-active={activeBatchId}>
                     <Icon name="clock" size={16} /><span>{t(s.activeBatch)}</span>
-                    <Button size="sm" label={t(s.activeOpen)} onClick={() => go(`/app/contacts/new/scan/${encodeURIComponent(activeBatchId)}`)} />
+                    <Button size="sm" label={t(s.activeOpen)} onClick={() => go(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(activeBatchId)}`, returnTo))} />
                   </p>
                 ) : null}
                 {available ? <DropZone t={t} stage={stage} maxPhotos={maxPhotos} /> : <p className={styles.body} role="status" data-scan-unavailable="">{t(s.unavailable)}</p>}

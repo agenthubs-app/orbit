@@ -81,7 +81,7 @@ type ContactsStage =
   | { kind: "organizing"; count: number; preview: PickPerson[]; progress?: { matched: number; normalized: number } };
 
 /** `/contacts/new/import?kind=contacts` (b9 A2 ① ② ③). */
-export function ContactsImportScreen({ design }: { design?: ImportDesignName }) {
+export function ContactsImportScreen({ design, returnTo = null }: { design?: ImportDesignName; returnTo?: "/start" | null }) {
   const { t } = useOrbitLocale();
   const router = useRouter();
   const api = useImportApi();
@@ -148,7 +148,7 @@ export function ContactsImportScreen({ design }: { design?: ImportDesignName }) 
       setStage(back);
       return;
     }
-    router.replace({ pathname: `${IMPORT_HREF}/[importId]`, params: { importId: result.data.id, excluded: String(excluded) } } as unknown as Href);
+    router.replace({ pathname: `${IMPORT_HREF}/[importId]`, params: { importId: result.data.id, excluded: String(excluded), ...(returnTo ? { returnTo } : {}) } } as unknown as Href);
   };
   const importPeople = (chosen: readonly PickPerson[], excluded: number) => {
     if (!chosen.length || stage.kind !== "pick") return;
@@ -326,7 +326,7 @@ function OrganizingStage({ count, preview, progress, onClose }: { count: number;
 }
 
 /** `/contacts/new/import?kind=linkedin` (b9 A3 ① App): the 3 steps, 取り込めるもの, CSV を選ぶ / LinkedIn を開く. */
-export function LinkedInImportScreen() {
+export function LinkedInImportScreen({ returnTo = null }: { returnTo?: "/start" | null } = {}) {
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
@@ -346,7 +346,7 @@ export function LinkedInImportScreen() {
       if (prepared.ok === false) { setError(t(prepared.reason)); return; }
       const uploaded = await api.upload(prepared.bytes, prepared.name, "csv", newImportKey());
       if (!uploaded.ok) { setError(failureText(t, uploaded.failure.kind === "other" ? uploaded.failure.reason : null, uploaded.failure.kind)); return; }
-      router.replace({ pathname: `${IMPORT_HREF}/[importId]`, params: { importId: uploaded.data.id } } as unknown as Href);
+      router.replace({ pathname: `${IMPORT_HREF}/[importId]`, params: { importId: uploaded.data.id, ...(returnTo ? { returnTo } : {}) } } as unknown as Href);
     } catch {
       setError(t("add.import.uploadFailed"));
     } finally {
@@ -403,7 +403,7 @@ const GROUP_KEY: Record<ImportIssueGroup, MessageKey> = { email: "add.import.gro
 type BatchState = { phase: "loading" } | { phase: "missing" | "expired" } | { phase: "ready"; batch: ContactImportBatchView; rows: ContactImportRowView[] };
 
 /** `/contacts/new/import/[importId]` (b9 A2 ④ App, 統一): まとめて確認 → N人を人脈に追加 → 完成. */
-export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: string; excluded?: number; design?: ImportDesignName }) {
+export function ImportBatchScreen({ batchId, excluded = 0, design, returnTo = null }: { batchId: string; excluded?: number; design?: ImportDesignName; returnTo?: "/start" | null }) {
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
@@ -490,6 +490,7 @@ export function ImportBatchScreen({ batchId, excluded = 0, design }: { batchId: 
     </KitFoot>
   ) : ready && done ? (
     <KitFoot>
+      {returnTo ? <GhostButton label={t("add.manual.sampleGuide")} onPress={() => router.replace(returnTo as Href)} testID="add-import-guide-return" /> : null}
       <XlButton icon="users" label={t("add.import.viewNetwork")} onPress={close} testID="add-import-network" />
     </KitFoot>
   ) : null;

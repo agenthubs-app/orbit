@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
-import { OnboardingFlow } from "../../app/(app)/app/profile/onboarding-0918/onboarding-flow";
+import { OnboardingFlow } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-flow";
 import {
   ONBOARDING_STEPS,
   SEEK_OPTIONS,
@@ -14,8 +14,8 @@ import {
   readOnboardingDraft,
   seekOptionsFromLabels,
   toggleValue,
-} from "../../app/(app)/app/profile/onboarding-0918/onboarding-model";
-import { OnboardingHomePreview, OnboardingNetworkPreview, firstIncompleteStep } from "../../app/(app)/app/profile/onboarding-0918/onboarding-previews";
+} from "../../app/(app)/app/orbit-2026/onboarding/onboarding-model";
+import { OnboardingHomePreview, OnboardingNetworkPreview, firstIncompleteStep } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-previews";
 import { profileOnboardingFlowPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
 test("onboarding has five steps with the AI introduction between persona and import", () => {
@@ -250,7 +250,7 @@ test("onboarding goal choices and sentence read back after reload without a loca
 });
 
 test("intro counter follows the shared bio rule: 200 for non-CJK text, 80 once CJK appears (0127)", async () => {
-  const { bioCounter } = await import("../../app/(app)/app/profile/onboarding-0918/onboarding-model");
+  const { bioCounter } = await import("../../app/(app)/app/orbit-2026/onboarding/onboarding-model");
   assert.deepEqual(bioCounter(""), { count: 0, limit: 200, over: false });
   assert.deepEqual(bioCounter(`  ${"a".repeat(180)}  `), { count: 180, limit: 200, over: false });
   assert.deepEqual(bioCounter("a".repeat(201)), { count: 201, limit: 200, over: true });

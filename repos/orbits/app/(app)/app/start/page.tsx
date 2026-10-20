@@ -20,6 +20,7 @@ import { parseStartStepParam } from "../../../../features/guide/start-steps";
 import { createProfileService } from "../../../../features/profile/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
+import { ShellPage } from "../orbit-2026/shell/slots";
 import { StartGuide, StartGuideUnavailable } from "./start-guide";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,7 @@ export default async function AppStartPage({
 
   return (
     <div data-r28-guide data-orbit-route="app-start-guide-route">
+      <ShellPage rightRail={false} />
       {body}
     </div>
   );

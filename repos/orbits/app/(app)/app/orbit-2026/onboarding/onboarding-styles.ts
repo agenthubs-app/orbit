@@ -3,6 +3,21 @@
 // 注意：本模板字面量的注释里不要写反引号。
 const S = '[data-r28-onboarding]';
 
+// Original CSS section notes (kept outside the template so the stylesheet has no localized text):
+// 本页按钮都挂 .btn（按钮 ratchet），但视觉取设计稿：先把 .btn 基类的非设计声明（44px 高、600 字重、8px 间距、nowrap、过渡）中和， 后面的 ob-* 规则同特异度、顺序在后，逐项覆盖。
+// ── 顶栏（设计 27–41 行）──
+// ── 通用按钮 ──
+// ── 欢迎（设计 46–101 行）──
+// ── 设置步骤（设计 104–264 行）──
+// ── AI 介绍（设计外新增屏，沿用步骤卡口径）──
+// ── 侧栏「iOrbit 对你的理解」（设计 239–261 行）──
+// ── 人脉步：只开放扫描名片 ──
+// ── 预览（设计 322–503 行）──
+// ── 从内联样式收拢的类（scale ratchet 只数 style 对象里的字面量）──
+// ── 禁用态：压过 [data-orbit-real-page] .btn[disabled]（0,3,0）的灰底 ──
+// ── 第 5 步：名片导入（上传组件 + 正在解析 + Network v2「10 名片确认」）──
+// 上传组件本身跟随站点主题；嵌进引导（浅色设计）时固定为浅色 token，与人脉页截图一致。
+// ── 06b 解析中补充 + 解析提醒（新用户引导.dc.html 327–352、621–650 行）──
 export const ONBOARDING_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes ob-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
@@ -12,12 +27,11 @@ ${S} a:hover { color: #0E1225; }
 ${S} input, ${S} textarea, ${S} button, ${S} select { font-family: inherit; }
 ${S} input::placeholder, ${S} textarea::placeholder { color: #9FA3C4; }
 ${S} .ob-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-/* 本页按钮都挂 .btn（按钮 ratchet），但视觉取设计稿：先把 .btn 基类的非设计声明（44px 高、600 字重、8px 间距、nowrap、过渡）中和，
-   后面的 ob-* 规则同特异度、顺序在后，逐项覆盖。 */
+
 ${S} .btn { align-items: center; justify-content: center; border: 0; border-radius: 0; background: transparent; display: inline-flex; font-size: inherit; font-weight: 400; gap: 0; height: auto; letter-spacing: normal; line-height: normal; padding: 0; text-align: inherit; transition: none; user-select: auto; white-space: normal; }
 ${S} .btn:active { transform: none; }
 
-/* ── 顶栏（设计 27–41 行）── */
+
 ${S} .ob-header { position: sticky; top: 0; z-index: 50; padding: 0; transition: padding .35s ease; }
 ${S} .ob-header-inner { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; gap: 24px; padding: 18px 40px; border-radius: 999px; background: rgba(251,251,254,0.9); border: 1px solid transparent; box-shadow: none; backdrop-filter: blur(16px); transition: all .35s ease; }
 ${S} .ob-header-scrolled { padding: 14px 24px; }
@@ -33,7 +47,7 @@ ${S} .ob-avatar-sm { width: 34px; height: 34px; border: 0; border-radius: 50%; b
 
 ${S} .ob-main { max-width: 1240px; margin: 0 auto; padding: 14px 40px 110px; display: flex; flex-direction: column; gap: 26px; }
 
-/* ── 通用按钮 ── */
+
 ${S} .ob-btn-dark { padding: 14px 32px; border: 0; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity .2s ease; }
 ${S} .ob-btn-dark:hover { background: #2E3270; color: #FFFFFF; }
 ${S} .ob-btn-dark:disabled { opacity: .35; cursor: default; background: #0E1225; }
@@ -49,7 +63,7 @@ ${S} .ob-link-under:hover { color: #0E1225; }
 ${S} .ob-link-plain { padding: 0; border: 0; background: transparent; cursor: pointer; font-size: 14px; color: #6B6F99; }
 ${S} .ob-link-plain:hover { color: #0E1225; }
 
-/* ── 欢迎（设计 46–101 行）── */
+
 ${S} .ob-welcome { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 56px; align-items: center; padding: 40px 0 20px; animation: orbit-fade .35s ease; }
 ${S} .ob-col { display: flex; flex-direction: column; gap: 28px; }
 ${S} .ob-kicker { font-size: 13px; letter-spacing: .18em; color: #3B3F7A; }
@@ -90,7 +104,7 @@ ${S} .ob-pill { padding: 6px 12px; border-radius: 999px; background: #F7F7FD; co
 ${S} .ob-tip { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 12px; background: #ECEEFB; color: #2E3270; font-size: 14px; line-height: 1.6; }
 ${S} .ob-tip-sm { font-size: 13px; line-height: 1.7; }
 
-/* ── 设置步骤（设计 104–264 行）── */
+
 ${S} .ob-steps { display: flex; flex-direction: column; gap: 26px; animation: orbit-fade .3s ease; }
 ${S} .ob-progress-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
 ${S} .ob-progress { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 14px; color: #6B6F99; }
@@ -142,14 +156,14 @@ ${S} .ob-notice { display: flex; align-items: center; gap: 12px; padding: 12px 1
 ${S} .ob-notice-error { background: #FBEAEA; color: #B5473A; }
 ${S} .ob-notice-warning { background: #FBF1DC; color: #8A6420; }
 
-/* ── AI 介绍（设计外新增屏，沿用步骤卡口径）── */
+
 ${S} .ob-ai-box { display: flex; flex-direction: column; gap: 18px; padding: 22px; border: 1px solid #DDDEFA; border-radius: 18px; background: linear-gradient(180deg, #F7F7FD 0%, #FFFFFF 70%); }
 ${S} .ob-ai-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 ${S} .ob-ai-status { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #2E3270; }
 ${S} .ob-ai-loading { display: flex; flex-direction: column; gap: 12px; padding: 6px 0; }
 ${S} .ob-ai-loading .ob-skeleton { height: 14px; animation: ob-pulse 1.4s ease infinite; }
 
-/* ── 侧栏「iOrbit 对你的理解」（设计 239–261 行）── */
+
 ${S} .ob-aside { position: sticky; top: 96px; border: 1px solid #E8E9F6; border-radius: 24px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 10px 40px rgba(59,63,122,0.06); }
 ${S} .ob-aside-title { display: flex; flex-direction: column; gap: 4px; }
 ${S} .ob-aside-title strong { font-family: var(--font); font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
@@ -164,9 +178,9 @@ ${S} .ob-mini-chip { padding: 5px 10px; border-radius: 999px; background: #ECEEF
 ${S} .ob-aside-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 ${S} .ob-aside-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 16px; border-top: 1px solid #E8E9F6; }
 
-/* ── 人脉步：只开放扫描名片 ── */
 
-/* ── 预览（设计 322–503 行）── */
+
+
 ${S} .ob-preview { display: flex; flex-direction: column; gap: 26px; animation: orbit-fade .3s ease; cursor: pointer; }
 ${S} .ob-preview-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px 14px 20px; border-radius: 16px; background: #0E1225; color: #FFFFFF; font-size: 14px; line-height: 1.6; }
 ${S} .ob-preview-banner .ob-btn-soft { border-color: #FFFFFF; }
@@ -241,7 +255,7 @@ ${S} .ob-person-main span { font-size: 13px; color: #6B6F99; }
 ${S} .ob-person-why { flex: 1.4; min-width: 220px; font-size: 13px; line-height: 1.6; color: #3B3F7A; }
 ${S} .ob-fine { padding-top: 12px; border-top: 1px solid #F1F1FA; font-size: 12px; color: #9FA3C4; }
 
-/* ── 从内联样式收拢的类（scale ratchet 只数 style 对象里的字面量）── */
+
 ${S} .ob-caret { font-size: 11px; }
 ${S} .ob-spark-lg { font-size: 18px; }
 ${S} .ob-gain-lead { font-size: 15px; color: #3B3F7A; }
@@ -272,7 +286,7 @@ ${S} .ob-net-copy { display: flex; flex-direction: column; gap: 22px; }
 ${S} .ob-net-p { max-width: 460px; line-height: 1.7; }
 ${S} .ob-net-ways { display: flex; flex-direction: column; gap: 10px; }
 
-/* ── 禁用态：压过 [data-orbit-real-page] .btn[disabled]（0,3,0）的灰底 ── */
+
 ${S} .btn.ob-btn-dark[disabled] { background: #0E1225; color: #FFFFFF; border-color: transparent; opacity: .35; cursor: default; }
 ${S} .btn.ob-btn-ghost[disabled] { background: #FFFFFF; color: #3B3F7A; border-color: #DDDEFA; opacity: .5; cursor: default; }
 ${S} .btn.ob-btn-soft[disabled] { background: #FFFFFF; color: #2E3270; border-color: #B9BCEB; opacity: .5; cursor: default; }
@@ -282,16 +296,16 @@ ${S} .btn.ob-chip-add-btn[disabled] { background: #ECEEFB; color: #2E3270; opaci
 
 
 ${S} .ob-suggest-loading { animation: ob-pulse 1.4s ease infinite; }
-/* ── 第 5 步：名片导入（上传组件 + 正在解析 + Network v2「10 名片确认」）── */
+
 ${S} .ob-grid-wide { grid-template-columns: minmax(0, 1fr); }
 ${S} .ob-finish { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 14px; }
 ${S} .ob-finish-note { font-size: 13px; color: #6B6F99; }
-/* 上传组件本身跟随站点主题；嵌进引导（浅色设计）时固定为浅色 token，与人脉页截图一致。 */
 
 
 
 
-/* ── 06b 解析中补充 + 解析提醒（新用户引导.dc.html 327–352、621–650 行）── */
+
+
 
 ${S} .ob-toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 

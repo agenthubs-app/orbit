@@ -23,7 +23,7 @@ import {
 } from "../../../../../shared/domain/industries";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { visibleCharacterCount } from "../profile-save-model";
+import { visibleCharacterCount } from "../../profile/profile-save-model";
 import {
   fetchProfile,
   fetchOnboardingProgress,
@@ -56,10 +56,10 @@ import {
   type OnboardingStep,
   type OnboardingView,
 } from "./onboarding-model";
-import { horizonOption, type GoalHorizon } from "../goal-editor/goal-editor-model";
+import { horizonOption, type GoalHorizon } from "../../profile/goal-editor/goal-editor-model";
 import { OnboardingHomePreview, OnboardingNetworkPreview, type PreviewProgress } from "./onboarding-previews";
 import { ONBOARDING_STYLES } from "./onboarding-styles";
-import { ONBOARDING_JA } from "../../orbit-2026/copy/onboarding-ja";
+import { ONBOARDING_COPY, ONBOARDING_PREVIEW_PEOPLE, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
 
 export interface OnboardingFlowProps {
   actorKey: string;
@@ -83,16 +83,16 @@ interface BasicDraft {
 const EMPTY_BASIC: BasicDraft = { birthDate: "", company: "", name: "", primaryIndustryId: "", secondaryIndustryId: "", title: "" };
 
 const WEEKDAYS: readonly Copy[] = [
-  { zh: "星期日", en: "Sunday" }, { zh: "星期一", en: "Monday" }, { zh: "星期二", en: "Tuesday" }, { zh: "星期三", en: "Wednesday" },
-  { zh: "星期四", en: "Thursday" }, { zh: "星期五", en: "Friday" }, { zh: "星期六", en: "Saturday" },
+  ONBOARDING_COPY.flow001, ONBOARDING_COPY.flow002, ONBOARDING_COPY.flow003, ONBOARDING_COPY.flow004,
+  ONBOARDING_COPY.flow005, ONBOARDING_COPY.flow006, ONBOARDING_COPY.flow007,
 ];
 
 const STEP_TITLES: Record<OnboardingStep, Copy> = {
-  profile: { zh: "告诉我们你是谁", en: "Tell us who you are" },
-  goals: { zh: "你最近想推进什么", en: "What you want to move forward" },
-  persona: { zh: "你能提供什么、在找什么", en: "What you offer and what you seek" },
-  intro: { zh: "iOrbit 帮你写好自我介绍", en: "iOrbit drafts your introduction" },
-  import: { zh: "带入已有人脉", en: "Bring in your network" },
+  profile: ONBOARDING_COPY.flow008,
+  goals: ONBOARDING_COPY.flow009,
+  persona: ONBOARDING_COPY.flow010,
+  intro: ONBOARDING_COPY.flow011,
+  import: ONBOARDING_COPY.flow012,
 };
 
 const STEP_NAV_TITLES: Record<OnboardingStep, Copy> = {
@@ -104,11 +104,11 @@ const STEP_NAV_TITLES: Record<OnboardingStep, Copy> = {
 };
 
 const STEP_TIMES: Record<OnboardingStep, Copy> = {
-  profile: { zh: "30 秒", en: "30 sec" },
-  goals: { zh: "30 秒", en: "30 sec" },
-  persona: { zh: "30 秒", en: "30 sec" },
-  intro: { zh: "AI 生成", en: "AI draft" },
-  import: { zh: "可跳过", en: "Optional" },
+  profile: ONBOARDING_COPY.flow013,
+  goals: ONBOARDING_COPY.flow014,
+  persona: ONBOARDING_COPY.flow015,
+  intro: ONBOARDING_COPY.flow016,
+  import: ONBOARDING_COPY.flow017,
 };
 
 function todayLabel(iso: string, t: (copy: Copy) => string): string {
@@ -134,7 +134,7 @@ function basicFromPayload(payload: ProfilePayload): BasicDraft {
 
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
   const { language, setLanguage, t: siteText } = useOrbitLanguage();
-  const t = (copy: Copy) => siteText(language === "ja" ? { ...copy, ja: copy.ja ?? ONBOARDING_JA[copy.en] } : copy);
+  const t = (copy: Copy) => siteText(copy);
   const lang = language;
   const [view, setView] = useState<OnboardingView>("welcome");
   const [scrolled, setScrolled] = useState(false);
@@ -174,7 +174,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const stepIndex = ONBOARDING_STEPS.indexOf(view as OnboardingStep);
   const isStep = stepIndex >= 0;
   const name = basic.name.trim();
-  const initial = name ? Array.from(name)[0]!.toUpperCase() : t({ zh: "你", en: "Y" });
+  const initial = name ? Array.from(name)[0]!.toUpperCase() : t(ONBOARDING_COPY.flow018);
   const effectiveHorizon = horizon;
 
   useEffect(() => {
@@ -225,7 +225,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         setLoaded(true);
       } catch {
         if (!active) return;
-        setLoadError(t({ zh: "资料读取失败，请刷新页面重试。", en: "Could not load your profile. Refresh to try again." }));
+        setLoadError(t(ONBOARDING_COPY.flow019));
       }
     })();
     return () => {
@@ -346,7 +346,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         ? t({ zh: "资料已在另一处更新。请刷新并核对后再保存。", en: "Your profile changed elsewhere. Refresh and review it before saving.", ja: "別の画面でプロフィールが更新されました。再読み込みして内容を確認してください。" })
         : caught instanceof Error && caught.message
           ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}`, ja: `保存できませんでした：${caught.message}` })
-          : t({ zh: "保存失败，请重试。", en: "Save failed. Please try again." }));
+          : t(ONBOARDING_COPY.flow020));
       return false;
     } finally {
       setSaving(false);
@@ -421,7 +421,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       if (kind === "regenerate" && (previous.bio.trim() || previous.headline.trim())) {
         // 换一版失败：保留上一版，不扣次数。
         setIntroStatus(previous.status === "error" ? "ready" : previous.status);
-        flash(t({ zh: "这次没换成功，保留了上一版，可以再试一次", en: "Couldn't get a new version — kept the previous one" }));
+        flash(t(ONBOARDING_COPY.flow021));
         return;
       }
       setIntroStatus("error");
@@ -451,9 +451,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         name: card.name || current.name,
         title: card.title || current.title,
       }));
-      flash(t({ zh: "已从名片识别，可继续修改", en: "Filled from your card — edit as needed" }));
+      flash(t(ONBOARDING_COPY.flow022));
     } catch {
-      setError(t({ zh: "名片没有识别出来，请换一张清晰的照片，或直接手动填写。", en: "Couldn't read the card. Try a clearer photo or fill in by hand." }));
+      setError(t(ONBOARDING_COPY.flow023));
     } finally {
       setScanning(false);
     }
@@ -477,7 +477,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     || (view === "goals" && !goalText.trim() && !goalChoices.length)
     || (view === "intro" && (!introValid || introStatus === "generating"));
 
-  const nextLabel = saving ? t({ zh: "保存中…", en: "Saving…" }) : t({ zh: "继续", en: "Continue" });
+  const nextLabel = saving ? t(ONBOARDING_COPY.flow024) : t(ONBOARDING_COPY.flow025);
 
   return (
     <>
@@ -489,17 +489,17 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
             {ONBOARDING_STEPS.map((step, index) => <span aria-current={step === view ? "step" : undefined} className={`ob-stage-item${step === view ? " ob-stage-current" : ""}`} key={step}>
               <span className="ob-stage-number">{index + 1}</span><span>{t(STEP_NAV_TITLES[step])}</span>
             </span>)}
-          </nav> : <nav className="ob-nav" aria-label={t({ zh: "预览", en: "Preview" })}>
+          </nav> : <nav className="ob-nav" aria-label={t(ONBOARDING_COPY.flow026)}>
             <button className={`btn ob-nav-link${view === "home" ? " ob-nav-on" : ""}`} onClick={() => go("home")} type="button">iOrbit</button>
-            <button className="btn ob-nav-link" onClick={() => go("home")} type="button">{t({ zh: "活动", en: "Events" })}</button>
-            <button className={`btn ob-nav-link${view === "network" ? " ob-nav-on" : ""}`} onClick={() => go("network")} type="button">{t({ zh: "人脉", en: "Network" })}</button>
+            <button className="btn ob-nav-link" onClick={() => go("home")} type="button">{t(ONBOARDING_COPY.flow027)}</button>
+            <button className={`btn ob-nav-link${view === "network" ? " ob-nav-on" : ""}`} onClick={() => go("network")} type="button">{t(ONBOARDING_COPY.flow028)}</button>
           </nav>}
           <div className="ob-header-right">
             <button className="btn ob-lang" onClick={() => setLanguage(language === "zh" ? "en" : language === "en" ? "ja" : "zh")} type="button">
               {t({ zh: "中文", en: "English", ja: "日本語" })} <span className="ob-caret" aria-hidden>⌄</span>
             </button>
             {isStep ? <button className="btn ob-header-skip" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">{t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" })}</button> : null}
-            <button aria-label={t({ zh: "关于你", en: "About you" })} className="btn ob-avatar-sm" onClick={() => go("profile")} type="button">{initial}</button>
+            <button aria-label={t(ONBOARDING_COPY.flow029)} className="btn ob-avatar-sm" onClick={() => go("profile")} type="button">{initial}</button>
           </div>
         </div>
       </header>
@@ -521,7 +521,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 </span>
               </span>
               <button className="btn ob-link-plain" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">
-                {complete ? t({ zh: "跳过，稍后在个人中心设置", en: "Skip, finish later in your profile" }) : t({ zh: "先看看 iOrbit", en: "Look around first" })}
+                {complete ? t(ONBOARDING_COPY.flow030) : t(ONBOARDING_COPY.flow031)}
               </button>
             </div>
 
@@ -569,12 +569,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   />
                 ) : null}
                 {view === "import" ? (
-                  <div className="ob-stack" data-screen-label="06 带入人脉">
-                    <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap the cards you have and iOrbit can start judging who's worth contacting now." })} />
+                  <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.import}>
+                    <StepHead title={t(ONBOARDING_COPY.flow032)} sub={t(ONBOARDING_COPY.flow033)} />
                     <div className="ob-import-links">
-                      {cardScanAvailable ? <a className="btn ob-btn-dark" href="/app/contacts/new/scan">{t({ zh: "扫名片", en: "Scan business cards" })}</a> : null}
-                      <a className="btn ob-btn-ghost" href="/app/contacts/new?method=csv">{t({ zh: "导入联系人", en: "Import contacts" })}</a>
-                      <p>{t({ zh: "确认完名片后，返回这里继续。也可以先跳过。", en: "After confirming your cards, return here to continue. You can also skip this step." })}</p>
+                      {cardScanAvailable ? <a className="btn ob-btn-dark" href="/app/contacts/new/scan">{t(ONBOARDING_COPY.flow034)}</a> : null}
+                      <a className="btn ob-btn-ghost" href="/app/contacts/new?method=csv">{t(ONBOARDING_COPY.flow035)}</a>
+                      <p>{t(ONBOARDING_COPY.flow036)}</p>
                     </div>
                   </div>
                 ) : null}
@@ -582,12 +582,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 {error ? <div className="ob-notice ob-notice-error" role="alert">{error}</div> : null}
 
                 <div className="ob-footer">
-                  <button className="btn ob-btn-ghost" disabled={saving} onClick={onBack} type="button">{t({ zh: "← 上一步", en: "← Back" })}</button>
+                  <button className="btn ob-btn-ghost" disabled={saving} onClick={onBack} type="button">{t(ONBOARDING_COPY.flow037)}</button>
                   <span className="ob-footer-right">
                     {view === "import" ? (
                       <span className="ob-finish">
                         <button className="btn ob-btn-dark" disabled={saving} onClick={() => void finish()} type="button">
-                          {t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
+                          {t(ONBOARDING_COPY.flow038)}
                         </button>
                       </span>
                     ) : (
@@ -628,11 +628,11 @@ type T = (copy: Copy) => string;
 
 function Welcome({ onBrowse, onStart, t }: { onBrowse: () => void; onStart: () => void; t: T }) {
   return (
-    <section className="ob-welcome" data-screen-label="01 欢迎">
+    <section className="ob-welcome" data-screen-label={ONBOARDING_SCREEN_LABELS.welcome}>
       <div className="ob-col">
-        <span className="ob-kicker">{t({ zh: "账号已创建", en: "Account created" })}</span>
-        <h1 className="ob-h1">{t({ zh: "欢迎来到 Orbit。", en: "Welcome to Orbit." })}<br />{t({ zh: "先让 iOrbit", en: "Let iOrbit" })}<br />{t({ zh: "认识你。", en: "get to know you." })}</h1>
-        <p className="ob-lead">{t({ zh: "大约 2 分钟。即使你现在一个联系人都没有，iOrbit 也能告诉你该去哪场活动、先认识谁、从什么话题开始。", en: "About 2 minutes. Even with zero contacts, iOrbit can tell you which events to attend, who to meet first and what to talk about." })}</p>
+        <span className="ob-kicker">{t(ONBOARDING_COPY.flow039)}</span>
+        <h1 className="ob-h1">{t(ONBOARDING_COPY.flow040)}<br />{t(ONBOARDING_COPY.flow041)}<br />{t(ONBOARDING_COPY.flow042)}</h1>
+        <p className="ob-lead">{t(ONBOARDING_COPY.flow043)}</p>
         <div className="ob-steplist">
           {ONBOARDING_STEPS.map((step, index) => (
             <div className="ob-steplist-row" key={step}>
@@ -643,44 +643,44 @@ function Welcome({ onBrowse, onStart, t }: { onBrowse: () => void; onStart: () =
           ))}
         </div>
         <div className="ob-actions">
-          <button className="btn ob-btn-dark ob-btn-dark-lg" onClick={onStart} type="button">{t({ zh: "开始设置", en: "Get started" })}</button>
-          <button className="btn ob-link-under" onClick={onBrowse} type="button">{t({ zh: "先随便看看", en: "Just look around" })}</button>
+          <button className="btn ob-btn-dark ob-btn-dark-lg" onClick={onStart} type="button">{t(ONBOARDING_COPY.flow044)}</button>
+          <button className="btn ob-link-under" onClick={onBrowse} type="button">{t(ONBOARDING_COPY.flow045)}</button>
         </div>
       </div>
       <div className="ob-panel">
         <div className="ob-panel-card">
           <div className="ob-iorbit-head">
-            <strong>{t({ zh: "iOrbit 智能", en: "iOrbit" })}</strong>
+            <strong>{t(ONBOARDING_COPY.flow046)}</strong>
             <span className="ob-spark ob-spark-lg" aria-hidden>✦</span>
             <span className="ob-vbar" aria-hidden />
-            <span className="ob-muted">{t({ zh: "正在等你介绍自己", en: "Waiting for you to introduce yourself" })}</span>
+            <span className="ob-muted">{t(ONBOARDING_COPY.flow047)}</span>
           </div>
           <div className="ob-fakeask" aria-hidden>
-            <span className="ob-fakeask-text">{t({ zh: "我刚来东京，想找到第一批合作伙伴……", en: "I just moved to Tokyo and want to find my first partners…" })}</span>
+            <span className="ob-fakeask-text">{t(ONBOARDING_COPY.flow048)}</span>
             <span className="ob-fakeask-send">↑</span>
           </div>
           <div className="ob-hr" />
-          <span className="ob-gain-lead">{t({ zh: "设置完成后，你会立刻得到", en: "Once set up, you immediately get" })}</span>
+          <span className="ob-gain-lead">{t(ONBOARDING_COPY.flow049)}</span>
           <div>
             <div className="ob-gain">
-              <span className="ob-gain-icon" aria-hidden><small>{t({ zh: "活动", en: "Event" })}</small><strong>✧</strong></span>
-              <span className="ob-gain-body"><strong>{t({ zh: "适合你的近期活动", en: "Upcoming events that fit you" })}</strong><span className="ob-skeleton" style={{ width: "70%" }} /></span>
-              <span className="ob-pill">{t({ zh: "第 2 步后", en: "After step 2" })}</span>
+              <span className="ob-gain-icon" aria-hidden><small>{t(ONBOARDING_COPY.flow050)}</small><strong>✧</strong></span>
+              <span className="ob-gain-body"><strong>{t(ONBOARDING_COPY.flow051)}</strong><span className="ob-skeleton" style={{ width: "70%" }} /></span>
+              <span className="ob-pill">{t(ONBOARDING_COPY.flow052)}</span>
             </div>
             <div className="ob-gain">
-              <span className="ob-gain-pair" aria-hidden><span>佐</span><span>陈</span></span>
-              <span className="ob-gain-body"><strong>{t({ zh: "值得先认识的人", en: "People worth meeting first" })}</strong><span className="ob-skeleton" style={{ width: "55%" }} /></span>
-              <span className="ob-pill">{t({ zh: "第 3 步后", en: "After step 3" })}</span>
+              <span className="ob-gain-pair" aria-hidden><span>{ONBOARDING_PREVIEW_PEOPLE[0].ch}</span><span>{ONBOARDING_PREVIEW_PEOPLE[1].ch}</span></span>
+              <span className="ob-gain-body"><strong>{t(ONBOARDING_COPY.flow053)}</strong><span className="ob-skeleton" style={{ width: "55%" }} /></span>
+              <span className="ob-pill">{t(ONBOARDING_COPY.flow054)}</span>
             </div>
             <div className="ob-gain">
               <span className="ob-gain-icon ob-gain-quote" aria-hidden>“</span>
-              <span className="ob-gain-body"><strong>{t({ zh: "一段拿得出手的自我介绍", en: "A self-introduction ready to use" })}</strong><span className="ob-skeleton" style={{ width: "62%" }} /></span>
-              <span className="ob-pill">{t({ zh: "第 4 步后", en: "After step 4" })}</span>
+              <span className="ob-gain-body"><strong>{t(ONBOARDING_COPY.flow055)}</strong><span className="ob-skeleton" style={{ width: "62%" }} /></span>
+              <span className="ob-pill">{t(ONBOARDING_COPY.flow056)}</span>
             </div>
           </div>
           <div className="ob-tip">
             <span className="ob-spark" aria-hidden>✦</span>
-            <span>{t({ zh: "不需要任何联系人。你的目标就是 iOrbit 的第一条线索。", en: "No contacts needed. Your goal is iOrbit's first lead." })}</span>
+            <span>{t(ONBOARDING_COPY.flow057)}</span>
           </div>
         </div>
       </div>
@@ -691,7 +691,7 @@ function Welcome({ onBrowse, onStart, t }: { onBrowse: () => void; onStart: () =
 function Field({ children, label, required, t }: { children: ReactNode; label: Copy; required?: boolean; t: T }) {
   return (
     <label className="ob-field">
-      <span className="ob-field-label">{t(label)}{required ? <span className="ob-required">{t({ zh: "必填", en: "Required" })}</span> : null}</span>
+      <span className="ob-field-label">{t(label)}{required ? <span className="ob-required">{t(ONBOARDING_COPY.flow058)}</span> : null}</span>
       {children}
     </label>
   );
@@ -726,31 +726,31 @@ function ProfileStep({
     setBasic(current => ({ ...current, [key]: value }));
   };
   return (
-    <div className="ob-stack" data-screen-label="02 关于你">
-      <StepHead title={t({ zh: "你是谁？", en: "Who are you?" })} sub={t({ zh: "这是别人在活动中看到你的第一眼，也是 iOrbit 为你匹配人的起点。", en: "This is the first thing people see at events, and where iOrbit starts matching you." })} />
+    <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.basics}>
+      <StepHead title={t(ONBOARDING_COPY.flow059)} sub={t(ONBOARDING_COPY.flow060)} />
       {cardScanAvailable ? (
         <>
           <button className="btn ob-autofill" disabled={disabled || scanning} onClick={() => fileRef.current?.click()} type="button">
             <span className="ob-spark" aria-hidden>✦</span>
-            {scanning ? t({ zh: "正在识别名片…", en: "Reading your card…" }) : t({ zh: "拍摄或上传自己的名片，自动填写", en: "Photograph or upload your own card to fill this in" })}
+            {scanning ? t(ONBOARDING_COPY.flow061) : t(ONBOARDING_COPY.flow062)}
           </button>
           <input accept="image/*,.heic,.heif" className="ob-sr" onChange={onCardFile} ref={fileRef} tabIndex={-1} type="file" aria-hidden />
         </>
       ) : null}
       <div className="ob-fields">
-        <Field label={{ zh: "姓名", en: "Name" }} required t={t}>
-          <input className="ob-input" disabled={disabled} maxLength={60} onChange={set("name")} placeholder={t({ zh: "你希望别人怎么称呼你", en: "How should people call you?" })} value={basic.name} />
+        <Field label={ONBOARDING_COPY.flow063} required t={t}>
+          <input className="ob-input" disabled={disabled} maxLength={60} onChange={set("name")} placeholder={t(ONBOARDING_COPY.flow064)} value={basic.name} />
         </Field>
-        <Field label={{ zh: "公司", en: "Company" }} t={t}>
-          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("company")} placeholder={t({ zh: "例如：Orbit", en: "e.g. Orbit" })} value={basic.company} />
+        <Field label={ONBOARDING_COPY.flow065} t={t}>
+          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("company")} placeholder={t(ONBOARDING_COPY.flow066)} value={basic.company} />
         </Field>
-        <Field label={{ zh: "职位", en: "Title" }} t={t}>
-          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("title")} placeholder={t({ zh: "例如：产品负责人", en: "e.g. Head of Product" })} value={basic.title} />
+        <Field label={ONBOARDING_COPY.flow067} t={t}>
+          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("title")} placeholder={t(ONBOARDING_COPY.flow068)} value={basic.title} />
         </Field>
         <Field label={{ zh: "生日（可选）", en: "Birthday (optional)", ja: "生年月日（任意）" }} t={t}>
           <input className="ob-input" disabled={disabled} max={todayIso} onChange={set("birthDate")} type="date" value={basic.birthDate} />
         </Field>
-        <Field label={{ zh: "一级行业", en: "Primary industry" }} required t={t}>
+        <Field label={ONBOARDING_COPY.flow069} required t={t}>
           <select
             className="ob-input"
             disabled={disabled}
@@ -760,11 +760,11 @@ function ProfileStep({
             }}
             value={basic.primaryIndustryId}
           >
-            <option value="">{t({ zh: "请选择", en: "Select" })}</option>
+            <option value="">{t(ONBOARDING_COPY.flow070)}</option>
             {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)}
           </select>
         </Field>
-        <Field label={{ zh: "二级行业", en: "Secondary industry" }} required t={t}>
+        <Field label={ONBOARDING_COPY.flow071} required t={t}>
           <select
             className="ob-input"
             disabled={disabled || !basic.primaryIndustryId}
@@ -774,15 +774,15 @@ function ProfileStep({
             }}
             value={basic.secondaryIndustryId}
           >
-            <option value="">{basic.primaryIndustryId ? t({ zh: "请选择", en: "Select" }) : t({ zh: "先选择一级行业", en: "Choose a primary industry first" })}</option>
+            <option value="">{basic.primaryIndustryId ? t(ONBOARDING_COPY.flow072) : t(ONBOARDING_COPY.flow073)}</option>
             {(basic.primaryIndustryId ? listSecondaryIndustries(basic.primaryIndustryId) : []).map(item => (
               <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>
             ))}
           </select>
         </Field>
       </div>
-      {showBirthError ? <div className="ob-notice ob-notice-warning">{t({ zh: "请填写有效的生日（不能晚于今天）。", en: "Enter a valid birthday (not later than today)." })}</div> : null}
-      <span className="ob-label-note ob-privacy">{t({ zh: "生日仅自己可见，用于活动报名核验，不会展示给其他人。", en: "Your birthday is private — used only for event registration checks, never shown to others." })}</span>
+      {showBirthError ? <div className="ob-notice ob-notice-warning">{t(ONBOARDING_COPY.flow074)}</div> : null}
+      <span className="ob-label-note ob-privacy">{t(ONBOARDING_COPY.flow075)}</span>
     </div>
   );
 }
@@ -809,7 +809,7 @@ function ChipGroup({
   }
   return (
     <div className="ob-group">
-      <span className="ob-label">{title}{limit ? <span className="ob-label-note">{t({ zh: `${values.length}/${limit}`, en: `${values.length}/${limit}` })}</span> : null}</span>
+      <span className="ob-label">{title}{limit ? <span className="ob-label-note">{t({ zh: `${values.length}/${limit}`, en: `${values.length}/${limit}`, ja: `${values.length}/${limit}` })}</span> : null}</span>
       <div className="ob-chips">
         {options.map(option => {
           const selected = values.find(value => optionMatches(option, value));
@@ -848,7 +848,7 @@ function ChipGroup({
             placeholder={t(customPlaceholder)}
             value={custom}
           />
-          <button className="btn ob-chip-add-btn" disabled={full || !custom.trim()} onClick={add} type="button">{t({ zh: "添加", en: "Add" })}</button>
+          <button className="btn ob-chip-add-btn" disabled={full || !custom.trim()} onClick={add} type="button">{t(ONBOARDING_COPY.flow076)}</button>
         </span>
       </div>
     </div>
@@ -863,19 +863,19 @@ function GoalsStep({ goals, setGoals, setGoalText, t, text }: {
   text: string;
 }) {
   return (
-    <div className="ob-stack" data-screen-label="03 目标">
-      <StepHead title={t({ zh: "最想达成什么？", en: "What matters most now?" })} sub={t({ zh: "最多选 2 项，按选择顺序优先。", en: "Choose up to two, in priority order." })} />
-      <div className="ob-group"><span className="ob-label">{t({ zh: "当前目标", en: "Current goals" })} <span className="ob-label-note">{goals.length} / 2</span></span>
+    <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.goals}>
+      <StepHead title={t(ONBOARDING_COPY.flow077)} sub={t(ONBOARDING_COPY.flow078)} />
+      <div className="ob-group"><span className="ob-label">{t(ONBOARDING_COPY.flow079)} <span className="ob-label-note">{goals.length} / 2</span></span>
         <div className="ob-chips">{PROFILE_ONBOARDING_GOALS.map((option) => {
           const selected = goals.find((value) => value === option.zh || value === option.en || value === option.ja);
           return <button aria-pressed={Boolean(selected)} className={`btn ob-chip${selected ? " ob-chip-on" : ""}`} disabled={!selected && goals.length >= 2} key={option.id}
             onClick={() => setGoals(selected ? goals.filter((value) => value !== selected) : [...goals, t(option)])} type="button">{selected ? `${goals.indexOf(selected) + 1}. ` : ""}{t(option)}</button>;
         })}</div>
       </div>
-      <label className="ob-field"><span className="ob-field-label">{t({ zh: "用一句话补充（可选）", en: "Add one sentence (optional)" })}</span>
+      <label className="ob-field"><span className="ob-field-label">{t(ONBOARDING_COPY.flow080)}</span>
         <textarea className="ob-input" maxLength={80} onChange={(event) => setGoalText(event.target.value)} rows={3} value={text} />
       </label>
-      <p className="ob-label-note">{t({ zh: "不默认设置期限。", en: "No deadline is set automatically." })}</p>
+      <p className="ob-label-note">{t(ONBOARDING_COPY.flow081)}</p>
     </div>
   );
 }
@@ -896,40 +896,40 @@ function PersonaStep({
   // 建议项排在前面，便于一眼看到。
   const seekOptions = [...suggested, ...SEEK_OPTIONS.filter(option => !suggested.some(item => item.zh === option.zh))];
   return (
-    <div className="ob-stack" data-screen-label="04 商务画像">
-      <StepHead title={t({ zh: "你能提供什么，在找什么？", en: "What can you offer, and what are you looking for?" })} sub={t({ zh: "好的关系是双向的。这两组词决定谁会被推荐给你，你又会被推荐给谁。", en: "Good relationships go both ways. These tags decide who is recommended to you, and to whom you are recommended." })} />
+    <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.persona}>
+      <StepHead title={t(ONBOARDING_COPY.flow082)} sub={t(ONBOARDING_COPY.flow083)} />
       <ChipGroup
-        customPlaceholder={{ zh: "自定义", en: "Custom" }}
+        customPlaceholder={ONBOARDING_COPY.flow084}
         limit={OFFER_LIMIT}
         options={OFFER_OPTIONS}
         setValues={setOffer}
         t={t}
-        title={t({ zh: "我能提供", en: "I can offer" })}
+        title={t(ONBOARDING_COPY.flow085)}
         values={offer}
       />
       <ChipGroup
-        customPlaceholder={{ zh: "自定义", en: "Custom" }}
+        customPlaceholder={ONBOARDING_COPY.flow086}
         limit={SEEK_LIMIT}
         options={seekOptions}
         setValues={setSeek}
         suggested={suggested}
         t={t}
-        title={<>{t({ zh: "我在寻找", en: "I'm looking for" })}{suggestStatus === "loading"
-          ? <span className="ob-label-note ob-suggest-loading">{t({ zh: "✦ iOrbit 正在根据你的目标挑选…", en: "✦ iOrbit is picking from your goals…" })}</span>
+        title={<>{t(ONBOARDING_COPY.flow087)}{suggestStatus === "loading"
+          ? <span className="ob-label-note ob-suggest-loading">{t(ONBOARDING_COPY.flow088)}</span>
           : suggested.length
-            ? <span className="ob-label-note">{t({ zh: "✦ iOrbit 根据你的目标建议", en: "✦ Suggested by iOrbit from your goals" })}</span>
+            ? <span className="ob-label-note">{t(ONBOARDING_COPY.flow089)}</span>
             : suggestStatus === "error"
-              ? <span className="ob-label-note">{t({ zh: "暂时没拿到建议，按需自己选即可", en: "No suggestions right now — pick what fits" })}</span>
+              ? <span className="ob-label-note">{t(ONBOARDING_COPY.flow090)}</span>
               : null}</>}
         values={seek}
       />
       <ChipGroup
-        customPlaceholder={{ zh: "自定义话题", en: "Custom topic" }}
+        customPlaceholder={ONBOARDING_COPY.flow091}
         limit={TOPIC_LIMIT}
         options={TOPIC_OPTIONS}
         setValues={setTopics}
         t={t}
-        title={<>{t({ zh: "想聊的话题", en: "Topics to talk about" })}<span className="ob-label-note">{t({ zh: "可选", en: "Optional" })}</span></>}
+        title={<>{t(ONBOARDING_COPY.flow092)}<span className="ob-label-note">{t(ONBOARDING_COPY.flow093)}</span></>}
         values={topics}
       />
     </div>
@@ -952,17 +952,17 @@ function IntroStep({
 }) {
   const generating = status === "generating";
   return (
-    <div className="ob-stack" data-screen-label="05 AI 介绍">
-      <StepHead title={t({ zh: "iOrbit 帮你写好了介绍", en: "iOrbit wrote your introduction" })} sub={t({ zh: "根据你刚才填写的身份、目标和画像生成。满意就直接用，也可以改几个字。", en: "Drafted from the identity, goals and persona you just entered. Use it as is or tweak a few words." })} />
+    <div className="ob-stack" data-screen-label={ONBOARDING_SCREEN_LABELS.intro}>
+      <StepHead title={t(ONBOARDING_COPY.flow094)} sub={t(ONBOARDING_COPY.flow095)} />
       <div className="ob-ai-box" aria-live="polite">
         <div className="ob-ai-head">
           <span className="ob-ai-status">
             <span className="ob-spark" aria-hidden>✦</span>
             {generating
-              ? t({ zh: "iOrbit 正在根据你的资料起草…", en: "iOrbit is drafting from your profile…" })
+              ? t(ONBOARDING_COPY.flow096)
               : status === "error"
-                ? t({ zh: "这次没有生成成功", en: "This draft didn't come through" })
-                : t({ zh: "AI 草稿 · 可直接修改", en: "AI draft · edit freely" })}
+                ? t(ONBOARDING_COPY.flow097)
+                : t(ONBOARDING_COPY.flow098)}
           </span>
           {status === "error" ? (
             errorCode === "INTRO_LIMIT_REACHED" || errorCode === "SAMPLE_READ_ONLY" ? null
@@ -971,7 +971,7 @@ function IntroStep({
             <button className="btn ob-btn-soft" disabled={generating || regenerationsLeft <= 0} onClick={onRegenerate} type="button">
               {regenerationsLeft > 0
                 ? t({ zh: `↻ 换一版 · 还剩 ${regenerationsLeft} 次`, en: `↻ Try another · ${regenerationsLeft} left`, ja: `↻ 別の案を作る · 残り${regenerationsLeft}回` })
-                : t({ zh: "换一版次数已用完", en: "No more versions" })}
+                : t(ONBOARDING_COPY.flow099)}
             </button>
           )}
         </div>
@@ -993,11 +993,11 @@ function IntroStep({
         ) : (
           <>
             <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "一句话介绍", en: "One-line intro" })}</span>
-              <input className="ob-input" maxLength={HEADLINE_LIMIT} onChange={event => setHeadline(event.target.value)} placeholder={t({ zh: "例如：帮助中国品牌落地日本市场", en: "e.g. Helping Chinese brands launch in Japan" })} value={headline} />
+              <span className="ob-field-label">{t(ONBOARDING_COPY.flow100)}</span>
+              <input className="ob-input" maxLength={HEADLINE_LIMIT} onChange={event => setHeadline(event.target.value)} placeholder={t(ONBOARDING_COPY.flow101)} value={headline} />
             </label>
             <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "关于我", en: "About me" })}</span>
+              <span className="ob-field-label">{t(ONBOARDING_COPY.flow102)}</span>
               <textarea className="ob-input" onChange={event => setBio(event.target.value)} rows={3} value={bio} />
               <span className={`ob-count${bioCount.over ? " ob-count-over" : ""}`}>{bioCount.count}/{bioCount.limit}</span>
             </label>
@@ -1006,7 +1006,7 @@ function IntroStep({
       </div>
       <div className="ob-tip ob-tip-sm">
         <span className="ob-spark" aria-hidden>✦</span>
-        <span>{t({ zh: "只会保存到你的个人资料，不会发给任何人。之后可以在个人中心随时修改。", en: "Saved to your profile only — never sent to anyone. You can change it any time in your profile." })}</span>
+        <span>{t(ONBOARDING_COPY.flow103)}</span>
       </div>
     </div>
   );
@@ -1036,33 +1036,33 @@ function UnderstandingAside({
   const separator = t({ zh: "、", en: ", ", ja: "、" });
   const goal = goalText.trim();
   return (
-    <aside className="ob-aside" aria-label={t({ zh: "iOrbit 对你的理解", en: "How iOrbit sees you" })}>
+    <aside className="ob-aside" aria-label={t(ONBOARDING_COPY.flow104)}>
       <span className="ob-aside-title">
-        <span className="ob-aside-heading"><span className="ob-spark" aria-hidden>✦</span><strong>{t({ zh: "iOrbit 对你的理解", en: "How iOrbit sees you" })}</strong></span>
-        <span className="ob-aside-sub">{t({ zh: "随你填写实时更新", en: "Updates as you type" })}</span>
+        <span className="ob-aside-heading"><span className="ob-spark" aria-hidden>✦</span><strong>{t(ONBOARDING_COPY.flow105)}</strong></span>
+        <span className="ob-aside-sub">{t(ONBOARDING_COPY.flow106)}</span>
       </span>
       <span className="ob-aside-person">
         <span className="ob-avatar" aria-hidden>{initial}</span>
         <span className="ob-aside-who">
-          <strong className={name ? "" : "ob-aside-empty"}>{name || t({ zh: "你的名字", en: "Your name" })}</strong>
-          <span className={`ob-aside-line${line.length ? "" : " ob-aside-empty"}`}>{line.length ? line.join(" · ") : t({ zh: "职位 · 公司 · 行业", en: "Title · Company · Industry" })}</span>
+          <strong className={name ? "" : "ob-aside-empty"}>{name || t(ONBOARDING_COPY.flow107)}</strong>
+          <span className={`ob-aside-line${line.length ? "" : " ob-aside-empty"}`}>{line.length ? line.join(" · ") : t(ONBOARDING_COPY.flow108)}</span>
           {headline.trim() ? <span className="ob-aside-headline">{headline.trim()}</span> : null}
         </span>
       </span>
       <span className="ob-aside-sec">
-        <span className="ob-aside-label">{t({ zh: "当前目标", en: "Current goal" })}</span>
+        <span className="ob-aside-label">{t(ONBOARDING_COPY.flow109)}</span>
         {goal ? <span className="ob-aside-val ob-aside-focus">“{goal}”{horizon ? ` · ${t(horizonOption(horizon).label)}` : ""}</span>
           : savedGoal.trim()
             ? <span className="ob-aside-val">{savedGoal.trim()}</span>
-            : <span className="ob-aside-val ob-aside-empty">{t({ zh: "待填写", en: "Not set" })}</span>}
+            : <span className="ob-aside-val ob-aside-empty">{t(ONBOARDING_COPY.flow110)}</span>}
       </span>
       <span className="ob-aside-two">
-        <span className="ob-aside-sec"><span className="ob-aside-label">{t({ zh: "能提供", en: "Offers" })}</span><span className={`ob-aside-val${offer.length ? "" : " ob-aside-empty"}`}>{offer.length ? offer.join(separator) : t({ zh: "待填写", en: "Not set" })}</span></span>
-        <span className="ob-aside-sec"><span className="ob-aside-label">{t({ zh: "在寻找", en: "Seeking" })}</span><span className={`ob-aside-val${seek.length ? "" : " ob-aside-empty"}`}>{seek.length ? seek.join(separator) : t({ zh: "待填写", en: "Not set" })}</span></span>
+        <span className="ob-aside-sec"><span className="ob-aside-label">{t(ONBOARDING_COPY.flow111)}</span><span className={`ob-aside-val${offer.length ? "" : " ob-aside-empty"}`}>{offer.length ? offer.join(separator) : t(ONBOARDING_COPY.flow112)}</span></span>
+        <span className="ob-aside-sec"><span className="ob-aside-label">{t(ONBOARDING_COPY.flow113)}</span><span className={`ob-aside-val${seek.length ? "" : " ob-aside-empty"}`}>{seek.length ? seek.join(separator) : t(ONBOARDING_COPY.flow114)}</span></span>
       </span>
       <span className="ob-aside-foot">
-        <span className="ob-aside-label">{t({ zh: "人脉", en: "Network" })}</span>
-        <span className="ob-aside-headline">{addedCount ? t({ zh: `已带入 ${addedCount} 位`, en: `${addedCount} added`, ja: `${addedCount}人を追加` }) : view === "import" ? t({ zh: "可通过扫描名片带入", en: "Bring in by scanning cards" }) : t({ zh: "尚未带入", en: "Not imported yet" })}</span>
+        <span className="ob-aside-label">{t(ONBOARDING_COPY.flow115)}</span>
+        <span className="ob-aside-headline">{addedCount ? t({ zh: `已带入 ${addedCount} 位`, en: `${addedCount} added`, ja: `${addedCount}人を追加` }) : view === "import" ? t(ONBOARDING_COPY.flow116) : t(ONBOARDING_COPY.flow117)}</span>
       </span>
       {goal ? (
         <span className="ob-tip ob-tip-sm">

@@ -2,8 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DEFAULT_HOME_LAYOUT } from "../../shared/api-schema/home-layout";
-import { addHomeWidget, homeOpeningGeometry, homeWeekWindow, moveHomeWidget, removeHomeWidget, resizeHomeWidget,
+import { addHomeWidget, homeContactCopyKeys, homeOpeningGeometry, homeWeekWindow, moveHomeWidget, removeHomeWidget, resizeHomeWidget,
   selectNextRegisteredEvent, signedTodayDelta } from "../../app/(app)/app/orbit-2026/home/home-model";
+
+test("home first-step copy follows the shared guide projection", () => {
+  assert.deepEqual(homeContactCopyKeys({ completed: 0, nextStep: "contacts", steps: { contacts: false } }), { intro: "railAbout", contacts: "guideContacts" });
+  assert.deepEqual(homeContactCopyKeys({ completed: 1, nextStep: "goal", steps: { contacts: true } }), { intro: "railAboutReady", contacts: "guideContactsDone" });
+  assert.deepEqual(homeContactCopyKeys({ completed: 3, nextStep: null, steps: { contacts: true } }), { intro: "railAboutReady", contacts: "guideContactsDone" });
+  assert.deepEqual(homeContactCopyKeys(null), { intro: "railAboutReady", contacts: "guideContacts" });
+});
 
 test("an untouched default keeps its 5/4/3/5/7 geometry across an App edit and hint dismissal", () => {
   assert.equal(homeOpeningGeometry(DEFAULT_HOME_LAYOUT), true);

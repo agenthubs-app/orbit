@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OnboardingRequestError, saveProfileFields } from "../../app/(app)/app/profile/onboarding-0918/onboarding-client";
+import { OnboardingRequestError, saveProfileFields } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-client";
 
 test("a stale onboarding save leaves another tab's confirmed profile untouched", async () => {
   const originalFetch = globalThis.fetch;

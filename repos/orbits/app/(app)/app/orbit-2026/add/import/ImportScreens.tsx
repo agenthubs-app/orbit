@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ContactImportBatchView, ContactImportMappableField, ContactImportRowView } from "../../../../../../shared/contract/contact-import";
+import { appendWebGuideReturnTo } from "../../../../../../features/guide/return-to";
 import { useOrbitLanguage } from "../../../orbit-language-context";
 import { addImportCopy as c } from "../../copy/add-import";
+import { addManualCopy } from "../../copy/add";
 import { ShellPage } from "../../shell/slots";
 import { Button, Card, CountUp, Icon, IconButton, MacTile, Orbit2026Scope, RetryCard, Skeleton, ToastProvider, useToast } from "../../ui";
 import { translator, type Translate } from "../add-parts";
@@ -55,11 +57,12 @@ const SOURCE_BRAND = { linkedin: "LinkedIn", csv: "CSV" } as const;
 const sourceName = (source: ImportSource, t: Translate) => (source === "linkedin" || source === "csv" ? SOURCE_BRAND[source] : t(SOURCE_LABEL[source]));
 const TITLE = { linkedin: [c.linkedinTitle, c.linkedinCrumb], contacts: [c.vcardTitle, c.vcardCrumb], csv: [c.csvTitle, c.csvCrumb], event: [c.eventTitle, c.eventCrumb] } as const;
 
-function usePage() {
+function usePage(returnTo: "/app/start" | null = null) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const t = translator(language);
-  return { language, t, href: preserveHref, go: (path: string) => router.push(preserveHref(path)), replace: (path: string) => router.replace(preserveHref(path)) };
+  const href = (path: string) => preserveHref(path.startsWith(IMPORT_HREF) ? appendWebGuideReturnTo(path, returnTo) : path);
+  return { language, t, href, go: (path: string) => router.push(href(path)), replace: (path: string) => router.replace(href(path)) };
 }
 
 export function batchHref(id: string, step?: "review"): string {
@@ -78,8 +81,8 @@ function rejectMessage(t: Translate, error: unknown): string {
 }
 
 /** `/app/contacts/new/import` (W-R16-10) and `?method=linkedin|contacts|csv|event`. */
-export function ImportStartScreen({ method, preset }: { method: ImportMethod | null; preset?: StartPreset }) {
-  const page = usePage();
+export function ImportStartScreen({ method, preset, returnTo = null }: { method: ImportMethod | null; preset?: StartPreset; returnTo?: "/app/start" | null }) {
+  const page = usePage(returnTo);
   const { t } = page;
   const back = <IconButton icon="left" label={t(c.back)} onClick={() => page.go(method ? IMPORT_HREF : "/app/contacts/new")} />;
   const [title, crumb] = method ? TITLE[method] : [c.doorsTitle, c.doorsCrumb];
@@ -89,8 +92,8 @@ export function ImportStartScreen({ method, preset }: { method: ImportMethod | n
       <ToastProvider>
         <ShellPage title={t(title)} subtitle={t(crumb)} left={back} rightRail={rail} />
         {method === null ? <ImportDoorsView t={t} href={page.href} /> : null}
-        {method === "linkedin" || method === "contacts" || method === "csv" ? <UploadStep key={method} method={method} preset={preset?.file} /> : null}
-        {method === "event" ? <EventStep preset={preset?.event} /> : null}
+        {method === "linkedin" || method === "contacts" || method === "csv" ? <UploadStep key={method} method={method} preset={preset?.file} returnTo={returnTo} /> : null}
+        {method === "event" ? <EventStep preset={preset?.event} returnTo={returnTo} /> : null}
       </ToastProvider>
     </Orbit2026Scope>
   );
@@ -102,8 +105,8 @@ export interface StartPreset {
   event?: { events: EventOptionView[]; selected: string; people: EventPersonView[] };
 }
 
-function UploadStep({ method, preset }: { method: "linkedin" | "contacts" | "csv"; preset?: UploadedFileView }) {
-  const page = usePage();
+function UploadStep({ method, preset, returnTo }: { method: "linkedin" | "contacts" | "csv"; preset?: UploadedFileView; returnTo: "/app/start" | null }) {
+  const page = usePage(returnTo);
   const { t } = page;
   const [file, setFile] = useState<UploadedFileView | null>(preset ?? null);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -155,8 +158,8 @@ function personSub(row: ContactImportRowView): string {
   return [row.fields.organization, row.fields.role].filter(Boolean).join(" · ");
 }
 
-function EventStep({ preset }: { preset?: StartPreset["event"] }) {
-  const page = usePage();
+function EventStep({ preset, returnTo }: { preset?: StartPreset["event"]; returnTo: "/app/start" | null }) {
+  const page = usePage(returnTo);
   const { t } = page;
   const [events, setEvents] = useState<EventOptionView[]>(preset?.events ?? []);
   const [selected, setSelected] = useState<string | null>(preset?.selected ?? null);
@@ -257,8 +260,8 @@ export interface ImportBatchActions {
 }
 
 /** `/app/contacts/new/import/[id]`: 列の対応 (CSV) → まとめて確認 (`?step=review`) → 完成. */
-export function ImportBatchScreen({ data, step, actions, review }: { data: ImportBatchData; step: "mapping" | "review"; actions: ImportBatchActions; review?: ReviewOverride }) {
-  const page = usePage();
+export function ImportBatchScreen({ data, step, actions, review, returnTo = null }: { data: ImportBatchData; step: "mapping" | "review"; actions: ImportBatchActions; review?: ReviewOverride; returnTo?: "/app/start" | null }) {
+  const page = usePage(returnTo);
   const { t } = page;
   const batch = data.phase === "ready" ? data.batch : null;
   const source: ImportSource = batch ? importSourceOf(batch.format) : "csv";
@@ -278,7 +281,7 @@ export function ImportBatchScreen({ data, step, actions, review }: { data: Impor
           {data.phase === "error" ? <RetryCard title={t(c.errLoad)} onRetry={data.retry} /> : null}
           {data.phase === "ready" && showMapping ? <MappingPanel batch={data.batch} rows={data.rows} source={source} actions={actions} t={t} onNext={() => page.go(batchHref(data.batch.id, "review"))} onBack={() => page.go(`${IMPORT_HREF}?method=${source === "linkedin" ? "linkedin" : "csv"}`)} /> : null}
           {data.phase === "ready" && !showMapping && !done ? <ReviewPanel batch={data.batch} rows={data.rows} source={source} actions={actions} t={t} review={review} onLater={() => page.go("/app/contacts")} /> : null}
-          {data.phase === "ready" && done ? <DonePanel batch={data.batch} source={source} t={t} go={page.go} /> : null}
+          {data.phase === "ready" && done ? <DonePanel batch={data.batch} source={source} t={t} go={page.go} returnTo={returnTo} /> : null}
         </div>
       </ToastProvider>
     </Orbit2026Scope>
@@ -393,7 +396,7 @@ function ReviewPanel({ batch, rows, source, actions, t, review, onLater }: { bat
   );
 }
 
-function DonePanel({ batch, source, t, go }: { batch: ContactImportBatchView; source: ImportSource; t: Translate; go: (href: string) => void }) {
+function DonePanel({ batch, source, t, go, returnTo }: { batch: ContactImportBatchView; source: ImportSource; t: Translate; go: (href: string) => void; returnTo: "/app/start" | null }) {
   const added = batch.counts.created + batch.counts.merged;
   return (
     <div className={addStyles.wgrid} data-import-done={added}>
@@ -421,6 +424,7 @@ function DonePanel({ batch, source, t, go }: { batch: ContactImportBatchView; so
         </div>
       </Card>
       <div className={`${addStyles.span12} ${addStyles.doneActs}`}>
+        {returnTo ? <Button variant="primary" className={addStyles.h44} label={t(addManualCopy.sampleGuidePlain)} onClick={() => go(returnTo)} data-done-guide="" /> : null}
         <Button variant="primary" icon="users" className={addStyles.h44} label={t(c.viewNetwork)} onClick={() => go("/app/contacts")} data-done-network="" />
         <Button variant="ghost" className={addStyles.h44} label={t(c.importMore)} onClick={() => go(IMPORT_HREF)} data-done-more="" />
       </div>
@@ -446,7 +450,7 @@ function ImportErrorCard({ phase, t, go }: { phase: "missing" | "expired" | "can
 }
 
 /** The live batch: loads it and its rows, re-reads after a remap, commits with every merge confirmed. */
-export function ImportBatchClient({ batchId, step }: { batchId: string; step: "mapping" | "review" }) {
+export function ImportBatchClient({ batchId, step, returnTo = null }: { batchId: string; step: "mapping" | "review"; returnTo?: "/app/start" | null }) {
   const [data, setData] = useState<ImportBatchData>({ phase: "loading" });
   const intent = useRef(newKey());
   const load = async () => {
@@ -482,5 +486,5 @@ export function ImportBatchClient({ batchId, step }: { batchId: string; step: "m
       }
     },
   };
-  return <ImportBatchScreen data={data} step={step} actions={actions} />;
+  return <ImportBatchScreen data={data} step={step} actions={actions} returnTo={returnTo} />;
 }

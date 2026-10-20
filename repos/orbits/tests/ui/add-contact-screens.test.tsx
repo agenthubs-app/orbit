@@ -16,7 +16,7 @@ import { SHELL_STUBS } from "./support/orbit-2026-shell-harness";
 // three buttons of an unreadable card, 完成). fetch is stubbed and every call recorded.
 type Reply = { status: number; body: unknown };
 type Handler = { method: string; url: string; replies: Reply[] };
-type Fixture = { view: "doors" | "manual" | "upload" | "batch"; handlers?: Handler[]; visits?: number; batch?: ScanBatchView; available?: boolean; lang?: string; settleResult?: string };
+type Fixture = { view: "doors" | "manual" | "upload" | "batch"; handlers?: Handler[]; visits?: number; batch?: ScanBatchView; available?: boolean; lang?: string; settleResult?: string; returnTo?: "/app/start" };
 type Call = { url: string; method: string; body?: any };
 
 const ok = (data: unknown, status = 200): Reply => ({ body: { data, success: true }, status });
@@ -63,7 +63,7 @@ test.before(async () => {
       doors: () => <AddContactScreen />,
       manual: () => <AddContactScreen manualOpen />,
       upload: () => <ScanUploadScreen available={f.available !== false} maxPhotos={100} maxBytes={10485760} onStart={async (cards) => { record({ start: cards.map((c) => [c.front.file.name, c.back ? c.back.file.name : null]) }); return { ok: true, batchId: "b-new" }; }} />,
-      batch: () => <ScanBatchScreen view={f.batch} actions={actions} />,
+      batch: () => <ScanBatchScreen view={f.batch} actions={actions} returnTo={f.returnTo} />,
     }[f.view];
     createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language={f.lang} signedIn><>{view()}</></Orbit2026Shell></OrbitAskProvider>);
   `, SHELL_STUBS);
@@ -343,6 +343,15 @@ test("完成: new / merged / unreadable (unreadable not counted as added); plan 
   await completed.locator('[data-done-plan="ready"]').getByRole("button", { name: "プランで見る" }).click();
   await completed.locator("[data-done-more]").click();
   assert.deepEqual((await calls(completed)).filter((c) => c.push).map((c) => c.push), ["/app/tasks?tab=plan", "/app/contacts/new/scan"]);
+});
+
+test("R28 scan completion offers the guide return only for a validated target", async (t) => {
+  const ordinary = await screen(t, { view: "batch", batch: batchView("done") });
+  await ordinary.locator("[data-scan-done]").waitFor();
+  assert.equal(await ordinary.locator("[data-done-guide]").count(), 0);
+  const fromGuide = await screen(t, { view: "batch", batch: batchView("done"), returnTo: "/app/start" });
+  await fromGuide.locator("[data-done-guide]").click();
+  assert.deepEqual((await calls(fromGuide)).filter((c) => c.push).map((c) => c.push), ["/app/start"]);
 });
 
 test("完成 (R12 review m4 / m11): merged comes from the server, not this device; the density bar counts the new people", async (t) => {

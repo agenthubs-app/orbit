@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
+import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { INDUSTRY_CATALOG, isIndustryIdCode, listSecondaryIndustries } from "../../../../../shared/domain/industries";
 import { regionDisplayName } from "../../../../../shared/domain/regions";
@@ -25,7 +26,7 @@ import {
 } from "../../contacts/ingest-v2/ingest-v2-route-view-model";
 import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { addBatchCopy as b, addDoorsCopy, addScanCopy as s } from "../copy/add";
+import { addBatchCopy as b, addDoorsCopy, addManualCopy, addScanCopy as s } from "../copy/add";
 import type { OrbitCopyEntry } from "../copy/types";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Chip, CountUp, FilterOption, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, ProgressBar, Skeleton, TextField, ToastProvider } from "../ui";
@@ -115,7 +116,7 @@ function dayLabel(iso: string | null, language: OrbitLanguage): string {
  * 読み取れず with 撮り直す / 手入力で補う / スキップ) → 完成 (new / merged / unreadable).
  * Keyboard: ↵ confirm · → next card · S skip.
  */
-export function ScanBatchScreen({ view, actions, onStart }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult> }) {
+export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult>; returnTo?: "/app/start" | null }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const t = translator(language);
@@ -131,9 +132,9 @@ export function ScanBatchScreen({ view, actions, onStart }: { view: ScanBatchVie
         <div className={styles.fade} data-scan-batch={view.batchId} data-scan-phase={view.phase}>
           {view.phase === "loading" ? <Skeleton lines={6} /> : null}
           {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? <BatchErrorCard phase={view.phase} t={t} go={go} /> : null}
-          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(`/app/contacts/new/scan/${encodeURIComponent(id)}`)} onNavigate={go} /> : null}
+          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(id)}`, returnTo))} onNavigate={go} /> : null}
           {view.phase === "review" ? <ReviewPanel view={view} actions={actions} t={t} language={language} onLater={() => go("/app/contacts")} /> : null}
-          {view.phase === "done" ? <DonePanel view={view} t={t} language={language} go={go} /> : null}
+          {view.phase === "done" ? <DonePanel view={view} t={t} language={language} go={go} returnTo={returnTo} /> : null}
         </div>
       </ToastProvider>
     </Orbit2026Scope>
@@ -588,7 +589,7 @@ function EnrichmentChoice({ label, t, options, onClear }: { label: string; t: Tr
   );
 }
 
-function DonePanel({ view, t, language, go }: { view: ScanBatchView; t: Translate; language: OrbitLanguage; go: (href: string) => void }) {
+function DonePanel({ view, t, language, go, returnTo }: { view: ScanBatchView; t: Translate; language: OrbitLanguage; go: (href: string) => void; returnTo: "/app/start" | null }) {
   const eventTitle = view.events.find((event) => view.writtenEventIds.includes(event.eventId))?.title;
   const scene = [t(b.doneScene, { n: view.cards.length, date: dayLabel(view.createdAt, language) }), eventTitle].filter(Boolean).join(" · ");
   const density = view.density;
@@ -635,6 +636,7 @@ function DonePanel({ view, t, language, go }: { view: ScanBatchView; t: Translat
         ) : null}
       </Card>
       <div className={`${styles.span12} ${styles.doneActs}`}>
+        {returnTo ? <Button variant="primary" className={styles.h44} label={t(addManualCopy.sampleGuidePlain)} onClick={() => go(returnTo)} data-done-guide="" /> : null}
         <Button variant="primary" icon="users" className={styles.h44} label={t(b.viewNetwork)} onClick={() => go("/app/contacts")} data-done-network="" />
         <Button variant="ghost" icon="scan" className={styles.h44} label={t(b.scanMore)} onClick={() => go("/app/contacts/new/scan")} data-done-more="" />
       </div>

@@ -4,7 +4,7 @@
  */
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
 import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
-import { profileEditorReadbackMatches } from "../profile-editor-adapter";
+import { profileEditorReadbackMatches } from "../../profile/profile-editor-adapter";
 
 interface ApiEnvelope<TData> {
   success?: boolean;

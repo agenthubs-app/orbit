@@ -106,7 +106,7 @@ export function StartGuideScreen() {
     {guide && nextStep ? <View style={[styles.footer, { backgroundColor: colors.bg, paddingBottom: Math.max(12, insets.bottom) }]}>
       <Button block size="lg" variant="primary" disabled={working || (nextStep === "plan" && (!kind || !goalText.trim()))} label={nextStep === "contacts" ? c.add : nextStep === "goal" ? c.edit : c.make}
         loading={working} onPress={() => {
-          if (nextStep === "contacts") router.push("/contacts/new/scan" as Href);
+          if (nextStep === "contacts") router.push("/contacts/new/scan?returnTo=%2Fstart" as Href);
           else if (nextStep === "goal") router.push("/profile/onboarding?next=%2Fstart" as Href);
           else void openPlan();
         }} />

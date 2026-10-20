@@ -3,7 +3,7 @@
  * （`onboarding-client.ts` 的 `saveProfileFields`：PUT /api/profile + 回执核验 + 复读核验，
  * 版本冲突时保留草稿并提示复核）。存储仍是 `relationshipGoal` 一段文字。
  */
-import { saveProfileFields } from "../profile/onboarding-0918/onboarding-client";
+import { saveProfileFields } from "../orbit-2026/onboarding/onboarding-client";
 
 export async function saveGuideGoal(
   relationshipGoal: string,

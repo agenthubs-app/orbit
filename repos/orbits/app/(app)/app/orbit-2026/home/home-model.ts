@@ -1,6 +1,14 @@
 import type { HomeLayoutContract, HomeWidgetKey, HomeWidgetSlot } from "../../../../../shared/contract/home-layout";
 import { calendarDate, localParts, resolveLocalDateTime, validTimeZone } from "../../../../../features/tasks/local-date-time";
 
+/** R28: the home prompt uses the same guide projection as the three-step card. */
+export function homeContactCopyKeys(projection: { completed: number; nextStep?: "contacts" | "goal" | "plan" | null; steps: { contacts: boolean } } | null) {
+  return {
+    intro: projection?.nextStep === "contacts" && !projection.steps.contacts ? "railAbout" : "railAboutReady",
+    contacts: projection?.steps.contacts ? "guideContactsDone" : "guideContacts",
+  } as const;
+}
+
 export const HOME_CATALOG: readonly { key: HomeWidgetKey; category: "today" | "network" | "event" | "plan" | "secretary" }[] = [
   { key: "today", category: "today" }, { key: "pending", category: "today" }, { key: "week", category: "today" },
   { key: "planScore", category: "plan" }, { key: "nextEvent", category: "event" },

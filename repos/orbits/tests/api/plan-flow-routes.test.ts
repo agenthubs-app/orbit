@@ -11,6 +11,7 @@ import {
   planIntakeViewSchema,
 } from "../../shared/api-schema/plan-v2";
 import { createNotImplementedFailure } from "../../shared/services/module-mode";
+import { DEMO_ACTOR_ID } from "../../shared/mock/demo-world/fixtures";
 
 // R23 SC-R23-06 端到端（mock）：路由从空态走到「确定了一份 v2 计划」，每个响应都过契约 schema。
 type Handler = (request: Request, context?: { params?: Promise<Record<string, string>> }) => Promise<Response>;
@@ -87,4 +88,27 @@ test("live: login is required; a missing backend is 503", async () => {
     resolveService: () => createNotImplementedFailure("plans", "live", ["mock"]),
   });
   assert.equal((await call(noBackend.listIntakes, "GET")).status, 503);
+});
+
+test("sample intake POST returns 403 before resolving storage or AI", async () => {
+  let resolutions = 0;
+  const h = createPlanFlowHandlers({
+    resolveActor: async () => ({ id: DEMO_ACTOR_ID }) as never,
+    resolveMode: () => "live",
+    resolveService: () => { resolutions += 1; throw new Error("sample write reached storage"); },
+  });
+  const request = { goalKind: "fundraising", goalText: "資金調達", idempotencyKey: "sample-1", source: "onboarding" };
+  const response = await call(h.createIntake, "POST", {}, request);
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error.context.reason, "SAMPLE_READ_ONLY");
+  assert.equal(resolutions, 0);
+
+  const realActor = createPlanFlowHandlers({
+    resolveActor: async () => ({ id: "actor:real" }) as never,
+    resolveMode: () => "live",
+    resolveService: () => { resolutions += 1; throw new Error("sample write reached storage"); },
+  });
+  const marked = await call(realActor.createIntake, "POST", {}, request, { "x-orbit-sample": "1" });
+  assert.equal(marked.status, 403);
+  assert.equal(resolutions, 0);
 });

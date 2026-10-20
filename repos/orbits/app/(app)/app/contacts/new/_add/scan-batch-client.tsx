@@ -16,7 +16,7 @@ import { useCardBatch } from "../../card-batch-0918/use-card-batch";
 import { replaceItemContent } from "../../ingest-v2/ingest-v2-client";
 import { buildScanBatchView } from "./scan-batch-view";
 
-export function ScanBatchClient({ batchId }: { batchId: string }) {
+export function ScanBatchClient({ batchId, returnTo }: { batchId: string; returnTo?: "/app/start" | null }) {
   const { t } = useOrbitLanguage();
   const batch = useCardBatch(batchId, t);
   const view = buildScanBatchView(batch);
@@ -55,5 +55,5 @@ export function ScanBatchClient({ batchId }: { batchId: string }) {
     reattach: (files) => void latest.current.reattach(files),
   }), [batchId]);
 
-  return <ScanBatchScreen view={view} actions={actions} onStart={startScanBatch} />;
+  return <ScanBatchScreen view={view} actions={actions} onStart={startScanBatch} returnTo={returnTo} />;
 }

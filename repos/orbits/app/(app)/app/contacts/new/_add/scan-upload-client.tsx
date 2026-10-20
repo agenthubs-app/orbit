@@ -9,7 +9,7 @@ import { listActiveBatches } from "../../card-batch-0918/card-batch-store";
 import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { startScanBatch } from "./start-scan-batch";
 
-export function ScanUploadClient({ available }: { available: boolean }) {
+export function ScanUploadClient({ available, returnTo }: { available: boolean; returnTo?: "/app/start" | null }) {
   // 全站 CardBatchHost 在这一页让位：本机还有进行中的批次时，给一个回到那一批的入口（续传在批次页继续）。
   const { account, ready } = useSharedReadAccount();
   const [active, setActive] = useState<string | null>(null);
@@ -17,5 +17,5 @@ export function ScanUploadClient({ available }: { available: boolean }) {
     if (!ready) return;
     setActive(listActiveBatches().at(-1) ?? null);
   }, [account, ready]);
-  return <ScanUploadScreen available={available} maxPhotos={INGEST_V2_MAX_ITEMS} maxBytes={INGEST_V2_MAX_RAW_BYTES} onStart={(cards) => startScanBatch(cards)} activeBatchId={active} />;
+  return <ScanUploadScreen available={available} maxPhotos={INGEST_V2_MAX_ITEMS} maxBytes={INGEST_V2_MAX_RAW_BYTES} onStart={(cards) => startScanBatch(cards)} activeBatchId={active} returnTo={returnTo} />;
 }

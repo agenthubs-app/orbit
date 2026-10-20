@@ -104,7 +104,7 @@ const EDIT_FIELDS = ["displayName", "organization", "role", "email", "phone"] as
 
 const activeCard = (card: IngestCard) => card.items.some((item) => ["extracted", "terminal_failed", "queued", "processing"].includes(item.status));
 
-export function ScanBatchScreen({ batchId }: { batchId: string }) {
+export function ScanBatchScreen({ batchId, returnTo = null }: { batchId: string; returnTo?: "/start" | null }) {
   // 本机像素门禁的只读演示（scan-design-fixtures）：开发包 + 开关下 design-* 用示例数据，不读服务器。
   const design = useMemo(() => scanDesignFor(batchId), [batchId]);
   const { styles: kitStyles } = useScanKitStyles();
@@ -377,6 +377,7 @@ export function ScanBatchScreen({ batchId }: { batchId: string }) {
     </KitFoot>
   ) : view.phase === "done" ? (
     <KitFoot>
+      {returnTo ? <FootGhost label={t("add.manual.sampleGuide")} onPress={() => router.replace(returnTo as Href)} /> : null}
       <FootButton icon="users" label={t("add.batch.viewNetwork")} onPress={close} testID="add-batch-network" />
       <FootGhost label={t("add.batch.scanMore")} onPress={() => router.replace("/contacts/new/scan" as Href)} />
     </KitFoot>

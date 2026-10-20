@@ -18,6 +18,8 @@ import {
 } from "../../features/followups/storage/relationship-lifecycle-facts-reader";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { LIFECYCLE_HOME_SUMMARY_SQL } from "../../features/followups/storage/lifecycle-home-summary";
+import { VERIFIED_LIFECYCLE_SORT_RUNTIMES } from "../../features/followups/storage/lifecycle-task-pages";
+import { currentNodeSortRuntime, nodeSortRuntimeMatches } from "../../shared/storage/sort-runtime";
 
 const actorId = "actor:w5-f";
 const workspaceId = "workspace:w5-f";
@@ -541,6 +543,14 @@ test("home default uses bounded summary SQL while the legacy loader uses the sco
         taskService: null,
       },
     });
+    // The full suite may set LANG=ja_JP. Unverified Node collation must fail
+    // before SQL; the verified locale exercises the bounded/default SQL path.
+    const nodeRuntime = currentNodeSortRuntime();
+    if (!VERIFIED_LIFECYCLE_SORT_RUNTIMES.some((entry) => nodeSortRuntimeMatches(entry.node, nodeRuntime))) {
+      assert.equal(factsCalls, 0);
+      assert.equal(home.followups.state, "unavailable");
+      return;
+    }
     assert.equal(factsCalls, 1);
     assert.equal(home.followups.state, "ready");
     assert.equal(home.followups.sourceLabel, "关系跟进");

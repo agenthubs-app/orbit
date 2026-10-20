@@ -9,8 +9,8 @@ import { START_REQUIRED_CONTACTS, type StartContactSample } from "../../../../fe
 import { useStartCopy } from "./start-copy";
 
 /** W54-2：「导入人脉」去 W0053 的导入页（CSV／vCard 一栏）。 */
-export const START_IMPORT_HREF = "/app/contacts/new?method=csv";
-export const START_SCAN_HREF = "/app/contacts/new/scan";
+export const START_IMPORT_HREF = "/app/contacts/new/import?method=csv&returnTo=%2Fapp%2Fstart";
+export const START_SCAN_HREF = "/app/contacts/new/scan?returnTo=%2Fapp%2Fstart";
 
 interface Slot {
   kind: "confirmed" | "empty";

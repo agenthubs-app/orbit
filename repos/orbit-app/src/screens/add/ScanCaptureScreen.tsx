@@ -22,6 +22,7 @@ import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { creationAttempt, type CreationAttempt, type IngestCardImage } from "../../view-models/business-card-ingest";
+import { appendAppGuideReturnTo, appGuideReturnTo } from "../../view-models/guide-return-to";
 import { useAddApi } from "./add-api";
 import { hideScanGuide, readScanGuide, recordScanGuideShown, shouldAutoShowGuide, type ScanGuideState } from "./add-storage";
 import { Body, Caption, FadeIn, useAddStyles } from "./add-ui";
@@ -44,7 +45,8 @@ export function ScanCaptureScreen() {
   const api = useAddApi();
   const { t } = useOrbitLocale();
   const { styles } = useAddStyles();
-  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const params = useLocalSearchParams<{ from?: string | string[]; returnTo?: string | string[] }>();
+  const returnTo = appGuideReturnTo(params.returnTo);
   const fromLegacy = (Array.isArray(params.from) ? params.from[0] : params.from) === "legacy";
   const [mode, setMode] = useState<Mode>("loading");
   const [guide, setGuide] = useState<ScanGuideState | null>(null);
@@ -126,7 +128,7 @@ export function ScanCaptureScreen() {
 
   /** Uploaded and reading: open the batch page (only if the person is still here). */
   async function settled(state: ScanUploadState) {
-    if (state.finished && mounted.current) router.replace(scanBatchHref(state.batchId) as Href);
+    if (state.finished && mounted.current) router.replace(appendAppGuideReturnTo(scanBatchHref(state.batchId), returnTo) as Href);
   }
 
   async function retryUpload() {

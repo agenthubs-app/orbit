@@ -357,7 +357,7 @@ test("W0054 SC-01: step 1 with 2 confirmed contacts has no skip — only scan an
   // 只有「扫名片」与「导入人脉」两个入口；导入链到 W0053 的导入页（CSV／vCard）。
   const importLink = one(root, "data-start-import");
   assert.equal(importLink.type, "a");
-  assert.equal(importLink.props.href, "/app/contacts/new?method=csv");
+  assert.equal(importLink.props.href, "/app/contacts/new/import?method=csv&returnTo=%2Fapp%2Fstart");
   assert.match(String(importLink.props.className), /sg-secondary/, "scan stays primary while recognition is available");
   assert.equal(text(importLink), "导入人脉");
   assert.equal(byData(root, "data-start-next").length, 0);
@@ -365,7 +365,7 @@ test("W0054 SC-01: step 1 with 2 confirmed contacts has no skip — only scan an
 
   const scanLink = one(root, "data-start-scan");
   assert.equal(scanLink.type, "a");
-  assert.equal(scanLink.props.href, "/app/contacts/new/scan");
+  assert.equal(scanLink.props.href, "/app/contacts/new/scan?returnTo=%2Fapp%2Fstart");
   // 点锁定的第 2 步只提示，不切换、不写记录。
   await click(one(root, "data-start-step", "2"));
   assert.equal(view(root), "1");
@@ -379,7 +379,7 @@ test("W0054 SC-01（W54-2）: when card recognition is unavailable, import becom
   assert.equal(byData(root, "data-start-scan").length, 0);
   const importLink = one(root, "data-start-import");
   assert.match(String(importLink.props.className), /sg-primary/);
-  assert.equal(importLink.props.href, "/app/contacts/new?method=csv");
+  assert.equal(importLink.props.href, "/app/contacts/new/import?method=csv&returnTo=%2Fapp%2Fstart");
   act(() => root.unmount());
 });
 
@@ -415,7 +415,7 @@ test("W0054 SC-02: a user with completedAt opens on the finish card even with on
 test("the guide leaves an in-progress scan batch with B's route", async (t) => {
   const api = stubBrowser(t, { activeBatch: "batch-guide-1" });
   const root = await mount(props());
-  assert.equal(one(root, "data-start-scan").props.href, "/app/contacts/new/scan");
+  assert.equal(one(root, "data-start-scan").props.href, "/app/contacts/new/scan?returnTo=%2Fapp%2Fstart");
   assert.ok(!api.requests.some((request) => request.endsWith("/batch-guide-1")));
   act(() => root.unmount());
 });

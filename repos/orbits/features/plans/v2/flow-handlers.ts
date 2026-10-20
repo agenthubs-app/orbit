@@ -42,6 +42,7 @@ import { DEMO_ACTOR_ID } from "../../../shared/mock/demo-world/fixtures";
 import { AppError, getHttpStatusForAppErrorCode, SAFE_INTERNAL_ERROR_MESSAGE } from "../../../shared/errors/app-error";
 import type { ServiceResolution } from "../../../shared/services/module-mode";
 import { redesignContractMode } from "../../redesign-contracts/route";
+import { isSampleWrite } from "../../guide/sample-write";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { resolvePlanFlowService } from "./flow-factory";
 import { PlanFlowError, type PlanFlowRequestContext, type PlanFlowService } from "./flow-service";
@@ -63,12 +64,15 @@ export function requestContext(request: Request): PlanFlowRequestContext {
   return { language, platform: (platform === "app" ? "app" : "web") as PlanHrefPlatform };
 }
 
-function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, request: Request, params: Params, context: PlanFlowRequestContext) => Promise<Reply>, dependencies: PlanFlowRouteDependencies) {
+function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, request: Request, params: Params, context: PlanFlowRequestContext) => Promise<Reply>, dependencies: PlanFlowRouteDependencies, guardSampleWrite = false) {
   return async function route(request: Request, routeContext?: { params?: Promise<Params> }): Promise<Response> {
     const mode = (dependencies.resolveMode ?? (() => redesignContractMode("plan-v2-summary")))();
     const headers = runtimeBoundaryHeaders(mode);
     const actor = await (dependencies.resolveActor ?? resolveAuthenticatedApiActor)();
     if (!actor && mode === "live") return authenticatedApiActorRequiredResponse(mode);
+    if (guardSampleWrite && (request.headers.get("x-orbit-sample")?.trim() === "1" || (actor && isSampleWrite(request, actor.id)))) {
+      return NextResponse.json(failure(new AppError("FORBIDDEN", "SAMPLE_READ_ONLY: sample data cannot be saved."), { reason: "SAMPLE_READ_ONLY" }), { headers, status: 403 });
+    }
     const resolution = (dependencies.resolveService ?? ((input) => resolvePlanFlowService(input)))({ actorId: actor?.id ?? DEMO_ACTOR_ID, mode });
     if (resolution.success === false) {
       return NextResponse.json(failure(new AppError("SERVICE_UNAVAILABLE", resolution.error.message), { capabilityId: resolution.error.capabilityId, reason: resolution.error.code, requestedMode: resolution.error.requestedMode }), { headers, status: getHttpStatusForAppErrorCode("SERVICE_UNAVAILABLE") });
@@ -114,7 +118,7 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     /** GET /api/agent/plans/intakes：未完成的流程 + 新目标余量。 */
     listIntakes: flowRoute(planIntakeListResponseSchema, async (service, _request, _params, context) => ({ data: await service.listIntakes(context) }), dependencies),
     /** POST /api/agent/plans/intakes：新建流程并下书背景（C2）。 */
-    createIntake: flowRoute(planIntakeViewSchema, async (service, request, _params, context) => ({ data: await service.createIntake(await body(request, planIntakeCreateRequestSchema), context), status: 201 }), dependencies),
+    createIntake: flowRoute(planIntakeViewSchema, async (service, request, _params, context) => ({ data: await service.createIntake(await body(request, planIntakeCreateRequestSchema), context), status: 201 }), dependencies, true),
     /** GET /api/agent/plans/intakes/[intakeId]。 */
     getIntake: flowRoute(planIntakeViewSchema, async (service, _request, params, context) => ({ data: (await service.getIntake(params.intakeId ?? "", context)) ?? notFound("intake") }), dependencies),
     /** PATCH /api/agent/plans/intakes/[intakeId]：逐块确认。 */
