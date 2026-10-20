@@ -93,14 +93,18 @@ test("live (and so production): every route answers 503 NOT_IMPLEMENTED with no 
     // R26：活动评估已有 live 实现（features/events/assessment，测试见 tests/api/event-assessment-routes.test.ts）。
     // R27：興味なし（契约 9）已有 live 实现（features/events/journey，测试见 tests/events/r27-journey-routes.test.ts）。
     // R20a の todo/page・calendar/external-events と R18b の app/version は live。
-    // account-lifecycle の export/deletion は引き続き 503。
+    // R18c rights capability is live, but without a configured runtime these routes still fail closed at 503.
     for (const item of CASES.filter((entry) => !entry.file.startsWith("invite-codes") && !entry.file.startsWith("contacts/completion-question") && !entry.file.startsWith("events/assessments") && !entry.file.startsWith("recommendations/events") && !entry.file.startsWith("search/global") && entry.file !== "todo/page" && entry.file !== "calendar/external-events" && entry.file !== "app/version")) {
       const response = await call(item);
       const text = await response.text();
       const body = JSON.parse(text);
       assert.equal(response.status, 503, `${item.method} ${item.file}`);
-      assert.equal(isNotImplemented(body), true, `${item.method} ${item.file}: ${text}`);
-      assert.match(body.error.context.capabilityId, /^[a-z0-9-]+$/u);
+      if (item.file.startsWith("account/")) {
+        assert.equal(body.error.code, "SERVICE_UNAVAILABLE", `${item.method} ${item.file}: ${text}`);
+      } else {
+        assert.equal(isNotImplemented(body), true, `${item.method} ${item.file}: ${text}`);
+        assert.match(body.error.context.capabilityId, /^[a-z0-9-]+$/u);
+      }
       assert.doesNotMatch(text, /demo-|sample|渡辺|K7QX/u, `${item.file} leaked a fixture`);
     }
   });

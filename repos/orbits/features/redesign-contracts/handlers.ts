@@ -13,6 +13,7 @@ import {
   inviteConnectionViewSchema, inviteMergeInputSchema, inviteShareUpdateInputSchema, inviteUnlinkInputSchema, inviteUnlinkResultSchema,
 } from "../../shared/api-schema/invite-codes";
 import { AppError } from "../../shared/errors/app-error";
+import { accountExportLiveHandlers } from "../account/data-rights/handlers";
 import { contactCompletionLiveHandlers } from "../contacts/completion/handlers";
 import { eventAssessmentLiveHandlers } from "../events/assessment/handlers";
 import { readLiveAppVersion } from "./app-version-live";
@@ -183,19 +184,26 @@ export const dismissEventRecommendation = redesignContractRoute("event-recommend
 });
 
 // 11 account
-export const listAccountExports = redesignContractRoute("account-lifecycle", z.array(accountExportSchema), () => ({ data: redesignMock.accountExports() }));
-export const createAccountExport = redesignContractRoute("account-lifecycle", accountExportSchema, async (request) => {
+export const listAccountExports = redesignContractRoute("account-lifecycle", z.array(accountExportSchema), (request, _params, { service }) =>
+  service.mode === "live" ? accountExportLiveHandlers().list(request) : { data: redesignMock.accountExports() });
+export const createAccountExport = redesignContractRoute("account-lifecycle", accountExportSchema, async (request, _params, { service }) => {
+  if (service.mode === "live") return accountExportLiveHandlers().create(request);
   const body = await readBody(request, accountExportCreateInputSchema);
   if (body.ok === false) return body.reply;
   return { data: redesignMock.createAccountExport(body.value), status: 202 };
 });
-export const getAccountExport = redesignContractRoute("account-lifecycle", accountExportSchema, (_request, params) => {
+export const getAccountExport = redesignContractRoute("account-lifecycle", accountExportSchema, (request, params, { service }) => {
+  if (service.mode === "live") return accountExportLiveHandlers().get(request, params);
   const found = redesignMock.accountExport(params.id ?? "");
   return found ? { data: found } : notFound();
 });
-export const getDeletionRequest = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), () => ({ data: redesignMock.deletionRequest() }));
-export const requestAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema, () => ({ data: redesignMock.requestDeletion(), status: 202 }));
-export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), () => ({ data: redesignMock.cancelDeletion() }));
+const deletionUnavailable = () => ({ error: new AppError("SERVICE_UNAVAILABLE", "Account deletion is unavailable.") });
+export const getDeletionRequest = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (_request, _params, { service }) =>
+  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.deletionRequest() });
+export const requestAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema, (_request, _params, { service }) =>
+  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.requestDeletion(), status: 202 });
+export const cancelAccountDeletion = redesignContractRoute("account-lifecycle", accountDeletionRequestSchema.nullable(), (_request, _params, { service }) =>
+  service.mode === "live" ? deletionUnavailable() : { data: redesignMock.cancelDeletion() });
 export const getAppVersion = redesignContractRoute("app-version", appVersionSchema, (_request, _params, { service }) => ({
   data: service.mode === "live" ? readLiveAppVersion() : redesignMock.appVersion(),
 }));

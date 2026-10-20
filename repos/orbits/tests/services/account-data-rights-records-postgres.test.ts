@@ -118,3 +118,31 @@ test("expired worker lease is reclaimable and the old worker cannot publish", {
   assert.equal(notifications.rows[0]?.payload.exportId, created.export!.id);
   assert.ok(!JSON.stringify(notifications.rows).includes('"new"'));
 }));
+
+test("ready expiry starts at completion and transitions only after private file cleanup", {
+  skip: localTestDatabase ? false : "requires local orbit_line_c_test",
+}, async () => withRecords(async ({ db, workspaceId }) => {
+  const { createAccountExportRecordStore } = await import("../../features/account/data-rights/records");
+  let instant = new Date("2026-10-20T00:00:00.000Z");
+  const store = createAccountExportRecordStore({ db, workspaceId, now: () => instant });
+  const created = await store.create("actor", { scope: ["contacts"], idempotencyKey: "expiry" });
+  assert.equal(created.kind, "accepted");
+  instant = new Date("2026-10-21T00:00:00.000Z");
+  const claim = await store.claimNext();
+  assert.ok(claim);
+  await store.markReady("actor", created.export!.id, claim.leaseToken, { fileKey: "private.zip", checksum: "sha256:x", fileName: "a.zip", fileSizeBytes: 1 });
+  assert.equal((await store.get("actor", created.export!.id))?.expiresAt, "2026-10-28T00:00:00.000Z");
+  instant = new Date("2026-10-27T23:59:59.999Z");
+  assert.equal((await store.listExpiredReady()).length, 0);
+  instant = new Date("2026-10-28T00:00:00.000Z");
+  assert.equal((await store.listExpiredReady()).length, 1);
+  assert.equal(await store.markExpired("other", created.export!.id), false);
+  const { reapExpiredAccountExports } = await import("../../features/account/data-rights/expiry");
+  let attempts = 0;
+  const storage = { async delete() { attempts++; if (attempts === 1) throw new Error("storage down"); } };
+  assert.equal((await reapExpiredAccountExports({ records: store, storage })).failed, 1);
+  assert.equal((await store.get("actor", created.export!.id))?.status, "ready");
+  assert.equal((await reapExpiredAccountExports({ records: store, storage })).expired, 1);
+  assert.equal((await store.get("actor", created.export!.id))?.status, "expired");
+  assert.equal((await store.listExpiredReady()).length, 0);
+}));

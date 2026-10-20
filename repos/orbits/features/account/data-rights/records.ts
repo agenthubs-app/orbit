@@ -162,5 +162,18 @@ export function createAccountExportRecordStore(input: { db: TransactionalPostgre
         }, record.version);
       }, { isolation: "read committed" });
     },
+    async listExpiredReady(): Promise<AccountExportRecord[]> {
+      const found = await db.query<Row>(`select payload from orbit_records where workspace_id=$1 and collection_name=$2
+        and payload->>'status'='ready' and payload->>'expiresAt'<=$3 order by created_at,record_id limit 100`,
+      [workspaceId, EXPORTS, now().toISOString()]);
+      return found.rows.map(fromRow);
+    },
+    async markExpired(actorId: string, id: string): Promise<boolean> {
+      return db.transaction(async sql => {
+        const record = await readOne(sql, workspaceId, actorId, id, true);
+        if (!record || record.status !== "ready" || !record.expiresAt || record.expiresAt > now().toISOString()) return false;
+        return replaceCurrent(sql, workspaceId, actorId, { ...record, status: "expired", fileKey: undefined, version: record.version + 1 }, record.version);
+      }, { isolation: "read committed" });
+    },
   };
 }
