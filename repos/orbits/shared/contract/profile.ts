@@ -28,7 +28,7 @@ export type ProfileOnboardingFieldCode =
   | "birthDate";
 
 export interface ProfileOnboardingContract {
-  policyVersion: 1;
+  policyVersion: 1 | 2;
   status: "incomplete" | "complete";
   missingFields: readonly ProfileOnboardingFieldCode[];
 }

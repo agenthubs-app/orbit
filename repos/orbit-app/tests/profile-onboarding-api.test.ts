@@ -18,15 +18,15 @@ function profileServer(options: { start?: "empty" | "filled" } = {}) {
   let tick = 0;
   let profile: Record<string, unknown> | null = options.start === "filled" ? { ...profilePayload.profile } : null;
   const requests: { method: string; path: string; body: unknown }[] = [];
-  const behaviour = { putStatus: 200 as number, dropReceipt: false, readbackPatch: null as Record<string, unknown> | null, network: false, conflictOnce: false, onPut: null as null | (() => void) };
+  const behaviour = { putStatus: 200 as number, dropReceipt: false, readbackPatch: null as Record<string, unknown> | null, network: false, conflictOnce: false, onPut: null as null | (() => void), policyVersion: 1 as 1 | 2 };
   function onboarding() {
     const missing = [
       ...(typeof profile?.displayName === "string" && profile.displayName.trim() ? [] : ["displayName"]),
       ...(profile?.primaryIndustryId ? [] : ["primaryIndustryId"]),
       ...(profile?.secondaryIndustryId ? [] : ["secondaryIndustryId"]),
-      ...(profile?.birthDate ? [] : ["birthDate"])
+      ...(behaviour.policyVersion === 1 && !profile?.birthDate ? ["birthDate"] : [])
     ];
-    return { policyVersion: 1, status: missing.length ? "incomplete" : "complete", missingFields: missing };
+    return { policyVersion: behaviour.policyVersion, status: missing.length ? "incomplete" : "complete", missingFields: missing };
   }
   function payload(extra: Record<string, unknown> = {}) {
     if (!profile) return { ...emptyProfilePayload, onboarding: onboarding(), ...extra };
@@ -83,6 +83,23 @@ test("first step saves on an empty profile, verifies the receipt and reads back 
   const put = server.requests[1]!.body as Record<string, unknown>;
   assert.equal(put.expectedUpdatedAt, null);
   assert.match(String(put.mutationId), /^ios:onboarding:/u);
+});
+
+test("v2 profile readback accepts an omitted birthday while an unknown policy cannot certify completion", async () => {
+  const server = profileServer();
+  server.behaviour.policyVersion = 2;
+  const before = await read(server);
+  const saved = await saveOnboardingFields(server.client, {
+    displayName: "林晓", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", birthDate: null,
+  }, before, mutationId);
+  assert.equal(saved.ok, true, JSON.stringify(saved));
+  if (!saved.ok) return;
+  assert.deepEqual(saved.detail.onboarding, { policyVersion: 2, status: "complete", missingFields: [] });
+  assert.equal(saved.detail.profile?.birthDate, null);
+  const future = profileDetailSchema.parse({ ...profilePayload,
+    onboarding: { policyVersion: 99, status: "complete", missingFields: [] } });
+  assert.equal(future.onboarding, undefined, "unknown policy must not grant completion or hide the profile");
+  assert.ok(future.profile);
 });
 
 test("a version conflict re-reads the latest version and resends the same fields once", async () => {

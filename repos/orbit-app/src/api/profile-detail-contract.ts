@@ -9,13 +9,15 @@ import { validateIndustrySelection } from "./domain/industries";
 const fields = z.enum(["displayName", "headline", "relationshipGoal", "homeMarket", "targetRelationshipTypes", "preferredIntroChannels"]);
 const timestamp = z.iso.datetime({ offset: true });
 export const profileOnboardingSchema = z.object({
-  policyVersion: z.literal(1), status: z.enum(["incomplete", "complete"]),
+  policyVersion: z.union([z.literal(1), z.literal(2)]), status: z.enum(["incomplete", "complete"]),
   missingFields: z.array(z.enum(["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"])),
 }).refine(value => new Set(value.missingFields).size === value.missingFields.length
-  && (value.status === "complete") === (value.missingFields.length === 0));
+  && (value.status === "complete") === (value.missingFields.length === 0)
+  && (value.policyVersion === 1 || !value.missingFields.includes("birthDate")));
 export const profileDetailSchema = z.object({
   state: z.enum(["success", "empty", "pending"]),
-  onboarding: profileOnboardingSchema.optional(),
+  // A future policy never turns an otherwise readable profile into an inferred completion.
+  onboarding: profileOnboardingSchema.optional().catch(undefined),
   mutationId: z.string().min(1).optional(),
   profile: z.object({
     id: z.string().trim().min(1), displayName: z.string(), headline: z.string(), organization: z.string(), role: z.string(),
