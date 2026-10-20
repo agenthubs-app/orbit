@@ -100,11 +100,11 @@ function HomeWorkspace() {
       right={<><ShellBellButton /><Button label={editing ? t("done") : t("edit")} icon="grid" onClick={() => { if (editing) void finish(); else enter(); }} disabled={saving || state === "error"} /></>}
       rightRail={rail} railCount={recommendations.length} phoneFold />
     <main className={styles.body} data-home-layout-state={state} data-home-editing={editing}>
-      {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><button type="button" onClick={() => void reload()}>{t("retry")}</button></div> : null}
+      {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={() => void reload()} /></div> : null}
       {state === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
       {state !== "error" && state !== "loading" ? <>
-        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><button type="button" aria-label={t("close")} onClick={() => void dismissHint()}>×</button></div> : null}
-        {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><button type="button" onClick={() => setEditing(false)}>{t("done")}</button></div> : null}
+        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><Button label="×" aria-label={t("close")} variant="ghost" size="sm" onClick={() => void dismissHint()} /></div> : null}
+        {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><Button label={t("done")} variant="ghost" size="sm" onClick={() => setEditing(false)} /></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
           {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small}`} data-widget={slot.key}
             draggable={editing} onDragStart={() => setDragged(slot.key)} onDragOver={(event) => { if (editing) event.preventDefault(); }}
@@ -112,10 +112,10 @@ function HomeWorkspace() {
             onPointerDown={holdStart} onPointerUp={holdEnd} onPointerCancel={holdEnd} onPointerLeave={holdEnd}>
             <header className={styles.cardHead}><h2>{t(TITLE[slot.key])}</h2>
               {editing ? <div className={styles.controls}>
-                <button type="button" aria-label={`${t(TITLE[slot.key])} ${t("moveUp")}`} disabled={index === 0} onClick={() => setDraft(moveHomeWidget(items, slot.key, index - 1))}>↑</button>
-                <button type="button" aria-label={`${t(TITLE[slot.key])} ${t("moveDown")}`} disabled={index === items.length - 1} onClick={() => setDraft(moveHomeWidget(items, slot.key, index + 1))}>↓</button>
-                <button type="button" aria-label={`${t(TITLE[slot.key])} ${t("size")}`} onClick={() => setDraft(resizeHomeWidget(items, slot.key, slot.size === "s" ? "m" : "s"))}>{slot.size === "s" ? t("small") : t("medium")}</button>
-                <button type="button" aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
+                <Button label="↑" aria-label={`${t(TITLE[slot.key])} ${t("moveUp")}`} variant="ghost" size="sm" disabled={index === 0} onClick={() => setDraft(moveHomeWidget(items, slot.key, index - 1))} />
+                <Button label="↓" aria-label={`${t(TITLE[slot.key])} ${t("moveDown")}`} variant="ghost" size="sm" disabled={index === items.length - 1} onClick={() => setDraft(moveHomeWidget(items, slot.key, index + 1))} />
+                <Button label={slot.size === "s" ? t("small") : t("medium")} aria-label={`${t(TITLE[slot.key])} ${t("size")}`} variant="ghost" size="sm" onClick={() => setDraft(resizeHomeWidget(items, slot.key, slot.size === "s" ? "m" : "s"))} />
+                <Button label="−" aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} variant="ghost" size="sm" onClick={() => remove(slot.key)} />
               </div> : null}
             </header>
             <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
@@ -135,7 +135,7 @@ function WidgetLibrary({ slots, t, onAdd }: { slots: readonly HomeWidgetSlot[]; 
     && (category === "all" || item.category === category)
     && t(TITLE[item.key]).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <div className={styles.library}><h2>{t("add")}</h2><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} aria-label={t("search")} />
-    <div className={styles.categories}>{CATEGORY.map((item) => <button key={item.key} type="button" aria-pressed={category === item.key} onClick={() => setCategory(item.key)}>{t(item.title)}</button>)}</div>
-    <div className={styles.libraryRows}>{available.map((item) => <div key={item.key}><span>{t(TITLE[item.key])}</span><button type="button" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "s" })}>+ {t("small")}</button><button type="button" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "m" })}>+ {t("medium")}</button></div>)}</div>
+    <div className={styles.categories}>{CATEGORY.map((item) => <Button key={item.key} label={t(item.title)} variant="ghost" size="sm" aria-pressed={category === item.key} onClick={() => setCategory(item.key)} />)}</div>
+    <div className={styles.libraryRows}>{available.map((item) => <div key={item.key}><span>{t(TITLE[item.key])}</span><Button label={`+ ${t("small")}`} size="sm" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "s" })} /><Button label={`+ ${t("medium")}`} size="sm" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "m" })} /></div>)}</div>
   </div>;
 }
