@@ -95,3 +95,7 @@ REVIEW 聚焦证据：Web Google 再认证／写入锁审计修补后 `R18c-web-
 | 同步域 | purge 已取 commit-order lock；owner 与 immutable publication 两项聚焦审计已转绿 | B 线确认匿名消息及会话投影的对方设备实际呈现；主会话安排独立复核 | 13/13 聚焦；本机规范化事件 PG 和 inbox PG 通过，跨端实机未覆盖 |
 
 越线自查：未改 A 组件/token 或生产配置。R18c 既有 `app/index.tsx` pending 跳转属于 D 线导航壳，主会话在本轮复核中追认其最小改动；R18b mobile Google broker 本属 C 线，不另作越线。复核 S3 由主会话明确授权 C 线只加不改 B 线 `relationship-communication/bounded-reader.ts` 的占位投影，未碰 B 线写入行为；向 B 线交接本机 API/同步验证范围。此前无库 Web 测试跳过条件与静态 PG fixture 修正已登记。HANDOFF-CLAUDE-2026-10-19.md 为用户预存文件，未触碰。开发服务器、Metro 与专用模拟器已关闭；3000 端口未动。仅本地提交，无 push。像素余项轮⑪、外部联调及上述遗留仍未完成，本报告不宣称 R18c 收口。
+
+## 主会话收口核验（2026-10-20 17:10）
+
+在 verify worktree `origin/redesign@9edbef851`（含全部复核修复）按基线环境（只设 LANG/LC_ALL=en_US.UTF-8）独立跑两端全量：Web 5 fail，全部在 R18b 基线名单内，**新增 0**；App 3,277 tests／14 fail，逐名对照基线出现 3 个新名：①「S1 これまでのコード…」在 D 线 R20b 多次全量（`_evidence-d/R20b/run-01/*app-full*.log`）已失败，属既有；②「the original split key set retains its current approved copy snapshot」为基线 i18n 快照用例改名，`origin/redesign` 同红；③ `tests/tasks-unification-interactions.test.ts` 为 Playwright `route.fulfill: Route is already handled` 负载竞态，单独重跑 22/22 ×2 通过。结论：本线新增失败 0，R18c 收口。像素→⑪；不可变角色账本 `reason`、生产清除与外部联调待用户授权。日志：`_evidence-main/r18c-{web,app}-full.log`。
