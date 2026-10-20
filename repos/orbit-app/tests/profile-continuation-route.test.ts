@@ -7,6 +7,8 @@ import {
 } from "../src/view-models/profile-continuation-route";
 
 test("profile continuation preserves an allowlisted internal destination", () => {
+  assert.equal(safeProfileContinuationNext("/start"), "/start");
+  assert.equal(profileContinuationHref("/start"), "/profile/onboarding?next=%2Fstart");
   assert.equal(
     safeProfileContinuationNext("/events/event-1?tab=details#agenda"),
     "/events/event-1?tab=details#agenda"

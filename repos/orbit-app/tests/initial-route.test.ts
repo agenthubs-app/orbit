@@ -76,6 +76,7 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref("settings/api"), "/settings/api");
     assert.equal(resolveInitialRouteHref("settings"), "/settings");
     assert.equal(resolveInitialRouteHref("today"), "/today");
+    assert.equal(resolveInitialRouteHref("/start"), "/start");
     assert.equal(resolveInitialRouteHref("party"), "/party");
     assert.equal(resolveInitialRouteHref("platform"), "/platform");
     assert.equal(resolveInitialRouteHref("register"), "/register");

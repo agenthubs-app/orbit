@@ -37,6 +37,7 @@ type InitialRoutePath =
   | "/schedule"
   | "/settings"
   | "/settings/api"
+  | "/start"
   | "/today"
   | "/task"
   | "/tasks"
@@ -100,6 +101,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   schedule: "/schedule",
   settings: "/settings",
   "settings/api": "/settings/api",
+  start: "/start",
   today: "/today",
   task: "/task",
   tasks: "/tasks",
