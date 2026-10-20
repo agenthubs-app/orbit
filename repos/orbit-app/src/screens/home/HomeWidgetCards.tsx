@@ -69,8 +69,8 @@ function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProg
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && (parsed.data.state === "upcoming" || parsed.data.state === "ongoing") ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /></View>;
-  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <GuideSteps progress={guide} navigate={navigate} />;
+  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard /></View>;
+  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard /></View>;
   return <View>
     {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
     {todo.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {todo.copy.lastSyncedAt ?? ""}</UiText> : null}

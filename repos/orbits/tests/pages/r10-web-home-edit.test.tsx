@@ -11,7 +11,7 @@ let code: { js: string; css: string };
 const stubs = {
   ...SHELL_STUBS,
   "network/ContactDrawer$": `export function ContactDrawer() { return null; }`,
-  "add/TodayQuestionCard$": `export function TodayQuestionCard() { return null; }`,
+  "add/TodayQuestionCard$": `export function TodayQuestionCard() { return <div data-question>Question fixture</div>; }`,
 };
 
 test.before(async () => {
@@ -39,6 +39,8 @@ async function home(t: { after: (fn: () => Promise<void>) => void }): Promise<Pa
         return Response.json({success:true,data:window.layout});
       }
       if(path==="/api/home/guide-progress") return Response.json({success:true,data:{kind:"progress",completed:0,confirmedContacts:0,nextStep:"contacts",steps:{contacts:false,goal:false,plan:false}}});
+      if(path==="/api/todo/page") return Response.json({success:true,data:{date:"2026-10-20",timeZone:"Asia/Tokyo",asOf:"2026-10-20T00:00:00Z",counts:{decisions:0,nextMoves:0,followups:0,overdue:0},countsCapped:{decisions:false,nextMoves:false},decisions:{items:[],next:{}},nextMoves:{items:[],next:{}},followups:{items:[],next:{}},sources:{task:"ok"}}});
+      if(path==="/api/schedule-items") return Response.json({success:true,data:{scheduleItems:[]}});
       if(path==="/api/inbox/secretary/preview") return Response.json({success:false},{status:503});
       return Response.json({success:false},{status:503});
     };
@@ -78,5 +80,6 @@ test("incomplete three-step guide belongs inside the Today card", async t => {
   const page = await home(t);
   await page.locator("[data-widget=today]").getByText("はじめの3ステップ").waitFor();
   assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /名刺を3枚追加/ }).count(), 1);
+  assert.equal(await page.locator("[data-widget=today] [data-question]").count(), 1, "a question remains available beside the empty guide");
   assert.equal(await page.locator("main > section").filter({ hasText: "はじめの3ステップ" }).count(), 0);
 });
