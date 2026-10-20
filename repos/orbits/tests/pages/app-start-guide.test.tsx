@@ -233,11 +233,11 @@ test("a new user opens on step 1 of 3: current / locked statuses and the page ch
 
 test("clicking a locked step only says which step to finish first; an open step switches and records currentStep", async (t) => {
   const api = stubBrowser(t);
-  // 有目标、名片没做完：第 2 步已完成（可重开），第 3 步锁着。
-  const root = await mount(props({ relationshipGoal: "找渠道" }));
+  // 名片已完成、目标未填：第 2 步可进入，第 3 步仍锁着。
+  const root = await mount(props({ snapshot: { confirmedContacts: 3, currentStep: 1 } }));
   await click(one(root, "data-start-step", "3"));
   assert.equal(view(root), "1", "no switch");
-  assert.equal(text(one(root, "data-start-locked-note")), "先完成第 1 步");
+  assert.equal(text(one(root, "data-start-locked-note")), "先完成第 2 步");
   assert.deepEqual(api.patches, [], "a locked click writes nothing");
 
   await click(one(root, "data-start-step", "2"));
@@ -254,12 +254,15 @@ test("clicking a locked step only says which step to finish first; an open step 
 
 test("the recorded currentStep is reopened when allowed; a recorded locked step falls back to the first unfinished one", async (t) => {
   stubBrowser(t);
-  const onTwo = await mount(props({ relationshipGoal: "找渠道", snapshot: { currentStep: 2 } }));
+  const onTwo = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 3, currentStep: 2 } }));
   assert.equal(view(onTwo), "2");
   act(() => onTwo.unmount());
   const locked = await mount(props({ snapshot: { currentStep: 3 } }));
   assert.equal(view(locked), "1");
   act(() => locked.unmount());
+  const goalBeforeContacts = await mount(props({ relationshipGoal: "找渠道", snapshot: { currentStep: 2 } }));
+  assert.equal(view(goalBeforeContacts), "1", "a recorded completed goal does not skip unfinished contacts");
+  act(() => goalBeforeContacts.unmount());
 });
 
 test("W0035: a stored step 4 (mapped to null by the server) lands on the first unfinished step or the finish card, without a PATCH", async (t) => {

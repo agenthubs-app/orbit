@@ -131,9 +131,9 @@ test.before(async () => {
       const [path, setPath] = useState(window.shellFixture.path);
       useEffect(() => { const go = (event) => setPath(event.detail); window.addEventListener("test-nav", go); return () => window.removeEventListener("test-nav", go); }, []);
       window.shellFixture.path = path;
-      const url = new URL(path, "https://orbit.test");
-      const batch = url.pathname.match(/^\\/app\\/contacts\\/new\\/scan\\/(.+)$/);
-      const returnTo = webGuideReturnTo(url.searchParams.get("returnTo"));
+      const [pathname, search = ""] = path.split("?");
+      const batch = pathname.match(/^\\/app\\/contacts\\/new\\/scan\\/(.+)$/);
+      const returnTo = webGuideReturnTo(new URLSearchParams(search).get("returnTo"));
       return batch ? <ScanBatchClient batchId={batch[1]} returnTo={returnTo} /> : <ScanUploadClient available returnTo={returnTo} />;
     }
     createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language="ja" signedIn><App /></Orbit2026Shell></OrbitAskProvider>);
