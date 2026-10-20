@@ -4,7 +4,7 @@
 
 ## 版本与做成的链路
 
-- 起点 `8862ccce4`（含 R10 投影 `8eaf86733`）；设计 `50c708543`，契约兼容 `b987287e1`，政策 v2 `0881931f2`，资料流程和介绍额度 `90a346202`，真实指南与 intake `04d6bbe76`，原生界面 `7bffccbbd`，Web 资料和 B 扫描入口 `1073f9ea9`，Web 指南三语与布局 `3902a452d`，文案审计修正 `f41c94d4a`，像素视图清单 `c7025e429`，App 契约与读取注册 `11db421e9`，旧资料标签兼容导出清理 `f1e98a2b9`，介绍失败文案收口 `f718ea48d`，App `/start` 续接允许表 `f377525f4`，两端资料冲突防覆盖 `204814b18`，Web 日文预览 `23b76c711`。上述提交均留在本地。
+- 起点 `8862ccce4`（含 R10 投影 `8eaf86733`）；设计 `50c708543`，契约兼容 `b987287e1`，政策 v2 `0881931f2`，资料流程和介绍额度 `90a346202`，真实指南与 intake `04d6bbe76`，原生界面 `7bffccbbd`，Web 资料和 B 扫描入口 `1073f9ea9`，Web 指南三语与布局 `3902a452d`，文案审计修正 `f41c94d4a`，像素视图清单 `c7025e429`，App 契约与读取注册 `11db421e9`，旧资料标签兼容导出清理 `f1e98a2b9`，介绍失败文案收口 `f718ea48d`，App `/start` 续接允许表 `f377525f4`，两端资料冲突防覆盖 `204814b18`，Web 日文预览 `23b76c711`，两端指南资料门禁 `a87fec3c9`／`d0263ad28`。上述提交均留在本地。
 - 资料政策 v2 允许空生日，姓名／行业仍必填；App 先兼容 v1/v2／未知新版再切服务端。共享契约 snapshot 已更新，App 副本已同步。首次资料 PUT 前建 actor 流程；每屏 PUT、GET 复读、进度确认，失败不推进。跨端使用同一进度记录。
 - 目标最多 2 个、保序、无默认期限；保留旧文本。介绍可用 ja/zh/en，首次流程每 actor 成功总额 3 次；幂等键、并发额度与失败重放由服务端持久记录，手写可继续。该本地运行未配置付费 provider，因此实际付费模型调用 **0**。
 - Web `/app/start` 去掉演示开关门禁；App `/start` 已成为真实三步页。两端从 R10 共享投影读取 3 个条件，步骤 3 显示保存的第一目标并要求用户选 `goalKind`；仅恢复 `source:onboarding`、类型相符的 intake，不把同名其他来源当续接。Web 用 Web href，App 校验 App href 后进入原生计划流程。
@@ -15,7 +15,7 @@
 | SC | 结论 | 证据与缺项 |
 | --- | --- | --- |
 | 01 开工／预检 | 部分 | `preflight-checklist.md`、b1/b12 清单和两块 b12 定向预检；整份 b12 变体预检因耗时中断，未记通过。起点与 R18c/R10 基线见下。 |
-| 02 入口／next | 部分 | Web 本地实际注册保留 `/app/start` 到资料页；匿名继续与指南 307 到登录，完整账号安全 next 到 `/app/start`，外站与嵌套循环回 `/app/home`。App 实机发现 `/start` 未列入启动允许表导致续接误落 Home，已修复并复测 guide 与外站回退；有效邀请和双端登录整张实机矩阵未完成。 |
+| 02 入口／next | 部分 | Web 本地注册保留 `/app/start` 到资料页；匿名继续与指南 307 到登录，完整账号安全 next 到指南，外站与嵌套循环回 Home。有效邀请 `/i/<code>` 匿名可直达、注册后回邀请并连通；邀请后资料不全曾可进真实指南，已修复两端 `/start` 门禁并实测转资料五屏。App `/start` 初始路线已修复；App 邀请回程及整张双端登录矩阵未完成。 |
 | 03 资料五屏／D28-2 | 部分 | BREAKING 登记、App 先兼容、v2、CAS/幂等/API、两端五屏操作链与服务端完成回读已做；Web 同账号双标签实际验证旧稿冲突被拒、刷新后从服务端第 2 屏续填。同账号 Web 基本资料→App 第 2 屏→Web 第 3 屏已双向实测；完整跨设备回读矩阵及各屏像素尚未验。 |
 | 04 目标／文案 | 部分 | 上限 2、第三项限制、保序、三语与显式类型选择的定向测试；Web 资料内嵌首页／人脉预览的静态文案已补日文。R28 双目标文本在 R18a 共用编辑器重开后保持原文、无暗加期限的组件定向测试 5/5；真实保存后重开与各版位像素尚未全验。 |
 | 05 AI 介绍 | 部分 | 服务额度、重放、并发、三语测试与两端失败手写链；Web 失败页不再显示 provider 配置/密钥名，额度耗尽不再给重试按钮。没有授权的付费正例，日文实际模型输出未运行。 |
@@ -33,7 +33,11 @@
 
 R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口待接。R28-02→SC11：Task 请求待 D。R28-03→SC09：已改为严格 onboarding intake。R28-04→SC07/08/12：App 真实指南已接，C 的旧 B 名片 UI 使用和资料标签旧导出已清理；Web 资料旧目录仍待迁移。试移 `orbit-2026/onboarding` 时，既有新目录审计检出 hard-coded 8/6/1、缺 ja 120/80；该试移已局部撤回，文案迁移与壳接入保留为未完成项。
 
-入口 URL 表由源码、定向测试与本地实际路由核对；有效邀请与 App 全矩阵仍未跑。本地两个一次性合成注册账号只写入 `orbit_line_c`，一个落到 `/app/profile/onboarding?next=%2Fapp%2Fstart`，另一个点击「Just look around」后重进 `/app/profile/continue` 仍回资料页。无会话 curl 访问继续页与指南均返回 307 登录，安全目标保留；已有完整账号的 Web 浏览器访问合法目标、外站目标和嵌套继续目标分别落到 `/app/start`、`/app/home`、`/app/home`。C 模拟器登录的完整资料账号打开 `orbit://profile/continue?next=%2Fstart` 后进入真实指南，外站 next 回 Home；截图 `_evidence-c/R28/app-continue-{valid-start,external-fallback}.png`。
+入口 URL 表由源码、定向测试与本地实际路由核对；App 邀请全矩阵仍未跑。本地合成注册账号只写入 `orbit_line_c`：普通账号落到 `/app/profile/onboarding?next=%2Fapp%2Fstart`，另一个点击「Just look around」后重进 `/app/profile/continue` 仍回资料页。无会话 curl 访问继续页与指南均返回 307 登录，安全目标保留；已有完整账号的 Web 浏览器访问合法目标、外站目标和嵌套继续目标分别落到 `/app/start`、`/app/home`、`/app/home`。C 模拟器登录的完整资料账号打开 `orbit://profile/continue?next=%2Fstart` 后进入真实指南，外站 next 回 Home；截图 `_evidence-c/R28/app-continue-{valid-start,external-fallback}.png`。
+
+有效邀请码实测：本地完整账号创建 7 天邀请，匿名浏览 `/i/<code>` 200；点击注册链接得到 `/app/account/signup?next=%2Fi%2F<code>`，新账号注册后直回邀请页、填写姓名并完成双向连接。此时新账号资料政策 v2 仍为 incomplete（缺两级行业）、流程记录为空；修前直接访问 `/app/start` 却显示真实指南，根因是旧 W0006 路由豁免仍在 `profile-onboarding-route-policy.ts`。R28 的私有页门禁优先于此旧豁免，故 C 线仅移除 `/app/start` 豁免，保留 `/i/<code>` 公开例外与五屏页本身豁免。代理 RED 7/10→GREEN 10/10，导航／指南组合 26/26；修后同一邀请账号进 `/app/start` 转 `/app/profile/onboarding?next=%2Fapp%2Fstart`，完整账号仍直达指南。截图 `_evidence-c/R28/valid-invite-{anonymous,profile-gate}.png`。邀请来源保存与连接属既有业务，本轮只做本地验收与 C 线门禁修复。
+
+同一未完成资料账号登录 App 后，修前直接深链 `orbit://start` 显示 0/3 真实指南；修后 App 先读取服务端 profile policy，再读取指南，不完整或未知政策都转 `/profile/onboarding?next=%2Fstart`，资料读取失败停在可重试态。RED 0/4→GREEN 4/4，App typecheck exit 0；重启 Metro bundle 后实机直接深链进入五屏首屏，截图 `_evidence-c/R28/app-invitee-{guide-bypass-before,profile-gate-after}.png`。这验证 App 直接指南入口，不代替 App 邀请链接回程全矩阵。
 
 | 条件 | Web 落点 | App 落点 |
 | --- | --- | --- |
@@ -87,10 +91,12 @@ R28 定向 Web 指南 28/28、资料路由 35/35、App 资料交互和指南相�
 
 `23b76c711` 后 Web 日文首页／人脉预览定向 17/17、文案审计组合 23/23、typecheck exit 0。预览是只读示意，不把其中的示例活动／人物当真实进度或联系人；完整画板像素仍按 SC13/14 保持未过。
 
+指南资料门禁修后，Web 代理／导航／指南组合 46/46、typecheck exit 0；App profile API／继续／指南入口 17/17、typecheck exit 0。App 真机重启 bundle 的同账号直接深链复核见入口段；这些定向结果不替代单次全量的失败结论。
+
 本地 `orbit_line_c` 追加 Web 双标签／换号操作复核：新合成账号同时打开两个 Basics 标签，各填不同姓名；标签 A 保存后服务端为 `Cross Tab A`、`lastConfirmedScreen=1`、`currentScreen=2`。标签 B 用旧版本点继续，界面提示资料已变化且草稿未保存，服务端姓名仍为 A、进度仍为第 2 屏；B 刷新后显示 Goals，预览姓名也是 A。在同一浏览器保留本地存储、清除会话并注册另一合成账号后，服务端资料姓名为空、流程记录为 `null`，Basics 输入为空，没有继承前一账号草稿。
 
 双端接力：C 模拟器先从另一合成账号登出，再登录该部分资料账号；`continue` 显示 1/5 续填卡，点继续直接进入 Goals 2/5。App 选一项目标并保存后进入 Offer & seek 3/5；Web 重新登录同账号，API 读回 `relationshipGoal=資金調達`、`lastConfirmedScreen=2`、`currentScreen=3`，页面也显示 Offer & seek。对应实机/浏览器截图 `_evidence-c/R28/cross-device-{app,web}-step3.png`。这验证了两端的一次往返，不替代完整五屏跨设备、离线、邀请矩阵。
 
-R18a 共用 GoalEditor 新增 R28 保真回归：把双目标及自由句组成的无期限文字解析后重开，输入仍是原文、没有期限被选中，复合保存仍为原文；`tests/pages/app-profile-goal-editor.test.tsx` 定向 5/5，React 服务端渲染仍打印既有 `useLayoutEffect` 提示。随后 Web 新账号在本地完成余下第 3～5 屏（AI 因空 provider 失败后手填、导入跳过），服务端读回五屏已完成；该操作没有进一步证明资料页编辑弹窗里的目标保存回读。Web 3400、Metro 8084 与 C 模拟器在操作后均已停。
+R18a 共用 GoalEditor 新增 R28 保真回归：把双目标及自由句组成的无期限文字解析后重开，输入仍是原文、没有期限被选中，复合保存仍为原文；`tests/pages/app-profile-goal-editor.test.tsx` 定向 5/5，React 服务端渲染仍打印既有 `useLayoutEffect` 提示。随后 Web 新账号在本地完成余下第 3～5 屏（AI 因空 provider 失败后手填、导入跳过），服务端读回五屏已完成；该操作没有进一步证明资料页编辑弹窗里的目标保存回读。
 
 独立复核细节见 `REVIEW.md`。全量仍为 exit 1，像素超带仍未归因；定向通过没有覆盖整套注册／邀请、付费计划和 Task 回程。
