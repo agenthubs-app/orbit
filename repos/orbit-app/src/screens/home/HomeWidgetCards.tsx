@@ -22,6 +22,7 @@ import { nextRegisteredEvent, signedDelta } from "./home-widget-model";
 import { useHomeRead, type HomeRead } from "./use-home-read";
 
 type Navigate = (href: string) => void;
+type GuideProgress = { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } };
 const scheduleSchema = z.object({ scheduleItems: z.array(z.unknown()) });
 const scheduleRowSchema = z.object({ title: z.string(), startsAt: z.string(), state: z.enum(["upcoming", "ongoing", "ended", "cancelled"]) });
 const picksSchema = z.object({ recommendations: z.array(z.object({ eventId: z.string(), title: z.string(), valueScore: z.number() }).passthrough()) });
@@ -45,7 +46,18 @@ function todayKey(now: Date, timeZone: string): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function TodayWidget({ navigate }: { navigate: Navigate }) {
+function GuideSteps({ progress, navigate }: { progress: GuideProgress; navigate: Navigate }) {
+  const { styles } = useStyles(); const { t } = useOrbitLocale();
+  const steps = [
+    { key: "contacts", label: t("home.widgetGuideContacts"), href: "/contacts" },
+    { key: "goal", label: t("home.widgetGuideGoal"), href: "/task?seg=plan" },
+    { key: "plan", label: t("home.widgetGuidePlan"), href: "/task?seg=plan" },
+  ] as const;
+  return <View><View style={styles.guideHead}><UiText style={styles.muted}>{t("home.widgetGuide")}</UiText><UiText style={styles.guideCount}>{progress.completed}/3</UiText></View>{steps.map((step, index) =>
+    <UiPressable key={step.key} accessibilityRole="link" accessibilityLabel={step.label} onPress={() => navigate(step.href)} style={styles.guideStep}><UiText style={styles.guideText}>{progress.steps[step.key] ? "✓" : "○"}  {index + 1}. {step.label}</UiText></UiPressable>)}</View>;
+}
+
+function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProgress | null }) {
   const { timeZone } = useOrbitTimeZone(); const { styles } = useStyles(); const { t } = useOrbitLocale();
   const date = useMemo(() => todayKey(new Date(), timeZone), [timeZone]);
   const todo = useTodoPage(timeZone, date);
@@ -57,10 +69,12 @@ function TodayWidget({ navigate }: { navigate: Navigate }) {
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && (parsed.data.state === "upcoming" || parsed.data.state === "ongoing") ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  if (!todo.page) return <View><UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /></View>;
+  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /></View>;
+  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <GuideSteps progress={guide} navigate={navigate} />;
   return <View>
+    {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
     {todo.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {todo.copy.lastSyncedAt ?? ""}</UiText> : null}
-    <View style={styles.stats}><Stat value={todo.page.counts.nextMoves} label="今日の一手" /><Stat value={todo.page.counts.decisions} label={t("home.widgetPending")} />{parsedSchedule?.success ? <Stat value={scheduleRows.length} label={t("home.schedule")} /> : <UiText style={styles.muted}>— {t("home.schedule")}</UiText>}</View>
+    <View style={styles.stats}><Stat value={todo.page.counts.nextMoves} label={t("home.widgetNextMove")} /><Stat value={todo.page.counts.decisions} label={t("home.widgetPending")} />{parsedSchedule?.success ? <Stat value={scheduleRows.length} label={t("home.schedule")} /> : <UiText style={styles.muted}>— {t("home.schedule")}</UiText>}</View>
     {todo.page.nextMoves.items[0] ? <LinkRow label={todo.page.nextMoves.items[0].titlePreview} href="/task?seg=todo" navigate={navigate} /> : null}
     {scheduleRows[0] ? <LinkRow label={scheduleRows[0].title} href="/task?seg=calendar" navigate={navigate} /> : null}
     {schedule.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {schedule.copy.lastSyncedAt ?? ""}</UiText> : null}
@@ -78,21 +92,21 @@ function PlanWidget({ client, navigate }: { client: OrbitApiClient; navigate: Na
   const { styles } = useStyles(); const { t } = useOrbitLocale();
   const state = useHomeRead(client, "/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   return <Resource state={state}>{data => data.current ? <View>
-    <View style={styles.score}><UiText style={styles.scoreNumber}>{data.current.score.total}</UiText><UiText style={styles.muted}>/ 100</UiText><UiText style={data.current.score.todayDelta < 0 ? styles.negative : styles.delta}>{signedDelta(data.current.score.todayDelta)} 今日</UiText></View>
+    <View style={styles.score}><UiText style={styles.scoreNumber}>{data.current.score.total}</UiText><UiText style={styles.muted}>/ 100</UiText><UiText style={data.current.score.todayDelta < 0 ? styles.negative : styles.delta}>{signedDelta(data.current.score.todayDelta)} {t("home.widgetTodayDelta")}</UiText></View>
     <UiText style={styles.muted}>{data.current.goal}</UiText>
-    <UiText style={styles.muted}>{data.current.score.segments.map(segment => `${segment.key === "event" ? "イベント枠" : segment.shortLabel} ${segment.earned}/${segment.allocation}`).join(" · ")}</UiText>
+    <UiText style={styles.muted}>{data.current.score.segments.map(segment => `${segment.key === "event" ? t("home.widgetEventSegment") : segment.shortLabel} ${segment.earned}/${segment.allocation}`).join(" · ")}</UiText>
     <LinkRow label={data.current.todayChance?.actionLabel ?? t("home.widgetMore")} href={data.current.todayChance?.href ?? "/task?seg=plan"} navigate={navigate} />
-  </View> : <View><UiText style={styles.muted}>{t("home.widgetEmpty")}</UiText><LinkRow label={t("home.widgetGoal")} href="/task?seg=plan" navigate={navigate} /></View>}</Resource>;
+  </View> : <View><UiText style={styles.muted}>{t("home.widgetPlanEmptyDetail")}</UiText><Button label={t("home.widgetGoal")} onPress={() => navigate("/task?seg=plan")} variant="secondary" size="sm" /></View>}</Resource>;
 }
 
 function EventWidget({ client, navigate }: { client: OrbitApiClient; navigate: Navigate }) {
-  const { styles } = useStyles(); const { t } = useOrbitLocale();
+  const { styles } = useStyles(); const { t, language } = useOrbitLocale();
   const state = useHomeRead(client, "/api/events/mine?range=upcoming", myEventsResponseSchema);
   return <Resource state={state}>{data => {
     const event = nextRegisteredEvent(data.items, data.asOf ? new Date(data.asOf) : new Date());
-    return event ? <View><UiText style={styles.eventTitle}>{event.emoji} {event.title}</UiText><UiText style={styles.muted}>{new Date(event.startsAt).toLocaleString("ja-JP")} · {event.venue ?? ""}</UiText>
-      {event.meetCount != null ? <UiText style={styles.muted}>会いたい人 {event.meetCount}人</UiText> : null}<LinkRow label={t("home.widgetMore")} href={event.href} navigate={navigate} /></View>
-      : <View><UiText style={styles.muted}>{t("home.widgetEmpty")}</UiText><LinkRow label={t("home.allEvents")} href="/events" navigate={navigate} /></View>;
+    return event ? <View><UiText style={styles.eventTitle}>{event.emoji} {event.title}</UiText><UiText style={styles.muted}>{new Date(event.startsAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")} · {event.venue ?? ""}</UiText>
+      {event.meetCount != null ? <UiText style={styles.muted}>{t("home.widgetMeetCount").replace("{count}", String(event.meetCount))}</UiText> : null}<LinkRow label={t("home.widgetMore")} href={event.href} navigate={navigate} /></View>
+      : <View><UiText style={styles.muted}>{t("home.widgetEventEmptyDetail")}</UiText><Button label={t("home.widgetAssessEvent")} onPress={() => navigate("/events/assess")} variant="secondary" size="sm" /></View>;
   }}</Resource>;
 }
 
@@ -100,9 +114,8 @@ function NetworkWidget({ client, navigate }: { client: OrbitApiClient; navigate:
   const { styles } = useStyles(); const { t } = useOrbitLocale();
   const summary = useHomeRead(client, "/api/contacts/summary", contactCardSummarySchema);
   const page = useHomeRead(client, "/api/contacts/page?sort=added&limit=4", contactCardPageSchema);
-  return <View><Resource state={summary}>{data => <View style={styles.score}><UiText style={styles.scoreNumber}>{data.total}</UiText><UiText style={styles.muted}>人</UiText>{data.addedThisMonth !== undefined ? <UiText style={styles.delta}>+{data.addedThisMonth} {t("home.widgetAdded")}</UiText> : null}</View>}</Resource>
-    <Resource state={page}>{data => <View style={styles.people}>{data.items.slice(0, 4).map(person => <UiPressable key={person.id} accessibilityRole="link" accessibilityLabel={person.displayName} onPress={() => navigate(`/contacts/${encodeURIComponent(person.id)}`)} style={styles.person}><View style={styles.avatar}><UiText>{person.displayName.slice(0, 1)}</UiText></View><UiText numberOfLines={1} style={styles.personName}>{person.displayName}</UiText></UiPressable>)}</View>}</Resource>
-    <LinkRow label={t("home.widgetMore")} href="/contacts" navigate={navigate} />
+  return <View><Resource state={summary}>{data => data.total > 0 ? <View style={styles.score}><UiText style={styles.scoreNumber}>{data.total}</UiText><UiText style={styles.muted}>{t("home.widgetPeopleUnit")}</UiText>{data.addedThisMonth !== undefined ? <UiText style={styles.delta}>+{data.addedThisMonth} {t("home.widgetAdded")}</UiText> : null}</View> : <UiText style={styles.muted}>{t("home.widgetNetworkEmptyDetail")}</UiText>}</Resource>
+    <Resource state={page}>{data => data.items.length ? <View><View style={styles.people}>{data.items.slice(0, 4).map(person => <UiPressable key={person.id} accessibilityRole="link" accessibilityLabel={person.displayName} onPress={() => navigate(`/contacts/${encodeURIComponent(person.id)}`)} style={styles.person}><View style={styles.avatar}><UiText>{person.displayName.slice(0, 1)}</UiText></View><UiText numberOfLines={1} style={styles.personName}>{person.displayName}</UiText></UiPressable>)}</View><LinkRow label={t("home.widgetMore")} href="/contacts" navigate={navigate} /></View> : <Button label={t("home.widgetScanCard")} onPress={() => navigate("/contacts/new/scan")} variant="primary" size="sm" />}</Resource>
   </View>;
 }
 
@@ -115,13 +128,13 @@ function SecretaryWidget({ client, actorId, navigate }: { client: OrbitApiClient
       && item.notification.sources.some(source => source.sourceKind === item.kind)
       && item.notification.target.status === "available" && item.notification.target.href).slice(0, 3).map(item =>
         <LinkRow key={item.key} label={`${item.notification.title}${item.notification.sample ? ` · ${t("home.widgetSample")}` : ""}`} href={item.notification.target.href!} navigate={navigate} />)}
-      <LinkRow label={t("home.widgetMore")} href="/inbox?filter=secretary" navigate={navigate} /></View>}</Resource>;
+      {data.items.length ? <LinkRow label={t("home.widgetMore")} href="/inbox?filter=secretary" navigate={navigate} /> : <UiText style={styles.muted}>{t("home.widgetSecretaryEmptyDetail")}</UiText>}</View>}</Resource>;
 }
 
 function PendingWidget({ navigate, size }: { navigate: Navigate; size: "s" | "m" }) {
   const { timeZone } = useOrbitTimeZone(); const { styles } = useStyles(); const { t } = useOrbitLocale();
   const todo = useTodoPage(timeZone, todayKey(new Date(), timeZone));
-  return todo.page ? <View><UiText style={styles.muted}>{todo.page.counts.decisions}件</UiText>{todo.page.decisions.items.slice(0, size === "m" ? 2 : 1).map(item => <LinkRow key={item.key} label={item.titlePreview} href="/task?seg=todo" navigate={navigate} />)}</View>
+  return todo.page ? <View><UiText style={styles.muted}>{t("home.widgetItemCount").replace("{count}", String(todo.page.counts.decisions))}</UiText>{todo.page.decisions.items.slice(0, size === "m" ? 2 : 1).map(item => <LinkRow key={item.key} label={item.titlePreview} href="/task?seg=todo" navigate={navigate} />)}</View>
     : <View><UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /></View>;
 }
 
@@ -158,9 +171,9 @@ function MemoWidget({ client, navigate, size }: { client: OrbitApiClient; naviga
     <LinkRow label={t("home.widgetMore")} href="/task?seg=memo" navigate={navigate} /></View>}</Resource>;
 }
 
-export function HomeWidgetBody({ widget, size, client, actorId, navigate }: { widget: HomeWidgetKey; size: "s" | "m"; client: OrbitApiClient; actorId: string; navigate: Navigate }) {
+export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide }: { widget: HomeWidgetKey; size: "s" | "m"; client: OrbitApiClient; actorId: string; navigate: Navigate; guide: GuideProgress | null }) {
   switch (widget) {
-    case "today": return <TodayWidget navigate={navigate} />;
+    case "today": return <TodayWidget navigate={navigate} guide={guide} />;
     case "planScore": return <PlanWidget client={client} navigate={navigate} />;
     case "nextEvent": return <EventWidget client={client} navigate={navigate} />;
     case "network": return <NetworkWidget client={client} navigate={navigate} />;
@@ -180,4 +193,5 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 11, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 11, fontWeight: "700" },
   eventTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 21 },
   people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 10 },
+  guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 11, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 12, fontWeight: "600" },
 }));

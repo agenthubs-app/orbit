@@ -95,21 +95,20 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     {state === "error" ? <View><UiText style={styles.error}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={() => void reload()} variant="secondary" /></View> : null}
     {state === "loading" ? <UiText style={styles.hintText}>{t("common.loadingLabel")}</UiText> : null}
     {state !== "error" && state !== "loading" ? <>
-      {guide.kind === "ready" && guide.data.kind === "progress" ? <Guide progress={guide.data} navigate={navigate} /> : null}
       {state === "stale" || pending ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{fetchedAt ? ` · ${new Date(fetchedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")}` : ""}</UiText> : null}
       {!editing && !layout.hintDismissedAt && !hintHidden ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetHint")}</UiText><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={() => void dismissHint()}><UiText style={styles.hintText}>×</UiText></UiPressable></View> : null}
       {editing ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetDragHint")}</UiText></View> : null}
       <View style={styles.grid}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} count={items.length} editing={editing}
         small={slot.size === "s"} dropTarget={dropTarget === index} onTarget={setDropTarget} onDrop={(key, to) => setDraft(moveWidgetTo(items, key, to))}>
-        <UiPressable onLongPress={begin} delayLongPress={400} accessibilityLabel={t(TITLE[slot.key])} style={styles.widgetPress}>
-          <Card style={styles.widget}><View style={styles.widgetHead}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText>
+        <UiPressable accessible={false} onLongPress={begin} delayLongPress={400} style={styles.widgetPress}>
+          <Card style={styles.widget}><View style={[styles.widgetHead, editing && styles.widgetHeadEditing]}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText>
             {editing ? <View style={styles.controls}>
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetMoveUp")}`} text="↑" disabled={index === 0} press={() => setDraft(moveWidget(items, slot.key, -1))} />
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetMoveDown")}`} text="↓" disabled={index === items.length - 1} press={() => setDraft(moveWidget(items, slot.key, 1))} />
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetSize")}`} text={slot.size === "s" ? t("home.widgetSmall") : t("home.widgetMedium")} press={() => setDraft(resizeWidget(items, slot.key))} />
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} text="−" press={() => remove(slot.key)} />
             </View> : null}</View>
-            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} />
+            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
           </Card>
         </UiPressable>
       </DraggableWidget>)}</View>
@@ -158,16 +157,6 @@ function DraggableWidget({ widget, index, count, editing, small, dropTarget, onT
     style={[styles.widgetWrap, small && styles.widgetSmall, dropTarget && styles.dropTarget, { transform: pan.getTranslateTransform(), zIndex: dropTarget ? 2 : 1 }]}>{children}</Animated.View>;
 }
 
-function Guide({ progress, navigate }: { progress: { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } }; navigate: (href: string) => void }) {
-  const { styles } = useStyles(); const { t } = useOrbitLocale();
-  const steps = [
-    { key: "contacts", label: t("home.widgetGuideContacts"), href: "/contacts" },
-    { key: "goal", label: t("home.widgetGuideGoal"), href: "/task?seg=plan" },
-    { key: "plan", label: t("home.widgetGuidePlan"), href: "/task?seg=plan" },
-  ] as const;
-  return <Card><View style={styles.guideHead}><UiText style={styles.widgetTitle}>{t("home.widgetGuide")}</UiText><UiText>{progress.completed}/3</UiText></View>{steps.map(step => <UiPressable key={step.key} accessibilityRole="link" onPress={() => navigate(step.href)} style={styles.guideStep}><UiText style={styles.hintText}>{progress.steps[step.key] ? "✓" : "○"} {step.label} →</UiText></UiPressable>)}</Card>;
-}
-
 function WidgetLibrary({ slots, onAdd }: { slots: readonly HomeWidgetSlot[]; onAdd: (slot: HomeWidgetSlot) => void }) {
   const { t } = useOrbitLocale(); const { colors, styles } = useStyles();
   const [category, setCategory] = useState("all"); const [query, setQuery] = useState("");
@@ -187,7 +176,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   hint: { borderWidth: 1, borderColor: colors.line, borderStyle: "dashed", borderRadius: 10, paddingHorizontal: 12, minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, hintText: { color: colors.ink3Text, fontSize: 11 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }, widgetWrap: { width: "100%" }, widgetSmall: { width: "48%" }, widgetPress: { flex: 1 }, widget: { flex: 1, minHeight: 155 }, widgetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 3, marginBottom: 12 }, widgetTitle: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
   dropTarget: { borderColor: colors.accentText, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
-  controls: { flexDirection: "row", flexWrap: "wrap", gap: 3, justifyContent: "flex-end", flex: 1 }, control: { paddingHorizontal: 5, minHeight: 29, minWidth: 26, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, controlText: { color: colors.accentText, fontSize: 11 }, disabled: { opacity: .35 },
-  guideHead: { flexDirection: "row", justifyContent: "space-between" }, guideStep: { paddingVertical: 8 },
+  widgetHeadEditing: { flexDirection: "column", alignItems: "stretch" },
+  controls: { flexDirection: "row", gap: 3, justifyContent: "flex-end", marginTop: 8 }, control: { paddingHorizontal: 5, minHeight: 29, minWidth: 26, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, controlText: { color: colors.accentText, fontSize: 11 }, disabled: { opacity: .35 },
   library: { paddingHorizontal: 20, paddingBottom: 30, gap: 12 }, search: { borderWidth: 1, borderColor: colors.line, color: colors.ink, borderRadius: 9, minHeight: 40, paddingHorizontal: 12 }, categories: { flexDirection: "row", flexWrap: "wrap", gap: 5 }, category: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14 }, categoryOn: { backgroundColor: colors.surface2 }, libraryRow: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 5 }, libraryName: { flex: 1, color: colors.ink, fontSize: 12 },
 }));

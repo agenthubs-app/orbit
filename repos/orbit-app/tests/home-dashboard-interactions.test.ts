@@ -128,9 +128,11 @@ export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
 `;
 
+// Keep the old dashboard's interaction guarantees while its audit references remain.
+// The live /home route uses HomeWidgetsScreen and has separate R10 coverage.
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/home"; import { ShellTabBar } from "./src/components/OrbitTabBar"; import { useFixture } from "fixture"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; function App() { const s = useFixture(); const language = s.language || "zh"; const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) }; return s.mounted ? <OrbitLocaleContext.Provider value={locale}><Route /><ShellTabBar /></OrbitLocaleContext.Provider> : null; } createRoot(document.getElementById("root")).render(<App />);',
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { HomeDashboardScreen } from "./src/screens/home/HomeDashboardScreen"; import { ShellTabBar } from "./src/components/OrbitTabBar"; import { useFixture } from "fixture"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; function App() { const s = useFixture(); const language = s.language || "zh"; const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) }; return s.mounted ? <OrbitLocaleContext.Provider value={locale}><HomeDashboardScreen /><ShellTabBar /></OrbitLocaleContext.Provider> : null; } createRoot(document.getElementById("root")).render(<App />);',
       loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],

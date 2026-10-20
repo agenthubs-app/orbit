@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DEFAULT_HOME_LAYOUT } from "../src/api/schema/home-layout";
+
+test("App opening layout gives People and assistant full-width cards", () => {
+  assert.deepEqual(DEFAULT_HOME_LAYOUT.app.map(slot => [slot.key, slot.size]), [
+    ["today", "m"], ["planScore", "s"], ["nextEvent", "s"], ["network", "m"], ["secretary", "m"],
+  ]);
+});
 import { HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, nextRegisteredEvent, removeWidget, resizeWidget, signedDelta } from "../src/screens/home/home-widget-model";
 
 test("App layout edits keep unique known keys, accept two sizes and hide unboarded deadline", () => {
