@@ -47,14 +47,12 @@ export function DeletedPage() {
   const { language } = useOrbitLanguage();
   const t = rightsCopy(language);
   return <Orbit2026Scope language={language} className={s.deleted}>
-    <header className={s.deletedHeader}><a href="/" aria-label="Orbit" className={s.deletedBrand}>
-      <span aria-hidden className={s.deletedLogo}>O</span><span>Orbit</span>
-    </a></header>
+    <header className={s.deletedHeader}><strong>{t("deletedNavBack")}</strong><span>{t("account")}</span></header>
     <main className={s.deletedMain}>
-      <span aria-hidden className={s.deletedWave}>👋</span>
       <h1>{t("deletedTitle")}</h1>
-      <p>{t("deletedBody")}<br />{t("deletedDetail")}</p>
-      <Button label={t("home")} variant="primary" onClick={() => window.location.assign("/")} />
+      <p>{t("deletedDetail")}</p>
+      <div className={s.deletedCard}>{t("deletedBody")}</div>
+      <div className={s.deletedActions}><Button label={t("home")} variant="primary" onClick={() => window.location.assign("/")} /></div>
     </main>
   </Orbit2026Scope>;
 }

@@ -10,6 +10,7 @@
 .content { min-width: 0; }
 .heading { margin: 0 0 16px; }
 .heading h1 { margin: 0; font-size:var(--fs-section); line-height: 1.35; font-weight: 800; }
+.largeTitle h1 { font-size: var(--fs-title-lg); }
 .heading p { margin: 4px 0 0; font-size:var(--fs-control); line-height: 1.5; color: var(--ink-3); }
 .phoneTitle, .phoneBack { display: none; }
 @media (max-width: 767px) {

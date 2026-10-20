@@ -7,20 +7,22 @@
 .overlayRoot :global(.btn.au-close:hover) { background: var(--surface-2); }
 .overlayRoot :global(.au-view) { display: flex; flex-direction: column; gap: 18px; }
 .overlayRoot :global(.au-head) { display: flex; flex-direction: column; gap: 6px; }
-.overlayRoot :global(.au-h2) { font-size: var(--fs-number-md); line-height: 1.25; font-weight: 800; }
-.overlayRoot :global(.au-sub) { color: var(--ink-2); font-size: var(--fs-body); line-height: 1.6; }
+.overlayRoot :global(.au-h2) { font-size: var(--fs-number-md); line-height: 1.35; font-weight: 700; }
+.overlayRoot :global(.au-sub) { color: var(--ink-2); font-size: var(--fs-body); line-height: 1.7; }
 .overlayRoot :global(.au-fields) { display: flex; flex-direction: column; gap: 16px; }
 .overlayRoot :global(.au-divider) { color: var(--ink-3-text); font-size: var(--fs-meta); text-align: center; }
-.overlayRoot :global(.au-label) { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-body-sm); font-weight: 700; }
+.overlayRoot :global(.au-label) { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-meta); font-weight: 800; }
 .overlayRoot :global(.au-label-row) { display: flex; justify-content: space-between; gap: 12px; }
 .overlayRoot :global(.au-field-wrap) { position: relative; display: block; }
-.overlayRoot :global(.au-input) { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-emo); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); }
+.overlayRoot :global(.au-input) { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-emo); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 400; }
 .overlayRoot :global(.au-input:focus) { border-color: var(--plum-500); background: var(--surface); }
+.overlayRoot :global(.au-input.au-input-invalid), .overlayRoot :global(.au-input.au-input-invalid:focus) { border-color: var(--coral); background: var(--surface-2); }
+.overlayRoot :global(.au-field-error) { margin: 0; color: var(--coral-text); font-size: var(--fs-meta); font-weight: 400; line-height: 1.6; }
 .overlayRoot :global(.au-field-wrap .au-input) { padding-right: 52px; }
 .overlayRoot :global(.btn.au-eye) { position: absolute; right: 7px; top: 6px; width: 36px; height: 36px; color: var(--ink-2); }
 .overlayRoot :global(.au-forgot), .overlayRoot :global(.au-switch-link), .overlayRoot :global(.au-back-link), .overlayRoot :global(.au-terms-link) { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; font-size: var(--fs-meta); font-weight: 500; }
 .overlayRoot :global(.au-forgot) { align-self: flex-start; }
-.overlayRoot :global(.btn.au-btn-login), .overlayRoot :global(.btn.au-btn-primary) { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; padding: 0 16px; border-radius: var(--r-pill); background: var(--ink); color: var(--surface); font-size: var(--fs-body); font-weight: 700; }
+.overlayRoot :global(.btn.au-btn-login), .overlayRoot :global(.btn.au-btn-primary) { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; padding: 0 16px; border-radius: var(--r-pill); background: var(--ink); color: var(--surface); font-size: var(--fs-body-sm); font-weight: 700; }
 .overlayRoot :global(.btn.au-btn-login:hover), .overlayRoot :global(.btn.au-btn-primary:hover) { opacity: .88; }
 .overlayRoot :global(.btn.au-google) { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; gap: 9px; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-body); font-weight: 700; }
 .overlayRoot :global(.au-switch), .overlayRoot :global(.au-terms), .overlayRoot :global(.au-back), .overlayRoot :global(.au-hint) { color: var(--ink-3-text); font-size: var(--fs-meta); line-height: 1.6; }

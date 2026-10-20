@@ -9,7 +9,7 @@ import { useAccountAuth } from "./use-account-auth";
 export function AuthForgot({ defaultNext }: { defaultNext: string }) {
   const { t } = useOrbitLanguage();
   const session = useAccountAuth({ ...getOrbitAccountAuthViewModel("forgot"), defaultNext });
-  const { error, label, onSubmit } = useAuthSubmit(session, "forgot");
+  const { error, localError, label, onSubmit } = useAuthSubmit(session, "forgot");
   const next = session.query.next;
 
   if (session.resetSent) return <div className="au-view">
@@ -26,8 +26,8 @@ export function AuthForgot({ defaultNext }: { defaultNext: string }) {
       <p className="au-sub">{t({ en: "Enter your email address.", ja: "メールアドレスを入力してください。", zh: "请输入邮箱地址。" })}</p>
     </div>
     <form className="au-view" noValidate onSubmit={onSubmit}>
-      <AuthEmailField session={session} />
-      <AuthErrorCard error={error} />
+      <AuthEmailField error={localError} session={session} />
+      <AuthErrorCard error={localError ? "" : error} />
       <AuthPrimaryButton className="au-btn-primary" label={session.submitting ? label : t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })} submitting={session.submitting} />
     </form>
   </div>;

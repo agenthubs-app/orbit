@@ -4,7 +4,8 @@
     "design-base": "http://localhost:3420/redesign-2026-10/",
     "app-origin": "http://localhost:3400",
     "grid": 100,
-    "attribution": "scripts/visual/attribution-redesign-R18a-app.json"
+    "attribution": "scripts/visual/attribution-redesign-R18a-app.json",
+    "wait": 35000
   },
   "sources": [
     "repos/orbit-app/src/screens/me/**",
@@ -49,7 +50,7 @@
       "themes": [
         "light"
       ],
-      "path": "/profile/preview",
+      "path": "/profile/preview?design=100",
       "note": "已接线开发 fixture；本登记不代表原生操作或像素门禁通过。"
     },
     {

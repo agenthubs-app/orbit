@@ -21,15 +21,19 @@ export const AUTH_PASSWORD_MAX_LENGTH = 72;
 export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthView, "reset">, onDelegate?: () => void) {
   const { t } = useOrbitLanguage();
   const [localError, setLocalError] = useState("");
+  const [localField, setLocalField] = useState<"email" | "password" | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<boolean> {
     event.preventDefault();
-    const problem = validateEmail(session.email) ?? (view === "forgot" ? null : validatePassword(session.password));
+    const emailProblem = validateEmail(session.email);
+    const problem = emailProblem ?? (view === "forgot" ? null : validatePassword(session.password));
     if (problem) {
       setLocalError(t(problem));
+      setLocalField(emailProblem ? "email" : "password");
       return false;
     }
     setLocalError("");
+    setLocalField(null);
     onDelegate?.();
     await session.onSubmit(event);
     return true;
@@ -39,17 +43,18 @@ export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthVie
   const label = session.submitting ? t(labels.loading) : session.succeeded && labels.success ? t(labels.success) : t(labels.idle);
   const error = localError || session.error;
 
-  return { error, label, onSubmit };
+  return { error, localError, localField, label, onSubmit };
 }
 
-export function AuthEmailField({ session }: { session: AccountAuthSession }) {
+export function AuthEmailField({ session, error }: { session: AccountAuthSession; error?: string }) {
   const { t } = useOrbitLanguage();
   return (
     <div className="au-label">
       <label htmlFor={AUTH_EMAIL_ID}>{t({ en: "Email", ja: "メールアドレス", zh: "邮箱" })}</label>
       <input
         autoComplete="email"
-        className="au-input"
+        aria-invalid={error ? true : undefined}
+        className={`au-input${error ? " au-input-invalid" : ""}`}
         id={AUTH_EMAIL_ID}
         inputMode="email"
         onChange={(event) => session.setEmail(event.target.value)}
@@ -58,17 +63,20 @@ export function AuthEmailField({ session }: { session: AccountAuthSession }) {
         type="email"
         value={session.email}
       />
+      {error ? <p className="au-field-error" role="alert">{error}</p> : null}
     </div>
   );
 }
 
 export function AuthPasswordField({
   autoComplete,
+  error,
   labelExtra,
   placeholder,
   session,
 }: {
   autoComplete: "current-password" | "new-password";
+  error?: string;
   labelExtra?: ReactNode;
   placeholder: string;
   session: AccountAuthSession;
@@ -81,7 +89,8 @@ export function AuthPasswordField({
       <span className="au-field-wrap">
         <input
           autoComplete={autoComplete}
-          className="au-input"
+          aria-invalid={error ? true : undefined}
+          className={`au-input${error ? " au-input-invalid" : ""}`}
           id={AUTH_PASSWORD_ID}
           maxLength={AUTH_PASSWORD_MAX_LENGTH}
           minLength={AUTH_PASSWORD_MIN_LENGTH}
@@ -101,6 +110,7 @@ export function AuthPasswordField({
           <Icon name="eye" size={16} />
         </button>
       </span>
+      {error ? <p className="au-field-error" role="alert">{error}</p> : null}
     </div>
   );
 }

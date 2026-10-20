@@ -3,7 +3,8 @@
   "defaults": {
     "design-base": "http://127.0.0.1:3340/redesign-2026-10/",
     "app-origin": "http://127.0.0.1:3400",
-    "grid": 100
+    "grid": 100,
+    "wait": 35000
   },
   "sources": [
     "repos/orbit-app/src/screens/profile/AccountScreen.tsx",

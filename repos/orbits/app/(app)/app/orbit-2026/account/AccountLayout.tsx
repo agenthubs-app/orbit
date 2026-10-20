@@ -27,12 +27,13 @@ const menu: readonly { section: Exclude<AccountSection, "home">; href: string; i
   { section: "help", href: "/app/settings/help", icon: "book" },
 ];
 
-export function AccountLayout({ active, title, subtitle, children, rightRail }: {
+export function AccountLayout({ active, title, subtitle, children, rightRail, largeTitle = false }: {
   active: AccountSection;
   title: string;
   subtitle?: string;
   children: ReactNode;
   rightRail?: ReactNode | false;
+  largeTitle?: boolean;
 }) {
   const { language } = useOrbitLanguage();
   const t = (key: keyof typeof accountCopy) => pickCopy(accountCopy[key], language);
@@ -58,7 +59,7 @@ export function AccountLayout({ active, title, subtitle, children, rightRail }: 
           </nav>
           <main className={s.content}>
             <a className={s.phoneBack} href="/app/settings"><Icon name="left" size={16} />{t("backToSettings")}</a>
-            <div className={s.heading}><h1>{title}</h1>{subtitle ? <p>{subtitle}</p> : null}</div>
+            <div className={`${s.heading} ${largeTitle ? s.largeTitle : ""}`}><h1>{title}</h1>{subtitle ? <p>{subtitle}</p> : null}</div>
             {children}
           </main>
         </div>

@@ -10,7 +10,9 @@ import { useAccountAuth } from "./use-account-auth";
 export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: string; oauthProviders: readonly string[] }) {
   const { t } = useOrbitLanguage();
   const session = useAccountAuth({ ...getOrbitAccountAuthViewModel("signup"), defaultNext });
-  const { error, label, onSubmit } = useAuthSubmit(session, "register");
+  const { error, localError, localField, label, onSubmit } = useAuthSubmit(session, "register");
+  const emailError = session.emailTaken ? error : localField === "email" ? localError : "";
+  const passwordError = localField === "password" ? localError : "";
   const next = session.query.next;
 
   return (
@@ -22,10 +24,10 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
-        <AuthEmailField session={session} />
-        <AuthPasswordField autoComplete="new-password" placeholder={t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })} session={session} />
+        <AuthEmailField error={emailError} session={session} />
+        <AuthPasswordField autoComplete="new-password" error={passwordError} placeholder={t({ en: "At least 8 characters", ja: "8文字以上", zh: "至少 8 位" })} session={session} />
       </div>
-      <AuthErrorCard error={error} />
+      <AuthErrorCard error={emailError || passwordError ? "" : error} />
       {session.emailTaken ? <p className="au-recovery-links">
         <a href={authRoutePath("login", next)}>{t({ en: "Sign in", ja: "ログイン", zh: "登录" })}</a>
         <a href={authRoutePath("forgot", next)}>{t({ en: "Reset password", ja: "パスワードを再設定", zh: "重置密码" })}</a>

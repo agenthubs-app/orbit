@@ -4,7 +4,7 @@
     "design-base": "http://localhost:3420/redesign-2026-10/",
     "grid": 100,
     "attribution": "scripts/visual/attribution-redesign-R18b-app.json",
-    "wait": 12000
+    "wait": 35000
   },
   "sources": [
     "repos/orbit-app/src/screens/public/PublicInfoContent.tsx",
@@ -58,6 +58,8 @@
     { "id": "A-R18b-04-accepted-light", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 756, "themes": ["light"], "note": "Requires isolated 202 response fixture." },
     { "id": "A-R18b-04-accepted-dark", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 757, "themes": ["dark"], "note": "Requires isolated 202 response fixture." },
     { "id": "A-R18b-05-password-72-light", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 762, "themes": ["light"], "note": "Requires synthetic token and 73-byte password input fixture." },
-    { "id": "A-R18b-05-password-72-dark", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 763, "themes": ["dark"], "note": "Requires synthetic token and 73-byte password input fixture." }
+    { "id": "A-R18b-05-password-72-dark", "path": "/account/reset-password#token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "design": "b12-missing-states.html", "board-index": 763, "themes": ["dark"], "note": "Requires synthetic token and 73-byte password input fixture." },
+    { "id": "A-R18b-04-error-light", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 1002, "themes": ["light"], "note": "Requires entered sample email and isolated local request network failure." },
+    { "id": "A-R18b-04-error-dark", "path": "/account/forgot-password", "design": "b12-missing-states.html", "board-index": 1003, "themes": ["dark"], "note": "Requires entered sample email and isolated local request network failure." }
   ]
 }

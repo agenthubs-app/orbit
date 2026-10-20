@@ -58,7 +58,7 @@ export function ExportsPage() {
     } finally { setBusy(false); }
   };
   const date = (value: string) => new Intl.DateTimeFormat(language, { timeZone: "Asia/Tokyo", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-  return <AccountLayout active="export" title={t("export")} subtitle={t("exportIntro")}>
+  return <AccountLayout active="export" title={t("export")} subtitle={t("exportIntro")} largeTitle>
     <div className={s.stack}>
       <Card title={t("exportSelected")}>
         <div className={s.selection}>

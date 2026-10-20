@@ -67,7 +67,7 @@ export function AccountDeletionPage() {
         { prompt: "login", max_age: "0", claims: JSON.stringify({ id_token: { auth_time: { essential: true } } }) });
     } catch { setProblem(t("generalError")); setBusy(false); }
   };
-  return <AccountLayout active="account" title={t("account")}>
+  return <AccountLayout active="account" title={t("account")} largeTitle>
     <div className={s.stack}>
       {step === "overview" ? <>
         <Card title={t("deletionList")}><p className={s.lead}>{t("deletionIntro")}</p>

@@ -9,7 +9,7 @@
 .primary { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 18px; border-radius: var(--r-pill); background: var(--ink); color: var(--surface) !important; font-size: var(--fs-body); font-weight: 700; }
 .primary:hover { opacity: .88; }
 .body { max-width: 1164px; margin: auto; padding: 72px 0 100px; }
-.hero { display: grid; grid-template-columns: 1fr 562px; align-items: center; gap: 62px; }
+.hero { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 40px; }
 .copy { min-width: 0; }
 .eyebrow, .sampleLabel { display: inline-block; padding: 4px 10px; border-radius: var(--r-pill); background: var(--plum-100); color: var(--accent-text); font-size: var(--fs-caption); font-weight: 700; }
 .copy h1 { margin: 16px 0 18px; font-size: var(--fs-display-lg); line-height: 1.2; letter-spacing: -.01em; font-weight: 900; }

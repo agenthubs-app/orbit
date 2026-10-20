@@ -2,7 +2,8 @@
   "_note": "R28 board-to-route manifest. Basic profile light boards use amended b1; dark and guide boards use appended b12. Entries are not pixel passes. Drive the documented server state before running a view.",
   "defaults": {
     "design-base": "http://127.0.0.1:3420/redesign-2026-10/",
-    "grid": 100
+    "grid": 100,
+    "wait": 35000
   },
   "sources": [
     "repos/orbit-app/src/screens/profile/onboarding/**",

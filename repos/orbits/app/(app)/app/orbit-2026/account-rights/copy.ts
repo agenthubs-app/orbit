@@ -51,9 +51,10 @@ const copy = {
   cancelTooLate: { ja: "取消期間が終了しました。", zh: "取消期限已过。", en: "The cancellation period has ended." },
   reconnect: { ja: "連携サービスは必要に応じて再接続してください。", zh: "如需使用连接的服务，请重新连接。", en: "Reconnect linked services if you need them." },
   deletedTitle: { ja: "アカウントを削除しました", zh: "账户已删除", en: "Account deleted" },
-  deletedBody: { ja: "Orbit をご利用いただきありがとうございました。", zh: "感谢使用 Orbit。", en: "Thank you for using Orbit." },
+  deletedNavBack: { ja: "‹ Orbit · 設定", zh: "‹ Orbit · 设置", en: "‹ Orbit · Settings" },
+  deletedBody: { ja: "これまでご利用いただき、ありがとうございました。", zh: "感谢你使用 Orbit。", en: "Thank you for using Orbit." },
   deletedDetail: { ja: "データの削除が完了しました。", zh: "数据删除已完成。", en: "Your data has been deleted." },
-  home: { ja: "トップへ", zh: "返回首页", en: "Go to home" },
+  home: { ja: "はじめの画面へ", zh: "返回起始页", en: "Back to the start" },
   signOut: { ja: "ログアウト", zh: "退出登录", en: "Sign out" },
 } as const;
 

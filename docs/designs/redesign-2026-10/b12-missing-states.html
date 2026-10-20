@@ -8863,6 +8863,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
 .rd33-field { margin:16px 0 0; }
 .rd33-field label { display:block; font-size:12px; font-weight:800; margin-bottom:6px; }
 .rd33-field .in { min-height:48px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface-2); font-size:14px; }
+.rd33-field .in.placeholder { color:var(--ink-3); }
 .rd33-field .err { border-color:var(--coral); color:var(--coral); }
 .rd33-error { color:var(--coral); font-size:12px; line-height:1.6; margin-top:6px; }
 .rd33-modal .btn.block,.rd33-app .btn.block { width:100%; margin-top:14px; }
@@ -8902,7 +8903,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     const foot = '<div class="rd33-fine"><a href="/terms">利用規約</a> · <a href="/privacy">プライバシーポリシー</a></div>';
     if (state === 'login-error' || state === 'login-no-google') return head + '<h2>ログイン</h2><p>おかえりなさい。</p>' + (state === 'login-no-google' ? '' : '<button class="btn block">Google でログイン</button><div class="rd33-or">またはメールアドレスで</div>') + rd33Field('メールアドレス', 'k.sato@minatolink.example') + rd33Field('パスワード', '••••••••', state === 'login-error' ? 'メールアドレスまたはパスワードが正しくありません。' : '') + '<div class="rd33-fine">パスワードをお忘れですか？</div><button class="btn primary block">ログイン</button><div class="rd33-fine">アカウントをお持ちでない方は 新規登録</div>';
     if (state === 'signup' || state === 'signup-no-google' || state === 'signup-existing' || state === 'signup-auto-success' || state === 'signup-auto-failed' || state === 'password-72') return head + '<h2>アカウントを作成</h2><p>1分で完了します。</p>' + (state === 'signup' ? '<button class="btn block">Google で登録</button><div class="rd33-or">またはメールアドレスで</div>' : '') + rd33Field('メールアドレス', 'k.sato@minatolink.example', state === 'signup-existing' ? 'このメールアドレスは登録済みです。ログイン / パスワードを再設定' : '') + rd33Field('パスワード', '••••••••', state === 'password-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + (state === 'signup-auto-success' ? '<div class="card">登録しました。プロフィール設定へ進みます。</div>' : '') + (state === 'signup-auto-failed' ? '<div class="card">登録しました。ログインして続けてください。</div>' : '') + '<button class="btn primary block">' + (state === 'signup-auto-failed' ? 'ログインへ' : '登録する') + '</button>' + foot;
-    if (state === 'forgot') return head + '<h2>パスワードの再設定</h2><p>メールアドレスを入力してください。</p>' + rd33Field('メールアドレス', 'k.sato@minatolink.example') + '<button class="btn primary block">再設定を申し込む</button>';
+    if (state === 'forgot' || state === 'forgot-error') return head + '<h2>パスワードの再設定</h2><p>メールアドレスを入力してください。</p>' + rd33Field('メールアドレス', state === 'forgot-error' ? 'invalid' : 'k.sato@minatolink.example', state === 'forgot-error' ? '有効なメールアドレスを入力してください。' : '') + '<button class="btn primary block">再設定を申し込む</button>';
     if (state === 'forgot-accepted') return head + '<h2>受け付けました</h2><p>登録済みのアドレスであればメールが届きます。</p><button class="btn primary block">ログインに戻る</button>';
     if (state === 'reset') return head + '<h2>新しいパスワード</h2><p>メールで受け取ったリンクから設定します。</p>' + rd33Field('新しいパスワード', '••••••••') + '<div class="rd33-fine">8文字以上</div>' + rd33Field('もう一度入力', '••••••••') + '<button class="btn primary block">変更してログインへ</button>';
     return head + '<h2>このリンクは使えません</h2><p>リンクが無効か、すでに使われている可能性があります。</p><button class="btn primary block">再設定を申し込む</button>';
@@ -8942,7 +8943,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     if (state === 'welcome' || state === 'welcome-no-google') return '<div class="rd33-app">' + rd33Brand + '<div class="rd33-demo"><span class="chip lav">サンプル</span><div class="card">📇 12枚を読み取りました</div><div class="card">🎯 プラン スコア 46</div><div class="card">✉️ お礼メールの下書き例</div></div><h2>名刺は撮るだけ。<br>あとは Orbit が整理します</h2><p>連続撮影・表裏の自動ペア・重複の統合まで。</p><div class="rd33-dots">● ○ ○</div><div class="rd33-footer"><button class="btn ghost">スキップして選択へ</button><button class="btn primary">はじめる（無料）</button>' + (state === 'welcome' ? '<button class="btn">Google で続ける</button>' : '') + '<div class="rd33-fine">ログイン · 登録を選ぶ</div></div></div>';
     if (state === 'login' || state === 'login-no-google' || state === 'pending-count' || state === 'pending-unknown') return '<div class="rd33-app">' + header + '<h2>おかえりなさい</h2><p>名刺と人脈は、どの端末からでも同じです。</p>' + (state === 'login-no-google' ? '' : '<button class="btn block">Google でログイン</button>') + (state === 'login-no-google' ? '' : '<div class="rd33-or">またはメールアドレスで</div>') + rd33Field('メールアドレス', 'k.sato@minato') + rd33Field('パスワード', '••••••••') + (state === 'pending-count' ? '<div class="rd33-card">この端末に未同期の変更が2件あります。アカウント情報は表示しません。</div>' : '') + (state === 'pending-unknown' ? '<div class="rd33-card">この端末の未同期の変更を確認できませんでした。</div>' : '') + '<div class="rd33-footer"><button class="btn primary">ログイン</button><div class="rd33-fine">パスワードをお忘れですか？ · 新規登録</div></div></div>';
     if (state === 'signup' || state === 'signup-no-google' || state === 'signup-existing' || state === 'signup-success' || state === 'signup-auto-failed' || state === 'password-72') return '<div class="rd33-app">' + header + '<h2>アカウントを作成</h2><p>1分で完了します。</p>' + (state === 'signup' ? '<button class="btn block">Google で登録</button><div class="rd33-or">またはメールアドレスで</div>' : '') + rd33Field('メールアドレス', 'k.sato@minatolink.example', state === 'signup-existing' ? 'このメールアドレスは登録済みです。' : '') + (state === 'signup-existing' ? '<div class="rd33-fine">ログイン · パスワードを再設定</div>' : '') + rd33Field('パスワード', '••••••••', state === 'password-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + (state === 'signup-success' ? '<div class="rd33-card">登録しました。プロフィール設定へ進みます。</div>' : '') + (state === 'signup-auto-failed' ? '<div class="rd33-card">登録しました。ログインして続けてください。</div>' : '') + '<div class="rd33-footer"><button class="btn primary">' + (state === 'signup-auto-failed' ? 'ログインへ' : '登録する') + '</button><div class="rd33-fine">利用規約 · プライバシーポリシー</div></div></div>';
-    if (state === 'forgot' || state === 'accepted') return '<div class="rd33-app">' + header + '<h2>' + (state === 'accepted' ? '受け付けました' : 'パスワードの再設定') + '</h2><p>' + (state === 'accepted' ? '登録済みのアドレスであればメールが届きます。' : 'メールアドレスを入力してください。') + '</p>' + (state === 'forgot' ? rd33Field('メールアドレス', 'k.sato@minatolink.example') : '') + '<div class="rd33-footer"><button class="btn primary">' + (state === 'accepted' ? 'ログインに戻る' : '再設定を申し込む') + '</button></div></div>';
+    if (state === 'forgot' || state === 'forgot-error' || state === 'accepted') return '<div class="rd33-app">' + header + '<h2>' + (state === 'accepted' ? '受け付けました' : 'パスワードの再設定') + '</h2><p>' + (state === 'accepted' ? '登録済みのアドレスであればメールが届きます。' : 'メールアドレスを入力してください。') + '</p>' + (state === 'forgot' ? rd33Field('メールアドレス', 'メールアドレスを入力').replace('class="in"', 'class="in placeholder"') : state === 'forgot-error' ? rd33Field('メールアドレス', 'k.sato@minatolink.example') : '') + (state === 'forgot-error' ? '<div class="rd33-error">現在サービスに接続できません。しばらくしてから再試行してください。</div>' : '') + '<div class="rd33-footer"><button class="btn primary">' + (state === 'accepted' ? 'ログインに戻る' : '再設定を申し込む') + '</button></div></div>';
     return '<div class="rd33-app">' + header + '<h2>' + (state === 'invalid' ? 'このリンクは使えません' : '新しいパスワードを設定してください') + '</h2><p>' + (state === 'invalid' ? 'もう一度、再設定をお申し込みください。' : 'メールで受け取ったリンクから設定します。') + '</p>' + (state === 'invalid' ? '' : rd33Field('新しいパスワード', '••••••••', state === 'reset-72' ? 'パスワードは UTF-8 で72バイト以下にしてください。' : '') + '<div class="rd33-fine">8文字以上</div>' + rd33Field('もう一度入力', '••••••••')) + '<div class="rd33-footer"><button class="btn primary">' + (state === 'invalid' ? '再設定を申し込む' : '変更してログインへ') + '</button></div></div>';
   };
   const rd33AppStates = [
@@ -8965,10 +8966,12 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     ['A-R18b-05-password-72', '72バイト超過', 'reset-72']
   ];
   for (const [id, title, state] of rd33AppStates) rd33Boards += PB(id + ' ' + title, '', () => ({ body: rd33AppContent(state), tab: -1 }), null, 'b1 #1 / #6–#9 · 2026-10-20 主会话代定');
+  window.__px2R18b = { web: rd33WebFrame, app: rd33AppContent };
   document.getElementById('out').insertAdjacentHTML('beforeend', group('r18b-rd33', rd33Boards));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
+
 <!-- 2026-10-20 主会话代定 §R18c-4：末尾补画数据导出与退会的宽度、主题和中途态。RD-33 已认可为正式基准；像素验收另行判定。 -->
 <style>
 .r18c-draft { box-sizing:border-box; color:var(--ink); background:var(--bg); min-height:100%; font-family:var(--font); }
@@ -9120,6 +9123,10 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
 .r28-draft .r28-demo b { flex:1; }
 .r28-draft .r28-guide-item { opacity:.48; }
 .r28-draft .r28-guide-item.ready { opacity:1; }
+.r28-draft .r28-plan-label { color:var(--ink-3); font-size:12px; margin:12px 0 8px; }
+.r28-draft .r28-plan-input { min-height:52px; display:flex; align-items:center; border:1px solid var(--line); border-radius:12px; padding:12px; font-size:13px; }
+.r28-draft .r28-plan-choice { display:inline-flex; align-items:center; min-height:36px; border-radius:20px; padding:8px 13px; background:var(--surface-2); font-size:12px; font-weight:700; }
+.r28-draft .r28-plan-choice.on { background:var(--mac-lav); }
 </style>
 <script>
 (function () {
@@ -9152,7 +9159,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     const completed = state === 'locked' ? 0 : state === 'current' ? 1 : state === 'plan' ? 2 : 3;
     const status = state === 'locked' ? 'まずは人脈を 3 人確認しましょう。' : state === 'current' ? '次は目標を保存しましょう。' : state === 'plan' ? '目標とプランの種類を確かめてください。' : '最初のプランができました。';
     const item = (n, title, detail, ready) => '<div class="r28-row r28-guide-item' + (ready ? ' ready' : '') + '"><b>' + n + ' ' + title + '</b><span>' + detail + '</span></div>';
-    return '<div class="r28-draft ' + (app ? 'r28-phone' : 'r28-web') + '"><div class="r28-top"><b>‹ ホーム</b><small>はじめのガイド</small></div><main class="r28-main"><div class="r28-kicker">はじめの 3 ステップ · ' + completed + ' / 3</div><h2>' + (state === 'complete' ? 'ガイドを終えました' : '最初のプランまで、あと少し') + '</h2><p>' + status + '</p>' + card(item('1', '人脈をつくる', state === 'locked' ? '0 / 3 人' : '3 / 3 人', true) + item('2', '目標を決める', state === 'locked' ? 'まだ開けません' : state === 'current' ? '今できること' : '完了', completed >= 1) + item('3', 'プランをつくる', completed < 2 ? '目標のあとで' : state === 'plan' ? '今できること' : '完了', completed >= 2)) + (state === 'plan' ? card(row('優先 1', 'シリーズAで3億円を調達') + row('プランの種類', '資金調達 · 変更できます')) : '') + acts(state === 'locked' ? '人脈を追加する' : state === 'current' ? '目標を設定する' : state === 'plan' ? 'プランをつくる' : 'プランを見る') + '</main></div>';
+    return '<div class="r28-draft ' + (app ? 'r28-phone' : 'r28-web') + '"><div class="r28-top"><b>‹ ホーム</b><small>はじめのガイド</small></div><main class="r28-main"><div class="r28-kicker">はじめの 3 ステップ · ' + completed + ' / 3</div><h2>' + (state === 'complete' ? 'ガイドを終えました' : '最初のプランまで、あと少し') + '</h2><p>' + status + '</p>' + card(item('1', '人脈をつくる', state === 'locked' ? '0 / 3 人' : '3 / 3 人', true) + item('2', '目標を決める', state === 'locked' ? 'まだ開けません' : state === 'current' ? '今できること' : '完了', completed >= 1) + item('3', 'プランをつくる', completed < 2 ? '目標のあとで' : state === 'plan' ? 'プランを作る' : '完了', completed >= 2)) + (state === 'plan' ? card('<b>保存済みの目標</b><div class="r28-plan-input">シリーズAで3億円を調達</div><div class="r28-plan-label">プランの種類を確認</div><div class="r28-pills"><span class="r28-plan-choice">🚀 上市・収益化</span><span class="r28-plan-choice on">💰 資金調達</span><span class="r28-plan-choice">🤝 新規開拓</span><span class="r28-plan-choice">👩‍💼 採用</span><span class="r28-plan-choice">🔗 事業提携</span><span class="r28-plan-choice">🧭 キャリア</span></div>') : '') + acts(state === 'locked' ? '人脈を追加する' : state === 'current' ? '目標を設定する' : state === 'plan' ? 'プランをつくる' : 'プランを見る') + '</main></div>';
   }
   function sample(state, app) {
     const modal = state === 'blocked' ? card('<b>これはサンプルです</b><p>サンプルの人物には書き込めません。ガイドを続けますか？</p>' + acts('ガイドを続ける · 1 / 3', 'サンプルを見る')) : card(row('佐藤 健一', 'サンプル') + row('高橋 美咲', 'サンプル') + row('渡辺 翔', 'サンプル'));
@@ -9190,6 +9197,22 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     }
   }
   document.getElementById('out').insertAdjacentHTML('beforeend', group('r28-draft-boards', html));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>
+<!-- PX2-D05: request validation boards follow all existing boards to preserve their indices. -->
+<script>
+(function () {
+  const { S8, INDEX, PB, group } = window.__r18bBoardKit;
+  const render = window.__px2R18b;
+  let boards = S8('PX2-D05 · 再設定申込の入力エラー', '既存 A-R18b-04 / W-R18b-04 は有効なメール入力。追加板は無効なメールの校驗エラー。');
+  for (const width of [1440, 1024, 390]) {
+    const id = 'W-R18b-04-error-' + width;
+    INDEX.push([id, '再設定申込 · 入力エラー ' + width]);
+    boards += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + id + '">' + id + ' 再設定申込 · 入力エラー<span class="src">PX2-D05 · 既存 W-R18b-04 から追加</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + render.web(width, 'light', 'forgot-error') + render.web(width, 'dark', 'forgot-error') + '</div></div>';
+  }
+  boards += PB('A-R18b-04-error 再設定申込 · 通信エラー', 'state', () => ({ body: render.app('forgot-error'), tab: -1 }), null, 'PX2-D05 · 既存 A-R18b-04 から追加');
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('px2-r18b-request-error', boards));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>

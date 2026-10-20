@@ -676,6 +676,8 @@
       "design": "b12-missing-states.html",
       "board-index": 984,
       "width": 1440,
+      "region": "182,28,680,40",
+      "design-region": "380,80,680,40",
       "themes": [
         "light"
       ],
@@ -687,6 +689,8 @@
       "design": "b12-missing-states.html",
       "board-index": 985,
       "width": 1440,
+      "region": "182,28,680,40",
+      "design-region": "380,80,680,40",
       "themes": [
         "dark"
       ],
@@ -698,6 +702,8 @@
       "design": "b12-missing-states.html",
       "board-index": 986,
       "width": 1024,
+      "region": "112,28,680,40",
+      "design-region": "172,80,680,40",
       "themes": [
         "light"
       ],
@@ -709,6 +715,8 @@
       "design": "b12-missing-states.html",
       "board-index": 987,
       "width": 1024,
+      "region": "112,28,680,40",
+      "design-region": "172,80,680,40",
       "themes": [
         "dark"
       ],
@@ -720,6 +728,8 @@
       "design": "b12-missing-states.html",
       "board-index": 988,
       "width": 390,
+      "region": "40,88,310,40",
+      "design-region": "35,73,310,40",
       "themes": [
         "light"
       ],
@@ -731,6 +741,8 @@
       "design": "b12-missing-states.html",
       "board-index": 989,
       "width": 390,
+      "region": "40,88,310,40",
+      "design-region": "35,73,310,40",
       "themes": [
         "dark"
       ],
