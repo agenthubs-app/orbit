@@ -1,4 +1,4 @@
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
-import { HomeDashboardScreen } from "../src/screens/home/HomeDashboardScreen";
+import { HomeWidgetsScreen } from "../src/screens/home/HomeWidgetsScreen";
 
-export default withOrbitPrivateRoute(HomeDashboardScreen);
+export default withOrbitPrivateRoute(HomeWidgetsScreen);
