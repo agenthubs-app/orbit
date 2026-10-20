@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -19,12 +19,22 @@ import {
 } from "../../view-models/account-session";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
+import { createAccountRightsApi } from "../account-rights/api";
 
 export function AccountScreen() {
+  const router = useRouter();
   const { colors } = useOrbitTheme();
   const { fontScale } = useWindowDimensions();
   const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
+  const rights = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader }), [server.baseUrl, auth.cookieHeader]);
+  useEffect(() => {
+    if (!auth.signedIn || auth.offline) return;
+    void rights.deletion().then(request => {
+      if (request?.status === "pending" || request?.status === "purging") router.replace("/account/pending");
+    }).catch(() => undefined);
+  }, [auth.signedIn, auth.offline, rights, router]);
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.accountMe,
     (data) =>
@@ -232,6 +242,19 @@ function AccountContent({
           <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
         </Pressable>
         {signedIn ? (
+          <>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.rights.export")}
+            onPress={() => router.push("/account/exports" as Href)}
+            style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
+            <Text style={styles.accessText}>{locale.t("account.rights.export")}</Text>
+            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.rights.delete")}
+            onPress={() => router.push("/account/deletion" as Href)}
+            style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
+            <Text style={styles.accessText}>{locale.t("account.rights.delete")}</Text>
+            <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
+          </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.permissions")}
             accessibilityHint={locale.t("account.permissionsHint")}
             onPress={() => router.push("/account/permissions" as Href)}
@@ -239,6 +262,7 @@ function AccountContent({
             <Text style={styles.accessText}>{locale.t("account.permissions")}</Text>
             <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />
           </Pressable>
+          </>
         ) : null}
       </View>
 

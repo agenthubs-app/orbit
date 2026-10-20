@@ -7,7 +7,7 @@ test("pending and purging accounts have narrow API and page access", async () =>
     ["GET", "/api/account/deletion-request"], ["DELETE", "/api/account/deletion-request"],
     ["GET", "/api/account/status"], ["GET", "/api/app/version"],
     ["GET", "/api/account/exports/export%3A1"], ["GET", "/api/account/exports/export%3A1/download"],
-    ["POST", "/api/auth/signout"],
+    ["POST", "/api/auth/signout"], ["POST", "/api/account/session/sign-out"],
   ];
   for (const [method, path] of allowed) assert.equal(accountRightsAccessDecision("pending", method, path), "allow", `${method} ${path}`);
   for (const [method, path] of [["GET", "/api/contacts"], ["POST", "/api/sync/push"], ["GET", "/api/sync/pull"], ["POST", "/api/account/exports"], ["GET", "/api/account/exports"]]) {

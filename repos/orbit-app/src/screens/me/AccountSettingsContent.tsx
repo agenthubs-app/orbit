@@ -20,7 +20,7 @@ export function AccountSettingsContent({ t, name, email, accountName, accountEma
       <ListRow title={rowName} subtitle={rowEmail} leading={<Avatar name={rowName} />} onPress={() => onOpen("/account")} /></Card>
     <UiText style={styles.label}>{t("me.help")}</UiText>
     <Card style={styles.group}>
-      <AccountRow icon="share" title={t("me.export")} onPress={() => onOpen("/settings/export")} />
+      <AccountRow icon="share" title={t("me.export")} onPress={() => onOpen("/account/exports")} />
       <AccountRow icon="book" title={t("me.help")} onPress={() => onOpen("/settings/help")} />
     </Card>
     <Card style={styles.group}>

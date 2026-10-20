@@ -7,6 +7,7 @@ export function accountRightsAccessDecision(state: AccountRightsAccessState, met
   if (state === "active") return "allow";
   if (pathname.startsWith("/api/")) {
     if (pathname === "/api/account/status" && method === "GET" || pathname === "/api/app/version" && method === "GET") return "allow";
+    if (pathname === "/api/account/session/sign-out" && method === "POST") return "allow";
     if (pathname.startsWith("/api/auth/")) return "allow";
     if (state === "pending") {
       if (pathname === "/api/account/deletion-request" && (method === "GET" || method === "DELETE")) return "allow";
