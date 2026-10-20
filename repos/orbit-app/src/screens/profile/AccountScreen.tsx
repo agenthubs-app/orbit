@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, RefreshControl, StyleSheet, View } from "react-native";
@@ -10,6 +9,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { Card } from "../../components/ui/Card";
+import { Icon } from "../../components/ui/Icon";
 import { ListRow } from "../../components/ui/ListRow";
 import { UiText } from "../../components/ui/Text";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
@@ -89,7 +89,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
       setFeedback(null);
     } catch { setFeedback("Debug 测试修改未能全部清理，请保留队列并检查设备。"); }
   }
-  const chevron = <Ionicons color={colors.ink3Text} name="chevron-forward" size={16} />;
+  const chevron = <Icon color={colors.ink3Text} name="right" size={16} />;
   return <View style={styles.page}>
     {/* 主会话代定 §R18c-2: #19 shows only supported account facts and keeps existing routes. */}
     <Card style={styles.identity}>
@@ -102,21 +102,21 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
     {auth.signedIn ? <>
       <UiText style={styles.heading}>{locale.t("account.loginSection")}</UiText>
       <Card style={styles.group}>
-        <ListRow title={locale.t("account.status")} subtitle={view.statusLabel} leading={<Ionicons color={colors.ink2} name="person-outline" size={20} />} />
+        <ListRow title={locale.t("account.status")} subtitle={view.statusLabel} leading={<Icon color={colors.ink2} name="user" size={20} />} />
         <View style={styles.rule} />
-        <ListRow title={locale.t("account.editProfile")} subtitle={view.displayName} leading={<Ionicons color={colors.ink2} name="create-outline" size={20} />} trailing={chevron} onPress={() => open("/profile/edit")} />
+        <ListRow title={locale.t("account.editProfile")} subtitle={view.displayName} leading={<Icon color={colors.ink2} name="edit" size={20} />} trailing={chevron} onPress={() => open("/profile/edit")} />
         <View style={styles.rule} />
-        <ListRow title={locale.t("account.workspace")} subtitle={`${view.workspaceName} · ${view.roleLabel}`} leading={<Ionicons color={colors.ink2} name="people-outline" size={20} />} />
+        <ListRow title={locale.t("account.workspace")} subtitle={`${view.workspaceName} · ${view.roleLabel}`} leading={<Icon color={colors.ink2} name="users" size={20} />} />
         <View style={styles.rule} />
-        <ListRow title={locale.t("account.goal")} subtitle={view.goal} leading={<Ionicons color={colors.ink2} name="flag-outline" size={20} />} />
+        <ListRow title={locale.t("account.goal")} subtitle={view.goal} leading={<Icon color={colors.ink2} name="flag" size={20} />} />
         <View style={styles.rule} />
-        <ListRow title={locale.t("account.timeZone")} subtitle={view.timezoneLabel} leading={<Ionicons color={colors.ink2} name="time-outline" size={20} />} />
+        <ListRow title={locale.t("account.timeZone")} subtitle={view.timezoneLabel} leading={<Icon color={colors.ink2} name="clock" size={20} />} />
       </Card>
       <UiText style={styles.heading}>{locale.t("account.dataSection")}</UiText>
       <Card style={styles.group}>
-        <ListRow title={locale.t("account.rights.export")} subtitle={locale.t("account.rights.exportIntro")} leading={<Ionicons color={colors.ink2} name="share-outline" size={20} />} trailing={chevron} onPress={() => open("/account/exports")} />
+        <ListRow title={locale.t("account.rights.export")} subtitle={locale.t("account.rights.exportIntro")} leading={<Icon color={colors.ink2} name="share" size={20} />} trailing={chevron} onPress={() => open("/account/exports")} />
         <View style={styles.rule} />
-        <ListRow title={locale.t("account.rights.delete")} leading={<Ionicons color={colors.coralText} name="close-outline" size={20} />} trailing={chevron} onPress={() => open("/account/deletion")} />
+        <ListRow title={locale.t("account.rights.delete")} leading={<Icon color={colors.coralText} name="x" size={20} />} trailing={chevron} onPress={() => open("/account/deletion")} />
       </Card>
       <Card style={styles.group}>
         <ListRow title={locale.t("account.permissions")} subtitle={locale.t("account.permissionsHint")} accessibilityLabel={locale.t("account.permissions")} trailing={chevron} onPress={() => open("/account/permissions")} />

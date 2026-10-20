@@ -58,6 +58,7 @@ import { revokeRegisteredPushDevice } from "../notifications/push-device-session
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 import { clearKioskDevice } from "../screens/host/kiosk-store";
 import { clearProfileEditSession } from "../data/profile-edit-session";
+import { clearNativeAccountRightsData } from "../screens/account-rights/local-cleanup-runtime";
 
 interface AuthActionResult {
   message?: string;
@@ -303,10 +304,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           }
           const deletion = await fetchMobileAccountStatus({ baseUrl, cookieHeader: storedValue });
           if (deletion.success && (deletion.data.status === "pending" || deletion.data.status === "purging") && deletion.data.accountId) {
-            if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: deletion.data.accountId }) || !current()) return;
-            await offlineIdentityStorage.clear(baseUrl);
-            clearProfileEditSession({ actorId: deletion.data.accountId, apiOrigin: baseUrl });
-            await clearKioskDevice();
+            if (!await clearNativeAccountRightsData({ baseUrl, actorId: deletion.data.accountId }) || !current()) return;
             setCookieHeader(storedValue);
             setAccountId(deletion.data.accountId);
             setUser(result.data.user);
@@ -459,10 +457,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
 
       if (pendingDeletion) {
-        if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: resolvedAccountId })) return { message: currentTranslator()("session.clearPreviousFailed"), success: false };
-        await offlineIdentityStorage.clear(baseUrl);
-        clearProfileEditSession({ actorId: resolvedAccountId, apiOrigin: baseUrl });
-        await clearKioskDevice();
+        if (!await clearNativeAccountRightsData({ baseUrl, actorId: resolvedAccountId })) return { message: currentTranslator()("session.clearPreviousFailed"), success: false };
         if (!usesBrowserManagedSession) await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
         if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
         setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
@@ -876,10 +871,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           const accountStatus = await fetchMobileAccountStatus({ baseUrl, cookieHeader });
           if (accountStatus.success && (accountStatus.data.status === "pending" || accountStatus.data.status === "purging") &&
             accountStatus.data.accountId === signedInAccountId) {
-            if (!await purgeSyncScope(syncLifecycle, { baseUrl, actorId: signedInAccountId }) || !current()) return;
-            await offlineIdentityStorage.clear(baseUrl);
-            clearProfileEditSession({ actorId: signedInAccountId, apiOrigin: baseUrl });
-            await clearKioskDevice();
+            if (!await clearNativeAccountRightsData({ baseUrl, actorId: signedInAccountId }) || !current()) return;
             setDeletionPending(true);
             setOffline(false);
             router.replace("/account/pending" as Href);

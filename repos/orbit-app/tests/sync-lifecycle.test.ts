@@ -166,6 +166,35 @@ test("logout archives only pending writes and a same-account reopen restores the
   assert.equal([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")), false);
 });
 
+test("account deletion on another device erases an unopened mirror and recovery vault without archiving", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,created_at
+  ) VALUES('m-deleted','workspace','notes','note','local:note','create','queued','{}','{}','2026-09-16T00:00:00.000Z')`));
+  await f.coordinator.setScope(null);
+  assert.ok([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")));
+  assert.equal(await f.coordinator.discardAccountDeletionScope(scope), true);
+  assert.equal(f.files.size, 0);
+  assert.equal(f.keys.size, 0);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 0, otherAccounts: 0 });
+});
+
+test("account deletion retries a vault file failure without restoring queued writes", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,created_at
+  ) VALUES('m-retry','workspace','notes','note','local:retry','create','queued','{}','{}','2026-09-16T00:00:00.000Z')`));
+  await f.coordinator.setScope(null);
+  f.state.fileDeleteFails = true;
+  assert.equal(await f.coordinator.discardAccountDeletionScope(scope), false);
+  assert.ok([...f.keys.keys()].some(key => key.startsWith("orbit.pending-vault.key.")));
+  f.state.fileDeleteFails = false;
+  assert.equal(await f.coordinator.discardAccountDeletionScope(scope), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 0, otherAccounts: 0 });
+});
+
 test("logout archives a queued task edit and a same-account reopen restores its frozen request", async t => {
   const f = await lifecycle(t);
   const now = Date.parse("2026-09-20T00:00:00.000Z");

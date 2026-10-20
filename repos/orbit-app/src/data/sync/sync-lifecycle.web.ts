@@ -234,6 +234,22 @@ export function createWebSyncLifecycle(input: {
     registeredPageCopyIds: WEB_MIRROR_PAGE_COPY_IDS,
     payloadCodec,
     status,
+    discardAccountDeletionScope(scope: SyncSessionScope): Promise<boolean> {
+      const requestToken = ++token;
+      return enqueue(async () => {
+        const prepared = await prepare();
+        // A degraded browser cannot prove a previous mirror key was erased.
+        if (prepared !== "ready") return false;
+        suspended = true;
+        const digest = await sha256Hex(deps!.subtle, JSON.stringify([normalizeOrbitApiBaseUrl(scope.baseUrl), scope.actorId]));
+        if (current && current.digest !== digest && !(await purge())) return false;
+        if (requestToken !== token) return false;
+        if (current?.digest === digest) return purge();
+        try { await persistPendingWebMirrorCleanup(digest, deps!); }
+        catch (error) { input.report("SYNC_CLEANUP_STATE_FAILED", digest, error); return false; }
+        return finishPendingCleanup(digest);
+      });
+    },
     async pendingWriteSummary(_scope?: SyncSessionScope): Promise<{ currentAccount: number; otherAccounts: number }> {
       // Browser offline writes are deliberately out of scope.
       return { currentAccount: 0, otherAccounts: 0 };

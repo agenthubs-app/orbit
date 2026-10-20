@@ -96,6 +96,13 @@ export const syncLifecycle = {
     if (state.sqliteBacked) return window.realSyncLifecycle("pendingWriteSummary", scope);
     return { currentAccount: 0, otherAccounts: 0 };
   },
+  async discardAccountDeletionScope(scope) {
+    state.scopeChanges.push({ discardAccountDeletionScope: scope });
+    if (state.sqliteBacked) return window.realSyncLifecycle("discardAccountDeletionScope", scope);
+    if (state.keyDeleteFails) return false;
+    state.currentScope = null;
+    return true;
+  },
   async withDatabase(_, callback) { return callback({ get: async () => ({ count: 0 }) }); }
 };
 export async function cancelOrbitManagedNotifications() {
@@ -177,7 +184,7 @@ async function open(
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   if (lifecycle) {
-    await page.exposeFunction("realSyncLifecycle", async (method: "suspendScope" | "setScope" | "pendingWriteSummary", input: unknown) => {
+    await page.exposeFunction("realSyncLifecycle", async (method: "suspendScope" | "setScope" | "pendingWriteSummary" | "discardAccountDeletionScope", input: unknown) => {
       return lifecycle[method](input as never);
     });
   }

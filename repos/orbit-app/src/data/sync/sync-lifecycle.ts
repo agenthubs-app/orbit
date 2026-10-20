@@ -205,12 +205,14 @@ export function createSyncLifecycle(input: {
 
   async function deletePendingVault(digest: string): Promise<void> {
     if (!native) return;
-    await native.secureStore.deleteItemAsync(`orbit.pending-vault.key.${digest}`, {
-      keychainAccessible: native.secureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-    });
     if ((await native.sqlite.listDatabaseNames?.() ?? []).includes(`orbit-pending-vault-${digest}.db`)) {
       await native.sqlite.deleteDatabaseAsync(`orbit-pending-vault-${digest}.db`);
     }
+    // Leave the key available for a retry when file deletion fails. A keyless
+    // vault file would otherwise block later startup before deletion can retry.
+    await native.secureStore.deleteItemAsync(`orbit.pending-vault.key.${digest}`, {
+      keychainAccessible: native.secureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+    });
   }
 
   async function expireOldPendingVaults(): Promise<void> {
@@ -398,6 +400,42 @@ export function createSyncLifecycle(input: {
 
   return {
     pendingWriteSummary,
+    /** Account deletion discards both the mirror and the separately encrypted
+     * recovery vault. Unlike logout, no unsent write is archived. */
+    discardAccountDeletionScope(scope: SyncSessionScope): Promise<boolean> {
+      const requestToken = ++token;
+      return enqueue(async () => {
+        if (input.platform === "web") return true;
+        if (!(await prepare()) || !native) return false;
+        suspended = true;
+        const digest = await syncScopeDigest(scope, native);
+        if (current && current.digest !== digest && !(await purge())) return false;
+        if (requestToken !== token) return false;
+        if (current?.digest === digest) {
+          current.blocked = true;
+          if (current.handle) {
+            try { await current.handle.closeAsync(); }
+            catch (error) {
+              input.report("SYNC_CLOSE_FAILED", digest, describeSyncFailure("close", error));
+              return false;
+            }
+          }
+          current = null;
+        }
+        try { await persistPendingSyncCleanup(digest, native); }
+        catch (error) {
+          input.report("SYNC_CLEANUP_STATE_FAILED", digest, describeSyncFailure("persist-pending-cleanup", error));
+          return false;
+        }
+        if (!(await finishPendingCleanup(digest))) return false;
+        try { await deletePendingVault(digest); }
+        catch (error) {
+          input.report("PENDING_VAULT_DELETE_FAILED", digest, describeSyncFailure("delete-pending-vault", error));
+          return false;
+        }
+        return true;
+      });
+    },
     // setScope accepts an identity transition; only this reports initialized storage.
     isScopeReadable(scope: SyncSessionScope | null): boolean {
       return input.platform !== "web" && readyToken === token && Boolean(scope && current?.database && !current.blocked &&

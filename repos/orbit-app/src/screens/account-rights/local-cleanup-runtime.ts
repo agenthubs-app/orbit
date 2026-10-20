@@ -8,11 +8,7 @@ import { clearAccountRightsSyncScope } from "./local-cleanup";
  * move them into its recovery vault. A failed erasure stays visible to the UI. */
 export async function clearNativeAccountRightsData(scope: { baseUrl: string; actorId: string }): Promise<boolean> {
   try {
-    const cleared = await clearAccountRightsSyncScope({
-      setScope: value => syncLifecycle.setScope(value),
-      withDatabase: (value, operation) => syncLifecycle.withDatabase(value, database =>
-        database.transaction(async () => { await operation({ run: sql => database.run(sql) }); })),
-    }, scope);
+    const cleared = await syncLifecycle.discardAccountDeletionScope(scope);
     if (!cleared) return false;
     await offlineIdentityStorage.clear(scope.baseUrl);
     clearProfileEditSession({ actorId: scope.actorId, apiOrigin: scope.baseUrl });

@@ -52,6 +52,7 @@ function repository(database: any) {
   reports,
   open: () => lifecycle.setScope(scope),
   signOut: () => lifecycle.setScope(null),
+  deleteAccount: () => lifecycle.discardAccountDeletionScope(scope),
   status: () => lifecycle.status(),
   readable: () => lifecycle.isScopeReadable(scope),
   apply: (ids: string[]) => lifecycle.withDatabase(scope, async (database) => {
@@ -78,7 +79,8 @@ function repository(database: any) {
     const degraded = createWebSyncLifecycle({ environment: () => patched, loadSqlite, report: (code, _scope, error) => { degradedReports.push(describe(code, error)); } });
     const ok = await degraded.setScope(scope);
     const opened = await degraded.withDatabase(scope, async () => "opened");
-    return { ok, opened, readable: degraded.isScopeReadable(scope), status: degraded.status(), capability: await getLocalSyncDatabaseCapability(patched), reports: degradedReports };
+    const deleted = await degraded.discardAccountDeletionScope(scope);
+    return { ok, opened, deleted, readable: degraded.isScopeReadable(scope), status: degraded.status(), capability: await getLocalSyncDatabaseCapability(patched), reports: degradedReports };
   },
   dropKeys: () => new Promise((resolve, reject) => { const request = indexedDB.deleteDatabase("orbit-sync-keys"); request.onsuccess = () => resolve("dropped"); request.onerror = () => reject(request.error); }),
 };
@@ -199,11 +201,20 @@ test("Web mirror: OPFS-backed, encrypted at rest, survives reload, isolates iden
   assert.equal(await call(page, "window.__mirror.open()"), true);
   assert.deepEqual(await call(page, "window.__mirror.list()"), []);
 
+  // The account-deletion path erases the active mirror without first reopening
+  // or retaining it for recovery.
+  assert.equal(await call(page, "window.__mirror.apply(['task:deleted'])"), "applied");
+  assert.equal(await call(page, "window.__mirror.deleteAccount()"), true);
+  await page.reload();
+  assert.equal(await call(page, "window.__mirror.open()"), true);
+  assert.deepEqual(await call(page, "window.__mirror.list()"), []);
+
   // 7. Degradation is a reported state, not an error: setScope true, withDatabase null, reason visible.
   for (const [mode, reason, capabilityReason] of [["no-opfs", "no-opfs", "no-opfs"], ["insecure", "insecure-context", "insecure-context"], ["broken-indexeddb", "open-failed", null]] as const) {
-    const outcome = await call<{ ok: boolean; opened: unknown; readable: boolean; status: unknown; capability: { mode: string; reason?: string }; reports: string[] }>(page, `window.__mirror.degrade('${mode}')`);
+    const outcome = await call<{ ok: boolean; opened: unknown; deleted: boolean; readable: boolean; status: unknown; capability: { mode: string; reason?: string }; reports: string[] }>(page, `window.__mirror.degrade('${mode}')`);
     assert.equal(outcome.ok, true, mode);
     assert.equal(outcome.opened, null, mode);
+    assert.equal(outcome.deleted, false, mode);
     assert.equal(outcome.readable, false, mode);
     assert.deepEqual(outcome.status, { mode: "online-only", reason }, mode);
     if (capabilityReason) assert.deepEqual(outcome.capability, { mode: "online-only", reason: capabilityReason }, mode);
