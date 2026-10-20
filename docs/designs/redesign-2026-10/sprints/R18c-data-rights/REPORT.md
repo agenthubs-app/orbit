@@ -9,9 +9,9 @@
 | 01 开工／预检 | 完成 | R18b 基线、现有 orbit_records CAS、b7 原稿／改稿 16 板与 b12 登记已核；preflight-checklist.md 及 _evidence-c 预检。 |
 | 02 改稿／入口 | 部分 | b7 去 Pro、虚假反馈和进度估计；RD-33 重画 #19、认可 b12，App/Web 权利入口已接。真实两端操作链与像素仍红。 |
 | 03 契约／存储 | 本机通过 | 严格 POST、确定性 recordId/CAS、契约 snapshot/schema parity 5/5、App 副本同步；无 DDL。真实端到端未验。 |
-| 04 创建／限额／历史 | 本机通过，双端未验 | 东京日 3 次、同键重放、单活动任务、失败返额度和本人历史有 PG 测试；未取得完整 App/Web 操作记录。 |
-| 05 Worker／ZIP／通知 | 部分 | 五域 ZIP/manifest、私有对象、租约和 outbox 有聚焦测试与合成样本；离页自动调度和生产任务列 DEFERRED。 |
-| 06 下载／过期 | 部分 | 本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试；原生文件打开/分享与浏览器实取文件未完整留证。 |
+| 04 创建／限额／历史 | Web 本机通过，App 未验 | Web 实操 CSV、vCard、all-json 三次 202、第四次 429 和专用文案；同键重放、单活动任务、失败返额度有 PG 测试。App 原生操作未留证。 |
+| 05 Worker／ZIP／通知 | 部分 | Web 本机维护 pass 将三次任务逐个变 ready，生成私有 ZIP/manifest；邮件因本机无 redirect target 被明确跳过。离页自动调度和生产任务列 DEFERRED。 |
+| 06 下载／过期 | 部分 | Web 同源登录后真实下载三份 ZIP 并检查成员；本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试。App 原生打开/分享与实时时钟到期操作未留证。 |
 | 07 App 账户／导出 | 部分 | AccountScreen 已整屏换为 kit 行，保留 profile、workspace、目标、权限、登出及服务器入口；debug 仅 dev。App #19 三轮和其余 P 板像素未过。 |
 | 08 退会申请／再认证 | 部分 | 密码限次与用途绑定一次性 receipt；Google challenge + prompt=login/max_age=0 + auth_time ≤10 分钟、同账号校验已接，旧 503 已去。真实外部 Google 账号未联调；本机 handler/授权测试通过。 |
 | 09 pending／取消 | 部分 | 旧 JWT 失效、普通 API/sync 白名单、镜像清理、CAS 取消及 pending 登录路由有聚焦测试；两端真实整链未验。 |
@@ -19,7 +19,7 @@
 | 11 完成／异常态 | 部分 | RD-33 匿名完成邮件 outbox 与最终身份删除同事务，提交后投递；本机失败重试通过。#23/#27 像素三轮仍红。 |
 | 12 旧屏／路由 | 部分 | #19 整屏替换，R18a/R18b 路由保留；Web 言語と外観整板 6/6 红，需 A/集成轮复核。 |
 | 13 像素全量 | **未通过** | RD-33 b12 已是正式基准；原稿 P、补画 P 与 R18a 整板矩阵均有失败。每 P 上限和转轮⑪见下。 |
-| 14 权限／可移植 | 部分 | actor 隔离、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦通过；真实双端打开与共享域零残留未验。 |
+| 14 权限／可移植 | 部分 | actor 隔离、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦通过；Web 三种 ZIP 可打开且成员与 manifest 对齐。App 原生打开与共享域零残留未验。 |
 | 15 交接／生产 | 部分 | 下方四栏交接和 DEFERRED 已登记；根台账与活跃 B/D/A/E 线由主会话协调，未越权发送或启用生产。 |
 | 16 全量／独立复核 | **未通过** | Web/App 按指定环境各跑一次仍有新失败；聚焦修复不能代替全量；主会话独立复核尚未执行。 |
 
@@ -32,6 +32,8 @@
 - **§R18c-5 完成邮件。** final-identity 同一事务删除身份并写只含收件地址、模板和投递控制字段的匿名 outbox；提交后投递，成功删行，失败保留重试。提交 cdab6d89e，PLANNER 相应句已改。邮件服务真实投递仍列 DEFERRED。
 
 本机到期清除逐域顺序为连携／设备、导出对象、人脈、メモ／Task／日程、プラン／iOrbit、イベント、收件箱、最终身份。每步有确定性进度/CAS 与租约；失租和残留会阻止最终身份。只有实际连接为 loopback orbit_line_c_test 且显式 local 环境时可运行。合成 ZIP 位于 _evidence-c/R18c-sample-export.zip，含五域 JSON 与 manifest；它不是现实账号导出。
+
+**Web 本机实操。** 使用 localhost:3400 与本机测试账号，从画面提交 selected CSV、selected vCard、all-json 各一次，均返回 202；每次手动执行一个维护 pass 后为 ready。三份浏览器下载分别为 894／833／786 字节，成员为四域 CSV + manifest、contacts.vcf + 其余 CSV + manifest、五域 JSON + manifest。第四次返回 429，画面显示「今日の書き出し回数に達しました。明日もう一度お試しください。」。实操发现 all-json UI 曾误传 contactsFormat 导致 400，以及 Web 错读 error.context.reason 导致限额时显示通用错误；两端 UI 已省略 all-json 格式字段，Web 错误解析已修复，复试上述 202/429 均正确。测试账号没有业务记录，文件为空/header-only，不能代表真实大账号。证据为 _evidence-c/R18c-web-local-export-observation.json、三份 R18c-live-local-export*.zip 和维护日志。127.0.0.1 与 localhost 是不同 cookie 主机，下载必须使用与签名 URL 同源的 localhost 登录；本机首轮跨主机点击 401，不将其归为生产验收通过。
 
 ## 画板与像素实测
 
@@ -48,7 +50,7 @@
 | --- | --- |
 | Web 全量 | R18c-web-full-baseline-env-final.log：7,911 tests／6,811 pass／35 fail／1,065 skip，exit 1。R18b 基线 7,764／7,204 pass／15 fail／545 skip。逐名 30 新、10 消失，见 R18c-web-full-baseline-env-delta.json。新失败中 C 同步审计 5 项；加锁/分类后聚焦 3 项恢复，2 项保持红：共享 inbox owner 改写、immutable publication in-place 改写。其余新增名主要是新增 PG 集成测试在未配置本机库时直接失败，逐项原始堆栈在日志。 |
 | App 全量 | R18c-app-full-baseline-env-final.log：3,274 tests／3,246 pass／26 fail／2 skip，exit 1。R18b 基线 3,246／3,232 pass／12 fail／2 skip。逐名 15 新、1 消失，见 R18c-app-full-baseline-env-delta.json。#19 的 9 项画面/布局失败经聚焦修复 9/9；四项 C 静态登记/离线边界修复后 57/57。旧 i18n snapshot 改名仍红；invite 与 discovery 属邻接画面，未归为 C 成功。 |
-| 聚焦／类型 | Web 共享 purge PG 3/3、sync 审计 9/11（2 项架构冲突）、Web typecheck exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
+| 聚焦／类型 | Web 共享 purge PG 3/3、sync 审计 9/11（2 项架构冲突）、导出错误/契约 4/4、Web typecheck/lint exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
 | copy/契约 | Web copy:qa 原先 7,507 条／245 issues，exit 1，非 R18c 权利文案专属；Web/App 契约同步与 schema parity 聚焦通过。未把红门禁记为通过。 |
 
 ## DEFERRED、待主会话决定与四栏交接
