@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {readContactMessageActor,readContactMessageActorForWrite} from '../inbox/inbox-request';
-import {Button,Card,Segmented,TextField,Toggle} from '../orbit-2026/ui';
+import {Button,Card,Icon,Segmented,Toggle,type IconName} from '../orbit-2026/ui';
 import {notificationCopy} from '../orbit-2026/copy/notifications';
 import {pickCopy} from '../orbit-2026/copy/types';
 import type {InboxDeliveryPreferencesDTO,InboxDeliveryPreferencesInput} from '../../../../shared/contract/notification-delivery-policy';
@@ -30,23 +30,24 @@ export function NotificationDeliverySettings({conversationId}:{conversationId?:s
  const saveHours=()=>{const patch=quietHoursPatch(start,end);if(!patch){setInvalidTime(true);return;}setInvalidTime(false);void change(patch);};
  if(unavailable)return <p role="status" className={s.hint}>{copy('unavailable')}</p>;
  if(!data)return error?<div role="alert" className={s.error}>{copy('unavailable')} <Button label={copy('refresh')} onClick={()=>setAttempt(v=>v+1)}/></div>:<p className={s.hint}>{copy('refresh')}…</p>;
- const row=(key:string,label:string,checked:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><div key={key} className={s.row}><div className={s.rowText}><strong>{label}</strong>{hint?<span>{hint}</span>:null}</div><Toggle checked={checked} disabled={busy} label={label} onChange={()=>void change(patch)}/></div>;
+ const icons:Record<string,IconName>={message:'mail',reminder:'clock',suggestion:'sparkle',update:'refresh'};
+ const row=(key:string,label:string,checked:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><div key={key} className={s.row}>{icons[key]?<span className={s.rowIcon} aria-hidden="true"><Icon name={icons[key]} size={16}/></span>:null}<div className={s.rowText}><strong>{label}</strong>{hint?<span>{hint}</span>:null}</div><Toggle checked={checked} disabled={busy} label={label} onChange={()=>void change(patch)}/></div>;
  if(conversationId){const muted=data.mutedConversationIds.includes(conversationId);return <Card className={s.conversation}>{row('mute',copy('mute'),muted,{muteConversation:{conversationId,muted:!muted}})}</Card>;}
  return <div className={s.grid} data-notification-settings>
-  <div className={s.main}><Card title={copy('channels')}>
+  <div className={s.main}><Card title={copy('channels')} className={s.channels}>
    {row('message',copy('message'),data.messageEnabled,{messageEnabled:!data.messageEnabled})}
    {row('reminder',copy('reminder'),data.reminderEnabled,{reminderEnabled:!data.reminderEnabled})}
    {row('suggestion',copy('suggestion'),data.suggestionEnabled,{suggestionEnabled:!data.suggestionEnabled})}
    {row('update',copy('update'),data.updateEnabled,{updateEnabled:!data.updateEnabled})}
+   <div className={s.lockRow}><strong>{copy('lock')}</strong><Segmented segments={[{key:'private',label:copy('private')},{key:'full',label:copy('full')}]} value={data.lockScreenContent} onChange={value=>void change({lockScreenContent:value})} label={copy('lock')}/></div>
   </Card>
-   <Card title={copy('lock')}><Segmented segments={[{key:'private',label:copy('private')},{key:'full',label:copy('full')}]} value={data.lockScreenContent} onChange={value=>void change({lockScreenContent:value})} label={copy('lock')} wide/></Card>
   </div>
-  <div className={s.side}><Card title={copy('cap')}><Segmented segments={[1,2,3].map(value=>({key:String(value),label:String(value)}))} value={String(data.dailyCap??3)} onChange={value=>void change({dailyCap:Number(value) as 1|2|3})} label={copy('cap')} wide/><p className={s.hint}>{copy('capHint')}</p></Card>
-   <Card title={copy('quiet')}>{row('quiet',copy('quiet'),data.quietHoursEnabled,{quietHoursEnabled:!data.quietHoursEnabled},copy('quietHint'))}
-    <div className={s.time}><TextField label={copy('start')} type="time" value={start} onChange={event=>setStart(event.target.value)}/><TextField label={copy('end')} type="time" value={end} onChange={event=>setEnd(event.target.value)}/></div>
+  <div className={s.side}><Card title={copy('cap')}><Segmented segments={[1,2,3].map(value=>({key:String(value),label:String(value)}))} value={String(data.dailyCap??3)} onChange={value=>void change({dailyCap:Number(value) as 1|2|3})} label={copy('cap')}/><p className={s.hint}>{copy('capHint')}</p></Card>
+   <Card title={copy('quiet')} trailing={<Toggle checked={data.quietHoursEnabled} disabled={busy} label={copy('quiet')} onChange={()=>void change({quietHoursEnabled:!data.quietHoursEnabled})}/>} className={s.quietCard}>
+    <div className={s.time}><label>{copy('start')} <input type="time" value={start} onChange={event=>setStart(event.target.value)}/></label><label>{copy('end')} <input type="time" value={end} onChange={event=>setEnd(event.target.value)}/></label></div>
     {invalidTime?<p role="alert" className={s.error}>{copy('invalidTime')}</p>:null}
     <Button label={copy('save')} disabled={busy} onClick={saveHours}/>
-    {row('meeting',copy('meeting'),data.meetingException!==false,{meetingException:data.meetingException===false},copy('meetingHint'))}
+    {row('meeting',copy('meeting'),data.meetingException!==false,{meetingException:data.meetingException===false})}
    </Card>
    <Card title={copy('secretary')}><p className={s.hint}>{copy('secretaryHint')}</p></Card>
    <p className={s.hint}>{copy('browser')}</p>

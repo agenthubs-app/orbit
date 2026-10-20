@@ -1,0 +1,9 @@
+{
+  "_note": "PX2 B R14 revised notification and secretary settings boards; native Orbit Line B simulator only.",
+  "defaults": { "grid": 30, "wait": 20000 },
+  "sources": ["repos/orbit-app/src/screens/settings/**"],
+  "views": [
+    { "id": "A-R14-P01", "path": "/settings/notifications", "design": "b5-me-inbox.html", "board-index": 13, "themes": ["light"] },
+    { "id": "A-R14-P02", "path": "/settings/notifications/secretary", "design": "b11-nav-v3.html", "board-index": 32, "themes": ["light"] }
+  ]
+}

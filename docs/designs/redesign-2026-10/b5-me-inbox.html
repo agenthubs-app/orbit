@@ -11,6 +11,42 @@
 <style>
   .doc { min-width: 1520px; }
   .score { font-family: var(--font-num); font-weight: 800; }
+  .d04-tabs { padding: 30px 18px 12px; border-bottom: 1px solid var(--line); }
+  .d04-tabs.msg { padding-top: 22px; padding-bottom: 6px; }
+  .d04-panel { margin: 28px 33px 0 !important; min-height: 535px; display: grid; grid-template-columns: 372px 1fr; }
+  .d04-filters { display: flex; flex-wrap: wrap; gap: 8px; width: 335px; }
+  .d04-panel .d04-empty { margin-top: 55px; }
+  .d04-panel .d04-placeholder { justify-self: center; align-self: center; }
+  .d04-msg-panel { display: grid; grid-template-columns: 374px 1fr; margin: 0; }
+  .d04-msg-panel .d04-msg-list { padding: 12px 20px; min-height: 139px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 12%, transparent); }
+  .d04-msg-panel .d04-msg-search { height: 44px; border-radius: 999px; background: var(--surface); }
+  .phone .d04-cats { flex-wrap: wrap; overflow: visible; margin: 20px -18px 0; row-gap: 6px; }
+  .phone .d04-cats .chip { font-size: 13px; padding: 8px 12px; }
+  .d04-shortcut { display: flex; justify-content: flex-end; margin: 28px 0 18px; }
+  .d04-shortcut .btn { border-radius: 999px; padding: 8px 13px; }
+  .web.d04-w1024 { width: 1024px; height: 960px; grid-template-columns: 72px 1fr; }
+  .d04-w1024 .side a { width: 48px; padding: 12px 0; font-size: 0; gap: 0; }
+  .d04-w1024 .side .logo { margin-bottom: 14px; }
+  .d04-w1024 .main { padding: 22px 26px 40px; }
+  .d04-w1024 .d04-panel { margin-top: 16px !important; }
+  .d04-w1024 .d04-empty { margin-top: 100px; }
+  .d04-w1024 .d04-filters .chip { padding: 6px 10px; font-size: 12px; }
+  .d04-mweb .scroll { padding: 0; }
+  .d04-mweb .tabbar { bottom: 8px; }
+  .d04-mhead { height: 64px; display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px 0; }
+  .d04-mhead .logo { width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; }
+  .d04-mhead b { padding-top: 7px; font-size: 16px; }
+  .d04-mhead .rbtn { width: 40px; height: 40px; }
+  .d04-mtitle { height: 76px; display: grid; place-items: start center; padding-top: 16px; font-size: 21px; font-weight: 800; }
+  .d04-mtabs { height: 46px; padding: 7px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 38%, transparent); }
+  .d04-mtabs .seg { display: inline-flex; }
+  .d04-mpane { margin: 14px 16px 0; min-height: 269px; padding: 16px; background: var(--surface); }
+  .d04-mpane .cats { flex-wrap: wrap; gap: 6px; overflow: visible; margin: 0; padding: 0; }
+  .d04-mpane .cats .chip { padding: 7px 12px; }
+  .d04-mpane .d04-mread { text-align: right; margin: 12px 0 0; }
+  .d04-mpane .d04-mempty { text-align: center; color: var(--ink-3); margin-top: 56px; font-size: 14px; }
+  .d04-mmsg .d04-msearch { margin: 12px 20px 0; height: 44px; border-radius: 999px; background: var(--surface); }
+  .d04-mmsg .d04-mempty { margin: 29px 10px 0; font-size: 16px; }
 
   /* 开关 */
 
@@ -973,13 +1009,11 @@ const avc = (c, cls = '') => `<div class="av ${cls} ${c.c}">${c.i}</div>`;
 const N = [
   { cat: 'rem', emo: '⏰', c: 'apricot', t: '30分後：高橋 美咲さんと面談', d: '10:00 · オンライン · 話すこと3点を用意済み', time: '9:30', unread: 1, day: '今日' },
   { cat: 'rem', emo: '🎟️', c: 'apricot', t: 'Japan SaaS Summit の早割は今日 23:59 まで', d: '明日から ¥22,000（+¥7,000）· 参加予定に入っています', time: '8:30', unread: 1, day: '今日' },
-  { cat: 'sec', emo: '📮', c: 'pink', t: '秘書：高橋 美咲さんとのメール 3通を要約しました', d: 'IC 前に ARR の月次推移が必要 · あなただけに表示 · 返信は下書きまで', time: '7:50', unread: 1, day: '今日' },
   { cat: 'sug', emo: '✨', c: 'lav', t: '山本 彩さんへのフォローをタスクに追加しますか？', d: '資料の再送依頼から 24日経過 · iOrbit の提案', time: '8:00', unread: 1, day: '今日', confirm: 1 },
   { cat: 'upd', emo: '🔄', c: 'blue', t: '鈴木 大輔さんの役職が変わりました', d: 'DX 推進室 室長 → 執行役員 DX 推進本部長（名刺の再スキャン）', time: '昨日', day: '昨日' },
   { cat: 'upd', emo: '🥂', c: 'blue', t: 'CFO Night Tokyo の参加者リストが公開されました', d: '会いたい人 6名が参加予定 · 主催者より', time: '昨日', day: '昨日', unread: 1 },
   { cat: 'sug', emo: '✨', c: 'lav', t: '渡辺 翔さんから投資家を紹介してもらえそうです', d: '紹介可能な 2名がプランの「VC パートナー」に該当', time: '10/5', day: '今週' },
   { cat: 'his', emo: '🗂️', c: 'teal', t: '名刺 17枚の取り込みが完了しました', d: '推測を含む項目 3件が確認待ちです', time: '10/4', day: '今週' },
-  { cat: 'his', emo: '📝', c: 'teal', t: '下書きを作成しました：高橋さんへのお礼', d: '送信はまだです · メールアプリで開けます', time: '10/3', day: '今週' },
 ];
 const CATS = [['all', 'すべて'], ['sec', '秘書'], ['rem', 'リマインダー'], ['sug', '提案'], ['upd', '更新'], ['his', '履歴']];   /* NAV-V3：新增「秘書」分类（⑪） */
 const cats = (on = 'all', many = true) => `<div class="cats">${CATS.map(([k, l]) => `<span class="chip ${k === on ? 'on' : ''}">${l}${many ? ` ${k === 'all' ? N.length : N.filter(n => n.cat === k).length}` : ''}</span>`).join('')}</div>`;
@@ -999,72 +1033,52 @@ const mrow = (t, sel) => `<div class="mrow ${t.unread ? 'unread' : ''} ${sel ? '
 
 function inboxApp(s, tab = 'notif') {
   const cnt = s === 'many' ? { m: 3, n: 6 } : s === 'few' ? { m: 1, n: 2 } : { m: 0, n: 0 };
-  const head = topbar('受信箱', s === 'empty' ? 'まだ何も届いていません' : `未読 ${cnt.m + cnt.n}件`, back, `<button class="rbtn">${ic('settings')}</button>`);
+  const head = topbar('受信トレイ', s === 'empty' ? '' : `未読 ${cnt.m + cnt.n}件`, back, s === 'empty' ? `<span class="lbl" style="width:80px;justify-self:end;text-align:right;white-space:nowrap;opacity:.55">${tab === 'msg' ? '表示分を既読' : 'すべて既読'}</span>` : `<button class="rbtn">${ic('settings')}</button>`);
   const seg = `<div class="seg" style="width:100%;display:grid;grid-template-columns:1fr 1fr"><button class="${tab === 'msg' ? 'on' : ''}">メッセージ${cnt.m ? ` · ${cnt.m}` : ''}</button><button class="${tab === 'notif' ? 'on' : ''}">通知${cnt.n ? ` · ${cnt.n}` : ''}</button></div>`;
-  if (s === 'empty') return head + seg + `
-    <div class="guide rise" style="margin-top:14px;text-align:center;padding:24px 20px">
-      <div style="font-size:50px;line-height:1">📮</div>
-      <div style="font-size:18px;font-weight:800;margin-top:10px">大事なことだけ、ここに届きます</div>
-      <div class="sub" style="margin:6px 0 16px">面談の30分前、締切の当日、iOrbit からの提案。<br>Gmail を連携すると、人脈に関係するメールだけが並びます。</div>
-      <button class="btn primary block" style="height:46px">${ic('mail', 'sm')}Gmail を連携する</button>
-      <div class="lbl" style="margin-top:8px">読むのは登録した相手とのスレッドだけ · Orbit からは送信しません</div>
-    </div>
-    <div class="grid3" style="margin-top:14px">
-      <div class="mac apricot" style="text-align:center"><div style="font-size:22px">🔔</div><b style="font-size:11.5px;display:block;margin-top:4px">通知の設定</b><div class="lbl" style="font-size:10px">頻度・時間帯</div></div>
-      <div class="mac blue" style="text-align:center"><div style="font-size:22px">📅</div><b style="font-size:11.5px;display:block;margin-top:4px">カレンダー</b><div class="lbl" style="font-size:10px">面談前に通知</div></div>
-      <div class="mac pink" style="text-align:center"><div style="font-size:22px">🎯</div><b style="font-size:11.5px;display:block;margin-top:4px">目標を設定</b><div class="lbl" style="font-size:10px">提案が届く</div></div>
-    </div>
-    <div class="card" style="margin-top:14px"><div class="card-h"><h3>届くとこう見えます ${SAMPLE}</h3></div>
-      <div class="faded" style="display:grid;gap:12px">${nface(N[0])}${nface(N[3], true)}</div></div>`;
+  if (s === 'empty' && tab === 'msg') return head + seg + `<div class="input" style="margin-top:19px;font-size:14px">${ic('search', 'sm')}メッセージを検索</div><div class="card" style="margin-top:12px;padding:18px 20px"><b style="font-size:16px">メッセージはありません</b><div class="lbl" style="margin-top:6px;font-size:13px">受信したメッセージがここに表示されます。</div></div>`;
+  if (s === 'empty') return head + seg + `<div class="d04-shortcut"><button class="btn">通知</button></div>` + cats('all', false).replace('class="cats"', 'class="cats d04-cats"') + `
+    <div class="card" style="margin-top:14px;padding:18px 20px"><b style="font-size:16px">通知はありません</b></div>`;
   if (tab === 'msg') return head + seg + `
-    <div class="banner">${ic('mail', 'sm')}<span>Gmail と主催者からのスレッドです。メール・メッセージは<b>下書きまで</b>。送信はあなたが行います。</span></div>
-    <div class="card" style="margin-top:12px;padding:4px 16px">${(s === 'many' ? T : T.slice(0, 1)).map(t => mrow(t)).join('')}</div>`;
-  const list = s === 'many' ? N : [N[0], N[3], N[7]];
+    <div class="input" style="margin-top:14px">${ic('search', 'sm')}メッセージを検索</div>
+    <div class="card" style="margin-top:12px;padding:18px 20px"><b>メッセージはありません</b><div class="lbl" style="margin-top:6px">受信したメッセージがここに表示されます。</div></div>`;
+  const list = s === 'many' ? N : [N[0], N[2], N[6]];
   return head + seg + (s === 'many' ? cats('all') : '') + `<div>${ngroup(list, s === 'many')}</div>
-    ${s === 'few' ? `<div class="card flat" style="margin-top:14px"><div class="row"><span class="emo sm blue">📧</span><div style="flex:1"><b style="font-size:13px">Gmail を連携すると</b><div class="lbl">人脈に関係するメールが「メッセージ」に並びます</div></div><button class="btn sm">連携</button></div></div>` : `<div class="lbl" style="text-align:center;margin-top:16px">30日より前の通知は「履歴」にまとめています</div>`}`;
+    <div class="lbl" style="text-align:center;margin-top:16px">通知を選ぶと詳細を表示します</div>`;
 }
 
 function threadApp() {
-  const c = C[0];
-  return topbar('Re: 事業計画書 v3 のご送付', '高橋 美咲 · 4件', back, moreB) + `
-    <div class="mail collapsed rise"><div class="row between"><span class="lbl">以前のメッセージ 3件</span>${ic('down', 'sm')}</div></div>
-    <div class="mail"><div class="row" style="gap:10px">${avc(c, 'sm')}<div style="flex:1"><b style="font-size:13px">${c.n}</b><div class="lbl">宛先：佐藤 健一 · 今日 10:12</div></div><span class="chip" style="font-size:10px">Gmail</span></div>
-      <div style="font-size:13px;line-height:1.75;margin-top:10px;color:var(--ink-2)">佐藤様<br><br>事業計画書 v3 のご送付ありがとうございます。社内で確認を進めております。<br>11月第2週の IC に向けて、ARR の月次推移と解約率を事前にいただけますでしょうか。<br><br>青葉ベンチャーズ 高橋</div></div>
-    <div class="card" data-why-box style="margin-top:12px;padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">要点</b><span class="why" style="margin-left:auto">?</span></div>
-      <div style="font-size:13.5px;font-weight:700;margin-top:6px;line-height:1.55">IC 前に「ARR 月次推移」と「解約率」の提出を希望。期限の明記はなし</div>
-      <div class="why-body" hidden>根拠：このメール本文の2段落目 · 面談メモ（10/6）「11月に IC 予定」</div>
-      <div class="confirm-card in-row row" style="gap:6px;margin-top:10px"><span class="lbl" style="flex:1">「ARR・解約率を送付」をタスクに（10/10まで）</span><button class="btn sm primary">追加する</button></div></div>
-    <div class="draft"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">返信の下書き</b></div>
-      <div class="txt">高橋様<br>ご確認ありがとうございます。ARR の月次推移（直近12か月）と解約率を、10日（金）までにお送りいたします。…</div>
-      <div class="grid3" style="gap:6px"><button class="btn sm">${ic('pen', 'sm')}編集</button><button class="btn sm">コピー</button><button class="btn sm primary">${ic('out', 'sm')}メールアプリで開く</button></div>
-      <div class="lbl" style="text-align:center;margin-top:8px">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div></div>`;
+  return topbar('メッセージ', '', back) + `
+    <div class="card" style="padding:16px"><b>高橋 美咲との会話</b><div class="lbl" style="margin-top:4px">宛先：高橋 美咲</div></div>
+    <div class="mail" style="margin-top:12px"><div class="row between"><b>高橋 美咲</b><span class="lbl">10:12</span></div><div class="sub" style="margin-top:8px">先日はありがとうございました。次回の面談についてご相談したいです。</div></div>
+    <div class="draft"><b>返信下書き</b><div class="txt" style="margin-top:8px">ありがとうございます。来週の候補日を確認してお送りします。</div><div class="lbl" style="margin:8px 0">確認済みの連絡先とのメッセージです。</div><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm">下書きを推敲</button><button class="btn sm">下書きを保存</button><button class="btn sm primary">メッセージを送信</button></div></div>`;
 }
 
 function inboxWeb(s, tab = 'notif') {
   const tabs = `<div class="seg"><button class="${tab === 'msg' ? 'on' : ''}">メッセージ${s === 'empty' ? '' : ` ${s === 'many' ? 3 : 1}`}</button><button class="${tab === 'notif' ? 'on' : ''}">通知${s === 'empty' ? '' : ` ${s === 'many' ? 5 : 2}`}</button></div>`;
-  const head = mainhead('受信箱', s === 'empty' ? 'まだ何も届いていません' : s === 'few' ? '未読 3件' : '未読 8件', tabs, s === 'empty' ? `<button class="rbtn">${ic('settings')}</button>` : `<button class="btn">${ic('check', 'sm')}すべて既読</button><button class="rbtn">${ic('settings')}</button>`);
-  if (s === 'empty') return head + `<div class="wgrid">
-    <div class="card span8 guide" style="padding:28px"><div class="row" style="gap:22px"><div style="font-size:60px">📮</div><div style="flex:1"><div style="font-size:23px;font-weight:800">大事なことだけ、ここに届きます</div><div class="sub" style="margin-top:6px">面談の30分前、締切の当日、iOrbit からの提案。Gmail を連携すると、人脈に関係するスレッドだけが「メッセージ」に並びます。</div>
-      <div class="row" style="gap:10px;margin-top:16px"><button class="btn primary" style="height:46px">${ic('mail', 'sm')}Gmail を連携する</button><span class="lbl">読むのは登録した相手とのスレッドだけ · Orbit からは送信しません</span></div></div></div></div>
-    <div class="span4" style="display:grid;gap:18px">${[['🔔', 'apricot', '通知の設定', '頻度の上限・静かな時間帯'], ['📅', 'blue', 'カレンダー連携', '面談の30分前にお知らせ'], ['🎯', 'pink', '目標を設定', 'iOrbit の提案が届きます']].map(([e, c, t, d]) => `<div class="card row" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div>
-    <div class="card span12"><div class="card-h"><h3>届くとこう見えます ${SAMPLE}</h3></div><div class="faded grid3" style="gap:18px">${nface(N[0])}${nface(N[3], true)}${nface(N[4])}</div></div></div>`;
+  const head = mainhead('受信箱', '') + `<div class="d04-tabs ${tab === 'msg' ? 'msg' : ''}">${tabs}</div>`;
+  if (s === 'empty' && tab === 'msg') return head + `<div class="d04-msg-panel"><div class="d04-msg-list"><div class="input d04-msg-search">${ic('search', 'sm')}スレッドを検索</div><div style="margin:28px 8px 0;font-size:16px">メッセージはまだありません</div></div><div style="padding:16px 0 0;font-size:16px">スレッドを選ぶとメッセージが表示されます。</div></div>`;
+  if (s === 'empty') return head + `<div class="card d04-panel" style="padding:18px">
+    <div style="border-right:1px solid var(--surface-3);padding-right:18px"><div class="d04-filters">${CATS.map(([k,l]) => '<span class="chip '+(k === 'all' ? 'on' : '')+'">'+l+'</span>').join('')}</div><div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm" disabled>すべて既読</button>${ic('settings','sm')}</div><div class="lbl center d04-empty">通知はありません</div></div>
+    <div class="lbl center d04-placeholder">通知を選ぶと詳細を表示します</div></div>`;
   if (tab === 'msg') {
-    const c = C[0];
-    return head + `<div class="wgrid">
-      <div class="card span5" style="padding:10px 18px"><div class="row" style="gap:8px;margin:8px 0 4px"><div class="input" style="flex:1;height:38px">${ic('search', 'sm')}スレッドを検索</div><span class="chip">Gmail</span><span class="chip">主催者</span></div>${T.map((t, k) => mrow(t, k === 0)).join('')}</div>
-      <div class="span7"><div class="row between" style="margin-bottom:12px"><div><b style="font-size:17px">Re: 事業計画書 v3 のご送付</b><div class="lbl">高橋 美咲 · 青葉ベンチャーズ · 4件</div></div><div class="row" style="gap:6px"><button class="lbtn">${ic('clock', 'sm')}</button><button class="lbtn">${ic('plus', 'sm')}</button><button class="lbtn">${ic('more', 'sm')}</button></div></div>
-        <div class="mail collapsed"><div class="row between"><span class="lbl">以前のメッセージ 3件（9/24 · 9/25 · 10/6）</span>${ic('down', 'sm')}</div></div>
-        <div class="mail"><div class="row" style="gap:10px">${avc(c, 'sm')}<div style="flex:1"><b style="font-size:13px">${c.n}</b><div class="lbl">宛先：佐藤 健一 · 今日 10:12</div></div></div>
-          <div style="font-size:13px;line-height:1.75;margin-top:10px;color:var(--ink-2)">佐藤様<br>事業計画書 v3 のご送付ありがとうございます。社内で確認を進めております。11月第2週の IC に向けて、ARR の月次推移と解約率を事前にいただけますでしょうか。<br>青葉ベンチャーズ 高橋</div></div>
-        <div class="draft"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">返信の下書き</b><div class="seg" style="margin-left:auto"><button class="on">丁寧</button><button>簡潔</button></div></div>
-          <div class="txt">高橋様<br>ご確認ありがとうございます。ARR の月次推移（直近12か月）と解約率を、10日（金）までにお送りいたします。あわせて、IC でご質問が出そうな点があれば事前に伺えますと幸いです。<br>佐藤</div>
-          <div class="row" style="gap:8px"><button class="btn sm">${ic('pen', 'sm')}編集</button><button class="btn sm">${ic('refresh', 'sm')}書き直す</button><button class="btn sm">コピー</button><button class="btn sm primary">${ic('out', 'sm')}メールアプリで開く</button></div><div class="lbl" style="margin-top:8px">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div></div></div></div>`;
+    return head + `<div class="card" style="margin:20px 0 0;min-height:535px;padding:18px;display:grid;grid-template-columns:390px 1fr">
+      <div style="border-right:1px solid var(--surface-3);padding-right:18px"><div class="input" style="height:38px">${ic('search', 'sm')}スレッドを検索</div><div class="lbl center" style="margin-top:48px">メッセージはありません</div></div>
+      <div class="lbl center" style="align-self:start">連絡先を選ぶとメッセージを表示します</div></div>`;
   }
-  const list = s === 'many' ? N : [N[0], N[3], N[7]];
+  const list = s === 'many' ? N : [N[0], N[2], N[6]];
   let last = '';
   return head + `<div class="wgrid"><div class="card span12">${s === 'many' ? `<div class="row between" style="margin-bottom:10px">${cats('all')}<span class="lbl">行にカーソルを合わせると操作が出ます</span></div>` : ''}
     <table class="table"><tbody>${list.map((n, k) => { const g = n.day !== last ? `<tr><td colspan="4" style="border-top:0;padding:14px 10px 4px" class="lbl"><b>${n.day}</b></td></tr>` : ''; last = n.day; return g + `<tr><td style="width:46px"><span class="emo sm ${n.c}">${n.emo}</span></td><td><b>${n.t}</b><div class="lbl">${n.d}</div>${n.confirm ? `<div class="confirm-card in-row row" style="gap:8px;display:inline-flex"><span class="lbl">今週のタスクに追加しますか？</span><button class="btn sm">不要</button><button class="btn sm primary">追加する</button></div>` : ''}</td><td style="text-align:right;width:330px"><div class="row" style="justify-content:flex-end;gap:6px"><div class="hov-acts ${k === 1 ? 'show' : ''}"><button class="btn sm">${ic('check', 'sm')}既読</button><button class="btn sm">${ic('plus', 'sm')}タスクに追加</button><button class="btn sm">${ic('clock', 'sm')}1時間後</button></div></div></td><td style="width:60px;text-align:right"><span class="lbl">${n.time}</span> ${n.unread ? '<i class="ud" style="margin:0 0 0 4px"></i>' : ''}</td></tr>`; }).join('')}</tbody></table></div></div>`;
 }
+const d04MobileNav = () => `<nav class="tabbar">${[['home', 'ホーム'], ['users', '人脈'], ['sparkle', 'iOrbit'], ['calendar', 'イベント'], ['task', 'Task']].map(([icon, label]) => `<button>${ic(icon)}${label}</button>`).join('')}</nav>`;
+function inboxMobileWeb(tab = 'notif') {
+  const header = `<div class="d04-mhead"><span class="logo">O</span><b>Orbit</b><span style="flex:1"></span><button class="rbtn">${ic('inbox')}</button><span class="avatar-btn">OQ</span></div><div class="d04-mtitle">受信箱</div>`;
+  const tabs = `<div class="d04-mtabs"><div class="seg"><button class="${tab === 'msg' ? 'on' : ''}">メッセージ</button><button class="${tab === 'notif' ? 'on' : ''}">通知</button></div></div>`;
+  if (tab === 'msg') return header + tabs + `<div class="d04-mmsg"><div class="input d04-msearch">${ic('search', 'sm')}スレッドを検索</div><div class="d04-mempty">メッセージはまだありません</div></div>`;
+  return header + tabs + `<div class="d04-mpane"><div class="cats">${CATS.map(([key, label]) => `<span class="chip ${key === 'all' ? 'on' : ''}">${label}</span>`).join('')}</div><div class="d04-mread"><button class="btn sm" disabled>すべて既読</button></div><div class="d04-mempty">通知はありません</div></div>`;
+}
+const inboxWeb1024 = (tab = 'notif', theme = '') => wf({ nav: 5, head: '', body: inboxWeb('empty', tab), theme }).replace('class="web ', 'class="web d04-w1024 ');
+const inboxWeb390 = (tab = 'notif', theme = '') => phone({ body: inboxMobileWeb(tab), tab: -1, theme, overlay: d04MobileNav() }).replace('class="phone"', 'class="phone mweb d04-mweb"');
 const inboxRail = (tab) => tab === 'msg' ? `<h4>${ic('user', 'sm')}このスレッドの相手</h4>
   <div class="card" style="padding:16px"><div class="row" style="gap:12px">${avc(C[0])}<div><b>${C[0].n}</b><div class="lbl">${C[0].co} · ${C[0].role}</div></div></div><div class="chips" style="margin-top:10px"><span class="chip lav">推進中</span><span class="chip">プラン：VC パートナー</span></div><div class="sub" style="margin-top:10px">💼 ${C[0].val}</div></div>
   <div class="card" style="padding:16px"><div class="lbl">関連するタスク</div><div class="row" style="gap:8px;margin-top:8px;font-size:13px"><span class="emo sm apricot">📊</span>事業計画書 v3 を送付 <span class="chip teal" style="margin-left:auto">完了</span></div></div>
@@ -1534,18 +1548,18 @@ const P = (n, sel, nth = 0) => pin(n, sel, nth);
 
 let h = '';
 /* ---- A 受信箱 ---- */
-h += sec('A · 受信箱', 'NAV-V3：App 从ホーム右上 🔔（红点 = 未读）/ 推送进入（マイページ「受信箱」行保留为次入口）；Web 左栏「受信箱」。消息 = 邮件式异步线程（不做即时聊天）；通知 5 类 + 「秘書」分类（AI 秘書：邮件摘要只给本人看 · 活动到期提醒 · 画像推荐，详见 ⑪）；行操作 既読 · タスクに追加 · 1時間後に再通知');
+h += sec('A · 受信箱 · D04 改稿', 'App 产品标题为「受信トレイ」、Web 为「受信箱」。空态没有 mail 来源、样例通知或未交快捷入口；消息来自已授权的人脉会话。活动/线程填充态须由同 actor 只读 fixture 提供，不能把空账号截图算同态。');
 h += boards([
-  ['受信箱 · 通知', 'empty', phone({ body: inboxApp('empty'), tab: -1, pins: P(1, '.guide .btn.primary') + P(2, '.card:has(.sample-tag)') }), ['空状态唯一主动作：连携 Gmail（消息才会有来源）；下方写明「只读登记对象的线程 · 不发送」', '「届くとこう見えます」淡化示例 + サンプル角标，不写库']],
-  ['受信箱 · 通知', 'few', phone({ body: inboxApp('few'), tab: -1, pins: P(1, '.seg') + P(2, '.confirm-card') + P(3, '.card.flat') }), ['顶部 seg 切 メッセージ / 通知，数字 = 未读数；切换为横向滑动过渡', 'AI「提案」类通知内嵌虚线确认卡：点「追加する」才写入任务（A 档），「不要」= 关闭该提案', '少量时尾部给次要入口（Gmail 连携），不是空白']],
-  ['受信箱 · 通知', 'many', phone({ body: inboxApp('many'), tab: -1, pins: P(4, '.swipe', 4) + P(1, '.cats') + P(2, '.swipe.open') + P(3, '.ud') }), ['分类 chip 横滑：すべて / 秘書 / リマインダー / 提案 / 更新 / 履歴，选中为墨色胶囊；数字是该类条数；「秘書」= AI 秘書的邮件摘要・到期提醒・活动推荐（⑪）', '行左滑出三个操作：既読（青绿）· タスクに追加（薰衣草）· 1時間後に再通知（杏色）；第 2 行为静态展开演示', '紫色小点 = 未读；点行 → 跳到深链目标（面談準備 / 活动卡片），同时标记已读', '「更新」类通知（例：鈴木さんの役職が変わりました）→ 更新の提案（⑦ G：字段级「現在 → 提案」逐项 ✓/✕）']],
-  ['受信箱 · メッセージ', 'many', phone({ body: inboxApp('many', 'msg'), tab: -1, pins: P(1, '.banner') + P(2, '.mrow') }), ['来源说明条：Gmail 与主办方线程；回复只到草稿', '线程行：名字 + 往来条数 / 件名 / 摘要一行 + 来源 chip；点 → ② 线程详情（push 进入）']],
-  ['② メッセージ · スレッド', '', phone({ body: threadApp(), tab: -1, pins: P(1, '.mail.collapsed') + P(2, '[data-why-box] .why') + P(3, '.draft') }), ['旧消息折叠成一行，点开展开（acc 过渡）', 'AI 要点默认只给结论，「?」展开依据；从要点提取的任务仍是虚线确认卡', '回复区 = 下書き卡：编辑 / コピー / メールアプリで開く，按钮下一行常驻「送信はしません · 送信はあなたが行います」，绝无「送信」按钮']],
+  ['受信トレイ · 通知 · 空', 'empty', phone({ body: inboxApp('empty'), tab: -1 }), ['无 mail、无样例事实、无快捷方式；分类与「通知はありません」为稳定空态']],
+  ['受信箱 · 通知', 'few', phone({ body: inboxApp('few'), tab: -1, pins: P(1, '.seg') + P(2, '.confirm-card') + P(3, '.card.flat') }), ['仅在同一 actor 有可追溯来源的通知时验收；当前 QA 空账号不计入像素分母', 'AI「提案」类通知须有服务来源和明确确认，不能由画板样例代替真实通知', '没有可用事件时使用 #0 空态，不展示邮件入口或示例快捷方式']],
+  ['受信箱 · 通知', 'many', phone({ body: inboxApp('many'), tab: -1, pins: P(4, '.swipe', 4) + P(1, '.cats') + P(2, '.swipe.open') + P(3, '.ud') }), ['分类 chip 横滑：すべて / 秘書 / リマインダー / 提案 / 更新 / 履歴；秘書只含有事件来源的期限与推荐', '行操作与深链须由服务返回的通知种类决定；没有来源的示例不用于像素验收', '紫色小点 = 未读；点行同时标记已读', '「更新」类通知须来自字段级变更来源']],
+  ['受信トレイ · メッセージ · 空', 'empty', phone({ body: inboxApp('empty', 'msg'), tab: -1 }), ['无授权线程时显示搜索与真实空态；填充态需同 actor 会话 fixture']],
+  ['② メッセージ · 認可済み会話', '', phone({ body: threadApp(), tab: -1, pins: P(1, '.draft') }), ['同 actor の確認済み会話 fixture でのみ比較する。mail は含まない', '送信は現行の関係メッセージ契約。未確認/オフライン/失敗は別状態とする']],
 ]);
-h += board('受信箱 · Web', 'empty', wf({ nav: 5, head: '', body: inboxWeb('empty'), rail: inboxRail('notif'), pins: P(1, '.guide .btn.primary') }), ['Web 空状态：8 列引导 + 右侧 3 个马卡龙次要入口；示例行淡化带サンプル']);
+h += board('受信箱 · Web · 通知 · 空', 'empty', wf({ nav: 5, head: '', body: inboxWeb('empty') }), ['无 mail、无虚假快捷方式与样例；两栏保持真实空态']);
 h += board('受信箱 · Web · 通知', 'few', wf({ nav: 5, head: '', body: inboxWeb('few'), rail: inboxRail('notif'), pins: P(1, '.hov-acts.show') + P(2, '.rail .card', 0) }), ['Web 行操作改为悬停出现（首行常显演示）：既読 / タスクに追加 / 1時間後', '右栏显示今日推送配额（2 / 3）与静かな時間帯状态，避免用户觉得「被轰炸」']);
 h += board('受信箱 · Web · 通知', 'many', wf({ nav: 5, head: '', body: inboxWeb('many'), rail: inboxRail('notif'), pins: P(1, '.cats') + P(2, '.confirm-card') }), ['分类 chip 在表头左侧，按日分组（今日 / 昨日 / 今週）', '提案行内嵌确认卡，确认后整行变为「履歴」']);
-h += board('受信箱 · Web · メッセージ', 'many', wf({ nav: 5, head: '', body: inboxWeb('many', 'msg'), rail: inboxRail('msg'), pins: P(1, '.mrow.sel') + P(2, '.draft .seg') + P(3, '.rail .card', 2) }), ['三栏：线程列表（5 列）→ 阅读区（7 列）→ 右栏对方信息；选中行浅底', '下書き可切「丁寧 / 簡潔」语气、書き直す；只有 コピー / メールアプリで開く', '右栏把线程里的待办做成虚线确认卡；页面任何位置都没有「送信」']);
+h += board('受信箱 · Web · メッセージ · 空', 'empty', wf({ nav: 5, head: '', body: inboxWeb('empty', 'msg') }), ['无授权线程时保留搜索与两栏空态；填充态须用服务拥有的会话 fixture']);
 
 /* ---- B 推送 ---- */
 h += sec('B · プッシュと深いリンク', '只推「错过有真实代价」的：面談 30 分前 / 早割締切当天；点开落到目标屏并高亮目标卡片');
@@ -1659,9 +1673,22 @@ h += boards([
   ['人脈分析 · 構造', 'many', phone({ body: anaApp('many'), tab: -1, theme: 'dark' })],
   ['設定', 'many', phone({ body: settingsApp('many'), tab: -1, theme: 'dark' })],
 ]);
-h += board('受信箱 · Web · メッセージ', 'many', wf({ nav: 5, head: '', body: inboxWeb('many', 'msg'), rail: inboxRail('msg'), theme: 'dark' }));
+h += board('受信箱 · Web · メッセージ · 空', 'empty', wf({ nav: 5, head: '', body: inboxWeb('empty', 'msg'), theme: 'dark' }));
 h += board('設定 › 連携 · Web', 'many', wf({ nav: 'settings', head: '', body: connWeb('many'), theme: 'dark' }));
 h += board('⌘K · 意味検索', '', wf({ nav: 1, head: '', body: netWeb(), theme: 'dark' }, cmdk('sem')));
+
+/* D04: empty inbox variants keep the current no-mail, actor-owned state. */
+h += sec('D04 · 受信トレイの空態', '暗色 App は空の通知と空の会話を別々に示す。未確認の通知・会話は表示しない。');
+h += board('受信トレイ · 通知 · 空 · App dark', 'empty', phone({ body: inboxApp('empty'), tab: -1, theme: 'dark' }), ['同じ認証済み actor の空通知。送信や提案のサンプルを重ねない。']);
+h += board('受信トレイ · メッセージ · 空 · App dark', 'empty', phone({ body: inboxApp('empty', 'msg'), tab: -1, theme: 'dark' }), ['同じ認証済み actor の空会話。送信画面は実在する会話で別途検証する。']);
+h += board('受信箱 · 通知 · 空 · Web 1024', 'empty', inboxWeb1024('notif'), ['左欄を 72px に畳む。通知のない本人データを表示する。']);
+h += board('受信箱 · 通知 · 空 · Web 390', 'empty', inboxWeb390('notif'), ['モバイル Web は一覧のみ。通知のない本人データを表示する。']);
+h += board('受信箱 · メッセージ · 空 · Web 1024', 'empty', inboxWeb1024('msg'), ['検索と空会話の同一状態。']);
+h += board('受信箱 · メッセージ · 空 · Web 390', 'empty', inboxWeb390('msg'), ['モバイル Web の検索と空会話。']);
+h += board('受信箱 · 通知 · 空 · Web 1024 dark', 'empty', inboxWeb1024('notif', 'dark'));
+h += board('受信箱 · 通知 · 空 · Web 390 dark', 'empty', inboxWeb390('notif', 'dark'));
+h += board('受信箱 · メッセージ · 空 · Web 1024 dark', 'empty', inboxWeb1024('msg', 'dark'));
+h += board('受信箱 · メッセージ · 空 · Web 390 dark', 'empty', inboxWeb390('msg', 'dark'));
 
 document.getElementById('out').innerHTML = h;
 docNav('b5-me-inbox'); orbitChrome();

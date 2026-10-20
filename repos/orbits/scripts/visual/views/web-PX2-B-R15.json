@@ -1,0 +1,57 @@
+{
+  "_note": "PX2 B D14. #14 is the pre-create introduction state. #52 is the generated state and requires a separate actor-owned, read-only issued-code fixture before gating.",
+  "defaults": {
+    "app-origin": "http://127.0.0.1:3300",
+    "login": "qa@orbit.test",
+    "grid": 30,
+    "wait": 4000
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/add/invite/**",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/invite.ts"
+  ],
+  "views": [
+    {
+      "id": "W-R15-14",
+      "app": "/app/contacts/new?add=invite",
+      "design": "b11-nav-v3.html",
+      "board-index": 14,
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "wait-for": "[data-invite-intro]",
+      "viewport": true
+    },
+    {
+      "id": "W-R15-14m",
+      "app": "/app/contacts/new?add=invite",
+      "design": "b11-nav-v3.html",
+      "board-index": 14,
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "region": "440,183,560,594",
+      "wait-for": "[data-invite-intro]",
+      "viewport": true
+    },
+    {
+      "id": "W-R15-52",
+      "app": "/app/contacts/new?add=invite",
+      "design": "b11-nav-v3.html",
+      "board-index": 52,
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "wait-for": "[data-invite-code]",
+      "viewport": true
+    },
+    {
+      "id": "W-R15-52m",
+      "app": "/app/contacts/new?add=invite",
+      "design": "b11-nav-v3.html",
+      "board-index": 52,
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "region": "440,183,560,594",
+      "wait-for": "[data-invite-code]",
+      "viewport": true
+    }
+  ]
+}

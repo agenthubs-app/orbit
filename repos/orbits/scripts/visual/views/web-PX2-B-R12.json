@@ -1,0 +1,123 @@
+{
+  "_note": "PX2 B R12 cross-page keys, local Web 3300, light and dark. Only the three original owner views are gated.",
+  "defaults": {
+    "app-origin": "http://127.0.0.1:3300",
+    "login": "qa@orbit.test",
+    "grid": 30
+  },
+  "sources": [
+    "repos/orbits/app/(app)/app/orbit-2026/add/**",
+    "repos/orbits/app/(app)/app/orbit-2026/copy/add.ts",
+    "repos/orbits/app/(app)/app/contacts/new/**",
+    "repos/orbits/app/(app)/app/orbit-2026/shell/**",
+    "repos/orbits/app/(app)/app/orbit-2026/ui/**"
+  ],
+  "views": [
+    {
+      "id": "W-R12-01",
+      "app": "/app/contacts/new",
+      "design": "b12-missing-states.html",
+      "width": 1440,
+      "wait-for": "[data-add-doors]",
+      "steps": [{ "waitFor": "[data-network-table]" }],
+      "note": "5 门弹窗压在人脈页上（背景 = R11）",
+      "viewport": true,
+      "board-index": 96,
+      "board-kind": "web",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "id": "W-R12-04",
+      "app": "/app/contacts/new?add=manual",
+      "design": "b11-nav-v3.html",
+      "board-index": 19,
+      "width": 1440,
+      "note": "手入力抽屉 + 重複の候補（输入同名）",
+      "viewport": true,
+      "steps": [
+        {
+          "waitFor": "[data-manual-form]"
+        },
+        {
+          "fill": [
+            "[data-manual-field=displayName]",
+            "石川 洋介"
+          ]
+        },
+        {
+          "fill": [
+            "[data-manual-field=organization]",
+            "ミライ精機株式会社"
+          ]
+        },
+        {
+          "fill": [
+            "[data-manual-field=note]",
+            "工場の自動化に関心。@鈴木 大輔 さんと同じ案件"
+          ]
+        },
+        {
+          "waitFor": "[data-manual-met] button:nth-child(2)"
+        },
+        {
+          "click": "[data-manual-met] button:first-child"
+        },
+        {
+          "waitFor": "[data-manual-candidate]"
+        },
+        {
+          "click": "[data-manual-form] b"
+        },
+        {
+          "wait": 400
+        }
+      ],
+      "region-note": "抽屉 906–1426",
+      "region": "906,14,520,932",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    },
+    {
+      "id": "W-R12-03",
+      "app": "/app/contacts/new?add=manual",
+      "design": "b9-import-plan-v2.html",
+      "board": "手入力 · Web 右侧抽屉",
+      "width": 1440,
+      "note": "手入力抽屉 · 署名を貼り付け（600 宽，region 826,0,614,960）",
+      "viewport": true,
+      "steps": [
+        {
+          "waitFor": "[data-manual-form]"
+        },
+        {
+          "wait": 1000
+        },
+        {
+          "click": "[data-manual-paste-open]"
+        },
+        {
+          "fill": [
+            "[data-manual-signature]",
+            "石川 陽介\n石川デザイン事務所　代表\n〒150-0001 東京都渋谷区神宮前 2-x-x\nTEL 03-5555-0198　Mail ishikawa@ishikawa-d.example"
+          ]
+        },
+        {
+          "click": "[data-manual-form] b"
+        },
+        {
+          "wait": 400
+        }
+      ],
+      "region": "826,14,600,932",
+      "themes": [
+        "light",
+        "dark"
+      ]
+    }
+  ]
+}

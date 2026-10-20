@@ -1,12 +1,20 @@
 .grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(280px,5fr);gap:18px;align-items:start}
 .main,.side{display:grid;gap:18px;min-width:0}
+.channels{min-height:485px}
 .row{display:flex;align-items:center;gap:16px;min-height:56px;padding:12px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0;padding-bottom:0}
+.rowIcon{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--surface-2);color:var(--ink-2)}
 .rowText{flex:1;min-width:0;display:grid;gap:3px;font-size:13px;color:var(--ink)}
 .rowText strong{font-weight:650}
 .rowText span,.hint{color:var(--ink-3);font-size:12px;line-height:1.6}
 .hint{margin:10px 0 0}
-.time{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.lockRow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;font-size:13px}
+.time{display:flex;gap:8px;margin:12px 0}
+.time label{display:inline-flex;align-items:center;gap:4px;border-radius:12px;background:var(--surface-2);padding:6px 10px;color:var(--ink-2);font-size:12px;font-weight:700}
+.time input{width:66px;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:700}
+.quietCard .row{min-height:40px;padding:8px 0 0;border:0}
 .error{color:var(--coral-text);font-size:12px;line-height:1.6;margin:8px 0}
 .conversation{padding-top:8px;padding-bottom:8px}
+@media(min-width:768px){.notificationPage :global([data-account-section="notifications"]){margin:-18px 34px 0}}
 @media(max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}.side{grid-row:auto}}
+@media(max-width:767px){.channels{min-height:0}.time{flex-wrap:wrap}}

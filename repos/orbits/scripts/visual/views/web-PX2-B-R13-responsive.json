@@ -1,0 +1,15 @@
+{
+  "_note": "PX2 B D04 new source-empty responsive inbox boards. Local QA actor has no notification or conversation rows; viewport only. Board indices appended after original b5 boards.",
+  "defaults": { "app-origin": "http://127.0.0.1:3300", "login": "qa@orbit.test", "grid": 30, "wait": 6000 },
+  "sources": ["repos/orbits/app/(app)/app/inbox/**"],
+  "views": [
+    { "id": "W-R13-D04-01-1024", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 74, "width": 1024, "themes": ["light"], "viewport": true },
+    { "id": "W-R13-D04-01-390", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 75, "width": 390, "themes": ["light"], "viewport": true },
+    { "id": "W-R13-D04-04-1024", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 76, "width": 1024, "themes": ["light"], "viewport": true },
+    { "id": "W-R13-D04-04-390", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 77, "width": 390, "themes": ["light"], "viewport": true },
+    { "id": "W-R13-D04-01d-1024", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 78, "width": 1024, "themes": ["dark"], "viewport": true },
+    { "id": "W-R13-D04-01d-390", "app": "/app/inbox?tab=notifications", "design": "b5-me-inbox.html", "board-index": 79, "width": 390, "themes": ["dark"], "viewport": true },
+    { "id": "W-R13-D04-04d-1024", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 80, "width": 1024, "themes": ["dark"], "viewport": true },
+    { "id": "W-R13-D04-04d-390", "app": "/app/inbox?tab=messages", "design": "b5-me-inbox.html", "board-index": 81, "width": 390, "themes": ["dark"], "viewport": true }
+  ]
+}

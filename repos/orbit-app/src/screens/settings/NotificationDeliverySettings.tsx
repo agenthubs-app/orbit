@@ -35,7 +35,7 @@ function ScopedDeliverySettings({actorId,scope,conversationId,section}:{actorId:
  const saveHours=()=>{const patch=quietHoursPatch(start,end);if(!patch){setInvalidTime(true);return;}setInvalidTime(false);void change(patch);};
  if(disabled)return <UiText style={{color:colors.ink3Text}}>{t('notifications.error')}</UiText>;
  if(!data)return error?<View style={{gap:10}}><UiText accessibilityRole="alert" style={{color:colors.coralText}}>{t('notifications.error')}</UiText><Button label={t('notifications.refresh')} onPress={()=>setAttempt(v=>v+1)}/></View>:<Skeleton onRetry={()=>setAttempt(v=>v+1)}/>;
- const row=(key:string,label:string,on:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><View key={key} style={{minHeight:54,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:9}}>
+ const row=(key:string,label:string,on:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><View key={key} style={{minHeight:conversationId?54:section==='secretary'?66:58,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:9}}>
   <View style={{flex:1,gap:2}}><UiText style={{color:colors.ink,fontSize:14,fontWeight:'600'}}>{label}</UiText>{hint?<UiText style={{color:colors.ink3Text,fontSize:12,lineHeight:18}}>{hint}</UiText>:null}</View>
   <Toggle value={on} disabled={busy} accessibilityLabel={label} onValueChange={()=>void change(patch)}/>
  </View>;

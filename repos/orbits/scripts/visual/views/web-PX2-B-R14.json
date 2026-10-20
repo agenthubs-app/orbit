@@ -1,0 +1,8 @@
+{
+  "_note": "PX2 B R14 revised notifications board; Web local origin 3300.",
+  "defaults": { "app-origin": "http://127.0.0.1:3300", "login": "qa@orbit.test", "grid": 30, "wait": 4000 },
+  "sources": ["repos/orbits/app/(app)/app/settings/notifications/**"],
+  "views": [
+    { "id": "W-R14-P01", "app": "/app/settings/notifications", "design": "b5-me-inbox.html", "board-index": 29, "width": 1440, "themes": ["light"], "wait-for": "[data-notification-settings]", "steps": [{ "wait": 20000 }, { "waitFor": "[data-notification-settings]" }], "viewport": true }
+  ]
+}
