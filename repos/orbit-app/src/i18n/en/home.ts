@@ -66,7 +66,7 @@ export const home = {
   "home.searchPeople": "Search people",
   "home.inbox": "Inbox",
   "home.scheduleCount": "{count} scheduled",
-  "home.taskCount": "Tasks: {count}",
+  "home.taskCount": "{count} tasks",
   "home.today": "Today",
   "home.schedule": "Schedule",
   "home.allSchedule": "All schedule items",

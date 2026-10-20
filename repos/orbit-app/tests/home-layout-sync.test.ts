@@ -15,7 +15,7 @@ test("offline App draft replays with its original id and the server's Web array"
     sent = options?.body;
     return { success: true, data: { ...server, revision: 5, app: draft.app }, status: 200, meta };
   }) as OrbitApiClient["put"];
-  const result = await reconcileHomeLayoutDraft(server, draft, put);
+  const result = await reconcileHomeLayoutDraft(server, draft, { put });
   assert.deepEqual(sent, { expectedRevision: 4, mutationId: "offline-1", app: draft.app, web: server.web });
   assert.equal(result.kind, "saved");
   assert.deepEqual(result.layout.web, server.web);
@@ -25,14 +25,14 @@ test("newer revision discards the local draft before a write", async () => {
   let calls = 0;
   const put = (async () => { calls++; throw new Error("must not write"); }) as OrbitApiClient["put"];
   const newer = { ...server, revision: 5 };
-  assert.deepEqual(await reconcileHomeLayoutDraft(newer, draft, put), { kind: "conflict", layout: newer });
+  assert.deepEqual(await reconcileHomeLayoutDraft(newer, draft, { put }), { kind: "conflict", layout: newer });
   assert.equal(calls, 0);
 });
 
 test("a raced 409 adopts the whole current server layout; an outage retains the draft", async () => {
   const newer = { ...server, revision: 5, app: [{ key: "today" as const, size: "s" as const }] };
   const conflict = (async () => ({ success: false, status: 409, meta, error: { code: "CONFLICT", message: "changed", context: { currentLayout: JSON.stringify(newer) } } })) as OrbitApiClient["put"];
-  assert.deepEqual(await reconcileHomeLayoutDraft(server, draft, conflict), { kind: "conflict", layout: newer });
+  assert.deepEqual(await reconcileHomeLayoutDraft(server, draft, { put: conflict }), { kind: "conflict", layout: newer });
   const unavailable = (async () => ({ success: false, status: 0, meta, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "offline" } })) as OrbitApiClient["put"];
-  assert.deepEqual(await reconcileHomeLayoutDraft(server, draft, unavailable), { kind: "pending", layout: server });
+  assert.deepEqual(await reconcileHomeLayoutDraft(server, draft, { put: unavailable }), { kind: "pending", layout: server });
 });

@@ -63,7 +63,7 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
       const server = parsed.data;
       const draft = cached.draft;
       if (!draft) { await publish({ snapshot: server, fetchedAt: new Date().toISOString(), draft: null }, "ready"); return; }
-      const resolved = await reconcileHomeLayoutDraft(server, draft, client.put);
+      const resolved = await reconcileHomeLayoutDraft(server, draft, client);
       if (!active.current) return;
       await publish({ snapshot: resolved.layout, fetchedAt: new Date().toISOString(), draft: resolved.kind === "pending" ? draft : null }, resolved.kind === "pending" ? "stale" : "ready");
       if (resolved.kind === "conflict") onConflict();

@@ -10,10 +10,10 @@ export type DraftReconciliation =
 
 /** A draft never wins after another revision; the whole server layout is adopted on conflict. */
 export async function reconcileHomeLayoutDraft(
-  server: HomeLayoutContract, draft: HomeLayoutDraft, put: Pick<OrbitApiClient, "put">["put"],
+  server: HomeLayoutContract, draft: HomeLayoutDraft, client: Pick<OrbitApiClient, "put">,
 ): Promise<DraftReconciliation> {
   if (server.revision !== draft.baseRevision) return { kind: "conflict", layout: server };
-  const result = await put<unknown>("/api/home/layout", { body: {
+  const result = await client.put<unknown>("/api/home/layout", { body: {
     expectedRevision: server.revision, mutationId: draft.mutationId, app: draft.app, web: server.web,
     ...(draft.hintDismissedAt ?? server.hintDismissedAt ? { hintDismissedAt: draft.hintDismissedAt ?? server.hintDismissedAt } : {}),
   } });

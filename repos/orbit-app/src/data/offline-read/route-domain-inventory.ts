@@ -76,6 +76,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/dashboard/opportunities')) return 'opportunities';
   if (path.startsWith('/api/dashboard/network-gaps') || path.startsWith('/api/audit/provenance')) return 'sources';
   if (path.startsWith('/api/dashboard')) return 'dashboard';
+  if (path.startsWith('/api/home/')) return 'home';
   if (path.startsWith('/api/mobile/contacts-dashboard')) return 'home';
   // R11b 人脈分析: the deterministic view, its drill-down lists and the iOrbit snapshot (read + 見直す).
   if (path.startsWith('/api/network/')) return 'network-analysis';
@@ -104,6 +105,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   // PX1's development-only fixture has an actor-partitioned, versioned snapshot in network-design-fixture.ts.
   // Keep its exact route in this inventory; the normal contacts policies must not absorb it.
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
+    // Home layout and guide state have an actor-scoped owner cache; the generic read mirror must not persist either response.
+    || endpointTemplate.startsWith('/api/home/')
     || endpointTemplate.startsWith('/api/account/exports') || endpointTemplate.startsWith('/api/account/deletion-request')
     || endpointTemplate === '/api/app/version'
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
@@ -770,6 +773,28 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/home/HomeDashboardScreen.tsx","GET","/api/tasks/page"],
   ["src/screens/home/HomeDashboardScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/screens/home/HomeScreen.tsx","GET","/api/events/public"],
+  // R10 Home widgets read only their mounted sources; the layout hook owns its actor-scoped offline draft.
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/page"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/summary"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/events/mine"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/inbox/secretary/preview"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/notes"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/recommendations/events"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/schedule-items"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/todo/page"],
+  ["src/screens/home/HomeWidgetsScreen.tsx","GET","/api/home/guide-progress"],
+  ["src/screens/home/home-layout-sync.ts","PUT","/api/home/layout"],
+  ["src/screens/home/use-home-layout.ts","GET","/api/home/layout"],
+  ["src/screens/home/use-home-layout.ts","PUT","/api/home/layout"],
+  ["src/screens/home/use-home-read.ts","GET","/api/agent/plans/v2/summary"],
+  ["src/screens/home/use-home-read.ts","GET","/api/contacts/page"],
+  ["src/screens/home/use-home-read.ts","GET","/api/contacts/summary"],
+  ["src/screens/home/use-home-read.ts","GET","/api/events/mine"],
+  ["src/screens/home/use-home-read.ts","GET","/api/home/guide-progress"],
+  ["src/screens/home/use-home-read.ts","GET","/api/inbox/secretary/preview"],
+  ["src/screens/home/use-home-read.ts","GET","/api/notes"],
+  ["src/screens/home/use-home-read.ts","GET","/api/schedule-items"],
   ["src/screens/memo/EditMemoScreen.tsx","POST","/api/contacts/search"],
   ["src/screens/memo/EditMemoScreen.tsx","GET","/api/events"],
   ["src/screens/memo/EditMemoScreen.tsx","PATCH","/api/notes/:id"],
