@@ -7,11 +7,45 @@ const hash = (actorId: string) => actorId === "A" ? "a".repeat(64) : "b".repeat(
 
 test("a missing native bridge never reports a successful clear or write", async () => {
   const { createWidgetSnapshotRuntime } = await import("../src/widgets/runtime");
-  const runtime = createWidgetSnapshotRuntime({ native: null, hashScope: async () => "a".repeat(64) });
+  const diagnostics: string[] = [];
+  const runtime = createWidgetSnapshotRuntime({ native: null, hashScope: async () => "a".repeat(64),
+    diagnoseUnavailable: code => { diagnostics.push(code); } });
   assert.equal(await runtime.clear(), false);
   assert.equal(await runtime.activate("https://first.example", "A"), null);
   assert.equal(await runtime.publish({ baseUrl: "https://first.example", actorId: "A",
     now: new Date("2026-10-20T08:00:00Z"), timeZone: "Asia/Tokyo", layoutRevision: 1, widgets: cards }), false);
+  assert.deepEqual(diagnostics, ["WIDGET_NATIVE_UNAVAILABLE"]);
+});
+
+test("a native bridge without an App Group remains a quiet no-op", async () => {
+  const { createWidgetSnapshotRuntime } = await import("../src/widgets/runtime");
+  const calls: string[] = [];
+  const diagnostics: string[] = [];
+  const runtime = createWidgetSnapshotRuntime({
+    native: {
+      containerAvailable: async () => { calls.push("probe"); return false; },
+      activateScope: async () => { calls.push("activate"); },
+      clearSnapshot: async () => { calls.push("clear"); },
+      writeSnapshot: async () => { calls.push("write"); },
+    },
+    hashScope: async () => "a".repeat(64),
+    diagnoseUnavailable: code => { diagnostics.push(code); },
+  });
+  assert.equal(await runtime.clear(), false);
+  assert.equal(await runtime.activate("https://first.example", "A"), null);
+  assert.equal(await runtime.publish({ baseUrl: "https://first.example", actorId: "A",
+    now: new Date("2026-10-20T08:00:00Z"), timeZone: "Asia/Tokyo", layoutRevision: 1, widgets: cards }), false);
+  assert.equal(await runtime.clear(), false);
+  assert.deepEqual(calls, ["probe"]);
+  assert.deepEqual(diagnostics, ["WIDGET_NATIVE_UNAVAILABLE"]);
+});
+
+test("an unavailable diagnostic cannot reject sign-out cleanup", async () => {
+  const { createWidgetSnapshotRuntime } = await import("../src/widgets/runtime");
+  const runtime = createWidgetSnapshotRuntime({ native: null, hashScope: async () => "a".repeat(64),
+    diagnoseUnavailable: () => { throw Error("logger unavailable"); } });
+  assert.equal(await runtime.clear(), false);
+  assert.equal(await runtime.activate("https://first.example", "A"), null);
 });
 
 test("a cleared or switched account cannot publish its late widget snapshot", async () => {

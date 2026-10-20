@@ -10,10 +10,13 @@ export type NativeWidgetSnapshotStore = {
 
 type HashScope = (normalizedBaseUrl: string, actorId: string) => Promise<string>;
 
-export function createWidgetSnapshotRuntime(input: { native: NativeWidgetSnapshotStore | null; hashScope: HashScope }) {
+export function createWidgetSnapshotRuntime(input: { native: NativeWidgetSnapshotStore | null; hashScope: HashScope;
+  diagnoseUnavailable?: (code: string) => void }) {
   let generation = 0;
   let active: { key: string; hash: string } | null = null;
   let pending: { key: string; promise: Promise<string | null> } | null = null;
+  let availability: Promise<boolean> | null = null;
+  let diagnosedUnavailable = false;
   let nativeTail: Promise<void> = Promise.resolve();
   const onNativeQueue = <T>(operation: () => Promise<T>): Promise<T> => {
     const result = nativeTail.then(operation);
@@ -21,18 +24,31 @@ export function createWidgetSnapshotRuntime(input: { native: NativeWidgetSnapsho
     return result;
   };
   const keyFor = (baseUrl: string, actorId: string) => `${normalizeOrbitApiBaseUrl(baseUrl)}\u0000${actorId}`;
+  // A missing bridge or entitlement is expected in the default build; report its code once.
+  const nativeAvailable = () => {
+    availability ??= (async () => {
+      let available = false;
+      try { available = await input.native?.containerAvailable() ?? false; } catch { /* Missing entitlement is an expected local state. */ }
+      if (!available && !diagnosedUnavailable) {
+        diagnosedUnavailable = true;
+        try { input.diagnoseUnavailable?.("WIDGET_NATIVE_UNAVAILABLE"); } catch { /* Diagnostics must not affect auth. */ }
+      }
+      return available;
+    })();
+    return availability;
+  };
 
   async function clear(): Promise<boolean> {
     generation += 1;
     active = null;
     pending = null;
-    if (!input.native) return false;
+    if (!await nativeAvailable()) return false;
     try { await onNativeQueue(() => input.native!.clearSnapshot()); return true; }
     catch (error) { console.warn("WIDGET_SNAPSHOT_CLEAR_FAILED", error); return false; }
   }
 
   function activate(baseUrl: string, actorId: string): Promise<string | null> {
-    if (!input.native || !actorId) return Promise.resolve(null);
+    if (!actorId) return Promise.resolve(null);
     const key = keyFor(baseUrl, actorId);
     if (active?.key === key) return Promise.resolve(active.hash);
     if (pending?.key === key) return pending.promise;
@@ -40,6 +56,7 @@ export function createWidgetSnapshotRuntime(input: { native: NativeWidgetSnapsho
     active = null;
     const promise = (async () => {
       try {
+        if (!await nativeAvailable() || ticket !== generation) return null;
         await onNativeQueue(() => input.native!.clearSnapshot());
         if (ticket !== generation) return null;
         const hash = await input.hashScope(normalizeOrbitApiBaseUrl(baseUrl), actorId);
@@ -69,5 +86,5 @@ export function createWidgetSnapshotRuntime(input: { native: NativeWidgetSnapsho
     } catch (error) { console.warn("WIDGET_SNAPSHOT_WRITE_FAILED", error); return false; }
   }
 
-  return { activate, clear, publish, containerAvailable: async () => input.native?.containerAvailable() ?? false };
+  return { activate, clear, publish, containerAvailable: nativeAvailable };
 }

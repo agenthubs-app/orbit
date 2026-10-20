@@ -136,10 +136,16 @@ private struct WidgetCopy {
   var skipped: String { pick("スキップ", "跳过", "Skipped") }
   var noLimit: String { pick("上限なし", "无上限", "No cap") }
   var chance: String { pick("今日のチャンス", "今日机会", "Today's chance") }
+  var fullScore: String { pick("満点 100", "满分 100", "100 points") }
+  var earnedPoints: String { pick("話して得た点", "交流得分", "Conversation points") }
+  var learnedPoints: String { pick("習熟済み", "已掌握", "Mastered") }
+  var remainingPoints: String { pick("まだの点", "剩余分数", "Remaining") }
+  var nextTypes: String { pick("次に話す人のタイプ", "下一步交流对象", "People to meet next") }
+  func chanceLine(_ points: String, _ label: String) -> String {
+    pick("今日 \(points) のチャンス：\(label)", "今日 \(points) 分机会：\(label)", "Today \(points): \(label)")
+  }
 }
 
-private let ink = Color(red: 0.16, green: 0.13, blue: 0.20)
-private let muted = Color(red: 0.42, green: 0.38, blue: 0.46)
 private let lavender = Color(red: 0.52, green: 0.38, blue: 0.64)
 private let mint = Color(red: 0.37, green: 0.62, blue: 0.52)
 
@@ -157,6 +163,9 @@ private struct OrbitWidgetView: View {
   @Environment(\.locale) private var locale
   @Environment(\.colorScheme) private var colorScheme
   private var copy: WidgetCopy { WidgetCopy(locale: locale) }
+  // 主会话代定 §R19-11: keep text legible in both widget color schemes.
+  private var ink: Color { colorScheme == .dark ? Color(red: 0.96, green: 0.93, blue: 0.97) : Color(red: 0.16, green: 0.13, blue: 0.20) }
+  private var muted: Color { colorScheme == .dark ? Color(red: 0.69, green: 0.66, blue: 0.73) : Color(red: 0.42, green: 0.38, blue: 0.46) }
 
   var body: some View {
     Group {
@@ -285,15 +294,17 @@ private struct OrbitWidgetView: View {
 
   @ViewBuilder private func plan(_ snapshot: WidgetSnapshot) -> some View {
     if let data = snapshot.widgets.plan.display, snapshot.widgets.plan.status == "ready" {
-      VStack(alignment: .leading, spacing: 11) {
-        Text("\(copy.plan) · \(data.goal)").font(.system(size: 12, weight: .bold)).lineLimit(1).foregroundStyle(muted)
+      VStack(alignment: .leading, spacing: 10) {
+        HStack {
+          Text("\(copy.plan) · \(data.goal)").font(.system(size: 12, weight: .bold)).lineLimit(1)
+          Spacer(minLength: 0)
+          Text("💰")
+        }.foregroundStyle(muted)
         HStack(alignment: .firstTextBaseline, spacing: 12) {
           Text(data.total.formatted()).font(.system(size: 54, weight: .bold, design: .rounded))
           VStack(alignment: .leading) {
             Text("\(copy.talked) \(data.talked.formatted()) · \(copy.skipped) \(data.skipped.formatted())")
-            Text(copy.noLimit)
-            Text("\(data.todayDelta < 0 ? "" : "+")\(data.todayDelta.formatted())")
-              .foregroundStyle(data.todayDelta < 0 ? Color.red : mint)
+            Text("\(copy.fullScore) · \(copy.noLimit)")
           }.font(.system(size: 11)).foregroundStyle(muted)
         }.foregroundStyle(ink)
         GeometryReader { geometry in
@@ -308,16 +319,34 @@ private struct OrbitWidgetView: View {
             }
           }
         }.frame(height: 8)
+        HStack(spacing: 8) {
+          Label(copy.earnedPoints, systemImage: "square.fill")
+          Label(copy.learnedPoints, systemImage: "square.fill")
+          Label(copy.remainingPoints, systemImage: "square.fill")
+        }.font(.system(size: 9, weight: .semibold)).foregroundStyle(muted).lineLimit(1)
         if let chance = data.chance {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(copy.chance).font(.system(size: 11, weight: .bold)).foregroundStyle(muted)
-            Text("\(chance.label)  \(chance.points < 0 ? "" : "+")\(chance.points.formatted())")
-              .font(.system(size: 14, weight: .semibold)).lineLimit(2)
+          HStack(spacing: 9) {
+            Text("💼")
+            VStack(alignment: .leading, spacing: 2) {
+              Text(copy.chanceLine("\(chance.points < 0 ? "" : "+")\(chance.points.formatted())", chance.label))
+                .font(.system(size: 12, weight: .bold)).lineLimit(1)
+              Text(copy.chance).font(.system(size: 10)).foregroundStyle(muted)
+            }
+            Spacer(minLength: 0)
+            Text("\(chance.points < 0 ? "" : "+")\(chance.points.formatted())")
+              .font(.system(size: 13, weight: .bold)).foregroundStyle(lavender)
           }.padding(10).frame(maxWidth: .infinity, alignment: .leading).background(lavender.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         }
-        ForEach(Array(data.segments.prefix(3).enumerated()), id: \.offset) { _, segment in
-          HStack { Text(segment.label); Spacer(); Text("\((segment.earned + segment.overflow).formatted()) / \(segment.allocation.formatted())") }
-            .font(.system(size: 12, weight: .semibold)).foregroundStyle(ink)
+        Text(copy.nextTypes).font(.system(size: 10, weight: .semibold)).foregroundStyle(muted)
+        ForEach(["vc", "cvc", "cfo"], id: \.self) { key in
+          if let segment = data.segments.first(where: { $0.key == key }) {
+            HStack {
+              Text(key == "vc" ? "💼" : key == "cvc" ? "🏢" : "📊")
+              Text(segment.label)
+              Spacer()
+              Text("\((segment.earned + segment.overflow).formatted()) / \(segment.allocation.formatted())")
+            }.font(.system(size: 12, weight: .semibold)).foregroundStyle(ink)
+          }
         }
         Spacer(minLength: 0)
         updated(SnapshotReader.date(snapshot.lastUpdatedAt))

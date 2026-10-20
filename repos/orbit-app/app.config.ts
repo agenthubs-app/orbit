@@ -1,5 +1,8 @@
 import type { ExpoConfig } from "expo/config";
 
+// 主会话代定 §R19-10: local builds stay free of WidgetKit/App Group entitlements by default.
+const widgetkitEnabled = process.env.ORBIT_ENABLE_WIDGETS === "1";
+
 const config: ExpoConfig = {
   name: "Orbit",
   slug: "orbit-app",
@@ -13,7 +16,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "./plugins/with-ios-build-settings",
-    "./plugins/with-orbit-widgetkit",
+    ...(widgetkitEnabled ? ["./plugins/with-orbit-widgetkit"] : []),
     "expo-secure-store",
     ["expo-sqlite", { useSQLCipher: true }],
     "expo-localization",
@@ -45,6 +48,7 @@ const config: ExpoConfig = {
   },
   extra: {
     easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    widgetkitEnabled,
     ...(process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL
       ? { orbitApiBaseUrl: process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL }
       : {})
