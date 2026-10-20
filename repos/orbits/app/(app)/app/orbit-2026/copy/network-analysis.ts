@@ -19,7 +19,7 @@ export const networkAnalysisCopy = {
   lockAddCards: { ja: "名刺を追加", zh: "添加名片", en: "Add cards", kind: "button" },
   lockImportCsv: { ja: "CSV を取り込む", zh: "导入 CSV", en: "Import CSV", kind: "button" },
   previewStructureBody: { ja: "業界・役職層・地域・出会った場所", zh: "行业、职位层级、地区、认识途径", en: "Industry, level, region, where you met", kind: "label" },
-  previewOpportunitiesBody: { ja: "再会すべき人・紹介を頼める人", zh: "值得再联系的人、能帮忙引荐的人", en: "Who to reconnect with, who can introduce you", kind: "label" },
+  previewOpportunitiesBody: { ja: "再会すべき人・止まっている関係", zh: "值得再联系的人、停滞的关系", en: "People to reconnect with, relationships gone quiet", kind: "label" },
   previewInsightBody: { ja: "人脈の傾向と、その理由", zh: "人脉的趋势和原因", en: "Trends in your network and why", kind: "label" },
   sampleIndustry1: { ja: "投資・金融", zh: "投资与金融", en: "Investment", kind: "label" },
   sampleIndustry2: { ja: "製造業", zh: "制造业", en: "Manufacturing", kind: "label" },

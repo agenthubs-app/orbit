@@ -172,7 +172,7 @@ export function IOrbitStartView({
         <UiText style={styles.muted}>{copy.manualSend}</UiText>
       </View>
     </AppScreen>
-    <FullDrawer visible={historyOpen} title={copy.conversations} onClose={onHistoryClose}>
+    <FullDrawer visible={historyOpen} title={copy.conversations} side="left" onClose={onHistoryClose}>
       <Button label={copy.newConversation} icon="plus" variant="primary" onPress={onNew} block />
       <SearchField value={historyQuery} onChangeText={onHistoryQueryChange} placeholder={copy.searchHistory} />
       {historyLoading && !history.length ? <UiText accessibilityLiveRegion="polite" style={styles.muted}>{copy.loading}</UiText> : null}

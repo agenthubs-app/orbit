@@ -416,10 +416,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   gapBodyPlain: { fontSize: 12.5, lineHeight: 20, color: colors.ink2 },
   gapButton: { marginTop: 10, alignItems: "flex-start" },
   // 機会
-  oppHead: { flexDirection: "row", alignItems: "center", gap: 12 },
+  oppHead: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
   oppTitle: { fontSize: 14, fontWeight: "800", color: colors.ink },
   mid: { fontSize: 22, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
-  oppFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
+  oppFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16 },
   // インサイト (kit .cmp, .minibars)
   headline: { marginTop: 8, fontSize: 14, lineHeight: 22, fontWeight: "800", color: colors.ink },
   cmp: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },

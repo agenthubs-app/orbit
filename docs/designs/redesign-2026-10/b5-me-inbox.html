@@ -412,8 +412,8 @@ const NP = [
   { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
 ];
 /* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 204 · 連絡先 41 · LinkedIn 22 · イベント 8 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川（2026-10-18 用户定 §B-1：删「情報が少ない人」页签，分类页签 = すべて / 目標に関係 / 要フォロー（有未完成 To-do 关联此人）；出どころ 加「イベント」，汎用 CSV 算手入力） */
-/* PX2 D02: R11a の九行と 10/12 の招待更新は 2026-10-21 JST の同じ時計を使う。 */
-const NET_MANY = [[NP[0], '15日前'], [NP[2], '17日前'], [NP[1], '21日前'], [NP[4], '15日前'], [NP[3], '6/29 登録'], [NP[7], '3/21 登録'], [NP[5], '17日前'], [NP[6], '16日前'], [NP[8], '17日前']].map(([p, last]) => ({ ...p, last }));
+/* PX2 D02: R11a の九行と 10/12 の招待更新は fixture の 2026-10-19 JST を基準にする。 */
+const NET_MANY = [[NP[0], '13日前'], [NP[2], '15日前'], [NP[1], '19日前'], [NP[4], '13日前'], [NP[3], '6/29 登録'], [NP[7], '3/21 登録'], [NP[5], '15日前'], [NP[6], '14日前'], [NP[8], '15日前']].map(([p, last]) => ({ ...p, last }));
 const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
 const DOORS = [
   ['meishi', '📇', 'apricot', '名刺スキャン', '会社・役職・連絡先 ＋ いつ・どこで会ったか', 2, '1枚 / まとめて最大100枚'],
@@ -1298,10 +1298,10 @@ const pubRail = (p) => { const d = PR[p]; return `<h4>${ic('user', 'sm')}公開�
   <div class="card" style="padding:16px"><div class="lbl" style="margin-bottom:4px">公開する項目</div>${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1], ['メール・電話（交換後のみ）', 0]].map(([t, on]) => `<div class="row between" style="font-size:12.5px;padding:6px 0">${t}${tg(on)}</div>`).join('')}</div>`; };
 
 /* =================== E1. 人脈分析 =================== */
-const IND = [['投資・金融', 105, 'var(--plum-900)'], ['小売・消費財', 83, 'var(--plum-700)'], ['教育・研究', 63, 'var(--plum-500)'], ['商社・物流', 35, 'var(--plum-300)']];
-const INDF = [['投資・金融', 5, 'var(--plum-900)'], ['小売・消費財', 4, 'var(--plum-700)'], ['教育・研究', 3, 'var(--plum-500)'], ['商社・物流', 2, 'var(--plum-300)']];
+const IND = [['金融・投資', 105, 'var(--plum-900)'], ['小売・消費財', 83, 'var(--plum-700)'], ['教育・研究', 63, 'var(--plum-500)'], ['貿易・物流', 35, 'var(--plum-300)']];
+const INDF = [['金融・投資', 5, 'var(--plum-900)'], ['小売・消費財', 4, 'var(--plum-700)'], ['教育・研究', 3, 'var(--plum-500)'], ['貿易・物流', 2, 'var(--plum-300)']];
 const DIMS = { many: [['役職層', [['経営層', 74], ['部長クラス', 96], ['担当者', 116]]], ['地域', [['東京', 188], ['大阪', 41], ['名古屋', 33], ['その他', 24]]], ['出会った場所', [['イベント', 142], ['紹介', 61], ['訪問・商談', 52], ['その他', 31]]]],
-  few: [['役職層', [['経営層', 4], ['部長クラス', 6], ['担当者', 4]]], ['地域', [['東京', 9], ['大阪', 2], ['名古屋', 2], ['その他', 1]]], ['出会った場所', [['イベント', 7], ['紹介', 3], ['訪問・商談', 3], ['その他', 1]]]] };
+  few: [['役職層', [['経営層', 4], ['部長クラス', 6], ['担当者', 4]]], ['地域', [['東京', 9], ['名古屋', 2], ['大阪', 2], ['その他', 1]]], ['出会った場所', [['イベント', 7], ['紹介', 3], ['訪問・商談', 3], ['その他', 1]]]] };
 const dimCard = ([t, rows], k, web) => { const mx = Math.max(...rows.map(r => r[1])); return `<div class="card ${web ? 'span4' : ''}"><div class="card-h"><h3>${t}</h3><span class="more">${ic('right', 'sm')}</span></div>${rows.map(([l, v], j) => `<div class="dim"><span>${l}</span>${bar(v / mx * 100, 'thin ' + (j === 0 ? '' : 'rose'))}<b class="score">${v}</b>${ic('right', 'sm')}</div>`).join('')}</div>`; };
 const indCard = (few, web) => { const L = few ? INDF : IND, tot = few ? 14 : 286; return `<div class="card ${web ? 'span5' : ''} rise"><div class="card-h"><h3>業界</h3><span class="lbl">タップで名簿</span></div><div class="row" style="gap:16px">${ring(web ? 140 : 118, 13, L.map(([, v, c]) => ({ v, c })), `<div class="big" style="font-size:${web ? 30 : 26}px">${num(tot)}</div><div class="lbl">人</div>`)}
   <div style="flex:1">${L.map(([l, v, c], k) => `<div class="leg ${k === 0 ? 'drill' : ''}"><i style="background:${c}"></i><span>${l}</span><b class="score">${v}</b>${ic('right', 'sm')}</div>`).join('')}</div></div></div>`; };
@@ -1313,10 +1313,10 @@ const gapCard = (few, web) => `<div class="mac pink gap ${web ? 'span7' : ''}" d
 // R11b 主会话代定 2026-10-18，RD-33：Web #41 按 REVIEW M1 改稿，下列块不画——
 //   「紹介を頼める人」「今月のイベントで会える人」：没有能算出这些人的数据源（介绍关系 / 活动登壇者名单与人脈的对照），隐藏。
 const OPP = [
-  ['🔁', 'pink', '再会すべき人', 12, '90日以上 接点がなく、プランに関係する人', '最終接点の日付 · プランに関係する人', [C[1], X[0], X[2]]],
+  ['🔁', 'pink', '再会すべき人', 12, '90日以上 接点がなく、プランに関係する人', '最終接点の日付 · プランに関係する人', [{ ...C[7], c: 'c5' }, { ...X[0], c: 'c2' }, { ...X[2], c: 'c5' }]],
   ['🙋', 'teal', '紹介を頼める人', 5, '投資家とつながりがあり、あなたと関係が近い人', 'メモ「投資家を紹介できる」（渡辺さん 10/5）· 段階「推進中」以上 · 共通のイベント参加', [C[3], C[2], C[5]]],
   ['🎟️', 'lav', '今月のイベントで会える人', 9, '参加予定イベントの登壇者・公開参加者と一致', 'Japan SaaS Summit 登壇者リスト · CFO Night 参加者リスト（10/6 公開）', [C[0], C[6], X[1]]],
-  ['⏳', 'apricot', '止まっている関係', 18, '「関係構築」のまま平均 46日', '現在の段階 · 最終接点の日付', [{ n: '鈴木 大輔', i: '鈴', c: 'c3' }, { n: '中村 健', i: '中', c: 'c4' }, { n: '高田 由紀', i: '高', c: 'c2' }]],
+  ['⏳', 'apricot', '止まっている関係', 18, '「関係構築」のまま平均 46日', '現在の段階 · 最終接点の日付', [{ n: '鈴木 大輔', i: '鈴', c: 'c2' }, { n: '中村 健', i: '中', c: 'c1' }, { n: '高田 由紀', i: '高', c: 'c1' }]],
 ];
 const oppCard = ([e, c, t, n, d, w, ppl], web) => `<div class="card ${web ? 'span6' : ''}" data-why-box><div class="row" style="gap:12px"><span class="emo ${c}">${e}</span><div style="flex:1;min-width:0"><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><div class="mid">${num(n)}<small class="lbl">人</small></div></div>
   <div class="row" style="margin-top:12px;gap:8px"><div class="avs">${ppl.map(p => `<div class="av sm ${p.c}">${p.i}</div>`).join('')}</div><span class="lbl">${ppl[0].n} ほか</span><span class="why" style="margin-left:auto">?</span><button class="btn sm">名簿を見る</button></div>
@@ -1330,10 +1330,9 @@ const INS = [
 const insCard = ([k, t, viz, w], web) => `<div class="card ${web ? 'span4' : ''}" data-why-box><div class="row"><span class="chip">${k}</span><span class="why" style="margin-left:auto">?</span></div><b style="display:block;font-size:14px;line-height:1.6;margin-top:8px">${t}</b>${viz}<div class="why-body" hidden>根拠：${w}</div></div>`;
 const anaTabs = (on, w) => `<div class="seg anatab" style="${w ? '' : 'width:100%;display:grid;grid-template-columns:repeat(3,1fr)'}">${[['str', '構造'], ['opp', '機会'], ['ins', 'インサイト']].map(([k, l]) => `<button class="${k === on ? 'on' : ''}">${l}</button>`).join('')}</div>`;
 // R11b PLANNER §2 B-1 / B-2（主会话代定，2026-10-18，RD-33）：10 人即解锁，「10人を超えると」改为「10人から」；≥30 人去「参考値」，「30人を超えると」改为「30人から」（说明，不是第二道锁）。
-// R11b 实现（主会话代定 2026-10-18，RD-33；只画真实存在的，决定表 §15-1 先例）：画板不改，下列块在实现里不画——
-//   App 顶栏右侧 sliders 按钮：分析页没有对应的筛选功能，不画。
+// PX2 D03: App 分析页没有筛选功能；当前态画板也不画顶栏 sliders 按钮。
 function anaApp(s, tab = 'str') {
-  const head = topbar('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : '286人 · 10/7 更新', back, `<button class="rbtn">${ic('sliders')}</button>`);
+  const head = topbar('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : '286人 · 10/7 更新', back, '');
   if (s === 'empty') return head + `
     <div class="guide rise" style="text-align:center;padding:24px 20px"><div class="lockring" style="width:120px;margin:0 auto">${ring(120, 12, [{ v: 5, c: 'var(--plum-700)', max: 10 }], `<div class="big" style="font-size:30px">${num(5)}<small>/10</small></div>`)}</div>
       <div style="font-size:18px;font-weight:800;margin-top:12px">あと5人で分析が始まります</div><div class="sub" style="margin:6px 0 16px">10人から、業界の偏りや足りない人が見えてきます。</div>
@@ -1348,15 +1347,16 @@ function anaApp(s, tab = 'str') {
 }
 function drillApp() {
   // PX2 D03: finance bucket 105 = active 79 + nurture 26 in the many286 DTO.
-  const L = [{ ...C[0], stage: '関係構築', st: 'lav' }, { ...C[7], stage: '知り合い', st: '' },
-    { ...C[2], stage: '関係構築', st: 'lav' }, { ...X[1], stage: '関係構築', st: 'lav' },
-    { n: '名前 8', i: '名', c: 'c5', co: '会社 8', role: '担当', stage: '関係構築', st: 'lav', emo: '', val: '' },
-    { n: '名前 9', i: '名', c: 'c5', co: '会社 9', role: '担当', stage: '関係構築', st: 'lav', emo: '', val: '' }];
-  return topbar('投資・金融', '105人 · 人脈分析から', back, `<button class="rbtn">${ic('sliders')}</button>`) + `
+  const generic = (n, stage = '関係構築') => ({ n: `名前 ${n}`, i: '名', c: 'c5', co: `会社 ${n}`, role: '担当', stage, st: stage === '知り合い' ? 'apricot' : 'blue', emo: '', val: '' });
+  const L = [{ ...C[0], stage: '要フォロー', st: 'pink', emo: '💼', val: 'シリーズAのリード投資家候補。SaaS領域に年8社出資' },
+    { ...C[7], stage: '要フォロー', st: 'pink', emo: '💼', val: '前回の面談で資料の再送を依頼されたまま' },
+    { ...C[2], stage: '関係構築', st: 'blue', emo: '📊', val: '資本政策の相談相手。VC 4社と面識あり' },
+    { ...X[1], stage: '関係構築', st: 'blue' }, generic(8), generic(9), generic(11), generic(13), generic(26, '知り合い')];
+  return topbar('金融・投資', '105人 · 人脈分析から', back, '') + `
     <div class="card rise"><div class="lbl">段階の内訳</div><div style="display:flex;height:10px;border-radius:6px;overflow:hidden;gap:3px;margin-top:8px">${[[79, 'var(--plum-300)'], [26, 'var(--plum-500)']].map(([v, c]) => `<i style="flex:${v};background:${c}"></i>`).join('')}</div>
       <div class="row between lbl" style="margin-top:6px"><span>知り合い 79</span><span>関係構築 26</span></div></div>
-    <div class="seg" style="margin-top:14px;width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button class="on">目標に近い順</button><button>最終接点</button><button>名前</button></div>
-    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${L.map(c => `<div class="li">${avc(c)}<div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span><span style="color:var(--ink-2);margin-top:2px">${c.emo} ${c.val}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
+    <div class="seg" style="margin-top:14px;width:100%;height:32px;display:grid;grid-template-columns:repeat(3,1fr)"><button class="on">目標に近い順</button><button>最終接点</button><button>名前</button></div>
+    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${L.map(c => `<div class="li">${avc(c)}<div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span>${c.val ? `<span style="color:var(--ink-2);margin-top:2px">${c.emo} ${c.val}</span>` : ''}</div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
 }
 // R11b REVIEW M1（主会话代定 §B-1 / §B-3）：b5 #41 原地改稿。Web 機会板只画有数据源的
 //   「再会すべき人」「止まっている関係」；无来源的「紹介を頼める人」「今月のイベントで会える人」隐藏。
@@ -1496,20 +1496,19 @@ const cmdk = (k) => { const q = { name: '高橋', sem: '投資家', none: '半�
     <div style="padding:4px 4px 6px;max-height:640px;overflow:hidden">${sRes(k).replace(/class="cmdrow"/, k === 'name' ? 'class="cmdrow sel"' : 'class="cmdrow"')}
       ${k !== 'none' ? `<div class="sgrp"><span>コマンド</span></div><div class="cmdrow"><span class="lbtn">${ic('sparkle', 'sm')}</span><div class="meta"><b>iOrbit に聞く：「${q}」</b></div><span class="kbd">⌘</span><span class="kbd">↵</span></div>` : ''}</div>
     <div class="row" style="gap:14px;padding:10px 12px 4px;border-top:1px solid var(--line)" ><span class="lbl"><span class="kbd">↑</span><span class="kbd">↓</span> 移動</span><span class="lbl"><span class="kbd">↵</span> 開く</span><span class="lbl"><span class="kbd">Tab</span> 種類を切替</span><span class="lbl" style="margin-left:auto">意味検索 ON</span></div></div>`; };
-/* 审计：人脈背景与 web.html 人脈 同源（HV3：顶栏 検索 / 人脈を追加，濃さ・出どころ 列，分类页签 すべて / 目標に関係 / 要フォロー——2026-10-18 用户定 §B-1：删「情報が少ない人」页签）；opt.chips = 已应用筛选（chip「●○○ 情報が少ない人」是 絞り込み 的浓度条件，保留） */
+/* 审计：人脈背景与 web.html 人脈 同源（HV3：顶栏 検索 / 人脈を追加，濃さ・出どころ 列，分类页签 すべて / 目標に関係 / 要フォロー——2026-10-18 用户定 §B-1：删「情報が少ない人」页签）；opt.open = 筛选弹层打开 */
 function netWeb(opt = {}) {
-  let h = HV3.W.network('many').replace(`<button class="lbtn">${ic('sliders', 'sm')}</button>`, `<button class="lbtn fbtn" style="${opt.chips ? 'background:var(--ink);color:var(--bg)' : ''}">${ic('sliders', 'sm')}</button>`);
-  if (opt.chips) h = h.replace(/<div class="row k-wcats"[^>]*>[\s\S]*?<\/span><\/div>/, '<div class="row k-wcats" style="gap:6px"><span class="chip lav">推進中 · 関係構築</span><span class="chip lav">投資・金融</span><span class="chip lav">東京</span><span class="chip lav">●○○ 情報が少ない人</span></div>');
+  let h = HV3.W.network('many').replace(`<button class="lbtn">${ic('sliders', 'sm')}</button>`, `<button class="lbtn fbtn" style="${opt.open ? 'background:var(--ink);color:var(--bg)' : ''}">${ic('sliders', 'sm')}</button>`);
   return h;
 }
 
 /* =================== E5. 筛选 =================== */
-const FG = [['段階', [['知り合い', 172], ['関係構築', 64, 1], ['推進中', 31, 1], ['協業中', 19], ['要フォロー', 12]]], ['業界', [['投資・金融', 105, 1], ['製造業', 83], ['SaaS・IT', 63], ['商社・流通', 35], ['士業', 14], ['その他', 21]]], ['地域', [['東京', 188, 1], ['大阪', 41], ['名古屋', 33], ['その他', 24]]], ['出会った場所', [['イベント', 142], ['紹介', 61], ['訪問・商談', 52], ['その他', 31]]], ['情報の濃さ', [['●○○', 74, 1], ['●●○', 171], ['●●●', 41]]]];
+const FG = [['段階', [['知り合い', 230], ['関係構築', 56]]], ['業界', [['金融・投資', 105], ['小売・消費財', 83], ['教育・研究', 63], ['貿易・物流', 35]]], ['地域', [['東京', 188], ['大阪', 41], ['名古屋', 33], ['その他', 24]]], ['出会った場所', [['イベント', 142], ['紹介', 61], ['訪問・商談', 52], ['その他', 31]]], ['情報の濃さ', [['●○○', 74], ['●●○', 171], ['●●●', 41]]]];
 const filterBody = FG.map(([t, list]) => `<div class="fgrp"><span class="lbl">${t}</span><div class="chips">${list.map(([l, n, on]) => `<span class="fopt ${on ? 'on' : ''}">${l}<small>${n}</small></span>`).join('')}</div></div>`).join('');
-const filterSheet = `<div class="sheet-scrim"></div><div class="sheet" style="top:120px"><div class="grab"></div><div class="row between"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div><div class="lbl" style="margin:2px 0 14px">同じ項目内は「または」、項目どうしは「かつ」</div>${filterBody}
-  <button class="btn primary block cnt-btn" style="margin-top:18px;height:48px"><span class="score" style="font-size:16px">${num(38)}</span>人を表示</button></div>`;
+const filterSheet = `<div class="sheet-scrim"></div><div class="sheet" style="top:252px"><div class="grab"></div><div class="row between"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div><div class="lbl" style="margin:2px 0 14px">同じ項目内は「または」、項目どうしは「かつ」</div>${filterBody}
+  <button class="btn primary block cnt-btn" style="margin-top:18px;height:48px"><span class="score" style="font-size:16px">${num(286)}</span>人を表示</button></div>`;
 const filterPop = `<div class="overlay" style="background:transparent"></div><div class="pop" style="top:352px;right:52px;width:660px;display:grid;grid-template-columns:1fr 1fr;column-gap:22px;align-content:start"><div class="row between" style="grid-column:1/-1"><b style="font-size:15px">絞り込み</b><button class="btn sm ghost">クリア</button></div><div class="lbl" style="margin:2px 0 12px;grid-column:1/-1">同じ項目内は「または」、項目どうしは「かつ」</div>${filterBody}
-  <div class="row between" style="grid-column:1/-1;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)"><span class="lbl">該当 <b class="score cnt-btn" style="font-size:20px;color:var(--ink)">${num(38)}</b> 人 / 286</span><button class="btn primary">表示する</button></div></div>`;
+  <div class="row between" style="grid-column:1/-1;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)"><span class="lbl">該当 <b class="score cnt-btn" style="font-size:20px;color:var(--ink)">${num(286)}</b> 人 / 286</span><button class="btn primary">表示する</button></div></div>`;
 /* 审计：App 人脈背景与 app.html 人脈 同源；筛选打开时右上 絞り込み 钮为墨色 */
 function netAppLite() {
   return HV3.A.network('many').replace(`<button class="rbtn">${ic('sliders')}</button>`, `<button class="rbtn" style="background:var(--ink);color:var(--bg)">${ic('sliders')}</button>`);
@@ -1611,9 +1610,9 @@ h += boards([
   ['下钻名单', '', phone({ body: drillApp(), tab: -1, pins: P(1, '.card.rise') }), ['名单顶部给该维度的段階内訳堆叠条；行第三行为价值一句话']],
 ]);
 h += board('人脈分析 · Web', 'empty', wf({ nav: 1, head: '', body: anaWeb('empty') }));
-h += board('人脈分析 · Web · 構造', 'few', wf({ nav: 1, head: '', body: anaWeb('few'), rail: drillRail('投資・金融', 5, [C[0], C[7], C[2]]) }));
-h += board('人脈分析 · Web · 構造', 'many', wf({ nav: 1, head: '', body: anaWeb('many'), rail: drillRail('投資・金融', 105, [C[0], C[7], X[0], X[1], X[2]]), pins: P(1, '.leg.drill') + P(2, '.rail .seg') }), ['点图例 / 细条 → 右栏切换为该维度名单（主从布局，不跳页）', '右栏名单可切排序；底部按钮在人脉一览中带条件打开']);
-h += board('人脈分析 · Web · 機会', 'many', wf({ nav: 1, head: '', body: anaWeb('many', 'opp'), rail: drillRail('再会すべき人', 12, [C[7], X[0], X[2], C[5], { n: '名前 10', i: '名', c: 'c5', co: '会社 10', role: '担当', stage: '知り合い', st: 'apricot' }], true) }));
+h += board('人脈分析 · Web · 構造', 'few', wf({ nav: 1, head: '', body: anaWeb('few'), rail: drillRail('金融・投資', 5, [C[7], C[0], C[2], { ...X[0], val: '' }, { ...X[1], stage: '知り合い', st: 'apricot', val: '' }]) }));
+h += board('人脈分析 · Web · 構造', 'many', wf({ nav: 1, head: '', body: anaWeb('many'), rail: drillRail('金融・投資', 105, [C[0], C[7], X[0], X[1], X[2]]), pins: P(1, '.leg.drill') + P(2, '.rail .seg') }), ['点图例 / 细条 → 右栏切换为该维度名单（主从布局，不跳页）', '右栏名单可切排序；底部按钮在人脉一览中带条件打开']);
+h += board('人脈分析 · Web · 機会', 'many', wf({ nav: 1, head: '', body: anaWeb('many', 'opp'), rail: drillRail('再会すべき人', 12, [C[7], X[0], X[2], { ...C[5], val: '' }, { n: '名前 10', i: '名', c: 'c5', co: '会社 10', role: '担当', stage: '知り合い', st: 'apricot' }], true) }));
 
 /* ---- E2 编辑 ---- */
 h += sec('E2 · 連絡先の編集', '字段编辑 → 业界·役職 选择器 → 删除确认（软删除 30 天可恢复）');
@@ -1651,9 +1650,9 @@ h += board('⌘K · 結果なし', '', wf({ nav: 1, head: '', body: netWeb() }, 
 /* ---- E5 筛选 ---- */
 h += sec('E5 · 絞り込み', 'App 底部弹层 / Web 弹出层：段階・業界・地域・出会った場所 多选，结果数实时变化');
 h += boards([
-  ['絞り込み · App', '', phone({ body: netAppLite(), tab: 1, overlay: filterSheet, pins: P(1, '.fgrp .fopt.on') + P(2, '.cnt-btn') }), ['chip 多选（灰紫描边 + 浅紫底 + ✓ = 选中；墨色实心只给单选分类页签），每个 chip 后附人数', '底部按钮人数随选择实时 count-up（38 人），0 人时按钮变灰并提示放宽条件']],
+  ['絞り込み · App', '', phone({ body: netAppLite(), tab: 1, overlay: filterSheet, pins: P(1, '.fgrp .fopt') + P(2, '.cnt-btn') }), ['此态没有已选条件；阶段、行业、人数按 many286 API 显示，每个 chip 后附人数', '底部按钮人数随选择实时变化，0 人时按钮变灰并提示放宽条件']],
 ]);
-h += board('絞り込み · Web', '', wf({ nav: 1, head: '', body: netWeb({ chips: true }), pins: P(1, '.pop .fopt.on') + P(2, '.pop .cnt-btn') }, filterPop), ['锚定在筛选钮下方的弹出层（点外部关闭）；已选条件同步显示为表头 chip', '底部人数随勾选实时 count-up；「表示する」后表格刷新']);
+h += board('絞り込み · Web', '', wf({ nav: 1, head: '', body: netWeb({ open: true }), pins: P(1, '.pop .fopt') + P(2, '.pop .cnt-btn') }, filterPop), ['锚定在筛选钮下方的弹出层（点外部关闭）；此态没有已选条件', '底部人数随勾选实时变化；「表示する」后表格刷新']);
 
 /* ---- E6 招待 ---- */
 h += sec('E6 · 招待・紹介', '与 ⑨ A5「招待コード」是同一功能（统一叫法 招待コード；互加模型：对方注册后双向加入人脈）。入口：マイページ「招待コード」/ 人脈右上「＋」› 招待コード（NAV-V3，指导屏见 ⑪）；① 生成（共有シート）→ ② 受邀方打开链接后的接受页（好友侧完整 5 步见 ⑨ A5）');

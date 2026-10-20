@@ -180,8 +180,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
             : (
               <>
               {narrow ? <div className={styles.mobileTools}>
-                <label className={styles.search}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} /></label>
-                <button ref={filterAnchor} type="button" className={`btn ${styles.lbtn}`} onClick={() => setFilterOpen(true)} aria-label={t("filter")} data-network-filter=""><Icon name="sliders" size={20} />{filterCount(filters) ? <span className={styles.badge}>{filterCount(filters)}</span> : null}</button>
+                <div className={styles.search}><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
+                <button ref={filterAnchor} type="button" className={`btn ${styles.lbtn}`} onClick={() => setFilterOpen(true)} aria-label={t("filter")} data-network-filter=""><Icon name="sliders" size={16} />{filterCount(filters) ? <span className={styles.badge}>{filterCount(filters)}</span> : null}</button></div>
               </div> : null}
               <div className={styles.wgrid} data-network-list="">
                 {narrow ? (header && header.total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS

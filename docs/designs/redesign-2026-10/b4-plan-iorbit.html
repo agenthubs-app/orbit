@@ -1419,7 +1419,7 @@ const HIST = {
 const STARTERS = {
   empty: [['🎯', 'pink', '目標の立て方を相談したい'], ['🔗', 'blue', 'このイベント、行く価値ある？'], ['📇', 'apricot', '名刺の束をまとめて登録したい'], ['💡', 'lav', 'Orbit で何ができる？']],
   few: [['📊', 'teal', '伊藤さんに何を相談すべき？'], ['🎟️', 'blue', '今月行くべきイベントは？'], ['✅', 'lav', '次に話すべき人を整理して'], ['✉️', 'pink', 'お礼メールの下書きを作って']],
-  many: [['💼', 'lav', 'CVC の担当者に会うには？'], ['🥂', 'apricot', '今夜の CFO Night の準備'], ['📈', 'teal', '今週の面談をまとめて'], ['✉️', 'pink', '山本さんへの再送メールを下書き']],
+  many: [['💼', 'lav', '今、誰に連絡すべき？'], ['🔍', 'apricot', '参加する価値があるイベントは？'], ['📇', 'teal', '関係の次の行動を整理して'], ['🧭', 'pink', '新しいプランを考えたい']],
 };
 const CAPS = [['home', 'ホーム', '今日やること・判断待ちを整理します'], ['users', '人脈', '誰が何の力になれるかを答えます'], ['calendar', 'イベント', 'URL から行く価値を判定します'], ['target', 'プラン', '話すべき人の整理と、方案の見直しを手伝います']];
 /* ===================== プラン v2 共通（原 ⑨ B3–B5 并入；数据与计分与 App / Web 相同） ===================== */
@@ -1829,18 +1829,22 @@ const wGoalModal = `<div class="overlay"></div><div class="wdlg wmodal" style="w
    ================================================================= */
 const histBtn = `<button class="rbtn">${ic('menu')}</button>`;
 const newBtn = `<button class="rbtn">${ic('x')}</button>`; /* 审计：右上统一为 ✕ 关闭；「新しい会話」在履歴抽屉顶部 */
-const aComposer = (mode = '') => `<div class="composer"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in ${mode === 'typed' ? 'typed' : ''}">${mode === 'typed' ? 'この中で、来月の大阪で会える人は？' : '質問・依頼　@ で人やイベント'}</span>${mode === 'stop' ? `<button class="stopb"><i></i></button>` : `<button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button>`}</div>`;
+const aComposer = (mode = '') => `<div class="composer">${mode === 'actor' ? `<span class="in">iOrbit に聞く…</span><button class="lbtn" style="background:var(--ink-3);color:var(--bg)">${ic('send', 'sm')}</button>` : `<button class="lbtn">${ic('plus', 'sm')}</button><span class="in ${mode === 'typed' ? 'typed' : ''}">${mode === 'typed' ? 'この中で、来月の大阪で会える人は？' : '質問・依頼　@ で人やイベント'}</span>${mode === 'stop' ? `<button class="stopb"><i></i></button>` : `<button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button>`}`}</div>`;
 function aStart(s) {
+  const many = s === 'many';
+  const appStarters = many ? [['👥', 'blue', '今日は何から進めますか？'], ['🎟️', 'pink', '最近おすすめのイベントは？'], ['🎯', 'lav', '連絡先との話し合いを振り返る'], ['✦', 'lav', '新しいプランを考えたい']] : STARTERS[s];
+  const appHistory = many ? [['田中さんとの提携相談', '10月17日'], ['来週のイベントを探す', '10月18日'], ['二端末で確認したプラン', '10月15日']] : [...HIST.today, HIST.week[0]];
   return topbar('iOrbit', s === 'empty' ? 'はじめまして' : '人脈・イベント・予定を知っています', histBtn, newBtn) + `
-    <div class="greet rise"><span class="emo lav" style="margin-bottom:12px">✨</span><h2>${s === 'empty' ? 'こんにちは、佐藤さん。<br>何から始めましょう？' : s === 'few' ? 'こんにちは、佐藤さん。<br>今日は何をしましょう？' : 'こんにちは、佐藤さん。<br>何を手伝いましょうか？'}</h2></div>
+    <div class="greet rise"><span class="emo lav" style="margin-bottom:12px">✨</span><h2>${s === 'empty' ? 'こんにちは、佐藤さん。<br>何から始めましょう？' : s === 'few' ? 'こんにちは、佐藤さん。<br>今日は何をしましょう？' : '何をお手伝いしましょうか？'}</h2>${many ? '<div class="sub">人脈やイベント、プランのこと。iOrbit に聞いてください。</div>' : ''}</div>
     ${s === 'empty' ? `<div class="mac apricot row" style="gap:10px;margin-bottom:12px;padding:14px"><span style="font-size:20px">📇</span><div style="flex:1"><b style="font-size:12.5px;color:var(--mac-apricot-ink)">名刺を 3枚追加すると</b><div style="font-size:11.5px;color:var(--mac-apricot-ink);opacity:.85">「誰に会うべきか」まで具体的に答えられます</div></div><button class="btn sm primary">スキャン</button></div>` : ''}
-    <div class="starters">${STARTERS[s].map(([e, c, t]) => `<button><span class="emo sm ${c}">${e}</span>${t}</button>`).join('')}</div>
-    ${s === 'many' ? `<div class="card" style="margin-top:14px"><div class="card-h"><h3>最近の会話</h3><span class="more">すべて${ic('right', 'sm')}</span></div><div class="list">${[...HIST.today, HIST.week[0]].map(([t, d]) => `<div class="li" style="padding:9px 0"><span class="lbtn" style="width:30px;height:30px">${ic('clock', 'sm')}</span><div class="meta"><b style="font-size:13px">${t}</b></div><span class="end">${d}</span></div>`).join('')}</div></div>` : ''}
-    <div class="card caps" style="margin-top:14px"><div class="lbl" style="margin-bottom:4px">iOrbit ができること</div>${CAPS.map(([i, t, d]) => `<div class="row"><span class="ico">${ic(i, 'sm')}</span><b>${t}</b><span class="d">${d}</span></div>`).join('')}
-      <div class="lbl" style="margin-top:8px">メール・メッセージは下書きまで。送信はあなたが行います。</div></div>`;
+    <div class="starters">${appStarters.map(([e, c, t]) => `<button><span class="emo sm ${c}">${e}</span>${t}</button>`).join('')}</div>
+    ${many ? `<div class="card" style="margin-top:14px"><div class="card-h"><h3>最近の会話</h3><span class="more">すべて${ic('right', 'sm')}</span></div><div class="list">${appHistory.map(([t, d]) => `<div class="li" style="padding:9px 0"><span class="lbtn" style="width:30px;height:30px">${ic('clock', 'sm')}</span><div class="meta"><b style="font-size:13px">${t}</b></div><span class="end">${d}</span></div>`).join('')}</div></div>` : ''}
+    ${many ? '' : `<div class="card caps" style="margin-top:14px"><div class="lbl" style="margin-bottom:4px">iOrbit ができること</div>${CAPS.map(([i, t, d]) => `<div class="row"><span class="ico">${ic(i, 'sm')}</span><b>${t}</b><span class="d">${d}</span></div>`).join('')}
+      <div class="lbl" style="margin-top:8px">メール・メッセージは下書きまで。送信はあなたが行います。</div></div>`}`;
 }
 const histList = (mode = 'many') => {
   if (mode === 'empty') return `<div class="search" style="background:var(--surface-2);height:40px">${ic('search', 'sm')}会話を検索</div><div style="text-align:center;padding:40px 10px;color:var(--ink-3);font-size:12.5px"><div style="font-size:28px">💬</div>まだ会話はありません<br>最初の質問から始めましょう</div>`;
+  if (mode === 'app-actor') return `<div class="search" style="background:var(--surface);height:42px">${ic('search', 'sm')}タイトルと本文を検索</div><div class="gl">ピン留め</div><div class="hi"><span>⌾</span><span class="t">田中さんとの提携相談<small style="display:block">10月17日</small></span><span>···</span></div><div class="gl">それ以前</div>${[['来週のイベントを探す', '10月18日'], ['二端末で確認したプラン', '10月15日'], ['名刺の整理', '10月2日']].map(([t, d]) => `<div class="hi"><span>▢</span><span class="t">${t}<small style="display:block">${d}</small></span><span>···</span></div>`).join('')}<div class="gl">プランを作る</div><div class="hi"><span>◎</span><span class="t">シリーズA 資金調達（3億円）<small style="display:block">進行中の目標</small></span></div><div class="hi" style="color:var(--ink-3)">＋ 新しい目標</div>`;
   if (mode === 'actor') return `<div class="search" style="background:var(--surface-2);height:40px">${ic('search', 'sm')}会話を検索</div><div class="gl">ピン留め</div><div class="hi"><span class="t">田中さんとの提携相談</span><small>10/17</small></div><div class="gl">それ以前</div>${[['来週のイベントを探す', '10/18'], ['二端末で確認したプラン', '10/15'], ['名刺の整理', '10/2']].map(([t, d]) => `<div class="hi"><span class="t">${t}</span><small>${d}</small></div>`).join('')}`;
   const few = mode === 'few';
   const grp = (title, rows, icon, gi) => `<div class="gl">${icon ? ic(icon, 'sm') : ''}${title}</div>${rows.map(([t, d], k) => {
@@ -1853,8 +1857,8 @@ const histList = (mode = 'many') => {
   return `<div class="search" style="background:var(--surface-2);height:40px">${ic('search', 'sm')}会話を検索</div>
     ${few ? grp('今日', [HIST.older[2]], '', 'x') : grp('ピン留め', HIST.pin, 'pin', 'pin') + grp('今日', HIST.today, '', 'today') + grp('今週', HIST.week, '', 'week') + grp('それ以前', HIST.older, '', 'older')}`;
 };
-const aDrawer = (mode) => `<div class="sheet-scrim"></div><div class="adrawer"><div class="row between" style="margin:0 4px 12px"><b style="font-size:18px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新しい会話</button></div><div class="hist">${histList(mode)}</div></div>
-  ${mode === 'press' ? `<div class="ctxm" style="left:120px;top:330px"><button>${ic('pin', 'sm')}ピン留め</button><button>${ic('edit', 'sm')}名前を変更</button><button>${ic('share', 'sm')}共有用にコピー</button><hr><button class="del">${ic('x', 'sm')}削除</button></div>` : ''}`;
+const aDrawer = (mode) => `<div class="sheet-scrim"></div><div class="adrawer"><div class="row between" style="margin:0 4px 12px"><b style="font-size:18px">会話リスト</b><button class="rbtn" aria-label="閉じる">${ic('x', 'sm')}</button></div><button class="btn primary block" style="margin-bottom:10px;height:40px">＋ 新しい会話</button><div class="hist">${histList(mode === 'many' || mode === 'press' ? 'app-actor' : mode)}</div></div>
+  ${mode === 'press' ? `<div class="sheet-scrim" style="z-index:53"></div><div class="sheet" style="z-index:54;text-align:center;padding:16px 18px 28px"><div class="grab"></div><b style="display:block;margin:8px 0 18px">会話の操作</b>${['ピン留め', '名前を変更', '削除', 'キャンセル'].map((label, i) => `<button class="btn block ${i === 2 ? 'danger' : ''}" style="height:46px;margin-top:8px">${label}</button>`).join('')}</div>` : ''}`;
 const aChatBg = () => topbar('iOrbit', 'CVC 担当者に会う方法', histBtn, newBtn) + `<div style="display:grid;gap:10px">
   <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
   <div class="bubble ai">今のつながりで話せた CVC 担当者は 1人です（目標は 3人）。近道は 2つあります。小林さんのコミュニティ経由の紹介と、10/23 の製造業 DX カンファレンスです。</div></div>`;
@@ -1907,12 +1911,12 @@ const wChat = (hist, msgs, comp = '', closed = false) => closed ? `<div class="i
 const wHead = (sub) => mainhead('iOrbit', sub, `<button class="rbtn k-wmenu">${ic('menu')}</button>`, `<span class="lbl"><span class="kbd">⌘</span> <span class="kbd">K</span> どこからでも</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
 const wRefN = s => `<div class="wref k-wref"><span class="lbl" style="font-weight:700">iOrbit が参照できるもの</span>${[['👥', '人脈', s === 'empty' ? 0 : s === 'few' ? 5 : 286, '人'], ['🎟️', 'イベント', s === 'empty' ? 0 : s === 'few' ? 1 : 14, '件'], ['🧭', 'プラン', s === 'empty' ? 0 : s === 'few' ? 1 : 2, 'つ'], ['📝', 'メモ・記録', s === 'empty' ? 0 : s === 'few' ? 3 : 46, '件']].map(([e, l, v, u]) => `<span class="chip ${v ? '' : 'z'}">${e} ${l} ${v}${u}</span>`).join('')}<span class="lbl" style="margin-left:auto">参照のオン・オフは 設定 › iOrbit</span></div>`;
 function wStart(s) {
-  const msgs = `<div style="margin-top:${s === 'many' ? 30 : 60}px"><span class="emo lav" style="width:52px;height:52px;font-size:26px;border-radius:16px">✨</span><div style="font-size:28px;font-weight:800;margin-top:14px;line-height:1.35">${s === 'empty' ? 'こんにちは、佐藤さん。何から始めましょう？' : s === 'few' ? 'こんにちは、佐藤さん。今日は何をしましょう？' : 'こんにちは、佐藤さん。何を手伝いましょうか？'}</div>
-    <div class="sub" style="margin-top:4px">${s === 'empty' ? 'まだ人脈のデータがないので、一般的なお手伝いから始めます。' : 'あなたの人脈・イベント・プランを踏まえて答えます。'}</div></div>
+  const msgs = `<div style="margin-top:${s === 'many' ? 30 : 60}px"><span class="emo lav" style="width:52px;height:52px;font-size:26px;border-radius:16px">✨</span><div style="font-size:28px;font-weight:800;margin-top:14px;line-height:1.35">${s === 'empty' ? 'こんにちは、佐藤さん。何から始めましょう？' : s === 'few' ? 'こんにちは、佐藤さん。今日は何をしましょう？' : 'Orbitさん、<br>何をお手伝いしましょう？'}</div>
+    <div class="sub" style="margin-top:4px">${s === 'empty' ? 'まだ人脈のデータがないので、一般的なお手伝いから始めます。' : s === 'many' ? '人脈やイベント、プランのこと。iOrbit に聞いてください。' : 'あなたの人脈・イベント・プランを踏まえて答えます。'}</div></div>
     ${s === 'empty' ? `<div class="mac apricot row" style="gap:12px;padding:14px 16px"><span style="font-size:22px">📇</span><div style="flex:1;color:var(--mac-apricot-ink)"><b style="font-size:13px">名刺を 3枚追加すると、「誰に会うべきか」まで具体的に答えられます</b></div><button class="btn sm primary">名刺を追加</button></div>` : ''}
     <div class="starters" style="grid-template-columns:repeat(4,1fr)">${STARTERS[s].map(([e, c, t]) => `<button style="min-height:112px"><span class="emo sm ${c}">${e}</span>${t}</button>`).join('')}</div>
     <div class="card caps" style="padding:16px 18px"><div class="lbl" style="margin-bottom:4px">iOrbit ができること</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px">${CAPS.map(([i, t, d]) => `<div class="row" style="border-top:0"><span class="ico">${ic(i, 'sm')}</span><b>${t}</b><span class="d">${d}</span></div>`).join('')}</div></div>`;
-  return wHead(s === 'empty' ? 'はじめまして' : '新しい会話') + wChat(histList(s === 'many' ? 'actor' : s), msgs + wRefN(s), '', s !== 'many');   /* PX2 D09: many は QA actor の読み取り専用履歴。empty / few は閉じる。 */
+  return wHead(s === 'empty' ? 'はじめまして' : s === 'many' ? '人脈・イベント・予定を知っている秘書' : '新しい会話') + wChat(histList(s === 'many' ? 'actor' : s), msgs + (s === 'many' ? '' : wRefN(s)), '', s !== 'many');   /* PX2 D09: many は QA actor の読み取り専用履歴。empty / few は閉じる。 */
 }
 const wCtxRailStart = s => `<h4>${ic('layers', 'sm')}iOrbit が参照できるもの</h4>
   <div class="card" style="padding:16px">${[['users', '人脈', s === 'empty' ? 0 : s === 'few' ? 5 : 286, '人'], ['calendar', 'イベント', s === 'empty' ? 0 : s === 'few' ? 1 : 14, '件'], ['target', 'プラン', s === 'empty' ? 0 : s === 'few' ? 1 : 2, 'つ'], ['book', 'メモ・記録', s === 'empty' ? 0 : s === 'few' ? 3 : 46, '件']].map(([i, l, v, u]) => `<div class="row" style="padding:8px 0;gap:10px;font-size:13px"><span class="lbtn" style="width:30px;height:30px">${ic(i, 'sm')}</span><span style="flex:1">${l}</span><b style="font-family:var(--font-num);${v ? '' : 'color:var(--ink-4)'}">${v}</b><span class="lbl">${u}</span></div>`).join('')}</div>
@@ -2153,7 +2157,7 @@ h += sec('B1 · iOrbit 空の会話（起始屏）', 'NAV-V3：App 点底栏 iOr
 h += boards([
   AP('iOrbit 起始', 'empty', { body: aStart('empty'), tab: -1, overlay: aComposer() }, ann([['.mac.apricot', 0, '新用户：先引导加名片（唯一主动作「スキャン」），说明加了之后能答什么'], ['.starters', 0, '4 个起始提问用 emoji 方块；点击即发送'], ['.caps', 0, '能力说明按 ホーム/人脈/イベント/プラン 各一句，末行写明「送信はあなたが行います」']])),
   AP('iOrbit 起始', 'few', { body: aStart('few'), tab: -1, overlay: aComposer() }, ann([['.starters button', 0, '起始提问按用户数据个性化（伊藤さん、今月のイベント）'], ['.topbar .rbtn', 0, '左上 ≡ 点击打开左侧会話リスト（顶部「新しい会話」）；右上 ✕ 或从左边缘右滑 = 退出，回到进入前的页面（与 app.html 同一顶栏）']])),
-  AP('iOrbit 起始', 'many', { body: aStart('many'), tab: -1, overlay: aComposer() }, ann([['.greet h2', 0, '问候语带今日上下文（今夜 CFO Night）'], ['.card .list', 0, '「最近の会話」3 条，点即续聊；「すべて」打开历史抽屉'], ['.composer', 0, '输入栏玻璃悬浮：＋附件 / 麦克风 / 发送']])),
+  AP('iOrbit 起始', 'many', { body: aStart('many'), tab: -1, overlay: aComposer('actor') }, ann([['.greet h2', 0, 'PX2 D09：起始页按 QA actor 已存资料显示，未取得姓名时不虚构称呼或 CFO Night'], ['.card .list', 0, '「最近の会話」3 条为 actor 已存会话；「すべて」打开历史抽屉'], ['.composer', 0, 'QA actor 原生输入栏是占位文字与发送按钮；无附件和麦克风按钮']])),
 ]);
 h += WB('Web iOrbit 起始', 'empty', { nav: 2, body: wStart('empty') }, '', ann([['.k-wmenu', 0, '左上 ≡ 点击开合左侧会話リスト；新对话起始屏默认收起，空时面板里只有一句提示、不放假数据'], ['.mac.apricot', 0, '新用户：引导加名片'], ['.k-wref', 0, '起始屏下方一行 chip 显示 iOrbit 能参照的数据量（0 显淡色）；NAV-V3 全屏后取消右栏']]));
 h += WB('Web iOrbit 起始', 'few', { nav: 2, body: wStart('few') });
@@ -2162,8 +2166,8 @@ h += WB('Web iOrbit 起始', 'many', { nav: 2, body: wStart('many') }, '', ann([
 /* ---- B2 履歴 ---- */
 h += sec('B2 · 会話の履歴', 'App 左上 ≡ 点击打开左侧抽屉；Web 左上 ≡ 点击开合左侧面板。搜索、分组、ピン留め、名前を変更、削除（确认框）');
 h += boards([
-  AP('① 履歴ドロワー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('many') }, ann([['.adrawer .search', 0, '顶部搜索：按标题与内容全文搜'], ['.hist .gl', 0, '分组：ピン留め / 今日 / 今週 / それ以前'], ['.hist .hi.on', 0, '当前会话白底；点左上 ≡ 打开（不用滑动：左边缘右滑 = 退出 iOrbit），点遮罩关闭']])),
-  AP('② 長押しメニュー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('press') }, ann([['.hist .hi.press', 0, '长按行 → 行变浅底 + 触感反馈'], ['.ctxm', 0, '菜单：ピン留め / 名前を変更 / 共有用にコピー / 削除（珊瑚色，分隔线隔开）']])),
+  AP('① 履歴ドロワー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('many') }, ann([['.adrawer .search', 0, '顶部搜索按标题与内容全文搜；QA actor 的四个已存会话'], ['.hist .gl', 0, 'PX2 D09：实际分组为ピン留め／それ以前／プランを作る；含已存目标'], ['.adrawer .rbtn', 0, '点左上 ≡ 打开，点遮罩或抽屉关闭按钮收起']])),
+  AP('② 長押しメニュー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('press') }, ann([['.hist .hi', 0, 'QA actor 已存会话的行级操作入口'], ['.sheet', 0, 'PX2 D09：App 原生底部操作表为ピン留め／名前を変更／削除／キャンセル，不画 Web 浮动菜单或不存在的复制操作']])),
   AP('③ 名前を変更', '', { body: aStart('many'), tab: -1, overlay: aDrawer('ren') + kb() }, ann([['.hist .hi.ren', 0, '原位变输入框（灰紫描边），回车保存、点外部取消；不另开弹窗']])),
   AP('④ 削除の確認', '', { body: aStart('many'), tab: -1, overlay: aDrawer('many') + delDlg(false) }, ann([['.dialog', 0, '删除前确认，并说明「会话里添加的任务/日程不会被删除」'], ['.dialog .btn', 1, '删除用珊瑚色；删除后 toast「削除しました · 元に戻す」']])),
 ]);
@@ -2203,7 +2207,7 @@ h += WB('Web 人脈 → ⌘K → iOrbit（文脈つき）', '', { nav: 2, body: 
 h += sec('ダークモード', '加点 +10、人物类型详情（人脈にいる）、見直し差分、iOrbit 空对话起始、历史抽屉；Web 人物类型与 iOrbit 生成中');
 h += boards([
   AP('加点 ② +10', '', { body: planScored(), tab: 4, overlay: toast('VC パートナー +10', '山口 大樹さんとの面談 · 3 / 3人', { notab: false }), theme: 'dark' }),
-  AP('iOrbit 起始', 'many', { body: aStart('many'), tab: -1, overlay: aComposer(), theme: 'dark' }),
+  AP('iOrbit 起始', 'many', { body: aStart('many'), tab: -1, overlay: aComposer('actor'), theme: 'dark' }),
   AP('履歴ドロワー', '', { body: aStart('many'), tab: -1, overlay: aDrawer('press'), theme: 'dark' }),
 ]);
 h += '<div class="v22x">' + boards([AP('① 人脈にいる · VC', '', { body: typeHave(), tab: -1, theme: 'dark' }), AP('見直し ③ AI 修正（差分）', '', { body: rv3.body, overlay: rv3.overlay, tab: -1, theme: 'dark' })]) + WB('① 人脈にいる · Web', '', { nav: 4, body: typeWeb('have'), rail: typeRail24(), theme: 'dark' }) + '</div>';

@@ -21,9 +21,12 @@
       "height": 960,
       "themes": ["light"],
       "wait-for": "aside [data-orbit-iorbit-history-row]",
-      "steps": [{"waitFor": "aside [data-orbit-iorbit-history-row]", "wait": 0}],
-      "app-wait": 5000,
-      "note": "Web start with QA account data; board has sample names and different counts."
+      "steps": [
+        {"waitFor": "aside [data-orbit-iorbit-history-row]:has-text(\"田中さんとの提携相談\")", "wait": 0},
+        {"waitFor": "aside [data-orbit-iorbit-history-row]:has-text(\"名刺の整理\")", "wait": 0}
+      ],
+      "app-wait": 0,
+      "note": "PX2 D09 actor-owned new conversation state; board uses current product copy and QA history."
     },
     {
       "id": "W-R21-R01",

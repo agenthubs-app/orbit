@@ -360,13 +360,13 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
           {source ? <div className={styles.contextCard}><div><b>{t(iorbitCopy.pageContext)}</b><p>{contextEnabled && pageContext ? `${pageContext.route} · ${source.length ? fill(t(iorbitCopy.industry), { value: source.join(", ") }) : ""}${fill(t(iorbitCopy.peopleUnit), { n: pageContext.count })}` : t(iorbitCopy.contextOff)}</p></div><Toggle checked={contextEnabled} onChange={(next) => void enableContext(next)} label={t(iorbitCopy.pageContext)} /></div> : null}
           {contextError ? <p className={styles.error} role="alert">{contextError}</p> : null}
           <form className={styles.composer} onSubmit={submit} data-orbit-agent-chat-composer>
-            <textarea ref={inputRef} rows={2} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.askPlaceholder)} value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
+            <textarea ref={inputRef} rows={1} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.askPlaceholder)} value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
             <IconButton icon="send" label={t(iorbitCopy.send)} type="submit" disabled={chat.thinking || !chat.chatDraft.trim()} data-orbit-agent-submit="true" />
           </form>
           <p className={styles.privacy}>{t(iorbitCopy.privacy)}</p>
         </main>
       </div>
-      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="sm" fullOnPhone><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
+      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="sm" side="left"><HistoryPane history={history} goals={goals} intakes={intakes} onNew={startNew} onPick={pick} /></Drawer>
       <ConfirmDialog open={Boolean(history.pendingDeleteHistory)} title={t(iorbitCopy.deleteTitle)} message={t(iorbitCopy.deleteMessage)} confirmLabel={t(iorbitCopy.delete)} cancelLabel={t(iorbitCopy.cancel)} destructive icon="trash" onConfirm={() => void history.confirmDeleteHistorySession()} onCancel={() => history.setPendingDeleteHistory(null)} />
       {history.historyDeleteError ? <p className={styles.error} role="alert">{history.historyDeleteError}</p> : null}
     </div>
