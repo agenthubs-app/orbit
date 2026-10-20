@@ -32,14 +32,13 @@ export const accountRightsApi = {
     if (!response.ok || !data?.reauthReceipt) throw new AccountRightsApiError(response.status, data?.error ?? "UNAVAILABLE");
     return data.reauthReceipt;
   },
-  reauthGoogleStart: async (): Promise<string> => {
-    const response = await fetch("/api/account/deletion-request/reauth/google/start", json({}));
-    const data = await response.json().catch(() => null) as { challenge?: string; error?: string } | null;
-    if (!response.ok || !data?.challenge) throw new AccountRightsApiError(response.status, data?.error ?? "UNAVAILABLE");
-    return data.challenge;
+  reauthGoogleStart: async (): Promise<void> => {
+    const response = await fetch("/api/account/deletion-request/reauth/google/start", json({ channel: "web" }));
+    const data = await response.json().catch(() => null) as { started?: boolean; error?: string } | null;
+    if (!response.ok || !data?.started) throw new AccountRightsApiError(response.status, data?.error ?? "UNAVAILABLE");
   },
-  reauthGoogle: async (challenge: string): Promise<string> => {
-    const response = await fetch("/api/account/deletion-request/reauth", json({ method: "google", challenge }));
+  reauthGoogle: async (): Promise<string> => {
+    const response = await fetch("/api/account/deletion-request/reauth", json({ method: "google" }));
     const data = await response.json().catch(() => null) as { reauthReceipt?: string; error?: string } | null;
     if (!response.ok || !data?.reauthReceipt) throw new AccountRightsApiError(response.status, data?.error ?? "UNAVAILABLE");
     return data.reauthReceipt;

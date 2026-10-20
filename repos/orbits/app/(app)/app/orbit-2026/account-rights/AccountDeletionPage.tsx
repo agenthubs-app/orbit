@@ -29,11 +29,10 @@ export function AccountDeletionPage() {
     }).catch(() => setProblem(t("generalError")));
   }, [t]);
   useEffect(() => {
-    const challenge = new URLSearchParams(window.location.search).get("googleReauth");
-    if (!challenge) return;
+    if (window.sessionStorage.getItem("orbit-deletion-google-return") !== "1") return;
+    window.sessionStorage.removeItem("orbit-deletion-google-return");
     setStep("verify"); setMethod("google");
-    void accountRightsApi.reauthGoogle(challenge).then(setGoogleReceipt).catch(() => setProblem(t("generalError")));
-    window.history.replaceState(null, "", window.location.pathname);
+    void accountRightsApi.reauthGoogle().then(setGoogleReceipt).catch(() => setProblem(t("generalError")));
   }, [t]);
   const next = async () => {
     setBusy(true); setProblem("");
@@ -62,8 +61,9 @@ export function AccountDeletionPage() {
     setBusy(true); setProblem("");
     try {
       // 主会话代定 §R18c-3. Google documents auth_time as an explicit ID-token claim.
-      const challenge = await accountRightsApi.reauthGoogleStart();
-      await signIn("google", { callbackUrl: `/app/settings/account?googleReauth=${encodeURIComponent(challenge)}` },
+      await accountRightsApi.reauthGoogleStart();
+      window.sessionStorage.setItem("orbit-deletion-google-return", "1");
+      await signIn("google", { callbackUrl: "/app/settings/account" },
         { prompt: "login", max_age: "0", claims: JSON.stringify({ id_token: { auth_time: { essential: true } } }) });
     } catch { setProblem(t("generalError")); setBusy(false); }
   };

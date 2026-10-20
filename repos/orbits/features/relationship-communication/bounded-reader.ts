@@ -9,15 +9,21 @@ import { createRelationshipReadCursor } from "./read-cursor";
 // the conversation is active and the caller is an active member; a revoked
 // conversation is invisible to both sides. No other account's rows are read.
 const iso = (column: string) => `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
-const MEMBER_NAME = (account: string) => `(select left(n.display_name,256) from relationship_conversation_members n
-  where n.workspace_id=c.workspace_id and n.conversation_id=c.conversation_id and n.account_id=${account})`;
+// 主会话复核 S3: API and offline sync share this projection. A departed
+// member's identity columns remain in the stored conversation for its other
+// participant, but never leave the read boundary.
+const ACTIVE_MEMBER = (account: string) => `exists(select 1 from relationship_conversation_members n
+  where n.workspace_id=c.workspace_id and n.conversation_id=c.conversation_id and n.account_id=${account} and n.state='active')`;
+const MEMBER_ID = (account: string) => `(case when ${ACTIVE_MEMBER(account)} then ${account} else 'deleted-account' end)`;
+const MEMBER_NAME = (account: string) => `(coalesce((select left(n.display_name,256) from relationship_conversation_members n
+  where n.workspace_id=c.workspace_id and n.conversation_id=c.conversation_id and n.account_id=${account} and n.state='active'), '削除済みユーザー'))`;
 
 const IDENTITY = `jsonb_build_object(
   'conversationId', left(c.conversation_id,512), 'contactId', left(c.inviter_contact_id,512),
-  'participantAccountIds', jsonb_build_array(c.inviter_account_id, c.invitee_account_id),
+  'participantAccountIds', jsonb_build_array(${MEMBER_ID("c.inviter_account_id")}, ${MEMBER_ID("c.invitee_account_id")}),
   'participantDisplayNames', jsonb_build_object(
-    c.inviter_account_id, ${MEMBER_NAME("c.inviter_account_id")},
-    c.invitee_account_id, ${MEMBER_NAME("c.invitee_account_id")}),
+    ${MEMBER_ID("c.inviter_account_id")}, ${MEMBER_NAME("c.inviter_account_id")},
+    ${MEMBER_ID("c.invitee_account_id")}, ${MEMBER_NAME("c.invitee_account_id")}),
   'qualificationVersion', left(c.qualification_version,512), 'status','active',
   'createdAt', ${iso("c.created_at")}, 'updatedAt', ${iso("c.last_message_at")}
 )`;

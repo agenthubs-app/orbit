@@ -126,6 +126,33 @@ async function manifest(x: Host, actor: HarnessActor, etag?: string) {
 
 const locked = (h: RelationshipHarness, sql: string, values: unknown[]) => h.client.transaction(async (tx) => { await acquireSyncCommitOrderLock(tx); await tx.query(sql, values); });
 
+test("departed participant is a schema-valid placeholder in the other member's API and offline sync", options, async t => {
+  const x = await host(t);
+  const conversation = await connect(x.h, A, B, "contact:deleted-a");
+  await x.send(A, conversation, "private before deletion");
+  const device = phone(x, B);
+  await device.sync();
+  await x.h.client.transaction(async tx => {
+    await acquireSyncCommitOrderLock(tx);
+    await tx.query("update relationship_messages set sender_account_id='deleted-account',sender_display_name='削除済みユーザー',body='削除されたメッセージ' where workspace_id=$1 and conversation_id=$2 and sender_account_id=$3", [x.h.workspaceId, conversation.conversationId, A.accountId]);
+    await tx.query("delete from relationship_conversation_members where workspace_id=$1 and conversation_id=$2 and account_id=$3", [x.h.workspaceId, conversation.conversationId, A.accountId]);
+    await tx.query("update relationship_conversations set inviter_contact_id='deleted-contact',sync_revision=sync_revision+1 where workspace_id=$1 and conversation_id=$2", [x.h.workspaceId, conversation.conversationId]);
+  });
+  const api = await routes(x).summaries(B);
+  assert.equal(api.items.length, 1);
+  assert.deepEqual(api.items[0].participantAccountIds, ["deleted-account", B.accountId]);
+  assert.equal(api.items[0].participantDisplayNames["deleted-account"], "削除済みユーザー");
+  assert.ok(!JSON.stringify(api).includes(A.accountId));
+  const apiMessages = await routes(x).messages(B, conversation.conversationId);
+  assert.equal(apiMessages.items[0].senderAccountId, "deleted-account");
+  await device.sync();
+  const synced = device.deviceConversations()[0]!;
+  assert.deepEqual(synced.participantAccountIds, api.items[0].participantAccountIds);
+  assert.deepEqual(synced.participantDisplayNames, api.items[0].participantDisplayNames);
+  assert.ok(!JSON.stringify(device.deviceConversations()).includes(A.accountId));
+  assert.ok(!JSON.stringify(device.deviceMessages()).includes(A.accountId));
+});
+
 test("registry: the message domains are leased device domains whose owner is the account's member row; the database guard refuses moving a member, a conversation or a message", options, async (t) => {
   for (const domainId of [CONVERSATIONS, MESSAGES]) {
     const domain = findSyncDomain(domainId, SYNC_DOMAINS);

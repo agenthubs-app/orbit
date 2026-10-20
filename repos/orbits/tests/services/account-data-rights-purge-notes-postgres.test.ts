@@ -52,7 +52,37 @@ test("local deletion anonymizes one side of a shared appointment, removes their 
     await pool.query(`insert into appointment_command_receipts(workspace_id,idempotency_key,actor_id,appointment_id,aggregate_version,created_at,
       resource_id,command,request_hash,response_snapshot) values('space','other-key','other','shared',2,now(),'shared','counter','hash',$1::jsonb)`,
     [JSON.stringify(appointment)]);
+    await pool.query(`insert into appointment_command_receipts(workspace_id,idempotency_key,actor_id,appointment_id,aggregate_version,created_at,
+      resource_id,command,request_hash,response_snapshot) values('space','owner-key','owner','shared',2,now(),'shared','counter','owner-hash',$1::jsonb)`,
+    [JSON.stringify(appointment)]);
+    for (const [id, initiator] of [["owner-event", "owner"], ["other-event", "other"]]) {
+      await pool.query(`insert into appointment_outbox(workspace_id,outbox_event_id,appointment_id,aggregate_version,event_type,dedupe_key,payload,
+        status,available_at,created_at,updated_at) values('space',$1,'shared',2,'appointment.countered',$1,$2::jsonb,'pending',now(),now(),now())`,
+      [id, JSON.stringify({ appointmentId: "shared", initiatedByActorId: initiator, participantActorIds: ["owner", "other"],
+        notificationRecipientActorIds: ["owner", "other"], contactIdsByActor: appointment.contactIdsByActor, confirmed: appointment.confirmed,
+        projection: { joinUrl: "owner-secret-link" }, revision: 2 })]);
+    }
+    await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,
+      evidence_ids,search_text,payload,created_at,updated_at)
+      values('space','notifications','other-reminder','other','agent_action','other-reminder',
+      array['appointment:shared:revision:2'],'owner-secret-notification',
+      '{"title":"owner-secret-notification","body":"owner-secret-notification"}'::jsonb,now(),now())`);
+    const at = "2026-10-02T00:00:00.000Z";
+    const inboxNotice = { id: "inbox-other", actorId: "other", revision: 1, kind: "update", origin: "business",
+      semanticKey: "appointment:shared:2", title: "owner-secret-inbox", reason: "owner-secret-inbox",
+      object: { id: "other-contact", name: "owner-secret-name" },
+      sources: [{ sourceKind: "appointment", sourceId: "shared", sourceRevision: "event:2", occurredAt: at, readAt: at,
+        authorId: "owner", excerpt: "owner-secret-inbox" }],
+      target: { kind: "appointment", id: "shared", href: "/contacts/other-contact", status: "available" },
+      actions: ["read"], occurredAt: at, updatedAt: at, readAt: null, disposition: "open" };
+    await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,
+      search_text,payload,created_at,updated_at) values('space','inboxNotifications','inbox-other','other','system',
+      'appointment:shared:2','owner-secret-inbox',$1::jsonb,now(),now())`,
+    [JSON.stringify({ notification: inboxNotice, operations: {} })]);
     const { purgeAccountNotes } = await import("../../features/account/data-rights/purge/notes");
+    await pool.query("update appointment_outbox set status='processing' where outbox_event_id='other-event'");
+    await assert.rejects(purgeAccountNotes(db, "space", "owner"), /APPOINTMENT_OUTBOX_IN_FLIGHT/u);
+    await pool.query("update appointment_outbox set status='pending' where outbox_event_id='other-event'");
     const result = await purgeAccountNotes(db, "space", "owner");
     assert.ok(result.deleted >= 2);
     const kept = (await pool.query(`select owner_actor_id,invitee_actor_id,status,payload from appointment_aggregates where appointment_id='shared'`)).rows[0];
@@ -67,7 +97,32 @@ test("local deletion anonymizes one side of a shared appointment, removes their 
     assert.ok(JSON.stringify(kept).includes("keep-other-history"));
     assert.ok(!JSON.stringify(kept).includes('"owner"') && !JSON.stringify(kept).includes("owner-secret"),
       "deleted actor ID and authored content leave the retained row");
-    assert.equal((await pool.query(`select count(*)::int as n from appointment_command_receipts where appointment_id='shared'`)).rows[0]?.n, 0);
+    const receipts = (await pool.query(`select actor_id,response_snapshot from appointment_command_receipts where appointment_id='shared'`)).rows;
+    assert.equal(receipts.length, 1);
+    assert.equal(receipts[0]?.actor_id, "other");
+    assert.ok(!JSON.stringify(receipts[0]).includes("owner-secret"));
+    assert.ok(!JSON.stringify(receipts[0]).includes('"owner"'));
+    const outbox = (await pool.query(`select outbox_event_id,payload,status from appointment_outbox where appointment_id='shared'`)).rows;
+    assert.deepEqual(outbox.map(row => row.outbox_event_id), ["other-event"]);
+    assert.ok(!JSON.stringify(outbox).includes('"owner"'));
+    assert.ok(!JSON.stringify(outbox).includes("owner-secret"));
+    assert.equal(outbox[0]?.status, "cancelled");
+    const notification = (await pool.query("select user_id,search_text,payload,lifecycle_state from orbit_records where record_id='other-reminder'")).rows[0];
+    assert.equal(notification?.user_id, "other");
+    assert.equal(notification?.lifecycle_state, "deleted");
+    assert.ok(!JSON.stringify(notification).includes("owner-secret"));
+    const retainedInbox = (await pool.query("select user_id,search_text,payload from orbit_records where record_id='inbox-other'")).rows[0];
+    assert.equal(retainedInbox?.user_id, "other");
+    assert.ok(!JSON.stringify(retainedInbox).includes("owner-secret"));
+    assert.ok(!JSON.stringify(retainedInbox).includes('"owner"'));
+    const { inboxNotificationWriteSchema } = await import("../../shared/api-schema/inbox-notifications");
+    inboxNotificationWriteSchema.parse(retainedInbox.payload.notification);
+    const { createPostgresAppointmentRepository } = await import("../../features/appointments/postgres-repository");
+    const repository = createPostgresAppointmentRepository({ client: db, workspaceId: "space" } as Parameters<typeof createPostgresAppointmentRepository>[0]);
+    const replay = await repository.mutate({ actorId: "other", appointmentId: "shared", command: "counter", expectedVersion: 2,
+      idempotencyKey: "other-key", requestHash: "hash" }, () => { throw new Error("retry must use retained receipt"); });
+    assert.equal(replay.replayed, true);
+    assert.ok(!JSON.stringify(replay.appointment).includes("owner-secret"));
     assert.deepEqual((await pool.query("select distinct user_id from orbit_records order by user_id")).rows, [{ user_id: "other" }]);
     assert.equal((await purgeAccountNotes(db, "space", "owner")).deleted, 0);
     assert.equal((await pool.query(`select count(*)::int as n from appointment_aggregates`)).rows[0]?.n, 2);
