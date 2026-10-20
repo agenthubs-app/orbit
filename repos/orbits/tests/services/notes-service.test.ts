@@ -367,6 +367,29 @@ test("post-save handoff runs for persisted writes, not replays, and cannot undo 
   assert.equal(errors[0]!.includes("Still saved"), false);
 });
 
+test("failed memo handoff logs only a fixed stage and code", async () => {
+  const { service } = fixture();
+  const errors: string[] = [];
+  const originalError = console.error;
+  console.error = (message) => { errors.push(String(message)); };
+  try {
+    const saved = await service.create({
+      actorId: "account:private-actor", body: "private memo body", noteKind: "meeting",
+      contactIds: ["contact:private-person"], usedForPlan: true,
+      idempotencyKey: "private-handoff", now: "2026-10-18T09:00:00.000Z",
+      onPersisted: (note) => {
+        const failure = new Error(`secret provider detail ${note.id} ${note.body}`);
+        failure.name = `PrivateError:${note.ownerUserId}:${note.contactIds[0]}`;
+        throw failure;
+      },
+    });
+    assert.equal(saved.body, "private memo body", "handoff failure must not roll back the note");
+  } finally { console.error = originalError; }
+  assert.deepEqual(errors.map((entry) => JSON.parse(entry)), [
+    { event: "memo_extraction_error", stage: "enqueue_failed", code: "ENQUEUE_FAILED" },
+  ]);
+});
+
 test("a future mention survives an unchanged edit but cannot be forged or rewritten", async () => {
   const { repository, service } = fixture();
   const future = { entityType: "future", futureId: "future:1", start: 0, end: 4, displayText: "Note" };

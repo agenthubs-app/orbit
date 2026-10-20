@@ -190,11 +190,9 @@ function requirePlanUseEligibility(kind: NoteDTO["noteKind"], enabled: boolean |
 function notifyPersisted(note: NoteDTO, callback: ((note: NoteDTO) => void) | undefined): void {
   if (!callback) return;
   try { callback(note); }
-  catch (error) {
+  catch {
     console.error(JSON.stringify({
-      event: "memo_extraction_error", stage: "enqueue_failed", actorId: note.ownerUserId,
-      contactId: note.contactIds[0] ?? null, noteId: note.id,
-      error: error instanceof Error ? error.name : "unknown",
+      event: "memo_extraction_error", stage: "enqueue_failed", code: "ENQUEUE_FAILED",
     }));
   }
 }
