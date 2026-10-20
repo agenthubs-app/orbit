@@ -1,4 +1,5 @@
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
+import { acquireSyncCommitOrderLock } from "../../../../features/sync/commit-order-lock";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const PERSONAL_COLLECTIONS = ["inboxNotifications", "inboxSourceCheckMarks", "notification_interactions",
@@ -17,6 +18,7 @@ export async function purgeAccountInbox(db: TransactionalPostgresClient, workspa
   await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   return db.transaction(async sql => {
+    await acquireSyncCommitOrderLock(sql);
     const scope = [workspaceId, actorId];
     let deleted = 0;
     deleted += await remove(sql, `delete from relationship_messages where workspace_id=$1 and sender_account_id=$2`, scope);

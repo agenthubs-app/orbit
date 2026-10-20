@@ -11,6 +11,15 @@ import { auditDerivedDomainSources, auditEventTableWrites, auditMessageTableWrit
 // it is safe under the strict sync_revision trigger. A new writer, or a new
 // statement in a listed file, fails this test until it is classified.
 export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
+  // R18c: rights metadata is private/non-sync. The two shared-domain purge writers take the lock.
+  "features/account/data-rights/deletion-records.ts": { policy: "non-sync", statements: 9, collections: "deletion requests, receipts, auth, rights outbox" },
+  "features/account/data-rights/outbox.ts": { policy: "non-sync", statements: 2, collections: "account_rights_outbox" },
+  "features/account/data-rights/purge/events.ts": { policy: "locked", statements: 1, how: "purgeAccountEvents takes acquireSyncCommitOrderLock before shared event writes" },
+  "features/account/data-rights/purge/final-identity.ts": { policy: "non-sync", statements: 3, collections: "anonymous completion mail, auth and rights metadata" },
+  "features/account/data-rights/purge/inbox.ts": { policy: "locked", statements: 1, how: "purgeAccountInbox takes acquireSyncCommitOrderLock before shared conversation writes" },
+  "features/account/data-rights/purge/progress.ts": { policy: "non-sync", statements: 2, collections: "account_purge_steps" },
+  "features/account/data-rights/reauth.ts": { policy: "non-sync", statements: 2, collections: "account_reauth_receipts and account_reauth_limits" },
+  "features/account/data-rights/records.ts": { policy: "non-sync", statements: 5, collections: "account_exports and account_export_locks" },
   "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 5, how: "upsert/insertIfAbsent/updateIfCurrent/delete/reassignRecordOwner wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
   "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write of every command (connections, evidence and tasks are sync collections)" },
   "features/connections/lifecycle/initialization.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock before the first write when a task is created" },
@@ -58,12 +67,14 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
 
 // Sprint 0109: every writer of the relationship message tables (all rows are sync rows).
 export const MESSAGE_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
+  "features/account/data-rights/purge/inbox.ts": { statements: 1, how: "purgeAccountInbox takes acquireSyncCommitOrderLock first" },
   "features/relationship-communication/message-store.ts": { statements: 8, how: "every write runs in a read-committed transaction that calls acquireSyncCommitOrderLock first" },
   "features/relationship-communication/message-migration.ts": { statements: 9, how: "each legacy conversation is planned and applied inside one transaction after acquireSyncCommitOrderLock" },
 };
 
 // Sprint 0113: every writer of the event tables that carry sync_revision (strict trigger, same lock).
 export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
+  "features/account/data-rights/purge/events.ts": { statements: 2, how: "purgeAccountEvents takes acquireSyncCommitOrderLock first" },
   "features/events/admission/storage/postgres-repository.ts": { statements: 1, how: "runTransaction takes the lock first for every admission write" },
   "features/events/core/backfill.ts": { statements: 1, how: "applyEventCoreBackfillPlan takes the lock first" },
   "features/events/host/storage/lifecycle.ts": { statements: 4, how: "R17: every host lifecycle write runs in hostTransaction, which takes the lock first (create / update / publish / cancel / archive / reissue)" },

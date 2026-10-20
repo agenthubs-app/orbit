@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
+import { acquireSyncCommitOrderLock } from "../../../../features/sync/commit-order-lock";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
 const PERSONAL_COLLECTIONS = ["attendees", "eventParticipantIntents", "eventPreferences",
@@ -230,6 +231,7 @@ export async function purgeAccountEvents(db: TransactionalPostgresClient, worksp
   await assertLocalAccountPurgeDatabase(db);
   if (!workspaceId || !actorId) throw new Error("ACCOUNT_PURGE_SCOPE_REQUIRED");
   return db.transaction(async sql => {
+    await acquireSyncCommitOrderLock(sql);
     let deleted = 0;
     const hostedCanonical = await sql.query<{ event_id: string }>(`select event_id from event_ops_events
       where workspace_id=$1 and organizer_actor_id=$2 for update`, [workspaceId, actorId]);
