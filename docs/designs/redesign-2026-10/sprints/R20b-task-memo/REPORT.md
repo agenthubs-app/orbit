@@ -153,7 +153,7 @@ SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror �
 | 13 App 像素 | A01 两轮 raw 0.1181／0.1241；A02 两轮 0.0838／0.0843，第三张取到候选出现前旧截图的“PASS”无效；A03 0.6684，A05 0.1351，A06 0.0792，A07 0.1105。实际 `@` 候选另有截图。 | **未过**：board 状态／真实数据不一致，AI／录音改稿未到；不扩大三轮上限。App 深色无板。 |
 | 14 Web 像素 | W01 三轮 raw 0.0907→0.0805→0.0772，末轮仍缺 32 块；R07 Memo 标题／左栏浅深区域 raw 0 通过，整屏浅／深 0.0627／0.0587 失败；1024／390 无横向溢出截图。 | **未过**；Web #19 右栏按钮和状态来源待主会话定，1024／390／深色无板只作交接截图。 |
 | 15 全量／跨端 | 两端真实同 actor 双向创建／编辑／重开，联系人的离线同步见下；Web normal tsc、app tsc、lint 与 App tsc 均 exit0。 | 全量 Web **33 fail**、App **14 fail**，copy QA 仍红；详见下。不能标零新增失败或 Sprint done。 |
-| 16 REPORT／复核 | 本节逐项登记结果、原始证据、越线请求和决定；所有本轮实现均在 PLANNER §1 D 线归属路径内。 | 本 REPORT 可提交；主会话独立 REVIEW、已通过图至少 20% 重比、汇总文档和 DEFERRED 更新仍待。 |
+| 16 REPORT／复核 | 本节逐项登记结果、原始证据、越线请求和决定；`c823cceaf` 的 sync read-service／App tasks-mirror 越出原 §1 清单，归属与批准见下方 RD-25 更正。 | 本 REPORT 可提交；主会话独立 REVIEW、已通过图至少 20% 重比、汇总文档和 DEFERRED 更新仍待。 |
 
 ### 收口测试、逐名基线与来源
 
@@ -174,8 +174,12 @@ SC-06 の歴史 `voice` 読取を小さく再確認した。既存 App mirror �
 | --- | --- |
 | 主会话／画板 owner | 按 RD-33 重绘 b5 #46/#49/#50/#51 的 AI／录音／回放片段，保留可验的手写内容；明确 Web #19 右栏 `お礼の下書きを作る`、To-do、下一步按钮的可达服务、状态与错误回执。七板五项预检未过，W01 已到三轮上限；新画板版本需重新定 fixture 与门禁。A-R20b-02 的录音文案也需改。 |
 | B／Event owner | RD-33 的离线新建联系人 temporary ID alias／依赖 note 出队移入 DEFERRED；提供可报名且可进 `registered_event` 镜像的隔离活动 fixture，复走 SC-05／08 的 `@イベント` 实设备链。A-R12-16 的 token 状态交 R11a 画面归属方重比。 |
-| C11／R24／E 线 | 为 SC-10 配置**隔离本机** provider＋quota ledger 并取得确认卡设备读回；D 已有固定 provider 单本机链和无 PII 补扫回归。SC-11 的 task-domain manifest / page 失效投影与 cursor reset 超 D §1，需 sync owner 接；E 线类型详情与「プランに追加」用 D 的 `{planId,typeItemId}` 契约联验。 |
+| C11／R24／E 线 | 为 SC-10 配置**隔离本机** provider＋quota ledger 并取得确认卡设备读回；D 已有固定 provider 单本机链和无 PII 补扫回归。RD-25 已批准 D 补 SC-11 的 task-domain 失效同步；E 线类型详情与「プランに追加」仍需用 D 的 `{planId,typeItemId}` 契约联验。 |
 | A／R13 与 copy owner | 核对 App full 新的 discovery、typed inbox、Toast 时序和字典 snapshot；`src/i18n/copy-kinds.ts` 中 notes kind 元数据、全域 copy QA 的既有 issue 由归属方处理。Web full 保留的 30 名及 App 10 名也仍是红色基线，不得从 D 的定向绿推为全量绿。 |
 | 主会话文档／独立复核 | 把 #47 录音、#48 E3、面談の記録合并判定与临时联系人 ID 写 DEFERRED-A；注明 W-R20b-02 废稿。更新 README/HANDOFF/决定表时记本端版本 `2994e9038`、`9b202c0d2`、`df89e77f8`、`bfa580172`、双向本机读回和未过门禁；独立重跑测试、SC-10/11 联验及至少 20% 已过图。D 不越权改根台账。 |
 
-本轮没有自行扩大 D allowlist，也没有新的产品代定；执行的是 PLANNER D-1～D-11、RD-33 和既有 R20a 基线。需主会话决定的是**新画板的数据／操作来源和对应版本的重新门禁**，以及跨线 C11／sync／Event fixture 的归属排期。没有用户级发布授权需求；未 push、未部署、未连 Neon／生产。已停止自己启动的 Next 3500、设计服务 3320、Metro 8085，关闭自己的 `Orbit Line D` 模拟器；Next 自动生成的 `next-env.d.ts`／`tsconfig.json` 仅按自己产生的差异恢复。
+本轮没有新的产品代定；执行的是 PLANNER D-1～D-11、RD-33 和既有 R20a 基线，原 §1 外的 sync 触碰按下述 RD-25 批准单独记账。需主会话决定的是**新画板的数据／操作来源和对应版本的重新门禁**，以及跨线 C11／Event fixture 的归属排期。没有用户级发布授权需求；未 push、未部署、未连 Neon／生产。已停止自己启动的 Next 3500、设计服务 3320、Metro 8085，关闭自己的 `Orbit Line D` 模拟器；Next 自动生成的 `next-env.d.ts`／`tsconfig.json` 仅按自己产生的差异恢复。
+
+### RD-25 M5 归属与批准更正
+
+REVIEW 指出的 `c823cceaf` 确实改动了 PLANNER §1 原清单外的 `repos/orbits/features/sync/read-service.ts` 和 `repos/orbit-app/src/view-models/tasks-mirror.ts`。上表旧版“所有实现均在 §1 内”的说法错误，不能用路径提交或定向测试替代所有权批准。主会话在本轮 RD-25 指令中明确追认这两处是 `planLink` 同步所需，并批准 D 线为 M1 在 sync read-service 做加法修复。`504ad51e8` 因 task 域的实际读路径，同项还新增 actor-scoped 计划快照，并加法接入 `domain-read-service.ts` 的 generation／page 及 `domain-handlers.ts` 的条件 manifest 键；旧 v1 投影在未提供计划快照时维持原行为。此处记录批准依据和越出原 §1 的范围，不把旧记录改写成“原本就属于 D allowlist”。E 线 UI 联验及独立复核仍未完成。
