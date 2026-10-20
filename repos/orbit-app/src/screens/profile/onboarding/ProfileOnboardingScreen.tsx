@@ -526,7 +526,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
             <TextInput accessibilityLabel={t("onboarding.company")} editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
           </Field>
         </View>
-        <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")}>
+        <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")} optional>
           <TextInput accessibilityLabel={t("onboarding.birthDate")} autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
             placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.birthDate} />
         </Field>

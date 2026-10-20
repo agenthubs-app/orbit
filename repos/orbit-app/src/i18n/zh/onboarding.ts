@@ -44,7 +44,7 @@ export const onboarding = {
   "onboarding.birthDateInvalid": "请填写有效的生日（不能晚于今天）。",
   "onboarding.goalsTitle": "你最近想推进什么？",
   "onboarding.goalsLead": "没有联系人时，目标就是 iOrbit 最重要的线索——它决定推荐哪些活动、哪些人。",
-  "onboarding.goalsPick": "选择 1–3 个方向",
+  "onboarding.goalsPick": "按优先顺序最多选择 2 个目标",
   "onboarding.horizon": "时间范围",
   "onboarding.focus": "具体想做成什么",
   "onboarding.focusPlaceholder": "例如：把 AI 会议纪要产品推到日本，先找到 5 家愿意试用的企业。",

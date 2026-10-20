@@ -44,7 +44,7 @@ export const onboarding = {
   "onboarding.birthDateInvalid": "有効な生年月日を入力してください（今日より後は不可）。",
   "onboarding.goalsTitle": "最近、何を進めたいですか？",
   "onboarding.goalsLead": "連絡先がまだないとき、目標は iOrbit にとって一番の手がかりです。どのイベントや人を勧めるかがここで決まります。",
-  "onboarding.goalsPick": "1〜3 個選んでください",
+  "onboarding.goalsPick": "優先順に2つまで選んでください",
   "onboarding.horizon": "期間",
   "onboarding.focus": "具体的に実現したいこと",
   "onboarding.focusPlaceholder": "例：AI 議事録サービスを日本に展開し、まず試用してくれる企業を 5 社見つける。",

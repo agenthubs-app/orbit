@@ -44,7 +44,7 @@ export const onboarding = {
   "onboarding.birthDateInvalid": "Enter a valid birthday (not later than today).",
   "onboarding.goalsTitle": "What do you want to move forward?",
   "onboarding.goalsLead": "With no contacts yet, your goal is iOrbit's most important lead — it decides which events and people to recommend.",
-  "onboarding.goalsPick": "Pick 1–3 directions",
+  "onboarding.goalsPick": "Pick up to 2 goals in priority order",
   "onboarding.horizon": "Time frame",
   "onboarding.focus": "What exactly you want to achieve",
   "onboarding.focusPlaceholder": "e.g. Bring our AI meeting-notes product to Japan and find 5 companies willing to pilot it.",

@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { PlanGoalKind } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_KINDS } from "../../api/compute/plan-templates";
@@ -17,9 +18,9 @@ import { createPlanApi } from "../plan/plan-api";
 import { goalKindLabel } from "../plan/plan-model";
 
 const copy = {
-  zh: { title: "开始使用 Orbit", subtitle: "先完成这三步", contacts: "确认 3 位联系人", goal: "写下当前目标", plan: "制定第一份计划", add: "添加名片", edit: "填写目标", make: "继续制定计划", failed: "进度暂时无法读取", choose: "确认计划类型", missing: "请选择计划类型", href: "计划入口暂时无法打开，请重试", saved: "当前目标", done: "已完成", locked: "先完成上一步", back: "返回首页" },
-  en: { title: "Get started with Orbit", subtitle: "Three steps to begin", contacts: "Confirm 3 contacts", goal: "Set your current goal", plan: "Make your first plan", add: "Add a card", edit: "Set a goal", make: "Continue to plan", failed: "Could not load your progress", choose: "Choose a plan type", missing: "Choose a plan type", href: "Could not open the plan. Retry.", saved: "Current goal", done: "Done", locked: "Finish the previous step first", back: "Back to home" },
-  ja: { title: "Orbit を始める", subtitle: "はじめの 3 ステップ", contacts: "連絡先を 3 人確認", goal: "今の目標を決める", plan: "最初のプランを作る", add: "名刺を追加", edit: "目標を書く", make: "プランを作る", failed: "進捗を読み込めませんでした", choose: "プランの種類を確認", missing: "プランの種類を選んでください", href: "プランを開けませんでした。もう一度お試しください", saved: "保存済みの目標", done: "完了", locked: "前のステップを先に完了", back: "ホームに戻る" },
+  zh: { title: "开始使用 Orbit", subtitle: "距离第一份计划只差几步", contacts: "确认 3 位联系人", goal: "写下当前目标", plan: "制定第一份计划", add: "添加名片", edit: "填写目标", make: "继续制定计划", failed: "进度暂时无法读取", choose: "确认计划类型", missing: "请选择计划类型", href: "计划入口暂时无法打开，请重试", saved: "当前目标", done: "已完成", locked: "先完成上一步", back: "返回首页", helpContacts: "先确认 3 位联系人。", helpGoal: "写下你现在最想推进的目标。", helpPlan: "确认目标和计划类型后继续。" },
+  en: { title: "Get started with Orbit", subtitle: "A few steps to your first plan", contacts: "Confirm 3 contacts", goal: "Set your current goal", plan: "Make your first plan", add: "Add a card", edit: "Set a goal", make: "Continue to plan", failed: "Could not load your progress", choose: "Choose a plan type", missing: "Choose a plan type", href: "Could not open the plan. Retry.", saved: "Current goal", done: "Done", locked: "Finish the previous step first", back: "Back to home", helpContacts: "Start by confirming 3 contacts.", helpGoal: "Set the goal you want to work on now.", helpPlan: "Confirm your goal and plan type to continue." },
+  ja: { title: "はじめのガイド", subtitle: "最初のプランまで、あと少し", contacts: "人脈をつくる", goal: "目標を決める", plan: "プランをつくる", add: "人脈を追加する", edit: "目標を書く", make: "プランを作る", failed: "進捗を読み込めませんでした", choose: "プランの種類を確認", missing: "プランの種類を選んでください", href: "プランを開けませんでした。もう一度お試しください", saved: "保存済みの目標", done: "完了", locked: "前のステップを先に完了", back: "ホームに戻る", helpContacts: "まずは人脈を 3 人確認しましょう。", helpGoal: "今の目標を決めましょう。", helpPlan: "目標に合うプランを選びましょう。" },
 } as const;
 
 export function StartGuideScreen() {
@@ -27,6 +28,7 @@ export function StartGuideScreen() {
   const { language } = useOrbitLocale();
   const c = copy[language];
   const client = useOrbitApiClient();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const api = createPlanApi(client, language);
   const [guide, setGuide] = useState<AppGuideProgress | null>(null);
@@ -44,7 +46,7 @@ export function StartGuideScreen() {
       setGuide(result.data);
       const first = firstProfileGoalForPlan(result.data.relationshipGoal);
       setGoalText(first.text);
-      setKind(first.suggestedKind);
+      setKind(null);
       setError("");
     } else setError(c.failed);
     setLoading(false);
@@ -65,16 +67,23 @@ export function StartGuideScreen() {
     }
   }
 
+  const nextStep = !guide?.flags.contacts ? "contacts" : !guide.flags.goal ? "goal" : !guide.flags.plan ? "plan" : null;
+
   return (
-    <AppScreen inset="kit" title={c.title} subtitle={c.subtitle} onBack={() => router.replace("/home" as Href)}>
+    <View style={[styles.page, { backgroundColor: colors.bg }]}>
+    <AppScreen inset="kit" title={c.title} onBack={() => router.replace("/home" as Href)}>
       {loading ? <Skeleton lines={4} /> : !guide ? <RetryCard title={c.failed} onRetry={() => void reload()} /> : (
         <View testID="app-start-guide" style={styles.stack}>
-          <UiText style={styles.progress}>{guide.completed} / 3</UiText>
-          <Step title={c.contacts} done={guide.flags.contacts} locked={false} action={c.add} onPress={() => router.push("/contacts/new/scan" as Href)} styles={styles} copy={c} />
-          <Step title={c.goal} done={guide.flags.goal} locked={!guide.flags.contacts} action={c.edit} onPress={() => router.push("/profile/onboarding?next=%2Fstart" as Href)} styles={styles} copy={c} />
-          <Card>
-            <UiText style={styles.stepTitle}>{c.plan}</UiText>
-            <UiText style={styles.hint}>{guide.flags.plan ? c.done : !guide.flags.contacts || !guide.flags.goal ? c.locked : c.saved}</UiText>
+          <UiText style={styles.meta}>{c.subtitle} · {guide.completed} / 3</UiText>
+          <UiText style={styles.headline}>{c.subtitle}</UiText>
+          <UiText style={styles.hint}>{nextStep === "contacts" ? c.helpContacts : nextStep === "goal" ? c.helpGoal : nextStep === "plan" ? c.helpPlan : c.done}</UiText>
+          <Card style={styles.guideCard}>
+            <GuideRow index={1} title={c.contacts} status={guide.flags.contacts ? c.done : `${guide.snapshot.confirmedContacts} / 3`} styles={styles} />
+            <GuideRow index={2} title={c.goal} status={guide.flags.goal ? c.done : !guide.flags.contacts ? c.locked : c.edit} styles={styles} />
+            <GuideRow index={3} title={c.plan} status={guide.flags.plan ? c.done : !guide.flags.contacts || !guide.flags.goal ? c.locked : c.make} styles={styles} />
+          </Card>
+          {nextStep === "plan" ? <Card>
+            <UiText style={styles.stepTitle}>{c.saved}</UiText>
             {guide.flags.contacts && guide.flags.goal && !guide.flags.plan ? (
               <View style={styles.planForm}>
                 <TextInput accessibilityLabel={c.saved} multiline onChangeText={(value) => { setGoalText(value); keyRef.current = null; }} style={[styles.input, { color: colors.ink }]} value={goalText} />
@@ -82,37 +91,47 @@ export function StartGuideScreen() {
                 <View style={styles.kinds}>
                   {PLAN_GOAL_KINDS.map((value) => <Button key={value} label={goalKindLabel(value, language) ?? value} variant={kind === value ? "primary" : "secondary"} onPress={() => { setKind(value); keyRef.current = null; }} />)}
                 </View>
-                <Button block disabled={!kind || !goalText.trim() || working} label={c.make} loading={working} onPress={() => void openPlan()} />
               </View>
             ) : null}
-          </Card>
+          </Card> : null}
           {error ? <UiText accessibilityRole="alert" style={styles.error}>{error}</UiText> : null}
-          <Button label={c.back} variant="secondary" onPress={() => router.replace("/home" as Href)} />
         </View>
       )}
     </AppScreen>
+    {guide && nextStep ? <View style={[styles.footer, { backgroundColor: colors.bg, paddingBottom: Math.max(12, insets.bottom) }]}>
+      <Button block size="lg" variant="primary" disabled={working || (nextStep === "plan" && (!kind || !goalText.trim()))} label={nextStep === "contacts" ? c.add : nextStep === "goal" ? c.edit : c.make}
+        loading={working} onPress={() => {
+          if (nextStep === "contacts") router.push("/contacts/new/scan" as Href);
+          else if (nextStep === "goal") router.push("/profile/onboarding?next=%2Fstart" as Href);
+          else void openPlan();
+        }} />
+    </View> : null}
+    </View>
   );
 }
 
-function Step({ title, done, locked, action, onPress, styles, copy: c }: {
-  title: string; done: boolean; locked: boolean; action: string; onPress: () => void;
-  styles: ReturnType<typeof useStyles>["styles"]; copy: typeof copy.ja | typeof copy.en | typeof copy.zh;
+function GuideRow({ index, title, status, styles }: {
+  index: number; title: string; status: string; styles: ReturnType<typeof useStyles>["styles"];
 }) {
-  return <Card><View style={styles.step}>
-    <View style={styles.stepText}><UiText style={styles.stepTitle}>{title}</UiText><UiText style={styles.hint}>{done ? c.done : locked ? c.locked : ""}</UiText></View>
-    {!done && !locked ? <Button label={action} onPress={onPress} /> : null}
-  </View></Card>;
+  return <View style={styles.row}>
+    <UiText style={styles.rowTitle}>{index} {title}</UiText><UiText style={styles.rowStatus}>{status}</UiText>
+  </View>;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  stack: { gap: 12 },
-  progress: { color: colors.ink, fontSize: 22, fontWeight: "800", marginBottom: 4 },
-  step: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  stepText: { flex: 1, gap: 4 },
+  page: { flex: 1 },
+  stack: { gap: 12, paddingBottom: 96 },
+  meta: { color: colors.ink3Text, fontSize: 12 },
+  headline: { color: colors.ink, fontSize: 25, fontWeight: "800", marginTop: 6 },
+  guideCard: { gap: 0 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", flexShrink: 1 },
+  rowStatus: { color: colors.ink3Text, fontSize: 12 },
   stepTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
   hint: { color: colors.ink2, fontSize: 12 },
   planForm: { gap: 12, marginTop: 16 },
   input: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 12, minHeight: 54 },
   kinds: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  footer: { paddingHorizontal: 18, paddingTop: 12 },
   error: { color: colors.coralText, fontSize: 13 },
 }));
