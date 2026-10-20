@@ -1,5 +1,5 @@
 /**
- * New-user onboarding (web /app/profile/onboarding, onboarding-0918) as a pure App model.
+ * New-user onboarding (web /app/profile/onboarding, orbit-2026/onboarding) as a pure App model.
  * Same steps, limits, option lists and relationship-goal format as the web flow; the App
  * adds Japanese labels. No React, no HTTP. Progress is inferred from saved profile fields.
  */

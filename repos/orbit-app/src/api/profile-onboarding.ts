@@ -1,6 +1,6 @@
 /**
  * HTTP layer for new-user onboarding. Same endpoints and checks as the web flow
- * (onboarding-0918/onboarding-client.ts): GET/PUT /api/profile with a verified mutation
+ * (orbit-2026/onboarding/onboarding-client.ts): GET/PUT /api/profile with a verified mutation
  * receipt and a readback, a visible version conflict, the intro draft, the own
  * business-card scan, and the business-card batch v2 collection for the import step.
  */
