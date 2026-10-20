@@ -13,9 +13,9 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 55 |
-| 不读账号数据（布局、跳转、本机设置） | 39 |
-| 合计（路由文件） | 131 |
+| 只能在线 | 58 |
+| 不读账号数据（布局、跳转、本机设置） | 40 |
+| 合计（路由文件） | 135 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -78,6 +78,9 @@
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/forgot-password` | 忘记密码 | 涉及凭据或会话：发送重置邮件需要服务器 | /api/auth/password-reset/request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/reset-password` | 重置密码 | 涉及凭据或会话：重置令牌由服务器验证 | /api/auth/password-reset/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/account/exports` | 账户数据导出（R18c） | 涉及凭据或会话：导出任务、下载资格和期限由服务器按当前账号验证 | /api/account/exports、/api/account/exports/:id/download | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/account/deletion` | 退会申请（R18c） | 涉及凭据或会话：近期再认证与退会状态需服务器实时验证 | /api/account/deletion-request、/method、/reauth | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/account/pending` | 退会冷静期与取消（R18c） | 涉及凭据或会话：取消资格与清除领取状态由服务器判定 | /api/account/deletion-request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/login-admin` | 后台登录入口 | 涉及凭据或会话：公开入口先探测连接；登录走现有账号验证 | /api/health（公开入口探测）；登录提交走既有 /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/admin` | 当前账号后台概览 | 管理员工具：当前账号活动与资料从服务器只读获取，不保存为本机副本 | /api/dashboard、/api/events、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/admin/access` | 后台登录入口 | 涉及凭据或会话：公开入口先探测连接；登录走现有账号验证，不读取后台私有资料 | /api/health（公开入口探测）；登录提交走既有 /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -160,6 +163,7 @@
 | `/agent/actions` | 旧 All Actions 入口，跳到 Task 的判断待ち | 无（目标页见 app/task.tsx） | 保留 entry 定位，跳到 /task?seg=todo&section=decisions（可离线） |
 | `/contacts/all-actions` | 旧联系人 All Actions 入口，跳到 Task 的判断待ち | 无（目标页见 app/task.tsx） | 保留 entry 定位，跳到 /task?seg=todo&section=decisions（可离线） |
 | `/account/permissions` | 旧权限页 → 设置（R18a） | 无 | 跳到 /settings 内联系统权限 |
+| `/account/deleted` | 退会完成通用页（R18c） | 无个人数据 | 静态页可查看 |
 | `/events/:id/operations/admission` | 旧报名审核链接跳转到イベント運営「参加者」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/operations/experience` | 旧活动体验配置链接跳转到イベント運営「概要」段（R17） | 无 | 跳到运营台（运营台需要联网） |
 | `/events/:id/operations/roles` | 旧角色与权限链接跳转到イベント運営「概要」段（R17） | 无 | 跳到运营台（运营台需要联网） |
@@ -181,9 +185,13 @@
 | `app/[...legacy].tsx` | `/*（旧链接或未知路由）` | device-only |
 | `app/+html.tsx` | `(浏览器外壳)` | device-only |
 | `app/account.tsx` | `/account` | online-only |
+| `app/account/deleted.tsx` | `/account/deleted` | device-only |
+| `app/account/deletion.tsx` | `/account/deletion` | online-only |
+| `app/account/exports.tsx` | `/account/exports` | online-only |
 | `app/account/forgot-password.tsx` | `/account/forgot-password` | online-only |
 | `app/account/login.tsx` | `/account/login` | online-only |
 | `app/account/mobile-google.tsx` | `/account/mobile-google` | device-only |
+| `app/account/pending.tsx` | `/account/pending` | online-only |
 | `app/account/permissions.tsx` | `/account/permissions` | device-only |
 | `app/account/reset-password.tsx` | `/account/reset-password` | online-only |
 | `app/account/signup.tsx` | `/account/signup` | online-only |

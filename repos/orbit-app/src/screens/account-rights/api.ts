@@ -1,7 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Share } from "react-native";
 
-import { createOrbitApiClient, type OrbitApiClient } from "../../api/client";
+import type { OrbitApiClient } from "../../api/client";
 import type { AccountDeletionRequestContract, AccountExportContract } from "../../api/contract/account";
 
 export class RightsApiError extends Error {
@@ -17,10 +17,10 @@ function rawHeaders(cookieHeader: string): Record<string, string> {
   return cookieHeader.trim() ? { Cookie: cookieHeader, Accept: "application/json" } : { Accept: "application/json" };
 }
 
-export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: string; fetchImpl?: typeof fetch }) {
-  const client = createOrbitApiClient({ baseUrl: input.baseUrl, authCookieHeader: input.cookieHeader, ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}) });
+export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: string; client: OrbitApiClient; fetchImpl?: typeof fetch }) {
+  const { client } = input;
   const fetcher = input.fetchImpl ?? fetch;
-  const url = (path: string) => new URL(path, input.baseUrl).toString();
+  const baseUrl = input.baseUrl.replace(/\/$/u, "");
   return {
     async exports() { return unwrap<AccountExportContract[]>(await client.get("/api/account/exports")); },
     async createExport(body: { scope: string[]; mode: "selected" | "all-json"; contactsFormat: "csv" | "vcard"; idempotencyKey: string }) {
@@ -28,13 +28,13 @@ export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: s
     },
     async deletion() { return unwrap<AccountDeletionRequestContract | null>(await client.get("/api/account/deletion-request")); },
     async method(): Promise<"credentials" | "google"> {
-      const response = await fetcher(url("/api/account/deletion-request/method"), { headers: rawHeaders(input.cookieHeader), credentials: input.cookieHeader ? "omit" : "include" });
+      const response = await fetcher(`${baseUrl}/api/account/deletion-request/method`, { headers: rawHeaders(input.cookieHeader), credentials: input.cookieHeader ? "omit" : "include" });
       const data = await response.json().catch(() => null) as { method?: string } | null;
       if (!response.ok || data?.method !== "credentials" && data?.method !== "google") throw new RightsApiError(response.status, "UNAVAILABLE");
       return data.method;
     },
     async reauthPassword(password: string): Promise<string> {
-      const response = await fetcher(url("/api/account/deletion-request/reauth"), { method: "POST", credentials: input.cookieHeader ? "omit" : "include",
+      const response = await fetcher(`${baseUrl}/api/account/deletion-request/reauth`, { method: "POST", credentials: input.cookieHeader ? "omit" : "include",
         headers: { ...rawHeaders(input.cookieHeader), "Content-Type": "application/json" }, body: JSON.stringify({ method: "password", password }) });
       const data = await response.json().catch(() => null) as { reauthReceipt?: string; error?: string } | null;
       if (!response.ok || !data?.reauthReceipt) throw new RightsApiError(response.status, data?.error ?? "UNAVAILABLE");
@@ -46,7 +46,7 @@ export function createAccountRightsApi(input: { baseUrl: string; cookieHeader: s
       if (item.status !== "ready" || !item.downloadUrl || !FileSystem.cacheDirectory) throw new RightsApiError(404, "NOT_READY");
       const link = new URL(item.downloadUrl);
       if (!/^\/api\/account\/exports\/[^/]+\/download$/u.test(link.pathname) || decodeURIComponent(link.pathname.split("/")[4] ?? "") !== item.id) throw new RightsApiError(400, "INVALID_DOWNLOAD_URL");
-      const source = url(`${link.pathname}${link.search}`);
+      const source = new URL(`${link.pathname}${link.search}`, baseUrl).toString();
       const destination = `${FileSystem.cacheDirectory}orbit-export-${Date.now()}.zip`;
       try {
         const downloaded = await FileSystem.downloadAsync(source, destination, { headers: rawHeaders(input.cookieHeader) });

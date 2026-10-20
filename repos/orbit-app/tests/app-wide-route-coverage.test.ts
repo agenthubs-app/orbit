@@ -194,6 +194,11 @@ const integratedFeatureRoutes = [
   "/inbox/notifications/[id]",
   "/inbox/sources/[id]",
   "/account/reset-password",
+  // R18c account rights are functional routes; the older visual snapshot predates them.
+  "/account/exports",
+  "/account/deletion",
+  "/account/pending",
+  "/account/deleted",
   // R12 人脈を追加: 名刺 (capture, batch), 手入力, 確認待ちの下書き. The v1 / batch2 / import routes are gone.
   "/contacts/new/drafts",
   // R16 取り込み: 連絡先 / LinkedIn, then まとめて確認 → 完成.

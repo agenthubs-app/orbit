@@ -10,6 +10,7 @@ import { Button, Card, Checkbox, Segmented, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { MessageKey } from "../../i18n/messages";
 import { createAccountRightsApi, RightsApiError } from "./api";
 
@@ -24,9 +25,10 @@ export function ExportsScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
+  const client = useOrbitApiClient();
   const { t, language } = useOrbitLocale();
   const { styles } = useStyles();
-  const api = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader }), [server.baseUrl, auth.cookieHeader]);
+  const api = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader, client }), [server.baseUrl, auth.cookieHeader, client]);
   const [selected, setSelected] = useState<Choice[]>(["contacts", "notes", "plans"]);
   const [all, setAll] = useState(false);
   const [format, setFormat] = useState<"csv" | "vcard">("csv");

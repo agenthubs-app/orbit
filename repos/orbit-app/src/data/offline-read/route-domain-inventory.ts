@@ -7,6 +7,7 @@ function domainFor(path: string): string {
   if (path === '/api/dev/network-design-fixture') return 'network-design-fixture';
   if (path.startsWith('/api/auth/') || path === '/api/account/session/sign-out') return 'account';
   if (path === '/api/account/me' || path === '/api/account/status') return 'account';
+  if (path.startsWith('/api/account/exports') || path.startsWith('/api/account/deletion-request')) return 'account';
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
   if (path.startsWith('/api/profile')) return 'profile';
@@ -103,6 +104,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   // PX1's development-only fixture has an actor-partitioned, versioned snapshot in network-design-fixture.ts.
   // Keep its exact route in this inventory; the normal contacts policies must not absorb it.
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
+    || endpointTemplate.startsWith('/api/account/exports') || endpointTemplate.startsWith('/api/account/deletion-request')
     || endpointTemplate === '/api/app/version'
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
     || endpointTemplate === '/api/inbox/delivery/preferences'
@@ -783,6 +785,13 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/platform/PlatformScreen.tsx","GET","/api/events/public"],
   ["src/screens/profile/AccountAuthScreen.tsx","POST","/api/auth/password-reset/request"],
   ["src/screens/profile/AccountScreen.tsx","GET","/api/account/me"],
+  ["src/screens/account-rights/api.ts","GET","/api/account/exports"],
+  ["src/screens/account-rights/api.ts","POST","/api/account/exports"],
+  ["src/screens/account-rights/api.ts","GET","/api/account/deletion-request"],
+  ["src/screens/account-rights/api.ts","GET","/api/account/deletion-request/method"],
+  ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request/reauth"],
+  ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request"],
+  ["src/screens/account-rights/api.ts","DELETE","/api/account/deletion-request"],
   ["src/screens/profile/PasswordResetScreen.tsx","POST","/api/auth/password-reset/confirm"],
   ["src/screens/profile/useProfileEditSessionScreen.ts","GET","/api/profile"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","GET","/api/appointments/:id"],

@@ -78,13 +78,13 @@ export function ExportsPage() {
         <p className={s.note}>{t("exportLimit")}</p>
         <div className={s.actions}><Button label={t("startExport")} variant="primary" loading={busy} disabled={active || !all && !selected.length} onClick={() => void create()} /></div>
       </Card>
-      {problem ? <p role="alert" className={s.error}>{problem} {problem === t("freshLogin") ? <button type="button" className={s.inlineAction} onClick={() => void signOut({ callbackUrl: "/app/account/login?next=/app/settings/exports" })}>{t("signInAgain")}</button> : null}</p> : null}
+      {problem ? <p role="alert" className={s.error}>{problem} {problem === t("freshLogin") ? <Button label={t("signInAgain")} variant="ghost" size="sm" className={s.inlineAction} onClick={() => void signOut({ callbackUrl: "/app/account/login?next=/app/settings/exports" })} /> : null}</p> : null}
       <Card title={t("exportHistory")} trailing={<Button label={t("retry")} size="sm" variant="ghost" onClick={() => void refresh()} />}>
         {loading ? <p className={s.note}>{t("running")}</p> : history.length === 0 ? <p className={s.note}>{t("noExports")}</p> :
           <ul className={s.history}>{history.map(item => <li className={s.historyItem} key={item.id}>
             <div><strong>{t(item.status)}</strong><span className={s.meta}>{date(item.requestedAt)}</span>
               {item.status === "queued" || item.status === "running" ? <p className={s.note}>{t("progress").replace("{done}", String(item.completedItems ?? 0)).replace("{total}", String(item.totalItems ?? item.scope.length))}</p> : null}
-              {item.status === "ready" && item.expiresAt ? <p className={s.note}>{date(item.expiresAt)} まで</p> : null}
+              {item.status === "ready" && item.expiresAt ? <p className={s.note}>{t("availableUntil").replace("{date}", date(item.expiresAt))}</p> : null}
             </div>
             {item.status === "ready" && item.downloadUrl ? <a className={s.download} href={item.downloadUrl}>{t("download")}</a> : null}
           </li>)}</ul>}

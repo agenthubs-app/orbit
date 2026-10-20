@@ -9,6 +9,7 @@ import { Button, Card, Checkbox, TextField, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { createAccountRightsApi, RightsApiError } from "./api";
 import { clearNativeAccountRightsData, discardNativeAccountRightsWrites } from "./local-cleanup-runtime";
 
@@ -16,9 +17,10 @@ export function DeletionScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
+  const client = useOrbitApiClient();
   const { t } = useOrbitLocale();
   const { styles } = useStyles();
-  const api = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader }), [server.baseUrl, auth.cookieHeader]);
+  const api = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader, client }), [server.baseUrl, auth.cookieHeader, client]);
   const [step, setStep] = useState<"overview" | "verify">("overview");
   const [method, setMethod] = useState<"credentials" | "google" | null>(null);
   const [password, setPassword] = useState("");

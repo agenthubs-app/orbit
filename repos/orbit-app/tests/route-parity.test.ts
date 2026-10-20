@@ -86,6 +86,7 @@ interface RouteParityResult {
 const accountSettingsSections = new Set(["appearance", "integrations", "iorbit", "notifications", "account", "permissions", "export", "help", "terms", "privacy"]);
 function nativeParityRoute(route: string, nativeRoutes: ReadonlySet<string>): string | null {
   if (nativeRoutes.has(route)) return route;
+  if (route === "/settings/exports" && nativeRoutes.has("/account/exports")) return "/account/exports";
   if (route === "/[...missing]" && nativeRoutes.has("/[...legacy]")) return "/[...legacy]";
   const section = /^\/settings\/([^/]+)$/u.exec(route)?.[1];
   return section && accountSettingsSections.has(section) && nativeRoutes.has("/settings/[section]") ? "/settings/[section]" : null;

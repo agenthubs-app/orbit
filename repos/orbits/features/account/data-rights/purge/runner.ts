@@ -50,7 +50,7 @@ export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
       if (await progress.get(actorId, step.id)) continue;
       const result = await step.run();
       await progress.complete(actorId, leaseToken, step.id, { deleted: result.deleted,
-        ...("objects" in result ? { objects: result.objects } : {}) });
+        ...("objects" in result && typeof result.objects === "number" ? { objects: result.objects } : {}) });
     } catch (error) {
       return { kind: "failed", step: step.id, reason: error instanceof Error ? error.message : "UNKNOWN" };
     }

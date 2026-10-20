@@ -22,6 +22,7 @@ const copy = {
   download: { ja: "ZIP をダウンロード", zh: "下载 ZIP", en: "Download ZIP" },
   retry: { ja: "もう一度読み込む", zh: "重新加载", en: "Reload" },
   noExports: { ja: "書き出し履歴はまだありません。", zh: "暂无导出记录。", en: "No exports yet." },
+  availableUntil: { ja: "{date} まで", zh: "可下载至 {date}", en: "Available until {date}" },
   progress: { ja: "{done}/{total} 項目が完了", zh: "已完成 {done}/{total} 项", en: "{done} of {total} items complete" },
   exportActive: { ja: "別の書き出しが進行中です。完了後にもう一度お試しください。", zh: "另一个导出正在进行，请完成后重试。", en: "Another export is in progress. Try again when it finishes." },
   exportQuota: { ja: "今日の書き出し回数に達しました。明日もう一度お試しください。", zh: "今天已达到导出次数上限，请明天重试。", en: "You have reached today's export limit. Try again tomorrow." },

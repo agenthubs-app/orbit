@@ -20,6 +20,7 @@ import {
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { createAccountRightsApi } from "../account-rights/api";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 
 export function AccountScreen() {
   const router = useRouter();
@@ -27,8 +28,9 @@ export function AccountScreen() {
   const { fontScale } = useWindowDimensions();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
+  const client = useOrbitApiClient();
   const locale = useOrbitLocale();
-  const rights = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader }), [server.baseUrl, auth.cookieHeader]);
+  const rights = useMemo(() => createAccountRightsApi({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader, client }), [server.baseUrl, auth.cookieHeader, client]);
   useEffect(() => {
     if (!auth.signedIn || auth.offline) return;
     void rights.deletion().then(request => {
