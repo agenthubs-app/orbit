@@ -6,7 +6,7 @@
 "use client";
 
 import { START_REQUIRED_CONTACTS, type StartContactSample } from "../../../../features/guide/start-steps";
-import { useOrbitLanguage } from "../orbit-language-context";
+import { useStartCopy } from "./start-copy";
 
 /** W54-2：「导入人脉」去 W0053 的导入页（CSV／vCard 一栏）。 */
 export const START_IMPORT_HREF = "/app/contacts/new?method=csv";
@@ -31,7 +31,7 @@ export function StepCards({
   onNext: () => void;
   samples: readonly StartContactSample[];
 }) {
-  const { t } = useOrbitLanguage();
+  const { t } = useStartCopy();
   const confirmedShown = Math.min(confirmedContacts, START_REQUIRED_CONTACTS);
 
   const slots: Slot[] = [];
@@ -39,19 +39,20 @@ export function StepCards({
     const sample = samples[index];
     slots.push({
       kind: "confirmed",
-      name: sample?.displayName ?? t({ en: `Contact ${index + 1}`, zh: `第 ${index + 1} 位联系人` }),
+      name: sample?.displayName ?? t({ en: `Contact ${index + 1}`, zh: `第 ${index + 1} 位联系人`, ja: `連絡先 ${index + 1}` }),
       sub: sample ? [sample.organization, sample.role].filter(Boolean).join(" · ") : "",
     });
   }
   while (slots.length < START_REQUIRED_CONTACTS) {
     const index = slots.length + 1;
-    slots.push({ kind: "empty", name: "", sub: t({ en: `Card ${index}`, zh: `第 ${index} 张` }) });
+    slots.push({ kind: "empty", name: "", sub: t({ en: `Card ${index}`, zh: `第 ${index} 张`, ja: `人脈 ${index}` }) });
   }
 
   const why = done
     ? t({
         en: `${confirmedContacts} contacts confirmed — enough for the plan to see who can help.`,
         zh: `已确认 ${confirmedContacts} 位联系人，计划能看出谁帮得上忙了。`,
+        ja: `${confirmedContacts} 人を確認しました。プランで人脈を活かせます。`,
       })
     : t({
           en: "Your plan looks at who in your network can help. One card per photo — you can pick several at once.",
@@ -64,7 +65,7 @@ export function StepCards({
         <span className="sg-pill">{t({ en: "Step 1 · Cards", zh: "第 1 步 · 名片" })}</span>
         {done ? <span className="sg-pill sg-pill-good">{t({ en: "✓ Done", zh: "✓ 已完成" })}</span> : null}
       </div>
-      <h2>{t({ en: "Add at least 3 business cards", zh: "放进至少 3 张名片" })}</h2>
+      <h2>{t({ en: "Confirm 3 contacts", zh: "确认 3 位联系人", ja: "人脈を 3 人確認しましょう" })}</h2>
       <p className="sg-why">{why}</p>
       <div className="sg-slots" data-start-slots>
         {slots.map((slot, index) => (

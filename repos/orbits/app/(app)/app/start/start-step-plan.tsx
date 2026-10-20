@@ -22,13 +22,14 @@ import {
   parseRelationshipGoal,
   type GoalHorizon,
 } from "../profile/goal-editor/goal-editor-model";
-import { useOrbitLanguage } from "../orbit-language-context";
+import { useStartCopy } from "./start-copy";
 import { saveGuideGoal } from "./start-goal-save";
 import { resumeOrCreateOnboardingIntake } from "./start-plan-intake";
 
 export const START_PLAN_QUESTION = {
   en: "Based on my goal and my network, how should I achieve my goal?",
   zh: "根据我的目标和人脉信息，我该如何实现目标？",
+  ja: "目標と人脈をもとに、どのように進めればよいですか？",
 };
 
 export function StepPlan({
@@ -46,8 +47,8 @@ export function StepPlan({
   profileUpdatedAt: string | null;
   samples: readonly StartContactSample[];
 }) {
-  const { language, preserveHref, t } = useOrbitLanguage();
-  const lang = language === "en" ? "en" : "zh";
+  const { language, preserveHref, t } = useStartCopy();
+  const editorLang = language === "en" ? "en" : "zh";
   const parsed = parseRelationshipGoal(goal);
   const first = firstProfileGoalForPlan(goal);
 
@@ -70,7 +71,7 @@ export function StepPlan({
 
   async function saveEdit() {
     if (saving || !draftText.trim()) return;
-    const value = composeRelationshipGoal({ horizon: draftHorizon, text: draftText }, lang);
+    const value = composeRelationshipGoal({ horizon: draftHorizon, text: draftText }, editorLang);
     if (value === goal.trim()) {
       setEditing(false);
       return;
@@ -108,7 +109,7 @@ export function StepPlan({
     }
   }
 
-  const names = samples.map((sample) => sample.displayName).join(lang === "en" ? ", " : "、");
+  const names = samples.map((sample) => sample.displayName).join(language === "en" ? ", " : "、");
 
   return (
     <article className="sg-lead" data-start-module="3">
@@ -187,7 +188,7 @@ export function StepPlan({
         </label>
         <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型" })}>
           {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
-            onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], lang)}</button>)}
+            onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], language)}</button>)}
         </div>
         {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。" })}</p> : null}
       </div> : null}
@@ -198,8 +199,8 @@ export function StepPlan({
           <b>{t({ en: "your goal", zh: "你的目标" })}</b>
         </span>
         <span>
-          <b>{t({ en: `${confirmedContacts} contacts`, zh: `${confirmedContacts} 位联系人` })}</b>
-          {names ? (lang === "en" ? ` (${names})` : `（${names}）`) : null}
+          <b>{t({ en: `${confirmedContacts} contacts`, zh: `${confirmedContacts} 位联系人`, ja: `${confirmedContacts} 人の連絡先` })}</b>
+          {names ? (language === "en" ? ` (${names})` : `（${names}）`) : null}
         </span>
       </div>
 

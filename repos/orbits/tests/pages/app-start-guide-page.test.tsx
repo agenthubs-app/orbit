@@ -184,9 +184,8 @@ test("flag on: the guide snapshot and goal reach the client shell, read as the c
   ]);
   assert.deepEqual(stepFourReads(calls), [], "W0035: step 4 reads are gone");
   // 页面外层是引导页自己的作用域（样式与门禁都认这个路由标记）。
-  const wrapper = (tree.props as { children: ReactElement[] }).children[2] as ReactElement<Record<string, unknown>>;
-  assert.equal(wrapper.props["data-orbit-real-page"], "start-guide");
-  assert.equal(wrapper.props["data-orbit-route"], "app-start-guide-route");
+  assert.equal(tree.props["data-r28-guide"], true);
+  assert.equal(tree.props["data-orbit-route"], "app-start-guide-route");
 });
 
 test("an unreadable guide shows the unavailable state", async (t) => {

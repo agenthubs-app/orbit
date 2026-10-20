@@ -13,7 +13,7 @@ import {
   parseRelationshipGoal,
   type GoalHorizon,
 } from "../profile/goal-editor/goal-editor-model";
-import { useOrbitLanguage } from "../orbit-language-context";
+import { useStartCopy } from "./start-copy";
 import { saveGuideGoal } from "./start-goal-save";
 
 export function StepGoal({
@@ -29,7 +29,7 @@ export function StepGoal({
   onSaved: (relationshipGoal: string, updatedAt: string | null) => void;
   profileUpdatedAt: string | null;
 }) {
-  const { language, t } = useOrbitLanguage();
+  const { language, t } = useStartCopy();
   const lang = language === "en" ? "en" : "zh";
   const [initial] = useState(() => parseRelationshipGoal(goal));
   const [text, setText] = useState(initial.text);

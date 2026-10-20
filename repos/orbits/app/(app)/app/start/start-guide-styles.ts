@@ -126,4 +126,39 @@ ${S} .sg-finish p { margin: 0; font-size: 15px; line-height: 1.7; color: #3B3F7A
   ${S} .sg-foot { flex-direction: column; align-items: stretch; }
   ${S} .sg-foot .btn.sg-primary { justify-content: center; }
 }
+
+/* R28 の独立したガイド画面。三段階と保存済みの目標を短い行で読めるようにする。 */
+${S} { background: #F7F5F8; color: #24212B; }
+${S} .sg-nav { min-height: 54px; padding: 0 20px; border-bottom: 1px solid #ECE9EE; background: #FFFFFF; }
+${S} .sg-logo { font-size: 14px; font-weight: 700; color: #24212B; }
+${S} .sg-nav-step { font-size: 11px; }
+${S} .sg-wrap { max-width: 680px; padding: 24px 0 72px; gap: 12px; }
+${S} .sg-mast { gap: 5px; margin-bottom: 8px; }
+${S} .sg-progress { font-size: 11px; color: #8A8390; }
+${S} .sg-title { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+${S} .sg-lede { font-size: 12px; line-height: 1.5; color: #807A86; }
+${S} .sg-steps { display: flex; flex-direction: column; gap: 0; padding: 8px 16px; border-radius: 18px; background: #FFFFFF; }
+${S} .sg-steps li + li { border-top: 1px solid #EFEDF0; }
+${S} .btn.sg-step { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 5px; padding: 12px 0; border: 0; align-items: center; }
+${S} .sg-step-n { grid-row: auto; font-size: 13px; color: #24212B; }
+${S} .sg-step-t { font-size: 13px; font-weight: 700; color: #24212B; }
+${S} .sg-step-s { font-size: 11px; color: #9D97A1; }
+${S} .btn.sg-step[data-status="done"] .sg-step-n, ${S} .btn.sg-step[data-status="current"] .sg-step-n { color: #24212B; }
+${S} .btn.sg-step[data-status="current"] .sg-step-s { color: #8A8390; font-weight: 400; }
+${S} .sg-lead { padding: 16px; border: 0; box-shadow: none; border-radius: 18px; gap: 11px; }
+${S} .sg-lead h2 { font-size: 18px; }
+${S} .sg-why { font-size: 12px; line-height: 1.5; color: #807A86; }
+${S} .sg-pill { font-size: 11px; }
+${S} .btn.sg-primary { border-color: #24212B; background: #24212B; border-radius: 999px; font-size: 12px; }
+${S} .btn.sg-primary:hover:not(:disabled):not([aria-disabled="true"]) { border-color: #38343D; background: #38343D; }
+${S} .sg-goalbox { border-left: 0; border-radius: 10px; background: #F7F5F8; padding: 10px 12px; }
+${S} .sg-goalbox-h { letter-spacing: 0; }
+${S} .sg-question { font-size: 15px; font-weight: 600; color: #24212B; }
+@media (max-width: 720px) {
+  ${S} .sg-wrap { padding: 22px 16px 56px; }
+  ${S} .sg-steps { display: flex; }
+  ${S} .sg-steps-mini { display: none; }
+  ${S} .sg-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  ${S} .sg-slot { min-height: 64px; padding: 8px; }
+}
 `;

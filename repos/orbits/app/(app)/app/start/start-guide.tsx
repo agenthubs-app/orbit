@@ -30,7 +30,7 @@ import {
   type StartGuideSnapshot,
   type StartView,
 } from "../../../../features/guide/start-steps";
-import { useOrbitLanguage } from "../orbit-language-context";
+import { useStartCopy } from "./start-copy";
 import { horizonOption, parseRelationshipGoal } from "../profile/goal-editor/goal-editor-model";
 import { StepCards } from "./start-step-cards";
 import { StepGoal } from "./start-step-goal";
@@ -51,7 +51,7 @@ export interface StartGuideProps {
   snapshot: StartGuideSnapshot;
 }
 
-type T = (copy: { en: string; zh: string }) => string;
+type T = (copy: { en: string; zh: string; ja?: string }) => string;
 
 /** PATCH 本人的引导记录；返回是否成功（失败不抛）。 */
 export async function patchGuideState(body: Record<string, unknown>): Promise<boolean> {
@@ -133,7 +133,7 @@ function stepSubtitle(input: {
   if (status === "locked") {
     return {
       lock: true,
-      text: t({ en: `Unlocks after step ${step - 1}`, zh: `完成第 ${step - 1} 步后解锁` }),
+      text: t({ en: `Unlocks after step ${step - 1}`, zh: `完成第 ${step - 1} 步后解锁`, ja: `ステップ ${step - 1} の完了後に開きます` }),
     };
   }
   if (status === "current") {
@@ -144,19 +144,20 @@ function stepSubtitle(input: {
           ? t({
               en: `${Math.min(confirmedContacts, 3)} / 3 confirmed · in progress`,
               zh: `已确认 ${Math.min(confirmedContacts, 3)} / 3 · 进行中`,
+              ja: `${Math.min(confirmedContacts, 3)} / 3 人確認済み`,
             })
           : t({ en: "In progress", zh: "进行中" }),
     };
   }
   if (step === 1) {
-    return { lock: false, text: t({ en: `${confirmedContacts} confirmed`, zh: `已确认 ${confirmedContacts} 位` }) };
+    return { lock: false, text: t({ en: `${confirmedContacts} confirmed`, zh: `已确认 ${confirmedContacts} 位`, ja: `${confirmedContacts} 人確認済み` }) };
   }
   if (step === 2) {
     const horizon = parseRelationshipGoal(input.goal).horizon;
     return {
       lock: false,
       text: horizon
-        ? t({ en: `${horizonOption(horizon).label.en} · set`, zh: `${horizonOption(horizon).label.zh} · 已设定` })
+        ? t({ en: `${horizonOption(horizon).label.en} · set`, zh: `${horizonOption(horizon).label.zh} · 已设定`, ja: "設定済み" })
         : t({ en: "Set", zh: "已设定" }),
     };
   }
@@ -164,7 +165,7 @@ function stepSubtitle(input: {
 }
 
 export function StartGuide(props: StartGuideProps) {
-  const { language, preserveHref, t } = useOrbitLanguage();
+  const { language, preserveHref, t } = useStartCopy();
   const router = useRouter();
   const { snapshot } = props;
 
@@ -242,21 +243,16 @@ export function StartGuide(props: StartGuideProps) {
     <div className="sg" data-start-guide data-start-view={String(view)}>
       <style>{START_GUIDE_STYLES}</style>
       <header className="sg-nav">
-        <span className="sg-logo">iOrbit</span>
+        <a className="sg-logo" data-start-back href={preserveHref("/app/agent")}>{t({ en: "← Look around first", zh: "← 先回去看看" })}</a>
         <span className="sg-nav-step" data-start-nav-step>
           {viewNumber
-            ? t({ en: `Guide · Step ${viewNumber} of 3`, zh: `引导 · 第 ${viewNumber} 步 / 共 3 步` })
+            ? t({ en: `Guide · Step ${viewNumber} of 3`, zh: `引导 · 第 ${viewNumber} 步 / 共 3 步`, ja: "はじめのガイド" })
             : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成" })}
         </span>
       </header>
       <main className="sg-wrap">
-        <div className="sg-top">
-          <a className="sg-lk sg-muted" data-start-back href={preserveHref("/app/agent")}>
-            {t({ en: "← Look around first", zh: "← 先回去看看" })}
-          </a>
-          <span className="sg-hint">{t({ en: "Leave any time — your progress is kept", zh: "可以随时离开，进度会保留" })}</span>
-        </div>
         <header className="sg-mast">
+          <span className="sg-progress">{t({ en: `Your first 3 steps · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, zh: `开始的 3 步 · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3`, ja: `はじめの 3 ステップ · ${Number(flags.contacts) + Number(flags.goal) + Number(flags.plan)} / 3` })}</span>
           <h1 className="sg-title">{t({ en: "3 steps to put iOrbit to work for you", zh: "3 步，让 iOrbit 开始为你工作" })}</h1>
           <p className="sg-lede">
             {t({
@@ -322,6 +318,8 @@ export function StartGuide(props: StartGuideProps) {
                   <>
                     Step <b>{viewNumber}</b> of 3
                   </>
+                ) : language === "ja" ? (
+                  <>ステップ <b>{viewNumber}</b> / 3</>
                 ) : (
                   <>
                     第 <b>{viewNumber}</b> 步 / 共 3 步
@@ -361,6 +359,7 @@ export function StartGuide(props: StartGuideProps) {
                 samples={snapshot.contactSamples}
               />
             ) : null}
+            <p className="sg-hint">{t({ en: "Leave any time — your progress is kept", zh: "可以随时离开，进度会保留" })}</p>
           </>
         )}
       </main>
@@ -370,7 +369,7 @@ export function StartGuide(props: StartGuideProps) {
 
 /** 引导记录或进度读不到时：不猜进度，给一个回 iOrbit 的出口。 */
 export function StartGuideUnavailable() {
-  const { preserveHref, t } = useOrbitLanguage();
+  const { preserveHref, t } = useStartCopy();
   return (
     <div className="sg" data-start-guide-unavailable>
       <style>{START_GUIDE_STYLES}</style>
