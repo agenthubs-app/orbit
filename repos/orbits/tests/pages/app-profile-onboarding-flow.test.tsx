@@ -103,7 +103,7 @@ function stubWindow(t: { after: (fn: () => void) => void }, store: Map<string, s
   });
 }
 
-function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0) {
+function stubProfileApi(t: { mock: { method: (target: object, name: string, impl: (...args: never[]) => unknown) => unknown } }, relationshipGoal: string, extra: Record<string, unknown> = {}, initialConfirmed = 0, introFailureMessage?: string, introFailureCode = "MODEL_REQUEST_FAILED") {
   const puts: Record<string, unknown>[] = [];
   let profile: Record<string, unknown> = { displayName: "张三", relationshipGoal, offering: [], seeking: [], topics: [], bio: "", headline: "", updatedAt: "2026-09-28T00:00:00.000Z", ...extra };
   let mutationId: string | undefined;
@@ -130,6 +130,7 @@ function stubProfileApi(t: { mock: { method: (target: object, name: string, impl
       return Response.json({ success: true, data: { profile, mutationId, onboarding: { status: "complete", missingFields: [], policyVersion: 1 } } });
     }
     if (url === "/api/profile/seek-suggestions") return Response.json({ success: true, data: { suggestions: [] } });
+    if (url === "/api/profile/intro-draft" && introFailureMessage) return Response.json({ success: false, error: { code: introFailureCode, message: introFailureMessage } }, { status: 503 });
     return Response.json({ success: false }, { status: 404 });
   });
   return { puts, saved: () => String(profile.relationshipGoal) };
@@ -233,4 +234,27 @@ test("intro counter follows the shared bio rule: 200 for non-CJK text, 80 once C
   assert.deepEqual(bioCounter("a".repeat(201)), { count: 201, limit: 200, over: true });
   assert.deepEqual(bioCounter("界".repeat(81)), { count: 81, limit: 80, over: true });
   assert.deepEqual(bioCounter(`${"a".repeat(90)}界`), { count: 91, limit: 80, over: true });
+});
+
+test("intro failure offers a manual draft without exposing provider configuration", async (t) => {
+  stubWindow(t, new Map([[DRAFT_KEY("u-intro-error"), JSON.stringify({ view: "intro" })]]));
+  stubProfileApi(t, "Find partners", {}, 3, "No model provider API key is configured. Set GEMINI_API_KEY.");
+  const root = await mountFlow("u-intro-error");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  const output = JSON.stringify(root.toJSON());
+  assert.match(output, /可以点「重试」再生成一次，或直接在下面写几句/);
+  assert.doesNotMatch(output, /GEMINI_API_KEY|No model provider API key/);
+  act(() => root.unmount());
+});
+
+test("intro quota exhaustion offers manual writing without another retry", async (t) => {
+  stubWindow(t, new Map([[DRAFT_KEY("u-intro-limit"), JSON.stringify({ view: "intro" })]]));
+  stubProfileApi(t, "Find partners", {}, 3, "Quota error from server", "INTRO_LIMIT_REACHED");
+  const root = await mountFlow("u-intro-limit");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  const output = JSON.stringify(root.toJSON());
+  assert.match(output, /介绍草稿的 3 次生成额度已用完/);
+  assert.doesNotMatch(output, /Quota error from server/);
+  assert.equal(root.root.findAll(node => node.type === "button" && node.children.join("") === "重试").length, 0);
+  act(() => root.unmount());
 });

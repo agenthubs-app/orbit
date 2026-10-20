@@ -154,7 +154,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [headline, setHeadline] = useState("");
   const [savedIntro, setSavedIntro] = useState(false);
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
-  const [introError, setIntroError] = useState("");
+  const [introErrorCode, setIntroErrorCode] = useState<"INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | null>(null);
   const [introRegenerations, setIntroRegenerations] = useState(0);
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
@@ -402,7 +402,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     if (kind === "regenerate" && introRegenerations >= INTRO_REGENERATE_LIMIT) return;
     const previous = { bio, headline, status: introStatus };
     setIntroStatus("generating");
-    setIntroError("");
+    setIntroErrorCode(null);
     try {
       if (kind === "regenerate" || (kind === "retry" && !introActionKeyRef.current)) introActionKeyRef.current = crypto.randomUUID();
       introActionKeyRef.current ??= `web:onboarding:intro:first:${actorKey}:${expectedUpdatedAt ?? "new"}`;
@@ -414,7 +414,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       if (kind === "regenerate") setIntroRegenerations(count => count + 1);
     } catch (caught) {
       if (caught instanceof Error && "code" in caught && caught.code) introActionKeyRef.current = null;
-      const message = caught instanceof Error && caught.message ? caught.message : "";
+      const code = caught instanceof Error && "code" in caught ? caught.code : null;
       if (kind === "regenerate" && (previous.bio.trim() || previous.headline.trim())) {
         // 换一版失败：保留上一版，不扣次数。
         setIntroStatus(previous.status === "error" ? "ready" : previous.status);
@@ -422,7 +422,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         return;
       }
       setIntroStatus("error");
-      setIntroError(message);
+      setIntroErrorCode(code === "INTRO_LIMIT_REACHED" || code === "SAMPLE_READ_ONLY" ? code : null);
     }
   }
 
@@ -555,7 +555,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   <IntroStep
                     bio={bio}
                     bioCount={bioCount}
-                    error={introError}
+                    errorCode={introErrorCode}
                     headline={headline}
                     onRegenerate={() => void generateIntro(introStatus === "error" ? "retry" : "regenerate")}
                     regenerationsLeft={INTRO_REGENERATE_LIMIT - introRegenerations}
@@ -934,11 +934,11 @@ function PersonaStep({
 }
 
 function IntroStep({
-  bio, bioCount, error, headline, onRegenerate, regenerationsLeft, setBio, setHeadline, status, t,
+  bio, bioCount, errorCode, headline, onRegenerate, regenerationsLeft, setBio, setHeadline, status, t,
 }: {
   bio: string;
   bioCount: { count: number; limit: number; over: boolean };
-  error: string;
+  errorCode: "INTRO_LIMIT_REACHED" | "SAMPLE_READ_ONLY" | null;
   headline: string;
   onRegenerate: () => void;
   regenerationsLeft: number;
@@ -962,7 +962,8 @@ function IntroStep({
                 : t({ zh: "AI 草稿 · 可直接修改", en: "AI draft · edit freely" })}
           </span>
           {status === "error" ? (
-            <button className="btn ob-btn-soft" onClick={onRegenerate} type="button">{t({ zh: "重试", en: "Retry" })}</button>
+            errorCode === "INTRO_LIMIT_REACHED" || errorCode === "SAMPLE_READ_ONLY" ? null
+              : <button className="btn ob-btn-soft" onClick={onRegenerate} type="button">{t({ zh: "重试", en: "Retry", ja: "再試行" })}</button>
           ) : (
             <button className="btn ob-btn-soft" disabled={generating || regenerationsLeft <= 0} onClick={onRegenerate} type="button">
               {regenerationsLeft > 0
@@ -973,8 +974,11 @@ function IntroStep({
         </div>
         {status === "error" ? (
           <div className="ob-notice ob-notice-warning">
-            {t({ zh: "可以点「重试」再生成一次，或直接在下面写几句。", en: "Retry, or write a couple of lines below." })}
-            {error ? <span className="ob-faint"> ({error})</span> : null}
+            {errorCode === "INTRO_LIMIT_REACHED"
+              ? t({ zh: "介绍草稿的 3 次生成额度已用完。请直接在下面写几句。", en: "All three introduction drafts have been used. Write a few lines below instead.", ja: "自己紹介の生成は3回までです。下に直接入力してください。" })
+              : errorCode === "SAMPLE_READ_ONLY"
+                ? t({ zh: "示例资料不能生成介绍。请在真实资料中填写。", en: "Sample data is read only. Write your introduction in your own profile.", ja: "サンプルデータは編集できません。自分のプロフィールで入力してください。" })
+                : t({ zh: "可以点「重试」再生成一次，或直接在下面写几句。", en: "Retry, or write a couple of lines below.", ja: "再試行するか、下に直接入力してください。" })}
           </div>
         ) : null}
         {generating ? (
