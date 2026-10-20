@@ -232,6 +232,7 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function isAppPerformanceEnabled() { return true; }
     export function markAppPerformance(sample) { state.marks.push(sample); }
     export function setAppPerformanceScope(scope) { state.scopes.push(scope); }
+    export const widgetSnapshotRuntime = { async clear() { return true; }, async activate() { return null; } };
   `;
   const plugin: Plugin = {
     name: "root-performance-boundaries",
@@ -323,6 +324,7 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export function appPerformanceInput() { return {}; }
     export function markAppPerformance() {}
     export function setAppPerformanceScope() {}
+    export const widgetSnapshotRuntime = { async clear() { return true; }, async activate() { return null; } };
   `;
   const plugin: Plugin = {
     name: "root-auth-shell-boundaries",

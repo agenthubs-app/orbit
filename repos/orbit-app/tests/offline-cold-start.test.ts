@@ -84,6 +84,7 @@ export const syncLifecycle = {
   async withDatabase(_, callback) { return callback({ get: async () => ({ count: 0 }) }); }
 };
 export async function cancelOrbitManagedNotifications() {}
+export const widgetSnapshotRuntime = { async clear() { return true; }, async activate() { return null; } };
 export function onSessionExpired(handler) { state.expire = handler; return () => { state.expire = null; }; }
 export async function signOutOrbitSession() { return { success: true }; }
 export function createOrbitApiClient() { return { async get() {
@@ -110,7 +111,7 @@ createRoot(document.getElementById("root")).render(<OrbitAuthSessionProvider><Pr
     plugins: [{
       name: "offline-cold-start-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "offline" }));
+        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$|\/widgets\/native-runtime$/ }, () => ({ path: "fixture", namespace: "offline" }));
         plugin.onResolve({ filter: /^expo-crypto$/ }, () => ({ path: "crypto", namespace: "offline" }));
         plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "router", namespace: "offline" }));
         plugin.onResolve({ filter: /^expo-web-browser$/ }, () => ({ path: "browser", namespace: "offline" }));

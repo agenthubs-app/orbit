@@ -198,6 +198,9 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         addEventListener(_event: string, listener: unknown) { linkingListeners.add(listener); return { remove() { linkingListeners.delete(listener); } }; },
         async getInitialURL() { return null; },
       };
+      if (id.endsWith("/widgets/native-runtime")) return { widgetSnapshotRuntime: {
+        async clear() { return true; }, async activate() { return null; },
+      } };
       if (id === "@react-native-async-storage/async-storage") return {
         getItem: async (key: string) => storage.get(key) ?? null,
         setItem: async (key: string, value: string) => { storage.set(key, value); },
