@@ -1,12 +1,12 @@
 # R18c 画板预检（C 线）
 
-2026-10-20 在 `line-c` 从 `origin/redesign@063c3c65d` 对 `b7-account-misc.html` #19–32、#74、#81 实跑 `--list --json` 和 `board-preflight --board-index`。原稿与 §C-3 改稿的机器结果分别在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-original-preflight.json`、`R18c-revised-preflight.json`；两次都识别到 16 块，原稿数字冲突 0。**此表只完成预检，不是画板复核认可或像素通过。**
+2026-10-20 在 `line-c` 从 `origin/redesign@063c3c65d` 对 `b7-account-misc.html` #19–32、#74、#81 实跑 `--list --json` 和 `board-preflight --board-index`。原稿与 §C-3 改稿的机器结果分别在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-original-preflight.json`、`R18c-revised-preflight.json`；两次都识别到 16 块，原稿数字冲突 0。**主会话代定 §R18c-4：RD-33 已认可 b12 补画为正式基准；预检本身不代表像素通过。**
 
 ## 五项检查
 
 | 画面 / 原稿 | ① 数字和尺寸 | ② 元素数据来源与行为 | ③ token / 组件 | ④ 文案与行为冲突、改稿 | ⑤ 宽度 / 主题 / 中途态 |
 | --- | --- | --- | --- | --- | --- |
-| P-A01 #19 账户 | 390×844；30 日 | 账号身份、登录方式、设备由认证服务；导出与退会为真实入口 | kit `ListRow` / `Button`；外框 token 警告不属于 App 内屏 | 删本期不存在的 Pro 行，标题改「データ」 | 浅色有；深色待 b12 |
+| P-A01 #19 账户 | 390×844；30 日 | 账号身份、登录方式来自认证服务；导出与退会为真实入口 | kit `ListRow` / `Button`；外框 token 警告不属于 App 内屏 | 主会话代定 §R18c-2：保留 profile/workspace/目标/登出行；无可信设备数和密码路由的两行删除，设备 debug 仅开发构建 | 浅色有；深色由 b12 补齐 |
 | P-A02 #20 清除清单 | 390×844；30 日 | 各领域清单由 purge manifest；导出入口到 `/account/exports` | `AppScreen` / `ListRow` / `Button`；无页面私有 kit 替身 | 删除 App Store 订阅说明，改为登录和连携影响；主办活动有报名的阻止态待补 | 浅色有；深色、阻止态待 b12 |
 | P-A03 #21 再认证 | 390×844；10/7→11/6 为 30 日 | 登录方法来自账号、challenge/receipt 来自服务端；成功徽记只在再认证完成后 | `Button` / `Checkbox` / `Card`；日文外壳不手画 | Google 示例只给 Google 再确认，不允许切到密码；申请后普通页面不可用，但 pending 登录可用 | 浅色有；深色 #74 |
 | P-A04 #22 pending | 390×844；30 日示例 | 申请状态、UTC 截止时间和东京日期来自服务器；取消走 CAS | `AppScreen` / `Button` / 状态组件 | 取消后重新连接 Google；登录后只能进 pending | 浅色有；深色、取消错误待 b12 |
@@ -27,5 +27,5 @@
 
 - 工具原稿汇总：16 板、近似 token 5、缺 token 71、疑似数字冲突 0、疑似无功能元素 8。缺项大多落在画框、系统状态栏和 Safari 外壳；这些不由产品页面绘制。内容里的 letter spacing、Web 输入焦点阴影和键帽行高需与 R31a/b 组件逐一核对，不能在本线补 token。`#20` 的「音声メモを含む」等内容来源还需与领域读取 adapter 核对。
 - §C-3 改稿已经在 b7 的 R18c 段标注，`--list` 和改稿后 `board-preflight` 均 exit 0。Web 账户/导出示例的设置菜单不再显示 Pro；旧的付费画板属本期作废范围，未用来验收。
-- b12 末尾现有 68 组 R18c 草案：App P01–P09 / S01–S08 各浅/深；Web P01–P07 / S01–S10 各 1440/1024/390 浅/深。`scripts/visual/views/{app,web}-R18c.json` 已登记原稿和草案，共 43 个 App frame、109 个 Web frame。App Google 再确认草案已与原稿的 Google 账号示例一致；Web 示范密码账号。草案差异和组件缺口仍待主会话复核，不能用作已批准像素基准。
-- 补画后对两份登记分别执行 `board-preflight --suite --no-variants`，均 exit 0；152 frame 的数字自洽警告 0。App 近似 token 66、缺 token 257、疑似无功能 1；Web 近似 token 263、缺 token 346、疑似无功能 7。相同草案组件跨宽度与主题重复计数，缺口集中在新草案的自定义字体行高、卡片与外壳样式；这些数目不是组件库已对齐的证据。JSON 和逐项数据来源清单在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-{app,web}-board-preflight.{json,md,txt}`。两个 suite 使用 `--no-variants`，宽度/主题覆盖由本登记和 b12 board list 逐项核对；主会话复核仍是正式门禁前置条件。
+- 主会话代定 §R18c-4：b12 末尾 68 组 R18c 补画已按 RD-33 认可为正式基准：App P01–P09 / S01–S08 各浅/深；Web P01–P07 / S01–S10 各 1440/1024/390 浅/深。`scripts/visual/views/{app,web}-R18c.json` 已登记原稿和补画，共 43 个 App frame、109 个 Web frame。App Google 再确认与原稿 Google 账号示例一致；Web 示范密码账号。认可基准不等于像素验收通过。
+- 补画后对两份登记分别执行 `board-preflight --suite --no-variants`，均 exit 0；152 frame 的数字自洽警告 0。App 近似 token 66、缺 token 257、疑似无功能 1；Web 近似 token 263、缺 token 346、疑似无功能 7。相同组件跨宽度与主题重复计数，缺口集中在自定义字体行高、卡片与外壳样式；这些数目不是组件库已对齐的证据。JSON 和逐项数据来源清单在 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-{app,web}-board-preflight.{json,md,txt}`。两个 suite 使用 `--no-variants`，宽度/主题覆盖由本登记和 b12 board list 逐项核对；像素差异按每 P 最多三轮和余项轮⑪处理。

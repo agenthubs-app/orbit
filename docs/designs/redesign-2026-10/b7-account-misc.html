@@ -47,6 +47,9 @@
   .srow .meta span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .srow .end { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); flex: none; }
   .srow.danger b { color: var(--coral); }
+  /* 主会话代定 §R18c-2: account rows use the existing App list treatment. */
+  .acctapp .srow .lbtn { width:20px; height:20px; min-width:20px; border:0; border-radius:0; background:transparent; box-shadow:none; padding:0; color:var(--ink-2); }
+  .acctapp .srow + .srow::before { left:30px; }
   .orow { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding: 9px 0; font-size: 13px; align-items: start; }
   .orow + .orow { border-top: 1px solid var(--line); }
   .orow .lbl { padding-top: 1px; }
@@ -1252,12 +1255,13 @@ const cancelModal = `<div class="overlay"></div><div class="wmodal w480 k-cmodal
 const DEL = [['👥', 'lav', '人脈', '286人 · 名刺画像 312枚 · やりとりの記録'], ['📝', 'apricot', 'メモ', '148件（音声メモを含む）'], ['🧭', 'pink', 'プラン', '2件 · 進捗ログ 64件 · タスク'], ['🔗', 'blue', '連携', 'Gmail・Google カレンダーの接続と取り込んだデータ'], ['🎟️', 'teal', 'イベント・主催', '参加履歴 24件 · 主催イベント 6件の公開ページ']];
 const delList = (w) => DEL.map(([e, c, t, d]) => `<div class="xrow"><span class="emo sm ${c}">${e}</span><div class="meta"><b>${t}</b><span class="lbl">${d}</span></div>${w ? '<span class="chip">削除</span>' : ''}</div>`).join('');
 function acctApp() {
+  /* 主会话代定 §R18c-2: keep existing account capabilities as rows; omit unsupported device and password claims. */
   return topbar('アカウント', '設定', back, '<span></span>') + `
+    <div class="acctapp">
     <div class="card row rise" style="gap:12px;padding:14px 16px"><div class="av c1">佐</div><div style="flex:1;min-width:0"><b>${ME.name}</b><div class="lbl">k.sato@minatolink.example</div></div></div>
-    ${glbl('ログイン')}<div class="sgroup">${srow('user', 'ログイン方法', 'Google（k.sato@minatolink.example）')}${srow('settings', 'パスワード', '未設定 · Google でログイン中', '<span class="lbl">設定する</span>')}${srow('phone', 'ログイン中の端末', 'iPhone · Mac（Chrome）', '<span class="lbl">2台</span>')}</div>
-    ${glbl('データ')}<div class="sgroup">${srow('share', 'データの書き出し', '人脈・メモ・プランを CSV / JSON で')}</div>
-    <div class="sgroup" style="margin-top:22px">${srow('x', '退会する', 'アカウントとすべてのデータを削除', '', true, 'danger k-quit')}</div>
-    <div class="lbl center" style="margin-top:10px">退会の申請から 30日間は取り消せます</div>`;
+    ${glbl('ログイン')}<div class="sgroup">${srow('user', 'ログイン状態', 'ログイン済み')}${srow('edit', 'プロフィールを編集', ME.name)}${srow('users', 'ワークスペース', 'Orbit · 運営者')}${srow('flag', 'つながりの目標', '目標はまだありません。')}${srow('clock', 'タイムゾーン', '東京時間')}</div>
+    ${glbl('データ')}<div class="sgroup">${srow('share', 'データの書き出し', '自分のデータを ZIP ファイルで受け取れます。')}${srow('x', 'アカウントを削除', '', '', true, 'danger k-quit')}</div>
+    <div class="sgroup" style="margin-top:14px">${srow('settings', '権限', 'カレンダー、通知、カメラ、連絡先へのアクセス')}${srow('out', 'ログアウト', '')}</div></div>`;
 }
 function delApp1() {
   return topbar('退会', '1 / 2 · 削除されるもの', back, '<span></span>') + steps(1, 2) + `

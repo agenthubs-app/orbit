@@ -8969,7 +8969,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
-<!-- 2026-10-20 主会话代定 §C-3 · R18c：只在末尾补画数据导出与退会的宽度、主题和中途态。草案待主会话复核；不作为像素通过证据。 -->
+<!-- 2026-10-20 主会话代定 §R18c-4：末尾补画数据导出与退会的宽度、主题和中途态。RD-33 已认可为正式基准；像素验收另行判定。 -->
 <style>
 .r18c-draft { box-sizing:border-box; color:var(--ink); background:var(--bg); min-height:100%; font-family:var(--font); }
 .r18c-draft * { box-sizing:border-box; }
@@ -9062,16 +9062,16 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     ['S07', 'notification-failed', '通知失敗'], ['S08', 'network-error', '通信エラー'],
     ['S09', 'account', 'アカウント'], ['S10', 'export-running', '準備中']
   ];
-  let html = S8('补画 · R18c データ権利', '§C-3 主会话代定。b7 #19–#32 / #74 / #81 の不足する幅・テーマ・中途態。差分は主会话复核前の草案。');
+  let html = S8('补画 · R18c データ権利', '主会话代定 §R18c-4（RD-33）：b7 #19–#32 / #74 / #81 の不足する幅・テーマ・中途態。正式基準、像素検証は別途。');
   for (const [code, state, title] of appStates) {
     const appId = 'A-R18c-' + code + '-d';
-    html += PB(appId + ' ' + title, 'state', () => ({ body: frame(state, 390, 'light', true), tab: -1 }), null, 'b7 R18c / §C-3 · 待主会话复核');
+    html += PB(appId + ' ' + title, 'state', () => ({ body: frame(state, 390, 'light', true), tab: -1 }), null, 'b7 R18c / RD-33 · 正式基準');
   }
   for (const [code, state, title] of webStates) {
     for (const width of [1440, 1024, 390]) {
       const webId = 'W-R18c-' + code + '-' + width;
       INDEX.push([webId, title + ' ' + width]);
-      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + webId + '">' + webId + ' ' + title + '<span class="src">b7 R18c / §C-3 · 待主会话复核</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frame(state, width, 'light', false) + frame(state, width, 'dark', false) + '</div></div>';
+      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + webId + '">' + webId + ' ' + title + '<span class="src">b7 R18c / RD-33 · 正式基準</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frame(state, width, 'light', false) + frame(state, width, 'dark', false) + '</div></div>';
     }
   }
   document.getElementById('out').insertAdjacentHTML('beforeend', group('r18c-draft-boards', html));

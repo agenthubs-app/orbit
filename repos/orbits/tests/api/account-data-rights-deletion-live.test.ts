@@ -23,7 +23,7 @@ test("deletion live handlers require a receipt and surface host-registration and
   assert.equal(code(await anonymous.get(new Request("http://localhost:3400/api/account/deletion-request"))), "UNAUTHORIZED");
 });
 
-test("password receipt route only issues after verified credentials", async () => {
+test("password receipt route only issues after verified credentials and Google requires a challenge", async () => {
   const { createAccountDeletionReauthHandler } = await import("../../features/account/data-rights/reauth-handler");
   const actor = { id: "actor", userId: "profile", email: "actor@example.test" };
   const handler = createAccountDeletionReauthHandler({ resolveActor: async () => actor,
@@ -33,8 +33,8 @@ test("password receipt route only issues after verified credentials", async () =
   }));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).reauthReceipt, "one-time-receipt");
-  const unsupported = await handler(new Request("http://localhost:3400/api/account/deletion-request/reauth", {
+  const missingChallenge = await handler(new Request("http://localhost:3400/api/account/deletion-request/reauth", {
     method: "POST", body: JSON.stringify({ method: "google" }),
   }));
-  assert.equal(unsupported.status, 503);
+  assert.equal(missingChallenge.status, 400);
 });

@@ -1,5 +1,5 @@
 {
-  "_note": "R18c registry includes b7 approved originals and b12 draft variants. Drafts require main-session review; state fixtures/native captures are pending and no pixel result is claimed.",
+  "_note": "R18c registry includes b7 originals and b12 supplemental variants approved under RD-33. Pixel and state results are recorded in REPORT.",
   "defaults": {
     "design-base": "http://127.0.0.1:3340/redesign-2026-10/",
     "app-origin": "http://127.0.0.1:3400",
@@ -109,7 +109,7 @@
         "light"
       ],
       "path": "/account",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P01-draft-dark",
@@ -119,7 +119,7 @@
         "dark"
       ],
       "path": "/account",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P02-draft-light",
@@ -129,7 +129,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P02-draft-dark",
@@ -139,7 +139,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P03-draft-light",
@@ -149,7 +149,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P03-draft-dark",
@@ -159,7 +159,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P04-draft-light",
@@ -169,7 +169,7 @@
         "light"
       ],
       "path": "/account/pending",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P04-draft-dark",
@@ -179,7 +179,7 @@
         "dark"
       ],
       "path": "/account/pending",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P05-draft-light",
@@ -189,7 +189,7 @@
         "light"
       ],
       "path": "/account/deleted",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P05-draft-dark",
@@ -199,7 +199,7 @@
         "dark"
       ],
       "path": "/account/deleted",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P06-draft-light",
@@ -209,7 +209,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P06-draft-dark",
@@ -219,7 +219,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P07-draft-light",
@@ -229,7 +229,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P07-draft-dark",
@@ -239,7 +239,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P08-draft-light",
@@ -249,7 +249,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P08-draft-dark",
@@ -259,7 +259,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P09-draft-light",
@@ -269,7 +269,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-P09-draft-dark",
@@ -279,7 +279,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S01-draft-light",
@@ -289,7 +289,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S01-draft-dark",
@@ -299,7 +299,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S02-draft-light",
@@ -309,7 +309,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S02-draft-dark",
@@ -319,7 +319,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S03-draft-light",
@@ -329,7 +329,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S03-draft-dark",
@@ -339,7 +339,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S04-draft-light",
@@ -349,7 +349,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S04-draft-dark",
@@ -359,7 +359,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S05-draft-light",
@@ -369,7 +369,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S05-draft-dark",
@@ -379,7 +379,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S06-draft-light",
@@ -389,7 +389,7 @@
         "light"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S06-draft-dark",
@@ -399,7 +399,7 @@
         "dark"
       ],
       "path": "/account/deletion",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S07-draft-light",
@@ -409,7 +409,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S07-draft-dark",
@@ -419,7 +419,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S08-draft-light",
@@ -429,7 +429,7 @@
         "light"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
       "id": "A-R18c-S08-draft-dark",
@@ -439,7 +439,7 @@
         "dark"
       ],
       "path": "/account/exports",
-      "note": "Draft for main-session review; not an approved pixel baseline."
+      "note": "Approved by main session under RD-33; pixel verification remains open."
     }
   ]
 }
