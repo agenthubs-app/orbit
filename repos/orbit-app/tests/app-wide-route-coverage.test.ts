@@ -149,9 +149,9 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   },
   { route: "/party/graph", consumer: "PartyGraphRedirect → /events/[id]/live?tab=people&view=map", kind: "redirect" },
   { route: "/home/events", consumer: "HomeScreen (events)", kind: "screen" },
-  { route: "/dashboard", consumer: "DashboardScreen", kind: "screen" },
+  { route: "/dashboard", consumer: "DashboardRedirect → /home", kind: "redirect" },
   { route: "/", consumer: "IndexRoute → resolveInitialRouteHref", kind: "redirect" },
-  { route: "/home", consumer: "HomeDashboardScreen", kind: "screen" },
+  { route: "/home", consumer: "HomeWidgetsScreen", kind: "screen" },
   {
     route: "/account/mobile-google",
     consumer: "MobileGoogleRoute → /account/login",

@@ -1,4 +1,8 @@
-import { DashboardScreen } from "../src/screens/dashboard/DashboardScreen";
+import { Redirect } from "expo-router";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(DashboardScreen);
+function DashboardRedirect() {
+  return <Redirect href="/home" />;
+}
+
+export default withOrbitPrivateRoute(DashboardRedirect);
