@@ -25,12 +25,14 @@ import { createRoot } from "react-dom/client";
 import { Pressable, Text, View } from "react-native";
 import { AppScreen } from "./src/components/AppScreen";
 import { ShellTabBar } from "./src/components/OrbitTabBar";
+import { rememberedScroll } from "./src/view-models/shell-state";
 function Page() {
   return <AppScreen title="一覧">{Array.from({ length: 60 }, (_, i) => <Text key={i} style={{ height: 40 }}>row {i}</Text>)}</AppScreen>;
 }
 function Harness() {
   const [shown, setShown] = useState(true);
   window.toggle = () => setShown((value) => !value);
+  window.readHomeScroll = () => rememberedScroll("/home");
   return <View style={{ flex: 1 }}>{shown ? <Page /> : <Text>secondary page</Text>}<ShellTabBar /></View>;
 }
 createRoot(document.getElementById("root")).render(<Harness />);
@@ -82,6 +84,28 @@ test("a tab page that is mounted again comes back at the same scroll position", 
   await scroller(page).waitFor();
   await page.waitForTimeout(200);
   assert.ok(Math.abs((await scrollTop(page)) - 900) <= 2, String(await scrollTop(page)));
+});
+
+test("a stale native scroll event during restore cannot erase the Home position", async (t) => {
+  const page = await open(t, "/home");
+  await page.evaluate(() => {
+    const node = [...document.querySelectorAll("div")].find((el) => el.scrollHeight > el.clientHeight + 10 && getComputedStyle(el).overflowY !== "visible")!;
+    node.scrollTop = 900; node.dispatchEvent(new Event("scroll"));
+  });
+  await page.waitForFunction(() => (window as any).readHomeScroll() === 900);
+  await page.evaluate(() => {
+    HTMLElement.prototype.scroll = function (options: ScrollToOptions) {
+      (window as any).restoreTarget = options.top;
+      // Native can send its initial zero offset after scrollTo was requested.
+      setTimeout(() => this.dispatchEvent(new Event("scroll")), 0);
+    };
+    (window as any).toggle();
+  });
+  await page.getByText("secondary page").waitFor();
+  await page.evaluate(() => (window as any).toggle());
+  await page.waitForFunction(() => (window as any).restoreTarget === 900);
+  await page.waitForTimeout(50);
+  assert.equal(await page.evaluate(() => (window as any).readHomeScroll()), 900);
 });
 
 test("secondary pages never show the tab bar; the four tab pages always do", () => {

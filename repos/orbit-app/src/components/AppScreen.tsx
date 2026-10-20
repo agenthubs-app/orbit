@@ -160,7 +160,6 @@ function useScrollMemory(key: string | null) {
     const { viewport, content } = size.current;
     if (pending.current > 0 && viewport > 0 && content - viewport >= pending.current) {
       ref.current?.scrollTo({ x: 0, y: pending.current, animated: false });
-      pending.current = 0;
     }
   };
   return {
@@ -169,7 +168,14 @@ function useScrollMemory(key: string | null) {
       scrollEventThrottle: 100,
       onScrollBeginDrag: () => { pending.current = 0; },
       onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-        if (pending.current === 0) rememberScroll(key, event.nativeEvent.contentOffset.y);
+        const y = event.nativeEvent.contentOffset.y;
+        // iOS may deliver an initial zero offset after scrollTo is requested.
+        // Keep the saved position until the requested offset is observed.
+        if (pending.current > 0) {
+          if (Math.abs(y - pending.current) > 2) return;
+          pending.current = 0;
+        }
+        rememberScroll(key, y);
       },
       onLayout: (event: { nativeEvent: { layout: { height: number } } }) => { size.current.viewport = event.nativeEvent.layout.height; tryRestore(); },
       onContentSizeChange: (_width: number, height: number) => { size.current.content = height; tryRestore(); }
