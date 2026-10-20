@@ -5,6 +5,7 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../.
 
 const EXPORTS = "account_exports";
 const LOCKS = "account_export_locks";
+const OUTBOX = "account_rights_outbox";
 const SEVEN_DAYS = 7 * 86_400_000;
 const LEASE_MILLIS = 2 * 60_000;
 
@@ -140,10 +141,16 @@ export function createAccountExportRecordStore(input: { db: TransactionalPostgre
         const record = await readOne(sql, workspaceId, actorId, id, true);
         if (!record || record.status !== "running" || record.leaseToken !== leaseToken || !record.leaseUntil || record.leaseUntil <= now().toISOString()) return false;
         const readyAt = now().toISOString();
-        return replaceCurrent(sql, workspaceId, actorId, {
+        const changed = await replaceCurrent(sql, workspaceId, actorId, {
           ...record, ...file, status: "ready", completedItems: record.totalItems, readyAt, leaseToken: undefined, leaseUntil: undefined,
           expiresAt: new Date(Date.parse(readyAt) + SEVEN_DAYS).toISOString(), version: record.version + 1,
         }, record.version);
+        if (!changed) return false;
+        const notificationId = `export-ready:${id}`;
+        await sql.query(`insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+          values ($1,$2,$3,$4,'account-rights',$3,$5::jsonb,$6,$6) on conflict do nothing`, [workspaceId, OUTBOX, notificationId, actorId,
+          JSON.stringify({ kind: "export-ready", exportId: id, status: "pending", version: 0 }), readyAt]);
+        return true;
       }, { isolation: "read committed" });
     },
     async markFailed(actorId: string, id: string, leaseToken: string, failureKind: "system" | "content"): Promise<boolean> {

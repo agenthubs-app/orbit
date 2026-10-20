@@ -3,14 +3,14 @@ import { createHash } from "node:crypto";
 import { del, get, put } from "@vercel/blob";
 
 export interface PrivateAccountExportBlobClient {
-  put(key: string, bytes: Buffer, options: { access: "private"; contentType: "application/zip" }): Promise<void>;
+  put(key: string, bytes: Buffer, options: { access: "private"; contentType: "application/zip"; allowOverwrite: false }): Promise<void>;
   get(key: string): Promise<Buffer | null>;
   delete(keys: string[]): Promise<void>;
 }
 
 const blobClient: PrivateAccountExportBlobClient = {
   async put(key, bytes, options) {
-    await put(key, bytes, { ...options, addRandomSuffix: false, allowOverwrite: true });
+    await put(key, bytes, { ...options, addRandomSuffix: false });
   },
   async get(key) {
     const response = await get(key, { access: "private", useCache: false });
@@ -54,7 +54,16 @@ export function createPrivateAccountExportStore({
   return {
     async put(actorId: string, exportId: string, bytes: Buffer): Promise<string> {
       const key = keyFor(actorId, exportId);
-      await storageCall(() => client.put(key, bytes, { access: "private", contentType: "application/zip" }));
+      await storageCall(async () => {
+        // A retry reuses the first complete object. Never overwrite a ZIP that
+        // another lease has already uploaded for this accepted export.
+        if (await client.get(key)) return;
+        try {
+          await client.put(key, bytes, { access: "private", contentType: "application/zip", allowOverwrite: false });
+        } catch (error) {
+          if (!await client.get(key)) throw error;
+        }
+      });
       return key;
     },
     async get(actorId: string, key: string): Promise<Buffer | null> {

@@ -113,4 +113,8 @@ test("expired worker lease is reclaimable and the old worker cannot publish", {
   assert.equal((await store.get("actor", created.export!.id))?.completedItems, 1);
   assert.equal(await store.markReady("actor", created.export!.id, second.leaseToken, { fileKey: "new", checksum: "new", fileName: "new.zip", fileSizeBytes: 2 }), true);
   assert.equal((await store.get("actor", created.export!.id))?.status, "ready");
+  const notifications = await db.query<{ payload: Record<string, unknown> }>(`select payload from orbit_records where workspace_id=$1 and collection_name='account_rights_outbox'`, [workspaceId]);
+  assert.equal(notifications.rows.length, 1);
+  assert.equal(notifications.rows[0]?.payload.exportId, created.export!.id);
+  assert.ok(!JSON.stringify(notifications.rows).includes('"new"'));
 }));
