@@ -12,6 +12,7 @@
 | 文案零增长审计 | 9/9 过 | 旧 opening snapshot 原样保留；旧允许清单没有扩大 |
 | TypeScript 与契约 | Web typecheck/typecheck:app exit 0、App typecheck exit 0、contract snapshot `--check` exit 0 | Web 旧导出删除后无运行时 import；App 受影响定向 69/69 见 REPORT |
 | Web 页面 surface manifest | 87/88 过 | 唯一失败仍是 Host/Search 的三个既有 P0，未涉及 R28；与全量基线同类 |
+| 资料编辑与离线读取 | Web 资料编辑服务契约 10/10、App 离线读取与目标模型 47/47 | 目标字段部分更新和清空、三语目标往返、读取域精确策略；尚未替代两端同账号双设备实测 |
 
 Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPORT 所列原因修复并用定向测试复核；**没有第二次全量通过的证据**。`copy:qa` 仍 exit 1，输出与本轮更早基线逐字一致。报告保留这些红项。
 
@@ -22,6 +23,7 @@ Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPO
 - 本地合成账号走过 App 空生日、双目标、介绍失败后手填、导入跳过；Web 确认三个联系人，创建 onboarding intake；App 恢复同一个 intake。付费 provider 留空，计划 AI 初版失败，没有 active plan；3/3、Task 回程和日文真实 AI 正例无证据。
 - 另一个 Web 新账号完成了基本→目标→画像→介绍失败后手写→导入跳过，服务端读回五屏确认与结束时间；之后 `continue` 落回 `/app/start`。逐屏操作截图在 `_evidence-c/R28/web-five-screen/`，不替代像素门禁。实机截图发现原介绍失败提示暴露 `API_KEY` 配置名；`f718ea48d` 改为按错误码给可操作的用户文案，重试/额度用尽定向 15/15、文案审计 7/7、Web typecheck/typecheck:app exit 0，修后本地截图不再含配置名。
 - 浏览器补核 Web 新注册与匿名／合法／恶意 `next` 的实际路由，结果记于 REPORT。有效邀请、跨设备同标签和 App 登录链仍需同态环境。
+- C 模拟器实际暴露 `/start` 不在 App 初始路线允许表：深链继续误回 Home。`f377525f4` 只登记此 C 指南路由；RED 为 18/20，修后 App 初始路线／资料续接／route parity 31/31、typecheck exit 0，重启 bundle 后实机继续落到真实指南，恶意外站 next 回 Home。`simctl` 直接写入旁支证据目录遇到 macOS 权限拒绝；改为截图到 `/tmp` 后复制，未把首次截图失败算成 UI 失败。
 - 全仓 import 检索显示 C 指南和资料不再调用 B 的旧 `card-batch-ui`；`profile-0918/profile-model.ts` 无生产引用后由 `f1e98a2b9` 删除。`onboarding-0918` 仍为 Web 资料实现路径。试迁到 `orbit-2026/onboarding` 触发该目录更严格的文案审计：内联硬编码 8/6/1、缺 ja 120/80。已局部撤回试迁，未放宽审计或留下新失败。
 
 ## 边界与余项
