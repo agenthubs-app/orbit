@@ -21,7 +21,7 @@
 | 06 今日やること | **待上游与联验**。首页读同 actor 的 `todo/page`、`schedule-items`，问题卡复用 R16；R20a 最终 REPORT 的 Task 原生/scroll、像素和全量仍有未闭合项，首页↔Task 完成/回答后的同源回读未满足 SC 前置，不能记完成。 |
 | 07 プラン スコア | **部分**。`current=null` 显示目标入口；两端选择直接 summary，event 段文案为イベント枠。Web 用浏览器响应 fixture 留 `+10 / 0 / −10` 三态实屏，负数不拼 `+−`；见 `web-plan-event-fixtures.json`。这不是同 actor 真实计划，也没有撤销加点后刷新或 App 三态截图。N13 是 Task 参考板，未算首页门禁。 |
 | 08 次のイベント | **部分**。两端从 upcoming 选最早未来 `registered` 并使用返回 href、`meetCount=null` 不画人数；Web 浏览器混合 `planned / waitlisted / registered` 响应 fixture 实屏选中最早 `registered`，标题与准备入口均取返回 href，未画虚构人数；见 `web-plan-event-fixtures.json`。尚缺真实同账号两端点击链。 |
-| 09 人脈 | **部分**。B 线已提供稳定 `sort=added`；本地真实 summary `total=78`、page 前四=4，Web 复用 `ContactDrawer`，App 走联系人详情。尚缺新增一人后的两端 +1/换号/抽屉滚动完整操作证据。 |
+| 09 人脈 | **部分**。B 线已提供稳定 `sort=added`；隔离账号 live summary 初始 `total=78`、page 前四=4。Web 手输新增合成联系人后 `78→79`、本月 `0→1`、`sort=added&limit=4` 第一条为新增项，首页显示 79/新联系人并打开 R11a `ContactDrawer`；另一账号仍为 0，撤销后回 78。独立抽屉操作在 600 高视口关闭后 scrollY `75→75`。见 `web-home-contact-live.json`、`web-home-contact-undo.json`、`web-contact-drawer-scroll.json`；App 同步/返回和 0/5/286 全态仍待补。 |
 | 10 秘書から | **部分**。只接受期限/会前准备/活动推荐三种合法来源，未知整条跳过；本地 live 源为空时为空态，不把样例写入库。Web 注入 sample 浏览器响应后留三来源同时显示的实屏，三个目标 href 正确、各有「サンプル」，邮件和未知来源不显示；见 `web-secretary-three-sample.json`。这不是通知生产/未读/受信箱的真实端到端回读；未调用 Gmail 或付费 AI。 |
 | 11 组件库四块 | **部分**。Web 用浏览器拦截的临时 D-01 布局 fixture 逐项加判断待ち、今週、イベント推薦、メモ，观察每次挂载后的本域 GET；推荐和笔记在未挂载时无请求。类别筛选只剩事件推荐、搜索只剩メモ；保存重开九块不重复，移除判断待ち→撤销→再次移除保存→加回保存，revision 1→3；见 `web-home-library.json` 与实屏，**此链不算 live 跨端布局回读**。App 库原生选中尺寸并添加判断待ち已真实回读，事件分类只剩事件推荐、输入 `Xyz` 后为空（`app-native-library-filter.png`）；App 其余三块逐项链仍待补，b11 #23 三轮像素 FAIL。 |
 | 12 三步与铃铛 | **部分**。共用纯投影独立提交 `08596eae5`，读联系人/目标/计划和 guideState v2 完成闩锁，不受示例开关影响；只读 API 来源失败 503，不猜 0/3。App/Web 空态实屏为 0/3；逐步到 3/3、老用户联验未全数完成。铃铛到受信箱再返回首页已实测，但隔离账号的受信箱读取失败。 |
@@ -43,7 +43,7 @@
 | R10-07 | `current=null` 空态已做，event segment 名称按定案；负数纯测试已做。 |
 | R10-08 | `−10` 字符口径两端纯测试通过；Web 浏览器响应 fixture 的首页负数实屏已留、标「设计稿无」，App 真实计划负数与撤销刷新仍待补。 |
 | R10-09 | R16 每天一问卡接在今日卡里；回答/跳过后跨端刷新仍待验。 |
-| R10-10 | R11a summary、`sort=added` 前四与 Web ContactDrawer/App 详情按导出接口消费；完整新增/换号链待补。 |
+| R10-10 | R11a summary、`sort=added` 前四与 Web ContactDrawer/App 详情按导出接口消费；Web 同账号新增一人后总数/本月/最近首位/抽屉及另一账号隔离已实测，新增项随后撤销；App 换号与详情返回链仍待补。 |
 
 ## 像素门禁与状态
 
@@ -71,7 +71,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 
 **清单中未取得可比结果的画面：** W-R10-02（`web.html` #1 少量）；A-R10-02/03/03S（`app.html` #1/#2/#3 少量、多量、滚动）。这些画面均为**未跑门禁**，不是通过或归因后的失败。少量/多量要求的同 actor 计划、活动和三种秘书提醒在隔离库中不存在。其余清单画面均已至少跑一轮但仍 FAIL；上表中的填充态运行也不能用不匹配的空 actor 获得 `[data]` 通过。重比需先补真实或明确标为 mock 的一致 fixture，再执行对应操作链；仍须逐带归因和通过画面 ≥20% 抽查。
 
-**设计稿无的状态：** Web 390 已留 `web-390-no-board.png`（五卡可见、搜索隐藏）；Web 单来源失败已留 `web-one-source-failure-no-board.png`，计划 summary 503 时仅计划卡显示错误与重试，其余四卡仍在，探针回执见 `web-home-supplement.json`。空态引导联系人、Task 计划、活动、受信箱的逐个导航回执见 `web-home-links.json`；第一次链接探针误选今日卡的计划引导链接，修正为精确 href 后四项通过。Web 四块库加回态留 `web-library-four-blocks-no-board.png`，但该图的布局为浏览器拦截的临时 fixture，不算 live 画板通过。Web 计划 `+10 / 0 / −10` 三张与混合状态活动一张实屏见 `web-plan-delta-{plus10,zero,minus10}-no-board.png`、`web-event-mixed-status-no-board.png`；三来源秘书 sample 实屏见 `web-secretary-three-sample-no-board.png`，均用浏览器响应 fixture，不是持久业务数据。App 原生离线编辑/重开/恢复有 `native-offline-layout.json` 的操作和回读记录，未取得独立截图；409、App 单源失败及其他无板深色态仍没有合格实屏图。无板状态不进入像素分母。
+**设计稿无的状态：** Web 390 已留 `web-390-no-board.png`（五卡可见、搜索隐藏）；Web 单来源失败已留 `web-one-source-failure-no-board.png`，计划 summary 503 时仅计划卡显示错误与重试，其余四卡仍在，探针回执见 `web-home-supplement.json`。空态引导联系人、Task 计划、活动、受信箱的逐个导航回执见 `web-home-links.json`；第一次链接探针误选今日卡的计划引导链接，修正为精确 href 后四项通过。Web 四块库加回态留 `web-library-four-blocks-no-board.png`，但该图的布局为浏览器拦截的临时 fixture，不算 live 画板通过。Web 计划 `+10 / 0 / −10` 三张与混合状态活动一张实屏见 `web-plan-delta-{plus10,zero,minus10}-no-board.png`、`web-event-mixed-status-no-board.png`；三来源秘书 sample 实屏见 `web-secretary-three-sample-no-board.png`，均用浏览器响应 fixture，不是持久业务数据。Web 联系人真实新增 79 与抽屉实屏见 `web-contact-plus-one-live-no-board.png`、`web-contact-drawer-live-no-board.png`；新增项已撤销。App 原生离线编辑/重开/恢复有 `native-offline-layout.json` 的操作和回读记录，未取得独立截图；409、App 单源失败及其他无板深色态仍没有合格实屏图。无板状态不进入像素分母。
 
 ## 通用口径 G01～G26 逐项
 
@@ -115,6 +115,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 - Web 组件库补证 `web-home-library.json`：D-01 响应用浏览器临时 fixture 拦截，四块挂载各触发对应真实本地 API GET，未挂载时推荐/笔记请求数为 0；保存、重开、移除、撤销、加回链在该 fixture 内 revision 0→3 且无重复，App 数组保持五块。此测试没有改写隔离账号的真实 D-01 记录，也不能代替 App 四块或两端同 actor 业务联验。
 - Web 计划/活动补证 `web-plan-event-fixtures.json`：注入只读响应后 `todayDelta` 的 `+10 / 0 / −10` 字形及 event segment 均从页面读回；活动混合状态过滤 planned/waitlisted、选中最早 registered，标题/准备 href 相同，`meetCount=null` 无人数。响应只在浏览器内，不能替代计划真实撤销或跨端活动同源。
 - Web 秘书补证 `web-secretary-three-sample.json`：从登录的本地账号取得 actor ID，浏览器只读响应注入带 sample 标记的三类通知和两条应跳过来源；页面保留三条合法通知的顺序、目标 href 与样例标记，邮件/未知条目未出现。测试没有写入通知，也没有证明未读和受信箱目标同源。
+- Web 人脈 live 补证 `web-home-contact-live.json`：隔离库中的 78 人合成账号经手输 API 加一人，总数 79、本月 +1、最近四人首位即新项，首页同步显示并打开 R11a 抽屉；另一合成账号总数保持 0。`web-home-contact-undo.json` 证实手输撤销 200、总数回 78。另用 600 高视口打开/关闭抽屉，`web-contact-drawer-scroll.json` 为 scrollY 75→75。未调用外部联系人系统或写生产数据。
 - Web copy QA 最终读数为 3,998 entries、29 个既有全局问题、首页新增问题 0，exit 1；App 首页单域过去未纳入全域清单，此次补齐组件类型和新组件文案后 91 entries、4 issues（均为 R03 已批准旧词条），exit 1，且已列入全域清单。全域 `copy-global-final.json` 为 7,598 entries、249 issues，其中首页 4 个旧词条、R10 新词条 0，exit 1。通过定向不代表全量绿。
 
 ## 自定决定、待主会话决定与跨线输入
@@ -129,7 +130,7 @@ Web 日期/右栏、App 日期/系统设备尺寸、画板 Gmail 行是已知差
 
 | 本端版本 | 另一端影响 | 未完成事项 | 验证范围 |
 | --- | --- | --- | --- |
-| D-01 `e843f5b18`、schema/默认几何 `e63eccef9`、Web `da774c9c8` + `b8758e23d` + `d34d6c0f3` + `81402a6de`、App `96617497c` + `1f2cf4bb3` + `ea2035ea5` + `01170099c` + `b71a56740` + `c4c6a62cb`。 | 同 actor `GET/PUT /api/home/layout` 返回 revision、App/Web 两数组、hint 和 Web 首次实际编辑标记；App 同步 schema 与本地草稿按 actor+baseURL 隔离。Web 编辑不会覆盖 App 数组，反向亦同；409 返回整版快照。 | Task 今日同源后续、E 线会话/AgentDock、Q5 改稿像素及部分跨端卡片回读。 | 本地隔离 PG：App 改 App 顺序→Web GET revision 1、Web 保持；Web 改 Web 顺序→revision 2，两数组保留；连续 CAS 中旧版 409，revision 4 恢复两端默认。App 原生离线编辑/重开/恢复服务后 revision 6 上传；随后原生重排、尺寸、移除撤销、库过滤与加回，revision 7→8；长按菜单指定尺寸 revision 10，移除/撤销 revision 13→14，Web 数组不变。Web 浏览器、App 原生浅/深、定向 PG/模型测试；首页新增词条 copy QA 0，新纳入的旧词条 4 条未过。无生产/Neon/发布验证。 |
+| D-01 `e843f5b18`、schema/默认几何 `e63eccef9`、Web `da774c9c8` + `b8758e23d` + `d34d6c0f3` + `81402a6de`、App `96617497c` + `1f2cf4bb3` + `ea2035ea5` + `01170099c` + `b71a56740` + `c4c6a62cb`。 | 同 actor `GET/PUT /api/home/layout` 返回 revision、App/Web 两数组、hint 和 Web 首次实际编辑标记；App 同步 schema 与本地草稿按 actor+baseURL 隔离。Web 编辑不会覆盖 App 数组，反向亦同；409 返回整版快照。 | Task 今日同源后续、E 线会话/AgentDock、Q5 改稿像素及部分跨端卡片回读。 | 本地隔离 PG：App 改 App 顺序→Web GET revision 1、Web 保持；Web 改 Web 顺序→revision 2，两数组保留；连续 CAS 中旧版 409，revision 4 恢复两端默认。App 原生离线编辑/重开/恢复服务后 revision 6 上传；随后原生重排、尺寸、移除撤销、库过滤与加回，revision 7→8；长按菜单指定尺寸 revision 10，移除/撤销 revision 13→14，Web 数组不变。Web 人脈新增合成联系人 78→79、最近首位与抽屉打开、另一账号仍 0，撤销后回 78；计划/活动/秘书为浏览器响应 fixture。Web 浏览器、App 原生浅/深、定向 PG/模型测试；首页新增词条 copy QA 0，新纳入的旧词条 4 条未过。无生产/Neon/发布验证。 |
 
 README、HANDOFF、DEFERRED-A、决定表和 screen-ownership 的汇总条目由主会话协调；D 线未覆盖共享台账或其他线未提交改动。
 
