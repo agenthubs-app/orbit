@@ -1183,25 +1183,25 @@ function plan390(s) {
 
 /* ============ 3 · iOrbit 対話 ============ */
 const ctxChips = (mobile) => `${mobile ? '' : '<span class="lbl" style="flex:none;margin-right:2px">参照中</span>'}${[['🎯', 'シリーズA · スコア 46'], ['👥', '小林・高橋・伊藤'], ['🎟️', '製造業 DX 大阪'], ['📝', '進捗ログ 4件']].map(([e, t]) => `<span class="chip">${e} ${t}<span class="x">${ic('x')}</span></span>`).join('')}<span class="chip" style="background:transparent;border:1.5px dashed var(--surface-3);color:var(--ink-3)">${ic('plus', 'sm')}追加</span>`;
-const chatMsgs = (mobile) => `<div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
+const chatMsgsDemo = (mobile) => `<div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
   <div class="bubble ai">今のつながりに CVC 担当者は 1名だけです（目標は 4名）。近道は 2つあります。</div>
   <div class="${mobile ? '' : 'grid2'}" style="${mobile ? 'display:grid;gap:10px' : ''}"><div class="card" style="padding:16px;margin:0"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1;min-width:0"><b>${C[5].n}</b><div class="lbl clamp1">${C[5].co} · 新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
     <div class="card" style="padding:16px;margin:0"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${mring(68, 44, 5, 12)}<div style="min-width:0"><b style="font-size:13px">製造業 DX カンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
   <div class="card dashed" style="padding:14px;margin:0"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1;min-width:0"><b style="font-size:13px">プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div>${mobile ? '' : '<button class="btn sm">やめる</button><button class="btn sm primary">追加する</button>'}</div>${mobile ? '<div class="grid2" style="margin-top:12px;gap:8px"><button class="btn">やめる</button><button class="btn primary">追加する</button></div>' : ''}</div>`;
-const HIST = { pin: [['シリーズA 投資家リストの整理', '9/30'], ['ピッチ資料の市場規模', '9/24']], today: [['CVC 担当者に会う方法', '10:12'], ['今夜の CFO Night の準備', '8:40']], week: [['山本さんへの再送メール', '月'], ['製造業 DX カンファレンスの評価', '日'], ['伊藤さんへの相談事項', '土']], older: [['9月の振り返り', '10/1'], ['名刺 17枚の一括登録', '9/22']] };
-const histList = () => `<div class="search" style="background:var(--surface-2);height:40px;font-size:12.5px">${ic('search', 'sm')}会話を検索</div><div class="hist">${[['ピン留め', 'pin', 'pin'], ['今日', 'today', ''], ['今週', 'week', ''], ['それ以前', 'older', '']].map(([t, key, icon]) => `<div class="gl">${icon ? ic(icon, 'sm') : ''}${t}</div>${HIST[key].map(([n, d], k) => `<div class="hi ${key === 'today' && k === 0 ? 'on' : ''}"><span class="t">${n}</span><small>${d}</small></div>`).join('')}`).join('')}</div>`;
+/* PX2 D09: actor-owned r21-visual-pinned is a text-only stored session (two messages, no panel/items). */
+const chatMsgs = () => `<div class="bubble me">田中さんとの提携相談について教えて</div><div class="bubble ai">関係する情報を確認しました。</div>`;
+const HIST = { pin: [['田中さんとの提携相談', '10/17']], today: [], week: [], older: [['来週のイベントを探す', '10/18'], ['二端末で確認したプラン', '10/15'], ['名刺の整理', '10/2']] };
+const histList = () => `<div class="search" style="background:var(--surface-2);height:40px;font-size:12.5px">${ic('search', 'sm')}会話を検索</div><div class="hist">${[['ピン留め', 'pin', 'pin'], ['今日', 'today', ''], ['今週', 'week', ''], ['それ以前', 'older', '']].filter(([, key]) => HIST[key].length).map(([t, key, icon]) => `<div class="gl">${icon ? ic(icon, 'sm') : ''}${t}</div>${HIST[key].map(([n, d], k) => `<div class="hi ${key === 'pin' && k === 0 ? 'on' : ''}"><span class="t">${n}</span><small>${d}</small></div>`).join('')}`).join('')}</div>`;
 const strip = `<aside class="r8strip"><button class="lbtn" title="履歴を開く">${ic('menu', 'sm')}</button><button class="lbtn">${ic('search', 'sm')}</button><button class="lbtn">${ic('edit', 'sm')}</button><hr><span class="pinav">📌</span><span class="pinav">💼</span></aside>`;
 const wComp = `<div class="wcomp">${ic('plus', 'sm')}<span class="in">質問・依頼を入力　@ で人・イベントを指定</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div><div class="lbl" style="text-align:center;margin-top:8px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
 function chat1024(open = false) {
-  return mainhead('iOrbit', 'CVC 担当者に会う方法', `<button class="rbtn">${ic('menu')}</button>`, `<span class="kbd">⌘</span><span class="kbd">K</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div class="r8chat">${strip}
-    <div class="ccol"><div class="r8ctx">${ctxChips(false)}</div><div class="msgs">${chatMsgs(false)}<div class="row" style="gap:6px;flex-wrap:wrap"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div></div>${wComp}</div>
+  return mainhead('iOrbit', '田中さんとの提携相談', `<button class="rbtn">${ic('menu')}</button>`, `<span class="kbd">⌘</span><span class="kbd">K</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div class="r8chat">${strip}
+    <div class="ccol"><div class="msgs">${chatMsgs()}</div>${wComp}</div>
     ${open ? `<div class="r8scrim"></div><aside class="r8hist"><div class="row between" style="padding:2px 4px 10px"><b style="font-size:14px">会話</b><span class="row" style="gap:6px"><button class="btn sm primary">${ic('edit', 'sm')}新規</button><button class="lbtn" style="width:30px;height:30px">${ic('left', 'sm')}</button></span></div>${histList()}</aside>` : ''}</div>`;
 }
 function chat390() {
-  return `<div class="r8chathead"><div class="row" style="gap:6px"><button class="rbtn">${ic('menu')}</button></div><div class="t"><b>iOrbit</b><small class="clamp1" style="display:block">CVC 担当者に会う方法</small></div><div class="row" style="gap:6px;justify-content:flex-end"><button class="rbtn">${ic('x')}</button></div></div>
-    <div class="carousel r8ctx" style="gap:6px;margin:0 -18px 12px;max-width:none;width:auto;overflow-x:auto">${ctxChips(true)}</div>
-    <div style="display:grid;gap:10px">${chatMsgs(true)}</div>
-    <div class="carousel" style="gap:6px;margin-top:12px">${['依頼文を作って', '大阪の日程を押さえて', '他に CVC に近い人は？'].map(t => `<span class="prompt">${t}</span>`).join('')}</div>`;
+  return `<div class="r8chathead"><div class="row" style="gap:6px"><button class="rbtn">${ic('menu')}</button></div><div class="t"><b>iOrbit</b><small class="clamp1" style="display:block">田中さんとの提携相談</small></div><div class="row" style="gap:6px;justify-content:flex-end"><button class="rbtn">${ic('x')}</button></div></div>
+    <div style="display:grid;gap:10px">${chatMsgs()}</div>`;
 }
 const mcomp = `<div class="mcomp"><div class="bx">${ic('plus', 'sm')}<span style="flex:1;min-width:0" class="clamp1">質問・依頼を入力　@ で指定</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div><div class="lbl">メール・メッセージは下書きまで。送信はあなたが行います。</div></div>`;
 const mHistDrawer = `<div class="sheet-scrim"></div><div class="r8adrawer"><div class="row between" style="padding:0 4px 12px"><b style="font-size:17px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新規</button></div>${histList()}</div>`;
@@ -1309,12 +1309,12 @@ h += boards([
     ['四个目标 2×2 磁贴单选（1440 为 4 列一排）', '唯一主动作「分析する」（不再选期间）；次要入口两颗马卡龙：iOrbit 相谈 / テンプレート', '淡化「サンプル」预览：スコア + 分数构成条 + 人物类型行，展示做完后的样子', '2026-10-12 用户定稿 D41：作废——本画板是 v2.1 之前的画法（4 个目标磁贴、「分析する」、选模板），与 b10 冲突，按「以更新的为准」作废；390 空态按 b10「① 目標を入力（プラン空状態）」做（plan-v2.2 DESIGN §9 #37）。画板保留作历史，不再作为像素比对依据']).replace('</div>', '<span class="tag">作废 · D41</span></div>'),
 ]);
 
-h += sec('3 · iOrbit 対話', '1024：历史收为左侧 48px 竖条（可展开覆盖面板），参照上下文变为顶部 chip 行；390：全屏对话 + 底部输入，确认卡全宽');
+h += sec('3 · iOrbit 対話 · PX2 D09 実データ', '読み取り専用 fixture r21-visual-pinned：田中さんとの提携相談／ユーザー・助手のテキスト各1件。panel/items なし。構造化カードは別の参考状態で、この5画板の比較対象に含めない。');
 h += boards([
-  board('iOrbit · 1024', '', f1024({ nav: 2, body: chat1024(), pins: pin(1, '.r8strip') + pin(2, '.r8ctx') + pin(3, '.card.dashed') + pin(4, '.wcomp') }),
-    ['会话历史收为 48px 竖条：≡ 展开 / 🔍 搜索 / ✎ 新规 + 置顶会话图标；点 ≡ → 272px 面板覆盖展开（见下方）', '参照上下文为顶部 chip 行（1440 为回答气泡下的「参照」chip；NAV-V3 iOrbit 无右栏）；点 chip 弹小浮层看明细，✕ 把该上下文移出本轮回答，「＋追加」= @ 选择器', '写入动作仍是虚线确认卡，「追加する」才执行，原地变成实线成功卡', '输入框居中 680px，⌘K 任意页唤起；下方写明「送信はあなたが行います」'], W),
-  board('iOrbit · 390', '', m390({ body: chat390(), overlay: mcomp, pins: pin(1, '.r8chathead .rbtn') + pin(2, '.r8ctx') + pin(3, '.card.dashed') + pin(4, '.mcomp') }),
-    ['全屏对话（NAV-V3 同 App）：左上 ≡ 点击打开会話リスト（左抽屉，顶部「新しい会話」）；右上 ✕ 或左边缘右滑 = 回到来源页；不显示底部胶囊', '参照 chip 横滑一行，✕ 移除', '确认卡全宽，「やめる / 追加する」两等分全宽按钮', '输入框固定底部（Safari 底栏之上），键盘弹出时随之上推；下方注明送信由你来做']),
+  board('iOrbit · 1024 · 保存済みテキスト', '', f1024({ nav: 2, body: chat1024(), pins: pin(1, '.r8strip') + pin(2, '.bubble.me') + pin(3, '.bubble.ai') + pin(4, '.wcomp') }),
+    ['左侧 48px 会話リスト入口；点 ≡ 展开历史', 'r21-visual-pinned の user.text', 'r21-visual-pinned の assistant.text；items/panel がないためカードを描かない', '入力欄は固定。送信はユーザーが行う'], W),
+  board('iOrbit · 390 · 保存済みテキスト', '', m390({ body: chat390(), overlay: mcomp, pins: pin(1, '.r8chathead .rbtn') + pin(2, '.bubble.me') + pin(3, '.bubble.ai') + pin(4, '.mcomp') }),
+    ['左上 ≡ で会話一覧、右上 ✕ で戻る', '同じ user.text', '同じ assistant.text；構造化カードなし', '入力欄は Safari バーの上']),
 ]);
 h += boards([
   board('iOrbit · 1024 历史展开', '弹层', f1024({ nav: 2, body: chat1024(true), pins: pin(1, '.r8hist') + pin(2, '.r8hist .hi.on') + pin(3, '.r8hist .search') }),
@@ -1343,6 +1343,9 @@ h += boards([
   board('iOrbit · 390', '', m390({ body: chat390(), overlay: mcomp, theme: 'dark' })),
   board('イベント評価結果 · 390', 'many', m390({ body: evalPage390(), overlay: mctaEval, theme: 'dark' })),
 ]);
+
+h += sec('PX2 D09 · 構造化 items の参考状態', '人物／イベント／プラン追加確認は専用 DTO と actor-owned fixture が届くまで比較対象外。テキスト会話へ重ねない。');
+h += board('iOrbit · 1024 · 構造化 items 参考', '参考・比較対象外', f1024({ nav: 2, body: mainhead('iOrbit', 'CVC 担当者に会う方法', '', '') + `<div class="r8chat"><div class="ccol"><div class="msgs">${chatMsgsDemo(false)}</div>${wComp}</div></div>` }), ['人物／イベント／確認カードの旧案。サービス DTO と actor-owned fixture は未提供。'], W);
 
 document.getElementById('out').innerHTML = h;
 /* 小交互：1024 评估卡点击切换选中 */

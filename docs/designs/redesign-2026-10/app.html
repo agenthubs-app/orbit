@@ -348,7 +348,8 @@ const NP = [
   { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
 ];
 /* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 204 · 連絡先 41 · LinkedIn 22 · イベント 8 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川（2026-10-18 用户定 §B-1：删「情報が少ない人」页签，分类页签 = すべて / 目標に関係 / 要フォロー（有未完成 To-do 关联此人）；出どころ 加「イベント」，汎用 CSV 算手入力） */
-const NET_MANY = [NP[0], NP[2], NP[1], NP[4], NP[3], NP[7], NP[5], NP[6], NP[8]];
+/* PX2 D02: R11a の九行と 10/12 の招待更新は 2026-10-21 JST の同じ時計を使う。 */
+const NET_MANY = [[NP[0], '15日前'], [NP[2], '17日前'], [NP[1], '21日前'], [NP[4], '15日前'], [NP[3], '6/29 登録'], [NP[7], '3/21 登録'], [NP[5], '17日前'], [NP[6], '16日前'], [NP[8], '17日前']].map(([p, last]) => ({ ...p, last }));
 const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
 const DOORS = [
   ['meishi', '📇', 'apricot', '名刺スキャン', '会社・役職・連絡先 ＋ いつ・どこで会ったか', 2, '1枚 / まとめて最大100枚'],
@@ -475,7 +476,7 @@ function network(s) {
       <div class="grid3" style="margin-top:10px;gap:6px;font-size:11px">${[[1, '身元だけ', 74], [2, '名刺レベル', 171], [3, '関係まで', 41]].map(([d, l, v]) => `<div>${dn(d)}<div class="muted" style="margin-top:3px">${l}</div><b style="font-family:var(--font-num);font-size:15px">${v}</b></div>`).join('')}</div>
       <div class="mac lav row" style="gap:8px;margin-top:12px;padding:10px 12px;font-size:12px"><span>💬</span><span style="flex:1"><b>1日1問</b>で少しずつ補えます · ホームの「判断待ち」に出ます</span></div></div>
     <div class="row k-cats" style="gap:6px;margin-top:14px;overflow:hidden"><span class="cat on">すべて <small>286</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー <small>12</small></span></div>
-    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${NET_MANY.slice(0, 8).map(p => nrow(p)).join('')}</div></div>`;
+    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${NET_MANY.slice(0, 9).map(p => nrow(p)).join('')}</div></div>`;
 }
 
 /* ============ イベント ============ */

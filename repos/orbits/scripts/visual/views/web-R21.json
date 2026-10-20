@@ -1,5 +1,5 @@
 {
-  "_note": "R21 iOrbit live start and responsive history smoke views. Local QA account has actor-owned R21 history fixtures; draft and generation states need separate controlled fixtures.",
+  "_note": "PX2 D09: R01-R05 compare the actor-owned, text-only r21-visual-pinned session. The structured person/event/action demo board is separate and has no comparable service DTO/fixture. W03 remains the new-conversation state.",
   "defaults": {
     "app-origin": "http://localhost:3800",
     "login": "qa@orbit.test",
@@ -36,7 +36,7 @@
       "wait-for": "[data-orbit-iorbit-message]",
       "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
       "app-wait": 5000,
-      "note": "1024 conversation; actor-owned fixture differs from board data"
+      "note": "PX2 D09 text-only actor-owned session r21-visual-pinned; no panel/items."
     },
     {
       "id": "W-R21-R02",
@@ -50,7 +50,7 @@
       "wait-for": "[data-orbit-iorbit-message]",
       "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
       "app-wait": 5000,
-      "note": "390 conversation; actor-owned fixture differs from board data. Design browser chrome excluded by comparator."
+      "note": "PX2 D09 text-only actor-owned session r21-visual-pinned; no panel/items. Design browser chrome excluded by comparator."
     },
     {
       "id": "W-R21-R03",
@@ -64,7 +64,7 @@
       "wait-for": "[data-orbit-iorbit-message]",
       "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
       "app-wait": 5000,
-      "note": "1024 actor-scoped history drawer; QA account content differs from the board."
+      "note": "PX2 D09 actor-scoped history drawer; board rows use the QA account session list."
     },
     {
       "id": "W-R21-R04",
@@ -78,7 +78,7 @@
       "wait-for": "[data-orbit-iorbit-message]",
       "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
       "app-wait": 5000,
-      "note": "390 actor-scoped history drawer; QA account content differs from the board."
+      "note": "PX2 D09 actor-scoped history drawer; board rows use the QA account session list."
     },
     {
       "id": "W-R21-R05",
@@ -92,7 +92,7 @@
       "wait-for": "[data-orbit-iorbit-message]",
       "steps": [{"waitFor": "[data-orbit-iorbit-message]", "wait": 0}],
       "app-wait": 5000,
-      "note": "390 dark conversation"
+      "note": "PX2 D09 dark text-only actor-owned session r21-visual-pinned."
     }
   ]
 }

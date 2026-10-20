@@ -1855,6 +1855,8 @@ h += WB('招待コード · Web · 作成後', '', { nav: 1, body: W.network('ma
   ['.k-wiquota', 0, '同一コードの有効期限と残人数'],
   ['.k-wimsg', 0, '共有はユーザーの端末から。Orbit は代送しない'],
 ]);
+h += sec('PX2 D09 · iOrbit 状態の対応', 'App #41 は /ai の新しい会話（アクティブな会話なし）。Web の保存済み会話は actor-owned fixture r21-visual-pinned と ?session=r21-visual-pinned で開く。人物・イベントカード／追加確認は、この fixture に含まれない。');
+h += WB('iOrbit · Web · 保存済みテキスト', '', { nav: 2, body: mainhead('iOrbit', '田中さんとの提携相談', '', '') + `<div class="wio"><div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px"><div class="bubble me">田中さんとの提携相談について教えて</div><div class="bubble ai">関係する情報を確認しました。</div></div></div></div>` }, [['.bubble.ai', 0, '保存済み assistant.text。構造化 items がないためカードは表示しない。']]);
 
 document.getElementById('out').innerHTML = h;
 docNav('b11-nav-v3'); orbitChrome();

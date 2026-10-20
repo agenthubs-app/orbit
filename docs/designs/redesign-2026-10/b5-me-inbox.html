@@ -412,7 +412,8 @@ const NP = [
   { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
 ];
 /* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 204 · 連絡先 41 · LinkedIn 22 · イベント 8 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川（2026-10-18 用户定 §B-1：删「情報が少ない人」页签，分类页签 = すべて / 目標に関係 / 要フォロー（有未完成 To-do 关联此人）；出どころ 加「イベント」，汎用 CSV 算手入力） */
-const NET_MANY = [NP[0], NP[2], NP[1], NP[4], NP[3], NP[7], NP[5], NP[6], NP[8]];
+/* PX2 D02: R11a の九行と 10/12 の招待更新は 2026-10-21 JST の同じ時計を使う。 */
+const NET_MANY = [[NP[0], '15日前'], [NP[2], '17日前'], [NP[1], '21日前'], [NP[4], '15日前'], [NP[3], '6/29 登録'], [NP[7], '3/21 登録'], [NP[5], '17日前'], [NP[6], '16日前'], [NP[8], '17日前']].map(([p, last]) => ({ ...p, last }));
 const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
 const DOORS = [
   ['meishi', '📇', 'apricot', '名刺スキャン', '会社・役職・連絡先 ＋ いつ・どこで会ったか', 2, '1枚 / まとめて最大100枚'],
@@ -539,7 +540,7 @@ function network(s) {
       <div class="grid3" style="margin-top:10px;gap:6px;font-size:11px">${[[1, '身元だけ', 74], [2, '名刺レベル', 171], [3, '関係まで', 41]].map(([d, l, v]) => `<div>${dn(d)}<div class="muted" style="margin-top:3px">${l}</div><b style="font-family:var(--font-num);font-size:15px">${v}</b></div>`).join('')}</div>
       <div class="mac lav row" style="gap:8px;margin-top:12px;padding:10px 12px;font-size:12px"><span>💬</span><span style="flex:1"><b>1日1問</b>で少しずつ補えます · ホームの「判断待ち」に出ます</span></div></div>
     <div class="row k-cats" style="gap:6px;margin-top:14px;overflow:hidden"><span class="cat on">すべて <small>286</small></span><span class="cat">目標に関係 <small>9</small></span><span class="cat">要フォロー <small>12</small></span></div>
-    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${NET_MANY.slice(0, 8).map(p => nrow(p)).join('')}</div></div>`;
+    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${NET_MANY.slice(0, 9).map(p => nrow(p)).join('')}</div></div>`;
 }
 
 /* ============ イベント ============ */
@@ -1297,8 +1298,8 @@ const pubRail = (p) => { const d = PR[p]; return `<h4>${ic('user', 'sm')}公開�
   <div class="card" style="padding:16px"><div class="lbl" style="margin-bottom:4px">公開する項目</div>${[['会社・役職', 1], ['提供・求めていること', 1], ['自己紹介', 1], ['メール・電話（交換後のみ）', 0]].map(([t, on]) => `<div class="row between" style="font-size:12.5px;padding:6px 0">${t}${tg(on)}</div>`).join('')}</div>`; };
 
 /* =================== E1. 人脈分析 =================== */
-const IND = [['投資・金融', 105, 'var(--plum-900)'], ['製造業', 83, 'var(--plum-700)'], ['SaaS・IT', 63, 'var(--plum-500)'], ['商社・流通', 35, 'var(--plum-300)']];
-const INDF = [['投資・金融', 5, 'var(--plum-900)'], ['製造業', 4, 'var(--plum-700)'], ['SaaS・IT', 3, 'var(--plum-500)'], ['商社・流通', 2, 'var(--plum-300)']];
+const IND = [['投資・金融', 105, 'var(--plum-900)'], ['小売・消費財', 83, 'var(--plum-700)'], ['教育・研究', 63, 'var(--plum-500)'], ['商社・物流', 35, 'var(--plum-300)']];
+const INDF = [['投資・金融', 5, 'var(--plum-900)'], ['小売・消費財', 4, 'var(--plum-700)'], ['教育・研究', 3, 'var(--plum-500)'], ['商社・物流', 2, 'var(--plum-300)']];
 const DIMS = { many: [['役職層', [['経営層', 74], ['部長クラス', 96], ['担当者', 116]]], ['地域', [['東京', 188], ['大阪', 41], ['名古屋', 33], ['その他', 24]]], ['出会った場所', [['イベント', 142], ['紹介', 61], ['訪問・商談', 52], ['その他', 31]]]],
   few: [['役職層', [['経営層', 4], ['部長クラス', 6], ['担当者', 4]]], ['地域', [['東京', 9], ['大阪', 2], ['名古屋', 2], ['その他', 1]]], ['出会った場所', [['イベント', 7], ['紹介', 3], ['訪問・商談', 3], ['その他', 1]]]] };
 const dimCard = ([t, rows], k, web) => { const mx = Math.max(...rows.map(r => r[1])); return `<div class="card ${web ? 'span4' : ''}"><div class="card-h"><h3>${t}</h3><span class="more">${ic('right', 'sm')}</span></div>${rows.map(([l, v], j) => `<div class="dim"><span>${l}</span>${bar(v / mx * 100, 'thin ' + (j === 0 ? '' : 'rose'))}<b class="score">${v}</b>${ic('right', 'sm')}</div>`).join('')}</div>`; };
@@ -1306,24 +1307,24 @@ const indCard = (few, web) => { const L = few ? INDF : IND, tot = few ? 14 : 286
   <div style="flex:1">${L.map(([l, v, c], k) => `<div class="leg ${k === 0 ? 'drill' : ''}"><i style="background:${c}"></i><span>${l}</span><b class="score">${v}</b>${ic('right', 'sm')}</div>`).join('')}</div></div></div>`; };
 const gapCard = (few, web) => `<div class="mac pink gap ${web ? 'span7' : ''}" data-why-box style="${web ? '' : 'margin-top:14px;'}padding:14px 16px;border-radius:20px"><div class="row" style="gap:8px"><span style="font-size:18px">🧩</span><b style="font-size:13.5px;flex:1">不足：CVC・事業会社の投資担当</b><span class="why">?</span></div>
   <div style="font-size:12.5px;margin-top:6px;line-height:1.6">プランでは 4人必要ですが、今は ${few ? 0 : 1}人。${few ? '名刺が増えると候補を探せます' : '小林さん（丸の内イノベーションラボ）経由で会える可能性があります'}</div>
-  <div class="why-body" hidden>根拠：プラン「シリーズA 資金調達」の必要人脈 · 役職と会社の分類（${few ? 14 : 286}人）· 小林さんのコミュニティ情報（メモ 9/12）</div>
+  <div class="why-body" hidden>根拠：プラン「シリーズA 資金調達」の必要人脈 · ${few ? '現在の人脈 14人' : '小林 誠さんの連絡先'}</div>
   ${few ? '' : '<button class="btn sm" style="margin-top:10px;background:var(--surface)">紹介ルートを見る</button>'}</div>`;
-// R11b 主会话代定 2026-10-18，RD-33：App 原板留作待验；Web #41 按 REVIEW M1 改稿，下列块不画——
+// PX2 D03：App 与 Web 当前态均按现有 DTO 画；无来源机会卡/回复洞察/周一重算文案不进当前态。
+// R11b 主会话代定 2026-10-18，RD-33：Web #41 按 REVIEW M1 改稿，下列块不画——
 //   「紹介を頼める人」「今月のイベントで会える人」：没有能算出这些人的数据源（介绍关系 / 活动登壇者名单与人脈的对照），隐藏。
 const OPP = [
-  ['🔁', 'pink', '再会すべき人', 12, '90日以上 接点がなく、プランに関係する人', '最終接点の日付 · プランの必要人脈との一致 · 段階が「知り合い」以上', [C[7], X[0], X[2]]],
+  ['🔁', 'pink', '再会すべき人', 12, '90日以上 接点がなく、プランに関係する人', '最終接点の日付 · プランに関係する人', [C[1], X[0], X[2]]],
   ['🙋', 'teal', '紹介を頼める人', 5, '投資家とつながりがあり、あなたと関係が近い人', 'メモ「投資家を紹介できる」（渡辺さん 10/5）· 段階「推進中」以上 · 共通のイベント参加', [C[3], C[2], C[5]]],
   ['🎟️', 'lav', '今月のイベントで会える人', 9, '参加予定イベントの登壇者・公開参加者と一致', 'Japan SaaS Summit 登壇者リスト · CFO Night 参加者リスト（10/6 公開）', [C[0], C[6], X[1]]],
-  ['⏳', 'apricot', '止まっている関係', 18, '「関係構築」のまま平均 46日', '段階の更新履歴 · 直近30日のやりとりの有無', [C[1], C[4], X[3]]],
+  ['⏳', 'apricot', '止まっている関係', 18, '「関係構築」のまま平均 46日', '現在の段階 · 最終接点の日付', [{ n: '鈴木 大輔', i: '鈴', c: 'c3' }, { n: '中村 健', i: '中', c: 'c4' }, { n: '高田 由紀', i: '高', c: 'c2' }]],
 ];
 const oppCard = ([e, c, t, n, d, w, ppl], web) => `<div class="card ${web ? 'span6' : ''}" data-why-box><div class="row" style="gap:12px"><span class="emo ${c}">${e}</span><div style="flex:1;min-width:0"><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><div class="mid">${num(n)}<small class="lbl">人</small></div></div>
   <div class="row" style="margin-top:12px;gap:8px"><div class="avs">${ppl.map(p => `<div class="av sm ${p.c}">${p.i}</div>`).join('')}</div><span class="lbl">${ppl[0].n} ほか</span><span class="why" style="margin-left:auto">?</span><button class="btn sm">名簿を見る</button></div>
   <div class="why-body" hidden>根拠：${w}</div></div>`;
-// R11b 实现（主会话代定 2026-10-18，RD-33；只画真实存在的，决定表 §15-1 先例）：画板不改，下列块在实现里不画——
-//   「返信」：没有回复时长与面谈的对照数据，隐藏；「インサイトは毎週月曜に更新されます」：没有每周重算的机制，不画。
+// PX2 D03: 返信の相関と週次再計算はソースがないため現在の画板にも表示しない。
 const INS = [
-  ['出会い方', '投資家との出会いの 68% はイベント経由。ただし「推進中」まで進んだ割合は、紹介経由がイベントの 2.3倍', `<div class="cmp"><span>イベント</span>${bar(9 / 21 * 100, 'thin rose')}<b class="score" style="color:var(--ink)">9%</b></div><div class="cmp"><span>紹介</span>${bar(100, 'thin')}<b class="score" style="color:var(--ink)">21%</b></div><div class="lbl" style="margin-top:4px">「推進中」への移行率（投資・金融 105人）</div>`, '投資・金融 105人の「出会った場所」と段階の推移（直近6か月）'],
-  ['伸び', '製造業の決裁者が今月 +9人。サブ目標「製造業の新規顧客開拓」に追い風です', `<div class="minibars">${[3, 4, 2, 5, 4, 9].map((h, k) => `<i class="${k === 5 ? 'hi' : ''}" style="height:${h * 10 + 6}%"></i>`).join('')}</div><div class="row between lbl" style="margin-top:4px"><span>5月</span><span>10月</span></div>`, '製造業 × 役職「部長クラス以上」の月別の新規登録数'],
+  ['出会い方', '投資・金融の人脈の 68% はイベント経由。現在「関係構築」の割合は、紹介経由がイベントの約 2倍', `<div class="cmp"><span>イベント</span>${bar(10 / 21 * 100, 'thin rose')}<b class="score" style="color:var(--ink)">10%</b></div><div class="cmp"><span>紹介</span>${bar(100, 'thin')}<b class="score" style="color:var(--ink)">21%</b></div><div class="lbl" style="margin-top:4px">現在「関係構築」の割合（投資・金融 105人）</div>`, '投資・金融 105人の出会った場所と現在の段階'],
+  ['伸び', '小売・消費財の人脈が今月 +9人。目標「小売の新規顧客開拓」に関係します', `<div class="minibars">${[29, 26, 30, 27, 0, 24].map((h, k) => `<i class="${k === 5 ? 'hi' : ''}" style="height:${h * 3 + 6}%"></i>`).join('')}</div><div class="row between lbl" style="margin-top:4px"><span>5月</span><span>10月</span></div>`, '全業界の月別登録数（5月〜10月）と今月の小売・消費財 9人'],
   ['返信', '2日以内に返した相手は、面談につながる割合が高めです（平均 3.4日）', `<div class="cmp"><span>2日以内</span>${bar(100, 'thin')}<b class="score" style="color:var(--ink)">38%</b></div><div class="cmp"><span>3日以上</span>${bar(42, 'thin rose')}<b class="score" style="color:var(--ink)">16%</b></div>`, 'Gmail 連携のスレッド 128件 · 面談の記録 41件。相関であり、因果ではありません'],
 ];
 const insCard = ([k, t, viz, w], web) => `<div class="card ${web ? 'span4' : ''}" data-why-box><div class="row"><span class="chip">${k}</span><span class="why" style="margin-left:auto">?</span></div><b style="display:block;font-size:14px;line-height:1.6;margin-top:8px">${t}</b>${viz}<div class="why-body" hidden>根拠：${w}</div></div>`;
@@ -1338,18 +1339,22 @@ function anaApp(s, tab = 'str') {
       <div style="font-size:18px;font-weight:800;margin-top:12px">あと5人で分析が始まります</div><div class="sub" style="margin:6px 0 16px">10人から、業界の偏りや足りない人が見えてきます。</div>
       <button class="btn primary block" style="height:46px">${ic('scan', 'sm')}名刺を追加する</button></div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>解放されると見えるもの</h3></div>
-      <div class="ghost-row"><i></i>構造：業界・役職層・地域・出会った場所</div><div class="ghost-row"><i></i>機会：再会すべき人・紹介を頼める人</div><div class="ghost-row"><i></i>インサイト：あなたの人脈の傾向と理由</div></div>
+      <div class="ghost-row"><i></i>構造：業界・役職層・地域・出会った場所</div><div class="ghost-row"><i></i>機会：再会すべき人・止まっている関係</div><div class="ghost-row"><i></i>インサイト：あなたの人脈の傾向と理由</div></div>
     <div class="card"><div class="card-h"><h3>分析の例 ${SAMPLE}</h3></div><div class="faded">${IND.map(([l, v]) => `<div class="dim"><span>${l}</span>${bar(v / 105 * 100, 'thin')}<b class="score">${v}</b><span></span></div>`).join('')}</div></div>`;
   const few = s === 'few';
-  if (tab === 'opp') return head + anaTabs('opp') + `<div style="margin-top:14px">${OPP.map(o => oppCard(o)).join('')}</div>`;
-  if (tab === 'ins') return head + anaTabs('ins') + `<div style="margin-top:14px">${INS.map(o => insCard(o)).join('')}</div><div class="lbl" style="text-align:center;margin-top:12px">インサイトは毎週月曜に更新されます</div>`;
+  if (tab === 'opp') return head + anaTabs('opp') + `<div style="margin-top:14px">${[OPP[0], OPP[3]].map(o => oppCard(o)).join('')}</div>`;
+  if (tab === 'ins') return head + anaTabs('ins') + `<div style="margin-top:14px">${INS.slice(0, 2).map(o => insCard(o)).join('')}</div>`;
   return head + anaTabs('str') + (few ? `<div class="banner">${ic('chart', 'sm')}<span>14人のため参考値です。30人から「機会」「インサイト」が安定します</span></div>` : '') + `<div style="margin-top:14px">${indCard(few)}${gapCard(few)}${DIMS[few ? 'few' : 'many'].map((d, k) => dimCard(d, k)).join('')}</div>`;
 }
 function drillApp() {
-  const L = [C[0], C[7], C[2], X[0], X[1], X[2]];
+  // PX2 D03: finance bucket 105 = active 79 + nurture 26 in the many286 DTO.
+  const L = [{ ...C[0], stage: '関係構築', st: 'lav' }, { ...C[7], stage: '知り合い', st: '' },
+    { ...C[2], stage: '関係構築', st: 'lav' }, { ...X[1], stage: '関係構築', st: 'lav' },
+    { n: '名前 8', i: '名', c: 'c5', co: '会社 8', role: '担当', stage: '関係構築', st: 'lav', emo: '', val: '' },
+    { n: '名前 9', i: '名', c: 'c5', co: '会社 9', role: '担当', stage: '関係構築', st: 'lav', emo: '', val: '' }];
   return topbar('投資・金融', '105人 · 人脈分析から', back, `<button class="rbtn">${ic('sliders')}</button>`) + `
-    <div class="card rise"><div class="lbl">段階の内訳</div><div style="display:flex;height:10px;border-radius:6px;overflow:hidden;gap:3px;margin-top:8px">${[[58, 'var(--plum-300)'], [27, 'var(--plum-500)'], [13, 'var(--plum-700)'], [7, 'var(--rose-500)']].map(([v, c]) => `<i style="flex:${v};background:${c}"></i>`).join('')}</div>
-      <div class="row between lbl" style="margin-top:6px"><span>知り合い 58</span><span>関係構築 27</span><span>推進中 13</span><span>協業 7</span></div></div>
+    <div class="card rise"><div class="lbl">段階の内訳</div><div style="display:flex;height:10px;border-radius:6px;overflow:hidden;gap:3px;margin-top:8px">${[[79, 'var(--plum-300)'], [26, 'var(--plum-500)']].map(([v, c]) => `<i style="flex:${v};background:${c}"></i>`).join('')}</div>
+      <div class="row between lbl" style="margin-top:6px"><span>知り合い 79</span><span>関係構築 26</span></div></div>
     <div class="seg" style="margin-top:14px;width:100%;display:grid;grid-template-columns:repeat(3,1fr)"><button class="on">目標に近い順</button><button>最終接点</button><button>名前</button></div>
     <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list">${L.map(c => `<div class="li">${avc(c)}<div class="meta"><b>${c.n}</b><span>${c.co} · ${c.role}</span><span style="color:var(--ink-2);margin-top:2px">${c.emo} ${c.val}</span></div><span class="chip ${c.st}">${c.stage}</span></div>`).join('')}</div></div>`;
 }
@@ -1358,10 +1363,10 @@ function drillApp() {
 //   「インサイトから」并入独立インサイト页（b12 W-R11b-05）；没有每周重算机制，不画该副标题。
 //   右栏按真实名单上限显示 5 人；機会没有「人脈一覧で開く」筛选参数，底部改为「さらに表示」。
 function anaWeb(s, tab = 'str') {
-  const head = mainhead('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : tab === 'opp' ? '286人 · 10/7 更新' : '286人 · 10/7 更新 · 毎週月曜に再計算', `<button class="rbtn">${ic('left')}</button>`, s === 'empty' ? '' : anaTabs(tab, true));
+  const head = mainhead('人脈分析', s === 'empty' ? '10人から使えます' : s === 'few' ? '14人 · 参考値' : '286人 · 10/7 更新', `<button class="rbtn">${ic('left')}</button>`, s === 'empty' ? '' : anaTabs(tab, true));
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="card span12 guide" style="padding:28px"><div class="row" style="gap:28px">${ring(140, 13, [{ v: 5, c: 'var(--plum-700)', max: 10 }], `<div class="big" style="font-size:34px">${num(5)}<small>/10</small></div>`)}<div style="flex:1"><div style="font-size:24px;font-weight:800">あと5人で分析が始まります</div><div class="sub" style="margin-top:6px">10人から、業界の偏り・足りない人・再会すべき人が見えてきます。名刺の画像をまとめてドロップできます。</div><div class="row" style="gap:10px;margin-top:16px"><button class="btn primary" style="height:46px">${ic('scan', 'sm')}名刺を追加</button><button class="btn">${ic('share', 'sm')}CSV を取り込む</button></div></div></div></div>
-    ${[['🧱', 'lav', '構造', '業界・役職層・地域・出会った場所'], ['🔭', 'teal', '機会', '再会すべき人・紹介を頼める人'], ['💡', 'apricot', 'インサイト', '人脈の傾向と、その理由']].map(([e, c, t, d]) => `<div class="card span4 row" style="gap:12px"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="lbl">${d}</div></div></div>`).join('')}
+    ${[['🧱', 'lav', '構造', '業界・役職層・地域・出会った場所'], ['🔭', 'teal', '機会', '再会すべき人・止まっている関係'], ['💡', 'apricot', 'インサイト', '人脈の傾向と、その理由']].map(([e, c, t, d]) => `<div class="card span4 row" style="gap:12px"><span class="emo ${c}">${e}</span><div><b>${t}</b><div class="lbl">${d}</div></div></div>`).join('')}
     <div class="card span12"><div class="card-h"><h3>分析の例 ${SAMPLE}</h3></div><div class="faded grid2" style="gap:30px">${IND.map(([l, v]) => `<div class="dim"><span>${l}</span>${bar(v / 105 * 100, 'thin')}<b class="score">${v}</b><span></span></div>`).join('')}</div></div></div>`;
   const few = s === 'few';
   if (tab === 'opp') return head + `<div class="wgrid">${[OPP[0], OPP[3]].map(o => oppCard(o, true)).join('')}</div>`;
