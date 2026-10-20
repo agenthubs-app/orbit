@@ -620,7 +620,7 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
     orbitNavigate(`/agent?q=${encodeURIComponent(draft.trim() || hint)}`);
   };
   return (
-    <div style={{ bottom: "calc(18px + env(safe-area-inset-bottom) + var(--orbit-shell-bottom-inset, 0px))", left: "50%", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: ORBIT_Z.sticky }}>
+    <div className="orbit-agent-dock" style={{ bottom: "calc(18px + env(safe-area-inset-bottom) + var(--orbit-shell-bottom-inset, 0px))", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: ORBIT_Z.sticky }}>
       <form
         onSubmit={(submitEvent) => { submitEvent.preventDefault(); ask(); }}
         style={{ alignItems: "center", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", background: "color-mix(in srgb, var(--surface) 62%, transparent)", border: "1px solid color-mix(in srgb, var(--surface) 80%, transparent)", borderRadius: "var(--r-pill)", boxShadow: "0 12px 40px rgba(23,33,31,.16)", display: "flex", gap: 10, outline: "1px solid var(--line)", padding: "8px 8px 8px 18px" }}
@@ -800,6 +800,12 @@ export function OrbitRealHome({ mode, viewModel }: { mode: HomeMode; viewModel: 
       <HubDesktop language={language} t={t} viewModel={viewModel} />
       <HubMobile language={language} t={t} viewModel={viewModel} />
       <style dangerouslySetInnerHTML={{ __html: `
+/* 主会话代定 §R10-12：AgentDock 对齐壳主区中心（左栏 84/72，右栏 360；手机无侧栏）。 */
+[data-orbit-real-page="home"] .orbit-agent-dock { left:50%; }
+[data-orbit-2026-shell][data-rail="false"] [data-orbit-real-page="home"] .orbit-agent-dock { left:calc(50% + 42px); }
+[data-orbit-2026-shell][data-rail="true"] [data-orbit-real-page="home"] .orbit-agent-dock { left:calc(50% - 138px); }
+@media (max-width:1279px) { [data-orbit-2026-shell] [data-orbit-real-page="home"] .orbit-agent-dock { left:calc(50% + 36px); } }
+@media (max-width:767px) { [data-orbit-2026-shell] [data-orbit-real-page="home"] .orbit-agent-dock { left:50%; } }
 [data-orbit-real-page="home"] .orbit-hub-profile { display:flex; flex-direction:column; gap:18px; padding:22px 22px 24px; }
 [data-orbit-real-page="home"] .orbit-hub-profile-title { display:flex; align-items:center; gap:8px; }
 [data-orbit-real-page="home"] .orbit-hub-profile-title svg { color:var(--accent-text); }

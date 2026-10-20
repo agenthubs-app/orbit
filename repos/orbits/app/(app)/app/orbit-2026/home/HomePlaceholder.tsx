@@ -9,6 +9,7 @@ import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/pl
 import { todoPageSchema } from "../../../../../shared/api-schema/todo-page";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
+import { shellCopy } from "../copy/shell";
 import { monthHeading } from "../shell/month-heading";
 import { ShellBellButton, ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
@@ -34,6 +35,25 @@ const CATEGORY: readonly { key: Category; title: keyof typeof homeCopy }[] = [
 ];
 const railScheduleRow = z.object({ id: z.string(), title: z.string(), startsAt: z.string(), state: z.string() });
 const railSchedule = z.object({ scheduleItems: z.array(z.unknown()) });
+const recentSessionsSchema = z.object({ items: z.array(z.unknown()) });
+
+function RecentSessions() {
+  const { language } = useOrbitLanguage();
+  const sessions = useHomeResource("/api/ai/conversations/sessions?limit=3", recentSessionsSchema);
+  if (sessions.kind !== "ready") return null;
+  const items = sessions.data.items.flatMap((raw) => {
+    if (typeof raw !== "object" || raw === null) return [];
+    const row = raw as { id?: unknown; title?: unknown; organization?: { customTitle?: unknown } };
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const custom = typeof row.organization?.customTitle === "string" ? row.organization.customTitle.trim() : "";
+    const title = custom || (typeof row.title === "string" ? row.title.trim() : "");
+    return id && title ? [{ id, title }] : [];
+  }).slice(0, 3);
+  if (!items.length) return null;
+  return <div className={styles.railRecent}><h2>{pickCopy(shellCopy.railRecentTitle, language)}</h2>
+    {items.map((item) => <Link key={item.id} href={`/app/agent?session=${encodeURIComponent(item.id)}`} className={styles.railItem}>{item.title}</Link>)}
+  </div>;
+}
 
 export function HomePlaceholder() {
   const { language } = useOrbitLanguage();
@@ -93,7 +113,7 @@ function HomeWorkspace() {
   const rail = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
     : <div className={styles.rail}><div className={styles.railBrand}>✨ iOrbit</div><div className={styles.railIntro}><strong>{t("railHello")}</strong><p>{t("railAbout")}</p></div><h2>✨ {t("nextMove")}</h2>{recommendations.length ? recommendations.map((item) =>
       <Link key={item.key} href={item.href} className={styles.railItem}>{item.title}<small>✨ {t(item.source === "secretary" ? "secretary" : item.source === "today" ? "today" : item.source === "plan" ? "planScore" : "schedule")} · {t("fromHome")}</small></Link>)
-      : <p className={styles.subtle}>{t("empty")}</p>}<Link href="/app/inbox" className={styles.cardLink}>{t("showAll")} →</Link></div>;
+      : <p className={styles.subtle}>{t("empty")}</p>}<Link href="/app/inbox" className={styles.cardLink}>{t("showAll")} →</Link><RecentSessions /></div>;
 
   return <>
     <ShellPage title={month} subtitle={range} left={<ShellSearchButton />}

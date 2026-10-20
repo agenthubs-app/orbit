@@ -69,8 +69,8 @@ function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProg
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && (parsed.data.state === "upcoming" || parsed.data.state === "ongoing") ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard /></View>;
-  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard /></View>;
+  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard onSettled={todo.refresh} /></View>;
+  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard onSettled={todo.refresh} /></View>;
   return <View>
     {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
     {todo.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {todo.copy.lastSyncedAt ?? ""}</UiText> : null}
@@ -79,7 +79,7 @@ function TodayWidget({ navigate, guide }: { navigate: Navigate; guide: GuideProg
     {scheduleRows[0] ? <LinkRow label={scheduleRows[0].title} href="/task?seg=calendar" navigate={navigate} /> : null}
     {schedule.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {schedule.copy.lastSyncedAt ?? ""}</UiText> : null}
     {Object.values(todo.page.sources).some(source => source === "unavailable" || source === "not_implemented") ? <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText> : null}
-    <TodayQuestionCard />
+    <TodayQuestionCard onSettled={todo.refresh} />
     <LinkRow label={t("home.widgetMore")} href="/task?seg=todo" navigate={navigate} />
   </View>;
 }

@@ -26,7 +26,7 @@ async function post(path: string, body: unknown): Promise<ContactCompletionResul
  * (`GET /api/contacts/completion-question`), answers or skips it, then hides for the day. Renders
  * nothing while loading, when there is no question, or when the contract is not live (503).
  */
-export function TodayQuestionCard() {
+export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}) {
   const { language } = useOrbitLanguage();
   const t = translator(language);
   const toast = useToast();
@@ -52,6 +52,7 @@ export function TodayQuestionCard() {
       await action();
       toast.success(message);
       setQuestion(null);
+      onSettled?.();
     } catch {
       toast.error(t(q.failed));
     } finally {

@@ -369,8 +369,9 @@ const HW_TODO = {
   few: [['ck', '鈴木さんに名刺交換のお礼', '北辰製作所 · 10/6 交換', 'lav', '今日の一手'], ['ck', '石川 陽介さんとは、どこで？', '手入力 · ひとつ選ぶだけ', '', '1問']],
 };
 const HW_PPL = { many: [NP[0], NP[2], NP[1], NP[3]], few: [NP[2], NP[0], NP[3]] };
+// 主会话代定 §R10-10：Q5 首期不读取 Gmail 正文，首页秘書只展示期限与活动推荐。
 const HW_SEC = {
-  many: [['📨', 'blue', 'メール要約', '高橋さんから返信：「DD 資料は 10/20 までに」', 'Gmail のスレッドを要約 · あなただけに表示'], ['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業 DX カンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
+  many: [['⏰', 'apricot', '期限', 'SaaS Summit の早割は明後日まで', '参加予定に入っていますが、まだ申し込んでいません'], ['🎯', 'lav', 'おすすめ', '製造業 DX カンファレンス 大阪', 'CVC 担当者 約3名 · プランの Step 3 に合います']],
   few: [['🎯', 'lav', 'おすすめ', 'CFO Night Tokyo vol.18（今夜）', 'CFO 経験者 約10名 · プランの Step 1 に合います']],
 };
 const HWX = {
@@ -387,14 +388,14 @@ const HWX = {
   event: (s, o = {}) => { if (s === 'empty') return hwH('🎟️', 'apricot', '次のイベント') + `<div class="hw-empty">URL かポスターで、行く価値を判定できます。</div><button class="btn sm push" style="margin-top:10px">${ic('link', 'sm')}評価する</button>`;
     return hwH('🎟️', 'apricot', '次のイベント') + `<span class="chip apricot" style="align-self:flex-start">今夜 19:00</span><b style="display:block;font-size:14px;line-height:1.4;margin-top:8px">CFO Night Tokyo vol.18</b><div class="hw-sub">渋谷ストリーム</div><div class="hw-foot push">会いたい人 ${s === 'many' ? 6 : 2}名${ic('right', 'sm')}</div>`; },
   sec: (s, o = {}) => { const L = HW_SEC[s];
-    if (s === 'empty') return hwH('🗂️', 'lav', '秘書から') + `<div class="hw-empty">人脈とイベントが増えると、メールの要約・申込の期限・あなたに合うイベントをここでお知らせします（1日 3件まで · 22:00–7:30 は通知しません）。</div>`;
+    if (s === 'empty') return hwH('🗂️', 'lav', '秘書から') + `<div class="hw-empty">人脈とイベントが増えると、申込の期限やあなたに合うイベントをここでお知らせします（1日 3件まで · 22:00–7:30 は通知しません）。</div>`;
     return hwH('🗂️', 'lav', '秘書から', `<span class="chip" style="margin-left:4px">${L.length}</span>`) + L.map(([e, c, k, t, d]) => `<div class="hw-sec"><span class="emo sm ${c}">${e}</span><div class="hmt"><b>${t}</b><small>${d}</small></div><span class="k">${k}</span></div>`).join('') + `<div class="hw-foot push">受信箱「秘書」ですべて見る${ic('right', 'sm')}</div>`; },
   /* 组件库（默认未放置） */
   pend: (s, o = {}) => hwH('⚖️', 'pink', '判断待ち', `<span class="chip coral" style="margin-left:4px">4</span>`) + `<div class="hw-row"><div class="av sm c4">山</div><div class="hmt"><b>山本 彩さんに資料を再送</b><span>24日間 未連絡</span></div><span class="chip coral">期限超過</span></div><div class="hw-row"><div class="av sm c3">鈴</div><div class="hmt"><b>鈴木さんと PoC 日程を確定</b><span>候補 3枠を提案済み</span></div><span class="chip apricot">今日</span></div>`,
   week: (s, o = {}) => hwH('🗓️', 'blue', '今週') + wk7(s === 'many'),
   memo: (s, o = {}) => hwH('📝', 'teal', 'メモ') + `<div class="hw-row"><div class="hmt"><b>高橋さん · 2回目の面談</b><span>DD の資料リストを受領。11月に IC 予定</span></div></div>`,
 };
-const HW_LIB = [['todo', '✅', '今日やること', 'Task の今日分', '中'], ['score', '💰', 'プラン スコア', 'スコアと今日のチャンス', '小'], ['net', '👥', '人脈', '人数 · 最近の人', '中'], ['event', '🎟️', '次のイベント', '次に参加する予定', '小'], ['sec', '🗂️', '秘書から', 'メール要約 · 期限 · おすすめ', '中'], ['pend', '⚖️', '判断待ち', 'あなたの判断が必要なこと', '中'], ['week', '🗓️', '今週', '7日間の予定', '中'], ['evrec', '✨', 'イベント推薦', 'あなたに合うイベント', '中'], ['memo', '📝', 'メモ', '最近のメモ', '小']];
+const HW_LIB = [['todo', '✅', '今日やること', 'Task の今日分', '中'], ['score', '💰', 'プラン スコア', 'スコアと今日のチャンス', '小'], ['net', '👥', '人脈', '人数 · 最近の人', '中'], ['event', '🎟️', '次のイベント', '次に参加する予定', '小'], ['sec', '🗂️', '秘書から', '期限 · おすすめ', '中'], ['pend', '⚖️', '判断待ち', 'あなたの判断が必要なこと', '中'], ['week', '🗓️', '今週', '7日間の予定', '中'], ['evrec', '✨', 'イベント推薦', 'あなたに合うイベント', '中'], ['memo', '📝', 'メモ', '最近のメモ', '小']];
 /* App：.hw 容器（m = 横 2 格）· edit = 编辑模式（抖动 + −） */
 const hwA = (k, s, o = {}) => `<div class="hw ${o.m ? 'm' : ''} k-hw-${k} ${o.edit ? 'edit' : ''}">${o.mark === k ? '<i class="scrollto" data-off="14"></i>' : ''}${o.edit ? '<span class="minus">−</span>' : ''}${HWX[k](s, o)}</div>`;
 const hhint = (cls = '', t = '長押しで組み替え · 「編集」で追加・削除') => `<div class="hhint ${cls}">${ic('grid')}<span>${t}</span><button class="lbtn">${ic('x', 'sm')}</button></div>`;
@@ -699,7 +700,7 @@ html += boards([
     ['.k-hw-todo', 0, '新用户：今日やること 显示「はじめの 3ステップ」（名刺 → 目標 → プラン，硬顺序），进度从真实数据推导'],
     ['.k-hw-net .btn', 0, '人脈 组件空态的唯一主按钮「名刺をスキャン」→ 名刺拍摄（① b1）；其他加人方式在 人脈 右上「＋」'],
     ['.k-hw-score .btn', 0, 'プラン スコア 空态「目標を決める」→ Task › プラン 的目標入力'],
-    ['.k-hw-sec', 0, '秘書から 空态说明会做什么（メール要約 · 申込の期限 · おすすめ），并写明 1日 3件、22:00–7:30 不推送；空态不显示 🔔 红点'],
+    ['.k-hw-sec', 0, '秘書から 空态说明会做什么（申込の期限 · おすすめ），并写明 1日 3件、22:00–7:30 不推送；空态不显示 🔔 红点'],
   ]),
   AP('ホーム', 'few', { body: home('few'), tab: 0 }, [
     ['.k-hw-todo', 0, '今日やること = Task 今日分的摘要（今日の一手 + 判断待ち + 予定）；点 → Task › To-do'],
@@ -719,7 +720,7 @@ html += boards([
   ]),
   AP('ホーム（スクロール後）', 'many', { body: home('many', { mark: 'net' }), tab: 0 }, [
     ['.k-hw-net .hw-ppl', 0, '人脈 286 · +24 今月 + 最近の人 4（只显示头像 / 姓名 / 公司，不显示行业、职位）；点人 → 連絡先詳細，点组件 → 人脈'],
-    ['.k-hw-sec .hw-sec', 0, '秘書から（AI 秘書主动服务）：メール要約（整理已登记联系人的 Gmail 线程给本人看，不代发）· 期限（报名截止 / 会前准备）· おすすめ（按画像推荐活动）'],
+    ['.k-hw-sec .hw-sec', 0, '秘書から（AI 秘書主动服务）：期限（报名截止 / 会前准备）· おすすめ（按画像推荐活动）；Q5 首期无 Gmail 正文摘要'],
     ['.k-hw-sec .hw-foot', 0, '与受信箱「秘書」分类同源；推送遵守既定 1日 3件、22:00–7:30 静音'],
   ]),
   AP('ホーム · 編集モード', 'many', { body: home('many', { edit: true, mark: 'net' }), tab: 0 }, [

@@ -73,7 +73,7 @@ export function CompletionQuestionCard({ question, busy = false, onAnswer, onSki
 }
 
 /** Reads today's question, answers or skips it, then hides for the day; nothing while loading, without a question, or when not live (503). */
-export function TodayQuestionCard() {
+export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}) {
   const { t } = useOrbitLocale();
   const client = useOrbitApiClient();
   const toast = useToast();
@@ -99,6 +99,7 @@ export function TodayQuestionCard() {
     if (!result?.success || !contactCompletionResultSchema.safeParse(result.data).success) { toast.error(t("add.completion.failed")); return; }
     toast.success(message);
     setQuestion(null);
+    onSettled?.();
   };
   const base = `/api/contacts/completion-question/${encodeURIComponent(question.id)}`;
   return (

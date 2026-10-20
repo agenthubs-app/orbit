@@ -40,6 +40,22 @@ test("HomeWidgetsScreen keeps today's question beside the empty three-step guide
   assert.ok((await requestsOf(page)).some((request) => request.startsWith("get:/api/contacts/completion-question")));
 });
 
+test("HomeWidgetsScreen refreshes the Today decision count after answering", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses: {
+    ...responses,
+    "/api/todo/page": { ...emptyTodo, counts: { ...emptyTodo.counts, decisions: 1 } },
+    "/api/contacts/completion-question/question%3Aone/answer": { questionId: question.id, status: "answered", next: null },
+  } });
+  await page.getByText(question.question).waitFor();
+  await page.getByText("1", { exact: true }).first().waitFor();
+  const before = (await requestsOf(page)).filter((request) => request.startsWith("resource:/api/todo/page")).length;
+  await page.evaluate(() => { (window as any).fixture.responses["/api/todo/page"].counts.decisions = 0; (window as any).fixture.responses["/api/contacts/completion-question"] = null; });
+  await page.getByText("朋友介绍").click();
+  await page.waitForFunction((count) => (window as any).fixture.requests.filter((request: string) => request.startsWith("resource:/api/todo/page")).length > count, before, { timeout: 5000 });
+  await page.getByText(question.question).waitFor({ state: "detached", timeout: 5000 });
+  assert.equal(await page.getByText("1", { exact: true }).count(), 0);
+});
+
 test("HomeWidgetsScreen reopens its scoped layout offline and queues an edit locally", async (t) => {
   const page = await harness.open(t, { screen: "home", online: false });
   const key = homeLayoutStorageKey(actor, baseUrl);

@@ -61,7 +61,7 @@ function TodayCard({ guide }: { guide: GuideProgress | null }) {
     const parsed = scheduleRowSchema.safeParse(raw);
     return parsed.success && ["upcoming", "ongoing"].includes(parsed.data.state) ? [parsed.data] : [];
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
-  if (guide && resource.kind !== "ready") return <><GuideSteps progress={guide} />{resource.kind === "error" ? <State resource={resource}>{() => null}</State> : null}<TodayQuestionCard /></>;
+  if (guide && resource.kind !== "ready") return <><GuideSteps progress={guide} />{resource.kind === "error" ? <State resource={resource}>{() => null}</State> : null}<TodayQuestionCard onSettled={resource.retry} /></>;
   return <><State resource={resource}>{(data) => guide && data.counts.nextMoves === 0 && data.counts.decisions === 0 && rows.length === 0 ? <GuideSteps progress={guide} /> : <>
     {guide ? <GuideSteps progress={guide} /> : null}
     <div className={styles.statRow}>
@@ -74,7 +74,7 @@ function TodayCard({ guide }: { guide: GuideProgress | null }) {
     {schedule.kind === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={schedule.retry} /></div> : null}
     {Object.values(data.sources).some((source) => source === "unavailable" || source === "not_implemented") ? <p className={styles.subtle}>{t("unavailable")}</p> : null}
     <EmptyLink href="/app/tasks?tab=todo" label={t("showAll")} />
-  </>}</State><TodayQuestionCard /></>;
+  </>}</State><TodayQuestionCard onSettled={resource.retry} /></>;
 }
 
 function PlanCard() {
