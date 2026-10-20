@@ -1,7 +1,7 @@
 /**
  * 引导页 `/app/start` route adapter（W0006，RW-04 / RW-05 第 3 步）。
  *
- * - 开关 `ORBIT_GUIDE_DEMO` 关闭（D1）：直接重定向到 `/app/agent`，不做任何读取；
+ * - 示例开关不限制真实指南读取；
  * - 资料门禁豁免这一条路径（`profile-onboarding-route-policy.ts`），资料未完成的新用户也能进；
  * - 进度由服务端从真实数据推导（`features/guide/progress.ts` 的 `readStartGuideForActor`），
  *   客户端只拿到可序列化的快照。W0035 删去「活动」一步后，本页不再读社群加入记录、公开
@@ -20,8 +20,6 @@ import { parseStartStepParam } from "../../../../features/guide/start-steps";
 import { createProfileService } from "../../../../features/profile/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
-import { OrbitReferenceStyles } from "../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { StartGuide, StartGuideUnavailable } from "./start-guide";
 
 export const dynamic = "force-dynamic";
@@ -84,12 +82,8 @@ export default async function AppStartPage({
   }
 
   return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      <div data-orbit-real-page="start-guide" data-orbit-route="app-start-guide-route">
-        {body}
-      </div>
-    </>
+    <div data-r28-guide data-orbit-route="app-start-guide-route">
+      {body}
+    </div>
   );
 }

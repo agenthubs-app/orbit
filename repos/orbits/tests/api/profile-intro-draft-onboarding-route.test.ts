@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createProfileIntroDraftHandler } from "../../app/api/profile/intro-draft/route";
+import { createProfileIntroDraftHandler } from "../../app/api/profile/intro-draft/handler";
 import { createStorageProfileIntroQuota, type ProfileIntroQuotaPayload } from "../../features/profile/intro-onboarding-quota";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 

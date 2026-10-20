@@ -3,9 +3,9 @@
  *
  * - 步骤条（W0035 起只有 3 步）：完成 ✓ / 进行中 / 锁定（完成前一步后解锁）；点锁定的步骤只提示
  *   「先完成第 n 步」不切换、不写记录；切换步骤写 currentStep；
- * - 第 1 步：槽位、「已确认 x / 3」、待确认张数、扫名片与「导入人脉」入口；W0054 起不能跳过（没有
+ * - 第 1 步：槽位、「已确认 x / 3」、扫名片与「导入人脉」入口；W0054 起不能跳过（没有
  *   「先这样，继续」与代价说明）；
- *   接上本机进行中的名片批次（状态机在本页，宿主让位）；
+ *   名片批次由 B 线 `/app/contacts/new/scan` 路由处理；
  * - 第 2 步：W0002 编辑器，已有目标自动完成；第 3 步：当前目标、就地修改（草稿，取消不覆盖）、
  *   固定问题与 6 点结构、「开始分析」直接调用计划生成接口（W0008），成功后去对话页看回答卡片；
  * - 3 步完成：完成卡片；D2 老用户直接停在第 3 步；记录的 currentStep 能打开就停在那一步；
@@ -17,7 +17,6 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 
 import type { StartGuideSnapshot } from "../../features/guide/start-steps";
-import type { CardBatch } from "../../app/(app)/app/contacts/card-batch-0918/use-card-batch";
 import { StartGuide, type StartGuideProps } from "../../app/(app)/app/start/start-guide";
 import { StepCards } from "../../app/(app)/app/start/start-step-cards";
 
@@ -364,9 +363,9 @@ test("W0054 SC-01: step 1 with 2 confirmed contacts has no skip — only scan an
   assert.equal(byData(root, "data-start-next").length, 0);
   assert.deepEqual(stepStatuses(root), ["current", "locked", "locked"]);
 
-  assert.equal(byData(root, "data-card-uploader").length, 0);
-  await click(one(root, "data-start-scan"));
-  assert.equal(byData(root, "data-card-uploader").length, 1, "the shared batch uploader opens in place");
+  const scanLink = one(root, "data-start-scan");
+  assert.equal(scanLink.type, "a");
+  assert.equal(scanLink.props.href, "/app/contacts/new/scan");
   // 点锁定的第 2 步只提示，不切换、不写记录。
   await click(one(root, "data-start-step", "2"));
   assert.equal(view(root), "1");
@@ -413,47 +412,32 @@ test("W0054 SC-02: a user with completedAt opens on the finish card even with on
   act(() => root.unmount());
 });
 
-test("the guide page takes over this browser's in-progress card batch (the site-wide host yields here)", async (t) => {
+test("the guide leaves an in-progress scan batch with B's route", async (t) => {
   const api = stubBrowser(t, { activeBatch: "batch-guide-1" });
   const root = await mount(props());
-  assert.ok(
-    api.requests.some((request) => request.startsWith("GET ") && request.endsWith("/batch-guide-1")),
-    "the page's own state machine loads the batch",
-  );
+  assert.equal(one(root, "data-start-scan").props.href, "/app/contacts/new/scan");
+  assert.ok(!api.requests.some((request) => request.endsWith("/batch-guide-1")));
   act(() => root.unmount());
 });
 
-test("step 1 slots list pending cards from the batch with their count", () => {
-  const batch = {
-    batchId: null,
-    drafts: { c1: { fields: { displayName: "佐藤美咲" } }, c2: { fields: { displayName: "" } } },
-    pending: [{ cardId: "c1" }, { cardId: "c2" }, { cardId: "c3" }],
-    reviewing: true,
-  } as unknown as CardBatch;
+test("step 1 slots use confirmed contacts from the server snapshot", () => {
   let root!: ReactTestRenderer;
   act(() => {
     root = create(
       <StepCards
-        batch={batch}
         cardScanAvailable
         confirmedContacts={1}
         done={false}
-        onBatchStarted={() => undefined}
         onNext={() => undefined}
-        onReset={() => undefined}
-        onScan={() => undefined}
         samples={[{ displayName: "王砚", organization: null, role: null }]}
-        scanOpen={false}
       />,
     );
   });
   assert.deepEqual(
     byData(root, "data-slot").map((node) => node.props["data-slot"]),
-    ["confirmed", "pending", "pending"],
+    ["confirmed", "empty", "empty"],
   );
-  assert.match(text(byData(root, "data-slot", "pending")[0]!), /待确认佐藤美咲/);
-  assert.match(text(byData(root, "data-slot", "pending")[1]!), /姓名待确认/);
-  assert.equal(text(one(root, "data-start-pending-count")), "待确认 3 张");
+  assert.equal(text(one(root, "data-start-card-count")), "已确认 1 / 3");
   act(() => root.unmount());
 });
 
@@ -537,6 +521,9 @@ test("step 3: edit the goal in place as a draft — cancel keeps the saved goal,
 test("step 3 creates an onboarding intake and opens its Web flow href", async (t) => {
   const api = stubBrowser(t);
   const root = await mount(props({ relationshipGoal: "获取客户", snapshot: { confirmedContacts: 3 } }));
+  assert.equal(one(root, "data-start-analyze").props.disabled, true, "the suggested type needs explicit confirmation");
+  const sales = root.root.find((node) => node.type === "button" && text(node) === "开拓客户");
+  await click(sales);
   await click(one(root, "data-start-analyze"));
   assert.deepEqual(api.assigned, ["/app/plans/flow/first-intake"]);
   assert.deepEqual(api.bootstraps, [], "the retired v1 bootstrap is never called");

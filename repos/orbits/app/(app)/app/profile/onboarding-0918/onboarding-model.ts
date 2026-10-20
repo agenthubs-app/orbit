@@ -12,8 +12,8 @@ import {
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../profile-tag-options";
 import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 
-export type Copy = { zh: string; en: string };
-export type Lang = "zh" | "en";
+export type Copy = { zh: string; en: string; ja?: string };
+export type Lang = "zh" | "en" | "ja";
 
 export type OnboardingStep = "profile" | "goals" | "persona" | "intro" | "import";
 export type OnboardingView = "welcome" | OnboardingStep | "home" | "network";
@@ -45,7 +45,7 @@ export { composeRelationshipGoal, parseRelationshipGoal };
 
 /** 选项在任一语言下的文本与 value 相同即视为同一个（切换语言后仍能识别）。 */
 export function optionMatches(option: Copy, value: string): boolean {
-  return value === option.zh || value === option.en;
+  return value === option.zh || value === option.en || value === option.ja;
 }
 
 /** AI 返回的建议标签（当前语言原文）→ SEEK_OPTIONS 里的选项，保持 AI 给出的顺序。 */
@@ -83,8 +83,6 @@ export interface OnboardingDraft {
   goalChoices?: string[];
   horizon: GoalHorizon | "";
   introRegenerations: number;
-  /** 第 5 步名片批次（名片 V2）；刷新/返回后接着显示解析进度或确认界面。 */
-  cardBatchId: string | null;
 }
 
 /**
@@ -115,7 +113,6 @@ export function readOnboardingDraft(actorKey: string): OnboardingDraft | null {
       introRegenerations: typeof parsed.introRegenerations === "number" && parsed.introRegenerations >= 0
         ? Math.min(Math.floor(parsed.introRegenerations), INTRO_REGENERATE_LIMIT)
         : 0,
-      cardBatchId: typeof parsed.cardBatchId === "string" && parsed.cardBatchId ? parsed.cardBatchId : null,
     };
   } catch {
     return null;

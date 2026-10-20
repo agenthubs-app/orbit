@@ -1,7 +1,7 @@
 // 新用户引导样式：取值来自 docs/designs/Orbit_0918/新用户引导.dc.html 的 style=""，
-// 前缀 [data-orbit-real-page="onboarding-0918"]（两段选择器，压过 orbit-reference-styles 的控件重置）。
+// 本线资料页独立作用域。
 // 注意：本模板字面量的注释里不要写反引号。
-const S = '[data-orbit-real-page="onboarding-0918"]';
+const S = '[data-r28-onboarding]';
 
 export const ONBOARDING_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -295,6 +295,43 @@ ${S} .ob-finish-note { font-size: 13px; color: #6B6F99; }
 
 ${S} .ob-toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 
+/* R28 five-screen layout, aligned with b1 onboarding cards. */
+${S} { background: #f5f2f7; color: #211d28; }
+${S} .ob-header { background: #f2edf6; border-bottom: 1px solid #e7e1eb; }
+${S} .ob-header-inner { max-width: 1440px; padding: 24px 40px; background: transparent; border-radius: 0; }
+${S} .ob-logo { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 700; color: #211d28; letter-spacing: 0; }
+${S} .ob-logo-mark { width: 34px; height: 34px; display: inline-grid; place-items: center; border-radius: 10px; background: #211d28; color: white; font-size: 14px; font-weight: 800; }
+${S} .ob-stage-nav { flex: 1; display: flex; justify-content: center; align-items: center; gap: 18px; overflow: hidden; }
+${S} .ob-stage-item { display: inline-flex; align-items: center; gap: 8px; color: #a6a0ad; font-size: 13px; white-space: nowrap; }
+${S} .ob-stage-item:not(:last-child)::after { content: ''; width: 36px; height: 1px; margin-left: 9px; background: #e8e2ec; }
+${S} .ob-stage-number { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; background: #eeeaf0; color: #9992a3; font-weight: 700; }
+${S} .ob-stage-current { color: #211d28; font-weight: 700; }
+${S} .ob-stage-current .ob-stage-number { background: #75658f; color: #fff; }
+${S} .ob-header-right { gap: 16px; }
+${S} .ob-header-skip { font-size: 13px; font-weight: 700; color: #51495b; white-space: nowrap; }
+${S} .ob-avatar-sm { font-size: 11px; }
+${S} .ob-main { max-width: 1280px; padding: 30px 40px 100px; }
+${S} .ob-progress-row { display: none; }
+${S} .ob-grid { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; }
+${S} .ob-card { min-height: 816px; padding: 30px 28px; border: 0; border-radius: 22px; gap: 24px; }
+${S} .ob-stack { gap: 20px; }
+${S} .ob-head { gap: 5px; }
+${S} .ob-h2 { font-size: 23px; font-weight: 800; letter-spacing: -.02em; }
+${S} .ob-p { font-size: 12px; color: #6c6574; }
+${S} .ob-autofill { align-self: stretch; justify-content: flex-start; background: #f4f0f8; border: 1px dashed #c8b7da; color: #292331; border-radius: 16px; min-height: 74px; }
+${S} .ob-fields { gap: 18px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+${S} .ob-field { gap: 7px; color: #605869; font-size: 12px; font-weight: 700; }
+${S} .ob-required { background: #ede4f5; color: #75658f; font-size: 11px; }
+${S} .ob-input { min-height: 49px; border-radius: 13px; border: 1px solid transparent; background: #f2eff4; color: #292331; font-size: 14px; }
+${S} .ob-input:focus { border-color: #75658f; }
+${S} .ob-privacy { font-size: 11px; color: #948c9c; }
+${S} .ob-footer { margin-top: auto; border: 0; }
+${S} .ob-btn-dark { background: #211d28; color: #fff; font-weight: 700; }
+${S} .ob-btn-dark:disabled { background: #211d28; }
+${S} .ob-aside { top: 110px; border: 0; border-radius: 22px; box-shadow: none; }
+${S} .ob-aside-label, ${S} .ob-aside-sub { color: #948c9c; }
+${S} .ob-aside-heading { color: #211d28; }
+
 @media (min-width: 1000px) {
 }
 @media (max-width: 860px) {
@@ -303,8 +340,20 @@ ${S} .ob-toast { position: fixed; left: 50%; bottom: 80px; transform: translateX
   ${S} .ob-nav { gap: 18px; }
   ${S} .ob-main { padding: 14px 16px 90px; }
   ${S} .ob-header-inner { padding: 14px 16px; gap: 12px; }
+  ${S} .ob-stage-nav { justify-content: flex-start; }
+  ${S} .ob-stage-item:not(.ob-stage-current) span:not(.ob-stage-number) { display: none; }
+  ${S} .ob-stage-item:not(:last-child)::after { width: 10px; margin-left: 1px; }
+  ${S} .ob-card { min-height: 720px; }
 }
 @media (max-width: 560px) {
   ${S} .ob-nav { display: none; }
+  ${S} .ob-header-inner { padding: 12px 16px; }
+  ${S} .ob-header-right .ob-lang, ${S} .ob-header-right .ob-avatar-sm { display: none; }
+  ${S} .ob-stage-nav { gap: 5px; }
+  ${S} .ob-stage-item { gap: 3px; font-size: 11px; }
+  ${S} .ob-stage-number { width: 21px; height: 21px; }
+  ${S} .ob-stage-item:not(:last-child)::after { width: 4px; }
+  ${S} .ob-fields { grid-template-columns: minmax(0, 1fr); }
+  ${S} .ob-card { min-height: 0; padding: 22px 18px; }
 }
 `;

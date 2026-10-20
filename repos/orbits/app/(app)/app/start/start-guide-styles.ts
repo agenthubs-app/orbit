@@ -1,8 +1,7 @@
 // 引导页 /app/start 的作用域样式（W0006）。取值来自已确认的原型 iorbit-plan（.start-*、.steps、
 // .step、.steps-mini、.lead、.slots、.goalbox、.question、.outline-list、.rec、.finish）。
-// 选择器全部以 [data-orbit-real-page="start-guide"] 起头；按钮用 .btn.sg-* 并中和
-// orbit-reference-styles 的 .btn 基类（高度、字重、间距、过渡）。注意：本模板字面量里不要写反引号。
-const S = '[data-orbit-real-page="start-guide"]';
+// 选择器限定在本线指南，避免影响其他路由。
+const S = '[data-r28-guide]';
 
 const BUTTONS = ["sg-primary", "sg-secondary", "sg-link", "sg-step"];
 

@@ -34,8 +34,6 @@ import {
   scanOwnBusinessCard,
   type ProfileFields,
 } from "./onboarding-client";
-import { CardBatchImport, CardBatchReminders } from "../../contacts/card-batch-0918/card-batch-ui";
-import { useCardBatch } from "../../contacts/card-batch-0918/use-card-batch";
 import {
   bioCounter,
   HEADLINE_LIMIT,
@@ -61,6 +59,7 @@ import {
 import { horizonOption, type GoalHorizon } from "../goal-editor/goal-editor-model";
 import { OnboardingHomePreview, OnboardingNetworkPreview, type PreviewProgress } from "./onboarding-previews";
 import { ONBOARDING_STYLES } from "./onboarding-styles";
+import { ONBOARDING_JA } from "./onboarding-ja";
 
 export interface OnboardingFlowProps {
   actorKey: string;
@@ -96,6 +95,14 @@ const STEP_TITLES: Record<OnboardingStep, Copy> = {
   import: { zh: "带入已有人脉", en: "Bring in your network" },
 };
 
+const STEP_NAV_TITLES: Record<OnboardingStep, Copy> = {
+  profile: { zh: "基本信息", en: "Basics", ja: "基本情報" },
+  goals: { zh: "目标", en: "Goals", ja: "目標" },
+  persona: { zh: "优势与需求", en: "Offer & seek", ja: "強み・ニーズ" },
+  intro: { zh: "自我介绍", en: "Introduction", ja: "自己紹介" },
+  import: { zh: "导入名片", en: "Cards", ja: "名刺の取り込み" },
+};
+
 const STEP_TIMES: Record<OnboardingStep, Copy> = {
   profile: { zh: "30 秒", en: "30 sec" },
   goals: { zh: "30 秒", en: "30 sec" },
@@ -109,7 +116,7 @@ function todayLabel(iso: string, t: (copy: Copy) => string): string {
   if (!year || !month || !day) return "";
   const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
   const monthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return t({ zh: `${year}年${month}月${day}日 · ${weekday.zh}`, en: `${weekday.en}, ${monthsEn[month - 1]} ${day}, ${year}` });
+  return t({ zh: `${year}年${month}月${day}日 · ${weekday.zh}`, en: `${weekday.en}, ${monthsEn[month - 1]} ${day}, ${year}`, ja: `${year}年${month}月${day}日 · ${t(weekday)}` });
 }
 
 function basicFromPayload(payload: ProfilePayload): BasicDraft {
@@ -126,8 +133,9 @@ function basicFromPayload(payload: ProfilePayload): BasicDraft {
 }
 
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
-  const { language, setLanguage, t } = useOrbitLanguage();
-  const lang = language === "zh" ? "zh" : "en";
+  const { language, setLanguage, t: siteText } = useOrbitLanguage();
+  const t = (copy: Copy) => siteText(language === "ja" ? { ...copy, ja: copy.ja ?? ONBOARDING_JA[copy.en] } : copy);
+  const lang = language;
   const [view, setView] = useState<OnboardingView>("welcome");
   const [scrolled, setScrolled] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -148,10 +156,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
   const [introError, setIntroError] = useState("");
   const [introRegenerations, setIntroRegenerations] = useState(0);
-  const [cardBatchId, setCardBatchId] = useState<string | null>(null);
-  // 名片批次在页面顶层维护：离开第 5 步时上传/识别/自动导入照常进行，完成后在任意视图提醒。
-  const cardBatch = useCardBatch(cardBatchId, t);
-  const importedCount = cardBatch.autoCount + cardBatch.userCount;
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
   const [saving, setSaving] = useState(false);
@@ -209,7 +213,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           setGoalChoices(draft.goalChoices ?? []);
           setHorizon(draft.horizon);
           setIntroRegenerations(draft.introRegenerations);
-          setCardBatchId(draft.cardBatchId);
           if (!flow) setView(draft.view);
         }
         if ((flow?.lastConfirmedScreen ?? 0) >= 2 || !draft?.goalText.trim()) {
@@ -234,8 +237,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { cardBatchId, goalText, goalChoices, horizon, introRegenerations, view });
-  }, [actorKey, cardBatchId, goalText, goalChoices, horizon, introRegenerations, loaded, view]);
+    writeOnboardingDraft(actorKey, { goalText, goalChoices, horizon, introRegenerations, view });
+  }, [actorKey, goalText, goalChoices, horizon, introRegenerations, loaded, view]);
 
   function flash(text: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -247,14 +250,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setError("");
     setView(nextView);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
-  }
-
-  // 解析期间「看看近期活动 / 去 iOrbit 探索」：去预览页逛，解析在后台继续，完成后弹提醒。
-  function browse(target: "home" | "events") {
-    go("home");
-    if (target === "events") {
-      setTimeout(() => document.getElementById("ob-events")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
-    }
   }
 
   // 中途离开（跳过、先进入 Orbit）保留草稿，回来还能接着填；只有走完最后一步才清除。
@@ -277,7 +272,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       clearOnboardingDraft(actorKey);
       window.location.assign(next);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not finish onboarding. Please retry.");
+      setError(caught instanceof Error ? caught.message : t({ zh: "无法完成设置，请重试。", en: "Could not finish onboarding. Please retry.", ja: "設定を完了できませんでした。再試行してください。" }));
     } finally {
       setSaving(false);
     }
@@ -347,7 +342,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       return true;
     } catch (caught) {
       setError(caught instanceof Error && caught.message
-        ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}` })
+        ? t({ zh: `保存失败：${caught.message}`, en: `Save failed: ${caught.message}`, ja: `保存できませんでした：${caught.message}` })
         : t({ zh: "保存失败，请重试。", en: "Save failed. Please try again." }));
       return false;
     } finally {
@@ -401,7 +396,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   }
 
   // ── AI 介绍：进入这一步且还没有介绍时自动起草；用户可重新生成、可直接改 ──
-  // kind: auto = 进入本步自动生成；retry = 失败后重试；这两种不计次。regenerate = 「换一版」，成功才计次，上限 3 次。
+  // kind: auto = 进入本步自动生成；retry = 失败后重试；这两种不计次。regenerate = 「换一版」，成功才计次，上限 2 次。
   async function generateIntro(kind: "auto" | "retry" | "regenerate") {
     if (introStatus === "generating") return;
     if (kind === "regenerate" && introRegenerations >= INTRO_REGENERATE_LIMIT) return;
@@ -486,16 +481,21 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       <style>{ONBOARDING_STYLES}</style>
       <header className={`ob-header${scrolled ? " ob-header-scrolled" : ""}`}>
         <div className="ob-header-inner">
-          <button className="btn ob-logo" onClick={() => go("welcome")} type="button">Orbit</button>
-          <nav className="ob-nav" aria-label={t({ zh: "预览", en: "Preview" })}>
+          <button className="btn ob-logo" onClick={() => go("welcome")} type="button"><span className="ob-logo-mark" aria-hidden>O</span>Orbit</button>
+          {isStep ? <nav className="ob-stage-nav" aria-label={t({ zh: "设置进度", en: "Setup progress", ja: "設定の進捗" })}>
+            {ONBOARDING_STEPS.map((step, index) => <span aria-current={step === view ? "step" : undefined} className={`ob-stage-item${step === view ? " ob-stage-current" : ""}`} key={step}>
+              <span className="ob-stage-number">{index + 1}</span><span>{t(STEP_NAV_TITLES[step])}</span>
+            </span>)}
+          </nav> : <nav className="ob-nav" aria-label={t({ zh: "预览", en: "Preview" })}>
             <button className={`btn ob-nav-link${view === "home" ? " ob-nav-on" : ""}`} onClick={() => go("home")} type="button">iOrbit</button>
             <button className="btn ob-nav-link" onClick={() => go("home")} type="button">{t({ zh: "活动", en: "Events" })}</button>
             <button className={`btn ob-nav-link${view === "network" ? " ob-nav-on" : ""}`} onClick={() => go("network")} type="button">{t({ zh: "人脉", en: "Network" })}</button>
-          </nav>
+          </nav>}
           <div className="ob-header-right">
-            <button className="btn ob-lang" onClick={() => setLanguage(language === "zh" ? "en" : "zh")} type="button">
-              {language === "zh" ? "中文" : "English"} <span className="ob-caret" aria-hidden>⌄</span>
+            <button className="btn ob-lang" onClick={() => setLanguage(language === "zh" ? "en" : language === "en" ? "ja" : "zh")} type="button">
+              {language === "zh" ? "中文" : language === "en" ? "English" : "日本語"} <span className="ob-caret" aria-hidden>⌄</span>
             </button>
+            {isStep ? <button className="btn ob-header-skip" onClick={() => (complete ? leaveTo(next) : go("home"))} type="button">{t({ zh: "稍后设置", en: "Set up later", ja: "あとで設定する" })}</button> : null}
             <button aria-label={t({ zh: "关于你", en: "About you" })} className="btn ob-avatar-sm" onClick={() => go("profile")} type="button">{initial}</button>
           </div>
         </div>
@@ -512,7 +512,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           <div className="ob-steps">
             <div className="ob-progress-row">
               <span className="ob-progress">
-                <span>{t({ zh: `设置你的 Orbit · 第 ${stepIndex + 1} 步，共 ${ONBOARDING_STEPS.length} 步`, en: `Set up Orbit · Step ${stepIndex + 1} of ${ONBOARDING_STEPS.length}` })}</span>
+                <span>{t({ zh: `设置你的 Orbit · 第 ${stepIndex + 1} 步，共 ${ONBOARDING_STEPS.length} 步`, en: `Set up Orbit · Step ${stepIndex + 1} of ${ONBOARDING_STEPS.length}`, ja: `Orbitの設定 · ${stepIndex + 1} / ${ONBOARDING_STEPS.length}` })}</span>
                 <span className="ob-bars" aria-hidden>
                   {ONBOARDING_STEPS.map((step, index) => <span className={`ob-bar${index <= stepIndex ? " ob-bar-on" : ""}`} key={step} />)}
                 </span>
@@ -568,14 +568,11 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 {view === "import" ? (
                   <div className="ob-stack" data-screen-label="06 带入人脉">
                     <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap the cards you have and iOrbit can start judging who's worth contacting now." })} />
-                    <CardBatchImport
-                      available={cardScanAvailable}
-                      batch={cardBatch}
-                      onBatchStarted={setCardBatchId}
-                      onBrowse={browse}
-                      onReset={() => setCardBatchId(null)}
-                      t={t}
-                    />
+                    <div className="ob-import-links">
+                      {cardScanAvailable ? <a className="btn ob-btn-dark" href="/app/contacts/new/scan">{t({ zh: "扫名片", en: "Scan business cards" })}</a> : null}
+                      <a className="btn ob-btn-ghost" href="/app/contacts/new?method=csv">{t({ zh: "导入联系人", en: "Import contacts" })}</a>
+                      <p>{t({ zh: "确认完名片后，返回这里继续。也可以先跳过。", en: "After confirming your cards, return here to continue. You can also skip this step." })}</p>
+                    </div>
                   </div>
                 ) : null}
 
@@ -586,13 +583,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   <span className="ob-footer-right">
                     {view === "import" ? (
                       <span className="ob-finish">
-                        {cardBatchId && (!cardBatch.reviewing || cardBatch.pending.length > 0) ? (
-                          <span className="ob-finish-note">{cardBatch.reviewing
-                            ? t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })
-                            : t({ zh: "可以先完成设置，上传和解析会在后台继续，完成后提醒你", en: "Go ahead — upload and reading continue in the background; we'll let you know" })}</span>
-                        ) : null}
                         <button className="btn ob-btn-dark" disabled={saving} onClick={() => void finish()} type="button">
-                          {importedCount > 0 ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : cardBatchId ? t({ zh: "先完成设置", en: "Finish setup for now" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
+                          {t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
                         </button>
                       </span>
                     ) : (
@@ -609,7 +601,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 horizon={effectiveHorizon}
                 initial={initial}
                 language={language}
-                addedCount={importedCount}
+                addedCount={0}
                 offer={offer}
                 savedGoal={savedGoal}
                 seek={seek}
@@ -624,7 +616,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         {view === "network" ? <OnboardingNetworkPreview {...previewProps} /> : null}
       </main>
 
-      <CardBatchReminders batch={cardBatch} onOpen={() => go("import")} t={t} viewingImport={view === "import"} />
       {toast ? <div className="ob-toast" role="status">{toast}</div> : null}
     </>
   );
@@ -747,6 +738,15 @@ function ProfileStep({
         <Field label={{ zh: "姓名", en: "Name" }} required t={t}>
           <input className="ob-input" disabled={disabled} maxLength={60} onChange={set("name")} placeholder={t({ zh: "你希望别人怎么称呼你", en: "How should people call you?" })} value={basic.name} />
         </Field>
+        <Field label={{ zh: "公司", en: "Company" }} t={t}>
+          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("company")} placeholder={t({ zh: "例如：Orbit", en: "e.g. Orbit" })} value={basic.company} />
+        </Field>
+        <Field label={{ zh: "职位", en: "Title" }} t={t}>
+          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("title")} placeholder={t({ zh: "例如：产品负责人", en: "e.g. Head of Product" })} value={basic.title} />
+        </Field>
+        <Field label={{ zh: "生日（可选）", en: "Birthday (optional)", ja: "生年月日（任意）" }} t={t}>
+          <input className="ob-input" disabled={disabled} max={todayIso} onChange={set("birthDate")} type="date" value={basic.birthDate} />
+        </Field>
         <Field label={{ zh: "一级行业", en: "Primary industry" }} required t={t}>
           <select
             className="ob-input"
@@ -777,15 +777,6 @@ function ProfileStep({
             ))}
           </select>
         </Field>
-        <Field label={{ zh: "职位", en: "Title" }} t={t}>
-          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("title")} placeholder={t({ zh: "例如：产品负责人", en: "e.g. Head of Product" })} value={basic.title} />
-        </Field>
-        <Field label={{ zh: "公司", en: "Company" }} t={t}>
-          <input className="ob-input" disabled={disabled} maxLength={80} onChange={set("company")} placeholder={t({ zh: "例如：Orbit", en: "e.g. Orbit" })} value={basic.company} />
-        </Field>
-        <Field label={{ zh: "生日", en: "Birthday" }} required t={t}>
-          <input className="ob-input" disabled={disabled} max={todayIso} onChange={set("birthDate")} type="date" value={basic.birthDate} />
-        </Field>
       </div>
       {showBirthError ? <div className="ob-notice ob-notice-warning">{t({ zh: "请填写有效的生日（不能晚于今天）。", en: "Enter a valid birthday (not later than today)." })}</div> : null}
       <span className="ob-label-note ob-privacy">{t({ zh: "生日仅自己可见，用于活动报名核验，不会展示给其他人。", en: "Your birthday is private — used only for event registration checks, never shown to others." })}</span>
@@ -807,7 +798,7 @@ function ChipGroup({
 }) {
   const [custom, setCustom] = useState("");
   const full = limit !== undefined && values.length >= limit;
-  const knownValues = new Set(options.flatMap(option => [option.zh, option.en]));
+  const knownValues = new Set(options.flatMap(option => [option.zh, option.en, option.ja]));
   const customValues = values.filter(value => !knownValues.has(value));
   function add() {
     setValues(current => addCustomValue(current, custom, limit));
@@ -975,7 +966,7 @@ function IntroStep({
           ) : (
             <button className="btn ob-btn-soft" disabled={generating || regenerationsLeft <= 0} onClick={onRegenerate} type="button">
               {regenerationsLeft > 0
-                ? t({ zh: `↻ 换一版 · 还剩 ${regenerationsLeft} 次`, en: `↻ Try another · ${regenerationsLeft} left` })
+                ? t({ zh: `↻ 换一版 · 还剩 ${regenerationsLeft} 次`, en: `↻ Try another · ${regenerationsLeft} left`, ja: `↻ 別の案を作る · 残り${regenerationsLeft}回` })
                 : t({ zh: "换一版次数已用完", en: "No more versions" })}
             </button>
           )}
@@ -1035,7 +1026,7 @@ function UnderstandingAside({
     ? secondaryIndustryLabel(basic.secondaryIndustryId, language)
     : basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, language) : "";
   const line = [basic.title.trim(), basic.company.trim(), industry].filter(Boolean);
-  const separator = t({ zh: "、", en: ", " });
+  const separator = t({ zh: "、", en: ", ", ja: "、" });
   const goal = goalText.trim();
   return (
     <aside className="ob-aside" aria-label={t({ zh: "iOrbit 对你的理解", en: "How iOrbit sees you" })}>
@@ -1064,12 +1055,12 @@ function UnderstandingAside({
       </span>
       <span className="ob-aside-foot">
         <span className="ob-aside-label">{t({ zh: "人脉", en: "Network" })}</span>
-        <span className="ob-aside-headline">{addedCount ? t({ zh: `已带入 ${addedCount} 位`, en: `${addedCount} added` }) : view === "import" ? t({ zh: "可通过扫描名片带入", en: "Bring in by scanning cards" }) : t({ zh: "尚未带入", en: "Not imported yet" })}</span>
+        <span className="ob-aside-headline">{addedCount ? t({ zh: `已带入 ${addedCount} 位`, en: `${addedCount} added`, ja: `${addedCount}人を追加` }) : view === "import" ? t({ zh: "可通过扫描名片带入", en: "Bring in by scanning cards" }) : t({ zh: "尚未带入", en: "Not imported yet" })}</span>
       </span>
       {goal ? (
         <span className="ob-tip ob-tip-sm">
           <span className="ob-spark" aria-hidden>✦</span>
-          <span>{t({ zh: `iOrbit 会优先为你留意与「${goal}」相关的活动和人。`, en: `iOrbit will prioritise events and people related to “${goal}”.` })}</span>
+          <span>{t({ zh: `iOrbit 会优先为你留意与「${goal}」相关的活动和人。`, en: `iOrbit will prioritise events and people related to “${goal}”.`, ja: `iOrbitが「${goal}」に合うイベントや人を探します。` })}</span>
         </span>
       ) : null}
     </aside>

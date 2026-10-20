@@ -9,8 +9,7 @@
  *   停在同一步；W0054（RN-12）起第 1 步只认 3 位已确认联系人，没有跳过入口，「扫名片」旁常驻
  *   「导入人脉」（W54-2）；存量 `step1Skipped = true` 只读兼容（W54-1）；有 `completedAt` 的人进页面
  *   默认显示完成卡片（W54-5）；
- * - 名片批次状态机挂在本页顶层（与 onboarding 在流程内扫名片同一写法），全站 CardBatchHost
- *   在 /app/start 让位，同一批次不会被处理两次。
+ * - 名片识别交给 B 线的 `/app/contacts/new/scan`；返回时服务端重读已确认联系人。
  */
 "use client";
 
@@ -31,9 +30,6 @@ import {
   type StartGuideSnapshot,
   type StartView,
 } from "../../../../features/guide/start-steps";
-import { CardBatchReminders } from "../contacts/card-batch-0918/card-batch-ui";
-import { listActiveBatches } from "../contacts/card-batch-0918/card-batch-store";
-import { useCardBatch } from "../contacts/card-batch-0918/use-card-batch";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { horizonOption, parseRelationshipGoal } from "../profile/goal-editor/goal-editor-model";
 import { StepCards } from "./start-step-cards";
@@ -230,20 +226,6 @@ export function StartGuide(props: StartGuideProps) {
     if (!startStepDone(before, view) && startStepDone(flags, view)) advance(viewAfterStepDone(flags));
   }, [advance, flags, view]);
 
-  // 名片批次：接上本机正在进行的批次（全站宿主在本页让位），确认数增加后刷新服务端计数。
-  const [cardBatchId, setCardBatchId] = useState<string | null>(null);
-  const [scanOpen, setScanOpen] = useState(false);
-  useEffect(() => {
-    setCardBatchId(listActiveBatches().at(-1) ?? null);
-  }, []);
-  const cardBatch = useCardBatch(cardBatchId, t);
-  const imported = cardBatch.autoCount + cardBatch.userCount;
-  const importedRef = useRef(imported);
-  useEffect(() => {
-    if (imported > importedRef.current) router.refresh();
-    importedRef.current = imported;
-  }, [imported, router]);
-
   const onGoalSaved = useCallback(
     (value: string, updatedAt: string | null, options: { advance: boolean }) => {
       setSavedGoal(value);
@@ -353,19 +335,11 @@ export function StartGuide(props: StartGuideProps) {
 
             {view === 1 ? (
               <StepCards
-                batch={cardBatch}
                 cardScanAvailable={props.cardScanAvailable}
                 confirmedContacts={snapshot.confirmedContacts}
                 done={flags.contacts}
-                onBatchStarted={(batchId) => {
-                  setCardBatchId(batchId);
-                  setScanOpen(true);
-                }}
                 onNext={() => advance(viewAfterStepDone(flags))}
-                onReset={() => setCardBatchId(null)}
-                onScan={() => setScanOpen(true)}
                 samples={snapshot.contactSamples}
-                scanOpen={scanOpen}
               />
             ) : null}
             {view === 2 ? (
@@ -390,15 +364,6 @@ export function StartGuide(props: StartGuideProps) {
           </>
         )}
       </main>
-      <CardBatchReminders
-        batch={cardBatch}
-        onOpen={() => {
-          setScanOpen(true);
-          openStep(1);
-        }}
-        t={t}
-        viewingImport={view === 1}
-      />
     </div>
   );
 }

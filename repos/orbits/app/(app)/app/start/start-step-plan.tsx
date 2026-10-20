@@ -57,7 +57,7 @@ export function StepPlan({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [planText, setPlanText] = useState(first.text);
-  const [goalKind, setGoalKind] = useState<PlanGoalKind | null>(first.suggestedKind);
+  const [goalKind, setGoalKind] = useState<PlanGoalKind | null>(null);
   const actionRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   function startEdit() {
@@ -82,7 +82,7 @@ export function StepPlan({
       onGoalSaved(saved.relationshipGoal, saved.updatedAt);
       const updated = firstProfileGoalForPlan(saved.relationshipGoal);
       setPlanText(updated.text);
-      setGoalKind(updated.suggestedKind);
+      setGoalKind(null);
       actionRef.current = null;
       setEditing(false);
     } catch {

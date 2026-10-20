@@ -7,8 +7,6 @@ import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveBusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { OnboardingFlow } from "../onboarding-0918/onboarding-flow";
 import {
   normalizeProfileOnboardingNext,
@@ -31,17 +29,13 @@ export default async function AppProfileOnboardingPage({
   }
 
   return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      <div data-orbit-real-page="onboarding-0918" data-orbit-route="app-profile-onboarding-route">
-        <OnboardingFlow
-          actorKey={session.user.id}
-          cardScanAvailable={resolveBusinessCardCaptureAvailability().available}
-          next={next}
-          todayIso={new Date().toISOString().slice(0, 10)}
-        />
-      </div>
-    </>
+    <div data-r28-onboarding data-orbit-route="app-profile-onboarding-route">
+      <OnboardingFlow
+        actorKey={session.user.id}
+        cardScanAvailable={resolveBusinessCardCaptureAvailability().available}
+        next={next}
+        todayIso={new Date().toISOString().slice(0, 10)}
+      />
+    </div>
   );
 }
