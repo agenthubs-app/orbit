@@ -127,6 +127,17 @@ test("SC-W0002-03: parse reads new and old horizons, folds the old chip prefix i
   }
 });
 
+test("R28: a two-choice onboarding goal reopens in the shared editor without adding a deadline", () => {
+  const saved = "資金調達、新規顧客開拓：まず日本で提携先を探す";
+  const draft = parseRelationshipGoal(saved);
+  assert.deepEqual(draft, { text: saved, horizon: "" });
+  const { root } = mount(<Harness initialText={draft.text} initialHorizon={draft.horizon} />);
+  assert.equal(input(root).props.value, saved);
+  assert.deepEqual(pressedHorizon(root), []);
+  assert.equal(composeRelationshipGoal(draft, "zh"), saved);
+  act(() => root.unmount());
+});
+
 test("editor markup: labelled input, hint + counter, examples heading, horizon cards; reminder copy; scoped styles", () => {
   const html = renderToStaticMarkup(<><GoalReminder /><GoalEditor horizon="year" onHorizonChange={() => undefined} onTextChange={() => undefined} text="从 0 到 1 打造自有品牌" /></>);
   assert.match(html, /请认真写。iOrbit 会用 AI 根据这句话分析你的人脉、拆出步骤、推荐要认识的人。/);
