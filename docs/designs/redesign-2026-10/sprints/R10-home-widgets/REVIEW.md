@@ -18,3 +18,7 @@
 ## 主会话全量核验（2026-10-20 19:25）
 
 verify worktree `origin/redesign@8862ccce4` 按基线环境独立跑两端全量，与 R18c 收口时（9edbef851）的失败集合逐名比较：Web 5→5、App 14→13，**新增 0**。日志 `_evidence-main/r10-{web,app}-full.log`。上面「最终零新增失败未证实」一条由此关闭；其余 M/m 交 D 线修复。
+
+## 主会话复核修复后全量（2026-10-20 20:30）
+
+verify `origin/redesign@d8823c5c5` 两端全量与上一轮集合比较：Web 新增 1 名「no page has more hard-coded text…」，原因为 §R10-12 的中文代定注释写在 CSS 模板字符串里，主会话移到 JSX 注释（定向 7/7、tsc 0）后推送；App 新增 1 名「a stale native scroll event during restore…」，单独重跑 5/5 ×2 通过，属负载波动。结论：R10 本线新增失败 0，收口。像素→⑪；最近会话摘要 DEFERRED→⑪。
