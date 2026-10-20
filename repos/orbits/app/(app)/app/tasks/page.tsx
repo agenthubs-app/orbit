@@ -8,6 +8,7 @@ import { taskTabFrom } from "../orbit-2026/task/task-tabs";
 import { TodoTaskSlot } from "../orbit-2026/todo/TodoTaskSlot";
 import { CalendarTaskSlot } from "../orbit-2026/calendar/CalendarTaskSlot";
 import { MemoTaskSlot } from "../orbit-2026/memo/MemoWorkspace";
+import { readTaskDemoDecisionForActor } from "./task-demo-decision";
 import type { LifecyclePageSearchParams } from "./lifecycle-pages-route-service";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
   });
   // R25: `plan` picks the goal (after the switcher's `open`), `new=1` opens the goal input.
   const plan = tab === "plan" && actor ? await loadPlanSlot(actor, { newGoal: params?.new === "1", planId: typeof params?.plan === "string" ? params.plan : null }) : undefined;
+  const demo = tab === "plan" && actor ? await readTaskDemoDecisionForActor({ actorId: actor.id, userId: session.user.id }) : null;
 
   return <TaskContainer
     initialTab={tab}
@@ -50,6 +52,7 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     todo={actor ? <TodoTaskSlot actorId={actor.id} initialAdd={tab === "todo" && params?.new === "1"} initialList={params?.view === "all" || params?.view === "completed" || Boolean(taskId)} initialCompleted={params?.view === "completed"} initialSelectedId={taskId} /> : null}
     memo={actor ? <MemoTaskSlot initialAdd={tab === "memo" && params?.new === "1"} initialSelectedId={typeof params?.memo === "string" ? params.memo : undefined} /> : null}
     plan={plan}
+    demo={demo}
     planStartHref={planStartHref()}
   />;
 }

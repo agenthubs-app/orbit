@@ -19,9 +19,9 @@ test.before(async () => {
     import { createRoot } from "react-dom/client";
     import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
     const f = window.shellFixture;
-    const plan = f.plan === "screen" ? <main data-orbit-real-page="agent"><h2>my plan</h2><div style={{ height: 2400 }} /><p id="plan-action-a1">action a1</p></main> : f.plan === "none" ? null : undefined;
+    const plan = f.plan === "screen" ? <main data-orbit-real-page="agent"><h2>my plan</h2><button type="button" onClick={() => f.calls.push({write:true})}>Save plan</button><div style={{ height: 2400 }} /><p id="plan-action-a1">action a1</p></main> : f.plan === "none" ? null : undefined;
     const root = createRoot(document.getElementById("root"));
-    const renderTab = (tab) => root.render(<TaskContainer initialTab={tab} plan={plan} planStartHref="/app/start"
+    const renderTab = (tab) => root.render(<TaskContainer initialTab={tab} plan={plan} planStartHref="/app/start" demo={f.demo}
       calendar={<main data-orbit-real-page="tasks"><p>personal schedule</p></main>}
       todo={<main data-orbit-real-page="tasks"><input aria-label="new to-do" /><p>to-do list</p>
         <div role="radiogroup" aria-label="view"><button type="button" role="radio" aria-checked="true">open</button><button type="button" role="radio" aria-checked="false">done</button></div>
@@ -33,8 +33,12 @@ test.before(async () => {
 });
 test.after(async () => { await browser?.close(); });
 
-async function container(t: { after: (fn: () => Promise<void>) => void }, tab: string, plan: "screen" | "none" | "unread" = "none", hash = ""): Promise<Page> {
-  const page = await open(browser, code, { html: `<div id="root"></div><script>${hash ? `history.replaceState(null, "", "#${hash}");` : ""}window.shellFixture=${JSON.stringify({ path: "/app/tasks", lang: "ja", calls: [], tab, plan })}</script>` });
+async function container(t: { after: (fn: () => Promise<void>) => void }, tab: string, plan: "screen" | "none" | "unread" = "none", hash = "", demo?: object): Promise<Page> {
+  const page = await open(browser, code, { html: `<div id="root"></div><script>${hash ? `history.replaceState(null, "", "#${hash}");` : ""}window.shellFixture=${JSON.stringify({ path: "/app/tasks", lang: "ja", calls: [], tab, plan, demo })};
+    if (window.shellFixture.demo) window.fetch = async (path, options) => {
+      if (path === "/api/guide/state") { window.shellFixture.calls.push({ patch: JSON.parse(options.body) }); return Response.json({ success: true, data: {} }); }
+      return Response.json({ success: false }, { status: 503 });
+    };</script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
   await page.getByRole("tablist", { name: "Task" }).waitFor();
   return page;
@@ -47,6 +51,56 @@ test("four tabs in the frozen order; the To-do and calendar slots are the existi
   await page.getByRole("tab", { name: "カレンダー" }).click();
   await page.getByText("personal schedule").waitFor();
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [{ replace: "/app/tasks?tab=calendar" }]);
+});
+
+test("demo plan shows the real 2/3 banner, persists collapse, and blocks plan writes", async (t) => {
+  const demo = { bannerCollapsed: false, completed: 2, confirmedContacts: 3, nextStep: "plan",
+    steps: { contacts: true, goal: true, plan: false } };
+  const page = await container(t, "plan", "screen", "", demo);
+  await page.getByText(/2\s*\/\s*3/u).first().waitFor();
+  await page.getByRole("button", { name: "Save plan" }).click();
+  await page.getByRole("dialog").waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "write" in call)), []);
+  await page.getByRole("link", { name: /guide|ガイド|引导/iu }).first().waitFor();
+  await page.getByRole("button", { name: /close|閉じる|关闭/iu }).click();
+  await page.getByRole("button", { name: /collapse|収|收/iu }).click();
+  await page.getByRole("button", { name: /sample|サンプル|示例/iu }).waitFor();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.some((call: any) => call.patch?.bannerCollapsed === true));
+});
+
+test("demo empty plan blocks its create action and a stored pill can reopen", async (t) => {
+  const demo = { bannerCollapsed: true, completed: 1, confirmedContacts: 3, nextStep: "goal",
+    steps: { contacts: true, goal: false, plan: false } };
+  const page = await container(t, "plan", "none", "", demo);
+  await page.locator("[data-task-demo-pill]").waitFor();
+  await page.getByRole("button", { name: "目標を決める" }).click();
+  await page.getByRole("dialog").waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "push" in call)), []);
+  await page.getByRole("button", { name: "閉じる" }).click();
+  await page.locator("[data-task-demo-pill] button").first().click();
+  await page.locator("[data-task-demo-banner]").waitFor();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.some((call: any) => call.patch?.bannerCollapsed === false));
+});
+
+test("switching to plan waits for its server demo decision before enabling add", async (t) => {
+  const transientCode = await bundle(`
+    import React from "react";
+    import { createRoot } from "react-dom/client";
+    import { ShellSlotsProvider, useShellSlots } from "./app/(app)/app/orbit-2026/shell/slots";
+    import { TaskContainer } from "./app/(app)/app/orbit-2026/task/TaskContainer";
+    function Page() {
+      const slots = useShellSlots();
+      return <><div data-shell-left>{slots.left}</div><div data-shell-right>{slots.right}</div><TaskContainer initialTab="todo" calendar={null} todo={<main>todo</main>} plan={undefined} /></>;
+    }
+    createRoot(document.getElementById("root")).render(<ShellSlotsProvider><Page /></ShellSlotsProvider>);
+  `, SHELL_STUBS);
+  const page = await open(browser, transientCode, { html: `<div id="root"></div><script>window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};</script>` });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.getByRole("tab", { name: "プラン" }).click();
+  const add = page.locator("[data-shell-right]").getByRole("button", { name: "目標を追加" });
+  await add.waitFor();
+  assert.equal(await add.isDisabled(), true);
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls.filter((call: object) => "push" in call)), []);
 });
 
 test("memo slot opens its add flow from the Task header without changing the selected tab", async (t) => {

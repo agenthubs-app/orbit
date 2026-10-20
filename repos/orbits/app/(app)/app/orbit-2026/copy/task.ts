@@ -1,6 +1,15 @@
 import type { OrbitCopyTable } from "./types";
 
 export const taskCopy = {
+  demoSample: { ja: "サンプルプレビュー", zh: "示例预览", en: "Sample preview", kind: "label" },
+  demoBody: { ja: "ガイドを終えると、ここにあなたのプランが表示されます。", zh: "完成引导后，这里会显示你自己的计划。", en: "Finish the guide to see your own plan here.", kind: "body" },
+  demoGuide: { ja: "ガイドを続ける", zh: "继续引导", en: "Continue guide", kind: "button" },
+  demoCollapse: { ja: "収める", zh: "收起", en: "Collapse", kind: "button" },
+  demoExpand: { ja: "サンプルを開く", zh: "展开示例", en: "Expand sample", kind: "button" },
+  demoProgress: { ja: "{count} / 3", zh: "{count} / 3", en: "{count} / 3", kind: "label" },
+  demoBlockedTitle: { ja: "これはサンプルです", zh: "这是示例", en: "This is a sample", kind: "dialogTitle" },
+  demoBlockedBody: { ja: "サンプル中はプランを変更できません。ガイドを終えると、自分のプランを使えます。", zh: "示例期间不能更改计划。完成引导后即可使用自己的计划。", en: "Sample plans are read only. Finish the guide to work on your own plan.", kind: "body" },
+  demoClose: { ja: "閉じる", zh: "关闭", en: "Close", kind: "button" },
   proposalTitle: { ja: "面談の日程提案", zh: "提议会面时间", en: "Propose meeting times", kind: "dialogTitle" },
   proposalCandidates: { ja: "候補を選ぶ", zh: "选择候选时间", en: "Choose times", kind: "label" },
   proposalFormat: { ja: "形式と場所", zh: "形式与地点", en: "Format and place", kind: "label" },

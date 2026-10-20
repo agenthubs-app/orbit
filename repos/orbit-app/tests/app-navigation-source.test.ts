@@ -61,3 +61,8 @@ test("inbox route lives inside the app group without a duplicate root route", ()
   const appInboxSource = readFileSync(appInboxPath, "utf8");
   assert.match(appInboxSource, /RelationshipInboxScreen/u);
 });
+
+test("the three-step guide returns to Home from the D navigation shell", async () => {
+  const { parentForPath } = await import("../src/view-models/app-navigation");
+  assert.equal(parentForPath("/start").href, "/home");
+});

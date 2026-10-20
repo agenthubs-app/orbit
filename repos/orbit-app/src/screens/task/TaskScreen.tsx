@@ -1,10 +1,11 @@
 import { useGlobalSearchParams, useIsFocused, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { readTaskPlanDemo, saveTaskPlanDemoCollapse, type TaskPlanDemoResult } from "../../api/task-plan-demo";
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { TabPageBar } from "../../components/TabPageBar";
@@ -12,9 +13,11 @@ import { ShellBackground } from "../../components/ShellBackground";
 import { shellHeaderDate } from "../../components/shell-date";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../components/ShellTopBar";
 import { IconButton } from "../../components/ui/IconButton";
+import { RetryCard, Skeleton } from "../../components/ui";
 import { SwipeSegments } from "../../components/ui/Segmented";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { TASK_SEGMENTS, type TaskSegment } from "../../view-models/app-navigation";
@@ -25,6 +28,7 @@ import { PlanSegment } from "../plan/PlanSegment";
 import { PlanGoalInputShown } from "../plan/plan-goal-input-shown";
 import { TodoTaskSlot } from "../todo/TodoScreen";
 import { TaskQuickAdd, type TaskQuickAddHandle } from "./TaskQuickAdd";
+import { TaskPlanDemoNotice } from "./TaskPlanDemoNotice";
 
 // R05 Task container (RD-20, frozen). Four slots in a fixed order; each slot is
 // one component and a feature Sprint replaces only its own slot:
@@ -51,6 +55,10 @@ export function TaskScreen() {
   const locale = useOrbitLocale();
   const copy = useStandardCopy();
   const { timeZone } = useOrbitTimeZone();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const client = useOrbitApiClient();
+  const focused = useIsFocused();
   const params = useGlobalSearchParams<{ seg?: string | string[] }>();
   const [segment, setSegment] = useState<TaskSegment>(() => initialTaskSegment(params.seg));
   const linked = Array.isArray(params.seg) ? params.seg[0] : params.seg;
@@ -76,6 +84,26 @@ export function TaskScreen() {
   if (!visited.has(segment)) setVisited(new Set([...visited, segment]));
   const quickAdd = useRef<TaskQuickAddHandle>(null);
   const [revision, setRevision] = useState(0);
+  const [planDemo, setPlanDemo] = useState<TaskPlanDemoResult | { kind: "loading" }>({ kind: "loading" });
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoError, setDemoError] = useState("");
+  const [demoIntercept, setDemoIntercept] = useState(false);
+  const demoTicket = useRef(0);
+  const reloadDemo = useCallback(async () => {
+    const ticket = ++demoTicket.current;
+    setPlanDemo({ kind: "loading" });
+    const result = await readTaskPlanDemo(client);
+    if (ticket === demoTicket.current) setPlanDemo(result);
+  }, [client]);
+  useEffect(() => {
+    if (!focused || segment !== "plan") return;
+    if (!auth.ready || !auth.signedIn || !auth.actorId || !server.ready) {
+      setPlanDemo({ kind: "unavailable" });
+      return;
+    }
+    void reloadDemo();
+    return () => { demoTicket.current += 1; };
+  }, [focused, segment, auth.ready, auth.signedIn, auth.actorId, auth.cookieHeader, server.ready, server.baseUrl, reloadDemo]);
   const onCreated = useCallback(() => setRevision((value) => value + 1), []);
 
   const choose = useCallback((next: TaskSegment) => {
@@ -92,12 +120,26 @@ export function TaskScreen() {
   // A new note needs the server on the Web (the notes page disables its own 「＋」 the
   // same way, review m3); the device saves notes offline.
   const unreachable = useServerUnreachable();
-  const addDisabled = segment === "memo" && Platform.OS === "web" && unreachable;
+  const addDisabled = segment === "memo" && Platform.OS === "web" && unreachable
+    || segment === "plan" && planDemo.kind !== "ready" && planDemo.kind !== "off";
   const add = () => {
     if (segment === "calendar") router.push("/schedule/personal/new" as Href);
     else if (segment === "todo") quickAdd.current?.focus();
     else if (segment === "memo") router.push("/notes/new" as Href);
-    else router.setParams({ new: "1", seg: "plan" });
+    else if (planDemo.kind === "ready") setDemoIntercept(true);
+    else if (planDemo.kind === "off") router.setParams({ new: "1", seg: "plan" });
+  };
+  const toggleDemo = async () => {
+    if (planDemo.kind !== "ready" || demoBusy) return;
+    const previous = planDemo.view;
+    setDemoBusy(true);
+    setDemoError("");
+    const next = !previous.bannerCollapsed;
+    const saved = await saveTaskPlanDemoCollapse(client, next);
+    if (saved) setPlanDemo(current => current.kind === "ready" && current.view === previous
+      ? { kind: "ready", view: { ...previous, bannerCollapsed: next } } : current);
+    else setDemoError(locale.t("tasks.demoSaveFailed"));
+    setDemoBusy(false);
   };
   const today = shellHeaderDate(new Date(), locale.language, timeZone, locale.t);
   // 目標入力（新用户空状态、`new=1`、概要的「目標を追加」、旧计划的「新しいプランを作る」）时副标题是一句说明，
@@ -116,13 +158,26 @@ export function TaskScreen() {
           left={<IconButton icon="search" accessibilityLabel={locale.t("search.open")} onPress={() => router.push("/search" as Href)} />}
           right={addLabel ? <IconButton icon="plus" accessibilityLabel={addLabel} onPress={add} disabled={addDisabled} /> : null} />
       </View>
+      {segment === "plan" && planDemo.kind === "ready" ? <TaskPlanDemoNotice view={planDemo.view} busy={demoBusy}
+        error={demoError} intercept={demoIntercept} onToggle={() => void toggleDemo()}
+        onContinue={() => { setDemoIntercept(false); router.push("/start" as Href); }} onClose={() => setDemoIntercept(false)} /> : null}
       <SwipeSegments
         segments={segments}
         value={segment}
         onChange={choose}
         accessibilityLabel={copy.nav.task}
         renderPage={(key) => visited.has(key)
-          ? <AppScreenEmbeddingProvider segment={key}><PlanGoalInputShown.Provider value={setPlanGoalInput}>{TASK_SLOTS[key]({ quickAdd, revision, onCreated })}</PlanGoalInputShown.Provider></AppScreenEmbeddingProvider>
+          ? <AppScreenEmbeddingProvider segment={key}><PlanGoalInputShown.Provider value={setPlanGoalInput}>
+            {key === "plan" && planDemo.kind !== "off" ? planDemo.kind === "ready" ? <View style={styles.demoBlocked}>
+              <View style={styles.demoBlocked} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                {TASK_SLOTS[key]({ quickAdd, revision, onCreated })}
+              </View>
+              <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={locale.t("tasks.demoBlockedTitle")}
+                onPress={() => setDemoIntercept(true)} />
+            </View> : planDemo.kind === "loading" ? <Skeleton lines={4} />
+              : <RetryCard title={locale.t("tasks.demoUnavailable")} onRetry={() => void reloadDemo()} />
+              : TASK_SLOTS[key]({ quickAdd, revision, onCreated })}
+          </PlanGoalInputShown.Provider></AppScreenEmbeddingProvider>
           : null}
       />
       <TabPageBar tab="task" />
@@ -154,4 +209,5 @@ function MemoSlot() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: SHELL_GUTTER },
+  demoBlocked: { flex: 1 },
 }));

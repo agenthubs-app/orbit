@@ -61,6 +61,8 @@ export function legacyTaskRedirect(pathname: string, params: Readonly<Record<str
 export function parentForPath(pathname: string, t: OrbitTranslator = currentTranslator()): { href: string; label: string } {
   const parts = pathname.split("/").filter(Boolean);
   switch (parts[0]) {
+    case "start":
+      return { href: "/home", label: t("shell.parent.home") };
     case "settings":
       return parts.length > 1 ? { href: "/settings", label: t("shell.parent.settings") } : { href: "/profile", label: t("shell.parent.me") };
     case "profile":

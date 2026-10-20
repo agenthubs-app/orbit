@@ -58,7 +58,10 @@ createRoot(document.getElementById("root")).render(<ToastProvider hasTabBar><UiP
     define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"ja"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     plugins: [nativeUiStubs, { name: "task-shell", setup(plugin) {
-      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "task-react-native-web", namespace: "task-native" }));
+      plugin.onLoad({ filter: /^task-react-native-web$/, namespace: "task-native" }, () => ({
+        contents: 'export * from "react-native-web"; export const findNodeHandle = () => null;', loader: "js", resolveDir: root,
+      }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-svg.js") }));
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
       plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: join(root, "tests/helpers/stubs/task-shell-router.js") }));
@@ -78,12 +81,20 @@ createRoot(document.getElementById("root")).render(<ToastProvider hasTabBar><UiP
 
 test.after(async () => { await browser?.close(); });
 
-async function open(t: { after: (fn: () => Promise<void>) => void }, params: Record<string, string> = {}, width = 390, paramsDelay = 0): Promise<Page> {
+async function open(t: { after: (fn: () => Promise<void>) => void }, params: Record<string, string> = {}, width = 390, paramsDelay = 0, demo: object | null = null): Promise<Page> {
   const page = await browser.newPage({ viewport: { width, height: 844 } });
   const errors: string[] = [];
   page.on("pageerror", (error) => { errors.push(error.message); if (process.env.DEBUG_SHELL) console.log(error.stack?.slice(0, 3000)); });
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
-  await page.setContent(`<!doctype html><html><body style="margin:0"><div id="root" style="height:100vh;display:flex;flex-direction:column"></div><script>window.shellFixture=${JSON.stringify({ path: "/task", params, navigation: [], paramsDelay })}</script></body></html>`);
+  await page.setContent(`<!doctype html><html><body style="margin:0"><div id="root" style="height:100vh;display:flex;flex-direction:column"></div><script>
+    window.shellFixture=${JSON.stringify({ path: "/task", params, navigation: [], paramsDelay, demo })};
+    const originalFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url.includes("/api/tasks/demo-status")) return Promise.resolve(Response.json({ success: true, data: { inDemo: Boolean(window.shellFixture.demo), view: window.shellFixture.demo } }));
+      return originalFetch(input, init);
+    };
+  </script></body></html>`);
   await page.addScriptTag({ content: script });
   await page.getByRole("tablist", { name: "Task" }).waitFor();
   return page;
@@ -169,6 +180,18 @@ test("the 「＋」 follows the segment: new event, focus the add box, 目標を
   await page.getByRole("button", { name: "メモを追加" }).click();
   const pushes = (await navigation(page)).filter((entry: { method: string }) => entry.method === "push");
   assert.deepEqual(pushes, [{ method: "push", href: "/schedule/personal/new" }, { method: "push", href: "/notes/new" }]);
+});
+
+test("a demo plan intercepts the Task add action and offers the real guide", async (t) => {
+  const demo = { bannerCollapsed: false, completed: 2, confirmedContacts: 3, nextStep: "plan",
+    steps: { contacts: true, goal: true, plan: false } };
+  const page = await open(t, { seg: "plan" }, 390, 0, demo);
+  await page.getByText(/2\s*\/\s*3/u).first().waitFor();
+  await page.getByRole("button", { name: "目標を追加" }).click();
+  await page.getByText("これはサンプルです").waitFor();
+  assert.equal((await navigation(page)).some((entry: { method: string; params?: Record<string, string> }) => entry.method === "setParams" && entry.params?.new === "1"), false);
+  await page.getByRole("button", { name: "ガイドを続ける" }).last().click();
+  assert.ok((await navigation(page)).some((entry: { method: string; href?: string }) => entry.method === "push" && entry.href === "/start"));
 });
 
 test("a later link while Task is open moves the segment", async (t) => {

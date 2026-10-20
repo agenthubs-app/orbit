@@ -1,12 +1,16 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode, type FormEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { useOrbitModalA11y } from "../../orbit-modal-a11y";
+import { ORBIT_Z } from "../../orbit-z";
+import { DemoModeProvider, useDemoMode, type DemoModeView } from "../../_demo/demo-mode-core";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
 import { memoCopy } from "../copy/memo";
+import { taskCopy } from "../copy/task";
 import { Button, EmptyState, Orbit2026Scope, Segmented, Skeleton, ToastProvider, useStandardCopy } from "../ui";
 import { monthHeading } from "../shell/month-heading";
 import { ShellPage, useInShell } from "../shell/slots";
@@ -43,8 +47,17 @@ async function memoServiceAvailable(signal?: AbortSignal): Promise<boolean> {
   } catch { return false; }
 }
 
-export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStartHref = "/app/agent" }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null; memo?: ReactNode; planStartHref?: string }) {
+type TaskContainerProps = { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null;
+  memo?: ReactNode; planStartHref?: string; demo?: DemoModeView | null };
+
+export function TaskContainer(props: TaskContainerProps) {
+  return props.demo ? <DemoModeProvider view={props.demo}><TaskContainerContent {...props} /></DemoModeProvider>
+    : <TaskContainerContent {...props} />;
+}
+
+function TaskContainerContent({ initialTab, calendar, todo, plan, memo, planStartHref = "/app/agent" }: TaskContainerProps) {
   const { language } = useOrbitLanguage();
+  const demo = useDemoMode();
   const router = useRouter();
   const pathname = usePathname() ?? "/app/tasks";
   const searchParams = useSearchParams();
@@ -107,7 +120,7 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
   const inShell = useInShell();
   const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
   // プラン: 「目標を追加」 only at ≥1280; b8 #6 / #16 (1024) keep just 「次の一手」 on the right.
-  const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} />
+  const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => demo ? demo.guardWrite(pickCopy(shellCopy.taskAddGoal, language)) : router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} disabled={initialTab !== "plan"} />
     : tab === "memo" ? <TaskAddButton label={pickCopy(memoCopy.add, language)} onSelect={() => {
       setMemoOnline(false);
       void memoServiceAvailable().then(available => {
@@ -125,15 +138,68 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
           <TaskTabs tab={tab} onChange={choose} />
         </div>
       </Orbit2026Scope>
-      <div data-task-slot={tab}>
+      {tab === "plan" && demo ? <TaskDemoNotice /> : null}
+      <div data-task-slot={tab} onClickCapture={tab === "plan" && demo ? (event) => guardDemoClick(event, demo.guardWrite, pickCopy(shellCopy.taskTitle, language)) : undefined}
+        onSubmitCapture={tab === "plan" && demo ? (event) => guardDemoSubmit(event, demo.guardWrite, pickCopy(shellCopy.taskTitle, language)) : undefined}>
         {tab === "calendar" ? calendar : tab === "todo" ? todo : tab === "memo" && memo ? memo : tab === "plan" && plan ? <PlanSlot>{plan}</PlanSlot> : (
           <Orbit2026Scope language={language} className={styles.empty}>
             <ToastProvider>{tab === "plan" ? (plan === undefined ? <Skeleton lines={4} /> : <PlanEmpty href={planStartHref} />) : <EmptyState title={pickCopy(shellCopy.memoEmptyTitle, language)} message={pickCopy(shellCopy.memoEmptyBody, language)} />}</ToastProvider>
           </Orbit2026Scope>
         )}
       </div>
+      {demo?.intercept ? <TaskDemoDialog /> : null}
     </>
   );
+}
+
+function guardDemoClick(event: MouseEvent<HTMLDivElement>, guardWrite: (label: string) => void, fallback: string) {
+  const control = (event.target as HTMLElement).closest("button,a,input,select,textarea,[role='button']");
+  if (!control) return;
+  event.preventDefault();
+  event.stopPropagation();
+  guardWrite(control.textContent?.trim() || fallback);
+}
+
+function guardDemoSubmit(event: FormEvent<HTMLDivElement>, guardWrite: (label: string) => void, label: string) {
+  event.preventDefault();
+  event.stopPropagation();
+  guardWrite(label);
+}
+
+function TaskDemoNotice() {
+  const demo = useDemoMode();
+  const { language } = useOrbitLanguage();
+  if (!demo) return null;
+  const copy = { sample: pickCopy(taskCopy.demoSample, language), body: pickCopy(taskCopy.demoBody, language),
+    guide: pickCopy(taskCopy.demoGuide, language), collapse: pickCopy(taskCopy.demoCollapse, language),
+    expand: pickCopy(taskCopy.demoExpand, language), progress: pickCopy(taskCopy.demoProgress, language).replace("{count}", String(demo.view.completed)) };
+  return <Orbit2026Scope language={language} className={styles.demoArea}>
+    {demo.collapsed ? <div className={styles.demoPillRow} data-task-demo-pill>
+      <Button size="sm" variant="secondary" className={styles.demoPill} onClick={() => demo.setCollapsed(false)} label={`${copy.expand} · ${copy.progress}`} />
+      <a href="/app/start">{copy.guide} →</a>
+    </div> : <div className={styles.demoBanner} data-task-demo-banner role="note">
+      <span className={styles.demoTag}>{copy.sample}</span>
+      <span className={styles.demoMessage}>{copy.body}<small>{copy.progress}</small></span>
+      <a className={styles.demoGuide} href="/app/start">{copy.guide} →</a>
+      <Button size="sm" variant="ghost" className={styles.demoCollapse} onClick={() => demo.setCollapsed(true)} label={copy.collapse} />
+    </div>}
+  </Orbit2026Scope>;
+}
+
+function TaskDemoDialog() {
+  const demo = useDemoMode();
+  const { language } = useOrbitLanguage();
+  const close = () => demo?.closeIntercept();
+  const cardRef = useOrbitModalA11y(close);
+  if (!demo?.intercept) return null;
+  const copy = { title: pickCopy(taskCopy.demoBlockedTitle, language), body: pickCopy(taskCopy.demoBlockedBody, language),
+    close: pickCopy(taskCopy.demoClose, language), guide: pickCopy(taskCopy.demoGuide, language) };
+  return <div className={styles.demoScrim} style={{ zIndex: ORBIT_Z.modal }} onClick={event => { if (event.target === event.currentTarget) close(); }}>
+    <div className={styles.demoDialog} role="dialog" aria-modal="true" aria-labelledby="task-demo-dialog-title" ref={cardRef} tabIndex={-1}>
+      <h2 id="task-demo-dialog-title">{copy.title}</h2><p>{copy.body}</p>
+      <div><Button size="sm" variant="ghost" onClick={close} label={copy.close} /><a href="/app/start">{copy.guide} →</a></div>
+    </div>
+  </div>;
 }
 
 // A full-page Task link can return before streamed content is tall enough for

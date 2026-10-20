@@ -16,6 +16,23 @@
 .bar { display: none; }
 .barAlone { display: flex; justify-content: center; padding: var(--space-14) var(--space-34) 0; }
 .empty { display: block; max-width: 640px; margin: var(--space-24) auto; padding: 0 var(--space-18); }
+.demoArea { padding: var(--space-12) var(--space-18); }
+.demoBanner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--r-card-web); background: var(--mac-apricot); color: var(--ink); }
+.demoTag { padding: 3px 8px; border-radius: var(--r-tag); background: var(--surface); font-size: var(--fs-tiny); font-weight: 700; letter-spacing: .08em; }
+.demoMessage { flex: 1; min-width: 180px; font-size: var(--fs-body-sm); }
+.demoMessage small { display: block; margin-top: 3px; opacity: .8; }
+.demoGuide { padding: 9px 14px; border-radius: var(--r-sm); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.demoCollapse { border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.demoPillRow { display: flex; align-items: center; gap: 14px; }
+.demoPill { border: 0; border-radius: var(--r-pill); padding: 7px 13px; background: var(--mac-apricot); color: var(--ink); cursor: pointer; }
+.demoPillRow a { color: var(--ink-2); }
+.demoScrim { position: fixed; inset: 0; display: flex; justify-content: center; align-items: flex-start; padding: 90px 16px 16px; background: var(--scrim-web); }
+.demoDialog { width: min(100%, 420px); padding: 24px; border-radius: var(--r-card-web); background: var(--surface); color: var(--ink); outline: none; }
+.demoDialog h2 { margin: 0 0 12px; font-size: var(--fs-title); }
+.demoDialog p { margin: 0 0 20px; color: var(--ink-2); }
+.demoDialog > div { display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.demoDialog button { border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+.demoDialog a { padding: 9px 14px; border-radius: var(--r-sm); background: var(--accent); color: var(--on-accent); text-decoration: none; }
 /* 768–1279 (b8 #6 / #16): the plan header has no 「目標を追加」; two classes beat the Button's own display. */
 @media (min-width: 768px) and (max-width: 1279px) {
   :global(.btn).addWide { display: none; }

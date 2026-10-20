@@ -29,6 +29,7 @@ export function shellAppliesTo(pathname: string, signedIn: boolean): boolean {
 /** The rail item a page belongs to (deep pages highlight their section). */
 export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   const path = pathname.replace(/\/+$/u, "");
+  if (path === "/app/start") return "home";
   if (matches(path, "/app/home")) return "home";
   if (matches(path, "/app/contacts")) return "network";
   if (matches(path, "/app/agent")) return "iorbit";

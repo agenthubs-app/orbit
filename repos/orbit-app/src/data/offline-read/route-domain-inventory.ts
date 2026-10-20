@@ -108,7 +108,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     // Home layout and guide state have an actor-scoped owner cache; the generic read mirror must not persist either response.
     || endpointTemplate.startsWith('/api/home/')
-    || endpointTemplate === '/api/guide/progress' || endpointTemplate === '/api/profile/onboarding-progress'
+    || endpointTemplate === '/api/guide/progress' || endpointTemplate === '/api/guide/state'
+    || endpointTemplate === '/api/tasks/demo-status' || endpointTemplate === '/api/profile/onboarding-progress'
     || endpointTemplate.startsWith('/api/account/exports') || endpointTemplate.startsWith('/api/account/deletion-request')
     || endpointTemplate === '/api/app/version'
     // Push preferences are live account/device state; the settings screen does not read a device mirror.
@@ -187,6 +188,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/useAccountProfile.ts","GET","/api/profile"],
   // R28: onboarding progress and guide are private, online-only actor state.
   ["src/api/guide-progress.ts","GET","/api/guide/progress"],
+  ["src/api/task-plan-demo.ts","GET","/api/tasks/demo-status"],
+  ["src/api/task-plan-demo.ts","PATCH","/api/guide/state"],
   ["src/api/profile-onboarding-progress.ts","GET","/api/profile/onboarding-progress"],
   ["src/api/profile-onboarding-progress.ts","POST","/api/profile/onboarding-progress"],
   // The native guide constructs the existing plan API; its transitive calls stay registered.

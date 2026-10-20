@@ -39,6 +39,7 @@ test("route rules: every signed-in product page gets the shell; public, sign-in 
     assert.equal(shellAppliesTo(path, true), false, path);
   }
   assert.equal(shellNavKeyFor("/app/contacts/c1"), "network");
+  assert.equal(shellNavKeyFor("/app/start"), "home", "the guide returns to Home in both shells");
   assert.equal(shellNavKeyFor("/app/events/e1/operations"), "host");
   assert.equal(shellNavKeyFor("/app/events/e1"), "events");
   assert.equal(shellNavKeyFor("/app/events/e1/live"), "events", "R27: 会場モード is the attendee's own page");
