@@ -1,85 +1,69 @@
 # R18c 数据导出与退会执行报告（未收口）
 
-2026-10-20，`line-c`。开工从 `origin/redesign@063c3c65d` 快进；本线只做路径限定提交，没有推送、部署或访问 Neon／生产。当前实现有可用的本机导出与密码退会申请链，但 **D-22 全域清除、两端操作链、像素与全量门禁尚未达到验收条件**。生产到期清除保持关闭，需用户另行授权。
+2026-10-20，line-c。开工从 origin/redesign@063c3c65d 快进；本线仅作路径限定提交，没有 push、部署或访问 Neon／生产。主会话 RD-33 的五项代定已落实到代码、改稿或明确的停点。**本 Sprint 尚未满足全部 SC：共享记录的同步/不可变契约、像素和全量零新增失败仍红。** 生产到期清除保持关闭。
 
 ## SC 对照
 
-| SC | 状态 | 证据与未完成条件 |
+| SC | 状态 | 主证据与缺项 |
 | --- | --- | --- |
-| 01 开工／预检 | 部分 | R18b 基线、`orbit_records` CAS、b7 原稿／改稿 16 板与 b12 补画 136 frame 已核；两端收口全量均红，逐名差分见末段。 |
-| 02 改稿／入口 | 部分 | b7 去 Pro、虚假反馈和进度估计；b12 末尾补 68 组，App／Web 导出和退会入口接通。b12 仍为待主会话复核草案。 |
-| 03 契约／存储 | 部分 | 契约 11 可选字段、严格 POST、BREAKING 记录与 App 同步；确定性 `orbit_records` + CAS，本机 PG 并发测试通过。契约/schema parity 5/5；真实端到端未验。 |
-| 04 创建／限额／历史 | 部分 | 东京日三次、一个活动任务、幂等与本人读取在 PG 测试通过；两端真实操作未验。 |
-| 05 Worker／ZIP／通知 | 部分 | 五域 ZIP、私有存储、租约、outbox 与本机替身已有聚焦测试。维护入口需调用，未验证离页后的自动调度；压缩仍同步处理，未流式分页。 |
-| 06 下载／过期 | 部分 | 本人／他人、五分钟链接、七天到期与对象删除有聚焦测试；App 原生下载分享与 Web 真实操作未验。 |
-| 07 App 账户／导出 | 部分 | 二级路由、导出选择／进度／下载已实现；签名模拟器仅核 App #23 完成页，导出操作与 A06–A08 像素未验。旧账户总览未按 #19 整屏替换。 |
-| 08 退会申请／再认证 | 部分 | 密码限次、用途绑定十分钟 receipt、主办仍有报名阻止、CAS 申请与受理 outbox 有本机测试。Google broker 未交付 `auth_time` + `prompt=login`／`max_age=0` 证据，申请链明确 503。 |
-| 09 pending／取消 | 部分 | 旧 JWT 删除时间戳、API 白名单、CAS 取消、本机镜像清理已实现并有聚焦测试；重新登录只到 pending 的 App 原生／Web 浏览器整链未验。 |
-| 10 本机到期清除 | **未通过** | 本机 runner 的无共享事件账号失败重试、八域步骤与同邮箱新 ID 测试通过；规范化共享事件与共享面谈明确停止。真实 Google revoke／名片 Blob eraser／邮件发送仅有注入替身；purging 阶段跨线自动建号阻止未交付。不能宣称 D-22 完成。 |
-| 11 完成／异常态 | 部分 | 静态完成页和可恢复错误态已接线；完成邮件仅本机 sender 替身。Web #27 与 App #23 各三轮像素仍红。 |
-| 12 旧屏／路由 | **未通过** | R18a/R18b 既有 profile、workspace、debug、认证入口保留，C 权利入口已加；旧 `AccountScreen` 仍在，整屏替换与 R18a 言語と外観整板未验。 |
-| 13 像素 | **未通过** | b12 草案未获主会话认可；Web 完成页 #27 三轮余 1 条未归因超阈带及 2 个缺块；App #23 三轮余 3 条未归因超阈带、缺块 0。其余矩阵未执行，未做 ≥20% 复核。 |
-| 14 权限／可移植 | 部分 | actor 限定读／下载、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦测试已过；全端文件打开及 shared-domain 零残留未验。 |
-| 15 交接／生产 | 部分 | 下文给四栏交接与授权请求。未发送跨线通知；生产调度、Neon、备份保留期保持待用户授权／查明。 |
-| 16 全量／独立复核 | **未通过** | Web 65 fail、App 20 fail 的收口全量均红；C 自有静态和登记失败已聚焦修复，按一次全量硬规则未重跑。主会话独立复核未进行。 |
+| 01 开工／预检 | 完成 | R18b 基线、现有 orbit_records CAS、b7 原稿／改稿 16 板与 b12 登记已核；preflight-checklist.md 及 _evidence-c 预检。 |
+| 02 改稿／入口 | 部分 | b7 去 Pro、虚假反馈和进度估计；RD-33 重画 #19、认可 b12，App/Web 权利入口已接。真实两端操作链与像素仍红。 |
+| 03 契约／存储 | 本机通过 | 严格 POST、确定性 recordId/CAS、契约 snapshot/schema parity 5/5、App 副本同步；无 DDL。真实端到端未验。 |
+| 04 创建／限额／历史 | 本机通过，双端未验 | 东京日 3 次、同键重放、单活动任务、失败返额度和本人历史有 PG 测试；未取得完整 App/Web 操作记录。 |
+| 05 Worker／ZIP／通知 | 部分 | 五域 ZIP/manifest、私有对象、租约和 outbox 有聚焦测试与合成样本；离页自动调度和生产任务列 DEFERRED。 |
+| 06 下载／过期 | 部分 | 本人授权、5 分钟链接、7 天过期与对象清理有聚焦测试；原生文件打开/分享与浏览器实取文件未完整留证。 |
+| 07 App 账户／导出 | 部分 | AccountScreen 已整屏换为 kit 行，保留 profile、workspace、目标、权限、登出及服务器入口；debug 仅 dev。App #19 三轮和其余 P 板像素未过。 |
+| 08 退会申请／再认证 | 部分 | 密码限次与用途绑定一次性 receipt；Google challenge + prompt=login/max_age=0 + auth_time ≤10 分钟、同账号校验已接，旧 503 已去。真实外部 Google 账号未联调；本机 handler/授权测试通过。 |
+| 09 pending／取消 | 部分 | 旧 JWT 失效、普通 API/sync 白名单、镜像清理、CAS 取消及 pending 登录路由有聚焦测试；两端真实整链未验。 |
+| 10 本机到期清除 | **未通过** | 逐域 runner、失败续跑、共享面谈双账号、规范化共享事件双账号测试已过；但已有 immutable 事件角色／修复台账可能残留本人 ID。残留扫描会失败关闭，不能声称零残留。 |
+| 11 完成／异常态 | 部分 | RD-33 匿名完成邮件 outbox 与最终身份删除同事务，提交后投递；本机失败重试通过。#23/#27 像素三轮仍红。 |
+| 12 旧屏／路由 | 部分 | #19 整屏替换，R18a/R18b 路由保留；Web 言語と外観整板 6/6 红，需 A/集成轮复核。 |
+| 13 像素全量 | **未通过** | RD-33 b12 已是正式基准；原稿 P、补画 P 与 R18a 整板矩阵均有失败。每 P 上限和转轮⑪见下。 |
+| 14 权限／可移植 | 部分 | actor 隔离、CSV 注入、vCard 转义、JSON 白名单、私有 ZIP 等聚焦通过；真实双端打开与共享域零残留未验。 |
+| 15 交接／生产 | 部分 | 下方四栏交接和 DEFERRED 已登记；根台账与活跃 B/D/A/E 线由主会话协调，未越权发送或启用生产。 |
+| 16 全量／独立复核 | **未通过** | Web/App 按指定环境各跑一次仍有新失败；聚焦修复不能代替全量；主会话独立复核尚未执行。 |
 
-## 实现与本机证据
+## RD-33 实施与安全边界
 
-**CAS 与导出。** 任务 ID 由 actor／幂等键确定，actor 锁行串行化配额与活动任务状态；东京日跨零点、同键重放、系统失败额度返还和跨账号隔离的本机 PG 测试通过。导出 ZIP 只取本人字段，CSV 前缀防公式，vCard 转义，`all-json` 包含五域与名片图；规范化事件表现在只输出本人主办／报名摘要，不带其他参与者快照。私有 ZIP path 按 actor 哈希隔离，下载再校验本人、状态与期限。当前每域 `LIMIT 10001`，超过 10,000 行显式失败；ZIP 同步压缩并有 50 MiB 上限。流式分页与分块 ZIP 尚未实现，不能把大账号导出记为通过。`manifest.json` 只列实际写入的文件，缺域直接失败，不会静默跳过。合成样本 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-sample-export.zip` 与 `R18c-sample-export-manifest.json` 经 `unzip -l`／`unzip -p` 检查，含五域 JSON 和 manifest；它不代表真实账号导出。
+- **§R18c-1 共享数据。** 共享面谈将退会者参与者 ID 换成本次删除占位 ID、移除本人备注，对方记录保留；规范化事件报名/参加行匿名化，发布 DTO 按当前值 CAS 去掉退会者，主办有报名继续阻止、无报名可删除。对应提交 4f77e92bc、2457d1411；PG 双账号与重跑测试通过。事件域的 immutable role assignment／repair ledger 有禁止 UPDATE/DELETE 的触发器，现有无 DDL 契约与“本人 ID 零残留”冲突；扫描报 EVENT_OPS_REDACTION_REQUIRED，不跳过、不报 SC10 通过。
+- **§R18c-2 账户 #19。** 新版列表保留 profile 编辑、workspace、目标、时区/状态、权限、导出/退会、登出和服务器设置。删掉无可信来源的端末数与无路由的密码设置；设备 debug 仅开发构建。后续修复了游客旧邮箱泄露及服务器入口。提交 c74ec67d5、a85a81859、56591c516。
+- **§R18c-3 认证。** purging 阶段阻止自动建号，删除完成后同邮箱可用新 account ID；App/Web pending 登录先到 pending 页。Google fresh challenge 用 AUTH_SECRET 加密并绑定 actor/user/email/退会用途，核验同账号 auth_time 后签发 10 分钟一次性 receipt；broker 发 prompt=login、max_age=0、auth_time essential claim。提交 a6616ad22、725a6df66。真实 Google OIDC 行为需获授权的外部账号联调，不能以本机替身证明。
+- **§R18c-4 画板。** b12 补画已按 RD-33 认可为正式基准，#19 改稿在 b7 注明。Web #27、App #23 各三轮上限的残差与 28px 标题组件缺口转像素余项轮⑪；不在 C 线加私有 token。
+- **§R18c-5 完成邮件。** final-identity 同一事务删除身份并写只含收件地址、模板和投递控制字段的匿名 outbox；提交后投递，成功删行，失败保留重试。提交 cdab6d89e，PLANNER 相应句已改。邮件服务真实投递仍列 DEFERRED。
 
-**清除顺序与实际存储。** `account_deletion_requests` 的到期领取与取消互斥，五分钟 lease；`account_purge_steps` 每域确定性 recordId、版本 CAS、完成时间与结果，失租即停。每个模块同时检查环境和 **实际连接**为 loopback `orbit_line_c_test`。本机专用库随机 workspace 的 runner 测试在第三方撤销失败后保留身份，租约过期重领后逐域完成，原账号记录归零、其他账号保留、同邮箱可插入新 ID。没有生产入口。
+本机到期清除逐域顺序为连携／设备、导出对象、人脈、メモ／Task／日程、プラン／iOrbit、イベント、收件箱、最终身份。每步有确定性进度/CAS 与租约；失租和残留会阻止最终身份。只有实际连接为 loopback orbit_line_c_test 且显式 local 环境时可运行。合成 ZIP 位于 _evidence-c/R18c-sample-export.zip，含五域 JSON 与 manifest；它不是现实账号导出。
 
-| 顺序／领域 | SQL／对象范围 | 本机结果／停点 |
-| --- | --- | --- |
-| 1 连携／设备 | `integrationTokens`、OAuth state／health、pushDevices、mobile auth exchange；先调用注入 revoker | 故障保留 token 并可重试；尚无已配置 Google revoke。 |
-| 2 导出 | `account_exports` 的本人 ZIP key 先删对象，再删历史／锁／ready outbox | 对象失败保留记录并可重试；错前缀由存储适配器拒绝。 |
-| 3 人脈 | `bc_ingest_*`、导入、contacts、connections、名片原图／衍生 key | 本人零、别人保留的 PG 测试通过；对象 eraser 为注入替身，shared key 阻止。 |
-| 4 メモ／Task／日程 | `notes`、`memo_extractions`、tasks、个人日程、appointment 表 | 个人样本通过；共享面谈因 owner／invitee NOT NULL 且另一方有权保留，抛 `SHARED_APPOINTMENT_REQUIRES_DECISION`。 |
-| 5 プラン／iOrbit | `plans`、Step、log、草稿／匹配、AI 用量；个人 actor 子空间与会话 | 本人样本与两个 actor 子空间重跑通过；共享会话的跨域内容仍须 B／E 复核。 |
-| 6 イベント | 旧 `event_registrations`／attendees 本人行；扫描 `event_ops_*` 及旧共享引用 | 无规范化／共享记录的样本通过；任一规范化 actor trace、主办旧事件或共享引用即显式阻止，不能当作全域通过。 |
-| 7 收件箱／通知 | 本人消息、成员／已读／通知；共享会话用删除占位 ID 匿名化 | 本人消息消失、另一方消息保留的 PG 测试通过；审计与离线同步生产者仍需跨线复核。 |
-| 8 最终身份 | 八域 done、无残余本人 `orbit_records`、completion-mail done 后事务删除 auth user／profile／account／申请／进度 | 缺步骤、残余行、邮件失败、失租均阻止；本机同邮箱新 ID 测试通过。发送成功到最终 DB 提交之间仍有短暂失败窗口，不能伪称已完整消除。 |
+## 画板与像素实测
 
-## 画板与像素
+- b7 原稿与改稿预检 16 板、数字冲突 0；b12 App/Web 登记共 152 frame，预检数字冲突 0。认可基准不等于像素通过。
+- App #19 有效原生三轮：run-01 raw 0.0641／8 超阈／11 缺块；run-02 0.067／8／9；run-03 0.0654／8／5。三轮上限转⑪。App #23 原生三轮最终 raw 0.0251／3／0，转⑪。
+- Web #27 三轮最终 raw 0.0072／1／2，转⑪；剩余 28px 标题与 kit token 差异交 A 线。Web b7 P01 已登录后的有效截图 raw 0.0581／4／29。
+- b7 其余 App P02/P03/P04/P06/P07/P08/P09 一轮 7/7 失败；Web P02/P03/P05/P06/P07 一轮 5/5 失败。b12 App P02/P03/P04/P06/P07/P08/P09 浅深 14/14 失败，Web P01/P02/P03/P05/P06/P07 三宽浅深 36/36 失败。R18a 言語と外観整板 6/6 失败。部分画面缺对应 live 状态 fixture，不能把错态截图判为像素通过；完整 triptych、raw/带数在 _evidence-c/R18c-*-P-matrix-run-01 与对应 summary.json。各 P 当前只跑一轮，余项转⑪。
 
-- b7 #19–32／#74／#81 原稿及改稿预检：16 板、数字冲突 0。b12 新补画 App P01–P09／S01–S08 各浅深、Web P01–P07／S01–S10 各 1440／1024／390 浅深；App Google 示例已修正为 Google 方法。清单在 `scripts/visual/views/{app,web}-R18c.json`，具体数据来源与 token 检查在 `preflight-checklist.md`。补画仍待主会话认可，未作为通过基准。
-- `board-preflight` 对 43 个 App、109 个 Web frame 均 exit 0、数字自洽 0；App 近似／缺 token 66／257，Web 263／346。重复宽度与主题会重复计数，缺口不等于已符合组件库。
-- Web 完成页 b7 #27 三轮：run-01 raw 0.0121、2 超阈、5 缺块；run-02 raw 0.0072、1 超阈、2 缺块；run-03 raw 0.0072、1 超阈、2 缺块。run-03 y=300–400 仍未归因（画板标题 28px，本线 token `--fs-title` 24px）；三轮上限到此，转像素余项轮，不做 `[data]` 豁免。证据 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/R18c-pixel-run-{01,02,03}`。其余 P 与 R18a 言語と外観整板、原生像素均 OPEN。
-- App b7 #23 原生 `Orbit Line C` 模拟器（402×874pt）三次有效截图：`R18c-app-native-P05-run-02` raw 0.0405／4 超阈／3 缺块，改为居中完成态与底部返回动作后 `run-03` 0.0398／3／3，文案与垂直位置对齐后 `run-04` 0.0251／3／0。最后 y=200–400 与 700–800 三带未归因；截图与 triptych 在各 run 目录。`run-01` 因工具默认设计服务端口 3320 不通，未取得截图、不计有效迭代。三轮上限到此，不用 `[raster]` 掩盖仍需独立复核的字形／按钮偏移。其余 App P、R18a 言語と外観整板仍 OPEN。
+## 测试与门禁
 
-## 测试与门禁（收口）
+所有日志与逐名差分在 /Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/。全量只在收口阶段经 heavy.sh c 各跑一次，环境仅设置 LANG=en_US.UTF-8、LC_ALL=en_US.UTF-8；没有全局数据库 URL。运行后做了有界聚焦修复，**未将聚焦结果冒充全量**。
 
-下表中的短日志名与逐名差分文件均位于 `/Volumes/ORICO/Dev/worktrees/orbit/_evidence-c/`。全量各运行一次，聚焦检查只用于定位和验证后续修正。
+| 门禁 | 实测 |
+| --- | --- |
+| Web 全量 | R18c-web-full-baseline-env-final.log：7,911 tests／6,811 pass／35 fail／1,065 skip，exit 1。R18b 基线 7,764／7,204 pass／15 fail／545 skip。逐名 30 新、10 消失，见 R18c-web-full-baseline-env-delta.json。新失败中 C 同步审计 5 项；加锁/分类后聚焦 3 项恢复，2 项保持红：共享 inbox owner 改写、immutable publication in-place 改写。其余新增名主要是新增 PG 集成测试在未配置本机库时直接失败，逐项原始堆栈在日志。 |
+| App 全量 | R18c-app-full-baseline-env-final.log：3,274 tests／3,246 pass／26 fail／2 skip，exit 1。R18b 基线 3,246／3,232 pass／12 fail／2 skip。逐名 15 新、1 消失，见 R18c-app-full-baseline-env-delta.json。#19 的 9 项画面/布局失败经聚焦修复 9/9；四项 C 静态登记/离线边界修复后 57/57。旧 i18n snapshot 改名仍红；invite 与 discovery 属邻接画面，未归为 C 成功。 |
+| 聚焦／类型 | Web 共享 purge PG 3/3、sync 审计 9/11（2 项架构冲突）、Web typecheck exit 0；App account ink 9/10（非账户 discovery 1 项红）、静态/离线 57/57、App typecheck exit 0。先前 Web auth、App auth/pending、导出/runner、契约聚焦证据见各 R18c-targeted 日志；真实 Google 未测。 |
+| copy/契约 | Web copy:qa 原先 7,507 条／245 issues，exit 1，非 R18c 权利文案专属；Web/App 契约同步与 schema parity 聚焦通过。未把红门禁记为通过。 |
 
-| 项目 | 结果 | 证据／逐名差分 |
-| --- | --- | --- |
-| Web `npm test`（LANG／LC=en_US.UTF-8，全局本机 PG URL） | **exit 1**：7,905 tests／7,296 pass／65 fail／544 skip | `R18c-web-full-close.log`。R18b `web-full-final-20261020.log` 为 7,764／15 fail／545 skip；原始逐名差分 52 新、2 消失在 `R18c-web-full-delta.json`。本次全局 URL 使大量“未配置数据库时失败关闭”用例失去原前提，不能把数量差全归产品回归；C 自有 typecheck／文案／token／button 静态失败见下。 |
-| Web C 静态聚焦；`typecheck`／`typecheck:app`／`lint` | **14/14、exit 0／exit 0／exit 0** | `R18c-web-targeted-close.log`、`R18c-web-typecheck.log`、`R18c-web-typecheck-app.log`、`R18c-web-lint.log`。全量后修正 runner 结果类型、导出到期文案、完成页 token、入口 Button；未按一次全量硬规则重跑。 |
-| Web `copy:qa` | **exit 1**：7,507 条／245 issues | `R18c-web-copy-qa.log`；没有 `account.rights`／R18c 告警，跨线存量与新增仍需各归属方处理；不能报门禁通过。 |
-| App `npm test` | **exit 1**：3,273 tests／3,251 pass／20 fail／2 skip | `R18c-app-full-close.log`；R18b `app-full-final-20261020.log` 为 3,246／12 fail／2 skip。原始逐名差分 9 新、1 消失在 `R18c-app-full-delta.json`；其中旧 i18n snapshot 测试改名但仍红。八个 C 新失败的路由／库存／账户 fixture／client 使用已聚焦修正。 |
-| App C 聚焦；`npx tsc --noEmit` | **65/68 后账户 16/16、exit 0** | `R18c-app-targeted-close.log` 先有 3 个账户 fixture 期望失败，补登记真实 pending 读取后 `R18c-app-account-rerun.log` 16/16；其余 52 项已绿。`R18c-app-typecheck.log` exit 0；完成页改后再跑 `R18c-app-typecheck-after-native.log`。全量未重跑。 |
-| 契约 snapshot／schema parity／`sync:contract`／路由及离线库存 | **5/5、exit 0、聚焦已绿** | `R18c-web-contract-close.log`；`R18c-app-sync-contract.log` exit 0 且未产生同步差异。App C 路由、Web `/settings/exports` 对 App `/account/exports`、离线权限分类与文档登记在聚焦 68 项中通过；旧屏整板仍未验。 |
-| 聚焦本机 PG | 已通过 | CAS、归档、worker、权限、逐域清除及 runner；各测试使用临时 schema 或随机 workspace，生产未触达。 |
+## DEFERRED、待主会话决定与四栏交接
 
-**全量失败逐名核对。** 完整失败名、基线名与集合差见 `R18c-web-full-delta.json`、`R18c-app-full-delta.json`。Web 原始新增 52 名中，本线静态失败为 `the entire project typechecks with zero errors`、`no page has more hard-coded text or missing Japanese than the allow list grants`、`orbit-2026 CSS Modules use only design tokens for colour, stacking, radius and type size`、`non-.btn <button> count in app/(app)/app does not increase`，对应的修正已聚焦通过。多数其余新增名是「未配置 live storage 应失败关闭」类测试；本次全量全局传入本机 PG URL，改变了这些测试的前提，因此原始差分不能直接归因为新回归。App 原始新增九名涉及 `action screens use the authenticated Orbit API client`、账户反馈 inset、App 路由／离线分类、Web–App route parity、账户导航 fixture、原生策略和旧字典快照；前八项的具体账户／路由缺口已聚焦修复，第九项仍为既有字典快照口径不符。原始全量保持红色；上述聚焦结果不能替代全量零新增失败证明。
+已接受的已知限制：每域 10,000 行显式失败上限、ZIP 同步压缩、离页自动调度与生产到期任务、真实 Google revoke／Blob eraser／邮件联调。这些不阻止本地代码交付，但不能包装为运行验证。生产调度、Neon/部署、备份保留期和真实外部账号仍待用户授权。
 
-## 自定决定、待主会话决定与请求
-
-1. **共享面谈与规范化事件。** 推荐确定统一的“保留另一方记录并移除退会者内容”规则，新增已发布事件 DTO 的失效／重发布或匿名化版本策略，再补同库双账号清除测试。当前直接删会违反 FK／快照关系，保留又留下本人内容；两类账号的清除在本线明确失败，SC10 不可完成。
-2. **App 账户 #19。** 当前旧屏含 profile 编辑、workspace、goal、设备 debug、登出等既有能力；曾尝试整屏替换会删除这些路径，已撤销该尝试并保留功能。画板的“登录中の端末 2台”和密码设置在现有服务无可信来源／路由。推荐先定是否删设备行、如何保留既有入口，再由 C 线整屏替换并做签名原生比对；受影响 P-A01／SC07／12／13。
-3. **Google 再认证。** R18b broker 需返回同账号、用途绑定、≤10 分钟、一次性 receipt，能证明 `prompt=login`／`max_age=0` 与 `auth_time`；C 当前明确 503。另需 R18b 在 purging 期间禁止自动建号，并在完成后用新 account ID 允许同邮箱注册；R18b 登录成功后进普通首页前识别 pending。
-4. **像素／组件。** 主会话复核 b12 草案后才能设为正式基准。A 线需核 28px 完成页标题 token 与 App #19 的新 ListRow／Button 参数；Web #27 三轮余项不在本线增加私有 token。R18a 言語と外観入口接线后整板复跑由集成门禁接续。
-5. **完成通知的原子边界。** PLANNER 要求先尝试发送完成邮件再清身份；本地实现按此顺序并用幂等 key／progress 防重。邮件投递成功而最终事务失败时用户可能先看到“已删除”。推荐主会话决定改文案为“清除处理中”或批准可恢复的最终交付方案；受影响 SC10／11。
-6. **生产。** 到期调度、Neon／生产开关、备份保留期、真实 Google／邮件／推送联调均未运行，登记 DEFERRED，**待用户授权**。本线未推送。
-
-## 四栏交接（由主会话协调更新根台账）
+需要主会话定夺的冲突：D-22 要求匿名化所有共享事件残留，而现行 immutable role/repair ledger 和 derived sync publication 契约拒绝就地更新；共享 inbox 的会话 owner 改变还需要正式 owner-change handler/设备撤回语义。C 线保留审计与残留扫描红灯，不添加隐藏例外。完成邮件与最终提交的原子边界已按 RD-33 改完。
 
 | 目标 | 本线版本／事实 | 另一端影响与请求 | 未完成／验证范围 |
 | --- | --- | --- | --- |
-| README 契约 11 | `shared/contract/account.ts`、BREAKING、App 副本同步；新严格删除 POST | 主会话登记同版接口与 R18b 版本接口分离 | 本机契约测试；真实双端操作未验 |
-| HANDOFF／DEFERRED-A | C 的 export／pending／local purge；生产入口关闭 | 记录 D-21 部分、D-22 未完成、生产启用待用户授权 | 本机 PG 与聚焦路由；无生产验证 |
-| A 线 App kit | 新二级页调用现有 `AppScreen inset="kit"`／UiText／Button 等；#23 原生三轮改善但未过 | 复核 #19 设备行与组件 token、Web 完成页 28px 标题缺口 | App 仅 #23 原生像素有证据；其余未验 |
-| B／E 线数据 | C 直接清人脈、共享 inbox、AI actor 子空间 | 复核 card Blob owner、共享会话／审计中本人内容、真实 token revoke／object eraser | 假体 + 本机 PG；跨端生产者未验 |
-| D／R18b 线壳与认证 | pending 白名单与旧 JWT 时间戳已接 | 登录后 pending 路由、purging 禁止自动建号、Google 新鲜证明 | C 路由测试；端到端未验 |
+| README 契约 11 | shared/contract/account.ts、BREAKING 与 App 副本同步；严格删除 POST | 主会话合并同版契约与根登记 | 聚焦契约；真实双端操作未验 |
+| HANDOFF／DEFERRED-A | 本机 export、pending、purge 与匿名完成 outbox；生产入口关闭 | 主会话登记 D-21 部分、D-22 未收口和生产授权 | PG/替身；无 Neon/生产 |
+| A 线组件／像素 | #19 kit 行已落，#23/#27 三轮上限；28px 标题无私有 token | A 线复核标题 token、ListRow/长文案；⑪ 接收残差 | 详见 triptych；P 矩阵红 |
+| B／E 数据 | 共享面谈、联系人/Blob、事件 DTO 与 inbox 占位方案 | 复核共享内容、不可变事件账本、Blob owner 和跨域生产者 | 双账号 PG 样本；immutable 残留失败关闭 |
+| D／R18b 认证壳 | pending 登录路由、purging 建号阻断、Google fresh receipt | 复核外部 OIDC、旧会话及设备同步撤回 | 本机聚焦；无付费外部账号联调 |
+| 同步域 | purge 已取 commit-order lock；静态审计仍有 owner/publication 两项红 | 主会话决定 owner-change handler 与 publication 新版本/旧快照清除路径 | Web 全量 2 项 C 冲突，未豁免 |
 
-越线自查：本线未改 A 组件／token、B 采集代码、D 导航壳、R18b Google broker、Neon 配置、根台账。`HANDOFF-CLAUDE-2026-10-19.md` 是预存用户文件，未触碰。无 push。主会话独立复核、像素余项与上述产品决定仍是停点；本报告不把局部测试或预检算作 SC 通过。
+越线自查：没有改 A 组件/token、B 采集、D 导航壳或生产配置；HANDOFF-CLAUDE-2026-10-19.md 为用户预存文件，未触碰。开发服务器、Metro 与专用模拟器已关闭；3000 端口未动。仅本地提交，无 push。主会话独立复核、像素余项轮⑪、外部联调及上述架构决定仍未完成，本报告不宣称 R18c 收口。
