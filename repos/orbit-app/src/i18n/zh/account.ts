@@ -83,5 +83,7 @@ export const account = {
   "account.rights.reconnect": "如需使用连接的服务，请重新连接。",
   "account.rights.deleted": "账户已删除",
   "account.rights.deletedBody": "感谢使用 Orbit。",
+  "account.rights.deletedDetail": "数据删除已完成。",
+  "account.rights.home": "返回首页",
   "account.rights.localCleanup": "无法清除这台设备上的数据，请重试。",
 } as const;

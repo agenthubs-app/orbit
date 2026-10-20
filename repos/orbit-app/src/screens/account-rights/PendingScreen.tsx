@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, useWindowDimensions } from "react-native";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -8,7 +8,7 @@ import type { AccountDeletionRequestContract } from "../../api/contract/account"
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
-import { spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { syncLifecycle } from "../../data/sync/sync-lifecycle";
@@ -68,10 +68,19 @@ export function PendingScreen() {
 }
 
 export function DeletedScreen() {
+  const router = useRouter();
+  const { height } = useWindowDimensions();
   const { t } = useOrbitLocale();
   const { styles } = useStyles();
-  return <AppScreen inset="kit" showBack={false} title={t("account.rights.deleted")}>
-    <Card><UiText style={styles.heading}>{t("account.rights.deleted")}</UiText><UiText style={styles.body}>{t("account.rights.deletedBody")}</UiText></Card>
+  return <AppScreen inset="kit" showBack={false} header={<View />} title={t("account.rights.deleted")}>
+    <View style={[styles.deletedFrame, { minHeight: Math.max(600, height - 100) }]}>
+      <View style={styles.deletedCenter}>
+        <View style={styles.deletedIcon}><UiText style={styles.deletedEmoji}>👋</UiText></View>
+        <UiText style={styles.deletedTitle}>{t("account.rights.deleted")}</UiText>
+        <UiText style={styles.deletedBody}>{t("account.rights.deletedBody")}{"\n"}{t("account.rights.deletedDetail")}</UiText>
+      </View>
+      <Button label={t("account.rights.home")} variant="secondary" size="lg" block onPress={() => router.replace("/")} />
+    </View>
   </AppScreen>;
 }
 
@@ -81,4 +90,10 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   body: { fontSize: typography.body, color: colors.ink, lineHeight: 22 },
   note: { fontSize: typography.bodySm, color: colors.ink2, marginTop: spacing.md },
   error: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
+  deletedFrame: { justifyContent: "space-between", paddingBottom: 14 },
+  deletedCenter: { alignItems: "center", paddingTop: 138 },
+  deletedIcon: { width: 72, height: 72, borderRadius: radius.xl, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 18 },
+  deletedEmoji: { fontSize: 32 },
+  deletedTitle: { fontSize: typography.title, fontWeight: "900", color: colors.ink, textAlign: "center", marginBottom: spacing.sm },
+  deletedBody: { fontSize: typography.bodySm, lineHeight: 20, color: colors.ink2, textAlign: "center" },
 }));

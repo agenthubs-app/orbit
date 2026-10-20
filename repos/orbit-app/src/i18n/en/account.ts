@@ -83,5 +83,7 @@ export const account = {
   "account.rights.reconnect": "Reconnect linked services if you need them.",
   "account.rights.deleted": "Account deleted",
   "account.rights.deletedBody": "Thank you for using Orbit.",
+  "account.rights.deletedDetail": "Your data has been deleted.",
+  "account.rights.home": "Go to the start",
   "account.rights.localCleanup": "Could not clear this device's data. Try again.",
 } as const;

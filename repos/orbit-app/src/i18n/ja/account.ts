@@ -81,7 +81,9 @@ export const account = {
   "account.rights.cancel": "削除を取り消す",
   "account.rights.tooLate": "取消期間が終了しました。",
   "account.rights.reconnect": "連携サービスは必要に応じて再接続してください。",
-  "account.rights.deleted": "アカウントの削除が完了しました",
-  "account.rights.deletedBody": "Orbit をご利用いただきありがとうございました。",
+  "account.rights.deleted": "アカウントを削除しました",
+  "account.rights.deletedBody": "これまでご利用いただき、ありがとうございました。",
+  "account.rights.deletedDetail": "データの削除が完了しました。",
+  "account.rights.home": "はじめの画面へ",
   "account.rights.localCleanup": "この端末のデータを消去できませんでした。もう一度お試しください。",
 } as const;
