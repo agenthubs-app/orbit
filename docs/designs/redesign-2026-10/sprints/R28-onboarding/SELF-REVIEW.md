@@ -1,6 +1,6 @@
-# R28 C 线独立复核
+# R28 C 线自查
 
-日期：2026-10-20。结论：**局部功能已交付，R28 未达到 Sprint 验收条件。** 本复核由 C 线主会话在代码提交后重新查读源码、定向运行关键用例并核对门禁；它不把全量失败或未运行的像素状态记为通过。
+日期：2026-10-20。结论：**局部功能已交付，R28 未达到 Sprint 验收条件。** 本文件仅为 C 线自查，主会话的独立 `REVIEW.md` 文件名保持空出。自查重新查读源码、定向运行关键用例并核对门禁；全量失败或未运行的像素状态不记为通过。
 
 ## 重新执行
 
@@ -31,11 +31,15 @@ Web/App 各只跑过一次收口全量，分别 exit 1。新增失败已按 REPO
 - 有效邀请的 Web 实链补核发现旧 W0006 `/app/start` 豁免绕开了 R28 资料门禁：邀请页匿名 200，注册后直回邀请并连接，但缺行业资料的新账号可进入真实指南。C 线移除这条精确豁免，保留邀请公开例外；代理测试先 RED 7/10、修后连同导航／指南 26/26。相同邀请账号再进指南被转到资料五屏且 `next=/app/start` 保留，完整账号仍能进入指南。截图 `_evidence-c/R28/valid-invite-{anonymous,profile-gate}.png`。
 - 相同邀请账号在 App 直接打开 `orbit://start` 也暴露 0/3 真实指南。C 线 App 入口现在先读取服务端 profile policy，完成才读指南，未知政策和读取失败不能放行；定向测试 RED 0/4→GREEN 4/4、App typecheck exit 0。重启 Metro 后实机深链落五屏首屏，前后截图 `_evidence-c/R28/app-invitee-{guide-bypass-before,profile-gate-after}.png`。
 - App 注册→登录→资料五屏的邀请安全目标纯路由链 8/8，目标仍为 `/i/ABCD-EFGH`。全新本地 App 账号实机从匿名邀请进入，完成五屏后回原邀请并兑换 200，`used_count` 1→2；已有完整资料账号从同一匿名邀请登录，直接回邀请并兑换 200，`used_count` 2→3。完成页显示双方连接；截图 `_evidence-c/R28/app-invite-{open,return,connected}.png` 与 `app-invite-existing-{return,connected}.png`。两条正例仍未遍历整张认证矩阵。
-- SC12 的新壳接入不能只靠移动 C 文件：D 线 `orbit-2026/shell/shell-routes.ts` 仍把 `/app/start` 列在 `NO_SHELL_EXACT`、把 `/app/profile/onboarding` 列在 `NO_SHELL_PREFIXES`。`ShellPage` 在无 `ShellSlotsProvider` 时不渲染插槽，C 不能改 D 壳路由；D 的明确映射与 A 的新表单组件回传后，C 才能完成旧目录迁移并复测像素。当前旧目录及审计余项如实保留。
-- 全仓 import 检索显示 C 指南和资料不再调用 B 的旧 `card-batch-ui`；`profile-0918/profile-model.ts` 无生产引用后由 `f1e98a2b9` 删除。`onboarding-0918` 仍为 Web 资料实现路径。试迁到 `orbit-2026/onboarding` 触发该目录更严格的文案审计：内联硬编码 8/6/1、缺 ja 120/80。已局部撤回试迁，未放宽审计或留下新失败。
+- §R28-b 已授权 C 精确修改 D 壳路由：`/app/start` 和 `/app/profile/onboarding` 不再禁壳，并接现有 `ShellPage` 插槽；路由测试通过。D 仍需复核壳状态与同态像素 fixture。
+- 全仓当前运行时代码与测试的旧 `onboarding-0918` 引用已清除，Web 五屏在 `orbit-2026/onboarding`，文案在 `orbit-2026/copy/onboarding.ts`，ja/zh/en 齐备。新目录 copy 审计零新增；旧路径仅保留在不可改的历史 opening snapshot 与历史描述中。
 
 ## 边界与余项
 
-相对起点 `8862ccce4` 的已提交源代码和测试 diff 位于 R28 归属的资料、指南、契约兼容、视图和证据路径。A 组件、D Task、B 导入业务、R22–25 计划引擎没有被 C 修改；用户原有 `HANDOFF-CLAUDE-2026-10-19.md` 未动。没有推送、部署、生产/Neon 连接或付费模型调用。本地服务和 C 模拟器均已停止；Next 启动时自动写出的 `next-env.d.ts`、`tsconfig.json` 已恢复。
+本轮 §R28-b～f 定向自查：壳路由 1/1；新目录 copy 审计 7/7、资料流程／冲突／首页模型 23/23、Web typecheck 通过；样本 intake 路由 5/5，403 返回前不构造 service；Web 指南卡回程 1/1、B 扫描完成 UI 回程 1/1，App 回程目标白名单 1/1、App 入口模型 15/15、App typecheck 通过。App 旧扫描上传 UI 用例仍在 5 秒内停于「アップロード中 0 / 3枚」，仅见 POST 批次而无 PUT 图片；暂时还原本轮 `ScanCaptureScreen` 所有修改后同一用例仍失败，因此不归因于本轮回程改动，也不把它报绿。最终全量结果另记 REPORT。
 
-下一次验收必须先取得 A/D 的状态组件和同态 fixture、B 的回程与示例写拒绝、可授权的计划 AI 正例，再补 Web 旧目录文案迁移、前端示例拦截、注册/邀请/设备矩阵和未过像素带。W01 与 A07 锁定态已达每屏三轮上限，本次不再加跑。各 SC 的具体缺项及四方请求见 REPORT。
+最后一次 Web 全量在日文 `LANG` 下出现一个 R10fix 未列的新失败名：Home bounded SQL 测试要求查询一次，而生产排序运行时在未验证的 `ja-JP` collator 下先拒绝查询。源码没有为测试放宽排序守卫；测试补上此安全分支，整文件在日文与默认 locale 各 24/24。全量原始失败仍保留在 REPORT，未第二次运行全量。
+
+相对起点 `8862ccce4` 的已提交源代码和测试 diff 位于 R28 归属的资料、指南、契约兼容、视图和证据路径。按主会话 §R28-b/d/e/f，本轮还精确修改 D 壳两路、B 扫描／导入 returnTo、B intake 示例写拒绝、D/R10 首页首步文案。A 组件、D Task、R22–25 计划引擎没有被 C 修改；用户原有 `HANDOFF-CLAUDE-2026-10-19.md` 未动。没有推送、部署、生产/Neon 连接或付费模型调用。本机 provider key 未配置，RD-33 授权有效。本地服务和 C 模拟器均已停止；Next 启动时自动写出的 `next-env.d.ts`、`tsconfig.json` 已恢复。
+
+下一次验收须取得 A/D 的状态组件和同态 fixture、可用的本地付费 provider key，以补日文介绍、active plan 3/3、四阶段 Task 回程，再补前端示例表面、注册／邀请／设备矩阵和未过像素带。B 回程与 intake 403 已由 C 在精确授权边界实现，仍待 B 复核。W01 与 A07 锁定态已达每屏三轮上限，转 ⑪，本次不再加跑。各 SC 的具体缺项及四方请求见 REPORT。

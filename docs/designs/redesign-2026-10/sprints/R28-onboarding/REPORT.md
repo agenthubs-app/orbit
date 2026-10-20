@@ -1,8 +1,23 @@
 # R28 新用户引导 — C 线交付与未结项
 
-日期：2026-10-20。状态：**部分交付，Sprint 未验收完成**。本线只在本地 `line-c` 提交；没有推送、部署、访问 Neon／生产库或调用付费 AI。用户原有的 `HANDOFF-CLAUDE-2026-10-19.md` 未改动。
+日期：2026-10-20。状态：**部分交付，Sprint 未验收完成**。本线只在本地 `line-c` 提交；没有推送、部署、访问 Neon／生产库。RD-33 已授权本机付费 AI 正例；本机没有可用的 provider key，因此本轮付费模型调用为 0。用户原有的 `HANDOFF-CLAUDE-2026-10-19.md` 未改动。
 
 ## 版本与做成的链路
+
+### 主会话 §R28-a～h 补做结果（本轮）
+
+| 项 | 状态 | 可核对结果 |
+| --- | --- | --- |
+| a 本机付费 AI | 环境阻塞 | RD-33 授权已确认。本 worktree 的 provider 环境变量无可用值；相邻主 worktree 的 `DEEPSEEK_API_KEY` 有变量名但值长 0。没有密钥时本地两次介绍尝试和一次计划初版尝试均在配置处失败，真实日文介绍、active plan、3/3、Task 回程未形成；介绍实际模型调用 0／额度命中 0，四阶段 AI 初版实际模型调用 0／额度命中 0。 |
+| b 壳 | 代码完成，待 D 复核 | C 只从 `NO_SHELL` 移出 `/app/start` 与 `/app/profile/onboarding`，两页接现有 `ShellPage` 插槽；壳路由测试 1/1。D 复核新壳状态和像素。 |
+| c Web 资料迁移 | 代码完成 | 五个实现文件移到 `orbit-2026/onboarding`；静态文案归入新三语 `copy/onboarding.ts`，六处缺失 ja 补齐；新目录 copy QA 零新增，旧目录无运行时引用。历史 opening snapshot 保留原 SHA 路径。 |
+| d B 名片回程 | 代码完成，待 B 复核 | Web `/app/start`、App `/start` 是唯一允许的 `returnTo`；扫码／导入入口、批次页面与完成态传递目标，未给其他路径开放回程。Web/App 目标白名单与 Web 完成 UI 定向绿；App 旧扫码上传 UI 超时见自查。 |
+| e 样本 plan intake | 代码完成，待 B 复核 | `POST /api/agent/plans/intakes` 用现有 `isSampleWrite` 判定，403 `SAMPLE_READ_ONLY`，在解析 service 前返回；服务 spy 定向断言未调用。 |
+| f 首页首步文案 | 代码完成，待 D 复核 | 依 R10 共享投影 `nextStep`／`contacts` completed 判定；联系人已满时显示完成文案，不再提示「追加 3 张名片」。三语文案及模型定向测试通过。 |
+| g Task›プラン | 待 D（已排队） | D 正进行 R19；示例横条／药丸／写拦截／继续指南由 D 在 R19 后处理。C 没有 Task 归属改动。 |
+| h 像素 | 未通过，转 ⑪ | W01、A07 锁定态各已用满 3 轮；其余同态 fixture 缺失或差异超带，保留 A 组件对齐请求，未追加第 4 轮。 |
+
+本轮 §R28-b～f 的代码与定向测试提交为 `6b557bb9e`；`REVIEW.md` 改为 C 自查 `SELF-REVIEW.md`，独立复核文件名留给主会话。以下早期收口数字为当时已提交版本的历史记录；本轮最终全量和新失败逐名对照见文末补记。
 
 - 起点 `8862ccce4`（含 R10 投影 `8eaf86733`）；设计 `50c708543`，契约兼容 `b987287e1`，政策 v2 `0881931f2`，资料流程和介绍额度 `90a346202`，真实指南与 intake `04d6bbe76`，原生界面 `7bffccbbd`，Web 资料和 B 扫描入口 `1073f9ea9`，Web 指南三语与布局 `3902a452d`，文案审计修正 `f41c94d4a`，像素视图清单 `c7025e429`，App 契约与读取注册 `11db421e9`，旧资料标签兼容导出清理 `f1e98a2b9`，介绍失败文案收口 `f718ea48d`，App `/start` 续接允许表 `f377525f4`，两端资料冲突防覆盖 `204814b18`，Web 日文预览 `23b76c711`，两端指南资料门禁 `a87fec3c9`／`d0263ad28`。上述提交均留在本地。
 - 资料政策 v2 允许空生日，姓名／行业仍必填；App 先兼容 v1/v2／未知新版再切服务端。共享契约 snapshot 已更新，App 副本已同步。首次资料 PUT 前建 actor 流程；每屏 PUT、GET 复读、进度确认，失败不推进。跨端使用同一进度记录。
@@ -18,20 +33,20 @@
 | 02 入口／next | 部分 | Web 本地注册保留 `/app/start` 到资料页；匿名继续与指南 307 到登录，完整账号安全 next 到指南，外站与嵌套循环回 Home。有效邀请 `/i/<code>` 两端匿名可直达；Web 注册后回邀请并连通；App 新账号完成五屏后回原邀请，已有完整资料账号登录后直接回邀请，两次兑换均 200。邀请后资料不全曾可进真实指南，已修复两端 `/start` 门禁并实测转资料五屏。未遍历全部旧账号／流程状态与双端登录组合。 |
 | 03 资料五屏／D28-2 | 部分 | BREAKING 登记、App 先兼容、v2、CAS/幂等/API、两端五屏操作链与服务端完成回读已做；Web 同账号双标签实际验证旧稿冲突被拒、刷新后从服务端第 2 屏续填。同账号 Web 基本资料→App 第 2 屏→Web 第 3 屏已双向实测；完整跨设备回读矩阵及各屏像素尚未验。 |
 | 04 目标／文案 | 部分 | 上限 2、第三项限制、保序、三语与显式类型选择的定向测试；Web 资料内嵌首页／人脉预览的静态文案已补日文。R28 双目标文本在 R18a 共用编辑器重开后保持原文、无暗加期限的组件定向测试 5/5；真实保存后重开与各版位像素尚未全验。 |
-| 05 AI 介绍 | 部分 | 服务额度、重放、并发、三语测试与两端失败手写链；Web 失败页不再显示 provider 配置/密钥名，额度耗尽不再给重试按钮。没有授权的付费正例，日文实际模型输出未运行。 |
-| 06 名片入口 | 部分 | C 的旧 card-batch UI 已迁往 B 的扫描/导入路由；Web/App 跳过导入的完成链已实测，B 回程仍依赖浏览器返回和服务端续填，0/3/10 张真实批次未全验。 |
+| 05 AI 介绍 | 部分 | 服务额度、重放、并发、三语测试与两端失败手写链；Web 失败页不再显示 provider 配置/密钥名，额度耗尽不再给重试按钮。RD-33 已授权本机正例，但没有可用 provider key，日文实际模型输出未运行，实际模型调用 0、额度命中 0。 |
+| 06 名片入口 | 部分 | C 的旧 card-batch UI 已迁往 B 的扫描/导入路由；Web/App 跳过导入的完成链已实测。B 扫描／导入完成态现有站内指南回程，白名单仅 Web `/app/start`、App `/start`；0/3/10 张真实批次未全验。 |
 | 07 硬顺序 | 部分 | R10 共享投影、0/2/3 联系人及锁定／`?step` 定向测试，server 写拒绝；双设备、active v1/v2 的完整事实矩阵未全验。 |
 | 08 App 指南 | 部分 | 原生 `/start`、锁定、2/3、计划续接已实机；active plan 缺付费 AI 正例，不能声明 3/3。 |
-| 09 指南到 v2.2 | 部分 | 双端显式类型、onboarding intake 恢复同 ID；Web AI 初版失败后只显示恢复出口，四阶段→Task 未到达。 |
-| 10 示例模式 | 部分 | C 的 profile、flow、intro 服务端样本写 403 早退测试；资料页的内嵌预览仅返回填写步骤，没有示例数据写入口。`/start` 是脱离预览的真实指南，新用户可在此写真资料；不能仅凭「仍在示例期」把该入口拦住。B 的 plan intake 示例写拒绝、A/D 拥有的示例横条/药丸及其写入口仍未联验。 |
+| 09 指南到 v2.2 | 部分 | 双端显式类型、onboarding intake 恢复同 ID；Web AI 初版失败后只显示恢复出口，四阶段→Task 未到达。本地 provider key 缺失，实际模型调用 0、额度命中 0。 |
+| 10 示例模式 | 部分 | C 的 profile、flow、intro 与 `POST /api/agent/plans/intakes` 服务端样本写 403 早退测试；intake 拒绝发生在存储和 AI service 构造前。资料页的内嵌预览仅返回填写步骤，没有示例数据写入口。`/start` 是真实指南，新用户可在此写真资料；A/D 的示例横条／药丸和其他写入口未联验。 |
 | 11 D 线 Task | 待 D | 本线未修改 Task。状态契约与具体请求在下表；没有 D 提交和回传，Task 链不能报通过。 |
-| 12 旧引用 | 部分 | C 的旧 `card-batch-ui` 使用与 `profile-model` re-export 已清理；Web 资料仍挂在 `onboarding-0918`，尚未达到新目录的文案审计零例外要求。D 壳的 `shell-routes.ts` 仍把 `/app/start` 与 `/app/profile/onboarding` 列为 `NO_SHELL`，C 单方挂 `ShellPage` 不会产生插槽；需 D 先给可用壳边界。 |
+| 12 旧引用 | 完成（本线） | C 的旧 `card-batch-ui` 使用与 `profile-model` re-export 已清理；Web 五屏实现迁至 `orbit-2026/onboarding`，三语文案集中到 `orbit-2026/copy/onboarding.ts`，新目录文案审计零新增。C 仅越线改 D 壳的两条精确路由，并给资料／指南接入 `ShellPage`；仍需 D 复核插槽和状态 fixture。 |
 | 13 资料像素 | 未过 | W01 1440 浅和 A01 深各有 triptych；超阈值带仍未归因，其他宽／主题及资料屏没有完整 fixture。 |
 | 14 指南／示例像素 | 未过 | A07、W07、W08 门禁失败；A08 首次比较用了错误路由，随后 `/contacts` 数据读失败，不能判通过；A/D 组件与 fixture 缺口见下。 |
 | 15 失败／兼容／离线 | 部分 | v1/v2/未知契约、资料／进度重试、无网络和 intake 错误定向测试；Web 双标签 409 实际提示并保留未提交输入，服务端没有被旧稿覆盖；同浏览器换合成账号后初始资料与进度为空。C 模拟器从另一合成账号登出，再登录部分资料账号，续填卡正确显示 1/5；完整离线同步审计未完成。 |
-| 16 收口 | 部分 | 本地代码、视图清单、REPORT／REVIEW、全量与基线对照均已收口；全量与像素门禁仍红，跨线依赖未回传，Sprint 保持开放。 |
+| 16 收口 | 部分 | 本地代码、视图清单、REPORT／SELF-REVIEW、全量与基线对照均已收口；全量与像素门禁仍红，跨线依赖未回传，Sprint 保持开放。 |
 
-R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口待接。R28-02→SC11：Task 请求待 D。R28-03→SC09：已改为严格 onboarding intake。R28-04→SC07/08/12：App 真实指南已接，C 的旧 B 名片 UI 使用和资料标签旧导出已清理；Web 资料旧目录仍待迁移。试移 `orbit-2026/onboarding` 时，既有新目录审计检出 hard-coded 8/6/1、缺 ja 120/80；该试移已局部撤回，文案迁移与壳接入保留为未完成项。
+R28-01→SC10/14：服务端 C 写保护已做，A/D 的展示与其他写入口待接。R28-02→SC11：Task 请求待 D（R19 后排队）。R28-03→SC09：已改为严格 onboarding intake。R28-04→SC07/08/12：App 真实指南已接，C 的旧 B 名片 UI 使用和资料标签旧导出已清理；Web 资料与三语文案完成迁移，新目录 copy 审计零新增，旧实现目录删除。
 
 入口 URL 表由源码、定向测试与本地实际路由核对；App 邀请全矩阵仍未跑。本地合成注册账号只写入 `orbit_line_c`：普通账号落到 `/app/profile/onboarding?next=%2Fapp%2Fstart`，另一个点击「Just look around」后重进 `/app/profile/continue` 仍回资料页。无会话 curl 访问继续页与指南均返回 307 登录，安全目标保留；已有完整账号的 Web 浏览器访问合法目标、外站目标和嵌套继续目标分别落到 `/app/start`、`/app/home`、`/app/home`。C 模拟器登录的完整资料账号打开 `orbit://profile/continue?next=%2Fstart` 后进入真实指南，外站 next 回 Home；截图 `_evidence-c/R28/app-continue-{valid-start,external-fallback}.png`。
 
@@ -66,18 +81,18 @@ App 邀请 `next` 的纯路由链追加复核：`/i/ABCD-EFGH` 经注册进入�
 | W07 计划 1440 浅 b12#972 | 1→2 | .0447→.0277 | 5/5（第 2 轮） | 10→6 | 未过；实际显式类型核对区比设计稿更大 |
 | W08 1440 浅 b12#984 | 1→2 | .076→.0583 | 25/25（第 2 轮） | 5→6 | 第 1 轮路由错；第 2 轮真实完整人脉页 2779px，画板为 900px 横条样例，不是同一整屏 |
 
-未列的 P/宽度/主题没有可比较的同态 fixture，结论为 **未运行**，不能把预检或 Web 五屏操作截图算作像素通过。A01 错选 b1#10 的深色初比（raw .215）为无效比较。已到三轮上限的 W01、A07 锁定态转余项轮，不再本次增跑。
+未列的 P/宽度/主题没有可比较的同态 fixture，结论为 **未运行**，不能把预检或 Web 五屏操作截图算作像素通过。A01 错选 b1#10 的深色初比（raw .215）为无效比较。已到三轮上限的 W01、A07 锁定态转 ⑪，不再本次增跑。壳接入后的同态新 fixture 尚未建立，因此没有再以旧截图冒充新壳像素结果；A 组件对齐请求继续保留。
 
 ## 跨线交接
 
 | 下一方 | 本端版本／已知事实 | 请求与接受条件 | 未验范围 |
 | --- | --- | --- | --- |
 | A 组件库 | C `7bffccbbd` 的 AppScreen kit／UiText 和 Web 自有 CSS；A01/A07 超带仍多 | 评估资料表单行高、输入、chip、指南卡与示例横条的 kit/token 对齐；给独立组件提交和 R28 状态 fixture 后按清单重比 | 未请求 C 越线修改 A 组件；手机系统外壳不实现 |
-| B 名片／计划服务 | C `1073f9ea9` 改扫卡到 `/app/contacts/new/scan`；`04d6bbe76` 两端仅续接 `source:onboarding` intake | 扫描/导入路由提供明确 return-to-guide；plan intake 写在示例期返 403 且无存储／AI 副作用；4 阶段失败恢复与 App 回 Task 正例由 B/R23–25 给回执 | 本地 blank AI provider 仅到问题阶段；未写 B API 文件 |
-| D Task／壳 | C 的指南显示 2/3 且未生成 active plan；A08/W08 画板与真实人脉页整屏不符；`shell-routes.ts` 当前对 `/app/start` 和 `/app/profile/onboarding` 禁壳 | 恢复 Task›プラン 空／有计划／示例横条、展开/药丸、写拦截、继续指南；明确 R28 两页的新壳插槽方案并移除对应禁壳路由，再回传独立 SHA、状态 props、同态 fixture、触控链 | 无 D 提交，未改 Task／壳；首页首步文案在 3 联系人后仍说“追加 3 张名片”需 R10/D 对齐 |
-| 主会话／Bridge | 本地 contract v2、App 兼容、真实指南/intake；生产与付费均未动 | 在共同环境审阅安全 next 矩阵、跨端完整回读、active 计划 3/3、A/B/D 提交后重比；决定是否授权付费 AI/生产示例开关 | 没有请求或执行发布；`bridge/status.md`／`handoffs.md` 台账由 Bridge 协调者更新 |
+| B 名片／计划服务 | C `1073f9ea9` 改扫卡到 `/app/contacts/new/scan`；`04d6bbe76` 两端仅续接 `source:onboarding` intake；本轮 C 仅加白名单 returnTo 与 intake 样本写 403 | B 复核扫描／导入完成态回指南与 403 无存储／AI 副作用；4 阶段失败恢复与 App 回 Task 正例由 B/R23–25 给回执 | 本地 blank AI provider 仅到问题阶段；B 扫描上传既有 UI 测试超时，见收口；未改 B 计划引擎 |
+| D Task／壳 | C 的指南显示 2/3 且未生成 active plan；A08/W08 画板与真实人脉页整屏不符。本轮按 §R28-b 精确改 `shell-routes.ts` 两路并接 `ShellPage`，按 §R28-f 修首页首步文案 | D 在 R19 后处理 Task›プラン 空／有计划／示例横条、展开／药丸、写拦截、继续指南（§R28-g，已排队）；复核壳插槽与首页文案并回传同态 fixture、触控链 | C 未改 Task；新壳／首页像素未验 |
+| 主会话／Bridge | 本地 contract v2、App 兼容、真实指南/intake；RD-33 已授权本机付费 AI，但未找到可用 provider key | 在有本地 key 的环境补日文介绍与 v2.2 四阶段付费正例、active plan 3/3 与 Task 回程；审阅安全 next 矩阵、跨端完整回读、A/B/D 提交后重比；生产示例开关另行决定 | 没有请求或执行发布；`bridge/status.md`／`handoffs.md` 台账由 Bridge 协调者更新 |
 
-DEFERRED（待用户授权）：生产示例开关、生产 since 与迁移、Neon/生产数据库、付费 AI 正例、部署／推送。当前本地测试账号与合成联系人仅在 `orbit_line_c`。
+DEFERRED（待用户授权）：生产示例开关、生产 since 与迁移、Neon/生产数据库、部署／推送。本机付费 AI 正例已获 RD-33 授权，但缺 provider key。当前本地测试账号与合成联系人仅在 `orbit_line_c`。
 
 ## 收口门禁与独立复核
 
@@ -89,7 +104,7 @@ App 单次全量（`heavy.sh c`，仅 LANG/LC_ALL）：3291 项，3267 过／22 
 
 Web `typecheck:app` exit 0、lint exit 0、contract snapshot `--check` exit 0。`copy:qa` 7601 条、249 项问题，exit 1；介绍失败文案修改后再次运行，输出与 `web-copy-qa-closeout.log` 逐字相同，R28 键 0 项新增，故这项保留为既有质量门禁失败，不写成通过。日志分别为 `web-lint-closeout.log`、`contract-snapshot-closeout.log`、`web-copy-qa-closeout.log`、`web-copy-qa-after-errorcopy.log`。
 
-R28 定向 Web 指南 28/28、资料路由 35/35、App 资料交互和指南相关定向均绿；两端 typecheck 在 UI 提交前后已各通过。App 修后受影响定向、route parity、contract sync 共 69/69，typecheck exit 0。独立复核另跑 Web 关键服务／路由／指南 40/40、App route parity／contract sync／intake 16/16，contract snapshot exit 0；介绍失败 UI 定向 15/15、文案审计 7/7、Web 资料编辑服务契约 10/10、App 离线读取与目标模型 47/47、App 续接／初始路由／route parity 31/31、Web typecheck/typecheck:app 与 App typecheck exit 0。Web 资料目录试迁又局部撤回后的复核见 REVIEW。
+R28 定向 Web 指南 28/28、资料路由 35/35、App 资料交互和指南相关定向均绿；两端 typecheck 在 UI 提交前后已各通过。App 修后受影响定向、route parity、contract sync 共 69/69，typecheck exit 0。早期复核另跑 Web 关键服务／路由／指南 40/40、App route parity／contract sync／intake 16/16，contract snapshot exit 0；介绍失败 UI 定向 15/15、文案审计 7/7、Web 资料编辑服务契约 10/10、App 离线读取与目标模型 47/47、App 续接／初始路由／route parity 31/31、Web typecheck/typecheck:app 与 App typecheck exit 0。其时 Web 资料目录试迁曾撤回；本轮迁移已完成，见上表和 SELF-REVIEW。
 
 `204814b18` 后追加定向复核：Web 并发保存／资料五屏／指南／文案审计 43/43、Web typecheck exit 0；App 资料 API 与组件交互 22/22、路由和 intake 13/13、App typecheck exit 0。App 字典域检查 3 项中 2 项通过；唯一失败「original split key set」与 R10fix 基线同名，新增 `guide.*` 域已使「each locale is a folder」恢复通过。一次误用 App `npm test -- <file>` 触发全仓 glob 后已立即中断，**不是一次完成的全量验证**，不能用其结果改写上述单次收口全量结论；随后改用直接 `node --test` 定向运行。
 
@@ -103,4 +118,12 @@ R28 定向 Web 指南 28/28、资料路由 35/35、App 资料交互和指南相�
 
 R18a 共用 GoalEditor 新增 R28 保真回归：把双目标及自由句组成的无期限文字解析后重开，输入仍是原文、没有期限被选中，复合保存仍为原文；`tests/pages/app-profile-goal-editor.test.tsx` 定向 5/5，React 服务端渲染仍打印既有 `useLayoutEffect` 提示。随后 Web 新账号在本地完成余下第 3～5 屏（AI 因空 provider 失败后手填、导入跳过），服务端读回五屏已完成；该操作没有进一步证明资料页编辑弹窗里的目标保存回读。
 
-独立复核细节见 `REVIEW.md`。全量仍为 exit 1，像素超带仍未归因；定向通过没有覆盖整套注册／邀请、付费计划和 Task 回程。
+本线自查细节见 `SELF-REVIEW.md`。主会话的独立 `REVIEW.md` 文件名保持空出。全量与像素的最终结论以本轮末尾补充为准；定向通过没有覆盖整套注册／邀请、付费计划和 Task 回程。
+
+## 主会话要求的最后一次全量与 R10fix 逐名对照
+
+仅设置 `LANG=ja_JP.UTF-8`、`LC_ALL=ja_JP.UTF-8`，经 `_runs/heavy.sh c` 各运行 Web、App 一次。Web 日志 `_evidence-c/R28/web-full-final.log`：7966 项，6865 过／6 失败／1095 跳，exit 1。R10fix Web 的 6 个失败名中，本轮仍同名的 5 项为 surface manifest、名片合并空字段、plan design fixture、B 扫描上传 UI、B 重复查找 UI；R10fix copy 上限失败已消失。本轮全量有 1 个新失败名：`home default uses bounded summary SQL while the legacy loader uses the scoped graph query`。
+
+该新失败由日文 `LANG` 下 Node 默认 collator `ja-JP` 未列入已验证的 Node/PG 排序运行时引起；服务在 SQL 前按设计拒绝，`factsCalls=0`，原测试却只接受 `factsCalls=1`。仅修测试：已验证 locale 继续断言 bounded SQL，未验证 locale 断言零 SQL 与 `unavailable`，不放宽生产排序运行时。整个测试文件在相同日文环境及默认环境分别 24/24；日文复核日志 `_evidence-c/R28/home-followup-after-ja.log`。因按要求不重复全量，**不能把先前全量里的这个新失败写成已经由全量复证消失**。
+
+App 日志 `_evidence-c/R28/app-full-final.log`：3298 项，3283 过／13 失败／2 跳，exit 1。13 个失败名与 R10fix 同名：9 个旧扫码／批次 UI、原字典快照、发现页切换、旧码合并、收件箱筛选；R10fix 的 Home scroll 失败本轮未复现。**App 本线新增失败名 0**。两端 full 的原始 exit 均为 1；没有把定向通过冒充全量通过。
