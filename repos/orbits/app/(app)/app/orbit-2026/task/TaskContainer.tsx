@@ -31,6 +31,18 @@ import styles from "./task.module.css";
  * `undefined` while it has not been read — the server reads it only for ?tab=plan,
  * and switching to the tab re-requests the page.
  */
+async function memoServiceAvailable(signal?: AbortSignal): Promise<boolean> {
+  if (!navigator.onLine) return false;
+  try {
+    const response = await fetch("/api/notes?limit=1&noteKind=all", { credentials: "same-origin", cache: "no-store", signal });
+    if (!response.ok) return false;
+    const value: unknown = await response.json();
+    return typeof value === "object" && value !== null && "success" in value && value.success === true
+      && "data" in value && typeof value.data === "object" && value.data !== null
+      && "notes" in value.data && Array.isArray(value.data.notes);
+  } catch { return false; }
+}
+
 export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStartHref = "/app/agent" }: { initialTab: TaskTab; calendar: ReactNode; todo: ReactNode; plan?: ReactNode | null; memo?: ReactNode; planStartHref?: string }) {
   const { language } = useOrbitLanguage();
   const router = useRouter();
@@ -38,16 +50,34 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
   const searchParams = useSearchParams();
   useTaskHistoryScroll(`${pathname}?${searchParams?.toString() ?? ""}`);
   const [tab, setTab] = useState<TaskTab>(initialTab);
-  const [memoOnline, setMemoOnline] = useState(true);
-  useEffect(() => { setTab(initialTab); }, [initialTab]);
+  const [memoOnline, setMemoOnline] = useState(false);
+  useEffect(() => { setTab(initialTab); setMemoOnline(false); }, [initialTab]);
   useEffect(() => {
-    const update = () => setMemoOnline(navigator.onLine);
-    update();
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
-  }, []);
+    if (tab !== "memo") return;
+    let active = true;
+    let latest = 0;
+    const controller = new AbortController();
+    const probe = () => {
+      const current = ++latest;
+      void memoServiceAvailable(controller.signal).then(available => {
+        if (active && current === latest) setMemoOnline(available);
+      });
+    };
+    const offline = () => { latest++; setMemoOnline(false); };
+    probe();
+    const timer = window.setInterval(probe, 15_000);
+    window.addEventListener("focus", probe);
+    window.addEventListener("online", probe);
+    window.addEventListener("offline", offline);
+    return () => {
+      active = false; controller.abort(); window.clearInterval(timer);
+      window.removeEventListener("focus", probe);
+      window.removeEventListener("online", probe);
+      window.removeEventListener("offline", offline);
+    };
+  }, [tab]);
   const choose = (next: TaskTab) => {
+    if (next === "memo") setMemoOnline(false);
     setTab(next);
     // Keep the slot's own parameters (for example the To-do view) when switching tabs.
     const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -78,7 +108,13 @@ export function TaskContainer({ initialTab, calendar, todo, plan, memo, planStar
   const tabs = <div data-task-bar="" className={styles.tabs}><TaskTabs tab={tab} onChange={choose} /></div>;
   // プラン: 「目標を追加」 only at ≥1280; b8 #6 / #16 (1024) keep just 「次の一手」 on the right.
   const add = tab === "plan" ? <TaskAddButton label={pickCopy(shellCopy.taskAddGoal, language)} onSelect={() => router.push(`${pathname}?tab=plan&new=1`)} className={styles.addWide} />
-    : tab === "memo" ? <TaskAddButton label={pickCopy(memoCopy.add, language)} onSelect={() => router.push(`${pathname}?tab=memo&new=1`)} disabled={!memoOnline} title={!memoOnline ? pickCopy(memoCopy.needsNetwork, language) : undefined} />
+    : tab === "memo" ? <TaskAddButton label={pickCopy(memoCopy.add, language)} onSelect={() => {
+      setMemoOnline(false);
+      void memoServiceAvailable().then(available => {
+        setMemoOnline(available);
+        if (available && latest.current.tab === "memo") router.push(`${pathname}?tab=memo&new=1`);
+      });
+    }} disabled={!memoOnline} title={!memoOnline ? pickCopy(memoCopy.needsNetwork, language) : undefined} />
     : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
   return (
     <>

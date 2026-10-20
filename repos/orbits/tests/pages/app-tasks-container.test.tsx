@@ -61,15 +61,36 @@ test("memo slot opens its add flow from the Task header without changing the sel
     }
     createRoot(document.getElementById("root")).render(<ShellSlotsProvider><Page /></ShellSlotsProvider>);
   `, SHELL_STUBS);
-  const page = await open(browser, memoCode, { html: '<div id="root"></div><script>window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]}</script>' });
+  const page = await open(browser, memoCode, { html: `<div id="root"></div><script>
+    window.shellFixture={path:"/app/tasks",lang:"ja",calls:[]};
+    window.memoApiAvailable=true;
+    window.fetch=async ()=>window.memoApiAvailable
+      ? Response.json({success:true,data:{notes:[],total:0}})
+      : Response.json({success:false}, {status:503});
+  </script>` });
   t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  page.setDefaultTimeout(3000);
   await page.getByText("memo workspace").waitFor();
-  await page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" }).click();
+  const add = page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" });
+  await page.waitForFunction(() => (document.querySelector("[data-shell-right] button") as HTMLButtonElement | null)?.disabled === false);
+  await page.evaluate(() => { (window as any).memoApiAvailable = false; window.dispatchEvent(new Event("focus")); });
+  assert.equal(await page.evaluate(() => navigator.onLine), true, "the browser stays online during the API outage");
+  await page.waitForFunction(() => (document.querySelector("[data-shell-right] button") as HTMLButtonElement | null)?.disabled === true);
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [], "unreachable notes must not open the editor");
+  await page.evaluate(() => { (window as any).memoApiAvailable = true; window.dispatchEvent(new Event("focus")); });
+  await page.waitForFunction(() => (document.querySelector("[data-shell-right] button") as HTMLButtonElement | null)?.disabled === false);
+  await page.evaluate(() => { (window as any).memoApiAvailable = false; });
+  await add.click();
+  await page.waitForFunction(() => (document.querySelector("[data-shell-right] button") as HTMLButtonElement | null)?.disabled === true);
+  assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [], "an outage after the probe cannot open the editor");
+  await page.evaluate(() => { (window as any).memoApiAvailable = true; window.dispatchEvent(new Event("focus")); });
+  await page.waitForFunction(() => (document.querySelector("[data-shell-right] button") as HTMLButtonElement | null)?.disabled === false);
+  await add.click();
   assert.deepEqual(await page.evaluate(() => (window as any).shellFixture.calls), [{ push: "/app/tasks?tab=memo&new=1" }]);
   assert.equal(await page.locator("[data-task-slot=memo]").count(), 1);
   await page.context().setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  assert.equal(await page.locator("[data-shell-right]").getByRole("button", { name: "メモを追加" }).isDisabled(), true);
+  assert.equal(await add.isDisabled(), true);
 });
 
 test("← → switch tabs from the page, but not while typing in a field", async (t) => {
