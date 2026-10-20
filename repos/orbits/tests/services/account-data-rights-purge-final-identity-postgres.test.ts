@@ -12,7 +12,7 @@ const local = (() => {
   catch { return false; }
 })();
 
-test("final identity purge waits for every domain and a recorded completion delivery, then permits a fresh same-email identity", { skip: local ? false : "requires local orbit_line_c_test" }, async () => {
+test("final identity and anonymous completion outbox commit together; failed delivery retries after deletion", { skip: local ? false : "requires local orbit_line_c_test" }, async () => {
   const schema = `r18c_${randomUUID().replaceAll("-", "")}`;
   const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
   const db = createTransactionalPostgresClient({ connectionString: databaseUrl!, pool });
@@ -33,6 +33,7 @@ test("final identity purge waits for every domain and a recorded completion deli
     await insert("accounts", "other", "other", { id: "other" });
     const { createAccountPurgeProgressStore } = await import("../../features/account/data-rights/purge/progress");
     const { purgeAccountFinalIdentity } = await import("../../features/account/data-rights/purge/final-identity");
+    const { runLocalAccountPurgeOnce } = await import("../../features/account/data-rights/purge/runner");
     const progress = createAccountPurgeProgressStore({ db, workspaceId: "space", now: () => now });
     let sends = 0;
     const keys: string[] = [];
@@ -40,9 +41,11 @@ test("final identity purge waits for every domain and a recorded completion deli
       sends++;
       keys.push(input.idempotencyKey);
       assert.equal(input.email, "old@example.test");
+      assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='auth_users' and user_id=$1`, [userId])).rows[0]?.n, 0,
+        "completion is sent only after the identity deletion commits");
       if (sends === 1) throw new Error("mail rejected");
     };
-    const run = () => purgeAccountFinalIdentity({ db, workspaceId: "space", actorId: actor, userId, leaseToken: "lease", progress, now: () => now, sendCompletion });
+    const run = () => purgeAccountFinalIdentity({ db, workspaceId: "space", actorId: actor, userId, leaseToken: "lease", now: () => now, sendCompletion });
     await assert.rejects(run(), /PURGE_STEPS_INCOMPLETE/);
     assert.equal(sends, 0);
     for (const step of ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox"]) {
@@ -52,12 +55,26 @@ test("final identity purge waits for every domain and a recorded completion deli
     await assert.rejects(run(), /PURGE_RESIDUAL_RECORDS/);
     assert.equal(sends, 0);
     await pool.query(`delete from orbit_records where collection_name='notes' and record_id='residual'`);
-    await assert.rejects(run(), /mail rejected/);
-    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='auth_users' and user_id=$1`, [userId])).rows[0]?.n, 1);
+    await pool.query(`create function reject_identity_delete() returns trigger language plpgsql as $$
+      begin if old.collection_name='auth_users' then raise exception 'identity delete rejected'; end if; return old; end $$;
+      create trigger reject_identity_delete before delete on orbit_records for each row execute function reject_identity_delete()`);
+    await assert.rejects(run(), /identity delete rejected/);
+    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='account_deletion_completion_mail'`)).rows[0]?.n, 0,
+      "a failed identity transaction must roll back the completion message too");
+    assert.equal(sends, 0);
+    await pool.query(`drop trigger reject_identity_delete on orbit_records; drop function reject_identity_delete()`);
     assert.equal((await run()).deleted, 1);
+    assert.equal(sends, 1);
+    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where user_id in ($1,$2)`, [actor, userId])).rows[0]?.n, 0);
+    const queued = (await pool.query(`select record_id,user_id,payload from orbit_records where collection_name='account_deletion_completion_mail'`)).rows;
+    assert.equal(queued.length, 1);
+    assert.ok(!JSON.stringify(queued).includes(actor) && !JSON.stringify(queued).includes(userId));
+    assert.equal(queued[0]?.payload?.email, "old@example.test");
+    assert.equal((await runLocalAccountPurgeOnce({ db, workspaceId: "space", sendCompletion, now: () => now,
+      storage: { delete: async () => undefined }, eraseObject: async () => undefined })).kind, "idle");
     assert.equal(sends, 2);
     assert.equal(keys[0], keys[1]);
-    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where user_id in ($1,$2)`, [actor, userId])).rows[0]?.n, 0);
+    assert.equal((await pool.query(`select count(*)::int as n from orbit_records where collection_name='account_deletion_completion_mail'`)).rows[0]?.n, 0);
     assert.equal((await pool.query(`select count(*)::int as n from orbit_records where user_id='other'`)).rows[0]?.n, 1);
     await insert("auth_users", "auth_user:old@example.test", "new-user", { id: "new-user", email: "old@example.test" });
     assert.equal((await pool.query(`select payload->>'id' as id from orbit_records where collection_name='auth_users'`)).rows[0]?.id, "new-user");
@@ -69,7 +86,7 @@ test("final identity purge waits for every domain and a recorded completion deli
       await progress.complete(same, "same-lease", step, { deleted: 0 });
     }
     assert.equal((await purgeAccountFinalIdentity({ db, workspaceId: "space", actorId: same, userId: same,
-      leaseToken: "same-lease", progress, now: () => now,
+      leaseToken: "same-lease", now: () => now,
       sendCompletion: async ({ email }) => assert.equal(email, "same@example.test") })).deleted, 1);
     assert.equal((await pool.query(`select count(*)::int as n from orbit_records where user_id=$1`, [same])).rows[0]?.n, 0);
   } finally {

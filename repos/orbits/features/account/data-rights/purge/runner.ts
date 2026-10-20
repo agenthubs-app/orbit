@@ -5,7 +5,7 @@ import { purgeAccountConnections } from "./connections";
 import { purgeAccountContacts } from "./contacts";
 import { purgeAccountEvents } from "./events";
 import { purgeAccountExports } from "./exports";
-import { purgeAccountFinalIdentity } from "./final-identity";
+import { deliverAccountCompletionMailOnce, purgeAccountFinalIdentity } from "./final-identity";
 import { purgeAccountInbox } from "./inbox";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 import { purgeAccountNotes } from "./notes";
@@ -29,6 +29,13 @@ export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
   assertLocalAccountPurgeTarget();
   await assertLocalAccountPurgeDatabase(input.db);
   const { db, workspaceId } = input;
+  // 主会话代定 §R18c-5: a crash after identity commit leaves only the
+  // anonymous completion outbox. Drain it before looking for another account.
+  try {
+    await deliverAccountCompletionMailOnce({ db, workspaceId, sendCompletion: input.sendCompletion, now: input.now });
+  } catch (error) {
+    return { kind: "failed", step: "completion-mail", reason: error instanceof Error ? error.message : "UNKNOWN" };
+  }
   const records = createAccountDeletionRecordStore({ db, workspaceId, now: input.now });
   const progress = createAccountPurgeProgressStore({ db, workspaceId, now: input.now });
   const claim = await records.claimNextPurge();
@@ -57,7 +64,7 @@ export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
   }
   try {
     const result = await purgeAccountFinalIdentity({ db, workspaceId, actorId, userId, leaseToken,
-      progress, sendCompletion: input.sendCompletion, now: input.now });
+      sendCompletion: input.sendCompletion, now: input.now });
     return { kind: "deleted", deleted: result.deleted };
   } catch (error) {
     return { kind: "failed", step: "final-identity", reason: error instanceof Error ? error.message : "UNKNOWN" };
