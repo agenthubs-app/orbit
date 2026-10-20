@@ -576,11 +576,11 @@ const wtd = (t, d, due, dc, done) => `<tr><td style="width:40px"><span class="td
 function wTaskTodo() {
   return wTaskHead(1) + `<div class="wgrid">${wPendCard(true).replace('k-wpend', 'k-wpend k-wtdpend')}${nstack(true, 'span5 k-wstack')}
     <div class="card span12 k-wtdfollow"><div class="card-h"><h3>フォロー <span class="lbl" style="font-weight:600">期限順</span></h3><span class="more">完了 今週 6件${ic('down', 'sm')}</span></div>
-      <table class="table"><tbody>${wtd('渡辺 翔さんに紹介のお礼', 'Nexa Robotics · 10/5 の紹介', '明日', 'apricot')}${wtd('加藤 健太さんへ 3社紹介のお礼', 'アクシス商事', '今週', '')}${wtd('森 恭平さんに 15分の紹介を依頼', 'プラン Step 3 · VC 候補', '10/12', '')}${wtd('伊藤さんに面談の日程を送る', '完了 · 今日 8:40', '', '', true)}</tbody></table></div></div>`;
+      <table class="table"><tbody>${wtd('渡辺 翔さんに紹介のお礼', 'Nexa Robotics · 10/5 の紹介', '', '')}${wtd('加藤 健太さんへ 3社紹介のお礼', 'アクシス商事', '', '')}${wtd('森 恭平さんに 15分の紹介を依頼', 'プラン Step 3 · VC 候補', '', '')}</tbody></table></div></div>`;
 }
 const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -592,7 +592,7 @@ function wTaskMemo() {
       <div class="row" style="gap:6px;margin-top:10px"><span class="at"><span class="av c2">高</span>高橋 美咲</span><span class="at ev">@青葉ベンチャーズ オフィス</span><span class="chip">面談</span></div>
       <div style="font-size:13.5px;line-height:1.85;margin-top:14px;color:var(--ink)">DD の資料リストを受領。11月に IC 予定。<br>「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。<br>聞けたこと：① リードを取る条件（ARR・成長率）② 最近見送った案件の理由</div>
       <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
-      <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">${ic('mail', 'sm')}お礼の下書きを作る</button><button class="btn sm ghost">To-do にする</button></div></div></div>`;
+      <div class="lbl" style="margin-top:12px">記録済みの面談メモ · 編集はメモ詳細から</div></div></div>`;
 }
 /* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>

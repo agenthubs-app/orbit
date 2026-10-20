@@ -645,7 +645,7 @@ function taskTodo(s) {
 }
 const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-memo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-memo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-memo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -850,7 +850,7 @@ function wTaskTodo() {
 }
 const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -862,7 +862,7 @@ function wTaskMemo() {
       <div class="row" style="gap:6px;margin-top:10px"><span class="at"><span class="av c2">高</span>高橋 美咲</span><span class="at ev">@青葉ベンチャーズ オフィス</span><span class="chip">面談</span></div>
       <div style="font-size:13.5px;line-height:1.85;margin-top:14px;color:var(--ink)">DD の資料リストを受領。11月に IC 予定。<br>「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。<br>聞けたこと：① リードを取る条件（ARR・成長率）② 最近見送った案件の理由</div>
       <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
-      <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">${ic('mail', 'sm')}お礼の下書きを作る</button><button class="btn sm ghost">To-do にする</button></div></div></div>`;
+      <div class="lbl" style="margin-top:12px">記録済みの面談メモ · 編集はメモ詳細から</div></div></div>`;
 }
 /* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
@@ -1089,7 +1089,7 @@ function tasksApp(s, o = {}) {
     </div>
     <div class="grid3" style="margin-top:14px">
       <div class="mac lav" style="text-align:center"><div style="font-size:22px">📇</div><b style="font-size:11.5px;display:block;margin-top:4px">名刺から</b><div class="lbl" style="font-size:10px">お礼の一手</div></div>
-      <div class="mac teal" style="text-align:center"><div style="font-size:22px">🎙️</div><b style="font-size:11.5px;display:block;margin-top:4px">音声メモから</b><div class="lbl" style="font-size:10px">話すだけ</div></div>
+      <div class="mac teal" style="text-align:center"><div style="font-size:22px">📝</div><b style="font-size:11.5px;display:block;margin-top:4px">メモを見る</b><div class="lbl" style="font-size:10px">手入力したメモ</div></div>
       <div class="mac pink" style="text-align:center"><div style="font-size:22px">✨</div><b style="font-size:11.5px;display:block;margin-top:4px">iOrbit に聞く</b><div class="lbl" style="font-size:10px">今週やること</div></div>
     </div>
     <div class="grp">今日 <span class="n">0</span></div>
@@ -1369,7 +1369,7 @@ function tasksWeb(s, o = {}) {
   if (s === 'empty') return head + `<div class="wgrid">
     <div class="card span8 guide" style="padding:28px"><div class="row" style="gap:20px"><div style="font-size:58px">✅</div><div style="flex:1"><div style="font-size:23px;font-weight:800">やることを、ここに集めます</div><div class="sub" style="margin-top:4px">お礼・資料送付・再会の約束など。名刺やメモから iOrbit が候補を出し、あなたが確認して追加します。</div></div></div>
       <div class="row" style="gap:10px;margin-top:18px"><button class="btn primary" style="height:46px">${ic('plus', 'sm')}タスクを追加</button><span class="lbl">ショートカット：<b>N</b></span></div></div>
-    <div class="span4" style="display:grid;gap:18px">${[['📇', 'lav', '名刺から作る', 'お礼・再会の一手'], ['🎙️', 'teal', '音声メモから', '話した内容をタスクに'], ['📅', 'blue', 'カレンダー連携', '空き時間に入れる']].map(([e, c, t, d]) => `<div class="card row" style="gap:12px;padding:16px"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}</div>
+    <div class="span4" style="display:grid;gap:18px">${[['📇', 'lav', '人脈を見る', '登録済みの人を確認', '/app/contacts'], ['📝', 'teal', 'メモを見る', '手入力したメモを確認', '/app/tasks?tab=memo'], ['📅', 'blue', 'カレンダーを見る', '予定と空き時間を確認', '/app/tasks?tab=calendar']].map(([e, c, t, d, href]) => `<a class="card row" href="${href}" style="gap:12px;padding:16px;color:inherit;text-decoration:none"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></a>`).join('')}</div>
     <div class="card span12">${tool(0, 0, 0)}<table class="table ttab"><tbody>
       <tr class="gh"><td colspan="5">今日 0</td></tr>
       ${['高橋さんにお礼メール', 'SaaS Summit の参加登録', '渡辺さんと定期フォロー（2週間ごと）'].map(t => `<tr><td colspan="5"><div class="ghost-row"><i></i>${t} ${ST}</div></td></tr>`).join('')}</tbody></table></div></div>`;
@@ -1439,7 +1439,10 @@ const calRail = (s) => s === 'empty' ? `<h4>${ic('calendar', 'sm')}10月7日（�
 function dayWeb() {
   const head = mainhead('10月7日（水）', '予定 6件 · 重複 1', `<button class="lbtn">${ic('left', 'sm')}</button><button class="lbtn">${ic('right', 'sm')}</button><button class="btn sm">今日</button>`, `<div class="seg dm"><button class="on">日</button><button>週</button><button>月</button></div><button class="btn accent" style="height:40px">${ic('plus', 'sm')}予定を追加</button>`);
   return head + `<div class="row" style="gap:12px;margin-bottom:12px"><span class="lbl" style="width:44px">終日</span><span class="e ps" style="padding:7px 12px;border-radius:10px;font-size:12.5px;font-weight:700;flex:1">9月分 経費精算の締め</span></div>
-    <div class="card" style="padding:18px 18px 6px">${dayTimeline(true, 8, 22).replace('class="cb mt "', 'class="cb mt sel" ')}</div>`;
+    <div class="card" style="padding:14px 18px 18px">
+      ${[['午前', AG.many[0]], ['午後', AG.many[1]], ['午後', AG.many[2]], ['夜', AG.many[3]]].map(([group, item], index) => `${index === 0 || group !== ['午前', '午後', '午後', '夜'][index - 1] ? `<div class="lbl cal-day-group" style="margin-top:${index ? 16 : 0}px;font-weight:700">${group}</div>` : ''}${agendaItem(...item)}`).join('')}
+      <div class="conflict" style="margin-top:16px"><span class="ci">${ix('alert', 'sm')}</span><div style="flex:1"><b>14:30 訪問と 15:00 電話が重なっています</b><div class="muted">電話を 16:00 に動かせます</div></div><button class="btn sm">動かす</button></div>
+    </div>`;
 }
 const dayRail = `<h4>${ic('calendar', 'sm')}予定の詳細</h4>
   <div class="card" style="padding:16px"><span class="chip blue">面談</span><b style="display:block;font-size:16px;margin-top:8px">伊藤 直子さんとオンライン面談</b><div class="lbl">10:00–10:45 · Google Meet</div>
@@ -1503,12 +1506,12 @@ h += wboard('Web ② Toast（右下）', '', W({ body: homeWeb({ removed: true, 
 /* 3. タスク一覧 */
 h += sec('3 · タスク一覧', 'NAV-V3：从 Task › To-do「すべて」进入的二级页（原从ホーム）；分组 期限超過/今日/今後/日付なし/完了，筛选 すべて/つながり/個人');
 h += boards([
-  ['タスク', 'empty', phone({ body: tasksApp('empty'), tab: -1, pins: pin(1, '.guide .btn') + pin(2, '.grid3') + pin(3, '.ghost-row') }), ['唯一主动作「タスクを追加」→ 底部快速添加弹层（标题 + 日期 chip）', '三个马卡龙次要入口：名刺/音声メモ/iOrbit', '虚线幽灵行 + サンプル 预告分组样子，不写库']],
+  ['タスク', 'empty', phone({ body: tasksApp('empty'), tab: -1, pins: pin(1, '.guide .btn') + pin(2, '.grid3') + pin(3, '.ghost-row') }), ['唯一主动作「タスクを追加」→ 底部快速添加弹层（标题 + 日期 chip）', '三个马卡龙次要入口：名刺/メモ/iOrbit；无录音入口', '虚线幽灵行 + サンプル 预告分组样子，不写库']],
   ['タスク', 'few', phone({ body: tasksApp('few'), tab: -1, pins: pin(1, '.card.flat') }), ['数据少时底部出「名刺から 2件の候補」入口 → 进入确认列表，逐条 ✓/✕ 后才加入']],
   ['タスク', 'many', phone({ body: tasksApp('many'), tab: -1, pins: pin(1, '.filt') + pin(2, '.grp.over') + pin(3, '.swipe.demo') + pin(4, '.ckr', 3) + pin(5, '.acc') }),
     ['筛选 seg：すべて / つながり（关联人）/ 個人；计数随筛选变化', '期限超過组珊瑚色标题；「まとめて明日へ」批量顺延（出 Toast 可撤销）', '左滑：明日 / 完了；首行自动演示一次', '圆形勾选框可点（可在此画板点击试）：勾上 → 划线 → .6s 后移入「完了」组', '完了组默认折叠，点标题展开（grid-rows 过渡）']],
 ]);
-h += wboard('Web タスク', 'empty', W({ body: tasksWeb('empty'), rail: railEmpty, pins: pin(1, '.guide .btn.primary') + pin(2, '.rail .confirm-card') }), ['主动作 + 快捷键 N；右侧四个次要入口卡', '右栏说明任务来源；AI 建议一律是虚线确认卡（此处为サンプル淡化）']);
+h += wboard('Web タスク', 'empty', W({ body: tasksWeb('empty'), rail: railEmpty, pins: pin(1, '.guide .btn.primary') + pin(2, '.rail .confirm-card') }), ['主动作 + 快捷键 N；右侧三张卡仅打开现有的人脈、メモ、カレンダー，不自动创建任务', '三个入口仅已登录的同一 actor 可达；未登录时回登录页，读取失败时各目标页显示自身错误／重试态', '右栏说明任务来源；AI 建议一律是虚线确认卡（此处为サンプル淡化）']);
 h += wboard('Web タスク', 'few', W({ body: tasksWeb('few', { sel: 0 }), rail: taskRailDetail() }));
 h += wboard('Web タスク', 'many', W({ body: tasksWeb('many', { sel: 0, hov: 2 }), rail: taskRailDetail(), pins: pin(1, '.ttab tr.sel') + pin(2, '.hov.show') + pin(3, '.main .filt') }),
   ['点行 → 右栏切换为该任务详情（主从布局，不跳页）；↑↓ 键切换', '悬停出现 明日 / 完了 / …（移动・削除・日付変更）', '筛选与分组同 App；表头「関連」列区分 つながり / 個人']);
@@ -1561,7 +1564,7 @@ h += wboard('Web カレンダー 月', 'empty', W({ body: calMonthWeb('empty'), 
 h += wboard('Web カレンダー 月', 'few', W({ body: calMonthWeb('few'), rail: calRail('few') }));
 h += wboard('Web カレンダー 月', 'many', W({ body: calMonthWeb('many'), rail: calRail('many'), pins: pin(1, '.main .mgrid .d.sel') + pin(2, '.rail .conflict') + pin(3, '.rail [data-why-box] .why') }),
   ['点日期 → 右栏切换当日议程；格内最多 3 条 + n；拖动色块可改日期（出 Toast 可撤销）', '冲突在右栏顶部提示并给「動かす」', '空档建议是 AI 结论 → 带「?」依据；点击后放入时间也需确认']);
-h += wboard('Web カレンダー 日', '', W({ body: dayWeb(), rail: dayRail, pins: pin(1, '.main .nowline') + pin(2, '.main .cb.clash') }), ['点时间块 → 右栏显示详情与「会う前に確認」；在空白处拖拽 = 新建个人预定', '冲突块珊瑚描边、左右并排']);
+h += wboard('Web カレンダー 日', '', W({ body: dayWeb(), rail: dayRail, pins: pin(1, '.main .cal-day-group') + pin(2, '.main .conflict') }), ['日视图按午前／午後／夜分时段列出实际日程；点行 → 右栏详情与「会う前に確認」', '重叠予定在列表下显示冲突提醒；新增予定走顶部按钮，不在空白处拖动']);
 h += wboard('Web 予定を追加（重複あり）', '', W({ body: calMonthWeb('many'), rail: calRail('many'), pins: editModal + pin(1, '.modal select') + pin(2, '.modal .conflict') }), ['Web 的重复规则用下拉菜单（桌面惯例），App 用底部弹层', '冲突提示不阻止保存']);
 
 /* 8. 系统状态 */

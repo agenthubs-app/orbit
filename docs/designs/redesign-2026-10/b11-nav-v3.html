@@ -819,7 +819,7 @@ function taskTodo(s) {
 }
 const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-memo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-memo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-memo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -1024,7 +1024,7 @@ function wTaskTodo() {
 }
 const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -1423,7 +1423,7 @@ function taskDeferBg() {
 }
 function memoNew() {
   return topbar('新しいメモ', '下書きは自動保存', xBtn, `<button class="btn sm primary" style="height:34px">保存</button>`) + `
-    <div class="row k-mnkind" style="gap:6px;margin-bottom:10px"><span class="cat on">面談の記録</span><span class="cat">自由メモ</span><span class="cat">音声 → 文字</span></div>
+    <div class="row k-mnkind" style="gap:6px;margin-bottom:10px"><span class="cat on">面談の記録</span><span class="cat">自由メモ</span></div>
     <div class="memoed k-mned">今日の CFO Night、<span class="at"><span class="av c2">高</span>高橋 美咲</span> さんと 15分。IC は 11月上旬。<span class="at ev">@CFO Night Tokyo vol.18</span> で <span style="color:var(--plum-700);font-weight:700">@伊<span class="caret"></span></span></div>
     <div class="atpick k-mnpick"><div class="gl">人</div>
       <div class="op on"><div class="av sm c4">伊</div><div class="meta"><b>伊藤 直子</b><span>ハルモニア · CFO</span></div><span class="kbd">↵</span></div>
@@ -1778,10 +1778,10 @@ h += boards([
 ]);
 h += boards([
   AP('④ メモを書く（@人 · @イベント）', '', { body: memoNew() }, [
-    ['.k-mnkind', 0, '类型：面談の記録 / 自由メモ / 音声 → 文字'],
+    ['.k-mnkind', 0, '类型：面談の記録 / 自由メモ；本期只手输入，不提供录音／自动转写入口'],
     ['.k-mned .at', 0, '@ 插入的人 / 活动是 token，点开即跳到对象；メモ 同时出现在对象的详情里'],
     ['.k-mnpick', 0, '输入「@伊」即过滤：人与活动分组，↵ 选中'],
-    ['.k-mntool', 0, '工具：语音 / 照片 / @ / #タグ；面談の記録用于计划「話せた」判定'],
+    ['.k-mntool', 0, '工具：@人・@イベント / #タグ；面談の記録用于计划「話せた」判定；本期无录音或自动转写'],
   ]),
   AP('⑤ プラン 段 → 人物タイプ', 'many', { body: A.plan('many'), tab: 4 }, [
     ['.k-tseg button', 2, 'Task › プラン 段（首页「プラン スコア」组件点进来也落在这里）'],

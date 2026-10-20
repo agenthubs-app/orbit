@@ -719,7 +719,7 @@ function taskTodo(s) {
 }
 const MEMOS = [
   ['k-memo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-memo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-memo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-memo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-memo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -924,7 +924,7 @@ function wTaskTodo() {
 }
 const MEMOS = [
   ['k-wmemo1', '🤝', 'apricot', '高橋 美咲さん · 2回目の面談', '10/6', 'DD の資料リストを受領。11月に IC 予定。「ARR 1億円が見えたら、また」と言われた。次回までに月次の推移を用意する。', [['p', NP[0]], ['tag', '面談']]],
-  ['k-wmemo2', '🎙️', 'teal', '音声メモ · CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '音声 → 文字']]],
+  ['k-wmemo2', '📝', 'teal', 'CFO Night の準備', '今日 8:12', '会いたい人 6名のうち、VC パートナー 2人には調達の進み具合を一言で話す。伊藤さんに紹介をお願いできるか確認。', [['e', 'CFO Night Tokyo vol.18'], ['tag', '自由メモ']]],
   ['k-wmemo3', '✍️', 'lav', 'ピッチの論点（自由メモ）', '10/4', '市場規模はトップダウンではなく、製造業 40社の導入単価から積み上げる。競合比較は 3社に絞る。', [['tag', '自由メモ']]],
   ['k-wmemo4', '🤝', 'apricot', '鈴木 大輔さん · 名刺交換', '10/6', '工場 IoT の PoC 予算あり。11月の展示会で再会予定。決裁は本部長。', [['p', NP[3]], ['e', '製造業 DX カンファレンス 大阪'], ['tag', '面談']]],
 ];
@@ -1416,15 +1416,15 @@ const M = [
   { d: 'それ以前', t: '9/28', c: C[6], tx: '中部の製造業 40社への販路。代理店契約に関心', tags: ['協業'] },
   { d: 'それ以前', t: '9/18', c: C[0], tx: 'Japan Startup Night で名刺交換。SaaS に年8社出資', tags: ['出会い'] },
 ];
-const memoCard = m => `<div class="memo"><div class="row" style="gap:8px">${avc(m.c, 'sm')}<b style="font-size:12.5px">${m.c.n}</b>${m.voice ? `<span class="chip rose" style="background:var(--rose-100);color:var(--rose-700)">${ic('mic', 'sm')}${m.voice}</span>` : ''}<span class="lbl" style="margin-left:auto">${m.t}</span></div><div class="tx">${m.tx}</div><div class="chips" style="margin-top:6px">${m.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div></div>`;
+const memoCard = m => `<div class="memo"><div class="row" style="gap:8px">${avc(m.c, 'sm')}<b style="font-size:12.5px">${m.c.n}</b>${m.voice ? `<span class="chip rose" style="background:var(--rose-100);color:var(--rose-700)">音声由来</span>` : ''}<span class="lbl" style="margin-left:auto">${m.t}</span></div><div class="tx">${m.tx}</div><div class="chips" style="margin-top:6px">${m.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div></div>`;
 const memoGroups = list => { let o = '', l = ''; list.forEach(m => { if (m.d !== l) { o += `<div class="daygrp">${m.d}</div>`; l = m.d; } o += memoCard(m); }); return o; };
-const memoBar = `<div class="card row quick" style="gap:8px;padding:8px 8px 8px 16px;border-radius:999px"><span class="lbl" style="flex:1">一言メモ… AI が整理します</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+const memoBar = `<div class="card row quick" style="gap:8px;padding:8px 8px 8px 16px;border-radius:999px"><span class="lbl" style="flex:1">一言メモを書く…</span><button class="lbtn" style="background:var(--ink);color:var(--bg)" aria-label="メモを書く">${ic('pen', 'sm')}</button></div>`;
 function memoApp(s) {
   const head = topbar('メモ', s === 'empty' ? '話した内容を一言で' : s === 'few' ? '2件' : '48件 · 今週 4件', back, `<button class="rbtn">${ic('search')}</button>`);
   if (s === 'empty') return head + memoBar + `
     <div class="guide rise" style="margin-top:14px;text-align:center;padding:24px 20px"><div style="font-size:48px;line-height:1">📝</div><div style="font-size:18px;font-weight:800;margin-top:10px">会った直後に、一言だけ</div>
-      <div class="sub" style="margin:6px 0 16px">「誰と・何を・次にやること」を AI が整理して、<br>連絡先とプランに紐づけます（確認してから）。</div>
-      <button class="btn primary block" style="height:46px">${ic('mic', 'sm')}音声でメモする</button><div class="lbl" style="margin-top:8px">自分用の音声メモです · 会話の録音ではありません</div></div>
+      <div class="sub" style="margin:6px 0 16px">面談の記録や自由メモを手入力できます。<br>関連する人・イベントは保存前に選べます。</div>
+      <button class="btn primary block" style="height:46px">${ic('pen', 'sm')}メモを書く</button><div class="lbl" style="margin-top:8px">入力した内容は自動で下書きに保存します</div></div>
     <div class="card" style="margin-top:14px"><div class="card-h"><h3>例 ${SAMPLE}</h3></div><div class="faded">${memoCard(M[0])}</div></div>`;
   return head + memoBar + (s === 'few' ? memoGroups(M.slice(0, 2)) : memoGroups(M));
 }
@@ -1435,35 +1435,28 @@ function contactLite() {
 }
 const quickSheet = `<div class="sheet-scrim"></div><div class="sheet"><div class="grab"></div><div class="row between"><b style="font-size:16px">メモ · 高橋 美咲さん</b><span class="lbl">10/7 9:12</span></div>
   <div class="input" style="height:auto;min-height:110px;align-items:flex-start;padding:12px 14px;margin-top:12px;color:var(--ink);line-height:1.7;font-size:14px">IC は11月第2週。ARR の月次推移と解約率を事前に送る<span class="caret"></span></div>
-  <div class="row" style="gap:8px;margin-top:12px"><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn">${ic('image', 'sm')}</button><span class="lbl" style="flex:1">一言で OK</span><button class="btn primary">${ic('sparkle', 'sm')}AI が整理</button></div>
-  <div class="lbl" style="margin-top:10px">相手・日付・次の一手を読み取ります。保存前に確認できます</div></div>`;
-const voiceSheet = `<div class="sheet-scrim"></div><div class="sheet" style="text-align:center"><div class="grab"></div><div class="row" style="justify-content:center;gap:6px"><i style="width:8px;height:8px;border-radius:50%;background:var(--coral)"></i><b style="font-size:13px">録音中 · 音声メモ</b></div>
-  <div class="big" style="margin-top:8px">0:18</div><div class="lbl">最大 2:00</div>
-  <div class="wave">${[14, 26, 40, 22, 52, 34, 60, 44, 28, 48, 36, 20, 42, 56, 30, 18, 38, 24, 46, 16].map((h, k) => `<i style="height:${h}px;animation-delay:${(k % 5) * .12}s"></i>`).join('')}</div>
-  <div class="sub" style="margin:4px 0 6px">「高橋さん、IC は11月第2週で、ARR の…」</div>
-  <div class="recbtn"><i></i></div><div class="lbl" style="margin-top:8px">停止すると AI が整理します</div>
-  <div class="mac lav" style="margin-top:12px;font-size:11.5px;text-align:left">自分用のメモです。相手との会話を録音する機能ではありません</div></div>`;
+  <div class="row" style="gap:8px;margin-top:12px"><span class="chip lav">面談の記録</span><span class="lbl" style="flex:1">下書きは自動保存</span><button class="btn primary">${ic('check', 'sm')}メモを保存</button></div>
+  <div class="lbl" style="margin-top:10px">関連する人は保存前に確認できます</div></div>`;
+const memoSaveError = `<div class="sheet-scrim"></div><div class="sheet"><div class="grab"></div><b style="font-size:16px">メモ · 高橋 美咲さん</b>
+  <div class="input" style="height:auto;min-height:110px;align-items:flex-start;padding:12px 14px;margin-top:12px;color:var(--ink);line-height:1.7;font-size:14px">IC は11月第2週。ARR の月次推移と解約率を事前に送る</div>
+  <div class="mac coral" style="margin-top:12px;font-size:12px">保存できませんでした。入力は残っています。もう一度お試しください。</div>
+  <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn">下書きを残す</button><button class="btn primary">再試行</button></div></div>`;
 function memoResult() {
-  return topbar('整理結果', '確認してから保存します', closeB, '<span></span>') + `
-    <div class="card rise"><div class="orow"><span class="lbl">相手</span><div class="row" style="gap:8px">${avc(C[0], 'sm')}<b>${C[0].n}</b><span class="chip teal" style="margin-left:auto">一致</span></div></div>
-      <div class="orow"><span class="lbl">日付</span><b>10月7日（水）</b></div>
-      <div class="orow"><span class="lbl">要点</span><div style="line-height:1.7">・IC は11月第2週<br>・事前に ARR 月次推移と解約率が必要</div></div>
-      <div class="orow"><span class="lbl">タグ</span><div class="chips"><span class="chip">資金調達</span><span class="chip">次の一手</span></div></div></div>
-    <div class="card cf" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:8px"><span class="emo sm lav">✅</span><b style="font-size:13px">タスクに追加しますか？</b></div><div class="sub" style="margin:6px 0 10px">「ARR 月次推移と解約率を高橋さんに送付」· 10/10（金）まで</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">不要</button></div></div>
-    <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent" data-why-box><div class="row" style="gap:8px"><span class="emo sm lav">🗺️</span><b style="font-size:13px">プランの進捗に記録しますか？</b><span class="why" style="margin-left:auto">?</span></div><div class="sub" style="margin:6px 0 10px">「VC パートナー：高橋さん IC へ」を第6週のログに</div><div class="why-body" hidden>根拠：高橋さんはプランの「VC パートナー」に紐づき済み</div><div class="row" style="gap:8px"><button class="btn sm primary">記録する</button><button class="btn sm">不要</button></div></div>
-    <div class="card acc"><div class="row between" data-acc style="cursor:pointer"><span class="lbl">元のメモ</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div><div class="sub" style="padding-top:8px">IC は11月第2週。ARR の月次推移と解約率を事前に送る</div></div></div></div>
-    <div class="grid2" style="margin-top:14px"><button class="btn">${ic('pen', 'sm')}修正する</button><button class="btn primary">メモを保存</button></div>`;
+  return topbar('メモの詳細', '10月7日（水） 9:12', closeB, `<button class="btn sm primary">${ic('pen', 'sm')}編集</button>`) + `
+    <div class="card rise"><div class="row" style="gap:8px"><span class="emo sm apricot">🤝</span><b style="font-size:16px">高橋 美咲さん · 2回目の面談</b></div>
+      <div class="sub" style="margin-top:12px;line-height:1.7">IC は11月第2週。ARR の月次推移と解約率を事前に送る</div>
+      <div class="chips" style="margin-top:12px"><span class="chip">面談</span><span class="chip">資金調達</span></div></div>
+    <div class="card"><div class="lbl">関連する人</div><div class="row" style="gap:8px;margin-top:8px">${avc(C[0], 'sm')}<b>${C[0].n}</b></div></div>`;
 }
 function memoWeb() {
-  return mainhead('メモ', '48件 · 今週 4件', `<button class="rbtn">${ic('left')}</button>`, `<div class="input" style="width:280px;height:40px">${ic('search', 'sm')}メモを検索</div>`) + `<div class="wgrid"><div class="span12"><div class="seg"><button class="on">すべて</button><button>音声</button><button>次の一手あり</button></div></div>
+  return mainhead('メモ', '48件 · 今週 4件', `<button class="rbtn">${ic('left')}</button>`, `<div class="input" style="width:280px;height:40px">${ic('search', 'sm')}メモを検索</div>`) + `<div class="wgrid"><div class="span12"><div class="seg"><button class="on">すべて</button><button>面談</button><button>自由メモ</button></div></div>
     ${['今日', '今週', 'それ以前'].map(d => `<div class="span12 daygrp" style="margin:4px 4px -6px">${d}</div>${M.filter(m => m.d === d).map(m => `<div class="span4" style="display:flex">${memoCard(m).replace('class="memo"', 'class="memo" style="flex:1"')}</div>`).join('')}`).join('')}</div>`;
 }
-const memoRail = `<h4>${ic('pen', 'sm')}一言メモ</h4>
-  <div class="card" style="padding:14px"><div class="input" style="height:auto;min-height:90px;align-items:flex-start;padding:10px 12px;color:var(--ink);line-height:1.7">鈴木さん、PoC は 10/22 で確定。工場長も同席<span class="caret"></span></div><div class="row" style="gap:6px;margin-top:10px"><button class="lbtn">${ic('mic', 'sm')}</button><span class="lbl" style="flex:1"><span class="kbd">⌘</span><span class="kbd">↵</span> で整理</span><button class="btn sm primary">${ic('sparkle', 'sm')}AI が整理</button></div></div>
-  <div class="lbl">整理結果（確認してください）</div>
-  <div class="card" style="padding:14px"><div class="orow"><span class="lbl">相手</span><b>鈴木 大輔</b></div><div class="orow"><span class="lbl">日付</span><b>10月22日（木）</b></div></div>
-  <div class="card cf" style="padding:14px;border:1.5px dashed var(--plum-300);background:transparent"><b style="font-size:13px">予定に追加しますか？</b><div class="lbl" style="margin:4px 0 10px">10/22 北辰製作所 PoC キックオフ（時間は未定）</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">不要</button></div></div>
-  <button class="btn primary block">メモを保存</button>`;
+const memoRail = `<h4>${ic('pen', 'sm')}メモの詳細</h4>
+  <div class="card" style="padding:14px"><b style="font-size:14px">高橋 美咲さん · 2回目の面談</b><div class="lbl" style="margin-top:4px">10月6日 · 面談</div>
+    <div class="sub" style="margin-top:12px;line-height:1.7">DD の資料リストを受領。11月に IC 予定。次回までに月次の推移を用意する。</div>
+    <div class="row" style="gap:6px;margin-top:12px"><span class="chip">高橋 美咲</span><span class="chip">資金調達</span></div></div>
+  <button class="btn primary block">${ic('pen', 'sm')}編集</button>`;
 
 /* =================== E4. 検索 =================== */
 const recent = ['高橋', '製造業の決裁者', 'CFO Night', '先月会った人'];
@@ -1627,16 +1620,16 @@ h += boards([
 h += board('連絡先の編集 · Web（抽屉）', '', wf({ nav: 1, head: '', body: netWeb(), pins: P(1, '.drawer') }, editDrawer()), ['右侧 600px 抽屉，与详情抽屉同位；保存后回到详情']);
 
 /* ---- E3 メモ ---- */
-h += sec('E3 · メモ', '① 一言メモ → ①\' 音声メモ录音中 → ② AI 整理结果确认 → 一览（今日 / 今週 / それ以前）');
+h += sec('E3 · メモ', '手入力 → 保存エラー時の再試行 → 保存済み詳細 → 一覧（今日 / 今週 / それ以前）');
 h += boards([
-  ['① 一言メモ', '', phone({ body: contactLite(), tab: -1, overlay: quickSheet, pins: P(1, '.sheet .btn.primary') }), ['从联系人详情「メモ」或 Task › メモ 右上「＋」打开；一句话即可，点「AI が整理」→ ②']],
-  ['①\' 音声メモ · 録音中', '', phone({ body: contactLite(), tab: -1, overlay: voiceSheet, pins: P(1, '.wave') + P(2, '.mac.lav') }), ['波形实时跳动 + 计时 + 实时转写一行；停止 → ②', '明示「自分用のメモ · 会話の録音ではありません」，单条最长 2 分（全场录音永久出局）']],
-  ['② 整理結果の確認', '', phone({ body: memoResult(), tab: -1, pins: P(1, '.orow .chip') + P(2, '.cf') + P(3, '.acc') }), ['相手匹配到已有联系人显示「一致」；不确定时给 2 个候选让用户选', '派生的写入动作（任务 / 计划日志）都是虚线确认卡，逐个确认', '原文可展开对照']],
-  ['メモ一覧', 'empty', phone({ body: memoApp('empty'), tab: -1, pins: P(1, '.quick') }), ['顶部常驻一言输入胶囊（文字 / 语音）']],
+  ['① 手入力メモ', '', phone({ body: contactLite(), tab: -1, overlay: quickSheet, pins: P(1, '.sheet .btn.primary') }), ['从联系人详情「メモ」或 Task › メモ 右上「＋」打开；手输入后保存，未接录音或 AI 整理']],
+  ['①\' 保存エラー · 下書きを保持', '', phone({ body: contactLite(), tab: -1, overlay: memoSaveError, pins: P(1, '.sheet .mac.coral') + P(2, '.sheet .btn.primary') }), ['保存失败时保留输入，可重试；不把失败当保存完成']],
+  ['② 保存済みメモの詳細', '', phone({ body: memoResult(), tab: -1, pins: P(1, '.card.rise') + P(2, '.card .av') }), ['只显示已保存正文、类型和关联人；编辑走手输入，不由页面自动创建任务或计划日志']],
+  ['メモ一覧', 'empty', phone({ body: memoApp('empty'), tab: -1, pins: P(1, '.quick') }), ['顶部手输入口与主动作「メモを書く」；无录音、转写或 AI 入口']],
   ['メモ一覧', 'few', phone({ body: memoApp('few'), tab: -1 })],
-  ['メモ一覧', 'many', phone({ body: memoApp('many'), tab: -1, pins: P(1, '.daygrp', 1) + P(2, '.memo .chip') }), ['按 今日 / 今週 / それ以前 分组', '音声メモ带时长 chip，点可回放自己的录音']],
+  ['メモ一覧', 'many', phone({ body: memoApp('many'), tab: -1, pins: P(1, '.daygrp', 1) + P(2, '.memo .chip') }), ['按 今日 / 今週 / それ以前 分组', '历史 voice 行只标「音声由来」来源，不提供回放动作']],
 ]);
-h += board('メモ · Web', 'many', wf({ nav: 1, head: '', body: memoWeb(), rail: memoRail, pins: P(1, '.rail .btn.primary') + P(2, '.rail .cf') }), ['右栏常驻一言メモ，⌘↵ 整理', '整理结果的写入（加日程）仍是虚线确认卡']);
+h += board('メモ · Web', 'many', wf({ nav: 1, head: '', body: memoWeb(), rail: memoRail, pins: P(1, '.rail .btn.primary') + P(2, '.rail .card') }), ['右栏显示选中 Memo 的已保存详情与编辑入口；不展示无来源的 AI、日程或任务写入按钮']);
 
 /* ---- E4 検索 ---- */
 h += sec('E4 · 検索', 'App 搜索页（人脈页左上 🔍）/ Web ⌘K 命令面板：人・イベント・会話 分组；语义搜索带匹配理由；无结果给建议');
