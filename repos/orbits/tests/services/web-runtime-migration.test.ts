@@ -7,13 +7,13 @@ import { loadLocalEnv } from "../../scripts/load-local-env";
 import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
 import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS } from "../../features/events/event-operations/storage/migrations";
 
-test("the web runtime migration CLI initializes an empty database and preserves data on rerun", async () => {
+test("the web runtime migration CLI initializes an empty database and preserves data on rerun", async (t) => {
   loadLocalEnv();
   // .env.local sets ORBIT_DATABASE_TARGET=local, which resolves to the developer's
   // orbit_events; this smoke test belongs on the dedicated test database named by
   // ORBIT_EVENT_DATABASE_URL, and must never reach a remote host (0123).
   const config = resolveLiveDatabaseConnectionConfig({ ...process.env, ORBIT_DATABASE_TARGET: undefined });
-  assert.ok(config, "The migration smoke test requires a local test database.");
+  if (!config) return t.skip("requires configured local PostgreSQL");
   assert.ok(["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(config.connectionString).hostname), "The migration smoke test only runs against a local database.");
   const schema = `web_migration_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });

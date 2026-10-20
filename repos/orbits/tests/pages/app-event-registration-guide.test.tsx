@@ -4,17 +4,8 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
-import { useRegistrationCatalogueFixture } from "../support/registration-catalogue-fixture";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
-useRegistrationCatalogueFixture([
-  {
-    id: "event_signup_02",
-    code: "EVTSIGNUP02",
-    title: "东京 AI 落地伙伴对接会",
-    venue: "Tokyo",
-  },
-]);
 
 async function withOrbitModuleMode<T>(
   mode: string,

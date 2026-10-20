@@ -52,7 +52,7 @@ async function expectSqlState(
 
 test(
   "the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const schema = `event_access_${randomUUID().replaceAll("-", "")}`;

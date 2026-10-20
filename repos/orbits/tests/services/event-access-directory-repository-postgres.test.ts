@@ -26,7 +26,7 @@ function schemaUrl(value: string, searchPath: string): string {
 
 test(
   "event access directory is event-scoped, shows only active assignments, and lets only the Event Core owner list current roles",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const suffix = randomUUID().replaceAll("-", "");

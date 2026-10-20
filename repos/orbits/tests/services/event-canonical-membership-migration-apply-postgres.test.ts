@@ -295,7 +295,7 @@ async function withIsolatedEventDatabase(
 
 test(
   "global canonical apply atomically migrates a diverse workspace and replays the immutable ledger",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const schema = `canonical_apply_${randomUUID().replaceAll("-", "")}`;
@@ -738,7 +738,7 @@ test(
 
 test(
   "global canonical apply rolls back ledger and every event when a later activation fails",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     await withIsolatedEventDatabase(
       "canonical_apply_rollback",
@@ -831,7 +831,7 @@ test(
 
 test(
   "activation serialization and deadlock SQLSTATEs rebuild the whole reviewed plan on a fresh transaction",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     await withIsolatedEventDatabase(
       "canonical_apply_retry",
@@ -919,7 +919,7 @@ test(
 
 test(
   "replay rejects an internally inconsistent event ledger before reading manifest or source",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     await withIsolatedEventDatabase(
       "canonical_apply_corrupt",
@@ -964,7 +964,7 @@ test(
 
 test(
   "readiness rejects migration and ledger relations resolved from different schemas",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const suffix = randomUUID().replaceAll("-", "");

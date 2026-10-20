@@ -106,7 +106,7 @@ async function expectNoMutation(
 
 test(
   "main event access schema is cut over and missing-event reads stay non-mutating",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const workspaceId = process.env.ORBIT_WORKSPACE_ID ?? "workspace:default";
@@ -150,7 +150,7 @@ test(
 
 test(
   "event access repository enforces owner authority, workspace isolation, transitions, CAS, and atomic audit",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const suffix = randomUUID().replaceAll("-", "");
@@ -504,7 +504,7 @@ test(
 
 test(
   "event access readiness rejects migration evidence and role tables resolved from different schemas",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const suffix = randomUUID().replaceAll("-", "");

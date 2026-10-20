@@ -294,7 +294,7 @@ async function mainSnapshot(pool: Pool, workspaceId: string): Promise<unknown> {
 
 test(
   "real canonical membership CLI reviews, rejects drift, applies, and replays a diverse PostgreSQL workspace",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const schema = `canonical_cli_${randomUUID().replaceAll("-", "")}`;
@@ -549,7 +549,7 @@ test(
 
 test(
   "isolated v11 canonical membership CLI is read-only and apply fails not-ready",
-  { timeout: 120_000 },
+  { timeout: 120_000, skip: !databaseUrl && "requires configured local PostgreSQL" },
   async (context) => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     const { pool, connectionString } = await createCanonicalMembershipV11Fixture(context, databaseUrl);

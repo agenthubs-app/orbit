@@ -14,10 +14,10 @@ import { createStorageAgentRuntimeRepository } from "../../features/agent/storag
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
 
-test("Postgres workers recover a killed claimant without replaying a persisted receipt", { timeout: 30_000 }, async () => {
+test("Postgres workers recover a killed claimant without replaying a persisted receipt", { timeout: 30_000 }, async (t) => {
   loadLocalEnv();
   const config = resolveLiveDatabaseConnectionConfig();
-  assert.ok(config);
+  if (!config) return t.skip("requires configured local PostgreSQL");
   const schema = `agent_recovery_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });
   const url = new URL(config.connectionString);

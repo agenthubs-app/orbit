@@ -14,10 +14,10 @@ import { handleAgentDispatchScanRequest } from "../../features/agent/runtime/dis
 import { processAgentActionQueueWake } from "../../features/agent/runtime/action-queue-worker";
 import type { AgentActionWake } from "../../features/agent/runtime/background-dispatch";
 
-test("Postgres dispatch scan recovers unpublished work with exact scope, due-time and approval fences", { timeout: 30_000 }, async () => {
+test("Postgres dispatch scan recovers unpublished work with exact scope, due-time and approval fences", { timeout: 30_000 }, async (t) => {
   loadLocalEnv();
   const config = resolveLiveDatabaseConnectionConfig();
-  assert.ok(config);
+  if (!config) return t.skip("requires configured local PostgreSQL");
   const schema = `agent_dispatch_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });
   const url = new URL(config.connectionString);

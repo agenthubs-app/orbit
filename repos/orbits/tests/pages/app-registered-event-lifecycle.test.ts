@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import test, { before, after } from "node:test";
+import nodeTest, { before, after } from "node:test";
+import { loadLocalEnv } from "../../scripts/load-local-env";
+import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
 import { createIsolatedRegistrationRuntime } from "../support/isolated-registration-runtime";
 
+loadLocalEnv();
+const databaseConfigured = Boolean(resolveLiveDatabaseConnectionConfig());
+const test = databaseConfigured ? nodeTest : nodeTest.skip;
 let isolatedRuntime: Awaited<ReturnType<typeof createIsolatedRegistrationRuntime>>;
-before(async () => { isolatedRuntime = await createIsolatedRegistrationRuntime(); });
+before(async () => { if (databaseConfigured) isolatedRuntime = await createIsolatedRegistrationRuntime(); });
 after(async () => { await isolatedRuntime?.close(); });
 
 test("registered catalogue attendee access follows persisted registration lifecycle", async () => {

@@ -72,6 +72,7 @@ function wrapTerminalTransactions(
 
 test("heartbeat commits between a terminal transaction snapshot and complete/fail without serialization failures", {
   timeout: 120_000,
+  skip: !databaseUrl && "requires configured local PostgreSQL",
 }, async () => {
   assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
   const schema = `terminal_heartbeat_${randomUUID().replaceAll("-", "")}`;

@@ -30,10 +30,10 @@ test("password reset acceptance waits for durable publication and exposes no acc
   assert.doesNotMatch(await failure.text(), /member@example|private provider details/);
 });
 
-test("queued delivery survives future retries and a crashed lease, then stops at the durable attempt limit", async () => {
+test("queued delivery survives future retries and a crashed lease, then stops at the durable attempt limit", async (t) => {
   loadLocalEnv();
   const config = resolveLiveDatabaseConnectionConfig();
-  assert.ok(config);
+  if (!config) return t.skip("requires configured local PostgreSQL");
   const schema = `reset_queue_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });
   const url = new URL(config.connectionString);

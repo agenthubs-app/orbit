@@ -56,8 +56,8 @@ test("device pending-write notices use the selected language and interpolate an 
 });
 
 test("the Debug outbox fixture is hidden outside signed-in development builds", () => {
-  assert.match(accountScreenSource, /__DEV__ \? <Card[\s\S]*Platform\.OS !== "web" && auth\.signedIn/u);
-  assert.match(accountScreenSource, /Platform\.OS === "web" \|\| !auth\.signedIn/u);
+  assert.match(accountScreenSource, /\{__DEV__ && Platform\.OS !== "web" && auth\.signedIn \? <>/u);
+  assert.match(accountScreenSource, /if \(!__DEV__ \|\| Platform\.OS === "web" \|\| !auth\.signedIn\) return;/u);
   assert.match(accountScreenSource, /enqueueDebugPendingWrite/u);
   assert.match(accountScreenSource, /Promise\.all\([\s\S]*?\)\.catch\([\s\S]*?无法读取这台设备上的待同步修改数量/u);
   assert.match(accountScreenSource, /Debug 测试修改未能写入本机队列/u);

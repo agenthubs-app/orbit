@@ -2,13 +2,18 @@ import { createIsolatedRegistrationRuntime } from "../support/isolated-registrat
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import test, { before, after } from "node:test";
+import nodeTest, { before, after } from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { loadLocalEnv } from "../../scripts/load-local-env";
+import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
 
+loadLocalEnv();
+const databaseConfigured = Boolean(resolveLiveDatabaseConnectionConfig());
+const test = databaseConfigured ? nodeTest : nodeTest.skip;
 let isolatedRuntime: Awaited<ReturnType<typeof createIsolatedRegistrationRuntime>>;
-before(async () => { isolatedRuntime = await createIsolatedRegistrationRuntime(); });
+before(async () => { if (databaseConfigured) isolatedRuntime = await createIsolatedRegistrationRuntime(); });
 after(async () => { await isolatedRuntime?.close(); });
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
