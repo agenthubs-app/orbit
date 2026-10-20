@@ -30,4 +30,13 @@
 .standalone h1 { margin: 0; font-size: var(--fs-title); }
 .standalone p { margin: 0; line-height: 1.6; }
 .standalone .actions { justify-content: flex-start; margin-top: 0; }
+.deleted { min-height: 100dvh; background: var(--bg); color: var(--ink); }
+.deletedHeader { height: 64px; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; border-bottom: 1px solid var(--line); background: var(--surface); }
+.deletedBrand { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; font-size: var(--fs-logo); font-weight: 600; }
+.deletedLogo { width: 32px; height: 32px; border-radius: 9px; background: var(--ink); color: var(--surface); display: grid; place-items: center; font-size: var(--fs-body); }
+.deletedMain { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 144px 18px 60px; }
+.deletedWave { font-size: 56px; line-height: 72px; margin-bottom: 12px; }
+.deletedMain h1 { margin: 0 0 12px; font-size: var(--fs-title); font-weight: 900; }
+.deletedMain p { margin: 0 0 28px; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: 1.7; }
 @media (max-width: 600px) { .selection { grid-template-columns: 1fr; } .allOption { grid-column: auto; } .historyItem { align-items: flex-start; flex-direction: column; } .actions { justify-content: stretch; } .actions :global(.btn) { width: 100%; } }
+@media (max-width: 600px) { .deletedHeader { padding: 0 18px; } .deletedMain { padding-top: min(15vh, 120px); } }

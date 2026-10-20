@@ -46,7 +46,15 @@ export function PendingPage() {
 export function DeletedPage() {
   const { language } = useOrbitLanguage();
   const t = rightsCopy(language);
-  return <Orbit2026Scope language={language} className={s.standalone}><main className={s.standaloneInner}>
-    <h1>{t("deletedTitle")}</h1><Card><p>{t("deletedBody")}</p></Card>
-  </main></Orbit2026Scope>;
+  return <Orbit2026Scope language={language} className={s.deleted}>
+    <header className={s.deletedHeader}><a href="/" aria-label="Orbit" className={s.deletedBrand}>
+      <span aria-hidden className={s.deletedLogo}>O</span><span>Orbit</span>
+    </a></header>
+    <main className={s.deletedMain}>
+      <span aria-hidden className={s.deletedWave}>👋</span>
+      <h1>{t("deletedTitle")}</h1>
+      <p>{t("deletedBody")}<br />{t("deletedDetail")}</p>
+      <Button label={t("home")} variant="primary" onClick={() => window.location.assign("/")} />
+    </main>
+  </Orbit2026Scope>;
 }
