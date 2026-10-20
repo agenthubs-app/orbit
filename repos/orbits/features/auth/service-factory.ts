@@ -3,6 +3,7 @@
 import { createModuleServiceFactory, type ModuleMode } from "../../shared/services/module-mode";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { createAuthUserService } from "./auth-user-service";
+import { readConfiguredAccountRightsAccessState } from "../account/data-rights/access-policy";
 import type { AuthUserService } from "./service";
 import {
   createConfiguredStorageAuthUserProvider,
@@ -28,6 +29,10 @@ export const authUserServiceFactory =
       live: () =>
         createAuthUserService({
           accountProvisioner: createConfiguredAuthAccountProvisioningProvider(),
+          canProvisionUser: async user => {
+            const state = await readConfiguredAccountRightsAccessState(user.id);
+            return state === "active" || state === "pending";
+          },
           provider: createConfiguredStorageAuthUserProvider(),
         }),
       mock: () =>

@@ -80,11 +80,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           providerAccountId: account.providerAccountId,
         });
 
-        if (result.state === "success") {
-          token.sub = result.data.user.id;
-          token.email = result.data.user.email;
-          token.name = result.data.user.displayName;
-        }
+        if (result.state !== "success") return null;
+        token.sub = result.data.user.id;
+        token.email = result.data.user.email;
+        token.name = result.data.user.displayName;
 
         return token;
       }

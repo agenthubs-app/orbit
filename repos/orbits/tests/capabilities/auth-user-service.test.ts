@@ -44,6 +44,30 @@ test("register then verify round-trips a credentials user", async () => {
   assert.equal(verified.data.user.id, registered.data.user.id);
 });
 
+test("purging identity cannot be re-provisioned through either login path", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId = "workspace:purging-login";
+  const provider = createStorageAuthUserProvider({ store, workspaceId });
+  const user = await createAuthUserService({ provider }).registerUser({
+    email: "purging@example.com", password: "orbit-demo-1",
+  });
+  assert.equal(user.state, "success");
+  if (user.state !== "success") return;
+  const provisioned: string[] = [];
+  const service = createAuthUserService({
+    provider,
+    accountProvisioner: { ensureAccountForUser: async candidate => { provisioned.push(candidate.id); } },
+    canProvisionUser: async candidate => candidate.id !== user.data.user.id,
+  });
+  const password = await service.verifyCredentials({ email: "purging@example.com", password: "orbit-demo-1" });
+  const google = await service.getOrCreateOAuthUser({
+    email: "purging@example.com", provider: "google", providerAccountId: "google-1",
+  });
+  assert.equal(password.state, "failure");
+  assert.equal(google.state, "failure");
+  assert.deepEqual(provisioned, []);
+});
+
 test("live auth provisioning creates one account and profile and preserves them on login", async () => {
   const store = createMemoryLiveRecordStore();
   const workspaceId = "workspace:auth-account-provisioning";

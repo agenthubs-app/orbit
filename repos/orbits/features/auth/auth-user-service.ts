@@ -26,6 +26,7 @@ const BCRYPT_COST = 12;
 
 export interface CreateAuthUserServiceOptions {
   accountProvisioner?: AuthAccountProvisioningProvider | null;
+  canProvisionUser?: (user: StoredAuthUser) => Promise<boolean>;
   provider: AuthUserStorageProvider | null;
   now?: () => Date;
 }
@@ -42,11 +43,15 @@ function newUserId(now: Date): string {
 
 export function createAuthUserService({
   accountProvisioner = null,
+  canProvisionUser = async () => true,
   provider,
   now = () => new Date(),
 }: CreateAuthUserServiceOptions): AuthUserService {
-  async function provisionAccount(user: StoredAuthUser): Promise<void> {
+  async function provisionAccount(user: StoredAuthUser): Promise<boolean> {
+    // 主会话代定 §R18c-3: a purging identity may never recreate its account.
+    if (!await canProvisionUser(user)) return false;
     await accountProvisioner?.ensureAccountForUser(toAuthUserDTO(user));
+    return true;
   }
 
   return {
@@ -88,7 +93,7 @@ export function createAuthUserService({
       } else {
         await provider.saveUser(user);
       }
-      await provisionAccount(user);
+      if (!await provisionAccount(user)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
 
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
@@ -116,7 +121,7 @@ export function createAuthUserService({
         return authUserFailure("AUTH_INVALID_CREDENTIALS");
       }
 
-      await provisionAccount(user);
+      if (!await provisionAccount(user)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
 
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
@@ -136,7 +141,7 @@ export function createAuthUserService({
       // 同邮箱已有账号(含密码注册的)直接复用:IdP 已验证邮箱所有权,
       // 与参考实现 allowDangerousEmailAccountLinking 的语义一致。
       if (existingUser) {
-        await provisionAccount(existingUser);
+        if (!await provisionAccount(existingUser)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
         return { data: { user: toAuthUserDTO(existingUser) }, state: "success" };
       }
 
@@ -156,11 +161,11 @@ export function createAuthUserService({
         const inserted = await provider.insertUserIfAbsent(user);
         const canonical = inserted ?? await provider.getUserByEmail(email);
         if (!canonical) return authUserFailure("AUTH_EMAIL_TAKEN");
-        await provisionAccount(canonical);
+        if (!await provisionAccount(canonical)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
         return { data: { user: toAuthUserDTO(canonical) }, state: "success" };
       }
       await provider.saveUser(user);
-      await provisionAccount(user);
+      if (!await provisionAccount(user)) return authUserFailure("AUTH_INVALID_CREDENTIALS");
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
   };
