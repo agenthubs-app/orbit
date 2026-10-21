@@ -57,6 +57,7 @@ import { cancelOrbitManagedNotifications } from "../notifications/native-notific
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 import { clearKioskDevice } from "../screens/host/kiosk-store";
+import { clearAccountLocalCaches } from "../data/account-local-caches";
 import { clearProfileEditSession } from "../data/profile-edit-session";
 import { clearNativeAccountRightsData } from "../screens/account-rights/local-cleanup-runtime";
 import { widgetSnapshotRuntime } from "../widgets/native-runtime";
@@ -699,6 +700,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
       // R17：受付的本机名单与离线队列（有参加者姓名）跟账号走，注销即清。
       await clearKioskDevice().catch(() => undefined);
+      // LF5: the account's small caches outside the sync database (recent searches, Home layout, handoff, merge);
+      // queued contact deletes go only when the user chose to discard unsent writes.
+      if (accountId) await clearAccountLocalCaches({ actorId: accountId, baseUrl }, { discardPendingWrites }).catch(() => undefined);
     } catch {
       return {
         message: currentTranslator()("session.clearSignInFailed"),

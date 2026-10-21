@@ -216,6 +216,8 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
     'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
     'src/data/sync/task-outbox-upload.ts POST /api/tasks',
+    // LF5: the 人脈 delete queue is a device queue too (it was labelled online-only).
+    'src/screens/network/contact-delete-queue.ts DELETE /api/contacts/:id',
   ]);
 });
 

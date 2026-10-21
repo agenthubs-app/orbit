@@ -15,7 +15,8 @@ import { contactGoalRelatedIdsSchema } from "../../api/schema/contact-goal-relat
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 
-export const NETWORK_MERGE_CACHE_PREFIX = "orbit.network.merge.v1:";
+import { NETWORK_MERGE_CACHE_PREFIX } from "./network-merge-cache-key";
+export { NETWORK_MERGE_CACHE_PREFIX };
 /** Re-read the plan link at most this often while the screen is open. */
 export const NETWORK_MERGE_MAX_AGE_MS = 5 * 60_000;
 

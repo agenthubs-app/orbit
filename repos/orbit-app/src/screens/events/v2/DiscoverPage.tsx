@@ -18,10 +18,11 @@ import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, 
 import { ringColor } from "./events-model";
 import { ScoreRing } from "./ScoreRing";
 import { useJourneyT } from "./useJourneyT";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
+import { recentSearchKey } from "../../../data/account-local-caches";
 
 export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: ["tokyo"], period: "this_month", planFirst: true, sort: "date", themes: [] };
 const CARD = 260;
-const RECENT_KEY = "orbit.events.recentSearches";
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
 
 /** 路由参数里的条件（`/events?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx&q=CFO&filters=1`）。 */
@@ -65,11 +66,14 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
     void api.discover(query).then((result) => { if (live) setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 }); });
     return () => { live = false; };
   }, [api, query]);
+  // LF5: the account's own recent event searches (the list used to be shared by every account on the device).
+  const auth = useOrbitAuthSession();
+  const recentKey = recentSearchKey("events", auth.actorId);
   useEffect(() => {
     let live = true;
-    void AsyncStorage.getItem(RECENT_KEY).then((value) => { if (live && value) { try { const parsed = JSON.parse(value) as unknown; if (Array.isArray(parsed)) setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, 5)); } catch { /* ignore */ } } }).catch(() => undefined);
+    if (recentKey) void AsyncStorage.getItem(recentKey).then((value) => { if (live && value) { try { const parsed = JSON.parse(value) as unknown; if (Array.isArray(parsed)) setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, 5)); } catch { /* ignore */ } } }).catch(() => undefined);
     return () => { live = false; };
-  }, []);
+  }, [recentKey]);
   useEffect(() => {
     const q = search.trim();
     if (!q) { setResults(null); return; }
@@ -82,7 +86,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
     if (!value) return;
     const next = [value, ...recent.filter((item) => item !== value)].slice(0, 5);
     setRecent(next);
-    void AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next)).catch(() => undefined);
+    if (recentKey) void AsyncStorage.setItem(recentKey, JSON.stringify(next)).catch(() => undefined);
   };
   const [draftCount, setDraftCount] = useState<number | null>(null);
   useEffect(() => {

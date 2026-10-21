@@ -8,6 +8,7 @@ import { StyleSheet, View } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { recentSearchKey } from "../../data/account-local-caches";
 import { splitByHighlights } from "../../api/compute/search-highlight";
 import type { GlobalSearchResponse, SearchHighlight } from "../../api/contract/global-search";
 import { useShellTopGap } from "../../components/ShellTopBar";
@@ -22,7 +23,7 @@ import { radius, type OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add/add-design-mock";
 import { useSearchApi, type SearchFilter } from "./search-api";
-import { APP_RECENT_SEARCHES_KEY, APP_SEMANTIC_PREFERENCE_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
+import { APP_SEMANTIC_PREFERENCE_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
 
 type Status = "idle" | "pending" | "ready" | "rate_limited" | "failed";
 
@@ -58,12 +59,14 @@ export function GlobalSearchScreen() {
     let live = true;
     void AsyncStorage.getItem(APP_SEMANTIC_PREFERENCE_KEY).then((value) => { if (live) setPreferSemantic(value !== "off"); }).catch(() => undefined);
     void api.search({ filter: "all", query: "" }).then((answer) => { if (live && answer.ok) setCapability(answer.data); });
-    void AsyncStorage.getItem(APP_RECENT_SEARCHES_KEY).then((value) => {
+    // LF5: recent searches are the signed-in account's own (the list used to be shared by every account on the device).
+    const recentKey = recentSearchKey("global", auth.actorId);
+    if (recentKey) void AsyncStorage.getItem(recentKey).then((value) => {
       if (!live || !value) return;
       try { const parsed = JSON.parse(value) as unknown; if (Array.isArray(parsed)) setRecent(parsed.filter((item): item is string => typeof item === "string").slice(0, APP_RECENT_SEARCHES_MAX)); } catch { /* ignore */ }
     }).catch(() => undefined);
     return () => { live = false; };
-  }, [api]);
+  }, [api, auth.actorId]);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -86,8 +89,9 @@ export function GlobalSearchScreen() {
 
   const saveRecent = useCallback((next: string[]) => {
     setRecent(next);
-    void AsyncStorage.setItem(APP_RECENT_SEARCHES_KEY, JSON.stringify(next)).catch(() => undefined);
-  }, []);
+    const recentKey = recentSearchKey("global", auth.actorId);
+    if (recentKey) void AsyncStorage.setItem(recentKey, JSON.stringify(next)).catch(() => undefined);
+  }, [auth.actorId]);
   const remember = () => saveRecent(rememberAppSearch(recent, query));
   const open = (href: string) => { remember(); router.push(href as Href); };
   const askIorbit = (prompt?: string) => {

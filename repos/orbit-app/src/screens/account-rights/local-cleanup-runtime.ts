@@ -2,6 +2,7 @@ import { offlineIdentityStorage } from "../../api/offline-identity-storage";
 import { syncLifecycle } from "../../data/sync/sync-lifecycle";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { clearKioskDevice } from "../host/kiosk-store";
+import { clearAccountLocalCaches } from "../../data/account-local-caches";
 import { clearAccountRightsSyncScope } from "./local-cleanup";
 
 /** Discard unsent writes deliberately before the normal sign-out lifecycle can
@@ -13,6 +14,8 @@ export async function clearNativeAccountRightsData(scope: { baseUrl: string; act
     await offlineIdentityStorage.clear(scope.baseUrl);
     clearProfileEditSession({ actorId: scope.actorId, apiOrigin: scope.baseUrl });
     await clearKioskDevice();
+    // LF5: account deletion drops every account cache, queued contact deletes included.
+    await clearAccountLocalCaches(scope, { discardPendingWrites: true });
     return true;
   } catch { return false; }
 }

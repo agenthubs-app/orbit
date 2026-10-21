@@ -100,6 +100,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const aiSessionOutboxWrite = consumerFile === 'src/data/sync/ai-session-outbox-upload.ts' && domainId === 'ai-sessions'
     && (method === 'PATCH' || method === 'DELETE');
+  // LF5: the 人脈 delete queue (R11a) keeps a delete on the device until it can be sent — an offline queue, not online-only.
+  const contactDeleteQueueWrite = consumerFile === 'src/screens/network/contact-delete-queue.ts' && method === 'DELETE';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   // The version response is public, but changes on the server and is no-store;
   // online_only_secret is this inventory's existing never-persisted read policy.
@@ -155,7 +157,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     selector: providerTodo ? 'todo:external-provider-oauth' : `${domainId}:${method}:${endpointTemplate}`,
     schemaVersion: 1,
     readPersistence: secret ? 'online_only_secret' : 'durable_normalized',
-    mutationPolicy: taskOutboxWrite || messageOutboxWrite || aiSessionOutboxWrite ? 'offline_queue' : 'online_only',
+    mutationPolicy: taskOutboxWrite || messageOutboxWrite || aiSessionOutboxWrite || contactDeleteQueueWrite ? 'offline_queue' : 'online_only',
     binaryPolicy: secret ? 'never_local' : binary ? 'on_demand_encrypted' : 'metadata_only',
   };
 }

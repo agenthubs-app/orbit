@@ -44,7 +44,10 @@ test("upcoming：升序、含待审核 / 加入计划 / 取消（取消不计数
 
 test("路由：未登录 401（live）；mock 返回演示世界并带 sample；参数不合法 400", async () => {
   const previous = process.env.ORBIT_FEATURE_MODE;
-  const route = createMyEventsRoute({ resolveActor: async () => ({ id: "actor:a" }) as never, reader: () => ({ rows: async () => rows }) });
+  // The route reads the real clock; keep its rows in the far future so the test does not expire with the calendar
+  // (the fixture's 2026-10-21 08:00 event fell out of "upcoming" on that morning).
+  const future = rows.map((row) => ({ ...row, startsAt: row.startsAt.replace("2026-", "2099-"), endsAt: row.endsAt ? row.endsAt.replace("2026-", "2099-") : null }));
+  const route = createMyEventsRoute({ resolveActor: async () => ({ id: "actor:a" }) as never, reader: () => ({ rows: async () => future }) });
   const bad = await route(new Request("http://localhost/api/events/mine?range=soon"));
   assert.equal(bad.status, 400);
   const ok = await route(new Request("http://localhost/api/events/mine?range=upcoming&limit=2"));

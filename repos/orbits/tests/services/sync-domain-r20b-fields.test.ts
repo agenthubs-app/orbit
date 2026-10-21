@@ -14,3 +14,8 @@ test("device note and task domains project the optional memo and plan fields", (
   assert.ok(notes.fields.includes("usedForPlan"));
   assert.ok(tasks.fields.includes("planLink"));
 });
+
+test("LF5: the tasks domain passes deferralCount through its field whitelist (the offline 2nd-deferral check needs it)", () => {
+  const tasks = RECORD_SYNC_DOMAINS.find((domain) => domain.domainId === "tasks");
+  assert.ok(tasks?.fields.includes("deferralCount"));
+});

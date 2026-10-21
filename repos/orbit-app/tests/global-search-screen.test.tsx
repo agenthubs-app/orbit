@@ -116,7 +116,7 @@ const requests = (page: Page) => page.evaluate(() => (window as unknown as { req
 const nav = (page: Page) => page.evaluate(() => (window as unknown as { nav: { navigation: { method: string; href?: unknown }[] } }).nav.navigation);
 
 test("初期 (b5 #53): recent searches from this device, the examples, the four type chips; 消去 forgets them", async (t) => {
-  const page = await open(t, byQuery, { "orbit.search.recent": JSON.stringify(["高橋", "CFO Night"]) });
+  const page = await open(t, byQuery, { "orbit.search.recent:actor-r30": JSON.stringify(["高橋", "CFO Night"]) });
   await page.getByText("最近の検索").waitFor();
   for (const text of ["高橋", "CFO Night", "投資家", "製造業の決裁者", "すべて", "人", "イベント", "会話", "キャンセル"]) await page.getByText(text, { exact: true }).first().waitFor();
   assert.equal(await page.getByText("言葉の意味でも探します", { exact: false }).count(), 0, "no semantic hint while semantic search is unavailable (A2)");
@@ -125,7 +125,7 @@ test("初期 (b5 #53): recent searches from this device, the examples, the four 
   assert.equal(await page.getByText("高橋", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "消去", exact: true }).click();
   assert.equal(await page.getByText("最近の検索").count(), 0);
-  assert.equal(await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore["orbit.search.recent"]), "[]");
+  assert.equal(await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore["orbit.search.recent:actor-r30"]), "[]");
 });
 
 test("名前 (b5 #54): one request after typing, groups with counts, status chips, iOrbit prefix; a row opens and is remembered", async (t) => {
@@ -137,7 +137,7 @@ test("名前 (b5 #54): one request after typing, groups with counts, status chip
   assert.deepEqual((await requests(page)).filter((path) => path.includes("q=%E9")), ["/api/search/global?q=%E9%AB%98%E6%A9%8B&platform=app"], "debounced: one keyword search");
   await page.getByRole("button", { name: "高橋 美咲" }).click();
   assert.deepEqual((await nav(page)).at(-1), { href: "/contacts/c1", method: "push" });
-  assert.equal(await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore["orbit.search.recent"]), JSON.stringify(["高橋"]));
+  assert.equal(await page.evaluate(() => (window as unknown as { deviceStore: Record<string, string> }).deviceStore["orbit.search.recent:actor-r30"]), JSON.stringify(["高橋"]));
 });
 
 test("type chip narrows the request; live without conversations draws no 会話 chip (A1)", async (t) => {

@@ -222,6 +222,8 @@ export const RECORD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
       "id", "accountId", "ownerUserId", "title", "status", "category", "priority", "source", "createdAt", "updatedAt",
       "notes", "location", "plannedDate", "dueAt", "relatedContactId", "relatedEventId", "relatedMeetingId",
       "relatedConversationId", "suggestionId", "sourceNoteId", "sourceNoteVersion", "completedAt", "completedBy", "completionSource", "planLink",
+      // LF5: the server already sends it (read-service); without it here the device never saw the deferral count.
+      "deferralCount",
     ],
     source: { kind: "orbit_records", collectionName: "tasks", changeKind: "task" },
   },
