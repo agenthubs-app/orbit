@@ -31,7 +31,7 @@
 | `inbox-notifications`（0118） | 是 | 本人的类型化收件箱通知（提醒、建议、动态），含历史：标题、原因、三种语言的文案、来源摘要、对象名、处置和已读状态。可能含第三方的名字（名片交换、约谈）和笔记摘要，和联系人域同级。来源已失效的通知以「来源已不可用」的形态下发，不带正文。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `ai-sessions`、`ai-session-messages`（0118） | 是 | 本人的 AI 会话列表（标题、第一个问题和最近一条的摘要、置顶／分组／自定义标题），以及本设备打开过的会话（最多 20 个）的消息原文：本人写下的问题和 AI 基于本人数据给出的回答，和笔记同级。卡片不同步，只缓存最后一次联网打开时的卡片。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `relationship-conversations`、`relationship-messages`（0119） | 是 | 本人仍是有效成员的对话（对方的名字、最后一条消息的 320 字预览、未读数、本人读到的序号），以及这些对话的**全部历史消息**：对方写给本人的原文和本人发出的原文。对方的原文是第三方私密内容（对方不知道这份副本在浏览器里），风险和笔记里关于第三方的内容同级。撤销关系后两人的设备都删除这个对话和它的全部消息。见下方「用户之间的消息：决定与接受的风险」 |
-| 页面副本（0131、R20a）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`todo-page`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`public-events`、`event-recommendations`、`home-plan-summary`、`home-guide-progress`、`home-week`、`completion-question`（LF1）、`event-assessments`、`events-mine`、`event-overview`、`event-venue`（LF2）、`plan-intakes`（LF3）、`host-summary`（LF8） | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
+| 页面副本（0131、R20a）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`todo-page`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`public-events`、`event-recommendations`、`home-plan-summary`、`home-guide-progress`、`home-week`、`completion-question`（LF1）、`event-assessments`、`events-mine`、`event-overview`、`event-venue`（LF2）、`plan-intakes`（LF3）、`host-summary`（LF8）、`plan-overview`、`plan-legacy`、`task-demo-status`（LF9） | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
 | 工作人员能看到的参会者名单、主办方运营数据 | 否 | 设计案 C 类，永不落地 |
 
 白名单在 `web-mirror-storage.ts` 的 `WEB_MIRROR_DOMAIN_IDS`（同步域）和 `WEB_MIRROR_PAGE_COPY_IDS`（页面副本，0131）硬编码，协调器只为白名单域绑定读取作用域与拉页；租约里其它域的授权在浏览器**既不存储也不拉取**。
@@ -158,6 +158,9 @@
   | `event-venue` | `/api/events/:id/venue` | LF2：按活动保存的会场内容（最近 10 个）：席次、ラウンド、推荐、参加者与本人备注；和 0115 的已发布结果同级。签到令牌随回应保存，到活动结束失效 |
   | `plan-intakes` | `/api/agent/plans/intakes` | LF3：AI 标签上本人进行中的计划草稿列表（目标与阶段）。和计划页同级 |
   | `host-summary`（LF8） | `/api/events/center?summary=1` | 「我的」页主办那一行的三个数：主办场数、进行中场数、本月报名数。只有计数，没有活动名称或报名人。低于联系人域 |
+  | `plan-overview`（LF9，按计划保存最近 5 个） | `/api/agent/plans/v2/:planId` | Task › プラン 段的计划概要：目标、人物类型和分数、下一步。含本人写的目标文字和计划里的人名，和 `home-plan-summary` 同级 |
+  | `plan-legacy`（LF9） | `/api/agent/plans/legacy` | 旧版（v1）计划的只读列表：标题、状态、时间。低于联系人域 |
+  | `task-demo-status`（LF9） | `/api/tasks/demo-status` | 是否在示例计划里、三步完成了几步、已确认联系人数。只有布尔和计数 |
   | `provenance-audit`（LF7 退役，本机旧副本同步时删除） | `/api/audit/provenance`（用户点「运行审计」后才读） | 上次来源审计的结果：各集合的来源覆盖率和待复核条目（记录编号和来源标签，不含正文）。低于联系人域 |
   | `event-recommendations` | `/api/recommendations/events` | 给本人的活动推荐。低 |
   | `public-events` | `/api/events/public` | **公开活动目录，平台数据，不按用户归属**：任何访客都能读到。仍按身份保存和清除（而不是做成全设备共享缓存），这样只有一条清除规则，也不会让下一个登录的人看到上一个人浏览过的目录时间点。泄露面几乎为零 |

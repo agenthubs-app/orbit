@@ -12,6 +12,8 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "src/screens/profile/onboarding/ProfileOnboardingScreen.tsx": "onboarding only",
   "src/screens/home/use-home-layout.ts": "skips the read inside HOME_COPY_FRESH_MS (LF1)",
   "src/screens/home/use-home-widget-snapshot.ts": "throttled to WIDGET_REFRESH_INTERVAL_MS (LF1), WidgetKit builds only",
+  "src/screens/plan/PlanSegment.tsx": "reads through page copies with PLAN_COPY_FRESH_MS (LF9)",
+  "src/screens/task/TaskScreen.tsx": "the demo decision reads through its page copy with PLAN_COPY_FRESH_MS (LF9)",
 };
 
 const root = join(import.meta.dirname, "..");
@@ -23,7 +25,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Files whose useFocusEffect(useCallback(…)) body starts asynchronous work (a request, a promise chain). */
+/** Files whose useFocusEffect(useCallback(…)) body, or a useEffect keyed on focus, starts asynchronous work (a request, a promise chain). */
 export function focusEffectReaders(sourceRoot: string): string[] {
   const hits = new Set<string>();
   for (const file of walk(join(sourceRoot, "src"))) {
@@ -32,6 +34,14 @@ export function focusEffectReaders(sourceRoot: string): string[] {
       const end = text.indexOf("}, [", match.index);
       const body = text.slice(match.index, end > 0 ? end : match.index + 3000);
       if (/\.then\(|\bawait\b|\bvoid [a-zA-Z_.]+\(/.test(body)) hits.add(relative(sourceRoot, file));
+    }
+    // LF9: the same read written as useEffect(…, [focused, …]) (useIsFocused) runs on every visit too.
+    for (const match of text.matchAll(/useEffect\(/g)) {
+      const end = text.indexOf("}, [", match.index);
+      if (end < 0) continue;
+      const deps = text.slice(end + 3, text.indexOf("]", end + 3) + 1);
+      const body = text.slice(match.index, end);
+      if (/\b(?:focused|isFocused)\b/.test(deps) && /\.then\(|\bawait\b|\bvoid [a-zA-Z_.]+\(/.test(body)) hits.add(relative(sourceRoot, file));
     }
   }
   return [...hits].sort();

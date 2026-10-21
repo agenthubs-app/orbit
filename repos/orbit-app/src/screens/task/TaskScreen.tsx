@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { readTaskPlanDemo, saveTaskPlanDemoCollapse, type TaskPlanDemoResult } from "../../api/task-plan-demo";
+import { isTaskPlanDemoStatus, saveTaskPlanDemoCollapse, TASK_PLAN_DEMO_PATH, taskPlanDemoOf, type TaskPlanDemoResult } from "../../api/task-plan-demo";
 import { serverReachability } from "../../api/server-reachability";
 import { AppScreenEmbeddingProvider } from "../../components/AppScreenEmbedding";
 import { TabPageBar } from "../../components/TabPageBar";
@@ -18,6 +18,9 @@ import { SwipeSegments } from "../../components/ui/Segmented";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import { readThroughPageCopy } from "../../data/sync/page-copy-through";
+import { PLAN_COPY_FRESH_MS } from "../plan/plan-copies";
 import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { TASK_SEGMENTS, type TaskSegment } from "../../view-models/app-navigation";
@@ -89,12 +92,17 @@ export function TaskScreen() {
   const [demoError, setDemoError] = useState("");
   const [demoIntercept, setDemoIntercept] = useState(false);
   const demoTicket = useRef(0);
-  const reloadDemo = useCallback(async () => {
+  const { whenReady } = usePageCopySession();
+  // LF9: the demo decision is a page copy too, so a visit within the plan copies' window reads nothing and
+  // offline the segment shows the saved decision instead of a retry card.
+  const reloadDemo = useCallback(async (force = false) => {
     const ticket = ++demoTicket.current;
     setPlanDemo({ kind: "loading" });
-    const result = await readTaskPlanDemo(client);
-    if (ticket === demoTicket.current) setPlanDemo(result);
-  }, [client]);
+    const got = await readThroughPageCopy(whenReady, { id: "task-demo-status", variant: "main" }, { accept: isTaskPlanDemoStatus, force, freshForMs: PLAN_COPY_FRESH_MS },
+      () => client.get<unknown>(TASK_PLAN_DEMO_PATH).catch(() => null),
+      (result) => result?.success ? { data: result.data } : { network: !result || (result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR") });
+    if (ticket === demoTicket.current) setPlanDemo(got.from === "failed" ? { kind: "unavailable" } : taskPlanDemoOf(got.data));
+  }, [client, whenReady]);
   useEffect(() => {
     if (!focused || segment !== "plan") return;
     if (!auth.ready || !auth.signedIn || !auth.actorId || !server.ready) {
@@ -175,7 +183,7 @@ export function TaskScreen() {
               <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={locale.t("tasks.demoBlockedTitle")}
                 onPress={() => setDemoIntercept(true)} />
             </View> : planDemo.kind === "loading" ? <Skeleton lines={4} />
-              : <RetryCard title={locale.t("tasks.demoUnavailable")} onRetry={() => void reloadDemo()} />
+              : <RetryCard title={locale.t("tasks.demoUnavailable")} onRetry={() => void reloadDemo(true)} />
               : TASK_SLOTS[key]({ quickAdd, revision, onCreated })}
           </PlanGoalInputShown.Provider></AppScreenEmbeddingProvider>
           : null}

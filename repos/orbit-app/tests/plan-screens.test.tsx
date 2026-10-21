@@ -65,7 +65,9 @@ createRoot(document.getElementById("root")).render(<Root />);
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-svg.js") }));
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
       plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "expo-router", namespace: "plan-stub" }));
-      plugin.onResolve({ filter: /(AuthSessionProvider|ApiBaseUrlProvider)$/ }, (args) => ({ path: args.path, namespace: "plan-stub" }));
+      plugin.onResolve({ filter: /(AuthSessionProvider|ApiBaseUrlProvider|usePageCopySession)$/ }, (args) => ({ path: args.path, namespace: "plan-stub" }));
+      // LF9: no device here, so the plan segment's page copies are absent (every read goes to the scripted server).
+      plugin.onLoad({ filter: /usePageCopySession$/, namespace: "plan-stub" }, () => ({ contents: `const none = { session: null, whenReady: async () => null }; export const usePageCopySession = () => none;`, loader: "js" }));
       plugin.onLoad({ filter: /AuthSessionProvider$/, namespace: "plan-stub" }, () => ({ contents: `export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor", cookieHeader: "c" });`, loader: "js" }));
       plugin.onLoad({ filter: /ApiBaseUrlProvider$/, namespace: "plan-stub" }, () => ({ contents: `export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "http://local.test" });`, loader: "js" }));
       plugin.onLoad({ filter: /^expo-router$/, namespace: "plan-stub" }, () => ({ contents: `

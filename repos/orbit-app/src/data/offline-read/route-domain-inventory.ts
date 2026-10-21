@@ -188,7 +188,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/me/useAccountProfile.ts","GET","/api/profile"],
   // R28: onboarding progress and guide are private, online-only actor state.
   ["src/api/guide-progress.ts","GET","/api/guide/progress"],
-  ["src/api/task-plan-demo.ts","GET","/api/tasks/demo-status"],
+  ["src/screens/task/TaskScreen.tsx","GET","/api/tasks/demo-status"],
   ["src/api/task-plan-demo.ts","PATCH","/api/guide/state"],
   ["src/api/profile-onboarding-progress.ts","GET","/api/profile/onboarding-progress"],
   ["src/api/profile-onboarding-progress.ts","POST","/api/profile/onboarding-progress"],

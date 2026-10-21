@@ -17,15 +17,15 @@ export type TaskPlanDemoResult = { kind: "ready"; view: TaskPlanDemoView } | { k
 
 export const canWriteTaskPlan = (status: TaskPlanDemoResult): boolean => status.kind === "off";
 
-export async function readTaskPlanDemo(client: OrbitApiClient): Promise<TaskPlanDemoResult> {
-  try {
-    const result = await client.get<unknown>("/api/tasks/demo-status");
-    if (!result.success) return { kind: "unavailable" };
-    const parsed = demoStatus.safeParse(result.data);
-    if (!parsed.success) return { kind: "unavailable" };
-    return parsed.data.inDemo ? { kind: "ready", view: parsed.data.view } : { kind: "off" };
-  } catch { return { kind: "unavailable" }; }
+export const TASK_PLAN_DEMO_PATH = "/api/tasks/demo-status";
+export const isTaskPlanDemoStatus = (value: unknown): boolean => demoStatus.safeParse(value).success;
+/** The server's decision (an answer or the LF9 page copy task-demo-status); anything malformed fails closed. */
+export function taskPlanDemoOf(value: unknown): TaskPlanDemoResult {
+  const parsed = demoStatus.safeParse(value);
+  if (!parsed.success) return { kind: "unavailable" };
+  return parsed.data.inDemo ? { kind: "ready", view: parsed.data.view } : { kind: "off" };
 }
+
 
 export async function saveTaskPlanDemoCollapse(client: OrbitApiClient, collapsed: boolean): Promise<boolean> {
   try {

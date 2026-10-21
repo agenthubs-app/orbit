@@ -8,6 +8,9 @@
 // it explains the limit instead; without a v2 goal but with a v1 plan the segment shows
 // the read-only 「以前のプラン」 card and 「新しいプランを作る」; the overview gets the goal
 // list for the switcher, and achieved goals stay reachable when no goal is active.
+// LF9: each read goes through its page copy (summary and intakes shared with Home and the AI tab):
+// a copy saved within PLAN_COPY_FRESH_MS and after the app's last write is used without a request,
+// and offline the copies are shown with 「截至」 instead of the whole segment going blank.
 import { useIsFocused, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { designState } from "../add/design-state";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -23,19 +26,25 @@ import { createThemedStyles } from "../../design/theme";
 import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
-import { usePlanApi } from "./plan-api";
+import { usePlanApi, type PlanResult } from "./plan-api";
 import { goalKindLabel } from "./plan-model";
 import { PlanGoalInput } from "./PlanGoalInput";
 import { PlanGoalInputShown } from "./plan-goal-input-shown";
 import { PlanLegacyCard } from "./PlanLegacy";
 import { PlanOverview } from "./PlanOverview";
 import { LimitNote } from "./plan-ui";
+import type { PageCopyId } from "../../data/sync/page-copies";
+import { readThroughPageCopy } from "../../data/sync/page-copy-through";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import { planIntakeListResponseSchema, planLegacyListResponseSchema, planV2DetailSchema, planV2SummaryResponseSchema } from "../../api/schema/plan-v2";
+import { EventsOfflineNotice } from "../events/v2/EventsOfflineNotice";
+import { PLAN_COPY_FRESH_MS } from "./plan-copies";
 
 type SegmentState =
   | { kind: "loading" }
   | { kind: "offline" }
   | { kind: "failed" }
-  | { kind: "ready"; current: PlanV2HomeSummary | null; goals: readonly PlanGoalListItem[]; intakes: PlanIntakeListResponse | null; overview: PlanV2Detail | null; legacy: readonly PlanLegacyItem[] };
+  | { kind: "ready"; current: PlanV2HomeSummary | null; goals: readonly PlanGoalListItem[]; intakes: PlanIntakeListResponse | null; overview: PlanV2Detail | null; legacy: readonly PlanLegacyItem[]; offlineAt: string | null };
 
 export function PlanSegment() {
   const api = usePlanApi();
@@ -47,6 +56,7 @@ export function PlanSegment() {
   const router = useRouter();
   const [state, setState] = useState<SegmentState>({ kind: "loading" });
   const [reloading, setReloading] = useState(false);
+  const { whenReady } = usePageCopySession();
   const params = useLocalSearchParams<{ new?: string | string[]; design?: string | string[] }>();
   // R31a (RD-28): dev-only gate states for the overview (premise / review / achieve / edit).
   const design = designState(params.design);
@@ -64,9 +74,21 @@ export function PlanSegment() {
     if (newParam === "1") setAdding(true);
   }, [newParam]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     const run = (sequence.current += 1);
-    const [summary, intakes] = await Promise.all([api.summary(), api.listIntakes()]);
+    let offlineAt: string | null = null;
+    const through = async <T,>(id: PageCopyId, variant: string, accept: (value: unknown) => boolean, read: () => Promise<PlanResult<T>>): Promise<PlanResult<T>> => {
+      const got = await readThroughPageCopy(whenReady, { id, variant }, { accept, force, freshForMs: PLAN_COPY_FRESH_MS }, read,
+        (result) => result.ok ? { data: result.data } : { network: result.failure.kind === "network" });
+      if (got.from === "failed") return got.result;
+      if (got.offlineAt && (!offlineAt || got.offlineAt < offlineAt)) offlineAt = got.offlineAt;
+      return { data: got.data, ok: true, status: 200 };
+    };
+    const accepts = (schema: { safeParse(value: unknown): { success: boolean } }) => (value: unknown) => schema.safeParse(value).success;
+    const [summary, intakes] = await Promise.all([
+      through("home-plan-summary", "main", accepts(planV2SummaryResponseSchema), api.summary),
+      through("plan-intakes", "main", accepts(planIntakeListResponseSchema), api.listIntakes),
+    ]);
     if (run !== sequence.current) return;
     if ((!summary.ok && summary.failure.kind === "network") || (!intakes.ok && intakes.failure.kind === "network")) return setState({ kind: "offline" });
     // 「尚未実装」 hides the block that needs it (HOW-TO §4): no plan card, no goal input.
@@ -77,19 +99,19 @@ export function PlanSegment() {
     let overview: PlanV2Detail | null = null;
     let legacy: readonly PlanLegacyItem[] = [];
     if (current) {
-      const detail = await api.overview(current.planId);
+      const detail = await through("plan-overview", current.planId, accepts(planV2DetailSchema), () => api.overview(current.planId));
       if (run !== sequence.current) return;
-      if (!detail.ok && detail.failure.kind === "network") return setState({ kind: "offline" });
-      if (!detail.ok && detail.failure.kind !== "notImplemented") return setState({ kind: "failed" });
+      // LF9: offline without a saved overview the summary's card stands in (ConfirmedPlanCard), not a blank segment.
+      if (!detail.ok && detail.failure.kind !== "notImplemented" && detail.failure.kind !== "network") return setState({ kind: "failed" });
       overview = detail.ok ? detail.data : null;
     } else {
       // R25: a v1 plan (read only) replaces the goal input until the user starts a new one.
-      const list = await api.legacyList();
+      const list = await through("plan-legacy", "main", accepts(planLegacyListResponseSchema), api.legacyList);
       if (run !== sequence.current) return;
       legacy = list.ok ? list.data.plans : [];
     }
-    setState({ current, goals: summary.ok ? summary.data.goals : [], intakes: intakes.ok ? intakes.data : null, kind: "ready", legacy, overview });
-  }, [api]);
+    setState({ current, goals: summary.ok ? summary.data.goals : [], intakes: intakes.ok ? intakes.data : null, kind: "ready", legacy, offlineAt, overview });
+  }, [api, whenReady]);
 
   // Read again each time the segment comes back into view (a plan may have been confirmed meanwhile).
   useEffect(() => {
@@ -99,7 +121,7 @@ export function PlanSegment() {
 
   const retry = async () => {
     setReloading(true);
-    await load();
+    await load(true);
     setReloading(false);
   };
 
@@ -107,6 +129,7 @@ export function PlanSegment() {
     <AppScreen title={copy.taskSegments.plan}>
       {state.kind === "loading" ? <Skeleton lines={4} /> : null}
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
+      {state.kind === "ready" && state.offlineAt ? <EventsOfflineNotice lastSyncedAt={state.offlineAt} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
       {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
       {state.kind === "ready" && !adding && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} design={design} /> : null}
