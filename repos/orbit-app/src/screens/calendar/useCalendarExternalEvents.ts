@@ -21,7 +21,8 @@ export function useCalendarExternalEvents(dateKey: string, mode: CalendarMode, t
   const server = useOrbitApiBaseUrl();
   const ranges = useMemo(() => calendarExternalRanges(dateKey, mode, timeZone), [dateKey, mode, timeZone]);
   const ready = enabled && server.ready && auth.ready && auth.signedIn && Boolean(auth.actorId);
-  const scope = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, dateKey, mode, timeZone]);
+  // LF10: keyed by the shown range, not the selected day — tapping another day of the same week or month reads nothing.
+  const scope = JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, ranges]);
   const first = useApiResource<unknown>(pathFor(ranges[0]), () => false, {
     cachePolicy: "network-only", enabled: ready && ranges.length > 0, scopeKey: `${scope}:0`,
   });

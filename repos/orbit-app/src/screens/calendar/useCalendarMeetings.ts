@@ -6,6 +6,7 @@ import type { ScheduleItemContract } from "../../api/contract/tasks";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { type PageCopy, type PageCopyStatus } from "../../data/sync/page-copies";
+import { pageCopyFreshness } from "../../data/sync/page-copy-freshness";
 import { useApiResource } from "../../hooks/useApiResource";
 import { usePageCopySession } from "../../hooks/usePageCopySession";
 import { calendarDate, localParts } from "../../time/date-time";
@@ -14,6 +15,8 @@ import type { CalendarMode } from "./calendar-projection";
 import { calendarMeetingWindow, readCalendarMeetings } from "./calendar-meeting-source";
 
 const COPY_ID = "calendar-meetings";
+/** LF10: a window's copy saved this recently (and after the app's last write) is shown without reading the server. */
+export const CALENDAR_COPY_FRESH_MS = 3 * 60_000;
 type MeetingCopy = { from: string; to: string; language: OrbitLanguage; readLocalDate: string; meetings: ScheduleItemContract[] };
 type MeetingCopyStatus = PageCopyStatus & { readLocalDate: string; stale: boolean };
 
@@ -48,9 +51,13 @@ export function useCalendarMeetings(dateKey: string, mode: CalendarMode, timeZon
   const actorBinding = JSON.stringify([server.baseUrl, auth.actorId, auth.cookieHeader, auth.notificationSessionRevision]);
   const scope = JSON.stringify([server.baseUrl, auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, variant]);
   const path = range ? `/api/schedule-items?${new URLSearchParams({ scope: "calendar", from: range.from, to: range.to, language })}` : "/api/schedule-items";
-  const network = useApiResource<unknown>(path, () => false, { cachePolicy: "network-only", enabled: ready, scopeKey: scope });
   const { session, whenReady } = usePageCopySession(copyEnabled);
   const [stored, setStored] = useState<{ key: string; copy: PageCopy<MeetingCopy> | null; settled: boolean }>({ key: "", copy: null, settled: false });
+  const [forced, setForced] = useState<string | null>(null);
+  const current = stored.key === scope ? stored : { key: scope, copy: null, settled: false };
+  // LF10: on the device the copy is read first; a fresh one keeps the request off (refresh() forces it).
+  const fresh = copyEnabled && current.settled && current.copy !== null && forced !== scope && pageCopyFreshness.isFresh(current.copy.syncedAt, CALENDAR_COPY_FRESH_MS);
+  const network = useApiResource<unknown>(path, () => false, { cachePolicy: "network-only", enabled: ready && (!copyEnabled || (current.settled && !fresh)), scopeKey: scope });
   const [now, setNow] = useState(() => new Date());
   const activeScope = useRef(scope);
   activeScope.current = scope;
@@ -60,7 +67,6 @@ export function useCalendarMeetings(dateKey: string, mode: CalendarMode, timeZon
   const saved = useRef<{ scope: string; answer: unknown } | null>(null);
   const copyOperations = useRef(new Map<string, Promise<void>>());
   const authoritativeDenied = network.kind === "failure" && network.status >= 400 && network.status < 500;
-  const current = stored.key === scope ? stored : { key: scope, copy: null, settled: false };
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -102,6 +108,7 @@ export function useCalendarMeetings(dateKey: string, mode: CalendarMode, timeZon
   }, [answer, copyEnabled, language, meetings, range?.from, range?.to, scope, timeZone, variant, whenReady]);
 
   if (!ready || !range) return { part: { kind: "loading", data: null, message: "" }, copy: null, refreshing: false, refresh: network.refresh };
+  if (fresh) return { part: { kind: "ready", data: { scheduleItems: current.copy!.data.meetings }, message: "" }, copy: null, refreshing: false, refresh: () => setForced(scope) };
   if (meetings) return { part: { kind: "ready", data: { scheduleItems: meetings }, message: "" }, copy: null, refreshing: network.refreshing, refresh: network.refresh };
   const reason = network.kind === "offline" ? "unreachable" : network.kind === "failure" && network.status >= 500 ? "unavailable" : null;
   const useCopy = !deniedScopes.current.has(scope) && current.copy && (network.kind === "loading" || reason !== null);
