@@ -68,6 +68,7 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   // registered attendee can read them on the event day without signal (what 0115's event-day screens gave).
   { id: "event-assessments", endpoint: "/api/events/assessments", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The events tab's assessment list as last seen." },
   { id: "events-mine", endpoint: "/api/events/mine", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The events tab's upcoming and past registrations as last seen (variants upcoming, past)." },
+  { id: "host-summary", endpoint: "/api/events/center", variants: "single", maxVariants: 1, maxBytes: 16 * KB, audience: "account", description: "The my page's host row: hosted, active and this month's applied counts as last seen (LF8)." },
   { id: "event-overview", endpoint: "/api/events/:id/overview", variants: "keyed", maxVariants: 20, maxBytes: 256 * KB, audience: "account", description: "An event's detail page per event; the 20 most recently opened are kept." },
   { id: "event-venue", endpoint: "/api/events/:id/venue", variants: "keyed", maxVariants: 10, maxBytes: 512 * KB, audience: "account", description: "An event's venue page (seats, rounds, recommendations, people) per event; the 10 most recently opened are kept." },
   // LF3: the AI tab's plan drafts list (plans have no sync domain).

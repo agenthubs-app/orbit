@@ -21,19 +21,6 @@ test("R18a seek candidate acceptance writes only the selected value with CAS; re
   assert.equal(module.candidateSeeking(["1","2","3","4","5"], "6", true), null);
 });
 
-test("R18a summary readers isolate malformed/failed rows and never invent counts", async () => {
-  const module = await import("../src/screens/me/account-api").catch(() => null);
-  assert.ok(module);
-  const client = createOrbitApiClient({ baseUrl: "http://localhost:3400", fetchImpl: async url => {
-    const path = String(url);
-    return Response.json({ success: true, data: path.includes("inbox") ? { unreadCount: 5 } : path.includes("center") ? { eventCount: 3, appliedThisMonth: 1, activeCount: 2 } : { items: [], upcomingCount: -1 } });
-  } });
-  const summaries = await module.createAccountApi(client).summaries();
-  assert.equal(summaries.unread, 5);
-  assert.equal(summaries.going, null);
-  assert.equal(summaries.host?.eventCount, 3);
-});
-
 test("R18a candidate receipt rejects wrong actor/profile or stale revision", async () => {
   const module = await import("../src/screens/me/account-api").catch(() => null);
   assert.ok(module);

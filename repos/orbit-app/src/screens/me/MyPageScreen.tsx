@@ -12,6 +12,7 @@ import { useAccountProfile } from "./useAccountProfile";
 import { useAccountDesign } from "./useAccountDesign";
 import { AccountCopyNotice } from "./AccountCopyNotice";
 import { accountCompletionDestination } from "./account-response";
+import { useMyPageSummaries } from "./useMyPageSummaries";
 
 export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { scopeKey: string; isScopeCurrent: () => boolean; completionNext?: string | null }) {
   const router = useRouter();
@@ -21,7 +22,13 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const designMode = state.path.includes("?design=");
   const client = useOrbitApiClient({ scopeKey: state.scopeKey });
   const api = useMemo(() => createAccountApi(client, state.path), [client, state.path]);
-  const [summaries, setSummaries] = useState<Awaited<ReturnType<typeof api.summaries>>>({ unread: null, going: null, host: null });
+  const live = useMyPageSummaries(!designMode, state.scopeKey);
+  const summaries = useMemo(() => {
+    if (!designMode) return live;
+    if (!design) return { unread: null, going: null, host: null };
+    const many = design.variant === "many"; const counts = design.fixtures.eventSummary;
+    return { unread: design.variant === "empty" ? design.fixtures.unread.new : design.fixtures.unread.regular, going: many ? counts.attending : 0, host: { eventCount: many ? counts.hosted : 0, activeCount: many ? counts.active : 0, appliedThisMonth: 0 } };
+  }, [designMode, design, live]);
   const [candidates, setCandidates] = useState<string[]>([]);
   const [saved, setSaved] = useState<AccountProfileData | null>(null);
   const [error, setError] = useState(false);
@@ -29,21 +36,15 @@ export function MyPageScreen({ scopeKey, isScopeCurrent, completionNext }: { sco
   const controller = useRef<AbortController | null>(null);
   const completionHandled = useRef(false);
   const data = saved ?? state.data;
-  useEffect(() => { setSaved(null); setCandidates([]); setSummaries({ unread: null, going: null, host: null }); setError(false); saving.current = false; }, [api]);
+  useEffect(() => { setSaved(null); setCandidates([]); setError(false); saving.current = false; }, [api]);
   useEffect(() => {
     const destination = accountCompletionDestination(data, completionNext, state.offline);
     if (!completionHandled.current && destination && isScopeCurrent()) { completionHandled.current = true; router.replace(destination as Href); }
   }, [completionNext, data, state.offline, isScopeCurrent, router]);
   useEffect(() => {
     const abort = new AbortController(); controller.current = abort;
-    if (designMode) {
-      if (design) { const many = design.variant === "many"; const counts = design.fixtures.eventSummary;
-        setSummaries({ unread: design.variant === "empty" ? design.fixtures.unread.new : design.fixtures.unread.regular, going: many ? counts.attending : 0, host: { eventCount: many ? counts.hosted : 0, activeCount: many ? counts.active : 0, appliedThisMonth: 0 } }); }
-      return () => abort.abort();
-    }
-    void api.summaries(abort.signal).then(value => { if (!abort.signal.aborted && isScopeCurrent()) setSummaries(value); });
     return () => abort.abort();
-  }, [api, isScopeCurrent, designMode, design?.fixtures, design?.variant]);
+  }, [api]);
   useEffect(() => {
     if (saved?.profile && state.data?.profile && Date.parse(state.data.profile.updatedAt) >= Date.parse(saved.profile.updatedAt)) setSaved(null);
   }, [state.data, saved]);

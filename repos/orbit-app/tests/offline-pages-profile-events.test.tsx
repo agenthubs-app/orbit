@@ -22,6 +22,29 @@ test("R18a my page and public preview retain the timestamped offline copy withou
     assert.deepEqual((await requestsOf(page)).filter(value => value.startsWith("put:") || value.startsWith("post:")), []);
   }
 });
+test("LF8 my page keeps its inbox, going and host rows: offline from the saved copies, online without re-reading fresh ones", { timeout: 20000 }, async t => {
+  const { profilePayload } = await import("./helpers/profile-detail-fixtures");
+  const profiles = await startOfflinePageHarness([{ name: "profile", importPath: "./tests/helpers/me-offline-consumers", exportName: "MeOfflineConsumer" }]);
+  t.after(() => profiles.close());
+  const copies = (syncedAt: string) => ({
+    "self-profile|main": { data: profilePayload, syncedAt },
+    "events-mine|upcoming": { data: { asOf: syncedAt, items: [], range: "upcoming", upcomingCount: 3 }, syncedAt },
+    "host-summary|main": { data: { eventCount: 2, activeCount: 1, appliedThisMonth: 0 }, syncedAt },
+  });
+  for (const online of [false, true]) {
+    const page = await profiles.open(t, { screen: "profile", online, responses: { "/api/profile": profilePayload }, copies: copies(online ? new Date().toISOString() : "2026-09-28T01:10:00.000Z") });
+    await page.getByText("程川").first().waitFor({ timeout: 3000 });
+    await page.getByText("收件箱", { exact: true }).waitFor({ timeout: 3000 });
+    await page.getByText(/3\s*场/u).first().waitFor({ timeout: 3000 });
+    await page.locator("[data-testid=\"host-events-row\"]").waitFor({ timeout: 3000 });
+    if (!online) continue;
+    await page.waitForTimeout(300);
+    const requests = await requestsOf(page);
+    for (const endpoint of ["/api/inbox/notifications", "/api/events/mine", "/api/events/center"]) {
+      assert.equal(requests.some(value => value.includes(`:${endpoint}`)), false, `${endpoint}: the count comes from the device or a fresh copy`);
+    }
+  }
+});
 const meeting = { appointmentId: "m1", confirmed: { durationMinutes: 30, medium: { kind: "in_person", location: "丸之内咖啡" }, startsAtUtc: "2026-10-02T02:00:00.000Z", timezone: "Asia/Tokyo" },
   contactId: "contact:1", details: "聊储能试点的报价", detailsUpdatedAt: "2026-09-27T01:00:00.000Z", detailsUpdatedBy: "you", eventId: null, proposals: [],
   status: "confirmed", title: "和张伟约谈", updatedAt: "2026-09-27T01:00:00.000Z", version: 3, visibility: "participants" };

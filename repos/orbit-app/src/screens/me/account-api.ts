@@ -1,13 +1,10 @@
 import { z } from "zod";
 import type { OrbitApiClient } from "../../api/client";
 import { accountScreenResponseSchema } from "./account-response";
-import { hostCenterSummarySchema } from "../../api/schema/host-events";
-import type { HostCenterSummary } from "../../api/contract/host-events";
 import type { AccountProfileData } from "./MyPageContent";
 import { SEEK_OPTIONS } from "../../view-models/profile-onboarding";
 
 type Profile = NonNullable<AccountProfileData["profile"]>;
-const count = z.number().int().nonnegative();
 export function accountProfilePath(design: unknown, development: boolean): string {
   return development && (design === "25" || design === "50" || design === "100") ? `/api/profile?design=${design}` : "/api/profile";
 }
@@ -21,20 +18,7 @@ export function candidateSeeking(current: readonly string[] | undefined, candida
   return values.length <= 5 ? values : null;
 }
 export function createAccountApi(client: OrbitApiClient, profilePath = "/api/profile") {
-  async function read<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T | null> {
-    const result = await client.get<unknown>(path, signal ? { signal } : {});
-    const parsed = result.success ? schema.safeParse(result.data) : null;
-    return parsed?.success ? parsed.data : null;
-  }
   return {
-    async summaries(signal?: AbortSignal): Promise<{ unread: number | null; going: number | null; host: HostCenterSummary | null }> {
-      const [inbox, events, host] = await Promise.all([
-        read("/api/inbox/notifications?limit=1", z.object({ unreadCount: count }), signal),
-        read("/api/events/mine?range=upcoming", z.object({ upcomingCount: count }), signal),
-        read("/api/events/center?summary=1", hostCenterSummarySchema, signal),
-      ]);
-      return { unread: inbox?.unreadCount ?? null, going: events?.upcomingCount ?? null, host };
-    },
     async seekCandidates(language: string, signal?: AbortSignal): Promise<string[]> {
       if (language !== "en" && language !== "zh") return [];
       const result = await client.post<unknown>("/api/profile/seek-suggestions", { body: { language, candidates: SEEK_OPTIONS.map(option => option[language]) }, ...(signal ? { signal } : {}) });

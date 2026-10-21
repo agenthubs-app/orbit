@@ -15,7 +15,7 @@ export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "pers
  * of a server-computed page, bound to the lease epoch and AES-GCM encrypted like
  * payloads). Each is argued in the threat model section 2, 「页面副本」.
  */
-export const WEB_MIRROR_PAGE_COPY_IDS: readonly string[] = ["self-profile", "agent-actions", "agent-ledger", "relationship-tasks", "task-suggestions", "today-page", "today-summary", "todo-page", "relationship-lifecycle", "meeting-details", "home-schedule", "public-events", "event-recommendations", "home-plan-summary", "home-guide-progress", "home-week", "completion-question", "event-assessments", "events-mine", "event-overview", "event-venue", "plan-intakes"];
+export const WEB_MIRROR_PAGE_COPY_IDS: readonly string[] = ["self-profile", "agent-actions", "agent-ledger", "relationship-tasks", "task-suggestions", "today-page", "today-summary", "todo-page", "relationship-lifecycle", "meeting-details", "home-schedule", "public-events", "event-recommendations", "home-plan-summary", "home-guide-progress", "home-week", "completion-question", "event-assessments", "events-mine", "event-overview", "event-venue", "plan-intakes", "host-summary"];
 
 /**
  * Browser mirror storage: expo-sqlite's web build (wa-sqlite in a Worker, OPFS

@@ -25,9 +25,8 @@ import { eventAssessmentListSchema } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
 import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
+import { EVENTS_COPY_FRESH_MS, EVENTS_MINE_UPCOMING_PATH } from "./events-copies";
 
-/** LF2: how long the events tab shows its saved lists without re-reading them. */
-const EVENTS_COPY_FRESH_MS = 3 * 60_000;
 import { ScoreRing } from "./ScoreRing";
 import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay, ringColor, verdictKey, verdictTone } from "./events-model";
 
@@ -47,7 +46,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   // tabs no longer re-reads them), and kept with 「截至」 when the server cannot be reached (not an empty list).
   const listCopy = usePageCopyResource<unknown>("/api/events/assessments", () => false, { copy: { id: "event-assessments" },
     freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => Array.isArray(value) });
-  const upCopy = usePageCopyResource<unknown>("/api/events/mine?range=upcoming&limit=10&platform=app", () => false, { copy: { id: "events-mine", variant: "upcoming" },
+  const upCopy = usePageCopyResource<unknown>(EVENTS_MINE_UPCOMING_PATH, () => false, { copy: { id: "events-mine", variant: "upcoming" },
     freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => myEventsResponseSchema.safeParse(value).success });
   const pastCopy = usePageCopyResource<unknown>("/api/events/mine?range=past&limit=10&platform=app", () => false, { copy: { id: "events-mine", variant: "past" },
     freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => myEventsResponseSchema.safeParse(value).success });

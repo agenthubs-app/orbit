@@ -11,7 +11,7 @@ async function accountControllerScript(screen: "Iorbit" | "Suggestions" | "Integ
     const active=()=>true;
     createRoot(document.getElementById("root")).render(<${component} scopeKey="test" isScopeCurrent={active}/>);
   `, [{ name: "r18a-controller-boundaries", setup(plugin) {
-    plugin.onResolve({ filter: /\/useAccountEditor$|\/useAccountSettingsApi$|\/useAccountDesign$|\/useAccountProfile$|\/useOrbitApiClient$|\/ApiBaseUrlProvider$|\/(suggestions|account)-api$|\/AppScreen$|^expo-router$|^expo-(crypto|document-picker|image-picker|file-system|web-browser)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "r18a-state" }));
+    plugin.onResolve({ filter: /\/useAccountEditor$|\/useAccountSettingsApi$|\/useMyPageSummaries$|\/useAccountDesign$|\/useAccountProfile$|\/useOrbitApiClient$|\/ApiBaseUrlProvider$|\/(suggestions|account)-api$|\/AppScreen$|^expo-router$|^expo-(crypto|document-picker|image-picker|file-system|web-browser)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "r18a-state" }));
     plugin.onLoad({ filter: /.*/, namespace: "r18a-state" }, () => ({ loader: "jsx", resolveDir: process.cwd(), contents: `
       import React from "react";
       import {UiFeedbackHost} from "./src/components/ui/feedback-host";
@@ -30,7 +30,7 @@ async function accountControllerScript(screen: "Iorbit" | "Suggestions" | "Integ
       const design={variant:"few",fixtures:{...accountDesignFixtures,seekCandidates:["候補A","候補B"],eventSummary:{hosted:0,active:0,attending:0},unread:{new:0,regular:0}}};
       function useScopedApi(){const[value,setValue]=React.useState(api);window.switchAccountApi=()=>setValue(nextApi);return value;}
       export const useAccountEditor=()=>window.uiFixture.designIorbit?designState:state; export const useAccountSettingsApi=useScopedApi; export const useOrbitApiClient=useScopedApi; export const createAccountSuggestionsApi=client=>client; export const createAccountApi=client=>client; export const accountDestination=path=>path; export const useAccountDesign=()=>window.uiFixture.mypage||window.uiFixture.designIorbit?design:null; export const useAccountProfile=()=>profileState;
-      export const useAccountPath=()=>"/api/profile"; export const useOrbitApiBaseUrl=()=>({baseUrl:"http://fixture",ready:true});
+      export const useMyPageSummaries=()=>({unread:null,going:null,host:null}); export const useAccountPath=()=>"/api/profile"; export const useOrbitApiBaseUrl=()=>({baseUrl:"http://fixture",ready:true});
       export const AppScreen=({children})=><main>{children}<UiFeedbackHost/></main>; export const useRouter=()=>({push(){}});
       export const randomUUID=()=>"test-mutation"; export class File{}; export const openBrowserAsync=url=>{(window.openedBrowserUrls??=[]).push(url);return new Promise(resolve=>{window.resolveBrowser=resolve;});};
       export const getDocumentAsync=async()=>({canceled:true}); export const requestCameraPermissionsAsync=async()=>({granted:false}); export const requestMediaLibraryPermissionsAsync=requestCameraPermissionsAsync; export const launchCameraAsync=async()=>({canceled:true}); export const launchImageLibraryAsync=launchCameraAsync;
