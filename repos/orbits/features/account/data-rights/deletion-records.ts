@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
+import { invalidateAccountRightsAccessState } from "./access-policy";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 
 const REQUESTS = "account_deletion_requests";
@@ -54,6 +55,11 @@ async function hasActiveHostRegistrations(sql: TransactionalSqlExecutor, workspa
   return canonical.rows.length > 0;
 }
 
+/** LF4: a request, cancellation or purge claim changes the gate state; this instance drops its cached copy. */
+function gateChanged<T>(work: Promise<T>): Promise<T> {
+  return work.finally(() => invalidateAccountRightsAccessState());
+}
+
 export function createAccountDeletionRecordStore(input: { db: TransactionalPostgresClient; workspaceId: string; now?: () => Date }) {
   const { db, workspaceId } = input;
   const now = input.now ?? (() => new Date());
@@ -71,7 +77,8 @@ export function createAccountDeletionRecordStore(input: { db: TransactionalPostg
     get(actorId: string): Promise<AccountDeletionRecord | null> { return read(db, workspaceId, actorId); },
     async request(actorId: string, userId: string, receipt: string): Promise<{ kind: "accepted" | "existing" | "bad-receipt" | "host-blocked"; request?: AccountDeletionRecord }> {
       if (!actorId || !userId || !/^[A-Za-z0-9_-]{43}$/.test(receipt)) return { kind: "bad-receipt" };
-      return db.transaction(async sql => {
+      // LF4: the per-request gate caches the state for a few seconds; this instance forgets it once the request lands.
+      return gateChanged(db.transaction(async sql => {
         const id = requestId(actorId);
         const at = now().toISOString();
         await sql.query(`insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
@@ -111,10 +118,10 @@ export function createAccountDeletionRecordStore(input: { db: TransactionalPostg
           values ($1,$2,$3,$4,'account-rights',$3,$5::jsonb,$6,$6) on conflict do nothing`, [workspaceId, OUTBOX, notificationId, actorId,
           JSON.stringify({ kind: "deletion-request", status: "pending", version: 0, requestedAt: at, purgeAfter: record.purgeAfter }), at]);
         return { kind: "accepted", request: record };
-      }, { isolation: "read committed" });
+      }, { isolation: "read committed" }));
     },
     async cancel(actorId: string): Promise<{ kind: "cancelled" | "existing" | "none" | "too-late"; request?: AccountDeletionRecord }> {
-      return db.transaction(async sql => {
+      return gateChanged(db.transaction(async sql => {
         const record = await read(sql, workspaceId, actorId, true);
         if (!record) return { kind: "none" };
         if (record.status === "cancelled") return { kind: "existing", request: record };
@@ -125,10 +132,10 @@ export function createAccountDeletionRecordStore(input: { db: TransactionalPostg
         [workspaceId, REQUESTS, record.id, actorId, JSON.stringify(next), next.cancelledAt, record.version]);
         if (!saved.rows.length) throw new Error("DELETION_CAS_CONFLICT");
         return { kind: "cancelled", request: next };
-      }, { isolation: "read committed" });
+      }, { isolation: "read committed" }));
     },
     async claimNextPurge(): Promise<{ request: AccountDeletionRecord; leaseToken: string } | null> {
-      return db.transaction(async sql => {
+      return gateChanged(db.transaction(async sql => {
         const at = now().toISOString();
         const found = await sql.query<{ user_id: string; payload: AccountDeletionRecord | string }>(`select user_id,payload from orbit_records
           where workspace_id=$1 and collection_name=$2 and ((payload->>'status'='pending' and payload->>'purgeAfter'<=$3) or
@@ -145,7 +152,7 @@ export function createAccountDeletionRecordStore(input: { db: TransactionalPostg
         [workspaceId, REQUESTS, record.id, row.user_id, JSON.stringify(next), at, record.version]);
         if (!saved.rows.length) throw new Error("DELETION_CLAIM_CONFLICT");
         return { request: next, leaseToken };
-      }, { isolation: "read committed" });
+      }, { isolation: "read committed" }));
     },
   };
 }

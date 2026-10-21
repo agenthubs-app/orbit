@@ -407,6 +407,24 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
     async hasLogKey(idempotencyKey) {
       return (await rows(`select 1 from plan_log where workspace_id = $1 and actor_id = $2 and idempotency_key = $3 limit 1`, [ws, actor, idempotencyKey])).length > 0;
     },
+    async logsFor(planIds) {
+      const grouped = new Map<string, PlanV2LogEntry[]>(planIds.map((id) => [id, []]));
+      if (planIds.length === 0) return grouped;
+      for (const entry of (await rows(
+        `/* plans-v2:logs-for */ select ${LOG_COLUMNS} from plan_log where workspace_id = $1 and actor_id = $2 and plan_id = any($3::text[]) order by plan_id, seq`,
+        [ws, actor, [...planIds]],
+      )).map(logFromRow)) grouped.get(entry.planId)?.push(entry);
+      return grouped;
+    },
+    async typeItemsFor(planIds) {
+      const grouped = new Map<string, PlanV2TypeItem[]>(planIds.map((id) => [id, []]));
+      if (planIds.length === 0) return grouped;
+      for (const item of (await rows(
+        `/* plans-v2:items-for */ select ${ITEM_COLUMNS} from plan_items where workspace_id = $1 and actor_id = $2 and plan_id = any($3::text[]) and kind = 'network_need' order by plan_id, sort_key, id`,
+        [ws, actor, [...planIds]],
+      )).map(typeItemFromRow)) grouped.get(item.planId)?.push(item);
+      return grouped;
+    },
     async log(planId) {
       return (await rows(
         `select ${LOG_COLUMNS} from plan_log where workspace_id = $1 and actor_id = $2 and plan_id = $3 order by seq`,

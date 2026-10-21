@@ -117,8 +117,9 @@ export const proxy = auth(async (request) => {
   if (request.auth?.user?.id &&
       (request.nextUrl.pathname.startsWith("/api/") || request.nextUrl.pathname.startsWith("/app/")) &&
       !request.nextUrl.pathname.startsWith("/api/auth/")) {
-    const { accountRightsAccessDecision, readConfiguredAccountRightsAccessState } = await import("./features/account/data-rights/access-policy");
-    const state = await readConfiguredAccountRightsAccessState(request.auth.user.id);
+    const { accountRightsAccessDecision, readAccountRightsGateState } = await import("./features/account/data-rights/access-policy");
+    // LF4: cached per instance for a few seconds; an unreadable store lets the request through (see the gate's comment).
+    const state = await readAccountRightsGateState(request.auth.user.id);
     const decision = accountRightsAccessDecision(state, request.method, request.nextUrl.pathname);
     if (decision === "reject-api") {
       return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: "Account deletion is in progress.",

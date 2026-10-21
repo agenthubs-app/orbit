@@ -354,10 +354,10 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     return people.size + anonymous;
   }
 
-  async function goalItem(reader: PlanV2Reader, plan: PlanV2Row): Promise<PlanGoalListItem & { score: PlanScoreView }> {
-    // 每个目标只读一次条目与记录（复核 m6）。
-    const types = await reader.typeItems(plan.id);
-    const log = await reader.log(plan.id);
+  async function goalItem(reader: PlanV2Reader, plan: PlanV2Row, batch?: { types: Map<string, PlanV2TypeItem[]>; logs: Map<string, PlanV2LogEntry[]> }): Promise<PlanGoalListItem & { score: PlanScoreView }> {
+    // 每个目标只读一次条目与记录（复核 m6）；LF4: the summary reads them for all goals in one query each.
+    const types = batch?.types.get(plan.id) ?? await reader.typeItems(plan.id);
+    const log = batch?.logs.get(plan.id) ?? await reader.log(plan.id);
     const score = summarizePlanScore({ achievedAt: plan.achievedAt, awards: activeAwards(log).map(toScoreAward), now: now(), reversals: scoreReversals(log), slots: scoreSlots(plan, types) });
     return {
       goal: plan.goalText,
@@ -370,6 +370,14 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       total: score.total,
       ...(options.sample ? { sample: true as const } : {}),
     };
+  }
+
+  /** LF4: one read for every goal's need items and one for their logs, instead of two per goal. */
+  async function goalBatch(reader: PlanV2Reader, goals: readonly PlanV2Row[]) {
+    if (!reader.logsFor || !reader.typeItemsFor || goals.length < 2) return undefined;
+    const ids = goals.map((plan) => plan.id);
+    const [types, logs] = await Promise.all([reader.typeItemsFor(ids), reader.logsFor(ids)]);
+    return { types, logs };
   }
 
   const withoutScore = ({ score: _score, ...item }: PlanGoalListItem & { score: PlanScoreView }): PlanGoalListItem => item;
@@ -661,8 +669,9 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     async summary() {
       return repository.read(scope, async (reader) => {
         const goals = await reader.goalPlans();
+        const batch = await goalBatch(reader, goals);
         const items: Array<PlanGoalListItem & { score: PlanScoreView }> = [];
-        for (const plan of goals) items.push(await goalItem(reader, plan));
+        for (const plan of goals) items.push(await goalItem(reader, plan, batch));
         const current = goals.find((plan) => plan.status === "active");
         let home: PlanV2HomeSummary | null = null;
         if (current) {
@@ -681,7 +690,9 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     async listGoals() {
       return repository.read(scope, async (reader) => {
         const items: PlanGoalListItem[] = [];
-        for (const plan of await reader.goalPlans()) items.push(withoutScore(await goalItem(reader, plan)));
+        const goals = await reader.goalPlans();
+        const batch = await goalBatch(reader, goals);
+        for (const plan of goals) items.push(withoutScore(await goalItem(reader, plan, batch)));
         return items;
       });
     },

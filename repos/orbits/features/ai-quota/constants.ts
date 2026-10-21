@@ -99,6 +99,8 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   plan_review: 3,
   // R26（events DESIGN §3.1 / §9 #22）：活动评估免费每东京月 10 次（付费档上线时再加不限）。
   event_assessment: 10,
+  // LF4（主会话代定，2026-10-21）：报名 persona / 自己紹介每次提交都会重新生成，原来没有上限；每东京月 30 次。
+  event_registration_interview: 30,
 };
 
 /**
@@ -122,6 +124,8 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   plan_review: "user",
   event_assessment: "user",
   event_matching: "system",
+  // LF4: the event-registration runner reserves from the system pool (journey/ledgered-runner.ts).
+  event_registration_interview: "system",
 };
 
 export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {

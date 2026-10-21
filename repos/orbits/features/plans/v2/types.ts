@@ -195,6 +195,9 @@ export interface PlanV2Reader {
   eventItems(planId: string): Promise<PlanV2EventItem[]>;
   /** 这份计划里的计分、Step 等 v2 记录（按时间正序）。 */
   log(planId: string): Promise<PlanV2LogEntry[]>;
+  /** LF4: the logs and need items of several plans in one read each (summary / goal list), grouped by plan id. */
+  logsFor?(planIds: readonly string[]): Promise<Map<string, PlanV2LogEntry[]>>;
+  typeItemsFor?(planIds: readonly string[]): Promise<Map<string, PlanV2TypeItem[]>>;
   hasLogKey(idempotencyKey: string): Promise<boolean>;
   flowReceipt(idempotencyKey: string): Promise<PlanFlowReceipt | null>;
   /** R23：某类回执在某时刻之后的条数（C1 每日 20 次）。 */
