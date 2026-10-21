@@ -90,3 +90,14 @@ test("LF1: Home cards read the device for contacts, events, secretary and notes 
     assert.equal(requests.some((request) => request.includes(`:${endpoint}`)), false, `${endpoint} must come from the device mirror`);
   }
 });
+
+test("LF6: the next-event card shows a registered event from the device's event-day domains", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses, records: {
+    registered_event: [{ eventId: "event:lf6", participantId: "p:1", title: "LF6 東京ミートアップ", description: null, venue: "渋谷", timeZone: "Asia/Tokyo",
+      startsAt: "2099-01-10T10:00:00.000Z", endsAt: "2099-01-10T12:00:00.000Z", lifecycleState: "published", checkInOpensAt: null, eventStartsAt: null,
+      eventEndsAt: null, profileEditDeadlineAt: null, resultsAvailableAt: null, roundOneStartsAt: null, roundTwoStartsAt: null }],
+    event_registration: [{ eventId: "event:lf6", membershipStatus: "rsvped", admissionStatus: "admitted" }],
+  } });
+  await page.getByText("LF6 東京ミートアップ").waitFor();
+  assert.equal((await requestsOf(page)).some((request) => request.includes(":/api/events/mine")), false);
+});

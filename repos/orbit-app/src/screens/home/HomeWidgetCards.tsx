@@ -139,7 +139,8 @@ function EventWidget({ navigate }: { navigate: Navigate }) {
   const { styles } = useStyles(); const { t, language } = useOrbitLocale();
   // LF1: the next registered event comes from the device's event-day domains (0115), not a server read.
   const device = useDeviceMirror();
-  const day = useLocalEventDay(false);
+  // `true`: the hook ties readiness to it (a cheap conditional probe through the sync coordinator).
+  const day = useLocalEventDay(true);
   const fallback = useFallbackRead("/api/events/mine?range=upcoming", myEventsResponseSchema, !device);
   const local = useMemo(() => nextLocalRegisteredEvent(localRegisteredEvents(day.records.events), day.records.registrations, new Date()),
     [day.records.events, day.records.registrations]);
