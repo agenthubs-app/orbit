@@ -201,6 +201,8 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/data/sync/schedule-outbox-upload.ts DELETE /api/schedule-items/:id',
     'src/data/sync/message-outbox-upload.ts POST /api/relationship-communication/conversations/:id/messages',
     'src/data/sync/ai-session-outbox-upload.ts PATCH /api/ai/conversations/sessions/:id',
+    // LF12: a contact deleted offline is a sync outbox write (it was a separate AsyncStorage list, LF5).
+    'src/data/sync/contact-outbox-upload.ts DELETE /api/contacts/:id',
     'src/data/sync/ai-session-outbox-upload.ts DELETE /api/ai/conversations/sessions/:id',
   ];
   assert.deepEqual(expectedCalls.filter(expected => !actual.has(expected)), []);
@@ -209,6 +211,7 @@ test('the actual native consumers all have explicit versioned policies', async (
   assert.deepEqual(surfaces.filter(row => row.mutationPolicy === 'offline_queue').map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`).sort(), [
     'src/data/sync/ai-session-outbox-upload.ts DELETE /api/ai/conversations/sessions/:id',
     'src/data/sync/ai-session-outbox-upload.ts PATCH /api/ai/conversations/sessions/:id',
+    'src/data/sync/contact-outbox-upload.ts DELETE /api/contacts/:id',
     'src/data/sync/message-outbox-upload.ts POST /api/relationship-communication/conversations/:id/messages',
     'src/data/sync/schedule-outbox-upload.ts DELETE /api/schedule-items/:id',
     'src/data/sync/schedule-outbox-upload.ts PATCH /api/schedule-items/:id',
@@ -216,8 +219,6 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
     'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
     'src/data/sync/task-outbox-upload.ts POST /api/tasks',
-    // LF5: the 人脈 delete queue is a device queue too (it was labelled online-only).
-    'src/screens/network/contact-delete-queue.ts DELETE /api/contacts/:id',
   ]);
 });
 

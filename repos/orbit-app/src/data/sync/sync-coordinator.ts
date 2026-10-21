@@ -20,6 +20,7 @@ import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, RETIRED_PAGE_COPY_IDS, t
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
 import { parseOfflineAiSessionDelete, parseOfflineAiSessionRequest, type OfflineAiSessionDeleteInput, type OfflineAiSessionMutationInput } from "./ai-session-outbox-mutation";
+import { parseOfflineContactDelete, type OfflineContactDeleteInput } from "./contact-outbox-mutation";
 import { isOfflineRelationshipFollowupMutation, isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
 import { isOfflineScheduleEditable, localNoteIdsOfSchedule, parseOfflineScheduleRequest } from "./schedule-outbox-mutation";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
@@ -155,6 +156,10 @@ export interface SyncCoordinatorSession {
   enqueueOfflineAiSessionMutation(mutation: OfflineAiSessionMutationInput | OfflineAiSessionDeleteInput): Promise<void>;
   cancelOfflineAiSessionDelete(mutationId: string): Promise<boolean>;
   discardOfflineAiSessionMutation(mutationId: string): Promise<boolean>;
+  /** LF12: queue a contact delete made offline (the contact must be on the device); a second delete of it is a no-op. */
+  enqueueOfflineContactDelete(mutation: OfflineContactDeleteInput): Promise<void>;
+  /** LF12: 元に戻す before the delete was sent (by the contact's API id); false once it is being sent or was acknowledged. */
+  cancelOfflineContactDelete(contactId: string): Promise<boolean>;
   /** Sprint 0134: non-recurring personal schedule writes admitted to the native offline outbox. */
   enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void>;
   /** Sprint 0135: a text message into a conversation the device holds and that is active. */
@@ -989,6 +994,38 @@ export function createSyncCoordinator(input: {
           return repository.discardOutboxMutations({ workspaceId: scope.workspaceId, domainId: "ai-sessions", mutationIds: [mutationId] });
         });
         if (removed) emitChange(bound, { type: "outbox", kind: "ai_session" });
+        return removed > 0;
+      },
+      async enqueueOfflineContactDelete(mutation: OfflineContactDeleteInput): Promise<void> {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) throw new TypeError("outbox mutation is outside the active actor/workspace");
+        const contactScope = readScopeFor(bound, "contact");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasGrant = Boolean(contactScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === contactScope.workspaceId && grant.domainId === contactScope.domainId &&
+          grant.authorizationEpoch === contactScope.authorizationEpoch));
+        if (!hasGrant) throw new TypeError("contact delete is not eligible");
+        parseOfflineContactDelete(mutation);
+        await withRepository(bound, async repository => {
+          const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "contact", id: mutation.id });
+          if (!record || record.actorId !== bound.actorId || record.deletedAt !== null) throw new TypeError("offline contact delete requires a mirrored contact");
+          const pending = await repository.readOutboxOverlay({ workspaceId: bound.workspaceId!, kind: "contact" });
+          if (pending.queuedMutations.some(item => item.id === mutation.id && (item.state === "queued" || item.state === "sending"))) return;
+          await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId! });
+        });
+        emitChange(bound, { type: "outbox", kind: "contact" });
+      },
+      async cancelOfflineContactDelete(contactId: string): Promise<boolean> {
+        await bound.ready;
+        const scope = readScopeFor(bound, "contact");
+        if (!isCurrent(bound) || !scope) throw new TypeError("contact delete is outside the active lease");
+        const removed = await withRepository(bound, async repository => {
+          const rows = await repository.readOutboxOverlay({ workspaceId: scope.workspaceId, kind: "contact" });
+          const named = (item: LocalSyncQueuedMutation) => { try { return parseOfflineContactDelete(item).contactId === contactId; } catch { return false; } };
+          const ids = rows.queuedMutations.filter(item => item.operation === "delete" && item.state === "queued" && named(item)).map(item => item.mutationId);
+          return ids.length ? repository.discardOutboxMutations({ workspaceId: scope.workspaceId, domainId: "contacts", mutationIds: ids }) : 0;
+        });
+        if (removed) emitChange(bound, { type: "outbox", kind: "contact" });
         return removed > 0;
       },
       async enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void> {

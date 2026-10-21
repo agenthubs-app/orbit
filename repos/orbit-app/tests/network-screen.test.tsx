@@ -41,12 +41,18 @@ export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, navigate(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const useFocusEffect = () => undefined;
-export const useSyncCoordinatorSession = () => null;
+// LF12: the device session's outbox for contact deletes (the coordinator's own rules are tested in lf12-contact-delete-outbox).
+const outboxSession = {
+  async enqueueOfflineContactDelete(mutation) { (state.outbox ??= []).push({ id: mutation.id, contactId: JSON.parse(mutation.requestJson).contactId }); },
+  async cancelOfflineContactDelete(contactId) { const before = (state.outbox ?? []).length; state.outbox = (state.outbox ?? []).filter((item) => item.contactId !== contactId); return state.outbox.length < before; },
+  async readOutboxOverlay() { return { serverRecords: [], queuedMutations: (state.outbox ?? []).map((item) => ({ id: item.id, operation: "delete", state: "queued" })) }; },
+};
+export const useSyncCoordinatorSession = () => outboxSession;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: state.lastSyncedAt === undefined ? "2026-10-18T05:40:00.000Z" : state.lastSyncedAt, workspaceId: "workspace:one",
   records: kind === "contact" ? contacts() : kind === "task" ? tasks() : [],
-  refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession: () => null,
+  refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession: () => outboxSession,
 });
 const offline = { kind: "offline", error: { code: "NETWORK", message: "Network request failed" }, meta: {}, status: 0, refreshing: false, refresh() {} };
 export const useApiResource = (path, _isEmpty, options) => {
@@ -329,19 +335,21 @@ test("delete online: confirm → DELETE → back to the list, gone, with 元に�
   await page.getByTestId("network-row-c-ito").waitFor();
 });
 
-test("delete offline goes to the write queue: hidden now, sent when the list opens online", async (t) => {
+test("delete offline goes to the sync outbox (LF12): hidden now, sent by the next sync round, 元に戻す drops it", async (t) => {
   const page = await open(t, { screen: "detail", params: { id: "c-ishikawa" }, online: false });
   await page.getByTestId("network-contact-head").waitFor();
   await page.getByRole("button", { name: "その他の操作" }).click();
   await page.getByRole("button", { name: "削除" }).click();
   await page.getByRole("button", { name: "削除する" }).click();
   await page.waitForFunction(() => (window as any).fixture.navigation.includes("/contacts"));
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.outbox.map((item: { contactId: string }) => item.contactId)), ["c-ishikawa"]);
   await page.evaluate(() => (window as any).showScreen("list"));
   await page.getByText("オンラインになったら削除します", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-row-c-ishikawa").count(), 0);
-  await page.evaluate(() => { (window as any).fixture.online = true; (window as any).showScreen("detail"); });
-  await page.evaluate(() => (window as any).showScreen("list"));
-  await page.waitForFunction(() => (window as any).fixture.requests.filter((path: string) => path === "delete:/api/contacts/c-ishikawa").length >= 2);
+  assert.equal((await page.evaluate(() => (window as any).fixture.requests as string[])).filter((path) => path === "delete:/api/contacts/c-ishikawa").length, 1, "only the first online attempt; the list no longer sends it");
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await page.waitForFunction(() => (window as any).fixture.outbox.length === 0);
+  await page.getByTestId("network-row-c-ishikawa").waitFor();
 });
 
 test("edit (b5 #42 / #43): fields → PATCH …/fields, industry / level / stage / tags → PATCH …/:id; offline cannot save", async (t) => {

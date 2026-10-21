@@ -10,5 +10,6 @@ export type { LocalContactsState } from "./local-contacts-source";
  * screens keep their network reads.
  */
 export function useLocalContacts(probe = true): LocalContactsState {
-  return useLocalContactsSource(useWebMirrorStatus().mode === "local-mirror", probe);
+  // Writes never queue in the browser (D2): an offline delete there says it needs the network.
+  return useLocalContactsSource(useWebMirrorStatus().mode === "local-mirror", probe, false);
 }

@@ -6,11 +6,12 @@ import { useSyncedCollection } from "./useSyncedCollection";
 
 export { NO_PENDING_WRITES, pendingWriteItems, type PendingWriteCounts } from "./pending-write-items";
 
-const KINDS: readonly (keyof PendingWriteCounts & SyncChangeKind)[] = ["note", "task", "personal_schedule", "relationship_message"];
+const KINDS: readonly (keyof PendingWriteCounts & SyncChangeKind)[] = ["note", "task", "personal_schedule", "relationship_message", "contact", "ai_session"];
 
 /**
  * Sprint 0136 (承接 0036 SC-03): how many of this account's writes are still only on the
- * device, per kind — notes, personal tasks, personal schedule, unsent messages. Counts
+ * device, per kind — notes, personal tasks, personal schedule, unsent messages, offline contact
+ * deletes and iOrbit conversation edits (LF12). Counts
  * only (never content). It re-reads whenever the device copy changes (an enqueue, an
  * acknowledgement, a completed sync) and starts from zero for every signed-in scope, so
  * another account's counts never show. The browser build (D2) has no queue: see .web.ts.

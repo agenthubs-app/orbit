@@ -35,7 +35,7 @@
 | `/chat/:id` | 对话 | 0119 | 域 relationship-messages，按对话按页从本机读（0131） | 「截至」；发送需要联网 |
 | `/contacts` | 人脈（一覧：页签、絞り込み、搜索；R11a） | R11a | 域 contacts、域 tasks（要フォロー）；目標に関係 / 跟进 id 读 /api/contacts/goal-related-ids 并缓存 | 「截至」；页签、絞り込み、本机搜索照常（计划 id 用上次缓存） |
 | `/contacts/list` | 旧联系人列表（R11a 起跳到 /contacts） | R11a | 无（跳转） | 跳到 /contacts |
-| `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进本机队列 |
+| `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进同步待发队列（LF12），各页面立刻隐藏，随同步补发，计入未同步 |
 | `/contacts/edit/:id` | 連絡先の編集（R11a） | R11a | 域 contacts | 「截至」；保存需要联网；删除进本机队列 |
 | `/contacts/dashboard` | 人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b） | R11b | LF3 起（0117 本机计算恢复）：構造・機会・インサイト由本机域 contacts（+ 目標に関係 id 缓存、域 tasks 的要フォロー）按共用规则 shared/compute/network-analysis-model.ts 在手机上算；/api/network/analysis 只为取计划需求（needs）读，保存在本机，新鲜期 10 分钟内不重读；服务器从没回应过时照旧读服务器；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute | 离线提示条；分析用本机联系人现算（计划缺口用上次保存的计划需求）；見立て显示「読み込めませんでした」；見直す需要联网；从没联网读过时显示可重试的「人数を読み込めませんでした」 |
 | `/contacts/analysis/:dimension/:bucketId` | 人脈分析の名簿（段階の内訳、並び順、R11b） | R11b | LF3 起：名簿在手机上用本机联系人按共用规则算（每一页，さらに表示不走网络）；本机算不了时（浏览器无本机库或服务器从没回应）读 /api/network/analysis/people，10人未満读 /api/network/analysis 显示锁定 | 离线提示条；本机现算的名簿照常翻页；服务器路径时显示上次保存的第一页，さらに表示需要联网 |

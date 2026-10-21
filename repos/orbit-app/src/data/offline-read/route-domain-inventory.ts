@@ -100,8 +100,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const aiSessionOutboxWrite = consumerFile === 'src/data/sync/ai-session-outbox-upload.ts' && domainId === 'ai-sessions'
     && (method === 'PATCH' || method === 'DELETE');
-  // LF5: the 人脈 delete queue (R11a) keeps a delete on the device until it can be sent — an offline queue, not online-only.
-  const contactDeleteQueueWrite = consumerFile === 'src/screens/network/contact-delete-queue.ts' && method === 'DELETE';
+  // LF12: a contact deleted offline waits in the sync outbox and is sent by every sync round — an offline queue, not online-only.
+  const contactDeleteQueueWrite = consumerFile === 'src/data/sync/contact-outbox-upload.ts' && method === 'DELETE';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   // The version response is public, but changes on the server and is no-store;
   // online_only_secret is this inventory's existing never-persisted read policy.
@@ -742,7 +742,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/network/NetworkContactScreen.tsx","GET","/api/contacts/value-lines"],
   ["src/screens/network/NetworkContactScreen.tsx","POST","/api/agent/plans/v2/:id/types/:id/candidates/:id/decision"],
   ["src/screens/network/NetworkScreen.tsx","POST","/api/contacts/:id/restore"],
-  ["src/screens/network/contact-delete-queue.ts","DELETE","/api/contacts/:id"],
+  ["src/data/sync/contact-outbox-upload.ts","DELETE","/api/contacts/:id"],
   ["src/screens/network/useDeleteContact.ts","DELETE","/api/contacts/:id"],
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/page"],
   ["src/screens/network/useNetworkList.ts","GET","/api/contacts/summary"],
