@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { EventVenuePerson, EventVenueResponse } from "../../../api/contract/event-venue";
 import { eventVenueResponseSchema } from "../../../api/schema/event-venue";
-import { OfflineNotice } from "../../../components/OfflineNotice";
+import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { RetryCard } from "../../../components/ui/States";
 import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
@@ -180,7 +180,7 @@ export function VenuePage() {
   const toAfter = () => router.replace(`${base}/after` as Href);
 
   const back = { fallback: base, leftLabel: t("close"), leftIcon: "x" as const };
-  const notice = offlineAt ? <OfflineNotice lastSyncedAt={offlineAt} /> : null;
+  const notice = offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null;
   if (!data) return <JourneyPage title={t("liveTitle")} {...back}>{missing === "network"
     ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); void load(); }} />
     : missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;

@@ -9,7 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
 import { eventOverviewResponseSchema } from "../../../api/schema/event-overview";
-import { OfflineNotice } from "../../../components/OfflineNotice";
+import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { RetryCard } from "../../../components/ui/States";
 import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
@@ -190,7 +190,7 @@ export function EventDetailPage() {
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.pad} stickyHeaderIndices={assessment ? [offlineAt ? 3 : 2] : undefined}>
         {header}
-        {offlineAt ? <OfflineNotice lastSyncedAt={offlineAt} /> : null}
+        {offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
           <Cover style={styles.cover}>
             <View style={[styles.emo, { backgroundColor: colors.surface }]}><UiText style={styles.coverEmo}>{data.emoji}</UiText></View>

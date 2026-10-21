@@ -23,7 +23,7 @@ import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
 import { eventAssessmentListSchema } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
-import { OfflineNotice } from "../../../components/OfflineNotice";
+import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
 
 /** LF2: how long the events tab shows its saved lists without re-reading them. */
@@ -85,7 +85,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
           left={<IconButton icon="search" accessibilityLabel={t("eventsV2.searchEvents")} onPress={() => setTab("discover")} />}
           right={<IconButton icon="calendar" accessibilityLabel={t("eventsV2.calendar")} onPress={() => router.push("/task?seg=calendar" as Href)} />} />
       </View>
-      {offlineCopy ? <OfflineNotice lastSyncedAt={offlineCopy.lastSyncedAt} reason={offlineCopy.reason} /> : null}
+      {offlineCopy ? <EventsOfflineNotice lastSyncedAt={offlineCopy.lastSyncedAt} reason={offlineCopy.reason} /> : null}
       <SwipeSegments
         variant="seg"
         dots={false}
