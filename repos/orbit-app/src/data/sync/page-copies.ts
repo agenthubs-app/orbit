@@ -65,6 +65,12 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "home-guide-progress", endpoint: "/api/home/guide-progress", variants: "single", maxVariants: 1, maxBytes: 16 * KB, audience: "account", description: "The Home three-step guide's last answer (derived from contacts, goal and plan on the server)." },
   { id: "home-week", endpoint: "/api/schedule-items", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The Home week card's last answer (this week's calendar items)." },
   { id: "completion-question", endpoint: "/api/contacts/completion-question", variants: "single", maxVariants: 1, maxBytes: 32 * KB, audience: "account", description: "Today's one completion question (the card re-reads after an answer or skip)." },
+  // LF2: events. The tab's three lists, and the detail and venue answers of the most recently opened events, so a
+  // registered attendee can read them on the event day without signal (what 0115's event-day screens gave).
+  { id: "event-assessments", endpoint: "/api/events/assessments", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The events tab's assessment list as last seen." },
+  { id: "events-mine", endpoint: "/api/events/mine", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The events tab's upcoming and past registrations as last seen (variants upcoming, past)." },
+  { id: "event-overview", endpoint: "/api/events/:id/overview", variants: "keyed", maxVariants: 20, maxBytes: 256 * KB, audience: "account", description: "An event's detail page per event; the 20 most recently opened are kept." },
+  { id: "event-venue", endpoint: "/api/events/:id/venue", variants: "keyed", maxVariants: 10, maxBytes: 512 * KB, audience: "account", description: "An event's venue page (seats, rounds, recommendations, people) per event; the 10 most recently opened are kept." },
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];

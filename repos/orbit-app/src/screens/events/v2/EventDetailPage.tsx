@@ -8,6 +8,10 @@ import { Platform, ScrollView, Share, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { EventOverviewResponse } from "../../../api/contract/event-overview";
+import { eventOverviewResponseSchema } from "../../../api/schema/event-overview";
+import { OfflineNotice } from "../../../components/OfflineNotice";
+import { RetryCard } from "../../../components/ui/States";
+import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, UnderlineTabs, useToast, type IconName } from "../../../components/ui";
@@ -69,7 +73,11 @@ export function EventDetailPage() {
   const params = useLocalSearchParams<{ id?: string; tab?: string }>();
   const eventId = String(params.id ?? "");
   const [data, setData] = useState<EventOverviewResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  const [missing, setMissing] = useState<"not_found" | "network" | null>(null);
+  // LF2: the last answer for this event, shown at once and kept with 「截至」 when the server cannot be reached.
+  const copy = useKeyedPageCopy<EventOverviewResponse>("event-overview", eventId, (value) => eventOverviewResponseSchema.safeParse(value).success);
+  const [offlineAt, setOfflineAt] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   const [tab, setTab] = useState<Tab>(params.tab === "people" || params.tab === "agenda" || params.tab === "host" ? params.tab : "intro");
   const [filter, setFilter] = useState<Filter>("planFit");
   const [whyOpen, setWhyOpen] = useState(false);
@@ -78,9 +86,18 @@ export function EventDetailPage() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let live = true;
-    void api.overview(eventId).then((result) => { if (!live) return; if (result.ok) setData(result.data); else setMissing(true); });
+    void (async () => {
+      const saved = await copy.read();
+      if (live && saved) setData(saved.data);
+      const result = await api.overview(eventId);
+      if (!live) return;
+      if (result.ok) { setData(result.data); setOfflineAt(null); setMissing(null); void copy.save(result.data); return; }
+      const unreachable = result.reason === "network" || result.reason === "unavailable";
+      if (saved && unreachable) setOfflineAt(saved.syncedAt);
+      else setMissing(unreachable ? "network" : "not_found");
+    })();
     return () => { live = false; };
-  }, [api, eventId]);
+  }, [api, copy, eventId, reload]);
 
   const tone = (key: Tone) => ({ apricot: [colors.macApricot, colors.macApricotInk], blue: [colors.macBlue, colors.macBlueInk], lav: [colors.macLav, colors.macLavInk], pink: [colors.macPink, colors.macPinkInk], teal: [colors.macTeal, colors.macTealInk] } as const)[key];
   const base = `/events/${encodeURIComponent(eventId)}`;
@@ -119,7 +136,9 @@ export function EventDetailPage() {
     return (
       <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]}>
         <ShellBackground />
-        <View style={styles.pad}>{header}{missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : null}</View>
+        <View style={styles.pad}>{header}{missing === "network"
+          ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); setReload((value) => value + 1); }} />
+          : missing ? <View style={styles.card}><UiText style={styles.sub}>{t("notFound")}</UiText></View> : null}</View>
       </SafeAreaView>
     );
   }
@@ -169,8 +188,9 @@ export function EventDetailPage() {
   return (
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-detail">
       <ShellBackground />
-      <ScrollView contentContainerStyle={styles.pad} stickyHeaderIndices={assessment ? [2] : undefined}>
+      <ScrollView contentContainerStyle={styles.pad} stickyHeaderIndices={assessment ? [offlineAt ? 3 : 2] : undefined}>
         {header}
+        {offlineAt ? <OfflineNotice lastSyncedAt={offlineAt} /> : null}
         <View style={[styles.card, styles.coverCard]}>
           <Cover style={styles.cover}>
             <View style={[styles.emo, { backgroundColor: colors.surface }]}><UiText style={styles.coverEmo}>{data.emoji}</UiText></View>

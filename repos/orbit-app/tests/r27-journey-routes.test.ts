@@ -6,7 +6,7 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("journey routes render the R27 screens behind the private and online-only gates", () => {
+test("journey routes render the R27 screens behind the private gate; only detail and venue drop the online-only gate (LF2 page copies)", () => {
   for (const [route, screen] of [
     ["app/events/[id].tsx", "EventDetailPage"],
     ["app/events/[id]/register.tsx", "RegisterPage"],
@@ -17,7 +17,11 @@ test("journey routes render the R27 screens behind the private and online-only g
   ] as const) {
     const source = read(route);
     assert.match(source, new RegExp(`import \\{ ${screen} \\} from "[./]+src/screens/events/v2/${screen}"`), route);
-    assert.match(source, /withOrbitPrivateRoute\(withOnlineOnlyRoute\(/, route);
+    if (route === "app/events/[id].tsx" || route === "app/events/[id]/live.tsx") {
+      // LF2: readable offline from the per-event page copy (event-overview / event-venue).
+      assert.match(source, /withOrbitPrivateRoute\((EventDetailRoute|EventVenueRoute)\)/, route);
+      assert.doesNotMatch(source, /withOnlineOnlyRoute/, route);
+    } else assert.match(source, /withOrbitPrivateRoute\(withOnlineOnlyRoute\(/, route);
   }
   assert.match(read("app/register.tsx"), /<Redirect href=\{"\/events\/assess\?mode=code" as Href\} \/>/);
 });

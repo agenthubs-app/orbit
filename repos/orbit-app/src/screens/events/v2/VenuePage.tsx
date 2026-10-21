@@ -11,6 +11,10 @@ import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { EventVenuePerson, EventVenueResponse } from "../../../api/contract/event-venue";
+import { eventVenueResponseSchema } from "../../../api/schema/event-venue";
+import { OfflineNotice } from "../../../components/OfflineNotice";
+import { RetryCard } from "../../../components/ui/States";
+import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, useShellTopGap } from "../../../components/ShellTopBar";
 import { BottomSheet, GlassSurface, Icon, IconButton, TabBar, UiPressable, UiText, usePageBottomBar, useToast, type IconName } from "../../../components/ui";
@@ -74,7 +78,11 @@ export function VenuePage() {
   const eventId = String(params.id ?? "");
   const base = `/events/${encodeURIComponent(eventId)}`;
   const [data, setData] = useState<EventVenueResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  const [missing, setMissing] = useState<"not_found" | "network" | null>(null);
+  // LF2: the last venue answer for this event (seats, rounds, recommendations): shown at once, kept with 「截至」 offline.
+  const copy = useKeyedPageCopy<EventVenueResponse>("event-venue", eventId, (value) => eventVenueResponseSchema.safeParse(value).success);
+  const [offlineAt, setOfflineAt] = useState<string | null>(null);
+  const savedAt = useRef<string | null>(null);
   const [tab, setTab] = useState<Tab>(isTab(params.tab) ? params.tab : "now");
   const [view, setView] = useState<"list" | "map">(params.view === "map" ? "map" : "list");
   const [selectedId, setSelectedId] = useState<string | null>(params.person ?? null);
@@ -86,8 +94,22 @@ export function VenuePage() {
   const [slots, setSlots] = useState<string[] | null>(null);
   const memoRef = useRef<TextInput | null>(null);
 
-  const load = useCallback(() => api.venue(eventId).then((res) => { if (res.ok) setData(res.data); else setMissing(true); return res; }), [api, eventId]);
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(() => api.venue(eventId).then((res) => {
+    if (res.ok) { setData(res.data); setOfflineAt(null); setMissing(null); void copy.save(res.data); return res; }
+    const unreachable = res.reason === "network" || res.reason === "unavailable";
+    if (unreachable && savedAt.current) setOfflineAt(savedAt.current);
+    else setMissing(unreachable ? "network" : "not_found");
+    return res;
+  }), [api, copy, eventId]);
+  useEffect(() => {
+    let live = true;
+    void copy.read().then((saved) => {
+      if (!live) return undefined;
+      if (saved) { savedAt.current = saved.syncedAt; setData(saved.data); }
+      return load();
+    });
+    return () => { live = false; };
+  }, [copy, load]);
 
   const people = useMemo(() => {
     if (!data) return [] as EventVenuePerson[];
@@ -158,13 +180,17 @@ export function VenuePage() {
   const toAfter = () => router.replace(`${base}/after` as Href);
 
   const back = { fallback: base, leftLabel: t("close"), leftIcon: "x" as const };
-  if (!data) return <JourneyPage title={t("liveTitle")} {...back}>{missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
+  const notice = offlineAt ? <OfflineNotice lastSyncedAt={offlineAt} /> : null;
+  if (!data) return <JourneyPage title={t("liveTitle")} {...back}>{missing === "network"
+    ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); void load(); }} />
+    : missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
   if (data.state === "before_check_in") {
-    return <JourneyPage title={t("checkIn")} subtitle={data.title} {...back} testID="events-venue"><CheckInView data={data} t={t} /></JourneyPage>;
+    return <JourneyPage title={t("checkIn")} subtitle={data.title} {...back} testID="events-venue">{notice}<CheckInView data={data} t={t} /></JourneyPage>;
   }
   if (data.state !== "checked_in") {
     return (
       <JourneyPage title={t("liveTitle")} subtitle={data.title} {...back} testID="events-venue">
+        {notice}
         <View style={vs.card}><UiText style={vs.sub}>{data.state === "ended" ? t("liveEnded") : t("liveNotRegistered")}</UiText></View>
         {data.state === "ended" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("toAfter")} onPress={toAfter} style={[vs.btnSm, vs.primary, vs.gap]}><UiText style={[vs.btnSmText, { color: colors.bg }]}>{t("toAfter")}</UiText></UiPressable> : null}
       </JourneyPage>
@@ -181,6 +207,7 @@ export function VenuePage() {
     <SafeAreaView edges={["top"]} style={[styles.page, { paddingTop: topGap }]} testID="events-venue">
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
+        {notice}
         <LiveTopBar title={shortTitle(data.title)} line={line} onClose={toAfter} onQr={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))} t={t} />
         {tab === "now" ? <NowTab data={shown} t={t} toneOf={toneOf} onRecap={toAfter} onMoreOpeners={() => setOpenerShift((value) => value + 1)} /> : null}
         {tab === "recs" ? <RecsTab data={data} t={t} toneOf={toneOf} onRequest={(person) => void requestSwap(person)} onOpen={(person) => setSelectedId(person.attendeeId)}

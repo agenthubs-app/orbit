@@ -788,6 +788,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/v2/events-api.ts","GET","/api/events/assessments/:id"],
   ["src/screens/events/v2/events-api.ts","GET","/api/events/assessments/availability"],
   ["src/screens/events/v2/events-api.ts","GET","/api/events/mine"],
+  // LF2: the events tab reads its three lists as page copies (event-assessments, events-mine).
+  ["src/screens/events/v2/EventsHome.tsx","GET","/api/events/assessments"],
+  ["src/screens/events/v2/EventsHome.tsx","GET","/api/events/mine"],
   ["src/screens/events/v2/events-api.ts","PATCH","/api/events/assessments/:id"],
   ["src/screens/events/v2/events-api.ts","POST","/api/events/assessments"],
   ["src/screens/events/v2/events-api.ts","POST","/api/events/assessments/:id/add-to-plan"],

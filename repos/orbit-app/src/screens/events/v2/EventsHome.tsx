@@ -21,7 +21,13 @@ import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
-import { useEventsApi } from "./events-api";
+import { eventAssessmentListSchema } from "./events-api";
+import { myEventsResponseSchema } from "../../../api/schema/events-mine";
+import { OfflineNotice } from "../../../components/OfflineNotice";
+import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
+
+/** LF2: how long the events tab shows its saved lists without re-reading them. */
+const EVENTS_COPY_FRESH_MS = 3 * 60_000;
 import { ScoreRing } from "./ScoreRing";
 import { appCardLine, appEventWhen, monthOf, orderAssessed, relativeDay, ringColor, verdictKey, verdictTone } from "./events-model";
 
@@ -34,32 +40,31 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   const params = useGlobalSearchParams<{ tab?: string; period?: string; areas?: string; themes?: string; q?: string; filters?: string }>();
   // 探す 的条件也走路由参数（可分享；门禁用来打开筛选弹层 / 搜索中）。
   const discoverQuery = useMemo(() => discoverQueryFromParams(params), [params.period, params.areas, params.themes]); // eslint-disable-line react-hooks/exhaustive-deps
-  const api = useEventsApi();
   const topGap = useShellTopGap();
   const [tab, setTab] = useState<Tab>(params.tab === "going" || params.tab === "discover" ? params.tab : "assess");
-  const [items, setItems] = useState<EventAssessmentContract[] | null>(null);
-  const [upcoming, setUpcoming] = useState<MyEventItem[]>([]);
-  const [past, setPast] = useState<MyEventItem[]>([]);
-  const [goingCount, setGoingCount] = useState(0);
-  // 服务端时钟（events-mine `asOf`）：今夜 / 「10月」与参加予定的划分一致（设计稿 fixture 固定时钟）。
-  const [now, setNow] = useState(() => new Date());
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
-
-  useFocusEffect(useCallback(() => {
-    let live = true;
-    void Promise.all([api.list(), api.mine("upcoming", 10), api.mine("past", 10)]).then(([list, up, before]) => {
-      if (!live) return;
-      setItems(list.ok ? list.data : []);
-      if (up.ok) {
-        setUpcoming([...up.data.items]);
-        setGoingCount(up.data.upcomingCount);
-        const asOf = up.data.asOf ? new Date(up.data.asOf) : null;
-        if (asOf && Number.isFinite(asOf.getTime())) setNow(asOf);
-      }
-      if (before.ok) setPast([...before.data.items]);
-    });
-    return () => { live = false; };
-  }, [api]));
+  // LF2: the three lists are page copies — shown at once, re-read after their fresh window or a write (switching
+  // tabs no longer re-reads them), and kept with 「截至」 when the server cannot be reached (not an empty list).
+  const listCopy = usePageCopyResource<unknown>("/api/events/assessments", () => false, { copy: { id: "event-assessments" },
+    freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => Array.isArray(value) });
+  const upCopy = usePageCopyResource<unknown>("/api/events/mine?range=upcoming&limit=10&platform=app", () => false, { copy: { id: "events-mine", variant: "upcoming" },
+    freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => myEventsResponseSchema.safeParse(value).success });
+  const pastCopy = usePageCopyResource<unknown>("/api/events/mine?range=past&limit=10&platform=app", () => false, { copy: { id: "events-mine", variant: "past" },
+    freshForMs: EVENTS_COPY_FRESH_MS, accept: (value) => myEventsResponseSchema.safeParse(value).success });
+  const answered = (state: typeof listCopy) => state.kind === "success" || state.kind === "empty";
+  const items = useMemo<EventAssessmentContract[] | null>(() => {
+    if (listCopy.kind === "loading") return null;
+    const parsed = answered(listCopy) ? eventAssessmentListSchema.safeParse(listCopy.data) : null;
+    return parsed?.success ? parsed.data : [];
+  }, [listCopy]); // eslint-disable-line react-hooks/exhaustive-deps
+  const up = useMemo(() => { const parsed = answered(upCopy) ? myEventsResponseSchema.safeParse(upCopy.data) : null; return parsed?.success ? parsed.data : null; }, [upCopy]); // eslint-disable-line react-hooks/exhaustive-deps
+  const before = useMemo(() => { const parsed = answered(pastCopy) ? myEventsResponseSchema.safeParse(pastCopy.data) : null; return parsed?.success ? parsed.data : null; }, [pastCopy]); // eslint-disable-line react-hooks/exhaustive-deps
+  const upcoming = useMemo<MyEventItem[]>(() => [...(up?.items ?? [])], [up]);
+  const past = useMemo<MyEventItem[]>(() => [...(before?.items ?? [])], [before]);
+  const goingCount = up?.upcomingCount ?? 0;
+  // 服务端时钟（events-mine `asOf`）：今夜 / 「10月」与参加予定的划分一致（设计稿 fixture 固定时钟）。
+  const now = useMemo(() => { const asOf = up?.asOf ? new Date(up.asOf) : null; return asOf && Number.isFinite(asOf.getTime()) ? asOf : new Date(); }, [up]);
+  const offlineCopy = [listCopy.copy, upCopy.copy, pastCopy.copy].find((copy) => copy?.offline) ?? null;
 
   const ordered = useMemo(() => orderAssessed((items ?? []).filter((item) => item.status === "ready" || item.status === "needs_input" || item.status === "reading")), [items]);
   const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
@@ -80,6 +85,7 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
           left={<IconButton icon="search" accessibilityLabel={t("eventsV2.searchEvents")} onPress={() => setTab("discover")} />}
           right={<IconButton icon="calendar" accessibilityLabel={t("eventsV2.calendar")} onPress={() => router.push("/task?seg=calendar" as Href)} />} />
       </View>
+      {offlineCopy ? <OfflineNotice lastSyncedAt={offlineCopy.lastSyncedAt} reason={offlineCopy.reason} /> : null}
       <SwipeSegments
         variant="seg"
         dots={false}

@@ -7,13 +7,13 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 37 |
+| 能断网看（本地优先） | 39 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0117 实现 | 1 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 59 |
+| 只能在线 | 57 |
 | 不读账号数据（布局、跳转、本机设置） | 39 |
 | 合计（路由文件） | 135 |
 
@@ -41,6 +41,8 @@
 | `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131） | 「截至」；重新计算、运行审计需要联网 |
 | `/contacts/dashboard` | 人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b） | R11b | 页面副本 network-analysis（/api/network/analysis）；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute | 离线提示条；显示上次保存的分析；見立て显示「読み込めませんでした」；見直す需要联网；从没打开过时显示可重试的「人数を読み込めませんでした」 |
 | `/contacts/analysis/:dimension/:bucketId` | 人脈分析の名簿（段階の内訳、並び順、R11b） | R11b | 页面副本：每个分组和顺序的第一页（/api/network/analysis/people）；さらに表示读下一页；10人未満读 /api/network/analysis 显示锁定 | 离线提示条；显示上次保存的第一页；さらに表示需要联网；没打开过的显示可重试状态 |
+| `/events/:id` | イベント詳細（R27） | LF2 | /api/events/:id/overview；上次回应存为按活动的页面副本 event-overview（最近 20 个），打开时先显示副本再在线更新 | 「截至」显示上次看到的详情；从没打开过的活动显示「需要联网」并可重试；报名、取消、保存评估需要联网 |
+| `/events/:id/live` | 会場モード（R27） | LF2 | /api/events/:id/venue；上次回应存为按活动的页面副本 event-venue（最近 10 个）：席・ラウンド・推荐・参加者 | 「截至」显示上次看到的会场内容；名刺交換、面談提案、メモ保存需要联网；从没打开过显示「需要联网」 |
 | `/schedule/personal/:id` | 个人日程详情 | 0108 | 域 personal-schedule | 「截至」；编辑、改期需要联网 |
 | `/schedule/personal/:id/edit` | 编辑个人日程 | 0108 | 域 personal-schedule | 表单显示本机内容；保存需要联网 |
 | `/schedule/personal/new` | 新建个人日程 | 0108 | 域 personal-schedule（关联选项读本机联系人、笔记） | 保存需要联网 |
@@ -58,7 +60,7 @@
 | `/profile/tags` | 资料标签 | 0131 | 页面副本 self-profile | 「截至」；保存标签需要联网 |
 | `/schedule/meetings/:id` | 约谈详情 | 0131 | 页面副本 meeting-details（按约谈保存最近打开的 20 个） | 「截至」；打开过的约谈显示本机副本；修改需要联网；没打开过的显示「需要联网」 |
 | `/schedule/events/:id` | 日历里的活动预览 | 0131 | 已报名的活动直接跳到 /events/:id（域 registered-events）；其他活动读 /api/events/public/:id | 已报名的活动跳转后可离线；其他活动显示「需要联网」 |
-| `/events` | 活动标签：活动列表和推荐 | 0131 | 页面副本 public-events（公开活动目录）和 event-recommendations | 「截至」；显示最近一次看到的列表；报名需要联网 |
+| `/events` | 活动标签：評価・参加予定・探す | 0131 | LF2 起：評価列表、参加予定、過去的参加读页面副本 event-assessments / events-mine（upcoming、past），新鲜期 3 分钟内切换标签不重读，任何写入后作废；探す（R26 discover/search）在线 | 「截至」；評価与参加予定显示最近一次看到的列表（不再显示成空列表）；探す、评估新活动、报名需要联网 |
 | `/home/events` | 推荐活动（旧入口） | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
 | `/events/:id/operations/check-in` | 受付（R17：名前検索 · 到着 · 取り消す · 当日枠 · QR） | R17 | /api/host/events/:id/kiosk（在线）；本机名单缓存 kiosk_roster（expo-sqlite，GET /kiosk/roster 成功后才存，TTL = cacheUntil，没有权限即清） | 用本机名单搜索并记到着；到着进本机队列（expo-sqlite），联网后按幂等键补发；撤销与当日枠需要联网 |
 
@@ -72,8 +74,6 @@
 | `/settings/notifications` | 通知设置（R14） | 涉及凭据或会话：读取本账号实时推送偏好与设备状态；版本写入和撤销设备须联网 | /api/inbox/delivery/preferences、/api/inbox/discovery/preferences、/api/devices/push | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/notifications/secretary` | 秘書通知设置（R14） | 涉及凭据或会话：读取本账号实时来源开关和推送上限；版本写入须联网 | /api/inbox/delivery/preferences | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/settings/integrations` | 关联服务（R18a） | 涉及凭据或会话：读取真实授权状态；连接和解除均需服务器 | /api/integrations、/api/integrations/:provider | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/events/:id` | イベント詳細（R27） | 需要服务器实时计算：评估分数与「会えそうな人」按当前计划在服务器计算 | /api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/events/:id/live` | 会場モード（R27） | 需要服务器实时计算：席・ラウンド・推荐由主办方发布的结果在服务器组合；名刺交換是写入 | /api/events/:id/venue | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account` | 账号与会话 | 涉及凭据或会话：账号、登录会话和退出都在服务器上确认 | /api/account/me | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/login` | 登录 | 涉及凭据或会话：提交密码需要服务器验证 | /api/auth/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -220,12 +220,12 @@
 | `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
 | `app/e/[slug].tsx` | `/e/:slug` | online-only |
-| `app/events/[id].tsx` | `/events/:id` | online-only |
+| `app/events/[id].tsx` | `/events/:id` | local-first (LF2) |
 | `app/events/[id]/after.tsx` | `/events/:id/after` | online-only |
 | `app/events/[id]/analytics.tsx` | `/events/:id/analytics` | device-only |
 | `app/events/[id]/attendees.tsx` | `/events/:id/attendees` | device-only |
 | `app/events/[id]/edit.tsx` | `/events/:id/edit` | online-only |
-| `app/events/[id]/live.tsx` | `/events/:id/live` | online-only |
+| `app/events/[id]/live.tsx` | `/events/:id/live` | local-first (LF2) |
 | `app/events/[id]/operations.tsx` | `/events/:id/operations` | online-only |
 | `app/events/[id]/operations/admission.tsx` | `/events/:id/operations/admission` | device-only |
 | `app/events/[id]/operations/check-in.tsx` | `/events/:id/operations/check-in` | local-first (R17) |

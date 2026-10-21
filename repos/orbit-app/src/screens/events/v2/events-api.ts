@@ -34,7 +34,8 @@ export async function read<T>(call: Promise<ApiResult<unknown>>, schema: ZodType
   return parsed.success ? { data: parsed.data, ok: true } : { ok: false, reason: "invalid" };
 }
 
-const listSchema = { safeParse: (value: unknown) => (Array.isArray(value) ? { data: value.flatMap((item) => { const parsed = eventAssessmentSchema.safeParse(item); return parsed.success ? [parsed.data] : []; }), success: true as const } : { success: false as const }) } as unknown as ZodType<EventAssessmentContract[]>;
+/** The assessment list, read one item at a time (an unreadable item is skipped). LF2 also validates its page copy with it. */
+export const eventAssessmentListSchema = { safeParse: (value: unknown) => (Array.isArray(value) ? { data: value.flatMap((item) => { const parsed = eventAssessmentSchema.safeParse(item); return parsed.success ? [parsed.data] : []; }), success: true as const } : { success: false as const }) } as unknown as ZodType<EventAssessmentContract[]>;
 
 export interface EventsApi {
   list(): Promise<EventsResult<EventAssessmentContract[]>>;
@@ -51,7 +52,7 @@ export interface EventsApi {
 export function createEventsApi(client: OrbitApiClient): EventsApi {
   const id = (value: string) => encodeURIComponent(value);
   return {
-    list: () => read(client.get<unknown>(BASE), listSchema),
+    list: () => read(client.get<unknown>(BASE), eventAssessmentListSchema),
     detail: (value) => read(client.get<unknown>(`${BASE}/${id(value)}`), eventAssessmentSchema),
     create: (input) => read(client.post<unknown>(BASE, { body: input }), eventAssessmentSchema),
     fill: (value, input) => read(client.patch<unknown>(`${BASE}/${id(value)}`, { body: input }), eventAssessmentSchema),
