@@ -35,8 +35,8 @@ export function useLocalContactsSource(available: boolean, probe: boolean, queue
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "contact" });
   const refresh = state.refresh;
   // The session getter through a ref: the callbacks and the returned state stay stable while it is re-created.
-  const sessionOf = useRef(state.currentSession);
-  sessionOf.current = state.currentSession;
+  const sessionOf = useRef(() => state.currentSession?.() ?? null);
+  sessionOf.current = () => state.currentSession?.() ?? null;
   useMirrorProbe(refresh, available && probe);
   const freshness = mirrorFreshness(state, available);
   const [pendingDeletes, setPendingDeletes] = useState<ReadonlySet<string>>(NO_IDS);
@@ -53,7 +53,7 @@ export function useLocalContactsSource(available: boolean, probe: boolean, queue
     let live = true;
     const session = available ? sessionOf.current() : null;
     if (!session) { keepPending([]); return; }
-    void session.readOutboxOverlay("contact").then((overlay) => {
+    void Promise.resolve().then(() => session.readOutboxOverlay?.("contact") ?? null).then((overlay) => {
       if (!live) return;
       const ids = (overlay?.queuedMutations ?? []).filter((item) => item.operation === "delete" && (item.state === "queued" || item.state === "sending")).map((item) => item.id);
       keepPending(ids);
