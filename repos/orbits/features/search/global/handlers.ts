@@ -13,7 +13,7 @@ import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from 
 import { requestContext } from "../../plans/v2/flow-handlers";
 import { redesignContractRoute, type ContractReply } from "../../redesign-contracts/route";
 import { liteCanExpand, liteRecallWords } from "../../../shared/compute/search-synonyms";
-import { buildGlobalSearch } from "./core";
+import { buildGlobalSearch, GLOBAL_SEARCH_LIVE_EXAMPLES, globalSearchExamples } from "./core";
 import { createGlobalSearchLivePorts, type GlobalSearchLivePorts } from "./live";
 
 export const GLOBAL_SEARCH_KEYWORD_PER_MINUTE = 60;
@@ -22,14 +22,8 @@ export const GLOBAL_SEARCH_COUNTS_TTL_MS = 5 * 60_000;
 /** Lite expands a query into at most this many extra single-word reads of the contacts reader. */
 export const LITE_MAX_RECALL_WORDS = 12;
 /** 「こんな検索もできます」 (live): the keyword-capable ones while semantic search is unavailable (DESIGN §2.3). */
-export const GLOBAL_SEARCH_EXAMPLES = ["投資家", "製造業の決裁者", "先月会った人", "紹介してくれそうな人", "3か月 連絡していない人"] as const;
-export const GLOBAL_SEARCH_KEYWORD_EXAMPLES = ["投資家", "製造業の決裁者"] as const;
-/** Live examples follow the reader's language (the demo world stays Japanese: its data is). */
-const LIVE_EXAMPLES: Record<"ja" | "zh" | "en", { all: readonly string[]; keyword: readonly string[] }> = {
-  ja: { all: GLOBAL_SEARCH_EXAMPLES, keyword: GLOBAL_SEARCH_KEYWORD_EXAMPLES },
-  zh: { all: ["投资人", "制造业决策者", "上个月见过的人", "可能帮忙介绍的人", "三个月没联系的人"], keyword: ["投资人", "制造业决策者"] },
-  en: { all: ["investor", "manufacturing decision-maker", "met last month", "could introduce me", "no contact in 3 months"], keyword: ["investor", "manufacturing"] },
-};
+export const GLOBAL_SEARCH_EXAMPLES = GLOBAL_SEARCH_LIVE_EXAMPLES.ja.all;
+export const GLOBAL_SEARCH_KEYWORD_EXAMPLES = GLOBAL_SEARCH_LIVE_EXAMPLES.ja.keyword;
 
 export interface GlobalSearchDeps {
   resolveActor?: ResolveAuthenticatedApiActor;
@@ -115,9 +109,7 @@ export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: 
   const types: ("people" | "events" | "conversations")[] = live.conversations ? ["people", "events", "conversations"] : ["people", "events"];
   const terms = splitSearchTerms(input.query);
   // 意味検索 lite 只认同义词表里的概念：「先月会った人」这类要时间 / 关系推理的示例 lite 搜不到，不给。
-  const examples = live.semanticAvailable
-    ? LIVE_EXAMPLES[input.language].all.filter((example) => liteCanExpand(splitSearchTerms(example)))
-    : [...LIVE_EXAMPLES[input.language].keyword];
+  const examples = globalSearchExamples(input.language, live.semanticAvailable);
   const counts = await live.counts(input.actorId);
   if (!terms.length) {
     return buildGlobalSearch({ conversations: null, events: null, examples, industryCounts: counts.industries, language: input.language, limit: input.limit, now: input.now, people: [], planLinked: null, platform: input.platform, query: input.query, searchedPeople: counts.total, semanticAvailable: live.semanticAvailable, terms, types });

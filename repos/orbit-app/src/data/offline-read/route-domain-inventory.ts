@@ -755,6 +755,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/network-analysis/analysis-api.ts","GET","/api/network/snapshot"],
   ["src/screens/network-analysis/analysis-api.ts","POST","/api/network/snapshot/recompute"],
   ["src/screens/search/search-api.ts","GET","/api/search/global"],
+  ["src/screens/search/useGlobalSearchSource.ts","GET","/api/search/global"],
   ["src/screens/events/v2/PrepPage.tsx","POST","/api/schedule-items"],
   ["src/screens/events/v2/VenuePage.tsx","POST","/api/events/:id/operations/contact-requests"],
   ["src/screens/events/v2/VenuePage.tsx","POST","/api/events/:id/operations/contact-requests/:id/respond"],

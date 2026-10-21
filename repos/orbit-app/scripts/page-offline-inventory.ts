@@ -30,7 +30,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17' | 'R11a' | 'R11b' | 'LF1' | 'LF2' | 'LF3';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137' | 'R05' | 'R17' | 'R11a' | 'R11b' | 'LF1' | 'LF2' | 'LF3' | 'LF11';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -164,7 +164,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/host/join.tsx', path: '/host/join', title: '共同運営に参加 · コード入力（R17）', classification: 'online-only', reasonCategory: 'server-token', reason: '招待コード由服务器验证', reads: '—', offline: NEEDS_NETWORK },
   { file: 'app/host/join/[code].tsx', path: '/host/join/:code', title: '共同運営に参加 · 招待の着地（R17）', classification: 'online-only', reasonCategory: 'server-token', reason: '招待由服务器验证并授予', reads: '/api/host/cohost-invites/:code', offline: NEEDS_NETWORK },
   { file: 'app/e/[slug].tsx', path: '/e/:slug', title: '申込ページ短链 → R27 活动详情（R17）', classification: 'online-only', reasonCategory: 'server-token', reason: '短链由服务器解析', reads: '/e/:slug（跟随重定向）', offline: NEEDS_NETWORK },
-  { file: 'app/search.tsx', path: '/search', title: '検索（人・イベント・会話；R30）', classification: 'online-only', reasonCategory: 'server-computed', reason: '搜索、排序与命中范围在服务器计算；查询与结果不存本机；最近搜索按账号存在这台设备（LF5），退出登录和删除账号时清除', reads: '/api/search/global', offline: NEEDS_NETWORK },
+  { file: 'app/search.tsx', path: '/search', title: '検索（人・イベント・会話；R30）', classification: 'local-first', sprint: 'LF11', reads: '人在本机联系人域里搜（服务器同一条联系人搜索规则，分组排序用共用的 shared/compute/global-search）；活动和会话每次查询问一次 /api/search/global?types=events,conversations（会话的正文搜索只有服务器能做）；没有可读的本机库时整页走服务器；最近搜索按账号存在这台设备（LF5）', offline: '人照常搜；会话按本机 AI 会话的标题和预览搜；活动显示「要联网后才能搜」' },
   { file: 'app/events/[id]/prep.tsx', path: '/events/:id/prep', title: '会う準備（R27）', classification: 'online-only', reasonCategory: 'server-computed', reason: '会いたい人与话しかけ方由规则在服务器计算；名刺の残り只存本机', reads: '/api/events/:id/prep', offline: NEEDS_NETWORK },
   { file: 'app/events/[id]/after.tsx', path: '/events/:id/after', title: '会後のふりかえり（R27）', classification: 'online-only', reasonCategory: 'server-computed', reason: 'まとめ与次の一手由服务器生成；确定是写入', reads: '/api/events/:id/after', offline: NEEDS_NETWORK },
   { file: 'app/events/[id]/register.tsx', path: '/events/:id/register', title: '参加登録（R27）', classification: 'online-only', reasonCategory: 'paid-ai', reason: '报名是写入；问题来自 AI 访谈（≤5 问），自己紹介草稿由 AI 生成', reads: '/api/events/:id/join/*、/api/events/:id/overview', offline: NEEDS_NETWORK },

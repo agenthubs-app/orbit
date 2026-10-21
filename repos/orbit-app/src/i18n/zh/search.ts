@@ -29,6 +29,7 @@ export const search = {
   "search.semanticHint": "也会按含义查找：搜「投资人」也能找到 VC、CVC 和天使投资人",
   "search.searching": "正在搜索…",
   "search.failed": "搜索失败，请重试",
+  "search.eventsOffline": "离线 · 人和对话在这台设备上搜索；活动要联网后才能搜",
   "search.rateLimited": "请稍等再试",
   "search.resultsLabel": "搜索结果",
   "search.cancel": "取消",

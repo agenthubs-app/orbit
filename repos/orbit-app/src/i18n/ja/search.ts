@@ -29,6 +29,7 @@ export const search = {
   "search.semanticHint": "言葉の意味でも探します。「投資家」で VC・CVC・エンジェルもヒットします",
   "search.searching": "検索中…",
   "search.failed": "検索できませんでした。もう一度お試しください",
+  "search.eventsOffline": "オフライン · 人と会話はこの端末で検索しています。イベントはオンラインで検索できます",
   "search.rateLimited": "少し待ってからもう一度",
   "search.resultsLabel": "検索結果",
   "search.cancel": "キャンセル",

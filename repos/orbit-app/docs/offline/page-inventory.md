@@ -7,12 +7,12 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 38 |
+| 能断网看（本地优先） | 39 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 57 |
+| 只能在线 | 56 |
 | 不读账号数据（布局、跳转、本机设置） | 40 |
 | 合计（路由文件） | 135 |
 
@@ -61,6 +61,7 @@
 | `/events` | 活动标签：評価・参加予定・探す | 0131 | LF2 起：評価列表、参加予定、過去的参加读页面副本 event-assessments / events-mine（upcoming、past），新鲜期 3 分钟内切换标签不重读，任何写入后作废；探す（R26 discover/search）在线 | 「截至」；評価与参加予定显示最近一次看到的列表（不再显示成空列表）；探す、评估新活动、报名需要联网 |
 | `/home/events` | 推荐活动（旧入口） | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
 | `/events/:id/operations/check-in` | 受付（R17：名前検索 · 到着 · 取り消す · 当日枠 · QR） | R17 | /api/host/events/:id/kiosk（在线）；本机名单缓存 kiosk_roster（expo-sqlite，GET /kiosk/roster 成功后才存，TTL = cacheUntil，没有权限即清） | 用本机名单搜索并记到着；到着进本机队列（expo-sqlite），联网后按幂等键补发；撤销与当日枠需要联网 |
+| `/search` | 検索（人・イベント・会話；R30） | LF11 | 人在本机联系人域里搜（服务器同一条联系人搜索规则，分组排序用共用的 shared/compute/global-search）；活动和会话每次查询问一次 /api/search/global?types=events,conversations（会话的正文搜索只有服务器能做）；没有可读的本机库时整页走服务器；最近搜索按账号存在这台设备（LF5） | 人照常搜；会话按本机 AI 会话的标题和预览搜；活动显示「要联网后才能搜」 |
 
 ## 只能在线
 
@@ -93,7 +94,6 @@
 | `/host/join` | 共同運営に参加 · コード入力（R17） | 需要服务器验证链接或邀请码：招待コード由服务器验证 | — | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/host/join/:code` | 共同運営に参加 · 招待の着地（R17） | 需要服务器验证链接或邀请码：招待由服务器验证并授予 | /api/host/cohost-invites/:code | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/e/:slug` | 申込ページ短链 → R27 活动详情（R17） | 需要服务器验证链接或邀请码：短链由服务器解析 | /e/:slug（跟随重定向） | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/search` | 検索（人・イベント・会話；R30） | 需要服务器实时计算：搜索、排序与命中范围在服务器计算；查询与结果不存本机；最近搜索按账号存在这台设备（LF5），退出登录和删除账号时清除 | /api/search/global | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/prep` | 会う準備（R27） | 需要服务器实时计算：会いたい人与话しかけ方由规则在服务器计算；名刺の残り只存本机 | /api/events/:id/prep | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/after` | 会後のふりかえり（R27） | 需要服务器实时计算：まとめ与次の一手由服务器生成；确定是写入 | /api/events/:id/after | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/register` | 参加登録（R27） | 付费 AI：报名是写入；问题来自 AI 访谈（≤5 问），自己紹介草稿由 AI 生成 | /api/events/:id/join/*、/api/events/:id/overview | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -286,7 +286,7 @@
 | `app/schedule/personal/[id].tsx` | `/schedule/personal/:id` | local-first (0108) |
 | `app/schedule/personal/[id]/edit.tsx` | `/schedule/personal/:id/edit` | local-first (0108) |
 | `app/schedule/personal/new.tsx` | `/schedule/personal/new` | local-first (0108) |
-| `app/search.tsx` | `/search` | online-only |
+| `app/search.tsx` | `/search` | local-first (LF11) |
 | `app/settings.tsx` | `/settings` | local-first (0131) |
 | `app/settings/[section].tsx` | `/settings/:section` | device-only |
 | `app/settings/api.tsx` | `/settings/api` | device-only |

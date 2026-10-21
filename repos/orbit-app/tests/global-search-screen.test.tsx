@@ -68,6 +68,10 @@ createRoot(document.getElementById("root")).render(<Root />);
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
       plugin.onResolve({ filter: /^(expo-router|@react-native-async-storage\/async-storage)$/ }, (args) => ({ path: args.path, namespace: "search-stub" }));
       plugin.onResolve({ filter: /(AuthSessionProvider|ApiBaseUrlProvider)$/ }, (args) => ({ path: args.path, namespace: "search-stub" }));
+      // LF11: the screen's UI against the server path (search-api.ts); the device path has its own tests (lf11-*).
+      plugin.onResolve({ filter: /\/useGlobalSearchSource$/ }, (args) => ({ path: args.path, namespace: "search-stub" }));
+      plugin.onLoad({ filter: /useGlobalSearchSource$/, namespace: "search-stub" }, () => ({ contents: `import { useMemo } from "react"; import { createSearchApi } from "./src/screens/search/search-api"; import { useOrbitApiClient } from "./src/hooks/useOrbitApiClient";
+export const useGlobalSearchSource = () => { const client = useOrbitApiClient(); return useMemo(() => ({ ...createSearchApi(client), eventsOffline: false }), [client]); };`, loader: "js", resolveDir: root }));
       plugin.onLoad({ filter: /AuthSessionProvider$/, namespace: "search-stub" }, () => ({ contents: `export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor-r30", cookieHeader: "c", user: { id: "actor-r30" } });`, loader: "js" }));
       plugin.onLoad({ filter: /ApiBaseUrlProvider$/, namespace: "search-stub" }, () => ({ contents: `export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "http://local.test" });`, loader: "js" }));
       plugin.onLoad({ filter: /^@react-native-async-storage\/async-storage$/, namespace: "search-stub" }, () => ({ contents: `
@@ -230,10 +234,11 @@ test("helpers: filters, empty rule, recent list, request path", () => {
   assert.equal(globalSearchPath({ filter: "all", query: "x" }), "/api/search/global?q=x&platform=app", "no semantic search on the account → not sent");
 });
 
-test("Task 🔍 opens /search (R20-01); the route is private and online-only; /search falls back to Task", () => {
+test("Task 🔍 opens /search (R20-01); the route is private and opens offline (LF11); /search falls back to Task", () => {
   const task = read("src/screens/task/TaskScreen.tsx");
   assert.match(task, /icon="search" accessibilityLabel=\{locale\.t\("search\.open"\)\} onPress=\{\(\) => router\.push\("\/search" as Href\)\}/);
   assert.doesNotMatch(task, /router\.push\("\/contacts\/list"/);
-  assert.match(read("app/search.tsx"), /withOrbitPrivateRoute\(withOnlineOnlyRoute\(GlobalSearchScreen\)\)/);
+  assert.match(read("app/search.tsx"), /withOrbitPrivateRoute\(GlobalSearchScreen\)/);
+  assert.doesNotMatch(read("app/search.tsx"), /withOnlineOnlyRoute/);
   assert.equal(parentForPath("/search", (key) => key).href, "/task?seg=todo");
 });

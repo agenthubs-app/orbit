@@ -22,7 +22,8 @@ import { createThemedStyles } from "../../design/theme";
 import { radius, type OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { addDesignMock } from "../add/add-design-mock";
-import { useSearchApi, type SearchFilter } from "./search-api";
+import type { SearchFilter } from "./search-api";
+import { useGlobalSearchSource } from "./useGlobalSearchSource";
 import { APP_SEMANTIC_PREFERENCE_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
 
 type Status = "idle" | "pending" | "ready" | "rate_limited" | "failed";
@@ -36,7 +37,8 @@ export function GlobalSearchScreen() {
   const locale = useOrbitLocale();
   const t = locale.t as (key: string, values?: Record<string, string | number>) => string;
   const router = useRouter();
-  const api = useSearchApi();
+  // LF11: people (and offline the conversations) are searched on the device; the server answers events.
+  const api = useGlobalSearchSource();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const topGap = useShellTopGap();
@@ -252,6 +254,7 @@ export function GlobalSearchScreen() {
         return <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={filterLabel[item]} onPress={() => setFilter(item)} style={[styles.cat, on && styles.catOn]}><UiText style={[styles.catText, on && styles.catTextOn]}>{filterLabel[item]}</UiText></UiPressable>;
       })}
     </View>}>
+      {api.eventsOffline && query.trim() && filter !== "people" ? <UiText style={[styles.lbl, styles.hint]} accessibilityLiveRegion="polite">{t("search.eventsOffline")}</UiText> : null}
       {body}
     </FullScreenSearch>
   );

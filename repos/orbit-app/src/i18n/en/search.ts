@@ -29,6 +29,7 @@ export const search = {
   "search.semanticHint": "Meaning counts too: “investor” also finds VCs, CVCs and angels",
   "search.searching": "Searching…",
   "search.failed": "Search failed. Try again.",
+  "search.eventsOffline": "Offline · people and conversations are searched on this device; events need a connection",
   "search.rateLimited": "Wait a moment and try again",
   "search.resultsLabel": "Search results",
   "search.cancel": "Cancel",
