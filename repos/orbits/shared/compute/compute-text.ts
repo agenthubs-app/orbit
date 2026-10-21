@@ -61,6 +61,15 @@ function runtimeCollator(): Intl.Collator {
   return collator;
 }
 
+let japaneseCollator: Intl.Collator | null = null;
+
+/** LF3: -1, 0 or 1 in the Japanese UI's name order (the R11b drill-down 名前順), one implementation for server and App. */
+export function compareJapaneseText(left: string, right: string): number {
+  if (left === right) return 0;
+  japaneseCollator ??= new Intl.Collator("ja");
+  return sign(japaneseCollator.compare(left, right));
+}
+
 /** -1, 0 or 1: the order of `left` and `right` (see the file comment). */
 export function compareText(left: string, right: string): number {
   if (left === right) return 0;

@@ -39,6 +39,10 @@ export const networkAnalysisInsightObject = z.object({
   added: count.optional(),
   planNeedTitle: z.string().max(200).optional(),
 });
+export const networkAnalysisNeedObject = z.object({
+  planId: id, needId: id, title: z.string().max(200), primaryIndustryId: z.string().max(120).nullable(),
+  targetCount: count, linkedCount: count, skipped: z.boolean(),
+});
 export const networkAnalysisLockObject = z.union([
   z.object({ state: z.literal("locked"), total: count, required: count, missing: count }),
   z.object({ state: z.literal("open"), total: count, required: count, reference: z.boolean() }),
@@ -56,6 +60,7 @@ export const networkAnalysisViewObject = z.object({
   }).optional(),
   opportunities: readableItems(networkAnalysisOpportunityObject).optional(),
   insights: readableItems(networkAnalysisInsightObject).optional(),
+  needs: readableItems(networkAnalysisNeedObject).nullable().optional(),
 });
 export const networkAnalysisViewSchema = networkAnalysisViewObject;
 

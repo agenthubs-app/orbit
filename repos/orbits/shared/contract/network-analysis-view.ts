@@ -95,6 +95,22 @@ export interface NetworkAnalysisViewDTO {
   opportunities?: NetworkAnalysisOpportunity[];
   /** Only the trends with enough samples (none below NETWORK_ANALYSIS_STABLE_CONTACTS people). */
   insights?: NetworkAnalysisInsight[];
+  /**
+   * LF3 (additive): the plan needs this view was built with, so a device can recompute the view from its own
+   * contacts (shared/compute/network-analysis-model.ts). Absent while locked; null = the plan could not be read.
+   */
+  needs?: NetworkAnalysisNeedDTO[] | null;
+}
+
+/** One active plan need as the analysis reads it (planGaps / insights input). */
+export interface NetworkAnalysisNeedDTO {
+  planId: string;
+  needId: string;
+  title: string;
+  primaryIndustryId: string | null;
+  targetCount: number;
+  linkedCount: number;
+  skipped: boolean;
 }
 
 /** Drill-down list order: plan-related first / latest touch / name. Only the ones the data supports are offered. */

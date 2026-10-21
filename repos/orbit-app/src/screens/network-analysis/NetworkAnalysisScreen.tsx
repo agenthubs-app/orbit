@@ -12,7 +12,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { recomputeNetworkSnapshot, useNetworkAnalysisView, useNetworkSnapshot, type CachedReadState, type NetworkSnapshotView } from "./analysis-api";
+import { recomputeNetworkSnapshot, useNetworkAnalysisViewLocalFirst, useNetworkSnapshot, type CachedReadState, type NetworkSnapshotView } from "./analysis-api";
 import { ANALYSIS_TABS, ANALYSIS_TAB_KEY, analysisListHref, analysisTabFrom, contactHref, tokyoMonthDay, type AnalysisTab } from "./analysis-labels";
 import { InsightsView, LockedView, OpportunitiesView, SnapshotCard, StructureView, type DrillSelection, type EvidencePerson } from "./AnalysisViews";
 import { useNetworkDesignContacts } from "../network/network-design-fixture";
@@ -33,7 +33,8 @@ export function NetworkAnalysisScreen() {
   const client = useOrbitApiClient();
   const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const [tab, setTab] = useState<AnalysisTab>(() => analysisTabFrom(params.tab));
-  const view = useNetworkAnalysisView();
+  // LF3: computed on the device from its contacts (plan needs from the kept server view).
+  const view = useNetworkAnalysisViewLocalFirst();
   const data = view.status === "ready" ? view.data : null;
   const open = view.status === "ready" && view.verified === true && data?.lock.state === "open";
   const snapshotRead = useNetworkSnapshot(language, open);

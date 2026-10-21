@@ -32,6 +32,7 @@ import {
   useApiResource,
   type ApiResourceState
 } from "../../hooks/useApiResource";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
@@ -156,6 +157,9 @@ function useStableKeyboardBottomInset(): number {
     : 0;
 }
 
+/** LF3: how long the AI tab shows its saved plan answers without re-reading them. */
+const AI_PLAN_COPY_FRESH_MS = 3 * 60_000;
+
 export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const toast = useToast();
   const locale = useOrbitLocale();
@@ -232,15 +236,19 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     () => false,
     { scopeKey: JSON.stringify([readScope, groupsAttempt]) }
   ), aiSessionGroupListSchema);
+  // LF3: the contact count comes from the contacts domain; the server summary is only the no-mirror fallback.
+  const localContacts = useLocalContacts(false);
   const contactSummary = validateApiResourceState(useApiResource<unknown>(
-    "/api/contacts/summary", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
+    "/api/contacts/summary", () => false, { scopeKey: readScope, cachePolicy: "network-only", enabled: !localContacts.available }
   ), contactCardSummarySchema);
-  const planIntakes = validateApiResourceState(useApiResource<unknown>(
-    "/api/agent/plans/intakes?platform=app", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
-  ), planIntakeListResponseSchema);
-  const planSummary = validateApiResourceState(useApiResource<unknown>(
-    "/api/agent/plans/v2/summary", () => false, { scopeKey: readScope, cachePolicy: "network-only" }
-  ), planV2SummaryResponseSchema);
+  const localContactCount = localContacts.available && localContacts.freshness.readable ? localContacts.rows.length : null;
+  // LF3: plans have no domain; their last answers are page copies (the plan summary is the one Home keeps).
+  const planIntakesCopy = usePageCopyResource<unknown>("/api/agent/plans/intakes?platform=app", () => false, {
+    copy: { id: "plan-intakes" }, freshForMs: AI_PLAN_COPY_FRESH_MS, accept: value => planIntakeListResponseSchema.safeParse(value).success });
+  const planIntakes = validateApiResourceState(planIntakesCopy, planIntakeListResponseSchema);
+  const planSummaryCopy = usePageCopyResource<unknown>("/api/agent/plans/v2/summary", () => false, {
+    copy: { id: "home-plan-summary" }, freshForMs: AI_PLAN_COPY_FRESH_MS, accept: value => planV2SummaryResponseSchema.safeParse(value).success });
+  const planSummary = validateApiResourceState(planSummaryCopy, planV2SummaryResponseSchema);
   const todayNow = new Date();
   const todayDate = localDateKey("Asia/Tokyo", todayNow);
   // Sprint 0131 (coordinator item from 0118): the Today block is the page copy "today-summary" (today's only),
@@ -747,7 +755,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
 
   return (
     <IOrbitStartView
-      contactCount={contactSummary.kind === "success" || contactSummary.kind === "empty" ? contactSummary.data.total : -1}
+      contactCount={localContactCount ?? (contactSummary.kind === "success" || contactSummary.kind === "empty" ? contactSummary.data.total : -1)}
       confirmDelete={confirmDelete}
       deleting={deletingHistoryId !== null}
       draft={draftMessage}

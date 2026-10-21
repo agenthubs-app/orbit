@@ -91,5 +91,5 @@ export function useNotificationInbox(actorId:string,get:Get,post:Post,isCurrent:
   }catch{if(isCurrent())setError(t('typedInbox.conflict'));}finally{mutationLock.current=false;if(isCurrent())setBusy(false);}
  }
  const deviceError=local.available&&local.freshness.failure?t('typedInbox.error'):'';
- return {data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,act,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null,timeZone};
+ return {fromDevice,data,enabled:fromDevice?true:enabled,error:error||deviceError,busy,filter,setFilter,more,markRead,act,refresh,offline,lastSyncedAt:fromDevice?local.freshness.lastSyncedAt:null,timeZone};
 }

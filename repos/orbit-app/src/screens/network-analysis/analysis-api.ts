@@ -16,6 +16,11 @@ import { networkAnalysisPeopleSchema, networkAnalysisViewSchema, networkSnapshot
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { ApiErrorBody, ApiResult } from "../../api/types";
 import { readSnapshot, retireSnapshot, writeSnapshot } from "../../data/snapshot-store";
+import { pageCopyFreshness } from "../../data/sync/page-copy-freshness";
+import { buildNetworkAnalysisPeople, buildNetworkAnalysisView, type NetworkAnalysisNeeds, type NetworkAnalysisRow } from "../../api/compute/network-analysis-model";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { localNetworkAnalysisRows } from "../../view-models/network-analysis-local";
+import { useNetworkMerge } from "../network/useNetworkMerge";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { z } from "zod";
 
@@ -56,7 +61,7 @@ function isOffline(result: ApiResult<unknown> | null): boolean {
  * and an unavailable request keeps the copy (offline = unreachable). A server LOCKED answer retires the copy.
  * `read` is null while the page must not ask (locked / not yet).
  */
-function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => Promise<ApiResult<unknown>>, schema: Schema<T>, keep: boolean): CachedReadState<T> & { refresh: () => void } {
+function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => Promise<ApiResult<unknown>>, schema: Schema<T>, keep: boolean, freshForMs?: number): CachedReadState<T> & { refresh: () => void } {
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
@@ -73,7 +78,15 @@ function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => P
       if (keep && actorId) {
         const record = await readSnapshot<unknown>(baseUrl, actorId, path).catch(() => null);
         const parsed = record?.result.success ? schema.safeParse(record.result.data) : null;
-        if (parsed?.success) { kept = parsed.data; set({ status: "ready", data: kept, offline: false, verified: false }); }
+        if (parsed?.success) {
+          kept = parsed.data;
+          // LF3: a copy kept within its fresh window (and before any write) is this visit's answer — no server read.
+          if (freshForMs !== undefined && tick === 0 && record && pageCopyFreshness.isFresh(record.syncedAt, freshForMs)) {
+            set({ status: "ready", data: kept, offline: false, verified: true });
+            return;
+          }
+          set({ status: "ready", data: kept, offline: false, verified: false });
+        }
       }
       const result = await read(client).catch(() => null);
       if (!live) return;
@@ -108,9 +121,62 @@ function useKeptRead<T>(path: string | null, read: (client: OrbitApiClient) => P
   return useMemo(() => ({ ...value, refresh }), [value, refresh]);
 }
 
-export function useNetworkAnalysisView(enabled = true) {
+export function useNetworkAnalysisView(enabled = true, freshForMs?: number) {
   return useKeptRead<NetworkAnalysisViewDTO>(enabled ? NETWORK_ANALYSIS_PATH : null, (client) => client.get<unknown>(ORBIT_API_ENDPOINTS.networkAnalysis),
-    networkAnalysisViewSchema as unknown as Schema<NetworkAnalysisViewDTO>, true);
+    networkAnalysisViewSchema as unknown as Schema<NetworkAnalysisViewDTO>, true, freshForMs);
+}
+
+/** LF3: how long the kept server view (read for its plan needs) is reused without asking again. */
+export const NETWORK_ANALYSIS_NEEDS_FRESH_MS = 10 * 60_000;
+
+/** The plan needs a server view carries; undefined when the answer predates LF3 (then the device keeps the server view). */
+function needsOf(state: CachedReadState<NetworkAnalysisViewDTO>): NetworkAnalysisNeeds | undefined {
+  // No server answer yet (and none kept): keep the server path — a count the page cannot read is a retry, never a guess.
+  if (state.status !== "ready") return undefined;
+  // A locked view or a pre-LF3 server sends no needs: keep the server view as it is.
+  return state.data.needs === undefined ? undefined : state.data.needs;
+}
+
+/** LF3: the device's analysis rows (contacts domain + plan-related / follow-up merge); null without a readable mirror. */
+function useLocalAnalysisRows(enabled: boolean): { rows: NetworkAnalysisRow[] | null; offline: boolean } {
+  const local = useLocalContacts(false);
+  const merge = useNetworkMerge(enabled && local.available);
+  const rows = useMemo(() => (enabled && local.available && local.freshness.readable ? localNetworkAnalysisRows(local.rows, merge) : null),
+    [enabled, local.available, local.freshness.readable, local.rows, merge.goalIds, merge.followUpIds]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { rows, offline: local.freshness.offline };
+}
+
+/**
+ * LF3 (0117 restored): the analysis is computed on the device from its own contacts with the shared rules
+ * (shared/compute/network-analysis-model.ts); the server view is read only for the plan needs (kept, 10-minute
+ * fresh window). Without a device mirror, or against a server that does not send needs, the server view is used.
+ */
+export function useNetworkAnalysisViewLocalFirst(): CachedReadState<NetworkAnalysisViewDTO> & { refresh: () => void } {
+  const server = useNetworkAnalysisView(true, NETWORK_ANALYSIS_NEEDS_FRESH_MS);
+  const needs = needsOf(server);
+  const local = useLocalAnalysisRows(needs !== undefined);
+  return useMemo(() => {
+    if (!local.rows || needs === undefined) return server;
+    const data = buildNetworkAnalysisView({ total: local.rows.length, rows: local.rows, needs, now: new Date() });
+    const verified = server.status === "ready" && server.verified === true;
+    return { status: "ready" as const, data, offline: local.offline || (server.status !== "loading" && server.offline), verified, refresh: server.refresh };
+  }, [local.rows, local.offline, needs, server]);
+}
+
+/** LF3: one drill-down list computed on the device (every page local); null rows → the server list. */
+export function useNetworkAnalysisPeopleLocal(dimension: NetworkAnalysisDimension | null, bucketId: string, sort: NetworkAnalysisPeopleSort | null): {
+  available: boolean; page: (cursor: string | null) => NetworkAnalysisPeopleDTO | null; locked: { total: number; required: number; missing: number } | null; offline: boolean;
+} {
+  const server = useNetworkAnalysisView(true, NETWORK_ANALYSIS_NEEDS_FRESH_MS);
+  const needs = needsOf(server);
+  const local = useLocalAnalysisRows(needs !== undefined);
+  const available = Boolean(local.rows && dimension && needs !== undefined);
+  const view = useMemo(() => (local.rows && needs !== undefined ? buildNetworkAnalysisView({ total: local.rows.length, rows: local.rows, needs, now: new Date() }) : null), [local.rows, needs]);
+  const locked = view && view.lock.state === "locked" ? view.lock : null;
+  const page = useCallback((cursor: string | null) => (local.rows && dimension && needs !== undefined && !locked
+    ? buildNetworkAnalysisPeople({ rows: local.rows, needs, dimension, bucketId, ...(sort ? { sort } : {}), ...(cursor ? { cursor } : {}), limit: PEOPLE_PAGE_LIMIT, now: new Date() })
+    : null), [bucketId, dimension, local.rows, locked, needs, sort]);
+  return { available, page, locked, offline: local.offline };
 }
 
 /** Only called by an open page (B-1: never below 10 people). Not kept: an old sentence is never shown as current (B-8). */

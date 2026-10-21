@@ -55,7 +55,8 @@ export interface NetworkMergeState {
   refresh(): void;
 }
 
-export function useNetworkMerge(): NetworkMergeState {
+/** `enabled`=false keeps the goal-related read off (LF3: the analysis reads it only when it computes on the device). */
+export function useNetworkMerge(enabled = true): NetworkMergeState {
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
   const tasks = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
@@ -65,7 +66,7 @@ export function useNetworkMerge(): NetworkMergeState {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (!key) return;
+    if (!key || !enabled) return;
     let live = true;
     void (async () => {
       let cached: NetworkMergeCache | null = null;
@@ -84,7 +85,7 @@ export function useNetworkMerge(): NetworkMergeState {
       try { await AsyncStorage.setItem(key, JSON.stringify(next)); } catch { /* cache is a convenience */ }
     })();
     return () => { live = false; };
-  }, [client, key, tick]);
+  }, [client, enabled, key, tick]);
 
   const mirror = useMemo(() => mirrorFollowUpIds(tasks.records), [tasks.records]);
   const refresh = useCallback(() => setTick((value) => value + 1), []);

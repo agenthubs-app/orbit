@@ -14818,6 +14818,51 @@
           "optional": true,
           "kind": "text",
           "type": "NetworkAnalysisInsight[]"
+        },
+        "needs": {
+          "optional": true,
+          "kind": "text",
+          "type": "NetworkAnalysisNeedDTO[] | null"
+        }
+      }
+    },
+    "network-analysis-view.ts::NetworkAnalysisNeedDTO": {
+      "kind": "object",
+      "members": {
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "needId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "primaryIndustryId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "targetCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "linkedCount": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "skipped": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
         }
       }
     },

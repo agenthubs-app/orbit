@@ -12,7 +12,7 @@ import { Avatar, Button, Card, Chip, EmptyState, OfflineBar, RetryCard, Segmente
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { isLockedListFailure, readNetworkAnalysisPage, useNetworkAnalysisFirstPage, useNetworkAnalysisView } from "./analysis-api";
+import { isLockedListFailure, readNetworkAnalysisPage, useNetworkAnalysisFirstPage, useNetworkAnalysisPeopleLocal, useNetworkAnalysisView, type CachedReadState } from "./analysis-api";
 import { SORT_KEY, analysisDimensionFrom, bucketIdFrom, bucketLabel, contactHref, networkListHref } from "./analysis-labels";
 import { LockedView } from "./AnalysisViews";
 
@@ -41,9 +41,17 @@ function DrillList({ dimension, bucketId, onTotal, onLocked }: { dimension: Netw
   const router = useRouter();
   const client = useOrbitApiClient();
   const [sort, setSort] = useState<NetworkAnalysisPeopleSort | null>(null);
-  const first = useNetworkAnalysisFirstPage(dimension, bucketId, sort);
+  // LF3: on the device the list is computed from its own contacts (every page, so さらに表示 needs no network).
+  const device = useNetworkAnalysisPeopleLocal(dimension, bucketId, sort);
+  const remote = useNetworkAnalysisFirstPage(device.available ? null : dimension, bucketId, sort);
+  const localFirst = device.available && !device.locked ? device.page(null) : null;
+  const first: CachedReadState<NetworkAnalysisPeopleDTO> & { refresh: () => void } = device.available
+    ? (localFirst ? { status: "ready", data: localFirst, offline: device.offline, verified: true, refresh: remote.refresh }
+      : device.locked ? { status: "failed", error: { code: "CONFLICT", message: "locked", context: { reason: "LOCKED" } }, httpStatus: 409, offline: false, refresh: remote.refresh }
+      : { status: "failed", error: { code: "NOT_FOUND", message: "unknown bucket" }, httpStatus: 404, offline: false, refresh: remote.refresh })
+    : remote;
   const locked = isLockedListFailure(first);
-  const lockView = useNetworkAnalysisView(locked);
+  const lockView = useNetworkAnalysisView(locked && !device.available);
   // Further pages (さらに表示): appended to the first page of the current order; a new order starts over.
   const [more, setMore] = useState<{ key: string; items: NetworkAnalysisPersonRow[]; cursor: string | null; loading: boolean } | null>(null);
   const firstPage = first.status === "ready" ? first.data : null;
@@ -52,19 +60,19 @@ function DrillList({ dimension, bucketId, onTotal, onLocked }: { dimension: Netw
   const items = firstPage ? [...firstPage.items, ...(extra?.items ?? [])] : [];
   const cursor = extra ? extra.cursor : firstPage?.nextCursor ?? null;
   useEffect(() => { onTotal(firstPage ? firstPage.total : null); }, [firstPage?.total]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lockedRequired = locked && lockView.status === "ready" && lockView.data.lock.state === "locked" ? lockView.data.lock.required : null;
+  const lockedRequired = device.locked ? device.locked.required : locked && lockView.status === "ready" && lockView.data.lock.state === "locked" ? lockView.data.lock.required : null;
   useEffect(() => { onLocked(lockedRequired); }, [lockedRequired]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (!firstPage || !cursor || extra?.loading) return;
     setMore({ key, items: extra?.items ?? [], cursor, loading: true });
-    const next = await readNetworkAnalysisPage(client, dimension, bucketId, firstPage.sort, cursor);
+    const next = device.available ? device.page(cursor) : await readNetworkAnalysisPage(client, dimension, bucketId, firstPage.sort, cursor);
     setMore(next ? { key, items: [...(extra?.items ?? []), ...next.items], cursor: next.nextCursor, loading: false } : { key, items: extra?.items ?? [], cursor, loading: false });
-  }, [bucketId, client, cursor, dimension, extra, firstPage, key]);
+  }, [bucketId, client, cursor, device, dimension, extra, firstPage, key]);
 
   if (locked) {
-    const lock = lockView.status === "ready" && lockView.data.lock.state === "locked" ? lockView.data.lock : null;
-    if (lockView.status === "loading") return <Skeleton lines={4} />;
+    const lock = device.locked ?? (lockView.status === "ready" && lockView.data.lock.state === "locked" ? lockView.data.lock : null);
+    if (!device.locked && lockView.status === "loading") return <Skeleton lines={4} />;
     if (!lock) return <RetryCard title={t("networkAnalysis.countFailed")} onRetry={first.refresh} />;
     return <LockedView total={lock.total} required={lock.required} missing={lock.missing} onAddCards={() => router.push("/contacts/new/scan" as Href)} />;
   }

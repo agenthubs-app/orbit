@@ -13,6 +13,9 @@ import { localRelationshipUnreadTotal } from "../view-models/relationship-local"
 
 const capped = (count: number) => (count > 0 ? Math.min(count, 99) : undefined);
 
+/** LF3: how often a visible badge refreshes its device copies. */
+export const BADGE_DEVICE_REFRESH_MS = 60_000;
+
 export function useRelationshipInboxBadgeCount(scopeKey?: string): number | undefined {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
@@ -48,8 +51,21 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
     return () => { listener.remove(); release.current?.(); release.current = null; };
   }, []);
 
+  // LF3: with both device copies (native always) the badge is counted on the device; instead of polling the server
+  // summary every 15 s, the copies are refreshed through the sync coordinator (a conditional read, 304 when unchanged)
+  // once a minute while the badge is visible.
+  const deviceCounts = local.available && threads.available;
+  const refreshLocal = local.refresh, refreshThreads = threads.refresh;
   useEffect(() => {
-    if (!scope.ready) return;
+    if (!scope.ready || !deviceCounts) return;
+    const tick = () => { void refreshLocal(); void refreshThreads(); };
+    tick();
+    const timer = setInterval(tick, BADGE_DEVICE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [deviceCounts, refreshLocal, refreshThreads, scope]);
+
+  useEffect(() => {
+    if (!scope.ready || deviceCounts) return;
     let active = true;
     const refresh = previousScopeKey.current !== scopeKey;
     previousScopeKey.current = scopeKey;
@@ -59,7 +75,7 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
     const stop = () => { active = false; unsubscribe(); };
     release.current = stop;
     return () => { stop(); if (release.current === stop) release.current = null; };
-  }, [actorId, client, scope, sharedKey]);
+  }, [actorId, client, deviceCounts, scope, sharedKey]);
 
   const summary = scope.ready && snapshot?.scope === scope ? snapshot : null;
   if (scope.ready && local.available && local.freshness.readable) {

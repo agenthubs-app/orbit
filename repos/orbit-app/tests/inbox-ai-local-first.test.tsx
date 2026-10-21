@@ -188,7 +188,10 @@ test("inbox: the notification list, filters and unread count come from the devic
   await page.getByText("提醒 n1", { exact: true }).waitFor();
   await page.getByText("提醒 n2", { exact: true }).waitFor();
   assert.equal(await page.getByText("来源已不可用", { exact: true }).count(), 0, "an unavailable notification is not in the default list");
-  await page.getByRole("tab", { name: /^通知 · 9/ }).waitFor();
+  // LF3: online with both device copies, the tab counts the device copy (2 open unread), like the Home badge,
+  // and the server summary (which says 9 here) is not polled.
+  await page.getByRole("tab", { name: /^通知 · 2/ }).waitFor();
+  assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/inbox/summary")), [], "no summary poll when both counts are on the device");
   await page.getByRole("tab", { name: "历史" }).click();
   await page.getByText("来源已不可用", { exact: true }).waitFor();
   assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/inbox/notifications")), [], "no inbox list read");

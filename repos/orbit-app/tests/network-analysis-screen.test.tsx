@@ -415,3 +415,10 @@ test("routes: /contacts/dashboard and the list route render the new screens; /co
   assert.match(graph, /<Redirect href="\/contacts\/dashboard\?tab=structure" \/>/);
   assert.match(graph, /withOrbitPrivateRoute\(ContactsGraphRoute\)/);
 });
+
+test("LF3: with plan needs from the server, the analysis is computed on the device from its own contacts", async (t) => {
+  // The server says 14 people and open; the device copy has two contacts, so the device view is locked (あと8人).
+  const page = await openPage(t, { answers: { [VIEW]: { ...few14, needs: [] } } });
+  await page.getByTestId("analysis-locked").waitFor();
+  await text(page, "あと8人で分析が始まります").waitFor();
+});

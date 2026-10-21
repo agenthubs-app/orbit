@@ -390,12 +390,15 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const unifiedState = useInboxResource('/api/inbox/summary', () => false, clientGet, isCurrent, {
     isValid: data => { const parsed = inboxSummarySchema.safeParse(data); return parsed.success && parsed.data.actorId === actorId; },
     refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
-    enabled: !threadsOffline && !typedInbox.offline,
+    // LF3: when both counts are on the device (notification and conversation domains), they are counted there;
+    // the device copies are kept fresh by the 15 s sync refresh below, so the server summary is not polled too.
+    enabled: !threadsOffline && !typedInbox.offline && !(threadsFromDevice && typedInbox.fromDevice),
   });
   const unified = inboxSummarySchema.safeParse(unifiedState.kind === 'success' ? unifiedState.data : null);
-  const messagesUnread = !threadsOffline && unified.success ? unified.data.messagesUnread : threadsFromDevice ? localRelationshipUnreadTotal(localThreads.conversations)
+  const countsOnDevice = threadsFromDevice && typedInbox.fromDevice;
+  const messagesUnread = !threadsOffline && !countsOnDevice && unified.success ? unified.data.messagesUnread : threadsFromDevice ? localRelationshipUnreadTotal(localThreads.conversations)
     : unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
-  const notificationsUnread = !typedInbox.offline && unified.success ? unified.data.notificationsUnread : typedInbox.data?.unreadCount ?? 0;
+  const notificationsUnread = !typedInbox.offline && !countsOnDevice && unified.success ? unified.data.notificationsUnread : typedInbox.data?.unreadCount ?? 0;
   const localThreadsRefresh = localThreads.refresh;
   useEffect(() => {
     if (!localThreads.available || !isCurrent()) return;

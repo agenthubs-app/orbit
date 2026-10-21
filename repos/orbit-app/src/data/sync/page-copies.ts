@@ -71,6 +71,8 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "events-mine", endpoint: "/api/events/mine", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The events tab's upcoming and past registrations as last seen (variants upcoming, past)." },
   { id: "event-overview", endpoint: "/api/events/:id/overview", variants: "keyed", maxVariants: 20, maxBytes: 256 * KB, audience: "account", description: "An event's detail page per event; the 20 most recently opened are kept." },
   { id: "event-venue", endpoint: "/api/events/:id/venue", variants: "keyed", maxVariants: 10, maxBytes: 512 * KB, audience: "account", description: "An event's venue page (seats, rounds, recommendations, people) per event; the 10 most recently opened are kept." },
+  // LF3: the AI tab's plan drafts list (plans have no sync domain).
+  { id: "plan-intakes", endpoint: "/api/agent/plans/intakes", variants: "single", maxVariants: 1, maxBytes: 128 * KB, audience: "account", description: "The account's plan intakes (drafts in progress) as last seen, shown on the AI tab." },
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];
