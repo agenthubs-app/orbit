@@ -7,14 +7,13 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 39 |
+| 能断网看（本地优先） | 38 |
 | └ 由 Sprint 0108 实现 | 8 |
-| └ 由 Sprint 0117 实现 | 1 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
 | 只能在线 | 57 |
-| 不读账号数据（布局、跳转、本机设置） | 39 |
+| 不读账号数据（布局、跳转、本机设置） | 40 |
 | 合计（路由文件） | 135 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
@@ -38,7 +37,6 @@
 | `/contacts/list` | 旧联系人列表（R11a 起跳到 /contacts） | R11a | 无（跳转） | 跳到 /contacts |
 | `/contacts/:id` | 連絡先詳細（R11a） | R11a | 域 contacts；联网增强：/api/contacts/value-lines、/api/agent/plans/v2/contacts/:id/fit、/api/invite-codes/connections/:id | 「截至」；联网增强整块隐藏；删除进本机队列 |
 | `/contacts/edit/:id` | 連絡先の編集（R11a） | R11a | 域 contacts | 「截至」；保存需要联网；删除进本机队列 |
-| `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131） | 「截至」；重新计算、运行审计需要联网 |
 | `/contacts/dashboard` | 人脈分析（構造 / 機会 / インサイト，?tab=；10人未満は锁定；R11b） | R11b | LF3 起（0117 本机计算恢复）：構造・機会・インサイト由本机域 contacts（+ 目標に関係 id 缓存、域 tasks 的要フォロー）按共用规则 shared/compute/network-analysis-model.ts 在手机上算；/api/network/analysis 只为取计划需求（needs）读，保存在本机，新鲜期 10 分钟内不重读；服务器从没回应过时照旧读服务器；iOrbit の見立て读 /api/network/snapshot?lang=（只在 10 人以上读，不存本机）；見直す 写 /api/network/snapshot/recompute | 离线提示条；分析用本机联系人现算（计划缺口用上次保存的计划需求）；見立て显示「読み込めませんでした」；見直す需要联网；从没联网读过时显示可重试的「人数を読み込めませんでした」 |
 | `/contacts/analysis/:dimension/:bucketId` | 人脈分析の名簿（段階の内訳、並び順、R11b） | R11b | LF3 起：名簿在手机上用本机联系人按共用规则算（每一页，さらに表示不走网络）；本机算不了时（浏览器无本机库或服务器从没回应）读 /api/network/analysis/people，10人未満读 /api/network/analysis 显示锁定 | 离线提示条；本机现算的名簿照常翻页；服务器路径时显示上次保存的第一页，さらに表示需要联网 |
 | `/events/:id` | イベント詳細（R27） | LF2 | /api/events/:id/overview；上次回应存为按活动的页面副本 event-overview（最近 20 个），打开时先显示副本再在线更新 | 「截至」显示上次看到的详情；从没打开过的活动显示「需要联网」并可重试；报名、取消、保存评估需要联网 |
@@ -155,6 +153,7 @@
 | `/settings/terms` | 设置中的公开利用規約跳转（R18b） | 无 | 跳到 /legal/terms（可离线） |
 | `/settings/privacy` | 设置中的公开プライバシー跳转（R18b） | 无 | 跳到 /legal/privacy（可离线） |
 | `/settings/api` | 服务器地址设置 | 本机保存的服务器地址；「检查连接」按需读 /api/health | 可以改地址；检查连接会显示连不上 |
+| `/dashboard` | 旧看板链接跳转到首页（R10） | 无（LF7：看板页与域 dashboard-graph、页面副本 provenance-audit 已退役，本机旧数据在同步时删除） | 跳到首页 |
 | `/contacts/graph` | 旧关系图链接，跳到人脈分析「構造」（R11b） | 无（目标页见 app/contacts/dashboard.tsx） | 跳到 /contacts/dashboard?tab=structure |
 | `/schedule` | 旧日历入口，跳到 Task 的カレンダー段（R05） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=calendar（可离线） |
 | `/today` | 旧今日待办入口，跳到 Task 的 To-do 段（R05，添加框在段顶部） | 无（目标页见 app/task.tsx） | 跳到 /task?seg=todo（可离线） |
@@ -218,7 +217,7 @@
 | `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
 | `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |
 | `app/contacts/new/scan/[batchId].tsx` | `/contacts/new/scan/:batchId` | online-only |
-| `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
+| `app/dashboard.tsx` | `/dashboard` | device-only |
 | `app/e/[slug].tsx` | `/e/:slug` | online-only |
 | `app/events/[id].tsx` | `/events/:id` | local-first (LF2) |
 | `app/events/[id]/after.tsx` | `/events/:id/after` | online-only |

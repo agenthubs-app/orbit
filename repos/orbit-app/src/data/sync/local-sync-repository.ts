@@ -586,6 +586,32 @@ export function createLocalSyncRepository(input: {
       return removed;
     },
 
+    /** LF7: delete what an earlier build stored for domains and page copies this build retired, in every workspace and epoch. */
+    async purgeRetired(retired: { domainIds: readonly string[]; pageCopyIds: readonly string[] }): Promise<number> {
+      let removed = 0;
+      const rows = retired.pageCopyIds.length
+        ? await database.all<{ key: string }>("SELECT key FROM sync_meta WHERE substr(key, 1, ?) = ? OR substr(key, 1, ?) = ?", [PAGE_COPY_PREFIX.length, PAGE_COPY_PREFIX, PAGE_COPY_INDEX_PREFIX.length, PAGE_COPY_INDEX_PREFIX])
+        : [];
+      await database.transaction(async () => {
+        for (const domainId of retired.domainIds) {
+          assertNonEmptyString(domainId, "domainId");
+          if (registered.has(domainId)) throw new TypeError("a registered domain cannot be retired");
+          for (const table of ["sync_records", "sync_cursors", "local_read_assets", "local_read_index", "local_read_scope_state"]) {
+            const result = await database.run(`DELETE FROM ${table} WHERE domain_id=?`, [domainId]);
+            if (table === "sync_records") removed += result.changes;
+          }
+        }
+        for (const row of rows) {
+          let binding: unknown;
+          try { binding = JSON.parse(row.key.slice(row.key.startsWith(PAGE_COPY_INDEX_PREFIX) ? PAGE_COPY_INDEX_PREFIX.length : PAGE_COPY_PREFIX.length)); } catch { binding = null; }
+          if (!Array.isArray(binding) || typeof binding[2] !== "string" || !retired.pageCopyIds.includes(binding[2])) continue;
+          await database.run("DELETE FROM sync_meta WHERE key = ?", [row.key]);
+          if (row.key.startsWith(PAGE_COPY_PREFIX)) removed += 1;
+        }
+      });
+      return removed;
+    },
+
     /** Sprint 0118: which partitions (opened sessions) the scope's last complete walk named. */
     async getPartitionKey(value: ReadScope): Promise<string | null> {
       const scope = assertScope(value);

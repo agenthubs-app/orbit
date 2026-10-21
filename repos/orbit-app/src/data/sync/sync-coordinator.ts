@@ -16,7 +16,7 @@ import {
   type SyncClient,
   SyncResetRequiredError,
 } from "./sync-client";
-import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
+import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, RETIRED_PAGE_COPY_IDS, type PageCopy } from "./page-copies";
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
 import { parseOfflineAiSessionDelete, parseOfflineAiSessionRequest, type OfflineAiSessionDeleteInput, type OfflineAiSessionMutationInput } from "./ai-session-outbox-mutation";
@@ -24,7 +24,7 @@ import { isOfflineRelationshipFollowupMutation, isOfflineTaskCategory, parseOffl
 import { isOfflineScheduleEditable, localNoteIdsOfSchedule, parseOfflineScheduleRequest } from "./schedule-outbox-mutation";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { MESSAGE_OUTBOX_DOMAIN, parseOfflineMessageRequest, type OfflineMessageMutationInput } from "./message-outbox-mutation";
-import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
+import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, RETIRED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
   type SyncRefreshReason,
@@ -221,6 +221,8 @@ interface ActiveScope extends SyncScopeInput {
   workspaceId: string | null;
   onOutboxQueued?: () => void;
   listeners: Set<(change: SyncScopeChange) => void>;
+  /** LF7: the retired domains and page copies were deleted in this scope. */
+  retiredPurged?: boolean;
 }
 
 interface SyncFlight {
@@ -568,6 +570,11 @@ export function createSyncCoordinator(input: {
         // Sprint 0131: page copies of any other epoch go with the rotation; a lease without grants keeps none.
         await withRepository(scope, (repository) => repository.retirePageCopies(pageCopyBinding(scope)));
         if (!isCurrent(scope) || flight.abandoned) return null;
+        if (!scope.retiredPurged) {
+          await withRepository(scope, (repository) => repository.purgeRetired({ domainIds: RETIRED_SYNC_DOMAINS, pageCopyIds: RETIRED_PAGE_COPY_IDS }));
+          scope.retiredPurged = true;
+          if (!isCurrent(scope) || flight.abandoned) return null;
+        }
         if (!workspaceId) return { error: null };
 
         // Revocation drops every epoch of the domain; rotation keeps only the granted one.

@@ -9,7 +9,6 @@
     "src/screens/ai/cards/AiEntityDraftCard.tsx",
     "src/screens/chat/RelationshipChatDetailScreen.tsx",
     "src/screens/chat/RelationshipChatScreen.tsx",
-    "src/screens/dashboard/DashboardScreen.tsx",
     "src/screens/home/HomeDashboardScreen.tsx",
     "src/screens/home/HomeScreen.tsx",
     "src/screens/inbox/NotificationDetailScreen.tsx",

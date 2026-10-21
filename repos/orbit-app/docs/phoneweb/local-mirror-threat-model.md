@@ -13,7 +13,7 @@
 | 密钥 | Web Crypto AES-GCM-256 `CryptoKey`，`extractable: false`，存 IndexedDB `orbit-sync-keys` | 64 位十六进制随机密钥，存 SecureStore（`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`） |
 | 加密范围 | 仅 `sync_records.payload_json`（仓库边界 `payloadCodec`，每条记录独立 96 位 IV）；连接开启 `PRAGMA secure_delete`，删除的行在库文件里被清零（0125） | 整库（PRAGMA key） |
 | 明文列 | `record_id`、`domain_id`、`workspace_id`、`revision`、`updated_at`、`payload_hash` 等元数据 | 无（整库密文） |
-| 白名单域 | `notes`（0125 起）、`tasks`、`personal-schedule`、`event-registrations`、`registered-events`、`event-published-results`（0115 起）、`contacts`（0116 起）、`dashboard-graph`（0117 起）、`inbox-notifications`、`ai-sessions`、`ai-session-messages`（0118 起）、`relationship-conversations`、`relationship-messages`（0119 起） | 同左 |
+| 白名单域 | `notes`（0125 起）、`tasks`、`personal-schedule`、`event-registrations`、`registered-events`、`event-published-results`（0115 起）、`contacts`（0116 起）、`inbox-notifications`、`ai-sessions`、`ai-session-messages`（0118 起）、`relationship-conversations`、`relationship-messages`（0119 起） | 同左 |
 | 退化 | 任一能力缺失 → online-only + 原因，`setScope` 返回 true、`withDatabase` 返回 null | SQLite 二进制缺失 → 同样退化 |
 
 ## 2. 白名单及逐域论证
@@ -27,11 +27,11 @@
 | `registered-events`（0115） | 是 | 只有本人仍有效报名（rsvped）的活动：标题、介绍、场地、时区、起止时间、签到和结果开放等配置时间。都是活动方公开发布的信息，公开活动详情页本来就给任何人看；不含主办方账号、参会人数以外的名单或工作人员数据 |
 | `event-published-results`（0115） | 是 | 发布给本人的那一份结果：本人所在的桌（同桌成员的公开资料、座位、分桌理由和破冰建议）、推荐给本人的人选和理由，以及这场活动参会者名录的公开资料字段（姓名、公司、职位、行业、话题、语言、需求、可提供）。每一项都是同一浏览器会话已经能从 `GET /api/events/:id/operations` 明文读到的内容，字段白名单与该接口共用一个投影（`attendee-public.ts`）。不含关系图、别人的推荐和分桌、名片交换状态、签到状态、画像原文、主办方与工作人员视图。见下方「活动现场：决定与接受的风险」 |
 | `contacts`（0116） | 是 | 本人的联系人：列表卡片、搜索文本、联系人详情（关系阶段、标签、本人详情状态里的备注和最近互动、本人引用的来源摘要）。含第三方（联系人本人）的资料和本人写下的关于他的内容，和笔记同级。见下方「联系人：决定与接受的风险」 |
-| `dashboard-graph`（0117） | 是 | 本人关系图里每条记录一行：联系人、关系、本人的详情状态（只有标签）、本人名下的万能表 `events` 记录（只有名称、开始时间、来源、来源编号）、待办（标题、状态、关联、截止时间），字段是服务器看板计算读取的那份投影再去掉计算不读的字段（邮箱、电话、简介等）；来源（evidence）行只有记录时间，不含正文。和联系人域同级：含第三方的名片资料和本人写的关系摘要。见下方「看板关系图：决定与接受的风险」 |
+| `dashboard-graph`（0117，**LF7 起退役**：不再进浏览器镜像，旧数据在第一次同步时删除） | 否 | 本人关系图里每条记录一行：联系人、关系、本人的详情状态（只有标签）、本人名下的万能表 `events` 记录（只有名称、开始时间、来源、来源编号）、待办（标题、状态、关联、截止时间），字段是服务器看板计算读取的那份投影再去掉计算不读的字段（邮箱、电话、简介等）；来源（evidence）行只有记录时间，不含正文。和联系人域同级：含第三方的名片资料和本人写的关系摘要。见下方「看板关系图：决定与接受的风险」 |
 | `inbox-notifications`（0118） | 是 | 本人的类型化收件箱通知（提醒、建议、动态），含历史：标题、原因、三种语言的文案、来源摘要、对象名、处置和已读状态。可能含第三方的名字（名片交换、约谈）和笔记摘要，和联系人域同级。来源已失效的通知以「来源已不可用」的形态下发，不带正文。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `ai-sessions`、`ai-session-messages`（0118） | 是 | 本人的 AI 会话列表（标题、第一个问题和最近一条的摘要、置顶／分组／自定义标题），以及本设备打开过的会话（最多 20 个）的消息原文：本人写下的问题和 AI 基于本人数据给出的回答，和笔记同级。卡片不同步，只缓存最后一次联网打开时的卡片。见下方「收件箱与 AI 会话：决定与接受的风险」 |
 | `relationship-conversations`、`relationship-messages`（0119） | 是 | 本人仍是有效成员的对话（对方的名字、最后一条消息的 320 字预览、未读数、本人读到的序号），以及这些对话的**全部历史消息**：对方写给本人的原文和本人发出的原文。对方的原文是第三方私密内容（对方不知道这份副本在浏览器里），风险和笔记里关于第三方的内容同级。撤销关系后两人的设备都删除这个对话和它的全部消息。见下方「用户之间的消息：决定与接受的风险」 |
-| 页面副本（0131、R20a）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`todo-page`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`provenance-audit`、`public-events`、`event-recommendations`、`home-plan-summary`、`home-guide-progress`、`home-week`、`completion-question`（LF1）、`event-assessments`、`events-mine`、`event-overview`、`event-venue`（LF2）、`plan-intakes`（LF3） | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
+| 页面副本（0131、R20a）：`self-profile`、`agent-actions`、`agent-ledger`、`relationship-tasks`、`task-suggestions`、`today-page`、`today-summary`、`todo-page`、`relationship-lifecycle`、`meeting-details`、`home-schedule`、`public-events`、`event-recommendations`、`home-plan-summary`、`home-guide-progress`、`home-week`、`completion-question`（LF1）、`event-assessments`、`events-mine`、`event-overview`、`event-venue`（LF2）、`plan-intakes`（LF3） | 是 | 服务器实时算出的页面，设备只保存上次联网读到的那一份，绑定租约的授权纪元。逐项论证见下方「页面副本：决定与接受的风险」 |
 | 工作人员能看到的参会者名单、主办方运营数据 | 否 | 设计案 C 类，永不落地 |
 
 白名单在 `web-mirror-storage.ts` 的 `WEB_MIRROR_DOMAIN_IDS`（同步域）和 `WEB_MIRROR_PAGE_COPY_IDS`（页面副本，0131）硬编码，协调器只为白名单域绑定读取作用域与拉页；租约里其它域的授权在浏览器**既不存储也不拉取**。
@@ -79,6 +79,8 @@
 - **已有浏览器升级**：库结构与域列表无关，不需要清库重建。升级后第一次同步给 `contacts` 拉一次首页（每页最多约 768KB）；拉完之前联系人页显示「正在同步」，不会显示成空列表。
 
 ### 看板关系图：决定与接受的风险（Sprint 0117）
+
+> **LF7（2026-10-22）退役**：看板页在 R10 改成跳转首页，人脈分析在 LF3 改为用联系人域计算，这个域已没有读取方。App 不再订阅它（服务器仍然下发授权，旧版 App 不受影响），并在每次登录后的第一次同步里删掉本机所有纪元的 `dashboard-graph` 行、游标和页面副本 `provenance-audit`（`purgeRetired`，见 `src/data/sync/sync-domains.ts` 的 `RETIRED_SYNC_DOMAINS`）。下文保留作为当时的决定记录。
 
 - **决定**：协调者 2026-09-28 受用户委托批准的设计（看板读取方案第 7 步）要求 App 上的看板和联系人分析由手机读本地数据自己算，断网也能看；phoneweb 断网也要能看，所以 `dashboard-graph` 进浏览器镜像。按 0125 的规则逐项论证如下。
 - **下发的是什么**：本人（`user_id` = 本人）六类记录里每条一行，字段白名单只有 `collection`、`recordId`、`occurredAt`、`updatedAt`（记录的两个时间，UTC 微秒）和 `data`。`data` 是服务器看板读整张图时取的那份投影（`DASHBOARD_GRAPH_PROJECTION_SQL`），再去掉任何计算都不读的字段（`DASHBOARD_GRAPH_DEVICE_OMITTED_FIELDS`：联系人的 personId、邮箱、电话、简介，关系的信任度和共同话题，活动的地点和结束时间）：联系人的姓名、单位、职位、地点、行业、自定义标签、阶段、来源引用和时间；关系的阶段、价值类型、分数、摘要、建议动作；详情状态只有标签；活动只有名称、开始时间和来源引用；待办只有标题、状态、关联联系人和关系、截止时间。来源（evidence）行的 `data` 恒为 null：看板计算从不读来源正文，只用它的记录时间。联系人的 `accountId` 指向别的账号时，这一行不在本人的图里（作为删除下发）。服务端读取见 `features/sync/dashboard-graph-reader.ts`，真库测试 `sync-dashboard-graph-postgres`。
@@ -155,7 +157,7 @@
   | `event-overview` | `/api/events/:id/overview` | LF2：按活动保存的详情（最近 20 个）。名单只在服务器允许本人看时才在回应里，所以副本不会比在线时多 |
   | `event-venue` | `/api/events/:id/venue` | LF2：按活动保存的会场内容（最近 10 个）：席次、ラウンド、推荐、参加者与本人备注；和 0115 的已发布结果同级。签到令牌随回应保存，到活动结束失效 |
   | `plan-intakes` | `/api/agent/plans/intakes` | LF3：AI 标签上本人进行中的计划草稿列表（目标与阶段）。和计划页同级 |
-  | `provenance-audit` | `/api/audit/provenance`（用户点「运行审计」后才读） | 上次来源审计的结果：各集合的来源覆盖率和待复核条目（记录编号和来源标签，不含正文）。低于联系人域 |
+  | `provenance-audit`（LF7 退役，本机旧副本同步时删除） | `/api/audit/provenance`（用户点「运行审计」后才读） | 上次来源审计的结果：各集合的来源覆盖率和待复核条目（记录编号和来源标签，不含正文）。低于联系人域 |
   | `event-recommendations` | `/api/recommendations/events` | 给本人的活动推荐。低 |
   | `public-events` | `/api/events/public` | **公开活动目录，平台数据，不按用户归属**：任何访客都能读到。仍按身份保存和清除（而不是做成全设备共享缓存），这样只有一条清除规则，也不会让下一个登录的人看到上一个人浏览过的目录时间点。泄露面几乎为零 |
 - **未缓解的部分**：页面打开期间同源脚本能读到这些副本，和笔记一样要靠站点防 XSS。副本反映的是上次联网时的服务器结论：例如一条 Agent 建议在服务器上已被别处处理，断网时仍会显示（页面顶部的「截至」说明了这一点，所有写入入口在断网时都禁用）。

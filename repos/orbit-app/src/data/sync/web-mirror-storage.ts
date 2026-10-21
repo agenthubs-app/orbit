@@ -8,14 +8,14 @@ import type { LocalSyncDatabase, LocalSyncSqlValue } from "./local-sync-database
  * argued per domain in the same document, section 2.
  */
 // Sprint 0118: the typed inbox and the AI sessions (list and opened sessions' messages), argued in the threat model section 2.
-export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "dashboard-graph", "inbox-notifications", "ai-sessions", "ai-session-messages", "relationship-conversations", "relationship-messages"];
+export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "inbox-notifications", "ai-sessions", "ai-session-messages", "relationship-conversations", "relationship-messages"];
 
 /**
  * Sprint 0131: page copies the browser may keep (the last successful online read
  * of a server-computed page, bound to the lease epoch and AES-GCM encrypted like
  * payloads). Each is argued in the threat model section 2, 「页面副本」.
  */
-export const WEB_MIRROR_PAGE_COPY_IDS: readonly string[] = ["self-profile", "agent-actions", "agent-ledger", "relationship-tasks", "task-suggestions", "today-page", "today-summary", "todo-page", "relationship-lifecycle", "meeting-details", "home-schedule", "provenance-audit", "public-events", "event-recommendations", "home-plan-summary", "home-guide-progress", "home-week", "completion-question", "event-assessments", "events-mine", "event-overview", "event-venue", "plan-intakes"];
+export const WEB_MIRROR_PAGE_COPY_IDS: readonly string[] = ["self-profile", "agent-actions", "agent-ledger", "relationship-tasks", "task-suggestions", "today-page", "today-summary", "todo-page", "relationship-lifecycle", "meeting-details", "home-schedule", "public-events", "event-recommendations", "home-plan-summary", "home-guide-progress", "home-week", "completion-question", "event-assessments", "events-mine", "event-overview", "event-venue", "plan-intakes"];
 
 /**
  * Browser mirror storage: expo-sqlite's web build (wa-sqlite in a Worker, OPFS

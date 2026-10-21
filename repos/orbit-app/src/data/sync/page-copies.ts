@@ -58,7 +58,6 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "home-schedule", endpoint: "/api/schedule-items", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The home schedule card's last answer (its confirmed meetings are shown offline next to the personal-schedule and registered-event domains)." },
   // Sprint 0131 (coordinator item from 0117): the source audit reads every audited collection, so it runs on demand;
   // the dashboard shows the last result and its time.
-  { id: "provenance-audit", endpoint: "/api/audit/provenance", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The last source audit the user ran (shown on the dashboard with its time)." },
   // LF1 (local-first repair): Home cards the device has no domain for keep their last answer, shown at once
   // and re-read only after their fresh window or a write (data/sync/page-copy-freshness.ts).
   { id: "home-plan-summary", endpoint: "/api/agent/plans/v2/summary", variants: "single", maxVariants: 1, maxBytes: 128 * KB, audience: "account", description: "The Home plan score card's last answer (current plan, score and segments)." },
@@ -76,6 +75,9 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];
+
+/** LF7: page copies an earlier build saved and this one no longer shows (the 0117 dashboard's source audit); deleted on sync. */
+export const RETIRED_PAGE_COPY_IDS: readonly string[] = ["provenance-audit"];
 
 export type PageCopyId = (typeof PAGE_COPY_DEFINITIONS)[number]["id"];
 
