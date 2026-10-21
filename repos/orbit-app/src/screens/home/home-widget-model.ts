@@ -1,4 +1,6 @@
 import type { HomeWidgetKey, HomeWidgetSlot } from "../../api/contract/home-layout";
+import type { SyncRecord } from "../../api/contract/sync";
+import { localEventDay, type LocalRegisteredEvent } from "../../view-models/event-day-local";
 
 export const HOME_WIDGETS: readonly { key: HomeWidgetKey; category: "today" | "network" | "event" | "plan" | "secretary" }[] = [
   { key: "today", category: "today" }, { key: "pending", category: "today" }, { key: "week", category: "today" },
@@ -34,3 +36,18 @@ export function nextRegisteredEvent<T extends { status: string; startsAt: string
     && Date.parse(item.endsAt ?? item.startsAt) > now.getTime()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null;
 }
 export function signedDelta(value: number): string { return value < 0 ? `−${Math.abs(value)}` : value > 0 ? `+${value}` : "0"; }
+
+/** LF1: how long a Home page copy (plan score, week, schedule, picks) is shown without re-reading the server. */
+export const HOME_COPY_FRESH_MS = 3 * 60_000;
+
+/**
+ * LF1: the next event the attendee is going to, from the device's event-day domains — the same rule as
+ * nextRegisteredEvent over GET /api/events/mine (registered = an rsvped membership; not cancelled; not over).
+ */
+export function nextLocalRegisteredEvent(
+  events: readonly LocalRegisteredEvent[], registrations: readonly SyncRecord[], now: Date,
+): LocalRegisteredEvent | null {
+  const going = (eventId: string) => localEventDay({ registrations, events: [], results: [] }, eventId).registration?.membershipStatus === "rsvped";
+  return events.filter(event => going(event.eventId) && event.lifecycleState !== "cancelled" && Date.parse(event.endsAt) > now.getTime())
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null;
+}

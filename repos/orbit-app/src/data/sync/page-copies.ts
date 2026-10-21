@@ -59,6 +59,12 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   // Sprint 0131 (coordinator item from 0117): the source audit reads every audited collection, so it runs on demand;
   // the dashboard shows the last result and its time.
   { id: "provenance-audit", endpoint: "/api/audit/provenance", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The last source audit the user ran (shown on the dashboard with its time)." },
+  // LF1 (local-first repair): Home cards the device has no domain for keep their last answer, shown at once
+  // and re-read only after their fresh window or a write (data/sync/page-copy-freshness.ts).
+  { id: "home-plan-summary", endpoint: "/api/agent/plans/v2/summary", variants: "single", maxVariants: 1, maxBytes: 128 * KB, audience: "account", description: "The Home plan score card's last answer (current plan, score and segments)." },
+  { id: "home-guide-progress", endpoint: "/api/home/guide-progress", variants: "single", maxVariants: 1, maxBytes: 16 * KB, audience: "account", description: "The Home three-step guide's last answer (derived from contacts, goal and plan on the server)." },
+  { id: "home-week", endpoint: "/api/schedule-items", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The Home week card's last answer (this week's calendar items)." },
+  { id: "completion-question", endpoint: "/api/contacts/completion-question", variants: "single", maxVariants: 1, maxBytes: 32 * KB, audience: "account", description: "Today's one completion question (the card re-reads after an answer or skip)." },
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];

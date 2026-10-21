@@ -10,6 +10,8 @@ import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { overlayTodoPage, todoPageIsStale } from "./todo-page-model";
 
+const TODO_PAGE_FRESH_MS = 2 * 60_000;
+
 /** R20a To-do first page; R10/R19 may consume this without generating or mutating server data. */
 export function useTodoPage(timeZone: string, date: string) {
   const auth = useOrbitAuthSession();
@@ -22,6 +24,8 @@ export function useTodoPage(timeZone: string, date: string) {
     return result.success && result.data.counts.decisions === 0 && result.data.counts.nextMoves === 0 && result.data.counts.followups === 0;
   }, { copy: { id: "todo-page", variant: "main" }, enabled: auth.ready && auth.signedIn && Boolean(auth.actorId),
     dropCopyOnErrorCodes: ["NOT_IMPLEMENTED"],
+    // LF1: Home and Task share this page; a copy read in the last two minutes (and before no write) is reused.
+    freshForMs: TODO_PAGE_FRESH_MS,
     scopeKey: JSON.stringify([auth.actorId, auth.cookieHeader, auth.notificationSessionRevision, server.baseUrl, date, timeZone]),
     accept: value => todoPageSchema.safeParse(value).success });
   const parsed = state.kind === "success" || state.kind === "empty" ? todoPageSchema.safeParse(state.data) : null;

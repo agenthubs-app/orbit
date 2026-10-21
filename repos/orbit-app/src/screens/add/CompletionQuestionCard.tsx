@@ -2,7 +2,7 @@
 // chips, the hint and スキップ. Rule-based on the server (no AI), one a day. 「答えると ●●○ に」 only
 // when answering really lifts the person to ●●○ (`densityIfAnswered`), otherwise 「情報が 1つ増えます」.
 // 「自分で入力」 opens a field. TodayQuestionCard = the live card R20 (To-do) / R11 / R10 mount.
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import { COMPLETION_OPTION_LABELS } from "../../api/compute/completion-question-rules";
@@ -11,6 +11,7 @@ import { contactCompletionQuestionSchema, contactCompletionResultSchema } from "
 import { Avatar, FilterOption, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { DensityDots } from "./add-ui";
 import { newImportKey } from "./import/import-api";
@@ -73,23 +74,24 @@ export function CompletionQuestionCard({ question, busy = false, onAnswer, onSki
 }
 
 /** Reads today's question, answers or skips it, then hides for the day; nothing while loading, without a question, or when not live (503). */
+const COMPLETION_QUESTION_FRESH_MS = 10 * 60_000;
+
 export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}) {
   const { t } = useOrbitLocale();
   const client = useOrbitApiClient();
   const toast = useToast();
-  const [question, setQuestion] = useState<ContactCompletionQuestion | null>(null);
+  const [settledId, setSettledId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // One key per question and action: a retry after a timeout replays the same request (idempotent).
   const keys = useRef<Record<string, string>>({});
-  useEffect(() => {
-    let live = true;
-    void client.get<unknown>("/api/contacts/completion-question").then((result) => {
-      if (!live || !result.success || !result.data) return;
-      const parsed = contactCompletionQuestionSchema.safeParse(result.data);
-      if (parsed.success) setQuestion(parsed.data);
-    }).catch(() => undefined);
-    return () => { live = false; };
-  }, [client]);
+  // LF1: today's question is kept as a page copy and re-read only after its fresh window or a write
+  // (an answer or skip is a write, so the next open asks the server for the next question).
+  const state = usePageCopyResource<unknown>("/api/contacts/completion-question", (value) => !value, {
+    copy: { id: "completion-question" }, freshForMs: COMPLETION_QUESTION_FRESH_MS,
+    accept: (value) => value === null || contactCompletionQuestionSchema.safeParse(value).success,
+  });
+  const parsed = state.kind === "success" ? contactCompletionQuestionSchema.safeParse(state.data) : null;
+  const question: ContactCompletionQuestion | null = parsed?.success && parsed.data.id !== settledId && !state.copy?.offline ? parsed.data : null;
   if (!question) return null;
   const settle = async (path: string, body: Record<string, string>, message: string) => {
     setBusy(true);
@@ -98,7 +100,7 @@ export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}
     setBusy(false);
     if (!result?.success || !contactCompletionResultSchema.safeParse(result.data).success) { toast.error(t("add.completion.failed")); return; }
     toast.success(message);
-    setQuestion(null);
+    setSettledId(question.id);
     onSettled?.();
   };
   const base = `/api/contacts/completion-question/${encodeURIComponent(question.id)}`;

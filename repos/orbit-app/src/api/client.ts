@@ -1,4 +1,5 @@
 import { serverReachability } from "./server-reachability";
+import { pageCopyFreshness } from "../data/sync/page-copy-freshness";
 import type {
   ApiEnvelope,
   ApiErrorBody,
@@ -331,6 +332,8 @@ async function request<TData>(
   }
 
   serverReachability.markReachable(baseUrl);
+  // LF1: a write the server accepted ends every page copy's fresh window.
+  if (method !== "GET" && response.ok) pageCopyFreshness.noteWrite();
 
   // 401 说明这次请求带的会话已经失效。这里只广播事实，
   // 登出与跳转由 AuthSessionProvider 决定（它才知道当前是否处于登录态）。

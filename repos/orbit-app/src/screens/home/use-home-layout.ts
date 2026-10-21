@@ -1,3 +1,5 @@
+import { pageCopyFreshness } from "../../data/sync/page-copy-freshness";
+import { HOME_COPY_FRESH_MS } from "./home-widget-model";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -41,7 +43,7 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
     setPending(Boolean(next.draft)); setState(nextState);
   }, [actorId, baseUrl]);
 
-  const read = useCallback(async () => {
+  const read = useCallback(async (force = false) => {
     if (busy.current) return;
     busy.current = true;
     try {
@@ -51,6 +53,11 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
       if (cached.snapshot || cached.draft) {
         setLayout(withDraft(cached.snapshot ?? DEFAULT_HOME_LAYOUT, cached.draft));
         setPending(Boolean(cached.draft)); setState("stale");
+      }
+      // LF1: a layout read moments ago (and not superseded by a write since) is current enough; the save's
+      // revision check still catches another device's change. Focus and foreground no longer re-read it.
+      if (!force && cached.snapshot && !cached.draft && cached.fetchedAt && pageCopyFreshness.isFresh(cached.fetchedAt, HOME_COPY_FRESH_MS)) {
+        setState("ready"); return;
       }
       const result = await client.get<unknown>("/api/home/layout");
       if (!active.current) return;
@@ -108,5 +115,6 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
     finally { busy.current = false; setSaving(false); }
   }, [client, onConflict, publish]);
 
-  return { layout, state, saving, pending, fetchedAt: record.current.fetchedAt, reload: read, save };
+  const reload = useCallback(() => read(true), [read]);
+  return { layout, state, saving, pending, fetchedAt: record.current.fetchedAt, reload, save };
 }

@@ -28,9 +28,9 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { homeAppTargetHref } from "./home-target";
 import { HomeWidgetBody } from "./HomeWidgetCards";
-import { HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, removeWidget, resizeWidget } from "./home-widget-model";
+import { HOME_COPY_FRESH_MS, HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, removeWidget, resizeWidget } from "./home-widget-model";
 import { useHomeLayout } from "./use-home-layout";
-import { useHomeRead } from "./use-home-read";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useHomeWidgetSnapshot } from "./use-home-widget-snapshot";
 
 const TITLE: Record<HomeWidgetKey, "home.widgetToday" | "home.widgetPending" | "home.widgetWeek" | "home.widgetPlan" | "home.widgetEvent" | "home.widgetEventPick" | "home.widgetNetwork" | "home.widgetSecretary" | "home.widgetMemo"> = {
@@ -68,7 +68,11 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const [hintHidden, setHintHidden] = useState(false);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const badge = useRelationshipInboxBadgeCount(actorId);
-  const guide = useHomeRead(client, "/api/home/guide-progress", guideSchema);
+  // LF1: the guide's last answer is a page copy (no domain derives it on the device); re-read after its fresh window or a write.
+  const guideCopy = usePageCopyResource<unknown>("/api/home/guide-progress", () => false, { copy: { id: "home-guide-progress" },
+    freshForMs: HOME_COPY_FRESH_MS, accept: value => guideSchema.safeParse(value).success });
+  const guideParsed = guideCopy.kind === "success" ? guideSchema.safeParse(guideCopy.data) : null;
+  const guideProgress = guideParsed?.success && guideParsed.data.kind === "progress" ? guideParsed.data : null;
   const now = useMemo(() => new Date(), []);
   const date = shellHeaderDate(now, language, timeZone, t);
   const greeting = shellGreeting(now, timeZone, auth.user?.name, t);
@@ -132,7 +136,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetSize")}`} text={slot.size === "s" ? t("home.widgetSmall") : t("home.widgetMedium")} press={() => setDraft(resizeWidget(items, slot.key))} />
               <Control label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} text="−" press={() => remove(slot.key)} />
             </View> : null}</View>
-            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null}
+            <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guideProgress}
               onDataSettled={() => setWidgetRefreshRevision(value => value + 1)} />
           </Card>
         </UiPressable>
@@ -143,7 +147,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
       <WidgetLibrary slots={items} onClose={() => setLibrary(false)} onAdd={slot => { setDraft(addWidget(items, slot)); setLibrary(false); }} />
     </BottomSheet>
     {menuSlot && !editing ? <HomeWidgetContextMenu slot={menuSlot} client={client} actorId={actorId} navigate={navigate}
-      guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} onClose={() => setMenu(null)}
+      guide={guideProgress} onClose={() => setMenu(null)}
       onEdit={() => { setMenu(null); begin(); }} onSize={size => void contextSize(menuSlot.key, size)} onRemove={() => void contextRemove(menuSlot.key)} /> : null}
   </AppScreen>;
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { serverReachability } from "../api/server-reachability";
+import { pageCopyFreshness } from "../data/sync/page-copy-freshness";
 import { shouldRetainPageCopy, type PageCopy, type PageCopyId, type PageCopyStatus } from "../data/sync/page-copies";
 import { resultToRouteState, type RouteState } from "../view-models/route-state";
 import { useApiResource, type ApiResourceState } from "./useApiResource";
@@ -46,15 +47,27 @@ export function usePageCopyResource<TData>(
     accept?: (data: unknown) => boolean;
     /** An authoritative feature-level error replaces, rather than revives, the last-seen copy. */
     dropCopyOnErrorCodes?: readonly string[];
+    /**
+     * LF1: a copy younger than this (and saved after the app's last accepted write) is shown
+     * without a server read; the page's refresh() still reads the server. Omitted: every open reads.
+     */
+    freshForMs?: number;
   },
 ): PageCopyResourceState<TData> {
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
   const enabled = options.enabled ?? true;
   const signedIn = auth.ready && auth.signedIn && Boolean(auth.actorId);
+  const freshForMs = options.freshForMs;
+  const copyKeyForFresh = JSON.stringify([baseUrl, auth.actorId, options.copy.id, options.copy.variant ?? "main"]);
+  // LF1: which copy key the user asked to read from the server despite a fresh copy.
+  const [forcedKey, setForcedKey] = useState<string | null>(null);
+  const [freshCheck, setFreshCheck] = useState<{ key: string; fresh: boolean | null }>({ key: "", fresh: null });
+  const freshDecision = freshForMs === undefined ? false : freshCheck.key === copyKeyForFresh ? freshCheck.fresh : null;
+  const skipNetwork = freshForMs !== undefined && forcedKey !== copyKeyForFresh && freshDecision !== false;
   const network = useApiResource<TData>(path, isEmpty, {
     cachePolicy: "network-only",
-    enabled,
+    enabled: enabled && !skipNetwork,
     ...(options.scopeKey === undefined ? {} : { scopeKey: options.scopeKey }),
   });
   const { session, whenReady } = usePageCopySession(enabled && signedIn);
@@ -73,10 +86,17 @@ export function usePageCopyResource<TData>(
     let live = true;
     // The session opens in an effect; wait for it (briefly) so an early offline answer does not miss the copy.
     void whenReady().then((ready) => ready ? ready.readPageCopy(copyId, variant) : null).then((copy) => {
-      if (live) setStored({ key: copyKey, copy: copy && accepts(copy.data) ? copy : null, settled: true });
-    }).catch(() => { if (live) setStored({ key: copyKey, copy: null, settled: true }); });
+      if (!live) return;
+      const kept = copy && accepts(copy.data) ? copy : null;
+      setStored({ key: copyKey, copy: kept, settled: true });
+      if (freshForMs !== undefined) setFreshCheck({ key: copyKey, fresh: Boolean(kept && pageCopyFreshness.isFresh(kept.syncedAt, freshForMs)) });
+    }).catch(() => {
+      if (!live) return;
+      setStored({ key: copyKey, copy: null, settled: true });
+      if (freshForMs !== undefined) setFreshCheck({ key: copyKey, fresh: false });
+    });
     return () => { live = false; };
-  }, [accepts, copyId, copyKey, enabled, session, variant, whenReady]);
+  }, [accepts, copyId, copyKey, enabled, freshForMs, session, variant, whenReady]);
 
   // A 2xx answer becomes the copy (once per answer).
   const saved = useRef<unknown>(null);
@@ -88,7 +108,12 @@ export function usePageCopyResource<TData>(
   }, [accepts, answer, copyId, variant, whenReady]);
 
   const reason = keepsCopyState(network);
-  const refresh = network.refresh;
+  const networkRefresh = network.refresh;
+  const refresh = useCallback(() => {
+    // A fresh copy kept the read off; the user's refresh turns it on (the enabled read starts it).
+    if (skipNetwork) setForcedKey(copyKeyForFresh);
+    else networkRefresh();
+  }, [copyKeyForFresh, networkRefresh, skipNetwork]);
   // Back online: read again at once instead of leaving the 「截至」 copy up.
   const offlineRef = useRef(false);
   offlineRef.current = reason !== null;
@@ -96,7 +121,13 @@ export function usePageCopyResource<TData>(
     if (state === "reachable" && previous === "unreachable" && offlineRef.current && url === baseUrl.trim().replace(/\/+$/u, "")) refresh();
   }), [baseUrl, refresh]);
 
-  if (network.kind === "success" || network.kind === "empty") return { ...network, copy: null };
+  if (network.kind === "success" || network.kind === "empty") return { ...network, refresh, copy: null };
+  // LF1: a fresh copy is this visit's answer (no server read); not offline, so writes stay on.
+  if (skipNetwork) {
+    if (freshDecision === null || !current.copy) return { kind: "loading", refresh, refreshing: false, copy: null };
+    const shown = resultToRouteState({ success: true, data: current.copy.data as TData, meta: META, status: 200 }, isEmpty);
+    return { ...shown, refresh, refreshing: false, copy: { lastSyncedAt: current.copy.syncedAt, offline: false, reason: null } };
+  }
   if (!shouldRetainPageCopy(network, options.dropCopyOnErrorCodes)) return { ...network, copy: null };
   const fromCopy = current.copy
     ? resultToRouteState({ success: true, data: current.copy.data as TData, meta: META, status: 200 }, isEmpty)

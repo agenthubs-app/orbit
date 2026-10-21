@@ -806,6 +806,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/home/HomeScreen.tsx","GET","/api/events/public"],
   // R10 Home widgets read only their mounted sources; the layout hook owns its actor-scoped offline draft.
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/agent/plans/v2/summary"],
+  // LF1: the next five are fallbacks only — read when the browser has no device mirror; native Home reads its domains.
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/page"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/summary"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/events/mine"],
@@ -826,14 +827,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/home/home-layout-sync.ts","PUT","/api/home/layout"],
   ["src/screens/home/use-home-layout.ts","GET","/api/home/layout"],
   ["src/screens/home/use-home-layout.ts","PUT","/api/home/layout"],
-  ["src/screens/home/use-home-read.ts","GET","/api/agent/plans/v2/summary"],
-  ["src/screens/home/use-home-read.ts","GET","/api/contacts/page"],
-  ["src/screens/home/use-home-read.ts","GET","/api/contacts/summary"],
-  ["src/screens/home/use-home-read.ts","GET","/api/events/mine"],
-  ["src/screens/home/use-home-read.ts","GET","/api/home/guide-progress"],
-  ["src/screens/home/use-home-read.ts","GET","/api/inbox/secretary/preview"],
-  ["src/screens/home/use-home-read.ts","GET","/api/notes"],
-  ["src/screens/home/use-home-read.ts","GET","/api/schedule-items"],
   ["src/screens/memo/EditMemoScreen.tsx","POST","/api/contacts/search"],
   ["src/screens/memo/EditMemoScreen.tsx","GET","/api/events"],
   ["src/screens/memo/EditMemoScreen.tsx","PATCH","/api/notes/:id"],

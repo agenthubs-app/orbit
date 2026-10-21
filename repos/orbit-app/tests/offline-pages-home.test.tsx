@@ -37,7 +37,8 @@ test("HomeWidgetsScreen keeps today's question beside the empty three-step guide
   await page.getByText(question.question).waitFor();
   assert.equal(await page.getByText("0/3").count(), 1);
   assert.equal(await page.getByText("今日待办").count(), 1);
-  assert.ok((await requestsOf(page)).some((request) => request.startsWith("get:/api/contacts/completion-question")));
+  // LF1: the question is a page copy read through the resource layer.
+  assert.ok((await requestsOf(page)).some((request) => /^(get|resource):\/api\/contacts\/completion-question/.test(request)));
 });
 
 test("HomeWidgetsScreen refreshes the Today decision count after answering", async (t) => {
@@ -78,4 +79,14 @@ test("HomeWidgetsScreen reopens its scoped layout offline and queues an edit loc
   await page.getByText(/以前的信息 · 联网后保存/).waitFor();
   const stored = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) ?? "null"), key);
   assert.equal(stored.draft.app[0].key, "planScore");
+});
+
+test("LF1: Home cards read the device for contacts, events, secretary and notes instead of the server", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses });
+  await page.getByText("开始的三步").waitFor();
+  await page.waitForTimeout(500);
+  const requests = await requestsOf(page);
+  for (const endpoint of ["/api/contacts/summary", "/api/contacts/page", "/api/events/mine", "/api/inbox/secretary/preview", "/api/notes"]) {
+    assert.equal(requests.some((request) => request.includes(`:${endpoint}`)), false, `${endpoint} must come from the device mirror`);
+  }
 });
