@@ -47,7 +47,7 @@ function CopyResource<T>({ state, schema, children }: { state: PageCopyResourceS
   if (state.kind === "loading") return <UiText style={styles.muted}>…</UiText>;
   const parsed = state.kind === "success" || state.kind === "empty" ? schema.safeParse(state.data) : null;
   if (!parsed?.success) return <View><UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={state.refresh} variant="ghost" size="sm" /></View>;
-  return <>{state.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {state.copy.lastSyncedAt ?? ""}</UiText> : null}{children(parsed.data)}</>;
+  return <><SavedOfflineNote show={state.copy?.offline} at={state.copy?.lastSyncedAt} />{children(parsed.data)}</>;
 }
 
 /** The server read a card falls back to without a device mirror; inert (no request) when the mirror is the source. */
@@ -64,8 +64,17 @@ function FallbackState({ loading, refresh }: { loading: boolean; refresh: () => 
 
 /** LF1: a device-mirror card — 「截至」 when the mirror is not up to date with the server. */
 function MirrorNotice({ offline, lastSyncedAt }: { offline: boolean; lastSyncedAt: string | null }) {
-  const { styles } = useStyles(); const { t } = useOrbitLocale();
-  return offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {lastSyncedAt ?? ""}</UiText> : null;
+  return <SavedOfflineNote show={offline} at={lastSyncedAt} />;
+}
+
+/** 「以前の情報 · …」 with the save time as a short local date, not the raw ISO string. */
+function SavedOfflineNote({ show, at }: { show: boolean | undefined; at: string | null | undefined }) {
+  const { styles } = useStyles(); const { t, language } = useOrbitLocale();
+  if (!show) return null;
+  const time = at && Number.isFinite(Date.parse(at))
+    ? new Date(at).toLocaleString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+  return <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{time ? ` · ${time}` : ""}</UiText>;
 }
 
 function LinkRow({ label, href, navigate }: { label: string; href: string; navigate: Navigate }) {
@@ -107,11 +116,11 @@ function TodayWidget({ navigate, guide, onDataSettled }: { navigate: Navigate; g
   if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard onSettled={settled} /></View>;
   return <View>
     {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
-    {todo.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {todo.copy.lastSyncedAt ?? ""}</UiText> : null}
+    <SavedOfflineNote show={todo.copy?.offline} at={todo.copy?.lastSyncedAt} />
     <View style={styles.stats}><Stat value={todo.page.counts.nextMoves} label={t("home.widgetNextMove")} /><Stat value={todo.page.counts.decisions} label={t("home.widgetPending")} />{parsedSchedule?.success ? <Stat value={scheduleRows.length} label={t("home.schedule")} /> : <UiText style={styles.muted}>— {t("home.schedule")}</UiText>}</View>
     {todo.page.nextMoves.items[0] ? <LinkRow label={todo.page.nextMoves.items[0].titlePreview} href="/task?seg=todo" navigate={navigate} /> : null}
     {scheduleRows[0] ? <LinkRow label={scheduleRows[0].title} href="/task?seg=calendar" navigate={navigate} /> : null}
-    {schedule.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {schedule.copy.lastSyncedAt ?? ""}</UiText> : null}
+    <SavedOfflineNote show={schedule.copy?.offline} at={schedule.copy?.lastSyncedAt} />
     {Object.values(todo.page.sources).some(source => source === "unavailable" || source === "not_implemented") ? <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText> : null}
     <TodayQuestionCard onSettled={settled} />
     <LinkRow label={t("home.widgetMore")} href="/task?seg=todo" navigate={navigate} />
@@ -238,7 +247,7 @@ function PickWidget({ navigate, size }: { navigate: Navigate; size: "s" | "m" })
   }, { copy: { id: "event-recommendations", variant: "home" }, freshForMs: HOME_COPY_FRESH_MS, accept: value => picksSchema.safeParse(value).success });
   const parsed = state.kind === "success" || state.kind === "empty" ? picksSchema.safeParse(state.data) : null;
   if (!parsed?.success) return <View><UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={state.refresh} variant="ghost" size="sm" /></View>;
-  return <View>{state.copy?.offline ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")} · {state.copy.lastSyncedAt ?? ""}</UiText> : null}
+  return <View><SavedOfflineNote show={state.copy?.offline} at={state.copy?.lastSyncedAt} />
     {parsed.data.recommendations.length ? parsed.data.recommendations.slice(0, size === "m" ? 2 : 1).map(item => <LinkRow key={item.eventId} label={`${item.title} · ${item.valueScore}`} href={`/events/${encodeURIComponent(item.eventId)}`} navigate={navigate} />) : <UiText style={styles.muted}>{t("home.widgetEmpty")}</UiText>}
     <LinkRow label={t("home.widgetMore")} href="/events" navigate={navigate} /></View>;
 }

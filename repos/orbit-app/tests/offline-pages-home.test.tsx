@@ -101,3 +101,11 @@ test("LF6: the next-event card shows a registered event from the device's event-
   await page.getByText("LF6 東京ミートアップ").waitFor();
   assert.equal((await requestsOf(page)).some((request) => request.includes(":/api/events/mine")), false);
 });
+
+test("LF6: offline Home cards label saved data with a readable time, never the raw ISO string", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses, online: false, syncStatus: "stale" });
+  await page.evaluate(({ storageKey, snapshot }) => localStorage.setItem(storageKey, JSON.stringify({ snapshot, fetchedAt: "2026-10-20T00:00:00Z", draft: null })), { storageKey: homeLayoutStorageKey(actor, baseUrl)!, snapshot: DEFAULT_HOME_LAYOUT });
+  await page.reload();
+  await page.getByText(/以前的信息 · 联网后保存 · /).first().waitFor();
+  assert.doesNotMatch(await page.locator("body").innerText(), /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u);
+});
