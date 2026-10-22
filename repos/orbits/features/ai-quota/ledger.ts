@@ -18,6 +18,7 @@ import { randomUUID } from "node:crypto";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import {
   AI_QUOTA_MAX_CALLS,
+  AI_QUOTA_DAILY_PURPOSE_LIMITS,
   AI_QUOTA_MONTHLY_LIMITS,
   AI_QUOTA_PURPOSE_POOLS,
   BACKGROUND_POOL_DAILY_LIMIT,
@@ -124,6 +125,10 @@ const INSERT_CALL_SQL = `/* ai-quota:begin-call */
   insert into ai_usage_calls (workspace_id, operation_id, seq, epoch, provider, model, status, started_at)
   values ($1, $2, $3, $4, $5, $6, 'started', now())`;
 
+const DAILY_PURPOSE_SQL = `/* ai-quota:usage-day-purpose */
+  select count(*)::int as used from ai_usage_ledger
+  where workspace_id = $1 and actor_id = $2 and purpose = $3 and status <> 'released' and usage_day = $4::date`;
+
 const MONTHLY_SQL = `/* ai-quota:usage-month */
   select count(*)::int as used from ai_usage_ledger
   where workspace_id = $1 and actor_id = $2 and purpose = $3 and status <> 'released'
@@ -177,6 +182,12 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
         }
         if (count(usage?.user_used) >= USER_POOL_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "user" };
       }
+    }
+    const dailyPurposeLimit = AI_QUOTA_DAILY_PURPOSE_LIMITS[request.purpose];
+    if (dailyPurposeLimit !== undefined) {
+      // LF13：按用途的日上限（任何池），在同一把锁里数今天未释放的操作。
+      const used = count((await executor.query<Row>(DAILY_PURPOSE_SQL, [workspaceId, actorId, request.purpose, day])).rows[0]?.used);
+      if (used >= dailyPurposeLimit) return { ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(request.now), limit: "purpose" };
     }
     const monthlyLimit = AI_QUOTA_MONTHLY_LIMITS[request.purpose];
     if (monthlyLimit !== undefined) {

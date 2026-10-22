@@ -355,3 +355,14 @@ test("event_assessment：日 5 次独立计数、不占用户池；月 10 次按
     assert.equal((await reserve("ea:nov-1", new Date("2026-10-31T15:00:00.000Z"))).ok, true);
   });
 });
+
+test("LF13 event_registration_question: 40 a Tokyo day in the system pool, released attempts do not count, the next day starts over", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    const reserve = (key: string, now: Date) => ledger.reserve({ actorId: ALICE, idempotencyKey: key, now, pool: "system", purpose: "event_registration_question", trigger: "auto" });
+    for (let n = 0; n < 40; n += 1) assert.equal((await reserve(`q:d1:${n}`, NOW)).ok, true);
+    assert.deepEqual(await reserve("q:d1:41", NOW), { limit: "purpose", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
+    assert.equal((await ledger.reserve({ actorId: BOB, idempotencyKey: "q:bob", now: NOW, pool: "system", purpose: "event_registration_question", trigger: "auto" })).ok, true, "per person");
+    assert.equal((await reserve("q:d2:0", new Date(NOW.getTime() + 86_400_000))).ok, true);
+  });
+});

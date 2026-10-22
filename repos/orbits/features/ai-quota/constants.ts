@@ -22,6 +22,8 @@ export type AiQuotaPurpose =
   | "event_assessment"
   // R27（events DESIGN §3.4 / §10 A5）：报名访谈（含 E4 自己紹介）、会後まとめ（E3）——只记账，不设月上限。
   | "event_registration_interview"
+  // LF13：报名访谈每一题的 AI 出题（原来不进账本、没有上限）。
+  | "event_registration_question"
   | "event_post_summary"
   // R17（host DESIGN §10 A6，用户 2026-10-16「全按推荐」）：编组生成（现有 event-ops worker 的付费 AI）——只记账，不设上限、不拦调用。
   | "event_matching";
@@ -31,7 +33,7 @@ export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "sy
 export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment",
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
-  "event_registration_interview", "event_post_summary", "event_matching",
+  "event_registration_interview", "event_registration_question", "event_post_summary", "event_matching",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -72,6 +74,8 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   event_assessment: 3,
   // R27：一次报名访谈提问 = 1 次；persona / 自己紹介 = 生成 + 修复；会後まとめ = 生成 + 修复。
   event_registration_interview: 2,
+  // LF13：一道访谈题 = 1 次调用。
+  event_registration_question: 1,
   event_post_summary: 2,
   // R17：一次编组任务尝试（推荐分片 / 分组 / 卓内容）= 1 次操作 1 次调用（维护任务事后补记）。
   event_matching: 1,
@@ -99,7 +103,8 @@ export const AI_QUOTA_MONTHLY_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, nu
   plan_review: 3,
   // R26（events DESIGN §3.1 / §9 #22）：活动评估免费每东京月 10 次（付费档上线时再加不限）。
   event_assessment: 10,
-  // LF4（主会话代定，2026-10-21）：报名 persona / 自己紹介每次提交都会重新生成，原来没有上限；每东京月 30 次。
+  // LF4（主会话代定，2026-10-21）：报名 persona / 自己紹介每次提交都会重新生成，原来没有上限；每东京月 30 次
+  // （LF13：旧的 /persona 接口也计在这里）。
   event_registration_interview: 30,
 };
 
@@ -126,6 +131,15 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   event_matching: "system",
   // LF4: the event-registration runner reserves from the system pool (journey/ledgered-runner.ts).
   event_registration_interview: "system",
+  event_registration_question: "system",
+};
+
+/**
+ * LF13（用户 2026-10-22 批准）：按用途的每东京日上限，在任何池里都查（系统池原来只有月上限）。
+ * 报名访谈出题每人每天 40 次；超出时不调用模型，已填的回答保留。
+ */
+export const AI_QUOTA_DAILY_PURPOSE_LIMITS: Readonly<Partial<Record<AiQuotaPurpose, number>>> = {
+  event_registration_question: 40,
 };
 
 export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {

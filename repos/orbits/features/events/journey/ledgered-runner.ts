@@ -1,10 +1,11 @@
 /**
- * R27（DESIGN §3.4 / §10 A5）：把两个现有活动 AI 调用（报名访谈 / 自己紹介 E4、会後まとめ E3）接进 AI 账本——只记账，不设上限。
+ * R27（DESIGN §3.4 / §10 A5）：把活动 AI 调用（报名访谈出题、自己紹介 E4、会後まとめ E3）接进 AI 账本。
  * Owner: 甲 (R27).
  * - 第一次调用前 `reserve`（system 池、auto），每次 HTTP 前后 `beginCall` / `endCall`（带 token），结束时 `finish`。
- * - 账本不可用（生产还没执行迁移 v4 时 CHECK 会拒绝新用途、或无库）→ 照常调用、不记账，并留一条日志：
- *   记账是观测手段，不能挡住已上线的功能。
- * - LF4：账本明确说额度用完（daily_limit / monthly_limit）→ 不发请求，返回不可重试的失败。
+ * - LF4：账本明确说额度用完（daily_limit / monthly_limit）→ 不发请求，返回不可重试的失败（`refusal()` = "quota"）。
+ * - LF13（用户 2026-10-22 批准，取代 A5 的「照常调用」）：账本不可用（表未迁移 / CHECK 拒绝新用途 / 出错 / 不是所有者）
+ *   → 同样不发请求（`refusal()` = "unavailable"），与其他 AI 用途的「始终拒绝」一致。生产上线前须先执行账本迁移。
+ *   没有注入账本（`gate: null`，只有测试与无库的本地模式）时照常调用。
  */
 import type { AiQuotaGate } from "../../ai-quota/gate";
 import type { runOrbitAgentModelText } from "../../orbit-ai/gemini-provider";
@@ -16,18 +17,20 @@ export interface LedgeredRunner {
   finish(outcome: "succeeded" | "failed"): Promise<void>;
   /** Calls made through `run` (for verification logs). */
   calls(): number;
+  /** LF13: why `run` sent nothing — the quota is used up, or the ledger could not be used; null when it ran. */
+  refusal(): "quota" | "unavailable" | null;
 }
 
 export function createLedgeredRunner(input: {
   gate: AiQuotaGate | null;
   actorId: string;
-  purpose: "event_registration_interview" | "event_post_summary";
+  purpose: "event_registration_interview" | "event_registration_question" | "event_post_summary";
   idempotencyKey: string;
   now?: () => Date;
   runner: Runner;
 }): LedgeredRunner {
   let operation: string | null | undefined;
-  let refused = false;
+  let refused: "quota" | "unavailable" | null = null;
   let count = 0;
   const now = input.now ?? (() => new Date());
   async function ensure(): Promise<string | null> {
@@ -36,16 +39,20 @@ export function createLedgeredRunner(input: {
     try {
       const reservation = await input.gate.reserve({ actorId: input.actorId, idempotencyKey: input.idempotencyKey, now: now(), pool: "system", purpose: input.purpose, takeover: true, trigger: "auto" });
       operation = reservation.ok && reservation.owner ? reservation.operationId : null;
-      if ("reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit")) refused = true;
-      if (!operation) console.warn(JSON.stringify({ event: "event_ai_ledger_unavailable", purpose: input.purpose, reason: reservation.ok ? "not_owner" : "refused" }));
+      if (!operation) {
+        refused = "reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit") ? "quota" : "unavailable";
+        console.warn(JSON.stringify({ event: "event_ai_ledger_unavailable", purpose: input.purpose, reason: "reason" in reservation ? reservation.reason : "not_owner" }));
+      }
     } catch (error) {
       console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_ai_ledger_unavailable", purpose: input.purpose }));
       operation = null;
+      refused = "unavailable";
     }
     return operation;
   }
   return {
     calls: () => count,
+    refusal: () => refused,
     async finish(outcome) {
       if (!operation || !input.gate) return;
       await input.gate.finish(operation, outcome).catch((error: unknown) => console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_ai_ledger_finish_failed" })));
@@ -53,8 +60,8 @@ export function createLedgeredRunner(input: {
     run: (async (args) => {
       const op = await ensure();
       if (refused) {
-        console.warn(JSON.stringify({ event: "event_ai_quota_exhausted", purpose: input.purpose }));
-        return { error: { code: "MODEL_REQUEST_FAILED", message: "AI quota for this purpose is used up.", provider: "deepseek", source: "env" }, retryable: false, success: false } as unknown as Awaited<ReturnType<Runner>>;
+        console.warn(JSON.stringify({ event: refused === "quota" ? "event_ai_quota_exhausted" : "event_ai_ledger_refused", purpose: input.purpose }));
+        return { error: { code: "MODEL_REQUEST_FAILED", message: refused === "quota" ? "AI quota for this purpose is used up." : "The AI usage ledger is unavailable.", provider: "deepseek", source: "env" }, retryable: false, success: false } as unknown as Awaited<ReturnType<Runner>>;
       }
       let callId: string | null = null;
       if (op && input.gate) {

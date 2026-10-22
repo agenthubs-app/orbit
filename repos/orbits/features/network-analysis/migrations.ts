@@ -207,6 +207,27 @@ alter table network_analysis_snapshots add column narrative_ja jsonb
   check (narrative_ja is null or jsonb_typeof(narrative_ja) = 'array');
 `,
   },
+  {
+    // LF13（用户 2026-10-22 批准）：报名访谈出题（event_registration_question）接进账本并设日上限。同 v4 写法；生产执行等合回授权。
+    name: "ai-usage-event-registration-question",
+    version: 7,
+    sql: `
+declare
+  purpose_check record;
+begin
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
+      'event_registration_interview', 'event_registration_question', 'event_post_summary', 'event_matching'));
+end;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

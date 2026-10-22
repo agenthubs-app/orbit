@@ -8,6 +8,11 @@ import {
 } from "../../../../../features/events/registration/adaptive-interview-service";
 import { signAdaptiveInterviewQuestion } from "../../../../../features/events/registration/interview-question-token.server";
 import { createEventRegistrationPortraitRuntime } from "../../../../../features/events/registration/portrait/runtime";
+import type { AiQuotaGate } from "../../../../../features/ai-quota/gate";
+import { createPostgresAiUsageLedger } from "../../../../../features/ai-quota/ledger";
+import { createLedgeredRunner, type LedgeredRunner } from "../../../../../features/events/journey/ledgered-runner";
+import { runOrbitAgentModelText } from "../../../../../features/orbit-ai/gemini-provider";
+import { createConfiguredTransactionalPostgresRuntime } from "../../../../../shared/storage/transactional-postgres";
 import { PortraitError } from "../../../../../features/events/registration/portrait/contract";
 import { portraitPreviewInputSchema, portraitRenewInputSchema } from "../../../../../shared/api-schema/event-registration-portrait";
 import type { PortraitAnswerProof } from "../../../../../shared/contract/event-registration-portrait";
@@ -36,10 +41,25 @@ interface AdaptiveRegistrationRouteContext {
 
 type LoadEventForRegistration = typeof loadEventForRegistration;
 
+/** LF13: the AI usage ledger of the configured database (null without one: tests and the local mock mode run unledgered). */
+function configuredLedger(): AiQuotaGate | null {
+  const runtime = createConfiguredTransactionalPostgresRuntime();
+  return runtime ? createPostgresAiUsageLedger({ client: runtime.client, workspaceId: runtime.workspaceId }) : null;
+}
+
+/** LF13: the answer when the ledger kept the model call off — the quota is used up (409 AI_LIMIT, as the plan flow) or it is unavailable. */
+function ledgerRefusalResponse(ledgered: LedgeredRunner, mode: ReturnType<typeof resolveFeatureMode>, kept: string): Response | null {
+  const refusal = ledgered.refusal();
+  if (refusal === "quota") return NextResponse.json(failure(new AppError("CONFLICT", `Today's AI limit for this step is used up. ${kept}`), { reason: "AI_LIMIT" }), { headers: runtimeBoundaryHeaders(mode), status: 409 });
+  if (refusal === "unavailable") return NextResponse.json(failure(new AppError("SERVICE_UNAVAILABLE", `AI is temporarily unavailable. ${kept}`)), { headers: runtimeBoundaryHeaders(mode), status: 503 });
+  return null;
+}
+
 export function createRegistrationInterviewPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   loadEvent: LoadEventForRegistration = loadEventForRegistration,
   getPortraitService: () => PortraitService | null = () => createEventRegistrationPortraitRuntime()?.service ?? null,
+  getLedger: () => AiQuotaGate | null = configuredLedger,
 ) {
   return async function POST(
     request: Request,
@@ -94,6 +114,8 @@ export function createRegistrationInterviewPostHandler(
       } catch (error) { return portraitErrorResponse(error, mode); }
     }
     let step;
+    // LF13: every question is one ledgered operation (event_registration_question, 40 a Tokyo day); a refused ledger sends nothing.
+    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", runner: runOrbitAgentModelText });
     try {
       step = await nextAdaptiveInterviewQuestion({
         event: {
@@ -103,8 +125,13 @@ export function createRegistrationInterviewPostHandler(
         },
         language: questionLanguage,
         transcript: readInterviewTranscript(body.transcript),
+        modelRunner: ledgered.run,
       });
+      await ledgered.finish("succeeded");
     } catch (error) {
+      await ledgered.finish("failed");
+      const refused = ledgerRefusalResponse(ledgered, mode, "Your answers were kept.");
+      if (refused) return refused;
       if (error instanceof AdaptiveInterviewGenerationError) {
         return NextResponse.json(
           failure(
@@ -151,6 +178,7 @@ export function createRegistrationPersonaPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   loadEvent: LoadEventForRegistration = loadEventForRegistration,
   getPortraitService: () => PortraitService | null = () => createEventRegistrationPortraitRuntime()?.service ?? null,
+  getLedger: () => AiQuotaGate | null = configuredLedger,
 ) {
   return async function POST(
     request: Request,
@@ -200,6 +228,8 @@ export function createRegistrationPersonaPostHandler(
 
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
     let persona;
+    // LF13: the older persona route counts as a self-introduction (event_registration_interview, 30 a Tokyo month).
+    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-persona-legacy:${event.id}:${Date.now()}`, purpose: "event_registration_interview", runner: runOrbitAgentModelText });
     try {
       persona = await generateEventPersona({
         event: {
@@ -209,8 +239,13 @@ export function createRegistrationPersonaPostHandler(
         },
         language,
         transcript,
+        modelRunner: ledgered.run,
       });
+      await ledgered.finish("succeeded");
     } catch (error) {
+      await ledgered.finish("failed");
+      const refused = ledgerRefusalResponse(ledgered, mode, "The registration remains saved.");
+      if (refused) return refused;
       if (error instanceof AdaptiveInterviewGenerationError) {
         return NextResponse.json(
           failure(
