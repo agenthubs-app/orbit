@@ -16,6 +16,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/account/data-rights/outbox.ts": { policy: "non-sync", statements: 2, collections: "account_rights_outbox" },
   "features/account/data-rights/purge/events.ts": { policy: "locked", statements: 1, how: "purgeAccountEvents takes acquireSyncCommitOrderLock before shared event writes" },
   "features/account/data-rights/purge/final-identity.ts": { policy: "non-sync", statements: 3, collections: "anonymous completion mail, auth and rights metadata" },
+  "features/account/data-rights/purge/residual.ts": { policy: "locked", statements: 1, how: "LF18 purgeAccountResidual takes acquireSyncCommitOrderLock before sweeping the account's remaining records" },
   "features/account/data-rights/purge/inbox.ts": { policy: "locked", statements: 2, how: "purgeAccountInbox takes acquireSyncCommitOrderLock before shared message and conversation writes" },
   "features/account/data-rights/purge/notes.ts": { policy: "locked", statements: 2, how: "purgeAccountNotes takes acquireSyncCommitOrderLock before shared notification writes" },
   "features/account/data-rights/purge/progress.ts": { policy: "non-sync", statements: 2, collections: "account_purge_steps" },

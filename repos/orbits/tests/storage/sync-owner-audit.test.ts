@@ -24,6 +24,7 @@ export const OWNER_WRITE_MANIFEST: Readonly<Record<string, OwnerWritePolicy>> = 
   "features/events/organizer-accounts/owner-migration.ts": { policy: "assigns-first-owner", statements: 1, how: "the reviewed organizer owner plan sets an event's owner only where user_id is null or already the planned account (the plan refuses a drifted owner)" },
   "scripts/seed-demo-workspace.ts": { policy: "handler", statements: 1, handler: "demo-event-owner-reset" },
   "features/sync/owner-backfill.ts": { policy: "handler", statements: 1, handler: "owner-backfill-0114" },
+  "features/account/data-rights/purge/residual.ts": { policy: "non-registered", statements: 1, collections: "relationship_lifecycle_audits, relationship_lifecycle_migration_audits (LF18: the purged account's audits keep no owner)" },
 };
 
 // Callers of the explicit owner-change interface. A sync-domain owner change must be a
