@@ -45,8 +45,8 @@ export function createEventRegistrationPortraitService(input: { repository: Port
       if (!snapshot.eventVersion || request.event.sourceMetadata.id !== `event-core-postgres:${request.event.id}:v${snapshot.eventVersion}`) throw new PortraitError(409, "PORTRAIT_SOURCE_CHANGED", "The event context changed. Read the current event before generating.");
       const sourceAnswers = readPortraitAnswerProofs({ workspaceId: input.workspaceId, actorId: request.actorId, eventId: request.event.id, responses: request.responses, snapshot, portrait, secret: input.secret, now: input.now });
       // The source transaction has ended before any provider work begins.
-      // R27（A5）：账本只记账（purpose event_registration_interview）；账本不可用时照常调用。
-      const ledgered = createLedgeredRunner({ actorId: request.actorId, gate: input.ledger ?? null, idempotencyKey: `event-persona:${request.event.id}:${portraitAnswersVersion(sourceAnswers).slice(0, 16)}:${Date.now()}`, purpose: "event_registration_interview", runner: input.modelRunner ?? runOrbitAgentModelText });
+      // R27：进账本（purpose event_registration_interview，LF4 每月 30 次）；LF13：账本不可用时不调用。
+      const ledgered = createLedgeredRunner({ actorId: request.actorId, gate: input.ledger ?? null, idempotencyKey: `event-persona:${request.event.id}:${portraitAnswersVersion(sourceAnswers).slice(0, 16)}:${Date.now()}`, purpose: "event_registration_interview", refuseWithoutLedger: true, runner: input.modelRunner ?? runOrbitAgentModelText });
       let persona: Awaited<ReturnType<typeof generateEventPersona>>;
       try {
         persona = await generateEventPersona({ event: { ...request.event, title: localizedEventTitle(request.event, labelLanguage), venue: bilingualSegment(request.event.venue, labelLanguage) }, language: request.language, transcript: sourceAnswers.map((answer) => ({ field: answer.field, answer: answer.answer, prompt: answer.question?.prompt ?? answer.label[labelLanguage] })), modelRunner: ledgered.run });

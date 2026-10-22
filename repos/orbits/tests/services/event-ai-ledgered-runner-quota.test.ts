@@ -30,7 +30,7 @@ test("LF4: a used-up quota sends no model request", async () => {
 test("LF13: an unavailable ledger refuses the call (it used to run unledgered, A5)", async () => {
   for (const unavailable of [gate({ ok: false, reason: "disabled" }), gate({ ok: true, operationId: "op", owner: false, status: "reserved" }), { ...gate(null), reserve: async () => { throw new Error("check constraint"); } } as unknown as AiQuotaGate]) {
     let calls = 0;
-    const runner = createLedgeredRunner({ actorId: "a", purpose: "event_registration_question", idempotencyKey: "k", gate: unavailable,
+    const runner = createLedgeredRunner({ actorId: "a", purpose: "event_registration_question", idempotencyKey: "k", gate: unavailable, refuseWithoutLedger: true,
       runner: (async () => { calls += 1; return { success: true, data: { text: "x" } }; }) as never });
     const result = await runner.run({ prompt: "p" } as never) as unknown as { success: boolean };
     assert.equal(calls, 0);

@@ -3,9 +3,9 @@
  * Owner: 甲 (R27).
  * - 第一次调用前 `reserve`（system 池、auto），每次 HTTP 前后 `beginCall` / `endCall`（带 token），结束时 `finish`。
  * - LF4：账本明确说额度用完（daily_limit / monthly_limit）→ 不发请求，返回不可重试的失败（`refusal()` = "quota"）。
- * - LF13（用户 2026-10-22 批准，取代 A5 的「照常调用」）：账本不可用（表未迁移 / CHECK 拒绝新用途 / 出错 / 不是所有者）
- *   → 同样不发请求（`refusal()` = "unavailable"），与其他 AI 用途的「始终拒绝」一致。生产上线前须先执行账本迁移。
- *   没有注入账本（`gate: null`，只有测试与无库的本地模式）时照常调用。
+ * - 账本不可用（表未迁移 / CHECK 拒绝新用途 / 出错 / 不是所有者）：会後まとめ（E3）照 A5 照常调用、不记账并留日志；
+ *   LF13（用户 2026-10-22 批准）报名的 AI（`refuseWithoutLedger`）改为不发请求（`refusal()` = "unavailable"），
+ *   与其他 AI 用途的「始终拒绝」一致——生产上线前须先执行账本迁移。没有注入账本（`gate: null`，只有测试与无库的本地模式）时照常调用。
  */
 import type { AiQuotaGate } from "../../ai-quota/gate";
 import type { runOrbitAgentModelText } from "../../orbit-ai/gemini-provider";
@@ -28,6 +28,8 @@ export function createLedgeredRunner(input: {
   idempotencyKey: string;
   now?: () => Date;
   runner: Runner;
+  /** LF13: refuse (send nothing) when the ledger cannot be used, instead of running unledgered (A5). */
+  refuseWithoutLedger?: boolean;
 }): LedgeredRunner {
   let operation: string | null | undefined;
   let refused: "quota" | "unavailable" | null = null;
@@ -40,13 +42,14 @@ export function createLedgeredRunner(input: {
       const reservation = await input.gate.reserve({ actorId: input.actorId, idempotencyKey: input.idempotencyKey, now: now(), pool: "system", purpose: input.purpose, takeover: true, trigger: "auto" });
       operation = reservation.ok && reservation.owner ? reservation.operationId : null;
       if (!operation) {
-        refused = "reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit") ? "quota" : "unavailable";
+        const quota = "reason" in reservation && (reservation.reason === "daily_limit" || reservation.reason === "monthly_limit");
+        refused = quota ? "quota" : input.refuseWithoutLedger ? "unavailable" : null;
         console.warn(JSON.stringify({ event: "event_ai_ledger_unavailable", purpose: input.purpose, reason: "reason" in reservation ? reservation.reason : "not_owner" }));
       }
     } catch (error) {
       console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "event_ai_ledger_unavailable", purpose: input.purpose }));
       operation = null;
-      refused = "unavailable";
+      refused = input.refuseWithoutLedger ? "unavailable" : null;
     }
     return operation;
   }

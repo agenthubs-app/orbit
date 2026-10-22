@@ -115,7 +115,7 @@ export function createRegistrationInterviewPostHandler(
     }
     let step;
     // LF13: every question is one ledgered operation (event_registration_question, 40 a Tokyo day); a refused ledger sends nothing.
-    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", runner: runOrbitAgentModelText });
+    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", refuseWithoutLedger: true, runner: runOrbitAgentModelText });
     try {
       step = await nextAdaptiveInterviewQuestion({
         event: {
@@ -229,7 +229,7 @@ export function createRegistrationPersonaPostHandler(
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
     let persona;
     // LF13: the older persona route counts as a self-introduction (event_registration_interview, 30 a Tokyo month).
-    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-persona-legacy:${event.id}:${Date.now()}`, purpose: "event_registration_interview", runner: runOrbitAgentModelText });
+    const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-persona-legacy:${event.id}:${Date.now()}`, purpose: "event_registration_interview", refuseWithoutLedger: true, runner: runOrbitAgentModelText });
     try {
       persona = await generateEventPersona({
         event: {
