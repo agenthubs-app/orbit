@@ -284,6 +284,20 @@ export async function purgeAccountEvents(db: TransactionalPostgresClient, worksp
       union all select event_id,'' as participant_id from event_ops_admission_application_heads where workspace_id=$1 and actor_id=$2
     ) actor_participation order by event_id,participant_id`, [workspaceId, actorId]);
     for (const row of canonical.rows) deleted += await redactCanonicalParticipant(sql, workspaceId, actorId, row.event_id, row.participant_id);
+    // LF18: the account's own event assessments (with poster images) and organizer requests are deleted; a notice the
+    // account sent keeps an opaque sender. Before the scan below, which stops on any remaining actor id.
+    for (const { table, column } of [
+      { table: "event_assessment_posters", column: "actor_id" }, { table: "event_assessments", column: "actor_id" },
+      { table: "event_host_roster_match_requests", column: "actor_id" }, { table: "event_host_notice_outbox", column: "actor_id" },
+    ]) {
+      if ((await sql.query<{ found: string | null }>("select to_regclass($1)::text as found", [table])).rows[0]?.found) {
+        const removed = await sql.query<{ count: string }>(`with gone as (delete from ${quote(table)} where workspace_id=$1 and ${quote(column)}=$2 returning 1) select count(*)::text as count from gone`, [workspaceId, actorId]);
+        deleted += Number(removed.rows[0]?.count ?? 0);
+      }
+    }
+    if ((await sql.query<{ found: string | null }>("select to_regclass('event_host_notice_sends')::text as found")).rows[0]?.found) {
+      await sql.query("update event_host_notice_sends set sent_by='deleted-account' where workspace_id=$1 and sent_by=$2", [workspaceId, actorId]);
+    }
     const tables = await sql.query<{ table_name: string }>(`select distinct table_name from information_schema.columns
       where table_schema=current_schema() and table_name like 'event_%' and column_name='workspace_id' order by table_name`);
     let retainedPseudonymizedAuditRows = 0;

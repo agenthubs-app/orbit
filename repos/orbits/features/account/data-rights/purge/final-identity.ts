@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../../shared/storage/transactional-postgres";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
-const REQUIRED_STEPS = ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox"] as const;
+const REQUIRED_STEPS = ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox", "residual"] as const;
 const IDENTITY_COLLECTIONS = ["accounts", "profiles", "account_deletion_requests", "account_deletion_locks",
   "account_reauth_receipts", "account_rights_outbox", "account_purge_steps"];
 const ALLOWED_RECORD_COLLECTIONS = [...IDENTITY_COLLECTIONS, "auth_users"];

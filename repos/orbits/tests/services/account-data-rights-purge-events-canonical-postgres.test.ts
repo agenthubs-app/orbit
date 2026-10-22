@@ -78,8 +78,18 @@ test("canonical event participant is anonymized while another account stays read
       values('space','event-1','actor',1,'001',now())`);
     await pool.query(`insert into event_reception_numbers(workspace_id,event_id,actor_id,sequence,reception_no,assigned_at)
       values('space','event-1','other',2,'002',now())`);
+    // LF18: the account's event assessments and poster images used to stop the purge at the event_% scan.
+    await pool.query(`create table event_assessments(workspace_id text,id text,actor_id text not null,source_url text);
+      create table event_assessment_posters(workspace_id text,id text,actor_id text not null,bytes bytea)`);
+    for (const actor of ["actor", "other"]) {
+      await pool.query("insert into event_assessments values('space',$1,$2,'https://example.test')", [`assessment:${actor}`, actor]);
+      await pool.query("insert into event_assessment_posters values('space',$1,$2,'\\x00')", [`poster:${actor}`, actor]);
+    }
     const { purgeAccountEvents } = await import("../../features/account/data-rights/purge/events");
     const first = await purgeAccountEvents(db, "space", "actor");
+    for (const table of ["event_assessments", "event_assessment_posters"]) {
+      assert.deepEqual((await pool.query(`select actor_id from ${table}`)).rows, [{ actor_id: "other" }], table);
+    }
     assert.ok(first.deleted > 0);
     assert.equal(first.retainedPseudonymizedAuditRows, 2);
     assert.equal((await pool.query(`select count(*)::int as n from event_ops_membership_heads where workspace_id='space' and actor_id='other'`)).rows[0]?.n, 1);

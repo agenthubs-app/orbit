@@ -10,6 +10,7 @@ import { purgeAccountInbox } from "./inbox";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 import { purgeAccountNotes } from "./notes";
 import { purgeAccountPlans } from "./plans";
+import { purgeAccountResidual } from "./residual";
 import { createAccountPurgeProgressStore } from "./progress";
 
 type Dependencies = {
@@ -51,6 +52,8 @@ export async function runLocalAccountPurgeOnce(input: Dependencies): Promise<
     { id: "agent", run: () => purgeAccountAgentData(db, workspaceId, actorId) },
     { id: "events", run: () => purgeAccountEvents(db, workspaceId, actorId) },
     { id: "inbox", run: () => purgeAccountInbox(db, workspaceId, actorId) },
+    // LF18: everything else the account owns (the domain steps above keep their own rules).
+    { id: "residual", run: () => purgeAccountResidual(db, workspaceId, actorId, userId) },
   ] as const;
   for (const step of steps) {
     try {

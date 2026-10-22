@@ -48,7 +48,7 @@ test("final identity and anonymous completion outbox commit together; failed del
     const run = () => purgeAccountFinalIdentity({ db, workspaceId: "space", actorId: actor, userId, leaseToken: "lease", now: () => now, sendCompletion });
     await assert.rejects(run(), /PURGE_STEPS_INCOMPLETE/);
     assert.equal(sends, 0);
-    for (const step of ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox"]) {
+    for (const step of ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox", "residual"]) {
       await progress.complete(actor, "lease", step, { deleted: 0 });
     }
     await insert("notes", "residual", actor, { secret: "private" });
@@ -82,7 +82,7 @@ test("final identity and anonymous completion outbox commit together; failed del
     await insert("account_deletion_requests", `deletion:${createHash("sha256").update(same).digest("hex")}`, same,
       { actorId: same, userId: same, status: "purging", leaseToken: "same-lease", leaseUntil: "2026-11-20T00:05:00.000Z" });
     await insert("auth_users", "auth_user:same@example.test", same, { id: same, email: "same@example.test" });
-    for (const step of ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox"]) {
+    for (const step of ["connections", "exports", "contacts", "notes", "plans", "agent", "events", "inbox", "residual"]) {
       await progress.complete(same, "same-lease", step, { deleted: 0 });
     }
     assert.equal((await purgeAccountFinalIdentity({ db, workspaceId: "space", actorId: same, userId: same,
