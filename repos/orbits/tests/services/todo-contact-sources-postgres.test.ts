@@ -11,7 +11,7 @@ import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-liv
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 
 const at = "2026-10-18T00:00:00.000Z";
-test("To-do contact sources match event-import drafts and current question visibility without generating absent questions", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+test("To-do contact sources match event-import drafts and current question visibility without generating absent questions; a large network stays readable (LF14)", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
   const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
   assert.ok(["localhost", "127.0.0.1"].includes(url.hostname)); assert.equal(url.search, "");
   const schema = `todo_contacts_${randomUUID().replaceAll("-", "")}`;
@@ -54,8 +54,19 @@ test("To-do contact sources match event-import drafts and current question visib
     const contact = await store.getRecord({ workspaceId: "w", collectionName: "contacts", recordId: "c" }); assert.ok(contact);
     await assert.rejects(async () => readStore.upsertRecord(contact), /TODO_SOURCE_WRITE_FORBIDDEN/);
     await assert.rejects(async () => readStore.getRecord({ workspaceId: "foreign-workspace", collectionName: "contacts", recordId: "c" }), /TODO_SOURCE_READ_SCOPE_INVALID/);
+    // LF14: an account with thousands of source records (the qa account has 4,483) still lists its drafts — the draft
+    // graph reads only what the latest attendees and saved drafts cite, never a whole table.
     await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
-      select 'w','attendees','growth:'||n,'a','manual','test',jsonb_build_object('id','growth:'||n),now(),now() from generate_series(1,110) n`);
-    await assert.rejects(readers.contact_draft(input), /TODO_SOURCE_READ_LIMIT/);
+      select 'w','evidence','unrelated:'||n,'a','manual','test',jsonb_build_object('id','unrelated:'||n),now(),now() from generate_series(1,300) n`);
+    const many = await createTodoContactReaders({ store: createTodoContactReadStore({ client: pool, workspaceId: "w", actorId: "a", assertAllowed: () => undefined }), workspaceId: "w" }).contact_draft(input);
+    assert.equal(many.total, 1);
+    assert.equal(many.entries[0]?.item.sourceId, expected.data.drafts[0]?.id);
+    // More attendees than the limit: the latest 100 are listed (the to-do total is capped at 100) instead of failing.
+    await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+      select 'w','attendees','growth:'||n,'a','manual','test',jsonb_build_object('id','growth:'||n,'eventId','event','displayName','Attendee '||n,'status','imported',
+        'source',jsonb_build_object('type','event_import','id','s'),'evidenceIds',jsonb_build_array('e'),'createdAt',now(),'updatedAt',now()),now(),now() from generate_series(1,110) n`);
+    const capped = await createTodoContactReaders({ store: createTodoContactReadStore({ client: pool, workspaceId: "w", actorId: "a", assertAllowed: () => undefined }), workspaceId: "w" }).contact_draft(input);
+    assert.equal(capped.total, 100);
+    assert.equal(capped.entries.length, 5);
   } finally { await pool.query(`drop schema if exists ${schema} cascade`); await pool.end(); }
 });
