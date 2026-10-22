@@ -8,7 +8,7 @@ export const notifications = {
   "notifications.suggestion":'推荐',
   "notifications.update":'动态',
   "notifications.dailyCap":'每日上限',
-  "notifications.capHint":'超过上限的内容仍可在收件箱查看。',
+  "notifications.capHint":'这是自动通知的上限（建议每天最多 1 条），别人发来的消息不计入。超过上限的内容仍可在收件箱查看。',
   "notifications.quiet":'免打扰时段',
   "notifications.quietHint":'这段时间的通知会合并发送。',
   "notifications.start":'开始',

@@ -8,7 +8,7 @@ export const notifications = {
   "notifications.suggestion":'Recommendations',
   "notifications.update":'Updates',
   "notifications.dailyCap":'Daily limit',
-  "notifications.capHint":'You can still read anything over the limit in your inbox.',
+  "notifications.capHint":'This limits automatic notifications (at most one suggestion a day); messages from people are not counted. You can still read anything over the limit in your inbox.',
   "notifications.quiet":'Quiet hours',
   "notifications.quietHint":'Updates from this period arrive together.',
   "notifications.start":'Start',

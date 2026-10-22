@@ -8,7 +8,7 @@ export const notifications = {
   "notifications.suggestion":'おすすめ',
   "notifications.update":'更新',
   "notifications.dailyCap":'1日の上限',
-  "notifications.capHint":'上限を超えた分は受信箱で確認できます。',
+  "notifications.capHint":'自動のお知らせの上限です（提案は1日1件まで）。人からのメッセージは数えません。上限を超えた分は受信箱で確認できます。',
   "notifications.quiet":'静かな時間帯',
   "notifications.quietHint":'この間の通知はまとめて届きます。',
   "notifications.start":'開始',

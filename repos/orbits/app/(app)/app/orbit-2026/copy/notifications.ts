@@ -8,7 +8,7 @@ export const notificationCopy={
  suggestion:{ja:'おすすめ',zh:'推荐',en:'Recommendations'},
  update:{ja:'更新',zh:'动态',en:'Updates'},
  cap:{ja:'1日の上限',zh:'每日上限',en:'Daily limit'},
- capHint:{ja:'上限を超えた分は受信箱で確認できます。',zh:'超过上限的内容仍可在收件箱查看。',en:'You can still read anything over the limit in your inbox.'},
+ capHint:{ja:'自動のお知らせの上限です（提案は1日1件まで）。人からのメッセージは数えません。上限を超えた分は受信箱で確認できます。',zh:'这是自动通知的上限（建议每天最多 1 条），别人发来的消息不计入。超过上限的内容仍可在收件箱查看。',en:'This limits automatic notifications (at most one suggestion a day); messages from people are not counted. You can still read anything over the limit in your inbox.'},
  quiet:{ja:'静かな時間帯',zh:'免打扰时段',en:'Quiet hours'},
  quietHint:{ja:'この間の通知はまとめて届きます。',zh:'这段时间的通知会合并发送。',en:'Updates from this period arrive together.'},
  start:{ja:'開始',zh:'开始',en:'Start'},

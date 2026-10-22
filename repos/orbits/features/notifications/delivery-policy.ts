@@ -49,8 +49,10 @@ export function deliveryDigestAt(s:DeliveryPolicySubject,p:InboxDeliveryPreferen
  return decision.action==='defer'&&['quiet_hours','digest_window'].includes(decision.reason)?decision.availableAt:null;
 }
 export interface DeliveryQuotaReservation {eventKey:string;at:string;timeZone:string;suggestion:boolean;}
+/** LF15: today's automatic pushes (the only ones reserved) and how many of them were suggestions. */
 export function deliveryQuotaUsage(rows:readonly DeliveryQuotaReservation[],now:string,timeZone:string) {
  const today=deliveryLocalDay(now,timeZone),unique=new Map<string,DeliveryQuotaReservation>();
  for(const row of rows)if(deliveryLocalDay(row.at,timeZone)===today||(row.timeZone!==timeZone&&Date.parse(now)-Date.parse(row.at)<86400000))unique.set(row.eventKey,row);
- return {total:unique.size};
+ let suggestions=0;for(const row of unique.values())if(row.suggestion)suggestions++;
+ return {total:unique.size,suggestions};
 }
