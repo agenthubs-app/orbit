@@ -23,6 +23,7 @@
 
 | 日期 | id | 改动 | 原因 | 甲乙同意 | App 跟进 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-22 | `POST /api/agent/plans`、`POST /api/agent/plans/reanalyze`、`POST /api/agent/plans/bootstrap` 行为 | R25 起 v1 计划不再生成、重新分析或续订：三个接口一律 409 `PLAN_V1_RETIRED`（带 v2 目標入力地址）；已有 v1 计划仍可只读查看（`GET /api/agent/plans/legacy`） | 计划统一到 v2；改版计划写的「v1 只读、行为不变」实际也关闭了续订，当时未登记，LF 核对补登 | 用户 2026-10-22 确认接受关闭并补登记（LF 待决定第 7b 项） | App（含生产版）从未调用这三个接口；旧 Web 页面与服务器同次部署被替换，无需跟进 |
 | 2026-10-20 | `profile.ts::ProfileOnboardingContract.policyVersion` | R28 把 `policyVersion` 从 1 扩为 1／2；v2 的完成条件为已确认姓名和两级行业，生日可空；填入生日仍须为真实日期 | b1 A3 两端基本资料写「生年月日（任意）」，v1 强制生日与画板冲突；先让 App 同时读 v1/v2、未知新版安全降级，再切 Web 服务端响应 | 主会话 R28 PLANNER §2.2／RD-33 已代定并授权 C 线执行；未冒称甲乙另外签字 | 先提交 App `profileOnboardingSchema` v1/v2 读取与未知版不误完成，再运行 `sync:contract` 同步新类型；旧 v1 回执、v2 回执与读回都验证后切服务端 |
 | 2026-10-20 | `POST /api/account/deletion-request` 请求语义 | R08 mock 原先接受空 body；R18c live 改为严格要求 `{ reauthReceipt, confirmed: true }`，receipt 绑定同一账号与删除用途、十分钟内一次性消费 | 退会不能只凭旧会话或重复请求执行；首次正式发布前两端同版落地 | 主会话 R18c PLANNER rev2 §6.1 / RD-33 代定；C 线执行，未冒称甲乙分别签字 | `AccountDeletionCreateInput` / schema 同提交同步 App；App 申请页改送 receipt 后再接 live |
 | 2026-10-18 | `notes.ts::NoteMentionContract.contactId` | R20b 把 `contactId` 从必填改为可选；`entityType=event` 时必须给 `eventId` 且不得给 `contactId`，旧 `entityType` 缺省仍按 contact 处理 | 活动提及不能伪造联系人 ID；现有必填字段阻止无联系人的活动 token 正确跨端读写 | 主会话按 R20b PLANNER rev2 D-4 / RD-33 代定；未冒称甲乙分别签字 | 同一 `contract:` 提交同步 App 类型和 strict 离线 schema；App reader/edit 与服务端写入按分支校验后再开放 UI |
