@@ -54,6 +54,15 @@ export function signedTodayDelta(value: number): string {
   return value > 0 ? `+${value}` : "0";
 }
 
+/** LF17: Home asks for "today" in the browser's time zone, like the To-do and calendar pages (the account zone fell back to UTC). */
+export function homeTodoPagePath(now: Date = new Date()): string {
+  try {
+    const timeZone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (validTimeZone(timeZone)) return `/api/todo/page?${new URLSearchParams({ date: localParts(now, timeZone).date, timeZone }).toString()}`;
+  } catch { /* the server's account zone answers */ }
+  return "/api/todo/page";
+}
+
 export function homeWeekWindow(now: Date, timeZone: string): { from: string; to: string } | null {
   if (!Number.isFinite(now.getTime()) || !validTimeZone(timeZone)) return null;
   const day = calendarDate(localParts(now, timeZone).date);

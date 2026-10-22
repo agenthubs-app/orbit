@@ -41,7 +41,8 @@ async function home(t: { after: (fn: () => Promise<void>) => void }): Promise<Pa
         return Response.json({success:true,data:window.layout});
       }
       if(path==="/api/home/guide-progress") return Response.json({success:true,data:{kind:"progress",completed:0,confirmedContacts:0,nextStep:"contacts",steps:{contacts:false,goal:false,plan:false}}});
-      if(path==="/api/todo/page") { window.todoReads++; return Response.json({success:true,data:{date:"2026-10-20",timeZone:"Asia/Tokyo",asOf:"2026-10-20T00:00:00Z",counts:{decisions:window.todoDecisions,nextMoves:0,followups:0,overdue:0},countsCapped:{decisions:false,nextMoves:false},decisions:{items:[],next:{}},nextMoves:{items:[],next:{}},followups:{items:[],next:{}},sources:{task:"ok"}}}); }
+      // LF17: Home sends the browser's date and time zone.
+      if(path.startsWith("/api/todo/page?date=")) { window.todoReads++; return Response.json({success:true,data:{date:"2026-10-20",timeZone:"Asia/Tokyo",asOf:"2026-10-20T00:00:00Z",counts:{decisions:window.todoDecisions,nextMoves:0,followups:0,overdue:0},countsCapped:{decisions:false,nextMoves:false},decisions:{items:[],next:{}},nextMoves:{items:[],next:{}},followups:{items:[],next:{}},sources:{task:"ok"}}}); }
       if(path==="/api/schedule-items") return Response.json({success:true,data:{scheduleItems:[]}});
       if(path==="/api/ai/conversations/sessions?limit=3") return Response.json({success:true,data:{items:[{id:"session:one",title:"資本政策の相談"},{id:"",title:"無効"},{id:"session:empty",title:""}]}});
       if(path==="/api/inbox/secretary/preview") return Response.json({success:false},{status:503});

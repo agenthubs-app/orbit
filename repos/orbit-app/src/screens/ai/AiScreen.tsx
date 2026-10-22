@@ -40,6 +40,7 @@ import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { iorbitR21Copy } from "../../i18n/iorbitR21";
 import { todayTaskSummaryModeSchema } from "../../api/schema/today";
 import { orbitAiHomeChatWindow } from "../../view-models/conversations";
@@ -250,12 +251,14 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     copy: { id: "home-plan-summary" }, freshForMs: AI_PLAN_COPY_FRESH_MS, accept: value => planV2SummaryResponseSchema.safeParse(value).success });
   const planSummary = validateApiResourceState(planSummaryCopy, planV2SummaryResponseSchema);
   const todayNow = new Date();
-  const todayDate = localDateKey("Asia/Tokyo", todayNow);
+  // LF17: "today" is the device's day, as on Home, To-do and the calendar (this tab alone was pinned to Tokyo).
+  const { timeZone: todayZone } = useOrbitTimeZone();
+  const todayDate = localDateKey(todayZone, todayNow);
   // Sprint 0131 (coordinator item from 0118): the Today block is the page copy "today-summary" (today's only),
   // so offline it keeps the last summary with the tab's 截至 notice instead of 「暂时无法连接」.
-  const todaySchema = todayTaskSummaryModeSchema.refine(value => value.date === todayDate && value.timeZone === "Asia/Tokyo", { message: "Stale Today summary scope" });
+  const todaySchema = todayTaskSummaryModeSchema.refine(value => value.date === todayDate && value.timeZone === todayZone, { message: "Stale Today summary scope" });
   const todayCopied = usePageCopyResource<unknown>(
-    todaySummaryPath("Asia/Tokyo"),
+    todaySummaryPath(todayZone),
     () => false,
     { scopeKey: JSON.stringify([readScope, todayAttempt, todayDate]), copy: { id: "today-summary" }, accept: (data) => todaySchema.safeParse(data).success }
   );
@@ -415,17 +418,17 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       ? todayState.data
       : null;
   const serverTodaySummary = todayPayload
-    ? todaySummaryToHomeView(todayPayload, todayDate, "Asia/Tokyo", todayNow, locale.language)
+    ? todaySummaryToHomeView(todayPayload, todayDate, todayZone, todayNow, locale.language)
     : null;
   const todaySummary = overlayTodayTaskSummaryView(serverTodaySummary,
     taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
       ? [record.payload as unknown as TaskItemContract] : []),
-    taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language);
+    taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, todayZone, locale.language);
   // Sprint 0136: offline with no copy of today's summary, count from the device task mirror instead of showing 0.
   const todayUnreachable = todayState.kind === "offline" || todayState.kind === "failure";
   const deviceTodaySummary = !todaySummary && todayUnreachable && Platform.OS !== "web" && taskMirror.status !== "unsynced"
     ? deviceTodayTaskSummaryView(taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
-      ? [record.payload as unknown as TaskItemContract] : []), taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language)
+      ? [record.payload as unknown as TaskItemContract] : []), taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, todayZone, locale.language)
     : null;
   const todaySummaryView = todaySummary ?? deviceTodaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
   const summaryQuestions = todayPayload ? todaySummaryQuestions(todayPayload, locale.language) : null;

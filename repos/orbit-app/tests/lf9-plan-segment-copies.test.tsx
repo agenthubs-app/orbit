@@ -34,3 +34,13 @@ test("online: copies saved within the window are used without a request", async 
   const requests = await requestsOf(page);
   for (const path of PLAN_READS) assert.equal(requests.some((request) => request.includes(`:${path}`)), false, `${path} came from its fresh copy`);
 });
+
+test("LF17: no current goal but an active one in the list opens that goal (as the Web plan tab), not the v1 list", async (t) => {
+  const goal = { planId: "plan_lf17", goal: "LF17 目標", goalKind: "launch", status: "active", total: 10, talkedPeople: 1 };
+  const page = await harness.open(t, { screen: "plan", responses: {
+    "/api/agent/plans/v2/summary": { current: null, goals: [goal] },
+    "/api/agent/plans/intakes": intakes,
+  } });
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: string) => request.includes(":/api/agent/plans/v2/plan_lf17")));
+  assert.equal((await requestsOf(page)).some((request) => request.includes(":/api/agent/plans/legacy")), false);
+});

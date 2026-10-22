@@ -141,7 +141,7 @@ export const taskCopy = {
   taskListReminder: { ja: "リマインダー", zh: "提醒", en: "Reminder", kind: "label" },
   taskListNoReminder: { ja: "設定なし", zh: "未设置", en: "Not set", kind: "label" },
   taskListReminderHour: { ja: "1時間後", zh: "1小时后", en: "In 1 hour", kind: "button" },
-  taskListReminderTomorrow: { ja: "明日の朝 8:00", zh: "明早 8:00", en: "Tomorrow at 8:00", kind: "button" },
+  taskListReminderTomorrow: { ja: "明日の朝 9:00", zh: "明早 9:00", en: "Tomorrow at 9:00", kind: "button" },
   taskListReminderCustom: { ja: "カスタム…", zh: "自定义…", en: "Custom…", kind: "button" },
   taskListReminderAt: { ja: "通知する日時", zh: "提醒时间", en: "Reminder date and time", kind: "label" },
   taskListReminderSet: { ja: "設定する", zh: "设置提醒", en: "Set reminder", kind: "button" },

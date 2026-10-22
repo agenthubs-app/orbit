@@ -65,7 +65,7 @@ export function PlanSegment() {
   const sequence = useRef(0);
   const ready = auth.ready && server.ready;
   const reportGoalInput = useContext(PlanGoalInputShown);
-  const goalInputShown = state.kind === "ready" && (adding || (!state.current && state.legacy.length === 0 && Boolean(state.intakes)));
+  const goalInputShown = state.kind === "ready" && (adding || (!state.current && !state.overview && state.legacy.length === 0 && Boolean(state.intakes)));
   useEffect(() => {
     reportGoalInput?.(goalInputShown);
   }, [reportGoalInput, goalInputShown]);
@@ -98,13 +98,16 @@ export function PlanSegment() {
     // R24: the overview of the current goal (same score as the summary: both come from summarizePlanScore).
     let overview: PlanV2Detail | null = null;
     let legacy: readonly PlanLegacyItem[] = [];
-    if (current) {
-      const detail = await through("plan-overview", current.planId, accepts(planV2DetailSchema), () => api.overview(current.planId));
+    // LF17: like the Web plan tab, without a current goal the first active one opens (a stale or partial summary).
+    const activePlanId = current?.planId ?? (summary.ok ? summary.data.goals.find((goal) => goal.status === "active" && !goal.sample)?.planId : undefined) ?? null;
+    if (activePlanId) {
+      const detail = await through("plan-overview", activePlanId, accepts(planV2DetailSchema), () => api.overview(activePlanId));
       if (run !== sequence.current) return;
       // LF9: offline without a saved overview the summary's card stands in (ConfirmedPlanCard), not a blank segment.
       if (!detail.ok && detail.failure.kind !== "notImplemented" && detail.failure.kind !== "network") return setState({ kind: "failed" });
       overview = detail.ok ? detail.data : null;
-    } else {
+    }
+    if (!current && !overview) {
       // R25: a v1 plan (read only) replaces the goal input until the user starts a new one.
       const list = await through("plan-legacy", "main", accepts(planLegacyListResponseSchema), api.legacyList);
       if (run !== sequence.current) return;
@@ -131,13 +134,13 @@ export function PlanSegment() {
       {state.kind === "offline" ? <EmptyState title={t("plan.segment.offlineTitle")} message={t("plan.segment.offlineBody")} action={{ label: copy.action.retry, onPress: () => void retry() }} /> : null}
       {state.kind === "ready" && state.offlineAt ? <EventsOfflineNotice lastSyncedAt={state.offlineAt} /> : null}
       {state.kind === "failed" ? <RetryCard title={fillCopy(copy.error.loadFailed, { item: copy.taskSegments.plan })} onRetry={() => void retry()} retrying={reloading} /> : null}
-      {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
-      {state.kind === "ready" && !adding && state.current && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} design={design} /> : null}
+      {state.kind === "ready" && adding ? <NewGoal intakes={state.intakes} goals={state.goals} onCancel={state.current || state.overview || state.legacy.length ? () => { setAdding(false); router.setParams({ new: undefined }); } : null} /> : null}
+      {state.kind === "ready" && !adding && state.overview ? <PlanOverview plan={state.overview} reload={load} goals={state.goals} onAddGoal={() => setAdding(true)} design={design} /> : null}
       {state.kind === "ready" && !adding && state.current && !state.overview ? <ConfirmedPlanCard plan={state.current} /> : null}
-      {state.kind === "ready" && !adding && !state.current && state.legacy.length > 0 ? <PlanLegacyCard plans={state.legacy} onCreate={() => setAdding(true)} /> : null}
-      {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && state.intakes ? <PlanGoalInput intakes={state.intakes} goals={state.goals} /> : null}
-      {state.kind === "ready" && !adding && !state.current && state.legacy.length === 0 && !state.intakes ? <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} /> : null}
-      {state.kind === "ready" && !state.current ? <AchievedGoals goals={state.goals} /> : null}
+      {state.kind === "ready" && !adding && !state.current && !state.overview && state.legacy.length > 0 ? <PlanLegacyCard plans={state.legacy} onCreate={() => setAdding(true)} /> : null}
+      {state.kind === "ready" && !adding && !state.current && !state.overview && state.legacy.length === 0 && state.intakes ? <PlanGoalInput intakes={state.intakes} goals={state.goals} /> : null}
+      {state.kind === "ready" && !adding && !state.current && !state.overview && state.legacy.length === 0 && !state.intakes ? <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} /> : null}
+      {state.kind === "ready" && !state.current && !state.overview ? <AchievedGoals goals={state.goals} /> : null}
     </AppScreen>
   );
 }

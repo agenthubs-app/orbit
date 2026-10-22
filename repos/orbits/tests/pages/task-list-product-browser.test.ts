@@ -408,17 +408,17 @@ test("custom Task reminder rejects the past and saves an unambiguous local time"
   assert.equal(posts[0].body.fireAt, `${futureYear}-01-02T03:30:00.000Z`);
 });
 
-test("tomorrow reminder button sends 8:00 in the task page's time zone", async t => {
+test("tomorrow reminder button sends 9:00 in the task page's time zone (LF17, as the App)", async t => {
   const html = fixture.replace("<script>", `<script>window.shellFixture = { path: "/app/tasks", lang: "ja", unread: false, calls: [] };`);
   const current = await open(browser, framedCode, { origin: "https://orbit.test/app/tasks?tab=todo&view=all", html, width: 1440 });
   t.after(async () => { const errors = errorsOf(current); await current.close(); assert.deepEqual(errors, []); });
   await current.getByRole("button", { name: "今日の資料の詳細" }).click();
   const rail = current.getByRole("complementary");
-  await rail.getByRole("button", { name: "明日の朝 8:00" }).click();
+  await rail.getByRole("button", { name: "明日の朝 9:00" }).click();
   await rail.getByRole("button", { name: /通知を取り消す/ }).last().waitFor();
   const post = (await current.evaluate(() => (window as any).taskCalls)).find((call: { path: string; method: string }) => call.path === "/api/reminders" && call.method === "POST");
   const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Tokyo" }).formatToParts(new Date(post.body.fireAt));
-  assert.equal(parts.find(part => part.type === "hour")?.value, "08");
+  assert.equal(parts.find(part => part.type === "hour")?.value, "09");
   assert.equal(parts.find(part => part.type === "minute")?.value, "00");
 });
 

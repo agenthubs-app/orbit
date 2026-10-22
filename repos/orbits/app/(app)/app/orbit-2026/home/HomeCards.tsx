@@ -15,7 +15,7 @@ import { pickCopy } from "../copy/types";
 import { TodayQuestionCard } from "../add/TodayQuestionCard";
 import { Button } from "../ui";
 import { homeCopy } from "./home-copy";
-import { homeContactCopyKeys, homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
+import { homeContactCopyKeys, homeTodoPagePath, homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
 import { visibleSecretaryItems } from "./secretary-model";
 import { useHomeResource, type HomeResource } from "./use-home-resource";
 import styles from "./home.module.css";
@@ -55,7 +55,7 @@ function GuideSteps({ progress }: { progress: GuideProgress }) {
 
 function TodayCard({ guide }: { guide: GuideProgress | null }) {
   const t = useT();
-  const resource = useHomeResource("/api/todo/page", todoPageSchema);
+  const resource = useHomeResource(homeTodoPagePath(), todoPageSchema);
   const schedule = useHomeResource("/api/schedule-items", scheduleSchema);
   const rows = schedule.kind === "ready" ? schedule.data.scheduleItems.flatMap((raw) => {
     const parsed = scheduleRowSchema.safeParse(raw);
@@ -123,11 +123,11 @@ function SecretaryCard({ resource }: { resource: HomeResource<SecretaryPreviewDT
 const picksSchema = z.object({ recommendations: z.array(z.object({ eventId: z.string(), title: z.string(), valueScore: z.number() }).passthrough()) });
 const notesSchema = z.object({ notes: z.array(z.object({ id: z.string(), title: z.string() }).passthrough()) });
 function PendingCard() {
-  const t = useT(); const resource = useHomeResource("/api/todo/page", todoPageSchema);
+  const t = useT(); const resource = useHomeResource(homeTodoPagePath(), todoPageSchema);
   return <State resource={resource}>{(data) => <><p className={styles.subtle}>{t("itemCount").replace("{count}", String(data.counts.decisions))}</p>{data.decisions.items.slice(0, 2).map((item) => <Link key={item.key} className={styles.item} href="/app/tasks?tab=todo">{item.titlePreview} →</Link>)}<EmptyLink href="/app/tasks?tab=todo" label={t("showAll")} /></>}</State>;
 }
 function WeekCard() {
-  const source = useHomeResource("/api/todo/page", todoPageSchema);
+  const source = useHomeResource(homeTodoPagePath(), todoPageSchema);
   return <State resource={source}>{(data) => <WeekData timeZone={data.timeZone} />}</State>;
 }
 function WeekData({ timeZone }: { timeZone: string }) {
