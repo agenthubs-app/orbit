@@ -62,10 +62,12 @@ export interface JourneyLivePorts {
   event(eventId: string): Promise<JourneyEvent | null>;
   /** Organizer history: editions (all time), first edition date, average registrations. */
   /** R17 A11：平均参加 = 已开过场次的受付人数均值；typeShare = 过去参加者申込回答 Q1 第一选项的比率（<5 不给）。 */
-  organizerStats(organizerKey: string): Promise<{ editions: number; since: string | null; averageAttendance: number | null; monthly: boolean; typeShare?: { label: string; percent: number } | null } | null>;
+  organizerStats(organizerKey: string, eventId?: string): Promise<{ editions: number; since: string | null; averageAttendance: number | null; monthly: boolean; typeShare?: { label: string; percent: number } | null } | null>;
   /** Event id by its public code (参加コード). */
   eventIdByCode(code: string): Promise<string | null>;
   publicAttendees(eventId: string): Promise<{ total: number; attendees: JourneyPublicAttendee[] }>;
+  /** Count-only projection for locked rosters; never loads complete profiles or returns names. */
+  publicRosterCounts?(actorId: string, eventId: string, contactNames: readonly string[]): Promise<{ known: number; planFit: number }>;
 
   /** Signed-in actor's facts. */
   myEvents(actorId: string): Promise<Array<{ eventId: string; status: MyEventStatus; organizerKey: string | null }>>;
