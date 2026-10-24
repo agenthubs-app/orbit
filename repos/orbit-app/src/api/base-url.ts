@@ -1,5 +1,7 @@
 // Release builds (__DEV__ false) talk to production unless EXPO_PUBLIC_ORBIT_API_BASE_URL says otherwise;
 // development builds and Node tests keep the local server.
+// React Native defines __DEV__; the Web project's typecheck also reads this file, so declare it here.
+declare const __DEV__: boolean | undefined;
 export const PRODUCTION_ORBIT_API_BASE_URL = "https://orbitailink.com";
 const releaseBuild = typeof __DEV__ !== "undefined" && !__DEV__;
 export const DEFAULT_ORBIT_API_BASE_URL =
