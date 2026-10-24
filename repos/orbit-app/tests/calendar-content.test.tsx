@@ -76,7 +76,8 @@ test("read-only Google events appear in month and day without an edit action", (
 test("unconnected and expired Google status offers truthful connection action", () => {
   assert.match(renderedText(view("month", { scheduleItems: [] }, { connection: "not_connected", events: [] })), /連携する/u);
   assert.match(renderedText(view("month", { scheduleItems: [] }, { connection: "needs_reconnect", events: [] })), /再連携/u);
-  assert.match(renderedText(view("month", { scheduleItems: [] }, { connection: "unavailable", events: [] })), /Google の予定を読み込めません/u);
+  // UX review: an unavailable Google integration is not shown as a permanent error card.
+  assert.doesNotMatch(renderedText(view("month", { scheduleItems: [] }, { connection: "unavailable", events: [] })), /Google の予定を読み込めません/u);
 });
 
 test("calendar container keeps device source and personal editor route instead of local writes", () => {
