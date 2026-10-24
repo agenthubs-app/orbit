@@ -22,7 +22,8 @@ const config: ExpoConfig = {
     "expo-secure-store",
     ["expo-sqlite", { useSQLCipher: true }],
     "expo-localization",
-    "expo-notifications",
+    // TestFlight and App Store builds need the production APNs environment; device debug builds keep development.
+    ["expo-notifications", { mode: process.env.ORBIT_RELEASE_BUILD === "1" ? "production" : "development" }],
     "expo-web-browser",
     ["expo-contacts", { contactsPermission: "读取你选中的联系人（姓名、公司、职位、电话、邮件），导入到人脈。" }],
     [
