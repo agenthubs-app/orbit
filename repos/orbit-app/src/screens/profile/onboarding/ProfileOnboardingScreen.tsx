@@ -67,6 +67,7 @@ import {
   type OnboardingStep
 } from "../../../view-models/profile-onboarding";
 import { batchRoutePath } from "../../../view-models/business-card-ingest";
+import { encodeDirectScanImage } from "../../../api/batch-images";
 import { appendAppGuideReturnTo } from "../../../view-models/guide-return-to";
 import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFrame, StepHead, useOnboardingStyles } from "./OnboardingParts";
 
@@ -319,13 +320,14 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     try {
       const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) { setMessage(t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied")); return; }
-      const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, base64: true, mediaTypes: ["images"], quality: 0.86 };
+      const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, mediaTypes: ["images"], quality: 0.86 };
       const picked = source === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = picked.canceled ? null : picked.assets?.[0];
       if (!asset) return;
-      if (!asset.base64) { setMessage(t("onboarding.scanFailed")); return; }
       setScanning(true);
-      const card = await scanOwnBusinessCard(client, { base64: asset.base64, fileName: asset.fileName || "business-card.jpg", mimeType: asset.mimeType ?? "image/jpeg", size: asset.fileSize ?? null });
+      const image = await encodeDirectScanImage({ ...asset, fileName: asset.fileName || "business-card.jpg" });
+      if (!mounted.current) return;
+      const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
       if (!card.ok) { setMessage(t("onboarding.scanFailed")); return; }
       setBasic(current => ({ ...current, company: card.company || current.company, name: card.name || current.name, title: card.title || current.title }));

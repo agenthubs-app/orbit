@@ -3,13 +3,15 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   BATCH_IMAGE_COMPRESSION_STEPS,
+  DIRECT_SCAN_MAX_IMAGE_BYTES,
+  encodeDirectScanImage,
   prepareBatchImage,
   prepareBatchImages,
   readPreparedBatchImage,
   type BatchImageCompressor,
   type BatchImageNative
 } from "../src/api/batch-images";
-import { MAX_ORBIT_BINARY_BYTES, createOrbitApiClient } from "../src/api/client";
+import { createOrbitApiClient } from "../src/api/client";
 import { ingestManifestEntrySchema } from "../src/api/schema/business-card-batch";
 
 // Sprint 0140: oversized card images are compressed on the device before any
@@ -146,6 +148,44 @@ test("an oversized original is replaced by its compressed copy before digest, ma
   assert.equal(h.originalReads, 0);
 });
 
+test("a 3.9 MiB direct scan is compressed before its JSON request exceeds Vercel's body limit", async () => {
+  const originalSize = Math.ceil(3.9 * MIB);
+  const h = harness({ originalSize, copySizes: [2 * MIB] });
+  const image = await encodeDirectScanImage(
+    { ...oversizedInput, fileSize: originalSize },
+    { native: h.native, compressor: h.compressor }
+  );
+  assert.equal(h.encodes.length, 1);
+  assert.equal(image.size, 2 * MIB);
+  assert.equal(image.mimeType, "image/jpeg");
+  // Same body shape as scanOwnBusinessCard sends.
+  const body = { imageBase64: image.base64, imageName: image.fileName, imageSizeBytes: image.size, mimeType: image.mimeType };
+  assert.ok(Buffer.byteLength(JSON.stringify(body)) < 4_500_000);
+});
+
+test("a direct scan at the 3 MiB limit is sent as is and stays under Vercel's body limit", async () => {
+  const h = harness({ originalSize: DIRECT_SCAN_MAX_IMAGE_BYTES, copySizes: [] });
+  const image = await encodeDirectScanImage(
+    { ...oversizedInput, fileSize: DIRECT_SCAN_MAX_IMAGE_BYTES },
+    { native: h.native, compressor: h.compressor }
+  );
+  assert.equal(h.encodes.length, 0);
+  const body = { imageBase64: image.base64, imageName: image.fileName, imageSizeBytes: image.size, mimeType: image.mimeType };
+  assert.ok(Buffer.byteLength(JSON.stringify(body)) < 4_500_000);
+});
+
+test("a 5 MiB batch image is compressed before raw upload reaches Vercel", async () => {
+  const originalSize = 5 * MIB;
+  const h = harness({ originalSize, copySizes: [3 * MIB] });
+  const prepared = await prepareBatchImage(
+    { ...oversizedInput, fileSize: originalSize },
+    { native: h.native, compressor: h.compressor }
+  );
+  assert.equal(h.encodes.length, 1);
+  assert.equal(prepared.rawSize, 3 * MIB);
+  assert.ok(prepared.rawSize < 4_500_000);
+});
+
 test("oversize detected only from the opened file (no picker size) still compresses", async () => {
   const h = harness();
   const { fileSize: _omit, ...withoutSize } = oversizedInput;
@@ -156,7 +196,7 @@ test("oversize detected only from the opened file (no picker size) still compres
 });
 
 test("the ladder stops at the first copy within the limit and discards larger attempts", async () => {
-  const h = harness({ copySizes: [11 * MIB, 10 * MIB + 1, 6 * MIB] });
+  const h = harness({ copySizes: [5 * MIB, 4 * MIB + 1, 3 * MIB] });
   const prepared = await prepareBatchImage(oversizedInput, { native: h.native, compressor: h.compressor });
   assert.deepEqual(h.encodes, [
     { width: 4096, height: 3072, quality: 0.85 },
@@ -165,7 +205,7 @@ test("the ladder stops at the first copy within the limit and discards larger at
   ]);
   assert.deepEqual(h.discarded, ["file:///cache/compressed-0.jpg", "file:///cache/compressed-1.jpg"]);
   assert.equal(prepared.uri, "file:///cache/compressed-2.jpg");
-  assert.equal(prepared.rawSize, 6 * MIB);
+  assert.equal(prepared.rawSize, 3 * MIB);
 });
 
 test("portrait and already-small dimensions are never upscaled", async () => {
@@ -178,7 +218,7 @@ test("portrait and already-small dimensions are never upscaled", async () => {
 });
 
 test("images at or under the limit are not recompressed", async () => {
-  for (const size of [1 * MIB, MAX_ORBIT_BINARY_BYTES]) {
+  for (const size of [1 * MIB, 4 * MIB]) {
     const h = harness({ originalSize: size });
     const prepared = await prepareBatchImage({ ...oversizedInput, fileSize: size }, { native: h.native, compressor: h.compressor });
     assert.deepEqual(h.encodes, []);
@@ -218,12 +258,12 @@ test("cancelling during compression discards the copy and stops the batch", asyn
 });
 
 test("a tighter transport limit compresses to that limit and validates reads against it", async () => {
-  const h = harness({ originalSize: 9 * MIB, copySizes: [8 * MIB, 5 * MIB] });
-  const limit = 7 * MIB;
+  const h = harness({ originalSize: 9 * MIB, copySizes: [4 * MIB, 3 * MIB + 1, 2 * MIB] });
+  const limit = 3 * MIB;
   const prepared = await prepareBatchImage({ ...oversizedInput, fileSize: 9 * MIB }, { native: h.native, compressor: h.compressor, maxBytes: limit });
-  assert.equal(h.encodes.length, 2);
-  assert.equal(prepared.rawSize, 5 * MIB);
+  assert.equal(h.encodes.length, 3);
+  assert.equal(prepared.rawSize, 2 * MIB);
   const bytes = await readPreparedBatchImage(prepared, { native: h.native, maxBytes: limit });
-  assert.equal(bytes.byteLength, 5 * MIB);
+  assert.equal(bytes.byteLength, 2 * MIB);
   assert.equal(digest(bytes), prepared.clientDigest);
 });

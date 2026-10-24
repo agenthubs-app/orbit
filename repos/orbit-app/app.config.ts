@@ -6,8 +6,9 @@ const widgetkitEnabled = process.env.ORBIT_ENABLE_WIDGETS === "1";
 const config: ExpoConfig = {
   name: "Orbit",
   slug: "orbit-app",
+  icon: "./assets/icon.png",
   scheme: "orbit",
-  version: "0.1.0",
+  version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   experiments: {
@@ -35,6 +36,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "app.agenthubs.orbit",
+    buildNumber: "6",
     infoPlist: {
       NSCameraUsageDescription:
         "扫描二维码和拍摄名片，用于生成待确认联系人候选。",

@@ -75,18 +75,18 @@ test("prepared digest satisfies the synced manifest schema and the exact digest-
   assert.equal(digest(bytes), manifest.clientDigest);
 });
 
-test("allows exactly 10 MiB, never reads an oversized original and rechecks actual size", async () => {
-  const boundary = new Uint8Array(10485760);
+test("allows exactly 4 MiB, never reads an oversized original and rechecks actual size", async () => {
+  const boundary = new Uint8Array(4194304);
   boundary.set(JPEG);
   const prepared = await prepareBatchImage(input, { native: native(boundary) });
-  assert.equal(prepared.rawSize, 10485760);
+  assert.equal(prepared.rawSize, 4194304);
   assert.equal(prepared.clientDigest, digest(boundary));
   let reads = 0;
   const fake = native();
-  fake.openFile = async () => ({ exists: true, size: 10485761, bytes: async () => { reads++; return JPEG; } });
+  fake.openFile = async () => ({ exists: true, size: 4194305, bytes: async () => { reads++; return JPEG; } });
   await assert.rejects(prepareBatchImage(input, { native: fake, compressor: failingCompressor }), errorCode("COMPRESSION_FAILED"));
   assert.equal(reads, 0);
-  fake.openFile = async () => ({ exists: true, size: 10, bytes: async () => new Uint8Array(10485761) });
+  fake.openFile = async () => ({ exists: true, size: 10, bytes: async () => new Uint8Array(4194305) });
   await assert.rejects(prepareBatchImage(input, { native: fake }), errorCode("FILE_TOO_LARGE"));
   let metadataReads = 0;
   const metadataNative = native();
@@ -95,7 +95,7 @@ test("allows exactly 10 MiB, never reads an oversized original and rechecks actu
     return { exists: true, size: JPEG.length, bytes: async () => JPEG };
   };
   await assert.rejects(
-    prepareBatchImage({ ...input, fileSize: 10485761 }, { native: metadataNative, compressor: failingCompressor }),
+    prepareBatchImage({ ...input, fileSize: 4194305 }, { native: metadataNative, compressor: failingCompressor }),
     errorCode("COMPRESSION_FAILED")
   );
   assert.equal(metadataReads, 0);

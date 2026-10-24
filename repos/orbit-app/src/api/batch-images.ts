@@ -66,7 +66,7 @@ export interface BatchImageOptions {
   native?: BatchImageNative;
   signal?: AbortSignal;
   compressor?: BatchImageCompressor;
-  /** Upload limit for this transport; defaults to the 10 MiB binary limit. */
+  /** Optional tighter limit for the upload transport. */
   maxBytes?: number;
 }
 export interface SelectedBatchImage {
@@ -90,6 +90,10 @@ export class BatchImageError extends Error {
 }
 
 const defaultCompressor: BatchImageCompressor = { open: openBatchImageCompressor };
+// Vercel rejects request bodies over 4.5 MB, so every image upload stays below it.
+const MAX_BUSINESS_CARD_UPLOAD_BYTES = 4 * 1024 * 1024;
+/** Base64 JSON for a 3 MiB image stays below Vercel's 4.5 MB request limit. */
+export const DIRECT_SCAN_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 const nativeBoundary: BatchImageNative = {
   async openFile(_uri, input) {
@@ -107,8 +111,8 @@ function checkCancellation(signal?: AbortSignal): void {
 
 function uploadLimit(options: BatchImageOptions): number {
   const limit = options.maxBytes;
-  return limit !== undefined && Number.isSafeInteger(limit) && limit > 0 && limit < MAX_ORBIT_BINARY_BYTES
-    ? limit : MAX_ORBIT_BINARY_BYTES;
+  return limit !== undefined && Number.isSafeInteger(limit) && limit > 0
+    ? Math.min(limit, MAX_BUSINESS_CARD_UPLOAD_BYTES) : MAX_BUSINESS_CARD_UPLOAD_BYTES;
 }
 
 function validateSize(size: number, limit = MAX_ORBIT_BINARY_BYTES): void {
@@ -117,7 +121,7 @@ function validateSize(size: number, limit = MAX_ORBIT_BINARY_BYTES): void {
   }
   if (size === 0) throw new BatchImageError("EMPTY_FILE", "图片文件为空，请重新选择。");
   if (size > limit) {
-    throw new BatchImageError("FILE_TOO_LARGE", "图片不能超过 10 MiB，请更换文件。");
+    throw new BatchImageError("FILE_TOO_LARGE", "图片超过当前传输上限，请更换文件。");
   }
 }
 
@@ -269,6 +273,15 @@ export async function readPreparedBatchImage(prepared: PreparedBatchImage, optio
     throw new BatchImageError("FILE_CHANGED", "图片已变化，请重新选择并匹配原图片。");
   }
   return bytes;
+}
+/** Prepares a picked image for a base64 JSON scan, compressing it on the device when it is over the limit. */
+export async function encodeDirectScanImage(input: BatchImageInput, options: BatchImageOptions = {}): Promise<{
+  base64: string; fileName: string; mimeType: BatchImageMimeType; size: number;
+}> {
+  const scanOptions = { ...options, maxBytes: DIRECT_SCAN_MAX_IMAGE_BYTES };
+  const prepared = await prepareBatchImage(input, scanOptions);
+  const bytes = await readPreparedBatchImage(prepared, scanOptions);
+  return { base64: fromByteArray(bytes), fileName: prepared.fileName, mimeType: prepared.mimeType, size: prepared.rawSize };
 }
 export async function loadSelectedBatchImage(client: OrbitApiClient, protectedImagePath: string, options: Pick<BatchImageOptions, "signal"> = {}): Promise<SelectedBatchImage> {
   checkCancellation(options.signal);
