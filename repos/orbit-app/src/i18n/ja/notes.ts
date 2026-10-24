@@ -49,6 +49,8 @@ export const notes = {
   "notes.loadingMore": "読み込み中…",
   "notes.cancelNew": "新しいメモをキャンセル",
   "notes.saving": "保存中",
+  "notes.done": "完了",
+  "notes.editShort": "編集",
   "notes.save": "保存",
   "notes.saveNote": "メモを保存",
   "notes.keepDraftTitle": "この下書きを残しますか？",

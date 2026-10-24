@@ -25,7 +25,6 @@ import { NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
 import { useNotesWriteStatus } from "../notes/notes-source";
-import { MemoKindPlanControls } from "./MemoKindPlanControls";
 
 export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScopeCurrent = () => true }: { actorId: string; draftServer?: string; scopeKey: string; isScopeCurrent?: () => boolean }) {
   const router = useRouter();
@@ -136,7 +135,9 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
 
   async function save() {
     if (!owns() || pending || (Platform.OS === "web" && writeStatus.offline)) return;
-    const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan: planEnabled }, idempotencyKey.current, locale.language);
+    // UX-5: one kind of note — interviews belong to the calendar. UX-6: the title may stay empty
+    // (the first line of the body names the note, as in iOS Notes).
+    const request = buildRichNoteCreateRequest({ title: noteTitleFor(title, draft), body: draft.trim() ? draft : title, manualContactIds: selectedIds, mentions, eventIds, noteKind: "free", usedForPlan: false }, idempotencyKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError("");
     const queueLocally = async () => {
@@ -183,29 +184,39 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !title.trim() || !draft.trim() || (Platform.OS === "web" && writeStatus.offline);
-  return <AppScreen inset="kit" title={locale.t("notes.new")} onBack={() => { if (!pending && owns()) hasChanges ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelNew")} disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
-    {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
-      <Text style={styles.exitTitle}>{locale.t("notes.keepDraftTitle")}</Text><Text style={styles.exitText}>{locale.t("notes.keepDraftBody")}</Text>
-      <View style={styles.exitActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.continueEditing")} onPress={() => { exitToHistory.current = false; setShowExitPrompt(false); }} style={styles.exitButton}><Text style={styles.cancelText}>{locale.t("notes.continueEditing")}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.discard")} onPress={() => { void discardAndExit(); }} style={styles.exitButton}><Text style={styles.destructiveText}>{locale.t("notes.discard")}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
-      </View>
-    </View> : null}
+  const empty = !title.trim() && !draft.trim();
+  const saveDisabled = pending || empty || (Platform.OS === "web" && writeStatus.offline);
+  // UX-6: leaving keeps the note — back saves it when there is something written (iOS Notes), an empty note is dropped.
+  const leave = () => {
+    if (pending || !owns()) return;
+    if (empty) { void discardAndExit(); return; }
+    void save();
+  };
+  return <AppScreen inset="kit" title={locale.t("notes.new")} onBack={leave} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")}
+    headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}>
+      <Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.done")}</Text>
+    </Pressable>}>
     {writeStatus.offline ? <MemoOfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
-    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewHistory")} disabled={pending} onPress={() => { if (!owns()) return; exitToHistory.current = true; hasChanges ? setShowExitPrompt(true) : router.replace("/notes"); }} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("notes.viewHistory")}</Text></Pressable>
     <View style={styles.paper}>
       <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder={locale.t("notes.noteTitle")} placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />
-      <View style={styles.rule} />
       <MemoMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { change(value); setMentions([...nextMentions]); }} searchContacts={searchContacts} events={events} />
     </View>
-    <MemoKindPlanControls kind={noteKind} usedForPlan={planEnabled} contactCount={contactCount} disabled={pending} onKindChange={kind => { setNoteKind(kind); if (kind !== "meeting") setUsedForPlan(false); }} onPlanChange={setUsedForPlan} />
-    <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
-    <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
-    {draftStatus ? <Text accessibilityLiveRegion="polite" style={draftStatus === locale.t("notes.autosaveFailed") ? styles.error : styles.draftStatus}>{draftStatus}</Text> : null}
+    <View style={styles.associations}>
+      <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
+      <View style={styles.rule} />
+      <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
+    </View>
+    {draftStatus === locale.t("notes.autosaveFailed") ? <Text accessibilityLiveRegion="polite" style={styles.error}>{draftStatus}</Text> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
   </AppScreen>;
+}
+
+/** UX-6: a note without a title is named by its first line (at most 40 characters). */
+export function noteTitleFor(title: string, body: string): string {
+  const trimmed = title.trim();
+  if (trimmed) return trimmed;
+  const first = body.trim().split(/\r?\n/u)[0]?.trim() ?? "";
+  return [...first].length > 40 ? `${[...first].slice(0, 40).join("")}…` : first;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
@@ -215,8 +226,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headerSave: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   headerSaveText: { color: colors.accentText, fontSize: typography.body, fontWeight: "800" },
   headerSaveDisabled: { color: colors.ink3Text },
-  paper: { minHeight: 420, paddingHorizontal: 2 },
-  titleInput: { color: colors.ink, fontSize: 30, fontWeight: "900", minHeight: 72, paddingVertical: spacing.md },
+  paper: { minHeight: 300, paddingHorizontal: 2 },
+  titleInput: { color: colors.ink, fontSize: 26, fontWeight: "800", minHeight: 56, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  associations: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
   rule: { backgroundColor: colors.line, height: StyleSheet.hairlineWidth },
   placeholder: { color: colors.ink3Text },
   error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },

@@ -49,6 +49,8 @@ export const notes = {
   "notes.loadingMore": "Loading…",
   "notes.cancelNew": "Cancel new note",
   "notes.saving": "Saving",
+  "notes.done": "Done",
+  "notes.editShort": "Edit",
   "notes.save": "Save",
   "notes.saveNote": "Save note",
   "notes.keepDraftTitle": "Keep this draft?",

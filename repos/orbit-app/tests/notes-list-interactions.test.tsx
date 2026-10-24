@@ -106,7 +106,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(() => page.close()); await page.goto(url); return page;
 }
 
-test("notes list searches, filters, follows stable ids and appends the next page", async (t) => {
+test("UX-5: notes list has no kind tabs, searches, follows stable ids and appends the next page", async (t) => {
   const page = await open(t);
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByRole("button", { name: "加载更多笔记" }).click();
@@ -114,9 +114,9 @@ test("notes list searches, filters, follows stable ids and appends the next page
   assert.match((await page.evaluate(() => (window as any).fixture.requests[0])) as string, /cursor=page%3A2/);
   await page.getByRole("button", { name: "查看笔记 预算确认" }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3A2"]);
-  await page.getByRole("tab", { name: "面谈" }).click();
-  assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
-  await page.getByText("预算确认", { exact: true }).waitFor();
+  // UX-5: one kind of note — no 全部 / 面谈 / 自由备忘录 tabs, and the list never asks for one kind.
+  for (const label of ["全部", "面谈", "自由备忘录"]) assert.equal(await page.getByRole("tab", { name: label }).count(), 0, label);
+  assert.doesNotMatch(await page.evaluate(() => (window as any).fixture.latestPath as string), /noteKind=(meeting|free)/);
   await page.getByRole("textbox", { name: "搜索笔记" }).fill("预算");
   await page.waitForFunction(() => (window as any).fixture.latestPath.includes("q=%E9%A2%84%E7%AE%97"));
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
@@ -135,11 +135,16 @@ test("notes list caps accessibility text at two times and keeps labels readable"
   await page.getByText("发布会准备", { exact: true }).waitFor();
   const title = await page.getByText("发布会准备", { exact: true }).boundingBox();
   const search = await page.getByRole("textbox", { name: "搜索笔记" }).boundingBox();
-  const filters = await Promise.all(["全部", "面谈", "自由备忘录"].map((label) => page.getByRole("tab", { name: label }).boundingBox()));
+  const summary = await page.getByText("发布会准备 正文摘要", { exact: true }).boundingBox();
+  const people = await page.getByText("1 人", { exact: true }).boundingBox();
+  const more = await page.getByRole("button", { name: "加载更多笔记" }).boundingBox();
+  // 17 px title × 2 cap = 34 px; a 3.1× scale would push it past 52 px.
   assert.ok(title && title.height >= 34 && title.height < 60, JSON.stringify(title));
   assert.ok(search && search.height >= 44, JSON.stringify(search));
-  // Kit Segmented renders a 30+ px pill and extends its touch target by 7 px above and below.
-  assert.ok(filters.every((box) => box && box.width <= 390 && box.height >= 30), JSON.stringify(filters));
+  // UX-6 row: the first line (15 px) and the people count (13 px) are capped at 2× too (3.1× would be ~46 px / ~40 px).
+  assert.ok(summary && summary.height >= 30 && summary.height < 44 && summary.width <= 390, JSON.stringify(summary));
+  assert.ok(people && people.height >= 26 && people.height < 38, JSON.stringify(people));
+  assert.ok(more && more.height >= 48 && more.width <= 390, JSON.stringify(more));
   assert.equal(await page.getByText("发布会准备", { exact: true }).isVisible(), true);
   assert.equal(await page.getByText("发布会准备 正文摘要", { exact: true }).isVisible(), true);
 });
@@ -147,10 +152,14 @@ test("notes list caps accessibility text at two times and keeps labels readable"
 test("an English account translates note-list chrome without changing note content", async (t) => {
   const page = await open(t, { language: "en" });
   await page.getByRole("textbox", { name: "Search notes" }).waitFor();
-  await page.getByRole("tab", { name: "Meeting" }).waitFor();
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByText("发布会准备 正文摘要", { exact: true }).waitFor();
+  await page.getByText("1 people", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Load more notes" }).waitFor();
+  await page.getByRole("button", { name: "New note", exact: true }).waitFor();
+  assert.equal(await page.getByRole("tab", { name: "Meeting" }).count(), 0, "UX-5: no kind tabs");
   assert.equal(await page.getByText("搜索笔记", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("1 人", { exact: true }).count(), 0);
 });
 
 test("a late history page cannot enter a changed search and uses an abortable request", async (t) => {
@@ -172,10 +181,11 @@ test("duplicates between first and later history pages render only once", async 
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 1);
 });
 
-test("53 saved notes fully load and failed later pages preserve loaded history for retry", async (t) => {
+test("53 saved notes fully load and failed later pages preserve loaded history for retry (UX-6: no count footers)", async (t) => {
   const page = await open(t, { history53: true, failNextPage: true });
   await page.getByText("历史笔记 0", { exact: true }).waitFor();
-  assert.equal(await page.getByText("已加载 20 / 共 53 篇", { exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: /^查看笔记 历史笔记 / }).count(), 20);
+  assert.equal(await page.getByText(/^已加载 /).count(), 0, "the loaded-count footer is gone");
   await page.getByRole("button", { name: "加载更多笔记" }).click();
   await page.getByText("后页暂不可读", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: /^查看笔记 历史笔记 / }).count(), 20);
@@ -184,7 +194,7 @@ test("53 saved notes fully load and failed later pages preserve loaded history f
   await page.getByRole("button", { name: "加载更多笔记" }).click();
   await page.getByText("历史笔记 52", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: /^查看笔记 历史笔记 / }).count(), 53);
-  assert.equal(await page.getByText("已加载 53 / 共 53 篇", { exact: true }).count(), 1);
-  assert.equal(await page.getByText("已加载全部笔记", { exact: true }).count(), 1);
+  // The end of history is shown by the load-more button going away; the count / "all loaded" footers are gone.
   assert.equal(await page.getByRole("button", { name: "加载更多笔记" }).count(), 0);
+  assert.equal(await page.getByText(/^已加载/).count(), 0);
 });

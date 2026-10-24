@@ -49,6 +49,8 @@ export const notes = {
   "notes.loadingMore": "加载中…",
   "notes.cancelNew": "取消新建笔记",
   "notes.saving": "保存中",
+  "notes.done": "完成",
+  "notes.editShort": "编辑",
   "notes.save": "保存",
   "notes.saveNote": "保存笔记",
   "notes.keepDraftTitle": "保留这份草稿吗？",

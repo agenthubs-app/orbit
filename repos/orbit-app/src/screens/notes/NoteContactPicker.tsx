@@ -84,15 +84,12 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
 
   const selected = new Set(selectedIds);
   return <View style={styles.group}>
-    <View style={styles.labelRow}>
-      <View>
-        <Text style={styles.label}>{locale.t("notes.relatedPeople")}</Text>
-        <Text style={styles.hint}>{locale.t("notes.relatedPeopleHint")}</Text>
-      </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedPeople")} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.addButton}>
-        <Ionicons color={colors.accentText} name={open ? "close" : "add"} size={23} />
-      </Pressable>
-    </View>
+    {/* UX-6: one tappable row (icon, label, +) instead of a heading, a hint line and a round button. */}
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedPeople")} accessibilityState={{ expanded: open }} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.labelRow}>
+      <Ionicons color={colors.ink3Text} name="person-outline" size={20} />
+      <Text style={styles.label}>{locale.t("notes.relatedPeople")}</Text>
+      <Ionicons color={colors.accentText} name={open ? "chevron-up" : "add"} size={22} />
+    </Pressable>
     {selectedIds.length ? <View style={styles.selectedRow}>{selectedIds.map((id) => {
       const contact = names.get(id);
       return <View key={id} style={styles.chip}>
@@ -105,7 +102,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
     {open ? <View style={styles.searchPanel}>
       <View style={styles.searchBox}>
         <Ionicons color={colors.ink3Text} name="search" size={19} />
-        <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
+        <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoFocus autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
       </View>
       {!query.trim() ? <Text style={styles.emptyHint}>{locale.t("notes.searchPeopleStart")}</Text> : null}
       {searching && results.length === 0 ? <Text accessibilityLiveRegion="polite" style={styles.emptyHint}>{locale.t("notes.searching")}</Text> : null}
@@ -128,9 +125,9 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  group: { gap: spacing.md },
-  labelRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  label: { color: colors.ink, fontSize: typography.body, fontWeight: "700", lineHeight: 28 },
+  group: { gap: spacing.sm, paddingVertical: spacing.xs },
+  labelRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 48 },
+  label: { color: colors.ink, flex: 1, fontSize: 17 },
   hint: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 20, marginTop: 2 },
   addButton: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 38, justifyContent: "center", width: 38 },
   selectedRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

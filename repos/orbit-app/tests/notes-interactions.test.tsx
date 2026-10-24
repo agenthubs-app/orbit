@@ -157,7 +157,7 @@ test.before(async () => {
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^react-native$/, namespace: "notes-test" }, () => ({ contents: `export * from "react-native-web"; export const Platform = { get OS() { return new URLSearchParams(location.search).has("native") ? "ios" : "web"; } };`, loader: "js", resolveDir: process.cwd() }));
-        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = (input) => { const note = input.noteKind === "meeting" ? { ...window.fixture.note, title: "面谈示例" } : input.noteKind === "free" ? { ...window.fixture.note, title: "自由示例" } : window.fixture.note; return { notes: [note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }; }; export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, failedMutation: window.fixture.failedMutation ?? null, async retryFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["retry", id]]; }, async discardFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["discard", id]]; }, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
+        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = (input) => { window.fixture.listInputs = [...(window.fixture.listInputs ?? []), input.noteKind]; const note = input.noteKind === "meeting" ? { ...window.fixture.note, title: "面谈示例" } : input.noteKind === "free" ? { ...window.fixture.note, title: "自由示例" } : window.fixture.note; return { notes: [note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }; }; export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, failedMutation: window.fixture.failedMutation ?? null, async retryFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["retry", id]]; }, async discardFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["discard", id]]; }, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'import React from "react"; export const Ionicons=({size=18})=>React.createElement("span",{style:{display:"inline-block",width:size,height:size}});', loader: "js", resolveDir: process.cwd() }));
       },
     }],
@@ -278,31 +278,38 @@ test("native memo keeps @person and @event ranges after an emoji edit", async (t
   ]);
 });
 
-test("memo list switches three kinds without the old duplicate hero", async (t) => {
+test("UX-5: memo list reads one kind of note with no category tabs, kind pill, or old duplicate hero", async (t) => {
   const value = await page(t, "list");
-  assert.equal(await value.getByRole("tab", { name: "全部" }).count(), 1);
-  await value.getByRole("tab", { name: "全部" }).getByText("1", { exact: true }).waitFor({ timeout: 3000 });
-  await value.getByRole("tab", { name: "面谈" }).click();
-  await value.getByText("面谈示例", { exact: true }).waitFor();
-  await value.getByRole("tab", { name: "自由备忘录" }).click();
-  await value.getByText("自由示例", { exact: true }).waitFor();
+  await value.getByText("原始标题", { exact: true }).waitFor();
+  for (const label of ["全部", "面谈", "自由备忘录"]) assert.equal(await value.getByRole("tab", { name: label }).count(), 0, label);
+  assert.equal(await value.getByText("面谈示例", { exact: true }).count(), 0);
+  assert.equal(await value.getByText("自由示例", { exact: true }).count(), 0);
+  assert.equal(await value.getByText("面谈", { exact: true }).count(), 0, "no kind pill on rows");
+  assert.equal(await value.getByText("自由备忘录", { exact: true }).count(), 0, "no kind pill on rows");
+  assert.equal(await value.getByText(/[✍🤝]/u).count(), 0, "no kind emoji icon");
+  assert.deepEqual([...new Set(await value.evaluate(() => (window as any).fixture.listInputs))], ["all"]);
   assert.equal(await value.getByText("我的笔记", { exact: true }).count(), 1);
   assert.equal(await value.getByText("笔记", { exact: true }).count(), 0);
 });
 
-test("meeting memo exposes plan use only with one linked person and sends the explicit choice", async (t) => {
+test("UX-5: edit has no kind or plan controls and keeps a stored meeting note's kind and plan choice", async (t) => {
   const value = await page(t, "edit");
-  const toggle = value.getByRole("switch", { name: "用于计划的已交流项" });
-  await value.getByRole("tab", { name: "面谈" }).click();
-  assert.equal(await toggle.isDisabled(), true);
-  await value.getByRole("button", { name: /移除相关人脉 佐藤/u }).click();
-  assert.equal(await toggle.isEnabled(), true);
-  await toggle.click();
+  await value.evaluate(() => {
+    const state = (window as any).fixture;
+    state.update({ note: { ...state.note, noteKind: "meeting", usedForPlan: true, manualContactIds: ["contact:a"], contactIds: ["contact:a"], version: 3 } });
+  });
+  await value.getByRole("button", { name: /移除相关人脉 林悦/u }).waitFor();
+  assert.equal(await value.getByRole("button", { name: /移除相关人脉 佐藤/u }).count(), 0);
+  for (const label of ["面谈", "自由备忘录"]) assert.equal(await value.getByRole("tab", { name: label }).count(), 0, label);
+  assert.equal(await value.getByRole("switch").count(), 0, "no 用于计划的已交流项 toggle");
+  assert.equal(await value.getByText("用于计划的已交流项").count(), 0);
+  await value.getByRole("textbox", { name: "笔记内容" }).fill("面谈后补充");
   await value.getByRole("button", { name: "保存修改" }).click();
   await value.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
   const body = await value.evaluate(() => (window as any).fixture.requests.find((request: any) => request.method === "PATCH").body);
-  assert.equal(body.noteKind, "meeting");
-  assert.equal(body.usedForPlan, true);
+  assert.equal(body.noteKind, "meeting", "the stored kind is untouched");
+  assert.equal(body.usedForPlan, true, "the stored plan choice is untouched");
+  assert.equal(body.expectedVersion, 3);
   assert.deepEqual(body.manualContactIds, ["contact:a"]);
 });
 
@@ -418,17 +425,29 @@ test("offline edits opened from a stale local alias enqueue against the canonica
   assert.equal(await value.evaluate(() => (window as any).fixture.queued[0].id), "note:one");
 });
 
-test("confirmed create navigates to the server note and cancel never creates an empty record", async (t) => {
+test("UX-6: back on an empty new note drops it without a request; 完成 creates a free note and opens the server note", async (t) => {
   const value = await page(t, "new");
-  await value.getByRole("button", { name: "取消新建笔记" }).click();
+  assert.equal(await value.getByRole("button", { name: "取消新建笔记" }).count(), 0, "no 取消 button");
+  assert.equal(await value.getByRole("button", { name: "查看过往笔记" }).count(), 0, "no history button");
+  for (const label of ["面谈", "自由备忘录"]) assert.equal(await value.getByRole("tab", { name: label }).count(), 0, label);
+  assert.equal(await value.getByRole("switch").count(), 0, "no 用于计划的已交流项 toggle");
+  const done = value.getByRole("button", { name: "保存笔记" });
+  assert.equal(await done.textContent(), "完成");
+  assert.equal(await done.isDisabled(), true, "nothing written yet");
+  await value.getByRole("button", { name: "返回笔记", exact: true }).click();
+  await value.waitForFunction(() => (window as any).fixture.navigation.length === 1);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), []);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["back"]);
+  assert.equal(await value.evaluate(() => (window as any).fixture.drafts.at(-1)?.kind), "clear");
   await value.getByRole("textbox", { name: "笔记标题" }).fill("确认标题");
   await value.getByRole("textbox", { name: "笔记内容" }).fill("确认保存");
   await value.getByRole("button", { name: "保存笔记" }).click();
   await value.waitForFunction(() => (window as any).fixture.navigation.length === 2);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["back", "/notes/note%3Acreated"]);
-  assert.match((await value.evaluate(() => (window as any).fixture.requests.find((request: any) => request.path === "/api/notes").body.idempotencyKey)), /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  const created = await value.evaluate(() => (window as any).fixture.requests.find((request: any) => request.path === "/api/notes").body);
+  assert.match(created.idempotencyKey, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.equal(created.noteKind, "free", "UX-5: a new note is always free");
+  assert.equal(created.usedForPlan, false);
 });
 
 test("native create with a lost POST response queues through the coordinator into real SQLite", async (t) => {
@@ -674,35 +693,57 @@ test("an English account can edit a note without fixed Chinese chrome", async (t
   const title = edit.getByRole("textbox", { name: "Note title" });
   await title.waitFor();
   await edit.getByRole("textbox", { name: "Note body" }).waitFor();
-  await edit.getByRole("button", { name: "Cancel editing note" }).waitFor();
+  const save = edit.getByRole("button", { name: "Save changes" });
+  await save.waitFor();
+  assert.equal(await save.textContent(), "Done");
   assert.equal(await title.inputValue(), "原始标题");
-  await edit.getByText("Only visible to you · Version 2", { exact: true }).waitFor();
+  // UX-6: no cancel button and no private/version line, in any language.
+  assert.equal(await edit.getByRole("button", { name: "Cancel editing note" }).count(), 0);
+  assert.equal(await edit.getByText(/Only visible to you/).count(), 0);
+  for (const chrome of ["完成", "编辑笔记", "保存修改", "相关人脉", "相关活动"]) assert.equal(await edit.getByText(chrome, { exact: true }).count(), 0, chrome);
 });
 
-test("top back preserves an unsaved note until the user chooses and detail returns to global history", async (t) => {
+test("UX-6: top back saves a written untitled note under its first line and detail returns to global history", async (t) => {
   const create = await page(t, "new");
-  await create.getByRole("textbox", { name: "笔记内容" }).fill("不可丢弃的草稿");
+  const firstLine = "一二三四五六七八九十".repeat(4) + "超出部分";
+  await create.getByRole("textbox", { name: "笔记内容" }).fill(firstLine + "\n第二行");
   await create.getByRole("button", { name: "返回笔记", exact: true }).click();
-  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), []);
-  assert.equal(await create.getByRole("textbox", { name: "笔记内容" }).inputValue(), "不可丢弃的草稿");
+  await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Acreated"]);
+  const created = await create.evaluate(() => (window as any).fixture.requests.find((request: any) => request.path === "/api/notes").body);
+  assert.equal(created.title, "一二三四五六七八九十".repeat(4) + "…", "an empty title becomes the first 40 characters of the first line");
+  assert.equal(created.body, firstLine + "\n第二行");
+  assert.equal(await create.getByRole("button", { name: "保留并退出" }).count(), 0, "no keep/discard prompt");
   const detail = await page(t, "detail");
   await detail.getByRole("button", { name: "返回笔记", exact: true }).click();
   assert.deepEqual(await detail.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
 });
 
-test("new-note history navigation and edited-note top back require a draft decision", async (t) => {
-  const create = await page(t, "new");
-  await create.getByRole("textbox", { name: "笔记内容" }).fill("历史入口草稿");
-  assert.equal(await create.getByRole("button", { name: "查看过往笔记", exact: true }).count(), 1);
-  await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
-  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), []);
-  await create.getByRole("button", { name: "保留并退出" }).click();
-  await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
-  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+test("UX-6: no draft-decision prompt — unchanged or invalid edits go straight back, changed edits are saved by top back", async (t) => {
+  const unchanged = await page(t, "edit");
+  await unchanged.getByRole("textbox", { name: "笔记标题" }).waitFor();
+  assert.equal(await unchanged.getByRole("button", { name: "取消编辑笔记" }).count(), 0, "no cancel button");
+  assert.equal(await unchanged.getByText(/仅自己可见/).count(), 0, "no private/version line");
+  const done = unchanged.getByRole("button", { name: "保存修改" });
+  assert.equal(await done.textContent(), "完成");
+  assert.equal(await done.isDisabled(), true, "nothing changed yet");
+  await unchanged.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await unchanged.evaluate(() => (window as any).fixture.navigation), ["back"]);
+
+  const invalid = await page(t, "edit");
+  await invalid.getByRole("textbox", { name: "笔记内容" }).fill("");
+  await invalid.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await invalid.evaluate(() => (window as any).fixture.navigation), ["back"]);
+  assert.equal(await invalid.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method === "PATCH").length), 0, "an empty body is never saved");
+
   const edit = await page(t, "edit");
   await edit.getByRole("textbox", { name: "笔记内容" }).fill("修改但未保存");
   await edit.getByRole("button", { name: "返回笔记", exact: true }).click();
-  assert.deepEqual(await edit.evaluate(() => (window as any).fixture.navigation), []);
+  assert.equal(await edit.getByRole("button", { name: "放弃", exact: true }).count(), 0, "no keep/discard prompt");
+  await edit.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
+  const body = await edit.evaluate(() => (window as any).fixture.requests.find((request: any) => request.method === "PATCH").body);
+  assert.equal(body.body, "修改但未保存");
+  assert.equal(body.expectedVersion, 2);
 });
 
 test("AppScreen without an override preserves back and parent fallback navigation", async (t) => {
@@ -715,27 +756,21 @@ test("AppScreen without an override preserves back and parent fallback navigatio
   assert.deepEqual(await fallback.evaluate(() => (window as any).fixture.navigation), ["/task?seg=memo"]);
 });
 
-test("continuing after opening history does not redirect a later ordinary cancel", async (t) => {
-  const create = await page(t, "new");
-  await create.getByRole("textbox", { name: "笔记内容" }).fill("保留草稿");
-  await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
-  await create.getByRole("button", { name: "继续编辑" }).click();
-  await create.getByRole("button", { name: "取消新建笔记" }).click();
-  await create.getByRole("button", { name: "保留并退出" }).click();
-  await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
-  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), ["back"]);
-});
-
-test("a scheduled autosave cannot write after a confirmed create or explicit discard", async (t) => {
-  for (const discard of [false, true]) {
+test("UX-6: a scheduled autosave cannot write after 完成, a back-save, or a back-discard of an emptied note", async (t) => {
+  for (const exit of ["done", "back-save", "back-discard"] as const) {
     const create = await page(t, "new");
     await create.getByRole("textbox", { name: "笔记标题" }).fill("马上退出");
     await create.getByRole("textbox", { name: "笔记内容" }).fill("不应复活");
-    if (discard) {
-      await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
-      await create.getByRole("button", { name: "放弃", exact: true }).click();
-    } else await create.getByRole("button", { name: "保存笔记" }).click();
+    if (exit === "back-discard") {
+      // Emptying the note re-arms the 500 ms autosave (the preselected person keeps the draft non-empty); back must still win.
+      await create.getByRole("textbox", { name: "笔记标题" }).fill("");
+      await create.getByRole("textbox", { name: "笔记内容" }).fill("");
+    }
+    if (exit === "done") await create.getByRole("button", { name: "保存笔记" }).click();
+    else await create.getByRole("button", { name: "返回笔记", exact: true }).click();
     await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+    assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), [exit === "back-discard" ? "back" : "/notes/note%3Acreated"], exit);
+    assert.equal(await create.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/notes").length), exit === "back-discard" ? 0 : 1, exit);
     await create.waitForTimeout(650);
     const writes = await create.evaluate(() => (window as any).fixture.drafts);
     assert.equal(writes.at(-1)?.kind, "clear");
@@ -753,12 +788,12 @@ for (const mode of ["new", "edit"] as const) test(`late restored drafts never ov
     assert.equal(await editor.getByRole("textbox", { name: "笔记内容" }).inputValue(), "不可被恢复覆盖");
 });
 
-test("discarding changed edits clears the draft without a later timer resurrection", async (t) => {
+test("UX-6: back-saving changed edits clears the draft without a later timer resurrection", async (t) => {
   const edit = await page(t, "edit");
-  await edit.getByRole("textbox", { name: "笔记内容" }).fill("丢弃本次修改");
-  await edit.getByRole("button", { name: "取消编辑笔记" }).click();
-  await edit.getByRole("button", { name: "放弃", exact: true }).click();
-  await edit.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  await edit.getByRole("textbox", { name: "笔记内容" }).fill("返回即保存");
+  await edit.getByRole("button", { name: "返回笔记", exact: true }).click();
+  await edit.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
+  await edit.getByText("笔记已更新。", { exact: true }).waitFor();
   await edit.waitForTimeout(650);
   assert.equal(await edit.evaluate(() => (window as any).fixture.drafts.at(-1)?.kind), "clear");
 });

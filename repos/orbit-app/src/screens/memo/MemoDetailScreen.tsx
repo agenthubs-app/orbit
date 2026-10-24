@@ -135,17 +135,19 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
       setConflictBusy(false);
     }
   }
-  return <AppScreen inset="kit" title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={() => { setTaskRefresh(value => value + 1); source.refresh(); }} />}>
+  return <AppScreen inset="kit" title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")}
+    // UX-6: editing is one tap away like iOS Notes — "编辑" in the header, or tap the text.
+    headerActions={note && !(source.offline && Platform.OS === "web") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.edit")} hitSlop={8} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={styles.headerEdit}><Text style={styles.headerEditText}>{locale.t("notes.editShort")}</Text></Pressable> : undefined}
+    refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={() => { setTaskRefresh(value => value + 1); source.refresh(); }} />}>
     {source.offline ? <MemoOfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {source.loading ? <Skeleton /> : null}
     {source.failure ? <RetryCard title={source.failure} onRetry={source.refresh} /> : null}
     {source.missing && source.offline ? <EmptyState title={locale.t("sync.notOnDevice")} /> : source.missing ? <EmptyState title={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
-        <View style={styles.privatePill}><Icon color={colors.ink3Text} name="lock" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
         <Text style={styles.title}>{note.title}</Text>
         {note.noteKind === "voice" ? <Chip label={locale.t("notes.voiceSource")} /> : null}
-        <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
+        <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</Text>
       {note.localMutationState ? <Text accessibilityLiveRegion="polite" style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as "notes.outboxQueued" | "notes.outboxConflict" | "notes.outboxFailed")}</Text> : null}
       </View>
       {failedMutation && source.retryFailed ? <View style={styles.conflictActions}>
@@ -166,9 +168,9 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
         </View>
         {conflictError ? <Text accessibilityRole="alert" style={styles.conflictError}>{conflictError}</Text> : null}
       </View> : null}
-      <View style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} disabledStyle={styles.disabledMention} textStyle={styles.body}
+      <Pressable accessible={false} onPress={() => { if (!(source.offline && Platform.OS === "web")) router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href); }} style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} disabledStyle={styles.disabledMention} textStyle={styles.body}
         contactIds={new Set(contactSummaries.keys())} eventIds={new Set(events.map(event => event.id))} deletedContact={locale.t("notes.deletedContact")}
-        onOpenContact={id => router.push(`/contacts/${encodeURIComponent(id)}` as Href)} onOpenEvent={id => router.push(`/events/${encodeURIComponent(id)}` as Href)} /></View>
+        onOpenContact={id => router.push(`/contacts/${encodeURIComponent(id)}` as Href)} onOpenEvent={id => router.push(`/events/${encodeURIComponent(id)}` as Href)} /></Pressable>
       {note.contactIds.length ? <View style={styles.section}>
         <Text style={styles.sectionTitle}>{locale.t("notes.relatedPeople")}</Text>
         <View style={styles.chips}>{note.contactIds.map((contactId) => {
@@ -187,15 +189,13 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
           : <View key={eventId} style={styles.linkRow}><Icon color={colors.ink3Text} name="calendar" size={20} /><Text style={styles.disabledMention}>{eventId.replace(/^event:/, "")}</Text></View>;
       })}</View> : null}
       <NoteSourceTasks key={JSON.stringify([scopeKey, actorId, noteId, taskRefresh])} actorId={actorId} noteId={noteId} scopeKey={scopeKey} />
-      <View style={styles.actions}>
-        <Pressable accessibilityRole="button" accessibilityLabel={source.offline && Platform.OS === "web" ? `${locale.t("notes.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.edit")} accessibilityState={{ disabled: source.offline && Platform.OS === "web" }} disabled={source.offline && Platform.OS === "web"} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={[styles.editLarge, source.offline && Platform.OS === "web" && styles.disabled]}><Text style={styles.editText}>{locale.t(source.offline && Platform.OS === "web" ? "sync.needsNetwork" : "notes.edit")}</Text></Pressable>
-      </View>
     </> : null}
   </AppScreen>;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heading: { gap: spacing.sm, paddingTop: spacing.sm },
+  headerEdit: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" }, headerEditText: { color: colors.accentText, fontSize: 17, fontWeight: "600" },
   privatePill: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface3, borderRadius: radius.pill, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 5 },
   private: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "700" },
   title: { color: colors.ink, fontSize: 30, fontWeight: "900", letterSpacing: -0.5, lineHeight: 40 },
