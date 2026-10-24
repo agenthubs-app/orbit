@@ -131,7 +131,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     {state === "error" ? <View><UiText style={styles.error}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={() => void reload()} variant="secondary" /></View> : null}
     {state === "loading" ? <UiText style={styles.hintText}>{t("common.loadingLabel")}</UiText> : null}
     {state !== "error" && state !== "loading" ? <>
-      {state === "stale" || pending ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{fetchedAt ? ` · ${new Date(fetchedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")}` : ""}</UiText> : null}
+      {state === "stale" || pending ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{fetchedAt ? ` · ${new Date(fetchedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</UiText> : null}
       {!editing && !layout.hintDismissedAt && !hintHidden ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetHint")}</UiText><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={() => void dismissHint()}><UiText style={styles.hintText}>×</UiText></UiPressable></View> : null}
       {editing ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetDragHint")}</UiText></View> : null}
       <View style={styles.grid}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} count={items.length} editing={editing}

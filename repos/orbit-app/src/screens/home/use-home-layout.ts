@@ -52,7 +52,8 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
       record.current = cached;
       if (cached.snapshot || cached.draft) {
         setLayout(withDraft(cached.snapshot ?? DEFAULT_HOME_LAYOUT, cached.draft));
-        setPending(Boolean(cached.draft)); setState("stale");
+        // UX-4: the saved layout is the layout (local-first); only an unsent edit is "stale".
+        setPending(Boolean(cached.draft)); setState(cached.draft ? "stale" : "ready");
       }
       // LF1: a layout read moments ago (and not superseded by a write since) is current enough; the save's
       // revision check still catches another device's change. Focus and foreground no longer re-read it.
@@ -63,10 +64,10 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
       if (!active.current) return;
       if (!result.success) {
         if (result.status === 503 && result.error.context?.reason === "NOT_IMPLEMENTED") { setState("fallback"); return; }
-        setState(cached.snapshot || cached.draft ? "stale" : "error"); return;
+        setState(cached.draft ? "stale" : cached.snapshot ? "ready" : "error"); return;
       }
       const parsed = homeLayoutSchema.safeParse(result.data);
-      if (!parsed.success) { setState(cached.snapshot ? "stale" : "error"); return; }
+      if (!parsed.success) { setState(cached.draft ? "stale" : cached.snapshot ? "ready" : "error"); return; }
       const server = parsed.data;
       const draft = cached.draft;
       if (!draft) { await publish({ snapshot: server, fetchedAt: new Date().toISOString(), draft: null }, "ready"); return; }
@@ -74,7 +75,7 @@ export function useHomeLayout({ actorId, baseUrl, client, onConflict }: {
       if (!active.current) return;
       await publish({ snapshot: resolved.layout, fetchedAt: new Date().toISOString(), draft: resolved.kind === "pending" ? draft : null }, resolved.kind === "pending" ? "stale" : "ready");
       if (resolved.kind === "conflict") onConflict();
-    } catch { if (active.current) setState(record.current.snapshot ? "stale" : "error"); }
+    } catch { if (active.current) setState(record.current.draft ? "stale" : record.current.snapshot ? "ready" : "error"); }
     finally { busy.current = false; }
   }, [actorId, baseUrl, client, onConflict, publish]);
 

@@ -120,8 +120,7 @@
       "modal": 1
     },
     "src/screens/tasks/TasksScreen.tsx": {
-      "oldComponent": 4,
-      "tablist": 2
+      "oldComponent": 4
     }
   }
 }

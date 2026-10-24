@@ -82,8 +82,9 @@ test("HomeWidgetsScreen reopens its scoped layout offline and queues an edit loc
     localStorage.setItem(storageKey, JSON.stringify({ snapshot, fetchedAt: "2026-10-20T00:00:00Z", draft: null }));
   }, { storageKey: key, snapshot: DEFAULT_HOME_LAYOUT });
   await page.reload();
-  await page.getByText(/以前的信息 · 联网后保存/).waitFor();
   await page.getByText("今日待办").waitFor();
+  // UX-4: a saved layout is shown as the layout — no "old data" notice until an edit is waiting to be sent.
+  assert.equal(await page.getByText(/以前的信息 · 联网后保存/).count(), 0);
   await page.getByRole("button", { name: "编辑" }).click();
   await page.getByRole("button", { name: "今日待办 移除" }).click(); // UX-2: the × badge replaced the move buttons
   await page.getByRole("button", { name: "完成" }).click();
