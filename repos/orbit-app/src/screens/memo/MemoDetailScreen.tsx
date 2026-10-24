@@ -16,6 +16,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { noteFromPayload } from "../../view-models/notes";
+import { bodyAfterTitle } from "./memo-mention-model";
 import { useNoteContactSummaries } from "../notes/useNoteContactSummaries";
 import { NoteSourceTasks } from "../notes/NoteSourceTasks";
 import { useNoteDetailSource } from "../notes/notes-source";
@@ -168,7 +169,7 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
         </View>
         {conflictError ? <Text accessibilityRole="alert" style={styles.conflictError}>{conflictError}</Text> : null}
       </View> : null}
-      <Pressable accessible={false} accessibilityLabel={locale.t("notes.edit")} onPress={() => { if (!(source.offline && Platform.OS === "web")) router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href); }} style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} disabledStyle={styles.disabledMention} textStyle={styles.body}
+      <Pressable accessible={false} accessibilityLabel={locale.t("notes.edit")} onPress={() => { if (!(source.offline && Platform.OS === "web")) router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href); }} style={styles.paper}><MentionedBody {...bodyAfterTitle(note.title, note.body, note.mentions)} mentionStyle={styles.mention} disabledStyle={styles.disabledMention} textStyle={styles.body}
         contactIds={new Set(contactSummaries.keys())} eventIds={new Set(events.map(event => event.id))} deletedContact={locale.t("notes.deletedContact")}
         onOpenContact={id => router.push(`/contacts/${encodeURIComponent(id)}` as Href)} onOpenEvent={id => router.push(`/events/${encodeURIComponent(id)}` as Href)} /></Pressable>
       {note.contactIds.length ? <View style={styles.section}>

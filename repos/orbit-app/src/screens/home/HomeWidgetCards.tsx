@@ -138,8 +138,8 @@ function PlanWidget({ navigate }: { navigate: Navigate }) {
     copy: { id: "home-plan-summary" }, freshForMs: HOME_COPY_FRESH_MS, accept: value => planV2SummaryResponseSchema.safeParse(value).success });
   return <CopyResource state={state} schema={planV2SummaryResponseSchema}>{data => data.current ? <View>
     <View style={styles.score}><UiText style={styles.scoreNumber}>{data.current.score.total}</UiText><UiText style={styles.muted}>/ 100</UiText><UiText style={data.current.score.todayDelta < 0 ? styles.negative : styles.delta}>{signedDelta(data.current.score.todayDelta)} {t("home.widgetTodayDelta")}</UiText></View>
-    <UiText style={styles.muted}>{data.current.goal}</UiText>
-    <UiText style={styles.muted}>{data.current.score.segments.map(segment => `${segment.key === "event" ? t("home.widgetEventSegment") : segment.shortLabel} ${segment.earned}/${segment.allocation}`).join(" · ")}</UiText>
+    <UiText style={styles.muted} numberOfLines={2}>{data.current.goal}</UiText>
+    <UiText style={styles.muted} numberOfLines={2}>{data.current.score.segments.map(segment => `${segment.key === "event" ? t("home.widgetEventSegment") : segment.shortLabel} ${segment.earned}/${segment.allocation}`).join(" · ")}</UiText>
     <LinkRow label={data.current.todayChance?.actionLabel ?? t("home.widgetMore")} href={data.current.todayChance?.href ?? "/task?seg=plan"} navigate={navigate} />
   </View> : <View><UiText style={styles.muted}>{t("home.widgetPlanEmptyDetail")}</UiText><Button label={t("home.widgetGoal")} onPress={() => navigate("/task?seg=plan")} variant="secondary" size="sm" /></View>}</CopyResource>;
 }

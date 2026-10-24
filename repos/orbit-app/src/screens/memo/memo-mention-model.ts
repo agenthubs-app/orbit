@@ -36,3 +36,12 @@ export function updateMemoMentionRanges(previousBody: string, nextBody: string, 
   }
   return output;
 }
+
+// UX-6: a title taken from the first line (noteTitleFor) is not shown twice; mentions on that line keep the full body.
+export function bodyAfterTitle(title: string, body: string, mentions: readonly NoteMentionContract[]): { body: string; mentions: readonly NoteMentionContract[] } {
+  const lineEnd = body.indexOf("\n");
+  const firstLine = lineEnd < 0 ? body : body.slice(0, lineEnd);
+  const cut = lineEnd < 0 ? body.length : lineEnd + 1;
+  if (!title.trim() || firstLine.trim() !== title.trim() || mentions.some(mention => mention.start < cut)) return { body, mentions };
+  return { body: body.slice(cut), mentions: mentions.map(mention => ({ ...mention, start: mention.start - cut, end: mention.end - cut })) };
+}
