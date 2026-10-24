@@ -6,8 +6,10 @@ const widgetkitEnabled = process.env.ORBIT_ENABLE_WIDGETS === "1";
 const config: ExpoConfig = {
   name: "Orbit",
   slug: "orbit-app",
+  owner: "orbitsdev",
+  icon: "./assets/icon.png",
   scheme: "orbit",
-  version: "0.1.0",
+  version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   experiments: {
@@ -21,7 +23,8 @@ const config: ExpoConfig = {
     "expo-secure-store",
     ["expo-sqlite", { useSQLCipher: true }],
     "expo-localization",
-    "expo-notifications",
+    // TestFlight and App Store builds need the production APNs environment; device debug builds keep development.
+    ["expo-notifications", { mode: process.env.ORBIT_RELEASE_BUILD === "1" ? "production" : "development" }],
     "expo-web-browser",
     ["expo-contacts", { contactsPermission: "读取你选中的联系人（姓名、公司、职位、电话、邮件），导入到人脈。" }],
     [
@@ -35,6 +38,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "app.agenthubs.orbit",
+    buildNumber: "6",
     infoPlist: {
       NSCameraUsageDescription:
         "扫描二维码和拍摄名片，用于生成待确认联系人候选。",
@@ -48,6 +52,8 @@ const config: ExpoConfig = {
     output: "static"
   },
   extra: {
+    // Expo project for push tokens (expo.dev/@orbitsdev/orbit-app); not a secret.
+    eas: { projectId: "30a1258f-8f50-4749-8355-0ccb1eb676b4" },
     easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     widgetkitEnabled,
     ...(process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL

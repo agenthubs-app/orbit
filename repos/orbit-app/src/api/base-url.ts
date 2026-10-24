@@ -1,5 +1,9 @@
+// Release builds (__DEV__ false) talk to production unless EXPO_PUBLIC_ORBIT_API_BASE_URL says otherwise;
+// development builds and Node tests keep the local server.
+export const PRODUCTION_ORBIT_API_BASE_URL = "https://orbitailink.com";
+const releaseBuild = typeof __DEV__ !== "undefined" && !__DEV__;
 export const DEFAULT_ORBIT_API_BASE_URL =
-  process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL ?? "http://localhost:3000";
+  process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL ?? (releaseBuild ? PRODUCTION_ORBIT_API_BASE_URL : "http://localhost:3000");
 
 export type OrbitApiBaseUrlValidation =
   | {

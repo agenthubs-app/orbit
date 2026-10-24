@@ -153,7 +153,20 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       const event = await ports.event(eventId);
       if (!event) return null;
       const at = now();
-      const [roster, stats] = await Promise.all([ports.publicAttendees(eventId), event.organizerKey ? ports.organizerStats(event.organizerKey) : Promise.resolve(null)]);
+      // An event-scoped membership is the authority, not the bounded "my events" timeline.
+      const [mine, registered] = actorId
+        ? await Promise.all([ports.myEvents(actorId), ports.registered(actorId, eventId)])
+        : [[], false] as const;
+      const mineRow = mine.find((item) => item.eventId === eventId);
+      const status: EventOverviewResponse["registration"]["status"] = registered
+        ? mineRow?.status === "attended" ? "attended" : "registered"
+        : mineRow && mineRow.status !== "planned" && mineRow.status !== "registered" && mineRow.status !== "attended" ? mineRow.status : "none";
+      const rosterVisible = canSeeRoster({ registrationStatus: status, signedIn: Boolean(actorId) });
+      // Do not fetch portraits and answers merely to remove them from the response later.
+      const [roster, stats] = await Promise.all([
+        rosterVisible ? ports.publicAttendees(eventId) : Promise.resolve({ total: event.registrationCount, attendees: [] }),
+        event.organizerKey ? ports.organizerStats(event.organizerKey, eventId) : Promise.resolve(null),
+      ]);
       const base: EventOverviewResponse = {
         agenda: event.agenda,
         attendeeCounts: { all: roster.total, known: 0, planFit: 0 },
@@ -177,14 +190,16 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       };
       // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
       if (!actorId) return { ...base, attendees: [], rosterLocked: !canSeeRoster({ signedIn: false }), signedOut: true };
-      const [mine, contacts, judged, types, followed] = await Promise.all([
-        ports.myEvents(actorId),
+      const [contacts, judged, types, followed] = await Promise.all([
         ports.contacts(actorId),
         ports.judge(actorId, [eventId], language),
-        ports.planTypesFor(actorId, roster.attendees),
+        rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
         event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
       ]);
       const contactNames = new Set(contacts.map((contact) => contact.name.replace(/\s+/g, "")));
+      const lockedCounts = !rosterVisible && ports.publicRosterCounts
+        ? await ports.publicRosterCounts(actorId, eventId, [...contactNames])
+        : null;
       const attendees = roster.attendees.map((item) => {
         const known = contactNames.has(item.name.replace(/\s+/g, ""));
         const planFit = Boolean(types[item.attendeeId]);
@@ -192,16 +207,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       });
       const order = (a: typeof attendees[number], b: typeof attendees[number]) => Number(b.planFit) - Number(a.planFit) || Number(b.known) - Number(a.known);
       const known = roster.attendees.filter((item) => contactNames.has(item.name.replace(/\s+/g, "")));
-      const mineRow = mine.find((item) => item.eventId === eventId);
       const result = judged.results[eventId];
-      const status = mineRow && mineRow.status !== "planned" ? mineRow.status : "none";
-      // 名单可见性只看 roster-policy 这一处（A：报名确定后才看名单，之前只给人数与知り合い人数）。
-      const rosterVisible = canSeeRoster({ registrationStatus: status, signedIn: true });
       return {
         ...base,
         assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
-        attendeeCounts: { all: roster.total, known: known.length, planFit: attendees.filter((item) => item.planFit).length },
+        attendeeCounts: { all: roster.total, known: lockedCounts?.known ?? known.length, planFit: lockedCounts?.planFit ?? attendees.filter((item) => item.planFit).length },
         attendees: rosterVisible ? [...attendees].sort(order).slice(0, cap) : [],
         knownAttendees: rosterVisible ? known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })) : [],
         ...(rosterVisible ? {} : { rosterLocked: true }),

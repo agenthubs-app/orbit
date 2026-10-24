@@ -179,14 +179,34 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       return event ? (await toJourneyEvents([event]))[0] ?? null : null;
     },
 
-    async organizerStats(organizerKey) {
+    async organizerStats(organizerKey, eventId) {
       const now = new Date();
-      const published = await core.listPublishedEvents(now);
-      const profiles = await profilesFor(published.map((event) => event.eventId));
-      const mine = published
-        .filter((event) => eventOrganizerKey(event.organizerActorId, profiles.get(event.eventId)) === organizerKey)
-        .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
-        .slice(0, ORGANIZER_EVENTS_LIMIT);
+      // The detail already identifies its event. Read only this organizer's dates,
+      // not every event's descriptions and source payloads in the workspace.
+      const mine: Array<{ eventId: string; startsAt: string }> = [];
+      if (eventId) {
+        const rows = await query(`/* events:r27-journey:organizer-event-dates */
+          select e.event_id,e.starts_at,origin.organizer_actor_id,origin.organizer_profile_id
+            from event_ops_events origin join event_ops_events e on e.workspace_id=origin.workspace_id
+             and (case when origin.organizer_profile_id is not null
+                    then e.organizer_profile_id=origin.organizer_profile_id
+                    else e.organizer_profile_id is null and e.organizer_actor_id=origin.organizer_actor_id end)
+           where origin.workspace_id=$1 and origin.event_id=$2
+             and origin.lifecycle_state_v2='published' and e.lifecycle_state_v2='published'
+           order by e.starts_at desc nulls last,e.event_id limit $3`, [workspaceId,eventId,ORGANIZER_EVENTS_LIMIT]);
+        for (const row of rows.rows) {
+          if (eventOrganizerKey(str(row.organizer_actor_id),str(row.organizer_profile_id)) !== organizerKey) return null;
+          const startsAt=iso(row.starts_at);
+          if (startsAt) mine.push({ eventId:String(row.event_id),startsAt });
+        }
+      } else {
+        const published = await core.listPublishedEvents(now);
+        const profiles = await profilesFor(published.map((event) => event.eventId));
+        mine.push(...published
+          .filter((event) => eventOrganizerKey(event.organizerActorId, profiles.get(event.eventId)) === organizerKey)
+          .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
+          .slice(0, ORGANIZER_EVENTS_LIMIT));
+      }
       if (!mine.length) return null;
       // R17 A11：平均参加 = 受付人数（签到）均值；第二格 = 申込回答 Q1 第一选项的比率（主办方自定义问题，<5 人不给）。
       const ids = mine.map((event) => event.eventId);
@@ -227,6 +247,45 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       if (!event) return { attendees: [], total: 0 };
       const registrations = await operations.listCanonicalRegistrations(event.eventId);
       return publicAttendeesFromRegistrations(registrations, payloadSpeakerNames(event.sourcePayload ?? {}));
+    },
+
+    async publicRosterCounts(actorId, eventId, contactNames) {
+      // Group visible positioning in PostgreSQL. Names stay inside the aggregate;
+      // no portrait, biography, interview answers, or participant identities cross the wire.
+      const [groups, plan] = await Promise.all([
+        query(`/* events:r27-journey:locked-roster-counts */
+          with visible as (
+            select coalesce((select r.response_payload #>> '{answer,displayText}'
+                    from event_ops_profile_response_versions r
+                   where r.workspace_id=m.workspace_id and r.event_id=m.event_id
+                     and r.participant_id=m.participant_id and r.profile_version=m.profile_version
+                     and r.field_key='positioning' and r.visibility in ('event_attendees','public')
+                   order by r.answered_at desc, r.response_id limit 1), '') as positioning,
+                   regexp_replace(p.profile_payload #>> '{registrationProfile,displayName}', '\\s', '', 'g') = any($3::text[]) as known
+              from event_ops_membership_heads m
+              join event_ops_profile_versions p on p.workspace_id=m.workspace_id and p.event_id=m.event_id
+               and p.participant_id=m.participant_id and p.profile_version=m.profile_version
+             where m.workspace_id=$1 and m.event_id=$2 and m.status='rsvped'
+               and exists (select 1 from event_ops_profile_response_versions r
+                    where r.workspace_id=m.workspace_id and r.event_id=m.event_id
+                      and r.participant_id=m.participant_id and r.profile_version=m.profile_version
+                      and r.visibility in ('event_attendees','public'))
+          ) select positioning, count(*)::int as n,
+                   count(*) filter (where known)::int as known
+              from visible group by positioning`, [workspaceId, eventId, [...contactNames]]),
+        currentPlan(actorId),
+      ]);
+      const types = (plan?.types ?? []).filter((type) => !type.skipped);
+      let known = 0;
+      let planFit = 0;
+      for (const group of groups.rows) {
+        known += Number(group.known);
+        const positioning = String(group.positioning).trim();
+        const [role, company] = positioning.split(/\s+(?:@|at|·|＠)\s+/u, 2);
+        const person = company ? { org: company.trim(), role: role.trim() } : { org: positioning, role: null };
+        if (typeOfPerson(person, types)) planFit += Number(group.n);
+      }
+      return { known, planFit };
     },
 
     async myEvents(actorId) {
@@ -310,8 +369,8 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
     },
 
     async registered(actorId, eventId) {
-      const registration = await operations.getCanonicalRegistration(eventId, actorId);
-      return registration?.status === "rsvped" && registration.userId === actorId;
+      const registration = await operations.getCanonicalRegistrationStatus(eventId, actorId);
+      return registration?.status === "rsvped" && registration.eventId === eventId;
     },
 
     async venueWorkspace(actorId, eventId) {

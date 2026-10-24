@@ -6,6 +6,7 @@ import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, OfflineBar, Skeleton, TextField, UiText, presentActionSheet } from "../../components/ui";
+import { encodeDirectScanImage } from "../../api/batch-images";
 import { scanOwnBusinessCard } from "../../api/profile-onboarding";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -89,11 +90,13 @@ export function AccountSuggestionsScreen() {
       if (!choice || !active()) return;
       const permission = choice === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted || !active()) return;
-      const options = { base64: true, quality: 0.8, mediaTypes: ["images"] as ImagePicker.MediaType[] };
+      const options = { quality: 0.8, mediaTypes: ["images"] as ImagePicker.MediaType[] };
       const image = choice === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = !image.canceled ? image.assets[0] : null;
-      if (!asset?.base64 || !active()) return;
-      const scanned = await scanOwnBusinessCard(client, { base64: asset.base64, fileName: asset.fileName ?? "card.jpg", mimeType: asset.mimeType ?? "image/jpeg", size: asset.fileSize ?? null }, abort.current?.signal);
+      if (!asset || !active()) return;
+      const card = await encodeDirectScanImage({ ...asset, fileName: asset.fileName ?? "card.jpg" });
+      if (!active()) return;
+      const scanned = await scanOwnBusinessCard(client, card, abort.current?.signal);
       if (!active()) return;
       if (!scanned.ok) { setError(t("me.failed")); return; }
       await extract("business-card", `Name: ${scanned.name}\nCompany: ${scanned.company}\nRole: ${scanned.title}`);

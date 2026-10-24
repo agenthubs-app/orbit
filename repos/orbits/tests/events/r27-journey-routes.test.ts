@@ -152,3 +152,58 @@ test("会場メモ（自分だけ）: saved per attendee, read back on the venue
   assert.equal(cleared.data.memo, null);
   assert.equal((await routes.venueMemo(post("/x", { attendeeId: "jp-shimizu", text: "x".repeat(201) }), params)).status, 400);
 });
+
+test("overview never reads full attendee profiles for anonymous or unregistered viewers", async () => {
+  const forbiddenReads: string[] = [];
+  const { ports } = fakePorts({
+    publicAttendees: async () => { forbiddenReads.push("full-roster"); throw new Error("Full profiles must stay behind registration"); },
+    registered: async () => false,
+  });
+  const service = createJourneyService({ ports, records: {} as never });
+  const anonymous = await service.overview(null, "ev1", "zh", "web");
+  assert.equal(anonymous?.attendeeCounts.all, 3);
+  assert.equal(anonymous?.rosterLocked, true);
+  assert.deepEqual(anonymous?.attendees, []);
+  const routes = liveRoutes(ports);
+  const unrelated = await routes.overview(get("/api/events/ev1/overview"), params("ev1"));
+  assert.equal(unrelated.status, 200);
+  const data = (await unrelated.json()).data;
+  assert.equal(data.attendeeCounts.all, 3);
+  assert.equal(data.rosterLocked, true);
+  assert.deepEqual(data.attendees, []);
+  assert.deepEqual(data.knownAttendees, []);
+  assert.deepEqual(forbiddenReads, []);
+});
+
+test("overview checks exact membership even when an older registration is outside myEvents window", async () => {
+  const { ports } = fakePorts({
+    myEvents: async () => [],
+    registered: async () => true,
+    publicAttendees: async () => ({ total: 3, attendees: [{ attendeeId: "p1", name: "Visible member", org: null, role: null, note: null, speaker: false }] }),
+  });
+  const response = await liveRoutes(ports).overview(get("/api/events/ev1/overview"), params("ev1"));
+  const data = (await response.json()).data;
+  assert.equal(data.registration.status, "registered");
+  assert.equal(data.rosterLocked, undefined);
+  assert.equal(data.attendees[0].name, "Visible member");
+});
+
+test("locked overview retains aggregate counts without requesting named attendee projections", async () => {
+  const { ports } = fakePorts({
+    publicAttendees: async () => { throw Error("unauthorized named roster read"); },
+    publicRosterCounts: async (_actor, eventId, names) => {
+      assert.equal(eventId, "ev1");
+      assert.deepEqual(names, ["KnownContact"]);
+      return { known: 2, planFit: 1 };
+    },
+    contacts: async () => [{ id: "c1", name: "Known Contact", org: null, role: null, history: [], linkedTypeKey: null }],
+    planTypesFor: async () => { throw Error("unregistered per-person classification"); },
+    registered: async () => false,
+  });
+  const response = await liveRoutes(ports).overview(get("/api/events/ev1/overview"), params("ev1"));
+  assert.equal(response.status, 200);
+  const data = (await response.json()).data;
+  assert.deepEqual(data.attendeeCounts, { all: 3, known: 2, planFit: 1 });
+  assert.deepEqual(data.attendees, []);
+  assert.deepEqual(data.knownAttendees, []);
+});
