@@ -1,0 +1,14 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "production": {
+      "env": { "ORBIT_RELEASE_BUILD": "1", "ORBIT_ENABLE_WIDGETS": "1" }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
