@@ -19,6 +19,8 @@ test("the root shell omits tab navigation and tab-height toast placement until s
     export const ActivityIndicator = Wrapper;
     export const UiText = Wrapper;
     export const Linking = { openURL: async () => undefined };
+    export const AppState = { addEventListener: () => ({ remove() {} }) };
+    export const LogBox = { ignoreAllLogs() {} };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;

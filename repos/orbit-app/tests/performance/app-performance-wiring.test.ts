@@ -196,6 +196,8 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export const ActivityIndicator = Wrapper;
     export const UiText = Wrapper;
     export const Linking = { openURL: async () => undefined };
+    export const AppState = { addEventListener: () => ({ remove() {} }) };
+    export const LogBox = { ignoreAllLogs() {} };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
@@ -288,6 +290,8 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export const ActivityIndicator = Wrapper;
     export const UiText = Wrapper;
     export const Linking = { openURL: async () => undefined };
+    export const AppState = { addEventListener: () => ({ remove() {} }) };
+    export const LogBox = { ignoreAllLogs() {} };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;

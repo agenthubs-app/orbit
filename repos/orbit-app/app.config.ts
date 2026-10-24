@@ -49,7 +49,7 @@ const config: ExpoConfig = {
     }
   },
   web: {
-    output: "static"
+    output: (process.env.ORBIT_WEB_OUTPUT as "static" | "single" | undefined) ?? "static"
   },
   extra: {
     // Expo project for push tokens (expo.dev/@orbitsdev/orbit-app); not a secret.

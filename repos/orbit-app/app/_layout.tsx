@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ActivityIndicator, Linking, ScrollView, View } from "react-native";
+import { AppState, Linking, LogBox, ScrollView, View } from "react-native";
 import {
   OrbitAuthSessionProvider,
   useOrbitAuthSession,
@@ -28,7 +28,6 @@ import { useOrbitTheme } from "../src/design/theme";
 import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
 import { useOrbitLocale } from "../src/i18n/OrbitLocaleContext";
 import { ToastProvider, UiFeedbackHost, UiPortalHost } from "../src/components/ui";
-import { UiText } from "../src/components/ui/Text";
 import { RootVersionGate } from "../src/components/RootVersionGate";
 import { useOrbitApiClient } from "../src/hooks/useOrbitApiClient";
 import { loadAppVersionGate } from "../src/api/app-version";
@@ -142,8 +141,27 @@ function UiRoot({ children, blocked = false }: { children: ReactNode; blocked?: 
 
 const appStoreUrl = validAppStoreUrl(process.env.EXPO_PUBLIC_ORBIT_APP_STORE_URL);
 
+// Screenshot runs on the simulator hide the dev warning toast (it covers the bottom of every screen).
+if (typeof __DEV__ !== "undefined" && __DEV__ && process.env.EXPO_PUBLIC_ORBIT_HIDE_LOGBOX === "1") LogBox.ignoreAllLogs();
+
+const VERSION_RECHECK_MS = 15 * 60_000;
+
+/** Counts returns to the foreground that come at least `minIntervalMs` after the last counted one. */
+function useForegroundTick(minIntervalMs: number): number {
+  const [tick, setTick] = useState(0);
+  const last = useRef(Date.now());
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", state => {
+      if (state !== "active" || Date.now() - last.current < minIntervalMs) return;
+      last.current = Date.now();
+      setTick(value => value + 1);
+    });
+    return () => subscription.remove();
+  }, [minIntervalMs]);
+  return tick;
+}
+
 function RootVersionBoundary({ children }: { children: (allowed: boolean) => ReactNode }) {
-  const pathname = usePathname();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
@@ -151,11 +169,11 @@ function RootVersionBoundary({ children }: { children: (allowed: boolean) => Rea
   const { colors } = useOrbitTheme();
   const [storeError, setStoreError] = useState<string | null>(null);
   const check = useCallback(() => loadAppVersionGate(client, Constants.expoConfig?.version), [client]);
-  const scopeKey = `${pathname}\u0000${auth.actorId ?? ""}\u0000${auth.ready}\u0000${baseUrl}`;
-  const checking = <View accessibilityRole="progressbar" style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
-    <ActivityIndicator color={colors.accentText} /><UiText>{t("publicInfo.checkingStatus")}</UiText>
-  </View>;
-  return <RootVersionGate scopeKey={scopeKey} check={check} checking={checking} blocked={(decision, retry) =>
+  // UX-4: checked in the background on launch, on account or server change, and on return to
+  // the foreground at most every 15 minutes — never per screen (it used to key on the pathname).
+  const foreground = useForegroundTick(VERSION_RECHECK_MS);
+  const scopeKey = `${auth.actorId ?? ""}\u0000${auth.ready}\u0000${baseUrl}\u0000${foreground}`;
+  return <RootVersionGate scopeKey={scopeKey} check={check} blocked={(decision, retry) =>
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.bg }}><ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       {decision.kind === "force-update"
         ? <ForceUpdateContent t={t} storeUrl={appStoreUrl} error={storeError} onUpdate={() => {

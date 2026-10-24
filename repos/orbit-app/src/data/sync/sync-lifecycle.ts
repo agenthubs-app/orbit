@@ -577,7 +577,11 @@ export const syncLifecycle = createSyncLifecycle({
     const crypto = require("expo-crypto") as typeof import("expo-crypto");
     const secureStore = require("expo-secure-store") as typeof import("expo-secure-store");
     try {
-      const [sqlite, fileSystem] = await Promise.all([import("expo-sqlite"), import("expo-file-system")]);
+      // Required synchronously too: in a dev build Metro serves dynamic imports as separate lazy
+      // bundles, and that load failed on the simulator (UX sprint, 2026-10-25), so local-first
+      // never started there. A missing native binary still throws here and is caught below.
+      const sqlite = require("expo-sqlite") as typeof import("expo-sqlite");
+      const fileSystem = require("expo-file-system") as typeof import("expo-file-system");
       return {
         sqlite: {
           openDatabaseAsync: sqlite.openDatabaseAsync,
