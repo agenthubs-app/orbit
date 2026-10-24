@@ -2136,13 +2136,14 @@ test("live Orbit Agent localizes injected event recommendations and forwards the
   assert.doesNotMatch(result.data?.nextAction ?? "", /Review|synthesis is skipped/i);
 });
 
-test("live Orbit Agent defaults interactive turns to artifact generation without synthesis", async () => {
+test("live Orbit Agent at two loop steps maps the tool to an artifact without synthesis", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
       apiKey: string;
       fetchImplementation: typeof fetch;
       model: string;
+      maxLoopSteps?: number;
     }) => {
       sendMessage: (input: { message?: string | null }) => Promise<{
         success: boolean;
@@ -2167,6 +2168,8 @@ test("live Orbit Agent defaults interactive turns to artifact generation without
 
   const service = liveModule.createLiveOrbitAgentConversationService({
     apiKey: "test-gemini-key",
+    // UX-3: the service default is now 3 (synthesis); this test pins the two-step mode explicitly.
+    maxLoopSteps: 2,
     fetchImplementation: (async (_url, init) => {
       requests.push(init);
 
@@ -3055,5 +3058,54 @@ test("development Orbit Agent trace route exposes raw planner output", async () 
     }
 
     globalThis.fetch = previousFetch;
+  }
+});
+
+test("UX-3: live Orbit Agent defaults interactive turns to three loop steps, so a tool result is synthesised into the reply", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: { apiKey: string; fetchImplementation: typeof fetch; model: string }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{ success: boolean; data?: { diagnostics?: { maxLoopSteps: number; timings: readonly { phase: string; skipped?: boolean }[] } } }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+  const previous = process.env.ORBIT_AGENT_MAX_LOOP_STEPS;
+  delete process.env.ORBIT_AGENT_MAX_LOOP_STEPS;
+  try {
+    const service = liveModule.createLiveOrbitAgentConversationService({
+      apiKey: "test-gemini-key",
+      fetchImplementation: (async (_url, init) => {
+        requests.push(init);
+  
+        return jsonResponse({
+          steps: [
+            {
+              content: [
+                {
+                  text: JSON.stringify({
+                    assistantMessage: "我先准备活动推荐结果，任何动作都需要你确认。",
+                    intent: "event_recommendations",
+                    toolRequests: [
+                      {
+                        arguments: {},
+                        requiresUserConfirmation: true,
+                        toolName: "events.recommend",
+                      },
+                    ],
+                  }),
+                  type: "text",
+                },
+              ],
+              type: "model_output",
+            },
+          ],
+        });
+      }) as typeof fetch,
+      model: "gemini-test-model",
+    });
+    const result = await service.sendMessage({ message: "帮我推荐下周适合认识投资人的活动。" });
+    assert.equal(result.data?.diagnostics?.maxLoopSteps, 3);
+    assert.ok(requests.length >= 2, `the planner and the synthesis both call the model (${requests.length})`);
+  } finally {
+    if (previous === undefined) delete process.env.ORBIT_AGENT_MAX_LOOP_STEPS; else process.env.ORBIT_AGENT_MAX_LOOP_STEPS = previous;
   }
 });

@@ -49,9 +49,12 @@ function scenarioFor(
 export function createLiveOrbitAgentConversationService(
   config: LiveOrbitAgentConversationServiceConfig = {},
 ): OrbitAgentConversationService {
+  // UX-3 (user 2026-10-25: iOrbit "cannot be used"): at 2 steps the loop stopped after the tool call
+  // and the reply was only a promise ("I'll check your follow-ups…") with no result. 3 runs the
+  // synthesis over the tool's sourced artifacts (DESIGN.md "Loop Steps"); the env var still overrides.
   const runtime = createLiveOrbitAgentRuntime({
     ...config,
-    defaultMaxLoopSteps: 2,
+    defaultMaxLoopSteps: 3,
   });
 
   return {
