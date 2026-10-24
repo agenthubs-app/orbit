@@ -6,6 +6,7 @@ const widgetkitEnabled = process.env.ORBIT_ENABLE_WIDGETS === "1";
 const config: ExpoConfig = {
   name: "Orbit",
   slug: "orbit-app",
+  owner: "orbitsdev",
   icon: "./assets/icon.png",
   scheme: "orbit",
   version: "1.0.0",
@@ -51,6 +52,8 @@ const config: ExpoConfig = {
     output: "static"
   },
   extra: {
+    // Expo project for push tokens (expo.dev/@orbitsdev/orbit-app); not a secret.
+    eas: { projectId: "30a1258f-8f50-4749-8355-0ccb1eb676b4" },
     easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     widgetkitEnabled,
     ...(process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL
