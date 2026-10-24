@@ -63,3 +63,19 @@ export function buildPersonalScheduleChange(item: PersonalScheduleContract | nul
   }
   return Object.keys(fields).length ? { kind: "ready", fields } : { kind: "unchanged" };
 }
+
+/** UX-8: a new personal schedule starts at the next full hour and lasts one hour (iOS Calendar's default). */
+export function newScheduleDraft(zone: string, now = Date.now()): PersonalScheduleDraft {
+  const base = personalScheduleDraft(null, zone);
+  if (!validTimeZone(zone)) return base;
+  // The next full hour on the zone's own clock (half-hour offset zones included).
+  const local = localParts(new Date(now + 60_000).toISOString(), zone);
+  const [hour, minute] = local.time.split(":").map(Number) as [number, number];
+  const nextHour = minute > 0 ? hour + 1 : hour;
+  const startDate = nextHour >= 24 ? shiftCalendarDate(local.date, 1) : local.date;
+  const startTime = `${String(nextHour % 24).padStart(2, "0")}:00`;
+  const startInstant = resolveLocalDateTime(startDate, startTime, zone);
+  if (!startInstant) return base;
+  const endParts = localParts(new Date(Date.parse(startInstant) + 3_600_000).toISOString(), zone);
+  return { ...base, startDate, startTime, endDate: endParts.date, endTime: endParts.time };
+}

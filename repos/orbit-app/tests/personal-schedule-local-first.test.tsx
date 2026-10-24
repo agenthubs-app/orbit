@@ -125,7 +125,7 @@ test("an empty synced mirror says so; a never-synced one does not", async (t) =>
   assert.equal(await never.getByText("暂无个人日程", { exact: true }).count(), 0);
 });
 
-test("the detail opens an occurrence from the mirror; offline it disables 编辑 and 改期", async (t) => {
+test("the detail opens an occurrence from the mirror; offline it disables 编辑", async (t) => {
   const online = await open(t, { screen: "detail", params: { id: "personal:weekly:occurrence:2026-10-12" } });
   await online.getByText("改到周二的复盘", { exact: true }).waitFor();
   assert.equal(await online.getByRole("button", { name: "编辑" }).isDisabled(), false);
@@ -134,7 +134,8 @@ test("the detail opens an occurrence from the mirror; offline it disables 编辑
   await offline.getByText("看牙医", { exact: true }).waitFor();
   await offline.getByText(/^无法连接 · 显示截至/).waitFor();
   assert.equal(await offline.getByRole("button", { name: "编辑，需要联网" }).isDisabled(), true);
-  assert.equal(await offline.getByRole("button", { name: "改期，需要联网" }).isDisabled(), true);
+  // UX-8: the detail no longer has its own 改期 button; time changes go through 编辑.
+  assert.equal(await offline.getByRole("button", { name: /^改期/ }).count(), 0);
   const cancelled = await open(t, { screen: "detail", params: { id: "personal:weekly:occurrence:2026-10-05" } });
   await cancelled.getByText("无法确认", { exact: false }).waitFor();
 });
@@ -144,7 +145,7 @@ test("the editor starts from the mirror and cannot save offline", async (t) => {
   await page.getByRole("textbox", { name: "标题" }).waitFor();
   assert.equal(await page.getByRole("textbox", { name: "标题" }).inputValue(), "看牙医");
   await page.getByText(/^无法连接 · 显示截至/).waitFor();
-  assert.equal(await page.getByRole("button", { name: "保存日程" }).isDisabled(), true);
   assert.equal(await page.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "保存日程" }).count(), 0, "UX-8: the header 保存 is the only save");
   assert.deepEqual((await requests(page)).filter((path) => !path.includes("association")), [], "reading the form costs no request");
 });

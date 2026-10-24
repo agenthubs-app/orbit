@@ -95,3 +95,16 @@ test("a personal date-only task keeps its location and is not labeled a relation
   assert.match(view.allDayItems[0]?.subtitle ?? "", /Room 123/);
   assert.doesNotMatch(view.allDayItems[0]?.subtitle ?? "", /人脉/);
 });
+
+test("UX-8: a new schedule starts at the next full hour on the zone's own clock and lasts one hour", async () => {
+  const { newScheduleDraft } = await import("../src/view-models/personal-schedule-editor");
+  const at = (iso: string) => Date.parse(iso);
+  const tokyo = newScheduleDraft("Asia/Tokyo", at("2026-10-25T04:28:00.000Z")); // 13:28 JST
+  assert.deepEqual([tokyo.startDate, tokyo.startTime, tokyo.endDate, tokyo.endTime], ["2026-10-25", "14:00", "2026-10-25", "15:00"]);
+  const kolkata = newScheduleDraft("Asia/Kolkata", at("2026-10-25T04:28:00.000Z")); // 09:58 IST
+  assert.deepEqual([kolkata.startTime, kolkata.endTime], ["10:00", "11:00"], "half-hour offsets still start on the hour");
+  const late = newScheduleDraft("Asia/Tokyo", at("2026-10-25T14:40:00.000Z")); // 23:40 JST
+  assert.deepEqual([late.startDate, late.startTime, late.endDate, late.endTime], ["2026-10-26", "00:00", "2026-10-26", "01:00"]);
+  const onTheHour = newScheduleDraft("Asia/Tokyo", at("2026-10-25T05:00:00.000Z")); // 14:00 → next minute rounds to 15:00
+  assert.equal(onTheHour.startTime, "15:00");
+});
