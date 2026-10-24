@@ -271,7 +271,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 },
   flowCell: { flex: 1, minWidth: 0, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 6, alignItems: "center" },
   pay: { backgroundColor: colors.accentSoft },
-  flowEmoji: { fontSize: 17, lineHeight: 26 },
+  flowEmoji: { fontSize: 19, lineHeight: 29 },
   flowLabel: { color: colors.ink, ...kitText(12, "700", 1.75) },
   flowNote: { color: colors.ink3, ...kitText(10.5, "500", 1.4), textAlign: "center" },
   ar: { width: 22, alignItems: "center" },
@@ -309,6 +309,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ex: { color: colors.ink3, ...kitText(11.5, "600"), marginTop: 2 },
   composer: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 26, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassLine },
   composerOff: { opacity: 0.55 },
-  composerInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 13, lineHeight: 19.5, paddingLeft: 6, paddingVertical: 7 },
+  composerInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 15, lineHeight: 22, paddingLeft: 6, paddingVertical: 7 },
   send: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
 }));

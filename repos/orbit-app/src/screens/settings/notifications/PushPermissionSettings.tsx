@@ -54,7 +54,7 @@ function ScopedPushPermissionSettings(){
  }
  return <Card>
   <View style={{flexDirection:'row',alignItems:'center',gap:12,minHeight:60}}>
-   <View style={{flex:1,gap:3}}><UiText style={{color:colors.ink,fontWeight:'700'}}>{t('notifications.pushOptIn')}</UiText><UiText style={{color:colors.ink3Text,fontSize:12,lineHeight:18}}>{t('notifications.pushOptInHint')}</UiText></View>
+   <View style={{flex:1,gap:3}}><UiText style={{color:colors.ink,fontWeight:'700'}}>{t('notifications.pushOptIn')}</UiText><UiText style={{color:colors.ink3Text,fontSize:14,lineHeight:21}}>{t('notifications.pushOptInHint')}</UiText></View>
    <Toggle value={optedIn} disabled={busy||permission===null} accessibilityLabel={t('notifications.pushOptIn')} onValueChange={value=>void change(value)}/>
   </View>
   {permission==='denied'?<View style={{gap:8,marginTop:8}}><UiText style={{color:colors.ink3Text}}>{t('notifications.permissionDenied')}</UiText><Button label={t('notifications.openSystemSettings')} onPress={()=>void Linking.openSettings().catch(()=>setError(true))}/></View>:null}

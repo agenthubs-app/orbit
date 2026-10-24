@@ -153,9 +153,9 @@ const styles = StyleSheet.create({
   keep: { borderRadius: 22, paddingVertical: 10, paddingRight: 10 },
   mark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   message: { flex: 1, minWidth: 0 },
-  title: { fontSize: 13, fontWeight: "700", lineHeight: 17 },
-  sub: { fontSize: 11, fontWeight: "600", opacity: 0.68 },
+  title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
+  sub: { fontSize: 13, fontWeight: "600", opacity: 0.68 },
   undo: { minHeight: 32, borderRadius: 999, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 5 },
-  undoLabel: { fontSize: 12, fontWeight: "800" },
+  undoLabel: { fontSize: 14, fontWeight: "800" },
   countdown: { position: "absolute", left: 22, right: 22, bottom: 3, height: 2, borderRadius: 1, opacity: 0.4 },
 });

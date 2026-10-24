@@ -31,6 +31,6 @@ export function MemoKindPlanControls({ kind, usedForPlan, contactCount, disabled
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   wrap: { gap: spacing.md },
   planRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: spacing.md },
-  planLabel: { color: colors.ink, flex: 1, fontSize: 14, fontWeight: "700" },
-  hint: { color: colors.ink3Text, fontSize: 12 },
+  planLabel: { color: colors.ink, flex: 1, fontSize: 17, fontWeight: "700" },
+  hint: { color: colors.ink3Text, fontSize: 14 },
 }));

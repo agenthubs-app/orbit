@@ -69,7 +69,7 @@ export function PlatformScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   section: { gap: 10 },
   heading: { color: colors.ink, fontSize: typography.dialogTitle, fontWeight: "800" },
-  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   stat: { color: colors.ink, fontSize: typography.number, fontWeight: "800" },
   cover: { width: 48, height: 48, borderRadius: radius.row },
   eventRow: { gap: 6 },

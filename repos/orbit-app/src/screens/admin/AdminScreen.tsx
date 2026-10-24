@@ -129,7 +129,7 @@ function AdminContent({ dashboard, events, profile, profileAvailable, surface, l
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   section: { gap: 10 },
   heading: { color: colors.ink, fontSize: typography.dialogTitle, fontWeight: "800" },
-  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   statRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   stat: { flexBasis: 128, flexGrow: 1, gap: 2 },

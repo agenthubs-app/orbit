@@ -87,7 +87,7 @@ export function DeletedScreen() {
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   stack: { gap: spacing.md },
   heading: { fontSize: typography.cardTitle, fontWeight: "700", color: colors.ink, marginBottom: spacing.sm },
-  body: { fontSize: typography.body, color: colors.ink, lineHeight: 22 },
+  body: { fontSize: typography.body, color: colors.ink, lineHeight: 27 },
   note: { fontSize: typography.bodySm, color: colors.ink2, marginTop: spacing.md },
   error: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
   deletedFrame: { justifyContent: "space-between", paddingBottom: 14 },
@@ -95,5 +95,5 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   deletedIcon: { width: 72, height: 72, borderRadius: radius.xl, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 18 },
   deletedEmoji: { fontSize: 32 },
   deletedTitle: { fontSize: typography.title, fontWeight: "900", color: colors.ink, textAlign: "center", marginBottom: spacing.sm },
-  deletedBody: { fontSize: typography.bodySm, lineHeight: 20, color: colors.ink2, textAlign: "center" },
+  deletedBody: { fontSize: typography.bodySm, lineHeight: 23, color: colors.ink2, textAlign: "center" },
 }));

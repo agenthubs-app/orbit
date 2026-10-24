@@ -806,10 +806,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 0
   },
   agendaRowLarge: { flexWrap: "wrap" },
-  agendaTime: { color: colors.ink, fontSize: 14, fontWeight: "800", width: 46 },
+  agendaTime: { color: colors.ink, fontSize: 17, fontWeight: "800", width: 46 },
   agendaTimeLarge: { flexShrink: 0, width: "auto" },
   agendaTitle: {
-    color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "700"
+    color: colors.ink, fontSize: 17, lineHeight: 24, fontWeight: "700"
   },
   allDayItems: { flex: 1 },
   allDayLabel: {
@@ -859,7 +859,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     right: 0,
     zIndex: 3
   },
-  currentTimeLabel: { color: colors.accentText, backgroundColor: colors.surface, fontSize: 11, fontWeight: "800", marginTop: -8, marginBottom: -8 },
+  currentTimeLabel: { color: colors.accentText, backgroundColor: colors.surface, fontSize: 13, fontWeight: "800", marginTop: -8, marginBottom: -8 },
   dayButton: {
     alignItems: "center",
     borderBottomColor: "transparent",
@@ -876,9 +876,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dayDots: { flexDirection: "row", gap: 2, height: 5, justifyContent: "center" },
   dayNumber: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "700",
-    lineHeight: 22
+    lineHeight: 25
   },
   dayStrip: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.line },
   dayTextSelected: { color: colors.accentText },
@@ -890,9 +890,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   dayWeekday: {
     color: colors.ink3Text,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
-    lineHeight: 16
+    lineHeight: 19
   },
   emptyTimeline: {
     alignItems: "center",
@@ -903,7 +903,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     top: 92
   },
   emptyTimelineText: { color: colors.ink3Text, fontSize: typography.bodySm },
-  hourLabel: { color: colors.ink3Text, fontSize: 11, marginTop: -8, width: 46 },
+  hourLabel: { color: colors.ink3Text, fontSize: 13, marginTop: -8, width: 46 },
   hourLine: { borderTopColor: colors.line, borderTopWidth: 1, flex: 1 },
   hourRow: {
     alignItems: "flex-start",
@@ -935,7 +935,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   legendDot: { borderRadius: radius.pill, height: 6, width: 6 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   legendRow: { flexDirection: "row", flexWrap: "wrap", flexShrink: 1, gap: 12, paddingTop: 8 },
-  legendText: { color: colors.ink3Text, fontSize: 11, fontWeight: "600" },
+  legendText: { color: colors.ink3Text, fontSize: 13, fontWeight: "600" },
   monthDay: {
     alignItems: "center",
     flexBasis: "14.285%",
@@ -946,13 +946,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   monthDayDot: { borderRadius: radius.pill, height: 4, width: 4 },
   monthDayDots: { flexDirection: "row", gap: 2, height: 4 },
   monthDaySelected: { backgroundColor: colors.accentText, borderRadius: 16, color: colors.onAccent },
-  monthDayText: { color: colors.ink, fontSize: 15, fontWeight: "600", minWidth: 32, minHeight: 32, textAlign: "center", lineHeight: 22, paddingVertical: 5 },
+  monthDayText: { color: colors.ink, fontSize: 17, fontWeight: "600", minWidth: 32, minHeight: 32, textAlign: "center", lineHeight: 25, paddingVertical: 5 },
   monthDays: { flexDirection: "row", flexWrap: "wrap", rowGap: 4 },
   monthAgenda: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 14 },
   monthWeekday: {
     color: colors.ink3Text,
     flex: 1,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
     textAlign: "center"
   },
@@ -966,7 +966,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     flexWrap: "wrap"
   },
-  sectionCount: { color: colors.accentText, fontSize: 12, fontWeight: "700", flexShrink: 0 },
+  sectionCount: { color: colors.accentText, fontSize: 14, fontWeight: "700", flexShrink: 0 },
   sectionHeadingRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -989,11 +989,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   timeBlockHeader: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   timeBlockMeta: {
     color: colors.ink3Text,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 18,
     marginLeft: 0
   },
-  timeBlockTime: { color: colors.ink3Text, fontSize: 12, fontWeight: "500" },
+  timeBlockTime: { color: colors.ink3Text, fontSize: 14, fontWeight: "500" },
   timeBlockTitleNext: { color: colors.bg },
   timeBlockMetaNext: { color: colors.bg, opacity: 0.8 },
   timeBlockTitle: {
@@ -1004,14 +1004,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   timeGrid: { position: "relative" },
   todayButton: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
-  todayButtonText: { color: colors.accentText, fontSize: 13, fontWeight: "700" },
+  todayButtonText: { color: colors.accentText, fontSize: 15, fontWeight: "700" },
   todayDateText: { color: colors.accentText },
   viewSwitchButton: {
     minHeight: 44, justifyContent: "center", alignItems: "center",
     borderRadius: 7, paddingHorizontal: 4, paddingVertical: 6, flex: 1
   },
   viewSwitchButtonSelected: { backgroundColor: colors.ink },
-  viewSwitchText: { color: colors.ink3Text, fontSize: 13, fontWeight: "700" },
+  viewSwitchText: { color: colors.ink3Text, fontSize: 15, fontWeight: "700" },
   viewSwitchTextSelected: { color: colors.bg },
   viewSwitcher: {
     borderColor: colors.line,
@@ -1024,10 +1024,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   weekAgendaDate: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: 8 },
   weekAgendaDay: { gap: 4 },
-  weekAgendaEmpty: { color: colors.ink3Text, fontSize: 12, paddingVertical: 12 },
+  weekAgendaEmpty: { color: colors.ink3Text, fontSize: 14, paddingVertical: 12 },
   weekAgendaItems: {},
   weekAgendaList: { gap: 18 },
-  earlierDaysLabel: { color: colors.ink3Text, fontSize: 12, paddingBottom: 8 },
+  earlierDaysLabel: { color: colors.ink3Text, fontSize: 14, paddingBottom: 8 },
   weekHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -1038,8 +1038,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   weekHeaderLarge: { flexWrap: "wrap" },
   weekHeadingCopyLarge: { flexDirection: "column", alignItems: "flex-start", flexBasis: "100%", flexShrink: 0 },
   dateArrows: { flexDirection: "row", flexShrink: 0, marginLeft: "auto" },
-  dateTitle: { color: colors.ink, fontSize: 24, lineHeight: 30, fontWeight: "900", letterSpacing: -0.6 },
+  dateTitle: { color: colors.ink, fontSize: 28, lineHeight: 35, fontWeight: "900", letterSpacing: -0.6 },
   dayDateTitle: { fontSize: 34, lineHeight: 40, letterSpacing: -1 },
-  dateSubtitle: { color: colors.ink3Text, fontSize: 13, lineHeight: 19 },
+  dateSubtitle: { color: colors.ink3Text, fontSize: 15, lineHeight: 22 },
   workspace: { gap: 14 }
 }));

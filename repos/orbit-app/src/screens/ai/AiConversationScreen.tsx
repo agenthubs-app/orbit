@@ -1291,7 +1291,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   r21Message: { flex: 1, minWidth: 0 },
   r21Stack: { gap: spacing.sm },
   r21Section: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800" },
-  r21Muted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  r21Muted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   r21Error: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "700" },
   r21Actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   r21Composer: { gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, padding: spacing.sm, marginBottom: spacing.lg },
@@ -1306,38 +1306,38 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   brandMark: { width: 18, height: 18 },
   composerPlusButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   numberedRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  numberedMarker: { color: colors.accentText, fontSize: 22, fontWeight: "800", lineHeight: 24, minWidth: 22 },
+  numberedMarker: { color: colors.accentText, fontSize: 24, fontWeight: "800", lineHeight: 26, minWidth: 22 },
   numberedCopy: { flex: 1, minWidth: 0, gap: 4 },
-  numberedDetail: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
+  numberedDetail: { color: colors.ink2, fontSize: 17, lineHeight: 28 },
   failureCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, gap: 12 },
   failureStack: { gap: 12 },
   failureHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
-  failureTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800", flexShrink: 1 },
-  failureBody: { color: colors.ink2, fontSize: 14, lineHeight: 22 },
-  failureCode: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  failureTitle: { color: colors.ink, fontSize: 17, lineHeight: 25, fontWeight: "800", flexShrink: 1 },
+  failureBody: { color: colors.ink2, fontSize: 17, lineHeight: 27 },
+  failureCode: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
   failureActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   failurePrimary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  failurePrimaryText: { color: colors.surface, fontSize: 14, lineHeight: 22, fontWeight: "700" },
+  failurePrimaryText: { color: colors.surface, fontSize: 17, lineHeight: 27, fontWeight: "700" },
   failureSecondary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
+  failureSecondaryText: { color: colors.ink, fontSize: 17, lineHeight: 27, fontWeight: "600" },
   // Sprint 0112: the top-of-history row follows the ledger's load-more row (hairline border, link text).
   earlierRow: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md },
   earlierButton: { borderColor: colors.line, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
   earlierFailure: { flexDirection: "row", gap: spacing.sm },
   earlierInline: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
   earlierLink: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
-  earlierMuted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
-  earlierError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  earlierMuted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
+  earlierError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.line },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pendingNoteChanges: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 18 },
-  mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  pendingNoteChanges: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 21 },
+  mentionButtonText: { color: colors.ink, fontSize: 22, fontWeight: "800" },
   referenceRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, paddingTop: spacing.xs },
   referenceChip: { backgroundColor: colors.surface2, borderRadius: radius.pill, minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.sm },
-  referenceChipText: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  referenceChipText: { color: colors.ink, fontSize: 14, fontWeight: "700" },
   recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: spacing.sm },
-  recordLinkText: { flex: 1, color: colors.accentText, fontSize: typography.bodySm, fontWeight: "600", lineHeight: 20 },
-  linkBoundary: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  recordLinkText: { flex: 1, color: colors.accentText, fontSize: typography.bodySm, fontWeight: "600", lineHeight: 23 },
+  linkBoundary: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   backButton: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -1348,7 +1348,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   disabled: {
     opacity: 0.54
@@ -1356,7 +1356,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   composerPanel: {
     backgroundColor: colors.surface,
@@ -1374,8 +1374,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     color: colors.ink,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 25,
     minHeight: 44,
     maxHeight: 120,
     paddingHorizontal: 4,
@@ -1429,7 +1429,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   taskInteractionReason: {
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 18
+    lineHeight: 20
   },
   taskInteractionSecondary: {
     ...createControlStyles(colors).secondaryButton
@@ -1442,7 +1442,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     fontSize: typography.body,
     fontWeight: "800",
-    lineHeight: 22
+    lineHeight: 27
   },
   intentBlock: {
     backgroundColor: colors.accentSoft,
@@ -1460,7 +1460,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listBullet: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20,
+    lineHeight: 23,
     width: 14
   },
   listItemRow: {
@@ -1497,7 +1497,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.label,
     fontWeight: "600",
-    lineHeight: 18
+    lineHeight: 20
   },
   assistantLabel: { color: colors.accentText },
   messageStack: {
@@ -1508,15 +1508,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   messageText: {
     color: colors.ink,
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 27,
     fontWeight: "400"
   },
   messageTextUser: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    lineHeight: 24
+    lineHeight: 27
   },
   panelTitle: {
     ...textStyles.section,
@@ -1553,13 +1553,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.label,
     fontWeight: "800",
-    lineHeight: 16
+    lineHeight: 18
   },
   quickRouteTitle: {
     color: colors.ink2,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
-    lineHeight: 14
+    lineHeight: 17
   },
   sendButton: {
     alignItems: "center",
@@ -1571,9 +1571,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadEyebrow: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "900",
-    lineHeight: 20,
+    lineHeight: 23,
     letterSpacing: 0.6
   },
   threadHeader: {
@@ -1589,7 +1589,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   threadNextAction: {
     color: colors.ink3Text,
     fontSize: typography.bodySm,
-    lineHeight: 19
+    lineHeight: 22
   },
   threadSurface: {
     backgroundColor: colors.surface,
@@ -1597,9 +1597,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadTitle: {
     color: colors.ink3Text,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "400",
-    lineHeight: 16
+    lineHeight: 19
   },
   threadTitleBlock: {
     flex: 1,

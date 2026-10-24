@@ -61,7 +61,7 @@ function NotificationDetail({actorId,id,scopeKey,filter}:{actorId:string;id:stri
   {!record&&!error&&!deviceMissing?<Text style={{color:colors.ink3Text}}>{local.available&&local.freshness.failure?t('typedInbox.error'):t('common.loading')}</Text>:null}
   {record?<View style={{gap:18}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Ionicons name={notificationKindIcons[record.kind]} color={colors.accentText} size={24}/><Text style={{color:colors.accentText}}>{t(`typedInbox.${record.kind}`)}</Text></View>
-    <Text accessibilityRole="header" style={{color:colors.ink,fontSize:23,lineHeight:32,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:24,fontSize:16}}>{record.reason}</Text>
+    <Text accessibilityRole="header" style={{color:colors.ink,fontSize:25,lineHeight:35,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:27,fontSize:18}}>{record.reason}</Text>
     <Text style={{color:colors.ink3Text}}>{t(`typedInbox.${stateKeys[record.disposition]}`)} · {t(record.readAt?'typedInbox.readState':'typedInbox.unreadState')}</Text>
     {record.dueAt?<Text style={{color:colors.ink3Text}}>{t('typedInbox.due')} · {new Date(record.dueAt).toLocaleString(language)}</Text>:null}
     {record.scheduledFor?<Text style={{color:colors.ink3Text}}>{t('typedInbox.scheduled')} · {new Date(record.scheduledFor).toLocaleString(language)}</Text>:null}

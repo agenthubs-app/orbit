@@ -227,7 +227,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   agentPrompt: {
     fontSize: typography.bodySm,
-    lineHeight: 20,
+    lineHeight: 23,
     color: colors.ink2
   },
   bodyText: {
@@ -248,7 +248,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     flex: 1,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   itemTitle: {
     ...textStyles.listTitle,
@@ -283,9 +283,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   metricValue: {
     color: colors.ink,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
-    lineHeight: 30
+    lineHeight: 32
   },
   pressed: {
     opacity: 0.72
@@ -335,6 +335,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   timeText: {
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 17
+    lineHeight: 19
   }
 }));

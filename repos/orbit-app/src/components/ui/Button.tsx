@@ -74,7 +74,7 @@ const useStyles = createThemedStyles(() => StyleSheet.create({
   sm: { minHeight: 32, paddingHorizontal: 12, paddingVertical: 6 },
   block: { alignSelf: "stretch" },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  label: { fontSize: 13, fontWeight: "700" },
-  labelSm: { fontSize: 12 },
+  label: { fontSize: 15, fontWeight: "700" },
+  labelSm: { fontSize: 14 },
   inactive: { opacity: 0.45 },
 }));

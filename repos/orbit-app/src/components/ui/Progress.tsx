@@ -47,7 +47,7 @@ export function RingChart({ size = 96, stroke = 10, segments, center, accessibil
           return element;
         })}
       </Svg>
-      {center ? <UiText style={{ color: colors.ink, fontSize: 18, fontWeight: "800" }}>{center}</UiText> : null}
+      {center ? <UiText style={{ color: colors.ink, fontSize: 20, fontWeight: "800" }}>{center}</UiText> : null}
     </View>
   );
 }

@@ -98,6 +98,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   offline: { marginBottom: 12 },
   // kit .banner (b5 #33)
   banner: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.surface2 },
-  bannerText: { flex: 1, fontSize: 11.5, lineHeight: 18, color: colors.ink2 },
+  bannerText: { flex: 1, fontSize: 13, lineHeight: 20, color: colors.ink2 },
   body: { marginTop: 14 },
 }));

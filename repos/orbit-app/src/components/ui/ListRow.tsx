@@ -41,9 +41,9 @@ export function ListRow({ title, subtitle, leading, trailing, titleAddon, onPres
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 11 },
   meta: { flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  title: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   titleLine: { flexDirection: "row", alignItems: "center", gap: 4 },
   titleWithAddon: { flexShrink: 1 },
-  subtitle: { color: colors.ink3Text, fontSize: 12, marginTop: 2 },
+  subtitle: { color: colors.ink3Text, fontSize: 14, marginTop: 2 },
   trailing: { flexShrink: 0, alignItems: "flex-end" },
 }));

@@ -857,7 +857,7 @@ test("AI conversation fits its kit header and keeps both exit controls reachable
 });
 test("AI conversation displays readable numbered steps with aligned supporting paragraphs", async t => {
   const p = await open(t, { payloads: sourceReadPayloads }); const number = p.getByText("1", { exact: true });
-  assert.equal(await number.count(), 1); assert.equal(await number.evaluate(el => getComputedStyle(el).fontSize), "22px");
+  assert.equal(await number.count(), 1); assert.equal(await number.evaluate(el => getComputedStyle(el).fontSize), "24px"); // UX-1 scale
   const title = await p.getByText("先准备一个具体问题", { exact: true }).boundingBox();
   const detail = await p.getByText("选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。", { exact: true }).boundingBox();
   assert.ok(title && detail && Math.abs(title.x - detail.x) < 1);

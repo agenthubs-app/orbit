@@ -282,11 +282,11 @@ export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide,
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  muted: { color: colors.ink3Text, fontSize: 11, lineHeight: 18 }, stale: { color: colors.coralText, fontSize: 10, marginBottom: 6 },
-  link: { minHeight: 32, justifyContent: "center", paddingVertical: 3 }, linkText: { color: colors.ink2, fontSize: 12 },
-  stats: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }, statNumber: { color: colors.ink, fontSize: 22, fontWeight: "700" },
-  score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 11, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 11, fontWeight: "700" },
-  eventTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 10 },
-  guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 11, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 12, fontWeight: "600" },
+  muted: { color: colors.ink3Text, fontSize: 13, lineHeight: 21 }, stale: { color: colors.coralText, fontSize: 12, marginBottom: 6 },
+  link: { minHeight: 32, justifyContent: "center", paddingVertical: 3 }, linkText: { color: colors.ink2, fontSize: 14 },
+  stats: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }, statNumber: { color: colors.ink, fontSize: 24, fontWeight: "700" },
+  score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 13, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 13, fontWeight: "700" },
+  eventTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 24 },
+  people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 12 },
+  guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 13, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 14, fontWeight: "600" },
 }));

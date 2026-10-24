@@ -30,7 +30,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingTop: 122, paddingBottom: spacing.xxl, alignItems: "center" },
   icon: { fontSize: 64, lineHeight: 72 },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "900", textAlign: "center", marginTop: 18 },
-  description: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 24, textAlign: "center", marginTop: spacing.sm },
+  description: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 28, textAlign: "center", marginTop: spacing.sm },
   schedule: { alignSelf: "stretch", marginTop: spacing.xl, paddingVertical: spacing.xl, alignItems: "center" },
   label: { color: colors.ink3Text, fontSize: typography.label, textAlign: "center" },
   scheduleValue: { color: colors.ink2, fontSize: typography.bodySm, marginTop: spacing.xs, textAlign: "center" },

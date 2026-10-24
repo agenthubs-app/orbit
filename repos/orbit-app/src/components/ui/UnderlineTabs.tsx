@@ -38,7 +38,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   utabs: { borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: 20, marginBottom: 12, marginTop: 14 },
   // 9 + 19.5 + 9 = 37.5 tall; the 20 gaps keep neighbours apart, VoiceOver reads each as a tab.
   utab: { paddingVertical: 9 },
-  label: { color: colors.ink3, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  label: { color: colors.ink3, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   labelOn: { color: colors.ink },
   count: { color: colors.ink3, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 10.8, fontWeight: "700" },
   line: { backgroundColor: colors.ink, borderRadius: 2, bottom: -1, height: 2.5, left: 0, position: "absolute", right: 0 },

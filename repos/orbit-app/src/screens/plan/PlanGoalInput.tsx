@@ -282,8 +282,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sub: { color: colors.ink2, ...kitText(12.5, "400"), marginTop: 4, marginBottom: 12 },
   field: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "transparent", justifyContent: "center", paddingHorizontal: 14 },
   fieldFocus: { borderColor: colors.plum500 },
-  input: { color: colors.ink, fontSize: 14, lineHeight: 21, padding: 0, minHeight: 21 },
-  placeholder: { position: "absolute", left: 14, right: 14, color: colors.ink4, fontSize: 14 },
+  input: { color: colors.ink, fontSize: 17, lineHeight: 25, padding: 0, minHeight: 21 },
+  placeholder: { position: "absolute", left: 14, right: 14, color: colors.ink4, fontSize: 17 },
   kinds: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   // kit 实测 chip 高 34.8（padding 7 + 行盒 17.8），iOS 行盒 18.75 → 上下各 6.5。
   fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6.5, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
@@ -292,7 +292,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   foptText: { color: colors.ink2, ...kitText(12.5, "700") },
   foptTextOn: { color: colors.ink },
   // iOS 的 Apple Color Emoji 在 12.5 号比 kit（Chrome）画得大约 2pt、chip 宽 2.5pt，第二行 chip 逐个右移；按实测比例缩到 11。
-  foptEmoji: { fontSize: 11 },
+  foptEmoji: { fontSize: 13 },
   start: { height: 50, marginTop: 14 },
   startAfterLimit: { marginTop: 10 },
   steps: { color: colors.ink3, ...kitText(11.5, "500", 1.6), textAlign: "center", marginTop: 8 },
@@ -312,7 +312,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sumrow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
   sumEmo: { width: 28, height: 28, borderRadius: 10, backgroundColor: colors.macLav, alignItems: "center", justifyContent: "center" },
   sumEmoPink: { backgroundColor: colors.macPink },
-  sumEmoText: { fontSize: 15, lineHeight: 22.5 },
+  sumEmoText: { fontSize: 17, lineHeight: 26 },
   sumTitle: { color: colors.ink, ...kitText(13, "700") },
 
   sampleCard: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, marginTop: 14 },

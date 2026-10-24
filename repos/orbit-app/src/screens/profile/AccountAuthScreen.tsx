@@ -499,15 +499,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { width: "100%", maxWidth: layout.contentMax, alignSelf: "center", minHeight: 58, paddingHorizontal: 36, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandMark: { width: 36, height: 36, overflow: "hidden", borderRadius: 12, backgroundColor: colors.ink, color: colors.surface, textAlign: "center", textAlignVertical: "center", fontSize: 22, fontWeight: "900" },
-  brandText: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  brandMark: { width: 36, height: 36, overflow: "hidden", borderRadius: 12, backgroundColor: colors.ink, color: colors.surface, textAlign: "center", textAlignVertical: "center", fontSize: 24, fontWeight: "900" },
+  brandText: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   closeButton: { minHeight: 44, minWidth: 44, alignItems: "flex-end", justifyContent: "center" },
-  closeText: { color: colors.ink2, fontSize: 12, lineHeight: 18, fontWeight: "600" },
+  closeText: { color: colors.ink2, fontSize: 14, lineHeight: 21, fontWeight: "600" },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1, width: "100%", maxWidth: layout.contentMax, alignSelf: "center", paddingHorizontal: 36, paddingBottom: 4 },
   hero: { paddingTop: 20 },
-  title: { color: colors.ink, fontSize: 22, lineHeight: 29, fontWeight: "800" },
-  description: { color: colors.ink2, fontSize: 13, lineHeight: 20, marginTop: 8 },
+  title: { color: colors.ink, fontSize: 24, lineHeight: 32, fontWeight: "800" },
+  description: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginTop: 8 },
   disabledButton: {
     opacity: 0.72
   },
@@ -524,7 +524,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dividerText: {
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 16
+    lineHeight: 18
   },
   errorText: {
     backgroundColor: colors.coralSoft,
@@ -533,12 +533,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 19,
+    lineHeight: 22,
     padding: spacing.md
   },
   errorLinks: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   errorLink: { minHeight: 44, justifyContent: "center" },
-  errorLinkText: { color: colors.accentText, fontSize: 13, fontWeight: "700" },
+  errorLinkText: { color: colors.accentText, fontSize: 15, fontWeight: "700" },
   fieldHelper: {
     ...textStyles.caption,
     color: colors.ink3Text,
@@ -546,8 +546,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   fieldLabel: {
     color: colors.ink,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     fontWeight: "700",
     letterSpacing: 0
   },
@@ -577,13 +577,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   helperLinkText: {
     color: colors.accentText,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "700",
-    lineHeight: 18
+    lineHeight: 21
   },
   input: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     color: colors.ink,
     flex: 1,
     minWidth: 0,
@@ -617,7 +617,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     color: colors.okText,
     fontSize: typography.bodySm,
-    lineHeight: 19,
+    lineHeight: 22,
     padding: spacing.md
   },
   oauthButton: {
@@ -656,12 +656,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   signupLegal: { alignItems: "center", marginTop: 4 },
-  signupLegalText: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  signupLegalText: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, textAlign: "center" },
   signupLegalLinks: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
   signupLegalLink: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
-  signupLegalLinkText: { color: colors.accentText, fontSize: 12, lineHeight: 18, textDecorationLine: "underline" },
+  signupLegalLinkText: { color: colors.accentText, fontSize: 14, lineHeight: 21, textDecorationLine: "underline" },
   footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  switchText: { color: colors.ink2, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  switchText: { color: colors.ink2, fontSize: 14, lineHeight: 21, textAlign: "center" },
   switchAction: { color: colors.accentText, fontWeight: "700" }
 }));

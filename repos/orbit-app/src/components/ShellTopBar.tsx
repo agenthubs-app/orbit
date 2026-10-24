@@ -55,7 +55,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   content: { flexDirection: "row", alignItems: "center" },
   center: { flex: 1, minWidth: 0, alignItems: "center" },
   // body line-height 1.5 (ui.css:9) → 25.5 / 17.25
-  title: { color: colors.ink, fontSize: 17, lineHeight: 25.5, fontWeight: "800", letterSpacing: 0.17, textAlign: "center" },
+  title: { color: colors.ink, fontSize: 19, lineHeight: 29, fontWeight: "800", letterSpacing: 0.17, textAlign: "center" },
   // RD-05 shell exception (R07 review M1): secondary shell text keeps the design's --ink-3.
-  subtitle: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25, fontWeight: "500", marginTop: 1, textAlign: "center" },
+  subtitle: { color: colors.ink3, fontSize: 13, lineHeight: 20, fontWeight: "500", marginTop: 1, textAlign: "center" },
 }));

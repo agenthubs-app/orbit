@@ -319,7 +319,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   callout: { alignItems: "center", backgroundColor: colors.okSoft, borderRadius: radius.xl, flexDirection: "row", gap: spacing.sm, padding: spacing.md },
   calloutText: { ...textStyles.small, color: colors.ink, flex: 1 },
   disabled: { opacity: 0.45 },
-  errorText: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
   linkButton: { alignSelf: "flex-start", paddingVertical: spacing.xs },
   linkButtonText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
   messageHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -332,6 +332,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm },
   primaryButton: { ...createControlStyles(colors).primaryButton, alignSelf: "flex-start" },
   primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
-  successText: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 20 },
+  successText: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 23 },
   textArea: { ...textStyles.body, backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.xl, borderWidth: 1, color: colors.ink, minHeight: 120, padding: spacing.md, textAlignVertical: "top" }
 }));

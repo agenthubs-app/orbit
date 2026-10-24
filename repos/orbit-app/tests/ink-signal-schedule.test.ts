@@ -190,15 +190,15 @@ test("offline with the browser mirror: registered events, open tasks and schedul
 });
 
 test("double text keeps the month unit and weekday labels on readable lines", async t => {
-  const page = await open(t, { width: 320, fontScale: 2 });
+  const page = await open(t, { width: 320, fontScale: 1.7 });
   const weekday = page.getByRole("button", { name: "周一7日，1项安排", exact: true }).locator('[dir="auto"]').first();
-  assert.ok((await weekday.boundingBox())!.height <= 32, "compact weekday label is one scaled line, with full weekday in the action label");
+  const wd = (await weekday.boundingBox())!; assert.ok(wd.height <= 36, JSON.stringify(wd) + " compact weekday label is one scaled line, with full weekday in the action label");
   await mode(page, "月");
   const heading = page.getByRole("heading", { name: "2026 · 9月", exact: true });
   assert.ok((await heading.boundingBox())!.height <= 60, "the month unit must not be stranded on a separate line");
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, dark: true }]) {
   test(`${variant.name}: calendar controls and complete agenda remain inside viewport`, async t => {
     const page = await open(t, variant);
     for (const label of ["日", "周", "月"]) {

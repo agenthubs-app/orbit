@@ -90,4 +90,4 @@ export function CalendarScreen() {
   </AppScreen>;
 }
 
-const offlineStyle = StyleSheet.create({ notice: { borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, lineHeight: 21 } });
+const offlineStyle = StyleSheet.create({ notice: { borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 17, lineHeight: 25 } });

@@ -43,6 +43,6 @@ const useRowStyles = createThemedStyles((colors) => StyleSheet.create({
   srow: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
   lbtn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, height: 34, justifyContent: "center", width: 34 },
   meta: { flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
-  sub: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25 },
+  title: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  sub: { color: colors.ink3, fontSize: 13, lineHeight: 20 },
 }));

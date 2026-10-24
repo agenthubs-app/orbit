@@ -266,7 +266,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   foptText: { color: colors.ink2, ...kitText(11.5, "700") },
   foptTextOn: { color: colors.ink },
   qin: { marginTop: 8, height: 38, borderRadius: 12, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12 },
-  qinInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 12.5, padding: 0 },
+  qinInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 15, padding: 0 },
   send: { marginTop: 12, alignSelf: "stretch" },
   note: { marginTop: 6 },
   premCard: { paddingVertical: 12, paddingHorizontal: 16 },
@@ -282,5 +282,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   v2go: { flexDirection: "row", alignItems: "center", gap: 4 },
   v2goText: { color: colors.ink2, ...kitText(12, "700") },
   editBox: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface2, marginBottom: 8 },
-  editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 12, color: colors.ink, fontSize: 13 },
+  editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 12, color: colors.ink, fontSize: 15 },
 }));

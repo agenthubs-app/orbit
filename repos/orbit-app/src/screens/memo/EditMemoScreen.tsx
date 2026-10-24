@@ -230,12 +230,12 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  private: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18 },
+  private: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 20 },
   paper: { minHeight: 420, paddingHorizontal: 2 },
   titleInput: { color: colors.ink, fontSize: 30, fontWeight: "900", minHeight: 72, paddingVertical: spacing.md },
   rule: { backgroundColor: colors.line, height: StyleSheet.hairlineWidth },
-  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
-  notice: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 20 },
+  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
+  notice: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 23 },
   saveText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700" },
   headerActions: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   headerSaveText: { color: colors.accentText, fontSize: typography.body, fontWeight: "800" },

@@ -100,7 +100,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   stack: { gap: spacing.md },
   heading: { fontSize: typography.body, fontWeight: "700", color: colors.ink, marginBottom: spacing.sm },
   label: { fontSize: typography.label, fontWeight: "700", color: colors.ink2, marginTop: spacing.md, marginBottom: spacing.sm },
-  note: { fontSize: typography.label, color: colors.ink2, lineHeight: 19, marginVertical: spacing.xs },
+  note: { fontSize: typography.label, color: colors.ink2, lineHeight: 21, marginVertical: spacing.xs },
   choice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md },
   choiceText: { fontSize: typography.body, color: colors.ink, fontWeight: "600", flexShrink: 1 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

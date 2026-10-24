@@ -575,7 +575,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   premMid: { flex: 1, minWidth: 0, alignItems: "flex-start" },
   premValue: { color: colors.ink, ...kitText(12.5, "400", 1.55) },
   premStrike: { color: colors.ink3, ...kitText(12.5, "400", 1.55), textDecorationLine: "line-through" },
-  premInput: { alignSelf: "stretch", minHeight: 40, borderRadius: 12, borderWidth: 2, borderColor: colors.plum700, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 6, color: colors.ink, fontSize: 12.5, lineHeight: 19.38, textAlignVertical: "top" },
+  premInput: { alignSelf: "stretch", minHeight: 40, borderRadius: 12, borderWidth: 2, borderColor: colors.plum700, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 6, color: colors.ink, fontSize: 15, lineHeight: 23, textAlignVertical: "top" },
   pflag: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 1, paddingHorizontal: 6, borderRadius: 6, backgroundColor: colors.surface },
   pflagIcon: { width: 11, height: 11, alignItems: "center", justifyContent: "center", transform: [{ scale: 11 / 16 }] },
   pflagText: { flexShrink: 1, color: colors.macApricotInk, ...kitText(10.5, "800") },
@@ -609,6 +609,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grid2Btn: { flex: 1 },
   manualNote: { marginTop: 8, lineHeight: 18.4 },
   note: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
-  noteText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
-  noteTitle: { color: colors.macApricotText, fontSize: 14, lineHeight: 20, fontWeight: "800" },
+  noteText: { color: colors.macApricotText, fontSize: 15, lineHeight: 23, fontWeight: "600" },
+  noteTitle: { color: colors.macApricotText, fontSize: 17, lineHeight: 24, fontWeight: "800" },
 }));

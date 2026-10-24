@@ -112,8 +112,8 @@ export function DeletionScreen() {
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   stack: { gap: spacing.md },
   heading: { fontSize: typography.cardTitle, fontWeight: "700", color: colors.ink, marginBottom: spacing.sm },
-  body: { fontSize: typography.body, color: colors.ink, lineHeight: 22, marginBottom: spacing.md },
-  note: { fontSize: typography.bodySm, color: colors.ink2, lineHeight: 20, marginBottom: spacing.md },
+  body: { fontSize: typography.body, color: colors.ink, lineHeight: 27, marginBottom: spacing.md },
+  note: { fontSize: typography.bodySm, color: colors.ink2, lineHeight: 23, marginBottom: spacing.md },
   confirm: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginVertical: spacing.lg },
   warning: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
   error: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },

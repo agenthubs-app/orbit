@@ -68,10 +68,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chip: { alignSelf: "flex-start", maxWidth: 160, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   withIcon: { flexDirection: "row", alignItems: "center", gap: 4 },
   // kit .chip: 11 / 700 at the body line-height 1.5 → 22.5 tall with padding 3.
-  label: { fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
-  inlineChip: { borderRadius: 999, fontSize: 11, fontWeight: "700", lineHeight: 16.5, paddingHorizontal: 6, paddingVertical: 1 },
+  label: { fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  inlineChip: { borderRadius: 999, fontSize: 13, fontWeight: "700", lineHeight: 20, paddingHorizontal: 6, paddingVertical: 1 },
   suggested: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, paddingRight: 4 },
   suggestedCheck: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  suggestedCheckText: { color: colors.ink2, fontSize: 10, fontWeight: "700" },
+  suggestedCheckText: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
   expanded: { flex: 1, alignSelf: "stretch", maxWidth: "100%" },
 }));

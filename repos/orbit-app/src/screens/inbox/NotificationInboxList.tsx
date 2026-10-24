@@ -54,7 +54,7 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
       const row = <ListRow title={item.title} subtitle={subtitle} onPress={() => onOpen(item.id)}
         leading={<View style={[styles.icon, { backgroundColor: colors.surface2 }]}><UiText>{kind ? '✦' : item.kind === 'reminder' ? '◷' : item.kind === 'suggestion' ? '✧' : '↗'}</UiText></View>}
         titleAddon={!item.readAt && item.disposition === 'open' ? <View accessibilityLabel={t('typedInbox.unreadState')} style={[styles.dot, { backgroundColor: colors.accentText }]} /> : undefined}
-        trailing={fontScale <= 1.2 ? <UiText style={{ color: colors.ink3Text, fontSize: 11 }}>{new Date(item.occurredAt).toLocaleTimeString(language, { timeZone: zone, hour: '2-digit', minute: '2-digit' })}</UiText> : undefined} />;
+        trailing={fontScale <= 1.2 ? <UiText style={{ color: colors.ink3Text, fontSize: 13 }}>{new Date(item.occurredAt).toLocaleTimeString(language, { timeZone: zone, hour: '2-digit', minute: '2-digit' })}</UiText> : undefined} />;
       return <View key={item.id}>
         {heading ? <UiText style={[styles.day, { color: colors.ink3Text }]}>{day}</UiText> : null}
         {actions.length ? <SwipeRow actions={actions}>{row}</SwipeRow> : row}
@@ -66,7 +66,7 @@ export function NotificationInboxList({ data, onOpen, onMore, onRefresh, onFilte
 
 const styles = StyleSheet.create({
   container: { gap: 8 },
-  day: { fontSize: 12, fontWeight: '700', marginTop: 12 },
+  day: { fontSize: 14, fontWeight: '700', marginTop: 12 },
   dot: { borderRadius: 3, height: 6, width: 6 },
   icon: { alignItems: 'center', borderRadius: 12, height: 38, justifyContent: 'center', width: 38 },
 });

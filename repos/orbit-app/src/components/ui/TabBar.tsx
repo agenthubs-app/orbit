@@ -58,6 +58,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   tab: { alignItems: "center", borderRadius: 999, flex: 1, gap: 2, justifyContent: "center", minHeight: 44 },
   tabOn: { backgroundColor: colors === darkColors ? colors.surface3 : colors.surface },
   // RD-05 shell exception (as OrbitTabBar): unselected items keep the design's --ink-3.
-  label: { color: colors.ink3, fontSize: 10, fontWeight: "700", lineHeight: 15, textAlign: "center" },
+  label: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 18, textAlign: "center" },
   labelOn: { color: colors.ink },
 }));

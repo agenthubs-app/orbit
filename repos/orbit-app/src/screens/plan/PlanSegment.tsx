@@ -203,9 +203,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { gap: 14 },
   grow: { flex: 1, minWidth: 0 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18, gap: 10 },
-  eyebrow: { color: colors.ink3Text, fontSize: 12, fontWeight: "700" },
-  goal: { color: colors.ink, fontSize: 17, lineHeight: 24, fontWeight: "800" },
+  eyebrow: { color: colors.ink3Text, fontSize: 14, fontWeight: "700" },
+  goal: { color: colors.ink, fontSize: 19, lineHeight: 27, fontWeight: "800" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  score: { color: colors.ink, fontSize: 15, fontWeight: "800" },
-  body: { color: colors.ink2, fontSize: 13, lineHeight: 20 },
+  score: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  body: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
 }));

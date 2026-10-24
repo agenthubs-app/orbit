@@ -20,6 +20,6 @@ export function TodoSentPrompt({ busy, confirmationStarted, onYes, onNotYet }: {
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   prompt: { gap: 8, paddingTop: 8 },
-  question: { color: colors.ink, fontSize: 13, fontWeight: "600" },
+  question: { color: colors.ink, fontSize: 15, fontWeight: "600" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 }));

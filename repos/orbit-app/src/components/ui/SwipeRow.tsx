@@ -82,6 +82,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { overflow: "hidden", borderRadius: 18, backgroundColor: colors.surface },
   actions: { position: "absolute", top: 0, bottom: 0, right: 0, flexDirection: "row" },
   action: { width: SWIPE_ACTION_WIDTH, alignItems: "center", justifyContent: "center", gap: 3 },
-  actionLabel: { fontSize: 10.5, fontWeight: "700" },
+  actionLabel: { fontSize: 12, fontWeight: "700" },
   face: { backgroundColor: colors.surface, paddingHorizontal: 14 },
 }));

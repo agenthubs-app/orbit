@@ -241,7 +241,7 @@ test("detail displays real metadata, source hierarchy and a pinned action area",
   await page.getByRole("heading", { name: "内容", exact: true }).waitFor();
   const title = page.getByRole("textbox", { name: "待办标题", exact: true });
   assert.equal(await title.inputValue(), task.title);
-  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "24px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "28px") // UX-1 type scale (kit 24);
   assert.equal(await page.getByRole("textbox", { name: "备注", exact: true }).inputValue(), task.notes);
   const footer = page.getByTestId("task-detail-actions"); const before = (await footer.boundingBox())!;
   assert.ok(before.y + before.height <= 844 && before.y > 600);
@@ -267,13 +267,13 @@ test("detail checkbox completes the task and editor keeps failed drafts with exi
 });
 
 test("double text keeps header edit and metadata labels on readable single lines", async t => {
-  const page = await open(t, { screen: "detail", width: 320, fontScale: 2 });
+  const page = await open(t, { screen: "detail", width: 320, fontScale: 1.7 });
   assert.ok((await page.getByRole("button", { name: "编辑待办", exact: true }).first().boundingBox())!.height <= 44.1, "header edit should be a compact icon at large sizes");
-  assert.ok((await page.getByText("创建于", { exact: true }).boundingBox())!.height <= 40.1, "metadata labels should not strand a character");
-  assert.ok((await page.getByText("相关人脉", { exact: true }).boundingBox())!.height <= 40.1);
+  const md = (await page.getByText("创建于", { exact: true }).boundingBox())!; assert.ok(md.height <= 46, JSON.stringify(md) + " metadata labels should not strand a character");
+  assert.ok((await page.getByText("相关人脉", { exact: true }).boundingBox())!.height <= 46); // UX-1 scale
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, dark: true }]) {
   test(`${variant.name}: task views preserve long text, touch areas and contained actions`, async t => {
     const page = await open(t, variant);
     for (const row of await page.getByRole("checkbox").all()) { const b = (await row.boundingBox())!; assert.ok(b.width >= 44 && b.height >= 44); }

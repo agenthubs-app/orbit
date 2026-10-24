@@ -36,7 +36,7 @@ function ScopedDeliverySettings({actorId,scope,conversationId,section}:{actorId:
  if(disabled)return <UiText style={{color:colors.ink3Text}}>{t('notifications.error')}</UiText>;
  if(!data)return error?<View style={{gap:10}}><UiText accessibilityRole="alert" style={{color:colors.coralText}}>{t('notifications.error')}</UiText><Button label={t('notifications.refresh')} onPress={()=>setAttempt(v=>v+1)}/></View>:<Skeleton onRetry={()=>setAttempt(v=>v+1)}/>;
  const row=(key:string,label:string,on:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><View key={key} style={{minHeight:conversationId?54:section==='secretary'?66:58,flexDirection:'row',alignItems:'center',gap:12,paddingVertical:9}}>
-  <View style={{flex:1,gap:2}}><UiText style={{color:colors.ink,fontSize:14,fontWeight:'600'}}>{label}</UiText>{hint?<UiText style={{color:colors.ink3Text,fontSize:12,lineHeight:18}}>{hint}</UiText>:null}</View>
+  <View style={{flex:1,gap:2}}><UiText style={{color:colors.ink,fontSize:17,fontWeight:'600'}}>{label}</UiText>{hint?<UiText style={{color:colors.ink3Text,fontSize:14,lineHeight:21}}>{hint}</UiText>:null}</View>
   <Toggle value={on} disabled={busy} accessibilityLabel={label} onValueChange={()=>void change(patch)}/>
  </View>;
  if(conversationId){const muted=data.mutedConversationIds.includes(conversationId);return <Card variant="flat">{row('mute',t('notifications.mute'),muted,{muteConversation:{conversationId,muted:!muted}})}</Card>;}
@@ -49,22 +49,22 @@ function ScopedDeliverySettings({actorId,scope,conversationId,section}:{actorId:
  </View>;
  return <View style={{gap:16}}>
   <UiText style={{color:colors.ink3Text,lineHeight:20}}>{t('notifications.subtitle')}</UiText>
-  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:15,marginBottom:4}}>{t('notifications.channels')}</UiText>
+  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:17,marginBottom:4}}>{t('notifications.channels')}</UiText>
    {row('message',t('notifications.message'),data.messageEnabled,{messageEnabled:!data.messageEnabled})}
    {row('reminder',t('notifications.reminder'),data.reminderEnabled,{reminderEnabled:!data.reminderEnabled})}
    {row('suggestion',t('notifications.suggestion'),data.suggestionEnabled,{suggestionEnabled:!data.suggestionEnabled})}
    {row('update',t('notifications.update'),data.updateEnabled,{updateEnabled:!data.updateEnabled})}</Card>
-  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:15,marginBottom:12}}>{t('notifications.dailyCap')}</UiText>
+  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:17,marginBottom:12}}>{t('notifications.dailyCap')}</UiText>
    <Segmented segments={[1,2,3].map(value=>({key:String(value),label:String(value)}))} value={String(data.dailyCap??3)} accessibilityLabel={t('notifications.dailyCap')} onChange={key=>void change({dailyCap:Number(key) as 1|2|3})}/>
-   <UiText style={{color:colors.ink3Text,fontSize:12,lineHeight:18,marginTop:12}}>{t('notifications.capHint')}</UiText></Card>
-  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:15}}>{t('notifications.quiet')}</UiText>
+   <UiText style={{color:colors.ink3Text,fontSize:14,lineHeight:21,marginTop:12}}>{t('notifications.capHint')}</UiText></Card>
+  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:17}}>{t('notifications.quiet')}</UiText>
    {row('quiet',t('notifications.quiet'),data.quietHoursEnabled,{quietHoursEnabled:!data.quietHoursEnabled},t('notifications.quietHint'))}
    <View style={{flexDirection:'row',gap:10,marginTop:8}}><View style={{flex:1}}><TextField label={t('notifications.start')} value={start} onChangeText={setStart} autoCapitalize="none" keyboardType="numbers-and-punctuation" presentation="kit" /></View>
     <View style={{flex:1}}><TextField label={t('notifications.end')} value={end} onChangeText={setEnd} autoCapitalize="none" keyboardType="numbers-and-punctuation" presentation="kit" /></View></View>
    {invalidTime?<UiText accessibilityRole="alert" style={{color:colors.coralText,marginTop:8}}>{t('notifications.invalidTime')}</UiText>:null}
    <View style={{marginTop:12}}><Button label={t('notifications.saveTime')} disabled={busy} onPress={saveHours}/></View>
    {row('meeting',t('notifications.meeting'),data.meetingException!==false,{meetingException:data.meetingException===false},t('notifications.meetingHint'))}</Card>
-  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:15,marginBottom:12}}>{t('notifications.lock')}</UiText>
+  <Card><UiText accessibilityRole="header" style={{color:colors.ink,fontWeight:'700',fontSize:17,marginBottom:12}}>{t('notifications.lock')}</UiText>
    <Segmented segments={[{key:'private',label:t('notifications.private')},{key:'full',label:t('notifications.full')}]} value={data.lockScreenContent} accessibilityLabel={t('notifications.lock')} onChange={value=>void change({lockScreenContent:value})}/></Card>
   {error?<View style={{gap:8}}><UiText accessibilityRole="alert" style={{color:colors.coralText}}>{t('notifications.error')}</UiText><Button label={t('notifications.refresh')} onPress={()=>setAttempt(v=>v+1)}/></View>:null}
  </View>;

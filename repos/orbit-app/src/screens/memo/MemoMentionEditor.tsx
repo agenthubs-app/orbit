@@ -66,6 +66,6 @@ export function MemoMentionEditor({ body, disabled = false, mentions, onChange, 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   wrap: { gap: spacing.sm },
   candidates: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, gap: spacing.xs, padding: spacing.sm },
-  hint: { color: colors.ink3Text, fontSize: 12, padding: spacing.sm },
-  error: { color: colors.coralText, fontSize: 12 },
+  hint: { color: colors.ink3Text, fontSize: 14, padding: spacing.sm },
+  error: { color: colors.coralText, fontSize: 14 },
 }));

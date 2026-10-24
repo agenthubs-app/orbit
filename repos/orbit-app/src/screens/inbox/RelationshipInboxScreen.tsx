@@ -1625,24 +1625,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   toolbarText: {
     color: colors.accentText,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     flexShrink: 1
   },
-  toolbarComposeText: { color: colors.accentText, fontSize: 16, fontWeight: "600", lineHeight: 22, flexShrink: 1 },
+  toolbarComposeText: { color: colors.accentText, fontSize: 18, fontWeight: "600", lineHeight: 25, flexShrink: 1 },
   mailTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: "800",
-    lineHeight: 24,
+    lineHeight: 27,
     textAlign: "center"
   },
   mailContent: { gap: 0 },
   mailList: { gap: 0 },
   readingPane: { gap: 20 },
   remindersPane: { gap: 12, paddingTop: 16 },
-  resourceStatus: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, paddingTop: 16 },
+  resourceStatus: { color: colors.ink3Text, fontSize: 17, lineHeight: 25, paddingTop: 16 },
   readingSubject: { ...textStyles.title, color: colors.ink },
   mailMessage: {
     borderBottomColor: colors.line,
@@ -1678,9 +1678,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   alertRowTop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   alertRowTopLarge: { flexDirection: "column", gap: 3 },
-  alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  alertDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  alertTime: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 116 },
+  alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 17, fontWeight: "700", lineHeight: 24 },
+  alertDetail: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
+  alertTime: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, maxWidth: 116 },
   alertTimeLarge: { maxWidth: "100%" },
   alertDismissButton: {
     alignItems: "center",
@@ -1701,7 +1701,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   buttonRow: {
     flexDirection: "row",
@@ -1717,7 +1717,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   emptyInboxSection: {
     alignItems: "center",
@@ -1756,15 +1756,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     textAlignVertical: "top",
-    lineHeight: 23
+    lineHeight: 28
   },
   listStack: {
     gap: spacing.sm
   },
   messageBody: {
     color: colors.ink,
-    fontSize: 16,
-    lineHeight: 26
+    fontSize: 18,
+    lineHeight: 29
   },
   messageMeta: {
     flexDirection: "row",
@@ -1774,7 +1774,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   messageSender: {
     color: colors.ink2,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600"
   },
   messageStack: {
@@ -1816,13 +1816,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: radius.sm,
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 18,
+    lineHeight: 20,
     padding: spacing.md
   },
   feedCoverage: {
     color: colors.ink3Text,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     paddingTop: 28,
     textAlign: "center"
   },
@@ -1856,8 +1856,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedSubtitle: {
     color: colors.ink3Text,
-    fontSize: 12,
-    lineHeight: 18
+    fontSize: 14,
+    lineHeight: 21
   },
   feedTab: {
     alignItems: "center",
@@ -1875,15 +1875,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedTabCount: {
     color: colors.accentText,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "800",
-    lineHeight: 21
+    lineHeight: 24
   },
   feedTabText: {
     color: colors.ink3Text,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "400",
-    lineHeight: 21
+    lineHeight: 24
   },
   feedTabTextActive: {
     color: colors.ink,
@@ -1900,8 +1900,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   feedTime: {
     color: colors.ink3Text,
     flexShrink: 0,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: "right"
   },
   feedTimeLarge: {
@@ -1910,9 +1910,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedTitle: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "500",
-    lineHeight: 22
+    lineHeight: 25
   },
   feedTitleUnread: {
     fontWeight: "700"
@@ -1931,8 +1931,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   unifiedError: {
     color: colors.coralText,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     paddingVertical: 8
   },
   unifiedSourceError: {
@@ -1952,8 +1952,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchInput: {
     color: colors.ink,
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     minWidth: 0,
     minHeight: 44,
     paddingVertical: 0
@@ -1973,8 +1973,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   segmentButtonText: {
     color: colors.ink3Text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: "400"
   },
   segmentButtonTextActive: {
@@ -1983,8 +1983,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   segmentCount: {
     color: colors.accentText,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: "800"
   },
   segmentedControl: {
@@ -2038,8 +2038,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadPreview: {
     color: colors.ink3Text,
-    fontSize: 14,
-    lineHeight: 21
+    fontSize: 17,
+    lineHeight: 25
   },
   threadRow: {
     alignItems: "flex-start",
@@ -2055,10 +2055,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listRowBodyLarge: { flexDirection: "column", gap: 3 },
   listCopy: { flex: 1, minWidth: 0, gap: 3 },
   listCopyLarge: { flex: 0, width: "100%" },
-  listHeadline: { color: colors.ink, fontSize: 15, fontWeight: "400", lineHeight: 21 },
+  listHeadline: { color: colors.ink, fontSize: 17, fontWeight: "400", lineHeight: 24 },
   listHeadlineUnread: { fontWeight: "700" },
-  listPreview: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  listDate: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 90 },
+  listPreview: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
+  listDate: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, maxWidth: 90 },
   listDateLarge: { maxWidth: "100%" },
   threadRowTop: {
     alignItems: "center",

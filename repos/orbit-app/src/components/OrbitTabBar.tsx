@@ -85,6 +85,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   selected: { backgroundColor: colors === darkColors ? colors.surface3 : colors.surface },
   // RD-05 shell exception (like the Web capsule labels): unselected items keep the design's --ink-3.
   // kit 10px at line-height 1.5 (iOS baseline nudge per label: ui/cjk-lift).
-  label: { color: colors.ink3, fontSize: 10, lineHeight: 15, fontWeight: "700", textAlign: "center", maxWidth: "100%" },
+  label: { color: colors.ink3, fontSize: 12, lineHeight: 18, fontWeight: "700", textAlign: "center", maxWidth: "100%" },
   labelSelected: { color: colors.ink }
 }));

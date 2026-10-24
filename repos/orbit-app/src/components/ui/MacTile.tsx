@@ -19,6 +19,6 @@ const useStyles = createThemedStyles(() => StyleSheet.create({
   tile: { alignItems: "center", justifyContent: "center" },
   md: { width: 40, height: 40, borderRadius: 13 },
   sm: { width: 32, height: 32, borderRadius: 10 },
-  emoji: { fontSize: 21 },
-  emojiSm: { fontSize: 17 },
+  emoji: { fontSize: 23 },
+  emojiSm: { fontSize: 19 },
 }));

@@ -44,16 +44,16 @@ export function WhyDisclosure({ reason, initialOpen = false, presentation = "def
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   button: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  mark: { color: colors.ink2, fontSize: 12, fontWeight: "800" },
+  mark: { color: colors.ink2, fontSize: 14, fontWeight: "800" },
   body: { flexDirection: "row", gap: 6, marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: colors.surface2 },
-  text: { flex: 1, color: colors.ink2, fontSize: 12, lineHeight: 19 },
+  text: { flex: 1, color: colors.ink2, fontSize: 14, lineHeight: 22 },
   kitButton: { width: 18, height: 18, borderRadius: 9 },
   kitBody: { paddingHorizontal: 12, paddingVertical: 10, gap: 0 },
   kitText: { lineHeight: 19.8 },
   kitCard: { padding: 16 },
   kitInline: { marginTop: 12 },
   kitHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  kitTitle: { flex: 1, color: colors.ink, fontSize: 13, fontWeight: "800" },
-  kitSummary: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21.7, marginTop: 8 },
+  kitTitle: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: "800" },
+  kitSummary: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 26, marginTop: 8 },
   kitChip: { flex: 1, minWidth: 0 },
 }));

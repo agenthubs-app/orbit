@@ -213,8 +213,8 @@ export const useKitStyles = createThemedStyles((colors) => StyleSheet.create({
 
   emo: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   emoSm: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  emoText: { fontSize: 21, lineHeight: 31.5 },
-  emoTextSm: { fontSize: 17, lineHeight: 25.5 },
+  emoText: { fontSize: 23, lineHeight: 35 },
+  emoTextSm: { fontSize: 19, lineHeight: 29 },
   emo_lav: { backgroundColor: colors.macLav },
   emo_teal: { backgroundColor: colors.macTeal },
   emo_pink: { backgroundColor: colors.macPink },

@@ -104,6 +104,6 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   box: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, marginHorizontal: 16, marginTop: 4, borderRadius: 14, backgroundColor: colors.surface2 },
-  input: { flex: 1, minHeight: 44, padding: 0, color: colors.ink, fontSize: 15 },
-  saving: { color: colors.ink3Text, fontSize: 12 },
+  input: { flex: 1, minHeight: 44, padding: 0, color: colors.ink, fontSize: 17 },
+  saving: { color: colors.ink3Text, fontSize: 14 },
 }));

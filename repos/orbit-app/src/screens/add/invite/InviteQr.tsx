@@ -53,5 +53,5 @@ const styles = StyleSheet.create({
   frame: { alignItems: "center", borderRadius: 16, borderWidth: FRAME, justifyContent: "center" },
   // .qr::after: 36 square, radius 10, ring 4 in the ground colour, 900 weight 「O」.
   badge: { alignItems: "center", borderRadius: 14, borderWidth: 4, height: 44, justifyContent: "center", position: "absolute", width: 44 },
-  badgeText: { fontSize: 14, fontWeight: "900", lineHeight: 18 },
+  badgeText: { fontSize: 17, fontWeight: "900", lineHeight: 22 },
 });

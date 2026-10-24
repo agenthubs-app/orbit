@@ -44,7 +44,7 @@ export function HostPcOnlyScreen({ kind }: { kind: PcOnlyKind }) {
 
 const usePcStyles = createThemedStyles((colors) => StyleSheet.create({
   card: { alignItems: "center" },
-  title: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25.5, marginTop: 12, textAlign: "center" },
+  title: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 29, marginTop: 12, textAlign: "center" },
   sub: { marginTop: 6, textAlign: "center" },
   btn: { alignSelf: "stretch", marginTop: 16 },
 }));

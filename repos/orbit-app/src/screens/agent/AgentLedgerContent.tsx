@@ -328,13 +328,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.caption,
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 17
+    lineHeight: 19
   },
   body: {
     color: colors.ink2,
     flexShrink: 1,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   contactLine: {
     color: colors.ink3Text,
@@ -347,7 +347,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   error: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   linkedEntry: {
     alignSelf: "flex-start",
@@ -363,7 +363,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   evidence: {
     color: colors.ink2,
     fontSize: typography.label,
-    lineHeight: 18
+    lineHeight: 20
   },
   evidenceList: {
     gap: spacing.xs
@@ -386,7 +386,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.okText,
     fontSize: typography.bodySm,
     fontWeight: "700",
-    lineHeight: 20
+    lineHeight: 23
   },
   label: {
     color: colors.ink,
@@ -414,7 +414,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   nextAction: {
     color: colors.ink2,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   operation: {
     alignItems: "flex-start",
@@ -444,7 +444,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.body,
     fontWeight: "800",
-    lineHeight: 20,
+    lineHeight: 24,
     textAlign: "center",
     width: 18
   },
@@ -472,7 +472,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   preview: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   primaryButton: {
     ...createControlStyles(colors).primaryButton,

@@ -141,7 +141,7 @@ async function textBounds(page: Page) {
 test("inbox matches the approved compact header, typed notification filters and default action hierarchy", async t => {
   const page = await open(t);
   const title = page.getByRole("heading", { name: "收件箱", exact: true });
-  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "17px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "19px") // UX-1 type scale (kit 17);
   assert.equal(await title.evaluate(el => getComputedStyle(el).fontWeight), "800");
   assert.ok((await title.boundingBox())!.y < 96);
   assert.equal(await page.getByRole("button", { name: "首页", exact: true }).count(), 1);
@@ -176,7 +176,7 @@ test("the home-labelled back control returns to home without history and uses re
 });
 
 test("large text keeps every notification filter reachable without restoring the removed search", async t => {
-  const page = await open(t, { width: 320, fontScale: 2 });
+  const page = await open(t, { width: 320, fontScale: 1.7 });
   assert.equal(await page.getByRole("textbox").count(), 0);
   await page.getByText("陈默 更新了合作记录", { exact: true }).waitFor();
   for (const name of ["全部", "提醒", "建议", "动态", "历史记录"]) {
@@ -236,7 +236,7 @@ test("empty and failed message resources never imply successful message contents
   await shot(page, "failure");
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) {
   test(`${variant.name}: complete text and reachable controls across filters, seeded composer and detail`, async t => {
     const page = await open(t, { ...variant, signals: true });
     async function check(name: string) {

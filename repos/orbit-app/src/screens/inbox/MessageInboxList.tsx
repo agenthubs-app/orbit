@@ -23,7 +23,7 @@ export function MessageInboxList({ conversations, onOpen }: {
       accessibilityLabel={`${conversation.name}, ${conversation.preview}`}
       onPress={() => onOpen(conversation.id)}
       leading={<View accessibilityElementsHidden style={[styles.avatar, { backgroundColor: colors.surface2 }]}><UiText>{Array.from(conversation.name)[0] || '?'}</UiText></View>}
-      trailing={<View style={styles.trailing}><UiText style={{ color: colors.ink3Text, fontSize: 11 }}>{conversation.lastAt}</UiText>
+      trailing={<View style={styles.trailing}><UiText style={{ color: colors.ink3Text, fontSize: 13 }}>{conversation.lastAt}</UiText>
         {conversation.unreadCount > 0 ? <UiText style={[styles.count, { color: colors.onAccent, backgroundColor: colors.accentText }]}>{conversation.unreadCount}</UiText> : null}</View>} />)}
   </View>;
 }

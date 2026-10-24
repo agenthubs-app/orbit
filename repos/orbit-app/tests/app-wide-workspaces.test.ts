@@ -290,7 +290,7 @@ test("iOrbit conversation keeps its draft when opening and closing mentions", as
 });
 test("chat list and detail retain navigation, messages and a failed real delivery", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
-  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "14.5px");
+  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "17px"); // UX-1 type scale (kit 14.5)
   const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
   await fits(detail.getByRole("button", { name: "发送消息", exact: true }), 50);
   await detail.getByRole("button", { name: "发送消息", exact: true }).click(); await detail.getByText("尚未确认消息送达，输入已保留。请刷新资格后重试。", { exact: true }).waitFor();

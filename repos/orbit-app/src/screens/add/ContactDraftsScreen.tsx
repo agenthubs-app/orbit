@@ -155,18 +155,18 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
 // kit 数值（b12 N08b / N09）：.lbl 引导（margin 0 4 12、行高 1.6）、.card.dimport padding 14、.card.drf padding 14 + 间距 10、
 // .av 38、名字 14 / 700、.dn.d1、.chip 来源、.acts 两格（间距 8、margin-top 12）。
 const useDraftStyles = createThemedStyles((colors) => StyleSheet.create({
-  lead: { marginHorizontal: 4, marginBottom: 12, fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  lead: { marginHorizontal: 4, marginBottom: 12, fontSize: 13, fontWeight: "500", lineHeight: 21, color: colors.ink2 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
   importCard: { marginBottom: 12, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   grow: { flex: 1, minWidth: 0 },
-  importTitle: { fontSize: 13.5, fontWeight: "700", lineHeight: 20.25, color: colors.ink },
-  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
+  importTitle: { fontSize: 16, fontWeight: "700", lineHeight: 24, color: colors.ink },
+  lbl: { fontSize: 13, fontWeight: "500", lineHeight: 20, color: colors.ink3 },
   importAct: { marginTop: 10, flexDirection: "row" },
   list: {},
   drf: {},
   drfNext: { marginTop: 10 },
-  name: { fontSize: 14, fontWeight: "700", lineHeight: 21, color: colors.ink },
+  name: { fontSize: 17, fontWeight: "700", lineHeight: 25, color: colors.ink },
   chips: { flexDirection: "row", gap: 6, marginTop: 8 },
   acts: { flexDirection: "row", gap: 8, marginTop: 12 },
   act: { flex: 1 },

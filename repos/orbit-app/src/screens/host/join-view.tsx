@@ -40,7 +40,7 @@ export function JoinCard({ invite, t, busy, onJoin, onCode }: { invite: HostCoho
 }
 
 export const useJoinStyles = createThemedStyles((colors) => StyleSheet.create({
-  title: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27, marginTop: 6 },
+  title: { color: colors.ink, fontSize: 20, fontWeight: "700", lineHeight: 30, marginTop: 6 },
   gap8: { gap: 8 },
   mt4: { marginTop: 4 },
   mt8: { marginTop: 8 },

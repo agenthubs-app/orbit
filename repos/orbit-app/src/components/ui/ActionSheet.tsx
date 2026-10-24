@@ -76,14 +76,14 @@ export function ActionSheet({ visible, title, subtitle, emoji, emojiTone = "lav"
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  title: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 22, textAlign: "center", marginBottom: 8 },
+  title: { color: colors.ink, fontSize: 18, fontWeight: "800", lineHeight: 25, textAlign: "center", marginBottom: 8 },
   effect: { flexDirection: "row", gap: 8, alignItems: "flex-start", paddingVertical: 4 },
-  effectText: { flex: 1, color: colors.ink2, fontSize: 12.5, lineHeight: 19 },
+  effectText: { flex: 1, color: colors.ink2, fontSize: 15, lineHeight: 23 },
   buttons: { gap: 8, marginTop: 14 },
   buttonsAfterHead: { marginTop: 0 },
   head: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   headMeta: { flex: 1, minWidth: 0 },
   headTitle: { color: colors.ink, fontWeight: "700" },
-  headSub: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+  headSub: { color: colors.ink3Text, fontSize: 13, fontWeight: "500", lineHeight: 20 },
   effects: { marginTop: 12, marginBottom: 14 },
 }));

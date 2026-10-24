@@ -323,5 +323,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   historyTitle: { marginBottom: 6 },
   hist: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   historyChip: { minHeight: 32, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  historyText: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
+  historyText: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
 }));

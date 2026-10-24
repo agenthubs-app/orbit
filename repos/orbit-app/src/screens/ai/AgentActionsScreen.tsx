@@ -301,7 +301,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   disabled: {
     opacity: 0.54
@@ -309,13 +309,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   feedbackText: {
     color: colors.okText,
     fontSize: typography.bodySm,
     fontWeight: "700",
-    lineHeight: 20
+    lineHeight: 23
   },
   metaBox: {
     backgroundColor: colors.surface2,
@@ -338,7 +338,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     flex: 1,
     fontSize: typography.bodySm,
-    lineHeight: 19
+    lineHeight: 22
   },
   metricChip: {
     backgroundColor: colors.accentSoft,
@@ -357,7 +357,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.accentText,
     fontSize: typography.label,
     fontWeight: "700",
-    lineHeight: 16
+    lineHeight: 18
   },
   nextStep: {
     alignItems: "flex-start",
@@ -373,7 +373,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     flex: 1,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   priorityTag: {
     backgroundColor: colors.macApricot,
@@ -383,7 +383,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.macApricotText,
     fontSize: typography.label,
     fontWeight: "700",
-    lineHeight: 16
+    lineHeight: 18
   },
   pressed: {
     opacity: 0.78,
@@ -413,7 +413,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     flex: 1,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   secondaryButton: {
     ...createControlStyles(colors).secondaryButton,
@@ -444,6 +444,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink2,
     fontSize: typography.label,
     fontWeight: "700",
-    lineHeight: 16
+    lineHeight: 18
   }
 }));

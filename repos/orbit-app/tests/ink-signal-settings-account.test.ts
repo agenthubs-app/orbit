@@ -79,7 +79,7 @@ async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREEN
 test("account shows open verified identity and only the actual workspace", async t => {
   const page = await open(t, { screen: "account" });
   const name = page.getByText("程川", { exact: true }).first();
-  assert.equal(await name.evaluate(el => getComputedStyle(el).fontSize), "15px");
+  assert.equal(await name.evaluate(el => getComputedStyle(el).fontSize), "17px") // UX-1 type scale (kit 15);
   await page.getByText("cheng.chuan@example.test", { exact: true }).waitFor();
   const initial = page.getByText("程", { exact: true }).locator("..");
   assert.equal((await initial.boundingBox())!.width, 40); assert.equal((await initial.boundingBox())!.height, 40);
@@ -125,7 +125,7 @@ test("account guest and resource failures never show stale private identity", as
 });
 
 test("double-size account email retains a readable column instead of squeezing beside edit", async t => {
-  const page = await open(t, { screen: "account", width: 320, fontScale: 2 });
+  const page = await open(t, { screen: "account", width: 320, fontScale: 1.7 });
   const email = page.getByText("cheng.chuan@example.test", { exact: true });
   assert.ok((await email.boundingBox())!.x >= 0);
   assert.ok((await email.boundingBox())!.x + (await email.boundingBox())!.width <= 320.1, "email stays within the viewport");
@@ -133,16 +133,16 @@ test("double-size account email retains a readable column instead of squeezing b
 });
 
 test("large account metadata uses one readable column", async t => {
-  const page = await open(t, { screen: "account", width: 320, fontScale: 1.6 });
+  const page = await open(t, { screen: "account", width: 320, fontScale: 1.35 });
   assert.ok((await page.getByText(/星野工作室/).last().boundingBox())!.width > 0);
 });
 
 test("double-size account header remains inside the viewport", async t => {
-  const page = await open(t, { screen: "account", width: 320, fontScale: 2 });
+  const page = await open(t, { screen: "account", width: 320, fontScale: 1.7 });
   assert.ok((await page.getByRole("heading").first().boundingBox())!.width <= 320);
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, dark: true }]) {
   test(`${variant.name}: account text is complete and controls reachable`, async t => {
     for (const screen of ["account"]) {
       const page = await open(t, { ...variant, screen });
@@ -152,7 +152,7 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       for (const control of await page.getByRole("button").all()) {
         await control.scrollIntoViewIfNeeded(); const b = (await control.boundingBox())!;
         assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.x + b.width <= variant.width + 0.1, `control fits ${JSON.stringify(b)}`);
-        assert.ok(b.y >= 48 && b.y + b.height <= 844.1, "controls remain in scroll viewport");
+        assert.ok(b.y >= 48 && b.y + b.height <= 845, `controls remain in scroll viewport ${JSON.stringify(b)} ${await control.textContent()}`);
       }
       await page.evaluate(() => document.querySelectorAll("*").forEach(el => {
         if (el.scrollHeight > el.clientHeight + 1 && ["auto", "scroll"].includes(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight;

@@ -115,7 +115,7 @@ function AssessPage({ items, upcoming, empty, now, language }: { items: EventAss
         <View style={[styles.row, { gap: 10, marginBottom: 12 }]}>
           <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>🔍</UiText></View>
           <View style={styles.grow}>
-            <UiText style={[styles.cardTitle, empty ? { fontSize: 17, lineHeight: 25.5 } : null]}>{t("eventsV2.assessTitle")}</UiText>
+            <UiText style={[styles.cardTitle, empty ? { fontSize: 19, lineHeight: 29 } : null]}>{t("eventsV2.assessTitle")}</UiText>
             <UiText style={styles.lbl}>{t("eventsV2.assessSubApp")}</UiText>
           </View>
         </View>
@@ -186,7 +186,7 @@ function EmptyExtras() {
             <View style={[styles.emo, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoText}>🎤</UiText></View>
             <ScoreRing size={46} stroke={5} value={82} color={colors.plum700} label="82" fontSize={13} />
           </View>
-          <UiText style={[styles.metaTitle, { fontSize: 14, lineHeight: 18.9, marginTop: 12 }]}>{t("eventsV2.exampleName")}</UiText>
+          <UiText style={[styles.metaTitle, { fontSize: 17, lineHeight: 23, marginTop: 12 }]}>{t("eventsV2.exampleName")}</UiText>
           <UiText style={[styles.lbl, { marginTop: 4 }]}>{t("eventsV2.exampleSub")}</UiText>
           <View style={[styles.row, { gap: 6, marginTop: 12, paddingTop: 10 }]}><Chip label={t("eventsV2.verdictRecommend")} tone="teal" /><Chip label={t("eventsV2.meetCount", { n: 14 })} tone="neutral" /></View>
         </View>
@@ -194,7 +194,7 @@ function EmptyExtras() {
       <View style={[styles.card, styles.flat, { marginTop: 14 }]}>
         <View style={styles.row}>
           <View style={[styles.emo, styles.emoSm, { backgroundColor: colors.macTeal }]}><UiText style={styles.emoTextSm}>🗓️</UiText></View>
-          <View style={styles.grow}><UiText style={[styles.guideTitle, { fontSize: 13 }]}>{t("eventsV2.invitedTitle")}</UiText><UiText style={styles.lbl}>{t("eventsV2.invitedSub")}</UiText></View>
+          <View style={styles.grow}><UiText style={[styles.guideTitle, { fontSize: 15 }]}>{t("eventsV2.invitedTitle")}</UiText><UiText style={styles.lbl}>{t("eventsV2.invitedSub")}</UiText></View>
           <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.codeDialogTitle")} onPress={() => router.push("/events/assess?mode=code" as Href)} style={styles.btnSm} testID="events-enter-code"><UiText style={styles.btnSmText}>{t("eventsV2.enterShort")}</UiText></UiPressable>
         </View>
       </View>
@@ -312,43 +312,43 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     grow: { flex: 1, minWidth: 0 },
     emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
     emoSm: { borderRadius: 10, height: 32, width: 32 },
-    emoText: { fontSize: 21, lineHeight: 26 },
-    emoTextSm: { fontSize: 17, lineHeight: 22 },
-    cardTitle: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
-    lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+    emoText: { fontSize: 23, lineHeight: 28 },
+    emoTextSm: { fontSize: 19, lineHeight: 25 },
+    cardTitle: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
+    lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
     // <div><b style="font-size:12.5px">…：行内 b 的行盒仍按外层 14px · 1.5 = 21。
-    guideTitle: { color: colors.ink, fontSize: 12.5, fontWeight: "700", lineHeight: 21 },
+    guideTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 25 },
     // .drop：背景 color-mix(accent-soft 60%, transparent)，行内 gap 8。
     // 边框 1.6：Chrome 在 3x 屏按整设备像素画成 4px（4/3pt），这里照画出来的宽度；高 = 上下 16 + 行高 18.75 + 边框。
     drop: { alignItems: "center", overflow: "hidden", borderColor: colors.plum300, borderRadius: 18, borderStyle: "dashed", borderWidth: DROP_BORDER, flexDirection: "row", gap: 8, height: 16 * 2 + 18.75 + DROP_BORDER * 2, justifyContent: "center", paddingHorizontal: 16 },
     dropFill: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0, backgroundColor: colors.accentSoft, opacity: 0.6 },
     dropHalf: { alignItems: "center", flexDirection: "row", gap: 8 },
-    dropText: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75 },
+    dropText: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
     cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-    h3: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
-    more: { color: colors.ink3, fontSize: 12, fontWeight: "600", lineHeight: 18 },
+    h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
+    more: { color: colors.ink3, fontSize: 14, fontWeight: "600", lineHeight: 21 },
     sampleTag: { backgroundColor: colors.macApricot, borderRadius: radius.tag, marginLeft: -6, paddingHorizontal: 6, paddingVertical: 1 },
-    sampleText: { color: colors.macApricotInk, fontSize: 9.5, fontWeight: "800", lineHeight: 14.25 },
+    sampleText: { color: colors.macApricotInk, fontSize: 12, fontWeight: "800", lineHeight: 18 },
     carousel: { marginHorizontal: -SHELL_GUTTER },
     carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
     evCard: { borderRadius: 22, overflow: "hidden", padding: 16 },
-    evName: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24, marginTop: 10 },
+    evName: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27, marginTop: 10 },
     avs: { flexDirection: "row" },
     av: { alignItems: "center", borderColor: colors.surface, borderRadius: radius.pill, borderWidth: 2, height: 30, justifyContent: "center", width: 30 },
-    avText: { fontSize: 11.5, fontWeight: "800", lineHeight: 15 },
+    avText: { fontSize: 13, fontWeight: "800", lineHeight: 17 },
     av0: { backgroundColor: colors.macPink }, av1: { backgroundColor: colors.macBlue }, av2: { backgroundColor: colors.macTeal }, av3: { backgroundColor: colors.macApricot },
     avInk0: { color: colors.macPinkInk }, avInk1: { color: colors.macBlueInk }, avInk2: { color: colors.macTealInk }, avInk3: { color: colors.macApricotInk },
     btnBlock: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 32, justifyContent: "center", marginTop: 12 },
     btnPrimary: { alignItems: "center", alignSelf: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 40, justifyContent: "center", paddingHorizontal: 16 },
-    btnPrimaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+    btnPrimaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
     guide: { alignItems: "center", overflow: "hidden", paddingHorizontal: 20, paddingVertical: 26 },
     // 44px emoji、行高 1：iOS 的 Apple Color Emoji 字形比 Chrome 高 4pt，只下移字形，不动下面的标题。
     guideEmoji: { fontSize: 44, lineHeight: 44, marginBottom: -4, marginTop: 4 },
-    guideBig: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25.5, marginTop: 8, textAlign: "center" },
-    guideSub: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75, marginBottom: 14, marginTop: 6, textAlign: "center" },
-    btnBlockText: { color: colors.bg, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+    guideBig: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29, marginTop: 8, textAlign: "center" },
+    guideSub: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginBottom: 14, marginTop: 6, textAlign: "center" },
+    btnBlockText: { color: colors.bg, fontSize: 14, fontWeight: "700", lineHeight: 21 },
     btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", marginLeft: "auto", paddingHorizontal: 12 },
-    btnSmText: { color: colors.ink, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+    btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
     dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },
     dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
     dotOn: { backgroundColor: colors.ink2, width: 18 },
@@ -356,8 +356,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     // .li + .li::before：1px 线，从 50 起到右边。
     liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
     meta: { flex: 1, minWidth: 0 },
-    metaTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
-    metaSub: { color: colors.ink3, fontSize: 12, lineHeight: 18 },
+    metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
+    metaSub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
     chip: { borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
-    chipText: { fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+    chipText: { fontSize: 13, fontWeight: "700", lineHeight: 20 },
 }));

@@ -192,7 +192,7 @@ test("direct-open login and permissions return to their public account parent", 
 test("compact secondary title grows without clipping at narrow widths and doubled text", async t => {
   const page = await open(t, "/contacts/one", "long", 320);
   const heading = page.getByRole("heading");
-  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "17px", "kit .topbar title");
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "19px", "kit .topbar title (UX-1 scale)");
   await page.addStyleTag({ content: '[role="heading"] { font-size: 32px !important; line-height: 42px !important; }' });
   const box = (await heading.boundingBox())!;
   assert.ok(box.x >= 0 && box.x + box.width <= 320);

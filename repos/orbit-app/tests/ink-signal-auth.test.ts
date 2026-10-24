@@ -68,7 +68,7 @@ test("login presents labelled credentials, recovery and reachable actions", asyn
   assert.equal(await shell.evaluate(el => getComputedStyle(el).borderTopWidth), "1px");
   assert.equal(await shell.evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
   const heading = page.getByRole("heading", { name: "欢迎回来", exact: true });
-  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "22px");
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "24px"); // UX-1 type scale (kit 22)
   assert.equal(await page.getByText("登录你的账号，继续高效连接。", { exact: true }).evaluate(el => getComputedStyle(el).color), "rgb(94, 88, 102)");
   const primary = page.getByRole("button", { name: "登录", exact: true });
   const forgot = page.getByRole("link", { name: "忘记密码", exact: true });
