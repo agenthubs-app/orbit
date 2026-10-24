@@ -42,7 +42,8 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
       <UiText style={styles.externalNoticeText}>{t(external.connection === "not_connected" ? "calendar.view.externalNotConnected" : "calendar.view.externalReconnectNeeded")}</UiText>
       <Button size="sm" label={t(external.connection === "not_connected" ? "calendar.view.externalConnect" : "calendar.view.externalReconnect")} onPress={onConnectExternal} />
     </Card> : null}
-    {external?.connection === "unavailable" ? <Card variant="flat" style={styles.externalNotice}><UiText style={styles.externalNoticeText}>{t("calendar.view.externalUnavailable")}</UiText></Card> : null}
+    {/* UX review: "unavailable" (Google not configured on this server, or its read failed) is not something the
+        user can act on; the calendar stays quiet instead of a permanent error card. Not-connected / reconnect still guide. */}
     <View style={styles.controlRow}>
       <Segmented<CalendarMode> accessibilityLabel={t("schedule.title")} inline segments={[
         { key: "day", label: t("schedule.viewDay") }, { key: "week", label: t("schedule.viewWeek") }, { key: "month", label: t("schedule.viewMonth") },
