@@ -38,6 +38,8 @@ interface AppScreenProps extends PropsWithChildren {
   inset?: "kit" | "legacy";
   onBack?: () => void;
   refreshControl?: ReactElement<RefreshControlProps>;
+  /** False while a child drags something (UX-2: a lifted home widget) so the page does not scroll under it. */
+  scrollEnabled?: boolean;
   showBack?: boolean;
   /** Secondary pages: small line under the centred title (kit .topbar .t small). */
   subtitle?: string | undefined;
@@ -57,6 +59,7 @@ export function AppScreen({
   inset = "legacy",
   onBack,
   refreshControl,
+  scrollEnabled = true,
   showBack,
   subtitle,
   title,
@@ -88,6 +91,7 @@ export function AppScreen({
     return (
       <ScrollView
         {...scroll.props}
+        scrollEnabled={scrollEnabled}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, styles.tabContent]}
         keyboardDismissMode="interactive"
@@ -123,6 +127,7 @@ export function AppScreen({
       ) : null}
       <ScrollView
         {...scroll.props}
+        scrollEnabled={scrollEnabled}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, mainTab && styles.tabContent]}
         contentInsetAdjustmentBehavior="automatic"

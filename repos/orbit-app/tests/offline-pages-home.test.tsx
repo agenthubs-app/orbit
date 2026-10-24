@@ -41,6 +41,23 @@ test("HomeWidgetsScreen keeps today's question beside the empty three-step guide
   assert.ok((await requestsOf(page)).some((request) => /^(get|resource):\/api\/contacts\/completion-question/.test(request)));
 });
 
+test("UX-2: edit mode shows an × on every widget, a fixed + / 完成 bar, and the widget list", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses });
+  await page.getByText("今日待办").waitFor();
+  await page.getByRole("button", { name: "编辑" }).click();
+  for (const title of ["今日待办", "计划分数", "下一场活动", "人脉", "秘书建议"]) await page.getByRole("button", { name: `${title} 移除` }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /上移|下移/ }).count(), 0, "the old arrow controls are gone");
+  await page.getByRole("button", { name: "秘书建议 移除" }).click();
+  assert.equal(await page.getByRole("button", { name: "秘书建议 移除" }).count(), 0);
+  await page.getByRole("button", { name: "添加小组件" }).click();
+  await page.getByRole("button", { name: "秘书建议 添加" }).waitFor();
+  await page.getByText("下一步建议").waitFor();
+  await page.getByRole("button", { name: "笔记 添加" }).click();
+  await page.getByRole("button", { name: "笔记 移除" }).waitFor();
+  await page.getByRole("button", { name: "完成" }).click();
+  await page.getByRole("button", { name: "编辑" }).waitFor();
+});
+
 test("HomeWidgetsScreen refreshes the Today decision count after answering", async (t) => {
   const page = await harness.open(t, { screen: "home", responses: {
     ...responses,
@@ -68,7 +85,7 @@ test("HomeWidgetsScreen reopens its scoped layout offline and queues an edit loc
   await page.getByText(/以前的信息 · 联网后保存/).waitFor();
   await page.getByText("今日待办").waitFor();
   await page.getByRole("button", { name: "编辑" }).click();
-  await page.getByRole("button", { name: "今日待办 下移" }).click();
+  await page.getByRole("button", { name: "今日待办 移除" }).click(); // UX-2: the × badge replaced the move buttons
   await page.getByRole("button", { name: "完成" }).click();
   await page.waitForFunction((storageKey) => {
     const stored = JSON.parse(localStorage.getItem(storageKey) ?? "null");

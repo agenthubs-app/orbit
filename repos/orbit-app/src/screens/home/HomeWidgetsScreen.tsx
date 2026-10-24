@@ -1,7 +1,8 @@
 import { type Href, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { Animated, PanResponder, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, PanResponder, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
 import { z } from "zod";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -14,7 +15,10 @@ import { shellGreeting, shellHeaderDate } from "../../components/shell-date";
 import { BottomSheet } from "../../components/ui/BottomSheet";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { Icon } from "../../components/ui/Icon";
 import { IconButton } from "../../components/ui/IconButton";
+import { useReducedMotion } from "../../components/ui/motion";
+import { Segmented } from "../../components/ui/Segmented";
 import { UiPressable } from "../../components/ui/Pressable";
 import { UiPortal } from "../../components/ui/Portal";
 import { UiText } from "../../components/ui/Text";
@@ -54,7 +58,7 @@ export function HomeWidgetsScreen() {
 
 function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl: string; client: OrbitApiClient }) {
   const router = useRouter(); const auth = useOrbitAuthSession(); const { t, language } = useOrbitLocale(); const { timeZone, canSave: timeZoneConfirmed } = useOrbitTimeZone(); const toast = useToast();
-  const { styles } = useStyles();
+  const { colors, styles } = useStyles(); const insets = useSafeAreaInsets();
   const onConflict = useCallback(() => toast.error(t("home.widgetConflict")), [t, toast]);
   const { layout, state, saving, pending, fetchedAt, reload, save } = useHomeLayout({ actorId, baseUrl, client, onConflict });
   const [widgetRefreshRevision, setWidgetRefreshRevision] = useState(0);
@@ -67,6 +71,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const [menu, setMenu] = useState<HomeWidgetKey | null>(null);
   const [hintHidden, setHintHidden] = useState(false);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
   const badge = useRelationshipInboxBadgeCount(actorId);
   // LF1: the guide's last answer is a page copy (no domain derives it on the device); re-read after its fresh window or a write.
   const guideCopy = usePageCopyResource<unknown>("/api/home/guide-progress", () => false, { copy: { id: "home-guide-progress" },
@@ -93,7 +98,7 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   };
   const remove = (key: HomeWidgetKey) => {
     const before = [...items]; setDraft(removeWidget(before, key));
-    toast.info(t(TITLE[key]), { undo: () => setDraft(before) });
+    toast.info(t("home.widgetRemovedToast", { name: t(TITLE[key]) }), { undo: () => setDraft(before) });
   };
   const contextSize = async (key: HomeWidgetKey, size: "s" | "m") => {
     setMenu(null);
@@ -114,11 +119,14 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     const result = await save(layout.app, new Date().toISOString());
     if (result === "error") { setHintHidden(false); toast.error(t("home.widgetUnavailable")); }
   };
-  return <AppScreen inset="kit" title={date} header={<View style={styles.header}>
+  return <AppScreen inset="kit" title={date} scrollEnabled={!dragging} header={<View style={styles.header}>
     <View style={styles.avatar}><UiText style={styles.avatarText}>{auth.user?.name?.slice(0, 1) || "O"}</UiText></View>
     <View style={styles.headerWords}><UiText style={styles.date}>{date}</UiText><UiText style={styles.greeting}>{greeting}</UiText></View>
-    <IconButton icon="bell" accessibilityLabel={t("home.inbox")} dot={Boolean(badge)} onPress={() => router.push("/inbox" as Href)} />
-    <Button label={editing ? t("home.widgetDone") : t("home.widgetEdit")} icon="grid" variant="surface" onPress={() => { if (editing) void finish(); else begin(); }} disabled={saving || state === "error"} />
+    {/* UX-2: iOS home-screen editing — "+" adds a widget, "完成" ends the jiggle mode. */}
+    {editing ? <View style={styles.editBarSpace} /> : <>
+      <IconButton icon="bell" accessibilityLabel={t("home.inbox")} dot={Boolean(badge)} onPress={() => router.push("/inbox" as Href)} />
+      <Button label={t("home.widgetEdit")} icon="grid" variant="surface" onPress={begin} disabled={saving || state === "error"} />
+    </>}
   </View>}>
     {state === "error" ? <View><UiText style={styles.error}>{t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={() => void reload()} variant="secondary" /></View> : null}
     {state === "loading" ? <UiText style={styles.hintText}>{t("common.loadingLabel")}</UiText> : null}
@@ -127,22 +135,29 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
       {!editing && !layout.hintDismissedAt && !hintHidden ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetHint")}</UiText><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={() => void dismissHint()}><UiText style={styles.hintText}>×</UiText></UiPressable></View> : null}
       {editing ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetDragHint")}</UiText></View> : null}
       <View style={styles.grid}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} count={items.length} editing={editing}
-        small={slot.size === "s"} dropTarget={dropTarget === index} onTarget={setDropTarget} onDrop={(key, to) => setDraft(moveWidgetTo(items, key, to))}>
-        <UiPressable accessible={false} onLongPress={() => { if (!editing) setMenu(slot.key); }} delayLongPress={400} style={styles.widgetPress}>
-          <Card style={styles.widget}><View style={[styles.widgetHead, editing && styles.widgetHeadEditing]}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText>
-            {editing ? <View style={styles.controls}>
-              <Control label={`${t(TITLE[slot.key])} ${t("home.widgetMoveUp")}`} text="↑" disabled={index === 0} press={() => setDraft(moveWidget(items, slot.key, -1))} />
-              <Control label={`${t(TITLE[slot.key])} ${t("home.widgetMoveDown")}`} text="↓" disabled={index === items.length - 1} press={() => setDraft(moveWidget(items, slot.key, 1))} />
-              <Control label={`${t(TITLE[slot.key])} ${t("home.widgetSize")}`} text={slot.size === "s" ? t("home.widgetSmall") : t("home.widgetMedium")} press={() => setDraft(resizeWidget(items, slot.key))} />
-              <Control label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} text="−" press={() => remove(slot.key)} />
-            </View> : null}</View>
+        small={slot.size === "s"} dropTarget={dropTarget === index} onTarget={setDropTarget} onLift={setDragging} onDrop={(key, to) => setDraft(moveWidgetTo(items, key, to))}>
+        <UiPressable accessible={false} pointerEvents={editing ? "none" : "auto"} onLongPress={() => { if (!editing) setMenu(slot.key); }} delayLongPress={400} style={styles.widgetPress}>
+          <Card style={styles.widget}><View style={styles.widgetHead}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText></View>
             <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guideProgress}
               onDataSettled={() => setWidgetRefreshRevision(value => value + 1)} />
           </Card>
         </UiPressable>
+        {editing ? <RemoveBadge label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} onPress={() => remove(slot.key)} /> : null}
+        {/* Screen readers cannot drag: reordering stays available as actions on the widget. */}
+        {editing ? <View accessible pointerEvents="none" accessibilityLabel={t(TITLE[slot.key])} style={styles.a11yReorder}
+          accessibilityActions={[{ name: "moveUp", label: t("home.widgetMoveUp") }, { name: "moveDown", label: t("home.widgetMoveDown") }, { name: "resize", label: t("home.widgetSize") }]}
+          onAccessibilityAction={event => {
+            if (event.nativeEvent.actionName === "moveUp" && index > 0) setDraft(moveWidget(items, slot.key, -1));
+            else if (event.nativeEvent.actionName === "moveDown" && index < items.length - 1) setDraft(moveWidget(items, slot.key, 1));
+            else if (event.nativeEvent.actionName === "resize") setDraft(resizeWidget(items, slot.key));
+          }} /> : null}
       </DraggableWidget>)}</View>
-      {editing ? <Button label={t("home.widgetAdd")} icon="plus" onPress={() => setLibrary(true)} variant="surface" /> : null}
     </> : null}
+    {/* Fixed like iOS's Done: the bar stays at the top while the page scrolls under it. */}
+    {editing && !library ? <UiPortal><View style={[styles.editBar, floatShadow(colors), { top: insets.top + 6 }]}>
+      <IconButton icon="plus" accessibilityLabel={t("home.widgetAdd")} onPress={() => setLibrary(true)} />
+      <Button label={t("home.widgetDone")} variant="primary" size="sm" onPress={() => void finish()} disabled={saving} />
+    </View></UiPortal> : null}
     <BottomSheet visible={library} onClose={() => setLibrary(false)} accessibilityLabel={t("home.widgetAdd")}>
       <WidgetLibrary slots={items} onClose={() => setLibrary(false)} onAdd={slot => { setDraft(addWidget(items, slot)); setLibrary(false); }} />
     </BottomSheet>
@@ -187,55 +202,115 @@ function iconFor(key: HomeWidgetKey): string {
   return { today: "✅", planScore: "💰", nextEvent: "🎟️", network: "👥", secretary: "🗂️", pending: "◉", week: "🗓️", eventPick: "🎫", memo: "📝", deadline: "" }[key];
 }
 
-function Control({ label, text, press, disabled = false }: { label: string; text: string; press: () => void; disabled?: boolean }) {
-  const { styles } = useStyles(); return <UiPressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={press} style={[styles.control, disabled && styles.disabled]}><UiText style={styles.controlText}>{text}</UiText></UiPressable>;
+/** UX-2: the iOS edit-mode delete badge, on the widget's top-right corner. */
+function RemoveBadge({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors, styles } = useStyles();
+  return <UiPressable accessibilityRole="button" accessibilityLabel={label} hitSlop={10} onPress={onPress} style={styles.removeBadge}>
+    <Icon name="x" size={13} color={colors.surface} strokeWidth={2.6} />
+  </UiPressable>;
 }
 
-function DraggableWidget({ widget, index, count, editing, small, dropTarget, onTarget, onDrop, children }: {
+function DraggableWidget({ widget, index, count, editing, small, dropTarget, onTarget, onLift, onDrop, children }: {
   widget: HomeWidgetKey; index: number; count: number; editing: boolean; small: boolean; dropTarget: boolean;
-  onTarget: (value: number | null) => void; onDrop: (key: HomeWidgetKey, to: number) => void; children: ReactNode;
+  onTarget: (value: number | null) => void; onLift: (lifted: boolean) => void; onDrop: (key: HomeWidgetKey, to: number) => void; children: ReactNode;
 }) {
   const { styles } = useStyles();
   const pan = useRef(new Animated.ValueXY()).current;
+  // UX-2: in edit mode every widget jiggles like an iOS home screen icon (alternating phase per
+  // position); Reduce Motion keeps them still.
+  const reduced = useReducedMotion();
+  const wiggle = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!editing || reduced) { wiggle.stopAnimation(); wiggle.setValue(0); return; }
+    const swing = (to: number) => Animated.timing(wiggle, { toValue: to, duration: 120, easing: Easing.inOut(Easing.quad), useNativeDriver: true });
+    const direction = index % 2 === 0 ? 1 : -1;
+    const loop = Animated.loop(Animated.sequence([swing(direction), swing(-direction)]));
+    loop.start();
+    return () => { loop.stop(); wiggle.setValue(0); };
+  }, [editing, reduced, index, wiggle]);
+  const rotate = wiggle.interpolate({ inputRange: [-1, 1], outputRange: [small ? "-1.6deg" : "-0.8deg", small ? "1.6deg" : "0.8deg"] });
   const height = useRef(180);
   const target = useRef(index);
-  const props = useRef({ widget, index, count, editing, onTarget, onDrop });
-  props.current = { widget, index, count, editing, onTarget, onDrop };
+  const props = useRef({ widget, index, count, editing, onTarget, onLift, onDrop });
+  props.current = { widget, index, count, editing, onTarget, onLift, onDrop };
+  // UX-2: like iOS, hold to lift a widget (it grows a little and the page stops scrolling), then
+  // drag it; a quick swipe before it lifts still scrolls the page.
+  const lift = useRef(new Animated.Value(1)).current;
+  const lifted = useRef(false);
+  const [isLifted, setIsLifted] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearHold = () => { if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; };
+  const settle = (drop: boolean) => {
+    clearHold();
+    if (!lifted.current) return;
+    const { widget: key, index: from, onDrop: dropAt, onTarget: mark, onLift: setLifted } = props.current;
+    if (drop && target.current !== from) dropAt(key, target.current);
+    lifted.current = false; setIsLifted(false); mark(null); setLifted(false);
+    Animated.parallel([
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
+      Animated.spring(lift, { toValue: 1, useNativeDriver: true }),
+    ]).start();
+  };
   const responder = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => props.current.editing && Math.abs(gesture.dx) + Math.abs(gesture.dy) > 8,
-    onPanResponderGrant: () => { target.current = props.current.index; },
+    onStartShouldSetPanResponder: () => props.current.editing,
+    onMoveShouldSetPanResponder: () => props.current.editing && lifted.current,
+    onPanResponderTerminationRequest: () => !lifted.current,
+    onPanResponderGrant: () => {
+      target.current = props.current.index;
+      clearHold();
+      holdTimer.current = setTimeout(() => {
+        lifted.current = true; setIsLifted(true); props.current.onLift(true);
+        Animated.spring(lift, { toValue: 1.04, useNativeDriver: true }).start();
+      }, 220);
+    },
     onPanResponderMove: (_, gesture) => {
+      if (!lifted.current) { if (Math.abs(gesture.dx) + Math.abs(gesture.dy) > 10) clearHold(); return; }
       pan.setValue({ x: gesture.dx, y: gesture.dy });
       const next = dragTargetIndex(props.current.index, props.current.count, height.current, gesture.dx, gesture.dy);
       if (next !== target.current) { target.current = next; props.current.onTarget(next === props.current.index ? null : next); }
     },
-    onPanResponderRelease: () => {
-      const { widget: key, index: from, onDrop: drop, onTarget: mark } = props.current;
-      if (target.current !== from) drop(key, target.current);
-      mark(null); Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
-    },
-    onPanResponderTerminate: () => { props.current.onTarget(null); Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start(); },
-  }), [pan]);
+    onPanResponderRelease: () => settle(true),
+    onPanResponderTerminate: () => settle(false),
+  }), [pan, lift]);
   return <Animated.View {...responder.panHandlers} onLayout={event => { height.current = event.nativeEvent.layout.height + 12; }}
-    style={[styles.widgetWrap, small && styles.widgetSmall, dropTarget && styles.dropTarget, { transform: pan.getTranslateTransform(), zIndex: dropTarget ? 2 : 1 }]}>{children}</Animated.View>;
+    style={[styles.widgetWrap, small && styles.widgetSmall, dropTarget && styles.dropTarget, { transform: [...pan.getTranslateTransform(), { rotate }, { scale: lift }], zIndex: isLifted ? 3 : dropTarget ? 2 : 1 }]}>{children}</Animated.View>;
 }
 
+const DESCRIPTION: Record<HomeWidgetKey, "home.widgetTodayDescription" | "home.widgetPendingDescription" | "home.widgetWeekDescription" | "home.widgetPlanDescription" | "home.widgetEventDescription" | "home.widgetEventPickDescription" | "home.widgetNetworkDescription" | "home.widgetSecretaryDescription" | "home.widgetMemoDescription"> = {
+  today: "home.widgetTodayDescription", pending: "home.widgetPendingDescription", week: "home.widgetWeekDescription", planScore: "home.widgetPlanDescription",
+  nextEvent: "home.widgetEventDescription", eventPick: "home.widgetEventPickDescription", network: "home.widgetNetworkDescription",
+  secretary: "home.widgetSecretaryDescription", memo: "home.widgetMemoDescription", deadline: "home.widgetWeekDescription",
+};
+
+/** UX-2: the widget gallery as one readable list — icon, name, what it shows, size, add. */
 function WidgetLibrary({ slots, onAdd, onClose }: { slots: readonly HomeWidgetSlot[]; onAdd: (slot: HomeWidgetSlot) => void; onClose: () => void }) {
   const { t } = useOrbitLocale(); const { colors, styles } = useStyles();
-  const [category, setCategory] = useState("all"); const [query, setQuery] = useState("");
   const [sizes, setSizes] = useState<Partial<Record<HomeWidgetKey, "s" | "m">>>({});
-  const categories = ["all", "today", "network", "event", "plan", "secretary"] as const;
-  const categoryLabels = ["home.widgetAll", "home.today", "home.widgetNetwork", "home.events", "home.widgetPlan", "home.widgetSecretary"] as const;
-  const available = HOME_WIDGETS.filter(item => !slots.some(slot => slot.key === item.key) && (category === "all" || item.category === category)
-    && t(TITLE[item.key]).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
-  const descriptions = { pending: "home.widgetPendingDescription", week: "home.widgetWeekDescription", eventPick: "home.widgetEventPickDescription", memo: "home.widgetMemoDescription" } as const;
-  return <View style={styles.library}><View style={styles.libraryHeader}><View style={styles.libraryHeading}><UiText style={styles.date}>{t("home.widgetAdd")}</UiText><UiText style={styles.hintText}>{t("home.widgetLibraryHint")}</UiText></View><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={styles.libraryClose}><UiText style={styles.hintText}>×</UiText></UiPressable></View><TextInput accessibilityLabel={t("home.widgetSearch")} placeholder={t("home.widgetSearch")} placeholderTextColor={colors.ink3Text} value={query} onChangeText={setQuery} style={styles.search} />
-    <View style={styles.categories}>{categories.map((item, index) => <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: category === item }} onPress={() => setCategory(item)} style={[styles.category, category === item && styles.categoryOn]}><UiText style={styles.hintText}>{t(categoryLabels[index]!)}</UiText></UiPressable>)}</View>
-    <View style={styles.libraryCards}>{available.map(item => {
+  const full = slots.length >= 10;
+  const available = HOME_WIDGETS.filter(item => !slots.some(slot => slot.key === item.key));
+  return <View style={styles.library}>
+    <View style={styles.libraryHeader}>
+      <UiText accessibilityRole="header" style={styles.libraryTitle}>{t("home.widgetAdd")}</UiText>
+      <IconButton icon="x" size={34} accessibilityLabel={t("common.close")} onPress={onClose} />
+    </View>
+    {available.length === 0 ? <UiText style={styles.libraryDescription}>{t("home.widgetLibraryAllAdded")}</UiText> : null}
+    <View style={styles.libraryList}>{available.map((item, index) => {
       const selected = sizes[item.key] ?? (item.key === "memo" ? "s" : "m");
-      return <View key={item.key} style={styles.libraryCard}><UiText style={styles.libraryIcon}>{iconFor(item.key)}</UiText><UiText style={styles.libraryName}>{t(TITLE[item.key])}</UiText><UiText numberOfLines={2} style={styles.hintText}>{item.key in descriptions ? t(descriptions[item.key as keyof typeof descriptions]) : t(TITLE[item.key])}</UiText><View style={styles.librarySizes}>{(["s", "m"] as const).map(size => <UiPressable key={size} accessibilityRole="button" accessibilityLabel={`${t(TITLE[item.key])} ${t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}`} accessibilityState={{ selected: selected === size }} hitSlop={6} onPress={() => setSizes(current => ({ ...current, [item.key]: size }))} style={[styles.librarySize, selected === size && styles.librarySizeSelected]}><UiText style={[styles.librarySizeText, selected === size && styles.librarySizeTextSelected]}>{t(size === "s" ? "home.widgetSmall" : "home.widgetMedium")}</UiText></UiPressable>)}<UiPressable accessibilityRole="button" accessibilityLabel={`${t(TITLE[item.key])} ${t("home.widgetAdd")}`} disabled={slots.length >= 10} hitSlop={5} onPress={() => onAdd({ key: item.key, size: selected })} style={[styles.libraryPlus, slots.length >= 10 && styles.disabled]}><UiText style={styles.libraryPlusText}>＋</UiText></UiPressable></View></View>;
+      const name = t(TITLE[item.key]);
+      return <View key={item.key} style={[styles.libraryRow, index > 0 && styles.libraryRowLine]}>
+        <View style={styles.libraryIconWrap}><UiText style={styles.libraryIcon}>{iconFor(item.key)}</UiText></View>
+        <View style={styles.libraryWords}>
+          <UiText numberOfLines={1} style={styles.libraryName}>{name}</UiText>
+          <UiText numberOfLines={2} style={styles.libraryDescription}>{t(DESCRIPTION[item.key])}</UiText>
+        </View>
+        <Segmented inline segments={[{ key: "s", label: t("home.widgetSmallShort") }, { key: "m", label: t("home.widgetMediumShort") }]} value={selected}
+          onChange={size => setSizes(current => ({ ...current, [item.key]: size }))} accessibilityLabel={`${name} ${t("home.widgetSize")}`} />
+        <UiPressable accessibilityRole="button" accessibilityLabel={`${name} ${t("home.widgetAddOne")}`} disabled={full} hitSlop={6}
+          onPress={() => onAdd({ key: item.key, size: selected })} style={[styles.libraryAdd, full && styles.disabled]}>
+          <Icon name="plus" size={16} color={colors.surface} strokeWidth={2.4} />
+        </UiPressable>
+      </View>;
     })}</View>
-    <View style={styles.libraryExisting}><UiText style={styles.hintText}>{t("home.widgetOnHome")} {slots.length}</UiText><UiText numberOfLines={2} style={styles.hintText}>{slots.map(slot => t(TITLE[slot.key])).join(" · ")}</UiText></View>
   </View>;
 }
 
@@ -246,12 +321,17 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }, widgetWrap: { width: "100%" }, widgetSmall: { width: "48%" }, widgetPress: { flex: 1 }, widget: { flex: 1, minHeight: 155 }, widgetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 3, marginBottom: 12 }, widgetTitle: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
   dropTarget: { borderColor: colors.accentText, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
   widgetHeadEditing: { flexDirection: "column", alignItems: "stretch" },
-  controls: { flexDirection: "row", gap: 3, justifyContent: "flex-end", marginTop: 8 }, control: { paddingHorizontal: 5, minHeight: 29, minWidth: 26, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, controlText: { color: colors.accentText, fontSize: 13 }, disabled: { opacity: .35 },
-  library: { minHeight: 500, paddingBottom: 20, gap: 12 }, libraryHeader: { flexDirection: "row", alignItems: "center" }, libraryHeading: { flex: 1, gap: 3 }, libraryClose: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
-  search: { borderWidth: 1, borderColor: colors.line, color: colors.ink, borderRadius: 18, minHeight: 40, paddingHorizontal: 12 }, categories: { flexDirection: "row", flexWrap: "wrap", gap: 5 }, category: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14 }, categoryOn: { backgroundColor: colors.surface2 },
-  libraryCards: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }, libraryCard: { width: "48%", minHeight: 130, padding: 10, borderRadius: 14, backgroundColor: colors.surface2 }, libraryIcon: { fontSize: 19 }, libraryName: { color: colors.ink, fontSize: 14, fontWeight: "700", marginTop: 3 }, librarySizes: { flexDirection: "row", alignItems: "center", marginTop: "auto", gap: 4 },
-  librarySize: { width: 27, height: 27, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }, librarySizeSelected: { backgroundColor: colors.ink }, librarySizeText: { color: colors.ink3Text, fontSize: 12, fontWeight: "700" }, librarySizeTextSelected: { color: colors.surface }, libraryPlus: { marginLeft: "auto", width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.ink }, libraryPlusText: { color: colors.surface, fontSize: 22, lineHeight: 25 },
-  libraryExisting: { backgroundColor: colors.surface2, borderRadius: 14, minHeight: 52, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 },
+  disabled: { opacity: 0.4 },
+  editBarSpace: { width: 120, height: 44 }, editBar: { position: "absolute", right: 12, flexDirection: "row", alignItems: "center", gap: 6, padding: 4, borderRadius: 26, backgroundColor: colors.surface },
+  removeBadge: { position: "absolute", top: -9, right: -9, zIndex: 3, width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.bg },
+  a11yReorder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  library: { paddingBottom: 24, gap: 8 }, libraryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 },
+  libraryTitle: { color: colors.ink, fontSize: 22, fontWeight: "700" }, libraryList: { paddingHorizontal: 2 },
+  libraryRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 72, paddingVertical: 12 }, libraryRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  libraryIconWrap: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
+  libraryIcon: { fontSize: 22 }, libraryWords: { flex: 1, gap: 2 }, libraryName: { color: colors.ink, fontSize: 17, fontWeight: "600" },
+  libraryDescription: { color: colors.ink3Text, fontSize: 14, lineHeight: 19 },
+  libraryAdd: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: colors.ink },
   contextPreview: { position: "absolute", right: 18, width: 178 }, contextPreviewCard: { minHeight: 184, gap: 8 },
   contextBackdrop: { bottom: 88 }, contextTabDismiss: { position: "absolute", left: 0, right: 0, bottom: 0, height: 88 },
   contextMenu: { position: "absolute", right: 18, width: 216, borderRadius: radius.menu, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 5 },
