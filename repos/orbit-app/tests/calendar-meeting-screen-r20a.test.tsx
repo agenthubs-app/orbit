@@ -58,11 +58,12 @@ test("a stale meeting copy is marked while unrelated personal rows remain visibl
   assert.equal(await page.evaluate(() => (window as any).meetingRefreshes), 1);
 });
 
-test("a cached meeting has an as-of timestamp while its network read is pending", async t => {
+test("UX review: a cached meeting shows at once while its network read is pending, without an as-of notice", async t => {
   const page = await openScenario(browser, script, { loadingCopy: true });
   t.after(() => page.close());
   await page.getByText("Confirmed interview").first().waitFor();
-  await page.getByText(/時点の情報/u).waitFor({ timeout: 1000 });
+  // The device copy is the calendar while the read runs (local-first); 「…時点の情報」 is only for an offline copy.
+  assert.equal(await page.getByText(/時点の情報/u).count(), 0);
 });
 
 test("a failed meeting read does not hide personal schedule rows", async t => {

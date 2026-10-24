@@ -74,7 +74,7 @@ export function CalendarScreen() {
     headerActions={<IconButton icon="plus" accessibilityLabel={t("schedule.newPersonal")} onPress={create} />}>
     {loading && !projection ? <Skeleton /> : null}
     {source.offline ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{offlineMessage}</UiText> : null}
-    {meetings.copy && meetingTime ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{t("calendar.view.meetingSnapshot", { time: meetingTime })}</UiText> : null}
+    {meetings.copy?.offline && meetingTime ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{t("calendar.view.meetingSnapshot", { time: meetingTime })}</UiText> : null}
     {meetings.copy?.stale ? <UiText accessibilityRole="alert" style={[offlineStyle.notice, { color: colors.macApricotText, backgroundColor: colors.macApricot }]}>{t("calendar.view.meetingStale")}</UiText> : null}
     {source.tasks.kind === "failure" || source.tasks.kind === "offline" ? <RetryCard title={t("schedule.tasksFailed")} message={failureMessage(source.tasks.message)} onRetry={refresh} /> : null}
     {source.events.kind === "failure" || source.events.kind === "offline" ? <RetryCard title={t("schedule.eventsFailed")} message={failureMessage(source.events.message)} onRetry={refresh} /> : null}
