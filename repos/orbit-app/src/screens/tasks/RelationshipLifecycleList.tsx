@@ -12,6 +12,23 @@ import { DataCard } from "../../components/DataCard";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTheme as useTheme } from "../../design/theme";
 
+/**
+ * UX-7: the open follow-ups' first page (the same page copy the list below reads), for the one
+ * Reminders-style To-do list that shows them among the tasks by date.
+ */
+export function useOpenFollowUps(scopeKey: string, ready: boolean) {
+  const auth = useOrbitAuthSession();
+  const actorId = auth.actorId ?? "";
+  const enabled = ready && Boolean(actorId);
+  const first = usePageCopyResource<unknown>(`/api/relationship-tasks/page?mode=open&limit=30`, () => false,
+    { scopeKey: `${scopeKey}:${actorId}:followups:first`, enabled, copy: { id: "relationship-tasks", variant: "open" },
+      accept: (data) => decodeRelationshipTaskPage(data, actorId, "open") !== null });
+  const refreshRef = useRef(first.refresh); refreshRef.current = first.refresh;
+  useFocusEffect(useCallback(() => { refreshRef.current(); }, []));
+  const page = decodeRelationshipTaskPage(enabled && (first.kind === "success" || first.kind === "empty") ? first.data : null, actorId, "open");
+  return { items: page?.items ?? null, total: page?.total ?? 0, hasMore: page?.hasMore ?? false, refresh: first.refresh };
+}
+
 export function RelationshipLifecycleList({ scopeKey, ready, mode }: { scopeKey: string; ready: boolean; mode: "open" | "completed" }) {
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";

@@ -8,7 +8,7 @@ import { TodoSentPrompt } from "./TodoSentPrompt";
 import { retryTodoHandoffItem, type TodoHandoffRecord } from "./todo-handoff-state";
 import { canWriteTodoFollowup, todoSectionCount } from "./todo-page-model";
 
-export function TodoSections({ page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, focusedEntryId, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide, handoffFor, orphanedHandoffs, onSentYes, onSentNotYet }: {
+export function TodoSections({ showFollowups = true, page, offline, staleDay, busy, pagingSection, pagingFailedSection, mirroredTaskIds, focusedEntryId, onRefresh, onMore, canOpen, canOpenFollowup, canDefer, onOpen, onOpenFollowup, onComplete, onDefer, onDecide, handoffFor, orphanedHandoffs, onSentYes, onSentNotYet }: {
   page: TodoPageContract;
   offline: boolean;
   staleDay: boolean;
@@ -20,6 +20,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
   onRefresh: () => void;
   onMore?: (section: TodoSectionKey) => void;
   canOpen: (item: TodoDecisionItem | TodoNextMoveItem) => boolean;
+  showFollowups?: boolean;
   canOpenFollowup: (item: TodoFollowupItem) => boolean;
   canDefer: (item: TodoFollowupItem) => boolean;
   onOpen: (item: TodoDecisionItem | TodoNextMoveItem) => void;
@@ -76,7 +77,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
         accessibilityState={item === focusedDecision ? { selected: true } : undefined}>
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
-          {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
+          {item.reasonPreview ? <UiText numberOfLines={2} style={styles.muted}>{item.reasonPreview}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
         </View>
         <View style={styles.actions}>
@@ -99,7 +100,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
       {page.nextMoves.items.map(item => <View key={item.key} style={styles.row}>
         <View style={styles.rowBody}>
           <UiText style={styles.title}>{item.titlePreview}</UiText>
-          {item.reasonPreview ? <UiText style={styles.muted}>{item.reasonPreview}</UiText> : null}
+          {item.reasonPreview ? <UiText numberOfLines={2} style={styles.muted}>{item.reasonPreview}</UiText> : null}
           {!item.draftAvailable ? <UiText style={styles.muted}>{t("todo.draftUnavailable")}</UiText> : null}
           {item.sample ? <UiText style={styles.sample}>{t("todo.sample")}</UiText> : null}
           {handoffFor?.(item) && onSentYes && onSentNotYet ?
@@ -121,7 +122,8 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
       {more("nextMoves")}
     </Card>
 
-    <Card style={styles.section}>
+    {/* UX-7: the To-do list already shows follow-ups by date; the suggestion page can leave them out. */}
+    {showFollowups ? <Card style={styles.section}>
       {sectionHead("followups")}
       {partial("followups")}
       {empty("followups", page.followups.items.length)}
@@ -147,7 +149,7 @@ export function TodoSections({ page, offline, staleDay, busy, pagingSection, pag
         </View>;
       })}
       {more("followups")}
-    </Card>
+    </Card> : null}
   </View>;
 }
 

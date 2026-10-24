@@ -26,6 +26,8 @@ export const todo = {
   "todo.unavailable": "This action is unavailable",
   "todo.more": "See all",
   "todo.allTasks": "All tasks",
+  "todo.suggestionsTitle": "Suggestions",
+  "todo.suggestionsRow": "{count} suggestions",
   "todo.backToTodo": "Back to to-do",
   "todo.draft": "Open draft",
   "todo.draftUnavailable": "Draft unavailable for now",

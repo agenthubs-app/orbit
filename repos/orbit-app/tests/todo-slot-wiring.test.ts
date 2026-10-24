@@ -10,9 +10,13 @@ test("Task keeps quick add and mounts the new To-do first page with the preserve
   assert.doesNotMatch(source, /<TasksScreen key=\{revision\} \/>/u);
 });
 
-test("opening the task list keeps an explicit list URL for return navigation", () => {
+test("the To-do tab opens on the one task list with a suggestions row, and returning from suggestions keeps an explicit list URL", () => {
   const source = readFileSync(join(import.meta.dirname, "../src/screens/todo/TodoScreen.tsx"), "utf8");
-  assert.match(source, /onShowTasks=\{\(\) => \{ setView\("tasks"\); router\.setParams\(\{ view: "all" \}\); \}\}/u);
+  assert.match(source, /return <TasksScreen listHeader=\{<TodoSuggestionsRow onOpen=\{\(\) => setView\("suggestions"\)\} \/>\} \/>;/u);
+  assert.match(source, /setView\("list"\); router\.setParams\(\{ view: "open", entry: undefined \}\);/u);
+  assert.match(source, /useState<"list" \| "suggestions">\(\(\) => entry \? "suggestions" : "list"\)/u);
+  assert.doesNotMatch(source, /onShowTasks=\{/u);
+  assert.doesNotMatch(source, /setView\("tasks"\)/u);
 });
 
 test("Task mounts the unified calendar in its frozen calendar slot", () => {

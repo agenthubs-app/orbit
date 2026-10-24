@@ -892,6 +892,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/tasks/TaskDetailScreen.tsx","POST","/api/reminders"],
   ["src/hooks/useContactLabels.ts","GET","/api/contacts/labels"],
   ["src/screens/tasks/task-list-source.web.ts","GET","/api/tasks/page"],
+  // UX-7: the one To-do list reads the open follow-ups' first page (page copy "relationship-tasks"/"open") via useOpenFollowUps.
+  ["src/screens/tasks/TasksScreen.tsx","GET","/api/relationship-tasks/page"],
   ["src/screens/tasks/TasksScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/screens/task/TaskQuickAdd.tsx","POST","/api/tasks"],
   ["src/hooks/useTodayTaskPages.ts","GET","/api/today"],

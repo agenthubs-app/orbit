@@ -1,6 +1,7 @@
 export const tasks = {
   "tasks.title": "タスク",
   "tasks.save": "保存",
+  "tasks.moreFollowUps": "ほかにフォローアップ {count} 件",
   "tasks.groupOverdue": "期限切れ",
   "tasks.groupToday": "今日",
   "tasks.groupLater": "今後",

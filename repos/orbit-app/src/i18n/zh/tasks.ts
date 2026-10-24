@@ -1,6 +1,7 @@
 export const tasks = {
   "tasks.title": "待办",
   "tasks.save": "保存",
+  "tasks.moreFollowUps": "还有 {count} 条跟进",
   "tasks.groupOverdue": "已逾期",
   "tasks.groupToday": "今天",
   "tasks.groupLater": "之后",

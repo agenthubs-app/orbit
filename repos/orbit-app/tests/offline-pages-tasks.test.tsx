@@ -25,7 +25,9 @@ test.before(async () => {
 });
 test.after(async () => { await harness?.close(); });
 
-test("the task list offline: 截至, local tasks, relationship follow-ups and suggestions from their copies, reminders from the device inbox", async (t) => {
+test("the task list offline: 截至, local tasks and relationship follow-ups from their copy in the same date groups, no suggestion or reminder reads", async (t) => {
+  // UX-7: follow-ups join the one list from the "relationship-tasks"/"open" copy; suggestions and the
+  // reminder queue are no longer part of the task list (they live behind the To-do tab's suggestions row).
   const page = await harness.open(t, {
     screen: "tasks", online: false, syncStatus: "stale", params: { scope: "relationship" },
     records: { task: [task("t9", "回访佐藤")], inbox_notification: [] },
@@ -33,11 +35,13 @@ test("the task list offline: 截至, local tasks, relationship follow-ups and su
   });
   await page.getByText(OFFLINE_BANNER).first().waitFor();
   await page.getByText("回访佐藤").waitFor();
-  await page.getByText("约张伟聊试点").waitFor();
-  await page.getByText("问候佐藤").waitFor();
+  await page.getByRole("checkbox", { name: "完成：约张伟聊试点", exact: true }).waitFor();
+  await page.getByRole("button", { name: "约张伟聊试点，张伟", exact: true }).waitFor();
+  assert.equal(await page.getByText("问候佐藤").count(), 0);
   const check = page.getByRole("checkbox", { name: /回访佐藤.*需要联网/ });
   assert.equal(await check.isDisabled(), true);
-  assert.equal((await requestsOf(page)).some((entry) => entry.includes("/api/inbox/notifications")), false, "reminders are counted on the device");
+  assert.equal((await requestsOf(page)).some((entry) => entry.includes("/api/inbox/notifications")), false, "no reminder queue read from the task list");
+  assert.equal((await requestsOf(page)).some((entry) => entry.includes("/api/task-suggestions")), false, "no suggestion read from the task list");
   assert.deepEqual((await requestsOf(page)).filter((entry) => !entry.startsWith("get:") && !entry.startsWith("resource:")), []);
 });
 

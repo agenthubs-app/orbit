@@ -109,7 +109,11 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
     }
     else if (url.pathname === "/api/ai/conversations/sessions") response = Response.json({ success: true, data: method === "GET" ? emptyAiSessionListPayload : { session: JSON.parse(body!).session, storage: emptyAiSessionListPayload.storage } });
     else if (url.pathname === "/api/task-suggestions/page") response = Response.json({success:true,data:{actorId:session.actor,scope:"relationship",items:[],total:0,nextCursor:null,hasMore:false,asOf:"2026-09-25T00:00:00Z"}});
-    else if (url.pathname === "/api/relationship-tasks/page") response = Response.json({ success: true, data: { actorId: session.actor, mode: url.searchParams.get('mode'), items: [], total: 0, hasMore: false, nextCursor: null, asOf: '2026-09-25T00:00:00.000Z' } });
+    else if (url.pathname === "/api/relationship-tasks/page") {
+      const followUps = url.searchParams.get("mode") === "open" && session.actor === "owner" && Array.isArray(patch.followUps) ? patch.followUps as any[] : [];
+      const total = typeof patch.followUpTotal === "number" ? patch.followUpTotal : followUps.length;
+      response = Response.json({ success: true, data: { actorId: session.actor, mode: url.searchParams.get('mode'), items: followUps, total, hasMore: total > followUps.length, nextCursor: total > followUps.length ? "follow-ups-next" : null, asOf: '2026-09-25T00:00:00.000Z' } });
+    }
     else if (url.pathname === "/api/tasks/page") response = Response.json({success:true,data:taskPageFixture(await service.list({actorId:session.actor}),session.actor,url.searchParams)});
     else if (url.pathname === "/api/contacts/labels") response=Response.json({success:true,data:{actorId:session.actor,items:session.actor==="owner"&&url.searchParams.getAll("id").includes("contact:22")?[{id:"contact:22",namePreview:"真实联系人",organizationPreview:"真实机构"}]:[],asOf:"2026-09-25T00:00:00Z"}});
     else if (url.pathname === "/api/tasks") response = await createTaskCollectionHandlers(dependencies).GET(nativeRequest);
@@ -126,12 +130,16 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   return page;
 }
 
-test("actual list keeps 61 task IDs in four scope/status combinations without candidate counts", async t => {
+test("one list keeps 61 task IDs: 31 open across pages and 30 completed in the fold, without tabs or candidate counts", async t => {
   const page = await open(t);
   await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).first().waitFor();
-  await page.getByRole("tab", { name: "全部", exact: true }).waitFor();
-  await page.getByRole("tab", { name: "未完成 31", exact: true }).waitFor();
+  // UX-7: no scope tabs and no open/completed tabs.
+  assert.equal(await page.getByRole("tablist").count(), 0);
+  assert.equal(await page.getByRole("tab").count(), 0);
+  await page.getByRole("heading", { name: "未安排 30", exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 30);
+  const fold = page.getByRole("button", { name: "展开已完成任务", exact: true });
+  assert.equal(await fold.getByText("30", { exact: true }).count(), 1);
   const firstNames=await page.getByRole("checkbox").evaluateAll(elements=>elements.map(e=>e.getAttribute("aria-label")));
   await page.getByRole("button",{name:"下一页待办",exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('[role="checkbox"]').length===1);
@@ -140,50 +148,47 @@ test("actual list keeps 61 task IDs in four scope/status combinations without ca
   await page.getByRole("button",{name:"返回待办第一页",exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('[role="checkbox"]').length===30);
   assert.equal(await page.getByText("未确认候选", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "已完成 30", exact: true }).click();
+  await fold.click();
   await page.getByRole("checkbox", {name:"恢复：事项 1",exact:true}).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 30);
-  await page.getByRole("tab", { name: "人脉", exact: true }).click();
-  await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 21);
-  await page.getByRole("tab", { name: "未完成 21", exact: true }).click();
-  await page.getByRole("checkbox", {name:"完成：事项 0",exact:true}).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 21);
+  assert.equal(await page.getByRole("checkbox", { name: /^恢复：/ }).count(), 30);
+  assert.equal(await page.getByRole("checkbox", { name: /^完成：/ }).count(), 30);
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 1);
-  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 1);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
-test("an overdue task row uses the warning color without coloring ordinary rows", async t => {
+test("an overdue task row colors its group title and date without coloring ordinary rows", async t => {
   const page = await open(t, { overdueTask: true });
   await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).waitFor();
-  const overdue = page.getByText("已逾期", { exact: true });
-  await overdue.waitFor();
-  const warningColor = await overdue.locator("..").getByText("1", { exact: true }).evaluate(element => getComputedStyle(element).color);
-  const overdueColor = await page.getByText("事项 0", { exact: true }).evaluate(element => getComputedStyle(element).color);
-  const ordinaryColor = await page.getByText("事项 2", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  await page.getByRole("heading", { name: "已逾期 1", exact: true }).waitFor();
+  const warningColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const overdueTitleColor = await page.getByText("事项 0", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const ordinaryTitleColor = await page.getByText("事项 2", { exact: true }).evaluate(element => getComputedStyle(element).color);
   const overdueDetail = page.getByText("事项 0", { exact: true }).locator("..").locator(":scope > *").nth(1);
   const ordinaryDetail = page.getByText("事项 2", { exact: true }).locator("..").locator(":scope > *").nth(1);
   assert.match((await overdueDetail.textContent()) ?? "", /1月1日/);
   assert.ok((await ordinaryDetail.textContent())?.trim());
-  const overdueDetailColor = await overdueDetail.evaluate(element => getComputedStyle(element).color);
+  const overdueDateColor = await overdueDetail.getByText(/1月1日/).evaluate(element => getComputedStyle(element).color);
   const ordinaryDetailColor = await ordinaryDetail.evaluate(element => getComputedStyle(element).color);
-  assert.equal(overdueColor, warningColor);
-  assert.equal(overdueDetailColor, warningColor);
-  assert.notEqual(ordinaryColor, warningColor);
+  const ordinaryDateColor = await ordinaryDetail.locator(":scope > *").first().evaluate(element => getComputedStyle(element).color);
+  assert.equal(overdueDateColor, warningColor);
+  // Only the date carries the warning; the title stays ordinary ink like other rows.
+  assert.equal(overdueTitleColor, ordinaryTitleColor);
+  assert.notEqual(overdueTitleColor, warningColor);
   assert.notEqual(ordinaryDetailColor, warningColor);
+  assert.notEqual(ordinaryDateColor, warningColor);
 });
 
-test("personal list tab reads the owned complement and never treats contact-linked work as personal", async t => {
-  const page = await open(t);
-  await page.getByRole("tab", { name: "个人", exact: true }).click();
-  await page.getByRole("tab", { name: "未完成 10", exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 10);
+test("route scope/view parameters cannot narrow the one list or open completed history", async t => {
+  const page = await open(t, { params: { scope: ["personal", "all"], view: ["completed", "open"] } });
+  await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox").count(), 30);
+  // Relationship-category, contact-linked and personal work all stay in the one list.
+  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 1);
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 1);
-  assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "已完成 9", exact: true }).click();
-  await page.getByRole("checkbox", { name: "恢复：事项 43", exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 9);
+  assert.equal(await page.getByRole("checkbox", { name: /^恢复：/ }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "展开已完成任务", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("tab").count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
@@ -199,43 +204,49 @@ test("completed section expands below open groups without replacing the open tas
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
-test("route parameters use first values and preserve a distinct contact navigation target", async t => {
-  const page = await open(t, { params: { scope: ["relationship", "all"], view: ["completed", "open"] } });
-  await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();
-  await page.getByRole("tab", { name: "未完成 21", exact: true }).click();
-  const contact = page.getByRole("button", { name: "查看人脉：真实联系人", exact: true });
-  await contact.waitFor(); assert.ok((await contact.boundingBox())!.height >= 44);
-  await contact.click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3A22"]);
+test("a linked contact's name is the row's one detail line and accessible label, read from contact labels only", async t => {
+  const page = await open(t);
+  const body = page.getByRole("button", { name: "事项 22，未安排日期，真实联系人", exact: true });
+  await body.waitFor(); assert.ok((await body.boundingBox())!.height >= 44);
+  await page.getByText("未安排日期  ·  真实联系人", { exact: true }).waitFor();
+  // The separate contact link row and the category label are gone.
+  assert.equal(await page.getByRole("button", { name: /^查看人脉：/ }).count(), 0);
+  assert.equal(await page.getByText("真实联系人 · 真实机构", { exact: true }).count(), 0);
+  await body.click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3A22"]);
   const paths=await page.evaluate(()=>(window as any).fixture.requests.map((r:any)=>r.path));
   assert.ok(paths.includes("/api/contacts/labels"));assert.ok(!paths.includes("/api/contacts"));
 });
 
-test("contact picker searches another owned page and revalidates its name before enabling a draft",async t=>{
-  const page=await open(t,{params:{scope:"relationship"}});
-  await page.getByRole("checkbox",{name:"完成：事项 22",exact:true}).waitFor();
-  const headers={"Access-Control-Allow-Origin":"null","Access-Control-Allow-Credentials":"true"};
-  await page.route("**/api/contacts/page?*",async route=>{
-    const query=new URL(route.request().url()).searchParams.get("query");
-    await route.fulfill({status:200,contentType:"application/json",headers,body:JSON.stringify({success:true,data:{items:query==="页外"?[{id:"contact:outside",displayName:"页外本人联系人",organization:"公司",role:"",sourceType:"manual",status:"active",pendingInitialization:false,nextActionPreview:"",updatedAt:"2026-09-25T00:00:00Z"}]:[],hasMore:false,nextCursor:null,asOf:"2026-09-25T00:00:00Z"}})});
-  });
-  await page.route("**/api/contacts/summary?*",route=>route.fulfill({status:200,contentType:"application/json",headers,body:JSON.stringify({success:true,data:{total:1,sources:{manual:1},statuses:{active:1},values:{},tags:[],hasMoreTags:false,asOf:"2026-09-25T00:00:00Z"}})}));
-  let denySelected=true;
-  await page.route("**/api/contacts/labels?*",async route=>{
-    if(!new URL(route.request().url()).searchParams.getAll("id").includes("contact:outside"))return route.fallback();
-    await route.fulfill({status:denySelected?403:200,contentType:"application/json",headers,body:JSON.stringify(denySelected?{success:false,error:{code:"FORBIDDEN",message:"revoked"}}:{success:true,data:{actorId:"owner",items:[{id:"contact:outside",namePreview:"页外本人联系人",organizationPreview:"公司"}],asOf:"2026-09-25T00:00:00Z"}})});
-  });
-  await page.getByRole("button",{name:"选择联系人或事项",exact:true}).click();
-  await page.getByRole("button",{name:"搜索其他联系人",exact:true}).click();
-  await page.getByRole("textbox",{name:"搜索联系人",exact:true}).fill("页外");
-  await page.getByRole("button",{name:"页外本人联系人 · 公司",exact:true}).click();
-  await page.getByRole("button",{name:"重新确认联系人",exact:true}).waitFor();
-  assert.equal(await page.getByRole("button",{name:"AI 起草",exact:true}).isDisabled(),true);
-  assert.deepEqual(await page.evaluate(()=>(window as any).fixture.navigation),[]);
-  denySelected=false;
-  await page.getByRole("button",{name:"重新确认联系人",exact:true}).click();
-  await page.getByText(/已选择.*页外本人联系人/).waitFor();
-  assert.equal(await page.getByRole("button",{name:"AI 起草",exact:true}).isDisabled(),false);
+test("relationship follow-ups sit in the date groups, open their own page from either tap and never complete in place", async t => {
+  const day = 24 * 60 * 60 * 1000;
+  const followUp = (key: string, title: string, dueAt: string | null) => ({ itemKey: key, taskId: `rt:${key}`, connectionId: `connection:${key}`, contactId: `contact:${key}`, contactNamePreview: `联系人${key}`, titlePreview: title, status: "open", dueAt });
+  const page = await open(t, { followUpTotal: 5, followUps: [
+    followUp("a", "跟进逾期", new Date(Date.now() - 3 * day).toISOString()),
+    followUp("b", "跟进今天", new Date().toISOString()),
+    followUp("c", "跟进无日期", null),
+  ] });
+  await page.getByRole("checkbox", { name: "完成：跟进逾期", exact: true }).waitFor();
+  const headings = await page.getByRole("heading").evaluateAll(elements => elements.map(e => e.textContent));
+  assert.deepEqual(headings.filter(text => /^(已逾期|今天|之后|未安排)/.test(text ?? "")), ["已逾期1", "今天1", "未安排31"]);
+  for (const [title, connection] of [["跟进逾期", "a"], ["跟进今天", "b"], ["跟进无日期", "c"]]) {
+    const checkbox = page.getByRole("checkbox", { name: `完成：${title}`, exact: true });
+    const box = (await checkbox.boundingBox())!; assert.ok(box.width >= 40 && box.height >= 52);
+    await checkbox.click();
+    await page.getByRole("button", { name: new RegExp(`^${title}(，|$)`) }).click();
+    const navigation = await page.evaluate(() => (window as any).fixture.navigation.splice(0));
+    assert.deepEqual(navigation, [`/tasks/relationship/connection%3A${connection}`, `/tasks/relationship/connection%3A${connection}`]);
+  }
+  assert.ok(await page.getByRole("button", { name: /^跟进逾期，.+，联系人a$/ }).count());
+  const warningColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);
+  const overdueDate = page.getByText("跟进逾期", { exact: true }).locator("..").locator(":scope > *").nth(1).locator(":scope > *").first();
+  assert.equal(await overdueDate.evaluate(element => getComputedStyle(element).color), warningColor);
+  // The first page holds 3 of 5; the rest stay behind an explicit link to the old list.
+  assert.equal(await page.getByRole("heading", { name: "人脉跟进", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "还有 2 条跟进", exact: true }).click();
+  await page.getByRole("button", { name: "刷新人脉跟进", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "还有 2 条跟进", exact: true }).count(), 0);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
 test("private route blocks signed-out reads rather than displaying a personal task list", async t => {
@@ -253,20 +264,25 @@ async function waitForHeld(page: Page) {
   assert.fail("The real handler did not reach the held response boundary");
 }
 
-test("completion and reopen change one real route/service record with separate task and contact taps", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
+test("completion and reopen change one real route/service record with separate checkbox and detail taps", async t => {
+  const page = await open(t);
   const checkbox = page.getByRole("checkbox", { name: "完成：事项 22", exact: true }); await checkbox.waitFor();
+  const box = (await checkbox.boundingBox())!; assert.ok(box.width >= 40 && box.height >= 52);
   await page.getByRole("button", { name: /^事项 22，/ }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3A22"]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH").length), 0);
   const control = backends.get(page)!; control.holdWrites = true;
   await checkbox.evaluate(element => { element.dispatchEvent(new MouseEvent("click", { bubbles: true })); element.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   await waitForHeld(page);
   assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH").length), 1);
   control.holdWrites = false; control.release!();
-  await page.getByRole("tab", { name: "未完成 20", exact: true }).waitFor();
-  await page.getByRole("tab", { name: "已完成 22", exact: true }).click();
+  await checkbox.waitFor({ state: "detached" });
+  const fold = page.getByRole("button", { name: "展开已完成任务", exact: true });
+  await fold.getByText("31", { exact: true }).waitFor();
+  await fold.click();
   await page.getByRole("checkbox", { name: "恢复：事项 22", exact: true }).click();
-  await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();
+  await page.getByRole("button", { name: "收起已完成任务", exact: true }).getByText("30", { exact: true }).waitFor();
+  await checkbox.waitFor();
   const persisted = await control.repository.get("owner", "task:22");
   assert.equal(persisted.payload.task.status, "open");
   assert.deepEqual(persisted.payload.activities.map((item: any) => item.type), ["completed", "reopened"]);
@@ -278,7 +294,8 @@ test("failed completion retains the row and reuses its intent key on explicit re
   const checkbox = page.getByRole("checkbox", { name: "完成：事项 0", exact: true }); await checkbox.waitFor(); await checkbox.click();
   await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  control.failWrites = false; await checkbox.click(); await page.getByRole("tab", { name: "未完成 30", exact: true }).waitFor();
+  control.failWrites = false; await checkbox.click(); await checkbox.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "展开已完成任务", exact: true }).getByText("31", { exact: true }).waitFor();
   const writes = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH"));
   assert.equal(writes.length, 2); assert.equal(writes[0].body.idempotencyKey, writes[1].body.idempotencyKey);
   assert.equal((await control.repository.get("owner", "task:0")).payload.activities.length, 1);
@@ -289,7 +306,8 @@ test("a mismatched receipt is not accepted, and retry reads the original committ
   const checkbox = page.getByRole("checkbox", { name: "完成：事项 0", exact: true }); await checkbox.waitFor(); await checkbox.click();
   await page.getByRole("alert").filter({ hasText: "未能确认操作结果" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  control.wrongReceipt = false; await checkbox.click(); await page.getByRole("tab", { name: "未完成 30", exact: true }).waitFor();
+  control.wrongReceipt = false; await checkbox.click(); await checkbox.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "展开已完成任务", exact: true }).getByText("31", { exact: true }).waitFor();
   const writes = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH"));
   assert.equal(writes[0].body.idempotencyKey, writes[1].body.idempotencyKey);
   assert.equal((await control.repository.get("owner", "task:0")).payload.activities.length, 1);
@@ -305,19 +323,6 @@ test("an old actor's late completion cannot refresh or publish into the new acco
   assert.equal(await page.getByRole("checkbox").count(), 1);
   assert.equal(await page.getByRole("alert").count(), 0);
   assert.equal((await control.repository.get("other", "task:actor2")).payload.task.status, "open");
-});
-
-test("relationship tools require an explicit accessible contact and cancellation performs no writes", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).waitFor();
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.getByRole("button", { name: "选择联系人或事项", exact: true }).click();
-  await page.getByRole("button", { name: "真实联系人 · 真实机构 · 事项 22", exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: / · 事项 24$/ }).count(), 0);
-  await page.getByRole("button", { name: "取消选择", exact: true }).click();
-  assert.equal(await page.getByRole("button", { name: "真实联系人 · 真实机构 · 事项 22", exact: true }).count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });
 
 test("real task handlers deny unauthenticated and foreign-actor writes without touching the record", async () => {
@@ -338,162 +343,4 @@ test("real task handlers deny unauthenticated and foreign-actor writes without t
     assert.equal(stored.payload.task.status, "open");
     assert.deepEqual(stored.payload.activities, []);
   }
-});
-
-test("canonical suggestion previews and reminder queue remain separate from saved task counts", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).waitFor();
-  // Suggestions have their own canonical source. /api/tasks cannot supply them.
-  const suggestions = { actorId: "owner", scope: "relationship", total: 1, items: [{ id: "suggestion:1", titlePreview: "原有待确认建议", reasonPreview: "先确认合作方向", category: "relationship", updatedAt: "2026-09-25T00:00:00Z" }], nextCursor: null, hasMore: false, asOf: "2026-09-25T00:00:00Z" };
-  const notificationTime = "2026-09-25T00:00:00Z";
-  const notifications = { enabled: true, items: [{
-    id: "legacy-reminder:1", actorId: "owner", revision: 1, kind: "reminder", origin: "automation", semanticKey: "legacy-reminder:1",
-    title: "原有提醒候选", reason: "复核后安排", object: { id: "contact:legacy", name: "旧联系人" },
-    sources: [{ sourceKind: "reminder_plan", sourceId: "legacy-reminder:1", sourceRevision: "1", occurredAt: notificationTime, readAt: notificationTime }],
-    target: { kind: "source", id: "legacy-reminder:1", href: null, status: "available" }, actions: ["read"],
-    occurredAt: notificationTime, updatedAt: notificationTime, readAt: null, dueAt: notificationTime, disposition: "open"
-  }], unreadCount: 1, nextCursor: null, asOf: notificationTime };
-  for (const [endpoint, data] of [["**/api/task-suggestions/page?*", suggestions], [`**${INBOX_NOTIFICATIONS_PATH}?*`, notifications]] as const) {
-    await page.route(endpoint, async route => {
-      if (route.request().method() !== "GET") return route.fallback();
-      await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: true, data }) });
-    });
-  }
-  await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://legacy.example" }));
-  await page.getByText("原有待确认建议", { exact: true }).waitFor();
-  await page.getByRole("heading", { name: "待确认建议 1", exact: true }).waitFor();
-  await page.getByText("原有提醒候选", { exact: true }).waitFor();
-  await page.getByRole("tab", { name: "未完成 21", exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 21);
-  assert.equal(await page.getByRole("checkbox", { name: /未选择的联系人/ }).count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-  assert.equal(await page.evaluate(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/tasks")), false);
-});
-
-test("unavailable suggestion pages do not invent a zero or fall back to full tasks", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.route("**/api/task-suggestions/page?*", route => route.fulfill({ status: 503, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({success:false,error:{code:"UNAVAILABLE",message:"建议未能读取"}}) }));
-  await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://failure.example" }));
-  await page.getByText("建议未能读取", {exact:true}).waitFor();
-  assert.equal(await page.getByRole("heading", {name:"待确认建议 0",exact:true}).count(),0);
-  assert.equal(await page.getByText("暂无待确认建议。", {exact:true}).count(),0);
-  assert.equal(await page.evaluate(() => (window as any).fixture.requests.some((r:any)=>r.path==="/api/tasks")),false);
-});
-
-test("suggestion next page replaces twenty previews and rejects a foreign actor response", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  // Finish the initial default-host read before counting requests after the host change.
-  await page.getByRole("heading", { name: "待确认建议 0", exact: true }).waitFor();
-  let wrongActor=false;
-  const reads:string[]=[];
-  await page.route("**/api/task-suggestions/page?*", async route => {
-    const params=new URL(route.request().url()).searchParams;
-    assert.equal(params.get("limit"),"20");assert.equal(params.get("scope"),"relationship");
-    const cursor=params.get("cursor");reads.push(cursor??"first");
-    const start=cursor?20:0, length=cursor?5:20;
-    const data={actorId:wrongActor?"foreign":"owner",scope:"relationship",total:25,
-      items:Array.from({length},(_,n)=>({id:`suggestion:${start+n}`,titlePreview:`建议 ${start+n}`,reasonPreview:"复核依据",category:"relationship",updatedAt:"2026-09-25T00:00:00Z"})),
-      hasMore:!cursor,nextCursor:cursor?null:"signed-next",asOf:"2026-09-25T00:00:00Z"};
-    await route.fulfill({status:200,contentType:"application/json",headers:{"Access-Control-Allow-Origin":"null","Access-Control-Allow-Credentials":"true"},body:JSON.stringify({success:true,data})});
-  });
-  await page.evaluate(()=>(window as any).fixture.update({baseUrl:"https://suggestions.example"}));
-  await page.getByText("建议 0",{exact:true}).waitFor();
-  assert.equal(await page.getByText(/^建议 \d+$/).count(),20);
-  await page.getByRole("button",{name:"下一页",exact:true}).click();
-  await page.getByText("建议 24",{exact:true}).waitFor();
-  assert.equal(await page.getByText(/^建议 \d+$/).count(),5);
-  assert.equal(await page.getByText("建议 0",{exact:true}).count(),0);
-  assert.deepEqual(reads,["first","signed-next"]);
-  await page.getByRole("heading",{name:"待确认建议 25",exact:true}).waitFor();
-  wrongActor=true;
-  await page.getByRole("button",{name:"返回第一页",exact:true}).click();
-  await page.getByText("未能确认建议，请重试。",{exact:true}).waitFor();
-  assert.equal(await page.getByText(/^建议 \d+$/).count(),0);
-  assert.equal(await page.getByRole("heading",{name:"待确认建议 25",exact:true}).count(),0);
-});
-
-test("an unavailable reminder queue is shown as an error instead of an empty count", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.route(`**${INBOX_NOTIFICATIONS_PATH}?*`, async route => {
-    if (route.request().method() !== "GET") return route.fallback();
-    await route.fulfill({ status: 503, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: false, error: { code: "UNAVAILABLE", message: "提醒暂时无法读取" } }) });
-  });
-  await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://unavailable.example" }));
-  await page.getByText("提醒暂不可用", { exact: true }).waitFor();
-  assert.equal(await page.getByText("暂无待复核提醒。", { exact: true }).count(), 0);
-  assert.equal(await page.getByRole("heading", { name: "提醒队列 0", exact: true }).count(), 0);
-  assert.equal(await page.getByRole("checkbox").count(), 21);
-});
-
-test("migrated reminder instants follow the device zone across midnight", async t => {
-  const page = await open(t, { params: { scope: "relationship" }, timeZone: "America/New_York" });
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.route(`**${INBOX_NOTIFICATIONS_PATH}?*`, async route => {
-    if (route.request().method() !== "GET") return route.fallback();
-    const notificationTime = "2026-09-15T00:30:00Z";
-    const data = { enabled: true, items: [{
-      id: "zone-reminder", actorId: "owner", revision: 1, kind: "reminder", origin: "automation", semanticKey: "zone-reminder",
-      title: "跨日提醒", reason: "复核后安排", object: { id: "organization:legacy", name: "原有机构" },
-      sources: [{ sourceKind: "reminder_plan", sourceId: "zone-reminder", sourceRevision: "1", occurredAt: notificationTime, readAt: notificationTime }],
-      target: { kind: "source", id: "zone-reminder", href: null, status: "available" }, actions: ["read"],
-      occurredAt: notificationTime, updatedAt: notificationTime, readAt: null, dueAt: notificationTime, disposition: "open"
-    }], unreadCount: 1, nextCursor: null, asOf: notificationTime };
-    await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: true, data }) });
-  });
-  await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://new-york.example" }));
-  await page.getByText("跨日提醒", { exact: true }).waitFor();
-  await page.getByText(/2026-09-14 20:30/).waitFor();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-});
-
-test("selected task template opens actual IORBIT, waits for edited manual send and retains the contact reference", async t => {
-  const page = await open(t, { params: { scope: "relationship" }, followNavigation: true });
-  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  const draft = page.getByRole("button", { name: "起草联系消息", exact: true });
-  await draft.waitFor(); assert.equal(await draft.isEnabled(), false);
-  await page.getByRole("button", { name: "选择联系人或事项", exact: true }).click();
-  await page.getByRole("button", { name: "真实联系人 · 真实机构 · 事项 22", exact: true }).click();
-  await draft.click();
-  const composer = page.getByRole("textbox", { name: "消息", exact: true }); await composer.waitFor();
-  assert.match(await composer.inputValue(), /真实联系人.*邮件/s);
-  assert.match(await composer.inputValue(), /事项 22/);
-  const navigation = await page.evaluate(() => (window as any).fixture.navigation);
-  assert.equal(navigation[0].pathname, "/ai/[id]");
-  assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
-  assert.doesNotMatch(JSON.stringify(navigation[0]), /真实联系人|事项 22|contact:22/);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-  await composer.fill("我修改后的联系草稿需求");
-  await page.getByRole("button", { name: "发送消息", exact: true }).click();
-  await page.getByText("待复核的联系草稿", { exact: true }).first().waitFor();
-  await page.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/ai/conversations/sessions" && r.method === "POST"));
-  const writes = await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET"));
-  assert.equal(writes.length, 2);
-  assert.equal(writes[0].path, "/api/ai/conversations");
-  assert.equal(writes[0].body.message, "我修改后的联系草稿需求");
-  assert.deepEqual(writes[0].body.references, [{ id: "contact:22", type: "contact" }]);
-  assert.equal(writes[0].body.origin.entryPointId, "contact.followup_draft");
-  assert.deepEqual(writes[0].body.origin.template, { id: "contact.followup_email_draft", version: 1 });
-  assert.deepEqual(writes[1].body.session.messages.find((message: any) => message.role === "user").references, [{ id: "contact:22", type: "contact" }]);
-});
-
-for (const [button, content] of [["生成候选", /待复核的联系任务候选/], ["生成提醒候选", /待复核的提醒候选/]] as const) {
-  test(`${button} enters actual IORBIT as editable text with no automatic send`, async t => {
-    const page = await open(t, { params: { scope: "relationship" }, followNavigation: true });
-    await page.getByRole("button", { name: button, exact: true }).click();
-    const composer = page.getByRole("textbox", { name: "消息", exact: true }); await composer.waitFor();
-    assert.match(await composer.inputValue(), content);
-    assert.equal(await page.getByRole("button", { name: /^移除联系人：/ }).count(), 0);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
-  });
-}
-
-test("existing drafts and calendar remain reachable through navigation without business writes", async t => {
-  const page = await open(t, { params: { scope: "relationship" } });
-  await page.getByRole("button", { name: "查看已有草稿与候选", exact: true }).click();
-  await page.getByRole("button", { name: "回到日程", exact: true }).click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/ai?drawer=1", "/schedule"]);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
 });

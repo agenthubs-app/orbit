@@ -2,7 +2,7 @@ import * as Crypto from "expo-crypto";
 import * as Clipboard from "expo-clipboard";
 import { type Href, useGlobalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Linking, Platform, RefreshControl, StyleSheet, View } from "react-native";
+import { Linking, Platform, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 
 import { taskPath } from "../../api/endpoints";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -29,27 +29,50 @@ import { TodoManualDraft, todoManualDraftForScope, todoManualMailto } from "./To
 import { TODO_SENT_ENCOUNTER_NOTE, todoHandoffTarget, todoHandoffRetryTarget, todoHandoffTaskReceipt, todoEncounterReceipt } from "./todo-handoff-request";
 import { todoHandoffStorage } from "./todo-handoff-storage";
 import { beginTodoHandoffConfirmation, clearTodoHandoff, markTodoHandoff, markTodoHandoffTaskCompleted, orphanedTodoHandoffs, pendingTodoHandoff, todoHandoffStorageKey, type TodoHandoffRecord } from "./todo-handoff-state";
-import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoInitialView, todoLifecycleResolvePath, todoLifecycleResolvedHref, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
+import { laterTaskDatePatch, todoDecisionHref, todoFollowupHref, todoLifecycleResolvePath, todoLifecycleResolvedHref, todoNativeDecisionReceipt, todoNativeDecisionRequest, todoNativeSnoozeReceipt, todoNativeSnoozeRequest, todoSuggestionDecisionRequest, todoSuggestionDecisionReceipt, todoSuggestionSnoozeRequest, todoSuggestionSnoozeReceipt, todoTaskCompletionReceipt } from "./todo-actions";
 import { appendTodoSourcePage, todoAggregateHidden } from "./todo-page-model";
 import { useTodoPage } from "./useTodoPage";
+import { Icon } from "../../components/ui/Icon";
+import { UiText as Text } from "../../components/ui/Text";
+import { useOrbitTheme } from "../../design/theme";
 
-/** Until SC09 replaces the general task list, retain it as an explicit second view. */
+/**
+ * UX-7: the To-do tab opens on the one Reminders-style list; suggestions (decisions and next moves
+ * from Orbit and iOrbit) are one row above it that opens the suggestion page.
+ */
 export function TodoTaskSlot() {
   const params = useGlobalSearchParams<{ view?: string | string[]; entry?: string | string[] }>();
   const router = useRouter();
   const { t } = useOrbitLocale();
-  const [view, setView] = useState(() => todoInitialView(params.view));
-  useEffect(() => { if (todoInitialView(params.view) === "tasks") setView("tasks"); }, [params.view]);
-  if (view === "tasks") return <View style={slotStyles.list}>
-    <View style={slotStyles.back}><Button label={t("todo.backToTodo")} onPress={() => { setView("home"); router.setParams({ view: "open" }); }} variant="ghost" /></View>
-    <TasksScreen />
+  const entry = Array.isArray(params.entry) ? params.entry[0] : params.entry;
+  const [view, setView] = useState<"list" | "suggestions">(() => entry ? "suggestions" : "list");
+  useEffect(() => { if (entry) setView("suggestions"); }, [entry]);
+  if (view === "suggestions") return <View style={slotStyles.list}>
+    <View style={slotStyles.back}><Button label={t("todo.backToTodo")} icon="left" onPress={() => { setView("list"); router.setParams({ view: "open", entry: undefined }); }} variant="ghost" /></View>
+    <TodoScreen focusedEntryId={entry} hideFollowups />
   </View>;
-  return <TodoScreen focusedEntryId={Array.isArray(params.entry) ? params.entry[0] : params.entry}
-    onShowTasks={() => { setView("tasks"); router.setParams({ view: "all" }); }} />;
+  return <TasksScreen listHeader={<TodoSuggestionsRow onOpen={() => setView("suggestions")} />} />;
+}
+
+function TodoSuggestionsRow({ onOpen }: { onOpen: () => void }) {
+  const { timeZone } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
+  const { colors } = useOrbitTheme();
+  const date = localParts(new Date(), timeZone).date;
+  const { page } = useTodoPage(timeZone, date);
+  const count = page ? page.counts.decisions + page.counts.nextMoves : 0;
+  if (!page || count === 0) return null;
+  return <Pressable accessibilityRole="button" accessibilityLabel={locale.t("todo.suggestionsRow", { count })} onPress={onOpen}
+    style={({ pressed }) => [slotStyles.suggestions, { backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}>
+    <View style={[slotStyles.suggestionIcon, { backgroundColor: colors.accentSoft }]}><Icon name="sparkle" size={16} color={colors.accentText} /></View>
+    <Text style={[slotStyles.suggestionText, { color: colors.ink }]}>{locale.t("todo.suggestionsTitle")}</Text>
+    <Text style={[slotStyles.suggestionCount, { color: colors.ink3Text }]}>{page.countsCapped.decisions || page.countsCapped.nextMoves ? `${count}+` : count}</Text>
+    <Icon name="right" size={16} color={colors.ink3Text} />
+  </Pressable>;
 }
 
 /** The first To-do page is a read-only aggregate; actions still use their owning source. */
-export function TodoScreen({ onShowTasks, focusedEntryId }: { onShowTasks?: () => void; focusedEntryId?: string | undefined }) {
+export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false }: { onShowTasks?: () => void; focusedEntryId?: string | undefined; hideFollowups?: boolean }) {
   const { timeZone } = useOrbitTimeZone();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(timer); }, []);
@@ -435,7 +458,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId }: { onShowTasks?: () =
   if (!page && todoAggregateHidden(todo.state)) return null;
 
   return <AppScreen inset="kit" title={locale.t("tasks.title")} refreshControl={<RefreshControl refreshing={todo.state.refreshing} onRefresh={refresh} />}>
-    {page ? <TodoSections page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds} focusedEntryId={focusedEntryId}
+    {page ? <TodoSections showFollowups={!hideFollowups} page={page} offline={offline} staleDay={staleDay} busy={busy} pagingSection={pagingSection} pagingFailedSection={pagingFailedSection} mirroredTaskIds={mirroredTaskIds} focusedEntryId={focusedEntryId}
       onRefresh={refresh} canOpen={item => "actions" in item ? todoDecisionHref(item) !== null : true}
       onMore={section => { void loadMore(section); }}
       canOpenFollowup={item => item.kind === "lifecycle"
@@ -484,4 +507,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId }: { onShowTasks?: () =
   </AppScreen>;
 }
 
-const slotStyles = StyleSheet.create({ list: { flex: 1 }, back: { paddingHorizontal: 16, paddingTop: 8 }, allTasks: { paddingHorizontal: 16, paddingBottom: 20 } });
+const slotStyles = StyleSheet.create({ list: { flex: 1 }, back: { paddingHorizontal: 16, paddingTop: 8 }, allTasks: { paddingHorizontal: 16, paddingBottom: 20 },
+  suggestions: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52, paddingHorizontal: 14, borderRadius: 14 },
+  suggestionIcon: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  suggestionText: { flex: 1, fontSize: 17 }, suggestionCount: { fontSize: 17 } });

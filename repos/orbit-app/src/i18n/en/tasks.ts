@@ -1,6 +1,7 @@
 export const tasks = {
   "tasks.title": "Tasks",
   "tasks.save": "Save",
+  "tasks.moreFollowUps": "{count} more follow-ups",
   "tasks.groupOverdue": "Overdue",
   "tasks.groupToday": "Today",
   "tasks.groupLater": "Later",

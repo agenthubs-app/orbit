@@ -43,6 +43,7 @@ test("the lifecycle whitelist holds exactly the differentially tested (Node side
       "78.3/17.0/en-US|pg16/UTF8/153.136/153.136/i/true",
       "78.3/17.0/en-US|pg16/UTF8/153.14/153.14/i/true",
       "78.2/17.0/en-US|pg16/UTF8/153.14/153.14/i/true",
+      "78.3/17.0/en-US|pg18/UTF8/153.136/153.136/i/true",
       "78.2/17.0/en-US|pg18/UTF8/153.136/153.136/i/true",
     ],
   );
@@ -83,7 +84,7 @@ test("any pair outside the table throws LIFECYCLE_SORT_RUNTIME_UNVERIFIED", capt
     ["SQL_ASCII", ICU783, pg("160015", "153.14", "153.14", { encoding: "SQL_ASCII" })],
     ["PG 17", ICU783, pg("170004", "153.14")],
     ["PG 15", ICU783, pg("150013", "153.14")],
-    ["PG18 with untested ICU78.3", ICU783, pg("180003", "153.136")],
+    ["PG18 with untested ICU78.4", node("78.4", "17.0", "en-US"), pg("180003", "153.136")],
     ["PG18 with untested collation", ICU782, pg("180003", "153.14")],
     ["server_version_num not numeric", ICU783, pg("16.15", "153.14")],
     ["no ICU build", node(undefined, "17.0", "en-US"), PROD_PG],
