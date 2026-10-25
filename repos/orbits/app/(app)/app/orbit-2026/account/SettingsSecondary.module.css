@@ -40,3 +40,39 @@
 @media (max-width: 1279px) { .readCard { grid-column: span 12; } }
 /* 390: kit .card + .card adds 14 on top of the grid gap (b12 W-R18a-22). */
 @media (max-width: 767px) { .connGrid { grid-template-columns: minmax(0, 1fr); } .connCard, .readCard { grid-column: 1; } .connCard + .connCard, .connCard + .readCard { margin-top: var(--space-14); } }
+
+/* 言語と外観, b12 W-R18a-03: kit .card.span12 + .card-h, .grid3 of .tile (2px border, plum when on), .prev thumbnails. */
+.appearance { display: grid; gap: var(--space-18); }
+.setCard { padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); }
+.setCardHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.setCardHead h2 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
+.setCardHead span { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-12); }
+.grid3 .tile { height: auto; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px; border: 2px solid transparent; border-radius: var(--r-bubble); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: var(--lh-body); text-align: left; white-space: normal; cursor: pointer; }
+.grid3 .tileOn { border-color: var(--plum-500); background: var(--surface); }
+.tileRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tileName { font-size: var(--fs-emph); }
+/* kit .chip.lav holding the check icon */
+.tileCheck { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-text); }
+.tileCheck svg { width: 16px; height: 16px; }
+.tileSub { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.prev { height: 70px; border-radius: var(--r-row); display: grid; grid-template-columns: 26px 1fr; gap: 6px; padding: 8px; }
+.prev i { display: block; border-radius: var(--r-tag); }
+.prev > span { display: grid; gap: 5px; align-content: start; }
+.prev_light { background: var(--preview-light-bg); }
+.prev_light i { background: var(--preview-light-line); }
+.prev_dark { background: var(--preview-dark-bg); }
+.prev_dark i { background: var(--preview-dark-line); }
+.prev > span > i:nth-child(1), .prev > span > i:nth-child(2) { height: 8px; }
+.prev > span > i:nth-child(2) { width: 60%; }
+.prev > span > i:nth-child(3) { height: 18px; opacity: .6; }
+.prev_system { background: linear-gradient(90deg, var(--preview-light-bg) 50%, var(--preview-dark-bg) 50%); }
+.accountRow { display: flex; align-items: center; gap: 14px; }
+.accountAvatar { width: 56px; height: 56px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-text); display: grid; place-items: center; font-size: var(--fs-section); font-weight: var(--fw-heavy); flex: none; }
+.accountText { flex: 1; min-width: 0; }
+.accountText b { display: block; font-size: var(--fs-emph); }
+.accountText span { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.accountRow .accountButton { height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; display: inline-flex; align-items: center; }
+.accountRow .accountDanger { background: transparent; color: var(--coral-text); }
+/* 390 (b12 W-R18a-24): one column, kit .card padding 18 and .card + .card 14 on top of the gap. */
+@media (max-width: 767px) { .grid3 { grid-template-columns: minmax(0, 1fr); } .setCard { padding: var(--space-18); } .setCard + .setCard { margin-top: var(--space-14); } .accountRow { flex-wrap: wrap; } }

@@ -63,7 +63,11 @@ export const designColors = {
     paperInk2: "#8B8692",
     cam: "#0F0E12",
     cam2: "#24222A",
-    camInk: "#FFFFFF"
+    camInk: "#FFFFFF",
+    previewLightBg: "#F7F5F7",
+    previewLightLine: "#E3DEE7",
+    previewDarkBg: "#19181C",
+    previewDarkLine: "#393840"
   },
   dark: {
     bg: "#19181C",
@@ -126,7 +130,11 @@ export const designColors = {
     paperInk2: "#8B8692",
     cam: "#0F0E12",
     cam2: "#24222A",
-    camInk: "#FFFFFF"
+    camInk: "#FFFFFF",
+    previewLightBg: "#F7F5F7",
+    previewLightLine: "#E3DEE7",
+    previewDarkBg: "#19181C",
+    previewDarkLine: "#393840"
   }
 } as const;
 

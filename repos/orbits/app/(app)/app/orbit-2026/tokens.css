@@ -65,6 +65,10 @@
   --cam: #0F0E12;
   --cam-2: #24222A;
   --cam-ink: #FFFFFF;
+  --preview-light-bg: #F7F5F7;
+  --preview-light-line: #E3DEE7;
+  --preview-dark-bg: #19181C;
+  --preview-dark-line: #393840;
   --shadow-float: 0 10px 30px -12px rgba(60, 40, 90, 0.22);
   --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-knob: 0 1px 3px rgba(30, 26, 36, 0.25);
@@ -270,6 +274,10 @@
     --cam: #0F0E12;
     --cam-2: #24222A;
     --cam-ink: #FFFFFF;
+    --preview-light-bg: #F7F5F7;
+    --preview-light-line: #E3DEE7;
+    --preview-dark-bg: #19181C;
+    --preview-dark-line: #393840;
     --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
     --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-knob: 0 1px 3px rgba(243, 240, 246, 0.25);
@@ -342,6 +350,10 @@
   --cam: #0F0E12;
   --cam-2: #24222A;
   --cam-ink: #FFFFFF;
+  --preview-light-bg: #F7F5F7;
+  --preview-light-line: #E3DEE7;
+  --preview-dark-bg: #19181C;
+  --preview-dark-line: #393840;
   --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
   --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-knob: 0 1px 3px rgba(243, 240, 246, 0.25);

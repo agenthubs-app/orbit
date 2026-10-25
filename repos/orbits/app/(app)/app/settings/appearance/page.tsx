@@ -8,5 +8,5 @@ import { settingsCopy } from "../../orbit-2026/account/settings-copy";
 export default function AppearanceSettingsPage() {
   const { language } = useOrbitLanguage();
   const t = settingsCopy(language);
-  return <AccountLayout active="appearance" title={t("appearance")}><AppearanceSettings /></AccountLayout>;
+  return <AccountLayout active="appearance" title={t("appearance")} subtitle={t("appearanceIntro")}><AppearanceSettings /></AccountLayout>;
 }
