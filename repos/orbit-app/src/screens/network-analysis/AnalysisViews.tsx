@@ -6,7 +6,7 @@ import { StyleSheet, View } from "react-native";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 
 import type { NetworkAnalysisDistribution, NetworkAnalysisGap, NetworkAnalysisInsight, NetworkAnalysisOpportunity, NetworkAnalysisViewDTO } from "../../api/contract/network-analysis-view";
-import { AvatarStack, Button, Card, Chip, Icon, MacTile, RingChart, SampleTag, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { AvatarStack, Button, Card, Chip, Icon, MacTile, RingChart, SampleTag, Segmented, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import type { OrbitColors } from "../../design/tokens";
 import type { MessageKey } from "../../i18n/messages";
@@ -117,26 +117,67 @@ export function LockedView({ total, required, missing, onAddCards }: { total: nu
 
 /* ---------- 構造 (b5 #33 / #34) ---------- */
 
-function DimensionCard({ title, distribution, onOpen, compactTop = false }: { title: string; distribution: NetworkAnalysisDistribution; onOpen: (selection: DrillSelection) => void; compactTop?: boolean }) {
+type CompositionDimension = NetworkAnalysisDistribution["dimension"];
+
+/** Distinct slice hues (a budget-app pie, not one colour family); the unknown buckets are grey and always last. */
+const sliceColors = (colors: OrbitColors) => [colors.plum700, colors.macBlueInk, colors.macTealInk, colors.macApricotInk, colors.macPinkInk] as const;
+const isUnknownBucket = (dimension: CompositionDimension, id: string) => id === "rest" || id === "unset" || id === "none" || (dimension === "met" && id === "other");
+
+/**
+ * 構造 as one pie card (user 2026-10-25: every breakdown as a pie, like a budgeting app): a breakdown switch, a donut
+ * with the total inside, and the buckets largest first with share and count; a row opens its drill-down list.
+ */
+function CompositionCard({ structure, onOpen }: { structure: NonNullable<NetworkAnalysisViewDTO["structure"]>; onOpen: (selection: DrillSelection) => void }) {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
-  if (distribution.buckets.length === 0) return null;
-  const max = Math.max(1, ...distribution.buckets.map((bucket) => bucket.count));
+  const [dimension, setDimension] = useState<CompositionDimension>("industry");
+  const distributions: Record<CompositionDimension, NetworkAnalysisDistribution> = {
+    industry: structure.industries, seniority: structure.seniority, region: structure.regions, met: structure.mets,
+  };
+  const titles: Record<CompositionDimension, string> = {
+    industry: t("networkAnalysis.industry"), seniority: t("networkAnalysis.seniority"), region: t("networkAnalysis.region"), met: t("networkAnalysis.met"),
+  };
+  const distribution = distributions[dimension];
+  const total = Math.max(1, distribution.total);
+  const palette = sliceColors(colors);
+  const known = distribution.buckets.filter((bucket) => bucket.count > 0 && !isUnknownBucket(dimension, bucket.id)).sort((a, b) => b.count - a.count);
+  const unknown = distribution.buckets.filter((bucket) => bucket.count > 0 && isUnknownBucket(dimension, bucket.id));
+  const slices = [
+    ...known.map((bucket, index) => ({ bucket, color: palette[index % palette.length]! })),
+    ...unknown.map((bucket) => ({ bucket, color: colors.ink4 })),
+  ];
   return (
-    <Card style={compactTop ? styles.afterGap : styles.gapTop}>
-      <View testID={`analysis-dimension-${distribution.dimension}`}>
-        <CardHead title={title} right={<Icon name="right" size={16} color={colors.ink3} />} />
-        {distribution.buckets.map((bucket, index) => {
-          const label = bucketLabel(distribution.dimension, bucket.id, t, language);
-          return (
-            <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.openDimension", { label })} onPress={() => onOpen({ dimension: distribution.dimension, bucketId: bucket.id })} style={styles.dim}>
-              <UiText numberOfLines={1} style={styles.dimLabel}>{label}</UiText>
-              <View style={styles.grow}><ThinBar value={bucket.count / max} rose={index > 0} /></View>
-              <UiText style={styles.dimCount}>{bucket.count}</UiText>
-              <Icon name="right" size={16} color={colors.ink3} />
-            </UiPressable>
-          );
-        })}
+    <Card>
+      <View testID="analysis-composition">
+        <CardHead title={t("networkAnalysis.composition")} right={<UiText style={styles.lbl}>{t("networkAnalysis.tapForList")}</UiText>} />
+        <Segmented accessibilityLabel={t("networkAnalysis.compositionPick")} value={dimension} onChange={setDimension}
+          segments={(["industry", "seniority", "region", "met"] as const).map((key) => ({ key, label: titles[key] }))} />
+        <View style={styles.pieWrap}>
+          <View>
+            <RingChart size={188} stroke={30} cap="butt" accessibilityLabel={`${titles[dimension]} ${distribution.total}`}
+              segments={slices.map(({ bucket, color }) => ({ value: bucket.count, color }))} />
+            <View style={styles.ringCenter} pointerEvents="none">
+              <UiText style={styles.pieTotal}>{distribution.total}</UiText>
+              <UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText>
+            </View>
+          </View>
+        </View>
+        <View testID={`analysis-dimension-${dimension}`}>
+          {slices.map(({ bucket, color }, index) => {
+            const label = bucketLabel(dimension, bucket.id, t, language);
+            const percent = Math.round((bucket.count / total) * 100);
+            return (
+              <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.compositionRow", { label, count: bucket.count, percent })}
+                onPress={() => onOpen({ dimension, bucketId: bucket.id })} style={[styles.pieRow, index > 0 ? styles.legLine : null]}>
+                <View style={[styles.pieDot, { backgroundColor: color }]} />
+                <UiText numberOfLines={1} style={[styles.legLabel, styles.grow]}>{label}</UiText>
+                <UiText style={styles.pieCount}>{bucket.count}</UiText>
+                <UiText style={styles.piePercent}>{percent}%</UiText>
+                <Icon name="right" size={16} color={colors.ink3} />
+              </UiPressable>
+            );
+          })}
+        </View>
       </View>
     </Card>
   );
@@ -165,50 +206,18 @@ export function StructureView({ view, snapshot, names, onOpen, onOpenPerson }: {
   view: NetworkAnalysisViewDTO; snapshot: NetworkSnapshotView | null; names: Record<string, EvidencePerson>;
   onOpen: (selection: DrillSelection) => void; onOpenPerson: (contactId: string) => void;
 }) {
-  const { styles, colors } = useStyles();
-  const { t, language } = useOrbitLocale();
+  const { styles } = useStyles();
+  const { t } = useOrbitLocale();
   const structure = view.structure;
   if (!structure) return null;
-  const industries = structure.industries;
-  const palette = ringColors(colors);
   const gap = structure.gaps?.[0] ?? null;
   const gapBlock = gap ? snapshot?.blocks.find((block) => block.kind === "gap" && block.needId === gap.needId) ?? null : null;
   return (
     <View testID="analysis-structure">
-      <Card>
-        <View testID="analysis-dimension-industry">
-          <CardHead title={t("networkAnalysis.industry")} right={<UiText style={styles.lbl}>{t("networkAnalysis.tapForList")}</UiText>} />
-          <View style={styles.ringRow}>
-            <View>
-              <RingChart size={118} stroke={13} accessibilityLabel={`${t("networkAnalysis.industry")} ${industries.total}`}
-                segments={industries.buckets.map((bucket, index) => ({ value: bucket.count, color: palette[Math.min(index, 3)]! }))} />
-              <View style={styles.ringCenter} pointerEvents="none">
-                <UiText style={styles.ringTotal}>{industries.total}</UiText>
-                <UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText>
-              </View>
-            </View>
-            <View style={styles.grow}>
-              {industries.buckets.map((bucket, index) => {
-                const label = bucketLabel("industry", bucket.id, t, language);
-                return (
-                  <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.openDimension", { label })} onPress={() => onOpen({ dimension: "industry", bucketId: bucket.id })} style={[styles.leg, index > 0 ? styles.legLine : null]}>
-                    <View style={[styles.legSwatch, { backgroundColor: palette[Math.min(index, 3)] }]} />
-                    <UiText numberOfLines={1} style={[styles.legLabel, styles.grow]}>{label}</UiText>
-                    <UiText style={styles.legCount}>{bucket.count}</UiText>
-                    <Icon name="right" size={16} color={colors.ink3} />
-                  </UiPressable>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </Card>
-      {gap ? <GapCard gap={gap} total={industries.total} block={gapBlock} names={names} onOpenPerson={onOpenPerson} /> : structure.gaps === null ? (
+      <CompositionCard structure={structure} onOpen={onOpen} />
+      {gap ? <GapCard gap={gap} total={structure.industries.total} block={gapBlock} names={names} onOpenPerson={onOpenPerson} /> : structure.gaps === null ? (
         <View style={styles.gapCard} testID="analysis-gap-unavailable"><UiText style={styles.gapBodyPlain}>{t("networkAnalysis.gapUnavailable")}</UiText></View>
       ) : null}
-      <DimensionCard title={t("networkAnalysis.seniority")} distribution={structure.seniority} onOpen={onOpen} compactTop />
-      <DimensionCard title={t("networkAnalysis.region")} distribution={structure.regions} onOpen={onOpen} />
-      <DimensionCard title={t("networkAnalysis.met")} distribution={structure.mets} onOpen={onOpen} />
     </View>
   );
 }
@@ -403,6 +412,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   // 業界 ring + kit .leg
   ringRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   ringTotal: { fontSize: 28, fontWeight: "800", color: colors.ink, lineHeight: 31, fontVariant: ["tabular-nums"] },
+  pieWrap: { alignItems: "center", paddingTop: 18, paddingBottom: 14 },
+  pieTotal: { fontSize: 34, fontWeight: "800", color: colors.ink, lineHeight: 38, fontVariant: ["tabular-nums"] },
+  pieRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
+  pieDot: { width: 12, height: 12, borderRadius: 6 },
+  pieCount: { fontSize: 15, color: colors.ink3Text, fontVariant: ["tabular-nums"] },
+  piePercent: { width: 48, textAlign: "right", fontSize: 15, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   leg: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, minHeight: 34 },
   legLine: { borderTopWidth: 1, borderTopColor: colors.line },
   legSwatch: { width: 10, height: 10, borderRadius: 3 },

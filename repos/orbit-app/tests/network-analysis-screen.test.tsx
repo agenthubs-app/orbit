@@ -197,7 +197,9 @@ test("14 people (b5 #33): 構造 by default, the 参考値 banner, the four dime
   assert.equal(await page.getByRole("tab", { name: "構造" }).getAttribute("aria-selected"), "true");
   await text(page, "不足：CVC・事業会社の投資担当").waitFor();
   await text(page, "プランでは 4人必要ですが、今は 0人。名刺が増えると候補を探せます").waitFor();
-  for (const label of ["業界", "役職層", "地域", "出会った場所"]) await text(page, label).waitFor();
+  // One pie card with a breakdown switch (user 2026-10-25): the four breakdowns are its tabs.
+  for (const label of ["業界", "役職層", "地域", "出会った場所"]) await page.getByRole("tab", { name: label }).waitFor();
+  await page.getByRole("tab", { name: "地域" }).click();
   await page.getByTestId("analysis-dimension-region").getByText("東京", { exact: true }).waitFor();
 });
 
@@ -205,23 +207,27 @@ test("286 people (b5 #34): subtitle with the snapshot date, the ring and legend 
   const page = await openPage(t, { answers: { [VIEW]: many286, [SNAPSHOT]: snapshot(blocks) } });
   await text(page, "286人 · 10/7 更新").waitFor();
   assert.equal(await page.getByTestId("analysis-reference").count(), 0, "30 or more: no 参考値 banner");
-  const industry = page.getByTestId("analysis-dimension-industry");
-  await industry.getByText("286", { exact: true }).waitFor();
-  for (const [label, count] of [["金融・投資", "105"], ["製造・サプライチェーン", "83"], ["テクノロジー・インターネット", "63"], ["貿易・物流", "35"]]) {
-    const row = page.getByRole("button", { name: `${label}の名簿` }).first();
-    assert.equal((await row.innerText()).replace(/\s+/g, ""), `${label}${count}`);
+  await page.getByTestId("analysis-composition").getByText("286", { exact: true }).waitFor();
+  // Each row: the share of the 286 people, rounded (105 → 37%).
+  for (const [label, count, percent] of [["金融・投資", "105", "37"], ["製造・サプライチェーン", "83", "29"], ["テクノロジー・インターネット", "63", "22"], ["貿易・物流", "35", "12"]]) {
+    const row = page.getByTestId("analysis-dimension-industry").getByRole("button", { name: `${label}、${count}人、${percent}%` });
+    assert.equal((await row.innerText()).replace(/\s+/g, ""), `${label}${count}${percent}%`);
   }
+  await page.getByRole("tab", { name: "役職層" }).click();
   const seniority = page.getByTestId("analysis-dimension-seniority");
   for (const value of ["経営層", "74", "部長クラス", "96", "担当者", "116"]) await seniority.getByText(value, { exact: true }).waitFor();
+  await page.getByRole("tab", { name: "地域" }).click();
   const region = page.getByTestId("analysis-dimension-region");
   for (const value of ["東京", "188", "大阪", "41", "名古屋", "33", "その他", "24"]) await region.getByText(value, { exact: true }).waitFor();
   await text(page, "プランでは 4人必要ですが、今は 1人。小林さん（丸の内イノベーションラボ）経由で会える可能性があります").waitFor();
   await page.getByRole("button", { name: "根拠を見る" }).first().click();
   await text(page, "根拠：プランの必要人脈 · 役職と会社の分類（286人）").waitFor();
   await page.getByRole("button", { name: "紹介ルートを見る" }).click();
-  await page.getByRole("button", { name: "金融・投資の名簿" }).click();
-  await region.getByRole("button", { name: "東京の名簿" }).click();
-  await region.getByRole("button", { name: "その他の名簿" }).click();
+  await page.getByRole("tab", { name: "業界" }).click();
+  await page.getByRole("button", { name: "金融・投資、105人、37%" }).click();
+  await page.getByRole("tab", { name: "地域" }).click();
+  await region.getByRole("button", { name: "東京、188人、66%" }).click();
+  await region.getByRole("button", { name: "その他、24人、8%" }).click();
   assert.deepEqual(await navigation(page), ["/contacts/c-kobayashi", "/contacts/analysis/industry/finance_investment", "/contacts/analysis/region/Tokyo", "/contacts/analysis/region/rest"]);
 });
 

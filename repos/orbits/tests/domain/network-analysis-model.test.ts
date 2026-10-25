@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { REGION_CITY_ALIASES } from "../../shared/domain/regions";
 import {
+  ANALYSIS_CITY_ALIASES, analysisCityFromLocation, analysisSeniorityFromTitle,
   availableSorts, buildNetworkAnalysisPeople, buildNetworkAnalysisView, bucketMembers, distribution, insights, opportunities, planGaps,
   type NetworkAnalysisNeed, type NetworkAnalysisRow,
 } from "../../features/network-analysis/analysis-model";
@@ -31,8 +33,9 @@ test("every distribution adds up to the total; the fourth industry / region row 
     ...many(6, { primaryIndustryId: "finance_investment", city: "Tokyo", metKind: "event", seniorityLevel: "c_level" }),
     ...many(4, { primaryIndustryId: "manufacturing_supply_chain", city: "Osaka", metKind: "referral", seniorityLevel: "manager" }),
     ...many(3, { primaryIndustryId: "technology_internet", city: "Nagoya", metKind: "visit", seniorityLevel: "individual_contributor" }),
-    ...many(2, { primaryIndustryId: "retail_consumer", city: "Kyoto" }),
-    ...many(2, {}),
+    // No stored level and no title: unset (a title would be read as a level, see the fallback test below).
+    ...many(2, { primaryIndustryId: "retail_consumer", city: "Kyoto", role: "" }),
+    ...many(2, { role: "" }),
   ];
   const industries = distribution(rows, "industry");
   assert.deepEqual(industries.buckets, [{ id: "finance_investment", count: 6 }, { id: "manufacturing_supply_chain", count: 4 }, { id: "technology_internet", count: 3 }, { id: "rest", count: 4 }]);
@@ -124,4 +127,26 @@ test("drill-down list: 段階の内訳 adds up; sorts offered only with data; pa
   assert.equal(buildNetworkAnalysisPeople({ rows, needs: [], dimension: "industry", bucketId: "finance_investment", sort: "goal", now: NOW })!.sort, "recent", "an order the data cannot support falls back");
   assert.equal(buildNetworkAnalysisPeople({ rows, needs: [], dimension: "opportunity", bucketId: "nope", now: NOW }), null);
   assert.throws(() => buildNetworkAnalysisPeople({ rows, needs: [], dimension: "industry", bucketId: "finance_investment", cursor: "%%%", now: NOW }), /NETWORK_ANALYSIS_CURSOR_INVALID/);
+});
+
+test("display fallbacks: an empty city reads the location, an empty level reads the title; stored values win", () => {
+  const rows = [
+    person({ location: "113-0033 東京都文京区本郷4丁目2-2", role: "代表取締役社長" }),
+    person({ location: "深圳", role: "市场负责人" }),
+    person({ location: "Osaka, Japan", role: "Product Manager" }),
+    person({ location: "京都府京都市", role: "DX 顾问" }),
+    person({ city: "Nagoya", location: "東京", seniorityLevel: "individual_contributor", role: "創業者 CEO" }),
+    person({ location: "somewhere", role: "" }),
+  ];
+  assert.deepEqual(distribution(rows, "region").buckets, [{ id: "Kyoto", count: 1 }, { id: "Nagoya", count: 1 }, { id: "Osaka", count: 1 }, { id: "rest", count: 3 }]);
+  assert.deepEqual(distribution(rows, "seniority").buckets, [{ id: "decision", count: 1 }, { id: "manager", count: 2 }, { id: "staff", count: 2 }, { id: "unset", count: 1 }]);
+  assert.equal(analysisCityFromLocation("東京都千代田区"), "Tokyo", "東京都 contains 京都: the longest alias wins");
+  assert.equal(analysisCityFromLocation("Kobeya Street"), null, "ASCII aliases match whole words only");
+  assert.equal(analysisSeniorityFromTitle("投资合伙人"), "decision");
+  assert.equal(analysisSeniorityFromTitle("销售总监"), "decision");
+  assert.equal(analysisSeniorityFromTitle("  "), null);
+});
+
+test("the analysis city aliases are the region domain's aliases (compute cannot import shared/domain)", () => {
+  assert.deepEqual(ANALYSIS_CITY_ALIASES.map(([city, aliases]) => [city, [...aliases]]), REGION_CITY_ALIASES.map((entry) => [entry.city, [...entry.aliases]]));
 });
