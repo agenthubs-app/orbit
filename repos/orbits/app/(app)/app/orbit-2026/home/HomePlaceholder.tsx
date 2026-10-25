@@ -11,28 +11,25 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
 import { monthHeading } from "../shell/month-heading";
-import { ShellBellButton, ShellSearchButton } from "../shell/Orbit2026Shell";
+import { DefaultRail, ShellBellButton, ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
-import { Button, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import { Button, Icon, MacTile, Orbit2026Scope, ToastProvider, useToast } from "../ui";
+import type { AvatarTone } from "../ui/Basics";
 import { ContactDrawer } from "../network/ContactDrawer";
-import { HomeCardBody, useGuideProgress, useSecretaryPreview } from "./HomeCards";
+import { HOME_HEAD, HomeCardBody, useGuideProgress, useSecretaryPreview } from "./HomeCards";
 import { homeCopy } from "./home-copy";
-import { addHomeWidget, HOME_CATALOG, homeContactCopyKeys, homeOpeningGeometry, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
+import { addHomeWidget, HOME_CATALOG, homeContactCopyKeys, homeOpeningGeometry, homeTodoPagePath, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
 import { useHomeLayout } from "./use-home-layout";
-import { homeRailSuggestions } from "./home-rail-model";
+import { homeRailSuggestions, type HomeRailSuggestion } from "./home-rail-model";
 import { useHomeResource } from "./use-home-resource";
 import styles from "./home.module.css";
+import shellStyles from "../shell/shell.module.css";
 
-type Category = "all" | (typeof HOME_CATALOG)[number]["category"];
 type T = (key: keyof typeof homeCopy) => string;
 const TITLE: Record<HomeWidgetKey, keyof typeof homeCopy> = {
   today: "today", pending: "pending", week: "week", planScore: "planScore", nextEvent: "nextEvent",
   eventPick: "eventPick", network: "network", secretary: "secretary", memo: "memo", deadline: "week",
 };
-const CATEGORY: readonly { key: Category; title: keyof typeof homeCopy }[] = [
-  { key: "all", title: "all" }, { key: "today", title: "todayCategory" }, { key: "network", title: "networkCategory" },
-  { key: "event", title: "eventCategory" }, { key: "plan", title: "planCategory" }, { key: "secretary", title: "secretaryCategory" },
-];
 const railScheduleRow = z.object({ id: z.string(), title: z.string(), startsAt: z.string(), state: z.string() });
 const railSchedule = z.object({ scheduleItems: z.array(z.unknown()) });
 const recentSessionsSchema = z.object({ items: z.array(z.unknown()) });
@@ -50,9 +47,10 @@ function RecentSessions() {
     return id && title ? [{ id, title }] : [];
   }).slice(0, 3);
   if (!items.length) return null;
-  return <div className={styles.railRecent}><h2>{pickCopy(shellCopy.railRecentTitle, language)}</h2>
-    {items.map((item) => <Link key={item.id} href={`/app/agent?session=${encodeURIComponent(item.id)}`} className={styles.railItem}>{item.title}</Link>)}
-  </div>;
+  return <>
+    <h2 className={styles.railLbl}>{pickCopy(shellCopy.railRecentTitle, language)}</h2>
+    {items.map((item) => <Link key={item.id} href={`/app/agent?session=${encodeURIComponent(item.id)}`} className={styles.recentRow}><Icon name="clock" size={16} />{item.title}</Link>)}
+  </>;
 }
 
 export function HomePlaceholder() {
@@ -70,11 +68,13 @@ function HomeWorkspace() {
   const [draft, setDraft] = useState<HomeWidgetSlot[] | null>(null);
   const [contact, setContact] = useState<string | null>(null);
   const [hintHidden, setHintHidden] = useState(false);
+  const [later, setLater] = useState<string[]>([]);
+  const [sizing, setSizing] = useState<HomeWidgetKey | null>(null);
   const [dragged, setDragged] = useState<HomeWidgetKey | null>(null);
   const [editRevision, setEditRevision] = useState<number | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const secretary = useSecretaryPreview();
-  const railTodo = useHomeResource("/api/todo/page", todoPageSchema);
+  const railTodo = useHomeResource(homeTodoPagePath(), todoPageSchema);
   const railPlan = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const railEvents = useHomeResource("/api/schedule-items", railSchedule);
   const guide = useGuideProgress();
@@ -89,7 +89,7 @@ function HomeWorkspace() {
     }) : null,
   });
 
-  useEffect(() => { if (!editing) setDraft(null); }, [editing]);
+  useEffect(() => { if (!editing) { setDraft(null); setSizing(null); } }, [editing]);
   const enter = () => { if (state === "error") return; setDraft([...layout.web]); setEditRevision(layout.revision); setEditing(true); };
   const finish = async () => {
     if (!draft || JSON.stringify(draft) === JSON.stringify(layout.web)) { setEditing(false); return; }
@@ -111,36 +111,45 @@ function HomeWorkspace() {
   const holdStart = () => { if (!editing) hold.current = setTimeout(enter, 400); };
   const holdEnd = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
 
+  const shown = recommendations.filter((item) => !later.includes(item.key));
+  // web.html #0: with nothing to suggest the rail is the shell's iOrbit intro; #1/#2: 「次の一手 · ホームから」.
   const rail = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
-    : <div className={styles.rail}><div className={styles.railBrand}>✨ iOrbit</div><div className={styles.railIntro}><strong>{t("railHello")}</strong><p>{t(contactCopy.intro)}</p></div><h2>✨ {t("nextMove")}</h2>{recommendations.length ? recommendations.map((item) =>
-      <Link key={item.key} href={item.href} className={styles.railItem}>{item.title}<small>✨ {t(item.source === "secretary" ? "secretary" : item.source === "today" ? "today" : item.source === "plan" ? "planScore" : "schedule")} · {t("fromHome")}</small></Link>)
-      : <p className={styles.subtle}>{t("empty")}</p>}<Link href="/app/inbox" className={styles.cardLink}>{t("showAll")} →</Link><RecentSessions /></div>;
+    : shown.length ? <NextMoveRail items={shown} t={t} onLater={(key) => setLater((keys) => [...keys, key])} />
+    : <DefaultRail intro={contactCopy.intro === "railAbout" ? undefined : { title: t("railHello"), body: t("railAboutReady") }} />;
 
   return <>
     <ShellPage title={month} subtitle={range} left={<ShellSearchButton />}
-      right={<><ShellBellButton /><Button label={editing ? t("done") : t("edit")} icon="grid" onClick={() => { if (editing) void finish(); else enter(); }} disabled={saving || state === "error"} /></>}
-      rightRail={rail} railCount={recommendations.length} phoneFold />
+      right={editing ? <Button label={t("done")} variant="primary" onClick={() => void finish()} disabled={saving} />
+        : <><ShellBellButton /><Button label={t("edit")} icon="grid" onClick={enter} disabled={saving || state === "error"} /></>}
+      rightRail={rail} railCount={shown.length} phoneFold />
     <main className={styles.body} data-home-layout-state={state} data-home-editing={editing}>
       {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={() => void reload()} /></div> : null}
       {state === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
       {state !== "error" && state !== "loading" ? <>
-        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><span>✦ {t("hint")}</span><Button label="×" aria-label={t("close")} variant="ghost" size="sm" onClick={() => void dismissHint()} /></div> : null}
-        {editing ? <div className={styles.hint}><span>{t("dragHint")}</span><Button label={t("done")} variant="ghost" size="sm" onClick={() => void finish()} /></div> : null}
+        {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><Icon name="grid" size={16} /><span><span className={styles.hintPointer}>{t("hint")}</span><span className={styles.hintTouch}>{t("hintTouch")}</span></span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("close")} onClick={() => void dismissHint()}><Icon name="x" size={16} /></button></div> : null}
+        {editing ? <div className={styles.hint}><Icon name="grid" size={16} /><span>{t("dragHint")}</span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("done")} onClick={() => void finish()}><Icon name="x" size={16} /></button></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
-          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small}`} data-widget={slot.key}
+          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""}`} data-widget={slot.key}
             draggable={editing} onDragStart={() => setDragged(slot.key)} onDragOver={(event) => { if (editing) event.preventDefault(); }}
             onDrop={(event) => { event.preventDefault(); if (dragged) setDraft(moveHomeWidget(items, dragged, index)); setDragged(null); }}
+            onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}
             onPointerDown={holdStart} onPointerUp={holdEnd} onPointerCancel={holdEnd} onPointerLeave={holdEnd}>
-            <header className={styles.cardHead}><h2>{t(TITLE[slot.key])}</h2>
-              {editing ? <div className={styles.controls}>
-                <Button label="↑" aria-label={`${t(TITLE[slot.key])} ${t("moveUp")}`} variant="ghost" size="sm" disabled={index === 0} onClick={() => setDraft(moveHomeWidget(items, slot.key, index - 1))} />
-                <Button label="↓" aria-label={`${t(TITLE[slot.key])} ${t("moveDown")}`} variant="ghost" size="sm" disabled={index === items.length - 1} onClick={() => setDraft(moveHomeWidget(items, slot.key, index + 1))} />
-                <Button label={slot.size === "s" ? t("small") : t("medium")} aria-label={`${t(TITLE[slot.key])} ${t("size")}`} variant="ghost" size="sm" onClick={() => setDraft(resizeHomeWidget(items, slot.key, slot.size === "s" ? "m" : "s"))} />
-                <Button label="−" aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} variant="ghost" size="sm" onClick={() => remove(slot.key)} />
+            {editing ? <>
+              {/* b11 #25: the − badge removes; clicking the card opens 小 4 列 / 中 8 列. ↑↓ stay for the keyboard (visible on focus). */}
+              <button type="button" className={`btn ${styles.minus}`} aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
+              <div className={styles.controls}>
+                <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("moveUp")}`} disabled={index === 0} onClick={() => setDraft(moveHomeWidget(items, slot.key, index - 1))}>↑</button>
+                <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("moveDown")}`} disabled={index === items.length - 1} onClick={() => setDraft(moveHomeWidget(items, slot.key, index + 1))}>↓</button>
+                <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("size")}`} aria-haspopup="menu" aria-expanded={sizing === slot.key} onClick={() => setSizing(slot.key)}>{slot.size === "s" ? t("small") : t("medium")}</button>
+              </div>
+              {sizing === slot.key ? <div className={styles.szpop} role="menu" aria-label={`${t(TITLE[slot.key])} ${t("size")}`}>
+                {(["s", "m"] as const).map((size) => <button key={size} type="button" role="menuitemradio" aria-checked={slot.size === size} className={`btn ${slot.size === size ? styles.on : ""}`}
+                  onClick={() => { setDraft(resizeHomeWidget(items, slot.key, size)); setSizing(null); }}>{t(size === "s" ? "small" : "medium")}<small>{t(size === "s" ? "cols4" : "cols8")}</small></button>)}
               </div> : null}
-            </header>
+            </> : null}
             <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
           </section>)}
+          {editing ? <button type="button" className={`btn ${styles.addTile}`} onClick={() => document.querySelector<HTMLElement>("[data-home-library] button")?.focus()}><Icon name="plus" size={16} />{t("add")}</button> : null}
         </div>
         {editing ? <div className={styles.mobileLibrary}><WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} /></div> : null}
       </> : null}
@@ -149,14 +158,42 @@ function HomeWorkspace() {
   </>;
 }
 
+const RAIL_TILE: Record<HomeRailSuggestion["source"], { emoji: string; tone: AvatarTone }> = {
+  today: { emoji: "💌", tone: "pink" }, plan: { emoji: "🙋", tone: "teal" }, schedule: { emoji: "🥂", tone: "lav" }, secretary: { emoji: "⏰", tone: "apricot" },
+};
+
+/** web.html #2 rail: kit `.rail h4` + `.sugg` cards (primary action + あとで), 最近の会話, `.assist-in`. */
+function NextMoveRail({ items, t, onLater }: { items: readonly HomeRailSuggestion[]; t: T; onLater: (key: string) => void }) {
+  const { language } = useOrbitLanguage();
+  // shellStyles.railBody: the shell's own rule lets the 1024 drawer size it (b12 N07b).
+  return <div className={`${shellStyles.railBody} ${styles.rail}`}>
+    <h2 className={styles.railHead}><MacTile emoji="✨" tone="lav" size="sm" />{t("nextMove")}<span>{t("fromHome")}</span></h2>
+    {items.map((item) => { const tile = RAIL_TILE[item.source];
+      return <div key={item.key} className={styles.sugg}>
+        <div className={styles.suggRow}><MacTile emoji={tile.emoji} tone={tile.tone} size="sm" /><div><b>{item.title}</b>{item.detail ? <span>{item.detail}</span> : null}</div></div>
+        <div className={styles.suggActs}><Link className={`btn ${styles.suggGo}`} href={item.href}>{item.actionLabel ?? t(item.draft ? "openDraft" : "open")}</Link>
+          <button type="button" className={`btn ${styles.suggLater}`} onClick={() => onLater(item.key)}>{t("later")}</button></div>
+      </div>; })}
+    <RecentSessions />
+    <span className={styles.railSpacer} />
+    <button type="button" className={`btn ${styles.railAsk}`} onClick={() => window.dispatchEvent(new CustomEvent("orbit:open-palette"))}>
+      <Icon name="sparkle" size={16} /><span>{pickCopy(shellCopy.railAskPlaceholder, language)}</span><small>⌘K</small>
+    </button>
+  </div>;
+}
+
+/** web.html #3 / b11 #25 rail: 「ウィジェットを追加」 tiles at their default size, then what is already on Home (dimmed). */
 function WidgetLibrary({ slots, t, onAdd }: { slots: readonly HomeWidgetSlot[]; t: T; onAdd: (slot: HomeWidgetSlot) => void }) {
-  const [category, setCategory] = useState<Category>("all");
-  const [query, setQuery] = useState("");
-  const available = HOME_CATALOG.filter((item) => !slots.some((slot) => slot.key === item.key)
-    && (category === "all" || item.category === category)
-    && t(TITLE[item.key]).toLocaleLowerCase().includes(query.toLocaleLowerCase()));
-  return <div className={styles.library}><h2>{t("add")}</h2><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("search")} aria-label={t("search")} />
-    <div className={styles.categories}>{CATEGORY.map((item) => <Button key={item.key} label={t(item.title)} variant="ghost" size="sm" aria-pressed={category === item.key} onClick={() => setCategory(item.key)} />)}</div>
-    <div className={styles.libraryRows}>{available.map((item) => <div key={item.key}><span>{t(TITLE[item.key])}</span><Button label={`+ ${t("small")}`} size="sm" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "s" })} /><Button label={`+ ${t("medium")}`} size="sm" disabled={slots.length >= 10} onClick={() => onAdd({ key: item.key, size: "m" })} /></div>)}</div>
+  const available = HOME_CATALOG.filter((item) => !slots.some((slot) => slot.key === item.key));
+  const full = slots.length >= 10;
+  return <div className={styles.library} data-home-library="">
+    <h2 className={styles.railHead}><Icon name="grid" size={16} />{t("add")}</h2>
+    <div className={styles.libHint}>{t("libraryHint")}</div>
+    <div className={`${styles.wlib} ${styles.wlibOne}`}>{available.map((item) => <button key={item.key} type="button" className={`btn ${styles.wlibTile}`} disabled={full}
+      aria-label={`${t(TITLE[item.key])} ${t(item.size === "s" ? "small" : "medium")}`} onClick={() => onAdd({ key: item.key, size: item.size })}>
+      <span className={styles.sz}>{t(item.size === "s" ? "small" : "medium")}</span><b>{HOME_HEAD[item.key].emoji} {t(TITLE[item.key])}</b><span>{t(item.description)}</span><i className={styles.plus}><Icon name="plus" size={16} /></i>
+    </button>)}</div>
+    {slots.length ? <><h2 className={`${styles.railHead} ${styles.onHomeHead}`}>{t("onHome")}</h2>
+      <div className={styles.wlib}>{HOME_CATALOG.filter((item) => slots.some((slot) => slot.key === item.key)).map((item) => <div key={item.key} className={`${styles.wlibTile} ${styles.added}`}><b>{HOME_HEAD[item.key].emoji} {t(TITLE[item.key])}</b></div>)}</div></> : null}
   </div>;
 }

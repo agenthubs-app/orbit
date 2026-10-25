@@ -3,7 +3,14 @@ import type { SecretaryPreviewDTO } from "../../../../../shared/contract/secreta
 import type { TodoPageContract } from "../../../../../shared/contract/todo-page";
 import { visibleSecretaryItems } from "./secretary-model";
 
-export interface HomeRailSuggestion { key: string; title: string; href: string; source: "secretary" | "today" | "plan" | "schedule" }
+export interface HomeRailSuggestion {
+  key: string; title: string; href: string; source: "secretary" | "today" | "plan" | "schedule";
+  /** The card's second line (kit `.sugg .lbl`). */
+  detail?: string;
+  /** The primary button's own label when the source gives one; otherwise 開く / 下書きを開く. */
+  actionLabel?: string;
+  draft?: boolean;
+}
 export interface HomeRailSources {
   secretary?: SecretaryPreviewDTO | null;
   todo?: TodoPageContract | null;
@@ -15,12 +22,13 @@ export interface HomeRailSources {
 export function homeRailSuggestions(sources: HomeRailSources): HomeRailSuggestion[] {
   const choices: HomeRailSuggestion[] = [];
   if (sources.secretary) for (const item of visibleSecretaryItems(sources.secretary)) choices.push({ key: item.key, title: item.notification.title,
-    href: item.notification.target.href!, source: "secretary" });
+    href: item.notification.target.href!, source: "secretary", detail: item.notification.reason || undefined });
   const move = sources.todo?.nextMoves.items[0];
   if (move) choices.push({ key: `move:${move.key}`, title: move.titlePreview,
-    href: move.taskId ? `/app/tasks?tab=todo&task=${encodeURIComponent(move.taskId)}` : "/app/tasks?tab=todo", source: "today" });
+    href: move.taskId ? `/app/tasks?tab=todo&task=${encodeURIComponent(move.taskId)}` : "/app/tasks?tab=todo", source: "today", detail: move.reasonPreview, draft: move.draftAvailable });
   const chance = sources.plan?.current?.todayChance;
-  if (chance?.href) choices.push({ key: `plan:${sources.plan!.current!.planId}`, title: chance.label, href: chance.href, source: "plan" });
+  if (chance?.href) choices.push({ key: `plan:${sources.plan!.current!.planId}`, title: chance.label, href: chance.href, source: "plan",
+    detail: chance.progressLabel ?? chance.basis ?? undefined, actionLabel: chance.actionLabel ?? undefined });
   const next = sources.schedule?.filter(item => item.state === "upcoming" && Number.isFinite(Date.parse(item.startsAt)))
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
   if (next) choices.push({ key: `schedule:${next.id}`, title: next.title, href: "/app/tasks?tab=calendar", source: "schedule" });

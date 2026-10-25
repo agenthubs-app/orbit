@@ -1,4 +1,5 @@
 import type { HomeLayoutContract, HomeWidgetKey, HomeWidgetSlot } from "../../../../../shared/contract/home-layout";
+import type { homeCopy } from "./home-copy";
 import { calendarDate, localParts, resolveLocalDateTime, validTimeZone } from "../../../../../features/tasks/local-date-time";
 
 /** R28: the home prompt uses the same guide projection as the three-step card. */
@@ -9,13 +10,14 @@ export function homeContactCopyKeys(projection: { completed: number; nextStep?: 
   } as const;
 }
 
-export const HOME_CATALOG: readonly { key: HomeWidgetKey; category: "today" | "network" | "event" | "plan" | "secretary" }[] = [
-  { key: "today", category: "today" }, { key: "pending", category: "today" }, { key: "week", category: "today" },
-  { key: "planScore", category: "plan" }, { key: "nextEvent", category: "event" },
-  { key: "eventPick", category: "event" }, { key: "network", category: "network" },
-  { key: "secretary", category: "secretary" }, { key: "memo", category: "today" },
+/** web.html HW_LIB: each widget's category, default size in the library and its one-line description. */
+export const HOME_CATALOG: readonly { key: HomeWidgetKey; category: "today" | "network" | "event" | "plan" | "secretary"; size: "s" | "m"; description: keyof typeof homeCopy }[] = [
+  { key: "today", category: "today", size: "m", description: "descToday" }, { key: "planScore", category: "plan", size: "s", description: "descPlan" },
+  { key: "network", category: "network", size: "m", description: "descNetwork" }, { key: "nextEvent", category: "event", size: "s", description: "descEvent" },
+  { key: "secretary", category: "secretary", size: "m", description: "descSecretary" }, { key: "pending", category: "today", size: "m", description: "descPending" },
+  { key: "week", category: "today", size: "m", description: "descWeek" }, { key: "eventPick", category: "event", size: "m", description: "descPick" },
+  { key: "memo", category: "today", size: "s", description: "descMemo" },
 ];
-
 export function homeOpeningGeometry(layout: HomeLayoutContract): boolean {
   return !layout.webCustomizedAt;
 }

@@ -11,7 +11,6 @@ let code: { js: string; css: string };
 const stubs = {
   ...SHELL_STUBS,
   "network/ContactDrawer$": `export function ContactDrawer() { return null; }`,
-  "add/TodayQuestionCard$": `export function TodayQuestionCard({ onSettled }) { return <button data-question onClick={() => onSettled?.()}>Question fixture</button>; }`,
 };
 
 test.before(async () => {
@@ -32,7 +31,8 @@ async function home(t: { after: (fn: () => Promise<void>) => void }): Promise<Pa
     window.shellFixture={lang:"ja",calls:[],path:"/app/home"};
     window.layout={revision:0,app:[{key:"today",size:"m"},{key:"planScore",size:"s"},{key:"nextEvent",size:"s"},{key:"network",size:"s"},{key:"secretary",size:"m"}],web:[{key:"today",size:"m"},{key:"planScore",size:"s"},{key:"nextEvent",size:"s"},{key:"network",size:"s"},{key:"secretary",size:"m"}]};
     window.writes=[];
-    window.todoDecisions=0;
+    window.todoDecisions=[];
+    window.todoMoves=[];
     window.todoReads=0;
     window.fetch=async (url,init={})=>{
       const path=String(url);
@@ -42,7 +42,7 @@ async function home(t: { after: (fn: () => Promise<void>) => void }): Promise<Pa
       }
       if(path==="/api/home/guide-progress") return Response.json({success:true,data:{kind:"progress",completed:0,confirmedContacts:0,nextStep:"contacts",steps:{contacts:false,goal:false,plan:false}}});
       // LF17: Home sends the browser's date and time zone.
-      if(path.startsWith("/api/todo/page?date=")) { window.todoReads++; return Response.json({success:true,data:{date:"2026-10-20",timeZone:"Asia/Tokyo",asOf:"2026-10-20T00:00:00Z",counts:{decisions:window.todoDecisions,nextMoves:0,followups:0,overdue:0},countsCapped:{decisions:false,nextMoves:false},decisions:{items:[],next:{}},nextMoves:{items:[],next:{}},followups:{items:[],next:{}},sources:{task:"ok"}}}); }
+      if(path.startsWith("/api/todo/page?date=")) { window.todoReads++; return Response.json({success:true,data:{date:"2026-10-20",timeZone:"Asia/Tokyo",asOf:"2026-10-20T00:00:00Z",counts:{decisions:window.todoDecisions.length,nextMoves:window.todoMoves.length,followups:0,overdue:0},countsCapped:{decisions:false,nextMoves:false},decisions:{items:window.todoDecisions,next:{}},nextMoves:{items:window.todoMoves,next:{}},followups:{items:[],next:{}},sources:{task:"ok"}}}); }
       if(path==="/api/schedule-items") return Response.json({success:true,data:{scheduleItems:[]}});
       if(path==="/api/ai/conversations/sessions?limit=3") return Response.json({success:true,data:{items:[{id:"session:one",title:"資本政策の相談"},{id:"",title:"無効"},{id:"session:empty",title:""}]}});
       if(path==="/api/inbox/secretary/preview") return Response.json({success:false},{status:503});
@@ -62,14 +62,16 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
   const first = await boxes();
   await page.locator("[data-header]").getByRole("button", { name: "編集" }).click();
   assert.deepEqual(await boxes(), first, "entering Edit alone must not move a card");
-  await page.getByRole("button", { name: "今日やること 下へ" }).click();
-  await page.getByRole("button", { name: "今日やること サイズを変更" }).click();
+  await page.getByRole("button", { name: "今日やること 下へ" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "今日やること サイズを変更" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitemradio", { name: /小/ }).click();
   await page.getByRole("button", { name: "次のイベント 外す" }).click();
   assert.equal(await page.locator("[data-widget=nextEvent]").count(), 0);
   await page.getByRole("button", { name: "元に戻す" }).click();
   assert.equal(await page.locator("[data-widget=nextEvent]").count(), 1);
-  await page.getByRole("searchbox", { name: "ウィジェットを検索" }).fill("メモ");
-  await page.locator("[data-rail]").getByRole("button", { name: "+ 小" }).click();
+  await page.locator("[data-rail]").getByRole("button", { name: "メモ 小" }).click();
   assert.equal(await page.locator("[data-widget=memo]").count(), 1);
   await page.locator("main").getByRole("button", { name: "完了" }).click();
   await page.waitForFunction(() => (window as any).writes.length === 1);
@@ -80,31 +82,31 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
   assert.deepEqual(await page.locator("[data-widget]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-widget"))), saved.web.map((slot: { key: string }) => slot.key));
 });
 
-test("incomplete three-step guide belongs inside the Today card", async t => {
+test("incomplete three-step guide belongs inside the Today card (web.html #0)", async t => {
   const page = await home(t);
-  await page.locator("[data-widget=today]").getByText("はじめの3ステップ").waitFor();
-  assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /3人.*確認/ }).count(), 1);
-  assert.equal(await page.locator("[data-widget=today] [data-question]").count(), 1, "a question remains available beside the empty guide");
-  assert.equal(await page.locator("main > section").filter({ hasText: "はじめの3ステップ" }).count(), 0);
+  await page.locator("[data-widget=today]").getByText("はじめの 3ステップ").waitFor();
+  assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /3人の名刺を確認.*0 \/ 3/ }).count(), 1);
+  assert.equal(await page.locator("main > section").filter({ hasText: "はじめの 3ステップ" }).count(), 0);
 });
 
-test("Home rail only shows actor-scoped recent session summaries with usable links", async t => {
+test("the daily question is a 「1問」 row that opens To-do, counted in the head (web.html #1)", async t => {
   const page = await home(t);
-  await page.locator("[data-rail]").getByText("最近の会話").waitFor();
+  await page.evaluate(() => { (window as any).todoDecisions = [{ key: "q:1", source: "completion_question", sourceId: "q1", titlePreview: "石川 陽介さんとは、どこで？", createdAt: "2026-10-20T00:00:00Z", actions: ["open"] }]; window.dispatchEvent(new Event("focus")); });
+  const row = page.locator("[data-widget=today]").getByRole("link", { name: /石川 陽介さんとは、どこで？.*ひとつ選ぶだけ.*1問/ });
+  await row.waitFor();
+  assert.equal(await row.getAttribute("href"), "/app/tasks?tab=todo");
+  assert.equal(await page.locator("[data-widget=today] header").getByText("1", { exact: true }).count(), 1);
+});
+
+test("Home rail: iOrbit intro with nothing to suggest; 次の一手 cards with recent sessions otherwise (web.html #0 / #2)", async t => {
+  const page = await home(t);
+  await page.locator("[data-rail]").getByText("はじめまして。").waitFor();
+  await page.evaluate(() => { (window as any).todoMoves = [{ key: "m:1", source: "task", sourceId: "t1", titlePreview: "高橋さんへお礼メール", reasonPreview: "昨日の面談 · 下書き済み", draftAvailable: true, taskId: "t1", createdAt: "2026-10-20T00:00:00Z" }]; window.dispatchEvent(new Event("focus")); });
+  await page.locator("[data-rail]").getByText("次の一手").waitFor();
+  assert.equal(await page.locator("[data-rail]").getByRole("link", { name: "下書きを開く" }).getAttribute("href"), "/app/tasks?tab=todo&task=t1");
   const recent = page.locator("[data-rail]").getByRole("link", { name: "資本政策の相談" });
   assert.equal(await recent.getAttribute("href"), "/app/agent?session=session%3Aone");
   assert.equal(await page.locator("[data-rail]").getByText("無効").count(), 0);
-  assert.equal(await page.locator("[data-rail]").getByRole("link", { name: "資本政策の相談" }).count(), 1);
-});
-
-test("settling the daily question re-reads the Today decision count", async t => {
-  const page = await home(t);
-  await page.evaluate(() => { (window as any).todoDecisions = 1; window.dispatchEvent(new Event("focus")); });
-  await page.locator("[data-widget=today]").getByText("1", { exact: true }).waitFor();
-  const before = await page.evaluate(() => (window as any).todoReads);
-  await page.evaluate(() => { (window as any).todoDecisions = 0; });
-  await page.locator("[data-widget=today] [data-question]").click();
-  await page.waitForFunction((count) => (window as any).todoReads > count, before, { timeout: 5000 });
-  await page.locator("[data-widget=today]").getByText("はじめの3ステップ").waitFor();
-  assert.equal(await page.locator("[data-widget=today]").getByText("1", { exact: true }).count(), 0);
+  await page.locator("[data-rail]").getByRole("button", { name: "あとで" }).click();
+  await page.locator("[data-rail]").getByText("はじめまして。").waitFor();
 });
