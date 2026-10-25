@@ -98,7 +98,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <Modal open={open} onClose={onClose} title={pickCopy(searchCopy.dialogTitle, language)} size={680} top bare initialFocus={input}
       header={<span hidden />}>
       <SearchPanel state={state} rows={rows} cursor={cursor} onHover={setCursor} onPick={choose} onQueryChange={setQuery} onFilterChange={setFilter}
-        onClearRecent={search.clearRecent} onRemoveRecent={search.removeRecent} onKeyDown={onKeyDown} inputRef={input} language={language} listId={listId} optionId={optionId} />
+        onClearRecent={search.clearRecent} onRemoveRecent={search.removeRecent} onInputKeyDown={onKeyDown} inputRef={input} language={language} listId={listId} optionId={optionId} />
     </Modal>
   );
 }

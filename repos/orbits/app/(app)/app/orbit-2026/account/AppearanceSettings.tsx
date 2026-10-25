@@ -25,8 +25,8 @@ export function AppearanceSettings() {
         <Segmented<OrbitLanguage> label={t("language")} segments={[{ key: "zh", label: t("languageChinese") }, { key: "en", label: t("languageEnglish") }, { key: "ja", label: t("languageJapanese") }]} value={language} onChange={setLanguage} wide />
       </div></Card>
       <Card title={rights("account")}><div className={styles.controlGroup}>
-        <a className={styles.back} href="/app/settings/exports">{rights("export")}</a>
-        <a className={styles.back} href="/app/settings/account">{rights("deletion")}</a>
+        <a className={styles.back} href="/app/settings/exports" aria-label={rights("export")}>{rights("export")}</a>
+        <a className={styles.back} href="/app/settings/account" aria-label={rights("deletion")}>{rights("deletion")}</a>
       </div></Card>
     </div>;
 }

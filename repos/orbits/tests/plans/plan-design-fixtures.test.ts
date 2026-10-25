@@ -58,7 +58,17 @@ test("only the dev route imports the design fixtures", () => {
     .map((file) => path.relative(ROOT, file));
   // R26: the events design fixtures have their own dev route (same rules: .dev.ts, mock only).
   // R11b: the 人脈分析 design fixtures have their own dev route too (app/api/dev/network-design-fixture/route.dev.ts).
-  assert.deepEqual(offenders.filter((file) => !file.startsWith("app/api/dev/event-design-fixture/") && !file.startsWith("app/api/dev/network-design-fixture/")), ["app/api/dev/plan-design-fixture/route.dev.ts"]);
+  // R12: the scan read-only demo (/contacts/new/scan/design-*) is off in production (scan-design-fixture-gate).
+  // Profile and PX1 network contact cards import their fixtures lazily and only outside production.
+  const gated = new Set([
+    "app/(app)/app/contacts/new/_add/scan-design-fixture-gate.ts",
+    "app/(app)/app/contacts/new/_add/scan-design-fixtures.tsx",
+    "app/(app)/app/contacts/new/scan/[batchId]/page.tsx",
+    "features/acquisition/business-card-ingest-v2/design-fixtures.ts",
+    "app/api/profile/handlers.ts",
+    "features/contacts/card-service.ts",
+  ]);
+  assert.deepEqual(offenders.filter((file) => !gated.has(file) && !file.startsWith("app/api/dev/event-design-fixture/") && !file.startsWith("app/api/dev/network-design-fixture/")), ["app/api/dev/plan-design-fixture/route.dev.ts"]);
 });
 
 test("every design fixture is plain data: read through the same service, it fits the same API schema", async () => {

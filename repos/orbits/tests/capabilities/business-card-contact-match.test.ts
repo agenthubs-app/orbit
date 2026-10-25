@@ -116,7 +116,7 @@ test("merging fills empty fields, keeps existing values and appends the rest to 
   assert.equal(payload.primaryIndustryId, "legal", "fields the card does not know about survive");
   assert.equal(
     payload.notes,
-    "既存メモ\nFAX: 03-6800-3712\n\n名片补充 · 2026-09-27\n公司: TEN 法律事務所\n微信(Wechat): yoshikuni26",
+    "既存メモ\nFAX: 03-6800-3712\n\n名片补充 · 2026-09-27\n公司: TEN法律事務所\n微信(Wechat): yoshikuni26",
   );
   assert.deepEqual(store.current.evidenceIds, ["evidence:old", "evidence:new"]);
 });

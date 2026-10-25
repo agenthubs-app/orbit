@@ -188,9 +188,10 @@ test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → �
   await page.locator('[data-scan-phase="review"]').waitFor({ timeout: 45_000 });
   const contacts = () => page.evaluate(() => (window as any).fakeServer.contacts.length);
   assert.equal(await contacts(), before + 1, "normal card added automatically; the identical one merged");
-  const sections = await page.locator("[data-review-card]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-duplicate-card") ? "duplicate" : node.getAttribute("data-failed-card") ? "failed" : "review"));
-  assert.deepEqual(sections, ["duplicate", "failed"]);
-  await page.locator("[data-scan-auto-added]").getByText("2人はもう人脈に入っています。").waitFor();
+  // R12 rework (UnifiedReview): the similar card is a duplicate row; the unreadable card is the only card left below.
+  assert.equal(await page.locator("[data-review-duplicates]").getAttribute("data-review-duplicates"), "1");
+  assert.equal(await page.locator("[data-review-duplicate]").count(), 1);
+  assert.equal(await page.locator("[data-failed-card]").count(), 1);
   const manifest = await page.evaluate(() => (window as any).fakeServer.items.map((item: any) => [item.sourceFileName, item.side, item.cardId]));
   const back = manifest.find(([name]: string[]) => name === "normal-back.jpg");
   const front = manifest.find(([name]: string[]) => name === "normal.jpg");
@@ -198,8 +199,8 @@ test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → �
   assert.equal(back[2], front[2], "the back is paired with the card before it");
 
   // まとめて確認: the similar card is someone else; the unreadable card is skipped.
-  await page.locator("[data-duplicate-card]").getByRole("button", { name: "別人として追加" }).click();
-  await page.locator("[data-scan-add-all]").click();
+  await page.locator("[data-review-separate]").click();
+  await page.locator("[data-review-duplicate]").waitFor({ state: "detached" });
   await page.locator("[data-failed-skip]").waitFor();
   await page.locator("[data-failed-skip]").click();
 
@@ -209,7 +210,8 @@ test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → �
   await settled("merged", 1);
   await settled("unreadable", 1);
   assert.equal(await contacts(), before + 2, "完成「新しく追加」= how many people the network gained");
-  assert.equal(await page.locator("[data-orbit-2026-mainhead] h1").textContent(), "3人を人脈に追加しました");
+  // R12 rework: the page head keeps the screen name; the result is the 完成 card heading.
+  assert.equal(await page.locator("[data-scan-done] h2").first().textContent(), "3人を人脈に追加しました");
   await page.locator('[data-done-plan="ready"]').waitFor();
 });
 
@@ -224,8 +226,8 @@ test("R12 review m9: when the duplicate lookup fails nothing is added automatica
   assert.equal(await page.evaluate(() => (window as any).fakeServer.contacts.length), before, "nothing was added behind the person's back");
   const confirms = await page.evaluate(() => (window as any).fakeServer.log.filter((line: string) => /\/confirm$/.test(line)));
   assert.deepEqual(confirms, []);
-  assert.equal(await page.locator("[data-scan-auto-added]").count(), 0);
-  assert.equal(await page.locator("[data-scan-add-all]").getAttribute("data-scan-add-all"), "2");
+  assert.equal(await page.locator("[data-review-duplicate]").count(), 0);
+  assert.equal(await page.locator("[data-review-add-all]").getAttribute("data-review-add-all"), "2");
 });
 
 test("R12 review m12: the batch id is encoded before it goes into the API path", { timeout: 30_000 }, async (t) => {

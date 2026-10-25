@@ -77,7 +77,7 @@ function Marked({ text, ranges, field }: { text: string; ranges: readonly Search
 
 const EMO_TONE: Record<string, string> = { apricot: styles.av_apricot, blue: styles.av_blue, lav: styles.av_lav, pink: styles.av_pink, teal: styles.av_teal };
 
-export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChange, onFilterChange, onClearRecent, onRemoveRecent, onKeyDown, inputRef, language, listId, optionId }: {
+export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChange, onFilterChange, onClearRecent, onRemoveRecent, onInputKeyDown, inputRef, language, listId, optionId }: {
   state: PanelState;
   rows: readonly PanelRow[];
   cursor: number;
@@ -87,7 +87,7 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
   onFilterChange: (filter: SearchFilter) => void;
   onClearRecent: () => void;
   onRemoveRecent: (text: string) => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  onInputKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   inputRef: RefObject<HTMLInputElement | null>;
   language: OrbitLanguage;
   listId: string;
@@ -202,7 +202,7 @@ export function SearchPanel({ state, rows, cursor, onHover, onPick, onQueryChang
           value={query}
           size={Math.max(trimmed.length, 1)}
           onChange={(event) => onQueryChange(event.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={onInputKeyDown}
         />
         <div className={styles.chips} role="tablist" aria-label={t(searchCopy.typesLabel)}>
           {filters.map((filter) => <button type="button" role="tab" key={filter} aria-selected={state.filter === filter} aria-controls={listId} className={`${styles.cat} ${state.filter === filter ? styles.catOn : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => onFilterChange(filter)}>{filterLabel[filter]}</button>)}

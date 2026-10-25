@@ -433,6 +433,9 @@ const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
   ...["button {t(item.cta)}", "button {t(ONBOARDING_COPY.preview003)}", "button {t(ONBOARDING_COPY.preview051)}", "button {t(ONBOARDING_COPY.preview054)}", "button {t(ONBOARDING_COPY.preview061)}", "button {t(ONBOARDING_COPY.preview075)}"]
     .map((trigger) => [`${ONBOARDING_PREVIEWS}#${trigger}`, `${SCANNER_CROSS_COMPONENT}: click delegated to PreviewFrame onClick via data-ob-goto`] as const),
+  ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#button {t(\"pvApply\")}", "decorative preview of the attendee page: aria-hidden, tabIndex -1, no action by design"],
+  ["repos/orbits/app/(app)/app/orbit-2026/search/SearchPanel.tsx#button {text}", "scanner misses onMouseDown: examples pick on mouse down so the search input keeps focus"],
+  ["repos/orbits/app/(app)/app/orbit-2026/search/SearchPanel.tsx#span `${t(searchCopy.recentClear)} ${text}`", "scanner misses onMouseDown: removing a recent search acts on mouse down so the input keeps focus"],
 ]);
 
 test("manifest generation writes the required repository artifacts", () => {

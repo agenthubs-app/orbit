@@ -147,7 +147,7 @@ function ConditionRows({ conditions, t, onChange, onOpenSizes }: { conditions: H
 function Options({ values, value, label, render, onChange }: { values: readonly number[]; value: number; label: string; render: (n: number) => string; onChange: (n: number) => void }) {
   return (
     <div className={s.seg} role="radiogroup" aria-label={label}>
-      {values.map((n) => <button key={n} type="button" role="radio" aria-checked={n === value} className={`btn ${s.segBtn} ${n === value ? s.segOn : ""}`} onClick={() => onChange(n)}>{render(n)}</button>)}
+      {values.map((n) => <button key={n} type="button" role="radio" aria-checked={n === value} aria-label={render(n)} className={`btn ${s.segBtn} ${n === value ? s.segOn : ""}`} onClick={() => onChange(n)}>{render(n)}</button>)}
     </div>
   );
 }

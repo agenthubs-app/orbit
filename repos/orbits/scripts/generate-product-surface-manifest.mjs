@@ -1314,7 +1314,8 @@ function detectDataAndStates(reachableFiles) {
         ),
     },
     stateSignals: {
-      redirect: /\bredirect\s*\(/.test(combined),
+      // notFound() throws like redirect(): the route never renders its own loading or error state.
+      redirect: /\b(?:redirect|notFound)\s*\(/.test(combined),
       loading: /loading|pending|skeleton/i.test(combined),
       empty: /\bempty\b|no results|not found/i.test(combined),
       partial: /\bpartial\b|degraded/i.test(combined),

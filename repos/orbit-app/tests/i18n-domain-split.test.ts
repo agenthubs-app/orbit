@@ -13,10 +13,11 @@ import { zh } from "../src/i18n/zh";
 // Later sprints add keys to both new and original domains; those additions
 // still pass the locale parity and single-domain checks below.
 const PRE_SPLIT = {
-  en: { keys: 2253, sha256: "638192bfe5212904fda21acae16138ff871d36cf9830e936d628550c922b9d39" },
+  // In every locale R20b (notes.bodyPlaceholder) and R28 (onboarding.goalsPick) later updated 2 original values; the key set is still R03's.
+  en: { keys: 2253, sha256: "1059f89b1e15cc9c8323e0e3c5280fbaca0609b46702b62b538ec9f40af167af" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "2e20d034d29ade135938dfabc0ab437729187d501c5e2710feae6a6aeb78f7a9" },
-  zh: { keys: 2253, sha256: "197cb41cc98085886fb83c331bf2304579644c71e7de1260c1a9a48276dd05af" },
+  ja: { keys: 2253, sha256: "2ada766df1659a712efbdbbbb1c01f9636b5eaad756704abbc453e3f1187677d" },
+  zh: { keys: 2253, sha256: "33b17293ac42ba6c84bd327860b7ef65bd33b1fe3e49839027402680f912ac9e" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.
