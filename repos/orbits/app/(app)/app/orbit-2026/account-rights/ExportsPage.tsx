@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AccountExportContract } from "../../../../../shared/contract/account";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { AccountLayout } from "../account/AccountLayout";
-import { Button, Card } from "../ui";
+import { Button, Chip, Icon, MacTile } from "../ui";
 import { accountRightsApi, AccountRightsApiError } from "./api";
 import { rightsCopy } from "./copy";
 import s from "./rights.module.css";
@@ -58,37 +58,47 @@ export function ExportsPage() {
     } finally { setBusy(false); }
   };
   const date = (value: string) => new Intl.DateTimeFormat(language, { timeZone: "Asia/Tokyo", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-  return <AccountLayout active="export" title={t("export")} subtitle={t("exportIntro")} largeTitle>
+  // b7 #31 書き出し ① 選択: the 書き出す範囲 card (custom checkboxes, a CSV / vCard segment on 人脈, すべて (JSON)),
+  // 形式について and 履歴 on the right. Per-category counts are not shown: there is no count source.
+  const rows = [["contacts", "👥", "lav", "contactsSub"], ["notes", "📝", "apricot", "notesSub"], ["plans", "🧭", "pink", "plansSub"], ["events", "🎟️", "teal", "eventsSub"]] as const;
+  const day = (value: string) => new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-GB", { timeZone: "Asia/Tokyo", month: "long", day: "numeric" }).format(new Date(value));
+  const scopeLabel = (item: AccountExportContract) => item.mode === "all-json" ? t("exportAll")
+    : choices.filter(choice => item.scope.includes(choice)).map(choice => choice === "contacts" && item.contactsFormat ? `${t(choice)}（${item.contactsFormat === "vcard" ? "vCard" : "CSV"}）` : t(choice)).join(" · ");
+  return <AccountLayout active="export" title={t("export")} subtitle={t("exportIntro")}>
     <div className={s.stack}>
-      <Card title={t("exportSelected")}>
-        <div className={s.selection}>
-          {choices.map(choice => <label className={s.option} key={choice}>
-            <input type="checkbox" checked={!all && selected.includes(choice)} onChange={() => toggle(choice)} />
-            <span>{t(choice)}</span>
+      <div className={s.leaveGrid}>
+        <section className={s.leaveCard}>
+          <div className={s.leaveHead}><h2>{t("exportSelected")}</h2><span>{t("selectedCount").replace("{n}", String(all ? 5 : selected.length))}</span></div>
+          {rows.map(([choice, emoji, tone, sub]) => <label className={s.xrow} key={choice}>
+            <input type="checkbox" className={s.cbxInput} checked={!all && selected.includes(choice)} onChange={() => toggle(choice)} />
+            <span className={s.cbx} aria-hidden><Icon name="check" size={16} /></span>
+            <MacTile emoji={emoji} tone={tone} size="sm" /><div><b>{t(choice)}</b><span>{t(sub)}</span></div>
+            {choice === "contacts" ? <span className={s.seg} role="radiogroup" aria-label={t("contactsFormat")}>
+              {(["csv", "vcard"] as const).map(value => <button key={value} type="button" role="radio" aria-checked={format === value} className={`btn ${format === value ? s.segOn : ""}`} disabled={all || !selected.includes("contacts")} onClick={event => { event.preventDefault(); setFormat(value); }}>{value === "csv" ? "CSV" : "vCard"}</button>)}
+            </span> : null}
           </label>)}
-          <label className={`${s.option} ${s.allOption}`}>
-            <input type="checkbox" checked={all} onChange={event => { requestKey.current = null; setAll(event.target.checked); }} />
-            <span>{t("exportAll")}</span>
+          <label className={s.xrow}>
+            <input type="checkbox" className={s.cbxInput} checked={all} onChange={event => { requestKey.current = null; setAll(event.target.checked); }} />
+            <span className={s.cbx} aria-hidden><Icon name="check" size={16} /></span>
+            <MacTile emoji="🗂️" tone="blue" size="sm" /><div><b>{t("exportAll")}</b><span>{t("allSub")}</span></div>
           </label>
+          <div className={s.exportFoot}><span>{t("readyNotice")}</span><Button label={t("startExport")} variant="primary" loading={busy} disabled={active || !all && !selected.length} onClick={() => void create()} /></div>
+        </section>
+        <div className={s.leaveSide}>
+          <section className={s.sideCard}><h2>{t("formatTitle")}</h2><p>{t("formatCsv")}<br />{t("formatVcard")}<br />{t("formatJson")}</p></section>
+          <section className={s.sideCard}><div className={s.leaveHead}><h2>{t("exportHistory")}</h2><button type="button" className={`btn ${s.refresh}`} aria-label={t("retry")} onClick={() => void refresh()}><Icon name="refresh" size={16} /></button></div>
+            {loading ? <p className={s.note}>{t("running")}</p> : history.length === 0 ? <p className={s.note}>{t("noExports")}</p> :
+              <table className={s.historyTable}><tbody>{history.map(item => <tr key={item.id}>
+                <td className={s.lblCell}>{day(item.requestedAt)}</td>
+                <td><b>{scopeLabel(item)}</b>
+                  {item.status === "queued" || item.status === "running" ? <span className={s.lblCell}>{t("progress").replace("{done}", String(item.completedItems ?? 0)).replace("{total}", String(item.totalItems ?? item.scope.length))}</span> : null}
+                  {item.status === "ready" && item.expiresAt ? <span className={s.lblCell}>{t("availableUntil").replace("{date}", date(item.expiresAt))}</span> : null}</td>
+                <td className={s.statusCell}>{item.status === "ready" && item.downloadUrl ? <a className={s.download} href={item.downloadUrl}>{t("download")}</a> : <Chip label={t(item.status)} tone={item.status === "failed" ? "coral" : "neutral"} />}</td>
+              </tr>)}</tbody></table>}
+          </section>
         </div>
-        {!all && selected.includes("contacts") ? <fieldset className={s.formats}><legend>{t("contactsFormat")}</legend>
-          <label><input type="radio" name="contacts-format" checked={format === "csv"} onChange={() => setFormat("csv")} /> CSV</label>
-          <label><input type="radio" name="contacts-format" checked={format === "vcard"} onChange={() => setFormat("vcard")} /> vCard</label>
-        </fieldset> : null}
-        <p className={s.note}>{t("exportLimit")}</p>
-        <div className={s.actions}><Button label={t("startExport")} variant="primary" loading={busy} disabled={active || !all && !selected.length} onClick={() => void create()} /></div>
-      </Card>
+      </div>
       {problem ? <p role="alert" className={s.error}>{problem} {problem === t("freshLogin") ? <Button label={t("signInAgain")} variant="ghost" size="sm" className={s.inlineAction} onClick={() => void signOut({ callbackUrl: "/app/account/login?next=/app/settings/exports" })} /> : null}</p> : null}
-      <Card title={t("exportHistory")} trailing={<Button label={t("retry")} size="sm" variant="ghost" onClick={() => void refresh()} />}>
-        {loading ? <p className={s.note}>{t("running")}</p> : history.length === 0 ? <p className={s.note}>{t("noExports")}</p> :
-          <ul className={s.history}>{history.map(item => <li className={s.historyItem} key={item.id}>
-            <div><strong>{t(item.status)}</strong><span className={s.meta}>{date(item.requestedAt)}</span>
-              {item.status === "queued" || item.status === "running" ? <p className={s.note}>{t("progress").replace("{done}", String(item.completedItems ?? 0)).replace("{total}", String(item.totalItems ?? item.scope.length))}</p> : null}
-              {item.status === "ready" && item.expiresAt ? <p className={s.note}>{t("availableUntil").replace("{date}", date(item.expiresAt))}</p> : null}
-            </div>
-            {item.status === "ready" && item.downloadUrl ? <a className={s.download} href={item.downloadUrl}>{t("download")}</a> : null}
-          </li>)}</ul>}
-      </Card>
     </div>
   </AccountLayout>;
 }

@@ -44,3 +44,56 @@
 .deletedActions { display: flex; justify-content: flex-end; margin-top: 20px; }
 @media (max-width: 600px) { .selection { grid-template-columns: 1fr; } .allOption { grid-column: auto; } .historyItem { align-items: flex-start; flex-direction: column; } .actions { justify-content: stretch; } .actions :global(.btn) { width: 100%; } }
 @media (max-width: 600px) { .deletedHeader { min-height: 66px; padding: 0 36px; } .deletedMain { padding: 20px 36px 88px; } .deletedMain h1 { font-size: var(--fs-title-sm); } .deletedCard { padding: 15px; } .deletedActions :global(.btn) { width: 100%; } }
+
+/* b7 #24 退会 1/2 */
+.steps { display: flex; gap: 6px; margin: 2px 0 -2px; } /* kit 14 below, minus the stack gap 16 */
+.steps i { flex: 1; height: 4px; border-radius: var(--r-hair); background: var(--surface-3); }
+.steps i.stepDone { background: var(--plum-700); }
+.leaveGrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); align-items: start; }
+.leaveCard { grid-column: span 7; padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); }
+.leaveHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.leaveHead h2 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.leaveHead span, .xrow span, .flatCard span { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.xrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.xrow + .xrow { border-top: 1px solid var(--line); }
+.xrow > div { flex: 1; min-width: 0; }
+.xrow b { display: block; font-size: var(--fs-row); }
+.xrow span:not([class]) { display: block; }
+.leaveSide { grid-column: span 5; display: grid; gap: var(--space-18); align-content: start; }
+.exportCard { padding: 16px 18px; border-radius: var(--r-card-web); background: var(--mac-lav); }
+.exportHead { display: flex; align-items: center; gap: 10px; }
+.exportHead > span { font-size: var(--fs-number); }
+.exportHead b { display: block; }
+.exportHead div span { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.exportCard .exportGo { display: inline-flex; align-items: center; gap: 6px; height: 32px; margin-top: 12px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font-size: var(--fs-meta); font-weight: var(--fw-bold); text-decoration: none; }
+.flatCard { padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface-2); }
+.flatCard b { display: block; }
+.flatCard p { margin: 4px 0 0; color: var(--ink-2); font-size: var(--fs-control); line-height: var(--lh-prose-lg); }
+.flatCard span { display: block; margin-top: 4px; }
+.leaveActions { display: flex; justify-content: flex-end; gap: 10px; }
+.leaveActions .stop, .leaveActions .toVerify { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; cursor: pointer; }
+.leaveActions .toVerify { height: 50px; color: var(--coral-text); font-size: var(--fs-card-title); }
+@media (max-width: 1023px) { .leaveCard, .leaveSide { grid-column: span 12; } }
+
+/* b7 #31 書き出し ① 選択 */
+label.xrow { cursor: pointer; position: relative; }
+.cbxInput { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cbx { width: 20px; height: 20px; border-radius: var(--r-check); border: 1.8px solid var(--ink-4); display: inline-grid; place-items: center; flex: none; color: transparent; }
+.cbx svg { width: 13px; height: 13px; }
+.cbxInput:checked + .cbx { background: var(--plum-700); border-color: var(--plum-700); color: var(--surface); }
+.cbxInput:focus-visible + .cbx { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-pill); background: var(--surface-2); flex: none; }
+.seg button:global(.btn) { height: auto; min-height: 0; padding: 6px 13px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-size: var(--fs-meta); font-weight: 600; cursor: pointer; }
+.seg button.segOn:global(.btn) { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-seg); }
+.exportFoot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.exportFoot > span { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.sideCard { padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); }
+.sideCard h2 { margin: 0 0 12px; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.sideCard .leaveHead h2 { margin: 0; }
+.sideCard p { margin: 0; color: var(--ink-2); font-size: var(--fs-control); line-height: var(--lh-letter); }
+.sideCard .refresh { width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.historyTable { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); }
+.historyTable td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.lblCell { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+td.lblCell { display: table-cell; white-space: nowrap; }
+.statusCell { text-align: right; }
