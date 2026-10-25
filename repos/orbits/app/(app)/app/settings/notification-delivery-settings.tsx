@@ -42,7 +42,7 @@ export function NotificationDeliverySettings({conversationId}:{conversationId?:s
    <div className={s.lockRow}><strong>{copy('lock')}</strong><Segmented segments={[{key:'private',label:copy('private')},{key:'full',label:copy('full')}]} value={data.lockScreenContent} onChange={value=>void change({lockScreenContent:value})} label={copy('lock')}/></div>
   </Card>
   </div>
-  <div className={s.side}><Card title={copy('cap')}><Segmented segments={[1,2,3].map(value=>({key:String(value),label:String(value)}))} value={String(data.dailyCap??3)} onChange={value=>void change({dailyCap:Number(value) as 1|2|3})} label={copy('cap')}/><p className={s.hint}>{copy('capHint')}</p></Card>
+  <div className={s.side}><Card title={copy('cap')}><Segmented segments={[1,2,3].map(value=>({key:String(value),label:copy('capItems').replace('{n}',String(value))}))} value={String(data.dailyCap??3)} onChange={value=>void change({dailyCap:Number(value) as 1|2|3})} label={copy('cap')}/><p className={s.hint}>{copy('capHint')}</p></Card>
    <Card title={copy('quiet')} trailing={<Toggle checked={data.quietHoursEnabled} disabled={busy} label={copy('quiet')} onChange={()=>void change({quietHoursEnabled:!data.quietHoursEnabled})}/>} className={s.quietCard}>
     <div className={s.time}><label>{copy('start')} <input type="time" value={start} onChange={event=>setStart(event.target.value)}/></label><label>{copy('end')} <input type="time" value={end} onChange={event=>setEnd(event.target.value)}/></label></div>
     {invalidTime?<p role="alert" className={s.error}>{copy('invalidTime')}</p>:null}
