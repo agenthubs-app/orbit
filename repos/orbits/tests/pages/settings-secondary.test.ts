@@ -61,7 +61,7 @@ test("secondary routes and memory controls are wired without a Google Contacts a
     assert.match(route, new RegExp(`active="${page}"`));
   }
   const integrations = source("app/(app)/app/orbit-2026/account/IntegrationsSettings.tsx");
-  assert.match(integrations, /Google Contacts/);
+  assert.match(integrations, /contactsName/);
   assert.doesNotMatch(integrations, /google_contacts.*authorize/);
   const iorbit = source("app/(app)/app/orbit-2026/account/IorbitSettings.tsx");
   assert.match(iorbit, /\/api\/agent\/memory/);

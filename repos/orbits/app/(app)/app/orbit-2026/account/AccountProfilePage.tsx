@@ -11,7 +11,7 @@ import { eventsApi } from "../events/events-api";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { InviteCodeModal } from "../add/invite/InviteCodeModal";
-import { Button } from "../ui";
+import { Button, Chip, Icon, MacTile, Toggle } from "../ui";
 import { AccountLayout, type AccountSection } from "./AccountLayout";
 import { validSaveReceipt } from "./SuggestionsApi";
 import { cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
@@ -44,24 +44,32 @@ function editOf(draft: Draft): ManualProfileUpdateInput {
   };
 }
 
-function ProfilePreview({ profile, draft, t }: { profile: ManualProfileContract; draft: Draft | null; t: (key: keyof typeof accountCopy) => string }) {
+/** b12 W-R18a-01 rail: 公開プレビュー card, 提供 / 求め chips, 公開する項目 toggles (contacts stay exchange-only). */
+function ProfilePreview({ profile, draft, t, onVisibility, busy }: { profile: ManualProfileContract; draft: Draft | null; t: (key: keyof typeof accountCopy) => string; onVisibility: (fields: ProfilePublicFieldsContract) => void; busy: boolean }) {
   const projected = previewForProfile(draft ? { ...profile, ...editOf(draft) } : profile);
-  const chips = (values: readonly string[] | undefined) => values?.length
-    ? <div className={s.chips}>{values.map(value => <span className={s.chip} key={value}>{value}</span>)}</div>
+  const visibility = { ...defaultVisibility, ...(draft?.publicFields ?? profile.publicFields) };
+  const chips = (values: readonly string[] | undefined, tone: "lav" | "pink") => values?.length
+    ? <div className={s.chips}>{values.map(value => <Chip key={value} label={value} tone={tone} />)}</div>
     : <span className={s.muted}>{t("previewHidden")}</span>;
   return <section className={s.preview} aria-label={t("preview")}>
-    <div className={s.previewHeading}><strong>{t("preview")}</strong><span>{t("previewSub")}</span></div>
-    <div className={s.previewCard}>
-      <div className={s.avatar}>{projected.displayName.slice(0, 1)}</div>
+    <h2 className={s.previewHeading}><Icon name="user" size={16} />{t("preview")}<span>{t("previewSub")}</span></h2>
+    <div className={`${s.previewCard} ${s.previewIdentity}`}>
+      <span className={s.avatar}>{projected.displayName.slice(0, 1)}</span>
       <strong>{projected.displayName}</strong>
       {projected.organization || projected.role ? <span>{[projected.organization, projected.role].filter(Boolean).join(" · ")}</span> : null}
       {projected.bio ? <p>{projected.bio}</p> : null}
     </div>
     <div className={s.previewCard}>
-      <small>{t("whatOffer")}</small>{chips(projected.offering)}
-      <small>{t("whatSeek")}</small>{chips(projected.seeking)}
+      <small>{t("whatOffer")}</small>{chips(projected.offering, "lav")}
+      <small className={s.seekLabel}>{t("whatSeek")}</small>{chips(projected.seeking, "pink")}
     </div>
-    <p className={s.privateNotice}>{t("contactsPrivate")}</p>
+    {!profile.offering?.length ? <div className={s.publicNotice}>{t("publicNotice")}</div> : null}
+    <div className={s.previewCard}>
+      <small className={s.visibilityLabel}>{t("visibility")}</small>
+      {(["companyRole", "offeringSeeking", "intro"] as const).map(key => <div className={s.visibilityRow} key={key}><span>{t(key)}</span>
+        <Toggle checked={visibility[key]} label={t(key)} disabled={busy} onChange={next => onVisibility({ ...visibility, [key]: next })} /></div>)}
+      <div className={s.visibilityRow}><span>{t("contactsAfterExchangeShort")}</span><Toggle checked={false} label={t("contactsAfterExchangeShort")} disabled onChange={() => undefined} /></div>
+    </div>
   </section>;
 }
 
@@ -155,7 +163,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
     }
   }, [profile, edit]);
   const progress = payload ? cardProgress(payload.completeness) : null;
-  const missingLabels: Record<CardKey, keyof typeof accountCopy> = { companyRole: "companyRole", offering: "whatOffer", seeking: "whatSeek", intro: "intro" };
+  const missingLabels: Record<CardKey, keyof typeof accountCopy> = { companyRole: "companyRole", offering: "canHelp", seeking: "whatSeek", intro: "intro" };
   const introValid = !draft || profileBioWithinLimit(draft.bio);
 
   async function persistEdit(edit: ManualProfileUpdateInput): Promise<boolean> {
@@ -189,42 +197,44 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
     await persistEdit({ seeking: [...(profile.seeking ?? []), value] });
   }
 
-  const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} /> : null;
+  const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} busy={saving} onVisibility={fields => { if (draft) setDraft({ ...draft, publicFields: fields }); else void persistEdit({ publicFields: fields }); }} /> : null;
   const visibleSuggestions = suggestions.length ? suggestions : liveSuggestions;
+  const pending = profile && !profile.seeking?.length ? visibleSuggestions.filter(value => !dismissed.includes(value)) : [];
   return <AccountLayout active={active} title={t("profile")} subtitle={t("profileIntro")} rightRail={preview}>
     {loading && !payload ? <div className={s.status} aria-busy="true">{t("profile")}</div> : null}
     {readError ? <div className={s.status} role="alert"><p>{readError === "unauthorized" ? t("profileLogin") : t("readError")}</p><Button label={t("retry")} size="sm" onClick={() => void load()} /></div> : null}
     {profile && progress ? <>
-      <div className={s.cards}>
-        <section className={s.businessCard}>
-          <div className={s.cardTop}><span className={s.orbitMark}>O</span><strong>{t("card")}</strong><Button label={t("editProfile")} size="sm" data-profile-edit onClick={() => setDraft(draftOf(profile))} /></div>
-          <div className={s.identity}><div className={s.avatar}>{profile.displayName.slice(0, 1)}</div><div><strong>{profile.displayName}</strong><span>{profile.organization && profile.role ? `${profile.organization} · ${profile.role}` : t("missingCompany")}</span></div></div>
-          {profile.handles?.email ? <span className={s.email}>{profile.handles.email}</span> : null}
+      {/* b12 W-R18a-01 / b5 #20: .wgrid — mycard 7 + ringcard 5, 提供/求め 12, 招待コード 12, 主催 / 参加 6 + 6. */}
+      <div className={s.grid}>
+        <section className={s.businessCard} aria-label={t("card")}>
+          <div className={s.cardTop}><span className={s.orbitMark}>O</span><span>{t("card")}</span>
+            <button type="button" className={`btn ${s.shareButton}`} aria-label={t("inviteCreate")} onClick={() => setInviteOpen(true)}><Icon name="share" size={16} /></button></div>
+          <button type="button" className={`btn ${s.identity}`} aria-label={t("editProfile")} data-profile-edit onClick={() => setDraft(draftOf(profile))}>
+            <span className={s.avatar} aria-hidden>{profile.displayName.slice(0, 1)}</span>
+            <span className={s.identityText}><strong>{profile.displayName}</strong><span>{profile.organization && profile.role ? `${profile.organization} · ${profile.role}` : t("missingCompany")}</span></span>
+          </button>
+          {profile.handles?.email || profile.industry ? <div className={s.cardFoot}>{profile.handles?.email ? <><Icon name="mail" size={16} /><span>{profile.handles.email}</span></> : null}{profile.industry ? <span className={s.industry}><Chip label={profile.industry} /></span> : null}</div> : null}
         </section>
         <section className={s.progressCard}>
-          <div className={s.progressHead}><div className={s.ring} style={{ "--score": `${progress.score}%` } as CSSProperties}><strong>{progress.score}%</strong></div><div><small>{t("completeness")}</small><strong>{progress.score === 100 ? t("complete") : t("missingMany").replace("{n}", String(progress.missing.length))}</strong></div></div>
-          {progress.hasCard && progress.missing.length ? <div className={s.missingList}>{progress.missing.map(key => <button key={key} type="button" onClick={() => setDraft(draftOf(profile))}><span>＋</span>{t(missingLabels[key])}<em>+25%</em></button>)}</div> : null}
+          <div className={s.progressHead}><div className={s.ring} style={{ "--score": `${progress.score}%` } as CSSProperties}><strong>{progress.score}<small>%</small></strong></div><div><small>{t("completeness")}</small><strong>{progress.score === 100 ? t("complete") : t(pending.length && progress.missing.includes("seeking") ? "missingReviewSeek" : "missingMany").replace("{n}", String(progress.missing.length))}</strong></div></div>
+          {progress.hasCard && progress.missing.length ? <div className={s.missingList}>{progress.missing.map(key => <button key={key} type="button" className="btn" onClick={() => setDraft(draftOf(profile))}><span>＋</span>{key === "seeking" && pending.length ? t("seekCandidates").replace("{n}", String(pending.length)) : t(missingLabels[key])}<em>+25%</em></button>)}</div> : null}
         </section>
-      </div>
-      <section className={s.detailsCard}>
-        <div className={s.detailsTop}><strong>{t("whatOffer")}</strong><Button label={t("editDetails")} size="sm" onClick={() => setDraft(draftOf(profile))} /></div>
-        <div className={s.chips}>{profile.offering?.length ? profile.offering.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
-        <strong>{t("whatSeek")}</strong>
-        <div className={s.chips}>{profile.seeking?.length ? profile.seeking.map(value => <span className={s.chip} key={value}>{value}</span>) : <span className={s.muted}>{t("missing")}</span>}</div>
-        {!profile.seeking?.length && visibleSuggestions.some(value => !dismissed.includes(value)) ? <div className={s.suggestions}>
-          <span className={s.suggestionHeading}>{t("suggested")}</span>
-          {visibleSuggestions.filter(value => !dismissed.includes(value)).map(value => <div className={s.suggestion} key={value}>
-            <span>{value}</span>
-            <button type="button" aria-label={`${t("suggestAccept")}: ${value}`} disabled={saving} onClick={() => void acceptSuggestion(value)}>✓</button>
-            <button type="button" aria-label={`${t("suggestDismiss")}: ${value}`} onClick={() => setDismissed([...dismissed, value])}>×</button>
-          </div>)}
-          {saveError && !draft ? <span role="alert">{t("saveError")}</span> : null}
-        </div> : null}
-      </section>
-      <div className={s.actions}>
-        <section><strong>{t("invite")}</strong><span>{t("inviteSub")}</span><Button label={t("inviteCreate")} size="sm" onClick={() => setInviteOpen(true)} /></section>
-        {hostedCount !== null ? <a href="/app/events/center"><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${t("eventCount").replace("{n}", String(hostedCount))}${activeCount ? ` · ${t("activeCount").replace("{n}", String(activeCount))}` : ""}`}</span><span aria-hidden="true">→</span></a> : null}
-        {attendingCount !== null && attendingCount !== 0 ? <a href="/app/events?tab=going"><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : t("eventCount").replace("{n}", String(attendingCount))}</span><span aria-hidden="true">→</span></a> : null}
+        {/* No edit button on the board: the card itself opens the editor (the name card does too, by keyboard). */}
+        <section className={s.detailsCard} onClick={event => { if (!(event.target as HTMLElement).closest("button")) setDraft(draftOf(profile)); }}>
+          <small>{t("whatOffer")}</small>
+          <div className={s.chips}>{profile.offering?.length ? profile.offering.map(value => <Chip key={value} label={value} tone="lav" />) : (["offerExample1", "offerExample2"] as const).map(key => <button key={key} type="button" className={`btn ${s.ghostChip}`} onClick={() => setDraft(draftOf(profile))}>{t(key)}</button>)}</div>
+          <div className={s.seekRow}><small>{t("whatSeek")}</small>{pending.length ? <Chip label={t("suggested")} tone="lav" /> : null}</div>
+          <div className={s.chips}>{profile.seeking?.length ? profile.seeking.map(value => <Chip key={value} label={value} tone="pink" />)
+            : pending.length ? pending.map(value => <span className={s.suggestion} key={value}>{value}
+              <button type="button" aria-label={`${t("suggestDismiss")}: ${value}`} onClick={() => setDismissed([...dismissed, value])}>✕</button>
+              <button type="button" className={s.accept} aria-label={`${t("suggestAccept")}: ${value}`} disabled={saving} onClick={() => void acceptSuggestion(value)}>✓</button></span>)
+            : (["seekExample1", "seekExample2"] as const).map(key => <button key={key} type="button" className={`btn ${s.ghostChip}`} onClick={() => setDraft(draftOf(profile))}>{t(key)}</button>)}</div>
+          {saveError && !draft && pending.length ? <p role="alert" className={s.fillHint}>{t("saveError")}</p> : null}
+          {!profile.offering?.length && !profile.seeking?.length && !pending.length ? <p className={s.fillHint}>{t("fillHint")}</p> : null}
+        </section>
+        <section className={`${s.rowCard} ${attendingCount ? s.inviteCard : s.half}`}><MacTile emoji="🔗" tone="teal" /><div><strong>{t("invite")}</strong><span>{t("inviteSub")}</span></div><Button label={t("inviteCreate")} size="sm" onClick={() => setInviteOpen(true)} /></section>
+        {hostedCount !== null ? <a className={`${s.rowCard} ${s.half}`} href="/app/events/center"><MacTile emoji="🎤" tone="apricot" /><div><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${t("eventCount").replace("{n}", String(hostedCount))}${activeCount ? ` · ${t("activeCount").replace("{n}", String(activeCount))}` : ""}`}</span></div><span className={s.go}><Icon name="right" size={16} /></span></a> : null}
+        {attendingCount !== null && attendingCount !== 0 ? <a className={`${s.rowCard} ${s.half}`} href="/app/events?tab=going"><MacTile emoji="🎟️" tone="blue" /><div><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : t("eventCount").replace("{n}", String(attendingCount))}</span></div><span className={s.go}><Icon name="right" size={16} /></span></a> : null}
       </div>
       <div className={s.mobilePreview}>{preview}</div>
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />

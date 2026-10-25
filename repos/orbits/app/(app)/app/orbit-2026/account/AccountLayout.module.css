@@ -1,24 +1,31 @@
-.page { min-height: 100%; padding: 18px 0 72px; color: var(--ink); }
-.grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
-.menu { display: grid; gap: 2px; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); }
-.menuItem { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; gap: 10px; align-items: center; width: 100%; min-height: 42px; padding: 8px 10px; border: 0; border-radius:var(--r-row); background: transparent; color: var(--ink-2); text-align: left; text-decoration: none; font: inherit; font-size:var(--fs-body-sm); cursor: pointer; }
-.menuItem:hover, .selected { background: var(--surface-2); color: var(--ink); }
-.menuItem > :last-child { color: var(--ink-3); }
-.selected { font-weight: 750; }
-.rule { height: 1px; margin: 5px 8px; background: var(--line); }
-.signOut { grid-template-columns: 20px minmax(0, 1fr); color: var(--coral-text); }
+/* b12 W-R18a / b5 Web 設定: kit .setgrid 220 + 22 gap, .smenu card, 19px heading. */
+.page { min-height: 100%; padding: 0 34px 40px; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+.grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-22); align-items: start; }
+.menu { display: grid; gap: 2px; padding: 8px; background: var(--surface); border-radius: var(--r-card-web); }
+.menu .menuItem { display: flex; gap: 10px; align-items: center; width: 100%; height: auto; min-height: 0; padding: 10px 12px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--ink-2); text-align: left; text-decoration: none; font: inherit; font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: var(--lh-body); cursor: pointer; }
+.menuItem > span { flex: 1; min-width: 0; }
+.menu .menuItem:hover, .menu .selected { background: var(--surface-2); color: var(--ink); }
+.menuChevron { display: none; color: var(--ink-3); }
+
+.rule { height: 1px; margin: 6px 10px; background: var(--line); }
+.menu .signOut { color: var(--coral-text); }
 .content { min-width: 0; }
 .heading { margin: 0 0 16px; }
-.heading h1 { margin: 0; font-size:var(--fs-section); line-height: 1.35; font-weight: 800; }
+.heading h1 { margin: 0; font-size: var(--fs-section); line-height: var(--lh-body); font-weight: var(--fw-heavy); }
 .largeTitle h1 { font-size: var(--fs-title-lg); }
-.heading p { margin: 4px 0 0; font-size:var(--fs-control); line-height: 1.5; color: var(--ink-3); }
-.phoneTitle, .phoneBack { display: none; }
+.heading p { margin: 0; font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: var(--lh-body); color: var(--ink-3); }
+.phoneTitle, .phoneTopbar { display: none; }
+@media (max-width: 1279px) { .page { padding: 0 26px 40px; } }
 @media (max-width: 767px) {
   .page { padding: 8px 0 72px; }
+  .menuChevron { display: inline-flex; }
   .grid { display: block; }
   .menu { padding: 0; border: 0; border-radius: var(--r-none); background: none; }
-  .menuItem { min-height: 50px; padding: 12px 14px; border-bottom: 1px solid var(--line); border-radius: var(--r-none); }
+  .menu .menuItem { min-height: 50px; padding: 12px 14px; border-bottom: 1px solid var(--line); border-radius: var(--r-none); font-weight: var(--fw-regular); }
   .phoneTitle { display: block; padding: 10px 14px 14px; font-size:var(--fs-title-sm); font-weight: 800; }
   .home .content, .detail .menu { display: none; }
-  .phoneBack { display: inline-flex; gap: 5px; align-items: center; margin: 0 0 12px; color: var(--ink-2); font-size:var(--fs-control); text-decoration: none; }
+  .detail.page { padding: 0 var(--space-18) 130px; }
+  .phoneTopbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 6px 0 14px; }
+  .phoneTopbar b { text-align: center; font-size: var(--fs-emoji-sm); font-weight: var(--fw-heavy); letter-spacing: .01em; }
+  .phoneTopbar .phoneBack { width: 40px; height: 40px; min-height: 40px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; }
 }

@@ -41,7 +41,7 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, la
   return (
     <Orbit2026Scope language={language} className={`${s.page} ${home ? s.home : s.detail}`}>
       <ToastProvider>
-        <ShellPage title={t("settings")} rightRail={rightRail ?? false} />
+        <ShellPage title={t("settings")} rightRail={rightRail ?? false} phoneFold={!home} phoneBare={!home} />
         <div className={s.grid} data-account-section={active}>
           <nav className={s.menu} aria-label={t("settings")}>
             <div className={s.phoneTitle}>{t("settings")}</div>
@@ -49,7 +49,7 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, la
               <a key={section} className={`${s.menuItem} ${section === active || (home && section === "profile") ? s.selected : ""}`} href={href} aria-current={section === active ? "page" : undefined}>
                 <Icon name={icon} size={16} />
                 <span>{t(section)}</span>
-                <Icon name="right" size={16} />
+                <span className={s.menuChevron}><Icon name="right" size={16} /></span>
               </a>
             ))}
             <div className={s.rule} />
@@ -58,7 +58,8 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, la
             </button>
           </nav>
           <main className={s.content}>
-            <a className={s.phoneBack} href="/app/settings"><Icon name="left" size={16} />{t("backToSettings")}</a>
+            {/* b12 W-R18a-2x (390): a detail page is full screen with the kit .topbar — back + centred title. */}
+            <div className={s.phoneTopbar}><a className={`btn ${s.phoneBack}`} href="/app/settings" aria-label={t("backToSettings")}><Icon name="left" size={20} /></a><b>{title}</b><span /></div>
             <div className={`${s.heading} ${largeTitle ? s.largeTitle : ""}`}><h1>{title}</h1>{subtitle ? <p>{subtitle}</p> : null}</div>
             {children}
           </main>
