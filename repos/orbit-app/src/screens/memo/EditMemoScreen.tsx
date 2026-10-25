@@ -23,6 +23,7 @@ import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteUpdateRequest, confirmedNote, noteAssociationsForReceipt, type NoteView } from "../../view-models/notes";
 import { NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
+import { editableNoteTitle, noteTitleFor } from "./memo-mention-model";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
 import { useNoteContactSummaries } from "../notes/useNoteContactSummaries";
 import { useNoteDetailSource, useNotesWriteStatus } from "../notes/notes-source";
@@ -75,7 +76,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
   useEffect(() => {
     if (!current || dirty || current.version <= initializedVersion.current) return;
     initializedVersion.current = current.version;
-    setTitle(current.title);
+    setTitle(editableNoteTitle(current.title, current.body));
     setDraft(current.body);
     setMentions([...current.mentions]);
     setEventIds([...current.eventIds]);
@@ -156,7 +157,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
   async function save() {
     if (!owns() || pending || !current || (Platform.OS === "web" && source.offline)) return;
     const targetNoteId = current.id;
-    const request = buildRichNoteUpdateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan: planEnabled }, current.version, mutationKey.current, locale.language);
+    const request = buildRichNoteUpdateRequest({ title: noteTitleFor(title, draft), body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan: planEnabled }, current.version, mutationKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError(""); setSaved(false);
     if (Platform.OS !== "web") {
@@ -191,7 +192,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
       autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);
       if (!owns()) return;
-      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setNoteKind(note.noteKind ?? "free"); setUsedForPlan(note.usedForPlan === true); setDirty(false); setDraftStatus(""); setSaved(true);
+      initializedVersion.current = note.version; setConfirmed(note); setTitle(editableNoteTitle(note.title, note.body)); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setNoteKind(note.noteKind ?? "free"); setUsedForPlan(note.usedForPlan === true); setDirty(false); setDraftStatus(""); setSaved(true);
       // Pull the change into the device copy the list and detail read from.
       if (!await source.confirmSaved(targetNoteId, note.version)) { if (owns()) setError(locale.t("sync.mutationPending")); }
       else if (owns()) router.back(); // UX-6: saving closes the editor, as in iOS Notes.
@@ -200,7 +201,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !dirty || !title.trim() || !draft.trim() || (Platform.OS === "web" && source.offline);
+  const saveDisabled = pending || !dirty || !noteTitleFor(title, draft).trim() || !draft.trim() || (Platform.OS === "web" && source.offline);
   // UX-6: like iOS Notes, leaving keeps the edit — back saves a changed note; "完成" saves and closes.
   return <AppScreen inset="kit" title={locale.t("notes.edit")} onBack={() => { if (pending || !owns()) return; if (dirty && !saveDisabled) void save(); else router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />}
     headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.done")}</Text></Pressable>}>

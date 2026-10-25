@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { activeMemoMentionQuery, bodyAfterTitle, insertMemoMention, updateMemoMentionRanges } from "../src/screens/memo/memo-mention-model";
+import { activeMemoMentionQuery, bodyAfterTitle, editableNoteTitle, insertMemoMention, noteTitleFor, updateMemoMentionRanges } from "../src/screens/memo/memo-mention-model";
 
 test("@ alone searches, and inserting an event creates a UTF-16 ranged event token", () => {
   const body = "🙂 @";
@@ -33,4 +33,12 @@ test("a title taken from the first line is not repeated in the body; mention ran
   assert.equal(bodyAfterTitle("Lunch…", "Lunch notes", []).body, "Lunch notes");
   const onFirst = [{ ...mention, start: 0, end: 5 }];
   assert.equal(bodyAfterTitle("@Sato", "@Sato\nx", onFirst).body, "@Sato\nx");
+});
+
+test("a title that is only the first line stays automatic in the editor; a typed title is kept", () => {
+  assert.equal(noteTitleFor("", "Dinner with Ito\nmore"), "Dinner with Ito");
+  assert.equal(noteTitleFor("  Plan  ", "Dinner"), "Plan");
+  assert.equal(editableNoteTitle("Dinner with Ito", "Dinner with Ito\nmore"), "", "automatic: re-derived on save");
+  assert.equal(noteTitleFor(editableNoteTitle("Dinner with Ito", "x"), "Lunch with Ito\nmore"), "Dinner with Ito", "typed: kept");
+  assert.equal(noteTitleFor(editableNoteTitle("Dinner with Ito", "Dinner with Ito"), "Lunch with Ito"), "Lunch with Ito", "automatic: follows the new first line");
 });

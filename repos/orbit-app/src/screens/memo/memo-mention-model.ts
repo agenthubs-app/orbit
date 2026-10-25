@@ -45,3 +45,16 @@ export function bodyAfterTitle(title: string, body: string, mentions: readonly N
   if (!title.trim() || firstLine.trim() !== title.trim() || mentions.some(mention => mention.start < cut)) return { body, mentions };
   return { body: body.slice(cut), mentions: mentions.map(mention => ({ ...mention, start: mention.start - cut, end: mention.end - cut })) };
 }
+
+/** UX-6: a typed title, else the body's first line (40 characters at most). */
+export function noteTitleFor(title: string, body: string): string {
+  const trimmed = title.trim();
+  if (trimmed) return trimmed;
+  const first = body.trim().split(/\r?\n/u)[0]?.trim() ?? "";
+  return [...first].length > 40 ? `${[...first].slice(0, 40).join("")}…` : first;
+}
+
+/** The title field shows what was typed; a title that is just the body's first line stays automatic (empty field). */
+export function editableNoteTitle(title: string, body: string): string {
+  return title.trim() && title.trim() === noteTitleFor("", body) ? "" : title;
+}

@@ -23,6 +23,7 @@ import { buildRichNoteCreateRequest, confirmedNote, noteAssociationsForReceipt }
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
+import { noteTitleFor } from "./memo-mention-model";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
 import { useNotesWriteStatus } from "../notes/notes-source";
 
@@ -212,12 +213,6 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
 }
 
 /** UX-6: a note without a title is named by its first line (at most 40 characters). */
-export function noteTitleFor(title: string, body: string): string {
-  const trimmed = title.trim();
-  if (trimmed) return trimmed;
-  const first = body.trim().split(/\r?\n/u)[0]?.trim() ?? "";
-  return [...first].length > 40 ? `${[...first].slice(0, 40).join("")}…` : first;
-}
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cancel: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" },
