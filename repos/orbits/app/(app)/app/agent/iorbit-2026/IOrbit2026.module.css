@@ -1,6 +1,11 @@
 .scope { color: var(--ink); min-height: 70vh; }
 .layout { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: var(--space-20); padding: 0 var(--space-34) var(--space-40); }
 .layout:not(:has(> .sidebar)) { grid-template-columns: minmax(0, 1fr); }
+.layout:has(> .strip) { grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-16); }
+.strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border-radius: var(--r-lg); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.strip hr { width: 22px; height: 1px; margin: 4px 0; border: 0; background: var(--line); }
+.scope .stripButton { width: 34px; height: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.scope .stripPin { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; font-size: var(--fs-body); font-weight: var(--fw-bold); }
 /* b4 #37 .hpanel */
 .sidebar { background: color-mix(in srgb, var(--surface) 60%, transparent); border-radius: var(--r-card-web); padding: var(--space-12) var(--space-10); overflow: auto; min-height: 0; }
 /* .ccol: messages centred at 680, composer at the bottom */
@@ -83,6 +88,8 @@
 .composer textarea::placeholder { color: var(--ink-3); }
 .privacy { max-width: 680px; width: 100%; margin: 8px auto 0; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); text-align: center; line-height: var(--lh-body); }
 @media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .sidebar { height: 100%; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
-@media (max-width: 1023px) { .layout { padding: 0 var(--space-18) var(--space-18); } }
-@media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: 1fr; } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
+/* b8 #9: at 1024 the header keeps only ⌘ K. */
+@media (max-width: 1199px) { .anywhereText { display: none; } }
+@media (max-width: 1023px) { .layout { padding: 0 var(--space-26) var(--space-40); } }
+@media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .strip { display: none; } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: 1fr; } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
 @media (prefers-reduced-motion: reduce) { .suggestion:hover { transform: none; } }

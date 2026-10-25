@@ -305,10 +305,18 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
       <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || t(iorbitCopy.inConversation) : t(iorbitCopy.subtitle)}
         left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => { historyOpenChosen.current = true; setHistoryOpen((open) => !open); }} />}
-        right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd> {t(iorbitCopy.anywhere)}</span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
+        right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd><span className={styles.anywhereText}> {t(iorbitCopy.anywhere)}</span></span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
         rightRail={false} phoneFold phoneBare={inConversation} />
       <div className={styles.layout}>
         {historyOpen && !narrow ? <aside className={styles.sidebar} aria-label={t(iorbitCopy.list)}><HistoryPane history={history} onNew={startNew} onPick={pick} /></aside> : null}
+        {narrow ? <aside className={styles.strip} aria-label={t(iorbitCopy.list)}>
+          {/* b8 #9 .r8strip (768–1199): open the list, search it, start new, then pinned conversations. */}
+          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)}><Icon name="menu" size={16} /></button>
+          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.searchLabel)} onClick={() => setHistoryOpen(true)}><Icon name="search" size={16} /></button>
+          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.newChat)} onClick={startNew}><Icon name="edit" size={16} /></button>
+          {history.storedHistory.some((item) => item.pinned) ? <><hr /><span className={styles.stripPin} aria-hidden>📌</span>
+            {history.storedHistory.filter((item) => item.pinned).slice(0, 5).map((item) => <button key={item.id} type="button" className={`btn ${styles.stripPin}`} aria-label={item.title} title={item.title} onClick={() => pick(item)}>{[...item.title.trim()][0] ?? "·"}</button>)}</> : null}
+        </aside> : null}
         <main className={styles.main}>
           <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><div className={styles.phoneHeaderTitle}><strong>iOrbit</strong>{inConversation && activeTitle ? <small>{activeTitle}</small> : null}</div><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
