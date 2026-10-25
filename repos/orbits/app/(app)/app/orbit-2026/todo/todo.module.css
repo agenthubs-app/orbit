@@ -1,5 +1,5 @@
 /* web.html wTaskTodo: 7/5 top row and full-width follow-ups. */
-.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); align-items: stretch; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); align-items: stretch; padding: 0 var(--space-34) 40px; }
 .decisions { grid-column: span 7; }
 .decisionRow { display: flex; align-items: center; min-height: 60px; padding: 11px 10px; border-top: 1px solid var(--line); }
 .decisionMain { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
@@ -12,7 +12,19 @@
 .decisionActions { display: inline-flex; gap: var(--space-8); opacity: 0; pointer-events: none; }
 .decisionActionsShown, .decisionRow:hover .decisionActions, .decisionRow:focus-within .decisionActions { opacity: 1; pointer-events: auto; }
 @media (hover: none), (max-width: 390px) { .decisionActions { opacity: 1; pointer-events: auto; } }
-.nextMoves { grid-column: span 5; min-width: 0; }
+/* web.html #14 .nstack */
+.nextMoves { grid-column: span 5; min-width: 0; position: relative; padding-bottom: 14px; display: flex; flex-direction: column; }
+.stackBack { position: absolute; left: 0; right: 0; top: 0; bottom: 14px; border-radius: var(--r-card-web); background: var(--surface); }
+.stackBack1 { transform: translateY(7px) scale(.95); opacity: .75; }
+.stackBack2 { transform: translateY(14px) scale(.9); opacity: .45; }
+.stackFront { position: relative; z-index: var(--z-raised); flex: 1; padding: var(--space-20); border-radius: var(--r-card-web); background: linear-gradient(135deg, var(--mac-lav), var(--surface) 70%); }
+.stackHead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.stackHead b { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+.stackCount { margin-left: auto; font-family: var(--font-num); font-size: var(--fs-meta); font-weight: var(--fw-heavy); color: var(--ink-3); }
+.stackHead .stackNext { width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.why { margin-left: auto; display: inline-flex; }
+.header .more { display: inline-flex; align-items: center; gap: 2px; height: auto; min-height: 0; padding: 0; border: 0; border-radius: var(--r-none); background: transparent; color: var(--ink-3); font-size: var(--fs-meta); font-weight: 600; text-decoration: none; cursor: pointer; }
+.headingNote { font-size: var(--fs-label); font-weight: 600; color: var(--ink-3); }
 .followups { grid-column: span 12; }
 .followupRow { display: flex; align-items: center; gap: var(--space-8); }
 .followupMain { flex: 1; min-width: 0; }
@@ -20,17 +32,20 @@
 .heading { display: flex; align-items: center; gap: var(--space-8); margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .row { display: flex; align-items: center; gap: var(--space-8); }
 .note { color: var(--ink-3); font-size: var(--fs-caption); line-height: var(--lh-label); margin: var(--space-8) 0; }
-.moveTitle { display: flex; align-items: center; gap: var(--space-10); }
-.moveTitle h4 { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
-.reason { color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-body); margin: var(--space-10) 0; }
-.moveFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); margin-top: var(--space-14); }
+.moveTitle { display: flex; align-items: center; gap: var(--space-10); font-size: var(--fs-emph); font-weight: var(--fw-bold); line-height: var(--lh-body); }
+.reason { color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: var(--lh-prose); margin: 3px 0 0; }
+.moveFoot { display: flex; align-items: center; gap: var(--space-8); margin-top: var(--space-12); }
 .editorFields { display: grid; gap: var(--space-12); margin-top: var(--space-16); }
 .editorLabel { display: grid; gap: var(--space-8); margin-top: var(--space-12); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .draftBody { width: 100%; min-height: 280px; resize: vertical; padding: var(--space-16); border: 1px solid var(--surface-3); border-radius: var(--r-bubble); background: var(--surface); color: var(--ink); font: inherit; font-weight: var(--fw-regular); line-height: var(--lh-body); }
 .draftLink { display: inline-flex; align-items: center; min-height: 40px; padding: var(--space-8) var(--space-16); border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; }
+/* The rail scope fills the shell aside so the ask bar sits at the bottom. */
+.railScope { display: block; height: 100%; }
 .rail { display: grid; gap: var(--space-10); }
 .rail .header { margin-bottom: 0; }
 .railCard { border-radius: var(--r-bubble); padding: var(--space-14); }
 .taskListLink { align-self: start; color: var(--accent-text); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); grid-column: span 12; text-decoration: none; }
 .taskListLink:hover { text-decoration: underline; }
+@media (max-width: 1279px) { .grid { padding: 0 var(--space-26) 40px; } }
 @media (max-width: 1023px) { .decisions, .nextMoves { grid-column: span 12; } }
+@media (max-width: 767px) { .grid { padding: 0 var(--space-16) 32px; } }

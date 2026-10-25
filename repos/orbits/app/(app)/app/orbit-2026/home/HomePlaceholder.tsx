@@ -34,7 +34,7 @@ const railScheduleRow = z.object({ id: z.string(), title: z.string(), startsAt: 
 const railSchedule = z.object({ scheduleItems: z.array(z.unknown()) });
 const recentSessionsSchema = z.object({ items: z.array(z.unknown()) });
 
-function RecentSessions() {
+export function RecentSessions() {
   const { language } = useOrbitLanguage();
   const sessions = useHomeResource("/api/ai/conversations/sessions?limit=3", recentSessionsSchema);
   if (sessions.kind !== "ready") return null;
@@ -164,7 +164,6 @@ const RAIL_TILE: Record<HomeRailSuggestion["source"], { emoji: string; tone: Ava
 
 /** web.html #2 rail: kit `.rail h4` + `.sugg` cards (primary action + あとで), 最近の会話, `.assist-in`. */
 function NextMoveRail({ items, t, onLater }: { items: readonly HomeRailSuggestion[]; t: T; onLater: (key: string) => void }) {
-  const { language } = useOrbitLanguage();
   // shellStyles.railBody: the shell's own rule lets the 1024 drawer size it (b12 N07b).
   return <div className={`${shellStyles.railBody} ${styles.rail}`}>
     <h2 className={styles.railHead}><MacTile emoji="✨" tone="lav" size="sm" />{t("nextMove")}<span>{t("fromHome")}</span></h2>
@@ -175,14 +174,22 @@ function NextMoveRail({ items, t, onLater }: { items: readonly HomeRailSuggestio
           <button type="button" className={`btn ${styles.suggLater}`} onClick={() => onLater(item.key)}>{t("later")}</button></div>
       </div>; })}
     <RecentSessions />
-    <span className={styles.railSpacer} />
-    <button type="button" className={`btn ${styles.railAsk}`} onClick={() => window.dispatchEvent(new CustomEvent("orbit:open-palette"))}>
-      <Icon name="sparkle" size={16} /><span>{pickCopy(shellCopy.railAskPlaceholder, language)}</span><small>⌘K</small>
-    </button>
+    <RailAsk />
   </div>;
 }
 
 /** web.html #3 / b11 #25 rail: 「ウィジェットを追加」 tiles at their default size, then what is already on Home (dimmed). */
+/** The rail's bottom: kit .assist-in (「iOrbit に聞く…」 ⌘K), pushed to the end by a spacer. */
+export function RailAsk() {
+  const { language } = useOrbitLanguage();
+  return <>
+    <span className={styles.railSpacer} />
+    <button type="button" className={`btn ${styles.railAsk}`} onClick={() => window.dispatchEvent(new CustomEvent("orbit:open-palette"))}>
+      <Icon name="sparkle" size={16} /><span>{pickCopy(shellCopy.railAskPlaceholder, language)}</span><small>⌘K</small>
+    </button>
+  </>;
+}
+
 function WidgetLibrary({ slots, t, onAdd }: { slots: readonly HomeWidgetSlot[]; t: T; onAdd: (slot: HomeWidgetSlot) => void }) {
   const available = HOME_CATALOG.filter((item) => !slots.some((slot) => slot.key === item.key));
   const full = slots.length >= 10;
