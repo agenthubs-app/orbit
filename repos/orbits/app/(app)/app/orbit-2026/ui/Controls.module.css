@@ -107,8 +107,8 @@
 .fopt { border: 1.5px solid transparent; }
 /* Over an old page's unscoped legacy `.btn` (HANDOFF G13): two classes restate the kit values. */
 .fopt:global(.btn), .cat:global(.btn) { gap: 4px; height: auto; padding: 7px 12px; border-radius: var(--r-pill); font-size: var(--fs-control); font-weight: var(--fw-bold); letter-spacing: normal; }
-.fopt:global(.btn) { border: 1.5px solid transparent; }
-.foptOn:global(.btn) { border-color: var(--plum-500); }
+.fopt:global(.btn) { border: 1.5px solid transparent; background: var(--surface-2); color: var(--ink-2); }
+.foptOn:global(.btn) { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
 .hit:global(.btn) { gap: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .toggle:global(.btn) { gap: 0; width: 44px; height: 26px; padding: 0; border: 0; border-radius: var(--r-pill); }
 .toggle:global(.btn):disabled { background: var(--surface-3); color: inherit; cursor: default; }

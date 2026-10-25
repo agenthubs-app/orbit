@@ -26,7 +26,7 @@ async function post(path: string, body: unknown): Promise<ContactCompletionResul
  * (`GET /api/contacts/completion-question`), answers or skips it, then hides for the day. Renders
  * nothing while loading, when there is no question, or when the contract is not live (503).
  */
-export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}) {
+export function TodayQuestionCard({ onSettled, variant }: { onSettled?: () => void; variant?: "flat" | "rail" } = {}) {
   const { language } = useOrbitLanguage();
   const t = translator(language);
   const toast = useToast();
@@ -61,7 +61,7 @@ export function TodayQuestionCard({ onSettled }: { onSettled?: () => void } = {}
   };
   const base = `/api/contacts/completion-question/${encodeURIComponent(question.id)}`;
   return (
-    <CompletionQuestionCard question={question} t={t} busy={busy}
+    <CompletionQuestionCard question={question} t={t} busy={busy} variant={variant}
       onAnswer={(answer) => void settle(() => post(`${base}/answer`, { answer, idempotencyKey: keyFor(question.id, `answer:${answer}`) }), t(q.answered, { name: question.contactName ?? "" }))}
       onSkip={() => void settle(() => post(`${base}/skip`, { idempotencyKey: keyFor(question.id, "skip") }), t(q.skipped))} />
   );

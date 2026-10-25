@@ -1,5 +1,8 @@
 /* 今日の 1問 (b9 A7 .card.flat padding 14 · .av.sm · .fopt · .dn.up). Tokens only. */
 .card { min-width: 0; max-width: 100%; padding: var(--space-14); border-radius: var(--r-xl); background: var(--surface-2); line-height: 1.5; }
+.rail { padding: var(--space-16); background: var(--surface); }
+.rail .title { font-size: var(--fs-body-sm); }
+.rail .options { margin-top: 10px; }
 .head { display: flex; align-items: center; gap: 10px; }
 .av { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: var(--r-pill); font-size: var(--fs-label); font-weight: var(--fw-heavy); }
 .av_lav { background: var(--mac-lav); color: var(--mac-lav-ink); }

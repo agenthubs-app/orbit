@@ -27,6 +27,8 @@ const CHIP_KEY = { meishi: "chipMeishi", phone: "chipPhone", manual: "chipManual
 export const LINKEDIN = "LinkedIn";
 export const chipLabel = (chip: keyof typeof CHIP_KEY | "linkedin", t: NetworkT) => (chip === "linkedin" ? LINKEDIN : t(CHIP_KEY[chip]));
 const SOURCE_ORDER = ["meishi", "phone", "linkedin", "event", "manual", "self"] as const;
+// web.html #6: each source chip leads with its icon (12px).
+const SOURCE_ICON = { meishi: "scan", phone: "phone", linkedin: "link", event: "calendar", manual: "edit", self: "check" } as const;
 const MET_KEY = { event: "metEvent", referral: "metReferral", visit: "metVisit", other: "metOther" } as const;
 
 export interface NetworkScreenProps { language: OrbitLanguage; nowIso: string; /** `/app/contacts/<id>`: open this contact in the drawer. */ initialContactId?: string | null }
@@ -151,7 +153,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       ) : (
         <>
           <h4><span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>💬</span>{t("railQuestion")}</h4>
-          <TodayQuestionCard />
+          <TodayQuestionCard variant="rail" />
           {planCandidates.length ? <>
             <h4><Icon name="sparkle" size={16} />{t("railNext")}</h4>
             <div className={styles.card}>
@@ -203,7 +205,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                 <div className={`${styles.card} ${styles.span3}`} data-network-sources="">
                   <div className={styles.lbl}>{t("sources")}</div>
                   {SOURCE_ORDER.filter((key) => (summary?.sourceChips?.[key] ?? 0) > 0).map((key) => (
-                    <div key={key} className={styles.srcRow}><span className={`${styles.chip} ${key === "self" ? styles.chipTeal : ""}`}>{chipLabel(key, t)}</span><b>{summary?.sourceChips?.[key]}</b></div>
+                    <div key={key} className={styles.srcRow}><span className={`${styles.chip} ${key === "self" ? styles.chipTeal : ""}`}>{SOURCE_ICON[key] ? <Icon name={SOURCE_ICON[key]} size={16} /> : null}{chipLabel(key, t)}</span><b>{summary?.sourceChips?.[key]}</b></div>
                   ))}
                 </div>
                 </>}
@@ -288,7 +290,7 @@ function NetworkTable({ rows, t, nowMs, selectedId, onOpen }: { rows: NetworkRow
             <td><div className={styles.row}><ContactAvatar name={row.name} /><b>{row.name}</b></div></td>
             <td>{row.organization || row.role ? <><span className={styles.sub}>{row.organization}</span><div className={styles.lbl}>{row.role}</div></> : <span className={styles.lbl}>{t("unset")}</span>}</td>
             <td><Dots level={row.density} /></td>
-            <td><span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{chipLabel(row.chip, t)}</span></td>
+            <td><span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{row.chip in SOURCE_ICON ? <Icon name={SOURCE_ICON[row.chip as keyof typeof SOURCE_ICON]} size={16} /> : null}{chipLabel(row.chip, t)}</span></td>
             <td>{row.goal ? goalText(row.goal, t) : <span className={styles.lbl}>—</span>}</td>
             <td className={styles.muted}>{touchText(row, t, nowMs)}</td>
           </tr>
@@ -307,7 +309,7 @@ function NetworkMobileList({ rows, t, nowMs, onOpen }: { rows: NetworkRow[]; t: 
         <span className={styles.sub}>{[row.organization, row.role].filter(Boolean).join(" · ") || t("unset")}</span>
         <span className={styles.mobileBottom}><span>{row.goal ? goalText(row.goal, t) : ""}</span><span className={styles.muted}>{touchText(row, t, nowMs)}</span></span>
       </span>
-      <span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{chipLabel(row.chip, t)}</span>
+      <span className={`${styles.chip} ${row.chip === "self" ? styles.chipTeal : ""}`}>{row.chip in SOURCE_ICON ? <Icon name={SOURCE_ICON[row.chip as keyof typeof SOURCE_ICON]} size={16} /> : null}{chipLabel(row.chip, t)}</span>
     </button>)}
   </div>;
 }

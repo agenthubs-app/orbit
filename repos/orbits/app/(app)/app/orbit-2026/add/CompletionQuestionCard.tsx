@@ -31,8 +31,10 @@ export function completionQuestionText(question: ContactCompletionQuestion, t: T
  * Rule-based on the server (no AI), one a day. 「答えると ●●○ に」 only when answering really lifts the
  * person to ●●○ (`densityIfAnswered`); otherwise 「情報が 1つ増えます」. 「自分で入力」 opens a field.
  */
-export function CompletionQuestionCard({ question, t, busy = false, onAnswer, onSkip }: {
+export function CompletionQuestionCard({ question, t, busy = false, onAnswer, onSkip, variant = "flat" }: {
   question: ContactCompletionQuestion;
+  /** "rail": web.html #6 人脈 rail — a white .card (padding 16, 13px title, options 10 below) without the hint row. */
+  variant?: "flat" | "rail";
   t: Translate;
   busy?: boolean;
   onAnswer: (answer: string) => void;
@@ -50,7 +52,7 @@ export function CompletionQuestionCard({ question, t, busy = false, onAnswer, on
   const hint = `${t(q.cardLabel)} · ${after === 3 ? t(q.hint3) : after === 2 ? t(q.hint) : t(q.hintSame)}`;
   const lifts = after > 1;
   return (
-    <div className={styles.card} data-completion-question={question.id} data-sample={question.sample ? "" : undefined}>
+    <div className={`${styles.card} ${variant === "rail" ? styles.rail : ""}`} data-completion-question={question.id} data-sample={question.sample ? "" : undefined}>
       <div className={styles.head}>
         {name ? <span className={`${styles.av} ${styles[`av_${avatarTone(name)}`]}`} aria-hidden>{initials(name)}</span> : null}
         <div className={styles.meta}>
@@ -72,10 +74,10 @@ export function CompletionQuestionCard({ question, t, busy = false, onAnswer, on
           <Button type="submit" size="sm" variant="primary" label={t(q.done)} disabled={!text.trim() || busy} />
         </form>
       ) : null}
-      <div className={styles.foot}>
+      {variant === "rail" ? null : <div className={styles.foot}>
         <span className={styles.lbl}>{hint}</span>
         <span role="button" className={styles.skip} {...pressProps(onSkip, busy)} data-completion-skip="">{t(q.skip)}</span>
-      </div>
+      </div>}
     </div>
   );
 }

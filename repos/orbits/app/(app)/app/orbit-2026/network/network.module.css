@@ -45,7 +45,7 @@
 .dn i { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--surface-3); }
 .dn i.on { background: var(--plum-700); }
 
-.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-tiny); font-weight: var(--fw-bold); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
 .chipTeal { background: var(--mac-teal); color: var(--mac-teal-text); }
 .chipLav { background: var(--mac-lav); color: var(--mac-lav-text); }
 .chipApricot { background: var(--mac-apricot); color: var(--mac-apricot-text); }
@@ -174,3 +174,4 @@
 .effects { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .effect { font-size: var(--fs-body-sm); color: var(--ink-2); padding-left: 16px; position: relative; }
 .effect::before { content: ""; position: absolute; left: 4px; top: 9px; width: 5px; height: 5px; border-radius: var(--r-pill); background: var(--ink-3); }
+.chip svg { width: 12px; height: 12px; flex: none; }
