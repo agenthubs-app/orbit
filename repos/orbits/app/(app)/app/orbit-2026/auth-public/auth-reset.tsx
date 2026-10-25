@@ -23,7 +23,7 @@ export function AuthReset() {
       <div className="au-view">
         <div className="au-head">
           <h2 className="au-h2" id={titleId}>{t({ en: "This link cannot be used", ja: "このリンクは使えません", zh: "此链接无法使用" })}</h2>
-          <p className="au-sub" role="alert">{t({ en: "Request another password reset.", ja: "もう一度、再設定をお申し込みください。", zh: "请重新申请密码重置。" })}</p>
+          <p className="au-sub" role="alert">{t({ en: "The link may be invalid or already used.", ja: "リンクが無効か、すでに使われている可能性があります。", zh: "链接可能已失效或已被使用。" })}</p>
         </div>
         <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })}</a>
       </div>
