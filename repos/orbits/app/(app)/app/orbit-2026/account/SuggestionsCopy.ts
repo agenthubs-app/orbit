@@ -36,6 +36,19 @@ const copy = {
   evidence: { zh: "依据", en: "Why this was suggested", ja: "根拠" },
   sample: { zh: "示例", en: "Sample", ja: "サンプル" },
   sampleNote: { zh: "这是一张示例卡，不会修改任何资料。", en: "This is a sample card. It cannot change any profile.", ja: "これはサンプルです。プロフィールは変更されません。" },
+  skipAll: { zh: "全部跳过", en: "Skip all", ja: "すべて見送る" },
+  applyCount: { zh: "反映所选 {n} 项", en: "Apply {n} selected", ja: "選んだ {n}項目を反映" },
+  headCount: { zh: "{cards} 条 · {rows} 项", en: "{cards} cards · {rows} items", ja: "{cards}件 · {rows}項目" },
+  tally: { zh: "✓ {yes} · ✕ {no} · 未确认 {pending}", en: "✓ {yes} · ✕ {no} · {pending} to review", ja: "✓ {yes} · ✕ {no} · 未確認 {pending}" },
+  acceptAll: { zh: "全部采纳", en: "Accept all", ja: "すべて採用" },
+  scanned: { zh: "{date} 扫描", en: "Scanned {date}", ja: "{date} スキャン" },
+  uploaded: { zh: "{date} 上传", en: "Uploaded {date}", ja: "{date} アップロード" },
+  talked: { zh: "{date} 的对话", en: "Conversation on {date}", ja: "{date}の会話" },
+  noted: { zh: "{date}", en: "On {date}", ja: "{date}" },
+  ruleLine1: { zh: "・只改写你 ✓ 的项目", en: "・Only items you ✓ are changed", ja: "・✓ した項目だけ書き換えます" },
+  ruleLine2: { zh: "・不会通知对方", en: "・No one is notified", ja: "・相手に通知されることはありません" },
+  chatNote: { zh: "来自「与 iOrbit 的对话」的建议只使用你说过的内容，不会用外部信息改写人物。", en: "Suggestions from iOrbit conversations use only what you said. Outside information never rewrites a person.", ja: "「iOrbit との会話」からの提案は、あなたが話した内容だけを使います。外部の情報で人物を書き換えることはありません。" },
+  back: { zh: "返回", en: "Back", ja: "戻る" },
   self: { zh: "你的个人资料", en: "Your profile", ja: "あなたのプロフィール" },
   unknown: { zh: "未填写", en: "Not set", ja: "未設定" },
 } as const;
@@ -44,8 +57,8 @@ const sources: Record<SuggestionSource, { zh: string; en: string; ja: string }> 
   chat: { zh: "iOrbit 对话", en: "iOrbit conversation", ja: "iOrbit との会話" },
   activity: { zh: "活动", en: "Activity", ja: "アクティビティ" },
   contact: { zh: "联系人信息", en: "Contact information", ja: "連絡先の情報" },
-  "business-card": { zh: "名片文本", en: "Business-card text", ja: "名刺のテキスト" },
-  resume: { zh: "履历文本", en: "Résumé text", ja: "職務経歴書のテキスト" },
+  "business-card": { zh: "新名片", en: "New business card", ja: "新しい名刺" },
+  resume: { zh: "履历", en: "Résumé", ja: "職務経歴書" },
 };
 
 const fields: Record<SuggestionField, { zh: string; en: string; ja: string }> = {
