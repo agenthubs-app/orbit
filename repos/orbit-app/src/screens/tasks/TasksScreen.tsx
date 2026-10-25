@@ -273,8 +273,9 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
       {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
       {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-      {mode === "open" && followUps.hasMore && !moreFollowUps ? <Pressable accessibilityRole="button" onPress={() => setMoreFollowUps(true)} style={styles.contactLink}>
+      {mode === "open" && followUps.hasMore && !moreFollowUps ? <Pressable accessibilityRole="button" onPress={() => setMoreFollowUps(true)} style={[styles.contactLink, styles.moreRow]}>
         <Text style={styles.contactText}>{locale.t("tasks.moreFollowUps", { count: followUps.total - (followUps.items?.length ?? 0) })}</Text>
+        <Icon name="down" size={15} color={colors.accentText} />
       </Pressable> : null}
       {moreFollowUps ? <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} /> : null}
     </AppScreen>
@@ -295,6 +296,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   checkButton: { alignItems: "center", justifyContent: "center", width: 40, minHeight: 52 },
   contactLink: { minHeight: layout.control, justifyContent: "center", paddingLeft: layout.control },
   contactText: { color: colors.accentText, fontSize: 15, lineHeight: 23 },
+  moreRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 4 },
   checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink4, borderWidth: 1.6, borderRadius: 12, width: 24, height: 24 },
   checkboxBusy: { opacity: 0.5 },
   checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },

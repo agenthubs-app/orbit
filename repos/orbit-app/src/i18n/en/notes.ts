@@ -1,4 +1,5 @@
 export const notes = {
+  "notes.noAdditionalText": "No additional text",
   "notes.browserOnlineOnly": "The browser does not keep notes on this device. Connect to view them.",
   "notes.title": "Notes",
   "notes.myNotes": "My notes",

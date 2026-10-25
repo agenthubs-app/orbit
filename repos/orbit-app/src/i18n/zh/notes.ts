@@ -1,4 +1,5 @@
 export const notes = {
+  "notes.noAdditionalText": "无附加文本",
   "notes.browserOnlineOnly": "浏览器不在本机保存笔记，联网后才能查看",
   "notes.title": "笔记",
   "notes.myNotes": "我的笔记",

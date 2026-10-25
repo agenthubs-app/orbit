@@ -10,6 +10,7 @@ import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { MemoOfflineNotice } from "./MemoOfflineNotice";
+import { bodyAfterTitle } from "./memo-mention-model";
 import { useNotesListSource } from "../notes/notes-source";
 
 function noteTime(value: string, language: "en" | "ja" | "zh"): string {
@@ -72,7 +73,7 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
       <Text maxFontSizeMultiplier={2} numberOfLines={1} style={styles.title}>{note.title}</Text>
       <View style={styles.subRow}>
         <Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt, locale.language)}</Text>
-        <Text maxFontSizeMultiplier={2} numberOfLines={1} style={styles.summary}>{note.body.replace(/\s+/g, " ")}</Text>
+        <Text maxFontSizeMultiplier={2} numberOfLines={1} style={styles.summary}>{bodyAfterTitle(note.title, note.body, []).body.replace(/\s+/g, " ").trim() || locale.t("notes.noAdditionalText")}</Text>
       </View>
       {note.contactIds.length || note.eventIds.length || note.localMutationState ? <View style={styles.metaRow}>
         {note.contactIds.length ? <View style={styles.metaPill}><Icon color={colors.ink3Text} name="users" size={13} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}

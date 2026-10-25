@@ -1,4 +1,5 @@
 export const notes = {
+  "notes.noAdditionalText": "追加テキストなし",
   "notes.browserOnlineOnly": "ブラウザはこの端末にメモを保存しません。接続すると表示できます。",
   "notes.title": "メモ",
   "notes.myNotes": "自分のメモ",

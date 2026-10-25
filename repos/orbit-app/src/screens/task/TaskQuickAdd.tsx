@@ -68,6 +68,8 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
       const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.tasks, { body: { category: "other", idempotencyKey, plannedDate, title } });
       if (result.success) {
         setDraft("");
+        // Final pass 2026-10-25: the new row sits under 今天, often below the overdue ones; say where it went.
+        toast.success(locale.t("today.addedToToday"), { sub: title });
         onCreated();
       } else if (result.error.code === "ORBIT_APP_NETWORK_ERROR" && native) {
         await queueOffline(idempotencyKey, plannedDate, title);

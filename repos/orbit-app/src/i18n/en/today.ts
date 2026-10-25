@@ -3,6 +3,7 @@ export const today = {
   "today.unavailable": "Today is unavailable",
   "today.timezoneUnavailable": "The device time zone is unavailable. Your draft is preserved. Create the task after it recovers.",
   "today.addTask": "Add task",
+  "today.addedToToday": "Added to Today",
   "today.creating": "Creating",
   "today.emptyTasks": "No tasks today",
   "today.emptySchedule": "No schedule today",

@@ -12,8 +12,10 @@ export interface NoteContactSearchPage {
   nextCursor?: string;
 }
 
-export function NoteContactPicker({ disabled = false, selectedIds, selectedContacts = [], onToggle, search }: {
+export function NoteContactPicker({ disabled = false, selectedIds, selectedContacts = [], onToggle, search, browseWhenEmpty = false }: {
   disabled?: boolean;
+  /** Final pass 2026-10-25: where search is local (the phone), list people before anything is typed. */
+  browseWhenEmpty?: boolean;
   selectedIds: readonly string[];
   selectedContacts?: readonly ContactSummary[];
   onToggle: (id: string, contact?: ContactSummary) => void;
@@ -37,7 +39,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
     controller.current?.abort();
     const currentGeneration = ++generation.current;
     if (!open) return;
-    if (!word) {
+    if (!word && !browseWhenEmpty) {
       setResults([]);
       setNextCursor(undefined);
       setSearching(false);
@@ -60,9 +62,9 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
         setError(reason instanceof Error ? reason.message : locale.t("notes.searchUnavailable"));
         setSearching(false);
       });
-    }, 250);
+    }, word ? 250 : 0);
     return () => { clearTimeout(timer); operation.abort(); };
-  }, [locale, open, query, search]);
+  }, [browseWhenEmpty, locale, open, query, search]);
 
   async function loadMore() {
     if (!nextCursor || searching) return;
@@ -104,7 +106,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
         <Ionicons color={colors.ink3Text} name="search" size={19} />
         <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoFocus autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.searchInput} value={query} />
       </View>
-      {!query.trim() ? <Text style={styles.emptyHint}>{locale.t("notes.searchPeopleStart")}</Text> : null}
+      {!query.trim() && !browseWhenEmpty ? <Text style={styles.emptyHint}>{locale.t("notes.searchPeopleStart")}</Text> : null}
       {searching && results.length === 0 ? <Text accessibilityLiveRegion="polite" style={styles.emptyHint}>{locale.t("notes.searching")}</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {query.trim() && !searching && !error && results.length === 0 ? <Text style={styles.emptyHint}>{locale.t("notes.noPeople")}</Text> : null}

@@ -215,7 +215,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
       </View>
       {/* UX-5: no note kinds — an existing interview note keeps its stored kind, nothing to choose here. */}
       <View style={styles.associations}>
-      <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
+      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
       <View style={styles.rule} />
       <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => { setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]); markChanged(); }} />
       </View>
