@@ -84,7 +84,8 @@ test("Settings offers automatic, light and dark", () => {
     assert.match(appearance, new RegExp(`key: "${choice}"`));
   }
   assert.match(appearance, /setOrbitThemePreference/);
-  assert.match(appearance, /<Segmented<OrbitThemePreference>/);
+  // b12 W-R18a-03: three preview tiles act as one radio group.
+  assert.match(appearance, /role="radiogroup"/);
 });
 
 test("the root layout runs the shared init script before paint", () => {

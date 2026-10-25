@@ -478,12 +478,12 @@ test("reset: missing / short / malformed / absent token has one generic reapplic
       const copy = renderer.root.findByProps({ className: "au-sub" });
       assert.equal(copy.type, "p");
       assert.equal(copy.props.role, "alert");
-      assert.equal(copy.children.join(""), "请重新申请密码重置。");
+      assert.equal(copy.children.join(""), "链接可能已失效或已被使用。");
       const again = renderer.root.find((node) => node.type === "a" && node.props.className === "btn au-btn-primary au-btn-link");
       assert.equal(again.props.href, "/app/account/forgot-password");
       assert.equal(again.children.join(""), "申请重置密码");
       assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password"]);
-      assert.deepEqual(alerts(renderer), ["请重新申请密码重置。"]);
+      assert.deepEqual(alerts(renderer), ["链接可能已失效或已被使用。"]);
       assert.deepEqual(statuses(renderer), []);
       assert.equal(harness.observed.length, 0);
     });

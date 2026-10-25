@@ -23,7 +23,7 @@ const setupDocument = () => {
 
 test("Task next-move rail reuses the page read and guarded draft, then restores the generic rail", async t => {
   const restore = setupDocument(); let reads = 0;
-  t.mock.method(globalThis, "fetch", async () => {
+  t.mock.method(globalThis, "fetch", async (input?: unknown) => { if (String(input).startsWith("/api/ai/conversations/")) return Response.json({ success: true, data: { items: [] } });
     reads++;
     return Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", nextMoves: { ...demoTodoPage.nextMoves, items: demoTodoPage.nextMoves.items.map(item => ({ ...item, sample: undefined, draftAvailable: false })) } } });
   });
@@ -44,7 +44,7 @@ test("Task next-move rail reuses the page read and guarded draft, then restores 
 
 test("To-do global add entry stays hidden and uses the designed button while opening the add form", async t => {
   const restore = setupDocument();
-  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }));
+  t.mock.method(globalThis, "fetch", async (input?: unknown) => String(input).startsWith("/api/ai/conversations/") ? Response.json({ success: true, data: { items: [] } }) : Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }));
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" />); });
   t.after(() => { act(() => root.unmount()); restore(); });
@@ -58,7 +58,7 @@ test("To-do global add entry stays hidden and uses the designed button while ope
 
 test("Task rail drops account data while the next account loads and hides whole-page NOT_IMPLEMENTED", async t => {
   let settle!: (response: Response) => void; let first = true;
-  t.mock.method(globalThis, "fetch", async () => first ? Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }) : new Promise<Response>(resolve => { settle = resolve; }));
+  t.mock.method(globalThis, "fetch", async (input?: unknown) => String(input).startsWith("/api/ai/conversations/") ? Response.json({ success: true, data: { items: [] } }) : first ? Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18" } }) : new Promise<Response>(resolve => { settle = resolve; }));
   const render = (account: string) => <SessionContext.Provider value={{ status: "authenticated", data: { user: { id: account }, expires: "2099-01-01" }, update: async () => null }}><ShellSlotsProvider><ShellPage rightRail={<p>Generic rail</p>} /><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" /><RailProbe /></ShellSlotsProvider></SessionContext.Provider>;
   let root: ReactTestRenderer;
   await act(async () => { root = create(render("a")); });
@@ -75,15 +75,16 @@ test("Task rail drops account data while the next account loads and hides whole-
 
 test("Task rail retries failed reads and bounds real source cards to three", async t => {
   let failed = true;
-  t.mock.method(globalThis, "fetch", async () => failed ? Response.json({ success: false }, { status: 503 }) : Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", counts: { ...demoTodoPage.counts, nextMoves: 5 }, nextMoves: { items: Array.from({ length: 5 }, (_, index) => ({ ...demoTodoPage.nextMoves.items[0], key: `agent_signal:rail-${index}`, sourceId: `rail-${index}`, titlePreview: `Rail move ${index}`, sample: undefined })), next: {} } } }));
+  t.mock.method(globalThis, "fetch", async (input?: unknown) => String(input).startsWith("/api/ai/conversations/") ? Response.json({ success: true, data: { items: [] } }) : failed ? Response.json({ success: false }, { status: 503 }) : Response.json({ success: true, data: { ...demoTodoPage, date: "2026-10-18", counts: { ...demoTodoPage.counts, nextMoves: 5 }, nextMoves: { items: Array.from({ length: 5 }, (_, index) => ({ ...demoTodoPage.nextMoves.items[0], key: `agent_signal:rail-${index}`, sourceId: `rail-${index}`, titlePreview: `Rail move ${index}`, sample: undefined })), next: {} } } }));
   let root: ReactTestRenderer;
   await act(async () => { root = create(<ShellSlotsProvider><TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" /><RailProbe /></ShellSlotsProvider>); });
   t.after(() => act(() => root.unmount()));
   const rail = () => root!.root.findByProps({ "data-rail-probe": "" });
   assert.ok(contents(rail()).includes("To-do を読み込めませんでした"));
   failed = false;
-  await act(async () => rail().findByType("button").props.onClick());
-  assert.equal(rail().findAllByType("button").length, 3);
+  // The rail also ends with the ask bar (web.html #14 .assist-in), and each card has 下書きを開く + あとで.
+  await act(async () => rail().findAllByType("button").find(node => !contents(node).includes("iOrbit"))!.props.onClick());
+  assert.equal(rail().findAllByType("button").filter(node => contents(node) === "下書きを開く").length, 3);
   assert.ok(contents(rail()).includes("Rail move 2"));
   assert.ok(!contents(rail()).includes("Rail move 3"));
 });
@@ -151,7 +152,8 @@ test("View all includes every cached source and loads its next page independentl
   let root: ReactTestRenderer;
   await act(async () => { root = create(<TodoWorkspace language="ja" timeZone="Asia/Tokyo" date="2026-10-18" />); });
   t.after(() => { act(() => root.unmount()); restoreDocument(); });
-  await act(async () => button(root, "すべて").props.onClick());
+  // The header link reads 「すべて (N)」 (web.html #14 .card-h .more).
+  await act(async () => root!.root.findAllByType("button").find(node => contents(node).startsWith("すべて"))!.props.onClick());
   assert.ok(root!.root.findAllByProps({ href: "/app/contacts/new/drafts" }).length > 0);
   await act(async () => button(root, "連絡先の下書き").props.onClick());
   assert.equal(paged, true);

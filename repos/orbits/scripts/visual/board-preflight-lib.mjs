@@ -16,6 +16,9 @@ export function loadTokenIndex(tokensJsonPath) {
   idx.space.push({ name: "gap", value: src.space.gap, web: "--gap", app: "designSpace.gap" });
   for (const theme of ["light", "dark"]) {
     for (const [k, v] of Object.entries(src.color[theme])) {
+      // preview-*: fixed light/dark swatches for the 外観 thumbnails only; matching board colours against
+      // them would hide a dark colour used in a light board (theme crossover).
+      if (k.startsWith("preview-")) continue;
       const rgba = parseColor(v);
       if (rgba) idx.color[theme].push({ name: k, value: v, rgba, web: `--${k}`, app: `designColors.${theme}[${JSON.stringify(k)}]` });
     }

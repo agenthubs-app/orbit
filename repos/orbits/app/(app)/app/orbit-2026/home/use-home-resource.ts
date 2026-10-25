@@ -23,6 +23,8 @@ export function useHomeResource<T>(path: string, schema: ZodType<T>): HomeResour
       } catch { if (active) setResource({ kind: "error" }); }
     };
     void read();
+    // No window (server render / Node test renderers): read once, no focus refresh.
+    if (typeof window === "undefined") return () => { active = false; };
     const onFocus = () => { if (document.visibilityState === "visible") void read(); };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);

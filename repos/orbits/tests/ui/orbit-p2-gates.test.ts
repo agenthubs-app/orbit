@@ -33,7 +33,8 @@ test("P2-2: Icon registry defines sun and moon stroke paths", () => {
 test("P2-2: new appearance choice uses text labels without emoji glyphs", () => {
   const appearanceSource = source("app/(app)/app/orbit-2026/account/AppearanceSettings.tsx");
   assert.doesNotMatch(appearanceSource, /[☀\u{1F31C}☾\u{1F319}]/u);
-  assert.match(appearanceSource, /<Segmented<OrbitThemePreference>/);
+  // b12 W-R18a-03: the choice is three preview tiles (radios), still text-labelled.
+  assert.match(appearanceSource, /role="radio"/);
 });
 
 test("P2-3 (superseded by R01 / RD-09): no serif token; the sans stack follows the language", () => {
