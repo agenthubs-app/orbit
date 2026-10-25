@@ -6,7 +6,7 @@ import { taskCopy } from "../copy/task";
 import { pickCopy } from "../copy/types";
 import { useState } from "react";
 import { EmptyState, MacTile, Orbit2026Scope, RetryCard, SampleTag, Skeleton } from "../ui";
-import { RailAsk, RecentSessions } from "../home/HomePlaceholder";
+import { RailAsk, RecentSessions } from "../home/RailParts";
 import home from "../home/home.module.css";
 import shellStyles from "../shell/shell.module.css";
 import type { TodoPageView } from "./todo-view-model";
