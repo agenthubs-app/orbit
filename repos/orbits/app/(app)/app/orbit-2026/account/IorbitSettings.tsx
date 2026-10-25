@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import type { AgentMemory } from "../../../../../features/agent/memory/contract";
 import { profileBioLimit, profileBioWithinLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 import type { ProfilePayload } from "../../../../../features/profile/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { fetchGlobalSearch, readSemanticPreference, searchUrl, writeSemanticPreference } from "../search/use-global-search";
-import { Button, Card, ConfirmDialog, Toggle, useToast } from "../ui";
+import { Button, ConfirmDialog, Icon, MacTile, Toggle, WhyBody, WhyButton, useToast } from "../ui";
+import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/plan-v2";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
 
@@ -18,7 +19,11 @@ export function IorbitSettings() {
   const t = settingsCopy(language);
   const toast = useToast();
   const [memories, setMemories] = useState<AgentMemory[]>([]);
-  const [goal, setGoal] = useState("");
+  const [goal, setGoal] = useState<{ text: string; kind: string } | null>(null);
+  const [savedBio, setSavedBio] = useState("");
+  const [editingBio, setEditingBio] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const whyId = useId();
   const [semanticAvailable, setSemanticAvailable] = useState(false);
   const [semanticOn, setSemanticOn] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -38,8 +43,13 @@ export function IorbitSettings() {
       const body = await response.json() as { success?: boolean; data?: ProfilePayload };
       if (response.ok && body.success === true && body.data?.profile) {
         setDraft(body.data.profile.bio ?? "");
-        setGoal(body.data.profile.relationshipGoal ?? "");
+        setSavedBio(body.data.profile.bio ?? "");
       }
+    }).catch(() => undefined);
+    void fetch("/api/agent/plans/v2/summary", { cache: "no-store" }).then(async (response) => {
+      const body = await response.json() as { data?: unknown };
+      const parsed = planV2SummaryResponseSchema.safeParse(body.data);
+      if (response.ok && parsed.success && parsed.data.current) setGoal({ text: parsed.data.current.goal, kind: parsed.data.current.goalKind });
     }).catch(() => undefined);
     setSemanticOn(readSemanticPreference());
     void fetchGlobalSearch(searchUrl({ query: "", filter: "all" })).then((result) => {
@@ -85,31 +95,46 @@ export function IorbitSettings() {
       });
       const result = await response.json() as { success?: boolean; data?: ProfilePayload };
       if (!response.ok || result.success !== true || result.data?.mutationId !== mutationId) throw new Error("Profile save failed");
-      setDraft("");
+      setSavedBio(draft.trim());
+      setEditingBio(false);
       toast.success(t("saved"));
     } catch { toast.error(t("failed")); }
     finally { setBusy(false); }
   };
 
+  // b12 W-R18a-02: 現在の目標 + 自己紹介 (span6 each), the memory table, the 意味検索 card.
+  const goalEmoji: Record<string, string> = { fundraising: "💰", sales: "📈", hiring: "🧑‍💼", partnership: "🤝", launch: "🚀", career: "🧭" };
+  const bioChanged = draft.trim() !== savedBio.trim();
   return <>
-    <div className={styles.page}>
-      {error ? <p role="alert" className={styles.error}>{error}</p> : null}
-      <Card title={t("goal")}><div className={styles.row}><span className={styles.rowLabel}>{goal}</span><a className={styles.back} href={preserveHref("/app/plan")}>{t("editGoal")} →</a></div></Card>
-      <Card title={t("memory")}>
-        {memories.length === 0 ? <p className={styles.detail}>{t("noMemories")}</p> : memories.map((item) => <div className={styles.memory} key={item.memoryId}>
-          <div className={styles.memoryBody}><p>{item.content}</p><span className={styles.meta}>{item.source === "conversation" ? t("sourceConversation") : t("sourceManual")}{item.createdAt ? ` · ${new Date(item.createdAt).toLocaleDateString(language)}` : ""}</span></div>
-          <Button label={t("delete")} size="sm" variant="dangerGhost" disabled={busy} onClick={() => setDeleting(item.memoryId)} />
-        </div>)}
-      </Card>
-      <Card title={t("bioDraft")}><div className={styles.controlGroup}>
-        <p className={styles.detail}>{t("draftOnly")}</p>
-        {language === "ja" ? <p className={styles.detail}>{t("draftJapaneseUnavailable")}</p> : null}
-        <textarea className={styles.draft} aria-label={t("bioDraft")} value={draft} onChange={(event) => setDraft(event.target.value)} />
-        <span className={styles.meta}>{profileVisibleLength(draft)}/{profileBioLimit(draft)}</span>
-        {draft && !profileBioWithinLimit(draft) ? <p role="alert" className={styles.error}>{t("bioTooLong")}</p> : null}
-        <div className={styles.smallActions}>{language !== "ja" ? <Button label={t("generate")} variant="secondary" loading={busy} onClick={() => void generateDraft()} /> : null}<Button label={t("confirmBio")} variant="primary" disabled={!draft.trim() || !profileBioWithinLimit(draft) || busy} onClick={() => void saveDraft()} /></div>
-      </div></Card>
-      {semanticAvailable ? <Card title={t("semantic")}><div className={styles.row}><p className={styles.detail}>{t("semanticNote")}</p><Toggle checked={semanticOn} label={t("semantic")} onChange={(next) => { writeSemanticPreference(next); setSemanticOn(next); }} /></div></Card> : null}
+    {error ? <p role="alert" className={styles.error}>{error}</p> : null}
+    <div className={styles.connGrid}>
+      <section className={`${styles.setCard} ${styles.half}`}>
+        <div className={styles.cardTopRow}><span className={styles.lbl}>{t("currentGoal")}</span><a className={`btn ${styles.smButton}`} href={preserveHref("/app/tasks?tab=plan")}><Icon name="edit" size={16} />{goal ? t("change") : t("setGoal")}</a></div>
+        {goal ? <div className={styles.goalRow}><MacTile emoji={goalEmoji[goal.kind] ?? "🎯"} tone="pink" /><b>{goal.text}</b></div> : null}
+      </section>
+      <section className={`${styles.setCard} ${styles.half}`}>
+        <div className={styles.cardTopRow}><span className={styles.lbl}>{t("intro")}</span>
+          {language !== "ja" ? <button type="button" className={`btn ${styles.smButton}`} disabled={busy} onClick={() => { setEditingBio(true); void generateDraft(); }}><Icon name="sparkle" size={16} />{t("polish")}</button>
+            : <button type="button" className={`btn ${styles.smButton}`} onClick={() => setEditingBio(true)}><Icon name="edit" size={16} />{t("editIntro")}</button>}</div>
+        {editingBio && language === "ja" ? <p className={styles.detail}>{t("draftJapaneseUnavailable")}</p> : null}
+        {editingBio ? <>
+          <textarea className={styles.introBox} aria-label={t("intro")} value={draft} onChange={(event) => setDraft(event.target.value)} />
+          <div className={styles.introFoot}><span className={styles.meta}>{profileVisibleLength(draft)}/{profileBioLimit(draft)}</span>
+            {draft && !profileBioWithinLimit(draft) ? <span role="alert" className={styles.error}>{t("bioTooLong")}</span> : null}
+            <Button label={t("cancel")} size="sm" variant="ghost" onClick={() => { setDraft(savedBio); setEditingBio(false); }} />
+            <Button label={t("confirmBio")} size="sm" variant="primary" disabled={!bioChanged || !draft.trim() || !profileBioWithinLimit(draft) || busy} onClick={() => void saveDraft()} /></div>
+        </> : <button type="button" className={`btn ${styles.introBox}`} onClick={() => setEditingBio(true)}>{savedBio || t("noIntro")}</button>}
+      </section>
+      <section className={`${styles.setCard} ${styles.full}`}>
+        <div className={styles.memoryHead}><h2>{t("memory")}</h2><WhyButton open={whyOpen} onToggle={() => setWhyOpen(!whyOpen)} controls={whyId} /><span className={styles.lbl}>{t("memoryDeleteHint")}</span></div>
+        <WhyBody id={whyId} open={whyOpen}>{t("memoryWhy")}</WhyBody>
+        {memories.length === 0 ? <p className={styles.detail}>{t("noMemories")}</p> : <table className={styles.memoryTable}><tbody>{memories.map((item) => <tr key={item.memoryId}>
+          <td><b>{item.content}</b></td>
+          <td className={styles.lbl}>{item.source === "conversation" ? t("sourceConversation") : t("sourceManual")}{item.createdAt ? ` ${new Date(item.createdAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}` : ""}</td>
+          <td className={styles.memoryAction}><button type="button" className={`btn ${styles.lbtn}`} aria-label={t("delete")} disabled={busy} onClick={() => setDeleting(item.memoryId)}><Icon name="x" size={16} /></button></td>
+        </tr>)}</tbody></table>}
+      </section>
+      {semanticAvailable ? <section className={`${styles.setCard} ${styles.full} ${styles.semanticCard}`}><div><b>{t("semantic")}</b><span className={styles.lbl}>{t("semanticNote")}</span></div><Toggle checked={semanticOn} label={t("semantic")} onChange={(next) => { writeSemanticPreference(next); setSemanticOn(next); }} /></section> : null}
     </div>
     <ConfirmDialog open={deleting !== null} title={t("deleteMemoryTitle")} confirmLabel={t("delete")} cancelLabel={t("cancel")} destructive onConfirm={() => void removeMemory()} onCancel={() => setDeleting(null)} />
   </>;

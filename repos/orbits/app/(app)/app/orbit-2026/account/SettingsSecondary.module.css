@@ -76,3 +76,27 @@
 .accountRow .accountDanger { background: transparent; color: var(--coral-text); }
 /* 390 (b12 W-R18a-24): one column, kit .card padding 18 and .card + .card 14 on top of the gap. */
 @media (max-width: 767px) { .grid3 { grid-template-columns: minmax(0, 1fr); } .setCard { padding: var(--space-18); } .setCard + .setCard { margin-top: var(--space-14); } .accountRow { flex-wrap: wrap; } }
+
+/* iOrbit が使う情報, b12 W-R18a-02 */
+.half { grid-column: span 6; }
+.full { grid-column: span 12; }
+.lbl { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.cardTopRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cardTopRow .smButton { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-meta); font-weight: var(--fw-bold); text-decoration: none; cursor: pointer; }
+.goalRow { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.goalRow b { font-size: var(--fs-emoji-sm); }
+.setCard .introBox { display: block; width: 100%; height: auto; min-height: 0; margin-top: 8px; padding: 12px 14px; border: 0; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: var(--fw-regular); line-height: var(--lh-prose-lg); text-align: left; white-space: normal; resize: vertical; cursor: text; }
+textarea.introBox { min-height: 110px; outline: 0; }
+.introFoot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.introFoot > :first-child { margin-right: auto; }
+.memoryHead { display: flex; align-items: center; gap: 8px; }
+.memoryHead h2 { margin: 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
+.memoryHead > span:last-child { margin-left: auto; }
+.memoryTable { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: var(--fs-body-sm); }
+.memoryTable td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.memoryAction { width: 40px; }
+.memoryTable .lbtn { width: 34px; height: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.semanticCard { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.semanticCard b { display: block; font-size: var(--fs-body); }
+.semanticCard .lbl { display: block; }
+@media (max-width: 767px) { .half, .full { grid-column: 1; } .half + .half, .half + .full, .full + .full { margin-top: var(--space-14); } }
