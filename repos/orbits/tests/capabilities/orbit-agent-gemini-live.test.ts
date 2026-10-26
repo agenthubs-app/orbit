@@ -292,6 +292,9 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
   assert.match(systemPrompt ?? "", /Each non-general intent must use exactly one matching tool/);
   assert.match(systemPrompt ?? "", /relationship lookup/);
   assert.match(systemPrompt ?? "", /message drafting/);
+  // 消息草稿没有卡片：planner 自己作答时也必须把草稿正文写进回复。
+  assert.match(systemPrompt ?? "", /A message or email draft is not a record: never return it as entityDraft/);
+  assert.match(systemPrompt ?? "", /must contain the complete draft text/);
   assert.match(systemPrompt ?? "", /privacy control/);
   assert.match(systemPrompt ?? "", /Do not claim privacy settings/);
   assert.match(systemPrompt ?? "", /Do not describe storage guarantees/);
@@ -305,6 +308,62 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
     systemPrompt ?? "",
     /Never claim that an email, calendar event, notification, database write, or external action has been executed\./,
   );
+});
+
+// 「起草」按钮的回复曾写"草稿已备好，可直接在卡片上修改"，但聊天上下文的结果在 App
+// 里没有卡片，用户什么草稿都看不到。合成提示只在真有卡片的 intent 上提卡片，
+// 草稿请求必须把正文写进回复。
+test("Orbit Agent synthesis puts a requested draft in the reply and only mentions cards that render", async () => {
+  const systemPrompts: string[] = [];
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+      provider: "deepseek";
+    }) => {
+      synthesize: (input: {
+        artifacts: readonly unknown[];
+        assistantMessage: string;
+        intent: string;
+        locale: string;
+        message: string;
+        toolRequests: readonly unknown[];
+      }) => Promise<{ success: boolean; data?: { assistantMessage: string } }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+  const draft = "主题：展会后跟进\n\n林玫您好，……\n\n（尚未发送）";
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-deepseek-key",
+    fetchImplementation: (async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages?: readonly { content?: string; role?: string }[];
+      };
+      systemPrompts.push(body.messages?.find((message) => message.role === "system")?.content ?? "");
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { content: draft } }] });
+    }) as typeof fetch,
+    model: "deepseek-chat",
+    provider: "deepseek",
+  });
+  const input = {
+    artifacts: [{ kind: "relationship_chat_context", preferredSurface: "side_panel", title: "林玫", summary: "展会认识" }],
+    assistantMessage: "我会准备一段可复核的邮件草稿。",
+    locale: "zh",
+    message: "请为 @林玫 起草一段邮件。公司：Acme。建议下一步：约一次会面。只生成可编辑草稿，不要发送。",
+    toolRequests: [],
+  };
+
+  const drafted = await planner.synthesize({ ...input, intent: "relationship_chat_context" });
+  assert.equal(drafted.success, true);
+  assert.equal(drafted.data?.assistantMessage, draft);
+  assert.doesNotMatch(systemPrompts[0] ?? "", /already rendered as a card/);
+  assert.match(systemPrompts[0] ?? "", /No card, panel or attachment is shown with this reply/);
+  assert.match(systemPrompts[0] ?? "", /the reply MUST contain the complete draft text itself/);
+  assert.match(systemPrompts[0] ?? "", /never say the draft is on a card/);
+
+  await planner.synthesize({ ...input, intent: "contact_recommendations", message: "谁能介绍投资人" });
+  assert.match(systemPrompts[1] ?? "", /already rendered as a card directly below this reply/);
+  assert.doesNotMatch(systemPrompts[1] ?? "", /No card, panel or attachment is shown/);
 });
 
 // 服务范围边界:超纲的生活类问题不能直接作答，要转成"你的人脉里谁懂这个"；
