@@ -1,14 +1,14 @@
 "use client";
 
-import { signOut } from "next-auth/react";
-import type { ReactNode } from "react";
+import { SessionContext, signOut } from "next-auth/react";
+import { useContext, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { clearKioskDevice } from "../host/kiosk-store";
 import { ShellPage } from "../shell/slots";
-import { Icon, Orbit2026Scope, ToastProvider, type IconName } from "../ui";
+import { Avatar, Icon, Orbit2026Scope, ToastProvider, type IconName } from "../ui";
 import s from "./AccountLayout.module.css";
 
 export type AccountSection =
@@ -38,23 +38,27 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, la
   const { language } = useOrbitLanguage();
   const t = (key: keyof typeof accountCopy) => pickCopy(accountCopy[key], language);
   const home = active === "home";
+  // Read the context directly: outside a SessionProvider (tests, static renders) there is simply no account card.
+  const account = useContext(SessionContext)?.data?.user;
   return (
     <Orbit2026Scope language={language} className={`${s.page} ${home ? s.home : s.detail}`}>
       <ToastProvider>
-        <ShellPage title={t("settings")} rightRail={rightRail ?? false} phoneFold={!home} phoneBare={!home} />
+        <ShellPage title={t("settings")} rightRail={rightRail ?? false} phoneFold phoneBare />
         <div className={s.grid} data-account-section={active}>
+          {/* b12 W-R18a-20 (390): kit .topbar「‹ 設定」, the account card, then one .sgroup card of rows. */}
+          <div className={s.phoneTopbar}><a className={`btn ${s.phoneBack}`} href="/app/home" aria-label={t("backToHome")}><Icon name="left" size={20} /></a><b>{t("settings")}</b><span /></div>
+          {account?.name || account?.email ? <div className={s.phoneAccount}><Avatar name={account.name || account.email || ""} tone="lav" /><div><b>{account.name || account.email}</b>{account.name && account.email ? <span>{account.email}</span> : null}</div></div> : null}
           <nav className={s.menu} aria-label={t("settings")}>
-            <div className={s.phoneTitle}>{t("settings")}</div>
             {menu.map(({ section, href, icon }) => (
               <a key={section} className={`${s.menuItem} ${section === active || (home && section === "profile") ? s.selected : ""}`} href={href} aria-current={section === active ? "page" : undefined}>
-                <Icon name={icon} size={16} />
+                <span className={s.menuIcon}><Icon name={icon} size={16} /></span>
                 <span>{t(section)}</span>
                 <span className={s.menuChevron}><Icon name="right" size={16} /></span>
               </a>
             ))}
             <div className={s.rule} />
             <button className={`${s.menuItem} ${s.signOut}`} type="button" onClick={() => void clearKioskDevice().finally(() => signOut({ callbackUrl: "/app" }))}>
-              <Icon name="out" size={16} /><span>{t("signOut")}</span>
+              <span className={s.menuIcon}><Icon name="out" size={16} /></span><span>{t("signOut")}</span>
             </button>
           </nav>
           <main className={s.content}>

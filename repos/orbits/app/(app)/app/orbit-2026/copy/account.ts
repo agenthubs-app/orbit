@@ -16,6 +16,7 @@ export const accountCopy = {
   preparing: { ja: "準備中", zh: "正在准备", en: "Coming soon", kind: "title" },
   preparingBody: { ja: "この設定は、もう少しで使えるようになります。", zh: "这项设置还需要一点时间。", en: "This setting will be available soon.", kind: "body" },
   backToSettings: { ja: "設定に戻る", zh: "返回设置", en: "Back to settings", kind: "button" },
+  backToHome: { ja: "ホームに戻る", zh: "返回首页", en: "Back to Home", kind: "button" },
   profileIntro: { ja: "Orbit 名刺と公開プロフィール。右側が、ほかの人からの見え方です。", zh: "管理 Orbit 名片和公开资料，并查看别人看到的内容。", en: "Manage your Orbit card and preview what others can see.", kind: "body" },
   card: { ja: "Orbit 名刺", zh: "Orbit 名片", en: "Orbit card", kind: "label" },
   completeness: { ja: "プロフィール完成度", zh: "资料完成度", en: "Profile completeness", kind: "label" },

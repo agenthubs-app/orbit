@@ -187,8 +187,10 @@ export function SuggestionsPage({ designCards, sampleExample }: { designCards?: 
         <Button label={t("skipAll")} onClick={skipAll} disabled={sampleMode || busy || blocked} />
         <Button label={t("applyCount").replace("{n}", String(yes))} variant="primary" loading={busy} disabled={sampleMode || !decided || blocked} onClick={() => void apply()} />
       </> : undefined}
-      rightRail={<SuggestionsRail counts={counts} language={language} />} />
+      rightRail={<SuggestionsRail counts={counts} language={language} />} phoneFold phoneBare />
     <div className={styles.page}>
+      {/* b12 W-R18a-25 (390): full screen with the kit .topbar — back + centred title; the bulk actions move into the page. */}
+      <div className={styles.phoneTopbar}><a className={`btn ${styles.back}`} href="/app/profile" aria-label={t("back")}><Icon name="left" size={20} /></a><b>{t("title")}</b><span /></div>
       {status === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
       {status === "failed" ? <div className={styles.top}><p className={styles.error} role="alert">{t("failed")}</p><Button label={t("retry")} onClick={() => void load()} /></div> : null}
       {status === "ready" ? <>
@@ -199,6 +201,10 @@ export function SuggestionsPage({ designCards, sampleExample }: { designCards?: 
             {sources.map((source) => <button key={source} type="button" className={`btn ${filter === source ? styles.on : ""}`} aria-pressed={filter === source} onClick={() => setFilter(source)}>{suggestionSourceLabel(source, language)} {counts[source]}</button>)}
           </div>
           <span className={styles.lbl}>{t("tally").replace("{yes}", String(yes)).replace("{no}", String(no)).replace("{pending}", String(allRows.length - yes - no))}</span>
+        </div> : null}
+        {totalCards ? <div className={styles.phoneActions}>
+          <Button label={t("skipAll")} onClick={skipAll} disabled={sampleMode || busy || blocked} />
+          <Button label={t("applyCount").replace("{n}", String(yes))} variant="primary" loading={busy} disabled={sampleMode || !decided || blocked} onClick={() => void apply()} />
         </div> : null}
         {!cards.length && !visibleSamples.length ? <section className={styles.sgcard}><h2 className={styles.cardTitle}>{t("empty")}</h2><p className={styles.subtle}>{t("emptyDetail")}</p><div className={styles.actions}><a href="/app/contacts/new/scan">{t("scanContact")}</a><a href="/app/agent">{t("talkIorbit")}</a></div></section> : null}
         <div className={styles.cards}>
