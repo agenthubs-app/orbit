@@ -121,6 +121,24 @@
         "ORBIT_NEXT_DIST_DIR": ".next-r30",
         "ORBIT_REDESIGN_MOCK": "global-search"
       }
+    },
+    {
+      "name": "orbits-add-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3207"
+      ],
+      "port": 3207,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-r207",
+        "ORBIT_REDESIGN_MOCK": "add-scan,add-import,invite-codes"
+      }
     }
   ]
 }
