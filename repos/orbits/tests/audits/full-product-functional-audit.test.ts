@@ -553,8 +553,6 @@ export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Ma
   // R17：申込設定的申込页预览（b6 #13–#15）里「申し込む」只是画出来给主办方看（aria-hidden、tabIndex=-1），不是可用控件。
   ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#{t(\"pvApply\")}", "intentional preview-only control: the 申込 page preview draws the attendee's button (aria-hidden, tabIndex -1); it has no behavior by design"],
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
-  ...["{t(item.cta)}", "{t(ONBOARDING_COPY.preview003)}", "{t(ONBOARDING_COPY.preview051)}", "{t(ONBOARDING_COPY.preview054)}", "{t(ONBOARDING_COPY.preview061)}", "{t(ONBOARDING_COPY.preview075)}"]
-    .map((name) => [`repos/orbits/app/(app)/app/orbit-2026/onboarding/onboarding-previews.tsx#${name}`, `${SCANNER_CROSS_COMPONENT} (click delegated to PreviewFrame onClick via data-ob-goto)`] as const),
 ]);
 
 test("visible controls do not rely on missing static behavior evidence", () => {

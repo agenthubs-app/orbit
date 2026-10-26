@@ -16,6 +16,7 @@ import { ShellPage } from "../shell/slots";
 import { Button, Icon, MacTile, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import { ContactDrawer } from "../network/ContactDrawer";
+import { OnboardingGuideRail, OnboardingResumeDialog, unfinishedOnboarding, useProfileOnboardingFlow } from "../onboarding/OnboardingGuide";
 import { HOME_HEAD, HomeCardBody, useGuideProgress, useSecretaryPreview } from "./HomeCards";
 import { homeCopy } from "./home-copy";
 import { addHomeWidget, HOME_CATALOG, homeContactCopyKeys, homeOpeningGeometry, homeTodoPagePath, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
@@ -59,6 +60,7 @@ function HomeWorkspace() {
   const railPlan = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const railEvents = useHomeResource("/api/schedule-items", railSchedule);
   const guide = useGuideProgress();
+  const onboarding = unfinishedOnboarding(useProfileOnboardingFlow());
   const contactCopy = homeContactCopyKeys(guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null);
   const items = editing ? draft ?? [...layout.web] : layout.web;
   const recommendations = homeRailSuggestions({
@@ -94,9 +96,11 @@ function HomeWorkspace() {
 
   const shown = recommendations.filter((item) => !later.includes(item.key));
   // web.html #0: with nothing to suggest the rail is the shell's iOrbit intro; #1/#2: 「次の一手 · ホームから」.
-  const rail = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
+  const railBody = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
     : shown.length ? <NextMoveRail items={shown} t={t} onLater={(key) => setLater((keys) => [...keys, key])} />
     : <DefaultRail intro={contactCopy.intro === "railAbout" ? undefined : { title: t("railHello"), body: t("railAboutReady") }} />;
+  // b1 #21 / #24: while the profile onboarding is unfinished, 「はじめかたガイド」 heads the rail.
+  const rail = onboarding && !editing ? <><OnboardingGuideRail flow={onboarding} />{railBody}</> : railBody;
 
   return <>
     <ShellPage title={month} subtitle={range} left={<ShellSearchButton />}
@@ -136,6 +140,7 @@ function HomeWorkspace() {
       </> : null}
     </main>
     {contact ? <ContactDrawer contactId={contact} onClose={() => setContact(null)} /> : null}
+    {onboarding ? <OnboardingResumeDialog flow={onboarding} /> : null}
   </>;
 }
 

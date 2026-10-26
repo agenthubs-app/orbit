@@ -1,0 +1,42 @@
+/* b1 A3 kit .wstp — the five-screen stepper (header #16–#20, おかえりなさい #21). */
+.stepper { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.step { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 8px; color: var(--ink-3); font-size: var(--fs-control); white-space: nowrap; }
+/* The 28px rule gives way first when the row is tight (おかえりなさい at step 5). */
+.step em { width: 28px; min-width: 8px; height: 1.5px; flex: 0 1 28px; margin-right: 2px; background: var(--surface-3); }
+.num { display: grid; width: 26px; height: 26px; flex: 0 0 auto; place-items: center; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-meta); font-weight: var(--fw-heavy); }
+.now { color: var(--ink); font-weight: var(--fw-heavy); }
+.now .num { background: var(--accent); color: var(--on-accent); }
+.done { color: var(--ink-2); }
+.done .num { background: var(--ok); color: var(--on-accent); }
+
+/* b1 #21 / #24 rail: 🧭 はじめかたガイド. */
+.rail { display: flex; flex-direction: column; gap: 14px; }
+.railHead { display: flex; align-items: center; gap: 8px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.railCard { padding: 16px; border-radius: var(--r-card-web); background: var(--surface); }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lbl { color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.bar { position: relative; height: 6px; margin: 8px 0 4px; border-radius: var(--r-tag); background: var(--surface-3); }
+.bar > i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: var(--r-tag); background: linear-gradient(90deg, var(--plum-300), var(--plum-700)); }
+.bar > i::after { content: ""; position: absolute; top: 50%; right: -7px; width: 14px; height: 14px; margin-top: -7px; box-sizing: border-box; border: 3px solid var(--plum-700); border-radius: var(--r-pill); background: var(--surface); }
+.check { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: var(--fs-body-sm); }
+.box { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-4); }
+.checkDone { color: var(--ink-2); }
+.checkDone .box { background: var(--ok); color: var(--on-accent); }
+.checkNow { font-weight: var(--fw-heavy); }
+.checkWait { color: var(--ink-4); }
+.resume:global(.btn) { display: flex; width: 100%; height: 40px; margin-top: 8px; align-items: center; justify-content: center; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
+
+/* b1 #21: 640 .wmodal — 👋 + title / progress line, the stepper, [あとで][続きから再開] 50 high. */
+.welcome { display: flex; align-items: center; gap: 14px; }
+.welcomeTitle { font-size: var(--fs-number); font-weight: var(--fw-black); }
+.sub { color: var(--ink-2); font-size: var(--fs-control); }
+.dialogStepper { margin-top: 18px; }
+.actions { display: flex; gap: 10px; margin-top: 22px; }
+.secondaryXl:global(.btn), .primaryXl:global(.btn) { display: inline-flex; height: 50px; flex: 1 1 0; align-items: center; justify-content: center; border-radius: var(--r-pill); font-size: var(--fs-card-title); font-weight: var(--fw-bold); }
+.secondaryXl:global(.btn) { background: var(--surface-2); color: var(--ink); }
+.primaryXl:global(.btn) { background: var(--ink); color: var(--bg); }
+
+@media (max-width: 767px) {
+  .dialogStepper .label { display: none; }
+  .dialogStepper .now .label { display: inline; }
+}

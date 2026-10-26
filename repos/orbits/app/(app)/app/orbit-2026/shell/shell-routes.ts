@@ -4,8 +4,8 @@ import { allowsOrbitAsk } from "../../orbit-global-ask/orbit-ask-routes";
 export type ShellNavKey = "home" | "network" | "iorbit" | "events" | "task" | "inbox" | "host" | "settings" | "me";
 
 // Pages with their own frame: the public landing, sign-in, the admin host console,
-// the public organizer page and registration hand-offs.
-const NO_SHELL_EXACT = new Set(["/app", "/app/platform"]);
+// the public organizer page, registration hand-offs and the profile onboarding (b1 A3 draws its own header).
+const NO_SHELL_EXACT = new Set(["/app", "/app/platform", "/app/profile/onboarding"]);
 const NO_SHELL_PREFIXES = ["/app/account", "/app/login-admin", "/app/admin", "/app/o", "/app/register"];
 
 function matches(path: string, prefix: string): boolean {

@@ -1,5 +1,5 @@
 /**
- * 新用户引导 route adapter（Orbit_0918 新用户引导.dc.html）。
+ * 新用户引导 route adapter（b1 A3 Web #16–#20：无壳的五屏资料）。
  * 首次登录 / 资料门禁未通过时，proxy 与 /app/profile/continue 把用户带到这里（门禁豁免路由）。
  * 只做鉴权与名片识别可用性判定；资料在客户端经 /api/profile 读写。
  */
@@ -8,7 +8,6 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../auth";
 import { resolveBusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
 import { OnboardingFlow } from "../../orbit-2026/onboarding/onboarding-flow";
-import { ShellPage } from "../../orbit-2026/shell/slots";
 import {
   normalizeProfileOnboardingNext,
   profileOnboardingFlowPath,
@@ -31,7 +30,6 @@ export default async function AppProfileOnboardingPage({
 
   return (
     <div data-r28-onboarding data-orbit-route="app-profile-onboarding-route">
-      <ShellPage rightRail={false} />
       <OnboardingFlow
         actorKey={session.user.id}
         cardScanAvailable={resolveBusinessCardCaptureAvailability().available}

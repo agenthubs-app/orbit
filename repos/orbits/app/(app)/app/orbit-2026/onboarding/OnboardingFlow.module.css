@@ -1,0 +1,160 @@
+/* b1 A3 Web #16–#20 (.web.bare > .obw): no shell — 84px header (logo · .wstp · あとで設定する),
+   body 30 / 120 padding on a 12-column grid: the form card spans 7 and fills the height, the aside spans 5. */
+.page { display: flex; min-height: 100vh; flex-direction: column; background: radial-gradient(900px 500px at 10% -10%, var(--fog-a), transparent 70%), radial-gradient(700px 500px at 95% 0%, var(--fog-b), transparent 70%), var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: 1.5; }
+.head { display: flex; height: 84px; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 24px; padding: 0 40px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--r-row); background: var(--ink); color: var(--bg); font-weight: var(--fw-black); }
+.later:global(.btn) { height: 40px; padding: 0 16px; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); white-space: nowrap; }
+.body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 14px; padding: 30px 120px; }
+.grid { display: grid; flex: 1 1 auto; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.card { display: flex; grid-column: span 7; flex-direction: column; padding: 28px; border-radius: var(--r-card-web); background: var(--surface); animation: rise .6s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+.aside { display: flex; grid-column: span 5; flex-direction: column; gap: 14px; align-self: start; }
+
+.title { font-size: var(--fs-number); font-weight: var(--fw-black); line-height: 1.5; }
+.sub { color: var(--ink-2); font-size: var(--fs-control); }
+.lbl { color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.headRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.muted { color: var(--ink-3); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.notice { padding: 10px 14px; border-radius: var(--r-md); background: var(--coral-soft); color: var(--coral-text); font-size: var(--fs-control); font-weight: 600; }
+.card .notice { margin-top: 14px; }
+
+/* kit .btn / .btn.sm / .btn.primary.xl / .btn.ghost */
+.btn:global(.btn), .back:global(.btn), .sm:global(.btn), .ghost:global(.btn), .primary:global(.btn), .pick:global(.btn) { display: inline-flex; height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); white-space: nowrap; }
+.sm:global(.btn) { height: 32px; padding: 0 12px; font-size: var(--fs-meta); }
+.ghost:global(.btn) { background: transparent; color: var(--ink-2); }
+.primary:global(.btn), .pick:global(.btn) { background: var(--ink); color: var(--bg); }
+.primary:global(.btn) { height: 50px; font-size: var(--fs-card-title); }
+.primary:global(.btn):disabled { opacity: .45; }
+
+/* .obw-foot */
+.foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 20px; }
+.saved { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.spacer { flex: 1 1 auto; }
+
+/* ① 基本情報 — dashed autofill row, 2-column .fld grid (48 high on surface-2). */
+.autofill { display: flex; align-items: center; gap: 14px; margin-top: 18px; padding: 16px; border: 1.6px dashed var(--plum-300); border-radius: var(--r-bubble); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.autofillTile { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: var(--r-emo); background: var(--surface); font-size: var(--fs-emoji-md); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field { display: block; margin-top: 12px; }
+.fieldLabel { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
+.input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid transparent; border-radius: var(--r-md); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); }
+.input::placeholder { color: var(--ink-3); }
+.input:focus { border-color: var(--plum-500); background: var(--surface); }
+.selectWrap { position: relative; display: block; }
+.selectWrap svg { position: absolute; top: 50%; right: 14px; color: var(--ink); pointer-events: none; transform: translateY(-50%); }
+select.input { appearance: none; padding-right: 36px; }
+select.input:disabled + svg { color: var(--ink-3); }
+.chipLav { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-ink); font-size: var(--fs-caption); font-weight: var(--fw-bold); white-space: nowrap; }
+
+/* ② 目標 — 3-column .gt tiles with an order badge; the one-line field and its note. */
+.goals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.goal:global(.btn) { position: relative; display: flex; height: auto; flex-direction: column; align-items: flex-start; gap: 6px; padding: 13px; border: 2px solid transparent; border-radius: var(--r-lg); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-align: left; transition: border-color .2s, transform .15s var(--ease); }
+.goal:global(.btn) small { color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-medium); }
+.goal.on:global(.btn) { border-color: var(--plum-500); background: var(--surface); }
+.ord { position: absolute; top: 10px; right: 10px; display: grid; width: 22px; height: 22px; place-items: center; border-radius: var(--r-pill); background: var(--accent); color: var(--on-accent); font-size: var(--fs-caption); font-weight: var(--fw-heavy); }
+.goalLine { margin-top: 18px; }
+.msg { display: block; margin-top: 6px; color: var(--ink-3); font-size: var(--fs-label); font-weight: 600; line-height: 1.55; }
+
+/* ③ 強み・ニーズ — .grp with an emoji head and .tog pills. */
+.groups { margin-top: 18px; }
+.group + .group { margin-top: 16px; }
+.groupHead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.togs { display: flex; flex-wrap: wrap; gap: 7px; }
+.tog:global(.btn), .tog { display: inline-flex; height: auto; align-items: center; gap: 5px; padding: 8px 13px; border: 1.5px solid transparent; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-control); font-weight: var(--fw-bold); white-space: nowrap; }
+.tog.on:global(.btn) { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
+.tog.add:global(.btn) { border: 1.5px dashed var(--ink-4); background: transparent; color: var(--ink-3); }
+.tog:global(.btn):disabled { opacity: .55; }
+.adding { padding: 4px 13px; border-color: var(--plum-500); background: var(--surface); }
+.adding input { width: 150px; height: 26px; border: 0; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-control); }
+
+/* ④ 自己紹介 — tone segment, the draft on surface-2 (14.5 / 1.9), 別の案 · 直接編集 row. */
+.seg { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px; border-radius: var(--r-pill); background: var(--surface-2); }
+.seg :global(.btn) { height: auto; padding: 6px 13px; border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; }
+.seg .on:global(.btn) { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent); }
+.introBox { margin-top: 18px; padding: 18px; border-radius: var(--r-bubble); background: var(--surface-2); font-size: var(--fs-card-title); line-height: 1.9; }
+.introText { margin: 0; white-space: pre-wrap; }
+.introEdit { width: 100%; min-height: 150px; padding: 0; border: 0; outline: none; resize: vertical; background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-card-title); line-height: 1.9; }
+.introMeta { display: flex; align-items: center; gap: 8px; margin-top: 10px; line-height: 1.5; }
+.whyEnd { margin-left: auto; }
+.over { color: var(--coral-text); }
+.bones { display: flex; flex-direction: column; gap: 12px; padding: 6px 0; }
+.bones i { height: 12px; border-radius: var(--r-tag); background: var(--surface-3); }
+.introActions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.left { padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.pushEnd { margin-left: auto; }
+
+/* ⑤ 名刺の取り込み — .dropbig and the three method rows. */
+.drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; padding: 34px; border: 2px dashed var(--plum-300); border-radius: var(--r-cta); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); text-align: center; }
+.drop b { font-size: var(--fs-dialog-title); }
+.dropEmoji { font-size: var(--fs-emoji-jumbo); line-height: 1.37; }
+.pick:global(.btn) { margin-top: 6px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.method { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r-tile); background: var(--surface-2); color: var(--ink); }
+.method b { font-size: var(--fs-body-sm); }
+
+/* Aside cards (kit .card / .card.flat / .faded / .ghost-row). */
+.asideLabel { display: flex; align-items: center; gap: 4px; margin-bottom: -4px; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.asideCard { padding: 20px; border-radius: var(--r-card-web); background: var(--surface); }
+.flat { background: var(--surface-2); }
+.faded { opacity: .5; filter: saturate(.7); pointer-events: none; }
+.person { display: flex; align-items: center; gap: 14px; }
+.avatarLg, .avatarSm { display: grid; flex: 0 0 auto; place-items: center; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-ink); font-weight: var(--fw-heavy); }
+.avatarLg { width: 56px; height: 56px; font-size: var(--fs-section); }
+.avatarSm { width: 30px; height: 30px; font-size: var(--fs-label); }
+.avatarApricot { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.personName { font-size: var(--fs-section); font-weight: var(--fw-heavy); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chipBlue, .chipTeal, .chipPink { display: inline-flex; max-width: 100%; overflow: hidden; padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); text-overflow: ellipsis; white-space: nowrap; }
+.chipBlue { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.chipTeal { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.chipPink { background: var(--mac-pink); color: var(--mac-pink-ink); }
+.ghostRow { display: flex; height: 46px; align-items: center; gap: 10px; margin-top: 8px; padding: 0 14px; border: 1.5px dashed var(--surface-3); border-radius: var(--r-md); color: var(--ink-4); font-size: var(--fs-meta); }
+.person + .chips + .ghostRow, .person + .ghostRow, .row + .ghostRow, .big + .ghostRow, .person + .chips + .previewText, .person + .previewText { margin-top: 14px; }
+.ghostRow i { width: 26px; height: 26px; border-radius: var(--r-pill); background: var(--surface-2); }
+.previewText { margin: 8px 0 0; color: var(--ink-2); font-size: var(--fs-control); line-height: 1.7; }
+.ring { position: relative; display: grid; width: 90px; height: 90px; flex: 0 0 auto; place-items: center; }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke: var(--surface-3); stroke-width: 8; }
+.ring .ringArc { stroke: var(--rose-300); stroke-dasharray: 1 251; stroke-linecap: round; }
+.ring b { font-family: var(--font-num); font-size: var(--fs-title-xs); }
+.plus { margin-top: 4px; }
+.row + .row { margin-top: 0; }
+.link { height: 22px; margin: 10px 0 10px 12px; border-left: 2px dashed var(--plum-300); }
+.linkNote { margin-top: 12px; }
+.small { font-size: var(--fs-body-sm); }
+.clamp { display: -webkit-box; margin-top: 8px; overflow: hidden; line-height: 1.7; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.useText { margin-top: 8px; }
+.big { font-family: var(--font-num); font-size: var(--fs-display); font-weight: var(--fw-heavy); letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.big small { margin-left: 3px; color: var(--ink-3); font-size: var(--fs-emph); font-weight: var(--fw-bold); letter-spacing: 0; }
+
+/* Narrower than the 1440 board (no 1024 / 390 drawing in b1 A3): one column with the aside under the card,
+   the stepper keeps only the current label, and below 768 only the numbers. */
+@media (max-width: 1279px) {
+  .body { padding: 24px 40px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .card, .aside { grid-column: auto; }
+  .card { min-height: 640px; }
+  .head .stepper :global(li) > span:last-child { display: none; }
+  .head .stepper :global(li)[aria-current="step"] > span:last-child { display: inline; }
+}
+@media (max-width: 767px) {
+  .head { height: 64px; gap: 12px; padding: 0 16px; }
+  .brand b { display: none; }
+  .head .stepper { gap: 4px; }
+  .head .stepper :global(li)[aria-current="step"] > span:last-child { display: none; }
+  .head .stepper :global(em) { width: 8px; flex-basis: 8px; }
+  .later:global(.btn) { padding: 0 4px; }
+  .body { padding: 16px; }
+  .card { min-height: 0; padding: 20px; }
+  .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .goals { grid-template-columns: 1fr 1fr; }
+  .headRow, .introActions, .foot { flex-wrap: wrap; }
+  .pushEnd { margin-left: 0; }
+  .foot .spacer { display: none; }
+  .foot .ghost:global(.btn), .foot .primary:global(.btn) { flex: 1 1 100%; }
+}

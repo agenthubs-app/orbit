@@ -15,7 +15,6 @@ import {
   seekOptionsFromLabels,
   toggleValue,
 } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-model";
-import { OnboardingHomePreview, OnboardingNetworkPreview, firstIncompleteStep } from "../../app/(app)/app/orbit-2026/onboarding/onboarding-previews";
 import { profileOnboardingFlowPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
 test("onboarding has five steps with the AI introduction between persona and import", () => {
@@ -42,49 +41,18 @@ test("tag helpers respect limits and de-duplicate custom tags", () => {
   assert.deepEqual(addCustomValue(["x"], "y", 1), ["x"]);
 });
 
-test("preview clicks fall through to the first unfinished step", () => {
-  const done = { profileDone: true, goalsDone: true, personaDone: true, introDone: true };
-  assert.equal(firstIncompleteStep({ ...done, profileDone: false }), "profile");
-  assert.equal(firstIncompleteStep({ ...done, personaDone: false }), "persona");
-  assert.equal(firstIncompleteStep(done), "import");
-});
-
-test("the Japanese onboarding preview keeps its sample labels and actions in Japanese", () => {
-  const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="ja">
-    <OnboardingHomePreview complete={false} firstGoal="" focus="" initial="山" name="" onEnter={() => {}} onGo={() => {}}
-      progress={{ profileDone: false, goalsDone: false, personaDone: false, introDone: false }} todayLabel="2026年10月20日" />
-  </OrbitLanguageProvider>);
-  assert.match(html, /最初の1週間/);
-  assert.match(html, /設定を続ける/);
-  assert.match(html, /サンプル/);
-  assert.doesNotMatch(html, /First-week plan|Continue setup|Sample/);
-});
-
-test("the Japanese network preview keeps its empty state and scan action in Japanese", () => {
-  const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="ja">
-    <OnboardingNetworkPreview complete={false} firstGoal="" focus="" initial="山" name="" onEnter={() => {}} onGo={() => {}}
-      progress={{ profileDone: false, goalsDone: false, personaDone: false, introDone: false }} todayLabel="2026年10月20日" />
-  </OrbitLanguageProvider>);
-  assert.match(html, /あなたのつながり/);
-  assert.match(html, /名刺を読み取る/);
-  assert.doesNotMatch(html, /Your network|Scan business cards/);
-});
-
 test("gate target is the onboarding route and keeps a safe next", () => {
   assert.equal(profileOnboardingFlowPath("/app/contacts?from=x"), "/app/profile/onboarding?next=%2Fapp%2Fcontacts%3Ffrom%3Dx");
   assert.equal(profileOnboardingFlowPath("/app/profile/onboarding"), "/app/profile/onboarding?next=%2Fapp%2Fhome");
 });
 
-test("welcome screen renders the five steps and the real nav (no calendar, no LinkedIn)", () => {
+test("b1 A3: the first screen is the basics form under the five-step header — no welcome page, no app nav", () => {
   const html = renderToStaticMarkup(<OnboardingFlow actorKey="u1" cardScanAvailable next="/app/home" todayIso="2026-09-26" />);
-  assert.match(html, /欢迎来到 Orbit。/);
-  for (const label of ["告诉我们你是谁", "你最近想推进什么", "你能提供什么、在找什么", "iOrbit 帮你写好自我介绍", "带入已有人脉"]) {
-    assert.ok(html.includes(label), label);
-  }
-  assert.match(html, />iOrbit</);
-  assert.match(html, />活动</);
-  assert.match(html, />人脉</);
-  assert.doesNotMatch(html, /日历|领英|LinkedIn/);
+  assert.match(html, /先从你开始/);
+  for (const label of ["基本信息", "目标", "优势与需求", "自我介绍", "导入名片"]) assert.ok(html.includes(label), label);
+  assert.match(html, /稍后设置/);
+  assert.match(html, /对方看到的你/);
+  assert.doesNotMatch(html, /欢迎来到 Orbit|开始设置|>iOrbit<|>活动<|>人脉</);
 });
 
 test("saved goal text round-trips into the editor; old chip-prefixed text keeps every word", () => {
@@ -177,7 +145,9 @@ async function mountFlow(actorKey: string) {
   return root;
 }
 
-const goalInput = (root: ReactTestRenderer) => root.root.findByProps({ className: "ob-input" });
+const goalInput = (root: ReactTestRenderer) => root.root.find(node => node.type === "input" && node.props["data-goal-line"] !== undefined);
+// Visible text of a host node (icons and tiles are elements, so only string children count).
+const textOf = (node: { children: ReadonlyArray<unknown> }): string => node.children.map(child => typeof child === "string" ? child : child && typeof child === "object" && "children" in child ? textOf(child as { children: ReadonlyArray<unknown> }) : "").join("");
 const DRAFT_KEY = (actor: string) => `orbit.onboarding.v1:${actor}`;
 
 test("goals step preserves an old local draft and presents six choices with no default deadline", async (t) => {
@@ -187,7 +157,7 @@ test("goals step preserves an old local draft and presents six choices with no d
   const root = await mountFlow("u-old");
 
   assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "03 目标").length, 1);
-  assert.equal(root.root.findAll(node => node.type === "button" && node.props.className === "btn ob-chip").length, 6);
+  assert.equal(root.root.findAll(node => node.type === "button" && node.props["data-goal"] !== undefined).length, 6);
   assert.equal(goalInput(root).props.value, "寻找合作伙伴、开拓新市场：先找 5 家试用企业");
   assert.match(JSON.stringify(readOnboardingDraft("u-old")), /寻找合作伙伴、开拓新市场：先找 5 家试用企业/);
   act(() => root.unmount());
@@ -215,7 +185,7 @@ test("Set up later defers with CAS and readback; failure keeps the step for retr
   const assignments = stubWindow(t, new Map());
   const api = stubProfileApi(t, "", {}, 1, undefined, "MODEL_REQUEST_FAILED", 1);
   const root = await mountFlow("u-defer-retry");
-  const later = () => root.root.findAll(node => node.type === "button" && node.children.join("") === "稍后设置")[0]!;
+  const later = () => root.root.findAll(node => node.type === "button" && textOf(node) === "稍后设置")[0]!;
   assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
   await act(async () => { await later().props.onClick(); });
   assert.equal(root.root.findAll(node => node.props["data-onboarding-view"] === "goals").length, 1);
@@ -254,25 +224,24 @@ test("onboarding goal choices and sentence read back after reload without a loca
     secondaryIndustryId: "technology_internet.enterprise_software",
   });
   const clickText = async (root: ReactTestRenderer, text: string) => {
-    const button = root.root.findAll(node => node.type === "button" && node.children.join("") === text)[0];
+    const button = root.root.findAll(node => node.type === "button" && textOf(node) === text)[0];
     assert.ok(button, text);
     await act(async () => { await button.props.onClick(); });
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   };
-  // 无草稿 → 欢迎页 → 开始设置 → 关于你（资料已齐）继续 → 目标步
+  // 无草稿 → 基本信息（资料已齐）下一步 → 目标步
   const enterGoals = async (root: ReactTestRenderer) => {
-    await clickText(root, "开始设置");
-    await clickText(root, "继续");
+    await clickText(root, "下一步");
     assert.equal(root.root.findAll(node => node.props["data-screen-label"] === "03 目标").length, 1);
   };
 
   const first = await mountFlow("u-reload");
   await enterGoals(first);
-  const choice = first.root.findAll(node => node.type === "button" && node.children.join("") === "寻找合作伙伴")[0];
+  const choice = first.root.findAll(node => node.type === "button" && node.props["data-goal"] === "partners")[0];
   assert.ok(choice);
   await act(async () => { choice.props.onClick(); });
   await act(async () => { goalInput(first).props.onChange({ target: { value: "先谈大阪的两家供应商" } }); });
-  await clickText(first, "继续");
+  await clickText(first, "下一步");
   assert.equal(api.puts.at(-1)?.relationshipGoal, "寻找合作伙伴：先谈大阪的两家供应商");
   assert.equal(api.saved(), "寻找合作伙伴：先谈大阪的两家供应商");
   act(() => first.unmount());
@@ -281,9 +250,9 @@ test("onboarding goal choices and sentence read back after reload without a loca
   store.clear();
   const second = await mountFlow("u-reload");
   assert.equal(second.root.findAll(node => node.props["data-screen-label"] === "04 商务画像").length, 1);
-  await clickText(second, "← 上一步");
+  await clickText(second, "返回");
   assert.equal(goalInput(second).props.value, "先谈大阪的两家供应商");
-  assert.equal(second.root.findAll(node => node.type === "button" && node.props["aria-pressed"] === true && node.children.join("").includes("寻找合作伙伴")).length, 1);
+  assert.equal(second.root.findAll(node => node.type === "button" && node.props["aria-pressed"] === true && node.props["data-goal"] === "partners").length, 1);
   act(() => second.unmount());
 });
 
@@ -315,6 +284,6 @@ test("intro quota exhaustion offers manual writing without another retry", async
   const output = JSON.stringify(root.toJSON());
   assert.match(output, /介绍草稿的 3 次生成额度已用完/);
   assert.doesNotMatch(output, /Quota error from server/);
-  assert.equal(root.root.findAll(node => node.type === "button" && node.children.join("") === "重试").length, 0);
+  assert.equal(root.root.findAll(node => node.type === "button" && textOf(node) === "重试").length, 0);
   act(() => root.unmount());
 });

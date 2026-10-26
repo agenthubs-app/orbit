@@ -260,6 +260,8 @@ async function shootApp(v, designHeight) {
   });
   // 主题靠 colorScheme（实现默认「自動」跟随系统，RD-05）；不写 localStorage，否则头像菜单的「外観」会显示成手动选了浅 / 深。
   await ctx.addInitScript(() => { try { localStorage.removeItem("orbit-theme"); } catch {} });
+  // 套件 view 的 "init-script"：页面任何脚本之前执行（例：R28 把付费的 /api/profile/intro-draft 换成固定草稿，截图不调模型）。
+  if (v["init-script"]) await ctx.addInitScript({ content: v["init-script"] });
   const page = await ctx.newPage();
   try { await page.goto(v.app, { waitUntil: "networkidle", timeout: 30000 }); }
   catch { await page.waitForTimeout(1500); }

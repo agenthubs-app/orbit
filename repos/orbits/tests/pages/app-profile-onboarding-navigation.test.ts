@@ -104,7 +104,7 @@ type ProfileContinueOptions = {
   actor?: Record<string, unknown> | null;
   actorThrows?: boolean;
   profileService: { getProfile: (input: { actorId: string }) => unknown };
-  progress?: { finishedAt: string | null } | null;
+  progress?: { finishedAt: string | null; deferred?: boolean } | null;
   progressThrows?: boolean;
   signedIn?: boolean;
 };
@@ -350,6 +350,17 @@ test("a complete profile with an unfinished flow resumes onboarding; progress re
     const result = await page() as { props?: { role?: string } };
     assert.equal(result.props?.role, "alert");
     assert.ok(!calls.some((call) => call.operation === "redirect"));
+  }, "live");
+});
+
+test("b1 #21: a complete profile whose flow was deferred continues to next, where home offers おかえりなさい", async (t) => {
+  const { accountId, store } = profileMembershipFixture();
+  const service = createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId: profileFixtureWorkspace }) });
+  assert.equal((await service.updateProfile({ displayName: "Alice", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.enterprise_software" }, { actorId: accountId })).success, true);
+  await withProfileEnvironment(async () => {
+    const { page, calls, redirected } = loadProfileContinuePage(t, { profileService: service, progress: { finishedAt: null, deferred: true } });
+    await assert.rejects(page(), (error) => error === redirected);
+    assert.equal(calls.at(-1)?.input, "/app/home");
   }, "live");
 });
 

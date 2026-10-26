@@ -428,11 +428,8 @@ test("pointer-down resize controls count as static behavior", () => {
 // (KNOWN_MISSING_STATIC_BEHAVIOR). New P0s still fail; fixed entries must be deleted.
 const SCANNER_CROSS_COMPONENT =
   "scanner false positive across a component boundary; recovery: the scanner resolves it (then delete the entry)";
-const ONBOARDING_PREVIEWS = "repos/orbits/app/(app)/app/orbit-2026/onboarding/onboarding-previews.tsx";
 const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>([
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
-  ...["button {t(item.cta)}", "button {t(ONBOARDING_COPY.preview003)}", "button {t(ONBOARDING_COPY.preview051)}", "button {t(ONBOARDING_COPY.preview054)}", "button {t(ONBOARDING_COPY.preview061)}", "button {t(ONBOARDING_COPY.preview075)}"]
-    .map((trigger) => [`${ONBOARDING_PREVIEWS}#${trigger}`, `${SCANNER_CROSS_COMPONENT}: click delegated to PreviewFrame onClick via data-ob-goto`] as const),
 ]);
 
 test("manifest generation writes the required repository artifacts", () => {

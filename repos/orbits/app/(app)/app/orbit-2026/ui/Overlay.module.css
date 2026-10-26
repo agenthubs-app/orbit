@@ -30,6 +30,8 @@
 .w480 { width: min(480px, calc(100vw - 32px)); }
 .w520 { width: min(520px, calc(100vw - 32px)); }
 .w560 { width: min(560px, calc(100vw - 32px)); }
+/* R28 (only added): b1 #21 おかえりなさい is a 640 .wmodal. */
+.w640 { width: min(640px, calc(100vw - 32px)); }
 .w680 { width: min(680px, calc(100vw - 32px)); }
 /* b3 form modals (.wmodal.form with inline widths): 送る前の確認 760, フォロー完了 860, 日程を提案 1000. */
 .w760 { width: min(760px, calc(100vw - 32px)); }

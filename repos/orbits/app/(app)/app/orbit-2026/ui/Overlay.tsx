@@ -75,7 +75,7 @@ export function Modal({ open, onClose, title, header, description, subtitle, sub
   titleSize?: 17 | 18;
   /** R31b: false = no ✕ (keep a cancel action; Esc still closes). */
   closable?: boolean;
-  size?: 380 | 420 | 480 | 520 | 560 | 680 | 760 | 860 | 1000;
+  size?: 380 | 420 | 480 | 520 | 560 | 640 | 680 | 760 | 860 | 1000;
   top?: boolean;
   form?: boolean;
   /** R30 (only added): the ⌘K panel body draws its own rows edge to edge — kit `.cmdk` padding 10 instead of 24. */

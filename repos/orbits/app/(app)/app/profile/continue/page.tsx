@@ -71,7 +71,8 @@ export default async function AppProfileContinuePage({
     const language = await getOrbitServerLanguage();
     return <main role="alert">{RETRY_COPY.progress[language]}</main>;
   }
-  if (access.status === "complete" && (!flow || flow.finishedAt)) redirect(next);
+  // b1 #21: a flow left with 「あとで設定する」 resumes from home (おかえりなさい), not by forcing the form again.
+  if (access.status === "complete" && (!flow || flow.finishedAt || flow.deferred)) redirect(next);
 
   redirect(profileOnboardingFlowPath(next));
 }
