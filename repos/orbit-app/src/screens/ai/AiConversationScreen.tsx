@@ -913,12 +913,9 @@ function ConversationThread({
   const router = useRouter();
   const copy = iorbitR21Copy[locale.language];
   return (
-    <AppScreen inset="kit" title="iOrbit" showBack={false}
-      header={<View style={styles.r21Header}>
-        <UiIconButton icon="menu" accessibilityLabel={copy.conversations} onPress={() => onOpenHref("/ai?drawer=1")} />
-        <View style={styles.r21TitleBlock}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.r21Title}>iOrbit</UiText><UiText numberOfLines={1} style={styles.r21Subtitle}>{thread.title}</UiText></View>
-        <UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />
-      </View>}>
+    // The bar sits outside the scroll view (fixed), so scrolling a long answer never slides it under the status bar.
+    <AppScreen inset="kit" title="iOrbit" subtitle={thread.title} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
+      headerActions={<UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />}>
       {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
       <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
@@ -959,7 +956,6 @@ function ConversationThread({
             ? <View style={styles.earlierFailure}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.loadEarlierFailed")}</UiText><UiButton label={locale.t("aiConversation.retryEarlier")} variant="ghost" onPress={requestEarlier} /></View>
             : <UiButton label={locale.t("aiConversation.loadEarlier")} variant="ghost" onPress={requestEarlier} />
           : earlier?.allLoaded ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.allMessagesLoaded")}</UiText> : null}
-        {thread.messages.length === 0 ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
         {thread.messages.map((message, index) => <Fragment key={message.id}>
           <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
             {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
