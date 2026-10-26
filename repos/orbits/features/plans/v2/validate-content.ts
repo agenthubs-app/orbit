@@ -8,9 +8,11 @@ import type { PlanGoalKind } from "../../../shared/contract/plan-v2";
 import type { DraftLandscapeItem, DraftOutput, DraftSlotInfo } from "./ai/types";
 
 export const PLAN_DRAFT_STEP_LIMIT = 7;
-const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫";
+/** 每个人物类型「聞くこと」的条数（面谈メモ按「3 问里覆盖 2 问」计分，见 `PLAN_MEMO_COVERAGE_MIN`）。 */
+export const PLAN_TYPE_QUESTION_COUNT = 3;
+export const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫";
 const DIGIT = /[0-9０-９]/;
-const HEADCOUNT = /([0-9０-９]+|[一二三四五六七八九十両]+)\s*(人|名|people|persons?|位)/i;
+export const HEADCOUNT = /([0-9０-９]+|[一二三四五六七八九十両]+)\s*(人|名|people|persons?|位)/i;
 
 export interface ContentCheckInput {
   goalKind: PlanGoalKind;
@@ -78,7 +80,7 @@ export function checkDraftContent(content: DraftOutput, input: ContentCheckInput
     if (type.targetCount < 1 || type.targetCount > 5) issues.push(`personType ${type.slot}: target 1–5`);
     // 0 点的类型不能留在方案里，要去掉就走「移除类型」（复核 m1）。
     if (type.allocation < 5) issues.push(`personType ${type.slot}: at least 5 points`);
-    if (type.questions.length !== 3) issues.push(`personType ${type.slot}: three questions`);
+    if (type.questions.length !== PLAN_TYPE_QUESTION_COUNT) issues.push(`personType ${type.slot}: three questions`);
     for (const route of type.introRoutes) {
       if (!input.aliases.has(route.viaAlias)) issues.push(`personType ${type.slot}: intro route via unknown alias`);
       if (HEADCOUNT.test(route.why)) issues.push(`personType ${type.slot}: intro route mentions a headcount`);
