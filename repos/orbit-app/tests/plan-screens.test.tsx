@@ -149,6 +149,17 @@ test("goal input: the type is guessed after a pause, a picked chip is never over
   assert.equal(await page.getByRole("radio", { name: "💰 資金調達" }).getAttribute("aria-checked"), "false");
 });
 
+test("goal input: a picked chip alone starts the flow, with its name as the goal", async (t) => {
+  const intake = intakeAt("background");
+  const { page, calls } = await open(t, "/task", (call) => segmentReads(call, []) ?? (call.method === "POST" && call.path === "/api/agent/plans/intakes" ? ok(intake, 201) : call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intake) : undefined));
+  await page.getByText("何を達成したいですか？").waitFor();
+  await page.getByRole("radio", { name: "🤝 新規開拓" }).click();
+  await page.getByRole("button", { name: "iOrbit と具体化する" }).click();
+  await page.waitForFunction(() => (window as unknown as { planNav?: { navigation: unknown[] } }).planNav?.navigation.length === 1);
+  const create = calls.find((call) => call.method === "POST" && call.path === "/api/agent/plans/intakes")!.body as Record<string, unknown>;
+  assert.deepEqual({ goalKind: create.goalKind, goalText: create.goalText }, { goalKind: "sales", goalText: "新規開拓" });
+});
+
 test("goal input: the monthly limit is explained up front and the button is disabled", async (t) => {
   const { page } = await open(t, "/task", (call) => call.path === "/api/agent/plans/intakes" ? ok({ ...intakesEmpty, newGoalsLeftThisMonth: 0 }) : segmentReads(call, []));
   await page.getByText("今月はこれ以上新しい目標を作れません。").waitFor();

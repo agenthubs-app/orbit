@@ -64,7 +64,8 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
   const active = goals.filter((goal) => goal.status === "active");
 
   const create = async () => {
-    const goalText = text.trim();
+    // A chip alone is enough to start: its name stands in as the goal, and iOrbit makes it concrete in the flow.
+    const goalText = text.trim() || (kind ? planCopy(PLAN_GOAL_KIND_COPY[kind], language) : "");
     if (!goalText || blocked || creating) return;
     const goalKind = kind ?? guessGoalKindByKeywords(goalText);
     const fingerprint = JSON.stringify([goalText, goalKind]);
@@ -122,7 +123,7 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
         </View>
         {monthlyOut ? <LimitCard kind="monthly" /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
         {/* 空着也画成可按（b12 A-R23-02a）：按下把焦点给输入框，有字才建。 */}
-        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
+        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() || kind ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
       </View>
       <SampleTypeCard />
