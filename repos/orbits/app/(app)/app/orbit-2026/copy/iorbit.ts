@@ -25,7 +25,7 @@ export const iorbitCopy = {
   delete: { ja: "削除", zh: "删除", en: "Delete" },
   newChat: { ja: "新しい会話", zh: "新对话", en: "New conversation" },
   searchLabel: { ja: "会話を検索", zh: "搜索对话", en: "Search conversations" },
-  searchPlaceholder: { ja: "タイトルと本文を検索", zh: "搜索标题和正文", en: "Search titles and messages" },
+  searchPlaceholder: { ja: "会話を検索", zh: "搜索对话", en: "Search conversations" },
   loading: { ja: "会話を読み込み中…", zh: "正在加载对话…", en: "Loading conversations…" },
   readFailed: { ja: "会話を読み込めませんでした。", zh: "无法读取对话。", en: "Could not load conversations." },
   retry: { ja: "再試行", zh: "重试", en: "Retry" },

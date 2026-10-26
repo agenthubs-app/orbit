@@ -96,16 +96,9 @@
   .r8ctx .chip { padding: 5px 8px 5px 10px; font-size: 11.5px; background: var(--surface); flex: none; }
   .r8ctx .chip .x { color: var(--ink-4); display: inline-grid; }
   .r8ctx .chip .x svg.i { width: 13px; height: 13px; }
-  .r8hist { position: absolute; left: 14px; top: 14px; bottom: 14px; width: 380px; z-index: 6; background: var(--bg); border-radius: 28px; padding: 22px; box-shadow: var(--shadow-float); overflow: hidden; }
-  .r8scrim { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 5; background: var(--scrim-web); }
-  .r8adrawer { position: absolute; left: 14px; top: 14px; bottom: 14px; width: calc(100% - 28px); z-index: 51; background: var(--bg); border-radius: 28px; padding: 22px; overflow: hidden; box-shadow: var(--shadow-float); }
-  .r8history { display: grid; align-content: start; gap: 12px; }
-  .r8history .gl { padding: 7px 0 2px; }
-  .r8history .hi { display: flex; align-items: center; gap: 8px; padding: 11px 8px; background: transparent; }
-  .r8history .hi .t { display: grid; gap: 3px; min-width: 0; }
-  .r8history .hi .t b, .r8history .hi .t small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .r8history .hi .t b { font-size: 13px; }
-  .r8history .hi .t small { font-size: 11px; font-weight: 400; }
+  .r8hist { position: absolute; left: 0; top: 0; bottom: 0; width: 272px; z-index: 6; background: var(--bg); border-radius: 22px; padding: 12px 10px; box-shadow: var(--shadow-float); overflow: hidden; }
+  .r8scrim { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 5; border-radius: 22px; background: var(--scrim-web); }
+  .r8adrawer { position: absolute; left: 0; top: 0; bottom: 0; width: 318px; z-index: 51; background: var(--bg); border-radius: 0 34px 34px 0; padding: 58px 14px 30px; overflow: hidden; box-shadow: var(--shadow-float); }
   .r8user { display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }
   .r8user .r8userbubble { max-width: 80%; padding: 14px 18px; border-radius: 20px; background: var(--accent-soft); font-size: 13px; line-height: 1.55; }
   .r8assist { display: flex; align-items: flex-start; gap: 12px; }
@@ -1206,20 +1199,20 @@ const chatMsgsDemo = (mobile) => `<div class="bubble me">CVC の担当者に会�
 /* PX2 D09: actor-owned r21-visual-pinned is a text-only stored session (two messages, no panel/items). */
 const chatMsgs = () => `<div class="r8user"><div class="r8userbubble">田中さんとの提携相談について教えて</div><span class="r8copy">${ic('copy', 'sm')}</span></div><div class="r8assist"><span class="r8assisticon">${ic('sparkle', 'sm')}</span><div class="r8answer"><b>iOrbit</b><span>関係する情報を確認しました。</span><span class="r8copy">${ic('copy', 'sm')}</span></div></div><div class="r8follow">プランを見る</div>`;
 const HIST = { pin: [['田中さんとの提携相談', '10/17']], today: [], week: [], older: [['来週のイベントを探す', '10/18'], ['二端末で確認したプラン', '10/15'], ['名刺の整理', '10/2']] };
-const histList = () => `<div class="r8history"><button class="btn primary block">${ic('plus', 'sm')}新しい会話</button><div class="search" style="background:var(--surface);height:40px;font-size:12.5px">${ic('search', 'sm')}タイトルと本文を検索</div><div class="hist">${[['ピン留め', 'pin'], ['それ以前', 'older']].map(([t, key]) => `<div class="gl">${t}</div>${HIST[key].map(([n, d]) => `<div class="hi">${ic(key === 'pin' ? 'pin' : 'chat', 'sm')}<span class="t"><b>${n}</b><small>October ${d.split('/')[1]}, 2026</small></span>${ic('more', 'sm')}</div>`).join('')}`).join('')}<div class="gl">プランを作る</div><div class="hi">${ic('target', 'sm')}<span class="t"><b>シリーズA 資金調達（3億円）</b><small>進行中の目標</small></span><small>振り返る</small></div><div class="hi" style="justify-content:center">＋ 新しい目標</div></div></div>`;
+const histList = () => `<div class="search" style="background:var(--surface-2);height:40px;font-size:12.5px">${ic('search', 'sm')}会話を検索</div><div class="hist">${[['ピン留め', 'pin', 'pin'], ['今日', 'today', ''], ['今週', 'week', ''], ['それ以前', 'older', '']].filter(([, key]) => HIST[key].length).map(([t, key, icon]) => `<div class="gl">${icon ? ic(icon, 'sm') : ''}${t}</div>${HIST[key].map(([n, d], k) => `<div class="hi ${key === 'pin' && k === 0 ? 'on' : ''}"><span class="t">${n}</span><small>${d}</small></div>`).join('')}`).join('')}</div>`;
 const strip = `<aside class="r8strip"><button class="lbtn" title="履歴を開く">${ic('menu', 'sm')}</button><button class="lbtn">${ic('search', 'sm')}</button><button class="lbtn">${ic('edit', 'sm')}</button><hr><span class="pinav">📌</span><span class="pinav">💼</span></aside>`;
 const wComp = `<div class="wcomp"><span class="in">iOrbit に聞く…</span><button class="lbtn">${ic('send', 'sm')}</button></div><div class="lbl" style="text-align:center;margin-top:8px">送信はあなたが行います。回答の根拠は結果で確認できます。</div>`;
 function chat1024(open = false) {
   return mainhead('iOrbit', '田中さんとの提携相談', `<button class="rbtn">${ic('menu')}</button>`, `<span class="kbd">⌘</span><span class="kbd">K</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div class="r8chat">${strip}
     <div class="ccol"><div class="msgs" style="padding-top:20px">${chatMsgs()}</div>${wComp}</div>
-    </div>`;
+    ${open ? `<div class="r8scrim"></div><aside class="r8hist"><div class="row between" style="padding:2px 4px 10px"><b style="font-size:14px">会話</b><span class="row" style="gap:6px"><button class="btn sm primary">${ic('edit', 'sm')}新規</button><button class="lbtn" style="width:30px;height:30px">${ic('left', 'sm')}</button></span></div>${histList()}</aside>` : ''}</div>`;
 }
 function chat390() {
   return `<div class="r8chathead"><div class="row" style="gap:6px"><button class="rbtn">${ic('menu')}</button></div><div class="t"><b>iOrbit</b><small class="clamp1" style="display:block">田中さんとの提携相談</small></div><div class="row" style="gap:6px;justify-content:flex-end"><button class="rbtn">${ic('x')}</button></div></div>
     <div style="display:grid;gap:18px;margin-top:150px">${chatMsgs()}</div>`;
 }
 const mcomp = `<div class="mcomp"><div class="bx" style="min-height:72px"><span style="flex:1;min-width:0">iOrbit に聞く…</span><button class="lbtn">${ic('send', 'sm')}</button></div><div class="lbl">送信はあなたが行います。回答の根拠は結果で確認できます。</div></div>`;
-const mHistDrawer = `<div class="sheet-scrim"></div><div class="r8adrawer"><div class="row between" style="padding:0 0 14px"><b style="font-size:20px">会話リスト</b><button class="lbtn" style="width:36px;height:36px">${ic('x', 'sm')}</button></div>${histList()}</div>`;
+const mHistDrawer = `<div class="sheet-scrim"></div><div class="r8adrawer"><div class="row between" style="padding:0 4px 12px"><b style="font-size:17px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新規</button></div>${histList()}</div>`;
 
 /* ============ 4 · 連絡先詳細 ============ */
 const c0 = C[0];
@@ -1332,10 +1325,10 @@ h += boards([
     ['左上 ≡ で会話一覧、右上 ✕ で戻る', '同じ user.text', '同じ assistant.text；構造化カードなし', '入力欄は Safari バーの上']),
 ]);
 h += boards([
-  board('iOrbit · 1024 历史展开', '弹层', f1024({ nav: 2, body: chat1024(true), extra: `<div class="r8scrim"></div><aside class="r8hist"><div class="row between" style="padding:0 0 14px"><b style="font-size:20px">会話リスト</b><button class="lbtn" style="width:36px;height:36px">${ic('x', 'sm')}</button></div>${histList()}</aside>`, pins: pin(1, '.r8hist') + pin(2, '.r8hist .hi') + pin(3, '.r8hist .search') }),
-    ['左抽屉 380px，覆盖全屏壳；点外部 / Esc / ✕ 收起；窗口 ≥1200 时使用常驻列表', 'actor-owned QA 会话四项，保存时间与列表读源一致', '新しい会話、标题与正文搜索、ピン留め / それ以前、プランを作る与逐行操作均来自现行产品'], W),
-  board('iOrbit · 390 历史', '弹层', m390({ body: chat390(), overlay: mHistDrawer, pins: pin(1, '.r8adrawer') + pin(2, '.r8adrawer .hi') }),
-    ['左抽屉宽 362px、四边留 14px；点遮罩或 ✕ 关闭', '同一 actor-owned 会话列表，点会话切换；逐行 ··· 操作含 ピン留め / 名前を変更 / 削除']),
+  board('iOrbit · 1024 历史展开', '弹层', f1024({ nav: 2, body: chat1024(true), pins: pin(1, '.r8hist') + pin(2, '.r8hist .hi.on') + pin(3, '.r8hist .search') }),
+    ['面板从左滑出、覆盖在对话上（不挤压 680px 对话列）；点外部 / Esc / ‹ 收起；窗口 ≥1280 时自动恢复常驻', '当前会话高亮；点其他会话 → 切换并自动收起面板', '顶部搜索；分组 ピン留め / 今日 / 今週 / それ以前；悬停行出 ··· 菜单（ピン留め / 名前を変更 / 削除）'], W),
+  board('iOrbit · 390 历史', '弹层', m390({ body: chat390(), overlay: mHistDrawer, pins: pin(1, '.r8adrawer') + pin(2, '.r8adrawer .hi.on') }),
+    ['左抽屉 318px 从左滑入，遮罩暗化；左滑抽屉 / 点遮罩关闭', '点会话切换并关闭；长按 → ピン留め / 名前を変更 / 削除（删除有确认）']),
 ]);
 
 h += sec('4 · 連絡先詳細', '1024：右侧抽屉宽 520（1440 为 600）；390：全屏页，顶部返回');
