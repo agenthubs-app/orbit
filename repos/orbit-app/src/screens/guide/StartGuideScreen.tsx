@@ -91,7 +91,7 @@ export function StartGuideScreen() {
             <UiText style={styles.stepTitle}>{c.saved}</UiText>
             {guide.flags.contacts && guide.flags.goal && !guide.flags.plan ? (
               <View style={styles.planForm}>
-                <TextInput accessibilityLabel={c.saved} multiline onChangeText={(value) => { setGoalText(value); keyRef.current = null; }} style={[styles.input, { color: colors.ink }]} value={goalText} />
+                <TextInput accessibilityLabel={c.saved} multiline returnKeyType="done" submitBehavior="blurAndSubmit" onChangeText={(value) => { setGoalText(value); keyRef.current = null; }} style={[styles.input, { color: colors.ink }]} value={goalText} />
                 <UiText style={styles.hint}>{c.choose}</UiText>
                 <View style={styles.kinds}>
                   {PLAN_GOAL_KINDS.map((value) => <Button key={value} label={goalKindLabel(value, language) ?? value} variant={kind === value ? "primary" : "secondary"} onPress={() => { setKind(value); keyRef.current = null; }} />)}

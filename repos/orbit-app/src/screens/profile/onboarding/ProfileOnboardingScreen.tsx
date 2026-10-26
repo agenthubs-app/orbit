@@ -505,7 +505,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       {message ? <Text accessibilityLiveRegion="polite" style={message === t("onboarding.scanFilled") ? styles.toast : styles.warning}>{message}</Text> : null}
       <View style={styles.fields}>
         <Field label={t("onboarding.name")}>
-          <TextInput accessibilityLabel={t("onboarding.name")} editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
+          <TextInput accessibilityLabel={t("onboarding.name")} returnKeyType="done" editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
         </Field>
         <View style={styles.fieldRow}>
           {selectButton("primary", t("onboarding.primaryIndustry"), primaryLabel, t("onboarding.select"), !disabled)}
@@ -526,14 +526,14 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
         ) : null}
         <View style={styles.fieldRow}>
           <Field half label={t("onboarding.role")} optional>
-            <TextInput accessibilityLabel={t("onboarding.role")} editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
+            <TextInput accessibilityLabel={t("onboarding.role")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
           </Field>
           <Field half label={t("onboarding.company")} optional>
-            <TextInput accessibilityLabel={t("onboarding.company")} editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
+            <TextInput accessibilityLabel={t("onboarding.company")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
           </Field>
         </View>
         <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")} optional>
-          <TextInput accessibilityLabel={t("onboarding.birthDate")} autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
+          <TextInput accessibilityLabel={t("onboarding.birthDate")} returnKeyType="done" autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
             placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.birthDate} />
         </Field>
         {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}
@@ -609,7 +609,7 @@ function GoalsStep({ focus, goals, setFocus, setGoals }: {
         <CustomChip disabled={full} onAdd={value => setGoals(current => addCustomValue(current, value, GOAL_LIMIT))} />
       </View>
       <Field label={t("onboarding.focus")} optional>
-        <TextInput accessibilityLabel={t("onboarding.focus")} maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
+        <TextInput accessibilityLabel={t("onboarding.focus")} returnKeyType="done" submitBehavior="blurAndSubmit" maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
       </Field>
     </>
   );
@@ -685,10 +685,10 @@ function IntroStep({ bio, bioCount, headline, message, onRegenerate, regeneratio
       )}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.warning}>{message}</Text> : null}
       <Field label={t("onboarding.headline")}>
-        <TextInput accessibilityLabel={t("onboarding.headline")} editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
+        <TextInput accessibilityLabel={t("onboarding.headline")} returnKeyType="done" editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
       </Field>
       <Field label={t("onboarding.bio")}>
-        <TextInput accessibilityLabel={t("onboarding.bio")} editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
+        <TextInput accessibilityLabel={t("onboarding.bio")} returnKeyType="done" submitBehavior="blurAndSubmit" editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
         <Text style={[styles.counter, bioCount.over && styles.counterOver]}>{t("onboarding.charCount", { count: bioCount.count, limit: bioCount.limit })}</Text>
         {bioCount.over ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.bioTooLong", { limit: bioCount.limit })}</Text> : null}
       </Field>

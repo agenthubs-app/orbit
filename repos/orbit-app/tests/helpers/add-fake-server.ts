@@ -35,6 +35,8 @@ export class FakeAddServer {
   duplicatesFail = false;
   /** R12 review m7: uploads wait for this before answering (null = answer at once). */
   uploadGate: Promise<void> | null = null;
+  /** Photo uploads answer 500 (the server cannot store the image). */
+  uploadFail = false;
   undone: string[] = [];
   /** 元に戻す waits for this before answering (null = answer at once), like a slow network. */
   undoGate: Promise<void> | null = null;
@@ -104,6 +106,7 @@ export class FakeAddServer {
     }
     if ((match = new RegExp(`^${v2}/([^/]+)/items/([^/]+)/content$`).exec(path)) && call.method === "PUT") {
       if (this.uploadGate) await this.uploadGate;
+      if (this.uploadFail) return fail(500, "INTERNAL_ERROR", "STORAGE_DOWN");
       const entry = this.batches.get(decodeURIComponent(match[1]!))!;
       const index = entry.items.findIndex((item) => item.id === decodeURIComponent(match![2]!));
       const item = { ...entry.items[index]!, derivativeObjectKey: `d/${match[2]}`, derivativeSize: 900, imageDigest: entry.items[index]!.clientDigest, status: "uploaded" as const, version: entry.items[index]!.version + 1 };

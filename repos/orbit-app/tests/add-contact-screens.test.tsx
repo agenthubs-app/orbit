@@ -300,6 +300,18 @@ test("camera: [表面][裏面], a back pairs with the last front, 裏なし, the
   assert.deepEqual((await nav(page)).navigation.at(-1)?.method, "replace");
 });
 
+test("camera: a photo upload the server refuses shows the problem and 再アップロード (not アップロード中 forever)", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/scan", { deviceStore: GUIDE_DONE });
+  server.uploadFail = true;
+  await page.getByTestId("add-scan-camera").waitFor();
+  await page.getByRole("button", { name: "撮影する" }).click();
+  await page.getByText("連続撮影 1枚", { exact: false }).waitFor();
+  await page.getByRole("button", { name: /^完了 / }).click();
+  await page.getByText("アップロードできなかった写真があります。").waitFor();
+  await page.getByRole("button", { name: "再アップロード" }).waitFor();
+  assert.ok(!(await nav(page)).stack.at(-1)!.startsWith("/contacts/new/scan/batch-"), "stays on the camera page");
+});
+
 /** A ready batch built through the real capture flow (upload included), then read by the fake server. */
 async function batchPage(t: { after: (fn: () => Promise<void>) => void }, photos: number, options: OpenOptions & { readings: FakeAddServer["readings"]; twoSidedAt?: number; returnTo?: string }) {
   const opened = await open(t, options.returnTo ? `/contacts/new/scan?returnTo=${encodeURIComponent(options.returnTo)}` : "/contacts/new/scan", { deviceStore: GUIDE_DONE, ...options });

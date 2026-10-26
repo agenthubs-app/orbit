@@ -114,8 +114,13 @@ export function ScanCaptureScreen() {
     batchId.current = created.data.batch.id;
     // R12 review m7: the upload runs in the module-level queue, so leaving this page does not
     // stop it (the batch is finalized and read on the server; the batch page can watch / retry).
+    // The job exists only once startScanUpload has run, so watch after it (watching first saw no job,
+    // and a failed upload then stayed on 正在上传 0/1 with no error or retry).
+    const running = startScanUpload({ api, detail: created.data, files, native: uploadNative, ownerId });
     watch(created.data.batch.id);
-    await settled(await startScanUpload({ api, detail: created.data, files, native: uploadNative, ownerId }));
+    const state = await running;
+    if (mounted.current) setUpload({ busy: state.busy, done: state.done, problem: state.problem, total: state.total });
+    await settled(state);
   }
 
   /** While this page is open it mirrors the queue's progress. */
@@ -166,7 +171,7 @@ export function ScanCaptureScreen() {
       {fromLegacy && !guideOn ? <View style={styles.notice}><Body>{t("add.scan.legacyNotice")}</Body></View> : null}
       {mode === "loading" ? <Skeleton lines={4} /> : null}
       {mode === "guide" ? (
-        <ScanGuide notice={notice} legacy={fromLegacy} />
+        <ScanGuide legacy={fromLegacy} />
       ) : null}
       {mode === "upload" ? (
         <FadeIn testID="add-scan-upload">
@@ -189,7 +194,7 @@ export function ScanCaptureScreen() {
       ) : null}
     </AppScreen>
     {guideOn ? (
-      <GuideFoot onCamera={() => setMode("camera")} onPick={() => void pickPhotos(false)} hidden={Boolean(guide?.hidden)}
+      <GuideFoot notice={notice} onCamera={() => setMode("camera")} onPick={() => void pickPhotos(false)} hidden={Boolean(guide?.hidden)}
         onHide={guide && !guide.hidden ? () => { void hideScanGuide(guide).then(setGuide); setMode("camera"); } : null} />
     ) : null}
     </View>
@@ -201,7 +206,7 @@ export function ScanCaptureScreen() {
  * うまく撮るコツ (4 tips, 連写 OK · 一度に最大 N枚), 撮ったあと (3 steps), the privacy note; カメラを開く,
  * 写真から選ぶ and 次回から表示しない sit in the bottom bar (GuideFoot, outside the scroll).
  */
-function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | null; legacy: boolean }) {
+function ScanGuide({ legacy }: { legacy: boolean }) {
   const { t } = useOrbitLocale();
   const { colors, styles: g } = useGuideStyles();
   const tips: [string, string, string][] = [
@@ -258,18 +263,19 @@ function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | n
         <UiText style={g.privEmoji}>🔒</UiText>
         <UiText style={g.privText}>{t("add.scan.privacyBefore")}<UiText style={g.privStrong}>{t("add.scan.privacyStrong")}</UiText>{t("add.scan.privacyAfter")}</UiText>
       </View>
-      {notice ? <View style={g.noticeGap}><Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption></View> : null}
       <View style={{ height: KIT_FOOT_SPACE }} />
     </FadeIn>
   );
 }
 
 /** The guide's bottom bar: カメラを開く (xl), then 写真から選ぶ (link) · 次回から表示しない (check). */
-function GuideFoot({ onCamera, onPick, hidden, onHide }: { onCamera: () => void; onPick: () => void; hidden: boolean; onHide: (() => void) | null }) {
+function GuideFoot({ notice, onCamera, onPick, hidden, onHide }: { notice: "limit" | "pick" | "camera" | null; onCamera: () => void; onPick: () => void; hidden: boolean; onHide: (() => void) | null }) {
   const { t } = useOrbitLocale();
   const { colors, styles: g } = useGuideStyles();
   return (
     <KitFoot>
+      {/* In the bar, not at the end of the scroll: there the bar covered it. */}
+      {notice ? <Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption> : null}
       <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.openCamera")} onPress={onCamera} style={g.xl} testID="add-scan-open-camera">
         <Icon name="scan" size={16} color={colors.bg} />
         <UiText style={g.xlText}>{t("add.scan.openCamera")}</UiText>
@@ -354,7 +360,6 @@ const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   privEmoji: { fontSize: 20, width: 21 },
   privText: { flex: 1, fontSize: 13, fontWeight: "500", lineHeight: 21, color: colors.ink2 },
   privStrong: { fontWeight: "700", color: colors.ink },
-  noticeGap: { marginTop: 12 },
   xl: { height: 50, borderRadius: 999, backgroundColor: colors.ink, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" },
   xlText: { fontSize: 17, fontWeight: "700", lineHeight: 25, color: colors.bg },
   footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
