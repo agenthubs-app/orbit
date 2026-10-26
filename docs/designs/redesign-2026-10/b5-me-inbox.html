@@ -1048,10 +1048,19 @@ function inboxApp(s, tab = 'notif') {
 }
 
 function threadApp() {
-  return topbar('メッセージ', '', back) + `
-    <div class="card" style="padding:16px"><b>高橋 美咲との会話</b><div class="lbl" style="margin-top:4px">宛先：高橋 美咲</div></div>
-    <div class="mail" style="margin-top:12px"><div class="row between"><b>高橋 美咲</b><span class="lbl">10:12</span></div><div class="sub" style="margin-top:8px">先日はありがとうございました。次回の面談についてご相談したいです。</div></div>
-    <div class="draft"><b>返信下書き</b><div class="txt" style="margin-top:8px">ありがとうございます。来週の候補日を確認してお送りします。</div><div class="lbl" style="margin:8px 0">確認済みの連絡先とのメッセージです。</div><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm">下書きを推敲</button><button class="btn sm">下書きを保存</button><button class="btn sm primary">メッセージを送信</button></div></div>`;
+  const c = C[0];
+  return topbar('Re: 事業計画書 v3 のご送付', '高橋 美咲 · 4件', back, moreB) + `
+    <div class="mail collapsed rise"><div class="row between"><span class="lbl">以前のメッセージ 3件</span>${ic('down', 'sm')}</div></div>
+    <div class="mail"><div class="row" style="gap:10px">${avc(c, 'sm')}<div style="flex:1"><b style="font-size:13px">${c.n}</b><div class="lbl">宛先：佐藤 健一 · 今日 10:12</div></div><span class="chip" style="font-size:10px">Gmail</span></div>
+      <div style="font-size:13px;line-height:1.75;margin-top:10px;color:var(--ink-2)">佐藤様<br><br>事業計画書 v3 のご送付ありがとうございます。社内で確認を進めております。<br>11月第2週の IC に向けて、ARR の月次推移と解約率を事前にいただけますでしょうか。<br><br>青葉ベンチャーズ 高橋</div></div>
+    <div class="card" data-why-box style="margin-top:12px;padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">要点</b><span class="why" style="margin-left:auto">?</span></div>
+      <div style="font-size:13.5px;font-weight:700;margin-top:6px;line-height:1.55">IC 前に「ARR 月次推移」と「解約率」の提出を希望。期限の明記はなし</div>
+      <div class="why-body" hidden>根拠：このメール本文の2段落目 · 面談メモ（10/6）「11月に IC 予定」</div>
+      <div class="confirm-card in-row row" style="gap:6px;margin-top:10px"><span class="lbl" style="flex:1">「ARR・解約率を送付」をタスクに（10/10まで）</span><button class="btn sm primary">追加する</button></div></div>
+    <div class="draft"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">返信の下書き</b></div>
+      <div class="txt">高橋様<br>ご確認ありがとうございます。ARR の月次推移（直近12か月）と解約率を、10日（金）までにお送りいたします。…</div>
+      <div class="grid3" style="gap:6px"><button class="btn sm">${ic('pen', 'sm')}編集</button><button class="btn sm">コピー</button><button class="btn sm primary">${ic('out', 'sm')}メールアプリで開く</button></div>
+      <div class="lbl" style="text-align:center;margin-top:8px">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div></div>`;
 }
 
 function inboxWeb(s, tab = 'notif') {
@@ -1551,7 +1560,7 @@ h += boards([
   ['受信箱 · 通知', 'few', phone({ body: inboxApp('few'), tab: -1, pins: P(1, '.seg') + P(2, '.confirm-card') + P(3, '.card.flat') }), ['仅在同一 actor 有可追溯来源的通知时验收；当前 QA 空账号不计入像素分母', 'AI「提案」类通知须有服务来源和明确确认，不能由画板样例代替真实通知', '没有可用事件时使用 #0 空态，不展示邮件入口或示例快捷方式']],
   ['受信箱 · 通知', 'many', phone({ body: inboxApp('many'), tab: -1, pins: P(4, '.swipe', 4) + P(1, '.cats') + P(2, '.swipe.open') + P(3, '.ud') }), ['分类 chip 横滑：すべて / 秘書 / リマインダー / 提案 / 更新 / 履歴；秘書只含有事件来源的期限与推荐', '行操作与深链须由服务返回的通知种类决定；没有来源的示例不用于像素验收', '紫色小点 = 未读；点行同时标记已读', '「更新」类通知须来自字段级变更来源']],
   ['受信トレイ · メッセージ · 空', 'empty', phone({ body: inboxApp('empty', 'msg'), tab: -1 }), ['无授权线程时显示搜索与真实空态；填充态需同 actor 会话 fixture']],
-  ['② メッセージ · 認可済み会話', '', phone({ body: threadApp(), tab: -1, pins: P(1, '.draft') }), ['同 actor の確認済み会話 fixture でのみ比較する。mail は含まない', '送信は現行の関係メッセージ契約。未確認/オフライン/失敗は別状態とする']],
+  ['② メッセージ · スレッド', '', phone({ body: threadApp(), tab: -1, pins: P(1, '.mail.collapsed') + P(2, '[data-why-box] .why') + P(3, '.draft') }), ['旧消息折叠成一行，点开展开（acc 过渡）', 'AI 要点默认只给结论，「?」展开依据；从要点提取的任务仍是虚线确认卡', '回复区 = 下書き卡：编辑 / コピー / メールアプリで開く，按钮下一行常驻「送信はしません · 送信はあなたが行います」，绝无「送信」按钮']],
 ]);
 h += board('受信箱 · Web · 通知 · 空', 'empty', wf({ nav: 5, head: '', body: inboxWeb('empty') }), ['无 mail、无虚假快捷方式与样例；两栏保持真实空态']);
 h += board('受信箱 · Web · 通知', 'few', wf({ nav: 5, head: '', body: inboxWeb('few'), rail: inboxRail('notif'), pins: P(1, '.hov-acts.show') + P(2, '.rail .card', 0) }), ['Web 行操作改为悬停出现（首行常显演示）：既読 / タスクに追加 / 1時間後', '右栏显示今日推送配额（2 / 3）与静かな時間帯状态，避免用户觉得「被轰炸」']);
