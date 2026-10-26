@@ -13,19 +13,19 @@ export interface LiveProfileDocumentExtractionServiceOptions {
 }
 
 const fieldLabels = {
-  displayName: /^(?:姓名|名字|name)\s*[:：]\s*(.+)$/i,
-  organization: /^(?:公司|机构|组织|company|organization)\s*[:：]\s*(.+)$/i,
-  role: /^(?:职位|职务|角色|title|role)\s*[:：]\s*(.+)$/i,
-  headline: /^(?:标题|一句话介绍|headline)\s*[:：]\s*(.+)$/i,
-  homeMarket: /^(?:市场|地区|所在地|market|location)\s*[:：]\s*(.+)$/i,
+  displayName: /^(?:姓名|名字|氏名|名前|name)\s*[:：]\s*(.+)$/i,
+  organization: /^(?:公司|机构|组织|会社名?|所属|company|organization)\s*[:：]\s*(.+)$/i,
+  role: /^(?:职位|职务|角色|役職|肩書き?|title|role)\s*[:：]\s*(.+)$/i,
+  headline: /^(?:标题|一句话介绍|ひとこと紹介|headline)\s*[:：]\s*(.+)$/i,
+  homeMarket: /^(?:市场|地区|所在地|地域|勤務地|market|location)\s*[:：]\s*(.+)$/i,
   relationshipGoal:
-    /^(?:关系目标|希望认识|寻求|目标|relationship goal|seeking)\s*[:：]\s*(.+)$/i,
+    /^(?:关系目标|希望认识|寻求|目标|探しているもの|求めていること|目標|relationship goal|seeking)\s*[:：]\s*(.+)$/i,
   targetRelationshipTypes:
     /^(?:目标人脉|关系类型|target relationships?)\s*[:：]\s*(.+)$/i,
   preferredFollowUpWindow:
     /^(?:跟进时间|联系时间|follow[- ]?up window)\s*[:：]\s*(.+)$/i,
   preferredIntroChannels:
-    /^(?:联系方式|引荐渠道|联系渠道|channels?)\s*[:：]\s*(.+)$/i,
+    /^(?:联系方式|引荐渠道|联系渠道|連絡方法|channels?)\s*[:：]\s*(.+)$/i,
 } as const;
 
 function clean(value: string | undefined, limit = 300): string {

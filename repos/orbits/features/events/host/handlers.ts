@@ -66,6 +66,7 @@ import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from 
 import { redesignContractMode } from "../../redesign-contracts/route";
 import { createHostMockService, DEMO_ACTOR_ID } from "./mock";
 import { HostError, type HostErrorCode, type HostService } from "./service";
+import { EventOperationsError } from "../event-operations/contract";
 
 type Params = Record<string, string>;
 type RouteContext = { params?: Promise<Params> };
@@ -133,6 +134,12 @@ function hostRoute<T>(
       if (error instanceof HostError && error.code === "RATE_LIMITED") return reply(429, failure(new AppError("FORBIDDEN", "Too many attempts. Try again later."), { reason: "RATE_LIMITED" }));
       if (error instanceof HostError) return fail(new AppError(ERROR_MAP[error.code], error.message), { reason: error.code === "INVALID_STATE" && error.message !== error.code ? error.message : error.code });
       if (error instanceof AppError) return fail(error);
+      // Check-in and other operations rules (closed window, unknown participant…) are known answers, not 500s.
+      if (error instanceof EventOperationsError) {
+        const code: AppErrorCode = error.code === "EVENT_OPERATIONS_FORBIDDEN" ? "FORBIDDEN" : error.code === "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND" || error.code === "EVENT_OPERATIONS_GENERATION_NOT_FOUND" ? "NOT_FOUND"
+          : error.code === "EVENT_OPERATIONS_NOT_CONFIGURED" || error.code.startsWith("EVENT_OPERATIONS_AI_") ? "SERVICE_UNAVAILABLE" : "CONFLICT";
+        return fail(new AppError(code, error.message), { reason: error.code.replace(/^EVENT_OPERATIONS_/u, "") });
+      }
       console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "host_route_failed" }));
       return fail(new AppError("INTERNAL_ERROR", SAFE_INTERNAL_ERROR_MESSAGE));
     }

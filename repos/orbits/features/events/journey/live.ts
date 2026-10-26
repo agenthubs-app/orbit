@@ -21,6 +21,10 @@ import { createConfiguredTaskService } from "../../tasks/service-factory";
 import { createPostgresActorRecordStore } from "../actor-records/store";
 import { getConfiguredEventAssessmentRuntime } from "../assessment/configured";
 import { judgeEvent } from "../assessment/judge";
+import { canAccessEventCapability } from "../event-access/capability-policy";
+import { EVENT_ACCESS_CAPABILITIES } from "../event-access/contract";
+import { createPostgresEventAccessRepository } from "../event-access/storage/postgres-repository";
+import { createConfiguredEventOperationsPostgresRuntime } from "../event-operations/storage/postgres-client";
 import type { PublishedCanonicalEvent } from "../core/contract";
 import { createConfiguredEventCoreService } from "../core/runtime";
 import { readEventOperationsCatalogueSummaries } from "../event-operations/catalogue-summary";
@@ -124,15 +128,15 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
   async function toJourneyEvents(events: readonly PublishedCanonicalEvent[]): Promise<JourneyEvent[]> {
     const ids = events.map((event) => event.eventId);
     const [counts, policies, profiles] = await Promise.all([countsFor(ids), policiesFor(ids), profilesFor(ids)]);
-    return events.map((event) => journeyEventFromCanonical(event, { organizerProfileId: profiles.get(event.eventId) ?? null, policy: policies.get(event.eventId) ?? null, registrationCount: counts.get(event.eventId) ?? 0 }));
+    return events.map((event) => { const profile = profiles.get(event.eventId); return journeyEventFromCanonical(event, { organizerProfile: profile ?? null, organizerProfileId: profile?.id ?? null, policy: policies.get(event.eventId) ?? null, registrationCount: counts.get(event.eventId) ?? 0 }); });
   }
 
-  /** R17-08：活动 → 主办方资料页 id（主办方键按资料页算）。 */
-  async function profilesFor(ids: readonly string[]): Promise<Map<string, string>> {
+  /** R17-08：活动 → 主办方资料页（id；主办方键按资料页算）+ 公开名与 slug（详情的主办方名与 o/[slug] 链接）。 */
+  async function profilesFor(ids: readonly string[]): Promise<Map<string, { id: string; name: string | null; slug: string | null }>> {
     if (!ids.length) return new Map();
-    const result = await query(`/* events:r27-journey:organizer-profiles */ select event_id, organizer_profile_id from event_ops_events where workspace_id = $1 and event_id = any($2::text[]) and organizer_profile_id is not null`, [workspaceId, [...ids]])
+    const result = await query(`/* events:r27-journey:organizer-profiles */ select e.event_id, e.organizer_profile_id, p.display_name, p.slug from event_ops_events e left join organizer_profiles p on p.workspace_id = e.workspace_id and p.profile_id = e.organizer_profile_id where e.workspace_id = $1 and e.event_id = any($2::text[]) and e.organizer_profile_id is not null`, [workspaceId, [...ids]])
       .catch(warned("r27_journey_profiles_failed", { rows: [] as Array<Record<string, unknown>> }));
-    return new Map(result.rows.map((row) => [String(row.event_id), String(row.organizer_profile_id)]));
+    return new Map(result.rows.map((row) => [String(row.event_id), { id: String(row.organizer_profile_id), name: str(row.display_name), slug: str(row.slug) }]));
   }
 
   async function publishedEvent(eventId: string): Promise<PublishedCanonicalEvent | null> {
@@ -203,7 +207,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         const published = await core.listPublishedEvents(now);
         const profiles = await profilesFor(published.map((event) => event.eventId));
         mine.push(...published
-          .filter((event) => eventOrganizerKey(event.organizerActorId, profiles.get(event.eventId)) === organizerKey)
+          .filter((event) => eventOrganizerKey(event.organizerActorId, profiles.get(event.eventId)?.id) === organizerKey)
           .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
           .slice(0, ORGANIZER_EVENTS_LIMIT));
       }
@@ -247,6 +251,13 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       if (!event) return { attendees: [], total: 0 };
       const registrations = await operations.listCanonicalRegistrations(event.eventId);
       return publicAttendeesFromRegistrations(registrations, payloadSpeakerNames(event.sourcePayload ?? {}));
+    },
+
+    async hosting(actorId, eventId) {
+      const ops = createConfiguredEventOperationsPostgresRuntime();
+      if (!ops) return false;
+      const view = await createPostgresEventAccessRepository(ops).get({ eventId, subjectActorId: actorId }).catch(warned("r27_journey_hosting_read_failed", null, { eventId }));
+      return Boolean(view) && EVENT_ACCESS_CAPABILITIES.some((capability) => canAccessEventCapability({ capability, owner: view!.owner, role: view!.role, state: view!.state }));
     },
 
     async publicRosterCounts(actorId, eventId, contactNames) {

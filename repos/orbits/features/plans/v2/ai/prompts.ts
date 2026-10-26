@@ -78,7 +78,7 @@ export const TASKS = {
     "If no change is needed or the request conflicts with the premise, return the plan unchanged and explain in noChangeReason (one or two sentences).",
     "The revised plan follows the same rules as the first draft (short names from the dictionary, allocations multiples of 5 totalling 100, citations only from the given landscape, numbers only with markers), except that allocations may move freely.",
     REVISED_SHAPE,
-    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same, in the output language, in plain everyday words (e.g. the step or person-type names), never field names"], "noChangeReason": null}',
   ].join("\n"),
   reviewMarks: [
     "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, and memo summaries of meetings), mark only the premise rows that may have changed.",
@@ -92,7 +92,7 @@ export const TASKS = {
     "The 100 is the person-type allocations plus event.allocation. Whenever you raise one slot by N points, lower other non-skipped slots by exactly N in total (never below earned, never below 5). Add the numbers up before answering.",
     "Same rules as a revision otherwise (no new citations, keep questions, count rule, recognition hints, persona, opener, intro routes). If nothing should change, return the plan unchanged with noChangeReason.",
     REVISED_SHAPE,
-    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["..."], "noChangeReason": null}',
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["short labels of what stayed the same, in the output language, in plain everyday words, never field names or paths"], "noChangeReason": null}',
   ].join("\n"),
   nextGoals: [
     "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",

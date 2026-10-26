@@ -109,7 +109,8 @@ export function createLivePlanFlowContext(input: { pool: PlanPoolLike; workspace
         const created = await service.createManualContactDraft({ displayName: contact.name, note: contact.relationLabel, source: { label: "プラン" } });
         if (created.success !== true || !created.data.draft) return null;
         const confirmed = await service.confirmManualContactDraft({ draftId: created.data.draft.id });
-        return confirmed.success === true ? confirmed.data.contactCandidate.candidateId : null;
+        // QA-A: the contact record id, not the draft candidate id ("contact-candidate:…"), which no contact read can find.
+        return confirmed.success === true ? confirmed.data.contactCandidate.contactId ?? null : null;
       } catch (error) {
         console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_flow_add_contact_failed" }));
         return null;

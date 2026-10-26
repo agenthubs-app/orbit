@@ -201,7 +201,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       : facts.pending > 0 ? { count: facts.pending, kind: "review_pending" }
       : facts.matched === null && facts.generations === 0 ? { kind: "matching_missing" }
       : { kind: "none" };
-    return { action: status === "live" ? "open_check_in" : "open_console", applied: facts.applied, capacity: facts.capacity, checkedIn: status === "live" || status === "ended" || status === "archived" ? facts.checkedIn : null, emoji: facts.payload.emoji ?? null, endsAt: facts.endsAt, eventId: facts.eventId, matched: facts.matched, note, role: ROLE_LABEL[facts.role ?? ""] ?? "owner", startsAt: facts.startsAt, status, title: facts.title, venue: facts.venue };
+    return { action: status === "live" ? "open_check_in" : "open_console", applied: facts.applied, capacity: facts.capacity, checkedIn: status === "live" || status === "ended" || status === "archived" || facts.checkedIn > 0 ? facts.checkedIn : null, emoji: facts.payload.emoji ?? null, endsAt: facts.endsAt, eventId: facts.eventId, matched: facts.matched, note, role: ROLE_LABEL[facts.role ?? ""] ?? "owner", startsAt: facts.startsAt, status, title: facts.title, venue: facts.venue };
   }
 
   async function setupView(actorId: string, eventId: string): Promise<HostSetupResponse> {
@@ -234,7 +234,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
   async function applyPolicy(actorId: string, eventId: string, settings: { capacity: number | null; registrationClosesAt: string | null; admissionMode: "first_come" | "review" }): Promise<void> {
     const facts = await factsOrThrow(actorId, eventId);
     if (facts.lifecycle !== "published" || !facts.startsAt) return;
-    const closes = settings.registrationClosesAt ?? facts.startsAt;
+    // Registration never stays open past the start (the operations configuration clamps the same way, and the two must match).
+    const closes = settings.registrationClosesAt && Date.parse(settings.registrationClosesAt) < Date.parse(facts.startsAt) ? settings.registrationClosesAt : facts.startsAt;
     const current = await admission.getPolicy(eventId);
     await admission.configurePolicy({
       admissionMode: settings.admissionMode === "first_come" ? "instant" : "approval_required",
@@ -572,6 +573,10 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async saveSetup(actorId, eventId, input) {
       await require(actorId, eventId, "experience.configure");
+      if (input.registrationClosesAt) {
+        const facts = await factsOrThrow(actorId, eventId);
+        if (facts.startsAt && Date.parse(input.registrationClosesAt) > Date.parse(facts.startsAt)) throw new HostError("VALIDATION", "REGISTRATION_CLOSES_AFTER_START");
+      }
       const draft = { admissionMode: input.admissionMode, capacity: input.capacity, description: input.description, questions: input.questions, registrationClosesAt: input.registrationClosesAt };
       const result = await client.query(
         `insert into event_host_question_sets (workspace_id, event_id, draft, revision, saved_at, updated_by) values ($1, $2, $3::jsonb, 1, now(), $4)

@@ -8,6 +8,8 @@ import type {
   ContactAcquisitionDraftResult,
   ContactDraftConfirmationInput,
   ContactDraftConfirmationResult,
+  ContactDraftDiscardInput,
+  ContactDraftDiscardResult,
 } from "./contract";
 
 export type ContactAcquisitionDraftServiceResult<TResult> =
@@ -24,6 +26,10 @@ export interface ContactAcquisitionDraftService {
   confirmContactDraft: (
     input: ContactDraftConfirmationInput,
   ) => ContactAcquisitionDraftServiceResult<ContactDraftConfirmationResult>;
+  // QA-C2: 破棄 a pending draft for every device (live only; mock has none).
+  discardContactDraft?: (
+    input: ContactDraftDiscardInput,
+  ) => ContactAcquisitionDraftServiceResult<ContactDraftDiscardResult>;
 }
 
 // 将采集草稿领域失败转换成统一 AppError。

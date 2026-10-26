@@ -54,3 +54,21 @@ test("3 项手入力 → 200 + 合契约 schema；他人 404；限速 → 429 RA
   assert.equal("error" in reply && reply.status, 429);
   assert.equal("error" in reply && reply.context?.reason, "RATE_LIMITED");
 });
+
+test("QA-B2: DELETE removes my assessment (contract shape); someone else's → 404; sample mode → 403", async () => {
+  const { eventAssessmentDeleteResultSchema } = await import("../../shared/api-schema/event-assessment");
+  const shared = service();
+  const alice = createEventAssessmentLiveHandlers({ resolveActor: async () => ({ id: "actor:a" }) as never, service: shared });
+  const bob = createEventAssessmentLiveHandlers({ resolveActor: async () => ({ id: "actor:b" }) as never, service: shared });
+  const created = await alice.create(post({ ...manual, idempotencyKey: "del" }));
+  const id = eventAssessmentSchema.parse((created as { data: unknown }).data).id;
+  const del = (headers: Record<string, string> = {}) => new Request(`http://localhost/api/events/assessments/${id}`, { headers, method: "DELETE" });
+  const refused = await bob.remove(del(), { id });
+  assert.equal("error" in refused && refused.error.code, "NOT_FOUND");
+  const sample = await alice.remove(del({ "x-orbit-sample": "1" }), { id });
+  assert.equal("error" in sample && sample.context?.reason, "SAMPLE_READ_ONLY");
+  const removed = await alice.remove(del(), { id });
+  assert.deepEqual(eventAssessmentDeleteResultSchema.parse((removed as { data: unknown }).data), { assessmentId: id, deleted: true });
+  const gone = await alice.get(new Request("http://localhost/x"), { id });
+  assert.equal("error" in gone && gone.error.code, "NOT_FOUND");
+});

@@ -23,6 +23,10 @@ export const EVENT_POSTER_TOTAL_TIMEOUT_MS = 90_000;
 const REQUEST_TIMEOUT_MS = 60_000;
 const THINKING_DISABLED = { type: "disabled" } as const;
 
+// Real check (2026-10-26): deepseek-v4-flash answers "isEventPage":"true" (a string) for a clear poster; z.boolean() refused it twice
+// and the read ended as unreadable with nothing kept. "true" / "false" strings are read as booleans.
+const looseBoolean = z.preprocess((value) => (value === "true" ? true : value === "false" ? false : value), z.boolean());
+
 const factValue = {
   title: z.string().min(1).max(200).nullish(),
   startsAt: z.string().max(40).nullish(),
@@ -34,7 +38,7 @@ const factValue = {
   speakers: z.array(z.object({ name: z.string().min(1).max(120), org: z.string().max(160).nullish(), role: z.string().max(160).nullish() })).max(40).nullish(),
   exhibitorCount: z.number().int().min(0).max(100000).nullish(),
   expectedAttendees: z.number().int().min(0).max(1000000).nullish(),
-  format: z.object({ networking: z.boolean(), tableTalk: z.boolean().nullish(), matching: z.boolean().nullish() }).nullish(),
+  format: z.object({ networking: looseBoolean, tableTalk: looseBoolean.nullish(), matching: looseBoolean.nullish() }).nullish(),
   agenda: z.array(z.object({ at: z.string().min(1).max(40), title: z.string().min(1).max(200), minutes: z.number().int().min(0).max(1440).nullish() })).max(40).nullish(),
 };
 const FIELD_NAMES = Object.keys(factValue) as (keyof typeof factValue)[];
@@ -43,7 +47,7 @@ const fieldList = z.union([z.array(z.string()).max(20), z.string().max(400), z.n
   .transform((value) => (Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,、\s]+/).map((item) => item.trim()).filter(Boolean) : []));
 
 export const extractionOutputSchema = z.object({
-  isEventPage: z.boolean(),
+  isEventPage: looseBoolean,
   facts: z.object(factValue),
   // 真实验证（2026-10-14）：模型会把空列表写成 "" 或 null，也会写 "a, b"——都读成数组（不算 schema 失败）。
   guessed: fieldList,
@@ -184,12 +188,16 @@ export function toContractFacts(output: ExtractionOutput): EventAssessmentFacts 
   return facts;
 }
 
-function parseOutput(content: string): ExtractionOutput | null {
+function parseOutput(content: string, promptVersion: string): ExtractionOutput | null {
   try {
     const json = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, ""));
     const parsed = extractionOutputSchema.safeParse(json);
-    return parsed.success ? parsed.data : null;
+    if (parsed.success) return parsed.data;
+    // Only field paths and issue codes are logged (never the event text).
+    console.warn(JSON.stringify({ event: "event_facts_schema_invalid", issues: parsed.error.issues.slice(0, 5).map((issue) => `${issue.path.join(".")}:${issue.code}`), promptVersion }));
+    return null;
   } catch {
+    console.warn(JSON.stringify({ event: "event_facts_json_invalid", length: content.length, promptVersion }));
     return null;
   }
 }
@@ -211,7 +219,7 @@ async function structured(input: { apiKey: string; fetchImpl: typeof fetch; mete
   const messages = [{ content: input.system, role: "system" }, { content: input.user, role: "user" }];
   const first = await postChat({ apiKey: input.apiKey, body: { messages, model: input.model, response_format: { type: "json_object" }, thinking: THINKING_DISABLED }, fetchImpl: input.fetchImpl, meter: input.meter, model: input.model, timeoutMs: input.timeoutMs });
   input.usage.calls += 1; input.usage.inputTokens += first.inputTokens; input.usage.outputTokens += first.outputTokens;
-  const parsed = parseOutput(first.content);
+  const parsed = parseOutput(first.content, input.promptVersion);
   if (parsed) return toExtraction(parsed, input.promptVersion, input.usage);
   const repair = await postChat({
     apiKey: input.apiKey,
@@ -219,7 +227,7 @@ async function structured(input: { apiKey: string; fetchImpl: typeof fetch; mete
     fetchImpl: input.fetchImpl, meter: input.meter, model: input.model, timeoutMs: input.timeoutMs,
   });
   input.usage.calls += 1; input.usage.inputTokens += repair.inputTokens; input.usage.outputTokens += repair.outputTokens;
-  const repaired = parseOutput(repair.content);
+  const repaired = parseOutput(repair.content, input.promptVersion);
   if (repaired) return toExtraction(repaired, input.promptVersion, input.usage);
   throw new EventExtractionError("UNREADABLE", "The extraction did not match the schema after one repair.");
 }

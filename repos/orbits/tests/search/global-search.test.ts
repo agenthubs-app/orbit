@@ -241,7 +241,7 @@ test("R21 conversation hits use platform routes built from kind and encoded id",
     "/app/agent?session=ai%2Fa%20b", "/app/inbox?conversationId=inbox%2Fa%20b",
   ]);
   assert.deepEqual(app.conversations?.items.map((hit) => hit.href), [
-    "/ai/ai%2Fa%20b", "/inbox/inbox%2Fa%20b",
+    "/ai/ai%2Fa%20b?source=session", "/inbox/inbox%2Fa%20b",
   ]);
 });
 

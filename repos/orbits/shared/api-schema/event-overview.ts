@@ -34,6 +34,7 @@ export const eventOverviewResponseObject = z.object({
   organizer: z.object({
     organizerId: z.string().nullable().optional(),
     name: z.string(),
+    slug: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
     since: z.string().nullable().optional(),
     monthly: z.boolean().optional(),
@@ -55,6 +56,7 @@ export const eventOverviewResponseObject = z.object({
   knownNote: z.object({ text: z.string(), detail: z.string().nullable().optional() }).nullable().optional().catch(null),
   attendeesPublicAt: z.string().nullable().optional(),
   registrationClosesAt: z.string().nullable().optional(),
+  hosting: z.boolean().optional(),
   attendeeCounts: z.object({ all: z.number().int().min(0), planFit: z.number().int().min(0), known: z.number().int().min(0) }),
   rosterLocked: z.boolean().optional(),
   attendees: readableItems(eventOverviewAttendeeObject),

@@ -84,7 +84,7 @@ export function payloadSpeakerNames(payload: Readonly<Record<string, unknown>>):
   }).slice(0, 50);
 }
 
-export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { registrationCount: number; policy: AdmissionFacts | null; organizerProfileId?: string | null }): JourneyEvent {
+export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { registrationCount: number; policy: AdmissionFacts | null; organizerProfileId?: string | null; organizerProfile?: { name: string | null; slug: string | null } | null }): JourneyEvent {
   const payload = event.sourcePayload ?? {};
   const facts = payloadFacts(payload);
   const payloadCapacity = typeof payload.capacity === "number" && Number.isSafeInteger(payload.capacity) && payload.capacity > 0 ? payload.capacity : null;
@@ -97,7 +97,9 @@ export function journeyEventFromCanonical(event: CanonicalEventLike, extra: { re
     endsAt: event.endsAt,
     eventId: event.eventId,
     organizerKey: eventOrganizerKey(event.organizerActorId, extra.organizerProfileId),
-    organizerName: organizerNameFrom(payload, event.organizerActorId),
+    // The organizer profile's public name wins over the payload (host-created events carry no organizerName); its slug links to o/[slug].
+    organizerName: text(extra.organizerProfile?.name) ?? organizerNameFrom(payload, event.organizerActorId),
+    organizerSlug: text(extra.organizerProfile?.slug),
     priceYen: facts.feeYen,
     publicCode: event.publicCode?.trim() || null,
     registrationClosesAt: extra.policy?.registrationClosesAt ?? null,

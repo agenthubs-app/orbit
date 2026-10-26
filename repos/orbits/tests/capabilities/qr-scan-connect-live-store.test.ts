@@ -484,3 +484,29 @@ test("QR scan API rejects anonymous requests before parsing scan content", async
   assert.equal(body.error.code, "UNAUTHORIZED");
   assert.equal(body.error.context.service, "authenticated-api-actor");
 });
+
+// QA-A3 2026-10-26: a QR without organization / role stored the English placeholders
+// "Unknown organization" / "Relationship candidate" on the draft and on the contact.
+test("QR scan without organization or role stores them empty, not as placeholder text", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createService({ actorId: ACTOR_A, store });
+
+  const scan = await service.scanQrCode({ qrText: "orbit-qr:name=QR Bare Contact;event=Tokyo QA Lab" });
+
+  assert.equal(scan.success, true);
+  assert.equal(scan.data.draft?.organization, "");
+  assert.equal(scan.data.draft?.role, "");
+  assert.doesNotMatch(JSON.stringify(scan.data), /Unknown organization|Relationship candidate/);
+  const draftId = scan.data.draft?.id;
+  assert.ok(draftId);
+
+  // The stored draft reads back (it is not rejected for the empty fields) and confirms.
+  const confirmation = await service.confirmQrConnectionDraft({ actorLabel: "Live QR reviewer", draftId });
+
+  assert.equal(confirmation.success, true);
+  const contact = store.listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID })[0];
+  assert.equal(contact.payload.displayName, "QR Bare Contact");
+  assert.equal(contact.payload.organization, undefined);
+  assert.equal(contact.payload.role, undefined);
+  assert.doesNotMatch(JSON.stringify(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID })), /Unknown organization|Relationship candidate/);
+});

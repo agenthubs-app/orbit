@@ -5,6 +5,8 @@
 // in model),字段枚举、题数上限、敏感词、长度全部在代码里校验(deterministic
 // validation in code)。模型不可用或输出不合规时显式失败，由客户端保留
 // 已完成回答并重试；禁止用确定性内容冒充 AI 结果。
+// 例外：报名访谈在模型用不了时（当天 AI 用量用完 / 不可用 / 输出不合规）可改问固定问题
+// （fixedInterviewQuestion），provenance 记为 deterministic-fallback + orbit-fixed，保证报名一定能完成。
 import {
   runOrbitAgentModelText,
   type GeminiOrbitAgentProviderConfig,
@@ -272,6 +274,43 @@ export async function nextAdaptiveInterviewQuestion(
         model: modelResult.model,
         provider: modelResult.provider,
       },
+    },
+  };
+}
+
+/** Provider / model recorded on a fixed (non-AI) question, so stored answers say where the question came from. */
+export const FIXED_INTERVIEW_QUESTION_PROVIDER = "orbit-fixed";
+export const FIXED_INTERVIEW_QUESTION_MODEL = "fixed-questions-v1";
+
+type FixedQuestionText = { prompt: string; options: readonly string[] };
+/** The fixed questions, in asking order (the two core fields first). */
+const FIXED_INTERVIEW_QUESTIONS: readonly { field: EventParticipantProfileField; zh: FixedQuestionText; en: FixedQuestionText; ja: FixedQuestionText }[] = [
+  { field: "targetAttendees", zh: { prompt: "这次活动上，你最想认识哪类人？", options: ["潜在客户", "合作伙伴", "投资人", "同行交流"] }, en: { prompt: "Who would you most like to meet at this event?", options: ["Potential clients", "Partners", "Investors", "Peers"] }, ja: { prompt: "このイベントで一番会いたいのはどんな人ですか？", options: ["見込み顧客", "提携先", "投資家", "同業者"] } },
+  { field: "valueOffered", zh: { prompt: "你能给认识的人带来什么帮助？", options: ["行业经验", "介绍人脉", "技术支持", "合作机会"] }, en: { prompt: "What can you offer the people you meet?", options: ["Industry experience", "Introductions", "Technical help", "Business opportunities"] }, ja: { prompt: "出会った人に何を提供できますか？", options: ["業界の知見", "人の紹介", "技術面の支援", "協業の機会"] } },
+  { field: "desiredOutcome", zh: { prompt: "参加这次活动，你最希望有什么收获？", options: ["找到客户", "找到合作方", "了解行业动态", "认识新朋友"] }, en: { prompt: "What do you most hope to get from this event?", options: ["Find clients", "Find partners", "Learn what is new", "Meet new people"] }, ja: { prompt: "このイベントで一番得たいことは何ですか？", options: ["顧客を見つける", "提携先を見つける", "業界の動きを知る", "新しい知り合い"] } },
+  { field: "experienceHighlight", zh: { prompt: "你想和别人聊哪些话题？", options: ["行业趋势", "产品与技术", "市场与销售", "创业与经营"] }, en: { prompt: "Which topics would you like to talk about?", options: ["Industry trends", "Product and tech", "Marketing and sales", "Running a business"] }, ja: { prompt: "どんな話題で話したいですか？", options: ["業界の動向", "製品と技術", "マーケと営業", "起業と経営"] } },
+  { field: "energyStyle", zh: { prompt: "在交流活动上，你更习惯怎样和人聊？", options: ["主动搭话", "一对一深聊", "先听再说"] }, en: { prompt: "How do you usually talk with people at events?", options: ["I start conversations", "Deep one-to-one talks", "I listen first"] }, ja: { prompt: "交流の場では、どんなふうに話すことが多いですか？", options: ["自分から話しかける", "1対1でじっくり", "まず聞く"] } },
+];
+
+/**
+ * A fixed next question for when the model cannot be used (daily AI limit used up, AI unavailable, invalid output),
+ * so registration can always finish. Same limits as the model path; done when nothing is left to ask.
+ */
+export function fixedInterviewQuestion(input: { language?: "en" | "zh" | "ja"; reason: string; transcript: readonly AdaptiveInterviewTurn[] }): AdaptiveInterviewStep {
+  const language = input.language === "en" ? "en" : input.language === "ja" ? "ja" : "zh";
+  const transcript = input.transcript.slice(0, ADAPTIVE_INTERVIEW_MAX_TURNS);
+  const answered = new Set(transcript.map((turn) => turn.field));
+  const next = FIXED_INTERVIEW_QUESTIONS.find((item) => !answered.has(item.field));
+  if (!next || transcript.length >= ADAPTIVE_INTERVIEW_QUESTION_LIMIT) return { done: true, question: null };
+  const text = next[language];
+  return {
+    done: false,
+    question: {
+      acknowledgment: "",
+      field: next.field,
+      options: [...text.options],
+      prompt: text.prompt,
+      provenance: { fallbackReason: input.reason, generationMethod: "deterministic-fallback", model: FIXED_INTERVIEW_QUESTION_MODEL, provider: FIXED_INTERVIEW_QUESTION_PROVIDER },
     },
   };
 }

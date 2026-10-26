@@ -201,7 +201,10 @@ export function createEventJourneyRoutes(deps: JourneyRouteDeps = {}) {
       // Next 已解码过路由参数；不再 decodeURIComponent（带 % 的参数会抛 URIError → 500）。
       const code = (params.code ?? "").trim().toUpperCase();
       if (!code || code.length > 32) return { error: new AppError("VALIDATION_ERROR", "Invalid code.") };
-      return { code, eventId: await service.eventIdByCode(code).catch(() => null) };
+      // Codes are shown as XXXX-XXXX; the App's 8-box input (and typed codes) arrive without the dash.
+      const found = await service.eventIdByCode(code).catch(() => null);
+      const dashed = /^[A-Z0-9]{8}$/u.test(code) ? `${code.slice(0, 4)}-${code.slice(4)}` : null;
+      return { code, eventId: found ?? (dashed ? await service.eventIdByCode(dashed).catch(() => null) : null) };
     }, deps),
     follow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), true), deps),
     unfollow: journeyRoute({ auth: "required", schema: organizerFollowResultSchema, write: true }, async ({ actorId, params, service }) => service.follow(actorId!, (params.id ?? "").trim(), false), deps),

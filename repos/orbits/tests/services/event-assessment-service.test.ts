@@ -285,3 +285,17 @@ test("复核 M1：同一来源一时失败后再贴 → 重新评估（旧行让
   assert.notEqual(second.id, first.id);
   assert.equal(repository.rows.get(first.id)?.userDecision, "dismissed");
 });
+
+test("QA-B2: delete removes my assessment and its poster; someone else's id is refused", async () => {
+  const { service, repository } = setup();
+  const poster = await service.uploadPoster(ALICE, { bytes: Buffer.from("img"), mimeType: "image/jpeg" });
+  const created = await service.create(ALICE, { idempotencyKey: "del-1", posterAssetId: poster.posterAssetId, sourceKind: "poster" }, "ja");
+  await flush();
+  assert.equal(await service.remove(BOB, created.id), false);
+  assert.ok(repository.rows.has(created.id));
+  assert.equal(await service.remove(ALICE, created.id), true);
+  assert.equal(repository.rows.has(created.id), false);
+  assert.equal(repository.posters.size, 0);
+  assert.equal(await service.get(ALICE, created.id, "ja"), null);
+  assert.equal(await service.remove(ALICE, created.id), false);
+});

@@ -339,7 +339,10 @@ function contactFromRecord(
     evidenceIds: ids,
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt,
-  };
+    // QA-C2: 以前の値 — the edit write keeps the overwritten values in `fieldHistory`; without it here the
+    // detail read (online and the synced device copy) never had earlier values to show.
+    ...(Array.isArray(payload.fieldHistory) ? { fieldHistory: payload.fieldHistory } : {}),
+  } as ContactDTO;
 }
 
 function connectionFromRecord(

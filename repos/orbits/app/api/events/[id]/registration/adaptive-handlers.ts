@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   AdaptiveInterviewGenerationError,
+  fixedInterviewQuestion,
   generateEventPersona,
   nextAdaptiveInterviewQuestion,
   readInterviewTranscript,
@@ -92,6 +93,7 @@ export function createRegistrationInterviewPostHandler(
       mode?: unknown;
       language?: unknown;
       transcript?: unknown;
+      fallback?: unknown;
     };
     if (body.mode === "renew-stored-question") {
       try {
@@ -116,6 +118,8 @@ export function createRegistrationInterviewPostHandler(
     let step;
     // LF13: every question is one ledgered operation (event_registration_question, 40 a Tokyo day); a refused ledger sends nothing.
     const ledgered = createLedgeredRunner({ actorId: actor.id, gate: getLedger(), idempotencyKey: `event-question:${event.id}:${Date.now()}`, purpose: "event_registration_question", refuseWithoutLedger: true, runner: runOrbitAgentModelText });
+    // The registration facade (join/next) asks for fixed questions when the model cannot be used, so registration always finishes.
+    const allowFixed = body.fallback === "fixed" && body.mode !== "portrait-interview";
     try {
       step = await nextAdaptiveInterviewQuestion({
         event: {
@@ -130,20 +134,27 @@ export function createRegistrationInterviewPostHandler(
       await ledgered.finish("succeeded");
     } catch (error) {
       await ledgered.finish("failed");
-      const refused = ledgerRefusalResponse(ledgered, mode, "Your answers were kept.");
-      if (refused) return refused;
-      if (error instanceof AdaptiveInterviewGenerationError) {
-        return NextResponse.json(
-          failure(
-            new AppError(
-              "SERVICE_UNAVAILABLE",
-              "The AI interview question could not be generated. Your answers were kept; retry this step.",
+      const refusal = ledgered.refusal();
+      if (allowFixed && (refusal !== null || error instanceof AdaptiveInterviewGenerationError)) {
+        const reason = refusal === "quota" ? "AI_LIMIT" : refusal === "unavailable" ? "AI_UNAVAILABLE" : (error as AdaptiveInterviewGenerationError).code;
+        console.warn(JSON.stringify({ event: "event_registration_fixed_question", eventId: event.id, reason }));
+        step = fixedInterviewQuestion({ language: questionLanguage, reason, transcript: readInterviewTranscript(body.transcript) });
+      } else {
+        const refused = ledgerRefusalResponse(ledgered, mode, "Your answers were kept.");
+        if (refused) return refused;
+        if (error instanceof AdaptiveInterviewGenerationError) {
+          return NextResponse.json(
+            failure(
+              new AppError(
+                "SERVICE_UNAVAILABLE",
+                "The AI interview question could not be generated. Your answers were kept; retry this step.",
+              ),
             ),
-          ),
-          { headers: runtimeBoundaryHeaders(mode), status: 503 },
-        );
+            { headers: runtimeBoundaryHeaders(mode), status: 503 },
+          );
+        }
+        throw error;
       }
-      throw error;
     }
 
     let signedQuestion: { question: NonNullable<typeof step.question>; questionToken: string; portraitAdaptiveToken?: string } | null = step.question

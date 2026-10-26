@@ -103,6 +103,41 @@ test("E1 / E2 输出宽进：空列表写成 \"\" / null / \"a, b\" 都读成数
   assert.deepEqual([parsed.guessed, parsed.unreadable, parsed.events], [[], ["startsAt", "price"], []]);
 });
 
+test("QA-B2: a clear poster answered with \"isEventPage\":\"true\" (a string) is read, not unreadable (real reply 2026-10-26)", async () => {
+  const { createConfiguredEventFactsProvider } = await import("../../features/events/assessment/extract-provider");
+  // The real deepseek-v4-flash replies for a generated poster: transcription OK, then JSON with string booleans.
+  const structured = JSON.stringify({ events: [], facts: { agenda: [{ at: "18:30", minutes: null, title: "受付・開場" }], area: "東京都千代田区", endsAt: "2026-11-20T21:00:00+09:00", format: { matching: null, networking: "true", tableTalk: null }, price: "3,000円", startsAt: "2026-11-20T18:30:00+09:00", title: "AI × 製造業 交流ナイト 2026", venue: "丸の内ホール 3F" }, guessed: [], isEventPage: "true", unreadable: [] });
+  const replies = ["AI × 製造業 交流ナイト 2026\n日時：2026年11月20日（金）18:30〜21:00", structured];
+  const requests: string[] = [];
+  const fetchImpl = (async (_url: string, init: { body: string }) => {
+    requests.push(JSON.parse(init.body).model);
+    const content = replies.shift() ?? "";
+    return new Response(JSON.stringify({ choices: [{ message: { content } }], usage: { completion_tokens: 1, prompt_tokens: 1 } }), { status: 200 });
+  }) as unknown as typeof fetch;
+  const provider = createConfiguredEventFactsProvider({ env: { DEEPSEEK_API_KEY: "test" }, fetchImpl })!;
+  const result = await provider.extractFromImages({ images: [{ base64: "AAAA", mimeType: "image/png" }], meter: { begin: async () => "c", end: async () => undefined } });
+  assert.equal(result.isEventPage, true);
+  assert.equal(result.facts.title, "AI × 製造業 交流ナイト 2026");
+  assert.equal(result.facts.startsAt, "2026-11-20T18:30:00+09:00");
+  assert.deepEqual(result.facts.format, { networking: true });
+  assert.equal(requests.length, 2, "no repair call was needed");
+});
+
+test("QA-B2: an output that still fails the schema logs the field paths before it ends as unreadable", async () => {
+  const { createConfiguredEventFactsProvider } = await import("../../features/events/assessment/extract-provider");
+  const fetchImpl = (async () => new Response(JSON.stringify({ choices: [{ message: { content: "{\"isEventPage\":\"maybe\",\"facts\":{}}" } }] }), { status: 200 })) as unknown as typeof fetch;
+  const provider = createConfiguredEventFactsProvider({ env: { DEEPSEEK_API_KEY: "test" }, fetchImpl })!;
+  const warnings: string[] = [];
+  const previous = console.warn;
+  console.warn = (line: string) => { warnings.push(line); };
+  try {
+    await assert.rejects(provider.extractFromText({ meter: { begin: async () => "c", end: async () => undefined }, text: "x" }), (error: Error & { code?: string }) => error.code === "UNREADABLE");
+  } finally { console.warn = previous; }
+  assert.equal(warnings.length, 2);
+  assert.match(warnings[0]!, /event_facts_schema_invalid/);
+  assert.match(warnings[0]!, /isEventPage/);
+});
+
 test("复核 S1：AI 给的「19:00+09:00」「19:00Z」不带秒也规范化成合法时间；认不出的丢掉", async () => {
   const { toContractFacts } = await import("../../features/events/assessment/extract-provider");
   const base = { events: [], guessed: [], isEventPage: true, unreadable: [] };

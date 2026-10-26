@@ -20,7 +20,7 @@ export interface GlobalSearchLivePorts {
   /** Total contacts of mine and how many per industry (primary and secondary ids). */
   counts(actorId: string): Promise<{ total: number; industries: IndustryCount[] }>;
   /** R21: conversation search; null = not available (the 会話 chip stays hidden). */
-  conversations: ((actorId: string, query: string, limit: number) => Promise<ConversationCandidate[]>) | null;
+  conversations: ((actorId: string, query: string, limit: number, language?: "ja" | "zh" | "en") => Promise<ConversationCandidate[]>) | null;
   semanticAvailable: boolean;
 }
 

@@ -2,6 +2,7 @@
 // The inbox branch is supplied by B once it exposes a read-only search service.
 import { highlightsFor } from "../../../shared/compute/search-highlight";
 import { splitSearchTerms } from "../../../shared/compute/search-normalize";
+import { conversationSubtitle, type SearchLanguage } from "../../../shared/compute/global-search";
 import type { AiSessionSummaryItemContract } from "../../../shared/contract/ai-session-page";
 import type { GlobalSearchConversationHit } from "../../../shared/contract/global-search";
 import { createOrbitAgentChatSessionProvider } from "../../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
@@ -12,7 +13,7 @@ type SessionReader = { listSessionSummariesPage(query: { q: string; limit: numbe
 const tokyoDate = new Intl.DateTimeFormat("ja-JP", { day: "numeric", month: "numeric", timeZone: "Asia/Tokyo" });
 
 export function createConversationSearch(deps: { sessionForActor(actorId: string): SessionReader | null }) {
-  return async (actorId: string, q: string, limit: number): Promise<GlobalSearchConversationHit[]> => {
+  return async (actorId: string, q: string, limit: number, language: SearchLanguage = "ja"): Promise<GlobalSearchConversationHit[]> => {
     const query = q.trim();
     if (!actorId.trim() || !query || !Number.isSafeInteger(limit) || limit < 1) return [];
     const reader = deps.sessionForActor(actorId);
@@ -22,7 +23,7 @@ export function createConversationSearch(deps: { sessionForActor(actorId: string
     const terms = splitSearchTerms(query);
     return page.items.slice(0, cap).map((item) => {
       const title = item.organization.customTitle || item.title;
-      const subtitle = `${tokyoDate.format(new Date(item.updatedAt))} · iOrbit との会話`;
+      const subtitle = conversationSubtitle(tokyoDate.format(new Date(item.updatedAt)), language);
       return {
         highlights: highlightsFor(title, subtitle, terms),
         href: `/app/agent?session=${encodeURIComponent(item.id)}`,

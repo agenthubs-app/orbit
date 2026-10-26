@@ -118,3 +118,12 @@ test("deterministic fallback questions cannot be signed", () => {
       error.code === "INTERVIEW_AI_RESULT_REQUIRED",
   );
 });
+
+test("QA-B2: a fixed question (orbit-fixed / fixed-questions-v1) can be signed; other deterministic ones still cannot", async () => {
+  const { fixedInterviewQuestion } = await import("../../features/events/registration/adaptive-interview-service");
+  const step = fixedInterviewQuestion({ language: "ja", reason: "AI_LIMIT", transcript: [] });
+  assert.ok(step.question);
+  const token = signAdaptiveInterviewQuestion({ actorId: "actor:li", eventId: "event:tokyo", language: "zh", question: step.question, secret });
+  assert.equal(token.split(".").length, 2);
+  assert.throws(() => signAdaptiveInterviewQuestion({ actorId: "actor:li", eventId: "event:tokyo", language: "zh", question: { ...step.question!, provenance: { ...step.question!.provenance, model: "other" } }, secret }), (error) => error instanceof InterviewQuestionTokenError);
+});

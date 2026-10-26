@@ -214,6 +214,27 @@ test("manual contact live confirmation writes one actor-owned contact and is ide
   assert.equal(listCollection(store, "contacts").length, 1);
 });
 
+test("a name-only manual contact stores no placeholder organization or role", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({ actorId: ACTOR_ID, store, workspaceId: WORKSPACE_ID });
+  const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    contactProvider: createStorageBusinessCardContactWriteProvider({ recordProvider: "orbit-manual-contact-write", store, workspaceId: WORKSPACE_ID }),
+    now: () => NOW,
+    provider,
+  });
+  const created = await service.createManualContactDraft({ displayName: "山田 花子" });
+  assert.equal(created.success, true);
+  assert.equal(created.data.draft?.organization, "");
+  assert.equal(created.data.draft?.role, "");
+  const confirmed = await service.confirmManualContactDraft({ actorLabel: "Live reviewer", draftId: created.data.draft?.id ?? "" });
+  assert.equal(confirmed.success, true);
+  const contacts = listCollection(store, "contacts");
+  assert.equal(contacts.length, 1);
+  assert.equal(contacts[0]?.payload.organization ?? "", "");
+  assert.equal(contacts[0]?.payload.role ?? "", "");
+});
+
 test("manual contact confirmation stays pending when the contact store is unavailable", async () => {
   const store = createStore();
   const provider = createStorageContactAcquisitionDraftProvider({

@@ -333,7 +333,8 @@ test("literal route props exclude unreachable component branches", () => {
           "repos/orbit-app/src/screens/home/HomeScreen.tsx" &&
         interaction.tag === "HomeEventsContent",
     ),
-    true,
+    // QA-B2: /home/events now redirects to the 活动 tab, so the old page's content is unreachable too.
+    false,
   );
 
   const contactsOverview = inventory.surfaces.find(

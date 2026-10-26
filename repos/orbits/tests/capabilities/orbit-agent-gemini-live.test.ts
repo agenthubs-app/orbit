@@ -1152,7 +1152,8 @@ test("live Gemini Orbit Agent asks users to choose one workflow for multi-intent
   assert.equal(result.data?.proposedToolIntents.length, 0);
   assert.match(result.data?.assistantMessage ?? "", /一次|一个|先选|选择/);
   assert.match(result.data?.assistantMessage ?? "", /活动|消息|草稿|跟进/);
-  assert.match(result.data?.assistantMessage ?? "", /没有调用|没有执行/);
+  // QA-A 2026-10-26: the reply is plain words now; "没有调用模型/没有执行工具" was internal.
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /模型|工具/);
   assert.equal(
     result.data?.provenance.source,
     "local:orbit-agent-multi-intent-boundary",
@@ -1444,7 +1445,8 @@ test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous
   assert.equal(result.data?.artifacts.length, 0);
   assert.equal(result.data?.proposedToolIntents.length, 0);
   assert.match(result.data?.assistantMessage ?? "", /联系人|对象|她是谁|明确/);
-  assert.match(result.data?.assistantMessage ?? "", /没有调用|没有执行|不会假定/);
+  assert.match(result.data?.assistantMessage ?? "", /@/);
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /模型|工具/);
   assert.equal(
     result.data?.provenance.source,
     "local:orbit-agent-clarification-boundary",

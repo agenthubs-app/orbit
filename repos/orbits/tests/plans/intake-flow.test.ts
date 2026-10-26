@@ -5,7 +5,8 @@ import { PLAN_GOAL_TEMPLATES, planCapabilityGaps } from "../../shared/compute/pl
 import { PlanFlowError, PLAN_NEW_GOAL_MONTHLY_LIMIT } from "../../features/plans/v2/flow-service";
 import type { PlanFlowContextSource } from "../../features/plans/v2/flow-context";
 import { createMockPlanFlowContext } from "../../features/plans/v2/flow-context";
-import { confirmedBackground, countingAi, flowWorld, JA, key } from "./flow-fixture";
+import { confirmedBackground, countingAi, flowWorld, JA, key, premiseReady } from "./flow-fixture";
+import { SCOPE } from "./v2-fixture";
 import { draftInput } from "./v2-fixture";
 
 // R23 SC-R23-02 / 03 / 07：背景确认、选题、前提（DESIGN §2.2–2.3、§5）。
@@ -123,6 +124,29 @@ test("members from the network get inferred capabilities; hand-written members n
   const withContact = await world.flow.addMembers(intake.intakeId, { alsoAddToNetwork: true, capabilities: [], idempotencyKey: key(), mode: "manual", name: "佐藤さん", otherCapabilities: [], relation: "contractor" }, JA);
   assert.deepEqual(added, ["佐藤さん"]);
   assert.equal(withContact.background.team.value.members.find((member) => member.name === "佐藤さん")?.contactId, "contact:new");
+});
+
+test("members: the user's own card (a contact with the user's name) is never added as a team member", async () => {
+  const base = createMockPlanFlowContext();
+  const context: PlanFlowContextSource = { ...base, profile: async () => ({ headline: null, name: "中村 拓也" }), contacts: async (actor, ids) => [...(await base.contacts(actor, ids.filter((id) => id !== "self-card"))), ...(ids.includes("self-card") ? [{ id: "self-card", industry: null, name: "中村拓也", notes: null, organization: "ミライテック", role: "部長", tags: [] }] : [])] };
+  const world = flowWorld({ context });
+  const intake = await world.flow.createIntake({ goalKind: "launch", goalText: "Orbit を黒字化したい", idempotencyKey: key(), source: "task" }, JA);
+  const after = await world.flow.addMembers(intake.intakeId, { contactIds: ["self-card", "demo-person-matsui"], idempotencyKey: key(), mode: "network" }, JA);
+  assert.ok(!after.background.team.value.members.some((member) => member.contactId === "self-card"));
+  assert.ok(after.background.team.value.members.some((member) => member.contactId === "demo-person-matsui"));
+});
+
+test("abandon: an unfinished flow leaves the open list, replays, and its draft cannot be confirmed", async () => {
+  const world = flowWorld();
+  const intake = await world.flow.createIntake({ goalKind: "launch", goalText: "Orbit を黒字化したい", idempotencyKey: key(), source: "task" }, JA);
+  const abandonKey = key();
+  assert.deepEqual(await world.flow.abandonIntake(intake.intakeId, abandonKey), { abandoned: true, intakeId: intake.intakeId });
+  assert.deepEqual(await world.flow.abandonIntake(intake.intakeId, abandonKey), { abandoned: true, intakeId: intake.intakeId });
+  assert.equal(world.repository.dump(SCOPE).intakes.find((row) => row.id === intake.intakeId)?.status, "abandoned");
+  const ready = await premiseReady(world);
+  const draft = await world.flow.makeDraft(ready.intakeId, key(), JA);
+  await world.flow.abandonIntake(ready.intakeId, key());
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA), (error: unknown) => error instanceof PlanFlowError && error.reason === "DRAFT_CLOSED");
 });
 
 test("questions: at most 5 from the bank, same background → same questions in the same order (cached, no second AI call)", async () => {

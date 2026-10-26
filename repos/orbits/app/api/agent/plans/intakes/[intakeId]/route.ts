@@ -2,4 +2,5 @@
 import { planFlowHandlers } from "../../../../../../features/plans/v2/flow-handlers";
 export const GET = planFlowHandlers.getIntake;
 export const PATCH = planFlowHandlers.confirmBlock;
+export const DELETE = planFlowHandlers.abandonIntake;
 export const dynamic = "force-dynamic";

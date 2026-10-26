@@ -59,9 +59,9 @@ export interface GlobalSearchCoreInput {
 }
 
 const COPY = {
-  ja: { askLabel: "iOrbit に紹介ルートを聞く", askDetail: (q: string) => `「${q}の人に会うには？」`, eventsLabel: "イベントで探す", eventsFallback: "探すで条件を変えて探す", narrow: "業界で絞り込む", registered: "参加予定", countPeople: (n: number) => `${n}人` },
-  zh: { askLabel: "问 iOrbit 介绍路径", askDetail: (q: string) => `「怎样认识${q}的人？」`, eventsLabel: "在活动里找", eventsFallback: "到「发现」换个条件找", narrow: "按行业筛选", registered: "计划参加", countPeople: (n: number) => `${n}人` },
-  en: { askLabel: "Ask iOrbit for an intro route", askDetail: (q: string) => `“How can I meet people in ${q}?”`, eventsLabel: "Look at events", eventsFallback: "Change the filters in Discover", narrow: "Filter by industry", registered: "Going", countPeople: (n: number) => `${n} people` },
+  ja: { askLabel: "iOrbit に紹介ルートを聞く", askDetail: (q: string) => `「${q}の人に会うには？」`, eventsLabel: "イベントで探す", eventsFallback: "探すで条件を変えて探す", narrow: "業界で絞り込む", registered: "参加予定", countPeople: (n: number) => `${n}人`, conversationWith: "iOrbit との会話" },
+  zh: { askLabel: "问 iOrbit 介绍路径", askDetail: (q: string) => `「怎样认识${q}的人？」`, eventsLabel: "在活动里找", eventsFallback: "到「发现」换个条件找", narrow: "按行业筛选", registered: "计划参加", countPeople: (n: number) => `${n}人`, conversationWith: "与 iOrbit 的对话" },
+  en: { askLabel: "Ask iOrbit for an intro route", askDetail: (q: string) => `“How can I meet people in ${q}?”`, eventsLabel: "Look at events", eventsFallback: "Change the filters in Discover", narrow: "Filter by industry", registered: "Going", countPeople: (n: number) => `${n} people`, conversationWith: "Conversation with iOrbit" },
 } as const;
 
 const INDUSTRY_EMOJI: Record<string, string> = {
@@ -221,7 +221,12 @@ export function globalSearchExamples(language: SearchLanguage, semanticAvailable
  * message bodies; the device matches what every summary carries (title, custom title, first message, last preview).
  * Subtitle, highlights and the App href follow the server's conversation search (features/search/global/conversations.ts).
  */
-export function conversationHitsFromSessions(sessions: readonly AiSessionSummaryItemContract[], query: string, limit: number): GlobalSearchConversationHit[] {
+/** 「10/26 · iOrbit との会話」 in the reader's language (the server's conversation hits and the device fallback). */
+export function conversationSubtitle(dateLabel: string, language: SearchLanguage = "ja"): string {
+  return `${dateLabel} · ${COPY[language].conversationWith}`;
+}
+
+export function conversationHitsFromSessions(sessions: readonly AiSessionSummaryItemContract[], query: string, limit: number, language: SearchLanguage = "ja"): GlobalSearchConversationHit[] {
   const needle = query.trim().toLowerCase();
   if (!needle || !Number.isSafeInteger(limit) || limit < 1) return [];
   const terms = splitSearchTerms(query);
@@ -231,7 +236,7 @@ export function conversationHitsFromSessions(sessions: readonly AiSessionSummary
     .slice(0, Math.min(limit, 20))
     .map((session) => {
       const title = session.organization.customTitle || session.title;
-      const subtitle = `${tokyoMonthDay(session.updatedAt)?.label ?? ""} · iOrbit との会話`;
-      return { highlights: highlightsFor(title, subtitle, terms), href: `/ai/${encodeURIComponent(session.id)}`, id: session.id, kind: "iorbit" as const, subtitle, title };
+      const subtitle = conversationSubtitle(tokyoMonthDay(session.updatedAt)?.label ?? "", language);
+      return { highlights: highlightsFor(title, subtitle, terms), href: `/ai/${encodeURIComponent(session.id)}?source=session`, id: session.id, kind: "iorbit" as const, subtitle, title };
     });
 }

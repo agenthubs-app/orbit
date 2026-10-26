@@ -214,8 +214,8 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
           zh: `与你的请求在「${matchedTokens.join("、")}」上匹配。`,
         })
       : localize(locale, {
-          en: "Available from live Events data for review.",
-          zh: "来自活动库的可复核活动。",
+          en: "An event coming up.",
+          zh: "近期可以参加的活动。",
         });
   const timingNote = candidate.upcoming
     ? localize(locale, {

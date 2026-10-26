@@ -302,8 +302,9 @@ function sourceEvidence(input: {
 function baseFieldValues(contact: ContactDTO): BusinessCardReviewedFields {
   return {
     displayName: contact.displayName,
-    role: nonEmpty(contact.role) ?? "Relationship candidate",
-    organization: nonEmpty(contact.organization) ?? "Unknown organization",
+    // QA-A3: no placeholder text is shown or stored; an unknown role / organization stays empty.
+    role: nonEmpty(contact.role) ?? "",
+    organization: nonEmpty(contact.organization) ?? "",
     email: nonEmpty(contact.primaryEmail) ?? "",
     phone: nonEmpty(contact.primaryPhone) ?? "",
   };

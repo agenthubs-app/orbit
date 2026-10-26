@@ -15,7 +15,10 @@ export function lifecycleErrorResponse(error: unknown): Response {
   const appError = error instanceof AppError ? error : error instanceof RelationshipLifecycleError
     ? new AppError(error.code === "NOT_FOUND" || error.code === "FORBIDDEN" ? "NOT_FOUND" : error.code === "CONFLICT" || error.code === "IDEMPOTENCY_CONFLICT" ? "CONFLICT" : "VALIDATION_ERROR", error.code === "NOT_FOUND" || error.code === "FORBIDDEN" ? "Relationship not found." : error.code === "CONFLICT" || error.code === "IDEMPOTENCY_CONFLICT" ? "关系已变更或重复请求不一致，请刷新后核对。" : "跟进处理不符合当前关系状态，请检查下一步。")
     : new AppError("INTERNAL_ERROR", "Unable to access relationship lifecycle.");
-  return NextResponse.json(failure(appError), { status: getHttpStatusForAppErrorCode(appError.code), headers });
+  // QA-C3: the refused write for a contact with several relationship records keeps the generic CONFLICT text,
+  // plus a context the app can name plainly ("refresh to check" would not help there).
+  const duplicate = error instanceof RelationshipLifecycleError && error.code === "CONFLICT" && /more than one relationship record/iu.test(error.message);
+  return NextResponse.json(failure(appError, duplicate ? { lifecycleConflict: "duplicate_relationship" } : undefined), { status: getHttpStatusForAppErrorCode(appError.code), headers });
 }
 export function createRelationshipLifecycleHandlers(dependencies: Dependencies = {}) {
   async function boundary(context: Context) {

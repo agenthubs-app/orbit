@@ -403,6 +403,9 @@ export const redesignMock = {
     assessMap().set(id, { ...found, userDecision: "added" });
     return true;
   },
+  deleteAssessment(id: string): boolean {
+    return assessMap().delete(id);
+  },
   dismissAssessment(id: string): boolean {
     const found = assessMap().get(id);
     if (!found) return false;

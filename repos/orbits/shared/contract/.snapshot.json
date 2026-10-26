@@ -5932,6 +5932,21 @@
         }
       }
     },
+    "event-assessment.ts::EventAssessmentDeleteResult": {
+      "kind": "object",
+      "members": {
+        "assessmentId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "deleted": {
+          "optional": false,
+          "kind": "text",
+          "type": "true"
+        }
+      }
+    },
     "event-assessment.ts::EventAssessmentAvailability": {
       "kind": "object",
       "members": {
@@ -6872,6 +6887,11 @@
               "kind": "text",
               "type": "string"
             },
+            "slug": {
+              "optional": true,
+              "kind": "text",
+              "type": "string | null"
+            },
             "emoji": {
               "optional": true,
               "kind": "text",
@@ -6968,6 +6988,11 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        },
+        "hosting": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
         },
         "attendeeCounts": {
           "optional": false,

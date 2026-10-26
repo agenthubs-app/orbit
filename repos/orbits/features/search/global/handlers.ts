@@ -130,13 +130,13 @@ export async function searchLive(live: GlobalSearchLivePorts, input: { actorId: 
     wanted.has("people") ? recallPeople() : Promise.resolve({ items: [], total: 0 }),
     wanted.has("people") ? live.planLinked(input.actorId) : Promise.resolve(null),
     live.events(input.actorId, terms.join(" "), 20),
-    wanted.has("conversations") && live.conversations ? live.conversations(input.actorId, input.query, 20) : Promise.resolve(null),
+    wanted.has("conversations") && live.conversations ? live.conversations(input.actorId, input.query, 20, input.language) : Promise.resolve(null),
   ]);
   const navigable = conversations?.flatMap((hit): GlobalSearchConversationHit[] => {
     if (!hit.id?.trim()) return [];
     const id = encodeURIComponent(hit.id);
     const href = hit.kind === "iorbit"
-      ? input.platform === "app" ? `/ai/${id}` : `/app/agent?session=${id}`
+      ? input.platform === "app" ? `/ai/${id}?source=session` : `/app/agent?session=${id}`
       : hit.kind === "inbox"
         ? input.platform === "app" ? `/inbox/${id}` : `/app/inbox?conversationId=${id}`
         : null;

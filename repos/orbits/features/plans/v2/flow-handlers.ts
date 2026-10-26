@@ -110,6 +110,7 @@ const notFound = (what: string) => {
 };
 
 const planAchievedSchema = z.object({ planId: z.string().min(1), achievedAt: z.string().min(1) });
+const planDeletedSchema = z.object({ planId: z.string().min(1), deleted: z.literal(true) });
 
 export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies = {}) {
   return {
@@ -172,6 +173,10 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     openManualEdit: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.openManualEdit(params.planId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context), status: 201 }), dependencies),
     /** POST /api/agent/plans/v2/[planId]/achieve。 */
     achieve: flowRoute(planAchievedSchema, async (service, request, params) => ({ data: await service.achieve(params.planId ?? "", await body(request, planAchieveRequestSchema)) }), dependencies),
+    /** DELETE /api/agent/plans/intakes/[intakeId]：放弃未完成的计划。 */
+    abandonIntake: flowRoute(z.object({ intakeId: z.string().min(1), abandoned: z.literal(true) }), async (service, request, params) => ({ data: await service.abandonIntake(params.intakeId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey) }), dependencies),
+    /** DELETE /api/agent/plans/v2/[planId]：删除这个目标（进行中或已达成）。 */
+    deleteGoal: flowRoute(planDeletedSchema, async (service, request, params) => ({ data: await service.deleteGoal(params.planId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey) }), dependencies),
     /** GET /api/agent/plans/v2/[planId]/next-goals（C10，每计划一次）。 */
     nextGoals: flowRoute(planNextGoalsResponseSchema, async (service, _request, params, context) => ({ data: await service.nextGoals(params.planId ?? "", context) }), dependencies),
     /** PATCH /api/agent/plans/v2/[planId]/goal。 */

@@ -98,6 +98,7 @@ export function createEventAssessmentLiveHandlers(deps: EventAssessmentLiveDeps 
       return added ? { data: { addedToPlan: true, assessmentId: params.id, planId: added.planId, planItemId: added.planItemId } } : notFound();
     }),
     dismiss: run(true, async ({ actorId, params, service }) => ((await service.dismiss(actorId, params.id ?? "")) ? { data: { assessmentId: params.id, userDecision: "dismissed" } } : notFound())),
+    remove: run(true, async ({ actorId, params, service }) => ((await service.remove(actorId, params.id ?? "")) ? { data: { assessmentId: params.id, deleted: true } } : notFound())),
     uploadPoster: run(true, async ({ actorId, request, service }) => {
       // The App sends the image bytes as the body (content-type image/*); the Web sends multipart form data.
       const type = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";

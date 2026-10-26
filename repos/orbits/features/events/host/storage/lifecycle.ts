@@ -162,6 +162,42 @@ export function defaultOperationsSchedule(startsAt: string, endsAt: string, regi
   return { checkInOpensAt: at(start - 60 * 60_000), eventEndsAt: at(end), eventStartsAt: at(start), profileEditDeadlineAt: at(cutoff), registrationCutoffAt: at(cutoff), resultsAvailableAt: at(start), roundOneStartsAt: at(r1), roundTwoStartsAt: at(r2) };
 }
 
+/**
+ * The registration close after the event moves from beforeStartsAt to afterStartsAt:
+ * - a close that would now fall after the new start moves by the same amount (keeping the host's "close N hours before" gap), never past the new start;
+ * - a close that was the start itself (the default "until it starts") follows the start, also when the event moves later;
+ * - any other close still before the new start stays where the host put it.
+ */
+export function shiftedRegistrationClose(closesAt: string | null, beforeStartsAt: string, afterStartsAt: string): string | null {
+  if (!closesAt) return null;
+  const close = Date.parse(closesAt);
+  const before = Date.parse(beforeStartsAt);
+  const start = Date.parse(afterStartsAt);
+  if (close === before) return new Date(start).toISOString();
+  if (!(close > start)) return closesAt;
+  return new Date(Math.min(close + (start - before), start)).toISOString();
+}
+
+// The host's saved registration settings (draft / published) carry the close too; keep them in step so publishing them later
+// does not bring back a close after the start. The revision moves so an open editor reloads instead of saving the old time.
+async function shiftSavedRegistrationClose(executor: EventOperationsSqlExecutor, workspaceId: string, eventId: string, beforeStartsAt: string, afterStartsAt: string): Promise<void> {
+  const result = await executor.query<{ draft: Record<string, unknown> | null; published: Record<string, unknown> | null }>(`select draft, published from event_host_question_sets where workspace_id = $1 and event_id = $2 for update`, [workspaceId, eventId]);
+  const row = result.rows[0];
+  if (!row) return;
+  const moved = (settings: Record<string, unknown> | null) => {
+    const closesAt = typeof settings?.registrationClosesAt === "string" ? settings.registrationClosesAt : null;
+    const next = shiftedRegistrationClose(closesAt, beforeStartsAt, afterStartsAt);
+    return settings && next !== closesAt ? { ...settings, registrationClosesAt: next } : null;
+  };
+  const draft = moved(row.draft);
+  const published = moved(row.published);
+  if (!draft && !published) return;
+  await executor.query(
+    `update event_host_question_sets set draft = coalesce($3::jsonb, draft), published = coalesce($4::jsonb, published), revision = revision + 1 where workspace_id = $1 and event_id = $2`,
+    [workspaceId, eventId, draft ? JSON.stringify(draft) : null, published ? JSON.stringify(published) : null],
+  );
+}
+
 async function writeOperationsConfiguration(executor: EventOperationsSqlExecutor, workspaceId: string, event: HostEventRow, registrationClosesAt: string | null, tableSize = 5): Promise<void> {
   const schedule = defaultOperationsSchedule(event.startsAt, event.endsAt, registrationClosesAt);
   const head = await executor.query<{ configuration_version: string }>(`select configuration_version::text from event_ops_configuration_heads where workspace_id = $1 and event_id = $2 for update`, [workspaceId, event.eventId]);
@@ -305,9 +341,26 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
         };
         const saved = await setEvent(executor, current, { ...current, description: input.description !== undefined ? input.description : current.description, endsAt, organizerProfileId: input.organizerProfileId ?? current.organizerProfileId, payload, startsAt, title: input.title?.trim() ?? current.title, venue });
         if (current.lifecycle === "published" && timeChanged) {
-          const policy = await executor.query<{ registration_closes_at: unknown }>(`select v.registration_closes_at from event_ops_admission_policy_heads h join event_ops_admission_policy_versions v using (workspace_id, event_id, policy_version) where h.workspace_id = $1 and h.event_id = $2`, [workspaceId, eventId]);
-          await writeOperationsConfiguration(executor, workspaceId, saved, iso(policy.rows[0]?.registration_closes_at) ?? null);
+          const policy = await executor.query<{ policy_version: string; registration_closes_at: unknown; registration_opens_at: unknown }>(`select v.policy_version::text, v.registration_opens_at, v.registration_closes_at from event_ops_admission_policy_heads h join event_ops_admission_policy_versions v using (workspace_id, event_id, policy_version) where h.workspace_id = $1 and h.event_id = $2`, [workspaceId, eventId]);
+          const row = policy.rows[0];
+          const closesAt = iso(row?.registration_closes_at) ?? null;
+          const nextClosesAt = shiftedRegistrationClose(closesAt, current.startsAt, startsAt);
+          if (row && closesAt && nextClosesAt && nextClosesAt !== closesAt) {
+            // Moving the event earlier must not leave registration open after it starts: write the moved close as a new policy version
+            // (deadline = close, as applyPolicy writes it, so the policy keeps matching the operations configuration below).
+            const opensAt = iso(row.registration_opens_at)!;
+            const nextOpensAt = Date.parse(opensAt) < Date.parse(nextClosesAt) ? opensAt : new Date(Date.parse(nextClosesAt) - 60_000).toISOString();
+            const version = Number(row.policy_version);
+            await executor.query(
+              `insert into event_ops_admission_policy_versions (workspace_id, event_id, policy_version, capacity, admission_mode, waitlist_enabled, registration_opens_at, registration_closes_at, profile_edit_deadline_at, updated_at)
+               select workspace_id, event_id, $4, capacity, admission_mode, waitlist_enabled, $5, $6, $6, clock_timestamp() from event_ops_admission_policy_versions where workspace_id = $1 and event_id = $2 and policy_version = $3`,
+              [workspaceId, eventId, version, version + 1, nextOpensAt, nextClosesAt],
+            );
+            await executor.query(`update event_ops_admission_policy_heads set policy_version = $3, updated_at = clock_timestamp() where workspace_id = $1 and event_id = $2`, [workspaceId, eventId, version + 1]);
+          }
+          await writeOperationsConfiguration(executor, workspaceId, saved, nextClosesAt);
         }
+        if (timeChanged) await shiftSavedRegistrationClose(executor, workspaceId, eventId, current.startsAt, startsAt);
         let notified = 0;
         if (current.lifecycle === "published" && input.notify && (timeChanged || venueChanged)) {
           for (const recipient of await recipients(executor, eventId, ["admitted", "waitlisted"])) {

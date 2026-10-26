@@ -695,3 +695,26 @@ test("confirming an unreviewed business card draft still fails closed as pending
 
   assert.equal(persisted, null);
 });
+
+// QA-A3 2026-10-26: a source contact without role / organization showed (and on confirm
+// stored) the placeholders "Relationship candidate" / "Unknown organization".
+test("a review draft for a contact without role or organization starts with them empty", async () => {
+  const store = await createSeedStore();
+  const record = store
+    .listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "contacts" })
+    .find((item) => item.recordId === "contact_012");
+  assert.ok(record);
+  const { organization: _organization, role: _role, ...payload } = record.payload;
+  await writeAsOwner(store, { ...record, payload });
+  const service = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider: createStorageBusinessCardReviewProvider({ store, workspaceId: WORKSPACE_ID }),
+  });
+
+  const lookup = await service.getReviewDraft({ actorId: ACTOR_ID, draftId: LIVE_DRAFT_ID });
+
+  assert.equal(lookup.success, true);
+  assert.equal(lookup.data.reviewDraft?.organization, "");
+  assert.equal(lookup.data.reviewDraft?.role, "");
+  assert.doesNotMatch(JSON.stringify(lookup.data), /Unknown organization|Relationship candidate/);
+});

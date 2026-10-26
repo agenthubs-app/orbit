@@ -530,10 +530,19 @@ async function applyEntityDraft(
   result: OrbitAgentConversationResult,
   input: OrbitAgentSendMessageInput,
   actorId: string | null,
+  sessionId?: string | null,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false || !actorId) return result;
-  const conversationId = result.data.activeConversationId?.trim() ?? "";
-  const { proposedEntityDraft, ...publicData } = result.data;
+  // QA-A 2026-10-26: the live runtime answers every turn with the same constant
+  // activeConversationId, while both clients read the open card back with
+  // GET /api/ai/entity-drafts?conversationId=<sessionId>. Binding to that id made
+  // the card vanish after leaving the chat, and a draft in one chat superseded
+  // the pending draft of every other chat. Reliable sends bind to their session.
+  const conversationId = (sessionId?.trim() || result.data.activeConversationId?.trim()) ?? "";
+  const { proposedEntityDraft: proposed, ...publicData } = result.data;
+  // QA-A 2026-10-26: "新建待办：…" was created at once by the task interaction AND offered
+  // again as a 「确认创建」 card (a second, duplicate to-do). The task card owns this turn.
+  const proposedEntityDraft = result.data.taskInteraction ? undefined : proposed;
   if (!conversationId) {
     return proposedEntityDraft ? { data: publicData, success: true } : result;
   }
@@ -542,7 +551,7 @@ async function applyEntityDraft(
   // Postgres runtime and five domain services, and most turns neither propose a
   // record nor answer a card.
   const intent = readEntityDraftIntent(input.message ?? "");
-  if (!proposedEntityDraft && !intent) return result;
+  if (!proposedEntityDraft && !intent) return proposed ? { data: publicData, success: true } : result;
 
   const service = createConfiguredEntityDraftService();
   if (!service) {
@@ -746,6 +755,7 @@ export async function POST(request: Request): Promise<Response> {
         ),
         conversationInput,
         agentContext.actorId,
+        reliableInput?.success ? reliableInput.data.sessionId : null,
       ),
       conversationInput,
       agentContext.runtime,

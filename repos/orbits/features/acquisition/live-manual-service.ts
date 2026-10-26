@@ -198,11 +198,12 @@ function organizationFrom(input: ManualContactCreationInput): string {
   const note = nonEmpty(input.note) ?? "";
   const fromMatch = note.match(/\sfrom\s+(.+?)(?:\s+asked|\s+after|\.|$)/iu);
 
-  return nonEmpty(fromMatch?.[1]) ?? "Unknown organization";
+  // No placeholder text is stored as data: an unknown organization stays empty.
+  return nonEmpty(fromMatch?.[1]) ?? "";
 }
 
 function roleFrom(input: ManualContactCreationInput): string {
-  return nonEmpty(input.role) ?? "Relationship candidate";
+  return nonEmpty(input.role) ?? "";
 }
 
 function unconfiguredProvenance(now: string): ManualContactCreationProvenance {

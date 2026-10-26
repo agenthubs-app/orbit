@@ -613,3 +613,49 @@ test("business card scan API rejects unauthenticated reads before parsing input"
   assert.equal(body.error.code, "UNAUTHORIZED");
   assert.equal(body.error.context.service, "authenticated-api-actor");
 });
+
+// QA-A3 2026-10-26: a card without a title or organization filled the review form (and
+// then the saved contact) with the English placeholder "Relationship candidate".
+test("an uploaded card without a title or organization leaves them empty", async () => {
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "gemini-3.5-flash-lite",
+      providerName: "google-gemini-interactions",
+      async extract() {
+        return {
+          extraction: {
+            addresses: [],
+            certifications: [],
+            contactPoints: [],
+            departments: [],
+            detectedLanguages: ["ja"],
+            emails: [],
+            fullName: "青空 花子",
+            nativeFullName: "青空 花子",
+            organization: null,
+            romanizedFullName: null,
+            title: null,
+            website: null,
+          },
+          usage: { inputTokens: 10, latencyMs: 5, outputTokens: 10 },
+        };
+      },
+    },
+    now: () => NOW,
+    provider: null,
+  });
+
+  const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
+    imageBase64: TEST_IMAGE_BASE64,
+    imageName: "card.jpg",
+    imageSizeBytes: 5,
+    mimeType: "image/jpeg",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.draft?.displayName, "青空 花子");
+  assert.equal(result.data.draft?.role, "");
+  assert.equal(result.data.draft?.organization, "");
+  assert.doesNotMatch(JSON.stringify(result.data), /Unknown organization|Relationship candidate/);
+});
