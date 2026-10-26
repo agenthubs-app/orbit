@@ -31,6 +31,8 @@ test("the root shell omits tab navigation and tab-height toast placement until s
     export function ToastProvider({ children, hasTabBar }) { return React.createElement("div", { "data-has-tab-bar": String(hasTabBar) }, children); }
     export function ShellTabBar() { return React.createElement("nav", { "aria-label": "main tabs" }); }
     export function usePathname() { return globalThis.__rootShellAuthFixture.pathname; }
+    export function useRootNavigationState() { return { type: "stack", index: 0, routes: [{}] }; }
+    export function trackRootNavigationState(state) { globalThis.__rootShellAuthFixture.tracked = state; }
     export function mainTabForPath(pathname) { return pathname === "/home" ? "home" : null; }
     export function useOrbitAuthSession() { return globalThis.__rootShellAuthFixture; }
     export function useOrbitLocale() { return { language: "ja", t: (key) => key }; }
@@ -97,6 +99,7 @@ test("the root shell omits tab navigation and tab-height toast placement until s
   assert.match(signedOutHome, /data-root-version-gate/u, "the route tree passes through the root version gate");
   assert.doesNotMatch(signedOutHome, /<nav aria-label="main tabs"/u);
   assert.match(signedOutHome, /data-has-tab-bar="false"/u);
+  assert.deepEqual((globalThis as any).__rootShellAuthFixture.tracked, { type: "stack", index: 0, routes: [{}] }, "the stack is tracked signed out too, for the reset on sign-in");
 
   const signedInHome = render(true, "/home");
   assert.match(signedInHome, /<nav aria-label="main tabs"/u);

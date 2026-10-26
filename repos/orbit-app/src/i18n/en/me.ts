@@ -44,6 +44,7 @@ export const me = {
   "me.help": "Help",
   "me.terms": "Terms and privacy",
   "me.logout": "Sign out",
+  "me.logoutConfirm": "Sign out?",
   "me.preparing": "Coming soon",
   "me.preparingHint": "This page is not ready yet.",
   "me.camera": "Camera",

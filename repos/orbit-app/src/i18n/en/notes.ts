@@ -8,6 +8,7 @@ export const notes = {
   "notes.loadedCount": "Loaded {loaded} / {total} notes",
   "notes.historyComplete": "All notes loaded",
   "notes.contactScope": "Notes for this person",
+  "notes.contactFallback": "Contact",
   "notes.reloadHistory": "Reload note history",
   "notes.new": "New note",
   "notes.search": "Search notes",

@@ -44,6 +44,7 @@ export const me = {
   "me.help": "帮助",
   "me.terms": "使用条款与隐私",
   "me.logout": "退出登录",
+  "me.logoutConfirm": "退出登录？",
   "me.preparing": "准备中",
   "me.preparingHint": "这个页面还在准备中。",
   "me.camera": "相机",

@@ -8,6 +8,7 @@ export const notes = {
   "notes.loadedCount": "{total} 件中 {loaded} 件を読み込み済み",
   "notes.historyComplete": "すべてのメモを読み込み済み",
   "notes.contactScope": "この人のメモ",
+  "notes.contactFallback": "連絡先",
   "notes.reloadHistory": "メモ一覧を再読み込み",
   "notes.new": "新しいメモ",
   "notes.search": "メモを検索",

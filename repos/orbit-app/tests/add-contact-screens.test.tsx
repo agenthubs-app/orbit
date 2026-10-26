@@ -572,6 +572,29 @@ test("読み取れず: 手入力で補う pre-fills what was read and confirms t
   assert.ok(server.writes().some((write) => write.endsWith("/replace")));
 });
 
+test("模拟器走查 M1: a chip moves the keyboard to the field it adds; 連絡先 looks like the others; no merge note or density summary", async (t) => {
+  const { page } = await open(t, "/contacts/new/manual");
+  await page.getByTestId("add-manual").waitFor();
+  const text = await page.getByTestId("add-manual").innerText();
+  for (const jargon of ["統合", "出どころ", "手入力」", "毎日の 1問"]) assert.ok(!text.includes(jargon), `no "${jargon}" on the form`);
+  const chipColor = (extra: string) => page.getByTestId(`add-manual-chip-${extra}`).evaluate((node) => [getComputedStyle(node).borderTopColor, getComputedStyle(node.querySelector("div[dir], div:last-child")!).color].join("|"));
+  assert.equal(await chipColor("contact"), await chipColor("organization"), "連絡先 is not greyed out");
+  const name = page.getByRole("textbox", { name: "名前" });
+  await name.fill("集中 太郎");
+  await page.getByTestId("add-manual-chip-organization").click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("data-testid") === "add-manual-organization");
+  await page.keyboard.type("ミライ");
+  assert.equal(await name.inputValue(), "集中 太郎", "typing goes to 会社, not 名前");
+  assert.equal(await page.getByTestId("add-manual-organization").inputValue(), "ミライ");
+  await page.getByTestId("add-manual-chip-contact").click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "メール");
+  await name.focus();
+  await page.getByTestId("add-manual-chip-met").click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") !== "名前");
+  await page.keyboard.type("x");
+  assert.equal(await name.inputValue(), "集中 太郎", "a chip without a text box closes the keyboard instead");
+});
+
 test("手入力: a name alone finds a 同名 candidate; 統合 asks only the differing fields; 別の人 saves anyway", async (t) => {
   const people = [{ displayName: "石川 陽介", id: "contact-ishikawa", organization: "ミライ精機", role: "生産技術部" }];
   const { page, server } = await open(t, "/contacts/new/manual", { people });
@@ -604,24 +627,28 @@ test("手入力: a name alone finds a 同名 candidate; 統合 asks only the dif
   await page.getByText("既存の人に統合しました").waitFor();
 });
 
-test("手入力: 保存 shows 保存したあと (b11 #18) with 「人脈に追加しました · 手入力 · ●●○ [元に戻す]」; 元に戻す deletes it and returns to the form", async (t) => {
+test("手入力: 保存 shows 保存したあと (b11 #18) with 「人脈に追加しました · <name> [元に戻す]」; 元に戻す deletes it and returns to the form", async (t) => {
   const { page, server } = await open(t, "/contacts/new/manual", { setup: (s) => { s.events = [{ id: "event-cfo", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night Tokyo" }]; } });
   await page.getByRole("textbox", { name: "名前" }).fill("新井 光");
-  await page.getByTestId("add-manual-density-1").waitFor();
   await page.getByTestId("add-manual-chip-met").click();
   await page.getByRole("checkbox", { name: "CFO Night Tokyo（10/7）" }).click();
   await page.getByTestId("add-manual-chip-contact").click();
   await page.getByRole("textbox", { name: "メール" }).fill("arai@example.jp");
-  await page.getByTestId("add-manual-density-2").waitFor();
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "保存" }).first().click();
   await page.getByTestId("add-manual-saved").waitFor();
   await page.getByText("情報を濃くする").waitFor();
-  await page.getByText("手入力の内容と統合 · ●●○ → ●●●").waitFor();
+  // Simulator QA M2: plain lines — no 手入力 chip, no ●○○ → ●●○, no 保存先 footer.
+  await page.getByText("会社・役職・連絡先が入ります").waitFor();
+  await page.getByText("本人に入力してもらえます").waitFor();
+  await page.getByText("会って話したことを残せます").waitFor();
+  const saved = await page.getByTestId("add-manual-saved").innerText();
+  for (const jargon of ["手入力", "●", "保存先", "Task ›"]) assert.ok(!saved.includes(jargon), `no "${jargon}" on the saved page`);
   const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
   assert.deepEqual(created.metContext, { eventId: "event-cfo", kind: "event", label: "CFO Night Tokyo" });
   await page.getByText("人脈に追加しました").waitFor();
-  await page.getByText("新井 光 · 手入力 · ●●○").waitFor();
+  await page.getByText("新井 光", { exact: true }).last().waitFor();
+  assert.equal(await page.getByText("新井 光 · 手入力", { exact: false }).count(), 0, "the toast names the person only");
   await page.getByRole("button", { name: "元に戻す" }).click();
   await page.getByText("追加を取り消しました").waitFor();
   assert.equal(server.undone.length, 1);
@@ -634,13 +661,13 @@ test("手入力: choosing メモ saves the contact first, then opens a contact-s
   const { page, server } = await open(t, "/contacts/new/manual");
   await page.getByRole("textbox", { name: "名前" }).fill("メモ 試験");
   await page.getByTestId("add-manual-chip-note").click();
-  await page.getByText("Task › メモ に入ります").waitFor({ timeout: 2000 });
+  await page.getByText("保存したあと、話したことを書くメモが開きます").waitFor({ timeout: 2000 });
   assert.equal(await page.getByRole("textbox", { name: "メモ" }).count(), 0, "memo text is entered after a canonical contact id exists");
   await page.getByRole("button", { name: "保存" }).first().click();
   await page.waitForFunction(() => (window as unknown as { addNav: { stack: string[] } }).addNav.stack.at(-1)?.startsWith("/notes/new?contactId="));
   const route = (await nav(page)).stack.at(-1)!;
   const savedId = server.people[0]?.id;
-  assert.equal(route, `/notes/new?contactId=${encodeURIComponent(savedId!)}`);
+  assert.equal(route, `/notes/new?contactId=${encodeURIComponent(savedId!)}&contactName=${encodeURIComponent("メモ 試験")}`, "the name goes along: the new person is not on the device yet");
   const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
   assert.equal("note" in created, false);
   assert.equal(server.calls.some((call) => call.path.startsWith("/api/notes")), false, "opening the editor does not create an orphan note");

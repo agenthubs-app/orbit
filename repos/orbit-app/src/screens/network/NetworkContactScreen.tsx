@@ -296,7 +296,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         <View style={[styles.card, styles.gapTop]} testID="network-interactions">
           <View style={styles.between}>
             <UiText style={styles.cardH}>{t("network.detail.interactions")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("network.detail.addMemo")} onPress={() => router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}` as Href)}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("network.detail.addMemo")} onPress={() => router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}&contactName=${encodeURIComponent(contact.displayName)}` as Href)}>
               <UiText style={styles.more}>{t("network.detail.addMemo")}</UiText>
             </UiPressable>
           </View>

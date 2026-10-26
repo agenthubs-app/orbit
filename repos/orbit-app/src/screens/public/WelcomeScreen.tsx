@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { openMainTab } from "../../components/shell-navigation";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { createTranslator } from "../../i18n/messages";
@@ -28,7 +29,7 @@ export function WelcomeScreen() {
     setGoogleError(null);
     try {
       const result = await auth.startGoogleSignIn({ redirectTo: "/home" });
-      if (result.success) router.replace("/home");
+      if (result.success) openMainTab(router, "/home");
       else setGoogleError(result.message === createTranslator("zh")("auth.googleCancelled") ? t("auth.googleCancelled") : result.message ?? t("auth.googleIncomplete"));
     } finally {
       setGooglePending(false);

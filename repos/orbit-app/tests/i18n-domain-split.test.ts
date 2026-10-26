@@ -15,10 +15,11 @@ import { zh } from "../src/i18n/zh";
 const PRE_SPLIT = {
   // In every locale R20b (notes.bodyPlaceholder) and R28 (onboarding.goalsPick) later updated 2 original values; the key set is still R03's.
   // UX 2026-10-26 (Task tab copy: plain labels for the schedule links, the to-do detail and the calendar "+N") updated more original values in all three.
-  en: { keys: 2253, sha256: "8b0b869598a386f7ce4deb86fb555e8acf8593f4c56b8303c16a189f2e199aea" },
+  // UX 2026-10-26 (onboarding: plain industry labels, a date picker for the birthday, no forced break in the zh step 5 title) updated more.
+  en: { keys: 2253, sha256: "19cae7c672b323dfd58f0e1311b56f5b8b6e7808076b2822d34fe28750e21841" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "637ac50ab706f28d8b9d63eff36c2eb67def25fa76a56d4e84a218240f492b14" },
-  zh: { keys: 2253, sha256: "bafb49c76f242691e6074ddc602749bc19c10c67f9eb57ab448746b6f0749db6" },
+  ja: { keys: 2253, sha256: "29cd5ab47a1f7d02b5ea268a641de46684f0f4c8d5072c9c4ed5fca60904ca92" },
+  zh: { keys: 2253, sha256: "4c592cfd1919d0f652747ad333190877b05ee41ddd527a09b774747750c1c4fd" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

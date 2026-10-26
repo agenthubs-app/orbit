@@ -121,20 +121,34 @@ async function shot(page: Page, name: string) {
 }
 const withProfile = (profile: Record<string, unknown>) => ({ detail: { ...profilePayload, profile: { ...profilePayload.profile, ...profile } } });
 
+// The birthday picker opens on January, thirty years back; nothing is chosen until a day is tapped.
+async function pickBirthday(page: Page, date: string) {
+  await page.getByRole("button", { name: /^生日：/u }).click();
+  const [year, month] = date.split("-").map(Number) as [number, number];
+  for (let step = new Date().getFullYear() - 30; step > year; step -= 1) await page.getByRole("button", { name: "上一年", exact: true }).click();
+  for (let step = 1; step < month; step += 1) await page.getByRole("button", { name: "下个月", exact: true }).click();
+  await page.getByRole("button", { name: date, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click();
+}
+
 async function fillProfileStep(page: Page) {
   await page.getByRole("textbox", { name: "姓名" }).fill("林晓");
-  await page.getByRole("button", { name: "一级行业：请选择" }).click();
+  await page.getByRole("button", { name: "行业：请选择" }).click();
   await page.getByRole("button", { name: "科技与互联网", exact: true }).click();
-  await page.getByRole("button", { name: "二级行业：请选择" }).click();
+  await page.getByRole("button", { name: "细分领域：请选择" }).click();
   await page.getByRole("button", { name: "人工智能与数据", exact: true }).click();
   await page.getByRole("textbox", { name: "职位" }).fill("产品负责人");
-  await page.getByRole("textbox", { name: "生日" }).fill("1990-05-20");
+  await pickBirthday(page, "1990-05-20");
 }
 
 test("a new account walks welcome → profile, saves with a receipt and a readback, and lands on step 2", async t => {
   const page = await open(t);
   await page.getByRole("heading", { name: /先让 iOrbit/u }).waitFor();
   for (const title of ["告诉我们你是谁", "你最近想推进什么", "你能提供什么、在找什么", "iOrbit 帮你写自我介绍", "带入已有人脉"]) await page.getByText(title, { exact: true }).waitFor();
+  for (const number of ["01", "02", "03", "04", "05"]) {
+    const box = (await page.getByText(number, { exact: true }).boundingBox())!;
+    assert.ok(box.height < 30, `${number} stays on one line: ${JSON.stringify(box)}`);
+  }
   const start = page.getByRole("button", { name: "开始设置" });
   assert.equal(await start.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(30, 26, 36)", "black primary button");
   assert.equal(Math.round((await start.boundingBox())!.height), 50);
@@ -144,10 +158,12 @@ test("a new account walks welcome → profile, saves with a receipt and a readba
   const next = page.getByRole("button", { name: "继续" });
   assert.equal(await next.isDisabled(), true, "required fields gate the step");
   await fillProfileStep(page);
-  await page.getByRole("textbox", { name: "生日" }).fill("2999-01-01");
-  await page.getByText("请填写有效的生日（不能晚于今天）。").waitFor();
-  assert.equal(await next.isDisabled(), true);
-  await page.getByRole("textbox", { name: "生日" }).fill("1990-05-20");
+  await page.getByRole("button", { name: "生日：1990年5月20日" }).waitFor();
+  // The birthday is optional: clearing it keeps the step open, and it can be picked again.
+  await page.getByRole("button", { name: "清除生日" }).click();
+  await page.getByRole("button", { name: "生日：选择日期" }).waitFor();
+  assert.equal(await next.isDisabled(), false);
+  await pickBirthday(page, "1990-05-20");
   await shot(page, "02-profile");
   await next.click();
   await page.getByRole("heading", { name: "你最近想推进什么？" }).waitFor();
@@ -220,7 +236,7 @@ test("no network shows the amber notice and keeps the typed values", async t => 
   await notice.waitFor();
   assert.equal(await notice.evaluate(el => getComputedStyle(el).color), "rgb(139, 96, 46)", "amber offline text");
   assert.equal(await page.getByRole("textbox", { name: "姓名" }).inputValue(), "林晓");
-  assert.equal(await page.getByRole("textbox", { name: "生日" }).inputValue(), "1990-05-20");
+  await page.getByRole("button", { name: "生日：1990年5月20日" }).waitFor();
   await shot(page, "08-offline");
   await set(page, { network: false });
   await page.getByRole("button", { name: "继续" }).click();
@@ -253,7 +269,12 @@ test("intro: auto-drafts once on entry, failure keeps the fields editable, 换�
   await page.getByRole("button", { name: "继续", exact: true }).click();
   await page.getByText("这次没有生成成功").waitFor();
   assert.equal(await page.getByRole("textbox", { name: "自我介绍" }).isEditable(), true, "user can write it by hand");
-  await page.getByRole("textbox", { name: "一句话介绍" }).fill("我自己写的");
+  const headline = page.getByRole("textbox", { name: "一句话介绍" });
+  assert.equal(await headline.evaluate(el => el.tagName), "TEXTAREA", "the one-line intro wraps instead of scrolling sideways");
+  assert.equal(await headline.getAttribute("maxlength"), "80");
+  await headline.fill("第一行\n第二行");
+  assert.equal(await headline.inputValue(), "第一行 第二行", "a line break becomes a space");
+  await headline.fill("我自己写的");
   await shot(page, "10-intro-failed");
   await set(page, { ai: "ok" });
   await page.getByRole("button", { name: "重新生成 ›" }).click();
@@ -270,7 +291,7 @@ test("intro: auto-drafts once on entry, failure keeps the fields editable, 换�
   await page.getByRole("button", { name: "换一版（剩 1 次）" }).waitFor();
   await shot(page, "05-intro");
   await page.getByRole("button", { name: "用这段介绍" }).click();
-  await page.getByRole("heading", { name: /带入你已有/u }).waitFor();
+  await page.getByRole("heading", { name: /带入已有人脉/u }).waitFor();
   const { profile, aiCalls, requests } = await fx(page);
   assert.equal(aiCalls, 4);
   assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body.language), Array(4).fill("zh"));
@@ -284,7 +305,7 @@ test("import: 拍名片 opens the existing batch import and 完成设置 goes to
   await page.getByRole("button", { name: "继续", exact: true }).click();
   await page.getByRole("heading", { name: /iOrbit 帮你/u }).waitFor();
   await page.getByRole("button", { name: "用这段介绍" }).click();
-  await page.getByRole("heading", { name: /带入你已有/u }).waitFor();
+  await page.getByRole("heading", { name: /带入已有人脉/u }).waitFor();
   assert.equal((await fx(page)).aiCalls, 0, "an existing introduction is not regenerated");
   await shot(page, "06-import");
   await page.getByRole("button", { name: "拍名片" }).click();
@@ -293,11 +314,21 @@ test("import: 拍名片 opens the existing batch import and 完成设置 goes to
   assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/scan?returnTo=%2Fprofile%2Fonboarding%3Fscreen%3D5", "replace:/events/e1"]);
 });
 
+test("O1: with no next (right after sign-up), 完成设置 lands on Home as a tab page", async t => {
+  const profile = withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" });
+  const flow = { version: 1, currentScreen: 5, lastConfirmedScreen: 4, finishedAt: null, deferred: false, revision: "flow:5" };
+  const page = await open(t, { ...profile, flow, screen: "5", next: "" });
+  await page.getByRole("heading", { name: "带入已有人脉" }).waitFor();
+  await page.getByRole("button", { name: "完成设置" }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual((await fx(page)).navigation, ["replace:/home"]);
+});
+
 test("returning from scan or import opens the unfinished fifth screen directly", async t => {
   const profile = withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", bio: "已有介绍" });
   const flow = { version: 1, currentScreen: 5, lastConfirmedScreen: 4, finishedAt: null, deferred: false, revision: "flow:5" };
   const page = await open(t, { ...profile, flow, screen: "5" });
-  await page.getByRole("heading", { name: /带入你已有/u }).waitFor();
+  await page.getByRole("heading", { name: /带入已有人脉/u }).waitFor();
   await page.getByRole("button", { name: "通讯录" }).click();
   assert.deepEqual((await fx(page)).navigation, ["push:/contacts/new/import?kind=contacts&returnTo=%2Fprofile%2Fonboarding%3Fscreen%3D5"]);
 });
@@ -307,7 +338,8 @@ test("English and Japanese render the whole welcome and step copy", async t => {
   await english.getByRole("heading", { name: /Let iOrbit/u }).waitFor();
   await english.getByRole("button", { name: "Get started" }).click();
   await english.getByRole("heading", { name: "Who are you?" }).waitFor();
-  await english.getByRole("button", { name: "Primary industry：Select" }).waitFor();
+  await english.getByRole("button", { name: "Industry：Select" }).waitFor();
+  await english.getByRole("button", { name: "Birthday：Choose a date" }).waitFor();
   const japanese = await open(t, { language: "ja", ...withProfile({ ...complete, ...blank }) });
   await japanese.getByText("5 中 1 完了。「最近進めたいこと」から続けます。").waitFor();
   await japanese.getByRole("button", { name: "続ける" }).click();

@@ -21,12 +21,21 @@ import { registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import { createThemedStyles } from "../../design/theme";
 import { radius, type OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { localParts } from "../../time/date-time";
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { addDesignMock } from "../add/add-design-mock";
+import { LOCAL_ITEM_FILTERS, localItemCount, searchLocalItems, type LocalItemFilter, type LocalItemHit } from "./local-item-search";
 import type { SearchFilter } from "./search-api";
 import { useGlobalSearchSource } from "./useGlobalSearchSource";
+import { useLocalItemSources } from "./useLocalItemSources";
 import { APP_SEMANTIC_PREFERENCE_KEY, APP_RECENT_SEARCHES_MAX, APP_SEARCH_DEBOUNCE_MS, APP_SEARCHING_DELAY_MS, alternativePrompt, appSearchFilters, isAppEmptyResult, rememberAppSearch } from "./search-model";
 
 type Status = "idle" | "pending" | "ready" | "rate_limited" | "failed";
+type ScreenFilter = SearchFilter | LocalItemFilter;
+const isLocalFilter = (filter: ScreenFilter): filter is LocalItemFilter => (LOCAL_ITEM_FILTERS as readonly string[]).includes(filter);
+/** Rows per group under 全部 (a chip shows them all). */
+const ALL_GROUP_ROWS = 3;
+const LOCAL_GROUP_ROWS = 50;
 
 function fill(text: string, values: Record<string, string | number>): string {
   return text.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
@@ -41,13 +50,16 @@ export function GlobalSearchScreen() {
   const api = useGlobalSearchSource();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
+  // Simulator QA G1: notes, to-dos and schedule items are searched on the device (useLocalItemSources.ts).
+  const localItems = useLocalItemSources(auth.actorId ?? "");
+  const { timeZone } = useOrbitTimeZone();
   const topGap = useShellTopGap();
   // 门禁开发开关：聚焦不弹软键盘（画板从不画系统键盘）。
   const noKeyboard = addDesignMock("no-keyboard");
   // `?q=` opens with a query already in the field (R11 人脈 🔍, the design gate); typing replaces it.
   const params = useLocalSearchParams<{ q?: string | string[] }>();
   const [query, setQuery] = useState(() => (Array.isArray(params.q) ? params.q[0] : params.q) ?? "");
-  const [filter, setFilter] = useState<SearchFilter>("all");
+  const [filter, setFilter] = useState<ScreenFilter>("all");
   const [capability, setCapability] = useState<GlobalSearchResponse | null>(null);
   const [result, setResult] = useState<GlobalSearchResponse | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -78,7 +90,9 @@ export function GlobalSearchScreen() {
     setStatus("pending");
     const slowTimer = setTimeout(() => { if (request.current === id) setSlow(true); }, APP_SEARCH_DEBOUNCE_MS + APP_SEARCHING_DELAY_MS);
     const timer = setTimeout(() => {
-      void api.search({ filter, query: trimmed, semantic }).then((answer) => {
+      // A notes / to-do / schedule chip asks only for 人 (answered on the device when the mirror is readable):
+      // the answer still carries the 其他办法 rows for the empty state.
+      void api.search({ filter: isLocalFilter(filter) ? "people" : filter, query: trimmed, semantic }).then((answer) => {
         if (request.current !== id) return;
         setSlow(false);
         if (answer.ok === true) { setResult(answer.data); setStatus("ready"); return; }
@@ -105,12 +119,33 @@ export function GlobalSearchScreen() {
   };
   const close = () => { if (router.canGoBack()) router.back(); else router.replace("/task" as Href); };
 
-  const filters = appSearchFilters(capability?.types ?? result?.types);
-  const filterLabel: Record<SearchFilter, string> = { all: t("search.typeAll"), conversations: t("search.typeConversations"), events: t("search.typeEvents"), people: t("search.typePeople") };
+  const filters: ScreenFilter[] = [...appSearchFilters(capability?.types ?? result?.types), ...LOCAL_ITEM_FILTERS];
+  const filterLabel: Record<ScreenFilter, string> = { all: t("search.typeAll"), conversations: t("search.typeConversations"), events: t("search.typeEvents"), people: t("search.typePeople"), notes: t("search.typeNotes"), todos: t("search.typeTodos"), schedule: t("search.typeSchedule") };
   // Like the Web panel: the previous answer stays until the next one arrives (no blank flash); after 300 ms without an
   // answer the 検索中 skeleton takes over.
   const showResult = (status === "ready" || (status === "pending" && !slow)) && result && query.trim() ? result : null;
-  const empty = isAppEmptyResult(showResult, filter);
+  // Local rows follow the answer shown (same query, same moment), so the page never mixes two queries.
+  const shownQuery = showResult?.query ?? "";
+  const local = useMemo(() => searchLocalItems({ ...localItems, query: shownQuery, now: Date.now(), limit: filter === "all" ? ALL_GROUP_ROWS : LOCAL_GROUP_ROWS }), [filter, localItems, shownQuery]);
+  const localFilter = isLocalFilter(filter);
+  const empty = localFilter
+    ? Boolean(showResult) && localItemCount(local, filter) === 0
+    : isAppEmptyResult(showResult, filter) && (filter !== "all" || localItemCount(local, "all") === 0);
+  const day = (iso: string) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/u.test(iso) ? iso : localParts(iso, timeZone).date;
+    const [, month, dayOfMonth] = date.split("-");
+    return month && dayOfMonth ? `${Number(month)}/${Number(dayOfMonth)}` : "";
+  };
+  const localSub = (kind: LocalItemFilter, hit: LocalItemHit) => {
+    if (kind === "notes") return [hit.at ? day(hit.at) : "", hit.detail].filter(Boolean).join(" · ");
+    if (kind === "todos") return [hit.done ? t("search.todoDone") : hit.at ? day(hit.at) : "", hit.detail].filter(Boolean).join(" · ");
+    return [hit.at ? `${day(hit.at)} ${localParts(hit.at, timeZone).time}` : "", hit.detail].filter(Boolean).join(" · ");
+  };
+  const LOCAL_GROUP: Record<LocalItemFilter, { label: string; emoji: string; tone: string }> = {
+    notes: { label: "search.groupNotes", emoji: "📝", tone: colors.macApricot },
+    todos: { label: "search.groupTodos", emoji: "☑️", tone: colors.macTeal },
+    schedule: { label: "search.groupSchedule", emoji: "🗓️", tone: colors.macBlue },
+  };
 
   const marked = (text: string, ranges: readonly SearchHighlight[], field: "title" | "subtitle", style: object) => {
     const own = ranges.filter((range) => range.field === field);
@@ -177,11 +212,11 @@ export function GlobalSearchScreen() {
       <View style={[styles.card, styles.resultCard]} testID="global-search-empty">
         <View style={styles.empty}>
           <UiText style={styles.emptyEmoji}>🔎</UiText>
-          <UiText style={styles.emptyTitle}>{fill(t(filter === "events" ? "search.emptyTitleEvents" : filter === "conversations" ? "search.emptyTitleConversations" : "search.emptyTitle"), { q: showResult.query })}</UiText>
+          <UiText style={styles.emptyTitle}>{fill(t(filter === "events" ? "search.emptyTitleEvents" : filter === "conversations" ? "search.emptyTitleConversations" : filter === "notes" ? "search.emptyTitleNotes" : filter === "todos" ? "search.emptyTitleTodos" : filter === "schedule" ? "search.emptyTitleSchedule" : "search.emptyTitle"), { q: showResult.query })}</UiText>
           {filter === "all" || filter === "people" ? <UiText style={[styles.lbl, styles.emptySub]}>{fill(t("search.emptySearched"), { n: showResult.searchedPeople })}</UiText> : null}
         </View>
-        {showResult.suggestions.length ? group(t("search.emptyNear")) : null}
-        {showResult.suggestions.map((item, index) => (
+        {showResult.suggestions.length && !localFilter ? group(t("search.emptyNear")) : null}
+        {(localFilter ? [] : showResult.suggestions).map((item, index) => (
           <UiPressable key={item.href} accessibilityRole="button" accessibilityLabel={item.label} onPress={() => open(item.href)} style={[styles.row, index === 0 && styles.sel]}>
             {emo(item.emoji, index === 0 ? colors.macBlue : colors.macApricot)}
             <View style={styles.meta}><UiText style={styles.title} numberOfLines={1}>{item.label}</UiText><UiText style={styles.sub} numberOfLines={1}>{fill(t("search.suggestionNarrow"), { n: item.count })}</UiText></View>
@@ -198,9 +233,11 @@ export function GlobalSearchScreen() {
       </View>
     );
   } else if (showResult) {
-    const people = showResult.people;
-    const conversations = showResult.conversations;
-    const isSemantic = showResult.semantic.enabled;
+    // A notes / to-do / schedule chip shows only its own rows (the 人 answer behind it only feeds the empty state).
+    const people = localFilter ? { ...showResult.people, items: [] } : showResult.people;
+    const conversations = localFilter ? null : showResult.conversations;
+    const events = localFilter ? [] : showResult.events.items;
+    const isSemantic = !localFilter && showResult.semantic.enabled;
     body = (
       <View style={[styles.card, styles.resultCard]} testID="global-search-results" accessibilityLabel={t("search.resultsLabel")}>
         {isSemantic ? (
@@ -219,8 +256,8 @@ export function GlobalSearchScreen() {
                 : hit.status === "acquaintance" ? <View style={[styles.chip, { backgroundColor: colors.macApricot }]}><UiText style={[styles.chipText, { color: colors.macApricotText }]}>{t("search.statusAcquaintance")}</UiText></View> : null}
           </UiPressable>
         ))}
-        {showResult.events.items.length ? group(fill(t("search.groupEvents"), { n: showResult.events.total })) : null}
-        {showResult.events.items.map((hit) => (
+        {events.length ? group(fill(t("search.groupEvents"), { n: showResult.events.total })) : null}
+        {events.map((hit) => (
           <UiPressable key={hit.eventId} accessibilityRole="button" accessibilityLabel={hit.title} onPress={() => open(hit.href)} style={styles.row}>
             {emo(hit.emoji, hit.via === "attendees" ? colors.macLav : colors.macTeal)}
             <View style={styles.meta}>{marked(hit.title, hit.highlights, "title", styles.title)}{marked(hit.note, hit.highlights, "subtitle", styles.sub)}</View>
@@ -239,6 +276,28 @@ export function GlobalSearchScreen() {
             </View>
           </UiPressable>
         ))}
+        {LOCAL_ITEM_FILTERS.filter((kind) => filter === "all" || filter === kind).map((kind) => {
+          const found = local[kind];
+          if (!found.items.length) return null;
+          const look = LOCAL_GROUP[kind];
+          return (
+            <View key={kind} testID={`global-search-${kind}`}>
+              {group(fill(t(look.label), { n: found.total }), filter === "all" && found.total > found.items.length ? t("search.showAll") : null, () => setFilter(kind))}
+              {found.items.map((hit) => {
+                const sub = localSub(kind, hit);
+                return (
+                  <UiPressable key={hit.id} accessibilityRole="button" accessibilityLabel={hit.title} onPress={() => open(hit.href)} style={styles.row}>
+                    {emo(look.emoji, look.tone)}
+                    <View style={styles.meta}>
+                      <UiText style={[styles.title, hit.done && styles.done]} numberOfLines={2}>{hit.title}</UiText>
+                      {sub ? <UiText style={styles.sub} numberOfLines={2}>{sub}</UiText> : null}
+                    </View>
+                  </UiPressable>
+                );
+              })}
+            </View>
+          );
+        })}
       </View>
     );
   }
@@ -254,7 +313,7 @@ export function GlobalSearchScreen() {
         return <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={filterLabel[item]} onPress={() => setFilter(item)} style={[styles.cat, on && styles.catOn]}><UiText style={[styles.catText, on && styles.catTextOn]}>{filterLabel[item]}</UiText></UiPressable>;
       })}
     </View>}>
-      {api.eventsOffline && query.trim() && filter !== "people" ? <UiText style={[styles.lbl, styles.hint]} accessibilityLiveRegion="polite">{t("search.eventsOffline")}</UiText> : null}
+      {api.eventsOffline && query.trim() && filter !== "people" && !localFilter ? <UiText style={[styles.lbl, styles.hint]} accessibilityLiveRegion="polite">{t("search.eventsOffline")}</UiText> : null}
       {body}
     </FullScreenSearch>
   );
@@ -289,6 +348,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   meta: { flex: 1, minWidth: 0 },
   title: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   recentTitle: { fontWeight: "600" },
+  done: { color: colors.ink3, textDecorationLine: "line-through" },
   sub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
   mark: { backgroundColor: colors.rose100 },
   av: { alignItems: "center", borderRadius: radius.pill, height: 30, justifyContent: "center", width: 30 },

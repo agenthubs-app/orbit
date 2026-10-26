@@ -29,8 +29,11 @@ import { useNotesWriteStatus } from "../notes/notes-source";
 
 export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScopeCurrent = () => true }: { actorId: string; draftServer?: string; scopeKey: string; isScopeCurrent?: () => boolean }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ contactId?: string | string[] }>();
+  const params = useLocalSearchParams<{ contactId?: string | string[]; contactName?: string | string[] }>();
   const initialContactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
+  // Simulator QA N3: a person added a moment ago is not on the device yet — the page that opened this
+  // passes their name, so the chip never shows the raw id (the device copy wins once it has them; no request is made).
+  const initialContactName = (Array.isArray(params.contactName) ? params.contactName[0] : params.contactName)?.trim();
   const client = useOrbitApiClient({ scopeKey });
   const locale = useOrbitLocale();
   const localContacts = useLocalContacts(false);
@@ -47,6 +50,11 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialContactId ? [initialContactId] : []);
   const [selectedContacts, setSelectedContacts] = useState<ContactSummary[]>([]);
+  const knownContacts = useMemo(() => {
+    if (!initialContactId) return selectedContacts;
+    const resolved = localContactSummaries.find((item) => item.id === initialContactId) ?? (initialContactName ? { id: initialContactId, name: initialContactName, nextAction: "", organization: "", relationship: "", role: "", status: "", valueLabels: [], valueScore: null } : null);
+    return resolved ? [resolved, ...selectedContacts.filter((item) => item.id !== initialContactId)] : selectedContacts;
+  }, [initialContactId, initialContactName, localContactSummaries, selectedContacts]);
   const [noteKind, setNoteKind] = useState<"free" | "meeting">("free");
   const [usedForPlan, setUsedForPlan] = useState(false);
   const [pending, setPending] = useState(false);
@@ -203,7 +211,7 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
       <MemoMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { change(value); setMentions([...nextMentions]); }} searchContacts={searchContacts} events={events} />
     </View>
     <View style={styles.associations}>
-      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} mentioned={mentionedContacts(mentions)} onToggle={toggle} />
+      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={knownContacts} selectedIds={selectedIds} mentioned={mentionedContacts(mentions)} onToggle={toggle} />
       <View style={styles.rule} />
       <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
     </View>

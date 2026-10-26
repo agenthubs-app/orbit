@@ -52,11 +52,61 @@ export function describeSyncFailure(stage: string, error: unknown): SyncFailureD
 }
 
 type NativeDatabase = Awaited<ReturnType<NativeSyncDependencies["sqlite"]["openDatabaseAsync"]>>;
+type NativeSqlValue = Exclude<LocalSyncSqlValue, bigint>;
+
+/**
+ * The only way this module touches an open native handle. expo-sqlite runs async calls on a
+ * concurrent native queue, so a close that overlaps a statement still running on the same
+ * connection frees memory that statement is using (a native crash, not a JS error). Once
+ * closing starts, new calls reject with SYNC_DATABASE_CLOSED without reaching native, and the
+ * close itself waits for the calls already in flight.
+ */
+interface GuardedHandle {
+  execAsync(source: string): Promise<void>;
+  runAsync(source: string, parameters: NativeSqlValue[]): Promise<{ changes: number }>;
+  getFirstAsync<T>(source: string, parameters?: NativeSqlValue[]): Promise<T | null>;
+  getAllAsync<T>(source: string, parameters?: NativeSqlValue[]): Promise<T[]>;
+  closeAsync(): Promise<void>;
+}
+
+function guardHandle(handle: NativeDatabase): GuardedHandle {
+  let revoked = false;
+  let closing: Promise<void> | null = null;
+  const inFlight = new Set<Promise<unknown>>();
+  function use<T>(call: () => Promise<T>): Promise<T> {
+    if (revoked) return Promise.reject(new Error("SYNC_DATABASE_CLOSED"));
+    let pending: Promise<T>;
+    try { pending = call(); } catch (error) { return Promise.reject(error); }
+    inFlight.add(pending);
+    const settle = () => { inFlight.delete(pending); };
+    pending.then(settle, settle);
+    return pending;
+  }
+  return {
+    execAsync: source => use(() => handle.execAsync(source)),
+    runAsync: (source, parameters) => use(() => handle.runAsync(source, parameters)),
+    getFirstAsync: <T>(source: string, parameters: NativeSqlValue[] = []) => use(() => handle.getFirstAsync<T>(source, parameters)),
+    getAllAsync: <T>(source: string, parameters: NativeSqlValue[] = []) => use(() => handle.getAllAsync<T>(source, parameters)),
+    closeAsync() {
+      revoked = true;
+      closing ??= (async () => {
+        while (inFlight.size > 0) await Promise.allSettled([...inFlight]);
+        await handle.closeAsync();
+      })().catch((error: unknown) => {
+        // A failed close stays revoked; a later purge may retry the native close.
+        closing = null;
+        throw error;
+      });
+      return closing;
+    },
+  };
+}
+
 interface OpenScope {
   scope: SyncSessionScope;
   digest: string;
   name: string;
-  handle: NativeDatabase | null;
+  handle: GuardedHandle | null;
   database: LocalSyncDatabase | null;
   blocked: boolean;
 }
@@ -65,14 +115,14 @@ function sameScope(left: SyncSessionScope, right: SyncSessionScope): boolean {
   return normalizeOrbitApiBaseUrl(left.baseUrl) === normalizeOrbitApiBaseUrl(right.baseUrl) && left.actorId === right.actorId;
 }
 
-function nativeParameters(parameters: readonly LocalSyncSqlValue[]) {
+function nativeParameters(parameters: readonly LocalSyncSqlValue[]): NativeSqlValue[] {
   return parameters.map(value => {
     if (typeof value === "bigint") throw new Error("SYNC_BIND_UNSUPPORTED");
     return value;
   });
 }
 
-function adaptDatabase(handle: NativeDatabase): LocalSyncDatabase {
+function adaptDatabase(handle: GuardedHandle): LocalSyncDatabase {
   return {
     execute: source => handle.execAsync(source),
     run: (source, parameters = []) => handle.runAsync(source, nativeParameters(parameters)),
@@ -134,7 +184,7 @@ export function createSyncLifecycle(input: {
     }
     if (!/^[a-f0-9]{64}$/u.test(key)) throw new Error("PENDING_VAULT_KEY_INVALID");
     const name = `orbit-pending-vault-${digest}.db`;
-    const handle = await native.sqlite.openDatabaseAsync(name, { useNewConnection: true });
+    const handle = guardHandle(await native.sqlite.openDatabaseAsync(name, { useNewConnection: true }));
     try {
       await handle.execAsync(`PRAGMA key = "x'${key}'";`);
       const cipher = await handle.getFirstAsync<{ cipher_version: string }>("PRAGMA cipher_version");
@@ -190,7 +240,7 @@ export function createSyncLifecycle(input: {
     // A file left behind after its SecureStore key was deleted is already cryptographically erased.
     if (!sourceKey) return;
     if (!/^[a-f0-9]{64}$/u.test(sourceKey)) throw new Error("PENDING_VAULT_SOURCE_KEY_INVALID");
-    const handle = await native.sqlite.openDatabaseAsync(`orbit-sync-${digest}.db`, { useNewConnection: true });
+    const handle = guardHandle(await native.sqlite.openDatabaseAsync(`orbit-sync-${digest}.db`, { useNewConnection: true }));
     try {
       await handle.execAsync(`PRAGMA key = "x'${sourceKey}'";`);
       const cipher = await handle.getFirstAsync<{ cipher_version: string }>("PRAGMA cipher_version");
@@ -499,7 +549,7 @@ export function createSyncLifecycle(input: {
           if (!(await eraseOtherIdentities(digest))) return false;
           current = { scope, digest, name: `orbit-sync-${digest}.db`, handle: null, database: null, blocked: false };
           const key = await loadSyncDatabaseKey(digest, loaded, () => loaded.sqlite.deleteDatabaseAsync(current!.name));
-          current.handle = await loaded.sqlite.openDatabaseAsync(current.name, { useNewConnection: true });
+          current.handle = guardHandle(await loaded.sqlite.openDatabaseAsync(current.name, { useNewConnection: true }));
           await current.handle.execAsync(`PRAGMA key = "x'${key}'";`);
           const cipher = await current.handle.getFirstAsync<{ cipher_version: string }>("PRAGMA cipher_version");
           if (!cipher?.cipher_version) throw new Error("SYNC_CIPHER_UNAVAILABLE");

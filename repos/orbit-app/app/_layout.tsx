@@ -1,7 +1,7 @@
 import { OrbitTimeZoneProvider } from "../src/time/OrbitTimeZoneProvider";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
-import { usePathname } from "expo-router";
+import { usePathname, useRootNavigationState } from "expo-router";
 import type { ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -36,6 +36,7 @@ import { MaintenanceContent } from "../src/screens/public/MaintenanceContent";
 import { validAppStoreUrl } from "../src/view-models/force-update-view";
 import { formatMaintenanceUntil } from "../src/view-models/maintenance-view";
 import { ShellTabBar } from "../src/components/OrbitTabBar";
+import { trackRootNavigationState } from "../src/components/shell-navigation";
 import { mainTabForPath } from "../src/view-models/app-navigation";
 import { useMobileViewport } from "../src/platform/use-mobile-viewport";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -124,6 +125,8 @@ export function ErrorBoundary({
 // or sheet; toasts sit above the tab bar on the main tab pages.
 // R05: the shell's one tab bar sits over the navigator, under overlays.
 function UiRoot({ children, blocked = false }: { children: ReactNode; blocked?: boolean }) {
+  // Tracked signed in or out: the stack resets on sign-in and sign-out need the current stack depth.
+  trackRootNavigationState(useRootNavigationState());
   const pathname = usePathname();
   const auth = useOrbitAuthSession();
   // The bar hides while the keyboard is up; the toast then drops to its no-bar place (R05 review m6).

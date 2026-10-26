@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { UiText } from "../../components/ui";
+import { presentConfirm, UiText } from "../../components/ui";
+import { resetStackTo } from "../../components/shell-navigation";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { setAppearanceChoice, useAppearanceChoice } from "../../design/appearance";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -19,10 +20,15 @@ export function AccountSettingsScreen() {
   async function signOut() {
     if (busy || !auth.actorId) return; setBusy(true); setError(null);
     const actorId = auth.actorId;
+    const confirmed = await presentConfirm({ title: locale.t("me.logoutConfirm"), confirmLabel: locale.t("me.logout"), cancelLabel: locale.t("common.cancel"), destructive: true });
+    if (!confirmed) { setBusy(false); return; }
     // AuthSessionProvider owns the pending-write action sheet and encrypted keep/discard choices.
     const result = await auth.signOut();
-    if (result.success) clearProfileEditSession({ actorId, apiOrigin: server.baseUrl });
-    else setError(result.message ?? locale.t("account.signOutFailure"));
+    if (result.success) {
+      clearProfileEditSession({ actorId, apiOrigin: server.baseUrl });
+      // Login becomes the only page: nothing of this account stays to go back to.
+      resetStackTo(router, "/account/login");
+    } else setError(result.message ?? locale.t("account.signOutFailure"));
     setBusy(false);
   }
   return <AppScreen inset="kit" title={locale.t("me.settings")}>

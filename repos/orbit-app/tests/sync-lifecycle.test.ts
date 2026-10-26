@@ -1050,3 +1050,61 @@ test("a pending-vault archive failure while erasing another identity reports its
   const entry = f.logs.find(log => log[0] === "PENDING_VAULT_WRITE_FAILED");
   assert.equal((entry?.[2] as { stage?: string } | undefined)?.stage, "archive-pending-writes");
 });
+
+// Native crash on the simulator (2026-10-26): expo-sqlite runs async calls on a concurrent queue,
+// so a close that overlaps a running statement, or a statement sent to a closed handle, reaches
+// freed SQLite memory. Holders that kept the mirror past sign-out must get a JS error instead.
+function probeNativeHandles(f: ReturnType<typeof fixture>) {
+  const probe = { active: 0, overlapAtClose: false, callsAfterClose: 0, gate: null as Promise<void> | null };
+  const open = f.native.sqlite.openDatabaseAsync;
+  (f.native.sqlite as { openDatabaseAsync: unknown }).openDatabaseAsync = async (name: string) => {
+    const inner = await open(name) as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    let closed = false;
+    const wrap = (method: string) => async (...args: unknown[]) => {
+      if (closed) probe.callsAfterClose += 1;
+      probe.active += 1;
+      try {
+        if (method === "runAsync" && probe.gate) await probe.gate;
+        return await inner[method]!(...args);
+      } finally { probe.active -= 1; }
+    };
+    return {
+      execAsync: wrap("execAsync"), getFirstAsync: wrap("getFirstAsync"), getAllAsync: wrap("getAllAsync"), runAsync: wrap("runAsync"),
+      async closeAsync() { if (probe.active > 0) probe.overlapAtClose = true; closed = true; await inner.closeAsync!(); },
+    };
+  };
+  return probe;
+}
+
+test("a mirror reference kept past sign-out is refused without reaching the closed native handle", async t => {
+  const f = await lifecycle(t);
+  const probe = probeNativeHandles(f);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const kept = await f.coordinator.withDatabase(scope, async db => db);
+  assert.ok(kept);
+  assert.equal(await f.coordinator.setScope(null), true);
+  await assert.rejects(kept.run("INSERT INTO sync_meta(key,value) VALUES(?,?)", ["late", "write"]), /SYNC_DATABASE_CLOSED/u);
+  await assert.rejects(kept.get("SELECT COUNT(*) AS count FROM sync_outbox"), /SYNC_DATABASE_CLOSED/u);
+  await assert.rejects(kept.transaction(async () => undefined), /SYNC_DATABASE_CLOSED/u);
+  assert.equal(probe.callsAfterClose, 0);
+});
+
+test("sign-out waits for a statement still running on the mirror before closing it", async t => {
+  const f = await lifecycle(t);
+  const probe = probeNativeHandles(f);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  let release!: () => void;
+  probe.gate = new Promise<void>(resolve => { release = resolve; });
+  // An operation that returns without awaiting its write leaves it running after its queue turn.
+  let straggler!: Promise<unknown>;
+  await f.coordinator.withDatabase(scope, async db => { straggler = db.run("INSERT INTO sync_meta(key,value) VALUES(?,?)", ["straggler", "write"]); });
+  const signedOut = f.coordinator.setScope(null);
+  for (let turn = 0; turn < 20; turn += 1) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.events.includes("close"), false, "close must not start while a statement runs");
+  release();
+  await straggler;
+  assert.equal(await signedOut, true);
+  assert.equal(f.events.includes("close"), true);
+  assert.equal(probe.overlapAtClose, false);
+  assert.equal(probe.callsAfterClose, 0);
+});

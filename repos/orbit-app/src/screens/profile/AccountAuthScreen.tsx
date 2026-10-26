@@ -16,6 +16,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { resetStackTo } from "../../components/shell-navigation";
 import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -200,7 +201,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         const signedIn = await auth.signIn({ email: values.email, password: values.password, redirectTo: next });
         if (!isCurrent()) return;
         if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
-        router.replace((signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next })) as Href);
+        // Signed in now: nothing from before (welcome, login, signup) stays to go back to.
+        resetStackTo(router, signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next }));
         return;
       }
 
@@ -216,11 +218,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      router.replace(result.pendingDeletion ? "/account/pending" :
+      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode,
           next
-        }) as Href
+        })
       );
     } finally {
       if (isCurrent()) {
@@ -253,11 +255,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       }
 
       // Google completes a session even when launched from the signup screen.
-      router.replace(result.pendingDeletion ? "/account/pending" :
+      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode: "login",
           next
-        }) as Href
+        })
       );
     } finally {
       if (isCurrent()) {

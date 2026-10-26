@@ -44,6 +44,7 @@ export const me = {
   "me.help": "ヘルプ",
   "me.terms": "利用規約・プライバシー",
   "me.logout": "ログアウト",
+  "me.logoutConfirm": "ログアウトしますか？",
   "me.preparing": "準備中",
   "me.preparingHint": "このページは準備中です。",
   "me.camera": "カメラ",

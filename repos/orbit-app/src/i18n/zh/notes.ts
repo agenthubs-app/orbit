@@ -8,6 +8,7 @@ export const notes = {
   "notes.loadedCount": "已加载 {loaded} / 共 {total} 篇",
   "notes.historyComplete": "已加载全部笔记",
   "notes.contactScope": "此联系人的笔记",
+  "notes.contactFallback": "联系人",
   "notes.reloadHistory": "重新加载笔记列表",
   "notes.new": "新建笔记",
   "notes.search": "搜索笔记",

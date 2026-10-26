@@ -29,6 +29,9 @@ import {
   type OnboardingProfileFields
 } from "../../../api/profile-onboarding";
 import { LoadingState } from "../../../components/LoadingState";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
+import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
+import { isTabPageHref, openMainTab } from "../../../components/shell-navigation";
 import { profileVisibleCharacterCount } from "../../../data/profile-edit-session";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
@@ -82,6 +85,12 @@ const STEP_TITLE_KEYS: Record<OnboardingStep, MessageKey> = {
 const STEP_TIME_KEYS: Record<OnboardingStep, MessageKey> = {
   profile: "onboarding.time.quick", goals: "onboarding.time.quick", persona: "onboarding.time.quick", intro: "onboarding.time.ai", import: "onboarding.time.optional"
 };
+
+/** Home (or another tab page) becomes the only page, with no way back to login, signup or onboarding. */
+function leaveOnboarding(router: ReturnType<typeof useRouter>, href: string): void {
+  if (isTabPageHref(href)) openMainTab(router, href);
+  else router.replace(href as Href);
+}
 
 function localToday(): string {
   const now = new Date();
@@ -137,7 +146,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     if (!result.ok || !progress.ok) { setView("loadError"); return; }
     flowRef.current = progress.progress;
     if (progress.progress?.finishedAt || (!progress.progress && result.detail.onboarding?.status === "complete")) {
-      routerRef.current.replace(destinationRef.current as Href); return;
+      leaveOnboarding(routerRef.current, destinationRef.current); return;
     }
     const profile = result.detail.profile;
     setDetail(result.detail);
@@ -206,7 +215,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     });
     if (result && result.ok && result.progress) {
       flowRef.current = result.progress;
-      router.replace(destination as Href);
+      leaveOnboarding(router, destination);
     } else setNotice({ kind: "failed" });
     if (mounted.current) setSaving(false);
   }
@@ -221,7 +230,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
       const result = await updateProfileOnboardingProgress(client, { action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
       if (!result.ok || !result.progress) { setNotice({ kind: "failed" }); return; }
       flowRef.current = result.progress;
-      router.replace(destination as Href);
+      leaveOnboarding(router, destination);
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -484,6 +493,12 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       ? listSecondaryIndustries(basic.primaryIndustryId).map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
       : [];
   const showBirthError = basic.birthDate.length >= 10 && !isValidProfileBirthDate(basic.birthDate, today);
+  const { timeZone } = useOrbitTimeZone();
+  const [dateOpen, setDateOpen] = useState(false);
+  // Stored as YYYY-MM-DD (what PUT /api/profile expects); shown as a local date.
+  const birthLabel = isValidProfileBirthDate(basic.birthDate, today)
+    ? new Intl.DateTimeFormat(locale.language, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${basic.birthDate}T12:00:00Z`))
+    : basic.birthDate || null;
   function select(id: string) {
     if (picker === "primary") setBasic(current => ({ ...current, primaryIndustryId: id as IndustryIdCode, secondaryIndustryId: current.primaryIndustryId === id ? current.secondaryIndustryId : "" }));
     else setBasic(current => ({ ...current, secondaryIndustryId: id as SecondaryIndustryIdCode }));
@@ -533,9 +548,23 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
           </Field>
         </View>
         <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")} optional>
-          <TextInput accessibilityLabel={t("onboarding.birthDate")} returnKeyType="done" autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
-            placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.birthDate} />
+          <View style={styles.dateRow}>
+            <Pressable accessibilityLabel={`${t("onboarding.birthDate")}：${birthLabel ?? t("onboarding.birthDatePlaceholder")}`} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled}
+              onPress={() => setDateOpen(true)} style={[styles.selectButton, styles.dateButton, disabled && styles.disabled]}>
+              <Text style={[styles.selectText, !birthLabel && styles.selectPlaceholder]}>{birthLabel ?? t("onboarding.birthDatePlaceholder")}</Text>
+              <Ionicons color={colors.ink3Text} name="calendar-outline" size={16} />
+            </Pressable>
+            {basic.birthDate ? (
+              <Pressable accessibilityLabel={t("onboarding.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={8} onPress={() => set("birthDate")("")} style={styles.linkButton}>
+                <Ionicons color={colors.ink3Text} name="close-circle" size={20} />
+              </Pressable>
+            ) : null}
+          </View>
         </Field>
+        {dateOpen ? (
+          <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={disabled} yearJump max={today}
+            initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); set("birthDate")(value); }} />
+        ) : null}
         {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}
       </View>
     </>
@@ -685,7 +714,7 @@ function IntroStep({ bio, bioCount, headline, message, onRegenerate, regeneratio
       )}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.warning}>{message}</Text> : null}
       <Field label={t("onboarding.headline")}>
-        <TextInput accessibilityLabel={t("onboarding.headline")} returnKeyType="done" editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
+        <TextInput accessibilityLabel={t("onboarding.headline")} returnKeyType="done" submitBehavior="blurAndSubmit" multiline editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={value => setHeadline(value.replace(/\s*\n\s*/gu, " "))} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
       </Field>
       <Field label={t("onboarding.bio")}>
         <TextInput accessibilityLabel={t("onboarding.bio")} returnKeyType="done" submitBehavior="blurAndSubmit" editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />

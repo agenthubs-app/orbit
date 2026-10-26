@@ -9,8 +9,8 @@
 //   (元に戻す = the server's undo: within 10 minutes and untouched only).
 // The sample account cannot save (403 SAMPLE_READ_ONLY): the page says so.
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { Keyboard, StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
 import type { ManualContactFieldChoice, ManualContactMergeField, ManualContactOrganizationSuggestion } from "../../api/contract/manual-contact";
@@ -23,7 +23,7 @@ import type { MessageKey } from "../../i18n/messages";
 import { useAddApi } from "./add-api";
 import { addDesignMock } from "./add-design-mock";
 import { ManualSavedView, type ManualSaved } from "./ManualSavedView";
-import { Caption, DensityDots, FadeIn, KitHeadAction } from "./add-ui";
+import { Caption, FadeIn, KitHeadAction } from "./add-ui";
 import {
   createBody,
   defaultChoices,
@@ -31,7 +31,6 @@ import {
   duplicateCheckBody,
   EMPTY_MANUAL_FORM,
   eventChips,
-  densityMarks,
   formDensity,
   formFingerprint,
   monthDay,
@@ -53,7 +52,6 @@ const FIELD_KEY: Record<ManualContactMergeField, MessageKey> = {
   phone: "add.manual.phone",
   role: "add.manual.role",
 };
-const DENSITY_KEY: Record<1 | 2 | 3, MessageKey> = { 1: "add.doors.density1", 2: "add.doors.density2", 3: "add.doors.density3" };
 
 const deviceNow = () => new Date();
 
@@ -77,6 +75,11 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<"name" | "review" | "sample" | "failed" | null>(null);
   const key = useRef<{ fingerprint: string; key: string } | null>(null);
+  // Simulator QA M1: a chip that adds a field moves the keyboard there (or closes it when the field has no text box),
+  // so typing no longer runs on into 名前.
+  const [justOpened, setJustOpened] = useState<Extra | null>(null);
+  const organizationInput = useRef<TextInput>(null);
+  const emailInput = useRef<TextInput>(null);
   const mounted = useRef(true);
   // Set on every mount: Fast Refresh and StrictMode re-run effects, and a ref left false would drop answers.
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -122,9 +125,14 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     setForm((current) => ({ ...current, [field]: value }));
     setProblem(null);
   };
-  const toggle = (extra: Extra) => setOpen((current) => new Set(current).add(extra));
+  const toggle = (extra: Extra) => { setOpen((current) => new Set(current).add(extra)); setJustOpened(extra); };
+  useEffect(() => {
+    if (!justOpened) return;
+    const input = justOpened === "organization" ? organizationInput.current : justOpened === "contact" ? emailInput.current : null;
+    if (input) input.focus(); else Keyboard.dismiss();
+    setJustOpened(null);
+  }, [justOpened]);
   const differing = useMemo(() => (candidate ? differingFields(candidate, form) : []), [candidate, form]);
-  const density = formDensity(form);
 
   async function save() {
     if (saving) return;
@@ -158,18 +166,18 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
     key.current = null;
     if (answer.outcome === "merged") {
       // Push (not replace): this page stays underneath.
-      router.push((wantsMemo ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : `/contacts/${encodeURIComponent(contactId)}`) as Href);
-      toast.success(t("add.manual.mergedToast"), { sub: t("add.manual.addedSub", { name: snapshot.displayName.trim() }) });
+      router.push((wantsMemo ? `/notes/new?contactId=${encodeURIComponent(contactId)}&contactName=${encodeURIComponent(snapshot.displayName.trim())}` : `/contacts/${encodeURIComponent(contactId)}`) as Href);
+      toast.success(t("add.manual.mergedToast"), { sub: snapshot.displayName.trim() });
       return;
     }
     // b11 #18 保存したあと: this page turns into the saved view (情報を濃くする), the toast keeps 元に戻す.
     const level = formDensity(snapshot);
     setSaved({ contactId, density: level, metLabel: snapshot.met?.label ?? null, name: snapshot.displayName.trim(), organization: snapshot.organization.trim() });
     toast.success(t("add.manual.addedToast"), {
-      sub: t("add.manual.addedSubLevel", { dots: densityMarks(level), name: snapshot.displayName.trim() }),
+      sub: snapshot.displayName.trim(),
       undo: () => void undoSaved(contactId, snapshot),
     });
-    if (wantsMemo) router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}` as Href);
+    if (wantsMemo) router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}&contactName=${encodeURIComponent(snapshot.displayName.trim())}` as Href);
   }
 
   // 元に戻す (simulator walkthrough fix): the server can take a few seconds, so say so at once;
@@ -227,7 +235,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
 
         {open.has("organization") ? (
           <Field label={t("add.manual.organization")}>
-            <FieldInput value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
+            <FieldInput ref={organizationInput} value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
               onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
             {showSuggestions ? (
               <View style={m.sugg} testID="add-manual-org-suggestions">
@@ -266,13 +274,13 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
 
         {open.has("note") ? (
           <Field label={t("add.manual.note")}>
-            <UiText style={m.lbl}>{t("add.manual.enrichNoteSub")}</UiText>
+            <UiText style={m.lbl}>{t("add.manual.noteAfterSave")}</UiText>
           </Field>
         ) : null}
 
         {open.has("contact") ? (
           <>
-            <Field label={t("add.manual.email")}><FieldInput value={form.email} keyboardType="email-address" autoCapitalize="none" onChangeText={(value) => set("email", value)} accessibilityLabel={t("add.manual.email")} /></Field>
+            <Field label={t("add.manual.email")}><FieldInput ref={emailInput} value={form.email} keyboardType="email-address" autoCapitalize="none" onChangeText={(value) => set("email", value)} accessibilityLabel={t("add.manual.email")} /></Field>
             <Field label={t("add.manual.phone")}><FieldInput value={form.phone} keyboardType="phone-pad" onChangeText={(value) => set("phone", value)} accessibilityLabel={t("add.manual.phone")} /></Field>
           </>
         ) : null}
@@ -283,28 +291,13 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
         {open.size < 4 ? (
           <View style={[m.chips, anyOpen ? m.chipsAfter : null]} testID="add-manual-chips">
             {(["organization", "met", "note", "contact"] as const).filter((extra) => !open.has(extra)).map((extra) => (
-              <UiPressable key={extra} accessibilityRole="button" onPress={() => toggle(extra)} style={[m.addf, extra === "contact" ? m.addfQuiet : null]} testID={`add-manual-chip-${extra}`}>
-                <Icon name="plus" size={16} color={extra === "contact" ? colors.ink3 : colors.plum700} />
-                <UiText style={[m.addfText, extra === "contact" ? m.addfQuietText : null]}>{t(extra === "organization" ? "add.manual.chipOrganization" : extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")}</UiText>
+              <UiPressable key={extra} accessibilityRole="button" onPress={() => toggle(extra)} style={m.addf} testID={`add-manual-chip-${extra}`}>
+                <Icon name="plus" size={16} color={colors.plum700} />
+                <UiText style={m.addfText}>{t(extra === "organization" ? "add.manual.chipOrganization" : extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")}</UiText>
               </UiPressable>
             ))}
           </View>
         ) : null}
-        {anyOpen ? null : (
-          <View style={[m.flat, m.mergeNote]}>
-            <UiText style={m.mergeEmoji}>📇</UiText>
-            <UiText style={m.mergeText}>{t("add.manual.cardLaterBefore")}<UiText style={m.mergeStrong}>{t("add.manual.cardLaterStrong")}</UiText>{t("add.manual.cardLaterAfter")}</UiText>
-          </View>
-        )}
-
-        {/* b11 #15 (nothing opened): このまま保存すると · 毎日の 1問で少しずつ補えます; #16 / #17 (a field opened): 保存すると · 出どころは「手入力」. */}
-        <View style={[m.flat, anyOpen ? m.densGapOpen : m.densGap]} testID={`add-manual-density-${density}`}>
-          <View style={m.between}>
-            <UiText style={m.lbl}>{t(anyOpen ? "add.manual.densitySave" : "add.manual.densityAsIs")}</UiText>
-            <DensityDots level={density} />
-          </View>
-          <UiText style={[m.lbl, m.densLine]}>{t(anyOpen ? "add.manual.densityLine2" : "add.manual.densityLine1", { level: t(DENSITY_KEY[density]) })}</UiText>
-        </View>
         {problemKey ? <View style={m.gap}><Caption tone="error">{t(problemKey)}</Caption></View> : null}
         {/* b12 N12 サンプル表示中は保存できません: the dialog (サンプルを見続ける / ガイドを続ける); no step count in the App (§17-12). */}
         <ConfirmDialog visible={problem === "sample"} stacked cancelVariant="ghost" icon={{ emoji: "\u{1F9EA}" }} title={t("add.manual.sampleTitle")} message={`${t("add.manual.sampleBlocked")}${t("add.manual.sampleAsk")}`}
@@ -327,7 +320,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
                 <UiText style={m.lbl}>{t("add.manual.dupIncoming")}</UiText>
                 <UiText numberOfLines={1} style={m.cmpName}>{form.displayName.trim()}</UiText>
                 {form.organization.trim() ? <UiText numberOfLines={1} style={m.cmpText}>{form.organization.trim()}</UiText> : null}
-                <UiText numberOfLines={1} style={m.lbl}>{[t("add.manual.sourceManual"), form.met?.label].filter(Boolean).join(" · ")}</UiText>
+                {form.met?.label ? <UiText numberOfLines={1} style={m.lbl}>{form.met.label}</UiText> : null}
               </View>
               <View style={[m.cmpBox, m.cmpExisting]}>
                 <UiText style={m.lbl}>{t("add.manual.dupExisting")}</UiText>
@@ -360,11 +353,11 @@ function Field({ label, required, hint, first = false, testID, children }: { lab
 }
 
 /** kit .fld .in: 46 high, radius 14, surface, plum-500 border when focused. */
-function FieldInput({ multiline = false, onFocus, onBlur, ...input }: TextInputProps) {
+function FieldInput({ multiline = false, onFocus, onBlur, ref, ...input }: TextInputProps & { ref?: Ref<TextInput> }) {
   const { colors, m } = useManualStyles();
   const [focused, setFocused] = useState(false);
   return (
-    <TextInput {...input} multiline={multiline} placeholderTextColor={colors.ink3Text} showSoftInputOnFocus={!addDesignMock("no-keyboard")}
+    <TextInput {...input} ref={ref} multiline={multiline} placeholderTextColor={colors.ink3Text} showSoftInputOnFocus={!addDesignMock("no-keyboard")}
       onFocus={(event) => { setFocused(true); onFocus?.(event); }} onBlur={(event) => { setFocused(false); onBlur?.(event); }}
       style={[m.in, multiline ? m.inMulti : null, focused ? m.inFocus : null]} />
   );
@@ -425,19 +418,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metChips: { gap: 6 },
   chipsAfter: { marginTop: 12 },
   addf: { flexDirection: "row", alignItems: "center", gap: 4, height: 34, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300 },
-  addfQuiet: { borderColor: colors.surface3 },
   addfText: { fontSize: 14, fontWeight: "800", color: colors.plum700 },
-  addfQuietText: { color: colors.ink3 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
-  mergeNote: { marginTop: 16, flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  // iOS 的 Apple Color Emoji 字宽比 Chrome 大约 3pt：盒子固定成 kit 里的字宽，后面的文字才对齐。
-  mergeEmoji: { fontSize: 20, width: 21 },
-  mergeText: { flex: 1, fontSize: 13, fontWeight: "500", color: colors.ink2, lineHeight: 21 },
-  mergeStrong: { fontWeight: "700", color: colors.ink },
-  densGap: { marginTop: 10 },
-  densGapOpen: { marginTop: 12 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  densLine: { marginTop: 4 },
   gap: { marginTop: 8 },
   dupLine: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 8 },
   sugg: { marginTop: 6, borderRadius: 14, backgroundColor: colors.surface, padding: 4, ...floatShadow(colors) },

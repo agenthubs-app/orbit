@@ -6,6 +6,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { AccountDeletionRequestContract } from "../../api/contract/account";
 import { AppScreen } from "../../components/AppScreen";
+import { resetStackTo } from "../../components/shell-navigation";
 import { Button, Card, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
@@ -62,7 +63,7 @@ export function PendingScreen() {
       {problem ? <UiText accessibilityRole="alert" style={styles.error}>{problem}</UiText> : null}
       {needsLogin ? <Button label={t("auth.loginPrimary")} variant="primary" onPress={() => router.replace("/account/login?next=/account/pending")} /> :
         request?.status === "pending" ? <Button label={t("account.rights.cancel")} variant="primary" loading={busy} onPress={() => void cancel()} /> : null}
-      <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut()} />
+      <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut().then(result => { if (result.success) resetStackTo(router, "/account/login"); })} />
     </View>
   </AppScreen>;
 }

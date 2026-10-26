@@ -100,7 +100,8 @@ test("会话过期时清理本地会话并回到登录页", () => {
 
   assert.match(providerSource, /onSessionExpired\(\(\) => \{/u);
   assert.match(providerSource, /nativeAuthSessionStorage\.clear\(baseUrl\)/u);
-  assert.match(providerSource, /router\.replace\("\/account\/login" as Href\)/u);
+  // O2: back to login as the only page (nothing of the ended session stays to go back to).
+  assert.match(providerSource, /resetStackTo\(router, "\/account\/login"\)/u);
 
   // 只在登录态下订阅：未登录时的 401 只是「这个接口需要登录」，
   // 处理完把 user 置空后订阅自动解除，不会形成跳转循环。

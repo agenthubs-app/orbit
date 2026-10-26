@@ -10,6 +10,7 @@ import { firstProfileGoalForPlan } from "../../api/compute/profile-onboarding-go
 import { nextAppGuideStep, readAppGuideEntry, type AppGuideProgress } from "../../api/guide-progress";
 import { resumeOrCreateAppOnboardingIntake } from "../../api/onboarding-plan-intake";
 import { AppScreen } from "../../components/AppScreen";
+import { openMainTab } from "../../components/shell-navigation";
 import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -76,7 +77,7 @@ export function StartGuideScreen() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.bg }]}>
-    <AppScreen inset="kit" title={c.title} onBack={() => router.replace("/home" as Href)}>
+    <AppScreen inset="kit" title={c.title} onBack={() => openMainTab(router, "/home")}>
       {loading ? <Skeleton lines={4} /> : !guide ? <RetryCard title={c.failed} onRetry={() => void reload()} /> : (
         <View testID="app-start-guide" style={styles.stack}>
           <UiText style={styles.meta}>{c.subtitle} · {guide.completed} / 3</UiText>

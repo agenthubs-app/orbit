@@ -109,7 +109,7 @@ export const useApiResource = (path, _empty, options = {}) => {
   }
   return { kind: "success", data: path === "/api/contacts" ? contacts : path === "/api/events" ? { events: state.remoteEvents } : { note: state.note }, refreshing: false, refresh() { state.update({}); } };
 };
-export const useLocalSearchParams = () => state.mode === "new" ? { contactId: "contact:a" } : { id: "note:one" };
+export const useLocalSearchParams = () => { const query = new URLSearchParams(location.search); return state.mode === "new" ? { contactId: query.get("contactId") ?? "contact:a", ...(query.has("contactName") ? { contactName: query.get("contactName") } : {}) } : { id: "note:one" }; };
 export const usePathname = () => state.mode === "new" ? "/notes/new" : "/notes/note:one";
 export const useRouter = () => ({
   canGoBack: () => state.mode !== "fallback",
@@ -228,6 +228,18 @@ test("new note searches only after a word, selects by id, and preserves a failed
   const second = await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/notes")[1]);
   assert.equal(first.body.idempotencyKey, second.body.idempotencyKey);
   assert.deepEqual(first.body.manualContactIds, ["contact:a", "contact:b"]);
+});
+
+test("模拟器走查 N3: a person not on the device yet shows the name the opening page passed, never the raw id", async (t) => {
+  const value = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  t.after(() => value.close());
+  await value.goto(`${url}?mode=new&language=zh&native=1&contactId=${encodeURIComponent("contact:manual-v1")}&contactName=${encodeURIComponent("QA Tanaka")}`);
+  await value.getByText("QA Tanaka", { exact: true }).waitFor();
+  assert.equal(await value.getByText("contact:manual-v1").count(), 0);
+  await value.goto(`${url}?mode=new&language=zh&native=1&contactId=${encodeURIComponent("contact:manual-v2")}`);
+  await value.getByText("联系人", { exact: true }).waitFor();
+  assert.equal(await value.getByText("contact:manual-v2").count(), 0, "unknown name: a plain word, not the id");
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), [], "no request to learn the name");
 });
 
 test("native note pickers use only mirrored contacts and registered events", async (t) => {

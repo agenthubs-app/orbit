@@ -1,6 +1,6 @@
 // R12 手入力 ④ 保存したあと (b11 A3 #18, App): the person just added — avatar, name, company, density,
-// 手入力 / 出会った場所 chips — then 情報を濃くする (名刺を撮る / 招待コードを送る / 面談のメモを書く, any one),
-// and where the person went (人脈 › すべて, newest first; 「情報が少ない人」 = ●○○ only, as on app.html 人脈). The 元に戻す toast comes from the save itself.
+// 出会った場所 chip — then 情報を濃くする (名刺を撮る / 招待コードを送る / メモを書く, any one), each with a plain line
+// (simulator QA M2: no 手入力 chip, no ●○○ → ●●○, no 保存先 footer). The 元に戻す toast comes from the save itself.
 // ‹ goes back to 人脈; ⋯ opens the person's page.
 import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
@@ -13,7 +13,6 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { KitChip, KitEmo } from "../plan/plan-kit";
 import { DensityDots, FadeIn } from "./add-ui";
-import { densityMarks } from "./manual-model";
 
 export type ManualSaved = { contactId: string; name: string; organization: string; metLabel: string | null; density: ContactDensityLevel };
 
@@ -23,11 +22,10 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
   const { colors, styles } = useStyles();
   const [menu, setMenu] = useState(false);
   const profile = `/contacts/${encodeURIComponent(saved.contactId)}` as Href;
-  const next = Math.min(3, saved.density + 1) as ContactDensityLevel;
   const rows = [
-    { key: "card", emoji: "📇", tone: "apricot" as const, title: t("add.manual.enrichCard"), sub: t("add.manual.enrichCardSub", { from: densityMarks(saved.density), to: densityMarks(next) }), href: "/contacts/new/scan" as Href },
+    { key: "card", emoji: "📇", tone: "apricot" as const, title: t("add.manual.enrichCard"), sub: t("add.manual.enrichCardSub"), href: "/contacts/new/scan" as Href },
     { key: "invite", emoji: "🤝", tone: "pink" as const, title: t("add.manual.enrichInvite"), sub: t("add.manual.enrichInviteSub"), href: "/contacts/new/invite" as Href },
-    { key: "note", emoji: "📝", tone: "lav" as const, title: t("add.manual.enrichNote"), sub: t("add.manual.enrichNoteSub"), href: `/notes/new?contactId=${encodeURIComponent(saved.contactId)}` as Href },
+    { key: "note", emoji: "📝", tone: "lav" as const, title: t("add.manual.enrichNote"), sub: t("add.manual.enrichNoteSub"), href: `/notes/new?contactId=${encodeURIComponent(saved.contactId)}&contactName=${encodeURIComponent(saved.name)}` as Href },
   ];
   return (
     <AppScreen inset="kit" title="" onBack={() => router.replace("/contacts" as Href)}
@@ -39,10 +37,6 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
           {saved.organization ? <UiText style={styles.lbl}>{saved.organization}</UiText> : null}
           <View style={styles.chips}>
             <DensityDots level={saved.density} />
-            <View style={styles.src}>
-              <Icon name="pen" size={16} color={colors.ink2} />
-              <UiText style={styles.srcText}>{t("add.manual.sourceManual")}</UiText>
-            </View>
             {saved.metLabel ? <KitChip label={saved.metLabel} /> : null}
           </View>
         </View>
@@ -56,17 +50,12 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
               style={[styles.nx, index > 0 && styles.nxLine]} testID={`add-manual-enrich-${row.key}`}>
               <KitEmo emoji={row.emoji} tone={row.tone} sm />
               <View style={styles.meta}>
-                <UiText numberOfLines={1} style={styles.nxTitle}>{row.title}</UiText>
-                <UiText numberOfLines={1} style={styles.nxSub}>{row.sub}</UiText>
+                <UiText style={styles.nxTitle}>{row.title}</UiText>
+                <UiText style={styles.nxSub}>{row.sub}</UiText>
               </View>
               <Icon name="right" size={16} color={colors.ink3} />
             </UiPressable>
           ))}
-        </View>
-        <View style={styles.flat}>
-          <UiText style={styles.where}>
-            {t("add.manual.savedWhereBefore")}<UiText style={styles.whereStrong}>{t("add.manual.savedWhereStrong")}</UiText>{t("add.manual.savedWhereAfter")}{saved.density === 1 ? t("add.manual.savedWhereThin") : ""}
-          </UiText>
         </View>
       </FadeIn>
       <ActionSheet visible={menu} title={saved.name} options={[{ key: "profile", label: t("add.manual.savedOpenProfile") }]}
@@ -81,8 +70,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   name: { marginTop: 8, fontSize: 22, fontWeight: "800", lineHeight: 33, color: colors.ink },
   lbl: { fontSize: 13, fontWeight: "500", lineHeight: 20, color: colors.ink3 },
   chips: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 },
-  src: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: colors.surface2 },
-  srcText: { fontSize: 13, fontWeight: "700", lineHeight: 20, color: colors.ink2 },
   card: { marginTop: 14, backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 6, paddingHorizontal: 16 },
   cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 10, marginBottom: 2 },
   h3: { fontSize: 17, fontWeight: "800", lineHeight: 25, color: colors.ink },
@@ -91,7 +78,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   meta: { flex: 1, minWidth: 0 },
   nxTitle: { fontSize: 15, fontWeight: "700", lineHeight: 22, color: colors.ink },
   nxSub: { fontSize: 13, lineHeight: 20, color: colors.ink3 },
-  flat: { marginTop: 14, backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
-  where: { fontSize: 13, fontWeight: "500", lineHeight: 21, color: colors.ink2 },
-  whereStrong: { fontWeight: "700", color: colors.ink },
 }));

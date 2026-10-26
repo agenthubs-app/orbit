@@ -6,6 +6,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
+import { resetStackTo } from "../../components/shell-navigation";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { Card } from "../../components/ui/Card";
@@ -71,6 +72,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
     if (!result.success) { setFeedback(result.message ?? locale.t("account.signOutFailure")); return; }
     if (auth.actorId) clearProfileEditSession({ actorId: auth.actorId, apiOrigin: server.baseUrl });
     onRefresh();
+    resetStackTo(router, "/account/login");
   }
   async function addDebugPendingWrite() {
     try {

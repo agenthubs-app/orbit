@@ -103,6 +103,7 @@ test("account links use existing destinations and sign-out failure remains visib
   assert.equal(await page.evaluate(() => (window as any).fixture.refreshes), 1);
   assert.equal(await page.getByText("退出未完成，请重试。", { exact: true }).count(), 0);
   assert.deepEqual(await calls(page), ["sign-out", "sign-out"]);
+  assert.deepEqual((await navigation(page)).slice(3), ["/account/login"], "only a finished sign-out resets to login");
 });
 
 test("account guest and resource failures never show stale private identity", async t => {

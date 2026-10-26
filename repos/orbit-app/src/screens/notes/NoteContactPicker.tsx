@@ -106,8 +106,8 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
     </View>)}{selectedIds.map((id) => {
       const contact = names.get(id);
       return <View key={id} style={styles.chip}>
-        <Text numberOfLines={1} style={styles.chipText}>{contact?.name ?? id}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.removeRelatedPerson", { name: contact?.name ?? id })} disabled={disabled} onPress={() => onToggle(id, contact)} hitSlop={8}>
+        <Text numberOfLines={1} style={styles.chipText}>{contact?.name ?? locale.t("notes.contactFallback")}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.removeRelatedPerson", { name: contact?.name ?? locale.t("notes.contactFallback") })} disabled={disabled} onPress={() => onToggle(id, contact)} hitSlop={8}>
           <Ionicons color={colors.ink3Text} name="close-circle" size={18} />
         </Pressable>
       </View>;
