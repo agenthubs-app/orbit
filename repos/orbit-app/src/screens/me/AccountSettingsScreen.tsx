@@ -20,7 +20,7 @@ export function AccountSettingsScreen() {
   async function signOut() {
     if (busy || !auth.actorId) return; setBusy(true); setError(null);
     const actorId = auth.actorId;
-    const confirmed = await presentConfirm({ title: locale.t("me.logoutConfirm"), confirmLabel: locale.t("me.logout"), cancelLabel: locale.t("common.cancel"), destructive: true });
+    const confirmed = await presentConfirm({ title: locale.t("me.logoutConfirm"), confirmLabel: locale.t("me.logout"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "out" });
     if (!confirmed) { setBusy(false); return; }
     // AuthSessionProvider owns the pending-write action sheet and encrypted keep/discard choices.
     const result = await auth.signOut();

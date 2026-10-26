@@ -61,7 +61,7 @@ export const plan = {
   "plan.flow.purposeLevel": "目的：{level}段目",
   "plan.background.intro": "プロフィール・目標・人脈から、あなた · チーム · 目的の 3つをまとめて下書きしました。上から順に、違うところだけ直してください。",
   "plan.background.fallback": "下書きできませんでした · 自分で選べます",
-  "plan.background.toQuestions": "この背景で質問へ（5問まで）",
+  "plan.background.toQuestions": "次へ：いくつか質問します",
   "plan.block.me": "わたし",
   "plan.block.team": "チーム",
   "plan.block.purpose": "目的",

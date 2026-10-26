@@ -61,7 +61,7 @@ export const plan = {
   "plan.flow.purposeLevel": "Purpose: step {level}",
   "plan.background.intro": "From your profile, goal and network, iOrbit drafted you · team · purpose together. Go top to bottom and fix only what is off.",
   "plan.background.fallback": "Could not draft this · you can choose yourself",
-  "plan.background.toQuestions": "On to questions (max 5)",
+  "plan.background.toQuestions": "Next: a few questions",
   "plan.block.me": "You",
   "plan.block.team": "Team",
   "plan.block.purpose": "Purpose",

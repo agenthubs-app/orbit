@@ -165,7 +165,7 @@ test("background: わたし is open (確認中), チーム and 目的 wait as da
   assert.match(text, /下書き：チーム 2名 · 空き 4/);
   assert.match(text, /下書き：3段目「/);
   assert.equal(await page.getByRole("button", { name: "わたしを確定 → チームへ" }).count(), 1);
-  assert.equal(await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).count(), 0, "questions wait for all three blocks");
+  assert.equal(await page.getByRole("button", { name: "次へ：いくつか質問します" }).count(), 0, "questions wait for all three blocks");
 });
 
 test("わたし: no stance from the AI → none pre-selected and the confirm button waits for one (m9)", async (t) => {
@@ -430,7 +430,7 @@ test("empty state → confirmed: goal, background, questions, premise, first dra
   await page.getByRole("button", { name: "わたしを確定 → チームへ" }).click();
   await page.getByRole("button", { name: "チームを確定 → 目的へ" }).click();
   // RD-16: the purpose block is last, so one bottom button confirms it and then asks for the questions.
-  await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
+  await page.getByRole("button", { name: "次へ：いくつか質問します" }).click();
   await page.getByTestId("questions-send").click();
   await page.getByTestId("flow-make-draft").click();
   await page.getByTestId("draft-confirm").click();

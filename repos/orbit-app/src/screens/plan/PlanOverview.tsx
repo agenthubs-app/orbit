@@ -183,7 +183,6 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
                 <UiText style={styles.premiseValue}>{row.value}</UiText>
                 {row.guessed ? <KitChip label={t("plan.overview.premiseGuessed")} tone="apricot" style={styles.premiseGuess} /> : null}
               </View>
-              <View style={styles.premiseSource}><UiText style={styles.premiseSourceText}>{row.source === "background" ? t("plan.premise.sourceBackground") : row.source === "record" ? t("plan.premise.sourceRecord") : row.source.toUpperCase()}</UiText></View>
             </View>
           ))}</View>
           <View style={styles.premiseNote}><UiText style={styles.premiseNoteText}>{t("plan.overview.premiseNote")}</UiText></View>

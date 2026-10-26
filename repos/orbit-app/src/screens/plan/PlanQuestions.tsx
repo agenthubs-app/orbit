@@ -7,7 +7,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import type { PlanGoalKind, PlanIntakeView, PlanPremiseRow } from "../../api/contract/plan-v2";
-import { PLAN_GOAL_KIND_COPY, PLAN_QUESTION_COPY, planCopy } from "../../api/compute/plan-template-copy";
+import { PLAN_QUESTION_COPY, planCopy } from "../../api/compute/plan-template-copy";
 import { PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
 import { Button, ConfirmDialog, Icon, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
@@ -58,7 +58,6 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
       <KitCard style={styles.qcard} testID="flow-questions">
         <View accessibilityLabel={t("plan.questions.title", { count: questions.length })} style={styles.row8}>
           <UiText accessibilityRole="header" style={styles.qTitle}>{t("plan.questions.title", { count: questions.length })}</UiText>
-          <KitChip label={t("plan.questions.bank", { kind: planCopy(PLAN_GOAL_KIND_COPY[kind], language) })} />
           {whyBox.button}
         </View>
         {whyBox.body}
@@ -73,7 +72,6 @@ export function PlanQuestions({ intake, kind, api, onIntake, onReload }: { intak
               <View style={styles.row8}>
                 <View style={styles.qno}><UiText style={styles.qnoText}>{String(index + 1)}</UiText></View>
                 <UiText style={styles.qPrompt}>{planCopy(qcopy.prompt, language)}</UiText>
-                <View style={styles.qid}><UiText style={styles.qidText}>{`${question.id} ${planCopy(qcopy.topic, language)}`}</UiText></View>
               </View>
               <View accessibilityRole={multi ? undefined : "radiogroup"} accessibilityLabel={planCopy(qcopy.prompt, language)} style={styles.opts}>
                 {template.options.map((option) => {
@@ -116,7 +114,6 @@ export function shortPremise(value: string): string {
   return value.split(/\s·\s|（/u)[0]!.trim() || value;
 }
 
-const SOURCE_LABEL: Record<PlanPremiseRow["source"], string> = { background: "", q1: "Q1", q2: "Q2", q3: "Q3", q4: "Q4", q5: "Q5", record: "" };
 
 /** 「確定した前提」. With a draft it starts folded (「すべて見る」); with AI revisions a change asks first. */
 export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraft, hasRevisions = false, draftAction }: {
@@ -144,7 +141,6 @@ export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraf
   const [confirmRedo, setConfirmRedo] = useState<string | null>(null);
   const open = hasDraft ? expanded : true;
 
-  const sourceLabel = (row: PlanPremiseRow) => (row.source === "background" ? t("plan.premise.sourceBackground") : row.source === "record" ? t("plan.premise.sourceRecord") : SOURCE_LABEL[row.source]);
 
   const startEdit = (row: PlanPremiseRow) => {
     if (hasRevisions && confirmRedo !== row.key) {
@@ -207,7 +203,6 @@ export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraf
                 <UiText style={[kit.lbl, styles.premLabel]}>{row.label}</UiText>
                 <UiText style={styles.premValue}>{row.value}</UiText>
                 <View style={styles.premTags}>
-                  {sourceLabel(row) ? <View style={styles.src}><UiText style={styles.srcText}>{sourceLabel(row)}</UiText></View> : null}
                   {row.guessed ? <View style={styles.src}><UiText style={styles.srcText}>{t("plan.common.guessed")}</UiText></View> : null}
                 </View>
               </UiPressable>

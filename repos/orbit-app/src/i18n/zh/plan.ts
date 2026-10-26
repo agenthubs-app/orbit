@@ -61,7 +61,7 @@ export const plan = {
   "plan.flow.purposeLevel": "目的：第{level}级",
   "plan.background.intro": "根据资料、目标和人脉，一次写好了 你 · 团队 · 目的 三部分。请从上往下，只改不对的地方。",
   "plan.background.fallback": "没能起草 · 可以自己选择",
-  "plan.background.toQuestions": "按这个背景提问（最多5题）",
+  "plan.background.toQuestions": "下一步：回答几个问题",
   "plan.block.me": "我",
   "plan.block.team": "团队",
   "plan.block.purpose": "最终目的",

@@ -168,7 +168,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
               <View style={styles.row8}>
                 <View style={styles.okmark}><Icon name="check" size={16} color={colors.surface} /></View>
                 <UiText style={styles.okTitle}>{t("plan.flow.backgroundDone")}</UiText>
-                {intake.background.purpose.value.selectedLevel ? <UiText style={kit.lbl}>{t("plan.flow.purposeLevel", { level: intake.background.purpose.value.selectedLevel })}</UiText> : null}
+                
               </View>
             </View>
           ) : null}
