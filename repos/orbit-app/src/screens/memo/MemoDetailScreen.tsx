@@ -212,7 +212,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   conflictSecondary: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
   conflictSecondaryText: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
   conflictError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
-  paper: { borderBottomColor: colors.line, borderBottomWidth: 1, minHeight: 230, paddingBottom: spacing.xl, paddingTop: spacing.md },
+  paper: { borderBottomColor: colors.line, borderBottomWidth: 1, minHeight: 96, paddingBottom: spacing.xl, paddingTop: spacing.md },
   body: { color: colors.ink, fontSize: 19, lineHeight: 32 },
   mention: { backgroundColor: colors.accentSoft, color: colors.accentText, fontWeight: "800" },
   disabledMention: { color: colors.ink3Text, fontWeight: "700" },
