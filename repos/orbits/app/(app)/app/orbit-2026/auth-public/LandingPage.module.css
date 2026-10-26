@@ -17,21 +17,21 @@
 .eyebrow, .sampleLabel, .chip { display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--mac-lav); color: var(--mac-lav-ink); font-weight: var(--fw-bold); white-space: nowrap; }
 .eyebrow { padding: 5px 12px; font-size: var(--fs-meta); }
 .copy h1 { margin: 18px 0; font-size: var(--fs-display-lg); line-height: 1.22; letter-spacing: -.015em; font-weight: var(--fw-black); }
-.copy > p { max-width: 540px; color: var(--ink-2); font-size: 16px; line-height: 1.85; }
+.copy > p { max-width: 540px; color: var(--ink-2); font-size: var(--fs-dialog-title); line-height: 1.85; }
 .ctas { display: flex; align-items: center; gap: 10px; margin-top: 28px; }
 .cta { height: 52px; padding: 0 26px; font-size: var(--fs-emph); }
 .google { height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 10px; border-radius: var(--r-pill); background: var(--surface) !important; border: 1.5px solid var(--surface-3) !important; font-family: var(--font); font-size: var(--fs-row); font-weight: var(--fw-bold); color: var(--ink); }
-.g { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-weight: var(--fw-black); font-size: var(--fs-body-sm); font-family: var(--font-num); }
+.g { width: 24px; height: 24px; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; font-weight: var(--fw-black); font-size: var(--fs-body-sm); font-family: var(--font-num); }
 .copy small { display: block; margin-top: 12px; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); }
 
 .art { position: relative; height: 470px; }
 .art > * { position: absolute; }
-.art > .sampleLabel { z-index: 5; right: 4px; top: -18px; padding: 3px 9px; font-size: var(--fs-caption); }
-.paper { width: 220px; aspect-ratio: 91 / 55; display: flex; flex-direction: column; padding: 13px 15px; border-radius: 5px; background: var(--paper); color: var(--paper-ink); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--cam) 40%, transparent); }
-.pCo { font-size: 8.5px; color: var(--paper-ink-2); font-weight: var(--fw-bold); letter-spacing: .04em; }
-.pR { margin-top: auto; font-size: 7.5px; color: var(--paper-ink-2); }
-.pN { font-size: 17px; font-weight: var(--fw-heavy); font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; letter-spacing: .06em; }
-.pM { margin-top: 7px; font-size: 7px; line-height: 1.5; color: var(--paper-ink-2); }
+.art > .sampleLabel { z-index: var(--z-raised); right: 4px; top: -18px; padding: 3px 9px; font-size: var(--fs-caption); }
+.paper { width: 220px; aspect-ratio: 91 / 55; display: flex; flex-direction: column; padding: 13px 15px; border-radius: var(--r-seg); background: var(--paper); color: var(--paper-ink); box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--cam) 40%, transparent); }
+.pCo { font-size: var(--fs-micro); color: var(--paper-ink-2); font-weight: var(--fw-bold); letter-spacing: .04em; }
+.pR { margin-top: auto; font-size: var(--fs-micro); color: var(--paper-ink-2); }
+.pN { font-size: var(--fs-logo); font-weight: var(--fw-heavy); font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; letter-spacing: .06em; }
+.pM { margin-top: 7px; font-size: var(--fs-micro); line-height: 1.5; color: var(--paper-ink-2); }
 .float { padding: 20px; border-radius: var(--r-card-web); background: var(--surface); animation: floaty 6s var(--ease) infinite; }
 .d2 { animation-delay: -2s; }
 .d3 { animation-delay: -4s; }

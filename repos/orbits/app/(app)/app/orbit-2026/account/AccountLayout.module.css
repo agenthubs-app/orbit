@@ -26,7 +26,7 @@
   .menu .menuItem { position: relative; gap: 12px; min-height: 56px; padding: 11px 0; border-radius: var(--r-none); color: var(--ink); font-size: var(--fs-row); font-weight: var(--fw-bold); }
   .menu .menuItem + .menuItem::before { content: ""; position: absolute; top: 0; left: 46px; right: 0; height: 1px; background: var(--line); }
   .menu .menuItem:hover, .menu .selected { background: transparent; color: var(--ink); }
-  .menu .menuItem > .menuIcon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+  .menu .menuItem > .menuIcon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); }
   .rule { display: none; }
   .menu .signOut { color: var(--coral); }
   .menu .rule + .signOut::before { content: ""; position: absolute; top: 0; left: 46px; right: 0; height: 1px; background: var(--line); }
