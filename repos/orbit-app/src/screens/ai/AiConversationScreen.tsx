@@ -1225,7 +1225,7 @@ function MarkdownContent({
     return null;
   }
 
-  const groups: { number?: string; blocks: MarkdownBlockView[] }[] = [];
+  const groups: MarkdownGroup[] = [];
   for (const block of blocks) {
     const number = !block.quote && block.kind === "listItem" ? /^(\d+)[.)]$/u.exec(block.marker ?? "")?.[1] : undefined;
     const previous = groups.at(-1);
@@ -1234,6 +1234,8 @@ function MarkdownContent({
     else groups.push({ blocks: [block] });
   }
 
+  const versionEnds = onUseVersion ? suggestedVersionEnds(groups) : new Set<number>();
+
   return (
     <View style={styles.markdownStack}>
       {groups.map((group, index) => group.number ? <View key={index} style={styles.numberedRow}>
@@ -1241,19 +1243,38 @@ function MarkdownContent({
         <View style={styles.numberedCopy}>{group.blocks.map((block, blockIndex) => <MarkdownBlock block={block} isUser={isUser} detail={blockIndex > 0} key={blockIndex} />)}</View>
       </View> : <Fragment key={index}>
         <MarkdownBlock block={group.blocks[0]!} isUser={isUser} />
-        {onUseVersion && group.blocks[0]!.quote && !groups[index + 1]?.blocks[0]?.quote ? <View style={styles.useVersionRow}>
-          <UiButton label={locale.t("aiConversation.useVersion")} variant="secondary" size="sm" icon="check" onPress={() => onUseVersion(quoteRunText(groups, index))} />
+        {onUseVersion && versionEnds.has(index) ? <View style={styles.useVersionRow}>
+          <UiButton label={locale.t("aiConversation.useVersion")} variant="secondary" size="sm" icon="check" onPress={() => onUseVersion(versionText(groups, index))} />
         </View> : null}
       </Fragment>)}
     </View>
   );
 }
 
-/** The plain text of the run of quote blocks that ends at `end` (one suggested version). */
-function quoteRunText(groups: readonly { number?: string; blocks: MarkdownBlockView[] }[], end: number): string {
+type MarkdownGroup = { number?: string; blocks: MarkdownBlockView[] };
+
+const plainText = (block: MarkdownBlockView) => block.segments.map((segment) => segment.text).join("");
+const isQuote = (group: MarkdownGroup | undefined) => Boolean(group && !group.number && group.blocks[0]?.quote);
+/** A paragraph that is bold only, e.g. 「**可直接复制的草稿（简洁版）**」. */
+const isBoldHeading = (group: MarkdownGroup | undefined) => Boolean(group && !group.number && group.blocks[0]?.kind === "paragraph" && !group.blocks[0].quote
+  && group.blocks[0].segments.length > 0 && group.blocks[0].segments.every((segment) => segment.kind === "strong" || !segment.text.trim()));
+
+/**
+ * QA-C4: where each suggested version of a polished reply ends. The request asks for each version in a quote block;
+ * a reply without quotes still lists versions as a bold heading followed by one paragraph.
+ */
+function suggestedVersionEnds(groups: readonly MarkdownGroup[]): Set<number> {
+  const quoted = groups.flatMap((group, index) => isQuote(group) && !isQuote(groups[index + 1]) ? [index] : []);
+  if (quoted.length) return new Set(quoted);
+  return new Set(groups.flatMap((group, index) => index > 0 && isBoldHeading(groups[index - 1]) && !group.number
+    && group.blocks[0]?.kind === "paragraph" && !isBoldHeading(group) ? [index] : []));
+}
+
+/** The plain text of the version that ends at `end`: the run of quote blocks, or the one paragraph. */
+function versionText(groups: readonly MarkdownGroup[], end: number): string {
   let start = end;
-  while (start > 0 && !groups[start - 1]!.number && groups[start - 1]!.blocks[0]?.quote) start -= 1;
-  return groups.slice(start, end + 1).map((group) => group.blocks[0]!.segments.map((segment) => segment.text).join("")).join("\n").trim();
+  while (isQuote(groups[end]) && start > 0 && isQuote(groups[start - 1])) start -= 1;
+  return groups.slice(start, end + 1).map((group) => plainText(group.blocks[0]!)).join("\n").trim();
 }
 
 function MarkdownBlock({

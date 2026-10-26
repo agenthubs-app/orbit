@@ -82,7 +82,7 @@ export const ai = {
   "ai.prefill.followupReason": "原因：{value}",
   "ai.prefill.draftOnly": "只生成可编辑草稿，不要发送",
   "ai.prefill.sentence": "{text}。",
-  "ai.prefill.polish": "请润色这段准备发给 @{name} 的草稿，保留事实和原意，只返回可编辑草稿，不要发送：\n{draft}",
+  "ai.prefill.polish": "请润色这段准备发给 @{name} 的草稿，保留事实和原意，只返回可编辑草稿（每一版放在 > 引用里），不要发送：\n{draft}",
   "ai.prefill.taskCandidates": "请根据我当前已保存的到期跟进，整理待复核的联系任务候选。不要自动创建事项或发送消息。",
   "ai.prefill.reminderCandidates": "请根据我当前已保存的到期跟进，整理待复核的提醒候选。不要自动创建提醒、发送推送或消息。",
 } as const;

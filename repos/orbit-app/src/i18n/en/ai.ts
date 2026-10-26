@@ -82,7 +82,7 @@ export const ai = {
   "ai.prefill.followupReason": "Why: {value}",
   "ai.prefill.draftOnly": "Only write an editable draft; don't send it",
   "ai.prefill.sentence": "{text}. ",
-  "ai.prefill.polish": "Please polish this draft to @{name}. Keep the facts and meaning, return only an editable draft, and don't send it:\n{draft}",
+  "ai.prefill.polish": "Please polish this draft to @{name}. Keep the facts and meaning, return only an editable draft (each version in a > quote), and don't send it:\n{draft}",
   "ai.prefill.taskCandidates": "From the follow-ups I've saved that are due, list follow-up to-dos for me to review. Don't create anything or send messages.",
   "ai.prefill.reminderCandidates": "From the follow-ups I've saved that are due, list reminders for me to review. Don't create reminders or send notifications or messages.",
 } as const;

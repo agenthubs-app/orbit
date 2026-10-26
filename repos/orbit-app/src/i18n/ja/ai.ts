@@ -82,7 +82,7 @@ export const ai = {
   "ai.prefill.followupReason": "理由：{value}",
   "ai.prefill.draftOnly": "編集できる下書きだけを作り、送信はしないでください",
   "ai.prefill.sentence": "{text}。",
-  "ai.prefill.polish": "@{name} さんに送る予定のこの下書きを整えてください。事実と意図はそのままで、編集できる下書きだけを返し、送信はしないでください：\n{draft}",
+  "ai.prefill.polish": "@{name} さんに送る予定のこの下書きを整えてください。事実と意図はそのままで、編集できる下書きだけを返し（各案は > 引用で）、送信はしないでください：\n{draft}",
   "ai.prefill.taskCandidates": "保存済みの期限が来たフォローをもとに、確認用の連絡タスク候補をまとめてください。自動で作成したりメッセージを送ったりしないでください。",
   "ai.prefill.reminderCandidates": "保存済みの期限が来たフォローをもとに、確認用のリマインダー候補をまとめてください。自動でリマインダーを作成したり、通知やメッセージを送ったりしないでください。",
 } as const;
