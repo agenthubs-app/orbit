@@ -38,7 +38,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "app.agenthubs.orbit",
-    buildNumber: "9",
+    buildNumber: "10",
     infoPlist: {
       NSCameraUsageDescription:
         "扫描二维码和拍摄名片，用于生成待确认联系人候选。",
