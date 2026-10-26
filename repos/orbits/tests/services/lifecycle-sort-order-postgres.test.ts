@@ -99,9 +99,35 @@ test("a drifted database collation still fails closed in all three readers", { s
   for (const drift of [{ actual: "154.1" }, { catalog: "153.120" }, { provider: "c" }, { deterministic: false }, { encoding: "SQL_ASCII" }]) {
     const client = driftedClient(pool, drift);
     await assert.rejects(createLifecycleTaskPagesReader({ client, workspaceId: "w", secret }).read("a"), undefined, JSON.stringify(drift));
-    await assert.rejects(createRelationshipTaskPageReader({ client, workspaceId: "w", secret }).read("a", { mode: "open" }), undefined, JSON.stringify(drift));
+    // The relationship page falls back to byte order (identical on every PostgreSQL) instead of failing.
+    const relationshipPage = await createRelationshipTaskPageReader({ client, workspaceId: "w", secret }).read("a", { mode: "open" });
+    assert.ok(relationshipPage.total >= 0, JSON.stringify(drift));
     await assert.rejects(createLifecycleHomeSummaryReader({ client, workspaceId: "w" }).read("a", { snapshotAt: SORT_FIXTURE_AT, from: SORT_FIXTURE_AT, to: "2026-10-02T00:00:00.000Z" }), undefined, JSON.stringify(drift));
     const home = await loadHomeFacts({ actorId: "a", snapshotAt: SORT_FIXTURE_AT, dependencies: { taskService: null, personalScheduleService: null, appointmentService: null, followupSummaryReaderFactory: () => createLifecycleHomeSummaryReader({ client, workspaceId: "w" }) } });
     assert.equal(home.followups.state, "unavailable");
   }
+}));
+
+test("relationship page on an unverified runtime: byte order walks every open task exactly once, and an ICU cursor is refused", { skip }, async (t) => database(t, async pool => {
+  const verified = createRelationshipTaskPageReader({ client: pool, workspaceId: "w", secret });
+  const icuFirst = await verified.read("a", { mode: "open", limit: 2 });
+  const drifted = createRelationshipTaskPageReader({ client: driftedClient(pool, { actual: "153.121", catalog: "153.121" }), workspaceId: "w", secret });
+  const seen: string[] = [];
+  const tuples: string[][] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 100; page += 1) {
+    const result = await drifted.read("a", { mode: "open", limit: 2, cursor });
+    assert.equal(result.total, icuFirst.total);
+    seen.push(...result.items.map(item => item.itemKey));
+    tuples.push(...result.items.map(item => [item.dueAt ?? "9999", item.taskId, item.itemKey]));
+    cursor = result.nextCursor;
+    if (!cursor) break;
+  }
+  assert.equal(cursor, null, "pages terminate");
+  assert.equal(seen.length, icuFirst.total, "no omissions");
+  assert.equal(new Set(seen).size, seen.length, "no duplicates");
+  const bytes = (tuple: string[]) => Buffer.concat(tuple.flatMap(part => [Buffer.from(part), Buffer.from([0])]));
+  for (let i = 1; i < tuples.length; i += 1) assert.ok(Buffer.compare(bytes(tuples[i - 1]!), bytes(tuples[i]!)) < 0, `byte order at ${i}`);
+  assert.ok(icuFirst.nextCursor && seen.length > 2, "the fixture spans several pages");
+  await assert.rejects(drifted.read("a", { mode: "open", limit: 2, cursor: icuFirst.nextCursor }), /RELATIONSHIP_TASK_CURSOR_INVALID/);
 }));
