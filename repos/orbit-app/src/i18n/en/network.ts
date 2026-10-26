@@ -84,6 +84,7 @@ export const network = {
   "network.detail.edit": "Edit",
   "network.detail.share": "What you share",
   "network.detail.message": "Message",
+  "network.detail.messageFailed": "Couldn't open the conversation. Try again.",
   "network.detail.unlink": "Disconnect",
   "network.detail.delete": "Delete",
   "network.detail.mail": "Email",

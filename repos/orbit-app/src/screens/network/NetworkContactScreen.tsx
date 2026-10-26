@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
-import { relationshipCommunicationEligibilityPath } from "../../api/endpoints";
+import { relationshipCommunicationEligibilityPath, relationshipCommunicationStartPath } from "../../api/endpoints";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -74,6 +74,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
   // QA-C3: a person you can message in Orbit (an open conversation) gets a Message button on their page.
   const [conversationId, setConversationId] = useState<string | null>(null);
+  // Connected by invite code with no conversation yet: "Message" opens one.
+  const [canStart, setCanStart] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -114,12 +117,27 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   useEffect(() => {
     let live = true;
     setConversationId(null);
+    setCanStart(false);
     if (fixture.enabled || !connected) return () => { live = false; };
-    void client.get<{ canSend?: unknown; conversationId?: unknown }>(relationshipCommunicationEligibilityPath(contactId)).then((result) => {
-      if (live && result.success && result.data?.canSend === true && typeof result.data.conversationId === "string" && result.data.conversationId) setConversationId(result.data.conversationId);
+    void client.get<{ canSend?: unknown; canStart?: unknown; conversationId?: unknown }>(relationshipCommunicationEligibilityPath(contactId)).then((result) => {
+      if (!live || !result.success) return;
+      if (result.data?.canSend === true && typeof result.data.conversationId === "string" && result.data.conversationId) setConversationId(result.data.conversationId);
+      else if (result.data?.canStart === true) setCanStart(true);
     }).catch(() => undefined);
     return () => { live = false; };
   }, [client, contactId, connected, fixture.enabled]);
+
+  const startConversation = useCallback(async () => {
+    if (starting) return;
+    setStarting(true);
+    const result = await client.post<{ canSend?: unknown; conversationId?: unknown }>(relationshipCommunicationStartPath(), { body: { contactId } });
+    setStarting(false);
+    const id = result.success && typeof result.data?.conversationId === "string" ? result.data.conversationId : "";
+    if (!id) { toast.error(t("network.detail.messageFailed")); return; }
+    setConversationId(id);
+    setCanStart(false);
+    router.push(`/inbox/${encodeURIComponent(id)}` as Href);
+  }, [client, contactId, router, starting, t, toast]);
 
   const candidate = fixture.enabled && params.design === "sync" ? null : fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
@@ -189,7 +207,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             <>
               <View style={styles.rowCenter}><DensityDots level={3} /><Chip label={t("network.chipSelf")} tone="teal" /></View>
               <UiText style={styles.lbl}>{t("network.detail.selfHint")}</UiText>
-              {conversationId ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} onPress={() => router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href)} /></View> : null}
+              {conversationId ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} onPress={() => router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href)} /></View>
+                : canStart ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} loading={starting} onPress={() => void startConversation()} /></View> : null}
             </>
           ) : (
             <View style={styles.chips}>

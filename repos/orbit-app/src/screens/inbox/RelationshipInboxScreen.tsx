@@ -74,6 +74,7 @@ import {
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
+import { beginReplyPolish, takeReplyPolish } from "../../data/reply-polish-handoff";
 import {
   appPerformanceInput,
   appPerformanceScenarioForPath,
@@ -301,7 +302,9 @@ export function RelationshipInboxScreen() {
   const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
-  const requestedSection = firstParam(params.tab) === 'notifications' ? 'alerts' : firstParam(params.tab) === 'messages' ? 'threads' : null;
+  // QA-C4: links also say ?tab=alerts / ?tab=threads (the section names).
+  const requestedTab = firstParam(params.tab);
+  const requestedSection = requestedTab === 'notifications' || requestedTab === 'alerts' ? 'alerts' : requestedTab === 'messages' || requestedTab === 'threads' ? 'threads' : null;
   const requestedNotificationFilter = firstParam(params.filter) === 'secretary' ? 'secretary' : null;
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
   if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
@@ -1322,6 +1325,18 @@ function ReplyComposer({
     setDraftStatus(outcome);
   }
 
+  // QA-C4: a version chosen in iOrbit ("Use this version") lands in the reply box on return.
+  const composerFocused = useIsFocused();
+  useEffect(() => {
+    if (!composerFocused) return;
+    const chosen = takeReplyPolish(detail.conversationId);
+    if (!chosen) return;
+    draftEdited.current = true;
+    setDraftStatus("idle");
+    setStaged("");
+    setBody(chosen);
+  }, [composerFocused, detail.conversationId]);
+
   useEffect(() => {
     if (draftEdited.current) return;
     setBody(detail.draftReply);
@@ -1336,7 +1351,9 @@ function ReplyComposer({
     if (!contactId) { setRewriteError(locale.t("inbox.missingContact")); return; }
     if (!actorId || !server.baseUrl) { setRewriteError(locale.t("inbox.signInForAi")); return; }
     try {
-      const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() }) });
+      const template = inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() });
+      const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...template });
+      beginReplyPolish(detail.conversationId, template.message);
       setRewriteError(null);
       router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
     } catch {

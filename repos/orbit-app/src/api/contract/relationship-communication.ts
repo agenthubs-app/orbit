@@ -17,6 +17,8 @@ export interface RelationshipEligibilityDTO {
   status: RelationshipEligibilityStatus;
   canInvite: boolean;
   canSend: boolean;
+  /** QA-C4: connected by invite code and no conversation yet — "Message" opens one (POST /conversations/start). */
+  canStart?: boolean;
   qualificationVersion?: string;
   expiresAt?: string;
   conversationId?: string;

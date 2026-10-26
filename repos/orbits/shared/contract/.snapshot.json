@@ -20781,6 +20781,11 @@
           "kind": "text",
           "type": "boolean"
         },
+        "canStart": {
+          "optional": true,
+          "kind": "text",
+          "type": "boolean"
+        },
         "qualificationVersion": {
           "optional": true,
           "kind": "text",
@@ -20863,6 +20868,11 @@
         },
         "canSend": {
           "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "canStart": {
+          "optional": true,
           "kind": "text",
           "type": "boolean"
         },

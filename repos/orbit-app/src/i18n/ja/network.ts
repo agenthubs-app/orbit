@@ -84,6 +84,7 @@ export const network = {
   "network.detail.edit": "編集",
   "network.detail.share": "共有する項目",
   "network.detail.message": "メッセージ",
+  "network.detail.messageFailed": "会話を開けませんでした。もう一度お試しください。",
   "network.detail.unlink": "つながりを解除",
   "network.detail.delete": "削除",
   "network.detail.mail": "メール",

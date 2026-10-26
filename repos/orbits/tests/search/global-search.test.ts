@@ -13,6 +13,7 @@ import { buildGlobalSearch, industriesForTerms, suggestionsFor, type GlobalSearc
 import { createGlobalSearchHandlers, createRateWindow, GLOBAL_SEARCH_KEYWORD_PER_MINUTE, searchLive } from "../../features/search/global/handlers";
 import { intersectById, type GlobalSearchLivePorts } from "../../features/search/global/live";
 import { createConversationSearch } from "../../features/search/global/conversations";
+import { relationshipMessageSnippet } from "../../shared/compute/relationship-message-search";
 
 // R30 (search/DESIGN.md §3–§6; PLANNER SC-R30-01…07): one service behind the Web ⌘K panel and the App search page.
 
@@ -264,6 +265,36 @@ test("R21 conversation search reads one actor-scoped server page and highlights 
     id: "session/a", kind: "iorbit", title: "高橋へ返信 😀", subtitle: "10/18 · iOrbit との会話",
     highlights: [{ field: "title", start: 0, end: 2 }], href: "/app/agent?session=session%2Fa",
   }]);
+});
+
+test("QA-C4: messages exchanged with people join the conversations group (newest match per conversation, before iOrbit chats)", async () => {
+  const calls: unknown[] = [];
+  const search = createConversationSearch({
+    sessionForActor: () => ({ async listSessionSummariesPage() {
+      return { items: [{ id: "session/a", title: "Lunch plan", updatedAt: "2026-10-17T16:00:00.000Z", organization: { customTitle: null, groupId: null, pinned: false, revision: 1 } }] };
+    } }),
+    async messages(actorId, terms, limit) {
+      calls.push([actorId, terms, limit]);
+      return [
+        { conversationId: "conv:kato", title: "QA Kato", body: "Old note about lunch", sentAt: "2026-10-20T01:00:00.000Z" },
+        { conversationId: "conv:kato", title: "QA Kato", body: "Shall we have LUNCH on Friday near the station?", sentAt: "2026-10-21T01:00:00.000Z" },
+        { conversationId: "conv:mori", title: "Mori", body: "Thanks for the intro", sentAt: "2026-10-22T01:00:00.000Z" },
+      ];
+    },
+  });
+  const hits = await search("actor:one", "Lunch", 6, "en");
+  assert.deepEqual(calls, [["actor:one", ["lunch"], 6]]);
+  assert.deepEqual(hits.map((hit) => [hit.kind, hit.id, hit.title, hit.subtitle]), [
+    ["inbox", "conv:kato", "QA Kato", "Shall we have LUNCH on Friday near the station?"],
+    ["iorbit", "session/a", "Lunch plan", "10/18 · Conversation with iOrbit"],
+  ]);
+  assert.deepEqual(hits[0]!.highlights, [{ field: "subtitle", start: 14, end: 19 }]);
+  assert.equal(hits[0]!.href, "/inbox/conv%3Akato");
+  // A failing message read keeps the iOrbit chats.
+  const failing = createConversationSearch({ sessionForActor: () => null, messages: async () => { throw new Error("db down"); } });
+  assert.deepEqual(await failing("actor:one", "lunch", 6), []);
+  const long = relationshipMessageSnippet(`${"x".repeat(60)} lunch ${"y".repeat(120)}`, ["lunch"]);
+  assert.ok(long.startsWith("…") && long.endsWith("…") && long.includes("lunch"), long);
 });
 
 test("live AND: per-term rows intersect by id in the first list's order; terms arrive folded (全角 / case)", async () => {

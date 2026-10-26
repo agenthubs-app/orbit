@@ -764,6 +764,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/network/NetworkContactScreen.tsx","GET","/api/contacts/value-lines"],
   ["src/screens/network/NetworkContactScreen.tsx","GET","/api/relationship-communication/eligibility"],
   ["src/screens/network/NetworkContactScreen.tsx","POST","/api/agent/plans/v2/:id/types/:id/candidates/:id/decision"],
+  ["src/screens/network/NetworkContactScreen.tsx","POST","/api/relationship-communication/conversations/start"],
   ["src/screens/network/NetworkScreen.tsx","POST","/api/contacts/:id/restore"],
   ["src/data/sync/contact-outbox-upload.ts","DELETE","/api/contacts/:id"],
   ["src/screens/network/useDeleteContact.ts","DELETE","/api/contacts/:id"],

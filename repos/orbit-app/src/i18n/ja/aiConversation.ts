@@ -86,6 +86,7 @@ export const aiConversation = {
   "aiConversation.loadingEarlier": "以前のメッセージを読み込み中…",
   "aiConversation.loadEarlierFailed": "以前のメッセージを読み込めませんでした",
   "aiConversation.retryEarlier": "再試行",
+  "aiConversation.useVersion": "この文面を使う",
   "aiConversation.allMessagesLoaded": "すべてのメッセージを読み込みました",
   "aiConversation.retryCards": "カードを再読み込み",
   "aiConversation.all": "すべて",

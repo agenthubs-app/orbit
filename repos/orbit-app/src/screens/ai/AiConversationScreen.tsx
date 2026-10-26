@@ -78,6 +78,7 @@ import {
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
 import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
+import { chooseReplyPolish, replyPolishTarget } from "../../data/reply-polish-handoff";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -899,6 +900,14 @@ function ConversationThread({
   const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
+  // QA-C4: a thread started by a conversation's "Polish" offers each quoted version back to that reply box.
+  const threadRouter = useRouter();
+  const polishFor = replyPolishTarget(thread.messages.find((message) => message.role === "user")?.content);
+  const useVersion = polishFor ? (text: string) => {
+    chooseReplyPolish(polishFor, text);
+    if (threadRouter.canGoBack()) threadRouter.back();
+    else threadRouter.replace(`/inbox/${encodeURIComponent(polishFor)}` as Href);
+  } : undefined;
   // QA-A: the history has a fixed height; when the composer grows (the @ picker, reference chips)
   // the composer was pushed below the screen. Shrink the history by what the composer gained.
   const [composerExtra, setComposerExtra] = useState(0);
@@ -996,7 +1005,7 @@ function ConversationThread({
         {thread.messages.map((message, index) => <Fragment key={message.id}>
           <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
             {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
-            <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} /></View>
+            <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} onUseVersion={useVersion} /></View>
           </View>
           {turnCards.get(message.id)?.length ? <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} /> : null}
           {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} /> : null}
@@ -1164,7 +1173,7 @@ function QuickRouteDock({
   );
 }
 
-function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void }) {
+function MessageBubble({ baseUrl, message, onOpenHref, onUseVersion }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void; onUseVersion?: ((text: string) => void) | undefined }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const isUser = message.role === "user";
@@ -1174,7 +1183,7 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
   return (
     <View accessibilityLabel={locale.t(isUser ? "aiConversation.myMessage" : "aiConversation.aiReply")} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
       <Text style={[styles.messageLabel, !isUser ? styles.assistantLabel : null]}>{isUser ? locale.t("aiConversation.you") : "IORBIT"}</Text>
-      {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} />}
+      {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} onUseVersion={onUseVersion} />}
       {links.map((link) => (
         <Pressable
           accessibilityLabel={locale.t("aiConversation.openRecordNamed", { kind: link.kind, id: link.id })}
@@ -1201,12 +1210,15 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
 
 function MarkdownContent({
   content,
-  isUser
+  isUser,
+  onUseVersion
 }: {
   content: string;
   isUser: boolean;
+  onUseVersion?: ((text: string) => void) | undefined;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const blocks = markdownBlocksFor(content);
 
   if (blocks.length === 0) {
@@ -1227,9 +1239,21 @@ function MarkdownContent({
       {groups.map((group, index) => group.number ? <View key={index} style={styles.numberedRow}>
         <Text style={styles.numberedMarker}>{group.number}</Text>
         <View style={styles.numberedCopy}>{group.blocks.map((block, blockIndex) => <MarkdownBlock block={block} isUser={isUser} detail={blockIndex > 0} key={blockIndex} />)}</View>
-      </View> : <MarkdownBlock block={group.blocks[0]!} isUser={isUser} key={index} />)}
+      </View> : <Fragment key={index}>
+        <MarkdownBlock block={group.blocks[0]!} isUser={isUser} />
+        {onUseVersion && group.blocks[0]!.quote && !groups[index + 1]?.blocks[0]?.quote ? <View style={styles.useVersionRow}>
+          <UiButton label={locale.t("aiConversation.useVersion")} variant="secondary" size="sm" icon="check" onPress={() => onUseVersion(quoteRunText(groups, index))} />
+        </View> : null}
+      </Fragment>)}
     </View>
   );
+}
+
+/** The plain text of the run of quote blocks that ends at `end` (one suggested version). */
+function quoteRunText(groups: readonly { number?: string; blocks: MarkdownBlockView[] }[], end: number): string {
+  let start = end;
+  while (start > 0 && !groups[start - 1]!.number && groups[start - 1]!.blocks[0]?.quote) start -= 1;
+  return groups.slice(start, end + 1).map((group) => group.blocks[0]!.segments.map((segment) => segment.text).join("")).join("\n").trim();
 }
 
 function MarkdownBlock({
@@ -1511,6 +1535,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   markdownStack: {
     gap: 14
   },
+  useVersionRow: { alignItems: "flex-start", marginTop: -2 },
   markdownQuoteBlock: {
     borderLeftColor: colors.line,
     borderLeftWidth: 3,

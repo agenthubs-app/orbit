@@ -799,6 +799,10 @@ export function relationshipCommunicationEligibilityPath(contactId: string): str
   return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/eligibility?contactId=${encodeURIComponent(contactId.trim())}`;
 }
 
+export function relationshipCommunicationStartPath(): string {
+  return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/conversations/start`;
+}
+
 export function relationshipCommunicationInvitationsPath(): string {
   return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/invitations`;
 }

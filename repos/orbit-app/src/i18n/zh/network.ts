@@ -84,6 +84,7 @@ export const network = {
   "network.detail.edit": "编辑",
   "network.detail.share": "共享的项目",
   "network.detail.message": "发消息",
+  "network.detail.messageFailed": "没能打开对话，请再试一次。",
   "network.detail.unlink": "解除连接",
   "network.detail.delete": "删除",
   "network.detail.mail": "邮件",

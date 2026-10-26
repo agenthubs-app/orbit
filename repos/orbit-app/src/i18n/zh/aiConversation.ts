@@ -86,6 +86,7 @@ export const aiConversation = {
   "aiConversation.loadingEarlier": "正在加载更早的消息…",
   "aiConversation.loadEarlierFailed": "没能加载更早的消息",
   "aiConversation.retryEarlier": "重试",
+  "aiConversation.useVersion": "用这一版",
   "aiConversation.allMessagesLoaded": "已加载全部消息",
   "aiConversation.retryCards": "重新加载卡片",
   "aiConversation.all": "全部",

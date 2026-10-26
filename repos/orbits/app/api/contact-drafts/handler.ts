@@ -17,6 +17,7 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../_shared/authenticated-actor";
+import { localizeRelationshipContextFields, relationshipContextLanguage } from "../../../shared/compute/relationship-context-labels";
 
 export function createContactDraftsGetHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
@@ -50,7 +51,7 @@ export function createContactDraftsGetHandler(
       );
     }
 
-    return NextResponse.json(success(result.data), {
+    return NextResponse.json(success(localizeRelationshipContextFields(result.data, relationshipContextLanguage(request))), {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
     });

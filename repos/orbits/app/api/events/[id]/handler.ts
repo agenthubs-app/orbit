@@ -16,6 +16,7 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../../_shared/authenticated-actor";
+import { localizeRelationshipContextFields, relationshipContextLanguage } from "../../../../shared/compute/relationship-context-labels";
 
 // 单个 event 的详情入口。
 // path param 提供 eventId，query scenario 用于 mock 场景切换；
@@ -58,7 +59,7 @@ export function createEventDetailGetHandler(
       );
     }
 
-    return NextResponse.json(success(result.data), {
+    return NextResponse.json(success(localizeRelationshipContextFields(result.data, relationshipContextLanguage(request))), {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
     });

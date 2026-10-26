@@ -86,6 +86,7 @@ export const aiConversation = {
   "aiConversation.loadingEarlier": "Loading earlier messages…",
   "aiConversation.loadEarlierFailed": "Earlier messages could not be loaded",
   "aiConversation.retryEarlier": "Retry",
+  "aiConversation.useVersion": "Use this version",
   "aiConversation.allMessagesLoaded": "All messages loaded",
   "aiConversation.retryCards": "Reload cards",
   "aiConversation.all": "All",
