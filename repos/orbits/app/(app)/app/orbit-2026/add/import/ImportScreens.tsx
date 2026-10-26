@@ -84,7 +84,7 @@ function rejectMessage(t: Translate, error: unknown): string {
 export function ImportStartScreen({ method, preset, returnTo = null }: { method: ImportMethod | null; preset?: StartPreset; returnTo?: WebGuideReturnTo | null }) {
   const page = usePage(returnTo);
   const { t } = page;
-  const back = <IconButton icon="left" label={t(c.back)} onClick={() => page.go(method ? IMPORT_HREF : "/app/contacts/new")} />;
+  const back = <IconButton icon="left" label={t(c.back)} onClick={() => page.go(returnTo ?? (method ? IMPORT_HREF : "/app/contacts/new"))} />;
   const [title, crumb] = method ? TITLE[method] : [c.doorsTitle, c.doorsCrumb];
   const rail = railFor(method === "contacts" ? "vcard" : method ?? "doors", t);
   return (
@@ -267,7 +267,7 @@ export function ImportBatchScreen({ data, step, actions, review, returnTo = null
   const source: ImportSource = batch ? importSourceOf(batch.format) : "csv";
   const done = batch?.status === "completed" || batch?.status === "committing";
   const showMapping = Boolean(batch && !done && step === "mapping" && batch.kind === "csv");
-  const back = <IconButton icon="left" label={t(c.back)} onClick={() => page.go(showMapping || !batch ? IMPORT_HREF : batch.kind === "csv" ? batchHref(batch.id) : IMPORT_HREF)} />;
+  const back = <IconButton icon="left" label={t(c.back)} onClick={() => page.go(batch && !showMapping && batch.kind === "csv" ? batchHref(batch.id) : returnTo ?? IMPORT_HREF)} />;
   const title = done ? t(c.reviewTitle) : showMapping ? t(c.mapTitle) : t(c.reviewTitle);
   const subtitle = !batch ? t(c.doorsCrumb) : showMapping ? t(c.mapSub, { source: sourceName(source, t), file: batch.fileName, n: batch.rowCount.toLocaleString() }) : t(c.reviewSub, { source: sourceName(source, t), n: batch.rowCount.toLocaleString() });
   const stepLabel = batch && !done && batch.kind === "csv" ? <span className={styles.lbl}>{t(c.step, { n: showMapping ? 2 : 3 })}</span> : undefined;
@@ -280,7 +280,7 @@ export function ImportBatchScreen({ data, step, actions, review, returnTo = null
           {data.phase === "missing" || data.phase === "expired" || data.phase === "cancelled" ? <ImportErrorCard phase={data.phase} t={t} go={page.go} /> : null}
           {data.phase === "error" ? <RetryCard title={t(c.errLoad)} onRetry={data.retry} /> : null}
           {data.phase === "ready" && showMapping ? <MappingPanel batch={data.batch} rows={data.rows} source={source} actions={actions} t={t} onNext={() => page.go(batchHref(data.batch.id, "review"))} onBack={() => page.go(`${IMPORT_HREF}?method=${source === "linkedin" ? "linkedin" : "csv"}`)} /> : null}
-          {data.phase === "ready" && !showMapping && !done ? <ReviewPanel batch={data.batch} rows={data.rows} source={source} actions={actions} t={t} review={review} onLater={() => page.go("/app/contacts")} /> : null}
+          {data.phase === "ready" && !showMapping && !done ? <ReviewPanel batch={data.batch} rows={data.rows} source={source} actions={actions} t={t} review={review} onLater={() => page.go(returnTo ?? "/app/contacts")} /> : null}
           {data.phase === "ready" && done ? <DonePanel batch={data.batch} source={source} t={t} go={page.go} returnTo={returnTo} /> : null}
         </div>
       </ToastProvider>

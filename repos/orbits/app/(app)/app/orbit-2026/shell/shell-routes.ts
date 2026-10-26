@@ -26,6 +26,12 @@ export function shellAppliesTo(pathname: string, signedIn: boolean): boolean {
   return !NO_SHELL_PREFIXES.some((prefix) => matches(path, prefix)) && allowsOrbitAsk(path);
 }
 
+/** R28: card import opened from onboarding step 5 keeps the onboarding header in place of the rail nav. */
+export function onboardingImportFocus(pathname: string, returnTo: string | null): boolean {
+  const path = pathname.replace(/\/+$/u, "");
+  return returnTo === "/app/profile/onboarding?screen=5" && (matches(path, "/app/contacts/new/scan") || matches(path, "/app/contacts/new/import"));
+}
+
 /** The rail item a page belongs to (deep pages highlight their section). */
 export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   const path = pathname.replace(/\/+$/u, "");

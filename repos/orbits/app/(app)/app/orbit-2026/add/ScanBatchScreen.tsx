@@ -124,7 +124,7 @@ export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { v
   const reading = view.phase === "uploading" || view.phase === "reading" || view.phase === "importing";
   const title = reading ? t(s.pageTitle) : view.phase === "review" ? t(b.reviewPageTitle) : t(b.pageTitle);
   const subtitle = view.phase === "review" ? t(b.reviewPageSub, { n: view.cards.length }) : t(s.pageSubtitle);
-  const back = <IconButton icon="left" label={t(s.back)} onClick={() => go("/app/contacts/new")} />;
+  const back = <IconButton icon="left" label={t(returnTo ? s.backToGuide : s.back)} onClick={() => go(returnTo ?? "/app/contacts/new")} />;
   return (
     <Orbit2026Scope language={language} className={styles.page}>
       <ToastProvider>
@@ -133,7 +133,7 @@ export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { v
           {view.phase === "loading" ? <Skeleton lines={6} /> : null}
           {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? <BatchErrorCard phase={view.phase} t={t} go={go} /> : null}
           {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(id)}`, returnTo))} onNavigate={go} /> : null}
-          {view.phase === "review" ? <ReviewPanel view={view} actions={actions} t={t} language={language} onLater={() => go("/app/contacts")} /> : null}
+          {view.phase === "review" ? <ReviewPanel view={view} actions={actions} t={t} language={language} onLater={() => go(returnTo ?? "/app/contacts")} /> : null}
           {view.phase === "done" ? <DonePanel view={view} t={t} language={language} go={go} returnTo={returnTo} /> : null}
         </div>
       </ToastProvider>

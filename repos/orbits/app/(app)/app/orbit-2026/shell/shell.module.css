@@ -343,3 +343,11 @@
   .frame[data-phone-bare="true"] .title { font-size: var(--fs-logo); letter-spacing: 0.01em; }
   .frame[data-phone-bare="true"] .headTitle .subtitle { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); margin-top: 1px; }
 }
+
+/* R28: card import opened from onboarding — the onboarding header across the top, no rail nav. */
+.frame[data-focus="true"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+.frame[data-focus="true"][data-rail="true"] { grid-template-columns: minmax(0, 1fr) 360px; }
+.focusScope { grid-column: 1 / -1; }
+@media (max-width: 1279px) {
+  .frame[data-focus="true"], .frame[data-focus="true"][data-rail="true"] { grid-template-columns: minmax(0, 1fr); }
+}

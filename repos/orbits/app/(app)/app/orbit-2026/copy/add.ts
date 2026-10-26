@@ -33,6 +33,7 @@ export const addScanCopy = {
   pageTitle: { ja: "名刺をスキャン", zh: "扫描名片", en: "Scan business cards", kind: "label" },
   pageSubtitle: { ja: "人脈を追加 › 名刺", zh: "添加人脉 › 名片", en: "Add people › Cards", kind: "label" },
   back: { ja: "人脈を追加に戻る", zh: "返回添加人脉", en: "Back to Add people", kind: "label" },
+  backToGuide: { ja: "ガイドに戻る", zh: "返回引导", en: "Back to the guide", kind: "label" },
   activeBatch: { ja: "前回の読み取りが続いています", zh: "上一批读取还在进行", en: "Your last batch is still being read", kind: "label" },
   activeOpen: { ja: "開く", zh: "打开", en: "Open", kind: "button" },
   dropTitle: { ja: "名刺の写真をここにドロップ", zh: "把名片照片拖到这里", en: "Drop card photos here", kind: "label" },

@@ -5,7 +5,7 @@ import test from "node:test";
 import type { Browser, Page } from "playwright";
 
 import { monthHeading } from "../../app/(app)/app/orbit-2026/shell/month-heading";
-import { shellAppliesTo, shellNavKeyFor, shellShowsRail } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
+import { onboardingImportFocus, shellAppliesTo, shellNavKeyFor, shellShowsRail } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
 import { ORBIT_2026_HISTORY, ORBIT_2026_RAIL, ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_LEFT_SIDEBAR_WIDTH } from "../../app/(app)/app/orbit-layout-constants";
 import { launch } from "./support/orbit-2026-harness";
 import { errorsOf, LEGACY_PAGE, openShell, shellBundle } from "./support/orbit-2026-shell-harness";
@@ -28,6 +28,14 @@ async function shell(t: { after: (fn: () => Promise<void>) => void }, fixture: P
   await page.getByText("legacy button").waitFor();
   return page;
 }
+
+test("R28: only card import opened from onboarding step 5 takes the onboarding header", () => {
+  const ob = "/app/profile/onboarding?screen=5";
+  for (const path of ["/app/contacts/new/scan", "/app/contacts/new/scan/b1", "/app/contacts/new/import", "/app/contacts/new/import/i1"]) assert.equal(onboardingImportFocus(path, ob), true, path);
+  assert.equal(onboardingImportFocus("/app/contacts/new/scan", "/app/start"), false, "the guide page keeps the app shell");
+  assert.equal(onboardingImportFocus("/app/contacts/new/scan", null), false);
+  assert.equal(onboardingImportFocus("/app/contacts/new", ob), false);
+});
 
 test("route rules: every signed-in product page gets the shell; public, sign-in and admin do not", () => {
   for (const path of ["/app/home", "/app/contacts", "/app/contacts/c1", "/app/agent", "/app/agent/actions", "/app/events", "/app/events/e1", "/app/events/center", "/app/events/e1/operations", "/app/events/e1/operations/experience", "/app/events/e1/operations/admission", "/app/tasks", "/app/tasks/personal", "/app/inbox", "/app/inbox/sources/s1", "/app/settings", "/app/profile", "/app/home/events", "/app/invitations/t", "/app/start"]) {

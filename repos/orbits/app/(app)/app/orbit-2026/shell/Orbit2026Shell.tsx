@@ -3,7 +3,7 @@
 import { signOut, useSession } from "next-auth/react";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -22,9 +22,10 @@ import { initials } from "../ui/Basics";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
-import { SHELL_NAV, shellAppliesTo, shellNavKeyFor, shellShowsRail, type ShellNavKey } from "./shell-routes";
+import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellNavKeyFor, shellShowsRail, type ShellNavKey } from "./shell-routes";
 import { ShellSlotsProvider, useShellSlots } from "./slots";
 import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
+import { OnboardingImportHeader } from "../onboarding/OnboardingImportHeader";
 import styles from "./shell.module.css";
 
 // R07 Orbit2026Shell (RD-02 / RD-19): the one frame of every signed-in page, mounted
@@ -37,10 +38,12 @@ import styles from "./shell.module.css";
 // next/link, so the shell stays mounted across pages.
 export function Orbit2026Shell({ language, signedIn, currentBuildId, children }: { language: OrbitLanguage; signedIn: boolean; currentBuildId?: string; children: ReactNode }) {
   const pathname = usePathname() ?? "";
+  const returnTo = useSearchParams()?.get("returnTo") ?? null;
   if (!shellAppliesTo(pathname, signedIn)) return <>{children}</>;
+  const focus = returnTo && onboardingImportFocus(pathname, returnTo) ? <OnboardingImportHeader returnTo={returnTo} /> : null;
   return (
     <ShellSlotsProvider>
-      <ShellFrame language={language} pathname={pathname} currentBuildId={currentBuildId}>{children}</ShellFrame>
+      <ShellFrame language={language} pathname={pathname} currentBuildId={currentBuildId} focus={focus}>{children}</ShellFrame>
     </ShellSlotsProvider>
   );
 }
@@ -51,7 +54,9 @@ export function Orbit2026Shell({ language, signedIn, currentBuildId, children }:
 type ShellChrome = { openPalette: () => void; openRail: () => void; inboxDot: boolean; rail: boolean };
 const ShellChromeContext = createContext<ShellChrome | null>(null);
 
-function ShellFrame({ language, pathname, currentBuildId, children }: { language: OrbitLanguage; pathname: string; currentBuildId?: string; children: ReactNode }) {
+// `focus` (R28 onboarding import): a header across the top in place of the rail nav,
+// the mobile top bar and the bottom capsule; the main header, content and rail stay.
+function ShellFrame({ language, pathname, currentBuildId, focus = null, children }: { language: OrbitLanguage; pathname: string; currentBuildId?: string; focus?: ReactNode; children: ReactNode }) {
   const slots = useShellSlots();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [railDrawer, setRailDrawer] = useState(false);
@@ -66,14 +71,16 @@ function ShellFrame({ language, pathname, currentBuildId, children }: { language
   useEffect(() => { setRailDrawer(false); }, [pathname]);
   return (
     <ShellChromeContext.Provider value={chrome}>
-    <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined}>
-      <Orbit2026Scope language={language} className={styles.sideScope}>
-        <ShellSidebar active={active} dot={dot} />
-      </Orbit2026Scope>
+    <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined} data-focus={focus ? "true" : undefined}>
+      {focus ? <Orbit2026Scope language={language} className={styles.focusScope}>{focus}</Orbit2026Scope> : (
+        <Orbit2026Scope language={language} className={styles.sideScope}>
+          <ShellSidebar active={active} dot={dot} />
+        </Orbit2026Scope>
+      )}
       <div className={styles.main}>
         <Orbit2026Scope language={language} className={styles.headScope}>
           <ToastProvider>
-            <ShellMobileTop active={active} dot={dot} />
+            {focus ? null : <ShellMobileTop active={active} dot={dot} />}
             {hasHeader ? (
               <header className={`${styles.mainhead} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="">
                 <div className={styles.headSide}>{slots.left}{slots.demoPill ? <span className={styles.demoSlot}>{slots.demoPill}</span> : null}</div>
@@ -111,9 +118,11 @@ function ShellFrame({ language, pathname, currentBuildId, children }: { language
           <aside className={styles.rail} aria-label={pickCopy(shellCopy.railNextTitle, language)}>{railContent}</aside>
         </Orbit2026Scope>
       ) : null}
-      <Orbit2026Scope language={language} className={styles.bottomScope}>
-        <ShellBottomBar active={active} />
-      </Orbit2026Scope>
+      {focus ? null : (
+        <Orbit2026Scope language={language} className={styles.bottomScope}>
+          <ShellBottomBar active={active} />
+        </Orbit2026Scope>
+      )}
       <Orbit2026Scope language={language}>
         <WebVersionBannerGate currentBuildId={currentBuildId} language={language} />
       </Orbit2026Scope>

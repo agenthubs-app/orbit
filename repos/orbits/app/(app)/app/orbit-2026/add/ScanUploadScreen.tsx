@@ -60,7 +60,7 @@ export function ScanUploadScreen({ available, maxPhotos, maxBytes, onStart, acti
   const go = (href: string) => router.push(preserveHref(href));
   const stage = useStagedCards(t, maxPhotos, maxBytes);
   const { cards, starting } = stage;
-  const back = <IconButton icon="left" label={t(s.back)} onClick={() => (cards.length ? stage.clear() : go("/app/contacts/new"))} />;
+  const back = <IconButton icon="left" label={t(returnTo && !cards.length ? s.backToGuide : s.back)} onClick={() => (cards.length ? stage.clear() : go(returnTo ?? "/app/contacts/new"))} />;
   const photos = photoCount(cards);
   const start = async () => {
     const batchId = await stage.start(onStart);

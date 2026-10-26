@@ -142,9 +142,9 @@ test.before(async () => {
     "^next/navigation$": `
       const f = () => window.shellFixture;
       const go = (href) => { f().calls.push({ push: href }); window.dispatchEvent(new CustomEvent("test-nav", { detail: href })); };
-      export const usePathname = () => f().path;
+      export const usePathname = () => f().path.split("?")[0];
       export const useRouter = () => ({ push: go, replace: go, back() {}, refresh() {} });
-      export const useSearchParams = () => new URLSearchParams("");
+      export const useSearchParams = () => new URLSearchParams(f().path.split("?")[1] ?? "");
       export const redirect = go;
     `,
     "^next-auth/react$": `
@@ -171,6 +171,17 @@ test("R28 fifth-screen scan returns to the exact onboarding target after complet
   await page.locator("[data-scan-start]").click();
   await page.locator('[data-scan-phase="done"]').waitFor({ timeout: 30_000 });
   await page.locator("[data-done-guide]").click();
+  assert.equal(await page.evaluate(() => (window as any).shellFixture.path), returnTo);
+});
+
+test("R28 scan opened from onboarding keeps the onboarding header, and its back returns to the fifth screen", { timeout: 60_000 }, async (t) => {
+  const returnTo = "/app/profile/onboarding?screen=5";
+  const entry = "/app/contacts/new/scan?returnTo=" + encodeURIComponent(returnTo);
+  const page = await open(browser, code, { html: '<div id="root"></div><script>window.shellFixture=' + JSON.stringify({ calls: [], lang: "ja", path: entry, unread: false }) + '</script>' });
+  t.after(async () => { const errors = errorsOf(page); await page.close(); assert.deepEqual(errors, []); });
+  await page.locator("[data-onboarding-import-head]").waitFor();
+  assert.equal(await page.locator('[data-orbit-2026-shell] nav, [data-orbit-2026-shell] [aria-label="ホーム"]').count(), 0, "no rail nav over the onboarding import");
+  await page.getByRole("button", { name: "ガイドに戻る" }).click();
   assert.equal(await page.evaluate(() => (window as any).shellFixture.path), returnTo);
 });
 
