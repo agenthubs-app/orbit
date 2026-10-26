@@ -1,17 +1,18 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { AiPageContextContract } from "../../../../../shared/contract/ai-sessions";
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import type { OrbitAgentHistoryView, OrbitAgentSuggestView } from "../../orbit-agent-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
 import { standardCopyFor } from "../../orbit-2026/copy/standard";
 import { ShellPage } from "../../orbit-2026/shell/slots";
-import { Button, Card, ConfirmDialog, ContextMenu, Drawer, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
+import { Button, Card, ConfirmDialog, ContextMenu, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
 import { AgentActionStatusCard } from "../agent-action-status-card";
 import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
 import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
@@ -37,24 +38,33 @@ function tokyoDate(value: string): string | null {
   }).format(date);
 }
 
-function historySections(history: HistoryStore): ["pinned" | "today" | "week" | "older", OrbitAgentHistoryView[]][] {
+type HistorySection = "pinned" | "today" | "week" | "older";
+
+function historySections(history: HistoryStore, language: string): [HistorySection, { item: OrbitAgentHistoryView; stamp: string }[]][] {
   const dates = new Map(history.storedSessions.map((session) => [session.id, session.updatedAt || session.createdAt]));
   const today = tokyoDate(new Date().toISOString())!;
   const todayDay = Date.parse(`${today}T00:00:00Z`) / 86_400_000;
   const mondayDay = todayDay - ((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7);
-  const groups = new Map<"pinned" | "today" | "week" | "older", OrbitAgentHistoryView[]>([
+  const locale = language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US";
+  const groups = new Map<HistorySection, { item: OrbitAgentHistoryView; stamp: string }[]>([
     ["pinned", []], ["today", []], ["week", []], ["older", []],
   ]);
   for (const item of history.storedHistory) {
-    const day = tokyoDate(dates.get(item.sessionId ?? "") ?? "");
+    const raw = dates.get(item.sessionId ?? "") ?? "";
+    const day = tokyoDate(raw);
     const ordinal = day ? Date.parse(`${day}T00:00:00Z`) / 86_400_000 : -Infinity;
     const section = item.pinned ? "pinned" : ordinal === todayDay ? "today" : ordinal >= mondayDay ? "week" : "older";
-    groups.get(section)!.push(item);
+    const when = new Date(raw);
+    const stamp = !day ? item.date
+      : section === "today" ? new Intl.DateTimeFormat(locale, { timeZone: "Asia/Tokyo", hour: "numeric", minute: "2-digit", hour12: false }).format(when)
+        : section === "week" ? new Intl.DateTimeFormat(locale, { timeZone: "Asia/Tokyo", weekday: "short" }).format(when).replace(/曜日?$/u, "")
+          : `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
+    groups.get(section)!.push({ item, stamp });
   }
   return [...groups].filter(([, items]) => items.length > 0);
 }
 
-function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; history: HistoryStore; onPick: (item: OrbitAgentHistoryView) => void }) {
+function HistoryRow({ item, stamp, history, onPick }: { item: OrbitAgentHistoryView; stamp: string; history: HistoryStore; onPick: (item: OrbitAgentHistoryView) => void }) {
   const { t } = useOrbitLanguage();
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -73,7 +83,7 @@ function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; hi
         </form>
       ) : (
         <div className={styles.historyEntry}>
-          <button className={`btn ${styles.historyEntryMain}`} type="button" onClick={() => onPick(item)}><span className={styles.historyTitle}>{item.title}</span><small>{item.date}</small></button>
+          <button className={`btn ${styles.historyEntryMain}`} type="button" onClick={() => onPick(item)}><span className={styles.historyTitle}>{item.title}</span><small>{stamp}</small></button>
           <button ref={menuAnchor} type="button" className={`btn ${styles.historyMore}`} aria-label={t(iorbitCopy.actions)} onClick={() => setMenuOpen(true)}><Icon name="more" size={16} /></button>
         </div>
       )}
@@ -89,22 +99,31 @@ function HistoryRow({ item, history, onPick }: { item: OrbitAgentHistoryView; hi
   );
 }
 
+/** b8 #11 .r8hist (768–1199: a 272px panel over the chat with its own scrim) / #12 .r8adrawer (≤767: a full-height sheet from the left). */
+function HistoryDrawer({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const ref = useOrbitModalA11y(onClose);
+  return <>
+    <div className={styles.historyScrim} aria-hidden onClick={onClose} />
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={styles.historyDrawer}>{children}</div>
+  </>;
+}
+
 /** b4 #37 .hpanel: 「会話 + 新規」, a search pill, then ピン留め / 今日 / 今週 / それ以前 rows (title · date). */
-function HistoryPane({ history, onNew, onPick }: { history: HistoryStore; onNew: () => void; onPick: (item: OrbitAgentHistoryView) => void }) {
-  const { t } = useOrbitLanguage();
+function HistoryPane({ history, onNew, onPick, onCollapse }: { history: HistoryStore; onNew: () => void; onPick: (item: OrbitAgentHistoryView) => void; onCollapse?: () => void }) {
+  const { language, t } = useOrbitLanguage();
   const [search, setSearch] = useState(history.historyQuery);
   useEffect(() => { const timer = window.setTimeout(() => history.setHistoryQuery(search), 250); return () => window.clearTimeout(timer); }, [search, history.setHistoryQuery]);
-  const sections = useMemo(() => historySections(history), [history.storedHistory, history.storedSessions]);
+  const sections = useMemo(() => historySections(history, language), [history.storedHistory, history.storedSessions, language]);
   return (
     <div className={styles.history}>
-      <div className={styles.historyHead}><b>{t(iorbitCopy.conversation)}</b><Button label={t(iorbitCopy.newShort)} icon="edit" variant="primary" size="sm" onClick={onNew} /></div>
+      <div className={styles.historyHead}><b>{t(iorbitCopy.conversation)}</b><span className={styles.historyHeadActions}><Button label={t(iorbitCopy.newShort)} icon="edit" variant="primary" size="sm" onClick={onNew} />{onCollapse ? <button type="button" className={`btn ${styles.historyCollapse}`} aria-label={standardCopyFor(language).action.close} onClick={onCollapse}><Icon name="left" size={16} /></button> : null}</span></div>
       <SearchField label={t(iorbitCopy.searchLabel)} placeholder={t(iorbitCopy.searchPlaceholder)} value={search} onChange={setSearch} />
       {history.historyPageLoading && !history.storedHistory.length ? <p role="status" className={styles.emptyHistory}>{t(iorbitCopy.loading)}</p> : null}
       {history.historyReadError ? <div role="alert" className={styles.error}>{t(iorbitCopy.readFailed)}<Button label={t(iorbitCopy.retry)} variant="ghost" size="sm" onClick={history.retryHistoryRead} /></div> : null}
       {!history.historyPageLoading && !history.historyReadError && !history.storedHistory.length ? <p className={styles.emptyHistory}>{t(search ? iorbitCopy.noMatch : iorbitCopy.empty)}</p> : null}
       {sections.map(([section, items]) => <section key={section} aria-label={t(iorbitCopy[section])} className={styles.historySection}>
         <h3>{t(iorbitCopy[section])}</h3>
-        {items.map((item) => <HistoryRow key={item.id} item={item} history={history} onPick={onPick} />)}
+        {items.map(({ item, stamp }) => <HistoryRow key={item.id} item={item} stamp={stamp} history={history} onPick={onPick} />)}
       </section>)}
       {history.historyPageHasMore ? <Button label={t(history.historyPageLoading ? iorbitCopy.loadingMore : iorbitCopy.more)} variant="ghost" size="sm" disabled={history.historyPageLoading} onClick={() => void history.loadMoreHistory()} block /> : null}
       {history.historyFeedback ? <p role={history.historyFeedback.kind === "error" ? "alert" : "status"} className={history.historyFeedback.kind === "error" ? styles.error : styles.feedback}>{history.historyFeedback.text}</p> : null}
@@ -317,6 +336,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
           {history.storedHistory.some((item) => item.pinned) ? <><hr /><span className={styles.stripPin} aria-hidden>📌</span>
             {history.storedHistory.filter((item) => item.pinned).slice(0, 5).map((item) => <button key={item.id} type="button" className={`btn ${styles.stripPin}`} aria-label={item.title} title={item.title} onClick={() => pick(item)}>{[...item.title.trim()][0] ?? "·"}</button>)}</> : null}
         </aside> : null}
+        {historyOpen && narrow ? <HistoryDrawer label={t(iorbitCopy.list)} onClose={() => setHistoryOpen(false)}><HistoryPane history={history} onNew={startNew} onPick={pick} onCollapse={() => setHistoryOpen(false)} /></HistoryDrawer> : null}
         <main className={styles.main}>
           <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><div className={styles.phoneHeaderTitle}><strong>iOrbit</strong>{inConversation && activeTitle ? <small>{activeTitle}</small> : null}</div><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
@@ -372,7 +392,6 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
           <p className={styles.privacy}>{t(iorbitCopy.privacy)}</p>
         </main>
       </div>
-      <Drawer open={historyOpen && narrow} onClose={() => setHistoryOpen(false)} title={t(iorbitCopy.list)} size="sm" side="left"><HistoryPane history={history} onNew={startNew} onPick={pick} /></Drawer>
       <ConfirmDialog open={Boolean(history.pendingDeleteHistory)} title={t(iorbitCopy.deleteTitle)} message={t(iorbitCopy.deleteMessage)} confirmLabel={t(iorbitCopy.delete)} cancelLabel={t(iorbitCopy.cancel)} destructive icon="trash" onConfirm={() => void history.confirmDeleteHistorySession()} onCancel={() => history.setPendingDeleteHistory(null)} />
       {history.historyDeleteError ? <p className={styles.error} role="alert">{history.historyDeleteError}</p> : null}
     </div>

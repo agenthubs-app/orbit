@@ -1,5 +1,5 @@
 .scope { color: var(--ink); min-height: 70vh; }
-.layout { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: var(--space-20); padding: 0 var(--space-34) var(--space-40); }
+.layout { position: relative; display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: var(--space-20); padding: 0 var(--space-34) var(--space-40); }
 .layout:not(:has(> .sidebar)) { grid-template-columns: minmax(0, 1fr); }
 .layout:has(> .strip) { grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-16); }
 .strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border-radius: var(--r-lg); background: color-mix(in srgb, var(--surface) 60%, transparent); }
@@ -34,6 +34,12 @@
 .history { display: flex; flex-direction: column; width: 100%; }
 .historyHead { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px; }
 .historyHead b { font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.historyHeadActions { display: inline-flex; align-items: center; gap: 6px; }
+.historyCollapse:global(.btn) { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+/* b8 #11 .r8hist / .r8scrim (768–1199): a 272px panel over the chat area, scrim inside the same frame. */
+.historyScrim { position: absolute; z-index: 5; top: 0; bottom: var(--space-40); left: var(--space-34); right: var(--space-34); border-radius: var(--r-card-web); background: var(--scrim-web); }
+.historyDrawer { position: absolute; z-index: 6; top: 0; bottom: var(--space-40); left: var(--space-34); width: 272px; display: flex; overflow-y: auto; padding: 12px 10px; border-radius: var(--r-card-web); background: var(--bg); box-shadow: var(--shadow-float); }
+.historyDrawer:focus { outline: none; }
 .history > label { height: 40px; background: var(--surface-2); }
 .historySection { display: flex; flex-direction: column; }
 .historySection h3 { margin: 0; padding: 14px 10px 6px; color: var(--ink-3); font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: var(--lh-body); }
@@ -90,6 +96,8 @@
 @media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .sidebar { height: 100%; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
 /* b8 #9: at 1024 the header keeps only ⌘ K. */
 @media (max-width: 1199px) { .anywhereText { display: none; } }
-@media (max-width: 1023px) { .layout { padding: 0 var(--space-26) var(--space-40); } }
+@media (max-width: 1023px) { .layout { padding: 0 var(--space-26) var(--space-40); } .historyScrim { left: var(--space-26); right: var(--space-26); } .historyDrawer { left: var(--space-26); } }
+/* b8 #12 .r8adrawer (≤767): full-height sheet from the left, 「会話」 at 17px, no collapse button (the scrim and Esc close it). */
+@media (max-width: 767px) { .historyScrim { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; background: var(--scrim); } .historyDrawer { position: fixed; z-index: var(--z-overlay); top: 0; bottom: 0; left: 0; width: 318px; padding: 58px 14px 30px; border-radius: 0 var(--r-sheet) var(--r-sheet) 0; } .historyDrawer .historyHead { padding: 0 4px 12px; } .historyDrawer .historyHead b { font-size: var(--fs-logo); } .historyCollapse:global(.btn) { display: none; } }
 @media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .strip { display: none; } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: 1fr; } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
 @media (prefers-reduced-motion: reduce) { .suggestion:hover { transform: none; } }
