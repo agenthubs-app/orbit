@@ -305,7 +305,7 @@ test("overlay: a click inside the panel does not close; mousedown in the panel r
     assert.deepEqual(harness.navigation.assigned, []);
     await act(async () => { overlay.props.onMouseDown({ currentTarget: overlay, target: overlay }); overlay.props.onClick({ currentTarget: overlay, target: overlay }); });
     assert.deepEqual(harness.navigation.assigned, ["/app"]);
-    const close = renderer.root.find((node) => node.type === "button" && node.props.className === "btn au-close");
+    const close = renderer.root.find((node) => node.type === "button" && node.props.className === "btn au-lbtn au-close");
     await act(async () => { close.props.onClick(); });
     assert.deepEqual(harness.navigation.assigned, ["/app", "/app"]);
   });
@@ -378,7 +378,7 @@ async function fillReset(renderer: ReactTestRenderer, password: string, confirma
 test("forgot SSR exposes a recoverable request form without account enumeration", () => {
   const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="forgot" />);
   assert.match(html, /aria-labelledby="au-title-forgot"/);
-  assert.match(html, /申请重置密码/);
+  assert.match(html, /发送重置链接/);
   assert.match(html, /id="au-email"/);
   assert.doesNotMatch(html, /id="au-password"|au-google|role="status"/);
 });
@@ -478,12 +478,12 @@ test("reset: missing / short / malformed / absent token has one generic reapplic
       const copy = renderer.root.findByProps({ className: "au-sub" });
       assert.equal(copy.type, "p");
       assert.equal(copy.props.role, "alert");
-      assert.equal(copy.children.join(""), "链接可能已失效或已被使用。");
+      assert.equal(copy.children.join(""), "链接可能已失效或已被使用。\n请重新申请重置密码。");
       const again = renderer.root.find((node) => node.type === "a" && node.props.className === "btn au-btn-primary au-btn-link");
       assert.equal(again.props.href, "/app/account/forgot-password");
       assert.equal(again.children.join(""), "申请重置密码");
-      assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password"]);
-      assert.deepEqual(alerts(renderer), ["链接可能已失效或已被使用。"]);
+      assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password", "/app/account/login"]);
+      assert.deepEqual(alerts(renderer), ["链接可能已失效或已被使用。\n请重新申请重置密码。"]);
       assert.deepEqual(statuses(renderer), []);
       assert.equal(harness.observed.length, 0);
     });

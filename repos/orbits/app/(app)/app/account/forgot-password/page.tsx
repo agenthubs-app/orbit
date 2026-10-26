@@ -10,6 +10,7 @@ import { normalizeOrbitAuthReturnPath } from "../../../../../features/auth/app-a
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { enabledOAuthProviders } from "../../../../../features/auth/oauth-providers";
 import {
   loadAppAccountAuthRouteViewModel,
   type AppAccountAuthRouteStateViewModel,
@@ -83,9 +84,10 @@ export default async function AppAccountForgotPasswordPage({
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-forgot-route">
           {/* 认证弹窗 任务 3：落地页在下（未登录态）、找回弹窗在上（设计 394–420）；view model 只取 defaultNext（标题 / 描述 / 按钮文案由弹窗内 t() 给出设计文案）。 */}
-          <LandingPage googleEnabled={false} />
+          <LandingPage googleEnabled={enabledOAuthProviders().includes("google")} />
           <AuthModal
             defaultNext={localizeOrbitTree(routeModel.auth, language).defaultNext}
+            oauthProviders={enabledOAuthProviders()}
             view="forgot"
           />
         </div>

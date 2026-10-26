@@ -4,7 +4,7 @@ import { useCallback, useRef, type MouseEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
-import { Orbit2026Scope } from "../ui";
+import { Icon, Orbit2026Scope } from "../ui";
 import { AuthForgot } from "./auth-forgot";
 import { AuthLogin } from "./auth-login";
 import { authTitleId, type AuthView } from "./auth-model";
@@ -41,9 +41,10 @@ export function AuthModal({
   return <Orbit2026Scope language={language} className={s.overlayRoot}>
     <div className="au-overlay" onMouseDown={onOverlayMouseDown} onClick={onOverlayClick}>
       <div aria-labelledby={authTitleId(view)} aria-modal="true" className="au-panel" ref={cardRef} role="dialog" tabIndex={-1}>
-        <div className={s.top}><span className="au-wordmark">Orbit</span><button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn au-close" onClick={handleClose} type="button">×</button></div>
+        {/* b1 #2–#5 .lbtn: the close button sits on the title row (top-right), no wordmark. */}
+        <button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn au-lbtn au-close" onClick={handleClose} type="button"><Icon name="x" size={16} /></button>
         {view === "register" ? <AuthRegister defaultNext={defaultNext} oauthProviders={oauthProviders} />
-          : view === "forgot" ? <AuthForgot defaultNext={defaultNext} />
+          : view === "forgot" ? <AuthForgot defaultNext={defaultNext} oauthProviders={oauthProviders} />
           : view === "reset" ? <AuthReset />
           : <AuthLogin defaultNext={defaultNext} oauthProviders={oauthProviders} />}
       </div>

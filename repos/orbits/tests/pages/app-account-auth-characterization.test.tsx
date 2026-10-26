@@ -373,7 +373,7 @@ test("forgot: POST /api/auth/password-reset/request {email} and announce accepta
   try {
     renderer = await mount("forgot");
     assert.equal(renderer.root.findAllByType("input").some((node) => node.props.id === "au-password"), false);
-    assert.equal(submitLabel(renderer), "申请重置密码");
+    assert.equal(submitLabel(renderer), "发送重置链接");
     await fill(renderer, "owner@example.invalid");
     await submit(renderer);
 

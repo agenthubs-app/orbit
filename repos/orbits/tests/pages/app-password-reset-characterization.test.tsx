@@ -160,9 +160,9 @@ test("invalid or missing hash token offers one generic reapplication path", asyn
       renderer = await mount();
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
       assert.equal(heading(renderer), "此链接无法使用");
-      assert.deepEqual(byRole(renderer, "alert"), ["链接可能已失效或已被使用。"]);
+      assert.deepEqual(byRole(renderer, "alert"), ["链接可能已失效或已被使用。\n请重新申请重置密码。"]);
       const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
-      assert.deepEqual(hrefs, ["/app/account/forgot-password"]);
+      assert.deepEqual(hrefs, ["/app/account/forgot-password", "/app/account/login"]);
     } finally {
       await unmount(renderer);
       harness.restore();

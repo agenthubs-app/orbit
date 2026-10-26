@@ -7,6 +7,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { AuthErrorCard, AuthPrimaryButton, AUTH_PASSWORD_MAX_LENGTH } from "./auth-form";
 import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, authTitleId, validateResetPair } from "./auth-model";
 import { usePasswordReset } from "./use-password-reset";
+import { MacTile } from "../ui";
 
 export const AUTH_NEW_PASSWORD_ID = "au-new-password";
 export const AUTH_CONFIRM_PASSWORD_ID = "au-confirm-password";
@@ -20,12 +21,14 @@ export function AuthReset() {
   // done 先于 tokenValid：hook 成功后清空 token（旧 JSX 同序），否则成功态会掉进「链接已失效」。
   if (session.ready && !session.tokenValid && !session.done) {
     return (
-      <div className="au-view">
+      <div className="au-view au-center">
+        <span className="au-hero-tile"><MacTile emoji="⏳" tone="apricot" /></span>
         <div className="au-head">
           <h2 className="au-h2" id={titleId}>{t({ en: "This link cannot be used", ja: "このリンクは使えません", zh: "此链接无法使用" })}</h2>
-          <p className="au-sub" role="alert">{t({ en: "The link may be invalid or already used.", ja: "リンクが無効か、すでに使われている可能性があります。", zh: "链接可能已失效或已被使用。" })}</p>
+          <p className="au-sub" role="alert">{t({ en: "The link may be invalid or already used.\nPlease request a reset again.", ja: "リンクが無効か、すでに使われている可能性があります。\nもう一度、再設定をお申し込みください。", zh: "链接可能已失效或已被使用。\n请重新申请重置密码。" })}</p>
         </div>
         <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a reset", ja: "再設定を申し込む", zh: "申请重置密码" })}</a>
+        <p className="au-switch au-foot"><a className="au-switch-link" href={authRoutePath("login", "")}>{t({ en: "Back to sign in", ja: "ログインに戻る", zh: "返回登录" })}</a></p>
       </div>
     );
   }

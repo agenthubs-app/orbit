@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LandingPage } from "../../orbit-2026/auth-public/LandingPage";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
+import { enabledOAuthProviders } from "../../../../../features/auth/oauth-providers";
 import { AuthModal } from "../../orbit-2026/auth-public/auth-modal";
 
 export const metadata: Metadata = { title: "重置密码 · Orbit", robots: { index: false, follow: false }, referrer: "no-referrer" };
@@ -12,7 +13,7 @@ export default function PasswordResetPage() {
   return (
     <>
       <div data-orbit-route="app-account-reset-route">
-        <LandingPage googleEnabled={false} />
+        <LandingPage googleEnabled={enabledOAuthProviders().includes("google")} />
         <AuthModal view="reset" />
       </div>
       <OrbitVisualFreezeRuntime />

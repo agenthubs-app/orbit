@@ -1,35 +1,59 @@
+/* b1 #2–#5 .wmodal.on-surface: 440 wide, 28 radius, 24 padding over the web scrim; fields 48 high on surface-2. */
 .overlayRoot { position: fixed; inset: 0; z-index: var(--z-modal); }
-.overlayRoot :global(.au-overlay) { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--scrim); backdrop-filter: blur(5px); }
-.overlayRoot :global(.au-panel) { width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 26px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-float); }
-.top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.overlayRoot :global(.au-wordmark) { font-size: var(--fs-dialog-title); font-weight: 700; }
-.overlayRoot :global(.btn.au-close) { width: 26px; height: 26px; font-size: var(--fs-title-xs); line-height: 1; color: var(--ink-2); }
-.overlayRoot :global(.btn.au-close:hover) { background: var(--surface-2); }
-.overlayRoot :global(.au-view) { display: flex; flex-direction: column; gap: 18px; }
-.overlayRoot :global(.au-head) { display: flex; flex-direction: column; gap: 6px; }
-.overlayRoot :global(.au-h2) { font-size: var(--fs-number-md); line-height: 1.35; font-weight: 700; }
-.overlayRoot :global(.au-sub) { color: var(--ink-2); font-size: var(--fs-body); line-height: 1.7; }
-.overlayRoot :global(.au-fields) { display: flex; flex-direction: column; gap: 16px; }
-.overlayRoot :global(.au-divider) { color: var(--ink-3-text); font-size: var(--fs-meta); text-align: center; }
-.overlayRoot :global(.au-label) { display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-meta); font-weight: 800; }
+.overlayRoot :global(.au-overlay) { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--scrim-web); }
+.overlayRoot :global(.au-panel) { position: relative; width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px; border-radius: var(--r-dialog); background: var(--surface); box-shadow: var(--shadow-float); font-size: var(--fs-body); line-height: 1.5; }
+.overlayRoot :global(.btn.au-lbtn) { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); transition: transform .15s var(--ease); }
+.overlayRoot :global(.btn.au-lbtn:active) { transform: scale(.9); }
+.overlayRoot :global(.btn.au-close) { position: absolute; top: 24px; right: 24px; z-index: 1; }
+.overlayRoot :global(.au-view) { display: flex; flex-direction: column; }
+.overlayRoot :global(.au-head) { display: block; }
+.overlayRoot :global(.au-h2) { min-height: 34px; display: flex; align-items: center; padding-right: 44px; font-size: var(--fs-number); line-height: 1.5; font-weight: var(--fw-black); }
+.overlayRoot :global(.au-sub) { color: var(--ink-2); font-size: var(--fs-control); line-height: 1.5; }
+.overlayRoot :global(.au-head-below .au-h2) { min-height: 0; margin-top: 10px; padding-right: 0; }
+.overlayRoot :global(.au-head-below .au-sub) { margin-top: 4px; line-height: 1.7; }
+
+.overlayRoot :global(.btn.au-google) { display: flex; width: 100%; height: 48px; margin-top: 20px; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid var(--surface-3); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font-size: var(--fs-row); font-weight: var(--fw-bold); }
+.overlayRoot :global(.au-g) { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); font-family: var(--font-num); font-size: var(--fs-body-sm); font-weight: var(--fw-black); }
+.overlayRoot :global(.au-divider) { display: flex; align-items: center; gap: 10px; margin: 16px 0 2px; color: var(--ink-3-text); font-size: var(--fs-label); }
+.overlayRoot :global(.au-divider::before), .overlayRoot :global(.au-divider::after) { content: ""; flex: 1 1 0%; height: 1px; background: var(--surface-3); }
+
+.overlayRoot :global(.au-fields) { display: block; }
+.overlayRoot :global(.au-label) { display: block; margin-top: 12px; }
+.overlayRoot :global(.au-label > label), .overlayRoot :global(.au-label-row > label) { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--ink-2); font-size: var(--fs-meta); font-weight: var(--fw-bold); }
 .overlayRoot :global(.au-label-row) { display: flex; justify-content: space-between; gap: 12px; }
 .overlayRoot :global(.au-field-wrap) { position: relative; display: block; }
-.overlayRoot :global(.au-input) { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-emo); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 400; }
+.overlayRoot :global(.au-input) { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid transparent; border-radius: var(--r-md); outline: none; background: var(--surface-2); color: var(--ink); font: inherit; font-size: var(--fs-body); }
+.overlayRoot :global(.au-input::placeholder) { color: var(--ink-3-text); }
 .overlayRoot :global(.au-input:focus) { border-color: var(--plum-500); background: var(--surface); }
-.overlayRoot :global(.au-input.au-input-invalid), .overlayRoot :global(.au-input.au-input-invalid:focus) { border-color: var(--coral); background: var(--surface-2); }
-.overlayRoot :global(.au-field-error) { margin: 0; color: var(--coral-text); font-size: var(--fs-meta); font-weight: 400; line-height: 1.6; }
-.overlayRoot :global(.au-field-wrap .au-input) { padding-right: 52px; }
-.overlayRoot :global(.btn.au-eye) { position: absolute; right: 7px; top: 6px; width: 36px; height: 36px; color: var(--ink-2); }
-.overlayRoot :global(.au-forgot), .overlayRoot :global(.au-switch-link), .overlayRoot :global(.au-back-link), .overlayRoot :global(.au-terms-link) { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; font-size: var(--fs-meta); font-weight: 500; }
-.overlayRoot :global(.au-forgot) { align-self: flex-start; }
-.overlayRoot :global(.btn.au-btn-login), .overlayRoot :global(.btn.au-btn-primary) { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; padding: 0 16px; border-radius: var(--r-pill); background: var(--ink); color: var(--surface); font-size: var(--fs-body-sm); font-weight: 700; }
+.overlayRoot :global(.au-input.au-input-invalid), .overlayRoot :global(.au-input.au-input-invalid:focus) { border-color: var(--coral); background: var(--coral-soft); }
+.overlayRoot :global(.au-field-wrap .au-input) { padding-right: 60px; }
+.overlayRoot :global(.btn.au-eye) { position: absolute; right: 14px; top: 0; height: 48px; padding: 0; background: none; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-bold); }
+.overlayRoot :global(.au-field-error) { margin: 6px 0 0; color: var(--coral-text); font-size: var(--fs-label); font-weight: 600; line-height: 1.55; }
+.overlayRoot :global(.au-hint) { display: block; margin-top: 6px; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: 600; line-height: 1.55; }
+
+.overlayRoot :global(.au-forgot) { align-self: flex-end; margin-top: 14px; color: var(--accent-text); font-size: var(--fs-control); font-weight: var(--fw-bold); }
+.overlayRoot :global(.au-reqs) { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--ink-3-text); font-size: var(--fs-meta); }
+.overlayRoot :global(.au-reqs.au-reqs-ok) { color: var(--ok); font-weight: var(--fw-bold); }
+.overlayRoot :global(.au-consent) { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--ink-2); font-size: var(--fs-control); font-weight: 600; }
+.overlayRoot :global(.au-terms-link), .overlayRoot :global(.au-switch-link), .overlayRoot :global(.au-recovery-links a) { color: var(--accent-text); font-weight: var(--fw-bold); }
+.overlayRoot :global(.btn.au-inline) { display: inline; height: auto; padding: 0; background: none; font: inherit; font-weight: var(--fw-bold); }
+
+.overlayRoot :global(.btn.au-btn-login), .overlayRoot :global(.btn.au-btn-primary) { display: flex; width: 100%; height: 50px; margin-top: 18px; align-items: center; justify-content: center; padding: 0 16px; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font-size: var(--fs-card-title); font-weight: var(--fw-bold); }
+.overlayRoot :global(.au-consent + .btn.au-btn-primary) { margin-top: 16px; }
 .overlayRoot :global(.btn.au-btn-login:hover), .overlayRoot :global(.btn.au-btn-primary:hover) { opacity: .88; }
-.overlayRoot :global(.btn.au-google) { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; gap: 9px; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-body); font-weight: 700; }
-.overlayRoot :global(.au-switch), .overlayRoot :global(.au-terms), .overlayRoot :global(.au-back), .overlayRoot :global(.au-hint) { color: var(--ink-3-text); font-size: var(--fs-meta); line-height: 1.6; }
-.overlayRoot :global(.au-error) { color: var(--coral-text); font-size: var(--fs-meta); line-height: 1.5; }
-.overlayRoot :global(.au-recovery-links) { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; font-size: var(--fs-meta); }
-.overlayRoot :global(.au-recovery-links a) { color: var(--accent-text); text-decoration: underline; }
-.overlayRoot :global(.au-notice), .overlayRoot :global(.au-success) { padding: 12px; border-radius: var(--r-row); background: var(--plum-100); color: var(--accent-text); font-size: var(--fs-body-sm); line-height: 1.6; }
+.overlayRoot :global(.btn.au-btn-primary:disabled) { cursor: default; opacity: .45 !important; }
+.overlayRoot :global(.au-foot) { margin-top: 14px; color: var(--ink-3-text); font-size: var(--fs-label); font-weight: var(--fw-medium); text-align: center; }
+.overlayRoot :global(.au-consent ~ .au-foot) { margin-top: 12px; }
+.overlayRoot :global(.au-error) { margin-top: 12px; color: var(--coral-text); font-size: var(--fs-meta); line-height: 1.5; }
+.overlayRoot :global(.au-recovery-links) { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 0; font-size: var(--fs-meta); }
+.overlayRoot :global(.au-notice), .overlayRoot :global(.au-success) { margin-top: 16px; padding: 12px; border-radius: var(--r-row); background: var(--plum-100); color: var(--accent-text); font-size: var(--fs-body-sm); line-height: 1.6; }
 .overlayRoot :global(.au-success) { display: flex; flex-direction: column; gap: 5px; }
 .overlayRoot :global(.au-btn-link) { text-decoration: none; }
-@media (max-width: 480px) { .overlayRoot :global(.au-panel) { padding: 26px; } }
+
+/* b1 #5: centred state — 64px tile under the close row, title, two-line note, CTA, back link. */
+.overlayRoot :global(.au-center) { padding-top: 34px; text-align: center; }
+.overlayRoot :global(.au-hero-tile) { display: flex; justify-content: center; }
+.overlayRoot :global(.au-hero-tile > span) { width: 64px; height: 64px; border-radius: var(--r-lg); font-size: 32px; }
+.overlayRoot :global(.au-center .au-h2) { display: block; min-height: 0; margin-top: 14px; padding: 0; }
+.overlayRoot :global(.au-center .au-sub) { margin-top: 6px; line-height: 1.7; white-space: pre-line; }
+.overlayRoot :global(.au-view .au-view) { margin-top: 0; }
