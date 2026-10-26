@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { useReducedMotion } from "./Scope";
 import styles from "./Progress.module.css";
 
-// kit .bar: 6 high (thin 4) with a round knob; plum gradient, coral when warning.
-export function ProgressBar({ value, thin = false, tone = "plum", label }: { value: number; thin?: boolean; tone?: "plum" | "coral"; label: string }) {
+// kit .bar: 6 high (thin 4) with a round knob; plum gradient, coral when warning, rose (kit .bar.rose) as a second series.
+export function ProgressBar({ value, thin = false, tone = "plum", label }: { value: number; thin?: boolean; tone?: "plum" | "coral" | "rose"; label: string }) {
   const percent = Math.max(0, Math.min(100, Math.round(value * 100)));
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className={`${styles.bar} ${thin ? styles.thin : ""} ${tone === "coral" ? styles.coral : ""}`}>
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className={`${styles.bar} ${thin ? styles.thin : ""} ${tone === "coral" ? styles.coral : tone === "rose" ? styles.rose : ""}`}>
       <i className={styles.fill} style={{ width: `${percent}%` }} />
     </div>
   );

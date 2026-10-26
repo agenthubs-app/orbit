@@ -1,13 +1,22 @@
 import assert from 'node:assert/strict';import test from 'node:test';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
-import {NotificationCategoryIcon,NotificationRecordCard} from '../../app/(app)/app/inbox/typed-notifications-tab';
+import {NotificationRecordCard,notificationDayGroup} from '../../app/(app)/app/inbox/typed-notifications-tab';
 import {notificationInboxView,notificationDetailView} from '../../app/(app)/app/inbox/notification-inbox-view-model';
 const at='2026-09-16T02:00:00Z';
 const row={id:'n',actorId:'a',revision:1,kind:'reminder',origin:'user',semanticKey:'s',title:'发送报价资料',reason:'会议中答应发送',sources:[{sourceKind:'note',sourceId:'note',sourceRevision:'1',occurredAt:at,readAt:at,excerpt:'原文承诺'}],target:{kind:'source',id:'note',href:'/notes/note',status:'available'},actions:['read'],occurredAt:at,updatedAt:at,readAt:null,disposition:'open'};
-test('category icons differ and readable source-only reminders do not invent task destinations',()=>{
- const variants=['reminder','suggestion','update'].map(kind=>renderToStaticMarkup(<NotificationCategoryIcon kind={kind as any}/>));assert.equal(new Set(variants).size,3);
+test('kinds get distinct tiles and readable source-only reminders do not invent task destinations',()=>{
  const n=notificationInboxView({enabled:true,items:[row],unreadCount:1,nextCursor:null,asOf:at},'a').items[0]!;
- const html=renderToStaticMarkup(<NotificationRecordCard notification={n} onOpen={()=>{}}/>);for(const text of ['提醒','发送报价资料','会议中答应发送'])assert.ok(html.includes(text));assert.doesNotMatch(html,/\/tasks\//);
+ const render=(item:typeof n)=>renderToStaticMarkup(<table><tbody><NotificationRecordCard notification={item} now={at} onOpen={()=>{}}/></tbody></table>);
+ const tiles=(['reminder','suggestion','update'] as const).map(kind=>/<span[^>]*>(\S+)<\/span>/u.exec(render({...n,kind}))![1]);assert.equal(new Set(tiles).size,3);
+ const html=render(n);for(const text of ['发送报价资料','会议中答应发送','原文承诺'])assert.ok(html.includes(text));assert.doesNotMatch(html,/\/tasks\//);
  assert.throws(()=>notificationInboxView({enabled:true,items:[row],unreadCount:1,nextCursor:null,asOf:at},'other'));
+});
+test('b5 #6 day groups: 今日 / 昨日 / 今週 (Monday start) / それ以前 in the reader zone',()=>{
+ // 2026-09-16 is a Wednesday in Tokyo.
+ const now='2026-09-16T02:00:00Z',zone='Asia/Tokyo';
+ assert.equal(notificationDayGroup('2026-09-15T23:00:00Z',now,zone),'today');
+ assert.equal(notificationDayGroup('2026-09-15T01:00:00Z',now,zone),'yesterday');
+ assert.equal(notificationDayGroup('2026-09-14T01:00:00Z',now,zone),'week');
+ assert.equal(notificationDayGroup('2026-09-13T01:00:00Z',now,zone),'earlier');
 });
 test('D-16 mail summaries stay hidden in the list and direct detail reader',()=>{
  const mail={...row,id:'mail',sources:[{...row.sources[0],sourceKind:'mail_summary'}]};

@@ -1,19 +1,57 @@
-.root { padding: 16px; }
-.workspace { display: grid; grid-template-columns: minmax(320px, 390px) minmax(0, 1fr); min-height: 540px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); }
-.list { min-width: 0; border-right: 1px solid var(--line); padding: 18px; overflow: auto; }
-.detail { min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
-.toolbar { display: flex; justify-content: flex-end; padding: 8px 0; }
-.day { margin: 18px 0 4px; color: var(--ink-3-text); font-size: 12px; font-weight: 700; }
-.empty { padding: 32px 8px; text-align: center; color: var(--ink-3-text); }
-.selected { background: var(--surface-2); border-radius: 12px; }
-.placeholder { margin: auto; color: var(--ink-3-text); font-size: 13px; }
-.back { display: none; align-self: flex-start; }
+/* b5 #6 受信箱 · 通知: one full-width card (kit .card.span12 + .table), rows grouped by day,
+   row actions 既読 / タスクに追加 / 1時間後, a suggestion's in-row confirm card; the rail is 通知の状態. */
+.root { display: flex; flex-direction: column; gap: var(--space-18); }
+.card { background: var(--surface); border-radius: var(--r-card-web); padding: var(--space-20); }
+.alert { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; font-size: var(--fs-body-sm); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-10); margin-bottom: var(--space-10); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); line-height: var(--lh-body); color: var(--ink); }
+.table td { padding: 11px 10px; border-top: 1px solid var(--line); vertical-align: middle; text-align: left; }
+.row { transition: background 0.15s; }
+.row:hover { background: var(--surface-2); }
+.table td.day { border-top: 0; padding: 14px 10px 4px; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
+.tileCell { width: 46px; }
+.body { min-width: 0; }
+.lbl { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); line-height: var(--lh-body); }
+.title:global(.btn) { font-family: var(--font); display: block; height: auto; padding: 0; border: 0; border-radius: var(--r-none); background: none; color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: var(--lh-body); text-align: left; cursor: pointer; }
+.title:global(.btn):hover { text-decoration: underline; }
+.actsCell { width: 330px; }
+.table td.actsCell { text-align: right; }
+.acts { display: flex; justify-content: flex-end; gap: var(--space-6); }
+.sm:global(.btn) { font-family: var(--font); line-height: var(--lh-body); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-6); height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-meta); font-weight: var(--fw-bold); white-space: nowrap; cursor: pointer; }
+.primary:global(.btn) { background: var(--ink); color: var(--bg); }
+.sm:global(.btn):disabled { opacity: 0.5; cursor: default; }
+.confirm { display: inline-flex; align-items: center; gap: var(--space-8); margin-top: var(--space-8); padding: 8px 10px; border: 1.5px dashed var(--plum-300); border-radius: var(--r-md); }
+.timeCell { width: 60px; }
+.table td.timeCell { text-align: right; white-space: nowrap; }
+.unread { display: inline-block; width: 8px; height: 8px; margin: 0 0 0 4px; border-radius: var(--r-pill); background: var(--plum-700); }
+.empty { padding: var(--space-34) var(--space-8); text-align: center; font-size: var(--fs-body-sm); color: var(--ink-3); }
+.more:global(.btn) { margin: var(--space-12) auto 0; display: flex; }
+
+/* Rail (shell rightRail slot). */
+.railScope { height: 100%; }
+.rail { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+.railHead { margin: 0; display: flex; align-items: center; gap: var(--space-8); font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); line-height: var(--lh-body); }
+.railCard { background: var(--surface); border-radius: var(--r-card-web); padding: var(--space-16); }
+.quota { display: flex; align-items: flex-end; gap: var(--space-6); }
+.quota b { font-family: var(--font-num); font-size: var(--fs-number-lg); font-weight: var(--fw-heavy); letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.quota span { padding-bottom: var(--space-6); }
+.quiet { display: flex; align-items: center; gap: var(--space-10); }
+.quiet > div { flex: 1; min-width: 0; }
+.quiet b { font-size: var(--fs-body-sm); }
+.cmp { display: grid; grid-template-columns: 70px 1fr 40px; gap: var(--space-8); align-items: center; margin-top: var(--space-6); font-size: var(--fs-label); color: var(--ink-3); }
+.cmp > div { margin: 0; }
+.cmp b { font-family: var(--font-num); font-weight: var(--fw-heavy); text-align: right; color: var(--ink); }
+.settingsLink:global(.btn) { font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: var(--space-6); width: 100%; height: 40px; padding: 0 16px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; }
+
 @media (max-width: 767px) {
-  .root { padding: 0; }
-  .workspace { display: block; min-height: 0; border: 0; border-radius: 0; }
-  .list { border: 0; padding: 16px; }
-  .detail { display: none; padding: 20px; }
-  .detailVisible { display: flex; }
-  .list.detailOpen { display: none; }
-  .back { display: inline-flex; }
+  .card { border-radius: var(--r-none); padding: var(--space-16); }
+  .table, .table tbody { display: block; }
+  .row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: var(--space-10); padding: 11px 0; border-top: 1px solid var(--line); }
+  .table td { display: block; padding: 0; border-top: 0; }
+  .table td.day { padding: 14px 0 4px; }
+  .tileCell, .actsCell, .timeCell { width: auto; }
+  .actsCell { grid-column: 2 / -1; margin-top: var(--space-8); }
+  .table td.actsCell { text-align: left; }
+  .acts { justify-content: flex-start; flex-wrap: wrap; }
+  .timeCell { grid-column: 3; grid-row: 1; }
 }

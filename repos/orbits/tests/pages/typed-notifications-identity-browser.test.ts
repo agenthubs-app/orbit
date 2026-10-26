@@ -10,7 +10,7 @@ test("notifications tab shares the read confirmation and confirms afresh before 
     import React from "react"; import {createRoot} from "react-dom/client";
     import {TypedNotificationsTab} from "./app/(app)/app/inbox/typed-notifications-tab";
     const at="2026-09-16T02:00:00Z";
-    const row=(readAt)=>({id:"n",actorId:"a",revision:readAt?2:1,kind:"reminder",origin:"user",semanticKey:"s",title:"发送报价资料",reason:"会议中答应发送",sources:[{sourceKind:"note",sourceId:"note",sourceRevision:"1",occurredAt:at,readAt:at,excerpt:"原文承诺"}],target:{kind:"source",id:"note",href:"/notes/note",status:"available"},actions:["read","dismiss"],occurredAt:at,updatedAt:at,readAt,disposition:"open"});
+    const row=(readAt)=>({id:"n",actorId:"a",revision:readAt?2:1,kind:"reminder",origin:"user",semanticKey:"s",title:"发送报价资料",reason:"会议中答应发送",sources:[{sourceKind:"note",sourceId:"note",sourceRevision:"1",occurredAt:at,readAt:at,excerpt:"原文承诺"}],target:{kind:"source",id:"note",href:"/notes/note",status:"available"},actions:["read","accept"],occurredAt:at,updatedAt:at,readAt,disposition:"open"});
     window.calls=[];window.account="a";window.changed=0;window.read=null;
     window.fetch=async(url,options={})=>{
       const path=String(url);window.calls.push({path,method:options.method||"GET"});
@@ -35,16 +35,16 @@ test("notifications tab shares the read confirmation and confirms afresh before 
     const posts = () => page.evaluate(() => (window as any).calls.filter((c: any) => c.method === "POST").length);
     await page.getByText("发送报价资料").first().waitFor();
     assert.equal(await me(), 1, "list read: the before and after confirmations share one request");
-    await page.getByText("发送报价资料").first().click();
-    // Opening a detail now marks it read, using the same action barrier.
+    // b5 #6: the row's 既読 action marks it read, using the same action barrier.
+    await page.getByRole("button", { name: "已读 发送报价资料" }).click();
     await page.waitForFunction(() => (window as any).calls.some((c: any) => c.method === "POST"));
     // Barrier before the action, then a fresh post-write confirmation (never the barrier's answer).
     await page.waitForFunction(() => (window as any).calls.filter((c: any) => c.path === "/api/account/me").length >= 3);
     assert.equal(await me(), 3, "the action confirmed before and after with fresh requests");
-    await page.getByText("已读").first().waitFor();
+    await page.getByRole("button", { name: "已读 发送报价资料" }).waitFor({ state: "detached" });
     // The account changes while the old identity is still reusable: the next action must notice.
     await page.evaluate(() => { (window as any).account = "b"; });
-    await page.getByRole("button", { name: "忽略" }).click();
+    await page.getByRole("button", { name: "加入待办 发送报价资料" }).click();
     await page.waitForFunction(() => (window as any).changed > 0);
     assert.equal(await me(), 4);
     assert.equal(await posts(), 1, "no action was sent for the switched account");

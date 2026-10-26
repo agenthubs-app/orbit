@@ -22,6 +22,8 @@
 }
 .coral .fill { background: linear-gradient(90deg, color-mix(in srgb, var(--coral) 40%, transparent), var(--coral)); }
 .coral .fill::after { border-color: var(--coral); }
+.rose .fill { background: linear-gradient(90deg, var(--rose-300), var(--rose-700)); }
+.rose .fill::after { border-color: var(--rose-700); }
 .thin { height: 4px; }
 .thin .fill::after { display: none; }
 

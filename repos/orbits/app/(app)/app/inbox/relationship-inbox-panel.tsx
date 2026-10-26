@@ -1169,7 +1169,7 @@ function RelationshipInboxPanel({
         className={`ri-panel${resizing ? " is-resizing" : ""}`}
         ref={panelRef}
         role={inline ? "region" : "dialog"}
-        style={inline ? { background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100vh", position: "relative", width: "100%" } : {
+        style={inline ? { background: tab === "alerts" ? "transparent" : "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100vh", position: "relative", width: "100%" } : {
           background: "var(--bg, #fff)",
           borderLeft: "1px solid var(--line)",
           bottom: 0,
@@ -1233,8 +1233,8 @@ function RelationshipInboxPanel({
           <span aria-hidden="true" />
         </button></>}
 
-        <div className="ri-panel-tabs"><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
-          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` · ${counts[item.id]}` : ''}`}))} /></div>
+        <div className={`ri-panel-tabs${inline && tab === "alerts" ? " d04" : ""}`}><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
+          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` ${counts[item.id]}` : ''}`}))} /></div>
 
         <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
@@ -1316,6 +1316,9 @@ function RelationshipInboxPanel({
 [data-orbit-real-page="relationship-inbox"] .ri-panel-tabs { height:47px; padding:7px 18px 6px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:3px; }
 [data-orbit-real-page="relationship-inbox"] .ri-panel-body { flex:1; min-height:0; overflow:hidden; }
 [data-orbit-real-page="relationship-inbox"] .ri-panel-body.scroll { overflow-y:auto; padding:14px 16px 18px; }
+/* b5 #6 inbox notifications (inline page): the tab strip is kit .d04-tabs over the page fog, the list card sits flush under it. */
+[data-orbit-real-page="relationship-inbox"] .ri-panel-tabs.d04 { height:auto; padding:12px 18px; }
+[data-orbit-real-page="relationship-inbox"][data-relationship-inbox-inline] .ri-panel-body.scroll { overflow:visible; padding:0; }
 
 [data-orbit-real-page="relationship-inbox"] .ri-resize-handle { position:absolute; z-index:4; top:0; bottom:0; left:-7px; width:14px; padding:0; border:0; background:transparent; cursor:ew-resize; touch-action:none; }
 [data-orbit-real-page="relationship-inbox"] .ri-resize-handle::before { content:""; position:absolute; inset:0 6px; background:transparent; transition:background .15s; }
