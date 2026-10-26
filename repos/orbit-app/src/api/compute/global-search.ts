@@ -137,7 +137,8 @@ function monthDay(startsAt: string, now: Date, language: SearchLanguage): string
 
 export function alternativesFor(input: Pick<GlobalSearchCoreInput, "query" | "events" | "eventHits" | "language" | "platform" | "now">): GlobalSearchAlternative[] {
   const copy = COPY[input.language];
-  const compact = input.query.replace(/\s+/gu, "");
+  // Spaces between CJK words go ("半導体 商社" → "半導体商社"); Latin word breaks stay ("Expo follow-up").
+  const compact = input.query.trim().replace(/\s+/gu, " ").replace(/(?<=[^\x00-\x7F]) (?=[^\x00-\x7F])/gu, "");
   const first = input.events?.events[0] ?? input.eventHits?.items[0];
   return [
     { detail: copy.askDetail(compact), emoji: "✨", href: "#ask", kind: "ask_iorbit", label: copy.askLabel },

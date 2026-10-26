@@ -4,7 +4,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -307,12 +307,12 @@ export function GlobalSearchScreen() {
     <FullScreenSearch testID="global-search" inputTestID="global-search-input" topGap={topGap}
       value={query} onChangeText={setQuery} onSubmitEditing={remember} showSoftInputOnFocus={!noKeyboard}
       placeholder={t("search.placeholder")} clearLabel={t("search.clearQuery")} cancelLabel={t("search.cancel")} onCancel={close}
-      chips={<View style={styles.scope} accessibilityLabel={t("search.typesLabel")}>
+      chips={<ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scope} accessibilityLabel={t("search.typesLabel")}>
       {filters.map((item) => {
         const on = item === filter;
         return <UiPressable key={item} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={filterLabel[item]} onPress={() => setFilter(item)} style={[styles.cat, on && styles.catOn]}><UiText style={[styles.catText, on && styles.catTextOn]}>{filterLabel[item]}</UiText></UiPressable>;
       })}
-    </View>}>
+    </ScrollView>}>
       {api.eventsOffline && query.trim() && filter !== "people" && !localFilter ? <UiText style={[styles.lbl, styles.hint]} accessibilityLiveRegion="polite">{t("search.eventsOffline")}</UiText> : null}
       {body}
     </FullScreenSearch>
@@ -333,7 +333,7 @@ function toneText(colors: OrbitColors, tone: Tone): string {
 // .chip 3/9 11 700 · .mr 2/8 11 700 rose-700 / rose-100 · mark rose-100 · .banner 9/12 r14 surface-2 11.5 ink-2 gap 8 ·
 // 空状态 22 10 8：🔎 40 / b 15 700 mt6 / .lbl mt4 · 例 chip lav 6/11 · 提示 .lbl mt10 · 骨架 .skel 12 / 10 mt7（surface-2）。
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  scope: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  scope: { flexDirection: "row", gap: 6 },
   cat: { backgroundColor: colors.surface2, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7 },
   catOn: { backgroundColor: colors.ink },
   catText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 23 },
