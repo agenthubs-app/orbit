@@ -39,8 +39,8 @@ export function ShellTopBar({ title, subtitle, left, right }: { title: string; s
     <View style={styles.bar}>
       <View style={[styles.side, { minWidth: side }]}><View style={styles.content} onLayout={measure("left")}>{left}</View></View>
       <View style={styles.center}>
-        {title ? <UiText accessibilityRole="header" numberOfLines={1} style={[styles.title, cjkLift(title, -1, -1)]}>{title}</UiText> : null}
-        {subtitle ? <UiText numberOfLines={1} style={[styles.subtitle, cjkLift(subtitle, -0.5, 0)]}>{subtitle}</UiText> : null}
+        {title ? <UiText accessibilityRole="header" style={[styles.title, cjkLift(title, -1, -1)]}>{title}</UiText> : null}
+        {subtitle ? <UiText style={[styles.subtitle, cjkLift(subtitle, -0.5, 0)]}>{subtitle}</UiText> : null}
       </View>
       <View style={[styles.side, { minWidth: side }, side > SIDE && styles.sideEnd]}><View style={styles.content} onLayout={measure("right")}>{right}</View></View>
     </View>

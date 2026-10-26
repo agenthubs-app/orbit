@@ -914,7 +914,7 @@ function ConversationThread({
   const copy = iorbitR21Copy[locale.language];
   return (
     // The bar sits outside the scroll view (fixed), so scrolling a long answer never slides it under the status bar.
-    <AppScreen inset="kit" title="iOrbit" subtitle={thread.title} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
+    <AppScreen inset="kit" title="iOrbit" subtitle={shortTitle(thread.title)} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
       headerActions={<UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />}>
       {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
       <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
@@ -1609,3 +1609,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: 16
   }
 }));
+
+// The nav bar grows rather than clipping, so a conversation titled by its whole first message is shortened here.
+function shortTitle(title: string): string {
+  const chars = Array.from(title.trim());
+  return chars.length > 22 ? `${chars.slice(0, 21).join("")}…` : chars.join("");
+}
