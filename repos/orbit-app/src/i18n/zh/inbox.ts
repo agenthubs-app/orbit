@@ -130,4 +130,5 @@ export const inbox = {
   "inbox.previewSafety": "下一步只预览草稿，不会保存或发送消息。",
   "inbox.preparing": "正在准备",
   "inbox.previewDraft": "预览草稿",
+  "inbox.notificationSettings": "通知设置",
 } as const;

@@ -12,12 +12,20 @@ export interface NoteContactSearchPage {
   nextCursor?: string;
 }
 
-export function NoteContactPicker({ disabled = false, selectedIds, selectedContacts = [], onToggle, search, browseWhenEmpty = false }: {
+/** People @mentioned in the body: shown with the picked people right away (removed by editing the body, not here). */
+export function mentionedContacts(mentions: readonly { contactId?: string; displayText: string; entityType?: string }[]): { id: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const mention of mentions) if ((mention.entityType ?? "contact") === "contact" && mention.contactId && !seen.has(mention.contactId)) seen.set(mention.contactId, mention.displayText.replace(/^@/u, ""));
+  return [...seen].map(([id, name]) => ({ id, name }));
+}
+
+export function NoteContactPicker({ disabled = false, selectedIds, selectedContacts = [], mentioned = [], onToggle, search, browseWhenEmpty = false }: {
   disabled?: boolean;
   /** Final pass 2026-10-25: where search is local (the phone), list people before anything is typed. */
   browseWhenEmpty?: boolean;
   selectedIds: readonly string[];
   selectedContacts?: readonly ContactSummary[];
+  mentioned?: readonly { id: string; name: string }[];
   onToggle: (id: string, contact?: ContactSummary) => void;
   search: (query: string, cursor: string | undefined, signal: AbortSignal) => Promise<NoteContactSearchPage>;
 }) {
@@ -85,6 +93,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
   }
 
   const selected = new Set(selectedIds);
+  const mentionedOnly = mentioned.filter((person) => !selected.has(person.id));
   return <View style={styles.group}>
     {/* UX-6: one tappable row (icon, label, +) instead of a heading, a hint line and a round button. */}
     <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedPeople")} accessibilityState={{ expanded: open }} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.labelRow}>
@@ -92,7 +101,9 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
       <Text style={styles.label}>{locale.t("notes.relatedPeople")}</Text>
       <Ionicons color={colors.accentText} name={open ? "chevron-up" : "add"} size={22} />
     </Pressable>
-    {selectedIds.length ? <View style={styles.selectedRow}>{selectedIds.map((id) => {
+    {selectedIds.length || mentionedOnly.length ? <View style={styles.selectedRow}>{mentionedOnly.map((person) => <View key={`mention:${person.id}`} style={styles.chip} testID={`note-mentioned-${person.id}`}>
+      <Text numberOfLines={1} style={styles.chipText}>{`@${names.get(person.id)?.name ?? person.name}`}</Text>
+    </View>)}{selectedIds.map((id) => {
       const contact = names.get(id);
       return <View key={id} style={styles.chip}>
         <Text numberOfLines={1} style={styles.chipText}>{contact?.name ?? id}</Text>

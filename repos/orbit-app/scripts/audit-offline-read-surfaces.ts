@@ -26,9 +26,8 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/me/account-api.ts:31': ['/api/profile'],
   'src/screens/me/suggestions-api.ts:31': ['/api/profile'],
   'src/screens/profile/useProfileEditSessionScreen.ts:45': ['/api/profile'],
-  'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id'],
-  'src/screens/tasks/TaskDetailScreen.tsx:92': ['/api/tasks/:id/activities'],
-  'src/screens/tasks/TaskDetailScreen.tsx:93': ['/api/reminders'],
+  'src/screens/tasks/TaskDetailScreen.tsx:89': ['/api/tasks/:id'],
+  'src/screens/tasks/TaskDetailScreen.tsx:90': ['/api/reminders'],
   // R20 exact-task lifecycle resolver builds its actor-scoped path before transport.
   'src/screens/todo/TodoScreen.tsx:317': ['/api/relationship-tasks/:id/resolve'],
   // R20 To-do decision builders validate source and action before this single transport call.

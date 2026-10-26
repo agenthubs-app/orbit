@@ -31,7 +31,7 @@ test("a legacy followup id alone is not proof of an accessible task", () => {
 
   assert.equal(actions.get("notice:one")?.href, undefined);
   const view = relationshipAlertsToView({ state: "success", reminders: [{ ...reminder, href: undefined, followupTaskId: "task:missing" }], notificationInteractions: {} });
-  assert.equal(view.alerts[0]?.title, "来源已不可用");
+  assert.equal(view.alerts[0]?.title, "这条通知已过期");
   assert.equal(view.alerts[0]?.detail, "");
   assert.equal(view.alerts[0]?.canPersistState, true);
 });

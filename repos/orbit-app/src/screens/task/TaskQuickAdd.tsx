@@ -83,8 +83,10 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
     }
   }
 
+  // UX T1: the box is pinned above the scrolling list (which clips at its top). A gap and a hairline bottom edge make
+  // rows scrolling up end at a clean line instead of looking sliced right under the box. No fill, so the page fog shows through.
   return (
-    <View style={styles.box}>
+    <View style={styles.bar}><View style={styles.box}>
       <Icon name="plus" size={20} color={colors.ink3Text} />
       <TextInput
         ref={input}
@@ -100,12 +102,13 @@ export const TaskQuickAdd = forwardRef<TaskQuickAddHandle, { onCreated: () => vo
         value={draft}
       />
       {saving ? <UiText style={styles.saving}>{locale.t("today.creating")}</UiText> : null}
-    </View>
+    </View></View>
   );
 });
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  box: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, marginHorizontal: 16, marginTop: 4, borderRadius: 14, backgroundColor: colors.surface2 },
+  bar: { zIndex: 1, paddingTop: 4, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
+  box: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, marginHorizontal: 16, borderRadius: 14, backgroundColor: colors.surface2 },
   input: { flex: 1, minHeight: 44, padding: 0, color: colors.ink, fontSize: 17 },
   saving: { color: colors.ink3Text, fontSize: 14 },
 }));

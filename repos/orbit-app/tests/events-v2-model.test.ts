@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { appCardLine, appEventWhen, meetCountOf, orderAssessed, relativeDay, ringColor, verdictKey } from "../src/screens/events/v2/events-model";
+import { appCardLine, appEventWhen, clipboardEventUrl, meetCountOf, orderAssessed, relativeDay, ringColor, verdictKey } from "../src/screens/events/v2/events-model";
+import { announceEventChanged, publicOrganizerName, subscribeEventChanged } from "../src/screens/events/v2/journey-model";
 import type { EventAssessmentContract } from "../src/api/contract/event-assessment";
 
 // R26 App イベント: date / chip / ring helpers match the boards (app.html #14 / #15).
@@ -23,4 +24,24 @@ test("ring colour, verdict key, 会いたい人 count, score order with 見送�
   assert.equal(verdictKey("conditional"), "verdictConditional");
   assert.equal(meetCountOf(base("a", 82, { meetCandidates: [{ basis: "", count: 3, emoji: "💼", label: "VC", source: "speakers" }, { basis: "", count: 11, emoji: "🏭", label: "DX", source: "exhibitors" }, { basis: "", count: 2, emoji: "👋", label: "known", source: "known" }] })), 14);
   assert.deepEqual(orderAssessed([base("low", 41), base("skip", 90, { userDecision: "dismissed" }), base("high", 82)]).map((item) => item.id), ["high", "low", "skip"]);
+});
+
+test("UX E2: 粘贴网址 takes the first http(s) link from the clipboard, nothing else", () => {
+  assert.equal(clipboardEventUrl("https://peatix.com/event/123"), "https://peatix.com/event/123");
+  assert.equal(clipboardEventUrl("見てみて 「https://example.com/e?id=1」 よろしく"), "https://example.com/e?id=1");
+  assert.equal(clipboardEventUrl("ただのメモ"), null);
+  assert.equal(clipboardEventUrl(""), null);
+  assert.equal(clipboardEventUrl(null), null);
+});
+
+test("UX E6 / E8: the server's 「Organizer #id」 placeholder is not a name; registration changes reach the open detail", () => {
+  assert.equal(publicOrganizerName("Organizer #1Q8PXWU"), null);
+  assert.equal(publicOrganizerName("  "), null);
+  assert.equal(publicOrganizerName("東京SaaS会"), "東京SaaS会");
+  const heard: string[] = [];
+  const stop = subscribeEventChanged((id) => heard.push(id));
+  announceEventChanged("event-1");
+  stop();
+  announceEventChanged("event-2");
+  assert.deepEqual(heard, ["event-1"]);
 });

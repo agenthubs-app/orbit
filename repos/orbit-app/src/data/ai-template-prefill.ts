@@ -90,9 +90,13 @@ export function contactFollowupTemplate(input: {
   recommendedAction: string;
 }) {
   const channel = input.channel === "email" ? "邮件" : "联系消息";
+  const part = (value: string) => value.trim().replace(/[。.\s]+$/u, "");
+  // An empty part would read "原因：。"; its whole "label：。" sentence is dropped instead.
+  const message = `请为 @${input.contactName} 起草一段${channel}。公司：${part(input.organization)}。建议下一步：${part(input.recommendedAction)}。原因：${part(input.rationale)}。只生成可编辑草稿，不要发送。`
+    .split("。").filter((sentence) => !sentence.endsWith("：")).join("。");
   return {
     entryPointId: "contact.followup_draft" as const,
-    message: `请为 @${input.contactName} 起草一段${channel}。公司：${input.organization || "未填写"}。建议下一步：${input.recommendedAction}。原因：${input.rationale}。只生成可编辑草稿，不要发送。`,
+    message,
     references: [{ id: input.contactId, type: "contact" as const }],
     template: { id: input.channel === "email" ? "contact.followup_email_draft" : "contact.followup_chat_draft", version: 1 },
   };

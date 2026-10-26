@@ -278,6 +278,20 @@ test("native memo keeps @person and @event ranges after an emoji edit", async (t
   ]);
 });
 
+test("UX N1/N2: an @ suggestion shows company · role, and the mentioned person joins 相关人脉 before saving", async (t) => {
+  const value = await nativePage(t);
+  const body = value.getByRole("textbox", { name: "笔记内容" });
+  await body.fill("@镜");
+  const candidate = value.getByRole("button", { name: "提及 镜像联系人" });
+  await candidate.getByText("本地组织 · 顾问", { exact: true }).waitFor();
+  assert.equal(await candidate.getByText("人", { exact: true }).count(), 0, "no bare 人 subtitle");
+  assert.equal(await value.getByTestId("note-mentioned-contact:local").count(), 0);
+  await candidate.click();
+  await value.getByTestId("note-mentioned-contact:local").getByText("@镜像联系人", { exact: true }).waitFor();
+  await body.fill("");
+  await value.waitForFunction(() => !document.querySelector("[data-testid='note-mentioned-contact:local']"));
+});
+
 test("UX-5: memo list reads one kind of note with no category tabs, kind pill, or old duplicate hero", async (t) => {
   const value = await page(t, "list");
   await value.getByText("原始标题", { exact: true }).waitFor();

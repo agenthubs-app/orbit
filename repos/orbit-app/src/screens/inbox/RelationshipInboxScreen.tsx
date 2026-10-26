@@ -24,7 +24,9 @@ import {
   View
 } from "react-native";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Segmented } from "../../components/ui";
+import { Button, IconButton, Segmented } from "../../components/ui";
+import { inboxAppTargetHref } from "../../view-models/inbox-target";
+import type { InboxNotificationDTO } from "../../api/contract/inbox-notifications";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { NotificationDeliveryContract } from "../../api/contract/notifications";
@@ -532,6 +534,19 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     }
   }
 
+  // A notification that points somewhere opens that place directly (and is marked read on the way);
+  // only one without a usable target opens the notification page.
+  function openNotification(item: InboxNotificationDTO) {
+    if (!isCurrent()) return;
+    const href = item.target.status === "available" ? inboxAppTargetHref(item.target.href) : null;
+    if (!href) {
+      router.push(`/inbox/notifications/${encodeURIComponent(item.id)}${typedInbox.filter === "secretary" ? "?filter=secretary" : ""}` as Href);
+      return;
+    }
+    if (!item.readAt && item.actions.includes("read") && !typedInbox.offline) void typedInbox.act(item, "read");
+    router.push(href as Href);
+  }
+
   function openConversation(conversationId: string) {
     if (!isCurrent()) return;
     router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href);
@@ -554,6 +569,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       markAllReadLabel={activeSection === "threads" ? threadsOffline ? `${locale.t("inbox.markPageRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
       markAllReadVisibleLabel={activeSection === "threads" ? locale.t("typedInbox.markPageReadShort") : undefined}
       markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : threadsOffline || batchPending || confirmableUnread === 0}
+      settingsAction={activeSection === "alerts" && !typedInbox.offline && !composing && !createdThread ? { label: locale.t(typedInbox.filter === "secretary" ? "notifications.secretaryTitle" : "inbox.notificationSettings"), onPress: () => router.push(typedInbox.filter === "secretary" ? "/settings/notifications/secretary" : "/settings/notifications") } : undefined}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -576,10 +592,9 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={notificationsUnread} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
-      {activeSection === "alerts" && !typedInbox.offline ? <View style={{alignSelf:'flex-end',marginBottom:8}}><Button size="lg" label={locale.t(typedInbox.filter==='secretary'?'notifications.secretaryTitle':'notifications.title')} onPress={()=>router.push(typedInbox.filter==='secretary'?'/settings/notifications/secretary':'/settings/notifications')}/></View> : null}
       {activeSection === "threads" && threadsOffline && !composing && !createdThread ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
       {activeSection === "threads" && !composing && !createdThread ? <UnsentEndedNotice messages={endedOutbox} onDiscard={ids => { void outbox.discard(ids).catch(() => undefined); }} /> : null}
-      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}${typedInbox.filter==='secretary'?'?filter=secretary':''}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
+      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={openNotification} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
           onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
@@ -776,20 +791,25 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, settingsAction, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onMarkAllRead?: (() => void) | undefined;
   markAllReadLabel?: string;
   markAllReadVisibleLabel?: string | undefined;
   markAllReadDisabled?: boolean;
+  /** Notifications tab: a gear next to 全部已读 that opens the notification settings. */
+  settingsAction?: { label: string; onPress: () => void } | undefined;
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
 }>) {
   const locale = useOrbitLocale();
   return <AppScreen inset="kit" title={title} headerVariant="compact" backLabel={locale.t("inbox.home")} showBack={!hideBack} {...(onBack ? { onBack } : {})}
     {...(refreshControl ? { refreshControl } : {})}
-    headerActions={onMarkAllRead ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : undefined}>
+    headerActions={onMarkAllRead || settingsAction ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {onMarkAllRead ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : null}
+      {settingsAction ? <IconButton icon="settings" size={34} soft accessibilityLabel={settingsAction.label} onPress={settingsAction.onPress} /> : null}
+    </View> : undefined}>
     {children}
   </AppScreen>;
 }

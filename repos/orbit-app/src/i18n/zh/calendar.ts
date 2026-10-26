@@ -1,5 +1,5 @@
 export const calendar = {
-  "calendar.view.more": "另有{count}项",
+  "calendar.view.more": "+{count}",
   "calendar.view.emptyTitle": "还没有日程",
   "calendar.view.emptyBody": "创建个人日程后，会显示在这里。",
   "calendar.view.overlap": "{first}和{second}的时间重叠。",

@@ -23,7 +23,7 @@ import { radius, shadows } from "../../../design/tokens";
 import { CancelSheet } from "./CancelSheet";
 import { newIdempotencyKey, useEventsApi } from "./events-api";
 import { useJourneyApi } from "./journey-api";
-import { eventRange, feeText, rowTone } from "./journey-model";
+import { eventRange, feeText, publicOrganizerName, rowTone, subscribeEventChanged } from "./journey-model";
 import { ringColor, verdictKey } from "./events-model";
 import { ScoreRing } from "./ScoreRing";
 import { useJourneyT } from "./useJourneyT";
@@ -98,6 +98,7 @@ export function EventDetailPage() {
     })();
     return () => { live = false; };
   }, [api, copy, eventId, reload]);
+  useEffect(() => subscribeEventChanged((changed) => { if (changed === eventId) setReload((value) => value + 1); }), [eventId]);
 
   const tone = (key: Tone) => ({ apricot: [colors.macApricot, colors.macApricotInk], blue: [colors.macBlue, colors.macBlueInk], lav: [colors.macLav, colors.macLavInk], pink: [colors.macPink, colors.macPinkInk], teal: [colors.macTeal, colors.macTealInk] } as const)[key];
   const base = `/events/${encodeURIComponent(eventId)}`;
@@ -197,7 +198,7 @@ export function EventDetailPage() {
             {remainingChip ? <View style={[styles.chip, styles.coverChip]}><UiText style={styles.chipText} numberOfLines={1}>{remainingChip}</UiText></View> : null}
           </Cover>
           <View style={styles.coverBody}>
-            <UiText style={styles.lbl}>{data.organizer.name}</UiText>
+            {publicOrganizerName(data.organizer.name) ? <UiText style={styles.lbl}>{publicOrganizerName(data.organizer.name)}</UiText> : null}
             <UiText style={styles.title}>{data.title}</UiText>
             <View style={styles.facts}>{facts.map((fact) => <View key={fact.icon} style={styles.fact}><Icon name={fact.icon} size={16} color={colors.ink3} /><UiText style={styles.factText}>{fact.text}</UiText></View>)}</View>
           </View>
@@ -263,7 +264,7 @@ export function EventDetailPage() {
         {tab === "host" ? (
           <View style={styles.card}><View style={[styles.row, { gap: 12 }]}>
             <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>{data.organizer.emoji ?? data.emoji}</UiText></View>
-            <View style={styles.grow}><UiText style={styles.metaTitle}>{data.organizer.name}</UiText><UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</UiText></View>
+            <View style={styles.grow}><UiText style={styles.metaTitle}>{publicOrganizerName(data.organizer.name) ?? t("hostUnnamed")}</UiText><UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</UiText></View>
           </View></View>
         ) : null}
         {tab === "people" && data.rosterLocked ? rosterGate : null}

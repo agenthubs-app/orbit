@@ -1,5 +1,5 @@
 export const calendar = {
-  "calendar.view.more": "ほか {count}件",
+  "calendar.view.more": "+{count}",
   "calendar.view.emptyTitle": "予定はまだありません",
   "calendar.view.emptyBody": "個人の予定を作ると、ここに表示されます。",
   "calendar.view.overlap": "{first} と {second} が重なっています。",

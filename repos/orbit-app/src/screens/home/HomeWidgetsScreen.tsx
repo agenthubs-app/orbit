@@ -36,6 +36,9 @@ import { HOME_COPY_FRESH_MS, HOME_WIDGETS, addWidget, dragTargetIndex, moveWidge
 import { useHomeLayout } from "./use-home-layout";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useHomeWidgetSnapshot } from "./use-home-widget-snapshot";
+import { useStandardCopy } from "../../i18n/standard-copy";
+import { accountProfilePath } from "../me/account-api";
+import { accountScreenResponseSchema } from "../me/account-response";
 
 const TITLE: Record<HomeWidgetKey, "home.widgetToday" | "home.widgetPending" | "home.widgetWeek" | "home.widgetPlan" | "home.widgetEvent" | "home.widgetEventPick" | "home.widgetNetwork" | "home.widgetSecretary" | "home.widgetMemo"> = {
   today: "home.widgetToday", pending: "home.widgetPending", week: "home.widgetWeek", planScore: "home.widgetPlan",
@@ -57,7 +60,7 @@ export function HomeWidgetsScreen() {
 }
 
 function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl: string; client: OrbitApiClient }) {
-  const router = useRouter(); const auth = useOrbitAuthSession(); const { t, language } = useOrbitLocale(); const { timeZone, canSave: timeZoneConfirmed } = useOrbitTimeZone(); const toast = useToast();
+  const router = useRouter(); const auth = useOrbitAuthSession(); const { t, language } = useOrbitLocale(); const { timeZone, canSave: timeZoneConfirmed } = useOrbitTimeZone(); const toast = useToast(); const copy = useStandardCopy();
   const { colors, styles } = useStyles(); const insets = useSafeAreaInsets();
   const onConflict = useCallback(() => toast.error(t("home.widgetConflict")), [t, toast]);
   const { layout, state, saving, pending, fetchedAt, reload, save } = useHomeLayout({ actorId, baseUrl, client, onConflict });
@@ -80,7 +83,12 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const guideProgress = guideParsed?.success && guideParsed.data.kind === "progress" ? guideParsed.data : null;
   const now = useMemo(() => new Date(), []);
   const date = shellHeaderDate(now, language, timeZone, t);
-  const greeting = shellGreeting(now, timeZone, auth.user?.name, t);
+  // UX: greet with the name on the profile card (我的), the sign-in account name until that copy is read.
+  const profileCopy = usePageCopyResource<unknown>(accountProfilePath(undefined, false), () => false, { copy: { id: "self-profile" },
+    scopeKey: JSON.stringify([actorId, auth.cookieHeader, baseUrl]), freshForMs: HOME_COPY_FRESH_MS, accept: value => accountScreenResponseSchema.safeParse(value).success });
+  const profileParsed = profileCopy.kind === "success" || profileCopy.kind === "empty" ? accountScreenResponseSchema.safeParse(profileCopy.data) : null;
+  const displayName = (profileParsed?.success ? profileParsed.data.profile?.displayName?.trim() : "") || auth.user?.name?.trim() || "";
+  const greeting = shellGreeting(now, timeZone, displayName, t);
   const items = editing ? draft ?? [...layout.app] : layout.app;
   const menuSlot = menu ? layout.app.find(slot => slot.key === menu) : null;
   const navigate = (target: string) => {
@@ -120,7 +128,8 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     if (result === "error") { setHintHidden(false); toast.error(t("home.widgetUnavailable")); }
   };
   return <AppScreen inset="kit" title={date} scrollEnabled={!dragging} header={<View style={styles.header}>
-    <View style={styles.avatar}><UiText style={styles.avatarText}>{auth.user?.name?.slice(0, 1) || "O"}</UiText></View>
+    {/* UX: the avatar opens 我的 (profile and settings), as on the old dashboard. */}
+    <UiPressable accessibilityRole="button" accessibilityLabel={copy.nav.me} hitSlop={2} onPress={() => router.push("/profile" as Href)} style={styles.avatar}><UiText style={styles.avatarText}>{Array.from(displayName)[0]?.toUpperCase() || "O"}</UiText></UiPressable>
     <View style={styles.headerWords}><UiText style={styles.date}>{date}</UiText><UiText style={styles.greeting}>{greeting}</UiText></View>
     {/* UX-2: iOS home-screen editing — "+" adds a widget, "完成" ends the jiggle mode. */}
     {editing ? <View style={styles.editBarSpace} /> : <>

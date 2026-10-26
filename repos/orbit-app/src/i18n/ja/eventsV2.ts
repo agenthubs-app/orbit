@@ -144,6 +144,7 @@ export const eventsV2 = {
   "eventsV2.inputOnlyHere": "入力した内容はこの判定にだけ使われます",
   "eventsV2.posterImage": "ポスター画像",
   "eventsV2.upcoming": "これから",
+  "eventsV2.upcomingEmpty": "参加予定のイベントはまだありません",
   "eventsV2.past": "過去",
   "eventsV2.attended": "参加した",
   "eventsV2.notCheckedIn": "未チェックイン",

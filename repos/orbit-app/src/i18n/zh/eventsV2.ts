@@ -144,6 +144,7 @@ export const eventsV2 = {
   "eventsV2.inputOnlyHere": "填写的内容只用于这次判断",
   "eventsV2.posterImage": "海报图片",
   "eventsV2.upcoming": "接下来",
+  "eventsV2.upcomingEmpty": "还没有要参加的活动",
   "eventsV2.past": "过去",
   "eventsV2.attended": "参加了",
   "eventsV2.notCheckedIn": "未签到",

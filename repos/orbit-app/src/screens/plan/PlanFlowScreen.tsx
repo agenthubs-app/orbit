@@ -195,19 +195,19 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             <>
               {(() => {
                 const usedUp = draft.aiFixUsed >= draft.aiFixLimit;
-                const actions = (first: boolean) => draftOpen && !usedUp
-                  ? <DraftActions draft={draft} first={first} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} />
+                const actions = () => draftOpen && !usedUp
+                  ? <DraftActions draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} />
                   : undefined;
                 const last = draft.turns.length - 1;
                 return (
                   <>
                     {!draft.turns.length ? <Bubble>{t("plan.draft.bubble")}</Bubble> : null}
                     <ChatScrollTarget active={draft.turns.length > 0}>
-                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions(true)} />
+                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions()} />
                     </ChatScrollTarget>
                     {draft.turns.map((turn, index) => (
                       <View key={turn.n} style={styles.turn} onLayout={(event) => { turnOffsets.current[turn.n] = event.nativeEvent.layout.y; }}>
-                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions(false) : undefined} mark={index === last} />
+                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions() : undefined} mark={index === last} />
                       </View>
                     ))}
                     {busy === "fix" ? <UiText style={kit.lbl}>{t("plan.fix.sending")}</UiText> : null}

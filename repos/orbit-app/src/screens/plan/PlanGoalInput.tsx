@@ -124,7 +124,6 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
         {/* 空着也画成可按（b12 A-R23-02a）：按下把焦点给输入框，有字才建。 */}
         <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
-        <UiText style={styles.steps}>{`${t("plan.goal.previewFirst")}\n${t("plan.goal.previewSecond")}`}</UiText>
       </View>
       <SampleTypeCard />
     </View>
@@ -168,10 +167,9 @@ function ResumeCard({ intake, onOpen }: { intake: PlanIntakeListItem; onOpen: ()
           <Icon name="right" size={16} color={colors.bg} />
         </UiPressable>
       </View>
-      <View style={[styles.row10, styles.resumeFoot]}>
-        <KitStages stage={stage} style={styles.fm} />
-        <UiText style={kit.lbl}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
-      </View>
+      {/* 五段进度占满一行（与右侧文字同排时每段太窄、名字被截断），停在哪一步写在下面。 */}
+      <KitStages stage={stage} style={styles.resumeFoot} />
+      <UiText style={[kit.lbl, styles.resumeWhere]}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
     </View>
   );
 }
@@ -245,7 +243,7 @@ function SampleTypeCard() {
           <View style={styles.tcardHead}>
             <KitEmo emoji="🎪" tone="lav" sm />
             <View style={kit.grow}>
-              <UiText style={styles.tk}>{t("plan.sample.kicker", { label: shortLabel })}</UiText>
+              <UiText style={styles.tk}>{shortLabel}</UiText>
               <UiText style={styles.tname}>{t("plan.sample.roleSituation")}</UiText>
             </View>
             <UiText style={styles.pp}>0<UiText style={styles.ppSmall}> / 20</UiText></UiText>
@@ -295,14 +293,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   foptEmoji: { fontSize: 13 },
   start: { height: 50, marginTop: 14 },
   startAfterLimit: { marginTop: 10 },
-  steps: { color: colors.ink3, ...kitText(11.5, "500", 1.6), textAlign: "center", marginTop: 8 },
 
   resume: { backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   resumeGoal: { color: colors.ink, ...kitText(13.5, "700") },
   resumeBtn: { flexDirection: "row", alignItems: "center", gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.ink },
   resumeBtnText: { color: colors.bg, ...kitText(12, "700") },
-  resumeFoot: { marginTop: 10 },
-  fm: { flex: 1, minWidth: 0 },
+  resumeFoot: { marginTop: 12 },
+  resumeWhere: { marginTop: 6 },
 
   limitWrap: { marginTop: 12 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },

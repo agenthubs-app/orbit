@@ -281,6 +281,13 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       ) : null}
 
+      {data && !data.popularityFallback && !flat && rows.length === 0 && data.community.length === 0 && data.planFit.length === 0 ? (
+        <View style={[styles.card, styles.noMatch]} testID="events-discover-no-match">
+          <UiText style={styles.noMatchTitle}>{t("noMatchTitle")}</UiText>
+          {count ? <UiPressable accessibilityRole="button" accessibilityLabel={t("noMatchClear")} onPress={() => setQuery({ areas: [], planFirst: true, sort: query.sort ?? "date", themes: [] })} style={[styles.btnSm, styles.noMatchBtn]} testID="events-discover-clear"><UiText style={styles.btnSmText}>{t("noMatchClear")}</UiText></UiPressable> : null}
+        </View>
+      ) : null}
+
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel={t("filtersLbl")}>
         <View style={styles.sheet} testID="events-discover-sheet">
           <View style={[styles.row, { justifyContent: "space-between", marginBottom: 2 }]}>
@@ -408,6 +415,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cardFoot: { gap: 6, marginTop: "auto", paddingTop: 10 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", marginLeft: "auto", paddingHorizontal: 12 },
   btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  noMatch: { alignItems: "center", gap: 12, marginTop: 14, paddingVertical: 28 },
+  noMatchTitle: { color: colors.ink2, fontSize: 15, fontWeight: "600", lineHeight: 22, textAlign: "center" },
+  noMatchBtn: { marginLeft: 0 },
   dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },
   dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
   dotOn: { backgroundColor: colors.ink2, width: 18 },

@@ -266,6 +266,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-going">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("eventsV2.upcoming")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: coming.length })}</UiText></View>
+      {coming.length === 0 ? <UiText style={[styles.lbl, { marginBottom: 12 }]} testID="events-going-upcoming-empty">{t("eventsV2.upcomingEmpty")}</UiText> : null}
       {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" />)}
       {past.length ? (
         <View style={[styles.card, { marginTop: 6, paddingHorizontal: 16, paddingVertical: 8 }]}>
@@ -275,7 +276,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
               {index > 0 ? <View style={styles.liLine} /> : null}
               <View style={[styles.emo, styles.emoSm, { backgroundColor: item.status === "attended" ? colors.macTeal : colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
               <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
-              <Chip label={item.status === "attended" ? t("eventsV2.attended") : item.status === "cancelled" ? t("eventsV2.statusCancelled") : t("eventsV2.notCheckedIn")} tone={item.status === "attended" ? "teal" : "neutral"} />
+              {item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
             </UiPressable>
           ))}
         </View>

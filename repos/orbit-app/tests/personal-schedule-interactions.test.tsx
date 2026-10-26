@@ -79,7 +79,7 @@ export const useLocalSearchParams = () => { observe(); return { id: state.taskId
 export const useGlobalSearchParams = useLocalSearchParams;
 export const useFocusEffect = callback => React.useEffect(callback, [callback]);
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
-export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation = path; }, replace(path) { state.navigation = path; } });
+export const useRouter = () => ({ canGoBack: () => !!state.canGoBack, back() { state.navigation = "back"; }, push(path) { state.navigation = path; }, replace(path) { state.navigation = path; } });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const readSnapshot = async () => null;
@@ -382,7 +382,7 @@ test("saving disables a staged picker and rejects its earlier confirmation callb
   assert.deepEqual((await writes(p))[0].body.patch, { title: "Only title" });
 });
 
-for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联人脉", "搜索相关人脉"]] as const) {
+for (const [entry, searchLabel] of [["相关笔记", "搜索笔记"], ["相关的人", "搜索相关人脉"]] as const) {
   test(`association entry ${entry} opens a bottom dialog before searching`, async t => {
     const p = await open(t);
     await press(p, entry);
@@ -396,7 +396,7 @@ for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联�
     await p.getByRole("textbox", { name: searchLabel, exact: true }).waitFor();
     await p.waitForTimeout(350);
     const requests = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/schedule-items/association-options/")).map((r: any) => [r.method, r.path, r.query]));
-    assert.deepEqual(requests, [["GET", `/api/schedule-items/association-options/${entry === "关联笔记" ? "notes" : "contacts"}`, "?q=&limit=20"]]);
+    assert.deepEqual(requests, [["GET", `/api/schedule-items/association-options/${entry === "相关笔记" ? "notes" : "contacts"}`, "?q=&limit=20"]]);
     assert.deepEqual(await writes(p), []);
   });
 }
@@ -434,13 +434,13 @@ test("editor reference date is localized without changing its saved date or time
 
 test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
   const p = await open(t, { contact: { id: "contact:owned", displayName: "林悦" } });
-  await press(p, "关联人脉");
+  await press(p, "相关的人");
   const choice = p.getByRole("checkbox", { name: "林悦", exact: true });
   await choice.click(); await settle(p);
   assert.equal(await choice.getAttribute("aria-checked"), "true");
   await choice.click(); await settle(p);
   assert.equal(await choice.getAttribute("aria-checked"), "false");
-  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关的人", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "取消");
   assert.deepEqual(await writes(p), []);
 });
@@ -448,10 +448,10 @@ test("association checkbox exposes selected state, supports deselection and canc
 test("association close aborts pending search and ignores its late response", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  await press(p, "相关笔记"); await p.waitForTimeout(50);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"));
   assert.ok(index >= 0);
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
   await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "note", options: [{ id: "late", title: "Late private title" }], sourceVersion: "v1", partial: false }), index);
   await settle(p);
@@ -462,11 +462,11 @@ test("association close aborts pending search and ignores its late response", as
 test("association actor change closes the sheet and rejects the old scope response", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
   assert.ok(index >= 0);
   await p.evaluate(() => (window as any).fixture.update({ actor: "actor-2" })); await settle(p);
-  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("dialog", { name: "相关的人", exact: true }).count(), 0);
   assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
   await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "old", title: "Old actor title" }], sourceVersion: "v1", partial: false }), index);
   await settle(p);
@@ -477,7 +477,7 @@ test("association actor change closes the sheet and rejects the old scope respon
 test("association partial empty page continues, appends choices and preserves selected IDs", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  await press(p, "相关笔记"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"); s.reply(i, 200, { actorId: "actor-1", kind: "note", options: [], sourceVersion: "v1", partial: true, nextCursor: "scan-200" }); });
   await p.getByRole("button", { name: "加载更多笔记", exact: true }).waitFor();
   assert.equal(await p.getByText("还有未检查的记录，请加载更多", { exact: true }).count(), 1);
@@ -498,7 +498,7 @@ test("association partial empty page continues, appends choices and preserves se
 test("association read failure offers retry and refuses foreign summary scope", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
   await p.getByRole("button", { name: "重试", exact: true }).waitFor();
   await press(p, "重试"); await p.waitForTimeout(50);
@@ -515,11 +515,11 @@ test("association limit explains fifty selections and still permits removal", as
   const ids = Array.from({ length: 50 }, (_, i) => `contact:${i}`);
   const p = await open(t, { item: { ...initialItem, contactIds: ids } });
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"); s.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "contact:0", title: "Selected choice" }, { id: "contact:new", title: "New choice" }], sourceVersion: "v1", partial: false }); });
   await p.getByRole("checkbox", { name: "New choice", exact: true }).waitFor();
   assert.equal(await p.getByText("已选 50/50", { exact: true }).count(), 1);
-  assert.equal(await p.getByText("最多关联 50 项，先移除一项再添加", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("最多选 50 项，先移除一项再添加", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("checkbox", { name: "New choice", exact: true }).isDisabled(), true);
   await p.getByRole("checkbox", { name: "Selected choice", exact: true }).click(); await settle(p);
   assert.equal(await p.getByText("已选 49/50", { exact: true }).count(), 1);
@@ -533,7 +533,7 @@ test("selected contact chip uses the verified identity avatar and removes it aft
   assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "添加相关人脉", exact: true }).count(), 1);
   await p.evaluate(() => (window as any).fixture.update({ contact: null, language: "en" }));
-  await p.getByText("Association unavailable. Remove it or retry.", { exact: true }).waitFor();
+  await p.getByText("Can't find this item. Remove it or try again.", { exact: true }).waitFor();
   assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
@@ -736,28 +736,28 @@ for (const [language, entry, daily, until, done, save, message] of [
 
 test("association sheet closes through platform back and a real downward pointer gesture", async t => {
   const p = await open(t);
-  await press(p, "关联笔记");
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).waitFor();
+  await press(p, "相关笔记");
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).waitFor();
   await p.waitForTimeout(350);
   await p.keyboard.press("Escape"); await p.waitForTimeout(350);
-  assert.equal(await p.getByRole("dialog", { name: "关联笔记", exact: true }).count(), 0);
-  await press(p, "关联人脉");
+  assert.equal(await p.getByRole("dialog", { name: "相关笔记", exact: true }).count(), 0);
+  await press(p, "相关的人");
   await p.waitForTimeout(350);
-  const handle = await p.getByRole("dialog", { name: "关联人脉", exact: true }).locator(":scope > div").first().boundingBox();
+  const handle = await p.getByRole("dialog", { name: "相关的人", exact: true }).locator(":scope > div").first().boundingBox();
   assert.ok(handle);
   await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
   await p.mouse.down();
   await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 + 100, { steps: 10 });
   await p.mouse.up(); await p.waitForTimeout(350);
-  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("dialog", { name: "相关的人", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
 test("localized sheet remains reachable with enlarged text and a reduced visible viewport", async t => {
   for (const [language, entry, title, search] of [
-    ["zh", "关联人脉", "日程标题", "搜索相关人脉"],
-    ["ja", "関連する連絡先", "予定名", "関連する人を検索"],
-    ["en", "Related contacts", "Schedule title", "Search related people"],
+    ["zh", "相关的人", "日程标题", "搜索相关人脉"],
+    ["ja", "関係する人", "予定名", "関連する人を検索"],
+    ["en", "People", "Schedule title", "Search related people"],
   ] as const) {
     const p = await open(t, { language, fontScale: 1.8 });
     assert.equal(await p.getByRole("textbox", { name: title, exact: true }).inputValue(), "Original title");
@@ -774,7 +774,7 @@ test("localized sheet remains reachable with enlarged text and a reduced visible
 test("association query replacement aborts old work and does not display its late summaries", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(350);
+  await press(p, "相关的人"); await p.waitForTimeout(350);
   const first = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
   await fill(p, "搜索相关人脉", "LY"); await p.waitForTimeout(300);
   const next = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
@@ -838,6 +838,13 @@ test("create without a contact, failure retry and reopen use one server record",
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit?saved=2026-09-15T00%3A00%3A00Z");
   await p.evaluate(() => (window as any).fixture.update({ taskId: "personal:edit" })); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "Home");
+});
+// UX C7: an edit opened from its detail page returns to that page instead of stacking a second copy of it.
+test("saving an edit goes back to the existing detail instead of pushing another one", async t => {
+  const p = await open(t, { canGoBack: true }); await fill(p, "日程地点", "Osaka"); await press(p, "保存"); await reply(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "back");
+  const created = await open(t, { taskId: "", canGoBack: true }); await fill(created, "日程标题", "New one"); await press(created, "添加"); await reply(created);
+  assert.equal(await created.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit?saved=2026-09-15T00%3A00%3A00Z", "a new schedule still replaces the form with its detail");
 });
 test("clear optional fields, retain conflicting draft, explicitly reload and confirm deletion", async t => {
   // UX-8: the end is cleared by switching 全天 on and off (the 清除结束时间 button is gone).
@@ -919,30 +926,30 @@ test("save waits for independent authenticated GET before navigating and preserv
 test("private note selection saves exact IDs and details refuse revoked note contents", async t => {
   const note = { id: "note:owned", accountId: "actor-1", ownerUserId: "actor-1", title: "Saved note", body: "Private body", contactIds: [], manualContactIds: [], mentions: [], eventIds: [], version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
   const p = await open(t, { note });
-  await press(p, "关联笔记");
+  await press(p, "相关笔记");
   await p.getByRole("textbox", { name: "搜索笔记", exact: true }).fill("Saved");
   await p.getByRole("checkbox", { name: "Saved note", exact: true }).click(); await settle(p);
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "保存");
   assert.deepEqual((await writes(p))[0].body.patch.noteIds, ["note:owned"]);
   await reply(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ detail: true, note: { ...s.note, ownerUserId: "other" } }); });
-  await p.getByText("关联对象不可用，请移除或重试", { exact: true }).waitFor();
+  await p.getByText("找不到这一项，请移除或重试", { exact: true }).waitFor();
   assert.equal(await p.getByText("Private body", { exact: true }).count(), 0);
 });
 
 test("personal contact selection uses bounded formal search and refuses unavailable cached identities", async t => {
   const contact = { id: "contact:owned", displayName: "Owned contact", role: "Engineer", organization: "Company", status: "active", source: { type: "manual", label: "Manual" }, evidence: [], value: { score: 50, valueTypes: [], rationale: "", evidenceIds: [] } };
   const p = await open(t, { contact });
-  await press(p, "关联人脉"); await p.getByRole("textbox", { name: "搜索相关人脉", exact: true }).fill("Owned");
+  await press(p, "相关的人"); await p.getByRole("textbox", { name: "搜索相关人脉", exact: true }).fill("Owned");
   await p.getByRole("checkbox", { name: "Owned contact", exact: true }).click(); await settle(p);
   const search = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path === "/api/schedule-items/association-options/contacts" && new URLSearchParams(r.query).get("q") === "Owned"));
   assert.equal(search.method, "GET");
   assert.equal(search.query, "?q=Owned&limit=20");
-  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关的人", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "保存"); assert.deepEqual((await writes(p))[0].body.patch.contactIds, ["contact:owned"]); await reply(p);
   await p.evaluate(() => (window as any).fixture.update({ detail: true, contact: null }));
-  await p.getByText("关联对象不可用，请移除或重试", { exact: true }).waitFor();
+  await p.getByText("找不到这一项，请移除或重试", { exact: true }).waitFor();
   assert.equal(await p.getByText("Owned contact", { exact: true }).count(), 0);
 });
 
@@ -986,11 +993,14 @@ test("detail exposes a safe online link only on user action and hides an invalid
   assert.equal((await writes(p)).length, 0);
 });
 
-test("detail saved notice requires the independently read current version", async t => {
-  const p = await open(t, { detail: true, saved: initialItem.updatedAt });
-  assert.equal(await p.getByText("个人日程已保存", { exact: true }).count(), 1);
-  await p.evaluate(() => (window as any).fixture.update({ saved: "2020-01-01T00:00:00Z" })); await settle(p);
-  assert.equal(await p.getByText("个人日程已保存", { exact: true }).count(), 0);
+// UX C6: the detail reads like iOS Calendar — 地点 / 相关的人 / 提醒 / 重复 rows, no saved line or internal labels.
+test("detail shows plain grouped rows without a saved line or internal labels", async t => {
+  const p = await open(t, { detail: true, saved: initialItem.updatedAt, item: { ...initialItem, contactIds: ["contact:owned"] }, contact: { id: "contact:owned", displayName: "林悦" } });
+  await p.getByText("Tokyo", { exact: true }).waitFor();
+  for (const label of ["地点", "相关的人", "提醒", "重复"]) assert.equal(await p.getByText(label, { exact: true }).count(), 1, label);
+  await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
+  for (const removed of ["个人日程已保存", "仅你可见的日程关联", "日程地点", "相关笔记"]) assert.equal(await p.getByText(removed, { exact: true }).count(), 0, removed);
+  assert.equal((await writes(p)).length, 0);
 });
 
 test("a new schedule starts at the next full hour for one hour and an untouched form cancels without a prompt", async t => {
@@ -1031,7 +1041,7 @@ test("one location field: an http(s) link becomes the video meeting, anything el
 
 test("the note row's ＋ opens the same note sheet as its label", async t => {
   const p = await open(t);
-  await press(p, "添加关联笔记");
+  await press(p, "添加相关笔记");
   await p.getByRole("textbox", { name: "搜索笔记", exact: true }).waitFor();
   assert.equal(await p.getByRole("dialog").count(), 1);
   assert.equal(await p.getByRole("button", { name: "添加相关人脉", exact: true }).count(), 1);

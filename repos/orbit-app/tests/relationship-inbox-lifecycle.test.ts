@@ -653,7 +653,8 @@ test('typed inbox reads an explicit visible snapshot and leaves a new arrival un
 });
 test('typed inbox source-only navigation never manufactures a task and account changes hide old content',async t=>{
  const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
- await p.getByRole('button',{name:/发送报价资料/}).click();assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),['/inbox/notifications/inbox%3Aone']);
+ await p.getByRole('button',{name:/发送报价资料/}).click();assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),['/notes/note%3Aone']);
+ await settle(p);const read=(await writes(p))[0]!;assert.equal(read.path,'/api/inbox/notifications/inbox%3Aone/actions');assert.equal(read.body.action,'read');
  await p.evaluate(()=>{(window as any).fixture.holdReads=true;});await update(p,{actor:'actor:two'});
  assert.doesNotMatch(await p.locator('body').innerText(),/发送报价资料|原文承诺/);
 });

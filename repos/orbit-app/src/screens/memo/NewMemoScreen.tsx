@@ -21,7 +21,7 @@ import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteCreateRequest, confirmedNote, noteAssociationsForReceipt } from "../../view-models/notes";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
-import { NoteContactPicker } from "../notes/NoteContactPicker";
+import { mentionedContacts, NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
 import { noteTitleFor } from "./memo-mention-model";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
@@ -203,7 +203,7 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
       <MemoMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { change(value); setMentions([...nextMentions]); }} searchContacts={searchContacts} events={events} />
     </View>
     <View style={styles.associations}>
-      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
+      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} mentioned={mentionedContacts(mentions)} onToggle={toggle} />
       <View style={styles.rule} />
       <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
     </View>
@@ -221,7 +221,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headerSave: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   headerSaveText: { color: colors.accentText, fontSize: typography.body, fontWeight: "800" },
   headerSaveDisabled: { color: colors.ink3Text },
-  paper: { minHeight: 300, paddingHorizontal: 2 },
+  paper: { paddingHorizontal: 2, marginBottom: spacing.sm },
   titleInput: { color: colors.ink, fontSize: 26, fontWeight: "800", minHeight: 56, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   associations: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
   rule: { backgroundColor: colors.line, height: StyleSheet.hairlineWidth },

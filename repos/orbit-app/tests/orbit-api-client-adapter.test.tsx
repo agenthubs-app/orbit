@@ -21,6 +21,7 @@ function hookClient(fetcher: FetchLike, options?: Options): OrbitApiClient {
     if (name.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ actorId: "actor-1", cookieHeader: "orbit_session=auth" }) };
     if (name.endsWith("/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
     if (name.endsWith("/client")) return { createOrbitApiClient };
+    if (name.endsWith("/OrbitLocaleContext")) return { useOrbitLocale: () => ({ language: "zh" }) };
     throw new Error(`Unexpected API hook dependency ${name}`);
   } });
   let client!: OrbitApiClient;
@@ -30,10 +31,10 @@ function hookClient(fetcher: FetchLike, options?: Options): OrbitApiClient {
 }
 
 test("optional fetch adapter makes legacy settings envelopes readable before client validation", async () => {
-  const requests: { path: string; cookie: string | null }[] = [];
+  const requests: { path: string; cookie: string | null; lang: string | null }[] = [];
   const client = hookClient(async (input, init) => {
     const path = new URL(String(input)).pathname;
-    requests.push({ path, cookie: new Headers(init?.headers).get("Cookie") });
+    requests.push({ path, cookie: new Headers(init?.headers).get("Cookie"), lang: new Headers(init?.headers).get("x-orbit-lang") });
     if (init?.method === "DELETE") return new Response(null, { status: 204 });
     return Response.json({ data: path === "/api/integrations"
       ? [{ provider: "gmail", status: "active", healthStatus: "healthy" }]
@@ -43,7 +44,7 @@ test("optional fetch adapter makes legacy settings envelopes readable before cli
   assert.equal((await api.integrations())?.[0]?.provider, "gmail");
   assert.equal((await api.memories())?.[0]?.memoryId, "m1");
   assert.equal(await api.removeMemory("m1"), true);
-  assert.deepEqual(requests, ["/api/integrations", "/api/agent/memory", "/api/agent/memory/m1"].map(path => ({ path, cookie: "orbit_session=auth" })));
+  assert.deepEqual(requests, ["/api/integrations", "/api/agent/memory", "/api/agent/memory/m1"].map(path => ({ path, cookie: "orbit_session=auth", lang: "zh" })));
 });
 
 test("existing no-options hook callers keep authenticated requests and ordinary Orbit envelopes", async () => {

@@ -19,8 +19,10 @@ import { useContactLabels } from "../../hooks/useContactLabels";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
-import { parseTaskListSelection, taskListReceiptMatches } from "../../view-models/task-list-scope";
-import { useTaskListSource } from "./task-list-source";
+import { parseTaskListSelection, readTaskListItems, taskListReceiptMatches } from "../../view-models/task-list-scope";
+import { useTaskListSource, type TaskListEntry } from "./task-list-source";
+import { useToast } from "../../components/ui/Toast";
+import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
@@ -64,8 +66,13 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
   const completedCursor = completedPosition.scope === foldScope ? completedPosition.cursor : null;
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  // UX T3 (like Reminders): a tapped circle fills at once, the row stays a moment, then the task is completed.
+  const toast = useToast();
+  const copy = useStandardCopy();
+  const [checking, setChecking] = useState<ReadonlySet<string>>(() => new Set());
+  const checkTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const [displayScope, setDisplayScope] = useState(scope);
-  if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); }
+  if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); setChecking(new Set()); }
   const now = new Date();
   const today = tokyoDateKey(now, timeZone);
   const pageScope=JSON.stringify([scopeKey,selection,today,timeZone]);
@@ -117,12 +124,32 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
   useEffect(() => {
     scope.active = true;
     if (scope.controller.signal.aborted) scope.controller = new AbortController();
-    return () => { scope.active = false; scope.controller.abort(); };
+    const timers = checkTimers.current;
+    return () => { scope.active = false; scope.controller.abort(); timers.forEach(clearTimeout); timers.clear(); };
   }, [scope]);
 
-  async function toggleTask(item: TaskListRowView) {
-    const baseline = canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id);
-    if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return;
+  const uncheck = (id: string) => setChecking(previous => { const next = new Set(previous); next.delete(id); return next; });
+  function tapCheck(item: TaskListRowView) {
+    if (item.status === "completed") { void toggleTask(item); return; }
+    const pending = checkTimers.current.get(item.id);
+    // A second tap within the moment takes the check back; nothing was written yet.
+    if (pending) { clearTimeout(pending); checkTimers.current.delete(item.id); uncheck(item.id); return; }
+    setChecking(previous => new Set(previous).add(item.id));
+    checkTimers.current.set(item.id, setTimeout(() => { checkTimers.current.delete(item.id); void completeChecked(item); }, 1000));
+  }
+  async function completeChecked(item: TaskListRowView) {
+    // Another row's write may still be running (one at a time); wait briefly for it.
+    for (let tries = 0; scope.busy && tries < 50; tries++) await new Promise(resolve => setTimeout(resolve, 100));
+    const reopenFrom = await toggleTask(item);
+    // On failure the circle empties again (the error line says why). The checked id stays while the row leaves the list.
+    if (!reopenFrom) { if (scope.active && currentScope.current === scope) uncheck(item.id); return; }
+    toast.success(copy.toast.completed, { sub: item.title, undo: () => { uncheck(item.id); void toggleTask({ ...item, status: "completed" }, reopenFrom); } });
+  }
+
+  /** Completes or reopens one task. Returns the task as it now stands (the base for an undo), or null when nothing was saved. */
+  async function toggleTask(item: TaskListRowView, known?: TaskListEntry): Promise<TaskListEntry | null> {
+    const baseline = known ?? canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id);
+    if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return null;
     scope.busy = true;
     setUpdatingId(item.id);
     setMutationError(null);
@@ -131,7 +158,7 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
       if (source.offline) {
         if (!isOfflineTaskCategory(baseline.category)) {
           setMutationError(locale.t("sync.needsNetwork"));
-          return;
+          return null;
         }
         const idempotencyKey = Crypto.randomUUID();
         const createdAt = new Date().toISOString();
@@ -145,7 +172,7 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
         }));
         setPosition({ scope: pageScope, cursor: null });
         setCompletedPosition({ scope: foldScope, cursor: null });
-        return;
+        return { ...baseline, status: action === "complete" ? "completed" : "open" };
       }
       const intent = JSON.stringify([item.id, action, baseline.updatedAt]);
       const key = scope.keys.get(intent) ?? mutationKey(`${action}:${item.id}`);
@@ -153,13 +180,19 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
       const result = await client.patch<unknown>(taskPath(item.id), {
         body: { action, idempotencyKey: key }, signal: scope.controller.signal,
       });
-      if (!scope.active || currentScope.current !== scope) return;
+      if (!scope.active || currentScope.current !== scope) return null;
       if (!result.success) setMutationError(locale.t("tasks.operationFailed"));
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null}); }
+      else if (await source.confirmMutation(item.id, action)) {
+        scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null});
+        const saved = readTaskListItems({ tasks: [(result.data as { task?: unknown }).task] }, actorId)?.[0];
+        return { ...baseline, status: action === "complete" ? "completed" : "open", ...(saved ? { updatedAt: saved.updatedAt } : {}) };
+      }
       else setMutationError(locale.t("sync.mutationPending"));
+      return null;
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
+      return null;
     } finally {
       scope.busy = false;
       if (scope.active && currentScope.current === scope) setUpdatingId(null);
@@ -219,17 +252,19 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
           {group.items.length || group.followUps.length ? <View style={styles.card}>{group.items.map((item, index) => {
             const contactId = (canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id))?.relatedContactId;
             const contact = contactId ? contacts.get(contactId) : null;
-            const completedItem = item.status === "completed";
+            const completedItem = item.status === "completed" || checking.has(item.id);
+            // UX T2: under 今天 the day is implied; show only the time (when there is one). Other groups keep their dates.
+            const when = group.id === "today" ? item.dueAt && Number.isFinite(Date.parse(item.dueAt)) ? timeOfDay(item.dueAt, timeZone) : "" : item.dateLabel;
             const offlineBlocked = Boolean(source.offline && !isOfflineTaskCategory(item.category));
             return <View key={item.id} style={styles.row}>
               <Pressable
-                accessibilityLabel={locale.t(completedItem ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (offlineBlocked ? " · " + locale.t("sync.needsNetwork") : "")}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (offlineBlocked ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
                 aria-checked={completedItem}
                 accessibilityState={{ checked: completedItem, disabled: updatingId !== null || offlineBlocked, busy: updatingId === item.id }}
                 disabled={updatingId !== null || offlineBlocked}
                 hitSlop={8}
-                onPress={() => void toggleTask(item)}
+                onPress={() => tapCheck(item)}
                 style={styles.checkButton}
               >
                 <View style={[styles.checkbox, completedItem && styles.checkboxCompleted, updatingId === item.id && styles.checkboxBusy]}>
@@ -237,34 +272,34 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
                 </View>
               </Pressable>
               <Pressable
-                accessibilityLabel={[item.title, item.dateLabel, contact?.name].filter(Boolean).join("，")}
+                accessibilityLabel={[item.title, when, contact?.name].filter(Boolean).join("，")}
                 accessibilityRole="button"
                 onPress={() => router.push(`/tasks/${encodeURIComponent(item.id)}` as Href)}
                 style={({ pressed }) => [styles.rowBody, index > 0 && styles.rowLine, pressed ? styles.pressed : null]}
               >
                 <Text style={[styles.rowTitle, completedItem ? styles.completedTitle : null]}>{item.title}</Text>
-                {item.dateLabel || contact || item.location ? <Text numberOfLines={1} style={styles.rowDetail}>
-                  {item.dateLabel ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{item.dateLabel}</Text> : null}
-                  {[contact?.name, item.location].filter(Boolean).map(part => `${item.dateLabel ? "  ·  " : ""}${part}`).join("")}
+                {when || contact || item.location ? <Text numberOfLines={1} style={styles.rowDetail}>
+                  {when ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{when}</Text> : null}
+                  {[contact?.name, item.location].filter(Boolean).map((part, index) => `${when || index > 0 ? "  ·  " : ""}${part}`).join("")}
                 </Text> : null}
                 {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
               </Pressable>
             </View>;
-          })}{group.followUps.map((item, index) => <View key={item.key} style={styles.row}>
+          })}{group.followUps.map((item, index) => { const due = group.id === "today" ? "" : followUpDate(item.dueAt); return <View key={item.key} style={styles.row}>
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: false }} accessibilityLabel={locale.t("tasks.completeNamed", { title: item.title })} hitSlop={8}
               onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(item.connectionId)}` as Href)} style={styles.checkButton}>
               <View style={styles.checkbox} />
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={[item.title, followUpDate(item.dueAt), item.contactName].filter(Boolean).join("，")}
+            <Pressable accessibilityRole="button" accessibilityLabel={[item.title, due, item.contactName].filter(Boolean).join("，")}
               onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(item.connectionId)}` as Href)}
               style={({ pressed }) => [styles.rowBody, (group.items.length > 0 || index > 0) && styles.rowLine, pressed ? styles.pressed : null]}>
               <Text style={styles.rowTitle}>{item.title}</Text>
-              <Text numberOfLines={1} style={styles.rowDetail}>
-                {followUpDate(item.dueAt) ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{followUpDate(item.dueAt)}</Text> : null}
-                {item.contactName ? `${followUpDate(item.dueAt) ? "  ·  " : ""}${item.contactName}` : ""}
-              </Text>
+              {due || item.contactName ? <Text numberOfLines={1} style={styles.rowDetail}>
+                {due ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{due}</Text> : null}
+                {item.contactName ? `${due ? "  ·  " : ""}${item.contactName}` : ""}
+              </Text> : null}
             </Pressable>
-          </View>)}</View> : null}
+          </View>; })}</View> : null}
           {group.fold && completedExpanded && source.completedSection?.nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedNextPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: source.completedSection?.nextCursor ?? null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedNextPage")}</Text></Pressable> : null}
           {group.fold && completedExpanded && completedCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedFirstPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedFirstPage")}</Text></Pressable> : null}
         </View>
@@ -284,6 +319,10 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
 
 function tokyoDateKey(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function timeOfDay(value: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
 
 function taskDateKey(item: TaskListRowView, timeZone: string): string | undefined {

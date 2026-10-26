@@ -149,3 +149,17 @@ test("the editor starts from the mirror and cannot save offline", async (t) => {
   assert.equal(await page.getByRole("button", { name: "保存日程" }).count(), 0, "UX-8: the header 保存 is the only save");
   assert.deepEqual((await requests(page)).filter((path) => !path.includes("association")), [], "reading the form costs no request");
 });
+
+test("UX K6: /schedule/personal/new?contactId= starts a new schedule with that person linked; an existing one ignores it", async (t) => {
+  const linked = await open(t, { screen: "editor", params: { contactId: "contact:sato" } });
+  await linked.getByRole("textbox", { name: "标题" }).waitFor();
+  await linked.getByRole("button", { name: /^移除相关人脉/u }).waitFor();
+  assert.equal(await linked.getByRole("button", { name: /^移除相关人脉/u }).count(), 1);
+  const plain = await open(t, { screen: "editor", params: {} });
+  await plain.getByRole("textbox", { name: "标题" }).waitFor();
+  assert.equal(await plain.getByRole("button", { name: /^移除相关人脉/u }).count(), 0);
+  const existing = await open(t, { screen: "editor", status: "stale", params: { id: "personal:dentist", contactId: "contact:sato" } });
+  await existing.getByRole("textbox", { name: "标题" }).waitFor();
+  assert.equal(await existing.getByRole("textbox", { name: "标题" }).inputValue(), "看牙医");
+  assert.equal(await existing.getByRole("button", { name: /^移除相关人脉/u }).count(), 0);
+});

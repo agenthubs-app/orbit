@@ -185,12 +185,12 @@ export function DiagCard({ plan, busy, onPremise, onReview, onManual, onAchieve,
       {why.body}
       <View style={styles.acts}>
         <KitButton icon="layers" label={t("plan.overview.premise")} onPress={onPremise} style={styles.act} />
-        <KitButton icon="refresh" label={t("plan.overview.review")} badge={t("plan.overview.reviewBadge", { n: plan.quota.reviewMonthlyLimit })} onPress={onReview} style={styles.act} />
+        <KitButton icon="refresh" label={t("plan.overview.review")} onPress={onReview} style={styles.act} />
         <KitButton icon="edit" label={t("plan.overview.manualEdit")} onPress={onManual} disabled={busy || !plan.quota.manualEditAvailable} style={styles.act} />
         <KitButton icon="flag" label={t("plan.overview.achieve")} onPress={onAchieve} disabled={busy} style={styles.act} />
       </View>
       {!plan.quota.manualEditAvailable ? <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.manualLocked")}</UiText> : null}
-      <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth, limit: plan.quota.reviewMonthlyLimit })}</UiText>
+      <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth })}</UiText>
       {problem}
       <UiPressable accessibilityRole="link" accessibilityLabel={t("plan.overview.seeConversation")} hitSlop={10} onPress={onConversation} style={styles.v2go}>
         <UiText style={styles.v2goText}>{t("plan.overview.seeConversation")}</UiText>
@@ -252,7 +252,7 @@ export function StepsCard({ plan, cards, onOpenType, onOpenEvents, onDoneMark, s
   const chips = stepChipsVisible(plan.score.total, steps);
   return (
     <KitCard>
-      <KitCardHead title={t("plan.step.title")} right={t("plan.step.note")} />
+      <KitCardHead title={t("plan.step.title")} />
       {steps.map((step, index) => (
         <StepItem key={step.key} n={index + 1} last={index === steps.length - 1} step={step} chip={chips ? stepChip(progress.get(step.key), Boolean(step.completedAt), t) : null}
           types={step.personTypeKeys.flatMap((key) => (byKey.get(key) ? [byKey.get(key)!] : []))} hasEvent={step.personTypeKeys.includes("event")} closing={closingStepNumbers(steps, index, "event")}
@@ -336,7 +336,7 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
   const unitText = units.last === null ? t("plan.types.unitsEven", { points: units.points }) : t("plan.types.unitsLast", { last: units.last, points: units.points });
   const cell = (value: number, label: string, people: boolean, zero: boolean) => (
     <View accessible accessibilityLabel={`${label} ${people ? t("plan.types.count", { count: value }) : String(value)}`} style={styles.m3cell}>
-      <UiText style={[styles.m3b, zero && styles.m3z]}>{String(value)}{people ? <UiText style={styles.m3small}>{t("plan.types.cellPeople")}</UiText> : null}</UiText>
+      <UiText style={[styles.m3b, zero && styles.m3z]}>{String(value)}{people && !zero ? <UiText style={styles.m3small}>{t("plan.types.cellPeople")}</UiText> : null}</UiText>
       <UiText numberOfLines={1} style={styles.m3span}>{label}</UiText>
     </View>
   );

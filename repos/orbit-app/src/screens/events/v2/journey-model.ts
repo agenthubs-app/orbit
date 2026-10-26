@@ -49,3 +49,14 @@ export const themeLabel = (x: EventDiscoverTheme, t: T) => t(`${({ funding: "tFu
 export const PERIODS: readonly EventDiscoverPeriod[] = ["this_week", "this_month", "next_month"];
 export const AREAS: readonly EventDiscoverArea[] = ["online", "tokyo", "osaka", "nagoya"];
 export const THEMES: readonly EventDiscoverTheme[] = ["funding", "saas", "manufacturing_dx", "hiring", "management", "networking", "ipo", "global"];
+
+/** The server names an organizer without a public name 「Organizer #1Q8PXWU」; the App does not show that id. */
+export function publicOrganizerName(name: string | null | undefined): string | null {
+  const value = name?.trim() ?? "";
+  return value && !/^Organizer #[0-9A-Z]+$/u.test(value) ? value : null;
+}
+
+/** 参加登録 changed an event (submitted / tentative): the detail underneath reloads when × goes back to it. */
+const eventChangeListeners = new Set<(eventId: string) => void>();
+export function announceEventChanged(eventId: string): void { for (const listener of eventChangeListeners) listener(eventId); }
+export function subscribeEventChanged(listener: (eventId: string) => void): () => void { eventChangeListeners.add(listener); return () => { eventChangeListeners.delete(listener); }; }

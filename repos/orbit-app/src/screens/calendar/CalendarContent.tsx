@@ -75,7 +75,7 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
     <Card style={styles.agenda}>
       <View style={styles.agendaHeading}>
         <UiText accessibilityRole="header" style={styles.agendaTitle}>{new Intl.DateTimeFormat(language, { month: "long", day: "numeric", weekday: "short", timeZone: "UTC" }).format(selectedDate)}</UiText>
-        <UiText style={styles.count}>{t("schedule.dayItemCount", { weekday: "", count: projection.selectedItems.length + selectedExternal.length }).trim()}</UiText>
+        <UiText style={styles.count}>{t("schedule.itemCount", { count: projection.selectedItems.length + selectedExternal.length })}</UiText>
       </View>
       {projection.selectedItems.length ? projection.selectedItems.map(item => <UiPressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.title} ${t("schedule.openDetail")}`} onPress={() => onOpenItem(item)} style={styles.agendaRow}>
         <UiText style={styles.time}>{item.timeLabel || t("schedule.allDay")}</UiText>
@@ -105,7 +105,7 @@ function CalendarDateCell({ day, external, currentMonth, colors, onSelect }: { d
     <UiText style={[styles.dateNumber, day.isToday && styles.todayNumber, (day.isSunday || day.isHoliday) && styles.holidayNumber]}>{day.dayNumber}</UiText>
     {day.items.slice(0, 2).map(item => <View key={item.id} style={[styles.monthItem, { backgroundColor: tone(item.kind, colors).background }]}><UiText numberOfLines={1} style={[styles.monthItemText, { color: tone(item.kind, colors).ink }]}>{item.title}</UiText></View>)}
     {external.slice(0, Math.max(0, 2 - day.items.length)).map(item => <View key={`external:${item.id}`} style={[styles.monthItem, styles.externalItem]}><UiText numberOfLines={1} style={styles.externalItemTitle}>{item.titlePreview}</UiText></View>)}
-    {day.items.length + external.length > 2 ? <UiText style={styles.more}>{t("calendar.view.more", { count: day.items.length + external.length - 2 })}</UiText> : null}
+    {day.items.length + external.length > 2 ? <UiText numberOfLines={1} style={styles.more}>{t("calendar.view.more", { count: day.items.length + external.length - 2 })}</UiText> : null}
   </UiPressable>;
 }
 

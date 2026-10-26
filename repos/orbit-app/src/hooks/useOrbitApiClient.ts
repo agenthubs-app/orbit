@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { createOrbitApiClient, type FetchLike, type OrbitApiClient } from "../api/client";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 
 export function useOrbitApiClient({ scopeKey, fetchAdapter }: { scopeKey?: string; fetchAdapter?: (fetcher: FetchLike) => FetchLike } = {}): OrbitApiClient {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
+  const { language } = useOrbitLocale();
   const fetchImpl = useMemo<FetchLike>(() => {
     const fetcher = fetchAdapter ? fetchAdapter(fetch) : fetch;
     return scopeKey === undefined ? fetcher : async (input, init) => {
@@ -22,8 +24,9 @@ export function useOrbitApiClient({ scopeKey, fetchAdapter }: { scopeKey?: strin
       createOrbitApiClient({
         authCookieHeader: auth.cookieHeader,
         baseUrl,
-        fetchImpl
+        fetchImpl,
+        language
       }),
-    [auth.cookieHeader, baseUrl, fetchImpl]
+    [auth.cookieHeader, baseUrl, fetchImpl, language]
   );
 }

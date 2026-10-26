@@ -272,8 +272,11 @@ test("completion and reopen change one real route/service record with separate c
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3A22"]);
   assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH").length), 0);
   const control = backends.get(page)!; control.holdWrites = true;
-  await checkbox.evaluate(element => { element.dispatchEvent(new MouseEvent("click", { bubbles: true })); element.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
-  await waitForHeld(page);
+  // UX T3: the circle fills at once and the write follows about a second later (Reminders); a tap while it is held adds nothing.
+  await checkbox.dispatchEvent("click");
+  assert.equal(await checkbox.getAttribute("aria-checked"), "true");
+  await page.waitForTimeout(1100); await waitForHeld(page);
+  await checkbox.dispatchEvent("click");
   assert.equal(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "PATCH").length), 1);
   control.holdWrites = false; control.release!();
   await checkbox.waitFor({ state: "detached" });

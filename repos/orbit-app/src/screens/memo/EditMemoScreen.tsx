@@ -21,7 +21,7 @@ import { contactsToSummaries, type ContactSummary } from "../../view-models/cont
 import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteUpdateRequest, confirmedNote, noteAssociationsForReceipt, type NoteView } from "../../view-models/notes";
-import { NoteContactPicker } from "../notes/NoteContactPicker";
+import { mentionedContacts, NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
 import { editableNoteTitle, noteTitleFor } from "./memo-mention-model";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
@@ -216,7 +216,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
       </View>
       {/* UX-5: no note kinds — an existing interview note keeps its stored kind, nothing to choose here. */}
       <View style={styles.associations}>
-      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
+      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} mentioned={mentionedContacts(mentions)} onToggle={toggle} />
       <View style={styles.rule} />
       <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => { setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]); markChanged(); }} />
       </View>
@@ -229,7 +229,7 @@ export function EditMemoScreen({ actorId, draftServer = "local", noteId, scopeKe
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   private: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 20 },
-  paper: { minHeight: 300, paddingHorizontal: 2 },
+  paper: { paddingHorizontal: 2, marginBottom: spacing.sm },
   titleInput: { color: colors.ink, fontSize: 26, fontWeight: "800", minHeight: 56, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   associations: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
   rule: { backgroundColor: colors.line, height: StyleSheet.hairlineWidth },

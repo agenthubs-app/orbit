@@ -114,9 +114,10 @@ export function ToastCapsule({ toast, onClose, onAction, countdown = null }: { t
   const markColor = toast.kind === "error" ? colors.coral : toast.kind === "success" ? colors.ok : mixHex(dark ? colors.ink : colors.bg, background, 0.22);
   const markIcon = (toast.icon as IconName | undefined) ?? (toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info");
   const markTint = toast.kind === "info" ? text : colors.bg;
-  // R31a: no ✕ (kit .toast has none). A toast that stays (error, undo bar) closes with a tap anywhere on it;
+  // R31a: no ✕ (kit .toast has none). A toast that stays (undo bar) or an error closes with a tap anywhere on it;
   // its button closes the toast first, then runs the undo / action.
   const stays = toast.autoDismissMs === null;
+  const tapToClose = stays || toast.kind === "error";
   const body = (
     <>
       <View style={[styles.mark, { backgroundColor: markColor }]}>
@@ -142,7 +143,7 @@ export function ToastCapsule({ toast, onClose, onAction, countdown = null }: { t
       {!stays && !reduced ? <Animated.View style={[styles.countdown, { backgroundColor: text, transform: [{ scaleX: countdown ?? 1 }] }]} /> : null}
     </>
   );
-  return stays
+  return tapToClose
     ? <UiPressable accessibilityRole="button" accessibilityLabel={toast.message} accessibilityHint={copy.action.close} onPress={onClose} pressedScale={1} style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>{body}</UiPressable>
     : <View style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>{body}</View>;
 }

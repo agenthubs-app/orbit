@@ -43,7 +43,7 @@ export function MemoMentionEditor({ body, disabled = false, mentions, onChange, 
   const filteredEvents = active ? events.filter(event => event.title.toLocaleLowerCase(locale.language).includes(active.query.toLocaleLowerCase(locale.language))).slice(0, 6) : [];
   const candidates: MemoMentionCandidate[] = mode === "event"
     ? filteredEvents.map(event => ({ id: event.id, label: event.title, kind: "event" }))
-    : contacts.map(contact => ({ id: contact.id, label: contact.name, kind: "contact" }));
+    : contacts.map(contact => ({ id: contact.id, label: contact.name, kind: "contact", detail: [contact.organization, contact.role].filter(Boolean).join(" · ") }));
   const changeBody = (value: string) => {
     const next = updateMemoMentionRanges(body, value, mentions);
     if (!next) { setTokenError(true); return; }
@@ -58,7 +58,7 @@ export function MemoMentionEditor({ body, disabled = false, mentions, onChange, 
       <Segmented segments={[{ key: "contact", label: locale.t("notes.mentionPersonTab") }, { key: "event", label: locale.t("notes.mentionEventTab") }]} value={mode} onChange={setMode} accessibilityLabel={locale.t("notes.mentionCandidates")} />
       {searching && mode === "contact" ? <UiText style={styles.hint}>{locale.t("notes.mentionSearching")}</UiText> : null}
       {!searching && candidates.length === 0 ? <UiText style={styles.hint}>{locale.t("notes.mentionNone")}</UiText> : null}
-      {candidates.map(candidate => <ListRow key={`${candidate.kind}:${candidate.id}`} title={candidate.label} subtitle={candidate.kind === "event" ? locale.t("notes.mentionEventTab") : locale.t("notes.mentionPersonTab")}
+      {candidates.map(candidate => <ListRow key={`${candidate.kind}:${candidate.id}`} title={candidate.label} {...(candidate.detail ? { subtitle: candidate.detail } : {})}
         accessibilityLabel={locale.t(candidate.kind === "event" ? "notes.mentionEventNamed" : "notes.mentionNamed", { name: candidate.label })}
         onPress={() => { const inserted = insertMemoMention(body, active, candidate); setTokenError(false); onChange(inserted.body, [...mentions, inserted.mention]); setContacts([]); }} />)}
     </View> : null}
@@ -67,7 +67,7 @@ export function MemoMentionEditor({ body, disabled = false, mentions, onChange, 
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   wrap: { gap: spacing.sm },
-  body: { color: colors.ink, fontSize: 17, lineHeight: 25, minHeight: 220, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  body: { color: colors.ink, fontSize: 17, lineHeight: 25, minHeight: 120, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   candidates: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, gap: spacing.xs, padding: spacing.sm },
   hint: { color: colors.ink3Text, fontSize: 14, padding: spacing.sm },
   error: { color: colors.coralText, fontSize: 14 },

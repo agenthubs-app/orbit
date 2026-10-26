@@ -42,7 +42,7 @@ export const me = {
   "me.iorbit": "iOrbit 使用的信息",
   "me.export": "导出数据",
   "me.help": "帮助",
-  "me.terms": "使用条款・隐私",
+  "me.terms": "使用条款与隐私",
   "me.logout": "退出登录",
   "me.preparing": "准备中",
   "me.preparingHint": "这个页面还在准备中。",

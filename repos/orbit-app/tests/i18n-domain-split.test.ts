@@ -14,10 +14,11 @@ import { zh } from "../src/i18n/zh";
 // still pass the locale parity and single-domain checks below.
 const PRE_SPLIT = {
   // In every locale R20b (notes.bodyPlaceholder) and R28 (onboarding.goalsPick) later updated 2 original values; the key set is still R03's.
-  en: { keys: 2253, sha256: "1059f89b1e15cc9c8323e0e3c5280fbaca0609b46702b62b538ec9f40af167af" },
+  // UX 2026-10-26 (Task tab copy: plain labels for the schedule links, the to-do detail and the calendar "+N") updated more original values in all three.
+  en: { keys: 2253, sha256: "8b0b869598a386f7ce4deb86fb555e8acf8593f4c56b8303c16a189f2e199aea" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "2ada766df1659a712efbdbbbb1c01f9636b5eaad756704abbc453e3f1187677d" },
-  zh: { keys: 2253, sha256: "33b17293ac42ba6c84bd327860b7ef65bd33b1fe3e49839027402680f912ac9e" },
+  ja: { keys: 2253, sha256: "637ac50ab706f28d8b9d63eff36c2eb67def25fa76a56d4e84a218240f492b14" },
+  zh: { keys: 2253, sha256: "bafb49c76f242691e6074ddc602749bc19c10c67f9eb57ab448746b6f0749db6" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

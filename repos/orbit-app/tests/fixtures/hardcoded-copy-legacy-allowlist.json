@@ -21,7 +21,7 @@
     "src/components/ErrorState.tsx": 1,
     "src/components/LoadingState.tsx": 1,
     "src/components/analysis-pie-orbit-layout.ts": 4,
-    "src/data/ai-template-prefill.ts": 10,
+    "src/data/ai-template-prefill.ts": 9,
     "src/data/sync/sync-coordinator.ts": 7,
     "src/data/sync/useOfflineScheduleOutbox.ts": 5,
     "src/data/sync/useOfflineTaskOutbox.ts": 2,

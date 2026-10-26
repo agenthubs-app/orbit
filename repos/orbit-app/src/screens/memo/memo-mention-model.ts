@@ -1,6 +1,6 @@
 import type { NoteMentionContract } from "../../api/contract/notes";
 
-export type MemoMentionCandidate = { id: string; label: string; kind: "contact" | "event" };
+export type MemoMentionCandidate = { id: string; label: string; kind: "contact" | "event"; /** company · role, shown under a person */ detail?: string };
 
 export function activeMemoMentionQuery(body: string): { start: number; query: string } | null {
   const match = body.match(/(?:^|\s)@([^\s@]{0,30})$/u);

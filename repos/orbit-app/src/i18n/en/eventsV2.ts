@@ -144,6 +144,7 @@ export const eventsV2 = {
   "eventsV2.inputOnlyHere": "What you enter is used only for this assessment",
   "eventsV2.posterImage": "Poster image",
   "eventsV2.upcoming": "Upcoming",
+  "eventsV2.upcomingEmpty": "No events coming up yet",
   "eventsV2.past": "Past",
   "eventsV2.attended": "Attended",
   "eventsV2.notCheckedIn": "Not checked in",

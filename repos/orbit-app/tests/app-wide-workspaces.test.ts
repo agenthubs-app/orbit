@@ -248,10 +248,11 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task-one"]);
     const detail = await open(t, "task", scheme);
     await detail.getByRole("textbox", { name: "待办标题", exact: true }).waitFor();
-    const more = detail.getByRole("button", { name: "更多待办操作", exact: true }); await fits(more); await more.click();
-    await fits(detail.getByRole("button", { name: "关闭待办设置", exact: true }));
-    await detail.getByRole("button", { name: "关闭待办设置", exact: true }).click();
-    await fits(detail.getByRole("button", { name: "标记完成", exact: true }), 50); await noWrites(detail);
+    // UX T4: only 提醒 opens a sheet now (closed with 完成); the one destructive action is 删除待办 at the bottom.
+    const more = detail.getByRole("button", { name: "提醒", exact: true }); await fits(more); await more.click();
+    await fits(detail.getByRole("button", { name: "完成", exact: true }));
+    await detail.getByRole("button", { name: "完成", exact: true }).click();
+    await fits(detail.getByRole("button", { name: "删除待办", exact: true }), 50); await noWrites(detail);
   });
   test(`${scheme}: calendar day week month modes preserve selected date and event navigation`, async t => {
     const page = await open(t, "schedule", scheme); await fits(page.getByRole("button", { name: "回到今天", exact: true }));
@@ -320,7 +321,7 @@ test("agent workspace headers do not repeat brand names above their page titles"
   }
 });
 test("workspace actions grow with doubled text while keeping labels inside the phone", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["tasks", "展开已完成任务"], ["task", "标记完成"], ["schedule", "回到今天"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["tasks", "展开已完成任务"], ["task", "删除待办"], ["schedule", "回到今天"]]) {
     const page = await open(t, screen!, "dark"); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; const line = parseFloat(s.lineHeight); el.style.lineHeight = `${(Number.isFinite(line) ? line : parseFloat(s.fontSize) * 1.5) * 2}px`; }));
     await fits(action); const bounds = (await action.boundingBox())!;
@@ -343,7 +344,7 @@ test("iOrbit resource fallback keeps the local conversation header and offline e
   await noWrites(page);
 });
 test("task metadata stays complete at large text without cutting off the scheduled date", async t => {
-  const page = await open(t, "task"); const metadata = page.getByText("截止", { exact: true }).locator("..").locator("..");
+  const page = await open(t, "task"); const metadata = page.getByText("日期", { exact: true }).locator("..").locator("..");
   await metadata.waitFor();
   await metadata.locator("[dir='auto']").evaluateAll(elements => elements.forEach(node => { const el = node as HTMLElement; el.style.fontSize = "30px"; el.style.lineHeight = "46px"; }));
   const clipped = await metadata.locator("[dir='auto']").evaluateAll(elements => elements.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(el => el.textContent));
@@ -375,7 +376,7 @@ test("calendar agendas retain complete time and event text at doubled native fon
   }
 });
 test("workspace actions and template navigation use their shared control text roles", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["task", "标记完成"], ["thread", "发送消息"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["thread", "发送消息"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
     assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} shared control label weight`);
   }

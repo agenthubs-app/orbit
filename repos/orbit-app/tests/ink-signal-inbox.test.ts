@@ -154,7 +154,7 @@ test("inbox matches the approved compact header, typed notification filters and 
 });
 
 // The legacy feed rows and their 20pt-gutter geometry were retired with the feed
-// (fc0569649). Typed rows keep the unread marker and open the notification detail.
+// (fc0569649). Typed rows keep the unread marker and open their target directly.
 test("typed unread and read rows keep a distinct unread marker, safe targets and open without writes", async t => {
   const page = await open(t);
   const first = page.getByRole("button", { name: /林悦 报名了/ });
@@ -163,7 +163,8 @@ test("typed unread and read rows keep a distinct unread marker, safe targets and
   assert.equal(await first.getByLabel("未读", { exact: true }).count(), 1);
   assert.equal(await read.getByLabel("未读", { exact: true }).count(), 0);
   for (const row of [first, read]) { const box = (await row.boundingBox())!; assert.ok(box.height >= 44 && box.x >= 0 && box.x + box.width <= 391); }
-  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/notifications/inbox%3Achen"]);
+  // UX QA: a row with a target opens the target itself; a read row sends nothing.
+  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Achen"]);
   assert.deepEqual(await nonSummaryRequests(page), []);
 });
 

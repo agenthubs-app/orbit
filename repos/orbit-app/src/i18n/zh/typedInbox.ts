@@ -24,7 +24,7 @@ export const typedInbox = {
   "typedInbox.conflict": "这条通知已变化，请刷新后重试。",
   "typedInbox.pending": "正在保存…",
   "typedInbox.retry": "重试操作",
-  "typedInbox.unavailable": "来源已不可用",
+  "typedInbox.unavailable": "这条通知已过期",
   "typedInbox.openState": "未处理",
   "typedInbox.handledState": "已处理",
   "typedInbox.dismissedState": "已忽略",

@@ -130,4 +130,5 @@ export const inbox = {
   "inbox.previewSafety": "The next step only previews the draft; it will not save or send a message.",
   "inbox.preparing": "Preparing",
   "inbox.previewDraft": "Preview draft",
+  "inbox.notificationSettings": "Notification settings",
 } as const;

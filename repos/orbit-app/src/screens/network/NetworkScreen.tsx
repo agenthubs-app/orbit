@@ -164,7 +164,6 @@ function useDeletedContacts(): ReadonlySet<string> {
 export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first: boolean; onPress: () => void }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
-  const chipKey = NETWORK_CHIP_COPY[row.chip];
   return (
     <UiPressable accessibilityRole="button" accessibilityLabel={row.name} onPress={onPress} style={styles.row} testID={`network-row-${row.id}`}>
       {first ? null : <View style={styles.divider} />}
@@ -176,7 +175,8 @@ export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first
       </View>
       <View style={styles.rend}>
         <DensityDots level={row.density} />
-        <Chip label={t(chipKey)} icon={NETWORK_CHIP_ICON[row.chip]} tone={row.chip === "self" ? "teal" : "neutral"} />
+        {/* UX: rows no longer show where a card came from; only 本人入力 (a live connection) keeps its chip. */}
+        {row.chip === "self" ? <Chip label={t(NETWORK_CHIP_COPY.self)} icon={NETWORK_CHIP_ICON.self} tone="teal" /> : null}
       </View>
     </UiPressable>
   );
@@ -215,10 +215,6 @@ function DensityCard({ summary, onAnalysis }: { summary: ContactCardSummaryDTO |
             <UiText style={styles.densityCount}>{counts[level]}</UiText>
           </View>
         ))}
-      </View>
-      <View style={styles.dailyHint}>
-        <UiText style={styles.hintEmoji}>💬</UiText>
-        <UiText style={[styles.hintText, styles.grow]}><UiText style={styles.hintBold}>{t("network.dailyHintBold")}</UiText>{t("network.dailyHintRest")}</UiText>
       </View>
     </View>
   );
@@ -352,7 +348,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: -16 },
   tabs: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },
-  densityCard: { paddingBottom: 27 },
+  densityCard: { paddingBottom: 20 },
   flatCard: { backgroundColor: colors.surface2 },
   listCard: { backgroundColor: colors.surface, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 16, marginTop: 12 },
   listAfterInvite: { marginTop: 20 },
@@ -370,9 +366,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grid3: { flexDirection: "row", gap: 6, marginTop: 18 },
   densityLabel: { color: colors.ink3, fontSize: 13, marginTop: 3 },
   densityCount: { color: colors.ink, fontSize: 17, fontWeight: "700" },
-  dailyHint: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 23, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.macLav },
-  hintEmoji: { fontSize: 14 },
-  hintText: { color: colors.ink, fontSize: 14 },
   hintBold: { fontWeight: "700" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13.5 },
   divider: { position: "absolute", top: 0, left: 50, right: 0, height: 1, backgroundColor: colors.line },

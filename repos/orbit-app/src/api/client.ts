@@ -22,6 +22,8 @@ export interface OrbitApiClientOptions {
   authCookieHeader?: string;
   baseUrl?: string;
   fetchImpl?: FetchLike;
+  /** The UI language, sent as `x-orbit-lang` on every request so localized server answers match the app; a request's own header wins. */
+  language?: string;
   /** Conditional-GET memory shared by every client of this process; tests pass their own. */
   conditionalCache?: OrbitConditionalCache;
 }
@@ -487,10 +489,19 @@ function coalescedGet<TData>(
   return pending;
 }
 
+// The language goes into the per-request headers, so the conditional-GET and in-flight keys include it.
+function withLanguage(options: OrbitApiRequestOptions | undefined, language: string): OrbitApiRequestOptions | undefined {
+  if (!language) return options;
+  const headers = options?.headers ?? {};
+  if (Object.keys(headers).some(name => name.toLowerCase() === "x-orbit-lang")) return options;
+  return { ...(options ?? {}), headers: { "x-orbit-lang": language, ...headers } } as OrbitApiRequestOptions;
+}
+
 export function createOrbitApiClient({
   authCookieHeader = "",
   baseUrl = configuredBaseUrl(),
   fetchImpl = fetch,
+  language = "",
   conditionalCache = sharedConditionalCache
 }: OrbitApiClientOptions = {}): OrbitApiClient {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
@@ -504,7 +515,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "DELETE",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     get<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -513,7 +524,7 @@ export function createOrbitApiClient({
         authCookieHeader,
         fetchImpl,
         path,
-        options,
+        withLanguage(options, language),
         conditionalCache
       );
     },
@@ -524,7 +535,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "PATCH",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     post<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -534,7 +545,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "POST",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     put<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -544,7 +555,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "PUT",
         path,
-        options
+        withLanguage(options, language)
       );
     }
   };

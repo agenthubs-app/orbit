@@ -8,21 +8,21 @@ const base = { actorId: "actor-1", dateKey: "2026-10-07", events: { events: [] }
 
 test("month, week, and day keys navigate across month edges without losing the selected date", () => {
   assert.deepEqual([calendarDateKeys("2026-10-07", "month")[0], calendarDateKeys("2026-10-07", "month").at(-1)], ["2026-09-27", "2026-10-31"]);
-  assert.deepEqual(calendarDateKeys("2026-10-07", "week"), ["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11"]);
+  assert.deepEqual(calendarDateKeys("2026-10-07", "week"), ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"]);
   assert.deepEqual(calendarDateKeys("2026-10-07", "day"), ["2026-10-07"]);
   assert.equal(calendarDateKeys("2026-02-12", "month").length, 28, "a complete four-week February needs no blank fifth row");
   assert.equal(shiftCalendarSelection("2026-10-31", "month", 1), "2026-11-30");
   assert.equal(shiftCalendarSelection("2026-10-07", "week", -1), "2026-09-30");
 });
 
-test("the Task week shows Monday through Sunday, including a Sunday item", () => {
+test("the Task week shows Sunday through Saturday like the month grid, including a Sunday item", () => {
   const projection = calendarProjection({ ...base, mode: "week", scheduleItems: { scheduleItems: [
-    { id: "sunday", kind: "personal", title: "Sunday visit", startsAt: "2026-10-11T06:00:00.000Z", endsAt: "2026-10-11T07:00:00.000Z" },
+    { id: "sunday", kind: "personal", title: "Sunday visit", startsAt: "2026-10-04T06:00:00.000Z", endsAt: "2026-10-04T07:00:00.000Z" },
   ] } });
   assert.equal(projection.kind, "ready");
   if (projection.kind !== "ready") return;
-  assert.deepEqual([projection.days[0]?.dateKey, projection.days.at(-1)?.dateKey], ["2026-10-05", "2026-10-11"]);
-  assert.equal(projection.days.at(-1)?.items[0]?.title, "Sunday visit");
+  assert.deepEqual([projection.days[0]?.dateKey, projection.days.at(-1)?.dateKey], ["2026-10-04", "2026-10-10"]);
+  assert.equal(projection.days[0]?.items[0]?.title, "Sunday visit");
 });
 
 test("legacy calendar date links select a valid date in the user's zone", () => {

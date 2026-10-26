@@ -130,4 +130,5 @@ export const inbox = {
   "inbox.previewSafety": "次は下書きのプレビューのみで、保存も送信もされません。",
   "inbox.preparing": "準備中",
   "inbox.previewDraft": "下書きをプレビュー",
+  "inbox.notificationSettings": "通知設定",
 } as const;

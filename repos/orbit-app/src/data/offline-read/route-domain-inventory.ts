@@ -809,6 +809,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/inbox/secretary/preview"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/notes"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/recommendations/events"],
+  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/relationship-tasks/page"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/schedule-items"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/todo/page"],
   // R19 projects the same R10 GETs into a bounded WidgetKit snapshot; it adds no write route.
@@ -820,6 +821,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/widgets/read-home-sources.ts","GET","/api/schedule-items"],
   ["src/widgets/read-home-sources.ts","GET","/api/todo/page"],
   ["src/screens/home/HomeWidgetsScreen.tsx","GET","/api/home/guide-progress"],
+  ["src/screens/home/HomeWidgetsScreen.tsx","GET","/api/profile"],
   ["src/screens/home/home-layout-sync.ts","PUT","/api/home/layout"],
   ["src/screens/home/use-home-layout.ts","GET","/api/home/layout"],
   ["src/screens/home/use-home-layout.ts","PUT","/api/home/layout"],
@@ -885,7 +887,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/tasks/PendingTaskSuggestions.tsx","GET","/api/task-suggestions/page"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/reminders"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/tasks/:id"],
-  ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/tasks/:id/activities"],
   ["src/screens/tasks/TaskDetailScreen.tsx","DELETE","/api/tasks/:id"],
   ["src/screens/tasks/TaskDetailScreen.tsx","PATCH","/api/reminders/:id"],
   ["src/screens/tasks/TaskDetailScreen.tsx","PATCH","/api/tasks/:id"],

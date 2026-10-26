@@ -130,7 +130,7 @@ const draftWith = (used: number): PlanDraftView => {
 test("goal input: the type is guessed after a pause, a picked chip is never overridden, and the sample card sends nothing", async (t) => {
   const { page, calls } = await open(t, "/task", (call) => segmentReads(call, []) ?? (call.path === "/api/agent/plans/goal-kind" ? ok({ goalKind: "fundraising", source: "ai" }) : undefined));
   await page.getByText("何を達成したいですか？").waitFor();
-  await page.getByText("人物タイプは、こう具体的になります").waitFor();
+  await page.getByText("たとえば、こんな人を探します").waitFor();
   assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`).sort(), ["GET /api/agent/plans/intakes", "GET /api/agent/plans/legacy", "GET /api/agent/plans/v2/summary"], "opening the segment (and the sample card) only reads (R25: plus 以前のプラン)");
   for (const call of calls) {
     assert.equal(call.headers["x-orbit-lang"], "ja");
@@ -211,7 +211,7 @@ test("AI_BUSY: no failure card — 「処理中です…」, then one more read 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") return fail(409, "CONFLICT", { reason: "AI_BUSY" });
     return undefined;
   });
-  await page.getByLabel("AI 修正はあと 3 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 3 回）").waitFor();
   const reads = () => calls.filter((call) => call.method === "GET").length;
   const before = reads();
   await page.getByLabel("AI に頼む修正").fill("営業は 2人で");
@@ -318,8 +318,9 @@ test("first draft failing (AI_FAILED) shows the failure card with 再試行", as
 
 test("fix bar: shows the revisions left; at 0 the field is disabled and only edit / confirm remain", async (t) => {
   const left = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
-  await left.page.getByLabel("AI 修正はあと 2 回").waitFor();
-  await left.page.getByText("AI 修正 あと 2 回", { exact: true }).waitFor();
+  // UX QA: the count left is said once, in the composer placeholder (no chip, no floating bar).
+  await left.page.getByPlaceholder("直したいこと（あと 2 回）").waitFor();
+  assert.equal(await left.page.getByText("AI 修正 あと 2 回", { exact: true }).count(), 0);
   assert.equal(await left.page.getByLabel("AI に頼む修正").isEditable(), true);
   // RD-16: edit / confirm sit under the last card, not in the bottom bar.
   assert.equal(await left.page.getByTestId("draft-manual").getAttribute("aria-disabled"), null);
@@ -334,8 +335,7 @@ test("fix bar: shows the revisions left; at 0 the field is disabled and only edi
   await card.getByText("L-103 開業時の資金の集め方", { exact: false }).waitFor();
 
   const out = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(3)) : undefined);
-  await out.page.getByLabel("AI 修正はあと 0 回").waitFor();
-  await out.page.getByText("修正は使い切りました。手動で編集するか、この内容で確定します。").waitFor();
+  await out.page.getByPlaceholder("AI 修正は使い切りました").waitFor();
   assert.equal(await out.page.getByLabel("AI に頼む修正").isEditable(), false);
   assert.equal(await out.page.getByRole("button", { name: "修正を頼む" }).getAttribute("aria-disabled"), "true");
   const usedUp = out.page.getByTestId("draft-used-up");
@@ -352,11 +352,11 @@ test("fix: one revision sends the text once and shows only the diff", async (t) 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") { fixes += 1; return ok(draftWith(1)); }
     return undefined;
   });
-  await page.getByLabel("AI 修正はあと 3 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 3 回）").waitFor();
   await page.getByLabel("AI に頼む修正").fill("営業は当面 2人でやる");
   await page.getByRole("button", { name: "修正を頼む" }).click();
   await page.getByText("AI 修正 1 / 3 を反映").waitFor();
-  await page.getByLabel("AI 修正はあと 2 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 2 回）").waitFor();
   assert.equal(fixes, 1);
   assert.equal((calls.find((call) => call.path.endsWith("/fix"))!.body as { text: string }).text, "営業は当面 2人でやる");
   await page.getByText("変わらない点：見立てと結論 · 人物タイプと配点").waitFor();

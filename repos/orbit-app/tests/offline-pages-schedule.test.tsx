@@ -97,11 +97,11 @@ test("a new schedule created offline can link a note created offline and is queu
   await page.getByRole("radio", { name: "HH 10", exact: true }).dispatchEvent("click");
   await page.getByRole("radio", { name: "mm 00", exact: true }).dispatchEvent("click");
   await page.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).dispatchEvent("click"); await settle(page);
-  await page.getByRole("button", { name: "关联笔记", exact: true }).dispatchEvent("click"); await settle(page);
+  await page.getByRole("button", { name: "相关笔记", exact: true }).dispatchEvent("click"); await settle(page);
   const choice = page.getByRole("checkbox", { name: "和陈总聊的三件事", exact: true });
   await choice.waitFor();
   await choice.dispatchEvent("click"); await settle(page);
-  await page.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).dispatchEvent("click"); await settle(page);
+  await page.getByRole("dialog", { name: "相关笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).dispatchEvent("click"); await settle(page);
   await page.getByRole("button", { name: "和陈总聊的三件事", exact: true }).waitFor();
   await page.getByRole("button", { name: "添加", exact: true }).dispatchEvent("click");
   await page.waitForFunction(() => ((window as any).fixture.enqueuedSchedules ?? []).length === 1);

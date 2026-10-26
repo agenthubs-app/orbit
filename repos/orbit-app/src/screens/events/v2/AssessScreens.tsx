@@ -1,6 +1,7 @@
 // R26 イベント評価 (App): the input and 判定中 (app.html #30), the result (#31, dark #37) and the failure states
 // (b2 #0 login, #1 not an event page, #2 poster fill-in, #3 after filling). Scores come from the server by rule;
 // a URL / poster read polls every 2 seconds for up to 90 seconds (DESIGN §5). The poster picker loads lazily.
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Share, StyleSheet, TextInput, View } from "react-native";
@@ -14,7 +15,7 @@ import { radius, shadows } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { newIdempotencyKey, useEventsApi, type EventsApi } from "./events-api";
 import { KitGradient } from "../../plan/plan-kit";
-import { appEventTime, appEventWhen, ringColor, tokyoDay, verdictKey } from "./events-model";
+import { appEventTime, appEventWhen, clipboardEventUrl, ringColor, tokyoDay, verdictKey } from "./events-model";
 import { ScoreRing } from "./ScoreRing";
 
 const POLL_MS = 2_000;
@@ -71,6 +72,11 @@ export function AssessInputScreen() {
   }, [api, run, t, toast]);
 
   useEffect(() => { if (params.mode === "poster") void pickPoster(); }, [params.mode, pickPoster]);
+  // 「粘贴网址」: a copied link fills the field (the user asked to paste, so the clipboard is read once here).
+  useEffect(() => {
+    if (params.mode !== "url") return;
+    void Clipboard.getStringAsync().then((text) => { const found = clipboardEventUrl(text); if (found && live.current) setUrl((current) => current || found); }).catch(() => undefined);
+  }, [params.mode]);
 
   if (params.mode === "code") {
     const valid = /^[A-Z0-9]{8}$/.test(code);
@@ -95,7 +101,7 @@ export function AssessInputScreen() {
       <View style={styles.card} testID="events-assess-input">
         <UiText style={styles.lbl}>{t("eventsV2.pastedUrl")}</UiText>
         <View style={styles.inputRow}>
-          <TextInput value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder={t("eventsV2.pasteHere")} placeholderTextColor={colors.ink3} style={styles.urlInput} accessibilityLabel={t("eventsV2.urlLabel")} testID="events-url-input"
+          <TextInput value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder={t("eventsV2.pasteHere")} placeholderTextColor={colors.ink3} style={styles.urlInput} accessibilityLabel={t("eventsV2.urlLabel")} testID="events-url-input" autoFocus={params.mode === "url"}
             onSubmitEditing={() => { if (/^https?:\/\//.test(url.trim())) void run({ idempotencyKey: newIdempotencyKey(), sourceKind: "url", url: url.trim() }); }} />
         </View>
         <UiText style={[styles.lbl, { marginTop: 12 }]}>{t("eventsV2.orPoster")}</UiText>
@@ -124,22 +130,20 @@ export function AssessInputScreen() {
   );
 }
 
-// .crit（grid 74 / 1fr / 30，gap 10，12px）：.bar 6 高、渐变填充 + 右端 14 的圆钮（rose 版用于时间对効果）。
+// .crit：名称和分数一行（不截断），下面是 6 高的 .bar、渐变填充 + 右端 14 的圆钮（rose 版用于时间对効果）。
 function Crit({ label, value, rose, gradientId }: { label: string; value: EventAssessmentDisplayValue; rose?: boolean; gradientId: string }) {
   const { styles, colors } = useStyles();
   const text = value.min !== undefined && value.max !== undefined && value.min !== value.max ? `${value.min}–${value.max}` : String(value.value);
   const width = Math.max(0, Math.min(100, value.value));
   return (
     <View style={styles.crit}>
-      <UiText style={styles.critLabel}>{label}</UiText>
+      <View style={styles.critHead}><UiText style={styles.critLabel}>{label}</UiText><UiText style={styles.critScore}>{text}</UiText></View>
       <View style={styles.bar}>
         <View style={[styles.barFill, { width: `${width}%` }]}>
           <KitGradient id={`events-crit-${rose ? "rose" : "plum"}-${gradientId}`} from={rose ? colors.rose300 : colors.plum300} to={rose ? colors.rose700 : colors.plum700} angle={90} />
         </View>
         <View style={[styles.barKnob, { borderColor: rose ? colors.rose700 : colors.plum700, left: `${width}%` }]} />
       </View>
-      {/* 30 宽的格子；「55–70」这类区间在 Chrome 里向左溢出、右对齐，不挤进度条。 */}
-      <View style={styles.critScoreCell}><UiText style={styles.critScore} numberOfLines={1}>{text}</UiText></View>
     </View>
   );
 }
@@ -247,7 +251,7 @@ export function AssessmentResultScreen() {
         {display ? (
           <View style={styles.card}>
             <View style={styles.cardH}><UiText style={styles.cardTitle}>{t("eventsV2.breakdownLong")}</UiText></View>
-            <View style={{ gap: 6 }}>
+            <View style={{ gap: 14 }}>
               <Crit label={t("eventsV2.dimGoal")} value={display.goalFit} gradientId="goal" />
               <Crit label={t("eventsV2.dimPeople")} value={display.people} gradientId="people" />
               <Crit label={t("eventsV2.dimTime")} value={display.timeCost} rose gradientId="time" />
@@ -565,13 +569,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   big: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontWeight: "800", letterSpacing: -0.88 },
   verdictChip: { borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
   verdictText: { fontSize: 15, fontWeight: "700", lineHeight: 23 },
-  crit: { alignItems: "center", flexDirection: "row", gap: 10, height: 18 },
-  critLabel: { color: colors.ink3, fontSize: 14, lineHeight: 21, width: 74 },
-  bar: { backgroundColor: colors.surface3, borderRadius: 6, flex: 1, height: 6 },
+  crit: { gap: 6 },
+  critHead: { alignItems: "baseline", flexDirection: "row", gap: 10, justifyContent: "space-between" },
+  critLabel: { color: colors.ink3, flexShrink: 1, fontSize: 14, lineHeight: 21 },
+  bar: { backgroundColor: colors.surface3, borderRadius: 6, height: 6, marginHorizontal: 7 },
   barFill: { borderRadius: 6, bottom: 0, left: 0, overflow: "hidden", position: "absolute", top: 0 },
   barKnob: { backgroundColor: colors.surface, borderRadius: 7, borderWidth: 3, height: 14, marginLeft: -7, position: "absolute", top: -4, width: 14 },
-  critScoreCell: { height: 18, width: 30 },
-  critScore: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 14, fontWeight: "800", lineHeight: 21, position: "absolute", right: 0, textAlign: "right", top: 0 },
+  critScore: { color: colors.ink, flexShrink: 0, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 14, fontWeight: "800", lineHeight: 21, textAlign: "right" },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
   liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
   metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },

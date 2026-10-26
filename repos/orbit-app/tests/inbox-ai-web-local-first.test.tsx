@@ -43,7 +43,7 @@ const notice = (id, fields = {}) => ({ id, payload: { id, revision: 1, kind: "su
   occurredAt: "2026-09-28T0" + id.slice(-1) + ":00:00.000Z", updatedAt: "2026-09-28T08:00:00.000Z", readAt: null, disposition: "open", sourceState: "available", ...fields } });
 const inbox = () => [
   notice("n1"), notice("n2"), notice("n3", { readAt: "2026-09-28T08:30:00.000Z" }),
-  notice("n4", { sourceState: "unavailable", title: "来源已不可用", reason: "来源已变更、不可访问，或此通知已不再适用。", copy: undefined, actions: [], target: { kind: "source", id: "c:n4", href: null, status: "unavailable" } }),
+  notice("n4", { sourceState: "unavailable", title: "这条通知已过期", reason: "相关内容已经处理过，或已不存在。", copy: undefined, actions: [], target: { kind: "source", id: "c:n4", href: null, status: "unavailable" } }),
 ];
 const sessions = () => [
   { id: "s1", payload: { id: "s1", title: "东京投资人名单", firstUserText: "帮我列东京投资人", lastMessagePreview: "已列出 3 位", createdAt: "2026-09-27T01:00:00.000Z", updatedAt: "2026-09-27T02:00:00.000Z", messageCount: 2, messageRevision: 2, organization: { customTitle: null, groupId: null, pinned: false, revision: 0 } } },

@@ -15,7 +15,7 @@ import { radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
 import { LinearGradient } from "../../plan/plan-svg";
 import { useJourneyApi } from "./journey-api";
-import { eventRange, monthDaySlash, tokyo } from "./journey-model";
+import { announceEventChanged, eventRange, monthDaySlash, tokyo } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
 import { ScoreRing } from "./ScoreRing";
 import { useJourneyT } from "./useJourneyT";
@@ -143,16 +143,17 @@ export function RegisterPage() {
     const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
     const res = await api.joinSubmit(eventId, answers, edited);
     setBusy(false);
-    if (res.ok) setResult(res.data); else toast.error(t("submitFailed"));
+    if (res.ok) { setResult(res.data); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
     setBusy(true);
     const res = await api.joinTentative(eventId);
     setBusy(false);
-    if (res.ok) { setCalendar("added"); toast.success(t("tentativeAdded")); } else toast.error(t("submitFailed"));
+    if (res.ok) { setCalendar("added"); announceEventChanged(eventId); toast.success(t("tentativeAdded")); } else toast.error(t("submitFailed"));
   };
-  const close = () => router.replace(detail as Href);
+  // × goes back to the detail it was opened from (a replace left a second detail in the stack); a deep link has none, so it opens the detail.
+  const close = () => (router.canGoBack() ? router.back() : router.replace(detail as Href));
 
   if (result) {
     const submitted = tokyo(result.submittedAt);

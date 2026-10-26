@@ -56,4 +56,5 @@ export const settings = {
   "settings.healthReadyDetail": "Orbit responded normally. You can continue.",
   "settings.healthRespondedTitle": "Server responded",
   "settings.healthRespondedDetail": "The server responded, but health details are unavailable.",
+  "settings.dataHelp": "Data and help",
 } as const;

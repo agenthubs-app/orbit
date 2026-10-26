@@ -8,8 +8,8 @@ test("meeting windows cover the visible local grid and stay within the server ca
   const day = calendarMeetingWindow("2026-03-08", "day", "America/New_York");
   assert.deepEqual(day && { from: day.from, to: day.to }, { from: "2026-03-08T05:00:00.000Z", to: "2026-03-09T04:00:00.000Z" });
   const week = calendarMeetingWindow("2026-03-08", "week", "America/New_York");
-  assert.equal(week?.from, "2026-03-02T05:00:00.000Z");
-  assert.equal(week?.to, "2026-03-09T04:00:00.000Z");
+  assert.equal(week?.from, "2026-03-08T05:00:00.000Z");
+  assert.equal(week?.to, "2026-03-15T04:00:00.000Z");
   const month = calendarMeetingWindow("2026-10-15", "month", "America/New_York");
   assert.ok(month);
   assert.ok(Date.parse(month.to) - Date.parse(month.from) <= 43 * 86_400_000);

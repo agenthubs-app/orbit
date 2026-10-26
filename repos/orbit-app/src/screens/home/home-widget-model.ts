@@ -51,3 +51,38 @@ export function nextLocalRegisteredEvent(
   return events.filter(event => going(event.eventId) && event.lifecycleState !== "cancelled" && Date.parse(event.endsAt) > now.getTime())
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null;
 }
+
+export type HomeTodayRow = { key: string; title: string };
+/** A date key (YYYY-MM-DD) in `timeZone`: a due time's local day, else the planned day — the to-do tab's grouping rule. */
+function homeTaskDateKey(dueAt: string | null | undefined, plannedDate: string | null | undefined, timeZone: string): string | undefined {
+  if (dueAt && Number.isFinite(Date.parse(dueAt))) return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(dueAt));
+  return plannedDate ?? undefined;
+}
+/**
+ * UX: the Today card counts what the to-do tab shows under 今天 and 已逾期 — open tasks and open relationship
+ * follow-ups, by due time (else planned day). `capped`: the task window ended while still on or before today.
+ */
+export function homeTodaySummary(
+  tasks: readonly { id: string; title: string; dueAt?: string | null | undefined; plannedDate?: string | null | undefined }[] | null,
+  followUps: readonly { itemKey: string; titlePreview: string; dueAt: string | null }[] | null,
+  today: string, timeZone: string, moreTasks = false,
+): { today: HomeTodayRow[]; overdue: HomeTodayRow[]; capped: boolean } {
+  const result = { today: [] as HomeTodayRow[], overdue: [] as HomeTodayRow[], capped: false };
+  const add = (key: string, title: string, day: string | undefined) => {
+    if (!day || day > today) return;
+    (day === today ? result.today : result.overdue).push({ key, title });
+  };
+  for (const task of tasks ?? []) add(`task:${task.id}`, task.title, homeTaskDateKey(task.dueAt, task.plannedDate, timeZone));
+  for (const item of followUps ?? []) add(`followup:${item.itemKey}`, item.titlePreview, homeTaskDateKey(item.dueAt, null, timeZone));
+  const last = tasks?.at(-1);
+  const lastDay = last ? homeTaskDateKey(last.dueAt, last.plannedDate, timeZone) : undefined;
+  result.capped = moreTasks && Boolean(lastDay && lastDay <= today);
+  return result;
+}
+/** The next of today's calendar items: the first that has not ended yet (all-day items count), else none. */
+export function nextTodayScheduleItem<T extends { timeLabel: string; durationMinutes: number }>(items: readonly T[], nowMinutes: number): T | null {
+  return items.find(item => {
+    const match = /^(\d{1,2}):(\d{2})/u.exec(item.timeLabel);
+    return !match || Number(match[1]) * 60 + Number(match[2]) + Math.max(0, item.durationMinutes) > nowMinutes;
+  }) ?? null;
+}

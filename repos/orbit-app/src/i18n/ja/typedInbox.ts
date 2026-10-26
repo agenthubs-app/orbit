@@ -24,7 +24,7 @@ export const typedInbox = {
   "typedInbox.conflict": "通知が変更されました。更新してもう一度お試しください。",
   "typedInbox.pending": "保存中…",
   "typedInbox.retry": "操作を再試行",
-  "typedInbox.unavailable": "参照元を利用できません",
+  "typedInbox.unavailable": "この通知は期限切れです",
   "typedInbox.openState": "未対応",
   "typedInbox.handledState": "対応済み",
   "typedInbox.dismissedState": "非表示",

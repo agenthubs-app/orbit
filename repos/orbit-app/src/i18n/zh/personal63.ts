@@ -1,7 +1,7 @@
 export const personal63 = {
   "personal63.add": "添加",
   "personal63.locationOrLink": "地点或视频会议链接",
-  "personal63.addNote": "添加关联笔记",
+  "personal63.addNote": "添加相关笔记",
   "personal63.start": "开始",
   "personal63.end": "结束",
   "personal63.endDate": "结束日期",

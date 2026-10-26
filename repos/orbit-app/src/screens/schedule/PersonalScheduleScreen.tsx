@@ -28,13 +28,13 @@ import { localDayStart, resolveLocalDateTime } from "../../time/date-time";
 import { buildOfflineScheduleMutation, isOfflineScheduleEditable } from "../../data/sync/schedule-outbox-mutation";
 
 export function PersonalScheduleScreen() {
-  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[] }>();
+  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[]; contactId?: string | string[] }>();
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
   const actorId = auth.actorId ?? ""; const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl, id, ready]);
-  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} focusTime={(Array.isArray(params.focus) ? params.focus[0] : params.focus) === "time"} />;
+  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} focusTime={(Array.isArray(params.focus) ? params.focus[0] : params.focus) === "time"} contactId={(Array.isArray(params.contactId) ? params.contactId[0] : params.contactId) ?? ""} />;
 }
-function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { id: string; actorId: string; ready: boolean; scopeKey: string; focusTime: boolean }) {
+function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, contactId }: { id: string; actorId: string; ready: boolean; scopeKey: string; focusTime: boolean; contactId: string }) {
   const router = useRouter(); const { timeZone, canSave } = useOrbitTimeZone(); const { styles, colors } = useStyles();
   const insets = useSafeAreaInsets();
   const locale = useOrbitLocale();
@@ -49,7 +49,8 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const [baseline, setBaseline] = useState<PersonalScheduleContract | null>(null);
   const [latest, setLatest] = useState<PersonalScheduleContract | null>(null);
   // UX-8: a new schedule starts at the next full hour for one hour, like iOS Calendar — never "YYYY-MM-DD / —".
-  const initialNew = useRef(newScheduleDraft(editZone));
+  // ?contactId= (contact detail 📅): a new schedule starts with that person linked.
+  const initialNew = useRef((draft => contactId && !id ? { ...draft, contactIds: [contactId] } : draft)(newScheduleDraft(editZone)));
   const [draft, setDraft] = useState(() => id ? personalScheduleDraft(null, editZone) : initialNew.current);
   const [loading, setLoading] = useState(!!id); const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [confirmDelete, setConfirmDelete] = useState(false);
@@ -110,7 +111,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
         await outbox.enqueue(mutation);
         scope.keys.delete(fingerprint);
         if (!scope.active || current.current !== scope) return;
-        router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
+        if (!remove && id && router.canGoBack()) router.back(); else router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
       } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
       finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
       return;
@@ -138,7 +139,8 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
       setBaseline(verified); setLatest(verified); setDraft(personalScheduleDraft(verified, verified.timeZone ?? editZone)); setMessage(locale.t("schedule.saved"));
       // The detail page reads the device copy: pull the saved change first.
       if (!await writeStatus.confirmSaved()) { if (scope.active && current.current === scope) setError(locale.t("sync.mutationPending")); return; }
-      router.replace(`/schedule/personal/${encodeURIComponent(verified.id)}?saved=${encodeURIComponent(verified.updatedAt)}` as Href);
+      // An edit was opened from its detail page: go back to it rather than stacking a second copy (a new schedule replaces the form).
+      if (id && router.canGoBack()) router.back(); else router.replace(`/schedule/personal/${encodeURIComponent(verified.id)}?saved=${encodeURIComponent(verified.updatedAt)}` as Href);
     } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
     finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
   }

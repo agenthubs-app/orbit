@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { Browser } from "playwright";
 
-import { createToast, disarmOwner, toastBottom, TOAST_DURATION_MS } from "../src/components/ui/toast-model";
+import { createToast, disarmOwner, toastBottom, ERROR_ACTION_TOAST_DURATION_MS, ERROR_TOAST_DURATION_MS, TOAST_DURATION_MS } from "../src/components/ui/toast-model";
 import { bundleScenarios, launch, openScenario } from "./helpers/ui-harness";
 
-// R04 (SC-R04-02): Toast — one at a time, success leaves after 5 s, errors and undo
+// R04 (SC-R04-02): Toast — one at a time, success leaves after 5 s, errors after 4 s (6 s with a button), undo
 // bars stay, 元に戻す runs the undo, an undo dies with the screen that showed it.
 let browser: Browser;
 let script: string;
@@ -16,9 +16,11 @@ test.before(async () => {
 });
 test.after(async () => browser?.close());
 
-test("the model: errors and undo bars never time out; an owner's unmount removes only its undo", () => {
+test("the model: errors time out (longer with a button), undo bars never do; an owner's unmount removes only its undo", () => {
   assert.equal(createToast({ message: "完了にしました" }, 1).autoDismissMs, TOAST_DURATION_MS);
-  assert.equal(createToast({ kind: "error", message: "保存できませんでした" }, 1).autoDismissMs, null);
+  assert.equal(createToast({ kind: "error", message: "保存できませんでした" }, 1).autoDismissMs, ERROR_TOAST_DURATION_MS);
+  assert.equal(createToast({ kind: "error", message: "保存できませんでした", action: { label: "再試行", onPress: () => undefined } }, 1).autoDismissMs, ERROR_ACTION_TOAST_DURATION_MS);
+  assert.equal(createToast({ kind: "error", message: "オフライン", stay: true }, 1).autoDismissMs, null);
   assert.equal(createToast({ message: "交換しました", keep: true, undo: () => undefined }, 1).autoDismissMs, null);
   const mine = createToast({ message: "完了にしました", undo: () => undefined }, 7);
   assert.equal(disarmOwner(mine, 7)?.undo, undefined);
@@ -49,15 +51,22 @@ test("undo callback runs after the toast has disappeared from the rendered page"
   await page.close();
 });
 
-test("success leaves after 5 s; errors and undo bars stay until closed", async () => {
+test("success leaves after 5 s; errors leave on their own or with a tap; undo bars stay until closed", async () => {
   const page = await openScenario(browser, script, { scenario: "toast" });
   await page.clock.install();
   await page.evaluate(() => (window as any).ui.successPlain());
   await page.clock.runFor(TOAST_DURATION_MS + 200);
   assert.equal(await page.getByText("コピーしました").count(), 0);
   await page.evaluate(() => (window as any).ui.error());
-  await page.clock.runFor(TOAST_DURATION_MS * 3);
+  await page.clock.runFor(ERROR_TOAST_DURATION_MS - 500);
   assert.equal(await page.getByText("保存できませんでした").count(), 1);
+  await page.clock.runFor(1000);
+  assert.equal(await page.getByText("保存できませんでした").count(), 0, "an error does not stay forever");
+  await page.evaluate(() => (window as any).ui.retry());
+  await page.clock.runFor(ERROR_TOAST_DURATION_MS + 500);
+  await page.getByRole("button", { name: "再試行" }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).events), ["retry"], "the action is still tappable after 4 s");
+  await page.evaluate(() => (window as any).ui.error());
   // R31a: no ✕ (kit .toast); a toast that stays closes with a tap on it.
   assert.equal(await page.getByRole("button", { name: "閉じる" }).count(), 0, "no close button");
   await page.getByRole("button", { name: "保存できませんでした" }).click({ position: { x: 20, y: 20 } });
