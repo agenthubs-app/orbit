@@ -8,6 +8,8 @@ import { ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type N
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
+import { openMainTab } from "../../../components/shell-navigation";
+import { planNewGoalHref } from "../../../api/compute/plan-href";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
@@ -160,7 +162,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             <UiText style={styles.lbl}>{t("noPlanLbl")}</UiText>
             <UiText style={styles.guideTitle}>{`${t("noPlanTitleShort")}\n${t("noPlanTitleRest")}`}</UiText>
             <UiText style={styles.guideSub}>{t("noPlanSubShort")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("setGoal")} onPress={() => router.push("/plans" as Href)} style={styles.btnBlock46}><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("setGoal")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.btnBlock46}><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("setGoal")}</UiText></UiPressable>
           </View>
           <View style={styles.grid3}>
             {([["🔗", "tileUrl", colors.macBlue, "/events/assess?mode=url"], ["🎟️", "tileCode", colors.macTeal, "/events?code=1"], ["👥", "tileCommunity", colors.macPink, "/events?tab=discover"]] as const).map(([emoji, key, bg, href]) => (
