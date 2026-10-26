@@ -5,7 +5,7 @@ export const home = {
   "home.widgetSearch": "ウィジェットを検索",
   "home.widgetLibraryHint": "サイズを選んで追加",
   "home.widgetOnHome": "ホームにあるもの",
-  "home.widgetPendingDescription": "あなたの判断が必要なこと",
+  "home.widgetPendingDescription": "判断が必要なこと",
   "home.widgetWeekDescription": "7日間の予定と焦点",
   "home.widgetEventPickDescription": "あなたに合うイベント",
   "home.widgetTodayDescription": "今日やること",

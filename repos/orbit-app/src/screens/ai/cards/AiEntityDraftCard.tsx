@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { radius, rowRoleStyles, spacing, textStyles } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { AiEntityDraftCardView } from "../../../view-models/ai-entity-draft";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 
 /**
  * Sprint 0085: the card that replaces a paragraph promising a confirmation.
@@ -20,6 +22,59 @@ const KIND_GLYPH: Readonly<Record<AiEntityDraftCardView["kind"], keyof typeof Io
   schedule: "time-outline",
   task: "checkbox-outline",
 };
+
+const DATE_FIELDS = new Set(["dueAt", "endsAt", "startsAt"]);
+
+/** QA-A: "2026-10-27T10:00:00+09:00" → "10月27日 周二 10:00" once the card is settled (the raw ISO string was shown). */
+function displayValue(field: string | undefined, value: string, language: string): string {
+  if (!field || !DATE_FIELDS.has(field) || !/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return value;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const locale = language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", weekday: "short", ...(dateOnly ? { timeZone: "UTC" } : { hour: "2-digit", minute: "2-digit" }) }).format(at);
+}
+
+/** QA-A2: "2026-10-27" or "2026-10-27T10:00[:00][+09:00]" split into the parts the pickers edit (the value's own clock, no zone math). */
+const DATE_VALUE = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+function dateValueParts(value: string): { date: string; time: string | null; offset: string } | null {
+  const match = DATE_VALUE.exec(value.trim());
+  return match ? { date: match[1]!, offset: match[3] ?? "", time: match[2] ?? null } : null;
+}
+const deviceZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Tokyo"; } catch { return "Asia/Tokyo"; } };
+
+/** QA-A2: a pending card's date/time is picked (calendar + hour/minute), not typed as an ISO string. */
+function DateFieldEditor({ busy, label, language, onChange, value }: { busy: boolean; label: string; language: string; onChange: (value: string) => void; value: string }) {
+  const { styles } = useStyles();
+  const [picking, setPicking] = useState<"date" | "time" | null>(null);
+  const parts = dateValueParts(value)!;
+  const locale = language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+  const dateLabel = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" }).format(new Date(`${parts.date}T00:00:00Z`));
+  const compose = (date: string, time: string | null) => (time ? `${date}T${time}:00${parts.offset}` : date);
+  return (
+    <View style={styles.dateParts}>
+      <Pressable accessibilityLabel={`${label} ${dateLabel}`} accessibilityRole="button" disabled={busy} onPress={() => setPicking("date")} style={({ pressed }) => [styles.datePill, pressed && styles.pressed]}>
+        <Text style={styles.datePillText}>{dateLabel}</Text>
+      </Pressable>
+      {parts.time ? (
+        <Pressable accessibilityLabel={`${label} ${parts.time}`} accessibilityRole="button" disabled={busy} onPress={() => setPicking("time")} style={({ pressed }) => [styles.datePill, pressed && styles.pressed]}>
+          <Text style={styles.datePillText}>{parts.time}</Text>
+        </Pressable>
+      ) : null}
+      {picking ? (
+        <PersonalScheduleDateTimePicker
+          disabled={busy}
+          kind={picking}
+          onCancel={() => setPicking(null)}
+          onConfirm={(next) => { setPicking(null); onChange(picking === "date" ? compose(next, parts.time) : compose(parts.date, next)); }}
+          title={label}
+          value={picking === "date" ? parts.date : parts.time ?? ""}
+          zone={deviceZone()}
+        />
+      ) : null}
+    </View>
+  );
+}
 
 export function AiEntityDraftCard({
   busy = false,
@@ -71,7 +126,9 @@ export function AiEntityDraftCard({
         {view.rows.map((row) => (
           <View key={row.label} style={styles.row}>
             <Text style={styles.rowLabel}>{row.label}</Text>
-            {row.editable && row.field && view.confirmable && onEditField ? (
+            {row.editable && row.field && view.confirmable && onEditField && DATE_FIELDS.has(row.field) && dateValueParts(row.value) ? (
+              <DateFieldEditor busy={busy} label={row.label} language={locale.language} onChange={(next) => onEditField(row.field!, next)} value={row.value} />
+            ) : row.editable && row.field && view.confirmable && onEditField ? (
               <TextInput
                 accessibilityLabel={row.label}
                 editable={!busy}
@@ -80,7 +137,7 @@ export function AiEntityDraftCard({
                 value={row.value}
               />
             ) : (
-              <Text style={styles.rowValue}>{row.value}</Text>
+              <Text style={styles.rowValue}>{displayValue(row.field, row.value, locale.language)}</Text>
             )}
           </View>
         ))}
@@ -180,6 +237,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     textAlign: "right",
   },
   failure: { ...textStyles.small, color: colors.coralText },
+  dateParts: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, justifyContent: "flex-end" },
+  datePill: { backgroundColor: colors.surface2, borderRadius: radius.md, justifyContent: "center", minHeight: 36, paddingHorizontal: spacing.sm },
+  datePillText: { ...rowRoleStyles.fieldValue, color: colors.ink },
   actions: { flexDirection: "row", gap: spacing.sm, paddingBottom: spacing.sm, paddingHorizontal: spacing.md },
   primary: {
     alignItems: "center",

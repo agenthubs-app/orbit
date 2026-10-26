@@ -13,7 +13,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { KitButton, KitCard, KitChip, KitEmo, kitText, useKitStyles, useKitWhy } from "./plan-kit";
 import { Bubble, ChatMark, FootFade } from "./plan-flow-kit";
-import { turnChipText } from "./plan-model";
+import { PLAN_EVENT_EMOJI, readableUnchanged, turnChipText } from "./plan-model";
 
 /** 初版 / 方案卡。`clamp`：見立て 4 行折叠（AI 修正之后，b10 ⑤）；`footer`：卡底部的回数 + 两个按钮。 */
 export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDraftView; clamp?: boolean; footer?: ReactNode | undefined }) {
@@ -22,7 +22,8 @@ export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDra
   const { t } = useOrbitLocale();
   const { content } = draft;
   const [full, setFull] = useState(false);
-  const basis = [content.basis.map((item) => item.label).join(" · "), ...draft.citations.map((citation) => `${citation.id} ${citation.title}`)].filter(Boolean).join("\n");
+  // QA-A: landscape refs carry only their id as label ("L-101"); the citations below name them properly.
+  const basis = [content.basis.filter((item) => item.kind !== "landscape").map((item) => item.label).join(" · "), ...draft.citations.map((citation) => citation.title)].filter(Boolean).join("\n");
   const why = useKitWhy(basis || null);
   const folded = clamp && !full;
   return (
@@ -71,6 +72,37 @@ export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDra
           </View>
         ) : null}
       </View>
+      {/* QA-A: what is being confirmed — the steps and who to talk to — not only the judgement. */}
+      {content.steps.length ? (
+        <View style={styles.jsec}>
+          <UiText style={styles.jsecLabel}>{t("plan.step.title")}</UiText>
+          {content.steps.map((step, index) => (
+            <View key={step.key || String(index)} style={styles.listRow}>
+              <UiText style={styles.listNum}>{String(index + 1)}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{step.title}</UiText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {content.personTypes.length ? (
+        <View style={styles.jsec}>
+          <UiText style={styles.jsecLabel}>{t("plan.types.title")}</UiText>
+          {content.personTypes.map((type) => (
+            <View key={type.key} style={styles.listRow}>
+              <UiText style={styles.listEmoji}>{type.emoji}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{type.shortLabel}</UiText>
+              <UiText style={styles.listMeta}>{t("plan.draft.peopleCount", { count: type.targetCount })}</UiText>
+            </View>
+          ))}
+          {content.event.allocation > 0 ? (
+            <View style={styles.listRow}>
+              <UiText style={styles.listEmoji}>{PLAN_EVENT_EMOJI}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{t("plan.draft.event")}</UiText>
+              <UiText style={styles.listMeta}>{t("plan.draft.eventCount", { count: content.event.targetCount })}</UiText>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {footer}
     </KitCard>
   );
@@ -110,7 +142,7 @@ export function PlanTurn({ turn, limit, footer, mark = false }: { turn: PlanDraf
             ))}
           </View>
         ) : null}
-        {changed && turn.unchanged.length ? <View style={styles.sameLine}><UiText style={styles.sameText}>{t("plan.turn.unchanged", { items: turn.unchanged.join(" · ") })}</UiText></View> : null}
+        {changed && readableUnchanged(turn.unchanged).length ? <View style={styles.sameLine}><UiText style={styles.sameText}>{t("plan.turn.unchanged", { items: readableUnchanged(turn.unchanged).join(" · ") })}</UiText></View> : null}
         {!changed ? <View style={[styles.sameLine, styles.noChange]}><UiText style={styles.sameText}>{turn.noChangeReason ?? t("plan.turn.unchangedTitle")}</UiText></View> : null}
         {why.body}
         {footer}
@@ -226,7 +258,7 @@ export function RevComposer({ label, left, leftLabel, hint, example, placeholder
         </View>
         <View style={styles.rvt}>
           <UiText style={styles.rvtText}>{hint}</UiText>
-          <UiText numberOfLines={1} style={styles.ex}>{example}</UiText>
+          <UiText style={styles.ex}>{example}</UiText>
         </View>
       </View> : null}
       <View style={[styles.composer, out && styles.composerOff]}>
@@ -271,6 +303,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flowLabel: { color: colors.ink, ...kitText(12, "700", 1.75) },
   flowNote: { color: colors.ink3, ...kitText(10.5, "500", 1.4), textAlign: "center" },
   ar: { width: 22, alignItems: "center" },
+  listRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 4 },
+  listNum: { width: 20, height: 20, borderRadius: 10, overflow: "hidden", backgroundColor: colors.ink, color: colors.bg, textAlign: "center", ...kitText(11, "800"), lineHeight: 20, marginTop: 1 },
+  listEmoji: { width: 20, textAlign: "center", fontSize: 15, lineHeight: 22 },
+  listText: { color: colors.ink, ...kitText(13.5, "600", 1.6) },
+  listMeta: { color: colors.ink3, ...kitText(12.5, "600", 1.75) },
   diff: { marginTop: 6 },
   dl: { flexDirection: "row", gap: 10, paddingVertical: 9 },
   chgtag: { alignSelf: "flex-start", paddingVertical: 2, paddingHorizontal: 7, borderRadius: 6, backgroundColor: colors.macLav },

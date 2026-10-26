@@ -505,6 +505,7 @@ export function ImportBatchScreen({ batchId, excluded = 0, design, returnTo = nu
           ) : null}
           {ready && !done ? (
             <UnifiedReviewApp
+              allClear={t("add.batch.allClear")}
               tiles={tiles}
               active="duplicate"
               duplicateTitle={t("add.batch.duplicateTitle", { n: tiles[0]!.count })}
@@ -581,7 +582,7 @@ function ImportDone({ batch }: { batch: ContactImportBatchView }) {
   const added = batch.counts.created + batch.counts.merged;
   return (
     <View testID="add-import-done">
-      <View style={styles.center}>
+      <View style={[styles.center, styles.doneHead]}>
         <UiText style={styles.doneEmoji}>🎉</UiText>
         <UiText accessibilityRole="header" style={styles.h1}>{t("add.import.doneTitle", { n: added })}</UiText>
       </View>
@@ -609,6 +610,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   fill: { flex: 1 },
   grow: { flex: 1, minWidth: 0 },
   center: { alignItems: "center" },
+  doneHead: { marginBottom: 14 },
   centerText: { textAlign: "center" },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18 },
   flat: { backgroundColor: colors.surface2 },

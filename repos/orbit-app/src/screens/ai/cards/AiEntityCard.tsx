@@ -36,9 +36,10 @@ export function AiEntityCard({
       </View>
       <View style={styles.copy}>
         <Text style={styles.kind}>{view.kindLabel}</Text>
-        <Text numberOfLines={1} style={styles.title}>{view.title}</Text>
+        {/* QA-A: one line cut long CJK titles to a single character ("产…"); allow two. */}
+        <Text numberOfLines={2} style={styles.title}>{view.title}</Text>
         {view.meta ? <Text numberOfLines={1} style={styles.meta}>{view.meta}</Text> : null}
-        {view.reason ? <Text numberOfLines={1} style={styles.reason}>{view.reason}</Text> : null}
+        {view.reason ? <Text numberOfLines={2} style={styles.reason}>{view.reason}</Text> : null}
       </View>
       {view.href ? <Ionicons color={colors.accentText} name="chevron-forward" size={16} /> : null}
     </>

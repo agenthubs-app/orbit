@@ -255,6 +255,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                       kind={kind}
                       gaps={gaps}
                       existingContactIds={new Set(members.map((member) => member.contactId).filter((id): id is string => Boolean(id)))}
+                      selfName={members.find((member) => member.isSelf)?.name ?? me.value.name}
                       onAdd={async (body) => {
                         const ok = await step("members", () => api.addMembers(intake.intakeId, body));
                         if (ok) setMode("team");

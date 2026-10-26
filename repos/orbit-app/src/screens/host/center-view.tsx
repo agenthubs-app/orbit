@@ -69,7 +69,8 @@ export function HostCenterBody(props: HostCenterViewProps) {
       </View>
     );
   }
-  const few = data.summary.eventCount === 1 && filter === "all";
+  const inactive = data.filterCounts?.inactive ?? 0;
+  const few = data.summary.eventCount === 1 && filter === "all" && data.events.length === 1;
   const segs: { key: HostCenterFilter; label: string }[] = [{ key: "all", label: t("fAll") }, { key: "upcoming", label: t("fUpcoming") }, { key: "live", label: t("fLive") }, { key: "ended", label: t("fEnded") }];
   return (
     <View testID={few ? "host-center-few" : "host-center-many"}>
@@ -78,6 +79,12 @@ export function HostCenterBody(props: HostCenterViewProps) {
         {data.events.map((row) => <HostEventCard key={row.eventId} row={row} t={t} language={language} onOpen={() => props.onOpenRow(row)} onAction={() => props.onRowAction(row)} />)}
         {data.events.length === 0 ? <UiText style={[h.lbl, styles.none]}>{t("noResults")}</UiText> : null}
       </View>
+      {/* Drafts / cancelled / archived are not in 全部; without this row a draft made on the computer was unreachable here. */}
+      {inactive > 0 ? (
+        <UiPressable accessibilityRole="button" accessibilityState={{ selected: filter === "inactive" }} onPress={() => props.onFilter(filter === "inactive" ? "all" : "inactive")} style={styles.inactiveRow} testID="host-center-inactive">
+          <UiText style={[h.lbl, filter === "inactive" ? { color: colors.ink, fontWeight: "700" } : null]}>{`${t("fInactive")} · ${inactive}`}</UiText>
+        </UiPressable>
+      ) : null}
       {few ? <PcCard text={t("appPcCreate")} style={styles.pcGap} /> : null}
     </View>
   );
@@ -123,6 +130,7 @@ export const useCenterStyles = createThemedStyles((colors) => StyleSheet.create(
   list: { gap: 12, marginTop: 14 },
   listFew: { marginTop: 4 },
   none: { paddingVertical: 24, textAlign: "center" },
+  inactiveRow: { alignItems: "center", minHeight: 44, justifyContent: "center", marginTop: 8 },
   pcGap: { marginTop: 12 },
   sheetTitle: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29 },
   codeRow: { flexDirection: "row", gap: 6, justifyContent: "center", marginTop: 14 },

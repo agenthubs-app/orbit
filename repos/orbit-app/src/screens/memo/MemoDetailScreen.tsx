@@ -6,7 +6,10 @@ import { Platform, Pressable, RefreshControl, StyleSheet, View } from "react-nat
 import type { NoteMentionContract } from "../../api/contract/notes";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { Chip, EmptyState, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { Chip, EmptyState, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { useToast } from "../../components/ui/Toast";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { deleteNoteOnServer } from "./delete-note";
 import { Icon } from "../../components/ui/Icon";
 import { MemoOfflineNotice } from "./MemoOfflineNotice";
 import { createThemedStyles } from "../../design/theme";
@@ -71,6 +74,24 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
     }
   }, [canonicalNoteId, noteId, router]);
   const [taskRefresh, setTaskRefresh] = useState(0);
+  const client = useOrbitApiClient();
+  const toast = useToast();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  // QA-D: like iOS Notes/Contacts, a red 「メモを削除」 at the end of the note, with a confirmation.
+  async function deleteNote() {
+    const target = source.note;
+    if (!target || deleting) return;
+    const confirmed = await presentConfirm({ title: locale.t("notes.deleteConfirm"), message: locale.t("notes.deleteBody"), confirmLabel: locale.t("notes.deleteNote"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "trash" });
+    if (!confirmed) return;
+    setDeleting(true); setDeleteError("");
+    const outcome = await deleteNoteOnServer(client, target).catch(() => "failed" as const);
+    setDeleting(false);
+    if (outcome !== "deleted") { setDeleteError(locale.t(outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
+    source.refresh();
+    toast.success(locale.t("notes.deleted"));
+    if (router.canGoBack()) router.back(); else router.replace("/notes");
+  }
   const [conflictBusy, setConflictBusy] = useState(false);
   const [conflictError, setConflictError] = useState("");
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
@@ -136,7 +157,7 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
       setConflictBusy(false);
     }
   }
-  return <AppScreen inset="kit" title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")}
+  return <AppScreen inset="kit" title={locale.t("notes.title")} onBack={() => (router.canGoBack() ? router.back() : router.replace("/notes"))} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")}
     // UX-6: editing is one tap away like iOS Notes — "编辑" in the header, or tap the text.
     headerActions={note && !(source.offline && Platform.OS === "web") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.edit")} hitSlop={8} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={styles.headerEdit}><Text style={styles.headerEditText}>{locale.t("notes.editShort")}</Text></Pressable> : undefined}
     refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={() => { setTaskRefresh(value => value + 1); source.refresh(); }} />}>
@@ -190,6 +211,12 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
           : <View key={eventId} style={styles.linkRow}><Icon color={colors.ink3Text} name="calendar" size={20} /><Text style={styles.disabledMention}>{eventId.replace(/^event:/, "")}</Text></View>;
       })}</View> : null}
       <NoteSourceTasks key={JSON.stringify([scopeKey, actorId, noteId, taskRefresh])} actorId={actorId} noteId={noteId} scopeKey={scopeKey} />
+      {!note.id.startsWith("local:") ? <View style={styles.deleteSection}>
+        {deleteError ? <Text accessibilityRole="alert" style={styles.conflictError}>{deleteError}</Text> : null}
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.deleteNote")} accessibilityState={{ disabled: deleting || source.offline }} disabled={deleting || source.offline} onPress={() => void deleteNote()} style={[styles.deleteRow, (deleting || source.offline) && styles.disabled]}>
+          <Text style={styles.deleteText}>{locale.t("notes.deleteNote")}</Text>
+        </Pressable>
+      </View> : null}
     </> : null}
   </AppScreen>;
 }
@@ -227,6 +254,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   linkText: { color: colors.ink, flex: 1, fontSize: typography.bodySm, fontWeight: "700" },
   actions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.lg },
   disabled: { opacity: 0.4 },
+  deleteSection: { gap: spacing.sm, paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  deleteRow: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.md, justifyContent: "center", minHeight: 50 },
+  deleteText: { color: colors.coralText, fontSize: typography.body, fontWeight: "600" },
   editLarge: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.lg, flex: 1, justifyContent: "center", minHeight: 58 },
   editText: { color: colors.bg, fontSize: typography.body, fontWeight: "800" },
   iorbit: { alignItems: "center", borderColor: colors.ink, borderRadius: radius.lg, borderWidth: 1.5, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 58, paddingHorizontal: spacing.sm },

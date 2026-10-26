@@ -244,7 +244,9 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
   }
   const offline = Boolean(todo.copy?.offline || todo.state.kind === "offline");
   // A last-seen copy shown while the network is still loading is not current enough to write against.
-  const staleDay = todo.staleDay || Boolean(todo.copy && !todo.copy.offline);
+  // QA-D: LF1's fresh copy (read in the last two minutes) is this visit's answer; treating it as stale left 提案 read-only
+  // (「以前の情報」, 開く disabled) every time Home had just loaded the page.
+  const staleDay = todo.staleDay || Boolean(todo.copy && !todo.copy.offline && !todo.copy.fresh);
   const mirroredTaskIds = useMemo(() => new Set(todo.mirror.records.filter(record => {
     if (Platform.OS === "web" || record.deletedAt !== null || !record.payload) return false;
     const task = record.payload as unknown as TaskItemContract;
@@ -462,7 +464,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
       onRefresh={refresh} canOpen={item => "actions" in item ? todoDecisionHref(item) !== null : true}
       onMore={section => { void loadMore(section); }}
       canOpenFollowup={item => item.kind === "lifecycle"
-        ? !offline && !staleDay && auth.ready && auth.signedIn && !!auth.actorId && server.ready && todoLifecycleResolvePath(item) !== null
+        ? !offline && !staleDay && !todo.copy && auth.ready && auth.signedIn && !!auth.actorId && server.ready && todoLifecycleResolvePath(item) !== null
         : todoFollowupHref(item) !== null}
       canDefer={item => !offline || deferableTaskIds.has(item.taskId)}
       onOpen={open} onOpenFollowup={item => { void openFollowup(item); }}

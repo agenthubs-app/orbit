@@ -94,6 +94,8 @@ export function AfterPage() {
   const top = { fallback: base, leftLabel: t("back") };
   if (!data) return <JourneyPage title={t("afterTitle")} {...top}>{missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
   const d = tokyo(`${data.date}T12:00:00+09:00`);
+  // 「今天的回顾」 only on the event day; afterwards the page is just 「回顾」.
+  const title = data.date === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date()) ? t("afterTitle") : t("goAfter");
   const subtitle = `${data.title} · ${d ? `${d.month}/${d.day}` : data.date}`;
   const empty = data.met.count === 0 && steps.length === 0;
   const right = <IconButton icon="share" accessibilityLabel={t("share")} onPress={shareRecap} />;
@@ -101,7 +103,7 @@ export function AfterPage() {
 
   if (empty) {
     return (
-      <JourneyPage title={t("afterTitle")} subtitle={subtitle} right={right} {...top} testID="events-after-empty">
+      <JourneyPage title={title} subtitle={subtitle} right={right} {...top} testID="events-after-empty">
         <View style={styles.guide}>
           <Svg width={220} height={220} style={styles.guideGlow}>
             <Defs><RadialGradient id="afterGlow" cx="50%" cy="50%" r="50%"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
@@ -136,7 +138,7 @@ export function AfterPage() {
   }
 
   return (
-    <JourneyPage title={t("afterTitle")} subtitle={subtitle} right={right} {...top} testID="events-after">
+    <JourneyPage title={title} subtitle={subtitle} right={right} {...top} testID="events-after">
       <View style={vs.card}>
         <View style={styles.heroRow}>
           <View><UiText style={vs.lbl}>{t("metToday")}</UiText><UiText style={[vs.big, styles.big52]}>{data.met.count}<UiText style={styles.bigUnit}>{` ${t("metUnit")}`}</UiText></UiText></View>

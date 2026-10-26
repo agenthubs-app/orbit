@@ -149,4 +149,11 @@ export const notes = {
   "notes.planUseRequiresOneContact": "用于计划时，请把面谈笔记只关联一位联系人。",
   "notes.versionInvalid": "笔记版本无效，请重新读取。",
   "notes.aiTaskPrompt": "请根据这篇笔记整理一个待办，并明确标题和日期。",
+  "notes.deleteNote": "删除笔记",
+  "notes.deleteConfirm": "删除这条笔记？",
+  "notes.deleteBody": "删除后无法恢复。",
+  "notes.deleteFailed": "没能删除笔记，请检查网络后重试。",
+  "notes.deleteConflict": "这条笔记在其他设备上被修改过，请重新打开后再删除。",
+  "notes.deleted": "已删除笔记",
+  "notes.removeRelatedNote": "移除关联笔记「{name}」",
 } as const;

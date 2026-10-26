@@ -44,8 +44,8 @@ test("R21 history surfaces server pin limit and a server-acknowledged undo", () 
 });
 
 test("R21 history separates typed plan entries from conversations", () => {
-  assert.match(view, /planIntakes\.map/u);
-  assert.match(view, /planGoals\.map/u);
+  assert.match(view, /planIntakes\.filter|shownIntakes\.map/u);
+  assert.match(view, /planGoals\.filter|shownGoals\.map/u);
   assert.match(controller, /planFlowHref\("app", intake\.intakeId\)/u);
   assert.match(controller, /planOverviewHref\("app", goal\.planId\)/u);
   assert.match(controller, /planReviewHref\("app", goal\.planId\)/u);

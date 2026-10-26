@@ -1,0 +1,5 @@
+{
+  "NSCameraUsageDescription": "Used to photograph business cards and scan QR codes so you can add people to your contacts.",
+  "NSPhotoLibraryUsageDescription": "Used to pick photos of business cards so you can add people to your contacts.",
+  "NSContactsUsageDescription": "Used to import the contacts you choose (name, company, title, phone, email) into your network."
+}

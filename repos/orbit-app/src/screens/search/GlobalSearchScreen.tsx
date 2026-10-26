@@ -212,7 +212,7 @@ export function GlobalSearchScreen() {
       <View style={[styles.card, styles.resultCard]} testID="global-search-empty">
         <View style={styles.empty}>
           <UiText style={styles.emptyEmoji}>🔎</UiText>
-          <UiText style={styles.emptyTitle}>{fill(t(filter === "events" ? "search.emptyTitleEvents" : filter === "conversations" ? "search.emptyTitleConversations" : filter === "notes" ? "search.emptyTitleNotes" : filter === "todos" ? "search.emptyTitleTodos" : filter === "schedule" ? "search.emptyTitleSchedule" : "search.emptyTitle"), { q: showResult.query })}</UiText>
+          <UiText style={styles.emptyTitle}>{fill(t(filter === "events" ? "search.emptyTitleEvents" : filter === "conversations" ? "search.emptyTitleConversations" : filter === "notes" ? "search.emptyTitleNotes" : filter === "todos" ? "search.emptyTitleTodos" : filter === "schedule" ? "search.emptyTitleSchedule" : filter === "all" ? "search.emptyTitleAll" : "search.emptyTitle"), { q: showResult.query })}</UiText>
           {filter === "all" || filter === "people" ? <UiText style={[styles.lbl, styles.emptySub]}>{fill(t("search.emptySearched"), { n: showResult.searchedPeople })}</UiText> : null}
         </View>
         {showResult.suggestions.length && !localFilter ? group(t("search.emptyNear")) : null}

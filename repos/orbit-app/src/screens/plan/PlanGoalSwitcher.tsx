@@ -41,7 +41,7 @@ export function PlanGoalTitle({ goal, goalKind, index, count, onPress }: { goal:
   );
 }
 
-export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activeGoalLimit, onSwitched, onAdd, onEdit }: {
+export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activeGoalLimit, onSwitched, onAdd, onEdit, onDelete }: {
   visible: boolean;
   onClose: () => void;
   goals: readonly PlanGoalListItem[];
@@ -50,6 +50,8 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
   onSwitched: () => void;
   onAdd: () => void;
   onEdit: (() => void) | null;
+  /** QA-A2: 删除这个目标 (the caller asks to confirm). */
+  onDelete?: (() => void) | null;
 }) {
   const api = usePlanApi();
   const router = useRouter();
@@ -86,7 +88,7 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
   };
   const go = (href: string) => { onClose(); router.push(href as Href); };
   const tile = (emoji: string, backgroundColor: string) => <View style={[styles.menuTile, { backgroundColor }]}><UiText style={styles.menuEmoji}>{emoji}</UiText></View>;
-  const actionTile = (icon: "plus" | "edit" | "archive") => <View style={styles.menuActionTile}><Icon name={icon} size={16} color={colors.ink2} /></View>;
+  const actionTile = (icon: "plus" | "edit" | "archive" | "trash", color: string = colors.ink2) => <View style={styles.menuActionTile}><Icon name={icon} size={16} color={color} /></View>;
 
   return (
     <Popover visible={visible} onClose={onClose} anchor={{ top: 192, left: 18, right: 60 }} accessibilityLabel={t("plan.goals.title")} testID="goal-switcher">
@@ -119,6 +121,7 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
         {full ? <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.goals.add")} accessibilityState={{ disabled: true }} disabled style={styles.menuDisabled} testID="goal-add"><View style={styles.menuDisabledInner}>{actionTile("plus")}<View style={styles.menuCopy}><UiText style={styles.menuDisabledTitle}>{t("plan.goals.add")}</UiText><UiText style={styles.menuHint}>{t("plan.goals.addLimitHint")}</UiText></View></View></UiPressable>
           : <PopoverRow title={t("plan.goals.add")} subtitle={t("plan.goals.addLimitHint")} leading={actionTile("plus")} onPress={() => { onClose(); onAdd(); }} testID="goal-add" />}
         {onEdit ? <PopoverRow title={t("plan.goals.edit")} leading={actionTile("edit")} onPress={() => { onClose(); onEdit(); }} /> : null}
+        {onDelete ? <PopoverRow title={t("plan.goals.delete")} leading={actionTile("trash", colors.coral)} onPress={() => { onClose(); onDelete(); }} testID="goal-delete" /> : null}
         {legacy.length ? (
           <View testID="goal-legacy">
             <PopoverDivider />

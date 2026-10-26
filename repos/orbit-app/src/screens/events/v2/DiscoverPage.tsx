@@ -17,11 +17,14 @@ import { useJourneyApi } from "./journey-api";
 import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, rowTone, themeLabel, tokyo, type JourneyTone } from "./journey-model";
 import { ringColor } from "./events-model";
 import { ScoreRing } from "./ScoreRing";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useJourneyT } from "./useJourneyT";
+import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
 
-export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: ["tokyo"], period: "this_month", planFirst: true, sort: "date", themes: [] };
+// Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
+export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
 const CARD = 260;
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
 
@@ -43,6 +46,7 @@ export function discoverQueryFromParams(params: Record<string, string | string[]
 export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, initialSearch = "", openFilters = false }: { onSubtitle?: (text: string) => void; initialQuery?: EventDiscoverQuery; initialSearch?: string; openFilters?: boolean }) {
   const { styles, colors } = useStyles();
   const { t, language } = useJourneyT();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const api = useJourneyApi();
   const [query, setQuery] = useState<EventDiscoverQuery>(initialQuery);
@@ -102,12 +106,15 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
 
   const open = useCallback((row: EventDiscoverRow) => router.push(row.href as Href), [router]);
   const patch = (next: Partial<EventDiscoverQuery>) => setQuery((current) => ({ ...current, ...next }));
-  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; return next; });
+  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; } return next; });
   const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
   const rows = useMemo(() => (data ? (query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))) : []), [data, query.sort]);
   const toneBg = (tone: JourneyTone) => (tone === "teal" ? colors.macTeal : tone === "lav" ? colors.macLav : tone === "blue" ? colors.macBlue : tone === "apricot" ? colors.macApricot : colors.macPink);
   const openSheet = () => { setDraft(query); setSheet(true); };
+  // 指定日期: a start day, then an end day (Tokyo dates; the server's custom period reads from / to).
+  const [pickDay, setPickDay] = useState<"from" | "to" | null>(null);
+  const customRange = (value: EventDiscoverQuery) => [value.from, value.to].filter(Boolean).map((day) => `${Number(day!.slice(5, 7))}/${Number(day!.slice(8, 10))}`).join("–");
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round((event.nativeEvent.contentOffset.x - SHELL_GUTTER) / (CARD + 12))));
 
@@ -132,7 +139,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </UiPressable>
       </View>
       {data?.popularityFallback ? null : <View style={styles.chips}>
-        {query.period ? chip(periodLabel(query.period, t), () => clear("period"), true, "period") : null}
+        {query.period ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
         {(query.areas ?? []).map((a) => chip(areaLabel(a, t), () => patch({ areas: (query.areas ?? []).filter((x) => x !== a) }), true, `a-${a}`))}
         {(query.themes ?? []).map((x) => chip(themeLabel(x, t), () => patch({ themes: (query.themes ?? []).filter((v) => v !== x) }), true, `t-${x}`))}
         {query.freeOnly ? chip(t("freeOnly"), () => clear("freeOnly"), true, "free") : null}
@@ -188,7 +195,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(row.startsAt)}
-                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
+                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
                 {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
               </UiPressable>
             ))}
@@ -219,7 +226,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(row.startsAt)}
-                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, row.communityReason === "following" ? t("following") : t("attended")].filter(Boolean).join(" · ")}</UiText></View>
+                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, row.communityReason === "following" ? t("following") : t("attended")].filter(Boolean).join(" · ")}</UiText></View>
                 {badge ? <View style={[styles.chip, { backgroundColor: badge === "members_only" ? colors.macLav : colors.macTeal }]}><UiText style={[styles.chipText, { color: badge === "members_only" ? colors.macLavInk : colors.macTealInk }]}>{badge === "members_only" ? t("badgeMembers") : t("badgeEarly")}</UiText></View> : null}
               </UiPressable>
             );
@@ -274,7 +281,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               {datebox(row.startsAt)}
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
               {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
             </UiPressable>
           ))}
@@ -288,13 +295,23 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </View>
       ) : null}
 
+      {pickDay ? (
+        // Shown after the filter sheet closes (two stacked iOS modals do not present reliably); the sheet comes back after.
+        <PersonalScheduleDateTimePicker kind="date" zone="Asia/Tokyo" disabled={false} value={(pickDay === "from" ? draft.from : draft.to) ?? ""}
+          title={locale.t(pickDay === "from" ? "schedule.fieldStartDate" : "schedule.fieldEndDate")}
+          onCancel={() => { setPickDay(null); setTimeout(() => setSheet(true), 350); }}
+          onConfirm={(day) => {
+            if (pickDay === "from") { setDraft(({ to, ...d }) => ({ ...d, from: day, period: "custom", ...(to && to >= day ? { to } : {}) })); setPickDay("to"); }
+            else { setDraft((d) => ({ ...d, period: "custom", to: d.from && day < d.from ? d.from : day })); setPickDay(null); setTimeout(() => setSheet(true), 350); }
+          }} />
+      ) : null}
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel={t("filtersLbl")}>
         <View style={styles.sheet} testID="events-discover-sheet">
           <View style={[styles.row, { justifyContent: "space-between", marginBottom: 2 }]}>
             <UiText style={styles.sheetTitle}>{t("filtersLbl")}</UiText>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("clear")} onPress={() => setDraft({ areas: [], planFirst: true, sort: APP_DISCOVER_QUERY.sort ?? "date", themes: [] })} style={styles.ghostBtn}><UiText style={styles.ghostBtnText}>{t("clear")}</UiText></UiPressable>
           </View>
-          <View style={styles.fgrp}><UiText style={styles.lbl}>{t("periodLbl")}</UiText><View style={styles.fchips}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={draft.period === p} onToggle={() => setDraft((d) => ({ ...d, period: p }))} />)}<FilterOption label={`📅 ${t("pCustom")}`} selected={false} onToggle={() => undefined} /></View></View>
+          <View style={styles.fgrp}><UiText style={styles.lbl}>{t("periodLbl")}</UiText><View style={styles.fchips}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={draft.period === p} onToggle={() => setDraft(({ from: _from, to: _to, ...d }) => ({ ...d, period: p }))} />)}<FilterOption label={draft.period === "custom" && draft.from ? `📅 ${customRange(draft)}` : `📅 ${t("pCustom")}`} selected={draft.period === "custom"} onToggle={() => { setSheet(false); setTimeout(() => setPickDay("from"), 350); }} /></View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("areaLbl")}</UiText><View style={styles.fchips}>{AREAS.map((a) => <FilterOption key={a} label={areaLabel(a, t)} selected={Boolean(draft.areas?.includes(a))} onToggle={() => setDraft((d) => ({ ...d, areas: toggleIn(d.areas, a) }))} />)}</View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("themeLbl")}</UiText><View style={styles.fchips}>{THEMES.slice(0, 5).map((x) => <FilterOption key={x} label={themeLabel(x, t)} selected={Boolean(draft.themes?.includes(x))} onToggle={() => setDraft((d) => ({ ...d, themes: toggleIn(d.themes, x) }))} />)}</View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("formatLbl")}</UiText><View style={styles.fchips}>{FORMATS.map((f) => <FilterOption key={f} label={t(f === "speakers" ? "fSpeakers" : f === "networking" ? "fNetworking" : "fSmall")} selected={Boolean(draft.formats?.includes(f))} onToggle={() => setDraft((d) => ({ ...d, formats: toggleIn(d.formats, f) }))} />)}</View></View>

@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import { takeDeletionRedirect } from "./deletion-handoff";
 import { currentTranslator } from "../i18n/messages";
 import { currentStandardCopy } from "../i18n/standard-copy";
 import { presentActionSheet, presentConfirm } from "../components/ui/feedback-requests";
@@ -821,7 +822,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setOffline(false);
       setDeletionPending(false);
       setUser(null);
-      resetStackTo(router, "/account/login");
+      const handoff = takeDeletionRedirect();
+      if (handoff) resetStackTo(router, handoff);
+      else resetStackTo(router, "/account/login");
     })().catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
   }, [baseUrl, cookieHeader]);
 

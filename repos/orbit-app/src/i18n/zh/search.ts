@@ -25,6 +25,7 @@ export const search = {
   "search.semanticBanner": "按含义搜索：与「{q}」有关的{count}（匹配{matched} · 相关{related}）",
   "search.semanticCount": "{n}位联系人",
   "search.emptyTitle": "没有和「{q}」匹配的人",
+  "search.emptyTitleAll": "没有找到与「{q}」相关的内容",
   "search.emptyTitleEvents": "没有和「{q}」匹配的活动",
   "search.emptyTitleConversations": "没有和「{q}」匹配的对话",
   "search.emptyTitleNotes": "没有和「{q}」匹配的笔记",

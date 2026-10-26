@@ -4,11 +4,14 @@ import * as ImagePicker from "expo-image-picker";
 import { File } from "expo-file-system";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, OfflineBar, Skeleton, TextField, UiText, presentActionSheet } from "../../components/ui";
 import { encodeDirectScanImage } from "../../api/batch-images";
 import { scanOwnBusinessCard } from "../../api/profile-onboarding";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useToast } from "../../components/ui/Toast";
+import { useOrbitTheme } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { AccountSuggestionsContent } from "./AccountSuggestionsContent";
 import { createAccountSuggestionsApi } from "./suggestions-api";
@@ -17,7 +20,7 @@ import { useAccountDesign } from "./useAccountDesign";
 import { useAccountEditor } from "./useAccountEditor";
 
 export function AccountSuggestionsScreen() {
-  const state = useAccountEditor(); const { t, language } = useOrbitLocale(); const router = useRouter(); const design = useAccountDesign(); const designMode = state.path.includes("?design=");
+  const state = useAccountEditor(); const { colors } = useOrbitTheme(); const toast = useToast(); const { t, language } = useOrbitLocale(); const router = useRouter(); const design = useAccountDesign(); const designMode = state.path.includes("?design=");
   const client = useOrbitApiClient({ scopeKey: JSON.stringify([state.scope, state.path]) });
   const api = useMemo(() => createAccountSuggestionsApi(client, state.path), [client, state.path]);
   const [cards, setCards] = useState<AccountSuggestionCard[]>([]); const [selected, setSelected] = useState<Set<string>>(new Set()); const [filter, setFilter] = useState<AccountSuggestionSource | "all">("all");
@@ -56,7 +59,7 @@ export function AccountSuggestionsScreen() {
       const intent = JSON.stringify([state.baseProfile.updatedAt, [...selected].sort()]); let sequence = 0;
       const result = await api.apply(cards, selected, state.baseProfile, () => mutation(`${intent}:${sequence++}`), language, abort.current?.signal);
       if (!active()) return;
-      if (result.receipt) { const failures = new Set(result.decisionFailures); removeFields(new Set([...selected].filter(id => !failures.has(id)))); state.refresh(); if (failures.size) setError(t("me.partial")); }
+      if (result.receipt) { const failures = new Set(result.decisionFailures); removeFields(new Set([...selected].filter(id => !failures.has(id)))); state.refresh(); if (failures.size) setError(t("me.partial")); else toast.success(t("me.saved")); }
       else if (localContactIds.size) removeFields(localContactIds);
       else setError(t("me.saveError"));
     } catch { if (active()) setError(t("me.saveError")); }
@@ -88,8 +91,10 @@ export function AccountSuggestionsScreen() {
       }
       const choice = await presentActionSheet({ title: t("me.scanCard"), options: [{ key: "camera", label: t("onboarding.scanCamera") }, { key: "library", label: t("onboarding.scanLibrary") }] });
       if (!choice || !active()) return;
-      const permission = choice === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted || !active()) return;
+      // The iOS photo picker needs no library access (QA-D: it asked for full access).
+      const permission = choice === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : Platform.OS === "ios" ? { granted: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!active()) return;
+      if (!permission.granted) { setError(t("onboarding.cameraDenied")); return; }
       const options = { quality: 0.8, mediaTypes: ["images"] as ImagePicker.MediaType[] };
       const image = choice === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = !image.canceled ? image.assets[0] : null;
@@ -105,7 +110,7 @@ export function AccountSuggestionsScreen() {
   return <AppScreen inset="kit" title={t("me.suggestions")}>
     <OfflineBar offline={state.offline} pending={0} />
     {loading ? <Skeleton onRetry={() => void reload()} /> : null}
-    {error ? <Card><UiText accessibilityRole="alert">{error}</UiText>
+    {error ? <Card><UiText accessibilityRole="alert" style={{ color: colors.coralText }}>{error}</UiText>
       <Button label={t("me.retry")} onPress={() => void reload()} /></Card> : null}
     {inputKind ? <Card>
       <TextField multiline label={t("me.sourceText")} value={text} onChangeText={setText} />

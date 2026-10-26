@@ -190,6 +190,13 @@ export class FakeAddServer {
       this.people.push({ createdVia: "draft", displayName: draft.displayName, email: "", id: contactId, merged: 0, organization: draft.organization, phone: "", role: draft.role });
       return ok({ confirmedDraft: { ...draft, contactId }, contactCandidate: { contactId, contactWriteExecuted: true }, state: "confirmed" });
     }
+    // QA-C2: 破棄 is stored on the server; the queue stops listing the draft.
+    if ((match = /^\/api\/contact-drafts\/([^/]+)\/discard$/.exec(path)) && call.method === "POST") {
+      const draftId = decodeURIComponent(match[1]!);
+      if (!this.drafts.some((entry) => entry.id === draftId)) return fail(404, "NOT_FOUND");
+      this.drafts = this.drafts.filter((entry) => entry.id !== draftId);
+      return ok({ draftId, discardedAt: T0, state: "discarded" });
+    }
     if (call.method === "POST" && path === "/api/contact-drafts/event-attendees/import") {
       const added = [{ displayName: "参加者 一郎", id: this.next("draft"), organization: "CFO Night", role: "", source: { label: "CFO Night Tokyo" }, status: "pending_confirmation" }];
       this.drafts.push(...added);

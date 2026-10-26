@@ -40,6 +40,8 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const copy = useStandardCopy();
   const scrollRef = useRef<ScrollView>(null);
   const turnOffsets = useRef<Record<number, number>>({});
+  // QA-A: after an AI revision, bring its card into view once it is laid out (the page used to stay put or jump up).
+  const revealTurn = useRef<number | null>(null);
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [intake, setIntake] = useState<PlanIntakeView | null>(null);
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
@@ -105,6 +107,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     const result = await api.fix(draft.draftId, text, newIdempotencyKey("fix"));
     setBusy(null);
     if (!result.ok) return setFailure({ failure: result.failure, op: "fix" });
+    revealTurn.current = result.data.turns[result.data.turns.length - 1]?.n ?? null;
     setDraft(result.data);
     setFixText("");
   };
@@ -206,7 +209,11 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                       <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions()} />
                     </ChatScrollTarget>
                     {draft.turns.map((turn, index) => (
-                      <View key={turn.n} style={styles.turn} onLayout={(event) => { turnOffsets.current[turn.n] = event.nativeEvent.layout.y; }}>
+                      <View key={turn.n} style={styles.turn} onLayout={(event) => {
+                        const y = event.nativeEvent.layout.y;
+                        turnOffsets.current[turn.n] = y;
+                        if (revealTurn.current === turn.n) { revealTurn.current = null; setTimeout(() => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, y - 8) }), 250); }
+                      }}>
                         <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions() : undefined} mark={index === last} />
                       </View>
                     ))}

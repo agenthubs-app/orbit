@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { markDeletionRequested } from "../../api/deletion-handoff";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -54,6 +55,7 @@ export function DeletionScreen() {
     try {
       const receipt = method === "google" ? googleReceipt! : await api.reauthPassword(password);
       await api.requestDeletion(receipt);
+      markDeletionRequested();
       setPassword("");
       const scope = { baseUrl: server.baseUrl, actorId: auth.accountId };
       if (!await discardNativeAccountRightsWrites(scope)) {
@@ -62,12 +64,14 @@ export function DeletionScreen() {
         router.replace("/account/pending");
         return;
       }
+      // QA-D: leave this private page first; signing out here let the sign-in guard send the user to 登录
+      // before 「已受理删除申请」 could show.
+      router.replace("/account/pending");
       const signedOut = await auth.signOut();
       if (!signedOut.success) {
         const cleared = await clearNativeAccountRightsData(scope);
         if (!cleared) setProblem(t("account.rights.localCleanup"));
       }
-      router.replace("/account/pending");
     } catch (error) {
       const reason = error instanceof RightsApiError ? error.reason : "UNAVAILABLE";
       setProblem(t(reason === "invalid_credentials" ? "account.rights.wrongPassword" : reason === "rate_limited" ? "account.rights.rateLimit" :
@@ -89,18 +93,18 @@ export function DeletionScreen() {
   return <AppScreen inset="kit" title={t("account.rights.delete")} onBack={() => router.replace("/account")}>
     <View style={styles.stack}>
       {step === "overview" ? <>
-        <Card><UiText style={styles.heading}>{t("account.rights.delete")}</UiText><UiText style={styles.body}>{t("account.rights.deletionIntro")}</UiText>
+        <Card><UiText style={styles.body}>{t("account.rights.deletionIntro")}</UiText>
           <UiText style={styles.body}>{t("account.rights.deletionItems")}</UiText>
           <UiText style={styles.note}>{t("account.rights.exportFirst")}</UiText>
           <Button label={t("account.rights.export")} variant="secondary" onPress={() => router.push("/account/exports")} />
         </Card>
         {pendingWrites ? <UiText accessibilityRole="alert" style={styles.warning}>{t("account.rights.unsynced")}</UiText> : null}
-        <Button label={t("account.rights.continue")} variant="dangerGhost" disabled={auth.offline} loading={busy} onPress={() => void next()} />
+        <Button label={t("account.rights.continue")} variant="dangerGhost" block disabled={auth.offline} loading={busy} onPress={() => void next()} />
       </> : <Card><UiText style={styles.heading}>{t("account.rights.verify")}</UiText>
         {method === "credentials" ? <TextField label={t("account.rights.password")} secureTextEntry autoComplete="current-password" value={password} onChangeText={setPassword} /> :
           <Button label={t("account.rights.verify")} variant="secondary" loading={busy} onPress={() => void startGoogle()} />}
         <View style={styles.confirm}><Checkbox checked={confirmed} accessibilityLabel={t("account.rights.confirm")} onChange={setConfirmed} />
-          <UiText style={styles.body}>{t("account.rights.confirm")}</UiText></View>
+          <UiText style={[styles.body, styles.confirmText]} onPress={() => setConfirmed(value => !value)}>{t("account.rights.confirm")}</UiText></View>
         <Button label={t("account.rights.request")} variant="danger" loading={busy}
           disabled={!confirmed || method === "credentials" && !password || method === "google" && !googleReceipt || auth.offline} onPress={() => void submit()} />
       </Card>}
@@ -115,6 +119,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   body: { fontSize: typography.body, color: colors.ink, lineHeight: 27, marginBottom: spacing.md },
   note: { fontSize: typography.bodySm, color: colors.ink2, lineHeight: 23, marginBottom: spacing.md },
   confirm: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginVertical: spacing.lg },
+  confirmText: { flex: 1, marginBottom: 0 },
   warning: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
   error: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
 }));

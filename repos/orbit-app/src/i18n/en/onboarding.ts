@@ -85,6 +85,7 @@ export const onboarding = {
   "onboarding.recognizing": "Reading",
   "onboarding.takeCards": "Snap cards",
   "onboarding.finish": "Finish setup",
+  "onboarding.importContacts": "Import from Contacts",
   "onboarding.saveFailed": "Not saved. Everything you entered is still here.",
   "onboarding.conflict": "Your profile changed on another device. Reopen setup to review the latest version before saving. Your entries stay here until you leave.",
   "onboarding.retry": "Retry",

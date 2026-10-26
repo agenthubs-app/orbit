@@ -22,10 +22,10 @@ export const appEventHref = (href: string) => href.replace(/^\/app(?=\/)/, "");
 /** 手机版过去活动先出 3 件（b7 #38），「すべて見る」展开。 */
 export const PAST_PREVIEW = 3;
 
-export interface OrganizerBodyProps { data: OrganizerPublicResponse; t: HostT; language: string; following: boolean; busy: boolean; expanded?: boolean; onFollow: () => void; onOpen: (event: OrganizerPublicUpcoming) => void; onShare: (event: OrganizerPublicUpcoming) => void; onSeeAll: () => void }
+export interface OrganizerBodyProps { data: OrganizerPublicResponse; t: HostT; language: string; following: boolean; busy: boolean; expanded?: boolean; /** The viewer owns this page: owner actions replace 关注 / 报名. */ owner?: boolean; onEditPage?: () => void; onFollow: () => void; onOpen: (event: OrganizerPublicUpcoming) => void; onShare: (event: OrganizerPublicUpcoming) => void; onSeeAll: () => void }
 
 /** 画面本体（渲染测试直接用）。 */
-export function OrganizerBody({ data, t, language, following, busy, expanded = false, onFollow, onOpen, onShare, onSeeAll }: OrganizerBodyProps) {
+export function OrganizerBody({ data, t, language, following, busy, expanded = false, owner = false, onEditPage, onFollow, onOpen, onShare, onSeeAll }: OrganizerBodyProps) {
   const { styles, colors } = useHostStyles();
   const o = usePubStyles().styles;
   const { profile, stats } = data;
@@ -47,6 +47,15 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
             </View>
           </View>
         </View>
+        {owner ? (
+          <View style={o.followBox}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("appEditPage")} onPress={onEditPage} style={o.xl} testID="host-organizer-edit">
+              <Icon name="pen" size={16} color={colors.ink} />
+              <UiText style={[o.xlText, { color: colors.ink }]}>{t("appEditPage")}</UiText>
+            </UiPressable>
+            <UiText style={[styles.lbl, o.center]}>{t("appOwnPageHint")}</UiText>
+          </View>
+        ) : (
         <View style={o.followBox}>
           <UiPressable accessibilityRole="button" accessibilityLabel={following ? t("pubFollowing") : t("pubFollow")} accessibilityState={{ selected: following, busy }} onPress={onFollow} style={[o.xl, following ? null : styles.primary]} testID="host-organizer-follow">
             {following ? <Icon name="check" size={16} color={colors.ink} /> : <Icon name="plus" size={16} color={colors.bg} />}
@@ -54,6 +63,7 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
           </UiPressable>
           <UiText style={[styles.lbl, o.center]}>{t("pubFollowHint")}</UiText>
         </View>
+        )}
       </View>
       <View style={o.secH}><UiText style={o.b15}>{t("pubUpcoming")}</UiText></View>
       {data.upcoming.length ? data.upcoming.map((event) => (
@@ -65,7 +75,7 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
           <UiText style={[o.b15, o.mt12]}>{event.title}</UiText>
           <UiText style={[styles.lbl, o.mt3]}>{[hostDateLong(event.startsAt, language, t), event.venue, feeText(event, t)].filter(Boolean).join(" · ")}</UiText>
           <View style={[styles.row, o.gap8, o.mt14]}>
-            <BtnSm label={t("pubDetail")} primary onPress={() => onOpen(event)} />
+            <BtnSm label={t(owner ? "appManageEvent" : "pubDetail")} primary onPress={() => onOpen(event)} />
             <UiPressable accessibilityRole="button" accessibilityLabel={t("pubShare")} onPress={() => onShare(event)} style={[styles.btnSm, styles.ghost]}><Icon name="share" size={16} color={colors.ink2} /><UiText style={[styles.btnSmText, { color: colors.ink2 }]}>{t("pubShare")}</UiText></UiPressable>
           </View>
         </View>
@@ -73,8 +83,8 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
         <View style={[styles.card, o.mt10]} testID="host-pub-none">
           <View style={o.none}>
             <Emo emoji="🗓️" tone="apricot" />
-            <View style={o.noneText}><UiText style={[o.b14, o.center]}>{t("pubNoneTitle")}</UiText><UiText style={[styles.lbl, o.center]}>{t("pubNoneSub")}</UiText></View>
-            <BtnSm label={t("pubFollowNotify")} icon="bell" onPress={onFollow} />
+            <View style={o.noneText}><UiText style={[o.b14, o.center]}>{t("pubNoneTitle")}</UiText><UiText style={[styles.lbl, o.center]}>{t(owner ? "appOwnNoneSub" : "pubNoneSub")}</UiText></View>
+            {owner ? null : <BtnSm label={t("pubFollowNotify")} icon="bell" onPress={onFollow} />}
           </View>
           <View style={o.ghosts}>
             <View style={o.ghostRow}><UiText style={o.ghostText}>{t("pubGhost1")}</UiText></View>

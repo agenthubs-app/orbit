@@ -116,6 +116,7 @@ export const inbox = {
   "inbox.replyDraft": "返信下書き",
   "inbox.replyBody": "返信本文",
   "inbox.replyPlaceholder": "伝えたい内容をまず書いてください。",
+  "inbox.messagePlaceholder": "メッセージ",
   "inbox.polishDraft": "下書きを推敲",
   "inbox.previewReply": "返信をプレビュー",
   "inbox.createDraftFailed": "この下書きを作成できません。",

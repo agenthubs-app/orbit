@@ -1,6 +1,6 @@
 // R30 全局搜索（App /search；search/DESIGN.md §2.2）。与 Web orbits app/(app)/app/orbit-2026/copy/search.ts 同一组文案。
 export const search = {
-  "search.placeholder": "Search people, events, notes, to-dos, schedule",
+  "search.placeholder": "Search everything",
   "search.typeAll": "All",
   "search.typePeople": "People",
   "search.typeEvents": "Events",
@@ -22,9 +22,10 @@ export const search = {
   "search.statusAcquaintance": "Acquaintance",
   "search.viaAttendees": "From attendees",
   "search.iorbitPrefix": "iOrbit: ",
-  "search.semanticBanner": "By meaning: {count} related to “{q}” ({matched} matched · {related} related)",
+  "search.semanticBanner": "Includes {count} related to “{q}” by meaning",
   "search.semanticCount": "{n} people",
   "search.emptyTitle": "No one matches “{q}”",
+  "search.emptyTitleAll": "Nothing matches “{q}”",
   "search.emptyTitleEvents": "No events match “{q}”",
   "search.emptyTitleConversations": "No conversations match “{q}”",
   "search.emptyTitleNotes": "No notes match “{q}”",

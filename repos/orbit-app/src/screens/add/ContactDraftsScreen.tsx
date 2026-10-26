@@ -1,6 +1,6 @@
 // R12 `contacts/new/drafts` 確認待ちの下書き (DESIGN §2.9, App): the existing draft queue
-// (`GET /api/contact-drafts`) with 確認して追加 (the existing confirm) and 破棄 (hidden on
-// this device — the draft service has no discard, as before); `?eventId=` adds
+// (`GET /api/contact-drafts`) with 確認して追加 (the existing confirm) and 破棄 (QA-C2:
+// `POST /api/contact-drafts/[id]/discard`, also hidden on this device); `?eventId=` adds
 // 参加者から取り込む (the existing attendee import). Reached from 人脈を追加 (when there are
 // drafts) and from an event's 「去复核联系人」 (reviewQueueHref).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,6 +74,14 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
 
   async function discard(draft: ContactDraftRow) {
     setDiscarding(null);
+    if (busy) return;
+    setBusy(draft.id);
+    // QA-C2: 破棄 is stored on the server so the count drops and other devices stop listing it;
+    // the device list still hides it right away (and on a server without the discard route).
+    const result = fixture ? { data: { stored: false }, ok: true as const } : await api.discardDraft(draft.id);
+    if (!mounted.current) return;
+    setBusy(null);
+    if (!result.ok) { toast.error(t("add.drafts.actionFailed")); return; }
     await discardDraft(accountId, draft.id);
     if (!mounted.current) return;
     toast.info(t("add.drafts.discardedToast"));

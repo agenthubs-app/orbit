@@ -59,6 +59,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
+import { useConversationContactNames } from "../../hooks/useConversationContactNames";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
 import { inboxSummarySchema } from "../../api/schema/inbox-summary";
 import { useLocalRelationshipConversations, useLocalRelationshipThread, type LocalRelationshipConversationsState } from "../../hooks/useLocalRelationshipMessages";
@@ -421,7 +422,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   currentBatchScope.current = batchScope;
   const [batchPending, setBatchPending] = useState(false);
   const [batchError, setBatchError] = useState("");
-  const readItems = messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language) : [];
+  const contactName = useConversationContactNames();
+  const readItems = messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language, contactName) : [];
   const confirmableUnread = readItems.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -569,6 +571,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       markAllReadLabel={activeSection === "threads" ? threadsOffline ? `${locale.t("inbox.markPageRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
       markAllReadVisibleLabel={activeSection === "threads" ? locale.t("typedInbox.markPageReadShort") : undefined}
       markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : threadsOffline || batchPending || confirmableUnread === 0}
+      markAllReadHidden={activeSection === "alerts" ? !typedInbox.offline && !typedInbox.busy && !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : !threadsOffline && !batchPending && confirmableUnread === 0}
       settingsAction={activeSection === "alerts" && !typedInbox.offline && !composing && !createdThread ? { label: locale.t(typedInbox.filter === "secretary" ? "notifications.secretaryTitle" : "inbox.notificationSettings"), onPress: () => router.push(typedInbox.filter === "secretary" ? "/settings/notifications/secretary" : "/settings/notifications") } : undefined}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
@@ -685,7 +688,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
     refreshing: summaryState.refreshing || messageState.refreshing };
   const stateData = state.kind === "success" || state.kind === "empty" ? state.data : null;
   const page = decodeRelationshipMessagePage(stateData, actorId, conversationId);
-  const detail = page && summary && page.conversation.qualificationVersion === summary.qualificationVersion ? relationshipMessagePageView(page, actorId, locale.language) : null;
+  const contactName = useConversationContactNames();
+  const detail = page && summary && page.conversation.qualificationVersion === summary.qualificationVersion ? relationshipMessagePageView(page, actorId, locale.language, contactName) : null;
   const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
   const retainedContactId = useRef("");
   if (detail) {
@@ -745,7 +749,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           tintColor={colors.accentText}
         />
       }
-      title={locale.t("inbox.messageTitle")}
+      // QA-C3: the header names the person, like Messages (was "Messages" over a "Conversation with …" heading).
+      title={detail?.participantName || locale.t("inbox.messageTitle")}
       onBack={() => router.canGoBack() ? router.back() : router.replace('/inbox?tab=messages' as Href)}
     >
       {!conversationId ? (
@@ -763,7 +768,6 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {page && summary && !detail ? <ErrorState message={locale.t("inbox.invalidMessageState")} /> : null}
       {historyCursor ? <ActionButton icon="arrow-forward-outline" label={locale.t("inbox.latestMessages")} onPress={refresh} variant="secondary" /> : null}
       {detail && page?.nextCursor ? <ActionButton icon="chevron-up-outline" label={locale.t("inbox.olderMessages")} onPress={() => setHistoryCursor(page.nextCursor)} variant="secondary" /> : null}
-      {conversationId && detail && !offline ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
         <View style={!detail ? { display: "none" } : undefined}>
@@ -781,6 +785,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         />
         </View>
       ) : null}
+      {/* QA-C3: the mute switch is a setting of the conversation, so it sits under it instead of above the messages. */}
+      {conversationId && detail && !offline ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && state.kind === "empty" && queuedHere.length === 0 ? (
         <EmptyState
           message={locale.t("inbox.emptyMessagesBody")}
@@ -791,13 +797,15 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, settingsAction, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, markAllReadHidden = false, settingsAction, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onMarkAllRead?: (() => void) | undefined;
   markAllReadLabel?: string;
   markAllReadVisibleLabel?: string | undefined;
   markAllReadDisabled?: boolean;
+  /** Nothing unread to act on (and not offline): the button is left out. */
+  markAllReadHidden?: boolean;
   /** Notifications tab: a gear next to 全部已读 that opens the notification settings. */
   settingsAction?: { label: string; onPress: () => void } | undefined;
   onBack?: (() => void) | undefined;
@@ -806,8 +814,9 @@ function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllRe
   const locale = useOrbitLocale();
   return <AppScreen inset="kit" title={title} headerVariant="compact" backLabel={locale.t("inbox.home")} showBack={!hideBack} {...(onBack ? { onBack } : {})}
     {...(refreshControl ? { refreshControl } : {})}
-    headerActions={onMarkAllRead || settingsAction ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-      {onMarkAllRead ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : null}
+    headerActions={(onMarkAllRead && !markAllReadHidden) || settingsAction ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {/* QA-C: hidden when there is nothing to mark (a disabled wide button squeezed the title to "Inb / ox"); offline it stays, disabled, to say why. */}
+      {onMarkAllRead && !markAllReadHidden ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="sm" variant="ghost" /> : null}
       {settingsAction ? <IconButton icon="settings" size={34} soft accessibilityLabel={settingsAction.label} onPress={settingsAction.onPress} /> : null}
     </View> : undefined}>
     {children}
@@ -950,7 +959,8 @@ function InboxContent({
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   const page = decodeConversationSummaryPage(data, actorId);
-  const view = page ? conversationSummaryView(page, actorId, locale.language) : {
+  const contactName = useConversationContactNames();
+  const view = page ? conversationSummaryView(page, actorId, locale.language, contactName) : {
     conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
   const [seedHandled, setSeedHandled] = useState(false);
@@ -1132,8 +1142,9 @@ function ThreadDetail({
     : detail.messages.filter(message => message.body !== "暂无消息正文");
   return (
     <View style={styles.readingPane}>
-      <Text accessibilityRole="header" style={styles.readingSubject}>{delivery ? locale.t("inbox.verifiedSubject", { name: detail.participantName }) : detail.subject}</Text>
-      {!previewOnly ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
+      {/* QA-C3: a real conversation already names the person in the header; the heading and "Recipient:" line repeated it. */}
+      {delivery ? null : <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>}
+      {!previewOnly && !delivery ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
       {emptyCount > 0 ? (
         <View>
           <Text style={styles.threadPreview}>{locale.t("inbox.emptyRecordCount", { count: emptyCount })}</Text>
@@ -1148,13 +1159,25 @@ function ThreadDetail({
         </View>
       ) : null}
       <View style={styles.messageStack}>
-        {visibleMessages.map((message) => (
+        {visibleMessages.map((message) => delivery ? (
+          // QA-C3: chat bubbles like Messages — mine on the right, theirs on the left, the time under each.
+          <View
+            key={message.id}
+            accessibilityLabel={`${message.fromMe ? locale.t("inbox.me") : message.sender}, ${message.time}: ${message.body}`}
+            style={[styles.bubbleRow, message.fromMe ? styles.bubbleRowMine : null]}
+          >
+            <View style={[styles.bubble, message.fromMe ? styles.bubbleMine : styles.bubbleTheirs]}>
+              <Text selectable style={[styles.bubbleText, message.fromMe ? styles.bubbleTextMine : null]}>{message.body}</Text>
+            </View>
+            <Text style={styles.bubbleTime}>{message.time}</Text>
+          </View>
+        ) : (
           <View
             key={message.id}
             style={styles.mailMessage}
           >
             <View style={styles.messageMeta}>
-              <Text style={styles.messageSender}>{delivery && message.fromMe ? locale.t("inbox.me") : message.sender}</Text>
+              <Text style={styles.messageSender}>{message.sender}</Text>
               <Text style={styles.messageTime}>{message.time}</Text>
             </View>
             <Text style={styles.messageBody}>{message.body}</Text>
@@ -1339,7 +1362,7 @@ function ReplyComposer({
 
   return (
     <View style={styles.composer}>
-      <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>
+      {delivery ? null : <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>}
       <TextInput
         accessibilityLabel={locale.t("inbox.replyBody")}
         editable={!sending && !attempt.current}
@@ -1349,16 +1372,16 @@ function ReplyComposer({
           setDraftStatus("idle");
           setBody(value);
         }}
-        placeholder={locale.t("inbox.replyPlaceholder")}
+        placeholder={locale.t(delivery ? "inbox.messagePlaceholder" : "inbox.replyPlaceholder")}
         placeholderTextColor={colors.ink3Text}
-        style={styles.input}
+        style={[styles.input, delivery ? styles.messageInput : null]}
         value={body}
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
       {sendFailed ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.sendUnconfirmed")}</Text> : null}
       {draftStatus === "saved" ? <Text accessibilityRole="text" style={styles.safetyText}>{locale.t("inbox.draftSaved")}</Text> : null}
       {draftStatus === "failed" ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.draftSaveFailed")}</Text> : null}
-      <Text style={styles.safetyText}>{delivery ? locale.t("inbox.verifiedSafety") : detail.safetyText}</Text>
+      {delivery ? null : <Text style={styles.safetyText}>{detail.safetyText}</Text>}
       <View style={styles.buttonRow}>
         <ActionButton
           disabled={!body.trim() || sending || !!attempt.current}
@@ -1376,12 +1399,15 @@ function ReplyComposer({
             variant="secondary"
           />
         ) : null}
+        {/* QA-C3: in a real conversation Send is the main action, so it spans the row. */}
+        <View style={delivery ? styles.sendWide : undefined}>
         <ActionButton
           disabled={(delivery && offline && !queueReply) || sending || (!body.trim() && !attempt.current)}
-          icon="mail-unread-outline"
+          icon={delivery ? "send-outline" : "mail-unread-outline"}
           label={delivery && offline && !queueReply ? `${locale.t("inbox.sendMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
           onPress={delivery ? sendReply : () => { draftEdited.current = true; setStaged(body.trim()); }}
         />
+        </View>
       </View>
     </View>
   );
@@ -1661,6 +1687,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   mailContent: { gap: 0 },
   mailList: { gap: 0 },
   readingPane: { gap: 20 },
+  bubbleRow: { alignItems: "flex-start", gap: 4 },
+  bubbleRowMine: { alignItems: "flex-end" },
+  bubble: { borderRadius: 20, maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10 },
+  bubbleMine: { backgroundColor: colors.ink },
+  bubbleTheirs: { backgroundColor: colors.surface },
+  bubbleText: { color: colors.ink, fontSize: 17, lineHeight: 24 },
+  bubbleTextMine: { color: colors.onAccent },
+  bubbleTime: { color: colors.ink3Text, fontSize: 13, paddingHorizontal: 6 },
+  messageInput: { minHeight: 88 },
+  sendWide: { width: "100%" },
   remindersPane: { gap: 12, paddingTop: 16 },
   resourceStatus: { color: colors.ink3Text, fontSize: 17, lineHeight: 25, paddingTop: 16 },
   readingSubject: { ...textStyles.title, color: colors.ink },

@@ -25,7 +25,7 @@ export function PersonalScheduleTimeBlock({ draft, zone, baseline = null, disabl
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{locale.t("schedule.allDay")}</Text>
         <Switch accessibilityLabel={locale.t("schedule.allDay")} value={!!draft.allDay} disabled={disabled} style={styles.switch}
-          onValueChange={() => onChange({ ...draft, allDay: !draft.allDay, ...(draft.allDay ? {} : { endDate: "", endTime: "" }) })} />
+          onValueChange={() => onChange({ ...draft, allDay: !draft.allDay, ...(draft.allDay ? timedFromAllDay(draft) : { endDate: "", endTime: "" }) })} />
       </View>
       <View style={[styles.row, styles.line]}>
         <Text style={styles.rowLabel}>{locale.t("personal63.start")}</Text>
@@ -60,3 +60,10 @@ const useStyles = createThemedStyles(colors => ({
   chip: { minHeight: 44, paddingHorizontal: 12, borderRadius: 8, justifyContent: "center" as const, backgroundColor: colors.surface2 },
   chipOn: { backgroundColor: colors.accentSoft }, chipText: { color: colors.ink, fontSize: 17 }, chipTextOn: { color: colors.accentText }, chipEmpty: { color: colors.ink3Text },
 }));
+
+// QA-D: an all-day item carries 00:00–23:59; turning 終日 off then left a 24-hour slot (and moving the start kept it).
+// Like iOS Calendar, fall back to a one-hour slot on the same day.
+function timedFromAllDay(draft: { startDate: string; startTime: string; endTime: string }): { startTime: string; endDate: string; endTime: string } | Record<string, never> {
+  if (draft.startTime !== "00:00" || (draft.endTime !== "23:59" && draft.endTime !== "")) return {};
+  return { startTime: "09:00", endDate: draft.startDate, endTime: "10:00" };
+}

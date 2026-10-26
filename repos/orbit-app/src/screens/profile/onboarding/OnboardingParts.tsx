@@ -169,7 +169,7 @@ export const useOnboardingStyles = createThemedStyles(colors => {
     resumeBody: { ...textStyles.small, color: colors.ink2 },
     resumeActions: { flexDirection: "row", gap: 10 },
     // Step frame
-    stepHeader: { gap: 14, paddingHorizontal: layout.pageInset, paddingTop: spacing.sm },
+    stepHeader: { gap: 14, paddingHorizontal: layout.pageInset, paddingTop: spacing.sm, paddingBottom: spacing.sm },
     stepNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: layout.toolbar },
     backButton: { flexDirection: "row", alignItems: "center", gap: 2, minHeight: layout.toolbar },
     backText: { color: colors.accentText, fontSize: 18 },
@@ -230,8 +230,8 @@ export const useOnboardingStyles = createThemedStyles(colors => {
     linkText: { color: colors.accentText, fontSize: 17, fontWeight: "600" },
     mutedLink: { color: colors.ink3Text },
     // Intro
-    aiRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14 },
-    aiLabel: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexShrink: 1 },
+    aiRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14 },
+    aiLabel: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexShrink: 1, minHeight: layout.control },
     aiMark: { width: 22, height: 22, borderRadius: 6, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
     aiMarkDot: { width: 7, height: 7, borderRadius: 2, backgroundColor: colors.accentText },
     aiFailed: { gap: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 14 },

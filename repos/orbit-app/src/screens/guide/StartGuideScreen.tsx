@@ -80,7 +80,7 @@ export function StartGuideScreen() {
     <AppScreen inset="kit" title={c.title} onBack={() => openMainTab(router, "/home")}>
       {loading ? <Skeleton lines={4} /> : !guide ? <RetryCard title={c.failed} onRetry={() => void reload()} /> : (
         <View testID="app-start-guide" style={styles.stack}>
-          <UiText style={styles.meta}>{c.subtitle} · {guide.completed} / 3</UiText>
+          <UiText style={styles.meta}>{guide.completed} / 3 {c.done}</UiText>
           <UiText style={styles.headline}>{c.subtitle}</UiText>
           <UiText style={styles.hint}>{nextStep === "contacts" ? c.helpContacts : nextStep === "goal" ? c.helpGoal : nextStep === "plan" ? c.helpPlan : c.done}</UiText>
           <Card style={styles.guideCard}>

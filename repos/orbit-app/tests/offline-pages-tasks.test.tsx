@@ -69,7 +69,7 @@ test("a relationship's next step: online saved per relationship; offline the cop
   const page = await harness.open(t, { screen: "lifecycle", online: false, params: { id: "connection:1" }, copies: { "relationship-lifecycle|connection:1": copy(lifecycle) } });
   await page.getByText(OFFLINE_BANNER).waitFor();
   await page.getByText("约张伟聊试点").first().waitFor();
-  const save = page.getByRole("button", { name: /完成并保存下一步 · 需要联网/ });
+  const save = page.getByRole("button", { name: /标记为完成 · 需要联网/ });
   assert.equal(await save.isDisabled(), true);
   const never = await harness.open(t, { screen: "lifecycle", online: false, params: { id: "connection:2" } });
   await never.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。").waitFor();

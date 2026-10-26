@@ -1,6 +1,9 @@
 // R11a 連絡先詳細（App）: pure helpers over the contact detail read (device mirror or GET /api/contacts/:id).
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { regionOptionLabel, type NetworkCityKey } from "./network-model";
+import { industryLabel, isIndustryIdCode } from "../../api/domain/industries";
+import { COMPLETION_OPTION_LABELS, MEETING_NOTE_PREFIX } from "../../api/compute/completion-question-rules";
+import type { OrbitLanguage } from "../../api/contract/language";
 
 export interface DetailFieldHistoryEntry { field: string; previous: string | null; next: string | null; source: string; at: string }
 
@@ -78,9 +81,11 @@ export function detailContactFrom(payload: Record<string, unknown> | null | unde
 }
 
 /** Header chips: stage, industry, city (only what the contact has). */
-export function detailHeaderChips(contact: DetailContact, cityLabel: (city: NetworkCityKey) => string): { status: string; industry: string | null; city: string | null } {
+export function detailHeaderChips(contact: DetailContact, cityLabel: (city: NetworkCityKey) => string, language?: OrbitLanguage): { status: string; industry: string | null; city: string | null } {
   const city = contact.region?.city ? regionOptionLabel(contact.region.city, cityLabel, "") : null;
-  return { status: contact.status, industry: contact.primaryIndustryLabel ?? null, city: city || null };
+  // QA-C: the stored label is in the language it was saved in; show the catalog label in the UI language when the id is known.
+  const industry = language && isIndustryIdCode(contact.primaryIndustryId) ? industryLabel(contact.primaryIndustryId, language) : contact.primaryIndustryLabel ?? null;
+  return { status: contact.status, industry, city: city || null };
 }
 
 /** Changes the person made themselves in the last 30 days (b9 #21 「…がプロフィールを更新しました」), newest change set first. */
@@ -107,4 +112,30 @@ export function tokyoMonthDay(iso: string): string {
   if (!Number.isFinite(ms)) return "";
   const tokyo = new Date(ms + 9 * 3_600_000);
   return `${tokyo.getUTCMonth() + 1}/${tokyo.getUTCDate()}`;
+}
+
+/**
+ * QA-C: the 「出会い：…」 line and its fixed answers are stored in Japanese (they are data markers the server parses).
+ * Show them in the UI language: the fixed answers map to labels, a typed label stays as typed.
+ */
+export function localizedMeetingValue(value: string, labels: { intro: string; formerColleague: string; forgot: string }): string {
+  const trimmed = value.trim();
+  for (const key of ["intro", "formerColleague", "forgot"] as const) {
+    const fixed = COMPLETION_OPTION_LABELS[key];
+    if (trimmed === fixed) return labels[key];
+    if (trimmed.startsWith(fixed)) {
+      const rest = trimmed.slice(fixed.length).trim().replace(/^[（(]\s*/u, "").replace(/\s*[）)]$/u, "");
+      return rest ? `${labels[key]} (${rest})` : labels[key];
+    }
+  }
+  return trimmed;
+}
+
+/** The card-notes body with its 「出会い：…」 line written as "<label>: <value>" in the UI language. */
+export function localizedCardNotes(body: string, metLabel: string, labels: { intro: string; formerColleague: string; forgot: string }): string {
+  const marker = MEETING_NOTE_PREFIX.slice(0, -1);
+  return body.split(/\r?\n/u).map((line) => {
+    const match = new RegExp(`^[\\s　]*${marker}[\\s　]*[：:](.*)$`, "u").exec(line);
+    return match ? `${metLabel}: ${localizedMeetingValue(match[1]!, labels)}` : line;
+  }).join("\n");
 }

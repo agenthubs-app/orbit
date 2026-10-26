@@ -4,7 +4,7 @@
 // 数据：GET /api/host/events/[id]/overview（概要 + レポート摘要）、/matching?round=、/people?bucket=；写：matching/publish、people/[actorId]/decision、
 // notices/preview + send（プロフィール未完了 的定型お知らせ，发前确认）。App 不做申込設定 / 报告详情（画板「PC で」）。
 import { Redirect, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
 import type { HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../api/contract/host-console";
@@ -13,7 +13,7 @@ import { Icon, IconButton, presentConfirm, useToast } from "../../components/ui"
 import { addDesignMock } from "../add/add-design-mock";
 import { JourneyPage } from "../events/v2/JourneyPage";
 import { useHostApi } from "./host-api";
-import { checkInHref, consoleHref, consoleSubtitle, desktopPath, parseSeg, type HostSeg, type HostT } from "./host-model";
+import { checkInHref, consoleHref, consoleSubtitle, desktopPath, openingPeopleBucket, parseSeg, type HostSeg, type HostT } from "./host-model";
 import { PcCard } from "./host-ui";
 import { useHostT } from "./useHostT";
 import { BUCKETS, MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips, useConsoleStyles } from "./console-view";
@@ -34,6 +34,8 @@ export function HostConsoleScreen() {
   const [failed, setFailed] = useState(false);
   const [round, setRound] = useState(Number(params.round) || 1);
   const [bucket, setBucket] = useState<HostPeopleBucket>(BUCKETS.includes(params.bucket as HostPeopleBucket) ? (params.bucket as HostPeopleBucket) : "pending");
+  // No tab asked for: the first answer may move the list to the tab that has people.
+  const pickBucket = useRef(!BUCKETS.includes(params.bucket as HostPeopleBucket));
   const [approving, setApproving] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
@@ -47,7 +49,16 @@ export function HostConsoleScreen() {
     let live = true;
     if (seg === "overview" || seg === "report") void loadOverview();
     if (seg === "matching") void api.matching(eventId, round).then((res) => { if (!live) return; if (res.ok) { setMatching(res.data); setEvent(res.data.event); } else setFailed(true); });
-    if (seg === "people") void api.people(eventId, bucket).then((res) => { if (!live) return; if (res.ok) { setPeople(res.data); setEvent(res.data.event); } else setFailed(true); });
+    if (seg === "people") void api.people(eventId, bucket).then((res) => {
+      if (!live) return;
+      if (!res.ok) { setFailed(true); return; }
+      if (pickBucket.current) {
+        pickBucket.current = false;
+        const opening = openingPeopleBucket(res.data.counts, bucket);
+        if (opening !== bucket) { setBucket(opening); return; }
+      }
+      setPeople(res.data); setEvent(res.data.event);
+    });
     return () => { live = false; };
   }, [api, bucket, eventId, loadOverview, round, seg]);
 
@@ -106,7 +117,7 @@ export function HostConsoleScreen() {
       <SegChips seg={seg} t={t} pending={seg === "overview" ? overview?.pendingReview ?? null : null} onSeg={go} />
       {overview ? (seg === "report"
         ? <ReportBody data={overview} t={t} now={now} onPc={() => void sendPc(desktopPath.report(eventId))} />
-        : <OverviewBody data={overview} t={t} onCheckIn={() => router.push(checkInHref(eventId) as Href)} onResults={() => go("matching")} onPublish={() => void publish()} onReview={() => go("people")} onNotify={() => void notify()} />)
+        : <OverviewBody data={overview} t={t} onCheckIn={() => router.push(checkInHref(eventId) as Href)} onResults={() => go("matching")} onPublish={() => void publish()} onReview={() => go("people")} onNotify={() => void notify()} onEditOnPc={() => void sendPc(desktopPath.edit(eventId))} />)
         : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
     </JourneyPage>
   );

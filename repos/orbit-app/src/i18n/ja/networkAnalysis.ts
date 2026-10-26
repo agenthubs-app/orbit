@@ -16,6 +16,7 @@ export const networkAnalysis = {
   "networkAnalysis.industry": "業界",
   "networkAnalysis.tapForList": "タップで名簿",
   "networkAnalysis.peopleUnit": "人",
+  "networkAnalysis.peopleUnitInline": "人",
   "networkAnalysis.composition": "人脈の構成",
   "networkAnalysis.compositionPick": "分析の切り口",
   "networkAnalysis.compositionRow": "{label}、{count}人、{percent}%",

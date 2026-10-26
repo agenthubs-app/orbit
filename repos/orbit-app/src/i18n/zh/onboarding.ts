@@ -85,6 +85,7 @@ export const onboarding = {
   "onboarding.recognizing": "识别中",
   "onboarding.takeCards": "拍名片",
   "onboarding.finish": "完成设置",
+  "onboarding.importContacts": "从通讯录导入",
   "onboarding.saveFailed": "没有保存成功，已填内容都还在。",
   "onboarding.conflict": "资料已在另一设备更新。重新进入设置并核对最新内容后再保存。离开前，当前输入会保留在此页。",
   "onboarding.retry": "重试",

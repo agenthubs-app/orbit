@@ -6,7 +6,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { AccountExportContract } from "../../api/contract/account";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Card, Checkbox, Segmented, UiText } from "../../components/ui";
+import { Button, Card, Checkbox, Segmented, TextField, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -35,6 +35,9 @@ export function ExportsScreen() {
   const [history, setHistory] = useState<AccountExportContract[]>([]);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // QA-D: the server wants a sign-in from the last 10 minutes; ask for the password here instead of a dead-end message.
+  const [needFresh, setNeedFresh] = useState(false);
+  const [password, setPassword] = useState("");
   const key = useRef<string | null>(null);
   const load = useCallback(async () => {
     try { setHistory(await api.exports()); setProblem(null); }
@@ -61,7 +64,16 @@ export function ExportsScreen() {
       const reason = error instanceof RightsApiError ? error.reason : "UNAVAILABLE";
       setProblem(t(reason === "DAILY_EXPORT_LIMIT" ? "account.rights.quota" : reason === "EXPORT_IN_PROGRESS" ? "account.rights.active" :
         reason === "RECENT_LOGIN_REQUIRED" ? "account.rights.fresh" : "account.rights.error"));
+      if (reason === "RECENT_LOGIN_REQUIRED" && auth.user?.email) setNeedFresh(true);
     } finally { setBusy(false); }
+  };
+  const confirmPassword = async () => {
+    if (busy || !auth.user?.email || !password) return;
+    setBusy(true); setProblem(null);
+    const result = await auth.signIn({ email: auth.user.email, password, redirectTo: "/account/exports" });
+    setBusy(false);
+    if (!result.success) { setProblem(result.message ?? t("auth.loginFailure")); return; }
+    setPassword(""); setNeedFresh(false);
   };
   const download = async (item: AccountExportContract) => {
     if (busy || auth.offline) return;
@@ -85,6 +97,10 @@ export function ExportsScreen() {
         <Button label={t("account.rights.start")} variant="primary" block loading={busy} disabled={auth.offline || active || !all && !selected.length} onPress={() => void start()} />
       </Card>
       {problem ? <UiText accessibilityRole="alert" style={styles.error}>{problem}</UiText> : null}
+      {needFresh ? <Card>
+        <TextField label={t("auth.password")} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} textContentType="password" onSubmitEditing={() => void confirmPassword()} />
+        <Button label={t("account.rights.freshSubmit")} variant="primary" block loading={busy} disabled={!password} onPress={() => void confirmPassword()} />
+      </Card> : null}
       <Card><View style={styles.row}><UiText style={styles.heading}>{t("account.rights.history")}</UiText><Button label={t("account.rights.retry")} size="sm" variant="ghost" onPress={() => void load()} /></View>
         {history.length === 0 ? <UiText style={styles.note}>{t("account.rights.empty")}</UiText> : history.map(item => <View key={item.id} style={styles.history}>
           <UiText style={styles.choiceText}>{t(statusKey[item.status])}</UiText><UiText style={styles.note}>{date(item.requestedAt)}</UiText>

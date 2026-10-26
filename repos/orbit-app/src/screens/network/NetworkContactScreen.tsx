@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
+import { relationshipCommunicationEligibilityPath } from "../../api/endpoints";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -30,7 +31,7 @@ import { LinearGradient } from "../plan/plan-svg";
 import { ContactRelationshipInitializer, useContactInitialization } from "../contacts/ContactRelationshipInitializer";
 import { useNotesListSource } from "../notes/notes-source";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
-import { detailContactFrom, detailHeaderChips, fitCandidate, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
+import { detailContactFrom, detailHeaderChips, fitCandidate, localizedCardNotes, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
 import { useNetworkDesignContacts } from "./network-design-fixture";
@@ -71,6 +72,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [valueLine, setValueLine] = useState<ValueLine | null>(null);
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
+  // QA-C3: a person you can message in Orbit (an open conversation) gets a Message button on their page.
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -106,6 +109,18 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     return () => { live = false; };
   }, [client, inviteApi, contactId, language, fixture.enabled, fixture.data]);
 
+  // Only people connected through an invite code can have a conversation in Orbit, so only their page asks.
+  const connected = connection !== null;
+  useEffect(() => {
+    let live = true;
+    setConversationId(null);
+    if (fixture.enabled || !connected) return () => { live = false; };
+    void client.get<{ canSend?: unknown; conversationId?: unknown }>(relationshipCommunicationEligibilityPath(contactId)).then((result) => {
+      if (live && result.success && result.data?.canSend === true && typeof result.data.conversationId === "string" && result.data.conversationId) setConversationId(result.data.conversationId);
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [client, contactId, connected, fixture.enabled]);
+
   const candidate = fixture.enabled && params.design === "sync" ? null : fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
     if (!candidate || deciding) return;
@@ -134,19 +149,25 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     );
   }
 
-  const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`));
+  const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`), language);
   const self = card?.sourceChip === "self" || connection !== null;
   const nextStep = contact.nextAction.trim();
   const selfUpdate = fixture.enabled && params.design === "fit" || updateDismissed ? null : recentSelfUpdates(contact.fieldHistory, now());
   const stagedRole = fixture.enabled && params.design === "sync" ? t("network.detail.syncSampleRole") : contact.role;
   const stagedOffering = fixture.enabled && params.design === "sync" ? [...contact.offering, t("network.detail.syncSampleOffering")] : contact.offering;
-  const linkedNotes = mergeTimelineNotes(contact.notes, linkedSource.notes ?? []);
+  // QA-C: without any recorded interaction the server fills the note / last interaction with relationship context or a generated
+  // placeholder ("Background generated from…", dated today) — not an interaction, so it is left out; card notes speak the UI language.
+  const hasEvidence = contact.notes.some((note) => note.id.startsWith("note:relationship-evidence:"));
+  const meetingLabels = { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") };
+  const linkedNotes = mergeTimelineNotes(contact.notes.filter((note) => !note.id.startsWith("note:live-contact-detail:"))
+    .map((note) => (note.id.startsWith("note:business-card-notes:") ? { ...note, body: localizedCardNotes(note.body, t("network.edit.met"), meetingLabels) } : note)), linkedSource.notes ?? []);
+  const lastInteraction = hasEvidence ? contact.lastInteraction : null;
   const openDraft = () => {
     if (!auth.actorId || !server.ready) { toast.error(t("network.detail.draftSignIn")); return; }
     const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, ...contactFollowupTemplate({ channel: "email", contactId, contactName: contact.displayName, organization: contact.organization, rationale: valueLine?.relation ?? "", recommendedAction: nextStep }) });
     router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as unknown as Href);
   };
-  const reach = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) void Linking.openURL(`${scheme}:${value}`); else toast.info(t(missing)); };
+  const reach = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) Linking.openURL(`${scheme}:${value}`).catch(() => toast.info(t("network.detail.openFailed", { value }))); else toast.info(t(missing)); };
   const menuOptions = [
     { key: "edit", label: t("network.detail.edit") },
     ...(connection ? [{ key: "share", label: t("network.detail.share") }, { key: "unlink", label: t("network.detail.unlink"), destructive: true }] : []),
@@ -168,6 +189,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             <>
               <View style={styles.rowCenter}><DensityDots level={3} /><Chip label={t("network.chipSelf")} tone="teal" /></View>
               <UiText style={styles.lbl}>{t("network.detail.selfHint")}</UiText>
+              {conversationId ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} onPress={() => router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href)} /></View> : null}
             </>
           ) : (
             <View style={styles.chips}>
@@ -300,10 +322,10 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
               <UiText style={styles.more}>{t("network.detail.addMemo")}</UiText>
             </UiPressable>
           </View>
-          {linkedNotes.length || contact.lastInteraction ? (
+          {linkedNotes.length || lastInteraction ? (
             <>
-              {contact.lastInteraction && !linkedNotes.some((note) => note.body === contact.lastInteraction!.summary) ? (
-                <View style={styles.tl}><UiText style={styles.tlTime}>{tokyoMonthDay(contact.lastInteraction.occurredAt)}</UiText><UiText style={[styles.body, styles.grow]}>{contact.lastInteraction.summary}</UiText></View>
+              {lastInteraction && !linkedNotes.some((note) => note.body === lastInteraction.summary) ? (
+                <View style={styles.tl}><UiText style={styles.tlTime}>{tokyoMonthDay(lastInteraction.occurredAt)}</UiText><UiText style={[styles.body, styles.grow]}>{lastInteraction.summary}</UiText></View>
               ) : null}
               {linkedNotes.slice(0, 8).map((note) => {
                 const row = <>
@@ -413,6 +435,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   whyBody: { fontSize: 17, lineHeight: 25, fontWeight: "700" },
   whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
+  messageButton: { alignSelf: "center", marginTop: 4 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   emo: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   emoText: { fontSize: 19 },

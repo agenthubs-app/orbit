@@ -19,7 +19,7 @@ const unique = (values: string[]) => [...new Set(values)];
 const usedComputedPathKeys = new Set<string>();
 
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
-  'src/screens/ai/AiConversationScreen.tsx:483': ['/api/ai/conversations', '/api/ai/conversations/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:491': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:216': ['/api/relationship-communication/conversations/:id/messages'],
   // Sprint 0140: the hub's source form is QR only; card scan and manual add moved to their own pages.
   // R18a profile path optionally carries only the development design query; all mutations still target profile.
@@ -29,9 +29,9 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/tasks/TaskDetailScreen.tsx:89': ['/api/tasks/:id'],
   'src/screens/tasks/TaskDetailScreen.tsx:90': ['/api/reminders'],
   // R20 exact-task lifecycle resolver builds its actor-scoped path before transport.
-  'src/screens/todo/TodoScreen.tsx:317': ['/api/relationship-tasks/:id/resolve'],
+  'src/screens/todo/TodoScreen.tsx:319': ['/api/relationship-tasks/:id/resolve'],
   // R20 To-do decision builders validate source and action before this single transport call.
-  'src/screens/todo/TodoScreen.tsx:343': [
+  'src/screens/todo/TodoScreen.tsx:345': [
     '/api/agent/actions/:id/accept', '/api/agent/actions/:id/dismiss', '/api/agent/ledger/:id/transition',
     '/api/agent/plans/v2/pending/:id/accept', '/api/agent/plans/v2/pending/:id/dismiss',
     '/api/task-suggestions/:id/accept', '/api/task-suggestions/:id/dismiss', '/api/task-suggestions/:id/snooze',

@@ -168,7 +168,7 @@ export const useAddStyles = createThemedStyles((colors) => StyleSheet.create({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headSlot: { width: 44, height: 34 },
-  headLayer: { position: "absolute", left: 0, top: 0, width: 200, height: 34, flexDirection: "row" },
+  headLayer: { position: "absolute", right: 0, top: 0, width: 200, height: 34, flexDirection: "row", justifyContent: "flex-end" },
   headBtn: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   headBtnOff: { opacity: 0.4 },
   headBtnText: { fontSize: 14, fontWeight: "700", lineHeight: 21 },

@@ -1,5 +1,5 @@
 import { resolveSupportedInitialRouteHref } from "./initial-route";
-import { createTranslator, type OrbitTranslator } from "../i18n/messages";
+import { createTranslator, type MessageKey, type OrbitTranslator } from "../i18n/messages";
 
 export type AccountAuthMode = "forgot" | "login" | "signup";
 
@@ -115,7 +115,7 @@ function fieldsForMode(mode: AccountAuthMode, t: OrbitTranslator): AccountAuthFi
 
   return mode === "signup"
     ? [emailField, { helper: t("auth.passwordHelper"), label: t("auth.setPassword"), name: "password", placeholder: t("auth.setPasswordPlaceholder"), secure: true }]
-    : [emailField, { helper: t("auth.passwordHelper"), label: t("auth.password"), name: "password", placeholder: t("auth.passwordPlaceholder"), secure: true }];
+    : [emailField, { label: t("auth.password"), name: "password", placeholder: t("auth.passwordPlaceholder"), secure: true }];
 }
 
 function helperLinksForMode(mode: AccountAuthMode, t: OrbitTranslator): AccountAuthHelperLinkView[] {
@@ -188,4 +188,40 @@ export function nextHrefForAccountAuthSubmit({
   }
 
   return `/profile/onboarding?next=${encodeURIComponent(safeNext)}`;
+}
+
+// QA-D: the auth transport (mobile-auth / browser-auth / auth-session) returns fixed Chinese messages; show them in the UI language.
+const AUTH_MESSAGE_KEYS: readonly MessageKey[] = [
+  "auth.err.invalidCredentials",
+  "auth.err.serviceUnavailable",
+  "auth.err.serviceUnreachable",
+  "auth.err.unverified",
+  "auth.err.network",
+  "auth.err.networkShort",
+  "auth.err.missing",
+  "auth.err.signupInput",
+  "auth.err.emailTaken",
+  "auth.err.signupFailed",
+  "auth.err.signOutFailed",
+  "auth.err.expired",
+  "auth.err.sessionExpired",
+  "auth.err.incomplete",
+  "auth.err.googleVerify",
+  "auth.err.googleIncomplete",
+  "auth.err.googleReturn",
+  "auth.err.googleCancelled",
+  "auth.err.invalidRequest",
+  "auth.err.invalidRedirect",
+  "auth.err.codeUsed",
+  "auth.err.identity",
+  "auth.err.providers",
+  "auth.err.accountState",
+];
+// The zh copy of each key is exactly the transport's fixed text, so the zh dictionary is the lookup table.
+const AUTH_MESSAGES_BY_TEXT = new Map(AUTH_MESSAGE_KEYS.map(key => [createTranslator("zh")(key), key] as const));
+
+export function localizeAuthMessage(message: string | null | undefined, t: OrbitTranslator): string | undefined {
+  if (!message) return undefined;
+  const key = AUTH_MESSAGES_BY_TEXT.get(message.trim());
+  return key ? t(key) : message;
 }

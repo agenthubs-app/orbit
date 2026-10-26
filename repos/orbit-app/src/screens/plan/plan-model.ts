@@ -148,8 +148,33 @@ function textHas(haystack: string, needle: string): boolean {
  * 人脈から選ぶ ordering (UI-SPEC ②): people tagged 共同創業者 first, then people whose
  * role or tags name a gap, then the rest in the order the search gave.
  */
-export function rankCandidates(candidates: readonly ContactCandidate[], gaps: readonly string[], excludeContactIds: ReadonlySet<string> = new Set()): RankedCandidate[] {
-  const ranked = candidates.filter((candidate) => !excludeContactIds.has(candidate.id)).map((candidate, index) => {
+/**
+ * QA-A2: which steps the user really moved. A step only shifted because another one was deleted or
+ * added keeps its order among the steps both lists share, so it is not flagged.
+ */
+export function movedStepIds(originIds: readonly string[], currentIds: readonly string[]): Set<string> {
+  const rank = new Map(originIds.map((id, index) => [id, index] as const));
+  const now = currentIds.filter((id) => rank.has(id));
+  // The steps left in their original order (the longest run that is still in order) stay unflagged.
+  const ranks = now.map((id) => rank.get(id)!);
+  const length = ranks.map(() => 1);
+  const previous = ranks.map(() => -1);
+  ranks.forEach((value, i) => { for (let j = 0; j < i; j += 1) if (ranks[j]! < value && length[j]! + 1 > length[i]!) { length[i] = length[j]! + 1; previous[i] = j; } });
+  let at = length.length ? length.indexOf(Math.max(...length)) : -1;
+  const kept = new Set<string>();
+  while (at >= 0) { kept.add(now[at]!); at = previous[at]!; }
+  return new Set(now.filter((id) => !kept.has(id)));
+}
+
+/** Names compared without spaces or case (「中村 拓也」 = 「中村拓也」). */
+export function sameName(left: string, right: string): boolean {
+  const norm = (value: string) => value.replace(/[\s\u3000]+/g, "").toLowerCase();
+  return norm(left) !== "" && norm(left) === norm(right);
+}
+
+/** `selfName`: the user's own card (a contact with their name) is never offered as a team member. */
+export function rankCandidates(candidates: readonly ContactCandidate[], gaps: readonly string[], excludeContactIds: ReadonlySet<string> = new Set(), selfName = ""): RankedCandidate[] {
+  const ranked = candidates.filter((candidate) => !excludeContactIds.has(candidate.id) && !sameName(candidate.name, selfName)).map((candidate, index) => {
     const text = [candidate.role, candidate.organization, ...candidate.tags].join(" ");
     const cofounder = COFOUNDER_WORDS.some((word) => textHas(text, word));
     const fills = gaps.filter((gap) => {
@@ -180,6 +205,11 @@ export function stepTypeChips(personTypeKeys: readonly string[], personTypes: re
 }
 
 /** The history chip text of a revision: the first 12 characters of what the user wrote. */
+/** QA-A: the model sometimes lists field paths ("citations", "personTypes.cfo.allocation") as what stayed the same; keep only words. */
+export function readableUnchanged(items: readonly string[]): string[] {
+  return items.filter((item) => !/^[a-z][A-Za-z0-9]*([._][A-Za-z0-9_]+)*$/.test(item.trim()));
+}
+
 export function turnChipText(input: string): string {
   const chars = [...input.trim()];
   return chars.length > 12 ? `${chars.slice(0, 12).join("")}…` : chars.join("");

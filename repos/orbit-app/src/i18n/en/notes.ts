@@ -149,4 +149,11 @@ export const notes = {
   "notes.planUseRequiresOneContact": "To use this for your plan, link the meeting note to one person.",
   "notes.versionInvalid": "The note version is invalid. Reload it.",
   "notes.aiTaskPrompt": "Turn this note into a task with a clear title and date.",
+  "notes.deleteNote": "Delete Note",
+  "notes.deleteConfirm": "Delete this note?",
+  "notes.deleteBody": "This can't be undone.",
+  "notes.deleteFailed": "Couldn't delete the note. Check your connection and try again.",
+  "notes.deleteConflict": "This note was changed on another device. Reopen it, then delete.",
+  "notes.deleted": "Note deleted",
+  "notes.removeRelatedNote": "Remove related note “{name}”",
 } as const;

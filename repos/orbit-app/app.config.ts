@@ -12,6 +12,12 @@ const config: ExpoConfig = {
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
+  // iOS permission prompts follow the device language (QA-D: the camera prompt showed Chinese in a Japanese UI).
+  locales: {
+    en: "./locales/en.json",
+    ja: "./locales/ja.json",
+    "zh-Hans": "./locales/zh-Hans.json"
+  },
   experiments: {
     typedRoutes: true,
     tsconfigPaths: true
@@ -38,7 +44,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "app.agenthubs.orbit",
-    buildNumber: "12",
+    buildNumber: "13",
     infoPlist: {
       NSCameraUsageDescription:
         "扫描二维码和拍摄名片，用于生成待确认联系人候选。",

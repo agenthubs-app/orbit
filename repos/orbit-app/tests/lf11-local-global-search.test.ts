@@ -56,7 +56,7 @@ test("events and online conversations are the server's groups; offline the devic
   assert.deepEqual(online.conversations?.items.map((item) => item.id), ["srv"]);
   const offline = localGlobalSearch({ ...base, query: "高橋" });
   assert.deepEqual(offline.events, { items: [], total: 0 });
-  assert.deepEqual(offline.conversations?.items.map((item) => [item.id, item.subtitle, item.href]), [["s1", "10/20 · iOrbit との会話", "/ai/s1"]]);
+  assert.deepEqual(offline.conversations?.items.map((item) => [item.id, item.subtitle, item.href]), [["s1", "10/20 · iOrbit との会話", "/ai/s1?source=session"]]);
 });
 
 test("nothing found: the server's empty rule — industry suggestions from the device's counts and the two other ways", () => {

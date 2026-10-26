@@ -149,4 +149,11 @@ export const notes = {
   "notes.planUseRequiresOneContact": "プランに使うには、面談メモに1人だけ紐づけてください。",
   "notes.versionInvalid": "メモのバージョンが無効です。再読み込みしてください。",
   "notes.aiTaskPrompt": "このメモからタスクを整理し、タイトルと日付を明確にしてください。",
+  "notes.deleteNote": "メモを削除",
+  "notes.deleteConfirm": "このメモを削除しますか？",
+  "notes.deleteBody": "削除すると元に戻せません。",
+  "notes.deleteFailed": "メモを削除できませんでした。通信状況を確認してもう一度お試しください。",
+  "notes.deleteConflict": "このメモはほかの端末で変更されました。開き直してから削除してください。",
+  "notes.deleted": "メモを削除しました",
+  "notes.removeRelatedNote": "関係するメモ「{name}」を外す",
 } as const;

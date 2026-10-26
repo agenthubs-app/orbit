@@ -3,7 +3,7 @@
 // Choosing options and typing never sends anything: 「まとめて回答する」 sends all
 // answers once. The premise rows edit in place (PATCH …/premise); 「この前提で初版を
 // つくる」 asks for the first draft (not counted against the AI revisions).
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
 import type { PlanGoalKind, PlanIntakeView, PlanPremiseRow } from "../../api/contract/plan-v2";
@@ -147,18 +147,23 @@ export function PlanPremiseCard({ intake, kind, api, onIntake, onReload, hasDraf
       setConfirmRedo(row.key);
       return;
     }
+    // QA-A: a value saved as "<option> · <free text>" reopens with that option picked and only the
+    // free text in the field; otherwise picking another option kept the old answer ("1–5个 · 没有").
+    const value = row.guessed ? "" : row.value;
+    const picked = optionsOf(row.key).find((item) => value === item.label || value.startsWith(`${item.label} · `)) ?? null;
     setEditing(row.key);
-    setOption(null);
-    setText(row.guessed ? "" : row.value);
+    setOption(picked?.id ?? null);
+    setText(picked ? value.slice(picked.label.length).replace(/^ · /, "") : value);
     setFailure(null);
   };
 
-  const options = useMemo(() => {
-    if (!editing) return [];
-    const template = PLAN_GOAL_TEMPLATES[kind].questions.find((item) => item.id === editing);
-    const copy = PLAN_QUESTION_COPY[editing];
+  function optionsOf(key: string | null) {
+    if (!key) return [];
+    const template = PLAN_GOAL_TEMPLATES[kind].questions.find((item) => item.id === key);
+    const copy = PLAN_QUESTION_COPY[key];
     return template && copy ? template.options.map((id) => ({ id, label: copy.options[id] ? planCopy(copy.options[id]!, language) : id })) : [];
-  }, [editing, kind, language]);
+  }
+  const options = optionsOf(editing);
 
   const save = async () => {
     if (!editing) return;
@@ -276,6 +281,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   premc: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" },
   v2go: { flexDirection: "row", alignItems: "center", gap: 4 },
   v2goText: { color: colors.ink2, ...kitText(12, "700") },
-  editBox: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface2, marginBottom: 8 },
-  editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 12, color: colors.ink, fontSize: 15 },
+  editBox: { gap: 8, padding: 12, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, marginBottom: 8 },
+  editInput: { minHeight: 40, borderRadius: 12, backgroundColor: colors.surface2, paddingHorizontal: 12, color: colors.ink, fontSize: 15 },
 }));

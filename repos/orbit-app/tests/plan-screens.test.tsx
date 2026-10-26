@@ -343,7 +343,8 @@ test("fix bar: shows the revisions left; at 0 the field is disabled and only edi
   assert.equal(await card.getByText("L-103", { exact: false }).count(), 0);
   await card.getByRole("button", { name: "根拠を見る" }).click();
   assert.equal(await card.getByRole("link").count(), 2, "both citations appear after 「?」");
-  await card.getByText("L-103 開業時の資金の集め方", { exact: false }).waitFor();
+  // QA-A: citations are named by title (the id alone, "L-103", meant nothing to the user).
+  await card.getByText("開業時の資金の集め方", { exact: false }).first().waitFor();
 
   const out = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(3)) : undefined);
   await out.page.getByPlaceholder("AI 修正は使い切りました").waitFor();
@@ -382,7 +383,7 @@ test("fix: one revision sends the text once and shows only the diff", async (t) 
 test("manual edit: an allocation change keeps the total at 100, removing a type shows where its points go", async (t) => {
   const { page, calls } = await open(t, "/plans/drafts/draft_f2/edit", (call) => call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
   await page.getByText("人物タイプと配点").waitFor();
-  const points = page.getByLabel("E 足りない専門の配点");
+  const points = page.getByLabel("足りない専門の配点");
   await points.fill("15");
   await points.press("Enter");
   await page.getByText("10 → 15", { exact: true }).waitFor();
@@ -394,16 +395,16 @@ test("manual edit: an allocation change keeps the total at 100, removing a type 
   await points.press("Enter");
   await page.getByText("配点は 5点刻みで入力してください").waitFor();
   // Remove C: the sheet lists the reflow before anything changes.
-  await page.getByRole("button", { name: "C 先行プロダクト経験を外す" }).click();
-  await page.getByText("タイプ C を外しますか？").waitFor();
+  await page.getByRole("button", { name: "先行プロダクト経験を外す" }).click();
+  await page.getByText("「先行プロダクト経験」を外しますか？").waitFor();
   await page.getByText("15点を 5点ずつ、配点の高いタイプから順に配り直します。").waitFor();
   await page.getByRole("button", { name: "外す", exact: true }).click();
-  await page.getByText("タイプ C を外しますか？").waitFor({ state: "detached" });
+  await page.getByText("「先行プロダクト経験」を外しますか？").waitFor({ state: "detached" });
   assert.equal(await page.getByText("合計 100 / 100", { exact: true }).count(), 1);
-  assert.equal(await page.getByLabel("C 先行プロダクト経験の配点").count(), 0);
+  assert.equal(await page.getByLabel("先行プロダクト経験の配点").count(), 0);
   // 元に戻す: back to the AI plan, locally.
   await page.getByRole("button", { name: "元に戻す" }).click();
-  await page.getByLabel("C 先行プロダクト経験の配点").waitFor();
+  await page.getByLabel("先行プロダクト経験の配点").waitFor();
   assert.deepEqual(writes(calls), [], "editing sends nothing until 「このプランで始める」");
 });
 

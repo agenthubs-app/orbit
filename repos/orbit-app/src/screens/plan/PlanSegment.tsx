@@ -147,12 +147,18 @@ export function PlanSegment() {
 
 /** R25 `new=1` / 「＋ 目標を追加」: the R23 goal input; with two active goals it explains the limit and lists them (b12 A-R23-02c). */
 function NewGoal({ intakes, goals, onCancel }: { intakes: PlanIntakeListResponse | null; goals: readonly PlanGoalListItem[]; onCancel: (() => void) | null }) {
-  const { styles } = useStyles();
+  const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   return (
     <View style={styles.page} testID="new-goal">
+      {/* QA-A2: the way back sat only at the very bottom, under the sample card; it is now first, like an iOS back button. */}
+      {onCancel ? (
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.goals.backToPlan")} hitSlop={8} onPress={onCancel} style={styles.back} testID="new-goal-back">
+          <Icon name="left" size={20} color={colors.accentText} />
+          <UiText style={styles.backText}>{t("plan.goals.backToPlan")}</UiText>
+        </UiPressable>
+      ) : null}
       {intakes ? <PlanGoalInput intakes={intakes} goals={goals} /> : <EmptyState title={t("shell.task.planEmptyTitle")} message={t("shell.task.planEmptyBody")} />}
-      {onCancel ? <Button label={t("plan.goals.backToPlan")} onPress={onCancel} variant="ghost" /> : null}
     </View>
   );
 }
@@ -201,6 +207,8 @@ export function ConfirmedPlanCard({ plan }: { plan: PlanV2HomeSummary }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { gap: 14 },
+  back: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2, minHeight: 44 },
+  backText: { color: colors.accentText, fontSize: 17, fontWeight: "600" },
   grow: { flex: 1, minWidth: 0 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18, gap: 10 },
   eyebrow: { color: colors.ink3Text, fontSize: 14, fontWeight: "700" },

@@ -26,6 +26,7 @@ import {
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
+import { openMainTab } from "../../components/shell-navigation";
 import { usePlanApi } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
 import { canConfirmManualMemo, groupPending, pendingPoints } from "./plan-overview-model";
@@ -57,6 +58,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
   const [achieveOpen, setAchieveOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   // R31a (RD-28) dev-only gate states (b12 #198 前提 / b4 A3 #19 見直し / A5 #24 達成 / A6 #29 編集). `design` is null
   // outside a dev build with open-path (PlanSegment → designState).
   useEffect(() => {
@@ -110,6 +112,15 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
     }
     router.push(planDoneHref("app", plan.planId) as Href);
   });
+  // QA-A2: 删除这个目标 (after a confirm); the summary then shows the next goal or the empty start.
+  const deleteGoal = () => void run(async () => {
+    setDeleteOpen(false);
+    setCardProblem(null);
+    const result = await api.deleteGoal(plan.planId, newIdempotencyKey("goal-delete"));
+    if (!result.ok) { setCardProblem(failureText(result.failure)); return; }
+    toast.success(t("plan.goals.deleted"));
+    await reload();
+  });
   const reopenStep = (stepKey: string) => run(async () => {
     setReopen(null);
     const result = await api.reopenStep(plan.planId, stepKey, newIdempotencyKey("step-reopen"));
@@ -122,7 +133,8 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
   const suggestionFor = (step: { key: string; completedAt?: string | null }) => (step.completedAt ? undefined : pending.steps.get(step.key));
   return (
     <View style={styles.page} testID="plan-overview">
-      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 ? plan.quota.activeGoalLimit : 0} onOpen={() => setSwitcherOpen(true)} />
+      {/* QA-A: "目标 1/2" with a single goal read as "one of two goals"; count the goals there are. */}
+      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 && activeGoals.length > 1 ? activeGoals.length : 0} onOpen={() => setSwitcherOpen(true)} />
       <HeroCard plan={plan} onOpenType={openType} score={<ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />} />
       <DiagCard
         plan={plan}
@@ -131,7 +143,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onReview={() => setReviewOpen(true)}
         onManual={openManualEdit}
         onAchieve={() => setAchieveOpen(true)}
-        onConversation={() => router.push("/agent" as Href)}
+        onConversation={() => openMainTab(router, "/ai")} /* QA-A: "/agent" is a legacy redirect to Task › 待办 */
         problem={cardProblem ? <InlineProblem text={cardProblem} /> : null}
       />
       <TodayCard plan={plan} cards={cards} onGo={() => router.push(plan.todayChance!.href as Href)} />
@@ -216,6 +228,16 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onSwitched={() => void reload()}
         onAdd={() => onAddGoal?.()}
         onEdit={() => setEditOpen(true)}
+        onDelete={() => setDeleteOpen(true)}
+      />
+      <ConfirmDialog
+        visible={deleteOpen}
+        title={t("plan.goals.deleteTitle", { goal: plan.goal })}
+        message={t("plan.goals.deleteBody")}
+        confirmLabel={t("plan.goals.deleteConfirm")}
+        destructive
+        onConfirm={deleteGoal}
+        onCancel={() => setDeleteOpen(false)}
       />
       <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} {...(design === "edit" ? { previewAmount: previewSamples.planEditPreviewAmount } : {})} />
     </View>

@@ -112,7 +112,11 @@ type ReliableSendAttempt = {
   requestId: string;
   sessionId: string;
 };
-type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number } };
+type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number }; /** QA-A2: when it was first sent (never sent to the server). */ sentAt?: number };
+/** QA-A2: a reliable send still "pending" this long after it was sent has stopped (the server run timed out). */
+const STALE_PENDING_MS = 5 * 60 * 1000;
+/** QA-A2: the check found the message never reached the server, or the run stopped; 重试 is safe. */
+const RETRYABLE_SEND_CODES = ["NOT_DELIVERED", "TIMED_OUT"];
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
 /** Sprint 0112: an older page of the opened session, loaded from the top of the history. */
 type EarlierPage = { cursor: string; hasMore: boolean; messages: AiSession["messages"]; nextCursor: string | null; recovery: unknown };
@@ -422,6 +426,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const sessionId = previousSession?.id ?? `agent-session-mobile-${randomUUID()}`;
     return {
       ...input,
+      sentAt: Date.now(),
       reliable: {
         clientMessageId: randomUUID(),
         expectedMessageRevision: previousSession?.messageRevision ?? previousSession?.messages.length ?? 0,
@@ -478,6 +483,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     journal.interruptedRequest = request;
     setSending(true); setSendError(null); setSendCode(null); setFailedRequest(null);
     setActionError(null);
+    // QA-A: the sent text stayed in the composer until the reply arrived (20–60 s), so the
+    // question looked unsent. Clear it now; a failure offers 「编辑问题」 to bring it back.
+    if (!request.sourceNote && draftValue.current.trim() === request.message.trim()) { draftValue.current = ""; setDraftMessage(""); }
     // Sprint 0085: a new question clears the card the previous reply offered.
     setEntityDraftOverride(null); setEntityDraftEdits({});
     const result = await client.post<unknown>(request.path, {
@@ -562,6 +570,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
     } else {
       setFailedRequest(request);
+      if (!request.sourceNote && !draftValue.current.trim()) { draftValue.current = request.message; setDraftMessage(request.message); }
       const unknown = Boolean(request.reliable) && (!result.success || receipt?.state === "pending" || receipt?.state === "outcome_unknown");
       setSendError(unknown ? locale.t("aiConversation.outcomeUnknown") : result.success ? locale.t("aiConversation.incomplete") : result.error.message);
       setSendCode(unknown ? receipt?.state ?? "OUTCOME_UNKNOWN" : result.success ? null : result.error.code);
@@ -636,8 +645,33 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       return;
     }
     setFailedRequest(request);
+    // QA-A2: 检查结果 used to swap one "not confirmed" sentence for another. Say what the check found:
+    // the server never got the message (404 / no record of this request) → 重试 resends it with the same ids
+    // (idempotent); a run still pending long after sending has stopped → 重试 sends it again as a new request.
+    const notDelivered = (result.success && !recovery) || (!result.success && result.status === 404);
+    const stale = Boolean(recovery) && Date.now() - (request.sentAt ?? Date.now()) > STALE_PENDING_MS;
+    if (notDelivered) {
+      setSendError(locale.t("aiConversation.notDelivered"));
+      setSendCode("NOT_DELIVERED");
+      return;
+    }
+    if (stale) {
+      setSendError(locale.t("aiConversation.timedOut"));
+      setSendCode("TIMED_OUT");
+      return;
+    }
     setSendError(recovery ? locale.t("aiConversation.stillUnknown") : result.success ? locale.t("aiConversation.inspectLater") : result.error.message);
     setSendCode(recovery?.receipt.state ?? (result.success ? "OUTCOME_UNKNOWN" : result.error.code));
+  }
+
+  /** 重试 after a check: the same request when it never arrived, a new one when the old run stopped. */
+  async function retryAfterCheck(request: SendRequest) {
+    if (sendCode === "TIMED_OUT") {
+      const { reliable: _reliable, sentAt: _sentAt, ...rest } = request;
+      await submitRequest(requestForSend(rest));
+      return;
+    }
+    await submitRequest(request);
   }
 
   async function resolveTaskSuggestion(action: "accept" | "dismiss") {
@@ -748,8 +782,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       offlineAt={localConversation.freshness.lastSyncedAt}
       sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
       pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
-      retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
-      onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
+      retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : RETRYABLE_SEND_CODES.includes(sendCode ?? "") ? "aiConversation.retry" : "aiConversation.regenerate")}
+      onRetrySend={() => { if (!failedRequest) return; if (RETRYABLE_SEND_CODES.includes(sendCode ?? "")) void retryAfterCheck(failedRequest); else void recoverRequest(failedRequest); }}
       onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
       onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
       sending={sending}
@@ -865,6 +899,9 @@ function ConversationThread({
   const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
+  // QA-A: the history has a fixed height; when the composer grows (the @ picker, reference chips)
+  // the composer was pushed below the screen. Shrink the history by what the composer gained.
+  const [composerExtra, setComposerExtra] = useState(0);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
   useEffect(() => {
@@ -917,7 +954,7 @@ function ConversationThread({
     <AppScreen inset="kit" title="iOrbit" subtitle={shortTitle(thread.title)} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
       headerActions={<UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />}>
       {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
-      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
+      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190) - composerExtra) }} contentContainerStyle={styles.r21Thread}
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
         onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
@@ -969,14 +1006,15 @@ function ConversationThread({
         {thread.taskInteraction ? <TaskInteractionCard busy={taskInteractionBusy} interaction={thread.taskInteraction} onResolve={onResolveTaskSuggestion} onOpenHref={onOpenHref} resolution={taskInteractionResolution} /> : null}
         {draftCardView ? <AiEntityDraftCard busy={entityDraftBusy} onCancel={() => onResolveEntityDraft("cancel")} onConfirm={() => onResolveEntityDraft("confirm")} onEditField={onEditEntityDraftField} onOpenRecord={onOpenHref} view={draftCardView} /> : null}
         {draftLinkNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{draftLinkNotice}</UiText> : null}
-        {thread.proposedToolIntents.length ? <UiCard variant="flat"><View style={styles.r21Stack}><UiText style={styles.r21Section}>{locale.t("aiConversation.suggestedActions")}</UiText>{thread.proposedToolIntents.map((intent) => <View key={intent.id}><UiText style={styles.r21Section}>{intent.label}</UiText><UiText style={styles.r21Muted}>{intent.reason}</UiText></View>)}</View></UiCard> : null}
-        {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
+        {/* QA-A: proposedToolIntents are the agent's tool trace ("模型 provider 从用户请求中选择了这个 Orbit 允许工具…"),
+            with no action to take; they are not shown to the user. */}
+        {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode && !["OUTCOME_UNKNOWN", "pending", "outcome_unknown", "NOT_DELIVERED", "TIMED_OUT"].includes(sendCode) ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
         {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
         {saveError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{saveError}</UiText><UiButton label={locale.t("aiConversation.retrySave")} onPress={onRetrySave} disabled={saving} /></View></UiCard> : null}
         {sending || saving ? <View style={styles.r21Actions}><UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText>{sending ? <UiButton label={copy.stop} variant="ghost" size="sm" onPress={onStopResponse} /> : null}</View> : null}
         {saveNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{saveNotice}</UiText> : null}
       </ScrollView>
-      <View testID="conversation-composer" style={styles.r21Composer}>
+      <View testID="conversation-composer" onLayout={(event) => { const extra = Math.max(0, Math.round(event.nativeEvent.layout.height - (minimumInputHeight + 18))); setComposerExtra((current) => (current === extra ? current : extra)); }} style={styles.r21Composer}>
         {sendLabelSuffix ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.sendMessage") + " · " + sendLabelSuffix}</UiText> : null}
         {pendingNoteChanges ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</UiText> : null}
         {selectedReferences.length ? <View style={styles.referenceRow}>{selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}</View> : null}

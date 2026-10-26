@@ -185,21 +185,30 @@ export function IOrbitStartView({
       {groups.map(([label, items]) => <View key={label} style={styles.group}><UiText style={styles.groupTitle}>{copy[label]}</UiText>
         {items.map((item) => <HistoryItemRow key={`${item.source}:${item.id}`} item={item} onOpen={onOpen} onSelect={setSelected} styles={styles} colors={colors} />)}
       </View>)}
+      {/* QA-A: the search box filtered chats only; plans stayed listed under "no matching chats". */}
+      {(() => {
+        const needle = historyQuery.trim().toLowerCase();
+        const shownIntakes = needle ? planIntakes.filter((intake) => intake.goal.toLowerCase().includes(needle)) : planIntakes;
+        const shownGoals = needle ? planGoals.filter((goal) => goal.goal.toLowerCase().includes(needle)) : planGoals;
+        if (needle && !shownIntakes.length && !shownGoals.length) return null;
+        return (
       <View style={styles.group}><UiText style={styles.groupTitle}>{copy.plan}</UiText>
-        {planIntakes.map((intake) => <UiPressable key={intake.intakeId} accessibilityRole="button" accessibilityLabel={intake.goal} onPress={() => onOpenIntake(intake)} style={styles.historyMain}>
+        {shownIntakes.map((intake) => <UiPressable key={intake.intakeId} accessibilityRole="button" accessibilityLabel={intake.goal} onPress={() => onOpenIntake(intake)} style={styles.historyMain}>
           <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{intake.goal}</UiText><UiText style={styles.recentMeta}>{copy.continuePlan}</UiText></View>
         </UiPressable>)}
-        {planGoals.map((goal) => <View key={goal.planId} style={styles.historyRow}>
+        {shownGoals.map((goal) => <View key={goal.planId} style={styles.historyRow}>
           <UiPressable accessibilityRole="button" accessibilityLabel={goal.goal} onPress={() => onOpenGoal(goal, "overview")} style={styles.historyMain}>
             <Icon name="target" size={16} color={colors.ink2} /><View style={styles.recentCopy}><UiText numberOfLines={2} style={styles.recentTitle}>{goal.goal}</UiText><UiText style={styles.recentMeta}>{goal.status === "achieved" ? copy.achieved : copy.active}</UiText></View>
           </UiPressable>
           <Button label={goal.status === "achieved" ? copy.viewDone : copy.review} variant="ghost" size="sm" onPress={() => onOpenGoal(goal, goal.status === "achieved" ? "done" : "review")} />
         </View>)}
-        <Button label={copy.newGoal} icon="plus" variant="ghost" size="sm" onPress={onNewGoal} />
+        {needle ? null : <Button label={copy.newGoal} icon="plus" variant="ghost" size="sm" onPress={onNewGoal} />}
       </View>
+        );
+      })()}
       {historyHasMore ? <Button label={historyLoading ? copy.loadingMore : copy.more} variant="ghost" onPress={onLoadMore} disabled={historyLoading} block /> : null}
     </FullDrawer>
-    <ActionSheet visible={selected !== null} title={copy.conversationActions} onClose={() => setSelected(null)} options={selected?.source === "session" ? [
+    <ActionSheet visible={selected !== null} title={selected?.title || copy.conversationActions} onClose={() => setSelected(null)} options={selected?.source === "session" ? [
       { key: "pin", label: selected.pinned ? copy.unpin : copy.pin },
       { key: "rename", label: copy.rename },
       { key: "delete", label: copy.delete, destructive: true },
@@ -214,7 +223,7 @@ export function IOrbitStartView({
       <TextField label={copy.conversationName} autoFocus value={renameDraft} onChangeText={setRenameDraft} />
       <Button label={copy.save} variant="primary" disabled={!renameDraft.trim()} onPress={() => { if (renaming && renameDraft.trim()) onRename(renaming, renameDraft.trim()); setRenaming(null); }} />
     </View></BottomSheet>
-    <ConfirmDialog visible={confirmDelete !== null} title={copy.confirmDelete} message={copy.deleteDetail} confirmLabel={deleting ? copy.deleting : copy.delete} destructive icon="trash" onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+    <ConfirmDialog visible={confirmDelete !== null} title={copy.confirmDelete} message={confirmDelete ? `${confirmDelete.title}\n\n${copy.deleteDetail}` : copy.deleteDetail} confirmLabel={deleting ? copy.deleting : copy.delete} destructive icon="trash" onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
   </View>;
 }
 

@@ -16,10 +16,12 @@ const PRE_SPLIT = {
   // In every locale R20b (notes.bodyPlaceholder) and R28 (onboarding.goalsPick) later updated 2 original values; the key set is still R03's.
   // UX 2026-10-26 (Task tab copy: plain labels for the schedule links, the to-do detail and the calendar "+N") updated more original values in all three.
   // UX 2026-10-26 (onboarding: plain industry labels, a date picker for the birthday, no forced break in the zh step 5 title) updated more.
-  en: { keys: 2253, sha256: "19cae7c672b323dfd58f0e1311b56f5b8b6e7808076b2822d34fe28750e21841" },
+  // QA-A 2026-10-26 (iOrbit record cards: plain "saved" footnotes instead of "written and read back") updated more.
+  // QA-D 2026-10-26 (ja start guide / onboarding leads, export, resume and suggestion copy; plain completion hint) updated more.
+  en: { keys: 2253, sha256: "86aa7e591a864ee70be4dde8a6c2056bcf9bde5ab2533129c7033affa1d956ff" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "29cd5ab47a1f7d02b5ea268a641de46684f0f4c8d5072c9c4ed5fca60904ca92" },
-  zh: { keys: 2253, sha256: "4c592cfd1919d0f652747ad333190877b05ee41ddd527a09b774747750c1c4fd" },
+  ja: { keys: 2253, sha256: "63c67b82365444f28d62cf911b2b2c5ee6a031452d4987fa2da93604f4e5b864" },
+  zh: { keys: 2253, sha256: "cadac1d9d2a8b81b0073fac1d6582d34e7731201afc2b5b7b2ba101527a96665" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

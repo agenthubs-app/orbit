@@ -15,7 +15,7 @@ import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../api/c
 import { guessGoalKindByKeywords, PLAN_GOAL_KINDS, PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
 import { planTaskSegmentHref } from "../../api/compute/plan-href";
 import { openMainTab } from "../../components/shell-navigation";
-import { Icon, UiPressable, UiText } from "../../components/ui";
+import { ConfirmDialog, Icon, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "../../components/ui/svg";
 import { faceFor } from "../../components/ui/Text";
 import { createThemedStyles } from "../../design/theme";
@@ -60,7 +60,24 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
   const monthlyOut = intakes.newGoalsLeftThisMonth <= 0;
   const activeOut = intakes.activeGoals >= intakes.activeGoalLimit;
   const blocked = monthlyOut || activeOut;
-  const resume = intakes.intakes[0] ?? null;
+  // QA-A2: an unfinished flow can be dropped (放弃); hide it here until the list reloads.
+  const [dropped, setDropped] = useState<readonly string[]>([]);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const [dropProblem, setDropProblem] = useState<string | null>(null);
+  const toast = useToast();
+  const resume = intakes.intakes.find((item) => !dropped.includes(item.intakeId)) ?? null;
+  const drop = async () => {
+    setDropOpen(false);
+    if (!resume || dropping) return;
+    setDropping(true);
+    setDropProblem(null);
+    const result = await api.abandonIntake(resume.intakeId, newIdempotencyKey("intake-abandon"));
+    setDropping(false);
+    if (!result.ok) return setDropProblem(failureText(result.failure));
+    setDropped((ids) => [...ids, resume.intakeId]);
+    toast.success(t("plan.goal.dropped"));
+  };
   const active = goals.filter((goal) => goal.status === "active");
 
   const create = async () => {
@@ -85,7 +102,17 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
 
   return (
     <View style={styles.page}>
-      {resume ? <ResumeCard intake={resume} onOpen={() => router.push(resume.href as Href)} /> : null}
+      {resume ? <ResumeCard intake={resume} onOpen={() => router.push(resume.href as Href)} onDrop={() => setDropOpen(true)} dropping={dropping} /> : null}
+      {dropProblem ? <InlineProblem text={dropProblem} /> : null}
+      <ConfirmDialog
+        visible={dropOpen && resume !== null}
+        title={t("plan.goal.dropTitle", { goal: resume?.goal ?? "" })}
+        message={t("plan.goal.dropBody")}
+        confirmLabel={t("plan.goal.drop")}
+        destructive
+        onConfirm={() => void drop()}
+        onCancel={() => setDropOpen(false)}
+      />
       <View style={[styles.guide, resume && styles.guideAfterResume]} testID="goal-input">
         <View pointerEvents="none" style={styles.glow}><Glow color={colors.macLav} /></View>
         <UiText accessibilityRole="header" style={styles.title}>{t("plan.goal.title")}</UiText>
@@ -148,7 +175,7 @@ function Glow({ color }: { color: string }) {
 }
 
 /** 作りかけのプラン（b12 A-R23-02a .k-resume）：🧭 · 目標 · 続ける ›，下面五段 .fm 与「質問まで · 10月10日」。 */
-function ResumeCard({ intake, onOpen }: { intake: PlanIntakeListItem; onOpen: () => void }) {
+function ResumeCard({ intake, onOpen, onDrop, dropping }: { intake: PlanIntakeListItem; onOpen: () => void; onDrop: () => void; dropping: boolean }) {
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
@@ -170,7 +197,12 @@ function ResumeCard({ intake, onOpen }: { intake: PlanIntakeListItem; onOpen: ()
       </View>
       {/* 五段进度占满一行（与右侧文字同排时每段太窄、名字被截断），停在哪一步写在下面。 */}
       <KitStages stage={stage} style={styles.resumeFoot} />
-      <UiText style={[kit.lbl, styles.resumeWhere]}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
+      <View style={styles.resumeBottom}>
+        <UiText style={[kit.lbl, styles.resumeWhere, kit.grow]}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.goal.dropA11y", { goal: intake.goal })} accessibilityState={{ disabled: dropping }} disabled={dropping} hitSlop={8} onPress={onDrop} style={styles.dropBtn} testID="goal-resume-drop">
+          <UiText style={styles.dropText}>{t("plan.goal.drop")}</UiText>
+        </UiPressable>
+      </View>
     </View>
   );
 }
@@ -301,6 +333,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   resumeBtnText: { color: colors.bg, ...kitText(12, "700") },
   resumeFoot: { marginTop: 12 },
   resumeWhere: { marginTop: 6 },
+  resumeBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dropBtn: { minHeight: 32, justifyContent: "center", marginTop: 6 },
+  dropText: { color: colors.coralText, ...kitText(12.5, "700") },
 
   limitWrap: { marginTop: 12 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },

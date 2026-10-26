@@ -271,8 +271,11 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
   const candidates = detail.candidates.length > 0 ? (
     <CandidatesCard detail={detail} selected={selected} faded={detail.skipped} onToggle={toggle} onMenu={setRowMenu} onAction={(person, key) => { if (key === "talked") { if (!detail.skipped) talked(person.contactId, person.name); } else decide(person.contactId, person.name, key); }} talkedOpen={talkedOpen} onTalkedToggle={() => setTalkedOpen((open) => !open)} />
   ) : null;
-  const talkedList = talkedOpen && detail.talked.length > 0 ? (
+  // QA-A: with no candidates there is no candidates card to open this list from, so it is always shown
+  // (otherwise a recorded talk could only be undone from the 4-second toast).
+  const talkedList = (talkedOpen || state === "none") && detail.talked.length > 0 ? (
     <KitCard style={styles.talkedList} testID="talked-list">
+      {state === "none" ? <UiText accessibilityRole="header" style={styles.b135}>{t("plan.type.talkedTitle", { count: detail.talked.length })}</UiText> : null}
       {detail.talked.map((entry, n) => {
         const name = entry.name ?? t("plan.type.anonymous");
         return (
@@ -318,6 +321,9 @@ function PlanTypeBody({ detail, plan, steps, reload, selected, onSelect, onAward
         <>
           <PersonaCard persona={detail.persona ?? detail.why} basis={detail.persona ? detail.why : null} />
           {detail.opener ? <OpenerCard opener={detail.opener} judge={detail.countRule ? t("plan.type.openerJudge", { rule: detail.countRule }) : null} onCopy={() => shareText(detail.opener!)} /> : null}
+          {talkedList}
+          {/* QA-A: what to ask once you meet one was missing when nobody in the network fits yet. */}
+          {questions}
           {events}
           {routes}
           {hints}

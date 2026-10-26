@@ -166,7 +166,7 @@ test("結果なし (b5 #56): searched count, 近い条件なら, ほかの方法
   const page = await open(t, byQuery);
   await page.getByTestId("global-search-input").fill("半導体 商社");
   await page.getByTestId("global-search-empty").waitFor();
-  for (const text of ["「半導体 商社」に一致する人はいません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).waitFor();
+  for (const text of ["「半導体 商社」に一致するものはありません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).waitFor();
   await page.getByRole("button", { name: "iOrbit に紹介ルートを聞く" }).click();
   const pushed = (await nav(page)).at(-1) as { href: { pathname: string; params: { id: string; prefillIntent: string } } };
   assert.equal(pushed.href.pathname, "/ai/[id]");

@@ -228,14 +228,16 @@ test("relationship follow-ups sit in the date groups, open their own page from e
   ] });
   await page.getByRole("checkbox", { name: "完成：跟进逾期", exact: true }).waitFor();
   const headings = await page.getByRole("heading").evaluateAll(elements => elements.map(e => e.textContent));
-  assert.deepEqual(headings.filter(text => /^(已逾期|今天|之后|未安排)/.test(text ?? "")), ["已逾期1", "今天1", "未安排31"]);
+  assert.deepEqual(headings.filter(text => /^(已逾期|今天|之后|未安排)/.test(text ?? "")), ["已逾期1", "今天1", "未安排31+"]);
   for (const [title, connection] of [["跟进逾期", "a"], ["跟进今天", "b"], ["跟进无日期", "c"]]) {
     const checkbox = page.getByRole("checkbox", { name: `完成：${title}`, exact: true });
     const box = (await checkbox.boundingBox())!; assert.ok(box.width >= 40 && box.height >= 52);
     await checkbox.click();
     await page.getByRole("button", { name: new RegExp(`^${title}(，|$)`) }).click();
     const navigation = await page.evaluate(() => (window as any).fixture.navigation.splice(0));
-    assert.deepEqual(navigation, [`/tasks/relationship/connection%3A${connection}`, `/tasks/relationship/connection%3A${connection}`]);
+    // QA-C2: the page opens on the tapped follow-up (task + contact), not on whatever the relationship has open.
+    const href = `/tasks/relationship/connection%3A${connection}?taskId=rt%3A${connection}&contactId=contact%3A${connection}`;
+    assert.deepEqual(navigation, [href, href]);
   }
   assert.ok(await page.getByRole("button", { name: /^跟进逾期，.+，联系人a$/ }).count());
   const warningColor = await page.getByText("已逾期", { exact: true }).evaluate(element => getComputedStyle(element).color);

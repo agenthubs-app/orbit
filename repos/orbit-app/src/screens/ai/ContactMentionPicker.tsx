@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { contactCardPageSchema } from "../../api/schema/contact-card-page";
@@ -15,6 +15,10 @@ export interface MentionContact {
   organization: string;
   role: string;
 }
+
+// QA-A: server-side placeholders stored on contacts created without these fields.
+const PLACEHOLDER_DETAILS = new Set(["Unknown organization", "Relationship candidate"]);
+const realDetail = (value: string) => (PLACEHOLDER_DETAILS.has(value.trim()) ? "" : value);
 
 export function ContactMentionPicker({ onSelect, selectedIds, scopeKey }: {
   scopeKey?: string | undefined;
@@ -36,10 +40,12 @@ export function ContactMentionPicker({ onSelect, selectedIds, scopeKey }: {
     { scopeKey: JSON.stringify([scope, cursor]), cachePolicy: "network-only", enabled: auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId) });
   const state = validateApiResourceState(raw, contactCardPageSchema);
   const page = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const results = page?.items.filter(contact => !selectedIds.includes(contact.id)).map(contact => ({ id: contact.id, name: contact.displayName, organization: contact.organization, role: contact.role })) ?? [];
+  const results = page?.items.filter(contact => !selectedIds.includes(contact.id)).map(contact => ({ id: contact.id, name: contact.displayName, organization: realDetail(contact.organization), role: realDetail(contact.role) })) ?? [];
   return <View style={styles.panel}>
     <Text style={styles.title}>{locale.t("aiMention.title")}</Text>
     <TextInput accessibilityLabel={locale.t("aiMention.searchLabel")} onChangeText={setQuery} placeholder={locale.t("aiMention.searchPlaceholder")} style={styles.input} value={query} />
+    {/* QA-A: the 8 rows + paging pushed the composer below the screen; the list scrolls inside a bounded panel. */}
+    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={styles.list}>
     {results.map(contact => <Pressable
       accessibilityLabel={locale.t("aiMention.selectContact", { name: locale.t.literal(contact.name), organization: locale.t.literal(contact.organization || locale.t("aiMention.companyMissing")), role: locale.t.literal(contact.role || locale.t("aiMention.roleMissing")) })}
       accessibilityRole="button"
@@ -58,6 +64,7 @@ export function ContactMentionPicker({ onSelect, selectedIds, scopeKey }: {
     {page && results.length === 0 ? <Text style={styles.empty}>{locale.t("aiMention.empty")}</Text> : null}
     {page?.hasMore && page.nextCursor ? <Pressable accessibilityRole="button" onPress={() => setPosition({ scope, cursor: page.nextCursor })}><Text style={styles.name}>{locale.t("contacts.nextPage")}</Text></Pressable> : null}
     {cursor ? <Pressable accessibilityRole="button" onPress={() => setPosition({ scope, cursor: null })}><Text style={styles.name}>{locale.t("contacts.firstPage")}</Text></Pressable> : null}
+    </ScrollView>
   </View>;
 }
 
@@ -65,6 +72,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   panel: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.xl, borderWidth: 1, gap: spacing.xs, padding: spacing.sm },
   title: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   input: { backgroundColor: colors.bg, borderColor: colors.line, borderRadius: radius.md, borderWidth: 1, color: colors.ink, minHeight: 44, paddingHorizontal: spacing.sm },
+  list: { maxHeight: 260 },
   row: { borderTopColor: colors.line, borderTopWidth: 1, minHeight: 52, paddingVertical: spacing.xs },
   name: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   detail: { color: colors.ink3Text, fontSize: 14, marginTop: 2 },

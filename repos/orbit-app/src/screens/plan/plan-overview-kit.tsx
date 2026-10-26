@@ -166,7 +166,9 @@ export function DiagCard({ plan, busy, onPremise, onReview, onManual, onAchieve,
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
-  const basis = [...plan.content.basis.map((item) => item.label), ...plan.content.allocationReasons].join(" · ");
+  // QA-A: one reason per line; landscape citations carry only their id as label (e.g. "L-101") and the
+  // template is already named under 该见的人的类型, so neither is listed here.
+  const basis = [...plan.content.basis.filter((item) => item.kind === "premise" || item.kind === "record").map((item) => item.label), ...plan.content.allocationReasons].map((line) => `• ${line}`).join("\n");
   const why = useKitWhy(basis || null);
   const status = !plan.quota.manualEditAvailable
     ? t("plan.overview.statusManual")
@@ -352,7 +354,7 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
         <UiText style={styles.pp}>{String(card.earned + card.overflow)}<UiText style={styles.ppSmall}>{` / ${type.allocation}`}</UiText></UiText>
       </View>
       <View style={styles.m3}>
-        {cell(card.candidates, card.candidates === 0 ? t("plan.types.notInNetwork") : t("plan.types.candidates"), true, card.candidates === 0)}
+        {cell(card.candidates, t("plan.types.candidates"), true, card.candidates === 0)}
         {cell(card.events, t("plan.types.events"), false, card.events === 0)}
         {cell(card.routes, t("plan.types.routes"), false, card.routes === 0)}
       </View>

@@ -40,12 +40,17 @@ test("cancel fails closed for non-confirmed or mismatched receipts and preserves
 test("cancel forwards the active screen abort signal to the appointment command", async () => {
   const controller = new AbortController();
   let received: AbortSignal | null | undefined;
+  let abortedInFlight: boolean | undefined;
   const client = createOrbitApiClient({ baseUrl: "https://orbit.example", fetchImpl: async (_input, init) => {
     received = init?.signal;
+    assert.equal(received?.aborted, false);
+    // The client composes the screen signal with its own timeout, so fetch gets a linked signal, not the same object.
+    controller.abort();
+    abortedInFlight = received?.aborted;
     return Response.json({ success: true, data: { ...meeting, status: "cancelled", version: 5, replayed: false } });
   } });
   await cancelConfirmedAppointment(client, meeting, "ios:cancel:key-3", controller.signal);
-  assert.equal(received, controller.signal);
+  assert.equal(abortedInFlight, true);
 });
 
 test("cancel accepts legacy omissions and additive optional proposal fields under exact optional typing", async () => {

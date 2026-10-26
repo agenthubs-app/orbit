@@ -28,7 +28,9 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 
 type TaskListMode = "open" | "completed";
-type FollowUpRow = { key: string; title: string; contactName: string; connectionId: string; dueAt: string | null };
+type FollowUpRow = { key: string; title: string; contactName: string; connectionId: string; taskId: string; contactId: string; dueAt: string | null };
+// QA-C2: open the follow-up that was tapped (the page otherwise has no task to pick).
+const followUpHref = (item: FollowUpRow) => `/tasks/relationship/${encodeURIComponent(item.connectionId)}?taskId=${encodeURIComponent(item.taskId)}&contactId=${encodeURIComponent(item.contactId)}` as Href;
 type TaskGroup = { id: string; label: string; items: TaskListRowView[]; followUps: FollowUpRow[]; tone: "danger" | "today" | "muted" | "completed"; fold?: boolean };
 
 function mutationKey(action: string) {
@@ -105,7 +107,7 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
   };
   const followUpRows = (bucket: string): FollowUpRow[] => mode === "open" ? (followUps.items ?? [])
     .filter(item => followUpBucket(item.dueAt) === bucket)
-    .map(item => ({ key: item.itemKey, title: item.titlePreview, contactName: item.contactNamePreview, connectionId: item.connectionId, dueAt: item.dueAt })) : [];
+    .map(item => ({ key: item.itemKey, title: item.titlePreview, contactName: item.contactNamePreview, connectionId: item.connectionId, taskId: item.taskId, contactId: item.contactId, dueAt: item.dueAt })) : [];
   const groups: TaskGroup[] = open && completed ? [
     ...(mode === "open" ? [
       { id: "overdue", label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), followUps: followUpRows("overdue"), tone: "danger" as const },
@@ -117,6 +119,9 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
       ? [{ id: "completed-fold", label: locale.t("tasks.groupCompleted"), items: foldedCompleted ?? [], followUps: [], tone: "completed" as const, fold: true }]
       : []),
   ].filter(group => group.items.length > 0 || group.followUps.length > 0 || group.fold) as TaskGroup[] : [];
+  // Follow-ups come one page at a time, ordered by date: when more remain, the group holding the last loaded one says "N+".
+  const lastFollowUp = followUps.items?.at(-1);
+  const moreIn = (group: TaskGroup) => mode === "open" && followUps.hasMore && Boolean(lastFollowUp) && group.followUps.some(row => row.key === lastFollowUp!.itemKey);
   const followUpDate = (dueAt: string | null) => dueAt && Number.isFinite(Date.parse(dueAt))
     ? new Date(dueAt).toLocaleDateString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", timeZone }) : "";
 
@@ -242,9 +247,9 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
             <Text style={[styles.groupTitle, styles.muted]}>{group.label}</Text>
             <Text style={styles.groupCount}>{source.counts?.completed ?? 0}</Text>
             <Icon name={completedExpanded ? "up" : "down"} size={16} color={colors.ink3Text} />
-          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length + group.followUps.length}`} style={styles.groupHeading}>
+          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length + group.followUps.length}${moreIn(group) ? "+" : ""}`} style={styles.groupHeading}>
             <Text style={[styles.groupTitle, group.tone === "danger" && styles.danger, group.tone === "today" && styles.todayCount]}>{group.label}</Text>
-            <Text style={styles.groupCount}>{group.items.length + group.followUps.length}</Text>
+            <Text style={styles.groupCount}>{group.items.length + group.followUps.length}{moreIn(group) ? "+" : ""}</Text>
           </View>}
           {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
           {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailable" : "tasks.unavailable")} message={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailableBody" : "tasks.readFailed")} /> : null}
@@ -287,11 +292,11 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
             </View>;
           })}{group.followUps.map((item, index) => { const due = group.id === "today" ? "" : followUpDate(item.dueAt); return <View key={item.key} style={styles.row}>
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: false }} accessibilityLabel={locale.t("tasks.completeNamed", { title: item.title })} hitSlop={8}
-              onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(item.connectionId)}` as Href)} style={styles.checkButton}>
+              onPress={() => router.push(followUpHref(item))} style={styles.checkButton}>
               <View style={styles.checkbox} />
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={[item.title, due, item.contactName].filter(Boolean).join("，")}
-              onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(item.connectionId)}` as Href)}
+              onPress={() => router.push(followUpHref(item))}
               style={({ pressed }) => [styles.rowBody, (group.items.length > 0 || index > 0) && styles.rowLine, pressed ? styles.pressed : null]}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               {due || item.contactName ? <Text numberOfLines={1} style={styles.rowDetail}>

@@ -42,3 +42,9 @@ test("device-local reminder choices cross DST using local calendar dates", () =>
   assert.equal(options.find(o => o.label === "明天 09:00")?.fireAt, "2026-03-08T13:00:00.000Z");
   assert.equal(reminderPlansToView({ reminders: [{ id: "r", fireAt: "2026-09-14T00:30:00Z", status: "scheduled" }] }, "America/Los_Angeles")[0]?.label, "9月13日 17:30");
 });
+
+test("QA-D: reminder choices follow the UI language", async () => {
+  const { createTranslator } = await import("../src/i18n/messages");
+  const options = reminderQuickOptions(new Date("2026-08-29T04:00:00.000Z"), "Asia/Tokyo", createTranslator("ja"));
+  assert.deepEqual(options.map((item) => item.label), ["1時間後", "今日 18:00", "明日 9:00"]);
+});

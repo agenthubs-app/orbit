@@ -19,7 +19,7 @@ export function MessageInboxList({ conversations, onOpen }: {
     {!visible.length ? <EmptyState title={t(query.trim() ? 'inbox.noSearchResults' : 'inbox.noMessages')}
       message={t(query.trim() ? 'inbox.searchHint' : 'inbox.messagesHint')} /> : null}
     {visible.map(conversation => <ListRow key={conversation.id} title={conversation.name}
-      subtitle={[conversation.subject, conversation.preview].filter(Boolean).join(' · ')}
+      subtitle={[conversation.subject !== conversation.name ? conversation.subject : '', conversation.preview].filter(Boolean).join(' · ')}
       accessibilityLabel={`${conversation.name}, ${conversation.preview}`}
       onPress={() => onOpen(conversation.id)}
       leading={<View accessibilityElementsHidden style={[styles.avatar, { backgroundColor: colors.surface2 }]}><UiText>{Array.from(conversation.name)[0] || '?'}</UiText></View>}

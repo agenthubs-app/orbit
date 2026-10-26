@@ -6,7 +6,7 @@ export const iorbitR21En = {
   addCard: "Add a business card for more specific answers", scan: "Scan",
   recent: "Recent conversations", all: "All", offline: "Offline", historyAt: "history",
   savedHistory: "Saved history", ask: "Ask iOrbit", askPlaceholder: "Ask iOrbit…",
-  send: "Send", undo: "Undo delete", manualSend: "You choose when to send.",
+  send: "Send", undo: "Undo delete", manualSend: "iOrbit only drafts. It never sends for you.",
   newConversation: "New conversation", searchHistory: "Search titles and messages", loading: "Loading conversations…",
   retry: "Retry", noMatch: "No matching conversations", noHistory: "No conversations yet",
   plan: "Make a plan", continuePlan: "Continue creating a plan", achieved: "Completed goal",

@@ -104,6 +104,8 @@ export interface PageCopyStatus {
   offline: boolean;
   /** Why: no connection, or the server answered 5xx. */
   reason: "unreachable" | "unavailable" | null;
+  /** QA-D: true when this is LF1's fresh copy, used as this visit's answer (no server read) — current enough to act on. */
+  fresh?: boolean;
 }
 
 export const PAGE_COPY_VARIANT_MAX_LENGTH = 200;

@@ -13,11 +13,13 @@ import { planTaskSegmentHref } from "../../api/compute/plan-href";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
-import { CountUp, RetryCard, Skeleton, UiText } from "../../components/ui";
+import { ConfirmDialog, CountUp, RetryCard, Skeleton, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
+import { newIdempotencyKey } from "./plan-model";
+import { InlineProblem, useFailureText } from "./plan-ui";
 import { dateParts } from "./plan-review-ui";
 import { KitButton, KitCard, KitEmo, KitHatch, KitSampleTag, kitText, useKitStyles, useKitWhy } from "./plan-kit";
 import { FlowFoot, FootFade, PlanChatFrame } from "./plan-flow-kit";
@@ -33,6 +35,11 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   const { t, language } = useOrbitLocale();
   const copy = useStandardCopy();
   const [load, setLoad] = useState<Load>({ kind: "loading" });
+  const toast = useToast();
+  const failureText = useFailureText();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteProblem, setDeleteProblem] = useState<string | null>(null);
   const sequence = useRef(0);
 
   const read = useCallback(async () => {
@@ -51,6 +58,18 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
   }, [auth.ready, read, server.ready]);
 
   const later = () => openMainTab(router, planTaskSegmentHref("app"));
+  // QA-A2: an achieved goal can be deleted too (e.g. one set by mistake); it leaves the 已完成 list.
+  const deleteGoal = async () => {
+    setDeleteOpen(false);
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteProblem(null);
+    const result = await api.deleteGoal(planId, newIdempotencyKey("goal-delete"));
+    setDeleting(false);
+    if (!result.ok) return setDeleteProblem(failureText(result.failure));
+    toast.success(t("plan.goals.deleted"));
+    later();
+  };
   return (
     <PlanChatFrame title={t("plan.done.title")} stage={null} onClose={later}>
       {load.kind === "loading" ? <Skeleton lines={6} /> : null}
@@ -75,6 +94,16 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
             <BigNumber label={t("plan.done.events")} value={load.done.events} />
           </View>
           {load.done.bestMove ? <BestMove move={load.done.bestMove} /> : null}
+          {/* QA-A2: with nothing recorded the page was three zeros; say why and what to do next time. */}
+          {!load.done.bestMove && load.done.total === 0 && load.done.talkedPeople === 0 && load.done.events === 0 ? (
+            <KitCard testID="done-empty" style={styles.empty}>
+              <View style={styles.row8}>
+                <KitEmo emoji="💬" tone="apricot" sm />
+                <UiText style={[styles.bestTitle, styles.grow]}>{t("plan.done.emptyTitle")}</UiText>
+              </View>
+              <UiText style={styles.emptyText}>{t("plan.done.emptyBody")}</UiText>
+            </KitCard>
+          ) : null}
           {load.done.skippedAreas.length ? (
             <View style={styles.skipped} testID="skipped-areas">
               <View style={styles.sw}><KitHatch line={colors.plum300} base={colors.plum100} /></View>
@@ -87,8 +116,19 @@ export function PlanDoneScreen({ planId }: { planId: string }) {
               <FootFade />
               <KitButton xl primary label={t("plan.done.decide")} onPress={decideNext} style={styles.xl} testID="next-decide" />
               <KitButton label={t("plan.done.later")} onPress={later} style={styles.ghost} />
+              {deleteProblem ? <InlineProblem text={deleteProblem} /> : null}
+              <KitButton danger label={t("plan.goals.delete")} onPress={() => setDeleteOpen(true)} style={styles.ghost} testID="done-delete" />
             </View>
           </FlowFoot>
+          <ConfirmDialog
+            visible={deleteOpen}
+            title={t("plan.goals.deleteTitle", { goal: load.done.goal })}
+            message={t("plan.goals.deleteBody")}
+            confirmLabel={t("plan.goals.deleteConfirm")}
+            destructive
+            onConfirm={() => void deleteGoal()}
+            onCancel={() => setDeleteOpen(false)}
+          />
         </>
       ) : null}
     </PlanChatFrame>
@@ -155,6 +195,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   best: { marginTop: -10 },
   bestTitle: { color: colors.ink, ...kitText(13.5, "700") },
   bestText: { color: colors.ink, ...kitText(14, "700", 1.55), marginTop: 8 },
+  empty: { marginTop: 4 },
+  emptyText: { color: colors.ink2, ...kitText(14, "400", 1.55), marginTop: 8 },
+  grow: { flex: 1 },
   skipped: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 24, backgroundColor: colors.surface2, marginTop: 4 },
   sw: { width: 22, height: 14, borderRadius: 3, overflow: "hidden" },
   skippedText: { flex: 1, color: colors.ink2, ...kitText(12.5, "400") },

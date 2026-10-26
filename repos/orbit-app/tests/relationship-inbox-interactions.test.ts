@@ -17,6 +17,7 @@ const fixture = `
 export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useConversationContactNames = () => () => undefined;
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 
@@ -110,7 +111,7 @@ test.before(async () => {
       plugin.onLoad({ filter: /.*/, namespace: "inbox-gesture" }, () => ({ contents: "const chain = new Proxy({}, { get: () => () => chain }); export const Gesture = { Pan: () => chain }; export const GestureDetector = ({children}) => children;", loader: "jsx" }));
       plugin.onResolve({ filter: /^react-native-reanimated$/ }, () => ({ path: "animated", namespace: "inbox-animated" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-animated" }, () => ({ contents: "import {View} from 'react-native-web'; export default {View}; export const useSharedValue = value => ({value}); export const useAnimatedStyle = fn => fn(); export const withTiming = value => value; export const runOnJS = fn => fn;", loader: "js", resolveDir: process.cwd() }));
-      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages|useConversationContactNames)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

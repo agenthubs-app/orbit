@@ -1017,7 +1017,7 @@ test("a new schedule starts at the next full hour for one hour and an untouched 
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
   await fill(p, "日程标题", "Default hour");
   assert.equal(await p.getByRole("button", { name: "添加", exact: true }).isDisabled(), true, "the dirty prompt disables the header action");
-  await press(p, "保留日程");
+  await press(p, "继续编辑"); // QA-D: the dirty prompt says 继续编辑 / 放弃修改
   await press(p, "添加");
   const write = (await writes(p))[0];
   assert.equal(write.method, "POST");

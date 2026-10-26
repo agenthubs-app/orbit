@@ -1,0 +1,5 @@
+{
+  "NSCameraUsageDescription": "用于拍摄名片和扫描二维码，把对方加入人脉。",
+  "NSPhotoLibraryUsageDescription": "用于选择名片照片，把对方加入人脉。",
+  "NSContactsUsageDescription": "读取你选中的联系人（姓名、公司、职位、电话、邮件），导入到人脉。"
+}

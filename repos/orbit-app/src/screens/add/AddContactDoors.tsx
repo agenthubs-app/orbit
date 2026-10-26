@@ -33,7 +33,7 @@ export function AddContactDoors({ draftCount, onOpen, onClose, header = true }: 
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const door = (key: DoorKey, emoji: string, tone: Tone, title: string, body: string, density?: ContactDensityLevel, main = false) => (
-    <UiPressable key={key} testID={`add-door-${key}`} accessibilityRole="button" accessibilityLabel={`${title}、${body}`} onPress={() => onOpen(ADD_DOOR_HREFS[key])}
+    <UiPressable key={key} testID={`add-door-${key}`} accessibilityRole="button" accessibilityLabel={`${title}, ${body}`} onPress={() => onOpen(ADD_DOOR_HREFS[key])}
       style={[styles.door, key === "drafts" ? styles.draftsDoor : null]}>
       {main ? <KitGradient id="add-door-main" from={colors.macApricot} to={colors.surface2} stop={0.75} /> : null}
       {key === "drafts" ? <View style={styles.draftsTile}><UiText style={styles.emoji}>{emoji}</UiText></View> : <MacTile emoji={emoji} tone={tone} />}
@@ -114,7 +114,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   otherText: { flex: 1, minWidth: 0 },
   otherTitle: { fontSize: 15, fontWeight: "700", color: colors.ink, lineHeight: 23 },
   otherBody: { fontSize: 12, fontWeight: "600", color: colors.ink3, lineHeight: 18 },
-  legend: { marginTop: 12, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 10 },
+  legend: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", columnGap: 14, rowGap: 4 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendText: { fontSize: 13, color: colors.ink3, lineHeight: 20 },
 }));

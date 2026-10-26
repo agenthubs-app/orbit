@@ -14,7 +14,7 @@ export const aiEntityDraft = {
   "aiEntityDraft.fieldSourceNote": "登録理由",
   "aiEntityDraft.fieldSources": "関連",
   "aiEntityDraft.footnotePending": "確認するまで保存されません。",
-  "aiEntityDraft.footnoteCreated": "保存して読み戻しました。",
+  "aiEntityDraft.footnoteCreated": "保存しました。",
   "aiEntityDraft.statePending": "確認待ち",
   "aiEntityDraft.stateCreated": "作成済み",
   "aiEntityDraft.stateCancelled": "キャンセル済み",

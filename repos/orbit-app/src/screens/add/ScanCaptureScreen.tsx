@@ -341,7 +341,7 @@ const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   c4: { right: 58, bottom: 22, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 7 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
   cardNext: { marginTop: 12 },
-  cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 },
+  cardH: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 },
   h3: { fontSize: 17, fontWeight: "800", lineHeight: 25, color: colors.ink },
   tip4: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tip: { width: "48.5%", flexGrow: 1, flexBasis: "45%", flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.surface2 },

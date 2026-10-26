@@ -116,6 +116,7 @@ export const inbox = {
   "inbox.replyDraft": "Reply draft",
   "inbox.replyBody": "Reply body",
   "inbox.replyPlaceholder": "Write a first version of what you want to say.",
+  "inbox.messagePlaceholder": "Message",
   "inbox.polishDraft": "Polish draft",
   "inbox.previewReply": "Preview reply",
   "inbox.createDraftFailed": "This draft could not be created.",

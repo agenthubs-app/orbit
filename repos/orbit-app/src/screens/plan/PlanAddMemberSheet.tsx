@@ -8,7 +8,7 @@ import { StyleSheet, TextInput, View } from "react-native";
 
 import type { PlanGoalKind, PlanIntakeMembersRequest, PlanMemberRelation } from "../../api/contract/plan-v2";
 import { PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
-import { BottomSheet, Button, Checkbox, FilterOption, SearchField, Segmented, Toggle, UiText } from "../../components/ui";
+import { BottomSheet, Button, Checkbox, FilterOption, SearchField, Segmented, Toggle, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
@@ -33,11 +33,13 @@ type Props = {
   kind: PlanGoalKind;
   gaps: readonly string[];
   existingContactIds: ReadonlySet<string>;
+  /** The user's own name: their own card is left out of the list. */
+  selfName?: string;
   onAdd: (body: PlanIntakeMembersRequest) => Promise<boolean>;
   adding: boolean;
 };
 
-export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingContactIds, onAdd, adding }: Props) {
+export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingContactIds, selfName = "", onAdd, adding }: Props) {
   const shared = usePlanStyles().styles;
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
@@ -85,7 +87,7 @@ export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingConta
     pending.current = null;
   }, [visible]);
 
-  const ranked = useMemo(() => rankCandidates(results ?? [], gaps, existingContactIds), [existingContactIds, gaps, results]);
+  const ranked = useMemo(() => rankCandidates(results ?? [], gaps, existingContactIds, selfName), [existingContactIds, gaps, results, selfName]);
 
   const submit = async (body: MembersBody) => {
     const fingerprint = JSON.stringify(body);
@@ -105,14 +107,19 @@ export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingConta
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("plan.member.sheetTitle")}>
       <View style={styles.sheet}>
-        <View>
-          <UiText accessibilityRole="header" style={shared.heading}>{t("plan.member.sheetTitle")}</UiText>
-          <UiText style={shared.caption}>{t("plan.member.sheetNote")}</UiText>
+        {/* QA-A: the network tab's add button sits in the header (the list can hold every contact). */}
+        <View style={shared.row}>
+          <View style={shared.grow}>
+            <UiText accessibilityRole="header" style={shared.heading}>{t("plan.member.sheetTitle")}</UiText>
+            <UiText style={shared.caption}>{t("plan.member.sheetNote")}</UiText>
+          </View>
+          {tab === "network" ? <Button disabled={selected.length === 0} label={t("plan.member.addCount", { count: selected.length })} loading={adding} onPress={() => void submit({ contactIds: selected, mode: "network" })} size="sm" variant="primary" /> : null}
         </View>
         <Segmented accessibilityLabel={t("plan.member.sheetTitle")} onChange={setTab} segments={[{ key: "network", label: t("plan.member.tabNetwork") }, { key: "manual", label: t("plan.member.tabManual") }]} value={tab} />
         {tab === "network" ? (
           <>
             <SearchField accessibilityLabel={t("plan.member.searchPlaceholder")} onChangeText={setQuery} placeholder={t("plan.member.searchPlaceholder")} value={query} />
+            {failed ? <InlineProblem text={t("plan.member.addFailed")} /> : null}
             <UiText style={shared.caption}>{t("plan.member.candidatesNote")}</UiText>
             {results === null ? <UiText style={shared.caption}>{t("plan.member.searching")}</UiText> : null}
             {searchFailed ? <InlineProblem text={t("plan.member.searchFailed")} /> : null}
@@ -120,12 +127,13 @@ export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingConta
             {ranked.map((candidate) => {
               const on = selected.includes(candidate.id);
               const full = !on && selected.length >= PLAN_NETWORK_ADD_LIMIT;
+              const toggle = (next: boolean) => { if (!full || !next) setSelected(next ? [...selected, candidate.id] : selected.filter((id) => id !== candidate.id)); };
               return (
-                <View key={candidate.id} style={[shared.row, styles.candidate]}>
+                <UiPressable key={candidate.id} accessible={false} onPress={() => toggle(!on)} style={[shared.row, styles.candidate]}>
                   <Checkbox
                     accessibilityLabel={candidate.name}
                     checked={on}
-                    onChange={(next) => { if (!full || !next) setSelected(next ? [...selected, candidate.id] : selected.filter((id) => id !== candidate.id)); }}
+                    onChange={toggle}
                   />
                   <View style={shared.grow}>
                     <UiText style={shared.title}>{candidate.name}</UiText>
@@ -133,11 +141,9 @@ export function PlanAddMemberSheet({ visible, onClose, kind, gaps, existingConta
                   </View>
                   {candidate.cofounder ? <Tag label={t("plan.relation.cofounder")} tone="accent" /> : null}
                   {candidate.fills[0] ? <Tag label={t("plan.member.fillsGap", { capability: capabilityLabel(candidate.fills[0], language) })} tone="gap" /> : null}
-                </View>
+                </UiPressable>
               );
             })}
-            {failed ? <InlineProblem text={t("plan.member.addFailed")} /> : null}
-            <Button block disabled={selected.length === 0} label={t("plan.member.addCount", { count: selected.length })} loading={adding} onPress={() => void submit({ contactIds: selected, mode: "network" })} variant="primary" />
           </>
         ) : (
           <>

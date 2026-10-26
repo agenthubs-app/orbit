@@ -136,7 +136,7 @@ function TodayWidget({ actorId, size, navigate, guide, onDataSettled }: { actorI
   const settled = () => { todo.refresh(); onDataSettled?.(); };
   if (!tasks.canonical) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{tasks.loading || !ready ? "…" : t("home.widgetUnavailable")}</UiText>{tasks.loading || !ready ? null : <Button label={t("home.readAgain")} onPress={tasks.refresh} variant="ghost" size="sm" />}<TodayQuestionCard onSettled={settled} /></View>;
   const count = (rows: readonly unknown[]) => `${rows.length}${summary.capped ? "+" : ""}`;
-  const suggestionRow = suggestions > 0 ? <LinkRow label={t("todo.suggestionsRow", { count: `${suggestions}${capped ? "+" : ""}` })} href="/task?seg=todo" navigate={navigate} quiet /> : null;
+  const suggestionRow = suggestions > 0 ? <LinkRow label={t("todo.suggestionsRow", { count: `${suggestions}${capped ? "+" : ""}` })} href="/task?seg=todo&entry=home" navigate={navigate} quiet /> : null;
   if (guide && summary.today.length === 0 && summary.overdue.length === 0 && !todaySchedule?.length) return <View><GuideSteps progress={guide} navigate={navigate} />{suggestionRow}<TodayQuestionCard onSettled={settled} /></View>;
   const rows = (summary.today.length ? summary.today : summary.overdue).slice(0, size === "m" ? 2 : 1);
   return <View>

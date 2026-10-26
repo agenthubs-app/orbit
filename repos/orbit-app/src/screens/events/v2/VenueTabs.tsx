@@ -38,9 +38,12 @@ export function CheckInView({ data, t }: { data: EventVenueResponse; t: JourneyT
   const reception = check?.receptionNumber ? t("vReception", { n: check.receptionNumber }) : "";
   return (
     <View testID="events-venue-checkin">
-      <View style={{ marginBottom: 14 }}>
-        <Segmented<"qr" | "name"> accessibilityLabel={t("checkIn")} value={mode} onChange={setMode} segments={[{ key: "qr", label: t("vByQr") }, { key: "name", label: t("vByName") }]} />
-      </View>
+      {/* No QR from the host yet: only the name card (no 扫码 tab that shows no code, no 扫不出 fallback card). */}
+      {qr ? (
+        <View style={{ marginBottom: 14 }}>
+          <Segmented<"qr" | "name"> accessibilityLabel={t("checkIn")} value={mode} onChange={setMode} segments={[{ key: "qr", label: t("vByQr") }, { key: "name", label: t("vByName") }]} />
+        </View>
+      ) : null}
       <View style={[styles.card, v.qrCard]}>
         {mode === "qr" && qr ? (
           <View style={v.qrFrame}>
@@ -53,12 +56,12 @@ export function CheckInView({ data, t }: { data: EventVenueResponse; t: JourneyT
         <UiText style={v.qrTitle}>{t("vShowQr")}</UiText>
         <UiText style={[styles.lbl, { textAlign: "center" }]}>{reception}</UiText>
       </View>
-      <View style={[styles.card, styles.flat, styles.gap]}>
+      {qr ? <View style={[styles.card, styles.flat, styles.gap]}>
         <View style={styles.row}>
           <View style={[styles.emoSm, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoSmText}>🙋</UiText></View>
           <View style={styles.grow}><UiText style={styles.title13}>{t("vQrFail")}</UiText><UiText style={styles.lbl}>{t("vSayName", { name: check?.displayName ?? "" })}</UiText></View>
         </View>
-      </View>
+      </View> : null}
       <View style={[styles.card, styles.gap]}>
         <UiText style={[styles.lbl, { marginBottom: 10 }]}>{t("vAfterCheckin")}</UiText>
         <View style={v.grid3}>
@@ -170,7 +173,8 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
   return (
     <View testID="events-venue-recs">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("recsTitle")}</UiText><UiText style={styles.lbl}>{t("vRecsHint", { n: Math.max(recs.length, data.recommendations.length) })}</UiText></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentOffset={{ x: SHELL_GUTTER, y: 0 }} snapToOffsets={recs.map((_, index) => SHELL_GUTTER + index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
+      {recs.length ? null : <View style={styles.card}><UiText style={[styles.sub, { color: colors.ink3 }]}>{t("vRecsEmpty")}</UiText></View>}
+      {recs.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentOffset={{ x: SHELL_GUTTER, y: 0 }} snapToOffsets={recs.map((_, index) => SHELL_GUTTER + index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
         {recs.map((person) => {
           const near = nearNext(person, data);
           return (
@@ -200,7 +204,7 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
             </View>
           );
         })}
-      </ScrollView>
+      </ScrollView> : null}
       {recs.length > 1 ? <View style={v.dots}>{recs.map((person, index) => <View key={person.attendeeId} style={[v.dot, index === page ? v.dotOn : null]} />)}</View> : null}
       {data.nextOrder.length ? (
         <View style={[styles.card, v.orderCard]}>
@@ -251,6 +255,7 @@ export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: Eve
             ))}
           </View>
           <View style={[styles.card, v.listCard]}>
+            {shown.length ? null : <UiText style={[styles.sub, { color: colors.ink3, paddingVertical: 12 }]}>{t("noPeopleHere")}</UiText>}
             {shown.map((person, index) => (
               <UiPressable key={person.attendeeId} accessibilityRole="button" accessibilityLabel={person.name} onPress={() => onOpen(person)} style={styles.li} testID={`events-venue-person-${person.attendeeId}`}>
                 {index ? <View style={styles.liLine} /> : null}
@@ -389,6 +394,7 @@ export function AgendaTab({ data, t }: { data: EventVenueResponse; t: JourneyT }
   return (
     <View testID="events-venue-agenda">
       <View style={styles.card}>
+        {data.agenda.length ? null : <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("noAgenda")}</UiText>}
         {data.agenda.map((item, index) => {
           const done = nowIndex >= 0 && index < nowIndex;
           const now = index === nowIndex;

@@ -1,5 +1,6 @@
 // R17 主催（App）：画面用的纯函数（日期、行内一句、颜色、路由）。没有 React，测试直接调。与 Web host-model.ts 同口径。
 import type { HostCenterEventRow, HostCenterSummary, HostEventStatus } from "../../api/contract/host-events";
+import type { HostPeopleBucket } from "../../api/contract/host-console";
 
 export type HostT = (key: string, values?: Record<string, string | number>) => string;
 export type HostLanguage = "ja" | "zh" | "en";
@@ -132,3 +133,9 @@ export function hostEventsRowSub(summary: HostCenterSummary | null, t: HostT): s
   return summary.activeCount > 0 ? t("appRowCountActive", { a: summary.activeCount, n: summary.eventCount }) : t("appRowCount", { n: summary.eventCount });
 }
 
+
+/** The people list opens on the asked tab when it has people; otherwise on the first tab that does (not an empty 待审核 when everyone is approved). */
+export function openingPeopleBucket(counts: Readonly<Record<HostPeopleBucket, number>>, current: HostPeopleBucket): HostPeopleBucket {
+  if (counts[current] > 0) return current;
+  return (["pending", "approved", "waitlisted", "rejected"] as const).find((bucket) => counts[bucket] > 0) ?? current;
+}

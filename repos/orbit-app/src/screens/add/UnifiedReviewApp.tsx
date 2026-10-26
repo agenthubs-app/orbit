@@ -35,7 +35,9 @@ export interface AppReviewGroupRow {
   open: boolean;
 }
 
-export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, onRowMenu, toggleLabel, mergeLabel, separateLabel, skipLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, reviewAttention, busy, children }: {
+export function UnifiedReviewApp({ allClear, tiles, active, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, onRowMenu, toggleLabel, mergeLabel, separateLabel, skipLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, reviewAttention, busy, children }: {
+  /** QA-C: shown when there is nothing to check (no duplicates, no groups) so the page is not blank. */
+  allClear?: string;
   tiles: readonly { key: ReviewTileKey; label: string; count: number }[];
   active: ReviewTileKey;
   duplicateTitle: string;
@@ -73,12 +75,19 @@ export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly
     <View testID="add-batch-review">
       <View style={styles.bq}>
         {tiles.map((tile) => (
-          <View key={tile.key} accessible accessibilityLabel={`${tile.label} ${tile.count}`} style={[styles.bqTile, active === tile.key && styles.bqOn]} testID={`add-tile-${tile.key}`}>
+          <View key={tile.key} accessible accessibilityLabel={`${tile.label} ${tile.count}`} style={[styles.bqTile, active === tile.key && tile.count > 0 && styles.bqOn]} testID={`add-tile-${tile.key}`}>
             <UiText numberOfLines={1} style={[styles.lbl, styles.bqLbl]}>{tile.label}</UiText>
             <UiText style={styles.bqNum}>{tile.count}</UiText>
           </View>
         ))}
       </View>
+
+      {allClear && !duplicates.length && !autoMergedLabel && !groups.length ? (
+        <View style={[styles.card, styles.cardTop, styles.ok]} testID="add-review-all-clear">
+          <View style={styles.okMark}><Icon name="check" size={16} color={colors.surface} /></View>
+          <UiText style={[styles.okTitle, styles.grow]}>{allClear}</UiText>
+        </View>
+      ) : null}
 
       {duplicates.length || autoMergedLabel ? (
         <View style={[styles.card, styles.cardTop]} testID="add-section-duplicate">

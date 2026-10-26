@@ -91,7 +91,10 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
   useEffect(() => { if (!baseline?.timeZone && clean && !saving && editZone !== timeZone) { setEditZone(timeZone); setDraft(personalScheduleDraft(baseline, timeZone)); } }, [timeZone, editZone, clean, saving, baseline]);
   const discard = () => { const zone = latest?.timeZone ?? timeZone; setBaseline(latest); setEditZone(zone); setDraft(personalScheduleDraft(latest, zone)); setError(""); };
   async function save(remove = false) {
-    if (!ready || !scope.active || current.current !== scope || scope.busy || stale || (id && !baseline) || writeBlocked) return;
+    if (!ready || !scope.active || current.current !== scope || scope.busy || (id && !baseline)) return;
+    // QA-D: these used to return silently, so 保存 / 削除を確認 looked dead.
+    if (stale) { setError(locale.t("schedule.newVersion")); return; }
+    if (writeBlocked) { setError(locale.t(repeatBlocked ? "schedule.repeatNeedsNetwork" : "sync.needsNetwork")); return; }
     if (baseline?.recurrence && !mutationScope) { setError(locale.t("personal60.scopeRequired")); return; }
     if (!remove && !canSave) { setError(locale.t("schedule.timezoneUnavailable")); return; }
     const change = remove ? { kind: "ready" as const, fields: {} } : buildPersonalScheduleChange(baseline, draft, editZone);
@@ -150,6 +153,9 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
     {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} queues="schedule" /> : null}
     {repeatBlocked ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.repeatNeedsNetwork")}</Text> : null}
     {loading && !baseline ? <LoadingState /> : null}
+    {/* QA-D: answers to 保存 and × show here at the top; at the end of the long form they were out of sight. */}
+    {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{message ? <Text style={styles.hint}>{message}</Text> : null}
+    {confirmExit ? <View><Text accessibilityRole="alert" style={styles.hint}>{locale.t("personal53.unsaved")}</Text><Pressable accessibilityRole="button" disabled={saving} onPress={() => setConfirmExit(false)} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("schedule.keepEditing")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.cancel")} disabled={saving} onPress={exit} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.discardChanges")}</Text></Pressable></View> : null}
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}
     {stale ? <View><Text accessibilityRole="alert" style={styles.error}>{locale.t("schedule.newVersion")}</Text><Pressable accessibilityRole="button" onPress={discard} style={styles.secondary}><Text>{locale.t("schedule.discardDraft")}</Text></Pressable></View> : null}
     {(!id || baseline) && ready ? <View style={styles.form}>
@@ -169,9 +175,8 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
       <View style={styles.card}><PersonalScheduleRules draft={draft} zone={editZone} disabled={saving} reminderElapsed={reminderElapsed} onChange={next => { if (!scope.busy && scope.active) setDraft(next); }} {...(baseline?.recurrence ? { scope: { selected: mutationScope, isOccurrence: !!baseline.seriesId, onSelect: (value: "occurrence" | "series") => { if (scope.busy || !scope.active) return; if (value === "series" && baseline.seriesId) { if (!clean) { setError(locale.t("personal60.chooseBeforeEditing")); return; } router.replace(`/schedule/personal/${encodeURIComponent(baseline.seriesId)}/edit` as Href); } else { setMutationScope(value); setError(""); } } } } : {})} /></View>
       {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeBlocked} onPress={() => setConfirmDelete(true)} style={styles.deleteCard}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
       {confirmDelete ? <View><Text style={styles.hint}>{locale.t("schedule.deleteHint")}</Text><Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => void save(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.confirmDelete")}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.secondary}><Text>{locale.t("schedule.keep")}</Text></Pressable></View> : null}
+      {confirmDelete && error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </View> : null}
-    {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{message ? <Text style={styles.hint}>{message}</Text> : null}
-    {confirmExit ? <View><Text accessibilityRole="alert" style={styles.hint}>{locale.t("personal53.unsaved")}</Text><Pressable accessibilityRole="button" disabled={saving} onPress={() => setConfirmExit(false)} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("schedule.keep")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.cancel")} disabled={saving} onPress={exit} style={styles.secondary}><Text style={styles.error}>{locale.t("personal53.cancel")}</Text></Pressable></View> : null}
     <View style={{ height: 24 + insets.bottom }} />
   </AppScreen></KeyboardAvoidingView>;
 }

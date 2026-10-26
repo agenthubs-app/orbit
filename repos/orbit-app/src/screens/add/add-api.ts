@@ -23,7 +23,7 @@ import type {
   ManualContactOrganizationSuggestionsResult,
   ManualContactUndoResult,
 } from "../../api/contract/manual-contact";
-import { contactDraftConfirmPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { contactDraftConfirmPath, contactDraftDiscardPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { ingestConfirmationResponseSchema, ingestFinalizeResponseSchema, ingestItemActionResponseSchema } from "../../api/schema/business-card-batch";
 import { readIngestContactCandidate, readIngestDuplicateMatches } from "../../api/schema/business-card-candidate";
 import {
@@ -81,6 +81,8 @@ export type CardConfirmOutcome =
 export interface AddApi {
   listDrafts(): Promise<AddResult<ContactDraftRow[]>>;
   confirmDraft(draftId: string): Promise<AddResult<{ contactId: string | null }>>;
+  /** QA-C2: 破棄 on the server; `stored: false` when this server has no discard yet (the screen then hides it on this device). */
+  discardDraft(draftId: string): Promise<AddResult<{ stored: boolean }>>;
   importAttendees(eventId: string): Promise<AddResult<{ count: number }>>;
   listEvents(): Promise<{ id?: unknown; title?: unknown; startsAt?: unknown }[]>;
   saveManual(input: ManualContactCreateInput): Promise<AddResult<ManualContactCreateResult>>;
@@ -115,6 +117,14 @@ export function createAddApi(client: OrbitApiClient): AddApi {
     async confirmDraft(draftId) {
       const result = await client.post<unknown>(contactDraftConfirmPath(draftId), { body: {} });
       return isHttpSuccess(result) ? { data: { contactId: confirmedDraftContactId(result.data) }, ok: true } : fail(addFailureOf(result));
+    },
+    async discardDraft(draftId) {
+      const result = await client.post<unknown>(contactDraftDiscardPath(draftId), { body: {} });
+      if (isHttpSuccess(result)) return { data: { stored: true }, ok: true };
+      // 404 / a page instead of an API answer: an older server without the discard route, or the draft is already gone
+      // (set aside on another device). Either way it is hidden here.
+      if (result.status === 404 || (!result.success && result.error.code === "ORBIT_APP_NON_JSON_RESPONSE")) return { data: { stored: false }, ok: true };
+      return fail(addFailureOf(result));
     },
     async importAttendees(eventId) {
       const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactDraftEventAttendeesImport, { body: { eventId } });

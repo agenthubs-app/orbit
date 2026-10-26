@@ -94,4 +94,7 @@ export const schedule = {
   "schedule.earlierWeek": "本周较早日期",
   "schedule.empty": "暂无安排",
   "schedule.itemCount": "{count} 项",
+  "schedule.deleteAsk": "删除这个日程？",
+  "schedule.discardChanges": "放弃修改",
+  "schedule.keepEditing": "继续编辑",
 } as const;

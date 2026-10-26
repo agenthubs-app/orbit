@@ -126,7 +126,7 @@ export function usePageCopyResource<TData>(
   if (skipNetwork) {
     if (freshDecision === null || !current.copy) return { kind: "loading", refresh, refreshing: false, copy: null };
     const shown = resultToRouteState({ success: true, data: current.copy.data as TData, meta: META, status: 200 }, isEmpty);
-    return { ...shown, refresh, refreshing: false, copy: { lastSyncedAt: current.copy.syncedAt, offline: false, reason: null } };
+    return { ...shown, refresh, refreshing: false, copy: { lastSyncedAt: current.copy.syncedAt, offline: false, reason: null, fresh: true } };
   }
   if (!shouldRetainPageCopy(network, options.dropCopyOnErrorCodes)) return { ...network, copy: null };
   const fromCopy = current.copy

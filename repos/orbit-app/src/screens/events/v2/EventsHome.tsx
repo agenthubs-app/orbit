@@ -14,14 +14,14 @@ import type { MyEventItem } from "../../../api/contract/events-mine";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { TabPageBar } from "../../../components/TabPageBar";
-import { Icon, IconButton, UiPressable, UiText } from "../../../components/ui";
+import { ConfirmDialog, Icon, IconButton, SwipeRow, UiPressable, UiText, useToast } from "../../../components/ui";
 import { SwipeSegments } from "../../../components/ui/Segmented";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { DiscoverPage, discoverQueryFromParams } from "./DiscoverPage";
-import { eventAssessmentListSchema } from "./events-api";
+import { eventAssessmentListSchema, useEventsApi } from "./events-api";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
 import { EventsOfflineNotice } from "./EventsOfflineNotice";
 import { usePageCopyResource } from "../../../hooks/usePageCopyResource";
@@ -64,8 +64,25 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
   // 服务端时钟（events-mine `asOf`）：今夜 / 「10月」与参加予定的划分一致（设计稿 fixture 固定时钟）。
   const now = useMemo(() => { const asOf = up?.asOf ? new Date(up.asOf) : null; return asOf && Number.isFinite(asOf.getTime()) ? asOf : new Date(); }, [up]);
   const offlineCopy = [listCopy.copy, upCopy.copy, pastCopy.copy].find((copy) => copy?.offline) ?? null;
+  // Delete from the assessment history (swipe left → 删除, confirmed): hidden at once, put back if the server refuses.
+  const eventsApi = useEventsApi();
+  const toast = useToast();
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const deleteAssessment = async (id: string) => {
+    setConfirmDelete(null);
+    setRemoved((current) => new Set([...current, id]));
+    const result = await eventsApi.remove(id);
+    if (!result.ok) {
+      setRemoved((current) => { const next = new Set(current); next.delete(id); return next; });
+      toast.error(t("eventsV2.genericError"));
+      return;
+    }
+    toast.success(t("eventsV2.assessmentDeleted"));
+    listCopy.refresh();
+  };
 
-  const ordered = useMemo(() => orderAssessed((items ?? []).filter((item) => item.status === "ready" || item.status === "needs_input" || item.status === "reading")), [items]);
+  const ordered = useMemo(() => orderAssessed((items ?? []).filter((item) => !removed.has(item.id) && (item.status === "ready" || item.status === "needs_input" || item.status === "reading"))), [items, removed]);
   const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
   const month = monthOf(now);
   // app.html #13 空：判定说明；b12 画板 308 有评估但没参加予定：「参加予定はまだありません」。
@@ -93,16 +110,19 @@ export function EventsHome({ scopeKey: _scopeKey }: { scopeKey?: string } = {}) 
         onChange={setTab}
         accessibilityLabel={t("eventsV2.tabsLabel")}
         renderPage={(key) => key === "assess"
-          ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} />
+          ? <AssessPage items={ordered} upcoming={upcoming} empty={empty} now={now} language={language} onDelete={setConfirmDelete} />
           : key === "going" ? <GoingPage upcoming={upcoming} past={past} now={now} language={language} onDiscover={() => setTab("discover")} />
             : <DiscoverPage onSubtitle={setDiscoverSubtitle} initialQuery={discoverQuery} initialSearch={typeof params.q === "string" ? params.q : ""} openFilters={params.filters === "1"} />}
       />
       <TabPageBar tab="events" />
+      <ConfirmDialog visible={confirmDelete !== null} destructive title={t("eventsV2.deleteAssessmentTitle")} message={t("eventsV2.deleteAssessmentBody")}
+        confirmLabel={t("eventsV2.deleteAssessment")} cancelLabel={t("eventsV2.keepAssessment")}
+        onConfirm={() => { if (confirmDelete) void deleteAssessment(confirmDelete); }} onCancel={() => setConfirmDelete(null)} />
     </SafeAreaView>
   );
 }
 
-function AssessPage({ items, upcoming, empty, now, language }: { items: EventAssessmentContract[]; upcoming: MyEventItem[]; empty: boolean; now: Date; language: string }) {
+function AssessPage({ items, upcoming, empty, now, language, onDelete }: { items: EventAssessmentContract[]; upcoming: MyEventItem[]; empty: boolean; now: Date; language: string; onDelete: (id: string) => void }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const router = useRouter();
@@ -154,18 +174,21 @@ function AssessPage({ items, upcoming, empty, now, language }: { items: EventAss
         </View>
       ) : null}
       {!empty && items.length ? (
-        <View style={[styles.card, { marginTop: 18, paddingHorizontal: 16, paddingVertical: 8 }]}>
-          <View style={[styles.cardH, { marginBottom: 0, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.assessedTitle")}</UiText><UiText style={styles.more}>{t("eventsV2.byScore")}</UiText></View>
+        // Rows sit in SwipeRow (its face pads 14), so the card pads 2 and the header 14: the same 16 as before.
+        <View style={[styles.card, { marginTop: 18, paddingHorizontal: 2, paddingVertical: 8 }]}>
+          <View style={[styles.cardH, { marginBottom: 0, marginHorizontal: 14, marginTop: 8 }]}><UiText style={styles.h3}>{t("eventsV2.assessedTitle")}</UiText><UiText style={styles.more}>{t("eventsV2.byScore")}</UiText></View>
           {items.map((item, index) => (
-            <UiPressable key={item.id} accessibilityRole="button" accessibilityLabel={item.facts.title ?? ""} onPress={() => router.push(`/events/assessments/${encodeURIComponent(item.id)}` as Href)} style={styles.li} testID={`events-assessed-${item.id}`}>
+            <SwipeRow key={item.id} actions={[{ icon: "trash", key: "delete", label: t("eventsV2.deleteAssessment"), onPress: () => onDelete(item.id), tone: "coral" }]}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={item.facts.title || item.sourceLabel || (item.sourceKind === "poster" ? t("eventsV2.posterImage") : "")} onPress={() => router.push(`/events/assessments/${encodeURIComponent(item.id)}` as Href)} style={styles.li} testID={`events-assessed-${item.id}`}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               <ScoreRing size={44} stroke={5} value={item.status === "reading" ? 0 : item.total} color={colors[ringColor(item.total)]} label={item.status === "reading" ? "…" : String(item.total)} fontSize={12} />
               <View style={styles.meta}>
-                <UiText style={styles.metaTitle} numberOfLines={1}>{item.facts.title ?? item.sourceLabel ?? ""}</UiText>
+                <UiText style={styles.metaTitle} numberOfLines={2}>{item.facts.title || item.sourceLabel || (item.sourceKind === "poster" ? t("eventsV2.posterImage") : "")}</UiText>
                 <UiText style={styles.metaSub} numberOfLines={1}>{appCardLine(item, language, t("eventsV2.free"))}</UiText>
               </View>
               <Chip label={item.userDecision === "dismissed" ? t("eventsV2.dismissed") : t(`eventsV2.${verdictKey(item.verdict)}`)} tone={item.userDecision === "dismissed" ? "neutral" : verdictTone(item.verdict)} />
             </UiPressable>
+            </SwipeRow>
           ))}
         </View>
       ) : null}
@@ -266,7 +289,12 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
   return (
     <ScrollView contentContainerStyle={styles.scroll} testID="events-going">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("eventsV2.upcoming")}</UiText><UiText style={styles.more}>{t("eventsV2.countItems", { n: coming.length })}</UiText></View>
-      {coming.length === 0 ? <UiText style={[styles.lbl, { marginBottom: 12 }]} testID="events-going-upcoming-empty">{t("eventsV2.upcomingEmpty")}</UiText> : null}
+      {coming.length === 0 ? (
+        <View style={[styles.row, { gap: 10, marginBottom: 12 }]}>
+          <UiText style={[styles.lbl, { flexShrink: 1 }]} testID="events-going-upcoming-empty">{t("eventsV2.upcomingEmpty")}</UiText>
+          <UiPressable accessibilityRole="button" accessibilityLabel={t("eventsV2.searchEvents")} onPress={onDiscover} style={styles.btnSm} testID="events-going-find"><UiText style={styles.btnSmText}>{t("eventsV2.searchEvents")}</UiText></UiPressable>
+        </View>
+      ) : null}
       {coming.map((item) => <GoingCard key={item.eventId} item={item} now={now} language={language} style={{ marginBottom: 12 }} gradientKey="list" />)}
       {past.length ? (
         <View style={[styles.card, { marginTop: 6, paddingHorizontal: 16, paddingVertical: 8 }]}>
@@ -275,7 +303,7 @@ function GoingPage({ upcoming, past, now, language, onDiscover }: { upcoming: My
             <UiPressable key={item.eventId} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => router.push(item.href as Href)} style={styles.li}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               <View style={[styles.emo, styles.emoSm, { backgroundColor: item.status === "attended" ? colors.macTeal : colors.macLav }]}><UiText style={styles.emoTextSm}>{item.emoji || eventEmoji({ title: item.title })}</UiText></View>
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{item.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[appEventWhen(item.startsAt, language), item.venue].filter(Boolean).join(" · ")}</UiText></View>
               {item.status === "attended" || item.status === "cancelled" ? <Chip label={item.status === "attended" ? t("eventsV2.attended") : t("eventsV2.statusCancelled")} tone={item.status === "attended" ? "teal" : "neutral"} /> : null}
             </UiPressable>
           ))}

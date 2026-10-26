@@ -83,7 +83,7 @@ export function CheckInBody(props: CheckInBodyProps) {
               <Avatar initial={row.initial} tone={avatarTone(row.name)} size="sm" />
               <View style={styles.grow}>
                 <UiText style={k.metaB} numberOfLines={1}>{row.name}</UiText>
-                <UiText style={k.metaS} numberOfLines={1}>{`${clock(row.at)} · ${row.queued ? t("appSendFailed") : row.org ?? ""}`}</UiText>
+                <UiText style={k.metaS} numberOfLines={1}>{[clock(row.at), row.queued ? t("appSendFailed") : row.org].filter(Boolean).join(" · ")}</UiText>
               </View>
               {row.queued && item ? <BtnSm label={t("kRetry")} icon="refresh" onPress={() => props.onRetry(item)} testID={`host-retry-${row.participantId}`} /> : row.table ? <View><Chip label={row.table} tone="lav" /></View> : null}
             </View>

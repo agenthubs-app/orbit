@@ -38,10 +38,12 @@ export function prepWhen(startsAt: string, now: string, t: JourneyT): string {
   return p ? `${p.month}/${p.day} ${time}` : time;
 }
 /** 「3:12」（时:分），开始后 0。 */
-export function countdown(startsAt: string, nowMs: number): { text: string; hours: boolean } {
+export function countdown(startsAt: string, nowMs: number): { text: string; hours: boolean; days?: boolean } {
   const left = Math.max(0, Date.parse(startsAt) - nowMs);
   const h = Math.floor(left / 3_600_000);
   const m = Math.floor((left % 3_600_000) / 60_000);
+  // 两天以上按天数（「8 天」而不是「194:53 小时」）。
+  if (h >= 48) return { days: true, hours: false, text: String(Math.round(h / 24)) };
   return h > 0 ? { hours: true, text: `${h}:${String(m).padStart(2, "0")}` } : { hours: false, text: String(m) };
 }
 
@@ -133,7 +135,7 @@ export function PrepPage() {
         <View style={[styles.row, { alignItems: "stretch", gap: 14 }]}>
           <View style={styles.grow}>
             <UiText style={styles.lbl}>{t("untilStart")}</UiText>
-            <UiText style={styles.big}>{until.text}<UiText style={styles.bigUnit}>{` ${until.hours ? t("hoursUnit") : t("minutesUnit")}`}</UiText></UiText>
+            <UiText style={styles.big}>{until.text}<UiText style={styles.bigUnit}>{` ${until.days ? t("daysUnit") : until.hours ? t("hoursUnit") : t("minutesUnit")}`}</UiText></UiText>
             <UiText style={[styles.lbl, { marginTop: 6 }]}>{[data.venue, data.access].filter(Boolean).join("\n")}</UiText>
           </View>
           <View style={styles.map}>
@@ -155,17 +157,18 @@ export function PrepPage() {
       {low ? (
         <UiPressable accessibilityRole="button" accessibilityLabel={t("cardsInputLabel")} onPress={() => setEditingCards(true)} style={styles.warnbar} testID="events-prep-cards">
           <View style={styles.warnEmojiBox}><UiText style={styles.warnEmoji}>📇</UiText></View>
-          <UiText style={[styles.warnText, styles.grow]}>{`${t("cardsWarnA")} `}<UiText style={styles.warnB}>{t("cardsN", { n: cards ?? 0 })}</UiText>{t("cardsWarnB", { p: data.people.length })}{" "}<UiText style={styles.warnB}>{t("cardsN", { n: recommended })}</UiText>{` ${t("cardsWarnC")}`}</UiText>
+          <UiText style={[styles.warnText, styles.grow]}>{`${t("cardsWarnA")} `}<UiText style={styles.warnB}>{t("cardsN", { n: cards ?? 0 })}</UiText>{data.people.length ? t("cardsWarnB", { p: data.people.length }) : t("cardsWarnBNoPeople")}{" "}<UiText style={styles.warnB}>{t("cardsN", { n: recommended })}</UiText>{` ${t("cardsWarnC")}`}</UiText>
         </UiPressable>
       ) : null}
       {editingCards || cards === null ? (
         <View style={[styles.card, styles.gap, styles.cardsInput]}>
           <UiText style={styles.lbl}>{t("cardsInputLabel")}</UiText>
-          <TextInput keyboardType="number-pad" defaultValue={cards === null ? "" : String(cards)} autoFocus={editingCards} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={(event) => saveCards(event.nativeEvent.text)} onEndEditing={(event) => { if (editingCards) saveCards(event.nativeEvent.text); }} accessibilityLabel={t("cardsInputLabel")} style={styles.cardsField} />
+          <TextInput keyboardType="number-pad" defaultValue={cards === null ? "" : String(cards)} autoFocus={editingCards} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={(event) => saveCards(event.nativeEvent.text)} onEndEditing={(event) => { if (editingCards) saveCards(event.nativeEvent.text); }} accessibilityLabel={t("cardsInputLabel")} placeholder={t("cardsPlaceholder")} placeholderTextColor={colors.ink3} style={styles.cardsField} />
         </View>
       ) : null}
       <View style={[styles.card, styles.gap]} testID="events-prep-people">
-        <View style={styles.cardH}><UiText style={styles.h3}>{t("meetListTitle", { n: data.people.length })}</UiText><UiText style={styles.lbl}>{t("meetListHint").split(" · ")[0]}</UiText></View>
+        <View style={styles.cardH}><UiText style={styles.h3}>{t("meetListTitle", { n: data.people.length })}</UiText>{data.people.length > 1 ? <UiText style={styles.lbl}>{t("meetListHint").split(" · ")[0]}</UiText> : null}</View>
+        {data.people.length === 0 ? <UiText style={styles.lbl}>{t("prepPeopleEmpty")}</UiText> : null}
         {data.people.map((person, index) => {
           const open = openPerson === index;
           const [bg, ink] = tone(AV_TONES[index % AV_TONES.length]!);

@@ -7,13 +7,14 @@ import type { AiSessionSummaryItemContract } from "../../api/contract/ai-session
 import type { ContactSyncPayload } from "../../api/contract/contact-local-directory";
 import type { GlobalSearchResponse, GlobalSearchType } from "../../api/contract/global-search";
 import { localContactDirectory } from "../../api/schema/contact-local-directory";
-import { buildGlobalSearch, conversationHitsFromSessions, globalSearchExamples, type IndustryCount, type PersonCandidate, type SearchLanguage } from "../../api/compute/global-search";
+import { buildGlobalSearch, conversationHitsFromSessions, conversationSubtitle, globalSearchExamples, type IndustryCount, type PersonCandidate, type SearchLanguage } from "../../api/compute/global-search";
 import { splitSearchTerms } from "../../api/compute/search-normalize";
 import { liteCanExpand, liteRecallWords } from "../../api/compute/search-synonyms";
 import type { SearchFilter } from "./search-model";
 
 /** The server's limits (features/search/global/handlers.ts, live.ts): terms searched, lite's extra words, people per term. */
 const MAX_TERMS = 4;
+const SERVER_JA_SUFFIX = conversationSubtitle("", "ja");
 const LITE_MAX_RECALL_WORDS = 12;
 const PEOPLE_RECALL = 50;
 const TYPES: readonly GlobalSearchType[] = ["people", "events", "conversations"];
@@ -77,8 +78,14 @@ export function localGlobalSearch(input: LocalGlobalSearchInput): GlobalSearchRe
     peopleTotal = lists.length === 1 && !semantic ? localContactDirectory(input.contacts, { query: terms[0]! }).length : people.length;
   }
   const conversations = !wanted.includes("conversations") ? null
-    : input.server ? input.server.conversations?.items ?? null
-      : conversationHitsFromSessions(input.sessions, input.query, 20);
+    // QA-C: a server deployed before the language fix writes 「· iOrbit との会話」 in every language; say it in the reader's.
+    // A stored iOrbit session opens with source=session (without it /ai/<id> reads it as a conversation id → "Could not open").
+    : input.server ? input.server.conversations?.items.map((hit) => {
+      const subtitle = hit.subtitle.endsWith(SERVER_JA_SUFFIX) ? conversationSubtitle(hit.subtitle.slice(0, -SERVER_JA_SUFFIX.length), input.language) : hit.subtitle;
+      const href = hit.kind === "iorbit" && hit.href.startsWith("/ai/") && !hit.href.includes("source=") ? `${hit.href}?source=session` : hit.href;
+      return { ...hit, subtitle, href };
+    }) ?? null
+      : conversationHitsFromSessions(input.sessions, input.query, 20, input.language);
   return buildGlobalSearch({
     ...common, people, peopleTotal, planLinked: wanted.includes("people") ? new Set(input.goalIds) : null, semantic,
     events: null, eventHits: input.server && wanted.includes("events") ? input.server.events : null, conversations,

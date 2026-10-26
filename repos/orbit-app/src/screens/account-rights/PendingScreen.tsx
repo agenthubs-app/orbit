@@ -58,12 +58,12 @@ export function PendingScreen() {
   const purgeDate = request?.purgeAfter ? new Intl.DateTimeFormat(language, { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" }).format(new Date(request.purgeAfter)) : null;
   return <AppScreen inset="kit" showBack={false} title={t("account.rights.pending")}>
     <View style={styles.stack}>
-      <Card><UiText style={styles.heading}>{t("account.rights.pending")}</UiText><UiText style={styles.body}>{t("account.rights.pendingBody")}</UiText>
-        {purgeDate ? <UiText style={styles.note}>{purgeDate}</UiText> : null}</Card>
+      <Card><UiText style={styles.body}>{t("account.rights.pendingBody")}</UiText>
+        {purgeDate ? <UiText style={styles.note}>{t("account.rights.purgeOn", { date: purgeDate })}</UiText> : null}</Card>
       {problem ? <UiText accessibilityRole="alert" style={styles.error}>{problem}</UiText> : null}
       {needsLogin ? <Button label={t("auth.loginPrimary")} variant="primary" onPress={() => router.replace("/account/login?next=/account/pending")} /> :
         request?.status === "pending" ? <Button label={t("account.rights.cancel")} variant="primary" loading={busy} onPress={() => void cancel()} /> : null}
-      <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut().then(result => { if (result.success) resetStackTo(router, "/account/login"); })} />
+      {auth.signedIn ? <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut().then(result => { if (result.success) resetStackTo(router, "/account/login"); })} /> : null}
     </View>
   </AppScreen>;
 }

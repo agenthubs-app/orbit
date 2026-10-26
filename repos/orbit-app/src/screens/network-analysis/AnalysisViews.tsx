@@ -170,7 +170,7 @@ function CompositionCard({ structure, onOpen }: { structure: NonNullable<Network
               <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.compositionRow", { label, count: bucket.count, percent })}
                 onPress={() => onOpen({ dimension, bucketId: bucket.id })} style={[styles.pieRow, index > 0 ? styles.legLine : null]}>
                 <View style={[styles.pieDot, { backgroundColor: color }]} />
-                <UiText numberOfLines={1} style={[styles.legLabel, styles.grow]}>{label}</UiText>
+                <UiText style={[styles.legLabel, styles.grow]}>{label}</UiText>
                 <UiText style={styles.pieCount}>{bucket.count}</UiText>
                 <UiText style={styles.piePercent}>{percent}%</UiText>
                 <Icon name="right" size={16} color={colors.ink3} />
@@ -245,7 +245,7 @@ function OpportunityCard({ card, first, onOpen }: { card: NetworkAnalysisOpportu
             <UiText style={styles.oppTitle}>{t(look.title)}</UiText>
             <UiText style={styles.lbl}>{body}</UiText>
           </View>
-          <UiText style={styles.mid}>{card.count}<UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText></UiText>
+          <UiText style={styles.mid}>{card.count}<UiText style={styles.lbl}>{t("networkAnalysis.peopleUnitInline")}</UiText></UiText>
         </View>
         <View style={styles.oppFoot}>
           {card.preview.length ? <AvatarStack names={card.preview.map((person) => person.name)} max={3} /> : null}

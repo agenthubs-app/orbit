@@ -19,7 +19,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localContactDetail } from "../../view-models/contacts-local";
-import { detailContactFrom } from "./contact-detail-model";
+import { detailContactFrom, localizedMeetingValue } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkDesignContacts } from "./network-design-fixture";
 
@@ -124,10 +124,13 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
           </View>
           <TextField label={t("network.edit.email")} value={value.email} onChangeText={(text) => set({ email: text })} keyboardType="email-address" autoCapitalize="none" />
           <TextField label={t("network.edit.phone")} value={value.phone} onChangeText={(text) => set({ phone: text })} keyboardType="phone-pad" />
-          <View style={styles.fld}>
-            <UiText style={styles.fieldLabel}>{t("network.edit.met")}</UiText>
-            <View style={styles.pick}><UiText style={styles.pickText}>{met ?? t("network.edit.metUnknown")}</UiText></View>
-          </View>
+          {/* QA-C: read-only (it comes from the card notes); a box here looked tappable and did nothing, so show plain text, and only when known. */}
+          {met ? (
+            <View style={styles.fld}>
+              <UiText style={styles.fieldLabel}>{t("network.edit.met")}</UiText>
+              <UiText style={styles.pickText}>{localizedMeetingValue(met, { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") })}</UiText>
+            </View>
+          ) : null}
           <View style={styles.fld}>
             <UiText style={styles.fieldLabel}>{t("network.edit.tags")}</UiText>
             <View style={styles.chips}>

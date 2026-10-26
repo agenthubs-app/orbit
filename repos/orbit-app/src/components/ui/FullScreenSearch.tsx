@@ -71,7 +71,7 @@ export function FullScreenSearch({
           <View style={styles.search}>
             {events ? <View pointerEvents="none" style={styles.searchRing} /> : null}
             <Icon name="search" size={16} color={iconColor} />
-            <TextInput value={value} onChangeText={onChangeText} autoFocus showSoftInputOnFocus={showSoftInputOnFocus} onSubmitEditing={onSubmitEditing} placeholder={placeholder} placeholderTextColor={colors.ink3Text} accessibilityLabel={placeholder} returnKeyType="search" style={styles.input} {...(inputTestID ? { testID: inputTestID } : {})} />
+            <TextInput value={value} onChangeText={onChangeText} autoFocus autoCapitalize="none" autoCorrect={false} showSoftInputOnFocus={showSoftInputOnFocus} onSubmitEditing={onSubmitEditing} placeholder={placeholder} placeholderTextColor={colors.ink3Text} accessibilityLabel={placeholder} returnKeyType="search" style={styles.input} {...(inputTestID ? { testID: inputTestID } : {})} />
             {value ? <UiPressable accessibilityRole="button" accessibilityLabel={clearLabel} onPress={() => onChangeText("")} hitSlop={8}><Icon name="x" size={16} color={iconColor} /></UiPressable> : null}
           </View>
           <UiPressable accessibilityRole="button" accessibilityLabel={cancelLabel} onPress={onCancel} hitSlop={events ? 6 : 2} style={[styles.cancel, events && styles.cancelSm]}>

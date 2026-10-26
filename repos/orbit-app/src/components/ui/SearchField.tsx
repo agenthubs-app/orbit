@@ -17,6 +17,9 @@ export function SearchField({ value, onChangeText, placeholder, accessibilityLab
       <Icon name="search" size={16} color={colors.ink3Text} />
       <TextInput
         accessibilityLabel={accessibilityLabel ?? placeholder}
+        // QA-C3: searches are names, companies and keywords; autocorrect turned "Yu" into "You".
+        autoCapitalize="none"
+        autoCorrect={false}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.ink3Text}

@@ -256,6 +256,14 @@ test("re-entry shows the resume card at the first unfinished step; 稍后 leaves
   await second.getByText("3 / 5", { exact: true }).waitFor();
 });
 
+test("QA-B4: a complete profile whose setup was put off (稍后) is not asked again on sign-in", async t => {
+  const page = await open(t, { ...withProfile({ ...complete, ...blank, relationshipGoal: "获取客户（本季度）" }), flow: { version: 1, currentScreen: 3, lastConfirmedScreen: 2, finishedAt: null, deferred: true, revision: "flow:2" } });
+  await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  const { navigation, requests } = await fx(page);
+  assert.deepEqual(navigation, ["replace:/events/e1"]);
+  assert.deepEqual(requests.map((r: any) => r.method), ["GET", "GET"], "nothing written");
+});
+
 test("an account with steps 1–4 saved goes straight to next and writes nothing", async t => {
   const page = await open(t, withProfile({ ...complete, relationshipGoal: "x", offering: ["a"], headline: "h" }));
   await page.waitForFunction(() => (window as any).fixture.navigation.length === 1);
@@ -341,7 +349,7 @@ test("English and Japanese render the whole welcome and step copy", async t => {
   await english.getByRole("button", { name: "Industry：Select" }).waitFor();
   await english.getByRole("button", { name: "Birthday：Choose a date" }).waitFor();
   const japanese = await open(t, { language: "ja", ...withProfile({ ...complete, ...blank }) });
-  await japanese.getByText("5 中 1 完了。「最近進めたいこと」から続けます。").waitFor();
+  await japanese.getByText("5 ステップのうち 1 つ完了しました。「最近進めたいこと」から続けます。").waitFor();
   await japanese.getByRole("button", { name: "続ける" }).click();
   await japanese.getByRole("button", { name: "新規顧客開拓", exact: true }).click();
   await japanese.getByRole("button", { name: "続ける" }).click();

@@ -9,7 +9,7 @@ import * as Crypto from "expo-crypto";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../api/domain/industries";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
@@ -29,6 +29,7 @@ import {
   type OnboardingProfileFields
 } from "../../../api/profile-onboarding";
 import { LoadingState } from "../../../components/LoadingState";
+import { presentConfirm } from "../../../components/ui/feedback-requests";
 import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
 import { isTabPageHref, openMainTab } from "../../../components/shell-navigation";
@@ -105,7 +106,8 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
   const client = useOrbitApiClient();
   const destination = onboardingDestination(next);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  // Set it again on every mount: Fast Refresh re-runs effects after their cleanup.
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const [view, setView] = useState<View_>("loading");
   const [resume, setResume] = useState<{ completed: number; step: OnboardingStep } | null>(null);
@@ -145,7 +147,8 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     if (!mounted.current) return;
     if (!result.ok || !progress.ok) { setView("loadError"); return; }
     flowRef.current = progress.progress;
-    if (progress.progress?.finishedAt || (!progress.progress && result.detail.onboarding?.status === "complete")) {
+    // A complete profile whose setup was put off (「稍后」) is set up: do not bring the 继续设置 card back on every sign-in.
+    if (progress.progress?.finishedAt || (result.detail.onboarding?.status === "complete" && (!progress.progress || progress.progress.deferred))) {
       leaveOnboarding(routerRef.current, destinationRef.current); return;
     }
     const profile = result.detail.profile;
@@ -327,8 +330,16 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     if (scanning) return;
     setMessage(null); setNotice(null);
     try {
-      const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) { setMessage(t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied")); return; }
+      // The iOS photo picker runs out of process and needs no library access; only ask for it elsewhere.
+      const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : Platform.OS === "ios" ? { granted: true, canAskAgain: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        const denied = t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied");
+        setMessage(denied);
+        // iOS asks only once; after a refusal the only way back is the Settings app.
+        if (!permission.canAskAgain && Platform.OS !== "web") void presentConfirm({ title: denied, confirmLabel: t("add.scan.openSettings"), cancelLabel: t("onboarding.cancel"), icon: "settings" })
+          .then(open => { if (open) void Linking.openSettings().catch(() => undefined); });
+        return;
+      }
       const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, mediaTypes: ["images"], quality: 0.86 };
       const picked = source === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = picked.canceled ? null : picked.assets?.[0];
@@ -445,7 +456,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     <>
       {banner}
       <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/scan", "/profile/onboarding?screen=5") as Href)} />
-      <SecondaryButton label={t("add.doors.otherContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
+      <SecondaryButton label={t("onboarding.importContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
       <PrimaryButton label={t("onboarding.finish")} onPress={() => void finish()} />
     </>
   ) : (
@@ -508,7 +519,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
     <Field half label={label}>
       <Pressable accessibilityLabel={`${label}：${value ?? placeholder}`} accessibilityRole="button" accessibilityState={{ disabled: !enabled, expanded: picker === which }} disabled={!enabled}
         onPress={() => setPicker(current => (current === which ? null : which))} style={[styles.selectButton, !enabled && styles.disabled]}>
-        <Text numberOfLines={1} style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
+        <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
         <Ionicons color={colors.ink3Text} name={picker === which ? "chevron-up" : "chevron-down"} size={14} />
       </Pressable>
     </Field>
@@ -562,7 +573,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
           </View>
         </Field>
         {dateOpen ? (
-          <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={disabled} yearJump max={today}
+          <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={disabled} yearJump max={today} title={t("onboarding.birthDate")}
             initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); set("birthDate")(value); }} />
         ) : null}
         {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}

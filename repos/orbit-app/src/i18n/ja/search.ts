@@ -25,6 +25,7 @@ export const search = {
   "search.semanticBanner": "意味で検索：「{q}」に関係する {count}（一致 {matched} · 関連 {related}）",
   "search.semanticCount": "{n}人",
   "search.emptyTitle": "「{q}」に一致する人はいません",
+  "search.emptyTitleAll": "「{q}」に一致するものはありません",
   "search.emptyTitleEvents": "「{q}」に一致するイベントはありません",
   "search.emptyTitleConversations": "「{q}」に一致する会話はありません",
   "search.emptyTitleNotes": "「{q}」に一致するメモはありません",

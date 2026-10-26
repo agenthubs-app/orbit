@@ -23,6 +23,7 @@ import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
   accountAuthPasswordError,
+  localizeAuthMessage,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
   rememberSignupFallbackEmail,
@@ -59,6 +60,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Login / forgot-password links only help when the server refused the sign-up (e.g. the address is taken), not for a short password.
+  const [signupRefused, setSignupRefused] = useState(false);
   const [devicePendingWrites, setDevicePendingWrites] = useState<{
     baseUrl: string;
     count: number | null;
@@ -161,7 +164,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           body: { email: values.email.trim() }
         });
         if (!isCurrent()) return;
-        if (!result.success) setError(result.error.message);
+        // QA-D: the API client turns server errors into fixed Chinese text; show the UI language instead.
+        if (!result.success) setError(result.status >= 500 ? locale.t("auth.forgotUnavailable") : result.error.code === "ORBIT_APP_NETWORK_ERROR" ? locale.t("auth.networkFailure") : locale.t("auth.pendingUnconfirmed"));
         else if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
           setError(locale.t("auth.pendingUnconfirmed"));
         } else setNotice(locale.t("auth.forgotAccepted"));
@@ -173,6 +177,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       return;
     }
     if (!ready || authPending.current) return;
+    setSignupRefused(false);
     const passwordError = accountAuthPasswordError(values.password);
     if (passwordError) {
       setError(locale.t(passwordError === "too-long" ? "reset.tooLong" : "reset.tooShort"));
@@ -194,7 +199,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
         if (!isCurrent()) return;
         if (!result.success) {
-          setError(result.message ?? locale.t("auth.signupFailure"));
+          setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.signupFailure"));
+          setSignupRefused(true);
           return;
         }
 
@@ -214,7 +220,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       if (!isCurrent()) return;
       if (!result.success) {
-        setError(result.message ?? locale.t("auth.loginFailure"));
+        setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.loginFailure"));
         return;
       }
 
@@ -249,7 +255,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (result.message === "已取消 Google 登录。") {
           setNotice(locale.t("auth.googleCancelled"));
         } else {
-          setError(result.message ?? locale.t("auth.googleIncomplete"));
+          setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.googleIncomplete"));
         }
         return;
       }
@@ -362,7 +368,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           ) : null}
           {notice && !accepted ? <Text style={styles.noticeText}>{notice}</Text> : null}
           {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-          {mode === "signup" && error ? <View style={styles.errorLinks}>
+          {mode === "signup" && error && signupRefused ? <View style={styles.errorLinks}>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/login?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.loginPrimary")}</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/forgot-password?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.forgotPassword")}</Text></Pressable>
           </View> : null}
@@ -464,6 +470,8 @@ function AuthField({
         <TextInput
           accessibilityLabel={field.label}
           autoCapitalize="none"
+          autoComplete={field.name === "email" ? "email" : "password"}
+          autoCorrect={false}
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
           onBlur={() => setFocused(false)}
@@ -472,6 +480,7 @@ function AuthField({
           placeholderTextColor={colors.ink3Text}
           secureTextEntry={field.secure && !passwordVisible}
           style={styles.input}
+          textContentType={field.name === "email" ? "emailAddress" : "password"}
           value={value}
         />
         {field.secure ? (
@@ -572,10 +581,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   helperLinkRow: {
-    alignItems: "flex-end",
+    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-end"
+    justifyContent: "center"
   },
   helperLinkText: {
     color: colors.accentText,
@@ -662,7 +671,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   signupLegalLinks: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
   signupLegalLink: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
   signupLegalLinkText: { color: colors.accentText, fontSize: 14, lineHeight: 21, textDecorationLine: "underline" },
-  footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  // QA-D: stacked and centred; side by side the Japanese 「…登録」 ran past the right edge.
+  footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, alignItems: "center" },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   switchText: { color: colors.ink2, fontSize: 14, lineHeight: 21, textAlign: "center" },
   switchAction: { color: colors.accentText, fontWeight: "700" }

@@ -86,15 +86,14 @@ export function TypeHeadCard({ detail, tone, kicker, events, busy, onUnskip }: {
       <View style={styles.scoreRow}>
         <UiText style={styles.mid}>{String(points)}</UiText>
         <UiText style={[kit.lbl, styles.scoreLbl]}>{scoreText}</UiText>
-        {candidates > 0
-          ? <KitChip label={t("plan.type.inNetwork", { count: candidates })} tone="lav" style={styles.chipRight} />
-          : <KitChip label={t("plan.type.notInNetwork")} style={styles.chipRight} />}
+        {/* QA-A: with none, the banner above already says so (it showed three times). */}
+        {candidates > 0 ? <KitChip label={t("plan.type.inNetwork", { count: candidates })} tone="lav" style={styles.chipRight} /> : null}
       </View>
       <View style={styles.mb}>
         {detail.skipped ? <KitHatch line={colors.plum300} base={colors.plum100} /> : <View style={[styles.mbFill, { width: `${fill}%` }]} />}
       </View>
       <View style={styles.m3}>
-        <Cell value={candidates} small={t("plan.type.cellPeople")} label={t(candidates === 0 ? "plan.type.cellNone" : "plan.type.cellCandidates")} />
+        <Cell value={candidates} small={t("plan.type.cellPeople")} label={t("plan.type.cellCandidates")} />
         <Cell value={events} label={t("plan.type.cellEvents")} />
         <Cell value={routes} label={t("plan.type.cellRoutes")} />
       </View>

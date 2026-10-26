@@ -635,7 +635,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   emoText: { fontSize: 23, lineHeight: 28 },
   h1: { color: colors.ink, fontSize: 24, fontWeight: "900", letterSpacing: -0.22, lineHeight: 32, marginTop: 10 },
   heroSub: { lineHeight: 20, marginTop: 6 },
-  heroRow: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: 10 },
+  heroRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chipIcon: { alignItems: "center", height: 12, justifyContent: "center", transform: [{ scale: 0.75 }], width: 12 },
   steps: { padding: 14 },
   h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25, marginBottom: 10 },

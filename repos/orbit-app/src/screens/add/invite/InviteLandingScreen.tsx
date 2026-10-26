@@ -155,6 +155,8 @@ export function InviteLandingScreen({ code: rawCode, api: injected, design }: { 
               <UiText style={styles.body}>{t("add.inviteIn.unavailableBody")}</UiText>
               {view.limited ? <UiText style={styles.body}>{t("add.inviteIn.limitedBody")}</UiText> : null}
               <Button label={t("add.inviteIn.enterAnother")} block onPress={() => router.replace("/i" as Href)} />
+              {/* Signed in, a dead link left no way back into the app (no back button on this page). */}
+              {auth.signedIn ? <Button label={t("publicInfo.backHome")} variant="ghost" block onPress={() => router.replace("/home" as Href)} /> : null}
             </Notice>
           ) : null}
         </View>

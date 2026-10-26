@@ -124,9 +124,9 @@ export function TaskDetailScreen() {
   const projectedDetail = projectedTask ? ownedTaskDetailToView({ task: projectedTask }, actorId, locale.language) : null;
   const detail = projectedDetail ?? (offline ? mirrorDetail : serverDetail ?? mirrorDetail);
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
-    ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
+    ? reminderPlansToView(remindersState.data, timeZone, locale.language).filter((item) => item.status === "scheduled")
     : [];
-  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone), [timeZone]);
+  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone, locale.t), [timeZone, locale.t]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [dateDraft, setDateDraft] = useState(() => taskDateDraftFromView(null));

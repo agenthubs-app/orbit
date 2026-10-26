@@ -17,6 +17,7 @@ export const useLocalRelationshipConversations = () => ({ available: false, conv
 export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {}, queueDelete: async () => false, cancelDelete: async () => false });
 export const usePathname = () => "/inbox";
 export const useSafeAreaInsets = () => ({ top: 48, bottom: 34, left: 0, right: 0 });
 
@@ -104,7 +105,7 @@ export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" styl
 test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { RelationshipInboxScreen, RelationshipInboxThreadScreen } from "./src/screens/inbox/RelationshipInboxScreen"; function App() { const s = useFixture(); return s.detail ? <RelationshipInboxThreadScreen /> : <RelationshipInboxScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-inbox-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-inbox" }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-inbox" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -247,7 +248,9 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { 
       for (const role of ["button", "tab"] as const) for (const control of await page.getByRole(role).all()) {
         await control.scrollIntoViewIfNeeded(); const box = await control.boundingBox();
         const segmentedTab = role === "tab" && /^(消息|通知)/u.test((await control.textContent()) ?? "");
-        assert.ok(box && box.height + (segmentedTab ? 14 : role === "tab" ? 12 : 0) >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
+        // QA-C: the header's 全部已读 is a kit sm Button, whose 6px hitSlop on each side completes the 44pt target.
+        const headerSmButton = role === "button" && (await control.textContent()) === "全部已读";
+        assert.ok(box && box.height + (segmentedTab ? 14 : role === "tab" || headerSmButton ? 12 : 0) >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
       }
       await page.evaluate(() => {
         for (const el of document.querySelectorAll<HTMLElement>("div")) {

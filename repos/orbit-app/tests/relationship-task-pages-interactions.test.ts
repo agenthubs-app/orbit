@@ -60,7 +60,7 @@ test('real task list replaces 30/30/5 windows, navigates detail and resets compl
   assert.equal(await page.getByText('跟进 0',{exact:true}).count(),0);
   await page.getByRole('button',{name:'下一页跟进'}).click();await page.getByText('跟进 64',{exact:true}).waitFor();
   assert.equal(await page.getByText(/^跟进 \d+$/).count(),5);assert.equal(await page.getByRole('button',{name:'下一页跟进'}).count(),0);
-  await page.getByRole('button',{name:/跟进 64/}).click();assert.deepEqual(await page.evaluate(()=>(window as any).fixture.navigation),['/tasks/relationship/connection%3A64']);
+  await page.getByRole('button',{name:/跟进 64/}).click();assert.deepEqual(await page.evaluate(()=>(window as any).fixture.navigation),['/tasks/relationship/connection%3A64?taskId=task%3A64&contactId=contact']);
   await page.getByRole('button',{name:'返回跟进第一页'}).click();await page.getByText('跟进 0',{exact:true}).waitFor();
   await page.evaluate(()=>(window as any).fixture.update({mode:'completed'}));await page.getByText('完成 1',{exact:true}).waitFor();
   assert.equal(await page.getByText(/^跟进 \d+$/).count(),0);

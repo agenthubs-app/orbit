@@ -729,7 +729,7 @@ test("an English account can edit a note without fixed Chinese chrome", async (t
   for (const chrome of ["完成", "编辑笔记", "保存修改", "相关人脉", "相关活动"]) assert.equal(await edit.getByText(chrome, { exact: true }).count(), 0, chrome);
 });
 
-test("UX-6: top back saves a written untitled note under its first line and detail returns to global history", async (t) => {
+test("UX-6: top back saves a written untitled note under its first line and detail goes back where it was opened from", async (t) => {
   const create = await page(t, "new");
   const firstLine = "一二三四五六七八九十".repeat(4) + "超出部分";
   await create.getByRole("textbox", { name: "笔记内容" }).fill(firstLine + "\n第二行");
@@ -742,7 +742,9 @@ test("UX-6: top back saves a written untitled note under its first line and deta
   assert.equal(await create.getByRole("button", { name: "保留并退出" }).count(), 0, "no keep/discard prompt");
   const detail = await page(t, "detail");
   await detail.getByRole("button", { name: "返回笔记", exact: true }).click();
-  assert.deepEqual(await detail.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+  // QA-C: with history the detail goes back to where the note was opened (e.g. the contact it was written from);
+  // only without history does it fall back to the notes list. Creating a note replaces the editor, so back never reopens it.
+  assert.deepEqual(await detail.evaluate(() => (window as any).fixture.navigation), ["back"]);
 });
 
 test("UX-6: no draft-decision prompt — unchanged or invalid edits go straight back, changed edits are saved by top back", async (t) => {

@@ -30,10 +30,10 @@ export function SegChips({ seg, t, pending, onSeg }: { seg: HostSeg; t: HostT; p
   );
 }
 
-export interface OverviewProps { data: HostOverviewResponse; t: HostT; onCheckIn: () => void; onResults: () => void; onPublish: () => void; onReview: () => void; onNotify: () => void }
+export interface OverviewProps { data: HostOverviewResponse; t: HostT; onCheckIn: () => void; onResults: () => void; onPublish: () => void; onReview: () => void; onNotify: () => void; onEditOnPc?: () => void }
 
 /** 概要（b6 #23）：三格 + 到着条 + 受付を開く · マッチング卡 · 要対応 · 💻。 */
-export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onReview, onNotify }: OverviewProps) {
+export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onReview, onNotify, onEditOnPc }: OverviewProps) {
   const { styles, colors } = useHostStyles();
   const c = useConsoleStyles().styles;
   const m = data.matching;
@@ -45,12 +45,19 @@ export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onRevie
       <View style={styles.card}>
         <View style={[styles.cnt3, c.cnt3Top]}>
           <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("kApplied")}</UiText><UiText style={styles.cntNum}>{data.applied}</UiText></View>
-          <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cMatched")}</UiText><UiText style={styles.cntNum}>{data.matchable}</UiText></View>
+          <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("oMatchable")}</UiText><UiText style={styles.cntNum}>{data.matchable}</UiText></View>
           <View style={styles.cnt}><UiText style={styles.cntLbl}>{t("cCheckedIn")}</UiText><UiText style={styles.cntNum}>{data.checkedIn}</UiText></View>
         </View>
         <Bar share={data.applied ? data.checkedIn / data.applied : 0} />
         <UiText style={styles.lbl}>{t("appArrival", { a: data.checkedIn, n: data.applied, r: data.arrivalRate ?? 0 })}</UiText>
-        <Btn label={t("openCheckIn")} variant="primary" icon="check" height={46} onPress={onCheckIn} style={c.mt12} testID="host-open-check-in" />
+        {/* A draft is not open yet: 打开签到 made no sense; say it is unpublished and where to publish it. */}
+        {data.event.status === "draft" ? (
+          <View style={c.mt12} testID="host-overview-draft">
+            <UiText style={styles.b13}>{t("bDraft")}</UiText>
+            <UiText style={styles.lbl}>{t("appPublishOnPc")}</UiText>
+            {onEditOnPc ? <Btn label={t("appSendPc")} variant="ghost" onPress={onEditOnPc} style={c.mt12} testID="host-overview-send-pc" /> : null}
+          </View>
+        ) : <Btn label={t("openCheckIn")} variant="primary" icon="check" height={46} onPress={onCheckIn} style={c.mt12} testID="host-open-check-in" />}
       </View>
       <View style={[styles.card, styles.next]} testID="host-overview-matching">
         <View style={[styles.row, styles.between]}>
@@ -107,7 +114,7 @@ export function ReportBody({ data, t, now, onPc }: { data: HostOverviewResponse;
             <View key={key} style={styles.cnt}><UiText style={styles.cntLbl}>{t(key)}</UiText><UiText style={styles.cntNum}>{pct(value)}{value == null ? null : <UiText style={c.pctSmall}>%</UiText>}</UiText></View>
           ))}
         </View>
-        {s ? <UiText style={[styles.lbl, c.mt8]}>{t("appReportLine", { a: s.checkedIn, at: asOf, n: s.total, x: s.exchanges ?? "—" })}</UiText> : <UiText style={[styles.lbl, c.mt8]}>{t("appReportBefore")}</UiText>}
+        {s ? <UiText style={[styles.lbl, c.mt8]}>{s.exchanges == null ? t("appReportLineNoX", { a: s.checkedIn, at: asOf, n: s.total }) : t("appReportLine", { a: s.checkedIn, at: asOf, n: s.total, x: s.exchanges })}</UiText> : <UiText style={[styles.lbl, c.mt8]}>{t("appReportBefore")}</UiText>}
       </View>
       <PcCard title={t("appReportPcTitle")} text={t("appReportPcSub")} style={styles.next} action={<BtnSm label={t("appPcDetail")} onPress={onPc} />} />
     </View>
@@ -178,8 +185,8 @@ export function PeopleBody({ data, t, approving, onBucket, onApprove }: { data: 
 // kit（b6 #23 / b12 #422 #424 #430）：.carousel gap6 mb12、外扩 18 · chip 段 7/14 12.5 · .cnt3 mt0 · .li 11 0 gap12、分隔线 left 50。
 export const useConsoleStyles = createThemedStyles((colors) => StyleSheet.create({
   carousel: { flexGrow: 0, marginBottom: 12, marginHorizontal: -18 },
-  // 画板 .carousel 有 scroll-snap：首个 chip 吸到左缘（scrollLeft 18），所以起点在 0、尾部留 36。
-  carouselIn: { gap: 6, paddingBottom: 4, paddingLeft: 0, paddingRight: 36, paddingTop: 2 },
+  // The first chip lines up with the page gutter (starting at 0 left it flush against the screen edge, looking cut off).
+  carouselIn: { gap: 6, paddingBottom: 4, paddingLeft: 18, paddingRight: 18, paddingTop: 2 },
   segChip: { backgroundColor: colors.surface2, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   segChipOn: { backgroundColor: colors.ink },
   segChipText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 23 },

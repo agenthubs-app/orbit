@@ -46,7 +46,7 @@ export function ManualSavedView({ saved }: { saved: ManualSaved }) {
             <UiText style={styles.lbl}>{t("add.manual.enrichAny")}</UiText>
           </View>
           {rows.map((row, index) => (
-            <UiPressable key={row.key} accessibilityRole="button" accessibilityLabel={`${row.title}、${row.sub}`} onPress={() => router.push(row.href)}
+            <UiPressable key={row.key} accessibilityRole="button" accessibilityLabel={`${row.title}, ${row.sub}`} onPress={() => router.push(row.href)}
               style={[styles.nx, index > 0 && styles.nxLine]} testID={`add-manual-enrich-${row.key}`}>
               <KitEmo emoji={row.emoji} tone={row.tone} sm />
               <View style={styles.meta}>

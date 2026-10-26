@@ -39,6 +39,8 @@ export interface EventOverviewResponse {
   organizer: {
     organizerId?: string | null;
     name: string;
+    /** Public organizer page slug (o/[slug]); absent when the organizer has no public page. */
+    slug?: string | null;
     emoji?: string | null;
     /** First edition date (「2023年から」). */
     since?: string | null;
@@ -68,6 +70,8 @@ export interface EventOverviewResponse {
   attendeesPublicAt?: string | null;
   /** When registration closes (the invite-code card shows 「10/3 まで有効」). */
   registrationClosesAt?: string | null;
+  /** I run this event (owner or co-host): show host actions (manage / check-in) instead of 报名. */
+  hosting?: boolean;
   attendeeCounts: { all: number; planFit: number; known: number };
   /** Names are hidden from me (not registered yet, or signed out): show the counts and 「参加登録すると参加者が見られます」 (R27 roster policy A). */
   rosterLocked?: boolean;

@@ -94,4 +94,7 @@ export const schedule = {
   "schedule.earlierWeek": "今週の過去の日付",
   "schedule.empty": "予定はありません",
   "schedule.itemCount": "{count}件",
+  "schedule.deleteAsk": "この予定を削除しますか？",
+  "schedule.discardChanges": "変更を破棄",
+  "schedule.keepEditing": "編集を続ける",
 } as const;

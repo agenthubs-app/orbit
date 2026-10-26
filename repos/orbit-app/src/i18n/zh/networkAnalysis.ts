@@ -16,6 +16,7 @@ export const networkAnalysis = {
   "networkAnalysis.industry": "行业",
   "networkAnalysis.tapForList": "点击查看名单",
   "networkAnalysis.peopleUnit": "位",
+  "networkAnalysis.peopleUnitInline": "位",
   "networkAnalysis.composition": "人脉构成",
   "networkAnalysis.compositionPick": "选择分析角度",
   "networkAnalysis.compositionRow": "{label}，{count}位，占{percent}%",

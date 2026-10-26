@@ -18,7 +18,7 @@ import { CheckInBody } from "../src/screens/host/check-in-view";
 import { MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips } from "../src/screens/host/console-view";
 import { JoinCard } from "../src/screens/host/join-view";
 import { OrganizerBody } from "../src/screens/host/organizer-view";
-import { consoleHref, consoleSubtitle, hostEventsRowSub, parseSeg, rowNote } from "../src/screens/host/host-model";
+import { consoleHref, consoleSubtitle, hostEventsRowSub, parseSeg, rowNote, openingPeopleBucket } from "../src/screens/host/host-model";
 import { applyRoster, flushQueue, memoryKioskStore, readRoster, searchRoster, streamRows, type KioskQueueItem, purgeExpiredRosters } from "../src/screens/host/kiosk-queue";
 import { renderedText } from "./helpers/render";
 
@@ -151,6 +151,13 @@ test("model helpers: seg parsing, links, マイページ row text", () => {
   assert.equal(consoleHref("a b", "report"), "/events/a%20b/operations?seg=report");
   assert.equal(hostEventsRowSub({ activeCount: 1, appliedThisMonth: 0, eventCount: 2 }, t), "2件 · 運営中 1");
   assert.equal(hostEventsRowSub({ activeCount: 0, appliedThisMonth: 0, eventCount: 0 }, t), "イベントを主催する");
+});
+
+test("QA-B4: the people list opens on a tab that has people, not an empty 待审核", () => {
+  assert.equal(openingPeopleBucket({ approved: 1, pending: 0, rejected: 0, waitlisted: 0 }, "pending"), "approved");
+  assert.equal(openingPeopleBucket({ approved: 1, pending: 2, rejected: 0, waitlisted: 0 }, "pending"), "pending");
+  assert.equal(openingPeopleBucket({ approved: 0, pending: 0, rejected: 0, waitlisted: 3 }, "pending"), "waitlisted");
+  assert.equal(openingPeopleBucket({ approved: 0, pending: 0, rejected: 0, waitlisted: 0 }, "pending"), "pending", "nobody at all: stays on 待审核");
 });
 
 test("routes: R17 screens behind the right gates; old operations pages redirect to ?seg=", () => {

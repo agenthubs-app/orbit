@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../src/view-models/relationship-pages";
+import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView, messageListTime, messageBubbleTime } from "../src/view-models/relationship-pages";
 
 const at = "2026-09-25T00:00:00Z";
 const item = { conversationId: "c", contactId: "contact", participantAccountIds: ["a", "b"], participantDisplayNames: { a: "Me", b: "Ren" }, qualificationVersion: "q", status: "active", createdAt: at, updatedAt: at, unreadCount: 10000,
@@ -36,4 +36,18 @@ test("message windows validate identity and full bodies without pretending to co
   for (const invalid of [{...window,actorId:"b"},{...window,items:[message,message]},{...window,items:[{...message,body:" "}]},{...window,items:[{...message,conversationId:"other"}]},{...window,items:[{...message,senderAccountId:"stranger"}]}]) {
     assert.equal(decodeRelationshipMessagePage(invalid,"a","c"),null);
   }
+});
+
+test("QA-C3: my name for the contact replaces the server's account name, and times read like Messages", () => {
+  const decoded = decodeConversationSummaryPage(page, "a"); assert.ok(decoded);
+  const named = conversationSummaryView(decoded, "a", "en", (id) => id === "contact" ? "Ren Kato" : undefined);
+  assert.equal(named.conversations[0]?.name, "Ren Kato");
+  assert.equal(conversationSummaryView(decoded, "a", "en", () => undefined).conversations[0]?.name, "Ren", "without a contact the account name stays");
+  const now = new Date(2026, 9, 26, 20, 0);
+  assert.match(messageListTime(new Date(2026, 9, 26, 19, 41).toISOString(), "en", now), /^7:41\s?PM$/u);
+  assert.equal(messageListTime(new Date(2026, 9, 25, 9, 0).toISOString(), "en", now), "Yesterday");
+  assert.equal(messageListTime(new Date(2026, 9, 22, 9, 0).toISOString(), "en", now), "Thu");
+  assert.equal(messageListTime(new Date(2026, 8, 3, 9, 0).toISOString(), "en", now), "Sep 3");
+  assert.equal(messageListTime(new Date(2025, 8, 3, 9, 0).toISOString(), "en", now), "Sep 3, 2025");
+  assert.match(messageBubbleTime(new Date(2026, 9, 25, 9, 5).toISOString(), "en", now), /^Oct 25 9:05\s?AM$/u);
 });

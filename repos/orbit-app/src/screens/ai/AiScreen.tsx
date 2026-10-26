@@ -499,6 +499,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
 
   function sendMessage(messageOverride?: string) {
     if (!owns() || navigationLock.current || !auth.actorId) return;
+    // QA-A: 「帮我规划新目标」 answered with a free-text plan that never became a goal; it opens the goal flow.
+    if (messageOverride !== undefined && messageOverride === locale.t("ai.planPrompt")) { router.push(planNewGoalHref("app") as Href); return; }
     const message = (messageOverride ?? draftMessage).trim();
 
     if (!message) {

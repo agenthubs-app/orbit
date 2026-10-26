@@ -236,7 +236,7 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
         {open.has("organization") ? (
           <Field label={t("add.manual.organization")}>
             <FieldInput ref={organizationInput} value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
-              onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
+              autoCorrect={false} onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
             {showSuggestions ? (
               <View style={m.sugg} testID="add-manual-org-suggestions">
                 {organizations.map((entry, index) => (
@@ -256,9 +256,15 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
             ) : null}
           </Field>
         ) : null}
+        {/* QA-C: the form always carried a title (role) but had no field for it; it opens with Company, like iOS Contacts. */}
+        {open.has("organization") ? (
+          <Field label={t("add.manual.role")}>
+            <FieldInput value={form.role} onChangeText={(value) => set("role", value)} accessibilityLabel={t("add.manual.role")} testID="add-manual-role" />
+          </Field>
+        ) : null}
 
         {open.has("met") ? (
-          <Field label={t("add.manual.met")} hint={t("add.manual.metHint")} testID="add-manual-met">
+          <Field label={t("add.manual.met")} hint={events.length > 0 && form.met?.kind !== "intro" && form.met?.kind !== "other" ? t("add.manual.metHint") : undefined} testID="add-manual-met">
             <View style={[m.chips, m.metChips]}>
               {events.map((event) => (
                 <FilterOption key={event.eventId} label={t("add.manual.metEventChip", { date: monthDay(event.startsAt), title: event.title })} selected={form.met?.kind === "event" && form.met.eventId === event.eventId} onToggle={() => set("met", form.met?.eventId === event.eventId ? null : { eventId: event.eventId, kind: "event", label: event.title })} />

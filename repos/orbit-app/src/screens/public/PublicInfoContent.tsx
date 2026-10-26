@@ -35,7 +35,6 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
   })), query);
 
   return <View style={styles.content}>
-    <UiText style={styles.eyebrow}>{t("publicInfo.page")}</UiText>
     <UiText accessibilityRole="header" style={[styles.title, !help && styles.legalTitle]}>{title}</UiText>
     {help ? <>
       <UiText style={styles.intro}>{t("publicInfo.helpIntro")}</UiText>
@@ -43,6 +42,9 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
         <Icon name="search" size={16} color={colors.ink3Text} />
         <TextInput
           accessibilityLabel={t("publicInfo.searchPlaceholder")}
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
           onChangeText={onQueryChange}
           placeholder={t("publicInfo.searchPlaceholder")}
           placeholderTextColor={colors.ink3Text}
@@ -69,10 +71,10 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
       <Chip label={t("publicInfo.legalPlaceholder")} tone="apricot" />
       <UiText style={styles.legalBody}>{t("publicInfo.legalBody")}</UiText>
     </Card>}
-    <View style={[styles.actions, !help && styles.legalActions]}>
-      <Button label={t("publicInfo.home")} variant="primary" onPress={() => onOpen("/")} />
-      {!help ? <Button label={t("publicInfo.seeHelp")} onPress={() => onOpen("/help")} /> : null}
-    </View>
+    {/* QA-D: the header back button already leaves; a second 「ホームへ」 button was redundant. */}
+    {!help ? <View style={[styles.actions, styles.legalActions]}>
+      <Button label={t("publicInfo.seeHelp")} onPress={() => onOpen("/help")} />
+    </View> : null}
   </View>;
 }
 

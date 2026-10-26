@@ -94,4 +94,7 @@ export const schedule = {
   "schedule.earlierWeek": "Earlier this week",
   "schedule.empty": "No schedule",
   "schedule.itemCount": "{count} items",
+  "schedule.deleteAsk": "Delete this event?",
+  "schedule.discardChanges": "Discard Changes",
+  "schedule.keepEditing": "Keep Editing",
 } as const;

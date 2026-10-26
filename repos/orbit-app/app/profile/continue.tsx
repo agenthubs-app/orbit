@@ -18,7 +18,7 @@ function ProfileContinueRoute() {
     setResult("loading");
     const [profile, flow] = await Promise.all([readOnboardingProfile(client), readProfileOnboardingProgress(client)]);
     if (!profile.ok || !flow.ok) { setResult("error"); return; }
-    setResult(profile.detail.onboarding?.status === "complete" && (!flow.progress || flow.progress.finishedAt) ? "next" : "onboarding");
+    setResult(profile.detail.onboarding?.status === "complete" && (!flow.progress || flow.progress.finishedAt || flow.progress.deferred) ? "next" : "onboarding");
   }, [client]);
   useEffect(() => { void reload(); }, [reload]);
   if (result === "onboarding") return <Redirect href={profileContinuationHref(params.next) as Href} />;

@@ -15,7 +15,9 @@ import { useKeyedPageCopy } from "../../../hooks/useKeyedPageCopy";
 import { ShellBackground } from "../../../components/ShellBackground";
 import { SHELL_GUTTER, ShellTopBar, useShellTopGap } from "../../../components/ShellTopBar";
 import { ActionSheet, GlassSurface, Icon, IconButton, Segmented, UiPressable, UiText, UnderlineTabs, useToast, type IconName } from "../../../components/ui";
-import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
+import { designIcons } from "../../../api/design/icons";
+import { useHostApi } from "../../host/host-api";
 import { LinearGradient } from "../../plan/plan-svg";
 import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
@@ -60,6 +62,12 @@ function Cover({ children, style }: { children: ReactNode; style: object }) {
   );
 }
 
+/** ★ once saved: the kit star shape, filled. */
+function FilledStar({ color }: { color: string }) {
+  const shape = designIcons.star[0] as { d: string };
+  return <Svg width={20} height={20} viewBox="0 0 24 24"><Path d={shape.d} fill={color} stroke={color} strokeWidth={1.7} strokeLinejoin="round" /></Svg>;
+}
+
 export function EventDetailPage() {
   const { styles, colors } = useStyles();
   const { scheme } = useOrbitTheme();
@@ -69,6 +77,7 @@ export function EventDetailPage() {
   const toast = useToast();
   const api = useJourneyApi();
   const eventsApi = useEventsApi();
+  const hostApi = useHostApi();
   const topGap = useShellTopGap();
   const params = useLocalSearchParams<{ id?: string; tab?: string }>();
   const eventId = String(params.id ?? "");
@@ -79,11 +88,15 @@ export function EventDetailPage() {
   const [offlineAt, setOfflineAt] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [tab, setTab] = useState<Tab>(params.tab === "people" || params.tab === "agenda" || params.tab === "host" ? params.tab : "intro");
-  const [filter, setFilter] = useState<Filter>("planFit");
+  const [filter, setFilter] = useState<Filter | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // ★: saved = an assessment of this event exists (the overview's assessmentId), or saved just now.
+  const [savedId, setSavedId] = useState<string | null>(null);
+  // Host of this event: the overview says so (hosting); an older server without the field is asked through the host API.
+  const [probedHost, setProbedHost] = useState<boolean | null>(null);
   useEffect(() => {
     let live = true;
     void (async () => {
@@ -99,12 +112,21 @@ export function EventDetailPage() {
     return () => { live = false; };
   }, [api, copy, eventId, reload]);
   useEffect(() => subscribeEventChanged((changed) => { if (changed === eventId) setReload((value) => value + 1); }), [eventId]);
+  const hostingKnown = data ? data.hosting !== undefined || Boolean(data.signedOut) || Boolean(data.sample) : false;
+  useEffect(() => {
+    if (!data || hostingKnown || probedHost !== null) return;
+    let live = true;
+    void hostApi.event(eventId).then((res) => { if (live) setProbedHost(res.ok); });
+    return () => { live = false; };
+  }, [data, eventId, hostApi, hostingKnown, probedHost]);
 
   const tone = (key: Tone) => ({ apricot: [colors.macApricot, colors.macApricotInk], blue: [colors.macBlue, colors.macBlueInk], lav: [colors.macLav, colors.macLavInk], pink: [colors.macPink, colors.macPinkInk], teal: [colors.macTeal, colors.macTealInk] } as const)[key];
   const base = `/events/${encodeURIComponent(eventId)}`;
   const share = () => { if (data) Share.share({ message: data.title }).catch(() => undefined); };
   const status = data?.registration.status ?? "none";
-  const holding = status === "registered" || status === "pending_review" || status === "waitlisted";
+  // attended = checked in: still theirs (it had no CTA at all); the main button opens 会场模式 and there is nothing to cancel.
+  const attended = status === "attended";
+  const holding = status === "registered" || status === "pending_review" || status === "waitlisted" || attended;
   const menu = async (key: string) => {
     setMenuOpen(false);
     if (key === "calendar") {
@@ -115,8 +137,11 @@ export function EventDetailPage() {
   };
   // ★ 保存 / 公開されたら知らせる = 记成 R26 的评估（出现在「評価」列表；名单首次公开时由重算任务通知；同 Web）。
   const save = async (done: "savedToAssess" | "notifyOn" = "savedToAssess") => {
+    const existing = savedId ?? data?.assessment?.assessmentId ?? null;
+    // Already saved: the star opens the saved assessment instead of saving again.
+    if (existing && done === "savedToAssess") { router.push(`/events/assessments/${encodeURIComponent(existing)}` as Href); return; }
     const created = await eventsApi.create({ eventId, idempotencyKey: newIdempotencyKey(), sourceKind: "orbit_event" });
-    if (created.ok) toast.success(t(done)); else toast.error(locale.t("eventsV2.genericError"));
+    if (created.ok) { setSavedId(created.data.id); toast.success(t(done)); } else toast.error(locale.t("eventsV2.genericError"));
   };
   const confirmCancel = async () => {
     setBusy(true);
@@ -124,7 +149,15 @@ export function EventDetailPage() {
     setBusy(false);
     setCancelOpen(false);
     if (!result.ok) { toast.error(t("cancelFailed")); return; }
-    setData((current) => (current ? { ...current, registration: { ...current.registration, status: "cancelled" } } : current));
+    // The seat comes back at once (only a confirmed place held one), then the overview is read again for the server's count.
+    const heldSeat = status === "registered" || status === "attended";
+    setData((current) => {
+      if (!current) return current;
+      const next = { ...current, registration: { ...current.registration, status: "cancelled" as const }, ...(heldSeat && typeof current.remaining === "number" ? { remaining: Math.min(current.remaining + 1, current.capacity ?? Number.MAX_SAFE_INTEGER) } : {}) };
+      void copy.save(next);
+      return next;
+    });
+    setReload((value) => value + 1);
     toast.success(t("cancelled"));
   };
 
@@ -144,15 +177,24 @@ export function EventDetailPage() {
     );
   }
 
-  const assessment = data.signedOut ? null : data.assessment ?? null;
+  const hosting = data.hosting ?? probedHost ?? false;
+  // The host is not asked whether their own event is worth going to.
+  const assessment = data.signedOut || hosting ? null : data.assessment ?? null;
   const verdictTone = assessment ? rowTone({ verdict: assessment.verdict }, 0).chip : null;
   const facts: { icon: IconName; text: string }[] = [
     { icon: "calendar", text: eventRange(data.startsAt, data.endsAt, language) },
     { icon: "pin", text: data.venue ?? "—" },
     { icon: "ticket", text: [feeText(data.priceYen, t), data.capacity ? t("capacityN", { n: data.capacity }) : null, data.review ? t("reviewYes") : null].filter(Boolean).join(" · ") },
   ];
-  const remainingChip = typeof data.remaining === "number" ? t(data.deadlineSoon ? "deadlineChip" : "openChip", { n: data.remaining }) : null;
-  const people = data.attendees.filter((person) => (filter === "planFit" ? person.planFit : filter === "known" ? person.known : true));
+  // An event that is over no longer shows seats left or 报名 / 会面准备; a registered person goes to the 回顾 instead.
+  const ended = Date.parse(data.endsAt ?? data.startsAt) < Date.now();
+  const saved = Boolean(savedId ?? assessment?.assessmentId);
+  // Someone who is already in sees where they stand, not 即将截止 · 剩N个名额.
+  const holdingChip = { attended: "stCheckedIn", pending_review: "stPending", registered: "stRegistered", waitlisted: "stWaitlisted" } as const;
+  const remainingChip = ended ? t("liveEnded") : holding && !hosting ? t(holdingChip[status as keyof typeof holdingChip]) : typeof data.remaining === "number" ? t(data.deadlineSoon ? "deadlineChip" : "openChip", { n: data.remaining }) : null;
+  // Opens on 符合计划 when someone fits the plan, otherwise on 全部 (never on an empty list by default).
+  const shown: Filter = filter ?? (data.attendeeCounts.planFit > 0 ? "planFit" : "all");
+  const people = data.attendees.filter((person) => (shown === "planFit" ? person.planFit : shown === "known" ? person.known : true));
   const fit = data.attendees.filter((person) => person.planFit && !person.known).slice(0, 3);
   const known = data.knownAttendees;
   const knownLine = known.map((person) => `${t("honorific", { name: person.name.split(/\s+/)[0] ?? person.name })}${person.speaker ? t("speakerTag") : ""}`)
@@ -170,8 +212,16 @@ export function EventDetailPage() {
     </View>
   );
 
+  // The host is not asked to register to see people: their list is on the 运营 page.
+  const hostRoster = (
+    <View style={[styles.card, tab === "intro" ? styles.gap : null]} testID="events-detail-host-roster">
+      <View style={styles.cardH}><UiText style={styles.h3}>{t("tabPeople")}</UiText><UiText style={styles.lbl}>{t("rosterCountsOnly", { n: data.attendeeCounts.all })}</UiText></View>
+      <UiText style={styles.sub}>{t("hostRosterHint")}</UiText>
+      <UiPressable accessibilityRole="button" accessibilityLabel={t("hostRosterOpen")} onPress={() => router.push(`${base}/operations?seg=people` as Href)} style={[styles.gateBtn, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.gateBtnText}>{t("hostRosterOpen")}</UiText></UiPressable>
+    </View>
+  );
   // 名单锁着（roster-policy A：报名确定前）：只给人数 · 知り合い人数 + 「参加登録すると…」（b12 #382 / #384）。
-  const rosterGate = (
+  const rosterGate = hosting ? hostRoster : (
     <View style={[styles.card, tab === "intro" ? styles.gap : null]} testID="events-detail-roster-gate">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("tabPeople")}</UiText><UiText style={styles.lbl}>{t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</UiText></View>
       <View style={styles.gate}>
@@ -205,7 +255,7 @@ export function EventDetailPage() {
         </View>
         {assessment ? (
           <View style={styles.scorebar} testID="events-detail-score">
-            <View style={styles.scoreRow}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("why")} onPress={() => (assessment.assessmentId ? router.push(`/events/assessments/${encodeURIComponent(assessment.assessmentId)}` as Href) : setWhyOpen((value) => !value))} style={styles.scoreRow}>
               <ScoreRing size={50} stroke={6} value={assessment.score} color={colors[ringColor(assessment.score)]} label={String(assessment.score)} fontSize={15} />
               <View style={styles.grow}>
                 <View style={[styles.row, { gap: 6 }]}>
@@ -214,8 +264,8 @@ export function EventDetailPage() {
                 </View>
                 <UiText style={[styles.lbl, { marginTop: 3 }]} numberOfLines={1}>{t("critLine", { g: assessment.display.goalFit, p: data.assessmentPeopleUnknown ? "—" : assessment.display.people, t: assessment.display.timeCost })}</UiText>
               </View>
-              <Icon name="right" size={16} color={colors.ink} />
-            </View>
+              {assessment.assessmentId ? <Icon name="right" size={16} color={colors.ink} /> : null}
+            </UiPressable>
             {whyOpen ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{assessment.basis}</UiText></View> : null}
           </View>
         ) : null}
@@ -223,7 +273,7 @@ export function EventDetailPage() {
           tabs={[{ key: "intro", label: t("tabIntro") }, { key: "agenda", label: t("tabAgenda") }, { key: "host", label: t("tabHost") }, { key: "people", label: t("tabPeople"), count: data.attendeeCounts.all }]} />
         {tab === "intro" ? (
           <>
-            <View style={styles.card}><UiText style={[styles.sub, styles.desc]}>{data.description}</UiText></View>
+            <View style={styles.card}><UiText style={[styles.sub, styles.desc, data.description?.trim() ? null : { color: colors.ink3 }]}>{data.description?.trim() || t("noDescription")}</UiText></View>
             {data.assessmentPeopleUnknown && data.speakerCandidates?.length ? (
               <View style={[styles.card, styles.gap]} testID="events-detail-meet">
                 <View style={styles.cardH}><UiText style={styles.h3}>{t("meetTitle")}</UiText><UiText style={styles.lbl}>{t("meetFromSpeakers")}</UiText></View>
@@ -254,7 +304,7 @@ export function EventDetailPage() {
           </>
         ) : null}
         {tab === "agenda" ? (
-          <View style={styles.card}>{data.agenda.map((item, index) => (
+          <View style={styles.card}>{data.agenda.length === 0 ? <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("noAgenda")}</UiText> : null}{data.agenda.map((item, index) => (
             <View key={`${item.at}-${item.title}`} style={[styles.row, index ? { marginTop: 12 } : null, { alignItems: "flex-start" }]}>
               <UiText style={styles.agendaAt}>{item.at}</UiText>
               <View style={styles.grow}><UiText style={styles.metaTitle}>{item.title}</UiText>{item.detail ? <UiText style={styles.lbl}>{item.detail}</UiText> : null}</View>
@@ -262,15 +312,20 @@ export function EventDetailPage() {
           ))}</View>
         ) : null}
         {tab === "host" ? (
-          <View style={styles.card}><View style={[styles.row, { gap: 12 }]}>
+          // Seed / imported organizers may have no public name or page: say so plainly, and only link when there is a page.
+          <UiPressable accessibilityRole={data.organizer.slug ? "link" : undefined} disabled={!data.organizer.slug} onPress={() => { if (data.organizer.slug) router.push(`/o/${encodeURIComponent(data.organizer.slug)}` as Href); }} style={styles.card} testID="events-detail-organizer"><View style={[styles.row, { gap: 12 }]}>
             <View style={[styles.emo, { backgroundColor: colors.macLav }]}><UiText style={styles.emoText}>{data.organizer.emoji ?? data.emoji}</UiText></View>
-            <View style={styles.grow}><UiText style={styles.metaTitle}>{publicOrganizerName(data.organizer.name) ?? t("hostUnnamed")}</UiText><UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</UiText></View>
-          </View></View>
+            <View style={styles.grow}>
+              {publicOrganizerName(data.organizer.name) ? <UiText style={styles.metaTitle}>{publicOrganizerName(data.organizer.name)}</UiText> : <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("hostUnnamed")}</UiText>}
+              {data.organizer.editions ? <UiText style={styles.lbl}>{t("hostEditions", { n: data.organizer.editions })}</UiText> : null}
+            </View>
+            {data.organizer.slug ? <Icon name="right" size={16} color={colors.ink3} /> : null}
+          </View></UiPressable>
         ) : null}
         {tab === "people" && data.rosterLocked ? rosterGate : null}
         {tab === "people" && !data.rosterLocked ? (
           <>
-            <Segmented<Filter> accessibilityLabel={t("tabPeople")} value={filter} onChange={setFilter}
+            <Segmented<Filter> accessibilityLabel={t("tabPeople")} value={shown} onChange={setFilter}
               segments={[{ key: "planFit", label: t("segPlanFit", { n: data.attendeeCounts.planFit }) }, { key: "known", label: t("segKnown", { n: data.attendeeCounts.known }) }, { key: "all", label: t("segAll", { n: data.attendeeCounts.all }) }]} />
             {people.length ? (
               <View style={[styles.card, styles.peopleCard]} testID="events-detail-people">
@@ -287,22 +342,30 @@ export function EventDetailPage() {
                   </View>
                 ))}
               </View>
-            ) : null}
+            ) : <View style={[styles.card, styles.gap]}><UiText style={[styles.sub, { color: colors.ink3 }]}>{holding && data.attendees.length === 0 && data.attendeeCounts.all === 1 ? t("onlyYou") : t("noPeopleHere")}</UiText></View>}
             {known.length ? knownCard(t("knownAlsoN", { n: known.length }), knownLine, known.slice(0, 3), KNOWN_TONES) : null}
           </>
         ) : null}
       </ScrollView>
-      {status === "none" || holding ? (
+      {/* After 取消参加 the person can register again (the server reactivates); no CTA left them stuck. */}
+      {hosting ? (
+        <View style={[styles.ctabar, scheme === "dark" ? shadows.floatDark : shadows.float]} testID="events-detail-cta">
+          <GlassSurface radius={28} style={styles.ctaGlass}>
+            {ended ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("hostCheckIn")} onPress={() => router.push(`${base}/operations/check-in` as Href)} style={styles.ctaSecondary} testID="events-detail-host-checkin"><UiText style={styles.ctaSecondaryText}>{t("hostCheckIn")}</UiText></UiPressable>}
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("hostManage")} onPress={() => router.push(`${base}/operations` as Href)} style={styles.ctaMain} testID="events-detail-host-manage"><UiText style={styles.ctaMainText}>{t("hostManage")}</UiText></UiPressable>
+          </GlassSurface>
+        </View>
+      ) : ((status === "none" || status === "cancelled") && !ended) || holding ? (
         <View style={[styles.ctabar, scheme === "dark" ? shadows.floatDark : shadows.float]} testID="events-detail-cta">
           <GlassSurface radius={28} style={styles.ctaGlass}>
             {holding ? (
               <>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("moreActions")} onPress={() => setMenuOpen(true)} style={styles.lbtn} testID="events-detail-more"><Icon name="more" size={20} color={colors.ink2} /></UiPressable>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("goPrep")} onPress={() => router.push(`${base}/prep` as Href)} style={styles.ctaMain}><UiText style={styles.ctaMainText}>{t("goPrep")}</UiText></UiPressable>
+                {ended || attended ? null : <UiPressable accessibilityRole="button" accessibilityLabel={t("moreActions")} onPress={() => setMenuOpen(true)} style={styles.lbtn} testID="events-detail-more"><Icon name="more" size={20} color={colors.ink2} /></UiPressable>}
+                <UiPressable accessibilityRole="button" accessibilityLabel={t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")} onPress={() => router.push(`${base}/${ended ? "after" : attended ? "live" : "prep"}` as Href)} style={styles.ctaMain}><UiText style={styles.ctaMainText}>{t(ended ? "goAfter" : attended ? "goVenue" : "goPrep")}</UiText></UiPressable>
               </>
             ) : (
               <>
-                <UiPressable accessibilityRole="button" accessibilityLabel={t("saveEvent")} onPress={() => void save()} style={styles.lbtn}><Icon name="star" size={20} color={colors.ink2} /></UiPressable>
+                <UiPressable accessibilityRole="button" accessibilityLabel={t(saved ? "savedEvent" : "saveEvent")} accessibilityState={{ selected: saved }} onPress={() => void save()} style={styles.lbtn} testID="events-detail-save">{saved ? <FilledStar color={colors.macApricotInk} /> : <Icon name="star" size={20} color={colors.ink2} />}</UiPressable>
                 <UiPressable accessibilityRole="button" accessibilityLabel={t("ctaRegisterAi")} onPress={() => router.push(`${base}/register` as Href)} style={styles.ctaMain} testID="events-detail-register"><UiText style={styles.ctaMainText}>{t("ctaRegisterAi")}</UiText></UiPressable>
               </>
             )}
@@ -383,4 +446,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   lbtn: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", width: 46 },
   ctaMain: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flex: 1, height: 46, justifyContent: "center", paddingHorizontal: 16 },
   ctaMainText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  ctaSecondary: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 46, justifyContent: "center", paddingHorizontal: 18 },
+  ctaSecondaryText: { color: colors.ink, fontSize: 15, fontWeight: "600", lineHeight: 22 },
 }));

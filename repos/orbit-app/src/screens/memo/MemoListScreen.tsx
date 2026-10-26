@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
 
 import { AppScreen } from "../../components/AppScreen";
-import { EmptyState, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { EmptyState, presentActionSheet, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
+import { useToast } from "../../components/ui/Toast";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { deleteNoteOnServer } from "./delete-note";
 import { Icon } from "../../components/ui/Icon";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
@@ -43,7 +46,26 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
   const source = useNotesListSource({ actorId, scopeKey, association: "all", contactId, noteKind: "all", q: debouncedQuery });
   const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
-  const notes = source.notes;
+  // QA-D: long-press a row → 削除 (with a confirmation), like the iOS Notes context menu. (A swipe would fight the Task
+  // tab's page swipe.) The row hides at once; the next sync drops it from the device.
+  const client = useOrbitApiClient();
+  const toast = useToast();
+  const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
+  const notes = source.notes?.filter(note => !deletedIds.has(note.id)) ?? null;
+  async function offerDelete(note: { id: string; version: number; title: string }) {
+    if (note.id.startsWith("local:") || source.offline) return;
+    const choice = await presentActionSheet({ title: note.title, options: [{ key: "delete", label: locale.t("notes.deleteNote"), destructive: true }, { key: "cancel", label: locale.t("common.cancel") }] });
+    if (choice === "delete") await deleteNote(note);
+  }
+  async function deleteNote(note: { id: string; version: number }) {
+    const confirmed = await presentConfirm({ title: locale.t("notes.deleteConfirm"), message: locale.t("notes.deleteBody"), confirmLabel: locale.t("notes.deleteNote"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "trash" });
+    if (!confirmed) return;
+    const outcome = await deleteNoteOnServer(client, note).catch(() => "failed" as const);
+    if (outcome !== "deleted") { toast.error(locale.t(outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
+    setDeletedIds(current => new Set([...current, note.id]));
+    toast.success(locale.t("notes.deleted"));
+    source.refresh();
+  }
   const needsNetwork = source.offline && Platform.OS === "web";
   const groups = useMemo(() => ([
     { value: "today", label: locale.t("notes.groupToday") },
@@ -68,7 +90,7 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
     {source.pageError ? <><RetryCard title={source.pageError} onRetry={source.refresh} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={source.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
     {notes?.length === 0 ? <EmptyState title={locale.t(query ? "notes.emptySearch" : contactId ? "notes.emptyLinked" : "notes.empty")} message={locale.t(query ? "notes.emptySearchBody" : "notes.emptyBody")} /> : null}
     {/* UX-6: iOS Notes list — each group one card; a row is the title, then the time and the first line. */}
-    <View style={styles.list}>{groups.map((group) => <View key={group.value} style={styles.group}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text><View style={styles.card}>{group.notes.map((note, index) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.row}>
+    <View style={styles.list}>{groups.map((group) => <View key={group.value} style={styles.group}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text><View style={styles.card}>{group.notes.map((note, index) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} accessibilityActions={[{ name: "delete", label: locale.t("notes.deleteNote") }]} onAccessibilityAction={event => { if (event.nativeEvent.actionName === "delete") void offerDelete(note); }} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} onLongPress={() => void offerDelete(note)} style={styles.row}>
       <View style={index > 0 ? styles.rowLine : null} />
       <Text maxFontSizeMultiplier={2} numberOfLines={1} style={styles.title}>{note.title}</Text>
       <View style={styles.subRow}>

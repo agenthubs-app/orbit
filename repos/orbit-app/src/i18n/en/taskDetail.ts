@@ -79,4 +79,7 @@ export const taskDetail = {
   "taskDetail.changeDate": "Change date",
   "taskDetail.changeTime": "Change time",
   "taskDetail.open": "View",
+  "taskDetail.remindInHour": "In 1 hour",
+  "taskDetail.remindTonight": "Today 18:00",
+  "taskDetail.remindTomorrow": "Tomorrow 9:00",
 } as const;

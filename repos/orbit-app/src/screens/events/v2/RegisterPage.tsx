@@ -150,7 +150,7 @@ export function RegisterPage() {
     setBusy(true);
     const res = await api.joinTentative(eventId);
     setBusy(false);
-    if (res.ok) { setCalendar("added"); announceEventChanged(eventId); toast.success(t("tentativeAdded")); } else toast.error(t("submitFailed"));
+    if (res.ok) { setCalendar("added"); announceEventChanged(eventId); toast.success(t(result?.status === "pending_review" ? "tentativeAdded" : "calendarAdded")); } else toast.error(t("submitFailed"));
   };
   // × goes back to the detail it was opened from (a replace left a second detail in the stack); a deep link has none, so it opens the detail.
   const close = () => (router.canGoBack() ? router.back() : router.replace(detail as Href));
@@ -160,7 +160,7 @@ export function RegisterPage() {
     const reviewUntil = result.reviewUntil ?? profile?.reviewUntil ?? null;
     const pending = result.status === "pending_review";
     return (
-      <JourneyPage title={t("doneTitle")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-done">
+      <JourneyPage key="done" title={t("doneTitle")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-done">
         <View style={[styles.card, styles.doneHero]}>
           <View style={styles.popcheck}>
             <Svg width={38} height={38} viewBox="0 0 24 24" fill="none" stroke={colors.macTealInk} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -179,8 +179,8 @@ export function RegisterPage() {
             {[
               { lines: [t("flowApply"), monthDaySlash(result.submittedAt)], state: "done" },
               { lines: [t("flowReview"), pending && reviewUntil ? t("reviewBy", { date: monthDaySlash(reviewUntil) }) : null], state: pending ? "now" : "done" },
-              { lines: [t("flowResult")], state: pending ? "" : "now" },
-              { lines: [t("flowDay"), monthDaySlash(result.startsAt)], state: "" },
+              { lines: [t("flowResult")], state: pending ? "" : "done" },
+              { lines: [t("flowDay"), monthDaySlash(result.startsAt)], state: pending ? "" : "now" },
             ].map((item) => (
               <View key={item.lines[0]} style={[styles.stepCell, item.state === "done" ? { borderTopColor: colors.plum500 } : item.state === "now" ? { borderTopColor: colors.plum700 } : null]}>
                 <UiText style={[styles.stepText, item.state === "done" ? { color: colors.ink2 } : item.state === "now" ? { color: colors.ink, fontWeight: "800" } : null]}>{item.lines.filter(Boolean).join("\n")}</UiText>
@@ -193,9 +193,9 @@ export function RegisterPage() {
           <View style={[styles.card, styles.gap, styles.confirm]} testID="events-join-calendar">
             <View style={[styles.row, { gap: 8 }]}>
               <View style={[styles.emoSm, { backgroundColor: colors.macLav }]}><UiText style={styles.emoSmText}>📅</UiText></View>
-              <UiText style={styles.title13}>{t("calAsk")}</UiText>
+              <UiText style={styles.title13}>{t(pending ? "calAsk" : "calAskConfirmed")}</UiText>
             </View>
-            <UiText style={[styles.sub, { marginBottom: 10, marginTop: 6 }]}>{t("calendarLine", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</UiText>
+            <UiText style={[styles.sub, { marginBottom: 10, marginTop: 6 }]}>{t(pending ? "calendarLine" : "calendarLineConfirmed", { range: eventRange(result.tentative.startsAt, result.tentative.endsAt, language), title: result.tentative.title })}</UiText>
             <View style={[styles.row, { gap: 8 }]}>
               <UiPressable accessibilityRole="button" accessibilityLabel={t("addIt")} onPress={() => void addTentative()} style={[styles.btnSm, styles.primary]}><UiText style={[styles.btnSmText, { color: colors.bg }]}>{t("addIt")}</UiText></UiPressable>
               <UiPressable accessibilityRole="button" accessibilityLabel={t("noNeed")} onPress={() => setCalendar("declined")} style={styles.btnSm}><UiText style={styles.btnSmText}>{t("noNeed")}</UiText></UiPressable>
@@ -212,7 +212,7 @@ export function RegisterPage() {
     const coverage = profile?.coverage ?? 0;
     const shownIntro = intro ?? profile?.selfIntro?.text ?? "";
     return (
-      <JourneyPage title={t("profileTitle")} subtitle={t("draftedByAi")} leftLabel={t("backToQuestions")} fallback={detail} onLeft={() => void askMore()} testID="events-join-review">
+      <JourneyPage key="review" title={t("profileTitle")} subtitle={t("draftedByAi")} leftLabel={t("backToQuestions")} fallback={detail} onLeft={() => void askMore()} testID="events-join-review">
         <View style={styles.card}>
           <View style={[styles.row, { gap: 16 }]}>
             <ScoreRing size={96} stroke={9} value={coverage} color={colors.plum700} label={`${coverage}%`} fontSize={22}>
@@ -234,10 +234,10 @@ export function RegisterPage() {
           {offerMissing ? <UiText style={[styles.lbl, { marginTop: 10 }]}>{t("offerHint")}</UiText> : null}
         </View>
         <View style={[styles.card, styles.gap]}>
-          <View style={styles.cardH}><UiText style={styles.h3}>{t("topicsLbl")}</UiText><UiText style={styles.more}>{t("edit")}</UiText></View>
+          {/* Topics come from the answers; the old 编辑 / ＋添加 were plain text that did nothing, so they are gone. */}
+          <View style={styles.cardH}><UiText style={styles.h3}>{t("topicsLbl")}</UiText></View>
           <View style={styles.chips}>
             {(profile?.topics ?? []).map((topic) => <View key={topic} style={[styles.chip, { backgroundColor: colors.macLav }]}><UiText style={[styles.chipText, { color: colors.macLavInk }]}>{topic}</UiText></View>)}
-            <View style={styles.chip}><UiText style={styles.chipText}>{t("addTopic")}</UiText></View>
           </View>
         </View>
         <View style={[styles.card, styles.gap]}>
@@ -266,7 +266,7 @@ export function RegisterPage() {
 
   const nextLabel = selected.length > 1 ? t("nextChosen", { n: selected.length }) : t("next");
   return (
-    <JourneyPage title={t("regTitle")} subtitle={event?.title ?? ""} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} footerRadius={26} testID="events-join-chat"
+    <JourneyPage key="chat" title={t("regTitle")} subtitle={event?.title ?? ""} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} footerRadius={26} followEnd testID="events-join-chat"
       footer={question ? (
         <>
           <TextInput ref={freeRef} value={free} onChangeText={setFree} placeholder={t("freeAnswer")} placeholderTextColor={colors.ink3} accessibilityLabel={t("freeAnswer")} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={() => void submitAnswer()} style={styles.composerIn} />
@@ -274,7 +274,10 @@ export function RegisterPage() {
           <UiPressable accessibilityRole="button" accessibilityLabel={nextLabel} disabled={busy || (!selected.length && !free.trim())} onPress={() => void submitAnswer()} style={[styles.btnSm, styles.primary]} testID="events-join-next"><UiText style={[styles.btnSmText, { color: colors.bg }]}>{nextLabel}</UiText></UiPressable>
         </>
       ) : undefined}>
-      {loadFailed && !step ? (
+      {loadFailed && !step && event && Date.parse(event.registrationClosesAt ?? event.endsAt ?? event.startsAt) < Date.now() ? (
+        // 报名已截止 / 活动已结束：说清楚，不给「再试一次」。
+        <View style={styles.card} testID="events-join-closed"><UiText style={styles.h3}>{t("regClosed")}</UiText></View>
+      ) : loadFailed && !step ? (
         <View style={styles.card} testID="events-join-error">
           <UiText style={styles.h3}>{t("regLoadFailed")}</UiText>
           <UiPressable accessibilityRole="button" accessibilityLabel={t("retryLoad")} onPress={() => setAttempt((value) => value + 1)} style={[styles.btnSm, { alignSelf: "flex-start", marginTop: 12 }]}><UiText style={styles.btnSmText}>{t("retryLoad")}</UiText></UiPressable>
@@ -289,7 +292,7 @@ export function RegisterPage() {
           <ProgressBar share={Math.max(0, step.index) / total} />
         </View>
       ) : null}
-      <View style={styles.prefill}><UiText style={styles.prefillText}>{t("regPrefilledLine")}</UiText></View>
+      {step ? <View style={styles.prefill}><UiText style={styles.prefillText}>{t("regPrefilledLine")}</UiText></View> : null}
       <View style={styles.chatcol}>
         {answers.map((item, index) => (
           <View key={`${item.field}-${index}`} style={styles.chatcol}>

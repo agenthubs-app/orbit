@@ -6,7 +6,7 @@ export const iorbitR21Zh = {
   addCard: "添加名片后，可以获得更具体的回答", scan: "扫描",
   recent: "最近的会话", all: "全部", offline: "离线", historyAt: "时的历史记录",
   savedHistory: "已保存的历史记录", ask: "询问 iOrbit", askPlaceholder: "询问 iOrbit…",
-  send: "发送", undo: "撤销删除", manualSend: "发送由你决定。",
+  send: "发送", undo: "撤销删除", manualSend: "iOrbit 只写草稿，不会替你发送。",
   newConversation: "新建会话", searchHistory: "搜索标题和正文", loading: "正在加载会话…",
   retry: "重试", noMatch: "没有匹配的会话", noHistory: "还没有会话",
   plan: "制定计划", continuePlan: "继续制定计划", achieved: "已完成的目标",

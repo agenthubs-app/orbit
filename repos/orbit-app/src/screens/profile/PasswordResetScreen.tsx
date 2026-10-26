@@ -109,7 +109,7 @@ export function PasswordResetScreen() {
       const result = await client.post<PasswordResetResponse>("/api/auth/password-reset/confirm", { body: { token, password } });
       if (!isCurrent()) return;
       if (!result.success) {
-        setError(result.error.code === "INVALID_TOKEN" ? locale.t("auth.resetLinkUnavailable") : result.error.message);
+        setError(result.error.code === "INVALID_TOKEN" ? locale.t("auth.resetLinkUnavailable") : locale.t("reset.unconfirmed"));
         if (result.error.code === "INVALID_TOKEN") {
           setToken(null);
           setPassword("");

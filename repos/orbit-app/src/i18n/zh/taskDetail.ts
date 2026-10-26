@@ -79,4 +79,7 @@ export const taskDetail = {
   "taskDetail.changeDate": "更改日期",
   "taskDetail.changeTime": "更改时间",
   "taskDetail.open": "查看",
+  "taskDetail.remindInHour": "1 小时后",
+  "taskDetail.remindTonight": "今天 18:00",
+  "taskDetail.remindTomorrow": "明天 09:00",
 } as const;

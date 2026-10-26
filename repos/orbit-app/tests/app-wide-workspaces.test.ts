@@ -168,11 +168,11 @@ for (const scheme of ["light", "dark"] as const) {
     const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
     // The keyword-driven contact/event/follow-up/profile/schedule panels were
     // removed with their whole-collection reads (docs/operations/2026-09-26-ai-conversation-bounded-reads.md).
-    // The suggested action is text in the new conversation stack; the task
-    // interaction remains an actionable card.
-    await page.getByText("核对合作信息", { exact: true }).waitFor();
+    // QA-A: proposed tool intents are the agent's tool trace with no action to take, so they are
+    // no longer shown; the task interaction remains an actionable card.
     const taskCard = page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..");
     await taskCard.waitFor();
+    for (const trace of ["核对合作信息", "先确认事实再行动"]) assert.equal(await page.getByText(trace, { exact: true }).count(), 0, trace);
     assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
     for (const removed of ["打开待办详情：联系 林悦", "打开待办详情：确认合作时间"]) assert.equal(await page.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
     assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");

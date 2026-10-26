@@ -30,7 +30,7 @@ test("reschedule success requires an independent GET with the same complete prop
   const { client, calls } = clientFor(pending), signal = new AbortController().signal;
   assert.deepEqual(await flow.postRescheduleProposal(client, confirmed, ...args, signal), { status: "sent", appointmentId: confirmed.appointmentId });
   assert.deepEqual(calls.map(row => [row.method, row.path]), [["POST", "/api/appointments/appointment%3Aone/commands"], ["GET", "/api/appointments/appointment%3Aone"]]);
-  assert.ok(calls.every(row => row.signal === signal));
+  assert.ok(calls.every(row => row.signal instanceof AbortSignal && !row.signal.aborted), "each call carries a cancellable signal (the screen signal composed with the client timeout)");
   assert.equal(calls[0]!.key, "ios:proposal:test");
 });
 
@@ -78,7 +78,7 @@ test("first proposal sends only contact and proposal, checks exact receipt, then
   assert.deepEqual(calls.map(row => [row.method, row.path]), [["POST", "/api/appointments/initial-proposal"], ["GET", "/api/appointments/appointment%3Aone"]]);
   assert.deepEqual(Object.keys(calls[0]!.body).sort(), ["contactId", "proposal"]);
   assert.deepEqual(calls[0]!.body.proposal.candidateTimes, candidates.map(row => ({ startsAtUtc: row.startsAt })));
-  assert.ok(calls.every(row => row.signal === signal));
+  assert.ok(calls.every(row => row.signal instanceof AbortSignal && !row.signal.aborted), "each call carries a cancellable signal (the screen signal composed with the client timeout)");
 });
 
 test("first proposal cannot acknowledge mismatched contact/candidates, changed GET, or a revoked scope", async () => {

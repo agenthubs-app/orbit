@@ -86,6 +86,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const openSearch = () => router.push((query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : "/search") as Href);
   const openContact = (id: string) => router.push(`/contacts/${encodeURIComponent(id)}` as Href);
   const counts = networkTabCounts(summary);
+  const filterCount = networkFilterCount(filters);
 
   return (
     <AppScreen inset="kit" title={t("network.title")}
@@ -102,14 +103,20 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
         ) : (
           <>
             <View style={styles.searchRow}>
-              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholder")} accessibilityLabel={t("network.searchPlaceholder")}
-                trailing={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.filter")} hitSlop={12} onPress={() => setFilterOpen(true)}><Icon name="sliders" size={16} color={colors.ink3Text} /></UiPressable>} /></View>
+              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholderShort")} accessibilityLabel={t("network.searchPlaceholder")}
+                trailing={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.filter")} hitSlop={12} onPress={() => setFilterOpen(true)}><Icon name="sliders" size={16} color={filterCount > 0 ? colors.accent : colors.ink3Text} /></UiPressable>} /></View>
             </View>
             {total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <DensityCard summary={summary} onAnalysis={() => router.push("/contacts/dashboard" as Href)} /> : null}
             <View style={styles.tabs} testID="network-tabs">
               <CategoryTabs accessibilityLabel={t("network.tabsLabel")} value={tab} onChange={setTab}
                 options={[{ key: "all", label: t("network.tabAll"), count: counts.all }, { key: "goal", label: t("network.tabGoal"), count: counts.goal }, { key: "followUp", label: t("network.tabFollowUp"), count: counts.followUp }]} />
             </View>
+            {filterCount > 0 ? (
+              <View style={[styles.between, styles.gapTop]} testID="network-filter-active">
+                <UiText style={styles.lbl}>{t("network.filteredLine", { n: list.matched, total })}</UiText>
+                <Button variant="ghost" size="sm" label={t("network.clearFilters")} onPress={() => setFilters(EMPTY_NETWORK_FILTERS)} />
+              </View>
+            ) : null}
             {total < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <InviteCard onInvite={() => router.push("/contacts/new/invite" as Href)} /> : null}
             {rows.length ? (
               <View style={[styles.listCard, total < NETWORK_ANALYSIS_UNLOCK_CONTACTS && styles.listAfterInvite]} testID="network-list">
@@ -325,17 +332,19 @@ export function NetworkFilterSheet({ visible, onClose, summary, filters, onChang
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("network.filterTitle")}>
       <View testID="network-filter-sheet">
+        {/* QA-C: the apply button sits in the header (it used to be below the fold); the any/all rule line was jargon. */}
         <View style={styles.between}>
           <UiText style={styles.sheetTitle}>{t("network.filterTitle")}</UiText>
-          <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
+          <View style={styles.rowCenter}>
+            <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
+            <Button variant="primary" size="sm" label={t("network.showPeople", { n: matched })} onPress={onClose} />
+          </View>
         </View>
-        <UiText style={styles.lbl}>{t("network.filterHint")}</UiText>
         {group(t("network.groupStage"), "statuses", NETWORK_STAGE_OPTIONS.map((key) => ({ key, label: t(key === "active" ? "network.stageActive" : "network.stageNurture"), count: summary?.statuses[key] ?? 0 })))}
         {group(t("network.groupIndustry"), "industries", industries.map((option) => ({ key: option.key, label: industryOptionLabel(option.key, language, other), count: option.count })))}
         {group(t("network.groupRegion"), "regions", regions.map((option) => ({ key: option.key, label: regionOptionLabel(option.key, (city) => t(`network.city.${city}`), other), count: option.count })))}
         {group(t("network.groupMet"), "mets", NETWORK_MET_OPTIONS.map((key) => ({ key, label: t(MET_COPY[key]), count: summary?.metKinds?.[key] ?? 0 })))}
         {group(t("network.groupDensity"), "densities", NETWORK_DENSITY_OPTIONS.map((key) => ({ key, label: key === "1" ? "●○○" : key === "2" ? "●●○" : "●●●", count: summary?.densityCounts?.[Number(key) as 1 | 2 | 3] ?? 0 })))}
-        <View style={styles.gapTop}><Button variant="primary" label={t("network.showPeople", { n: matched })} onPress={onClose} /></View>
       </View>
     </BottomSheet>
   );
