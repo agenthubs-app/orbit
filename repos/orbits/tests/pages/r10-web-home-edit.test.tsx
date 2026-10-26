@@ -85,7 +85,7 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
 test("incomplete three-step guide belongs inside the Today card (web.html #0)", async t => {
   const page = await home(t);
   await page.locator("[data-widget=today]").getByText("はじめの 3ステップ").waitFor();
-  assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /3人の名刺を確認.*0 \/ 3/ }).count(), 1);
+  assert.equal(await page.locator("[data-widget=today]").getByRole("link", { name: /名刺を3枚追加.*0 \/ 3/ }).count(), 1);
   assert.equal(await page.locator("main > section").filter({ hasText: "はじめの 3ステップ" }).count(), 0);
 });
 

@@ -7,8 +7,8 @@ import { addHomeWidget, homeContactCopyKeys, homeOpeningGeometry, homeWeekWindow
 import { homeCopy } from "../../app/(app)/app/orbit-2026/home/home-copy";
 
 test("home first-step copy follows the shared guide projection", () => {
-  assert.match(homeCopy.guideContacts.ja, /確認/u);
-  assert.match(homeCopy.railAbout.ja, /確認/u);
+  assert.match(homeCopy.guideContacts.ja, /名刺を3枚追加/u);
+  assert.match(homeCopy.railAbout.ja, /名刺を3枚追加/u);
   assert.deepEqual(homeContactCopyKeys({ completed: 0, nextStep: "contacts", steps: { contacts: false } }), { intro: "railAbout", contacts: "guideContacts" });
   assert.deepEqual(homeContactCopyKeys({ completed: 1, nextStep: "goal", steps: { contacts: true } }), { intro: "railAboutReady", contacts: "guideContactsDone" });
   assert.deepEqual(homeContactCopyKeys({ completed: 3, nextStep: null, steps: { contacts: true } }), { intro: "railAboutReady", contacts: "guideContactsDone" });
