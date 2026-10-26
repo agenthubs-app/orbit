@@ -4,7 +4,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { NotificationDeliverySettings } from "../settings/notification-delivery-settings";
 import { Avatar, ListRow, SearchField } from "../orbit-2026/ui";
-import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
+import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
@@ -20,8 +20,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const [detailError, setDetailError] = useState(false);
   const [readError, setReadError] = useState(false);
   const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState(false);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const bodyEdited = useRef(false);
   // "Saved" is bound to the exact text and conversation of one save request
@@ -31,10 +29,8 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const currentBody = useRef(body); currentBody.current = body;
   const currentSelected = useRef(selected); currentSelected.current = selected;
   const changed = useRef(onIdentityChanged); changed.current = onIdentityChanged;
-  const pending = useRef<{ conversationId: string; body: string; id: string; version: string } | null>(null);
   const lifetime = useRef<AbortController | null>(null);
   const readKey = useRef("");
-  const sendLock = useRef(false);
   useEffect(() => {
     const controller = new AbortController(); lifetime.current = controller;
     return () => { controller.abort(); lifetime.current = null; };
@@ -124,26 +120,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       });
     return () => { controller.abort(); if (!confirmed && readKey.current === key) readKey.current = ""; };
   }, [actorId, detail, selected, historyCursor]);
-  async function send() {
-    const controller = lifetime.current;
-    if (!detail || detail.id !== selected || sendLock.current || !controller || controller.signal.aborted || (!body.trim() && !pending.current)) return;
-    const request = pending.current ?? { conversationId: detail.id, body: body.trim(), id: crypto.randomUUID(), version: detail.version };
-    pending.current = request; sendLock.current = true; setSending(true); setSendError(false);
-    try {
-      await sendWindowMessage(actorId, request, controller.signal);
-      if (controller.signal.aborted) return;
-      pending.current = null; setBody(""); setHistoryCursor(null); setAttempt(n => n + 1);
-      // The delivery retires the saved draft on the server (Sprint 0122, Codex
-      // 104-C); no separate clear can fail here or erase newer text.
-      setDraftState("idle");
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        setSendError(true);
-        if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) { setDetail(null); setCards(null); changed.current(); }
-      }
-    }
-    finally { sendLock.current = false; if (!controller.signal.aborted) setSending(false); }
-  }
   const retry = <button className="btn btn-ghost" onClick={() => setAttempt(n => n + 1)}>{t({ zh: "重试", en: "Retry", ja: "再試行" })}</button>;
   const visibleCards = filterMessageCards(cards?.items ?? [], search);
   return <div className={`ri-thread-workspace${selected ? " has-open-thread" : ""}`}>
@@ -152,23 +128,21 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       {listError ? <p role="alert">{t({ zh: "消息列表读取失败。", en: "Could not load conversations.", ja: "メッセージを読み込めませんでした。" })}{retry}</p> : !cards ? <p role="status">{t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p> : !cards.items.length ? <p>{t({ zh: "暂无消息", en: "No messages yet", ja: "メッセージはまだありません" })}</p> : search.trim()&&!visibleCards.length ? <p>{t({zh:"没有匹配的会话",en:"No matching conversations",ja:"一致するスレッドはありません"})}</p> : null}
       {visibleCards.map(item => <ListRow key={item.id} title={item.name} subtitle={item.preview} leading={<Avatar name={item.name} size="md"/>}
         trailing={<span style={{display:'grid',gap:5,justifyItems:'end'}}><small>{formatOrbitDateTime(item.updatedAt,language)}</small>{item.unread>0?<span className="ri-row-unread">{item.unread}</span>:null}</span>}
-        onSelect={() => { if(sending||pending.current)return;setSelected(item.id); setHistoryCursor(null); setBody(""); setSendError(false); readKey.current = ""; }}/>) }
+        onSelect={() => { setSelected(item.id); setHistoryCursor(null); setBody(""); readKey.current = ""; }}/>) }
       {listCursor && <button className="btn btn-ghost" onClick={() => setListCursor(null)}>{t({ zh: "最新会话", en: "Latest conversations", ja: "最新のスレッド" })}</button>}
       {cards?.nextCursor && <button className="btn btn-ghost" onClick={() => setListCursor(cards.nextCursor)}>{t({ zh: "下一页会话", en: "Next conversations", ja: "次のスレッド" })}</button>}
     </div></aside>
     <section className="ri-thread-main" style={{ gridColumn: "2 / -1" }}>
       {!selected ? <p>{t({ zh: "选择联系人查看对话。", en: "Choose a contact to view messages.", ja: "スレッドを選ぶとメッセージが表示されます。" })}</p> : detailError ? <p role="alert">{t({ zh: "对话不可用，请重新加载。", en: "Conversation unavailable. Reload to continue.", ja: "この会話を開けません。再読み込みしてください。" })}{retry}</p> : !detail ? <p role="status">{t({ zh: "正在读取对话…", en: "Loading conversation…", ja: "会話を読み込み中…" })}</p> : <div className="ri-detail">
-        <div className="ri-detail-head"><button className="btn btn-ghost" disabled={sending || Boolean(pending.current)} onClick={() => setSelected(null)}>{t({ zh: "返回消息", en: "Back to messages", ja: "メッセージに戻る" })}</button><h3 className="ri-detail-subject">{detail.name}</h3></div>
+        <div className="ri-detail-head"><button className="btn btn-ghost" onClick={() => setSelected(null)}>{t({ zh: "返回消息", en: "Back to messages", ja: "メッセージに戻る" })}</button><h3 className="ri-detail-subject">{detail.name}</h3></div>
         <NotificationDeliverySettings key={detail.id} conversationId={detail.id}/>
         <div>{detail.nextCursor && <button className="btn btn-ghost" onClick={() => setHistoryCursor(detail.nextCursor)}>{t({ zh: "更早的消息", en: "Earlier messages", ja: "過去のメッセージ" })}</button>}{historyCursor && <button className="btn btn-ghost" onClick={() => setHistoryCursor(null)}>{t({ zh: "返回最新消息", en: "Latest messages", ja: "最新のメッセージに戻る" })}</button>}</div>
         {readError && <p role="alert">{t({ zh: "已读状态尚未保存，下次刷新会重试。", en: "Read state was not saved. It will retry.", ja: "既読を保存できませんでした。次の更新時に再試行します。" })}</p>}
         <div className="ri-msgs">{detail.messages.map(message => <article className={`ri-msg${message.authorId===actorId ? " is-me" : ""}`} key={message.id}><div className="ri-msg-meta"><strong className="ri-msg-sender">{message.author}</strong><time className="ri-msg-time">{formatOrbitDateTime(message.at,language)}</time></div><p className="ri-msg-body" style={{overflowWrap:"anywhere"}}>{message.body}</p></article>)}</div>
-        <div className="ri-composer"><label className="ri-composer-label">{t({ zh: "回复消息", en: "Reply", ja: "返信" })}</label><textarea className="field ri-composer-input" aria-label={t({ zh: "回复消息", en: "Reply", ja: "返信" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setBody(e.target.value); }} disabled={sending || Boolean(pending.current)} />
-          {sendError && <p role="alert">{t({ zh: "尚未确认送达，重试不会重复发送。", en: "Delivery unconfirmed. Retrying will not duplicate it.", ja: "送信を確認できませんでした。再試行しても重複送信されません。" })}</p>}
+        <div className="ri-composer"><label className="ri-composer-label">{t({ zh: "回复消息", en: "Reply", ja: "返信" })}</label><textarea className="field ri-composer-input" aria-label={t({ zh: "回复消息", en: "Reply", ja: "返信" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setBody(e.target.value); }} />
           {draftState === "saved" && <p role="status">{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it.", ja: "下書きを保存しました。自分だけに表示されます。" })}</p>}
           {draftState === "error" && <p role="alert">{t({ zh: "草稿没有保存，请重试。", en: "Draft was not saved. Try again.", ja: "下書きを保存できませんでした。再試行してください。" })}</p>}
-          <button className="btn btn-ghost" disabled={sending || Boolean(pending.current) || draftSaveInFlight} onClick={() => void saveDraft()}>{t({ zh: draftSaveInFlight ? "保存中…" : "保存草稿", en: draftSaveInFlight ? "Saving…" : "Save draft", ja: draftSaveInFlight ? "保存中…" : "下書きを保存" })}</button>
-          <button className="btn btn-primary" disabled={sending || (!body.trim() && !pending.current)} onClick={() => void send()}>{t({ zh: sending ? "发送中…" : sendError ? "重试发送" : "发送", en: sending ? "Sending…" : sendError ? "Retry send" : "Send", ja: sending ? "送信中…" : sendError ? "送信を再試行" : "送信" })}</button>
+          <button className="btn btn-ghost" disabled={draftSaveInFlight} onClick={() => void saveDraft()}>{t({ zh: draftSaveInFlight ? "保存中…" : "保存草稿", en: draftSaveInFlight ? "Saving…" : "Save draft", ja: draftSaveInFlight ? "保存中…" : "下書きを保存" })}</button>
         </div>
       </div>}
     </section>

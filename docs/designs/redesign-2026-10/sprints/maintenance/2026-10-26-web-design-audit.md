@@ -182,4 +182,10 @@ PX2 改过画板文件的提交只有 4 个：B 批 21f035e9d（D04 受信箱、
 
 - 决定：站内关系消息与邮件一样只到草稿，Orbit 不代发；页面不放「送信 / メッセージを送信」按钮。
 - b5 #4 已恢复 21f035e9d 之前的原稿（函数 `threadApp` 与画板注释），板序号不变。
-- 现行实现仍有发送：App `RelationshipInboxScreen`（`inbox.sendMessage`、离线排队发送），Web `bounded-contact-messages-tab.tsx`（「送信」按钮、`sendWindowMessage`），服务端有投递接口。代码怎么收，待定。
+- ~~现行实现仍有发送：App `RelationshipInboxScreen`（`inbox.sendMessage`、离线排队发送），Web `bounded-contact-messages-tab.tsx`（「送信」按钮、`sendWindowMessage`），服务端有投递接口。代码怎么收，待定。~~
+- 10-27 用户定：两端去掉发送按钮和发送逻辑，只留下書き保存 / 推敲；服务端投递接口先不删。已改：
+  - Web `bounded-contact-messages-tab.tsx` 去掉「送信」和送达失败提示，`sendWindowMessage` 删除。
+  - App `RelationshipInboxScreen` 的 ReplyComposer 去掉发送和离线排队；未验证线程仍保留「返信をプレビュー」本地预览（不发送）。
+  - App `RelationshipChatDetailScreen`（`/chat/[id]` 已重定向到收件箱，未挂载）去掉整块发送卡片。
+  - 4 个 i18n key 删除；离线读取清单去掉该页的 POST 一行。
+  - 10-27 之前已在设备队列里的消息仍显示，可重试 / 放弃，离线横幅文案未改。

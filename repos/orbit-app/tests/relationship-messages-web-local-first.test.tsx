@@ -140,7 +140,7 @@ const fixtureValue = (page: Page, key: string) => page.evaluate((name) => (windo
 const messageReads = (list: string[]) => list.filter((request) => /conversation-summaries|unread-summary|\/messages/.test(request) && request.startsWith("GET"));
 const B_ID = "relationship-conversation:wang";
 
-test("browser mirror active: the threads and the conversation read the device copy; offline 截至 and sending needs the network", async (t) => {
+test("browser mirror active: the threads and the conversation read the device copy; offline 截至 and no send", async (t) => {
   const page = await open(t);
   await page.getByText("李雷", { exact: true }).waitFor();
   await page.getByRole("tab", { name: /^消息 · 3/ }).waitFor();
@@ -149,7 +149,7 @@ test("browser mirror active: the threads and the conversation read the device co
   const offline = await open(t, { screen: "thread", status: "stale", params: { id: B_ID } });
   await offline.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
   await offline.getByText("王小明的第 40 条", { exact: true }).waitFor();
-  assert.equal(await offline.getByRole("button", { name: "发送消息 · 需要联网" }).getAttribute("aria-disabled"), "true");
+  assert.equal(await offline.getByRole("button", { name: /发送消息/ }).count(), 0);
   assert.deepEqual(await requests(offline), []);
 });
 

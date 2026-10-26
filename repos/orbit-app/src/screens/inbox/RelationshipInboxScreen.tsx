@@ -44,7 +44,7 @@ import {
   subscribeMessageStateInvalidation,
 } from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
-import { buildRelationshipMessageDeliveryRequest, decodeRelationshipReplyDraft, relationshipDeliveryReceiptMatches } from "../../api/contact-communication";
+import { decodeRelationshipReplyDraft } from "../../api/contact-communication";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -1148,8 +1148,7 @@ function ThreadDetail({
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline}
-            queueReply={delivery && outbox?.enabled && (offline || queued.length > 0) ? outbox : undefined} />
+          <ReplyComposer clientGet={clientGet} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline} />
         </>
       )}
     </View>
@@ -1162,21 +1161,16 @@ function ReplyComposer({
   contactId,
   isCurrent,
   detail,
-  clientPost,
   delivery,
   offline = false,
-  queueReply,
 }: {
   clientGet: ClientGet;
   clientPut?: ClientPut | undefined;
   contactId: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
-  clientPost: ClientPost;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
   offline?: boolean;
-  /** Sprint 0135: set while the reply must go through the device queue (offline, or behind queued messages). */
-  queueReply?: RelationshipMessageOutbox | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1187,8 +1181,6 @@ function ReplyComposer({
   const draftEdited = useRef(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   const [staged, setStaged] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendFailed, setSendFailed] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   // "Saved" belongs to the exact text of one save request (Sprint 0122, Codex
   // 104-A): edits while it is in flight keep the composer unsaved, and a receipt
@@ -1198,50 +1190,12 @@ function ReplyComposer({
   const draftSaveRequest = useRef<object | null>(null);
   const currentBody = useRef(body);
   currentBody.current = body;
-  const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
-  const sendRequest = useRef<object | null>(null);
-  // Sprint 0135: the server time of the draft this composer knows; an offline send retires only that draft,
-  // never one saved after the message was written.
-  const knownDraftUpdatedAt = useRef<string | null>(null);
-  useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
   useEffect(() => {
     draftSaveRequest.current = null;
     setDraftSaveInFlight(false);
     setDraftStatus(status => status === "saving" ? "idle" : status);
   }, [isCurrent]);
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
-
-  async function queueOfflineReply() {
-    if (!delivery || !queueReply || !isCurrent() || sendRequest.current || attempt.current || !body.trim()) return;
-    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
-    try {
-      await queueReply.enqueue({ conversationId: detail.conversationId, body: body.trim(), qualificationVersion: delivery.qualificationVersion, retireDraftThrough: knownDraftUpdatedAt.current });
-      if (!isCurrent() || sendRequest.current !== request) return;
-      draftEdited.current = true; setBody(""); setDraftStatus("idle");
-    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
-    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
-  }
-
-  async function sendReply() {
-    if (queueReply && !attempt.current) { await queueOfflineReply(); return; }
-    if (!delivery || offline || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
-    const currentAttempt = attempt.current ?? { body: body.trim(), requestId: randomUUID(), qualificationVersion: delivery.qualificationVersion };
-    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: detail.conversationId });
-    if (!built.success) { setSendFailed(true); return; }
-    attempt.current = currentAttempt;
-    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
-    try {
-      const result = await clientPost(built.request.endpoint, { ...built.request.body, requestId: currentAttempt.requestId });
-      if (!isCurrent() || sendRequest.current !== request) return;
-      if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, { ...currentAttempt, conversationId: detail.conversationId, senderAccountId: delivery.actorId })) {
-        setSendFailed(true); return;
-      }
-      attempt.current = null; draftEdited.current = true; setBody(""); setDraftStatus("idle"); emitMessageStateInvalidation();
-      // The delivery retires the saved draft on the server (Sprint 0122, Codex
-      // 104-C); no separate clear can fail here or erase newer text.
-    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
-    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
-  }
 
   // Verified conversations keep the participant's own reply draft on the server
   // (Sprint 0104); it is loaded once per conversation unless the user is typing.
@@ -1251,7 +1205,6 @@ function ReplyComposer({
     void clientGet(relationshipReplyDraftPath(detail.conversationId)).then(result => {
       if (!current || !isCurrent() || draftEdited.current || !result.success) return;
       const draft = decodeRelationshipReplyDraft(result.data, detail.conversationId);
-      if (draft) knownDraftUpdatedAt.current = draft.updatedAt;
       if (draft?.body) setBody(draft.body);
     }).catch(() => {});
     return () => { current = false; };
@@ -1269,7 +1222,6 @@ function ReplyComposer({
       const result = await clientPut(relationshipReplyDraftPath(detail.conversationId), { body: saving });
       const saved = result.success ? decodeRelationshipReplyDraft(result.data, detail.conversationId) : null;
       outcome = saved && saved.body === saving ? "saved" : "failed";
-      if (saved && outcome === "saved") knownDraftUpdatedAt.current = saved.updatedAt;
     } catch { outcome = "failed"; }
     if (draftSaveRequest.current !== request || !isCurrent()) return;
     draftSaveRequest.current = null;
@@ -1322,7 +1274,6 @@ function ReplyComposer({
       <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>
       <TextInput
         accessibilityLabel={locale.t("inbox.replyBody")}
-        editable={!sending && !attempt.current}
         multiline
         onChangeText={(value) => {
           draftEdited.current = true;
@@ -1335,13 +1286,12 @@ function ReplyComposer({
         value={body}
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
-      {sendFailed ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.sendUnconfirmed")}</Text> : null}
       {draftStatus === "saved" ? <Text accessibilityRole="text" style={styles.safetyText}>{locale.t("inbox.draftSaved")}</Text> : null}
       {draftStatus === "failed" ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.draftSaveFailed")}</Text> : null}
       <Text style={styles.safetyText}>{delivery ? locale.t("inbox.verifiedSafety") : detail.safetyText}</Text>
       <View style={styles.buttonRow}>
         <ActionButton
-          disabled={!body.trim() || sending || !!attempt.current}
+          disabled={!body.trim()}
           icon="sparkles-outline"
           label={locale.t("inbox.polishDraft")}
           onPress={rewriteDraft}
@@ -1349,19 +1299,22 @@ function ReplyComposer({
         />
         {delivery && clientPut ? (
           <ActionButton
-            disabled={offline || sending || !!attempt.current || draftSaveInFlight}
+            disabled={offline || draftSaveInFlight}
             icon="save-outline"
             label={offline ? `${locale.t("inbox.saveDraft")} · ${locale.t("sync.needsNetwork")}` : locale.t(draftSaveInFlight ? "inbox.savingDraft" : "inbox.saveDraft")}
             onPress={saveDraft}
             variant="secondary"
           />
         ) : null}
-        <ActionButton
-          disabled={(delivery && offline && !queueReply) || sending || (!body.trim() && !attempt.current)}
-          icon="mail-unread-outline"
-          label={delivery && offline && !queueReply ? `${locale.t("inbox.sendMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
-          onPress={delivery ? sendReply : () => { draftEdited.current = true; setStaged(body.trim()); }}
-        />
+        {/* 10-27: relationship messages stop at drafts; Orbit never sends them. */}
+        {delivery ? null : (
+          <ActionButton
+            disabled={!body.trim()}
+            icon="mail-unread-outline"
+            label={locale.t("inbox.previewReply")}
+            onPress={() => { draftEdited.current = true; setStaged(body.trim()); }}
+          />
+        )}
       </View>
     </View>
   );

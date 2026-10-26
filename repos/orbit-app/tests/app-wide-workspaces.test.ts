@@ -188,15 +188,14 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
     assert.equal(await taskCard.evaluate(el => getComputedStyle(el).borderRadius), "24px");
   });
-  test(`${scheme}: final inset chat detail and delivered message keep the exact request boundary`, async t => {
+  test(`${scheme}: final inset chat detail shows the history and offers no send (10-27: messages stop at drafts)`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
-    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.waitFor(); await draft.fill("周四可以");
+    await page.getByText("周四讨论合作资料", { exact: true }).waitFor();
     // Sprint 0104: the retired legacy chat extraction card is gone.
     assert.equal(await page.getByText("提取结果", { exact: true }).count(), 0);
-    await page.getByRole("button", { name: "发送消息", exact: true }).click();
-    await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/relationship-communication/conversations/thread-one/messages", body: { body: "周四可以", qualificationVersion: "qv:style" } }]);
-    assert.equal(await draft.inputValue(), "");
+    assert.equal(await page.getByRole("textbox").count(), 0);
+    assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
   test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
@@ -218,7 +217,7 @@ for (const scheme of ["light", "dark"] as const) {
     const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox IORBIT handoff preserves the reply until explicit send`, async t => {
+  test(`${scheme}: final inset inbox IORBIT handoff preserves the reply, which stops at the draft`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
     // Sprint 0104: the retired privacy panel (legacy chat) is gone.
@@ -229,9 +228,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
     assert.equal(await reply.inputValue(), "周四可以");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    await page.getByRole("button", { name: "发送消息", exact: true }).click();
-    await page.waitForFunction(() => (window as any).fixture.requests.some((r:any)=>r.method === "post"));
-    assert.equal((await page.evaluate(() => (window as any).fixture.requests)).filter((r:any)=>r.method === "post").length,1);
+    assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
 
   });
 }
@@ -288,14 +285,12 @@ test("iOrbit conversation keeps its draft when opening and closing mentions", as
   await page.getByRole("button", { name: "@", exact: true }).click();
   assert.equal(await reply.inputValue(), "先核对资料"); await noWrites(page);
 });
-test("chat list and detail retain navigation, messages and a failed real delivery", async t => {
+test("chat list and detail retain navigation and messages; the detail offers no send", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
   assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "14.5px");
-  const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
-  await fits(detail.getByRole("button", { name: "发送消息", exact: true }), 50);
-  await detail.getByRole("button", { name: "发送消息", exact: true }).click(); await detail.getByText("尚未确认消息送达，输入已保留。请刷新资格后重试。", { exact: true }).waitFor();
-  assert.equal(await draft.inputValue(), "周四可以");
-  assert.equal(await detail.evaluate(() => (window as any).fixture.requests.length), 1);
+  const detail = await open(t, "thread"); await detail.getByText("周四讨论合作资料", { exact: true }).waitFor();
+  assert.equal(await detail.getByRole("button", { name: /发送消息/ }).count(), 0);
+  await noWrites(detail);
 });
 test("iOrbit start offers four direct-send prompts without implicit writes", async t => {
   const page = await open(t, "ai");
@@ -381,7 +376,7 @@ test("calendar agendas retain complete time and event text at doubled native fon
   }
 });
 test("workspace actions and template navigation use their shared control text roles", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "发送消息"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
     assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), screen === "followups" ? "600" : "700", `${screen} shared control label weight`);
   }

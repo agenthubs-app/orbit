@@ -1,19 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from "react-native";
-import {
-  buildRelationshipMessageDeliveryRequest,
-  relationshipDeliveryReceiptMatches
-} from "../../api/contact-communication";
 import type { RelationshipMessagePageDTO } from "../../api/contract/relationship-communication";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
@@ -23,11 +18,9 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { createControlStyles } from "../../design/controls";
 import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
-import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { RelationshipCommunicationMessageView } from "../../view-models/contact-communication";
 import { decodeRelationshipMessagePage } from "../../view-models/relationship-pages";
 import { relationshipChatWindowView } from "../../view-models/relationship-chat-window";
@@ -65,10 +58,9 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   scopeKey: string;
 }) {
   const { colors, styles } = useStyles();
-  const [deliveryNotice, setDeliveryNotice] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
   // Sprint 0119: the device mirror holds the whole history (native always, the browser while its mirror is
-  // active); older pages are read from it too. Sending needs the network.
+  // active); older pages are read from it too.
   const local = useLocalRelationshipThread(conversationId, cursor);
   // Sprint 0135: offline (or behind queued messages) a message is queued and shown last with 「待发送」.
   const outbox = useRelationshipMessageOutbox(local);
@@ -114,143 +106,26 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
         <ThreadContent
           actorId={actorId}
           page={freshData}
-          deliveryNotice={deliveryNotice}
-          offline={offline}
           outbox={fromDevice && outbox.enabled ? outbox : undefined}
           queued={cursor ? [] : queuedHere}
-          onDelivered={() => {
-            setDeliveryNotice("消息已送达已验证的 Orbit 账号。");
-            refreshAll();
-          }}
-          scopeKey={scopeKey}
         />
     </AppScreen>
   );
 }
 
-function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, offline = false, outbox, queued = [] }: {
+function ThreadContent({ actorId, page, outbox, queued = [] }: {
   actorId: string;
   page: RelationshipMessagePageDTO | null;
-  deliveryNotice: string;
-  /** Sprint 0135: the device queue (native, device mirror readable). */
+  /** Sprint 0135: the device queue (native, device mirror readable); messages queued before 10-27 can still be retried or discarded. */
   outbox?: RelationshipMessageOutbox | undefined;
   queued?: readonly OutboxRelationshipMessage[];
-  /** Sprint 0119: offline the history shows as of the last sync and sending needs the network. */
-  offline?: boolean;
-  onDelivered: () => void;
-  scopeKey: string;
 }) {
   const { colors, styles } = useStyles();
-  const client = useOrbitApiClient({ scopeKey });
   const router = useRouter();
   const view = page ? relationshipChatWindowView(page, actorId) : null;
-  const active = useRef(false);
-  active.current = Boolean(view?.canSend);
-  const mounted = useRef(true);
-  const request = useRef<AbortController | null>(null);
-  const attempt = useRef<{ body: string; qualificationVersion: string; requestId: string } | null>(null);
-  const [draftBody, setDraftBody] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [pending, setPending] = useState(false);
 
-  useEffect(() => {
-    if (!page) {
-      request.current?.abort();
-      request.current = null;
-      setPending(false);
-    }
-  }, [page]);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      request.current?.abort();
-    };
-  }, []);
-
-  const queueing = Boolean(outbox && (offline || queued.length > 0));
-
-  async function queueMessage() {
-    if (!outbox || !view?.canSend || !mounted.current || request.current) return;
-    const body = draftBody.trim();
-    if (!body) return;
-    const controller = new AbortController();
-    request.current = controller;
-    setPending(true);
-    setFeedback("");
-    try {
-      // This window has no draft: nothing on the server is retired by a queued send.
-      await outbox.enqueue({ conversationId: view.conversationId, body, qualificationVersion: view.qualificationVersion, retireDraftThrough: null });
-      if (!mounted.current) return;
-      attempt.current = null;
-      setDraftBody("");
-    } catch {
-      if (mounted.current) setFeedback("消息没能存进本机队列，输入已保留。");
-    } finally {
-      if (mounted.current && request.current === controller) {
-        request.current = null;
-        setPending(false);
-      }
-    }
-  }
-
-  async function sendVerifiedMessage() {
-    if (queueing) { await queueMessage(); return; }
-    if (!mounted.current || !active.current || request.current || !view?.canSend || offline) return;
-    const normalizedBody = draftBody.trim();
-    const currentAttempt = attempt.current?.body === normalizedBody && attempt.current.qualificationVersion === view.qualificationVersion
-      ? attempt.current
-      : { body: normalizedBody, qualificationVersion: view.qualificationVersion, requestId: randomUUID() };
-    attempt.current = currentAttempt;
-    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: view.conversationId });
-    setFeedback("");
-    if (!built.success) {
-      setFeedback(built.error);
-      return;
-    }
-    const controller = new AbortController();
-    request.current = controller;
-    setPending(true);
-    try {
-      const result = await client.post<unknown>(built.request.endpoint, {
-        body: built.request.body,
-        headers: built.request.headers,
-        signal: controller.signal
-      });
-      if (!mounted.current || !active.current || controller.signal.aborted) return;
-      if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, {
-        body: currentAttempt.body,
-        conversationId: view.conversationId,
-        qualificationVersion: currentAttempt.qualificationVersion,
-        senderAccountId: actorId
-      })) {
-        setFeedback("尚未确认消息送达，输入已保留。请刷新资格后重试。");
-        return;
-      }
-      attempt.current = null;
-      setDraftBody("");
-      setFeedback("");
-      onDelivered();
-    } catch {
-      if (mounted.current && !controller.signal.aborted) setFeedback("消息暂时无法送达，输入已保留。请重试。");
-    } finally {
-      if (mounted.current && request.current === controller) {
-        request.current = null;
-        setPending(false);
-      }
-    }
-  }
-
-  function changeDraft(value: string) {
-    if (request.current) return;
-    setDraftBody(value);
-    setFeedback("");
-    attempt.current = null;
-  }
-
-  // Keep only the local draft mounted; an unavailable window must not retain
-  // visible messages, contact links or send authority.
+  // An unavailable window must not retain visible messages or contact links.
+  // 10-27: relationship messages stop at drafts; this window offers no send.
   if (!view) return null;
 
   return (
@@ -269,33 +144,12 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
       <DataCard detail={`本页 ${view.messages.length} 条消息`} title="消息记录">
         {view.messages.length ? (
           <View style={styles.messageList}>{view.messages.map((message) => <MessageRow key={message.id} message={message} />)}</View>
-        ) : queued.length ? null : <EmptyState message="验证完成后可以发送第一条消息。" title="暂无消息" />}
+        ) : queued.length ? null : <EmptyState message="这段对话还没有消息。" title="暂无消息" />}
         {queued.length ? (
           <View style={styles.messageList}>{queued.map((message) => (
             <OutboxMessageBubble key={message.mutationId} message={message} senderLabel="我" onRetry={(id) => { void outbox?.retry(id).catch(() => undefined); }} onDiscard={(id) => { void outbox?.discard([id]).catch(() => undefined); }} />
           ))}</View>
         ) : null}
-      </DataCard>
-      <DataCard detail="只有服务端投递回执匹配后才会清空输入" title="发送消息">
-        <TextInput
-          editable={!pending && view.canSend}
-          multiline
-          onChangeText={changeDraft}
-          placeholder="写给已验证联系人"
-          placeholderTextColor={colors.ink3Text}
-          style={styles.textArea}
-          value={draftBody}
-        />
-        {deliveryNotice || feedback ? <Text style={deliveryNotice ? styles.successText : styles.errorText}>{deliveryNotice || feedback}</Text> : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={offline && !queueing ? "发送消息 · 需要联网" : undefined}
-          disabled={(offline && !queueing) || pending || !view.canSend || !draftBody.trim()}
-          onPress={() => void sendVerifiedMessage()}
-          style={({ pressed }) => [styles.primaryButton, (offline && !queueing) || pending || !view.canSend || !draftBody.trim() ? styles.disabled : null, pressed ? styles.pressed : null]}
-        >
-          <Text style={styles.primaryButtonText}>{offline && !queueing ? "发送消息 · 需要联网" : pending ? "发送中" : "发送消息"}</Text>
-        </Pressable>
       </DataCard>
     </>
   );
@@ -318,8 +172,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: { ...textStyles.body, color: colors.ink },
   callout: { alignItems: "center", backgroundColor: colors.okSoft, borderRadius: radius.xl, flexDirection: "row", gap: spacing.sm, padding: spacing.md },
   calloutText: { ...textStyles.small, color: colors.ink, flex: 1 },
-  disabled: { opacity: 0.45 },
-  errorText: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
   linkButton: { alignSelf: "flex-start", paddingVertical: spacing.xs },
   linkButtonText: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
   messageHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -329,9 +181,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   messageRow: { backgroundColor: colors.surface2, borderRadius: radius.xl, gap: spacing.xs, padding: spacing.md },
   messageSender: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "700" },
   pressed: { opacity: 0.72 },
-  pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm },
-  primaryButton: { ...createControlStyles(colors).primaryButton, alignSelf: "flex-start" },
-  primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
-  successText: { color: colors.okText, fontSize: typography.bodySm, lineHeight: 20 },
-  textArea: { ...textStyles.body, backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.xl, borderWidth: 1, color: colors.ink, minHeight: 120, padding: spacing.md, textAlignVertical: "top" }
+  pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm }
 }));

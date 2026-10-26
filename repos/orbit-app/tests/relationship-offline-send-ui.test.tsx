@@ -9,10 +9,10 @@ import { chromium, type Browser, type Page } from "playwright";
 // and the chat detail with the device queue of messages written offline.
 // react-native resolves to react-native-web with Platform.OS = "ios" (offline
 // sending is native only); useSyncedCollection is the replaced mirror boundary
-// and its session is the queue. Offline, 「发送消息」 queues the message (no
-// request), it is shown last with 「待发送」, a refused one says 「未发送 · 重试 ·
-// 复制 · 放弃」, and a queued message whose conversation left the device is listed
-// once at the top of the inbox as 「N 条消息未能发送」.
+// and its session is the queue. Since 10-27 nothing new is queued (messages stop
+// at drafts); a message queued earlier is shown last, a refused one says 「未发送 ·
+// 重试 · 复制 · 放弃」, and a queued message whose conversation left the device is
+// listed once at the top of the inbox as 「N 条消息未能发送」.
 const require = createRequire(import.meta.url);
 let browser: Browser;
 let server: Server;
@@ -158,39 +158,17 @@ const B_ID = "relationship-conversation:wang";
 
 const posts = (list: string[]) => list.filter((request) => request.startsWith("POST") && request.endsWith("/messages"));
 
-test("conversation offline: 发送消息 queues the message without a request; it is shown last with 待发送 and the banner says it sends when online", async (t) => {
+// 10-27: relationship messages stop at drafts. The composer neither sends nor
+// queues; messages queued before that are still shown and can be retried or discarded.
+test("conversation offline: the composer offers no send and queues nothing; drafts still need the network", async (t) => {
   const page = await open(t, { screen: "thread", status: "stale", params: { id: B_ID } });
-  await page.getByText("无法连接 · 显示截至 9月28日 16:40；消息会在联网后发送").or(page.getByText(/^无法连接 · 显示截至 .+；消息会在联网后发送$/)).first().waitFor();
   await page.getByText("王小明的第 40 条", { exact: true }).waitFor();
   await page.getByLabel("回复正文").fill("断网时写的第一条");
-  const send = page.getByRole("button", { name: "发送消息", exact: true });
-  assert.notEqual(await send.getAttribute("aria-disabled"), "true", "sending is available offline");
-  await send.click();
-  await page.getByText("断网时写的第一条", { exact: true }).waitFor();
-  await page.getByText("待发送", { exact: true }).waitFor();
-  assert.equal(await page.getByLabel("回复正文").inputValue(), "", "the composer is cleared once the message is queued");
-  const enqueued = await fixtureValue(page, "enqueued") as Array<{ id: string; mutationId: string; requestJson: string }>;
-  assert.equal(enqueued.length, 1);
-  assert.equal(enqueued[0]!.id, B_ID);
-  assert.deepEqual(JSON.parse(enqueued[0]!.requestJson), { body: "断网时写的第一条", qualificationVersion: "qv_1", requestId: enqueued[0]!.mutationId, retireDraftThrough: null }, "offline the composer knew no server draft");
-  // The queued message is after the newest server message.
-  const order = await page.getByText(/^(王小明的第 40 条|断网时写的第一条)$/).allTextContents();
-  assert.deepEqual(order, ["王小明的第 40 条", "断网时写的第一条"]);
+  assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
+  assert.deepEqual(await fixtureValue(page, "enqueued"), []);
   assert.deepEqual(posts(await requests(page)), [], "nothing is sent offline");
   assert.equal(await page.getByRole("button", { name: "保存草稿 · 需要联网" }).getAttribute("aria-disabled"), "true", "drafts still need the network");
   await page.getByText("标为已读 · 需要联网").waitFor();
-});
-
-test("conversation online behind a queued message: the reply queues too (order kept) and carries the server time of the draft it knew", async (t) => {
-  const page = await open(t, { screen: "thread", params: { id: B_ID }, outbox: [{ requestId: "queued-1", conversationId: B_ID, body: "还在队列里的" }] });
-  await page.getByText("还在队列里的", { exact: true }).waitFor();
-  await page.getByLabel("回复正文").waitFor();
-  await page.waitForFunction(() => (document.querySelector('[aria-label="回复正文"]') as HTMLTextAreaElement | null)?.value === "联网时存的草稿");
-  await page.getByRole("button", { name: "发送消息", exact: true }).click();
-  await page.waitForFunction(() => (window as any).fixture.enqueued.length === 1);
-  const enqueued = await fixtureValue(page, "enqueued") as Array<{ requestJson: string }>;
-  assert.equal(JSON.parse(enqueued[0]!.requestJson).retireDraftThrough, "2026-09-28T08:55:00.000Z", "only the draft known when the message was written may be retired");
-  assert.deepEqual(posts(await requests(page)), [], "not sent ahead of the queued message");
 });
 
 test("a refused message says 未发送 · 重试 · 复制 · 放弃; retry and discard act on that one row", async (t) => {
@@ -225,15 +203,11 @@ test("inbox: a queued message whose conversation left the device is one top line
   await page.getByText("1 条消息未能发送：这段关系已结束").waitFor({ state: "detached" });
 });
 
-test("chat detail offline: sending queues the message and shows it last with 待发送", async (t) => {
+test("chat detail offline: no composer, nothing is queued", async (t) => {
   const page = await open(t, { screen: "chat-detail", status: "stale", params: { id: B_ID } });
   await page.getByText("王小明的第 40 条").first().waitFor();
-  await page.getByPlaceholder("写给已验证联系人").fill("详情页断网发送");
-  const send = page.getByRole("button", { name: "发送消息", exact: true });
-  await send.click();
-  await page.getByText("待发送", { exact: true }).waitFor();
-  await page.getByText("详情页断网发送", { exact: true }).waitFor();
-  const enqueued = await fixtureValue(page, "enqueued") as Array<{ requestJson: string }>;
-  assert.equal(JSON.parse(enqueued[0]!.requestJson).retireDraftThrough, null);
+  assert.equal(await page.getByRole("textbox").count(), 0);
+  assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
+  assert.deepEqual(await fixtureValue(page, "enqueued"), []);
   assert.deepEqual(posts(await requests(page)), []);
 });

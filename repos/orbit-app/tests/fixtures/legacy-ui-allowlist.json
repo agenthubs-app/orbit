@@ -23,8 +23,7 @@
       "modal": 1
     },
     "src/screens/chat/RelationshipChatDetailScreen.tsx": {
-      "oldComponent": 5,
-      "controls": 1
+      "oldComponent": 5
     },
     "src/screens/chat/RelationshipChatScreen.tsx": {
       "oldComponent": 5

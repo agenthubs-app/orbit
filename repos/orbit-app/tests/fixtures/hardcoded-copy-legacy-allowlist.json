@@ -33,7 +33,7 @@
     "src/screens/agent/AgentLedgerScreen.tsx": 12,
     "src/screens/ai/AgentActionsScreen.tsx": 1,
     "src/screens/ai/AiConversationScreen.tsx": 3,
-    "src/screens/chat/RelationshipChatDetailScreen.tsx": 29,
+    "src/screens/chat/RelationshipChatDetailScreen.tsx": 18,
     "src/screens/chat/RelationshipChatScreen.tsx": 15,
     "src/screens/contacts/ContactRelationshipInitializer.tsx": 54,
     "src/screens/home/HomeScreen.tsx": 16,

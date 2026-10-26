@@ -82,13 +82,6 @@ export async function confirmMessageWindowRead(actorId: string, conversationId: 
   // that the session did not switch while it was being written.
   await expectActor(actorId, signal);
 }
-export async function sendWindowMessage(actorId: string, request: { conversationId: string; body: string; id: string; version: string }, signal: AbortSignal) {
-  await expectActor(actorId, signal, true);
-  const value = await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(request.conversationId)}/messages`, {
-    signal, method: "POST", body: JSON.stringify({ body: request.body, requestId: request.id, qualificationVersion: request.version }),
-  }) as { conversationId?: unknown; deliveryState?: unknown; message?: { body?: unknown; senderAccountId?: unknown } };
-  if (value.conversationId !== request.conversationId || value.deliveryState !== "delivered" || value.message?.body !== request.body || value.message.senderAccountId !== actorId) throw Error("Delivery receipt invalid");
-}
 // Reply drafts (Sprint 0104): the signed-in participant's own unsent reply,
 // stored on the relationship conversation. The server only ever returns the
 // caller's draft; the response is still checked against the requested id.

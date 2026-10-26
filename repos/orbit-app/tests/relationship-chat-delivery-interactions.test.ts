@@ -8,8 +8,9 @@ const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
 
-// Keep the retired chat components' delivery and paging behavior covered while
-// /chat routes redirect to the unified inbox. Only external boundaries are replaced.
+// Keep the retired chat components' paging behavior covered while /chat routes
+// redirect to the unified inbox. Only external boundaries are replaced. Since
+// 10-27 relationship messages stop at drafts: the window offers no send.
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
@@ -86,19 +87,9 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: { listMo
   await page.evaluate(value => { (window as any).initialFixture = value; }, patch);
   await page.addScriptTag({ content: script });
   if (patch.listMode) await page.getByText("关系对话", { exact: true }).first().waitFor();
-  else await page.getByPlaceholder("写给已验证联系人", { exact: true }).waitFor();
+  else await page.getByText("消息记录", { exact: true }).waitFor();
   await settle(page);
   return page;
-}
-
-async function fill(page: Page, body = "需要确认送达的消息") {
-  await page.getByPlaceholder("写给已验证联系人", { exact: true }).fill(body);
-  await settle(page);
-}
-
-async function send(page: Page) {
-  await page.getByRole("button", { name: "发送消息", exact: true }).click();
-  await settle(page);
 }
 
 async function writes(page: Page) {
@@ -110,78 +101,27 @@ test("opening a verified conversation never sends and revoked qualification fail
   assert.deepEqual(await writes(page), []);
   // Sprint 0104: the retired legacy chat extraction call is gone.
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/chat/")).map((r: any) => r.path)), []);
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isDisabled(), true);
-  await fill(page);
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: /发送/u }).count(), 0);
+  assert.equal(await page.getByRole("textbox").count(), 0);
+  assert.equal(await page.getByText("查看联系人", { exact: true }).count(), 1);
 
   await page.evaluate(() => (window as any).fixture.update({ status: "revoked" }));
   await page.evaluate(() => (window as any).fixture.refresh());
   await settle(page);
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).count(), 0);
+  assert.equal(await page.getByText("查看联系人", { exact: true }).count(), 0);
   assert.match(await page.locator("body").innerText(), /当前账号可访问/u);
   assert.deepEqual(await writes(page), []);
 });
 
-test("delivery is single-flight, retries with the same idempotency key, and clears only on a matching receipt", async t => {
-  const page = await open(t);
-  await fill(page, "  需要确认送达的消息  ");
-  await page.evaluate(() => { const sendNow = (window as any).fixture.presses["发送消息"]; sendNow(); sendNow(); });
-  await settle(page);
-  let sent = await writes(page);
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].path, "/api/relationship-communication/conversations/conversation%3A1/messages");
-  assert.deepEqual(sent[0].body, { body: "需要确认送达的消息", qualificationVersion: "qv:1" });
-  const key = sent[0].headers["idempotency-key"];
-  assert.match(key, /^test-uuid-/u);
-
-  await page.evaluate(() => { const state = (window as any).fixture; state.reply(state.requests.findLastIndex((request: any) => request.method === "POST"), 503); });
-  await settle(page);
-  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "  需要确认送达的消息  ");
-  await send(page);
-  sent = await writes(page);
-  assert.equal(sent[1].headers["idempotency-key"], key);
-
-  await page.evaluate(() => { const state = (window as any).fixture; const index = state.requests.findLastIndex((request: any) => request.method === "POST"); state.messages = [state.message(state.requests[index].body.body)]; state.reply(index, 201, state.receipt(state.requests[index].body.body)); });
-  await settle(page);
-  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "");
-  assert.equal(await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).count(), 1);
-});
-
-for (const kind of ["wrong-body", "wrong-version", "wrong-sender", "wrong-conversation", "missing-message"]) {
-  test(`unconfirmed ${kind} receipt retains the input`, async t => {
-    const page = await open(t);
-    await fill(page);
-    await send(page);
-    await page.evaluate(kind => { const state = (window as any).fixture; const index = state.requests.findLastIndex((request: any) => request.method === "POST"); let receipt = state.receipt(state.requests[index].body.body); if (kind === "wrong-body") receipt.message.body = "other"; if (kind === "wrong-version") receipt.qualificationVersion = "qv:old"; if (kind === "wrong-sender") receipt.message.senderAccountId = "account:other"; if (kind === "wrong-conversation") receipt.conversationId = "conversation:other"; if (kind === "missing-message") delete receipt.message; state.reply(index, 201, receipt); }, kind);
-    await settle(page);
-    assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "需要确认送达的消息");
-    assert.match(await page.locator("body").innerText(), /尚未确认消息送达/u);
-  });
-}
-
-test("an identity change aborts an in-flight delivery and suppresses its late receipt", async t => {
-  const page = await open(t);
-  await fill(page);
-  await send(page);
-  await page.evaluate(() => { const state = (window as any).fixture; state.oldWrite = state.requests.findLastIndex((request: any) => request.method === "POST"); state.update({ actor: "account:other" }); });
-  await settle(page);
-  assert.equal(await page.evaluate(() => { const state = (window as any).fixture; return state.requests[state.oldWrite].signal.aborted; }), true);
-  await page.evaluate(() => { const state = (window as any).fixture; state.reply(state.oldWrite, 201, state.receipt("需要确认送达的消息")); });
-  await settle(page);
-  assert.equal(await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).count(), 0);
-});
-
-test("legacy chat opens only a 30-message window, replaces older pages and retains the draft", async t => {
+test("legacy chat opens only a 30-message window and replaces older pages", async t => {
   const messages = Array.from({ length: 65 }, (_, index) => ({ messageId: `message:${index}`, conversationId: "conversation:1", senderAccountId: "account:receiver", senderDisplayName: "Receiver", body: `历史正文 ${index}`, sentAt: "2026-09-14T12:00:00.000Z", deliveryState: "delivered" }));
   const page = await open(t, { messages });
-  await fill(page, "翻页也不要丢掉草稿");
   assert.equal(await page.getByText("历史正文 64", { exact: true }).count(), 1);
   assert.equal(await page.getByText("历史正文 34", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "更早的消息", exact: true }).click();
   await settle(page);
   assert.equal(await page.getByText("历史正文 34", { exact: true }).count(), 1);
   assert.equal(await page.getByText("历史正文 64", { exact: true }).count(), 0);
-  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "翻页也不要丢掉草稿");
   await page.getByRole("button", { name: "更早的消息", exact: true }).click();
   await settle(page);
   assert.equal(await page.getByText("历史正文 0", { exact: true }).count(), 1);
@@ -198,18 +138,15 @@ test("legacy chat opens only a 30-message window, replaces older pages and retai
 
 for (const readStatus of [403, 404]) test(`a ${readStatus} refresh hides private content without a full-history fallback`, async t => {
   const page = await open(t);
-  await fill(page, "本地未发送草稿");
   await page.evaluate(readStatus => { const state = (window as any).fixture; state.readStatus = readStatus; state.refresh(); }, readStatus);
   await settle(page);
-  assert.equal(await page.getByPlaceholder("写给已验证联系人").count(), 0);
   assert.equal(await page.getByText("查看联系人", { exact: true }).count(), 0);
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).count(), 0);
   assert.deepEqual(await writes(page), []);
   const reads = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET" && !r.path.endsWith("/extractions")).map((r: any) => r.path));
   assert.ok(reads.every((path: string) => path.includes("/messages?limit=30&direction=older")));
   await page.evaluate(() => { const state = (window as any).fixture; state.readStatus = 200; state.refresh(); });
   await settle(page);
-  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "本地未发送草稿");
+  assert.equal(await page.getByText("查看联系人", { exact: true }).count(), 1);
 });
 
 test("a late older-page response cannot replace the latest window", async t => {

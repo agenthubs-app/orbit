@@ -56,12 +56,9 @@ test("Web loads the saved reply draft for the opened conversation, saves edits, 
     assert.equal(await page.evaluate(() => (window as any).draft), "改过的草稿", "a failed save leaves the stored draft unchanged");
 
     await page.evaluate(() => { (window as any).failPut = false; });
-    await page.getByRole("button", { name: "发送", exact: true }).click();
-    await page.waitForFunction(() => (window as any).calls.some((call: any) => call.method === "POST" && call.path.endsWith("/messages")));
-    await page.waitForFunction(() => (document.querySelector("textarea") as HTMLTextAreaElement | null)?.value === "");
-    // Sprint 0122 (Codex 104-C): the delivery retires the draft on the server; the
-    // page sends no blanket clear that could fail or erase newer text.
-    assert.deepEqual(await page.evaluate(() => (window as any).calls.filter((call: any) => call.method === "PUT" && JSON.parse(call.body).body === "")), []);
+    // 10-27: relationship messages stop at drafts; the page offers no send.
+    assert.equal(await page.getByRole("button", { name: /发送|Send|送信/ }).count(), 0);
+    assert.equal(await page.evaluate(() => (window as any).calls.some((call: any) => call.method === "POST" && call.path.endsWith("/messages"))), false);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });

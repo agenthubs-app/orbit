@@ -273,7 +273,7 @@ for (const kind of ["loading", "offline", "failure"]) {
   });
 }
 
-test("a real reply waits for explicit send and the retired privacy panel is gone", async t => {
+test("a real reply stops at the draft (no send) and the retired privacy panel is gone", async t => {
   const page = await openScreen(t);
   await page.evaluate(() => (window as any).openDetail());
   const reply = page.getByRole("textbox", { name: "回复正文", exact: true });
@@ -281,8 +281,9 @@ test("a real reply waits for explicit send and the retired privacy panel is gone
   assert.equal(await reply.inputValue(), "");
   assert.equal(await page.getByText("隐私控制暂时不可用。", { exact: true }).count(), 0);
   await reply.fill("周四见。");
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "预览回复", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "保存草稿", exact: true }).isEnabled(), true);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   assert.equal(await reply.inputValue(), "周四见。");
   // Sprint 0104: the privacy panel called the legacy chat store with new-system ids and always failed.

@@ -174,15 +174,14 @@ test("conversation online: the history is the device copy; an unread conversatio
   assert.equal(await page.getByText(/显示截至/).count(), 0);
 });
 
-test("conversation offline: 截至, the whole history pages back from the device; send, save draft and mark read need the network", async (t) => {
+test("conversation offline: 截至, the whole history pages back from the device; save draft and mark read need the network, and there is no send", async (t) => {
   const page = await open(t, { screen: "thread", status: "stale", params: { id: B_ID } });
   await page.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
   await page.getByText("王小明的第 40 条", { exact: true }).waitFor();
   assert.equal(await page.getByText("王小明的第 1 条", { exact: true }).count(), 0, "the first page is the latest window");
   await page.getByText("标为已读 · 需要联网").waitFor();
-  const send = page.getByRole("button", { name: "发送消息 · 需要联网" });
   const save = page.getByRole("button", { name: "保存草稿 · 需要联网" });
-  assert.equal(await send.getAttribute("aria-disabled"), "true");
+  assert.equal(await page.getByRole("button", { name: /发送消息/ }).count(), 0);
   assert.equal(await save.getAttribute("aria-disabled"), "true");
   await page.getByRole("button", { name: "更早的消息" }).click();
   await page.getByText("王小明的第 1 条", { exact: true }).waitFor();
@@ -195,15 +194,14 @@ test("a conversation no longer on the device (revoked) says so instead of loadin
   assert.deepEqual(messageReads(await requests(page)), []);
 });
 
-test("chat list and chat detail read the device copy too; offline the detail keeps the history and sending needs the network", async (t) => {
+test("chat list and chat detail read the device copy too; offline the detail keeps the history and offers no send", async (t) => {
   const list = await open(t, { screen: "chat" });
   await list.getByText("王小明").first().waitFor();
   assert.deepEqual(messageReads(await requests(list)), []);
   const detail = await open(t, { screen: "chat-detail", status: "stale", params: { id: B_ID } });
   await detail.getByText(/^无法连接 · 显示截至 .+/).first().waitFor();
   await detail.getByText("王小明的第 40 条", { exact: true }).waitFor();
-  const send = detail.getByRole("button", { name: "发送消息 · 需要联网" });
-  assert.equal(await send.getAttribute("aria-disabled"), "true");
+  assert.equal(await detail.getByRole("button", { name: /发送消息/ }).count(), 0);
   await detail.getByRole("button", { name: "更早的消息" }).click();
   await detail.getByText("王小明的第 1 条", { exact: true }).waitFor();
   assert.deepEqual(await requests(detail), []);

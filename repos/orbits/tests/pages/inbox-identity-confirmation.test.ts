@@ -12,7 +12,6 @@ import {
   readMessageCards,
   readMessageWindow,
   saveReplyDraft,
-  sendWindowMessage,
 } from "../../app/(app)/app/inbox/bounded-contact-messages-view-model";
 import { readInboxUnreadCounts } from "../../app/(app)/app/inbox/relationship-inbox-panel";
 
@@ -161,9 +160,9 @@ test("(e) writes always confirm with a request issued after the write started", 
   const signal = new AbortController().signal;
   assert.equal(await readContactMessageActor(), "a");
   const before = meCalls();
-  await sendWindowMessage("a", { conversationId: "c", body: "hi", id: "r1", version: "v" }, signal);
+  await saveReplyDraft("a", "c", "hi", signal);
   await confirmMessageWindowRead("a", "c", "m", signal);
-  // send: barrier; read receipt: barrier + fresh post-write confirmation (Codex review P2).
+  // draft save: barrier; read receipt: barrier + fresh post-write confirmation (Codex review P2).
   assert.equal(meCalls(), before + 3, "a reusable result is never used for a write");
   assert.equal(await readContactMessageActorForWrite(), "a");
   assert.equal(meCalls(), before + 4);
@@ -178,10 +177,10 @@ test("(e) race: a pending ordinary confirmation (A), account switch to B, then a
   assert.equal(meCalls(), 1);
   account = "b";
   meHandler = null;
-  const write = sendWindowMessage("a", { conversationId: "c", body: "hi", id: "r2", version: "v" }, signal);
+  const write = saveReplyDraft("a", "c", "hi", signal);
   await assert.rejects(write, (error: unknown) => error instanceof BoundedMessageReadError && error.status === 403);
   assert.equal(meCalls(), 2, "the write barrier issued its own request");
-  assert.equal(calls.filter(c => c.method === "POST").length, 0, "no write request went out as A");
+  assert.equal(calls.filter(c => c.method === "PUT").length, 0, "no write request went out as A");
   gate.resolve();
   assert.equal(await ordinary, "a", "the older ordinary caller still gets its own answer");
   assert.equal(await readContactMessageActor(), "b", "the late A answer was not remembered");

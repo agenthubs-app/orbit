@@ -18,15 +18,8 @@ test("relationship chat detail no longer calls the retired legacy chat extractio
   assert.doesNotMatch(screenSource, /提取结果|生成摘要/u);
 });
 
-test("relationship chat detail sends only through a verified delivery receipt", () => {
-  assert.match(screenSource, /TextInput/u);
-  assert.match(screenSource, /buildRelationshipMessageDeliveryRequest/u);
-  assert.match(screenSource, /relationshipDeliveryReceiptMatches/u);
+test("relationship chat detail stops at drafts and offers no send (10-27)", () => {
   assert.match(screenSource, /relationshipCommunicationConversationPath/u);
-  assert.match(screenSource, /draftBody/u);
-  assert.match(screenSource, /sendVerifiedMessage/u);
-  assert.match(screenSource, /title="发送消息"/u);
-  assert.match(screenSource, /发送消息/u);
-  assert.match(screenSource, /已送达/u);
-  assert.doesNotMatch(screenSource, /保存草稿/u);
+  assert.doesNotMatch(screenSource, /TextInput|buildRelationshipMessageDeliveryRequest|relationshipDeliveryReceiptMatches|\.enqueue\(/u);
+  assert.doesNotMatch(screenSource, /发送消息|已送达/u);
 });

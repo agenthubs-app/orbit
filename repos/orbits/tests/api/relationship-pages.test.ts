@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRelationshipPageGetHandler } from "../../app/api/relationship-communication/read-handler";
-import { readMessageCards, sendWindowMessage, BoundedMessageReadError } from "../../app/(app)/app/inbox/bounded-contact-messages-view-model";
+import { readMessageCards, saveReplyDraft, BoundedMessageReadError } from "../../app/(app)/app/inbox/bounded-contact-messages-view-model";
 
 const actor = { id: "a", accountId: "a", userId: "subject", workspaceId: "w", name: "A", email: "a@example.test" };
 test("relationship pages authenticate once, preserve scope and reject duplicate inputs", async () => {
@@ -46,7 +46,7 @@ test("bounded Web reads and writes preserve revocation errors instead of replayi
       calls.push(String(url));
       return String(url) === "/api/account/me" ? Response.json({ success: true, data: { account: { id: "a" } } }) : Response.json({}, { status: 403 });
     };
-    await assert.rejects(sendWindowMessage("a", { conversationId: "c", body: "secret", id: "same-id", version: "v" }, controller.signal), error => error instanceof BoundedMessageReadError && error.status === 403);
+    await assert.rejects(saveReplyDraft("a", "c", "secret", controller.signal), error => error instanceof BoundedMessageReadError && error.status === 403);
     assert.equal(calls.length, 2);
   } finally { globalThis.fetch = originalFetch; }
 });

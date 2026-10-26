@@ -716,7 +716,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/ai/AiScreen.tsx","GET","/api/contacts/summary"],
   ["src/screens/ai/AiScreen.tsx","GET","/api/today"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/relationship-communication/conversations/:id/messages"],
-  ["src/screens/chat/RelationshipChatDetailScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/chat/RelationshipChatScreen.tsx","GET","/api/relationship-communication/conversation-summaries"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","GET","/api/inbox/notifications/:id"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","POST","/api/inbox/notifications/:id/actions"],
