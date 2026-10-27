@@ -35,13 +35,13 @@ test("notifications tab shares the read confirmation and confirms afresh before 
     const posts = () => page.evaluate(() => (window as any).calls.filter((c: any) => c.method === "POST").length);
     await page.getByText("发送报价资料").first().waitFor();
     assert.equal(await me(), 1, "list read: the before and after confirmations share one request");
-    // b5 #6: the row's 既読 action marks it read, using the same action barrier.
-    await page.getByRole("button", { name: "已读 发送报价资料" }).click();
+    // b5 D05: choosing the row opens its detail and marks it read, using the same action barrier.
+    await page.getByRole("button", { name: /发送报价资料/ }).first().click();
     await page.waitForFunction(() => (window as any).calls.some((c: any) => c.method === "POST"));
     // Barrier before the action, then a fresh post-write confirmation (never the barrier's answer).
     await page.waitForFunction(() => (window as any).calls.filter((c: any) => c.path === "/api/account/me").length >= 3);
     assert.equal(await me(), 3, "the action confirmed before and after with fresh requests");
-    await page.getByRole("button", { name: "已读 发送报价资料" }).waitFor({ state: "detached" });
+    await page.getByLabel("未读", { exact: true }).waitFor({ state: "detached" });
     // The account changes while the old identity is still reusable: the next action must notice.
     await page.evaluate(() => { (window as any).account = "b"; });
     await page.getByRole("button", { name: "加入待办 发送报价资料" }).click();

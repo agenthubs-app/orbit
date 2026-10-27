@@ -11,7 +11,7 @@ import {quietHoursPatch} from './notifications/model';
 import s from './notifications/NotificationSettings.module.css';
 
 const endpoint='/api/inbox/delivery/preferences';
-export function NotificationDeliverySettings({conversationId}:{conversationId?:string}){
+export function NotificationDeliverySettings({conversationId,compact=false}:{conversationId?:string;/** b5 D05: the thread header's one-line "notifications for this thread" switch. */compact?:boolean}){
  const {language}=useOrbitLanguage(),copy=(key:keyof typeof notificationCopy)=>pickCopy(notificationCopy[key],language);
  const [data,setData]=useState<InboxDeliveryPreferencesDTO|null>(null),[error,setError]=useState(false),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[unavailable,setUnavailable]=useState(false);
  const [start,setStart]=useState('22:00'),[end,setEnd]=useState('07:30'),[invalidTime,setInvalidTime]=useState(false);
@@ -28,6 +28,11 @@ export function NotificationDeliverySettings({conversationId}:{conversationId?:s
   catch{if(!scope.signal.aborted){setData(null);setError(true);setAttempt(v=>v+1);}}finally{if(!scope.signal.aborted){lock.current=false;setBusy(false);}}
  }
  const saveHours=()=>{const patch=quietHoursPatch(start,end);if(!patch){setInvalidTime(true);return;}setInvalidTime(false);void change(patch);};
+ if(compact&&conversationId){
+  if(!data)return null;
+  const muted=data.mutedConversationIds.includes(conversationId),label=pickCopy({ja:'このスレッドの通知',zh:'此会话的通知',en:'Notifications for this thread'},language);
+  return <span className={s.threadToggle}><Icon name="bell" size={16}/>{label}<Toggle checked={!muted} disabled={busy} label={label} onChange={()=>void change({muteConversation:{conversationId,muted:!muted}})}/></span>;
+ }
  if(unavailable)return <p role="status" className={s.hint}>{copy('unavailable')}</p>;
  if(!data)return error?<div role="alert" className={s.error}>{copy('unavailable')} <Button label={copy('refresh')} onClick={()=>setAttempt(v=>v+1)}/></div>:<p className={s.hint}>{copy('refresh')}…</p>;
  const icons:Record<string,IconName>={message:'mail',reminder:'clock',suggestion:'sparkle',update:'refresh'};

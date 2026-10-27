@@ -17,3 +17,5 @@
 .conversation{padding-top:8px;padding-bottom:8px}
 @media(max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}.side{grid-row:auto}}
 @media(max-width:767px){.channels{min-height:0}.time{flex-wrap:wrap}}
+/* b5 D05: the inbox thread header's per-thread switch. */
+.threadToggle { display: inline-flex; align-items: center; gap: var(--space-8); font-size: var(--fs-meta); color: var(--ink-3); white-space: nowrap; }

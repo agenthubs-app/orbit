@@ -31,6 +31,7 @@ import { ORBIT_Z } from "../orbit-z";
 
 import { invalidateInboxActorConfirmation, readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
+import workspace from "./inbox-workspace.module.css";
 
 type InboxTab = "threads" | "alerts";
 
@@ -1156,7 +1157,7 @@ function RelationshipInboxPanel({
     <div
       data-orbit-real-page="relationship-inbox"
       data-relationship-inbox-inline={inline ? "" : undefined}
-      style={inline ? { position: "relative", minHeight: "100vh" } : { inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
+      style={inline ? { position: "relative" } : { inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
     >
       {inline ? null : <div
         aria-hidden="true"
@@ -1169,7 +1170,7 @@ function RelationshipInboxPanel({
         className={`ri-panel${resizing ? " is-resizing" : ""}`}
         ref={panelRef}
         role={inline ? "region" : "dialog"}
-        style={inline ? { background: tab === "alerts" ? "transparent" : "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100vh", position: "relative", width: "100%" } : {
+        style={inline ? { background: "transparent", display: "flex", flexDirection: "column", position: "relative", width: "100%" } : {
           background: "var(--bg, #fff)",
           borderLeft: "1px solid var(--line)",
           bottom: 0,
@@ -1233,10 +1234,12 @@ function RelationshipInboxPanel({
           <span aria-hidden="true" />
         </button></>}
 
-        <div className={`ri-panel-tabs${inline && tab === "alerts" ? " d04" : ""}`}><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide value={tab} onChange={selectTab}
-          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` ${counts[item.id]}` : ''}`}))} /></div>
+        {/* b5 D05: on the page the tabs sit over the fog with a one-line note; the drawer keeps its strip. */}
+        <div className={inline ? workspace.tabs : "ri-panel-tabs"}><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide={!inline} value={tab} onChange={selectTab}
+          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` ${counts[item.id]}` : ''}`}))} />
+          {inline ? <span className={workspace.tabsNote}>{tab === "threads" ? t({ zh: "与在 Orbit 上建立联系的人的往来", en: "Exchanges with people you are connected to", ja: "Orbit でつながった人とのやり取り" }) : t({ zh: "会面 · 截止 · iOrbit 的建议", en: "Meetings · deadlines · iOrbit suggestions", ja: "面談・期限・iOrbit の提案" })}</span> : null}</div>
 
-        <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
+        <div className={inline ? undefined : `ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
             seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (

@@ -5,7 +5,7 @@ const at='2026-09-16T02:00:00Z';
 const row={id:'n',actorId:'a',revision:1,kind:'reminder',origin:'user',semanticKey:'s',title:'发送报价资料',reason:'会议中答应发送',sources:[{sourceKind:'note',sourceId:'note',sourceRevision:'1',occurredAt:at,readAt:at,excerpt:'原文承诺'}],target:{kind:'source',id:'note',href:'/notes/note',status:'available'},actions:['read'],occurredAt:at,updatedAt:at,readAt:null,disposition:'open'};
 test('kinds get distinct tiles and readable source-only reminders do not invent task destinations',()=>{
  const n=notificationInboxView({enabled:true,items:[row],unreadCount:1,nextCursor:null,asOf:at},'a').items[0]!;
- const render=(item:typeof n)=>renderToStaticMarkup(<table><tbody><NotificationRecordCard notification={item} now={at} onOpen={()=>{}}/></tbody></table>);
+ const render=(item:typeof n)=>renderToStaticMarkup(<NotificationRecordCard notification={item} now={at} onSelect={()=>{}}/>);
  const tiles=(['reminder','suggestion','update'] as const).map(kind=>/<span[^>]*>(\S+)<\/span>/u.exec(render({...n,kind}))![1]);assert.equal(new Set(tiles).size,3);
  const html=render(n);for(const text of ['发送报价资料','会议中答应发送','原文承诺'])assert.ok(html.includes(text));assert.doesNotMatch(html,/\/tasks\//);
  assert.throws(()=>notificationInboxView({enabled:true,items:[row],unreadCount:1,nextCursor:null,asOf:at},'other'));
