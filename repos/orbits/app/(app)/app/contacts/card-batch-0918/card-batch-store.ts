@@ -8,6 +8,7 @@
 "use client";
 
 import { getSharedReadAccount } from "../../orbit-shared-read";
+import { webGuideReturnTo, type WebGuideReturnTo } from "../../../../../features/guide/return-to";
 import { CARD_BATCH_LEDGER_PREFIX, parseCardBatchLedger, type CardBatchLedger } from "./card-batch-model";
 
 const DB_NAME = "orbit-card-batch";
@@ -144,6 +145,42 @@ export function registerActiveBatch(batchId: string): void {
 export function unregisterActiveBatch(batchId: string): void {
   const current = listActiveBatches();
   if (current.includes(batchId)) writeActive(current.filter(id => id !== batchId));
+}
+
+// ── R28：从引导开始的批次记住返回目标，全站胶囊打开它时仍用引导的外框 ──
+const RETURN_KEY = "orbit.cardBatches.returnTo.v1";
+
+function returnKey(batchId: string): string {
+  const account = getSharedReadAccount();
+  return `${RETURN_KEY}:${account ?? ""}:${batchId}`;
+}
+
+export function rememberBatchReturnTo(batchId: string, returnTo: WebGuideReturnTo | null): void {
+  try {
+    if (returnTo) window.localStorage.setItem(returnKey(batchId), returnTo);
+  } catch {
+    // 只影响胶囊打开时用哪种外框。
+  }
+}
+
+/** 引导完成后不再把它的批次带回引导外框。 */
+export function forgetBatchReturnTo(returnTo: WebGuideReturnTo): void {
+  try {
+    const keys = Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index));
+    for (const key of keys) {
+      if (key?.startsWith(`${RETURN_KEY}:`) && window.localStorage.getItem(key) === returnTo) window.localStorage.removeItem(key);
+    }
+  } catch {
+    // 同上。
+  }
+}
+
+export function batchReturnTo(batchId: string): WebGuideReturnTo | null {
+  try {
+    return webGuideReturnTo(window.localStorage.getItem(returnKey(batchId)));
+  } catch {
+    return null;
+  }
 }
 
 // ── W0021：宿主状态变化事件 ──

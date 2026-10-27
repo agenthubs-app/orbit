@@ -13,7 +13,8 @@ import styles from "./OnboardingFlow.module.css";
 export function OnboardingImportHeader({ returnTo }: { returnTo: string }) {
   const { t, preserveHref } = useOrbitLanguage();
   const flow = useProfileOnboardingFlow();
-  const confirmed = flow.kind === "ready" ? flow.flow.lastConfirmedScreen : 0;
+  // Step 5 is only reachable after 1–4 are confirmed, so they start checked rather than filling in once the read lands.
+  const confirmed = flow.kind === "ready" ? flow.flow.lastConfirmedScreen : 4;
   return (
     <header className={styles.head} data-onboarding-import-head="">
       <span className={styles.brand}><span className={styles.logo} aria-hidden>O</span><b>Orbit</b></span>

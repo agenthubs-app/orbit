@@ -41,13 +41,25 @@ export function OnboardingStepper({ current, confirmed, className }: { current: 
 
 export type OnboardingFlowState = { kind: "loading" } | { kind: "none" } | { kind: "ready"; flow: ProfileOnboardingProgressContract };
 
+// The last flow this tab read: the onboarding page and its import header start from it, so the
+// stepper does not render empty and then fill in on every page change (the read still refreshes it).
+let lastFlow: ProfileOnboardingProgressContract | null | undefined;
+
+export function rememberOnboardingFlow(flow: ProfileOnboardingProgressContract | null): void {
+  lastFlow = flow;
+}
+
+export function rememberedOnboardingFlow(): ProfileOnboardingProgressContract | null | undefined {
+  return lastFlow;
+}
+
 /** The actor's profile onboarding flow; failures read as "none" so home never blocks on it. */
 export function useProfileOnboardingFlow(): OnboardingFlowState {
-  const [state, setState] = useState<OnboardingFlowState>({ kind: "loading" });
+  const [state, setState] = useState<OnboardingFlowState>(() => (lastFlow === undefined ? { kind: "loading" } : lastFlow ? { kind: "ready", flow: lastFlow } : { kind: "none" }));
   useEffect(() => {
     let active = true;
     fetchOnboardingProgress()
-      .then((flow) => { if (active) setState(flow ? { kind: "ready", flow } : { kind: "none" }); })
+      .then((flow) => { rememberOnboardingFlow(flow); if (active) setState(flow ? { kind: "ready", flow } : { kind: "none" }); })
       .catch(() => { if (active) setState({ kind: "none" }); });
     return () => { active = false; };
   }, []);

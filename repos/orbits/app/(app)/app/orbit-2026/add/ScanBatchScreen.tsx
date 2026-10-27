@@ -116,11 +116,15 @@ function dayLabel(iso: string | null, language: OrbitLanguage): string {
  * 読み取れず with 撮り直す / 手入力で補う / スキップ) → 完成 (new / merged / unreadable).
  * Keyboard: ↵ confirm · → next card · S skip.
  */
+// Opened from the guide: a person added by hand stays here (toast only) instead of opening their page outside the guide.
+const stayInGuide = () => undefined;
+
 export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { view: ScanBatchView; actions: ScanBatchActions; onStart?: (cards: readonly StagedCard[]) => Promise<ScanStartResult>; returnTo?: WebGuideReturnTo | null }) {
   const { language, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const t = translator(language);
-  const go = (href: string) => router.push(preserveHref(href));
+  // Pages inside the scan flow keep the guide's return target, so 「もっとスキャン」 and retry stay in the onboarding frame.
+  const go = (href: string) => router.push(preserveHref(href.startsWith("/app/contacts/new/scan") ? appendWebGuideReturnTo(href, returnTo) : href));
   const reading = view.phase === "uploading" || view.phase === "reading" || view.phase === "importing";
   const title = reading ? t(s.pageTitle) : view.phase === "review" ? t(b.reviewPageTitle) : t(b.pageTitle);
   const subtitle = view.phase === "review" ? t(b.reviewPageSub, { n: view.cards.length }) : t(s.pageSubtitle);
@@ -132,7 +136,7 @@ export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { v
         <div className={styles.fade} data-scan-batch={view.batchId} data-scan-phase={view.phase}>
           {view.phase === "loading" ? <Skeleton lines={6} /> : null}
           {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? <BatchErrorCard phase={view.phase} t={t} go={go} /> : null}
-          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(id)}`, returnTo))} onNavigate={go} /> : null}
+          {view.phase === "uploading" || view.phase === "reading" || view.phase === "importing" ? <ReadingPanel view={view} actions={actions} t={t} onStart={onStart} onStarted={(id) => go(`/app/contacts/new/scan/${encodeURIComponent(id)}`)} onNavigate={returnTo ? stayInGuide : go} /> : null}
           {view.phase === "review" ? <ReviewPanel view={view} actions={actions} t={t} language={language} onLater={() => go(returnTo ?? "/app/contacts")} /> : null}
           {view.phase === "done" ? <DonePanel view={view} t={t} language={language} go={go} returnTo={returnTo} /> : null}
         </div>

@@ -17,7 +17,9 @@ import { useSession } from "next-auth/react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { CardBatchReminders } from "./card-batch-ui";
+import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
 import {
+  batchReturnTo,
   dispatchCardBatchChange,
   getPendingCardsReaderState,
   listActiveBatches,
@@ -99,7 +101,7 @@ export function CardBatchHost() {
     <CardBatchReminders
       batch={batch}
       hidePendingPill={cardBatchHostHidesPendingPill(pathname, reader)}
-      onOpen={() => window.location.assign(preserveHref(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`))}
+      onOpen={() => window.location.assign(preserveHref(appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`, batchReturnTo(batchId))))}
       t={t}
       viewingImport={false}
     />

@@ -13,6 +13,7 @@ import { startScanBatch } from "./start-scan-batch";
 import type { ScanBatchActions } from "../../../orbit-2026/add/scan-types";
 import { useOrbitLanguage } from "../../../orbit-language-context";
 import { useCardBatch } from "../../card-batch-0918/use-card-batch";
+import { rememberBatchReturnTo } from "../../card-batch-0918/card-batch-store";
 import { replaceItemContent } from "../../ingest-v2/ingest-v2-client";
 import { buildScanBatchView } from "./scan-batch-view";
 import type { WebGuideReturnTo } from "../../../../../../features/guide/return-to";
@@ -27,6 +28,9 @@ export function ScanBatchClient({ batchId, returnTo }: { batchId: string; return
   useEffect(() => {
     if (reviewing && !autoRunning && !notified) markNotified();
   }, [autoRunning, markNotified, notified, reviewing]);
+
+  // R28：从引导打开的批次记下返回目标，之后从全站胶囊回来时仍是引导的外框。
+  useEffect(() => { rememberBatchReturnTo(batchId, returnTo ?? null); }, [batchId, returnTo]);
 
   // 动作在调用时读最新状态；动作对象本身保持稳定。
   const latest = useRef(batch);

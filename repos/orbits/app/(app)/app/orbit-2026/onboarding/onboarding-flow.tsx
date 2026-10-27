@@ -9,6 +9,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 import type { ProfilePayload } from "../../../../../features/profile/contract";
 import type { ProfileOnboardingProgressCommandContract, ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
@@ -24,6 +25,7 @@ import {
 } from "../../../../../shared/domain/industries";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
 import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
+import { forgetBatchReturnTo } from "../../contacts/card-batch-0918/card-batch-store";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { visibleCharacterCount } from "../../profile/profile-save-model";
 import { Icon, MacTile, Orbit2026Scope, SampleTag, WhyBody, WhyButton } from "../ui";
@@ -58,7 +60,7 @@ import {
   type OnboardingStep,
   type OnboardingView,
 } from "./onboarding-model";
-import { OnboardingStepper } from "./OnboardingGuide";
+import { OnboardingStepper, rememberOnboardingFlow, rememberedOnboardingFlow } from "./OnboardingGuide";
 import { ONBOARDING_COPY, ONBOARDING_SCREEN_LABELS } from "../copy/onboarding";
 import styles from "./OnboardingFlow.module.css";
 
@@ -120,11 +122,19 @@ function basicFromDraft(draft: NonNullable<NonNullable<ReturnType<typeof readOnb
 export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: OnboardingFlowProps) {
   const { language, t: siteText } = useOrbitLanguage();
   const t: T = (copy) => siteText(copy as { ja: string; zh: string; en: string });
-  const [view, setView] = useState<OnboardingView>("profile");
+  // Start on the screen the link names (`?screen=5` back from card import) or the flow this tab last read,
+  // so the header and stepper do not show step 1 and then jump once the read lands.
+  const screenParam = Number(useSearchParams()?.get("screen") ?? "");
+  const [start] = useState(() => {
+    const remembered = rememberedOnboardingFlow();
+    const screen = screenParam >= 1 && screenParam <= ONBOARDING_STEPS.length ? screenParam : remembered?.currentScreen ?? 1;
+    return { view: ONBOARDING_STEPS[screen - 1]!, confirmed: remembered?.lastConfirmedScreen ?? Math.max(0, screen - 1) };
+  });
+  const [view, setView] = useState<OnboardingView>(start.view);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(0);
+  const [confirmed, setConfirmed] = useState(start.confirmed);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
   const [fromCard, setFromCard] = useState<ReadonlySet<keyof BasicDraft>>(new Set());
   const [goalText, setGoalText] = useState("");
@@ -165,6 +175,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         const [payload, flow] = await Promise.all([fetchProfile(), fetchOnboardingProgress()]);
         if (!active) return;
         progressRef.current = flow;
+        rememberOnboardingFlow(flow);
         const done = flow?.lastConfirmedScreen ?? 0;
         setConfirmed(done);
         const profile = payload.profile;
@@ -252,6 +263,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         progressRef.current = await updateOnboardingProgress({ action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
       }
       clearOnboardingDraft(actorKey);
+      forgetBatchReturnTo("/app/profile/onboarding?screen=5");
       window.location.assign(next);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t({ zh: "无法完成设置，请重试。", en: "Could not finish onboarding. Please retry.", ja: "設定を完了できませんでした。再試行してください。" }));
@@ -297,6 +309,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       throw error;
     } finally {
       setConfirmed(progressRef.current?.lastConfirmedScreen ?? 0);
+      rememberOnboardingFlow(progressRef.current);
     }
   }
 
