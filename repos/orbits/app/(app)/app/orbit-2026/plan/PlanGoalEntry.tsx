@@ -18,6 +18,7 @@ import { FmBar, LimitCard, RailHead } from "./FlowParts";
 import { newActionKey, planApi } from "./plan-api";
 import { flowStage, goalGuessReady, isGoalKind, planErrorView, type PlanErrorView } from "./plan-model";
 import { PlanErrorNotice, translator, type Translate } from "./PlanParts";
+import { useSavedPlanGoal } from "./saved-goal";
 import k from "./FlowKit.module.css";
 
 const GUESS_DELAY_MS = 800;
@@ -63,6 +64,15 @@ function GoalInput({ t }: { t: Translate }) {
   const pending = useRef(new Set<string>());
   const latestText = useRef(text);
   latestText.current = text;
+  // The goal from onboarding fills an untouched input once, so the plan starts from it.
+  const saved = useSavedPlanGoal();
+  const touched = useRef(false);
+  useEffect(() => {
+    if (!saved || touched.current) return;
+    touched.current = true;
+    setText(saved.text);
+    if (saved.suggestedKind) { chosenByHand.current = true; setKind(saved.suggestedKind); }
+  }, [saved]);
 
   useEffect(() => {
     let alive = true;
@@ -145,7 +155,7 @@ function GoalInput({ t }: { t: Translate }) {
         <h2 className={k.goalTitle}>{t(planFlowCopy.goalTitle)}</h2>
         <div className={`${k.sub} ${k.goalSub}`}>{t(planFlowCopy.goalLead)}</div>
         <input ref={inputRef} aria-label={t(planFlowCopy.goalInputLabel)} className={k.goalIn} value={text} placeholder={t(planFlowCopy.goalPlaceholder)} maxLength={2000}
-          onChange={(event) => setText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void start(); }} />
+          onChange={(event) => { touched.current = true; setText(event.target.value); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void start(); }} />
         <div className={k.kinds} role="group" aria-label={t(planFlowCopy.kindLabel)}>
           {KIND_ORDER.map((key) => (
             <button key={key} type="button" aria-pressed={kind === key} className={`btn ${k.fopt} ${kind === key ? k.on : ""}`}

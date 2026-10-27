@@ -18,6 +18,7 @@ import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
 import { journeyApi } from "./journey-api";
+import { useSavedPlanGoal } from "../plan/saved-goal";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 
@@ -197,6 +198,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 });
   }, []);
   useEffect(() => { void load(query); }, [load, query]);
+  const savedGoal = useSavedPlanGoal(Boolean(data?.popularityFallback && !data.signedOut));
 
   useEffect(() => {
     const q = search.trim();
@@ -280,10 +282,10 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             <div className={styles.row} style={{ alignItems: "center", gap: 24 }}>
               <div style={{ flex: 1 }}>
                 <div className={styles.lbl}>{t("noPlanLbl")}</div>
-                <div className={d.guideTitle}>{t("noPlanTitle")}</div>
-                <div className={styles.sub}>{t("noPlanSub")}</div>
+                <div className={d.guideTitle}>{t(savedGoal ? "noPlanTitleGoal" : "noPlanTitle")}</div>
+                <div className={styles.sub}>{t(savedGoal ? "noPlanSubGoal" : "noPlanSub")}</div>
               </div>
-              <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/plans"><Icon name="target" size={16} />{t("setGoal")}</a>
+              <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(savedGoal ? "planFromGoal" : "setGoal")}</a>
             </div>
             <div className={styles.grid3}>
               {([["🔗", "tileUrl", "tileUrlSub", "/app/events"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (

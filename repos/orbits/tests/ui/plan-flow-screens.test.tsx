@@ -66,7 +66,8 @@ async function screen(t: { after: (fn: () => Promise<void>) => void }, fixture: 
   return opened;
 }
 
-const fetches = (page: Page): Promise<Call[]> => page.evaluate(() => (window as any).shellFixture.fetches);
+// The goal input also reads the profile once (the saved goal); plan assertions leave that read out.
+const fetches = async (page: Page): Promise<Call[]> => (await page.evaluate(() => (window as any).shellFixture.fetches as Call[])).filter((call) => call.url !== "/api/profile");
 const calls = (page: Page): Promise<unknown[]> => page.evaluate(() => (window as any).shellFixture.calls);
 const path = (call: Call) => call.url.replace(/^\/api\/agent\/plans/u, "");
 
@@ -120,6 +121,19 @@ test("goal input: 「iOrbit と具体化する」 creates the intake once with a
   assert.equal(create[0]!.body.source, "task");
   assert.match(create[0]!.body.idempotencyKey, /^web:plan:/u);
   assert.deepEqual(await calls(page), [{ push: "/app/plans/flow/in-1" }]);
+});
+
+test("goal input: the goal saved in onboarding fills the input and its type, without a guess", async (t) => {
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok({ profile: { relationshipGoal: "資金調達、採用：シリーズA" } })], url: "^/api/profile$" },
+    { method: "GET", replies: [ok({ activeGoalLimit: 2, activeGoals: 0, intakes: [], newGoalsLeftThisMonth: 9 })], url: "/intakes$" },
+  ], view: "goal" });
+  const input = page.getByLabel("目標", { exact: true });
+  await page.waitForFunction(() => (document.querySelector("input[aria-label='目標']") as HTMLInputElement | null)?.value !== "");
+  assert.equal(await input.inputValue(), "資金調達：シリーズA");
+  await page.getByRole("button", { name: "💰 資金調達", pressed: true }).waitFor();
+  await page.waitForTimeout(1000);
+  assert.equal((await fetches(page)).filter((call) => path(call) === "/goal-kind").length, 0, "the saved type is used, nothing is guessed");
 });
 
 test("goal input: no new goals left this month is said up front and the button is off", async (t) => {

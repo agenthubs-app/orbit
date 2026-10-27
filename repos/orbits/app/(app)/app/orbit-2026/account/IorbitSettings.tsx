@@ -9,6 +9,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { fetchGlobalSearch, readSemanticPreference, searchUrl, writeSemanticPreference } from "../search/use-global-search";
 import { Button, ConfirmDialog, Icon, MacTile, Toggle, WhyBody, WhyButton, useToast } from "../ui";
 import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/plan-v2";
+import { useSavedPlanGoal } from "../plan/saved-goal";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
 
@@ -20,6 +21,7 @@ export function IorbitSettings() {
   const toast = useToast();
   const [memories, setMemories] = useState<AgentMemory[]>([]);
   const [goal, setGoal] = useState<{ text: string; kind: string } | null>(null);
+  const savedGoal = useSavedPlanGoal();
   const [savedBio, setSavedBio] = useState("");
   const [editingBio, setEditingBio] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
@@ -109,8 +111,9 @@ export function IorbitSettings() {
     {error ? <p role="alert" className={styles.error}>{error}</p> : null}
     <div className={styles.connGrid}>
       <section className={`${styles.setCard} ${styles.half}`}>
-        <div className={styles.cardTopRow}><span className={styles.lbl}>{t("currentGoal")}</span><a className={`btn ${styles.smButton}`} href={preserveHref("/app/tasks?tab=plan")}><Icon name="edit" size={16} />{goal ? t("change") : t("setGoal")}</a></div>
-        {goal ? <div className={styles.goalRow}><MacTile emoji={goalEmoji[goal.kind] ?? "🎯"} tone="pink" /><b>{goal.text}</b></div> : null}
+        <div className={styles.cardTopRow}><span className={styles.lbl}>{t("currentGoal")}</span><a className={`btn ${styles.smButton}`} href={preserveHref("/app/tasks?tab=plan")}><Icon name="edit" size={16} />{goal ? t("change") : savedGoal ? t("planFromGoal") : t("setGoal")}</a></div>
+        {goal ? <div className={styles.goalRow}><MacTile emoji={goalEmoji[goal.kind] ?? "🎯"} tone="pink" /><b>{goal.text}</b></div>
+          : savedGoal ? <div className={styles.goalRow}><MacTile emoji={(savedGoal.suggestedKind && goalEmoji[savedGoal.suggestedKind]) || "🎯"} tone="pink" /><div><b>{savedGoal.text}</b><div className={styles.meta}>{t("goalNoPlan")}</div></div></div> : null}
       </section>
       <section className={`${styles.setCard} ${styles.half}`}>
         <div className={styles.cardTopRow}><span className={styles.lbl}>{t("intro")}</span>

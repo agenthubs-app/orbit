@@ -18,6 +18,8 @@ const copy = {
   currentGoal: { zh: "当前目标", en: "Current goal", ja: "現在の目標" },
   change: { zh: "更改", en: "Change", ja: "変更" },
   setGoal: { zh: "设定目标", en: "Set a goal", ja: "目標を決める" },
+  planFromGoal: { zh: "用目标生成计划", en: "Make a plan from my goal", ja: "目標からプランを作る" },
+  goalNoPlan: { zh: "还没有计划", en: "No plan yet", ja: "まだプランがありません" },
   intro: { zh: "自我介绍", en: "About me", ja: "自己紹介" },
   polish: { zh: "用 AI 整理", en: "Polish with AI", ja: "AI で整える" },
   noIntro: { zh: "还没有自我介绍", en: "No introduction yet", ja: "自己紹介はまだありません" },

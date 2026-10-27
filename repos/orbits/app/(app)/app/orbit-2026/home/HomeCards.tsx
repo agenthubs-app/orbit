@@ -20,6 +20,7 @@ import { homeCopy } from "./home-copy";
 import { homeContactCopyKeys, homeTodoPagePath, homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
 import { visibleSecretaryItems } from "./secretary-model";
 import { useHomeResource, type HomeResource } from "./use-home-resource";
+import { useSavedPlanGoal } from "../plan/saved-goal";
 import styles from "./home.module.css";
 
 // web.html ホーム boards (#0 empty / #1 few / #2 many): every card is kit `.card.hw` —
@@ -158,6 +159,7 @@ function PlanCard({ controls }: { controls?: ReactNode }) {
   const t = useT();
   const resource = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const current = resource.kind === "ready" ? resource.data.current : null;
+  const savedGoal = useSavedPlanGoal(resource.kind === "ready" && !current);
   return <>
     <Head widget="planScore" emoji={resource.kind === "ready" && !current ? "🎯" : undefined} controls={controls} />
     <State resource={resource}>{(data) => data.current ? <>
@@ -169,8 +171,8 @@ function PlanCard({ controls }: { controls?: ReactNode }) {
         ? <Link href={data.current.todayChance.href} className={`${styles.chance} ${data.current.score.todayDelta < 0 ? styles.negative : ""}`}>{t("chance", { delta: signedTodayDelta(data.current.score.todayDelta) })}</Link>
         : <span className={`${styles.chance} ${data.current.score.todayDelta < 0 ? styles.negative : ""}`}>{t("chance", { delta: signedTodayDelta(data.current.score.todayDelta) })}</span>}</div>
     </> : <>
-      <div className={styles.empty}>{t("planEmptyDetail")}</div>
-      <Link className={styles.action} href="/app/tasks?tab=plan"><Icon name="plus" size={16} />{t("goal")}</Link>
+      <div className={styles.empty}>{t(savedGoal ? "planEmptyDetailGoal" : "planEmptyDetail")}</div>
+      <Link className={styles.action} href="/app/tasks?tab=plan"><Icon name="plus" size={16} />{t(savedGoal ? "planFromGoal" : "goal")}</Link>
     </>}</State>
   </>;
 }
