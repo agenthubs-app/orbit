@@ -174,7 +174,7 @@ function SearchResults({ data, language, t, onOpen, onFollow }: { data: EventSea
           <div className={d.grow}><b>{[person.name, [person.org, person.role].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}</b><div className={styles.lbl}>{t("personEvents", { n: person.eventCount })}</div></div>
         </div>
       ))}</> : null}
-      <a className={`${styles.mac} ${styles.macApricot} ${d.pasteRow}`} href="/app/events"><span>🔗</span><div className={d.grow}><b>{t("searchNotFound")}</b><div className={styles.lbl}>{t("searchPasteUrl")}</div></div><span className={`btn ${styles.btn} ${styles.sm}`}>{t("paste")}</span></a>
+      <a className={`${styles.mac} ${styles.macApricot} ${d.pasteRow}`} href="/app/events?tab=assess"><span>🔗</span><div className={d.grow}><b>{t("searchNotFound")}</b><div className={styles.lbl}>{t("searchPasteUrl")}</div></div><span className={`btn ${styles.btn} ${styles.sm}`}>{t("paste")}</span></a>
     </div>
   );
 }
@@ -288,13 +288,14 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
               <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(savedGoal ? "planFromGoal" : "setGoal")}</a>
             </div>
             <div className={styles.grid3}>
-              {([["🔗", "tileUrl", "tileUrlSub", "/app/events"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (
+              {([["🔗", "tileUrl", "tileUrlSub", "/app/events?tab=assess"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?tab=assess&code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (
                 <a key={title} href={href} className={`${styles.mac} ${styles.macApricot} ${styles.row}`} style={{ gap: 10 }}><span className={styles.guideEmoji}>{emoji}</span><div><b className={styles.guideName}>{t(title)}</b><div className={styles.lbl}>{t(sub)}</div></div></a>
               ))}
             </div>
           </div>
-          <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>
-          {([1, 2, 3] as const).map((n, index) => (
+          {/* 2026-10-27：没有目标也直接列真实活动（人気順，在引导卡正下方）；只有一场都没有时才画「有了计划后」示例。 */}
+          {data.all.length ? null : <div className={`${styles.span12} ${styles.cardH} ${d.sectionHead}`}><h3>{t("samplePreview")} <SampleTag /></h3></div>}
+          {data.all.length ? null : ([1, 2, 3] as const).map((n, index) => (
             <EventCard key={n} faded index={index} language={language} t={t} onOpen={() => undefined} metaOverride={t(`sample${n}Meta`)} row={{ emoji: ["🎤", "🤝", "📚"][index]!, eventId: `sample-${n}`, href: "#", reason: t(`sample${n}Reason`).replace(/^🎯\s*/, ""), reasonDetail: t("sampleReasonDetail"), score: [82, 77, 71][index]!, startsAt: "", title: t(`sample${n}Title`), verdict: "recommend" }} />
           ))}
           {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} at={at} popular onOpen={open} onSave={save} onDismiss={dismiss} /> : null}

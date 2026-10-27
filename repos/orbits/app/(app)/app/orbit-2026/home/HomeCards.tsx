@@ -200,7 +200,7 @@ function EventCard({ controls }: { controls?: ReactNode }) {
         <Foot href={event.href} label={event.meetCount != null ? t("meetCount", { count: event.meetCount }) : t("prep")} />
       </> : <>
         <div className={styles.empty}>{t("eventEmptyDetail")}</div>
-        <Link className={styles.action} href="/app/events"><Icon name="link" size={16} />{t("assess")}</Link>
+        <Link className={styles.action} href="/app/events?tab=assess"><Icon name="link" size={16} />{t("assess")}</Link>
       </>;
     }}</State>
   </>;

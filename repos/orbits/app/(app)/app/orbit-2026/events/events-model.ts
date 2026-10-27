@@ -98,7 +98,7 @@ export function monthOf(now: Date): number {
   return new Date(now.getTime() + TOKYO).getUTCMonth() + 1;
 }
 
-/** `?tab=` → the tab (default 評価). */
+/** `?tab=` → the tab. 2026-10-27：探す opens first (評価 by `?tab=assess`); the segment order stays 評価 / 参加予定 / 探す. */
 export function tabOf(value: string | null | undefined): "assess" | "going" | "discover" {
-  return value === "going" || value === "discover" ? value : "assess";
+  return value === "going" || value === "assess" ? value : "discover";
 }

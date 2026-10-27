@@ -100,7 +100,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const choose = (next: Tab) => {
     setTab(next);
     const search = new URLSearchParams(params?.toString() ?? "");
-    if (next === "assess") search.delete("tab"); else search.set("tab", next);
+    if (next === "discover") search.delete("tab"); else search.set("tab", next);
     router.replace(`/app/events${search.toString() ? `?${search.toString()}` : ""}`, { scroll: false });
   };
 
