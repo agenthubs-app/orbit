@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { z } from "zod";
 
 import type { HomeWidgetKey, HomeWidgetSlot } from "../../../../../shared/contract/home-layout";
@@ -21,6 +21,7 @@ import { HOME_HEAD, HomeCardBody, useGuideProgress, useSecretaryPreview } from "
 import { homeCopy } from "./home-copy";
 import { addHomeWidget, HOME_CATALOG, homeContactCopyKeys, homeOpeningGeometry, homeTodoPagePath, moveHomeWidget, removeHomeWidget, resizeHomeWidget } from "./home-model";
 import { useHomeLayout } from "./use-home-layout";
+import { useCardDrag } from "./use-card-drag";
 import { homeRailSuggestions, type HomeRailSuggestion } from "./home-rail-model";
 import { useHomeResource } from "./use-home-resource";
 import styles from "./home.module.css";
@@ -52,7 +53,6 @@ function HomeWorkspace() {
   const [hintHidden, setHintHidden] = useState(false);
   const [later, setLater] = useState<string[]>([]);
   const [sizing, setSizing] = useState<HomeWidgetKey | null>(null);
-  const [dragged, setDragged] = useState<HomeWidgetKey | null>(null);
   const [editRevision, setEditRevision] = useState<number | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const secretary = useSecretaryPreview();
@@ -93,6 +93,17 @@ function HomeWorkspace() {
   };
   const holdStart = () => { if (!editing) hold.current = setTimeout(enter, 400); };
   const holdEnd = () => { if (hold.current) clearTimeout(hold.current); hold.current = null; };
+  const drag = useCardDrag<HomeWidgetKey>({ enabled: editing, order: items.map((slot) => slot.key), onMove: (key, to) => setDraft((current) => moveHomeWidget(current ?? items, key, to)) });
+  // Outside edit mode a long press opens it; inside, the card drags (mouse, pen or finger).
+  const dragProps = (key: HomeWidgetKey) => {
+    const bound = drag.bind(key);
+    return { ...bound,
+      onPointerDown: (event: ReactPointerEvent<HTMLElement>) => { holdStart(); bound.onPointerDown(event); },
+      onPointerUp: (event: ReactPointerEvent<HTMLElement>) => { holdEnd(); bound.onPointerUp(event); },
+      onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => { holdEnd(); bound.onPointerCancel(event); },
+      onPointerLeave: holdEnd,
+      onPointerMove: (event: ReactPointerEvent<HTMLElement>) => { if (hold.current && Math.abs(event.movementX) + Math.abs(event.movementY) > 6) holdEnd(); bound.onPointerMove(event); } };
+  };
 
   const shown = recommendations.filter((item) => !later.includes(item.key));
   // web.html #0: with nothing to suggest the rail is the shell's iOrbit intro; #1/#2: 「次の一手 · ホームから」.
@@ -114,20 +125,18 @@ function HomeWorkspace() {
         {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><Icon name="grid" size={16} /><span><span className={styles.hintPointer}>{t("hint")}</span><span className={styles.hintTouch}>{t("hintTouch")}</span></span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("close")} onClick={() => void dismissHint()}><Icon name="x" size={16} /></button></div> : null}
         {editing ? <div className={styles.hint}><Icon name="grid" size={16} /><span>{t("dragHint")}</span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("done")} onClick={() => void finish()}><Icon name="x" size={16} /></button></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
-          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""}`} data-widget={slot.key} aria-label={t(TITLE[slot.key])}
-            draggable={editing} onDragStart={() => setDragged(slot.key)} onDragOver={(event) => { if (editing) event.preventDefault(); }}
-            onDrop={(event) => { event.preventDefault(); if (dragged) setDraft(moveHomeWidget(items, dragged, index)); setDragged(null); }}
-            onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}
-            onPointerDown={holdStart} onPointerUp={holdEnd} onPointerCancel={holdEnd} onPointerLeave={holdEnd}>
+          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""} ${drag.dragging === slot.key ? styles.dragging : ""}`} data-widget={slot.key} aria-label={t(TITLE[slot.key])}
+            {...dragProps(slot.key)}
+            onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (drag.consumeClick()) { event.stopPropagation(); return; } if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}>
             {editing ? <>
               {/* b11 #25: the − badge removes; clicking the card opens 小 4 列 / 中 8 列. ↑↓ stay for the keyboard (visible on focus). */}
-              <button type="button" className={`btn ${styles.minus}`} aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
-              <div className={styles.controls}>
+              <button type="button" data-no-drag="" className={`btn ${styles.minus}`} aria-label={`${t(TITLE[slot.key])} ${t("remove")}`} onClick={() => remove(slot.key)}>−</button>
+              <div className={styles.controls} data-no-drag="">
                 <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("moveUp")}`} disabled={index === 0} onClick={() => setDraft(moveHomeWidget(items, slot.key, index - 1))}>↑</button>
                 <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("moveDown")}`} disabled={index === items.length - 1} onClick={() => setDraft(moveHomeWidget(items, slot.key, index + 1))}>↓</button>
                 <button type="button" className="btn" aria-label={`${t(TITLE[slot.key])} ${t("size")}`} aria-haspopup="menu" aria-expanded={sizing === slot.key} onClick={() => setSizing(slot.key)}>{slot.size === "s" ? t("small") : t("medium")}</button>
               </div>
-              {sizing === slot.key ? <div className={styles.szpop} role="menu" aria-label={`${t(TITLE[slot.key])} ${t("size")}`}>
+              {sizing === slot.key ? <div className={styles.szpop} data-no-drag="" role="menu" aria-label={`${t(TITLE[slot.key])} ${t("size")}`}>
                 {(["s", "m"] as const).map((size) => <button key={size} type="button" role="menuitemradio" aria-checked={slot.size === size} className={`btn ${slot.size === size ? styles.on : ""}`}
                   onClick={() => { setDraft(resizeHomeWidget(items, slot.key, size)); setSizing(null); }}>{t(size === "s" ? "small" : "medium")}<small>{t(size === "s" ? "cols4" : "cols8")}</small></button>)}
               </div> : null}

@@ -82,6 +82,24 @@ test("opening Edit keeps the first five card boxes; actual edit saves order, siz
   assert.deepEqual(await page.locator("[data-widget]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-widget"))), saved.web.map((slot: { key: string }) => slot.key));
 });
 
+test("Edit: a card follows the pointer and the order changes live; the drop is saved and opens no size menu", async t => {
+  const page = await home(t);
+  await page.locator("[data-header]").getByRole("button", { name: "編集" }).click();
+  const order = () => page.locator("[data-widget]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-widget")));
+  const centre = async (key: string) => { const box = (await page.locator(`[data-widget=${key}]`).boundingBox())!; return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; };
+  const from = await centre("secretary"), to = await centre("today");
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 20 });
+  assert.equal((await order())[0], "secretary", "the order changes while the card is still held");
+  assert.equal(await page.locator("[data-widget=secretary]").evaluate(node => node.style.transform !== ""), true, "the held card follows the pointer");
+  await page.mouse.up();
+  assert.equal(await page.getByRole("menu").count(), 0, "a drag is not a click on the card");
+  await page.locator("main").getByRole("button", { name: "完了" }).click();
+  await page.waitForFunction(() => (window as any).writes.length === 1);
+  assert.equal((await page.evaluate(() => (window as any).layout)).web[0].key, "secretary");
+});
+
 test("incomplete three-step guide belongs inside the Today card (web.html #0)", async t => {
   const page = await home(t);
   await page.locator("[data-widget=today]").getByText("はじめの 3ステップ").waitFor();

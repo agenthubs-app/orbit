@@ -132,6 +132,9 @@
 
 /* Edit mode, web.html #3 / b11 #25: dashed outline, − badge, 小/中 popover, add tile, library rail. */
 .card.editing { outline: 1.5px dashed var(--plum-300); outline-offset: 3px; cursor: grab; }
+.card.editing { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* The card being dragged follows the pointer above the others; the rest slide (use-card-drag). */
+.card.dragging { position: relative; z-index: var(--z-raised); cursor: grabbing; box-shadow: var(--shadow-float); outline-style: solid; }
 .card .minus { position: absolute; left: -6px; top: -6px; z-index: var(--z-raised); width: 22px; height: 22px; min-height: 22px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--ink-3); color: var(--surface); display: grid; place-items: center; font-size: var(--fs-emph); font-weight: var(--fw-black); line-height: 1; box-shadow: 0 0 0 2px var(--bg); cursor: pointer; }
 .card .controls { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .card .controls button:global(.btn) { width: 25px; min-width: 25px; height: 25px; min-height: 25px; padding: 0; border: 0; border-radius: var(--r-tag); background: var(--accent-soft); color: var(--accent-text); cursor: pointer; }
