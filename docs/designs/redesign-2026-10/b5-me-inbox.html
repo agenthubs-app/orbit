@@ -214,6 +214,82 @@
   .qr::after { content: "O"; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 10px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; box-shadow: 0 0 0 4px var(--surface); }
   .urlbar { position: absolute; left: 14px; right: 14px; bottom: 30px; height: 46px; border-radius: 18px; z-index: 30; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-line); box-shadow: var(--shadow-float); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
   .cmdk { padding: 10px; }   /* 私有：⌘K 面板内边距 */
+  /* 2026-10-27 D05 · 受信箱 Web 再設計：通知もメッセージも「一覧 | 詳細」の二枚 + 右栏は文脈（通知の状態 / この相手）。 */
+  .ib5-tabs { display: flex; align-items: center; justify-content: space-between; margin: -4px 0 16px; }
+  .ib5-tabs .seg button { padding: 7px 18px; }
+  .ib5-tabs .seg .n { font-family: var(--font-num); font-weight: 800; margin-left: 6px; color: var(--ink-3); }
+  .ib5-tabs .seg .on .n { color: inherit; }
+  .ib5 { height: 776px; padding: 0 !important; display: grid; grid-template-columns: 420px 1fr; overflow: hidden; }
+  .ib5-list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .ib5-tool { padding: 16px 16px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+  .ib5-tool .cats { flex-wrap: nowrap; gap: 4px; }
+  .ib5-tool .cats .chip { padding: 5px 8px; font-size: 11px; }
+  .ib5-tool .cats .chip .n { font-family: var(--font-num); opacity: .6; margin-left: 2px; }
+  .ib5-tool .bar2 { display: flex; align-items: center; gap: 8px; }
+  .ib5-tool .bar2 .lbl { flex: 1; }
+  .ib5-tool .ibtn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+  .ib5-tool .input { height: 40px; border-radius: 999px; }
+  .ib5-rows { flex: 1; overflow: hidden; padding: 4px 10px 12px; }
+  .ib5-day { font-size: 11.5px; font-weight: 800; color: var(--ink-3); padding: 14px 8px 6px; }
+  .ib5-row { display: grid; grid-template-columns: 32px 1fr auto; gap: 11px; padding: 11px 10px; border-radius: 14px; align-items: start; }
+  .ib5-row + .ib5-row { box-shadow: 0 -1px 0 var(--line); }
+  .ib5-row.sel, .ib5-row.sel + .ib5-row { box-shadow: none; }
+  .ib5-row.sel { background: var(--accent-soft); }
+  .ib5-row b { display: block; font-size: 13px; line-height: 1.45; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ib5-row.unread b { font-weight: 800; }
+  .ib5-row .lbl { display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ib5-row .end { display: grid; justify-items: end; gap: 6px; }
+  .ib5-row .end .ud { margin: 0; }
+  .ib5-row .cnt1 { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: var(--bg); font: 800 11px/20px var(--font-num); text-align: center; }
+  .ib5-row.msg { grid-template-columns: 38px 1fr auto; align-items: center; }
+  .ib5-row.msg b { -webkit-line-clamp: 1; font-size: 13.5px; }
+  .ib5-pane { min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+  .ib5-hint { margin: auto; text-align: center; color: var(--ink-3); font-size: 13px; display: grid; justify-items: center; gap: 10px; }
+  .ib5-hint .ring0 { width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-3); }
+  .ib5-empty { margin: auto; width: 400px; text-align: center; display: grid; justify-items: center; }
+  .ib5-empty .emo { width: 64px; height: 64px; border-radius: 22px; font-size: 30px; }
+  .ib5-empty h3 { font-size: 18px; margin: 16px 0 6px; }
+  .ib5-empty p { font-size: 13px; line-height: 1.7; color: var(--ink-3); margin: 0; }
+  .ib5-kinds { width: 100%; margin: 20px 0 18px; display: grid; gap: 8px; text-align: left; }
+  .ib5-kinds .k { display: flex; gap: 11px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); }
+  .ib5-kinds .k b { display: block; font-size: 13px; }
+  .ib5-kinds .k .lbl { display: block; }
+  .ib5-listempty { padding: 40px 18px; text-align: center; color: var(--ink-3); font-size: 13px; line-height: 1.7; }
+  .ib5-det { padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: hidden; }
+  .ib5-det .top { display: flex; align-items: center; gap: 8px; }
+  .ib5-det h2 { font-size: 19px; line-height: 1.45; margin: 0; }
+  .ib5-det .reason { font-size: 13.5px; line-height: 1.75; color: var(--ink-2); margin: 0; }
+  .ib5-src { border-radius: 18px; background: var(--surface-2); padding: 14px 16px; display: grid; gap: 10px; }
+  .ib5-src .h { font-size: 11.5px; font-weight: 800; color: var(--ink-3); }
+  .ib5-src .it { display: flex; gap: 10px; align-items: center; background: var(--surface); border-radius: 14px; padding: 10px 12px; }
+  .ib5-src .it b { display: block; font-size: 13px; }
+  .ib5-src .it .lbl { display: block; }
+  .ib5-src .it > span:last-child { margin-left: auto; color: var(--ink-3); }
+  .ib5-due { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 14px; background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: 12.5px; font-weight: 700; }
+  .ib5-acts { padding-top: 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .ib5-acts .sp { flex: 1; }
+  .ib5-th { padding: 14px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .ib5-th b { display: block; font-size: 15px; }
+  .ib5-th .lbl { display: block; }
+  .ib5-th .sp { flex: 1; }
+  .ib5-th .nt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); }
+  .ib5-msgs { flex: 1; overflow: hidden; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .ib5-msgs .dd { align-self: center; font-size: 11px; font-weight: 700; color: var(--ink-3); background: var(--surface-2); padding: 3px 10px; border-radius: 999px; }
+  .ib5-msgs .m { max-width: 74%; display: grid; gap: 4px; }
+  .ib5-msgs .m .bubble { max-width: none; }
+  .ib5-msgs .m.me { align-self: flex-end; justify-items: end; }
+  .ib5-msgs .m .lbl { padding: 0 6px; }
+  .ib5-msgs .m:not(.me) .bubble { background: var(--surface-2); }
+  .ib5-comp { margin: 0 18px 18px; border: 1.5px dashed var(--plum-300); border-radius: 20px; padding: 12px 14px; background: color-mix(in srgb, var(--accent-soft) 45%, transparent); display: grid; gap: 10px; }
+  .ib5-comp .h { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; }
+  .ib5-comp .h .lbl { margin-left: auto; font-weight: 600; }
+  .ib5-comp .txt { background: var(--surface); border-radius: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.7; color: var(--ink-2); min-height: 66px; }
+  .ib5-comp .txt.ph { color: var(--ink-3); }
+  .ib5-comp .f { display: flex; align-items: center; gap: 8px; }
+  .ib5-comp .f .lbl { flex: 1; display: flex; align-items: center; gap: 6px; }
+  .ib5-rail-li { display: grid; gap: 10px; }
+  .ib5-rail-li div { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+  .ib5-rail-li .emo { width: 28px; height: 28px; border-radius: 9px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -1695,6 +1771,101 @@ h += board('受信箱 · 通知 · 空 · Web 1024 dark', 'empty', inboxWeb1024(
 h += board('受信箱 · 通知 · 空 · Web 390 dark', 'empty', inboxWeb390('notif', 'dark'));
 h += board('受信箱 · メッセージ · 空 · Web 1024 dark', 'empty', inboxWeb1024('msg', 'dark'));
 h += board('受信箱 · メッセージ · 空 · Web 390 dark', 'empty', inboxWeb390('msg', 'dark'));
+
+/* =================== D05 · 受信箱 Web 再設計（2026-10-27） ===================
+   通知・メッセージとも「一覧 420px | 詳細」の二枚組。右栏は他の一級画面と同じ 360px で、文脈だけを置く：
+   通知 → 通知の状態（選んだ通知の詳細は中央の詳細欄）、メッセージ → この相手。 */
+const pc = (name) => C.find(c => c.n === name);
+const ib5Tabs = (tab, m, n) => `<div class="ib5-tabs"><div class="seg"><button class="${tab === 'msg' ? 'on' : ''}">メッセージ${m ? `<span class="n">${m}</span>` : ''}</button><button class="${tab === 'notif' ? 'on' : ''}">通知${n ? `<span class="n">${n}</span>` : ''}</button></div><span class="lbl">${tab === 'msg' ? 'Orbit でつながった人とのやり取り' : '面談・期限・iOrbit の提案'}</span></div>`;
+const ib5Head = (tab, m, n) => mainhead('受信箱', '') + ib5Tabs(tab, m, n);
+const IB5N = [
+  { k: 'rem', emo: '⏰', c: 'apricot', t: '30分後：高橋 美咲さんと面談', d: '10:00 · オンライン · 話すこと3点を用意済み', time: '9:30', u: 1, day: '今日' },
+  { k: 'rem', emo: '🎟️', c: 'apricot', t: 'Japan SaaS Summit の早割は今日 23:59 まで', d: '参加予定 · 明日から ¥22,000（+¥7,000）', time: '8:30', u: 1, day: '今日' },
+  { k: 'sug', emo: '✨', c: 'lav', t: '山本 彩さんへのフォローをタスクに追加しますか？', d: '資料の再送依頼から 24日 · iOrbit の提案', time: '8:00', u: 1, day: '今日' },
+  { k: 'upd', emo: '🥂', c: 'blue', t: 'CFO Night Tokyo の参加者リストが公開されました', d: '会いたい人 6名が参加予定', time: '昨日', u: 1, day: '昨日' },
+  { k: 'upd', emo: '🔄', c: 'blue', t: '鈴木 大輔さんの役職が変わりました', d: '執行役員 DX 推進本部長 · 名刺の再スキャン', time: '昨日', day: '昨日' },
+  { k: 'his', emo: '🗂️', c: 'teal', t: '名刺 17枚の取り込みが完了しました', d: '確認待ちの項目 3件', time: '10/4', day: '今週' },
+];
+const IB5CATS = [['all', 'すべて', 6], ['sec', '秘書', 1], ['rem', 'リマインダー', 2], ['sug', '提案', 1], ['upd', '更新', 2], ['his', '履歴', 1]];
+const ib5Cats = (counts) => `<div class="cats">${IB5CATS.map(([k, l, n], i) => `<span class="chip ${i === 0 ? 'on' : ''}">${l}${counts ? `<span class="n">${n}</span>` : ''}</span>`).join('')}</div>`;
+const ib5NRow = (n, sel) => `<div class="ib5-row ${n.u ? 'unread' : ''} ${sel ? 'sel' : ''}"><span class="emo sm ${n.c}">${n.emo}</span><div style="min-width:0"><b>${n.t}</b><span class="lbl">${n.d}</span></div><div class="end"><span class="lbl">${n.time}</span>${n.u ? '<i class="ud"></i>' : ''}</div></div>`;
+const ib5NRows = (sel = -1) => { let last = ''; return IB5N.map((n, i) => { const g = n.day !== last ? `<div class="ib5-day">${n.day}</div>` : ''; last = n.day; return g + ib5NRow(n, i === sel); }).join(''); };
+const ib5NTool = (has) => `<div class="ib5-tool">${ib5Cats(has)}<div class="bar2"><span class="lbl">${has ? '未読 4件' : '未読はありません'}</span>${has ? `<button class="btn sm">${ic('check', 'sm')}すべて既読</button>` : ''}<span class="ibtn">${ic('settings', 'sm')}</span></div></div>`;
+const ib5NotifRail = (s) => `<h4>${ic('bell', 'sm')}通知の状態</h4>
+  <div class="card" style="padding:16px"><div class="lbl">今日のプッシュ</div><div class="row" style="align-items:flex-end;gap:6px"><div class="big" style="font-size:32px">${s === 'empty' ? 0 : num(2)}</div><span class="lbl" style="padding-bottom:6px">/ 上限 3件</span></div>${bar(s === 'empty' ? 0 : 67)}<div class="lbl">上限を超えた分は受信箱にだけ届きます</div></div>
+  <div class="card" style="padding:16px"><div class="row" style="gap:10px"><span class="emo sm lav">🌙</span><div style="flex:1"><b style="font-size:13px">静かな時間帯</b><div class="lbl">22:00 – 7:30 · 面談30分前は例外</div></div>${tg(1)}</div></div>
+  ${s === 'empty' ? '' : `<div class="card" style="padding:16px"><div class="lbl">今週の内訳</div>${[['リマインダー', 2], ['提案', 1], ['更新', 2], ['履歴', 1]].map(([l, v]) => `<div class="cmp"><span>${l}</span>${bar(v / 2 * 60, 'thin')}<b class="score" style="text-align:right;color:var(--ink)">${v}</b></div>`).join('')}</div>`}
+  <button class="btn block">${ic('settings', 'sm')}通知の設定を開く</button>`;
+function ib5Notif(s) {
+  const list = s === 'empty'
+    ? `<div class="ib5-list">${ib5NTool(false)}<div class="ib5-listempty">通知はありません</div></div>`
+    : `<div class="ib5-list">${ib5NTool(true)}<div class="ib5-rows">${ib5NRows(s === 'detail' ? 0 : -1)}</div></div>`;
+  let pane;
+  if (s === 'empty') pane = `<div class="ib5-empty"><span class="emo lav">🔔</span><h3>通知はまだありません</h3><p>見逃すと困ることだけ、ここに届きます。</p>
+    <div class="ib5-kinds">${[['⏰', 'apricot', 'リマインダー', '面談の30分前 · 申込の締切'], ['✨', 'lav', '提案', 'iOrbit が見つけた次の一手。承認したときだけタスクに'], ['🔄', 'blue', '更新', '名刺の取り込み完了 · 参加者リストの公開']].map(([e, c, b, l]) => `<div class="k"><span class="emo sm ${c}">${e}</span><div><b>${b}</b><span class="lbl">${l}</span></div></div>`).join('')}</div>
+    <button class="btn">${ic('settings', 'sm')}通知の設定</button></div>`;
+  else if (s === 'list') pane = `<div class="ib5-hint"><span class="ring0">${ic('bell')}</span><b style="color:var(--ink);font-size:14px">通知を選ぶと、ここに詳細が出ます</b><span>今日 3件 · 未読 4件</span></div>`;
+  else {
+    const m = pc('高橋 美咲');
+    pane = `<div class="ib5-det"><div class="top"><span class="emo sm apricot">⏰</span><span class="chip">リマインダー</span><span class="lbl" style="margin-left:auto">今日 9:30</span></div>
+      <h2>30分後：高橋 美咲さんと面談</h2>
+      <p class="reason">10:00 からオンライン。前回（10/6）は DD の資料リストを受け取っています。話すこと 3点を面談の準備に用意しました。</p>
+      <div class="ib5-due">${ic('clock', 'sm')}開始 10:00 · あと 30分</div>
+      <div class="ib5-src"><div class="h">この通知のもと</div>
+        <div class="it">${ic('calendar', 'sm')}<div><b>面談 · 高橋 美咲さん</b><span class="lbl">10/7（水）10:00–10:45 · Google カレンダー</span></div><span>${ic('right', 'sm')}</span></div>
+        <div class="it">${avc(m, 'sm')}<div><b>${m.n}</b><span class="lbl">${m.co} · ${m.role}</span></div><span>${ic('right', 'sm')}</span></div></div>
+      <div class="ib5-acts"><button class="btn primary">面談の準備を開く ${ic('right', 'sm')}</button><button class="btn">${ic('clock', 'sm')}1時間後</button><span class="sp"></span><button class="btn">${ic('check', 'sm')}既読</button></div></div>`;
+  }
+  return ib5Head('notif', s === 'empty' ? 0 : 3, s === 'empty' ? 0 : 4) + `<div class="card ib5">${list}<div class="ib5-pane">${pane}</div></div>`;
+}
+const IB5T = [
+  { who: '高橋 美咲', sn: 'ARR の月次推移、IC の前にいただけますか？', time: '10:12', u: 2 },
+  { who: '渡辺 翔', sn: '東都キャピタルの山本さん、ご紹介できそうです', time: '昨日', u: 1 },
+  { who: '伊藤 直子', sn: 'あなた（下書き）：来週の勉強会、ぜひ伺います', time: '10/5', draft: 1 },
+  { who: '鈴木 大輔', sn: 'PoC の候補日、10/20 か 10/22 でいかがでしょう', time: '10/3' },
+  { who: '中村 由紀', sn: '契約書のひな形、お送りしました', time: '9/28' },
+];
+const ib5MRow = (t, sel) => { const c = pc(t.who); return `<div class="ib5-row msg ${t.u ? 'unread' : ''} ${sel ? 'sel' : ''}">${avc(c)}<div style="min-width:0"><b>${c.n}</b><span class="lbl">${t.draft ? `<span style="color:var(--plum-700);font-weight:700">下書き</span> · ${t.sn.replace('あなた（下書き）：', '')}` : t.sn}</span></div><div class="end"><span class="lbl">${t.time}</span>${t.u ? `<span class="cnt1">${t.u}</span>` : ''}</div></div>`; };
+const ib5MsgRail = (s) => {
+  if (s === 'detail') { const c = pc('高橋 美咲'); return `<h4>${ic('users', 'sm')}この相手</h4>
+  <div class="card" style="padding:16px"><div class="row" style="gap:12px">${avc(c)}<div><b>${c.n}</b><div class="lbl">${c.co} · ${c.role}</div></div></div><div class="chips" style="margin-top:10px"><span class="chip lav">${c.stage}</span><span class="chip">最終接点 ${c.last}</span></div><div class="sub" style="margin-top:10px">${c.emo} ${c.val}</div></div>
+  <div class="card" style="padding:16px"><div class="lbl">関連するタスク</div><div class="row" style="gap:8px;margin-top:8px;font-size:13px"><span class="emo sm apricot">📊</span>ARR 月次推移を送付<span class="chip" style="margin-left:auto">10/10まで</span></div></div>
+  <button class="btn block">${ic('users', 'sm')}人脈で開く</button>`; }
+  return `<h4>${ic('mail', 'sm')}メッセージについて</h4>
+  <div class="card" style="padding:16px"><div class="ib5-rail-li">${[['🤝', 'teal', 'つながった人とだけやり取りします'], ['📝', 'lav', '返信は下書きまで。送信はしません'], ['🔔', 'apricot', '通知はスレッドごとに切り替えられます']].map(([e, c, t]) => `<div><span class="emo ${c}">${e}</span><span>${t}</span></div>`).join('')}</div></div>
+  ${s === 'empty' ? '' : `<div class="card" style="padding:16px"><div class="lbl">未読</div><div class="row" style="align-items:flex-end;gap:6px"><div class="big" style="font-size:32px">${num(3)}</div><span class="lbl" style="padding-bottom:6px">件 · 2 スレッド</span></div></div>`}`;
+};
+function ib5Msg(s) {
+  const tool = `<div class="ib5-tool"><div class="input">${ic('search', 'sm')}スレッドを検索</div></div>`;
+  const list = s === 'empty'
+    ? `<div class="ib5-list">${tool}<div class="ib5-listempty">スレッドはまだありません</div></div>`
+    : `<div class="ib5-list">${tool}<div class="ib5-rows">${IB5T.map((t, i) => ib5MRow(t, s === 'detail' && i === 0)).join('')}</div></div>`;
+  let pane;
+  if (s === 'empty') pane = `<div class="ib5-empty"><span class="emo teal">💬</span><h3>メッセージはまだありません</h3><p>Orbit でつながった人から届いたメッセージが、ここに並びます。返信は下書きまで作れます。</p>
+    <div style="margin-top:20px"><button class="btn">${ic('users', 'sm')}人脈を開く</button></div></div>`;
+  else if (s === 'list') pane = `<div class="ib5-hint"><span class="ring0">${ic('mail')}</span><b style="color:var(--ink);font-size:14px">スレッドを選ぶと、ここにやり取りが出ます</b><span>未読 3件</span></div>`;
+  else {
+    const c = pc('高橋 美咲');
+    pane = `<div class="ib5-th">${avc(c)}<div><b>${c.n}</b><span class="lbl">${c.co} · ${c.role}</span></div><span class="sp"></span><span class="nt">${ic('bell', 'sm')}このスレッドの通知 ${tg(1)}</span></div>
+      <div class="ib5-msgs"><span class="lbl" style="align-self:center">${ic('clock', 'sm')} 過去のメッセージ</span><span class="dd">10月6日（火）</span>
+        <div class="m me"><div class="bubble me">本日はありがとうございました。事業計画書 v3 をお送りします。</div><span class="lbl">あなた · 18:20</span></div>
+        <div class="m"><div class="bubble">ご送付ありがとうございます。社内で確認を進めます。</div><span class="lbl">${c.n} · 19:02</span></div>
+        <span class="dd">今日</span>
+        <div class="m"><div class="bubble">11月第2週の IC に向けて、ARR の月次推移と解約率を事前にいただけますでしょうか。</div><span class="lbl">${c.n} · 10:12</span></div>
+        <div class="m"><div class="bubble">期限は特にありませんが、来週中だと助かります。</div><span class="lbl">${c.n} · 10:13</span></div></div>
+      <div class="ib5-comp"><div class="h">${ic('pen', 'sm')}返信の下書き<span class="lbl">自分だけに表示</span></div>
+        <div class="txt">高橋様　ご確認ありがとうございます。ARR の月次推移（直近12か月）と解約率を、10日（金）までにお送りいたします。</div>
+        <div class="f"><span class="lbl">${ic('check', 'sm')}10:24 に保存しました · Orbit からは送信しません</span><button class="btn sm primary">下書きを保存</button></div></div>`;
+  }
+  return ib5Head('msg', s === 'empty' ? 0 : 3, s === 'empty' ? 0 : 4) + `<div class="card ib5">${list}<div class="ib5-pane">${pane}</div></div>`;
+}
+h += sec('D05 · 受信箱 Web 再設計（2026-10-27）', '通知・メッセージとも「一覧 | 詳細」の二枚組。右栏は他の一級画面と同じ位置・幅で文脈を置く（通知の状態 / この相手）。空態は何が届くかを示す。');
+h += board('受信箱 · Web · 通知 · 空', 'empty', wf({ nav: 5, head: '', body: ib5Notif('empty'), rail: ib5NotifRail('empty'), pins: P(1, '.ib5-kinds') + P(2, '.ib5-tool') }), ['空態は「何が届くか」を3種で示す；サンプル通知は出さない', '分類 chip は常に表示、件数は通知があるときだけ', '右栏の今週の内訳は通知があるときだけ']);
+h += board('受信箱 · Web · 通知', 'many', wf({ nav: 5, head: '', body: ib5Notif('list'), rail: ib5NotifRail('list'), pins: P(1, '.ib5-row.unread') + P(2, '.ib5-hint') }), ['行は2行まで（タイトル + 理由・期限）；未読は太字 + 紫の点', '未選択のときは詳細欄に件数だけを出す', '行の操作は詳細欄にまとめ、一覧はスキャン専用']);
+h += board('受信箱 · Web · 通知 · 詳細', 'many', wf({ nav: 5, head: '', body: ib5Notif('detail'), rail: ib5NotifRail('detail'), pins: P(1, '.ib5-src') + P(2, '.ib5-acts .btn.primary') + P(3, '.ib5-row.sel') }), ['「この通知のもと」= 通知の sources（面談・相手・イベント）；各行から元の画面へ', '主ボタンは元の画面を開く；1時間後 / 既読は副ボタン；提案なら「タスクに追加 / 不要」', '選んだ通知は既読になり、一覧で淡紫の選択色']);
+h += board('受信箱 · Web · メッセージ · 空', 'empty', wf({ nav: 5, head: '', body: ib5Msg('empty'), rail: ib5MsgRail('empty') }), ['つながった人がいないときの説明と人脈への入口のみ', '右栏は「メッセージについて」：相手の範囲・下書きまで・通知']);
+h += board('受信箱 · Web · メッセージ', 'many', wf({ nav: 5, head: '', body: ib5Msg('list'), rail: ib5MsgRail('list'), pins: P(1, '.ib5-row.msg .cnt1') + P(2, '.ib5-row.msg', 2) }), ['未読はスレッドごとの件数バッジ', '自分の下書きがあるスレッドは「下書き」と先頭に表示']);
+h += board('受信箱 · Web · メッセージ · 詳細', 'many', wf({ nav: 5, head: '', body: ib5Msg('detail'), rail: ib5MsgRail('detail'), pins: P(1, '.ib5-th .nt') + P(2, '.ib5-comp') + P(3, '.rail .btn.block') }), ['スレッド頭にこのスレッドの通知の切替', '返信欄は破線の下書き枠；保存のみで送信ボタンはない', '右栏「この相手」：関係の段階・最終接点・関連タスク・人脈で開く']);
 
 document.getElementById('out').innerHTML = h;
 docNav('b5-me-inbox'); orbitChrome();
