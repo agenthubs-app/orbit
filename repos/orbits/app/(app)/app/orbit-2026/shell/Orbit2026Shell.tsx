@@ -4,7 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { readInboxUnreadCounts } from "../../inbox/relationship-inbox-panel";
@@ -22,7 +22,7 @@ import { initials } from "../ui/Basics";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
-import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellNavKeyFor, shellShowsRail, type ShellNavKey } from "./shell-routes";
+import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellNavKeyFor, type ShellNavKey } from "./shell-routes";
 import { ShellSlotsProvider, useShellSlots } from "./slots";
 import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
 import { OnboardingImportHeader } from "../onboarding/OnboardingImportHeader";
@@ -51,8 +51,16 @@ export function Orbit2026Shell({ language, signedIn, currentBuildId, children }:
 // What the shell's own controls need, for the buttons a page puts in its header
 // slots (search, 🔔, 次の一手): the slot nodes render inside the shell, so they
 // read this instead of props.
-type ShellChrome = { openPalette: () => void; openRail: () => void; inboxDot: boolean; rail: boolean };
+type ShellChrome = { openPalette: () => void; openRail: () => void; inboxDot: boolean; rail: boolean; railLabel: string; railOpenLabel: string };
 const ShellChromeContext = createContext<ShellChrome | null>(null);
+// Its own context with a stable value: a page that closes the drawer must not re-render with
+// the shell, or the rail it passes back would loop (ShellChrome changes on every render).
+const CloseRailContext = createContext<() => void>(() => undefined);
+
+/** Closes the rail drawer (768–1279), for a rail whose choice stays on the same URL (iOrbit 会話リスト). */
+export function useCloseShellRail(): () => void {
+  return useContext(CloseRailContext);
+}
 
 // `focus` (R28 onboarding import): a header across the top in place of the rail nav,
 // the mobile top bar and the bottom capsule; the main header, content and rail stay.
@@ -60,17 +68,21 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const slots = useShellSlots();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [railDrawer, setRailDrawer] = useState(false);
+  const closeRail = useCallback(() => setRailDrawer(false), []);
   const openPalette = () => setPaletteOpen(true);
   useCommandPaletteShortcut(openPalette);
-  const rail = shellShowsRail(pathname) && slots.rightRail !== false && slots.rightRail !== undefined;
+  const rail = slots.rightRail !== false && slots.rightRail !== undefined;
+  const railLabel = slots.railLabel ?? pickCopy(shellCopy.railNextTitle, language);
+  const railOpenLabel = slots.railLabel ?? pickCopy(shellCopy.railOpen, language);
   const railContent = slots.rightRail === true ? <DefaultRail onOpenPalette={openPalette} /> : slots.rightRail;
   const active = shellNavKeyFor(pathname);
   const dot = useInboxDot(language, pathname);
   const hasHeader = Boolean(slots.title || slots.left || slots.right || slots.demoPill || rail);
-  const chrome: ShellChrome = { openPalette, openRail: () => setRailDrawer(true), inboxDot: dot, rail };
+  const chrome: ShellChrome = { openPalette, openRail: () => setRailDrawer(true), inboxDot: dot, rail, railLabel, railOpenLabel };
   useEffect(() => { setRailDrawer(false); }, [pathname]);
   return (
     <ShellChromeContext.Provider value={chrome}>
+    <CloseRailContext.Provider value={closeRail}>
     <div className={styles.frame} data-orbit-2026-shell="" data-rail={rail ? "true" : "false"} data-phone-bare={slots.phoneBare ? "true" : undefined} data-focus={focus ? "true" : undefined}>
       {focus ? <Orbit2026Scope language={language} className={styles.focusScope}>{focus}</Orbit2026Scope> : (
         <Orbit2026Scope language={language} className={styles.sideScope}>
@@ -96,7 +108,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
             ) : null}
             <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
             {rail ? (
-              <Drawer open={railDrawer} onClose={() => setRailDrawer(false)} title={pickCopy(shellCopy.railNextTitle, language)} size="sm" bare>
+              <Drawer open={railDrawer} onClose={() => setRailDrawer(false)} title={railLabel} size="sm" bare>
                 {/* b12 N07b: ✕ at the top left, 「Esc で閉じる」 at the right, then the rail as at 1440. */}
                 <div className={styles.drawerRail}>
                   <div className={styles.drawerHead}>
@@ -115,7 +127,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
       </div>
       {rail ? (
         <Orbit2026Scope language={language} as="div" className={styles.railScope}>
-          <aside className={styles.rail} aria-label={pickCopy(shellCopy.railNextTitle, language)}>{railContent}</aside>
+          <aside className={styles.rail} aria-label={railLabel}>{railContent}</aside>
         </Orbit2026Scope>
       ) : null}
       {focus ? null : (
@@ -127,6 +139,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
         <WebVersionBannerGate currentBuildId={currentBuildId} language={language} />
       </Orbit2026Scope>
     </div>
+    </CloseRailContext.Provider>
     </ShellChromeContext.Provider>
   );
 }
@@ -168,12 +181,11 @@ export function ShellBellButton() {
  */
 function ShellRailButton({ count, open }: { count?: number; open: boolean }) {
   const chrome = useContext(ShellChromeContext);
-  const { language } = useOrbitLanguage();
   if (!chrome?.rail) return null;
   return (
-    <button type="button" className={`btn ${styles.railButton} ${open ? styles.railButtonOn : ""}`} onClick={chrome.openRail} aria-label={pickCopy(shellCopy.railOpen, language)} aria-haspopup="dialog" aria-expanded={open} data-orbit-2026-rail-button="">
+    <button type="button" className={`btn ${styles.railButton} ${open ? styles.railButtonOn : ""}`} onClick={chrome.openRail} aria-label={chrome.railOpenLabel} aria-haspopup="dialog" aria-expanded={open} data-orbit-2026-rail-button="">
       <Icon name="sparkle" size={16} />
-      <span aria-hidden>{pickCopy(shellCopy.railNextTitle, language)}</span>
+      <span aria-hidden>{chrome.railLabel}</span>
       {count ? <span className={styles.cnum} aria-hidden>{count}</span> : null}
     </button>
   );

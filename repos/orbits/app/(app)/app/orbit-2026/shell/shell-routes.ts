@@ -55,11 +55,6 @@ export function shellNavKeyFor(pathname: string): ShellNavKey | null {
   return null;
 }
 
-/** iOrbit is a workspace of its own: no right rail there (web.html). */
-export function shellShowsRail(pathname: string): boolean {
-  return !matches(pathname.replace(/\/+$/u, ""), "/app/agent");
-}
-
 export const SHELL_NAV: readonly { key: Exclude<ShellNavKey, "host" | "settings" | "me">; href: string; icon: "home" | "users" | "sparkle" | "calendar" | "task" | "inbox" }[] = [
   { key: "home", href: "/app/home", icon: "home" },
   { key: "network", href: "/app/contacts", icon: "users" },

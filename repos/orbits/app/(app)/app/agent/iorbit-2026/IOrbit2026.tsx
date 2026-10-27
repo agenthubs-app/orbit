@@ -12,6 +12,7 @@ import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
 import { standardCopyFor } from "../../orbit-2026/copy/standard";
 import { ShellPage } from "../../orbit-2026/shell/slots";
+import { useCloseShellRail } from "../../orbit-2026/shell/Orbit2026Shell";
 import { Button, Card, ConfirmDialog, ContextMenu, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
 import { AgentActionStatusCard } from "../agent-action-status-card";
 import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
@@ -186,9 +187,12 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     setActiveSessionId: chat.setActiveSessionId, setChatOpen: chat.setChatOpen, setHistOpen: chat.setHistOpen,
     setMessages: chat.setMessages, setPanel: chat.setPanel, setThinking: chat.setThinking,
   });
+  // ≥768 the conversation list is the shell's right rail (as 次の一手 is on the other tabs:
+  // always there at ≥1280, a drawer from the header button at 768–1279). Below 768 it is
+  // the page's own drawer from 会話リスト in the phone header.
   const [historyOpen, setHistoryOpen] = useState(initialHistoryOpen);
-  const historyOpenChosen = useRef(initialHistoryOpen);
-  const [narrow, setNarrow] = useState(false);
+  const [phone, setPhone] = useState(false);
+  const closeRail = useCloseShellRail();
   const [contextEnabled, setContextEnabled] = useState(false);
   const [pageContext, setPageContext] = useState<AiPageContextContract | null>(null);
   const [contextError, setContextError] = useState<string | null>(null);
@@ -207,18 +211,11 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const oncePrefill = useRef(false);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1199px)");
-    const update = () => setNarrow(media.matches);
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setPhone(media.matches);
     update(); media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  useEffect(() => {
-    if (historyOpenChosen.current || history.storedHistory.length === 0) return;
-    if (window.matchMedia("(min-width: 1200px)").matches) {
-      historyOpenChosen.current = true;
-      setHistoryOpen(true);
-    }
-  }, [history.storedHistory.length]);
   useEffect(() => {
     const draftId = new URLSearchParams(window.location.search).get("draftId");
     setRequestedDraftId(draftId && draftId.length <= 160 ? draftId : null);
@@ -312,8 +309,8 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     void chat.ask(query, undefined, undefined, contextEnabled ? pageContext ?? undefined : undefined);
     resetContext();
   };
-  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
-  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); resetContext(); setSource(null); setRequestedDraftId(null); };
+  const startNew = () => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.newChat(); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
+  const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
   const activeTitle = history.storedHistory.find((item) => item.sessionId === chat.activeSessionId)?.title;
   const dictation = useDictation(language, (text) => { chat.setChatDraft(`${chat.chatDraft}${chat.chatDraft ? " " : ""}${text}`); inputRef.current?.focus(); });
@@ -323,20 +320,11 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
     <Orbit2026Scope language={language} className={`${styles.scope} ${inConversation ? styles.conversationScope : ""}`}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
       <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || t(iorbitCopy.inConversation) : t(iorbitCopy.subtitle)}
-        left={<IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => { historyOpenChosen.current = true; setHistoryOpen((open) => !open); }} />}
         right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd><span className={styles.anywhereText}> {t(iorbitCopy.anywhere)}</span></span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
-        rightRail={false} phoneFold phoneBare={inConversation} />
+        rightRail={phone ? false : <div className={styles.railHistory}><HistoryPane history={history} onNew={startNew} onPick={pick} /></div>}
+        railLabel={t(iorbitCopy.list)} phoneFold phoneBare={inConversation} />
       <div className={styles.layout}>
-        {historyOpen && !narrow ? <aside className={styles.sidebar} aria-label={t(iorbitCopy.list)}><HistoryPane history={history} onNew={startNew} onPick={pick} /></aside> : null}
-        {narrow ? <aside className={styles.strip} aria-label={t(iorbitCopy.list)}>
-          {/* b8 #9 .r8strip (768–1199): open the list, search it, start new, then pinned conversations. */}
-          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)}><Icon name="menu" size={16} /></button>
-          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.searchLabel)} onClick={() => setHistoryOpen(true)}><Icon name="search" size={16} /></button>
-          <button type="button" className={`btn ${styles.stripButton}`} aria-label={t(iorbitCopy.newChat)} onClick={startNew}><Icon name="edit" size={16} /></button>
-          {history.storedHistory.some((item) => item.pinned) ? <><hr /><span className={styles.stripPin} aria-hidden>📌</span>
-            {history.storedHistory.filter((item) => item.pinned).slice(0, 5).map((item) => <button key={item.id} type="button" className={`btn ${styles.stripPin}`} aria-label={item.title} title={item.title} onClick={() => pick(item)}>{[...item.title.trim()][0] ?? "·"}</button>)}</> : null}
-        </aside> : null}
-        {historyOpen && narrow ? <HistoryDrawer label={t(iorbitCopy.list)} onClose={() => setHistoryOpen(false)}><HistoryPane history={history} onNew={startNew} onPick={pick} onCollapse={() => setHistoryOpen(false)} /></HistoryDrawer> : null}
+        {historyOpen && phone ? <HistoryDrawer label={t(iorbitCopy.list)} onClose={() => setHistoryOpen(false)}><HistoryPane history={history} onNew={startNew} onPick={pick} onCollapse={() => setHistoryOpen(false)} /></HistoryDrawer> : null}
         <main className={styles.main}>
           <div className={styles.phoneHeader}><IconButton icon="menu" label={t(iorbitCopy.list)} onClick={() => setHistoryOpen(true)} /><div className={styles.phoneHeaderTitle}><strong>iOrbit</strong>{inConversation && activeTitle ? <small>{activeTitle}</small> : null}</div><IconButton icon={inConversation ? "x" : "plus"} label={inConversation ? standardCopyFor(language).action.close : t(iorbitCopy.newChat)} onClick={startNew} /></div>
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>

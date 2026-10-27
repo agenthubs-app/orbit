@@ -5,7 +5,7 @@ import test from "node:test";
 import type { Browser, Page } from "playwright";
 
 import { monthHeading } from "../../app/(app)/app/orbit-2026/shell/month-heading";
-import { onboardingImportFocus, shellAppliesTo, shellNavKeyFor, shellShowsRail } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
+import { onboardingImportFocus, shellAppliesTo, shellNavKeyFor } from "../../app/(app)/app/orbit-2026/shell/shell-routes";
 import { ORBIT_2026_HISTORY, ORBIT_2026_RAIL, ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_LEFT_SIDEBAR_WIDTH } from "../../app/(app)/app/orbit-layout-constants";
 import { launch } from "./support/orbit-2026-harness";
 import { errorsOf, LEGACY_PAGE, openShell, shellBundle } from "./support/orbit-2026-shell-harness";
@@ -56,7 +56,6 @@ test("route rules: every signed-in product page gets the shell; public, sign-in 
   // 计划页像素返工：生成流程、見直し在 iOrbit 里（设计稿左栏高亮 iOrbit）；概要、人物类型、手動編集（b10 #21 高亮 Task）、完了、以前のプラン 仍属 Task。
   for (const path of ["/app/plans/flow/intake_1", "/app/plans/plan_1/review"]) assert.equal(shellNavKeyFor(path), "iorbit", path);
   for (const path of ["/app/plans/drafts/draft_1/edit", "/app/plans/plan_1/types/item_1", "/app/plans/plan_1/done", "/app/plans/legacy/v1", "/app/plans/review"]) assert.equal(shellNavKeyFor(path), "task", path);
-  assert.equal(shellShowsRail("/app/agent/actions"), false);
   assert.deepEqual([ORBIT_2026_SIDEBAR, ORBIT_2026_SIDEBAR_COMPACT, ORBIT_2026_RAIL, ORBIT_2026_HISTORY, ORBIT_LEFT_SIDEBAR_WIDTH], [84, 72, 360, 260, 212]);
 });
 
@@ -124,7 +123,7 @@ test("the main header is three parts: left slot · title over subtitle · right 
   await bell.locator("i").waitFor();
 });
 
-test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit never has one", async (t) => {
+test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit's conversation list takes the same rail", async (t) => {
   const home = await shell(t, { path: "/app/home", rail: true });
   const rail = home.locator("aside");
   assert.equal(Math.round((await rail.boundingBox())!.width), 360);
@@ -133,8 +132,13 @@ test("1440 with the rail slot: a 360 right rail with the ⌘K entry; iOrbit neve
   const ask = (await rail.getByRole("button", { name: /iOrbit に聞く…/u }).boundingBox())!;
   const box = (await rail.boundingBox())!;
   assert.ok(box.y + box.height - (ask.y + ask.height) <= 30, JSON.stringify({ ask, box }));
-  const agent = await shell(t, { path: "/app/agent", rail: true });
-  assert.equal(await agent.locator("aside").count(), 0);
+  // iOrbit fills the same 360 rail with its 会話リスト (named by railLabel), so its title centres over the same column.
+  const agent = await shell(t, { path: "/app/agent", rail: true, railLabel: "会話リスト" });
+  const agentRail = agent.getByRole("complementary", { name: "会話リスト" });
+  assert.equal(Math.round((await agentRail.boundingBox())!.width), 360);
+  const homeTitle = (await home.locator("[data-orbit-2026-mainhead] h1").boundingBox())!;
+  const agentTitle = (await agent.locator("[data-orbit-2026-mainhead] h1").boundingBox())!;
+  assert.equal(Math.round(agentTitle.x + agentTitle.width / 2), Math.round(homeTitle.x + homeTitle.width / 2));
 });
 
 test("390: no left rail; a bottom capsule with the five tabs that covers neither the page's end nor its fixed controls", async (t) => {

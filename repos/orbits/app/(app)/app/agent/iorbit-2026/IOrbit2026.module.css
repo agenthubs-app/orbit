@@ -1,13 +1,5 @@
 .scope { color: var(--ink); min-height: 70vh; }
-.layout { position: relative; display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: var(--space-20); padding: 0 var(--space-34) var(--space-40); }
-.layout:not(:has(> .sidebar)) { grid-template-columns: minmax(0, 1fr); }
-.layout:has(> .strip) { grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-16); }
-.strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border-radius: var(--r-lg); background: color-mix(in srgb, var(--surface) 60%, transparent); }
-.strip hr { width: 22px; height: 1px; margin: 4px 0; border: 0; background: var(--line); }
-.scope .stripButton { width: 34px; height: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
-.scope .stripPin { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; font-size: var(--fs-body); font-weight: var(--fw-bold); }
-/* b4 #37 .hpanel */
-.sidebar { background: color-mix(in srgb, var(--surface) 60%, transparent); border-radius: var(--r-card-web); padding: var(--space-12) var(--space-10); overflow: auto; min-height: 0; }
+.layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); padding: 0 var(--space-34) var(--space-40); }
 /* .ccol: messages centred at 680, composer at the bottom */
 .main { min-width: 0; display: flex; flex-direction: column; }
 .phoneHeader { display: none; }
@@ -31,6 +23,8 @@
 .capabilityIcon { width: 30px; height: 30px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; flex: none; }
 .capability b { width: 64px; flex: none; font-size: var(--fs-control); }
 .capability > span:last-child { flex: 1; color: var(--ink-2); }
+/* ≥768 the list is the shell's right rail (the rail draws the panel; this only sets the text colour). */
+.railHistory { color: var(--ink); }
 .history { display: flex; flex-direction: column; width: 100%; }
 .historyHead { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px; }
 .historyHead b { font-size: var(--fs-body); font-weight: var(--fw-bold); }
@@ -53,11 +47,11 @@
 .historyRow :global(.btn) { min-width: 0; }
 .historyEntry { position: relative; display: flex; align-items: center; }
 /* .hist .hi */
-.scope .historyEntryMain { display: flex; align-items: center; flex: 1; gap: 8px; min-width: 0; height: auto; padding: 9px 10px; border: 0; border-radius: var(--r-md); color: var(--ink); background: transparent; text-align: left; font-size: var(--fs-body-sm); font-weight: var(--fw-regular); line-height: var(--lh-body); cursor: pointer; }
-.scope .historyEntryMain:hover { background: var(--surface-2); }
+:is(.scope, .railHistory) .historyEntryMain { display: flex; align-items: center; flex: 1; gap: 8px; min-width: 0; height: auto; padding: 9px 10px; border: 0; border-radius: var(--r-md); color: var(--ink); background: transparent; text-align: left; font-size: var(--fs-body-sm); font-weight: var(--fw-regular); line-height: var(--lh-body); cursor: pointer; }
+:is(.scope, .railHistory) .historyEntryMain:hover { background: var(--surface-2); }
 .historyTitle { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .historyEntryMain small { flex: none; font-size: var(--fs-caption); color: var(--ink-3); }
-.scope .historyMore { position: absolute; right: 4px; width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: none; place-items: center; cursor: pointer; }
+:is(.scope, .railHistory) .historyMore { position: absolute; right: 4px; width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); display: none; place-items: center; cursor: pointer; }
 .historyEntry:hover .historyMore, .historyEntry:focus-within .historyMore { display: grid; }
 .historyEntry:hover small, .historyEntry:focus-within small { visibility: hidden; }
 .emptyHistory { color: var(--ink-3-text); font-size: var(--fs-body-sm); }
@@ -93,11 +87,11 @@
 .composer textarea { flex: 1; min-width: 0; border: 0; resize: none; background: transparent; color: var(--ink); font: inherit; padding: 0; outline: 0; line-height: var(--lh-body); }
 .composer textarea::placeholder { color: var(--ink-3); }
 .privacy { max-width: 680px; width: 100%; margin: 8px auto 0; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); text-align: center; line-height: var(--lh-body); }
-@media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .sidebar { height: 100%; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
+@media (min-width: 768px) { .layout { height: calc(100dvh - 99px); box-sizing: border-box; } .main { height: 100%; } .start, .thread { flex: 1; overflow: auto; } .composer { margin-top: auto; } }
 /* b8 #9: at 1024 the header keeps only ⌘ K. */
 @media (max-width: 1199px) { .anywhereText { display: none; } }
 @media (max-width: 1023px) { .layout { padding: 0 var(--space-26) var(--space-40); } .historyScrim { left: var(--space-26); right: var(--space-26); } .historyDrawer { left: var(--space-26); } }
 /* b8 #12 .r8adrawer (≤767): full-height sheet from the left, 「会話」 at 17px, no collapse button (the scrim and Esc close it). */
 @media (max-width: 767px) { .historyScrim { position: fixed; inset: 0; z-index: var(--z-overlay); border-radius: 0; background: var(--scrim); } .historyDrawer { position: fixed; z-index: var(--z-overlay); top: 0; bottom: 0; left: 0; width: 318px; padding: 58px 14px 30px; border-radius: 0 var(--r-sheet) var(--r-sheet) 0; } .historyDrawer .historyHead { padding: 0 4px 12px; } .historyDrawer .historyHead b { font-size: var(--fs-logo); } .historyCollapse:global(.btn) { display: none; } }
-@media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .strip { display: none; } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: 1fr; } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
+@media (max-width: 767px) { .layout { display: block; padding: var(--space-18); } .phoneHeader { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-title-sm); } .start { margin-top: var(--space-18); gap: var(--space-12); } .start h1 { font-size: var(--fs-title); } .suggestions { grid-template-columns: 1fr; } .scope .suggestion { min-height: 64px; padding: var(--space-12); } .capabilities { display: none; } .layout { display: block; } .thread { padding-top: var(--space-12); } .conversationScope { min-height: 100dvh; display: flex; flex-direction: column; } .conversationScope > [data-orbit-agent-request-state] { flex: 1; display: flex; flex-direction: column; } .conversationScope .layout { flex: 1; display: flex; flex-direction: column; padding-inline: 0; } .conversationScope .main { flex: 1; min-height: 0; padding-bottom: calc(var(--space-40) + var(--space-20)); } .conversationScope .thread { flex: 1; min-height: 0; overflow-y: auto; } .conversationScope .followups { transform: translateY(var(--space-28)); } }
 @media (prefers-reduced-motion: reduce) { .suggestion:hover { transform: none; } }
