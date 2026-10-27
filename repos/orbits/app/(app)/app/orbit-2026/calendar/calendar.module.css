@@ -1,5 +1,10 @@
 .toolbar, .row, .status, .legend { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
 .toolbar { justify-content: space-between; margin-bottom: var(--space-14); }
+/* b3 #40: ‹ › 今日 on the left, the date centred, 日 / 週 / 月 on the right. */
+.dayToolbar { display: grid; grid-template-columns: 1fr auto 1fr; }
+.dayToolbar > :last-child { justify-self: end; }
+.dayToolbar .title { margin: 0; }
+.weekEmpty { margin: var(--space-12) 0 0; }
 .title { margin: 0 var(--space-8) 0 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .status { margin: var(--space-12) 0; }
 .note { font-size: var(--fs-caption); color: var(--ink-2); line-height: var(--lh-body); }
@@ -25,7 +30,8 @@
 .dayAllDay strong, .dayAllDay span { grid-column: 1 / -1; }
 .dayItem:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dayOverlap { display: grid; gap: var(--space-4); padding: var(--space-12); border-radius: var(--r-md); background: var(--mac-apricot); color: var(--ink); font-size: var(--fs-body-sm); }
-.weekLayout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-8); align-items: stretch; }
+.page { padding: 0 var(--space-34) var(--space-40); }
+.weekLayout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-18); align-items: stretch; }
 .weekCard, .agendaCard { min-width: 0; }
 .weekHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; margin-bottom: var(--space-12); }
 .weekGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-8); }
@@ -45,6 +51,8 @@
 .agendaHour time { color: var(--ink-3-text); font-family: var(--font-num); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
 .agendaEntry { position: absolute; min-width: 0; padding: var(--space-2); }
 .agendaEntry .entry { height: 100%; }
+@media (max-width: 1023px) { .page { padding: 0 var(--space-26) var(--space-40); } }
+@media (max-width: 767px) { .page { padding: 0 var(--space-18) var(--space-40); } }
 @media (max-width: 1100px) { .weekLayout { grid-template-columns: minmax(0, 1fr); } .weekGrid { overflow-x: auto; grid-template-columns: repeat(7, minmax(96px, 1fr)); } }
 .monthFrame { position: relative; }
 .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }

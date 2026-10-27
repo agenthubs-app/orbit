@@ -238,7 +238,6 @@ export const taskCopy = {
   calendarGoogleUnavailable: { ja: "Google カレンダーを読み込めませんでした", zh: "未能读取 Google 日历", en: "Could not load Google Calendar", kind: "label" },
   calendarGoogleReadOnly: { ja: "Google カレンダーの予定は読み取り専用です", zh: "Google 日历的日程仅供查看", en: "Google Calendar events are read-only", kind: "label" },
   calendarGoogleConnect: { ja: "連携する", zh: "关联", en: "Connect", kind: "button" },
-  calendarLoadingGoogle: { ja: "Google カレンダーを読み込み中", zh: "正在读取 Google 日历", en: "Loading Google Calendar", kind: "label" },
   calendarAdd: { ja: "予定を追加", zh: "添加日程", en: "Add schedule", kind: "button" },
   calendarEdit: { ja: "予定を編集", zh: "编辑日程", en: "Edit schedule", kind: "dialogTitle" },
   calendarScheduleTitle: { ja: "予定のタイトル", zh: "日程标题", en: "Schedule title", kind: "label" },
