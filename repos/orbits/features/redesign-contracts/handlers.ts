@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { accountDeletionRequestSchema, accountExportCreateInputSchema, accountExportSchema, appVersionSchema } from "../../shared/api-schema/account";
 import { contactCompletionAnswerInputSchema, contactCompletionQuestionSchema, contactCompletionResultSchema } from "../../shared/api-schema/contact-completion";
-import { eventAssessmentAddToPlanResultSchema, eventAssessmentAvailabilitySchema, eventAssessmentCreateInputSchema, eventAssessmentDismissResultSchema, eventAssessmentPatchInputSchema, eventAssessmentSchema } from "../../shared/api-schema/event-assessment";
+import { eventAssessmentAddToPlanResultSchema, eventAssessmentAvailabilitySchema, eventAssessmentCreateInputSchema, eventAssessmentDeleteResultSchema, eventAssessmentDismissResultSchema, eventAssessmentPatchInputSchema, eventAssessmentSchema } from "../../shared/api-schema/event-assessment";
 import { eventRecommendationDismissInputSchema, eventRecommendationDismissResultSchema } from "../../shared/api-schema/event-recommendation-feedback";
 import { homeLayoutSchema, homeLayoutUpdateInputSchema } from "../../shared/api-schema/home-layout";
 import {
@@ -170,6 +170,10 @@ export const addAssessmentToPlan = redesignContractRoute("event-assessment", eve
 export const dismissAssessment = redesignContractRoute("event-assessment", eventAssessmentDismissResultSchema, (request, params, { service }) => {
   if (service.mode === "live") return assessmentLive().dismiss(request, params);
   return redesignMock.dismissAssessment(params.id ?? "") ? { data: { assessmentId: params.id, userDecision: "dismissed" } } : notFound();
+});
+export const deleteAssessment = redesignContractRoute("event-assessment", eventAssessmentDeleteResultSchema, (request, params, { service }) => {
+  if (service.mode === "live") return assessmentLive().remove(request, params);
+  return redesignMock.deleteAssessment(params.id ?? "") ? { data: { assessmentId: params.id ?? "", deleted: true as const } } : notFound();
 });
 export const assessmentAvailability = redesignContractRoute("event-assessment", eventAssessmentAvailabilitySchema, (request, params, { service }) => {
   if (service.mode === "live") return assessmentLive().availability(request, params);

@@ -78,6 +78,7 @@ import {
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
 import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
+import { chooseReplyPolish, replyPolishTarget } from "../../data/reply-polish-handoff";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -112,7 +113,11 @@ type ReliableSendAttempt = {
   requestId: string;
   sessionId: string;
 };
-type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number } };
+type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number }; /** QA-A2: when it was first sent (never sent to the server). */ sentAt?: number };
+/** QA-A2: a reliable send still "pending" this long after it was sent has stopped (the server run timed out). */
+const STALE_PENDING_MS = 5 * 60 * 1000;
+/** QA-A2: the check found the message never reached the server, or the run stopped; 重试 is safe. */
+const RETRYABLE_SEND_CODES = ["NOT_DELIVERED", "TIMED_OUT"];
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
 /** Sprint 0112: an older page of the opened session, loaded from the top of the history. */
 type EarlierPage = { cursor: string; hasMore: boolean; messages: AiSession["messages"]; nextCursor: string | null; recovery: unknown };
@@ -422,6 +427,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const sessionId = previousSession?.id ?? `agent-session-mobile-${randomUUID()}`;
     return {
       ...input,
+      sentAt: Date.now(),
       reliable: {
         clientMessageId: randomUUID(),
         expectedMessageRevision: previousSession?.messageRevision ?? previousSession?.messages.length ?? 0,
@@ -478,6 +484,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     journal.interruptedRequest = request;
     setSending(true); setSendError(null); setSendCode(null); setFailedRequest(null);
     setActionError(null);
+    // QA-A: the sent text stayed in the composer until the reply arrived (20–60 s), so the
+    // question looked unsent. Clear it now; a failure offers 「编辑问题」 to bring it back.
+    if (!request.sourceNote && draftValue.current.trim() === request.message.trim()) { draftValue.current = ""; setDraftMessage(""); }
     // Sprint 0085: a new question clears the card the previous reply offered.
     setEntityDraftOverride(null); setEntityDraftEdits({});
     const result = await client.post<unknown>(request.path, {
@@ -562,6 +571,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
     } else {
       setFailedRequest(request);
+      if (!request.sourceNote && !draftValue.current.trim()) { draftValue.current = request.message; setDraftMessage(request.message); }
       const unknown = Boolean(request.reliable) && (!result.success || receipt?.state === "pending" || receipt?.state === "outcome_unknown");
       setSendError(unknown ? locale.t("aiConversation.outcomeUnknown") : result.success ? locale.t("aiConversation.incomplete") : result.error.message);
       setSendCode(unknown ? receipt?.state ?? "OUTCOME_UNKNOWN" : result.success ? null : result.error.code);
@@ -636,8 +646,33 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       return;
     }
     setFailedRequest(request);
+    // QA-A2: 检查结果 used to swap one "not confirmed" sentence for another. Say what the check found:
+    // the server never got the message (404 / no record of this request) → 重试 resends it with the same ids
+    // (idempotent); a run still pending long after sending has stopped → 重试 sends it again as a new request.
+    const notDelivered = (result.success && !recovery) || (!result.success && result.status === 404);
+    const stale = Boolean(recovery) && Date.now() - (request.sentAt ?? Date.now()) > STALE_PENDING_MS;
+    if (notDelivered) {
+      setSendError(locale.t("aiConversation.notDelivered"));
+      setSendCode("NOT_DELIVERED");
+      return;
+    }
+    if (stale) {
+      setSendError(locale.t("aiConversation.timedOut"));
+      setSendCode("TIMED_OUT");
+      return;
+    }
     setSendError(recovery ? locale.t("aiConversation.stillUnknown") : result.success ? locale.t("aiConversation.inspectLater") : result.error.message);
     setSendCode(recovery?.receipt.state ?? (result.success ? "OUTCOME_UNKNOWN" : result.error.code));
+  }
+
+  /** 重试 after a check: the same request when it never arrived, a new one when the old run stopped. */
+  async function retryAfterCheck(request: SendRequest) {
+    if (sendCode === "TIMED_OUT") {
+      const { reliable: _reliable, sentAt: _sentAt, ...rest } = request;
+      await submitRequest(requestForSend(rest));
+      return;
+    }
+    await submitRequest(request);
   }
 
   async function resolveTaskSuggestion(action: "accept" | "dismiss") {
@@ -748,8 +783,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       offlineAt={localConversation.freshness.lastSyncedAt}
       sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
       pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
-      retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
-      onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
+      retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : RETRYABLE_SEND_CODES.includes(sendCode ?? "") ? "aiConversation.retry" : "aiConversation.regenerate")}
+      onRetrySend={() => { if (!failedRequest) return; if (RETRYABLE_SEND_CODES.includes(sendCode ?? "")) void retryAfterCheck(failedRequest); else void recoverRequest(failedRequest); }}
       onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
       onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
       sending={sending}
@@ -865,6 +900,17 @@ function ConversationThread({
   const safeInsets = useSafeAreaInsets();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
+  // QA-C4: a thread started by a conversation's "Polish" offers each quoted version back to that reply box.
+  const threadRouter = useRouter();
+  const polishFor = replyPolishTarget(thread.messages.find((message) => message.role === "user")?.content);
+  const useVersion = polishFor ? (text: string) => {
+    chooseReplyPolish(polishFor, text);
+    if (threadRouter.canGoBack()) threadRouter.back();
+    else threadRouter.replace(`/inbox/${encodeURIComponent(polishFor)}` as Href);
+  } : undefined;
+  // QA-A: the history has a fixed height; when the composer grows (the @ picker, reference chips)
+  // the composer was pushed below the screen. Shrink the history by what the composer gained.
+  const [composerExtra, setComposerExtra] = useState(0);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
   useEffect(() => {
@@ -913,14 +959,11 @@ function ConversationThread({
   const router = useRouter();
   const copy = iorbitR21Copy[locale.language];
   return (
-    <AppScreen inset="kit" title="iOrbit" showBack={false}
-      header={<View style={styles.r21Header}>
-        <UiIconButton icon="menu" accessibilityLabel={copy.conversations} onPress={() => onOpenHref("/ai?drawer=1")} />
-        <View style={styles.r21TitleBlock}><UiText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={styles.r21Title}>iOrbit</UiText><UiText numberOfLines={1} style={styles.r21Subtitle}>{thread.title}</UiText></View>
-        <UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />
-      </View>}>
+    // The bar sits outside the scroll view (fixed), so scrolling a long answer never slides it under the status bar.
+    <AppScreen inset="kit" title="iOrbit" subtitle={shortTitle(thread.title)} showBack backIcon="menu" backAccessibilityLabel={copy.conversations} onBack={() => onOpenHref("/ai?drawer=1")}
+      headerActions={<UiIconButton icon="x" accessibilityLabel={copy.close} onPress={() => { Keyboard.dismiss(); if (router.canGoBack()) router.back(); else onBack(); }} />}>
       {offline ? <UiText accessibilityRole="alert" style={styles.r21Muted}>{copy.offline} · {offlineAt && !Number.isNaN(new Date(offlineAt).getTime()) ? `${new Intl.DateTimeFormat(locale.language, { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(offlineAt))} ${copy.conversationAt}` : copy.savedConversation}</UiText> : null}
-      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190)) }} contentContainerStyle={styles.r21Thread}
+      <ScrollView ref={historyScroll} testID="conversation-history" style={{ height: Math.max(180, windowHeight - safeInsets.top - safeInsets.bottom - (offline ? 220 : 190) - composerExtra) }} contentContainerStyle={styles.r21Thread}
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={100}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accentText} />}
         onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
@@ -959,11 +1002,10 @@ function ConversationThread({
             ? <View style={styles.earlierFailure}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.loadEarlierFailed")}</UiText><UiButton label={locale.t("aiConversation.retryEarlier")} variant="ghost" onPress={requestEarlier} /></View>
             : <UiButton label={locale.t("aiConversation.loadEarlier")} variant="ghost" onPress={requestEarlier} />
           : earlier?.allLoaded ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.allMessagesLoaded")}</UiText> : null}
-        {thread.messages.length === 0 ? <UiEmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} /> : null}
         {thread.messages.map((message, index) => <Fragment key={message.id}>
           <View style={message.role === "user" ? styles.r21User : styles.r21Assistant}>
             {message.role !== "user" ? <View style={styles.r21AssistantIcon}><UiIcon name="sparkle" size={16} color={colors.accentText} /></View> : null}
-            <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} /></View>
+            <View style={styles.r21Message}><MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} onUseVersion={useVersion} /></View>
           </View>
           {turnCards.get(message.id)?.length ? <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} /> : null}
           {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} /> : null}
@@ -973,14 +1015,15 @@ function ConversationThread({
         {thread.taskInteraction ? <TaskInteractionCard busy={taskInteractionBusy} interaction={thread.taskInteraction} onResolve={onResolveTaskSuggestion} onOpenHref={onOpenHref} resolution={taskInteractionResolution} /> : null}
         {draftCardView ? <AiEntityDraftCard busy={entityDraftBusy} onCancel={() => onResolveEntityDraft("cancel")} onConfirm={() => onResolveEntityDraft("confirm")} onEditField={onEditEntityDraftField} onOpenRecord={onOpenHref} view={draftCardView} /> : null}
         {draftLinkNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{draftLinkNotice}</UiText> : null}
-        {thread.proposedToolIntents.length ? <UiCard variant="flat"><View style={styles.r21Stack}><UiText style={styles.r21Section}>{locale.t("aiConversation.suggestedActions")}</UiText>{thread.proposedToolIntents.map((intent) => <View key={intent.id}><UiText style={styles.r21Section}>{intent.label}</UiText><UiText style={styles.r21Muted}>{intent.reason}</UiText></View>)}</View></UiCard> : null}
-        {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
+        {/* QA-A: proposedToolIntents are the agent's tool trace ("模型 provider 从用户请求中选择了这个 Orbit 允许工具…"),
+            with no action to take; they are not shown to the user. */}
+        {sendError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{locale.t("aiConversation.answerFailed")}</UiText><UiText style={styles.r21Muted}>{sendError}</UiText><View style={styles.r21Actions}><UiButton label={retrySendLabel} variant="primary" disabled={sending || writingBlocked} onPress={onRetrySend} /><UiButton label={locale.t("aiConversation.editQuestion")} variant="secondary" disabled={sending} onPress={onEditQuestion} /></View>{sendCode && !["OUTCOME_UNKNOWN", "pending", "outcome_unknown", "NOT_DELIVERED", "TIMED_OUT"].includes(sendCode) ? <UiText selectable style={styles.r21Muted}>{sendCode}</UiText> : null}</View></UiCard> : null}
         {actionError ? <UiText accessibilityRole="alert" style={styles.r21Error}>{actionError}</UiText> : null}
         {saveError ? <UiCard variant="line"><View style={styles.r21Stack}><UiText accessibilityRole="alert" style={styles.r21Error}>{saveError}</UiText><UiButton label={locale.t("aiConversation.retrySave")} onPress={onRetrySave} disabled={saving} /></View></UiCard> : null}
         {sending || saving ? <View style={styles.r21Actions}><UiText accessibilityLiveRegion="polite" style={styles.r21Muted}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</UiText>{sending ? <UiButton label={copy.stop} variant="ghost" size="sm" onPress={onStopResponse} /> : null}</View> : null}
         {saveNotice ? <UiText accessibilityRole="alert" style={styles.r21Error}>{saveNotice}</UiText> : null}
       </ScrollView>
-      <View testID="conversation-composer" style={styles.r21Composer}>
+      <View testID="conversation-composer" onLayout={(event) => { const extra = Math.max(0, Math.round(event.nativeEvent.layout.height - (minimumInputHeight + 18))); setComposerExtra((current) => (current === extra ? current : extra)); }} style={styles.r21Composer}>
         {sendLabelSuffix ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.sendMessage") + " · " + sendLabelSuffix}</UiText> : null}
         {pendingNoteChanges ? <UiText style={styles.r21Muted}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</UiText> : null}
         {selectedReferences.length ? <View style={styles.referenceRow}>{selectedReferences.map((reference) => <ContactReferenceChip key={reference.type + ":" + reference.id} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey} onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />)}</View> : null}
@@ -1130,7 +1173,7 @@ function QuickRouteDock({
   );
 }
 
-function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void }) {
+function MessageBubble({ baseUrl, message, onOpenHref, onUseVersion }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void; onUseVersion?: ((text: string) => void) | undefined }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const isUser = message.role === "user";
@@ -1140,7 +1183,7 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
   return (
     <View accessibilityLabel={locale.t(isUser ? "aiConversation.myMessage" : "aiConversation.aiReply")} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
       <Text style={[styles.messageLabel, !isUser ? styles.assistantLabel : null]}>{isUser ? locale.t("aiConversation.you") : "IORBIT"}</Text>
-      {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} />}
+      {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} onUseVersion={onUseVersion} />}
       {links.map((link) => (
         <Pressable
           accessibilityLabel={locale.t("aiConversation.openRecordNamed", { kind: link.kind, id: link.id })}
@@ -1167,19 +1210,22 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
 
 function MarkdownContent({
   content,
-  isUser
+  isUser,
+  onUseVersion
 }: {
   content: string;
   isUser: boolean;
+  onUseVersion?: ((text: string) => void) | undefined;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const blocks = markdownBlocksFor(content);
 
   if (blocks.length === 0) {
     return null;
   }
 
-  const groups: { number?: string; blocks: MarkdownBlockView[] }[] = [];
+  const groups: MarkdownGroup[] = [];
   for (const block of blocks) {
     const number = !block.quote && block.kind === "listItem" ? /^(\d+)[.)]$/u.exec(block.marker ?? "")?.[1] : undefined;
     const previous = groups.at(-1);
@@ -1188,14 +1234,47 @@ function MarkdownContent({
     else groups.push({ blocks: [block] });
   }
 
+  const versionEnds = onUseVersion ? suggestedVersionEnds(groups) : new Set<number>();
+
   return (
     <View style={styles.markdownStack}>
       {groups.map((group, index) => group.number ? <View key={index} style={styles.numberedRow}>
         <Text style={styles.numberedMarker}>{group.number}</Text>
         <View style={styles.numberedCopy}>{group.blocks.map((block, blockIndex) => <MarkdownBlock block={block} isUser={isUser} detail={blockIndex > 0} key={blockIndex} />)}</View>
-      </View> : <MarkdownBlock block={group.blocks[0]!} isUser={isUser} key={index} />)}
+      </View> : <Fragment key={index}>
+        <MarkdownBlock block={group.blocks[0]!} isUser={isUser} />
+        {onUseVersion && versionEnds.has(index) ? <View style={styles.useVersionRow}>
+          <UiButton label={locale.t("aiConversation.useVersion")} variant="secondary" size="sm" icon="check" onPress={() => onUseVersion(versionText(groups, index))} />
+        </View> : null}
+      </Fragment>)}
     </View>
   );
+}
+
+type MarkdownGroup = { number?: string; blocks: MarkdownBlockView[] };
+
+const plainText = (block: MarkdownBlockView) => block.segments.map((segment) => segment.text).join("");
+const isQuote = (group: MarkdownGroup | undefined) => Boolean(group && !group.number && group.blocks[0]?.quote);
+/** A paragraph that is bold only, e.g. 「**可直接复制的草稿（简洁版）**」. */
+const isBoldHeading = (group: MarkdownGroup | undefined) => Boolean(group && !group.number && group.blocks[0]?.kind === "paragraph" && !group.blocks[0].quote
+  && group.blocks[0].segments.length > 0 && group.blocks[0].segments.every((segment) => segment.kind === "strong" || !segment.text.trim()));
+
+/**
+ * QA-C4: where each suggested version of a polished reply ends. The request asks for each version in a quote block;
+ * a reply without quotes still lists versions as a bold heading followed by one paragraph.
+ */
+function suggestedVersionEnds(groups: readonly MarkdownGroup[]): Set<number> {
+  const quoted = groups.flatMap((group, index) => isQuote(group) && !isQuote(groups[index + 1]) ? [index] : []);
+  if (quoted.length) return new Set(quoted);
+  return new Set(groups.flatMap((group, index) => index > 0 && isBoldHeading(groups[index - 1]) && !group.number
+    && group.blocks[0]?.kind === "paragraph" && !isBoldHeading(group) ? [index] : []));
+}
+
+/** The plain text of the version that ends at `end`: the run of quote blocks, or the one paragraph. */
+function versionText(groups: readonly MarkdownGroup[], end: number): string {
+  let start = end;
+  while (isQuote(groups[end]) && start > 0 && isQuote(groups[start - 1])) start -= 1;
+  return groups.slice(start, end + 1).map((group) => plainText(group.blocks[0]!)).join("\n").trim();
 }
 
 function MarkdownBlock({
@@ -1291,7 +1370,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   r21Message: { flex: 1, minWidth: 0 },
   r21Stack: { gap: spacing.sm },
   r21Section: { color: colors.ink, fontSize: typography.bodySm, fontWeight: "800" },
-  r21Muted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  r21Muted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   r21Error: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "700" },
   r21Actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   r21Composer: { gap: spacing.sm, borderRadius: radius.xl, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1, padding: spacing.sm, marginBottom: spacing.lg },
@@ -1306,38 +1385,38 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   brandMark: { width: 18, height: 18 },
   composerPlusButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   numberedRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
-  numberedMarker: { color: colors.accentText, fontSize: 22, fontWeight: "800", lineHeight: 24, minWidth: 22 },
+  numberedMarker: { color: colors.accentText, fontSize: 24, fontWeight: "800", lineHeight: 26, minWidth: 22 },
   numberedCopy: { flex: 1, minWidth: 0, gap: 4 },
-  numberedDetail: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
+  numberedDetail: { color: colors.ink2, fontSize: 17, lineHeight: 28 },
   failureCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, gap: 12 },
   failureStack: { gap: 12 },
   failureHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
-  failureTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800", flexShrink: 1 },
-  failureBody: { color: colors.ink2, fontSize: 14, lineHeight: 22 },
-  failureCode: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
+  failureTitle: { color: colors.ink, fontSize: 17, lineHeight: 25, fontWeight: "800", flexShrink: 1 },
+  failureBody: { color: colors.ink2, fontSize: 17, lineHeight: 27 },
+  failureCode: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
   failureActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   failurePrimary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  failurePrimaryText: { color: colors.surface, fontSize: 14, lineHeight: 22, fontWeight: "700" },
+  failurePrimaryText: { color: colors.surface, fontSize: 17, lineHeight: 27, fontWeight: "700" },
   failureSecondary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
-  failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
+  failureSecondaryText: { color: colors.ink, fontSize: 17, lineHeight: 27, fontWeight: "600" },
   // Sprint 0112: the top-of-history row follows the ledger's load-more row (hairline border, link text).
   earlierRow: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md },
   earlierButton: { borderColor: colors.line, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
   earlierFailure: { flexDirection: "row", gap: spacing.sm },
   earlierInline: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
   earlierLink: { color: colors.accentText, fontSize: typography.bodySm, fontWeight: "700" },
-  earlierMuted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
-  earlierError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
+  earlierMuted: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
+  earlierError: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.line },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pendingNoteChanges: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 18 },
-  mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  pendingNoteChanges: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 21 },
+  mentionButtonText: { color: colors.ink, fontSize: 22, fontWeight: "800" },
   referenceRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, paddingTop: spacing.xs },
   referenceChip: { backgroundColor: colors.surface2, borderRadius: radius.pill, minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.sm },
-  referenceChipText: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  referenceChipText: { color: colors.ink, fontSize: 14, fontWeight: "700" },
   recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: spacing.sm },
-  recordLinkText: { flex: 1, color: colors.accentText, fontSize: typography.bodySm, fontWeight: "600", lineHeight: 20 },
-  linkBoundary: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  recordLinkText: { flex: 1, color: colors.accentText, fontSize: typography.bodySm, fontWeight: "600", lineHeight: 23 },
+  linkBoundary: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
   backButton: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -1348,7 +1427,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   disabled: {
     opacity: 0.54
@@ -1356,7 +1435,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   composerPanel: {
     backgroundColor: colors.surface,
@@ -1374,8 +1453,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     color: colors.ink,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 25,
     minHeight: 44,
     maxHeight: 120,
     paddingHorizontal: 4,
@@ -1429,7 +1508,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   taskInteractionReason: {
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 18
+    lineHeight: 20
   },
   taskInteractionSecondary: {
     ...createControlStyles(colors).secondaryButton
@@ -1442,7 +1521,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink,
     fontSize: typography.body,
     fontWeight: "800",
-    lineHeight: 22
+    lineHeight: 27
   },
   intentBlock: {
     backgroundColor: colors.accentSoft,
@@ -1460,7 +1539,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listBullet: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20,
+    lineHeight: 23,
     width: 14
   },
   listItemRow: {
@@ -1477,6 +1556,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   markdownStack: {
     gap: 14
   },
+  useVersionRow: { alignItems: "flex-start", marginTop: -2 },
   markdownQuoteBlock: {
     borderLeftColor: colors.line,
     borderLeftWidth: 3,
@@ -1497,7 +1577,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.label,
     fontWeight: "600",
-    lineHeight: 18
+    lineHeight: 20
   },
   assistantLabel: { color: colors.accentText },
   messageStack: {
@@ -1508,15 +1588,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   messageText: {
     color: colors.ink,
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 27,
     fontWeight: "400"
   },
   messageTextUser: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    lineHeight: 24
+    lineHeight: 27
   },
   panelTitle: {
     ...textStyles.section,
@@ -1553,13 +1633,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.label,
     fontWeight: "800",
-    lineHeight: 16
+    lineHeight: 18
   },
   quickRouteTitle: {
     color: colors.ink2,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
-    lineHeight: 14
+    lineHeight: 17
   },
   sendButton: {
     alignItems: "center",
@@ -1571,9 +1651,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadEyebrow: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "900",
-    lineHeight: 20,
+    lineHeight: 23,
     letterSpacing: 0.6
   },
   threadHeader: {
@@ -1589,7 +1669,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   threadNextAction: {
     color: colors.ink3Text,
     fontSize: typography.bodySm,
-    lineHeight: 19
+    lineHeight: 22
   },
   threadSurface: {
     backgroundColor: colors.surface,
@@ -1597,9 +1677,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadTitle: {
     color: colors.ink3Text,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "400",
-    lineHeight: 16
+    lineHeight: 19
   },
   threadTitleBlock: {
     flex: 1,
@@ -1613,3 +1693,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: 16
   }
 }));
+
+// The nav bar grows rather than clipping, so a conversation titled by its whole first message is shortened here.
+function shortTitle(title: string): string {
+  const chars = Array.from(title.trim());
+  return chars.length > 22 ? `${chars.slice(0, 21).join("")}…` : chars.join("");
+}

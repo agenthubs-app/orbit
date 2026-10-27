@@ -1,6 +1,7 @@
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import type { RelationshipConversationSummaryPageDTO, RelationshipMessagePageDTO } from "../../shared/contract/relationship-communication";
 import { relationshipConversationSummaryPageSchema, relationshipMessagePageSchema } from "../../shared/api-schema/relationship-pages";
+import { withMyContactIds, type RelationshipInviteLinks } from "./invite-link";
 import { createRelationshipReadCursor } from "./read-cursor";
 
 // Sprint 0109: summaries walk the caller's member rows through the
@@ -94,6 +95,8 @@ function messagesSql(direction: "older" | "newer"): string {
 
 export function createRelationshipBoundedReader(input: {
   client: LiveRecordSqlClient; workspaceId: string; actorId: string; cursorSecret: string; now?: () => string;
+  /** QA-C4: where I am the invitee, rows name my own contact of the other person (invite connections). */
+  inviteLinks?: RelationshipInviteLinks | null;
 }) {
   if (!input.workspaceId.trim() || !input.actorId.trim()) throw new Error("RELATIONSHIP_SCOPE_REQUIRED");
   const codec = createRelationshipReadCursor(input.cursorSecret);
@@ -115,7 +118,8 @@ export function createRelationshipBoundedReader(input: {
       if (!row) throw new Error("RELATIONSHIP_PAGE_RESULT_INVALID");
       const parsed = relationshipConversationSummaryPageSchema.parse({ actorId: input.actorId, items: row.items, hasMore: row.has_more, nextCursor: null, asOf: now() });
       const last = parsed.items.at(-1);
-      return { ...parsed, items: parsed.items.map(item => ({ ...item, participantAccountIds: item.participantAccountIds!, lastMessage: item.lastMessage ?? null })),
+      const items = await withMyContactIds(input.inviteLinks, input.actorId, parsed.items.map(item => ({ ...item, participantAccountIds: item.participantAccountIds!, lastMessage: item.lastMessage ?? null })));
+      return { ...parsed, items,
         nextCursor: parsed.hasMore && last ? codec.encode(cursorScope, last.updatedAt, last.conversationId) : null };
     },
     async messages(conversationId: string, query: { limit?: number; cursor?: string | null; direction?: "older" | "newer" } = {}): Promise<RelationshipMessagePageDTO> {
@@ -136,8 +140,9 @@ export function createRelationshipBoundedReader(input: {
       const page = relationshipMessagePageSchema.parse({ actorId: input.actorId, conversation: row.conversation, items: row.items, hasMore: row.has_more, direction, nextCursor: null, newestCursor: null, asOf: now() });
       const last = direction === "older" ? page.items[0] : page.items.at(-1);
       const newest = page.items.at(-1);
+      const [conversation] = await withMyContactIds(input.inviteLinks, input.actorId, [{ ...page.conversation, participantAccountIds: page.conversation.participantAccountIds! }]);
       return { ...page,
-        conversation: { ...page.conversation, participantAccountIds: page.conversation.participantAccountIds! },
+        conversation: conversation!,
         nextCursor: page.hasMore && last ? codec.encode(cursorScope, last.sentAt, last.messageId) : null,
         newestCursor: newest ? codec.encode(scope("messages",conversationId,"newer"),newest.sentAt,newest.messageId) : direction === "newer" ? query.cursor ?? null : null,
       };

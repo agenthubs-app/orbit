@@ -48,6 +48,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerLeft: { left: 0, borderTopRightRadius: 34, borderBottomRightRadius: 34, paddingTop: 58 },
   header: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 18, paddingBottom: 12 },
   leftPadding: { paddingHorizontal: 14 },
-  title: { flex: 1, color: colors.ink, fontSize: 17, fontWeight: "800" },
+  title: { flex: 1, color: colors.ink, fontSize: 19, fontWeight: "800" },
   content: { paddingHorizontal: 18, paddingBottom: 40, gap: 12 },
 }));

@@ -4,6 +4,7 @@ import type {
   AiSessionReferenceContract,
 } from "../api/contract/ai-sessions";
 import { aiSessionOriginInputSchema } from "../api/schema/ai-sessions";
+import { currentTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export interface AiTemplatePrefill {
   message: string;
@@ -81,6 +82,7 @@ export function contactMessageTemplate(contact: { id: string; name: string; orga
   };
 }
 
+// QA-C: the prompt is sent as the user's first message, so it follows the UI language (it was always Chinese).
 export function contactFollowupTemplate(input: {
   channel: "chat" | "email";
   contactId: string;
@@ -88,31 +90,39 @@ export function contactFollowupTemplate(input: {
   organization: string;
   rationale: string;
   recommendedAction: string;
-}) {
-  const channel = input.channel === "email" ? "邮件" : "联系消息";
+}, t: OrbitTranslator = currentTranslator()) {
+  const channel = t(input.channel === "email" ? "ai.prefill.channelEmail" : "ai.prefill.channelChat");
+  const part = (value: string) => value.trim().replace(/[。.\s]+$/u, "");
+  // An empty part would read "原因：。"; its whole sentence is dropped instead.
+  const sentences = [
+    t("ai.prefill.followupAsk", { name: input.contactName, channel }),
+    part(input.organization) ? t("ai.prefill.followupCompany", { value: part(input.organization) }) : "",
+    part(input.recommendedAction) ? t("ai.prefill.followupNext", { value: part(input.recommendedAction) }) : "",
+    part(input.rationale) ? t("ai.prefill.followupReason", { value: part(input.rationale) }) : "",
+    t("ai.prefill.draftOnly"),
+  ].filter(Boolean);
+  const message = sentences.map((text) => t("ai.prefill.sentence", { text })).join("").trim();
   return {
     entryPointId: "contact.followup_draft" as const,
-    message: `请为 @${input.contactName} 起草一段${channel}。公司：${input.organization || "未填写"}。建议下一步：${input.recommendedAction}。原因：${input.rationale}。只生成可编辑草稿，不要发送。`,
+    message,
     references: [{ id: input.contactId, type: "contact" as const }],
     template: { id: input.channel === "email" ? "contact.followup_email_draft" : "contact.followup_chat_draft", version: 1 },
   };
 }
 
-export function inboxPolishTemplate(input: { contactId: string; contactName: string; draft: string }) {
+export function inboxPolishTemplate(input: { contactId: string; contactName: string; draft: string }, t: OrbitTranslator = currentTranslator()) {
   return {
     entryPointId: "inbox.polish_draft" as const,
-    message: `请润色这段准备发给 @${input.contactName} 的草稿，保留事实和原意，只返回可编辑草稿，不要发送：\n${input.draft}`,
+    message: t("ai.prefill.polish", { name: input.contactName, draft: input.draft }),
     references: [{ id: input.contactId, type: "contact" as const }],
     template: { id: "inbox.polish_draft", version: 1 },
   };
 }
 
-export function followupCandidateTemplate(kind: "task" | "reminder") {
+export function followupCandidateTemplate(kind: "task" | "reminder", t: OrbitTranslator = currentTranslator()) {
   return {
     entryPointId: "followup.task_candidate" as const,
-    message: kind === "task"
-      ? "请根据我当前已保存的到期跟进，整理待复核的联系任务候选。不要自动创建事项或发送消息。"
-      : "请根据我当前已保存的到期跟进，整理待复核的提醒候选。不要自动创建提醒、发送推送或消息。",
+    message: t(kind === "task" ? "ai.prefill.taskCandidates" : "ai.prefill.reminderCandidates"),
     references: [],
     template: { id: kind === "task" ? "followup.task_candidate" : "followup.reminder_candidate", version: 1 },
   };

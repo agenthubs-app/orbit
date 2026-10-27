@@ -189,7 +189,7 @@ export function StepPlan({
           <input className="sg-input" onChange={(event) => { setPlanText(event.target.value); actionRef.current = null; }} value={planText} />
         </label>
         <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型", ja: "プランの種類" })}>
-          {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
+          {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} aria-label={planCopy(PLAN_GOAL_KIND_COPY[kind], language)} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
             onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], language)}</button>)}
         </div>
         {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。", ja: "目標に合うプランの種類を選んでください。" })}</p> : null}

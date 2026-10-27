@@ -148,7 +148,7 @@ export function HostCheckInScreen() {
     setBusy(null);
     if (res.ok) { toast.success(res.data.duplicate ? t("kDup", { name: row.name }) : res.data.table ? t("kDoneTable", { name: row.name, t: res.data.table }) : t("kDone", { name: row.name })); setQ(""); void load(""); return; }
     if (res.reason === "network") { setOnline(false); await store.current.enqueue(item); await refreshQueue(); toast.success(t("kQueued")); setQ(""); return; }
-    toast.error(res.code === "WAITLISTED" ? t("kWaitlistedErr") : res.reason === "sample" ? t("appSampleReadOnly") : t("saveError"));
+    toast.error(res.code === "WAITLISTED" ? t("kWaitlistedErr") : res.code === "CHECK_IN_CLOSED" ? t("kClosedErr") : res.reason === "sample" ? t("appSampleReadOnly") : t("saveError"));
   };
   const undo = async (row: HostKioskRow) => {
     if (!online) { toast.error(t("kOfflineAction")); return; }

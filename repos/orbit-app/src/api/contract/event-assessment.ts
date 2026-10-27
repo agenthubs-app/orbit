@@ -204,6 +204,12 @@ export interface EventAssessmentDismissResult {
   userDecision: "dismissed";
 }
 
+/** DELETE /api/events/assessments/[id]: removed from my assessment list (with its poster). */
+export interface EventAssessmentDeleteResult {
+  assessmentId: string;
+  deleted: true;
+}
+
 /**
  * R26: GET /api/events/assessments/availability — whether the URL / poster entries are offered and how many
  * AI reads are left this month. (The list itself stays `GET /api/events/assessments` → array, mine, highest score first.)

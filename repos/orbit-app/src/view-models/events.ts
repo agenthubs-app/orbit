@@ -651,11 +651,16 @@ function eventParticipantCountLabel(event: Record<string, unknown>): string {
   return count !== null ? `${count} 人已报名` : "报名人数待确认";
 }
 
+/** A placeholder organizer label (「Organizer #1Q8PXWU」) is an internal id, never shown. */
+function publicHostText(value: string): string {
+  return /^Organizer #[0-9A-Z]+$/u.test(value.trim()) ? "" : value;
+}
+
 function eventSubtitle(event: Record<string, unknown>): string {
   return uniqueStrings([
     userFacingText(stringField(event, "theme"), ""),
-    userFacingText(stringField(event, "host"), "") ||
-      userFacingText(stringField(event, "organizer"), "")
+    publicHostText(userFacingText(stringField(event, "host"), "")) ||
+      publicHostText(userFacingText(stringField(event, "organizer"), ""))
   ]).join(" · ");
 }
 
@@ -831,8 +836,8 @@ export function eventDetailToSummary(data: unknown, timeZone = "Asia/Tokyo"): Ev
     location,
     nextAction,
     organizerName:
-      userFacingText(stringField(event, "organizer"), "") ||
-      userFacingText(stringField(event, "host"), "") ||
+      publicHostText(userFacingText(stringField(event, "organizer"), "")) ||
+      publicHostText(userFacingText(stringField(event, "host"), "")) ||
       "主办方待确认",
     participantCountLabel: eventParticipantCountLabel(event),
     preparation,

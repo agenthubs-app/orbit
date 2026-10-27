@@ -37,12 +37,12 @@ export function TaskPlanDemoNotice({ view, busy, error, intercept, onToggle, onC
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   banner: { marginHorizontal: 16, marginBottom: 8, padding: 16, borderRadius: radius.lg, backgroundColor: colors.macApricot, gap: 7 },
-  tag: { color: colors.ink, fontSize: 11, fontWeight: "700" },
-  message: { color: colors.ink, fontSize: 13 },
-  progress: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  tag: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  message: { color: colors.ink, fontSize: 15 },
+  progress: { color: colors.ink, fontSize: 14, fontWeight: "700" },
   actions: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   pillRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginHorizontal: 16, marginBottom: 8, gap: 8 },
   pill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.macApricot },
-  pillLabel: { color: colors.ink, fontSize: 12, fontWeight: "700" },
-  error: { color: colors.coralText, marginHorizontal: 16, fontSize: 12 },
+  pillLabel: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  error: { color: colors.coralText, marginHorizontal: 16, fontSize: 14 },
 }));

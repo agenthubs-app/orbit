@@ -430,6 +430,9 @@ const SCANNER_CROSS_COMPONENT =
   "scanner false positive across a component boundary; recovery: the scanner resolves it (then delete the entry)";
 const KNOWN_P0_CANDIDATES: ReadonlyMap<string, string> = new Map<string, string>([
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#button {label}", `${SCANNER_CROSS_COMPONENT}: submit button inside the parent's <form onSubmit>`],
+  ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#button {t(\"pvApply\")}", "decorative preview of the attendee page: aria-hidden, tabIndex -1, no action by design"],
+  ["repos/orbits/app/(app)/app/orbit-2026/search/SearchPanel.tsx#button {text}", "scanner misses onMouseDown: examples pick on mouse down so the search input keeps focus"],
+  ["repos/orbits/app/(app)/app/orbit-2026/search/SearchPanel.tsx#span `${t(searchCopy.recentClear)} ${text}`", "scanner misses onMouseDown: removing a recent search acts on mouse down so the input keeps focus"],
 ]);
 
 test("manifest generation writes the required repository artifacts", () => {

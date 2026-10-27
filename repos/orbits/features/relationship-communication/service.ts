@@ -20,6 +20,7 @@ import type {
   RelationshipMessageRow,
   RelationshipMessageStore,
 } from "./message-store";
+import { withMyContactIds, type RelationshipInviteLinks } from "./invite-link";
 
 /**
  * Invitations still live in orbit_records. Since sprint 0109 bindings,
@@ -71,6 +72,12 @@ export interface RelationshipCommunicationServiceOptions {
   /** Conversations, members and messages (sprint 0109 tables). */
   messages: RelationshipMessageStore;
   workspaceId: string;
+  /**
+   * QA-C4: invite-code connections. Both people agreed to be connected, so either
+   * side can start a conversation (startConversation) without a relationship
+   * invitation. Omitted: only relationship invitations open conversations.
+   */
+  inviteLinks?: RelationshipInviteLinks | null;
 }
 
 export interface CreateRelationshipInvitationInput {
@@ -124,6 +131,8 @@ export interface RelationshipCommunicationService {
     input: MarkRelationshipConversationReadInput,
   ): Promise<RelationshipReadReceiptDTO>;
   revokeContactBinding(contactId: string): Promise<RelationshipEligibilityDTO>;
+  /** QA-C4: open (or return) the conversation with a person connected by invite code. */
+  startConversation(contactId: string): Promise<RelationshipEligibilityDTO>;
   saveReplyDraft(input: SaveRelationshipReplyDraftInput): Promise<RelationshipReplyDraftDTO>;
   sendMessage(
     input: SendRelationshipMessageInput,
@@ -287,6 +296,7 @@ function addSevenDays(timestamp: string): string {
 export function createRelationshipCommunicationService({
   actor,
   invitationBaseUrl,
+  inviteLinks = null,
   messages,
   now = () => new Date().toISOString(),
   randomToken = () => randomBytes(32).toString("base64url"),
@@ -349,8 +359,9 @@ export function createRelationshipCommunicationService({
       ? history.find((item) => item.seq === member.readSeq)?.messageId
         ?? (await messages.messageIdAtSeq(conversation.conversationId, member.readSeq)) ?? undefined
       : undefined;
+    const [perspective] = await withMyContactIds(inviteLinks, accountId, [{ contactId: conversation.inviterContactId, participantAccountIds: participants(conversation) }]);
     return {
-      contactId: conversation.inviterContactId,
+      contactId: perspective!.contactId,
       conversationId: conversation.conversationId,
       createdAt: conversation.createdAt,
       lastReadMessageId,
@@ -362,6 +373,36 @@ export function createRelationshipCommunicationService({
       unreadCount: member.unreadCount,
       updatedAt: conversation.lastMessageAt,
     };
+  }
+
+  /** Eligibility for a conversation the actor is a member of, from the actor's side. */
+  function memberEligibility(conversation: RelationshipConversationRow, contactId: string): RelationshipEligibilityDTO {
+    const remoteAccountId = conversation.inviterAccountId === accountId ? conversation.inviteeAccountId : conversation.inviterAccountId;
+    const remote = conversation.members.find((item) => item.accountId === remoteAccountId);
+    const active = conversation.status === "active" && conversation.members.find((item) => item.accountId === accountId)?.state === "active";
+    return {
+      canInvite: false,
+      canSend: active,
+      contactId,
+      conversationId: conversation.conversationId,
+      qualificationVersion: conversation.qualificationVersion,
+      remoteAccount: { accountId: remoteAccountId, displayName: remote?.displayName ?? "" },
+      status: active ? "confirmed" : "revoked",
+    };
+  }
+
+  /**
+   * QA-C4: the invite connection behind one of my contacts, and the conversation
+   * the other person already opened about me (their contact of me), if any.
+   */
+  async function inviteLinkFor(contactId: string) {
+    const link = inviteLinks ? await inviteLinks.forContact(accountId, contactId) : null;
+    if (!link) return null;
+    const mine = link.inviterAccountId === accountId;
+    const peerAccountId = mine ? link.redeemerAccountId : link.inviterAccountId;
+    const peerContactId = mine ? link.redeemerContactId : link.inviterContactId;
+    const reverse = await messages.conversationForInviterContact(peerAccountId, peerContactId);
+    return { link, peerAccountId, reverse: reverse && reverse.inviteeAccountId === accountId ? reverse : null };
   }
 
   // A delivered reply is no longer a draft (Sprint 0122, Codex 104-C). The send
@@ -415,6 +456,12 @@ export function createRelationshipCommunicationService({
           },
           status: conversation.status === "active" ? "confirmed" : "revoked",
         };
+      }
+      const invite = await inviteLinkFor(contact.contactId);
+      if (invite?.reverse) return memberEligibility(invite.reverse, contact.contactId);
+      if (invite) {
+        // Connected by invite code: messaging opens on the first "Message" (startConversation).
+        return { canInvite: false, canSend: false, canStart: true, contactId: contact.contactId, status: "unregistered" };
       }
       // Bounded: this actor's invitations to this one contact, newest first.
       const invitations = await store.listRecords({
@@ -608,6 +655,32 @@ export function createRelationshipCommunicationService({
         },
         status: "revoked",
       };
+    },
+
+    async startConversation(contactIdInput) {
+      const contact = await contactOwnedByActor(contactIdInput);
+      const own = await messages.conversationForInviterContact(accountId, contact.contactId);
+      if (own) return memberEligibility(own, contact.contactId);
+      const invite = await inviteLinkFor(contact.contactId);
+      // Only people connected by invite code; everyone else still needs an accepted relationship invitation.
+      if (!invite) throw new Error("Messaging is not available for this contact.");
+      if (invite.reverse) return memberEligibility(invite.reverse, contact.contactId);
+      // One conversation per connection, keyed by the code owner's contact, so both
+      // people tapping "Message" at once end on the same conversation.
+      const { link } = invite;
+      const actorIsInviter = link.inviterAccountId === accountId;
+      const createdAt = now();
+      const conversation = await messages.createConversation({
+        conversationId: conversationRecordId(link.inviterAccountId, link.redeemerAccountId, link.inviterContactId),
+        createdAt,
+        inviteeAccountId: link.redeemerAccountId,
+        inviteeDisplayName: actorIsInviter ? contact.displayName : displayName,
+        inviterAccountId: link.inviterAccountId,
+        inviterContactId: link.inviterContactId,
+        inviterDisplayName: actorIsInviter ? displayName : contact.displayName,
+        qualificationVersion: qualificationVersion(bindingRecordId(link.inviterAccountId, link.inviterContactId), "confirmed", createdAt),
+      });
+      return memberEligibility(conversation, contact.contactId);
     },
 
     async listConversations(input = {}) {

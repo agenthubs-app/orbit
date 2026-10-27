@@ -29,7 +29,8 @@ export function ProgressBar({ value, thin = false, tone = "plum", accessibilityL
 }
 
 // kit.js ring(): segments in one colour family around a centre label.
-export function RingChart({ size = 96, stroke = 10, segments, center, accessibilityLabel }: { size?: number; stroke?: number; segments: { value: number; color: string }[]; center?: string; accessibilityLabel: string }) {
+// `cap="butt"` for a thick pie-style donut, where round caps would overlap the next slice.
+export function RingChart({ size = 96, stroke = 10, segments, center, accessibilityLabel, cap = "round" }: { size?: number; stroke?: number; segments: { value: number; color: string }[]; center?: string; accessibilityLabel: string; cap?: "round" | "butt" }) {
   const { colors } = useOrbitTheme();
   const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
@@ -42,12 +43,12 @@ export function RingChart({ size = 96, stroke = 10, segments, center, accessibil
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.surface3} strokeWidth={stroke} fill="none" />
         {segments.map((segment, index) => {
           const length = Math.max(0, (segment.value / total) * circumference - gap);
-          const element = <Circle key={index} cx={size / 2} cy={size / 2} r={r} stroke={segment.color} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${length} ${circumference}`} strokeDashoffset={-offset} />;
+          const element = <Circle key={index} cx={size / 2} cy={size / 2} r={r} stroke={segment.color} strokeWidth={stroke} fill="none" strokeLinecap={cap} strokeDasharray={`${length} ${circumference}`} strokeDashoffset={-offset} />;
           offset += length + gap;
           return element;
         })}
       </Svg>
-      {center ? <UiText style={{ color: colors.ink, fontSize: 18, fontWeight: "800" }}>{center}</UiText> : null}
+      {center ? <UiText style={{ color: colors.ink, fontSize: 20, fontWeight: "800" }}>{center}</UiText> : null}
     </View>
   );
 }

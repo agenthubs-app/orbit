@@ -52,10 +52,11 @@ function withOrbitWidgetKit(config) {
         CLANG_ENABLE_MODULES: "YES",
         CODE_SIGN_ENTITLEMENTS: `${TARGET_NAME}/OrbitWidgets.entitlements`,
         CODE_SIGN_STYLE: "Automatic",
-        CURRENT_PROJECT_VERSION: 1,
+        // App Store requires an extension's version and build to match the host app's.
+        CURRENT_PROJECT_VERSION: mod.ios?.buildNumber ?? "1",
         GENERATE_INFOPLIST_FILE: "NO",
         IPHONEOS_DEPLOYMENT_TARGET: "17.0",
-        MARKETING_VERSION: '"0.1.0"',
+        MARKETING_VERSION: `"${mod.version ?? "0.1.0"}"`,
         SDKROOT: "iphoneos",
         SWIFT_VERSION: "5.0",
         TARGETED_DEVICE_FAMILY: '"1"',

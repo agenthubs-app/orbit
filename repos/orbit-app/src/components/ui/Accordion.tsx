@@ -35,7 +35,7 @@ export function Accordion({ title, children, initiallyOpen = false }: { title: s
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   header: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  title: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: "700" },
+  title: { flex: 1, color: colors.ink, fontSize: 17, fontWeight: "700" },
   chevronOpen: { transform: [{ rotate: "180deg" }] },
   body: { paddingBottom: 8 },
 }));

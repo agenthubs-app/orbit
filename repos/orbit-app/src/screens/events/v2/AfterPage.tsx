@@ -94,6 +94,8 @@ export function AfterPage() {
   const top = { fallback: base, leftLabel: t("back") };
   if (!data) return <JourneyPage title={t("afterTitle")} {...top}>{missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
   const d = tokyo(`${data.date}T12:00:00+09:00`);
+  // 「今天的回顾」 only on the event day; afterwards the page is just 「回顾」.
+  const title = data.date === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date()) ? t("afterTitle") : t("goAfter");
   const subtitle = `${data.title} · ${d ? `${d.month}/${d.day}` : data.date}`;
   const empty = data.met.count === 0 && steps.length === 0;
   const right = <IconButton icon="share" accessibilityLabel={t("share")} onPress={shareRecap} />;
@@ -101,7 +103,7 @@ export function AfterPage() {
 
   if (empty) {
     return (
-      <JourneyPage title={t("afterTitle")} subtitle={subtitle} right={right} {...top} testID="events-after-empty">
+      <JourneyPage title={title} subtitle={subtitle} right={right} {...top} testID="events-after-empty">
         <View style={styles.guide}>
           <Svg width={220} height={220} style={styles.guideGlow}>
             <Defs><RadialGradient id="afterGlow" cx="50%" cy="50%" r="50%"><Stop offset={0} stopColor={colors.macLav} /><Stop offset={0.7} stopColor={colors.macLav} stopOpacity={0} /></RadialGradient></Defs>
@@ -136,7 +138,7 @@ export function AfterPage() {
   }
 
   return (
-    <JourneyPage title={t("afterTitle")} subtitle={subtitle} right={right} {...top} testID="events-after">
+    <JourneyPage title={title} subtitle={subtitle} right={right} {...top} testID="events-after">
       <View style={vs.card}>
         <View style={styles.heroRow}>
           <View><UiText style={vs.lbl}>{t("metToday")}</UiText><UiText style={[vs.big, styles.big52]}>{data.met.count}<UiText style={styles.bigUnit}>{` ${t("metUnit")}`}</UiText></UiText></View>
@@ -243,50 +245,50 @@ export function AfterPage() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   guide: { backgroundColor: colors.surface, borderRadius: radius.xl, overflow: "hidden", padding: 20 },
   guideGlow: { position: "absolute", right: -80, top: -90 },
-  guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 26.6, marginVertical: 4 },
+  guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800", lineHeight: 29, marginVertical: 4 },
   block46: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 46, justifyContent: "center" },
-  primaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  primaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   grid2: { flexDirection: "row", gap: 12 },
   tile: { flex: 1, gap: 8 },
   sampleTag: { backgroundColor: colors.macApricot, borderRadius: 6, marginLeft: 4, paddingHorizontal: 6, paddingVertical: 1 },
-  sampleText: { color: colors.macApricotInk, fontSize: 9.5, fontWeight: "800", lineHeight: 14.25 },
+  sampleText: { color: colors.macApricotInk, fontSize: 12, fontWeight: "800", lineHeight: 18 },
   faded: { opacity: 0.5 },
   big38: { fontSize: 38, letterSpacing: -0.76, lineHeight: 39.9 },
   big52: { fontSize: 52, letterSpacing: -1.04, lineHeight: 54.6 },
   big36: { fontSize: 36, letterSpacing: -0.72, lineHeight: 37.8 },
-  bigUnit: { color: colors.ink3, fontSize: 15, fontWeight: "700", letterSpacing: 0 },
+  bigUnit: { color: colors.ink3, fontSize: 17, fontWeight: "700", letterSpacing: 0 },
   ghostRow: { alignItems: "center", borderColor: colors.surface3, borderRadius: 14, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", gap: 10, height: 46, paddingHorizontal: 14 },
   ghostDot: { backgroundColor: colors.surface2, borderRadius: radius.pill, height: 26, width: 26 },
-  ghostText: { color: colors.ink4, fontSize: 12, lineHeight: 18 },
+  ghostText: { color: colors.ink4, fontSize: 14, lineHeight: 21 },
   heroRow: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" },
   mini3: { flexDirection: "row", gap: 8, marginTop: 14 },
   mini: { backgroundColor: colors.surface2, borderRadius: 14, flex: 1, paddingHorizontal: 11, paddingVertical: 10 },
   // kit：小字 span 在 14px / 1.5 的行盒里 → 行高 21。
   miniLbl: { lineHeight: 21 },
-  miniNum: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 19, fontWeight: "800", lineHeight: 22.8 },
+  miniNum: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 21, fontWeight: "800", lineHeight: 25 },
   sumi: { paddingVertical: 10 },
   // kit：13px 的 <b> 落在 14px / 1.5 的行盒里 → 每行 21。
   hlTitle: { lineHeight: 21 },
   line: { borderTopColor: colors.line, borderTopWidth: 1 },
   batch: { backgroundColor: "transparent", borderColor: colors.plum300, borderRadius: 20, borderStyle: "dashed", borderWidth: 1.5 },
   nx: { paddingVertical: 12 },
-  nxName: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
+  nxName: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   yn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 30, justifyContent: "center", width: 30 },
   ynOn: { backgroundColor: colors.ink },
-  ynText: { color: colors.ink3, fontSize: 13, fontWeight: "800", lineHeight: 16 },
+  ynText: { color: colors.ink3, fontSize: 15, fontWeight: "800", lineHeight: 18 },
   acts: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginLeft: 40, marginTop: 8 },
   act: { alignItems: "center", borderColor: colors.plum300, borderRadius: radius.pill, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingVertical: 5 },
   actOn: { backgroundColor: colors.accentSoft, borderColor: "transparent", borderStyle: "solid" },
-  actCheck: { color: colors.plum700, fontSize: 11.5, fontWeight: "900", lineHeight: 17.25 },
-  actText: { color: colors.ink3, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25 },
+  actCheck: { color: colors.plum700, fontSize: 13, fontWeight: "900", lineHeight: 20 },
+  actText: { color: colors.ink3, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   btn: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 16 },
   btnPrimary: { backgroundColor: colors.ink },
-  ghostBtnText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
-  before: { color: colors.ink3, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 17, fontWeight: "800", lineHeight: 25.5, textDecorationLine: "line-through" },
+  ghostBtnText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  before: { color: colors.ink3, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 19, fontWeight: "800", lineHeight: 29, textDecorationLine: "line-through" },
   delta: { backgroundColor: colors.macTeal, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 },
-  deltaText: { color: colors.macTealInk, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25 },
+  deltaText: { color: colors.macTealInk, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   bar2: { backgroundColor: colors.surface3, borderRadius: 6, height: 8, marginBottom: 8, marginTop: 12, overflow: "hidden" },
   bar2Base: { backgroundColor: colors.plum500, borderRadius: 6, bottom: 0, left: 0, position: "absolute", top: 0 },
   bar2Add: { backgroundColor: colors.rose500, borderRadius: 6, bottom: 0, position: "absolute", top: 0 },
-  sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 22 },
+  sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "800", lineHeight: 25 },
 }));

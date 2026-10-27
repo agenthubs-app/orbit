@@ -1,6 +1,6 @@
 import type { NoteMentionContract } from "../../api/contract/notes";
 
-export type MemoMentionCandidate = { id: string; label: string; kind: "contact" | "event" };
+export type MemoMentionCandidate = { id: string; label: string; kind: "contact" | "event"; /** company · role, shown under a person */ detail?: string };
 
 export function activeMemoMentionQuery(body: string): { start: number; query: string } | null {
   const match = body.match(/(?:^|\s)@([^\s@]{0,30})$/u);
@@ -35,4 +35,26 @@ export function updateMemoMentionRanges(previousBody: string, nextBody: string, 
     if (mention.entityType && mention.entityType !== "contact" && mention.entityType !== "event") return null;
   }
   return output;
+}
+
+// UX-6: a title taken from the first line (noteTitleFor) is not shown twice; mentions on that line keep the full body.
+export function bodyAfterTitle(title: string, body: string, mentions: readonly NoteMentionContract[]): { body: string; mentions: readonly NoteMentionContract[] } {
+  const lineEnd = body.indexOf("\n");
+  const firstLine = lineEnd < 0 ? body : body.slice(0, lineEnd);
+  const cut = lineEnd < 0 ? body.length : lineEnd + 1;
+  if (!title.trim() || firstLine.trim() !== title.trim() || mentions.some(mention => mention.start < cut)) return { body, mentions };
+  return { body: body.slice(cut), mentions: mentions.map(mention => ({ ...mention, start: mention.start - cut, end: mention.end - cut })) };
+}
+
+/** UX-6: a typed title, else the body's first line (40 characters at most). */
+export function noteTitleFor(title: string, body: string): string {
+  const trimmed = title.trim();
+  if (trimmed) return trimmed;
+  const first = body.trim().split(/\r?\n/u)[0]?.trim() ?? "";
+  return [...first].length > 40 ? `${[...first].slice(0, 40).join("")}…` : first;
+}
+
+/** The title field shows what was typed; a title that is just the body's first line stays automatic (empty field). */
+export function editableNoteTitle(title: string, body: string): string {
+  return title.trim() && title.trim() === noteTitleFor("", body) ? "" : title;
 }

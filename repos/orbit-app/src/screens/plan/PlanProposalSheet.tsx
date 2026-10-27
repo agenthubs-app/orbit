@@ -114,15 +114,15 @@ export function PlanProposalSheet({ visible, onClose, planId, itemId, people, de
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   body: { gap: 12, paddingBottom: 8 },
-  title: { color: colors.ink, fontSize: 17, fontWeight: "800" },
-  note: { color: colors.ink3Text, fontSize: 12, lineHeight: 17 },
+  title: { color: colors.ink, fontSize: 19, fontWeight: "800" },
+  note: { color: colors.ink3Text, fontSize: 14, lineHeight: 20 },
   slot: { gap: 6, backgroundColor: colors.surface2, borderRadius: radius.md, padding: 8 },
   slotLine: { flexDirection: "row", alignItems: "center", gap: 8 },
-  slotLabel: { color: colors.ink2, fontSize: 12, fontWeight: "700", minWidth: 52 },
+  slotLabel: { color: colors.ink2, fontSize: 14, fontWeight: "700", minWidth: 52 },
   stepper: { flexDirection: "row", alignItems: "center", gap: 4 },
-  value: { color: colors.ink, fontSize: 14, fontWeight: "700", minWidth: 64, textAlign: "center" },
+  value: { color: colors.ink, fontSize: 17, fontWeight: "700", minWidth: 64, textAlign: "center" },
   person: { gap: 8, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12 },
   personHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  name: { color: colors.ink, fontSize: 14, fontWeight: "800" },
-  requested: { color: colors.okText, backgroundColor: colors.okSoft, borderRadius: radius.md, padding: 12, fontSize: 13, fontWeight: "700" },
+  name: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  requested: { color: colors.okText, backgroundColor: colors.okSoft, borderRadius: radius.md, padding: 12, fontSize: 15, fontWeight: "700" },
 }));

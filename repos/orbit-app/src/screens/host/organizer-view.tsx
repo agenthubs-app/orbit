@@ -22,10 +22,10 @@ export const appEventHref = (href: string) => href.replace(/^\/app(?=\/)/, "");
 /** 手机版过去活动先出 3 件（b7 #38），「すべて見る」展开。 */
 export const PAST_PREVIEW = 3;
 
-export interface OrganizerBodyProps { data: OrganizerPublicResponse; t: HostT; language: string; following: boolean; busy: boolean; expanded?: boolean; onFollow: () => void; onOpen: (event: OrganizerPublicUpcoming) => void; onShare: (event: OrganizerPublicUpcoming) => void; onSeeAll: () => void }
+export interface OrganizerBodyProps { data: OrganizerPublicResponse; t: HostT; language: string; following: boolean; busy: boolean; expanded?: boolean; /** The viewer owns this page: owner actions replace 关注 / 报名. */ owner?: boolean; onEditPage?: () => void; onFollow: () => void; onOpen: (event: OrganizerPublicUpcoming) => void; onShare: (event: OrganizerPublicUpcoming) => void; onSeeAll: () => void }
 
 /** 画面本体（渲染测试直接用）。 */
-export function OrganizerBody({ data, t, language, following, busy, expanded = false, onFollow, onOpen, onShare, onSeeAll }: OrganizerBodyProps) {
+export function OrganizerBody({ data, t, language, following, busy, expanded = false, owner = false, onEditPage, onFollow, onOpen, onShare, onSeeAll }: OrganizerBodyProps) {
   const { styles, colors } = useHostStyles();
   const o = usePubStyles().styles;
   const { profile, stats } = data;
@@ -47,6 +47,15 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
             </View>
           </View>
         </View>
+        {owner ? (
+          <View style={o.followBox}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("appEditPage")} onPress={onEditPage} style={o.xl} testID="host-organizer-edit">
+              <Icon name="pen" size={16} color={colors.ink} />
+              <UiText style={[o.xlText, { color: colors.ink }]}>{t("appEditPage")}</UiText>
+            </UiPressable>
+            <UiText style={[styles.lbl, o.center]}>{t("appOwnPageHint")}</UiText>
+          </View>
+        ) : (
         <View style={o.followBox}>
           <UiPressable accessibilityRole="button" accessibilityLabel={following ? t("pubFollowing") : t("pubFollow")} accessibilityState={{ selected: following, busy }} onPress={onFollow} style={[o.xl, following ? null : styles.primary]} testID="host-organizer-follow">
             {following ? <Icon name="check" size={16} color={colors.ink} /> : <Icon name="plus" size={16} color={colors.bg} />}
@@ -54,6 +63,7 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
           </UiPressable>
           <UiText style={[styles.lbl, o.center]}>{t("pubFollowHint")}</UiText>
         </View>
+        )}
       </View>
       <View style={o.secH}><UiText style={o.b15}>{t("pubUpcoming")}</UiText></View>
       {data.upcoming.length ? data.upcoming.map((event) => (
@@ -65,7 +75,7 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
           <UiText style={[o.b15, o.mt12]}>{event.title}</UiText>
           <UiText style={[styles.lbl, o.mt3]}>{[hostDateLong(event.startsAt, language, t), event.venue, feeText(event, t)].filter(Boolean).join(" · ")}</UiText>
           <View style={[styles.row, o.gap8, o.mt14]}>
-            <BtnSm label={t("pubDetail")} primary onPress={() => onOpen(event)} />
+            <BtnSm label={t(owner ? "appManageEvent" : "pubDetail")} primary onPress={() => onOpen(event)} />
             <UiPressable accessibilityRole="button" accessibilityLabel={t("pubShare")} onPress={() => onShare(event)} style={[styles.btnSm, styles.ghost]}><Icon name="share" size={16} color={colors.ink2} /><UiText style={[styles.btnSmText, { color: colors.ink2 }]}>{t("pubShare")}</UiText></UiPressable>
           </View>
         </View>
@@ -73,8 +83,8 @@ export function OrganizerBody({ data, t, language, following, busy, expanded = f
         <View style={[styles.card, o.mt10]} testID="host-pub-none">
           <View style={o.none}>
             <Emo emoji="🗓️" tone="apricot" />
-            <View style={o.noneText}><UiText style={[o.b14, o.center]}>{t("pubNoneTitle")}</UiText><UiText style={[styles.lbl, o.center]}>{t("pubNoneSub")}</UiText></View>
-            <BtnSm label={t("pubFollowNotify")} icon="bell" onPress={onFollow} />
+            <View style={o.noneText}><UiText style={[o.b14, o.center]}>{t("pubNoneTitle")}</UiText><UiText style={[styles.lbl, o.center]}>{t(owner ? "appOwnNoneSub" : "pubNoneSub")}</UiText></View>
+            {owner ? null : <BtnSm label={t("pubFollowNotify")} icon="bell" onPress={onFollow} />}
           </View>
           <View style={o.ghosts}>
             <View style={o.ghostRow}><UiText style={o.ghostText}>{t("pubGhost1")}</UiText></View>
@@ -109,18 +119,18 @@ export const usePubStyles = createThemedStyles((colors) => StyleSheet.create({
   hostavText: { fontSize: 32, lineHeight: 40 },
   headText: { alignSelf: "stretch", marginTop: 10 },
   center: { textAlign: "center" },
-  name: { color: colors.ink, fontSize: 21, fontWeight: "900", lineHeight: 31.5, textAlign: "center" },
-  bio: { color: colors.ink2, fontSize: 12.5, lineHeight: 21.875, marginTop: 6, textAlign: "center" },
+  name: { color: colors.ink, fontSize: 23, fontWeight: "900", lineHeight: 35, textAlign: "center" },
+  bio: { color: colors.ink2, fontSize: 15, lineHeight: 26, marginTop: 6, textAlign: "center" },
   stats: { flexDirection: "row", gap: 8, marginTop: 14 },
   stat: { backgroundColor: colors.surface2, borderRadius: 16, flex: 1, minWidth: 0, paddingHorizontal: 14, paddingVertical: 10 },
-  statNum: { color: colors.ink, fontFamily: numFont, fontSize: 22, fontWeight: "800", lineHeight: 26.4 },
-  statUnit: { color: colors.ink3, fontSize: 12 },
+  statNum: { color: colors.ink, fontFamily: numFont, fontSize: 24, fontWeight: "800", lineHeight: 29 },
+  statUnit: { color: colors.ink3, fontSize: 14 },
   followBox: { gap: 8, marginTop: 14 },
   xl: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 50, justifyContent: "center" },
-  xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75 },
+  xlText: { fontSize: 17, fontWeight: "700", lineHeight: 25 },
   secH: { marginHorizontal: 2, marginTop: 22 },
-  b15: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22.5 },
-  b14: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  b15: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 26 },
+  b14: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   pev: { backgroundColor: colors.surface, borderRadius: 22, marginTop: 10, padding: 18 },
   mt3: { marginTop: 3 },
   mt8: { marginTop: 8 },
@@ -132,7 +142,7 @@ export const usePubStyles = createThemedStyles((colors) => StyleSheet.create({
   noneText: { alignSelf: "stretch" },
   ghosts: { marginTop: 14 },
   ghostRow: { alignItems: "center", borderColor: colors.surface3, borderRadius: 14, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", height: 46, paddingHorizontal: 14 },
-  ghostText: { color: colors.ink4, fontSize: 12, lineHeight: 18 },
+  ghostText: { color: colors.ink4, fontSize: 14, lineHeight: 21 },
   pastH: { marginBottom: 4, marginHorizontal: 2, marginTop: 22 },
   pastList: { gap: 10 },
   past: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 18, flexDirection: "row", gap: 12, padding: 12 },

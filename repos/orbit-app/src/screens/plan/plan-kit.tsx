@@ -63,11 +63,13 @@ export function useKitWhy(reason: string | null | undefined) {
 }
 
 /** .btn（高 40、圆角 999、13px 700、surface-2）/ .primary / .sm（高 32、12px）。可点范围补到 44。 */
-export function KitButton({ label, icon, onPress, primary = false, sm = false, xl = false, disabled = false, badge, style, accessibilityLabel, testID }: {
+export function KitButton({ label, icon, onPress, primary = false, danger = false, sm = false, xl = false, disabled = false, badge, style, accessibilityLabel, testID }: {
   label: string;
   icon?: DesignIconName;
   onPress: () => void;
   primary?: boolean;
+  /** Destructive action (delete): coral label, as iOS shows a destructive row in red. */
+  danger?: boolean;
   sm?: boolean;
   /** .btn.xl：高 50、14.5px（底栏主按钮）。 */
   xl?: boolean;
@@ -78,7 +80,7 @@ export function KitButton({ label, icon, onPress, primary = false, sm = false, x
   testID?: string;
 }) {
   const { colors, styles } = useKitStyles();
-  const color = primary ? colors.bg : colors.ink;
+  const color = primary ? colors.bg : danger ? colors.coralText : colors.ink;
   return (
     <UiPressable
       accessibilityRole="button"
@@ -213,8 +215,8 @@ export const useKitStyles = createThemedStyles((colors) => StyleSheet.create({
 
   emo: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   emoSm: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  emoText: { fontSize: 21, lineHeight: 31.5 },
-  emoTextSm: { fontSize: 17, lineHeight: 25.5 },
+  emoText: { fontSize: 23, lineHeight: 35 },
+  emoTextSm: { fontSize: 19, lineHeight: 29 },
   emo_lav: { backgroundColor: colors.macLav },
   emo_teal: { backgroundColor: colors.macTeal },
   emo_pink: { backgroundColor: colors.macPink },

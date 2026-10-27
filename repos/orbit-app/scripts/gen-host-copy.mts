@@ -76,6 +76,14 @@ const APP: Record<string, Entry> = {
   appRowCountActive: { ja: "{n}件 · 運営中 {a}", zh: "{n}场 · 运营中{a}", en: "{n} events · {a} active", kind: "label" },
   appSampleVenue: { ja: "渋谷ストリーム", zh: "涩谷 Stream", en: "Shibuya Stream", kind: "label" },
   appShortLinkTitle: { ja: "イベント", zh: "活动", en: "Event", kind: "title" },
+  // Added by hand in the App first (QA-B); kept here so a re-run does not drop them.
+  kClosedErr: { ja: "今は受付時間外です", zh: "现在不在签到时间内", en: "Check-in isn't open right now", kind: "toast" },
+  appPublishOnPc: { ja: "PC の Orbit で公開すると、申し込みと受付を始められます", zh: "在电脑上的 Orbit 里公开后，就能开始报名和签到", en: "Publish it in Orbit on a computer to open registration and check-in", kind: "body" },
+  appEditPage: { ja: "主催者ページを編集", zh: "编辑主办方页面", en: "Edit host page", kind: "button" },
+  appOwnPageHint: { ja: "あなたの主催者ページです。ほかの人にはこう見えます", zh: "这是你的主办方页面，别人看到的就是这样", en: "This is your host page, as others see it", kind: "label" },
+  appManageEvent: { ja: "イベントを運営", zh: "管理活动", en: "Manage event", kind: "button" },
+  appOwnNoneSub: { ja: "PC の Orbit でイベントを公開すると、ここに表示されます", zh: "在电脑上的 Orbit 里公开活动后，会显示在这里", en: "Events you publish in Orbit on a computer show up here", kind: "label" },
+  appReportLineNoX: { ja: "到着 {a} / {n}名 · {at} 時点", zh: "已到{a} / {n}人 · 截至{at}", en: "Arrived {a} / {n} · as of {at}", kind: "label" },
 };
 
 const all: Record<string, Entry> = { ...web };

@@ -33,7 +33,7 @@ export function AddContactDoors({ draftCount, onOpen, onClose, header = true }: 
   const { t } = useOrbitLocale();
   const { colors, styles } = useStyles();
   const door = (key: DoorKey, emoji: string, tone: Tone, title: string, body: string, density?: ContactDensityLevel, main = false) => (
-    <UiPressable key={key} testID={`add-door-${key}`} accessibilityRole="button" accessibilityLabel={`${title}、${body}`} onPress={() => onOpen(ADD_DOOR_HREFS[key])}
+    <UiPressable key={key} testID={`add-door-${key}`} accessibilityRole="button" accessibilityLabel={`${title}, ${body}`} onPress={() => onOpen(ADD_DOOR_HREFS[key])}
       style={[styles.door, key === "drafts" ? styles.draftsDoor : null]}>
       {main ? <KitGradient id="add-door-main" from={colors.macApricot} to={colors.surface2} stop={0.75} /> : null}
       {key === "drafts" ? <View style={styles.draftsTile}><UiText style={styles.emoji}>{emoji}</UiText></View> : <MacTile emoji={emoji} tone={tone} />}
@@ -98,23 +98,23 @@ export function AddContactDoors({ draftCount, onOpen, onClose, header = true }: 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   headText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 17, fontWeight: "700", color: colors.ink, lineHeight: 25.5 },
-  lead: { fontSize: 11.5, fontWeight: "500", color: colors.ink3, lineHeight: 17.25 },
+  title: { fontSize: 19, fontWeight: "700", color: colors.ink, lineHeight: 29 },
+  lead: { fontSize: 13, fontWeight: "500", color: colors.ink3, lineHeight: 20 },
   doors: { marginTop: 14, gap: 8 },
   door: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 18, backgroundColor: colors.surface2, overflow: "hidden" },
   draftsDoor: { backgroundColor: colors.macPink },
   draftsTile: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
-  emoji: { fontSize: 21 },
+  emoji: { fontSize: 23 },
   doorText: { flex: 1, minWidth: 0 },
-  doorTitle: { fontSize: 14.5, fontWeight: "700", color: colors.ink, lineHeight: 21.75 },
-  doorBody: { marginTop: 1, fontSize: 11.5, color: colors.ink2, lineHeight: 17.25 },
-  group: { marginTop: 14, marginBottom: 8, fontSize: 11.5, fontWeight: "800", color: colors.ink2, lineHeight: 17.25 },
+  doorTitle: { fontSize: 17, fontWeight: "700", color: colors.ink, lineHeight: 25 },
+  doorBody: { marginTop: 1, fontSize: 13, color: colors.ink2, lineHeight: 20 },
+  group: { marginTop: 14, marginBottom: 8, fontSize: 13, fontWeight: "800", color: colors.ink2, lineHeight: 20 },
   others: { flexDirection: "row", gap: 8 },
   other: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth * 3, borderColor: colors.line, backgroundColor: colors.surface },
   otherText: { flex: 1, minWidth: 0 },
-  otherTitle: { fontSize: 12.5, fontWeight: "700", color: colors.ink, lineHeight: 18.75 },
-  otherBody: { fontSize: 10, fontWeight: "600", color: colors.ink3, lineHeight: 15 },
-  legend: { marginTop: 12, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 10 },
-  legendText: { fontSize: 11, color: colors.ink3, lineHeight: 16.5 },
+  otherTitle: { fontSize: 15, fontWeight: "700", color: colors.ink, lineHeight: 23 },
+  otherBody: { fontSize: 12, fontWeight: "600", color: colors.ink3, lineHeight: 18 },
+  legend: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", columnGap: 14, rowGap: 4 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendText: { fontSize: 13, color: colors.ink3, lineHeight: 20 },
 }));

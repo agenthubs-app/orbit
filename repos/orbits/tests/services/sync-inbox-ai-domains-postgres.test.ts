@@ -238,7 +238,7 @@ test("invalidation: when a notification's source goes away the next sync sends i
   const byKey = new Map(a.inbox().map((row) => [row.semanticKey, row]));
   const gone = byKey.get("test:gone")!;
   assert.equal(gone.sourceState, "unavailable");
-  assert.equal(gone.title, "来源已不可用");
+  assert.equal(gone.title, "这条通知已过期");
   assert.equal(gone.copy, undefined);
   assert.equal(gone.object, undefined);
   assert.equal(gone.target.href, null);

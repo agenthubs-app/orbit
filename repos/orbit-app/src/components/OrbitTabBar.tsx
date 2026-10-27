@@ -1,4 +1,4 @@
-import { usePathname, useRootNavigationState, useRouter, type Href } from "expo-router";
+import { usePathname, useRouter, type Href } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { useCoveredTab } from "./tab-bar-cover";
 import { cjkLift } from "./ui/cjk-lift";
@@ -11,7 +11,7 @@ import { useStandardCopy } from "../i18n/standard-copy";
 import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { GlassSurface } from "./ui/GlassSurface";
 import { TAB_BAR_HEIGHT } from "./shell-metrics";
-import { openMainTab, trackRootNavigationState } from "./shell-navigation";
+import { openMainTab } from "./shell-navigation";
 import { UiPressable } from "./ui/Pressable";
 import { UiText } from "./ui/Text";
 
@@ -70,7 +70,6 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
 // the bar back to the root only when it is on top again and its transition has ended.
 /** The one tab bar: mounted once by the root layout, shown only on the four tab pages. */
 export function ShellTabBar() {
-  trackRootNavigationState(useRootNavigationState());
   const active = mainTabForPath(usePathname());
   const covered = useCoveredTab();
   return active && covered !== active ? <OrbitTabBar active={active} /> : null;
@@ -85,6 +84,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   selected: { backgroundColor: colors === darkColors ? colors.surface3 : colors.surface },
   // RD-05 shell exception (like the Web capsule labels): unselected items keep the design's --ink-3.
   // kit 10px at line-height 1.5 (iOS baseline nudge per label: ui/cjk-lift).
-  label: { color: colors.ink3, fontSize: 10, lineHeight: 15, fontWeight: "700", textAlign: "center", maxWidth: "100%" },
+  label: { color: colors.ink3, fontSize: 12, lineHeight: 18, fontWeight: "700", textAlign: "center", maxWidth: "100%" },
   labelSelected: { color: colors.ink }
 }));

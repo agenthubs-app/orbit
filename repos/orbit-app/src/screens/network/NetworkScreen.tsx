@@ -86,6 +86,7 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
   const openSearch = () => router.push((query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : "/search") as Href);
   const openContact = (id: string) => router.push(`/contacts/${encodeURIComponent(id)}` as Href);
   const counts = networkTabCounts(summary);
+  const filterCount = networkFilterCount(filters);
 
   return (
     <AppScreen inset="kit" title={t("network.title")}
@@ -102,14 +103,20 @@ export function NetworkScreen({ scopeKey, now = () => Date.now() }: { scopeKey: 
         ) : (
           <>
             <View style={styles.searchRow}>
-              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholder")} accessibilityLabel={t("network.searchPlaceholder")}
-                trailing={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.filter")} hitSlop={12} onPress={() => setFilterOpen(true)}><Icon name="sliders" size={16} color={colors.ink3Text} /></UiPressable>} /></View>
+              <View style={styles.grow}><SearchField value={query} onChangeText={setQuery} placeholder={t("network.searchPlaceholderShort")} accessibilityLabel={t("network.searchPlaceholder")}
+                trailing={<UiPressable accessibilityRole="button" accessibilityLabel={t("network.filter")} hitSlop={12} onPress={() => setFilterOpen(true)}><Icon name="sliders" size={16} color={filterCount > 0 ? colors.accent : colors.ink3Text} /></UiPressable>} /></View>
             </View>
             {total >= NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <DensityCard summary={summary} onAnalysis={() => router.push("/contacts/dashboard" as Href)} /> : null}
             <View style={styles.tabs} testID="network-tabs">
               <CategoryTabs accessibilityLabel={t("network.tabsLabel")} value={tab} onChange={setTab}
                 options={[{ key: "all", label: t("network.tabAll"), count: counts.all }, { key: "goal", label: t("network.tabGoal"), count: counts.goal }, { key: "followUp", label: t("network.tabFollowUp"), count: counts.followUp }]} />
             </View>
+            {filterCount > 0 ? (
+              <View style={[styles.between, styles.gapTop]} testID="network-filter-active">
+                <UiText style={styles.lbl}>{t("network.filteredLine", { n: list.matched, total })}</UiText>
+                <Button variant="ghost" size="sm" label={t("network.clearFilters")} onPress={() => setFilters(EMPTY_NETWORK_FILTERS)} />
+              </View>
+            ) : null}
             {total < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? <InviteCard onInvite={() => router.push("/contacts/new/invite" as Href)} /> : null}
             {rows.length ? (
               <View style={[styles.listCard, total < NETWORK_ANALYSIS_UNLOCK_CONTACTS && styles.listAfterInvite]} testID="network-list">
@@ -164,7 +171,6 @@ function useDeletedContacts(): ReadonlySet<string> {
 export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first: boolean; onPress: () => void }) {
   const { styles } = useStyles();
   const { t } = useOrbitLocale();
-  const chipKey = NETWORK_CHIP_COPY[row.chip];
   return (
     <UiPressable accessibilityRole="button" accessibilityLabel={row.name} onPress={onPress} style={styles.row} testID={`network-row-${row.id}`}>
       {first ? null : <View style={styles.divider} />}
@@ -176,7 +182,8 @@ export function NetworkListRow({ row, first, onPress }: { row: NetworkRow; first
       </View>
       <View style={styles.rend}>
         <DensityDots level={row.density} />
-        <Chip label={t(chipKey)} icon={NETWORK_CHIP_ICON[row.chip]} tone={row.chip === "self" ? "teal" : "neutral"} />
+        {/* UX: rows no longer show where a card came from; only 本人入力 (a live connection) keeps its chip. */}
+        {row.chip === "self" ? <Chip label={t(NETWORK_CHIP_COPY.self)} icon={NETWORK_CHIP_ICON.self} tone="teal" /> : null}
       </View>
     </UiPressable>
   );
@@ -215,10 +222,6 @@ function DensityCard({ summary, onAnalysis }: { summary: ContactCardSummaryDTO |
             <UiText style={styles.densityCount}>{counts[level]}</UiText>
           </View>
         ))}
-      </View>
-      <View style={styles.dailyHint}>
-        <UiText style={styles.hintEmoji}>💬</UiText>
-        <UiText style={[styles.hintText, styles.grow]}><UiText style={styles.hintBold}>{t("network.dailyHintBold")}</UiText>{t("network.dailyHintRest")}</UiText>
       </View>
     </View>
   );
@@ -329,17 +332,19 @@ export function NetworkFilterSheet({ visible, onClose, summary, filters, onChang
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("network.filterTitle")}>
       <View testID="network-filter-sheet">
+        {/* QA-C: the apply button sits in the header (it used to be below the fold); the any/all rule line was jargon. */}
         <View style={styles.between}>
           <UiText style={styles.sheetTitle}>{t("network.filterTitle")}</UiText>
-          <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
+          <View style={styles.rowCenter}>
+            <Button variant="ghost" size="sm" label={t("network.filterClear")} onPress={() => onChange(EMPTY_NETWORK_FILTERS)} disabled={networkFilterCount(filters) === 0} />
+            <Button variant="primary" size="sm" label={t("network.showPeople", { n: matched })} onPress={onClose} />
+          </View>
         </View>
-        <UiText style={styles.lbl}>{t("network.filterHint")}</UiText>
         {group(t("network.groupStage"), "statuses", NETWORK_STAGE_OPTIONS.map((key) => ({ key, label: t(key === "active" ? "network.stageActive" : "network.stageNurture"), count: summary?.statuses[key] ?? 0 })))}
         {group(t("network.groupIndustry"), "industries", industries.map((option) => ({ key: option.key, label: industryOptionLabel(option.key, language, other), count: option.count })))}
         {group(t("network.groupRegion"), "regions", regions.map((option) => ({ key: option.key, label: regionOptionLabel(option.key, (city) => t(`network.city.${city}`), other), count: option.count })))}
         {group(t("network.groupMet"), "mets", NETWORK_MET_OPTIONS.map((key) => ({ key, label: t(MET_COPY[key]), count: summary?.metKinds?.[key] ?? 0 })))}
         {group(t("network.groupDensity"), "densities", NETWORK_DENSITY_OPTIONS.map((key) => ({ key, label: key === "1" ? "●○○" : key === "2" ? "●●○" : "●●●", count: summary?.densityCounts?.[Number(key) as 1 | 2 | 3] ?? 0 })))}
-        <View style={styles.gapTop}><Button variant="primary" label={t("network.showPeople", { n: matched })} onPress={onClose} /></View>
       </View>
     </BottomSheet>
   );
@@ -352,7 +357,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: -16 },
   tabs: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: 22, padding: 18 },
-  densityCard: { paddingBottom: 27 },
+  densityCard: { paddingBottom: 20 },
   flatCard: { backgroundColor: colors.surface2 },
   listCard: { backgroundColor: colors.surface, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 16, marginTop: 12 },
   listAfterInvite: { marginTop: 20 },
@@ -360,39 +365,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 10 },
   right: { alignItems: "flex-end" },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500" },
-  moreLink: { color: colors.ink2, fontSize: 11.5, fontWeight: "700" },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500" },
+  moreLink: { color: colors.ink2, fontSize: 13, fontWeight: "700" },
   bigRow: { flexDirection: "row", alignItems: "baseline" },
   big: { color: colors.ink, fontSize: 38, fontWeight: "800", letterSpacing: -0.76, lineHeight: 40 },
-  bigUnit: { color: colors.ink3, fontSize: 15, fontWeight: "700", marginLeft: 3 },
-  mid: { color: colors.ink, fontSize: 22, fontWeight: "800", letterSpacing: -0.22 },
+  bigUnit: { color: colors.ink3, fontSize: 17, fontWeight: "700", marginLeft: 3 },
+  mid: { color: colors.ink, fontSize: 24, fontWeight: "800", letterSpacing: -0.22 },
   stack: { flexDirection: "row", height: 12, borderRadius: 6, overflow: "hidden", gap: 2, marginTop: 10 },
   grid3: { flexDirection: "row", gap: 6, marginTop: 18 },
-  densityLabel: { color: colors.ink3, fontSize: 11, marginTop: 3 },
-  densityCount: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  dailyHint: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 23, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.macLav },
-  hintEmoji: { fontSize: 12 },
-  hintText: { color: colors.ink, fontSize: 12 },
+  densityLabel: { color: colors.ink3, fontSize: 13, marginTop: 3 },
+  densityCount: { color: colors.ink, fontSize: 17, fontWeight: "700" },
   hintBold: { fontWeight: "700" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13.5 },
   divider: { position: "absolute", top: 0, left: 50, right: 0, height: 1, backgroundColor: colors.line },
   meta: { flex: 1, minWidth: 0 },
-  name: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  sub: { color: colors.ink3, fontSize: 12 },
+  name: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  sub: { color: colors.ink3, fontSize: 14 },
   unregistered: { color: colors.ink4, fontStyle: "normal" },
-  goal: { color: colors.ink2, fontSize: 12, marginTop: 1 },
+  goal: { color: colors.ink2, fontSize: 14, marginTop: 1 },
   rend: { alignItems: "flex-end", gap: 5 },
   more: { paddingVertical: 10, alignItems: "flex-start" },
   emo: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   emoPink: { backgroundColor: colors.macPink },
   emoLav: { backgroundColor: colors.macLav },
-  emoText: { fontSize: 17 },
-  cardTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "700" },
+  emoText: { fontSize: 19 },
+  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
   empty: { marginTop: -16 },
   guide: { alignItems: "center", gap: 8, paddingTop: 24, paddingBottom: 30 },
   guideEmoji: { fontSize: 50, lineHeight: 50 },
-  guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800" },
-  guideBody: { color: colors.ink2, fontSize: 13, textAlign: "center", marginBottom: 6 },
+  guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800" },
+  guideBody: { color: colors.ink2, fontSize: 15, textAlign: "center", marginBottom: 6 },
   guideAction: { alignSelf: "stretch", marginTop: 16 },
   grid2: { flexDirection: "row", gap: 10 },
   mac: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 16 },
@@ -400,7 +402,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   macLav: { backgroundColor: colors.macLav },
   sampleCard: { marginTop: 20, paddingBottom: 33 },
   faded: { opacity: 0.55, marginVertical: 14 },
-  sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
   loadingBar: { borderRadius: 8, backgroundColor: colors.surface3 },
   loadingRoot: { marginTop: -16 },
   loadingSearch: { height: 44, borderRadius: 22, backgroundColor: colors.surface2 },

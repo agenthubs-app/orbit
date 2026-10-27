@@ -79,7 +79,7 @@ export const useLocalSearchParams = () => { observe(); return { id: state.taskId
 export const useGlobalSearchParams = useLocalSearchParams;
 export const useFocusEffect = callback => React.useEffect(callback, [callback]);
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
-export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation = path; }, replace(path) { state.navigation = path; } });
+export const useRouter = () => ({ canGoBack: () => !!state.canGoBack, back() { state.navigation = "back"; }, push(path) { state.navigation = path; }, replace(path) { state.navigation = path; } });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const readSnapshot = async () => null;
@@ -104,6 +104,7 @@ test.before(async () => {
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export { AppState } from "fixture";
+export const findNodeHandle = instance => instance ?? null;
 export const Linking = { openURL: async url => { window.fixture.openedUrls.push(url); } };
 export const useWindowDimensions = () => ({ ...realDimensions(), fontScale: useFixture().fontScale });
 const scaled = (style, scale) => { const s = StyleSheet.flatten(style) || {}; return [style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]; };
@@ -156,10 +157,17 @@ test("Japanese personal editor does not show the server language after a failed 
   await p.getByText("予定を読み込めません。もう一度お試しください。", { exact: true }).waitFor();
 });
 
-test("Japanese personal editor explains an unset start date in Japanese without writing", async t => {
-  const p = await open(t, { taskId: "", language: "ja" });
+test("Japanese personal editor explains a nonexistent start time in Japanese without writing", async t => {
+  // UX-8: a new schedule starts at the next full hour, so its start can no longer be left unset;
+  // a start inside a daylight-saving gap is the invalid start the editor must still explain.
+  const p = await open(t, { taskId: "", language: "ja", deviceZone: "America/New_York", now: "2026-03-08T05:30:00Z" });
   await p.getByRole("textbox", { name: "予定名", exact: true }).fill("Review");
-  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  assert.equal(await p.getByRole("button", { name: "開始時刻", exact: true }).innerText(), "01:00");
+  await p.getByRole("button", { name: "開始時刻", exact: true }).click();
+  await p.getByRole("radio", { name: "HH 02", exact: true }).click();
+  await p.getByRole("radio", { name: "mm 30", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完了", exact: true }).click(); await settle(p);
+  await p.getByRole("button", { name: "追加", exact: true }).click();
   await p.getByText("開始日時を確認してください。存在しない時刻や重複する時刻は保存できません。", { exact: true }).waitFor();
   assert.equal(await p.getByText("请填写明确的开始日期和时间；此当地时间可能不存在或重复。", { exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
@@ -171,7 +179,7 @@ test("Japanese all-day editor rejects an end before the start in Japanese withou
   await p.getByRole("button", { name: "日時を調整", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "2026-09-19", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完了", exact: true }).click();
-  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  await p.getByRole("button", { name: "保存", exact: true }).click();
   await p.getByText("終日予定の終了日を確認してください。", { exact: true }).waitFor();
   assert.equal(await p.getByText("全天结束日期无效。", { exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
@@ -190,7 +198,7 @@ test("Japanese personal schedule detail does not show the server language after 
 test("Japanese personal editor keeps the draft and does not show the server language after a failed save", async t => {
   const p = await open(t, { language: "ja" });
   await p.getByRole("textbox", { name: "予定名", exact: true }).fill("変更した予定");
-  await p.getByRole("button", { name: "予定を保存", exact: true }).click();
+  await p.getByRole("button", { name: "保存", exact: true }).click();
   await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.method === "PATCH"));
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
   await p.getByText(/Orbit 服务暂不可用|操作を完了できませんでした。下書きは保持されています。もう一度お試しください。/).waitFor();
@@ -207,7 +215,6 @@ async function fill(p: Page, label: string, value: string) {
   const cancel = language === "en" ? "Cancel" : language === "ja" ? "キャンセル" : "取消";
   const calendar = p.getByRole("dialog").filter({ has: p.getByRole("button", { name: /^\d{4}-\d{2}-\d{2}$/ }) });
   if (label !== "开始日期" && await calendar.count()) { await calendar.getByRole("button", { name: cancel, exact: true }).click(); await settle(p); }
-  if (label === "结束时间" && value === "") { await press(p, "清除结束时间"); return; }
   if (!(label === "开始日期" && await calendar.count())) await press(p, label === "开始日期" ? "调整日期和时间" : label);
   if (date) {
     for (let n = 0; n < 36; n++) {
@@ -226,14 +233,15 @@ async function fill(p: Page, label: string, value: string) {
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")).map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 
-test("empty creation date opens a calendar directly and cancellation leaves the draft empty", async t => {
-  const p = await open(t, { taskId: "" });
+test("new creation date opens a calendar directly and cancellation leaves the default draft", async t => {
+  const p = await open(t, { taskId: "", now: "2026-09-16T05:10:00Z" });
   await press(p, "调整日期和时间");
   assert.equal(await p.getByRole("dialog").count(), 1);
   assert.equal(await p.getByRole("textbox", { name: "开始日期", exact: true }).count(), 0);
   await p.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click();
   await settle(p);
   assert.equal(await p.getByRole("dialog").count(), 0);
+  assert.equal(await p.getByRole("button", { name: "开始时间", exact: true }).innerText(), "15:00");
   assert.deepEqual(await writes(p), []);
 });
 
@@ -250,26 +258,23 @@ test("time field opens exact minutes and Escape cancels without rounding", async
   assert.deepEqual(await writes(p), []);
 });
 
-test("new confirmed 23:45 start defaults to thirty minutes across midnight", async t => {
-  const p = await open(t, { taskId: "" });
+test("a new schedule's default hour carries across midnight when its start moves to 23:45", async t => {
+  // UX-8: the new form opens at the next full hour (15:00 here) for one hour; the picker keeps that duration.
+  const p = await open(t, { taskId: "", now: "2026-09-16T05:10:00Z" });
   await fill(p, "日程标题", "Picker midnight");
   await press(p, "调整日期和时间");
-  // A new schedule's calendar opens on the device's current month; step to September 2026 so
-  // the test does not depend on the day it runs (it broke when the clock reached October).
-  const today = new Date();
-  const monthsAfterTarget = (today.getFullYear() - 2026) * 12 + today.getMonth() - 8;
-  for (let n = 0; n < Math.abs(monthsAfterTarget); n++) await press(p, monthsAfterTarget > 0 ? "上个月" : "下个月");
   await p.getByRole("button", { name: "2026-09-17", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
   await press(p, "开始时间");
   await p.getByRole("radio", { name: "HH 23", exact: true }).click();
   await p.getByRole("radio", { name: "mm 45", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
-  assert.equal(await p.getByText("00:15", { exact: true }).count(), 1);
-  await press(p, "保存日程");
+  assert.equal(await p.getByRole("button", { name: "结束时间", exact: true }).innerText(), "00:45");
+  assert.equal(await p.getByRole("button", { name: "结束日期", exact: true }).innerText(), "9月18日周五");
+  await press(p, "添加");
   const write = (await writes(p))[0];
   assert.equal(write.body.startsAt, "2026-09-17T14:45:00.000Z");
-  assert.equal(write.body.endsAt, "2026-09-17T15:15:00.000Z");
+  assert.equal(write.body.endsAt, "2026-09-17T15:45:00.000Z");
 });
 
 test("moving an existing start preserves its actual duration including stored seconds", async t => {
@@ -279,7 +284,7 @@ test("moving an existing start preserves its actual duration including stored se
   await p.getByRole("radio", { name: "HH 10", exact: true }).click();
   await p.getByRole("radio", { name: "mm 30", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
-  await press(p, "保存日程");
+  await press(p, "保存");
   const write = (await writes(p))[0];
   assert.ok(write, "a valid moved start can be saved");
   assert.equal(write.body.patch.startsAt, "2026-09-17T01:30:00.000Z");
@@ -298,14 +303,26 @@ test("repeat end opens the same calendar and cancelling a candidate preserves th
   assert.deepEqual(await writes(p), []);
 });
 
-test("end date and clearing its time are directly accessible without a numeric keyboard", async t => {
+test("the end date chip opens a calendar without a numeric keyboard and saves a cross-day end", async t => {
   const p = await open(t);
   await press(p, "结束日期");
   await p.getByRole("button", { name: "2026-09-18", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
-  await press(p, "清除结束时间");
-  await press(p, "保存日程");
-  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null });
+  assert.equal(await p.getByRole("button", { name: "结束日期", exact: true }).innerText(), "9月18日周五");
+  await press(p, "保存");
+  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: "2026-09-18T01:30:00.000Z", timeZone: "Asia/Tokyo" });
+});
+
+test("the all-day switch clears the end; switching back saves a schedule without an end", async t => {
+  const p = await open(t);
+  const allDay = p.getByRole("switch", { name: "全天", exact: true });
+  await allDay.click(); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "开始时间", exact: true }).count(), 0, "all-day hides the start time");
+  assert.equal(await p.getByRole("button", { name: "结束时间", exact: true }).count(), 0, "all-day hides the end row");
+  await allDay.click(); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "结束时间", exact: true }).innerText(), "未设置");
+  await press(p, "保存");
+  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null, allDay: false, timeZone: "Asia/Tokyo" });
 });
 
 test("calendar navigates leap February and the year boundary without changing the candidate", async t => {
@@ -359,14 +376,14 @@ test("saving disables a staged picker and rejects its earlier confirmation callb
   const p = await open(t);
   await fill(p, "日程标题", "Only title"); await press(p, "开始时间");
   await p.getByRole("radio", { name: "mm 37", exact: true }).click();
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldConfirm = s.presses["完成"]; s.presses["保存日程"](); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldConfirm = s.presses["完成"]; s.presses["保存"](); }); await settle(p);
   assert.equal(await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).isDisabled(), true);
   await p.evaluate(() => (window as any).fixture.oldConfirm()); await settle(p);
   assert.equal((await writes(p)).length, 1);
   assert.deepEqual((await writes(p))[0].body.patch, { title: "Only title" });
 });
 
-for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联人脉", "搜索相关人脉"]] as const) {
+for (const [entry, searchLabel] of [["相关笔记", "搜索笔记"], ["相关的人", "搜索相关人脉"]] as const) {
   test(`association entry ${entry} opens a bottom dialog before searching`, async t => {
     const p = await open(t);
     await press(p, entry);
@@ -380,52 +397,51 @@ for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联�
     await p.getByRole("textbox", { name: searchLabel, exact: true }).waitFor();
     await p.waitForTimeout(350);
     const requests = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/schedule-items/association-options/")).map((r: any) => [r.method, r.path, r.query]));
-    assert.deepEqual(requests, [["GET", `/api/schedule-items/association-options/${entry === "关联笔记" ? "notes" : "contacts"}`, "?q=&limit=20"]]);
+    assert.deepEqual(requests, [["GET", `/api/schedule-items/association-options/${entry === "相关笔记" ? "notes" : "contacts"}`, "?q=&limit=20"]]);
     assert.deepEqual(await writes(p), []);
   });
 }
 
-test("editor duration shortcuts expose the selected duration after changing the time", async t => {
+test("UX-8 time card: 全天 switch, 开始 and 结束 chips, and none of the removed shortcuts or hints", async t => {
   const p = await open(t);
-  await press(p, "30分钟");
-  assert.equal(await p.getByRole("button", { name: "30分钟", exact: true }).getAttribute("aria-selected"), "true");
-  assert.notEqual(await p.getByRole("button", { name: "1小时", exact: true }).getAttribute("aria-selected"), "true");
+  assert.equal(await p.getByRole("switch", { name: "全天", exact: true }).isChecked(), false);
+  assert.equal(await p.getByRole("button", { name: "调整日期和时间", exact: true }).innerText(), "9月17日周四");
+  assert.equal(await p.getByRole("button", { name: "开始时间", exact: true }).innerText(), "09:30");
+  assert.equal(await p.getByRole("button", { name: "结束日期", exact: true }).innerText(), "9月17日周四");
+  assert.equal(await p.getByRole("button", { name: "结束时间", exact: true }).innerText(), "10:30");
+  for (const removed of ["30分钟", "1小时", "2小时", "改期", "清除结束时间"]) assert.equal(await p.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
+  for (const removed of ["仅保存在 Orbit", "Asia/Tokyo", "线上", "线下", "保存日程"]) assert.equal(await p.getByText(removed, { exact: false }).count(), 0, removed);
   assert.deepEqual(await writes(p), []);
-});
-
-test("duration selection does not call fractional stored durations thirty minutes", async t => {
-  const p = await open(t, { item: { ...initialItem, startsAt: "2026-09-17T00:37:42Z", endsAt: "2026-09-17T01:07:00Z", timeZone: "Asia/Tokyo" } });
-  assert.notEqual(await p.getByRole("button", { name: "30分钟", exact: true }).getAttribute("aria-selected"), "true");
 });
 
 test("editor reference date is localized without changing its saved date or time", async t => {
   const item = { ...initialItem, title: "产品体验演练", startsAt: "2026-09-16T09:00:00Z", endsAt: "2026-09-16T09:30:00Z", timeZone: "Asia/Tokyo", meetingMethod: "video", contactIds: ["contact:reference"] };
   const p = await open(t, { item, contact: { id: "contact:reference", displayName: "林悦" } });
-  assert.equal(await p.getByText("9月16日周三", { exact: true }).count(), 1);
+  // UX-8: the start and end date chips both show the (same) localized day.
+  assert.equal(await p.getByText("9月16日周三", { exact: true }).count(), 2);
   assert.equal(await p.getByText("18:00", { exact: true }).count(), 1);
   assert.equal(await p.getByText("18:30", { exact: true }).count(), 1);
-  const target = await p.getByRole("button", { name: "30分钟", exact: true }).boundingBox();
-  assert.ok(target && target.height >= 44);
   assert.deepEqual(await writes(p), []);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
   await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
-  // R05 rework: the kit top bar is 60pt (was 49), so the row may need a scroll; it must never sit under the panel.
-  await p.getByLabel("备注", { exact: true }).evaluate(el => { for (let node = el.parentElement; node; node = node.parentElement) if (node.scrollHeight > node.clientHeight + 1 && getComputedStyle(node).overflowY !== "visible") { node.scrollTop = node.scrollHeight; break; } });
-  const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
-  const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
-  assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);
+  // The last rule row scrolls into view while the header 保存 stays on screen (no bottom save panel).
+  await p.getByRole("button", { name: "重复", exact: true }).scrollIntoViewIfNeeded();
+  const repeat = await p.getByRole("button", { name: "重复", exact: true }).boundingBox();
+  const save = await p.getByRole("button", { name: "保存", exact: true }).boundingBox();
+  assert.ok(repeat && repeat.y >= 0 && repeat.y + repeat.height <= 844, `the last row is reachable: ${JSON.stringify(repeat)}`);
+  assert.ok(save && save.y >= 0 && save.y + save.height <= repeat.y, `the header save stays above the form: ${JSON.stringify({ save, repeat })}`);
   await p.screenshot({ path: join(evidenceDirectory, "app-editor-reference.png") });
 });
 
 test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
   const p = await open(t, { contact: { id: "contact:owned", displayName: "林悦" } });
-  await press(p, "关联人脉");
+  await press(p, "相关的人");
   const choice = p.getByRole("checkbox", { name: "林悦", exact: true });
   await choice.click(); await settle(p);
   assert.equal(await choice.getAttribute("aria-checked"), "true");
   await choice.click(); await settle(p);
   assert.equal(await choice.getAttribute("aria-checked"), "false");
-  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关的人", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "取消");
   assert.deepEqual(await writes(p), []);
 });
@@ -433,10 +449,10 @@ test("association checkbox exposes selected state, supports deselection and canc
 test("association close aborts pending search and ignores its late response", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  await press(p, "相关笔记"); await p.waitForTimeout(50);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"));
   assert.ok(index >= 0);
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
   await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "note", options: [{ id: "late", title: "Late private title" }], sourceVersion: "v1", partial: false }), index);
   await settle(p);
@@ -447,11 +463,11 @@ test("association close aborts pending search and ignores its late response", as
 test("association actor change closes the sheet and rejects the old scope response", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
   assert.ok(index >= 0);
   await p.evaluate(() => (window as any).fixture.update({ actor: "actor-2" })); await settle(p);
-  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("dialog", { name: "相关的人", exact: true }).count(), 0);
   assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
   await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "old", title: "Old actor title" }], sourceVersion: "v1", partial: false }), index);
   await settle(p);
@@ -462,7 +478,7 @@ test("association actor change closes the sheet and rejects the old scope respon
 test("association partial empty page continues, appends choices and preserves selected IDs", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  await press(p, "相关笔记"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"); s.reply(i, 200, { actorId: "actor-1", kind: "note", options: [], sourceVersion: "v1", partial: true, nextCursor: "scan-200" }); });
   await p.getByRole("button", { name: "加载更多笔记", exact: true }).waitFor();
   assert.equal(await p.getByText("还有未检查的记录，请加载更多", { exact: true }).count(), 1);
@@ -483,7 +499,7 @@ test("association partial empty page continues, appends choices and preserves se
 test("association read failure offers retry and refuses foreign summary scope", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
   await p.getByRole("button", { name: "重试", exact: true }).waitFor();
   await press(p, "重试"); await p.waitForTimeout(50);
@@ -500,11 +516,11 @@ test("association limit explains fifty selections and still permits removal", as
   const ids = Array.from({ length: 50 }, (_, i) => `contact:${i}`);
   const p = await open(t, { item: { ...initialItem, contactIds: ids } });
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await press(p, "相关的人"); await p.waitForTimeout(50);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"); s.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "contact:0", title: "Selected choice" }, { id: "contact:new", title: "New choice" }], sourceVersion: "v1", partial: false }); });
   await p.getByRole("checkbox", { name: "New choice", exact: true }).waitFor();
   assert.equal(await p.getByText("已选 50/50", { exact: true }).count(), 1);
-  assert.equal(await p.getByText("最多关联 50 项，先移除一项再添加", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("最多选 50 项，先移除一项再添加", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("checkbox", { name: "New choice", exact: true }).isDisabled(), true);
   await p.getByRole("checkbox", { name: "Selected choice", exact: true }).click(); await settle(p);
   assert.equal(await p.getByText("已选 49/50", { exact: true }).count(), 1);
@@ -518,18 +534,16 @@ test("selected contact chip uses the verified identity avatar and removes it aft
   assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "添加相关人脉", exact: true }).count(), 1);
   await p.evaluate(() => (window as any).fixture.update({ contact: null, language: "en" }));
-  await p.getByText("Association unavailable. Remove it or retry.", { exact: true }).waitFor();
+  await p.getByText("Can't find this item. Remove it or try again.", { exact: true }).waitFor();
   assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
-test("editor rule settings are real compact actions while unsupported remarks remain noninteractive", async t => {
+test("editor rule settings are real compact actions and the unsupported remark row and hints are gone", async t => {
   const p = await open(t);
   for (const label of ["提醒", "重复"]) assert.equal(await p.getByRole("button", { name: label, exact: true }).count(), 1);
-  const remark = p.getByLabel("备注", { exact: true });
-  assert.equal(await remark.getByText("暂不支持", { exact: true }).count(), 1);
-  assert.equal(await remark.getByRole("button").count(), 0);
-  assert.equal(await p.getByText("提醒和重复暂不支持", { exact: true }).count(), 0);
+  assert.equal(await p.getByLabel("备注", { exact: true }).count(), 0);
+  for (const removed of ["暂不支持", "提醒和重复暂不支持", "仅保存在 Orbit，不写入系统日历。", "仅你可见的日程关联"]) assert.equal(await p.getByText(removed, { exact: true }).count(), 0, removed);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -542,7 +556,7 @@ test("rule selection sends v3 persisted values and waits for independent exact-r
   await fill(p, "重复结束日期", "2026-09-20");
   await p.getByRole("dialog", { name: "重复", exact: true }).getByRole("button", { name: "完成", exact: true }).click();
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "保存日程");
+  await press(p, "保存");
   const w = (await writes(p))[0];
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "PATCH").headers["x-orbit-personal-schedule-version"]), "3");
   assert.deepEqual(w.body.patch, { reminderMinutes: 5, recurrence: { frequency: "daily", until: "2026-09-20" }, timeZone: "Asia/Tokyo" });
@@ -556,11 +570,11 @@ test("rule selection sends v3 persisted values and waits for independent exact-r
 test("an occurrence requires explicit scope and preserves inherited rules on a single-instance write", async t => {
   const item = { ...initialItem, id: "personal:edit:occurrence:2026-09-17", seriesId: initialItem.id, occurrenceDate: "2026-09-17", recurrence: { frequency: "daily", until: "2026-09-20" }, reminderMinutes: 15, timeZone: "Asia/Tokyo" };
   const p = await open(t, { item, taskId: item.id });
-  await fill(p, "日程标题", "One occurrence"); await press(p, "保存日程");
+  await fill(p, "日程标题", "One occurrence"); await press(p, "保存");
   assert.deepEqual(await writes(p), []);
   await p.getByRole("button", { name: "修改范围", exact: true }).click();
   await p.getByRole("radio", { name: "仅本次日程", exact: true }).click();
-  await press(p, "保存日程");
+  await press(p, "保存");
   const write = (await writes(p))[0];
   assert.equal(write.path, "/api/schedule-items/personal%3Aedit%3Aoccurrence%3A2026-09-17");
   assert.equal(write.body.scope, "occurrence");
@@ -586,7 +600,7 @@ test("series rule saves use explicit scope and reopening or discarding a conflic
   await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
   await p.getByRole("button", { name: "提醒", exact: true }).click();
   await p.getByRole("radio", { name: "不提醒", exact: true }).click();
-  await press(p, "保存日程");
+  await press(p, "保存");
   assert.deepEqual((await writes(p))[0].body.patch, { reminderMinutes: null });
   assert.equal((await writes(p))[0].body.scope, "series");
   await reply(p, 409);
@@ -620,7 +634,7 @@ test("v3 detail and bounded local-day list keep an occurrence identity and expos
 test("delete requires an independent current-state read and preserves the draft when that read fails", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "删除个人日程"); await press(p, "确认删除个人日程");
+  await press(p, "删除个人日程"); await press(p, "删除");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
   const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
@@ -634,7 +648,7 @@ test("deleting a one-off personal schedule returns to Calendar after its indepen
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
   await press(p, "删除个人日程");
-  await press(p, "确认删除个人日程");
+  await press(p, "删除");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
   const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
   assert.equal(last.method, "GET");
@@ -649,7 +663,7 @@ test("an unrelated series edit cannot accept ACK and GET that erase omitted rule
   const p = await open(t, { item });
   await p.getByRole("button", { name: "修改范围", exact: true }).click();
   await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
-  await fill(p, "日程标题", "Only title"); await press(p, "保存日程");
+  await fill(p, "日程标题", "Only title"); await press(p, "保存");
   const { recurrence, reminderMinutes, ...withoutRules } = item;
   await p.evaluate(item => { (window as any).fixture.item = item; }, { ...withoutRules, title: "Only title", updatedAt: "2026-09-15T00:00:00Z" });
   await reply(p, 200, { scheduleItem: { ...withoutRules, title: "Only title", updatedAt: "2026-09-15T00:00:00Z" } });
@@ -663,7 +677,7 @@ test("clearing a series repeat rule persists the omission and a reopened draft d
   await p.getByRole("button", { name: "修改范围", exact: true }).click(); await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
   await p.getByRole("button", { name: "重复", exact: true }).click(); await p.getByRole("radio", { name: "不重复", exact: true }).click();
   await p.getByRole("dialog", { name: "重复", exact: true }).getByRole("button", { name: "完成", exact: true }).click();
-  await press(p, "保存日程");
+  await press(p, "保存");
   assert.deepEqual((await writes(p))[0].body.patch, { recurrence: null });
   await reply(p);
   assert.ok(await p.evaluate(() => (window as any).fixture.navigation));
@@ -674,7 +688,7 @@ test("clearing a series repeat rule persists the omission and a reopened draft d
 test("an actor replacement cannot accept late series-rule saves or restore the old draft", async t => {
   const p = await open(t);
   await p.getByRole("button", { name: "提醒", exact: true }).click(); await p.getByRole("radio", { name: "提前5分钟", exact: true }).click();
-  await press(p, "保存日程");
+  await press(p, "保存");
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ actor: "actor-2", item: { ...s.item, accountId: "actor-2", ownerUserId: "actor-2", title: "New rule owner", reminderMinutes: 60, timeZone: "Asia/Tokyo" } }); }); await settle(p);
   await reply(p, 200, { scheduleItem: { ...initialItem, reminderMinutes: 5, timeZone: "Asia/Tokyo", updatedAt: "2026-09-15T00:00:00Z" } });
   assert.equal(await p.getByRole("textbox", { name: "日程标题", exact: true }).inputValue(), "New rule owner");
@@ -703,8 +717,8 @@ test("a past instance with a reminder shows the no-backfill boundary without sch
 });
 
 for (const [language, entry, daily, until, done, save, message] of [
-  ["en", "Repeat", "Daily", "Repeat end date", "Done", "Save schedule", "Enter a valid repeat end date on or after the start date."],
-  ["ja", "繰り返し", "毎日", "繰り返しの終了日", "完了", "予定を保存", "繰り返しの終了日は、開始日以降の有効な日付を入力してください。"],
+  ["en", "Repeat", "Daily", "Repeat end date", "Done", "Save", "Enter a valid repeat end date on or after the start date."],
+  ["ja", "繰り返し", "毎日", "繰り返しの終了日", "完了", "保存", "繰り返しの終了日は、開始日以降の有効な日付を入力してください。"],
 ] as const) {
   test(`invalid repeat end date retains the draft and blocks writes with a ${language} alert`, async t => {
     const p = await open(t, { language });
@@ -723,28 +737,28 @@ for (const [language, entry, daily, until, done, save, message] of [
 
 test("association sheet closes through platform back and a real downward pointer gesture", async t => {
   const p = await open(t);
-  await press(p, "关联笔记");
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).waitFor();
+  await press(p, "相关笔记");
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).waitFor();
   await p.waitForTimeout(350);
   await p.keyboard.press("Escape"); await p.waitForTimeout(350);
-  assert.equal(await p.getByRole("dialog", { name: "关联笔记", exact: true }).count(), 0);
-  await press(p, "关联人脉");
+  assert.equal(await p.getByRole("dialog", { name: "相关笔记", exact: true }).count(), 0);
+  await press(p, "相关的人");
   await p.waitForTimeout(350);
-  const handle = await p.getByRole("dialog", { name: "关联人脉", exact: true }).locator(":scope > div").first().boundingBox();
+  const handle = await p.getByRole("dialog", { name: "相关的人", exact: true }).locator(":scope > div").first().boundingBox();
   assert.ok(handle);
   await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
   await p.mouse.down();
   await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 + 100, { steps: 10 });
   await p.mouse.up(); await p.waitForTimeout(350);
-  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("dialog", { name: "相关的人", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
 test("localized sheet remains reachable with enlarged text and a reduced visible viewport", async t => {
   for (const [language, entry, title, search] of [
-    ["zh", "关联人脉", "日程标题", "搜索相关人脉"],
-    ["ja", "関連する連絡先", "予定名", "関連する人を検索"],
-    ["en", "Related contacts", "Schedule title", "Search related people"],
+    ["zh", "相关的人", "日程标题", "搜索相关人脉"],
+    ["ja", "関係する人", "予定名", "関連する人を検索"],
+    ["en", "People", "Schedule title", "Search related people"],
   ] as const) {
     const p = await open(t, { language, fontScale: 1.8 });
     assert.equal(await p.getByRole("textbox", { name: title, exact: true }).inputValue(), "Original title");
@@ -761,7 +775,7 @@ test("localized sheet remains reachable with enlarged text and a reduced visible
 test("association query replacement aborts old work and does not display its late summaries", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "关联人脉"); await p.waitForTimeout(350);
+  await press(p, "相关的人"); await p.waitForTimeout(350);
   const first = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
   await fill(p, "搜索相关人脉", "LY"); await p.waitForTimeout(300);
   const next = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
@@ -773,80 +787,85 @@ test("association query replacement aborts old work and does not display its lat
   assert.deepEqual(await writes(p), []);
 });
 
-for (const [language, minutes, endsAt, label] of [
-  ["zh", 30, "2026-09-17T01:00:00Z", "30 分钟"], ["zh", 60, "2026-09-17T01:30:00Z", "60 分钟"], ["zh", 120, "2026-09-17T02:30:00Z", "120 分钟"],
-  ["ja", 30, "2026-09-17T01:00:00Z", "30分"], ["ja", 60, "2026-09-17T01:30:00Z", "60分"], ["ja", 120, "2026-09-17T02:30:00Z", "120分"],
-  ["en", 30, "2026-09-17T01:00:00Z", "30 min"], ["en", 60, "2026-09-17T01:30:00Z", "60 min"], ["en", 120, "2026-09-17T02:30:00Z", "120 min"],
-] as const) {
-  test(`detail keeps ${minutes} minutes in ${language} under platform unit fault`, async t => {
-    const item = { ...initialItem, endsAt, timeZone: "Asia/Tokyo" };
-    for (const unitFormatAsSeconds of [false, true]) {
-      const p = await open(t, { detail: true, language, item, unitFormatAsSeconds });
-      const hint = p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/);
-      assert.equal(await hint.innerText(), `2026-09-17 · ${label} · Asia/Tokyo`);
-      assert.deepEqual(await writes(p), []);
-      assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
-    }
-  });
-}
-
-for (const [language, label] of [["zh", "结束时间未设置"], ["ja", "終了時刻未設定"], ["en", "End time not set"]] as const) {
-  test(`detail keeps missing end in ${language}`, async t => {
-    const { endsAt: _end, ...item } = { ...initialItem, timeZone: "Asia/Tokyo" };
-    const p = await open(t, { detail: true, language, item, unitFormatAsSeconds: true });
-    assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), `2026-09-17 · ${label} · Asia/Tokyo`);
+// UX-8: the detail shows the day (weekday; the year only outside the current year) and then
+// "HH:MM – HH:MM" or 全天; the zone is appended only when it is not the device zone.
+// (The old "N 分钟" duration text and its platform unit-format fault no longer exist.)
+for (const [language, day, allDay] of [["zh", "2025年9月17日周三", "全天"], ["ja", "2025年9月17日(水)", "終日"], ["en", "Wed, September 17, 2025", "All day"]] as const) {
+  test(`detail shows the day and time range in ${language} without a device-zone suffix`, async t => {
+    const item = { ...initialItem, startsAt: "2025-09-17T00:30:00Z", endsAt: "2025-09-17T01:30:00Z", timeZone: "Asia/Tokyo" };
+    const p = await open(t, { detail: true, language, item });
+    await p.getByText(day, { exact: true }).waitFor();
+    assert.equal(await p.getByText("09:30 – 10:30", { exact: true }).count(), 1);
+    assert.equal(await p.getByText(/Asia\/Tokyo/).count(), 0);
     assert.deepEqual(await writes(p), []);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+    const { endsAt: _end, ...openEnded } = item;
+    const noEnd = await open(t, { detail: true, language, item: openEnded });
+    await noEnd.getByText(day, { exact: true }).waitFor();
+    assert.equal(await noEnd.getByText("09:30", { exact: true }).count(), 1, "a missing end shows only the start");
+    const allDayItem = { ...item, startsAt: "2025-09-16T15:00:00Z", endsAt: "2025-09-17T15:00:00Z", allDay: true };
+    const whole = await open(t, { detail: true, language, item: allDayItem });
+    await whole.getByText(day, { exact: true }).waitFor();
+    assert.equal(await whole.getByText(allDay, { exact: true }).count(), 1);
+    assert.deepEqual(await writes(whole), []);
   });
 }
 
-test("detail preserves fractional minutes rather than rounding stored seconds", async t => {
-  const item = { ...initialItem, startsAt: "2026-09-17T00:30:42Z", endsAt: "2026-09-17T01:01:12Z", timeZone: "Asia/Tokyo" };
-  const p = await open(t, { detail: true, item, unitFormatAsSeconds: true });
-  assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), "2026-09-17 · 30.5 分钟 · Asia/Tokyo");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+test("detail names the zone only when the schedule's zone differs from the device", async t => {
+  const item = { ...initialItem, timeZone: "Europe/London" };
+  const p = await open(t, { detail: true, item });
+  await p.getByText(/^01:30 – 02:30\s+·\s+Europe\/London$/).waitFor();
   assert.deepEqual(await writes(p), []);
 });
 
-for (const [endsAt, expected] of [["2026-09-17T15:00:00Z", "2026-09-17 · 1440 分钟 · Asia/Tokyo"], ["2026-09-18T15:00:00Z", "2026-09-17 · 2026-09-18 · 2880 分钟 · Asia/Tokyo"]] as const) {
-  test(`all-day detail renders only occupied dates through the real route: ${endsAt}`, async t => {
-    const item = { ...initialItem, startsAt: "2026-09-16T15:00:00Z", endsAt, allDay: true, timeZone: "Asia/Tokyo" };
-    const p = await open(t, { detail: true, item, unitFormatAsSeconds: true });
-    assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), expected);
-    assert.deepEqual(await writes(p), []);
-    assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
-  });
-}
+test("detail omits the current year and spans the occupied days of a multi-day all-day schedule", async t => {
+  const item = { ...initialItem, startsAt: "2026-09-16T15:00:00Z", endsAt: "2026-09-18T15:00:00Z", allDay: true, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { detail: true, item });
+  const thisYear = await p.evaluate(() => new Date().getFullYear());
+  await p.getByText(thisYear === 2026 ? "9月17日周四 – 9月18日周五" : "2026年9月17日周四 – 2026年9月18日周五", { exact: true }).waitFor();
+  assert.equal(await p.getByText("全天", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+});
 async function reply(p: Page, status = 200, override?: object) {
   await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location", "reminderMinutes", "recurrence"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && !override) s.item = item; else if (status === 200 && r.method === "DELETE" && override && "scheduleItem" in override) s.item = override.scheduleItem; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
 }
 
 test("create without a contact, failure retry and reopen use one server record", async t => {
   const p = await open(t, { taskId: "" }); await fill(p, "日程标题", "Solo review"); await press(p, "调整日期和时间"); await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "09:30"); await fill(p, "日程地点", "Home");
-  await press(p, "保存日程"); await reply(p, 503); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Solo review");
-  await press(p, "保存日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].method, "POST"); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
+  await press(p, "添加"); await reply(p, 503); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Solo review");
+  await press(p, "添加"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].method, "POST"); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
   assert.equal(w[0].body.startsAt, "2026-09-17T00:30:00.000Z"); assert.equal(w[0].body.contactId, undefined); await reply(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit?saved=2026-09-15T00%3A00%3A00Z");
   await p.evaluate(() => (window as any).fixture.update({ taskId: "personal:edit" })); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "Home");
 });
+// UX C7: an edit opened from its detail page returns to that page instead of stacking a second copy of it.
+test("saving an edit goes back to the existing detail instead of pushing another one", async t => {
+  const p = await open(t, { canGoBack: true }); await fill(p, "日程地点", "Osaka"); await press(p, "保存"); await reply(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "back");
+  const created = await open(t, { taskId: "", canGoBack: true }); await fill(created, "日程标题", "New one"); await press(created, "添加"); await reply(created);
+  assert.equal(await created.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit?saved=2026-09-15T00%3A00%3A00Z", "a new schedule still replaces the form with its detail");
+});
 test("clear optional fields, retain conflicting draft, explicitly reload and confirm deletion", async t => {
-  const p = await open(t); await press(p, "调整日期和时间"); await fill(p, "结束时间", ""); await fill(p, "日程地点", ""); await press(p, "保存日程");
-  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null, location: null }); await reply(p); assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "");
-  await fill(p, "日程标题", "Local draft"); await press(p, "保存日程"); await reply(p, 409);
+  // UX-8: the end is cleared by switching 全天 on and off (the 清除结束时间 button is gone).
+  const p = await open(t); const allDay = p.getByRole("switch", { name: "全天", exact: true }); await allDay.click(); await allDay.click(); await settle(p); await fill(p, "日程地点", ""); await press(p, "保存");
+  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null, location: null, allDay: false, timeZone: "Asia/Tokyo" }); await reply(p); assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "");
+  await fill(p, "日程标题", "Local draft"); await press(p, "保存"); await reply(p, 409);
   await p.evaluate(() => { const s = (window as any).fixture; s.item = { ...s.item, title: "Remote", updatedAt: "2026-09-16T00:00:00Z" }; s.refresh(); }); await settle(p);
-  assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Local draft"); assert.equal(await p.getByRole("button", { name: "保存日程", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Local draft"); assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Remote");
-  await press(p, "删除个人日程"); assert.equal((await writes(p)).length, 2); await press(p, "确认删除个人日程");
+  await press(p, "删除个人日程"); assert.equal((await writes(p)).length, 2); await press(p, "删除");
   assert.equal((await writes(p))[2].method, "DELETE");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true }); assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule");
 });
 for (const wrong of ["owner", "id", "field"]) test(`${wrong} receipt retains draft and retry intent`, async t => {
-  const p = await open(t); await fill(p, "日程地点", "Local"); await press(p, "保存日程");
+  const p = await open(t); await fill(p, "日程地点", "Local"); await press(p, "保存");
   await reply(p, 200, { scheduleItem: { ...initialItem, updatedAt: "2026-09-15T00:00:00Z", location: wrong === "field" ? "Wrong" : "Local", ownerUserId: wrong === "owner" ? "other" : "actor-1", id: wrong === "id" ? "personal:other" : initialItem.id } });
-  await press(p, "保存日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
+  await press(p, "保存"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
 });
 test("account replacement cannot accept a late old save", async t => {
-  const p = await open(t); await fill(p, "日程地点", "Old draft"); await press(p, "保存日程");
+  const p = await open(t); await fill(p, "日程地点", "Old draft"); await press(p, "保存");
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ actor: "actor-2", item: { ...s.item, accountId: "actor-2", ownerUserId: "actor-2", title: "New account" } }); }); await settle(p);
   await reply(p, 200, { scheduleItem: { ...initialItem, location: "Old draft", updatedAt: "2026-09-15T00:00:00Z" } });
   assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "New account"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
@@ -854,46 +873,49 @@ test("account replacement cannot accept a late old save", async t => {
 
 test("personal editor effect replay retains an active read and save scope", async t => {
   const p = await open(t, { strict: true });
-  await fill(p, "日程地点", "After replay"); await press(p, "保存日程"); await reply(p);
+  await fill(p, "日程地点", "After replay"); await press(p, "保存"); await reply(p);
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "After replay");
   assert.equal((await writes(p)).length, 1);
   assert.equal(await p.getByRole("alert").count(), 0);
 });
 
-test("merged time block shortcuts and both saves share one in-flight mutation", async t => {
+test("a cross-midnight end set through its chip and a repeated 添加 share one in-flight mutation", async t => {
   const p = await open(t, { taskId: "" });
+  assert.equal(await p.getByRole("button", { name: "添加", exact: true }).isDisabled(), true, "添加 waits for a title");
   await fill(p, "日程标题", "Time block");
   await p.getByRole("button", { name: "调整日期和时间", exact: true }).click();
   await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "23:45");
-  await press(p, "30分钟");
-  await p.getByText("00:15", { exact: true }).waitFor();
-  await settle(p);
-  const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
-  assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: join(evidenceDirectory, "app-editor-shortcuts.png"), fullPage: true });
-  await press(p, "保存日程");
-  assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
+  await fill(p, "结束时间", "00:15");
+  assert.equal(await p.getByRole("button", { name: "结束日期", exact: true }).innerText(), "9月18日周五");
+  const saveBox = await p.getByRole("button", { name: "添加", exact: true }).boundingBox();
+  assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "the header 添加 is visible at the reference viewport");
+  await p.screenshot({ path: join(evidenceDirectory, "app-editor-time-card.png"), fullPage: true });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAdd = s.presses["添加"]; s.oldAdd(); }); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "添加", exact: true }).isDisabled(), true);
+  await p.evaluate(() => (window as any).fixture.oldAdd()); await settle(p);
   assert.equal((await writes(p)).length, 1);
+  assert.equal((await writes(p))[0].body.startsAt, "2026-09-17T14:45:00.000Z");
   assert.equal((await writes(p))[0].body.endsAt, "2026-09-17T15:15:00.000Z");
 });
 
-test("personal destination reads a standalone detail with edit and reschedule but no mutation on open", async t => {
+test("personal destination reads a standalone detail with edit but no mutation on open", async t => {
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
-  await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
+  await p.getByText("09:30 – 10:30", { exact: true }).waitFor();
+  // UX-8: no private line, local-only hint, 改期 button or duration minutes on the detail.
+  for (const removed of ["个人日程 · 仅自己可见", "仅保存在 Orbit，不写入系统日历。", "分钟"]) assert.equal(await p.getByText(removed, { exact: false }).count(), 0, removed);
+  assert.equal(await p.getByRole("button", { name: "改期", exact: true }).count(), 0);
   await p.screenshot({ path: join(evidenceDirectory, "app-detail.png"), fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");
-  await press(p, "改期");
-  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit?focus=time");
   assert.equal((await writes(p)).length, 0);
 });
 
 test("save waits for independent authenticated GET before navigating and preserves draft on failed readback", async t => {
   const p = await open(t, { taskId: "", holdReads: true });
   await fill(p, "日程标题", "Readback gate"); await press(p, "调整日期和时间");
-  await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "09:30"); await press(p, "保存日程"); await reply(p);
+  await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "09:30"); await press(p, "添加"); await reply(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
   const requests = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => [r.method, r.path]));
   assert.deepEqual(requests, [["POST", "/api/schedule-items"], ["GET", "/api/schedule-items/personal%3Aedit"]]);
@@ -905,30 +927,30 @@ test("save waits for independent authenticated GET before navigating and preserv
 test("private note selection saves exact IDs and details refuse revoked note contents", async t => {
   const note = { id: "note:owned", accountId: "actor-1", ownerUserId: "actor-1", title: "Saved note", body: "Private body", contactIds: [], manualContactIds: [], mentions: [], eventIds: [], version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
   const p = await open(t, { note });
-  await press(p, "关联笔记");
+  await press(p, "相关笔记");
   await p.getByRole("textbox", { name: "搜索笔记", exact: true }).fill("Saved");
   await p.getByRole("checkbox", { name: "Saved note", exact: true }).click(); await settle(p);
-  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
-  await press(p, "保存日程");
+  await p.getByRole("dialog", { name: "相关笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await press(p, "保存");
   assert.deepEqual((await writes(p))[0].body.patch.noteIds, ["note:owned"]);
   await reply(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ detail: true, note: { ...s.note, ownerUserId: "other" } }); });
-  await p.getByText("关联对象不可用，请移除或重试", { exact: true }).waitFor();
+  await p.getByText("找不到这一项，请移除或重试", { exact: true }).waitFor();
   assert.equal(await p.getByText("Private body", { exact: true }).count(), 0);
 });
 
 test("personal contact selection uses bounded formal search and refuses unavailable cached identities", async t => {
   const contact = { id: "contact:owned", displayName: "Owned contact", role: "Engineer", organization: "Company", status: "active", source: { type: "manual", label: "Manual" }, evidence: [], value: { score: 50, valueTypes: [], rationale: "", evidenceIds: [] } };
   const p = await open(t, { contact });
-  await press(p, "关联人脉"); await p.getByRole("textbox", { name: "搜索相关人脉", exact: true }).fill("Owned");
+  await press(p, "相关的人"); await p.getByRole("textbox", { name: "搜索相关人脉", exact: true }).fill("Owned");
   await p.getByRole("checkbox", { name: "Owned contact", exact: true }).click(); await settle(p);
   const search = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path === "/api/schedule-items/association-options/contacts" && new URLSearchParams(r.query).get("q") === "Owned"));
   assert.equal(search.method, "GET");
   assert.equal(search.query, "?q=Owned&limit=20");
-  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
-  await press(p, "保存日程"); assert.deepEqual((await writes(p))[0].body.patch.contactIds, ["contact:owned"]); await reply(p);
+  await p.getByRole("dialog", { name: "相关的人", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await press(p, "保存"); assert.deepEqual((await writes(p))[0].body.patch.contactIds, ["contact:owned"]); await reply(p);
   await p.evaluate(() => (window as any).fixture.update({ detail: true, contact: null }));
-  await p.getByText("关联对象不可用，请移除或重试", { exact: true }).waitFor();
+  await p.getByText("找不到这一项，请移除或重试", { exact: true }).waitFor();
   assert.equal(await p.getByText("Owned contact", { exact: true }).count(), 0);
 });
 
@@ -938,7 +960,7 @@ test("reschedule focus opens time editing and permits explicit cross-day end dat
   await timePicker.waitFor();
   await timePicker.getByRole("button", { name: "取消", exact: true }).click();
   await timePicker.waitFor({ state: "detached" });
-  await fill(p, "结束日期", "2026-09-18"); await fill(p, "结束时间", "00:15"); await press(p, "保存日程");
+  await fill(p, "结束日期", "2026-09-18"); await fill(p, "结束时间", "00:15"); await press(p, "保存");
   assert.equal((await writes(p))[0].body.patch.endsAt, "2026-09-17T15:15:00.000Z");
 });
 
@@ -972,9 +994,57 @@ test("detail exposes a safe online link only on user action and hides an invalid
   assert.equal((await writes(p)).length, 0);
 });
 
-test("detail saved notice requires the independently read current version", async t => {
-  const p = await open(t, { detail: true, saved: initialItem.updatedAt });
-  assert.equal(await p.getByText("个人日程已保存", { exact: true }).count(), 1);
-  await p.evaluate(() => (window as any).fixture.update({ saved: "2020-01-01T00:00:00Z" })); await settle(p);
-  assert.equal(await p.getByText("个人日程已保存", { exact: true }).count(), 0);
+// UX C6: the detail reads like iOS Calendar — 地点 / 相关的人 / 提醒 / 重复 rows, no saved line or internal labels.
+test("detail shows plain grouped rows without a saved line or internal labels", async t => {
+  const p = await open(t, { detail: true, saved: initialItem.updatedAt, item: { ...initialItem, contactIds: ["contact:owned"] }, contact: { id: "contact:owned", displayName: "林悦" } });
+  await p.getByText("Tokyo", { exact: true }).waitFor();
+  for (const label of ["地点", "相关的人", "提醒", "重复"]) assert.equal(await p.getByText(label, { exact: true }).count(), 1, label);
+  await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
+  for (const removed of ["个人日程已保存", "仅你可见的日程关联", "日程地点", "相关笔记"]) assert.equal(await p.getByText(removed, { exact: true }).count(), 0, removed);
+  assert.equal((await writes(p)).length, 0);
+});
+
+test("a new schedule starts at the next full hour for one hour and an untouched form cancels without a prompt", async t => {
+  const p = await open(t, { taskId: "", now: "2026-09-17T00:10:00Z" });
+  assert.equal(await p.getByRole("button", { name: "调整日期和时间", exact: true }).innerText(), "9月17日周四");
+  assert.equal(await p.getByRole("button", { name: "开始时间", exact: true }).innerText(), "10:00");
+  assert.equal(await p.getByRole("button", { name: "结束时间", exact: true }).innerText(), "11:00");
+  await press(p, "取消");
+  assert.equal(await p.getByText("有未保存的修改，确认放弃？", { exact: true }).count(), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule");
+  await p.evaluate(() => delete (window as any).fixture.navigation);
+  await fill(p, "开始时间", "10:30"); await press(p, "取消");
+  await p.getByText("有未保存的修改，确认放弃？", { exact: true }).waitFor();
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  await fill(p, "日程标题", "Default hour");
+  assert.equal(await p.getByRole("button", { name: "添加", exact: true }).isDisabled(), true, "the dirty prompt disables the header action");
+  await press(p, "继续编辑"); // QA-D: the dirty prompt says 继续编辑 / 放弃修改
+  await press(p, "添加");
+  const write = (await writes(p))[0];
+  assert.equal(write.method, "POST");
+  assert.equal(write.body.startsAt, "2026-09-17T01:30:00.000Z");
+  assert.equal(write.body.endsAt, "2026-09-17T02:30:00.000Z");
+});
+
+test("one location field: an http(s) link becomes the video meeting, anything else the place", async t => {
+  const p = await open(t);
+  assert.equal(await p.getByRole("button", { name: "线上", exact: true }).count(), 0);
+  await fill(p, "日程地点", "https://meet.example.test/room");
+  await press(p, "保存");
+  assert.deepEqual((await writes(p))[0].body.patch, { location: null, meetingMethod: "video", meetingUrl: "https://meet.example.test/room" });
+  await reply(p);
+  const video = await open(t, { item: { ...initialItem, location: undefined, meetingMethod: "video", meetingUrl: "https://meet.example.test/room" } });
+  assert.equal(await video.getByRole("textbox", { name: "日程地点", exact: true }).inputValue(), "https://meet.example.test/room");
+  await fill(video, "日程地点", "Shibuya office");
+  await press(video, "保存");
+  assert.deepEqual((await writes(video))[0].body.patch, { location: "Shibuya office", meetingMethod: "in_person", meetingUrl: null });
+});
+
+test("the note row's ＋ opens the same note sheet as its label", async t => {
+  const p = await open(t);
+  await press(p, "添加相关笔记");
+  await p.getByRole("textbox", { name: "搜索笔记", exact: true }).waitFor();
+  assert.equal(await p.getByRole("dialog").count(), 1);
+  assert.equal(await p.getByRole("button", { name: "添加相关人脉", exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
 });

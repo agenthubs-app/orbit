@@ -73,6 +73,8 @@ export interface EventAssessmentRepository {
   list(actorId: string, limit: number): Promise<AssessmentRow[]>;
   /** `guard` 给定时只在行仍是 `reading` 且租约等于认领时的值才写（复核 S2：被回收 / 被别的执行者认领后不再覆盖）。 */
   update(actorId: string, id: string, patch: AssessmentPatch, guard?: { leaseUntil: string | null }): Promise<AssessmentRow | null>;
+  /** 删除本人的一条评估（评估列表左滑删除 / 详情 ⋯）；返回删掉的行（不存在 / 别人的 → null）。 */
+  remove(actorId: string, id: string): Promise<AssessmentRow | null>;
   /** 认领 `reading` 且租约为空 / 过期的行（`attempts + 1`）；`id` 给定时只认领这一行。 */
   claimReading(input: { now: string; leaseMs: number; limit: number; id?: string }): Promise<AssessmentRow[]>;
   /** `reading` 且租约（没认领过就按创建时间）早于 `olderThan` 的行（回收为 timeout）。 */
@@ -119,6 +121,12 @@ export function createMemoryEventAssessmentRepository(): EventAssessmentReposito
     },
     async list(actorId, limit) {
       return [...rows.values()].filter((row) => row.actorId === actorId).sort((a, b) => b.total - a.total || b.createdAt.localeCompare(a.createdAt)).slice(0, limit).map(clone);
+    },
+    async remove(actorId, id) {
+      const row = rows.get(id);
+      if (!row || row.actorId !== actorId) return null;
+      rows.delete(id);
+      return clone(row);
     },
     async update(actorId, id, patch, guard) {
       const row = rows.get(id);
@@ -293,6 +301,9 @@ export function createPostgresEventAssessmentRepository(input: { client: Transac
         where += ` and status = 'reading' and lease_until is not distinct from $${values.length}::timestamptz`;
       }
       return one(`update event_assessments set ${sets.join(", ")} where ${where} returning *`, values);
+    },
+    async remove(actorId, id) {
+      return one("delete from event_assessments where workspace_id = $1 and actor_id = $2 and id = $3 returning *", [workspaceId, actorId, id]);
     },
     async claimReading({ now, leaseMs, limit, id }) {
       const result = await q(

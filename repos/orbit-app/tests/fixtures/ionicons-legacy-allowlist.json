@@ -22,7 +22,6 @@
     "src/screens/schedule/MeetingDetailScreen.tsx",
     "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
     "src/screens/schedule/ScheduleScreen.tsx",
-    "src/screens/tasks/TaskDetailScreen.tsx",
     "src/screens/tasks/TasksScreen.tsx"
   ]
 }

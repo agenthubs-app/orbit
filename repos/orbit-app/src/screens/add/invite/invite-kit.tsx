@@ -81,21 +81,21 @@ export function useInviteKit() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   xl: { alignItems: "center", alignSelf: "stretch", borderRadius: 999, flexDirection: "row", gap: 6, height: 50, justifyContent: "center", paddingHorizontal: 16 },
-  xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75 },
+  xlText: { fontSize: 17, fontWeight: "700", lineHeight: 25 },
   off: { opacity: 0.4 },
   ghost: { alignItems: "center", alignSelf: "stretch", borderRadius: 999, height: 40, justifyContent: "center" },
-  ghostText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  ghostText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   guide: { backgroundColor: colors.surface, borderRadius: 24, overflow: "hidden", padding: 20 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingHorizontal: 14, paddingVertical: 12 },
   chip: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 4, paddingHorizontal: 9, paddingVertical: 3 },
   chipOff: { opacity: 0.5 },
-  chipText: { fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+  chipText: { fontSize: 13, fontWeight: "700", lineHeight: 20 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
-  sub: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75 },
-  link: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  sub: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
+  link: { fontSize: 14, fontWeight: "700", lineHeight: 21 },
   rowBetween: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "space-between" },
-  infoTitle: { color: colors.ink, fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  infoTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 23 },
 }));
 export const useInviteKitStyles = useStyles;

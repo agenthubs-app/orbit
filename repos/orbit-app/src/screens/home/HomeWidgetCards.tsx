@@ -33,7 +33,15 @@ import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { TodayQuestionCard } from "../add/CompletionQuestionCard";
 import { calendarMeetingWindow } from "../calendar/calendar-meeting-source";
 import { useTodoPage } from "../todo/useTodoPage";
-import { HOME_COPY_FRESH_MS, nextLocalRegisteredEvent, nextRegisteredEvent, signedDelta } from "./home-widget-model";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { decodeRelationshipTaskPage } from "../../view-models/relationship-task-pages";
+import { useTaskListSource } from "../tasks/task-list-source";
+import { useScheduleCalendarSource } from "../schedule/schedule-calendar-source";
+import { useCalendarMeetings } from "../calendar/useCalendarMeetings";
+import { calendarProjection } from "../calendar/calendar-projection";
+import { mergeCalendarScheduleItems } from "../calendar/calendar-meeting-source";
+import { HOME_COPY_FRESH_MS, homeTodaySummary, nextLocalRegisteredEvent, nextRegisteredEvent, nextTodayScheduleItem, signedDelta } from "./home-widget-model";
 
 type Navigate = (href: string) => void;
 type GuideProgress = { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } };
@@ -77,9 +85,9 @@ function SavedOfflineNote({ show, at }: { show: boolean | undefined; at: string 
   return <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{time ? ` · ${time}` : ""}</UiText>;
 }
 
-function LinkRow({ label, href, navigate }: { label: string; href: string; navigate: Navigate }) {
+function LinkRow({ label, href, navigate, quiet = false }: { label: string; href: string; navigate: Navigate; quiet?: boolean }) {
   const { styles } = useStyles();
-  return <UiPressable accessibilityRole="link" accessibilityLabel={label} onPress={() => navigate(href)} style={styles.link}><UiText style={styles.linkText}>{label} →</UiText></UiPressable>;
+  return <UiPressable accessibilityRole="link" accessibilityLabel={label} onPress={() => navigate(href)} style={styles.link}><UiText numberOfLines={1} style={quiet ? styles.muted : styles.linkText}>{label} →</UiText></UiPressable>;
 }
 
 function todayKey(now: Date, timeZone: string): string {
@@ -99,36 +107,55 @@ function GuideSteps({ progress, navigate }: { progress: GuideProgress; navigate:
     <UiPressable key={step.key} accessibilityRole="link" accessibilityLabel={step.label} onPress={() => navigate(step.href)} style={styles.guideStep}><UiText style={styles.guideText}>{progress.steps[step.key] ? "✓" : "○"}  {index + 1}. {step.label}</UiText></UiPressable>)}</View>;
 }
 
-function TodayWidget({ navigate, guide, onDataSettled }: { navigate: Navigate; guide: GuideProgress | null; onDataSettled?: (() => void) | undefined }) {
-  const { timeZone } = useOrbitTimeZone(); const { styles } = useStyles(); const { t } = useOrbitLocale();
+function TodayWidget({ actorId, size, navigate, guide, onDataSettled }: { actorId: string; size: "s" | "m"; navigate: Navigate; guide: GuideProgress | null; onDataSettled?: (() => void) | undefined }) {
+  const { timeZone } = useOrbitTimeZone(); const { styles } = useStyles(); const { t, language } = useOrbitLocale();
+  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl();
+  const now = new Date();
   const date = useMemo(() => todayKey(new Date(), timeZone), [timeZone]);
+  // UX: the card mirrors the to-do tab (tasks + follow-ups under 今天 / 已逾期) from the same device task list;
+  // follow-ups share the tab's saved page copy, re-read after Home's fresh window.
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  const tasks = useTaskListSource({ actorId, ready, scopeKey: JSON.stringify([actorId, auth.cookieHeader, server.baseUrl, ready]), selection: { scope: "all", view: "open" }, today: date, timeZone });
+  const followUpCopy = usePageCopyResource<unknown>("/api/relationship-tasks/page?mode=open&limit=30", () => false, { enabled: ready,
+    copy: { id: "relationship-tasks", variant: "open" }, freshForMs: HOME_COPY_FRESH_MS, accept: value => decodeRelationshipTaskPage(value, actorId, "open") !== null });
+  const followUps = decodeRelationshipTaskPage(followUpCopy.kind === "success" || followUpCopy.kind === "empty" ? followUpCopy.data : null, actorId, "open");
+  const summary = homeTodaySummary(tasks.canonical, followUps?.items ?? null, date, timeZone, tasks.nextCursor !== null);
+  // 日程: only today's calendar items (events, meetings, personal plans) — tasks are counted above.
+  const calendar = useScheduleCalendarSource();
+  const meetings = useCalendarMeetings(date, "day", timeZone, language);
+  const scheduleReady = [calendar.events, calendar.scheduleItems, meetings.part].some(part => part.kind === "ready");
+  const projection = scheduleReady ? calendarProjection({ actorId, dateKey: date, events: calendar.events.kind === "ready" ? calendar.events.data : { events: [] }, language, mode: "day", now,
+    scheduleItems: mergeCalendarScheduleItems(calendar.scheduleItems.kind === "ready" ? calendar.scheduleItems.data : null, meetings.part.kind === "ready" ? meetings.part.data : null), tasks: { tasks: [] }, timeZone }) : null;
+  const todaySchedule = projection?.kind === "ready" ? projection.selectedItems : null;
+  const clock = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric", hourCycle: "h23", timeZone }).formatToParts(now);
+  const nextSchedule = todaySchedule ? nextTodayScheduleItem(todaySchedule, Number(clock.find(part => part.type === "hour")?.value ?? 0) * 60 + Number(clock.find(part => part.type === "minute")?.value ?? 0)) : null;
+  // Agent suggestions stay one tap away (建议 in the to-do tab): a quiet line, not a big number.
   const todo = useTodoPage(timeZone, date);
-  const schedule = usePageCopyResource<unknown>("/api/schedule-items", value => {
-    const parsed = scheduleSchema.safeParse(value); return parsed.success && parsed.data.scheduleItems.length === 0;
-  }, { copy: { id: "home-schedule", variant: "main" }, freshForMs: HOME_COPY_FRESH_MS, accept: value => scheduleSchema.safeParse(value).success });
-  const parsedSchedule = schedule.kind === "success" || schedule.kind === "empty" ? scheduleSchema.safeParse(schedule.data) : null;
-  const scheduleRows = parsedSchedule?.success ? parsedSchedule.data.scheduleItems.flatMap(raw => {
-    const parsed = scheduleRowSchema.safeParse(raw);
-    return parsed.success && (parsed.data.state === "upcoming" || parsed.data.state === "ongoing") ? [parsed.data] : [];
-  }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) : [];
+  const suggestions = todo.page ? todo.page.counts.decisions + todo.page.counts.nextMoves : 0;
+  const capped = todo.page ? todo.page.countsCapped.decisions || todo.page.countsCapped.nextMoves : false;
   const settled = () => { todo.refresh(); onDataSettled?.(); };
-  if (!todo.page) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{todo.state.kind === "loading" ? "…" : t("home.widgetUnavailable")}</UiText><Button label={t("home.readAgain")} onPress={todo.refresh} variant="ghost" size="sm" /><TodayQuestionCard onSettled={settled} /></View>;
-  if (guide && todo.page.counts.nextMoves === 0 && todo.page.counts.decisions === 0 && scheduleRows.length === 0) return <View><GuideSteps progress={guide} navigate={navigate} /><TodayQuestionCard onSettled={settled} /></View>;
+  if (!tasks.canonical) return <View>{guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}<UiText style={styles.muted}>{tasks.loading || !ready ? "…" : t("home.widgetUnavailable")}</UiText>{tasks.loading || !ready ? null : <Button label={t("home.readAgain")} onPress={tasks.refresh} variant="ghost" size="sm" />}<TodayQuestionCard onSettled={settled} /></View>;
+  const count = (rows: readonly unknown[]) => `${rows.length}${summary.capped ? "+" : ""}`;
+  const suggestionRow = suggestions > 0 ? <LinkRow label={t("todo.suggestionsRow", { count: `${suggestions}${capped ? "+" : ""}` })} href="/task?seg=todo&entry=home" navigate={navigate} quiet /> : null;
+  if (guide && summary.today.length === 0 && summary.overdue.length === 0 && !todaySchedule?.length) return <View><GuideSteps progress={guide} navigate={navigate} />{suggestionRow}<TodayQuestionCard onSettled={settled} /></View>;
+  const rows = (summary.today.length ? summary.today : summary.overdue).slice(0, size === "m" ? 2 : 1);
   return <View>
     {guide ? <GuideSteps progress={guide} navigate={navigate} /> : null}
-    <SavedOfflineNote show={todo.copy?.offline} at={todo.copy?.lastSyncedAt} />
-    <View style={styles.stats}><Stat value={todo.page.counts.nextMoves} label={t("home.widgetNextMove")} /><Stat value={todo.page.counts.decisions} label={t("home.widgetPending")} />{parsedSchedule?.success ? <Stat value={scheduleRows.length} label={t("home.schedule")} /> : <UiText style={styles.muted}>— {t("home.schedule")}</UiText>}</View>
-    {todo.page.nextMoves.items[0] ? <LinkRow label={todo.page.nextMoves.items[0].titlePreview} href="/task?seg=todo" navigate={navigate} /> : null}
-    {scheduleRows[0] ? <LinkRow label={scheduleRows[0].title} href="/task?seg=calendar" navigate={navigate} /> : null}
-    <SavedOfflineNote show={schedule.copy?.offline} at={schedule.copy?.lastSyncedAt} />
-    {Object.values(todo.page.sources).some(source => source === "unavailable" || source === "not_implemented") ? <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText> : null}
+    <SavedOfflineNote show={Boolean(tasks.offline)} at={tasks.offline?.lastSyncedAt} />
+    <View style={styles.stats}><Stat value={count(summary.today)} label={t("home.today")} />{summary.overdue.length ? <Stat value={count(summary.overdue)} label={t("home.taskOverdue")} danger /> : null}{todaySchedule ? <Stat value={String(todaySchedule.length)} label={t("home.schedule")} /> : <UiText style={styles.muted}>— {t("home.schedule")}</UiText>}</View>
+    {rows.map(row => <LinkRow key={row.key} label={row.title} href="/task?seg=todo" navigate={navigate} />)}
+    {summary.today.length === 0 && summary.overdue.length === 0 ? <UiText style={styles.muted}>{t("home.widgetNoTasksToday")}</UiText> : null}
+    {nextSchedule ? <LinkRow label={[nextSchedule.timeLabel, nextSchedule.title].filter(Boolean).join(" ")} href="/task?seg=calendar" navigate={navigate} /> : null}
+    <SavedOfflineNote show={!tasks.offline && Boolean(calendar.offline)} at={calendar.offline?.lastSyncedAt} />
+    {suggestionRow}
+    {todo.page && Object.values(todo.page.sources).some(source => source === "unavailable") ? <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText> : null}
     <TodayQuestionCard onSettled={settled} />
     <LinkRow label={t("home.widgetMore")} href="/task?seg=todo" navigate={navigate} />
   </View>;
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-  const { styles } = useStyles(); return <View><UiText style={styles.statNumber}>{value}</UiText><UiText style={styles.muted}>{label}</UiText></View>;
+function Stat({ value, label, danger = false }: { value: string; label: string; danger?: boolean }) {
+  const { styles } = useStyles(); return <View><UiText style={[styles.statNumber, danger && styles.statDanger]}>{value}</UiText><UiText style={styles.muted}>{label}</UiText></View>;
 }
 
 function PlanWidget({ navigate }: { navigate: Navigate }) {
@@ -138,8 +165,11 @@ function PlanWidget({ navigate }: { navigate: Navigate }) {
     copy: { id: "home-plan-summary" }, freshForMs: HOME_COPY_FRESH_MS, accept: value => planV2SummaryResponseSchema.safeParse(value).success });
   return <CopyResource state={state} schema={planV2SummaryResponseSchema}>{data => data.current ? <View>
     <View style={styles.score}><UiText style={styles.scoreNumber}>{data.current.score.total}</UiText><UiText style={styles.muted}>/ 100</UiText><UiText style={data.current.score.todayDelta < 0 ? styles.negative : styles.delta}>{signedDelta(data.current.score.todayDelta)} {t("home.widgetTodayDelta")}</UiText></View>
-    <UiText style={styles.muted}>{data.current.goal}</UiText>
-    <UiText style={styles.muted}>{data.current.score.segments.map(segment => `${segment.key === "event" ? t("home.widgetEventSegment") : segment.shortLabel} ${segment.earned}/${segment.allocation}`).join(" · ")}</UiText>
+    <UiText style={styles.muted} numberOfLines={1}>{data.current.goal}</UiText>
+    {/* UX: the top two parts of the score as single-line rows (name · earned/allocation), never a run-on list. */}
+    {data.current.score.segments.slice(0, 2).map(segment => <View key={segment.key} style={styles.segmentRow}>
+      <UiText style={[styles.muted, styles.segmentName]} numberOfLines={1}>{segment.key === "event" ? t("home.widgetEventSegment") : segment.shortLabel}</UiText>
+      <UiText style={styles.segmentValue}>{segment.earned}/{segment.allocation}</UiText></View>)}
     <LinkRow label={data.current.todayChance?.actionLabel ?? t("home.widgetMore")} href={data.current.todayChance?.href ?? "/task?seg=plan"} navigate={navigate} />
   </View> : <View><UiText style={styles.muted}>{t("home.widgetPlanEmptyDetail")}</UiText><Button label={t("home.widgetGoal")} onPress={() => navigate("/task?seg=plan")} variant="secondary" size="sm" /></View>}</CopyResource>;
 }
@@ -192,8 +222,8 @@ function NetworkCardBody({ navigate, offline, lastSyncedAt, summary, recent }: {
   </View>;
 }
 
-function SecretaryWidget({ actorId, navigate }: { actorId: string; navigate: Navigate }) {
-  const { styles } = useStyles(); const { t, language } = useOrbitLocale();
+function SecretaryWidget({ actorId, navigate, size }: { actorId: string; navigate: Navigate; size: "s" | "m" }) {
+  const { styles } = useStyles(); const { t, language } = useOrbitLocale(); const { timeZone } = useOrbitTimeZone();
   // LF1: the secretary preview is the shared buildSecretaryPreview over the device's inbox domain (0118),
   // instead of the server paging through the whole inbox on every Home focus.
   const inbox = useLocalInbox(false);
@@ -203,6 +233,9 @@ function SecretaryWidget({ actorId, navigate }: { actorId: string; navigate: Nav
     const rows = localInboxList(inbox.rows, { filter: "all", language, nowMs });
     return buildSecretaryPreview(actorId, rows.map(row => ({ notification: { ...row, actorId } as InboxNotificationDTO, sourceState: row.sourceState })), new Date(nowMs).toISOString());
   }, [actorId, inbox.rows, language]);
+  // UX: secretary notices are rare; without one the card shows the agent's suggestions (建议 in the to-do tab, same shared page copy).
+  const todo = useTodoPage(timeZone, todayKey(new Date(), timeZone));
+  const suggestions = todo.page ? [...todo.page.decisions.items, ...todo.page.nextMoves.items] : [];
   if (!inbox.available) {
     if (!fallback.data) return <FallbackState loading={fallback.loading} refresh={fallback.refresh} />;
     if (fallback.data.actorId !== actorId || fallback.data.items.some(item => item.notification.actorId !== actorId)) return <UiText style={styles.muted}>{t("home.widgetUnavailable")}</UiText>;
@@ -212,7 +245,11 @@ function SecretaryWidget({ actorId, navigate }: { actorId: string; navigate: Nav
   return <View><MirrorNotice offline={inbox.available && inbox.freshness.offline} lastSyncedAt={inbox.freshness.lastSyncedAt} />
     {preview.items.filter(item => item.notification.target.href).map(item =>
       <LinkRow key={item.key} label={`${item.notification.title}${item.notification.sample ? ` · ${t("home.widgetSample")}` : ""}`} href={item.notification.target.href!} navigate={navigate} />)}
-    {preview.items.length ? <LinkRow label={t("home.widgetMore")} href="/inbox?filter=secretary" navigate={navigate} /> : <UiText style={styles.muted}>{t("home.widgetSecretaryEmptyDetail")}</UiText>}</View>;
+    {preview.items.length ? <LinkRow label={t("home.widgetMore")} href="/inbox?filter=secretary" navigate={navigate} />
+      : suggestions.length ? <>{suggestions.slice(0, size === "m" ? 2 : 1).map(item => <LinkRow key={item.key} label={item.titlePreview}
+        href={item.source === "agent_action" ? `/task?seg=todo&entry=${encodeURIComponent(item.sourceId)}` : "/task?seg=todo"} navigate={navigate} />)}
+        <LinkRow label={t("home.widgetMore")} href="/task?seg=todo" navigate={navigate} /></>
+      : <UiText style={styles.muted}>{t("home.widgetSecretaryEmptyDetail")}</UiText>}</View>;
 }
 
 function PendingWidget({ navigate, size }: { navigate: Navigate; size: "s" | "m" }) {
@@ -268,11 +305,11 @@ function MemoWidget({ actorId, navigate, size }: { actorId: string; navigate: Na
 
 export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide, onDataSettled }: { widget: HomeWidgetKey; size: "s" | "m"; client: OrbitApiClient; actorId: string; navigate: Navigate; guide: GuideProgress | null; onDataSettled?: () => void }) {
   switch (widget) {
-    case "today": return <TodayWidget navigate={navigate} guide={guide} onDataSettled={onDataSettled} />;
+    case "today": return <TodayWidget actorId={actorId} size={size} navigate={navigate} guide={guide} onDataSettled={onDataSettled} />;
     case "planScore": return <PlanWidget navigate={navigate} />;
     case "nextEvent": return <EventWidget navigate={navigate} />;
     case "network": return <NetworkWidget navigate={navigate} />;
-    case "secretary": return <SecretaryWidget actorId={actorId} navigate={navigate} />;
+    case "secretary": return <SecretaryWidget actorId={actorId} size={size} navigate={navigate} />;
     case "pending": return <PendingWidget size={size} navigate={navigate} />;
     case "week": return <WeekWidget size={size} navigate={navigate} />;
     case "eventPick": return <PickWidget size={size} navigate={navigate} />;
@@ -282,11 +319,12 @@ export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide,
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  muted: { color: colors.ink3Text, fontSize: 11, lineHeight: 18 }, stale: { color: colors.coralText, fontSize: 10, marginBottom: 6 },
-  link: { minHeight: 32, justifyContent: "center", paddingVertical: 3 }, linkText: { color: colors.ink2, fontSize: 12 },
-  stats: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }, statNumber: { color: colors.ink, fontSize: 22, fontWeight: "700" },
-  score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 11, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 11, fontWeight: "700" },
-  eventTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 10 },
-  guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 11, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 12, fontWeight: "600" },
+  muted: { color: colors.ink3Text, fontSize: 13, lineHeight: 21 }, stale: { color: colors.coralText, fontSize: 12, marginBottom: 6 },
+  link: { minHeight: 32, justifyContent: "center", paddingVertical: 3 }, linkText: { color: colors.ink2, fontSize: 14 },
+  stats: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }, statNumber: { color: colors.ink, fontSize: 24, fontWeight: "700" }, statDanger: { color: colors.coralText },
+  segmentRow: { flexDirection: "row", alignItems: "baseline", gap: 8 }, segmentName: { flex: 1, minWidth: 0 }, segmentValue: { color: colors.ink2, fontSize: 13, lineHeight: 21, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 13, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 13, fontWeight: "700" },
+  eventTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 24 },
+  people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 12 },
+  guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 13, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 14, fontWeight: "600" },
 }));

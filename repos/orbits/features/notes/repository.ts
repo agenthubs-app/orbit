@@ -8,6 +8,8 @@ export interface NoteRepository {
   save(payload: NoteRecordPayload): Promise<NoteRecordPayload>;
   saveIfAbsent(payload: NoteRecordPayload): Promise<NoteRecordPayload | null>;
   saveIfVersion(payload: NoteRecordPayload, expected: { version: number; updatedAt: string }): Promise<NoteRecordPayload | null>;
+  /** Tombstones the note (sync then sends a delete); false when it changed since `expectedUpdatedAt` or is gone. */
+  delete(actorId: string, noteId: string, expected: { updatedAt: string; deletedAt: string }): Promise<boolean>;
 }
 
 export function createNoteRepository(input: {
@@ -15,6 +17,17 @@ export function createNoteRepository(input: {
   workspaceId: string;
 }): NoteRepository {
   return {
+    async delete(actorId, noteId, expected) {
+      const deleted = await input.store.deleteRecord({
+        workspaceId: input.workspaceId,
+        collectionName: NOTE_COLLECTION,
+        recordId: noteId,
+        userId: actorId,
+        expectedUpdatedAt: expected.updatedAt,
+        deletedAt: expected.deletedAt,
+      });
+      return deleted !== null;
+    },
     async get(actorId, noteId) {
       const record = await input.store.getRecord({
         workspaceId: input.workspaceId,

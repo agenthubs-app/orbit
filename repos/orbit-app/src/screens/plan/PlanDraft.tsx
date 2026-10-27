@@ -12,8 +12,8 @@ import { Icon, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { KitButton, KitCard, KitChip, KitEmo, kitText, useKitStyles, useKitWhy } from "./plan-kit";
-import { Bubble, ChatMark } from "./plan-flow-kit";
-import { turnChipText } from "./plan-model";
+import { Bubble, ChatMark, FootFade } from "./plan-flow-kit";
+import { PLAN_EVENT_EMOJI, readableUnchanged, turnChipText } from "./plan-model";
 
 /** 初版 / 方案卡。`clamp`：見立て 4 行折叠（AI 修正之后，b10 ⑤）；`footer`：卡底部的回数 + 两个按钮。 */
 export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDraftView; clamp?: boolean; footer?: ReactNode | undefined }) {
@@ -22,7 +22,8 @@ export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDra
   const { t } = useOrbitLocale();
   const { content } = draft;
   const [full, setFull] = useState(false);
-  const basis = [content.basis.map((item) => item.label).join(" · "), ...draft.citations.map((citation) => `${citation.id} ${citation.title}`)].filter(Boolean).join("\n");
+  // QA-A: landscape refs carry only their id as label ("L-101"); the citations below name them properly.
+  const basis = [content.basis.filter((item) => item.kind !== "landscape").map((item) => item.label).join(" · "), ...draft.citations.map((citation) => citation.title)].filter(Boolean).join("\n");
   const why = useKitWhy(basis || null);
   const folded = clamp && !full;
   return (
@@ -71,6 +72,37 @@ export function PlanDraftCard({ draft, clamp = false, footer }: { draft: PlanDra
           </View>
         ) : null}
       </View>
+      {/* QA-A: what is being confirmed — the steps and who to talk to — not only the judgement. */}
+      {content.steps.length ? (
+        <View style={styles.jsec}>
+          <UiText style={styles.jsecLabel}>{t("plan.step.title")}</UiText>
+          {content.steps.map((step, index) => (
+            <View key={step.key || String(index)} style={styles.listRow}>
+              <UiText style={styles.listNum}>{String(index + 1)}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{step.title}</UiText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {content.personTypes.length ? (
+        <View style={styles.jsec}>
+          <UiText style={styles.jsecLabel}>{t("plan.types.title")}</UiText>
+          {content.personTypes.map((type) => (
+            <View key={type.key} style={styles.listRow}>
+              <UiText style={styles.listEmoji}>{type.emoji}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{type.shortLabel}</UiText>
+              <UiText style={styles.listMeta}>{t("plan.draft.peopleCount", { count: type.targetCount })}</UiText>
+            </View>
+          ))}
+          {content.event.allocation > 0 ? (
+            <View style={styles.listRow}>
+              <UiText style={styles.listEmoji}>{PLAN_EVENT_EMOJI}</UiText>
+              <UiText style={[styles.listText, kit.grow]}>{t("plan.draft.event")}</UiText>
+              <UiText style={styles.listMeta}>{t("plan.draft.eventCount", { count: content.event.targetCount })}</UiText>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {footer}
     </KitCard>
   );
@@ -110,7 +142,7 @@ export function PlanTurn({ turn, limit, footer, mark = false }: { turn: PlanDraf
             ))}
           </View>
         ) : null}
-        {changed && turn.unchanged.length ? <View style={styles.sameLine}><UiText style={styles.sameText}>{t("plan.turn.unchanged", { items: turn.unchanged.join(" · ") })}</UiText></View> : null}
+        {changed && readableUnchanged(turn.unchanged).length ? <View style={styles.sameLine}><UiText style={styles.sameText}>{t("plan.turn.unchanged", { items: readableUnchanged(turn.unchanged).join(" · ") })}</UiText></View> : null}
         {!changed ? <View style={[styles.sameLine, styles.noChange]}><UiText style={styles.sameText}>{turn.noChangeReason ?? t("plan.turn.unchangedTitle")}</UiText></View> : null}
         {why.body}
         {footer}
@@ -119,19 +151,13 @@ export function PlanTurn({ turn, limit, footer, mark = false }: { turn: PlanDraf
   );
 }
 
-/** 最后一张卡下面：「AI 修正 あと N 回」（初版另加「初版は回数に含みません」）+ 手動で編集 / この内容で確定。 */
-export function DraftActions({ draft, first, onManual, onConfirm, confirming }: { draft: PlanDraftView; first: boolean; onManual: () => void; onConfirm: () => void; confirming: boolean }) {
+/** 最后一张卡下面：手動で編集 / この内容で確定。剩余回数只在底部输入栏的占位文字里提一次（UX 走查：同屏出现三次太吵）。 */
+export function DraftActions({ draft, onManual, onConfirm, confirming }: { draft: PlanDraftView; onManual: () => void; onConfirm: () => void; confirming: boolean }) {
   const { styles } = useStyles();
-  const kit = useKitStyles().styles;
   const { t } = useOrbitLocale();
-  const left = Math.max(0, draft.aiFixLimit - draft.aiFixUsed);
   return (
     <>
-      <View style={styles.leftRow}>
-        <KitChip label={t("plan.fix.chipLeft", { count: left })} tone="lav" />
-        {first ? <UiText style={[kit.lbl, styles.leftNote]}>{t("plan.fix.firstFree")}</UiText> : null}
-      </View>
-      <View style={styles.grid2}>
+      <View style={[styles.grid2, styles.actsTop]}>
         <KitButton sm icon="pen" label={t("plan.fix.manual")} onPress={onManual} disabled={!draft.manualEditAvailable} style={styles.grid2Btn} testID="draft-manual" />
         <KitButton sm primary label={t("plan.fix.confirm")} onPress={onConfirm} disabled={confirming} style={styles.grid2Btn} testID="draft-confirm" />
       </View>
@@ -146,10 +172,7 @@ export function DraftUsedUp({ draft, onManual, onConfirm, confirming, onTurn }: 
   const { t } = useOrbitLocale();
   return (
     <View style={styles.flat} testID="draft-used-up">
-      <View style={styles.row8}>
-        <UiText style={styles.usedTitle}>{t("plan.fix.allUsed")}</UiText>
-        <KitChip label={t("plan.fix.chipLeft", { count: 0 })} />
-      </View>
+      <UiText style={styles.usedTitle}>{t("plan.fix.allUsed")}</UiText>
       <UiText style={[kit.lbl, styles.usedBody]}>{t("plan.fix.allUsedBody")}</UiText>
       <View style={styles.hist}>
         {draft.turns.map((turn) => (
@@ -167,8 +190,8 @@ export function DraftUsedUp({ draft, onManual, onConfirm, confirming, onTurn }: 
 }
 
 /**
- * 底部（kit .revbar + .composer）：「AI 修正 あと N 回」+ 提示与例句，下面是输入栏（送信）。0 回时变灰、不可输入。
- * 画板已去掉「＋」（添付）与 🎤（决定表 §19-1）。
+ * 底部输入栏（送信）：只有 .composer，剩余回数写在占位文字里（UX 走查：浮在正文上的 .revbar 卡挡内容、和卡里的回数重复）。
+ * 0 回时变灰、不可输入。画板已去掉「＋」（添付）与 🎤（决定表 §19-1）。
  */
 export function PlanFixBar({ draft, text, onText, onSend, sending }: {
   draft: PlanDraftView;
@@ -187,7 +210,8 @@ export function PlanFixBar({ draft, text, onText, onSend, sending }: {
       leftLabel={t("plan.fix.leftLabel", { count: left })}
       hint={out ? t("plan.fix.usedUp") : t("plan.fix.hint")}
       example={out ? t("plan.fix.countsNoChange") : t("plan.fix.example")}
-      placeholder={out ? t("plan.fix.usedUpShort") : t("plan.fix.placeholder")}
+      placeholder={out ? t("plan.fix.usedUpShort") : t("plan.fix.placeholderLeft", { count: left })}
+      bar={false}
       inputLabel={t("plan.fix.inputLabel")}
       sendLabel={t("plan.fix.send")}
       text={text}
@@ -199,7 +223,7 @@ export function PlanFixBar({ draft, text, onText, onSend, sending }: {
 }
 
 /** kit .revbar（回数 + 说明 + 一行规则）+ .composer（输入 + 送信）；生成流程的 AI 修正与見直し共用。left = 0 时变灰、不可输入。 */
-export function RevComposer({ label, left, leftLabel, hint, example, placeholder, inputLabel, sendLabel, text, onText, onSend, sending, canSend = Boolean(text.trim()), above }: {
+export function RevComposer({ label, left, leftLabel, hint, example, placeholder, inputLabel, sendLabel, text, onText, onSend, sending, canSend = Boolean(text.trim()), above, bar = true }: {
   label: string;
   left: number;
   leftLabel: string;
@@ -216,26 +240,31 @@ export function RevComposer({ label, left, leftLabel, hint, example, placeholder
   canSend?: boolean;
   /** 发送中 / 失败的提示：放在送信钮上方，点了就看得到。 */
   above?: ReactNode;
+  /** false：不画 .revbar（回数 + 说明），只留输入栏（生成流程的 AI 修正）。 */
+  bar?: boolean;
 }) {
   const { styles, colors } = useStyles();
   const { t } = useOrbitLocale();
   const out = left === 0;
   return (
     <View pointerEvents="box-none" style={styles.bar}>
+      {/* 底栏盖在滚动的正文上：渐隐到不透明的页面底色，滚上来的字不会从输入栏下面透出来。 */}
+      <FootFade />
       {above}
-      <View style={styles.revbar}>
+      {bar ? <View style={styles.revbar}>
         <View accessibilityLabel={leftLabel} style={[styles.rvn, out && styles.rvnZero]}>
           <UiText style={[styles.rvnSmall, out && styles.rvnSmallZero]}>{label}</UiText>
           <UiText style={styles.rvnB}>{t("plan.fix.leftPre")}<UiText style={styles.rvnEm}>{String(left)}</UiText>{t("plan.fix.leftPost")}</UiText>
         </View>
         <View style={styles.rvt}>
           <UiText style={styles.rvtText}>{hint}</UiText>
-          <UiText numberOfLines={1} style={styles.ex}>{example}</UiText>
+          <UiText style={styles.ex}>{example}</UiText>
         </View>
-      </View>
+      </View> : null}
       <View style={[styles.composer, out && styles.composerOff]}>
         <TextInput
           accessibilityLabel={inputLabel}
+          {...(bar ? {} : { accessibilityHint: leftLabel })}
           editable={!out && !sending}
           onChangeText={onText}
           placeholder={placeholder}
@@ -253,7 +282,6 @@ export function RevComposer({ label, left, leftLabel, hint, example, placeholder
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  row8: { flexDirection: "row", alignItems: "center", gap: 8 },
   line: { borderTopWidth: 1, borderTopColor: colors.line },
   card: { paddingVertical: 14, paddingHorizontal: 16 },
   head: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -271,10 +299,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 },
   flowCell: { flex: 1, minWidth: 0, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 6, alignItems: "center" },
   pay: { backgroundColor: colors.accentSoft },
-  flowEmoji: { fontSize: 17, lineHeight: 26 },
+  flowEmoji: { fontSize: 19, lineHeight: 29 },
   flowLabel: { color: colors.ink, ...kitText(12, "700", 1.75) },
   flowNote: { color: colors.ink3, ...kitText(10.5, "500", 1.4), textAlign: "center" },
   ar: { width: 22, alignItems: "center" },
+  listRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 4 },
+  listNum: { width: 20, height: 20, borderRadius: 10, overflow: "hidden", backgroundColor: colors.ink, color: colors.bg, textAlign: "center", ...kitText(11, "800"), lineHeight: 20, marginTop: 1 },
+  listEmoji: { width: 20, textAlign: "center", fontSize: 15, lineHeight: 22 },
+  listText: { color: colors.ink, ...kitText(13.5, "600", 1.6) },
+  listMeta: { color: colors.ink3, ...kitText(12.5, "600", 1.75) },
   diff: { marginTop: 6 },
   dl: { flexDirection: "row", gap: 10, paddingVertical: 9 },
   chgtag: { alignSelf: "flex-start", paddingVertical: 2, paddingHorizontal: 7, borderRadius: 6, backgroundColor: colors.macLav },
@@ -285,17 +318,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sameLine: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.surface2 },
   noChange: { marginTop: 10 },
   sameText: { color: colors.ink2, ...kitText(12, "400", 1.6) },
-  leftRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
-  leftNote: { marginLeft: "auto" },
+  actsTop: { marginTop: 12 },
   grid2: { flexDirection: "row", gap: 12, marginTop: 8 },
   grid2Btn: { flex: 1 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 16 },
-  usedTitle: { flex: 1, color: colors.ink, ...kitText(13.5, "700") },
+  usedTitle: { color: colors.ink, ...kitText(13.5, "700") },
   usedBody: { marginTop: 4, lineHeight: 18.4 },
   hist: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   usedActs: { marginTop: 12 },
 
-  bar: { paddingHorizontal: 12, paddingBottom: 26, gap: 14 },
+  bar: { paddingTop: 22, paddingHorizontal: 12, paddingBottom: 26, gap: 14 },
   revbar: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 20, backgroundColor: colors.surface },
   rvn: { alignItems: "center", paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.accentSoft },
   rvnZero: { backgroundColor: colors.surface2 },
@@ -307,8 +339,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rvt: { flex: 1, minWidth: 0 },
   rvtText: { color: colors.ink, ...kitText(11.5, "700") },
   ex: { color: colors.ink3, ...kitText(11.5, "600"), marginTop: 2 },
-  composer: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 26, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassLine },
+  composer: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.glassLine },
   composerOff: { opacity: 0.55 },
-  composerInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 13, lineHeight: 19.5, paddingLeft: 6, paddingVertical: 7 },
+  composerInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 15, lineHeight: 22, paddingLeft: 6, paddingVertical: 7 },
   send: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
 }));

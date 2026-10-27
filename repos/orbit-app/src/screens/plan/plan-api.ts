@@ -75,6 +75,8 @@ export type { PlanFailure, PlanResult } from "./plan-failure";
 
 /** `POST …/v2/[planId]/achieve` answers `{ planId, achievedAt }` (no shared schema for it). */
 const planAchievedSchema = z.object({ planId: z.string().min(1), achievedAt: z.string().min(1) });
+/** `DELETE …/v2/[planId]` (QA-A2) answers `{ planId, deleted: true }`. */
+const planDeletedSchema = z.object({ planId: z.string().min(1), deleted: z.literal(true) });
 export type PlanAchieved = z.infer<typeof planAchievedSchema>;
 
 const PLANS = "/api/agent/plans";
@@ -86,6 +88,8 @@ export interface PlanApi {
   goalKind(text: string): Promise<PlanResult<PlanGoalKindResult>>;
   createIntake(body: PlanIntakeCreateRequest): Promise<PlanResult<PlanIntakeView>>;
   getIntake(intakeId: string): Promise<PlanResult<PlanIntakeView>>;
+  /** QA-A2: drop an unfinished plan flow. */
+  abandonIntake(intakeId: string, idempotencyKey: string): Promise<PlanResult<{ intakeId: string; abandoned: true }>>;
   retryBackground(intakeId: string, idempotencyKey: string): Promise<PlanResult<PlanIntakeView>>;
   confirmBlock(intakeId: string, body: PlanIntakeBlockRequest): Promise<PlanResult<PlanIntakeView>>;
   addMembers(intakeId: string, body: PlanIntakeMembersRequest): Promise<PlanResult<PlanIntakeView>>;
@@ -125,6 +129,8 @@ export interface PlanApi {
   openManualEdit(planId: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
   achieve(planId: string, expectedRevision: number, idempotencyKey: string): Promise<PlanResult<PlanAchieved>>;
   achievement(planId: string): Promise<PlanResult<PlanAchievementView>>;
+  /** Removes a goal (active or achieved); it leaves every list. */
+  deleteGoal(planId: string, idempotencyKey: string): Promise<PlanResult<{ planId: string; deleted: true }>>;
   nextGoals(planId: string): Promise<PlanResult<PlanNextGoalsResponse>>;
   editGoal(planId: string, body: PlanGoalEditRequest): Promise<PlanResult<PlanGoalEditResult>>;
   openGoal(planId: string): Promise<PlanResult<PlanOpenResult>>;
@@ -152,6 +158,7 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
     achieve: (id, expectedRevision, idempotencyKey) => call("post", plan(id, "/achieve"), planAchievedSchema, { expectedRevision, idempotencyKey }),
     achievement: (id) => call("get", plan(id, "/achievement"), planAchievementViewSchema),
     currentReview: (id) => call("get", plan(id, "/reviews/current"), planReviewViewSchema),
+    deleteGoal: (id, idempotencyKey) => call("delete", plan(id), planDeletedSchema, { idempotencyKey }),
     editGoal: (id, body) => call("patch", plan(id, "/goal"), planGoalEditResultSchema, body),
     getReview: (id) => call("get", draft(id, "/review"), planReviewViewSchema),
     legacyDetail: (id) => call("get", `${PLANS}/legacy/${segment(id)}`, planLegacyDetailSchema),
@@ -185,6 +192,7 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
     fix: (id, text, idempotencyKey) => call("post", draft(id, "/fix"), planDraftViewSchema, { idempotencyKey, text }),
     getDraft: (id) => call("get", draft(id), planDraftViewSchema),
     getIntake: (id) => call("get", intake(id), planIntakeViewSchema),
+    abandonIntake: (id, idempotencyKey) => call("delete", intake(id), z.object({ intakeId: z.string().min(1), abandoned: z.literal(true) }), { idempotencyKey }),
     goalKind: (text) => call("post", `${PLANS}/goal-kind`, planGoalKindResultSchema, { text }),
     ladder: (id, wants, idempotencyKey) => call("post", intake(id, "/ladder"), planIntakeViewSchema, { idempotencyKey, wants }),
     listIntakes: () => call("get", `${PLANS}/intakes`, planIntakeListResponseSchema),

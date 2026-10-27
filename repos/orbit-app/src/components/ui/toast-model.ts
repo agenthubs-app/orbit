@@ -1,6 +1,7 @@
 // R04 Toast rules (01-system ① / kit .toast), as a pure model:
 //   - one at a time: a new toast replaces the one on screen;
-//   - success / info leave after 5 s (the countdown line); errors stay until closed;
+//   - success / info leave after 5 s (the countdown line); errors leave after 4 s (6 s with a
+//     button, so 再試行 can still be tapped) and close earlier with a tap;
 //   - an `undo` adds 元に戻す (5 s); `keep` makes it an undo bar: no countdown, stays
 //     until closed, says until when (sub line);
 //   - one optional action button instead of undo: 再試行 on an error, 開く on info;
@@ -15,6 +16,9 @@ export type ToastInput = { kind?: ToastKind; message: string; sub?: string; undo
 export type ToastState = { id: number; owner: number; kind: ToastKind; message: string; sub?: string; undo?: () => void; action?: ToastAction; keep: boolean; autoDismissMs: number | null; icon?: string };
 
 export const TOAST_DURATION_MS = 5000;
+/** UX: an error no longer stays until tapped (it followed people across screens); a little longer when it has a button. */
+export const ERROR_TOAST_DURATION_MS = 4000;
+export const ERROR_ACTION_TOAST_DURATION_MS = 6000;
 let nextId = 1;
 
 export function createToast(input: ToastInput, owner: number): ToastState {
@@ -29,7 +33,7 @@ export function createToast(input: ToastInput, owner: number): ToastState {
     ...(input.icon ? { icon: input.icon } : {}),
     ...(input.undo ? { undo: input.undo } : input.action ? { action: input.action } : {}),
     keep,
-    autoDismissMs: kind === "error" || keep || input.stay ? null : TOAST_DURATION_MS,
+    autoDismissMs: keep || input.stay ? null : kind === "error" ? (input.undo || input.action ? ERROR_ACTION_TOAST_DURATION_MS : ERROR_TOAST_DURATION_MS) : TOAST_DURATION_MS,
   };
 }
 

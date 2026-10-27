@@ -75,3 +75,19 @@ test("profile document extraction factory resolves live policy provider", () => 
   assert.equal(resume.success, true);
   assert.equal(resume.data.provenance.extractionMethod, "live-policy-no-op");
 });
+
+test("live profile text extraction reads Japanese field labels (QA-D)", () => {
+  const service = createLiveProfileDocumentExtractionService({ now: () => "2026-10-26T07:00:00.000Z" });
+  const resume = service.extractResumeDraft({
+    fileName: "profile.txt",
+    mimeType: "text/plain",
+    text: ["氏名：山田花子", "会社：株式会社QAD", "役職：事業開発部長", "所在地：東京"].join("\n"),
+  });
+  assert.equal(resume.success, true);
+  if (!resume.success) return;
+  assert.equal(resume.data.state, "success");
+  assert.equal(resume.data.draft?.displayName, "山田花子");
+  assert.equal(resume.data.draft?.organization, "株式会社QAD");
+  assert.equal(resume.data.draft?.role, "事業開発部長");
+  assert.equal(resume.data.draft?.homeMarket, "東京");
+});

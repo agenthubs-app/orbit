@@ -3,6 +3,7 @@ export const today = {
   "today.unavailable": "今天暂时打不开",
   "today.timezoneUnavailable": "无法读取设备时区，请恢复后创建事项。草稿已保留。",
   "today.addTask": "添加待办",
+  "today.addedToToday": "已添加到「今天」",
   "today.creating": "添加中",
   "today.emptyTasks": "今天没有待办",
   "today.emptySchedule": "今天没有日程",

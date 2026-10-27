@@ -22,6 +22,8 @@ export interface OrbitApiClientOptions {
   authCookieHeader?: string;
   baseUrl?: string;
   fetchImpl?: FetchLike;
+  /** The UI language, sent as `x-orbit-lang` on every request so localized server answers match the app; a request's own header wins. */
+  language?: string;
   /** Conditional-GET memory shared by every client of this process; tests pass their own. */
   conditionalCache?: OrbitConditionalCache;
 }
@@ -30,6 +32,8 @@ export type OrbitApiRequestOptions = {
   headers?: Readonly<Record<string, string>>;
   responseType?: "bytes";
   signal?: AbortSignal;
+  /** How long to wait for the whole answer before giving up with the usual network failure; 0 waits forever. Default: see requestTimeoutMs. */
+  timeoutMs?: number;
 } & (
   | { body?: unknown; rawBody?: never }
   | { body?: never; rawBody: Uint8Array<ArrayBuffer> }
@@ -41,6 +45,76 @@ export interface OrbitApiBytes {
 }
 
 export const MAX_ORBIT_BINARY_BYTES = 10 * 1024 * 1024;
+
+// A request that never answers must end as an ordinary network failure so screens show their retry UI instead of spinning.
+export const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
+// AI turns, plan drafts, assessments, card scans, imports and uploads can legitimately run for minutes (server maxDuration up to 180 s).
+export const LONG_REQUEST_TIMEOUT_MS = 180_000;
+const LONG_RUNNING_WRITE_PATHS: readonly RegExp[] = [
+  /^\/api\/ai\//u,
+  /^\/api\/agent\//u,
+  /^\/api\/chat\//u,
+  /^\/api\/events\/assessments(?:[/?]|$)/u,
+  /^\/api\/events\/[^/]+\/join\/(?:next|profile|submit)(?:[/?]|$)/u,
+  /^\/api\/contact-drafts\//u,
+  /^\/api\/contacts\/(?:import|business-card)(?:[/?]|$)/u,
+  /^\/api\/profile(?:[/?]|$)/u,
+  /^\/api\/(?:analysis|network\/analysis|network\/snapshot)(?:[/?]|$)/u,
+  /^\/api\/message-drafts(?:[/?]|$)/u,
+  /\/draft(?:[?]|$)/u,
+  /\/generate(?:[?]|$)/u,
+  /^\/api\/host\/events\/[^/]+\/matching(?:[/?]|$)/u
+];
+
+/** The default wait for one request: long for uploads and for writes that run AI or heavy work, otherwise 20 s. */
+export function requestTimeoutMs(method: string, path: string, options: OrbitApiRequestOptions = {}): number {
+  if (options.timeoutMs !== undefined) return options.timeoutMs;
+  if (options.rawBody !== undefined) return LONG_REQUEST_TIMEOUT_MS;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (method !== "GET" && LONG_RUNNING_WRITE_PATHS.some((pattern) => pattern.test(normalizedPath))) return LONG_REQUEST_TIMEOUT_MS;
+  return DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
+const REQUEST_STOPPED = Symbol("orbit-request-stopped");
+
+interface RequestDeadline {
+  readonly signal: AbortSignal;
+  /** Rejects with REQUEST_STOPPED once the caller aborts or the time runs out, so a fetch or body read that ignores the signal still ends. */
+  until<T>(promise: Promise<T>): Promise<T>;
+  timedOut(): boolean;
+  dispose(): void;
+}
+
+// One AbortSignal for fetch that fires on the caller's signal or on the timeout (AbortSignal.any is not on every RN runtime).
+function requestDeadline(callerSignal: AbortSignal | undefined, timeoutMs: number): RequestDeadline {
+  const controller = new AbortController();
+  let expired = false;
+  let stop: (reason: typeof REQUEST_STOPPED) => void = () => undefined;
+  const stopped = new Promise<never>((_resolve, reject) => { stop = reject; });
+  stopped.catch(() => undefined);
+  const abort = () => {
+    stop(REQUEST_STOPPED);
+    if (!controller.signal.aborted) controller.abort(callerSignal?.reason);
+  };
+  if (callerSignal?.aborted) abort();
+  else callerSignal?.addEventListener("abort", abort);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  if (timeoutMs > 0 && Number.isFinite(timeoutMs) && !controller.signal.aborted) {
+    timer = setTimeout(() => {
+      expired = true;
+      abort();
+    }, timeoutMs);
+  }
+  return {
+    signal: controller.signal,
+    until: <T>(promise: Promise<T>) => Promise.race([promise, stopped]),
+    timedOut: () => expired,
+    dispose() {
+      if (timer !== null) clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", abort);
+    }
+  };
+}
 
 export interface OrbitApiClient {
   readonly baseUrl: string;
@@ -290,6 +364,15 @@ function requestInit(
   };
 }
 
+function networkFailure(): ApiResult<never> {
+  return failureResult(
+    0,
+    { featureMode: null, privacy: null, runtimeBoundary: null },
+    "ORBIT_APP_NETWORK_ERROR",
+    NETWORK_ERROR_MESSAGE
+  );
+}
+
 async function request<TData>(
   baseUrl: string,
   authCookieHeader: string,
@@ -298,6 +381,28 @@ async function request<TData>(
   path: string,
   options: OrbitApiRequestOptions = {},
   conditionalCache: OrbitConditionalCache = sharedConditionalCache
+): Promise<ApiResult<TData>> {
+  const deadline = requestDeadline(options.signal, requestTimeoutMs(method, path, options));
+  try {
+    return await requestOnce<TData>(baseUrl, authCookieHeader, fetchImpl, method, path, options, conditionalCache, deadline);
+  } catch (error) {
+    // The caller aborted or the time ran out while the answer was still arriving.
+    if (error === REQUEST_STOPPED) return networkFailure();
+    throw error;
+  } finally {
+    deadline.dispose();
+  }
+}
+
+async function requestOnce<TData>(
+  baseUrl: string,
+  authCookieHeader: string,
+  fetchImpl: FetchLike,
+  method: OrbitApiMethod,
+  path: string,
+  options: OrbitApiRequestOptions,
+  conditionalCache: OrbitConditionalCache,
+  deadline: RequestDeadline
 ): Promise<ApiResult<TData>> {
   if (options.rawBody !== undefined) {
     const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
@@ -310,25 +415,23 @@ async function request<TData>(
   }
   const conditionalKey = method === "GET" ? conditionalGetKey(baseUrl, authCookieHeader, path, options) : null;
   const remembered = conditionalKey ? conditionalCache.get(conditionalKey) : undefined;
-  const conditionalOptions: OrbitApiRequestOptions = remembered
-    ? { ...options, headers: { ...(options.headers ?? {}), "If-None-Match": remembered.etag } }
-    : options;
+  const conditionalOptions: OrbitApiRequestOptions = {
+    ...options,
+    ...(remembered ? { headers: { ...(options.headers ?? {}), "If-None-Match": remembered.etag } } : {}),
+    signal: deadline.signal
+  } as OrbitApiRequestOptions;
   let response: Response;
 
   try {
-    response = await fetchImpl(
+    response = await deadline.until(fetchImpl(
       pathToUrl(baseUrl, path),
       requestInit(method, conditionalOptions, authCookieHeader)
-    );
+    ));
   } catch {
     // Sprint 0131: an aborted request says nothing about the server; any other thrown fetch means it could not be reached.
-    if (!options.signal?.aborted) serverReachability.markUnreachable(baseUrl);
-    return failureResult(
-      0,
-      { featureMode: null, privacy: null, runtimeBoundary: null },
-      "ORBIT_APP_NETWORK_ERROR",
-      NETWORK_ERROR_MESSAGE
-    );
+    // A timeout is not proof either (the server may be slow), so it only ends this request.
+    if (!options.signal?.aborted && !deadline.timedOut()) serverReachability.markUnreachable(baseUrl);
+    return networkFailure();
   }
 
   serverReachability.markReachable(baseUrl);
@@ -362,12 +465,13 @@ async function request<TData>(
       return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
     }
     try {
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      const bytes = new Uint8Array(await deadline.until(response.arrayBuffer()));
       if (bytes.byteLength > MAX_ORBIT_BINARY_BYTES) {
         return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
       }
       return { success: true, data: { bytes, contentType } as TData, meta, status: response.status };
-    } catch {
+    } catch (error) {
+      if (error === REQUEST_STOPPED) throw error;
       return failureResult(response.status, meta, "ORBIT_APP_BINARY_READ_ERROR", NETWORK_ERROR_MESSAGE);
     }
   }
@@ -381,7 +485,9 @@ async function request<TData>(
     );
   }
 
-  const payload = await readJson(response);
+  const payload = await deadline.until(readJson(response));
+  // An abort during the body read surfaces as a JSON parse error; report it as the stop it was.
+  if (!payload.ok && deadline.signal.aborted) return networkFailure();
 
   if (!payload.ok) {
     return failureResult(
@@ -487,10 +593,19 @@ function coalescedGet<TData>(
   return pending;
 }
 
+// The language goes into the per-request headers, so the conditional-GET and in-flight keys include it.
+function withLanguage(options: OrbitApiRequestOptions | undefined, language: string): OrbitApiRequestOptions | undefined {
+  if (!language) return options;
+  const headers = options?.headers ?? {};
+  if (Object.keys(headers).some(name => name.toLowerCase() === "x-orbit-lang")) return options;
+  return { ...(options ?? {}), headers: { "x-orbit-lang": language, ...headers } } as OrbitApiRequestOptions;
+}
+
 export function createOrbitApiClient({
   authCookieHeader = "",
   baseUrl = configuredBaseUrl(),
   fetchImpl = fetch,
+  language = "",
   conditionalCache = sharedConditionalCache
 }: OrbitApiClientOptions = {}): OrbitApiClient {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
@@ -504,7 +619,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "DELETE",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     get<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -513,7 +628,7 @@ export function createOrbitApiClient({
         authCookieHeader,
         fetchImpl,
         path,
-        options,
+        withLanguage(options, language),
         conditionalCache
       );
     },
@@ -524,7 +639,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "PATCH",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     post<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -534,7 +649,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "POST",
         path,
-        options
+        withLanguage(options, language)
       );
     },
     put<TData>(path: string, options?: OrbitApiRequestOptions) {
@@ -544,7 +659,7 @@ export function createOrbitApiClient({
         fetchImpl,
         "PUT",
         path,
-        options
+        withLanguage(options, language)
       );
     }
   };

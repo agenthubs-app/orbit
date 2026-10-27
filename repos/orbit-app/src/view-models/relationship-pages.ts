@@ -22,15 +22,54 @@ export function decodeConversationSummaryPage(value: unknown, actorId: string): 
   return page;
 }
 
-export function conversationSummaryView(page: RelationshipConversationSummaryPageDTO, actorId: string, language: OrbitLanguage): RelationshipInboxView {
+const LANGUAGE_TAGS: Record<OrbitLanguage, string> = { en: "en-US", ja: "ja-JP", zh: "zh-CN" };
+const DAY_MS = 86_400_000;
+
+function startOfDay(value: Date): number {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+}
+
+/**
+ * QA-C3: like Messages — a time today, "Yesterday", a weekday this week, otherwise a date
+ * (the year only when it is not this year). Was a full "10/26/2026, 7:41:02 PM".
+ */
+export function messageListTime(iso: string, language: OrbitLanguage, now: Date = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  const tag = LANGUAGE_TAGS[language] ?? language;
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / DAY_MS);
+  if (days <= 0) return at.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" });
+  if (days === 1) return createTranslator(language)("inbox.yesterday");
+  if (days < 7) return at.toLocaleDateString(tag, { weekday: "short" });
+  return at.toLocaleDateString(tag, { month: "short", day: "numeric", ...(at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
+}
+
+/** QA-C3: the time under one message — the time today, otherwise date and time. */
+export function messageBubbleTime(iso: string, language: OrbitLanguage, now: Date = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  const tag = LANGUAGE_TAGS[language] ?? language;
+  const time = at.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" });
+  if (startOfDay(at) === startOfDay(now)) return time;
+  const date = at.toLocaleDateString(tag, { month: "short", day: "numeric", ...(at.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
+  return `${date} ${time}`;
+}
+
+/**
+ * QA-C3: the server keeps the account names from when the conversation started ("qa1026a");
+ * where the conversation is about one of my own contacts, my name for that person is used.
+ */
+export type ConversationContactName = (contactId: string) => string | undefined;
+
+export function conversationSummaryView(page: RelationshipConversationSummaryPageDTO, actorId: string, language: OrbitLanguage, contactName?: ConversationContactName): RelationshipInboxView {
   const t = createTranslator(language);
   const conversations = page.items.map(item => {
     const remote = item.participantAccountIds.find(id => id !== actorId)!;
-    const name = item.participantDisplayNames[remote]!;
+    const name = contactName?.(item.contactId)?.trim() || item.participantDisplayNames[remote]!;
     return {
       id: item.conversationId, contactId: item.contactId, name, organization: "",
       subject: name, preview: item.lastMessage?.bodyPreview ?? t("inbox.noMessages"),
-      lastAt: new Date(item.lastMessage?.sentAt ?? item.updatedAt).toLocaleString(language),
+      lastAt: messageListTime(item.lastMessage?.sentAt ?? item.updatedAt, language),
       nextAction: "", sourceLabels: [], unreadCount: item.unreadCount,
       unreadLabel: item.unreadCount ? t("inboxVm.newMessages", { count: item.unreadCount }) : "",
     };
@@ -39,8 +78,8 @@ export function conversationSummaryView(page: RelationshipConversationSummaryPag
 }
 
 /** These are the current page's explicit read targets, never a global mark-all. */
-export function conversationSummaryReadItems(page: RelationshipConversationSummaryPageDTO, actorId: string, language: OrbitLanguage): InboxFeedItem[] {
-  const view = conversationSummaryView(page, actorId, language);
+export function conversationSummaryReadItems(page: RelationshipConversationSummaryPageDTO, actorId: string, language: OrbitLanguage, contactName?: ConversationContactName): InboxFeedItem[] {
+  const view = conversationSummaryView(page, actorId, language, contactName);
   return page.items.map((item, index) => ({
     category: "contact", id: `conversation:${item.conversationId}`, occurredAt: item.updatedAt,
     read: item.unreadCount === 0, title: view.conversations[index]!.name, subtitle: view.conversations[index]!.preview,
@@ -66,17 +105,18 @@ export function decodeRelationshipMessagePage(value: unknown, actorId: string, c
   return page;
 }
 
-export function relationshipMessagePageView(page: RelationshipMessagePageDTO, actorId: string, language: OrbitLanguage): RelationshipThreadDetailView {
+export function relationshipMessagePageView(page: RelationshipMessagePageDTO, actorId: string, language: OrbitLanguage, contactName?: ConversationContactName): RelationshipThreadDetailView {
   const t = createTranslator(language), conversation = page.conversation;
   const remote = conversation.participantAccountIds.find(id => id !== actorId)!;
+  const remoteName = contactName?.(conversation.contactId)?.trim() || conversation.participantDisplayNames[remote]!;
   return {
     conversationId: conversation.conversationId, currentUserName: conversation.participantDisplayNames[actorId]!,
-    participantName: conversation.participantDisplayNames[remote]!, subject: conversation.participantDisplayNames[remote]!,
+    participantName: remoteName, subject: remoteName,
     draftReply: "", safetyText: "", sourceLabels: [], summary: "",
     messages: page.items.map(message => ({
       id: message.messageId, body: message.body, fromMe: message.senderAccountId === actorId,
-      sender: message.senderAccountId === actorId ? t("inboxVm.me") : message.senderDisplayName,
-      time: new Date(message.sentAt).toLocaleString(language),
+      sender: message.senderAccountId === actorId ? t("inboxVm.me") : remoteName,
+      time: messageBubbleTime(message.sentAt, language),
     })),
   };
 }

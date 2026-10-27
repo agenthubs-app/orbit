@@ -55,7 +55,7 @@ test("geometry and type follow the design scale", () => {
   );
   assert.ok(typography.body >= 14);
   assert.ok(typography.title > typography.titleSm);
-  assert.equal(typography.titleLg, 28, "b7 account completion heading has a named 28px token");
+  assert.equal(typography.titleLg, 30, "b7 account completion heading: the kit 28px token at the UX-1 App scale");
   assert.ok(typography.titleSm > typography.body);
   assert.equal(textStyles.pageTitle.fontSize, typography.title);
   assert.equal(textStyles.body.fontSize, typography.body);
@@ -69,4 +69,14 @@ test("mobile shadows use current React Native boxShadow tokens", () => {
     assert.ok(!("shadowOpacity" in shadow));
     assert.ok(!("shadowRadius" in shadow));
   }
+});
+
+test("UX-1: the App type scale follows the iOS text styles and never shrinks a size", async () => {
+  const { APP_TYPE_SCALE, appTypeSize } = await import("../src/design/type-scale");
+  const kit = Object.keys(APP_TYPE_SCALE).map(Number).sort((a, b) => a - b);
+  for (let i = 1; i < kit.length; i += 1) assert.ok(appTypeSize(kit[i]!) >= appTypeSize(kit[i - 1]!), `monotonic at ${kit[i]}`);
+  for (const size of kit) assert.ok(appTypeSize(size) >= Math.max(11, size), `${size} is not shrunk and stays ≥ 11`);
+  assert.equal(appTypeSize(14), 17, "kit body reads at the iOS Body size");
+  assert.equal(appTypeSize(13), 15, "kit small text reads at Subheadline");
+  assert.equal(appTypeSize(56), 56, "display sizes outside the table are kept");
 });

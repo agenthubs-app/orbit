@@ -7,10 +7,10 @@ export function DiscoverySettingsContent({data,busy,error,onChange,onRefresh}:{d
  const {t}=useOrbitLocale(),{colors}=useOrbitTheme();
  const stale=data.preferences.enabled&&(!data.lastRoundAt||Date.now()-Date.parse(data.lastRoundAt)>180000);
  return <View style={{gap:12,paddingVertical:18,borderBottomWidth:1,borderBottomColor:colors.line}}>
-  <Text accessibilityRole="header" style={{color:colors.ink,fontSize:17,fontWeight:'600'}}>{t('discovery.title')}</Text>
+  <Text accessibilityRole="header" style={{color:colors.ink,fontSize:19,fontWeight:'600'}}>{t('discovery.title')}</Text>
   <Text style={{color:colors.ink3Text,lineHeight:22}}>{t('discovery.hint')}</Text>
   {(['enabled','messageAnalysisEnabled'] as const).map(key=><Pressable key={key} accessibilityRole="switch" aria-checked={data.preferences[key]} accessibilityState={{checked:data.preferences[key],disabled:busy}} accessibilityLabel={t(key==='enabled'?'discovery.enabled':'discovery.messages')} disabled={busy} onPress={()=>onChange(key,!data.preferences[key])} style={{minHeight:48,paddingVertical:12,flexDirection:'row',gap:12,alignItems:'center'}}>
-   <Text style={{flex:1,color:colors.ink,fontSize:15}}>{t(key==='enabled'?'discovery.enabled':'discovery.messages')}</Text><Text style={{color:colors.accentText}}>{t(data.preferences[key]?'discovery.on':'discovery.off')}</Text>
+   <Text style={{flex:1,color:colors.ink,fontSize:17}}>{t(key==='enabled'?'discovery.enabled':'discovery.messages')}</Text><Text style={{color:colors.accentText}}>{t(data.preferences[key]?'discovery.on':'discovery.off')}</Text>
   </Pressable>)}
   <Text style={{color:colors.ink3Text,lineHeight:22}}>{t('discovery.sources')}</Text>
   {data.lastError||stale?<Text accessibilityRole="alert" style={{color:colors.ink}}>{t('discovery.unavailable')}</Text>:null}

@@ -42,7 +42,8 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
       <UiText style={styles.externalNoticeText}>{t(external.connection === "not_connected" ? "calendar.view.externalNotConnected" : "calendar.view.externalReconnectNeeded")}</UiText>
       <Button size="sm" label={t(external.connection === "not_connected" ? "calendar.view.externalConnect" : "calendar.view.externalReconnect")} onPress={onConnectExternal} />
     </Card> : null}
-    {external?.connection === "unavailable" ? <Card variant="flat" style={styles.externalNotice}><UiText style={styles.externalNoticeText}>{t("calendar.view.externalUnavailable")}</UiText></Card> : null}
+    {/* UX review: "unavailable" (Google not configured on this server, or its read failed) is not something the
+        user can act on; the calendar stays quiet instead of a permanent error card. Not-connected / reconnect still guide. */}
     <View style={styles.controlRow}>
       <Segmented<CalendarMode> accessibilityLabel={t("schedule.title")} inline segments={[
         { key: "day", label: t("schedule.viewDay") }, { key: "week", label: t("schedule.viewWeek") }, { key: "month", label: t("schedule.viewMonth") },
@@ -74,7 +75,7 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
     <Card style={styles.agenda}>
       <View style={styles.agendaHeading}>
         <UiText accessibilityRole="header" style={styles.agendaTitle}>{new Intl.DateTimeFormat(language, { month: "long", day: "numeric", weekday: "short", timeZone: "UTC" }).format(selectedDate)}</UiText>
-        <UiText style={styles.count}>{t("schedule.dayItemCount", { weekday: "", count: projection.selectedItems.length + selectedExternal.length }).trim()}</UiText>
+        <UiText style={styles.count}>{t("schedule.itemCount", { count: projection.selectedItems.length + selectedExternal.length })}</UiText>
       </View>
       {projection.selectedItems.length ? projection.selectedItems.map(item => <UiPressable key={item.id} accessibilityRole="button" accessibilityLabel={`${item.title} ${t("schedule.openDetail")}`} onPress={() => onOpenItem(item)} style={styles.agendaRow}>
         <UiText style={styles.time}>{item.timeLabel || t("schedule.allDay")}</UiText>
@@ -104,7 +105,7 @@ function CalendarDateCell({ day, external, currentMonth, colors, onSelect }: { d
     <UiText style={[styles.dateNumber, day.isToday && styles.todayNumber, (day.isSunday || day.isHoliday) && styles.holidayNumber]}>{day.dayNumber}</UiText>
     {day.items.slice(0, 2).map(item => <View key={item.id} style={[styles.monthItem, { backgroundColor: tone(item.kind, colors).background }]}><UiText numberOfLines={1} style={[styles.monthItemText, { color: tone(item.kind, colors).ink }]}>{item.title}</UiText></View>)}
     {external.slice(0, Math.max(0, 2 - day.items.length)).map(item => <View key={`external:${item.id}`} style={[styles.monthItem, styles.externalItem]}><UiText numberOfLines={1} style={styles.externalItemTitle}>{item.titlePreview}</UiText></View>)}
-    {day.items.length + external.length > 2 ? <UiText style={styles.more}>{t("calendar.view.more", { count: day.items.length + external.length - 2 })}</UiText> : null}
+    {day.items.length + external.length > 2 ? <UiText numberOfLines={1} style={styles.more}>{t("calendar.view.more", { count: day.items.length + external.length - 2 })}</UiText> : null}
   </UiPressable>;
 }
 
@@ -116,12 +117,12 @@ function tone(kind: ScheduleTimelineItem["kind"], colors: OrbitColors) {
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  body: { gap: 14 }, controlRow: { flexDirection: "row", gap: 10, alignItems: "center" }, navigation: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }, heading: { color: colors.ink, fontSize: 18, fontWeight: "800" },
-  externalNotice: { backgroundColor: colors.macLav, flexDirection: "row", alignItems: "center", gap: 8 }, externalNoticeText: { color: colors.macLavText, flex: 1, fontSize: 12 },
-  externalItem: { backgroundColor: colors.macLav }, externalItemTitle: { color: colors.macLavText, fontSize: 12, fontWeight: "700" }, externalSource: { color: colors.macLavText, fontSize: 11 },
-  gridCard: { paddingHorizontal: 8, paddingVertical: 12 }, grid: { flexDirection: "row", flexWrap: "wrap" }, weekday: { width: "14.285%", textAlign: "center", color: colors.ink3Text, fontSize: 11, fontWeight: "700", marginBottom: 8 },
-  dateCell: { width: "14.285%", minHeight: 70, padding: 3, borderWidth: 1, borderColor: colors.line, gap: 2 }, outside: { opacity: 0.45 }, selectedCell: { backgroundColor: colors.surface2 }, dateNumber: { color: colors.ink, fontSize: 12, fontWeight: "700" }, todayNumber: { color: colors.accentText }, holidayNumber: { color: colors.coralText },
-  monthItem: { borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1 }, monthItemText: { fontSize: 9, fontWeight: "700" }, more: { color: colors.ink3Text, fontSize: 9 },
-  weekStrip: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 18, padding: 5, gap: 3 }, weekDay: { flex: 1, minHeight: 66, alignItems: "center", gap: 3, borderRadius: 12, paddingVertical: 5 }, weekDaySelected: { backgroundColor: colors.surface2 }, weekDayLabel: { color: colors.ink3Text, fontSize: 10 }, weekDayNumber: { color: colors.ink, fontSize: 14, fontWeight: "700" }, weekDots: { flexDirection: "row", gap: 2, height: 5 }, dot: { width: 4, height: 4, borderRadius: 2 },
-  agenda: { gap: 8, padding: 14 }, agendaHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, agendaTitle: { color: colors.ink, fontSize: 15, fontWeight: "800" }, count: { color: colors.ink3Text, fontSize: 11 }, agendaRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, minHeight: 48 }, time: { color: colors.ink2, width: 42, paddingTop: 9, fontSize: 11, fontWeight: "700" }, itemCard: { flex: 1, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10 }, clash: { borderColor: colors.coralText, borderWidth: 1.5 }, itemTitle: { fontSize: 13, fontWeight: "700" }, itemSubtitle: { fontSize: 11 }, emptyDay: { color: colors.ink3Text, fontSize: 13, paddingVertical: 12 }, overlapCard: { gap: 8, backgroundColor: colors.coralSoft }, overlapText: { color: colors.coralText, fontSize: 12, fontWeight: "700" },
+  body: { gap: 14 }, controlRow: { flexDirection: "row", gap: 10, alignItems: "center" }, navigation: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }, heading: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  externalNotice: { backgroundColor: colors.macLav, flexDirection: "row", alignItems: "center", gap: 8 }, externalNoticeText: { color: colors.macLavText, flex: 1, fontSize: 14 },
+  externalItem: { backgroundColor: colors.macLav }, externalItemTitle: { color: colors.macLavText, fontSize: 14, fontWeight: "700" }, externalSource: { color: colors.macLavText, fontSize: 13 },
+  gridCard: { paddingHorizontal: 8, paddingVertical: 12 }, grid: { flexDirection: "row", flexWrap: "wrap" }, weekday: { width: "14.285%", textAlign: "center", color: colors.ink3Text, fontSize: 13, fontWeight: "700", marginBottom: 8 },
+  dateCell: { width: "14.285%", minHeight: 70, padding: 3, borderWidth: 1, borderColor: colors.line, gap: 2 }, outside: { opacity: 0.45 }, selectedCell: { backgroundColor: colors.surface2 }, dateNumber: { color: colors.ink, fontSize: 14, fontWeight: "700" }, todayNumber: { color: colors.accentText }, holidayNumber: { color: colors.coralText },
+  monthItem: { borderRadius: 4, paddingHorizontal: 3, paddingVertical: 1 }, monthItemText: { fontSize: 11, fontWeight: "700" }, more: { color: colors.ink3Text, fontSize: 11 },
+  weekStrip: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: 18, padding: 5, gap: 3 }, weekDay: { flex: 1, minHeight: 66, alignItems: "center", gap: 3, borderRadius: 12, paddingVertical: 5 }, weekDaySelected: { backgroundColor: colors.surface2 }, weekDayLabel: { color: colors.ink3Text, fontSize: 12 }, weekDayNumber: { color: colors.ink, fontSize: 17, fontWeight: "700" }, weekDots: { flexDirection: "row", gap: 2, height: 5 }, dot: { width: 4, height: 4, borderRadius: 2 },
+  agenda: { gap: 8, padding: 14 }, agendaHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, agendaTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" }, count: { color: colors.ink3Text, fontSize: 13 }, agendaRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, minHeight: 48 }, time: { color: colors.ink2, width: 42, paddingTop: 9, fontSize: 13, fontWeight: "700" }, itemCard: { flex: 1, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10 }, clash: { borderColor: colors.coralText, borderWidth: 1.5 }, itemTitle: { fontSize: 15, fontWeight: "700" }, itemSubtitle: { fontSize: 13 }, emptyDay: { color: colors.ink3Text, fontSize: 15, paddingVertical: 12 }, overlapCard: { gap: 8, backgroundColor: colors.coralSoft }, overlapText: { color: colors.coralText, fontSize: 14, fontWeight: "700" },
 }));

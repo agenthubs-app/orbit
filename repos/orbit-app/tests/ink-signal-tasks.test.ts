@@ -66,7 +66,7 @@ export const useSyncCoordinatorSession = () => null;
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; import { useFixture } from "fixture"; function App() { const s = useFixture(); const screen = s.screen === "detail" ? <TaskDetailScreen /> : <TasksScreen />; return s.language === "ja" ? <OrbitLocaleContext.Provider value={{ language: "ja", t: createTranslator("ja") }}>{screen}</OrbitLocaleContext.Provider> : screen; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "task-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; import { ToastProvider } from "./src/components/ui/Toast"; import { useFixture } from "fixture"; function App() { const s = useFixture(); const screen = <ToastProvider>{s.screen === "detail" ? <TaskDetailScreen /> : <TasksScreen />}</ToastProvider>; return s.language === "ja" ? <OrbitLocaleContext.Provider value={{ language: "ja", t: createTranslator("ja") }}>{screen}</OrbitLocaleContext.Provider> : screen; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "task-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-tasks" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
     plugin.onResolve({ filter: /^(fixture|expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "ink-tasks" }));
@@ -95,43 +95,39 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-tasks-${name}.png`, fullPage: true }); }
 
-test("personal schedule GET is bounded, versioned and abortable without entering task mutation requests", async t => {
+test("the one task list no longer embeds the personal schedule read or any mutation request", async t => {
+  // UX-7: PersonalScheduleList left the task list; its bounded GET is covered by the personal-schedule tests.
   const page = await open(t);
-  await page.waitForFunction(() => (window as any).fixture.httpReads.some((read: any) => !read.aborted));
-  const reads = await page.evaluate(() => (window as any).fixture.httpReads);
-  for (const read of reads) {
-    assert.equal(read.method, "GET");
-    assert.equal(read.body, undefined);
-    assert.equal(read.hasSignal, true);
-    assert.equal(read.headers["x-orbit-personal-schedule-version"], "3");
-    const query = new URL(read.path, "https://fixture.invalid").searchParams;
-    assert.equal(query.get("scope"), "personal");
-    assert.equal(Date.parse(query.get("to")!) - Date.parse(query.get("from")!), 90 * 86_400_000);
-  }
-  assert.equal(reads.some((read: any) => read.aborted), true, "focus refresh aborts the superseded initial GET");
+  await page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), []);
+  assert.equal((await page.evaluate(() => (window as any).fixture.reads)).some((path: string) => path.startsWith("/api/schedule-items")), false);
   assert.deepEqual(await requests(page), []);
 });
 
-test("task list has truthful counts and due-date groups without completed history in the open view", async t => {
+test("task list has truthful group counts and keeps completed history folded below the open groups", async t => {
   const page = await open(t);
-  const pending = page.getByRole("tab", { name: "未完成 5", exact: true }); await pending.waitFor();
-  assert.equal(await pending.getAttribute("aria-selected"), "true");
-  assert.equal(await pending.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(30, 26, 36)");
   for (const label of ["今天 3", "之后 2"]) await page.getByRole("heading", { name: label, exact: true }).waitFor();
+  assert.equal(await page.getByRole("tab").count(), 0);
   assert.equal(await page.getByRole("checkbox").count(), 5);
-  assert.equal(await page.getByRole("heading", { name: "已完成 1", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("checkbox", { name: /^恢复：/ }).count(), 0);
   assert.equal(await page.getByText("已取消的事项", { exact: true }).count(), 0);
-  for (const checkbox of await page.getByRole("checkbox").all()) assert.ok((await checkbox.boundingBox())!.height >= 44);
+  for (const checkbox of await page.getByRole("checkbox").all()) { const box = (await checkbox.boundingBox())!; assert.ok(box.width >= 40 && box.height >= 52); }
+  // The visible group count matches its rows; the fold shows the completed total.
+  assert.equal(await page.getByRole("heading", { name: "今天 3", exact: true }).getByText("3", { exact: true }).count(), 1);
+  const fold = page.getByRole("button", { name: "展开已完成任务", exact: true });
+  assert.equal(await fold.getByText("1", { exact: true }).count(), 1);
   await shot(page, "list");
-  await page.getByRole("tab", { name: "已完成 1", exact: true }).click();
-  assert.equal(await page.getByRole("checkbox").count(), 1);
-  assert.equal(await page.getByRole("checkbox").getAttribute("aria-checked"), "true");
+  await fold.click();
+  const restored = page.getByRole("checkbox", { name: "恢复：发送上次活动总结", exact: true }); await restored.waitFor();
+  assert.equal(await restored.getAttribute("aria-checked"), "true");
+  assert.equal(await page.getByRole("checkbox").count(), 6);
+  await page.getByRole("button", { name: "收起已完成任务", exact: true }).waitFor();
   assert.deepEqual(await requests(page), []);
 });
 
-test("completed view restores its own selected record", async t => {
+test("the completed fold restores its own selected record", async t => {
   const page = await open(t);
-  await page.getByRole("tab", { name: "已完成 1", exact: true }).click();
+  await page.getByRole("button", { name: "展开已完成任务", exact: true }).click();
   await page.getByRole("checkbox", { name: "恢复：发送上次活动总结", exact: true }).click();
   const writes = await requests(page); assert.equal(writes.length, 1); assert.equal(writes[0].body.action, "reopen");
   assert.equal(writes[0].path, "/api/tasks/done%3A1"); assert.ok(writes[0].body.idempotencyKey);
@@ -141,14 +137,37 @@ test("list completion and detail navigation have separate full-size touch areas"
   const page = await open(t);
   const checkbox = (await page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true }).boundingBox())!;
   const details = (await page.getByRole("button", { name: /给山田发介绍资料/ }).boundingBox())!;
-  assert.ok(checkbox.width >= 44 && details.x >= checkbox.x + checkbox.width, "the row navigation must not cover the checkbox hit area");
+  assert.ok(checkbox.width >= 40 && checkbox.height >= 52 && details.x >= checkbox.x + checkbox.width, "the row navigation must not cover the checkbox hit area");
+  assert.ok(details.height >= 52);
+});
+
+// UX T3: like Reminders, the circle fills at once and the write follows a moment later; a second tap in that moment takes it back.
+test("a tapped circle fills at once, writes after a moment, and a second tap within the moment writes nothing", async t => {
+  const page = await open(t);
+  const checkbox = page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true });
+  await checkbox.click();
+  assert.equal(await checkbox.getAttribute("aria-checked"), "true");
+  assert.deepEqual(await requests(page), []);
+  await checkbox.click();
+  assert.equal(await checkbox.getAttribute("aria-checked"), "false");
+  await page.clock.runFor(1500);
+  assert.deepEqual(await requests(page), []);
+  await checkbox.click(); await page.clock.runFor(1000);
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  assert.equal((await requests(page))[0].body.action, "complete");
+  await page.getByRole("button", { name: "撤销" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  const undo = (await requests(page))[1]; assert.equal(undo.body.action, "reopen"); assert.equal(undo.path, "/api/tasks/task%3A1");
 });
 
 test("list blocks same-turn double completion and keeps the row after a rejected write", async t => {
   const page = await open(t, { hold: true, failure: true });
   const initialReads = await page.evaluate(() => (window as any).fixture.httpReads);
   const checkbox = page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true });
+  await checkbox.click(); await page.clock.runFor(1000);
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
   await checkbox.evaluate(el => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await page.clock.runFor(1000);
   assert.equal((await requests(page)).length, 1);
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).waitFor();
@@ -160,7 +179,7 @@ test("list blocks same-turn double completion and keeps the row after a rejected
 test("Japanese task list keeps server error text out of a rejected completion", async t => {
   const page = await open(t, { language: "ja", failure: true });
   const checkbox = page.getByRole("checkbox", { name: "完了：给山田发介绍资料", exact: true });
-  await checkbox.click();
+  await checkbox.click(); await page.clock.runFor(1000);
   await page.getByRole("alert").first().waitFor();
   assert.equal(await page.getByText("保存失败，请重试。", { exact: true }).count(), 0);
   await page.getByRole("alert").filter({ hasText: "操作を完了できませんでした。もう一度お試しください。" }).waitFor();
@@ -171,12 +190,13 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   const page = await open(t, { thrown: true });
   const initialReads = await page.evaluate(() => (window as any).fixture.httpReads);
   const checkbox = page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true });
-  await checkbox.click();
+  await checkbox.click(); await page.clock.runFor(1000);
   await page.getByRole("alert").filter({ hasText: "操作未完成" }).waitFor();
   assert.equal(await checkbox.isEnabled(), true);
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
-  await checkbox.click(); assert.equal((await requests(page)).length, 2);
+  await checkbox.click(); await page.clock.runFor(1000);
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", openTaskPage]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
@@ -191,18 +211,28 @@ test("list retains overdue and undated work, navigates canonical task IDs and ex
   assert.deepEqual(await requests(page), []);
 });
 
-test("completed deep link and list load failure do not invent zero counts or empty success", async t => {
+test("a completed deep link opens the one list, and a completed-history load failure does not invent empty success", async t => {
   const page = await open(t, { view: "completed" });
-  assert.equal(await page.getByRole("tab", { name: "已完成 1", exact: true }).getAttribute("aria-selected"), "true");
+  await page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: /^恢复：/ }).count(), 0);
   await page.evaluate(path => (window as any).fixture.update({ kinds: { [path]: "failure" } }), completedTaskPage);
+  await page.getByRole("button", { name: "展开已完成任务", exact: true }).click();
+  await page.getByText("待办暂时打不开", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: /^恢复：/ }).count(), 0);
+  assert.equal(await page.getByText("暂无完成记录", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("checkbox").count(), 5);
+});
+
+test("an open-list load failure shows no groups, zero counts or empty state", async t => {
+  const page = await open(t, { kinds: { [openTaskPage]: "failure" } });
   await page.getByText("待办暂时打不开", { exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 0);
-  assert.equal(await page.getByRole("tab", { name: / 0$/ }).count(), 0);
-  assert.equal(await page.getByText("暂无完成记录", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("heading", { name: / 0$/ }).count(), 0);
+  assert.equal(await page.getByText("暂无待办", { exact: true }).count(), 0);
 });
 
 test("Japanese task list does not show a server-language read failure", async t => {
-  const page = await open(t, { language: "ja", view: "completed", kinds: { [completedTaskPage]: "failure" } });
+  const page = await open(t, { language: "ja", kinds: { [openTaskPage]: "failure" } });
   await page.getByText("タスクを開けません", { exact: true }).waitFor();
   assert.equal(await page.getByText("暂时无法读取，请重试。", { exact: true }).count(), 0);
   await page.getByText("タスクを読み込めません。もう一度お試しください。", { exact: true }).waitFor();
@@ -233,23 +263,23 @@ test("Japanese completion history identifies an unconfirmed account page", async
   await page.getByText("タスクのアカウントまたはバージョンを確認できません。再読み込みしてください。", { exact: true }).waitFor();
 });
 
-test("detail displays real metadata, source hierarchy and a pinned action area", async t => {
+// UX T4: Reminders-style detail — round check, inline title and note, then grouped rows; no internal metadata or pinned buttons.
+test("detail shows the round check, inline title and note, and plain grouped rows", async t => {
   const page = await open(t, { screen: "detail" });
-  await page.getByText("手动创建", { exact: true }).waitFor();
-  await page.getByText("9月10日 09:00", { exact: true }).waitFor();
-  await page.getByText("今天 18:00", { exact: true }).first().waitFor();
-  await page.getByRole("heading", { name: "内容", exact: true }).waitFor();
   const title = page.getByRole("textbox", { name: "待办标题", exact: true });
+  await title.waitFor();
   assert.equal(await title.inputValue(), task.title);
-  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "24px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "22px");
   assert.equal(await page.getByRole("textbox", { name: "备注", exact: true }).inputValue(), task.notes);
-  const footer = page.getByTestId("task-detail-actions"); const before = (await footer.boundingBox())!;
-  assert.ok(before.y + before.height <= 844 && before.y > 600);
+  assert.equal(await page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true }).getAttribute("aria-checked"), "false");
+  assert.equal(await page.getByRole("button", { name: "更改日期", exact: true }).innerText(), "今天");
+  assert.equal(await page.getByRole("button", { name: "更改时间", exact: true }).innerText(), "18:00");
+  for (const gone of ["手动创建", "创建于", "来源", "分类", "未完成", "内容"]) assert.equal(await page.getByText(gone, { exact: true }).count(), 0, gone);
+  for (const gone of ["编辑待办", "标记完成"]) assert.equal(await page.getByRole("button", { name: gone, exact: true }).count(), 0, gone);
+  assert.equal(await page.getByTestId("task-detail-actions").count(), 0);
   await shot(page, "detail");
   await page.getByRole("button", { name: "查看关联人脉", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3A1"]);
-  await page.getByRole("button", { name: "编辑待办", exact: true }).last().click();
-  assert.equal(await title.evaluate(el => el === document.activeElement), true);
   assert.deepEqual(await requests(page), []);
 });
 
@@ -266,24 +296,24 @@ test("detail checkbox completes the task and editor keeps failed drafts with exi
   assert.equal(writes[1].body.patch.title, "修改后仍保留的标题");
 });
 
-test("double text keeps header edit and metadata labels on readable single lines", async t => {
-  const page = await open(t, { screen: "detail", width: 320, fontScale: 2 });
-  assert.ok((await page.getByRole("button", { name: "编辑待办", exact: true }).first().boundingBox())!.height <= 44.1, "header edit should be a compact icon at large sizes");
-  assert.ok((await page.getByText("创建于", { exact: true }).boundingBox())!.height <= 40.1, "metadata labels should not strand a character");
-  assert.ok((await page.getByText("相关人脉", { exact: true }).boundingBox())!.height <= 40.1);
+test("double text keeps the row labels on single lines and no header button can wrap", async t => {
+  const page = await open(t, { screen: "detail", width: 320, fontScale: 1.7 });
+  await page.getByRole("textbox", { name: "待办标题", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "编辑待办", exact: true }).count(), 0);
+  for (const label of ["日期", "时间", "提醒", "相关的人"]) { const box = (await page.getByText(label, { exact: true }).first().boundingBox())!; assert.ok(box.height <= 46, `${label} ${JSON.stringify(box)} should not strand a character`); }
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, dark: true }]) {
   test(`${variant.name}: task views preserve long text, touch areas and contained actions`, async t => {
     const page = await open(t, variant);
-    for (const row of await page.getByRole("checkbox").all()) { const b = (await row.boundingBox())!; assert.ok(b.width >= 44 && b.height >= 44); }
+    for (const row of await page.getByRole("checkbox").all()) { const b = (await row.boundingBox())!; assert.ok(b.width >= 40 && b.height >= 52); }
     assert.deepEqual(await page.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1).map(n => n.textContent)), []);
     await shot(page, `${variant.name}-list`);
     await page.evaluate(() => (window as any).fixture.update({ screen: "detail" }));
-    await page.getByTestId("task-detail-actions").waitFor();
-    const complete = (await page.getByRole("button", { name: "标记完成", exact: true }).boundingBox())!;
-    assert.ok(complete.height >= 50 && complete.x >= 0 && complete.x + complete.width <= variant.width && complete.y + complete.height <= 844);
-    assert.equal(complete.x, (await page.getByText("截止", { exact: true }).boundingBox())!.x, "pinned actions align with the readable content column");
+    const check = (await page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true }).boundingBox())!;
+    assert.ok(check.width >= 44 && check.height >= 44 && check.x >= 0);
+    const remove = page.getByRole("button", { name: "删除待办", exact: true }); await remove.scrollIntoViewIfNeeded();
+    const removeBox = (await remove.boundingBox())!; assert.ok(removeBox.height >= 44 && removeBox.x >= 0 && removeBox.x + removeBox.width <= variant.width);
     await shot(page, `${variant.name}-detail-top`);
     for (const label of ["待办标题", "备注"]) {
       const input = page.getByRole("textbox", { name: label, exact: true }); await input.scrollIntoViewIfNeeded();

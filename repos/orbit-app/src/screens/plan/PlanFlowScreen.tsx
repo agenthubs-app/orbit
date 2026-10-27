@@ -40,6 +40,8 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const copy = useStandardCopy();
   const scrollRef = useRef<ScrollView>(null);
   const turnOffsets = useRef<Record<number, number>>({});
+  // QA-A: after an AI revision, bring its card into view once it is laid out (the page used to stay put or jump up).
+  const revealTurn = useRef<number | null>(null);
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [intake, setIntake] = useState<PlanIntakeView | null>(null);
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
@@ -105,6 +107,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     const result = await api.fix(draft.draftId, text, newIdempotencyKey("fix"));
     setBusy(null);
     if (!result.ok) return setFailure({ failure: result.failure, op: "fix" });
+    revealTurn.current = result.data.turns[result.data.turns.length - 1]?.n ?? null;
     setDraft(result.data);
     setFixText("");
   };
@@ -168,7 +171,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
               <View style={styles.row8}>
                 <View style={styles.okmark}><Icon name="check" size={16} color={colors.surface} /></View>
                 <UiText style={styles.okTitle}>{t("plan.flow.backgroundDone")}</UiText>
-                {intake.background.purpose.value.selectedLevel ? <UiText style={kit.lbl}>{t("plan.flow.purposeLevel", { level: intake.background.purpose.value.selectedLevel })}</UiText> : null}
+                
               </View>
             </View>
           ) : null}
@@ -195,19 +198,23 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             <>
               {(() => {
                 const usedUp = draft.aiFixUsed >= draft.aiFixLimit;
-                const actions = (first: boolean) => draftOpen && !usedUp
-                  ? <DraftActions draft={draft} first={first} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} />
+                const actions = () => draftOpen && !usedUp
+                  ? <DraftActions draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} />
                   : undefined;
                 const last = draft.turns.length - 1;
                 return (
                   <>
                     {!draft.turns.length ? <Bubble>{t("plan.draft.bubble")}</Bubble> : null}
                     <ChatScrollTarget active={draft.turns.length > 0}>
-                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions(true)} />
+                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions()} />
                     </ChatScrollTarget>
                     {draft.turns.map((turn, index) => (
-                      <View key={turn.n} style={styles.turn} onLayout={(event) => { turnOffsets.current[turn.n] = event.nativeEvent.layout.y; }}>
-                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions(false) : undefined} mark={index === last} />
+                      <View key={turn.n} style={styles.turn} onLayout={(event) => {
+                        const y = event.nativeEvent.layout.y;
+                        turnOffsets.current[turn.n] = y;
+                        if (revealTurn.current === turn.n) { revealTurn.current = null; setTimeout(() => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, y - 8) }), 250); }
+                      }}>
+                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions() : undefined} mark={index === last} />
                       </View>
                     ))}
                     {busy === "fix" ? <UiText style={kit.lbl}>{t("plan.fix.sending")}</UiText> : null}
@@ -323,5 +330,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   historyTitle: { marginBottom: 6 },
   hist: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   historyChip: { minHeight: 32, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  historyText: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
+  historyText: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
 }));

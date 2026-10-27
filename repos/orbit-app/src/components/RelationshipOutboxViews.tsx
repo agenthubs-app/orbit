@@ -71,13 +71,13 @@ export function UnsentEndedNotice({ messages, onDiscard }: { messages: readonly 
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  notice: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, lineHeight: 21 },
+  notice: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 17, lineHeight: 25 },
   bubble: { gap: 4, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  sender: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
-  pending: { color: colors.macApricotText, fontSize: 13 },
+  sender: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  body: { color: colors.ink, fontSize: 17, lineHeight: 25 },
+  pending: { color: colors.macApricotText, fontSize: 15 },
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
   endedRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  failed: { color: colors.coralText, fontSize: 13 },
-  link: { color: colors.accentText, fontSize: 13, fontWeight: "600" },
+  failed: { color: colors.coralText, fontSize: 15 },
+  link: { color: colors.accentText, fontSize: 15, fontWeight: "600" },
 }));

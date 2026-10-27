@@ -207,3 +207,18 @@ test("locked overview retains aggregate counts without requesting named attendee
   assert.deepEqual(data.attendees, []);
   assert.deepEqual(data.knownAttendees, []);
 });
+
+test("QA-B2: overview says hosting (owner / co-host) and gives the organizer page slug; a plain attendee gets hosting false", async () => {
+  const hostEvent = { agenda: [], badges: [], capacity: 20, description: null, emoji: "🧪", endsAt: "2026-10-07T21:30:00+09:00", eventId: "ev1", organizerKey: "orgp_x", organizerName: "QA 主办方", organizerSlug: "qa-host", priceYen: null, publicCode: null, registrationClosesAt: null, registrationCount: 0, review: false, startsAt: "2026-10-07T19:00:00+09:00", title: "QA", venue: null } as const;
+  const asked: string[] = [];
+  const { ports } = fakePorts({ event: async (id) => (id === "ev1" ? hostEvent : null), hosting: async (actorId, eventId) => { asked.push(`${actorId}:${eventId}`); return actorId === "actor:a"; } });
+  const data = (await (await liveRoutes(ports).overview(get("/api/events/ev1/overview"), params("ev1"))).json()).data;
+  assert.equal(data.hosting, true);
+  assert.equal(data.organizer.slug, "qa-host");
+  assert.equal(data.organizer.name, "QA 主办方");
+  assert.deepEqual(asked, ["actor:a:ev1"]);
+  const store = createMemoryActorRecordStore();
+  const other = createJourneyService({ now: () => new Date("2026-10-07T13:00:00.000Z"), ports, records: { checklist: createPrepChecklistService({ store }), feedback: createEventFeedbackService({ store }), follows: createOrganizerFollowService({ store }), memos: createVenueMemoService({ store }) } });
+  assert.equal((await other.overview("actor:b", "ev1", "zh", "app"))?.hosting, false);
+  assert.equal((await other.overview(null, "ev1", "zh", "app"))?.hosting, undefined, "signed out: no host check");
+});

@@ -16,6 +16,7 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useServerUnreachable } from "../../hooks/useServerUnreachable";
 import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, type AiSession } from "../../api/ai-history-contract";
 import { contactCardSummarySchema } from "../../api/schema/contact-card-page";
 import { planIntakeListResponseSchema, planV2SummaryResponseSchema } from "../../api/schema/plan-v2";
@@ -221,7 +222,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   // its mirror) the list, search and group filter read it; the network list stays inert.
   const localSessions = useLocalAiSessions();
   const historyFromDevice = localSessions.available && localSessions.freshness.readable;
-  const aiOffline = historyFromDevice && localSessions.freshness.offline;
+  // UX-3 (user 2026-10-25: iOrbit could not be used): sending needs the server, so only a server that
+  // cannot be reached blocks it. A background sync that timed out (common on a cold server) used to mark
+  // the mirror "offline" and refuse every send with 「需要联网」 although the server answered fine.
+  const serverUnreachable = useServerUnreachable(baseUrl);
+  const aiOffline = auth.offline || serverUnreachable;
   const pendingAiWrites = localSessions.queuedMutations.some(item => item.state === "queued" || item.state === "sending");
   const failedAiWrite = localSessions.queuedMutations.find(item => item.state === "conflict" || item.state === "failed");
   const historyState = validateApiResourceState(useApiResource<unknown>(
@@ -494,6 +499,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
 
   function sendMessage(messageOverride?: string) {
     if (!owns() || navigationLock.current || !auth.actorId) return;
+    // QA-A: 「帮我规划新目标」 answered with a free-text plan that never became a goal; it opens the goal flow.
+    if (messageOverride !== undefined && messageOverride === locale.t("ai.planPrompt")) { router.push(planNewGoalHref("app") as Href); return; }
     const message = (messageOverride ?? draftMessage).trim();
 
     if (!message) {

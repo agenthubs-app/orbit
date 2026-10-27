@@ -1,6 +1,7 @@
 import type { DomainChange } from "../../shared/contract/universal-read";
 import { relationshipMessageRowId } from "../../shared/compute/relationship-local";
 import { RELATIONSHIP_CONVERSATION_IDENTITY_SQL, RELATIONSHIP_CONVERSATION_LAST_MESSAGE_SQL } from "../relationship-communication/bounded-reader";
+import { createPostgresRelationshipInviteLinks, withMyContactIds } from "../relationship-communication/invite-link";
 import type { RelationshipMessagesSyncSource } from "./domain-registry";
 import { SyncReadError } from "./read-service";
 
@@ -141,6 +142,11 @@ async function readConversationsPage(client: Queryable, input: PageInput): Promi
     }
     changes.push({ id: row.conversation_id, revision: row.sync_revision, operation: "upsert", payload: { ...payload, readSeq: Number(payload.readSeq), lastMessageSeq: Number(payload.lastMessageSeq) } });
   }
+  // QA-C4: the invitee's device row names the invitee's own contact of the other person (invite connections).
+  const upserts = changes.filter((change) => change.payload !== null);
+  const mapped = await withMyContactIds(createPostgresRelationshipInviteLinks(client, input.workspaceId), input.actorId,
+    upserts.map((change) => change.payload as { contactId: string; participantAccountIds?: string[] }));
+  upserts.forEach((change, index) => { change.payload = mapped[index] as Record<string, unknown>; });
   return { changes, hasMore: result.rows.length > input.limit, lastRevision: pageRows.length ? pageRows.at(-1)!.sync_revision : null };
 }
 

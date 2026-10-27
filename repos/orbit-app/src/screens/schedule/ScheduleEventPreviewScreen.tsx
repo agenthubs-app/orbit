@@ -209,7 +209,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metaText: {
     color: colors.ink3Text,
     fontSize: typography.bodySm,
-    lineHeight: 19
+    lineHeight: 22
   },
   pressed: {
     opacity: 0.72

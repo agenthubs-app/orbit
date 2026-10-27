@@ -1,22 +1,23 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { localParts } from "../../time/date-time";
-import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { serverReachability, type ServerReachabilityState } from "../../api/server-reachability";
-import { Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskPath } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { OrbitLanguage } from "../../api/contract/language";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { Icon } from "../../components/ui/Icon";
+import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -34,7 +35,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
-import { ownedTaskDetailToView, taskActivitiesToView, type TaskDetailView } from "../../view-models/today-tasks";
+import { ownedTaskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
 import { buildTaskDatePatch, taskDateDraftFromView, taskDatePatchMovesLater, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
 
 function first(value: string | string[] | undefined): string {
@@ -70,8 +71,6 @@ export function TaskDetailScreen() {
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
-  const largeText = fontScale > 1.3;
-  const metadataLabelStyle = [styles.metadataLabel, largeText && styles.metadataLabelLarge];
   const titleInputRef = useRef<TextInput>(null);
   const [titleHeight, setTitleHeight] = useState(0);
   const [notesHeight, setNotesHeight] = useState(0);
@@ -86,10 +85,8 @@ export function TaskDetailScreen() {
   const scopeKey = JSON.stringify([server.baseUrl, actorId, taskId, ready]);
   const client = useOrbitApiClient({ scopeKey });
   const detailPath = useMemo(() => taskPath(taskId), [taskId]);
-  const activitiesPath = useMemo(() => taskActivitiesPath(taskId), [taskId]);
   const reminderResourcePath = useMemo(() => remindersPath("task", taskId), [taskId]);
   const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
-  const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
   const serverDetail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
   // Sprint 0131: when the server cannot be reached (or answers 5xx) the task comes from the device
@@ -126,11 +123,10 @@ export function TaskDetailScreen() {
   const projectedTask = projectedTasks?.find(task => task.id === taskId);
   const projectedDetail = projectedTask ? ownedTaskDetailToView({ task: projectedTask }, actorId, locale.language) : null;
   const detail = projectedDetail ?? (offline ? mirrorDetail : serverDetail ?? mirrorDetail);
-  const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
-    ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
+    ? reminderPlansToView(remindersState.data, timeZone, locale.language).filter((item) => item.status === "scheduled")
     : [];
-  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone), [timeZone]);
+  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone, locale.t), [timeZone, locale.t]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [dateDraft, setDateDraft] = useState(() => taskDateDraftFromView(null));
@@ -140,7 +136,6 @@ export function TaskDetailScreen() {
   const [latest, setLatest] = useState<TaskDetailView | null>(null);
   const latestRef = useRef(latest);
   latestRef.current = latest;
-  const [moreOpen, setMoreOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
@@ -158,7 +153,7 @@ export function TaskDetailScreen() {
     setEditTimeZone(timeZone);
     setBaseline(null); setLatest(null); setTitle(""); setNotes("");
     setDateDraft(taskDateDraftFromView(null));
-    setMoreOpen(false); setConfirmDelete(false); setConfirmSecondDeferral(false); setSaving(false); setMutationError(null); setReminderMessage(null);
+    setConfirmDelete(false); setConfirmSecondDeferral(false); setSaving(false); setMutationError(null); setReminderMessage(null);
   }
 
   useEffect(() => {
@@ -166,7 +161,6 @@ export function TaskDetailScreen() {
     setSaving(false);
     setMutationError(null);
     setReminderMessage(null);
-    setMoreOpen(false);
     setConfirmDelete(false);
     setConfirmSecondDeferral(false);
     return () => { mutationScope.active = false; mutationScope.controller.abort(); mutationScope.keys.clear(); };
@@ -258,11 +252,9 @@ export function TaskDetailScreen() {
     }
   }, [timeZone, editTimeZone, baseline, title, notes, dateDraft, saving]);
   const staleDraft = !!baseline && !!latest && baseline.id === latest.id && baseline.updatedAt !== latest.updatedAt;
-  const displayedDate = (latest ?? detail)?.dueAt ?? (latest ?? detail)?.plannedDate;
 
   function refresh() {
     detailState.refresh();
-    activitiesState.refresh();
     remindersState.refresh();
   }
 
@@ -289,7 +281,6 @@ export function TaskDetailScreen() {
     if (change.kind === "invalid") { setMutationError(change.message); return; }
     if (change.kind === "unchanged") { setMutationError(null); return; }
     if (baseline.deferralCount >= 1 && taskDatePatchMovesLater(baseline, change.patch) && !confirmedSecondDeferral) {
-      setMoreOpen(false);
       setConfirmSecondDeferral(true);
       return;
     }
@@ -377,18 +368,9 @@ export function TaskDetailScreen() {
     });
   }
 
-  async function cancelTask() {
-    await mutate("patch", taskPath(taskId), { action: "cancel" }, () => {
-      notifyReminderPlansChanged();
-      setMoreOpen(false);
-      refresh();
-    });
-  }
-
   async function deleteTask() {
     await mutate("delete", taskPath(taskId), { ...(baseline ? { expectedUpdatedAt: baseline.updatedAt } : {}) }, () => {
       notifyReminderPlansChanged();
-      setMoreOpen(false);
       router.replace(taskListReturnHref);
     });
   }
@@ -492,15 +474,36 @@ export function TaskDetailScreen() {
     });
   }
 
+  // UX T4/T5: Reminders-style inline rows instead of the old settings sheet. Each date change saves at once with the same
+  // update write the sheet used: 日期 alone is plannedDate; 日期 + 时间 is dueAt (and the same plannedDate). Confirming a
+  // picker again after a failed save retries the same draft (same request key); an unchanged draft writes nothing.
+  const locked = !detail || saving || offline && !isOfflineTaskCategory(detail.category);
+  const datesLocked = locked || staleDraft || detail?.status === "cancelled";
+  const shownDate = dateDraft.dueDate || dateDraft.plannedDate;
+  const [picker, setPicker] = useState<"date" | "time" | null>(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [dateSaveRequest, setDateSaveRequest] = useState(0);
+  useEffect(() => { if (dateSaveRequest > 0) void saveDates(); }, [dateSaveRequest]);
+  function setDates(next: Partial<TaskDateDraft>) {
+    if (scopeRef.current !== mutationScope || !mutationScope.active || mutationScope.busy || latestRef.current?.status === "cancelled") return;
+    dateDraftRef.current = { ...dateDraftRef.current, ...next };
+    setDateDraft(dateDraftRef.current);
+    setDateSaveRequest(value => value + 1);
+  }
+  const todayKey = () => localParts(new Date(), editTimeZone).date;
+  const nextHour = () => `${String(Math.min(23, Number(localParts(new Date(), editTimeZone).time.slice(0, 2)) + 1)).padStart(2, "0")}:00`;
+  const toggleDate = (on: boolean) => setDates(on ? { plannedDate: todayKey() } : { plannedDate: "", dueDate: "", dueTime: "" });
+  const toggleTime = (on: boolean) => { const day = shownDate || todayKey(); setDates(on ? { plannedDate: day, dueDate: day, dueTime: nextHour() } : { plannedDate: shownDate, dueDate: "", dueTime: "" }); };
+  const pickDate = (day: string) => setDates({ plannedDate: day, ...(dateDraft.dueTime ? { dueDate: day } : {}) });
+  const pickTime = (time: string) => setDates({ dueDate: shownDate || todayKey(), dueTime: time, ...(shownDate ? {} : { plannedDate: todayKey() }) });
+  const revertDates = () => { if (!baseline) return; dateDraftRef.current = taskDateDraftFromView(baseline, editTimeZone); setDateDraft(dateDraftRef.current); };
+
   return (
     <View style={styles.screen}>
     <AppScreen
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
       backLabel={locale.t("tasks.title")}
-      refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accentText} />}
-      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
-        {largeText ? <Ionicons color={colors.accentText} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
-      </Pressable> : null}
+      refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || remindersState.refreshing} tintColor={colors.accentText} />}
       title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
@@ -522,185 +525,152 @@ export function TaskDetailScreen() {
       {!offline && detailState.kind === "failure" ? <ErrorState message={locale.t("taskDetail.readFailed")} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
-          <View style={styles.hero}>
+          {/* Reminders detail: the round check, the title and the note in one card. */}
+          <View style={[styles.card, styles.hero]}>
             <Pressable
               accessibilityLabel={locale.t(detail.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: detail.title })}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: detail.status === "completed", disabled: saving || offline && !isOfflineTaskCategory(detail.category) || detail.status === "cancelled" }}
+              accessibilityState={{ checked: detail.status === "completed", disabled: locked || detail.status === "cancelled" }}
               aria-checked={detail.status === "completed"}
-              disabled={saving || offline && !isOfflineTaskCategory(detail.category) || detail.status === "cancelled"}
+              disabled={locked || detail.status === "cancelled"}
               onPress={changeStatus}
               style={styles.heroCheckButton}
             >
               <View style={[styles.checkbox, detail.status === "completed" && styles.checkboxCompleted]}>
-                {detail.status === "completed" ? <Ionicons color={colors.onAccent} name="checkmark" size={18} /> : null}
+                {detail.status === "completed" ? <Icon color={colors.onAccent} name="check" size={15} strokeWidth={2.4} /> : null}
               </View>
             </Pressable>
             <View style={styles.heroBody}>
-              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving && (!offline || isOfflineTaskCategory(detail.category))} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
+              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!locked} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
                 onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
-                style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
-              <View style={styles.badges}>
-                <Text style={styles.statusText}>{detail.status === "open" ? locale.t("taskDetail.statusOpen") : detail.statusLabel}</Text>
-                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text> : null}
-              </View>
+                style={[styles.titleInput, detail.status === "completed" && styles.titleDone, { minHeight: Math.max(30 * fontScale, titleHeight) }]} value={title} />
+              <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!locked} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
+                onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
+                placeholder={locale.t("taskDetail.notes")} placeholderTextColor={colors.ink3Text}
+                style={[styles.notesInput, { height: Math.max(24 * fontScale, notesHeight) }]} value={notes} />
             </View>
           </View>
 
-          {staleDraft && !moreOpen ? <View>
+          {staleDraft ? <View>
             <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-            <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={discardDraft} style={styles.sheetRow}>
-              <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
+            <Pressable accessibilityRole="button" disabled={locked} onPress={discardDraft} style={styles.linkRow}>
+              <Text style={styles.linkText}>{locale.t("taskDetail.discardDraft")}</Text>
             </Pressable>
           </View> : null}
+          {timeZone !== editTimeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("taskDetail.draftTimeZone", { timeZone: editTimeZone })}</Text> : null}
 
-          <View style={styles.metadataGroup}>
-            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" disabled={offline && !isOfflineTaskCategory(detail.category)} onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t((latest ?? detail).dueAt ? "taskDetail.due" : "taskDetail.scheduled")}</Text>
-              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
-            </Pressable>
-            {detail.relatedContactId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewContact")} accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedContact")}</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewContact")}</Text>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
-            </Pressable> : null}
-            {detail.relatedEventId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewEvent")} accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedEvent")}</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewEvent")}</Text>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
-            </Pressable> : null}
-            {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>{locale.t("taskDetail.location")}</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
-            {detail.sourceNoteId && detail.sourceNoteVersion ? <Pressable accessibilityLabel={locale.t("taskDetail.viewSourceNote")} accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.sourceNote")}</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewSourceNoteVersion", { version: detail.sourceNoteVersion })}</Text>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
-            </Pressable> : null}
-            {detail.sourceLabel ? <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.source")}</Text>
-              <Text style={styles.metadataValue}>{detail.sourceLabel}</Text>
-            </View> : null}
-            {detail.createdAt ? <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.createdAt")}</Text>
-              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt, timeZone, locale.language)}</Text>
-            </View> : null}
-            <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.category")}</Text>
-              <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.coralText }]}><Icon color={colors.onAccent} name="calendar" size={16} /></View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowLabel}>{locale.t("taskDetail.date")}</Text>
+                {shownDate ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("taskDetail.changeDate")} disabled={datesLocked} onPress={() => setPicker("date")} hitSlop={8}>
+                  <Text style={styles.rowValueLink}>{taskDateLabel(shownDate, editTimeZone, locale.language, locale.t)}</Text>
+                </Pressable> : null}
+              </View>
+              <Switch accessibilityLabel={locale.t("taskDetail.date")} value={Boolean(shownDate)} disabled={datesLocked} onValueChange={toggleDate} />
             </View>
-            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" disabled={offline && !isOfflineTaskCategory(detail.category)} onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
-              <Text style={metadataLabelStyle}>{locale.t("taskDetail.reminder")}</Text>
-              <Text style={styles.metadataValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
+            <View style={[styles.row, styles.rowLine]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.accentText }]}><Icon color={colors.onAccent} name="clock" size={16} /></View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowLabel}>{locale.t("taskDetail.time")}</Text>
+                {dateDraft.dueTime ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("taskDetail.changeTime")} disabled={datesLocked} onPress={() => setPicker("time")} hitSlop={8}>
+                  <Text style={styles.rowValueLink}>{dateDraft.dueTime}</Text>
+                </Pressable> : null}
+              </View>
+              <Switch accessibilityLabel={locale.t("taskDetail.time")} value={Boolean(dateDraft.dueTime)} disabled={datesLocked} onValueChange={toggleTime} />
+            </View>
+          </View>
+          {detail.status === "cancelled" ? <Text style={styles.hint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
+
+          <View style={styles.card}>
+            <Pressable accessibilityLabel={locale.t("taskDetail.reminder")} accessibilityRole="button" disabled={locked} onPress={() => setReminderOpen(true)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.macApricotText }]}><Icon color={colors.onAccent} name="bell" size={16} /></View>
+              <Text style={[styles.rowLabel, styles.rowGrow]}>{locale.t("taskDetail.reminder")}</Text>
+              <Text numberOfLines={1} style={styles.rowValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
+              <Icon color={colors.ink3Text} name="right" size={16} />
             </Pressable>
           </View>
 
-          <View style={styles.contentSection}>
-            <Text accessibilityRole="header" style={styles.contentHeading}>{locale.t("taskDetail.content")}</Text>
-            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving && (!offline || isOfflineTaskCategory(detail.category))} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
-              onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
-              placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.ink3Text}
-              style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
+          <View style={styles.card}>
+            {detail.relatedContactId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewContact")} accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.ink3Text }]}><Icon color={colors.onAccent} name="user" size={16} /></View>
+              <Text style={[styles.rowLabel, styles.rowGrow]}>{locale.t("taskDetail.relatedContact")}</Text>
+              <Text style={styles.rowValue}>{locale.t("taskDetail.open")}</Text>
+              <Icon color={colors.ink3Text} name="right" size={16} />
+            </Pressable> : null}
+            {detail.relatedEventId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewEvent")} accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={({ pressed }) => [styles.row, detail.relatedContactId && styles.rowLine, pressed && styles.pressed]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.ink3Text }]}><Icon color={colors.onAccent} name="ticket" size={16} /></View>
+              <Text style={[styles.rowLabel, styles.rowGrow]}>{locale.t("taskDetail.relatedEvent")}</Text>
+              <Text style={styles.rowValue}>{locale.t("taskDetail.open")}</Text>
+              <Icon color={colors.ink3Text} name="right" size={16} />
+            </Pressable> : null}
+            {detail.sourceNoteId && detail.sourceNoteVersion ? <Pressable accessibilityLabel={locale.t("taskDetail.viewSourceNote")} accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={({ pressed }) => [styles.row, (detail.relatedContactId || detail.relatedEventId) && styles.rowLine, pressed && styles.pressed]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.ink3Text }]}><Icon color={colors.onAccent} name="note" size={16} /></View>
+              <Text style={[styles.rowLabel, styles.rowGrow]}>{locale.t("taskDetail.sourceNote")}</Text>
+              <Text style={styles.rowValue}>{locale.t("taskDetail.open")}</Text>
+              <Icon color={colors.ink3Text} name="right" size={16} />
+            </Pressable> : null}
+            <View style={[styles.row, Boolean(detail.relatedContactId || detail.relatedEventId || detail.sourceNoteId && detail.sourceNoteVersion) && styles.rowLine]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.ink3Text }]}><Icon color={colors.onAccent} name="pin" size={16} /></View>
+              <TextInput accessibilityLabel={locale.t("taskDetail.location")} autoCorrect={false} editable={!datesLocked} onBlur={() => { void saveDates(); }}
+                onChangeText={value => changeDate("location", value)} placeholder={locale.t("taskDetail.locationPlaceholder")} placeholderTextColor={colors.ink3Text}
+                style={styles.locationInput} value={dateDraft.location ?? ""} />
+            </View>
           </View>
 
-          {mutationError && !moreOpen ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
+          {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
           {reminderMessage ? <Text style={styles.successText}>{reminderMessage}</Text> : null}
 
-          <Modal animationType="slide" onRequestClose={() => setMoreOpen(false)} transparent visible={moreOpen}>
+          <Pressable accessibilityRole="button" disabled={locked} onPress={() => setConfirmDelete(true)} style={({ pressed }) => [styles.card, styles.deleteButton, pressed && styles.pressed]}>
+            <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
+          </Pressable>
+
+          {picker ? <PersonalScheduleDateTimePicker kind={picker} value={picker === "date" ? shownDate : dateDraft.dueTime} zone={editTimeZone} disabled={datesLocked}
+            onCancel={() => setPicker(null)} onConfirm={value => { setPicker(null); (picker === "date" ? pickDate : pickTime)(value); }} /> : null}
+
+          <Modal animationType="slide" onRequestClose={() => setReminderOpen(false)} transparent visible={reminderOpen}>
             <View style={styles.modalRoot}>
-              <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="task-settings-scrim" style={styles.modalScrim} onPress={() => setMoreOpen(false)} />
-              <View style={styles.sheet}>
+              <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="task-settings-scrim" style={styles.modalScrim} onPress={() => setReminderOpen(false)} />
+              <View role="dialog" accessibilityLabel={locale.t("taskDetail.reminder")} style={styles.sheet}>
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>{locale.t("taskDetail.settings")}</Text>
-                  <Pressable accessibilityLabel={locale.t("taskDetail.closeSettings")} accessibilityRole="button" onPress={() => setMoreOpen(false)} style={styles.iconButton}>
-                    <Ionicons color={colors.ink2} name="close" size={21} />
+                  <Text accessibilityRole="header" style={styles.sheetTitle}>{locale.t("taskDetail.reminder")}</Text>
+                  <Pressable accessibilityLabel={locale.t("personal60.done")} accessibilityRole="button" onPress={() => setReminderOpen(false)} style={styles.sheetDone}>
+                    <Text style={styles.linkText}>{locale.t("personal60.done")}</Text>
                   </Pressable>
                 </View>
-                <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody}>
-                  {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-                  {timeZone !== editTimeZone ? <Text accessibilityRole="alert">{locale.t("taskDetail.draftTimeZone", { timeZone: editTimeZone })}</Text> : null}
-              {staleDraft ? <View>
-                    <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-                    <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={discardDraft} style={styles.sheetRow}>
-                      <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
-                    </Pressable>
-                  </View> : null}
-                  <Text style={styles.sheetSection}>{locale.t("taskDetail.dateTimeSection")}</Text>
-                  <Text style={styles.dateHint}>{locale.t("taskDetail.dateHint", { timeZone: editTimeZone })}</Text>
-                  {([
-                    ["plannedDate", locale.t("taskDetail.plannedDate"), "YYYY-MM-DD"],
-                    ["dueDate", locale.t("taskDetail.dueDate"), "YYYY-MM-DD"],
-                    ["dueTime", locale.t("taskDetail.dueTime"), "HH:mm"],
-                    ["location", locale.t("taskDetail.location"), locale.t("taskDetail.locationPlaceholder")],
-                  ] as const).map(([field, label, placeholder]) => <View key={field} style={styles.dateField}>
-                    <Text style={styles.dateFieldLabel}>{label}</Text>
-                    <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
-                      onChangeText={value => changeDate(field, value)}
-                      placeholder={placeholder} placeholderTextColor={colors.ink3Text} style={styles.dateInput} value={dateDraft[field] ?? ""} />
-                  </View>)}
-                  <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
-                  {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
-                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category) || staleDraft || detail.status === "cancelled"} onPress={() => { void saveDates(); }}
-                    style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
-                    <Text style={styles.completeButtonText}>{locale.t(saving ? "taskDetail.saving" : "taskDetail.saveDateTime")}</Text>
-                  </Pressable>
-                  <Text style={styles.sheetSection}>{locale.t("taskDetail.reminderOptions")}</Text>
+                <ScrollView contentContainerStyle={styles.sheetBody}>
                   {reminders.map((item) => (
-                    <Pressable key={item.id} onPress={() => void cancelReminder(item.id)} style={styles.sheetRow}>
-                      <Text style={styles.sheetRowText}>{item.label}</Text>
-                      <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelReminder")}</Text>
-                    </Pressable>
-                  ))}
-                  {detail.status === "open" ? (
-                    <View style={styles.reminderOptions}>
-                      {quickReminderOptions.map((option) => (
-                        <Pressable key={option.fireAt} onPress={() => void addReminder(option.fireAt)} style={styles.reminderOption}>
-                          <Text style={styles.reminderOptionText}>{option.label}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  <Text style={styles.sheetSection}>{locale.t("taskDetail.changeHistory")}</Text>
-                  {activities.slice(-5).reverse().map((item) => (
                     <View key={item.id} style={styles.sheetRow}>
                       <Text style={styles.sheetRowText}>{item.label}</Text>
-                      <Text style={styles.sheetRowMeta}>{item.dateLabel}</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`${locale.t("taskDetail.cancelReminder")} ${item.label}`} disabled={locked} onPress={() => void cancelReminder(item.id)} hitSlop={8}>
+                        <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelReminder")}</Text>
+                      </Pressable>
                     </View>
                   ))}
-
-                  {detail.status === "open" ? <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={cancelTask} style={styles.sheetRow}>
-                    <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelTask")}</Text>
-                  </Pressable> : null}
-                  <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => { setMoreOpen(false); setConfirmDelete(true); }} style={styles.deleteButton}>
-                    <Ionicons color={colors.coralText} name="trash-outline" size={18} />
-                    <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
-                  </Pressable>
+                  {detail.status === "open" ? quickReminderOptions.map((option) => (
+                    <Pressable key={option.fireAt} accessibilityRole="button" disabled={locked} onPress={() => void addReminder(option.fireAt)} style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}>
+                      <Text style={styles.sheetRowText}>{option.label}</Text>
+                      <Icon color={colors.accentText} name="plus" size={16} />
+                    </Pressable>
+                  )) : null}
+                  <Text style={styles.hint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
                 </ScrollView>
               </View>
             </View>
           </Modal>
           <ConfirmDialog visible={confirmDelete && !saving} destructive title={locale.t("taskDetail.deleteConfirmTitle")}
             message={locale.t("taskDetail.deleteConfirmBody")} confirmLabel={locale.t("taskDetail.deleteConfirmAction")}
-            onCancel={() => { setConfirmDelete(false); setMoreOpen(true); }}
+            onCancel={() => setConfirmDelete(false)}
             onConfirm={() => { setConfirmDelete(false); void deleteTask(); }} />
           <ConfirmDialog visible={confirmSecondDeferral && !saving} destructive title={locale.t("taskDetail.deferAgainTitle")}
             message={locale.t("taskDetail.deferAgainBody")} confirmLabel={locale.t("taskDetail.deferAgainAction")}
-            onCancel={() => { setConfirmSecondDeferral(false); setMoreOpen(true); }}
+            onCancel={() => { setConfirmSecondDeferral(false); revertDates(); }}
             onConfirm={() => { setConfirmSecondDeferral(false); void saveDates(true); }} />
         </>
       ) : null}
+      <View style={{ height: 24 + insets.bottom }} />
     </AppScreen>
-    {detail ? <View testID="task-detail-actions" style={[styles.actionDock, { paddingBottom: Math.max(24, insets.bottom) }]}>
-      <View style={styles.actionContent}>
-        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
-          <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{locale.t(detail.status === "completed" ? "taskDetail.restore" : "taskDetail.markComplete")}</Text>
-        </Pressable> : null}
-        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
-          <Text style={styles.editButtonText}>{locale.t("taskDetail.edit")}</Text>
-        </Pressable>
-      </View>
-    </View> : null}
     </View>
   );
 }
@@ -716,71 +686,51 @@ function taskDateLabel(value: string | undefined, timeZone: string, language: Or
   return dateLabel(value, timeZone, language, t);
 }
 
-function createdDateLabel(value: string, timeZone: string, language: OrbitLanguage): string {
-  return new Intl.DateTimeFormat(localeTag(language), { timeZone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
-}
-
 const taskListReturnHref = "/task?seg=todo&view=all" as Href;
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  actionContent: { alignSelf: "center", gap: 8, maxWidth: layout.contentMax - 2 * layout.pageInset, width: "100%" },
-  actionDock: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 16 },
-  badges: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  checkbox: { alignItems: "center", justifyContent: "center", width: 26, height: 26, borderWidth: 1.5, borderColor: colors.ink, borderRadius: 7 },
+  card: { backgroundColor: colors.surface, borderRadius: 14, paddingLeft: 14, marginBottom: 14, overflow: "hidden" },
+  checkbox: { alignItems: "center", justifyContent: "center", width: 24, height: 24, borderWidth: 1.6, borderColor: colors.ink4, borderRadius: 12 },
   checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },
-  completeButton: { ...createControlStyles(colors).primaryButton, minHeight: 50 },
-  completeButtonText: { ...createControlStyles(colors).primaryButtonText, fontSize: 15, lineHeight: 22 },
   conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.line, borderWidth: 1, borderRadius: radius.md, gap: spacing.sm, marginVertical: spacing.md, padding: spacing.md },
-  conflictText: { color: colors.ink, fontSize: typography.bodySm, lineHeight: 21 },
-  conflictServerText: { color: colors.ink2, fontSize: typography.label, lineHeight: 19 },
+  conflictText: { color: colors.ink, fontSize: typography.bodySm, lineHeight: 24 },
+  conflictServerText: { color: colors.ink2, fontSize: typography.label, lineHeight: 21 },
   conflictActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   conflictAction: { ...createControlStyles(colors).secondaryButton, flexGrow: 1, minHeight: 42, paddingHorizontal: spacing.sm },
   conflictActionText: { ...createControlStyles(colors).secondaryButtonText, fontSize: typography.label, textAlign: "center" },
-  contentHeading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
-  contentSection: { gap: 6 },
-  dateBadge: { color: colors.surface, backgroundColor: colors.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9, fontSize: 11, lineHeight: 16, fontWeight: "700" },
-  dateField: { gap: 6, marginTop: spacing.sm },
-  dateFieldLabel: { color: colors.ink2, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  dateHint: { color: colors.ink3Text, fontSize: 13, lineHeight: 20 },
-  dateInput: { color: colors.ink, fontSize: 16, lineHeight: 24, minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
-  dateSaveButton: { ...createControlStyles(colors).primaryButton, minHeight: 48, marginTop: spacing.sm },
-  deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
-  deleteText: { color: colors.coralText, fontSize: typography.body, fontWeight: "700" },
-  editButton: { ...createControlStyles(colors).secondaryButton, minHeight: 46 },
-  editButtonText: { ...createControlStyles(colors).secondaryButtonText, fontSize: 14, lineHeight: 20 },
-  editLink: { color: colors.accentText, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  errorText: { color: colors.coralText, fontSize: typography.bodySm },
-  iconButton: { alignItems: "center", justifyContent: "center", minHeight: layout.control, width: layout.control, borderRadius: radius.md },
-  hero: { alignItems: "flex-start", flexDirection: "row", gap: 0, paddingTop: 4 },
-  heroBody: { flex: 1, minWidth: 0 },
-  heroCheckButton: { width: 44, minHeight: 44, justifyContent: "flex-start", paddingTop: 4 },
-  linkValue: { color: colors.accentText },
+  deleteButton: { alignItems: "center", justifyContent: "center", minHeight: 50, paddingLeft: 0 },
+  deleteText: { color: colors.coralText, fontSize: 17 },
+  errorText: { color: colors.coralText, fontSize: typography.bodySm, marginBottom: 12 },
+  hero: { alignItems: "flex-start", flexDirection: "row", paddingVertical: 10, paddingRight: 14, paddingLeft: 4 },
+  heroBody: { flex: 1, minWidth: 0, gap: 4 },
+  heroCheckButton: { width: 44, minHeight: 44, alignItems: "center", justifyContent: "flex-start", paddingTop: 5 },
+  hint: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  linkRow: { minHeight: 44, justifyContent: "center", marginBottom: 8 },
+  linkText: { color: colors.accentText, fontSize: 17, fontWeight: "600" },
   localMutationLabel: { color: colors.ink2, fontSize: typography.label, marginVertical: spacing.xs },
-  metadataGroup: { borderTopColor: colors.line, borderTopWidth: 1, backgroundColor: colors.surface },
-  metadataLabel: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
-  metadataLabelLarge: { width: "100%", marginBottom: 6 },
-  metadataRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: 0, minHeight: 48, paddingVertical: 13 },
-  metadataValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", flex: 1, minWidth: 120 },
+  locationInput: { flex: 1, minHeight: 44, color: colors.ink, fontSize: 17, padding: 0 },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   modalScrim: { backgroundColor: colors.scrim, ...StyleSheet.absoluteFill },
-  notesInput: { color: colors.ink2, fontSize: 15, lineHeight: 24, padding: 0, textAlignVertical: "top" },
+  notesInput: { color: colors.ink2, fontSize: 16, lineHeight: 22, padding: 0, textAlignVertical: "top" },
   pressed: { opacity: 0.68 },
-  reminderOption: { ...createControlStyles(colors).chip, flex: 1 },
-  reminderOptions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
-  reminderOptionText: { ...textStyles.caption, color: colors.accentText, textAlign: "center", flexShrink: 1 },
-  reopenButton: { backgroundColor: colors.surface, borderColor: colors.accentText, borderWidth: 1 },
-  reopenButtonText: { ...createControlStyles(colors).secondaryButtonText, color: colors.accentText },
-  screen: { flex: 1, backgroundColor: colors.surface },
+  row: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 52, paddingVertical: 6, paddingRight: 14 },
+  rowBody: { flex: 1, minWidth: 0 },
+  rowGrow: { flex: 1 },
+  rowIcon: { alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8 },
+  rowLabel: { color: colors.ink, fontSize: 17 },
+  rowLine: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  rowValue: { color: colors.ink3Text, fontSize: 16, flexShrink: 1 },
+  rowValueLink: { color: colors.accentText, fontSize: 15, marginTop: 1 },
+  screen: { flex: 1, backgroundColor: colors.bg },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "78%", overflow: "hidden" },
-  sheetBody: { gap: spacing.sm, padding: spacing.lg, paddingTop: spacing.sm },
-  sheetHeader: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 58, paddingHorizontal: spacing.lg },
-  sheetRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 46 },
-  sheetRowAction: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "700" },
-  sheetRowMeta: { color: colors.ink3Text, fontSize: typography.label },
-  sheetRowText: { color: colors.ink, flex: 1, fontSize: typography.bodySm, fontWeight: "600" },
-  sheetSection: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "800", marginTop: spacing.md },
+  sheetBody: { paddingHorizontal: spacing.lg, paddingBottom: 32 },
+  sheetDone: { minHeight: 44, minWidth: 44, alignItems: "flex-end", justifyContent: "center" },
+  sheetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 56, paddingHorizontal: spacing.lg },
+  sheetRow: { alignItems: "center", borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.sm, minHeight: 50 },
+  sheetRowAction: { color: colors.coralText, fontSize: typography.bodySm, fontWeight: "600" },
+  sheetRowText: { color: colors.ink, flex: 1, fontSize: 17 },
   sheetTitle: { ...textStyles.section, color: colors.ink },
-  statusText: { color: colors.ink3Text, fontSize: 11, lineHeight: 16, borderColor: colors.line, borderWidth: 1, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3 },
-  successText: { color: colors.accentText, fontSize: typography.bodySm },
-  titleInput: { color: colors.ink, fontSize: 24, lineHeight: 32, fontWeight: "900", letterSpacing: -0.48, padding: 0, textAlignVertical: "top" },
+  successText: { color: colors.accentText, fontSize: typography.bodySm, marginBottom: 12 },
+  titleDone: { color: colors.ink3Text },
+  titleInput: { color: colors.ink, fontSize: 22, lineHeight: 28, fontWeight: "700", padding: 0, textAlignVertical: "top" },
 }));

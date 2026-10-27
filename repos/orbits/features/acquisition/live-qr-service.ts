@@ -187,9 +187,9 @@ function parseOrbitQrText(qrText: string): ParsedQrPayload | null {
     email: nonEmpty(fields.get("email")) ?? "",
     eventName: nonEmpty(fields.get("event")) ?? "Scanned Orbit QR",
     mutualConnections: stringList(fields.get("mutual")),
-    organization:
-      nonEmpty(fields.get("organization")) ?? "Unknown organization",
-    role: nonEmpty(fields.get("role")) ?? "Relationship candidate",
+    // QA-A3: no placeholder text is stored as data; an unknown organization / role stays empty.
+    organization: nonEmpty(fields.get("organization")) ?? "",
+    role: nonEmpty(fields.get("role")) ?? "",
     sharedTopics: stringList(fields.get("topic")),
   };
 }
@@ -320,7 +320,10 @@ function draftEvidenceFor(input: {
       evidenceId: `evidence:qr-scan:${input.digest.slice(0, 24)}`,
       source: input.source,
       sourceLabel: input.source.label,
-      excerpt: `${input.parsed.displayName}, ${input.parsed.role} at ${input.parsed.organization}, was parsed from an operator-supplied Orbit QR payload.`,
+      excerpt: `${[
+        input.parsed.displayName,
+        [input.parsed.role, input.parsed.organization].filter(Boolean).join(" at "),
+      ].filter(Boolean).join(", ")} was parsed from an operator-supplied Orbit QR payload.`,
       capturedFields: [
         "displayName",
         "role",
@@ -666,8 +669,10 @@ function contactForDraft(input: {
   return {
     id: input.contactId,
     displayName: input.draft.displayName.trim(),
-    organization: input.draft.organization.trim(),
-    role: input.draft.role.trim(),
+    ...(nonEmpty(input.draft.organization)
+      ? { organization: input.draft.organization.trim() }
+      : {}),
+    ...(nonEmpty(input.draft.role) ? { role: input.draft.role.trim() } : {}),
     ...(nonEmpty(input.draft.email)
       ? { primaryEmail: input.draft.email.trim() }
       : {}),

@@ -47,6 +47,18 @@ test("LF2: offline, the venue shows the saved copy with the 「截至」 notice"
   await page.getByText(/无法连接 · 显示截至/).waitFor();
 });
 
+test("QA-B4: 会场模式 shows LIVE only from the start time (check-in opens before it)", async (t) => {
+  const later = new Date(Date.now() + 40 * 60_000).toISOString();
+  const early = { ...venue, now: new Date().toISOString(), startsAt: later, endsAt: new Date(Date.now() + 160 * 60_000).toISOString() };
+  const page = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
+    copies: { [`event-venue|${eventId}`]: { data: early, syncedAt } } });
+  await page.getByText(/ 开始$/u).first().waitFor();
+  assert.equal(await page.getByText("LIVE", { exact: true }).count(), 0);
+  const live = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
+    copies: { [`event-venue|${eventId}`]: { data: { ...venue, startsAt: new Date(Date.now() - 10 * 60_000).toISOString() }, syncedAt } } });
+  await live.getByText("LIVE", { exact: true }).waitFor();
+});
+
 test("LF2: offline, the events tab keeps its saved lists with 「截至」 instead of showing no events", async (t) => {
   const mine = { items: [], upcomingCount: 0, asOf: syncedAt, nextCursor: null };
   const page = await harness.open(t, { screen: "events", online: false, copies: {

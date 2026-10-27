@@ -106,6 +106,26 @@ describe("multi goal", () => {
   });
 });
 
+describe("delete goal", () => {
+  test("an active or an achieved goal can be deleted: it leaves every list, frees the slot, replays, and cannot be deleted twice", async () => {
+    const world = flowWorld();
+    const a = await confirmedPlan(world);
+    const b = await confirmedPlan(world);
+    await world.flow.achieve(b.planId, { expectedRevision: b.detail.revision, idempotencyKey: key() });
+    const deleteKey = key();
+    const deleted = await world.flow.deleteGoal(a.planId, deleteKey);
+    assert.deepEqual(deleted, { deleted: true, planId: a.planId });
+    assert.deepEqual(await world.flow.deleteGoal(a.planId, deleteKey), deleted, "replay");
+    await assert.rejects(world.flow.deleteGoal(a.planId, key()), rejects("PLAN_NOT_FOUND"));
+    assert.equal((await world.flow.quota()).activeGoals, 0);
+    const goals = (await world.planService.summary()).goals;
+    assert.deepEqual(goals.map((goal) => goal.planId), [b.planId], "the achieved goal is still listed");
+    await world.flow.deleteGoal(b.planId, key());
+    assert.deepEqual((await world.planService.summary()).goals, []);
+    assert.equal(await world.planService.achievement(b.planId, "ja"), null, "a deleted goal has no done page");
+  });
+});
+
 describe("legacy", () => {
   const legacy = {
     actionsDone: 1,

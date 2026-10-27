@@ -16,12 +16,14 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { resetStackTo } from "../../components/shell-navigation";
 import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
   accountAuthPasswordError,
+  localizeAuthMessage,
   nextHrefForAccountAuthSubmit,
   normalizedNext,
   rememberSignupFallbackEmail,
@@ -58,6 +60,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Login / forgot-password links only help when the server refused the sign-up (e.g. the address is taken), not for a short password.
+  const [signupRefused, setSignupRefused] = useState(false);
   const [devicePendingWrites, setDevicePendingWrites] = useState<{
     baseUrl: string;
     count: number | null;
@@ -160,7 +164,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           body: { email: values.email.trim() }
         });
         if (!isCurrent()) return;
-        if (!result.success) setError(result.error.message);
+        // QA-D: the API client turns server errors into fixed Chinese text; show the UI language instead.
+        if (!result.success) setError(result.status >= 500 ? locale.t("auth.forgotUnavailable") : result.error.code === "ORBIT_APP_NETWORK_ERROR" ? locale.t("auth.networkFailure") : locale.t("auth.pendingUnconfirmed"));
         else if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
           setError(locale.t("auth.pendingUnconfirmed"));
         } else setNotice(locale.t("auth.forgotAccepted"));
@@ -172,6 +177,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       return;
     }
     if (!ready || authPending.current) return;
+    setSignupRefused(false);
     const passwordError = accountAuthPasswordError(values.password);
     if (passwordError) {
       setError(locale.t(passwordError === "too-long" ? "reset.tooLong" : "reset.tooShort"));
@@ -193,14 +199,16 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
         if (!isCurrent()) return;
         if (!result.success) {
-          setError(result.message ?? locale.t("auth.signupFailure"));
+          setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.signupFailure"));
+          setSignupRefused(true);
           return;
         }
 
         const signedIn = await auth.signIn({ email: values.email, password: values.password, redirectTo: next });
         if (!isCurrent()) return;
         if (!signedIn.success) rememberSignupFallbackEmail(values.email, next);
-        router.replace((signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next })) as Href);
+        // Signed in now: nothing from before (welcome, login, signup) stays to go back to.
+        resetStackTo(router, signedIn.pendingDeletion ? "/account/pending" : nextHrefForAccountAuthSubmit({ mode: signedIn.success ? "login" : "signup", next }));
         return;
       }
 
@@ -212,15 +220,15 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
       if (!isCurrent()) return;
       if (!result.success) {
-        setError(result.message ?? locale.t("auth.loginFailure"));
+        setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.loginFailure"));
         return;
       }
 
-      router.replace(result.pendingDeletion ? "/account/pending" :
+      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode,
           next
-        }) as Href
+        })
       );
     } finally {
       if (isCurrent()) {
@@ -247,17 +255,17 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (result.message === "已取消 Google 登录。") {
           setNotice(locale.t("auth.googleCancelled"));
         } else {
-          setError(result.message ?? locale.t("auth.googleIncomplete"));
+          setError(localizeAuthMessage(result.message, locale.t) ?? locale.t("auth.googleIncomplete"));
         }
         return;
       }
 
       // Google completes a session even when launched from the signup screen.
-      router.replace(result.pendingDeletion ? "/account/pending" :
+      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
         nextHrefForAccountAuthSubmit({
           mode: "login",
           next
-        }) as Href
+        })
       );
     } finally {
       if (isCurrent()) {
@@ -360,7 +368,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           ) : null}
           {notice && !accepted ? <Text style={styles.noticeText}>{notice}</Text> : null}
           {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-          {mode === "signup" && error ? <View style={styles.errorLinks}>
+          {mode === "signup" && error && signupRefused ? <View style={styles.errorLinks}>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/login?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.loginPrimary")}</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => navigateTo(`/account/forgot-password?next=${encodeURIComponent(next)}`)} style={styles.errorLink}><Text style={styles.errorLinkText}>{locale.t("auth.forgotPassword")}</Text></Pressable>
           </View> : null}
@@ -462,6 +470,8 @@ function AuthField({
         <TextInput
           accessibilityLabel={field.label}
           autoCapitalize="none"
+          autoComplete={field.name === "email" ? "email" : "password"}
+          autoCorrect={false}
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
           onBlur={() => setFocused(false)}
@@ -470,6 +480,7 @@ function AuthField({
           placeholderTextColor={colors.ink3Text}
           secureTextEntry={field.secure && !passwordVisible}
           style={styles.input}
+          textContentType={field.name === "email" ? "emailAddress" : "password"}
           value={value}
         />
         {field.secure ? (
@@ -499,15 +510,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { width: "100%", maxWidth: layout.contentMax, alignSelf: "center", minHeight: 58, paddingHorizontal: 36, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   brand: { flexDirection: "row", alignItems: "center", gap: 10 },
-  brandMark: { width: 36, height: 36, overflow: "hidden", borderRadius: 12, backgroundColor: colors.ink, color: colors.surface, textAlign: "center", textAlignVertical: "center", fontSize: 22, fontWeight: "900" },
-  brandText: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  brandMark: { width: 36, height: 36, overflow: "hidden", borderRadius: 12, backgroundColor: colors.ink, color: colors.surface, textAlign: "center", textAlignVertical: "center", fontSize: 24, fontWeight: "900" },
+  brandText: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   closeButton: { minHeight: 44, minWidth: 44, alignItems: "flex-end", justifyContent: "center" },
-  closeText: { color: colors.ink2, fontSize: 12, lineHeight: 18, fontWeight: "600" },
+  closeText: { color: colors.ink2, fontSize: 14, lineHeight: 21, fontWeight: "600" },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1, width: "100%", maxWidth: layout.contentMax, alignSelf: "center", paddingHorizontal: 36, paddingBottom: 4 },
   hero: { paddingTop: 20 },
-  title: { color: colors.ink, fontSize: 22, lineHeight: 29, fontWeight: "800" },
-  description: { color: colors.ink2, fontSize: 13, lineHeight: 20, marginTop: 8 },
+  title: { color: colors.ink, fontSize: 24, lineHeight: 32, fontWeight: "800" },
+  description: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginTop: 8 },
   disabledButton: {
     opacity: 0.72
   },
@@ -524,7 +535,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dividerText: {
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 16
+    lineHeight: 18
   },
   errorText: {
     backgroundColor: colors.coralSoft,
@@ -533,12 +544,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 19,
+    lineHeight: 22,
     padding: spacing.md
   },
   errorLinks: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   errorLink: { minHeight: 44, justifyContent: "center" },
-  errorLinkText: { color: colors.accentText, fontSize: 13, fontWeight: "700" },
+  errorLinkText: { color: colors.accentText, fontSize: 15, fontWeight: "700" },
   fieldHelper: {
     ...textStyles.caption,
     color: colors.ink3Text,
@@ -546,8 +557,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   fieldLabel: {
     color: colors.ink,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     fontWeight: "700",
     letterSpacing: 0
   },
@@ -570,20 +581,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   helperLinkRow: {
-    alignItems: "flex-end",
+    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-end"
+    justifyContent: "center"
   },
   helperLinkText: {
     color: colors.accentText,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "700",
-    lineHeight: 18
+    lineHeight: 21
   },
   input: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     color: colors.ink,
     flex: 1,
     minWidth: 0,
@@ -617,7 +628,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     color: colors.okText,
     fontSize: typography.bodySm,
-    lineHeight: 19,
+    lineHeight: 22,
     padding: spacing.md
   },
   oauthButton: {
@@ -656,12 +667,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).primaryButtonText
   },
   signupLegal: { alignItems: "center", marginTop: 4 },
-  signupLegalText: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  signupLegalText: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, textAlign: "center" },
   signupLegalLinks: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
   signupLegalLink: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 4 },
-  signupLegalLinkText: { color: colors.accentText, fontSize: 12, lineHeight: 18, textDecorationLine: "underline" },
-  footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  signupLegalLinkText: { color: colors.accentText, fontSize: 14, lineHeight: 21, textDecorationLine: "underline" },
+  // QA-D: stacked and centred; side by side the Japanese 「…登録」 ran past the right edge.
+  footer: { minHeight: 40, paddingTop: 4, paddingBottom: 4, alignItems: "center" },
   switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  switchText: { color: colors.ink2, fontSize: 12, lineHeight: 18, textAlign: "center" },
+  switchText: { color: colors.ink2, fontSize: 14, lineHeight: 21, textAlign: "center" },
   switchAction: { color: colors.accentText, fontWeight: "700" }
 }));

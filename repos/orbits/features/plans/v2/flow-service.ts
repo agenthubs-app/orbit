@@ -197,6 +197,10 @@ export interface PlanFlowService {
   /** 确定后的手动编辑：开一份只做手动编辑的见直草稿（不调 AI、不扣见直）。 */
   openManualEdit(planId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   achieve(planId: string, request: PlanAchieveRequest): Promise<{ planId: string; achievedAt: string }>;
+  /** QA-A2: drop an unfinished plan flow (it leaves the 未完成的计划 card; its draft can no longer be confirmed). */
+  abandonIntake(intakeId: string, idempotencyKey: string): Promise<{ intakeId: string; abandoned: true }>;
+  /** QA-A2: remove a goal (active or achieved). It is archived without achieved_at, so no list shows it again. */
+  deleteGoal(planId: string, idempotencyKey: string): Promise<{ planId: string; deleted: true }>;
   nextGoals(planId: string, context: PlanFlowRequestContext): Promise<PlanNextGoalsResponse>;
   editGoal(planId: string, request: PlanGoalEditRequest, context: PlanFlowRequestContext): Promise<PlanGoalEditResult>;
 }
@@ -422,6 +426,11 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     return [contact.role, contact.organization].filter(Boolean).join(" · ") || null;
   }
 
+  function sameName(left: string, right: string): boolean {
+    const norm = (value: string) => value.replace(/[\s\u3000]+/g, "").toLowerCase();
+    return norm(left) !== "" && norm(left) === norm(right);
+  }
+
   function selfMember(name: string, headline: string | null, capabilities: string[]): PlanTeamMember {
     return { basis: null, capabilities, contactId: null, headline, isSelf: true, memberId: "self", name: name || "—", otherCapabilities: [], relation: null, source: "profile" };
   }
@@ -429,7 +438,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
   async function runBackground(intake: PlanIntakeRow, attempt: number, context: PlanFlowRequestContext): Promise<PlanIntakeRow | null> {
     const kind = intake.goalKind;
     const capabilities = [...PLAN_GOAL_TEMPLATES[kind].capabilities];
-    const [profile, candidates] = await Promise.all([source.profile(scope.actorId), source.teamCandidates(scope.actorId)]);
+    const [profile, allCandidates] = await Promise.all([source.profile(scope.actorId), source.teamCandidates(scope.actorId)]);
+    // The user's own card (a contact with their own name) is never a team member.
+    const candidates = allCandidates.filter((contact) => !sameName(contact.name, profile.name));
     const { aliases, input } = aliasContacts(candidates);
     const outcome = await ai.background(
       { capabilities, contacts: input, goalKind: kind, goalText: intake.goalText, profile },
@@ -655,14 +666,14 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const previous = before.steps[index];
       const next = after.steps[index];
       const n = index + 1;
-      push(`steps.${index}.title`, tri(language, { en: `Step ${n} name`, ja: `Step ${n} の名前`, zh: `Step ${n} 名称` }), previous?.title ?? null, next?.title ?? null);
-      push(`steps.${index}.doneCriteria`, tri(language, { en: `Step ${n} done when`, ja: `Step ${n} の目安`, zh: `Step ${n} 完成标准` }), previous?.doneCriteria ?? null, next?.doneCriteria ?? null);
+      push(`steps.${index}.title`, tri(language, { en: `Step ${n} name`, ja: `ステップ${n} の名前`, zh: `第${n}步 名称` }), previous?.title ?? null, next?.title ?? null);
+      push(`steps.${index}.doneCriteria`, tri(language, { en: `Step ${n} done when`, ja: `ステップ${n} の目安`, zh: `第${n}步 完成标准` }), previous?.doneCriteria ?? null, next?.doneCriteria ?? null);
       // 复核 M3：Step 的关联类型与理由的变化也要在差分里看得见。
       const typeLabels = (keys: readonly string[] | undefined) => (keys ? keys.map((key) => after.personTypes.find((type) => type.key === key)?.shortLabel ?? before.personTypes.find((type) => type.key === key)?.shortLabel ?? tri(language, { en: "Events", ja: "イベント", zh: "活动" })).join("・") : null);
       if (previous && next && JSON.stringify(previous.personTypeKeys) !== JSON.stringify(next.personTypeKeys)) {
-        push(`steps.${index}.personTypeKeys`, tri(language, { en: `Step ${n} people`, ja: `Step ${n} の人物タイプ`, zh: `Step ${n} 的人物类型` }), typeLabels(previous.personTypeKeys), typeLabels(next.personTypeKeys));
+        push(`steps.${index}.personTypeKeys`, tri(language, { en: `Step ${n} people`, ja: `ステップ${n} の人物タイプ`, zh: `第${n}步 的人物类型` }), typeLabels(previous.personTypeKeys), typeLabels(next.personTypeKeys));
       }
-      if (previous && next) push(`steps.${index}.why`, tri(language, { en: `Step ${n} reason`, ja: `Step ${n} の理由`, zh: `Step ${n} 的理由` }), previous.why ?? null, next.why ?? null);
+      if (previous && next) push(`steps.${index}.why`, tri(language, { en: `Step ${n} reason`, ja: `ステップ${n} の理由`, zh: `第${n}步 的理由` }), previous.why ?? null, next.why ?? null);
     }
     const slots = [...new Set([...before.personTypes.map((type) => type.slot), ...after.personTypes.map((type) => type.slot)])];
     for (const slot of slots) {
@@ -675,7 +686,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       if (previous && next) push(`personTypes.${slot}.why`, `${name} · ${tri(language, { en: "why", ja: "理由", zh: "理由" })}`, previous.why, next.why);
     }
     const event = tri(language, { en: "Events", ja: "イベント", zh: "活动" });
-    push("event", event, `${before.event.allocation}/${before.event.targetCount}`, `${after.event.allocation}/${after.event.targetCount}`);
+    // QA-A: "15/3" read as a fraction; say points and times.
+    const describeEvent = (block: PlanDraftContent["event"]) => tri(language, { en: `${block.allocation} pts · ${block.targetCount} times`, ja: `${block.allocation} 点 · ${block.targetCount}回`, zh: `${block.allocation} 分 · ${block.targetCount}次` });
+    push("event", event, describeEvent(before.event), describeEvent(after.event));
     const cites = (content: PlanDraftContent) => content.citations.map((citation) => `${citation.id} v${citation.version}`).join("・") || null;
     push("citations", tri(language, { en: "Sources", ja: "参考資料", zh: "参考资料" }), cites(before), cites(after));
     return changes;
@@ -1164,7 +1177,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       let membersStep = before.aiSteps.members;
       if (request.mode === "network") {
         const existing = new Set((before.background.team?.value.members ?? []).map((member) => member.contactId).filter(Boolean));
-        const contacts = (await source.contacts(scope.actorId, request.contactIds)).filter((contact) => !existing.has(contact.id));
+        const [profile, found] = await Promise.all([source.profile(scope.actorId), source.contacts(scope.actorId, request.contactIds)]);
+        const contacts = found.filter((contact) => !existing.has(contact.id) && !sameName(contact.name, profile.name));
         if (contacts.length > 0) {
           const { aliases, input } = aliasContacts(contacts);
           const ids = contacts.map((contact) => contact.id).sort();
@@ -1914,6 +1928,34 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       });
     },
 
+    async abandonIntake(intakeId, idempotencyKey) {
+      return repository.transact(scope, async (tx) => {
+        const prior = await tx.flowReceipt(idempotencyKey);
+        if (prior?.kind === "intake_abandon") return { abandoned: true as const, intakeId };
+        const intake = await requireIntake(tx, intakeId);
+        if (intake.status === "planned") throw new PlanFlowError("BACKGROUND_LOCKED", "This flow is finished.");
+        if (intake.status !== "abandoned") await tx.updateIntake({ ...intake, status: "abandoned", updatedAt: now() });
+        await writeReceipt(tx, { body: { intakeId }, intakeId, key: idempotencyKey, kind: "intake_abandon", response: { abandoned: true, intakeId } });
+        return { abandoned: true as const, intakeId };
+      });
+    },
+
+    async deleteGoal(planId, idempotencyKey) {
+      return repository.transact(scope, async (tx) => {
+        const prior = await tx.flowReceipt(idempotencyKey);
+        if (prior?.kind === "goal_delete") return { deleted: true as const, planId: String(prior.response.planId ?? planId) };
+        const plan = await tx.plan(planId);
+        // Already removed (archived and never achieved) or not this actor's: nothing to delete.
+        if (!plan || (plan.status !== "active" && !plan.achievedAt)) throw new PlanFlowError("PLAN_NOT_FOUND", "Plan not found.");
+        const at = now();
+        await tx.updatePlan({ ...plan, achievedAt: null, archivedAt: plan.archivedAt ?? at, status: "archived", updatedAt: at });
+        const open = await tx.openReviewDraft(plan.id);
+        if (open) await tx.updateDraft({ ...open, status: "discarded", updatedAt: at });
+        await writeReceipt(tx, { body: { planId }, key: idempotencyKey, kind: "goal_delete", planId: plan.id, response: { deleted: true, planId: plan.id } });
+        return { deleted: true as const, planId: plan.id };
+      });
+    },
+
     async nextGoals(planId, context) {
       // 每计划只调一次（授权口径）：换语言沿用第一次的候选（复核 m3 的按语言分缓存会增加付费调用，未采用）。
       const key = `next-goal:${planId}`;
@@ -1995,7 +2037,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         return { draft: current, intake: owner };
       });
       if (draft.kind === "review") return confirmReviewDraft(draftId, context);
-      if (!intake || draft.kind !== "initial") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      if (!intake || draft.kind !== "initial" || intake.status === "abandoned") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       if (draft.status === "discarded") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       void idempotencyKey; // 同一份草稿重复确定只建一份（creationKey = 草稿 id），幂等由 createPlanFromDraft 保证。
       return confirmDraft(draft, intake, draft.manualEditUsed, context);

@@ -8,6 +8,8 @@ import { ScrollView, StyleSheet, TextInput, View, type NativeScrollEvent, type N
 import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, EventDiscoverQuery, EventDiscoverResponse, EventDiscoverRow, EventDiscoverTheme } from "../../../api/contract/event-discover";
 import type { EventSearchResponse } from "../../../api/contract/event-search";
 import { SHELL_GUTTER } from "../../../components/ShellTopBar";
+import { openMainTab } from "../../../components/shell-navigation";
+import { planNewGoalHref } from "../../../api/compute/plan-href";
 import { BottomSheet, FilterOption, FullScreenSearch, Icon, Toggle, UiPressable, UiText } from "../../../components/ui";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "../../../components/ui/svg";
 import { createThemedStyles } from "../../../design/theme";
@@ -17,11 +19,14 @@ import { useJourneyApi } from "./journey-api";
 import { AREAS, PERIODS, THEMES, areaLabel, discoverWhen, feeText, periodLabel, rowTone, themeLabel, tokyo, type JourneyTone } from "./journey-model";
 import { ringColor } from "./events-model";
 import { ScoreRing } from "./ScoreRing";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
 import { useJourneyT } from "./useJourneyT";
+import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import { recentSearchKey } from "../../../data/account-local-caches";
 
-export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: ["tokyo"], period: "this_month", planFirst: true, sort: "date", themes: [] };
+// Opens on this month with no area: a fixed 东京 filter left people elsewhere (and online events) with an empty page.
+export const APP_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "this_month", planFirst: true, sort: "date", themes: [] };
 const CARD = 260;
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
 
@@ -43,6 +48,7 @@ export function discoverQueryFromParams(params: Record<string, string | string[]
 export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, initialSearch = "", openFilters = false }: { onSubtitle?: (text: string) => void; initialQuery?: EventDiscoverQuery; initialSearch?: string; openFilters?: boolean }) {
   const { styles, colors } = useStyles();
   const { t, language } = useJourneyT();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const api = useJourneyApi();
   const [query, setQuery] = useState<EventDiscoverQuery>(initialQuery);
@@ -102,12 +108,15 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
 
   const open = useCallback((row: EventDiscoverRow) => router.push(row.href as Href), [router]);
   const patch = (next: Partial<EventDiscoverQuery>) => setQuery((current) => ({ ...current, ...next }));
-  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; return next; });
+  const clear = (key: keyof EventDiscoverQuery) => setQuery((current) => { const next = { ...current }; delete next[key]; if (key === "period") { delete next.from; delete next.to; } return next; });
   const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
   const rows = useMemo(() => (data ? (query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))) : []), [data, query.sort]);
   const toneBg = (tone: JourneyTone) => (tone === "teal" ? colors.macTeal : tone === "lav" ? colors.macLav : tone === "blue" ? colors.macBlue : tone === "apricot" ? colors.macApricot : colors.macPink);
   const openSheet = () => { setDraft(query); setSheet(true); };
+  // 指定日期: a start day, then an end day (Tokyo dates; the server's custom period reads from / to).
+  const [pickDay, setPickDay] = useState<"from" | "to" | null>(null);
+  const customRange = (value: EventDiscoverQuery) => [value.from, value.to].filter(Boolean).map((day) => `${Number(day!.slice(5, 7))}/${Number(day!.slice(8, 10))}`).join("–");
   const toggleIn = <T extends string>(list: readonly T[] | undefined, value: T) => (list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value]);
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => setPage(Math.max(0, Math.round((event.nativeEvent.contentOffset.x - SHELL_GUTTER) / (CARD + 12))));
 
@@ -132,7 +141,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
         </UiPressable>
       </View>
       {data?.popularityFallback ? null : <View style={styles.chips}>
-        {query.period ? chip(periodLabel(query.period, t), () => clear("period"), true, "period") : null}
+        {query.period ? chip(query.period === "custom" && query.from ? customRange(query) : periodLabel(query.period, t), () => clear("period"), true, "period") : null}
         {(query.areas ?? []).map((a) => chip(areaLabel(a, t), () => patch({ areas: (query.areas ?? []).filter((x) => x !== a) }), true, `a-${a}`))}
         {(query.themes ?? []).map((x) => chip(themeLabel(x, t), () => patch({ themes: (query.themes ?? []).filter((v) => v !== x) }), true, `t-${x}`))}
         {query.freeOnly ? chip(t("freeOnly"), () => clear("freeOnly"), true, "free") : null}
@@ -153,7 +162,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             <UiText style={styles.lbl}>{t("noPlanLbl")}</UiText>
             <UiText style={styles.guideTitle}>{`${t("noPlanTitleShort")}\n${t("noPlanTitleRest")}`}</UiText>
             <UiText style={styles.guideSub}>{t("noPlanSubShort")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("setGoal")} onPress={() => router.push("/plans" as Href)} style={styles.btnBlock46}><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("setGoal")}</UiText></UiPressable>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("setGoal")} onPress={() => openMainTab(router, planNewGoalHref("app"))} style={styles.btnBlock46}><Icon name="target" size={16} color={colors.bg} /><UiText style={styles.btnPrimaryText}>{t("setGoal")}</UiText></UiPressable>
           </View>
           <View style={styles.grid3}>
             {([["🔗", "tileUrl", colors.macBlue, "/events/assess?mode=url"], ["🎟️", "tileCode", colors.macTeal, "/events?code=1"], ["👥", "tileCommunity", colors.macPink, "/events?tab=discover"]] as const).map(([emoji, key, bg, href]) => (
@@ -188,7 +197,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(row.startsAt)}
-                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
+                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
                 {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
               </UiPressable>
             ))}
@@ -219,7 +228,7 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
               <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
                 {index > 0 ? <View style={styles.liLine} /> : null}
                 {datebox(row.startsAt)}
-                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, row.communityReason === "following" ? t("following") : t("attended")].filter(Boolean).join(" · ")}</UiText></View>
+                <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, row.communityReason === "following" ? t("following") : t("attended")].filter(Boolean).join(" · ")}</UiText></View>
                 {badge ? <View style={[styles.chip, { backgroundColor: badge === "members_only" ? colors.macLav : colors.macTeal }]}><UiText style={[styles.chipText, { color: badge === "members_only" ? colors.macLavInk : colors.macTealInk }]}>{badge === "members_only" ? t("badgeMembers") : t("badgeEarly")}</UiText></View> : null}
               </UiPressable>
             );
@@ -274,20 +283,37 @@ export function DiscoverPage({ onSubtitle, initialQuery = APP_DISCOVER_QUERY, in
             <UiPressable key={row.eventId} accessibilityRole="button" accessibilityLabel={row.title} onPress={() => open(row)} style={styles.li}>
               {index > 0 ? <View style={styles.liLine} /> : null}
               {datebox(row.startsAt)}
-              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={1}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
+              <View style={styles.meta}><UiText style={styles.metaTitle} numberOfLines={2}>{row.title}</UiText><UiText style={styles.metaSub} numberOfLines={1}>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</UiText></View>
               {typeof row.score === "number" ? <ScoreRing size={36} stroke={4} value={row.score} color={colors[ringColor(row.score)]} label={String(row.score)} fontSize={11} /> : null}
             </UiPressable>
           ))}
         </View>
       ) : null}
 
+      {data && !data.popularityFallback && !flat && rows.length === 0 && data.community.length === 0 && data.planFit.length === 0 ? (
+        <View style={[styles.card, styles.noMatch]} testID="events-discover-no-match">
+          <UiText style={styles.noMatchTitle}>{t("noMatchTitle")}</UiText>
+          {count ? <UiPressable accessibilityRole="button" accessibilityLabel={t("noMatchClear")} onPress={() => setQuery({ areas: [], planFirst: true, sort: query.sort ?? "date", themes: [] })} style={[styles.btnSm, styles.noMatchBtn]} testID="events-discover-clear"><UiText style={styles.btnSmText}>{t("noMatchClear")}</UiText></UiPressable> : null}
+        </View>
+      ) : null}
+
+      {pickDay ? (
+        // Shown after the filter sheet closes (two stacked iOS modals do not present reliably); the sheet comes back after.
+        <PersonalScheduleDateTimePicker kind="date" zone="Asia/Tokyo" disabled={false} value={(pickDay === "from" ? draft.from : draft.to) ?? ""}
+          title={locale.t(pickDay === "from" ? "schedule.fieldStartDate" : "schedule.fieldEndDate")}
+          onCancel={() => { setPickDay(null); setTimeout(() => setSheet(true), 350); }}
+          onConfirm={(day) => {
+            if (pickDay === "from") { setDraft(({ to, ...d }) => ({ ...d, from: day, period: "custom", ...(to && to >= day ? { to } : {}) })); setPickDay("to"); }
+            else { setDraft((d) => ({ ...d, period: "custom", to: d.from && day < d.from ? d.from : day })); setPickDay(null); setTimeout(() => setSheet(true), 350); }
+          }} />
+      ) : null}
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} accessibilityLabel={t("filtersLbl")}>
         <View style={styles.sheet} testID="events-discover-sheet">
           <View style={[styles.row, { justifyContent: "space-between", marginBottom: 2 }]}>
             <UiText style={styles.sheetTitle}>{t("filtersLbl")}</UiText>
             <UiPressable accessibilityRole="button" accessibilityLabel={t("clear")} onPress={() => setDraft({ areas: [], planFirst: true, sort: APP_DISCOVER_QUERY.sort ?? "date", themes: [] })} style={styles.ghostBtn}><UiText style={styles.ghostBtnText}>{t("clear")}</UiText></UiPressable>
           </View>
-          <View style={styles.fgrp}><UiText style={styles.lbl}>{t("periodLbl")}</UiText><View style={styles.fchips}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={draft.period === p} onToggle={() => setDraft((d) => ({ ...d, period: p }))} />)}<FilterOption label={`📅 ${t("pCustom")}`} selected={false} onToggle={() => undefined} /></View></View>
+          <View style={styles.fgrp}><UiText style={styles.lbl}>{t("periodLbl")}</UiText><View style={styles.fchips}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={draft.period === p} onToggle={() => setDraft(({ from: _from, to: _to, ...d }) => ({ ...d, period: p }))} />)}<FilterOption label={draft.period === "custom" && draft.from ? `📅 ${customRange(draft)}` : `📅 ${t("pCustom")}`} selected={draft.period === "custom"} onToggle={() => { setSheet(false); setTimeout(() => setPickDay("from"), 350); }} /></View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("areaLbl")}</UiText><View style={styles.fchips}>{AREAS.map((a) => <FilterOption key={a} label={areaLabel(a, t)} selected={Boolean(draft.areas?.includes(a))} onToggle={() => setDraft((d) => ({ ...d, areas: toggleIn(d.areas, a) }))} />)}</View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("themeLbl")}</UiText><View style={styles.fchips}>{THEMES.slice(0, 5).map((x) => <FilterOption key={x} label={themeLabel(x, t)} selected={Boolean(draft.themes?.includes(x))} onToggle={() => setDraft((d) => ({ ...d, themes: toggleIn(d.themes, x) }))} />)}</View></View>
           <View style={styles.fgrp}><UiText style={styles.lbl}>{t("formatLbl")}</UiText><View style={styles.fchips}>{FORMATS.map((f) => <FilterOption key={f} label={t(f === "speakers" ? "fSpeakers" : f === "networking" ? "fNetworking" : "fSmall")} selected={Boolean(draft.formats?.includes(f))} onToggle={() => setDraft((d) => ({ ...d, formats: toggleIn(d.formats, f) }))} />)}</View></View>
@@ -371,82 +397,85 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", gap: 10 },
   searchRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   search: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flex: 1, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 16 },
-  searchInput: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
+  searchInput: { color: colors.ink, flex: 1, fontSize: 16, padding: 0 },
   rbtn: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
   badge: { alignItems: "center", backgroundColor: colors.ink, borderRadius: 9, height: 17, justifyContent: "center", minWidth: 17, paddingHorizontal: 4, position: "absolute", right: -2, top: -2 },
-  badgeText: { color: colors.bg, fontSize: 10, fontWeight: "800", lineHeight: 12 },
+  badgeText: { color: colors.bg, fontSize: 12, fontWeight: "800", lineHeight: 14 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   chip: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 4, paddingHorizontal: 9, paddingVertical: 3 },
-  chipText: { color: colors.ink2, fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+  chipText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   caret: { alignItems: "center", height: 12, justifyContent: "center", width: 12 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18 },
   comm: { marginTop: 14, paddingHorizontal: 16, paddingVertical: 14 },
   cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  h3: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
-  more: { color: colors.ink3, fontSize: 12, fontWeight: "600", lineHeight: 18 },
+  h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
+  more: { color: colors.ink3, fontSize: 14, fontWeight: "600", lineHeight: 21 },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
   liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
   datebox: { backgroundColor: colors.surface2, borderRadius: 13, paddingVertical: 5, width: 44 },
-  dateDay: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 18.7, textAlign: "center" },
-  dateMonth: { color: colors.ink3, fontSize: 10, fontWeight: "700", lineHeight: 13.2, textAlign: "center" },
+  dateDay: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 21, textAlign: "center" },
+  dateMonth: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 16, textAlign: "center" },
   meta: { flex: 1, minWidth: 0 },
-  metaTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
-  metaSub: { color: colors.ink3, fontSize: 12, lineHeight: 18 },
+  metaTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
+  metaSub: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
   section: { marginTop: 18 },
   carousel: { marginHorizontal: -SHELL_GUTTER },
   carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
   evCard: { backgroundColor: colors.surface, borderRadius: 22, padding: 16, width: CARD },
   emo: { alignItems: "center", borderRadius: 13, height: 40, justifyContent: "center", width: 40 },
-  emoText: { fontSize: 21, lineHeight: 26 },
-  evTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 18.9, marginTop: 12 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+  emoText: { fontSize: 23, lineHeight: 28 },
+  evTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 23, marginTop: 12 },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
   reasonChip: { flex: 1 },
   why: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 18, justifyContent: "center", width: 18 },
-  whyText: { color: colors.ink3, fontSize: 10.5, fontWeight: "800", lineHeight: 13 },
+  whyText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 15 },
   whyBody: { backgroundColor: colors.surface2, borderRadius: 14, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  whyBodyText: { color: colors.ink2, fontSize: 12, lineHeight: 19.8 },
+  whyBodyText: { color: colors.ink2, fontSize: 14, lineHeight: 23 },
   cardFoot: { gap: 6, marginTop: "auto", paddingTop: 10 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, height: 32, justifyContent: "center", marginLeft: "auto", paddingHorizontal: 12 },
-  btnSmText: { color: colors.ink, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  noMatch: { alignItems: "center", gap: 12, marginTop: 14, paddingVertical: 28 },
+  noMatchTitle: { color: colors.ink2, fontSize: 15, fontWeight: "600", lineHeight: 22, textAlign: "center" },
+  noMatchBtn: { marginLeft: 0 },
   dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },
   dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
   dotOn: { backgroundColor: colors.ink2, width: 18 },
   all: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8 },
   sheet: { paddingBottom: 0 },
-  sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
   fgrp: { gap: 8, marginTop: 12 },
   fchips: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   toggleRow: { justifyContent: "space-between", marginTop: 6 },
-  toggleText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  toggleText: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   showBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, height: 48, justifyContent: "center", marginTop: 16 },
   ghostBtn: { alignItems: "center", borderRadius: radius.pill, height: 32, justifyContent: "center", paddingHorizontal: 12 },
-  ghostBtnText: { color: colors.ink2, fontSize: 12, fontWeight: "700", lineHeight: 18 },
-  btnPrimaryText: { color: colors.bg, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  ghostBtnText: { color: colors.ink2, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  btnPrimaryText: { color: colors.bg, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   btnBlock46: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 46, justifyContent: "center" },
   guide: { marginTop: 14, overflow: "hidden", padding: 20 },
   guideGlow: { height: 220, opacity: 0.9, position: "absolute", right: -80, top: -90, width: 220 },
-  guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 26.6, marginVertical: 4 },
-  guideSub: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75, marginBottom: 14 },
+  guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800", lineHeight: 29, marginVertical: 4 },
+  guideSub: { color: colors.ink2, fontSize: 15, lineHeight: 23, marginBottom: 14 },
   grid3: { flexDirection: "row", gap: 10, marginTop: 14 },
   tile: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.xl, flex: 1, gap: 7, paddingHorizontal: 6, paddingVertical: 14 },
-  tileText: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25 },
+  tileText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   sampleTag: { backgroundColor: colors.macApricot, borderRadius: radius.tag, paddingHorizontal: 6, paddingVertical: 1 },
-  sampleText: { color: colors.macApricotInk, fontSize: 9.5, fontWeight: "800", lineHeight: 14.25 },
+  sampleText: { color: colors.macApricotInk, fontSize: 12, fontWeight: "800", lineHeight: 18 },
   ghostRow: { alignItems: "center", borderColor: colors.surface3, borderRadius: 14, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", gap: 10, height: 46, paddingHorizontal: 14 },
   ghostDot: { backgroundColor: colors.surface2, borderRadius: radius.pill, height: 26, width: 26 },
-  ghostText: { color: colors.ink4, fontSize: 12, lineHeight: 18 },
+  ghostText: { color: colors.ink4, fontSize: 14, lineHeight: 21 },
   flat: { backgroundColor: colors.surface2 },
   emoSm: { borderRadius: 10, height: 32, width: 32 },
-  emoTextSm: { fontSize: 17, lineHeight: 22 },
-  widenTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  emoTextSm: { fontSize: 19, lineHeight: 25 },
+  widenTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   widenRow: { alignItems: "center", backgroundColor: colors.surface, borderRadius: 14, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10 },
-  widenText: { color: colors.ink, fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  widenText: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 23 },
   macNote: { backgroundColor: colors.macLav, borderRadius: 16, marginTop: 14, padding: 12 },
-  macNoteText: { color: colors.ink, fontSize: 12, lineHeight: 18 },
+  macNoteText: { color: colors.ink, fontSize: 14, lineHeight: 21 },
   // kit：聚焦时 0 0 0 2px plum-300 外圈（框本身 44，外圈让可见高度 48）。
   resultCard: { marginBottom: 14, paddingHorizontal: 16, paddingVertical: 8 },
   resultH: { marginBottom: 0, marginTop: 8 },
   mark: { backgroundColor: colors.macLav },
   av: { alignItems: "center", borderRadius: radius.pill, height: 38, justifyContent: "center", width: 38 },
-  avText: { fontSize: 13.5, fontWeight: "800", lineHeight: 17 },
+  avText: { fontSize: 16, fontWeight: "800", lineHeight: 20 },
 }));

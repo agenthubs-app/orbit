@@ -634,3 +634,86 @@ test(
     }
   },
 );
+
+test(
+  "a withdrawn admission application can be submitted again and reactivates the membership",
+  { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured", timeout: 90_000 },
+  async () => {
+    assert.ok(databaseUrl);
+    const suffix = randomUUID().replaceAll("-", "");
+    const schema = `event_admission_reapply_${suffix}`;
+    const workspaceId = `workspace:admission-reapply:${suffix}`;
+    const managerId = "actor:admission-manager";
+    const adminPool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const operationPool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
+    const client = createEventOperationsPostgresClient({ connectionString: databaseUrl, max: 4, pool: operationPool });
+    try {
+      await adminPool.query(`create schema ${schema}`);
+      await runEventOperationsMigrations(operationPool);
+      await runEventSyncRevisionMigration(operationPool);
+      const openWindow = {
+        profileEditDeadlineAt: "2099-01-01T00:00:00.000Z",
+        registrationClosesAt: "2100-01-01T00:00:00.000Z",
+        registrationOpensAt: "2000-01-01T00:00:00.000Z",
+      };
+      for (const eventId of ["event:reapply", "event:reapply-review"]) {
+        await lockedFixtureQuery(operationPool, `insert into event_ops_events (
+             workspace_id, event_id, organizer_actor_id, lifecycle_state, revision, created_at, updated_at
+           ) values ($1, $2, $3, 'active', 1, now(), now())`, [workspaceId, eventId, managerId]);
+        await operationPool.query(
+          `insert into event_ops_configurations (
+             workspace_id, event_id, configuration_version, check_in_opens_at, event_starts_at, event_ends_at,
+             profile_edit_deadline_at, registration_cutoff_at, results_available_at, round_one_starts_at, round_two_starts_at,
+             recommendation_count, table_size, shard_size, max_attempts_per_task, created_at, updated_at
+           ) values ($1, $2, 1, '1999-12-01T00:00:00.000Z', '1999-12-10T00:00:00.000Z', '2101-01-05T00:00:00.000Z',
+             $3, $4, '2101-01-01T00:00:00.000Z', '2101-01-02T00:00:00.000Z', '2101-01-03T00:00:00.000Z',
+             1, 2, 1, 1, '2099-01-01T00:00:00.000Z', '2099-01-01T00:00:00.000Z')`,
+          [workspaceId, eventId, openWindow.profileEditDeadlineAt, openWindow.registrationClosesAt],
+        );
+        await lockedFixtureQuery(operationPool, `insert into event_ops_configuration_heads (
+             workspace_id, event_id, configuration_version, revision, updated_at
+           ) values ($1, $2, 1, 1, '2099-01-01T00:00:00.000Z')`, [workspaceId, eventId]);
+      }
+      const service = createEventAdmissionService({
+        async requireCapability(actorId) {
+          if (actorId !== managerId) throw new EventAdmissionError("FORBIDDEN", "Admission capability is denied.");
+        },
+        repository: createPostgresEventAdmissionRepository({ client, workspaceId }),
+      });
+      await service.configurePolicy(managerId, { ...openWindow, admissionMode: "instant", capacity: null, eventId: "event:reapply", waitlistEnabled: false });
+      await service.configurePolicy(managerId, { ...openWindow, admissionMode: "approval_required", capacity: null, eventId: "event:reapply-review", waitlistEnabled: false });
+
+      const first = await service.submitApplication("actor:R", { eventId: "event:reapply", profilePayload: profile("actor:R") });
+      assert.equal(first.status, "admitted");
+      assert.equal((await service.withdrawApplication("actor:R", "event:reapply", 1)).status, "withdrawn");
+      const again = await service.submitApplication("actor:R", { eventId: "event:reapply", profilePayload: profile("actor:R") });
+      assert.equal(again.status, "admitted");
+      assert.equal(again.applicationVersion, 3);
+      const membership = await operationPool.query<{ status: string; profile_version: number; reactivated: boolean; application_version: number }>(
+        `select head.status, head.profile_version::int as profile_version,
+                version.reactivated_at is not null as reactivated,
+                version.admission_application_version::int as application_version
+         from event_ops_membership_heads head
+         join event_ops_membership_versions version
+           on version.workspace_id = head.workspace_id and version.event_id = head.event_id
+          and version.actor_id = head.actor_id and version.membership_version = head.membership_version
+         where head.workspace_id = $1 and head.event_id = 'event:reapply' and head.actor_id = 'actor:R'`,
+        [workspaceId],
+      );
+      assert.deepEqual(membership.rows[0], { application_version: 3, profile_version: 2, reactivated: true, status: "rsvped" });
+      // Submitting the same content again while admitted stays idempotent; withdrawing again still works.
+      assert.equal((await service.submitApplication("actor:R", { eventId: "event:reapply", profilePayload: profile("actor:R") })).applicationVersion, 3);
+      assert.equal((await service.withdrawApplication("actor:R", "event:reapply", 3)).status, "withdrawn");
+
+      // Review events: a withdrawn application goes back to the review queue.
+      await service.submitApplication("actor:V", { eventId: "event:reapply-review", profilePayload: profile("actor:V") });
+      await service.withdrawApplication("actor:V", "event:reapply-review", 1);
+      const queued = await service.submitApplication("actor:V", { eventId: "event:reapply-review", profilePayload: profile("actor:V") });
+      assert.deepEqual([queued.status, queued.applicationVersion], ["pending_review", 3]);
+    } finally {
+      await client.close();
+      await adminPool.query(`drop schema if exists ${schema} cascade`);
+      await adminPool.end();
+    }
+  },
+);

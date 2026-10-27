@@ -46,8 +46,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   tick: { fontWeight: "900" },
   on: { borderColor: colors.plum500, backgroundColor: colors.accentSoft },
   catOn: { backgroundColor: colors.ink },
-  label: { color: colors.ink2, fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  label: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 23 },
   labelOn: { color: colors.ink },
   catLabelOn: { color: colors.onAccent },
-  count: { color: colors.ink2, fontSize: 11, fontWeight: "600" },
+  count: { color: colors.ink2, fontSize: 13, fontWeight: "600" },
 }));

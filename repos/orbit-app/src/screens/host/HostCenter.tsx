@@ -43,10 +43,10 @@ export function HostCenterScreen() {
 
   return (
     <JourneyPage title={t("centerTitle")} subtitle={t("appCrumb")} leftLabel={t("appBack")} fallback="/profile"
-      right={<IconButton icon="plus" accessibilityLabel={t("createEvent")} onPress={() => void sendPc(desktopPath.create)} />} testID="host-center">
+      right={<IconButton icon="plus" accessibilityLabel={t("createEvent")} onPress={() => router.push("/events/center/new" as Href)} />} testID="host-center">
       {data ? (
         <HostCenterBody data={data} filter={filter} t={t} language={language} onFilter={setFilter}
-          onCreate={() => void sendPc(desktopPath.create)} onSendPc={() => void sendPc(desktopPath.center)}
+          onCreate={() => router.push("/events/center/new" as Href)} onSendPc={() => void sendPc(desktopPath.center)}
           onTemplate={() => setSheet("template")} onJoin={() => setSheet("code")} onCheckInOnly={() => setSheet("code")}
           onOpenRow={(row) => router.push(consoleHref(row.eventId) as Href)}
           onRowAction={(row) => router.push((row.action === "open_check_in" ? checkInHref(row.eventId) : consoleHref(row.eventId)) as Href)} />

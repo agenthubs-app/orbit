@@ -34,5 +34,5 @@ export function ComponentSectionScreen({ id, theme }: { id: string | undefined; 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   inline: { position: "absolute", left: 0, top: SECTION_TOP },
-  missing: { color: colors.ink2, fontSize: 13, marginTop: SECTION_TOP, marginLeft: 16 },
+  missing: { color: colors.ink2, fontSize: 15, marginTop: SECTION_TOP, marginLeft: 16 },
 }));

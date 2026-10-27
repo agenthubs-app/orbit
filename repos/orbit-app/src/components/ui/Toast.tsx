@@ -114,9 +114,10 @@ export function ToastCapsule({ toast, onClose, onAction, countdown = null }: { t
   const markColor = toast.kind === "error" ? colors.coral : toast.kind === "success" ? colors.ok : mixHex(dark ? colors.ink : colors.bg, background, 0.22);
   const markIcon = (toast.icon as IconName | undefined) ?? (toast.kind === "error" ? "alert" : toast.kind === "success" ? "check" : "info");
   const markTint = toast.kind === "info" ? text : colors.bg;
-  // R31a: no ✕ (kit .toast has none). A toast that stays (error, undo bar) closes with a tap anywhere on it;
+  // R31a: no ✕ (kit .toast has none). A toast that stays (undo bar) or an error closes with a tap anywhere on it;
   // its button closes the toast first, then runs the undo / action.
   const stays = toast.autoDismissMs === null;
+  const tapToClose = stays || toast.kind === "error";
   const body = (
     <>
       <View style={[styles.mark, { backgroundColor: markColor }]}>
@@ -142,7 +143,7 @@ export function ToastCapsule({ toast, onClose, onAction, countdown = null }: { t
       {!stays && !reduced ? <Animated.View style={[styles.countdown, { backgroundColor: text, transform: [{ scaleX: countdown ?? 1 }] }]} /> : null}
     </>
   );
-  return stays
+  return tapToClose
     ? <UiPressable accessibilityRole="button" accessibilityLabel={toast.message} accessibilityHint={copy.action.close} onPress={onClose} pressedScale={1} style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>{body}</UiPressable>
     : <View style={[styles.toast, toast.keep && styles.keep, { backgroundColor: background }]}>{body}</View>;
 }
@@ -153,9 +154,9 @@ const styles = StyleSheet.create({
   keep: { borderRadius: 22, paddingVertical: 10, paddingRight: 10 },
   mark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   message: { flex: 1, minWidth: 0 },
-  title: { fontSize: 13, fontWeight: "700", lineHeight: 17 },
-  sub: { fontSize: 11, fontWeight: "600", opacity: 0.68 },
+  title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
+  sub: { fontSize: 13, fontWeight: "600", opacity: 0.68 },
   undo: { minHeight: 32, borderRadius: 999, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 5 },
-  undoLabel: { fontSize: 12, fontWeight: "800" },
+  undoLabel: { fontSize: 14, fontWeight: "800" },
   countdown: { position: "absolute", left: 22, right: 22, bottom: 3, height: 2, borderRadius: 1, opacity: 0.4 },
 });

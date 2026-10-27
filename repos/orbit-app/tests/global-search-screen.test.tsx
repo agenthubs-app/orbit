@@ -72,6 +72,10 @@ createRoot(document.getElementById("root")).render(<Root />);
       plugin.onResolve({ filter: /\/useGlobalSearchSource$/ }, (args) => ({ path: args.path, namespace: "search-stub" }));
       plugin.onLoad({ filter: /useGlobalSearchSource$/, namespace: "search-stub" }, () => ({ contents: `import { useMemo } from "react"; import { createSearchApi } from "./src/screens/search/search-api"; import { useOrbitApiClient } from "./src/hooks/useOrbitApiClient";
 export const useGlobalSearchSource = () => { const client = useOrbitApiClient(); return useMemo(() => ({ ...createSearchApi(client), eventsOffline: false }), [client]); };`, loader: "js", resolveDir: root }));
+      // G1: the device's notes / to-dos / schedule are a fixture (window.localItems); the search over them is real.
+      plugin.onResolve({ filter: /\/useLocalItemSources$/ }, (args) => ({ path: args.path, namespace: "search-stub" }));
+      plugin.onLoad({ filter: /useLocalItemSources$/, namespace: "search-stub" }, () => ({ contents: `import { useMemo } from "react";
+export const useLocalItemSources = () => useMemo(() => window.localItems ?? { notes: [], tasks: [], schedule: [] }, []);`, loader: "js", resolveDir: root }));
       plugin.onLoad({ filter: /AuthSessionProvider$/, namespace: "search-stub" }, () => ({ contents: `export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor-r30", cookieHeader: "c", user: { id: "actor-r30" } });`, loader: "js" }));
       plugin.onLoad({ filter: /ApiBaseUrlProvider$/, namespace: "search-stub" }, () => ({ contents: `export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "http://local.test" });`, loader: "js" }));
       plugin.onLoad({ filter: /^@react-native-async-storage\/async-storage$/, namespace: "search-stub" }, () => ({ contents: `
@@ -96,7 +100,7 @@ export const useLocalSearchParams = () => Object.fromEntries(new URLSearchParams
 test.after(async () => { await browser?.close(); });
 
 type Reply = { status: number; body: unknown };
-async function open(t: { after: (fn: () => Promise<void>) => void }, answer: (path: string) => Reply | Promise<Reply>, deviceStore: Record<string, string> = {}, path = "/search"): Promise<Page> {
+async function open(t: { after: (fn: () => Promise<void>) => void }, answer: (path: string) => Reply | Promise<Reply>, deviceStore: Record<string, string> = {}, path = "/search", localItems: unknown = null): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.setDefaultTimeout(5000);
   const errors: string[] = [];
@@ -107,6 +111,7 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, answer: (pa
 window.nav=${JSON.stringify({ navigation: [], stack: [path] })};
 window.requests=[];
 window.deviceStore=${JSON.stringify(deviceStore)};
+window.localItems=${JSON.stringify(localItems)};
 </script></body></html>`);
   await page.addScriptTag({ content: script });
   return page;
@@ -161,7 +166,7 @@ test("結果なし (b5 #56): searched count, 近い条件なら, ほかの方法
   const page = await open(t, byQuery);
   await page.getByTestId("global-search-input").fill("半導体 商社");
   await page.getByTestId("global-search-empty").waitFor();
-  for (const text of ["「半導体 商社」に一致する人はいません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).waitFor();
+  for (const text of ["「半導体 商社」に一致するものはありません", "286人の名前・会社・役職・メモを探しました", "近い条件なら", "12人 · 業界で絞り込む", "ほかの方法", "iOrbit に紹介ルートを聞く", "イベントで探す"]) await page.getByText(text, { exact: true }).waitFor();
   await page.getByRole("button", { name: "iOrbit に紹介ルートを聞く" }).click();
   const pushed = (await nav(page)).at(-1) as { href: { pathname: string; params: { id: string; prefillIntent: string } } };
   assert.equal(pushed.href.pathname, "/ai/[id]");
@@ -241,4 +246,41 @@ test("Task 🔍 opens /search (R20-01); the route is private and opens offline (
   assert.match(read("app/search.tsx"), /withOrbitPrivateRoute\(GlobalSearchScreen\)/);
   assert.doesNotMatch(read("app/search.tsx"), /withOnlineOnlyRoute/);
   assert.equal(parentForPath("/search", (key) => key).href, "/task?seg=todo");
+});
+
+test("模拟器走查 G1: notes, to-dos and schedule items on the device are found too, with their own chips; a row opens the item", async (t) => {
+  const stamp = "2026-10-20T01:00:00.000Z";
+  const localItems = {
+    notes: [{ id: "note:qa", accountId: "actor-r30", ownerUserId: "actor-r30", title: "QA note", body: "first line\nQA details here", manualContactIds: [], mentions: [], contactIds: [], eventIds: [], version: 1, createdAt: stamp, updatedAt: stamp }],
+    tasks: [
+      { id: "task:qa", title: "QA buy stamps", status: "open", dueAt: "2026-10-30", updatedAt: stamp },
+      { id: "task:gone", title: "QA cancelled", status: "cancelled", updatedAt: stamp },
+    ],
+    schedule: [{ id: "sched:qa", title: "QA lunch", location: "Ginza", startsAt: "2099-10-28T03:00:00.000Z", state: "upcoming" }],
+  };
+  const page = await open(t, byQuery, {}, "/search", localItems);
+  for (const chip of ["メモ", "To-do", "予定"]) await page.getByRole("button", { name: chip, exact: true }).waitFor();
+  await page.getByTestId("global-search-input").fill("qa");
+  await page.getByTestId("global-search-results").waitFor();
+  assert.equal(await page.getByTestId("global-search-empty").count(), 0, "local hits keep the empty state away");
+  for (const text of ["メモ · 1", "To-do · 1", "予定 · 1", "QA note", "QA buy stamps", "QA lunch", "QA details here", "10/30"]) await page.getByText(text, { exact: false }).first().waitFor();
+  assert.equal(await page.getByText("QA cancelled").count(), 0, "cancelled to-dos are not offered");
+  await page.getByRole("button", { name: "QA buy stamps" }).click();
+  assert.deepEqual((await nav(page)).at(-1), { href: "/tasks/task%3Aqa", method: "push" });
+});
+
+test("模拟器走查 G1: a notes chip shows only notes; no match keeps the empty state and ほかの方法", async (t) => {
+  const localItems = { notes: [{ id: "note:qa", accountId: "actor-r30", ownerUserId: "actor-r30", title: "QA note", body: "", manualContactIds: [], mentions: [], contactIds: [], eventIds: [], version: 1, createdAt: "2026-10-20T01:00:00.000Z", updatedAt: "2026-10-20T01:00:00.000Z" }], tasks: [], schedule: [] };
+  const page = await open(t, byQuery, {}, "/search", localItems);
+  await page.getByTestId("global-search-input").fill("高橋");
+  await page.getByTestId("global-search-results").waitFor();
+  await page.getByRole("button", { name: "メモ", exact: true }).click();
+  await page.getByTestId("global-search-empty").waitFor();
+  await page.getByText("「高橋」に一致するメモはありません").waitFor();
+  await page.getByText("ほかの方法").waitFor();
+  assert.equal(await page.getByText("高橋 美咲").count(), 0, "people are not listed under メモ");
+  await page.getByTestId("global-search-input").fill("qa");
+  await page.getByTestId("global-search-notes").waitFor();
+  await page.getByRole("button", { name: "QA note" }).click();
+  assert.deepEqual((await nav(page)).at(-1), { href: "/notes/note%3Aqa", method: "push" });
 });

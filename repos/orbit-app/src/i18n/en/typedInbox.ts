@@ -24,7 +24,7 @@ export const typedInbox = {
   "typedInbox.conflict": "This notification changed. Refresh and retry.",
   "typedInbox.pending": "Saving…",
   "typedInbox.retry": "Retry action",
-  "typedInbox.unavailable": "Source unavailable",
+  "typedInbox.unavailable": "This notification has expired",
   "typedInbox.openState": "Open",
   "typedInbox.handledState": "Handled",
   "typedInbox.dismissedState": "Dismissed",
@@ -33,5 +33,5 @@ export const typedInbox = {
   "typedInbox.archivedState": "Archived",
   "typedInbox.readState": "Read",
   "typedInbox.unreadState": "Unread",
-  "typedInbox.markPageReadShort": "Mark shown read",
+  "typedInbox.markPageReadShort": "Mark read",
 } as const;

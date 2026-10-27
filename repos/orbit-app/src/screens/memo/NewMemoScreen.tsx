@@ -21,16 +21,19 @@ import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteCreateRequest, confirmedNote, noteAssociationsForReceipt } from "../../view-models/notes";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
-import { NoteContactPicker } from "../notes/NoteContactPicker";
+import { mentionedContacts, NoteContactPicker } from "../notes/NoteContactPicker";
 import { MemoMentionEditor } from "./MemoMentionEditor";
+import { noteTitleFor } from "./memo-mention-model";
 import { NoteEventPicker } from "../notes/NoteEventPicker";
 import { useNotesWriteStatus } from "../notes/notes-source";
-import { MemoKindPlanControls } from "./MemoKindPlanControls";
 
 export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScopeCurrent = () => true }: { actorId: string; draftServer?: string; scopeKey: string; isScopeCurrent?: () => boolean }) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ contactId?: string | string[] }>();
+  const params = useLocalSearchParams<{ contactId?: string | string[]; contactName?: string | string[] }>();
   const initialContactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
+  // Simulator QA N3: a person added a moment ago is not on the device yet — the page that opened this
+  // passes their name, so the chip never shows the raw id (the device copy wins once it has them; no request is made).
+  const initialContactName = (Array.isArray(params.contactName) ? params.contactName[0] : params.contactName)?.trim();
   const client = useOrbitApiClient({ scopeKey });
   const locale = useOrbitLocale();
   const localContacts = useLocalContacts(false);
@@ -47,6 +50,11 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
   const [eventIds, setEventIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialContactId ? [initialContactId] : []);
   const [selectedContacts, setSelectedContacts] = useState<ContactSummary[]>([]);
+  const knownContacts = useMemo(() => {
+    if (!initialContactId) return selectedContacts;
+    const resolved = localContactSummaries.find((item) => item.id === initialContactId) ?? (initialContactName ? { id: initialContactId, name: initialContactName, nextAction: "", organization: "", relationship: "", role: "", status: "", valueLabels: [], valueScore: null } : null);
+    return resolved ? [resolved, ...selectedContacts.filter((item) => item.id !== initialContactId)] : selectedContacts;
+  }, [initialContactId, initialContactName, localContactSummaries, selectedContacts]);
   const [noteKind, setNoteKind] = useState<"free" | "meeting">("free");
   const [usedForPlan, setUsedForPlan] = useState(false);
   const [pending, setPending] = useState(false);
@@ -136,7 +144,9 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
 
   async function save() {
     if (!owns() || pending || (Platform.OS === "web" && writeStatus.offline)) return;
-    const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds, noteKind, usedForPlan: planEnabled }, idempotencyKey.current, locale.language);
+    // UX-5: one kind of note — interviews belong to the calendar. UX-6: the title may stay empty
+    // (the first line of the body names the note, as in iOS Notes).
+    const request = buildRichNoteCreateRequest({ title: noteTitleFor(title, draft), body: draft.trim() ? draft : title, manualContactIds: selectedIds, mentions, eventIds, noteKind: "free", usedForPlan: false }, idempotencyKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError("");
     const queueLocally = async () => {
@@ -183,30 +193,34 @@ export function NewMemoScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !title.trim() || !draft.trim() || (Platform.OS === "web" && writeStatus.offline);
-  return <AppScreen inset="kit" title={locale.t("notes.new")} onBack={() => { if (!pending && owns()) hasChanges ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelNew")} disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
-    {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
-      <Text style={styles.exitTitle}>{locale.t("notes.keepDraftTitle")}</Text><Text style={styles.exitText}>{locale.t("notes.keepDraftBody")}</Text>
-      <View style={styles.exitActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.continueEditing")} onPress={() => { exitToHistory.current = false; setShowExitPrompt(false); }} style={styles.exitButton}><Text style={styles.cancelText}>{locale.t("notes.continueEditing")}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.discard")} onPress={() => { void discardAndExit(); }} style={styles.exitButton}><Text style={styles.destructiveText}>{locale.t("notes.discard")}</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
-      </View>
-    </View> : null}
+  const empty = !title.trim() && !draft.trim();
+  const saveDisabled = pending || empty || (Platform.OS === "web" && writeStatus.offline);
+  // UX-6: leaving keeps the note — back saves it when there is something written (iOS Notes), an empty note is dropped.
+  const leave = () => {
+    if (pending || !owns()) return;
+    if (empty) { void discardAndExit(); return; }
+    void save();
+  };
+  return <AppScreen inset="kit" title={locale.t("notes.new")} onBack={leave} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")}
+    headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}>
+      <Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.done")}</Text>
+    </Pressable>}>
     {writeStatus.offline ? <MemoOfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
-    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewHistory")} disabled={pending} onPress={() => { if (!owns()) return; exitToHistory.current = true; hasChanges ? setShowExitPrompt(true) : router.replace("/notes"); }} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("notes.viewHistory")}</Text></Pressable>
     <View style={styles.paper}>
       <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder={locale.t("notes.noteTitle")} placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />
-      <View style={styles.rule} />
       <MemoMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { change(value); setMentions([...nextMentions]); }} searchContacts={searchContacts} events={events} />
     </View>
-    <MemoKindPlanControls kind={noteKind} usedForPlan={planEnabled} contactCount={contactCount} disabled={pending} onKindChange={kind => { setNoteKind(kind); if (kind !== "meeting") setUsedForPlan(false); }} onPlanChange={setUsedForPlan} />
-    <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
-    <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
-    {draftStatus ? <Text accessibilityLiveRegion="polite" style={draftStatus === locale.t("notes.autosaveFailed") ? styles.error : styles.draftStatus}>{draftStatus}</Text> : null}
+    <View style={styles.associations}>
+      <NoteContactPicker browseWhenEmpty={Platform.OS !== "web"} disabled={pending} search={searchContacts} selectedContacts={knownContacts} selectedIds={selectedIds} mentioned={mentionedContacts(mentions)} onToggle={toggle} />
+      <View style={styles.rule} />
+      <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
+    </View>
+    {draftStatus === locale.t("notes.autosaveFailed") ? <Text accessibilityLiveRegion="polite" style={styles.error}>{draftStatus}</Text> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
   </AppScreen>;
 }
+
+/** UX-6: a note without a title is named by its first line (at most 40 characters). */
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cancel: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" },
@@ -215,16 +229,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headerSave: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   headerSaveText: { color: colors.accentText, fontSize: typography.body, fontWeight: "800" },
   headerSaveDisabled: { color: colors.ink3Text },
-  paper: { minHeight: 420, paddingHorizontal: 2 },
-  titleInput: { color: colors.ink, fontSize: 30, fontWeight: "900", minHeight: 72, paddingVertical: spacing.md },
+  paper: { paddingHorizontal: 2, marginBottom: spacing.sm },
+  titleInput: { color: colors.ink, fontSize: 26, fontWeight: "800", minHeight: 56, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  associations: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
   rule: { backgroundColor: colors.line, height: StyleSheet.hairlineWidth },
   placeholder: { color: colors.ink3Text },
-  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 20 },
-  draftStatus: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 18, textAlign: "right" },
+  error: { color: colors.coralText, fontSize: typography.bodySm, lineHeight: 23 },
+  draftStatus: { color: colors.ink3Text, fontSize: typography.label, lineHeight: 20, textAlign: "right" },
   saveText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700" },
   exitPrompt: { backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, gap: spacing.sm, padding: spacing.lg },
   exitTitle: { color: colors.ink, fontSize: typography.body, fontWeight: "800" },
-  exitText: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 20 },
+  exitText: { color: colors.ink3Text, fontSize: typography.bodySm, lineHeight: 23 },
   exitActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "flex-end" },
   exitButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.md },
   exitPrimary: { backgroundColor: colors.accentText, borderRadius: radius.sm, minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.md },

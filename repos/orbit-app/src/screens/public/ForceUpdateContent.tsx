@@ -31,9 +31,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   logo: { width: 84, height: 84, borderRadius: radius.xl, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   logoText: { color: colors.bg, fontSize: 36, fontWeight: "900" },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "900", textAlign: "center", marginTop: 20 },
-  description: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 24, textAlign: "center", marginTop: spacing.sm },
+  description: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 28, textAlign: "center", marginTop: spacing.sm },
   card: { alignSelf: "stretch", marginTop: 20 },
-  cardText: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 24 },
+  cardText: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 28 },
   footer: { alignSelf: "stretch", marginTop: "auto", gap: spacing.sm },
   hint: { color: colors.ink3Text, fontSize: typography.label, textAlign: "center" },
 }));

@@ -114,8 +114,13 @@ export function ScanCaptureScreen() {
     batchId.current = created.data.batch.id;
     // R12 review m7: the upload runs in the module-level queue, so leaving this page does not
     // stop it (the batch is finalized and read on the server; the batch page can watch / retry).
+    // The job exists only once startScanUpload has run, so watch after it (watching first saw no job,
+    // and a failed upload then stayed on 正在上传 0/1 with no error or retry).
+    const running = startScanUpload({ api, detail: created.data, files, native: uploadNative, ownerId });
     watch(created.data.batch.id);
-    await settled(await startScanUpload({ api, detail: created.data, files, native: uploadNative, ownerId }));
+    const state = await running;
+    if (mounted.current) setUpload({ busy: state.busy, done: state.done, problem: state.problem, total: state.total });
+    await settled(state);
   }
 
   /** While this page is open it mirrors the queue's progress. */
@@ -166,7 +171,7 @@ export function ScanCaptureScreen() {
       {fromLegacy && !guideOn ? <View style={styles.notice}><Body>{t("add.scan.legacyNotice")}</Body></View> : null}
       {mode === "loading" ? <Skeleton lines={4} /> : null}
       {mode === "guide" ? (
-        <ScanGuide notice={notice} legacy={fromLegacy} />
+        <ScanGuide legacy={fromLegacy} />
       ) : null}
       {mode === "upload" ? (
         <FadeIn testID="add-scan-upload">
@@ -189,7 +194,7 @@ export function ScanCaptureScreen() {
       ) : null}
     </AppScreen>
     {guideOn ? (
-      <GuideFoot onCamera={() => setMode("camera")} onPick={() => void pickPhotos(false)} hidden={Boolean(guide?.hidden)}
+      <GuideFoot notice={notice} onCamera={() => setMode("camera")} onPick={() => void pickPhotos(false)} hidden={Boolean(guide?.hidden)}
         onHide={guide && !guide.hidden ? () => { void hideScanGuide(guide).then(setGuide); setMode("camera"); } : null} />
     ) : null}
     </View>
@@ -201,7 +206,7 @@ export function ScanCaptureScreen() {
  * うまく撮るコツ (4 tips, 連写 OK · 一度に最大 N枚), 撮ったあと (3 steps), the privacy note; カメラを開く,
  * 写真から選ぶ and 次回から表示しない sit in the bottom bar (GuideFoot, outside the scroll).
  */
-function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | null; legacy: boolean }) {
+function ScanGuide({ legacy }: { legacy: boolean }) {
   const { t } = useOrbitLocale();
   const { colors, styles: g } = useGuideStyles();
   const tips: [string, string, string][] = [
@@ -258,18 +263,19 @@ function ScanGuide({ notice, legacy }: { notice: "limit" | "pick" | "camera" | n
         <UiText style={g.privEmoji}>🔒</UiText>
         <UiText style={g.privText}>{t("add.scan.privacyBefore")}<UiText style={g.privStrong}>{t("add.scan.privacyStrong")}</UiText>{t("add.scan.privacyAfter")}</UiText>
       </View>
-      {notice ? <View style={g.noticeGap}><Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption></View> : null}
       <View style={{ height: KIT_FOOT_SPACE }} />
     </FadeIn>
   );
 }
 
 /** The guide's bottom bar: カメラを開く (xl), then 写真から選ぶ (link) · 次回から表示しない (check). */
-function GuideFoot({ onCamera, onPick, hidden, onHide }: { onCamera: () => void; onPick: () => void; hidden: boolean; onHide: (() => void) | null }) {
+function GuideFoot({ notice, onCamera, onPick, hidden, onHide }: { notice: "limit" | "pick" | "camera" | null; onCamera: () => void; onPick: () => void; hidden: boolean; onHide: (() => void) | null }) {
   const { t } = useOrbitLocale();
   const { colors, styles: g } = useGuideStyles();
   return (
     <KitFoot>
+      {/* In the bar, not at the end of the scroll: there the bar covered it. */}
+      {notice ? <Caption tone="error">{t(notice === "limit" ? "add.scan.limitReached" : notice === "pick" ? "add.scan.pickFailed" : "add.scan.cameraFailed", { max: SCAN_MAX_PHOTOS })}</Caption> : null}
       <UiPressable accessibilityRole="button" accessibilityLabel={t("add.scan.openCamera")} onPress={onCamera} style={g.xl} testID="add-scan-open-camera">
         <Icon name="scan" size={16} color={colors.bg} />
         <UiText style={g.xlText}>{t("add.scan.openCamera")}</UiText>
@@ -321,12 +327,12 @@ export function AfterSteps() {
 // kit 数值（b11 #0 / b12 N10）：.sg-frame / .mcard / .card / .tip4 / .st3 / .card.flat 隐私 / .mybar / .foot。
 const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   mybar: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.macTeal, marginBottom: 12 },
-  mybarText: { flex: 1, fontSize: 12, fontWeight: "700", lineHeight: 17.4, color: colors.macTealText },
+  mybarText: { flex: 1, fontSize: 14, fontWeight: "700", lineHeight: 20, color: colors.macTealText },
   frame: { height: 168, borderRadius: 22, overflow: "hidden", alignItems: "center", justifyContent: "center", marginBottom: 12 },
   mcard: { width: 220, height: 220 * 55 / 91, backgroundColor: colors.paper, borderRadius: 5, paddingVertical: 13, paddingHorizontal: 15, transform: [{ rotate: "-3deg" }, { scale: 0.9 }], shadowColor: colors.cam, shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 10 } },
   pCo: { fontSize: 8.5, fontWeight: "700", letterSpacing: 0.34, color: colors.paperInk2, lineHeight: 12.75 },
   pR: { marginTop: "auto", fontSize: 7.5, color: colors.paperInk2, lineHeight: 11.25 },
-  pN: { fontSize: 17, fontWeight: "800", letterSpacing: 1.02, fontFamily: "Hiragino Mincho ProN", color: colors.paperInk, lineHeight: 25.5 },
+  pN: { fontSize: 19, fontWeight: "800", letterSpacing: 1.02, fontFamily: "Hiragino Mincho ProN", color: colors.paperInk, lineHeight: 29 },
   pM: { marginTop: 7, fontSize: 7, lineHeight: 10.5, color: colors.paperInk2 },
   corner: { position: "absolute", width: 20, height: 20, borderColor: colors.camInk },
   c1: { left: 58, top: 22, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 7 },
@@ -335,35 +341,34 @@ const useGuideStyles = createThemedStyles((colors) => StyleSheet.create({
   c4: { right: 58, bottom: 22, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 7 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
   cardNext: { marginTop: 12 },
-  cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 },
-  h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },
+  cardH: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 },
+  h3: { fontSize: 17, fontWeight: "800", lineHeight: 25, color: colors.ink },
   tip4: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tip: { width: "48.5%", flexGrow: 1, flexBasis: "45%", flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 9, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.surface2 },
   // iOS 的 Apple Color Emoji 比 Chrome 宽约 2pt：盒子定成 kit 的字宽。
-  tipEmoji: { fontSize: 17, lineHeight: 20.4, width: 21 },
+  tipEmoji: { fontSize: 19, lineHeight: 23, width: 21 },
   grow: { flex: 1, minWidth: 0 },
-  tipTitle: { fontSize: 12, fontWeight: "700", lineHeight: 18, color: colors.ink },
-  tipBody: { fontSize: 10.5, lineHeight: 14.7, color: colors.ink3 },
+  tipTitle: { fontSize: 14, fontWeight: "700", lineHeight: 21, color: colors.ink },
+  tipBody: { fontSize: 12, lineHeight: 17, color: colors.ink3 },
   st3: { flexDirection: "row", alignItems: "center", gap: 2 },
   step: { flex: 1, minWidth: 0, backgroundColor: colors.surface2, borderRadius: 14, paddingVertical: 9, paddingHorizontal: 4, alignItems: "center" },
-  stepEmoji: { fontSize: 18, lineHeight: 23.4 },
-  stepTitle: { fontSize: 11.5, fontWeight: "700", lineHeight: 15.5, color: colors.ink, textAlign: "center" },
-  stepSub: { marginTop: 2, fontSize: 10, lineHeight: 13.5, color: colors.ink3, textAlign: "center" },
+  stepEmoji: { fontSize: 20, lineHeight: 26 },
+  stepTitle: { fontSize: 13, fontWeight: "700", lineHeight: 18, color: colors.ink, textAlign: "center" },
+  stepSub: { marginTop: 2, fontSize: 12, lineHeight: 16, color: colors.ink3, textAlign: "center" },
   ar: { width: 16, alignItems: "center" },
   priv: { marginTop: 12, flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 24, backgroundColor: colors.surface2 },
-  privEmoji: { fontSize: 18, width: 21 },
-  privText: { flex: 1, fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  privEmoji: { fontSize: 20, width: 21 },
+  privText: { flex: 1, fontSize: 13, fontWeight: "500", lineHeight: 21, color: colors.ink2 },
   privStrong: { fontWeight: "700", color: colors.ink },
-  noticeGap: { marginTop: 12 },
   xl: { height: 50, borderRadius: 999, backgroundColor: colors.ink, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center" },
-  xlText: { fontSize: 14.5, fontWeight: "700", lineHeight: 21.75, color: colors.bg },
+  xlText: { fontSize: 17, fontWeight: "700", lineHeight: 25, color: colors.bg },
   footRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 },
-  lnk: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.accent },
+  lnk: { fontSize: 15, fontWeight: "700", lineHeight: 22, color: colors.accent },
   // kit 有两条 .chk：后一条改成行内、间距 6，前一条的上下 padding 10 仍在。
   chk: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 },
   lnkRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   chkBox: { width: 16, height: 16, borderRadius: 5, borderWidth: 1.6, borderColor: colors.ink4, alignItems: "center", justifyContent: "center" },
-  chkText: { fontSize: 12, fontWeight: "600", lineHeight: 18, color: colors.ink2 },
+  chkText: { fontSize: 14, fontWeight: "600", lineHeight: 21, color: colors.ink2 },
 }));
 
 /** Explain first, then ask; turned off: the way to Settings (b1 B1 ①②). */
@@ -559,7 +564,7 @@ const useCameraStyles = createThemedStyles((colors) => StyleSheet.create({
   viewfinder: { flex: 1, justifyContent: "center", overflow: "hidden" },
   frame: { alignSelf: "center", aspectRatio: 1.7, borderColor: colors.onImage, borderRadius: radius.md, borderWidth: 2, opacity: 0.8, width: "86%" },
   panel: { gap: 8, paddingBottom: 12, paddingHorizontal: 16, paddingTop: 10 },
-  onImage: { color: colors.onImage, fontSize: 13, fontWeight: "700", textAlign: "center" },
+  onImage: { color: colors.onImage, fontSize: 15, fontWeight: "700", textAlign: "center" },
   hint: { fontWeight: "600", flexShrink: 1 },
   hintRow: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center" },
   tray: { gap: 8, paddingVertical: 4 },

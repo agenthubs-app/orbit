@@ -19,13 +19,13 @@ import { PersonalScheduleRules } from "./PersonalScheduleRules";
 import { personalScheduleDraft } from "../../view-models/personal-schedule-editor";
 
 export function PersonalScheduleDetailScreen() {
-  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; saved?: string | string[] }>();
+  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && !!auth.actorId;
   const scopeKey = JSON.stringify([auth.actorId, server.baseUrl, id, ready]);
-  return <Detail key={scopeKey} actorId={auth.actorId ?? ""} id={id} ready={ready} scopeKey={scopeKey} savedVersion={(Array.isArray(params.saved) ? params.saved[0] : params.saved) ?? ""} />;
+  return <Detail key={scopeKey} actorId={auth.actorId ?? ""} id={id} ready={ready} scopeKey={scopeKey} />;
 }
-function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: string; id: string; ready: boolean; scopeKey: string; savedVersion: string }) {
+function Detail({ actorId, id, ready, scopeKey }: { actorId: string; id: string; ready: boolean; scopeKey: string }) {
   const { timeZone } = useOrbitTimeZone(); const locale = useOrbitLocale(); const router = useRouter(); const { styles } = useStyles();
   // Native reads the device mirror (sprint 0108); the browser is mirror-first or the network.
   const source = usePersonalScheduleItem({ actorId, ready, scopeKey, id });
@@ -91,19 +91,28 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
       <Pressable accessibilityRole="button" onPress={() => void resolveConflict("server")} style={styles.secondary}><Text style={styles.body}>{locale.t("schedule.useServerVersion")}</Text></Pressable>
       {snapshot ? <Pressable accessibilityRole="button" onPress={() => void resolveConflict("replace")} style={styles.secondary}><Text style={conflict.operation === "delete" ? styles.error : styles.body}>{locale.t(conflict.operation === "delete" ? confirmConflictDelete ? "schedule.confirmDeleteConflict" : "schedule.deleteAnyway" : "schedule.keepLocalVersion")}</Text></Pressable> : null}
     </View> : null}
-    {view ? <>{view.updatedAt === savedVersion ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{locale.t("schedule.saved")}</Text> : null}<Text style={styles.hint}>{locale.t("personal53.private")}</Text><Text accessibilityRole="header" style={styles.title}>{view.title}</Text>
-      <View style={styles.timeCard}><View><Text style={styles.hint}>{locale.t("schedule.fieldStartTime")}</Text><Text style={styles.time}>{view.allDay ? locale.t("schedule.allDay") : view.startTime}</Text></View><Text style={styles.hint}>→</Text><View><Text style={styles.hint}>{locale.t("schedule.fieldEndTime")}</Text><Text style={styles.time}>{view.allDay ? locale.t("schedule.allDay") : view.endTime ?? "—"}</Text></View></View>
-      <Text style={styles.hint}>{[view.date, view.endDate && view.endDate !== view.date ? view.endDate : null, view.durationMinutes !== null ? locale.t("home.durationMinutes", { count: view.durationMinutes }) : locale.t("personal53.noEnd"), view.zone].filter(Boolean).join(" · ")}</Text>
-      {view.location ? <View style={styles.row}><Text style={styles.hint}>{locale.t("schedule.fieldLocation")}</Text><Text style={styles.body}>{view.location}</Text></View> : null}
-      <PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={view.noteIds} contactIds={view.contactIds} />
-      {rules ? <PersonalScheduleRules draft={rules} readOnly /> : null}
-      <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
+    {view ? <><Text accessibilityRole="header" style={styles.title}>{view.title}</Text>
+      {/* UX-8: iOS Calendar's event detail — the day, then the time range; the zone only when it is not the phone's. */}
+      <View style={styles.when}>
+        <Text style={styles.whenDay}>{[view.date, view.endDate && view.endDate !== view.date ? view.endDate : null].filter((value): value is string => Boolean(value)).map(value => scheduleDay(value, locale.language)).join(" – ")}</Text>
+        <Text style={styles.whenTime}>{view.allDay ? locale.t("schedule.allDay") : [view.startTime, view.endTime].filter(Boolean).join(" – ")}{view.zone !== timeZone ? `  ·  ${view.zone}` : ""}</Text>
+      </View>
+      {/* Then iOS-style grouped cards: 地点, the linked people and notes, 提醒 / 重复. */}
+      {view.location ? <View style={styles.card}><View style={styles.row}><Text style={styles.rowLabel}>{locale.t("personal53.location")}</Text><Text style={styles.rowValue}>{view.location}</Text></View></View> : null}
+      {view.contactIds.length || view.noteIds.length ? <View style={styles.card}><PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={view.noteIds} contactIds={view.contactIds} /></View> : null}
+      {rules ? <View style={styles.card}><PersonalScheduleRules draft={rules} readOnly /></View> : null}
       {view.meetingUrl ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.join")} onPress={() => { void Linking.openURL(view.meetingUrl!).catch(() => setError(locale.t("schedule.operationFailed"))); }} style={styles.primary}><Text style={styles.primaryText}>{locale.t("personal53.join")}</Text></Pressable> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={editBlocked ? `${locale.t("personal53.reschedule")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.reschedule")} accessibilityState={{ disabled: editBlocked }} disabled={editBlocked} onPress={() => router.push(`${view.editHref}?focus=time` as Href)} style={[styles.secondary, editBlocked && styles.disabledBox]}><Text style={styles.body}>{locale.t("personal53.reschedule")}</Text></Pressable>
     </> : null}
   </AppScreen>;
 }
 const useStyles = createThemedStyles(colors => ({
-  title: { color: colors.ink, fontSize: 28, fontWeight: "800" as const, marginBottom: 20 }, time: { color: colors.ink, fontSize: 28, fontWeight: "800" as const }, timeCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const }, hint: { color: colors.ink3Text, fontSize: 13, lineHeight: 20, marginBottom: 8 }, row: { minHeight: 48, borderBottomWidth: 1, borderColor: colors.line, justifyContent: "center" as const }, body: { color: colors.ink, fontSize: 16 }, action: { minHeight: 44, justifyContent: "center" as const }, link: { color: colors.accentText, fontSize: 16 }, disabled: { color: colors.ink3Text }, disabledBox: { opacity: 0.4 }, error: { color: colors.coralText }, primary: { minHeight: 52, justifyContent: "center" as const, alignItems: "center" as const, backgroundColor: colors.ink, borderRadius: 12, marginTop: 20 }, primaryText: { color: colors.surface, fontSize: 16, fontWeight: "700" as const }, secondary: { minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, marginTop: 12 },
+  title: { color: colors.ink, fontSize: 28, fontWeight: "700" as const, marginBottom: 8 }, when: { gap: 2, marginBottom: 16 }, whenDay: { color: colors.ink, fontSize: 17 }, whenTime: { color: colors.ink2, fontSize: 17 }, time: { color: colors.ink, fontSize: 30, fontWeight: "800" as const }, timeCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const }, hint: { color: colors.ink3Text, fontSize: 15, lineHeight: 23, marginBottom: 8 }, card: { backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 16, marginBottom: 12 }, row: { minHeight: 52, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12, paddingVertical: 12 }, rowLabel: { color: colors.ink, fontSize: 17 }, rowValue: { flexShrink: 1, color: colors.ink3Text, fontSize: 17, textAlign: "right" as const }, body: { color: colors.ink, fontSize: 18 }, action: { minHeight: 44, justifyContent: "center" as const }, link: { color: colors.accentText, fontSize: 18 }, disabled: { color: colors.ink3Text }, disabledBox: { opacity: 0.4 }, error: { color: colors.coralText }, primary: { minHeight: 52, justifyContent: "center" as const, alignItems: "center" as const, backgroundColor: colors.ink, borderRadius: 12, marginTop: 20 }, primaryText: { color: colors.surface, fontSize: 18, fontWeight: "700" as const }, secondary: { minHeight: 48, borderWidth: 1, borderColor: colors.line, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, marginTop: 12 },
   conflict: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 16, marginBottom: 12, backgroundColor: colors.surface2 },
 }));
+
+/** "2026-10-25" → the localized day with weekday (10月25日 周日 / 10月25日(日) / Sun, Oct 25), as in the editor. */
+function scheduleDay(value: string, language: string): string {
+  const date = new Date(`${value}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) return value;
+  return new Intl.DateTimeFormat(language, { year: value.slice(0, 4) === String(new Date().getFullYear()) ? undefined : "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "UTC" }).format(date);
+}

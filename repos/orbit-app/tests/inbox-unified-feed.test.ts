@@ -16,7 +16,7 @@ test("feed never recreates an unavailable task link or its stale content", () =>
   const item = feed.items.find(item => item.id === "notification:gone");
   assert.ok(item);
   assert.equal(item.targetHref, undefined);
-  assert.equal(item.title, "来源已不可用");
+  assert.equal(item.title, "这条通知已过期");
   assert.equal(item.subtitle, "");
   assert.equal(JSON.stringify(feed).includes("SECRET OLD"), false);
 });
@@ -254,7 +254,7 @@ test("unproven legacy task reminders have no navigation or invented occurrence t
   assert.equal(view.items.length, 1);
   assert.equal(view.items[0]?.category, "task");
   assert.equal(view.items[0]?.targetHref, undefined);
-  assert.equal(view.items[0]?.title, "来源已不可用");
+  assert.equal(view.items[0]?.title, "这条通知已过期");
   assert.equal(view.items[0]?.occurredAt, "");
   assert.equal(view.coverageConfirmed, false);
 });

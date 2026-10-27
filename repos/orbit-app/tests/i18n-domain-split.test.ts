@@ -13,10 +13,18 @@ import { zh } from "../src/i18n/zh";
 // Later sprints add keys to both new and original domains; those additions
 // still pass the locale parity and single-domain checks below.
 const PRE_SPLIT = {
-  en: { keys: 2253, sha256: "638192bfe5212904fda21acae16138ff871d36cf9830e936d628550c922b9d39" },
+  // In every locale R20b (notes.bodyPlaceholder) and R28 (onboarding.goalsPick) later updated 2 original values; the key set is still R03's.
+  // UX 2026-10-26 (Task tab copy: plain labels for the schedule links, the to-do detail and the calendar "+N") updated more original values in all three.
+  // UX 2026-10-26 (onboarding: plain industry labels, a date picker for the birthday, no forced break in the zh step 5 title) updated more.
+  // QA-A 2026-10-26 (iOrbit record cards: plain "saved" footnotes instead of "written and read back") updated more.
+  // QA-D 2026-10-26 (ja start guide / onboarding leads, export, resume and suggestion copy; plain completion hint) updated more.
+  // Recheck 2026-10-27 (personal schedule delete moved to a dialog: its confirm button is a short "Delete") updated more.
+  // 2026-10-27 relationship messages stop at drafts: the four send keys (inbox.sendMessage / sendingMessage /
+  // retrySend / sendUnconfirmed) are gone; merged with redesign's copy updates of the same day.
+  en: { keys: 2249, sha256: "a73787e6ba20f50de2465520f312d4b5530101db73995e0b600482b912b5984d" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "2e20d034d29ade135938dfabc0ab437729187d501c5e2710feae6a6aeb78f7a9" },
-  zh: { keys: 2253, sha256: "197cb41cc98085886fb83c331bf2304579644c71e7de1260c1a9a48276dd05af" },
+  ja: { keys: 2249, sha256: "4d7f8600f8d28bc4bda8cfd0684e791813ab010d782748ead0ea381d8dc562e3" },
+  zh: { keys: 2249, sha256: "77c324ea240b140d537d4b2908c20e1e8809e67a012efd1727fcb940ca3691d2" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

@@ -9,6 +9,7 @@ import test from "node:test";
 import { createPostgresEventAccessRepository } from "../../features/events/event-access/storage/postgres-repository";
 import { createPostgresEventAdmissionRepository } from "../../features/events/admission/storage/postgres-repository";
 import { createHostLiveService, profileScore } from "../../features/events/host/live";
+import { shiftedRegistrationClose } from "../../features/events/host/storage/lifecycle";
 import { HostError } from "../../features/events/host/service";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
 import { lockedFixtureQuery } from "../support/sync-revision-fixture";
@@ -85,5 +86,46 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.deepEqual(cohosts!.members.map((member) => [member.name, member.role]), [["佐藤 健一", "owner"], ["中村 由紀", "read_only_analyst"], ["小林 誠", "check_in"]]);
     const page = await service.organizerPublic(null, profile.slug);
     assert.deepEqual(page!.upcoming.map((item) => item.title), ["CFO Night Tokyo vol.19"]);
+  });
+});
+
+test("moving an event keeps its registration close before the start", () => {
+  const start = "2026-11-10T10:00:00.000Z";
+  assert.equal(shiftedRegistrationClose(null, start, "2026-11-08T10:00:00.000Z"), null);
+  assert.equal(shiftedRegistrationClose("2026-11-10T09:00:00.000Z", start, "2026-11-08T10:00:00.000Z"), "2026-11-08T09:00:00.000Z", "earlier: the 1-hour gap is kept");
+  assert.equal(shiftedRegistrationClose("2026-11-01T00:00:00.000Z", start, "2026-11-08T10:00:00.000Z"), "2026-11-01T00:00:00.000Z", "a close still before the new start stays");
+  assert.equal(shiftedRegistrationClose("2026-11-11T19:00:00.000Z", start, "2026-11-10T08:00:00.000Z"), "2026-11-10T08:00:00.000Z", "a close already after the start is clamped to the new start");
+  assert.equal(shiftedRegistrationClose(start, start, "2026-11-12T10:00:00.000Z"), "2026-11-12T10:00:00.000Z", "the default close (= start) follows a later start");
+  assert.equal(shiftedRegistrationClose("2026-11-09T10:00:00.000Z", start, "2026-11-12T10:00:00.000Z"), "2026-11-09T10:00:00.000Z", "a later move leaves an explicit close alone");
+});
+
+test("event time edits move the registration close; a close after the start is refused", hostDatabaseTest, async () => {
+  await withHostDatabase(async ({ client, pool, workspaceId }) => {
+    await lockedFixtureQuery(pool, `insert into orbit_records (workspace_id, collection_name, record_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'auth_users', $2, 'auth', $3, $4::jsonb, now(), now())`, [workspaceId, "auth_user:host@example.com", HOST, JSON.stringify({ displayName: "佐藤 健一", email: "host@example.com", id: HOST })]);
+    const service = createHostLiveService({ client, operations: null, workspaceId });
+    const profile = await service.createProfile(HOST, { displayName: "QA 実行委員会", emoji: "🥂" });
+    const start = new Date(Date.now() + 5 * 86_400_000);
+    const created = await service.createEvent(HOST, { capacity: 30, endsAt: new Date(start.getTime() + 2 * 3600_000).toISOString(), feeKind: "free", organizerProfileId: profile.profileId, startsAt: start.toISOString(), title: "Move me" });
+    const eventId = created.event.eventId;
+    const setup = await service.setup(HOST, eventId);
+    await assert.rejects(service.saveSetup(HOST, eventId, { admissionMode: "first_come", capacity: 30, description: "", expectedRevision: setup!.revision, questions: [], registrationClosesAt: new Date(start.getTime() + 3600_000).toISOString() }), isHost("VALIDATION"), "a close after the start is refused");
+    const closesAt = new Date(start.getTime() - 3600_000).toISOString();
+    await service.saveSetup(HOST, eventId, { admissionMode: "first_come", capacity: 30, description: "", expectedRevision: setup!.revision, questions: [], registrationClosesAt: closesAt });
+    const published = await service.publishEvent(HOST, eventId, { expectedVersion: created.event.version });
+    const admission = createPostgresEventAdmissionRepository({ client, workspaceId });
+    assert.equal(Date.parse((await admission.getPolicy(eventId))!.registrationClosesAt), Date.parse(closesAt));
+
+    const newStart = new Date(start.getTime() - 2 * 86_400_000);
+    const moved = await service.updateEvent(HOST, eventId, { endsAt: new Date(newStart.getTime() + 2 * 3600_000).toISOString(), expectedVersion: published.event.version, notify: false, startsAt: newStart.toISOString() });
+    assert.equal(Date.parse(moved.event.startsAt!), newStart.getTime());
+    const policy = (await admission.getPolicy(eventId))!;
+    assert.equal(Date.parse(policy.registrationClosesAt), newStart.getTime() - 3600_000, "the close moved with the event, keeping the 1-hour gap");
+    assert.equal(Date.parse(policy.profileEditDeadlineAt), newStart.getTime() - 3600_000);
+    const config = await pool.query(`select c.registration_cutoff_at from event_ops_configuration_heads h join event_ops_configurations c using (workspace_id, event_id, configuration_version) where h.workspace_id = $1 and h.event_id = $2`, [workspaceId, eventId]);
+    assert.equal(new Date(config.rows[0]!.registration_cutoff_at as string).getTime(), newStart.getTime() - 3600_000, "operations configuration matches the policy");
+    const after = await service.setup(HOST, eventId);
+    assert.equal(Date.parse(after!.registrationClosesAt!), newStart.getTime() - 3600_000, "the saved settings show the moved close");
+    await service.publishSetup(HOST, eventId, { expectedRevision: after!.revision });
+    assert.equal(Date.parse((await admission.getPolicy(eventId))!.registrationClosesAt), newStart.getTime() - 3600_000, "re-publishing the settings keeps it");
   });
 });

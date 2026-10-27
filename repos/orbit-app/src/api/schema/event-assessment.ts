@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { knownValues, readableItems, tolerantEnum } from "./tolerant";
-import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, EventAssessmentContract, EventAssessmentDismissResult, EventAssessmentScoreItem, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
+import type { EventAssessmentAddToPlanResult, EventAssessmentAvailability, EventAssessmentContract, EventAssessmentDeleteResult, EventAssessmentDismissResult, EventAssessmentScoreItem, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../contract/event-assessment";
 
 // R08 contract 8 (owner 甲 / R26); R24 rubric v2: five fixed criteria 45 / 15 / 20 / 10 / 10, adding up to total.
 // Responses tolerant, request bodies strict (see home-layout.ts).
@@ -90,6 +90,8 @@ export const eventAssessmentAddToPlanResultSchema = eventAssessmentAddToPlanResu
 // R26: 見送る and the entry availability.
 export const eventAssessmentDismissResultObject = z.object({ assessmentId: z.string().min(1), userDecision: z.literal("dismissed") });
 export const eventAssessmentDismissResultSchema = eventAssessmentDismissResultObject as z.ZodType<EventAssessmentDismissResult>;
+export const eventAssessmentDeleteResultObject = z.object({ assessmentId: z.string().min(1), deleted: z.literal(true) });
+export const eventAssessmentDeleteResultSchema = eventAssessmentDeleteResultObject as z.ZodType<EventAssessmentDeleteResult>;
 const countOrNull = z.number().int().min(0).nullable().optional().catch(null);
 export const eventAssessmentAvailabilityObject = z.object({ monthlyLeft: countOrNull, monthlyLimit: countOrNull, dailyLeft: countOrNull, aiReadAvailable: z.boolean() });
 export const eventAssessmentAvailabilitySchema = eventAssessmentAvailabilityObject as z.ZodType<EventAssessmentAvailability>;

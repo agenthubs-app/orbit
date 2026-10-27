@@ -6,7 +6,7 @@ import { StyleSheet, View } from "react-native";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
 
 import type { NetworkAnalysisDistribution, NetworkAnalysisGap, NetworkAnalysisInsight, NetworkAnalysisOpportunity, NetworkAnalysisViewDTO } from "../../api/contract/network-analysis-view";
-import { AvatarStack, Button, Card, Chip, Icon, MacTile, RingChart, SampleTag, Skeleton, UiPressable, UiText } from "../../components/ui";
+import { AvatarStack, Button, Card, Chip, Icon, MacTile, RingChart, SampleTag, Segmented, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import type { OrbitColors } from "../../design/tokens";
 import type { MessageKey } from "../../i18n/messages";
@@ -117,26 +117,67 @@ export function LockedView({ total, required, missing, onAddCards }: { total: nu
 
 /* ---------- 構造 (b5 #33 / #34) ---------- */
 
-function DimensionCard({ title, distribution, onOpen, compactTop = false }: { title: string; distribution: NetworkAnalysisDistribution; onOpen: (selection: DrillSelection) => void; compactTop?: boolean }) {
+type CompositionDimension = NetworkAnalysisDistribution["dimension"];
+
+/** Distinct slice hues (a budget-app pie, not one colour family); the unknown buckets are grey and always last. */
+const sliceColors = (colors: OrbitColors) => [colors.plum700, colors.macBlueInk, colors.macTealInk, colors.macApricotInk, colors.macPinkInk] as const;
+const isUnknownBucket = (dimension: CompositionDimension, id: string) => id === "rest" || id === "unset" || id === "none" || (dimension === "met" && id === "other");
+
+/**
+ * 構造 as one pie card (user 2026-10-25: every breakdown as a pie, like a budgeting app): a breakdown switch, a donut
+ * with the total inside, and the buckets largest first with share and count; a row opens its drill-down list.
+ */
+function CompositionCard({ structure, onOpen }: { structure: NonNullable<NetworkAnalysisViewDTO["structure"]>; onOpen: (selection: DrillSelection) => void }) {
   const { styles, colors } = useStyles();
   const { t, language } = useOrbitLocale();
-  if (distribution.buckets.length === 0) return null;
-  const max = Math.max(1, ...distribution.buckets.map((bucket) => bucket.count));
+  const [dimension, setDimension] = useState<CompositionDimension>("industry");
+  const distributions: Record<CompositionDimension, NetworkAnalysisDistribution> = {
+    industry: structure.industries, seniority: structure.seniority, region: structure.regions, met: structure.mets,
+  };
+  const titles: Record<CompositionDimension, string> = {
+    industry: t("networkAnalysis.industry"), seniority: t("networkAnalysis.seniority"), region: t("networkAnalysis.region"), met: t("networkAnalysis.met"),
+  };
+  const distribution = distributions[dimension];
+  const total = Math.max(1, distribution.total);
+  const palette = sliceColors(colors);
+  const known = distribution.buckets.filter((bucket) => bucket.count > 0 && !isUnknownBucket(dimension, bucket.id)).sort((a, b) => b.count - a.count);
+  const unknown = distribution.buckets.filter((bucket) => bucket.count > 0 && isUnknownBucket(dimension, bucket.id));
+  const slices = [
+    ...known.map((bucket, index) => ({ bucket, color: palette[index % palette.length]! })),
+    ...unknown.map((bucket) => ({ bucket, color: colors.ink4 })),
+  ];
   return (
-    <Card style={compactTop ? styles.afterGap : styles.gapTop}>
-      <View testID={`analysis-dimension-${distribution.dimension}`}>
-        <CardHead title={title} right={<Icon name="right" size={16} color={colors.ink3} />} />
-        {distribution.buckets.map((bucket, index) => {
-          const label = bucketLabel(distribution.dimension, bucket.id, t, language);
-          return (
-            <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.openDimension", { label })} onPress={() => onOpen({ dimension: distribution.dimension, bucketId: bucket.id })} style={styles.dim}>
-              <UiText numberOfLines={1} style={styles.dimLabel}>{label}</UiText>
-              <View style={styles.grow}><ThinBar value={bucket.count / max} rose={index > 0} /></View>
-              <UiText style={styles.dimCount}>{bucket.count}</UiText>
-              <Icon name="right" size={16} color={colors.ink3} />
-            </UiPressable>
-          );
-        })}
+    <Card>
+      <View testID="analysis-composition">
+        <CardHead title={t("networkAnalysis.composition")} right={<UiText style={styles.lbl}>{t("networkAnalysis.tapForList")}</UiText>} />
+        <Segmented accessibilityLabel={t("networkAnalysis.compositionPick")} value={dimension} onChange={setDimension}
+          segments={(["industry", "seniority", "region", "met"] as const).map((key) => ({ key, label: titles[key] }))} />
+        <View style={styles.pieWrap}>
+          <View>
+            <RingChart size={188} stroke={30} cap="butt" accessibilityLabel={`${titles[dimension]} ${distribution.total}`}
+              segments={slices.map(({ bucket, color }) => ({ value: bucket.count, color }))} />
+            <View style={styles.ringCenter} pointerEvents="none">
+              <UiText style={styles.pieTotal}>{distribution.total}</UiText>
+              <UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText>
+            </View>
+          </View>
+        </View>
+        <View testID={`analysis-dimension-${dimension}`}>
+          {slices.map(({ bucket, color }, index) => {
+            const label = bucketLabel(dimension, bucket.id, t, language);
+            const percent = Math.round((bucket.count / total) * 100);
+            return (
+              <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.compositionRow", { label, count: bucket.count, percent })}
+                onPress={() => onOpen({ dimension, bucketId: bucket.id })} style={[styles.pieRow, index > 0 ? styles.legLine : null]}>
+                <View style={[styles.pieDot, { backgroundColor: color }]} />
+                <UiText style={[styles.legLabel, styles.grow]}>{label}</UiText>
+                <UiText style={styles.pieCount}>{bucket.count}</UiText>
+                <UiText style={styles.piePercent}>{percent}%</UiText>
+                <Icon name="right" size={16} color={colors.ink3} />
+              </UiPressable>
+            );
+          })}
+        </View>
       </View>
     </Card>
   );
@@ -165,50 +206,18 @@ export function StructureView({ view, snapshot, names, onOpen, onOpenPerson }: {
   view: NetworkAnalysisViewDTO; snapshot: NetworkSnapshotView | null; names: Record<string, EvidencePerson>;
   onOpen: (selection: DrillSelection) => void; onOpenPerson: (contactId: string) => void;
 }) {
-  const { styles, colors } = useStyles();
-  const { t, language } = useOrbitLocale();
+  const { styles } = useStyles();
+  const { t } = useOrbitLocale();
   const structure = view.structure;
   if (!structure) return null;
-  const industries = structure.industries;
-  const palette = ringColors(colors);
   const gap = structure.gaps?.[0] ?? null;
   const gapBlock = gap ? snapshot?.blocks.find((block) => block.kind === "gap" && block.needId === gap.needId) ?? null : null;
   return (
     <View testID="analysis-structure">
-      <Card>
-        <View testID="analysis-dimension-industry">
-          <CardHead title={t("networkAnalysis.industry")} right={<UiText style={styles.lbl}>{t("networkAnalysis.tapForList")}</UiText>} />
-          <View style={styles.ringRow}>
-            <View>
-              <RingChart size={118} stroke={13} accessibilityLabel={`${t("networkAnalysis.industry")} ${industries.total}`}
-                segments={industries.buckets.map((bucket, index) => ({ value: bucket.count, color: palette[Math.min(index, 3)]! }))} />
-              <View style={styles.ringCenter} pointerEvents="none">
-                <UiText style={styles.ringTotal}>{industries.total}</UiText>
-                <UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText>
-              </View>
-            </View>
-            <View style={styles.grow}>
-              {industries.buckets.map((bucket, index) => {
-                const label = bucketLabel("industry", bucket.id, t, language);
-                return (
-                  <UiPressable key={bucket.id} accessibilityRole="button" accessibilityLabel={t("networkAnalysis.openDimension", { label })} onPress={() => onOpen({ dimension: "industry", bucketId: bucket.id })} style={[styles.leg, index > 0 ? styles.legLine : null]}>
-                    <View style={[styles.legSwatch, { backgroundColor: palette[Math.min(index, 3)] }]} />
-                    <UiText numberOfLines={1} style={[styles.legLabel, styles.grow]}>{label}</UiText>
-                    <UiText style={styles.legCount}>{bucket.count}</UiText>
-                    <Icon name="right" size={16} color={colors.ink3} />
-                  </UiPressable>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </Card>
-      {gap ? <GapCard gap={gap} total={industries.total} block={gapBlock} names={names} onOpenPerson={onOpenPerson} /> : structure.gaps === null ? (
+      <CompositionCard structure={structure} onOpen={onOpen} />
+      {gap ? <GapCard gap={gap} total={structure.industries.total} block={gapBlock} names={names} onOpenPerson={onOpenPerson} /> : structure.gaps === null ? (
         <View style={styles.gapCard} testID="analysis-gap-unavailable"><UiText style={styles.gapBodyPlain}>{t("networkAnalysis.gapUnavailable")}</UiText></View>
       ) : null}
-      <DimensionCard title={t("networkAnalysis.seniority")} distribution={structure.seniority} onOpen={onOpen} compactTop />
-      <DimensionCard title={t("networkAnalysis.region")} distribution={structure.regions} onOpen={onOpen} />
-      <DimensionCard title={t("networkAnalysis.met")} distribution={structure.mets} onOpen={onOpen} />
     </View>
   );
 }
@@ -236,7 +245,7 @@ function OpportunityCard({ card, first, onOpen }: { card: NetworkAnalysisOpportu
             <UiText style={styles.oppTitle}>{t(look.title)}</UiText>
             <UiText style={styles.lbl}>{body}</UiText>
           </View>
-          <UiText style={styles.mid}>{card.count}<UiText style={styles.lbl}>{t("networkAnalysis.peopleUnit")}</UiText></UiText>
+          <UiText style={styles.mid}>{card.count}<UiText style={styles.lbl}>{t("networkAnalysis.peopleUnitInline")}</UiText></UiText>
         </View>
         <View style={styles.oppFoot}>
           {card.preview.length ? <AvatarStack names={card.preview.map((person) => person.name)} max={3} /> : null}
@@ -369,68 +378,74 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   between: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
   gapTop: { marginTop: 14 },
   afterGap: { marginTop: 2 },
-  lbl: { fontSize: 11.5, color: colors.ink3Text, fontWeight: "500" },
-  lblBody: { fontSize: 12.5, color: colors.ink3Text, lineHeight: 20 },
+  lbl: { fontSize: 13, color: colors.ink3Text, fontWeight: "500" },
+  lblBody: { fontSize: 15, color: colors.ink3Text, lineHeight: 24 },
   caption: { marginTop: 4 },
-  h3: { fontSize: 14.5, fontWeight: "800", color: colors.ink },
+  h3: { fontSize: 17, fontWeight: "800", color: colors.ink },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 },
   // kit .bar.thin
   barTrack: { height: 4, borderRadius: 4, backgroundColor: colors.surface3, overflow: "hidden" },
   // kit .why / .why-body
   why: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  whyMark: { fontSize: 10.5, fontWeight: "800", color: colors.ink3Text },
+  whyMark: { fontSize: 12, fontWeight: "800", color: colors.ink3Text },
   whyBody: { marginTop: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, backgroundColor: colors.surface2 },
   whyBodyOnSurface: { backgroundColor: colors.surface },
-  whyText: { fontSize: 12, color: colors.ink2, lineHeight: 20 },
+  whyText: { fontSize: 14, color: colors.ink2, lineHeight: 23 },
   // 锁定 (kit .guide, .ghost-row, .faded)
   guide: { alignItems: "stretch", paddingVertical: 24, paddingHorizontal: 20 },
   lockRing: { alignSelf: "center", width: 120, height: 120 },
   ringCenter: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, alignItems: "center", justifyContent: "center" },
   lockNum: { fontSize: 30, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
-  lockOf: { fontSize: 14, fontWeight: "700", color: colors.ink3Text },
-  lockTitle: { marginTop: 12, fontSize: 18, fontWeight: "800", color: colors.ink, textAlign: "center" },
-  lockBody: { marginTop: 6, marginBottom: 16, fontSize: 13, lineHeight: 21, color: colors.ink2, textAlign: "center" },
+  lockOf: { fontSize: 17, fontWeight: "700", color: colors.ink3Text },
+  lockTitle: { marginTop: 12, fontSize: 20, fontWeight: "800", color: colors.ink, textAlign: "center" },
+  lockBody: { marginTop: 6, marginBottom: 16, fontSize: 15, lineHeight: 24, color: colors.ink2, textAlign: "center" },
   ghostRow: { height: 46, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.surface3, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10 },
   ghostGap: { marginTop: 8 },
   ghostDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surface2 },
-  ghostText: { flex: 1, fontSize: 12, color: colors.ink3Text },
+  ghostText: { flex: 1, fontSize: 14, color: colors.ink3Text },
   faded: { opacity: 0.5 },
   // kit .dim (74 · bar · 34 · 16)
   dim: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 5, minHeight: 30 },
-  dimLabel: { width: 74, fontSize: 12, color: colors.ink3Text },
-  dimCount: { width: 34, textAlign: "right", fontSize: 12, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  dimLabel: { width: 74, fontSize: 14, color: colors.ink3Text },
+  dimCount: { width: 34, textAlign: "right", fontSize: 14, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   chevronSlot: { width: 16 },
   // 業界 ring + kit .leg
   ringRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  ringTotal: { fontSize: 26, fontWeight: "800", color: colors.ink, lineHeight: 29, fontVariant: ["tabular-nums"] },
+  ringTotal: { fontSize: 28, fontWeight: "800", color: colors.ink, lineHeight: 31, fontVariant: ["tabular-nums"] },
+  pieWrap: { alignItems: "center", paddingTop: 18, paddingBottom: 14 },
+  pieTotal: { fontSize: 34, fontWeight: "800", color: colors.ink, lineHeight: 38, fontVariant: ["tabular-nums"] },
+  pieRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
+  pieDot: { width: 12, height: 12, borderRadius: 6 },
+  pieCount: { fontSize: 15, color: colors.ink3Text, fontVariant: ["tabular-nums"] },
+  piePercent: { width: 48, textAlign: "right", fontSize: 15, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   leg: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, minHeight: 34 },
   legLine: { borderTopWidth: 1, borderTopColor: colors.line },
   legSwatch: { width: 10, height: 10, borderRadius: 3 },
-  legLabel: { fontSize: 12.5, color: colors.ink },
-  legCount: { fontSize: 12.5, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  legLabel: { fontSize: 15, color: colors.ink },
+  legCount: { fontSize: 15, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   // 不足 (kit .mac.pink)
   gapCard: { marginTop: 14, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.macPink },
-  gapEmoji: { fontSize: 18 },
-  gapTitle: { fontSize: 13.5, fontWeight: "800", color: colors.ink },
-  gapBody: { marginTop: 6, fontSize: 12.5, lineHeight: 20, color: colors.ink },
-  gapBodyPlain: { fontSize: 12.5, lineHeight: 20, color: colors.ink2 },
+  gapEmoji: { fontSize: 20 },
+  gapTitle: { fontSize: 16, fontWeight: "800", color: colors.ink },
+  gapBody: { marginTop: 6, fontSize: 15, lineHeight: 24, color: colors.ink },
+  gapBodyPlain: { fontSize: 15, lineHeight: 24, color: colors.ink2 },
   gapButton: { marginTop: 10, alignItems: "flex-start" },
   // 機会
   oppHead: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
-  oppTitle: { fontSize: 14, fontWeight: "800", color: colors.ink },
-  mid: { fontSize: 22, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  oppTitle: { fontSize: 17, fontWeight: "800", color: colors.ink },
+  mid: { fontSize: 24, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   oppFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16 },
   // インサイト (kit .cmp, .minibars)
-  headline: { marginTop: 8, fontSize: 14, lineHeight: 22, fontWeight: "800", color: colors.ink },
+  headline: { marginTop: 8, fontSize: 17, lineHeight: 27, fontWeight: "800", color: colors.ink },
   cmp: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
-  cmpLabel: { width: 70, fontSize: 11.5, color: colors.ink3Text },
-  cmpValue: { width: 40, textAlign: "right", fontSize: 11.5, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
+  cmpLabel: { width: 70, fontSize: 13, color: colors.ink3Text },
+  cmpValue: { width: 40, textAlign: "right", fontSize: 13, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
   minibars: { flexDirection: "row", alignItems: "flex-end", gap: 5, height: 54, marginTop: 10 },
   minibar: { flex: 1, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, backgroundColor: colors.plum300 },
   minibarHi: { backgroundColor: colors.plum700 },
   // iOrbit の見立て
   aiBlock: { marginTop: 4, marginBottom: 8 },
-  aiText: { fontSize: 13.5, lineHeight: 22, color: colors.ink },
+  aiText: { fontSize: 16, lineHeight: 26, color: colors.ink },
   evidence: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 4 },
-  evidenceName: { fontSize: 12, fontWeight: "700", color: colors.accentText },
+  evidenceName: { fontSize: 14, fontWeight: "700", color: colors.accentText },
 }));

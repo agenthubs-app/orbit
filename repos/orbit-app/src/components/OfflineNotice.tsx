@@ -32,5 +32,5 @@ export function OfflineNotice({ lastSyncedAt, reason = "unreachable", queues }: 
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  notice: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, lineHeight: 21 },
+  notice: { color: colors.macApricotText, backgroundColor: colors.macApricot, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, fontSize: 17, lineHeight: 25 },
 }));

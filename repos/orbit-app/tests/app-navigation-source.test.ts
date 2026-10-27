@@ -38,8 +38,11 @@ test("R21 iOrbit owns a full-screen header and leaves inbox navigation to the ap
 });
 
 test("R21 history separates plan intakes and goals from chat sessions", () => {
-  assert.match(aiStartSource, /planIntakes\.map/u);
-  assert.match(aiStartSource, /planGoals\.map/u);
+  // QA-A: the history search also filters plans, so the rows render from the filtered lists.
+  assert.match(aiStartSource, /shownIntakes = needle \? planIntakes\.filter/u);
+  assert.match(aiStartSource, /shownGoals = needle \? planGoals\.filter/u);
+  assert.match(aiStartSource, /shownIntakes\.map/u);
+  assert.match(aiStartSource, /shownGoals\.map/u);
   assert.match(aiScreenSource, /planFlowHref\("app", intake\.intakeId\)/u);
   assert.match(aiScreenSource, /planOverviewHref\("app", goal\.planId\)/u);
 });

@@ -24,7 +24,9 @@ import {
   View
 } from "react-native";
 import { AppScreen } from "../../components/AppScreen";
-import { Button, Segmented } from "../../components/ui";
+import { Button, IconButton, Segmented } from "../../components/ui";
+import { inboxAppTargetHref } from "../../view-models/inbox-target";
+import type { InboxNotificationDTO } from "../../api/contract/inbox-notifications";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { NotificationDeliveryContract } from "../../api/contract/notifications";
@@ -57,6 +59,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
+import { useConversationContactNames } from "../../hooks/useConversationContactNames";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
 import { inboxSummarySchema } from "../../api/schema/inbox-summary";
 import { useLocalRelationshipConversations, useLocalRelationshipThread, type LocalRelationshipConversationsState } from "../../hooks/useLocalRelationshipMessages";
@@ -71,6 +74,7 @@ import {
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
+import { beginReplyPolish, takeReplyPolish } from "../../data/reply-polish-handoff";
 import {
   appPerformanceInput,
   appPerformanceScenarioForPath,
@@ -298,7 +302,9 @@ export function RelationshipInboxScreen() {
   const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
-  const requestedSection = firstParam(params.tab) === 'notifications' ? 'alerts' : firstParam(params.tab) === 'messages' ? 'threads' : null;
+  // QA-C4: links also say ?tab=alerts / ?tab=threads (the section names).
+  const requestedTab = firstParam(params.tab);
+  const requestedSection = requestedTab === 'notifications' || requestedTab === 'alerts' ? 'alerts' : requestedTab === 'messages' || requestedTab === 'threads' ? 'threads' : null;
   const requestedNotificationFilter = firstParam(params.filter) === 'secretary' ? 'secretary' : null;
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
   if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
@@ -419,7 +425,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   currentBatchScope.current = batchScope;
   const [batchPending, setBatchPending] = useState(false);
   const [batchError, setBatchError] = useState("");
-  const readItems = messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language) : [];
+  const contactName = useConversationContactNames();
+  const readItems = messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language, contactName) : [];
   const confirmableUnread = readItems.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -532,6 +539,19 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     }
   }
 
+  // A notification that points somewhere opens that place directly (and is marked read on the way);
+  // only one without a usable target opens the notification page.
+  function openNotification(item: InboxNotificationDTO) {
+    if (!isCurrent()) return;
+    const href = item.target.status === "available" ? inboxAppTargetHref(item.target.href) : null;
+    if (!href) {
+      router.push(`/inbox/notifications/${encodeURIComponent(item.id)}${typedInbox.filter === "secretary" ? "?filter=secretary" : ""}` as Href);
+      return;
+    }
+    if (!item.readAt && item.actions.includes("read") && !typedInbox.offline) void typedInbox.act(item, "read");
+    router.push(href as Href);
+  }
+
   function openConversation(conversationId: string) {
     if (!isCurrent()) return;
     router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href);
@@ -554,6 +574,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       markAllReadLabel={activeSection === "threads" ? threadsOffline ? `${locale.t("inbox.markPageRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
       markAllReadVisibleLabel={activeSection === "threads" ? locale.t("typedInbox.markPageReadShort") : undefined}
       markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : threadsOffline || batchPending || confirmableUnread === 0}
+      markAllReadHidden={activeSection === "alerts" ? !typedInbox.offline && !typedInbox.busy && !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : !threadsOffline && !batchPending && confirmableUnread === 0}
+      settingsAction={activeSection === "alerts" && !typedInbox.offline && !composing && !createdThread ? { label: locale.t(typedInbox.filter === "secretary" ? "notifications.secretaryTitle" : "inbox.notificationSettings"), onPress: () => router.push(typedInbox.filter === "secretary" ? "/settings/notifications/secretary" : "/settings/notifications") } : undefined}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -576,10 +598,9 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={notificationsUnread} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
-      {activeSection === "alerts" && !typedInbox.offline ? <View style={{alignSelf:'flex-end',marginBottom:8}}><Button size="lg" label={locale.t(typedInbox.filter==='secretary'?'notifications.secretaryTitle':'notifications.title')} onPress={()=>router.push(typedInbox.filter==='secretary'?'/settings/notifications/secretary':'/settings/notifications')}/></View> : null}
       {activeSection === "threads" && threadsOffline && !composing && !createdThread ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
       {activeSection === "threads" && !composing && !createdThread ? <UnsentEndedNotice messages={endedOutbox} onDiscard={ids => { void outbox.discard(ids).catch(() => undefined); }} /> : null}
-      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}${typedInbox.filter==='secretary'?'?filter=secretary':''}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
+      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} timeZone={typedInbox.timeZone} filter={typedInbox.filter} onFilter={kind => { typedInbox.setFilter(kind); router.setParams({ filter: kind }); }} onAction={(item,action)=>void typedInbox.act(item,action)} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={openNotification} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
           onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
@@ -670,7 +691,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
     refreshing: summaryState.refreshing || messageState.refreshing };
   const stateData = state.kind === "success" || state.kind === "empty" ? state.data : null;
   const page = decodeRelationshipMessagePage(stateData, actorId, conversationId);
-  const detail = page && summary && page.conversation.qualificationVersion === summary.qualificationVersion ? relationshipMessagePageView(page, actorId, locale.language) : null;
+  const contactName = useConversationContactNames();
+  const detail = page && summary && page.conversation.qualificationVersion === summary.qualificationVersion ? relationshipMessagePageView(page, actorId, locale.language, contactName) : null;
   const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
   const retainedContactId = useRef("");
   if (detail) {
@@ -730,7 +752,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           tintColor={colors.accentText}
         />
       }
-      title={locale.t("inbox.messageTitle")}
+      // QA-C3: the header names the person, like Messages (was "Messages" over a "Conversation with …" heading).
+      title={detail?.participantName || locale.t("inbox.messageTitle")}
       onBack={() => router.canGoBack() ? router.back() : router.replace('/inbox?tab=messages' as Href)}
     >
       {!conversationId ? (
@@ -748,7 +771,6 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {page && summary && !detail ? <ErrorState message={locale.t("inbox.invalidMessageState")} /> : null}
       {historyCursor ? <ActionButton icon="arrow-forward-outline" label={locale.t("inbox.latestMessages")} onPress={refresh} variant="secondary" /> : null}
       {detail && page?.nextCursor ? <ActionButton icon="chevron-up-outline" label={locale.t("inbox.olderMessages")} onPress={() => setHistoryCursor(page.nextCursor)} variant="secondary" /> : null}
-      {conversationId && detail && !offline ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
         <View style={!detail ? { display: "none" } : undefined}>
@@ -766,6 +788,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         />
         </View>
       ) : null}
+      {/* QA-C3: the mute switch is a setting of the conversation, so it sits under it instead of above the messages. */}
+      {conversationId && detail && !offline ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && state.kind === "empty" && queuedHere.length === 0 ? (
         <EmptyState
           message={locale.t("inbox.emptyMessagesBody")}
@@ -776,20 +800,28 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadVisibleLabel, markAllReadDisabled = false, markAllReadHidden = false, settingsAction, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onMarkAllRead?: (() => void) | undefined;
   markAllReadLabel?: string;
   markAllReadVisibleLabel?: string | undefined;
   markAllReadDisabled?: boolean;
+  /** Nothing unread to act on (and not offline): the button is left out. */
+  markAllReadHidden?: boolean;
+  /** Notifications tab: a gear next to 全部已读 that opens the notification settings. */
+  settingsAction?: { label: string; onPress: () => void } | undefined;
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
 }>) {
   const locale = useOrbitLocale();
   return <AppScreen inset="kit" title={title} headerVariant="compact" backLabel={locale.t("inbox.home")} showBack={!hideBack} {...(onBack ? { onBack } : {})}
     {...(refreshControl ? { refreshControl } : {})}
-    headerActions={onMarkAllRead ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="lg" variant="ghost" /> : undefined}>
+    headerActions={(onMarkAllRead && !markAllReadHidden) || settingsAction ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {/* QA-C: hidden when there is nothing to mark (a disabled wide button squeezed the title to "Inb / ox"); offline it stays, disabled, to say why. */}
+      {onMarkAllRead && !markAllReadHidden ? <Button label={markAllReadVisibleLabel ?? markAllReadLabel ?? locale.t("inbox.markAllRead")} accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")} onPress={onMarkAllRead} disabled={markAllReadDisabled} size="sm" variant="ghost" /> : null}
+      {settingsAction ? <IconButton icon="settings" size={34} soft accessibilityLabel={settingsAction.label} onPress={settingsAction.onPress} /> : null}
+    </View> : undefined}>
     {children}
   </AppScreen>;
 }
@@ -930,7 +962,8 @@ function InboxContent({
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   const page = decodeConversationSummaryPage(data, actorId);
-  const view = page ? conversationSummaryView(page, actorId, locale.language) : {
+  const contactName = useConversationContactNames();
+  const view = page ? conversationSummaryView(page, actorId, locale.language, contactName) : {
     conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
   const [seedHandled, setSeedHandled] = useState(false);
@@ -1112,8 +1145,9 @@ function ThreadDetail({
     : detail.messages.filter(message => message.body !== "暂无消息正文");
   return (
     <View style={styles.readingPane}>
-      <Text accessibilityRole="header" style={styles.readingSubject}>{delivery ? locale.t("inbox.verifiedSubject", { name: detail.participantName }) : detail.subject}</Text>
-      {!previewOnly ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
+      {/* QA-C3: a real conversation already names the person in the header; the heading and "Recipient:" line repeated it. */}
+      {delivery ? null : <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>}
+      {!previewOnly && !delivery ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
       {emptyCount > 0 ? (
         <View>
           <Text style={styles.threadPreview}>{locale.t("inbox.emptyRecordCount", { count: emptyCount })}</Text>
@@ -1128,13 +1162,25 @@ function ThreadDetail({
         </View>
       ) : null}
       <View style={styles.messageStack}>
-        {visibleMessages.map((message) => (
+        {visibleMessages.map((message) => delivery ? (
+          // QA-C3: chat bubbles like Messages — mine on the right, theirs on the left, the time under each.
+          <View
+            key={message.id}
+            accessibilityLabel={`${message.fromMe ? locale.t("inbox.me") : message.sender}, ${message.time}: ${message.body}`}
+            style={[styles.bubbleRow, message.fromMe ? styles.bubbleRowMine : null]}
+          >
+            <View style={[styles.bubble, message.fromMe ? styles.bubbleMine : styles.bubbleTheirs]}>
+              <Text selectable style={[styles.bubbleText, message.fromMe ? styles.bubbleTextMine : null]}>{message.body}</Text>
+            </View>
+            <Text style={styles.bubbleTime}>{message.time}</Text>
+          </View>
+        ) : (
           <View
             key={message.id}
             style={styles.mailMessage}
           >
             <View style={styles.messageMeta}>
-              <Text style={styles.messageSender}>{delivery && message.fromMe ? locale.t("inbox.me") : message.sender}</Text>
+              <Text style={styles.messageSender}>{message.sender}</Text>
               <Text style={styles.messageTime}>{message.time}</Text>
             </View>
             <Text style={styles.messageBody}>{message.body}</Text>
@@ -1231,6 +1277,18 @@ function ReplyComposer({
     setDraftStatus(outcome);
   }
 
+  // QA-C4: a version chosen in iOrbit ("Use this version") lands in the reply box on return.
+  const composerFocused = useIsFocused();
+  useEffect(() => {
+    if (!composerFocused) return;
+    const chosen = takeReplyPolish(detail.conversationId);
+    if (!chosen) return;
+    draftEdited.current = true;
+    setDraftStatus("idle");
+    setStaged("");
+    setBody(chosen);
+  }, [composerFocused, detail.conversationId]);
+
   useEffect(() => {
     if (draftEdited.current) return;
     setBody(detail.draftReply);
@@ -1245,7 +1303,9 @@ function ReplyComposer({
     if (!contactId) { setRewriteError(locale.t("inbox.missingContact")); return; }
     if (!actorId || !server.baseUrl) { setRewriteError(locale.t("inbox.signInForAi")); return; }
     try {
-      const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() }) });
+      const template = inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() });
+      const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...template });
+      beginReplyPolish(detail.conversationId, template.message);
       setRewriteError(null);
       router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
     } catch {
@@ -1280,9 +1340,9 @@ function ReplyComposer({
           setDraftStatus("idle");
           setBody(value);
         }}
-        placeholder={locale.t("inbox.replyPlaceholder")}
+        placeholder={locale.t(delivery ? "inbox.messagePlaceholder" : "inbox.replyPlaceholder")}
         placeholderTextColor={colors.ink3Text}
-        style={styles.input}
+        style={[styles.input, delivery ? styles.messageInput : null]}
         value={body}
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
@@ -1578,24 +1638,33 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   toolbarText: {
     color: colors.accentText,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 25,
     flexShrink: 1
   },
-  toolbarComposeText: { color: colors.accentText, fontSize: 16, fontWeight: "600", lineHeight: 22, flexShrink: 1 },
+  toolbarComposeText: { color: colors.accentText, fontSize: 18, fontWeight: "600", lineHeight: 25, flexShrink: 1 },
   mailTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: "800",
-    lineHeight: 24,
+    lineHeight: 27,
     textAlign: "center"
   },
   mailContent: { gap: 0 },
   mailList: { gap: 0 },
   readingPane: { gap: 20 },
+  bubbleRow: { alignItems: "flex-start", gap: 4 },
+  bubbleRowMine: { alignItems: "flex-end" },
+  bubble: { borderRadius: 20, maxWidth: "82%", paddingHorizontal: 14, paddingVertical: 10 },
+  bubbleMine: { backgroundColor: colors.ink },
+  bubbleTheirs: { backgroundColor: colors.surface },
+  bubbleText: { color: colors.ink, fontSize: 17, lineHeight: 24 },
+  bubbleTextMine: { color: colors.onAccent },
+  bubbleTime: { color: colors.ink3Text, fontSize: 13, paddingHorizontal: 6 },
+  messageInput: { minHeight: 88 },
   remindersPane: { gap: 12, paddingTop: 16 },
-  resourceStatus: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, paddingTop: 16 },
+  resourceStatus: { color: colors.ink3Text, fontSize: 17, lineHeight: 25, paddingTop: 16 },
   readingSubject: { ...textStyles.title, color: colors.ink },
   mailMessage: {
     borderBottomColor: colors.line,
@@ -1631,9 +1700,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   alertRowTop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   alertRowTopLarge: { flexDirection: "column", gap: 3 },
-  alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", lineHeight: 21 },
-  alertDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  alertTime: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 116 },
+  alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 17, fontWeight: "700", lineHeight: 24 },
+  alertDetail: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
+  alertTime: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, maxWidth: 116 },
   alertTimeLarge: { maxWidth: "100%" },
   alertDismissButton: {
     alignItems: "center",
@@ -1654,7 +1723,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.ink,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   buttonRow: {
     flexDirection: "row",
@@ -1670,7 +1739,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     color: colors.coralText,
     fontSize: typography.bodySm,
-    lineHeight: 20
+    lineHeight: 23
   },
   emptyInboxSection: {
     alignItems: "center",
@@ -1709,15 +1778,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     textAlignVertical: "top",
-    lineHeight: 23
+    lineHeight: 28
   },
   listStack: {
     gap: spacing.sm
   },
   messageBody: {
     color: colors.ink,
-    fontSize: 16,
-    lineHeight: 26
+    fontSize: 18,
+    lineHeight: 29
   },
   messageMeta: {
     flexDirection: "row",
@@ -1727,7 +1796,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   messageSender: {
     color: colors.ink2,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600"
   },
   messageStack: {
@@ -1769,13 +1838,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: radius.sm,
     color: colors.ink3Text,
     fontSize: typography.label,
-    lineHeight: 18,
+    lineHeight: 20,
     padding: spacing.md
   },
   feedCoverage: {
     color: colors.ink3Text,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     paddingTop: 28,
     textAlign: "center"
   },
@@ -1809,8 +1878,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedSubtitle: {
     color: colors.ink3Text,
-    fontSize: 12,
-    lineHeight: 18
+    fontSize: 14,
+    lineHeight: 21
   },
   feedTab: {
     alignItems: "center",
@@ -1828,15 +1897,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedTabCount: {
     color: colors.accentText,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "800",
-    lineHeight: 21
+    lineHeight: 24
   },
   feedTabText: {
     color: colors.ink3Text,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "400",
-    lineHeight: 21
+    lineHeight: 24
   },
   feedTabTextActive: {
     color: colors.ink,
@@ -1853,8 +1922,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   feedTime: {
     color: colors.ink3Text,
     flexShrink: 0,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: "right"
   },
   feedTimeLarge: {
@@ -1863,9 +1932,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   feedTitle: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "500",
-    lineHeight: 22
+    lineHeight: 25
   },
   feedTitleUnread: {
     fontWeight: "700"
@@ -1884,8 +1953,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   unifiedError: {
     color: colors.coralText,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
     paddingVertical: 8
   },
   unifiedSourceError: {
@@ -1905,8 +1974,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchInput: {
     color: colors.ink,
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     minWidth: 0,
     minHeight: 44,
     paddingVertical: 0
@@ -1926,8 +1995,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   segmentButtonText: {
     color: colors.ink3Text,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: "400"
   },
   segmentButtonTextActive: {
@@ -1936,8 +2005,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   segmentCount: {
     color: colors.accentText,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: "800"
   },
   segmentedControl: {
@@ -1991,8 +2060,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   threadPreview: {
     color: colors.ink3Text,
-    fontSize: 14,
-    lineHeight: 21
+    fontSize: 17,
+    lineHeight: 25
   },
   threadRow: {
     alignItems: "flex-start",
@@ -2008,10 +2077,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listRowBodyLarge: { flexDirection: "column", gap: 3 },
   listCopy: { flex: 1, minWidth: 0, gap: 3 },
   listCopyLarge: { flex: 0, width: "100%" },
-  listHeadline: { color: colors.ink, fontSize: 15, fontWeight: "400", lineHeight: 21 },
+  listHeadline: { color: colors.ink, fontSize: 17, fontWeight: "400", lineHeight: 24 },
   listHeadlineUnread: { fontWeight: "700" },
-  listPreview: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  listDate: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, maxWidth: 90 },
+  listPreview: { color: colors.ink3Text, fontSize: 14, lineHeight: 21 },
+  listDate: { color: colors.ink3Text, fontSize: 14, lineHeight: 21, maxWidth: 90 },
   listDateLarge: { maxWidth: "100%" },
   threadRowTop: {
     alignItems: "center",

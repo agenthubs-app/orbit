@@ -166,7 +166,9 @@ export function DiagCard({ plan, busy, onPremise, onReview, onManual, onAchieve,
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
-  const basis = [...plan.content.basis.map((item) => item.label), ...plan.content.allocationReasons].join(" · ");
+  // QA-A: one reason per line; landscape citations carry only their id as label (e.g. "L-101") and the
+  // template is already named under 该见的人的类型, so neither is listed here.
+  const basis = [...plan.content.basis.filter((item) => item.kind === "premise" || item.kind === "record").map((item) => item.label), ...plan.content.allocationReasons].map((line) => `• ${line}`).join("\n");
   const why = useKitWhy(basis || null);
   const status = !plan.quota.manualEditAvailable
     ? t("plan.overview.statusManual")
@@ -185,12 +187,12 @@ export function DiagCard({ plan, busy, onPremise, onReview, onManual, onAchieve,
       {why.body}
       <View style={styles.acts}>
         <KitButton icon="layers" label={t("plan.overview.premise")} onPress={onPremise} style={styles.act} />
-        <KitButton icon="refresh" label={t("plan.overview.review")} badge={t("plan.overview.reviewBadge", { n: plan.quota.reviewMonthlyLimit })} onPress={onReview} style={styles.act} />
+        <KitButton icon="refresh" label={t("plan.overview.review")} onPress={onReview} style={styles.act} />
         <KitButton icon="edit" label={t("plan.overview.manualEdit")} onPress={onManual} disabled={busy || !plan.quota.manualEditAvailable} style={styles.act} />
         <KitButton icon="flag" label={t("plan.overview.achieve")} onPress={onAchieve} disabled={busy} style={styles.act} />
       </View>
       {!plan.quota.manualEditAvailable ? <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.manualLocked")}</UiText> : null}
-      <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth, limit: plan.quota.reviewMonthlyLimit })}</UiText>
+      <UiText style={[kit.lbl, styles.note]}>{t("plan.overview.reviewNote", { left: plan.quota.reviewLeftThisMonth })}</UiText>
       {problem}
       <UiPressable accessibilityRole="link" accessibilityLabel={t("plan.overview.seeConversation")} hitSlop={10} onPress={onConversation} style={styles.v2go}>
         <UiText style={styles.v2goText}>{t("plan.overview.seeConversation")}</UiText>
@@ -252,7 +254,7 @@ export function StepsCard({ plan, cards, onOpenType, onOpenEvents, onDoneMark, s
   const chips = stepChipsVisible(plan.score.total, steps);
   return (
     <KitCard>
-      <KitCardHead title={t("plan.step.title")} right={t("plan.step.note")} />
+      <KitCardHead title={t("plan.step.title")} />
       {steps.map((step, index) => (
         <StepItem key={step.key} n={index + 1} last={index === steps.length - 1} step={step} chip={chips ? stepChip(progress.get(step.key), Boolean(step.completedAt), t) : null}
           types={step.personTypeKeys.flatMap((key) => (byKey.get(key) ? [byKey.get(key)!] : []))} hasEvent={step.personTypeKeys.includes("event")} closing={closingStepNumbers(steps, index, "event")}
@@ -336,7 +338,7 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
   const unitText = units.last === null ? t("plan.types.unitsEven", { points: units.points }) : t("plan.types.unitsLast", { last: units.last, points: units.points });
   const cell = (value: number, label: string, people: boolean, zero: boolean) => (
     <View accessible accessibilityLabel={`${label} ${people ? t("plan.types.count", { count: value }) : String(value)}`} style={styles.m3cell}>
-      <UiText style={[styles.m3b, zero && styles.m3z]}>{String(value)}{people ? <UiText style={styles.m3small}>{t("plan.types.cellPeople")}</UiText> : null}</UiText>
+      <UiText style={[styles.m3b, zero && styles.m3z]}>{String(value)}{people && !zero ? <UiText style={styles.m3small}>{t("plan.types.cellPeople")}</UiText> : null}</UiText>
       <UiText numberOfLines={1} style={styles.m3span}>{label}</UiText>
     </View>
   );
@@ -352,7 +354,7 @@ function TypeCard({ card, first, onOpen }: { card: TypeCardView; first: boolean;
         <UiText style={styles.pp}>{String(card.earned + card.overflow)}<UiText style={styles.ppSmall}>{` / ${type.allocation}`}</UiText></UiText>
       </View>
       <View style={styles.m3}>
-        {cell(card.candidates, card.candidates === 0 ? t("plan.types.notInNetwork") : t("plan.types.candidates"), true, card.candidates === 0)}
+        {cell(card.candidates, t("plan.types.candidates"), true, card.candidates === 0)}
         {cell(card.events, t("plan.types.events"), false, card.events === 0)}
         {cell(card.routes, t("plan.types.routes"), false, card.routes === 0)}
       </View>

@@ -100,7 +100,7 @@ export function NoteMentionEditor({ body, disabled = false, mentions, onChange, 
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   editor: { position: "relative" },
-  input: { color: colors.ink, fontSize: typography.body, lineHeight: 26, minHeight: 260, paddingVertical: spacing.lg },
+  input: { color: colors.ink, fontSize: typography.body, lineHeight: 32, minHeight: 260, paddingVertical: spacing.lg },
   suggestions: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radius.lg, borderWidth: 1, ...floatShadow(colors), marginBottom: spacing.md, overflow: "hidden" },
   suggestionHeader: { alignItems: "center", backgroundColor: colors.accentSoft, flexDirection: "row", gap: 6, minHeight: 38, paddingHorizontal: spacing.md },
   suggestionTitle: { color: colors.ink2, fontSize: typography.label, fontWeight: "700" },

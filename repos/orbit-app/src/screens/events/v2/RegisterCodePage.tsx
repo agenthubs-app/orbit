@@ -23,12 +23,20 @@ export function RegisterCodePage() {
   const [invalid, setInvalid] = useState(false);
   useEffect(() => {
     let live = true;
-    const value = String(code ?? "").trim();
+    // The code input keeps 8 letters/digits; the server matches the printed XXXX-XXXX form.
+    const raw = String(code ?? "").trim().toUpperCase();
+    const value = /^[A-Z0-9]{8}$/.test(raw) ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
     if (!value) { setInvalid(true); return; }
-    void api.byCode(value).then((res) => {
+    void api.byCode(value).then(async (res) => {
       if (!live) return;
-      if (res.ok && res.data.eventId) router.replace(`/events/${encodeURIComponent(res.data.eventId)}/register` as Href);
-      else setInvalid(true);
+      if (!res.ok || !res.data.eventId) { setInvalid(true); return; }
+      const detail = `/events/${encodeURIComponent(res.data.eventId)}`;
+      // The host, or someone who already applied, gets the event page (host actions / their status), not a fresh registration.
+      const overview = await api.overview(res.data.eventId);
+      if (!live) return;
+      const status = overview.ok ? overview.data.registration.status : "none";
+      const settled = overview.ok && (overview.data.hosting || !["none", "cancelled"].includes(status));
+      router.replace((settled ? detail : `${detail}/register`) as Href);
     });
     return () => { live = false; };
   }, [api, code, router]);

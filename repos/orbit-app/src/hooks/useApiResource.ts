@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { createOrbitApiClient, type FetchLike } from "../api/client";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import { readSnapshot, writeSnapshot } from "../data/snapshot-store";
 import type { RouteState } from "../view-models/route-state";
 import { resultToRouteState } from "../view-models/route-state";
@@ -37,6 +38,7 @@ export function useApiResource<TData>(
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
+  const { language } = useOrbitLocale();
   const actorId = auth.actorId;
   const performanceScenario = isAppPerformanceEnabled()
     ? appPerformanceScenarioForPath(path)
@@ -58,9 +60,10 @@ export function useApiResource<TData>(
       createOrbitApiClient({
         authCookieHeader: auth.cookieHeader,
         baseUrl,
-        fetchImpl
+        fetchImpl,
+        language
       }),
-    [auth.cookieHeader, baseUrl, fetchImpl]
+    [auth.cookieHeader, baseUrl, fetchImpl, language]
   );
   const isEmptyRef = useRef(isEmpty);
   const [refreshIndex, setRefreshIndex] = useState(0);

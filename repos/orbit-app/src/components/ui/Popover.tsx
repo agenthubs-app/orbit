@@ -77,9 +77,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 16 },
   rowOn: { backgroundColor: colors.surface2 },
   meta: { flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
+  title: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   // kit ink-3 text → the readable ink-3-text (RD-05; a [contrast] substitution in the pixel gate).
   titleMuted: { color: colors.ink3Text },
-  sub: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
+  sub: { color: colors.ink3Text, fontSize: 13, fontWeight: "500", lineHeight: 20 },
   divider: { height: 1, backgroundColor: colors.line, marginHorizontal: 10, marginVertical: 4 },
 }));

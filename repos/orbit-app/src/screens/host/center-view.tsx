@@ -69,7 +69,8 @@ export function HostCenterBody(props: HostCenterViewProps) {
       </View>
     );
   }
-  const few = data.summary.eventCount === 1 && filter === "all";
+  const inactive = data.filterCounts?.inactive ?? 0;
+  const few = data.summary.eventCount === 1 && filter === "all" && data.events.length === 1;
   const segs: { key: HostCenterFilter; label: string }[] = [{ key: "all", label: t("fAll") }, { key: "upcoming", label: t("fUpcoming") }, { key: "live", label: t("fLive") }, { key: "ended", label: t("fEnded") }];
   return (
     <View testID={few ? "host-center-few" : "host-center-many"}>
@@ -78,6 +79,12 @@ export function HostCenterBody(props: HostCenterViewProps) {
         {data.events.map((row) => <HostEventCard key={row.eventId} row={row} t={t} language={language} onOpen={() => props.onOpenRow(row)} onAction={() => props.onRowAction(row)} />)}
         {data.events.length === 0 ? <UiText style={[h.lbl, styles.none]}>{t("noResults")}</UiText> : null}
       </View>
+      {/* Drafts / cancelled / archived are not in 全部; without this row a draft made on the computer was unreachable here. */}
+      {inactive > 0 ? (
+        <UiPressable accessibilityRole="button" accessibilityState={{ selected: filter === "inactive" }} onPress={() => props.onFilter(filter === "inactive" ? "all" : "inactive")} style={styles.inactiveRow} testID="host-center-inactive">
+          <UiText style={[h.lbl, filter === "inactive" ? { color: colors.ink, fontWeight: "700" } : null]}>{`${t("fInactive")} · ${inactive}`}</UiText>
+        </UiPressable>
+      ) : null}
       {few ? <PcCard text={t("appPcCreate")} style={styles.pcGap} /> : null}
     </View>
   );
@@ -107,7 +114,7 @@ export function normalizeCode(text: string): string {
 export const useCenterStyles = createThemedStyles((colors) => StyleSheet.create({
   guide: { backgroundColor: colors.surface, borderRadius: radius.xl, overflow: "hidden", padding: 20 },
   guideGlow: { position: "absolute", right: -80, top: -90 },
-  guideTitle: { color: colors.ink, fontSize: 19, fontWeight: "800", lineHeight: 26.6 },
+  guideTitle: { color: colors.ink, fontSize: 21, fontWeight: "800", lineHeight: 29 },
   guideSub: { marginBottom: 14, marginTop: 6 },
   ghostGap: { marginTop: 6 },
   tiles: { flexDirection: "row", gap: 12, marginTop: 14 },
@@ -115,20 +122,21 @@ export const useCenterStyles = createThemedStyles((colors) => StyleSheet.create(
   apricot: { backgroundColor: colors.macApricot },
   teal: { backgroundColor: colors.macTeal },
   blue: { backgroundColor: colors.macBlue },
-  tileEmoji: { fontSize: 22, lineHeight: 33 },
-  tileLabel: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25, marginTop: 4 },
+  tileEmoji: { fontSize: 24, lineHeight: 36 },
+  tileLabel: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 20, marginTop: 4 },
   previewCard: { marginTop: 14 },
   titleRow: { alignItems: "center", flexDirection: "row", gap: 4 },
   fadedWrap: { opacity: 1 },
   list: { gap: 12, marginTop: 14 },
   listFew: { marginTop: 4 },
   none: { paddingVertical: 24, textAlign: "center" },
+  inactiveRow: { alignItems: "center", minHeight: 44, justifyContent: "center", marginTop: 8 },
   pcGap: { marginTop: 12 },
-  sheetTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25.5 },
+  sheetTitle: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29 },
   codeRow: { flexDirection: "row", gap: 6, justifyContent: "center", marginTop: 14 },
   codeCellWrap: { alignItems: "center", flexDirection: "row", gap: 6 },
   codeCell: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 10, height: 44, justifyContent: "center", width: 32 },
-  codeChar: { color: colors.ink, fontSize: 18, fontWeight: "800", lineHeight: 22 },
+  codeChar: { color: colors.ink, fontSize: 20, fontWeight: "800", lineHeight: 24 },
   codeDash: { color: colors.ink4, fontWeight: "800" },
   hiddenInput: { height: 1, opacity: 0, position: "absolute", width: 1 },
   joinBtn: { marginTop: 16 },

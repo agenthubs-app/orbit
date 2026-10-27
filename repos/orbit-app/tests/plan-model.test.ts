@@ -18,6 +18,7 @@ import {
   manualEditStateOf,
   moveStep,
   rankCandidates,
+  movedStepIds,
   removeType,
   stepTypeChips,
   teamDraftOf,
@@ -94,6 +95,20 @@ test("人脈から選ぶ: co-founders first, then people who fill a gap; members
   ], ["design", "brand"], new Set(["d"]));
   assert.deepEqual(ranked.map((item) => item.id), ["c", "b", "a"]);
   assert.deepEqual(ranked[1]!.fills, ["design"]);
+});
+
+test("人脈から選ぶ: the user's own card (same name, spaces ignored) is not offered", () => {
+  const ranked = rankCandidates([
+    { id: "me", name: "中村拓也", organization: "ミライテック", role: "部長", tags: [] },
+    { id: "x", name: "高木 悠", organization: "", role: "", tags: [] },
+  ], [], new Set(), "中村 拓也");
+  assert.deepEqual(ranked.map((item) => item.id), ["x"]);
+});
+
+test("manual edit: only a step the user moved is flagged, not the ones that shifted after a delete or add", () => {
+  assert.deepEqual([...movedStepIds(["a", "b", "c", "d"], ["a", "c", "d"])], []);
+  assert.deepEqual([...movedStepIds(["a", "b", "c"], ["new-1", "a", "b", "c"])], []);
+  assert.deepEqual([...movedStepIds(["a", "b", "c", "d"], ["d", "a", "b", "c"])], ["d"]);
 });
 
 test("plan card: types are lettered in order; a step shows emoji + letter, the event slot only 🎟️", () => {

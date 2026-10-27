@@ -15,8 +15,11 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * v7（计划页像素返工，2026-10-12）：C10 每个候选多输出一行 `subtitle`（一句、简短、依据记录；校验器 ≤80 字、单行，
  *     不合格只把副标题置 null，不放宽其他校验）。其余任务的提示词不变。v7 只用 mock 测过，
  *     **上 staging 前须用真实调用验证 ≤5 次**（看副标题是否一句、是否只说记录里的事实）。
+ * v8（staging 新账号 0 联系人时 C6 每次被拒，2026-10-26）：C6 在任务里列出实际的联系人别名（可能为空），写明紹介ルート只能用
+ *     这些别名、没有就输出空数组（示例不再写 "C1"）；聞くこと「恰好 3 条」、引用「每条都要在文中标出、没用到就别列」写成硬规则。
+ *     服务端同时做确定性修理（ai/normalize.ts）。v8 只用 fake 测过，上线前须用真实调用验证。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v7";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v8";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -64,9 +67,9 @@ export const TASKS = {
     "diagnosis: 2–4 sentences. When a sentence uses a landscape entry, put its marker ①, ②, ... (the order of your citations list) in that sentence. STRICT: a sentence without a marker must not contain any digit at all (not even numbers from the premise such as user counts or hours; describe them in words instead). The conclusion must not contain digits either.",
     "conclusion: one sentence. flow: optional up to 3 cells {emoji, label, note}.",
     "steps: 3–6 steps, each with a title, doneCriteria (a countable state, not a date) and personTypeKeys (slot ids from personTypes, or \"event\").",
-    "personTypes: one per template slot you keep (slot ids from the given slots only). shortLabelId must be one of that slot's shortNames ids. roleSituation: one sentence 'role × situation' (not a job title). allocation: keep EVERY template slot (never drop one) and copy the template allocations exactly; only if the premise clearly calls for it, move 5 points from one slot to another (at most 2 slots changed in total), so that all allocations plus the event allocation still total exactly 100 in multiples of 5. When unsure, keep the template allocations unchanged. targetCount 1–5. questions: exactly 3 things to ask. countRule, recognizeHints (up to 3), persona and opener (or null). introRoutes: only through given contact aliases, why without headcounts. primaryIndustryId: an industry id if obvious, else null.",
-    "event: allocation and targetCount (1–10). citations: [{id, version}] of the entries you used, only from the given landscape. allocationReasons: one line per slot you changed.",
-    'Every personType object must have ALL of these keys: {"slot": "<slot id>", "shortLabelId": "<one of that slot shortNames ids>", "roleSituation": "...", "allocation": 25, "targetCount": 3, "why": "...", "questions": ["...", "...", "..."], "countRule": "...", "recognizeHints": ["..."], "persona": null, "opener": null, "introRoutes": [{"viaAlias": "C1", "why": "..."}], "primaryIndustryId": null}. persona and opener may be strings.',
+    "personTypes: one per template slot you keep (slot ids from the given slots only). shortLabelId must be one of that slot's shortNames ids. roleSituation: one sentence 'role × situation' (not a job title). allocation: keep EVERY template slot (never drop one) and copy the template allocations exactly; only if the premise clearly calls for it, move 5 points from one slot to another (at most 2 slots changed in total), so that all allocations plus the event allocation still total exactly 100 in multiples of 5. When unsure, keep the template allocations unchanged. targetCount 1–5. questions: EXACTLY 3 strings per person type (not 2, not 4). countRule, recognizeHints (up to 3), persona and opener (or null). introRoutes: see the contact alias rule below; why without headcounts. primaryIndustryId: an industry id if obvious, else null.",
+    "event: allocation and targetCount (1–10). citations: [{id, version}] of the entries you used, only from the given landscape; EVERY citation must have its marker in the diagnosis or conclusion, so list only entries you actually mark (an empty list is fine). allocationReasons: one line per slot you changed.",
+    'Every personType object must have ALL of these keys: {"slot": "<slot id>", "shortLabelId": "<one of that slot shortNames ids>", "roleSituation": "...", "allocation": 25, "targetCount": 3, "why": "...", "questions": ["...", "...", "..."], "countRule": "...", "recognizeHints": ["..."], "persona": null, "opener": null, "introRoutes": [], "primaryIndustryId": null}. persona and opener may be strings. An intro route is {"viaAlias": "<a given alias>", "why": "..."}.',
     'Every step object: {"title": "...", "doneCriteria": "...", "why": null, "personTypeKeys": ["<slot id>", "event"]}.',
     'Output: {"diagnosis": "...", "conclusion": "...", "flow": [], "steps": [...], "personTypes": [...], "event": {"allocation": 10, "targetCount": 2}, "citations": [{"id": "L-101", "version": 1}], "allocationReasons": []}',
   ].join("\n"),
@@ -75,7 +78,7 @@ export const TASKS = {
     "If no change is needed or the request conflicts with the premise, return the plan unchanged and explain in noChangeReason (one or two sentences).",
     "The revised plan follows the same rules as the first draft (short names from the dictionary, allocations multiples of 5 totalling 100, citations only from the given landscape, numbers only with markers), except that allocations may move freely.",
     REVISED_SHAPE,
-    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same"], "noChangeReason": null}',
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "steps.1.doneCriteria", "reason": "..."}], "unchanged": ["short labels of what stayed the same, in the output language, in plain everyday words (e.g. the step or person-type names), never field names"], "noChangeReason": null}',
   ].join("\n"),
   reviewMarks: [
     "The user is reviewing a confirmed plan. Given the confirmed premise rows and the records since then (talks, events, completed steps, and memo summaries of meetings), mark only the premise rows that may have changed.",
@@ -89,7 +92,7 @@ export const TASKS = {
     "The 100 is the person-type allocations plus event.allocation. Whenever you raise one slot by N points, lower other non-skipped slots by exactly N in total (never below earned, never below 5). Add the numbers up before answering.",
     "Same rules as a revision otherwise (no new citations, keep questions, count rule, recognition hints, persona, opener, intro routes). If nothing should change, return the plan unchanged with noChangeReason.",
     REVISED_SHAPE,
-    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["..."], "noChangeReason": null}',
+    'Output: {"revised": {"diagnosis": "...", "conclusion": "...", "flow": [...], "steps": [...], "personTypes": [...], "event": {...}, "citations": [...], "allocationReasons": [...]}, "reasons": [{"path": "...", "reason": "..."}], "unchanged": ["short labels of what stayed the same, in the output language, in plain everyday words, never field names or paths"], "noChangeReason": null}',
   ].join("\n"),
   nextGoals: [
     "The user achieved a goal. From the summary and the records, propose at most 2 natural next goals (one sentence each, in the user's words style) with a goal kind from: launch, fundraising, sales, hiring, partnership, career; give the record ids that support each.",
@@ -98,6 +101,14 @@ export const TASKS = {
     'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "subtitle": "...", "evidenceIds": ["..."]}]}',
   ].join("\n"),
 } as const;
+
+/** C6 的任务文本 + 本次实际的联系人别名（v8）：紹介ルート只能经由这些别名，没有就是空数组。 */
+export function firstDraftTask(aliases: readonly string[]): string {
+  const rule = aliases.length > 0
+    ? `Contact aliases you may use in introRoutes (no others exist): ${aliases.join(", ")}. Add a route only when that contact's card or notes clearly suggest they can introduce this kind of person; otherwise use "introRoutes": [].`
+    : 'The user has no contacts yet: every introRoutes must be [] (an empty array). Never invent aliases such as C1.';
+  return `${TASKS.firstDraft}\n${rule}`;
+}
 
 export function repairMessage(user: string, issues: readonly string[]): string {
   return `${user}\n\nYour previous answer was rejected for these reasons:\n- ${issues.join("\n- ")}\nFix them and answer again with the full JSON object.`;

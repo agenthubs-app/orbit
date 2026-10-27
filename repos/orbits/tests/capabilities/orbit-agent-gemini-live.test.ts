@@ -292,6 +292,9 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
   assert.match(systemPrompt ?? "", /Each non-general intent must use exactly one matching tool/);
   assert.match(systemPrompt ?? "", /relationship lookup/);
   assert.match(systemPrompt ?? "", /message drafting/);
+  // 消息草稿没有卡片：planner 自己作答时也必须把草稿正文写进回复。
+  assert.match(systemPrompt ?? "", /A message or email draft is not a record: never return it as entityDraft/);
+  assert.match(systemPrompt ?? "", /must contain the complete draft text/);
   assert.match(systemPrompt ?? "", /privacy control/);
   assert.match(systemPrompt ?? "", /Do not claim privacy settings/);
   assert.match(systemPrompt ?? "", /Do not describe storage guarantees/);
@@ -305,6 +308,62 @@ test("Orbit Agent provider instructions cover product-grade relationship work ro
     systemPrompt ?? "",
     /Never claim that an email, calendar event, notification, database write, or external action has been executed\./,
   );
+});
+
+// 「起草」按钮的回复曾写"草稿已备好，可直接在卡片上修改"，但聊天上下文的结果在 App
+// 里没有卡片，用户什么草稿都看不到。合成提示只在真有卡片的 intent 上提卡片，
+// 草稿请求必须把正文写进回复。
+test("Orbit Agent synthesis puts a requested draft in the reply and only mentions cards that render", async () => {
+  const systemPrompts: string[] = [];
+  const provider = await importProjectModule<{
+    createGeminiOrbitAgentPlanner: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      model: string;
+      provider: "deepseek";
+    }) => {
+      synthesize: (input: {
+        artifacts: readonly unknown[];
+        assistantMessage: string;
+        intent: string;
+        locale: string;
+        message: string;
+        toolRequests: readonly unknown[];
+      }) => Promise<{ success: boolean; data?: { assistantMessage: string } }>;
+    };
+  }>("features/orbit-ai/gemini-provider.ts");
+  const draft = "主题：展会后跟进\n\n林玫您好，……\n\n（尚未发送）";
+  const planner = provider.createGeminiOrbitAgentPlanner({
+    apiKey: "test-deepseek-key",
+    fetchImplementation: (async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages?: readonly { content?: string; role?: string }[];
+      };
+      systemPrompts.push(body.messages?.find((message) => message.role === "system")?.content ?? "");
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { content: draft } }] });
+    }) as typeof fetch,
+    model: "deepseek-chat",
+    provider: "deepseek",
+  });
+  const input = {
+    artifacts: [{ kind: "relationship_chat_context", preferredSurface: "side_panel", title: "林玫", summary: "展会认识" }],
+    assistantMessage: "我会准备一段可复核的邮件草稿。",
+    locale: "zh",
+    message: "请为 @林玫 起草一段邮件。公司：Acme。建议下一步：约一次会面。只生成可编辑草稿，不要发送。",
+    toolRequests: [],
+  };
+
+  const drafted = await planner.synthesize({ ...input, intent: "relationship_chat_context" });
+  assert.equal(drafted.success, true);
+  assert.equal(drafted.data?.assistantMessage, draft);
+  assert.doesNotMatch(systemPrompts[0] ?? "", /already rendered as a card/);
+  assert.match(systemPrompts[0] ?? "", /No card, panel or attachment is shown with this reply/);
+  assert.match(systemPrompts[0] ?? "", /the reply MUST contain the complete draft text itself/);
+  assert.match(systemPrompts[0] ?? "", /never say the draft is on a card/);
+
+  await planner.synthesize({ ...input, intent: "contact_recommendations", message: "谁能介绍投资人" });
+  assert.match(systemPrompts[1] ?? "", /already rendered as a card directly below this reply/);
+  assert.doesNotMatch(systemPrompts[1] ?? "", /No card, panel or attachment is shown/);
 });
 
 // 服务范围边界:超纲的生活类问题不能直接作答，要转成"你的人脉里谁懂这个"；
@@ -1093,7 +1152,8 @@ test("live Gemini Orbit Agent asks users to choose one workflow for multi-intent
   assert.equal(result.data?.proposedToolIntents.length, 0);
   assert.match(result.data?.assistantMessage ?? "", /一次|一个|先选|选择/);
   assert.match(result.data?.assistantMessage ?? "", /活动|消息|草稿|跟进/);
-  assert.match(result.data?.assistantMessage ?? "", /没有调用|没有执行/);
+  // QA-A 2026-10-26: the reply is plain words now; "没有调用模型/没有执行工具" was internal.
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /模型|工具/);
   assert.equal(
     result.data?.provenance.source,
     "local:orbit-agent-multi-intent-boundary",
@@ -1385,7 +1445,8 @@ test("live Gemini Orbit Agent asks for a contact before drafting to an ambiguous
   assert.equal(result.data?.artifacts.length, 0);
   assert.equal(result.data?.proposedToolIntents.length, 0);
   assert.match(result.data?.assistantMessage ?? "", /联系人|对象|她是谁|明确/);
-  assert.match(result.data?.assistantMessage ?? "", /没有调用|没有执行|不会假定/);
+  assert.match(result.data?.assistantMessage ?? "", /@/);
+  assert.doesNotMatch(result.data?.assistantMessage ?? "", /模型|工具/);
   assert.equal(
     result.data?.provenance.source,
     "local:orbit-agent-clarification-boundary",
@@ -2136,13 +2197,14 @@ test("live Orbit Agent localizes injected event recommendations and forwards the
   assert.doesNotMatch(result.data?.nextAction ?? "", /Review|synthesis is skipped/i);
 });
 
-test("live Orbit Agent defaults interactive turns to artifact generation without synthesis", async () => {
+test("live Orbit Agent at two loop steps maps the tool to an artifact without synthesis", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
       apiKey: string;
       fetchImplementation: typeof fetch;
       model: string;
+      maxLoopSteps?: number;
     }) => {
       sendMessage: (input: { message?: string | null }) => Promise<{
         success: boolean;
@@ -2167,6 +2229,8 @@ test("live Orbit Agent defaults interactive turns to artifact generation without
 
   const service = liveModule.createLiveOrbitAgentConversationService({
     apiKey: "test-gemini-key",
+    // UX-3: the service default is now 3 (synthesis); this test pins the two-step mode explicitly.
+    maxLoopSteps: 2,
     fetchImplementation: (async (_url, init) => {
       requests.push(init);
 
@@ -3055,5 +3119,54 @@ test("development Orbit Agent trace route exposes raw planner output", async () 
     }
 
     globalThis.fetch = previousFetch;
+  }
+});
+
+test("UX-3: live Orbit Agent defaults interactive turns to three loop steps, so a tool result is synthesised into the reply", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: { apiKey: string; fetchImplementation: typeof fetch; model: string }) => {
+      sendMessage: (input: { message?: string | null }) => Promise<{ success: boolean; data?: { diagnostics?: { maxLoopSteps: number; timings: readonly { phase: string; skipped?: boolean }[] } } }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+  const previous = process.env.ORBIT_AGENT_MAX_LOOP_STEPS;
+  delete process.env.ORBIT_AGENT_MAX_LOOP_STEPS;
+  try {
+    const service = liveModule.createLiveOrbitAgentConversationService({
+      apiKey: "test-gemini-key",
+      fetchImplementation: (async (_url, init) => {
+        requests.push(init);
+  
+        return jsonResponse({
+          steps: [
+            {
+              content: [
+                {
+                  text: JSON.stringify({
+                    assistantMessage: "我先准备活动推荐结果，任何动作都需要你确认。",
+                    intent: "event_recommendations",
+                    toolRequests: [
+                      {
+                        arguments: {},
+                        requiresUserConfirmation: true,
+                        toolName: "events.recommend",
+                      },
+                    ],
+                  }),
+                  type: "text",
+                },
+              ],
+              type: "model_output",
+            },
+          ],
+        });
+      }) as typeof fetch,
+      model: "gemini-test-model",
+    });
+    const result = await service.sendMessage({ message: "帮我推荐下周适合认识投资人的活动。" });
+    assert.equal(result.data?.diagnostics?.maxLoopSteps, 3);
+    assert.ok(requests.length >= 2, `the planner and the synthesis both call the model (${requests.length})`);
+  } finally {
+    if (previous === undefined) delete process.env.ORBIT_AGENT_MAX_LOOP_STEPS; else process.env.ORBIT_AGENT_MAX_LOOP_STEPS = previous;
   }
 });

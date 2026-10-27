@@ -26,6 +26,8 @@ export const todo = {
   "todo.unavailable": "今は操作できません",
   "todo.more": "すべて",
   "todo.allTasks": "タスク一覧",
+  "todo.suggestionsTitle": "提案",
+  "todo.suggestionsRow": "提案 {count} 件",
   "todo.backToTodo": "To-do に戻る",
   "todo.draft": "下書きを開く",
   "todo.draftUnavailable": "下書きは今は利用できません",

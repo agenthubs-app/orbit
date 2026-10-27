@@ -53,7 +53,7 @@ export function ApiSettingsScreen() {
 
       if (result.success) {
         const summary = healthPayloadToSummary(result.data, locale.t);
-        setHealthMessage(`${summary.title}. ${summary.detail}`);
+        setHealthMessage(locale.language === "en" ? `${summary.title}. ${summary.detail}` : `${summary.title}。${summary.detail}`);
       } else {
         setHealthMessage(result.error.message);
       }

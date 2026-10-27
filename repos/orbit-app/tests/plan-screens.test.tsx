@@ -130,7 +130,7 @@ const draftWith = (used: number): PlanDraftView => {
 test("goal input: the type is guessed after a pause, a picked chip is never overridden, and the sample card sends nothing", async (t) => {
   const { page, calls } = await open(t, "/task", (call) => segmentReads(call, []) ?? (call.path === "/api/agent/plans/goal-kind" ? ok({ goalKind: "fundraising", source: "ai" }) : undefined));
   await page.getByText("何を達成したいですか？").waitFor();
-  await page.getByText("人物タイプは、こう具体的になります").waitFor();
+  await page.getByText("たとえば、こんな人を探します").waitFor();
   assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`).sort(), ["GET /api/agent/plans/intakes", "GET /api/agent/plans/legacy", "GET /api/agent/plans/v2/summary"], "opening the segment (and the sample card) only reads (R25: plus 以前のプラン)");
   for (const call of calls) {
     assert.equal(call.headers["x-orbit-lang"], "ja");
@@ -149,6 +149,17 @@ test("goal input: the type is guessed after a pause, a picked chip is never over
   assert.equal(await page.getByRole("radio", { name: "💰 資金調達" }).getAttribute("aria-checked"), "false");
 });
 
+test("goal input: a picked chip alone starts the flow, with its name as the goal", async (t) => {
+  const intake = intakeAt("background");
+  const { page, calls } = await open(t, "/task", (call) => segmentReads(call, []) ?? (call.method === "POST" && call.path === "/api/agent/plans/intakes" ? ok(intake, 201) : call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intake) : undefined));
+  await page.getByText("何を達成したいですか？").waitFor();
+  await page.getByRole("radio", { name: "🤝 新規開拓" }).click();
+  await page.getByRole("button", { name: "iOrbit と具体化する" }).click();
+  await page.waitForFunction(() => (window as unknown as { planNav?: { navigation: unknown[] } }).planNav?.navigation.length === 1);
+  const create = calls.find((call) => call.method === "POST" && call.path === "/api/agent/plans/intakes")!.body as Record<string, unknown>;
+  assert.deepEqual({ goalKind: create.goalKind, goalText: create.goalText }, { goalKind: "sales", goalText: "新規開拓" });
+});
+
 test("goal input: the monthly limit is explained up front and the button is disabled", async (t) => {
   const { page } = await open(t, "/task", (call) => call.path === "/api/agent/plans/intakes" ? ok({ ...intakesEmpty, newGoalsLeftThisMonth: 0 }) : segmentReads(call, []));
   await page.getByText("今月はこれ以上新しい目標を作れません。").waitFor();
@@ -165,7 +176,7 @@ test("background: わたし is open (確認中), チーム and 目的 wait as da
   assert.match(text, /下書き：チーム 2名 · 空き 4/);
   assert.match(text, /下書き：3段目「/);
   assert.equal(await page.getByRole("button", { name: "わたしを確定 → チームへ" }).count(), 1);
-  assert.equal(await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).count(), 0, "questions wait for all three blocks");
+  assert.equal(await page.getByRole("button", { name: "次へ：いくつか質問します" }).count(), 0, "questions wait for all three blocks");
 });
 
 test("わたし: no stance from the AI → none pre-selected and the confirm button waits for one (m9)", async (t) => {
@@ -211,7 +222,7 @@ test("AI_BUSY: no failure card — 「処理中です…」, then one more read 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") return fail(409, "CONFLICT", { reason: "AI_BUSY" });
     return undefined;
   });
-  await page.getByLabel("AI 修正はあと 3 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 3 回）").waitFor();
   const reads = () => calls.filter((call) => call.method === "GET").length;
   const before = reads();
   await page.getByLabel("AI に頼む修正").fill("営業は 2人で");
@@ -318,8 +329,9 @@ test("first draft failing (AI_FAILED) shows the failure card with 再試行", as
 
 test("fix bar: shows the revisions left; at 0 the field is disabled and only edit / confirm remain", async (t) => {
   const left = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
-  await left.page.getByLabel("AI 修正はあと 2 回").waitFor();
-  await left.page.getByText("AI 修正 あと 2 回", { exact: true }).waitFor();
+  // UX QA: the count left is said once, in the composer placeholder (no chip, no floating bar).
+  await left.page.getByPlaceholder("直したいこと（あと 2 回）").waitFor();
+  assert.equal(await left.page.getByText("AI 修正 あと 2 回", { exact: true }).count(), 0);
   assert.equal(await left.page.getByLabel("AI に頼む修正").isEditable(), true);
   // RD-16: edit / confirm sit under the last card, not in the bottom bar.
   assert.equal(await left.page.getByTestId("draft-manual").getAttribute("aria-disabled"), null);
@@ -331,11 +343,11 @@ test("fix bar: shows the revisions left; at 0 the field is disabled and only edi
   assert.equal(await card.getByText("L-103", { exact: false }).count(), 0);
   await card.getByRole("button", { name: "根拠を見る" }).click();
   assert.equal(await card.getByRole("link").count(), 2, "both citations appear after 「?」");
-  await card.getByText("L-103 開業時の資金の集め方", { exact: false }).waitFor();
+  // QA-A: citations are named by title (the id alone, "L-103", meant nothing to the user).
+  await card.getByText("開業時の資金の集め方", { exact: false }).first().waitFor();
 
   const out = await open(t, "/plans/flow/intake_f1", (call) => call.path === "/api/agent/plans/intakes/intake_f1" ? ok(intakeAt("drafted")) : call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(3)) : undefined);
-  await out.page.getByLabel("AI 修正はあと 0 回").waitFor();
-  await out.page.getByText("修正は使い切りました。手動で編集するか、この内容で確定します。").waitFor();
+  await out.page.getByPlaceholder("AI 修正は使い切りました").waitFor();
   assert.equal(await out.page.getByLabel("AI に頼む修正").isEditable(), false);
   assert.equal(await out.page.getByRole("button", { name: "修正を頼む" }).getAttribute("aria-disabled"), "true");
   const usedUp = out.page.getByTestId("draft-used-up");
@@ -352,11 +364,11 @@ test("fix: one revision sends the text once and shows only the diff", async (t) 
     if (call.path === "/api/agent/plans/drafts/draft_f2/fix") { fixes += 1; return ok(draftWith(1)); }
     return undefined;
   });
-  await page.getByLabel("AI 修正はあと 3 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 3 回）").waitFor();
   await page.getByLabel("AI に頼む修正").fill("営業は当面 2人でやる");
   await page.getByRole("button", { name: "修正を頼む" }).click();
   await page.getByText("AI 修正 1 / 3 を反映").waitFor();
-  await page.getByLabel("AI 修正はあと 2 回").waitFor();
+  await page.getByPlaceholder("直したいこと（あと 2 回）").waitFor();
   assert.equal(fixes, 1);
   assert.equal((calls.find((call) => call.path.endsWith("/fix"))!.body as { text: string }).text, "営業は当面 2人でやる");
   await page.getByText("変わらない点：見立てと結論 · 人物タイプと配点").waitFor();
@@ -371,7 +383,7 @@ test("fix: one revision sends the text once and shows only the diff", async (t) 
 test("manual edit: an allocation change keeps the total at 100, removing a type shows where its points go", async (t) => {
   const { page, calls } = await open(t, "/plans/drafts/draft_f2/edit", (call) => call.path === "/api/agent/plans/drafts/draft_f2" ? ok(draftWith(1)) : undefined);
   await page.getByText("人物タイプと配点").waitFor();
-  const points = page.getByLabel("E 足りない専門の配点");
+  const points = page.getByLabel("足りない専門の配点");
   await points.fill("15");
   await points.press("Enter");
   await page.getByText("10 → 15", { exact: true }).waitFor();
@@ -383,16 +395,16 @@ test("manual edit: an allocation change keeps the total at 100, removing a type 
   await points.press("Enter");
   await page.getByText("配点は 5点刻みで入力してください").waitFor();
   // Remove C: the sheet lists the reflow before anything changes.
-  await page.getByRole("button", { name: "C 先行プロダクト経験を外す" }).click();
-  await page.getByText("タイプ C を外しますか？").waitFor();
+  await page.getByRole("button", { name: "先行プロダクト経験を外す" }).click();
+  await page.getByText("「先行プロダクト経験」を外しますか？").waitFor();
   await page.getByText("15点を 5点ずつ、配点の高いタイプから順に配り直します。").waitFor();
   await page.getByRole("button", { name: "外す", exact: true }).click();
-  await page.getByText("タイプ C を外しますか？").waitFor({ state: "detached" });
+  await page.getByText("「先行プロダクト経験」を外しますか？").waitFor({ state: "detached" });
   assert.equal(await page.getByText("合計 100 / 100", { exact: true }).count(), 1);
-  assert.equal(await page.getByLabel("C 先行プロダクト経験の配点").count(), 0);
+  assert.equal(await page.getByLabel("先行プロダクト経験の配点").count(), 0);
   // 元に戻す: back to the AI plan, locally.
   await page.getByRole("button", { name: "元に戻す" }).click();
-  await page.getByLabel("C 先行プロダクト経験の配点").waitFor();
+  await page.getByLabel("先行プロダクト経験の配点").waitFor();
   assert.deepEqual(writes(calls), [], "editing sends nothing until 「このプランで始める」");
 });
 
@@ -430,7 +442,7 @@ test("empty state → confirmed: goal, background, questions, premise, first dra
   await page.getByRole("button", { name: "わたしを確定 → チームへ" }).click();
   await page.getByRole("button", { name: "チームを確定 → 目的へ" }).click();
   // RD-16: the purpose block is last, so one bottom button confirms it and then asks for the questions.
-  await page.getByRole("button", { name: "この背景で質問へ（5問まで）" }).click();
+  await page.getByRole("button", { name: "次へ：いくつか質問します" }).click();
   await page.getByTestId("questions-send").click();
   await page.getByTestId("flow-make-draft").click();
   await page.getByTestId("draft-confirm").click();

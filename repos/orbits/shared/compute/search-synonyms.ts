@@ -19,14 +19,14 @@ export const SEARCH_SYNONYM_CONCEPTS: readonly SynonymConcept[] = [
   {
     id: "investor",
     heads: ["投資家", "投資者", "投资人", "投资者", "investor", "investors"],
-    synonyms: ["VC", "CVC", "エンジェル", "ベンチャーキャピタル", "キャピタル", "ベンチャーズ", "パートナー", "投資", "ファンド", "partner", "angel", "venture", "capital", "fund", "天使投资", "风投", "基金"],
+    synonyms: ["投资", "合伙人", "VC", "CVC", "エンジェル", "ベンチャーキャピタル", "キャピタル", "ベンチャーズ", "パートナー", "投資", "ファンド", "partner", "angel", "venture", "capital", "fund", "天使投资", "风投", "基金"],
     orgMarkers: ["キャピタル", "ベンチャーズ", "ventures", "capital", "VC", "CVC", "ファンド", "fund", "投資"],
     orgLabel: "VC",
   },
   {
     id: "decision_maker",
     heads: ["決裁者", "意思決定者", "決定権者", "决策者", "decisionmaker", "decision-maker"],
-    synonyms: ["社長", "代表取締役", "取締役", "役員", "執行役員", "本部長", "部長", "CEO", "COO", "CFO", "CTO", "CXO", "総経理", "总经理", "董事", "director", "president"],
+    synonyms: ["社長", "代表取締役", "取締役", "役員", "執行役員", "本部長", "部長", "CEO", "COO", "CFO", "CTO", "CXO", "総経理", "总经理", "董事", "总监", "总裁", "director", "president"],
   },
   {
     id: "manufacturing",
@@ -76,7 +76,10 @@ export function liteRecallWords(terms: readonly string[]): string[] {
       for (const word of [...entry.heads, ...entry.synonyms]) words.add(word);
     }
   }
-  return [...words];
+  // Recall is a substring match, so a word that contains another listed word finds nobody new (「投资人」 ⊃ 「投资」);
+  // dropping those keeps the capped word list for words that add people.
+  const list = [...words];
+  return list.filter((word) => !list.some((other) => other !== word && other.length > 0 && word.includes(other)));
 }
 
 export interface LitePerson {

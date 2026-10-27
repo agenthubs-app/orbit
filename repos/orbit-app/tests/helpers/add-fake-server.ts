@@ -35,6 +35,8 @@ export class FakeAddServer {
   duplicatesFail = false;
   /** R12 review m7: uploads wait for this before answering (null = answer at once). */
   uploadGate: Promise<void> | null = null;
+  /** Photo uploads answer 500 (the server cannot store the image). */
+  uploadFail = false;
   undone: string[] = [];
   /** 元に戻す waits for this before answering (null = answer at once), like a slow network. */
   undoGate: Promise<void> | null = null;
@@ -104,6 +106,7 @@ export class FakeAddServer {
     }
     if ((match = new RegExp(`^${v2}/([^/]+)/items/([^/]+)/content$`).exec(path)) && call.method === "PUT") {
       if (this.uploadGate) await this.uploadGate;
+      if (this.uploadFail) return fail(500, "INTERNAL_ERROR", "STORAGE_DOWN");
       const entry = this.batches.get(decodeURIComponent(match[1]!))!;
       const index = entry.items.findIndex((item) => item.id === decodeURIComponent(match![2]!));
       const item = { ...entry.items[index]!, derivativeObjectKey: `d/${match[2]}`, derivativeSize: 900, imageDigest: entry.items[index]!.clientDigest, status: "uploaded" as const, version: entry.items[index]!.version + 1 };
@@ -186,6 +189,13 @@ export class FakeAddServer {
       const contactId = this.next("contact-draft");
       this.people.push({ createdVia: "draft", displayName: draft.displayName, email: "", id: contactId, merged: 0, organization: draft.organization, phone: "", role: draft.role });
       return ok({ confirmedDraft: { ...draft, contactId }, contactCandidate: { contactId, contactWriteExecuted: true }, state: "confirmed" });
+    }
+    // QA-C2: 破棄 is stored on the server; the queue stops listing the draft.
+    if ((match = /^\/api\/contact-drafts\/([^/]+)\/discard$/.exec(path)) && call.method === "POST") {
+      const draftId = decodeURIComponent(match[1]!);
+      if (!this.drafts.some((entry) => entry.id === draftId)) return fail(404, "NOT_FOUND");
+      this.drafts = this.drafts.filter((entry) => entry.id !== draftId);
+      return ok({ draftId, discardedAt: T0, state: "discarded" });
     }
     if (call.method === "POST" && path === "/api/contact-drafts/event-attendees/import") {
       const added = [{ displayName: "参加者 一郎", id: this.next("draft"), organization: "CFO Night", role: "", source: { label: "CFO Night Tokyo" }, status: "pending_confirmation" }];

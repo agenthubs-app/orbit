@@ -35,7 +35,6 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
   })), query);
 
   return <View style={styles.content}>
-    <UiText style={styles.eyebrow}>{t("publicInfo.page")}</UiText>
     <UiText accessibilityRole="header" style={[styles.title, !help && styles.legalTitle]}>{title}</UiText>
     {help ? <>
       <UiText style={styles.intro}>{t("publicInfo.helpIntro")}</UiText>
@@ -43,6 +42,9 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
         <Icon name="search" size={16} color={colors.ink3Text} />
         <TextInput
           accessibilityLabel={t("publicInfo.searchPlaceholder")}
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
           onChangeText={onQueryChange}
           placeholder={t("publicInfo.searchPlaceholder")}
           placeholderTextColor={colors.ink3Text}
@@ -69,10 +71,10 @@ export function PublicInfoContent({ kind, t, query, onQueryChange, onOpen, conta
       <Chip label={t("publicInfo.legalPlaceholder")} tone="apricot" />
       <UiText style={styles.legalBody}>{t("publicInfo.legalBody")}</UiText>
     </Card>}
-    <View style={[styles.actions, !help && styles.legalActions]}>
-      <Button label={t("publicInfo.home")} variant="primary" onPress={() => onOpen("/")} />
-      {!help ? <Button label={t("publicInfo.seeHelp")} onPress={() => onOpen("/help")} /> : null}
-    </View>
+    {/* QA-D: the header back button already leaves; a second 「ホームへ」 button was redundant. */}
+    {!help ? <View style={[styles.actions, styles.legalActions]}>
+      <Button label={t("publicInfo.seeHelp")} onPress={() => onOpen("/help")} />
+    </View> : null}
   </View>;
 }
 
@@ -91,7 +93,7 @@ function PublicFaqRow({ question, answer }: { question: string; answer: string }
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   content: { paddingHorizontal: spacing.xl - spacing.xxs, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   eyebrow: { color: colors.ink3Text, fontSize: typography.label, fontWeight: "500" },
-  title: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 32, marginTop: spacing.sm },
+  title: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 37, marginTop: spacing.sm },
   legalTitle: { marginTop: spacing.md },
   intro: { color: colors.ink2, fontSize: typography.bodySm, marginTop: spacing.xs },
   search: { minHeight: 44, borderRadius: radius.pill, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: 30, marginBottom: spacing.lg },
@@ -99,13 +101,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   faqCard: { marginTop: 0, paddingTop: spacing.xl, paddingBottom: spacing.md },
   faqRow: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: spacing.xs },
   faqTrigger: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  faqMarker: { color: colors.ink, fontSize: 11, width: 12 },
-  faqQuestion: { color: colors.ink, fontSize: 14, fontWeight: "700", flexShrink: 1 },
-  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  answer: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 22, marginTop: spacing.sm },
+  faqMarker: { color: colors.ink, fontSize: 13, width: 12 },
+  faqQuestion: { color: colors.ink, fontSize: 17, fontWeight: "700", flexShrink: 1 },
+  cardTitle: { color: colors.ink, fontSize: 18, fontWeight: "700" },
+  answer: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 25, marginTop: spacing.sm },
   contactCard: { marginTop: spacing.md + spacing.xxs, gap: spacing.xs },
   legalCard: { marginTop: spacing.xl + spacing.xs, gap: spacing.md, padding: 22 },
-  legalBody: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 24 },
+  legalBody: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 28 },
   actions: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.lg + spacing.xxs },
   legalActions: { marginTop: spacing.xl - spacing.xxs },
 }));

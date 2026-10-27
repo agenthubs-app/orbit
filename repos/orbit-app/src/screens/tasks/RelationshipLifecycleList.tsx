@@ -12,6 +12,23 @@ import { DataCard } from "../../components/DataCard";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTheme as useTheme } from "../../design/theme";
 
+/**
+ * UX-7: the open follow-ups' first page (the same page copy the list below reads), for the one
+ * Reminders-style To-do list that shows them among the tasks by date.
+ */
+export function useOpenFollowUps(scopeKey: string, ready: boolean) {
+  const auth = useOrbitAuthSession();
+  const actorId = auth.actorId ?? "";
+  const enabled = ready && Boolean(actorId);
+  const first = usePageCopyResource<unknown>(`/api/relationship-tasks/page?mode=open&limit=30`, () => false,
+    { scopeKey: `${scopeKey}:${actorId}:followups:first`, enabled, copy: { id: "relationship-tasks", variant: "open" },
+      accept: (data) => decodeRelationshipTaskPage(data, actorId, "open") !== null });
+  const refreshRef = useRef(first.refresh); refreshRef.current = first.refresh;
+  useFocusEffect(useCallback(() => { refreshRef.current(); }, []));
+  const page = decodeRelationshipTaskPage(enabled && (first.kind === "success" || first.kind === "empty") ? first.data : null, actorId, "open");
+  return { items: page?.items ?? null, total: page?.total ?? 0, hasMore: page?.hasMore ?? false, refresh: first.refresh };
+}
+
 export function RelationshipLifecycleList({ scopeKey, ready, mode }: { scopeKey: string; ready: boolean; mode: "open" | "completed" }) {
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
@@ -45,7 +62,7 @@ function ScopedLifecycleList({ scopeKey, actorId, ready, mode }: { scopeKey: str
   return <DataCard title={text("人脉跟进", "Relationship follow-ups", "関係のフォローアップ")} detail={text("完成时需确认关系下一步", "Complete with a relationship next step", "完了時に関係の次のステップを確認")}>
     {offline ? <OfflineNotice lastSyncedAt={first.copy?.lastSyncedAt ?? null} reason={first.copy?.reason ?? null} /> : null}
     <Pressable accessibilityRole="button" onPress={refresh} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{text("刷新人脉跟进", "Refresh follow-ups", "フォローアップを更新")}</Text></Pressable>
-    {items ? items.length ? items.map(task => <Pressable key={task.itemKey} accessibilityRole="button" onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(task.connectionId)}` as Href)} style={{ paddingVertical: 12 }}>
+    {items ? items.length ? items.map(task => <Pressable key={task.itemKey} accessibilityRole="button" onPress={() => router.push(`/tasks/relationship/${encodeURIComponent(task.connectionId)}${task.status === "open" || task.status === "scheduled" ? `?taskId=${encodeURIComponent(task.taskId)}&contactId=${encodeURIComponent(task.contactId)}` : ""}` as Href)} style={{ paddingVertical: 12 }}>
       <Text style={{ color: colors.ink }}>{task.titlePreview}</Text><Text style={{ color: colors.ink3Text }}>{task.contactNamePreview} · {task.status === "completed" ? text("已完成", "Completed", "完了") : task.status === "dismissed" ? text("已忽略", "Dismissed", "終了") : text("待处理", "Open", "未完了")}</Text>
     </Pressable>) : <Text style={{ color: colors.ink3Text }}>{text("暂无人脉跟进", "No follow-ups", "フォローアップはありません")}</Text> : <View><Text style={{ color: colors.ink3Text }}>{state.kind === "loading" ? text("正在读取…", "Loading…", "読み込み中…") : state.kind === "offline" ? locale.t("sync.notOnDevice") : text("跟进读取失败，请刷新重试。", "Unable to load follow-ups. Refresh to retry.", "読み込めませんでした。再試行してください。")}</Text></View>}
     {page?.hasMore && !offline ? <Pressable accessibilityRole="button" onPress={() => setCursor(page.nextCursor)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText }}>{text("下一页跟进", "Next follow-up page", "次のフォローアップ")}</Text></Pressable> : null}

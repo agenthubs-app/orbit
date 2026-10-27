@@ -3,6 +3,7 @@ export const today = {
   "today.unavailable": "今日の画面を開けません",
   "today.timezoneUnavailable": "端末のタイムゾーンを取得できません。下書きは保持されています。復旧後に作成してください。",
   "today.addTask": "タスクを追加",
+  "today.addedToToday": "「今日」に追加しました",
   "today.creating": "作成中",
   "today.emptyTasks": "今日のタスクはありません",
   "today.emptySchedule": "今日の予定はありません",

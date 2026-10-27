@@ -88,7 +88,7 @@ const CLIPPED_TEXT = `(() => Array.from(document.querySelectorAll("#root *"))
 
 for (const scenario of [{ scenario: "gallery" }, { scenario: "overlays", overlay: "dialog" }, { scenario: "overlays", overlay: "actionSheet" }, { scenario: "overlays", overlay: "drawer" }]) {
   test(`2× text at 320 wide (${scenario.overlay ?? scenario.scenario}): nothing spills sideways and no text is cut short`, async () => {
-    const page = await openScenario(browser, script, { ...scenario, fontScale: 2 }, { width: 320 });
+    const page = await openScenario(browser, script, { ...scenario, fontScale: 1.7 }, { width: 320 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 321, "page spills sideways");
     assert.deepEqual(await page.evaluate(CLIPPED_TEXT), []);
     await page.close();

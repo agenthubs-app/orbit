@@ -59,5 +59,18 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
         return noteSuccess({ note });
       } catch (error) { return noteError(error); }
     },
+    // QA-D: notes could not be deleted anywhere. `expectedVersion` (query) guards against deleting a newer edit.
+    async DELETE(request: Request, context: NoteRouteContext): Promise<Response> {
+      const actor = await noteActorResolver(dependencies)();
+      if (!actor) return authenticatedApiActorRequiredResponse(resolveFeatureMode());
+      try {
+        const { id } = await context.params;
+        const raw = new URL(request.url).searchParams.get("expectedVersion");
+        const expectedVersion = raw === null ? undefined : Number(raw);
+        if (expectedVersion !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1)) throw new AppError("VALIDATION_ERROR", "expectedVersion must be a positive integer.");
+        await noteService(dependencies).delete({ actorId: actor.id, noteId: id, ...(expectedVersion === undefined ? {} : { expectedVersion }), now: noteNow(dependencies) });
+        return noteSuccess({ deleted: true, noteId: id });
+      } catch (error) { return noteError(error); }
+    },
   };
 }

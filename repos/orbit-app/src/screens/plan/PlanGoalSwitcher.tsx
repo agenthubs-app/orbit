@@ -41,7 +41,7 @@ export function PlanGoalTitle({ goal, goalKind, index, count, onPress }: { goal:
   );
 }
 
-export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activeGoalLimit, onSwitched, onAdd, onEdit }: {
+export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activeGoalLimit, onSwitched, onAdd, onEdit, onDelete }: {
   visible: boolean;
   onClose: () => void;
   goals: readonly PlanGoalListItem[];
@@ -50,6 +50,8 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
   onSwitched: () => void;
   onAdd: () => void;
   onEdit: (() => void) | null;
+  /** QA-A2: 删除这个目标 (the caller asks to confirm). */
+  onDelete?: (() => void) | null;
 }) {
   const api = usePlanApi();
   const router = useRouter();
@@ -86,7 +88,7 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
   };
   const go = (href: string) => { onClose(); router.push(href as Href); };
   const tile = (emoji: string, backgroundColor: string) => <View style={[styles.menuTile, { backgroundColor }]}><UiText style={styles.menuEmoji}>{emoji}</UiText></View>;
-  const actionTile = (icon: "plus" | "edit" | "archive") => <View style={styles.menuActionTile}><Icon name={icon} size={16} color={colors.ink2} /></View>;
+  const actionTile = (icon: "plus" | "edit" | "archive" | "trash", color: string = colors.ink2) => <View style={styles.menuActionTile}><Icon name={icon} size={16} color={color} /></View>;
 
   return (
     <Popover visible={visible} onClose={onClose} anchor={{ top: 192, left: 18, right: 60 }} accessibilityLabel={t("plan.goals.title")} testID="goal-switcher">
@@ -119,6 +121,7 @@ export function PlanGoalSwitcher({ visible, onClose, goals, currentPlanId, activ
         {full ? <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.goals.add")} accessibilityState={{ disabled: true }} disabled style={styles.menuDisabled} testID="goal-add"><View style={styles.menuDisabledInner}>{actionTile("plus")}<View style={styles.menuCopy}><UiText style={styles.menuDisabledTitle}>{t("plan.goals.add")}</UiText><UiText style={styles.menuHint}>{t("plan.goals.addLimitHint")}</UiText></View></View></UiPressable>
           : <PopoverRow title={t("plan.goals.add")} subtitle={t("plan.goals.addLimitHint")} leading={actionTile("plus")} onPress={() => { onClose(); onAdd(); }} testID="goal-add" />}
         {onEdit ? <PopoverRow title={t("plan.goals.edit")} leading={actionTile("edit")} onPress={() => { onClose(); onEdit(); }} /> : null}
+        {onDelete ? <PopoverRow title={t("plan.goals.delete")} leading={actionTile("trash", colors.coral)} onPress={() => { onClose(); onDelete(); }} testID="goal-delete" /> : null}
         {legacy.length ? (
           <View testID="goal-legacy">
             <PopoverDivider />
@@ -240,29 +243,29 @@ export function PlanGoalEditSheet({ visible, onClose, plan, reviewLeft, onSaved,
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   title: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 },
-  titleText: { color: colors.ink, fontSize: 17, lineHeight: 24, fontWeight: "800" },
+  titleText: { color: colors.ink, fontSize: 19, lineHeight: 27, fontWeight: "800" },
   sheet: { gap: 10, paddingBottom: 8 },
   group: { gap: 6, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52, paddingHorizontal: 10, paddingVertical: 8, borderRadius: radius.lg, backgroundColor: colors.surface2 },
   rowOn: { backgroundColor: colors.accentSoft },
   menuTile: { alignItems: "center", borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
-  menuEmoji: { fontSize: 17, lineHeight: 22 },
+  menuEmoji: { fontSize: 19, lineHeight: 25 },
   menuActionTile: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
   menuDisabled: { borderRadius: 16, padding: 10 },
   menuDisabledInner: { alignItems: "center", flexDirection: "row", gap: 10 },
   menuCopy: { flex: 1 },
-  menuDisabledTitle: { color: colors.ink3Text, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
-  menuHint: { color: colors.ink3Text, fontSize: 11.5, lineHeight: 17.25 },
+  menuDisabledTitle: { color: colors.ink3Text, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  menuHint: { color: colors.ink3Text, fontSize: 13, lineHeight: 20 },
   editHead: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  editTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
+  editTitle: { color: colors.ink, fontSize: 18, fontWeight: "700" },
   editField: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line, gap: 6, paddingVertical: 8 },
-  editLabel: { color: colors.ink3Text, fontSize: 11.5 },
+  editLabel: { color: colors.ink3Text, fontSize: 13 },
   editValue: { alignItems: "center", flexDirection: "row", gap: 8 },
-  editInput: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: "600", minHeight: 24, padding: 0 },
+  editInput: { color: colors.ink, flex: 1, fontSize: 15, fontWeight: "600", minHeight: 24, padding: 0 },
   kindButton: { alignItems: "center", backgroundColor: colors.macPink, borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
-  kindEmoji: { fontSize: 17 },
-  oldValue: { color: colors.ink3Text, fontSize: 13, textDecorationLine: "line-through" },
-  arrow: { color: colors.ink2, fontSize: 13 },
+  kindEmoji: { fontSize: 19 },
+  oldValue: { color: colors.ink3Text, fontSize: 15, textDecorationLine: "line-through" },
+  arrow: { color: colors.ink2, fontSize: 15 },
   changedTag: { backgroundColor: colors.macLav, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  changedTagText: { color: colors.macLavText, fontSize: 11, fontWeight: "700" },
+  changedTagText: { color: colors.macLavText, fontSize: 13, fontWeight: "700" },
 }));

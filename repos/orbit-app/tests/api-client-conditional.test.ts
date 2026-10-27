@@ -114,3 +114,22 @@ test("POST responses are never cached and never send If-None-Match", async () =>
   await client.post("/api/tasks", { body: {} });
   assert.deepEqual(headers, [null, null]);
 });
+
+test("the UI language rides on every request as x-orbit-lang; an explicit header wins and the language is part of the ETag identity", async () => {
+  const seen: { method: string; lang: string | null; ifNoneMatch: string | null }[] = [];
+  const cache = new Map();
+  const fetchImpl = async (_url: RequestInfo | URL, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    seen.push({ method: init?.method ?? "GET", lang: headers.get("x-orbit-lang"), ifNoneMatch: headers.get("If-None-Match") });
+    return json({ success: true, data: {} }, { ETag: 'W/"one"' });
+  };
+  const zh = createOrbitApiClient({ conditionalCache: cache, fetchImpl, language: "zh" });
+  await zh.get("/api/events/e1/assessment");
+  await zh.post("/api/notes", { body: { title: "x" } });
+  await zh.get("/api/plan", { headers: { "x-orbit-lang": "en" } });
+  const en = createOrbitApiClient({ conditionalCache: cache, fetchImpl, language: "en" });
+  await en.get("/api/events/e1/assessment");
+  await createOrbitApiClient({ conditionalCache: new Map(), fetchImpl }).get("/api/tasks");
+  assert.deepEqual(seen.map(item => item.lang), ["zh", "zh", "en", "en", null]);
+  assert.equal(seen[3]!.ifNoneMatch, null, "a zh answer is never replayed for an en request");
+});

@@ -30,6 +30,8 @@ export interface JourneyEvent {
   /** One-way digest of the organizer actor id (never the actor id itself). */
   organizerKey: string | null;
   organizerName: string | null;
+  /** The organizer profile's public slug (o/[slug]); null for events without a profile (seed / imported). */
+  organizerSlug?: string | null;
   registrationCount: number;
   badges: readonly ("members_only" | "early_access")[];
   publicCode: string | null;
@@ -68,6 +70,8 @@ export interface JourneyLivePorts {
   publicAttendees(eventId: string): Promise<{ total: number; attendees: JourneyPublicAttendee[] }>;
   /** Count-only projection for locked rosters; never loads complete profiles or returns names. */
   publicRosterCounts?(actorId: string, eventId: string, contactNames: readonly string[]): Promise<{ known: number; planFit: number }>;
+  /** The actor runs this event (owner or co-host with any capability): the detail shows host actions instead of 报名. */
+  hosting?(actorId: string, eventId: string): Promise<boolean>;
 
   /** Signed-in actor's facts. */
   myEvents(actorId: string): Promise<Array<{ eventId: string; status: MyEventStatus; organizerKey: string | null }>>;

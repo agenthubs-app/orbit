@@ -3,7 +3,12 @@ import test from "node:test";
 
 import { createLiveContactAcquisitionDraftService } from "../../features/acquisition/live-service";
 import { createContactAcquisitionDraftService } from "../../features/acquisition/service-factory";
-import { createStorageContactAcquisitionDraftProvider } from "../../features/acquisition/storage/contact-draft-live-record-provider";
+import {
+  createStorageContactAcquisitionDraftProvider,
+  type AtomicContactDraftConfirmer,
+} from "../../features/acquisition/storage/contact-draft-live-record-provider";
+import type { ContactAcquisitionDraft } from "../../features/acquisition/contract";
+import type { ContactDTO } from "../../shared/domain/contracts";
 import {
   createMemoryLiveRecordStore,
   type LiveRecord,
@@ -320,4 +325,266 @@ test("contact draft API rejects anonymous requests before resolving live storage
   assert.equal(body.success, false);
   assert.equal(body.error.code, "UNAUTHORIZED");
   assert.equal(body.error.context.service, "authenticated-api-actor");
+});
+
+// ── QA-C2: event-attendee drafts are derived on read; confirm and 破棄 must work on them ──
+
+function updateOnlyConfirmer(
+  store: ReturnType<typeof createSeedStore>,
+): AtomicContactDraftConfirmer {
+  // Mirrors the Postgres confirmer: it only UPDATEs a stored pending row and
+  // never inserts one (the bug: derived drafts were never stored).
+  return async ({ draft, updatedAt, workspaceId }) => {
+    const existing = store.getRecord({
+      workspaceId,
+      collectionName: "contactDrafts",
+      recordId: draft.id,
+    });
+
+    if (!existing) {
+      throw new Error(`Contact draft ${draft.id} could not be confirmed for this actor.`);
+    }
+
+    if (existing.payload.status !== "pending_confirmation") {
+      return {
+        draft: existing.payload as unknown as ContactAcquisitionDraft,
+        transitionApplied: false,
+      };
+    }
+
+    const saved = store.upsertRecord({
+      ...existing,
+      payload: draft as unknown as Record<string, unknown>,
+      updatedAt,
+    });
+
+    return {
+      draft: saved.payload as unknown as ContactAcquisitionDraft,
+      transitionApplied: true,
+    };
+  };
+}
+
+function memoryContactProvider(seed: readonly ContactDTO[] = []) {
+  const contacts = new Map(seed.map((contact) => [contact.id, contact]));
+  const saved: ContactDTO[] = [];
+
+  return {
+    saved,
+    provider: {
+      async getContact(contactId: string) {
+        return contacts.get(contactId) ?? null;
+      },
+      async listContacts() {
+        return [...contacts.values()];
+      },
+      async saveContact(contact: ContactDTO) {
+        contacts.set(contact.id, contact);
+        saved.push(contact);
+        return contact;
+      },
+    },
+  };
+}
+
+function attendeeRecord(input: {
+  id: string;
+  eventId: string;
+  personId?: string;
+  contactId?: string;
+  displayName: string;
+  organization?: string;
+}) {
+  return record("attendees", {
+    ...input,
+    role: "Founder",
+    status: "imported",
+    source: {
+      type: "event_import",
+      id: `source:${input.id}`,
+      label: `${input.displayName}的活动意向`,
+    },
+    evidenceIds: [`evidence:${input.id}`],
+    createdAt: NOW,
+    updatedAt: NOW,
+  });
+}
+
+function serviceWith(
+  store: ReturnType<typeof createSeedStore>,
+  contacts: ReturnType<typeof memoryContactProvider>,
+) {
+  // Seed rows are unowned (userId null); the provider reads them unscoped.
+  const provider = createStorageContactAcquisitionDraftProvider({
+    atomicContactDraftConfirmer: updateOnlyConfirmer(store),
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+
+  return createLiveContactAcquisitionDraftService({
+    actorId: "account:qa-c2",
+    contactProvider: contacts.provider,
+    now: () => NOW,
+    provider,
+  });
+}
+
+test("QA-C2: confirming a derived event draft stores it, adds the person and drops them from the queue", async () => {
+  const store = createSeedStore();
+  const contacts = memoryContactProvider();
+  const service = serviceWith(store, contacts);
+
+  const before = await service.listContactDrafts();
+  assert.equal(before.success, true);
+  assert.equal(before.data.drafts.length, 1);
+  // The chip reads the event's name, not the import's internal label.
+  assert.equal(before.data.drafts[0]?.source.label, "Tokyo Founder Signup Salon");
+
+  const result = await service.confirmContactDraft({
+    actorLabel: "Live reviewer",
+    draftId: DRAFT_ID,
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.confirmedDraft.status, "confirmed");
+  assert.equal(result.data.contactCandidate.contactWriteExecuted, true);
+  const contactId = result.data.contactCandidate.contactId;
+  assert.ok(contactId?.startsWith("contact:event:"));
+  assert.equal(contacts.saved.length, 1);
+  assert.equal(contacts.saved[0]?.displayName, "山田 由紀");
+  assert.equal(contacts.saved[0]?.organization, "Yamada AI Studio");
+  assert.equal(contacts.saved[0]?.metEventId, "event_live_signup");
+  assert.equal(contacts.saved[0]?.source.type, "event_import");
+  const stored = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: DRAFT_ID,
+  });
+  assert.equal(stored?.payload.status, "confirmed");
+  assert.equal(stored?.payload.contactId, contactId);
+
+  const after = await service.listContactDrafts();
+  assert.equal(after.success, true);
+  assert.equal(
+    after.data.drafts.some((draft) => draft.status === "pending_confirmation"),
+    false,
+  );
+
+  // A retry answers the stored result and writes nothing new.
+  const again = await service.confirmContactDraft({ draftId: DRAFT_ID });
+  assert.equal(again.success, false);
+  assert.equal(contacts.saved.length, 1);
+});
+
+test("QA-C2: the queue lists each person once and leaves out people already in the network", async () => {
+  const store = createSeedStore();
+  store.upsertRecord(attendeeRecord({ id: "attendee_yuki_2", eventId: "event_live_signup_2", personId: "person_live_yuki", displayName: "山田 由紀", organization: "Yamada AI Studio" }));
+  store.upsertRecord(attendeeRecord({ id: "attendee_ken", eventId: "event_live_signup", contactId: "contact_ken", displayName: "佐藤 健", organization: "Sato Co" }));
+  store.upsertRecord(attendeeRecord({ id: "attendee_mei", eventId: "event_live_signup", displayName: "林 玫", organization: "Lin Capital" }));
+  const contacts = memoryContactProvider([
+    { id: "contact_ken", displayName: "佐藤 健", stage: "captured", source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: NOW, updatedAt: NOW } as ContactDTO,
+    { id: "contact_mei", displayName: "林玫", organization: "Lin Capital", stage: "captured", source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: NOW, updatedAt: NOW } as ContactDTO,
+  ]);
+  const service = serviceWith(store, contacts);
+
+  const result = await service.listContactDrafts();
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.data.drafts.map((draft) => draft.displayName), ["山田 由紀"]);
+});
+
+test("QA-C2: confirming a draft for someone already in the network links that contact", async () => {
+  const store = createSeedStore();
+  // Seed rows are unowned (userId null); the provider reads them unscoped.
+  const provider = createStorageContactAcquisitionDraftProvider({
+    atomicContactDraftConfirmer: updateOnlyConfirmer(store),
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const contacts = memoryContactProvider();
+  const service = createLiveContactAcquisitionDraftService({
+    actorId: "account:qa-c2",
+    contactProvider: contacts.provider,
+    now: () => NOW,
+    provider,
+  });
+  const listed = await service.listContactDrafts();
+  assert.equal(listed.success, true);
+  // The person is added elsewhere (another device) after the queue was read.
+  await contacts.provider.saveContact({ id: "contact_yuki", personId: "person_live_yuki", displayName: "山田 由紀", stage: "captured", source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: NOW, updatedAt: NOW } as ContactDTO);
+  contacts.saved.length = 0;
+
+  // The draft is no longer listed, so confirming it reports it gone instead of duplicating the person.
+  const result = await service.confirmContactDraft({ draftId: DRAFT_ID });
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "CONTACT_DRAFT_NOT_FOUND");
+  assert.equal(contacts.saved.length, 0);
+});
+
+test("QA-C2: 破棄 is stored on the server and the person does not come back through another event", async () => {
+  const store = createSeedStore();
+  store.upsertRecord(attendeeRecord({ id: "attendee_yuki_2", eventId: "event_live_signup_2", personId: "person_live_yuki", displayName: "山田 由紀", organization: "Yamada AI Studio" }));
+  store.upsertRecord(attendeeRecord({ id: "attendee_mei", eventId: "event_live_signup", displayName: "林 玫", organization: "Lin Capital" }));
+  const contacts = memoryContactProvider();
+  const service = serviceWith(store, contacts);
+  const before = await service.listContactDrafts();
+  assert.equal(before.success, true);
+  assert.equal(before.data.drafts.length, 2);
+  const yuki = before.data.drafts.find((draft) => draft.displayName === "山田 由紀");
+  assert.ok(yuki);
+
+  const discarded = await service.discardContactDraft?.({ draftId: yuki.id });
+
+  assert.equal(discarded?.success, true);
+  const stored = store.getRecord({ workspaceId: WORKSPACE_ID, collectionName: "contactDrafts", recordId: yuki.id });
+  assert.equal(typeof stored?.payload.discardedAt, "string");
+  assert.equal(stored?.payload.status, "pending_confirmation");
+  // A fresh service (another device) no longer lists the person.
+  const after = await serviceWith(store, contacts).listContactDrafts();
+  assert.equal(after.success, true);
+  assert.deepEqual(after.data.drafts.map((draft) => draft.displayName), ["林 玫"]);
+  const confirmAfter = await service.confirmContactDraft({ draftId: yuki.id });
+  assert.equal(confirmAfter.success, false);
+  assert.equal(contacts.saved.length, 0);
+  const twice = await service.discardContactDraft?.({ draftId: yuki.id });
+  assert.equal(twice?.success, false);
+});
+
+test("QA-C2: a confirmed draft cannot be set aside", async () => {
+  const store = createSeedStore();
+  const contacts = memoryContactProvider();
+  const service = serviceWith(store, contacts);
+  await service.confirmContactDraft({ draftId: DRAFT_ID });
+
+  const result = await service.discardContactDraft?.({ draftId: DRAFT_ID });
+
+  assert.equal(result?.success, false);
+  const stored = store.getRecord({ workspaceId: WORKSPACE_ID, collectionName: "contactDrafts", recordId: DRAFT_ID });
+  assert.equal(stored?.payload.status, "confirmed");
+  assert.equal(stored?.payload.discardedAt, undefined);
+});
+
+test("QA-C2: discard API rejects anonymous requests and answers the stored discard", async () => {
+  const route = await import("../../app/api/contact-drafts/[id]/discard/handler");
+  const anonymous = await route.createDiscardContactDraftHandler(async () => null)(
+    new Request("https://orbit.local/api/contact-drafts/x/discard", { method: "POST" }),
+    { params: Promise.resolve({ id: "x" }) },
+  );
+  assert.equal(anonymous.status, 401);
+
+  const store = createSeedStore();
+  const contacts = memoryContactProvider();
+  const response = await route.createDiscardContactDraftHandler(
+    async () => ({ id: "account:qa-c2" }),
+    () => serviceWith(store, contacts),
+  )(
+    new Request(`https://orbit.local/api/contact-drafts/${encodeURIComponent(DRAFT_ID)}/discard`, { method: "POST" }),
+    { params: Promise.resolve({ id: DRAFT_ID }) },
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.data.state, "discarded");
+  assert.equal(body.data.draftId, DRAFT_ID);
 });

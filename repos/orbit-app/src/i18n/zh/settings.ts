@@ -56,4 +56,5 @@ export const settings = {
   "settings.healthReadyDetail": "Orbit 服务响应正常，可以继续使用。",
   "settings.healthRespondedTitle": "服务器已响应",
   "settings.healthRespondedDetail": "服务器已经响应，但暂时无法读取健康详情。",
+  "settings.dataHelp": "数据与帮助",
 } as const;

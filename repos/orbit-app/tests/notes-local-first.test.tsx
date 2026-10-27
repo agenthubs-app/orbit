@@ -100,18 +100,20 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 
 const requests = (page: Page) => page.evaluate(() => (window as any).fixture.requests as string[]);
 
-test("the notes list renders from the mirror, filters and searches locally, and sends no notes request", async (t) => {
+test("the notes list renders all kinds from the mirror in one list (UX-5), searches locally, and sends no notes request", async (t) => {
   const page = await open(t);
   await page.getByText("发布会准备", { exact: true }).waitFor();
+  // UX-5: one kind of note — the meeting-kind note sits in the same list, and there are no kind tabs.
   await page.getByText("预算确认", { exact: true }).waitFor();
-  assert.equal(await page.getByText("已是最新内容", { exact: true }).count(), 1, "the mirror's sync label is shown");
-  await page.getByRole("tab", { name: "面谈" }).click();
-  await page.getByText("预算确认", { exact: true }).waitFor();
-  assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "全部" }).click();
-  await page.getByRole("textbox", { name: "搜索笔记" }).fill("林玫");
   await page.getByText("午餐 @林玫", { exact: true }).waitFor();
-  await page.waitForFunction(() => document.body.innerText.includes("已加载 1 / 共 1 篇"));
+  for (const label of ["全部", "面谈", "自由备忘录"]) assert.equal(await page.getByRole("tab", { name: label }).count(), 0, label);
+  // UX-6: no sync-label / loaded-count footers.
+  assert.equal(await page.getByText("已是最新内容", { exact: true }).count(), 0, "the sync label footer is gone");
+  await page.getByRole("textbox", { name: "搜索笔记" }).fill("林玫");
+  await page.waitForFunction(() => !document.body.innerText.includes("发布会准备"));
+  await page.getByText("午餐 @林玫", { exact: true }).waitFor();
+  assert.equal(await page.getByText("预算确认", { exact: true }).count(), 0);
+  assert.equal(await page.getByText(/^已加载 /).count(), 0, "the loaded-count footer is gone");
   assert.deepEqual((await requests(page)).filter((path) => path.includes("/api/notes")), [], "no /api/notes read on native");
   assert.ok(await page.evaluate(() => (window as any).fixture.syncs) >= 1, "opening the page probes for changes (a conditional manifest read), after showing the mirror");
 });
@@ -139,7 +141,7 @@ test("a mirrored row owned by another account is refused, not shown", async (t) 
   assert.equal(await page.getByText("别人的笔记", { exact: true }).count(), 0);
 });
 
-test("the detail reads the mirror; offline it disables editing", async (t) => {
+test("the detail reads the mirror; offline in the browser build there is no edit entry (UX-6)", async (t) => {
   const online = await open(t, { screen: "detail", noteId: "note:1", tasks: [{ id: "task:from-note", accountId: "account:one", ownerUserId: "account:one", title: "发资料", status: "open", category: "work", priority: "normal", source: "manual", sourceNoteId: "note:1", createdAt: "2026-09-27T00:00:00.000Z", updatedAt: "2026-09-27T00:00:00.000Z" }] });
   await online.getByText("发布会准备", { exact: true }).waitFor();
   await online.getByText("发资料", { exact: true }).waitFor();
@@ -148,8 +150,10 @@ test("the detail reads the mirror; offline it disables editing", async (t) => {
   const offline = await open(t, { screen: "detail", noteId: "note:1", status: "stale" });
   await offline.getByText("发布会准备", { exact: true }).waitFor();
   await offline.getByText(/^无法连接 · 显示截至/).waitFor();
-  assert.equal(await offline.getByRole("button", { name: "编辑笔记，需要联网" }).isDisabled(), true);
-  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 1);
+  // This harness renders through react-native-web (Platform.OS "web"), so offline the header 编辑 button is not rendered.
+  // (The tap-the-text path is covered by the browser harness in notes-web-local-first.)
+  assert.equal(await offline.getByRole("button", { name: /^编辑笔记/ }).count(), 0, "no edit entry offline");
+  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 0);
   assert.equal(await offline.getByRole("button", { name: /AI 总结/ }).count(), 0);
 });
 

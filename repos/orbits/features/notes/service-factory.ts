@@ -1,4 +1,5 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
 import { createStorageContactGraphProvider } from "../contacts/storage/contact-live-record-provider";
 import { createNoteAssociationReader } from "./association-reader";
 import { createNoteRepository } from "./repository";
@@ -13,6 +14,7 @@ export function createConfiguredNoteService() {
       contactProvider: createStorageContactGraphProvider({ store: configured.store, workspaceId: configured.workspaceId }),
       store: configured.store,
       workspaceId: configured.workspaceId,
+      eventOps: createConfiguredTransactionalPostgresRuntime()?.client ?? null,
     }),
   });
 }

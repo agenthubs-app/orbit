@@ -245,6 +245,13 @@ export function createContactAcquisitionDraftServiceForActor(
   }
 
   return createLiveContactAcquisitionDraftService({
+    actorId,
+    // QA-C2: confirming an event-attendee draft adds the person to the network.
+    contactProvider: actorId.trim()
+      ? createConfiguredStorageBusinessCardContactWriteProvider({
+          recordProvider: "orbit-event-draft-contact-write",
+        })
+      : null,
     provider: actorId.trim()
       ? createConfiguredStorageContactAcquisitionDraftProvider({ actorId })
       : null,

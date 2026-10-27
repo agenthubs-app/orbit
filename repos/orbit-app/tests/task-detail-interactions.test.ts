@@ -242,10 +242,11 @@ test("a note-backed task returns to its exact source note without writing", asyn
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
-test("task settings retain an accessible close and decorative pointer dismissal without writes", async (t) => {
+// UX T4: the old settings sheet is gone; only 提醒 still opens a sheet, closed with 完成 or the scrim.
+test("the reminder sheet keeps an accessible close and decorative pointer dismissal without writes", async (t) => {
   const page = await openScreen(t);
-  const open = page.getByRole("button", { name: "更多待办操作", exact: true });
-  const close = page.getByRole("button", { name: "关闭待办设置", exact: true });
+  const open = page.getByRole("button", { name: "提醒", exact: true });
+  const close = page.getByRole("button", { name: "完成", exact: true });
   await open.click();
   await close.waitFor();
   // RN Web drops these native-only props. Observe the real screen's boundary
@@ -256,8 +257,8 @@ test("task settings retain an accessible close and decorative pointer dismissal 
     importantForAccessibility: "no-hide-descendants",
   });
   const dialog = page.getByRole("dialog");
-  assert.match(await dialog.ariaSnapshot(), /button "关闭待办设置"/u);
-  assert.match(await dialog.ariaSnapshot(), /button "删除待办"/u);
+  assert.match(await dialog.ariaSnapshot(), /button "完成"/u);
+  assert.match(await dialog.ariaSnapshot(), /1 小时后/u);
   await close.focus();
   assert.equal(await close.evaluate(element => element === document.activeElement), true);
   await page.keyboard.press("Enter");
@@ -398,11 +399,12 @@ test("failed edits reuse their request key, but a changed draft gets a new key",
 test("an unexpected mutation rejection unlocks the editor and offers a visible retry", async (t) => {
   const page = await openScreen(t);
   await page.evaluate(() => { (window as any).fixture.thrown = true; });
-  await page.getByRole("button", { name: "标记完成", exact: true }).click();
+  // This harness stubs theme styles, so the round check has no box: dispatch the press.
+  await page.getByRole("checkbox", { name: "完成：Original title", exact: true }).dispatchEvent("click");
   await page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>('[aria-label="待办标题"]')?.readOnly, { }, { timeout: 2000 });
   await page.getByText("请重试", { exact: false }).waitFor({ timeout: 2000 });
   await page.evaluate(() => { (window as any).fixture.thrown = false; });
-  await page.getByRole("button", { name: "标记完成", exact: true }).click();
+  await page.getByRole("checkbox", { name: "完成：Original title", exact: true }).dispatchEvent("click");
   const requests = await page.evaluate(() => (window as any).fixture.requests);
   assert.equal(requests.length, 2);
   assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
@@ -412,7 +414,6 @@ for (const boundary of ["task", "client", "unmount"]) {
   test(`a delayed delete cannot navigate or refresh after changing ${boundary}`, async (t) => {
     const page = await openScreen(t);
     await page.evaluate(() => { (window as any).fixture.hold = true; });
-    await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
     await page.getByRole("button", { name: "删除待办", exact: true }).click();
     assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0, "delete waits for confirmation");
     await page.getByRole("button", { name: "确认删除", exact: true }).click();
@@ -435,17 +436,17 @@ for (const boundary of ["task", "client", "unmount"]) {
 test("reminder permission blocks duplicate taps", async (t) => {
   const page = await openScreen(t);
   await page.evaluate(() => { (window as any).fixture.holdPermission = true; });
-  await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
+  await page.getByRole("button", { name: "提醒", exact: true }).click();
   const option = page.getByText("1 小时后", { exact: true });
   await option.click();
-  await option.click();
+  await option.dispatchEvent("click");
   assert.equal(await page.evaluate(() => (window as any).fixture.permissionCalls), 1);
 });
 
 test("reminder permission completion does not post after leaving the task", async (t) => {
   const page = await openScreen(t);
   await page.evaluate(() => { (window as any).fixture.holdPermission = true; });
-  await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
+  await page.getByRole("button", { name: "提醒", exact: true }).click();
   await page.getByText("1 小时后", { exact: true }).click();
   await page.evaluate(() => (window as any).fixture.update({ id: "task:next", title: "Next task" }));
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
@@ -466,17 +467,16 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
         fixture.update({});
       }
     }, operation);
-    if (["delete", "reminder", "cancel"].includes(operation)) await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
-    const action = operation === "complete" ? page.getByRole("button", { name: "标记完成", exact: true })
-      : operation === "reopen" ? page.getByRole("button", { name: "恢复待办", exact: true })
+    if (["reminder", "cancel"].includes(operation)) await page.getByRole("button", { name: "提醒", exact: true }).click();
+    const action = operation === "complete" ? page.getByRole("checkbox", { name: "完成：Original title", exact: true })
+      : operation === "reopen" ? page.getByRole("checkbox", { name: "恢复：Original title", exact: true })
       : operation === "delete" ? page.getByRole("button", { name: "删除待办", exact: true })
       : page.getByText(operation === "reminder" ? "1 小时后" : "取消", { exact: true });
-    await action.click();
+    await action.dispatchEvent("click");
     if (operation === "delete") await page.getByRole("button", { name: "确认删除", exact: true }).click();
     await page.getByRole("alert").filter({ hasText: "操作未完成，请重试。" }).first().waitFor();
     await page.evaluate(() => { (window as any).fixture.failure = false; });
-    if (operation === "delete") await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
-    await action.click();
+    await action.dispatchEvent("click");
     if (operation === "delete") await page.getByRole("button", { name: "确认删除", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.notifications === 1);
     const snapshot = await page.evaluate(() => {
@@ -496,7 +496,7 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       assert.equal(request.body.body, "Original title");
     }
     assert.deepEqual(snapshot.navigation, operation === "delete" ? ["/task?seg=todo&view=all"] : []);
-    assert.equal(snapshot.refreshes, operation === "delete" ? 0 : ["reminder", "cancel"].includes(operation) ? 1 : 3);
+    assert.equal(snapshot.refreshes, operation === "delete" ? 0 : ["reminder", "cancel"].includes(operation) ? 1 : 2);
   });
 }
 

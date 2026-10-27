@@ -144,6 +144,8 @@ export interface EventAssessmentService {
   patch(actorId: string, id: string, input: EventAssessmentPatchInput, language: PlanCopyLanguage): Promise<EventAssessmentContract | null>;
   addToPlan(actorId: string, id: string): Promise<{ planId: string | null; planItemId: string | null } | null>;
   dismiss(actorId: string, id: string): Promise<boolean>;
+  /** 从评估列表删掉（连同海报）；不存在 / 别人的 → false。 */
+  remove(actorId: string, id: string): Promise<boolean>;
   availability(actorId: string): Promise<EventAssessmentAvailability>;
   uploadPoster(actorId: string, input: { mimeType: string; bytes: Buffer }): Promise<{ posterAssetId: string }>;
   /** 本人的海报（结果页缩略图）。 */
@@ -269,6 +271,8 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       return result;
     } catch (error) {
       await deps.ai.gate.finish(reservation.operationId, "failed").catch(() => undefined);
+      // A failed read used to leave no trace in the logs; keep the reason (no event text).
+      console.warn(JSON.stringify({ code: error instanceof EventExtractionError ? error.code : null, error: error instanceof Error ? error.name : "unknown", event: "event_assessment_read_failed", message: error instanceof Error ? error.message.slice(0, 200) : null, sourceKind: row.sourceKind }));
       if (error instanceof EventExtractionError) return error.code === "TIMEOUT" ? "timeout" : error.code === "UNREADABLE" ? "unreadable" : "ai_unavailable";
       return "ai_unavailable";
     }
@@ -413,6 +417,13 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
     },
     async dismiss(actorId, id) {
       return Boolean(await deps.repository.update(actorId, id, { userDecision: "dismissed" }));
+    },
+    async remove(actorId, id) {
+      const removed = await deps.repository.remove(actorId, id);
+      if (!removed) return false;
+      pendingText.delete(id);
+      if (removed.posterAssetIds.length) await deps.repository.deletePosters(actorId, removed.posterAssetIds).catch(() => undefined);
+      return true;
     },
     async availability(actorId) {
       const usage = deps.ai.usage ? await deps.ai.usage(actorId, now()) : null;

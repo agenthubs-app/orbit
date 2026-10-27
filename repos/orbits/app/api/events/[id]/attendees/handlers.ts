@@ -21,6 +21,7 @@ import {
   withOwnedEventAccess,
   type OwnedEventAccessDependencies,
 } from "../owned-event-access";
+import { localizeRelationshipContextFields, relationshipContextLanguage } from "../../../../../shared/compute/relationship-context-labels";
 
 interface EventAttendeeRouteContext {
   params: Promise<{ id: string }>;
@@ -142,7 +143,7 @@ export function createEventAttendeesGetHandler(
       );
     }
 
-    return NextResponse.json(success(result.data), {
+    return NextResponse.json(success(localizeRelationshipContextFields(result.data, relationshipContextLanguage(request))), {
       headers: runtimeBoundaryHeaders(access.mode),
       status: 200,
     });
@@ -177,7 +178,7 @@ export function createEventAttendeeImportPostHandler(
       );
     }
 
-    return NextResponse.json(success(result.data), {
+    return NextResponse.json(success(localizeRelationshipContextFields(result.data, relationshipContextLanguage(request))), {
       headers: runtimeBoundaryHeaders(access.mode),
       status: 200,
     });

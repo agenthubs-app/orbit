@@ -38,9 +38,12 @@ export function CheckInView({ data, t }: { data: EventVenueResponse; t: JourneyT
   const reception = check?.receptionNumber ? t("vReception", { n: check.receptionNumber }) : "";
   return (
     <View testID="events-venue-checkin">
-      <View style={{ marginBottom: 14 }}>
-        <Segmented<"qr" | "name"> accessibilityLabel={t("checkIn")} value={mode} onChange={setMode} segments={[{ key: "qr", label: t("vByQr") }, { key: "name", label: t("vByName") }]} />
-      </View>
+      {/* No QR from the host yet: only the name card (no 扫码 tab that shows no code, no 扫不出 fallback card). */}
+      {qr ? (
+        <View style={{ marginBottom: 14 }}>
+          <Segmented<"qr" | "name"> accessibilityLabel={t("checkIn")} value={mode} onChange={setMode} segments={[{ key: "qr", label: t("vByQr") }, { key: "name", label: t("vByName") }]} />
+        </View>
+      ) : null}
       <View style={[styles.card, v.qrCard]}>
         {mode === "qr" && qr ? (
           <View style={v.qrFrame}>
@@ -53,12 +56,12 @@ export function CheckInView({ data, t }: { data: EventVenueResponse; t: JourneyT
         <UiText style={v.qrTitle}>{t("vShowQr")}</UiText>
         <UiText style={[styles.lbl, { textAlign: "center" }]}>{reception}</UiText>
       </View>
-      <View style={[styles.card, styles.flat, styles.gap]}>
+      {qr ? <View style={[styles.card, styles.flat, styles.gap]}>
         <View style={styles.row}>
           <View style={[styles.emoSm, { backgroundColor: colors.macApricot }]}><UiText style={styles.emoSmText}>🙋</UiText></View>
           <View style={styles.grow}><UiText style={styles.title13}>{t("vQrFail")}</UiText><UiText style={styles.lbl}>{t("vSayName", { name: check?.displayName ?? "" })}</UiText></View>
         </View>
-      </View>
+      </View> : null}
       <View style={[styles.card, styles.gap]}>
         <UiText style={[styles.lbl, { marginBottom: 10 }]}>{t("vAfterCheckin")}</UiText>
         <View style={v.grid3}>
@@ -170,7 +173,8 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
   return (
     <View testID="events-venue-recs">
       <View style={styles.cardH}><UiText style={styles.h3}>{t("recsTitle")}</UiText><UiText style={styles.lbl}>{t("vRecsHint", { n: Math.max(recs.length, data.recommendations.length) })}</UiText></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentOffset={{ x: SHELL_GUTTER, y: 0 }} snapToOffsets={recs.map((_, index) => SHELL_GUTTER + index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
+      {recs.length ? null : <View style={styles.card}><UiText style={[styles.sub, { color: colors.ink3 }]}>{t("vRecsEmpty")}</UiText></View>}
+      {recs.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentOffset={{ x: SHELL_GUTTER, y: 0 }} snapToOffsets={recs.map((_, index) => SHELL_GUTTER + index * (PCARD + 12))} decelerationRate="fast" onScroll={onScroll} scrollEventThrottle={32} style={v.carousel} contentContainerStyle={v.carouselInner}>
         {recs.map((person) => {
           const near = nearNext(person, data);
           return (
@@ -200,7 +204,7 @@ export function RecsTab({ data, t, toneOf, onRequest, onDismiss, onOpen }: { dat
             </View>
           );
         })}
-      </ScrollView>
+      </ScrollView> : null}
       {recs.length > 1 ? <View style={v.dots}>{recs.map((person, index) => <View key={person.attendeeId} style={[v.dot, index === page ? v.dotOn : null]} />)}</View> : null}
       {data.nextOrder.length ? (
         <View style={[styles.card, v.orderCard]}>
@@ -251,6 +255,7 @@ export function PeopleTab({ data, t, toneOf, view, onView, onOpen }: { data: Eve
             ))}
           </View>
           <View style={[styles.card, v.listCard]}>
+            {shown.length ? null : <UiText style={[styles.sub, { color: colors.ink3, paddingVertical: 12 }]}>{t("noPeopleHere")}</UiText>}
             {shown.map((person, index) => (
               <UiPressable key={person.attendeeId} accessibilityRole="button" accessibilityLabel={person.name} onPress={() => onOpen(person)} style={styles.li} testID={`events-venue-person-${person.attendeeId}`}>
                 {index ? <View style={styles.liLine} /> : null}
@@ -389,6 +394,7 @@ export function AgendaTab({ data, t }: { data: EventVenueResponse; t: JourneyT }
   return (
     <View testID="events-venue-agenda">
       <View style={styles.card}>
+        {data.agenda.length ? null : <UiText style={[styles.sub, { color: colors.ink3 }]}>{t("noAgenda")}</UiText>}
         {data.agenda.map((item, index) => {
           const done = nowIndex >= 0 && index < nowIndex;
           const now = index === nowIndex;
@@ -428,22 +434,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   qrCard: { alignItems: "center", paddingHorizontal: 18, paddingVertical: 24 },
   qrFrame: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 20, borderWidth: 1, padding: 13 },
   nameBox: { alignItems: "center", height: 224, justifyContent: "center", width: 224 },
-  bigName: { color: colors.ink, fontSize: 28, fontWeight: "800", lineHeight: 36, textAlign: "center" },
-  qrTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22.5, marginTop: 14, textAlign: "center" },
+  bigName: { color: colors.ink, fontSize: 30, fontWeight: "800", lineHeight: 39, textAlign: "center" },
+  qrTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 26, marginTop: 14, textAlign: "center" },
   grid3: { flexDirection: "row", gap: 12 },
   grid3Cell: { alignItems: "center", flex: 1 },
-  grid3Text: { color: colors.ink, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25, textAlign: "center" },
-  roundTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24, marginTop: 4 },
+  grid3Text: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 20, textAlign: "center" },
+  roundTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27, marginTop: 4 },
   seat46: { fontSize: 46, letterSpacing: -0.92, lineHeight: 48.3 },
   seat34: { fontSize: 34, letterSpacing: -0.68, lineHeight: 35.7, marginTop: 4 },
   rdots: { flexDirection: "row", gap: 6, width: 170 },
   rdot: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 12, flex: 1, paddingHorizontal: 4, paddingVertical: 7 },
   rdotNow: { backgroundColor: colors.ink },
-  rdotTable: { color: colors.ink2, fontFamily: "ui-rounded", fontSize: 14, fontWeight: "700", lineHeight: 15.75 },
-  rdotRound: { color: colors.ink3, fontSize: 10.5, fontWeight: "700", lineHeight: 15.75 },
+  rdotTable: { color: colors.ink2, fontFamily: "ui-rounded", fontSize: 17, fontWeight: "700", lineHeight: 19 },
+  rdotRound: { color: colors.ink3, fontSize: 12, fontWeight: "700", lineHeight: 18 },
   ice: { alignItems: "flex-start", flexDirection: "row", gap: 10, paddingVertical: 10 },
   iceLine: { borderTopColor: colors.line, borderTopWidth: 1 },
-  iceText: { color: colors.ink, fontSize: 13, lineHeight: 20.15 },
+  iceText: { color: colors.ink, fontSize: 15, lineHeight: 23 },
   // Chrome 里 13px 的 💬 占 16，iOS 的彩色 emoji 占 19：固定占位，文字起点同画板。
   iceEmoji: { alignItems: "center", width: 16 },
   grid2: { flexDirection: "row", gap: 12 },
@@ -451,29 +457,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   carousel: { marginHorizontal: -SHELL_GUTTER },
   carouselInner: { gap: 12, paddingBottom: 4, paddingHorizontal: SHELL_GUTTER, paddingTop: 2 },
   pcard: { backgroundColor: colors.surface, borderRadius: radius.xl, gap: 10, padding: 18, width: PCARD },
-  name16: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  name16: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
   dots: { flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 10 },
   dot: { backgroundColor: colors.ink4, borderRadius: 3, height: 6, width: 6 },
   dotOn: { backgroundColor: colors.ink2, width: 18 },
   orderCard: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8 },
-  orderNum: { color: colors.ink3, fontFamily: "ui-rounded", fontSize: 14, fontWeight: "800", lineHeight: 21, width: 18 },
+  orderNum: { color: colors.ink3, fontFamily: "ui-rounded", fontSize: 17, fontWeight: "800", lineHeight: 25, width: 18 },
   search: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 16 },
-  searchInput: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
+  searchInput: { color: colors.ink, flex: 1, fontSize: 16, padding: 0 },
   filters: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12, marginTop: 10 },
   listCard: { paddingHorizontal: 16, paddingVertical: 6 },
   peopleStatus: { alignSelf: "center" },
   mapCard: { alignItems: "center", paddingHorizontal: 8, paddingVertical: 10 },
   legendCard: { paddingHorizontal: 16, paddingVertical: 14 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  legendText: { color: colors.ink2, fontSize: 11.5, lineHeight: 17.25 },
+  legendText: { color: colors.ink2, fontSize: 13, lineHeight: 20 },
   groupRow: { alignItems: "center", borderTopColor: colors.line, borderTopWidth: 1, flexDirection: "row", gap: 10, paddingVertical: 9 },
-  groupLetter: { color: colors.ink, fontSize: 13, fontWeight: "800", lineHeight: 19.5 },
+  groupLetter: { color: colors.ink, fontSize: 15, fontWeight: "800", lineHeight: 22 },
   tline: { flexDirection: "row", gap: 8 },
-  tlineTime: { color: colors.ink, fontFamily: "ui-rounded", fontSize: 12.5, fontWeight: "800", lineHeight: 18.75, paddingTop: 1, width: 46 },
+  tlineTime: { color: colors.ink, fontFamily: "ui-rounded", fontSize: 15, fontWeight: "800", lineHeight: 23, paddingTop: 1, width: 46 },
   tlineDotCol: { width: 14 },
   tlineDot: { backgroundColor: colors.surface3, borderRadius: 5, height: 10, marginTop: 4, width: 10 },
   // kit .tline.n .dot：box-shadow 0 0 0 4px coral-soft —— 画成点后面的 18 圆，不占布局。
   tlineRing: { backgroundColor: colors.coralSoft, borderRadius: 9, height: 18, left: -4, position: "absolute", top: 0, width: 18 },
   tlineRail: { backgroundColor: colors.surface3, height: 46, left: 4, position: "absolute", top: 16, width: 2 },
-  tlineTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  tlineTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
 }));

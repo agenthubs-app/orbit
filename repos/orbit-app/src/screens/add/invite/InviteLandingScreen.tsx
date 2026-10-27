@@ -155,6 +155,8 @@ export function InviteLandingScreen({ code: rawCode, api: injected, design }: { 
               <UiText style={styles.body}>{t("add.inviteIn.unavailableBody")}</UiText>
               {view.limited ? <UiText style={styles.body}>{t("add.inviteIn.limitedBody")}</UiText> : null}
               <Button label={t("add.inviteIn.enterAnother")} block onPress={() => router.replace("/i" as Href)} />
+              {/* Signed in, a dead link left no way back into the app (no back button on this page). */}
+              {auth.signedIn ? <Button label={t("publicInfo.backHome")} variant="ghost" block onPress={() => router.replace("/home" as Href)} /> : null}
             </Notice>
           ) : null}
         </View>
@@ -517,18 +519,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   // marginBottom −12: AppScreen's 16 gap after the header slot → kit 4 (R31a: AppScreen has no extra top 12 any more).
   head: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: -12, paddingBottom: 10, paddingTop: 6 },
   headText: { flex: 1, minWidth: 0 },
-  brand: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22.5 },
+  brand: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 26 },
   appic: { alignItems: "center", borderRadius: 9, height: 28, justifyContent: "center", width: 28 },
-  appicText: { fontSize: 13, fontWeight: "900", lineHeight: 16 },
+  appicText: { fontSize: 15, fontWeight: "900", lineHeight: 18 },
   // 開く（b11 #9）
   person: { alignItems: "center", flexDirection: "row", gap: 12 },
-  personName: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
-  accountName: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  personName: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
+  accountName: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   factLabel: { fontWeight: "700", marginTop: 10 },
   factNext: { marginTop: 8 },
-  fact: { color: colors.ink, fontSize: 13, lineHeight: 19.5 },
+  fact: { color: colors.ink, fontSize: 15, lineHeight: 22 },
   explain: { alignItems: "flex-start", backgroundColor: colors.surface2, borderRadius: 24, flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  explainEmoji: { fontSize: 14, lineHeight: 21 },
+  explainEmoji: { fontSize: 17, lineHeight: 25 },
   explainText: { color: colors.ink2, flex: 1, lineHeight: 18.4 },
   codeLine: { marginHorizontal: 4, marginTop: 12 },
   openActions: { gap: 8, marginTop: 14 },
@@ -538,26 +540,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pairSecond: { marginLeft: -12 },
   // .av box-shadow 0 0 0 3px: a ring drawn outside the 56 box (it takes no room, so −3 on every side).
   ring: { borderRadius: 31, borderWidth: 3, margin: -3 },
-  guideTitle: { color: colors.ink, fontSize: 18, fontWeight: "800", lineHeight: 27, marginTop: 10, textAlign: "center" },
+  guideTitle: { color: colors.ink, fontSize: 20, fontWeight: "800", lineHeight: 30, marginTop: 10, textAlign: "center" },
   guideSub: { lineHeight: 20, marginTop: 4, textAlign: "center" },
   noteCard: { alignItems: "center", flexDirection: "row", gap: 10 },
-  noteEmoji: { fontSize: 18, lineHeight: 27 },
+  noteEmoji: { fontSize: 20, lineHeight: 30 },
   noteText: { color: colors.ink2, flex: 1, lineHeight: 18.4 },
   noteStrong: { color: colors.ink, fontWeight: "700" },
   // 完了（b11 #10）
   doneHero: { alignItems: "center", marginTop: 20 },
-  h1: { color: colors.ink, fontSize: 22, fontWeight: "900", letterSpacing: -0.22, lineHeight: 29.7, marginTop: 14, textAlign: "center" },
+  h1: { color: colors.ink, fontSize: 24, fontWeight: "900", letterSpacing: -0.22, lineHeight: 32, marginTop: 14, textAlign: "center" },
   doneSub: { marginTop: 4, textAlign: "center" },
   appCard: { alignItems: "center", flexDirection: "row", gap: 12, marginTop: 14, padding: 14 },
-  appTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  appTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   smBtn: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 6, height: 32, justifyContent: "center", paddingHorizontal: 12 },
-  smBtnText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  smBtnText: { fontSize: 14, fontWeight: "700", lineHeight: 21 },
   // 期限切れ（b11 #13）
   expiredGuide: { alignItems: "center", paddingHorizontal: 20, paddingVertical: 24 },
   bigEmoji: { fontSize: 44, lineHeight: 44 },
   expiredSub: { lineHeight: 20, marginTop: 6, textAlign: "center" },
-  askTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
+  askTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   draftBox: { backgroundColor: colors.surface2, borderRadius: 16, marginTop: 8, paddingHorizontal: 14, paddingVertical: 12 },
-  draftText: { color: colors.ink, fontSize: 12.5, lineHeight: 21.9 },
+  draftText: { color: colors.ink, fontSize: 15, lineHeight: 26 },
   askActions: { flexDirection: "row", gap: 8, marginTop: 10 },
 }));

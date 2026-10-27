@@ -255,6 +255,7 @@ export function PlanBackground({ intake, kind, api, onIntake, onReload }: Props)
                       kind={kind}
                       gaps={gaps}
                       existingContactIds={new Set(members.map((member) => member.contactId).filter((id): id is string => Boolean(id)))}
+                      selfName={members.find((member) => member.isSelf)?.name ?? me.value.name}
                       onAdd={async (body) => {
                         const ok = await step("members", () => api.addMembers(intake.intakeId, body));
                         if (ok) setMode("team");
@@ -391,7 +392,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   line: { borderTopWidth: 1, borderTopColor: colors.line },
   name14: { color: colors.ink, ...kitText(14, "700") },
   fld: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, borderWidth: 1.5, borderColor: "transparent" },
-  fldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 14, padding: 0 },
+  fldInput: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 17, padding: 0 },
   degrade: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, backgroundColor: colors.surface2 },
   degradeTitle: { color: colors.ink, ...kitText(12, "700") },
   degradeBtn: { alignSelf: "flex-start", marginTop: 8, backgroundColor: colors.surface },

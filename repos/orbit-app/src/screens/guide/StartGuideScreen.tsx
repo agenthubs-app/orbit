@@ -10,6 +10,7 @@ import { firstProfileGoalForPlan } from "../../api/compute/profile-onboarding-go
 import { nextAppGuideStep, readAppGuideEntry, type AppGuideProgress } from "../../api/guide-progress";
 import { resumeOrCreateAppOnboardingIntake } from "../../api/onboarding-plan-intake";
 import { AppScreen } from "../../components/AppScreen";
+import { openMainTab } from "../../components/shell-navigation";
 import { Button, Card, RetryCard, Skeleton, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -76,10 +77,10 @@ export function StartGuideScreen() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.bg }]}>
-    <AppScreen inset="kit" title={c.title} onBack={() => router.replace("/home" as Href)}>
+    <AppScreen inset="kit" title={c.title} onBack={() => openMainTab(router, "/home")}>
       {loading ? <Skeleton lines={4} /> : !guide ? <RetryCard title={c.failed} onRetry={() => void reload()} /> : (
         <View testID="app-start-guide" style={styles.stack}>
-          <UiText style={styles.meta}>{c.subtitle} · {guide.completed} / 3</UiText>
+          <UiText style={styles.meta}>{guide.completed} / 3 {c.done}</UiText>
           <UiText style={styles.headline}>{c.subtitle}</UiText>
           <UiText style={styles.hint}>{nextStep === "contacts" ? c.helpContacts : nextStep === "goal" ? c.helpGoal : nextStep === "plan" ? c.helpPlan : c.done}</UiText>
           <Card style={styles.guideCard}>
@@ -91,7 +92,7 @@ export function StartGuideScreen() {
             <UiText style={styles.stepTitle}>{c.saved}</UiText>
             {guide.flags.contacts && guide.flags.goal && !guide.flags.plan ? (
               <View style={styles.planForm}>
-                <TextInput accessibilityLabel={c.saved} multiline onChangeText={(value) => { setGoalText(value); keyRef.current = null; }} style={[styles.input, { color: colors.ink }]} value={goalText} />
+                <TextInput accessibilityLabel={c.saved} multiline returnKeyType="done" submitBehavior="blurAndSubmit" onChangeText={(value) => { setGoalText(value); keyRef.current = null; }} style={[styles.input, { color: colors.ink }]} value={goalText} />
                 <UiText style={styles.hint}>{c.choose}</UiText>
                 <View style={styles.kinds}>
                   {PLAN_GOAL_KINDS.map((value) => <Button key={value} label={goalKindLabel(value, language) ?? value} variant={kind === value ? "primary" : "secondary"} onPress={() => { setKind(value); keyRef.current = null; }} />)}
@@ -126,17 +127,17 @@ function GuideRow({ index, title, status, styles }: {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { flex: 1 },
   stack: { gap: 12, paddingBottom: 96 },
-  meta: { color: colors.ink3Text, fontSize: 12 },
-  headline: { color: colors.ink, fontSize: 25, fontWeight: "800", marginTop: 6 },
+  meta: { color: colors.ink3Text, fontSize: 14 },
+  headline: { color: colors.ink, fontSize: 28, fontWeight: "800", marginTop: 6 },
   guideCard: { gap: 0 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: "700", flexShrink: 1 },
-  rowStatus: { color: colors.ink3Text, fontSize: 12 },
-  stepTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  hint: { color: colors.ink2, fontSize: 12 },
+  rowTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", flexShrink: 1 },
+  rowStatus: { color: colors.ink3Text, fontSize: 14 },
+  stepTitle: { color: colors.ink, fontSize: 18, fontWeight: "700" },
+  hint: { color: colors.ink2, fontSize: 14 },
   planForm: { gap: 12, marginTop: 16 },
   input: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 12, minHeight: 54 },
   kinds: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   footer: { paddingHorizontal: 18, paddingTop: 12 },
-  error: { color: colors.coralText, fontSize: 13 },
+  error: { color: colors.coralText, fontSize: 15 },
 }));

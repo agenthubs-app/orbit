@@ -109,8 +109,97 @@ test("AbortSignal reaches fetch and independently cancellable GETs do not coales
     signals.push(init?.signal);
     return response('{"success":true,"data":{}}');
   } });
-  await Promise.all([client.get("/api/test/image", { signal: controller.signal }), client.get("/api/test/image", { signal: controller.signal })]);
-  assert.deepEqual(signals, [controller.signal, controller.signal]);
+  const results = await Promise.all([client.get("/api/test/image", { signal: controller.signal }), client.get("/api/test/image", { signal: controller.signal })]);
+  assert.equal(signals.length, 2, "a caller signal turns coalescing off");
+  assert.ok(results.every((result) => result.success));
+  const inFlight = new AbortController();
+  let fetchSignal: AbortSignal | undefined;
+  const aborting = createOrbitApiClient({ fetchImpl: async (_url, init) => {
+    fetchSignal = init?.signal ?? undefined;
+    assert.equal(fetchSignal?.aborted, false);
+    inFlight.abort();
+    assert.equal(fetchSignal?.aborted, true, "the caller's abort reaches the signal fetch received");
+    return response('{"success":true,"data":{}}');
+  } });
+  const aborted = await aborting.get("/api/test/image", { signal: inFlight.signal });
+  assert.equal(aborted.success, false, "an aborted request is reported as stopped, not as a late success");
+});
+
+function hangingFetch(seen: Array<AbortSignal | undefined> = []): FetchLike {
+  return (_url, init) => new Promise((_resolve, reject) => {
+    const signal = init?.signal ?? undefined;
+    seen.push(signal);
+    signal?.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+}
+
+test("a request that never answers ends as the usual network failure after its timeout", async () => {
+  const seen: Array<AbortSignal | undefined> = [];
+  const client = createOrbitApiClient({ fetchImpl: hangingFetch(seen), baseUrl: "http://timeout.test" });
+  const started = Date.now();
+  const result = await client.post("/api/events/e1/join/cancel", { body: {}, timeoutMs: 30 });
+  assert.equal(result.success, false);
+  if (result.success) assert.fail("expected failure");
+  assert.equal(result.error.code, "ORBIT_APP_NETWORK_ERROR");
+  assert.equal(result.status, 0);
+  assert.ok(Date.now() - started < 2000);
+  assert.equal(seen[0]?.aborted, true, "the stalled fetch is cancelled");
+});
+
+test("a fetch that ignores its signal still ends on timeout, and a stalled body read too", async () => {
+  const ignoring = createOrbitApiClient({ fetchImpl: () => new Promise<Response>(() => undefined) });
+  const first = await ignoring.get("/api/never", { timeoutMs: 20 });
+  assert.equal(first.success ? "" : first.error.code, "ORBIT_APP_NETWORK_ERROR");
+  const stalledBody = createOrbitApiClient({ fetchImpl: async () => ({
+    ok: true, status: 200, headers: new Headers({ "Content-Type": "application/json" }),
+    json: () => new Promise(() => undefined)
+  }) as unknown as Response });
+  const second = await stalledBody.get("/api/slow-body", { timeoutMs: 20 });
+  assert.equal(second.success ? "" : second.error.code, "ORBIT_APP_NETWORK_ERROR");
+});
+
+test("a timed-out GET is not remembered as in flight, so the retry asks again", async () => {
+  let calls = 0;
+  const client = createOrbitApiClient({ fetchImpl: (url, init) => {
+    calls += 1;
+    return calls === 1 ? hangingFetch()(url, init) : Promise.resolve(response('{"success":true,"data":{"ok":true}}'));
+  } });
+  const [a, b] = await Promise.all([client.get("/api/retry-after-timeout", { timeoutMs: 20 }), client.get("/api/retry-after-timeout", { timeoutMs: 20 })]);
+  assert.equal(a.success, false);
+  assert.equal(b.success, false);
+  assert.equal(calls, 1, "identical concurrent GETs still share one request");
+  const retry = await client.get("/api/retry-after-timeout");
+  assert.equal(retry.success, true);
+  assert.equal(calls, 2);
+});
+
+test("caller abort still cancels the request and is not mistaken for a timeout", async () => {
+  const seen: Array<AbortSignal | undefined> = [];
+  const client = createOrbitApiClient({ fetchImpl: hangingFetch(seen) });
+  const controller = new AbortController();
+  const pending = client.get("/api/abort-me", { signal: controller.signal, timeoutMs: 60_000 });
+  controller.abort();
+  const result = await pending;
+  assert.equal(result.success ? "" : result.error.code, "ORBIT_APP_NETWORK_ERROR");
+  assert.equal(seen[0]?.aborted, true);
+  const already = new AbortController();
+  already.abort();
+  const early = await client.get("/api/abort-me-early", { signal: already.signal });
+  assert.equal(early.success, false);
+});
+
+test("default timeouts: 20 s for ordinary requests, longer for AI, assessments, scans and uploads; override wins", async () => {
+  const { requestTimeoutMs, DEFAULT_REQUEST_TIMEOUT_MS, LONG_REQUEST_TIMEOUT_MS } = await import("../src/api/client");
+  assert.equal(DEFAULT_REQUEST_TIMEOUT_MS, 20_000);
+  assert.ok(LONG_REQUEST_TIMEOUT_MS >= 120_000);
+  assert.equal(requestTimeoutMs("POST", "/api/events/e1/join/cancel"), DEFAULT_REQUEST_TIMEOUT_MS);
+  assert.equal(requestTimeoutMs("GET", "/api/ai/conversations"), DEFAULT_REQUEST_TIMEOUT_MS);
+  for (const path of ["/api/ai/conversations", "/api/ai/conversations/c1", "/api/agent/plans/intakes", "/api/events/assessments", "/api/events/assessments/posters", "/api/events/e1/join/next", "/api/contact-drafts/business-card/scan", "/api/contacts/import", "/api/profile/intro-draft", "/api/tasks/generate"]) {
+    assert.equal(requestTimeoutMs("POST", path), LONG_REQUEST_TIMEOUT_MS, path);
+  }
+  assert.equal(requestTimeoutMs("PUT", "/api/x/content", { rawBody: new Uint8Array(1) }), LONG_REQUEST_TIMEOUT_MS);
+  assert.equal(requestTimeoutMs("GET", "/api/x", { timeoutMs: 5 }), 5);
+  assert.equal(requestTimeoutMs("POST", "/api/ai/runs", { timeoutMs: 0 }), 0);
 });
 
 test("raw transport accepts 10 MiB but rejects over-limit and dual-body requests before fetch", async () => {

@@ -35,7 +35,9 @@ export interface AppReviewGroupRow {
   open: boolean;
 }
 
-export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, onRowMenu, toggleLabel, mergeLabel, separateLabel, skipLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, reviewAttention, busy, children }: {
+export function UnifiedReviewApp({ allClear, tiles, active, duplicateTitle, exceptionsOnly, autoMergedLabel, autoMergedNote, similarLabel, duplicates, onToggle, onRowMenu, toggleLabel, mergeLabel, separateLabel, skipLabel, onMergeSelected, onSeparate, reviewTitle, reviewNote, estimated, groups, onGroup, groupBody, reviewAttention, busy, children }: {
+  /** QA-C: shown when there is nothing to check (no duplicates, no groups) so the page is not blank. */
+  allClear?: string;
   tiles: readonly { key: ReviewTileKey; label: string; count: number }[];
   active: ReviewTileKey;
   duplicateTitle: string;
@@ -73,12 +75,19 @@ export function UnifiedReviewApp({ tiles, active, duplicateTitle, exceptionsOnly
     <View testID="add-batch-review">
       <View style={styles.bq}>
         {tiles.map((tile) => (
-          <View key={tile.key} accessible accessibilityLabel={`${tile.label} ${tile.count}`} style={[styles.bqTile, active === tile.key && styles.bqOn]} testID={`add-tile-${tile.key}`}>
+          <View key={tile.key} accessible accessibilityLabel={`${tile.label} ${tile.count}`} style={[styles.bqTile, active === tile.key && tile.count > 0 && styles.bqOn]} testID={`add-tile-${tile.key}`}>
             <UiText numberOfLines={1} style={[styles.lbl, styles.bqLbl]}>{tile.label}</UiText>
             <UiText style={styles.bqNum}>{tile.count}</UiText>
           </View>
         ))}
       </View>
+
+      {allClear && !duplicates.length && !autoMergedLabel && !groups.length ? (
+        <View style={[styles.card, styles.cardTop, styles.ok]} testID="add-review-all-clear">
+          <View style={styles.okMark}><Icon name="check" size={16} color={colors.surface} /></View>
+          <UiText style={[styles.okTitle, styles.grow]}>{allClear}</UiText>
+        </View>
+      ) : null}
 
       {duplicates.length || autoMergedLabel ? (
         <View style={[styles.card, styles.cardTop]} testID="add-section-duplicate">
@@ -173,8 +182,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   // .bq 里的 span.lbl 是行内元素：行盒取父级 14px × 1.5 = 21。
   bqLbl: { lineHeight: 21 },
   bqOn: { borderWidth: 1.5, borderColor: colors.plum500, paddingVertical: 8.5, paddingHorizontal: 10.5 },
-  bqNum: { fontSize: 24, fontWeight: "800", lineHeight: 27.6, color: colors.ink, fontVariant: ["tabular-nums"] },
-  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
+  bqNum: { fontSize: 28, fontWeight: "800", lineHeight: 32, color: colors.ink, fontVariant: ["tabular-nums"] },
+  lbl: { fontSize: 13, fontWeight: "500", lineHeight: 20, color: colors.ink3 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 18 },
   cardTop: { marginTop: 12 },
   cardNext: { marginTop: 14 },
@@ -182,10 +191,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   accClosed: { paddingBottom: 26 },
   cardH: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  h3: { fontSize: 14.5, fontWeight: "800", lineHeight: 21.75, color: colors.ink },
+  h3: { fontSize: 17, fontWeight: "800", lineHeight: 25, color: colors.ink },
   ok: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: `${colors.ok}73` },
   okMark: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.ok, alignItems: "center", justifyContent: "center" },
-  okTitle: { fontSize: 12.5, fontWeight: "700", lineHeight: 18.75, color: colors.ink },
+  okTitle: { fontSize: 15, fontWeight: "700", lineHeight: 23, color: colors.ink },
   grow: { flex: 1, minWidth: 0 },
   similar: { lineHeight: 17, marginTop: 12, marginBottom: 2 },
   xrow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
@@ -194,23 +203,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cbxOn: { backgroundColor: colors.plum700, borderColor: colors.plum700 },
   avs: { flexDirection: "row" },
   avSecond: { marginLeft: -8, borderRadius: 999, borderWidth: 2, borderColor: colors.surface, margin: -2 },
-  metaTitle: { fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
-  metaSub: { fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
+  metaTitle: { fontSize: 15, fontWeight: "700", lineHeight: 22, color: colors.ink },
+  metaSub: { fontSize: 13, lineHeight: 20, color: colors.ink3 },
   acts: { flexDirection: "row", gap: 8, marginTop: 10 },
   sm: { height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   smPrimary: { backgroundColor: colors.ink },
   smGhost: { backgroundColor: "transparent" },
   smOff: { opacity: 0.4 },
   smBusy: { opacity: 0.6 },
-  smText: { fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  smText: { fontSize: 14, fontWeight: "700", lineHeight: 21 },
   accHead: { flexDirection: "row", alignItems: "center", gap: 6 },
   chevOpen: { transform: [{ rotate: "180deg" }] },
   accBody: { paddingTop: 8 },
   frow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
   frowLine: { borderBottomWidth: 1, borderBottomColor: colors.line },
-  frowKey: { width: 62, fontSize: 11.5, lineHeight: 17.25, color: colors.ink3 },
-  problem: { marginBottom: 8, marginLeft: 30, fontSize: 11.5, lineHeight: 17.25, color: colors.coralText },
+  frowKey: { width: 62, fontSize: 13, lineHeight: 20, color: colors.ink3 },
+  problem: { marginBottom: 8, marginLeft: 30, fontSize: 13, lineHeight: 20, color: colors.coralText },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
-  frowText: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: "700", lineHeight: 19.5, color: colors.ink },
+  frowText: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", lineHeight: 22, color: colors.ink },
   groupBody: { paddingVertical: 8, gap: 8 },
 }));

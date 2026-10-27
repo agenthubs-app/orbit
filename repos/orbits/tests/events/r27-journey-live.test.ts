@@ -297,3 +297,13 @@ test("createJourneyLivePorts：非 live 模式 → null（同 getConfiguredEvent
     if (previous.module === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = previous.module;
   }
 });
+
+test("QA-B2: an organizer profile's public name and slug win over the payload; without a profile the payload name stays and there is no slug", () => {
+  const event = { description: null, endsAt: null, eventId: "evt-2", organizerActorId: ORGANIZER, publicCode: null, sourcePayload: {}, startsAt: "2026-11-05T10:00:00.000Z", title: "QA", venue: null };
+  const hosted = journeyEventFromCanonical(event, { organizerProfile: { name: "QA 主办方", slug: "qa-host" }, organizerProfileId: "prof_1", policy: null, registrationCount: 0 });
+  assert.equal(hosted.organizerName, "QA 主办方");
+  assert.equal(hosted.organizerSlug, "qa-host");
+  const seed = journeyEventFromCanonical(event, { policy: null, registrationCount: 0 });
+  assert.equal(seed.organizerSlug, null);
+  assert.ok(seed.organizerName);
+});

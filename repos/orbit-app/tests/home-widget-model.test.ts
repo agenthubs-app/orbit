@@ -46,3 +46,30 @@ test("long-press size choice sets the requested size without toggling a matching
   const small = resizeWidget(medium, "today", "s");
   assert.equal(small.find(slot => slot.key === "today")?.size, "s");
 });
+
+test("UX: the Today card counts 今天 / 已逾期 like the to-do tab — tasks and follow-ups by due time, else planned day", async () => {
+  const { homeTodaySummary } = await import("../src/screens/home/home-widget-model");
+  const tasks = [
+    { id: "a", title: "Old", plannedDate: "2026-10-20" },
+    { id: "b", title: "Due late tonight Tokyo", dueAt: "2026-10-26T14:30:00.000Z" }, // 23:30 JST on the 26th
+    { id: "c", title: "Planned today", plannedDate: "2026-10-26" },
+    { id: "d", title: "Tomorrow", plannedDate: "2026-10-27" },
+    { id: "e", title: "No date" },
+  ];
+  const followUps = [{ itemKey: "f1", titlePreview: "Call Sato", dueAt: "2026-10-24T01:00:00.000Z" }, { itemKey: "f2", titlePreview: "Someday", dueAt: null }];
+  const summary = homeTodaySummary(tasks, followUps, "2026-10-26", "Asia/Tokyo");
+  assert.deepEqual(summary.today.map(row => row.title), ["Due late tonight Tokyo", "Planned today"]);
+  assert.deepEqual(summary.overdue.map(row => row.title), ["Old", "Call Sato"]);
+  assert.equal(summary.capped, false);
+  assert.equal(homeTodaySummary(tasks.slice(0, 3), [], "2026-10-26", "Asia/Tokyo", true).capped, true, "the 30-row window ended on today: counts are a floor");
+  assert.equal(homeTodaySummary(tasks, [], "2026-10-26", "Asia/Tokyo", true).capped, false);
+});
+
+test("UX: the next of today's calendar items is the first not yet over; all-day items always count", async () => {
+  const { nextTodayScheduleItem } = await import("../src/screens/home/home-widget-model");
+  const items = [{ title: "Breakfast", timeLabel: "08:00", durationMinutes: 60 }, { title: "Lunch", timeLabel: "12:00", durationMinutes: 60 }];
+  assert.equal(nextTodayScheduleItem(items, 9 * 60 + 30)?.title, "Lunch");
+  assert.equal(nextTodayScheduleItem(items, 8 * 60 + 30)?.title, "Breakfast", "an ongoing item is next");
+  assert.equal(nextTodayScheduleItem(items, 14 * 60), null);
+  assert.equal(nextTodayScheduleItem([{ title: "Holiday", timeLabel: "", durationMinutes: 0 }], 23 * 60)?.title, "Holiday");
+});

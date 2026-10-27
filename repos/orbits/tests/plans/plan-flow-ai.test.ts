@@ -5,14 +5,16 @@ import { PLAN_GOAL_TEMPLATES, planShortNameCandidates, PLAN_EVENT_SLOT } from ".
 import type { AiQuotaGate, AiQuotaReservation } from "../../features/ai-quota/gate";
 import { createDeepseekPlanFlowAi } from "../../features/plans/v2/ai/deepseek";
 import { createMockPlanFlowAi } from "../../features/plans/v2/ai/mock";
-import { checkBackground, checkDraft, checkLadder, checkQuestions, checkReviewFix } from "../../features/plans/v2/ai/schemas";
+import { firstDraftTask } from "../../features/plans/v2/ai/prompts";
+import { checkBackground, checkDraft, checkFix, checkLadder, checkQuestions, checkReviewFix } from "../../features/plans/v2/ai/schemas";
 import type { DraftOutput, FirstDraftInput, PlanAiContext } from "../../features/plans/v2/ai/types";
-import { citationMarkerIssues } from "../../features/plans/v2/validate-content";
+import { checkDraftContent, citationMarkerIssues } from "../../features/plans/v2/validate-content";
+import type { PlanGoalKind } from "../../shared/contract/plan-v2";
 
 // R23 SC-R23-07（DESIGN §5.1 / §5.2）：输出校验、mock 确定性、按操作记账、修复重试、失败与上限、同键不再调用。
 const CONTEXT: PlanAiContext = { actorId: "actor:alice", language: "ja", ledgerKey: "draft:intake-1:1", now: new Date("2026-10-07T01:00:00Z") };
 
-function draftInputFor(kind: "fundraising" | "launch" = "fundraising"): FirstDraftInput {
+function draftInputFor(kind: PlanGoalKind = "fundraising"): FirstDraftInput {
   const slots = PLAN_GOAL_TEMPLATES[kind].slots.filter((slot) => slot.slot !== PLAN_EVENT_SLOT).map((slot) => ({
     allocation: slot.allocation, emoji: slot.emoji, shortNames: planShortNameCandidates(slot.slot, []).map((id) => ({ id, label: id })), slot: slot.slot, targetCount: slot.targetCount,
   }));
@@ -57,8 +59,8 @@ test("first-draft checks reject what the design forbids", async () => {
   reject((draft) => { draft.citations = [{ id: "L-777", version: 1 }]; }, /not a published entry/);
   reject((draft) => { draft.diagnosis = "市場は 7,793 億円です。"; }, /number without a citation/);
   reject((draft) => { draft.citations = []; draft.diagnosis = "伸びています①。"; }, /has no citation/);
-  reject((draft) => { draft.personTypes[0]!.introRoutes = [{ viaAlias: "C9", why: "知り合い" }]; }, /unknown alias/);
-  reject((draft) => { draft.personTypes[0]!.introRoutes = [{ viaAlias: "C1", why: "VC を 3 人紹介できる" }]; }, /headcount/);
+  // 少于 3 条的聞くこと没有安全的补法（面谈メモ按 3 问里覆盖 2 问计分）→ 仍拒绝；別名不明 / 写人数的紹介ルート改为删掉（见下方）。
+  reject((draft) => { draft.personTypes[0]!.questions = ["最初に何から始めましたか？", "どこでつまずきましたか？"]; }, /three questions/);
   reject((draft) => { draft.personTypes[0]!.slot = "not_a_slot"; }, /not a template slot/);
   reject((draft) => { draft.personTypes[0]!.targetCount = 6; }, /target/);
 });
@@ -221,4 +223,143 @@ test("review fixes: an off-total revision is rebalanced from untouched slots, ne
   tight.personTypes[0]!.allocation += 10;
   const refused = checkReviewFix({ noChangeReason: null, reasons: [], revised: tight, unchanged: [] }, checkInput(input, false), current, { earned: floorEarned, skippedSlots: [] });
   assert.equal(refused.ok, false);
+});
+
+/* ---------- staging 新账号（0 联系人）C6 每次被拒（2026-10-26）：可修的小毛病由服务端确定性修理 ---------- */
+
+/** 营业类、0 联系人、4 条行业概况（staging 日志里的 5 个枠：decision_maker / field_lead / introducer / senior_seller / industry_body）。 */
+function stagingInput(): FirstDraftInput {
+  const input = draftInputFor("sales");
+  return { ...input, contacts: [], landscape: ["L-201", "L-202", "L-203", "L-204"].map((id) => ({ id, summary: "s", title: "t", version: 1 })) };
+}
+
+function recordingLog() {
+  const entries: Array<Record<string, unknown>> = [];
+  return { entries, log: (entry: Record<string, unknown>) => { entries.push(entry); } };
+}
+
+test("staging run 1 attempt 1: four questions and made-up intro aliases on every type → trimmed and dropped, the draft succeeds on the first call", async () => {
+  const input = stagingInput();
+  const good = await mockDraft(input);
+  assert.deepEqual(good.personTypes.map((type) => type.slot), ["decision_maker", "field_lead", "introducer", "senior_seller", "industry_body"]);
+  const bad = structuredClone(good);
+  for (const type of bad.personTypes) {
+    type.questions = [...type.questions, "予算はどのくらいですか？"];
+    type.introRoutes = [{ viaAlias: "C1", why: "業界の知り合いが多い" }];
+  }
+  const { entries, log } = recordingLog();
+  const { events, ledger } = fakeLedger();
+  const http = fakeChat([bad, bad]);
+  const outcome = await createDeepseekPlanFlowAi({ chat: http.chat, ledger, log, model: "m" }).firstDraft(input, CONTEXT);
+  assert.equal(outcome.ok, true, JSON.stringify(entries));
+  assert.equal(http.calls, 1, "no repair round-trip needed");
+  assert.equal(events.at(-1), "finish:op-1:succeeded");
+  const value = (outcome as { value: DraftOutput }).value;
+  for (const [index, type] of value.personTypes.entries()) {
+    assert.deepEqual(type.questions, good.personTypes[index]!.questions, "the first three, unchanged");
+    assert.deepEqual(type.introRoutes, [], "no fabricated introducer");
+  }
+  assert.deepEqual(checkDraftContent(value, checkInput(input)), []);
+  const repaired = entries.find((entry) => entry.event === "plan_v2_ai_output_repaired");
+  assert.ok(repaired, "repairs are logged, not silent");
+  assert.equal(repaired.step, "first_draft");
+  const codes = repaired.repairs as string[];
+  for (const slot of ["decision_maker", "field_lead", "introducer", "senior_seller", "industry_body"]) {
+    assert.ok(codes.includes(`questions_trimmed:${slot}`), codes.join(","));
+    assert.ok(codes.includes(`intro_route_unknown_alias_dropped:${slot}`), codes.join(","));
+  }
+  assert.equal(entries.some((entry) => entry.event === "plan_v2_ai_output_rejected"), false);
+});
+
+test("staging run 1 attempt 2 / run 2 attempt 1: intro routes via unknown aliases only → dropped; a known alias with a headcount is dropped too; known aliases stay", async () => {
+  const input = stagingInput();
+  const good = await mockDraft(input);
+  const bad = structuredClone(good);
+  for (const type of bad.personTypes) type.introRoutes = [{ viaAlias: "C2", why: "紹介してくれそう" }, { viaAlias: "C7", why: "元同僚" }];
+  const result = checkDraft(bad, checkInput(input));
+  assert.equal(result.ok, true, (result as { issues?: string[] }).issues?.join(" | "));
+  assert.ok((result as { value: DraftOutput }).value.personTypes.every((type) => type.introRoutes.length === 0));
+
+  const withContacts = draftInputFor("sales");
+  const base = await mockDraft(withContacts);
+  const mixed = structuredClone(base);
+  mixed.personTypes[1]!.introRoutes = [{ viaAlias: "C1", why: "同じ業界にいる" }, { viaAlias: "C9", why: "知り合い" }, { viaAlias: "C1", why: "3 人紹介できる" }];
+  const kept = checkDraft(mixed, checkInput(withContacts));
+  assert.equal(kept.ok, true, (kept as { issues?: string[] }).issues?.join(" | "));
+  assert.deepEqual((kept as { value: DraftOutput }).value.personTypes[1]!.introRoutes, [{ viaAlias: "C1", why: "同じ業界にいる" }]);
+  assert.deepEqual((kept as { repairs?: string[] }).repairs?.sort(), ["intro_route_headcount_dropped:field_lead", "intro_route_unknown_alias_dropped:field_lead"]);
+});
+
+test("staging run 2 attempt 2: citation ④ is not used in the text → dropped; an unused middle citation is dropped and later markers renumbered", async () => {
+  const input = stagingInput();
+  const good = await mockDraft(input);
+  const all = input.landscape.map((entry) => ({ id: entry.id, version: entry.version }));
+  const unusedLast = { ...structuredClone(good), citations: all, diagnosis: good.diagnosis.replace("①②", "①②③") };
+  const last = checkDraft(unusedLast, checkInput(input));
+  assert.equal(last.ok, true, (last as { issues?: string[] }).issues?.join(" | "));
+  assert.deepEqual((last as { value: DraftOutput }).value.citations.map((item) => item.id), ["L-201", "L-202", "L-203"]);
+  assert.deepEqual((last as { repairs?: string[] }).repairs, ["citation_unused_dropped:1"]);
+
+  const unusedMiddle = { ...structuredClone(good), citations: all, diagnosis: good.diagnosis.replace("①②", "①③④") };
+  const middle = checkDraft(unusedMiddle, checkInput(input));
+  assert.equal(middle.ok, true, (middle as { issues?: string[] }).issues?.join(" | "));
+  const value = (middle as { value: DraftOutput }).value;
+  assert.deepEqual(value.citations.map((item) => item.id), ["L-201", "L-203", "L-204"]);
+  assert.ok(value.diagnosis.includes("①②③") && !value.diagnosis.includes("④"), value.diagnosis);
+  assert.deepEqual(checkDraftContent(value, checkInput(input)), []);
+});
+
+test("unusable answers still fail: no person types, an empty diagnosis, or fewer than three questions → repair once, then failed", async () => {
+  const input = stagingInput();
+  const good = await mockDraft(input);
+  const noTypes = { ...structuredClone(good), personTypes: [], steps: good.steps.map((step) => ({ ...step, personTypeKeys: ["event"] })) };
+  const noDiagnosis = { ...structuredClone(good), diagnosis: "" };
+  const twoQuestions = structuredClone(good);
+  for (const type of twoQuestions.personTypes) type.questions = type.questions.slice(0, 2);
+  for (const bad of [noTypes, noDiagnosis, twoQuestions]) {
+    const { entries, log } = recordingLog();
+    const { events, ledger } = fakeLedger();
+    const http = fakeChat([bad, bad]);
+    const outcome = await createDeepseekPlanFlowAi({ chat: http.chat, ledger, log, model: "m" }).firstDraft(input, CONTEXT);
+    assert.deepEqual(outcome, { ok: false, reason: "failed" });
+    assert.equal(http.calls, 2);
+    assert.equal(events.at(-1), "finish:op-1:failed");
+    assert.equal(entries.filter((entry) => entry.event === "plan_v2_ai_output_rejected").length, 2);
+  }
+});
+
+test("the first-draft prompt lists the real contact aliases, and says intro routes must be empty when there are none", async () => {
+  assert.match(firstDraftTask([]), /no contacts yet: every introRoutes must be \[\]/);
+  assert.match(firstDraftTask(["C1", "C2"]), /no others exist\): C1, C2\./);
+  assert.match(firstDraftTask([]), /EXACTLY 3 strings/);
+  assert.doesNotMatch(firstDraftTask([]), /"viaAlias": "C1"/);
+  const input = stagingInput();
+  const good = await mockDraft(input);
+  const systems: string[] = [];
+  const { ledger } = fakeLedger();
+  await createDeepseekPlanFlowAi({ chat: async ({ system }) => { systems.push(system); return { content: JSON.stringify(good), usage: { inputTokens: 1, outputTokens: 1 } }; }, ledger, log: () => undefined, model: "m" }).firstDraft(input, CONTEXT);
+  assert.match(systems[0]!, /no contacts yet/);
+});
+
+test("revisions (C7 / C9): rewritten text that drops a citation marker falls back to the confirmed text instead of failing", async () => {
+  const input = draftInputFor();
+  const current = await mockDraft(input);
+  assert.equal(current.citations.length, 2);
+  const revised = { ...structuredClone(current), diagnosis: "まず現場の人に話を聞きます①。" };
+  revised.steps[0]!.title = "現場の人に話を聞く";
+  const raw = { noChangeReason: null, reasons: [{ path: "steps.0.title", reason: "r" }], revised, unchanged: [] };
+  const fixed = checkFix(raw, checkInput(input, false), current);
+  assert.equal(fixed.ok, true, (fixed as { issues?: string[] }).issues?.join(" | "));
+  const value = (fixed as { value: { revised: DraftOutput } }).value.revised;
+  assert.equal(value.diagnosis, current.diagnosis);
+  assert.equal(value.steps[0]!.title, "現場の人に話を聞く", "the requested change is kept");
+  assert.deepEqual((fixed as { repairs?: string[] }).repairs, ["revision_diagnosis_restored_for_citations"]);
+  const reviewed = checkReviewFix(raw, checkInput(input, false), current, { earned: {}, skippedSlots: [] });
+  assert.equal(reviewed.ok, true, (reviewed as { issues?: string[] }).issues?.join(" | "));
+
+  const { entries, log } = recordingLog();
+  const { ledger } = fakeLedger();
+  const outcome = await createDeepseekPlanFlowAi({ chat: fakeChat([raw]).chat, ledger, log, model: "m" }).reviewFix({ contacts: input.contacts, current, earned: {}, goalKind: input.goalKind, landscape: input.landscape, premise: [], previousTurns: [], request: "x", skippedSlots: [], slots: input.slots }, CONTEXT);
+  assert.equal(outcome.ok, true);
+  assert.ok(entries.some((entry) => entry.event === "plan_v2_ai_output_repaired" && entry.step === "review_fix"));
 });

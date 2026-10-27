@@ -17,6 +17,7 @@ export function MaintenanceGate({ language }: { language: OrbitLanguage }) {
     const controller = new AbortController();
     pending.current = controller;
     const timeout = setTimeout(() => controller.abort(), 8000);
+    // A failed read (network error, timeout, non-2xx) returns null and is treated as "not in maintenance".
     const next = await readMaintenanceFromApi(fetch, controller.signal);
     clearTimeout(timeout);
     if (pending.current !== controller) return;

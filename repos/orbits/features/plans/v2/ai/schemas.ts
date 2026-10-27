@@ -26,7 +26,8 @@ import type {
   QuestionsOutput,
 } from "./types";
 
-export type Checked<T> = { ok: true; value: T } | { ok: false; issues: string[] };
+/** `repairs`：服务端确定性修理过的问题码（只在有修理时出现；调用方写日志 `plan_v2_ai_output_repaired`）。 */
+export type Checked<T> = { ok: true; value: T; repairs?: string[] } | { ok: false; issues: string[] };
 
 const text = (max: number) => z.string().trim().max(max);
 const stance = z.enum(["owner", "cofounder", "employee", "individual"]).nullable().catch(null);
@@ -161,10 +162,12 @@ const draftSchema = z.object({
 export function checkDraft(raw: unknown, input: ContentCheckInput, normalize?: Omit<DraftNormalizeOptions, "goalKind" | "enforceTemplate">): Checked<DraftOutput> {
   const parsed = parse(draftSchema as z.ZodType<DraftOutput>, raw);
   if (parsed.ok === false) return { issues: parsed.issues, ok: false };
-  // 算术与引用一致性由服务端规整（normalize.ts），规整后再走同一套校验。
-  const value = normalizeDraftOutput(parsed.value, { ...normalize, enforceTemplate: input.enforceTemplate, goalKind: input.goalKind });
+  // 算术、引用一致性与可修的小毛病由服务端规整（normalize.ts），规整后再走同一套校验。
+  const repairs: string[] = [];
+  const value = normalizeDraftOutput(parsed.value, { ...normalize, aliases: input.aliases, enforceTemplate: input.enforceTemplate, goalKind: input.goalKind, repairs });
   const issues = checkDraftContent(value, input);
-  return issues.length > 0 ? { issues, ok: false } : { ok: true, value };
+  if (issues.length > 0) return { issues, ok: false };
+  return repairs.length > 0 ? { ok: true, repairs, value } : { ok: true, value };
 }
 
 /** C7：改后的完整方案 + 改动理由；方案本身按 C6 的规则（不限模板 ±5）。 */
@@ -180,7 +183,7 @@ export function checkFix(raw: unknown, input: ContentCheckInput, current?: Draft
   if (revised.ok === false) return { issues: revised.issues, ok: false };
   const disallowed = current ? disallowedChangeIssues(current, revised.value) : [];
   if (disallowed.length > 0) return { issues: disallowed, ok: false };
-  return { ok: true, value: { noChangeReason: parsed.value.noChangeReason ?? null, reasons: (parsed.value.reasons ?? []) as FixOutput["reasons"], revised: revised.value, unchanged: parsed.value.unchanged ?? [] } };
+  return { ok: true, ...(revised.repairs ? { repairs: revised.repairs } : {}), value: { noChangeReason: parsed.value.noChangeReason ?? null, reasons: (parsed.value.reasons ?? []) as FixOutput["reasons"], revised: revised.value, unchanged: parsed.value.unchanged ?? [] } };
 }
 
 /** C8：行 key ∈ 前提；依据 ∈ 输入的记录。 */

@@ -125,7 +125,10 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const persona = draft ? await ports.persona(eventId, answers.filter((answer) => !isHostAnswer(answer)), language).catch(() => null) : null;
       const intro = persona?.selfIntroDraft ? { source: "ai_draft" as const, text: persona.selfIntroDraft } : draft ? await ports.profileIntro(actorId).then((text) => (text ? { source: "profile" as const, text } : null)) : null;
       const basis = intro?.source === "ai_draft" ? tri(language, "回答（目的・テーマ・会いたい人）とプロフィールから作成。売上などの数値は入れていません。", "根据回答（目的、话题、想见的人）和个人资料写成，没有放入营收等数字。", "Written from your answers (goal, topics, who to meet) and your profile. No revenue or other figures.") : null;
-      const editableUntil = new Date(Date.parse(event.startsAt) - 86_400_000).toISOString();
+      // Answers stay editable until registration closes (the policy's profile-edit deadline is the close); a day before the
+      // start was often already past (「报名后10/25前仍可修改」 on a 10/26 event). Nothing is promised once that time has passed.
+      const editableUntilAt = event.registrationClosesAt ?? event.startsAt;
+      const editableUntil = Date.parse(editableUntilAt) > Date.now() ? new Date(Date.parse(editableUntilAt)).toISOString() : null;
       return profileFromAnswers(answers, { editableUntil, personaTopics: persona?.tags ?? [], review: event.review, reviewUntil: event.review ? event.registrationClosesAt : null, selfIntro: intro, selfIntroBasis: basis });
     },
     async submit(actorId: string, eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, selfIntro?: string): Promise<EventJoinResult | null> {
@@ -154,7 +157,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
       const status = await ports.registrationStatus(actorId, eventId);
       const final = status === "registered";
       const title = tentativeTitle(event.title, language, final);
-      if (existing && !existing.removed) return { eventId, scheduleItemId: existing.scheduleItemId, title };
+      // A record saved with an empty id (before the schedule id fix) is treated as missing, so a retry can succeed.
+      if (existing && !existing.removed && existing.scheduleItemId) return { eventId, scheduleItemId: existing.scheduleItemId, title };
       const endsAt = event.endsAt ?? new Date(Date.parse(event.startsAt) + 2 * 3_600_000).toISOString();
       const scheduleItemId = await ports.createSchedule(actorId, { endsAt, idempotencyKey, startsAt: event.startsAt, title });
       await ports.saveTentative(actorId, eventId, { final, scheduleItemId });

@@ -6,6 +6,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
+import { resetStackTo } from "../../components/shell-navigation";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { Card } from "../../components/ui/Card";
@@ -71,6 +72,7 @@ function AccountOverview({ view, onRefresh }: { view: AccountSessionView; onRefr
     if (!result.success) { setFeedback(result.message ?? locale.t("account.signOutFailure")); return; }
     if (auth.actorId) clearProfileEditSession({ actorId: auth.actorId, apiOrigin: server.baseUrl });
     onRefresh();
+    resetStackTo(router, "/account/login");
   }
   async function addDebugPendingWrite() {
     try {
@@ -144,12 +146,12 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   page: { gap: 12, paddingBottom: 24 },
   identity: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: colors.accentText, fontSize: 16, fontWeight: "700" },
+  avatarText: { color: colors.accentText, fontSize: 18, fontWeight: "700" },
   identityCopy: { flex: 1, minWidth: 0 },
-  identityName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  muted: { color: colors.ink3Text, fontSize: 12, marginTop: 3 },
-  heading: { color: colors.ink3Text, fontSize: 12, marginTop: 9, marginLeft: 6 },
+  identityName: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  muted: { color: colors.ink3Text, fontSize: 14, marginTop: 3 },
+  heading: { color: colors.ink3Text, fontSize: 14, marginTop: 9, marginLeft: 6 },
   group: { paddingVertical: 2, paddingHorizontal: 16 },
   rule: { height: 1, backgroundColor: colors.line, marginLeft: 30 },
-  feedback: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: 24, fontSize: 13, padding: 12 },
+  feedback: { color: colors.coralText, backgroundColor: colors.coralSoft, borderRadius: 24, fontSize: 15, padding: 12 },
 }));

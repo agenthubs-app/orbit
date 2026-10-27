@@ -634,6 +634,23 @@ test("AI reliable send creates stable ids before dispatch and queries an unknown
   );
   assert.equal((await writes(p)).length, 1, "unknown result recovery must not dispatch a second model request");
 });
+test("QA-A2: 检查结果 that finds no record says the message never arrived, and 重试 resends the same request", async t => {
+  const p = await open(t, { params: { id: "new" } });
+  await p.getByRole("textbox").fill("没有送到的问题");
+  await press(p, "发送消息");
+  const firstWrite = (await writes(p))[0];
+  await replyLastWrite(p, undefined, 503);
+  // The session exists but has no record of this request id: the POST never arrived.
+  await p.evaluate(({ path, payload }) => { (window as any).fixture.payloads[path] = payload; }, { path: `/api/ai/conversations/sessions/${encodeURIComponent(firstWrite.body.sessionId)}`, payload: { session: aiSession, storage: aiSessionListPayload.storage } });
+  await press(p, "检查结果");
+  assert.equal(await p.getByText("这条消息没有送到 iOrbit，没有生成回答。可以重试。", { exact: true }).count(), 1);
+  assert.equal((await writes(p)).length, 1, "checking never sends");
+  await press(p, "重试");
+  const all = await writes(p);
+  assert.equal(all.length, 2);
+  assert.equal(all[1].body.requestId, firstWrite.body.requestId, "the same idempotent request");
+  assert.equal(all[1].body.message, "没有送到的问题");
+});
 for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI prefilled question does not transfer to another identity " + JSON.stringify(patch), async t => {
   const p = await open(t, { params: { id: "new", initialMessage: "原账号的活动背景" } });
   assert.deepEqual(await writes(p), []);
@@ -857,7 +874,7 @@ test("AI conversation fits its kit header and keeps both exit controls reachable
 });
 test("AI conversation displays readable numbered steps with aligned supporting paragraphs", async t => {
   const p = await open(t, { payloads: sourceReadPayloads }); const number = p.getByText("1", { exact: true });
-  assert.equal(await number.count(), 1); assert.equal(await number.evaluate(el => getComputedStyle(el).fontSize), "22px");
+  assert.equal(await number.count(), 1); assert.equal(await number.evaluate(el => getComputedStyle(el).fontSize), "24px"); // UX-1 scale
   const title = await p.getByText("先准备一个具体问题", { exact: true }).boundingBox();
   const detail = await p.getByText("选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。", { exact: true }).boundingBox();
   assert.ok(title && detail && Math.abs(title.x - detail.x) < 1);
@@ -1044,7 +1061,7 @@ test("a drafted task shows a card with its own fields and writes nothing on its 
   await p.getByText("整理 Note full flow 笔记的后续行动", { exact: true }).waitFor();
   assert.equal(await p.getByText("待确认 · 待办", { exact: true }).count(), 1);
   assert.equal(await p.getByText("笔记 1 · 人脉 1", { exact: true }).count(), 1);
-  assert.equal(await p.getByText("确认前不会写入任何数据。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("确认后才会保存。", { exact: true }).count(), 1);
   assert.deepEqual(await writes(p), [], "rendering a card must not write");
 
   // The panel that used to sit under every reply is gone.
@@ -1062,11 +1079,15 @@ test("confirming the card is the one action that creates the record", async t =>
 
 test("an edited field is sent as a revision before the write, so the record matches the card", async t => {
   const p = await openWithDraft(t);
-  await p.getByRole("textbox", { name: "截止", exact: true }).fill("2026-09-19T09:00");
+  // QA-A2: the date and time are picked, not typed.
+  await p.getByRole("button", { name: /^截止 9月18日/ }).click(); await settle(p);
+  await press(p, "2026-09-19"); await press(p, "完成");
+  await p.getByRole("button", { name: "截止 18:00", exact: true }).click(); await settle(p);
+  await p.getByRole("radio", { name: "HH 09", exact: true }).click(); await press(p, "完成");
   await press(p, "确认创建整理 Note full flow 笔记的后续行动");
 
   assert.deepEqual(await writes(p), [
-    { method: "POST", path: "/api/ai/entity-drafts/entity-draft%3A1", body: { action: "revise", fields: { dueAt: "2026-09-19T09:00" } } },
+    { method: "POST", path: "/api/ai/entity-drafts/entity-draft%3A1", body: { action: "revise", fields: { dueAt: "2026-09-19T09:00:00" } } },
   ], "the revision must land before the confirm, and the confirm waits for it");
 });
 
@@ -1086,7 +1107,7 @@ test("a created card stops offering confirmation and opens the record instead", 
 
   await p.getByText("已创建 · 待办", { exact: true }).waitFor();
   assert.equal(await p.getByRole("button", { name: /^确认创建/ }).count(), 0, "a created record cannot be created again");
-  assert.equal(await p.getByText("已写入并回读成功。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("已保存。", { exact: true }).count(), 1);
   await press(p, "打开记录");
   assert.deepEqual(await navigation(p), ["/tasks/task%3A9"]);
 });

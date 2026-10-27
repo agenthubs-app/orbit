@@ -17,7 +17,7 @@ const state = window.fixture = { kind: "date", draft: "2027-02-15", zone: "Asia/
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 function App() {
   useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
-  return <><button aria-label="Open" onClick={() => state.update({ open: true })}>Open</button><output id="draft">{state.draft}</output>{state.open ? <PersonalScheduleDateTimePicker key={state.record + ":" + state.kind} kind={state.kind} value={state.draft} zone={state.zone} disabled={state.disabled} onCancel={() => state.update({ open: false })} onConfirm={draft => { if (!state.disabled) state.update({ draft, open: false }); }} /> : null}</>;
+  return <><button aria-label="Open" onClick={() => state.update({ open: true })}>Open</button><output id="draft">{state.draft}</output>{state.open ? <PersonalScheduleDateTimePicker key={state.record + ":" + state.kind} kind={state.kind} value={state.draft} zone={state.zone} disabled={state.disabled} yearJump={state.yearJump} initialMonth={state.initialMonth} max={state.max} onCancel={() => state.update({ open: false })} onConfirm={draft => { if (!state.disabled) state.update({ draft, open: false }); }} /> : null}</>;
 }
 createRoot(document.getElementById("root")).render(<App />);
 `, loader: "tsx", resolveDir: process.cwd() },
@@ -108,4 +108,21 @@ test("stored minute is initially visible in its scroll column", async t => {
   await page.waitForTimeout(350);
   const box = await page.getByRole("radio", { name: "mm 37", exact: true }).boundingBox();
   assert.ok(box && box.y >= 0 && box.y + box.height <= 844, `selected minute stays on screen: ${JSON.stringify(box)}`);
+});
+
+test("a birthday picker opens empty on its start month, steps by year, and refuses days after max", async t => {
+  const page = await open(t, { draft: "", yearJump: true, initialMonth: "1996-01", max: "2026-10-26" });
+  const done = page.getByRole("dialog").getByRole("button", { name: "完成", exact: true });
+  assert.equal(await done.isDisabled(), true, "nothing chosen yet");
+  assert.equal(await page.getByRole("button", { name: "今天", exact: true }).count(), 0, "no today/tomorrow shortcuts");
+  await page.getByRole("button", { name: "1996-01-15", exact: true }).waitFor();
+  for (let i = 0; i < 6; i += 1) await page.getByRole("button", { name: "上一年", exact: true }).click();
+  await page.getByRole("button", { name: "1990-01-20", exact: true }).click();
+  await done.click();
+  assert.equal(await draft(page), "1990-01-20");
+  await page.evaluate(() => (window as any).fixture.update({ open: true, record: 3, draft: "2026-10-20" }));
+  assert.equal(await page.getByRole("button", { name: "2026-10-26", exact: true }).isDisabled(), false);
+  assert.equal(await page.getByRole("button", { name: "2026-10-27", exact: true }).isDisabled(), true, "a day after max");
+  await page.getByRole("button", { name: "下一年", exact: true }).click();
+  await page.getByRole("button", { name: "2027-10-01", exact: true }).waitFor();
 });

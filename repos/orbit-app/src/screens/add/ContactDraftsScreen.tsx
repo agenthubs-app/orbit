@@ -1,6 +1,6 @@
 // R12 `contacts/new/drafts` 確認待ちの下書き (DESIGN §2.9, App): the existing draft queue
-// (`GET /api/contact-drafts`) with 確認して追加 (the existing confirm) and 破棄 (hidden on
-// this device — the draft service has no discard, as before); `?eventId=` adds
+// (`GET /api/contact-drafts`) with 確認して追加 (the existing confirm) and 破棄 (QA-C2:
+// `POST /api/contact-drafts/[id]/discard`, also hidden on this device); `?eventId=` adds
 // 参加者から取り込む (the existing attendee import). Reached from 人脈を追加 (when there are
 // drafts) and from an event's 「去复核联系人」 (reviewQueueHref).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,6 +74,14 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
 
   async function discard(draft: ContactDraftRow) {
     setDiscarding(null);
+    if (busy) return;
+    setBusy(draft.id);
+    // QA-C2: 破棄 is stored on the server so the count drops and other devices stop listing it;
+    // the device list still hides it right away (and on a server without the discard route).
+    const result = fixture ? { data: { stored: false }, ok: true as const } : await api.discardDraft(draft.id);
+    if (!mounted.current) return;
+    setBusy(null);
+    if (!result.ok) { toast.error(t("add.drafts.actionFailed")); return; }
     await discardDraft(accountId, draft.id);
     if (!mounted.current) return;
     toast.info(t("add.drafts.discardedToast"));
@@ -155,18 +163,18 @@ export function ContactDraftsScreen({ eventId, design = null }: { eventId: strin
 // kit 数值（b12 N08b / N09）：.lbl 引导（margin 0 4 12、行高 1.6）、.card.dimport padding 14、.card.drf padding 14 + 间距 10、
 // .av 38、名字 14 / 700、.dn.d1、.chip 来源、.acts 两格（间距 8、margin-top 12）。
 const useDraftStyles = createThemedStyles((colors) => StyleSheet.create({
-  lead: { marginHorizontal: 4, marginBottom: 12, fontSize: 11.5, fontWeight: "500", lineHeight: 18.4, color: colors.ink2 },
+  lead: { marginHorizontal: 4, marginBottom: 12, fontSize: 13, fontWeight: "500", lineHeight: 21, color: colors.ink2 },
   card: { backgroundColor: colors.surface, borderRadius: 24, padding: 14 },
   importCard: { marginBottom: 12, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   grow: { flex: 1, minWidth: 0 },
-  importTitle: { fontSize: 13.5, fontWeight: "700", lineHeight: 20.25, color: colors.ink },
-  lbl: { fontSize: 11.5, fontWeight: "500", lineHeight: 17.25, color: colors.ink3 },
+  importTitle: { fontSize: 16, fontWeight: "700", lineHeight: 24, color: colors.ink },
+  lbl: { fontSize: 13, fontWeight: "500", lineHeight: 20, color: colors.ink3 },
   importAct: { marginTop: 10, flexDirection: "row" },
   list: {},
   drf: {},
   drfNext: { marginTop: 10 },
-  name: { fontSize: 14, fontWeight: "700", lineHeight: 21, color: colors.ink },
+  name: { fontSize: 17, fontWeight: "700", lineHeight: 25, color: colors.ink },
   chips: { flexDirection: "row", gap: 6, marginTop: 8 },
   acts: { flexDirection: "row", gap: 8, marginTop: 12 },
   act: { flex: 1 },

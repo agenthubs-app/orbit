@@ -40,15 +40,17 @@ const TABS: readonly { key: Tab; icon: IconName; label: string }[] = [
 ];
 const isTab = (value: string | undefined): value is Tab => TABS.some((tab) => tab.key === value);
 
-/** kit .topbar（会場モード）：✕ · 标题 + 「● LIVE 20:22 · ラウンド 2 / 3」· 受付 QR。 */
-function LiveTopBar({ title, line, onClose, onQr, t }: { title: string; line: string; onClose: () => void; onQr: () => void; t: JourneyT }) {
+/** kit .topbar（会場モード）：✕ · 标题 + 「● LIVE 20:22 · ラウンド 2 / 3」· 受付 QR。Before the start (check-in opens an hour early) it reads 「19:00 开始」 without the LIVE mark. */
+function LiveTopBar({ title, line, started, onClose, onQr, t }: { title: string; line: string; started: boolean; onClose: () => void; onQr: () => void; t: JourneyT }) {
   const { styles } = useStyles();
   return (
     <View style={styles.bar}>
       <IconButton icon="x" accessibilityLabel={t("liveExit")} onPress={onClose} />
       <View style={styles.center}>
         <UiText accessibilityRole="header" style={styles.title} numberOfLines={1}>{title}</UiText>
-        <View style={styles.subRow}><View style={styles.liveDot} /><UiText style={styles.live}>LIVE</UiText><UiText style={styles.subtitle}>{` ${line}`}</UiText></View>
+        {started
+          ? <View style={styles.subRow}><View style={styles.liveDot} /><UiText style={styles.live}>LIVE</UiText><UiText style={styles.subtitle}>{` ${line}`}</UiText></View>
+          : <View style={styles.subRow}><UiText style={styles.subtitle}>{line}</UiText></View>}
       </View>
       <IconButton icon="scan" accessibilityLabel={t("checkInQr")} onPress={onQr} />
     </View>
@@ -93,6 +95,15 @@ export function VenuePage() {
   // 面談候补（服务端给默认 3 个；这里只在本机调 ±1 天 / ±30 分，下书き用调整后的时间）。
   const [slots, setSlots] = useState<string[] | null>(null);
   const memoRef = useRef<TextInput | null>(null);
+  // LIVE only from the start time: re-render once when it arrives (check-in opens before it).
+  const startsMs = data ? Date.parse(data.startsAt) : Number.NaN;
+  const [, setStartTick] = useState(0);
+  useEffect(() => {
+    const wait = startsMs - Date.now();
+    if (!Number.isFinite(wait) || wait <= 0 || wait > 86_400_000) return;
+    const timer = setTimeout(() => setStartTick((value) => value + 1), wait + 500);
+    return () => clearTimeout(timer);
+  }, [startsMs]);
 
   const load = useCallback(() => api.venue(eventId).then((res) => {
     if (res.ok) { setData(res.data); setOfflineAt(null); setMissing(null); void copy.save(res.data); return res; }
@@ -177,7 +188,8 @@ export function VenuePage() {
     const text = shownSlots.map((slot) => { const s = slotParts(slot); return `${s.date} ${s.time}`; }).join(t("listSep"));
     try { await Clipboard.setStringAsync(t("meetDraft", { name: surname(selected.name), slots: text })); toast.success(t("draftCopied")); } catch { genericError(); }
   };
-  const toAfter = () => router.replace(`${base}/after` as Href);
+  // Back to an 回顾 already in the stack (After → 从参会者名单选 → here) instead of stacking a second one.
+  const toAfter = () => router.dismissTo(`${base}/after` as Href);
 
   const back = { fallback: base, leftLabel: t("close"), leftIcon: "x" as const };
   const notice = offlineAt ? <EventsOfflineNotice lastSyncedAt={offlineAt} /> : null;
@@ -192,13 +204,15 @@ export function VenuePage() {
       <JourneyPage title={t("liveTitle")} subtitle={data.title} {...back} testID="events-venue">
         {notice}
         <View style={vs.card}><UiText style={vs.sub}>{data.state === "ended" ? t("liveEnded") : t("liveNotRegistered")}</UiText></View>
-        {data.state === "ended" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("toAfter")} onPress={toAfter} style={[vs.btnSm, vs.primary, vs.gap]}><UiText style={[vs.btnSmText, { color: colors.bg }]}>{t("toAfter")}</UiText></UiPressable> : null}
+        {data.state === "ended" ? <UiPressable accessibilityRole="button" accessibilityLabel={t("goAfter")} onPress={toAfter} style={[vs.btnSm, vs.primary, vs.gap]}><UiText style={[vs.btnSmText, { color: colors.bg }]}>{t("goAfter")}</UiText></UiPressable> : null}
       </JourneyPage>
     );
   }
 
   const nowMs = Date.parse(data.now);
-  const line = data.round ? t("liveRound", { i: data.round.index, n: data.round.total, time: hm(new Date(nowMs).toISOString()) }) : hm(new Date(nowMs).toISOString());
+  const started = !(Math.max(nowMs, Date.now()) < startsMs);
+  const line = !started ? t("liveStartsAt", { time: hm(data.startsAt) })
+    : data.round ? t("liveRound", { i: data.round.index, n: data.round.total, time: hm(new Date(nowMs).toISOString()) }) : hm(new Date(nowMs).toISOString());
   const openers = data.openers.length ? [...data.openers.slice(openerShift % data.openers.length), ...data.openers.slice(0, openerShift % data.openers.length)] : data.openers;
   const shown = { ...data, openers };
   const ago = selected?.requestedAt ? Math.max(0, Math.round((nowMs - Date.parse(selected.requestedAt)) / 60_000)) : null;
@@ -208,7 +222,7 @@ export function VenuePage() {
       <ShellBackground />
       <ScrollView contentContainerStyle={styles.pad} keyboardShouldPersistTaps="handled">
         {notice}
-        <LiveTopBar title={shortTitle(data.title)} line={line} onClose={toAfter} onQr={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))} t={t} />
+        <LiveTopBar title={shortTitle(data.title)} line={line} started={started} onClose={toAfter} onQr={() => toast.info(data.checkIn?.receptionNumber ? t("vReception", { n: data.checkIn.receptionNumber }) : t("checkInQr"))} t={t} />
         {tab === "now" ? <NowTab data={shown} t={t} toneOf={toneOf} onRecap={toAfter} onMoreOpeners={() => setOpenerShift((value) => value + 1)} /> : null}
         {tab === "recs" ? <RecsTab data={data} t={t} toneOf={toneOf} onRequest={(person) => void requestSwap(person)} onOpen={(person) => setSelectedId(person.attendeeId)}
           onDismiss={(person) => setData((current) => (current ? { ...current, recommendations: current.recommendations.filter((item) => item.attendeeId !== person.attendeeId) } : current))} /> : null}
@@ -306,24 +320,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pad: { paddingBottom: 130, paddingHorizontal: SHELL_GUTTER },
   bar: { alignItems: "center", flexDirection: "row", paddingBottom: 14, paddingTop: 6 },
   center: { alignItems: "center", flex: 1, minWidth: 0 },
-  title: { color: colors.ink, fontSize: 17, fontWeight: "800", letterSpacing: 0.17, lineHeight: 25.5, textAlign: "center" },
+  title: { color: colors.ink, fontSize: 19, fontWeight: "800", letterSpacing: 0.17, lineHeight: 29, textAlign: "center" },
   subRow: { alignItems: "center", flexDirection: "row", marginTop: 1 },
   liveDot: { backgroundColor: colors.coral, borderRadius: 3.5, height: 7, marginRight: 4, width: 7 },
-  live: { color: colors.coral, fontSize: 11.5, fontWeight: "800", lineHeight: 17.25 },
-  subtitle: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
-  sheetName: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25.5 },
+  live: { color: colors.coral, fontSize: 13, fontWeight: "800", lineHeight: 20 },
+  subtitle: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  sheetName: { color: colors.ink, fontSize: 19, fontWeight: "700", lineHeight: 29 },
   req: { marginTop: 14, padding: 14 },
   whyChip: { borderRadius: 999, flex: 1, paddingHorizontal: 9, paddingVertical: 3 },
-  input: { backgroundColor: colors.surface2, borderRadius: 14, color: colors.ink, flex: 1, fontSize: 13, height: 44, paddingHorizontal: 14 },
+  input: { backgroundColor: colors.surface2, borderRadius: 14, color: colors.ink, flex: 1, fontSize: 15, height: 44, paddingHorizontal: 14 },
   mic: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: 999, height: 44, justifyContent: "center", width: 44 },
   blockBtn: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, flexDirection: "row", gap: 6, height: 44, justifyContent: "center", marginTop: 14 },
-  blockText: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
-  meetTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
+  blockText: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  meetTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
   slot: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 12, flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8, padding: 8 },
-  slotLbl: { color: colors.ink2, fontSize: 11.5, fontWeight: "700", lineHeight: 17.25, minWidth: 52 },
-  slotVal: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21, minWidth: 64, textAlign: "center" },
-  minus: { color: colors.ink2, fontSize: 16, fontWeight: "700", lineHeight: 20 },
+  slotLbl: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20, minWidth: 52 },
+  slotVal: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25, minWidth: 64, textAlign: "center" },
+  minus: { color: colors.ink2, fontSize: 18, fontWeight: "700", lineHeight: 23 },
   meetFoot: { borderTopColor: colors.line, borderTopWidth: 1, marginTop: 12, paddingTop: 12 },
-  meetName: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
+  meetName: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   draftBtn: { alignItems: "center", backgroundColor: colors.ink, borderRadius: 999, flexDirection: "row", gap: 6, height: 40, justifyContent: "center", marginTop: 8 },
 }));

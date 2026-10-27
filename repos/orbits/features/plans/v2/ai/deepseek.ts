@@ -8,7 +8,7 @@ import { DeepseekJsonChatError } from "../../../ai/deepseek-json-chat";
 import { AI_QUOTA_MAX_CALLS, AI_QUOTA_PURPOSE_POOLS, type AiQuotaPurpose } from "../../../ai-quota/constants";
 import type { AiQuotaGate } from "../../../ai-quota/gate";
 import type { PlanAiChat } from "../../ai-generator";
-import { PLAN_V2_PROMPT_VERSION, repairMessage, systemPrompt, TASKS } from "./prompts";
+import { firstDraftTask, PLAN_V2_PROMPT_VERSION, repairMessage, systemPrompt, TASKS } from "./prompts";
 import { checkBackground, checkDraft, checkFix, checkGoalKind, checkLadder, checkMembers, checkNextGoals, checkQuestions, checkReviewFix, checkReviewMarks, type Checked } from "./schemas";
 import type { FirstDraftInput, PlanAiContext, PlanAiOutcome, PlanFlowAi } from "./types";
 
@@ -73,6 +73,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
         const checked = check(raw);
         if (checked.ok === true) {
           outcome = "succeeded";
+          if (checked.repairs?.length) log({ attempt, event: "plan_v2_ai_output_repaired", operationId, promptVersion: PLAN_V2_PROMPT_VERSION, repairs: checked.repairs, step });
           log({ attempt, event: "plan_v2_ai_succeeded", operationId, promptVersion: PLAN_V2_PROMPT_VERSION, step });
           return { ok: true, operationId, value: checked.value };
         }
@@ -89,7 +90,7 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
   return {
     id: "deepseek",
     background: (input, context) => run("background", "plan_background", context, TASKS.background, input, (raw) => checkBackground(raw, input)),
-    firstDraft: (input, context) => run("first_draft", "plan_draft", context, TASKS.firstDraft, input, (raw) => checkDraft(raw, draftCheckInput(input))),
+    firstDraft: (input, context) => run("first_draft", "plan_draft", context, firstDraftTask(input.contacts.map((contact) => contact.alias)), input, (raw) => checkDraft(raw, draftCheckInput(input))),
     fix: (input, context) => run("fix", "plan_revise", context, TASKS.fix, input, (raw) => checkFix(raw, draftCheckInput(input), input.current)),
     goalKind: (input, context) => run("goal_kind", "plan_intake", context, TASKS.goalKind, input, checkGoalKind),
     ladder: (input, context) => run("ladder", "plan_intake", context, TASKS.ladder, input, (raw) => checkLadder(raw, input.goalText)),

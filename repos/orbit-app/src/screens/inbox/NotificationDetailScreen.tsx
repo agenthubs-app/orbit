@@ -61,12 +61,14 @@ function NotificationDetail({actorId,id,scopeKey,filter}:{actorId:string;id:stri
   {!record&&!error&&!deviceMissing?<Text style={{color:colors.ink3Text}}>{local.available&&local.freshness.failure?t('typedInbox.error'):t('common.loading')}</Text>:null}
   {record?<View style={{gap:18}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Ionicons name={notificationKindIcons[record.kind]} color={colors.accentText} size={24}/><Text style={{color:colors.accentText}}>{t(`typedInbox.${record.kind}`)}</Text></View>
-    <Text accessibilityRole="header" style={{color:colors.ink,fontSize:23,lineHeight:32,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:24,fontSize:16}}>{record.reason}</Text>
-    <Text style={{color:colors.ink3Text}}>{t(`typedInbox.${stateKeys[record.disposition]}`)} · {t(record.readAt?'typedInbox.readState':'typedInbox.unreadState')}</Text>
+    <Text accessibilityRole="header" style={{color:colors.ink,fontSize:25,lineHeight:35,fontWeight:'700'}}>{record.title}</Text><Text style={{color:colors.ink,lineHeight:27,fontSize:18}}>{record.reason}</Text>
+    {/* Plain status: only say something once it is no longer just waiting (read / unread is implied by being here). */}
+    {record.disposition!=='open'?<Text style={{color:colors.ink3Text}}>{t(`typedInbox.${stateKeys[record.disposition]}`)}</Text>:null}
     {record.dueAt?<Text style={{color:colors.ink3Text}}>{t('typedInbox.due')} · {new Date(record.dueAt).toLocaleString(language)}</Text>:null}
     {record.scheduledFor?<Text style={{color:colors.ink3Text}}>{t('typedInbox.scheduled')} · {new Date(record.scheduledFor).toLocaleString(language)}</Text>:null}
     <Text style={{color:colors.ink3Text}}>{t('typedInbox.occurred')} · {new Date(record.occurredAt).toLocaleString(language)}</Text>
-    <View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.ink,fontWeight:'600'}}>{t('typedInbox.related')}</Text>{record.sources.map((s,i)=><View key={i} style={{gap:6}}>{s.excerpt?<Text style={{color:colors.ink,lineHeight:23}}>{s.excerpt}</Text>:null}<Text style={{color:colors.ink3Text}}>{new Date(s.occurredAt).toLocaleString(language)}</Text></View>)}</View>
+    {/* Only quoted text is worth a box; a source with nothing but a time would repeat the time above. */}
+    {record.sources.some(s=>s.excerpt)?<View style={{backgroundColor:colors.surface2,padding:16,borderRadius:14,gap:10}}><Text style={{color:colors.ink,fontWeight:'600'}}>{t('typedInbox.related')}</Text>{record.sources.filter(s=>s.excerpt).map((s,i)=><Text key={i} style={{color:colors.ink,lineHeight:23}}>{s.excerpt}</Text>)}</View>:null}
     {record.target.status==='available'&&inboxAppTargetHref(record.target.href)?<Button label={t('typedInbox.openItem')} disabled={busy||(!record.readAt&&record.actions.includes('read'))} onPress={()=>router.push(inboxAppTargetHref(record.target.href)! as Href)} variant="primary" />:null}
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{record.actions.filter(a=>a!=='read'||!record.readAt).map(action=><Button key={action} label={offline?`${t(`typedInbox.${action}`)} · ${t('sync.needsNetwork')}`:t(`typedInbox.${action}`)} disabled={offline||busy||!!pending.current} onPress={()=>void act(action)} variant="secondary" />)}</View>
     {busy?<Text style={{color:colors.ink3Text}}>{t('typedInbox.pending')}</Text>:null}

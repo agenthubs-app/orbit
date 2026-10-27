@@ -75,7 +75,7 @@ export function followupSlot(endsAt: string, title: string, language: JourneyLan
   while ([0, 6].includes((((dayIndex + 4) % 7) + 7) % 7)) dayIndex += 1;
   const start = dayIndex * DAY - 9 * 3_600_000 + 9.5 * 3_600_000;
   const short = title.replace(/\s*(Tokyo|東京)?\s*vol\.?\s*\d+\s*$/i, "").replace(/\s+Tokyo$/i, "").trim() || title;
-  const label = language === "zh" ? `${short} 的致谢与跟进` : language === "en" ? `${short}: thanks and follow-up` : `${short} のお礼とフォロー`;
+  const label = language === "zh" ? `${short}的致谢与跟进` : language === "en" ? `${short}: thanks and follow-up` : `${short} のお礼とフォロー`;
   return { endsAt: new Date(start + 30 * 60_000).toISOString(), startsAt: new Date(start).toISOString(), title: label };
 }
 

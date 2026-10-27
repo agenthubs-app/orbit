@@ -34,6 +34,8 @@ const defaults = () => [
   row(card("c-legacy", "前田 隼人", "", "", { sourceType: "event_import" }), 1, { primaryPhone: "090", cardNotes: "出会い：紹介（田中さん）" }),
 ];
 const contacts = () => (window.fixture.contacts ?? defaults()).map(payload => ({ id: payload.id, payload }));
+// UX K3: notes the user wrote that name this person (@mention / linked) come from the device notes mirror.
+const notes = () => (window.fixture.notes ?? []).map(payload => ({ id: payload.id, payload: { accountId: "account:one", ownerUserId: "account:one", title: "", manualContactIds: [], mentions: [], eventIds: [], version: 1, ...payload } }));
 const tasks = () => (window.fixture.tasks ?? [{ id: "t1", status: "open", category: "work", relatedContactId: "c-ishikawa" }, { id: "t2", status: "completed", category: "work", relatedContactId: "c-ito" }]).map(payload => ({ id: payload.id, payload }));
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, status: "fresh", online: true, ...window.initialFixture };
 export const useLocalSearchParams = () => window.fixture.params ?? {};
@@ -48,11 +50,12 @@ const outboxSession = {
   async readOutboxOverlay() { return { serverRecords: [], queuedMutations: (state.outbox ?? []).map((item) => ({ id: item.id, operation: "delete", state: "queued" })) }; },
 };
 export const useSyncCoordinatorSession = () => outboxSession;
+const currentSession = () => outboxSession; // stable, like the real hook (the notes mirror keys an effect on it)
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: state.lastSyncedAt === undefined ? "2026-10-18T05:40:00.000Z" : state.lastSyncedAt, workspaceId: "workspace:one",
-  records: kind === "contact" ? contacts() : kind === "task" ? tasks() : [],
-  refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession: () => outboxSession,
+  records: kind === "contact" ? contacts() : kind === "task" ? tasks() : kind === "note" ? (state.noteRecords ??= notes()) : [],
+  refresh: async () => { state.syncs++; return null; }, invalidate: async () => null, currentSession,
 });
 const offline = { kind: "offline", error: { code: "NETWORK", message: "Network request failed" }, meta: {}, status: 0, refreshing: false, refresh() {} };
 export const useApiResource = (path, _isEmpty, options) => {
@@ -243,11 +246,14 @@ test("offline (airplane mode): the list, tabs and search still work from the dev
   assert.deepEqual(await listNames(page), ["c-ishikawa"]);
 });
 
-test("the legacy row is filled on the device: ●●○ (phone + met context), イベント chip", async (t) => {
+test("rows do not show where a card came from (UX K2); only 本人入力 keeps its chip", async (t) => {
   const page = await open(t);
   const legacy = page.getByTestId("network-row-c-legacy");
   await legacy.waitFor();
-  await legacy.getByText("イベント", { exact: true }).waitFor();
+  assert.equal(await legacy.getByText("イベント", { exact: true }).count(), 0);
+  assert.equal(await page.getByTestId("network-row-c-ito").getByText("名刺", { exact: true }).count(), 0);
+  assert.equal(await page.getByTestId("network-row-c-ishikawa").getByText("手入力", { exact: true }).count(), 0);
+  await page.getByTestId("network-row-c-suzuki").getByText("本人入力", { exact: true }).waitFor();
 });
 
 test("no contacts yet: the guide, the two tiles and the sample rows (app.html #6)", async (t) => {
@@ -263,11 +269,12 @@ test("no contacts yet: the guide, the two tiles and the sample rows (app.html #6
   assert.deepEqual(await navigation(page), ["/contacts/new/scan"]);
 });
 
-test("ten or more people: the density card with 身元だけ / 名刺レベル / 関係まで and the 1日1問 hint (app.html #8)", async (t) => {
+test("ten or more people: the density card with plain levels 名前だけ / 名刺の情報あり / やりとりあり, no extra hint line (app.html #8)", async (t) => {
   const many = Array.from({ length: 12 }, (_, n) => ({ id: `m${n}`, card: { id: `m${n}`, displayName: `名前 ${n}`, organization: "会社", role: "役職", sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z", density: (n % 3) + 1, sourceChip: "manual", metKind: "other", addedAt: "2026-09-01T00:00:00.000Z" }, tags: [], search: { text: `名前 ${n}`, occurredAt: `2026-10-01T00:00:${String(n).padStart(2, "0")}.000000Z`, updatedAt: `2026-10-01T00:00:${String(n).padStart(2, "0")}.000000Z`, error: null }, detail: null }));
   const page = await open(t, { contacts: many, tasks: [] });
   await page.getByTestId("network-density-card").waitFor();
-  for (const label of ["身元だけ", "名刺レベル", "関係まで"]) await page.getByText(label, { exact: true }).waitFor();
+  for (const label of ["名前だけ", "名刺の情報あり", "やりとりあり"]) await page.getByText(label, { exact: true }).waitFor();
+  assert.equal(await page.getByText(/1日1問/).count(), 0, "UX K1: the wrapping 1日1問 hint is gone");
   await page.getByText("12人 · 今月 +0", { exact: true }).waitFor();
   assert.equal(await page.getByTestId("network-invite-card").count(), 0);
   assert.equal(await page.getByTestId("network-analysis-locked").count(), 0, "10 or more: the normal 人脈分析 › entry in the density card");
@@ -293,9 +300,39 @@ test("detail (app.html #29): head card, the type confirm card, why (value line),
   await page.waitForFunction(() => !document.querySelector("[data-testid='network-fit-card']"));
   assert.ok((await requests(page)).some((path) => path.startsWith("post:/api/agent/plans/v2/p1/types/cfo/candidates/c-ito/decision") && path.includes("\"decision\":\"accept\"")));
   await page.getByRole("button", { name: "下書きを作成" }).click();
-  assert.ok((await navigation(page)).some((href) => href.includes("prefillIntent")));
-  await page.getByRole("button", { name: "面談の日程提案" }).click();
-  await page.getByRole("dialog").first().waitFor({ timeout: 5000 }).catch(() => undefined);
+  // UX K4: the draft is a registered template prefill (an id app/ai/[id] can consume), not raw text.
+  const draft = JSON.parse((await navigation(page)).find((href) => href.includes("prefillIntent"))!) as { pathname: string; params: { id: string; prefillIntent: string } };
+  assert.equal(draft.pathname, "/ai/[id]");
+  assert.equal(draft.params.id, "new");
+  assert.match(draft.params.prefillIntent, /^ai-prefill-/);
+  // UX K6: 📅 opens a new personal schedule with this person linked (no dead-end proposal sheet).
+  await page.getByRole("button", { name: "予定を追加" }).click();
+  assert.ok((await navigation(page)).includes("/schedule/personal/new?contactId=c-ito"));
+});
+
+test("detail 往来 (UX K3): notes that mention or link this person join the record notes, newest first, and open the note", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" }, notes: [
+    { id: "note-mention", body: "@伊藤 直子 と決算の打ち合わせ", mentions: [{ contactId: "c-ito", start: 0, end: 6, displayText: "@伊藤 直子" }], contactIds: ["c-ito"], createdAt: "2026-10-12T01:00:00.000Z", updatedAt: "2026-10-12T01:00:00.000Z" },
+    { id: "note-linked", title: "紹介の件", body: "高橋さんを紹介する", manualContactIds: ["c-ito"], contactIds: ["c-ito"], createdAt: "2026-10-01T01:00:00.000Z", updatedAt: "2026-10-01T01:00:00.000Z" },
+    { id: "note-other", body: "別の人のメモ", manualContactIds: ["c-takahashi"], contactIds: ["c-takahashi"], createdAt: "2026-10-13T01:00:00.000Z", updatedAt: "2026-10-13T01:00:00.000Z" },
+  ] });
+  const timeline = page.getByTestId("network-interactions");
+  await timeline.getByText("@伊藤 直子 と決算の打ち合わせ", { exact: true }).waitFor();
+  await timeline.getByText("紹介の件", { exact: true }).waitFor();
+  assert.equal(await timeline.getByText("別の人のメモ").count(), 0, "only notes about this person");
+  const order = await timeline.locator("[data-testid^='network-note-']").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-testid")));
+  assert.deepEqual(order, ["network-note-note-mention", "network-note-note-linked"], "newest first");
+  const texts = await timeline.innerText();
+  assert.ok(texts.indexOf("決算の打ち合わせ") < texts.indexOf("DD の資料リストを受領") && texts.indexOf("DD の資料リストを受領") < texts.indexOf("紹介の件"), "merged with the record's own notes by date");
+  await page.getByTestId("network-note-note-mention").click();
+  assert.ok((await navigation(page)).includes("/notes/note-mention"));
+});
+
+test("detail mail / phone without a value (UX K5): dimmed, and a tap explains how to add one", async (t) => {
+  const page = await open(t, { screen: "detail", params: { id: "c-ito" } });
+  await page.getByTestId("network-contact-head").waitFor();
+  await page.getByRole("button", { name: "電話" }).click();
+  await page.getByText(/電話番号がまだありません/).waitFor();
 });
 
 test("detail of an invite-linked person: 本人入力, their fields with 本人 / 同期停止, connected via, their latest update (b9 #20 / #21)", async (t) => {

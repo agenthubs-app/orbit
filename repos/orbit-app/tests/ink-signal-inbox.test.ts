@@ -17,6 +17,7 @@ export const useLocalRelationshipConversations = () => ({ available: false, conv
 export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {}, queueDelete: async () => false, cancelDelete: async () => false });
 export const usePathname = () => "/inbox";
 export const useSafeAreaInsets = () => ({ top: 48, bottom: 34, left: 0, right: 0 });
 
@@ -104,7 +105,7 @@ export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" styl
 test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { RelationshipInboxScreen, RelationshipInboxThreadScreen } from "./src/screens/inbox/RelationshipInboxScreen"; function App() { const s = useFixture(); return s.detail ? <RelationshipInboxThreadScreen /> : <RelationshipInboxScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { __ORBIT_LEGACY_TEST_LANGUAGE__: '"zh"', "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-inbox-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-inbox" }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-inbox" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -141,7 +142,7 @@ async function textBounds(page: Page) {
 test("inbox matches the approved compact header, typed notification filters and default action hierarchy", async t => {
   const page = await open(t);
   const title = page.getByRole("heading", { name: "收件箱", exact: true });
-  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "17px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "19px") // UX-1 type scale (kit 17);
   assert.equal(await title.evaluate(el => getComputedStyle(el).fontWeight), "800");
   assert.ok((await title.boundingBox())!.y < 96);
   assert.equal(await page.getByRole("button", { name: "首页", exact: true }).count(), 1);
@@ -154,7 +155,7 @@ test("inbox matches the approved compact header, typed notification filters and 
 });
 
 // The legacy feed rows and their 20pt-gutter geometry were retired with the feed
-// (fc0569649). Typed rows keep the unread marker and open the notification detail.
+// (fc0569649). Typed rows keep the unread marker and open their target directly.
 test("typed unread and read rows keep a distinct unread marker, safe targets and open without writes", async t => {
   const page = await open(t);
   const first = page.getByRole("button", { name: /林悦 报名了/ });
@@ -163,7 +164,8 @@ test("typed unread and read rows keep a distinct unread marker, safe targets and
   assert.equal(await first.getByLabel("未读", { exact: true }).count(), 1);
   assert.equal(await read.getByLabel("未读", { exact: true }).count(), 0);
   for (const row of [first, read]) { const box = (await row.boundingBox())!; assert.ok(box.height >= 44 && box.x >= 0 && box.x + box.width <= 391); }
-  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/notifications/inbox%3Achen"]);
+  // UX QA: a row with a target opens the target itself; a read row sends nothing.
+  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Achen"]);
   assert.deepEqual(await nonSummaryRequests(page), []);
 });
 
@@ -176,7 +178,7 @@ test("the home-labelled back control returns to home without history and uses re
 });
 
 test("large text keeps every notification filter reachable without restoring the removed search", async t => {
-  const page = await open(t, { width: 320, fontScale: 2 });
+  const page = await open(t, { width: 320, fontScale: 1.7 });
   assert.equal(await page.getByRole("textbox").count(), 0);
   await page.getByText("陈默 更新了合作记录", { exact: true }).waitFor();
   for (const name of ["全部", "提醒", "建议", "动态", "历史记录"]) {
@@ -236,7 +238,7 @@ test("empty and failed message resources never imply successful message contents
   await shot(page, "failure");
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.35 }, { name: "narrow-double", width: 320, fontScale: 1.7 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) {
   test(`${variant.name}: complete text and reachable controls across filters, seeded composer and detail`, async t => {
     const page = await open(t, { ...variant, signals: true });
     async function check(name: string) {
@@ -246,7 +248,9 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       for (const role of ["button", "tab"] as const) for (const control of await page.getByRole(role).all()) {
         await control.scrollIntoViewIfNeeded(); const box = await control.boundingBox();
         const segmentedTab = role === "tab" && /^(消息|通知)/u.test((await control.textContent()) ?? "");
-        assert.ok(box && box.height + (segmentedTab ? 14 : role === "tab" ? 12 : 0) >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
+        // QA-C: the header's 全部已读 is a kit sm Button, whose 6px hitSlop on each side completes the 44pt target.
+        const headerSmButton = role === "button" && (await control.textContent()) === "全部已读";
+        assert.ok(box && box.height + (segmentedTab ? 14 : role === "tab" || headerSmButton ? 12 : 0) >= 44 && box.x >= 0 && box.x + box.width <= variant.width + 1 && box.y >= 48 && box.y + box.height <= 845, `${name} ${await control.textContent()} ${JSON.stringify(box)}`);
       }
       await page.evaluate(() => {
         for (const el of document.querySelectorAll<HTMLElement>("div")) {

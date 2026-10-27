@@ -310,6 +310,11 @@ export function contactDraftConfirmPath(id: string): string {
   return `${detailPath("/api/contact-drafts", id)}/confirm`;
 }
 
+/** QA-C2: 破棄 a pending draft on the server (every device stops listing it). */
+export function contactDraftDiscardPath(id: string): string {
+  return `${detailPath("/api/contact-drafts", id)}/discard`;
+}
+
 export function businessCardContactConfirmPath(): string {
   return ORBIT_API_ENDPOINTS.contactBusinessCardConfirm;
 }
@@ -792,6 +797,10 @@ export function relationshipInboxPath(conversationId?: string | null): string {
 
 export function relationshipCommunicationEligibilityPath(contactId: string): string {
   return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/eligibility?contactId=${encodeURIComponent(contactId.trim())}`;
+}
+
+export function relationshipCommunicationStartPath(): string {
+  return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/conversations/start`;
 }
 
 export function relationshipCommunicationInvitationsPath(): string {

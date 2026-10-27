@@ -1,0 +1,5 @@
+{
+  "NSCameraUsageDescription": "名刺を撮影したり QR コードを読み取ったりして、連絡先に追加するために使います。",
+  "NSPhotoLibraryUsageDescription": "名刺の写真を選んで、連絡先に追加するために使います。",
+  "NSContactsUsageDescription": "選んだ連絡先（氏名・会社・役職・電話・メール）を人脈に取り込むために使います。"
+}

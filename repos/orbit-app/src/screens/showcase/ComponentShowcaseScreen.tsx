@@ -231,13 +231,13 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 18, paddingBottom: 80 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: "800" },
-  group: { color: colors.ink, fontSize: 15, fontWeight: "800", marginTop: 8 },
+  title: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  group: { color: colors.ink, fontSize: 17, fontWeight: "800", marginTop: 8 },
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   section: { gap: 10 },
-  sectionName: { color: colors.ink2, fontSize: 11.5, fontWeight: "700" },
-  caption: { color: colors.ink2, fontSize: 12 },
-  number: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  sectionName: { color: colors.ink2, fontSize: 13, fontWeight: "700" },
+  caption: { color: colors.ink2, fontSize: 14 },
+  number: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   glass: { padding: 16 },
 }));
 

@@ -458,7 +458,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onImage,
     fontSize: typography.label,
     fontWeight: "800",
-    lineHeight: 17
+    lineHeight: 19
   },
   homeEventImageDateChip: {
     alignItems: "center",
@@ -473,15 +473,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   homeEventImageDateDetail: {
     color: colors.onImageBadge,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
-    lineHeight: 13
+    lineHeight: 16
   },
   homeEventImageDateValue: {
     color: colors.onImageBadge,
     fontSize: typography.label,
     fontWeight: "900",
-    lineHeight: 17
+    lineHeight: 19
   },
   homeEventImageBottom: {
     gap: spacing.md,
@@ -492,7 +492,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexShrink: 1,
     fontSize: typography.bodySm,
     fontWeight: "700",
-    lineHeight: 19,
+    lineHeight: 22,
     minWidth: 0
   },
   homeEventImageFooter: {
@@ -517,7 +517,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.ink3Text,
     fontSize: typography.label,
     fontWeight: "700",
-    lineHeight: 17
+    lineHeight: 19
   },
   homeEventClearButton: {
     alignItems: "center",
@@ -576,9 +576,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     color: colors.onImageBadge,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
-    lineHeight: 14,
+    lineHeight: 17,
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: 5
@@ -587,7 +587,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onImage,
     fontSize: typography.label,
     fontWeight: "800",
-    lineHeight: 16
+    lineHeight: 18
   },
   homeEventImageTitle: {
     color: colors.onImage,

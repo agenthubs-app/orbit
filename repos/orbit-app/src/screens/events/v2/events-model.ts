@@ -81,3 +81,8 @@ export function appEventTime(iso: string, _language: string): string | null {
   if (!p || (p.hh === 0 && p.mm === 0)) return null;
   return `${p.hh}:${String(p.mm).padStart(2, "0")}`;
 }
+
+/** The first http(s) link in copied text (「粘贴网址」 fills the field with it). */
+export function clipboardEventUrl(text: string | null | undefined): string | null {
+  return text?.match(/https?:\/\/[^\s<>"'「」]+/u)?.[0] ?? null;
+}

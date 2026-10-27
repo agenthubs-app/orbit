@@ -4,7 +4,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import type { AdaptiveNextQuestion } from "./adaptive-interview-service";
+import { FIXED_INTERVIEW_QUESTION_MODEL, FIXED_INTERVIEW_QUESTION_PROVIDER, type AdaptiveNextQuestion } from "./adaptive-interview-service";
 import {
   EVENT_PROFILE_FIELD_LABELS,
   type EventInterviewResponseSubmission,
@@ -153,12 +153,18 @@ export function signAdaptiveInterviewQuestion(input: {
   secret?: string;
   ttlMs?: number;
 }): string {
+  const provenance = input.question.provenance;
+  // A fixed question (fixedInterviewQuestion) is signed too, so registration can finish without the model; it keeps its own provider / model.
+  const fixed =
+    provenance.generationMethod === "deterministic-fallback" &&
+    provenance.provider === FIXED_INTERVIEW_QUESTION_PROVIDER &&
+    provenance.model === FIXED_INTERVIEW_QUESTION_MODEL;
   if (
-    input.question.provenance.generationMethod !==
-      "orbit-agent-model-adaptive" ||
-    input.question.provenance.fallbackReason !== null ||
-    !input.question.provenance.model ||
-    !input.question.provenance.provider
+    !fixed &&
+    (provenance.generationMethod !== "orbit-agent-model-adaptive" ||
+      provenance.fallbackReason !== null ||
+      !provenance.model ||
+      !provenance.provider)
   ) {
     throw new InterviewQuestionTokenError(
       "INTERVIEW_AI_RESULT_REQUIRED",

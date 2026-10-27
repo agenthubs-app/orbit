@@ -375,3 +375,53 @@ test("configured lifecycle service persists to the configured workspace and repl
     await createConfiguredTransactionalPostgresRuntime({ env })?.client.close();
   }
 }));
+
+test("QA-C2: an open, dated task linked to the relationship is read and resolved as its follow-up", async () => {
+  const calls: { sql: string; values?: readonly unknown[] }[] = [];
+  const row = (collection: string, id: string, payload: Record<string, unknown>) => ({ workspace_id: workspaceId, collection_name: collection, record_id: id, user_id: actorId, payload, created_at: new Date(now), updated_at: new Date(now), lifecycle_state: "active" });
+  const legacy = { id: "task:seeded", connectionId, contactId, title: "复核下一步", status: "open", dueAt: "2026-07-29T09:00:00+00:00" };
+  const taskRows = [
+    row("tasks", "task:seeded", legacy),
+    row("tasks", "task:generic", { id: "task:generic", connectionId, title: "普通任务", status: "open" }),
+    row("tasks", "task:done-generic", { id: "task:done-generic", connectionId, title: "已完成", status: "completed", dueAt: now }),
+  ];
+  const client: TransactionalPostgresClient = {
+    async query<T>(sql: string, values?: readonly unknown[]) {
+      calls.push({ sql, values });
+      if (/relationship_lifecycle_command_receipts/.test(sql) && /^\s*select/i.test(sql)) return { rows: [] as T[] };
+      if (/collection_name = 'connections'/.test(sql) && /^\s*select/i.test(sql)) return { rows: [row("connections", connectionId, { ...connectionPayload, stage: "active" })] as T[] };
+      if (/collection_name = 'contacts'/.test(sql)) return { rows: [row("contacts", contactId, { id: contactId })] as T[] };
+      if (/collection_name = 'tasks'/.test(sql) && /^\s*select/i.test(sql)) return { rows: taskRows as T[] };
+      return { rows: [{ record_id: connectionId }] as T[] };
+    },
+    async transaction(operation) { return operation(this); },
+    async close() {},
+  };
+  const repo = createPostgresRelationshipLifecycleRepository({ client, workspaceId });
+
+  const snapshot = await repo.read(actorId, connectionId);
+
+  assert.deepEqual(snapshot?.tasks.map(({ taskId, purpose, status, dueAt }) => ({ taskId, purpose, status, dueAt })), [
+    { taskId: "task:seeded", purpose: "follow_up", status: "open", dueAt: "2026-07-29T09:00:00.000Z" },
+  ]);
+  assert.equal(snapshot?.tasks[0]?.createdAt, now);
+
+  calls.length = 0;
+  await repo.mutate({ ...mutation, command: "complete_task" }, (current) => applyRelationshipTaskCompletion({
+    command: { actorId, connectionId, taskId: "task:seeded", expectedConnectionVersion: 3, expectedTaskVersion: 1, idempotencyKey: "key:1", outcome: { kind: "archived", dismissTaskIds: [] } },
+    current: current.connection, tasks: current.tasks, now,
+  }));
+  const taskUpdate = calls.find(({ sql, values }) => /update orbit_records[\s\S]*'tasks'/i.test(sql) && values?.[1] === "task:seeded");
+  const payload = taskUpdate?.values?.[3] as Record<string, unknown>;
+  assert.equal(payload.status, "completed");
+  assert.equal(payload.relationshipPurpose, "follow_up");
+  assert.equal(calls.some(({ values }) => values?.[1] === "task:generic"), false, "general tasks stay untouched");
+});
+
+test("PostgreSQL refuses a lifecycle write when the contact has more than one relationship record", databaseTest, async () => withDatabase(async ({ client, repo, insert }) => {
+  // Versioning one of several connections would make every contact read refuse the contact as ambiguous.
+  await insert("connections", `${connectionId}:duplicate`, actorId, { ...connectionPayload, id: `${connectionId}:duplicate` });
+  const before = await counts(client);
+  await assert.rejects(repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now })), { code: "CONFLICT" });
+  assert.deepEqual(await counts(client), before);
+}));

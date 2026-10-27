@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 
 import type { EventJoinAnswer, EventJoinQuestion } from "../../../shared/contract/event-join";
+import { AppError } from "../../../shared/errors/app-error";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import { createPostgresActorRecordStore } from "../actor-records/store";
 import type { JoinPorts } from "./join";
@@ -13,11 +14,11 @@ import type { JourneyLanguage } from "./prep-core";
 
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
 
-async function callHandler(handler: Handler, eventId: string, path: string, body: unknown, method: "POST" | "GET" | "DELETE" = "POST"): Promise<{ status: number; data: unknown }> {
+async function callHandler(handler: Handler, eventId: string, path: string, body: unknown, method: "POST" | "GET" | "DELETE" = "POST"): Promise<{ status: number; data: unknown; message: string | null }> {
   const request = new Request(`http://orbit.internal/api/events/${encodeURIComponent(eventId)}/${path}`, method === "GET" ? { method } : { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method });
   const response = await handler(request, { params: Promise.resolve({ id: eventId }) });
-  const json = (await response.json().catch(() => null)) as { data?: unknown } | null;
-  return { data: json?.data ?? null, status: response.status };
+  const json = (await response.json().catch(() => null)) as { data?: unknown; error?: { message?: unknown } } | null;
+  return { data: json?.data ?? null, message: typeof json?.error?.message === "string" ? json.error.message : null, status: response.status };
 }
 
 const transcript = (answers: readonly EventJoinAnswer[]) => answers.map((answer) => ({ answer: answer.answer, field: answer.field, prompt: answer.prompt }));
@@ -38,7 +39,11 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     },
     async next(eventId, answers, language) {
       const { createRegistrationInterviewPostHandler } = await import("../../../app/api/events/[id]/registration/adaptive-handlers");
-      const { data, status } = await callHandler(createRegistrationInterviewPostHandler(), eventId, "registration/interview", { language, transcript: transcript(answers) });
+      const { data, message, status } = await callHandler(createRegistrationInterviewPostHandler(), eventId, "registration/interview", { fallback: "fixed", language, transcript: transcript(answers) });
+      // fallback "fixed": when the model cannot be used (daily AI limit, AI down) the interview answers with fixed questions, so registration always finishes.
+      // A closed event (409 not open) is a known answer, not a 500.
+      if (status === 409) throw new AppError("CONFLICT", message ?? "This event is not open for registration.");
+      if (status === 404) throw new AppError("NOT_FOUND", message ?? "The event could not be found.");
       if (status >= 400) throw Object.assign(new Error("interview unavailable"), { status });
       const step = data as { done?: boolean; signedQuestion?: { question?: { field?: string; prompt?: string; options?: string[] }; questionToken?: string } | null } | null;
       if (!step || step.done || !step.signedQuestion?.question || !step.signedQuestion.questionToken) return null;
@@ -72,16 +77,31 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
         const { createEventAdmissionApplicationPostHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
         const applied = await callHandler(createEventAdmissionApplicationPostHandler(), eventId, "admission/application", { responses });
         if (applied.status < 300) return { status: "pending_review", submittedAt: new Date().toISOString() };
+        if (applied.status === 409) throw new AppError("CONFLICT", applied.message ?? "This event is not open for registration.");
         throw Object.assign(new Error("admission application failed"), { status: applied.status });
       }
       // 不带 intent / expectedRegistrationVersion：服务端按现状推断 register / reactivate（取消后再报）/ update（改资料）。
       const registered = await callHandler(POST as Handler, eventId, "registration", { answers: {}, responses });
       if (registered.status < 300) return { status: "registered", submittedAt: new Date().toISOString() };
+      // An admission-controlled event with instant admission (review false) refuses direct registration;
+      // it takes the same answers as an admission application (admitted → registered, otherwise waiting for review).
+      if (registered.status === 409 && registered.message?.includes("admission application flow")) {
+        const { createEventAdmissionApplicationPostHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
+        const applied = await callHandler(createEventAdmissionApplicationPostHandler(), eventId, "admission/application", { responses });
+        if (applied.status < 300) {
+          const status = (applied.data as { status?: string } | null)?.status;
+          return { status: status === "admitted" ? "registered" : "pending_review", submittedAt: new Date().toISOString() };
+        }
+        if (applied.status === 409) throw new AppError("CONFLICT", applied.message ?? "This event is not open for registration.");
+        throw Object.assign(new Error("admission application failed"), { status: applied.status });
+      }
+      if (registered.status === 409) throw new AppError("CONFLICT", registered.message ?? "This event is not open for registration.");
       throw Object.assign(new Error("registration failed"), { status: registered.status });
     },
     async cancel(eventId) {
-      // 审核制：撤回审核申请（普通取消接口对审核制活动返回 409）。
-      if ((await input.journey.event(eventId))?.review) {
+      // 有入场申请（审核制，或即时入场的 admission 活动）：撤回申请（普通取消接口对这类活动返回 409）。
+      // 不只看 review：即时入场的活动 review 为 false，但同样只能撤回申请。没有申请时走普通取消。
+      {
         const { createEventAdmissionApplicationDeleteHandler, createEventAdmissionApplicationGetHandler } = await import("../../../app/api/events/[id]/admission/application/handler");
         const current = await callHandler(createEventAdmissionApplicationGetHandler(), eventId, "admission/application", null, "GET");
         const version = (current.data as { applicationVersion?: number } | null)?.applicationVersion;
@@ -101,7 +121,9 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
     async createSchedule(actorId, value) {
       const service = await schedule();
       const created = await service.create(actorId, { endsAt: value.endsAt, idempotencyKey: value.idempotencyKey, startsAt: value.startsAt, timeZone: "Asia/Tokyo", title: value.title });
-      return String((created as { id?: string }).id ?? "");
+      // The schedule service answers { scheduleItem }; reading `.id` off the envelope gave "" and the response failed validation.
+      const reply = created as { scheduleItem?: { id?: string }; id?: string };
+      return String(reply.scheduleItem?.id ?? reply.id ?? "");
     },
     async readTentative(actorId, eventId) {
       const row = await store.get<{ scheduleItemId: string; final: boolean; removed?: boolean }>("eventTentativeSchedules", actorId, tentativeId(actorId, eventId));

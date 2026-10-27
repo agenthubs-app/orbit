@@ -28,13 +28,24 @@ export function poppableLevels(state: unknown): number {
   return levels;
 }
 
-/** The shell (ShellTabBar, mounted once in the root layout) mirrors the root state here. */
+/** The root layout (UiRoot, mounted signed in or out) mirrors the root state here. */
 export function trackRootNavigationState(state: unknown): void {
   latestRootState = state as NavState;
 }
 
-export function openMainTab(router: { dismissAll?: () => void; replace: (href: never) => void }, href: string): void {
+type ResetRouter = { dismissAll?: () => void; replace: (href: never) => void };
+
+/**
+ * Makes `href` the only page: pops every stack on the focused path, then replaces the first page.
+ * Used for tab pages and for auth changes (sign-in, sign-up, onboarding done, sign-out), so no
+ * page from before the change — or from the previous account — stays underneath to go back to.
+ */
+export function resetStackTo(router: ResetRouter, href: string): void {
   for (let level = poppableLevels(latestRootState); level > 0; level -= 1) router.dismissAll?.();
   router.replace(href as never);
+}
+
+export function openMainTab(router: ResetRouter, href: string): void {
+  resetStackTo(router, href);
 }
 

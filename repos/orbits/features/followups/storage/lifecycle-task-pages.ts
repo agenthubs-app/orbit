@@ -213,6 +213,11 @@ export const VERIFIED_LIFECYCLE_SORT_RUNTIMES: readonly LifecycleSortRuntimeEntr
     pg: PG16_UND_ICU_153_14, evidence: "W0034: Node 24.21.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu783.txt, unicode-probe-node24-icu783.txt)" }),
   lifecycleEntry({ id: "icu78.2-u17.0-en-US/pg16-153.14", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
     pg: PG16_UND_ICU_153_14, evidence: "W0034: Node 24.15.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu782.txt, unicode-probe-node24-icu782.txt)" }),
+  // UX sprint 2026-10-25: Node 22.23.4 (ICU 78.3) with Homebrew PG 18 — the local dev/test pair after the
+  // global Node moved to 22; r20a-followup-pg18.test.ts raw SQL differential passed on it before admission.
+  lifecycleEntry({ id: "icu78.3-u17.0-en-US/pg18-153.136", node: { icu: "78.3", unicode: "17.0", collatorLocale: "en-US" },
+    pg: { ...PG16_UND_ICU_153_136, pgMajor: 18 },
+    evidence: "UX-7: Node 22.23.4 / Homebrew PG 18; r20a-followup-pg18.test.ts candidate-runtime differential (ok 1) before admission" }),
   lifecycleEntry({ id: "icu78.2-u17.0-en-US/pg18-153.136", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
     pg: { ...PG16_UND_ICU_153_136, pgMajor: 18 },
     evidence: "R20a: Node 25.8.1 / Homebrew PG 18.3; r20a-followup-pg18.test.ts raw SQL differential + reviewed 19,942-character sort matrix; R20a/run-01/sc02-red.log and sc02-green.log" }),

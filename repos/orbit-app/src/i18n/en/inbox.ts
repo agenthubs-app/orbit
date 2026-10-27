@@ -112,6 +112,7 @@ export const inbox = {
   "inbox.replyDraft": "Reply draft",
   "inbox.replyBody": "Reply body",
   "inbox.replyPlaceholder": "Write a first version of what you want to say.",
+  "inbox.messagePlaceholder": "Message",
   "inbox.polishDraft": "Polish draft",
   "inbox.previewReply": "Preview reply",
   "inbox.createDraftFailed": "This draft could not be created.",
@@ -126,4 +127,5 @@ export const inbox = {
   "inbox.previewSafety": "The next step only previews the draft; it will not save or send a message.",
   "inbox.preparing": "Preparing",
   "inbox.previewDraft": "Preview draft",
+  "inbox.notificationSettings": "Notification settings",
 } as const;

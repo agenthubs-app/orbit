@@ -1,5 +1,5 @@
 export const calendar = {
-  "calendar.view.more": "{count} more",
+  "calendar.view.more": "+{count}",
   "calendar.view.emptyTitle": "No plans yet",
   "calendar.view.emptyBody": "Personal plans you create will appear here.",
   "calendar.view.overlap": "{first} and {second} overlap.",

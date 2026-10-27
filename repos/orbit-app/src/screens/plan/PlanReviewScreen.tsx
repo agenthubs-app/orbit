@@ -22,7 +22,7 @@ import { radius } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
-import { newIdempotencyKey } from "./plan-model";
+import { newIdempotencyKey, readableUnchanged } from "./plan-model";
 import { canSendReview, hasReviewInput, markEvidenceTexts, markOf, premiseEdits, reviewHasChanges, reviewStage, turnOrdinal } from "./plan-review-model";
 import { ReviewUsedUpNote } from "./plan-review-ui";
 import { FailureNote, InlineProblem, usePlanStyles } from "./plan-ui";
@@ -38,24 +38,17 @@ type Load =
   | { kind: "ready"; plan: PlanV2Detail | null };
 type Op = "start" | "send" | "toggle" | "confirm";
 
-const SOURCE_KEYS = {
-  background: "plan.review.sourceBackground",
-  q1: "plan.review.sourceQ1",
-  q2: "plan.review.sourceQ2",
-  q3: "plan.review.sourceQ3",
-  q4: "plan.review.sourceQ4",
-  q5: "plan.review.sourceQ5",
-  record: "plan.review.sourceRecord",
-} as const;
-
 const REVIEW_STAGE_KEYS = ["plan.review.stagePremise", "plan.review.stageFix", "plan.review.stageManual"] as const;
 
 /** 「前回の確定（9/14）から 3週間です。」（确定日 = 计划开始日 startsOn）。 */
 function sinceText(confirmedAt: string, t: ReturnType<typeof useOrbitLocale>["t"]): string {
   const at = new Date(confirmedAt);
-  const days = Math.max(0, Math.round((Date.now() - at.getTime()) / 86_400_000));
+  // QA-A: whole Tokyo calendar days (a plan confirmed this morning read "1 天").
+  const tokyoDay = (value: Date) => Date.parse(value.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" }));
+  const days = Math.max(0, Math.round((tokyoDay(new Date()) - tokyoDay(at)) / 86_400_000));
   // 日期按东京（计划日期都是东京日期），不跟设备时区走。
   const date = at.toLocaleDateString("en-US", { day: "numeric", month: "numeric", timeZone: "Asia/Tokyo" });
+  if (days === 0) return t("plan.review.sinceToday", { date });
   return days >= 14 ? t("plan.review.sinceWeeks", { date, weeks: Math.round(days / 7) }) : t("plan.review.sinceDays", { date, days });
 }
 
@@ -382,7 +375,6 @@ function PremiseCard({ rows, view, edits, editing, editable, compact, onEdit, on
                   </View>
                 ) : null}
               </View>
-              <View style={styles.psrc}><UiText style={styles.psrcText}>{t(SOURCE_KEYS[row.source])}</UiText></View>
             </PremiseRowShell>
             {flag && mark?.suggested && editable ? (
               <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.review.useSuggested", { value: mark.suggested })} hitSlop={6} onPress={() => onChange(row.key, mark.suggested!)} style={styles.suggested}>
@@ -417,7 +409,7 @@ function ReviewTurn({ turn, ordinal, limit, earned, latest, busy, onToggle, foot
   const { t } = useOrbitLocale();
   const changed = turn.changes.length > 0 && !turn.noChangeReason;
   const why = useKitWhy(turn.changes.map((change) => change.reason).filter(Boolean).join("\n") || null);
-  const same = [...turn.unchanged, ...(earned !== null ? [t("plan.review.unchangedEarned", { points: earned })] : [])];
+  const same = [...readableUnchanged(turn.unchanged), ...(earned !== null ? [t("plan.review.unchangedEarned", { points: earned })] : [])];
   return (
     <>
       {turn.input ? <Bubble me>{turn.input}</Bubble> : null}
@@ -575,12 +567,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   premMid: { flex: 1, minWidth: 0, alignItems: "flex-start" },
   premValue: { color: colors.ink, ...kitText(12.5, "400", 1.55) },
   premStrike: { color: colors.ink3, ...kitText(12.5, "400", 1.55), textDecorationLine: "line-through" },
-  premInput: { alignSelf: "stretch", minHeight: 40, borderRadius: 12, borderWidth: 2, borderColor: colors.plum700, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 6, color: colors.ink, fontSize: 12.5, lineHeight: 19.38, textAlignVertical: "top" },
+  premInput: { alignSelf: "stretch", minHeight: 40, borderRadius: 12, borderWidth: 2, borderColor: colors.plum700, backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 6, color: colors.ink, fontSize: 15, lineHeight: 23, textAlignVertical: "top" },
   pflag: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 1, paddingHorizontal: 6, borderRadius: 6, backgroundColor: colors.surface },
   pflagIcon: { width: 11, height: 11, alignItems: "center", justifyContent: "center", transform: [{ scale: 11 / 16 }] },
   pflagText: { flexShrink: 1, color: colors.macApricotInk, ...kitText(10.5, "800") },
-  psrc: { backgroundColor: colors.surface2, borderRadius: 6, paddingVertical: 1, paddingHorizontal: 6 },
-  psrcText: { color: colors.ink3, ...kitText(10, "800") },
   suggested: { alignSelf: "flex-start", marginTop: 6, marginLeft: 92, minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.surface },
   suggestedText: { color: colors.accentText, ...kitText(11.5, "700") },
   updCard: { paddingVertical: 14, paddingHorizontal: 16 },
@@ -609,6 +599,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grid2Btn: { flex: 1 },
   manualNote: { marginTop: 8, lineHeight: 18.4 },
   note: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
-  noteText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
-  noteTitle: { color: colors.macApricotText, fontSize: 14, lineHeight: 20, fontWeight: "800" },
+  noteText: { color: colors.macApricotText, fontSize: 15, lineHeight: 23, fontWeight: "600" },
+  noteTitle: { color: colors.macApricotText, fontSize: 17, lineHeight: 24, fontWeight: "800" },
 }));

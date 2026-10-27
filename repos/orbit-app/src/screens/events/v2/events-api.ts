@@ -5,7 +5,7 @@ import type { ZodType } from "zod";
 
 import type { OrbitApiClient } from "../../../api/client";
 import type { ApiResult } from "../../../api/types";
-import { eventAssessmentAddToPlanResultSchema, eventAssessmentAvailabilitySchema, eventAssessmentDismissResultSchema, eventAssessmentSchema } from "../../../api/schema/event-assessment";
+import { eventAssessmentAddToPlanResultSchema, eventAssessmentAvailabilitySchema, eventAssessmentDeleteResultSchema, eventAssessmentDismissResultSchema, eventAssessmentSchema } from "../../../api/schema/event-assessment";
 import { myEventsResponseSchema } from "../../../api/schema/events-mine";
 import type { EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentPatchInput } from "../../../api/contract/event-assessment";
 import type { MyEventsRange, MyEventsResponse } from "../../../api/contract/events-mine";
@@ -44,6 +44,8 @@ export interface EventsApi {
   fill(id: string, input: EventAssessmentPatchInput): Promise<EventsResult<EventAssessmentContract>>;
   addToPlan(id: string): Promise<EventsResult<unknown>>;
   dismiss(id: string): Promise<EventsResult<unknown>>;
+  /** Removes the assessment from my list (DELETE). */
+  remove(id: string): Promise<EventsResult<unknown>>;
   availability(): Promise<EventsResult<EventAssessmentAvailability>>;
   mine(range: MyEventsRange, limit?: number): Promise<EventsResult<MyEventsResponse>>;
   uploadPoster(bytes: Uint8Array<ArrayBuffer>, mimeType: string): Promise<EventsResult<{ posterAssetId: string }>>;
@@ -58,6 +60,7 @@ export function createEventsApi(client: OrbitApiClient): EventsApi {
     fill: (value, input) => read(client.patch<unknown>(`${BASE}/${id(value)}`, { body: input }), eventAssessmentSchema),
     addToPlan: (value) => read(client.post<unknown>(`${BASE}/${id(value)}/add-to-plan`, { body: {} }), eventAssessmentAddToPlanResultSchema as ZodType<unknown>),
     dismiss: (value) => read(client.post<unknown>(`${BASE}/${id(value)}/dismiss`, { body: {} }), eventAssessmentDismissResultSchema as ZodType<unknown>),
+    remove: (value) => read(client.delete<unknown>(`${BASE}/${id(value)}`), eventAssessmentDeleteResultSchema as ZodType<unknown>),
     availability: () => read(client.get<unknown>(`${BASE}/availability`), eventAssessmentAvailabilitySchema as ZodType<EventAssessmentAvailability>),
     mine: (range, limit = 20) => read(client.get<unknown>(`/api/events/mine?range=${range}&limit=${limit}&platform=app`), myEventsResponseSchema as ZodType<MyEventsResponse>),
     async uploadPoster(bytes, mimeType) {

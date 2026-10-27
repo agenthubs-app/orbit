@@ -7,3 +7,4 @@ node_modules
 orbit-local-backup.sql
 *.log
 tsconfig.tsbuildinfo
+.next-*

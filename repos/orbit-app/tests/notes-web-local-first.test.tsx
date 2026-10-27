@@ -121,7 +121,8 @@ test("browser mirror active: the notes list renders from the mirror and sends no
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByText("预算确认", { exact: true }).waitFor();
   assert.equal(await page.getByText("服务器上的笔记", { exact: true }).count(), 0);
-  assert.equal(await page.getByText("已是最新内容", { exact: true }).count(), 1, "the mirror's sync label is shown");
+  // UX-6: the iOS Notes-style list no longer prints the mirror's sync label as a footer.
+  assert.equal(await page.getByText("已是最新内容", { exact: true }).count(), 0, "the sync label footer is gone");
   assert.deepEqual(await notesReads(page), [], "no /api/notes read while the mirror is the source");
   assert.ok(await page.evaluate(() => (window as any).fixture.syncs) >= 1, "opening the page probes for changes");
   assert.deepEqual(errors, []);
@@ -147,7 +148,7 @@ test("the list's 「首页」 button goes home even when there is history, onlin
   }
 });
 
-test("browser mirror active: the detail and its source tasks read the mirrors; offline editing needs the network", async (t) => {
+test("browser mirror active: the detail and its source tasks read the mirrors; offline there is no edit entry (UX-6)", async (t) => {
   const tasks = [{ id: "task:from-note", accountId: "account:one", ownerUserId: "account:one", title: "发资料", status: "open", category: "work", priority: "normal", source: "manual", sourceNoteId: "note:1", createdAt: "2026-09-27T00:00:00.000Z", updatedAt: "2026-09-27T00:00:00.000Z" }];
   const { page: online } = await open(t, { screen: "detail", noteId: "note:1", tasks });
   await online.getByText("发布会准备", { exact: true }).waitFor();
@@ -157,8 +158,11 @@ test("browser mirror active: the detail and its source tasks read the mirrors; o
   const { page: offline } = await open(t, { screen: "detail", noteId: "note:1", tasks, status: "stale" });
   await offline.getByText("发布会准备", { exact: true }).waitFor();
   await offline.getByText(/^无法连接 · 显示截至/).waitFor();
-  assert.equal(await offline.getByRole("button", { name: "编辑笔记，需要联网" }).isDisabled(), true);
-  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 1, "the edit entry is disabled");
+  // UX-6: offline in the browser the header 编辑 button is not rendered, and tapping the text does not open edit.
+  assert.equal(await offline.getByRole("button", { name: /^编辑笔记/ }).count(), 0, "no edit entry offline");
+  assert.equal(await offline.getByRole("button", { name: /，需要联网$/ }).count(), 0);
+  await offline.getByText("发布会准备 正文", { exact: true }).click();
+  assert.deepEqual(await offline.evaluate(() => (window as any).fixture.navigation), [], "tapping the body offline does not open edit");
   assert.equal(await offline.getByRole("button", { name: /AI 总结/ }).count(), 0, "the deferred AI entry is absent");
 });
 

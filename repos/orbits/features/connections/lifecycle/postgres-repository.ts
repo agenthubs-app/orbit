@@ -11,6 +11,8 @@ interface RecordRow {
   record_id: string;
   user_id: string;
   payload: Record<string, unknown>;
+  created_at?: unknown;
+  updated_at?: unknown;
 }
 
 function requiredString(value: unknown): string {
@@ -68,6 +70,16 @@ function parseReceiptSnapshot(value: unknown, actorId: string, connectionId: str
   };
 }
 
+const rowDate = (value: unknown): unknown => value instanceof Date ? value.toISOString() : value;
+
+/** QA-C2: an open, dated task on this relationship without a lifecycle purpose (seeded / older follow-ups). */
+function isLegacyFollowUp(task: Record<string, unknown>, contactId: string): boolean {
+  return (task.status === "open" || task.status === "scheduled") &&
+    typeof task.title === "string" && task.title.trim().length > 0 &&
+    typeof task.dueAt === "string" && Number.isFinite(Date.parse(task.dueAt)) &&
+    (task.contactId === undefined || task.contactId === contactId);
+}
+
 async function loadSnapshot(sql: TransactionalSqlExecutor, workspaceId: string, actorId: string, connectionId: string): Promise<RelationshipLifecycleSnapshot | null> {
   const records = await sql.query<RecordRow>("select * from orbit_records where workspace_id = $1 and collection_name = 'connections' and record_id = $2 and user_id = $3 and lifecycle_state <> 'deleted' for update", [workspaceId, connectionId, actorId]);
   const row = records.rows[0];
@@ -85,13 +97,17 @@ async function loadSnapshot(sql: TransactionalSqlExecutor, workspaceId: string, 
   for (const taskRow of taskRecords.rows) {
     assertOwner(taskRow, workspaceId, actorId);
     const task = taskRow.payload;
-    // General tasks are not relationship obligations and remain untouched.
-    if (task.relationshipPurpose === undefined) continue;
-    if (task.connectionId !== connectionId || task.contactId !== contactId) throw new RelationshipLifecycleError("FORBIDDEN", "Task contact identity is missing or belongs to another relationship.");
-    if ((task.relationshipPurpose !== "follow_up" && task.relationshipPurpose !== "maintenance") || (task.status !== "open" && task.status !== "scheduled" && task.status !== "completed" && task.status !== "dismissed") || typeof task.dueAt !== "string" || !Number.isFinite(Date.parse(task.dueAt))) {
+    // General tasks are not relationship obligations and remain untouched —
+    // except an open, dated task linked to this relationship (QA-C2): the to-do
+    // list already shows it as this person's follow-up, so it is resolved here
+    // as one (resolving it stamps relationshipPurpose on the stored task).
+    const purpose = task.relationshipPurpose ?? (isLegacyFollowUp(task, contactId) ? "follow_up" : undefined);
+    if (purpose === undefined) continue;
+    if (task.connectionId !== connectionId || (task.contactId ?? (task.relationshipPurpose === undefined ? contactId : undefined)) !== contactId) throw new RelationshipLifecycleError("FORBIDDEN", "Task contact identity is missing or belongs to another relationship.");
+    if ((purpose !== "follow_up" && purpose !== "maintenance") || (task.status !== "open" && task.status !== "scheduled" && task.status !== "completed" && task.status !== "dismissed") || typeof task.dueAt !== "string" || !Number.isFinite(Date.parse(task.dueAt))) {
       throw new RelationshipLifecycleError("INVALID_TASK", "Stored relationship task is invalid.");
     }
-    tasks.push({ actorId, connectionId, contactId, taskId: taskRow.record_id, title: requiredString(task.title), dueAt: normalizeRelationshipLifecycleInstant(task.dueAt, "INVALID_TASK"), purpose: task.relationshipPurpose, status: task.status, createdAt: receiptDate(task.createdAt), updatedAt: receiptDate(task.updatedAt), version: recordVersion(task.version) });
+    tasks.push({ actorId, connectionId, contactId, taskId: taskRow.record_id, title: requiredString(task.title), dueAt: normalizeRelationshipLifecycleInstant(task.dueAt, "INVALID_TASK"), purpose, status: task.status, createdAt: receiptDate(task.createdAt ?? rowDate(taskRow.created_at)), updatedAt: receiptDate(task.updatedAt ?? rowDate(taskRow.updated_at)), version: recordVersion(task.version) });
   }
   return {
     connection: { actorId, connectionId, contactId, stage: payload.stage, activeGoal: payload.activeGoal == null ? null : requiredString(payload.activeGoal), version: recordVersion(payload.version), createdAt: receiptDate(payload.createdAt), updatedAt: receiptDate(payload.updatedAt) },
@@ -135,6 +151,10 @@ export function createPostgresRelationshipLifecycleRepository({ client, workspac
         const before = await loadSnapshot(sql, workspaceId, input.actorId, input.connectionId);
         if (!before) throw new RelationshipLifecycleError("NOT_FOUND", "Connection not found.");
         if (before.connection.version !== input.expectedVersion) throw new RelationshipLifecycleError("CONFLICT", "Connection version has changed.");
+        // A contact with several connections has no single lifecycle owner: writing a version on one of them
+        // would make every contact read refuse the contact as ambiguous, so refuse the write instead.
+        const siblings = await sql.query<{ count: string }>("select count(*)::text as count from orbit_records where workspace_id = $1 and collection_name = 'connections' and user_id = $2 and lifecycle_state = 'active' and payload ->> 'contactId' = $3", [workspaceId, input.actorId, before.connection.contactId]);
+        if (Number(siblings.rows[0]?.count ?? 0) > 1) throw new RelationshipLifecycleError("CONFLICT", "This contact has more than one relationship record.");
         // SQL awaits must not expose the validated plan to callback-owned mutation.
         const plan = structuredClone(operation(structuredClone(before)));
         const snapshot = applyLifecycleMutationPlan(input, before, plan);

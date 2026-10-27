@@ -184,16 +184,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   labelMeta: {
     color: colors.ink3Text,
-    fontSize: 12,
-    lineHeight: 17
+    fontSize: 14,
+    lineHeight: 20
   },
   labelPressed: {
     opacity: 0.62
   },
   labelTitle: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "800",
-    lineHeight: 18
+    lineHeight: 21
   }
 }));

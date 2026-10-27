@@ -9,7 +9,7 @@ import * as Crypto from "expo-crypto";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../api/domain/industries";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../api/contract/industries";
@@ -29,6 +29,10 @@ import {
   type OnboardingProfileFields
 } from "../../../api/profile-onboarding";
 import { LoadingState } from "../../../components/LoadingState";
+import { presentConfirm } from "../../../components/ui/feedback-requests";
+import { PersonalScheduleDateTimePicker } from "../../schedule/PersonalScheduleDateTimePicker";
+import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
+import { isTabPageHref, openMainTab } from "../../../components/shell-navigation";
 import { profileVisibleCharacterCount } from "../../../data/profile-edit-session";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
@@ -67,6 +71,7 @@ import {
   type OnboardingStep
 } from "../../../view-models/profile-onboarding";
 import { batchRoutePath } from "../../../view-models/business-card-ingest";
+import { encodeDirectScanImage } from "../../../api/batch-images";
 import { appendAppGuideReturnTo } from "../../../view-models/guide-return-to";
 import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFrame, StepHead, useOnboardingStyles } from "./OnboardingParts";
 
@@ -82,6 +87,12 @@ const STEP_TIME_KEYS: Record<OnboardingStep, MessageKey> = {
   profile: "onboarding.time.quick", goals: "onboarding.time.quick", persona: "onboarding.time.quick", intro: "onboarding.time.ai", import: "onboarding.time.optional"
 };
 
+/** Home (or another tab page) becomes the only page, with no way back to login, signup or onboarding. */
+function leaveOnboarding(router: ReturnType<typeof useRouter>, href: string): void {
+  if (isTabPageHref(href)) openMainTab(router, href);
+  else router.replace(href as Href);
+}
+
 function localToday(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -95,7 +106,8 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
   const client = useOrbitApiClient();
   const destination = onboardingDestination(next);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  // Set it again on every mount: Fast Refresh re-runs effects after their cleanup.
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const [view, setView] = useState<View_>("loading");
   const [resume, setResume] = useState<{ completed: number; step: OnboardingStep } | null>(null);
@@ -135,8 +147,9 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     if (!mounted.current) return;
     if (!result.ok || !progress.ok) { setView("loadError"); return; }
     flowRef.current = progress.progress;
-    if (progress.progress?.finishedAt || (!progress.progress && result.detail.onboarding?.status === "complete")) {
-      routerRef.current.replace(destinationRef.current as Href); return;
+    // A complete profile whose setup was put off (「稍后」) is set up: do not bring the 继续设置 card back on every sign-in.
+    if (progress.progress?.finishedAt || (result.detail.onboarding?.status === "complete" && (!progress.progress || progress.progress.deferred))) {
+      leaveOnboarding(routerRef.current, destinationRef.current); return;
     }
     const profile = result.detail.profile;
     setDetail(result.detail);
@@ -205,7 +218,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     });
     if (result && result.ok && result.progress) {
       flowRef.current = result.progress;
-      router.replace(destination as Href);
+      leaveOnboarding(router, destination);
     } else setNotice({ kind: "failed" });
     if (mounted.current) setSaving(false);
   }
@@ -220,7 +233,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
       const result = await updateProfileOnboardingProgress(client, { action: "finish", expectedRevision: flow.revision, mutationId: finishMutationRef.current });
       if (!result.ok || !result.progress) { setNotice({ kind: "failed" }); return; }
       flowRef.current = result.progress;
-      router.replace(destination as Href);
+      leaveOnboarding(router, destination);
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -317,15 +330,24 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     if (scanning) return;
     setMessage(null); setNotice(null);
     try {
-      const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) { setMessage(t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied")); return; }
-      const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, base64: true, mediaTypes: ["images"], quality: 0.86 };
+      // The iOS photo picker runs out of process and needs no library access; only ask for it elsewhere.
+      const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : Platform.OS === "ios" ? { granted: true, canAskAgain: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        const denied = t(source === "camera" ? "onboarding.cameraDenied" : "onboarding.libraryDenied");
+        setMessage(denied);
+        // iOS asks only once; after a refusal the only way back is the Settings app.
+        if (!permission.canAskAgain && Platform.OS !== "web") void presentConfirm({ title: denied, confirmLabel: t("add.scan.openSettings"), cancelLabel: t("onboarding.cancel"), icon: "settings" })
+          .then(open => { if (open) void Linking.openSettings().catch(() => undefined); });
+        return;
+      }
+      const options: ImagePicker.ImagePickerOptions = { allowsEditing: false, mediaTypes: ["images"], quality: 0.86 };
       const picked = source === "camera" ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       const asset = picked.canceled ? null : picked.assets?.[0];
       if (!asset) return;
-      if (!asset.base64) { setMessage(t("onboarding.scanFailed")); return; }
       setScanning(true);
-      const card = await scanOwnBusinessCard(client, { base64: asset.base64, fileName: asset.fileName || "business-card.jpg", mimeType: asset.mimeType ?? "image/jpeg", size: asset.fileSize ?? null });
+      const image = await encodeDirectScanImage({ ...asset, fileName: asset.fileName || "business-card.jpg" });
+      if (!mounted.current) return;
+      const card = await scanOwnBusinessCard(client, image);
       if (!mounted.current) return;
       if (!card.ok) { setMessage(t("onboarding.scanFailed")); return; }
       setBasic(current => ({ ...current, company: card.company || current.company, name: card.name || current.name, title: card.title || current.title }));
@@ -434,7 +456,7 @@ export function ProfileOnboardingScreen({ next, screen }: { next?: string | stri
     <>
       {banner}
       <SecondaryButton label={t("onboarding.takeCards")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/scan", "/profile/onboarding?screen=5") as Href)} />
-      <SecondaryButton label={t("add.doors.otherContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
+      <SecondaryButton label={t("onboarding.importContacts")} onPress={() => router.push(appendAppGuideReturnTo("/contacts/new/import?kind=contacts", "/profile/onboarding?screen=5") as Href)} />
       <PrimaryButton label={t("onboarding.finish")} onPress={() => void finish()} />
     </>
   ) : (
@@ -482,6 +504,12 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       ? listSecondaryIndustries(basic.primaryIndustryId).map(item => ({ id: item.id as string, label: item.labels[locale.language] }))
       : [];
   const showBirthError = basic.birthDate.length >= 10 && !isValidProfileBirthDate(basic.birthDate, today);
+  const { timeZone } = useOrbitTimeZone();
+  const [dateOpen, setDateOpen] = useState(false);
+  // Stored as YYYY-MM-DD (what PUT /api/profile expects); shown as a local date.
+  const birthLabel = isValidProfileBirthDate(basic.birthDate, today)
+    ? new Intl.DateTimeFormat(locale.language, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${basic.birthDate}T12:00:00Z`))
+    : basic.birthDate || null;
   function select(id: string) {
     if (picker === "primary") setBasic(current => ({ ...current, primaryIndustryId: id as IndustryIdCode, secondaryIndustryId: current.primaryIndustryId === id ? current.secondaryIndustryId : "" }));
     else setBasic(current => ({ ...current, secondaryIndustryId: id as SecondaryIndustryIdCode }));
@@ -491,7 +519,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
     <Field half label={label}>
       <Pressable accessibilityLabel={`${label}：${value ?? placeholder}`} accessibilityRole="button" accessibilityState={{ disabled: !enabled, expanded: picker === which }} disabled={!enabled}
         onPress={() => setPicker(current => (current === which ? null : which))} style={[styles.selectButton, !enabled && styles.disabled]}>
-        <Text numberOfLines={1} style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
+        <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>{value ?? placeholder}</Text>
         <Ionicons color={colors.ink3Text} name={picker === which ? "chevron-up" : "chevron-down"} size={14} />
       </Pressable>
     </Field>
@@ -503,7 +531,7 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
       {message ? <Text accessibilityLiveRegion="polite" style={message === t("onboarding.scanFilled") ? styles.toast : styles.warning}>{message}</Text> : null}
       <View style={styles.fields}>
         <Field label={t("onboarding.name")}>
-          <TextInput accessibilityLabel={t("onboarding.name")} editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
+          <TextInput accessibilityLabel={t("onboarding.name")} returnKeyType="done" editable={!disabled} maxLength={60} onChangeText={set("name")} placeholder={t("onboarding.namePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.name} />
         </Field>
         <View style={styles.fieldRow}>
           {selectButton("primary", t("onboarding.primaryIndustry"), primaryLabel, t("onboarding.select"), !disabled)}
@@ -524,16 +552,30 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
         ) : null}
         <View style={styles.fieldRow}>
           <Field half label={t("onboarding.role")} optional>
-            <TextInput accessibilityLabel={t("onboarding.role")} editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
+            <TextInput accessibilityLabel={t("onboarding.role")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("title")} placeholder={t("onboarding.rolePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.title} />
           </Field>
           <Field half label={t("onboarding.company")} optional>
-            <TextInput accessibilityLabel={t("onboarding.company")} editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
+            <TextInput accessibilityLabel={t("onboarding.company")} returnKeyType="done" editable={!disabled} maxLength={80} onChangeText={set("company")} placeholder={t("onboarding.companyPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.company} />
           </Field>
         </View>
         <Field helper={t("onboarding.birthDateHelp")} label={t("onboarding.birthDate")} optional>
-          <TextInput accessibilityLabel={t("onboarding.birthDate")} autoCorrect={false} editable={!disabled} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={set("birthDate")}
-            placeholder={t("onboarding.birthDatePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} value={basic.birthDate} />
+          <View style={styles.dateRow}>
+            <Pressable accessibilityLabel={`${t("onboarding.birthDate")}：${birthLabel ?? t("onboarding.birthDatePlaceholder")}`} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled}
+              onPress={() => setDateOpen(true)} style={[styles.selectButton, styles.dateButton, disabled && styles.disabled]}>
+              <Text style={[styles.selectText, !birthLabel && styles.selectPlaceholder]}>{birthLabel ?? t("onboarding.birthDatePlaceholder")}</Text>
+              <Ionicons color={colors.ink3Text} name="calendar-outline" size={16} />
+            </Pressable>
+            {basic.birthDate ? (
+              <Pressable accessibilityLabel={t("onboarding.birthDateClear")} accessibilityRole="button" disabled={disabled} hitSlop={8} onPress={() => set("birthDate")("")} style={styles.linkButton}>
+                <Ionicons color={colors.ink3Text} name="close-circle" size={20} />
+              </Pressable>
+            ) : null}
+          </View>
         </Field>
+        {dateOpen ? (
+          <PersonalScheduleDateTimePicker kind="date" value={isValidProfileBirthDate(basic.birthDate, today) ? basic.birthDate : ""} zone={timeZone} disabled={disabled} yearJump max={today} title={t("onboarding.birthDate")}
+            initialMonth={`${Number(today.slice(0, 4)) - 30}-01`} onCancel={() => setDateOpen(false)} onConfirm={value => { setDateOpen(false); set("birthDate")(value); }} />
+        ) : null}
         {showBirthError ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.birthDateInvalid")}</Text> : null}
       </View>
     </>
@@ -607,7 +649,7 @@ function GoalsStep({ focus, goals, setFocus, setGoals }: {
         <CustomChip disabled={full} onAdd={value => setGoals(current => addCustomValue(current, value, GOAL_LIMIT))} />
       </View>
       <Field label={t("onboarding.focus")} optional>
-        <TextInput accessibilityLabel={t("onboarding.focus")} maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
+        <TextInput accessibilityLabel={t("onboarding.focus")} returnKeyType="done" submitBehavior="blurAndSubmit" maxLength={FOCUS_LIMIT} multiline onChangeText={setFocus} placeholder={t("onboarding.focusPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.multiline} value={focus} />
       </Field>
     </>
   );
@@ -683,10 +725,10 @@ function IntroStep({ bio, bioCount, headline, message, onRegenerate, regeneratio
       )}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.warning}>{message}</Text> : null}
       <Field label={t("onboarding.headline")}>
-        <TextInput accessibilityLabel={t("onboarding.headline")} editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={setHeadline} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
+        <TextInput accessibilityLabel={t("onboarding.headline")} returnKeyType="done" submitBehavior="blurAndSubmit" multiline editable={!generating} maxLength={HEADLINE_LIMIT} onChangeText={value => setHeadline(value.replace(/\s*\n\s*/gu, " "))} placeholder={t("onboarding.headlinePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.headlineInput} value={headline} />
       </Field>
       <Field label={t("onboarding.bio")}>
-        <TextInput accessibilityLabel={t("onboarding.bio")} editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
+        <TextInput accessibilityLabel={t("onboarding.bio")} returnKeyType="done" submitBehavior="blurAndSubmit" editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
         <Text style={[styles.counter, bioCount.over && styles.counterOver]}>{t("onboarding.charCount", { count: bioCount.count, limit: bioCount.limit })}</Text>
         {bioCount.over ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.bioTooLong", { limit: bioCount.limit })}</Text> : null}
       </Field>

@@ -43,6 +43,7 @@ test("the lifecycle whitelist holds exactly the differentially tested (Node side
       "78.3/17.0/en-US|pg16/UTF8/153.136/153.136/i/true",
       "78.3/17.0/en-US|pg16/UTF8/153.14/153.14/i/true",
       "78.2/17.0/en-US|pg16/UTF8/153.14/153.14/i/true",
+      "78.3/17.0/en-US|pg18/UTF8/153.136/153.136/i/true",
       "78.2/17.0/en-US|pg18/UTF8/153.136/153.136/i/true",
     ],
   );
@@ -83,7 +84,7 @@ test("any pair outside the table throws LIFECYCLE_SORT_RUNTIME_UNVERIFIED", capt
     ["SQL_ASCII", ICU783, pg("160015", "153.14", "153.14", { encoding: "SQL_ASCII" })],
     ["PG 17", ICU783, pg("170004", "153.14")],
     ["PG 15", ICU783, pg("150013", "153.14")],
-    ["PG18 with untested ICU78.3", ICU783, pg("180003", "153.136")],
+    ["PG18 with untested ICU78.4", node("78.4", "17.0", "en-US"), pg("180003", "153.136")],
     ["PG18 with untested collation", ICU782, pg("180003", "153.14")],
     ["server_version_num not numeric", ICU783, pg("16.15", "153.14")],
     ["no ICU build", node(undefined, "17.0", "en-US"), PROD_PG],
@@ -153,9 +154,16 @@ test("readers: PG mismatch rejects after the one existing query; the home Node p
   await assert.rejects(createLifecycleTaskPagesReader({ client: pages.client, workspaceId: "w", secret, nodeRuntime: () => ICU783 }).read("actor:private"), /^Error: LIFECYCLE_SORT_RUNTIME_UNVERIFIED$/);
   assert.deepEqual(pages.texts, [LIFECYCLE_TASK_PAGES_SQL]);
 
+  // The relationship page cuts its pages in SQL, so an unverified runtime falls back to byte order instead of failing:
+  // one ICU attempt, then the byte-order query; the next read on the same database goes straight to bytes.
   const relationship = fakeClient({ ok: true, runtime: pg("160015", "153.14", "153.136"), total: 0, items: [] });
-  await assert.rejects(createRelationshipTaskPageReader({ client: relationship.client, workspaceId: "w", secret, nodeRuntime: () => ICU783 }).read("actor:private", { mode: "open" }), /^Error: LIFECYCLE_SORT_RUNTIME_UNVERIFIED$/);
-  assert.equal(relationship.texts.length, 1);
+  const relationshipReader = createRelationshipTaskPageReader({ client: relationship.client, workspaceId: "w", secret, nodeRuntime: () => ICU783 });
+  assert.equal((await relationshipReader.read("actor:private", { mode: "open" })).total, 0);
+  assert.equal(relationship.texts.length, 2);
+  assert.ok(relationship.texts[0]!.includes('collate pg_catalog."und-x-icu"') && !relationship.texts[1]!.includes('collate pg_catalog."und-x-icu"'), "second query orders by bytes");
+  await relationshipReader.read("actor:private", { mode: "open" });
+  assert.equal(relationship.texts.length, 3);
+  assert.ok(!relationship.texts[2]!.includes('collate pg_catalog."und-x-icu"'));
 
   const window = { snapshotAt: "2026-09-25T00:00:00.000Z", from: "2026-09-18T00:00:00.000Z", to: "2026-10-02T00:00:00.000Z" };
   const homeRow = { ok: true, runtime: pg("160015", "153.14", "153.14", { provider: "c" }), counts: { current: 0, history: 0, orphan: 0 }, groups: { overdue: 0, recent: 0, undated: 0 }, items: [] };
@@ -166,8 +174,8 @@ test("readers: PG mismatch rejects after the one existing query; the home Node p
   await assert.rejects(createLifecycleHomeSummaryReader({ client: homePg.client, workspaceId: "w", nodeRuntime: () => ICU783 }).read("actor:private", window), /^Error: LIFECYCLE_SORT_RUNTIME_UNVERIFIED$/);
   assert.deepEqual(homePg.texts, [LIFECYCLE_HOME_SUMMARY_SQL]);
 
-  const checks = lines.map(line => (JSON.parse(line) as { check: string }).check);
-  assert.deepEqual(checks, ["lifecycle_pages", "relationship_task_page", "lifecycle_home", "lifecycle_home"]);
+  const checks = lines.map(line => { const entry = JSON.parse(line) as { check?: string; event: string }; return entry.check ?? entry.event; });
+  assert.deepEqual(checks, ["lifecycle_pages", "relationship_task_page_byte_order", "lifecycle_home", "lifecycle_home"]);
   for (const line of lines) {
     for (const marker of ["actor:private", "w\"", "select", "SELECT"]) assert.ok(!line.includes(marker), `${marker} must not be logged`);
   }

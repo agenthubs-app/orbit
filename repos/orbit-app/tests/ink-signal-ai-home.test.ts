@@ -261,7 +261,9 @@ test("R21 swiping a stored history row left opens its actions without writing", 
   await p.mouse.down();
   await p.mouse.move(x - 90, y, { steps: 6 });
   await p.mouse.up();
-  await p.getByRole("heading", { name: "会话操作" }).waitFor();
+  // QA-A: the action sheet is now titled with the row it acts on.
+  await p.getByRole("heading", { name: "产品试点讨论", exact: true }).waitFor();
+  assert.ok(await p.getByRole("button", { name: "置顶" }).count());
   assert.deepEqual(await writes(p), []);
 });
 

@@ -11,3 +11,9 @@ test("home targets retain source details while switching Web Task tabs to native
   assert.equal(homeAppTargetHref("https://outside.test/"), null);
   assert.equal(homeAppTargetHref("/app/admin"), null);
 });
+
+test("a bare /plans target opens the Task 计划 segment (there is no /plans page), plan detail routes stay", () => {
+  assert.equal(homeAppTargetHref("/plans"), "/task?seg=plan");
+  assert.equal(homeAppTargetHref("/plans?from=home"), "/task?seg=plan");
+  assert.equal(homeAppTargetHref("/plans/plan%3Aone/done"), "/plans/plan%3Aone/done");
+});

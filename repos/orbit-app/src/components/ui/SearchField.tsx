@@ -17,6 +17,9 @@ export function SearchField({ value, onChangeText, placeholder, accessibilityLab
       <Icon name="search" size={16} color={colors.ink3Text} />
       <TextInput
         accessibilityLabel={accessibilityLabel ?? placeholder}
+        // QA-C3: searches are names, companies and keywords; autocorrect turned "Yu" into "You".
+        autoCapitalize="none"
+        autoCorrect={false}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.ink3Text}
@@ -36,5 +39,5 @@ export function SearchField({ value, onChangeText, placeholder, accessibilityLab
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   field: { minHeight: 44, borderRadius: 999, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16 },
-  input: { flex: 1, color: colors.ink, fontSize: 13.5, paddingVertical: 10 },
+  input: { flex: 1, color: colors.ink, fontSize: 16, paddingVertical: 10 },
 }));

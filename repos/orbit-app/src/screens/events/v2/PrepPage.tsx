@@ -38,10 +38,12 @@ export function prepWhen(startsAt: string, now: string, t: JourneyT): string {
   return p ? `${p.month}/${p.day} ${time}` : time;
 }
 /** 「3:12」（时:分），开始后 0。 */
-export function countdown(startsAt: string, nowMs: number): { text: string; hours: boolean } {
+export function countdown(startsAt: string, nowMs: number): { text: string; hours: boolean; days?: boolean } {
   const left = Math.max(0, Date.parse(startsAt) - nowMs);
   const h = Math.floor(left / 3_600_000);
   const m = Math.floor((left % 3_600_000) / 60_000);
+  // 两天以上按天数（「8 天」而不是「194:53 小时」）。
+  if (h >= 48) return { days: true, hours: false, text: String(Math.round(h / 24)) };
   return h > 0 ? { hours: true, text: `${h}:${String(m).padStart(2, "0")}` } : { hours: false, text: String(m) };
 }
 
@@ -133,7 +135,7 @@ export function PrepPage() {
         <View style={[styles.row, { alignItems: "stretch", gap: 14 }]}>
           <View style={styles.grow}>
             <UiText style={styles.lbl}>{t("untilStart")}</UiText>
-            <UiText style={styles.big}>{until.text}<UiText style={styles.bigUnit}>{` ${until.hours ? t("hoursUnit") : t("minutesUnit")}`}</UiText></UiText>
+            <UiText style={styles.big}>{until.text}<UiText style={styles.bigUnit}>{` ${until.days ? t("daysUnit") : until.hours ? t("hoursUnit") : t("minutesUnit")}`}</UiText></UiText>
             <UiText style={[styles.lbl, { marginTop: 6 }]}>{[data.venue, data.access].filter(Boolean).join("\n")}</UiText>
           </View>
           <View style={styles.map}>
@@ -155,17 +157,18 @@ export function PrepPage() {
       {low ? (
         <UiPressable accessibilityRole="button" accessibilityLabel={t("cardsInputLabel")} onPress={() => setEditingCards(true)} style={styles.warnbar} testID="events-prep-cards">
           <View style={styles.warnEmojiBox}><UiText style={styles.warnEmoji}>📇</UiText></View>
-          <UiText style={[styles.warnText, styles.grow]}>{`${t("cardsWarnA")} `}<UiText style={styles.warnB}>{t("cardsN", { n: cards ?? 0 })}</UiText>{t("cardsWarnB", { p: data.people.length })}{" "}<UiText style={styles.warnB}>{t("cardsN", { n: recommended })}</UiText>{` ${t("cardsWarnC")}`}</UiText>
+          <UiText style={[styles.warnText, styles.grow]}>{`${t("cardsWarnA")} `}<UiText style={styles.warnB}>{t("cardsN", { n: cards ?? 0 })}</UiText>{data.people.length ? t("cardsWarnB", { p: data.people.length }) : t("cardsWarnBNoPeople")}{" "}<UiText style={styles.warnB}>{t("cardsN", { n: recommended })}</UiText>{` ${t("cardsWarnC")}`}</UiText>
         </UiPressable>
       ) : null}
       {editingCards || cards === null ? (
         <View style={[styles.card, styles.gap, styles.cardsInput]}>
           <UiText style={styles.lbl}>{t("cardsInputLabel")}</UiText>
-          <TextInput keyboardType="number-pad" defaultValue={cards === null ? "" : String(cards)} autoFocus={editingCards} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={(event) => saveCards(event.nativeEvent.text)} onEndEditing={(event) => { if (editingCards) saveCards(event.nativeEvent.text); }} accessibilityLabel={t("cardsInputLabel")} style={styles.cardsField} />
+          <TextInput keyboardType="number-pad" defaultValue={cards === null ? "" : String(cards)} autoFocus={editingCards} showSoftInputOnFocus={!noKeyboard} onSubmitEditing={(event) => saveCards(event.nativeEvent.text)} onEndEditing={(event) => { if (editingCards) saveCards(event.nativeEvent.text); }} accessibilityLabel={t("cardsInputLabel")} placeholder={t("cardsPlaceholder")} placeholderTextColor={colors.ink3} style={styles.cardsField} />
         </View>
       ) : null}
       <View style={[styles.card, styles.gap]} testID="events-prep-people">
-        <View style={styles.cardH}><UiText style={styles.h3}>{t("meetListTitle", { n: data.people.length })}</UiText><UiText style={styles.lbl}>{t("meetListHint").split(" · ")[0]}</UiText></View>
+        <View style={styles.cardH}><UiText style={styles.h3}>{t("meetListTitle", { n: data.people.length })}</UiText>{data.people.length > 1 ? <UiText style={styles.lbl}>{t("meetListHint").split(" · ")[0]}</UiText> : null}</View>
+        {data.people.length === 0 ? <UiText style={styles.lbl}>{t("prepPeopleEmpty")}</UiText> : null}
         {data.people.map((person, index) => {
           const open = openPerson === index;
           const [bg, ink] = tone(AV_TONES[index % AV_TONES.length]!);
@@ -231,48 +234,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   gap: { marginTop: 14 },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 18 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
-  sub: { color: colors.ink2, fontSize: 12.5, lineHeight: 18.75 },
-  h3: { color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.75 },
-  title13: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  sub: { color: colors.ink2, fontSize: 15, lineHeight: 23 },
+  h3: { color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 },
+  title13: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 22 },
   cardH: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   big: { color: colors.ink, fontFamily: Platform.OS === "ios" ? "ui-rounded" : undefined, fontSize: 38, fontVariant: ["tabular-nums"], fontWeight: "800", letterSpacing: -0.76, lineHeight: 39.9, transform: [{ translateY: 3 }] },
-  bigUnit: { color: colors.ink3, fontSize: 15, fontWeight: "700", letterSpacing: 0 },
+  bigUnit: { color: colors.ink3, fontSize: 17, fontWeight: "700", letterSpacing: 0 },
   map: { height: 96, width: 128 },
   // svg <text x=10 y=84 font 8>，viewBox 120×90 缩放到 128×96（×16/15）：基线 89.6、字号 8.53。
   mapText: { color: colors.ink3, fontSize: 8.53, left: 10.67, lineHeight: 10, position: "absolute", top: 81.6 },
   btnSm: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", gap: 6, height: 32, justifyContent: "center", paddingHorizontal: 12 },
-  btnSmText: { color: colors.ink, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  btnSmText: { color: colors.ink, fontSize: 14, fontWeight: "700", lineHeight: 21 },
   primary: { backgroundColor: colors.ink },
   warnbar: { alignItems: "center", backgroundColor: colors.coralSoft, borderRadius: 16, flexDirection: "row", gap: 10, marginTop: 14, paddingHorizontal: 14, paddingVertical: 11 },
   // Chrome 里 18px 的 📇 占 21 宽，iOS 的彩色 emoji 占 24：固定 21 的占位，文字起点同画板。
   warnEmojiBox: { alignItems: "center", width: 21 },
-  warnEmoji: { fontSize: 18, lineHeight: 24, width: 24, textAlign: "center" },
-  warnText: { color: colors.ink, fontSize: 12.5, lineHeight: 18.75 },
+  warnEmoji: { fontSize: 20, lineHeight: 27, width: 24, textAlign: "center" },
+  warnText: { color: colors.ink, fontSize: 15, lineHeight: 23 },
   warnB: { color: colors.coral, fontWeight: "700" },
   cardsInput: { gap: 8 },
-  cardsField: { backgroundColor: colors.surface2, borderRadius: 14, color: colors.ink, fontSize: 15, height: 44, paddingHorizontal: 14 },
+  cardsField: { backgroundColor: colors.surface2, borderRadius: 14, color: colors.ink, fontSize: 17, height: 44, paddingHorizontal: 14 },
   av: { alignItems: "center", borderRadius: radius.pill, height: 38, justifyContent: "center", width: 38 },
-  avText: { fontSize: 13.5, fontWeight: "800", lineHeight: 17 },
+  avText: { fontSize: 16, fontWeight: "800", lineHeight: 20 },
   accLine: { borderTopColor: colors.line, borderTopWidth: 1 },
   accH: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 10 },
-  accName: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
+  accName: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   chevOpen: { transform: [{ rotate: "180deg" }] },
   chip: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: radius.pill, flexDirection: "row", paddingHorizontal: 9, paddingVertical: 3 },
-  chipText: { color: colors.ink2, fontSize: 11, fontWeight: "700", lineHeight: 16.5 },
+  chipText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   accIn: { gap: 8, paddingBottom: 12, paddingLeft: 48 },
   kv: { flexDirection: "row", gap: 8 },
-  kvKey: { color: colors.ink3, fontSize: 11.5, lineHeight: 18.75, paddingTop: 1, width: 58 },
-  kvVal: { color: colors.ink, flex: 1, fontSize: 12.5, lineHeight: 18.75 },
+  kvKey: { color: colors.ink3, fontSize: 13, lineHeight: 21, paddingTop: 1, width: 58 },
+  kvVal: { color: colors.ink, flex: 1, fontSize: 15, lineHeight: 23 },
   quote: { backgroundColor: colors.surface2, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
-  quoteText: { color: colors.ink, fontSize: 12.5, lineHeight: 20 },
+  quoteText: { color: colors.ink, fontSize: 15, lineHeight: 24 },
   chk: { alignItems: "flex-start", flexDirection: "row", gap: 10, paddingVertical: 10 },
   chkLine: { borderTopColor: colors.line, borderTopWidth: 1 },
   box: { alignItems: "center", borderColor: colors.ink4, borderRadius: radius.pill, borderWidth: 1.8, height: 22, justifyContent: "center", marginTop: 1, width: 22 },
   boxDone: { backgroundColor: colors.plum500, borderColor: colors.plum500 },
-  chkTitle: { color: colors.ink, fontSize: 13.5, fontWeight: "700", lineHeight: 20.25 },
+  chkTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
   chkDone: { color: colors.ink3, textDecorationLine: "line-through" },
   confirm: { backgroundColor: "transparent", borderColor: colors.plum300, borderRadius: 20, borderStyle: "dashed", borderWidth: 1.5 },
   emoSm: { alignItems: "center", borderRadius: 10, height: 32, justifyContent: "center", width: 32 },
-  emoSmText: { fontSize: 17, lineHeight: 22 },
+  emoSmText: { fontSize: 19, lineHeight: 25 },
 }));

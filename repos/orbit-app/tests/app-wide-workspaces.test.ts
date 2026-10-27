@@ -149,25 +149,17 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, screen: str
 async function fits(action: Locator, height = 44) { const b = (await action.boundingBox())!; assert.ok(b && b.height + 0.001 >= height, `expected ${height}pt target, got ${b?.height}`); assert.ok(b.x >= 0 && b.x + b.width <= 320, "action fits 320pt screen"); }
 async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "get")), []); }
 
-test("personal schedule reads retain v3 audit while every mutation still violates the no-write boundary", async t => {
+test("the task list no longer reads the personal schedule, and every mutation still violates the no-write boundary", async t => {
+  // UX-7: PersonalScheduleList left the task list; its v3 read audit lives in the personal-schedule tests.
   const page = await open(t, "tasks");
-  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.startsWith("/api/schedule-items?")));
-  const reads = await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?")));
-  for (const read of reads) {
-    assert.equal(read.method, "get");
-    assert.equal(read.body, undefined);
-    assert.equal(read.headers["x-orbit-personal-schedule-version"], "3");
-    const query = new URL(read.path, "https://fixture.invalid").searchParams;
-    assert.equal(query.get("scope"), "personal");
-    assert.equal(Date.parse(query.get("to")!) - Date.parse(query.get("from")!), 90 * 86_400_000);
-  }
+  await page.getByRole("checkbox", { name: "完成：确认合作时间", exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items"))), []);
   await noWrites(page);
   for (const method of ["post", "patch", "delete", "put"]) {
-    await page.evaluate(method => (window as any).fixture.requests.push({ method, path: "/api/schedule-items", body: { title: "unexpected write" } }), method);
+    await page.evaluate(method => (window as any).fixture.requests.push({ method, path: "/api/tasks/task-one", body: { action: "complete" } }), method);
     await assert.rejects(noWrites(page), assert.AssertionError);
     await page.evaluate(() => (window as any).fixture.requests.pop());
   }
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?"))), reads);
 });
 
 for (const scheme of ["light", "dark"] as const) {
@@ -176,11 +168,11 @@ for (const scheme of ["light", "dark"] as const) {
     const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
     // The keyword-driven contact/event/follow-up/profile/schedule panels were
     // removed with their whole-collection reads (docs/operations/2026-09-26-ai-conversation-bounded-reads.md).
-    // The suggested action is text in the new conversation stack; the task
-    // interaction remains an actionable card.
-    await page.getByText("核对合作信息", { exact: true }).waitFor();
+    // QA-A: proposed tool intents are the agent's tool trace with no action to take, so they are
+    // no longer shown; the task interaction remains an actionable card.
     const taskCard = page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..");
     await taskCard.waitFor();
+    for (const trace of ["核对合作信息", "先确认事实再行动"]) assert.equal(await page.getByText(trace, { exact: true }).count(), 0, trace);
     assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
     for (const removed of ["打开待办详情：联系 林悦", "打开待办详情：确认合作时间"]) assert.equal(await page.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
     assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");
@@ -245,17 +237,19 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await draft.inputValue(), "先核对合作资料"); await noWrites(page);
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-ai-${scheme}.png`, fullPage: true });
   });
-  test(`${scheme}: task mode switching and detail expansion never complete or delete a task`, async t => {
+  test(`${scheme}: completed fold and detail expansion never complete or delete a task`, async t => {
     const page = await open(t, "tasks", scheme);
-    for (const name of ["已完成 1", "未完成 1"]) { const tab = page.getByRole("tab", { name, exact: true }); await fits(tab); await tab.click(); }
+    for (const name of ["展开已完成任务", "收起已完成任务"]) { const fold = page.getByRole("button", { name, exact: true }); await fits(fold); await fold.click(); }
+    await fits(page.getByRole("checkbox", { name: "完成：确认合作时间", exact: true }), 52);
     await page.getByRole("button", { name: /确认合作时间/ }).click(); await noWrites(page);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task-one"]);
     const detail = await open(t, "task", scheme);
     await detail.getByRole("textbox", { name: "待办标题", exact: true }).waitFor();
-    const more = detail.getByRole("button", { name: "更多待办操作", exact: true }); await fits(more); await more.click();
-    await fits(detail.getByRole("button", { name: "关闭待办设置", exact: true }));
-    await detail.getByRole("button", { name: "关闭待办设置", exact: true }).click();
-    await fits(detail.getByRole("button", { name: "标记完成", exact: true }), 50); await noWrites(detail);
+    // UX T4: only 提醒 opens a sheet now (closed with 完成); the one destructive action is 删除待办 at the bottom.
+    const more = detail.getByRole("button", { name: "提醒", exact: true }); await fits(more); await more.click();
+    await fits(detail.getByRole("button", { name: "完成", exact: true }));
+    await detail.getByRole("button", { name: "完成", exact: true }).click();
+    await fits(detail.getByRole("button", { name: "删除待办", exact: true }), 50); await noWrites(detail);
   });
   test(`${scheme}: calendar day week month modes preserve selected date and event navigation`, async t => {
     const page = await open(t, "schedule", scheme); await fits(page.getByRole("button", { name: "回到今天", exact: true }));
@@ -287,7 +281,7 @@ test("iOrbit conversation keeps its draft when opening and closing mentions", as
 });
 test("chat list and detail retain navigation and messages; the detail offers no send", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
-  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "14.5px");
+  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "17px"); // UX-1 type scale (kit 14.5)
   const detail = await open(t, "thread"); await detail.getByText("周四讨论合作资料", { exact: true }).waitFor();
   assert.equal(await detail.getByRole("button", { name: /发送消息/ }).count(), 0);
   await noWrites(detail);
@@ -300,9 +294,10 @@ test("iOrbit start offers four direct-send prompts without implicit writes", asy
   }
   await noWrites(page);
 });
-for (const [screen, label] of [["actions", "确认建议"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
+// UX-7: the relationship-scope tools ("生成候选") left the task list, so "followups" is no longer a separate workspace here.
+for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"]]) {
   test(`${screen}: successful workspace exposes a reachable primary action without implicit writes`, async t => {
-    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "followups" ? 44 : 50); await noWrites(page);
+    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), 50); await noWrites(page);
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
@@ -321,8 +316,8 @@ test("agent workspace headers do not repeat brand names above their page titles"
   }
 });
 test("workspace actions grow with doubled text while keeping labels inside the phone", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["tasks", "已完成 1"], ["task", "标记完成"], ["schedule", "回到今天"]]) {
-    const page = await open(t, screen!, "dark"); const action = page.getByRole(screen === "tasks" ? "tab" : "button", { name: label!, exact: true }).first(); await action.waitFor();
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["tasks", "展开已完成任务"], ["task", "删除待办"], ["schedule", "回到今天"]]) {
+    const page = await open(t, screen!, "dark"); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; const line = parseFloat(s.lineHeight); el.style.lineHeight = `${(Number.isFinite(line) ? line : parseFloat(s.fontSize) * 1.5) * 2}px`; }));
     await fits(action); const bounds = (await action.boundingBox())!;
     for (const text of await action.locator("[dir='auto']").all()) { const box = (await text.boundingBox())!; assert.ok(box.x >= bounds.x && box.x + box.width <= bounds.x + bounds.width + 1, `${screen} action label fits horizontally`); assert.ok(box.y >= bounds.y && box.y + box.height <= bounds.y + bounds.height + 1, `${screen} action label fits vertically`); }
@@ -344,7 +339,7 @@ test("iOrbit resource fallback keeps the local conversation header and offline e
   await noWrites(page);
 });
 test("task metadata stays complete at large text without cutting off the scheduled date", async t => {
-  const page = await open(t, "task"); const metadata = page.getByText("截止", { exact: true }).locator("..").locator("..");
+  const page = await open(t, "task"); const metadata = page.getByText("日期", { exact: true }).locator("..").locator("..");
   await metadata.waitFor();
   await metadata.locator("[dir='auto']").evaluateAll(elements => elements.forEach(node => { const el = node as HTMLElement; el.style.fontSize = "30px"; el.style.lineHeight = "46px"; }));
   const clipped = await metadata.locator("[dir='auto']").evaluateAll(elements => elements.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(el => el.textContent));
@@ -376,9 +371,9 @@ test("calendar agendas retain complete time and event text at doubled native fon
   }
 });
 test("workspace actions and template navigation use their shared control text roles", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
-    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), screen === "followups" ? "600" : "700", `${screen} shared control label weight`);
+    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} shared control label weight`);
   }
 });
 for (const [screen, title] of [["tasks", "暂无待办"], ["chat", "暂无关系对话"], ["thread", "暂无消息"], ["ledger", "操作账本还是空的"]]) {

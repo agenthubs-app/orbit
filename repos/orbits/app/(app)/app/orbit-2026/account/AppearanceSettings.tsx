@@ -68,8 +68,8 @@ export function AppearanceSettings() {
       <div className={styles.accountRow}>
         <span className={styles.accountAvatar} aria-hidden>{identity?.name.slice(0, 1) ?? <Icon name="user" size={20} />}</span>
         <div className={styles.accountText}><b>{identity?.name ?? ""}</b>{identity?.email ? <span>{identity.email}</span> : null}</div>
-        <a className={`btn ${styles.accountButton}`} href="/app/settings/exports">{rights("export")}</a>
-        <a className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account">{rights("deletion")}</a>
+        <a className={`btn ${styles.accountButton}`} href="/app/settings/exports" aria-label={rights("export")}>{rights("export")}</a>
+        <a className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account" aria-label={rights("deletion")}>{rights("deletion")}</a>
       </div>
     </section>
   </div>;

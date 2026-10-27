@@ -39,5 +39,5 @@ export function AdminLoginScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   card: { gap: 12 },
   heading: { color: colors.ink, fontSize: typography.dialogTitle, fontWeight: "800" },
-  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 20 },
+  body: { color: colors.ink2, fontSize: typography.bodySm, lineHeight: 23 },
 }));

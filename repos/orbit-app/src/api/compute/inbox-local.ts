@@ -24,9 +24,9 @@ export type InboxListFilter = "all" | "history" | InboxNotificationKind;
 export type InboxDeviceNotification = Omit<InboxNotificationDTO, "actorId"> & { sourceState: InboxSourceState };
 
 export const INBOX_UNAVAILABLE_TEXT: Readonly<Record<InboxLanguage, { title: string; reason: string }>> = {
-  zh: { title: "来源已不可用", reason: "来源已变更、不可访问，或此通知已不再适用。" },
-  en: { title: "Source unavailable", reason: "The source changed, access is unavailable, or this notification no longer applies." },
-  ja: { title: "参照元を利用できません", reason: "参照元が変更されたか、アクセスできないか、この通知が対象外になりました。" },
+  zh: { title: "这条通知已过期", reason: "相关内容已经处理过，或已不存在。" },
+  en: { title: "This notification has expired", reason: "What it pointed to was already handled or no longer exists." },
+  ja: { title: "この通知は期限切れです", reason: "対象はすでに処理済みか、なくなりました。" },
 };
 
 const THIRTY_DAYS_MS = 30 * 86_400_000;

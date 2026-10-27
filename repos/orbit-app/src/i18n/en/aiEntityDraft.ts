@@ -14,7 +14,7 @@ export const aiEntityDraft = {
   "aiEntityDraft.fieldSourceNote": "Why in Orbit",
   "aiEntityDraft.fieldSources": "Linked",
   "aiEntityDraft.footnotePending": "Nothing is saved until you confirm.",
-  "aiEntityDraft.footnoteCreated": "Saved and read back.",
+  "aiEntityDraft.footnoteCreated": "Saved.",
   "aiEntityDraft.statePending": "Awaiting confirmation",
   "aiEntityDraft.stateCreated": "Created",
   "aiEntityDraft.stateCancelled": "Cancelled",

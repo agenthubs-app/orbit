@@ -30,3 +30,22 @@ for (const kind of ["memory", "postgres"] as const) {
     }
   });
 }
+
+test("postgres conditional writes accept rows stored with microsecond timestamps", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+  // Rows written by SQL (seeds, backfills) keep microseconds; the record read back only has milliseconds,
+  // and an exact comparison then refused every save with CONFLICT.
+  const schema = `cas_${randomUUID().replaceAll("-", "")}`;
+  const pool = new Pool({ connectionString: process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL, max: 1, options: `-c search_path=${schema}` });
+  try {
+    await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client: { async query<T>(sql: string, values?: readonly unknown[]) { return { rows: (await pool.query(sql, values ? [...values] : undefined)).rows as T[] }; } } });
+    await store.upsertRecord(seed);
+    await pool.query(`update orbit_records set updated_at = '2026-09-17T00:00:00.123456Z', created_at = '2026-09-16T00:00:00.654321Z'`);
+    const read = await store.getRecord({ workspaceId: "w", collectionName: "contacts", recordId: "c", userId: "a" });
+    assert.ok(read);
+    const written = await store.updateRecordIfCurrent!({ ...read, updatedAt: "2026-09-17T00:01:00.000Z", payload: { name: "saved" } }, { userId: "a", updatedAt: read.updatedAt });
+    assert.equal(written?.payload.name, "saved");
+  } finally {
+    await pool.query(`drop schema ${schema} cascade`); await pool.end();
+  }
+});

@@ -26,6 +26,7 @@ import {
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useStandardCopy } from "../../i18n/standard-copy";
+import { openMainTab } from "../../components/shell-navigation";
 import { usePlanApi } from "./plan-api";
 import { newIdempotencyKey } from "./plan-model";
 import { canConfirmManualMemo, groupPending, pendingPoints } from "./plan-overview-model";
@@ -57,6 +58,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
   const [achieveOpen, setAchieveOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   // R31a (RD-28) dev-only gate states (b12 #198 前提 / b4 A3 #19 見直し / A5 #24 達成 / A6 #29 編集). `design` is null
   // outside a dev build with open-path (PlanSegment → designState).
   useEffect(() => {
@@ -110,6 +112,15 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
     }
     router.push(planDoneHref("app", plan.planId) as Href);
   });
+  // QA-A2: 删除这个目标 (after a confirm); the summary then shows the next goal or the empty start.
+  const deleteGoal = () => void run(async () => {
+    setDeleteOpen(false);
+    setCardProblem(null);
+    const result = await api.deleteGoal(plan.planId, newIdempotencyKey("goal-delete"));
+    if (!result.ok) { setCardProblem(failureText(result.failure)); return; }
+    toast.success(t("plan.goals.deleted"));
+    await reload();
+  });
   const reopenStep = (stepKey: string) => run(async () => {
     setReopen(null);
     const result = await api.reopenStep(plan.planId, stepKey, newIdempotencyKey("step-reopen"));
@@ -122,7 +133,8 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
   const suggestionFor = (step: { key: string; completedAt?: string | null }) => (step.completedAt ? undefined : pending.steps.get(step.key));
   return (
     <View style={styles.page} testID="plan-overview">
-      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 ? plan.quota.activeGoalLimit : 0} onOpen={() => setSwitcherOpen(true)} />
+      {/* QA-A: "目标 1/2" with a single goal read as "one of two goals"; count the goals there are. */}
+      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 && activeGoals.length > 1 ? activeGoals.length : 0} onOpen={() => setSwitcherOpen(true)} />
       <HeroCard plan={plan} onOpenType={openType} score={<ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />} />
       <DiagCard
         plan={plan}
@@ -131,7 +143,7 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onReview={() => setReviewOpen(true)}
         onManual={openManualEdit}
         onAchieve={() => setAchieveOpen(true)}
-        onConversation={() => router.push("/agent" as Href)}
+        onConversation={() => openMainTab(router, "/ai")} /* QA-A: "/agent" is a legacy redirect to Task › 待办 */
         problem={cardProblem ? <InlineProblem text={cardProblem} /> : null}
       />
       <TodayCard plan={plan} cards={cards} onGo={() => router.push(plan.todayChance!.href as Href)} />
@@ -183,7 +195,6 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
                 <UiText style={styles.premiseValue}>{row.value}</UiText>
                 {row.guessed ? <KitChip label={t("plan.overview.premiseGuessed")} tone="apricot" style={styles.premiseGuess} /> : null}
               </View>
-              <View style={styles.premiseSource}><UiText style={styles.premiseSourceText}>{row.source === "background" ? t("plan.premise.sourceBackground") : row.source === "record" ? t("plan.premise.sourceRecord") : row.source.toUpperCase()}</UiText></View>
             </View>
           ))}</View>
           <View style={styles.premiseNote}><UiText style={styles.premiseNoteText}>{t("plan.overview.premiseNote")}</UiText></View>
@@ -217,6 +228,16 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
         onSwitched={() => void reload()}
         onAdd={() => onAddGoal?.()}
         onEdit={() => setEditOpen(true)}
+        onDelete={() => setDeleteOpen(true)}
+      />
+      <ConfirmDialog
+        visible={deleteOpen}
+        title={t("plan.goals.deleteTitle", { goal: plan.goal })}
+        message={t("plan.goals.deleteBody")}
+        confirmLabel={t("plan.goals.deleteConfirm")}
+        destructive
+        onConfirm={deleteGoal}
+        onCancel={() => setDeleteOpen(false)}
       />
       <PlanGoalEditSheet visible={editOpen} onClose={() => setEditOpen(false)} plan={plan} reviewLeft={plan.quota.reviewLeftThisMonth} onSaved={() => void reload()} {...(design === "edit" ? { previewAmount: previewSamples.planEditPreviewAmount } : {})} />
     </View>
@@ -276,36 +297,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   // 嵌在 Task 段里的 AppScreen：顶部多了 spacing.md（12，与 kit .tswipe 的 margin-bottom 12 重复），
   // 左右是 layout.pageInset 16（kit .scroll 是 18）。壳归乙（热点文件），已提请改 AppScreen embedded，在那之前计划页先抵消。
   page: { gap: 14, marginTop: -12, marginHorizontal: 2 },
-  toFull: { color: colors.macLavText, fontSize: 12, fontWeight: "700" },
+  toFull: { color: colors.macLavText, fontSize: 14, fontWeight: "700" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   accent: { color: colors.accentText },
   muted: { color: colors.ink3Text },
   link: { alignSelf: "flex-start", minHeight: 24, justifyContent: "center" },
-  linkText: { color: colors.accentText, fontSize: 12, fontWeight: "700" },
+  linkText: { color: colors.accentText, fontSize: 14, fontWeight: "700" },
   buttons: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   buttonCell: { flexBasis: "47%", flexGrow: 1 },
   chance: { borderWidth: 1.5, borderColor: colors.plum300 },
   step: { gap: 8, paddingBottom: 6 },
   typeChip: { backgroundColor: colors.macLav, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  typeChipText: { color: colors.macLavText, fontSize: 12, fontWeight: "700" },
+  typeChipText: { color: colors.macLavText, fontSize: 14, fontWeight: "700" },
   typePoints: { alignItems: "flex-end", gap: 4 },
-  footnote: { color: colors.ink3Text, fontSize: 12, textAlign: "center", paddingVertical: 8 },
+  footnote: { color: colors.ink3Text, fontSize: 14, textAlign: "center", paddingVertical: 8 },
   sheet: { paddingBottom: 8 },
   premiseHead: { alignItems: "center", flexDirection: "row", gap: 10 },
   premiseHeadText: { flex: 1 },
-  premiseTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", lineHeight: 24 },
-  premiseMeta: { color: colors.ink3, fontSize: 11.5, lineHeight: 17.25 },
+  premiseTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", lineHeight: 27 },
+  premiseMeta: { color: colors.ink3, fontSize: 13, lineHeight: 20 },
   premiseClose: { alignItems: "center", backgroundColor: colors.surface2, borderRadius: 999, height: 34, justifyContent: "center", width: 34 },
   premiseRows: { marginTop: 8 },
   premiseRow: { alignItems: "flex-start", flexDirection: "row", gap: 8, paddingVertical: 6 },
   premiseLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
-  premiseLabel: { color: colors.ink3, fontSize: 11.5, lineHeight: 19.38, width: 84 },
+  premiseLabel: { color: colors.ink3, fontSize: 13, lineHeight: 22, width: 84 },
   premiseValueWrap: { alignItems: "flex-start", flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4, minWidth: 0 },
-  premiseValue: { color: colors.ink, fontSize: 12.5, lineHeight: 19.38 },
+  premiseValue: { color: colors.ink, fontSize: 15, lineHeight: 23 },
   premiseGuess: { paddingHorizontal: 6, paddingVertical: 1 },
   premiseSource: { backgroundColor: colors.surface2, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
-  premiseSourceText: { color: colors.ink3, fontSize: 10, fontWeight: "800", lineHeight: 15 },
+  premiseSourceText: { color: colors.ink3, fontSize: 12, fontWeight: "800", lineHeight: 18 },
   premiseNote: { backgroundColor: colors.macLav, borderRadius: 16, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  premiseNoteText: { color: colors.ink, fontSize: 12, lineHeight: 19.2 },
+  premiseNoteText: { color: colors.ink, fontSize: 14, lineHeight: 22 },
   premiseAction: { alignSelf: "stretch", marginTop: 12 },
 }));

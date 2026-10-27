@@ -8,6 +8,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, UiText } from "../../components/ui";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { createThemedStyles } from "../../design/theme";
 import { createControlStyles } from "../../design/controls";
@@ -16,7 +17,7 @@ import { OfflineNotice } from "../../components/OfflineNotice";
 import { usePersonalScheduleItem, usePersonalScheduleWriteStatus } from "./personal-schedule-source";
 import { personalSchedulePath, readPersonalSchedule, personalScheduleReceiptMatches } from "../../api/personal-schedule";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
-import { buildPersonalScheduleChange, personalScheduleDraft, type PersonalScheduleDraft } from "../../view-models/personal-schedule-editor";
+import { buildPersonalScheduleChange, newScheduleDraft, personalScheduleDraft, type PersonalScheduleDraft } from "../../view-models/personal-schedule-editor";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
@@ -28,13 +29,13 @@ import { localDayStart, resolveLocalDateTime } from "../../time/date-time";
 import { buildOfflineScheduleMutation, isOfflineScheduleEditable } from "../../data/sync/schedule-outbox-mutation";
 
 export function PersonalScheduleScreen() {
-  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[] }>();
+  const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[]; contactId?: string | string[] }>();
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
   const actorId = auth.actorId ?? ""; const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl, id, ready]);
-  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} focusTime={(Array.isArray(params.focus) ? params.focus[0] : params.focus) === "time"} />;
+  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} focusTime={(Array.isArray(params.focus) ? params.focus[0] : params.focus) === "time"} contactId={(Array.isArray(params.contactId) ? params.contactId[0] : params.contactId) ?? ""} />;
 }
-function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { id: string; actorId: string; ready: boolean; scopeKey: string; focusTime: boolean }) {
+function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, contactId }: { id: string; actorId: string; ready: boolean; scopeKey: string; focusTime: boolean; contactId: string }) {
   const router = useRouter(); const { timeZone, canSave } = useOrbitTimeZone(); const { styles, colors } = useStyles();
   const insets = useSafeAreaInsets();
   const locale = useOrbitLocale();
@@ -48,13 +49,16 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const current = useRef(scope); current.current = scope;
   const [baseline, setBaseline] = useState<PersonalScheduleContract | null>(null);
   const [latest, setLatest] = useState<PersonalScheduleContract | null>(null);
-  const [draft, setDraft] = useState(() => personalScheduleDraft(null, editZone));
+  // UX-8: a new schedule starts at the next full hour for one hour, like iOS Calendar — never "YYYY-MM-DD / —".
+  // ?contactId= (contact detail 📅): a new schedule starts with that person linked.
+  const initialNew = useRef((draft => contactId && !id ? { ...draft, contactIds: [contactId] } : draft)(newScheduleDraft(editZone)));
+  const [draft, setDraft] = useState(() => id ? personalScheduleDraft(null, editZone) : initialNew.current);
   const [loading, setLoading] = useState(!!id); const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   const [timePickerRequest, setTimePickerRequest] = useState(0);
   const [mutationScope, setMutationScope] = useState<"occurrence" | "series" | null>(null);
-  const originalDraft = personalScheduleDraft(baseline, editZone);
+  const originalDraft = baseline || id ? personalScheduleDraft(baseline, editZone) : initialNew.current;
   const clean = JSON.stringify(draft) === JSON.stringify(originalDraft);
   const reminderStart = baseline && draft.startDate === originalDraft.startDate && draft.startTime === originalDraft.startTime && draft.allDay === baseline.allDay ? Date.parse(baseline.startsAt)
     : draft.allDay ? localDayStart(draft.startDate, editZone) : (() => { const value = resolveLocalDateTime(draft.startDate, draft.startTime, editZone); return value ? Date.parse(value) : null; })();
@@ -88,7 +92,10 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   useEffect(() => { if (!baseline?.timeZone && clean && !saving && editZone !== timeZone) { setEditZone(timeZone); setDraft(personalScheduleDraft(baseline, timeZone)); } }, [timeZone, editZone, clean, saving, baseline]);
   const discard = () => { const zone = latest?.timeZone ?? timeZone; setBaseline(latest); setEditZone(zone); setDraft(personalScheduleDraft(latest, zone)); setError(""); };
   async function save(remove = false) {
-    if (!ready || !scope.active || current.current !== scope || scope.busy || stale || (id && !baseline) || writeBlocked) return;
+    if (!ready || !scope.active || current.current !== scope || scope.busy || (id && !baseline)) return;
+    // QA-D: these used to return silently, so 保存 / 削除を確認 looked dead.
+    if (stale) { setError(locale.t("schedule.newVersion")); return; }
+    if (writeBlocked) { setError(locale.t(repeatBlocked ? "schedule.repeatNeedsNetwork" : "sync.needsNetwork")); return; }
     if (baseline?.recurrence && !mutationScope) { setError(locale.t("personal60.scopeRequired")); return; }
     if (!remove && !canSave) { setError(locale.t("schedule.timezoneUnavailable")); return; }
     const change = remove ? { kind: "ready" as const, fields: {} } : buildPersonalScheduleChange(baseline, draft, editZone);
@@ -108,7 +115,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
         await outbox.enqueue(mutation);
         scope.keys.delete(fingerprint);
         if (!scope.active || current.current !== scope) return;
-        router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
+        if (!remove && id && router.canGoBack()) router.back(); else router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
       } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
       finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
       return;
@@ -136,47 +143,57 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
       setBaseline(verified); setLatest(verified); setDraft(personalScheduleDraft(verified, verified.timeZone ?? editZone)); setMessage(locale.t("schedule.saved"));
       // The detail page reads the device copy: pull the saved change first.
       if (!await writeStatus.confirmSaved()) { if (scope.active && current.current === scope) setError(locale.t("sync.mutationPending")); return; }
-      router.replace(`/schedule/personal/${encodeURIComponent(verified.id)}?saved=${encodeURIComponent(verified.updatedAt)}` as Href);
+      // An edit was opened from its detail page: go back to it rather than stacking a second copy (a new schedule replaces the form).
+      if (id && router.canGoBack()) router.back(); else router.replace(`/schedule/personal/${encodeURIComponent(verified.id)}?saved=${encodeURIComponent(verified.updatedAt)}` as Href);
     } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
     finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
   }
   const exit = () => { if (router.canGoBack()) router.back(); else router.replace((id ? `/schedule/personal/${encodeURIComponent(id)}` : "/schedule") as Href); };
   const cancel = () => { if (saving) return; if (clean) exit(); else setConfirmExit(true); };
-  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "height" : undefined} style={styles.screen}><AppScreen onBack={cancel} backIcon="x" backLabel={locale.t("personal53.cancel")} backAccessibilityLabel={locale.t("personal53.cancel")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.save")} disabled={saving || stale || confirmExit || writeBlocked} onPress={() => void save()} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("personal53.save")}</Text></Pressable>} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
+  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "height" : undefined} style={styles.screen}><AppScreen onBack={cancel} backIcon="x" backLabel={locale.t("personal53.cancel")} backAccessibilityLabel={locale.t("personal53.cancel")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t(id ? "personal53.save" : "personal63.add")} disabled={saving || stale || confirmExit || writeBlocked || !draft.title.trim()} onPress={() => void save()} style={styles.secondary}><Text style={[styles.headerSave, (!draft.title.trim() || saving) && styles.headerSaveOff]}>{locale.t(saving ? "schedule.saving" : id ? "personal53.save" : "personal63.add")}</Text></Pressable>} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
     {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} queues="schedule" /> : null}
     {repeatBlocked ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.repeatNeedsNetwork")}</Text> : null}
     {loading && !baseline ? <LoadingState /> : null}
+    {/* QA-D: answers to 保存 and × show here at the top; at the end of the long form they were out of sight. */}
+    {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{message ? <Text style={styles.hint}>{message}</Text> : null}
+    {confirmExit ? <View><Text accessibilityRole="alert" style={styles.hint}>{locale.t("personal53.unsaved")}</Text><Pressable accessibilityRole="button" disabled={saving} onPress={() => setConfirmExit(false)} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("schedule.keepEditing")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.cancel")} disabled={saving} onPress={exit} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.discardChanges")}</Text></Pressable></View> : null}
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}
     {stale ? <View><Text accessibilityRole="alert" style={styles.error}>{locale.t("schedule.newVersion")}</Text><Pressable accessibilityRole="button" onPress={discard} style={styles.secondary}><Text>{locale.t("schedule.discardDraft")}</Text></Pressable></View> : null}
     {(!id || baseline) && ready ? <View style={styles.form}>
-      <View style={styles.titleField}><Text style={styles.titleLabel}>{locale.t("schedule.fieldTitle")}</Text><TextInput accessibilityLabel={locale.t("schedule.fieldTitle")} value={draft.title} placeholder={locale.t("schedule.fieldTitlePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.titleInput} editable={!saving} onChangeText={title => { if (!scope.busy) setDraft(previous => ({ ...previous, title })); }} /></View>
+      {/* UX-8: iOS Calendar's first card — title and location (an http(s) link is the video meeting). */}
+      <View style={styles.card}>
+        <TextInput accessibilityLabel={locale.t("schedule.fieldTitle")} value={draft.title} placeholder={locale.t("schedule.fieldTitlePlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.titleInput} editable={!saving} onChangeText={title => { if (!scope.busy) setDraft(previous => ({ ...previous, title })); }} />
+        <View style={styles.cardLine} />
+        <TextInput accessibilityLabel={locale.t("schedule.fieldLocation")} value={draft.meetingMethod === "video" ? draft.meetingUrl : draft.location} placeholder={locale.t("personal63.locationOrLink")} placeholderTextColor={colors.ink3Text} style={styles.input} editable={!saving} autoCapitalize="none" autoCorrect={false}
+          onChangeText={value => { if (!scope.busy) setDraft(previous => /^https?:\/\//iu.test(value.trim()) ? { ...previous, meetingMethod: "video", meetingUrl: value, location: "" } : { ...previous, ...(previous.meetingMethod === "video" ? { meetingMethod: "in_person" as const } : {}), location: value, meetingUrl: "" }); }} />
+      </View>
       <PersonalScheduleTimeBlock key={timePickerRequest} draft={draft} zone={editZone} baseline={baseline} disabled={saving} initialExpanded={focusTime || timePickerRequest > 0} onError={setError} onChange={next => { if (!scope.busy && scope.active) setDraft({ ...next, ...(next.endTime !== draft.endTime ? { endDate: next.endTime ? next.endDate || next.startDate : "" } : {}) }); }} />
       {overlap.kind === "known_overlap" ? <Card variant="flat" style={styles.conflictCard}>
         <UiText accessibilityRole="alert" style={styles.conflictText}>{locale.t("calendar.view.overlap", { first: draft.title.trim(), second: overlap.title })}</UiText>
         <Button size="sm" label={locale.t("calendar.view.changeTime")} onPress={() => setTimePickerRequest(value => value + 1)} disabled={saving} />
       </Card> : null}
-      <View style={styles.field}><Text style={styles.label}>{locale.t("schedule.fieldLocation")}</Text><View style={styles.modeRow}>{(["video", "in_person"] as const).map(meetingMethod => <Pressable key={meetingMethod} accessibilityRole="button" aria-selected={draft.meetingMethod === meetingMethod} accessibilityState={{ selected: draft.meetingMethod === meetingMethod }} disabled={saving} onPress={() => setDraft(previous => ({ ...previous, meetingMethod, ...(meetingMethod === "video" ? { location: "" } : { meetingUrl: "" }) }))} style={[styles.mode, draft.meetingMethod === meetingMethod && styles.modeSelected]}><Text style={[styles.modeText, draft.meetingMethod === meetingMethod && styles.modeSelectedText]}>{locale.t(meetingMethod === "video" ? "personal53.online" : "personal53.offline")}</Text></Pressable>)}</View>
-      <TextInput accessibilityLabel={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocation")} value={draft.meetingMethod === "video" ? draft.meetingUrl : draft.location} placeholder={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocationPlaceholder")} placeholderTextColor={colors.ink3Text} style={styles.input} editable={!saving} autoCapitalize="none" autoCorrect={false} onChangeText={value => { if (!scope.busy) setDraft(previous => ({ ...previous, ...(previous.meetingMethod === "video" ? { meetingUrl: value } : { location: value }) })); }} /></View>
-      <PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={draft.noteIds ?? []} contactIds={draft.contactIds ?? []} disabled={saving} onNotesChange={noteIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, noteIds })); }} onContactsChange={contactIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, contactIds })); }} />
-      <PersonalScheduleRules draft={draft} zone={editZone} disabled={saving} reminderElapsed={reminderElapsed} onChange={next => { if (!scope.busy && scope.active) setDraft(next); }} {...(baseline?.recurrence ? { scope: { selected: mutationScope, isOccurrence: !!baseline.seriesId, onSelect: (value: "occurrence" | "series") => { if (scope.busy || !scope.active) return; if (value === "series" && baseline.seriesId) { if (!clean) { setError(locale.t("personal60.chooseBeforeEditing")); return; } router.replace(`/schedule/personal/${encodeURIComponent(baseline.seriesId)}/edit` as Href); } else { setMutationScope(value); setError(""); } } } } : {})} />
-      <View accessibilityLabel={locale.t("taskDetail.notes")} style={styles.settingRow}><Text style={styles.settingLabel}>{locale.t("taskDetail.notes")}</Text><Text style={styles.settingValue}>{locale.t("personal59.unsupportedOption")}</Text></View>
-      <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
-      <Text style={styles.hint}>{locale.t("personal53.associations")}</Text>
-      {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeBlocked} onPress={() => setConfirmDelete(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
-      {confirmDelete ? <View><Text style={styles.hint}>{locale.t("schedule.deleteHint")}</Text><Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => void save(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.confirmDelete")}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.secondary}><Text>{locale.t("schedule.keep")}</Text></Pressable></View> : null}
+      <View style={styles.card}><PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={draft.noteIds ?? []} contactIds={draft.contactIds ?? []} disabled={saving} onNotesChange={noteIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, noteIds })); }} onContactsChange={contactIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, contactIds })); }} /></View>
+      <View style={styles.card}><PersonalScheduleRules draft={draft} zone={editZone} disabled={saving} reminderElapsed={reminderElapsed} onChange={next => { if (!scope.busy && scope.active) setDraft(next); }} {...(baseline?.recurrence ? { scope: { selected: mutationScope, isOccurrence: !!baseline.seriesId, onSelect: (value: "occurrence" | "series") => { if (scope.busy || !scope.active) return; if (value === "series" && baseline.seriesId) { if (!clean) { setError(locale.t("personal60.chooseBeforeEditing")); return; } router.replace(`/schedule/personal/${encodeURIComponent(baseline.seriesId)}/edit` as Href); } else { setMutationScope(value); setError(""); } } } } : {})} /></View>
+      {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeBlocked} onPress={() => setConfirmDelete(true)} style={styles.deleteCard}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
+      {/* The delete button sits at the bottom of the form, so an inline confirmation would open below the fold. */}
+      <ConfirmDialog visible={confirmDelete && !saving && !stale} destructive title={locale.t("schedule.deletePersonal")}
+        message={locale.t("schedule.deleteHint")} confirmLabel={locale.t("schedule.confirmDelete")} cancelLabel={locale.t("schedule.keep")}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => { setConfirmDelete(false); void save(true); }} />
     </View> : null}
-    {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}{message ? <Text style={styles.hint}>{message}</Text> : null}
-    {confirmExit ? <View><Text accessibilityRole="alert" style={styles.hint}>{locale.t("personal53.unsaved")}</Text><Pressable accessibilityRole="button" disabled={saving} onPress={() => setConfirmExit(false)} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("schedule.keep")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.cancel")} disabled={saving} onPress={exit} style={styles.secondary}><Text style={styles.error}>{locale.t("personal53.cancel")}</Text></Pressable></View> : null}
-    <View style={{ height: 100 + insets.bottom }} />
-  </AppScreen>{ready && (!id || baseline) ? <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, 12) }]}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.save")} disabled={saving || stale || confirmExit || writeBlocked} onPress={() => void save()} style={styles.primary}><Text style={styles.primaryText}>{locale.t(saving ? "schedule.saving" : "schedule.save")}</Text></Pressable></View> : null}</KeyboardAvoidingView>;
+    <View style={{ height: 24 + insets.bottom }} />
+  </AppScreen></KeyboardAvoidingView>;
 }
 const useStyles = createThemedStyles(colors => ({
   screen: { flex: 1, position: "relative" as const }, bottom: { position: "absolute" as const, bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderColor: colors.line },
-  form: { gap: 0 }, titleField: { marginBottom: 8 }, titleLabel: { color: colors.ink3Text, fontSize: 11, fontWeight: "700" as const }, titleInput: { minHeight: 44, borderBottomWidth: 1.5, borderColor: colors.ink, color: colors.ink, fontSize: 22, fontWeight: "900" as const, letterSpacing: -0.44 }, headerSave: { color: colors.accentText, fontSize: 15, fontWeight: "700" as const }, modeRow: { flexDirection: "row" as const, padding: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 10 }, mode: { flex: 1, minHeight: 44, alignItems: "center" as const, justifyContent: "center" as const, borderRadius: 7 }, modeText: { color: colors.ink3Text, fontSize: 13 }, modeSelected: { backgroundColor: colors.ink }, modeSelectedText: { color: colors.surface, fontWeight: "600" as const },
-  hint: { color: colors.ink2, fontSize: 12, lineHeight: 18, marginBottom: 8 }, field: { gap: 4, marginBottom: 0 }, label: { color: colors.ink, fontSize: 15, fontWeight: "800" as const },
-  settings: { marginTop: 0 }, settingRow: { minHeight: 36, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12, borderBottomWidth: 1, borderColor: colors.line }, settingLabel: { color: colors.ink, fontSize: 15, fontWeight: "800" as const }, settingValue: { flexShrink: 1, color: colors.ink3Text, fontSize: 13, textAlign: "right" as const },
-  input: { minHeight: 44, borderBottomWidth: 1, borderColor: colors.line, color: colors.ink, fontSize: 15 },
-  primary: { ...createControlStyles(colors).primaryButton, backgroundColor: colors.ink, minHeight: 50, borderRadius: 12 }, primaryText: { color: colors.surface, fontWeight: "700" as const, fontSize: 15 },
-  secondary: { minHeight: 44, justifyContent: "center" as const, marginBottom: 8 }, error: { color: colors.coralText, fontSize: 14, lineHeight: 22 },
-  conflictCard: { backgroundColor: colors.coralSoft, gap: 8, marginBottom: 12 }, conflictText: { color: colors.coralText, fontSize: 13, fontWeight: "700" as const, lineHeight: 20 },
+  form: { gap: 12 }, titleField: { marginBottom: 8 },
+  card: { backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 16 }, cardLine: { height: 0.5, backgroundColor: colors.line },
+  deleteCard: { backgroundColor: colors.surface, borderRadius: 14, minHeight: 52, alignItems: "center" as const, justifyContent: "center" as const }, headerSaveOff: { color: colors.ink3Text }, titleLabel: { color: colors.ink3Text, fontSize: 13, fontWeight: "700" as const }, titleInput: { minHeight: 52, color: colors.ink, fontSize: 20, fontWeight: "600" as const }, headerSave: { color: colors.accentText, fontSize: 17, fontWeight: "700" as const }, modeRow: { flexDirection: "row" as const, padding: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 10 }, mode: { flex: 1, minHeight: 44, alignItems: "center" as const, justifyContent: "center" as const, borderRadius: 7 }, modeText: { color: colors.ink3Text, fontSize: 15 }, modeSelected: { backgroundColor: colors.ink }, modeSelectedText: { color: colors.surface, fontWeight: "600" as const },
+  hint: { color: colors.ink2, fontSize: 14, lineHeight: 21, marginBottom: 8 }, field: { gap: 4, marginBottom: 0 }, label: { color: colors.ink, fontSize: 17, fontWeight: "800" as const },
+  settings: { marginTop: 0 }, settingRow: { minHeight: 36, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12, borderBottomWidth: 1, borderColor: colors.line }, settingLabel: { color: colors.ink, fontSize: 17, fontWeight: "800" as const }, settingValue: { flexShrink: 1, color: colors.ink3Text, fontSize: 15, textAlign: "right" as const },
+  input: { minHeight: 48, color: colors.ink, fontSize: 17 },
+  primary: { ...createControlStyles(colors).primaryButton, backgroundColor: colors.ink, minHeight: 50, borderRadius: 12 }, primaryText: { color: colors.surface, fontWeight: "700" as const, fontSize: 17 },
+  secondary: { minHeight: 44, justifyContent: "center" as const, marginBottom: 8 }, error: { color: colors.coralText, fontSize: 17, lineHeight: 27 },
+  conflictCard: { backgroundColor: colors.coralSoft, gap: 8, marginBottom: 12 }, conflictText: { color: colors.coralText, fontSize: 15, fontWeight: "700" as const, lineHeight: 23 },
 }));
+

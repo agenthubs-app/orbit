@@ -431,7 +431,11 @@ function isAmbiguousRecipientDraftRequest(message: string): boolean {
   const ambiguousRecipient =
     /(?:给|發給|发给|約|约|邀請|邀请|联系|和)(?:她|他|ta|TA)|\b(?:write|message|send|invite|meet|follow up with)\s+(?:her|him|them)\b/i;
 
-  return relationshipAction.test(message) && ambiguousRecipient.test(message);
+  // QA-A 2026-10-26: "@高橋智子 帮我起草一封邮件约她…" names the person with an @mention
+  // (the app also sends it as a reference); "她" then refers to that person.
+  const namedByMention = /@[^\s@，。,.!?！？]{1,40}/u.test(message);
+
+  return relationshipAction.test(message) && ambiguousRecipient.test(message) && !namedByMention;
 }
 
 function isRelationshipStateMutationRequest(message: string): boolean {
@@ -514,7 +518,36 @@ function detectWorkflowSignals(message: string): string[] {
   return Array.from(new Set(signals));
 }
 
+// QA-A 2026-10-26: "周四下午3点和林玫开会，帮我加到日程，标题写 …" was refused as two directions
+// (会议 → 活动准备, 写 → 消息草稿). A request to put one item on the schedule / to-do / notes is
+// one direction; the model turns it into a confirmable card.
+const SINGLE_RECORD_REQUEST =
+  /(?:加到|加入|添加到|放进|放到|记到|记进|记一个|记个|建一个|建个|新建|创建|安排).{0,8}(?:日程|日历|待办|笔记|备忘)|(?:日程|待办|笔记)\s*[:：]|\b(?:add|put)\b.{0,24}\b(?:calendar|schedule|to-?do|notes?)\b/i;
+
+// A request to write a message / email / reply for the user (not a record, not
+// "save this draft"): the answer must be the draft itself.
+const MESSAGE_DRAFT_REQUEST =
+  /起草|草拟|草擬|(?:写|寫|拟|擬|回复|回覆|改写|改寫|润色|潤色).{0,16}(?:邮件|郵件|消息|讯息|訊息|短信|微信|私信|邀请函|邀請函|信)|(?:邮件|郵件|消息|跟进|跟進).{0,4}草稿|メール.{0,8}(?:書いて|作成|下書き)|下書き|\b(?:draft|write|compose|rewrite|polish)\b.{0,24}\b(?:e-?mail|message|reply|note|follow[- ]?up|invit(?:e|ation)|draft)\b/i;
+const SAVE_DRAFT_REQUEST =
+  /(?:保存|存为|留作).{0,12}草稿|save.{0,16}draft/i;
+
+export function requestsMessageDraft(message: string): boolean {
+  const action = requestedActionText(message);
+  return (
+    MESSAGE_DRAFT_REQUEST.test(action) &&
+    !SAVE_DRAFT_REQUEST.test(action) &&
+    !requestsEntityDraft(message)
+  );
+}
+
+function hasSynthesizedText(
+  result: Awaited<ReturnType<LiveOrbitAgentRuntime["planner"]["synthesize"]>> | null,
+): boolean {
+  return result?.success === true && result.data.assistantMessage.trim().length > 0;
+}
+
 function isMultiIntentWorkflowRequest(message: string): boolean {
+  if (SINGLE_RECORD_REQUEST.test(message)) return false;
   return detectWorkflowSignals(message).length > 1;
 }
 
@@ -723,7 +756,7 @@ function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayl
       : "其中一个关系工作方向";
 
   return localBoundaryPayload({
-    assistant: `这句里同时有多个方向：${choices}。Orbit 一次只推进一个可复核的方向，所以先停在本地澄清：没有调用模型，也没有执行工具。请先选一个方向，我再继续。`,
+    assistant: `这句话里有好几件事：${choices}。我们一次做一件，你想先做哪一件？`,
     label: "Orbit Agent local multi-intent clarification boundary",
     message,
     nextAction:
@@ -735,7 +768,7 @@ function multiIntentBoundaryPayload(message: string): OrbitAgentConversationPayl
 function clarificationBoundaryPayload(message: string): OrbitAgentConversationPayload {
   return localBoundaryPayload({
     assistant:
-      "需要先明确联系人对象。我不会假定“她”是谁，也没有调用模型、执行工具或生成草稿。请告诉我联系人姓名或选择一位联系人后，我再准备可复核的消息草稿。",
+      "你说的“她 / 他”是哪位？请用 @ 选一位联系人，或直接写出名字，我再帮你起草。",
     label: "Orbit Agent local clarification boundary",
     message,
     nextAction:
@@ -1703,25 +1736,54 @@ export async function runLiveOrbitAgentRuntime(
     }
   }
 
+  // QA-A3 2026-10-26: "@高橋智子 帮我起草一封邮件…" sometimes ended with the planner's
+  // "我先查一下…然后…起草" because the synthesis step timed out (or no tool result came
+  // back) and the reply fell back to the planner's plan. A drafting request always
+  // gets the written draft: synthesis runs even without tool results, is retried once,
+  // and if it still fails the turn fails visibly instead of returning a promise.
+  const draftReplyRequired =
+    runtime.maxLoopSteps >= 3 && requestsMessageDraft(message);
   const shouldSynthesizeAfterTools =
-    runtime.maxLoopSteps >= 3 && artifacts.length > 0;
+    runtime.maxLoopSteps >= 3 && (artifacts.length > 0 || draftReplyRequired);
   const synthesisStartedAt = nowMs();
-  const synthesisResult = shouldSynthesizeAfterTools
-    ? await runtime.planner.synthesize({
-        artifacts: artifacts.map(artifactSummaryForSynthesis),
-        assistantMessage: assistantMessageForSynthesis,
-        history: historyTurns,
-        intent: plan.intent,
-        locale: input.locale,
-        memory: input.memory,
-        message,
-        outcomes: input.outcomes,
-        toolRequests: accumulatedToolRequests,
-      })
-    : null;
+  const runSynthesis = () =>
+    runtime.planner.synthesize({
+      artifacts: artifacts.map(artifactSummaryForSynthesis),
+      assistantMessage: assistantMessageForSynthesis,
+      history: historyTurns,
+      // A message draft has no card; this intent tells the writer the reply is all
+      // the user sees, so the full draft goes in it.
+      intent: draftReplyRequired ? "relationship_chat_context" : plan.intent,
+      locale: input.locale,
+      memory: input.memory,
+      message,
+      outcomes: input.outcomes,
+      toolRequests: accumulatedToolRequests,
+    });
+  let synthesisResult = shouldSynthesizeAfterTools ? await runSynthesis() : null;
+  if (draftReplyRequired && !hasSynthesizedText(synthesisResult)) {
+    synthesisResult = await runSynthesis();
+  }
   timings.push(
     timingSpan("synthesis", synthesisStartedAt, !shouldSynthesizeAfterTools),
   );
+  if (draftReplyRequired && !hasSynthesizedText(synthesisResult)) {
+    return {
+      failureResult:
+        synthesisResult?.success === false
+          ? failureForPlannerResult(synthesisResult)
+          : failure(
+              "ORBIT_AGENT_PROVIDER_REQUEST_FAILED",
+              safetyLedger({ aiProviderRequested: true, externalNetworkRequested: true }),
+              "The provider returned no draft text.",
+            ),
+      locale,
+      message,
+      ...(synthesisResult?.success === false ? { plannerResult: synthesisResult } : {}),
+      state: "planner_failure",
+      timings,
+    };
+  }
 
   const finalAssistantMessage =
     synthesisResult?.success === true && synthesisResult.data.assistantMessage.trim()

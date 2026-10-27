@@ -25,6 +25,8 @@ export interface NoteService {
   create(input: NoteCreateInput): Promise<NoteDTO>;
   update(input: NoteUpdateInput): Promise<NoteDTO>;
   unlinkContact(input: { actorId: string; noteId: string; contactId: string; expectedVersion: number; idempotencyKey: string; now: string }): Promise<NoteDTO>;
+  /** QA-D: delete a note. With `expectedVersion`, a note edited elsewhere since is not deleted (conflict). */
+  delete(input: { actorId: string; noteId: string; expectedVersion?: number; now: string }): Promise<void>;
 }
 
 export interface NoteAssociationReader {
@@ -407,6 +409,17 @@ export function createNoteService(input: { repository: NoteRepository; associati
         }
         notifyPersisted(saved.note, updateInput.onPersisted);
         return saved.note;
+      });
+    },
+    async delete(deleteInput) {
+      return withMutationLock(`${deleteInput.actorId}\u0000${deleteInput.noteId}`, async () => {
+        const stored = requirePayload(await input.repository.get(deleteInput.actorId, deleteInput.noteId), deleteInput.noteId);
+        if (deleteInput.expectedVersion !== undefined && stored.note.version !== deleteInput.expectedVersion) {
+          throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
+        }
+        const deletedAt = new Date(Math.max(Date.parse(deleteInput.now) || Date.now(), Date.parse(stored.note.updatedAt) + 1)).toISOString();
+        const deleted = await input.repository.delete(deleteInput.actorId, deleteInput.noteId, { updatedAt: stored.note.updatedAt, deletedAt });
+        if (!deleted) throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
       });
     },
     async unlinkContact(unlinkInput) {

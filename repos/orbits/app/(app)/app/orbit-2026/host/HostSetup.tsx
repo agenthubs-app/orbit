@@ -76,6 +76,9 @@ const toLocalInput = (iso: string | null) => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
 };
+/** Registration cannot close after the event starts (the server refuses it); a later pick becomes the start time. */
+const closeBeforeStart = (closesAt: string | null, startsAt: string) =>
+  closesAt && Date.parse(closesAt) > Date.parse(startsAt) ? new Date(Date.parse(startsAt)).toISOString() : closesAt;
 const fromLocalInput = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) return null;
@@ -132,8 +135,8 @@ function Settings({ data, draft, t, language, host, onChange }: { data: HostSetu
       <div className={m.setrow}>
         <span className={`${s.lbl} ${u.setLbl}`}>{t("suCloses")}</span>
         {edit === "close"
-          ? <input autoFocus className={u.setInput} type="datetime-local" aria-label={t("suEditClose")} defaultValue={toLocalInput(draft.registrationClosesAt)}
-            onBlur={(event) => { onChange?.({ ...draft, registrationClosesAt: fromLocalInput(event.currentTarget.value) }); setEdit(null); }}
+          ? <input autoFocus className={u.setInput} type="datetime-local" aria-label={t("suEditClose")} defaultValue={toLocalInput(draft.registrationClosesAt)} max={toLocalInput(data.event.startsAt)}
+            onBlur={(event) => { onChange?.({ ...draft, registrationClosesAt: closeBeforeStart(fromLocalInput(event.currentTarget.value), data.event.startsAt) }); setEdit(null); }}
             onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setEdit(null); }} />
           : <button type="button" className={`btn ${u.setVal} ${s.clamp1}`} aria-label={t("suEditClose")} onClick={() => setEdit("close")}>{draft.registrationClosesAt ? hostDateLong(draft.registrationClosesAt, language, t) : t("suNoClose")}</button>}
       </div>

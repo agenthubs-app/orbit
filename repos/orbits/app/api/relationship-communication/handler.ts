@@ -118,6 +118,18 @@ export function createEligibilityGetHandler(
     );
 }
 
+/** QA-C4: open (or return) the conversation with a person connected by invite code. */
+export function createConversationStartPostHandler(
+  dependencies: RelationshipCommunicationHandlerDependencies = {},
+) {
+  return async (request: Request) => {
+    const body = await readBody(request);
+    return withService(request, dependencies, async (service) =>
+      service.startConversation(stringField(body, "contactId")),
+    );
+  };
+}
+
 export function createInvitationsPostHandler(
   dependencies: RelationshipCommunicationHandlerDependencies = {},
 ) {

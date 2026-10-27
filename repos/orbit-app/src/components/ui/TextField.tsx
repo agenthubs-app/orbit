@@ -31,16 +31,16 @@ export function TextField({ label, error, presentation = "default", ...input }: 
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   wrap: { gap: 6 },
-  label: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
-  input: { minHeight: 44, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line, color: colors.ink, fontSize: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  label: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
+  input: { minHeight: 44, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line, color: colors.ink, fontSize: 17, paddingHorizontal: 14, paddingVertical: 10 },
   inputError: { borderColor: colors.coralText },
   error: { flexDirection: "row", gap: 6, alignItems: "flex-start", backgroundColor: colors.coralSoft, borderRadius: 10, padding: 10 },
-  errorText: { flex: 1, color: colors.coralText, fontSize: 12, lineHeight: 18 },
+  errorText: { flex: 1, color: colors.coralText, fontSize: 14, lineHeight: 21 },
   kitWrap: { gap: 6 },
-  kitLabel: { color: colors.ink3Text, fontSize: 11.5 },
-  kitInput: { backgroundColor: colors.surface, color: colors.ink, fontSize: 13 },
+  kitLabel: { color: colors.ink3Text, fontSize: 13 },
+  kitInput: { backgroundColor: colors.surface, color: colors.ink, fontSize: 15 },
   kitInputError: { borderColor: colors.coral },
   kitError: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
-  kitErrorText: { color: colors.ink, fontSize: 12, lineHeight: 18.6 },
+  kitErrorText: { color: colors.ink, fontSize: 14, lineHeight: 22 },
   kitErrorLead: { color: colors.coral, fontWeight: "700" },
 }));

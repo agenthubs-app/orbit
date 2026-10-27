@@ -1,7 +1,7 @@
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import { fillCopy, useStandardCopy } from "../i18n/standard-copy";
 import { useRouter, usePathname, type Href } from "expo-router";
-import { useRef, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useEffect, useRef, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -25,7 +25,7 @@ interface AppScreenProps extends PropsWithChildren {
   backAccessibilityLabel?: string;
   backLabel?: string;
   /** "x" for a form that cancels (kit 手入力: ✕ top-left); the default ‹ goes back. */
-  backIcon?: "left" | "x" | "down";
+  backIcon?: "left" | "x" | "down" | "menu";
   eyebrow?: string;
   header?: ReactNode;
   headerActions?: ReactNode;
@@ -38,6 +38,8 @@ interface AppScreenProps extends PropsWithChildren {
   inset?: "kit" | "legacy";
   onBack?: () => void;
   refreshControl?: ReactElement<RefreshControlProps>;
+  /** False while a child drags something (UX-2: a lifted home widget) so the page does not scroll under it. */
+  scrollEnabled?: boolean;
   showBack?: boolean;
   /** Secondary pages: small line under the centred title (kit .topbar .t small). */
   subtitle?: string | undefined;
@@ -57,6 +59,7 @@ export function AppScreen({
   inset = "legacy",
   onBack,
   refreshControl,
+  scrollEnabled = true,
   showBack,
   subtitle,
   title,
@@ -82,17 +85,19 @@ export function AppScreen({
   const embedded = useAppScreenEmbedding();
   const scrollKey = embedded ? shellScrollKey("/task", embedded.segment) : mainTab ? shellScrollKey(pathname) : null;
   const scroll = useScrollMemory(scrollKey);
+  const pullRefresh = usePullOnlyRefresh(refreshControl);
   const topGap = useShellTopGap();
 
   if (embedded) {
     return (
       <ScrollView
         {...scroll.props}
+        scrollEnabled={scrollEnabled}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, styles.tabContent]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
-        refreshControl={refreshControl}
+        refreshControl={pullRefresh}
       >
         <View style={styles.body}>{children}</View>
       </ScrollView>
@@ -123,12 +128,13 @@ export function AppScreen({
       ) : null}
       <ScrollView
         {...scroll.props}
+        scrollEnabled={scrollEnabled}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.content, inset === "kit" && styles.kitContent, mainTab && styles.tabContent]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
-        refreshControl={refreshControl}
+        refreshControl={pullRefresh}
       >
         {header ?? (!navVisible ? <View style={styles.header}>
           {eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? (
@@ -225,3 +231,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.title
   }
 }));
+
+/**
+ * UX-4: the spinner of a pull-to-refresh shows only for a refresh the user pulled. Screens pass
+ * `refreshing` from their data source, which is also true for the quiet background re-reads on
+ * focus — showing that spinner on every visit made the app feel like it waits for the server.
+ */
+function usePullOnlyRefresh(control: ReactElement<RefreshControlProps> | undefined): ReactElement<RefreshControlProps> | undefined {
+  const [pulled, setPulled] = useState(false);
+  const refreshing = control?.props.refreshing ?? false;
+  const sawRefreshing = useRef(false);
+  useEffect(() => {
+    if (!pulled) return;
+    if (refreshing) { sawRefreshing.current = true; return; }
+    // The pull ends when the source's refresh finishes (or never started: settle shortly after).
+    if (sawRefreshing.current) { sawRefreshing.current = false; setPulled(false); return; }
+    const timer = setTimeout(() => setPulled(false), 600);
+    return () => clearTimeout(timer);
+  }, [pulled, refreshing]);
+  if (!control) return undefined;
+  return cloneElement(control, {
+    refreshing: pulled && refreshing,
+    onRefresh: () => { setPulled(true); control.props.onRefresh?.(); },
+  });
+}

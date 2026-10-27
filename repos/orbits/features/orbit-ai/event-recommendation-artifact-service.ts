@@ -200,13 +200,18 @@ export function bilingualSegment(text: string, locale: ArtifactLocale): string {
   );
 }
 
+const genericEventTokens = new Set(["event", "events", "活动", "イベント"]);
+
 function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocale) {
   // live 库的 description/relationshipContext 是导入原始串，不适合直接展示；
   // 卡片文案从匹配词和时间状态确定性生成，保持当前语言。
   // 旧缓存和测试替身可能来自 matchedTokens/localizedDescriptions 加入前的
   // candidate 版本。展示边界必须兼容这类已持久化 payload，不能因为可选的
   // 增强字段缺失而让整个 artifact 失败。
-  const matchedTokens = candidate.matchedTokens ?? [];
+  // "event" / 活动 only says the card is an event; naming it as the match reads like a field name.
+  const matchedTokens = (candidate.matchedTokens ?? []).filter(
+    (token) => !genericEventTokens.has(token.toLowerCase()),
+  );
   const matchedReason =
     matchedTokens.length > 0
       ? localize(locale, {
@@ -214,8 +219,8 @@ function itemFor(candidate: EventsRecommendationCandidate, locale: ArtifactLocal
           zh: `与你的请求在「${matchedTokens.join("、")}」上匹配。`,
         })
       : localize(locale, {
-          en: "Available from live Events data for review.",
-          zh: "来自活动库的可复核活动。",
+          en: "An event coming up.",
+          zh: "近期可以参加的活动。",
         });
   const timingNote = candidate.upcoming
     ? localize(locale, {

@@ -207,10 +207,8 @@ function uploadedPayload(input: {
     extraction.nativeFullName ??
     extraction.romanizedFullName ??
     "";
-  const role =
-    extraction.title ??
-    extraction.departments.join(" · ") ??
-    "Relationship candidate";
+  // QA-A3: no placeholder text is stored as data; an unknown role stays empty.
+  const role = extraction.title ?? extraction.departments.join(" · ");
   const organization = extraction.organization ?? "";
   const email = extraction.emails[0]?.value ?? "";
   const phone =
@@ -232,7 +230,7 @@ function uploadedPayload(input: {
     status: "pending_confirmation",
     source,
     displayName,
-    role: role || "Relationship candidate",
+    role,
     organization,
     email,
     phone,
@@ -633,8 +631,8 @@ function draftFor(input: {
     status: "pending_confirmation",
     source: sourceFor(input.contact),
     displayName: input.contact.displayName,
-    role: nonEmpty(input.contact.role) ?? "Relationship candidate",
-    organization: nonEmpty(input.contact.organization) ?? "Unknown organization",
+    role: nonEmpty(input.contact.role) ?? "",
+    organization: nonEmpty(input.contact.organization) ?? "",
     email: nonEmpty(input.contact.primaryEmail) ?? "",
     phone: nonEmpty(input.contact.primaryPhone) ?? "",
     relationshipContext:

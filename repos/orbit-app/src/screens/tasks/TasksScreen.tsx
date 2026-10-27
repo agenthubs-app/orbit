@@ -1,11 +1,9 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
-import { PersonalScheduleList } from "../schedule/PersonalScheduleList";
-import { RelationshipTaskTools } from "./RelationshipTaskTools";
-import { RelationshipLifecycleList } from "./RelationshipLifecycleList";
+import { RelationshipLifecycleList, useOpenFollowUps } from "./RelationshipLifecycleList";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { taskPath } from "../../api/endpoints";
@@ -21,25 +19,41 @@ import { useContactLabels } from "../../hooks/useContactLabels";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
-import { parseTaskListSelection, taskListReceiptMatches } from "../../view-models/task-list-scope";
-import { useTaskListSource } from "./task-list-source";
+import { parseTaskListSelection, readTaskListItems, taskListReceiptMatches } from "../../view-models/task-list-scope";
+import { useTaskListSource, type TaskListEntry } from "./task-list-source";
+import { useToast } from "../../components/ui/Toast";
+import { useStandardCopy } from "../../i18n/standard-copy";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 
 type TaskListMode = "open" | "completed";
-type TaskGroup = { label: string; items: TaskListRowView[]; tone: "danger" | "today" | "muted" | "completed"; fold?: boolean };
+type FollowUpRow = { key: string; title: string; contactName: string; connectionId: string; taskId: string; contactId: string; dueAt: string | null };
+// QA-C2: open the follow-up that was tapped (the page otherwise has no task to pick).
+const followUpHref = (item: FollowUpRow) => `/tasks/relationship/${encodeURIComponent(item.connectionId)}?taskId=${encodeURIComponent(item.taskId)}&contactId=${encodeURIComponent(item.contactId)}` as Href;
+// A long overdue backlog would push 今天 (and anything just added) far down the list.
+const OVERDUE_PREVIEW = 5;
+
+type TaskGroup = { id: string; label: string; items: TaskListRowView[]; followUps: FollowUpRow[]; tone: "danger" | "today" | "muted" | "completed"; fold?: boolean };
 
 function mutationKey(action: string) {
   return `ios:${action}:${Crypto.randomUUID()}`;
 }
 
-export function TasksScreen() {
+/**
+ * UX-7 (user 2026-10-25: 「代办界面过于复杂… ios 提醒事项那种」): one list like iOS Reminders — no
+ * all / relationship / personal tabs and no open / completed tabs. Rows are a round checkbox, the
+ * title and one quiet line (date — red when overdue — and the person); completed items fold at the
+ * bottom. `listHeader` lets the To-do tab put its suggestions row above the list.
+ */
+export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
   const { timeZone } = useOrbitTimeZone();
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ scope?: string | string[]; view?: string | string[] }>();
-  const requested = parseTaskListSelection(params);
+  const parsed = parseTaskListSelection(params);
+  // One list: every task, open first, completed folded at the bottom.
+  const requested = useMemo(() => ({ ...parsed, scope: "all" as const, view: "open" as const }), [parsed.scope, parsed.view]);
   const router = useRouter();
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
@@ -57,8 +71,13 @@ export function TasksScreen() {
   const completedCursor = completedPosition.scope === foldScope ? completedPosition.cursor : null;
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  // UX T3 (like Reminders): a tapped circle fills at once, the row stays a moment, then the task is completed.
+  const toast = useToast();
+  const copy = useStandardCopy();
+  const [checking, setChecking] = useState<ReadonlySet<string>>(() => new Set());
+  const checkTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const [displayScope, setDisplayScope] = useState(scope);
-  if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); }
+  if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); setChecking(new Set()); }
   const now = new Date();
   const today = tokyoDateKey(now, timeZone);
   const pageScope=JSON.stringify([scopeKey,selection,today,timeZone]);
@@ -80,28 +99,66 @@ export function TasksScreen() {
   const open = canonical ? tasksToListView({ tasks: canonical }, "open", now, timeZone, locale.language).items : null;
   const completed = canonical ? tasksToListView({ tasks: canonical }, "completed", now, timeZone, locale.language).items : null;
   const foldedCompleted = foldedCanonical ? tasksToListView({ tasks: foldedCanonical }, "completed", now, timeZone, locale.language).items : null;
+  // UX-7: relationship follow-ups sit among the tasks by date (no separate 人脉 list); finishing one
+  // still asks for the relationship's next step on its own page.
+  const followUps = useOpenFollowUps(scopeKey, ready);
+  const [moreFollowUps, setMoreFollowUps] = useState(false);
+  const [overdueExpanded, setOverdueExpanded] = useState(false);
+  const followUpBucket = (dueAt: string | null) => {
+    if (!dueAt || !Number.isFinite(Date.parse(dueAt))) return "unscheduled";
+    const key = tokyoDateKey(new Date(dueAt), timeZone);
+    return key < today ? "overdue" : key === today ? "today" : "later";
+  };
+  const followUpRows = (bucket: string): FollowUpRow[] => mode === "open" ? (followUps.items ?? [])
+    .filter(item => followUpBucket(item.dueAt) === bucket)
+    .map(item => ({ key: item.itemKey, title: item.titlePreview, contactName: item.contactNamePreview, connectionId: item.connectionId, taskId: item.taskId, contactId: item.contactId, dueAt: item.dueAt })) : [];
   const groups: TaskGroup[] = open && completed ? [
     ...(mode === "open" ? [
-      { label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" as const },
-      { label: locale.t("tasks.groupToday"), items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" as const },
-      { label: locale.t("tasks.groupLater"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" as const },
-      { label: locale.t("tasks.groupUnscheduled"), items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" as const },
-    ] : [{ label: locale.t("tasks.groupCompleted"), items: completed, tone: "completed" }]),
+      { id: "overdue", label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), followUps: followUpRows("overdue"), tone: "danger" as const },
+      { id: "today", label: locale.t("tasks.groupToday"), items: open.filter(item => taskDateKey(item, timeZone) === today), followUps: followUpRows("today"), tone: "today" as const },
+      { id: "later", label: locale.t("tasks.groupLater"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), followUps: followUpRows("later"), tone: "muted" as const },
+      { id: "unscheduled", label: locale.t("tasks.groupUnscheduled"), items: open.filter(item => !taskDateKey(item, timeZone)), followUps: followUpRows("unscheduled"), tone: "muted" as const },
+    ] : [{ id: "completed", label: locale.t("tasks.groupCompleted"), items: completed, followUps: [], tone: "completed" as const }]),
     ...(mode === "open" && (open.length > 0 || (source.counts?.completed ?? 0) > 0)
-      ? [{ label: locale.t("tasks.groupCompleted"), items: foldedCompleted ?? [], tone: "completed" as const, fold: true }]
+      ? [{ id: "completed-fold", label: locale.t("tasks.groupCompleted"), items: foldedCompleted ?? [], followUps: [], tone: "completed" as const, fold: true }]
       : []),
-  ].filter(group => group.items.length > 0 || group.fold) as TaskGroup[] : [];
+  ].filter(group => group.items.length > 0 || group.followUps.length > 0 || group.fold) as TaskGroup[] : [];
+  // Follow-ups come one page at a time, ordered by date: when more remain, the group holding the last loaded one says "N+".
+  const lastFollowUp = followUps.items?.at(-1);
+  const moreIn = (group: TaskGroup) => mode === "open" && followUps.hasMore && Boolean(lastFollowUp) && group.followUps.some(row => row.key === lastFollowUp!.itemKey);
+  const followUpDate = (dueAt: string | null) => dueAt && Number.isFinite(Date.parse(dueAt))
+    ? new Date(dueAt).toLocaleDateString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", timeZone }) : "";
 
   useEffect(() => setSelection(requested), [requested.scope, requested.view]);
   useEffect(() => {
     scope.active = true;
     if (scope.controller.signal.aborted) scope.controller = new AbortController();
-    return () => { scope.active = false; scope.controller.abort(); };
+    const timers = checkTimers.current;
+    return () => { scope.active = false; scope.controller.abort(); timers.forEach(clearTimeout); timers.clear(); };
   }, [scope]);
 
-  async function toggleTask(item: TaskListRowView) {
-    const baseline = canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id);
-    if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return;
+  const uncheck = (id: string) => setChecking(previous => { const next = new Set(previous); next.delete(id); return next; });
+  function tapCheck(item: TaskListRowView) {
+    if (item.status === "completed") { void toggleTask(item); return; }
+    const pending = checkTimers.current.get(item.id);
+    // A second tap within the moment takes the check back; nothing was written yet.
+    if (pending) { clearTimeout(pending); checkTimers.current.delete(item.id); uncheck(item.id); return; }
+    setChecking(previous => new Set(previous).add(item.id));
+    checkTimers.current.set(item.id, setTimeout(() => { checkTimers.current.delete(item.id); void completeChecked(item); }, 1000));
+  }
+  async function completeChecked(item: TaskListRowView) {
+    // Another row's write may still be running (one at a time); wait briefly for it.
+    for (let tries = 0; scope.busy && tries < 50; tries++) await new Promise(resolve => setTimeout(resolve, 100));
+    const reopenFrom = await toggleTask(item);
+    // On failure the circle empties again (the error line says why). The checked id stays while the row leaves the list.
+    if (!reopenFrom) { if (scope.active && currentScope.current === scope) uncheck(item.id); return; }
+    toast.success(copy.toast.completed, { sub: item.title, undo: () => { uncheck(item.id); void toggleTask({ ...item, status: "completed" }, reopenFrom); } });
+  }
+
+  /** Completes or reopens one task. Returns the task as it now stands (the base for an undo), or null when nothing was saved. */
+  async function toggleTask(item: TaskListRowView, known?: TaskListEntry): Promise<TaskListEntry | null> {
+    const baseline = known ?? canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id);
+    if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return null;
     scope.busy = true;
     setUpdatingId(item.id);
     setMutationError(null);
@@ -110,7 +167,7 @@ export function TasksScreen() {
       if (source.offline) {
         if (!isOfflineTaskCategory(baseline.category)) {
           setMutationError(locale.t("sync.needsNetwork"));
-          return;
+          return null;
         }
         const idempotencyKey = Crypto.randomUUID();
         const createdAt = new Date().toISOString();
@@ -124,7 +181,7 @@ export function TasksScreen() {
         }));
         setPosition({ scope: pageScope, cursor: null });
         setCompletedPosition({ scope: foldScope, cursor: null });
-        return;
+        return { ...baseline, status: action === "complete" ? "completed" : "open" };
       }
       const intent = JSON.stringify([item.id, action, baseline.updatedAt]);
       const key = scope.keys.get(intent) ?? mutationKey(`${action}:${item.id}`);
@@ -132,13 +189,19 @@ export function TasksScreen() {
       const result = await client.patch<unknown>(taskPath(item.id), {
         body: { action, idempotencyKey: key }, signal: scope.controller.signal,
       });
-      if (!scope.active || currentScope.current !== scope) return;
+      if (!scope.active || currentScope.current !== scope) return null;
       if (!result.success) setMutationError(locale.t("tasks.operationFailed"));
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null}); }
+      else if (await source.confirmMutation(item.id, action)) {
+        scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); setCompletedPosition({scope:foldScope,cursor:null});
+        const saved = readTaskListItems({ tasks: [(result.data as { task?: unknown }).task] }, actorId)?.[0];
+        return { ...baseline, status: action === "complete" ? "completed" : "open", ...(saved ? { updatedAt: saved.updatedAt } : {}) };
+      }
       else setMutationError(locale.t("sync.mutationPending"));
+      return null;
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
+      return null;
     } finally {
       scope.busy = false;
       if (scope.active && currentScope.current === scope) setUpdatingId(null);
@@ -161,143 +224,124 @@ export function TasksScreen() {
       </Pressable>}
       title={locale.t("tasks.title")}
     >
-      <View accessibilityRole="tablist" style={styles.tabs}>
-        {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")], ["personal", locale.t("tasks.scopePersonal")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
-      </View>
-      <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={source.counts?.open} completedCount={source.counts?.completed} />
-      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} queues="tasks" /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
+      {listHeader}
+      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} queues="tasks" /> : null}
       {source.loading ? <LoadingState /> : null}
       {source.failure ? (
         <ErrorState message={locale.t(failureMessageKey)} title={locale.t(failureTitleKey)} />
       ) : null}
       {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
       {ready && contactsState.failure ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
-      {canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
+      {canonical && (mode === "open" ? open?.length === 0 && (followUps.items?.length ?? 0) === 0 : completed?.length === 0) ? (
         <EmptyState
           message={locale.t(mode === "open" ? "tasks.emptyOpenBody" : "tasks.emptyCompletedBody")}
           title={locale.t(mode === "open" ? "tasks.emptyOpenTitle" : "tasks.emptyCompletedTitle")}
         />
       ) : null}
       <View style={styles.groups}>
-      {groups.map(group => (
-        <View key={group.label} style={styles.list}>
+      {groups.map(fullGroup => {
+        const total = fullGroup.items.length + fullGroup.followUps.length;
+        const capped = fullGroup.id === "overdue" && !overdueExpanded && total > OVERDUE_PREVIEW;
+        const shownItems = capped ? fullGroup.items.slice(0, OVERDUE_PREVIEW) : fullGroup.items;
+        const group = capped ? { ...fullGroup, items: shownItems, followUps: fullGroup.followUps.slice(0, OVERDUE_PREVIEW - shownItems.length) } : fullGroup;
+        return (
+        <View key={group.id} style={styles.section}>
           {group.fold ? <Pressable
             accessibilityRole="button"
             accessibilityLabel={locale.t(completedExpanded ? "tasks.collapseCompleted" : "tasks.expandCompleted")}
             accessibilityState={{ expanded: completedExpanded }}
             onPress={() => { setFold({ scope: foldScope, expanded: !completedExpanded }); if (completedExpanded) setCompletedPosition({ scope: foldScope, cursor: null }); }}
-            style={styles.groupHeading}
+            style={[styles.groupHeading, styles.foldHeading]}
           >
             <Text style={[styles.groupTitle, styles.muted]}>{group.label}</Text>
             <Text style={styles.groupCount}>{source.counts?.completed ?? 0}</Text>
-            <Icon name="down" size={16} color={colors.ink3Text} />
-          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length}`} style={styles.groupHeading}>
-            <Text style={[styles.groupTitle, group.tone === "completed" && styles.muted]}>{group.label}</Text>
-            <Text style={[styles.groupCount, group.tone === "today" && styles.todayCount, group.tone === "danger" && styles.danger]}>{group.items.length}</Text>
+            <Icon name={completedExpanded ? "up" : "down"} size={16} color={colors.ink3Text} />
+          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${total}${moreIn(fullGroup) ? "+" : ""}`} style={styles.groupHeading}>
+            <Text style={[styles.groupTitle, group.tone === "danger" && styles.danger, group.tone === "today" && styles.todayCount]}>{group.label}</Text>
+            <Text style={styles.groupCount}>{total}{moreIn(fullGroup) ? "+" : ""}</Text>
           </View>}
           {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
           {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailable" : "tasks.unavailable")} message={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailableBody" : "tasks.readFailed")} /> : null}
           {group.fold && completedExpanded && foldedCompleted?.length === 0 ? <Text style={styles.rowDetail}>{locale.t("tasks.emptyCompletedTitle")}</Text> : null}
-          {group.items.map(item => {
+          {group.items.length || group.followUps.length ? <View style={styles.card}>{group.items.map((item, index) => {
             const contactId = (canonical?.find(task => task.id === item.id) ?? foldedCanonical?.find(task => task.id === item.id))?.relatedContactId;
             const contact = contactId ? contacts.get(contactId) : null;
-            return <View key={item.id}><View
-              style={styles.row}
-            >
+            const completedItem = item.status === "completed" || checking.has(item.id);
+            // UX T2: under 今天 the day is implied; show only the time (when there is one). Other groups keep their dates.
+            const when = group.id === "today" ? item.dueAt && Number.isFinite(Date.parse(item.dueAt)) ? timeOfDay(item.dueAt, timeZone) : "" : item.dateLabel;
+            const offlineBlocked = Boolean(source.offline && !isOfflineTaskCategory(item.category));
+            return <View key={item.id} style={styles.row}>
               <Pressable
-                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline && !isOfflineTaskCategory(item.category) ? " · " + locale.t("sync.needsNetwork") : "")}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (offlineBlocked ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
-                aria-checked={item.status === "completed"}
-                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category)), busy: updatingId === item.id }}
-                disabled={updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category))}
-                onPress={() => void toggleTask(item)}
+                aria-checked={completedItem}
+                accessibilityState={{ checked: completedItem, disabled: updatingId !== null || offlineBlocked, busy: updatingId === item.id }}
+                disabled={updatingId !== null || offlineBlocked}
+                hitSlop={8}
+                onPress={() => tapCheck(item)}
                 style={styles.checkButton}
               >
-                <View style={[styles.checkbox, item.status === "completed" && styles.checkboxCompleted]}>
-                  {item.status === "completed" ? <Ionicons color={colors.onAccent} name="checkmark" size={16} /> : null}
+                <View style={[styles.checkbox, completedItem && styles.checkboxCompleted, updatingId === item.id && styles.checkboxBusy]}>
+                  {completedItem ? <Ionicons color={colors.onAccent} name="checkmark" size={15} /> : null}
                 </View>
               </Pressable>
               <Pressable
-                accessibilityLabel={`${item.title}，${item.categoryLabel}，${item.dateLabel}`}
+                accessibilityLabel={[item.title, when, contact?.name].filter(Boolean).join("，")}
                 accessibilityRole="button"
                 onPress={() => router.push(`/tasks/${encodeURIComponent(item.id)}` as Href)}
-                style={({ pressed }) => [styles.rowBody, pressed ? styles.pressed : null]}
+                style={({ pressed }) => [styles.rowBody, index > 0 && styles.rowLine, pressed ? styles.pressed : null]}
               >
-                <Text
-                  style={[styles.rowTitle, item.status === "completed" ? styles.completedTitle : null, group.tone === "danger" && styles.danger]}
-                >
-                  {item.title}
-                </Text>
-                <Text style={[styles.rowDetail, group.tone === "danger" && styles.danger]}>
-                  {[item.categoryLabel, item.dateLabel, item.location].filter(Boolean).join(" · ")}
-                </Text>
+                <Text style={[styles.rowTitle, completedItem ? styles.completedTitle : null]}>{item.title}</Text>
+                {when || contact || item.location ? <Text numberOfLines={1} style={styles.rowDetail}>
+                  {when ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{when}</Text> : null}
+                  {[contact?.name, item.location].filter(Boolean).map((part, index) => `${when || index > 0 ? "  ·  " : ""}${part}`).join("")}
+                </Text> : null}
                 {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
               </Pressable>
-              <Ionicons color={colors.ink3Text} name="chevron-forward" size={17} />
-            </View>
-            {contact ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.viewContact", { name: contact.name })} onPress={() => router.push(`/contacts/${encodeURIComponent(contact.id)}` as Href)} style={styles.contactLink}><Text style={styles.contactText}>{[contact.name, contact.organization].filter(Boolean).join(" · ")}</Text></Pressable> : contactId ? <Text style={styles.rowDetail}>{locale.t("tasks.contactUnavailable")}</Text> : null}
             </View>;
-          })}
+          })}{group.followUps.map((item, index) => { const due = group.id === "today" ? "" : followUpDate(item.dueAt); return <View key={item.key} style={styles.row}>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: false }} accessibilityLabel={locale.t("tasks.completeNamed", { title: item.title })} hitSlop={8}
+              onPress={() => router.push(followUpHref(item))} style={styles.checkButton}>
+              <View style={styles.checkbox} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={[item.title, due, item.contactName].filter(Boolean).join("，")}
+              onPress={() => router.push(followUpHref(item))}
+              style={({ pressed }) => [styles.rowBody, (group.items.length > 0 || index > 0) && styles.rowLine, pressed ? styles.pressed : null]}>
+              <Text style={styles.rowTitle}>{item.title}</Text>
+              {due || item.contactName ? <Text numberOfLines={1} style={styles.rowDetail}>
+                {due ? <Text style={group.tone === "danger" ? styles.danger : group.tone === "today" ? styles.todayCount : null}>{due}</Text> : null}
+                {item.contactName ? `${due ? "  ·  " : ""}${item.contactName}` : ""}
+              </Text> : null}
+            </Pressable>
+          </View>; })}</View> : null}
+          {capped ? <Pressable accessibilityRole="button" onPress={() => setOverdueExpanded(true)} style={[styles.contactLink, styles.moreRow]}>
+            <Text style={styles.contactText}>{locale.t("tasks.showAllOverdue", { count: total })}</Text>
+            <Icon name="down" size={15} color={colors.accentText} />
+          </Pressable> : null}
           {group.fold && completedExpanded && source.completedSection?.nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedNextPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: source.completedSection?.nextCursor ?? null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedNextPage")}</Text></Pressable> : null}
           {group.fold && completedExpanded && completedCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedFirstPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedFirstPage")}</Text></Pressable> : null}
         </View>
-      ))}
+        );
+      })}
       </View>
       {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
       {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-      {selection.scope !== "personal" ? <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} /> : null}
-      {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}
-      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={`tools:${scopeKey}`} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={source.tasksPayload} /> : null}
+      {mode === "open" && followUps.hasMore && !moreFollowUps ? <Pressable accessibilityRole="button" onPress={() => setMoreFollowUps(true)} style={[styles.contactLink, styles.moreRow]}>
+        <Text style={styles.contactText}>{locale.t("tasks.moreFollowUps", { count: followUps.total - (followUps.items?.length ?? 0) })}</Text>
+        <Icon name="down" size={15} color={colors.accentText} />
+      </Pressable> : null}
+      {moreFollowUps ? <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} /> : null}
     </AppScreen>
-  );
-}
-
-function TaskModeSwitcher({
-  mode,
-  onChange,
-  openCount,
-  completedCount,
-}: {
-  mode: TaskListMode;
-  onChange: (mode: TaskListMode) => void;
-  openCount: number | undefined;
-  completedCount: number | undefined;
-}) {
-  const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  const options: Array<{ label: string; value: TaskListMode }> = [
-    { label: locale.t("tasks.viewOpen"), value: "open" },
-    { label: locale.t("tasks.viewCompleted"), value: "completed" },
-  ];
-  return (
-    <View accessibilityRole="tablist" style={styles.tabs}>
-      {options.map((option) => {
-        const selected = mode === option.value;
-        const count = option.value === "open" ? openCount : completedCount;
-        return (
-          <Pressable
-            accessibilityRole="tab"
-            aria-selected={selected}
-            accessibilityLabel={`${option.label}${count === undefined ? "" : ` ${count}`}`}
-            accessibilityState={{ selected }}
-            key={option.value}
-            onPress={() => onChange(option.value)}
-            style={[styles.tab, selected ? styles.tabSelected : null]}
-          >
-            <Text style={[styles.tabText, selected ? styles.tabTextSelected : null]}>
-              {option.label}
-            </Text>
-            {count !== undefined ? <Text style={[styles.tabText, selected && styles.tabCountSelected]}>{count}</Text> : null}
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
 function tokyoDateKey(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function timeOfDay(value: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
 
 function taskDateKey(item: TaskListRowView, timeZone: string): string | undefined {
@@ -307,31 +351,27 @@ function taskDateKey(item: TaskListRowView, timeZone: string): string | undefine
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
-  checkButton: { alignItems: "flex-start", justifyContent: "center", width: layout.control, minHeight: layout.control },
+  checkButton: { alignItems: "center", justifyContent: "center", width: 40, minHeight: 52 },
   contactLink: { minHeight: layout.control, justifyContent: "center", paddingLeft: layout.control },
-  contactText: { color: colors.accentText, fontSize: 13, lineHeight: 20 },
-  checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink, borderWidth: 1.5, borderRadius: 6, width: 22, height: 22 },
+  contactText: { color: colors.accentText, fontSize: 15, lineHeight: 23 },
+  moreRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 4 },
+  checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink4, borderWidth: 1.6, borderRadius: 12, width: 24, height: 24 },
+  checkboxBusy: { opacity: 0.5 },
   checkboxCompleted: { backgroundColor: colors.accentText, borderColor: colors.accentText },
   completedTitle: { color: colors.ink3Text, textDecorationLine: "line-through" },
   danger: { color: colors.coralText },
-  errorText: { color: colors.coralText, fontSize: 13 },
-  groupCount: { color: colors.ink3Text, fontSize: 22, lineHeight: 28, fontWeight: "800", letterSpacing: -0.44 },
-  groupHeading: { alignItems: "baseline", flexDirection: "row", gap: 10, paddingBottom: 4 },
-  groupTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
-  syncStatus: { color: colors.ink3Text, fontSize: 12, lineHeight: 18, marginBottom: 8 },
-  groups: { gap: 22 },
-  list: { backgroundColor: colors.surface },
+  errorText: { color: colors.coralText, fontSize: 15 },
+  groupCount: { color: colors.ink3Text, fontSize: 17, fontWeight: "600", marginLeft: "auto" },
+  groupHeading: { alignItems: "center", flexDirection: "row", gap: 8, paddingHorizontal: 4, paddingBottom: 6 },
+  groupTitle: { color: colors.ink, fontSize: 20, fontWeight: "700" },
+  groups: { gap: 22 }, section: { gap: 0 }, foldHeading: { minHeight: layout.control },
+  card: { backgroundColor: colors.surface, borderRadius: 14, paddingLeft: 6, overflow: "hidden" },
   muted: { color: colors.ink3Text },
   pressed: { opacity: 0.65 },
-  row: { alignItems: "center", flexDirection: "row", minHeight: 66, paddingVertical: 9, borderBottomColor: colors.line, borderBottomWidth: 1 },
-  rowBody: { flex: 1, gap: 2, justifyContent: "center", minHeight: 46, minWidth: 0, paddingRight: 8 },
-  rowDetail: { color: colors.ink3Text, fontSize: 12, lineHeight: 18 },
-  rowTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
-  tab: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1, flexShrink: 1 },
-  tabSelected: { borderBottomColor: colors.ink },
-  tabs: { flexDirection: "row", gap: 22, borderBottomColor: colors.line, borderBottomWidth: 1 },
-  tabText: { color: colors.ink3Text, fontSize: 14, lineHeight: 20, flexShrink: 1 },
-  tabTextSelected: { color: colors.ink, fontWeight: "800" },
-  tabCountSelected: { color: colors.accentText, fontWeight: "800" },
+  row: { alignItems: "stretch", flexDirection: "row" },
+  rowLine: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  rowBody: { flex: 1, gap: 2, justifyContent: "center", minHeight: 52, minWidth: 0, paddingVertical: 10, paddingRight: 14 },
+  rowDetail: { color: colors.ink3Text, fontSize: 15, lineHeight: 20 },
+  rowTitle: { color: colors.ink, fontSize: 17, lineHeight: 22 },
   todayCount: { color: colors.accentText },
 }));

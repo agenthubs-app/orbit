@@ -6,7 +6,7 @@ export const iorbitR21Ja = {
   addCard: "名刺を追加すると、もっと具体的に答えられます", scan: "スキャン",
   recent: "最近の会話", all: "すべて", offline: "オフライン", historyAt: "時点の履歴",
   savedHistory: "保存済みの履歴", ask: "iOrbit に聞く", askPlaceholder: "iOrbit に聞く…",
-  send: "送信", undo: "削除を元に戻す", manualSend: "送信はあなたが行います。",
+  send: "送信", undo: "削除を元に戻す", manualSend: "iOrbit は下書きまで。代わりに送信はしません。",
   newConversation: "新しい会話", searchHistory: "タイトルと本文を検索", loading: "会話を読み込み中…",
   retry: "再試行", noMatch: "一致する会話はありません", noHistory: "まだ会話はありません",
   plan: "プランを作る", continuePlan: "作成中のプランを続ける", achieved: "完了した目標",

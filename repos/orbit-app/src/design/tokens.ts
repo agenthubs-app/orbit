@@ -1,4 +1,5 @@
 import { designColors, designFont, designMotion, designRadius, designShadow } from "../api/design/tokens";
+import { appTypeScale } from "./type-scale";
 
 // R01: every value below comes from the generated, synced copy of
 // orbits/shared/design/tokens.json (src/api/design/tokens.ts — never edit it by
@@ -26,7 +27,8 @@ export const spacing = {
   xxl: 32
 } as const;
 
-export const typography = designFont.size;
+// UX-1: kit sizes mapped onto the iOS text styles (see type-scale.ts).
+export const typography = appTypeScale(designFont.size);
 
 export const fontWeight = designFont.weight;
 
@@ -42,13 +44,13 @@ export const layout = {
 } as const;
 
 export const textStyles = {
-  pageTitle: { fontSize: typography.title, lineHeight: 32, fontWeight: "900" },
+  pageTitle: { fontSize: typography.title, lineHeight: 34, fontWeight: "900" },
   title: { fontSize: typography.titleSm, lineHeight: 28, fontWeight: "800" },
-  section: { fontSize: typography.cardTitle, lineHeight: 21, fontWeight: "800" },
-  listTitle: { fontSize: typography.cardTitle, lineHeight: 21, fontWeight: "700" },
-  body: { fontSize: typography.body, lineHeight: 22 },
-  small: { fontSize: typography.bodySm, lineHeight: 20 },
-  caption: { fontSize: typography.label, lineHeight: 17 }
+  section: { fontSize: typography.cardTitle, lineHeight: 23, fontWeight: "800" },
+  listTitle: { fontSize: typography.cardTitle, lineHeight: 23, fontWeight: "700" },
+  body: { fontSize: typography.body, lineHeight: 24 },
+  small: { fontSize: typography.bodySm, lineHeight: 21 },
+  caption: { fontSize: typography.label, lineHeight: 18 }
 } as const;
 
 /**
@@ -67,10 +69,10 @@ export const textStyles = {
  * explicit `lineHeight` where it was, which clips the text at large sizes.
  */
 export const rowRoleStyles = {
-  groupHeading: { fontSize: 12, fontWeight: "600", letterSpacing: 0.96, textTransform: "uppercase" },
-  navLabel: { fontSize: 16, fontWeight: "500" },
-  fieldLabel: { fontSize: 13, fontWeight: "500" },
-  fieldValue: { fontSize: 16, fontWeight: "400" }
+  groupHeading: { fontSize: 13, fontWeight: "600", letterSpacing: 0.96, textTransform: "uppercase" },
+  navLabel: { fontSize: 17, fontWeight: "500" },
+  fieldLabel: { fontSize: 15, fontWeight: "500" },
+  fieldValue: { fontSize: 17, fontWeight: "400" }
 } as const;
 
 export const shadows = {

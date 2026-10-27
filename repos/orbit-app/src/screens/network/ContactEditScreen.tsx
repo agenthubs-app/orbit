@@ -19,7 +19,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localContactDetail } from "../../view-models/contacts-local";
-import { detailContactFrom } from "./contact-detail-model";
+import { detailContactFrom, localizedMeetingValue } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkDesignContacts } from "./network-design-fixture";
 
@@ -124,10 +124,13 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
           </View>
           <TextField label={t("network.edit.email")} value={value.email} onChangeText={(text) => set({ email: text })} keyboardType="email-address" autoCapitalize="none" />
           <TextField label={t("network.edit.phone")} value={value.phone} onChangeText={(text) => set({ phone: text })} keyboardType="phone-pad" />
-          <View style={styles.fld}>
-            <UiText style={styles.fieldLabel}>{t("network.edit.met")}</UiText>
-            <View style={styles.pick}><UiText style={styles.pickText}>{met ?? t("network.edit.metUnknown")}</UiText></View>
-          </View>
+          {/* QA-C: read-only (it comes from the card notes); a box here looked tappable and did nothing, so show plain text, and only when known. */}
+          {met ? (
+            <View style={styles.fld}>
+              <UiText style={styles.fieldLabel}>{t("network.edit.met")}</UiText>
+              <UiText style={styles.pickText}>{localizedMeetingValue(met, { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") })}</UiText>
+            </View>
+          ) : null}
           <View style={styles.fld}>
             <UiText style={styles.fieldLabel}>{t("network.edit.tags")}</UiText>
             <View style={styles.chips}>
@@ -207,17 +210,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   center: { alignItems: "center", marginBottom: 12 },
   form: { gap: 12 },
   fld: { gap: 6 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500" },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500" },
   // Same as the TextField label above the text fields (picker / segmented / tag rows read as one form).
-  fieldLabel: { color: colors.ink2, fontSize: 12, fontWeight: "700" },
+  fieldLabel: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
   pick: { minHeight: 44, borderRadius: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 8 },
-  pickText: { color: colors.ink, fontSize: 14 },
+  pickText: { color: colors.ink, fontSize: 17 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
-  tagInput: { minWidth: 80, color: colors.ink, fontSize: 12.5, paddingVertical: 4 },
+  tagInput: { minWidth: 80, color: colors.ink, fontSize: 15, paddingVertical: 4 },
   deleteRow: { marginTop: 22 },
   sheet: { gap: 12 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sheetTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
   search: { height: 40, borderRadius: 20, backgroundColor: colors.surface2, paddingHorizontal: 14, color: colors.ink },
   pickRow: { minHeight: 44, borderRadius: 14, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 },
   pickRowOn: { backgroundColor: colors.accentSoft },

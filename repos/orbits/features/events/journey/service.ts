@@ -179,7 +179,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         endsAt: event.endsAt,
         eventId,
         knownAttendees: [],
-        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}) },
+        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(event.organizerSlug ? { slug: event.organizerSlug } : {}), since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}) },
         priceYen: event.priceYen,
         registration: { href: `/events/${eventId}/register`, status: "none" },
         remaining: event.capacity ? Math.max(0, event.capacity - event.registrationCount) : null,
@@ -190,11 +190,12 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
       };
       // 未登录只给人数：报名资料的「参加者に表示」是给同场参加者看的，不给匿名访客（旧的公开预览也只有聚合桶）。
       if (!actorId) return { ...base, attendees: [], rosterLocked: !canSeeRoster({ signedIn: false }), signedOut: true };
-      const [contacts, judged, types, followed] = await Promise.all([
+      const [contacts, judged, types, followed, hosting] = await Promise.all([
         ports.contacts(actorId),
         ports.judge(actorId, [eventId], language),
         rosterVisible ? ports.planTypesFor(actorId, roster.attendees) : Promise.resolve({}),
         event.organizerKey ? records.follows.followed(actorId) : Promise.resolve(new Set<string>()),
+        ports.hosting ? ports.hosting(actorId, eventId).catch(() => false) : Promise.resolve(false),
       ]);
       const contactNames = new Set(contacts.map((contact) => contact.name.replace(/\s+/g, "")));
       const lockedCounts = !rosterVisible && ports.publicRosterCounts
@@ -218,6 +219,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         ...(rosterVisible ? {} : { rosterLocked: true }),
         organizer: { ...base.organizer, following: event.organizerKey ? followed.has(event.organizerKey) : false, myAttendance: event.organizerKey ? mine.filter((item) => item.organizerKey === event.organizerKey && item.status === "attended").length : null },
         registration: { href: `/events/${eventId}/register`, status },
+        hosting,
       };
     },
 

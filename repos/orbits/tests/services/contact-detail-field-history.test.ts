@@ -18,3 +18,29 @@ test("the detail carries the field history the writers left on the contact", () 
   assert.equal(history.length, 20);
   assert.equal(history.at(-1)!.previous, "29");
 });
+
+// QA-C2: the stored contact reader kept a whitelist without `fieldHistory`, so the detail read (and the synced
+// device copy built from it) never had 以前の値 after an edit.
+test("the stored contact read keeps fieldHistory so the detail (and the device copy) shows earlier values", async () => {
+  const { readOwnedContactDetailInputs } = await import("../../features/contacts/storage/contact-live-record-provider");
+  const { contactDetailPayloadFromGraph } = await import("../../features/contacts/live-detail-service");
+  const { createMemoryLiveRecordStore } = await import("../../shared/storage/live-record-store");
+  const now = "2026-10-26T00:00:00.000Z";
+  const workspaceId = "workspace:qa-c2";
+  const actorId = "actor:qa-c2";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([{
+    workspaceId, collectionName: "contacts", recordId: "contact:1", userId: actorId, sourceType: "manual", sourceId: "s", sourceLabel: "s",
+    provider: "test", providerRecordId: "contact:1", evidenceIds: ["e1"], targetType: null, targetId: null, occurredAt: now, createdAt: now, updatedAt: now,
+    lifecycleState: "active", searchText: "",
+    payload: { id: "contact:1", accountId: actorId, displayName: "林玫", role: "Senior Tester", stage: "captured", source: { type: "manual", id: "s" }, evidenceIds: ["e1"], createdAt: now, updatedAt: now,
+      fieldHistory: [{ field: "role", previous: "Tester", next: "Senior Tester", source: "manual", at: now }] },
+  }]);
+  const inputs = await readOwnedContactDetailInputs({
+    actorId, contactRecordIds: ["contact:1"], workspaceId, store,
+    scopeReader: async () => ({ contactIds: ["contact:1"], connectionIds: [], detailStateIds: [], evidenceRecordIds: [] }),
+  });
+  const contact = inputs.graph.contacts[0]!;
+  const detail = contactDetailPayloadFromGraph({ collectedAt: now, contact, connections: [], evidence: [], persistedState: null, provider: { source: "test", sourceLabel: "test" } });
+  const raw = detail as unknown as { contact?: { fieldHistory?: { field: string; previous: string }[] } };
+  assert.deepEqual(raw.contact?.fieldHistory?.map((entry) => [entry.field, entry.previous]), [["role", "Tester"]]);
+});

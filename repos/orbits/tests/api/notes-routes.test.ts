@@ -270,3 +270,28 @@ test("HTTP PATCH echoes a stored future token unchanged but rejects a rewritten 
   );
   assert.equal(newUnknown.status, 400);
 });
+
+test("QA-D: deletes a note, guards a stale version, and hides it afterwards", async () => {
+  const deps = dependencies();
+  const collection = createNoteCollectionHandlers(deps);
+  const created = (await json(await collection.POST(new Request("https://orbit.local/api/notes", {
+    body: JSON.stringify({ body: "削除するメモ", idempotencyKey: "api:create:delete" }),
+    method: "POST",
+  })))).data.note;
+  const detail = createNoteDetailHandlers(deps);
+  const params = { params: Promise.resolve({ id: created.id }) };
+  const stale = await detail.DELETE(new Request(`https://orbit.local/api/notes/${created.id}?expectedVersion=2`, { method: "DELETE" }), params);
+  assert.equal(stale.status, 409);
+  const deleted = await detail.DELETE(new Request(`https://orbit.local/api/notes/${created.id}?expectedVersion=1`, { method: "DELETE" }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(deleted.status, 200);
+  assert.equal((await json(deleted)).data.deleted, true);
+  const after = await detail.GET(new Request(`https://orbit.local/api/notes/${created.id}`), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(after.status, 404);
+  const list = await collection.GET(new Request("https://orbit.local/api/notes"));
+  assert.deepEqual((await json(list)).data.notes, []);
+  const again = await detail.DELETE(new Request(`https://orbit.local/api/notes/${created.id}`, { method: "DELETE" }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(again.status, 404);
+  const strangers = createNoteDetailHandlers({ ...deps, resolveActor: async () => ({ id: "account:other", workspaceId }) });
+  const other = await strangers.DELETE(new Request(`https://orbit.local/api/notes/${created.id}`, { method: "DELETE" }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(other.status, 404);
+});

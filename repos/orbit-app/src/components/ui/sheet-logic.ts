@@ -4,6 +4,8 @@
 // The drag helpers are "worklet"s: the pan callbacks run them on the UI thread.
 export const SHEET_MAX_RATIO = 0.8;
 export const SHEET_FLICK_VELOCITY = 900;
+// Declared before the worklets: a worklet captures its constants when the module loads.
+export const SHEET_KEYBOARD_GAP = 12;
 
 /**
  * Tallest the sheet may be. With the keyboard up (R04 review M6) the sheet sits on
@@ -16,8 +18,6 @@ export function sheetMaxHeight(screenHeight: number, keyboardHeight = 0, topInse
   if (keyboardHeight <= 0) return ratio;
   return Math.max(0, Math.min(ratio, Math.round(screenHeight - keyboardHeight - topInset - SHEET_KEYBOARD_GAP)));
 }
-
-export const SHEET_KEYBOARD_GAP = 12;
 
 export function sheetDragOffset(dy: number): number {
   "worklet";

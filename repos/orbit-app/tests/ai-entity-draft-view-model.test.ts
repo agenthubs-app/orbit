@@ -39,7 +39,7 @@ test("a well-formed payload becomes a card with a heading and its own rows", () 
   assert.equal(view.rows[0]?.editable, true, "a pending field can be corrected");
   assert.equal(view.rows[1]?.editable, false, "the source summary is derived, not entered");
   assert.equal(view.sourceSummary, "笔记 1 · 人脉 1");
-  assert.equal(view.footnote, "确认前不会写入任何数据。");
+  assert.equal(view.footnote, "确认后才会保存。");
 });
 
 test("the heading is never repeated as a row", () => {
@@ -69,7 +69,7 @@ test("a created card offers its record and stops offering confirmation", () => {
 
   assert.equal(view.confirmable, false);
   assert.equal(view.createdHref, "/tasks/task%3A9");
-  assert.equal(view.footnote, "已写入并回读成功。");
+  assert.equal(view.footnote, "已保存。");
 });
 
 test("a failed attempt keeps the card confirmable and carries the reason", () => {

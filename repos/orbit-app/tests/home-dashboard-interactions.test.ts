@@ -281,7 +281,7 @@ for (const { language, label } of [
   { language: "en", label: "Notes" },
 ]) {
   test("home shows one translated notes shortcut that stays tappable at narrow large text: " + language, async t => {
-    const p = await open(t, { language, width: 320, fontScale: 1.6 }); await hydrate(p);
+    const p = await open(t, { language, width: 320, fontScale: 1.35 }); await hydrate(p);
     const notes = p.getByRole("button", { name: label, exact: true });
     assert.equal(await notes.count(), 1);
     const box = (await notes.boundingBox())!;
@@ -425,7 +425,7 @@ test("invalid successful reads are errors, not empty counts", async t => {
 });
 
 test("large font uses one column; narrow event rows stay within bounds and clear the tabs", async t => {
-  const p = await open(t, { fontScale: 1.6, width: 320 }); await hydrate(p);
+  const p = await open(t, { fontScale: 1.35, width: 320 }); await hydrate(p);
   const layout = p.getByTestId("home-day-sections");
   assert.equal(await layout.evaluate(el => getComputedStyle(el).flexDirection), "column");
   const last = p.getByRole("button", { name: "查看活动：周末产品交流会" }); await last.evaluate(el => el.scrollIntoView({ block: "start" })); await settle(p);
@@ -486,8 +486,10 @@ test("matched source content retains weekday labels, source font fallback and ev
   await p.waitForFunction(() => (window as any).fixture.requests.length === 4); await hydrate(p);
   assert.equal(await p.getByText("周五", { exact: true }).count(), 1);
   assert.match(await p.getByRole("button", { name: "查看日程：林悦 · 合作沟通" }).getByText("林悦 · 合作沟通").evaluate(el => getComputedStyle(el).fontFamily), /PingFang SC/);
-  const last = (await p.getByRole("button", { name: "查看活动：设计师午间聚会" }).boundingBox())!;
+  // UX-1: at the iOS type scale the page scrolls; the last row must be reachable above the bar.
+  let last = (await p.getByRole("button", { name: "查看活动：设计师午间聚会" }).boundingBox())!;
   const bar = (await p.getByRole("tablist").boundingBox())!;
+  if (last.y + last.height > bar.y) { await p.mouse.move(195, 400); await p.mouse.wheel(0, last.y + last.height - bar.y + 40); await p.waitForTimeout(200); last = (await p.getByRole("button", { name: "查看活动：设计师午间聚会" }).boundingBox())!; }
   assert.ok(last.y + last.height <= bar.y, JSON.stringify({ event: last, tabs: bar }));
   const heading = (await p.getByRole("button", { name: "全部待办" }).boundingBox())!;
   const firstTask = (await p.getByRole("button", { name: "完成待办：发送项目介绍" }).boundingBox())!;
@@ -519,7 +521,7 @@ test("the source large-text setting stacks day sections and keeps the three avai
   const last = (await p.getByRole("button", { name: "笔记", exact: true }).boundingBox())!;
   assert.equal(first.y, last.y);
   const textSize = await p.getByRole("button", { name: "查看日程：林悦 · 合作沟通" }).getByText("林悦 · 合作沟通").evaluate(el => parseFloat(getComputedStyle(el).fontSize));
-  assert.ok(textSize >= 15.5 && textSize <= 16);
+  assert.ok(textSize >= 17.5 && textSize <= 18.5, String(textSize)); // UX-1: 15pt row text at 1.2×
   const firstSchedule = p.getByRole("button", { name: "查看日程：陈默 · 需求复盘" });
   assert.equal(await firstSchedule.evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
   const lastSchedule = (await p.getByRole("button", { name: "查看日程：周宁 · 项目讨论" }).boundingBox())!;

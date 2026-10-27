@@ -27,6 +27,7 @@ import { fillCopy, useStandardCopy } from "../../i18n/standard-copy";
 import { usePlanApi, type PlanFailure } from "./plan-api";
 import {
   addType,
+  movedStepIds,
   allocationTotal,
   changeCount,
   editAllocation,
@@ -41,7 +42,6 @@ import {
   PLAN_EVENT_EMOJI,
   PLAN_STEP_LIMIT,
   removeType,
-  typeLetters,
   unusedTemplateSlots,
   type ManualEditState,
 } from "./plan-model";
@@ -109,8 +109,8 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const kind = draft && isKnownGoalKind(draft.goalKind) ? draft.goalKind : null;
   const origin = useMemo(() => (draft ? manualEditStateOf(draft.content, draft.slotState) : null), [draft]);
   const originAllocation = useMemo(() => new Map([...(origin?.types ?? []).map((type) => [type.key, type.allocation] as const), [PLAN_EVENT_SLOT, origin?.event.allocation ?? 0]]), [origin]);
-  const letters = typeLetters(state?.types ?? []);
-  const labelOf = (key: string) => key === PLAN_EVENT_SLOT ? t("plan.draft.event") : `${letters.get(key) ?? ""} ${state?.types.find((type) => type.key === key)?.shortLabel ?? ""}`.trim();
+  // QA-A: types are named, not lettered ("A 决策人" read as a code).
+  const labelOf = (key: string) => key === PLAN_EVENT_SLOT ? t("plan.draft.event") : state?.types.find((type) => type.key === key)?.shortLabel ?? "";
   const editable = Boolean(draft && draft.status === "open" && draft.manualEditAvailable);
 
   const close = () => (router.canGoBack() ? router.back() : openMainTab(router, planTaskSegmentHref("app")));
@@ -183,8 +183,9 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
   const changes = state && origin ? changeCount(origin, state) : 0;
   const review = draft?.kind === "review";
   const originIndex = new Map((origin?.steps ?? []).map((step, index) => [step.id, index] as const));
+  const moved = movedStepIds((origin?.steps ?? []).map((step) => step.id), (state?.steps ?? []).map((step) => step.id));
   const typeRows = state ? [
-    ...state.types.map((type) => ({ key: type.key, slot: type.slot, emoji: type.emoji, title: `${letters.get(type.key)} ${type.shortLabel}`, allocation: type.allocation, count: type.targetCount, event: false })),
+    ...state.types.map((type) => ({ key: type.key, slot: type.slot, emoji: type.emoji, title: type.shortLabel, allocation: type.allocation, count: type.targetCount, event: false })),
     { key: PLAN_EVENT_SLOT, slot: PLAN_EVENT_SLOT, emoji: PLAN_EVENT_EMOJI, title: t("plan.draft.event"), allocation: state.event.allocation, count: state.event.targetCount, event: true },
   ] : [];
   const setStep = (id: string, patch: Partial<ManualEditState["steps"][number]>) => state && setState({ ...state, steps: state.steps.map((item) => item.id === id ? { ...item, ...patch } : item) });
@@ -220,7 +221,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                 <UiText style={styles.footTotal}>{t("plan.manual.footTotal", { total })}</UiText>
                 <UiText style={kit.lbl}>{t("plan.manual.changes", { count: changes })}</UiText>
               </View>
-              <KitButton primary label={t(review ? "plan.manual.reviewSave" : "plan.manual.start")} disabled={!manualEditReady(state) || saving} onPress={() => void save()} style={styles.start} testID="manual-start" />
+              <KitButton primary label={t(review ? "plan.manual.reviewSave" : "plan.manual.start")} disabled={!manualEditReady(state) || saving || (review && changes === 0)} onPress={() => void save()} style={styles.start} testID="manual-start" />
             </View>
           </View>
         </FlowFoot>
@@ -252,7 +253,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                   title={step.title}
                   criteria={step.doneCriteria}
                   original={renamed ? step.originalTitle : null}
-                  moved={was !== undefined && was !== index ? t("plan.manual.movedFrom", { from: was + 1, to: index + 1 }) : null}
+                  moved={was !== undefined && moved.has(step.id) ? t("plan.manual.movedFrom", { from: was + 1, to: index + 1 }) : null}
                   editing={editing?.id === step.id ? editing.field : null}
                   onEdit={(field) => setEditing(field ? { field, id: step.id } : null)}
                   onTitle={(title) => setStep(step.id, { title })}
@@ -298,6 +299,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                       onChangeText={(value) => setInputs({ ...inputs, [row.key]: value.replace(/[^0-9]/g, "") })}
                       onSubmitEditing={() => commitAllocation(row.key)}
                       returnKeyType="done"
+                      selectTextOnFocus
                       selectionColor={colors.plum700}
                       style={styles.ptin}
                       value={inputs[row.key] ?? String(row.allocation)}
@@ -306,7 +308,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                       <UiText accessibilityLabel={t("plan.manual.fromTo", { from: before, to: row.allocation })} style={styles.ba}>
                         <UiText style={styles.baS}>{String(before)}</UiText>{" → "}<UiText style={[styles.baB, row.allocation < before && styles.baDn]}>{String(row.allocation)}</UiText>
                       </UiText>
-                    ) : <UiText style={styles.ba}>{String(row.allocation)}</UiText>}
+                    ) : null}
                   </View>
                 </View>
               );
@@ -314,10 +316,10 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
             {unusedTemplateSlots(state, kind).length ? <GhostRow label={t("plan.manual.addType")} onPress={() => setAddingType(true)} height={40} /> : null}
           </KitCard>
           <UiText style={[kit.lbl, styles.after]}>{t(review ? "plan.manual.reviewAfter" : "plan.manual.after")}</UiText>
-          <BottomSheet visible={removing !== null && preview !== null} onClose={() => setRemoving(null)} accessibilityLabel={t("plan.manual.removeTitle", { letter: removing ? letters.get(removing) ?? "" : "" })}>
+          <BottomSheet visible={removing !== null && preview !== null} onClose={() => setRemoving(null)} accessibilityLabel={t("plan.manual.removeTitle", { letter: removing ? labelOf(removing) : "" })}>
             {removing && preview ? (
               <View style={styles.sheet}>
-                <UiText accessibilityRole="header" style={shared.heading}>{t("plan.manual.removeTitle", { letter: letters.get(removing) ?? "" })}</UiText>
+                <UiText accessibilityRole="header" style={shared.heading}>{t("plan.manual.removeTitle", { letter: labelOf(removing) })}</UiText>
                 <UiText style={shared.body2}>{t("plan.manual.removeSub", { label: state.types.find((type) => type.key === removing)?.shortLabel ?? "", points: state.types.find((type) => type.key === removing)?.allocation ?? 0 })}</UiText>
                 {preview.ok ? (
                   <>
@@ -333,7 +335,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
                       );
                     })}
                     <View style={shared.row}><UiText style={[shared.title, shared.grow]}>{t("plan.manual.sum")}</UiText><UiText style={shared.title}>{allocationTotal(preview.state)}</UiText></View>
-                    <UiText style={shared.caption}>{t("plan.manual.removeNote", { letter: letters.get(removing) ?? "" })}</UiText>
+                    <UiText style={shared.caption}>{t("plan.manual.removeNote", { letter: labelOf(removing) })}</UiText>
                   </>
                 ) : <InlineProblem text={errorText(preview.error)} />}
                 <View style={shared.footerRow}>
@@ -368,7 +370,7 @@ export function PlanManualEditScreen({ draftId }: { draftId: string }) {
               <TextInput accessibilityLabel={t("plan.manual.criteriaPlaceholder")} onChangeText={(doneCriteria) => setNewStep({ ...newStep, doneCriteria })} placeholder={t("plan.manual.criteriaPlaceholder")} placeholderTextColor={colors.ink3Text} style={shared.input} value={newStep.doneCriteria} />
               <UiText style={shared.label}>{t("plan.manual.newStepTypes")}</UiText>
               <View style={shared.wrap}>
-                {[...state.types.map((type) => ({ key: type.key, label: `${type.emoji} ${letters.get(type.key)}` })), { key: PLAN_EVENT_SLOT, label: PLAN_EVENT_EMOJI }].map((item) => (
+                {[...state.types.map((type) => ({ key: type.key, label: `${type.emoji} ${type.shortLabel}` })), { key: PLAN_EVENT_SLOT, label: `${PLAN_EVENT_EMOJI} ${t("plan.draft.event")}` }].map((item) => (
                   <FilterOption key={item.key} label={item.label} selected={newStep.types.includes(item.key)} onToggle={() => setNewStep({ ...newStep, types: newStep.types.includes(item.key) ? newStep.types.filter((key) => key !== item.key) : [...newStep.types, item.key] })} />
                 ))}
               </View>
@@ -496,8 +498,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   snumText: { color: colors.bg, ...kitText(11, "800") },
   snumTextLift: { color: colors.onAccent },
   emB: { color: colors.ink, ...kitText(13, "700") },
-  ein: { height: 30, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.plum500, paddingHorizontal: 8, paddingVertical: 0, color: colors.ink, fontSize: 13, fontWeight: "700" },
-  einSub: { marginTop: 3, fontSize: 11.5, fontWeight: "500" },
+  ein: { height: 30, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.plum500, paddingHorizontal: 8, paddingVertical: 0, color: colors.ink, fontSize: 15, fontWeight: "700" },
+  einSub: { marginTop: 3, fontSize: 13, fontWeight: "500" },
   subUnderInput: { marginTop: 3 },
   mv: { color: colors.plum700, ...kitText(10, "800") },
   del: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
@@ -511,7 +513,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stpI: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   stpIText: { color: colors.ink2, ...kitText(13, "800") },
   stpB: { minWidth: 30, textAlign: "center", color: colors.ink, ...kitText(13, "700") },
-  ptin: { width: 50, height: 28, borderRadius: 9, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "transparent", textAlign: "center", padding: 0, color: colors.ink, fontSize: 14, fontWeight: "900" },
+  ptin: { width: 50, height: 28, borderRadius: 9, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "transparent", textAlign: "center", padding: 0, color: colors.ink, fontSize: 17, fontWeight: "900" },
   ba: { color: colors.ink3, ...kitText(11, "700") },
   baS: { color: colors.ink4, textDecorationLine: "line-through" },
   baB: { color: colors.ink },
@@ -523,5 +525,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   start: { height: 46 },
   sheet: { gap: 10, borderRadius: radius.lg },
   stale: { backgroundColor: colors.macApricot, borderRadius: radius.md, padding: 12, gap: 8 },
-  staleText: { color: colors.macApricotText, fontSize: 13, lineHeight: 20, fontWeight: "600" },
+  staleText: { color: colors.macApricotText, fontSize: 15, lineHeight: 23, fontWeight: "600" },
 }));

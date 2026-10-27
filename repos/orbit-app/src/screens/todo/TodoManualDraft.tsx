@@ -39,9 +39,9 @@ export function TodoManualDraft({ title, value, onChange, onClose, onCopy, onMai
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   card: { gap: 10, marginHorizontal: 16, marginBottom: 16 },
-  title: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  note: { color: colors.ink2, fontSize: 12 },
+  title: { color: colors.ink, fontSize: 18, fontWeight: "700" },
+  note: { color: colors.ink2, fontSize: 14 },
   input: { backgroundColor: colors.surface2, borderColor: colors.line, borderRadius: 12, borderWidth: 1,
-    color: colors.ink, fontSize: 14, minHeight: 128, padding: 12 },
+    color: colors.ink, fontSize: 17, minHeight: 128, padding: 12 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 }));

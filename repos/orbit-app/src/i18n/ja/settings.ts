@@ -56,4 +56,5 @@ export const settings = {
   "settings.healthReadyDetail": "Orbit は正常に応答しています。続けて利用できます。",
   "settings.healthRespondedTitle": "サーバーが応答しました",
   "settings.healthRespondedDetail": "サーバーは応答しましたが、ヘルス情報を取得できません。",
+  "settings.dataHelp": "データとヘルプ",
 } as const;

@@ -6,6 +6,7 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { AccountDeletionRequestContract } from "../../api/contract/account";
 import { AppScreen } from "../../components/AppScreen";
+import { resetStackTo } from "../../components/shell-navigation";
 import { Button, Card, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
@@ -57,12 +58,12 @@ export function PendingScreen() {
   const purgeDate = request?.purgeAfter ? new Intl.DateTimeFormat(language, { timeZone: "Asia/Tokyo", year: "numeric", month: "long", day: "numeric" }).format(new Date(request.purgeAfter)) : null;
   return <AppScreen inset="kit" showBack={false} title={t("account.rights.pending")}>
     <View style={styles.stack}>
-      <Card><UiText style={styles.heading}>{t("account.rights.pending")}</UiText><UiText style={styles.body}>{t("account.rights.pendingBody")}</UiText>
-        {purgeDate ? <UiText style={styles.note}>{purgeDate}</UiText> : null}</Card>
+      <Card><UiText style={styles.body}>{t("account.rights.pendingBody")}</UiText>
+        {purgeDate ? <UiText style={styles.note}>{t("account.rights.purgeOn", { date: purgeDate })}</UiText> : null}</Card>
       {problem ? <UiText accessibilityRole="alert" style={styles.error}>{problem}</UiText> : null}
       {needsLogin ? <Button label={t("auth.loginPrimary")} variant="primary" onPress={() => router.replace("/account/login?next=/account/pending")} /> :
         request?.status === "pending" ? <Button label={t("account.rights.cancel")} variant="primary" loading={busy} onPress={() => void cancel()} /> : null}
-      <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut()} />
+      {auth.signedIn ? <Button label={t("account.signOut")} variant="ghost" onPress={() => void auth.signOut().then(result => { if (result.success) resetStackTo(router, "/account/login"); })} /> : null}
     </View>
   </AppScreen>;
 }
@@ -87,7 +88,7 @@ export function DeletedScreen() {
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   stack: { gap: spacing.md },
   heading: { fontSize: typography.cardTitle, fontWeight: "700", color: colors.ink, marginBottom: spacing.sm },
-  body: { fontSize: typography.body, color: colors.ink, lineHeight: 22 },
+  body: { fontSize: typography.body, color: colors.ink, lineHeight: 27 },
   note: { fontSize: typography.bodySm, color: colors.ink2, marginTop: spacing.md },
   error: { fontSize: typography.bodySm, color: colors.coralText, backgroundColor: colors.coralSoft, padding: spacing.md, borderRadius: 12 },
   deletedFrame: { justifyContent: "space-between", paddingBottom: 14 },
@@ -95,5 +96,5 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   deletedIcon: { width: 72, height: 72, borderRadius: radius.xl, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 18 },
   deletedEmoji: { fontSize: 32 },
   deletedTitle: { fontSize: typography.title, fontWeight: "900", color: colors.ink, textAlign: "center", marginBottom: spacing.sm },
-  deletedBody: { fontSize: typography.bodySm, lineHeight: 20, color: colors.ink2, textAlign: "center" },
+  deletedBody: { fontSize: typography.bodySm, lineHeight: 23, color: colors.ink2, textAlign: "center" },
 }));

@@ -1,16 +1,20 @@
 // R11a 連絡先詳細（App; app.html #29, b9 #20 / #21 / #22 招待でつながった人, b5 #42–#44 編集・削除）。
 // 头卡（名片式）· 人物タイプの確認カード（fit candidate）· なぜこの人か（value-lines，联网增强）· 次の一手 · 力になれること /
 // 求めていること · やりとり。招待でつながった人：本人入力 chip、本人入力的项目、同期停止的项目、⋯ 里的共有 / 解除（R15 sheet）。
-// 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开 R20a「面談の日程提案」。
+// 以前の値（fieldHistory）。顶栏 ⋯：編集 / 共有する項目 / つながりを解除 / 削除。日历键打开新建个人日程（带上这位联系人）。
+// 往来：联系人记录里的备忘 + 笔记里关联 / @ 到这个人的笔记（本机笔记镜像），新的在上，点开进笔记。
 // 本机优先：详情读同步镜像，离线照常显示；value-lines / fit / 招待连接是联网增强，失败或「尚未実装」时整块隐藏（G18）。
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
 import { whenNotImplemented } from "../../api/compute/not-implemented";
+import { relationshipCommunicationEligibilityPath, relationshipCommunicationStartPath } from "../../api/endpoints";
 import type { InviteConnectionView } from "../../api/contract/invite-codes";
 import type { PlanContactFit } from "../../api/contract/plan-v2";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { contactFollowupTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import { AppScreen } from "../../components/AppScreen";
 import { ActionSheet, Avatar, Button, Chip, ConfirmDialog, Icon, IconButton, OfflineBar, RetryCard, Skeleton, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Defs, Rect, Stop } from "../../components/ui/svg";
@@ -23,11 +27,11 @@ import { localContactDetail, withLegacyNetworkFields } from "../../view-models/c
 import { DensityDots } from "../add/add-ui";
 import { InviteShareSheet, InviteUnlinkSheet } from "../add/invite/InviteConnectionSheets";
 import { useInviteApi } from "../add/invite/invite-api";
-import { MeetingProposalSheet } from "../calendar/MeetingProposalSheet";
 import { LinearGradient } from "../plan/plan-svg";
 import { ContactRelationshipInitializer, useContactInitialization } from "../contacts/ContactRelationshipInitializer";
+import { useNotesListSource } from "../notes/notes-source";
 import { NETWORK_CHIP_COPY } from "./NetworkScreen";
-import { detailContactFrom, detailHeaderChips, fitCandidate, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
+import { detailContactFrom, detailHeaderChips, fitCandidate, localizedCardNotes, previousValues, recentSelfUpdates, tokyoMonthDay, type DetailContact, type DetailFieldHistoryEntry } from "./contact-detail-model";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkMerge } from "./useNetworkMerge";
 import { useNetworkDesignContacts } from "./network-design-fixture";
@@ -48,6 +52,7 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const params = useLocalSearchParams<{ design?: string | string[] }>();
   const toast = useToast();
   const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
   const inviteApi = useInviteApi();
   const local = useLocalContacts();
@@ -61,11 +66,17 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     if (fixture.enabled || local.available) return detailContactFrom(localContactDetail(localRows, contactId));
     return remote.kind === "success" ? detailContactFrom(remote.data) : null;
   }, [fixture.enabled, local.available, localRows, contactId, remote]);
+  const linkedSource = useNotesListSource({ actorId: auth.actorId ?? "", scopeKey: `network-contact:${contactId}`, association: "all", contactId, noteKind: "all", q: "" });
   const goalLink = fixture.enabled ? fixture.data?.links.find((link) => link.contactId === contactId) ?? null : merge.links.get(contactId) ?? null;
 
   const [valueLine, setValueLine] = useState<ValueLine | null>(null);
   const [fit, setFit] = useState<PlanContactFit | null>(null);
   const [connection, setConnection] = useState<InviteConnectionView | null>(null);
+  // QA-C3: a person you can message in Orbit (an open conversation) gets a Message button on their page.
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  // Connected by invite code with no conversation yet: "Message" opens one.
+  const [canStart, setCanStart] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<View>(null);
@@ -73,7 +84,6 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
   const [unlinkOpen, setUnlinkOpen] = useState(fixture.enabled && params.design === "unlink");
   useEffect(() => { if (fixture.enabled) setUnlinkOpen(params.design === "unlink"); }, [fixture.enabled, params.design]);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [proposalOpen, setProposalOpen] = useState(false);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [updateDismissed, setUpdateDismissed] = useState(false);
@@ -101,6 +111,33 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     });
     return () => { live = false; };
   }, [client, inviteApi, contactId, language, fixture.enabled, fixture.data]);
+
+  // Only people connected through an invite code can have a conversation in Orbit, so only their page asks.
+  const connected = connection !== null;
+  useEffect(() => {
+    let live = true;
+    setConversationId(null);
+    setCanStart(false);
+    if (fixture.enabled || !connected) return () => { live = false; };
+    void client.get<{ canSend?: unknown; canStart?: unknown; conversationId?: unknown }>(relationshipCommunicationEligibilityPath(contactId)).then((result) => {
+      if (!live || !result.success) return;
+      if (result.data?.canSend === true && typeof result.data.conversationId === "string" && result.data.conversationId) setConversationId(result.data.conversationId);
+      else if (result.data?.canStart === true) setCanStart(true);
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [client, contactId, connected, fixture.enabled]);
+
+  const startConversation = useCallback(async () => {
+    if (starting) return;
+    setStarting(true);
+    const result = await client.post<{ canSend?: unknown; conversationId?: unknown }>(relationshipCommunicationStartPath(), { body: { contactId } });
+    setStarting(false);
+    const id = result.success && typeof result.data?.conversationId === "string" ? result.data.conversationId : "";
+    if (!id) { toast.error(t("network.detail.messageFailed")); return; }
+    setConversationId(id);
+    setCanStart(false);
+    router.push(`/inbox/${encodeURIComponent(id)}` as Href);
+  }, [client, contactId, router, starting, t, toast]);
 
   const candidate = fixture.enabled && params.design === "sync" ? null : fitCandidate(fit);
   const decide = useCallback(async (decision: "accept" | "dismiss") => {
@@ -130,14 +167,25 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
     );
   }
 
-  const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`));
+  const chips = detailHeaderChips(contact, (city) => t(`network.city.${city}`), language);
   const self = card?.sourceChip === "self" || connection !== null;
   const nextStep = contact.nextAction.trim();
   const selfUpdate = fixture.enabled && params.design === "fit" || updateDismissed ? null : recentSelfUpdates(contact.fieldHistory, now());
   const stagedRole = fixture.enabled && params.design === "sync" ? t("network.detail.syncSampleRole") : contact.role;
   const stagedOffering = fixture.enabled && params.design === "sync" ? [...contact.offering, t("network.detail.syncSampleOffering")] : contact.offering;
-  const linkedNotes = [...contact.notes].sort((left, right) => (left.createdAt < right.createdAt ? 1 : -1));
-  const openDraft = () => router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent: t("network.detail.draftIntent", { name: contact.displayName, step: nextStep }) } } as unknown as Href);
+  // QA-C: without any recorded interaction the server fills the note / last interaction with relationship context or a generated
+  // placeholder ("Background generated from…", dated today) — not an interaction, so it is left out; card notes speak the UI language.
+  const hasEvidence = contact.notes.some((note) => note.id.startsWith("note:relationship-evidence:"));
+  const meetingLabels = { intro: t("network.metReferral"), formerColleague: t("add.completion.optionFormerColleague"), forgot: t("add.completion.optionUnknown") };
+  const linkedNotes = mergeTimelineNotes(contact.notes.filter((note) => !note.id.startsWith("note:live-contact-detail:"))
+    .map((note) => (note.id.startsWith("note:business-card-notes:") ? { ...note, body: localizedCardNotes(note.body, t("network.edit.met"), meetingLabels) } : note)), linkedSource.notes ?? []);
+  const lastInteraction = hasEvidence ? contact.lastInteraction : null;
+  const openDraft = () => {
+    if (!auth.actorId || !server.ready) { toast.error(t("network.detail.draftSignIn")); return; }
+    const prefillIntent = registerAiTemplatePrefill({ actorId: auth.actorId, baseUrl: server.baseUrl, ...contactFollowupTemplate({ channel: "email", contactId, contactName: contact.displayName, organization: contact.organization, rationale: valueLine?.relation ?? "", recommendedAction: nextStep }) });
+    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as unknown as Href);
+  };
+  const reach = (value: string, scheme: "mailto" | "tel", missing: "network.detail.noEmail" | "network.detail.noPhone") => { if (value) Linking.openURL(`${scheme}:${value}`).catch(() => toast.info(t("network.detail.openFailed", { value }))); else toast.info(t(missing)); };
   const menuOptions = [
     { key: "edit", label: t("network.detail.edit") },
     ...(connection ? [{ key: "share", label: t("network.detail.share") }, { key: "unlink", label: t("network.detail.unlink"), destructive: true }] : []),
@@ -159,6 +207,8 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             <>
               <View style={styles.rowCenter}><DensityDots level={3} /><Chip label={t("network.chipSelf")} tone="teal" /></View>
               <UiText style={styles.lbl}>{t("network.detail.selfHint")}</UiText>
+              {conversationId ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} onPress={() => router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href)} /></View>
+                : canStart ? <View style={styles.messageButton}><Button variant="primary" size="sm" icon="chat" label={t("network.detail.message")} loading={starting} onPress={() => void startConversation()} /></View> : null}
             </>
           ) : (
             <View style={styles.chips}>
@@ -169,9 +219,9 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
           )}
           {!self ? (
             <View style={styles.actions}>
-              <View style={styles.actionCircle}><IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => { if (contact.primaryEmail) void Linking.openURL(`mailto:${contact.primaryEmail}`); }} /></View>
-              <View style={styles.actionCircle}><IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => { if (contact.primaryPhone) void Linking.openURL(`tel:${contact.primaryPhone}`); }} /></View>
-              <View style={styles.actionCircle}><IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => setProposalOpen(true)} /></View>
+              <View style={[styles.actionCircle, !contact.primaryEmail && styles.actionEmpty]}><IconButton icon="mail" accessibilityLabel={t("network.detail.mail")} onPress={() => reach(contact.primaryEmail, "mailto", "network.detail.noEmail")} /></View>
+              <View style={[styles.actionCircle, !contact.primaryPhone && styles.actionEmpty]}><IconButton icon="phone" accessibilityLabel={t("network.detail.call")} onPress={() => reach(contact.primaryPhone, "tel", "network.detail.noPhone")} /></View>
+              <View style={styles.actionCircle}><IconButton icon="calendar" accessibilityLabel={t("network.detail.schedule")} onPress={() => router.push(`/schedule/personal/new?contactId=${encodeURIComponent(contactId)}` as Href)} /></View>
               <View style={styles.actionCircle}><IconButton icon="pen" accessibilityLabel={t("network.detail.edit")} onPress={() => router.push(`/contacts/edit/${encodeURIComponent(contactId)}` as Href)} /></View>
             </View>
           ) : null}
@@ -287,21 +337,25 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
         <View style={[styles.card, styles.gapTop]} testID="network-interactions">
           <View style={styles.between}>
             <UiText style={styles.cardH}>{t("network.detail.interactions")}</UiText>
-            <UiPressable accessibilityRole="button" accessibilityLabel={t("network.detail.addMemo")} onPress={() => router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}` as Href)}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("network.detail.addMemo")} onPress={() => router.push(`/notes/new?contactId=${encodeURIComponent(contactId)}&contactName=${encodeURIComponent(contact.displayName)}` as Href)}>
               <UiText style={styles.more}>{t("network.detail.addMemo")}</UiText>
             </UiPressable>
           </View>
-          {linkedNotes.length || contact.lastInteraction ? (
+          {linkedNotes.length || lastInteraction ? (
             <>
-              {contact.lastInteraction && !linkedNotes.some((note) => note.body === contact.lastInteraction!.summary) ? (
-                <View style={styles.tl}><UiText style={styles.tlTime}>{tokyoMonthDay(contact.lastInteraction.occurredAt)}</UiText><UiText style={[styles.body, styles.grow]}>{contact.lastInteraction.summary}</UiText></View>
+              {lastInteraction && !linkedNotes.some((note) => note.body === lastInteraction.summary) ? (
+                <View style={styles.tl}><UiText style={styles.tlTime}>{tokyoMonthDay(lastInteraction.occurredAt)}</UiText><UiText style={[styles.body, styles.grow]}>{lastInteraction.summary}</UiText></View>
               ) : null}
-              {linkedNotes.slice(0, 8).map((note) => (
-                <View key={note.id} style={styles.tl}>
+              {linkedNotes.slice(0, 8).map((note) => {
+                const row = <>
                   <UiText style={styles.tlTime}>{tokyoMonthDay(note.createdAt)}</UiText>
-                  <View style={styles.grow}>{note.title ? <UiText style={styles.cardTitle}>{note.title}</UiText> : null}<UiText style={note.title ? styles.lbl : styles.body}>{note.body}</UiText></View>
-                </View>
-              ))}
+                  <View style={styles.grow}>{note.title ? <UiText style={styles.cardTitle}>{note.title}</UiText> : null}<UiText numberOfLines={note.linked ? 3 : undefined} style={note.title ? styles.lbl : styles.body}>{note.body}</UiText></View>
+                  {note.linked ? <Icon name="right" size={16} color={colors.ink3} /> : null}
+                </>;
+                return note.linked
+                  ? <UiPressable key={note.id} accessibilityRole="button" accessibilityLabel={note.title || note.body.slice(0, 40)} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.tl} testID={`network-note-${note.id}`}>{row}</UiPressable>
+                  : <View key={note.id} style={styles.tl}>{row}</View>;
+              })}
             </>
           ) : <UiText style={styles.lbl}>{t("network.detail.noInteractions")}</UiText>}
         </View>
@@ -320,10 +374,22 @@ export function NetworkContactScreen({ contactId, now = () => Date.now() }: { co
             onUnlinked={() => { setUnlinkOpen(false); setConnection(null); local.refresh(); }} /> : null}
         </>
       ) : null}
-      {/* R20a 面談の日程提案（D 线交付的组件；R11a 只挂载，见 REPORT 交接）。 */}
-      <MeetingProposalSheet open={proposalOpen} contactId={contactId} onClose={() => setProposalOpen(false)} />
     </AppScreen>
   );
+}
+
+type TimelineNote = DetailContact["notes"][number] & { linked: boolean };
+/** 往来：联系人记录里的备忘 + 笔记镜像里关联到这个人的笔记（同一 id 以笔记为准、可点开），新的在上。 */
+export function mergeTimelineNotes(recordNotes: DetailContact["notes"], linked: readonly { id: string; title?: string | null; body: string; createdAt: string; noteKind?: string | null; sample?: true }[]): TimelineNote[] {
+  const byId = new Map<string, TimelineNote>();
+  for (const note of recordNotes) byId.set(note.id, { ...note, linked: false });
+  for (const note of linked) {
+    if (note.sample) continue;
+    const body = note.body.trim(), title = note.title?.trim() ?? "";
+    // A note without its own title is named by its first line: show the body once, not the line twice.
+    byId.set(note.id, { id: note.id, body, kind: note.noteKind ?? "", createdAt: note.createdAt, title: title && !body.startsWith(title.replace(/…$/u, "")) ? title : "", linked: true });
+  }
+  return [...byId.values()].sort((left, right) => (left.createdAt < right.createdAt ? 1 : left.createdAt > right.createdAt ? -1 : 0));
 }
 
 function evidenceLabel(label: string, t: ReturnType<typeof useOrbitLocale>["t"]): string {
@@ -378,30 +444,32 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   headSelf: { paddingBottom: 34 },
   confirm: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.plum300, gap: 10, paddingVertical: 14 },
   syncCard: { borderWidth: 1.5, borderColor: colors.plum300, paddingBottom: 24 },
-  name: { color: colors.ink, fontSize: 19, fontWeight: "800", marginTop: 6 },
-  sub: { color: colors.ink3, fontSize: 12.5 },
+  name: { color: colors.ink, fontSize: 21, fontWeight: "800", marginTop: 6 },
+  sub: { color: colors.ink3, fontSize: 15 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 6 },
   actions: { flexDirection: "row", gap: 12, marginTop: 12 },
   actionCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  actionEmpty: { opacity: 0.4 },
   whyCard: { overflow: "hidden" },
-  whyBody: { fontSize: 14.5, lineHeight: 21, fontWeight: "700" },
+  whyBody: { fontSize: 17, lineHeight: 25, fontWeight: "700" },
   whyChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
+  messageButton: { alignSelf: "center", marginTop: 4 },
   between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   emo: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  emoText: { fontSize: 17 },
-  cardTitle: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  cardH: { color: colors.ink, fontSize: 15, fontWeight: "800" },
-  body: { color: colors.ink, fontSize: 13.5, lineHeight: 21, marginTop: 6 },
-  lbl: { color: colors.ink3, fontSize: 11.5, fontWeight: "500", marginTop: 4 },
+  emoText: { fontSize: 19 },
+  cardTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  cardH: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  body: { color: colors.ink, fontSize: 16, lineHeight: 25, marginTop: 6 },
+  lbl: { color: colors.ink3, fontSize: 13, fontWeight: "500", marginTop: 4 },
   center: { textAlign: "center" },
-  more: { color: colors.ink2, fontSize: 12.5, fontWeight: "700" },
+  more: { color: colors.ink2, fontSize: 15, fontWeight: "700" },
   grid2: { flexDirection: "row", gap: 10 },
   frow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
-  frowKey: { color: colors.ink3, fontSize: 12, width: 84 },
-  frowValue: { color: colors.ink, fontSize: 13.5, fontWeight: "600" },
+  frowKey: { color: colors.ink3, fontSize: 14, width: 84 },
+  frowValue: { color: colors.ink, fontSize: 16, fontWeight: "600" },
   strike: { textDecorationLine: "line-through", color: colors.ink3 },
   prev: { paddingVertical: 4, paddingLeft: 8 },
-  tl: { flexDirection: "row", gap: 12, paddingVertical: 8 },
-  tlTime: { color: colors.ink3, fontSize: 12, width: 38 },
+  tl: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 8 },
+  tlTime: { color: colors.ink3, fontSize: 14, width: 38 },
 }));

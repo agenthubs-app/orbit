@@ -71,7 +71,7 @@ export function FullScreenSearch({
           <View style={styles.search}>
             {events ? <View pointerEvents="none" style={styles.searchRing} /> : null}
             <Icon name="search" size={16} color={iconColor} />
-            <TextInput value={value} onChangeText={onChangeText} autoFocus showSoftInputOnFocus={showSoftInputOnFocus} onSubmitEditing={onSubmitEditing} placeholder={placeholder} placeholderTextColor={colors.ink3Text} accessibilityLabel={placeholder} returnKeyType="search" style={styles.input} {...(inputTestID ? { testID: inputTestID } : {})} />
+            <TextInput value={value} onChangeText={onChangeText} autoFocus autoCapitalize="none" autoCorrect={false} showSoftInputOnFocus={showSoftInputOnFocus} onSubmitEditing={onSubmitEditing} placeholder={placeholder} placeholderTextColor={colors.ink3Text} accessibilityLabel={placeholder} returnKeyType="search" style={styles.input} {...(inputTestID ? { testID: inputTestID } : {})} />
             {value ? <UiPressable accessibilityRole="button" accessibilityLabel={clearLabel} onPress={() => onChangeText("")} hitSlop={8}><Icon name="x" size={16} color={iconColor} /></UiPressable> : null}
           </View>
           <UiPressable accessibilityRole="button" accessibilityLabel={cancelLabel} onPress={onCancel} hitSlop={events ? 6 : 2} style={[styles.cancel, events && styles.cancelSm]}>
@@ -94,9 +94,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   search: { alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.pill, flex: 1, flexDirection: "row", gap: 8, height: 44, paddingHorizontal: 16 },
   // kit .search.on uses an outer box-shadow; draw its 2px ring outside the 44pt field.
   searchRing: { position: "absolute", top: -2, right: -2, bottom: -2, left: -2, borderColor: colors.plum300, borderRadius: radius.pill, borderWidth: 2 },
-  input: { color: colors.ink, flex: 1, fontSize: 13.5, padding: 0 },
+  input: { color: colors.ink, flex: 1, fontSize: 16, padding: 0 },
   cancel: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center", paddingHorizontal: 4 },
   cancelSm: { height: 32, paddingHorizontal: 12 },
-  cancelText: { color: colors.ink2, fontSize: 13, fontWeight: "700", lineHeight: 19.5 },
-  cancelTextSm: { fontSize: 12, lineHeight: 18 },
+  cancelText: { color: colors.ink2, fontSize: 15, fontWeight: "700", lineHeight: 22 },
+  cancelTextSm: { fontSize: 14, lineHeight: 21 },
 }));

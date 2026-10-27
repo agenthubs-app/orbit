@@ -151,8 +151,8 @@ export function AnalysisPieChart({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   centerCaption: {
     color: colors.ink3Text,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 17,
     textAlign: "center"
   },
   centerLabel: {
@@ -167,14 +167,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   centerValue: {
     color: colors.ink,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "800",
-    lineHeight: 30
+    lineHeight: 32
   },
   centerMeta: {
     color: colors.ink3Text,
-    fontSize: 10,
-    lineHeight: 13
+    fontSize: 12,
+    lineHeight: 16
   },
   frame: {
     alignItems: "center",

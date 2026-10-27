@@ -307,8 +307,8 @@ test("review: AI marks, edit in place, send uses one (3 → 2); ✕ sends exactl
   await turn.getByText(/^獲得済み \d+ → \d+/).waitFor();
   // ✕ one change: one request, the answer is the server's rebuilt plan.
   const before = writes(calls).length;
-  await turn.getByRole("radio", { name: "「Step 1 の目安」を採用しない" }).click();
-  await page.waitForFunction(() => document.querySelector('[aria-label="「Step 1 の目安」を採用しない"]')?.getAttribute("aria-checked") === "true");
+  await turn.getByRole("radio", { name: "「ステップ1 の目安」を採用しない" }).click();
+  await page.waitForFunction(() => document.querySelector('[aria-label="「ステップ1 の目安」を採用しない"]')?.getAttribute("aria-checked") === "true");
   assert.deepEqual(writes(calls).slice(before), [`POST /api/agent/plans/drafts/${calls.find((call) => call.path.endsWith("/review/fix"))!.path.split("/")[5]}/changes/t1-1/toggle`]);
   const view = await direct<PlanReviewView>(server, "GET", `/api/agent/plans/v2/${PLAN}/reviews/current`);
   assert.equal(view.data.draft.turns[0]!.changes[0]!.accepted, false);
@@ -402,6 +402,9 @@ test("manual edit from the overview: a review draft in the editor; saving return
   assert.deepEqual(writes(calls), [`POST /api/agent/plans/v2/${PLAN}/manual-edit`]);
   const pushed = (await navigation(page)).navigation[0]!;
   assert.match(pushed.href!, /^\/plans\/drafts\/[^/]+\/edit$/);
+  // QA-A: nothing changed → saving would only use up the one manual edit, so it waits for a change.
+  assert.equal(await page.getByRole("button", { name: "保存して確定" }).getAttribute("aria-disabled"), "true");
+  await page.getByRole("button", { name: /イベントを増やす$/ }).click();
   await page.getByRole("button", { name: "保存して確定" }).click();
   await page.getByText("方案を更新しました").waitFor();
   await page.getByTestId("plan-overview").waitFor();
@@ -628,8 +631,8 @@ test("end to end (mock): overview → 見直し → send → ✕ one → confirm
   await page.getByLabel("ほかに変わったこと（任意）").fill("CVC にも並行で当たりたい");
   await page.getByRole("button", { name: "前提を送って修正案をつくる" }).click();
   await page.getByTestId("review-turn").waitFor();
-  await page.getByRole("radio", { name: "「Step 1 の目安」を採用しない" }).click();
-  await page.waitForFunction(() => document.querySelector('[aria-label="「Step 1 の目安」を採用しない"]')?.getAttribute("aria-checked") === "true");
+  await page.getByRole("radio", { name: "「ステップ1 の目安」を採用しない" }).click();
+  await page.waitForFunction(() => document.querySelector('[aria-label="「ステップ1 の目安」を採用しない"]')?.getAttribute("aria-checked") === "true");
   await page.getByRole("button", { name: "この内容で確定" }).click();
   await page.getByText("方案を更新しました").waitFor();
   await page.getByTestId("plan-overview").waitFor();
@@ -749,6 +752,7 @@ test("STALE on a manual edit of a review draft: 「最新を読み込む」 open
   await page.getByTestId("plan-overview").waitFor();
   await page.getByRole("button", { name: "手動で編集" }).click();
   await page.getByRole("button", { name: "保存して確定" }).waitFor();
+  await page.getByRole("button", { name: /イベントを増やす$/ }).click();
   const detail = (await direct<PlanV2Detail>(server, "GET", `/api/agent/plans/v2/${PLAN}`)).data;
   await direct(server, "PATCH", `/api/agent/plans/v2/${PLAN}/goal`, { expectedRevision: detail.revision, goalText: "シリーズA 資金調達（5億円）", idempotencyKey: "elsewhere", mode: "save_only" });
   await page.getByRole("button", { name: "保存して確定" }).click();

@@ -63,6 +63,15 @@ export interface LiveContactAcquisitionDraftProvider {
     draft: ContactAcquisitionDraft,
     updatedAt: string,
   ) => LiveContactAcquisitionDraftProviderResult<ContactDraftConfirmationWriteResult>;
+  /**
+   * QA-C2: event-attendee drafts are derived on read and never stored, while the
+   * atomic confirmer only updates a stored row. Store the pending draft first
+   * (insert only — an existing row, confirmed or set aside, is left alone).
+   */
+  materializeContactDraft?: (
+    draft: ContactAcquisitionDraft,
+    updatedAt: string,
+  ) => LiveContactAcquisitionDraftProviderResult<void>;
 }
 
 export interface ContactDraftConfirmationWriteResult {
@@ -325,6 +334,8 @@ function evidenceFromRecord(
   };
 }
 
+const EMPTY_ROLE_ORGANIZATION_SOURCES: ReadonlySet<string> = new Set(["manual", "qr_scan"]);
+
 function draftFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ContactAcquisitionDraft | null {
@@ -341,8 +352,10 @@ function draftFromRecord(
     !(payload.status === "pending_confirmation" || payload.status === "confirmed") ||
     !source ||
     !nonEmptyString(payload.displayName) ||
-    !nonEmptyString(payload.role) ||
-    !nonEmptyString(payload.organization) ||
+    // A manual or QR draft may leave role / organization empty (no placeholder text is stored).
+    !(nonEmptyString(payload.role) || (EMPTY_ROLE_ORGANIZATION_SOURCES.has(source.type) && payload.role === "")) ||
+    !(nonEmptyString(payload.organization) ||
+      (EMPTY_ROLE_ORGANIZATION_SOURCES.has(source.type) && payload.organization === "")) ||
     // Sprint 0140: a manual draft without a relationship note stores an empty
     // context; every other source still has to carry one.
     !(nonEmptyString(payload.relationshipContext) ||
@@ -582,6 +595,28 @@ export function createStorageContactAcquisitionDraftProvider({
       const saved = await store.upsertRecord(record);
 
       return (draftFromRecord(saved) ?? draft);
+    },
+    async materializeContactDraft(
+      draft: ContactAcquisitionDraft,
+      updatedAt: string,
+    ): Promise<void> {
+      const record = contactDraftRecord({ actorId, draft, updatedAt, workspaceId });
+
+      if (store.insertRecordIfAbsent) {
+        await store.insertRecordIfAbsent(record);
+        return;
+      }
+
+      const existing = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+        recordId: draft.id,
+        includeDeleted: true,
+      });
+
+      if (!existing) {
+        await store.upsertRecord(record);
+      }
     },
     async confirmContactDraft(
       draft: ContactAcquisitionDraft,

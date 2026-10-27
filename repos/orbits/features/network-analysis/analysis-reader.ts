@@ -40,19 +40,23 @@ async function allPages<T>(read: (cursor: string | null) => Promise<{ items: T[]
   return items;
 }
 
-async function readSeniority(actorId: string, contactIds: readonly string[]): Promise<Map<string, string>> {
+async function readProfileExtras(actorId: string, contactIds: readonly string[]): Promise<Map<string, { level: string | null; location: string | null }>> {
   const runtime = createConfiguredPostgresLiveRecordStore();
   if (!runtime || contactIds.length === 0) return new Map();
   resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "contacts" });
-  const result = await runtime.client.query<{ id: string; level: string | null }>(
+  const result = await runtime.client.query<{ id: string; level: string | null; location: string | null }>(
     `/* network-analysis:seniority */
-    select c.payload->>'id' as id, c.payload->'publicProfile'->>'seniorityLevel' as level
+    select c.payload->>'id' as id,
+      case when jsonb_typeof(c.payload->'publicProfile'->'seniorityLevel') = 'string' then c.payload->'publicProfile'->>'seniorityLevel' end as level,
+      case when jsonb_typeof(c.payload->'location') = 'string' then left(c.payload->>'location', 256) end as location
     from orbit_records c
     where c.workspace_id = $1 and c.collection_name = 'contacts' and c.user_id = $2 and c.lifecycle_state <> 'deleted'
-      and c.payload->>'id' = any($3::text[]) and jsonb_typeof(c.payload->'publicProfile'->'seniorityLevel') = 'string'`,
+      and c.payload->>'id' = any($3::text[])`,
     [runtime.workspaceId, actorId, [...contactIds]],
   );
-  return new Map(result.rows.flatMap((row) => (typeof row.id === "string" && typeof row.level === "string" ? [[row.id, row.level]] : [])));
+  return new Map(result.rows.flatMap((row) => (typeof row.id === "string"
+    ? [[row.id, { level: typeof row.level === "string" ? row.level : null, location: typeof row.location === "string" ? row.location : null }]]
+    : [])));
 }
 
 export async function readNetworkAnalysisRows(actor: ContactCardActor, service: ContactCardService = createContactCardService(actor)): Promise<NetworkAnalysisRow[]> {
@@ -61,11 +65,11 @@ export async function readNetworkAnalysisRows(actor: ContactCardActor, service: 
     allPages((cursor) => service.page({ limit: PAGE, cursor, needsFollowUp: true }, actor.id)),
   ]);
   const followUpIds = new Set(followUps.map((card) => card.id));
-  const levels = await readSeniority(actor.id, cards.map((card) => card.id));
+  const extras = await readProfileExtras(actor.id, cards.map((card) => card.id));
   return cards.map((card) => ({
     id: card.id, name: card.displayName, organization: card.organization, role: card.role, status: card.status,
-    primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, metKind: card.metKind ?? null,
-    seniorityLevel: levels.get(card.id) ?? null, addedAt: card.addedAt ?? null, lastInteractionAt: card.lastInteractionAt ?? null,
+    primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, location: extras.get(card.id)?.location ?? null,
+    metKind: card.metKind ?? null, seniorityLevel: extras.get(card.id)?.level ?? null, addedAt: card.addedAt ?? null, lastInteractionAt: card.lastInteractionAt ?? null,
     goalRelated: card.goalRelated === true, needsFollowUp: followUpIds.has(card.id), nextActionPreview: card.nextActionPreview,
   }));
 }

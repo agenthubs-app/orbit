@@ -112,6 +112,7 @@ export const inbox = {
   "inbox.replyDraft": "回复草稿",
   "inbox.replyBody": "回复正文",
   "inbox.replyPlaceholder": "先写一版要说的话。",
+  "inbox.messagePlaceholder": "写消息",
   "inbox.polishDraft": "润色草稿",
   "inbox.previewReply": "预览回复",
   "inbox.createDraftFailed": "这段草稿暂时创建不了。",
@@ -126,4 +127,5 @@ export const inbox = {
   "inbox.previewSafety": "下一步只预览草稿，不会保存或发送消息。",
   "inbox.preparing": "正在准备",
   "inbox.previewDraft": "预览草稿",
+  "inbox.notificationSettings": "通知设置",
 } as const;

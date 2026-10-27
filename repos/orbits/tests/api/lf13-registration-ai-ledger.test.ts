@@ -47,3 +47,39 @@ test("an unusable ledger: 503 and no provider request", async () => {
   const response = await noProvider(() => createRegistrationInterviewPostHandler(resolveActor, loadEvent, () => null, broken)(post("interview"), routeContext));
   assert.equal(response.status, 503);
 });
+
+// QA-B2: registration must always finish. The join facade asks for fixed questions (fallback "fixed") when the model cannot be used.
+test("a used-up quota with fallback fixed: a signed fixed question, the answer verifies, still no provider request", async () => {
+  const { verifyInterviewResponseSubmissions } = await import("../../features/events/registration/interview-question-token.server");
+  const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+  process.env.ORBIT_INTERVIEW_SIGNING_SECRET = "test-interview-signing-secret";
+  const warn = console.warn;
+  console.warn = () => undefined;
+  try {
+    const exhausted = () => gate({ ok: false, reason: "daily_limit", limit: "purpose" });
+    const request = (body: unknown) => new Request("https://orbit.test/api/events/demo-event-1/registration/interview", { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST" });
+    const handler = createRegistrationInterviewPostHandler(resolveActor, loadEvent, () => null, exhausted);
+    const response = await noProvider(() => handler(request({ fallback: "fixed", language: "zh", transcript: [] }), routeContext));
+    assert.equal(response.status, 200);
+    const body = await response.json() as { data: { done: boolean; signedQuestion: { question: { field: string; prompt: string; options: string[]; provenance: { generationMethod: string; provider: string; fallbackReason: string } }; questionToken: string } } };
+    const { question, questionToken } = body.data.signedQuestion;
+    assert.equal(body.data.done, false);
+    assert.equal(question.field, "targetAttendees");
+    assert.match(question.prompt, /认识/);
+    assert.deepEqual([question.provenance.generationMethod, question.provenance.provider, question.provenance.fallbackReason], ["deterministic-fallback", "orbit-fixed", "AI_LIMIT"]);
+    const [snapshot] = verifyInterviewResponseSubmissions({ actorId: "actor:participant", eventId: "demo-event-1", responses: [{ answer: question.options[0]!, questionToken }] });
+    assert.equal(snapshot!.field, "targetAttendees");
+    assert.equal(snapshot!.generation.provider, "orbit-fixed");
+
+    // Next fixed question skips answered fields; after five answers the interview is done.
+    const second = await noProvider(() => handler(request({ fallback: "fixed", language: "en", transcript: [{ answer: "Investors", field: "targetAttendees", prompt: "Who?" }] }), routeContext));
+    const secondBody = await second.json() as { data: { signedQuestion: { question: { field: string } } } };
+    assert.equal(secondBody.data.signedQuestion.question.field, "valueOffered");
+    const five = ["targetAttendees", "valueOffered", "desiredOutcome", "experienceHighlight", "energyStyle"].map((field) => ({ answer: "x", field, prompt: "question?" }));
+    const done = await noProvider(() => handler(request({ fallback: "fixed", language: "zh", transcript: five }), routeContext));
+    assert.deepEqual((await done.json() as { data: unknown }).data, { done: true, signedQuestion: null });
+  } finally {
+    console.warn = warn;
+    if (previousSecret === undefined) delete process.env.ORBIT_INTERVIEW_SIGNING_SECRET; else process.env.ORBIT_INTERVIEW_SIGNING_SECRET = previousSecret;
+  }
+});

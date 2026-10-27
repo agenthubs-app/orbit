@@ -59,6 +59,16 @@ export interface ContactDraftConfirmationInput {
   scenario?: ContactDraftConfirmationScenario | string | null;
 }
 
+/** QA-C2: 破棄 — the draft is set aside on the server so every device stops listing it. */
+export interface ContactDraftDiscardInput {
+  draftId: string;
+}
+
+export interface ContactDraftDiscardSuccess {
+  success: true;
+  data: { state: "discarded"; draftId: string; discardedAt: string };
+}
+
 export interface ContactAcquisitionDraftErrorDefinition {
   code: ContactAcquisitionDraftErrorCode;
   appCode: AppErrorCode;
@@ -196,7 +206,13 @@ export interface ContactDraftCandidate {
   source: ContactDraftSourceReference;
   evidenceIds: readonly string[];
   readyForContactWrite: true;
-  contactWriteExecuted: false;
+  /**
+   * QA-C2: an event-attendee draft confirmed with a contact store attached is
+   * written (or linked to the person already in the network) right away; the
+   * id is the contact to open. Without a contact store nothing is written.
+   */
+  contactId?: string;
+  contactWriteExecuted: boolean;
 }
 
 // confirmation payload 会生成 contactCandidate，但仍显式标记 contactWriteExecuted=false。
@@ -235,4 +251,8 @@ export type ContactAcquisitionDraftResult =
 
 export type ContactDraftConfirmationResult =
   | ContactDraftConfirmationSuccess
+  | ContactAcquisitionDraftFailure;
+
+export type ContactDraftDiscardResult =
+  | ContactDraftDiscardSuccess
   | ContactAcquisitionDraftFailure;

@@ -1,6 +1,7 @@
 import type { AuthenticatedApiActor } from "../../app/api/_shared/authenticated-actor";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
+import { createPostgresRelationshipInviteLinks } from "./invite-link";
 import { createRelationshipMessageStore } from "./message-store";
 import {
   createRelationshipCommunicationService,
@@ -23,6 +24,7 @@ function unavailableService(message: string): RelationshipCommunicationService {
     revokeContactBinding: unavailable,
     saveReplyDraft: unavailable,
     sendMessage: unavailable,
+    startConversation: unavailable,
   } as RelationshipCommunicationService;
 }
 
@@ -44,6 +46,7 @@ export function createConfiguredRelationshipCommunicationService(
   return createRelationshipCommunicationService({
     actor: { accountId, displayName, email },
     invitationBaseUrl,
+    inviteLinks: createPostgresRelationshipInviteLinks(transactional.client, transactional.workspaceId),
     messages: createRelationshipMessageStore({ client: transactional.client, workspaceId: transactional.workspaceId }),
     async resolveContact(contactId, ownerAccountId) {
       // Bounded point lookup: the owner's contact with this id (sprint 0109).

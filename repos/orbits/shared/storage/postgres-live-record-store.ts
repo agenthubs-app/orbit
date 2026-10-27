@@ -365,8 +365,8 @@ export function createPostgresLiveRecordStore<
         ${lockedFrom(record.collectionName)}
         where workspace_id=$1 and collection_name=$2 and record_id=$3
           and user_id is not distinct from $4::text
-          and updated_at=$20::timestamptz and lifecycle_state <> 'deleted'
-          and created_at=$17::timestamptz
+          and date_trunc('milliseconds', updated_at)=$20::timestamptz and lifecycle_state <> 'deleted'
+          and date_trunc('milliseconds', created_at)=$17::timestamptz
           and ($21::text is null or payload #>> $22::text[] = $21::text)
         returning ${recordColumns}
       `, [

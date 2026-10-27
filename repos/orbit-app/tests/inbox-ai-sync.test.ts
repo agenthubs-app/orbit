@@ -165,15 +165,15 @@ test("inbox: pulled rows become the list, detail and unread count; an invalidate
   assert.equal(list.unreadCount, 2);
   assert.ok(list.items.every((item) => item.actorId === A), "the device fills in its own actor for the existing views");
   // The server invalidated n2 (its source went away): the row comes back without content.
-  host.log[INBOX]!.push(notice("n2", 4, { sourceState: "unavailable", title: "来源已不可用", reason: "来源已变更、不可访问，或此通知已不再适用。", copy: undefined, actions: [], target: { kind: "source", id: "c:n2", href: null, status: "unavailable" } }));
+  host.log[INBOX]!.push(notice("n2", 4, { sourceState: "unavailable", title: "这条通知已过期", reason: "相关内容已经处理过，或已不存在。", copy: undefined, actions: [], target: { kind: "source", id: "c:n2", href: null, status: "unavailable" } }));
   host.log[INBOX]!.push({ id: "n1", revision: "5", operation: "delete", payload: null });
   assert.equal((await d.sync())?.error, null);
   const after = inboxDeviceRows(await d.records("inbox_notification"), A);
   assert.deepEqual(after.map((row) => row.id).sort(), ["n2", "n3"]);
   assert.equal(localInboxListData(after, { actorId: A, filter: "all", language: "zh", nowMs: T0 }).items.map((item) => item.id).join(), "n3", "an unavailable notification leaves the default list");
-  assert.equal(localInboxListData(after, { actorId: A, filter: "history", language: "ja", nowMs: T0 }).items.find((item) => item.id === "n2")!.title, "参照元を利用できません");
+  assert.equal(localInboxListData(after, { actorId: A, filter: "history", language: "ja", nowMs: T0 }).items.find((item) => item.id === "n2")!.title, "この通知は期限切れです");
   assert.equal(localInboxListData(after, { actorId: A, filter: "all", language: "zh", nowMs: T0 }).unreadCount, 0);
-  assert.equal(localInboxDetail(after, { actorId: A, id: "n2", language: "en", nowMs: T0 })!.title, "Source unavailable");
+  assert.equal(localInboxDetail(after, { actorId: A, id: "n2", language: "en", nowMs: T0 })!.title, "This notification has expired");
   // Revocation retires the inbox rows.
   host.granted = [];
   await d.sync();

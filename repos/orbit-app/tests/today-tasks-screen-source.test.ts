@@ -9,11 +9,13 @@ const tasksSource = readFileSync(
   "utf8",
 );
 
-test("all tasks keeps open and completed history as visible tabs", () => {
-  assert.match(tasksSource, /type TaskListMode = "open" \| "completed"/u);
-  assert.match(tasksSource, /label: locale\.t\("tasks\.viewOpen"\)/u);
-  assert.match(tasksSource, /label: locale\.t\("tasks\.viewCompleted"\)/u);
-  assert.match(tasksSource, /accessibilityRole="tablist"/u);
+test("all tasks is one list with completed history folded at the bottom instead of tabs", () => {
+  // UX-7: no scope tabs and no open/completed tabs; completed history is a fold group.
+  assert.doesNotMatch(tasksSource, /accessibilityRole="tablist"/u);
+  assert.doesNotMatch(tasksSource, /tasks\.viewOpen|tasks\.viewCompleted|tasks\.scopeAll/u);
+  assert.match(tasksSource, /scope: "all" as const, view: "open" as const/u);
+  assert.match(tasksSource, /id: "completed-fold", label: locale\.t\("tasks\.groupCompleted"\)/u);
+  assert.match(tasksSource, /locale\.t\(completedExpanded \? "tasks\.collapseCompleted" : "tasks\.expandCompleted"\)/u);
   // Platform transport wiring remains source-checked; task-page-source-lifecycle
   // and tasks-unification-interactions execute the bounded online consumer.
   assert.match(tasksSource, /useTaskListSource\(/u);

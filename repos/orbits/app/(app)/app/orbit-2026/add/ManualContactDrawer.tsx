@@ -264,7 +264,7 @@ function ManualFormBody({ t, onClose, navigate, now }: { t: Translate; onClose: 
       <div>
         <label className={styles.pasteLabel} htmlFor={`${formId}-paste`}>{t(m.pasteLabel)}</label>
         {signature.trim() && !editingPaste ? (
-          <div role="button" tabIndex={0} className={styles.pasteBox} onClick={() => setEditingPaste(true)}
+          <div role="button" tabIndex={0} aria-label={t(m.pasteLabel)} className={styles.pasteBox} onClick={() => setEditingPaste(true)}
             onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setEditingPaste(true); } }} data-manual-signature-preview="">
             {runs.map((run, index) => run.field
               ? <mark key={index} className={styles[`mark_${run.field}`]} data-span={run.field}>{run.text}</mark>

@@ -196,6 +196,8 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export const ActivityIndicator = Wrapper;
     export const UiText = Wrapper;
     export const Linking = { openURL: async () => undefined };
+    export const AppState = { addEventListener: () => ({ remove() {} }) };
+    export const LogBox = { ignoreAllLogs() {} };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
@@ -206,6 +208,8 @@ test("RootLayout records first commit and auth restoration after assigning the a
     export function RootVersionGate({ children }) { return children(true); }
     export function UiFeedbackHost() { return null; }
     export function usePathname() { return "/home"; }
+    export function useRootNavigationState() { return undefined; }
+    export function trackRootNavigationState() {}
     export function mainTabForPath() { return "home"; }
     export function AppErrorScreen() { return null; }
     export function OrbitRouteAccessBoundary() { return null; }
@@ -288,6 +292,8 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export const ActivityIndicator = Wrapper;
     export const UiText = Wrapper;
     export const Linking = { openURL: async () => undefined };
+    export const AppState = { addEventListener: () => ({ remove() {} }) };
+    export const LogBox = { ignoreAllLogs() {} };
     export const OrbitAuthSessionProvider = Wrapper;
     export const OrbitApiBaseUrlProvider = Wrapper;
     export const AppErrorBoundary = Wrapper;
@@ -299,6 +305,8 @@ test("RootLayout does not expose the shell tabs or reserve their toast space on 
     export function ShellTabBar() { return <nav aria-label="main tabs" />; }
     export function UiFeedbackHost() { return null; }
     export function usePathname() { return state.pathname; }
+    export function useRootNavigationState() { return undefined; }
+    export function trackRootNavigationState() {}
     export function mainTabForPath(pathname) { return pathname === "/home" ? "home" : null; }
     export function useOrbitAuthSession() { return { actorId: state.signedIn ? "actor:one" : null, ready: state.ready, signedIn: state.signedIn }; }
     export function useOrbitApiBaseUrl() { return { baseUrl: "https://api.example.test" }; }

@@ -34,6 +34,8 @@ export interface NetworkAnalysisRow {
   status: string;
   primaryIndustryId?: string | null;
   city?: string | null;
+  /** The contact's free-text location; read only when `city` is empty. */
+  location?: string | null;
   metKind?: string | null;
   seniorityLevel?: string | null;
   addedAt?: string | null;
@@ -74,14 +76,59 @@ const daysSince = (row: NetworkAnalysisRow, nowMs: number): number => {
   return Number.isFinite(at) ? Math.floor((nowMs - at) / DAY) : Number.POSITIVE_INFINITY;
 };
 
+// Display fallbacks while a contact's enrichment is still empty (scripts/backfill-network-analysis.ts fills the stored
+// fields; nothing here writes). The aliases are shared/domain/regions REGION_CITY_ALIASES (a test keeps them equal).
+export const ANALYSIS_CITY_ALIASES: readonly (readonly [string, readonly string[]])[] = [
+  ["Tokyo", ["tokyo", "東京都", "東京", "东京都", "东京"]],
+  ["Osaka", ["osaka", "大阪府", "大阪市", "大阪"]],
+  ["Kyoto", ["kyoto", "京都府", "京都市", "京都"]],
+  ["Kobe", ["kobe", "神戸市", "神戸", "神户"]],
+  ["Yokohama", ["yokohama", "横浜市", "横浜", "横滨"]],
+  ["Nagoya", ["nagoya", "名古屋市", "名古屋"]],
+  ["Fukuoka", ["fukuoka", "福岡市", "福岡", "福冈"]],
+  ["Sapporo", ["sapporo", "札幌市", "札幌"]],
+  ["Shanghai", ["shanghai", "上海市", "上海"]],
+  ["Beijing", ["beijing", "peking", "北京市", "北京"]],
+  ["Shenzhen", ["shenzhen", "深圳市", "深圳", "深セン"]],
+  ["Singapore", ["singapore", "新加坡", "シンガポール"]],
+];
+
+/** The canonical city a location names (longest alias wins: 東京都 contains 京都); ASCII aliases match whole words. */
+export function analysisCityFromLocation(location: string | null | undefined): string | null {
+  const text = location?.trim().toLowerCase();
+  if (!text) return null;
+  let best: { city: string; length: number } | null = null;
+  for (const [city, aliases] of ANALYSIS_CITY_ALIASES) {
+    for (const alias of aliases) {
+      const at = text.indexOf(alias);
+      const ascii = /^[a-z]+$/.test(alias);
+      const hit = at >= 0 && (!ascii || (!/[a-z]/.test(text[at - 1] ?? "") && !/[a-z]/.test(text[at + alias.length] ?? "")));
+      if (hit && (!best || alias.length > best.length)) best = { city, length: alias.length };
+    }
+  }
+  return best?.city ?? null;
+}
+
+const DECISION_TITLE = /創業|创始|founder|owner|オーナー|経営者|经营者|代表|社長|会長|取締役|役員|執行役|董事|总裁|總裁|总经理|總經理|首席|合伙人|合夥人|パートナー|partner|president|chair|vice president|\bvp\b|director|ディレクター|总监|總監|本部長|\bc[a-z]o\b/iu;
+const MANAGER_TITLE = /部長|課長|课长|经理|經理|主管|负责人|負責人|マネージャー|manager|\bhead\b|\blead\b|リーダー|主任/iu;
+
+/** A seniority group read from the title when no level is stored; an empty title stays unset. */
+export function analysisSeniorityFromTitle(role: string | null | undefined): "decision" | "manager" | "staff" | null {
+  const title = role?.trim();
+  if (!title) return null;
+  if (DECISION_TITLE.test(title)) return "decision";
+  if (MANAGER_TITLE.test(title)) return "manager";
+  return "staff";
+}
+
 function bucketKey(row: NetworkAnalysisRow, dimension: Exclude<NetworkAnalysisDimension, "opportunity">): string {
   switch (dimension) {
     case "industry": return row.primaryIndustryId?.trim() || "none";
-    case "region": return row.city?.trim() || "none";
+    case "region": return row.city?.trim() || analysisCityFromLocation(row.location) || "none";
     case "met": return row.metKind === "event" || row.metKind === "referral" || row.metKind === "visit" ? row.metKind : "other";
     case "seniority": {
       const group = seniorityGroup(row.seniorityLevel);
-      return group === "other" ? "unset" : group;
+      return group === "other" ? analysisSeniorityFromTitle(row.role) ?? "unset" : group;
     }
   }
 }

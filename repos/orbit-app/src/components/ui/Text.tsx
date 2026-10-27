@@ -20,11 +20,15 @@ import { currentOrbitLanguage } from "../../i18n/locale-core";
 const LocaleContext = (LocaleContextModule as { OrbitLocaleContext?: Context<{ language: string } | null> }).OrbitLocaleContext;
 const useLocaleLanguage: () => string | undefined = LocaleContext ? () => useContext(LocaleContext)?.language : () => undefined;
 
-export function UiText({ lineBreakStrategyIOS = "standard", children, ...props }: TextProps) {
+// UX-1: the App sizes are already the iOS defaults, so system text size can grow them by up to
+// 1.7× (≈ the old kit sizes at 2×, the range the layout tests cover); a caller may cap lower.
+export const UI_TEXT_MAX_FONT_SCALE = 1.7;
+
+export function UiText({ lineBreakStrategyIOS = "standard", maxFontSizeMultiplier = UI_TEXT_MAX_FONT_SCALE, children, ...props }: TextProps) {
   const language = useLocaleLanguage();
   const japanese = Platform.OS === "ios" && (language ?? currentOrbitLanguage()) === "ja";
   return (
-    <RNText lineBreakStrategyIOS={lineBreakStrategyIOS} {...props}>
+    <RNText lineBreakStrategyIOS={lineBreakStrategyIOS} maxFontSizeMultiplier={maxFontSizeMultiplier} {...props}>
       {japanese ? withJapaneseFaces(children, StyleSheet.flatten(props.style) ?? {}) : children}
     </RNText>
   );

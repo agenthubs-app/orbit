@@ -117,11 +117,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   optionInline: { flex: 0, flexGrow: 0, flexShrink: 0 },
   // kit .seg button.on / .tseg button.on: surface + 0 1px 2px.
   selected: { backgroundColor: colors.surface, ...shadows.segment },
-  label: { color: colors.ink2, fontSize: 12, fontWeight: "600", lineHeight: 18, textAlign: "center" },
+  label: { color: colors.ink2, fontSize: 14, fontWeight: "600", lineHeight: 21, textAlign: "center" },
   labelSelected: { color: colors.ink },
   // kit .tseg (ui.css:722): buttons padding 7 0, 12.5/700 at line-height 1.5; the selected one lifts by 0 1px 2px.
   taskOption: { paddingVertical: 7, paddingHorizontal: 0 },
-  taskLabel: { fontSize: 12.5, fontWeight: "700", lineHeight: 18.75 },
+  taskLabel: { fontSize: 15, fontWeight: "700", lineHeight: 23 },
   segmentsInset: { paddingHorizontal: 18 },
   segmentsGap: { marginBottom: 14 },
   // kit .tswipe: margin 8 0 12

@@ -15,7 +15,7 @@ import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy } from "../../api/c
 import { guessGoalKindByKeywords, PLAN_GOAL_KINDS, PLAN_GOAL_TEMPLATES } from "../../api/compute/plan-templates";
 import { planTaskSegmentHref } from "../../api/compute/plan-href";
 import { openMainTab } from "../../components/shell-navigation";
-import { Icon, UiPressable, UiText } from "../../components/ui";
+import { ConfirmDialog, Icon, UiPressable, UiText, useToast } from "../../components/ui";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "../../components/ui/svg";
 import { faceFor } from "../../components/ui/Text";
 import { createThemedStyles } from "../../design/theme";
@@ -60,11 +60,29 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
   const monthlyOut = intakes.newGoalsLeftThisMonth <= 0;
   const activeOut = intakes.activeGoals >= intakes.activeGoalLimit;
   const blocked = monthlyOut || activeOut;
-  const resume = intakes.intakes[0] ?? null;
+  // QA-A2: an unfinished flow can be dropped (放弃); hide it here until the list reloads.
+  const [dropped, setDropped] = useState<readonly string[]>([]);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const [dropProblem, setDropProblem] = useState<string | null>(null);
+  const toast = useToast();
+  const resume = intakes.intakes.find((item) => !dropped.includes(item.intakeId)) ?? null;
+  const drop = async () => {
+    setDropOpen(false);
+    if (!resume || dropping) return;
+    setDropping(true);
+    setDropProblem(null);
+    const result = await api.abandonIntake(resume.intakeId, newIdempotencyKey("intake-abandon"));
+    setDropping(false);
+    if (!result.ok) return setDropProblem(failureText(result.failure));
+    setDropped((ids) => [...ids, resume.intakeId]);
+    toast.success(t("plan.goal.dropped"));
+  };
   const active = goals.filter((goal) => goal.status === "active");
 
   const create = async () => {
-    const goalText = text.trim();
+    // A chip alone is enough to start: its name stands in as the goal, and iOrbit makes it concrete in the flow.
+    const goalText = text.trim() || (kind ? planCopy(PLAN_GOAL_KIND_COPY[kind], language) : "");
     if (!goalText || blocked || creating) return;
     const goalKind = kind ?? guessGoalKindByKeywords(goalText);
     const fingerprint = JSON.stringify([goalText, goalKind]);
@@ -84,7 +102,17 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
 
   return (
     <View style={styles.page}>
-      {resume ? <ResumeCard intake={resume} onOpen={() => router.push(resume.href as Href)} /> : null}
+      {resume ? <ResumeCard intake={resume} onOpen={() => router.push(resume.href as Href)} onDrop={() => setDropOpen(true)} dropping={dropping} /> : null}
+      {dropProblem ? <InlineProblem text={dropProblem} /> : null}
+      <ConfirmDialog
+        visible={dropOpen && resume !== null}
+        title={t("plan.goal.dropTitle", { goal: resume?.goal ?? "" })}
+        message={t("plan.goal.dropBody")}
+        confirmLabel={t("plan.goal.drop")}
+        destructive
+        onConfirm={() => void drop()}
+        onCancel={() => setDropOpen(false)}
+      />
       <View style={[styles.guide, resume && styles.guideAfterResume]} testID="goal-input">
         <View pointerEvents="none" style={styles.glow}><Glow color={colors.macLav} /></View>
         <UiText accessibilityRole="header" style={styles.title}>{t("plan.goal.title")}</UiText>
@@ -122,9 +150,8 @@ export function PlanGoalInput({ intakes, goals = [] }: { intakes: PlanIntakeList
         </View>
         {monthlyOut ? <LimitCard kind="monthly" /> : activeOut ? <LimitCard kind="active" goals={active} /> : null}
         {/* 空着也画成可按（b12 A-R23-02a）：按下把焦点给输入框，有字才建。 */}
-        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
+        <KitButton xl primary icon="sparkle" label={t("plan.goal.start")} disabled={blocked || creating} onPress={() => (text.trim() || kind ? void create() : input.current?.focus())} style={[styles.start, blocked && styles.startAfterLimit]} testID="goal-start" />
         {failure ? isLimitFailure(failure) ? <LimitNote failure={failure} /> : <InlineProblem text={failureText(failure)} /> : null}
-        <UiText style={styles.steps}>{`${t("plan.goal.previewFirst")}\n${t("plan.goal.previewSecond")}`}</UiText>
       </View>
       <SampleTypeCard />
     </View>
@@ -148,7 +175,7 @@ function Glow({ color }: { color: string }) {
 }
 
 /** 作りかけのプラン（b12 A-R23-02a .k-resume）：🧭 · 目標 · 続ける ›，下面五段 .fm 与「質問まで · 10月10日」。 */
-function ResumeCard({ intake, onOpen }: { intake: PlanIntakeListItem; onOpen: () => void }) {
+function ResumeCard({ intake, onOpen, onDrop, dropping }: { intake: PlanIntakeListItem; onOpen: () => void; onDrop: () => void; dropping: boolean }) {
   const { styles, colors } = useStyles();
   const kit = useKitStyles().styles;
   const { t, language } = useOrbitLocale();
@@ -168,9 +195,13 @@ function ResumeCard({ intake, onOpen }: { intake: PlanIntakeListItem; onOpen: ()
           <Icon name="right" size={16} color={colors.bg} />
         </UiPressable>
       </View>
-      <View style={[styles.row10, styles.resumeFoot]}>
-        <KitStages stage={stage} style={styles.fm} />
-        <UiText style={kit.lbl}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
+      {/* 五段进度占满一行（与右侧文字同排时每段太窄、名字被截断），停在哪一步写在下面。 */}
+      <KitStages stage={stage} style={styles.resumeFoot} />
+      <View style={styles.resumeBottom}>
+        <UiText style={[kit.lbl, styles.resumeWhere, kit.grow]}>{t("plan.goal.resumeWhere", { date, stage: t(STAGE_KEYS[stage]) })}</UiText>
+        <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.goal.dropA11y", { goal: intake.goal })} accessibilityState={{ disabled: dropping }} disabled={dropping} hitSlop={8} onPress={onDrop} style={styles.dropBtn} testID="goal-resume-drop">
+          <UiText style={styles.dropText}>{t("plan.goal.drop")}</UiText>
+        </UiPressable>
       </View>
     </View>
   );
@@ -245,7 +276,7 @@ function SampleTypeCard() {
           <View style={styles.tcardHead}>
             <KitEmo emoji="🎪" tone="lav" sm />
             <View style={kit.grow}>
-              <UiText style={styles.tk}>{t("plan.sample.kicker", { label: shortLabel })}</UiText>
+              <UiText style={styles.tk}>{shortLabel}</UiText>
               <UiText style={styles.tname}>{t("plan.sample.roleSituation")}</UiText>
             </View>
             <UiText style={styles.pp}>0<UiText style={styles.ppSmall}> / 20</UiText></UiText>
@@ -282,8 +313,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sub: { color: colors.ink2, ...kitText(12.5, "400"), marginTop: 4, marginBottom: 12 },
   field: { minHeight: 46, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: "transparent", justifyContent: "center", paddingHorizontal: 14 },
   fieldFocus: { borderColor: colors.plum500 },
-  input: { color: colors.ink, fontSize: 14, lineHeight: 21, padding: 0, minHeight: 21 },
-  placeholder: { position: "absolute", left: 14, right: 14, color: colors.ink4, fontSize: 14 },
+  input: { color: colors.ink, fontSize: 17, lineHeight: 25, padding: 0, minHeight: 21 },
+  placeholder: { position: "absolute", left: 14, right: 14, color: colors.ink4, fontSize: 17 },
   kinds: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   // kit 实测 chip 高 34.8（padding 7 + 行盒 17.8），iOS 行盒 18.75 → 上下各 6.5。
   fopt: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6.5, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: "transparent" },
@@ -292,17 +323,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   foptText: { color: colors.ink2, ...kitText(12.5, "700") },
   foptTextOn: { color: colors.ink },
   // iOS 的 Apple Color Emoji 在 12.5 号比 kit（Chrome）画得大约 2pt、chip 宽 2.5pt，第二行 chip 逐个右移；按实测比例缩到 11。
-  foptEmoji: { fontSize: 11 },
+  foptEmoji: { fontSize: 13 },
   start: { height: 50, marginTop: 14 },
   startAfterLimit: { marginTop: 10 },
-  steps: { color: colors.ink3, ...kitText(11.5, "500", 1.6), textAlign: "center", marginTop: 8 },
 
   resume: { backgroundColor: colors.surface, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
   resumeGoal: { color: colors.ink, ...kitText(13.5, "700") },
   resumeBtn: { flexDirection: "row", alignItems: "center", gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.ink },
   resumeBtnText: { color: colors.bg, ...kitText(12, "700") },
-  resumeFoot: { marginTop: 10 },
-  fm: { flex: 1, minWidth: 0 },
+  resumeFoot: { marginTop: 12 },
+  resumeWhere: { marginTop: 6 },
+  resumeBottom: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dropBtn: { minHeight: 32, justifyContent: "center", marginTop: 6 },
+  dropText: { color: colors.coralText, ...kitText(12.5, "700") },
 
   limitWrap: { marginTop: 12 },
   flat: { backgroundColor: colors.surface2, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 14 },
@@ -312,7 +345,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sumrow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
   sumEmo: { width: 28, height: 28, borderRadius: 10, backgroundColor: colors.macLav, alignItems: "center", justifyContent: "center" },
   sumEmoPink: { backgroundColor: colors.macPink },
-  sumEmoText: { fontSize: 15, lineHeight: 22.5 },
+  sumEmoText: { fontSize: 17, lineHeight: 26 },
   sumTitle: { color: colors.ink, ...kitText(13, "700") },
 
   sampleCard: { backgroundColor: colors.surface, borderRadius: 24, padding: 18, marginTop: 14 },

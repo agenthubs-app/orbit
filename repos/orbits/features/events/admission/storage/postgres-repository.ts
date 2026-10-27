@@ -693,14 +693,16 @@ async function projectCanonicalMembership(input: {
   );
   const current = currentResult.rows[0];
   if (
-    (input.status === "rsvped" && current) ||
+    (input.status === "rsvped" && current && current.status !== "cancelled") ||
     (input.status === "cancelled" && (!current || current.status !== "rsvped"))
   ) invalid("Admission membership projection state is invalid.");
   const membershipVersion = current
     ? positiveVersion(current.membership_version, "membershipVersion") + 1
     : 1;
+  // Reactivation (a withdrawn application submitted again) writes a new profile version.
+  const reactivated = input.status === "rsvped" && Boolean(current);
   const profileVersion = current
-    ? positiveVersion(current.profile_version, "profileVersion")
+    ? positiveVersion(current.profile_version, "profileVersion") + (reactivated ? 1 : 0)
     : 1;
   const participantProfileId = canonicalParticipantProfileId(
     input.application.eventId,
@@ -738,7 +740,7 @@ async function projectCanonicalMembership(input: {
       userId: input.application.actorId,
     },
     participantProfileId,
-    reactivatedAt: null,
+    reactivatedAt: reactivated ? input.application.updatedAt : null,
     registeredAt,
     sideEffects: registrationSideEffects(),
     status: input.status,
@@ -1145,8 +1147,10 @@ export function createPostgresEventAdmissionRepository(input: {
            for update`,
           [workspaceId, eventId, actorId],
         );
-        if (existingResult.rows[0]) {
-          const existing = applicationFromRow(existingResult.rows[0]);
+        // A withdrawn application can be submitted again (cancel, then register again); it continues the same version history.
+        const previous = existingResult.rows[0] ? applicationFromRow(existingResult.rows[0]) : null;
+        if (previous && previous.status !== "withdrawn") {
+          const existing = previous;
           if (
             JSON.stringify(stableApplicationProfile(existing.profilePayload)) ===
             JSON.stringify(stableApplicationProfile(profilePayload))
@@ -1174,7 +1178,7 @@ export function createPostgresEventAdmissionRepository(input: {
         }
         const application: EventAdmissionApplication = {
           actorId,
-          applicationVersion: 1,
+          applicationVersion: previous ? previous.applicationVersion + 1 : 1,
           decidedAt: null,
           decisionActorId: null,
           eventId,
@@ -1201,7 +1205,7 @@ export function createPostgresEventAdmissionRepository(input: {
           after: applicationAuditPayload(application),
           aggregateId: `${eventId}:${actorId}`,
           aggregateType: "admission_application",
-          before: null,
+          before: previous ? applicationAuditPayload(previous) : null,
           eventId,
           occurredAt: now,
           workspaceId,

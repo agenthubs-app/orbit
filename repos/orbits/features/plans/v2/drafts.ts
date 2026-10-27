@@ -50,6 +50,8 @@ export function introDraftShortText(input: { viaName: string; roleSituation: str
 
 export function introDraftText(input: { viaName: string; goal: string; typeLabel: string; roleSituation: string; language: PlanCopyLanguage }): { subject: string; body: string } {
   const reason = INTRO_DRAFT_REASON[input.language] ?? INTRO_DRAFT_REASON.ja;
+  // QA-A: the role sentence ends with its own 。/. — inside 「…」 it read 「…讨论。」这样的人.
+  input = { ...input, roleSituation: input.roleSituation.trim().replace(/[。．.！!]+$/u, "") };
   if (input.language === "en") {
     return {
       body: `Hi ${input.viaName},\n\nI'm working toward "${input.goal}". I'm looking to talk with ${input.roleSituation.toLowerCase()}. ${reason}\n\nIf someone comes to mind, would you be willing to introduce us? A short note is fine; I'll take it from there.\n\nThank you.`,

@@ -29,7 +29,9 @@ function row(index: number): ContactSyncPayload {
     },
     tags: [],
     search: { text: `人${index}`, occurredAt: `2026-10-01T00:${minute}:00.000000Z`, updatedAt: `2026-10-01T00:${minute}:00.000000Z`, error: null },
-    detail: { state: "success", contact: { id, displayName: `人${index}`, ...(levels[index % levels.length] ? { seniorityLevel: levels[index % levels.length] } : {}) } },
+    // The detail read keeps the level where the server stores it (contact.publicProfile.seniorityLevel) and the free-text location.
+    detail: { state: "success", contact: { id, displayName: `人${index}`, ...(index % 5 === 0 ? { location: "東京都港区" } : {}),
+      ...(levels[index % levels.length] ? { publicProfile: { seniorityLevel: levels[index % levels.length] } } : {}) } },
   };
 }
 
@@ -46,8 +48,9 @@ function serverRows(): NetworkAnalysisRow[] {
   const goal = new Set(merge.goalIds), followUp = new Set(merge.followUpIds);
   return rows.map(({ card, detail }) => ({
     id: card!.id, name: card!.displayName, organization: card!.organization, role: card!.role, status: card!.status,
-    primaryIndustryId: card!.primaryIndustryId ?? null, city: card!.region?.city ?? null, metKind: card!.metKind ?? null,
-    seniorityLevel: ((detail as { contact: { seniorityLevel?: string } }).contact.seniorityLevel) ?? null,
+    primaryIndustryId: card!.primaryIndustryId ?? null, city: card!.region?.city ?? null,
+    location: (detail as { contact: { location?: string } }).contact.location ?? null, metKind: card!.metKind ?? null,
+    seniorityLevel: (detail as { contact: { publicProfile?: { seniorityLevel?: string } } }).contact.publicProfile?.seniorityLevel ?? null,
     addedAt: card!.addedAt ?? null, lastInteractionAt: card!.lastInteractionAt ?? null,
     goalRelated: goal.has(card!.id), needsFollowUp: followUp.has(card!.id), nextActionPreview: card!.nextActionPreview,
   }));

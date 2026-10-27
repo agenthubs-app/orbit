@@ -81,11 +81,11 @@ function FilterSheetBody() {
   const f = samples.filterSheet;
   return (
     <Stack gap={12}>
-      <Row><UiText style={{ fontSize: 15, fontWeight: "800", flex: 1 }}>{f.title}</UiText><Button label={f.clear} variant="ghost" size="sm" onPress={noop} /></Row>
+      <Row><UiText style={{ fontSize: 17, fontWeight: "800", flex: 1 }}>{f.title}</UiText><Button label={f.clear} variant="ghost" size="sm" onPress={noop} /></Row>
       {f.groups.map((group) => (
         <Stack key={group.label} gap={6}><Label>{group.label}</Label><Row gap={6} wrap>{group.options.map((option, index) => <FilterOption key={option} label={option} selected={group.on.includes(index)} onToggle={noop} />)}</Row></Stack>
       ))}
-      <Row><UiText style={{ flex: 1, fontSize: 13 }}>{f.prefer}</UiText><Toggle value onValueChange={noop} accessibilityLabel={f.prefer} /></Row>
+      <Row><UiText style={{ flex: 1, fontSize: 15 }}>{f.prefer}</UiText><Toggle value onValueChange={noop} accessibilityLabel={f.prefer} /></Row>
       <Button label={f.show} variant="primary" onPress={noop} />
     </Stack>
   );
@@ -167,14 +167,14 @@ function ConfirmPreviewSection() {
 
 function EventTextSection() {
   const { colors, styles } = useStyles();
-  return <Card style={{ padding: 14 }}><Stack gap={4}><UiText numberOfLines={2} style={{ color: colors.ink, fontSize: 14.5, fontWeight: "800", lineHeight: 21.025 }}>{text1.title}</UiText><UiText numberOfLines={1} style={styles.label}>{text1.sub}</UiText></Stack></Card>;
+  return <Card style={{ padding: 14 }}><Stack gap={4}><UiText numberOfLines={2} style={{ color: colors.ink, fontSize: 17, fontWeight: "800", lineHeight: 25 }}>{text1.title}</UiText><UiText numberOfLines={1} style={styles.label}>{text1.sub}</UiText></Stack></Card>;
 }
 
 function B2SearchSection() {
   const { colors } = useStyles();
   // The b2 phone starts its content at y=50; the 16e simulator reports a 47pt top safe inset.
   return <FullScreenSearch kind="events" topGap={3} value={b2.search.value} onChangeText={noop} placeholder={b2.search.placeholder} clearLabel={b2.search.clear} cancelLabel={b2.search.cancel} onCancel={noop} showSoftInputOnFocus={false}>
-    <Card style={{ paddingHorizontal: 16, paddingVertical: 8 }}><UiText style={{ color: colors.ink, fontSize: 14.5, fontWeight: "800", marginVertical: 8 }}>{b2.search.heading}</UiText><ListRow title={b2.search.result} subtitle={b2.search.resultSub} /></Card>
+    <Card style={{ paddingHorizontal: 16, paddingVertical: 8 }}><UiText style={{ color: colors.ink, fontSize: 17, fontWeight: "800", marginVertical: 8 }}>{b2.search.heading}</UiText><ListRow title={b2.search.result} subtitle={b2.search.resultSub} /></Card>
   </FullScreenSearch>;
 }
 
@@ -191,7 +191,7 @@ export const COMPONENT_SECTIONS: readonly ComponentSection[] = [
     <BottomSheet visible onClose={noop} accessibilityLabel={ps.name}>
       <Stack gap={12}>
         <ListRow title={ps.name} subtitle={ps.subtitle} leading={<Avatar name={ps.name} size="lg" />} />
-        <Card variant="flat"><Stack gap={8}><UiText style={{ fontSize: 13, fontWeight: "800" }}>{ps.request}</UiText><Row><Button label={ps.approve} variant="primary" size="sm" onPress={noop} /><Button label={ps.ignore} size="sm" onPress={noop} /></Row></Stack></Card>
+        <Card variant="flat"><Stack gap={8}><UiText style={{ fontSize: 15, fontWeight: "800" }}>{ps.request}</UiText><Row><Button label={ps.approve} variant="primary" size="sm" onPress={noop} /><Button label={ps.ignore} size="sm" onPress={noop} /></Row></Stack></Card>
         <TextField label={ps.memoLabel} placeholder={ps.memoPlaceholder} value="" onChangeText={noop} />
         <Button label={ps.propose} onPress={noop} />
       </Stack>
@@ -229,51 +229,51 @@ export function findComponentSection(id: string | undefined): ComponentSection |
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  label: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "500", lineHeight: 17.25 },
-  code: { fontFamily: "Courier", fontSize: 11.5 },
+  label: { color: colors.ink3Text, fontSize: 13, fontWeight: "500", lineHeight: 20 },
+  code: { fontFamily: "Courier", fontSize: 13 },
   confirmFrame: { width: 322, height: 390, paddingHorizontal: 18, paddingVertical: 26, borderRadius: 22, overflow: "hidden", justifyContent: "center", alignItems: "flex-start", backgroundColor: colors.scrim },
   aiMatchCard: { padding: 14 },
   aiMatchMeta: { flex: 1, minWidth: 0 },
-  aiMatchName: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  aiMatchName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
   aiMatchActions: { flexDirection: "row", gap: 8 },
   aiMatchAction: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   aiMatchHint: { marginTop: 12, marginBottom: 6 },
   quotaDots: { flexDirection: "row", gap: 5 },
   quotaDot: { width: 26, height: 8, borderRadius: 4 },
   payQuotaCard: { padding: 14 },
-  payQuotaTitle: { flex: 1, color: colors.ink, fontSize: 13, fontWeight: "800" },
+  payQuotaTitle: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: "800" },
   payDots: { marginTop: 10 },
   payNote: { marginTop: 8 },
   payButton: { marginTop: 12 },
   payOutCard: { padding: 16 },
   payOutHead: { flex: 1, minWidth: 0 },
-  payOutTitle: { color: colors.ink, fontSize: 15, fontWeight: "800" },
+  payOutTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" },
   payOutDots: { marginTop: 12, marginBottom: 4 },
   payOutBody: { padding: 12, marginTop: 6 },
-  payOutBodyText: { color: colors.ink2, fontSize: 12.5, lineHeight: 21.25 },
+  payOutBodyText: { color: colors.ink2, fontSize: 15, lineHeight: 26 },
   payOutPrimary: { marginTop: 12 },
   payOutSecondary: { marginTop: 4 },
   longChipRoot: { width: 300, paddingTop: 50 },
   longChipBubble: { position: "absolute", top: 8, left: 0, maxWidth: 280, backgroundColor: colors.ink, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 11 },
-  longChipBubbleText: { color: colors.bg, fontSize: 11.5, fontWeight: "600", lineHeight: 17.25 },
+  longChipBubbleText: { color: colors.bg, fontSize: 13, fontWeight: "600", lineHeight: 20 },
   longChipTail: { position: "absolute", left: 18, top: "100%", borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: colors.ink },
   loadingCard: { padding: 16 },
   loadingOrb: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   loadingGradient: { position: "absolute", top: 0, left: 0 },
-  loadingOrbText: { fontSize: 28 },
+  loadingOrbText: { fontSize: 30 },
   loadingHeading: { flex: 1, minWidth: 0 },
-  loadingTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  loadingTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" },
   loadingSteps: { marginTop: 10 },
   loadingStep: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
   loadingStepMark: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
   loadingDone: { backgroundColor: colors.ok },
   loadingSpinner: { width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
-  loadingStepText: { flex: 1, color: colors.ink, fontSize: 13 },
+  loadingStepText: { flex: 1, color: colors.ink, fontSize: 15 },
   loadingStepDoneText: { color: colors.ink2 },
   loadingStepWaitingText: { color: colors.ink3Text },
-  loadingCount: { color: colors.ink3Text, fontSize: 11.5, fontWeight: "700" },
+  loadingCount: { color: colors.ink3Text, fontSize: 13, fontWeight: "700" },
   loadingClose: { marginTop: 8 },
   sampleDivider: { height: 1, marginLeft: 50, backgroundColor: colors.line },
   offlineRowCard: { paddingHorizontal: 14, paddingVertical: 2.5 },
-  offlinePendingLabel: { color: colors.macApricotText, fontSize: 10.5, fontWeight: "700" },
+  offlinePendingLabel: { color: colors.macApricotText, fontSize: 12, fontWeight: "700" },
 }));
