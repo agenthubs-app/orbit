@@ -62,7 +62,7 @@ test("editing a non-recurring schedule offline queues the edit with the mirrored
 test("deleting a non-recurring schedule offline queues a versioned delete after the existing confirmation", async t => {
   const page = await harness.open(t, { ...offline, screen: "editor", params: { id: "personal:one" }, records: { personal_schedule: [item("personal:one", "和陈总通话")] } });
   await page.getByRole("button", { name: "删除个人日程", exact: true }).dispatchEvent("click");
-  await page.getByRole("button", { name: "确认删除个人日程", exact: true }).dispatchEvent("click");
+  await page.getByRole("button", { name: "删除", exact: true }).dispatchEvent("click");
   await page.waitForFunction(() => ((window as any).fixture.enqueuedSchedules ?? []).length === 1);
   const [remove] = await enqueued(page);
   assert.equal(remove?.operation, "delete");

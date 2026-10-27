@@ -18,10 +18,11 @@ const PRE_SPLIT = {
   // UX 2026-10-26 (onboarding: plain industry labels, a date picker for the birthday, no forced break in the zh step 5 title) updated more.
   // QA-A 2026-10-26 (iOrbit record cards: plain "saved" footnotes instead of "written and read back") updated more.
   // QA-D 2026-10-26 (ja start guide / onboarding leads, export, resume and suggestion copy; plain completion hint) updated more.
-  en: { keys: 2253, sha256: "86aa7e591a864ee70be4dde8a6c2056bcf9bde5ab2533129c7033affa1d956ff" },
+  // Recheck 2026-10-27 (personal schedule delete moved to a dialog: its confirm button is a short "Delete") updated more.
+  en: { keys: 2253, sha256: "b8499901900b40512b07b9db698dd9bee844550509a5a767fada77eebdcb4991" },
   // 36 original ja values were updated by later copy work; the key set is still R03's.
-  ja: { keys: 2253, sha256: "63c67b82365444f28d62cf911b2b2c5ee6a031452d4987fa2da93604f4e5b864" },
-  zh: { keys: 2253, sha256: "cadac1d9d2a8b81b0073fac1d6582d34e7731201afc2b5b7b2ba101527a96665" },
+  ja: { keys: 2253, sha256: "4ba63f05d533b54a9d1f4dd0c068da5b15a226f7bbfd1f02d88f485edb69ef0d" },
+  zh: { keys: 2253, sha256: "989c100be86f9ef45bf93dff2d49e0399be5075de85d06cc0e1854315b1494cd" },
 };
 const dictionaries = { en, ja, zh } as const;
 // Captured from 4cb76ad8c, excluding the post-split shell/session domains.

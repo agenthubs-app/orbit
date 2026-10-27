@@ -50,7 +50,7 @@ export const schedule = {
   "schedule.deleteAnyway": "Delete anyway",
   "schedule.confirmDeleteConflict": "Confirm deleting the updated schedule",
   "schedule.conflictUnavailable": "The conflict cannot be resolved right now. Sync and try again.",
-  "schedule.confirmDelete": "Confirm personal schedule deletion",
+  "schedule.confirmDelete": "Delete",
   "schedule.keep": "Keep schedule",
   "schedule.editorHint": "Times use {timeZone}. This schedule is stored only in Orbit and is not added to an external calendar.",
   "schedule.draftZone": "The unsaved draft is still interpreted in {timeZone}.",

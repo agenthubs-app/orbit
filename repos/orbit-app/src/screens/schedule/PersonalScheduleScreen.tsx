@@ -8,6 +8,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { Button, Card, UiText } from "../../components/ui";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { createThemedStyles } from "../../design/theme";
 import { createControlStyles } from "../../design/controls";
@@ -174,8 +175,11 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
       <View style={styles.card}><PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={draft.noteIds ?? []} contactIds={draft.contactIds ?? []} disabled={saving} onNotesChange={noteIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, noteIds })); }} onContactsChange={contactIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, contactIds })); }} /></View>
       <View style={styles.card}><PersonalScheduleRules draft={draft} zone={editZone} disabled={saving} reminderElapsed={reminderElapsed} onChange={next => { if (!scope.busy && scope.active) setDraft(next); }} {...(baseline?.recurrence ? { scope: { selected: mutationScope, isOccurrence: !!baseline.seriesId, onSelect: (value: "occurrence" | "series") => { if (scope.busy || !scope.active) return; if (value === "series" && baseline.seriesId) { if (!clean) { setError(locale.t("personal60.chooseBeforeEditing")); return; } router.replace(`/schedule/personal/${encodeURIComponent(baseline.seriesId)}/edit` as Href); } else { setMutationScope(value); setError(""); } } } } : {})} /></View>
       {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale || writeBlocked} onPress={() => setConfirmDelete(true)} style={styles.deleteCard}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
-      {confirmDelete ? <View><Text style={styles.hint}>{locale.t("schedule.deleteHint")}</Text><Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => void save(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.confirmDelete")}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.secondary}><Text>{locale.t("schedule.keep")}</Text></Pressable></View> : null}
-      {confirmDelete && error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {/* The delete button sits at the bottom of the form, so an inline confirmation would open below the fold. */}
+      <ConfirmDialog visible={confirmDelete && !saving && !stale} destructive title={locale.t("schedule.deletePersonal")}
+        message={locale.t("schedule.deleteHint")} confirmLabel={locale.t("schedule.confirmDelete")} cancelLabel={locale.t("schedule.keep")}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => { setConfirmDelete(false); void save(true); }} />
     </View> : null}
     <View style={{ height: 24 + insets.bottom }} />
   </AppScreen></KeyboardAvoidingView>;

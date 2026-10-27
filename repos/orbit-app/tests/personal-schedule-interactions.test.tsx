@@ -104,6 +104,7 @@ test.before(async () => {
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export { AppState } from "fixture";
+export const findNodeHandle = instance => instance ?? null;
 export const Linking = { openURL: async url => { window.fixture.openedUrls.push(url); } };
 export const useWindowDimensions = () => ({ ...realDimensions(), fontScale: useFixture().fontScale });
 const scaled = (style, scale) => { const s = StyleSheet.flatten(style) || {}; return [style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]; };
@@ -633,7 +634,7 @@ test("v3 detail and bounded local-day list keep an occurrence identity and expos
 test("delete requires an independent current-state read and preserves the draft when that read fails", async t => {
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
-  await press(p, "删除个人日程"); await press(p, "确认删除个人日程");
+  await press(p, "删除个人日程"); await press(p, "删除");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
   const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
@@ -647,7 +648,7 @@ test("deleting a one-off personal schedule returns to Calendar after its indepen
   const p = await open(t);
   await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
   await press(p, "删除个人日程");
-  await press(p, "确认删除个人日程");
+  await press(p, "删除");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
   const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
   assert.equal(last.method, "GET");
@@ -854,7 +855,7 @@ test("clear optional fields, retain conflicting draft, explicitly reload and con
   await p.evaluate(() => { const s = (window as any).fixture; s.item = { ...s.item, title: "Remote", updatedAt: "2026-09-16T00:00:00Z" }; s.refresh(); }); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Local draft"); assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Remote");
-  await press(p, "删除个人日程"); assert.equal((await writes(p)).length, 2); await press(p, "确认删除个人日程");
+  await press(p, "删除个人日程"); assert.equal((await writes(p)).length, 2); await press(p, "删除");
   assert.equal((await writes(p))[2].method, "DELETE");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true }); assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule");
 });

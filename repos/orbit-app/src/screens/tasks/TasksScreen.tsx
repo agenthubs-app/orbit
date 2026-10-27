@@ -31,6 +31,9 @@ type TaskListMode = "open" | "completed";
 type FollowUpRow = { key: string; title: string; contactName: string; connectionId: string; taskId: string; contactId: string; dueAt: string | null };
 // QA-C2: open the follow-up that was tapped (the page otherwise has no task to pick).
 const followUpHref = (item: FollowUpRow) => `/tasks/relationship/${encodeURIComponent(item.connectionId)}?taskId=${encodeURIComponent(item.taskId)}&contactId=${encodeURIComponent(item.contactId)}` as Href;
+// A long overdue backlog would push 今天 (and anything just added) far down the list.
+const OVERDUE_PREVIEW = 5;
+
 type TaskGroup = { id: string; label: string; items: TaskListRowView[]; followUps: FollowUpRow[]; tone: "danger" | "today" | "muted" | "completed"; fold?: boolean };
 
 function mutationKey(action: string) {
@@ -100,6 +103,7 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
   // still asks for the relationship's next step on its own page.
   const followUps = useOpenFollowUps(scopeKey, ready);
   const [moreFollowUps, setMoreFollowUps] = useState(false);
+  const [overdueExpanded, setOverdueExpanded] = useState(false);
   const followUpBucket = (dueAt: string | null) => {
     if (!dueAt || !Number.isFinite(Date.parse(dueAt))) return "unscheduled";
     const key = tokyoDateKey(new Date(dueAt), timeZone);
@@ -235,7 +239,12 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
         />
       ) : null}
       <View style={styles.groups}>
-      {groups.map(group => (
+      {groups.map(fullGroup => {
+        const total = fullGroup.items.length + fullGroup.followUps.length;
+        const capped = fullGroup.id === "overdue" && !overdueExpanded && total > OVERDUE_PREVIEW;
+        const shownItems = capped ? fullGroup.items.slice(0, OVERDUE_PREVIEW) : fullGroup.items;
+        const group = capped ? { ...fullGroup, items: shownItems, followUps: fullGroup.followUps.slice(0, OVERDUE_PREVIEW - shownItems.length) } : fullGroup;
+        return (
         <View key={group.id} style={styles.section}>
           {group.fold ? <Pressable
             accessibilityRole="button"
@@ -247,9 +256,9 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
             <Text style={[styles.groupTitle, styles.muted]}>{group.label}</Text>
             <Text style={styles.groupCount}>{source.counts?.completed ?? 0}</Text>
             <Icon name={completedExpanded ? "up" : "down"} size={16} color={colors.ink3Text} />
-          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length + group.followUps.length}${moreIn(group) ? "+" : ""}`} style={styles.groupHeading}>
+          </Pressable> : <View accessibilityRole="header" accessibilityLabel={`${group.label} ${total}${moreIn(fullGroup) ? "+" : ""}`} style={styles.groupHeading}>
             <Text style={[styles.groupTitle, group.tone === "danger" && styles.danger, group.tone === "today" && styles.todayCount]}>{group.label}</Text>
-            <Text style={styles.groupCount}>{group.items.length + group.followUps.length}{moreIn(group) ? "+" : ""}</Text>
+            <Text style={styles.groupCount}>{total}{moreIn(fullGroup) ? "+" : ""}</Text>
           </View>}
           {group.fold && completedExpanded && source.completedSection?.loading ? <LoadingState /> : null}
           {group.fold && completedExpanded && source.completedSection?.failure ? <ErrorState title={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailable" : "tasks.unavailable")} message={locale.t(source.completedSection.unconfirmed ? "tasks.dataUnavailableBody" : "tasks.readFailed")} /> : null}
@@ -305,10 +314,15 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
               </Text> : null}
             </Pressable>
           </View>; })}</View> : null}
+          {capped ? <Pressable accessibilityRole="button" onPress={() => setOverdueExpanded(true)} style={[styles.contactLink, styles.moreRow]}>
+            <Text style={styles.contactText}>{locale.t("tasks.showAllOverdue", { count: total })}</Text>
+            <Icon name="down" size={15} color={colors.accentText} />
+          </Pressable> : null}
           {group.fold && completedExpanded && source.completedSection?.nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedNextPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: source.completedSection?.nextCursor ?? null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedNextPage")}</Text></Pressable> : null}
           {group.fold && completedExpanded && completedCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.completedFirstPage")} onPress={() => setCompletedPosition({ scope: foldScope, cursor: null })} style={styles.contactLink}><Text style={styles.contactText}>{locale.t("tasks.completedFirstPage")}</Text></Pressable> : null}
         </View>
-      ))}
+        );
+      })}
       </View>
       {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
       {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}

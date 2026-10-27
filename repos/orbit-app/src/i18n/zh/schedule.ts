@@ -50,7 +50,7 @@ export const schedule = {
   "schedule.deleteAnyway": "仍然删除",
   "schedule.confirmDeleteConflict": "确认删除更新后的日程",
   "schedule.conflictUnavailable": "暂时无法处理冲突，请同步后重试。",
-  "schedule.confirmDelete": "确认删除个人日程",
+  "schedule.confirmDelete": "删除",
   "schedule.keep": "保留日程",
   "schedule.editorHint": "时间使用 {timeZone}。这条日程只保存在 Orbit，不会写入外部日历。",
   "schedule.draftZone": "未保存草稿仍按 {timeZone} 解释。",
