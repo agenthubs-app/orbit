@@ -17,6 +17,8 @@ import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { eventsToSummaries } from "../../view-models/events";
+import { useLocalEventDay } from "../../hooks/useLocalEventDay";
+import { localScheduleEvents } from "../../view-models/event-day-local";
 import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { noteFromPayload } from "../../view-models/notes";
 import { bodyAfterTitle } from "./memo-mention-model";
@@ -95,6 +97,7 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   const [conflictBusy, setConflictBusy] = useState(false);
   const [conflictError, setConflictError] = useState("");
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
+  const localEventDay = useLocalEventDay(Platform.OS !== "web");
   const note = source.note;
   const conflictMutation = source.conflictMutation;
   const failedMutation = source.failedMutation ?? null;
@@ -114,7 +117,11 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
     ? noteFromPayload({ note: conflictMutation.serverSnapshot }, actorId, conflictMutation.id, locale.language)
     : null;
   const contactSummaries = useNoteContactSummaries(note?.contactIds ?? [], scopeKey);
-  const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
+  // The editor's picker offers the events on this phone (the event-day mirror); name those too, not only /api/events.
+  const events = [
+    ...(eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : []),
+    ...eventsToSummaries(localScheduleEvents(localEventDay.records.events)),
+  ];
   const contactNames = new Map(note?.mentions.filter(mention => (mention.entityType ?? "contact") === "contact" && mention.contactId)
     .map(mention => [mention.contactId!, mention.displayText.replace(/^@/, "")] as const) ?? []);
   contactSummaries.forEach((contact, id) => contactNames.set(id, contact.name));

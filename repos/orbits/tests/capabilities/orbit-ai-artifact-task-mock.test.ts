@@ -426,6 +426,30 @@ test("live artifact task renders event recommendations from the events tool", as
   );
 });
 
+test("event cards never name the generic word event as what matched", async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceModule = await importProjectModule<any>("features/orbit-ai/event-recommendation-artifact-service.ts");
+  const card = (matchedTokens: string[]) => ({
+    databaseQueryExecuted: true, description: "", endsAt: "2026-11-08T12:00:00.000Z", eventId: `event_${matchedTokens.join("_")}`,
+    evidenceIds: ["evidence:event:x"], matchReasons: [], matchedTokens, nextAction: "", recommendedPreparation: "", relationshipContext: "",
+    score: 90, sourceLabel: "Events Postgres live storage", startsAt: "2026-11-08T10:00:00.000Z", status: "confirmed",
+    title: `Card ${matchedTokens.join(" ")}`, upcoming: true, venue: "Tokyo",
+  });
+  const service = serviceModule.createOrbitAgentEventRecommendationArtifactService({
+    recommendationTool: {
+      async recommend() {
+        return { candidates: [card(["event"]), card(["event", "saas"])], databaseQueryExecuted: true, evidenceIds: ["evidence:event:x"],
+          sourceLabel: "Events Postgres live storage", state: "success", summary: "2 events" };
+      },
+    },
+  });
+  const result = await service.createArtifactTask({ kind: "event_recommendations", locale: "zh", query: "event", toolArguments: { limit: 2 } });
+  const view = JSON.stringify(result.data?.result.generatedView);
+  assert.doesNotMatch(view, /「event/);
+  assert.match(view, /近期可以参加的活动。/);
+  assert.match(view, /与你的请求在「saas」上匹配。/);
+});
+
 test("mock artifact task creates a traceable ready event recommendation view", async () => {
   const serviceModule = await importProjectModule<{
     createMockOrbitAgentArtifactTaskService: () => {

@@ -29,3 +29,23 @@ test("association reader returns only actor-visible contacts and existing events
   assert.deepEqual(await reader.accessibleEventIds({ actorId: "account:one", ids: ["event:one", "event:missing"] }), ["event:one"]);
   assert.deepEqual(await reader.searchContactIds({ actorId: "account:one", query: "Ada" }), ["contact:ada"]);
 });
+
+test("association reader also accepts the actor's own event-operations events, and only those", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([]);
+  const queries: unknown[][] = [];
+  const reader = createNoteAssociationReader({
+    store, workspaceId: "workspace:test",
+    contactProvider: { source: "test", sourceLabel: "Test", async readContactGraph() { return { contacts: [], connections: [], evidence: [], generatedAt: contact.updatedAt }; } },
+    eventOps: {
+      async query<TRow>(_text: string, values: readonly unknown[] = []) {
+        queries.push([...values]);
+        const [workspaceId, actorId, ids] = values as [string, string, string[]];
+        const mine = workspaceId === "workspace:test" && actorId === "account:one" ? ["event_signup_01"] : [];
+        return { rows: ids.filter((id) => mine.includes(id)).map((event_id) => ({ event_id })) as unknown as TRow[] };
+      },
+    },
+  });
+  assert.deepEqual(await reader.accessibleEventIds({ actorId: "account:one", ids: ["event_signup_01", "event_signup_02"] }), ["event_signup_01"]);
+  assert.deepEqual(await reader.accessibleEventIds({ actorId: "account:two", ids: ["event_signup_01"] }), []);
+  assert.deepEqual(queries[0], ["workspace:test", "account:one", ["event_signup_01", "event_signup_02"]]);
+});
