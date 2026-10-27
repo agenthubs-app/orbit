@@ -78,6 +78,9 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
   const active = shellNavKeyFor(pathname);
   const dot = useInboxDot(language, pathname);
   const hasHeader = Boolean(slots.title || slots.left || slots.right || slots.demoPill || rail);
+  // b11 TT2 (2026-10-28): on a primary page (a left-rail destination itself) the title takes its own
+  // row and the side controls drop to a toolbar row under it — left search / segments, right action.
+  const twoTier = Boolean(slots.left || slots.right) && SHELL_NAV.some((item) => item.href === pathname.replace(/\/+$/u, ""));
   const chrome: ShellChrome = { openPalette, openRail: () => setRailDrawer(true), inboxDot: dot, rail, railLabel, railOpenLabel };
   useEffect(() => { setRailDrawer(false); }, [pathname]);
   return (
@@ -94,7 +97,7 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
           <ToastProvider>
             {focus ? null : <ShellMobileTop active={active} dot={dot} />}
             {hasHeader ? (
-              <header className={`${styles.mainhead} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="">
+              <header className={`${styles.mainhead} ${twoTier ? styles.twoTier : ""} ${slots.phoneFold ? styles.mainheadFold : ""}`} data-orbit-2026-mainhead="" data-two-tier={twoTier ? "true" : undefined}>
                 <div className={styles.headSide}>{slots.left}{slots.demoPill ? <span className={styles.demoSlot}>{slots.demoPill}</span> : null}</div>
                 <div className={styles.headTitle}>
                   {slots.title ? <h1 className={styles.title}>{slots.title}</h1> : null}

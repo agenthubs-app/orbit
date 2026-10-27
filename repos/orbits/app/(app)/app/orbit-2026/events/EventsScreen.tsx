@@ -200,7 +200,7 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
 
   return (
     <>
-      <ShellPage title={t("title")} subtitle={subtitle} left={<ShellSearchButton />} right={segment} rightRail={rail} phoneFold={tier === "narrow"} />
+      <ShellPage title={t("title")} subtitle={subtitle} left={segment} right={<ShellSearchButton />} rightRail={rail} phoneFold={tier === "narrow"} />
       {tier === "narrow" && tab === "discover" ? (
         <>
           {/* b12 #348（探す 390）：App 式 topbar（🔍 · イベント + 件数 · 📅）+ 全宽 seg。 */}

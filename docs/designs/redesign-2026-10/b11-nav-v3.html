@@ -319,6 +319,9 @@
   .web.tt2 .mainhead .t { grid-area: t; }
   .web.tt2 .mainhead .l { grid-area: l; }
   .web.tt2 .mainhead .r { grid-area: r; }
+  /* 2026-10-28 用户定稿：イベント 分段放左、搜索放右（与 受信箱 / Task 的切换同位置）。 */
+  .web.tt2.evswap .mainhead { grid-template-columns: 1fr auto; grid-template-areas: "t t" "r l"; }
+  .web.tt2.evswap .mainhead .r { justify-content: flex-start; }
 </style>
 </head>
 <body>
@@ -1866,13 +1869,13 @@ h += WB('iOrbit · Web · 保存済みテキスト', '', { nav: 2, body: mainhea
 
 /* ---- TT2 · 一级页顶部：同一行 vs 两层（2026-10-28 用户提议，先看稿再定） ---- */
 const TT2 = (label, o, notes) => WB(label, '', o, notes).replace('class="web ', 'class="web tt2 ');
-h += sec('TT2 · 一级页顶部两层（提案）', '现状：标题与左右按钮同一行、同一高度。提案：对齐 受信箱——第 1 行只放标题（+ 副标题）居中，第 2 行左侧放搜索 / 分段、右侧放主操作。每页上为现状、下为提案。');
+h += sec('TT2 · 一级页顶部两层（2026-10-28 定稿）', '现状：标题与左右按钮同一行、同一高度。提案：对齐 受信箱——第 1 行只放标题（+ 副标题）居中，第 2 行左侧放搜索 / 分段、右侧放主操作。每页上为现状、下为提案。');
 h += WB('ホーム · 現状（同一行）', 'many', { nav: 0, body: W.home('many'), rail: W.assistRail('many') });
 h += TT2('ホーム · 提案（两层）', { nav: 0, body: W.home('many'), rail: W.assistRail('many') }, ['标题「10月」+ 日期范围单独一行居中', '第 2 行：左 搜索，右 🔔 + 編集']);
 h += WB('人脈 · 現状（同一行）', 'many', { nav: 1, body: W.network('many'), rail: W.netRail('many') });
 h += TT2('人脈 · 提案（两层）', { nav: 1, body: W.network('many'), rail: W.netRail('many') }, ['「人脈」+「83人 · 今月 +5」单独一行', '第 2 行：左 搜索，右「人脈を追加」']);
 h += WB('イベント · 現状（同一行）', 'many', { nav: 3, body: W.events('many'), rail: W.assistRail('many', 'イベント') });
-h += TT2('イベント · 提案（两层）', { nav: 3, body: W.events('many'), rail: W.assistRail('many', 'イベント') }, ['标题单独一行', '第 2 行：左 搜索，右 主操作']);
+h += TT2('イベント · 提案（两层）', { nav: 3, body: W.events('many'), rail: W.assistRail('many', 'イベント') }, ['标题单独一行', '第 2 行：左 分段 評価 / 参加予定 / 探す，右 搜索（10-28 定稿）']).replace('class="web tt2 ', 'class="web tt2 evswap ');
 h += WB('Task · 現状（同一行）', 'many', { nav: 4, body: webTaskTodo() });
 h += TT2('Task · 提案（两层）', { nav: 4, body: webTaskTodo() }, ['标题单独一行', '第 2 行：左 分段（与 受信箱 的 メッセージ / 通知 同位置），右「追加」']);
 

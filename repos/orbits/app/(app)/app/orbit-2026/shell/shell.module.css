@@ -102,6 +102,13 @@
 .headTitle { text-align: center; display: block; font-size: var(--fs-body); line-height: 1.5; }
 .title { display: block; font-size: var(--fs-title-sm); font-weight: var(--fw-heavy); line-height: 1.5; }
 .headTitle .subtitle { display: inline; font-size: var(--fs-meta); color: var(--ink-3); }
+/* b11 TT2: primary pages — title row, then a toolbar row (left search / segments, right action). */
+@media (min-width: 768px) {
+  .twoTier { grid-template-columns: 1fr auto; grid-template-areas: "t t" "l r"; row-gap: var(--space-16); margin-bottom: var(--space-18); }
+  .twoTier > .headSide:first-child { grid-area: l; }
+  .twoTier > .headTitle { grid-area: t; }
+  .twoTier > .headRight { grid-area: r; }
+}
 .content { flex: 1; min-width: 0; }
 
 .railScope { display: block; position: sticky; top: 0; height: 100vh; }
