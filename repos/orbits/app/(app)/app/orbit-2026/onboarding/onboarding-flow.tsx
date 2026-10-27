@@ -25,7 +25,7 @@ import {
 } from "../../../../../shared/domain/industries";
 import { isValidProfileBirthDate } from "../../../../../features/profile/onboarding";
 import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
-import { forgetBatchReturnTo } from "../../contacts/card-batch-0918/card-batch-store";
+import { forgetBatchReturnTo } from "../../contacts/card-batch-return";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { visibleCharacterCount } from "../../profile/profile-save-model";
 import { Icon, MacTile, Orbit2026Scope, SampleTag, WhyBody, WhyButton } from "../ui";

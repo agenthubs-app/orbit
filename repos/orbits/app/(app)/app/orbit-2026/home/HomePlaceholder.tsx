@@ -114,7 +114,7 @@ function HomeWorkspace() {
         {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><Icon name="grid" size={16} /><span><span className={styles.hintPointer}>{t("hint")}</span><span className={styles.hintTouch}>{t("hintTouch")}</span></span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("close")} onClick={() => void dismissHint()}><Icon name="x" size={16} /></button></div> : null}
         {editing ? <div className={styles.hint}><Icon name="grid" size={16} /><span>{t("dragHint")}</span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("done")} onClick={() => void finish()}><Icon name="x" size={16} /></button></div> : null}
         <div className={`${styles.grid} ${homeOpeningGeometry(layout) && JSON.stringify(items) === JSON.stringify(layout.web) ? styles.opening : ""}`}>
-          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""}`} data-widget={slot.key}
+          {items.map((slot, index) => <section key={slot.key} className={`${styles.card} ${slot.size === "m" ? styles.medium : styles.small} ${editing ? styles.editing : ""}`} data-widget={slot.key} aria-label={t(TITLE[slot.key])}
             draggable={editing} onDragStart={() => setDragged(slot.key)} onDragOver={(event) => { if (editing) event.preventDefault(); }}
             onDrop={(event) => { event.preventDefault(); if (dragged) setDraft(moveHomeWidget(items, dragged, index)); setDragged(null); }}
             onClickCapture={(event) => { if (!editing) return; event.preventDefault(); if (!(event.target as HTMLElement).closest("button")) setSizing(slot.key); }}

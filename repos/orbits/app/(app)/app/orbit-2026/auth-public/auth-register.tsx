@@ -26,7 +26,7 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
         <h2 className="au-h2" id={authTitleId("register")}>{t({ en: "Create account", ja: "アカウントを作成", zh: "创建账号" })}</h2>
         <p className="au-sub">{t({ en: "It takes about a minute. You can add your cards right after.", ja: "1分で完了します。名刺の取り込みはこのあとすぐ。", zh: "约 1 分钟完成，之后马上就能导入名片。" })}</p>
       </div>
-      {oauthProviders.includes("google") ? <AuthGoogleButton label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} label={t({ en: "Sign up with Google", ja: "Google で登録", zh: "使用 Google 注册" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
         <AuthEmailField error={emailError} session={session} />

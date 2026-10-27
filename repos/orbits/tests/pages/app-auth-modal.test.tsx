@@ -293,7 +293,8 @@ test("eye button toggles the password input between password and text", async ()
 
 test("overlay: a click inside the panel does not close; mousedown in the panel released on the overlay does not close (终审修正); mousedown+click on the overlay itself and × both navigate to /app", async () => {
   await withModal("login", "", {}, async (renderer, harness) => {
-    const overlay = renderer.root.find((node) => node.type === "div" && node.props.className === "au-overlay");
+    // The outside click is taken by the backdrop layer (au-scrim) inside au-overlay.
+    const overlay = renderer.root.find((node) => node.type === "div" && node.props.className === "au-scrim");
     const panel = renderer.root.find((node) => node.props.role === "dialog");
     await act(async () => { overlay.props.onMouseDown({ currentTarget: overlay, target: panel }); overlay.props.onClick({ currentTarget: overlay, target: panel }); });
     assert.deepEqual(harness.navigation.assigned, []);

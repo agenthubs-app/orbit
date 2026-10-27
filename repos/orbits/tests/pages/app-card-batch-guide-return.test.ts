@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { batchReturnTo, forgetBatchReturnTo, rememberBatchReturnTo } from "../../app/(app)/app/contacts/card-batch-0918/card-batch-store";
+import { batchReturnTo, forgetBatchReturnTo, rememberBatchReturnTo } from "../../app/(app)/app/contacts/card-batch-return";
 
 function installStorage() {
   const map = new Map<string, string>();

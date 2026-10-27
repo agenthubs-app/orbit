@@ -18,8 +18,8 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { CardBatchReminders } from "./card-batch-ui";
 import { appendWebGuideReturnTo } from "../../../../../features/guide/return-to";
+import { batchReturnTo } from "../card-batch-return";
 import {
-  batchReturnTo,
   dispatchCardBatchChange,
   getPendingCardsReaderState,
   listActiveBatches,

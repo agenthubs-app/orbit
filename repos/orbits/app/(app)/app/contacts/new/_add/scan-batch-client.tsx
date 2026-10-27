@@ -13,7 +13,7 @@ import { startScanBatch } from "./start-scan-batch";
 import type { ScanBatchActions } from "../../../orbit-2026/add/scan-types";
 import { useOrbitLanguage } from "../../../orbit-language-context";
 import { useCardBatch } from "../../card-batch-0918/use-card-batch";
-import { rememberBatchReturnTo } from "../../card-batch-0918/card-batch-store";
+import { rememberBatchReturnTo } from "../../card-batch-return";
 import { replaceItemContent } from "../../ingest-v2/ingest-v2-client";
 import { buildScanBatchView } from "./scan-batch-view";
 import type { WebGuideReturnTo } from "../../../../../../features/guide/return-to";

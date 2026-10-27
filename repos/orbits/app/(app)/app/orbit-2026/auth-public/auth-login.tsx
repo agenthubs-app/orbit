@@ -23,7 +23,7 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
         <p className="au-sub">{t({ en: "Welcome back.", ja: "おかえりなさい。", zh: "欢迎回来。" })}</p>
       </div>
       <AuthNoticeCard notice={session.message} />
-      {oauthProviders.includes("google") ? <AuthGoogleButton label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
         <AuthEmailField error={emailError} session={session} />

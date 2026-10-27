@@ -39,7 +39,9 @@ export function AuthModal({
   }
 
   return <Orbit2026Scope language={language} className={s.overlayRoot}>
-    <div className="au-overlay" onMouseDown={onOverlayMouseDown} onClick={onOverlayClick}>
+    <div className="au-overlay">
+      {/* The backdrop takes the outside click on its own pointer-only layer (as the kit Overlay does). */}
+      <div aria-hidden="true" className="au-scrim" onMouseDown={onOverlayMouseDown} onClick={onOverlayClick} />
       <div aria-labelledby={authTitleId(view)} aria-modal="true" className="au-panel" ref={cardRef} role="dialog" tabIndex={-1}>
         {/* b1 #2–#5 .lbtn: the close button sits on the title row (top-right), no wordmark. */}
         <button aria-label={t({ ja: "閉じる", zh: "关闭", en: "Close" })} className="btn au-lbtn au-close" onClick={handleClose} type="button"><Icon name="x" size={16} /></button>
