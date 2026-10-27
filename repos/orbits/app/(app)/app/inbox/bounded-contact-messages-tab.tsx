@@ -172,7 +172,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
           <h3>{t({ zh: "暂无消息", en: "No messages yet", ja: "メッセージはまだありません" })}</h3>
           <p>{t({ zh: "在 Orbit 上建立联系的人发来的消息会出现在这里。回复可以先写成草稿。", en: "Messages from people you are connected to on Orbit appear here. You can draft replies.", ja: "Orbit でつながった人から届いたメッセージが、ここに並びます。返信は下書きまで作れます。" })}</p>
           <a className={`btn ${ws.btn}`} style={{marginTop:20}} href="/app/contacts"><Icon name="users" size={16}/>{t({ zh: "打开人脉", en: "Open network", ja: "人脈を開く" })}</a>
-        </div> : <div className={ws.hint}><span className={ws.hintIcon}><Icon name="mail" size={22}/></span><b>{t({ zh: "选择会话，往来消息会显示在这里", en: "Choose a thread to see it here", ja: "スレッドを選ぶと、ここにやり取りが出ます" })}</b>{unread > 0 ? <span>{t({ zh: "未读 {n} 条", en: "{n} unread", ja: "未読 {n}件" }).replace("{n}", String(unread))}</span> : null}</div>
+        </div> : <div className={ws.hint}><span className={ws.hintIcon}><Icon name="mail" size={21}/></span><b>{t({ zh: "选择会话，往来消息会显示在这里", en: "Choose a thread to see it here", ja: "スレッドを選ぶと、ここにやり取りが出ます" })}</b>{unread > 0 ? <span>{t({ zh: "未读 {n} 条", en: "{n} unread", ja: "未読 {n}件" }).replace("{n}", String(unread))}</span> : null}</div>
         : detailError ? <p role="alert" className={ws.listNote}>{t({ zh: "对话不可用，请重新加载。", en: "Conversation unavailable. Reload to continue.", ja: "この会話を開けません。再読み込みしてください。" })}{retry}</p> : !detail ? <p role="status" className={ws.listNote}>{t({ zh: "正在读取对话…", en: "Loading conversation…", ja: "会話を読み込み中…" })}</p> : <>
           <div className={ws.threadHead}>
             <button className={`btn ${ws.btn} ${ws.sm} ${ws.back}`} onClick={() => setSelected(null)} aria-label={t({ zh: "返回消息", en: "Back to messages", ja: "メッセージに戻る" })}><Icon name="left" size={16}/></button>
@@ -181,7 +181,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
             <NotificationDeliverySettings key={detail.id} conversationId={detail.id} compact/>
           </div>
           <div className={ws.msgs}>
-            {detail.nextCursor && <button className={`btn ${ws.older}`} onClick={() => setHistoryCursor(detail.nextCursor)}><Icon name="clock" size={14}/>{t({ zh: "更早的消息", en: "Earlier messages", ja: "過去のメッセージ" })}</button>}
+            {detail.nextCursor && <button className={`btn ${ws.older}`} onClick={() => setHistoryCursor(detail.nextCursor)}><Icon name="clock" size={13}/>{t({ zh: "更早的消息", en: "Earlier messages", ja: "過去のメッセージ" })}</button>}
             {historyCursor && <button className={`btn ${ws.older}`} onClick={() => setHistoryCursor(null)}>{t({ zh: "返回最新消息", en: "Latest messages", ja: "最新のメッセージに戻る" })}</button>}
             {readError && <p role="alert" className={ws.lbl}>{t({ zh: "已读状态尚未保存，下次刷新会重试。", en: "Read state was not saved. It will retry.", ja: "既読を保存できませんでした。次の更新時に再試行します。" })}</p>}
             {detail.messages.map(message => {
@@ -195,7 +195,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
             <div className={ws.composerHead}><Icon name="pen" size={16}/>{t({ zh: "回复草稿", en: "Reply draft", ja: "返信の下書き" })}<span className={ws.lbl}>{t({ zh: "只有你能看到", en: "Only you can see it", ja: "自分だけに表示" })}</span></div>
             <textarea aria-label={t({ zh: "回复消息", en: "Reply", ja: "返信" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setBody(e.target.value); }} />
             <div className={ws.composerFoot}>
-              {draftState === "saved" ? <p role="status" className={ws.lbl} style={{margin:0}}><Icon name="check" size={14}/>{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it.", ja: "下書きを保存しました。自分だけに表示されます。" })}</p>
+              {draftState === "saved" ? <p role="status" className={ws.lbl} style={{margin:0}}><Icon name="check" size={13}/>{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it.", ja: "下書きを保存しました。自分だけに表示されます。" })}</p>
                 : draftState === "error" ? <p role="alert" className={ws.lbl} style={{margin:0}}>{t({ zh: "草稿没有保存，请重试。", en: "Draft was not saved. Try again.", ja: "下書きを保存できませんでした。再試行してください。" })}</p>
                 : <span className={ws.lbl}>{t({ zh: "Orbit 不会替你发出", en: "Orbit does not send it", ja: "Orbit からは送信しません" })}</span>}
               <button className={`btn ${ws.btn} ${ws.sm} ${ws.primary}`} disabled={draftSaveInFlight} onClick={() => void saveDraft()}>{t({ zh: draftSaveInFlight ? "保存中…" : "保存草稿", en: draftSaveInFlight ? "Saving…" : "Save draft", ja: draftSaveInFlight ? "保存中…" : "下書きを保存" })}</button>

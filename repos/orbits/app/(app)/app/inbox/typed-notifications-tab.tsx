@@ -222,7 +222,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
      <p>{t({zh:'只有错过会有影响的事才会出现在这里。',en:'Only things you should not miss arrive here.',ja:'見逃すと困ることだけ、ここに届きます。'})}</p>
      <div className={ws.kinds}>{kinds.map(([emoji,tone,title,line])=><div key={emoji} className={ws.kind}><MacTile emoji={emoji} tone={tone} size="sm"/><div><b>{t(title)}</b><span className={ws.lbl}>{t(line)}</span></div></div>)}</div>
      <a className={`btn ${ws.btn}`} href="/app/settings/notifications"><Icon name="settings" size={16}/>{t({zh:'通知设置',en:'Notification settings',ja:'通知の設定'})}</a>
-    </div>:data?<div className={ws.hint}><span className={ws.hintIcon}><Icon name="bell" size={22}/></span><b>{t({zh:'选择一条通知，详情会显示在这里',en:'Choose a notification to see it here',ja:'通知を選ぶと、ここに詳細が出ます'})}</b>
+    </div>:data?<div className={ws.hint}><span className={ws.hintIcon}><Icon name="bell" size={21}/></span><b>{t({zh:'选择一条通知，详情会显示在这里',en:'Choose a notification to see it here',ja:'通知を選ぶと、ここに詳細が出ます'})}</b>
      <span>{[todayCount?t({zh:'今天 {n} 条',en:'{n} today',ja:'今日 {n}件'}).replace('{n}',String(todayCount)):null,unread?t({zh:'未读 {n} 条',en:'{n} unread',ja:'未読 {n}件'}).replace('{n}',String(unread)):null].filter(Boolean).join(' · ')}</span></div>:null}
    </div>
   </section>
