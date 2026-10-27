@@ -594,13 +594,13 @@ function wTaskMemo() {
       <div style="font-size:13.5px;line-height:1.85;margin-top:14px;color:var(--ink)">DD の資料リストを受領。11月に IC 予定。<br>次回までに月次の推移を用意する。</div>
       <div class="lbl" style="margin-top:12px">保存済みの手入力メモ · 編集は詳細から</div></div></div>`;
 }
-/* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
+/* ---- iOrbit（NAV-V3 全屏对话；2026-10-27 起 Web 会話リスト在右栏，App 仍是左上 ≡） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
   <div class="grp">今日</div><div class="hi on">${ic('sparkle', 'sm')}<span>CVC 担当者に会うには</span></div><div class="grp">昨日</div><div class="hi">${ic('sparkle', 'sm')}<span>CFO Night の準備リスト</span></div>
   <div class="grp">今週</div>${['ピッチ資料の市場規模', 'プランを見直す（10/4）', '名刺 32枚をまとめて登録', '最初のプランについて'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div>`;
 const wInput = `<div class="assist-in k-winput" style="margin-top:20px;height:56px;box-shadow:var(--shadow-float)">${ic('plus', 'sm')}質問・依頼を入力　@で人やイベントを指定<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
 function wIorbit(open) {
-  const head = mainhead('iOrbit', open ? 'CVC 担当者に会うには' : '人脈・イベント・予定を知っている秘書', `<button class="rbtn k-whist">${ic('menu')}</button>`, `<button class="btn k-wionew">${ic('plus', 'sm')}新しい会話</button>`);
+  const head = mainhead('iOrbit', open ? 'CVC 担当者に会うには' : '人脈・イベント・予定を知っている秘書', '', `<button class="btn k-wionew">${ic('plus', 'sm')}新しい会話</button>`);
   const start = `<div style="max-width:720px;width:100%;margin:90px auto 0" class="k-wiostart"><div class="io-hello" style="padding:0"><div class="orbm">O</div><h2 style="font-size:30px">こんにちは、佐藤さん。何を手伝いましょうか？</h2><div class="sub">人脈・イベント・予定・プランを知っています。メールやメッセージは下書きまで。</div></div>
     <div class="io-sugg k-wiosugg" style="grid-template-columns:1fr 1fr">${[['💼', 'lav', '今夜の CFO Night で、誰と話すべき？'], ['🔍', 'apricot', 'このイベント、行く価値ある？'], ['📇', 'teal', '名刺の束をまとめて登録したい'], ['🧭', 'pink', 'プランの Step 3 を進めるには？']].map(([e, c, t]) => `<div class="prompt"><span class="emo sm ${c}">${e}</span>${t}</div>`).join('')}</div>${wInput}</div>`;
   const thread = `<div style="max-width:760px;width:100%;margin:0 auto;display:grid;gap:12px">
@@ -610,7 +610,8 @@ function wIorbit(open) {
       <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業 DX カンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
     <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
     <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>${wInput}</div>`;
-  return head + `<div class="wio ${open ? 'open' : ''}">${WHIST}<div class="wchat">${open ? thread : start}</div></div>`;
+  /* 2026-10-27：会話リストは右栏（他の Tab の「次の一手」と同じ 360 栏、常に表示）。 */
+  return head + `<div class="wio"><div class="whist"></div><div class="wchat">${open ? thread : start}</div></div><!--rail-->${WHIST}<!--/rail-->`;
 }
 const chatPage = () => wIorbit(true);   /* 旧名保留 */
 
@@ -670,9 +671,9 @@ h += board('人脈', 'empty', webFrame({ nav: 1, head: '', body: network('empty'
 h += board('人脈', 'few', webFrame({ nav: 1, head: '', body: network('few'), rail: netRail('few'), pins: pin(3, '.k-wanal') + pin(1, '.k-wdens') + pin(2, '.k-wtable') }), ['浓度卡：三段构成条 + 三格计数（1 / 2 / 2）', '表格新增「濃さ」「出どころ」两列；「目標との関係」列放计划里的类型（候補为 AI 推测）', '「人脈分析 ›」→ 人脈分析（⑤ E1 Web；10 人以下为锁定态）']);
 h += board('人脈', 'many', webFrame({ nav: 1, head: '', body: network('many'), rail: netRail('many'), pins: pin(4, '.k-wanal') + pin(1, '.k-wcats') + pin(2, '.k-wask') + pin(3, '.k-wtable tr', 4) }), ['2026-10-18 用户定 §B-1：分类页签 = すべて 286 / 目標に関係 9 / 要フォロー 12（要フォロー = 有未完成 To-do 关联此人）；原「情報が少ない人」页签与右栏批量补全删除，薄的人靠「濃さ」列与浓度卡区分；出どころ卡加「イベント 8」（活动名单导入；汎用 CSV 算手入力）', '右栏「今日の 1問」与 App To-do 的判断待ち 同一题，任一端答了另一端消失', 'LinkedIn 导入的人显示「2024年3月につながる」代替最终接点；排序 = 目标相关 > 最近接点', '「人脈分析 ›」→ 人脈分析（⑤ E1：構造 / 機会 / インサイト）；搜索框 ⌘K → 命令面板（⑤ E4）；筛选钮 → 弹出层（⑤ E5）']);
 h += board('連絡先詳細（抽屉）', '', webFrame({ nav: 1, head: '', body: network('many', { sel: 0 }), rail: netRail('many'), pins: pin(1, '.drawer') + pin(2, '.drawer [data-why-box]') }).replace('</section>', '</section>' + contactDrawer()), ['从右侧滑入 600px 抽屉，关闭回到原列表位置（W0056 决定）；首页人脈组件点人也打开这个抽屉', '「なぜ高橋さんか」默认展开依据；主按钮只到草稿']);
-h += sec('iOrbit', 'NAV-V3：全屏对话（无右栏）；左上 ≡ 点击开合左侧会话历史；右上「新しい会話」；初始 = 新对话起始屏；写入类动作是虚线确认卡');
+h += sec('iOrbit', '2026-10-27：会話リスト在右栏（与其他 Tab 的「次の一手」同一 360 栏、常驻，标题居中在同一中间栏上方）；右上「新しい会話」；初始 = 新对话起始屏；写入类动作是虚线确认卡');
 h += WB('iOrbit · 新しい会話', '', { nav: 2, body: wIorbit(false) }, [
-  ['.k-whist', 0, '左上 ≡ 点击 → 左侧历史面板展开（260px，主区右移）；再点收起；状态记住'],
+  ['.rail .k-whistp', 0, '会話リスト常驻右栏（360，同其他 Tab 的「次の一手」）；1024 由右上按钮从右侧拉出'],
   ['.k-wiosugg', 0, '起始屏：问候 + 4 个建议（按当前数据生成）'],
   ['.k-winput', 0, '输入：＋ 附件 · @ 人 / 活动 · Enter 送信；⌘K 在任何页唤起 iOrbit'],
 ]);

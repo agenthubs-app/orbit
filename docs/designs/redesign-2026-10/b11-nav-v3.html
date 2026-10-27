@@ -311,9 +311,9 @@
   .io-drawer .swipe .face .hi { padding: 10px; }
   .io-drawer .swipe .acts button { width: 66px; }
   .io-drawer .swipe.open .face { transform: translateX(-132px); }
-  .wio .whist .hi mark { background: var(--mac-apricot); color: var(--mac-apricot-ink); border-radius: 4px; padding: 0 2px; }
-  .wio .whist .hi.hov { background: var(--surface-2); }
-  .wio .whist .hi .mo { flex: none; color: var(--ink-3); }
+  :is(.wio, .rail) .whist .hi mark { background: var(--mac-apricot); color: var(--mac-apricot-ink); border-radius: 4px; padding: 0 2px; }
+  :is(.wio, .rail) .whist .hi.hov { background: var(--surface-2); }
+  :is(.wio, .rail) .whist .hi .mo { flex: none; color: var(--ink-3); }
 </style>
 </head>
 <body>
@@ -1038,7 +1038,7 @@ function wTaskMemo() {
       <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">${ic('mail', 'sm')}お礼の下書きを作る</button><button class="btn sm ghost">To-do にする</button></div></div></div>`;
 }
-/* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
+/* ---- iOrbit（NAV-V3 全屏对话；2026-10-27 起 Web 会話リスト在右栏，App 仍是左上 ≡） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
   <div class="grp">今日</div><div class="hi on">${ic('sparkle', 'sm')}<span>CVC 担当者に会うには</span></div><div class="grp">昨日</div><div class="hi">${ic('sparkle', 'sm')}<span>CFO Night の準備リスト</span></div>
   <div class="grp">今週</div>${['ピッチ資料の市場規模', 'プランを見直す（10/4）', '名刺 32枚をまとめて登録', '最初のプランについて'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div>`;
@@ -1464,8 +1464,9 @@ function webIoHist() {
   const hist = `<div class="whist k-wiohist"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px;background:var(--surface)">${ic('search', 'sm')}<span style="color:var(--ink)">CFO</span><span class="caret"></span></div>
     <div class="grp">📌 ピン留め</div><div class="hi">${ic('sparkle', 'sm')}<span>シリーズA 投資家リスト</span></div>
     <div class="grp">検索結果 · 3件</div><div class="hi on">${ic('sparkle', 'sm')}<span><mark>CFO</mark> Night の準備リスト</span></div><div class="hi hov k-wiohov" style="position:relative">${ic('sparkle', 'sm')}<span>CVC 担当者に会うには</span><span class="mo">${ic('more', 'sm')}</span></div><div class="hi">${ic('sparkle', 'sm')}<span>最初のプランについて</span></div>
-    <div class="dmenu k-wiomenu" style="left:250px;top:384px"><div>${'📌 ピン留め'}</div><div>✎ 名前を変更</div><div style="color:var(--coral-text)">削除…</div></div></div>`;
-  return mainhead('iOrbit', 'CFO Night の準備リスト', `<button class="rbtn k-wioburger">${ic('menu')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div class="wio open">${hist}<div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px">
+    <div class="dmenu k-wiomenu" style="left:116px;top:384px"><div>${'📌 ピン留め'}</div><div>✎ 名前を変更</div><div style="color:var(--coral-text)">削除…</div></div></div>`;
+  /* 2026-10-27：会話リストは右栏（他の Tab の「次の一手」と同じ 360 栏、常に表示）。 */
+  return mainhead('iOrbit', 'CFO Night の準備リスト', '', `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<!--rail-->${hist}<!--/rail--><div class="wio"><div class="whist"></div><div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px">
     <div class="bubble me">今夜の CFO Night の準備リストを作って</div>
     <div class="bubble ai">会いたい人 6名のうち、VC パートナー 2人を優先しましょう。準備は 3つです。<br>1. 高橋さん：IC の時期と ARR の見込み<br>2. 長谷川さん：リードの条件<br>3. 名刺 20枚 · 話すこと 3点を Task › メモ に</div>
     <div class="card confirm-card" style="padding:14px"><b style="font-size:13px">準備リストを Task › To-do に追加しますか？</b><div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div></div></div></div>`;
@@ -1832,7 +1833,7 @@ h += boards([
   ]),
 ]);
 h += WB('iOrbit · Web（履歴を開く · 検索 · ⋯ メニュー）', 'many', { nav: 2, body: webIoHist() }, [
-  ['.k-wioburger', 0, '左上 ≡ 点击开合左侧会話リスト（状态记住）'],
+  ['.rail .k-wiohist', 0, '会話リスト常驻右栏（360，同其他 Tab 的「次の一手」）；1024 由右上按钮从右侧拉出'],
   ['.k-wiohist .input', 0, '搜索框即时过滤，命中词高亮'],
   ['.k-wiomenu', 0, '行悬停「⋯」：ピン留め / 名前を変更 / 削除（确认框同 ④）'],
 ]);
@@ -1856,7 +1857,7 @@ h += WB('招待コード · Web · 作成後', '', { nav: 1, body: W.network('ma
   ['.k-wimsg', 0, '共有はユーザーの端末から。Orbit は代送しない'],
 ]);
 h += sec('PX2 D09 · iOrbit 状態の対応', 'App #41 は /ai の新しい会話（アクティブな会話なし）。Web の保存済み会話は actor-owned fixture r21-visual-pinned と ?session=r21-visual-pinned で開く。人物・イベントカード／追加確認は、この fixture に含まれない。');
-h += WB('iOrbit · Web · 保存済みテキスト', '', { nav: 2, body: mainhead('iOrbit', '田中さんとの提携相談', '', '') + `<div class="wio"><div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px"><div class="bubble me">田中さんとの提携相談について教えて</div><div class="bubble ai">関係する情報を確認しました。</div></div></div></div>` }, [['.bubble.ai', 0, '保存済み assistant.text。構造化 items がないためカードは表示しない。']]);
+h += WB('iOrbit · Web · 保存済みテキスト', '', { nav: 2, body: mainhead('iOrbit', '田中さんとの提携相談', '', '') + `<div class="wio"><div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px"><div class="bubble me">田中さんとの提携相談について教えて</div><div class="bubble ai">関係する情報を確認しました。</div></div></div></div><!--rail--><div class="whist"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div><div class="grp">📌 ピン留め</div><div class="hi on">${ic('sparkle', 'sm')}<span>田中さんとの提携相談</span></div><div class="grp">それ以前</div>${['来週のイベントを探す', '二端末で確認したプラン', '名刺の整理'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div><!--/rail-->` }, [['.bubble.ai', 0, '保存済み assistant.text。構造化 items がないためカードは表示しない。'], ['.rail .hi.on', 0, '2026-10-27：会話リストは右栏常驻；開いている r21-visual-pinned を強調']]);
 
 document.getElementById('out').innerHTML = h;
 docNav('b11-nav-v3'); orbitChrome();

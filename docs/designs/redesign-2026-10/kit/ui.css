@@ -773,11 +773,13 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
 .wio.open { grid-template-columns: 260px 1fr; gap: 24px; }
 .wio .whist { overflow: hidden; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line); padding-right: 16px; min-width: 0; }
 .wio:not(.open) .whist { visibility: hidden; padding: 0; border: 0; }
-.wio .whist .hi { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); min-width: 0; }
-.wio .whist .hi span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wio .whist .hi.on { background: var(--surface); color: var(--ink); font-weight: 800; }
-.wio .whist .grp { font-size: 11px; font-weight: 800; color: var(--ink-3); margin: 8px 4px 2px; }
+:is(.wio, .rail) .whist .hi { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+:is(.wio, .rail) .whist .hi span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.wio, .rail) .whist .hi.on { background: var(--surface); color: var(--ink); font-weight: 800; }
+:is(.wio, .rail) .whist .grp { font-size: 11px; font-weight: 800; color: var(--ink-3); margin: 8px 4px 2px; }
 .wio .wchat { min-width: 0; display: flex; flex-direction: column; }
+/* 2026-10-27：Web iOrbit 的会話リスト在右栏（与其他 Tab 的「次の一手」同一栏，常驻）。 */
+.rail .whist { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* 人脈「＋」加人 sheet：主推 3 种 + その他 */
 .addp { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 18px; background: var(--surface-2); }
 .addp + .addp { margin-top: 8px; }

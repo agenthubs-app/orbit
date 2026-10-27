@@ -88,16 +88,13 @@
   .r8stg > div { width: 148px; border-radius: 18px; padding: 12px 14px; background: var(--surface); border-top: 4px solid var(--surface-3); font-size: 12px; }
   .r8stg > div.d { border-top-color: var(--plum-500); } .r8stg > div.on { border-top-color: var(--plum-700); background: var(--accent-soft); }
   .r8stg b { display: block; font-size: 13.5px; margin-top: 2px; }
-  .r8chat { display: grid; grid-template-columns: 48px 1fr; gap: 16px; height: 740px; position: relative; }
-  .r8strip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; border-radius: 20px; background: color-mix(in srgb, var(--surface) 60%, transparent); }
-  .r8strip hr { width: 22px; border: 0; height: 1px; background: var(--line); margin: 4px 0; }
-  .r8strip .pinav { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: 14px; background: var(--surface-2); }
+  .r8chat { display: grid; grid-template-columns: 1fr; height: 740px; position: relative; }
+  .rdrawer .dh { display: flex; align-items: center; gap: 10px; }
+  .rdrawer .dh .lbl { margin-left: auto; }
   .r8ctx { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow: hidden; max-width: 680px; width: 100%; margin: 0 auto 12px; }
   .r8ctx .chip { padding: 5px 8px 5px 10px; font-size: 11.5px; background: var(--surface); flex: none; }
   .r8ctx .chip .x { color: var(--ink-4); display: inline-grid; }
   .r8ctx .chip .x svg.i { width: 13px; height: 13px; }
-  .r8hist { position: absolute; left: 0; top: 0; bottom: 0; width: 272px; z-index: 6; background: var(--bg); border-radius: 22px; padding: 12px 10px; box-shadow: var(--shadow-float); overflow: hidden; }
-  .r8scrim { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 5; border-radius: 22px; background: var(--scrim-web); }
   .r8adrawer { position: absolute; left: 0; top: 0; bottom: 0; width: 318px; z-index: 51; background: var(--bg); border-radius: 0 34px 34px 0; padding: 58px 14px 30px; overflow: hidden; box-shadow: var(--shadow-float); }
   .r8user { display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }
   .r8user .r8userbubble { max-width: 80%; padding: 14px 18px; border-radius: 20px; background: var(--accent-soft); font-size: 13px; line-height: 1.55; }
@@ -1200,13 +1197,13 @@ const chatMsgsDemo = (mobile) => `<div class="bubble me">CVC の担当者に会�
 const chatMsgs = () => `<div class="r8user"><div class="r8userbubble">田中さんとの提携相談について教えて</div><span class="r8copy">${ic('copy', 'sm')}</span></div><div class="r8assist"><span class="r8assisticon">${ic('sparkle', 'sm')}</span><div class="r8answer"><b>iOrbit</b><span>関係する情報を確認しました。</span><span class="r8copy">${ic('copy', 'sm')}</span></div></div><div class="r8follow">プランを見る</div>`;
 const HIST = { pin: [['田中さんとの提携相談', '10/17']], today: [], week: [], older: [['来週のイベントを探す', '10/18'], ['二端末で確認したプラン', '10/15'], ['名刺の整理', '10/2']] };
 const histList = () => `<div class="search" style="background:var(--surface-2);height:40px;font-size:12.5px">${ic('search', 'sm')}会話を検索</div><div class="hist">${[['ピン留め', 'pin', 'pin'], ['今日', 'today', ''], ['今週', 'week', ''], ['それ以前', 'older', '']].filter(([, key]) => HIST[key].length).map(([t, key, icon]) => `<div class="gl">${icon ? ic(icon, 'sm') : ''}${t}</div>${HIST[key].map(([n, d], k) => `<div class="hi ${key === 'pin' && k === 0 ? 'on' : ''}"><span class="t">${n}</span><small>${d}</small></div>`).join('')}`).join('')}</div>`;
-const strip = `<aside class="r8strip"><button class="lbtn" title="履歴を開く">${ic('menu', 'sm')}</button><button class="lbtn">${ic('search', 'sm')}</button><button class="lbtn">${ic('edit', 'sm')}</button><hr><span class="pinav">📌</span><span class="pinav">💼</span></aside>`;
 const wComp = `<div class="wcomp"><span class="in">iOrbit に聞く…</span><button class="lbtn">${ic('send', 'sm')}</button></div><div class="lbl" style="text-align:center;margin-top:8px">送信はあなたが行います。回答の根拠は結果で確認できます。</div>`;
+/* 2026-10-27：会話リストは 1440 で右栏常驻；1024 は他の Tab の「次の一手」と同じく主标题区按钮 → 右侧 380 抽屉。左の 48px 入口条は廃止。 */
 function chat1024(open = false) {
-  return mainhead('iOrbit', '田中さんとの提携相談', `<button class="rbtn">${ic('menu')}</button>`, `<span class="kbd">⌘</span><span class="kbd">K</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div class="r8chat">${strip}
-    <div class="ccol"><div class="msgs" style="padding-top:20px">${chatMsgs()}</div>${wComp}</div>
-    ${open ? `<div class="r8scrim"></div><aside class="r8hist"><div class="row between" style="padding:2px 4px 10px"><b style="font-size:14px">会話</b><span class="row" style="gap:6px"><button class="btn sm primary">${ic('edit', 'sm')}新規</button><button class="lbtn" style="width:30px;height:30px">${ic('left', 'sm')}</button></span></div>${histList()}</aside>` : ''}</div>`;
+  return mainhead('iOrbit', '田中さんとの提携相談', '', `<span class="kbd">⌘</span><span class="kbd">K</span><button class="btn">${ic('plus', 'sm')}新しい会話</button><button class="btn rail-btn ${open ? 'on' : ''}">${ic('sparkle', 'sm')}会話リスト</button>`) + `<div class="r8chat">
+    <div class="ccol"><div class="msgs" style="padding-top:20px">${chatMsgs()}</div>${wComp}</div></div>`;
 }
+const histDrawer1024 = `<div class="overlay"></div><div class="drawer rdrawer r8histr"><div class="dh"><button class="rbtn">${ic('x')}</button><span class="lbl"><span class="kbd">Esc</span> で閉じる</span></div><div class="row between" style="padding:2px 4px 0"><b style="font-size:14px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新規</button></div>${histList()}</div>`;
 function chat390() {
   return `<div class="r8chathead"><div class="row" style="gap:6px"><button class="rbtn">${ic('menu')}</button></div><div class="t"><b>iOrbit</b><small class="clamp1" style="display:block">田中さんとの提携相談</small></div><div class="row" style="gap:6px;justify-content:flex-end"><button class="rbtn">${ic('x')}</button></div></div>
     <div style="display:grid;gap:18px;margin-top:150px">${chatMsgs()}</div>`;
@@ -1319,14 +1316,14 @@ h += boards([
 
 h += sec('3 · iOrbit 対話 · PX2 D09 実データ', '読み取り専用 fixture r21-visual-pinned：田中さんとの提携相談／ユーザー・助手のテキスト各1件。panel/items なし。構造化カードは別の参考状態で、この5画板の比較対象に含めない。');
 h += boards([
-  board('iOrbit · 1024 · 保存済みテキスト', '', f1024({ nav: 2, body: chat1024(), pins: pin(1, '.r8strip') + pin(2, '.r8userbubble') + pin(3, '.r8assist') + pin(4, '.wcomp') }),
-    ['左侧 48px 会話リスト入口；点 ≡ 展开历史', 'r21-visual-pinned の user.text', 'r21-visual-pinned の assistant.text；items/panel がないためカードを描かない', '入力欄は固定。送信はユーザーが行う'], W),
+  board('iOrbit · 1024 · 保存済みテキスト', '', f1024({ nav: 2, body: chat1024(), pins: pin(1, '.rail-btn') + pin(2, '.r8userbubble') + pin(3, '.r8assist') + pin(4, '.wcomp') }),
+    ['2026-10-27：会話リスト入口 = 主标题区最右按钮（同其他 Tab 的「次の一手」）；点 → 右侧 380 抽屉', 'r21-visual-pinned の user.text', 'r21-visual-pinned の assistant.text；items/panel がないためカードを描かない', '入力欄は固定。送信はユーザーが行う'], W),
   board('iOrbit · 390 · 保存済みテキスト', '', m390({ body: chat390(), overlay: mcomp, pins: pin(1, '.r8chathead .rbtn') + pin(2, '.r8userbubble') + pin(3, '.r8assist') + pin(4, '.mcomp') }),
     ['左上 ≡ で会話一覧、右上 ✕ で戻る', '同じ user.text', '同じ assistant.text；構造化カードなし', '入力欄は Safari バーの上']),
 ]);
 h += boards([
-  board('iOrbit · 1024 历史展开', '弹层', f1024({ nav: 2, body: chat1024(true), pins: pin(1, '.r8hist') + pin(2, '.r8hist .hi.on') + pin(3, '.r8hist .search') }),
-    ['面板从左滑出、覆盖在对话上（不挤压 680px 对话列）；点外部 / Esc / ‹ 收起；窗口 ≥1280 时自动恢复常驻', '当前会话高亮；点其他会话 → 切换并自动收起面板', '顶部搜索；分组 ピン留め / 今日 / 今週 / それ以前；悬停行出 ··· 菜单（ピン留め / 名前を変更 / 削除）'], W),
+  board('iOrbit · 1024 历史展开', '弹层', f1024({ nav: 2, body: chat1024(true), extra: histDrawer1024, pins: pin(1, '.r8histr') + pin(2, '.r8histr .hi.on') + pin(3, '.r8histr .search') }),
+    ['2026-10-27：右侧 380 抽屉（同「次の一手」N07b），遮罩 22%；左上 ✕ / Esc / 点遮罩收起；窗口 ≥1280 时是常驻右栏', '当前会话高亮；点其他会话 → 切换并自动收起面板', '顶部搜索；分组 ピン留め / 今日 / 今週 / それ以前；悬停行出 ··· 菜单（ピン留め / 名前を変更 / 削除）'], W),
   board('iOrbit · 390 历史', '弹层', m390({ body: chat390(), overlay: mHistDrawer, pins: pin(1, '.r8adrawer') + pin(2, '.r8adrawer .hi.on') }),
     ['左抽屉 318px 从左滑入，遮罩暗化；左滑抽屉 / 点遮罩关闭', '点会话切换并关闭；长按 → ピン留め / 名前を変更 / 削除（删除有确认）']),
 ]);

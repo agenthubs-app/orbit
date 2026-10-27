@@ -102,7 +102,10 @@
 
   /* NAV-V3：Web 左栏 ホーム / 人脈 / iOrbit / イベント / Task / 受信箱（+ 底部 主催 / 設定） */
   const SIDE = [['home', 'ホーム'], ['users', '人脈'], ['sparkle', 'iOrbit'], ['calendar', 'イベント'], ['task', 'Task'], ['inbox', '受信箱']];
-  window.webFrame = ({ nav = 0, head, body, rail = '', pins = '', theme = '' }) =>
+  /* 2026-10-27：页面可以在 body 里用 <!--rail-->…<!--/rail--> 带上自己的右栏（iOrbit 的会話リスト），与其他 Tab 的「次の一手」同一栏。 */
+  const railFromBody = (o) => { const m = /<!--rail-->([\s\S]*?)<!--\/rail-->/.exec(o.body || ''); return m ? { ...o, body: o.body.replace(m[0], ''), rail: o.rail || m[1] } : o; };
+  window.webFrame = (o) => webFrameOf(railFromBody(o));
+  const webFrameOf = ({ nav = 0, head, body, rail = '', pins = '', theme = '' }) =>
     `<div class="web ${rail ? '' : 'no-rail'}" ${theme ? `data-theme="${theme}"` : ''}>
       <aside class="side"><div class="logo">O</div>${SIDE.map(([i, l], k) => `<a class="${k === nav ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}
         <div class="sp"></div><a class="${nav === 'host' ? 'on' : ''}">${ic('brief')}主催</a><a class="${nav === 'settings' ? 'on' : ''}">${ic('settings')}設定</a><div class="avatar-btn" style="margin-top:8px">佐</div></aside>

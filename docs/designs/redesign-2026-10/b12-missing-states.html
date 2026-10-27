@@ -1294,11 +1294,10 @@
 
 
   /* Web iOrbit 版面 */
-  .ichat { display: grid; grid-template-columns: 252px 1fr; gap: 20px; height: 820px; }
-  .ichat.closed { grid-template-columns: 1fr; }   /* NAV-V3：左侧历史收起（点 ≡ 开合） */
+  .ichat { display: grid; grid-template-columns: 1fr; height: 820px; }   /* 2026-10-27：会話リストは右栏 */
   .wref { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .wref .chip.z { opacity: .45; }
-  .hpanel { background: color-mix(in srgb, var(--surface) 60%, transparent); border-radius: 22px; padding: 12px 10px; overflow: auto; position: relative; }
+  .hpanel { position: relative; }   /* 右栏の中：背景・内边距は .rail が持つ */
   .ccol { display: flex; flex-direction: column; min-width: 0; position: relative; }
   .ccol .msgs { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 4px 16px; }
   .ccol .msgs > * { width: 100%; max-width: 680px; margin-left: auto; margin-right: auto; }
@@ -3306,7 +3305,7 @@ function wTaskMemo() {
       <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">${ic('mail', 'sm')}お礼の下書きを作る</button><button class="btn sm ghost">To-do にする</button></div></div></div>`;
 }
-/* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
+/* ---- iOrbit（NAV-V3 全屏对话；2026-10-27 起 Web 会話リスト在右栏，App 仍是左上 ≡） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
   <div class="grp">今日</div><div class="hi on">${ic('sparkle', 'sm')}<span>CVC 担当者に会うには</span></div><div class="grp">昨日</div><div class="hi">${ic('sparkle', 'sm')}<span>CFO Night の準備リスト</span></div>
   <div class="grp">今週</div>${['ピッチ資料の市場規模', 'プランを見直す（10/4）', '名刺 32枚をまとめて登録', '最初のプランについて'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div>`;
@@ -3403,7 +3402,7 @@ h += group('g2', sec('g2 · 导航壳：头像菜单 · 1024 右栏抽屉', 'W-R
   ], 'b8 ⑧ 390 列 · R07 REVIEW M1', 390)
   + WP('N07 1024 · 主标题区「次の一手」按钮（W-R07-03）', '', t => ({ nav: 0, body: home1024Btn(false) }), [
     ['.k-wrailbtn', 0, '768–1279 宽：右栏不常驻，主标题区最右出现「次の一手」按钮（b8 断点规范：右栏收为标题区按钮，带计数 = 右栏建议条数）。现实现是只有图标的圆钮（读屏名「次の一手を開く」），建议改成带字带数'],
-    ['.k-wedit', 0, '按钮排在「🔔 · 編集」之后；iOrbit 等没有右栏的页面不出这个按钮'],
+    ['.k-wedit', 0, '按钮排在「🔔 · 編集」之后；没有右栏的页面不出这个按钮。2026-10-27 起 iOrbit 的右栏是会話リスト，同位置按钮写「会話リスト」'],
   ], 'b8 ⑧ 断点规范 · web.html ホーム', 1024)
   + WP('N07b 1024 · 「次の一手」380 抽屉を開いた状態', '', t => ({ nav: 0, body: home1024Btn(true), ov: `<div class="overlay"></div><div class="drawer rdrawer k-wrdrawer"><div class="dh"><button class="rbtn">${ic('x')}</button><span class="lbl"><span class="kbd">Esc</span> で閉じる</span></div>${W.assistRail('many')}</div>` }), [
     ['.k-wrdrawer', 0, '点按钮 → 右侧 380 抽屉（b8 / b6 1024 的 .rdrawer），内容与 1440 右栏完全相同；遮罩 22%，按钮保持选中底色'],
@@ -5646,7 +5645,7 @@ function wTaskMemo() {
       <div class="mac lav row k-wmjudge push" style="gap:10px;margin-top:16px;font-size:12.5px"><span>🎯</span><span style="flex:1">プラン「VC パートナー」の <b>3問中 2問</b> を聞けています → 話せた判定 +10 の根拠に使えます</span><span class="tgl on"></span></div>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm">${ic('mail', 'sm')}お礼の下書きを作る</button><button class="btn sm ghost">To-do にする</button></div></div></div>`;
 }
-/* ---- iOrbit（NAV-V3：全屏对话，无右栏；左上 ≡ 点击开合左侧历史） ---- */
+/* ---- iOrbit（NAV-V3 全屏对话；2026-10-27 起 Web 会話リスト在右栏，App 仍是左上 ≡） ---- */
 const WHIST = `<div class="whist k-whistp"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div>
   <div class="grp">今日</div><div class="hi on">${ic('sparkle', 'sm')}<span>CVC 担当者に会うには</span></div><div class="grp">昨日</div><div class="hi">${ic('sparkle', 'sm')}<span>CFO Night の準備リスト</span></div>
   <div class="grp">今週</div>${['ピッチ資料の市場規模', 'プランを見直す（10/4）', '名刺 32枚をまとめて登録', '最初のプランについて'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div>`;
@@ -6299,9 +6298,10 @@ const aSources = () => topbar('iOrbit', '新しい会話', histBtn, newBtn) + `<
    ================================================================= */
 const wComposer = (mode = '') => `<div class="wcomp">${ic('plus', 'sm')}<span class="in ${mode ? 'typed' : ''}">${mode === 'mention' ? `${M('高橋 美咲')} の次の面談で何を聞くべき？ @伊<span class="caret"></span>` : '質問・依頼を入力　@ で人・イベントを指定'}</span><button class="lbtn">${ic('mic', 'sm')}</button>${mode === 'stop' ? `<button class="stopb"><i></i></button>` : `<button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button>`}</div>
   <div class="lbl" style="text-align:center;margin-top:8px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
-/* NAV-V3：Web iOrbit = 全屏对话 + 左侧历史（≡ 点击开合）；原右栏「参照しているもの / この会話で行ったこと」收进对话流（气泡下 chip / 会话末尾小卡） */
-const wChat = (hist, msgs, comp = '', closed = false) => closed ? `<div class="ichat closed"><div class="ccol"><div class="msgs">${msgs}</div>${wComposer(comp)}</div></div>` : `<div class="ichat"><aside class="hpanel"><div class="row between" style="padding:2px 4px 10px"><b style="font-size:14px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新規</button></div><div class="hist">${hist}</div></aside><div class="ccol"><div class="msgs">${msgs}</div>${wComposer(comp)}</div></div>`;
-const wHead = (sub) => mainhead('iOrbit', sub, `<button class="rbtn k-wmenu">${ic('menu')}</button>`, `<span class="lbl"><span class="kbd">⌘</span> <span class="kbd">K</span> どこからでも</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
+/* NAV-V3：Web iOrbit = 对话 + 会話リスト（2026-10-27 起在右栏）；原右栏「参照しているもの / この会話で行ったこと」收进对话流（气泡下 chip / 会话末尾小卡） */
+/* 2026-10-27：会話リストは右栏（他の Tab の「次の一手」と同じ 360 栏、常に表示）。closed は旧 NAV-V3 の「≡ で閉じた」状態で、今は同じ表示。 */
+const wChat = (hist, msgs, comp = '', closed = false) => `<div class="ichat"><div class="ccol"><div class="msgs">${msgs}</div>${wComposer(comp)}</div></div><!--rail--><div class="hpanel"><div class="row between" style="padding:2px 4px 10px"><b style="font-size:14px">会話</b><button class="btn sm primary">${ic('edit', 'sm')}新規</button></div><div class="hist">${hist}</div></div><!--/rail-->`;
+const wHead = (sub) => mainhead('iOrbit', sub, '', `<span class="lbl"><span class="kbd">⌘</span> <span class="kbd">K</span> どこからでも</span><button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
 const wRefN = s => `<div class="wref k-wref"><span class="lbl" style="font-weight:700">iOrbit が参照できるもの</span>${[['👥', '人脈', s === 'empty' ? 0 : s === 'few' ? 5 : 286, '人'], ['🎟️', 'イベント', s === 'empty' ? 0 : s === 'few' ? 1 : 14, '件'], ['🧭', 'プラン', s === 'empty' ? 0 : s === 'few' ? 1 : 2, 'つ'], ['📝', 'メモ・記録', s === 'empty' ? 0 : s === 'few' ? 3 : 46, '件']].map(([e, l, v, u]) => `<span class="chip ${v ? '' : 'z'}">${e} ${l} ${v}${u}</span>`).join('')}<span class="lbl" style="margin-left:auto">参照のオン・オフは 設定 › iOrbit</span></div>`;
 function wStart(s) {
   const msgs = `<div style="margin-top:${s === 'many' ? 30 : 60}px"><span class="emo lav" style="width:52px;height:52px;font-size:26px;border-radius:16px">✨</span><div style="font-size:28px;font-weight:800;margin-top:14px;line-height:1.35">${s === 'empty' ? 'こんにちは、佐藤さん。何から始めましょう？' : s === 'few' ? 'こんにちは、佐藤さん。今日は何をしましょう？' : 'おかえりなさい、佐藤さん。今夜は CFO Night ですね。'}</div>
@@ -6322,7 +6322,7 @@ const wChatMsgs = `<div class="bubble me">CVC の担当者に会うには、ど�
     <div class="card" style="padding:16px"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${scoreRing(68, 44)}<div><b style="font-size:13px">製造業 DX カンファレンス 大阪</b><div class="lbl">CVC 3名 · 10/23</div></div></div></div></div>`;
 const wHistOps = () => {
   const panel = histList('hov').replace('<div class="hi hov">', '<div class="hi hov" style="position:relative">');
-  return wHead('CVC 担当者に会う方法') + wChat(panel + `<div class="ctxm" style="left:150px;top:350px"><button>${ic('pin', 'sm')}ピン留め</button><button>${ic('edit', 'sm')}名前を変更</button><button>${ic('share', 'sm')}共有用にコピー</button><hr><button class="del">${ic('x', 'sm')}削除</button></div>`, wChatMsgs);
+  return wHead('CVC 担当者に会う方法') + wChat(panel + `<div class="ctxm" style="left:100px;top:350px"><button>${ic('pin', 'sm')}ピン留め</button><button>${ic('edit', 'sm')}名前を変更</button><button>${ic('share', 'sm')}共有用にコピー</button><hr><button class="del">${ic('x', 'sm')}削除</button></div>`, wChatMsgs);
 };
 const wMention = () => wHead('高橋さんの次の面談') + wChat(histList('start'), `<div class="bubble me">高橋さんとの次の面談、何を準備すればいい？</div>
   <div class="bubble ai">IC（11月）前の最終面談になりそうです。DD 資料の抜け漏れ確認と、他の VC の検討状況を聞かれる準備をおすすめします。</div>`).replace('<div class="wcomp">', `<div class="wcomp"><div class="pop" style="position:absolute;left:150px;bottom:62px;width:360px;z-index:5">
