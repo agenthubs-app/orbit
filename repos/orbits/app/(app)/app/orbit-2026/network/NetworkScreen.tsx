@@ -131,7 +131,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     .join(t("railPersonSeparator"));
   const header = headerCounts(summary);
   const empty = header !== null && header.total === 0;
-  const subtitle = empty ? t("subtitleEmpty") : header ? t("subtitle", { total: header.total, added: header.added }) : undefined;
+  // While the counts load the line is held by a blank of the same height, so 人脈 does not drop and then jump up.
+  const subtitle = empty ? t("subtitleEmpty") : header ? t("subtitle", { total: header.total, added: header.added }) : "\u00a0";
   const open = (id: string | null) => {
     setOpenContact(id);
     try {
@@ -173,7 +174,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
         right={narrow ? undefined : <a className={`btn ${styles.btn} ${styles.accent}`} href="/app/contacts/new" data-network-add=""><span aria-hidden="true">＋</span>{t("addPeople")}</a>}
         rightRail={narrow ? undefined : rail} phoneFold={narrow} />
       {narrow ? <div className={styles.mobileHeading} data-network-mobile-heading="">
-        <h1>{t("title")}</h1>{subtitle ? <span className={styles.lbl}>{subtitle}</span> : null}
+        <h1>{t("title")}</h1><span className={styles.lbl}>{subtitle}</span>
         <a className={styles.mobileAdd} href="/app/contacts/new" aria-label={t("addPeople")} data-network-add=""><Icon name="plus" size={20} /></a>
       </div> : null}
       {summary === null && !failed ? <div className={styles.card} data-network-loading=""><Skeleton lines={6} /></div>
