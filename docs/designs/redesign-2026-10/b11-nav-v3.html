@@ -314,6 +314,11 @@
   :is(.wio, .rail) .whist .hi mark { background: var(--mac-apricot); color: var(--mac-apricot-ink); border-radius: 4px; padding: 0 2px; }
   :is(.wio, .rail) .whist .hi.hov { background: var(--surface-2); }
   :is(.wio, .rail) .whist .hi .mo { flex: none; color: var(--ink-3); }
+  /* 2026-10-28 TT2 · 一级页顶部两层（对标 受信箱）：第 1 行只有标题 + 副标题居中；第 2 行左 = 搜索 / 分段，右 = 主操作。 */
+  .web.tt2 .mainhead { grid-template-columns: 1fr auto; grid-template-areas: "t t" "l r"; row-gap: 16px; margin-bottom: 18px; }
+  .web.tt2 .mainhead .t { grid-area: t; }
+  .web.tt2 .mainhead .l { grid-area: l; }
+  .web.tt2 .mainhead .r { grid-area: r; }
 </style>
 </head>
 <body>
@@ -1858,6 +1863,18 @@ h += WB('招待コード · Web · 作成後', '', { nav: 1, body: W.network('ma
 ]);
 h += sec('PX2 D09 · iOrbit 状態の対応', 'App #41 は /ai の新しい会話（アクティブな会話なし）。Web の保存済み会話は actor-owned fixture r21-visual-pinned と ?session=r21-visual-pinned で開く。人物・イベントカード／追加確認は、この fixture に含まれない。');
 h += WB('iOrbit · Web · 保存済みテキスト', '', { nav: 2, body: mainhead('iOrbit', '田中さんとの提携相談', '', '') + `<div class="wio"><div class="wchat"><div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:12px"><div class="bubble me">田中さんとの提携相談について教えて</div><div class="bubble ai">関係する情報を確認しました。</div></div></div></div><!--rail--><div class="whist"><button class="btn primary block" style="margin-bottom:6px">${ic('plus', 'sm')}新しい会話</button><div class="input" style="height:36px">${ic('search', 'sm')}会話を検索</div><div class="grp">📌 ピン留め</div><div class="hi on">${ic('sparkle', 'sm')}<span>田中さんとの提携相談</span></div><div class="grp">それ以前</div>${['来週のイベントを探す', '二端末で確認したプラン', '名刺の整理'].map(t => `<div class="hi">${ic('sparkle', 'sm')}<span>${t}</span></div>`).join('')}</div><!--/rail-->` }, [['.bubble.ai', 0, '保存済み assistant.text。構造化 items がないためカードは表示しない。'], ['.rail .hi.on', 0, '2026-10-27：会話リストは右栏常驻；開いている r21-visual-pinned を強調']]);
+
+/* ---- TT2 · 一级页顶部：同一行 vs 两层（2026-10-28 用户提议，先看稿再定） ---- */
+const TT2 = (label, o, notes) => WB(label, '', o, notes).replace('class="web ', 'class="web tt2 ');
+h += sec('TT2 · 一级页顶部两层（提案）', '现状：标题与左右按钮同一行、同一高度。提案：对齐 受信箱——第 1 行只放标题（+ 副标题）居中，第 2 行左侧放搜索 / 分段、右侧放主操作。每页上为现状、下为提案。');
+h += WB('ホーム · 現状（同一行）', 'many', { nav: 0, body: W.home('many'), rail: W.assistRail('many') });
+h += TT2('ホーム · 提案（两层）', { nav: 0, body: W.home('many'), rail: W.assistRail('many') }, ['标题「10月」+ 日期范围单独一行居中', '第 2 行：左 搜索，右 🔔 + 編集']);
+h += WB('人脈 · 現状（同一行）', 'many', { nav: 1, body: W.network('many'), rail: W.netRail('many') });
+h += TT2('人脈 · 提案（两层）', { nav: 1, body: W.network('many'), rail: W.netRail('many') }, ['「人脈」+「83人 · 今月 +5」单独一行', '第 2 行：左 搜索，右「人脈を追加」']);
+h += WB('イベント · 現状（同一行）', 'many', { nav: 3, body: W.events('many'), rail: W.assistRail('many', 'イベント') });
+h += TT2('イベント · 提案（两层）', { nav: 3, body: W.events('many'), rail: W.assistRail('many', 'イベント') }, ['标题单独一行', '第 2 行：左 搜索，右 主操作']);
+h += WB('Task · 現状（同一行）', 'many', { nav: 4, body: webTaskTodo() });
+h += TT2('Task · 提案（两层）', { nav: 4, body: webTaskTodo() }, ['标题单独一行', '第 2 行：左 分段（与 受信箱 的 メッセージ / 通知 同位置），右「追加」']);
 
 document.getElementById('out').innerHTML = h;
 docNav('b11-nav-v3'); orbitChrome();
