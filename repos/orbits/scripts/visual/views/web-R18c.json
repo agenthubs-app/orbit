@@ -19,7 +19,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Original approved board; authenticated runtime state capture pending."
     },
     {
@@ -30,7 +30,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Original approved board; authenticated runtime state capture pending."
     },
     {
@@ -85,7 +85,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Original approved board; authenticated runtime state capture pending."
     },
     {
@@ -96,7 +96,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -107,7 +107,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -118,7 +118,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -129,7 +129,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -140,7 +140,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -151,7 +151,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -162,7 +162,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -173,7 +173,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -184,7 +184,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -195,7 +195,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -206,7 +206,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -217,7 +217,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -492,7 +492,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -503,7 +503,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -514,7 +514,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -525,7 +525,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -536,7 +536,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -547,7 +547,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -558,7 +558,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -569,7 +569,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -580,7 +580,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -591,7 +591,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -602,7 +602,7 @@
       "themes": [
         "light"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -613,7 +613,7 @@
       "themes": [
         "dark"
       ],
-      "app": "/app/settings/account",
+      "app": "/app/settings/account/delete",
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
@@ -1079,70 +1079,70 @@
       "note": "Approved by main session under RD-33; pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-1440-draft-light",
+      "id": "W-R18c-S11-1440-draft-light",
       "design": "b12-missing-states.html",
-      "board-index": 888,
+      "board-index": 1004,
       "width": 1440,
       "themes": [
         "light"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-1440-draft-dark",
+      "id": "W-R18c-S11-1440-draft-dark",
       "design": "b12-missing-states.html",
-      "board-index": 889,
+      "board-index": 1005,
       "width": 1440,
       "themes": [
         "dark"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-1024-draft-light",
+      "id": "W-R18c-S11-1024-draft-light",
       "design": "b12-missing-states.html",
-      "board-index": 890,
+      "board-index": 1006,
       "width": 1024,
       "themes": [
         "light"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-1024-draft-dark",
+      "id": "W-R18c-S11-1024-draft-dark",
       "design": "b12-missing-states.html",
-      "board-index": 891,
+      "board-index": 1007,
       "width": 1024,
       "themes": [
         "dark"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-390-draft-light",
+      "id": "W-R18c-S11-390-draft-light",
       "design": "b12-missing-states.html",
-      "board-index": 892,
+      "board-index": 1008,
       "width": 390,
       "themes": [
         "light"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
-      "id": "W-R18c-S09-390-draft-dark",
+      "id": "W-R18c-S11-390-draft-dark",
       "design": "b12-missing-states.html",
-      "board-index": 893,
+      "board-index": 1009,
       "width": 390,
       "themes": [
         "dark"
       ],
       "app": "/app/settings/account",
-      "note": "Approved by main session under RD-33; pixel verification remains open."
+      "note": "2026-10-29 user decision: account overview (replaces the S09 draft); pixel verification remains open."
     },
     {
       "id": "W-R18c-S10-1440-draft-light",

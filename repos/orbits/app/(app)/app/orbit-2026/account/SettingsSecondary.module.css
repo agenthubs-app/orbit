@@ -72,7 +72,7 @@
 .accountText { flex: 1; min-width: 0; }
 .accountText b { display: block; font-size: var(--fs-emph); }
 .accountText span { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
-.accountRow .accountButton { height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; display: inline-flex; align-items: center; }
+.accountRow .accountButton { height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 .accountRow .accountDanger { background: transparent; color: var(--coral-text); }
 /* 390 (b12 W-R18a-24): one column, kit .card padding 18 and .card + .card 14 on top of the gap. */
 @media (max-width: 767px) { .grid3 { grid-template-columns: minmax(0, 1fr); } .setCard { padding: var(--space-18); } .setCard + .setCard { margin-top: var(--space-14); } .accountRow { flex-wrap: wrap; } }

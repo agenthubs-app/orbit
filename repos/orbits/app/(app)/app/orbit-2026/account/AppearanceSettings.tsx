@@ -29,7 +29,7 @@ const identityOf = (payload: ProfilePayload | undefined): Identity | null =>
   payload?.profile?.displayName ? { name: payload.profile.displayName, email: payload.profile.handles?.email ?? "" } : null;
 
 // The profile the settings pages share (the 個人資料 page's last answer); undefined while the first read is out.
-function useAccountIdentity(): Identity | null | undefined {
+export function useAccountIdentity(): Identity | null | undefined {
   const [identity, setIdentity] = useState<Identity | null | undefined>(() => identityOf(lastAnswer<ProfilePayload>(PROFILE_ANSWER_KEY)) ?? undefined);
   useEffect(() => {
     if (identity && answerFresh(PROFILE_ANSWER_KEY, FRESH.slow)) return;
@@ -81,7 +81,7 @@ export function AppearanceSettings() {
           <div className={styles.accountText}><b>{identity?.name ?? ""}</b>{identity?.email ? <span>{identity.email}</span> : null}</div>
         </>}
         <Link className={`btn ${styles.accountButton}`} href="/app/settings/exports" aria-label={rights("export")}>{rights("export")}</Link>
-        <Link className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account" aria-label={rights("deletion")}>{rights("deletion")}</Link>
+        <Link className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account/delete" aria-label={rights("deletion")}>{rights("deletion")}</Link>
       </div>
     </section>
   </div>;

@@ -63,7 +63,7 @@ export function AccountDeletionPage() {
       // 主会话代定 §R18c-3. Google documents auth_time as an explicit ID-token claim.
       await accountRightsApi.reauthGoogleStart();
       window.sessionStorage.setItem("orbit-deletion-google-return", "1");
-      await signIn("google", { callbackUrl: "/app/settings/account" },
+      await signIn("google", { callbackUrl: "/app/settings/account/delete" },
         { prompt: "login", max_age: "0", claims: JSON.stringify({ id_token: { auth_time: { essential: true } } }) });
     } catch { setProblem(t("generalError")); setBusy(false); }
   };
@@ -87,7 +87,7 @@ export function AccountDeletionPage() {
           </div>
         </div>
         {unsynced ? <p className={s.error}>{t("unsynced")}</p> : null}
-        <div className={s.leaveActions}><a className={`btn ${s.stop}`} href="/app/settings">{t("stop")}</a><button type="button" className={`btn ${s.toVerify}`} disabled={busy} onClick={() => void next()}>{t("toVerify")}</button></div>
+        <div className={s.leaveActions}><a className={`btn ${s.stop}`} href="/app/settings/account">{t("stop")}</a><button type="button" className={`btn ${s.toVerify}`} disabled={busy} onClick={() => void next()}>{t("toVerify")}</button></div>
       </> : <Card title={t("verify")}>
         <p className={s.lead}>{t("deletionIntro")}</p>
         {method === "credentials" ? <label className={s.field}>{t("password")}

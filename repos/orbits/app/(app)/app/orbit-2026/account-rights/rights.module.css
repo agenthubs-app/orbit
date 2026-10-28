@@ -97,3 +97,8 @@ label.xrow { cursor: pointer; position: relative; }
 .lblCell { display: block; font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
 td.lblCell { display: table-cell; white-space: nowrap; }
 .statusCell { text-align: right; }
+
+/* 設定 › アカウント 総覧 (b12 W-R18c-S11): the bottom card's title in coral-text, its explanation beside the
+   danger-ghost entry, wrapping under it on a narrow screen. */
+.dangerTitle { color: var(--coral-text); }
+.dangerBody { flex: 1 1 280px; margin: 0; color: var(--ink-2); font-size: var(--fs-body-sm); line-height: var(--lh-prose-lg); }

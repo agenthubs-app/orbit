@@ -32,7 +32,8 @@ const menu: readonly { section: Exclude<AccountSection, "home">; href: string; i
 export function accountSectionFor(pathname: string): AccountSection {
   const path = pathname.replace(/\/+$/u, "");
   if (path === "/app/settings") return "home";
-  return menu.find((item) => item.href === path)?.section ?? "home";
+  // A section's own sub-pages (アカウント › 削除) keep the section selected.
+  return menu.find((item) => path === item.href || path.startsWith(`${item.href}/`))?.section ?? "home";
 }
 
 /**

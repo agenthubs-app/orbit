@@ -8830,7 +8830,7 @@ r18b += r18b404 + r18bMaintenance + r18bForceUpdate + r18bWebUpdate;
 document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r18b-boards', r18b));
 document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 orbitChrome();
-window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
+window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
 
 })();
 </script>
@@ -9074,7 +9074,7 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
     for (const width of [1440, 1024, 390]) {
       const webId = 'W-R18c-' + code + '-' + width;
       INDEX.push([webId, title + ' ' + width]);
-      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + webId + '">' + webId + ' ' + title + '<span class="src">b7 R18c / RD-33 · 正式基準</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frame(state, width, 'light', false) + frame(state, width, 'dark', false) + '</div></div>';
+      html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + webId + '">' + webId + ' ' + title + '<span class="src">' + (state === 'account' ? '作废（2026-10-29）· 由 W-R18c-S11 取代' : 'b7 R18c / RD-33 · 正式基準') + '</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frame(state, width, 'light', false) + frame(state, width, 'dark', false) + '</div></div>';
     }
   }
   document.getElementById('out').insertAdjacentHTML('beforeend', group('r18c-draft-boards', html));
@@ -9213,6 +9213,32 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390 };
   }
   boards += PB('A-R18b-04-error 再設定申込 · 通信エラー', 'state', () => ({ body: render.app('forgot-error'), tab: -1 }), null, 'PX2-D05 · 既存 A-R18b-04 から追加');
   document.getElementById('out').insertAdjacentHTML('beforeend', group('px2-r18b-request-error', boards));
+  document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
+})();
+</script>
+
+<!-- 2026-10-29 用户决定（Web 設定 › アカウント）：原来「アカウント」直接进退会 1/2（Web 没有账户页画板，W-R18c-S09 只是草稿）。
+     新：账户总览页——ログイン情報、データの書き出し、最底部「アカウントの削除」危险区（入口 = danger-ghost），点进去才是 W-R18c-P01 起的退会流程。
+     数据来源：名前・メール = /api/profile；ログイン方法 = /api/account/deletion-request/method（credentials / google）。只在文件末尾追加。 -->
+<script>
+(function () {
+  const { S8, INDEX, group, setPage, phoneContent } = window.__r18bBoardKit;
+  const body = () => setPage('acct', 'アカウント', 'ログイン情報とデータの扱いを管理します。', `<div class="wgrid">
+    <div class="card span12"><div class="card-h"><h3>ログイン情報</h3></div>
+      <div class="row" style="gap:14px;flex-wrap:wrap"><div class="av lg c1">佐</div><div style="flex:1 1 200px;min-width:0"><b style="font-size:15px">佐藤 健一</b><div class="lbl">k.sato@minatolink.example</div></div><span class="chip">Google でログイン</span></div></div>
+    <div class="card span12"><div class="card-h"><h3>データ</h3></div>
+      <div class="row" style="gap:12px"><span class="emo apricot">📦</span><div style="flex:1;min-width:0"><b>データの書き出し</b><div class="lbl">人脈 CSV / vCard · メモ · プラン · すべて（JSON）</div></div><button class="btn">${ic('share', 'sm')}書き出す</button></div></div>
+    <div class="card span12"><div class="card-h"><h3 style="color:var(--coral-text)">アカウントの削除</h3></div>
+      <div class="row" style="gap:12px;flex-wrap:wrap"><div style="flex:1 1 280px;min-width:0"><div class="sub" style="line-height:1.7">申請するとすぐにログアウトします。30日以内なら取り消せます。その後、人脈・メモ・プラン・連携を含むすべてのデータを削除します。</div></div><button class="btn danger-ghost">アカウントを削除…</button></div></div>
+  </div>`);
+  let html = S8('补画 · 設定 › アカウント（Web 総覧）', '2026-10-29 用户决定：アカウント = 总览页，退会只在最底部危险区进入；W-R18c-S09 草稿作废。浅 / 深各一框。');
+  for (const width of [1440, 1024, 390]) {
+    const id = 'W-R18c-S11-' + width;
+    INDEX.push([id, 'アカウント · 総覧 ' + width]);
+    const frameOf = theme => webOne({ nav: 'settings', body: width === 390 ? phoneContent(body(), 'アカウント') : body() }, theme, '', width);
+    html += '<div class="board" style="margin-bottom:34px"><div class="board-label" id="b-' + id + '">' + id + ' アカウント · 総覧<span class="src">2026-10-29 用户决定 · 取代 W-R18c-S09</span></div><div class="pair ' + (width === 390 ? '' : 'col') + '">' + frameOf('light') + frameOf('dark') + '</div></div>';
+  }
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('g11 r18c-account-overview', html));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>

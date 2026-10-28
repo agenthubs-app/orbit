@@ -17,7 +17,7 @@ export function RouteSkeleton({ plainClassName }: { plainClassName: string }) {
   const kind = pageSkeletonFor(pathname);
   const copy = useStandardCopy();
   if (kind) return <PageSkeletonBody kind={kind} label={copy.loading.loading} />;
-  if (/^\/app\/(profile|settings)(\/[^/]+)?\/?$/u.test(pathname) && !/^\/app\/profile\/./u.test(pathname)) {
+  if (/^\/app\/(profile|settings)(\/[^/]+)*\/?$/u.test(pathname) && !/^\/app\/profile\/./u.test(pathname)) {
     const section = accountSectionFor(pathname === "/app/profile" ? "/app/profile" : pathname);
     return <AccountLayout active={section} shell={false}>{section === "profile" || section === "home" ? <ProfileSkeleton /> : <Skeleton lines={5} />}</AccountLayout>;
   }
