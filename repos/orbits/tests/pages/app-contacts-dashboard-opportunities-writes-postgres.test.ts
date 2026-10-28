@@ -1,13 +1,12 @@
 /**
- * W0050 review P1（D46③）：从真实的 `/app/contacts/dashboard` page 入口打开「机会」标签，对任意表 0 次写入。
+ * W0050 review P1（D46③）起：从真实的 `/app/contacts/dashboard` page 入口直接打开「机会」标签不写库。
+ * R11b 起该页是 NetworkAnalysisScreen（三个标签同一加载器，旧「机会」子页、覆盖率与报告已删除）；本用例守 R11b 的
+ * 锁定规则（SC-R11b-03）：不足 10 人时直开 `?tab=opportunities` 也只渲染锁定页——0 次写入、0 个生成任务、强度缓存不刷新。
+ * 10 人起的写入规则（只许排队一次快照任务）见 app-contacts-dashboard-overview-writes-postgres.test.ts。
  *
  * 真实 PostgreSQL（`ORBIT_EVENT_DATABASE_URL` 回环库、随机 schema；live 模式经 PGOPTIONS 的 search_path 指到该 schema）。
- * 只替换与数据库无关的边界：会话（auth）、账号解析、界面语言、样式组件；页面本身与它调用的全部加载器
- * （强度读模型、人脉分析、名单、档位查询、`loadOpportunitiesTab`）都是真实代码、真实数据库。
- *
- * 夹具处在「会触发强度重算」的状态：本人有联系人与时间线，却还没有强度缓存（state 行缺失 ⇒ 来源戳／东京日都算变化）。
- * - 打开 `?tab=opportunities`：schema 内每张表的 statement 级触发器计数为 0，进程内所有 pg 连接也没有发出 INSERT／UPDATE／DELETE；
- * - 对照：同一夹具打开 `?tab=structure` 会刷新强度缓存（写 orbit_records），证明夹具确实处在会写的状态。
+ * 只替换与数据库无关的边界：会话（auth）、账号解析、界面语言、样式组件；页面与它调用的加载器都是真实代码、真实数据库。
+ * 夹具处在「会触发强度重算」的状态：本人有联系人，却还没有强度缓存。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -102,11 +101,14 @@ function findProps(node: unknown, name: string): Record<string, unknown> | null 
   return null;
 }
 
-test("review P1: opening the opportunities tab from the real dashboard page writes nothing to any table, even when the strength cache is due a refresh", databaseTest, async (t) => {
+test("review P1 (R11b): opening the opportunities tab directly while below 10 people renders the lock and writes nothing", databaseTest, async (t) => {
   await withNetworkDatabase(async (harness) => {
-    for (let index = 0; index < 4; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { primaryIndustryId: "finance_investment", role: "Partner" });
-    const before = await harness.pool.query(`select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`);
-    assert.equal(before.rows[0]!.n, 0, "no strength cache yet → a refreshing entry would compute and write");
+    const at = new Date().toISOString();
+    for (let index = 0; index < 4; index += 1) {
+      await harness.addContact(ALICE, `${ALICE}:c${index}`, { createdAt: at, evidenceIds: ["e"], primaryIndustryId: "finance_investment", role: "Partner", source: { id: "s", type: "manual" }, updatedAt: at });
+    }
+    const strengthRows = `select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`;
+    assert.equal((await harness.pool.query(strengthRows)).rows[0]!.n, 0, "no strength cache yet → a refreshing entry would compute and write");
     const counter = await installWriteCounter(harness);
     setEnv(t, {
       ORBIT_DATABASE_TARGET: undefined,
@@ -114,6 +116,8 @@ test("review P1: opening the opportunities tab from the real dashboard page writ
       ORBIT_MODULE_MODE: "live",
       ORBIT_NETWORK_ANALYSIS_GENERATOR: undefined,
       ORBIT_PLAN_GENERATOR: undefined,
+      // The contact card reader signs its cursors; the runner loads no .env, so the test brings its own.
+      ORBIT_READ_CURSOR_SECRET: "local-test-secret-".repeat(3),
       ORBIT_WORKSPACE_ID: WORKSPACE,
       PGOPTIONS: `-c search_path=${harness.schema}`,
     });
@@ -124,18 +128,13 @@ test("review P1: opening the opportunities tab from the real dashboard page writ
     const tree = await page({ searchParams: Promise.resolve({ tab: "opportunities" }) });
     assert.deepEqual(await counter.byTable(), [], "0 INSERT/UPDATE/DELETE on any table in the schema");
     assert.deepEqual(pgWrites, [], "no write statement from any pg connection in the process");
-    const analysis = findProps(tree, "NetworkAnalysis");
-    assert.ok(analysis, "the real page rendered the analysis sub-page");
-    assert.equal(analysis.initialTab, "opp");
-    const view = analysis.opportunities as { report: { state: string }; coverage: { state: string } };
-    assert.equal(view.coverage.state, "no_plan", "the opportunities loader really ran against the schema");
-    assert.equal(view.report.state, "none");
-    const after = await harness.pool.query(`select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`);
-    assert.equal(after.rows[0]!.n, 0, "the strength cache was not refreshed");
-
-    // 对照：结构标签照旧刷新强度缓存（夹具确实处在会写的状态）。
-    await page({ searchParams: Promise.resolve({ tab: "structure" }) });
-    const control = await counter.byTable();
-    assert.ok(control.some((row) => row.table_name === "orbit_records"), JSON.stringify(control));
+    const screen = findProps(tree, "NetworkAnalysisScreen");
+    assert.ok(screen, "the real page rendered the analysis screen");
+    assert.equal(screen.initialTab, "opportunities");
+    const lock = (screen.view as { lock: { state: string; total: number } }).lock;
+    assert.deepEqual([lock.state, lock.total], ["locked", 4], "the count really ran against the schema: 4 of 10");
+    assert.equal(screen.snapshot, null, "a direct opportunities link does not get past the lock to the snapshot");
+    assert.equal((await harness.pool.query(`select count(*)::int as n from network_analysis_jobs`)).rows[0]!.n, 0, "no snapshot job queued");
+    assert.equal((await harness.pool.query(strengthRows)).rows[0]!.n, 0, "the strength cache was not refreshed");
   });
 });

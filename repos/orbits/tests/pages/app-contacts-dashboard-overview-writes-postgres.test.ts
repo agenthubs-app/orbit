@@ -1,16 +1,19 @@
 /**
- * W0052 review P1：从真实的 `/app/contacts/dashboard` page 入口打开「概览」，对任意表 0 次写入（照 W0050 机会标签同一写法）。
+ * 从真实的 `/app/contacts/dashboard` page 入口打开 R11b 人脈分析，写入只限设计允许的那一处。
+ * （W0052 review P1 原本守的是旧「概览」0 写入；R11b 起该页换成 NetworkAnalysisScreen，规则按 R11b PLANNER 改写。）
  *
  * 真实 PostgreSQL（`ORBIT_EVENT_DATABASE_URL` 回环库、随机 schema；live 模式经 PGOPTIONS 的 search_path 指到该 schema）。
- * 只替换与数据库无关的边界：会话、账号解析、界面语言、样式组件；页面与它调用的全部加载器（人脉分析、名单、
- * `loadOverviewCockpit`：计划 getCurrent、快照只读视图、待确认、时间线、档位看板、姓名）都是真实代码、真实数据库。
+ * 只替换与数据库无关的边界：会话、账号解析、界面语言、样式组件；页面与它调用的全部加载器（人数、名单、计划需求、
+ * 快照视图、证据姓名）都是真实代码、真实数据库。
  *
  * 夹具同时处在三种「会写」的状态：
  * - 强度缓存待重算（有联系人、还没有强度缓存）；
  * - 生效计划正处阶段边界（「进入新阶段」还没写）；
- * - 快照已生成、之后新增 3 位联系人 → 判定为自动重算。
- * 打开概览：schema 内每张表的 statement 级触发器计数为 0，进程内所有 pg 连接也没有发出写语句，付费 AI 主机 0 次请求。
- * 对照：同一夹具打开 `?tab=structure` 会刷新强度缓存（写 orbit_records）；`getCurrentView` 会写 plan_log。
+ * - 快照已生成、之后新增联系人 → 判定为自动重算。
+ * 不足 10 人（SC-R11b-03）：整页锁，schema 内每张表 0 次写入、0 个生成任务、进程内 0 条写语句、付费 AI 0 次。
+ * 10 人起：快照过期时 GET 照 R11b「事实 3」排队一个后台重算任务（走后台限流）——这是唯一允许的写入；
+ * 不刷新强度缓存、不写计划日志、请求内不调付费 AI；再打开一次不重复排队（0 写入）。
+ * 对照：`getCurrentView` 会写 plan_log（夹具确实处在会写的状态）。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -155,10 +158,20 @@ async function seedPhaseBoundaryPlan(harness: NetworkHarness) {
   return plans;
 }
 
-test("review P1: opening the overview from the real dashboard page writes nothing to any table, with the strength cache, plan phase and snapshot all due", databaseTest, async (t) => {
+/** The fields the R11a card reader needs to list a contact (its source and timestamps, cited evidence). */
+function listedContact() {
+  const at = NOW.toISOString();
+  return { evidenceIds: ["e"], source: { id: "s", type: "manual" }, createdAt: at, updatedAt: at };
+}
+
+async function countRows(harness: NetworkHarness, sql: string): Promise<number> {
+  return (await harness.pool.query(sql)).rows[0]!.n as number;
+}
+
+test("review P1 (R11b): the real dashboard page writes nothing while locked, and from 10 people only queues the one snapshot job", databaseTest, async (t) => {
   const paid = countPaidFetch(t);
   await withNetworkDatabase(async (harness) => {
-    for (let index = 0; index < 4; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { displayName: `Alice ${index}`, primaryIndustryId: "finance_investment", role: "Partner" });
+    for (let index = 0; index < 4; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { ...listedContact(), displayName: `Alice ${index}`, primaryIndustryId: "finance_investment", role: "Partner" });
     // 快照：后台先生成一版，再新增 3 位 → 自动重算待办（只用 mock 生成器准备夹具，不在被测路径里）。
     const runtime = createNetworkAnalysisRuntime({
       client: harness.client, generator: mockGenerator(), now: () => NOW,
@@ -168,12 +181,12 @@ test("review P1: opening the overview from the real dashboard page writes nothin
     });
     assert.equal((await runtime.service.readView(ALICE, "zh")).freshness.job, "queued");
     assert.equal((await runtime.service.runWorker(ALICE)).status, "succeeded");
-    for (let index = 4; index < 7; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { displayName: `Alice ${index}`, primaryIndustryId: "retail_consumer" });
+    for (let index = 4; index < 7; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { ...listedContact(), displayName: `Alice ${index}`, primaryIndustryId: "retail_consumer" });
     assert.equal((await runtime.service.evaluate(ALICE)).decision.kind, "auto");
     await harness.pool.query(`delete from network_analysis_jobs`);
     const plans = await seedPhaseBoundaryPlan(harness);
-    const before = await harness.pool.query(`select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`);
-    assert.equal(before.rows[0]!.n, 0, "no strength cache yet → a refreshing entry would compute and write");
+    const strengthRows = `select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`;
+    assert.equal(await countRows(harness, strengthRows), 0, "no strength cache yet → a refreshing entry would compute and write");
 
     const counter = await installWriteCounter(harness);
     setEnv(t, {
@@ -183,34 +196,50 @@ test("review P1: opening the overview from the real dashboard page writes nothin
       ORBIT_MODULE_MODE: "live",
       ORBIT_NETWORK_ANALYSIS_GENERATOR: undefined,
       ORBIT_PLAN_GENERATOR: undefined,
+      // The contact card reader signs its cursors; the runner loads no .env, so the test brings its own.
+      ORBIT_READ_CURSOR_SECRET: "local-test-secret-".repeat(3),
       ORBIT_WORKSPACE_ID: WORKSPACE,
       PGOPTIONS: `-c search_path=${harness.schema}`,
     });
     const pgWrites = countPgWrites(t);
     const page = loadRealDashboardPage(t);
+    const jobs = `select count(*)::int as n from network_analysis_jobs`;
+
+    // 7 people: locked — nothing is read past the count, nothing is written or queued.
     await counter.reset();
+    const locked = findProps(await page({ searchParams: Promise.resolve({}) }), "NetworkAnalysisScreen");
+    assert.equal((locked?.view as { lock: { state: string; total: number } } | null)?.lock.state, "locked");
+    assert.equal((locked?.view as { lock: { total: number } }).lock.total, 7);
+    assert.equal(locked?.snapshot, null, "no snapshot read while locked");
+    assert.deepEqual(await counter.byTable(), [], "locked: 0 INSERT/UPDATE/DELETE on any table in the schema");
+    assert.deepEqual(pgWrites, [], "locked: no write statement from any pg connection in the process");
+    assert.equal(await countRows(harness, jobs), 0, "locked: no snapshot job queued");
 
-    const tree = await page({ searchParams: Promise.resolve({}) });
-    assert.deepEqual(await counter.byTable(), [], "0 INSERT/UPDATE/DELETE on any table in the schema");
-    assert.deepEqual(pgWrites, [], "no write statement from any pg connection in the process");
-    assert.deepEqual(paid, [], "no paid AI request");
-    const overview = findProps(tree, "NetworkOverview");
-    assert.ok(overview, "the real page rendered the overview");
-    const data = overview.overview as { meta: { kind: string }; cards: Array<{ id: string; n: number | null }>; tierPending: number | null; tiers: Array<{ count: number | null }> };
-    assert.equal(data.meta.kind, "snapshot", "the snapshot was read (read-only)");
-    assert.deepEqual(data.cards.map((card) => [card.id, card.n]).slice(1, 3), [["gap", 1], ["week", 1]], "plan read via getCurrent at the phase boundary");
-    // 分析总数按聚合口径（本夹具的联系人缺资产字段，聚合计为 0）；有总数时待统计 = 总数。
-    const total = (data as { total?: number | null }).total ?? null;
-    assert.equal(data.tierPending, total !== null && total > 0 ? total : null);
-    assert.deepEqual(data.tiers.map((tier) => tier.count), total !== null && total > 0 ? [null, null, null, null] : [0, 0, 0, 0], "no tier cache → dashes (not zeros) when the account has contacts");
-    assert.equal((await harness.pool.query(`select count(*)::int as n from network_analysis_jobs`)).rows[0]!.n, 0, "no snapshot job queued");
-    assert.equal((await harness.pool.query(`select count(*)::int as n from orbit_records where collection_name in ('relationship_strengths', 'relationship_strength_state')`)).rows[0]!.n, 0, "the strength cache was not refreshed");
+    // 10 people: open; the stale snapshot queues its one recompute job — the only write.
+    for (let index = 7; index < 10; index += 1) await harness.addContact(ALICE, `${ALICE}:c${index}`, { ...listedContact(), displayName: `Alice ${index}`, primaryIndustryId: "retail_consumer" });
+    await counter.reset();
+    pgWrites.length = 0;
+    const open = findProps(await page({ searchParams: Promise.resolve({}) }), "NetworkAnalysisScreen");
+    assert.equal((open?.view as { lock: { state: string } } | null)?.lock.state, "open", "ten people: the analysis is open");
+    const snapshot = open?.snapshot as { freshness: { job: string; stale: boolean } } | null | "failed";
+    assert.ok(snapshot && snapshot !== "failed", "the snapshot view was read");
+    assert.equal(snapshot.freshness.job, "queued");
+    assert.deepEqual(await counter.byTable(), [{ n: 1, op: "INSERT", table_name: "network_analysis_jobs" }], "open: the snapshot job is the only write");
+    assert.deepEqual(pgWrites.filter((text) => !/network_analysis_jobs/i.test(text)), [], "open: no other write statement from any pg connection");
+    assert.equal(await countRows(harness, jobs), 1);
+    assert.equal(await countRows(harness, strengthRows), 0, "the strength cache was not refreshed");
 
-    // 对照：结构标签照旧刷新强度缓存；getCurrentView 会写「进入新阶段」（夹具确实处在会写的状态）。
-    await page({ searchParams: Promise.resolve({ tab: "structure" }) });
+    // Again: the job is already there — nothing more is written.
+    await counter.reset();
+    pgWrites.length = 0;
+    await page({ searchParams: Promise.resolve({ tab: "opportunities" }) });
+    assert.deepEqual(await counter.byTable(), [], "a second visit queues nothing more");
+    assert.deepEqual(pgWrites, []);
+    assert.equal(await countRows(harness, jobs), 1);
+    assert.deepEqual(paid, [], "no paid AI request in any page request");
+
+    // Control: the fixture is in a state that writes — the plan read for its own page enters the new phase.
     await plans.getCurrentView();
-    const control = (await counter.byTable()).map((row) => row.table_name);
-    assert.ok(control.includes("orbit_records"), control.join(","));
-    assert.ok(control.includes("plan_log"), control.join(","));
+    assert.ok((await counter.byTable()).some((row) => row.table_name === "plan_log"));
   });
 });
