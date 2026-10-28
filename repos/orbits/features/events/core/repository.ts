@@ -11,5 +11,11 @@ export interface EventCoreRepository {
    * event ids. Optional: a repository without it has no narrow read.
    */
   listEventsByIds?(eventIds: readonly string[]): Promise<readonly CanonicalEventRecord[]>;
+  /**
+   * The public catalogue's narrow read: published events with a public code that end after
+   * `endsAfter` and start before `startsBefore`, earliest first, at most `limit`. Optional: a
+   * repository without it leaves the catalogue on `listEvents`.
+   */
+  listPublishedEventsInWindow?(window: { endsAfter: string; startsBefore: string; limit: number }): Promise<readonly CanonicalEventRecord[]>;
   resolveAlias(alias: string): Promise<EventAliasResolution | null>;
 }

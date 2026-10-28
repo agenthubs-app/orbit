@@ -29,6 +29,7 @@ import { judgeEvent, missingRequiredFields, type JudgeContext, type OrbitEventEx
 import { extractEventPage } from "./page-extract";
 import type { AssessmentRow, EventAssessmentRepository, PosterAsset } from "./repository";
 import { normalizeUrl, type UrlFetchResult } from "./url-fetch";
+import { mapLimit } from "../../../shared/performance/map-limit";
 
 /** 租约 ≥ 最坏处理时长（E1 两次 60 秒 ≈ 125 秒、E2 ≤ 90 秒；路由 maxDuration 120 秒），复核 S2。 */
 export const ASSESSMENT_LEASE_MS = 180_000;
@@ -383,9 +384,10 @@ export function createEventAssessmentService(deps: EventAssessmentServiceDeps): 
       return viewOf(row, await deps.plan.context(actorId, language));
     },
     async list(actorId, language) {
-      const rows = await deps.repository.list(actorId, ASSESSMENT_LIST_LIMIT);
-      const context = await deps.plan.context(actorId, language);
-      const views = await Promise.all(rows.map((row) => viewOf(row, context)));
+      // The rows and the plan context do not depend on each other; up to 100 rows each read their
+      // event's facts, four at a time (as the journey judge does) instead of all at once.
+      const [rows, context] = await Promise.all([deps.repository.list(actorId, ASSESSMENT_LIST_LIMIT), deps.plan.context(actorId, language)]);
+      const views = await mapLimit(rows, 4, (row) => viewOf(row, context));
       // 評価したイベント · スコア順；見送り沉到底部（DESIGN §2.1）。
       return views.sort((a, b) => Number(a.userDecision === "dismissed") - Number(b.userDecision === "dismissed") || b.total - a.total || b.createdAt.localeCompare(a.createdAt));
     },

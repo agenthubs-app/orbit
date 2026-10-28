@@ -188,6 +188,17 @@ test(
         createPostgresEventCoreRepository({ client, workspaceId }),
       );
       const now = new Date("2026-08-04T00:00:00.000Z");
+      // The discover catalogue's SQL window gives exactly what reading every event and
+      // keeping the public, overlapping ones gives, earliest first, limit applied.
+      for (const [days, limit] of [[120, 200], [40, 3], [3650, 200]] as const) {
+        const startsBefore = new Date(now.getTime() + days * 86_400_000).toISOString();
+        const expected = (await service.listPublishedEvents(now))
+          .filter((event) => event.publicCode?.trim() && Date.parse(event.endsAt) > now.getTime() && Date.parse(event.startsAt) < Date.parse(startsBefore))
+          .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || (a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0))
+          .slice(0, limit);
+        const windowed = await service.listPublishedEventsInWindow!({ endsAfter: now.toISOString(), startsBefore, limit }, now);
+        assert.deepEqual(windowed, expected, `window ${days}d / limit ${limit}`);
+      }
       const catalogue = createCanonicalPublicEventCatalogue({
         eventCoreService: service,
         now,

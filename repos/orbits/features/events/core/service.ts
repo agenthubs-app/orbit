@@ -116,6 +116,11 @@ export interface EventCoreService {
     eventIds: readonly string[],
     now?: Date,
   ): Promise<readonly PublishedCanonicalEvent[]>;
+  /** `listPublishedEvents` read for one window in SQL (repository `listPublishedEventsInWindow`). Present only when the repository can. */
+  listPublishedEventsInWindow?(
+    window: { endsAfter: string; startsBefore: string; limit: number },
+    now?: Date,
+  ): Promise<readonly PublishedCanonicalEvent[]>;
 }
 
 export function createEventCoreService(
@@ -151,6 +156,20 @@ export function createEventCoreService(
             now = new Date(),
           ) {
             const records = await repository.listEventsByIds!(eventIds);
+            return records
+              .map((record) => eventWithPhase(record, now))
+              .filter((event) => event.lifecycleState === "published")
+              .map((event) => publishedEvent(event, now));
+          },
+        }
+      : {}),
+    ...(repository.listPublishedEventsInWindow
+      ? {
+          async listPublishedEventsInWindow(
+            window: { endsAfter: string; startsBefore: string; limit: number },
+            now = new Date(),
+          ) {
+            const records = await repository.listPublishedEventsInWindow!(window);
             return records
               .map((record) => eventWithPhase(record, now))
               .filter((event) => event.lifecycleState === "published")

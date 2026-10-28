@@ -14,6 +14,7 @@ import type { PlanEventFact } from "../../plans/v2/overview";
 import { createPostgresMyEventsReader } from "../mine/service";
 import { getConfiguredEventAssessmentRuntime, listContactsForAssessment, readPreferencesForAssessment, type ConfiguredEventAssessmentRuntime } from "./configured";
 import { createPostgresEventAssessmentRepository } from "./repository";
+import { mapLimit } from "../../../shared/performance/map-limit";
 
 /** 读失败时计划页少显示活动而不是报错；但要留日志（复核：不能静默）。 */
 function logged<T>(event: string, fallback: T): (error: unknown) => T {
@@ -69,9 +70,11 @@ export async function createLivePlanEventSources(actorId: string, options: { str
     async orbitFacts(events) {
       const person = await personFacts();
       const out: PlanEventFact[] = [];
-      for (const event of events) {
-        const fact = options.strict ? await runtime.orbitEvents.planEventFact(event.eventId, person) :
-          await runtime.orbitEvents.planEventFact(event.eventId, person).catch(logged("plan_event_sources_fact_failed", null));
+      // Each event's facts are two reads (enrollment, roster); four events at a time, as the journey
+      // judge does, instead of one after another. Order and the strict failure rule are unchanged.
+      const facts = await mapLimit(events, 4, (event) => options.strict ? runtime.orbitEvents.planEventFact(event.eventId, person) :
+        runtime.orbitEvents.planEventFact(event.eventId, person).catch(logged("plan_event_sources_fact_failed", null)));
+      for (const fact of facts) {
         if (options.strict && !fact) throw Error("EVENT_FACT_UNAVAILABLE");
         if (fact) out.push(fact);
       }

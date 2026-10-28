@@ -151,6 +151,21 @@ export function createPostgresEventCoreRepository(input: {
       );
       return result.rows.map(recordFromRow);
     },
+    async listPublishedEventsInWindow({ endsAfter, startsBefore, limit }) {
+      // event_ops_events_public_catalogue_idx (workspace_id, lifecycle_state_v2, starts_at, event_id).
+      const result = await client.query<SqlRow>(
+        `${canonicalEventSelect()}
+         where workspace_id = $1
+           and lifecycle_state_v2 = 'published'
+           and public_code is not null and btrim(public_code) <> ''
+           and ends_at > $2::timestamptz
+           and starts_at < $3::timestamptz
+         order by starts_at, event_id
+         limit $4`,
+        [workspaceId, endsAfter, startsBefore, limit],
+      );
+      return result.rows.map(recordFromRow);
+    },
     async resolveAlias(alias) {
       const result = await client.query<SqlRow>(
         `

@@ -57,6 +57,7 @@ import {
   venueWorkspaceFrom,
 } from "./live-mapping";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts, MyEventStatus } from "./ports";
+import { mapLimit } from "../../../shared/performance/map-limit";
 
 type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 
@@ -73,18 +74,6 @@ function warned<T>(event: string, fallback: T, extra: Record<string, unknown> = 
     console.warn(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event, ...extra }));
     return fallback;
   };
-}
-
-async function mapLimit<T, R>(items: readonly T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const index = next++;
-      out[index] = await run(items[index]!);
-    }
-  }));
-  return out;
 }
 
 const iso = (value: unknown): string | null => (value === null || value === undefined ? null : value instanceof Date ? value.toISOString() : String(value));
@@ -171,7 +160,11 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
     async catalogue(now) {
       const from = now.getTime();
       const until = from + CATALOGUE_DAYS * DAY;
-      const events = (await core.listPublishedEvents(now))
+      // The window in SQL when the repository can (not every event's description and source
+      // payload in the workspace); the filter below stays as the same rule either way.
+      const window = { endsAfter: new Date(from).toISOString(), startsBefore: new Date(until).toISOString(), limit: CATALOGUE_LIMIT };
+      const listed = core.listPublishedEventsInWindow ? await core.listPublishedEventsInWindow(window, now) : await core.listPublishedEvents(now);
+      const events = listed
         .filter((event) => event.publicCode?.trim() && Date.parse(event.endsAt) > from && Date.parse(event.startsAt) < until)
         .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || a.eventId.localeCompare(b.eventId))
         .slice(0, CATALOGUE_LIMIT);
