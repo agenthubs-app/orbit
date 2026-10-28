@@ -269,6 +269,8 @@ function useInboxDot(language: OrbitLanguage, pathname: string): boolean {
 
 function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolean }) {
   const copy = useStandardCopy();
+  // The six left-rail pages are prefetched whole (`prefetch`, kept for next.config staleTimes.static) as soon as
+  // the rail is on screen and again on hover once stale, so switching between them shows the page at once.
   // data-tip: the compact rail (768–1279) shows the label as a tooltip on hover and keyboard focus.
   // ⌘K has no rail item (web.html): the shortcut stays, its button is the header's 🔍.
   return (
@@ -277,7 +279,7 @@ function ShellSidebar({ active, dot }: { active: ShellNavKey | null; dot: boolea
       {SHELL_NAV.map((item) => {
         const label = copy.nav[item.key];
         return (
-          <Link key={item.key} href={item.href} className={`${styles.item} ${active === item.key ? styles.itemOn : ""}`} aria-current={active === item.key ? "page" : undefined} data-tip={label}>
+          <Link key={item.key} href={item.href} prefetch className={`${styles.item} ${active === item.key ? styles.itemOn : ""}`} aria-current={active === item.key ? "page" : undefined} data-tip={label}>
             <span className={styles.itemIcon}><Icon name={item.icon} size={20} />{item.key === "inbox" && dot ? <i className={styles.dot} aria-hidden /> : null}</span>
             <span className={styles.itemLabel}>{label}</span>
           </Link>
@@ -380,7 +382,7 @@ function ShellBottomBar({ active }: { active: ShellNavKey | null }) {
   return (
     <nav className={styles.bottom} aria-label={copy.nav.main}>
       {SHELL_NAV.filter((item) => item.key !== "inbox").map((item) => (
-        <Link key={item.key} href={item.href} className={`${styles.bottomItem} ${active === item.key ? styles.bottomOn : ""}`} aria-current={active === item.key ? "page" : undefined}>
+        <Link key={item.key} href={item.href} prefetch className={`${styles.bottomItem} ${active === item.key ? styles.bottomOn : ""}`} aria-current={active === item.key ? "page" : undefined}>
           <Icon name={item.icon} size={21} />
           <span>{copy.nav[item.key]}</span>
         </Link>

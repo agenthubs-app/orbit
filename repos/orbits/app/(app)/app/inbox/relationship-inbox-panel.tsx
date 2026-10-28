@@ -1187,7 +1187,7 @@ function RelationshipInboxPanel({
       <div
         aria-label={t({ en: "Relationship inbox", zh: "关系收件箱", ja: "受信箱" })}
         aria-modal={inline ? undefined : "true"}
-        className={`ri-panel${resizing ? " is-resizing" : ""}`}
+        className={`ri-panel${inline ? " is-inline" : ""}${resizing ? " is-resizing" : ""}`}
         ref={panelRef}
         role={inline ? "region" : "dialog"}
         style={inline ? { background: "transparent", display: "flex", flexDirection: "column", position: "relative", width: "100%" } : {
@@ -1269,7 +1269,8 @@ function RelationshipInboxPanel({
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-[data-orbit-real-page="relationship-inbox"] .ri-panel { animation:ri-slide .22s cubic-bezier(.22,1,.36,1); container:relationship-inbox / inline-size; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel { container:relationship-inbox / inline-size; }
+[data-orbit-real-page="relationship-inbox"] .ri-panel:not(.is-inline) { animation:ri-slide .22s cubic-bezier(.22,1,.36,1); }
 @keyframes ri-slide { from { transform: translateX(24px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
 [data-orbit-real-page="relationship-inbox"] .ri-tab { display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:var(--r-pill, 999px); border:1px solid transparent; background:transparent; color:var(--ink-3-text); font-family:var(--font); font-size:13.5px; font-weight:600; cursor:pointer; transition:background .15s, color .15s; }
 [data-orbit-real-page="relationship-inbox"] .ri-tab:hover { color:var(--ink); }
