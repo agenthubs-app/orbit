@@ -8,7 +8,7 @@ test("Vercel resolves to the serverless profile: small pool, client-side query t
   assert.equal(profile.kind, "serverless");
   assert.deepEqual(
     { pool: profile.poolMax, tx: profile.transactionalPoolMax, query: profile.queryTimeoutMillis, statement: profile.statementTimeoutMillis },
-    { pool: 2, tx: 2, query: 15_000, statement: null },
+    { pool: 5, tx: 3, query: 15_000, statement: null },
   );
   assert.equal(profile.connectionTimeoutMillis, 10_000);
   assert.equal(profile.idleTimeoutMillis, 10_000);

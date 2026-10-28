@@ -7,13 +7,20 @@ import Google from "next-auth/providers/google";
 
 import { enabledOAuthProviders } from "./features/auth/oauth-providers";
 import { resolveAuthUserService } from "./features/auth/service-factory";
-import { isPasswordSessionCurrent, isPreDeletionSessionCurrent } from "./features/auth/session-revocation";
+import { isAuthSessionCurrent } from "./features/auth/session-revocation";
+import { cacheForRequest } from "./shared/performance/request-cache";
 
 function authUserService() {
   return resolveAuthUserService(
     process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
   );
 }
+
+// The layout, the page and its server components each call auth(); within one server render they
+// share a single revocation read. Outside a render (proxy, route handlers) React calls straight
+// through, so every request still reads the row itself (D31).
+const checkSessionForRequest = cacheForRequest((email: string, userId: string, authenticatedAt: number) =>
+  isAuthSessionCurrent({ email, userId, authenticatedAt }));
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   // zrok 隧道/代理场景需要信任转发的 Host,与 dev 的 allowedDevOrigins 配套。
@@ -65,8 +72,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (!user && token.email && token.sub) {
         const authenticatedAt = typeof token.authenticatedAt === "number"
           ? token.authenticatedAt : (token.iat ?? 0) * 1000;
-        if (!await isPasswordSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt }) ||
-            !await isPreDeletionSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt })) return null;
+        if (!await checkSessionForRequest(token.email, token.sub, authenticatedAt)) return null;
         // Keep the original authentication time as Auth.js rotates iat on refresh.
         token.authenticatedAt = authenticatedAt;
       }

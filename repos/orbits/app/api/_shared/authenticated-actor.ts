@@ -14,6 +14,7 @@ import {
 } from "../../../shared/config/feature-mode";
 import { AppError } from "../../../shared/errors/app-error";
 import { noteReadReceiptAccount } from "../../../shared/observability/read-receipts";
+import { cacheForRequest } from "../../../shared/performance/request-cache";
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 
 export interface AuthenticatedApiActor {
@@ -116,6 +117,18 @@ export async function resolveAuthenticatedApiActor(): Promise<AuthenticatedApiAc
   });
 }
 
+// Layout, page and server components resolve the same actor; within one server render they share
+// one identity read. Outside a render React calls straight through.
+const readSessionIdentityForRequest = cacheForRequest(async (userId: string): Promise<LiveAccountSessionIdentity | null> => {
+  const provider = createConfiguredStorageAccountSessionProvider();
+  // Identity fields only (W0030); providers without the lightweight read fall back to the full graph.
+  return provider
+    ? await (provider.readAccountSessionIdentity
+      ? provider.readAccountSessionIdentity({ userId })
+      : provider.readAccountSessionGraph({ userId }))
+    : null;
+});
+
 export async function resolveAuthenticatedApiActorFromSession(
   session: AuthenticatedApiSessionIdentity,
 ): Promise<AuthenticatedApiActor | null> {
@@ -124,13 +137,7 @@ export async function resolveAuthenticatedApiActorFromSession(
   );
   const config = resolveLiveDatabaseConnectionConfig();
   const workspaceId = config?.workspaceId ?? "workspace:mock-auth";
-  const provider = createConfiguredStorageAccountSessionProvider();
-  // Identity fields only (W0030); providers without the lightweight read fall back to the full graph.
-  const graph = provider
-    ? await (provider.readAccountSessionIdentity
-      ? provider.readAccountSessionIdentity({ userId: session.userId })
-      : provider.readAccountSessionGraph({ userId: session.userId }))
-    : null;
+  const graph = await readSessionIdentityForRequest(session.userId);
 
   const actor = resolveAuthenticatedApiActorIdentity({
     graph,

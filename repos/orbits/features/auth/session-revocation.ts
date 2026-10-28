@@ -46,7 +46,7 @@ const ROW_READABLE = `(
       and not coalesce(isfinite(deleted_at) and not ${jsDateSafeTimestampSql("deleted_at")}, false)
     )`;
 
-// One statement per check. Readable rows return only lifecycle, the two payload values (jsonb as
+// One statement per check. Readable rows return only lifecycle, the three payload values (jsonb as
 // is, never `->>`) and the flag; unreadable rows instead return the native columns `rowToRecord`
 // needs (c1–c5), so the old conversion and its errors run on the same snapshot without a second
 // read. Where clause = `getRecord`'s. No password hash or reset data is ever returned.
@@ -54,6 +54,7 @@ const SESSION_CHECK_SQL = `/* auth-session-revocation:v1 */
     select lifecycle_state, readable,
       case when readable then payload -> 'id' end as id,
       case when readable then payload -> 'passwordChangedAt' end as password_changed_at,
+      case when readable then payload -> 'deletionRequestedAt' end as deletion_requested_at,
       case when not readable then occurred_at end as c1,
       case when not readable then created_at end as c2,
       case when not readable then updated_at end as c3,
@@ -71,6 +72,7 @@ interface SessionCheckRow {
   readable: boolean;
   id: unknown;
   password_changed_at: unknown;
+  deletion_requested_at: unknown;
   c1: Date | string | null;
   c2: Date | string;
   c3: Date | string;
@@ -89,10 +91,21 @@ function isSessionCurrent(lifecycleState: string, payload: Record<string, unknow
   return typeof changedAt !== "string" || Date.parse(changedAt) < input.authenticatedAt;
 }
 
+function isBeforeDeletionRequest(lifecycleState: string, payload: Record<string, unknown>, input: SessionCheckInput): boolean {
+  if (lifecycleState !== "active" || payload.id !== input.userId) return false;
+  const requestedAt = payload.deletionRequestedAt;
+  if (typeof requestedAt !== "string") return true;
+  const requestedMs = Date.parse(requestedAt);
+  return Number.isFinite(requestedMs) && requestedMs < input.authenticatedAt;
+}
+
+type SessionDecision = (lifecycleState: string, payload: Record<string, unknown>, input: SessionCheckInput) => boolean;
+
 async function readSessionCheck(
   database: SessionCheckDatabase & { client: LiveRecordSqlClient; customRead: LiveRecordCustomRead },
   recordId: string,
   input: SessionCheckInput,
+  decide: SessionDecision = isSessionCurrent,
 ): Promise<boolean> {
   sessionCheckSeq += 1;
   const collectionName = "auth_users";
@@ -104,7 +117,7 @@ async function readSessionCheck(
   if (!row) return false;
   if (row.readable === true) {
     const lifecycleState = row.lifecycle_state === "archived" || row.lifecycle_state === "deleted" ? row.lifecycle_state : "active";
-    return isSessionCurrent(lifecycleState, { id: row.id, passwordChangedAt: row.password_changed_at }, input);
+    return decide(lifecycleState, { id: row.id, passwordChangedAt: row.password_changed_at, deletionRequestedAt: row.deletion_requested_at }, input);
   }
   // Bad data: the real conversion decides (and throws) exactly as the full read would.
   const user = rowToRecord<Record<string, unknown>>({
@@ -120,7 +133,7 @@ async function readSessionCheck(
     updated_at: row.c3,
     workspace_id: database.workspaceId,
   } satisfies PostgresLiveRecordRow);
-  return isSessionCurrent(user.lifecycleState, user.payload, input);
+  return decide(user.lifecycleState, user.payload, input);
 }
 
 export async function isPasswordSessionCurrent(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
@@ -138,9 +151,23 @@ export async function isPasswordSessionCurrent(input: SessionCheckInput, databas
 export async function isPreDeletionSessionCurrent(input: SessionCheckInput, database: Pick<SessionCheckDatabase, "store" | "workspaceId"> | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
   if (!database) return process.env.NODE_ENV !== "production";
   const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName: "auth_users", recordId: authUserRecordId(input.email) });
-  if (!user || user.lifecycleState !== "active" || user.payload.id !== input.userId) return false;
-  const requestedAt = user.payload.deletionRequestedAt;
-  if (typeof requestedAt !== "string") return true;
-  const requestedMs = Date.parse(requestedAt);
-  return Number.isFinite(requestedMs) && requestedMs < input.authenticatedAt;
+  if (!user) return false;
+  return isBeforeDeletionRequest(user.lifecycleState, user.payload, input);
+}
+
+/**
+ * Both Auth.js session checks (password change and deletion request) decided from one read of the
+ * auth_users row, instead of one read each. Still unshared across checks (D31).
+ */
+export async function isAuthSessionCurrent(input: SessionCheckInput, database: SessionCheckDatabase | null = createConfiguredPostgresLiveRecordStore()): Promise<boolean> {
+  if (!database) return process.env.NODE_ENV !== "production";
+  const decide: SessionDecision = (lifecycleState, payload, check) =>
+    isSessionCurrent(lifecycleState, payload, check) && isBeforeDeletionRequest(lifecycleState, payload, check);
+  const recordId = authUserRecordId(input.email);
+  if (database.client && database.customRead) {
+    return readSessionCheck({ ...database, client: database.client, customRead: database.customRead }, recordId, input, decide);
+  }
+  const user = await database.store.getRecord({ workspaceId: database.workspaceId, collectionName: "auth_users", recordId });
+  if (!user) return false;
+  return decide(user.lifecycleState, user.payload, input);
 }

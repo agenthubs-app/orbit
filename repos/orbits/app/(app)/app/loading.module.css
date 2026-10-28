@@ -1,0 +1,10 @@
+/* The skeleton sits where page content starts: the shell's main header insets, without its row. */
+.loading { padding: var(--space-26) var(--space-34) 0; }
+
+@media (max-width: 1279px) {
+  .loading { padding: var(--space-22) var(--space-26) 0; }
+}
+
+@media (max-width: 767px) {
+  .loading { padding: var(--space-16) var(--space-18) 0; }
+}

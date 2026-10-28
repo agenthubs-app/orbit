@@ -22,7 +22,9 @@ export interface DatabaseRuntimeProfile {
 export type DatabaseRuntimeEnv = Record<string, string | undefined>;
 
 const PROFILES: Record<DatabaseRuntimeKind, DatabaseRuntimeProfile> = {
-  serverless: { kind: "serverless", poolMax: 2, transactionalPoolMax: 2, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, queryTimeoutMillis: 15_000, statementTimeoutMillis: null },
+  // A page fires about a dozen API reads at once on one Fluid instance; 2 connections made them
+  // queue. The Neon pooler (pgbouncer) takes far more clients than these per-instance pools.
+  serverless: { kind: "serverless", poolMax: 5, transactionalPoolMax: 3, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, queryTimeoutMillis: 15_000, statementTimeoutMillis: null },
   worker: { kind: "worker", poolMax: 4, transactionalPoolMax: 4, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 30_000, queryTimeoutMillis: 60_000, statementTimeoutMillis: 60_000 },
   local: { kind: "local", poolMax: 4, transactionalPoolMax: 4, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000, queryTimeoutMillis: 30_000, statementTimeoutMillis: 30_000 },
 };
