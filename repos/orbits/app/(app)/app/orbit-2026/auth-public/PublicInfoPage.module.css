@@ -269,3 +269,26 @@
     border-radius: var(--r-xl);
   }
 }
+
+/* 設定 › ヘルプ (b7 #57): search across the top, よくある質問 7 and お問い合わせ 5 beside it; one column at 390. */
+.settingsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--space-18);
+  align-items: start;
+}
+
+.settingsGrid .search {
+  grid-column: 1 / -1;
+  height: 52px;
+  margin: 0;
+}
+
+.settingsGrid .contactCard {
+  margin-top: 0;
+  background: var(--surface);
+}
+
+@media (max-width: 767px) {
+  .settingsGrid { grid-template-columns: minmax(0, 1fr); }
+}
