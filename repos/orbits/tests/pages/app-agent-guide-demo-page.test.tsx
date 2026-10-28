@@ -17,6 +17,7 @@ import type { ReactElement } from "react";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 // W0040：真实首页组合函数（在页面桩替换 require.cache 之前载入），用于证明那 1 次首页读取不算资料建议。
 import { loadAppHomeRouteViewModel as realLoadAppHomeRouteViewModel } from "../../app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
+import { loadAppProfileRouteViewModel as realLoadAppProfileRouteViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileSignalReviewQueueServiceFactory } from "../../features/profile/service-factory";
 // W0041：首页联系人改读计数服务；联系人列表服务解析时记调用栈，区分是否经过联系人页模型。
 import { homeContactsSummaryServiceFactory } from "../../features/contacts/home-contacts-summary";
@@ -158,6 +159,20 @@ function loadPage(t: TestContext, scenario: Scenario) {
           },
           state: "success",
         };
+      },
+    },
+    // The live screen's one server read: the profile, for the greeting's name.
+    [join(root, "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts")]: {
+      loadAppProfileRouteViewModel: async (...args: unknown[]) => {
+        calls.push({ input: args, operation: "profile" });
+        if (scenario.throughRealHomeLoader) {
+          const real = await realLoadAppProfileRouteViewModel(
+            args[0] as Parameters<typeof realLoadAppProfileRouteViewModel>[0],
+            args[1] as Parameters<typeof realLoadAppProfileRouteViewModel>[1],
+          );
+          calls.push({ input: real.state, operation: "profile-real" });
+        }
+        return { profile: { profile: { displayName: "Owner" } }, state: "success" };
       },
     },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: realStub("events", {}) },
@@ -444,12 +459,15 @@ test("W0014 in the guide: every real chat / home-business loader throws, yet the
   assert.ok(!JSON.stringify(props.viewModel).includes("甲斐真由美"), "no real suggests reach the demo shell");
 });
 
-test("W0014 flag off: the live path reads home, events, registrations and community exactly once each (legacy chat retired in 0104)", async (t) => {
+test("W0014 flag off: the live path reads the profile once and no home, events, registrations or community (legacy chat retired in 0104)", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
+  assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
+  assert.equal(props.accountName, "Owner");
+  // The live iOrbit 2026 screen shows none of these; they are not read for it.
   for (const operation of ["home", "events", "registrations", "community"]) {
-    assert.equal(calls.filter((call) => call.operation === operation).length, 1, operation);
+    assert.equal(calls.filter((call) => call.operation === operation).length, 0, operation);
   }
   assert.deepEqual(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)), []);
   // Sprint 0104: the welcome suggests come from the fixed starter view model, never from a server read.
@@ -463,14 +481,14 @@ const step4Reads = (calls: Array<{ operation: string; input?: unknown }>) =>
 const communityReads = (calls: Array<{ operation: string; input?: unknown }>) =>
   calls.filter((call) => call.operation === "community");
 
-test("W0035 flag off: guideEnabled false, no guideStep4Pending prop, community read once, hasAnyActiveRegistration never called", async (t) => {
+test("W0035 flag off: guideEnabled false, no guideStep4Pending prop, community never read, hasAnyActiveRegistration never called", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 4, flag: undefined, registeredAny: "throw" });
   const props = shellPropsOf(await page());
   assert.equal(props.__screen, "live");
   assert.equal("guideEnabled" in props, false);
   assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
-  assert.equal(communityReads(calls).length, 1);
+  assert.equal(communityReads(calls).length, 0);
 });
 
 test("W0035 in the demo: no step-4 read and no guide-step-4 prop on the demo shell", async (t) => {
@@ -483,7 +501,7 @@ test("W0035 in the demo: no step-4 read and no guide-step-4 prop on the demo she
 
 const LEGACY = { contacts: 4, createdAt: "2026-06-01T00:00:00.000Z", flag: "on", goal: "推进日本合作", since: "2026-10-15" } as const;
 
-test("W0035 flag on, out of the demo, nothing joined or registered: guideEnabled true, community read once, zero hasAnyActiveRegistration", async (t) => {
+test("W0035 flag on, out of the demo, nothing joined or registered: no guideEnabled prop, community never read, zero hasAnyActiveRegistration", async (t) => {
   const { calls, page } = loadPage(t, { ...LEGACY, homeEvents: ["ev-1"], registeredAny: "throw" });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
@@ -491,7 +509,7 @@ test("W0035 flag on, out of the demo, nothing joined or registered: guideEnabled
   assert.equal("guideEnabled" in props, false);
   assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
-  assert.deepEqual(communityReads(calls).map((call) => call.input), [[{ actorId: "account:canonical" }]]);
+  assert.equal(communityReads(calls).length, 0);
 });
 
 test("W0035 flag on: joined or registered changes nothing about step-4 reads (still zero)", async (t) => {
@@ -501,7 +519,7 @@ test("W0035 flag on: joined or registered changes nothing about step-4 reads (st
   assert.equal("guideEnabled" in joinedProps, false);
   assert.ok(!("guideStep4Pending" in joinedProps));
   assert.equal(step4Reads(joined.calls).length, 0);
-  assert.equal(communityReads(joined.calls).length, 1);
+  assert.equal(communityReads(joined.calls).length, 0);
 
   const registered = loadPage(t, { ...LEGACY, homeEvents: ["ev-1", "ev-2"], registeredEvents: ["ev-2"], registeredAny: true });
   assert.ok(!("guideStep4Pending" in shellPropsOf(await registered.page())));
@@ -608,14 +626,14 @@ test("W0040 in the demo: still exactly one home read, no home in the demo shell,
   assert.deepEqual(suggestionReads(calls), []);
 });
 
-test("W0040 flag off: home, events, registrations and community once each, zero profile suggestion reads", async (t) => {
+test("W0040 flag off: one profile read and no home, events, registrations or community, zero profile suggestion reads", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, throughRealHomeLoader: true });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
   for (const operation of ["home", "events", "registrations", "community"]) {
-    assert.equal(calls.filter((call) => call.operation === operation).length, 1, operation);
+    assert.equal(calls.filter((call) => call.operation === operation).length, 0, operation);
   }
-  assert.deepEqual(calls.filter((call) => call.operation === "home-real").map((call) => call.input), ["success"]);
+  assert.deepEqual(calls.filter((call) => call.operation === "profile-real").map((call) => call.input), ["success"]);
   assert.deepEqual(suggestionReads(calls), []);
 });
 

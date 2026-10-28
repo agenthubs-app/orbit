@@ -44,6 +44,7 @@ import type {
   PlanProposalResult,
   PlanTalkedOfflineRequest,
   PlanTalkedOfflineResult,
+  PlanTodayChance,
 } from "../../../shared/contract/plan-v2";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
@@ -242,6 +243,17 @@ export interface ActiveTypeNeeds {
   needs: ActiveTypeNeed[];
 }
 
+/**
+ * The todo page's 今日のチャンス alone. summary() + overview() reach the same answer, but also
+ * score every goal and build the plan's detail, quota and other overview parts the todo page drops.
+ */
+export interface PlanV2TodayChanceReader {
+  /** The plan summary() calls current: the most recently opened active plan. */
+  currentPlanId(): Promise<string | null>;
+  /** overview(planId, view).todayChance, read without the rest of the overview. */
+  todayChance(planId: string, view?: PlanViewOptions): Promise<PlanTodayChance | null>;
+}
+
 export interface PlanV2ServiceOptions {
   repository: PlanV2Repository;
   scope: PlanV2Scope;
@@ -331,7 +343,7 @@ function scoreSlots(plan: PlanV2Row, types: readonly PlanV2TypeItem[]): PlanScor
   ];
 }
 
-export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Service {
+export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Service & PlanV2TodayChanceReader {
   const { repository, scope } = options;
   const now = () => (options.now ? options.now() : new Date()).toISOString();
   const newId = options.newId ?? (() => randomUUID());
@@ -1136,6 +1148,22 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           // R26（D53）：概要「🎟 イベント」卡的推荐活动（分数降序 ≤3）。
           recommendedEvents: plan.status === "active" ? eventsFor(input, null).slice(0, 3) : [],
         };
+      });
+    },
+
+    async currentPlanId() {
+      // goalPlans() lists the active plans first in this same order; summary() takes the first.
+      return repository.read(scope, async (reader) => (await reader.activePlans())[0]?.id ?? null);
+    },
+
+    async todayChance(planId, view = {}) {
+      const id = requiredId(planId, "planId");
+      const events = await loadEvents();
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.plan(id);
+        // overview() gives a chance to an active plan only.
+        if (!plan || plan.status !== "active") return null;
+        return todayChance(await overviewInput(reader, plan, events, view), now());
       });
     },
 

@@ -10,6 +10,9 @@
  *   - legacy 投影（活动未接入报名窗口，`legacy_unenrolled`）：读 `listRegistrationsForUser`；
  *   - canonical membership（活动已接入，`enrolled`）：读 `listCanonicalRegistrationsForUser`。
  * 两条路径都只在报名记在账号 id 下时显示已报名；记在会话 id 下的一律不算。
+ *
+ * 2026-10-28：真实分支改为 iOrbit 2026 屏，它不显示活动，页面不再读报名（只读资料取问候名）。
+ * 这里守住新口径：两条报名读取路径都一次不走，账号 id／会话 id 的报名都不影响页面。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -69,6 +72,9 @@ function loadPage(t: TestContext, scenario: Scenario) {
         home: { account: { relationshipGoal: "" }, events: [{ id: EVENT_ID, stats: {} }] },
         state: "success",
       }),
+    },
+    [join(root, "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts")]: {
+      loadAppProfileRouteViewModel: async () => ({ profile: { profile: { displayName: "Owner" } }, state: "success" }),
     },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: async () => ({}) },
     [join(root, "app/(app)/app/_demo/demo-guide-view.ts")]: { readDemoModeViewForActor: async () => null },
@@ -151,19 +157,13 @@ function loadPage(t: TestContext, scenario: Scenario) {
   };
 }
 
-/** 页面返回元素树（壳是桩），取传给 live 视图的 home 里这场活动的报名状态。 */
-async function registeredOnHome(page: () => Promise<ReactElement>): Promise<boolean> {
+/** 页面返回元素树（壳是桩），取传给 live 视图的 props。 */
+async function liveProps(page: () => Promise<ReactElement>): Promise<Record<string, unknown>> {
   const nodes: unknown[] = [await page()];
   while (nodes.length) {
     const node = nodes.pop() as { props?: Record<string, unknown>; type?: unknown } | null;
     if (!node || typeof node !== "object") continue;
-    if (typeof node.type === "function" && ["IOrbitShell", "IOrbit2026"].includes((node.type as { name?: string }).name ?? "")) {
-      const home = node.props?.home as { events: Array<{ id: string; youRsvped: boolean; stats: { youRsvped: boolean } }> };
-      const event = home.events.find((candidate) => candidate.id === EVENT_ID);
-      assert.ok(event, "the event reaches the shell");
-      assert.equal(event.stats.youRsvped, event.youRsvped);
-      return event.youRsvped;
-    }
+    if (typeof node.type === "function" && (node.type as { name?: string }).name === "IOrbit2026") return node.props ?? {};
     const children = node.props?.children;
     nodes.push(...(Array.isArray(children) ? children : [children]));
   }
@@ -171,19 +171,14 @@ async function registeredOnHome(page: () => Promise<ReactElement>): Promise<bool
 }
 
 for (const path of ["legacy", "canonical"] as const) {
-  test(`${path} read path: a registration written under the account id shows as registered`, async (t) => {
-    const { fullRowCalls, page, reads } = loadPage(t, { path, registeredUnder: ACCOUNT_ID });
-    assert.equal(await registeredOnHome(page), true);
-    assert.deepEqual(
-      [...new Set(reads.map((read) => read.userId))],
-      [ACCOUNT_ID],
-      "registrations are read by the account id only",
-    );
-    assert.deepEqual(fullRowCalls, [], "W0028: the page never uses the full-row registration reads");
-  });
-
-  test(`${path} read path: a registration kept only under the session user id is not shown`, async (t) => {
-    const { page } = loadPage(t, { path, registeredUnder: SESSION_ID });
-    assert.equal(await registeredOnHome(page), false);
-  });
+  for (const registeredUnder of [ACCOUNT_ID, SESSION_ID]) {
+    test(`${path} read path, registered under ${registeredUnder === ACCOUNT_ID ? "the account id" : "the session id"}: the live page reads no registrations`, async (t) => {
+      const { fullRowCalls, page, reads } = loadPage(t, { path, registeredUnder });
+      const props = await liveProps(page);
+      assert.equal(props.accountName, "Owner");
+      assert.equal("home" in props, false, "no events reach the live screen");
+      assert.deepEqual(reads, [], "registrations are not read for a screen that shows no events");
+      assert.deepEqual(fullRowCalls, [], "W0028: the page never uses the full-row registration reads");
+    });
+  }
 }

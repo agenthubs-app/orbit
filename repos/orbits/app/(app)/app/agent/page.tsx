@@ -41,11 +41,8 @@ import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-mode
 import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { IOrbit2026 } from "./iorbit-2026/IOrbit2026";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
-import { presentOrbitEvents } from "../orbit-event-presentation";
-import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
-import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
+import { loadAppProfileRouteViewModel } from "../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
-import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { readGuideStatusForActor } from "../../../../features/guide/progress";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
 import { readDemoHomeEventCandidates } from "../../../../features/agent/home-event-pool-runtime";
@@ -165,39 +162,16 @@ export default async function AppAgentPage({
       </>
     );
   }
-  const homeModel = await loadHomeModel();
-  const registrationEventIds =
-    homeModel.state === "success"
-      ? homeModel.home.events.map((event) => event.id)
-      : [];
-  const canonicalEventIdsByRouteId = await resolveConfiguredActorEventCanonicalIds({
-    actorId,
-    eventIds: registrationEventIds,
-  });
-  const canonicalRegistrationStates = await readRuntimeEventRegistrationStates({
-    eventIds: registrationEventIds.map(
-      (routeId) => canonicalEventIdsByRouteId[routeId] ?? routeId,
-    ),
-    // 报名接口以账号 id（actor.id）写入，键为 eventId + actorId；按同一个 id 读（W0018）。
-    userId: actorId,
-  });
-  const registrationStates = Object.fromEntries(
-    registrationEventIds.map((routeId) => {
-      const canonicalId = canonicalEventIdsByRouteId[routeId] ?? routeId;
-      return [
-        routeId,
-        canonicalRegistrationStates[canonicalId] ?? {
-          availability: "unavailable" as const,
-          registered: false,
-        },
-      ];
-    }),
+  // The live iOrbit 2026 screen greets by name and reads nothing else from the server: the
+  // profile alone, not the whole home model (events, recommendations, readiness, registrations).
+  const profileModel = await loadAppProfileRouteViewModel(
+    { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
+    { suggestions: "skip" },
   );
-  // W0003：「已报名活动」栏首行的社群状态由服务端读，SSR 首帧即正确。
-  const communityJoined = await readCommunityJoinedForActor({ actorId });
-  // W0022：开关只决定无计划时「帮我制定推进计划 →」的去向，不做任何读取。
-  const guideEnabled = readGuideDemoConfig().enabled;
   const language = requestedLanguage ?? (await getAgentPageLanguage());
+  const accountName = profileModel.state === "success"
+    ? localizeOrbitTree(profileModel.profile.profile.displayName || "Orbit operator", language)
+    : null;
 
   return (
     <>
@@ -205,33 +179,9 @@ export default async function AppAgentPage({
       <OrbitVisualFreezeRuntime />
       <div data-orbit-route="app-agent-route">
           <IOrbit2026
+            accountName={accountName}
             initialHistoryOpen={
               firstSearchParam(resolvedSearchParams, "history") === "1"
-            }
-            home={
-              homeModel.state === "success"
-                ? localizeOrbitTree(
-                    {
-                      ...homeModel.home,
-                      events: presentOrbitEvents(
-                        homeModel.home.events.map((event) => {
-                          const registered =
-                            registrationStates[event.id]?.registered ?? false;
-                          return {
-                            ...event,
-                            stats: {
-                              ...event.stats,
-                              youRsvped: registered,
-                            },
-                            youRsvped: registered,
-                          };
-                        }),
-                        language,
-                      ),
-                    },
-                    language,
-                  )
-                : null
             }
           />
       </div>

@@ -202,10 +202,10 @@ export function useCardBatch(batchId: string | null, t: T) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fingerprint]);
 
-  // 上传与识别阶段轮询；识别结束后停止。
+  // 上传与识别阶段轮询；识别结束后停止；标签页在后台时跳过。
   useEffect(() => {
     if (status !== "collecting" && status !== "processing" && !retrying) return;
-    const timer = setInterval(() => void refresh(), 2_500);
+    const timer = setInterval(() => { if (typeof document !== "undefined" && document.visibilityState === "hidden") return; void refresh(); }, 2_500);
     return () => clearInterval(timer);
   }, [status, refresh, retrying]);
 

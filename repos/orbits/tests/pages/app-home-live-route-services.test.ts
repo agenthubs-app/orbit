@@ -29,15 +29,12 @@ test("app-home-route renders the R07 home placeholder while the iOrbit workspace
   assert.doesNotMatch(hubSource, /OrbitRealHome|HomeRouteStateBoundary/);
 
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
+  // The home model is read only for the demo check (the goal); the live iOrbit 2026 screen
+  // greets by the profile's name and shows no events, so it reads no events or registrations.
   assert.match(agentPageSource, /loadAppHomeRouteViewModel\(undefined,/);
-  assert.match(agentPageSource, /presentOrbitEvents/);
-  assert.match(agentPageSource, /readRuntimeEventRegistrationStates/);
-  assert.match(agentPageSource, /resolveConfiguredActorEventCanonicalIds/);
-  // iOrbit 任务 3 修订轮 1：`registrationAvailabilityByEventId` 的唯一消费者是批次 4a
-  // 的 dashboard（任务 6 删除），新概览屏不读它，所以那个 prop 从 page.tsx 去掉了。
-  // 这里改断「运行时报名态仍然进到首屏数据里」——即每场活动的 registered 标记。
-  assert.match(agentPageSource, /registrationStates\[event\.id\]\?\.registered/);
-  assert.match(agentPageSource, /youRsvped: registered/);
+  assert.match(agentPageSource, /loadAppProfileRouteViewModel\(/);
+  assert.match(agentPageSource, /accountName=\{accountName\}/);
+  assert.doesNotMatch(agentPageSource, /readRuntimeEventRegistrationStates|resolveConfiguredActorEventCanonicalIds|presentOrbitEvents/);
 
   // iOrbit 任务 6a：`orbit-real-agent.tsx` 与 `orbit-agent-dashboard.tsx` 都已删除；
   // 首屏组件今天是 `iorbit-0918/iorbit-home.tsx`，由壳按视图挂载。

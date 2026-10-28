@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import type { AiPageContextContract } from "../../../../../shared/contract/ai-sessions";
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import type { OrbitAgentHistoryView, OrbitAgentSuggestView } from "../../orbit-agent-route-view-model";
-import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
@@ -163,8 +162,9 @@ function useDictation(language: string, onText: (text: string) => void) {
 
 const STARTER_TONES = ["lav", "apricot", "teal", "pink"] as const;
 
-export function IOrbit2026({ home, initialHistoryOpen = false }: {
-  home: OrbitHomeViewModel | null;
+export function IOrbit2026({ accountName, initialHistoryOpen = false }: {
+  /** The greeting's name (the profile display name); null greets without one. */
+  accountName: string | null;
   initialHistoryOpen?: boolean;
 }) {
   const { language, t } = useOrbitLanguage();
@@ -330,7 +330,7 @@ export function IOrbit2026({ home, initialHistoryOpen = false }: {
           {!inConversation ? <section className={styles.start} aria-label={t(iorbitCopy.newChat)}>
             <div className={styles.greeting}>
               <span className={styles.star} aria-hidden>✨</span>
-              <h1>{home?.account.fullName ? fill(t(iorbitCopy.greetingName), { name: home.account.fullName.split(/\s+/u)[0] }) : t(iorbitCopy.greeting)}<br />{t(iorbitCopy.heading)}</h1>
+              <h1>{accountName ? fill(t(iorbitCopy.greetingName), { name: accountName.split(/\s+/u)[0] }) : t(iorbitCopy.greeting)}<br />{t(iorbitCopy.heading)}</h1>
               <p>{t(iorbitCopy.intro)}</p>
             </div>
             <div className={styles.suggestions}>

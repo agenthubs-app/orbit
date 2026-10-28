@@ -78,7 +78,8 @@ function TaskContainerContent({ initialTab, calendar, todo, plan, memo, planStar
     };
     const offline = () => { latest++; setMemoOnline(false); };
     probe();
-    const timer = window.setInterval(probe, 15_000);
+    // Focus probes again, so a tab in the background skips its turns.
+    const timer = window.setInterval(() => { if (typeof document !== "undefined" && document.visibilityState === "hidden") return; probe(); }, 15_000);
     window.addEventListener("focus", probe);
     window.addEventListener("online", probe);
     window.addEventListener("offline", offline);

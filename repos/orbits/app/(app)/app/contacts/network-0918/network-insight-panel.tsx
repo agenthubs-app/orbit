@@ -78,6 +78,8 @@ export function NetworkInsightPanel({
     if (!polling || !contactId) return;
     let cancelled = false;
     const timer = setInterval(() => {
+      // A tab in the background skips its turn without spending one of the INSIGHT_POLL_MAX reads.
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       void (async () => {
         polls.current += 1;
         const last = polls.current >= INSIGHT_POLL_MAX;

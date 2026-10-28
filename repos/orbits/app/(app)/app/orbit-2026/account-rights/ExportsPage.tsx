@@ -33,7 +33,8 @@ export function ExportsPage() {
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!history.some(item => item.status === "queued" || item.status === "running")) return;
-    const timer = window.setInterval(() => void refresh(), 3000);
+    // A tab in the background skips its turns; the next one after it comes back reads again.
+    const timer = window.setInterval(() => { if (typeof document !== "undefined" && document.visibilityState === "hidden") return; void refresh(); }, 3000);
     return () => window.clearInterval(timer);
   }, [history, refresh]);
   const active = history.some(item => item.status === "queued" || item.status === "running");

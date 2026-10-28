@@ -360,10 +360,11 @@ export function AgentActionStatusCard({
     }
 
     void refreshExecutionStatus();
-    const interval = window.setInterval(
-      () => void refreshExecutionStatus(),
-      1_000,
-    );
+    // A tab in the background skips its turns; the next one after it comes back reads again.
+    const interval = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      void refreshExecutionStatus();
+    }, 1_000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);

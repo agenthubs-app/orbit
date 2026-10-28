@@ -27,6 +27,7 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
     [join(root, "app/(app)/app/agent/iorbit-2026/IOrbit2026.tsx")]: { IOrbit2026: () => null },
     [join(root, "app/(app)/app/home/orbit-real-home.tsx")]: { OrbitRealHome: () => null },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: { loadAppHomeRouteViewModel: stub("home", { state: "success", home: { events: [] } }) },
+    [join(root, "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts")]: { loadAppProfileRouteViewModel: stub("profile", { state: "success", profile: { profile: { displayName: "Owner" } } }) },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: stub("events", {}) },
     [join(root, "features/events/registration/runtime.ts")]: { readRuntimeEventRegistrationStates: stub("registrations", {}) },
   };
@@ -58,19 +59,17 @@ for (const route of ["agent", "home/events"] as const) {
     assert.deepEqual(calls.find(call => call.operation === "identity")?.input, [{ userId: "subject:external", email: "owner@example.test", name: "Owner" }]);
     if (route === "agent") {
       const nodes: any[] = [tree];
-      let liveHome: unknown;
-      while (nodes.length && liveHome === undefined) {
+      let liveProps: Record<string, unknown> | undefined;
+      while (nodes.length && liveProps === undefined) {
         const node = nodes.pop();
         if (!node?.props) continue;
-        if (node.type?.name === "IOrbit2026") liveHome = node.props.home;
+        if (node.type?.name === "IOrbit2026") liveProps = node.props;
         nodes.push(...[node.props.children].flat());
       }
-      assert.deepEqual(liveHome, { events: [] });
-      assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
-      assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
-      assert.equal(calls.find(call => call.operation === "events")?.input[0].actorId, "account:canonical");
-      // W0018：报名按账号 id 读，与报名接口写入口径一致。
-      assert.equal(calls.find(call => call.operation === "registrations")?.input[0].userId, "account:canonical");
+      assert.equal(liveProps?.accountName, "Owner");
+      // The live iOrbit 2026 screen reads the greeting's name alone, by the canonical account id.
+      assert.equal(calls.find(call => call.operation === "profile")?.input[0].id, "account:canonical");
+      assert.deepEqual(calls.filter(call => ["home", "events", "registrations"].includes(call.operation)), []);
     } else if (route === "home/events") {
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");

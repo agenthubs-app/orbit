@@ -21,9 +21,37 @@ function conflictLayout(body: unknown): HomeLayoutContract | null {
   } catch { return null; }
 }
 
+type Read = { layout: HomeLayoutContract; state: Exclude<LoadState, "loading"> };
+
+// The last layout this tab read and the read in flight: back on Home the grid draws at once and
+// refreshes behind, and a mount, a focus and a visibilitychange arriving together ask once.
+let lastRead: Read | undefined;
+let inFlight: Promise<Read> | undefined;
+
+async function readLayout(): Promise<Read> {
+  try {
+    const response = await fetch("/api/home/layout", { cache: "no-store" });
+    const body = await response.json() as { success?: boolean; data?: unknown; error?: { context?: { reason?: string } } };
+    if (response.status === 503 && body.error?.context?.reason === "NOT_IMPLEMENTED") return { layout: DEFAULT_HOME_LAYOUT, state: "fallback" };
+    const parsed = homeLayoutSchema.safeParse(body.data);
+    if (!response.ok || !body.success || !parsed.success) return { layout: lastRead?.layout ?? DEFAULT_HOME_LAYOUT, state: "error" };
+    return { layout: parsed.data, state: "ready" };
+  } catch { return { layout: lastRead?.layout ?? DEFAULT_HOME_LAYOUT, state: "error" }; }
+}
+
+function sharedRead(): Promise<Read> {
+  inFlight ??= readLayout().then((read) => {
+    inFlight = undefined;
+    // A failed refresh keeps a good layout on screen.
+    if (read.state !== "error" || !lastRead || lastRead.state === "error") lastRead = read;
+    return lastRead;
+  });
+  return inFlight;
+}
+
 export function useHomeLayout() {
-  const [layout, setLayout] = useState<HomeLayoutContract>(DEFAULT_HOME_LAYOUT);
-  const [state, setState] = useState<LoadState>("loading");
+  const [layout, setLayout] = useState<HomeLayoutContract>(() => lastRead?.layout ?? DEFAULT_HOME_LAYOUT);
+  const [state, setState] = useState<LoadState>(() => lastRead?.state ?? "loading");
   const [saving, setSaving] = useState(false);
   const layoutRef = useRef(layout);
   const requestRef = useRef<{ fingerprint: string; mutationId: string } | null>(null);
@@ -31,17 +59,8 @@ export function useHomeLayout() {
   layoutRef.current = layout;
 
   const reload = useCallback(async () => {
-    try {
-      const response = await fetch("/api/home/layout", { cache: "no-store" });
-      const body = await response.json() as { success?: boolean; data?: unknown; error?: { context?: { reason?: string } } };
-      if (response.status === 503 && body.error?.context?.reason === "NOT_IMPLEMENTED") {
-        setLayout(DEFAULT_HOME_LAYOUT); setState("fallback"); return;
-      }
-      if (!response.ok || !body.success) { setState("error"); return; }
-      const parsed = homeLayoutSchema.safeParse(body.data);
-      if (!parsed.success) { setState("error"); return; }
-      setLayout(parsed.data); setState("ready");
-    } catch { setState("error"); }
+    const read = await sharedRead();
+    setLayout(read.layout); setState(read.state);
   }, []);
 
   useEffect(() => {
@@ -72,13 +91,14 @@ export function useHomeLayout() {
       const body = await response.json() as { success?: boolean; data?: unknown };
       if (response.status === 409) {
         const current = conflictLayout(body);
-        if (current) { setLayout(current); setState("ready"); }
+        if (current) { lastRead = { layout: current, state: "ready" }; setLayout(current); setState("ready"); }
         requestRef.current = null;
         return { kind: "conflict", layout: current };
       }
       const parsed = homeLayoutSchema.safeParse(body.data);
       if (!response.ok || !body.success || !parsed.success) return { kind: "error" };
       requestRef.current = null;
+      lastRead = { layout: parsed.data, state: "ready" };
       setLayout(parsed.data); setState("ready");
       return { kind: "saved", layout: parsed.data };
     } catch { return { kind: "error" }; }

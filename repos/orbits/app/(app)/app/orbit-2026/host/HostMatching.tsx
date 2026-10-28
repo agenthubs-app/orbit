@@ -362,10 +362,10 @@ export function HostMatchingTab({ eventId, language, onChanged }: { eventId: str
     if (res.ok) { setData(res.data); setFailed(false); } else setFailed(true);
   }, [eventId, round]);
   useEffect(() => { void load(); }, [load]);
-  // 生成中：每 4 秒重读，直到出结果。
+  // 生成中：每 4 秒重读，直到出结果；标签页在后台时跳过。
   useEffect(() => {
     if (data?.state !== "generating") return;
-    const timer = setInterval(() => void load(), 4000);
+    const timer = setInterval(() => { if (typeof document !== "undefined" && document.visibilityState === "hidden") return; void load(); }, 4000);
     return () => clearInterval(timer);
   }, [data?.state, load]);
   useEffect(() => {

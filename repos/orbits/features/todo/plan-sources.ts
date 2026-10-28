@@ -61,13 +61,14 @@ export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: 
       let facts: PlanEventFact[] = [];
       const at = input.now?.() ?? new Date();
       const service = makeService(query.actorId, async () => facts, () => at);
-      const current = (await service.summary()).current;
-      if (!current) return { entries: [], total: 0, hasMore: false, notImplemented: true };
+      // Only the chance is shown: not summary()'s goal scores, nor the rest of overview().
+      const planId = await service.currentPlanId();
+      if (!planId) return { entries: [], total: 0, hasMore: false, notImplemented: true };
       if (localParts(at, query.timeZone).date !== query.date) return { entries: [], total: 0, hasMore: false };
       if (input.events) { input.assertAllowed("events"); facts = await input.events(query.actorId, at); }
-      const chance = (await service.overview(current.planId, { language: "ja", platform: "web", timeZone: query.timeZone }))?.todayChance;
+      const chance = await service.todayChance(planId, { language: "ja", platform: "web", timeZone: query.timeZone });
       if (!chance) return { entries: [], total: 0, hasMore: false };
-      const id = `${current.planId}:${query.date}`;
+      const id = `${planId}:${query.date}`;
       return { total: 1, hasMore: false, entries: query.cursor ? [] : [{ cursor: JSON.stringify(id), item: {
         key: `plan_today_chance:${id}`, source: "plan_today_chance", sourceId: id, titlePreview: chance.label.slice(0, 240),
         createdAt: at.toISOString(), draftAvailable: chance.kind === "candidate", ...(chance.basis ? { reasonPreview: chance.basis.slice(0, 320) } : {}),

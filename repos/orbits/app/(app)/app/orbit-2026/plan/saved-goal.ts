@@ -11,6 +11,8 @@ import { firstProfileGoalForPlan, type ProfileGoalPlanKind } from "../../../../.
 export type SavedPlanGoal = { text: string; suggestedKind: ProfileGoalPlanKind | null };
 
 let cached: SavedPlanGoal | null | undefined;
+// Readers mounting together share one request.
+let inFlight: Promise<SavedPlanGoal | null> | undefined;
 
 export async function readSavedPlanGoal(fetcher: typeof fetch = fetch): Promise<SavedPlanGoal | null> {
   const response = await fetcher("/api/profile", { cache: "no-store" });
@@ -26,7 +28,8 @@ export function useSavedPlanGoal(enabled = true): SavedPlanGoal | null {
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    void readSavedPlanGoal().then((value) => { cached = value; if (alive) setGoal(value); }).catch(() => undefined);
+    inFlight ??= readSavedPlanGoal().finally(() => { inFlight = undefined; });
+    void inFlight.then((value) => { cached = value; if (alive) setGoal(value); }).catch(() => undefined);
     return () => { alive = false; };
   }, [enabled]);
   return goal;
