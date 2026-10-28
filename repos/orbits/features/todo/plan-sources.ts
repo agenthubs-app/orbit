@@ -8,8 +8,12 @@ import { localParts } from "../tasks/local-date-time";
 import type { TodoSourceReader } from "./service";
 
 export const TODO_PLAN_ROWS_PER_QUERY = 100;
+/** A plan's log is read whole (pending decisions, awards and steps all depend on it) and grows with
+ * every action on the plan, so it has its own, larger cap; past it the source still fails closed. */
+export const TODO_PLAN_LOG_ROWS_PER_QUERY = 1000;
 export const TODO_PLAN_QUERY_LIMIT = 32;
-export const TODO_PLAN_ROW_LIMIT = 2000;
+/** Two active plans' whole logs plus their other rows. */
+export const TODO_PLAN_ROW_LIMIT = 3000;
 export const TODO_PLAN_BYTE_LIMIT = 2 * 1024 * 1024;
 const collections = ["plans", "plan_items", "plan_log", "plan_match_candidates", "plan_revisions", "contacts", "contact_detail_states"] as const;
 
@@ -28,9 +32,10 @@ function boundedReadPool(pool: PlanPoolLike): PlanPoolLike {
       if (!/^select\b/i.test(statement) || !/\bfrom\s+(plans|plan_items|plan_log|plan_match_candidates|plan_revisions|orbit_records)\b/i.test(statement)
         || /\b(insert|update|delete|nextval|set_config|pg_advisory|for\s+update)\b/i.test(statement)) throw Error("TODO_PLAN_READ_SHAPE_UNSUPPORTED");
       if (++queries > TODO_PLAN_QUERY_LIMIT) throw Error("TODO_PLAN_READ_LIMIT");
-      const result = await client.query(`select * from (${text}) todo_plan_read limit ${TODO_PLAN_ROWS_PER_QUERY + 1}`, values);
+      const perQuery = /\bfrom\s+plan_log\b/i.test(statement) ? TODO_PLAN_LOG_ROWS_PER_QUERY : TODO_PLAN_ROWS_PER_QUERY;
+      const result = await client.query(`select * from (${text}) todo_plan_read limit ${perQuery + 1}`, values);
       rows += result.rows.length; bytes += Buffer.byteLength(JSON.stringify(result.rows));
-      if (result.rows.length > TODO_PLAN_ROWS_PER_QUERY || rows > TODO_PLAN_ROW_LIMIT || bytes > TODO_PLAN_BYTE_LIMIT) throw Error("TODO_PLAN_READ_LIMIT");
+      if (result.rows.length > perQuery || rows > TODO_PLAN_ROW_LIMIT || bytes > TODO_PLAN_BYTE_LIMIT) throw Error("TODO_PLAN_READ_LIMIT");
       return result;
     } };
   } };

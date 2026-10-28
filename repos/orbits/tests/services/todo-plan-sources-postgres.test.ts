@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTodoPlanReaders } from "../../features/todo/plan-sources";
+import { createTodoPlanReaders, TODO_PLAN_LOG_ROWS_PER_QUERY } from "../../features/todo/plan-sources";
 import { createTodoPageService } from "../../features/todo/service";
 import { createPostgresPlanV2Repository } from "../../features/plans/v2/repository";
 import { createPlanV2Service } from "../../features/plans/v2/service";
@@ -66,10 +66,19 @@ test("bounded read-only plan sources expose a real next move and reject incomple
   const partial = await eventBudgetClosed.read(input);
   assert.equal(partial.sources.plan_pending, "ok");
   assert.equal(partial.sources.plan_today_chance, "unavailable", "blocked event facts cannot become a precise zero");
-  // Enough historical source rows to exceed the adapter's explicit per-query cap.
-  // A truncated log would lose prior decisions and resurrect dismissed cards.
+  // A plan in use for a while: more log entries than the other relations' 100-row cap. The log
+  // has its own cap, so the decisions are still listed exactly as before.
+  const beforeGrowth = await live.read(input);
   await pool.query(`insert into plan_log(workspace_id,id,actor_id,plan_id,kind,event,author,body,payload,idempotency_key)
     select $1,'growth:'||n,$2,$3,'auto','pending_dismissed','user','dismissed',jsonb_build_object('pendingId','x'||n),'growth:'||n from generate_series(1,110) n`, [WORKSPACE, actorId, plan.planId]);
+  const grown = await live.read(input);
+  assert.equal(grown.sources.plan_pending, "ok", "a 110-entry log is read whole, not refused");
+  assert.deepEqual(grown.decisions.items, beforeGrowth.decisions.items);
+  assert.equal(errors.length, 0);
+  // Past the log's own cap the read still fails closed: a truncated log would lose prior
+  // decisions and resurrect dismissed cards.
+  await pool.query(`insert into plan_log(workspace_id,id,actor_id,plan_id,kind,event,author,body,payload,idempotency_key)
+    select $1,'growth:'||n,$2,$3,'auto','pending_dismissed','user','dismissed',jsonb_build_object('pendingId','x'||n),'growth:'||n from generate_series(111,${TODO_PLAN_LOG_ROWS_PER_QUERY + 1}) n`, [WORKSPACE, actorId, plan.planId]);
   const over = await live.read(input);
   assert.equal(over.sources.plan_pending, "unavailable");
   assert.equal(over.decisions.items.length, 0); assert.equal(over.counts.decisions, 0);
