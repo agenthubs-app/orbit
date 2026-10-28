@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOutAndForget } from "../orbit-sign-out";
 
 import { ORBIT_Z } from "../orbit-z";
 import { orbitNavigate } from "../orbit-account-shell";
@@ -654,7 +654,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           </div>
           <div style={{ display: "flex", flexShrink: 0, gap: 10 }}>
             <a className="btn btn-ghost" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }}><Icon name="edit" size={16} />{t({ en: "Edit universal profile", zh: "编辑通用画像" })}</a>
-            <button className="btn btn-soft" onClick={() => { void signOut({ callbackUrl: "/app" }); }} type="button"><Icon name="logout" size={16} />{t({ en: "Sign out", zh: "退出登录" })}</button>
+            <button className="btn btn-soft" onClick={() => { void signOutAndForget("/app"); }} type="button"><Icon name="logout" size={16} />{t({ en: "Sign out", zh: "退出登录" })}</button>
           </div>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
@@ -715,7 +715,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
           <span className="avatar g-indigo" style={{ fontSize: 21.84, height: 52, width: 52 }}>{viewModel.account.initial}</span>
           <div style={{ flex: 1, minWidth: 0 }}><div style={{ color: "var(--ink-3-text)", fontSize: 12 }}>{t({ en: "Good evening", zh: "晚上好" })}</div><h1 className="h-title" style={{ color: "var(--ink)", margin: 0 }}>{viewModel.account.fullName}</h1><div style={{ color: "var(--ink-3-text)", fontSize: 12.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitleFor(viewModel.account, language)}</div></div>
           <a aria-label={t({ en: "Edit", zh: "编辑" })} className="hit-44" href="/app/profile" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/profile"); }} style={{ alignItems: "center", background: "var(--surface-2)", borderRadius: "var(--r-pill)", color: "var(--ink-2)", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }}><Icon name="settings" size={19} /></a>
-          <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOut({ callbackUrl: "/app" }); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--ink-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
+          <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOutAndForget("/app"); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--ink-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
           {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (

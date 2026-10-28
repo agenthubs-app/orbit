@@ -9,6 +9,10 @@ import { ShellPage, ShellSlotsProvider, useShellSlots } from "../../app/(app)/ap
 import { MemoryRelationshipLifecycleRepository } from "../../features/connections/lifecycle/memory-repository";
 import { createRelationshipLifecycleHandlers } from "../../app/api/connections/[id]/lifecycle/handler";
 import { createRelationshipLifecycleService } from "../../features/connections/lifecycle/service";
+import { resetLastAnswersForTests } from "../../app/(app)/app/orbit-last-answer";
+
+// The read cache is module state: each test starts without the previous test's remembered page.
+test.beforeEach(() => { resetLastAnswersForTests(); });
 
 function RailProbe() { return <aside data-rail-probe="">{useShellSlots().rightRail}</aside>; }
 

@@ -5,7 +5,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { memoCopy } from "../copy/memo";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { Bone, Button, CategoryTabs, Chip, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { activeMemoMentionQuery, insertMemoMention, memoContactIds, memoPage, memoRequest, memoTabForKind, rebaseMemoMentions, type MemoMentionCandidate, type MemoRow, type MemoTab } from "./memo-model";
@@ -132,6 +132,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     // A new search keeps the shown numbers until the new ones are in (or the remembered ones for that search).
     const remembered = lastAnswer<Counts>(countsKey(settledQuery));
     if (remembered) setCounts(remembered);
+    if (remembered && answerFresh(countsKey(settledQuery), FRESH.list)) return () => controller.abort();
     void Promise.all((["all", "meeting", "free"] as const).map(async kind => {
       const params = new URLSearchParams({ limit: "20", noteKind: kind });
       if (settledQuery) params.set("q", settledQuery);

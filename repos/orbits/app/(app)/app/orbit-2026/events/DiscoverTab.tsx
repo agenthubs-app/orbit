@@ -10,7 +10,7 @@ import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, Event
 import type { EventRecommendationDismissReason } from "../../../../../shared/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../../../shared/contract/event-search";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { eventsJourneyCopy as jc } from "../copy/eventsJourney";
 import { DefaultRail } from "../shell/Orbit2026Shell";
@@ -208,7 +208,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     if (result.ok) rememberAnswer(discoverAnswerKey(next), result.data);
     setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 });
   }, []);
-  useEffect(() => { void load(query); }, [load, query]);
+  useEffect(() => { if (!answerFresh(discoverAnswerKey(query), FRESH.list)) void load(query); }, [load, query]);
   // The guide card's copy depends on the profile goal: read it alongside discover (not after it) when the card may
   // show, and keep the card a skeleton until it is in (undefined = not read yet).
   const [savedGoal, setSavedGoal] = useState<SavedPlanGoal | null | undefined>(() => lastAnswer<{ goal: SavedPlanGoal | null }>(SAVED_GOAL_KEY)?.goal);
@@ -217,6 +217,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   useEffect(() => {
     if (!goalWanted || goalStarted.current) return;
     goalStarted.current = true;
+    if (answerFresh(SAVED_GOAL_KEY, FRESH.slow)) return;
     // Started once (a ref, not an effect cleanup flag: StrictMode's re-run must still see the answer land).
     readSavedPlanGoal().then((goal) => { rememberAnswer(SAVED_GOAL_KEY, { goal }); setSavedGoal(goal); }, () => setSavedGoal((value) => value ?? null));
   }, [goalWanted]);

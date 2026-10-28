@@ -119,6 +119,8 @@ test("mobile navigation follows session transitions and closes with Escape", asy
 test("all home-page sign-out controls clear the NextAuth session", () => {
   const homeSource = source("app/(app)/app/home/orbit-real-home.tsx");
 
-  assert.equal((homeSource.match(/signOut\(\{ callbackUrl: "\/app" \}\)/g) ?? []).length, 2);
+  // Every sign-out goes through orbit-sign-out.ts, which forgets this account on the device and then ends the NextAuth session.
+  assert.equal((homeSource.match(/signOutAndForget\("\/app"\)/g) ?? []).length, 2);
+  assert.match(source("app/(app)/app/orbit-sign-out.ts"), /await signOut\(\{ callbackUrl \}\)/);
   assert.doesNotMatch(homeSource, /onClick=\{\(\) => orbitNavigate\("\/"\)\}/);
 });

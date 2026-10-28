@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -8,8 +8,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { readInboxUnreadCounts } from "../../inbox/relationship-inbox-panel";
-// R17：注销时删掉本机受付库（kiosk 的名单缓存与离线队列都有参加者姓名；共用平板换人登录）。
-import { clearKioskDevice } from "../host/kiosk-store";
+// R17 / 读取缓存规则：注销时清掉本机这个账号的东西（受付库、读取缓存、个人 localStorage 项），见 orbit-sign-out.ts。
+import { signOutAndForget } from "../../orbit-sign-out";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { installWriteWatch } from "../../orbit-write-watch";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../../orbit-theme";
 import { pickCopy } from "../copy/types";
@@ -42,6 +44,10 @@ import styles from "./shell.module.css";
 // next/link, so the shell stays mounted across pages.
 export function Orbit2026Shell({ language, signedIn, currentBuildId, children }: { language: OrbitLanguage; signedIn: boolean; currentBuildId?: string; children: ReactNode }) {
   const pathname = usePathname() ?? "";
+  // Every /app page: the browser read cache knows whose it is (orbit-last-answer keys and clears by account),
+  // and a successful write anywhere marks it stale (orbit-write-watch).
+  useSharedReadAccount();
+  useEffect(() => { installWriteWatch(); }, []);
   const returnTo = useSearchParams()?.get("returnTo") ?? null;
   if (!shellAppliesTo(pathname, signedIn)) return <>{children}</>;
   const focus = returnTo && onboardingImportFocus(pathname, returnTo) ? <OnboardingImportHeader returnTo={returnTo} /> : null;
@@ -371,7 +377,7 @@ function AccountMenuBody({ name, email, compact, onDone }: { name: string; email
           segments={[{ key: "system", label: t(shellCopy.themeSystem) }, { key: "light", label: t(shellCopy.themeLight) }, { key: "dark", label: t(shellCopy.themeDark) }]} />
       </div>
       <span className={styles.menuSep} aria-hidden />
-      <Button label={t(shellCopy.signOut)} variant="dangerGhost" icon="out" block className={styles.menuOut} onClick={() => void clearKioskDevice().finally(() => signOut({ callbackUrl: "/app" }))} />
+      <Button label={t(shellCopy.signOut)} variant="dangerGhost" icon="out" block className={styles.menuOut} onClick={() => void signOutAndForget("/app")} />
     </div>
   );
 }

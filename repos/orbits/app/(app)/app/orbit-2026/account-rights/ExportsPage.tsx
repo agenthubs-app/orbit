@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOutAndForget } from "../../orbit-sign-out";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AccountExportContract } from "../../../../../shared/contract/account";
@@ -99,7 +99,7 @@ export function ExportsPage() {
           </section>
         </div>
       </div>
-      {problem ? <p role="alert" className={s.error}>{problem} {problem === t("freshLogin") ? <Button label={t("signInAgain")} variant="ghost" size="sm" className={s.inlineAction} onClick={() => void signOut({ callbackUrl: "/app/account/login?next=/app/settings/exports" })} /> : null}</p> : null}
+      {problem ? <p role="alert" className={s.error}>{problem} {problem === t("freshLogin") ? <Button label={t("signInAgain")} variant="ghost" size="sm" className={s.inlineAction} onClick={() => void signOutAndForget("/app/account/login?next=/app/settings/exports")} /> : null}</p> : null}
     </div>
   </AccountLayout>;
 }

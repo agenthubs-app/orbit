@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOutAndForget } from "../../orbit-sign-out";
 import { useEffect, useMemo, useState } from "react";
 
 import type { AccountDeletionRequestContract } from "../../../../../shared/contract/account";
@@ -38,7 +38,7 @@ export function PendingPage() {
     {problem ? <p role="alert" className={s.error}>{problem}</p> : null}
     <div className={s.actions}>
       {request?.status === "pending" ? <Button label={t("cancelDeletion")} variant="primary" loading={busy} onClick={() => void cancel()} /> : null}
-      <Button label={t("signOut")} variant="secondary" onClick={() => void signOut({ callbackUrl: "/app/account/login?next=/app/account/pending" })} />
+      <Button label={t("signOut")} variant="secondary" onClick={() => void signOutAndForget("/app/account/login?next=/app/account/pending")} />
     </div>
   </main></Orbit2026Scope>;
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { SessionContext, signOut } from "next-auth/react";
+import { SessionContext } from "next-auth/react";
 import { useContext, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
-import { clearKioskDevice } from "../host/kiosk-store";
+import { signOutAndForget } from "../../orbit-sign-out";
 import { ShellPage } from "../shell/slots";
 import { Avatar, Icon, Orbit2026Scope, ToastProvider, type IconName } from "../ui";
 import s from "./AccountLayout.module.css";
@@ -57,7 +57,7 @@ export function AccountLayout({ active, title, subtitle, children, rightRail, la
               </a>
             ))}
             <div className={s.rule} />
-            <button className={`${s.menuItem} ${s.signOut}`} type="button" onClick={() => void clearKioskDevice().finally(() => signOut({ callbackUrl: "/app" }))}>
+            <button className={`${s.menuItem} ${s.signOut}`} type="button" onClick={() => void signOutAndForget("/app")}>
               <span className={s.menuIcon}><Icon name="out" size={16} /></span><span>{t("signOut")}</span>
             </button>
           </nav>

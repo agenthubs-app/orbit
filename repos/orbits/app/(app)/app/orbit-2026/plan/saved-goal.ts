@@ -7,11 +7,13 @@
 import { useEffect, useState } from "react";
 
 import { firstProfileGoalForPlan, type ProfileGoalPlanKind } from "../../../../../shared/compute/profile-onboarding-goal";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 
 export type SavedPlanGoal = { text: string; suggestedKind: ProfileGoalPlanKind | null };
 
-let cached: SavedPlanGoal | null | undefined;
-// Readers mounting together share one request.
+// The last answer lives in the site's read cache (per account, cleared on sign-out, stale after a write);
+// younger than FRESH.slow it is not read again. Readers mounting together share one request.
+const GOAL_KEY = "plan:saved-goal";
 let inFlight: Promise<SavedPlanGoal | null> | undefined;
 
 export async function readSavedPlanGoal(fetcher: typeof fetch = fetch): Promise<SavedPlanGoal | null> {
@@ -27,12 +29,12 @@ export async function readSavedPlanGoal(fetcher: typeof fetch = fetch): Promise<
  * wait for it rather than redraw when it lands. A failed read answers null (a previous answer stays).
  */
 export function useSavedPlanGoalAnswer(enabled = true): SavedPlanGoal | null | undefined {
-  const [goal, setGoal] = useState<SavedPlanGoal | null | undefined>(cached);
+  const [goal, setGoal] = useState<SavedPlanGoal | null | undefined>(() => lastAnswer<{ goal: SavedPlanGoal | null }>(GOAL_KEY)?.goal);
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || answerFresh(GOAL_KEY, FRESH.slow)) return;
     let alive = true;
     inFlight ??= readSavedPlanGoal().finally(() => { inFlight = undefined; });
-    void inFlight.then((value) => { cached = value; if (alive) setGoal(value); })
+    void inFlight.then((value) => { rememberAnswer(GOAL_KEY, { goal: value }); if (alive) setGoal(value); })
       .catch(() => { if (alive) setGoal((current) => current === undefined ? null : current); });
     return () => { alive = false; };
   }, [enabled]);

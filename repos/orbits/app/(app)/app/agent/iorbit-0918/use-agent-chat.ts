@@ -5,6 +5,8 @@
 // `persistCurrentSession`、`restoreSession`、hydration、`?q=` / `?session=` /
 // localStorage、navigate/pushState 与全局提问接线。R21 为进行中的回复增加
 // 停止等待与同一可靠请求的再开，并在切换会话后忽略迟到结果。
+import { FRESH, answerFresh, lastAnswer } from "../../orbit-last-answer";
+import { FIRST_PAGE_KEY, type AgentHistoryFirstPage } from "./use-agent-history";
 import {
   useCallback,
   useEffect,
@@ -697,9 +699,11 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
 
     const hydrateHistory = async () => {
       const sessionId = currentAgentSessionId();
+      // The history rail's fresh first page already carries the groups (orbit-last-answer): no second read.
+      const rememberedGroups = answerFresh(FIRST_PAGE_KEY, FRESH.list) ? lastAnswer<AgentHistoryFirstPage>(FIRST_PAGE_KEY)?.groups : undefined;
       const [session, groups] = await Promise.all([
         sessionId ? loadStoredAgentChatSession(sessionId) : Promise.resolve(null),
-        loadAgentChatGroups(),
+        rememberedGroups ? Promise.resolve(rememberedGroups) : loadAgentChatGroups(),
       ]);
 
       if (cancelled) {

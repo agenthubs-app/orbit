@@ -38,5 +38,12 @@ function withPublicOrigin(request: NextRequest): NextRequest {
 export const GET = (request: NextRequest): Promise<Response> =>
   handlers.GET(withPublicOrigin(request));
 
-export const POST = (request: NextRequest): Promise<Response> =>
-  handlers.POST(withPublicOrigin(request));
+// 退出登录：响应里加 `Clear-Site-Data: "cache"`，浏览器把本站的 HTTP 缓存一起清掉（MDN Clear-Site-Data）。
+// 只清 cache：storage 会连语言、外观这类设备偏好一起删；个人的本机存储由客户端 orbit-sign-out.ts 逐项清。
+export const POST = async (request: NextRequest): Promise<Response> => {
+  const response = await handlers.POST(withPublicOrigin(request));
+  if (!request.nextUrl.pathname.endsWith("/signout")) return response;
+  const headers = new Headers(response.headers);
+  headers.set("clear-site-data", '"cache"');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+};

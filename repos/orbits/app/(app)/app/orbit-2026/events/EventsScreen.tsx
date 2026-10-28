@@ -10,7 +10,7 @@ import { eventEmoji } from "../../../../../shared/compute/event-emoji";
 import type { EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../../../../shared/contract/event-assessment";
 import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
@@ -101,7 +101,8 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
       rememberAnswer<EventsOverviewAnswer>("events:overview", { items: list.data, upcoming: [...up.data.items], upcomingCount: up.data.upcomingCount, past: [...before.data.items], availability: avail.data });
     }
   }, []);
-  useEffect(() => { void load(); return () => abort.current?.abort(); }, [load]);
+  // Mounting with lists younger than FRESH.list (and no write since) reads nothing again (orbit-last-answer).
+  useEffect(() => { if (!answerFresh("events:overview", FRESH.list)) void load(); return () => abort.current?.abort(); }, [load]);
 
   const ordered = useMemo(() => orderAssessed((items ?? []).filter(isShownInGrid).filter((item) => item.status !== "failed")), [items]);
   const current = useMemo(() => (items ?? []).find((item) => item.id === selected) ?? null, [items, selected]);

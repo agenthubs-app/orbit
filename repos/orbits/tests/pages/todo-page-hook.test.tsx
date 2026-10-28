@@ -4,6 +4,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { SessionContext } from "next-auth/react";
 import { useTodoPage } from "../../app/(app)/app/orbit-2026/todo/useTodoPage";
 import type { TodoPageContract } from "../../shared/contract/todo-page";
+import { resetLastAnswersForTests } from "../../app/(app)/app/orbit-last-answer";
+
+// The read cache is module state: each test starts without the previous test's remembered page.
+test.beforeEach(() => { resetLastAnswersForTests(); });
 
 const first: TodoPageContract = {
   date: "2026-10-18", timeZone: "Asia/Tokyo", asOf: "2026-10-18T00:00:00Z",

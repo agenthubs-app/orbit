@@ -3,25 +3,39 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ZodType } from "zod";
 
+import { FRESH, onAnswersStale } from "../../orbit-last-answer";
+import { getSharedReadAccount } from "../../orbit-shared-read";
+
 export type HomeResource<T> = { kind: "loading" } | { kind: "error" } | { kind: "ready"; data: T; readAt: string };
 
 /**
- * Shared per path across every mounted card, in the stale-while-revalidate manner of SWR: cards
- * asking for the same path at once share one request, a card mounting again (back to Home) shows
- * the last answer at once and refreshes it behind, and a focus refreshes each path once.
- * Mounts reuse an answer for SWR's default dedupingInterval (2 s); a focus always asks again.
+ * Shared per path (and per account) across every mounted card, in the stale-while-revalidate manner of
+ * SWR / TanStack Query and under the site's one cache rule (orbit-last-answer.ts): cards asking for the
+ * same path at once share one request; a card mounting again (back to Home) shows the last answer at once
+ * and asks again only once it is older than FRESH.list or a write has made it stale; a focus refreshes
+ * the mounted paths (FRESH.focus: always, one request per path at a time); a write anywhere (orbit-write-watch) refreshes the mounted ones.
+ * Memory only, keyed by account, cleared on sign-out (orbit-sign-out.ts).
  */
-const DEDUPE_MS = 2_000;
 
 type Body = { ok: boolean; body: { success?: boolean; data?: unknown } | null; readAt: string };
 type Entry = { last?: Body; startedAt: number; inFlight?: Promise<Body>; listeners: Set<(answer: Body) => void> };
 
 const entries = new Map<string, Entry>();
+let owner: string | null = null;
 
+/** The account's own entry for a path; another account on this page drops every entry of the last one. */
 function entryFor(path: string): Entry {
+  const account = getSharedReadAccount();
+  if (owner !== account) { entries.clear(); owner = account; }
   let entry = entries.get(path);
   if (!entry) { entry = { startedAt: 0, listeners: new Set() }; entries.set(path, entry); }
   return entry;
+}
+
+/** Sign-out: nothing of this account stays in memory. */
+export function clearHomeResources(): void {
+  entries.clear();
+  owner = null;
 }
 
 async function fetchBody(path: string): Promise<Body> {
@@ -35,7 +49,8 @@ async function fetchBody(path: string): Promise<Body> {
 /** One request per path at a time; `within` skips it when the last one started that recently. */
 function revalidate(path: string, within: number): void {
   const entry = entryFor(path);
-  if (entry.inFlight || Date.now() - entry.startedAt < within) return;
+  // A failed answer is never fresh: the next mount or focus asks again.
+  if (entry.inFlight || (entry.last?.ok !== false && Date.now() - entry.startedAt < within)) return;
   entry.startedAt = Date.now();
   const request = fetchBody(path);
   entry.inFlight = request;
@@ -60,17 +75,21 @@ function wireFocusRefresh(): void {
   focusWired = true;
   const onFocus = () => {
     if (document.visibilityState !== "visible") return;
-    for (const [path, entry] of entries) if (entry.listeners.size > 0) revalidate(path, 0);
+    for (const [path, entry] of entries) if (entry.listeners.size > 0) revalidate(path, FRESH.focus);
   };
   window.addEventListener("focus", onFocus);
   document.addEventListener("visibilitychange", onFocus);
+  // A write anywhere on the page: the cards on screen read again now (behind their content), the others on mount.
+  onAnswersStale(() => {
+    for (const [path, entry] of entries) { entry.startedAt = 0; if (entry.listeners.size > 0) revalidate(path, 0); }
+  });
 }
 
 /** Mounted cards alone subscribe to their domain. A failed domain leaves other cards alone. */
 export function useHomeResource<T>(path: string, schema: ZodType<T>): HomeResource<T> & { retry: () => void } {
   const [version, setVersion] = useState(0);
   const [resource, setResource] = useState<HomeResource<T>>(() => {
-    const last = typeof window === "undefined" ? undefined : entries.get(path)?.last;
+    const last = typeof window === "undefined" ? undefined : entryFor(path).last;
     return last ? toResource(last, schema) : { kind: "loading" };
   });
   const retry = useCallback(() => setVersion((value) => value + 1), []);
@@ -85,8 +104,8 @@ export function useHomeResource<T>(path: string, schema: ZodType<T>): HomeResour
     const listener = (answer: Body) => { if (active) setResource(toResource(answer, schema)); };
     entry.listeners.add(listener);
     if (entry.last) setResource(toResource(entry.last, schema));
-    // A retry always asks again; a mount reuses an answer that is only a moment old.
-    revalidate(path, version > 0 ? 0 : DEDUPE_MS);
+    // A retry always asks again; a mount reuses an answer younger than the list freshness.
+    revalidate(path, version > 0 ? 0 : FRESH.list);
     wireFocusRefresh();
     return () => { active = false; entry.listeners.delete(listener); };
   }, [path, schema, version]);

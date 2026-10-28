@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TODO_SECTION_SOURCES, todoPageSchema } from "../../../../../shared/api-schema/todo-page";
 import type { TodoPageContract, TodoSection, TodoSectionKey, TodoSourceKey } from "../../../../../shared/contract/todo-page";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 
 type ReadState = "idle" | "loading" | "ready" | "failed" | "not_implemented";
@@ -86,7 +86,12 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     publish({ scope, state: answer.kind === "ok" ? "ready" : answer.kind === "not_implemented" ? "not_implemented" : "failed", page: answer.kind === "ok" ? answer.page : null, paging: {}, denied: answer.kind === "denied" });
   }, [cancel, date, enabled, publish, ready, scope, timeZone, url]);
 
-  useEffect(() => { void refresh(); return cancel; }, [cancel, refresh]);
+  // A remembered page younger than FRESH.list (and no write since) is not read again on mount (orbit-last-answer).
+  useEffect(() => {
+    if (seeded.current && answerFresh(answerKey(date, timeZone), FRESH.list)) { seeded.current = false; return cancel; }
+    void refresh();
+    return cancel;
+  }, [cancel, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async (section: TodoSectionKey, source: TodoSourceKey) => {
     const current = value.current;

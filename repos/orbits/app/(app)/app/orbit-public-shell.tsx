@@ -1,7 +1,8 @@
 "use client";
 
 import { useContext, useEffect, useState, type ReactNode } from "react";
-import { SessionContext, signOut } from "next-auth/react";
+import { SessionContext } from "next-auth/react";
+import { signOutAndForget } from "./orbit-sign-out";
 import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "./orbit-language-context";
@@ -194,7 +195,7 @@ function OrbitNavAccountControl({
           <button
             onClick={() => {
               setMenuOpen(false);
-              void signOut({ callbackUrl: preserveHref("/app") });
+              void signOutAndForget(preserveHref("/app"));
             }}
             role="menuitem"
             type="button"

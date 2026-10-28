@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ContactCompletionQuestion, ContactCompletionResult } from "../../../../../shared/contract/contact-completion";
 import { contactCompletionQuestionSchema, contactCompletionResultSchema } from "../../../../../shared/api-schema/contact-completion";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { completionCopy as q } from "../copy/add-import";
 import { Bone, useToast } from "../ui";
@@ -46,6 +46,7 @@ export function TodayQuestionCard({ onSettled, variant }: { onSettled?: () => vo
   const keyFor = (id: string, action: string) => (keys.current[`${id}:${action}`] ??= key());
   useEffect(() => {
     let live = true;
+    if (answerFresh(ANSWER_KEY, FRESH.list)) return () => { live = false; };
     void fetch("/api/contacts/completion-question").then(async (response) => {
       const json = (await response.json().catch(() => null)) as { success?: boolean; data?: unknown } | null;
       if (!live) return;

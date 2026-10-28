@@ -182,6 +182,13 @@ export const proxy = auth(async (request) => {
     },
   });
 
+  // A signed-in /app page carries this person's data: no browser or shared cache keeps it, so after signing
+  // out the Back button cannot show the previous person's page from the back/forward cache (web.dev sign-out
+  // best practices). The app's own in-memory caches (router cache, orbit-last-answer) are unaffected.
+  if (request.nextUrl.pathname.startsWith("/app") && request.auth?.user?.id) {
+    response.headers.set("cache-control", "private, no-store");
+  }
+
   if (language) {
     // cookie 让后续没有 query 参数的 `/app` 页面继续使用用户选择的语言。
     response.cookies.set("orbit-lang", language, {

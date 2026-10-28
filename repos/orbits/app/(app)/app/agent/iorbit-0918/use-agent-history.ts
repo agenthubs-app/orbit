@@ -27,7 +27,7 @@ import type {
   AiSessionOrganizationContract,
 } from "../../../../../shared/contract/ai-sessions";
 import type { OrbitAgentHistoryView } from "../../orbit-agent-route-view-model";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { createAgentChatSessionMutationQueue } from "../agent-chat-session-mutations";
@@ -68,8 +68,8 @@ export interface AgentHistoryChatBridge {
 }
 
 /** The unfiltered first page of conversations, remembered per account so a revisit shows the list at once (orbit-last-answer). */
-const FIRST_PAGE_KEY = "agent:history:first-page";
-type AgentHistoryFirstPage = { items: AgentSessionSummary[]; nextCursor: string | null; hasMore: boolean; groups: AiSessionGroupContract[] };
+export const FIRST_PAGE_KEY = "agent:history:first-page";
+export type AgentHistoryFirstPage = { items: AgentSessionSummary[]; nextCursor: string | null; hasMore: boolean; groups: AiSessionGroupContract[] };
 
 export function useAgentHistory() {
   const { language, t } = useOrbitLanguage();
@@ -159,8 +159,11 @@ export function useAgentHistory() {
         if (!cancelled && generation === historyPageGenerationRef.current) setHistoryPageLoading(false);
       });
     };
-    const refreshOnFocus = () => refreshAcrossClients(false);
-    refreshAcrossClients(true);
+    // The unfiltered first page younger than FRESH.list (and no write since) is not read again on mount; a focus reads it unless just read.
+    const freshFirstPage = () => !historyQuery && !selectedSessionGroupId && historyRefreshVersion === 0 && answerFresh(FIRST_PAGE_KEY, FRESH.list);
+    const refreshOnFocus = () => { if (historyQuery || selectedSessionGroupId || !answerFresh(FIRST_PAGE_KEY, FRESH.focus)) refreshAcrossClients(false); };
+    if (freshFirstPage() && storedSessionsRef.current === remembered?.items) setHistoryPageLoading(false);
+    else refreshAcrossClients(true);
     window.addEventListener("focus", refreshOnFocus);
     return () => {
       cancelled = true;

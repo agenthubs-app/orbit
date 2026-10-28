@@ -13,7 +13,7 @@ import { shellCopy } from "../copy/shell";
 import { ShellPage, useInShell } from "../shell/slots";
 import Link from "next/link";
 import { pickCopy } from "../copy/types";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { Bone, Icon, Orbit2026Scope, Skeleton, useStandardCopy } from "../ui";
 import { FmBar, LimitCard, RailHead } from "./FlowParts";
@@ -91,6 +91,7 @@ function GoalInput({ t }: { t: Translate }) {
 
   useEffect(() => {
     let alive = true;
+    if (answerFresh(ENTRY_KEY, FRESH.list)) return () => { alive = false; };
     void (async () => {
       const result = await planApi<PlanIntakeListResponse>("/intakes", { language });
       const next = result.ok ? result.data : null;
@@ -108,7 +109,7 @@ function GoalInput({ t }: { t: Translate }) {
   // The rail is drawn only in the shell, so its recent chats are read only there (as the rail did).
   const inShell = useInShell();
   useEffect(() => {
-    if (!inShell) return;
+    if (!inShell || answerFresh(RECENT_KEY, FRESH.list)) return;
     let alive = true;
     void readRecentChats().then((items) => { if (!alive) return; if (items) rememberAnswer(RECENT_KEY, items); setRecent(items ?? []); });
     return () => { alive = false; };

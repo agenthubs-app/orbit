@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContactCardDTO, ContactCardSummaryDTO } from "../../../../../shared/contract/contact-card-page";
 import type { ContactGoalRelatedLinkDTO } from "../../../../../shared/contract/contact-goal-related";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
-import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { TodayQuestionCard } from "../add/TodayQuestionCard";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
@@ -94,9 +94,11 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     const result = await networkApi.summary();
     if (result.ok) { setSummary(result.data); rememberAnswer("network:summary", result.data); } else setFailed(true);
   }, []);
+  // Mounting with answers younger than FRESH.list (and no write since) reads nothing again (orbit-last-answer).
   useEffect(() => {
     if (designLoading) return;
-    void loadSummary();
+    if (!answerFresh("network:summary", FRESH.list)) void loadSummary();
+    if (answerFresh("network:links", FRESH.list)) return;
     void networkApi.goalRelated().then((result) => {
       // A failed read draws the list without 🎯 labels rather than holding the skeleton (the last answer stays if there is one).
       if (!result.ok) { setLinks((current) => current ?? new Map()); return; }
@@ -122,8 +124,12 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   // 「その他」 in a filter is expanded from the summary's facets: without them the first read would be made once
   // with the bare key and again once the summary lands. Wait for the summary then (the list keeps its skeleton).
   const needsFacets = summary === null && (filters.industries.includes(OTHER_KEY) || filters.regions.includes(OTHER_KEY));
+  const firstList = useRef(true);
   useEffect(() => {
     if (designLoading || needsFacets) return;
+    const first = firstList.current;
+    firstList.current = false;
+    if (first && items && answerFresh(listAnswerKey(query, tab, filters), FRESH.list)) return;
     const current = ++generation.current;
     const handle = setTimeout(() => {
       void Promise.all([networkApi.page(pageQuery), networkApi.summary(networkQuery({ query, tab, filters, facets: summary }))]).then(([page, filtered]) => {

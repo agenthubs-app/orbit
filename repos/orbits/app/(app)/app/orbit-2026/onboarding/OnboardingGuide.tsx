@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 
 import type { ProfileOnboardingProgressContract } from "../../../../../shared/contract/profile";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Icon, MacTile, Modal } from "../ui";
 import { fetchOnboardingProgress } from "./onboarding-client";
@@ -43,7 +44,8 @@ export type OnboardingFlowState = { kind: "loading" } | { kind: "none" } | { kin
 
 // The last flow this tab read: the onboarding page and its import header start from it, so the
 // stepper does not render empty and then fill in on every page change (the read still refreshes it).
-let lastFlow: ProfileOnboardingProgressContract | null | undefined;
+// It lives in the site's read cache (per account, cleared on sign-out).
+const FLOW_KEY = "onboarding:flow";
 // Callers mounting together (home, the import header) share one read.
 let flowRead: Promise<ProfileOnboardingProgressContract | null> | undefined;
 
@@ -53,18 +55,23 @@ function sharedOnboardingRead(): Promise<ProfileOnboardingProgressContract | nul
 }
 
 export function rememberOnboardingFlow(flow: ProfileOnboardingProgressContract | null): void {
-  lastFlow = flow;
+  rememberAnswer(FLOW_KEY, { flow });
 }
 
 export function rememberedOnboardingFlow(): ProfileOnboardingProgressContract | null | undefined {
-  return lastFlow;
+  return lastAnswer<{ flow: ProfileOnboardingProgressContract | null }>(FLOW_KEY)?.flow;
 }
 
 /** The actor's profile onboarding flow; failures read as "none" so home never blocks on it. */
 export function useProfileOnboardingFlow(): OnboardingFlowState {
-  const [state, setState] = useState<OnboardingFlowState>(() => (lastFlow === undefined ? { kind: "loading" } : lastFlow ? { kind: "ready", flow: lastFlow } : { kind: "none" }));
+  const [state, setState] = useState<OnboardingFlowState>(() => {
+    const lastFlow = rememberedOnboardingFlow();
+    return lastFlow === undefined ? { kind: "loading" } : lastFlow ? { kind: "ready", flow: lastFlow } : { kind: "none" };
+  });
   useEffect(() => {
     let active = true;
+    // Younger than FRESH.list (and no write since): not read again (orbit-last-answer).
+    if (answerFresh(FLOW_KEY, FRESH.list)) return () => { active = false; };
     sharedOnboardingRead()
       .then((flow) => { rememberOnboardingFlow(flow); if (active) setState(flow ? { kind: "ready", flow } : { kind: "none" }); })
       .catch(() => { if (active) setState({ kind: "none" }); });
