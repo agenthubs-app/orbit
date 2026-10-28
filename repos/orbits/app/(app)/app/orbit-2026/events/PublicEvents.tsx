@@ -12,6 +12,7 @@ import { translator as assessTranslator } from "./AssessmentDetail";
 import { DEFAULT_DISCOVER_QUERY, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
 import { EventDetailBody, monthDaySlash } from "./EventDetail";
 import { journeyApi } from "./journey-api";
+import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
 import x from "./detail.module.css";
 import p from "./public.module.css";
@@ -71,16 +72,17 @@ function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: stri
 
 /** 参加コード卡（b12 #376）：码 · 发出方 · 期限 + 「ログインして参加登録」/「無料で登録して参加登録」，登录后回到 /register/〈コード〉再进报名。 */
 function InviteCodeCard({ code, data, t }: { code: string; data: EventOverviewResponse; t: JourneyT }) {
+  const { ended, canRegister } = useDetailTiming(data);
   const next = encodeURIComponent(`/app/register/${encodeURIComponent(code)}`);
   return (
     <div className={`${styles.card} ${styles.span4} ${p.codeCard}`} data-public-invite={code}>
       <div className={styles.lbl}>{t("inviteCodeLbl")}</div>
       <div className={p.code}>{code}</div>
       <div className={styles.lbl}>{t("inviteFrom", { date: monthDaySlash(data.registrationClosesAt), org: data.organizer.name })}</div>
-      <div className={p.codeActions}>
+      {canRegister ? <div className={p.codeActions}>
         <a className={`btn ${styles.btn} ${styles.primary}`} href={`${LOGIN}?next=${next}`}>{t("loginRegister")}</a>
         <a className={`btn ${styles.btn}`} href={`/app/account/signup?next=${next}`}>{t("signupRegister")}</a>
-      </div>
+      </div> : <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span>}
       <div className={`${styles.lbl} ${p.codeNote}`}>{t("inviteNote")}</div>
     </div>
   );
@@ -90,6 +92,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
+  const { ended, canRegister } = useDetailTiming(data);
   useEffect(() => { void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId]);
   return (
     <div className={p.page}>
@@ -100,7 +103,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
           <div className={p.t}><b>{data?.title}</b><small>{data?.organizer.name}</small></div>
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
-            <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a>
+            {canRegister ? <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a> : data ? <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span> : null}
           </div>
         </div>
         {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} /> : null}

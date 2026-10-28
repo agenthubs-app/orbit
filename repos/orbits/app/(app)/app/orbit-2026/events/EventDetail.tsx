@@ -15,6 +15,7 @@ import { CancelDialog } from "./CancelDialog";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { LoginAssessCard } from "./PublicEvents";
+import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 import x from "./detail.module.css";
@@ -63,27 +64,29 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
 
 /** 名单锁着（roster-policy A：报名确定前）：人数 · 知り合い人数 + 「参加登録すると…」（b12 #382–#389）。 */
 function RosterGate({ data, t, onRegister, wide }: { data: EventOverviewResponse; t: JourneyT; onRegister?: () => void; wide?: boolean }) {
+  const { ended, canRegister } = useDetailTiming(data);
   return (
     <>
       {/* 未登录：只给人数（不提知り合い）、按钮是「ログインして参加登録」（b12 #394）。 */}
-      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{data.signedOut ? t("rosterCountsOnly", { n: data.attendeeCounts.all }) : t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
+      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{ended ? t("pastRegistrationCount", { n: data.attendeeCounts.all }) : data.signedOut ? t("rosterCountsOnly", { n: data.attendeeCounts.all }) : t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
       <div className={`${x.gate} ${wide ? x.gateWide : ""}`} data-roster-gate="">
         <div className={x.gateEmoji}>👥</div>
-        <b className={x.gateTitle}>{t("rosterGateBody")}</b>
+        <b className={x.gateTitle}>{t(ended ? "pastRosterGate" : "rosterGateBody")}</b>
         <div className={`${styles.lbl} ${x.gateNote}`}>{t("rosterGateNote")}</div>
-        {onRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t(data.signedOut ? "loginRegister" : "rosterGateCta")}</button> : null}
+        {onRegister && canRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t(data.signedOut ? "loginRegister" : "rosterGateCta")}</button> : null}
       </div>
     </>
   );
 }
 
 export function DetailRail({ data, t, onRegister, language = "ja" }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void; language?: OrbitLanguage }) {
+  const { ended, canRegister } = useDetailTiming(data);
   const fit = data.attendees.filter((item) => item.planFit && !item.known).slice(0, 5);
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("meetTitle")}</h4>
       {data.rosterLocked && data.attendeeCounts.all > 0 ? (
-        <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t("railGateBody")}</div></div>
+        <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t(ended ? "pastRosterGate" : "railGateBody")}</div></div>
       ) : <>
       <div className={`${styles.card} ${x.railList}`}>
         <div className={x.list}>
@@ -102,7 +105,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
       ) : null}
       </>}
       <div className={x.spacer} />
-      {data.registration.status === "none" ? (
+      {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : data.registration.status === "none" && canRegister ? (
         <div className={`${styles.card} ${x.cta}`}>
           <b>{t("ctaTitle")}</b>
           <div className={`${styles.lbl} ${x.ctaSub}`}>{t("ctaSub")}</div>
@@ -134,6 +137,7 @@ export function usePhone(): boolean {
 }
 
 export function PhoneDetailBody({ data, language, t, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; onRegister: () => void }) {
+  const { ended, canRegister } = useDetailTiming(data);
   const toast = useToast();
   // ★ 保存 = 记成 R26 的评估（出现在「評価」列表），同一活动重复保存由服务端按来源去重。
   const save = async () => {
@@ -157,10 +161,11 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       <div className={`${styles.card} ${x.pCover}`}>
         <div className={x.pCoverArt}>
           <span className={`${styles.emo} ${x.pCoverEmo}`}>{data.emoji}</span>
-          {data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
+          {!ended && data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
         </div>
         <div className={x.pCoverBody}>
           <div className={styles.lbl}>{data.organizer.name}</div>
+          {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
           <b className={x.pTitle}>{data.title}</b>
           <div className={x.pFacts}>{facts.map((fact) => <div key={fact.icon}><Icon name={fact.icon} size={16} />{fact.text}</div>)}</div>
         </div>
@@ -224,7 +229,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           ) : null}
         </>
       ) : null}
-      {data.registration.status === "none" ? (
+      {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : data.registration.status === "none" && canRegister ? (
         <div className={x.ctabar} data-detail-cta="">
           <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")} onClick={() => void save()}><Icon name="star" size={20} /></button>
           <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} onClick={onRegister}>{t("ctaRegisterAi")}</button>
@@ -236,6 +241,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
 
 /** `onSeeAll`：「すべて見る」去取全部公开参加者（取过就不再显示按钮；其余人没有公开资料）。 */
 export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void }) {
+  const { ended } = useDetailTiming(data);
   const at = assessTranslator(language);
   const toast = useToast();
   const [tab, setTab] = useState<"intro" | "agenda" | "host" | "people">("intro");
@@ -260,6 +266,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
       <div className={`${styles.card} ${x.span8} ${x.coverCard}`}>
         <div className={x.cover}><span className={`${styles.emo} ${x.coverEmo}`}>{data.emoji}</span></div>
         <div className={x.coverBody}>
+          {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
           <div className={x.facts}>
             <div><div className={styles.lbl}>{t("fDate")}</div><b>{eventRange(data.startsAt, data.endsAt, language)}</b></div>
             <div><div className={styles.lbl}>{t("fPlace")}</div><b>{data.venue ?? "—"}</b></div>
@@ -271,7 +278,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           <div className={`${styles.sub} ${x.intro}`}>{data.description}</div>
         </div>
       </div>
-      {data.signedOut ? (signedOutAside ?? <LoginAssessCard t={t} language={language} span="span4" />) : data.assessment ? (
+      {data.signedOut ? (ended ? <div className={`${styles.card} ${styles.span4}`}><b>{t("liveEnded")}</b></div> : signedOutAside ?? <LoginAssessCard t={t} language={language} span="span4" />) : data.assessment ? (
         <div className={`${styles.card} ${styles.span4} ${x.scoreCard}`} data-why-box="">
           <div className={styles.lbl}>{t("yourAssessment")}</div>
           <div className={x.scoreRing}>
@@ -371,7 +378,8 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
   // 参加の取り消し（b12 #374）：`?cancel=1` 打开确认框，只在已有报名时。
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const holding = data?.registration.status === "registered" || data?.registration.status === "pending_review" || data?.registration.status === "waitlisted";
+  const { ended, canRegister } = useDetailTiming(data);
+  const holding = !ended && (data?.registration.status === "registered" || data?.registration.status === "pending_review" || data?.registration.status === "waitlisted");
   useEffect(() => {
     if (holding && new URLSearchParams(window.location.search).get("cancel") === "1") setCancelOpen(true);
   }, [holding]);
@@ -423,7 +431,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
           ) : null}
         </span>
       ) : null}
-      {status === "none" ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
+      {ended ? (status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a> : <span className={styles.chip}>{t("liveEnded")}</span>) : status === "none" && canRegister ? <button type="button" className={`btn ${styles.btn} ${x.accent}`} onClick={register}>{t("register")}</button>
         : status === "registered" || status === "pending_review" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/prep`}>{t("goPrep")}</a>
           : status === "attended" ? <a className={`btn ${styles.btn} ${x.accent}`} href={`/app/events/${encodeURIComponent(eventId)}/after`}>{t("goAfter")}</a>
             : <span className={styles.chip}>{statusLabel}</span>}
