@@ -358,3 +358,19 @@
 @media (max-width: 1279px) {
   .frame[data-focus="true"], .frame[data-focus="true"][data-rail="true"] { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* The fixed frame of a left-rail page before it has filled the slots (shellFrameFor): placeholders
+   the size of its controls, count line and rail, in the design system's skeleton fill (01-system ⑧). */
+.framePill, .frameLine, .frameBone, .frameCard {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%;
+  animation: frameShimmer var(--dur-shimmer) linear infinite;
+}
+.framePill { border-radius: var(--r-pill); }
+.frameLine { width: 120px; height: 12px; border-radius: var(--r-chip); vertical-align: middle; }
+.frameBone { display: block; height: 14px; border-radius: var(--r-chip); }
+.frameCard { display: block; height: 112px; border-radius: var(--r-card-web); }
+@keyframes frameShimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .framePill, .frameLine, .frameBone, .frameCard { animation: none; } }
+:global([data-motion="reduce"]) :is(.framePill, .frameLine, .frameBone, .frameCard) { animation: none; }

@@ -8,12 +8,14 @@ import { ShellPage } from "../orbit-2026/shell/slots";
 import shellStyles from "../orbit-2026/shell/shell.module.css";
 import ws from "./inbox-workspace.module.css";
 import { inboxListTime } from "./inbox-list-time";
+import { lastAnswer, rememberAnswer } from "../orbit-last-answer";
 import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
   const { t, language } = useOrbitLanguage();
-  const [cards, setCards] = useState<MessageCardPageView | null>(null);
+  // Back on the inbox: the last first page of threads shows at once while it is read again (orbit-last-answer).
+  const [cards, setCards] = useState<MessageCardPageView | null>(() => lastAnswer<MessageCardPageView>(`inbox:cards:${actorId}`) ?? null);
   const [search, setSearch] = useState("");
   const [listCursor, setListCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -41,11 +43,12 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   }, [actorId]);
   useEffect(() => {
     const controller = new AbortController(); let busy = false;
-    setCards(null); setListError(false);
+    const remembered = listCursor ? undefined : lastAnswer<MessageCardPageView>(`inbox:cards:${actorId}`);
+    setCards(remembered ?? null); setListError(false);
     const refresh = async () => {
       if (busy || document.visibilityState === "hidden") return;
       busy = true;
-      try { const result = await readMessageCards(actorId, controller.signal, listCursor); if (!controller.signal.aborted) { setCards(result); setListError(false); } }
+      try { const result = await readMessageCards(actorId, controller.signal, listCursor); if (!controller.signal.aborted) { setCards(result); setListError(false); if (!listCursor) rememberAnswer(`inbox:cards:${actorId}`, result); } }
       catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) changed.current();

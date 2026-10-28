@@ -2,6 +2,8 @@
 import {TypedNotificationsTab} from './typed-notifications-tab';
 import { sanitizeInboxComposeSeed, type NewThreadSeed } from './inbox-compose-seed';
 import { Segmented } from '../orbit-2026/ui';
+import { ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
+import { ShellPage } from '../orbit-2026/shell/slots';
 import { readWebInboxSummary } from './inbox-summary-client';
 
 import {
@@ -113,6 +115,12 @@ function takeInboxComposeSeed(): NewThreadSeed | null {
 /** Sent by the shell's bridge when a compose request arrives while /app/inbox is already open. */
 export const INBOX_PAGE_COMPOSE_EVENT = "orbit:inbox-page-compose";
 
+/** Before the panel mounts: the page's tabs and 420 / 1fr card as skeletons (the shell's route loading draws the same). */
+function InboxSkeleton() {
+  const { t } = useOrbitLanguage();
+  return <ScopedPageSkeleton kind="inbox" label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} />;
+}
+
 /** R07 /app/inbox: the relationship inbox as a page (same reads and 15-second refresh as the drawer). */
 export function RelationshipInboxPage() {
   const [seed, setSeed] = useState<NewThreadSeed | null | undefined>(undefined);
@@ -124,7 +132,7 @@ export function RelationshipInboxPage() {
     window.addEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
     return () => window.removeEventListener(INBOX_PAGE_COMPOSE_EVENT, onCompose);
   }, []);
-  if (seed === undefined) return null;
+  if (seed === undefined) return <InboxSkeleton />;
   return <RelationshipInboxPanel key={version} inline initialSeed={seed} onClose={() => undefined} />;
 }
 
@@ -1241,7 +1249,7 @@ function RelationshipInboxPanel({
 
         <div className={inline ? undefined : `ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
-            seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
+            seed ? <>{inline ? <ShellPage rightRail={false} /> : null}<ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /></> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : identityError ? <p role="status">{inline ? <ShellPage rightRail={false} /> : null}{t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" })}</p> : inline ? <ScopedPageSkeleton kind="inboxCard" label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <p role="status">{t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
             actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
           )}

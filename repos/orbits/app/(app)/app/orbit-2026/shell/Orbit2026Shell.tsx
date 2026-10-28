@@ -14,6 +14,10 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../../orbit-theme";
 import { pickCopy } from "../copy/types";
 import { shellCopy } from "../copy/shell";
+import { networkCopy } from "../copy/network";
+import { eventsCopy } from "../copy/events";
+import { iorbitCopy } from "../copy/iorbit";
+import { monthHeading } from "./month-heading";
 import { standardCopyFor } from "../copy/standard";
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";
 import { orbitAskPageContext } from "../../orbit-global-ask/orbit-ask-routes";
@@ -22,8 +26,8 @@ import { initials } from "../ui/Basics";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { InboxEventBridge } from "./inbox-bridge";
 import { ShellToastBridge } from "./shell-toast-bridge";
-import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellNavKeyFor, type ShellNavKey } from "./shell-routes";
-import { ShellSlotsProvider, useShellSlots } from "./slots";
+import { SHELL_NAV, onboardingImportFocus, shellAppliesTo, shellFrameFor, shellNavKeyFor, type ShellFrame as RouteFrame, type ShellNavKey } from "./shell-routes";
+import { ShellSlotsProvider, useShellSlots, useShellSlotsFilled, type ShellSlots } from "./slots";
 import { WebVersionBannerGate } from "../auth-public/WebVersionBanner";
 import { OnboardingImportHeader } from "../onboarding/OnboardingImportHeader";
 import styles from "./shell.module.css";
@@ -65,7 +69,13 @@ export function useCloseShellRail(): () => void {
 // `focus` (R28 onboarding import): a header across the top in place of the rail nav,
 // the mobile top bar and the bottom capsule; the main header, content and rail stay.
 function ShellFrame({ language, pathname, currentBuildId, focus = null, children }: { language: OrbitLanguage; pathname: string; currentBuildId?: string; focus?: ReactNode; children: ReactNode }) {
-  const slots = useShellSlots();
+  const filled = useShellSlots();
+  const routeFrame = shellFrameFor(pathname);
+  // Until the page fills the slots, its fixed frame; after, the page's slots — with the frame's rail
+  // placeholder kept while the part of the page that brings the rail is still on its way (受信箱: the
+  // title mounts before the open tab). A page that has no rail says `rightRail={false}`.
+  const slots = !useShellSlotsFilled() && routeFrame ? frameSlots(routeFrame, language)
+    : routeFrame?.rail && filled.rightRail === undefined ? { ...filled, rightRail: <FrameRail /> } : filled;
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [railDrawer, setRailDrawer] = useState(false);
   const closeRail = useCallback(() => setRailDrawer(false), []);
@@ -144,6 +154,43 @@ function ShellFrame({ language, pathname, currentBuildId, focus = null, children
     </div>
     </CloseRailContext.Provider>
     </ShellChromeContext.Provider>
+  );
+}
+
+// A left-rail page's fixed frame (shellFrameFor) as slots: the real title, and placeholders the size
+// of the controls, the count line and the rail the page puts there once it has mounted.
+const FRAME_TITLE: Record<RouteFrame["title"], (language: OrbitLanguage) => string> = {
+  month: (language) => monthHeading(language).month,
+  network: (language) => pickCopy(networkCopy.title, language),
+  iorbit: () => "iOrbit",
+  events: (language) => pickCopy(eventsCopy.title, language),
+  task: (language) => pickCopy(shellCopy.taskTitle, language),
+  inbox: (language) => pickCopy(shellCopy.inboxTitle, language),
+};
+
+function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {
+  const height = frame.toolbar?.height ?? 40;
+  const controls = (widths: readonly number[]) => widths.length ? <>{widths.map((width, index) => <i key={index} className={styles.framePill} style={{ width, height }} aria-hidden />)}</> : undefined;
+  return {
+    title: FRAME_TITLE[frame.title](language),
+    subtitle: frame.subtitle === "range" ? monthHeading(language).range
+      : frame.subtitle === "iorbit" ? pickCopy(iorbitCopy.subtitle, language)
+      : frame.subtitle === "pending" ? <i className={styles.frameLine} aria-hidden /> : undefined,
+    left: frame.toolbar ? controls(frame.toolbar.left) : undefined,
+    right: frame.toolbar ? controls(frame.toolbar.right) : undefined,
+    rightRail: frame.rail ? <FrameRail /> : undefined,
+    phoneFold: frame.phoneFold,
+  };
+}
+
+function FrameRail() {
+  const copy = useStandardCopy();
+  return (
+    <div className={styles.railBody} role="progressbar" aria-busy aria-label={copy.loading.loading} data-orbit-2026-frame-rail="">
+      <i className={styles.frameBone} style={{ width: "40%" }} />
+      <i className={styles.frameCard} />
+      <i className={styles.frameCard} />
+    </div>
   );
 }
 

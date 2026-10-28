@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 // R07 shell slots (frozen): a page fills the main header and the optional right
 // rail by rendering <ShellPage …/> anywhere in its tree; the shell draws them.
@@ -36,6 +36,9 @@ export type ShellSlots = {
 type SetSlots = (id: string, slots: ShellSlots | null) => void;
 
 const SlotsContext = createContext<ShellSlots | null>(null);
+// Whether any <ShellPage> has filled the slots: until one has (server render, a route's loading
+// state, the first client frame), the shell draws the route's fixed frame instead (shellFrameFor).
+const FilledContext = createContext(false);
 // The setter lives in its own context and never changes, so a <ShellPage> does not
 // re-render (and re-run its effect) every time the slots change.
 const SetSlotsContext = createContext<SetSlots | null>(null);
@@ -61,7 +64,9 @@ export function ShellSlotsProvider({ children }: { children: ReactNode }) {
   }, [entries]);
   return (
     <SetSlotsContext.Provider value={set}>
-      <SlotsContext.Provider value={slots}>{children}</SlotsContext.Provider>
+      <FilledContext.Provider value={entries.length > 0}>
+        <SlotsContext.Provider value={slots}>{children}</SlotsContext.Provider>
+      </FilledContext.Provider>
     </SetSlotsContext.Provider>
   );
 }
@@ -70,20 +75,37 @@ export function useShellSlots(): ShellSlots {
   return useContext(SlotsContext) ?? {};
 }
 
+export function useShellSlotsFilled(): boolean {
+  return useContext(FilledContext);
+}
+
 /** Whether the page renders inside the shell (signed in, a framed page); false in tests of a page on its own. */
 export function useInShell(): boolean {
   return useContext(SetSlotsContext) !== null;
 }
+
+// Mounting and unmounting happen before paint, not after: a page's header and rail replace the
+// previous page's (or the fixed frame) in the same frame as its content, so switching pages never
+// shows the shell without them. Later changes follow after paint, as before — a tree that both reads
+// the slots and fills them would otherwise re-render itself synchronously without end.
+// The server runs no effects, and React warns about useLayoutEffect there.
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /** Sets the shell slots while mounted. Outside the shell (signed out, tests) it renders nothing. */
 export function ShellPage(props: ShellSlots) {
   const id = useId();
   const set = useContext(SetSlotsContext);
   const { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare } = props;
+  const latest = useRef<ShellSlots>({});
+  latest.current = { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare };
+  useBeforePaint(() => {
+    if (!set) return undefined;
+    set(id, latest.current);
+    return () => set(id, null);
+  }, [set, id]);
   useEffect(() => {
     if (!set) return;
     set(id, { title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare });
   }, [set, id, title, subtitle, left, right, demoPill, rightRail, railLabel, railCount, phoneFold, phoneBare]);
-  useEffect(() => (set ? () => set(id, null) : undefined), [set, id]);
   return null;
 }

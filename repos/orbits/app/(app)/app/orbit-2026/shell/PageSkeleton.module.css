@@ -1,0 +1,36 @@
+/* Page insets as the pages' own .page / .body (0 34 40; 26 under 1280; 18 under 768). */
+.page { display: grid; gap: var(--space-18); padding: 0 var(--space-34) 40px; }
+.page.bare { padding: 0; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-18); }
+.card { grid-column: span var(--span, 12); display: flex; flex-direction: column; gap: 12px; padding: var(--space-20); border-radius: var(--r-card-web); background: var(--surface); min-width: 0; }
+.bone {
+  display: block;
+  height: 14px;
+  border-radius: var(--r-chip);
+  background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer var(--dur-shimmer) linear infinite;
+}
+.pill { border-radius: var(--r-pill); }
+/* iOrbit: the welcome column (680, centred) with the 2 × 2 suggestions. */
+.start { display: grid; gap: 14px; width: 100%; max-width: 680px; margin: 48px auto 0; justify-items: center; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin-top: 18px; }
+.tile { display: block; min-height: 104px; border-radius: var(--r-card-web); background: var(--surface); }
+/* 受信箱: the 420 / 1fr card under the tabs. */
+.split { display: grid; grid-template-columns: 420px minmax(0, 1fr); height: calc(100vh - 184px); border-radius: var(--r-card-web); background: var(--surface); overflow: hidden; }
+.list { display: grid; align-content: start; gap: 18px; padding: var(--space-20); border-right: 1px solid var(--line); }
+.pane { min-width: 0; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .bone { animation: none; } }
+:global([data-motion="reduce"]) .bone { animation: none; }
+
+@media (max-width: 1279px) {
+  .page { padding: 0 var(--space-26) 40px; }
+  .grid { gap: 14px; }
+}
+@media (max-width: 767px) {
+  .page { padding: 0 var(--space-18) 40px; }
+  .card { grid-column: span 12; }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .pane { display: none; }
+}

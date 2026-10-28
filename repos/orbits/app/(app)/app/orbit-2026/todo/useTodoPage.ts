@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TODO_SECTION_SOURCES, todoPageSchema } from "../../../../../shared/api-schema/todo-page";
 import type { TodoPageContract, TodoSection, TodoSectionKey, TodoSourceKey } from "../../../../../shared/contract/todo-page";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 
 type ReadState = "idle" | "loading" | "ready" | "failed" | "not_implemented";
@@ -37,13 +38,25 @@ function merge(current: TodoPageContract, incoming: TodoPageContract, section: T
   return result;
 }
 
-/** R20a read boundary, also reusable by R10/R19. No browser relationship-data cache. */
+const answerKey = (date: string, timeZone: string) => `todo:page:${date}:${timeZone}`;
+
+/**
+ * R20a read boundary, also reusable by R10/R19. Nothing is kept in browser storage; back on the page
+ * (same account, same day) the last first page shows at once while it is read again (orbit-last-answer,
+ * memory only — as Home's useHomeResource keeps the same page).
+ */
 export function useTodoPage(timeZone: string, date: string, enabled = true) {
   const { account, ready } = useSharedReadAccount();
   const scope = JSON.stringify([account, ready, timeZone, date, enabled]);
   const activeScope = useRef(scope);
   activeScope.current = scope;
-  const [snapshot, setSnapshot] = useState<Snapshot>({ scope, state: enabled ? "loading" : "idle", page: null, paging: {} });
+  // Only the mount's own read keeps the remembered page on screen; a later refresh (after a write) reloads as before.
+  const seeded = useRef(false);
+  const [snapshot, setSnapshot] = useState<Snapshot>(() => {
+    const remembered = enabled && ready && account ? lastAnswer<TodoPageContract>(answerKey(date, timeZone)) : undefined;
+    seeded.current = remembered !== undefined;
+    return remembered ? { scope, state: "ready", page: remembered, paging: {} } : { scope, state: enabled ? "loading" : "idle", page: null, paging: {} };
+  });
   const value = useRef(snapshot);
   const generation = useRef(0);
   const requests = useRef(new Map<string, AbortController>());
@@ -62,10 +75,12 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     const epoch = generation.current;
     const controller = new AbortController();
     requests.current.set("first", controller);
-    publish({ scope, state: "loading", page: null, paging: {} });
+    if (!(seeded.current && value.current.scope === scope && value.current.page)) publish({ scope, state: "loading", page: null, paging: {} });
     const answer = await read(url(), date, timeZone, controller.signal).catch((): ReadResult => ({ kind: "failed" }));
     if (controller.signal.aborted || generation.current !== epoch || activeScope.current !== scope) return;
     requests.current.delete("first");
+    seeded.current = false;
+    if (answer.kind === "ok") rememberAnswer(answerKey(date, timeZone), answer.page);
     publish({ scope, state: answer.kind === "ok" ? "ready" : answer.kind === "not_implemented" ? "not_implemented" : "failed", page: answer.kind === "ok" ? answer.page : null, paging: {}, denied: answer.kind === "denied" });
   }, [cancel, date, enabled, publish, ready, scope, timeZone, url]);
 

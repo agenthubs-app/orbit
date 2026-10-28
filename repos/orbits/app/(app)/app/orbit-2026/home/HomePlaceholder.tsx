@@ -9,6 +9,7 @@ import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/pl
 import { todoPageSchema } from "../../../../../shared/api-schema/todo-page";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
+import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { shellCopy } from "../copy/shell";
 import { monthHeading } from "../shell/month-heading";
 import { DefaultRail, ShellBellButton, ShellSearchButton } from "../shell/Orbit2026Shell";
@@ -120,7 +121,7 @@ function HomeWorkspace() {
       rightRail={rail} railCount={shown.length} phoneFold />
     <main className={styles.body} data-home-layout-state={state} data-home-editing={editing}>
       {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={() => void reload()} /></div> : null}
-      {state === "loading" ? <p className={styles.subtle} role="status">{t("loading")}</p> : null}
+      {state === "loading" ? <PageSkeletonBody kind="home" label={t("loading")} bare /> : null}
       {state !== "error" && state !== "loading" ? <>
         {!editing && !layout.hintDismissedAt && !hintHidden ? <div className={styles.hint}><Icon name="grid" size={16} /><span><span className={styles.hintPointer}>{t("hint")}</span><span className={styles.hintTouch}>{t("hintTouch")}</span></span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("close")} onClick={() => void dismissHint()}><Icon name="x" size={16} /></button></div> : null}
         {editing ? <div className={styles.hint}><Icon name="grid" size={16} /><span>{t("dragHint")}</span><button type="button" className={`btn ${styles.hintClose}`} aria-label={t("done")} onClick={() => void finish()}><Icon name="x" size={16} /></button></div> : null}

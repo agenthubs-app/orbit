@@ -63,3 +63,34 @@ export const SHELL_NAV: readonly { key: Exclude<ShellNavKey, "host" | "settings"
   { key: "task", href: "/app/tasks", icon: "task" },
   { key: "inbox", href: "/app/inbox", icon: "inbox" },
 ];
+
+/**
+ * The fixed frame of each left-rail page — what its main header and right rail are before the page
+ * has said so: on the server, during the route's loading state and in the first client frame, no
+ * page has filled the slots yet. The shell draws this frame then (title, toolbar row, rail column,
+ * placeholders where the page's own controls and rail will go), so the layout never shifts when the
+ * page's slots arrive. `toolbar` lists placeholder widths for the left / right controls (b11 TT2 row);
+ * `subtitle` is the date range, the copy's own line, or a placeholder for a count the page reads.
+ */
+export type ShellFrameTitle = "month" | "network" | "iorbit" | "events" | "task" | "inbox";
+export type ShellFrame = {
+  title: ShellFrameTitle;
+  subtitle: "range" | "iorbit" | "pending" | null;
+  /** `height`: the tallest control of the row when it is not a 40 button (イベント's segments are 46). */
+  toolbar: { left: readonly number[]; right: readonly number[]; height?: number } | null;
+  rail: boolean;
+  phoneFold: boolean;
+};
+
+const SHELL_FRAMES: Readonly<Record<string, ShellFrame>> = {
+  "/app/home": { title: "month", subtitle: "range", toolbar: { left: [40], right: [40, 96] }, rail: true, phoneFold: true },
+  "/app/contacts": { title: "network", subtitle: "pending", toolbar: { left: [40], right: [128] }, rail: true, phoneFold: true },
+  "/app/agent": { title: "iorbit", subtitle: "iorbit", toolbar: { left: [], right: [148, 112] }, rail: true, phoneFold: true },
+  "/app/events": { title: "events", subtitle: "pending", toolbar: { left: [232], right: [40], height: 46 }, rail: true, phoneFold: true },
+  "/app/tasks": { title: "task", subtitle: "range", toolbar: { left: [300], right: [40] }, rail: true, phoneFold: true },
+  "/app/inbox": { title: "inbox", subtitle: null, toolbar: null, rail: true, phoneFold: false },
+};
+
+export function shellFrameFor(pathname: string): ShellFrame | null {
+  return SHELL_FRAMES[pathname.replace(/\/+$/u, "")] ?? null;
+}

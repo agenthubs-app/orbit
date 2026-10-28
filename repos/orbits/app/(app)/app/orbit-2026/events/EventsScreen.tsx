@@ -10,6 +10,8 @@ import { eventEmoji } from "../../../../../shared/compute/event-emoji";
 import type { EventAssessmentAvailability, EventAssessmentContract, EventAssessmentCreateInput, EventAssessmentFacts } from "../../../../../shared/contract/event-assessment";
 import type { MyEventItem } from "../../../../../shared/contract/events-mine";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage, useInShell } from "../shell/slots";
 import { Drawer, Icon, Kbd, Modal, Orbit2026Scope, SampleTag, Segmented, ToastProvider, useStandardCopy, useToast } from "../ui";
@@ -55,6 +57,8 @@ export function EventsScreen(props: EventsScreenProps) {
   );
 }
 
+type EventsOverviewAnswer = { items: EventAssessmentContract[]; upcoming: MyEventItem[]; upcomingCount: number; past: MyEventItem[]; availability: EventAssessmentAvailability };
+
 function EventsInner({ language, discover, initialAssessmentId, nowIso }: EventsScreenProps) {
   const t = translator(language);
   const router = useRouter();
@@ -65,11 +69,14 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const [tab, setTab] = useState<Tab>(initialAssessmentId ? "assess" : tabOf(params?.get("tab")));
   useEffect(() => { if (!initialAssessmentId) setTab(tabOf(params?.get("tab"))); }, [params, initialAssessmentId]);
-  const [items, setItems] = useState<EventAssessmentContract[] | null>(null);
-  const [upcoming, setUpcoming] = useState<MyEventItem[]>([]);
-  const [past, setPast] = useState<MyEventItem[]>([]);
-  const [upcomingCount, setUpcomingCount] = useState(0);
-  const [availability, setAvailability] = useState<EventAssessmentAvailability | null>(null);
+  // Back on the page: the last lists show at once while they are read again (orbit-last-answer).
+  useSharedReadAccount();
+  const [opening] = useState(() => lastAnswer<EventsOverviewAnswer>("events:overview"));
+  const [items, setItems] = useState<EventAssessmentContract[] | null>(opening?.items ?? null);
+  const [upcoming, setUpcoming] = useState<MyEventItem[]>(opening?.upcoming ?? []);
+  const [past, setPast] = useState<MyEventItem[]>(opening?.past ?? []);
+  const [upcomingCount, setUpcomingCount] = useState(opening?.upcomingCount ?? 0);
+  const [availability, setAvailability] = useState<EventAssessmentAvailability | null>(opening?.availability ?? null);
   const [selected, setSelected] = useState<string | null>(initialAssessmentId ?? null);
   const [flow, setFlow] = useState<Flow>(null);
   const [url, setUrl] = useState("");
@@ -87,6 +94,9 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
     if (up.ok) { setUpcoming([...up.data.items]); setUpcomingCount(up.data.upcomingCount); }
     if (before.ok) setPast([...before.data.items]);
     if (avail.ok) setAvailability(avail.data);
+    if (list.ok && up.ok && before.ok && avail.ok) {
+      rememberAnswer<EventsOverviewAnswer>("events:overview", { items: list.data, upcoming: [...up.data.items], upcomingCount: up.data.upcomingCount, past: [...before.data.items], availability: avail.data });
+    }
   }, []);
   useEffect(() => { void load(); return () => abort.current?.abort(); }, [load]);
 

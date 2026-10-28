@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContactCardDTO, ContactCardSummaryDTO } from "../../../../../shared/contract/contact-card-page";
 import type { ContactGoalRelatedLinkDTO } from "../../../../../shared/contract/contact-goal-related";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { TodayQuestionCard } from "../add/TodayQuestionCard";
 import { ShellSearchButton } from "../shell/Orbit2026Shell";
 import { ShellPage } from "../shell/slots";
@@ -55,6 +57,9 @@ function useNarrow(): boolean {
   return narrow;
 }
 
+type NetworkListAnswer = { items: ContactCardDTO[]; cursor: string | null; matched: number | null };
+const listAnswerKey = (query: string, tab: NetworkTab, filters: NetworkFilters) => `network:list:${JSON.stringify([query, tab, filters])}`;
+
 function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScreenProps) {
   const t = useNetworkT();
   const router = useRouter();
@@ -67,13 +72,16 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const [tab, setTab] = useState<NetworkTab>("all");
   const [filters, setFilters] = useState<NetworkFilters>(() => filtersFromSearch(params));
   const [query, setQuery] = useState("");
-  const [summary, setSummary] = useState<ContactCardSummaryDTO | null>(null);
-  const [matched, setMatched] = useState<number | null>(null);
-  const [items, setItems] = useState<ContactCardDTO[] | null>(null);
+  // Back on the page: the last counts, links and first page show at once while they are read again (orbit-last-answer).
+  useSharedReadAccount();
+  const [opening] = useState(() => lastAnswer<NetworkListAnswer>(listAnswerKey("", "all", filters)));
+  const [summary, setSummary] = useState<ContactCardSummaryDTO | null>(() => lastAnswer<ContactCardSummaryDTO>("network:summary") ?? null);
+  const [matched, setMatched] = useState<number | null>(opening?.matched ?? null);
+  const [items, setItems] = useState<ContactCardDTO[] | null>(opening?.items ?? null);
   const [fixtureNowMs, setFixtureNowMs] = useState<number | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(opening?.cursor ?? null);
   const [failed, setFailed] = useState(false);
-  const [links, setLinks] = useState<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>(new Map());
+  const [links, setLinks] = useState<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>(() => lastAnswer<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>("network:links") ?? new Map());
   const [filterOpen, setFilterOpen] = useState(false);
   const [densityWhy, setDensityWhy] = useState(false);
   const [openContact, setOpenContact] = useState<string | null>(initialContactId ?? params?.get("contact") ?? null);
@@ -82,12 +90,17 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
 
   const loadSummary = useCallback(async () => {
     const result = await networkApi.summary();
-    if (result.ok) setSummary(result.data); else setFailed(true);
+    if (result.ok) { setSummary(result.data); rememberAnswer("network:summary", result.data); } else setFailed(true);
   }, []);
   useEffect(() => {
     if (designLoading) return;
     void loadSummary();
-    void networkApi.goalRelated().then((result) => { if (result.ok) setLinks(new Map((result.data.links ?? []).map((link) => [link.contactId, link]))); });
+    void networkApi.goalRelated().then((result) => {
+      if (!result.ok) return;
+      const next = new Map((result.data.links ?? []).map((link) => [link.contactId, link]));
+      setLinks(next);
+      rememberAnswer("network:links", next);
+    });
   }, [loadSummary, designLoading]);
 
   // The controlled PX1 list and its drawer use the same design people and plan labels.
@@ -114,6 +127,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
         setItems(page.data.items);
         setCursor(page.data.nextCursor);
         setMatched(filtered.ok ? filtered.data.total : null);
+        rememberAnswer<NetworkListAnswer>(listAnswerKey(query, tab, filters), { items: page.data.items, cursor: page.data.nextCursor, matched: filtered.ok ? filtered.data.total : null });
       });
     }, query ? 250 : 0);
     return () => clearTimeout(handle);

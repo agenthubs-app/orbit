@@ -28,6 +28,11 @@ const nextConfig = {
   // origin 防护会静默拒绝 hydration 与 HMR websocket；显式放行该域名。
   // 仅影响 dev server，生产构建忽略此项。
   allowedDevOrigins: ["orbit.shares.zrok.io", "127.0.0.1", "localhost"],
+  // 一级页来回切换：浏览器里已渲染过的页面 30 秒内直接复用、不再向服务器要（Next 14 的默认值；
+  // Next 15 起默认 0，每次切换都重新渲染）。写操作走 router.refresh / revalidatePath 时缓存照常作废。
+  experimental: {
+    staleTimes: { dynamic: 30 },
+  },
   // R15 复核 m3：旧关系邀请接口仍生成 `/app/invitations/<token>`，页面已删。配置里的 redirects 在
   // proxy.ts 之前执行（未登录也不会先被送去登录）；目标不带 token（Next 不把未用到的路径参数追加到
   // redirect 的 query）；非永久（307），以后可以改。`/i` 读 `expired=legacy` 显示一句说明。

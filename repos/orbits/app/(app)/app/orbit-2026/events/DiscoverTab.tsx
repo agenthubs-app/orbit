@@ -10,10 +10,12 @@ import type { EventDiscoverArea, EventDiscoverFormat, EventDiscoverPeriod, Event
 import type { EventRecommendationDismissReason } from "../../../../../shared/contract/event-recommendation-feedback";
 import type { EventSearchResponse } from "../../../../../shared/contract/event-search";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { PageSkeletonBody } from "../shell/PageSkeleton";
 import { eventsJourneyCopy as jc } from "../copy/eventsJourney";
 import { DefaultRail } from "../shell/Orbit2026Shell";
 import { pickCopy } from "../copy/types";
-import { BottomSheet, ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useToast, type MenuItem } from "../ui";
+import { BottomSheet, ContextMenu, FilterOption, Icon, Kbd, SampleTag, Toggle, useStandardCopy, useToast, type MenuItem } from "../ui";
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
@@ -77,6 +79,9 @@ export const formatLabel = (f: EventDiscoverFormat, t: JourneyT) => t(f === "spe
 export const DEFAULT_DISCOVER_QUERY: EventDiscoverQuery = { areas: ["tokyo"], period: "this_month", planFirst: true, sort: "recommended", themes: [] };
 
 /** URL 上的条件（可分享；`?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx`）。 */
+/** The last discover answer for a query (orbit-last-answer: back on 探す, the cards show at once). */
+const discoverAnswerKey = (query: EventDiscoverQuery) => `events:discover:${JSON.stringify(query)}`;
+
 export function queryFromParams(params: URLSearchParams | null): EventDiscoverQuery {
   if (!params) return DEFAULT_DISCOVER_QUERY;
   const list = <T extends string>(key: string, allowed: readonly T[]) => (params.get(key) ?? "").split(",").filter((value): value is T => (allowed as readonly string[]).includes(value));
@@ -185,7 +190,8 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const toast = useToast();
   const params = useSearchParams();
   const [query, setQuery] = useState<EventDiscoverQuery>(() => queryFromParams(params));
-  const [data, setData] = useState<EventDiscoverResponse | null>(null);
+  const std = useStandardCopy();
+  const [data, setData] = useState<EventDiscoverResponse | null>(() => lastAnswer<EventDiscoverResponse>(discoverAnswerKey(queryFromParams(params))) ?? null);
   const [selected, setSelected] = useState<string | null>(null);
   const [pop, setPop] = useState<"period" | "area" | "theme" | "sort" | null>(null);
   const [draftThemes, setDraftThemes] = useState<EventDiscoverTheme[]>([]);
@@ -195,6 +201,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
 
   const load = useCallback(async (next: EventDiscoverQuery) => {
     const result = await journeyApi.discover(next);
+    if (result.ok) rememberAnswer(discoverAnswerKey(next), result.data);
     setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 });
   }, []);
   useEffect(() => { void load(query); }, [load, query]);
@@ -264,7 +271,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   if (results) {
     return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><SearchResults data={results} language={language} t={t} onOpen={open} onFollow={async (id, following) => { const r = await journeyApi.follow(id, following); if (r.ok) setResults((cur) => cur ? { ...cur, organizers: cur.organizers.map((o) => (o.organizerId === id ? { ...o, following } : o)) } : cur); }} /></div></div>;
   }
-  if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}</div>;
+  if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><PageSkeletonBody kind="events" label={std.loading.loading} bare /></div></div>;
 
   if (tier === "narrow" && !data.popularityFallback && !flat && !data.signedOut) {
     return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return next; })} onOpen={open} />;
