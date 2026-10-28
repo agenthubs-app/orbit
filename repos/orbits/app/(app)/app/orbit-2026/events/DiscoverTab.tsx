@@ -66,17 +66,18 @@ export const monthDay = (iso: string) => { const p = tokyo(iso); return p ? `${p
 export const dayMonth = (iso: string, t: JourneyT) => { const p = tokyo(iso); return p ? { day: p.day, month: t("monthLabel", { m: p.month }) } : { day: 0, month: "" }; };
 export const feeText = (yen: number | null | undefined, t: JourneyT) => (yen === 0 ? t("free") : typeof yen === "number" ? `¥${yen.toLocaleString("en-US")}` : null);
 
-const PERIODS: readonly EventDiscoverPeriod[] = ["this_week", "this_month", "next_month"];
+/** DISCOVER-RULES 2026-10-29 D3：これから · 今週 · 今月 · 来月 · 開催済み。 */
+const PERIODS: readonly EventDiscoverPeriod[] = ["upcoming", "this_week", "this_month", "next_month", "past"];
 const AREAS: readonly EventDiscoverArea[] = ["online", "tokyo", "osaka", "nagoya"];
 const THEMES: readonly EventDiscoverTheme[] = ["funding", "saas", "manufacturing_dx", "hiring", "management", "networking", "ipo", "global"];
 const FORMATS: readonly EventDiscoverFormat[] = ["speakers", "networking", "small"];
-export const periodLabel = (p: EventDiscoverPeriod, t: JourneyT) => t(p === "this_week" ? "pThisWeek" : p === "this_month" ? "pThisMonth" : p === "next_month" ? "pNextMonth" : "pCustom");
+export const periodLabel = (p: EventDiscoverPeriod, t: JourneyT) => t(p === "upcoming" ? "pUpcoming" : p === "past" ? "pPast" : p === "this_week" ? "pThisWeek" : p === "this_month" ? "pThisMonth" : p === "next_month" ? "pNextMonth" : "pCustom");
 export const areaLabel = (a: EventDiscoverArea, t: JourneyT) => t(a === "online" ? "aOnline" : a === "tokyo" ? "aTokyo" : a === "osaka" ? "aOsaka" : "aNagoya");
 export const themeLabel = (x: EventDiscoverTheme, t: JourneyT) => t(({ funding: "tFunding", global: "tGlobal", hiring: "tHiring", ipo: "tIpo", management: "tManagement", manufacturing_dx: "tMfgDx", networking: "tNetworking", saas: "tSaas" } as const)[x]);
 export const formatLabel = (f: EventDiscoverFormat, t: JourneyT) => t(f === "speakers" ? "fSpeakers" : f === "networking" ? "fNetworking" : "fSmall");
 
-/** 默认条件：今月 · 東京（画板 #11 / #13 的初始值）、テーマ 未选、おすすめ順。 */
-export const DEFAULT_DISCOVER_QUERY: EventDiscoverQuery = { areas: ["tokyo"], period: "this_month", planFirst: true, sort: "recommended", themes: [] };
+/** 默认条件（DISCOVER-RULES 2026-10-29 D1 / D2）：これから · 場所 不限、テーマ 未选、おすすめ順。 */
+export const DEFAULT_DISCOVER_QUERY: EventDiscoverQuery = { areas: [], period: "upcoming", planFirst: true, sort: "recommended", themes: [] };
 
 /** URL 上的条件（可分享；`?tab=discover&period=this_week&areas=tokyo&themes=manufacturing_dx`）。 */
 /** The last discover answer for a query (orbit-last-answer: back on 探す, the cards show at once). */
@@ -230,17 +231,18 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     return () => clearTimeout(timer);
   }, [search, signedIn]);
 
-  const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
+  const past = query.period === "past";
+  const flat = data !== null && !past && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const firstRow = data ? (flat ? data.all[0] : data.planFit[0]) ?? null : null;
   const railRow = data ? ([...data.planFit, ...data.all, ...data.community].find((row) => row.eventId === selected) ?? firstRow) : null;
-  useEffect(() => { onRail({ loaded: data !== null, row: data && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, railRow, onRail]);
+  useEffect(() => { onRail({ loaded: data !== null, row: data && !past && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, past, railRow, onRail]);
   useEffect(() => {
     if (!data) return;
-    onSubtitle(data.popularityFallback ? t("dSubtitleEmpty") : flat ? t("dSubtitleFew", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
-  }, [data, flat, onSubtitle, query.period, t]);
+    onSubtitle(past ? t("dSubtitlePast", { n: data.total }) : data.popularityFallback ? t("dSubtitleEmpty") : flat ? t("dSubtitleFew", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
+  }, [data, flat, onSubtitle, past, query.period, t]);
 
   const open = (href: string) => { window.location.assign(`/app${href}`); };
-  const filterOn = data ? !data.popularityFallback : false;
+  const filterOn = data ? past || !data.popularityFallback : false;
   const set = (patch: Partial<EventDiscoverQuery>) => { setQuery((current) => ({ ...current, ...patch })); setPop(null); };
   const dismiss = async (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => {
     const result = await journeyApi.dismiss(row.eventId, reason);
@@ -261,7 +263,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
         {tier === "wide" ? <span className={styles.lbl} style={{ marginLeft: "auto" }}>{t("kbdSearch")}</span> : null}
       </label>
       <div className={d.popWrap}>
-        <button type="button" className={`btn ${d.wfilter} ${filterOn ? d.on : ""}`} onClick={() => setPop(pop === "period" ? null : "period")}><Icon name="calendar" size={16} />{t("filterPeriod", { v: periodLabel(query.period ?? "this_month", t) })}<Icon name="down" size={16} /></button>
+        <button type="button" className={`btn ${d.wfilter} ${filterOn ? d.on : ""}`} onClick={() => setPop(pop === "period" ? null : "period")}><Icon name="calendar" size={16} />{t("filterPeriod", { v: periodLabel(query.period ?? "upcoming", t) })}<Icon name="down" size={16} /></button>
         <FilterPopover open={pop === "period"} onClose={() => setPop(null)}><b>{t("periodLbl")}</b><div className={`${styles.chips} ${d.optChips}`}>{PERIODS.map((p) => <FilterOption key={p} label={periodLabel(p, t)} selected={query.period === p} onToggle={() => set({ period: p })} />)}</div></FilterPopover>
       </div>
       <div className={d.popWrap}>
@@ -289,8 +291,17 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   }
   if (!data) return <div className={styles.wgrid} data-events-discover-tab="">{filters}<div className={styles.span12}><PageSkeletonBody kind="events" label={std.loading.loading} bare /></div></div>;
 
-  if (tier === "narrow" && !data.popularityFallback && !flat && !data.signedOut) {
-    return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return next; })} onOpen={open} />;
+  // DISCOVER-RULES D5：これから 等的结果最下方「開催済みのイベント N件 →」。
+  const pastRow = !past && data.pastTotal ? (
+    <button type="button" className={`btn ${styles.card} ${styles.span12} ${styles.flat} ${d.pastRow}`} data-discover-past-entry="" onClick={() => set({ period: "past" })}>
+      <span className={`${styles.emo} ${styles.emoSm} ${styles.t_lav}`}>🗂️</span>
+      <div className={d.grow}><b>{t("pastEntry", { n: data.pastTotal })}</b><div className={styles.lbl}>{t("pastEntrySub")}</div></div>
+      <Icon name="right" size={16} />
+    </button>
+  ) : null;
+
+  if (tier === "narrow" && (past || (!data.popularityFallback && !flat)) && !data.signedOut) {
+    return <PhoneDiscover data={data} query={query} language={language} t={t} search={search} onSearch={setSearch} onQuery={(patch) => setQuery((current) => ({ ...current, ...patch }))} onClear={(key) => setQuery((current) => { const next = { ...current }; delete next[key]; return key === "period" ? { ...next, period: "upcoming" } : next; })} onOpen={open} pastRow={pastRow} />;
   }
 
   const card = (row: EventDiscoverRow, index: number) => <EventCard key={row.eventId} row={row} index={index} language={language} t={t} selected={tier !== "narrow" && railRow?.eventId === row.eventId} onSelect={() => setSelected(row.eventId)} onOpen={() => open(row.href)} />;
@@ -299,7 +310,10 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     <div className={styles.wgrid} data-events-discover-tab="">
       {filters}
       {data.signedOut ? <div className={`${styles.span12} ${styles.card} ${d.signedOut}`}>{t("signedOutBanner")}</div> : null}
-      {data.popularityFallback && !data.signedOut ? (
+      {past ? (
+        data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} at={at} past onOpen={open} onSave={save} onDismiss={dismiss} />
+          : <div className={`${styles.card} ${styles.span12} ${styles.flat}`} data-discover-past-empty=""><b>{t("pastEmpty")}</b><div className={styles.lbl}>{t("pastEmptySub")}</div></div>
+      ) : data.popularityFallback && !data.signedOut ? (
         <>
           <div className={`${styles.card} ${styles.span12} ${styles.guide}`} data-discover-empty="">
             <div className={styles.row} style={{ alignItems: "center", gap: 24 }}>
@@ -337,7 +351,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
       ) : flat ? (
         <>
           <div className={`${styles.span12} ${styles.chips}`} data-discover-active="">
-            {query.period ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => { setQuery(({ period: _period, ...rest }) => rest); setPop(null); }}>{periodLabel(query.period, t)} ✕</button> : null}
+            {query.period && query.period !== "upcoming" ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ period: "upcoming" })}>{periodLabel(query.period, t)} ✕</button> : null}
             {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
             {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => set({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}
           </div>
@@ -382,6 +396,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
           {data.all.length ? <AllTable rows={data.all} total={data.total} language={language} t={t} at={at} onOpen={open} onSave={save} onDismiss={dismiss} /> : null}
         </>
       )}
+      {pastRow}
     </div>
   );
 }
@@ -397,15 +412,16 @@ function RowMenu({ label, items }: { label: string; items: MenuItem[] }) {
   );
 }
 
-function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDismiss }: { rows: readonly EventDiscoverRow[]; total: number; language: OrbitLanguage; t: JourneyT; at: ReturnType<typeof assessTranslator>; popular?: boolean; onOpen: (href: string) => void; onSave: (row: EventDiscoverRow) => void; onDismiss: (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => void }) {
+/** `past`（開催済み）：服务端已按开始时间倒序；没有スコア列，判定列 =「終了」，没有 ☆ / 興味なし。 */
+function AllTable({ rows, total, language, t, at, popular, past, onOpen, onSave, onDismiss }: { rows: readonly EventDiscoverRow[]; total: number; language: OrbitLanguage; t: JourneyT; at: ReturnType<typeof assessTranslator>; popular?: boolean; past?: boolean; onOpen: (href: string) => void; onSave: (row: EventDiscoverRow) => void; onDismiss: (row: EventDiscoverRow, reason: EventRecommendationDismissReason) => void }) {
   // 表格按分数（プランに合うものを優先）排，同分按日期；画板 #13 的行序（82 / 77 / 71 / 68 / 58 / 41）。
-  const sorted = popular ? rows : [...rows].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const sorted = popular || past ? rows : [...rows].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || Date.parse(a.startsAt) - Date.parse(b.startsAt));
   const recommendIndex = new Map(sorted.filter((row) => row.verdict === "recommend").map((row, index) => [row.eventId, index]));
   return (
     <div className={`${styles.card} ${styles.span12}`} data-discover-all="">
-      <div className={styles.cardH}><h3>{t("allTitle", { n: total })}</h3><span className={styles.more}>{popular ? t("byPopularity") : t("byDate")} <Icon name="down" size={16} /></span></div>
+      <div className={styles.cardH}><h3>{t(past ? "pastTitle" : "allTitle", { n: total })}</h3><span className={styles.more}>{past ? t("byNewest") : popular ? t("byPopularity") : t("byDate")} <Icon name="down" size={16} /></span></div>
       <table className={d.table}>
-        <thead><tr><th>{t("colDate")}</th><th>{t("colEvent")}</th><th>{t("colPlace")}</th><th>{t("colFee")}</th><th>{t("colScore")}</th><th>{t("colVerdict")}</th><th /></tr></thead>
+        <thead><tr><th>{t("colDate")}</th><th>{t("colEvent")}</th><th>{t("colPlace")}</th><th>{t("colFee")}</th>{past ? null : <th>{t("colScore")}</th>}<th>{t("colVerdict")}</th><th /></tr></thead>
         <tbody>
           {sorted.map((row) => {
             const tone = rowTone(row, recommendIndex.get(row.eventId) ?? 0);
@@ -420,10 +436,10 @@ function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDis
                 <td><b>{row.title}</b></td>
                 <td className={d.muted}>{row.venue}</td>
                 <td>{feeText(row.priceYen, t) ?? "—"}</td>
-                <td>{typeof row.score === "number" ? <Ring score={row.score} size={32} /> : "—"}</td>
-                <td>{row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}</td>
+                {past ? null : <td>{typeof row.score === "number" ? <Ring score={row.score} size={32} /> : "—"}</td>}
+                <td>{past ? <span className={styles.chip}>{t("endedChip")}</span> : row.verdict ? <span className={`${styles.chip} ${tone.chip ? toneClass(tone.chip) : ""}`}>{row.verdict === "recommend" ? at("verdictRecommend") : row.verdict === "conditional" ? at("verdictConditional") : at("verdictSkip")}</span> : null}</td>
                 <td data-row-actions="">
-                  <div className={d.hovActs}>
+                  {past ? null : <div className={d.hovActs}>
                     <button type="button" className={`btn ${d.lbtn}`} aria-label={t("save")} onClick={() => onSave(row)}><Icon name="star" size={16} /></button>
                     <RowMenu label={t("notInterested")} items={[
                       { key: "open", label: t("detail"), onSelect: () => onOpen(row.href) },
@@ -432,7 +448,7 @@ function AllTable({ rows, total, language, t, at, popular, onOpen, onSave, onDis
                       { key: "content", label: `${t("notInterested")} · ${t("dismissContent")}`, onSelect: () => onDismiss(row, "content") },
                       { key: "known", label: `${t("notInterested")} · ${t("dismissKnown")}`, onSelect: () => onDismiss(row, "known") },
                     ]} />
-                  </div>
+                  </div>}
                 </td>
               </tr>
             );
@@ -490,11 +506,12 @@ export function DiscoverRail({ row, language }: { row: EventDiscoverRow; languag
 
 /** 探す 没有选中活动时的右栏（b2 #11）：iOrbit 的探す专用开场与两条提问。 */
 // ---------- 390（b12 #348）：App 式探す——搜索 + 筛选按钮（件数）、已选 chip、コミュニティ列表、プランに効く横滑卡、すべて列表 ----------
-function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void }) {
+function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, onClear, onOpen, pastRow }: { data: EventDiscoverResponse; query: EventDiscoverQuery; language: OrbitLanguage; t: JourneyT; search: string; onSearch: (value: string) => void; onQuery: (patch: Partial<EventDiscoverQuery>) => void; onClear: (key: keyof EventDiscoverQuery) => void; onOpen: (href: string) => void; pastRow?: ReactNode }) {
   const [sheet, setSheet] = useState(false);
   const [page, setPage] = useState(0);
-  const count = (query.period ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
-  const rows = query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const count = (query.period && query.period !== "upcoming" ? 1 : 0) + (query.areas?.length ?? 0) + (query.themes?.length ?? 0) + (query.freeOnly ? 1 : 0);
+  const past = query.period === "past";
+  const rows = past || query.sort === "recommended" ? data.all : [...data.all].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   const datebox = (iso: string) => { const dm = dayMonth(iso, t); return <div className={d.pDate}><b>{dm.day}</b><small>{dm.month}</small></div>; };
   return (
     <div data-events-discover-tab="" data-discover-phone="">
@@ -503,7 +520,7 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
         <button type="button" className={`btn ${d.pFilter}`} aria-label={t("filtersLbl")} onClick={() => setSheet(true)}><Icon name="sliders" size={20} />{count ? <span className={d.pBadge}>{count}</span> : null}</button>
       </div>
       <div className={`${styles.chips} ${d.pChips}`} data-discover-active="">
-        {query.period ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("period")}>{periodLabel(query.period, t)} ✕</button> : null}
+        {query.period && query.period !== "upcoming" ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("period")}>{periodLabel(query.period, t)} ✕</button> : null}
         {(query.areas ?? []).map((a) => <button key={a} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ areas: (query.areas ?? []).filter((x) => x !== a) })}>{areaLabel(a, t)} ✕</button>)}
         {(query.themes ?? []).map((x) => <button key={x} type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onQuery({ themes: (query.themes ?? []).filter((v) => v !== x) })}>{themeLabel(x, t)} ✕</button>)}
         {query.freeOnly ? <button type="button" className={`btn ${styles.chip} ${styles.c_lav} ${d.activeChip}`} onClick={() => onClear("freeOnly")}>{t("freeOnly")} ✕</button> : null}
@@ -549,18 +566,20 @@ function PhoneDiscover({ data, query, language, t, search, onSearch, onQuery, on
       ) : null}
       {rows.length ? (
         <div className={`${styles.card} ${d.pAll}`} data-discover-all="">
-          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{t("allPlain")}</h3><button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ sort: query.sort === "recommended" ? "date" : "recommended" })}>{query.sort === "recommended" ? t("sortRecommended").split("：").pop() : t("byDate")} <Icon name="down" size={16} /></button></div>
+          <div className={`${styles.cardH} ${d.pAllH}`}><h3>{past ? t("pastTitle", { n: data.total }) : t("allPlain")}</h3>{past ? <span className={styles.lbl}>{t("byNewest")}</span> : <button type="button" className={`btn ${d.pMore}`} onClick={() => onQuery({ sort: query.sort === "recommended" ? "date" : "recommended" })}>{query.sort === "recommended" ? t("sortRecommended").split("：").pop() : t("byDate")} <Icon name="down" size={16} /></button>}</div>
           <div className={d.pList}>
             {rows.map((row) => (
               <button key={row.eventId} type="button" className={`btn ${d.pLi}`} data-discover-row="" onClick={() => onOpen(row.href)}>
                 {datebox(row.startsAt)}
                 <div className={d.pMeta}><b>{row.title}</b><span>{[row.venue, feeText(row.priceYen, t)].filter(Boolean).join(" · ")}</span></div>
+                {past ? <span className={styles.chip}>{t("endedChip")}</span> : null}
                 {typeof row.score === "number" ? <ScoreRing score={row.score} size={36} stroke={4} label={String(row.score)}><span className={styles.score} style={{ fontSize: "var(--fs-caption)" }}>{row.score}</span></ScoreRing> : null}
               </button>
             ))}
           </div>
         </div>
-      ) : null}
+      ) : past ? <div className={`${styles.card} ${styles.flat} ${d.pAll}`} data-discover-past-empty=""><b>{t("pastEmpty")}</b><div className={styles.lbl}>{t("pastEmptySub")}</div></div> : null}
+      {pastRow}
       <BottomSheet open={sheet} onClose={() => setSheet(false)} label={t("filtersLbl")}>
         <div className={d.pSheet}>
           <b>{t("periodLbl")}</b>

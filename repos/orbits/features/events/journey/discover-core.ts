@@ -58,8 +58,16 @@ export function eventArea(place: string | null | undefined): EventDiscoverArea |
   return null;
 }
 
-/** 东京时间的 [from, to)：今週 = 现在到本周日结束；今月 / 来月 = 东京自然月；custom = from 0:00 到 to 24:00。没有时期 → 现在起 60 天。 */
-export function periodWindow(query: Pick<EventDiscoverParsedQuery, "period" | "from" | "to">, now: Date): { from: number; to: number } {
+/** 过去 1 年内结束的才算「開催済み」（DISCOVER-RULES D4）。 */
+export const PAST_DAYS = 365;
+/** これから 的上限 = 目录窗口（live.ts CATALOGUE_DAYS）。 */
+const UPCOMING_DAYS = 120;
+
+/**
+ * 东京时间的 [from, to)：これから = 现在起 120 天；今週 = 现在到本周日结束；今月 / 来月 = 东京自然月；custom = from 0:00 到 to 24:00；
+ * 開催済み = 过去 1 年到现在（`ended`：按结束时间落在窗口内判断）。没有时期 → 现在起 60 天。
+ */
+export function periodWindow(query: Pick<EventDiscoverParsedQuery, "period" | "from" | "to">, now: Date): { from: number; to: number; ended?: true } {
   const DAY = 86_400_000;
   const tokyoMidnight = (time: number) => tokyoParts(time).dayIndex * DAY - 9 * 3_600_000;
   const nowTime = now.getTime();
@@ -67,6 +75,10 @@ export function periodWindow(query: Pick<EventDiscoverParsedQuery, "period" | "f
   const monthStart = (year: number, month: number) => Date.UTC(year, month, 1) - 9 * 3_600_000;
   const tokyo = new Date(nowTime + 9 * 3_600_000);
   switch (query.period) {
+    case "upcoming":
+      return { from: nowTime, to: nowTime + UPCOMING_DAYS * DAY };
+    case "past":
+      return { ended: true, from: nowTime - PAST_DAYS * DAY, to: nowTime };
     case "this_week": {
       const weekday = tokyoParts(nowTime).day; // 0 = 日曜
       const daysToSunday = weekday === 0 ? 0 : 7 - weekday;
@@ -175,15 +187,19 @@ const PLAN_FIT_ROWS = 3;
 const COMMUNITY_ROWS = 3;
 const ALL_ROWS = 50;
 
-interface Enriched { candidate: DiscoverCandidate; area: EventDiscoverArea | null; themes: EventDiscoverTheme[]; formats: EventDiscoverFormat[]; time: number }
+interface Enriched { candidate: DiscoverCandidate; area: EventDiscoverArea | null; themes: EventDiscoverTheme[]; formats: EventDiscoverFormat[]; time: number; end: number }
 
 function enrich(candidate: DiscoverCandidate): Enriched {
   const text = [candidate.title, candidate.description, candidate.organizerName].filter(Boolean).join(" ");
-  return { area: eventArea(candidate.venue), candidate, formats: eventFormats(text, candidate.capacity), themes: eventThemes(text), time: Date.parse(candidate.startsAt) };
+  const time = Date.parse(candidate.startsAt);
+  const end = Date.parse(candidate.endsAt ?? "");
+  return { area: eventArea(candidate.venue), candidate, end: Number.isFinite(end) ? end : time, formats: eventFormats(text, candidate.capacity), themes: eventThemes(text), time };
 }
 
-function matches(item: Enriched, query: EventDiscoverParsedQuery, window: { from: number; to: number }, filters: { areas?: readonly EventDiscoverArea[]; themes?: readonly EventDiscoverTheme[] } = {}): boolean {
-  if (!Number.isFinite(item.time) || item.time < window.from || item.time >= window.to) return false;
+function matches(item: Enriched, query: EventDiscoverParsedQuery, window: { from: number; to: number; ended?: true }, filters: { areas?: readonly EventDiscoverArea[]; themes?: readonly EventDiscoverTheme[] } = {}): boolean {
+  if (!Number.isFinite(item.time)) return false;
+  // 開催済み：结束时间落在 (from, to]；其余时期按重叠——已开始、还没结束的也算（DISCOVER-RULES D1 / D3）。
+  if (window.ended ? item.end <= window.from || item.end > window.to : item.end <= window.from || item.time >= window.to) return false;
   const areas = filters.areas ?? query.areas;
   const themes = filters.themes ?? query.themes;
   if (areas.length && (!item.area || !areas.includes(item.area))) return false;
@@ -199,9 +215,11 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
   const window = periodWindow(input.query, input.now);
   const matched = enriched.filter((item) => matches(item, input.query, window));
   const scored = input.signedIn && input.hasPlan;
+  // 開催済み：不打分、不推荐，只按开始时间倒序列出（DISCOVER-RULES D4）。
+  const past = input.query.period === "past";
   const effects = new Map(matched.map((item) => [item.candidate.eventId, feedbackEffect({ area: item.area, eventId: item.candidate.eventId, organizerId: item.candidate.organizerId, startsAt: item.candidate.startsAt, themes: item.themes }, input.feedback)]));
   const toRow = (item: Enriched, communityReason?: EventDiscoverCommunityReason | null): EventDiscoverRow => {
-    const judge = scored ? item.candidate.judge ?? null : null;
+    const judge = scored && !past ? item.candidate.judge ?? null : null;
     return {
       area: item.area,
       emoji: item.candidate.emoji,
@@ -233,12 +251,12 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
   const recommendable = (item: Enriched) => !effects.get(item.candidate.eventId)?.hidden && !input.myEventIds.has(item.candidate.eventId);
 
   // すべて：日付順；没有计划 / 未登录 → 人气順（DESIGN §9 #13）；planFirst 且有分 → 分数顺。
-  const allSorted = [...matched].sort(!scored ? popularity : input.query.planFirst && input.query.sort === "recommended" ? (a, b) => rank(b) - rank(a) || byDate(a, b) : byDate);
-  const planFitAll = scored ? matched.filter((item) => recommendable(item) && item.candidate.judge && item.candidate.judge.verdict !== "skip")
+  const allSorted = [...matched].sort(past ? (a, b) => byDate(b, a) : !scored ? popularity : input.query.planFirst && input.query.sort === "recommended" ? (a, b) => rank(b) - rank(a) || byDate(a, b) : byDate);
+  const planFitAll = scored && !past ? matched.filter((item) => recommendable(item) && item.candidate.judge && item.candidate.judge.verdict !== "skip")
     .sort(options.dailyCandidates
       ? (a, b) => (b.candidate.judge!.score - a.candidate.judge!.score) || a.candidate.eventId.localeCompare(b.candidate.eventId)
       : (a, b) => rank(b) - rank(a) || byDate(a, b)) : [];
-  const community = input.signedIn
+  const community = input.signedIn && !past
     ? matched
       .filter((item) => recommendable(item) && item.candidate.organizerId && (input.followedOrganizers.has(item.candidate.organizerId) || input.attendedOrganizers.has(item.candidate.organizerId)))
       .sort(byDate)
@@ -248,7 +266,7 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
 
   // 结果很少（≤5）时给「条件を広げる」：每项单独放宽后多出的件数。
   const widen: EventDiscoverWidenSuggestion[] = [];
-  if (input.signedIn && matched.length <= 5) {
+  if (input.signedIn && !past && matched.length <= 5) {
     const extraWith = (variant: Partial<EventDiscoverParsedQuery>, filters: { areas?: readonly EventDiscoverArea[]; themes?: readonly EventDiscoverTheme[] } = {}) => {
       const w = periodWindow({ ...input.query, ...variant }, input.now);
       return enriched.filter((item) => matches(item, { ...input.query, ...variant }, w, filters)).length - matched.length;
@@ -277,6 +295,7 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
     popularityFallback: !scored,
     total: matched.length,
     ...(widen.length ? { widen } : {}),
+    ...(past ? {} : { pastTotal: enriched.filter((item) => matches(item, input.query, periodWindow({ period: "past" }, input.now))).length }),
     ...(input.signedIn ? {} : { signedOut: true }),
   };
 }

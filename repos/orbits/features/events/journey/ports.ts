@@ -60,6 +60,8 @@ export interface JourneyContact {
 export interface JourneyLivePorts {
   /** Upcoming published events (bounded: next 120 days, ≤ 200). */
   catalogue(now: Date): Promise<JourneyEvent[]>;
+  /** Published events that ended in the last year, newest first (≤ 100) — 探す「開催済み」. Optional: fakes without it list none. */
+  recentlyEnded?(now: Date): Promise<JourneyEvent[]>;
   /** One published event, or null. */
   event(eventId: string): Promise<JourneyEvent | null>;
   /** Organizer history: editions (all time), first edition date, average registrations. */

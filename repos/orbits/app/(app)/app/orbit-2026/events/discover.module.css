@@ -44,6 +44,8 @@
 .widenBtn { gap: 6px; }
 .guideTitle { font-size: var(--fs-number); font-weight: var(--fw-heavy); margin: 4px 0; }
 .signedOut { padding: 14px 20px; font-size: var(--fs-control); color: var(--ink-2); }
+/* DISCOVER-RULES D5：「開催済みのイベント N件 →」（与 widen 行同一 flat 卡）。 */
+.pastRow.pastRow { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; height: auto; text-align: left; cursor: pointer; }
 .searchPanel { gap: 8px; }
 .searchRow.searchRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 0; border: 0; border-radius: var(--r-row); background: transparent; min-height: 0; height: auto; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .groupLbl { margin-top: 14px; font-size: var(--fs-label); color: var(--ink-3); font-weight: 600; }

@@ -2,7 +2,8 @@
 // Owner: 甲 (R27). Used by: events (探す tab, both clients); signed-out visitors get the `all` group only (R26-08).
 import type { EventAssessmentVerdict } from "./event-assessment";
 
-export type EventDiscoverPeriod = "this_week" | "this_month" | "next_month" | "custom";
+/** `upcoming` = not ended yet (default); `past` = ended in the last year, newest first (2026-10-29 DISCOVER-RULES). */
+export type EventDiscoverPeriod = "upcoming" | "this_week" | "this_month" | "next_month" | "past" | "custom";
 export type EventDiscoverArea = "online" | "tokyo" | "osaka" | "nagoya";
 /** Fixed theme list (matched against title / description / tags by keyword rules). */
 export type EventDiscoverTheme = "funding" | "saas" | "manufacturing_dx" | "hiring" | "management" | "networking" | "ipo" | "global";
@@ -63,6 +64,8 @@ export interface EventDiscoverResponse {
   /** Current-plan goal label for the 「?」 text, when there is a plan. */
   planGoal?: string | null;
   widen?: readonly EventDiscoverWidenSuggestion[];
+  /** Not on `past`: ended events (last year) matching the same area / theme filters — the 「開催済みのイベント N件」 row. */
+  pastTotal?: number;
   /** Signed-out visitors: only `all`, no scores. */
   signedOut?: boolean;
 }

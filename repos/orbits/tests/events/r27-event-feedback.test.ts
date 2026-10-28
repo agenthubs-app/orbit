@@ -171,3 +171,24 @@ test("探す helpers: area, themes, period windows (Tokyo)", () => {
   assert.throws(() => eventDiscoverQueryObject.parse({ areas: "mars" }));
   assert.throws(() => eventDiscoverQueryObject.parse({ unknown: "1" }));
 });
+
+test("探す DISCOVER-RULES 2026-10-29: これから includes ongoing, 開催済み = last year newest first, unscored; pastTotal follows filters", () => {
+  const events = [
+    candidate("ongoing", { endsAt: "2026-10-07T18:00:00+09:00", startsAt: "2026-10-07T10:00:00+09:00", ...judged(80) }),
+    candidate("next", { startsAt: "2026-10-16T19:00:00+09:00", ...judged(75) }),
+    candidate("ended-1", { endsAt: "2026-10-06T21:00:00+09:00", startsAt: "2026-10-06T19:00:00+09:00", ...judged(90) }),
+    candidate("ended-2", { endsAt: "2026-09-20T21:00:00+09:00", startsAt: "2026-09-20T19:00:00+09:00", venue: "グランフロント大阪" }),
+    candidate("too-old", { endsAt: "2025-09-01T21:00:00+09:00", startsAt: "2025-09-01T19:00:00+09:00" }),
+  ];
+  const upcoming = buildDiscover({ ...base, candidates: events, query: q({ period: "upcoming" }) });
+  assert.deepEqual(upcoming.all.map((row) => row.eventId).sort(), ["next", "ongoing"], "ongoing counts as これから; ended ones do not");
+  assert.equal(upcoming.pastTotal, 2, "ended in the last year, too-old excluded");
+  assert.equal(buildDiscover({ ...base, candidates: events, query: q({ areas: "tokyo", period: "upcoming" }) }).pastTotal, 1, "same area filter");
+  assert.deepEqual(buildDiscover({ ...base, candidates: events, query: q({ period: "this_month" }) }).all.map((row) => row.eventId).includes("ongoing"), true, "今月 overlaps too");
+  const past = buildDiscover({ ...base, candidates: events, query: q({ period: "past" }) });
+  assert.deepEqual(past.all.map((row) => row.eventId), ["ended-1", "ended-2"], "newest first");
+  assert.equal(past.all.every((row) => row.score === undefined), true, "never scored");
+  assert.deepEqual([past.planFit.length, past.community.length, past.widen, past.pastTotal], [0, 0, undefined, undefined]);
+  assert.equal(past.popularityFallback, false, "a plan holder still is not shown the no-plan guide");
+  assert.doesNotThrow(() => eventDiscoverResponseSchema.parse(upcoming));
+});

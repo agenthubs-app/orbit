@@ -57,6 +57,7 @@ import {
   venueWorkspaceFrom,
 } from "./live-mapping";
 import type { JourneyContact, JourneyEvent, JourneyLivePorts, MyEventStatus } from "./ports";
+import { PAST_DAYS } from "./discover-core";
 import { mapLimit } from "../../../shared/performance/map-limit";
 
 type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
@@ -64,6 +65,8 @@ type Query = (sql: string, values?: readonly unknown[]) => Promise<{ rows: Array
 const DAY = 86_400_000;
 export const CATALOGUE_DAYS = 120;
 export const CATALOGUE_LIMIT = 200;
+/** 探す「開催済み」：近 1 年结束、最多 100 场。 */
+export const PAST_LIMIT = 100;
 export const JUDGE_LIMIT = 40;
 export const CONTACTS_LIMIT = 500;
 const ORGANIZER_EVENTS_LIMIT = 200;
@@ -168,6 +171,19 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         .filter((event) => event.publicCode?.trim() && Date.parse(event.endsAt) > from && Date.parse(event.startsAt) < until)
         .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || a.eventId.localeCompare(b.eventId))
         .slice(0, CATALOGUE_LIMIT);
+      return toJourneyEvents(events);
+    },
+
+    async recentlyEnded(now) {
+      const to = now.getTime();
+      const from = to - PAST_DAYS * DAY;
+      // SQL 按开始时间正序取，多读一些再取最近的 PAST_LIMIT 场。
+      const window = { endsAfter: new Date(from).toISOString(), startsBefore: new Date(to).toISOString(), limit: PAST_LIMIT * 3 };
+      const listed = core.listPublishedEventsInWindow ? await core.listPublishedEventsInWindow(window, now) : await core.listPublishedEvents(now);
+      const events = listed
+        .filter((event) => event.publicCode?.trim() && Date.parse(event.endsAt) > from && Date.parse(event.endsAt) <= to)
+        .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt) || a.eventId.localeCompare(b.eventId))
+        .slice(0, PAST_LIMIT);
       return toJourneyEvents(events);
     },
 

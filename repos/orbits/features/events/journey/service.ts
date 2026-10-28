@@ -91,8 +91,10 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
 
   async function discoverRows(actorId: string | null, query: EventDiscoverParsedQuery, language: JourneyLanguage, forDaily = false): Promise<EventDiscoverResponse> {
       const at = now();
-      const events = await ports.catalogue(at);
-      const candidates = events.map(candidateOf);
+      // 開催済み（DISCOVER-RULES D4 / D5）：近 1 年结束的另读一次，和目录合并（每日候选不需要）。
+      const [events, ended] = await Promise.all([ports.catalogue(at), forDaily ? [] : ports.recentlyEnded?.(at) ?? []]);
+      const seen = new Set(events.map((event) => event.eventId));
+      const candidates = [...events, ...ended.filter((event) => !seen.has(event.eventId))].map(candidateOf);
       if (!actorId) {
         return buildDiscover({ attendedOrganizers: new Set(), candidates, feedback: [], followedOrganizers: new Set(), hasPlan: false, hrefFor, myEventIds: new Set(), now: at, query, signedIn: false });
       }

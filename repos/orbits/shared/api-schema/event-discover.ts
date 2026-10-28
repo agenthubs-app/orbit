@@ -3,7 +3,7 @@ import { knownValues, readableItems, tolerantEnum } from "./tolerant";
 import type { EventDiscoverResponse } from "../contract/event-discover";
 
 // R27 探す. Responses tolerant (unknown verdict / area → null, unknown badges skipped, unreadable rows skipped); query strict.
-export const EVENT_DISCOVER_PERIODS = ["this_week", "this_month", "next_month", "custom"] as const;
+export const EVENT_DISCOVER_PERIODS = ["upcoming", "this_week", "this_month", "next_month", "past", "custom"] as const;
 export const EVENT_DISCOVER_AREAS = ["online", "tokyo", "osaka", "nagoya"] as const;
 export const EVENT_DISCOVER_THEMES = ["funding", "saas", "manufacturing_dx", "hiring", "management", "networking", "ipo", "global"] as const;
 export const EVENT_DISCOVER_FORMATS = ["speakers", "networking", "small"] as const;
@@ -43,6 +43,7 @@ export const eventDiscoverResponseObject = z.object({
   popularityFallback: z.boolean(),
   planGoal: z.string().nullable().optional(),
   widen: readableItems(z.object({ kind: z.enum(["period", "area", "theme"]), value: z.string(), extra: z.number().int().min(0) })).optional().catch(undefined),
+  pastTotal: z.number().int().min(0).optional().catch(undefined),
   signedOut: z.boolean().optional(),
 });
 export const eventDiscoverResponseSchema = eventDiscoverResponseObject as unknown as z.ZodType<EventDiscoverResponse>;

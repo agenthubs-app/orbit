@@ -45,10 +45,13 @@ export function LoginAssessCard({ t, language, span }: { t: JourneyT; language: 
   );
 }
 
+/** 公开活动页（未登录落地）：照旧「公開イベント · {month}月」= 今月 · 東京（DISCOVER-RULES 只改登录后的探す）。 */
+const PUBLIC_LIST_QUERY = { ...DEFAULT_DISCOVER_QUERY, areas: ["tokyo"] as const, period: "this_month" as const };
+
 function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: string }) {
   const t = useMemo(() => journeyTranslator(language), [language]);
   const [data, setData] = useState<EventDiscoverResponse | null>(null);
-  useEffect(() => { void journeyApi.discover(DEFAULT_DISCOVER_QUERY).then((result) => setData(result.ok ? result.data : null)); }, []);
+  useEffect(() => { void journeyApi.discover(PUBLIC_LIST_QUERY).then((result) => setData(result.ok ? result.data : null)); }, []);
   const month = new Date(Date.parse(nowIso) + 9 * 3_600_000).getUTCMonth() + 1;
   return (
     <div className={p.page}>
