@@ -6,6 +6,8 @@ import {inboxDeliveryPreferencesSchema} from '../../../../shared/api-schema/noti
 import type {InboxDeliveryPreferencesDTO} from '../../../../shared/contract/notification-delivery-policy';
 import { CategoryTabs, Icon, MacTile, type IconName } from '../orbit-2026/ui';
 import { ShellPage } from '../orbit-2026/shell/slots';
+import { ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
+import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
 import ws from './inbox-workspace.module.css';
 import {inboxListTime} from './inbox-list-time';
 import {useEffect,useMemo,useRef,useState,type ComponentProps} from 'react';
@@ -91,14 +93,23 @@ function NotificationDetail({notification:n,now,timeZone,disabled,onAction}:{not
  </article>;
 }
 const WEEK_PAGES=4;
+type RailAnswer={preferences:InboxDeliveryPreferencesDTO|null;usage:{used:number;cap:number}|null;week:WeekCounts|null;timeZone:string};
 export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:string;onIdentityChanged:()=>void}) {
- const {t,language}=useOrbitLanguage();const [filter,setFilter]=useState<keyof typeof categories>('all'),[data,setData]=useState<NotificationList|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[timeZone,setTimeZone]=useState('Asia/Tokyo');
- const [selected,setSelected]=useState<string|null>(null),[counts,setCounts]=useState<Partial<Record<keyof typeof categories,number>>|null>(null);
- const [preferences,setPreferences]=useState<InboxDeliveryPreferencesDTO|null>(null),[usage,setUsage]=useState<{used:number;cap:number}|null>(null),[week,setWeek]=useState<WeekCounts|null>(null),[statsVersion,setStatsVersion]=useState(0),[quietBusy,setQuietBusy]=useState(false);
+ const {t,language}=useOrbitLanguage();
+ // Back on the tab, the last list, chip counts and rail show at once while they are read again (orbit-last-answer);
+ // the first time, the list card and the rail wait as skeletons and appear complete, not filled in piece by piece.
+ const [remembered]=useState(()=>lastAnswer<RailAnswer>('inbox:rail:'+actorId));
+ const [filter,setFilter]=useState<keyof typeof categories>('all'),[data,setData]=useState<NotificationList|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false),[timeZone,setTimeZone]=useState(remembered?.timeZone??'Asia/Tokyo');
+ const [selected,setSelected]=useState<string|null>(null),[counts,setCounts]=useState<Partial<Record<keyof typeof categories,number>>|null>(()=>lastAnswer('inbox:chips:'+actorId)??null);
+ const [preferences,setPreferences]=useState<InboxDeliveryPreferencesDTO|null>(remembered?.preferences??null),[usage,setUsage]=useState<{used:number;cap:number}|null>(remembered?.usage??null),[week,setWeek]=useState<WeekCounts|null>(remembered?.week??null),[statsVersion,setStatsVersion]=useState(0),[quietBusy,setQuietBusy]=useState(false);
+ const [railReady,setRailReady]=useState(Boolean(remembered));
+ // The list's day groups depend on the account's time zone: they wait for the preferences read (or its memory).
+ const [zoneKnown,setZoneKnown]=useState(Boolean(remembered));
  useEffect(()=>{if(new URLSearchParams(window.location.search).get('filter')==='secretary')setFilter('secretary');},[]);
  function selectFilter(next:keyof typeof categories){setFilter(next);const url=new URL(window.location.href);url.searchParams.set('filter',next);window.history.replaceState(window.history.state,'',url);}
  const scope=useRef<AbortController|null>(null),pending=useRef<{id:string;request:{action:keyof typeof actions;expectedRevision:number;idempotencyKey:string;scheduledFor?:string}}|null>(null),lock=useRef(false),query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
  const changed=useRef(onIdentityChanged);changed.current=onIdentityChanged;
+ const listKey='inbox:notifications:'+actorId+':'+query;
  async function request(path:string,options:RequestInit={},controller=scope.current,allowMissing=false){
   if(!controller||controller.signal.aborted)throw new Error();
   // Reads share the per-cycle identity confirmation; writes pass the fresh pre-write barrier (W0031).
@@ -112,11 +123,11 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
   return result;
  }
  useEffect(()=>{
-  const controller=new AbortController();scope.current=controller;setData(null);let loading=false;
+  const controller=new AbortController();scope.current=controller;setData(lastAnswer<NotificationList>(listKey)??null);let loading=false;
   async function refresh(){if(loading||document.visibilityState==='hidden')return;loading=true;try{
     const load=async(cursor?:string)=>notificationInboxView(await request('/api/inbox/notifications?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{},controller),actorId);
     const next=filter==='secretary'?await scanSecretaryNotificationPage(load):await load();
-    if(!controller.signal.aborted){setData({...next,items:[...next.items]});setError('');}
+    if(!controller.signal.aborted){setData({...next,items:[...next.items]});setError('');rememberAnswer(listKey,next);}
   }catch{if(!controller.signal.aborted){invalidateInboxActorConfirmation();setData(null);setError(t({zh:'通知读取失败，请重试。',en:'Could not load notifications. Retry.',ja:'通知を読み込めません。再試行してください。'}));}}finally{loading=false;}}
   void refresh();const timer=setInterval(()=>void refresh(),15000);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
  // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,21 +137,23 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
   if(filter!=='all'||!data)return;
   if(data.nextCursor){setCounts(null);return;}
   const open=data.items.filter(n=>n.disposition==='open');
-  setCounts({all:data.items.length,secretary:data.items.filter(n=>secretaryKind(n)).length,reminder:open.filter(n=>n.kind==='reminder').length,suggestion:open.filter(n=>n.kind==='suggestion').length,update:open.filter(n=>n.kind==='update').length});
+  const next={all:data.items.length,secretary:data.items.filter(n=>secretaryKind(n)).length,reminder:open.filter(n=>n.kind==='reminder').length,suggestion:open.filter(n=>n.kind==='suggestion').length,update:open.filter(n=>n.kind==='update').length};
+  setCounts(next);rememberAnswer('inbox:chips:'+actorId,next);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  },[filter,data]);
  // The rail (b5 #6 通知の状態): preferences, today's push quota and this week's breakdown. Each part is
  // optional — a missing source hides its card instead of showing an invented number.
  useEffect(()=>{
   const controller=new AbortController();
-  void request('/api/inbox/delivery/preferences',{},controller,true).then(raw=>{
+  const preferencesRead=request('/api/inbox/delivery/preferences',{},controller,true).then(raw=>{
     const parsed=inboxDeliveryPreferencesSchema.safeParse(raw);
     if(!controller.signal.aborted&&parsed.success&&parsed.data.actorId===actorId){setTimeZone(notificationDisplayZone(parsed.data.timeZone));setPreferences(parsed.data);}
-  }).catch(()=>{});
-  void request('/api/inbox/delivery/usage',{},controller,true).then(raw=>{
+  }).catch(()=>{}).finally(()=>{if(!controller.signal.aborted)setZoneKnown(true);});
+  const usageRead=request('/api/inbox/delivery/usage',{},controller,true).then(raw=>{
     const value=raw as {actorId?:unknown;used?:unknown;cap?:unknown};
     if(!controller.signal.aborted&&value?.actorId===actorId&&Number.isSafeInteger(value.used)&&Number.isSafeInteger(value.cap)&&(value.cap as number)>0)setUsage({used:value.used as number,cap:value.cap as number});
   }).catch(()=>{});
-  void (async()=>{
+  const weekRead=(async()=>{
     const now=new Date().toISOString(),counts:WeekCounts={reminder:0,suggestion:0,update:0,history:0};let cursor:string|null=null;
     for(let page=0;page<WEEK_PAGES;page++){
       const list=notificationInboxView(await request('/api/inbox/notifications?language='+language+'&history=true'+(cursor?'&cursor='+encodeURIComponent(cursor):''),{},controller),actorId);
@@ -153,6 +166,8 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     }
     if(!controller.signal.aborted)setWeek(counts);
   })().catch(()=>{if(!controller.signal.aborted)setWeek(null);});
+  // The rail shows once all three have answered (or failed), so its cards do not arrive one by one.
+  void Promise.all([preferencesRead,usageRead,weekRead]).then(()=>{if(!controller.signal.aborted)setRailReady(true);});
   return()=>controller.abort();
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[actorId,language,statsVersion,timeZone]);
@@ -178,9 +193,13 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  async function markRead(){if(!data||lock.current)return;const controller=scope.current;if(!controller)return;lock.current=true;setBusy(true);const snapshot=data.items.filter(n=>!n.readAt&&n.actions.includes('read')).map(n=>({id:n.id,expectedRevision:n.revision}));try{for(let i=0;i<snapshot.length;i+=50){const items=snapshot.slice(i,i+50);const result=await request('/api/inbox/notifications/read',{method:'POST',body:JSON.stringify({items,idempotencyKey:crypto.randomUUID()})},controller) as {results?:{id:string;error?:string;notification?:NotificationRow}[]};if(!result.results||items.some(n=>!result.results!.some(r=>r.id===n.id&&!r.error&&r.notification?.actorId===actorId&&r.notification.readAt)))throw new Error();}if(!controller.signal.aborted)setAttempt(n=>n+1);}catch{if(!controller.signal.aborted)setError(t({zh:'部分通知未能标记，请刷新后重试。',en:'Some notifications could not be marked. Refresh and retry.',ja:'一部の通知を既読にできませんでした。更新して再試行してください。'}));}finally{lock.current=false;if(!controller.signal.aborted)setBusy(false);}}
  async function more(){if(!data?.nextCursor||lock.current)return;const previous=data,controller=scope.current;if(!controller)return;lock.current=true;setBusy(true);try{const load=async(cursor?:string)=>notificationInboxView(await request('/api/inbox/notifications?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{},controller),actorId);const next=filter==='secretary'?await scanSecretaryNotificationPage(load,previous.nextCursor):await load(previous.nextCursor);if(!controller.signal.aborted)setData(old=>old===previous?{...next,items:[...new Map([...old.items,...next.items].map(n=>[n.id,n])).values()]}:old);}catch{if(!controller.signal.aborted)setError(t({zh:'加载失败，请重试。',en:'Could not load more. Retry.',ja:'読み込めません。再試行してください。'}));}finally{lock.current=false;if(!controller.signal.aborted)setBusy(false);}}
  const weekShown=week&&Object.values(week).some(value=>value>0)?week:null;
- const rail=useMemo(()=><NotificationStatusRail language={language} usage={usage} preferences={preferences} week={weekShown} quietBusy={quietBusy} onQuietChange={next=>void setQuiet(next)}/>,
+ // The chips' counts in the same render as the list they are counted from (the effect above only keeps them for the other filters).
+ const chipCounts=useMemo(()=>filter!=='all'||!data?counts:data.nextCursor?null:(()=>{const open=data.items.filter(n=>n.disposition==='open');return {all:data.items.length,secretary:data.items.filter(n=>secretaryKind(n)).length,reminder:open.filter(n=>n.kind==='reminder').length,suggestion:open.filter(n=>n.kind==='suggestion').length,update:open.filter(n=>n.kind==='update').length};})(),[filter,data,counts]);
+ useEffect(()=>{if(railReady)rememberAnswer<RailAnswer>('inbox:rail:'+actorId,{preferences,usage,week,timeZone});},[railReady,actorId,preferences,usage,week,timeZone]);
+ // Until then no rail of its own: the shell keeps the page's rail skeleton in place (shellFrameFor).
+ const rail=useMemo(()=>railReady?<NotificationStatusRail language={language} usage={usage} preferences={preferences} week={weekShown} quietBusy={quietBusy} onQuietChange={next=>void setQuiet(next)}/>:undefined,
  // eslint-disable-next-line react-hooks/exhaustive-deps
- [language,usage,preferences,weekShown,quietBusy]);
+ [railReady,language,usage,preferences,weekShown,quietBusy]);
  const now=data?.asOf??new Date().toISOString();
  const chosen=data?.items.find(n=>n.id===selected)??null;
  const unread=data?.unreadCount??0;
@@ -192,10 +211,11 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  return <div>
   <ShellPage rightRail={rail}/>
   {error?<div role="alert" className={ws.alert}>{error} <button className="btn btn-ghost" type="button" onClick={()=>{pending.current=null;setAttempt(n=>n+1);}}>{t({zh:'刷新',en:'Refresh',ja:'更新'})}</button>{pending.current?<button className="btn btn-ghost" type="button" disabled={busy} onClick={()=>void retryPending()}>{t({zh:'重试操作',en:'Retry action',ja:'操作を再試行'})}</button>:null}</div>:null}
+  {(!data||!zoneKnown)&&!error?<ScopedPageSkeleton kind="inboxCard" label={t({zh:'正在读取通知…',en:'Loading notifications…',ja:'通知を読み込み中…'})}/>:
   <section className={`${ws.card}${chosen?' '+ws.open:''}`} aria-label={t({zh:'通知列表',en:'Notifications',ja:'通知一覧'})}>
    <div className={ws.list}>
     <div className={ws.tool}>
-     <CategoryTabs label={t({zh:'通知类别',en:'Notification categories',ja:'通知の分類'})} value={filter} onChange={key=>{setSelected(null);selectFilter(key as keyof typeof categories);}} options={(Object.keys(categories) as (keyof typeof categories)[]).map(k=>({key:k,label:t(categories[k]),count:counts?.[k]||undefined}))} />
+     <CategoryTabs label={t({zh:'通知类别',en:'Notification categories',ja:'通知の分類'})} value={filter} onChange={key=>{setSelected(null);selectFilter(key as keyof typeof categories);}} options={(Object.keys(categories) as (keyof typeof categories)[]).map(k=>({key:k,label:t(categories[k]),count:chipCounts?.[k]||undefined}))} />
      <div className={ws.toolBar}>
       <span className={ws.lbl}>{unread?t({zh:'未读 {n} 条',en:'{n} unread',ja:'未読 {n}件'}).replace('{n}',String(unread)):t({zh:'没有未读',en:'Nothing unread',ja:'未読はありません'})}</span>
       {data?.items.some(n=>!n.readAt&&n.actions.includes('read'))?<button type="button" className={`btn ${ws.btn} ${ws.sm}`} disabled={busy} onClick={()=>void markRead()}><Icon name="check" size={16}/>{t({zh:'全部已读',en:'Mark all read',ja:'すべて既読'})}</button>:null}
@@ -225,7 +245,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     </div>:data?<div className={ws.hint}><span className={ws.hintIcon}><Icon name="bell" size={21}/></span><b>{t({zh:'选择一条通知，详情会显示在这里',en:'Choose a notification to see it here',ja:'通知を選ぶと、ここに詳細が出ます'})}</b>
      <span>{[todayCount?t({zh:'今天 {n} 条',en:'{n} today',ja:'今日 {n}件'}).replace('{n}',String(todayCount)):null,unread?t({zh:'未读 {n} 条',en:'{n} unread',ja:'未読 {n}件'}).replace('{n}',String(unread)):null].filter(Boolean).join(' · ')}</span></div>:null}
    </div>
-  </section>
+  </section>}
  </div>;
 }
 export type {NotificationCategory};

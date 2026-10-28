@@ -5,6 +5,7 @@ import { formatOrbitDateTime } from "../orbit-datetime";
 import { NotificationDeliverySettings } from "../settings/notification-delivery-settings";
 import { Avatar, Icon, MacTile, Orbit2026Scope, SearchField } from "../orbit-2026/ui";
 import { ShellPage } from "../orbit-2026/shell/slots";
+import { ScopedPageSkeleton } from "../orbit-2026/shell/RouteSkeleton";
 import shellStyles from "../orbit-2026/shell/shell.module.css";
 import ws from "./inbox-workspace.module.css";
 import { inboxListTime } from "./inbox-list-time";
@@ -140,7 +141,10 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const pick = (id: string) => { setSelected(id); setHistoryCursor(null); setBody(""); readKey.current = ""; };
   // b5 D05 rail: この相手 for the open thread (only what the conversation itself knows), otherwise メッセージについて.
   const railName = card?.name ?? detail?.name ?? null;
-  const rail = useMemo(() => <Orbit2026Scope language={language}><div className={`${shellStyles.railBody} ${ws.rail}`}>{selected && railName ? <>
+  // Until the threads are read there is no rail of its own (the shell keeps the page's rail skeleton), and
+  // the card waits as a skeleton: the unread card and the rows arrive together, not one after the other.
+  const listKnown = cards !== null || listError;
+  const rail = useMemo(() => !listKnown ? undefined : <Orbit2026Scope language={language}><div className={`${shellStyles.railBody} ${ws.rail}`}>{selected && railName ? <>
       <h2 className={ws.railHead}><Icon name="users" size={16}/>{t({ zh: "对方", en: "This contact", ja: "この相手" })}</h2>
       <section className={ws.railCard}><div className={ws.person}><Avatar name={railName} size="md"/><div><b>{railName}</b>{card ? <span className={ws.lbl}>{t({ zh: "最近往来", en: "Last exchange", ja: "最後のやり取り" })} · {formatOrbitDateTime(card.updatedAt, language)}</span> : null}</div></div></section>
     </> : <>
@@ -151,10 +155,11 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       {unread > 0 ? <section className={ws.railCard}><div className={ws.lbl}>{t({ zh: "未读", en: "Unread", ja: "未読" })}</div><div className={ws.railNum}><b>{unread}</b><span className={ws.lbl}>{t({ zh: "条 · {n} 个会话", en: "· {n} threads", ja: "件 · {n} スレッド" }).replace("{n}", String(unreadThreads))}</span></div></section> : null}
     </>}</div></Orbit2026Scope>,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [language, selected, railName, card?.updatedAt, unread, unreadThreads]);
+  [listKnown, language, selected, railName, card?.updatedAt, unread, unreadThreads]);
   let previousDay = "";
   return <div>
     <ShellPage rightRail={rail}/>
+    {!listKnown ? <ScopedPageSkeleton kind="inboxCard" label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> :
     <section className={`${ws.card}${selected ? " " + ws.open : ""}`} aria-label={t({ zh: "消息", en: "Messages", ja: "メッセージ" })}>
       <div className={ws.list}>
         <div className={ws.tool}><SearchField value={search} onChange={setSearch} placeholder={t({zh:"搜索会话",en:"Search conversations",ja:"スレッドを検索"})}/></div>
@@ -206,6 +211,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
           </div>
         </>}
       </div>
-    </section>
+    </section>}
   </div>;
 }

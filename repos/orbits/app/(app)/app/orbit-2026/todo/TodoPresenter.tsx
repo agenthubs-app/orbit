@@ -15,6 +15,11 @@ export const todoSourceCopy = {
 
 const MOVE_TILES = [{ emoji: "💌", tone: "pink" }, { emoji: "🙋", tone: "teal" }, { emoji: "🤝", tone: "apricot" }] as const;
 
+/** The To-do board before its first answer: the three cards' own classes with bones, so the footprint matches. */
+export function TodoSkeleton({ onRetry }: { onRetry?: () => void }) {
+  return <div className={styles.grid}><Card className={styles.decisions}><Skeleton lines={3} onRetry={onRetry} /></Card><Card className={styles.nextMoves}><Skeleton lines={3} onRetry={onRetry} /></Card><Card className={styles.followups}><Skeleton lines={4} onRetry={onRetry} /></Card></div>;
+}
+
 export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFollowup, onTaskComplete, onMore }: {
   state: "idle" | "loading" | "ready" | "failed" | "not_implemented";
   view: TodoPageView | null;
@@ -28,9 +33,10 @@ export function TodoPresenter({ state, view, onRetry, onDecision, onDraft, onFol
   const language = useScopeLanguage();
   const t = (entry: typeof taskCopy[keyof typeof taskCopy]) => pickCopy(entry, language);
   const [nextIndex, setNextIndex] = useState(0);
-  if (state === "idle" || state === "not_implemented") return null;
+  if (state === "not_implemented") return null;
   if (state === "failed") return <RetryCard title={t(taskCopy.todoReadFailed)} onRetry={onRetry} />;
-  if (!view || state === "loading") return <div className={styles.grid}><Card className={styles.decisions}><Skeleton lines={3} onRetry={onRetry} /></Card><Card className={styles.nextMoves}><Skeleton lines={3} onRetry={onRetry} /></Card><Card className={styles.followups}><Skeleton lines={4} onRetry={onRetry} /></Card></div>;
+  // Not read yet (idle: the account is still settling) is the same board skeleton as loading — never blank first.
+  if (!view || state === "loading" || state === "idle") return <TodoSkeleton onRetry={onRetry} />;
   const item = view.nextMoves.items[nextIndex % Math.max(1, view.nextMoves.items.length)];
   const count = (section: TodoSectionView<unknown>) => section.count.value === null ? "—" : `${section.count.value}${section.count.partial || section.count.capped ? "+" : ""}`;
   const issues = (section: TodoSectionView<unknown>) => <>

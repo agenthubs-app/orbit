@@ -2,7 +2,8 @@
 import {TypedNotificationsTab} from './typed-notifications-tab';
 import { sanitizeInboxComposeSeed, type NewThreadSeed } from './inbox-compose-seed';
 import { Segmented } from '../orbit-2026/ui';
-import { ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
+import { ScopedBone, ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
+import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
 import { ShellPage } from '../orbit-2026/shell/slots';
 import { readWebInboxSummary } from './inbox-summary-client';
 
@@ -186,6 +187,19 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
   activeInboxCountReads.set(key, read);
   try { return await read; }
   finally { if (activeInboxCountReads.get(key) === read) activeInboxCountReads.delete(key); }
+}
+
+/** The page's 消息 / 通知 segments (kit .seg): the skeleton that holds their place is as tall. */
+const INBOX_TABS_HEIGHT = 36;
+
+/** `?tab=` first, then the tab this account last left the inbox on. */
+function rememberedInboxTab(actor: string | null): InboxTab {
+  try {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (requested === 'notifications') return 'alerts';
+    if (requested === 'messages') return 'threads';
+    return actor && localStorage.getItem("orbit:inbox:tab:" + actor) === "alerts" ? "alerts" : "threads";
+  } catch { return "threads"; /* Tab memory is optional. */ }
 }
 
 // The outer indicator is a dot; each inbox tab owns its own unread count.
@@ -961,10 +975,13 @@ function RelationshipInboxPanel({
 }) {
   const { t, language } = useOrbitLanguage();
   // 带 seed（来自联系人详情页"起草邮件"）时默认进对话 tab。
-  const [tab, setTab] = useState<InboxTab>("threads");
-  const [actorId, setActorId] = useState<string | null>(null);
+  // Back on the inbox the account, its counts and the tab it was left on are known at once
+  // (orbit-last-answer), so the tabs show complete and on the right tab, not patched in after the reads.
+  const [actorId, setActorId] = useState<string | null>(() => lastAnswer<string>("inbox:actor") ?? null);
+  const [tab, setTab] = useState<InboxTab>(() => initialSeed ? "threads" : rememberedInboxTab(actorId));
   const [identityError, setIdentityError] = useState(false);
-  const [counts, setCounts] = useState<Record<InboxTab, number>>({ threads: 0, alerts: 0 });
+  // null until the first count read answers: the tabs wait as a skeleton rather than gaining their numbers later.
+  const [counts, setCounts] = useState<Record<InboxTab, number> | null>(() => lastAnswer<Record<InboxTab, number>>("inbox:counts") ?? null);
   useEffect(() => {
     if (!actorId) return;
     let active = true;
@@ -972,8 +989,8 @@ function RelationshipInboxPanel({
     async function refreshCounts() {
       if (loading || document.visibilityState === "hidden") return;
       loading = true;
-      try { const next = await readInboxUnreadCounts(language, actorId!); if (active) setCounts(next); }
-      catch { if (active) setCounts({ threads: 0, alerts: 0 }); }
+      try { const next = await readInboxUnreadCounts(language, actorId!); if (active) { setCounts(next); rememberAnswer("inbox:counts", next); } }
+      catch { if (active) setCounts(current => current ?? { threads: 0, alerts: 0 }); }
       finally { loading = false; }
     }
     void refreshCounts();
@@ -985,13 +1002,8 @@ function RelationshipInboxPanel({
     void readContactMessageActor(controller.signal).then(actor => {
       if (controller.signal.aborted) return;
       setActorId(actor);
-      try {
-        if (initialSeed) return;
-        const requested = new URLSearchParams(window.location.search).get('tab');
-        if (requested === 'notifications') setTab('alerts');
-        else if (requested === 'messages') setTab('threads');
-        else if (localStorage.getItem("orbit:inbox:tab:" + actor) === "alerts") setTab("alerts");
-      } catch { /* Tab memory is optional. */ }
+      rememberAnswer("inbox:actor", actor);
+      if (!initialSeed) setTab(rememberedInboxTab(actor));
     }).catch(() => { if (!controller.signal.aborted) setIdentityError(true); });
     return () => controller.abort();
   }, [initialSeed]);
@@ -1243,15 +1255,15 @@ function RelationshipInboxPanel({
         </button></>}
 
         {/* b5 D05: on the page the tabs sit over the fog with a one-line note; the drawer keeps its strip. */}
-        <div className={inline ? workspace.tabs : "ri-panel-tabs"}><Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide={!inline} value={tab} onChange={selectTab}
-          segments={tabs.map(item => ({key:item.id,label:`${item.label}${counts[item.id] > 0 ? ` ${counts[item.id]}` : ''}`}))} />
+        <div className={inline ? workspace.tabs : "ri-panel-tabs"}>{inline && !counts && !seed ? <ScopedBone width={150} height={INBOX_TABS_HEIGHT} round label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <Segmented label={t({zh:'收件箱',en:'Inbox',ja:'受信箱'})} variant="seg" wide={!inline} value={tab} onChange={selectTab}
+          segments={tabs.map(item => ({key:item.id,label:`${item.label}${(counts?.[item.id] ?? 0) > 0 ? ` ${counts![item.id]}` : ''}`}))} />}
           {inline ? <span className={workspace.tabsNote}>{tab === "threads" ? t({ zh: "与在 Orbit 上建立联系的人的往来", en: "Exchanges with people you are connected to", ja: "Orbit でつながった人とのやり取り" }) : t({ zh: "会面 · 截止 · iOrbit 的建议", en: "Meetings · deadlines · iOrbit suggestions", ja: "面談・期限・iOrbit の提案" })}</span> : null}</div>
 
         <div className={inline ? undefined : `ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
             seed ? <>{inline ? <ShellPage rightRail={false} /> : null}<ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /></> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : identityError ? <p role="status">{inline ? <ShellPage rightRail={false} /> : null}{t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" })}</p> : inline ? <ScopedPageSkeleton kind="inboxCard" label={t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })} /> : <p role="status">{t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
-            actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
+            actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : inline ? <ScopedPageSkeleton kind="inboxCard" label={t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
           )}
         </div>
       </div>

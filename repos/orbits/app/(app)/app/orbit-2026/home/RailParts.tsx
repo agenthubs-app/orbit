@@ -13,9 +13,14 @@ import styles from "./home.module.css";
 
 const recentSessionsSchema = z.object({ items: z.array(z.unknown()) });
 
+/** 最近の会話's read; Home also holds its rail until it has answered (same cached path, one request). */
+export function useRecentSessions() {
+  return useHomeResource("/api/ai/conversations/sessions?limit=3", recentSessionsSchema);
+}
+
 export function RecentSessions() {
   const { language } = useOrbitLanguage();
-  const sessions = useHomeResource("/api/ai/conversations/sessions?limit=3", recentSessionsSchema);
+  const sessions = useRecentSessions();
   if (sessions.kind !== "ready") return null;
   const items = sessions.data.items.flatMap((raw) => {
     if (typeof raw !== "object" || raw === null) return [];

@@ -130,9 +130,13 @@ function TaskContainerContent({ initialTab, calendar, todo, plan, memo, planStar
       });
     }} disabled={!memoOnline} title={!memoOnline ? pickCopy(memoCopy.needsNetwork, language) : undefined} />
     : tab === "calendar" || tab === "todo" ? <TaskAddButton label={pickCopy(tab === "calendar" ? shellCopy.taskAddEvent : shellCopy.taskAddTodo, language)} onSelect={startSlotAdd} /> : undefined;
+  // The rail belongs to the open slot: カレンダー / To-do / a plan screen put their own rail in once its data
+  // is complete, and until then the shell keeps the route's rail skeleton (rightRail undefined). Only a tab
+  // whose final rail is the shell's iOrbit card (メモ, no plan yet, no slot) says so here.
+  const slotRail = tab === "calendar" ? Boolean(calendar) : tab === "todo" ? Boolean(todo) : tab === "plan" ? plan !== null : false;
   return (
     <>
-      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail phoneFold />
+      <ShellPage title={pickCopy(shellCopy.taskTitle, language)} subtitle={monthHeading(language).range} left={tabs} right={add} rightRail={slotRail ? undefined : true} phoneFold />
       {/* Outside the shell (a page on its own) there is no header: the tabs stay on the page. */}
       <Orbit2026Scope language={language} className={inShell ? styles.bar : styles.barAlone}>
         <div data-task-bar="" className={styles.mobileTabs}>

@@ -27,6 +27,8 @@ import type {
   AiSessionOrganizationContract,
 } from "../../../../../shared/contract/ai-sessions";
 import type { OrbitAgentHistoryView } from "../../orbit-agent-route-view-model";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { createAgentChatSessionMutationQueue } from "../agent-chat-session-mutations";
 import {
@@ -65,8 +67,14 @@ export interface AgentHistoryChatBridge {
   setThinking: Dispatch<SetStateAction<boolean>>;
 }
 
+/** The unfiltered first page of conversations, remembered per account so a revisit shows the list at once (orbit-last-answer). */
+const FIRST_PAGE_KEY = "agent:history:first-page";
+type AgentHistoryFirstPage = { items: AgentSessionSummary[]; nextCursor: string | null; hasMore: boolean; groups: AiSessionGroupContract[] };
+
 export function useAgentHistory() {
   const { language, t } = useOrbitLanguage();
+  useSharedReadAccount();
+  const [remembered] = useState(() => lastAnswer<AgentHistoryFirstPage>(FIRST_PAGE_KEY));
 
   // 对话侧桥接：组件在 `useAgentChat` 返回后调用 `bindChat` 写入。只有事件
   // 处理器（删除二次确认）会读它，那时必定已经渲染过一次。
@@ -78,8 +86,8 @@ export function useAgentHistory() {
   const languageRef = useRef(language);
   languageRef.current = language;
 
-  const [storedSessions, setStoredSessions] = useState<AgentSessionSummary[]>([]);
-  const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>([]);
+  const [storedSessions, setStoredSessions] = useState<AgentSessionSummary[]>(() => remembered?.items ?? []);
+  const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>(() => remembered?.groups ?? []);
 
   const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
 
@@ -89,9 +97,10 @@ export function useAgentHistory() {
   storedSessionsRef.current = storedSessions;
   const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
   const [historyQuery, setHistoryQuery] = useState("");
-  const [historyPageHasMore, setHistoryPageHasMore] = useState(false);
-  const [historyPageCursor, setHistoryPageCursor] = useState<string | null>(null);
-  const [historyPageLoading, setHistoryPageLoading] = useState(false);
+  const [historyPageHasMore, setHistoryPageHasMore] = useState(() => remembered?.hasMore ?? false);
+  const [historyPageCursor, setHistoryPageCursor] = useState<string | null>(() => remembered?.nextCursor ?? null);
+  // Not read yet counts as loading, so the list is not first drawn as 「まだ会話はありません」.
+  const [historyPageLoading, setHistoryPageLoading] = useState(!remembered);
   const [historyReadError, setHistoryReadError] = useState<"page" | "more" | null>(null);
   const [historyRefreshVersion, setHistoryRefreshVersion] = useState(0);
   const [groupMutationPending, setGroupMutationPending] = useState(false);
@@ -118,7 +127,9 @@ export function useAgentHistory() {
     let cancelled = false;
     const refreshAcrossClients = (clearCurrentPage: boolean) => {
       const generation = ++historyPageGenerationRef.current;
-      if (clearCurrentPage) {
+      // The remembered first page stays on screen while it is read again (only while it is still what is shown).
+      const keepRemembered = Boolean(remembered) && storedSessionsRef.current === remembered?.items && !historyQuery && !selectedSessionGroupId;
+      if (clearCurrentPage && !keepRemembered) {
         storedSessionsRef.current = [];
         setStoredSessions([]);
         setHistoryPageCursor(null);
@@ -137,6 +148,9 @@ export function useAgentHistory() {
           setHistoryPageCursor(page.nextCursor);
           setHistoryPageHasMore(page.hasMore);
           setHistoryReadError(null);
+          if (!selectedSessionGroupId && !historyQuery) {
+            rememberAnswer<AgentHistoryFirstPage>(FIRST_PAGE_KEY, { items: page.items, nextCursor: page.nextCursor, hasMore: page.hasMore, groups });
+          }
         } else {
           setHistoryReadError("page");
         }

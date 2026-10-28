@@ -32,7 +32,7 @@ test.before(async () => {
     import { Orbit2026Shell } from "./app/(app)/app/orbit-2026/shell/Orbit2026Shell";
     import { TaskListWorkspace } from "./app/(app)/app/orbit-2026/todo/TaskListWorkspace";
     createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language="ja" signedIn><TaskListWorkspace actorId="a" language="ja" date="2026-10-17" timeZone="Asia/Tokyo" initialSelectedId={new URLSearchParams(location.search).get("task") || undefined} /></Orbit2026Shell></OrbitAskProvider>);
-  `, { ...SHELL_STUBS, "^next-auth/react$": `${SHELL_STUBS["^next-auth/react$"]}\nexport const SessionContext = React.createContext(null);` });
+  `, SHELL_STUBS);
   browser = await launch();
 });
 test.after(async () => { await browser?.close(); });

@@ -20,7 +20,7 @@ import { ContactAvatar, ContactDrawer, useNetworkT, type NetworkT } from "./Cont
 import { networkApi } from "./network-api";
 import {
   DENSITY_OPTIONS, EMPTY_FILTERS, MET_OPTIONS, NETWORK_ANALYSIS_UNLOCK_CONTACTS, PAGE_SIZE, STAGE_OPTIONS, TOP_INDUSTRIES, TOP_REGIONS, filterCount, filtersFromSearch, headerCounts,
-  industryOptionLabel, lastTouch, networkQuery, networkRow, regionLabel, toggle, topFacetOptions, type NetworkCityKey, type NetworkFilters, type NetworkRow, type NetworkTab,
+  OTHER_KEY, industryOptionLabel, lastTouch, networkQuery, networkRow, regionLabel, toggle, topFacetOptions, type NetworkCityKey, type NetworkFilters, type NetworkRow, type NetworkTab,
 } from "./network-model";
 import styles from "./network.module.css";
 
@@ -57,6 +57,7 @@ function useNarrow(): boolean {
   return narrow;
 }
 
+const NO_LINKS: ReadonlyMap<string, ContactGoalRelatedLinkDTO> = new Map();
 type NetworkListAnswer = { items: ContactCardDTO[]; cursor: string | null; matched: number | null };
 const listAnswerKey = (query: string, tab: NetworkTab, filters: NetworkFilters) => `network:list:${JSON.stringify([query, tab, filters])}`;
 
@@ -81,7 +82,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   const [fixtureNowMs, setFixtureNowMs] = useState<number | null>(null);
   const [cursor, setCursor] = useState<string | null>(opening?.cursor ?? null);
   const [failed, setFailed] = useState(false);
-  const [links, setLinks] = useState<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>(() => lastAnswer<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>("network:links") ?? new Map());
+  // null = the goal links are not in yet: the table and the rail wait for them, so the 🎯 column does not fill in later.
+  const [links, setLinks] = useState<ReadonlyMap<string, ContactGoalRelatedLinkDTO> | null>(() => lastAnswer<ReadonlyMap<string, ContactGoalRelatedLinkDTO>>("network:links") ?? null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [densityWhy, setDensityWhy] = useState(false);
   const [openContact, setOpenContact] = useState<string | null>(initialContactId ?? params?.get("contact") ?? null);
@@ -96,7 +98,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     if (designLoading) return;
     void loadSummary();
     void networkApi.goalRelated().then((result) => {
-      if (!result.ok) return;
+      // A failed read draws the list without 🎯 labels rather than holding the skeleton (the last answer stays if there is one).
+      if (!result.ok) { setLinks((current) => current ?? new Map()); return; }
       const next = new Map((result.data.links ?? []).map((link) => [link.contactId, link]));
       setLinks(next);
       rememberAnswer("network:links", next);
@@ -116,8 +119,11 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   }, [items]);
 
   const pageQuery = useMemo(() => networkQuery({ query, tab, filters, facets: summary, limit: PAGE_SIZE }), [query, tab, filters, summary]);
+  // 「その他」 in a filter is expanded from the summary's facets: without them the first read would be made once
+  // with the bare key and again once the summary lands. Wait for the summary then (the list keeps its skeleton).
+  const needsFacets = summary === null && (filters.industries.includes(OTHER_KEY) || filters.regions.includes(OTHER_KEY));
   useEffect(() => {
-    if (designLoading) return;
+    if (designLoading || needsFacets) return;
     const current = ++generation.current;
     const handle = setTimeout(() => {
       void Promise.all([networkApi.page(pageQuery), networkApi.summary(networkQuery({ query, tab, filters, facets: summary }))]).then(([page, filtered]) => {
@@ -131,7 +137,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       });
     }, query ? 250 : 0);
     return () => clearTimeout(handle);
-  }, [pageQuery, designLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageQuery, designLoading, needsFacets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -139,7 +145,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     if (result.ok) { setItems((current) => [...(current ?? []), ...result.data.items]); setCursor(result.data.nextCursor); }
   };
   const refresh = () => { void loadSummary(); setFilters((current) => ({ ...current })); };
-  const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links)), [items, links]);
+  const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links ?? NO_LINKS)), [items, links]);
   const planCandidates = rows.filter((row) => row.goal).slice(0, 2);
   const planCandidateNames = planCandidates.map((row) => language === "ja" ? t("railPersonName", { name: row.name.split(/\s+/u)[0] }) : row.name)
     .join(t("railPersonSeparator"));
@@ -157,7 +163,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
     } catch { /* the address is a convenience */ }
   };
 
-  const rail = (
+  // The rail draws once the counts (empty or not) and the goal links (次の一手) are in; until then the shell keeps its rail skeleton.
+  const rail = summary === null || links === null ? undefined : (
     <div className={styles.rail} data-network-rail="">
       {empty ? (
         <>
@@ -243,11 +250,11 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
                       </button>
                     </div>
                   </div> : null}
-                  {items === null ? <Skeleton lines={6} /> : rows.length ? (
+                  {items === null || links === null ? <Skeleton lines={6} /> : rows.length ? (
                     narrow ? <NetworkMobileList rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} onOpen={open} />
                       : <NetworkTable rows={rows} t={t} nowMs={fixtureNowMs ?? nowMs} selectedId={openContact} onOpen={open} />
                   ) : <p className={styles.lbl} style={{ marginTop: 16 }}>{t("noMatchTitle")} · {t("noMatchBody")}</p>}
-                  {cursor ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (matched ?? 0) - rows.length) })}</button></div> : null}
+                  {cursor && items !== null && links !== null ? <div className={styles.moreRow}><button type="button" className={`btn ${styles.btn} ${styles.sm}`} onClick={() => void loadMore()}>{t("loadMore", { n: Math.max(0, (matched ?? 0) - rows.length) })}</button></div> : null}
                 </div>
                 {narrow && (header?.total ?? 0) < NETWORK_ANALYSIS_UNLOCK_CONTACTS ? (
                   // 390（b6 / b8 人脈 少量）: the locked 人脈分析 entry under the list; 1440 keeps 「人脈分析 ›」 in つながり (web.html, the page itself is locked).
@@ -263,7 +270,7 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       <Popover open={filterOpen} onClose={() => setFilterOpen(false)} anchor={filterAnchor} label={t("filterTitle")} width={420}>
         <FilterPanel t={t} language={language} summary={summary} filters={filters} onChange={setFilters} matched={matched} total={header?.total ?? 0} onDone={() => setFilterOpen(false)} />
       </Popover>
-      {openContact ? <ContactDrawer contactId={openContact} onClose={() => open(null)} goalLabel={links.get(openContact)?.label ?? null}
+      {openContact ? <ContactDrawer contactId={openContact} onClose={() => open(null)} goalLabel={links?.get(openContact)?.label ?? null}
         designMoment={process.env.NODE_ENV !== "production" ? params?.get("design") : null}
         inviteLinked={(() => { const card = items?.find((item) => item.id === openContact); return card ? card.sourceChip === "self" : undefined; })()}
         onChanged={(event) => {

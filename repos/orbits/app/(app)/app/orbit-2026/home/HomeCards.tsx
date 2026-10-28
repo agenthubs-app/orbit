@@ -14,13 +14,13 @@ import type { HomeWidgetKey } from "../../../../../shared/contract/home-layout";
 import type { TodoPageContract } from "../../../../../shared/contract/todo-page";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
-import { Avatar, Button, Chip, Icon, MacTile, type ChipTone } from "../ui";
+import { Avatar, Bone, Button, Chip, Icon, MacTile, type ChipTone } from "../ui";
 import type { AvatarTone } from "../ui/Basics";
 import { homeCopy } from "./home-copy";
 import { homeContactCopyKeys, homeTodoPagePath, homeWeekWindow, selectNextRegisteredEvent, signedTodayDelta } from "./home-model";
 import { visibleSecretaryItems } from "./secretary-model";
 import { useHomeResource, type HomeResource } from "./use-home-resource";
-import { useSavedPlanGoal } from "../plan/saved-goal";
+import { useSavedPlanGoalAnswer } from "../plan/saved-goal";
 import styles from "./home.module.css";
 
 // web.html ホーム boards (#0 empty / #1 few / #2 many): every card is kit `.card.hw` —
@@ -58,11 +58,12 @@ export const HOME_HEAD: Record<HomeWidgetKey, { emoji: string; tone: AvatarTone;
   memo: { emoji: "📝", tone: "teal", title: "memo", href: "/app/tasks?tab=memo" },
 };
 
-function Head({ widget, count, emoji, controls }: { widget: HomeWidgetKey; count?: number; emoji?: string; controls?: ReactNode }) {
+/** `pending`: the tile's emoji depends on data still on its way (計画 💰 / 🎯) — a 32 bone holds its place. */
+function Head({ widget, count, emoji, pending = false, controls }: { widget: HomeWidgetKey; count?: number; emoji?: string; pending?: boolean; controls?: ReactNode }) {
   const t = useT();
   const head = HOME_HEAD[widget];
   return <header className={styles.head}>
-    <MacTile emoji={emoji ?? head.emoji} tone={head.tone} size="sm" />
+    {pending ? <Bone width={32} height={32} /> : <MacTile emoji={emoji ?? head.emoji} tone={head.tone} size="sm" />}
     <h2 className={styles.lbl}>{t(head.title)}</h2>
     {count ? <span className={styles.count}><Chip label={String(count)} /></span> : null}
     {controls ?? <Link className={styles.go} href={head.href} aria-label={t(head.title)}><Icon name="right" size={16} /></Link>}
@@ -78,8 +79,26 @@ function Failure({ retry }: { retry: () => void }) {
   return <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={retry} /></div>;
 }
 
-function State<T>({ resource, children }: { resource: HomeResource<T> & { retry: () => void }; children: (data: T) => ReactNode }) {
-  if (resource.kind === "loading") return <p className={styles.empty} role="status">…</p>;
+type SkeletonShape = "rows" | "figure" | "people";
+/** Until a card's reads have all answered: bones in the card's own body (rows, or a big figure), never 「…」 or an empty line. */
+function CardSkeleton({ shape = "rows" }: { shape?: SkeletonShape }) {
+  const t = useT();
+  return <div className={styles.cardSkeleton} role="progressbar" aria-busy aria-label={t("loading")} data-home-card-skeleton="">
+    {shape === "people" ? <>
+      {/* 人脈: the total, then 「最近の人」 and four people in the card's own .people row (same height as the loaded card). */}
+      <Bone width={96} height={34} />
+      <div className={`${styles.sub} ${styles.recent}`}><Bone width={64} height={12} /></div>
+      <div className={styles.people}>{[0, 1, 2, 3].map((index) => <span key={index} className={styles.person}><Bone width={28} height={28} round /><Bone width="70%" height={13} /><Bone width="55%" height={10} /></span>)}</div>
+    </> : shape === "figure" ? <>
+      <Bone width={96} height={34} />
+      <Bone width="70%" height={12} />
+      <Bone width="100%" height={8} />
+    </> : [0, 1, 2].map((index) => <span key={index} className={styles.skeletonRow}><Bone width={18} height={18} round /><Bone width={index === 1 ? "56%" : "72%"} height={14} /></span>)}
+  </div>;
+}
+
+function State<T>({ resource, shape, children }: { resource: HomeResource<T> & { retry: () => void }; shape?: SkeletonShape; children: (data: T) => ReactNode }) {
+  if (resource.kind === "loading") return <CardSkeleton shape={shape} />;
   if (resource.kind === "error") return <Failure retry={resource.retry} />;
   return <>{children(resource.data)}</>;
 }
@@ -130,7 +149,7 @@ export function homeTodoRows(data: TodoPageContract, today: readonly { id: strin
   return { rows, total: Math.max(total, rows.length) };
 }
 
-function TodayCard({ guide, controls }: { guide: GuideProgress | null; controls?: ReactNode }) {
+function TodayCard({ guide, guideLoading, controls }: { guide: GuideProgress | null; guideLoading: boolean; controls?: ReactNode }) {
   const t = useT();
   const resource = useHomeResource(homeTodoPagePath(), todoPageSchema);
   const schedule = useHomeResource("/api/schedule-items", scheduleSchema);
@@ -142,6 +161,8 @@ function TodayCard({ guide, controls }: { guide: GuideProgress | null; controls?
   const showGuide = guide !== null && guide.completed < 3;
   const view = resource.kind === "ready"
     ? homeTodoRows(resource.data, today, { move: t("todayMove"), overdue: t("overdue"), question: t("question"), questionSub: t("questionSub") }) : null;
+  // The guide rows, the count and the schedule row come from three reads: draw the body once all have answered.
+  if (resource.kind === "loading" || schedule.kind === "loading" || guideLoading) return <><Head widget="today" controls={controls} /><CardSkeleton /></>;
   return <>
     <Head widget="today" count={view?.total} controls={controls} />
     {showGuide ? <GuideRows progress={guide} /> : null}
@@ -159,7 +180,9 @@ function PlanCard({ controls }: { controls?: ReactNode }) {
   const t = useT();
   const resource = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const current = resource.kind === "ready" ? resource.data.current : null;
-  const savedGoal = useSavedPlanGoal(resource.kind === "ready" && !current);
+  // Without a plan the emoji and the copy follow the profile's saved goal: wait for it too.
+  const savedGoal = useSavedPlanGoalAnswer(resource.kind === "ready" && !current);
+  if (resource.kind === "loading" || (resource.kind === "ready" && !current && savedGoal === undefined)) return <><Head widget="planScore" pending controls={controls} /><CardSkeleton shape="figure" /></>;
   return <>
     <Head widget="planScore" emoji={resource.kind === "ready" && !current ? "🎯" : undefined} controls={controls} />
     <State resource={resource}>{(data) => data.current ? <>
@@ -191,7 +214,7 @@ function EventCard({ controls }: { controls?: ReactNode }) {
   const resource = useHomeResource("/api/events/mine?range=upcoming", myEventsResponseSchema);
   return <>
     <Head widget="nextEvent" controls={controls} />
-    <State resource={resource}>{(data) => {
+    <State resource={resource} shape="figure">{(data) => {
       const event = selectNextRegisteredEvent(data.items, new Date(data.asOf ?? Date.now()));
       return event ? <>
         <span className={styles.when}><Chip label={eventWhen(event.startsAt, t)} tone="apricot" /></span>
@@ -210,6 +233,8 @@ function NetworkCard({ onContact, controls }: { onContact: (id: string) => void;
   const t = useT();
   const summary = useHomeResource("/api/contacts/summary", contactCardSummarySchema);
   const page = useHomeResource("/api/contacts/page?sort=added&limit=4", contactCardPageSchema);
+  // The total and 「最近の人」 are one block: draw it once both reads have answered.
+  if (summary.kind === "loading" || page.kind === "loading") return <><Head widget="network" controls={controls} /><CardSkeleton shape="people" /></>;
   return <>
     <Head widget="network" controls={controls} />
     <State resource={summary}>{(data) => data.total > 0 ? <>
@@ -294,9 +319,10 @@ function MemoCard({ controls }: { controls?: ReactNode }) {
     : <p className={styles.empty}>{t("empty")}</p>}</State></>;
 }
 
-export function HomeCardBody({ widget, onContact, secretary, guide, controls }: { widget: HomeWidgetKey; onContact: (id: string) => void; secretary: HomeResource<SecretaryPreviewDTO> & { retry: () => void }; guide: GuideProgress | null; controls?: ReactNode }) {
+/** `guideLoading`: guide-progress has not answered yet (Today waits for it rather than inserting the guide later). */
+export function HomeCardBody({ widget, onContact, secretary, guide, guideLoading = false, controls }: { widget: HomeWidgetKey; onContact: (id: string) => void; secretary: HomeResource<SecretaryPreviewDTO> & { retry: () => void }; guide: GuideProgress | null; guideLoading?: boolean; controls?: ReactNode }) {
   switch (widget) {
-    case "today": return <TodayCard guide={guide} controls={controls} />;
+    case "today": return <TodayCard guide={guide} guideLoading={guideLoading} controls={controls} />;
     case "planScore": return <PlanCard controls={controls} />;
     case "nextEvent": return <EventCard controls={controls} />;
     case "network": return <NetworkCard onContact={onContact} controls={controls} />;

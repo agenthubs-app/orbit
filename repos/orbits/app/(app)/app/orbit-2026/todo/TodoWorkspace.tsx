@@ -10,19 +10,24 @@ import { pickCopy } from "../copy/types";
 import { taskCopy } from "../copy/task";
 import { Button, ListRow, Modal, Orbit2026Scope, TextField, ToastProvider, useToast } from "../ui";
 import { createTodoDecisionClient } from "./todo-decision-client";
-import { TodoPresenter, todoSourceCopy } from "./TodoPresenter";
+import { TodoPresenter, TodoSkeleton, todoSourceCopy } from "./TodoPresenter";
 import { todoPageView, type DecisionAction } from "./todo-view-model";
 import { useTodoPage } from "./useTodoPage";
 import styles from "./todo.module.css";
 import { TodoDraftDrawer, type ManualTodoDraft } from "./TodoDraftDrawer";
 import { ShellPage } from "../shell/slots";
-import { TodoNextMovesRail } from "./TodoNextMovesRail";
+import { TodoNextMovesRail, useTodoRailSlot } from "./TodoNextMovesRail";
 import { FollowupCompletionModal } from "./FollowupCompletionModal";
 
 export function TodoWorkspace({ actorId, language, timeZone, date, initialAdd = false }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd?: boolean }) {
   const { account, ready } = useSharedReadAccount();
   const origin = typeof window === "undefined" ? "same-origin" : window.location?.origin ?? "same-origin";
-  return <Orbit2026Scope language={language}><ToastProvider><Workspace key={JSON.stringify([actorId ?? account, account, ready, origin])} {...(actorId ? { actorId } : {})} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} /></ToastProvider></Orbit2026Scope>;
+  // Until the session has settled the board is its skeleton, and the workspace mounts once with the
+  // settled account (it starts from the remembered page, if any) instead of mounting, then remounting and
+  // reading again. Another account still remounts it (the key), dropping the previous account's state.
+  return <Orbit2026Scope language={language}><ToastProvider>{ready
+    ? <Workspace key={JSON.stringify([actorId ?? account, account, origin])} {...(actorId ? { actorId } : {})} timeZone={timeZone} date={date} language={language} initialAdd={initialAdd} />
+    : <TodoSkeleton />}</ToastProvider></Orbit2026Scope>;
 }
 
 function Workspace({ actorId, language, timeZone, date, initialAdd }: { actorId?: string; language: OrbitLanguage; timeZone: string; date: string; initialAdd: boolean }) {
@@ -109,9 +114,10 @@ function Workspace({ actorId, language, timeZone, date, initialAdd }: { actorId?
   const draft = ready && !resource.denied && resource.state !== "not_implemented" && draftKey ? drafts[draftKey] : null;
   const binding = resource.page?.nextMoves.items.find(item => item.key === draftKey);
   const canHandoff = Boolean(resource.state === "ready" && binding && !binding.sample && resource.page?.sources[binding.source] === "ok");
+  const { slot: rail, probe: railProbe } = useTodoRailSlot(resource.state, () => <TodoNextMovesRail account={account} language={language} state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDraft={openDraft} />);
   if (resource.state === "not_implemented") return <ShellPage rightRail={false} />;
   return <>
-    <ShellPage rightRail={<TodoNextMovesRail account={account} language={language} state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDraft={openDraft} />} />
+    <ShellPage rightRail={rail} />{railProbe}
     <Button hidden style={{ display: "none" }} data-task-add="" label={t(taskCopy.todoAdd)} onClick={() => { setAdding(true); setError(false); }} />
     <TodoPresenter state={resource.state} view={view} onRetry={() => { void resource.refresh(); }} onDecision={decide} onMore={setAll} onDraft={openDraft} onFollowup={openFollowup} onTaskComplete={completeTask} />
     {followup && ready && !resource.denied ? <FollowupCompletionModal open {...followup} {...(actorId ? { actorId } : {})} timeZone={timeZone} onClose={() => setFollowup(null)} onCompleted={taskId => { if (activeScope.current === "unmounted" || taskId !== followup.taskId) return; setFollowup(null); toast.success(t(taskCopy.followupCompleted)); void resource.refresh(); }} /> : null}

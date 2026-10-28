@@ -30,7 +30,9 @@ export function useCalendarPage(zone: string, date: string, mode: CalendarMode, 
     const epoch = generation.current;
     const controller = new AbortController();
     request.current = controller;
-    setSnapshot(empty(scope, "loading"));
+    // Entries already on screen for this range stay while it is read again (after a write): the answers replace
+    // them in place. A new range, zone or account (another scope) still starts from loading.
+    setSnapshot(previous => previous.scope === scope && !previous.denied && previous.internal.state === "ready" && previous.external.state !== "loading" ? previous : empty(scope, "loading"));
     const active = () => !controller.signal.aborted && generation.current === epoch && activeScope.current === scope;
     const fail = (part: "internal" | "external", error: unknown) => {
       if (!active()) return;

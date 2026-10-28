@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Chip, EmptyState, IconButton, RetryCard, Segmented, Skeleton, useScopeLanguage } from "../ui";
+import { Bone, Button, Card, Chip, EmptyState, IconButton, RetryCard, Segmented, Skeleton, useScopeLanguage } from "../ui";
 import { taskCopy } from "../copy/task";
 import { pickCopy } from "../copy/types";
 import type { CalendarMode } from "./calendar-range";
@@ -23,8 +23,11 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   const monthFormat = new Intl.DateTimeFormat(locale, { timeZone: "UTC", year: "numeric", month: "long" });
   const at = (key: string) => new Date(`${key}T12:00:00Z`);
   const heading = mode === "month" ? monthFormat.format(at(date)) : mode === "week" && days.length ? `${dayFormat.format(at(days[0]!.date))} – ${dayFormat.format(at(days.at(-1)!.date))}` : dayFormat.format(at(date));
+  // The entries and the status line wait for both sources to answer (ready or failed), so the schedule and
+  // Google's events land together; a failed source still leaves the other one's entries on screen.
+  const settled = [internalState, externalState].every(state => state === "ready" || state === "failed");
   const visible = days.map(day => {
-    const items = day.items.filter(item => item.kind === "external" ? externalState === "ready" && connection === "connected" : internalState === "ready");
+    const items = !settled ? [] : day.items.filter(item => item.kind === "external" ? externalState === "ready" && connection === "connected" : internalState === "ready");
     return { ...day, items, allDay: items.filter(item => item.allDay), timed: layoutCalendarIntervals(items.filter(item => !item.allDay)) };
   });
   const entry = (item: CalendarEntry, timeLabel?: string) => <Button variant="ghost" className={`${styles.entry} ${styles[item.kind]}`}
@@ -35,8 +38,10 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   const failedGoogle = externalState === "failed" || externalState === "ready" && connection === "unavailable";
   // 2026-10-27：until the read says Google is connected, nothing about Google is shown (no 「读取中」 for an account that never linked it;
   // the server answers not_connected without contacting Google).
-  const googleStatus = externalState === "loading" ? null : failedGoogle ? <RetryCard title={t(taskCopy.calendarGoogleUnavailable)} onRetry={onRetry} /> : externalState === "ready" ? connect ? <div className={styles.row}><span className={styles.note}>{t(connection === "needs_reconnect" ? taskCopy.calendarGoogleReconnect : taskCopy.calendarGoogleNotConnected)}</span><a href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarGoogleConnect)}</a></div> : <><Chip label={t(taskCopy.calendarGoogleConnected)} tone="teal" /><span className={styles.note}>{t(taskCopy.calendarGoogleReadOnly)}</span></> : null;
-  const readStatus = internalState === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={onRetry} /> : internalState === "loading" ? <Skeleton lines={2} onRetry={onRetry} /> : null;
+  const googleStatus = !settled ? null : failedGoogle ? <RetryCard title={t(taskCopy.calendarGoogleUnavailable)} onRetry={onRetry} /> : externalState === "ready" ? connect ? <div className={styles.row}><span className={styles.note}>{t(connection === "needs_reconnect" ? taskCopy.calendarGoogleReconnect : taskCopy.calendarGoogleNotConnected)}</span><a href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarGoogleConnect)}</a></div> : <><Chip label={t(taskCopy.calendarGoogleConnected)} tone="teal" /><span className={styles.note}>{t(taskCopy.calendarGoogleReadOnly)}</span></> : null;
+  const readStatus = !settled ? null : internalState === "failed" ? <RetryCard title={t(taskCopy.calendarReadFailed)} onRetry={onRetry} /> : null;
+  // One bone where a day's entries go (week columns, month cells) while the sources are on their way.
+  const pendingEntry = settled ? null : <Bone width="80%" height={14} />;
   const controls = <Segmented label={t(taskCopy.calendarTitle)} value={mode} onChange={onModeChange} segments={[{ key: "day", label: t(taskCopy.calendarDay) }, { key: "week", label: t(taskCopy.calendarWeek) }, { key: "month", label: t(taskCopy.calendarMonth) }]} />;
   const emptyMonthGuide = mode === "month" && internalState === "ready" && externalState === "ready" && connection === "not_connected" && !partial && !visible.some(day => day.items.length);
   if (mode === "week") {
@@ -50,16 +55,17 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     const agendaEnd = selected ? Math.max(agendaHour(21) ?? selected.minutes, ...selected.timed.map(item => item.endMinute)) : 0;
     return <section aria-label={t(taskCopy.calendarTitle)} className={styles.weekLayout}>
       <Card className={styles.weekCard}><header className={styles.weekHeader}><div className={styles.row}><h2 className={styles.title}>{weekLabel}</h2><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} />{showToday ? <Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /> : null}</div><div className={styles.row}>{externalState === "ready" && !connect && !failedGoogle ? <Chip label={t(taskCopy.calendarGoogleConnected)} tone="teal" /> : null}{controls}</div></header>
-        {externalState === "loading" || externalState === "ready" && !connect && !failedGoogle ? null : <div className={styles.status}>{googleStatus}</div>}
+        {!settled || externalState === "ready" && !connect && !failedGoogle ? null : <div className={styles.status}>{googleStatus}</div>}
         {readStatus}{partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}
         <div className={styles.weekGrid}>{visible.map(day => <section key={day.date} data-calendar-date={day.date} aria-label={dateLabel.format(at(day.date))} className={`${styles.weekDay} ${day.date === date ? styles.weekDaySelected : ""} ${day.date < today ? styles.weekDayPast : ""}`}>
           <button type="button" aria-pressed={day.date === date} aria-current={day.date === today ? "date" : undefined} className={`btn ${styles.weekDayDate}`} onClick={() => onDaySelect(day.date)}><small>{shortWeekday.format(at(day.date))}</small><b>{day.dayNumber}</b></button>
-          {day.items.map(item => <button type="button" key={item.key} className={`btn ${styles.weekEntry} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><time>{item.timeLabel || t(taskCopy.calendarAllDay)}</time><span>{item.title || t(taskCopy.calendarUntitled)}</span></button>)}
+          {pendingEntry}{day.items.map(item => <button type="button" key={item.key} className={`btn ${styles.weekEntry} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><time>{item.timeLabel || t(taskCopy.calendarAllDay)}</time><span>{item.title || t(taskCopy.calendarUntitled)}</span></button>)}
         </section>)}</div>
         {internalState === "ready" && externalState === "ready" && connection === "connected" && !partial && !visible.some(day => day.items.length) ? <p role="status" className={`${styles.note} ${styles.weekEmpty}`}>{t(taskCopy.calendarEmpty)}</p> : null}
       </Card>
       <Card className={styles.agendaCard}><header className={styles.weekHeader}><h2 className={styles.title}>{selected ? dateLabel.format(at(selected.date)) : dayFormat.format(at(date))}</h2></header>
         {selected ? <section data-calendar-date={selected.date} aria-label={dateLabel.format(at(selected.date))}>
+          {!settled ? <Skeleton lines={2} onRetry={onRetry} /> : null}
           {selected.allDay.length ? <div className={styles.agendaAllDay}><span className={styles.note}>{t(taskCopy.calendarAllDay)}</span>{selected.allDay.map(item => <div key={item.key}>{entry(item)}</div>)}</div> : null}
           <div className={styles.agendaTimeline} style={{ height: (agendaEnd - agendaStart) * 0.5 }}>{selected.hours.filter(hour => hour.minute >= agendaStart && hour.minute <= agendaEnd).map(hour => <div key={hour.minute} className={styles.agendaHour} style={{ top: (hour.minute - agendaStart) * 0.5 }}><time>{hour.label}</time></div>)}{selected.timed.map(item => <div key={item.key} className={styles.agendaEntry} style={{ top: (item.startMinute - agendaStart) * 0.5, height: Math.max(26, (item.endMinute - item.startMinute) * 0.5), left: `calc(48px + (100% - 48px) * ${item.column / item.columns})`, width: `calc((100% - 48px) / ${item.columns})` }}>{entry(item, item.timeLabel)}</div>)}</div>
         </section> : null}
@@ -81,6 +87,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
       {readStatus}{partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}
       <div className={styles.legend}>{(["personal", "meeting", "event", "external"] as const).map(kind => <span key={kind} className={`${styles.legendItem} ${styles[kind]}`}>{t(kind === "personal" ? taskCopy.calendarPersonal : kind === "meeting" ? taskCopy.calendarMeeting : kind === "event" ? taskCopy.calendarEvent : taskCopy.calendarGoogleReadOnly)}</span>)}</div>
       <section data-calendar-day-list="" data-calendar-date={selected?.date} aria-label={heading} className={styles.dayList}>
+        {!settled ? <Skeleton lines={4} onRetry={onRetry} /> : null}
         {selected?.allDay.length ? <div className={styles.dayGroup}><h3>{t(taskCopy.calendarAllDay)}</h3>{selected.allDay.map(item => <button key={item.key} type="button" className={`btn ${styles.dayItem} ${styles.dayAllDay} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><strong>{item.title || t(taskCopy.calendarUntitled)}</strong>{item.location ? <span>{item.location}</span> : null}</button>)}</div> : null}
         {groups.filter(group => group.items.length).map(group => <div key={group.label} className={styles.dayGroup}><h3>{group.label}</h3>{group.items.map(item => <button key={item.key} type="button" className={`btn ${styles.dayItem} ${styles[item.kind]}`} onClick={() => onEntrySelect(item)}><time>{item.timeLabel}</time><strong>{item.title || t(taskCopy.calendarUntitled)}</strong>{item.location ? <span>{item.location}</span> : null}</button>)}</div>)}
         {overlap ? <div data-calendar-overlap="" role="status" className={styles.dayOverlap}><strong>{t(taskCopy.calendarOverlap)}</strong><span>{overlap[0].timeLabel} {overlap[0].title} · {overlap[1].timeLabel} {overlap[1].title}</span></div> : null}
@@ -97,7 +104,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     <div className={styles.legend}>{(["personal", "meeting", "event", "external"] as const).map(kind => <span key={kind} className={`${styles.legendItem} ${styles[kind]}`}>{t(kind === "personal" ? taskCopy.calendarPersonal : kind === "meeting" ? taskCopy.calendarMeeting : kind === "event" ? taskCopy.calendarEvent : taskCopy.calendarGoogleReadOnly)}</span>)}</div>
     {mode === "month" ? <div className={styles.monthFrame}><div className={styles.month}>{visible.slice(0, 7).map(day => <div className={styles.weekday} key={`weekday:${day.date}`}>{new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(at(day.date))}</div>)}{visible.map(day => <section key={day.date} data-calendar-date={day.date} aria-label={dayFormat.format(at(day.date))} className={`${styles.monthDay} ${!day.inMonth ? styles.outside : ""} ${day.date === date ? styles.selected : ""}`}>
       <Button variant="ghost" label={String(day.dayNumber)} aria-pressed={day.date === date} aria-current={day.date === today ? "date" : undefined} className={styles.dayNumber} onClick={() => onDaySelect(day.date)} />
-      {day.items.slice(0, 3).map(item => <div key={item.key}>{entry(item, item.timeLabel)}</div>)}{day.items.length > 3 ? <Button size="sm" variant="ghost" label={t(taskCopy.calendarMore).replace("{count}", String(day.items.length - 3))} onClick={() => { onDaySelect(day.date); onModeChange("day"); }} /> : null}
+      {pendingEntry}{day.items.slice(0, 3).map(item => <div key={item.key}>{entry(item, item.timeLabel)}</div>)}{day.items.length > 3 ? <Button size="sm" variant="ghost" label={t(taskCopy.calendarMore).replace("{count}", String(day.items.length - 3))} onClick={() => { onDaySelect(day.date); onModeChange("day"); }} /> : null}
     </section>)}</div>{emptyMonthGuide ? <div className={styles.monthGuide} data-calendar-empty-guide=""><div className={styles.monthGuideIntro}><span aria-hidden="true">📅</span><div><h3>{t(taskCopy.calendarEmptyMonthTitle)}</h3><p>{t(taskCopy.calendarEmptyMonthBody)}</p></div></div><div className={styles.monthGuideActions}><a className={`btn ${styles.monthGuideConnect}`} href="/api/integrations/google_calendar/authorize?returnTo=calendar">{t(taskCopy.calendarEmptyMonthConnect)}</a><Button label={t(taskCopy.calendarEmptyMonthAdd)} icon="plus" onClick={onAddPersonal} /></div><p className={styles.monthGuidePrivacy}>{t(taskCopy.calendarEmptyMonthPrivacy)}</p></div> : null}</div> : null}
     {internalState === "ready" && externalState === "ready" && connection === "connected" && !partial && !visible.some(day => day.items.length) ? <EmptyState title={t(taskCopy.calendarEmpty)} /> : null}
   </section>;

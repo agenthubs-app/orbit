@@ -62,7 +62,7 @@ test.before(async () => {
       return new Response(JSON.stringify(handler.reply.body), { status: handler.reply.status, headers: { "content-type": "application/json" } });
     };
     createRoot(document.getElementById("root")).render(<OrbitAskProvider><Orbit2026Shell language="ja" signedIn><NetworkScreen language="ja" nowIso="2026-10-18T03:00:00.000Z" /></Orbit2026Shell></OrbitAskProvider>);
-  `, { ...SHELL_STUBS, "^next-auth/react$": `${SHELL_STUBS["^next-auth/react$"]}\nexport const SessionContext = React.createContext(null);` });
+  `, SHELL_STUBS);
   browser = await launch();
 });
 test.after(async () => { await browser?.close(); });

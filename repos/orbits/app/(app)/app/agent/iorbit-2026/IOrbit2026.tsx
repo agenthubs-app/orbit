@@ -12,7 +12,7 @@ import { iorbitCopy } from "../../orbit-2026/copy/iorbit";
 import { standardCopyFor } from "../../orbit-2026/copy/standard";
 import { ShellPage } from "../../orbit-2026/shell/slots";
 import { useCloseShellRail } from "../../orbit-2026/shell/Orbit2026Shell";
-import { Button, Card, ConfirmDialog, ContextMenu, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
+import { Bone, Button, Card, ConfirmDialog, ContextMenu, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, SearchField, Toggle } from "../../orbit-2026/ui";
 import { AgentActionStatusCard } from "../agent-action-status-card";
 import { AgentTaskInteractionCard } from "../agent-task-interaction-card";
 import { AgentMessageCopyButton, PanelCards, ThinkingIndicator } from "../iorbit-0918/iorbit-rich-components";
@@ -118,7 +118,7 @@ function HistoryPane({ history, onNew, onPick, onCollapse }: { history: HistoryS
     <div className={styles.history}>
       <div className={styles.historyHead}><b>{t(iorbitCopy.conversation)}</b><span className={styles.historyHeadActions}><Button label={t(iorbitCopy.newShort)} icon="edit" variant="primary" size="sm" onClick={onNew} />{onCollapse ? <button type="button" className={`btn ${styles.historyCollapse}`} aria-label={standardCopyFor(language).action.close} onClick={onCollapse}><Icon name="left" size={16} /></button> : null}</span></div>
       <SearchField label={t(iorbitCopy.searchLabel)} placeholder={t(iorbitCopy.searchPlaceholder)} value={search} onChange={setSearch} />
-      {history.historyPageLoading && !history.storedHistory.length ? <p role="status" className={styles.emptyHistory}>{t(iorbitCopy.loading)}</p> : null}
+      {history.historyPageLoading && !history.storedHistory.length ? <HistorySkeleton label={t(iorbitCopy.loading)} /> : null}
       {history.historyReadError ? <div role="alert" className={styles.error}>{t(iorbitCopy.readFailed)}<Button label={t(iorbitCopy.retry)} variant="ghost" size="sm" onClick={history.retryHistoryRead} /></div> : null}
       {!history.historyPageLoading && !history.historyReadError && !history.storedHistory.length ? <p className={styles.emptyHistory}>{t(search ? iorbitCopy.noMatch : iorbitCopy.empty)}</p> : null}
       {sections.map(([section, items]) => <section key={section} aria-label={t(iorbitCopy[section])} className={styles.historySection}>
@@ -132,10 +132,23 @@ function HistoryPane({ history, onNew, onPick, onCollapse }: { history: HistoryS
   );
 }
 
+/** The list before its first page: a section label and rows of the same footprint as HistoryRow (.hi padding 9 10). */
+function HistorySkeleton({ label }: { label: string }) {
+  return (
+    <div role="progressbar" aria-busy aria-label={label} className={styles.historySection} data-orbit-iorbit-history-loading>
+      <h3 aria-hidden><Bone width={48} height={12} /></h3>
+      {[72, 58, 84, 64, 76].map((width, index) => <div key={index} className={styles.historySkeletonRow} aria-hidden>
+        <Bone width={`${width}%`} height={14} /><Bone width={28} height={10} />
+      </div>)}
+    </div>
+  );
+}
+
 type SpeechRecognitionLike = { lang: string; interimResults: boolean; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 /** b4 composer 🎤: the browser's own speech recognition (no AI call); hidden where the browser has none. */
 function useDictation(language: string, onText: (text: string) => void) {
-  const [supported, setSupported] = useState(false);
+  // null until the browser is checked after mount: the 🎤 slot is held meanwhile so the input does not narrow later.
+  const [supported, setSupported] = useState<boolean | null>(null);
   const [listening, setListening] = useState(false);
   const ref = useRef<SpeechRecognitionLike | null>(null);
   useEffect(() => {
@@ -313,13 +326,15 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false }: {
   const pick = (item: OrbitAgentHistoryView) => { chat.setAgentPrefill(null); setPrefillOrigin(null); chat.pickHistory(item); setHistoryOpen(false); closeRail(); resetContext(); setSource(null); setRequestedDraftId(null); };
   const inConversation = chat.messages.length > 0 || chat.thinking;
   const activeTitle = history.storedHistory.find((item) => item.sessionId === chat.activeSessionId)?.title;
+  // An open conversation whose title is not read yet holds the line with a blank instead of 「会話中」 → title.
+  const titlePending = !activeTitle && Boolean(chat.activeSessionId) && history.historyPageLoading && !history.storedHistory.length;
   const dictation = useDictation(language, (text) => { chat.setChatDraft(`${chat.chatDraft}${chat.chatDraft ? " " : ""}${text}`); inputRef.current?.focus(); });
   const shortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/u.test(navigator.platform) ? "⌘" : "Ctrl";
   const panelLanguage = language === "zh" ? "zh" : "en";
   return (
     <Orbit2026Scope language={language} className={`${styles.scope} ${inConversation ? styles.conversationScope : ""}`}>
     <div aria-busy={chat.thinking} data-orbit-agent-request-state={chat.thinking ? "pending" : "idle"}>
-      <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || t(iorbitCopy.inConversation) : t(iorbitCopy.subtitle)}
+      <ShellPage title="iOrbit" subtitle={inConversation ? activeTitle || (titlePending ? "\u00a0" : t(iorbitCopy.inConversation)) : t(iorbitCopy.subtitle)}
         right={<><span className={styles.anywhere}><Kbd>{shortcut}</Kbd> <Kbd>K</Kbd><span className={styles.anywhereText}> {t(iorbitCopy.anywhere)}</span></span><Button label={t(iorbitCopy.newChat)} icon="plus" onClick={startNew} /></>}
         rightRail={phone ? false : <div className={styles.railHistory}><HistoryPane history={history} onNew={startNew} onPick={pick} /></div>}
         railLabel={t(iorbitCopy.list)} phoneFold phoneBare={inConversation} />
@@ -374,6 +389,7 @@ export function IOrbit2026({ accountName, initialHistoryOpen = false }: {
           <form className={styles.composer} onSubmit={submit} data-orbit-agent-chat-composer>
             <span className={styles.composerPlus} aria-hidden><Icon name="plus" size={16} /></span>
             <textarea ref={inputRef} rows={1} aria-label={t(iorbitCopy.ask)} placeholder={t(iorbitCopy.composerPlaceholder)} value={chat.chatDraft} onChange={(event) => chat.setChatDraft(event.target.value)} disabled={chat.thinking} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submit(); } }} />
+            {dictation.supported === null ? <span className={`btn ${styles.composerButton}`} style={{ visibility: "hidden" }} aria-hidden data-orbit-iorbit-mic-slot><Icon name="mic" size={16} /></span> : null}
             {dictation.supported ? <button type="button" className={`btn ${styles.composerButton}`} aria-label={t(dictation.listening ? iorbitCopy.dictating : iorbitCopy.dictate)} aria-pressed={dictation.listening} onClick={dictation.toggle} disabled={chat.thinking}><Icon name="mic" size={16} /></button> : null}
             <button type="submit" className={`btn ${styles.composerButton} ${styles.composerSend}`} aria-label={t(iorbitCopy.send)} disabled={chat.thinking || !chat.chatDraft.trim()} data-orbit-agent-submit="true"><Icon name="send" size={16} /></button>
           </form>

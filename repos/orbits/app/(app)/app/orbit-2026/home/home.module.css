@@ -157,3 +157,7 @@
 .wlibTile.added { opacity: .5; }
 .wlibTile .plus { position: absolute; right: 8px; bottom: 8px; width: 22px; height: 22px; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); display: grid; place-items: center; }
 .wlibTile .plus svg { width: 13px; height: 13px; }
+
+/* Card body before its reads have answered: bones laid out like the rows (.row: 7px padding, ~36 tall) or the figure. */
+.cardSkeleton { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
+.skeletonRow { display: flex; align-items: center; gap: 9px; min-height: 36px; }

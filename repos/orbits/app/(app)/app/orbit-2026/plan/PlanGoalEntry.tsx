@@ -10,15 +10,17 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planReviewCopy } from "../copy/plan";
 import { shellCopy } from "../copy/shell";
-import { ShellPage } from "../shell/slots";
+import { ShellPage, useInShell } from "../shell/slots";
 import Link from "next/link";
 import { pickCopy } from "../copy/types";
-import { Icon, Orbit2026Scope, useStandardCopy } from "../ui";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { Bone, Icon, Orbit2026Scope, Skeleton, useStandardCopy } from "../ui";
 import { FmBar, LimitCard, RailHead } from "./FlowParts";
 import { newActionKey, planApi } from "./plan-api";
 import { flowStage, goalGuessReady, isGoalKind, planErrorView, type PlanErrorView } from "./plan-model";
 import { PlanErrorNotice, translator, type Translate } from "./PlanParts";
-import { useSavedPlanGoal } from "./saved-goal";
+import { useSavedPlanGoalAnswer } from "./saved-goal";
 import k from "./FlowKit.module.css";
 
 const GUESS_DELAY_MS = 800;
@@ -47,14 +49,26 @@ function formatDay(iso: string | Date, language: OrbitLanguage): string {
   return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language, { day: "numeric", month: language === "en" ? "short" : "long" }).format(date);
 }
 
+type EntryAnswer = { list: PlanIntakeListResponse | null; goals: PlanV2SummaryResponse["goals"] | null };
+const ENTRY_KEY = "plan:goal-entry";
+const RECENT_KEY = "plan:goal-entry:recent";
+
+const atLimit = (list: PlanIntakeListResponse | null) => Boolean(list && list.newGoalsLeftThisMonth > 0 && list.activeGoals >= list.activeGoalLimit);
+
 function GoalInput({ t }: { t: Translate }) {
   const { language } = useOrbitLanguage();
+  // The account first, so the remembered answers are this account's.
+  useSharedReadAccount();
   const router = useRouter();
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [kind, setKind] = useState<PlanGoalKind | null>(null);
-  const [list, setList] = useState<PlanIntakeListResponse | null>(null);
-  const [goals, setGoals] = useState<PlanV2SummaryResponse["goals"] | null>(null);
+  // null = not read yet: the 続きから card, the quota / limit notes and the saved goal land together, so
+  // the area is a skeleton until /intakes (and, at the goal limit, the active goals) has answered.
+  const [entry, setEntry] = useState<EntryAnswer | null>(() => lastAnswer<EntryAnswer>(ENTRY_KEY) ?? null);
+  const list = entry?.list ?? null;
+  const goals = entry?.goals ?? null;
+  const [recent, setRecent] = useState<RecentChat[] | null>(() => lastAnswer<RecentChat[]>(RECENT_KEY) ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<PlanErrorView | null>(null);
   // Once the person picks a chip, the guess never overwrites it (UI-SPEC ①).
@@ -65,28 +79,41 @@ function GoalInput({ t }: { t: Translate }) {
   const latestText = useRef(text);
   latestText.current = text;
   // The goal from onboarding fills an untouched input once, so the plan starts from it.
-  const saved = useSavedPlanGoal();
+  // undefined until the profile read answers; the input is not drawn before, so the goal is in it from the first frame.
+  const saved = useSavedPlanGoalAnswer();
   const touched = useRef(false);
-  useEffect(() => {
-    if (!saved || touched.current) return;
+  // Filled in the same render the answer arrives (not in an effect after), so the input never shows empty first.
+  if (saved && !touched.current) {
     touched.current = true;
     setText(saved.text);
     if (saved.suggestedKind) { chosenByHand.current = true; setKind(saved.suggestedKind); }
-  }, [saved]);
+  }
 
   useEffect(() => {
     let alive = true;
-    void planApi<PlanIntakeListResponse>("/intakes", { language }).then((result) => { if (alive && result.ok) setList(result.data); });
+    void (async () => {
+      const result = await planApi<PlanIntakeListResponse>("/intakes", { language });
+      const next = result.ok ? result.data : null;
+      // At the goal limit the note lists the active goals: read them before the area is drawn.
+      const summary = atLimit(next) ? await planApi<PlanV2SummaryResponse>("/v2/summary", { language }) : null;
+      if (!alive) return;
+      const answer: EntryAnswer = { list: next, goals: summary?.ok ? summary.data.goals.filter((goal) => goal.status === "active") : null };
+      if (result.ok && (!summary || summary.ok)) rememberAnswer(ENTRY_KEY, answer);
+      // A failed re-read keeps what is on screen.
+      setEntry((current) => result.ok || !current ? answer : current);
+    })();
     return () => { alive = false; };
   }, [language]);
 
-  const atGoalLimit = Boolean(list && list.newGoalsLeftThisMonth > 0 && list.activeGoals >= list.activeGoalLimit);
+  // The rail is drawn only in the shell, so its recent chats are read only there (as the rail did).
+  const inShell = useInShell();
   useEffect(() => {
-    if (!atGoalLimit) return;
+    if (!inShell) return;
     let alive = true;
-    void planApi<PlanV2SummaryResponse>("/v2/summary", { language }).then((result) => { if (alive && result.ok) setGoals(result.data.goals.filter((goal) => goal.status === "active")); });
+    void readRecentChats().then((items) => { if (!alive) return; if (items) rememberAnswer(RECENT_KEY, items); setRecent(items ?? []); });
     return () => { alive = false; };
-  }, [atGoalLimit, language]);
+  }, [inShell]);
+  const atGoalLimit = atLimit(list);
 
   useEffect(() => {
     const trimmed = text.trim();
@@ -129,10 +156,23 @@ function GoalInput({ t }: { t: Translate }) {
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const daysLeft = Math.ceil((nextMonth.getTime() - now.getTime()) / 86_400_000);
 
+  // b12 W-R23-01-1440 / 02a–c: the goal input's rail is the plan's iOrbit rail (ask about this plan, recent
+  // chats) — in once its recent chats have answered; until then the shell keeps its rail skeleton.
+  const rail = <ShellPage rightRail={recent ? <GoalRail t={t} recent={recent} /> : undefined} />;
+  if (!entry || saved === undefined) return (
+    <div className={k.wgrid} data-plan-goal-pending="">
+      {rail}
+      <div className={`${k.card} ${k.span7} ${k.guide} ${k.goalCard}`}>
+        <Bone width="45%" height={24} />
+        <Skeleton lines={4} />
+      </div>
+      <div className={`${k.card} ${k.span5} ${k.deskOnly}`}><Skeleton lines={5} /></div>
+    </div>
+  );
+
   return (
     <div className={k.wgrid}>
-      {/* b12 W-R23-01-1440 / 02a–c: the goal input's rail is the plan's iOrbit rail (ask about this plan, recent chats). */}
-      <ShellPage rightRail={<GoalRail t={t} />} />
+      {rail}
       {inProgress ? (
         <div className={k.span12} data-plan-resume="">
           <div className={`${k.card} ${k.resumeCard}`}>
@@ -215,27 +255,21 @@ function GoalInput({ t }: { t: Translate }) {
 
 type RecentChat = { id: string; title: string };
 
-/** iOrbit's recent conversations (the same list as iOrbit's history; read only). */
-async function readRecentChats(): Promise<RecentChat[]> {
+/** iOrbit's recent conversations (the same list as iOrbit's history; read only); null when the read failed. */
+async function readRecentChats(): Promise<RecentChat[] | null> {
   try {
     const response = await fetch("/api/ai/conversations/sessions", { cache: "no-store" });
-    if (!response.ok) return [];
+    if (!response.ok) return null;
     const body = (await response.json().catch(() => null)) as { success?: boolean; data?: { items?: { id?: string; title?: string }[] } } | null;
     return (body?.success ? body.data?.items ?? [] : []).filter((item) => item.id && item.title).slice(0, 2).map((item) => ({ id: item.id!, title: item.title! }));
   } catch {
-    return [];
+    return null;
   }
 }
 
 /** b12 goalRail: ✨ iOrbit · 「このプランについて質問」 · 最近の会話 (iOrbit history) · iOrbit に聞く… ⌘K. */
-function GoalRail({ t }: { t: Translate }) {
+function GoalRail({ t, recent }: { t: Translate; recent: readonly RecentChat[] }) {
   const { language } = useOrbitLanguage();
-  const [recent, setRecent] = useState<RecentChat[]>([]);
-  useEffect(() => {
-    let alive = true;
-    void readRecentChats().then((items) => { if (alive) setRecent(items); });
-    return () => { alive = false; };
-  }, []);
   return (
     <div className={k.rail} data-plan-rail="goal">
       <h4 className={k.railH}><span className={`${k.emo} ${k.emoLav}`} aria-hidden>✨</span>{t(planFlowCopy.iorbitTitle)}</h4>

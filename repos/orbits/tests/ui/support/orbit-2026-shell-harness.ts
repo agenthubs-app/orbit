@@ -24,6 +24,8 @@ export const SHELL_STUBS: Record<string, string> = {
     export const useSession = () => ({ status: "authenticated", data: { user: { name: "Hana Yamada", email: "hana@orbit.test" } } });
     export const signOut = (options) => window.shellFixture.calls.push({ signOut: options?.callbackUrl });
     export const SessionProvider = ({ children }) => children;
+    // orbit-shared-read-account reads the provider's context; no provider here (the account stays unknown).
+    export const SessionContext = React.createContext(null);
   `,
   "relationship-inbox-panel$": `
     export const RELATIONSHIP_INBOX_COMPOSE_EVENT = "orbit:relationship-inbox-compose";

@@ -13,7 +13,7 @@ import { calendarDaysView, type CalendarEntry } from "./calendar-view-model";
 import { shiftCalendarDate, type CalendarMode } from "./calendar-range";
 import { CalendarPresenter } from "./CalendarPresenter";
 import { CalendarAgendaRail } from "./CalendarAgendaRail";
-import { CalendarNextMovesRail } from "./CalendarNextMovesRail";
+import { useCalendarNextMovesRail } from "./CalendarNextMovesRail";
 import { CalendarPersonalEditor } from "./CalendarPersonalEditor";
 import { MeetingProposalModal } from "./MeetingProposalModal";
 import { createMeetingProposalClient, MeetingProposalError, type MeetingProposalTarget } from "./meeting-proposal-client";
@@ -87,11 +87,15 @@ function Workspace({ actorId, language, timeZone, today, initialDate, initialAdd
   const confirmed = selected?.meeting?.confirmed;
   const detailStart = confirmed?.startsAtUtc ?? selected?.item?.startsAt ?? selected?.entry.startsAt;
   const detailEnd = confirmed ? new Date(Date.parse(confirmed.startsAtUtc) + confirmed.durationMinutes * 60_000).toISOString() : selected?.item?.endsAt ?? selected?.entry.endsAt;
+  const nextMovesRail = useCalendarNextMovesRail({ language, timeZone, today, enabled: inShell && mode === "week" });
+  // The agenda goes in once both sources have answered (ready or failed), so its items and its notes land
+  // together; until then the shell keeps its rail skeleton.
+  const sourcesSettled = [resource.internal.state, resource.external.state].every(state => state === "ready" || state === "failed");
   return <>
     {/* web.html #13 (week): 次の一手; b3 #39 (month) and #40 (day): the selected day's agenda. */}
     <ShellPage rightRail={mode !== "week"
-      ? <CalendarAgendaRail date={date} today={today} day={days.find(day => day.date === date)} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onEntrySelect={entry => { void open(entry); }} />
-      : <CalendarNextMovesRail language={language} timeZone={timeZone} today={today} />} />
+      ? sourcesSettled ? <CalendarAgendaRail date={date} today={today} day={days.find(day => day.date === date)} internalState={resource.internal.state} externalState={resource.external.state} connection={resource.external.data?.connection ?? "unavailable"} partial={partial} onEntrySelect={entry => { void open(entry); }} /> : undefined
+      : nextMovesRail.slot} />{nextMovesRail.probe}
     {/* web.html #13 / b3 #37–40: the cards sit in the middle column with its 34 side padding (as the other tabs). */}
     <div className={styles.page}>
       <div className={styles.status} style={inShell ? { display: "none" } : undefined}><Button hidden={inShell} data-task-add="" label={t(taskCopy.calendarAdd)} icon="plus" variant="accent" disabled={!ready || denied} onClick={() => { closeDetail(); setEditor(null); }} /></div>

@@ -73,7 +73,9 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
 
   const rail = useMemo(() => (detail ? <OverviewRail detail={detail} t={t} language={language} /> : null), [detail, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (failed && !detail) return <div data-plan-overview-error=""><RetryCard title={t(planFlowCopy.slotLoadFailed)} message={t(c.slotErrorBody)} onRetry={() => void load()} /></div>;
+  // The Task container leaves the rail to this screen: undefined (the shell's rail skeleton) while the plan
+  // is read, the complete OverviewRail once it is, and the shell's iOrbit card where this screen has none.
+  if (failed && !detail) return <div data-plan-overview-error=""><ShellPage rightRail /><RetryCard title={t(planFlowCopy.slotLoadFailed)} message={t(c.slotErrorBody)} onRetry={() => void load()} /></div>;
   if (!detail) return <Skeleton lines={6} />;
 
   const openManualEdit = async () => {
@@ -125,7 +127,7 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
   return (
     <div data-plan-overview={detail.planId} data-tier={tier}>
       {/* 1440: the iOrbit rail (web.html planRail); 768–1279 the shell's 次の一手 drawer shows the same rail. */}
-      {tier !== "narrow" && rail ? <ShellPage rightRail={rail} /> : null}
+      {tier !== "narrow" && rail ? <ShellPage rightRail={rail} /> : <ShellPage rightRail />}
       <div className={styles.goalRow}>
         <div>{switcher}</div>
         {tier === "wide" ? <div className={styles.acts}><PlanButtons detail={detail} t={t} busy={busy} {...handlers} /></div> : null}

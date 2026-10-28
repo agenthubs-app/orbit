@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { planFlowCopy, planOverviewCopy } from "../copy/plan";
+import { ShellPage } from "../shell/slots";
 import { Orbit2026Scope, RetryCard } from "../ui";
 import { translator } from "./PlanParts";
 import styles from "./plan.module.css";
@@ -20,6 +21,8 @@ export function PlanSlotError() {
   const [retrying, setRetrying] = useState(false);
   return (
     <Orbit2026Scope language={language} className={styles.slot}>
+      {/* The Task container leaves the rail to the plan screen; this one's rail is the shell's iOrbit card. */}
+      <ShellPage rightRail />
       <div data-plan-slot-error="">
         <RetryCard title={t(planFlowCopy.slotLoadFailed)} message={t(planOverviewCopy.slotErrorBody)} retrying={retrying} onRetry={() => { setRetrying(true); router.refresh(); window.setTimeout(() => setRetrying(false), 1500); }} />
       </div>

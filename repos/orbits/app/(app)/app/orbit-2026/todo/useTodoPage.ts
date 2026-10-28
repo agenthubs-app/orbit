@@ -50,7 +50,6 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
   const scope = JSON.stringify([account, ready, timeZone, date, enabled]);
   const activeScope = useRef(scope);
   activeScope.current = scope;
-  // Only the mount's own read keeps the remembered page on screen; a later refresh (after a write) reloads as before.
   const seeded = useRef(false);
   const [snapshot, setSnapshot] = useState<Snapshot>(() => {
     const remembered = enabled && ready && account ? lastAnswer<TodoPageContract>(answerKey(date, timeZone)) : undefined;
@@ -75,7 +74,10 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     const epoch = generation.current;
     const controller = new AbortController();
     requests.current.set("first", controller);
-    if (!(seeded.current && value.current.scope === scope && value.current.page)) publish({ scope, state: "loading", page: null, paging: {} });
+    // A page already on screen for this account and day stays while it is read again (after a write, a retry
+    // of a load-more, the remembered page on return): the new answer replaces it in place, no skeleton between.
+    const shown = value.current.scope === scope && value.current.page && (seeded.current || value.current.state === "ready");
+    if (!shown) publish({ scope, state: "loading", page: null, paging: {} });
     const answer = await read(url(), date, timeZone, controller.signal).catch((): ReadResult => ({ kind: "failed" }));
     if (controller.signal.aborted || generation.current !== epoch || activeScope.current !== scope) return;
     requests.current.delete("first");

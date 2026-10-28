@@ -17,6 +17,8 @@
 .detailHead time, .kind { color: var(--ink-3-text); font-size: var(--fs-meta); }
 .body { font-size: var(--fs-body); line-height: 1.7; min-height: 120px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The 全部 / 会議 / 自由 row before its counts are in: pills the size of CategoryTabs' (7 + 20 + 7). */
+.tabsPending { display: flex; gap: 6px; }
 .form { display: grid; gap: 16px; }
 .bodyLabel { color: var(--ink-2); display: grid; font-size: var(--fs-body-sm); font-weight: 700; gap: 8px; }
 .bodyLabel textarea { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--ink); font: inherit; line-height: 1.6; padding: 13px; resize: vertical; }

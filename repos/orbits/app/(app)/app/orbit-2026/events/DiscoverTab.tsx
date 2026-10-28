@@ -20,7 +20,7 @@ import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { eventsApi, newIdempotencyKey } from "./events-api";
 import { ringColor } from "./events-model";
 import { journeyApi } from "./journey-api";
-import { useSavedPlanGoal } from "../plan/saved-goal";
+import { readSavedPlanGoal, type SavedPlanGoal } from "../plan/saved-goal";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
 
@@ -96,7 +96,11 @@ export function queryFromParams(params: URLSearchParams | null): EventDiscoverQu
   };
 }
 
-export interface DiscoverRailState { row: EventDiscoverRow | null; signedOut: boolean }
+/** `loaded`: false until the first discover answer is in (the page keeps the shell's rail skeleton till then). */
+export interface DiscoverRailState { loaded: boolean; row: EventDiscoverRow | null; signedOut: boolean }
+
+/** The saved goal (no-plan guide card) as last read: `{ goal }` so a remembered "no goal" is told apart from "not read". */
+const SAVED_GOAL_KEY = "events:discover:savedGoal";
 
 function WhyBox({ reason, detail, t }: { reason: string; detail?: string | null; t: JourneyT }) {
   const [open, setOpen] = useState(false);
@@ -205,7 +209,18 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
     setData(result.ok ? result.data : { all: [], community: [], planFit: [], planFitTotal: 0, popularityFallback: true, total: 0 });
   }, []);
   useEffect(() => { void load(query); }, [load, query]);
-  const savedGoal = useSavedPlanGoal(Boolean(data?.popularityFallback && !data.signedOut));
+  // The guide card's copy depends on the profile goal: read it alongside discover (not after it) when the card may
+  // show, and keep the card a skeleton until it is in (undefined = not read yet).
+  const [savedGoal, setSavedGoal] = useState<SavedPlanGoal | null | undefined>(() => lastAnswer<{ goal: SavedPlanGoal | null }>(SAVED_GOAL_KEY)?.goal);
+  const goalWanted = signedIn && (data === null || (data.popularityFallback && !data.signedOut));
+  const goalStarted = useRef(false);
+  useEffect(() => {
+    if (!goalWanted || goalStarted.current) return;
+    goalStarted.current = true;
+    // Started once (a ref, not an effect cleanup flag: StrictMode's re-run must still see the answer land).
+    readSavedPlanGoal().then((goal) => { rememberAnswer(SAVED_GOAL_KEY, { goal }); setSavedGoal(goal); }, () => setSavedGoal((value) => value ?? null));
+  }, [goalWanted]);
+  const goal = signedIn ? savedGoal : null;
 
   useEffect(() => {
     const q = search.trim();
@@ -217,7 +232,7 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
   const flat = data !== null && !data.popularityFallback && data.total <= 5 && data.all.length > 0;
   const firstRow = data ? (flat ? data.all[0] : data.planFit[0]) ?? null : null;
   const railRow = data ? ([...data.planFit, ...data.all, ...data.community].find((row) => row.eventId === selected) ?? firstRow) : null;
-  useEffect(() => { onRail({ row: data && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, railRow, onRail]);
+  useEffect(() => { onRail({ loaded: data !== null, row: data && !data.popularityFallback ? railRow : null, signedOut: Boolean(data?.signedOut) }); }, [data, railRow, onRail]);
   useEffect(() => {
     if (!data) return;
     onSubtitle(data.popularityFallback ? t("dSubtitleEmpty") : flat ? t("dSubtitleFew", { n: data.total }) : t("dSubtitleMany", { n: data.planFitTotal, period: query.period ? periodLabel(query.period, t) : "", total: data.total }));
@@ -289,10 +304,21 @@ export function DiscoverTab({ language, tier, signedIn, onRail, onSubtitle }: { 
             <div className={styles.row} style={{ alignItems: "center", gap: 24 }}>
               <div style={{ flex: 1 }}>
                 <div className={styles.lbl}>{t("noPlanLbl")}</div>
-                <div className={d.guideTitle}>{t(savedGoal ? "noPlanTitleGoal" : "noPlanTitle")}</div>
-                <div className={styles.sub}>{t(savedGoal ? "noPlanSubGoal" : "noPlanSub")}</div>
+                {goal === undefined ? (
+                  <div aria-busy aria-label={std.loading.loading} data-discover-goal-pending="">
+                    <div className={d.guideTitle}><i className={styles.pendBone} style={{ width: "48%", height: 18 }} aria-hidden /></div>
+                    <div className={styles.sub}><i className={styles.pendBone} style={{ width: "72%" }} aria-hidden /></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className={d.guideTitle}>{t(goal ? "noPlanTitleGoal" : "noPlanTitle")}</div>
+                    <div className={styles.sub}>{t(goal ? "noPlanSubGoal" : "noPlanSub")}</div>
+                  </>
+                )}
               </div>
-              <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(savedGoal ? "planFromGoal" : "setGoal")}</a>
+              {goal === undefined
+                ? <span className={styles.pendSeg} aria-hidden><span className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`}><Icon name="target" size={16} />{t("planFromGoal")}</span></span>
+                : <a className={`btn ${styles.btn} ${styles.primary} ${styles.tall}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t(goal ? "planFromGoal" : "setGoal")}</a>}
             </div>
             <div className={styles.grid3}>
               {([["🔗", "tileUrl", "tileUrlSub", "/app/events?tab=assess"], ["🎟️", "tileCode", "tileCodeSub", "/app/events?tab=assess&code=1"], ["👥", "tileCommunity", "tileCommunitySub", "/app/events?tab=discover"]] as const).map(([emoji, title, sub, href]) => (

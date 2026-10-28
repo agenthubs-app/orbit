@@ -26,7 +26,7 @@ import { useCardDrag } from "./use-card-drag";
 import { homeRailSuggestions, type HomeRailSuggestion } from "./home-rail-model";
 import { useHomeResource } from "./use-home-resource";
 import styles from "./home.module.css";
-import { RailAsk, RecentSessions } from "./RailParts";
+import { RailAsk, RecentSessions, useRecentSessions } from "./RailParts";
 import shellStyles from "../shell/shell.module.css";
 
 type T = (key: keyof typeof homeCopy) => string;
@@ -61,7 +61,9 @@ function HomeWorkspace() {
   const railPlan = useHomeResource("/api/agent/plans/v2/summary", planV2SummaryResponseSchema);
   const railEvents = useHomeResource("/api/schedule-items", railSchedule);
   const guide = useGuideProgress();
-  const onboarding = unfinishedOnboarding(useProfileOnboardingFlow());
+  const recentSessions = useRecentSessions();
+  const onboardingFlow = useProfileOnboardingFlow();
+  const onboarding = unfinishedOnboarding(onboardingFlow);
   const contactCopy = homeContactCopyKeys(guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null);
   const items = editing ? draft ?? [...layout.web] : layout.web;
   const recommendations = homeRailSuggestions({
@@ -107,18 +109,21 @@ function HomeWorkspace() {
   };
 
   const shown = recommendations.filter((item) => !later.includes(item.key));
+  // The rail is drawn once, complete: every read it depends on (suggestions, the intro's guide copy,
+  // はじめかたガイド, 最近の会話) has answered or failed. Until then the shell keeps its rail skeleton.
+  const railReady = [secretary, railTodo, railPlan, railEvents, guide, recentSessions].every((read) => read.kind !== "loading") && onboardingFlow.kind !== "loading";
   // web.html #0: with nothing to suggest the rail is the shell's iOrbit intro; #1/#2: 「次の一手 · ホームから」.
   const railBody = editing ? <WidgetLibrary slots={items} t={t} onAdd={(slot) => setDraft(addHomeWidget(items, slot))} />
     : shown.length ? <NextMoveRail items={shown} t={t} onLater={(key) => setLater((keys) => [...keys, key])} />
     : <DefaultRail intro={contactCopy.intro === "railAbout" ? undefined : { title: t("railHello"), body: t("railAboutReady") }} />;
   // b1 #21 / #24: while the profile onboarding is unfinished, 「はじめかたガイド」 heads the rail.
-  const rail = onboarding && !editing ? <><OnboardingGuideRail flow={onboarding} />{railBody}</> : railBody;
+  const rail = editing ? railBody : !railReady ? undefined : onboarding ? <><OnboardingGuideRail flow={onboarding} />{railBody}</> : railBody;
 
   return <>
     <ShellPage title={month} subtitle={range} left={<ShellSearchButton />}
       right={editing ? <Button label={t("done")} variant="primary" onClick={() => void finish()} disabled={saving} />
         : <><ShellBellButton /><Button label={t("edit")} icon="grid" onClick={enter} disabled={saving || state === "error"} /></>}
-      rightRail={rail} railCount={shown.length} phoneFold />
+      rightRail={rail} railCount={railReady ? shown.length : undefined} phoneFold />
     <main className={styles.body} data-home-layout-state={state} data-home-editing={editing}>
       {state === "error" ? <div className={styles.failure}><span>{t("unavailable")}</span><Button label={t("retry")} variant="ghost" size="sm" onClick={() => void reload()} /></div> : null}
       {state === "loading" ? <PageSkeletonBody kind="home" label={t("loading")} bare /> : null}
@@ -142,7 +147,7 @@ function HomeWorkspace() {
                   onClick={() => { setDraft(resizeHomeWidget(items, slot.key, size)); setSizing(null); }}>{t(size === "s" ? "small" : "medium")}<small>{t(size === "s" ? "cols4" : "cols8")}</small></button>)}
               </div> : null}
             </> : null}
-            <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} />
+            <HomeCardBody widget={slot.key} secretary={secretary} onContact={setContact} guide={guide.kind === "ready" && guide.data.kind === "progress" ? guide.data : null} guideLoading={guide.kind === "loading"} />
           </section>)}
           {editing ? <button type="button" className={`btn ${styles.addTile}`} onClick={() => document.querySelector<HTMLElement>("[data-home-library] button")?.focus()}><Icon name="plus" size={16} />{t("add")}</button> : null}
         </div>

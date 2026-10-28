@@ -4,13 +4,48 @@ import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { taskCopy } from "../copy/task";
 import { pickCopy } from "../copy/types";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { z } from "zod";
 import { EmptyState, MacTile, Orbit2026Scope, RetryCard, SampleTag, Skeleton } from "../ui";
 import { RailAsk, RecentSessions } from "../home/RailParts";
+import { useHomeResource } from "../home/use-home-resource";
 import home from "../home/home.module.css";
 import shellStyles from "../shell/shell.module.css";
+import { useInShell } from "../shell/slots";
 import type { TodoPageView } from "./todo-view-model";
 import styles from "./todo.module.css";
+
+type RailState = "idle" | "loading" | "ready" | "failed" | "not_implemented";
+
+// The rail's 「最近の会話」 block (RailParts RecentSessions) reads this path through the shared Home resource;
+// the page subscribes to the same path, so the rail goes in once that answer is there too (one request).
+const RECENT_SESSIONS_PATH = "/api/ai/conversations/sessions?limit=3";
+const recentSessionsSchema = z.object({ items: z.array(z.unknown()) });
+
+/** Subscribes to the rail's recent conversations (the same shared read the rail's block uses) and says when it has answered. */
+function RecentSessionsProbe({ onSettled }: { onSettled: (settled: boolean) => void }) {
+  const sessions = useHomeResource(RECENT_SESSIONS_PATH, recentSessionsSchema);
+  const settled = sessions.kind !== "loading";
+  useEffect(() => { onSettled(settled); }, [onSettled, settled]);
+  return null;
+}
+
+/**
+ * The rail slot for a page that owns the To-do rail: `undefined` (the shell keeps its rail skeleton) until
+ * the To-do read and the recent conversations have both answered, `false` when To-do is closed for the
+ * account, then the complete rail once. Render `probe` in the page; it reads only inside the shell (the
+ * rail is not drawn elsewhere), as the rail did.
+ */
+export function useTodoRailSlot(state: RailState, rail: () => ReactNode, enabled = true): { slot: ReactNode | false | undefined; probe: ReactNode } {
+  const inShell = useInShell();
+  const [sessionsSettled, setSessionsSettled] = useState(false);
+  const active = enabled && inShell;
+  const probe = active ? <RecentSessionsProbe onSettled={setSessionsSettled} /> : null;
+  if (!active) return { slot: undefined, probe };
+  if (state === "not_implemented") return { slot: false, probe };
+  if ((state !== "ready" && state !== "failed") || !sessionsSettled) return { slot: undefined, probe };
+  return { slot: rail(), probe };
+}
 
 const TILES = [{ emoji: "💌", tone: "pink" }, { emoji: "🙋", tone: "teal" }, { emoji: "🥂", tone: "lav" }] as const;
 
@@ -18,7 +53,7 @@ const TILES = [{ emoji: "💌", tone: "pink" }, { emoji: "🙋", tone: "teal" },
 export function TodoNextMovesRail({ account, language, state, view, onRetry, onDraft }: {
   account: string | null;
   language: OrbitLanguage;
-  state: "idle" | "loading" | "ready" | "failed" | "not_implemented";
+  state: RailState;
   view: TodoPageView | null;
   onRetry: () => void;
   onDraft: (key: string) => void;

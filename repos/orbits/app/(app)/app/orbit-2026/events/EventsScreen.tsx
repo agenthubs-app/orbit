@@ -73,17 +73,19 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   useSharedReadAccount();
   const [opening] = useState(() => lastAnswer<EventsOverviewAnswer>("events:overview"));
   const [items, setItems] = useState<EventAssessmentContract[] | null>(opening?.items ?? null);
-  const [upcoming, setUpcoming] = useState<MyEventItem[]>(opening?.upcoming ?? []);
-  const [past, setPast] = useState<MyEventItem[]>(opening?.past ?? []);
-  const [upcomingCount, setUpcomingCount] = useState(opening?.upcomingCount ?? 0);
-  const [availability, setAvailability] = useState<EventAssessmentAvailability | null>(opening?.availability ?? null);
+  // null = not read yet (a skeleton), never an empty list (no-flash rule 1).
+  const [upcoming, setUpcoming] = useState<MyEventItem[] | null>(opening?.upcoming ?? null);
+  const [past, setPast] = useState<MyEventItem[] | null>(opening?.past ?? null);
+  const [upcomingCount, setUpcomingCount] = useState<number | null>(opening?.upcomingCount ?? null);
+  // undefined = not read yet; null = the read failed (the card then shows as with the AI on, as before).
+  const [availability, setAvailability] = useState<EventAssessmentAvailability | null | undefined>(opening ? opening.availability : undefined);
   const [selected, setSelected] = useState<string | null>(initialAssessmentId ?? null);
   const [flow, setFlow] = useState<Flow>(null);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [discoverRail, setDiscoverRail] = useState<DiscoverRailState>({ row: null, signedOut: false });
+  const [discoverRail, setDiscoverRail] = useState<DiscoverRailState>({ loaded: false, row: null, signedOut: false });
   const [discoverSubtitle, setDiscoverSubtitle] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -91,9 +93,10 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
   const load = useCallback(async () => {
     const [list, up, before, avail] = await Promise.all([eventsApi.list(), eventsApi.mine("upcoming", 10), eventsApi.mine("past", 10), eventsApi.availability()]);
     setItems(list.ok ? list.data : []);
-    if (up.ok) { setUpcoming([...up.data.items]); setUpcomingCount(up.data.upcomingCount); }
-    if (before.ok) setPast([...before.data.items]);
-    if (avail.ok) setAvailability(avail.data);
+    // A failed read keeps the last lists (a reload after 追加) or, on the first read, settles to empty.
+    if (up.ok) { setUpcoming([...up.data.items]); setUpcomingCount(up.data.upcomingCount); } else { setUpcoming((value) => value ?? []); setUpcomingCount((value) => value ?? 0); }
+    setPast((value) => (before.ok ? [...before.data.items] : value ?? []));
+    setAvailability((value) => (avail.ok ? avail.data : value ?? null));
     if (list.ok && up.ok && before.ok && avail.ok) {
       rememberAnswer<EventsOverviewAnswer>("events:overview", { items: list.data, upcoming: [...up.data.items], upcomingCount: up.data.upcomingCount, past: [...before.data.items], availability: avail.data });
     }
@@ -186,24 +189,37 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
 
   const assessedCount = (items ?? []).filter((item) => item.status === "ready" || item.status === "needs_input").length;
   const month = monthOf(now);
-  const subtitle = tab === "discover" && discoverSubtitle ? discoverSubtitle : tab === "going"
-    ? t("subtitleGoing", { going: upcomingCount, month })
+  // Every read the page's blocks need (one Promise.all); before it, skeletons only (no-flash rule 2).
+  const overviewLoaded = items !== null && upcoming !== null && past !== null && upcomingCount !== null && availability !== undefined;
+  // Until the read that decides the line is in, a placeholder line of the shell's size (never subtitleEmpty first).
+  const pendingLine = <i className={styles.pendBone} style={{ width: 120 }} aria-hidden />;
+  const subtitle = tab === "discover" && !discover ? discoverSubtitle ?? pendingLine
+    : tab === "going" ? (upcomingCount === null ? pendingLine : t("subtitleGoing", { going: upcomingCount, month }))
+    : !overviewLoaded ? pendingLine
     : assessedCount === 0 && upcomingCount === 0 ? t("subtitleEmpty")
       : assessedCount >= 3 ? t("subtitle", { assessed: assessedCount, going: upcomingCount, month }) : t("subtitleGoing", { going: upcomingCount, month });
 
-  const segmentFor = (full: boolean) => (
-    <Segmented<"assess" | "going" | "discover"> variant="seg" wide={full} label={t("tabsLabel")} data-events-tabs="" value={tab} onChange={choose}
-      segments={(["assess", "going", "discover"] as const).map((key) => ({ key, label: key === "assess" ? t("tabAssess") : key === "going" ? (tier === "wide" || upcomingCount === 0 || (tier === "narrow" && tab === "discover") ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount })) : t("tabDiscover") }))} />
-  );
+  // 768–1279 / 390 show 「参加予定 N」: until N is read the row is held as a skeleton of its own size, so the
+  // label never shows first without its number.
+  const countless = tier === "wide" || upcomingCount === 0 || (tier === "narrow" && tab === "discover");
+  const segmentFor = (full: boolean) => {
+    const row = (
+      <Segmented<"assess" | "going" | "discover"> variant="seg" wide={full} label={t("tabsLabel")} data-events-tabs="" value={tab} onChange={choose}
+        segments={(["assess", "going", "discover"] as const).map((key) => ({ key, label: key === "assess" ? t("tabAssess") : key === "going" ? (countless ? t("tabGoing") : t("tabGoingCount", { n: upcomingCount ?? 0 })) : t("tabDiscover") }))} />
+    );
+    return countless || upcomingCount !== null ? row : <span className={`${styles.pendSeg} ${full ? styles.pendFull : ""}`} aria-hidden data-events-tabs-pending="">{row}</span>;
+  };
   const segment = segmentFor(false);
-  const empty = items !== null && ordered.length === 0 && upcoming.length === 0;
+  const empty = overviewLoaded && ordered.length === 0 && (upcoming ?? []).length === 0;
   // 1440: the selected assessment in the rail (web.html #12), the default iOrbit rail otherwise (#10).
   // 1024 / 390 (b8 #0 / #1): no rail button in the header — the result opens as a drawer / its own screen.
   // 参加予定页签（b12 #310）：右栏是下一场（有评估记录的）参加予定的「評価の詳細」。
-  const goingRailItem = tab === "going" ? upcoming.map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
+  const goingRailItem = tab === "going" ? (upcoming ?? []).map((event) => (items ?? []).find((item) => item.id === event.assessmentId)).find((item) => item?.status === "ready") ?? null : null;
   const shownRailItem = tab === "assess" && !empty ? railItem : goingRailItem;
+  // Until the rail's data is in, undefined: the shell keeps its rail skeleton (no-flash rule 3).
   const rail = tier !== "wide" ? false : tab === "discover"
-    ? (discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
+    ? (!discover && !discoverRail.loaded ? undefined : discoverRail.row ? <DiscoverRail row={discoverRail.row} language={language} /> : <DiscoverHelpRail language={language} />)
+    : !overviewLoaded ? undefined
     : shownRailItem
     ? <AssessmentRail item={shownRailItem} language={language} busy={busy} onAdd={() => void decide(shownRailItem, "add")} onSkip={() => void decide(shownRailItem, "skip")} />
     : true;
@@ -216,20 +232,21 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           {/* b12 #348（探す 390）：App 式 topbar（🔍 · イベント + 件数 · 📅）+ 全宽 seg。 */}
           <div className={styles.ptop} data-events-phone-top="">
             <ShellSearchButton />
-            <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : null}</div>
+            <div className={styles.ptopT}><b>{t("title")}</b>{discoverSubtitle ? <small>{discoverSubtitle}</small> : discover ? null : <small>{pendingLine}</small>}</div>
             <a className={`btn ${styles.ptopBtn}`} href="/app/events?tab=going" aria-label={t("tabGoing")}><Icon name="calendar" size={20} /></a>
           </div>
           {segmentFor(true)}
         </>
       ) : tier === "narrow" ? (
         <>
-          <div className={styles.r8ttl}>{t("title")}{assessedCount > 0 ? <span className={styles.lbl}>{t("assessedCount", { n: assessedCount })}</span> : null}</div>
+          <div className={styles.r8ttl}>{t("title")}{items === null ? <i className={styles.pendBone} style={{ width: 64 }} aria-hidden /> : assessedCount > 0 ? <span className={styles.lbl}>{t("assessedCount", { n: assessedCount })}</span> : null}</div>
           {segmentFor(true)}
         </>
       ) : !inShell ? <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 12px" }}>{segment}</div> : null}
       {tab === "discover" ? <div data-events-discover="">{discover ?? <DiscoverTab language={language} tier={tier} signedIn onRail={setDiscoverRail} onSubtitle={setDiscoverSubtitle} />}</div> : null}
-      {tab === "going" ? <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} /> : null}
-      {tab === "assess" ? (
+      {tab === "going" ? (upcoming === null || past === null ? <GoingSkeleton /> : <MyEvents language={language} upcoming={upcoming} past={past} now={now} t={t} />) : null}
+      {tab === "assess" && !overviewLoaded ? <AssessSkeleton tier={tier} /> : null}
+      {tab === "assess" && overviewLoaded ? (
         <div className={tier === "narrow" ? styles.stack : styles.wgrid} data-events-assess="">
           {flow?.kind === "assessing" ? <Assessing language={language} step={flow.step} {...(flow.sourceLabel ? { sourceLabel: flow.sourceLabel } : {})} /> : null}
           {flow?.kind === "paste" ? <PasteText language={language} busy={busy} onAssessText={(text) => void start({ idempotencyKey: newIdempotencyKey(), sourceKind: "text", text })} /> : null}
@@ -238,11 +255,11 @@ function EventsInner({ language, discover, initialAssessmentId, nowIso }: Events
           {!flow && current?.failureReason === "login_required" ? <LoginRequired item={current} language={language} onManual={() => setFlow({ kind: "manual" })} onOther={() => { setSelected(null); setUrl(""); }} onPaste={() => setFlow({ kind: "paste" })} onShot={() => fileRef.current?.click()} /> : null}
           {!flow && current?.failureReason === "not_event_page" ? <NotEventPage item={current} language={language} onManual={() => setFlow({ kind: "manual" })} onAssess={(link, title) => (link ? void start({ idempotencyKey: newIdempotencyKey(), sourceKind: "url", url: link }) : setFlow({ kind: "manual" }))} /> : null}
           <AssessCard
-            t={t} tier={tier} big={empty} url={url} setUrl={setUrl} onAssessUrl={submitUrl} busy={busy} availability={availability} fileRef={fileRef} dragging={dragging} setDragging={setDragging}
+            t={t} tier={tier} big={empty} url={url} setUrl={setUrl} onAssessUrl={submitUrl} busy={busy} availability={availability ?? null} fileRef={fileRef} dragging={dragging} setDragging={setDragging}
             onFiles={(files) => void submitPosters(files)} onManual={() => setFlow({ kind: "manual" })} goalLabel={null}
           />
           {empty ? <EmptyCards t={t} onCode={() => setCodeOpen(true)} /> : null}
-          {!empty && upcoming[0] ? <NextCard t={t} tier={tier} item={upcoming[0]} language={language} now={now} /> : null}
+          {!empty && upcoming?.[0] ? <NextCard t={t} tier={tier} item={upcoming[0]} language={language} now={now} /> : null}
           {!empty && ordered.length ? (
             <>
               <div className={tier === "narrow" ? `${styles.cardH} ${styles.phoneHead}` : `${styles.span12} ${styles.cardH} ${styles.listHead}`}>
@@ -333,6 +350,44 @@ function AssessCard({ t, tier, big, url, setUrl, onAssessUrl, busy, availability
           <div className={`${styles.mac} ${styles.macApricot} ${styles.row}`}><span className={styles.guideEmoji}>⏱️</span><div><b className={styles.guideName}>{t("guideTime")}</b><div className={styles.lbl}>{t("guideTimeSub")}</div></div></div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// The 評価 tab before its reads are in: the input card and 次の参加予定 in their own columns and classes, then a
+// row of assessed cards — the blocks then fill in where they stand (no-flash rule 2).
+function AssessSkeleton({ tier }: { tier: Tier }) {
+  const label = useStandardCopy().loading.loading;
+  const lines = (widths: readonly (number | string)[]) => widths.map((width, index) => <i key={index} className={`${styles.pendBone} ${styles.pendBlock}`} style={{ width, height: index === 0 ? 16 : 12 }} />);
+  if (tier === "narrow") {
+    return (
+      <div className={styles.stack} data-events-assess="" role="progressbar" aria-busy aria-label={label} data-events-assess-pending="">
+        <div className={`${styles.card} ${styles.evalBox} ${styles.pendCard}`} style={{ display: "flex", minHeight: 150 }}>{lines(["40%", "100%", "100%"])}</div>
+        <div className={`${styles.card} ${styles.nextRow}`} style={{ minHeight: 72 }}>{lines(["60%"])}</div>
+      </div>
+    );
+  }
+  const medium = tier === "medium";
+  return (
+    <div className={styles.wgrid} data-events-assess="" role="progressbar" aria-busy aria-label={label} data-events-assess-pending="">
+      <div className={`${styles.card} ${medium ? styles.span7 : styles.span8} ${styles.pendCard}`} style={{ minHeight: 236 }}>{lines(["36%", "60%", "100%", "100%"])}</div>
+      <div className={`${styles.card} ${medium ? styles.span5 : styles.span4} ${styles.pendCard}`} style={{ minHeight: 236 }}>{lines(["30%", "80%", "56%"])}</div>
+      {[0, 1, 2, 3].map((index) => <div key={index} className={`${styles.card} ${styles.span3} ${styles.pendCard}`} style={{ minHeight: 168 }}>{lines(["24%", "80%", "56%"])}</div>)}
+    </div>
+  );
+}
+
+// The 参加予定 tab before its reads are in: the heading line and the three upcoming cards (span 4).
+function GoingSkeleton() {
+  const label = useStandardCopy().loading.loading;
+  return (
+    <div className={styles.wgrid} role="progressbar" aria-busy aria-label={label} data-events-going="pending">
+      <div className={`${styles.span12} ${styles.cardH}`} style={{ margin: "0 0 -6px" }}><i className={styles.pendBone} style={{ width: 120, height: 16 }} /></div>
+      {[0, 1, 2].map((index) => (
+        <div key={index} className={`${styles.card} ${styles.span4} ${styles.pendCard}`} style={{ minHeight: 200 }}>
+          {(["40%", "80%", "56%"] as const).map((width, line) => <i key={line} className={`${styles.pendBone} ${styles.pendBlock}`} style={{ width, height: line === 1 ? 16 : 12 }} />)}
+        </div>
+      ))}
     </div>
   );
 }

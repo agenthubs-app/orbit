@@ -230,3 +230,14 @@
 .ptopT b { display: block; font-size: var(--fs-logo); font-weight: var(--fw-heavy); letter-spacing: 0.01em; }
 .ptopT small { display: block; font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); margin-top: 1px; }
 .ptopBtn.ptopBtn { width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: var(--surface); display: grid; place-items: center; color: var(--ink-2); }
+/* Before the first read (no-flash): a line / pill / card the size of what will be drawn there. */
+.pendBone { display: inline-block; height: 12px; border-radius: var(--r-chip); vertical-align: middle; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%; animation: pendShimmer var(--dur-shimmer) linear infinite; }
+.pendBlock { display: block; }
+.pendSeg { position: relative; display: inline-block; pointer-events: none; }
+.pendSeg.pendFull { display: block; }
+.pendSeg > * { visibility: hidden; }
+.pendSeg::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%; animation: pendShimmer var(--dur-shimmer) linear infinite; }
+.pendCard { gap: 10px; }
+@keyframes pendShimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .pendBone, .pendSeg::after { animation: none; } }
+:global([data-motion="reduce"]) .pendBone, :global([data-motion="reduce"]) .pendSeg::after { animation: none; }

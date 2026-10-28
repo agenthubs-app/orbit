@@ -55,6 +55,8 @@
 .historyEntry:hover .historyMore, .historyEntry:focus-within .historyMore { display: grid; }
 .historyEntry:hover small, .historyEntry:focus-within small { visibility: hidden; }
 .emptyHistory { color: var(--ink-3-text); font-size: var(--fs-body-sm); }
+/* Before the first page: same row box as .historyEntryMain (padding 9 10, body-sm line). */
+.historySkeletonRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: calc(var(--fs-body-sm) * var(--lh-body) + 18px); padding: 9px 10px; }
 .rename { display: flex; gap: var(--space-8); align-items: center; }
 .rename input { min-width: 0; flex: 1; height: 40px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--accent); border-radius: var(--r-sm); padding: 0 var(--space-12); font: inherit; }
 .feedback { color: var(--ink-2); font-size: var(--fs-label); }

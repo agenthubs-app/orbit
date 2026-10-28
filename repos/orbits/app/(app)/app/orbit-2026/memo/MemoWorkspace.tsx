@@ -5,9 +5,14 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { pickCopy } from "../copy/types";
 import { memoCopy } from "../copy/memo";
-import { Button, CategoryTabs, Chip, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useToast } from "../ui";
+import { lastAnswer, rememberAnswer } from "../../orbit-last-answer";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { Bone, Button, CategoryTabs, Chip, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { activeMemoMentionQuery, insertMemoMention, memoContactIds, memoPage, memoRequest, memoTabForKind, rebaseMemoMentions, type MemoMentionCandidate, type MemoRow, type MemoTab } from "./memo-model";
 import styles from "./memo.module.css";
+
+type Counts = Record<MemoTab, number | null>;
+const countsKey = (query: string) => `memo:counts:${query}`;
 
 type Draft = { title: string; body: string; kind: "meeting" | "free" | "voice"; usedForPlan: boolean; contactIds: string[]; eventIds: string[]; mentions: MemoRow["mentions"] };
 const emptyDraft = (): Draft => ({ title: "", body: "", kind: "free", usedForPlan: false, contactIds: [], eventIds: [], mentions: [] });
@@ -44,14 +49,18 @@ export function MemoWorkspace({ language, initialAdd = false, initialSelectedId 
 }
 
 function Workspace({ language, initialAdd, initialSelectedId }: { language: OrbitLanguage; initialAdd: boolean; initialSelectedId?: string }) {
+  // The account first, so the remembered counts are this account's.
+  useSharedReadAccount();
   const t = useCallback((entry: typeof memoCopy[keyof typeof memoCopy]) => pickCopy(entry, language), [language]);
   const toast = useToast();
+  const standard = useStandardCopy();
   const [tab, setTab] = useState<MemoTab>("all");
   const [query, setQuery] = useState("");
   const [settledQuery, setSettledQuery] = useState("");
   const [notes, setNotes] = useState<MemoRow[] | null>(null);
   const [total, setTotal] = useState(0);
-  const [counts, setCounts] = useState<Record<MemoTab, number | null>>({ all: null, meeting: null, free: null });
+  // null = not read yet: the tab row is a skeleton until all three counts have answered together.
+  const [counts, setCounts] = useState<Counts | null>(() => lastAnswer<Counts>(countsKey("")) ?? null);
   const [cursor, setCursor] = useState<string | undefined>();
   const [selected, setSelected] = useState(initialSelectedId ?? "");
   const [loading, setLoading] = useState(false);
@@ -68,6 +77,9 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   const [eventOptions, setEventOptions] = useState<MemoMentionCandidate[]>([]);
   const [optionError, setOptionError] = useState(false);
   const [resolvedContacts, setResolvedContacts] = useState<Record<string, string>>({});
+  // Which contact / event id lists have finished resolving: until then their chips are bones, not raw ids.
+  const [contactsFor, setContactsFor] = useState<string | null>(null);
+  const [eventsFor, setEventsFor] = useState<string | null>(null);
   const bodyInput = useRef<HTMLTextAreaElement>(null);
   const generation = useRef(0);
   const pinnedId = useRef(initialSelectedId ?? "");
@@ -117,15 +129,23 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   useEffect(() => { setNotes(null); setCursor(undefined); void read(); return () => { generation.current++; }; }, [tab, settledQuery]); // read is intentionally triggered only by the query, not each page cursor
   useEffect(() => {
     const controller = new AbortController();
-    setCounts({ all: null, meeting: null, free: null });
-    for (const kind of ["all", "meeting", "free"] as const) {
+    // A new search keeps the shown numbers until the new ones are in (or the remembered ones for that search).
+    const remembered = lastAnswer<Counts>(countsKey(settledQuery));
+    if (remembered) setCounts(remembered);
+    void Promise.all((["all", "meeting", "free"] as const).map(async kind => {
       const params = new URLSearchParams({ limit: "20", noteKind: kind });
       if (settledQuery) params.set("q", settledQuery);
-      void fetch(`/api/notes?${params}`, { credentials: "same-origin", signal: controller.signal })
-        .then(async response => { if (!response.ok) throw new Error(String(response.status)); return memoPage(dataOf(await response.json())); })
-        .then(page => { if (!controller.signal.aborted && page) setCounts(previous => ({ ...previous, [kind]: page.total })); })
-        .catch(() => { /* The current list keeps its own retry state. */ });
-    }
+      try {
+        const response = await fetch(`/api/notes?${params}`, { credentials: "same-origin", signal: controller.signal });
+        if (!response.ok) throw new Error(String(response.status));
+        return memoPage(dataOf(await response.json()))?.total ?? null;
+      } catch { return null; /* The current list keeps its own retry state. */ }
+    })).then(([all, meeting, free]) => {
+      if (controller.signal.aborted) return;
+      const next: Counts = { all: all ?? null, meeting: meeting ?? null, free: free ?? null };
+      if (next.all !== null && next.meeting !== null && next.free !== null) rememberAnswer(countsKey(settledQuery), next);
+      setCounts(next);
+    });
     return () => controller.abort();
   }, [settledQuery]);
   const select = (id: string) => {
@@ -138,7 +158,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
   const current = useMemo(() => notes?.find(row => row.id === selected) ?? notes?.[0], [notes, selected]);
   const contactKey = current?.contactIds.join("\u0000") ?? "";
   useEffect(() => {
-    if (!current?.contactIds.length) { setResolvedContacts({}); return; }
+    if (!current?.contactIds.length) { setResolvedContacts({}); setContactsFor(contactKey); return; }
     const controller = new AbortController();
     void Promise.all(current.contactIds.slice(0, 20).map(async id => {
       try {
@@ -146,7 +166,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
         const contact = response.ok ? asRecord(dataOf(await response.json())?.contact) : null;
         return contact?.id === id && typeof contact.displayName === "string" ? [id, contact.displayName] as const : null;
       } catch { return null; }
-    })).then(entries => { if (!controller.signal.aborted) setResolvedContacts(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => entry !== null))); });
+    })).then(entries => { if (!controller.signal.aborted) { setResolvedContacts(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => entry !== null))); setContactsFor(contactKey); } });
     return () => controller.abort();
   }, [contactKey]);
   useEffect(() => {
@@ -163,18 +183,23 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     }, 200);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [editorOpen, online, optionQuery]);
+  const eventKey = current?.eventIds.join("\u0000") ?? "";
   useEffect(() => {
     if ((!editorOpen && !current?.eventIds.length) || !online) { setEventOptions([]); return; }
     const controller = new AbortController();
     void fetch("/api/events", { credentials: "same-origin", signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error(String(response.status)); return dataOf(await response.json()); })
-      .then(data => { if (!controller.signal.aborted) setEventOptions(Array.isArray(data?.events) ? data.events.flatMap((raw): MemoMentionCandidate[] => {
+      .then(data => { if (!controller.signal.aborted) setEventsFor(eventKey); if (!controller.signal.aborted) setEventOptions(Array.isArray(data?.events) ? data.events.flatMap((raw): MemoMentionCandidate[] => {
         const item = asRecord(raw);
         return item && typeof item.id === "string" && typeof item.title === "string" && item.sample !== true ? [{ id: item.id, label: item.title, kind: "event" }] : [];
       }) : []); })
-      .catch(() => { if (!controller.signal.aborted) { setEventOptions([]); setOptionError(true); } });
+      .catch(() => { if (!controller.signal.aborted) { setEventsFor(eventKey); setEventOptions([]); setOptionError(true); } });
     return () => controller.abort();
-  }, [editorOpen, online, current?.eventIds.join("\u0000")]);
+  }, [editorOpen, online, eventKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A memo's linked people / events: resolved names (or, once resolving has answered, the id it could not name).
+  const contactsSettled = contactsFor === contactKey;
+  const eventsSettled = !current?.eventIds.length || !online || eventsFor === eventKey;
+  const linksSettled = contactsSettled && eventsSettled;
   const resolvedEvents = Object.fromEntries(eventOptions.map(option => [option.id, option.label]));
   const openEditor = (row?: MemoRow) => {
     setWriteError(null); setTokenError(false);
@@ -229,7 +254,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
       patch({ eventIds: editor.draft.eventIds.includes(option.id) ? editor.draft.eventIds.filter(id => id !== option.id) : [...editor.draft.eventIds, option.id] });
     }
   };
-  const options: { key: MemoTab; label: string }[] = (["all", "meeting", "free"] as const).map(key => ({ key, label: `${t(memoCopy[key])}${counts[key] === null ? "" : ` ${counts[key]}`}` }));
+  const options: { key: MemoTab; label: string }[] = (["all", "meeting", "free"] as const).map(key => ({ key, label: `${t(memoCopy[key])}${counts?.[key] == null ? "" : ` ${counts[key]}`}` }));
   const kindOptions: { key: "meeting" | "free"; label: string }[] = (["meeting", "free"] as const).map(key => ({ key, label: t(memoCopy[key]) }));
   const shownContacts = contactOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language)));
   const shownEvents = eventOptions.filter(option => !optionQuery || option.label.toLocaleLowerCase(language).includes(optionQuery.toLocaleLowerCase(language))).slice(0, 20);
@@ -238,8 +263,9 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     <div className={styles.grid}>
       <section className={styles.list} aria-label={t(memoCopy.all)}>
         <SearchField value={query} onChange={setQuery} placeholder={t(memoCopy.search)} />
-        <CategoryTabs<MemoTab> label={t(memoCopy.all)} options={options} value={tab} onChange={setTab} />
-        {loading && notes === null ? <Skeleton lines={5} /> : null}
+        {counts ? <CategoryTabs<MemoTab> label={t(memoCopy.all)} options={options} value={tab} onChange={setTab} />
+          : <div className={styles.tabsPending} role="progressbar" aria-busy aria-label={standard.loading.loading}>{[72, 64, 88].map(width => <Bone key={width} width={width} height={34} round />)}</div>}
+        {notes === null && !failed ? <Skeleton lines={5} /> : null}
         {failed && notes === null ? <RetryCard title={t(memoCopy.retry)} onRetry={() => { void read(); }} /> : null}
         {notes?.length === 0 ? <EmptyState title={query ? t(memoCopy.noResult) : t(memoCopy.empty)} message={t(memoCopy.emptyBody)} /> : null}
         {notes ? <div className={styles.srOnly} aria-live="polite">{notes.length} / {total}</div> : null}
@@ -254,8 +280,9 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
       </section>
       <section className={styles.detail} aria-label={current?.title ?? t(memoCopy.empty)}>
         {current ? <><div className={styles.detailHead}><div><span className={styles.kind}>{t(memoCopy[memoTabForKind(current.noteKind)])}</span><h2>{current.title}</h2><time>{new Date(current.updatedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US")}</time></div><Button label={t(memoCopy.edit)} onClick={() => openEditor(current)} disabled={!online || current.sample === true} /></div>
-          <p className={styles.body}>{memoBody(current, resolvedContacts, resolvedEvents)}</p>
-          <div className={styles.chips}>{current.noteKind === "voice" ? <Chip label={t(memoCopy.voice)} /> : null}{current.contactIds.map(id => resolvedContacts[id] ? <a key={`c:${id}`} href={`/app/contacts/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.people)}: ${resolvedContacts[id]}`}><Chip label={resolvedContacts[id]} /></a> : <Chip key={`c:${id}`} label={id} />)}{current.eventIds.map(id => resolvedEvents[id] ? <a key={`e:${id}`} href={`/app/events/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.events)}: ${resolvedEvents[id]}`}><Chip label={resolvedEvents[id]} /></a> : <Chip key={`e:${id}`} label={id} />)}</div>
+          {linksSettled || !current.mentions.length ? <p className={styles.body}>{memoBody(current, resolvedContacts, resolvedEvents)}</p>
+            : <div className={styles.body}><Skeleton lines={3} /></div>}
+          <div className={styles.chips}>{current.noteKind === "voice" ? <Chip label={t(memoCopy.voice)} /> : null}{!contactsSettled ? current.contactIds.map(id => <Bone key={`c:${id}`} width={72} height={28} round />) : current.contactIds.map(id => resolvedContacts[id] ? <a key={`c:${id}`} href={`/app/contacts/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.people)}: ${resolvedContacts[id]}`}><Chip label={resolvedContacts[id]} /></a> : <Chip key={`c:${id}`} label={id} />)}{!eventsSettled ? current.eventIds.map(id => <Bone key={`e:${id}`} width={88} height={28} round />) : current.eventIds.map(id => resolvedEvents[id] ? <a key={`e:${id}`} href={`/app/events/${encodeURIComponent(id)}`} aria-label={`${t(memoCopy.events)}: ${resolvedEvents[id]}`}><Chip label={resolvedEvents[id]} /></a> : <Chip key={`e:${id}`} label={id} />)}</div>
           {current.usedForPlan ? <p className={styles.meta}>{t(memoCopy.planUse)}</p> : null}
         </> : notes ? <EmptyState title={t(memoCopy.empty)} message={t(memoCopy.emptyBody)} /> : null}
       </section>
