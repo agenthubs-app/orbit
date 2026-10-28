@@ -125,7 +125,11 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // screens, chat/ and the /app/today · /app/schedule · /app/followups routes;
   // the surviving rich components moved to iorbit-0918/iorbit-rich-components.tsx
   // → 79 (measured).
-  const CEILING = 79;
+  // Web inbox D05 (d5054c8f3, 2026-10-27) made the two list panes rows you select
+  // (typed-notifications-tab.tsx NotificationRow, bounded-contact-messages-tab.tsx
+  // conversation rows): whole-row <button>s with the b5 list-row geometry (`ws.row`),
+  // where `.btn` would add a button face the boards do not have → 80 (measured).
+  const CEILING = 80;
 
   assert.ok(
     nonBtn.length <= CEILING,
