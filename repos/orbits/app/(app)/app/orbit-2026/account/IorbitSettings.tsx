@@ -5,59 +5,98 @@ import { useEffect, useId, useState } from "react";
 import type { AgentMemory } from "../../../../../features/agent/memory/contract";
 import { profileBioLimit, profileBioWithinLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 import type { ProfilePayload } from "../../../../../features/profile/contract";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { fetchGlobalSearch, readSemanticPreference, searchUrl, writeSemanticPreference } from "../search/use-global-search";
-import { Button, ConfirmDialog, Icon, MacTile, Toggle, WhyBody, WhyButton, useToast } from "../ui";
+import { Bone, Button, ConfirmDialog, Icon, MacTile, Toggle, WhyBody, WhyButton, useStandardCopy, useToast } from "../ui";
 import { planV2SummaryResponseSchema } from "../../../../../shared/api-schema/plan-v2";
-import { useSavedPlanGoal } from "../plan/saved-goal";
+import { useSavedPlanGoalAnswer } from "../plan/saved-goal";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
 
 type MemoryResponse = { data?: { memories?: AgentMemory[] } };
+type Goal = { text: string; kind: string };
+// The four reads of this page in one answer (orbit-last-answer.ts), so they arrive — and come back — together.
+type IorbitAnswer = { memories: AgentMemory[] | null; bio: string; goal: Goal | null; semanticAvailable: boolean };
+const ANSWER_KEY = "settings:iorbit";
+
+async function readMemories(): Promise<AgentMemory[]> {
+  const response = await fetch("/api/agent/memory", { cache: "no-store" });
+  const body = await response.json() as MemoryResponse;
+  if (!response.ok || !Array.isArray(body.data?.memories)) throw new Error("Memory unavailable");
+  return body.data.memories;
+}
+
+async function readIorbitAnswer(): Promise<IorbitAnswer> {
+  const [memories, bio, goal, semantic] = await Promise.allSettled([
+    readMemories(),
+    fetch("/api/profile", { cache: "no-store" }).then(async (response) => {
+      const body = await response.json() as { success?: boolean; data?: ProfilePayload };
+      return response.ok && body.success === true && body.data?.profile ? body.data.profile.bio ?? "" : "";
+    }),
+    fetch("/api/agent/plans/v2/summary", { cache: "no-store" }).then(async (response) => {
+      const body = await response.json() as { data?: unknown };
+      const parsed = planV2SummaryResponseSchema.safeParse(body.data);
+      return response.ok && parsed.success && parsed.data.current ? { text: parsed.data.current.goal, kind: parsed.data.current.goalKind } : null;
+    }),
+    fetchGlobalSearch(searchUrl({ query: "", filter: "all" })).then((result) => result.ok && result.data.semantic.available),
+  ]);
+  return {
+    memories: memories.status === "fulfilled" ? memories.value : null,
+    bio: bio.status === "fulfilled" ? bio.value : "",
+    goal: goal.status === "fulfilled" ? goal.value : null,
+    semanticAvailable: semantic.status === "fulfilled" && semantic.value,
+  };
+}
+
+/** The page's cards as bones until its reads are in (the same grid, the same card heights). */
+function IorbitSkeleton() {
+  const copy = useStandardCopy();
+  return <div className={styles.connGrid} role="progressbar" aria-busy="true" aria-label={copy.loading.loading}>
+    <section className={`${styles.setCard} ${styles.half} ${styles.boneCard}`}><Bone width={80} height={14} /><Bone width="70%" height={40} /></section>
+    <section className={`${styles.setCard} ${styles.half} ${styles.boneCard}`}><Bone width={80} height={14} /><Bone width="100%" height={52} /></section>
+    <section className={`${styles.setCard} ${styles.full} ${styles.boneCard}`}><Bone width={120} height={20} /><Bone width="100%" height={18} /><Bone width="100%" height={18} /><Bone width="60%" height={18} /></section>
+  </div>;
+}
 
 export function IorbitSettings() {
   const { language, preserveHref } = useOrbitLanguage();
   const t = settingsCopy(language);
   const toast = useToast();
-  const [memories, setMemories] = useState<AgentMemory[]>([]);
-  const [goal, setGoal] = useState<{ text: string; kind: string } | null>(null);
-  const savedGoal = useSavedPlanGoal();
-  const [savedBio, setSavedBio] = useState("");
+  const [cached] = useState(() => lastAnswer<IorbitAnswer>(ANSWER_KEY));
+  const [ready, setReady] = useState(Boolean(cached));
+  const [memories, setMemories] = useState<AgentMemory[]>(cached?.memories ?? []);
+  const [goal, setGoal] = useState<Goal | null>(cached?.goal ?? null);
+  const savedGoalAnswer = useSavedPlanGoalAnswer();
+  const savedGoal = savedGoalAnswer ?? null;
+  const [savedBio, setSavedBio] = useState(cached?.bio ?? "");
   const [editingBio, setEditingBio] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const whyId = useId();
-  const [semanticAvailable, setSemanticAvailable] = useState(false);
+  const [semanticAvailable, setSemanticAvailable] = useState(cached?.semanticAvailable ?? false);
   const [semanticOn, setSemanticOn] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(cached?.bio ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const reload = async () => {
-    const response = await fetch("/api/agent/memory", { cache: "no-store" });
-    const body = await response.json() as MemoryResponse;
-    if (!response.ok || !Array.isArray(body.data?.memories)) throw new Error("Memory unavailable");
-    setMemories(body.data.memories);
-  };
   useEffect(() => {
-    void reload().catch(() => setError(t("failed")));
-    void fetch("/api/profile", { cache: "no-store" }).then(async (response) => {
-      const body = await response.json() as { success?: boolean; data?: ProfilePayload };
-      if (response.ok && body.success === true && body.data?.profile) {
-        setDraft(body.data.profile.bio ?? "");
-        setSavedBio(body.data.profile.bio ?? "");
-      }
-    }).catch(() => undefined);
-    void fetch("/api/agent/plans/v2/summary", { cache: "no-store" }).then(async (response) => {
-      const body = await response.json() as { data?: unknown };
-      const parsed = planV2SummaryResponseSchema.safeParse(body.data);
-      if (response.ok && parsed.success && parsed.data.current) setGoal({ text: parsed.data.current.goal, kind: parsed.data.current.goalKind });
-    }).catch(() => undefined);
     setSemanticOn(readSemanticPreference());
-    void fetchGlobalSearch(searchUrl({ query: "", filter: "all" })).then((result) => {
-      if (result.ok) setSemanticAvailable(result.data.semantic.available);
-    }).catch(() => undefined);
-  }, []);
+    if (cached && answerFresh(ANSWER_KEY, FRESH.slow)) return;
+    let alive = true;
+    void readIorbitAnswer().then((answer) => {
+      if (!alive) return;
+      if (answer.memories) setMemories(answer.memories);
+      else if (!cached) setError(t("failed"));
+      setDraft((current) => current === savedBio ? answer.bio : current);
+      setSavedBio(answer.bio);
+      setGoal(answer.goal);
+      setSemanticAvailable(answer.semanticAvailable);
+      setReady(true);
+      if (answer.memories) rememberAnswer(ANSWER_KEY, answer);
+    });
+    return () => { alive = false; };
+  }, []); // once per visit; language changes navigate the page
 
   const removeMemory = async () => {
     const id = deleting;
@@ -107,6 +146,7 @@ export function IorbitSettings() {
   // b12 W-R18a-02: 現在の目標 + 自己紹介 (span6 each), the memory table, the 意味検索 card.
   const goalEmoji: Record<string, string> = { fundraising: "💰", sales: "📈", hiring: "🧑‍💼", partnership: "🤝", launch: "🚀", career: "🧭" };
   const bioChanged = draft.trim() !== savedBio.trim();
+  if (!ready || savedGoalAnswer === undefined) return <IorbitSkeleton />;
   return <>
     {error ? <p role="alert" className={styles.error}>{error}</p> : null}
     <div className={styles.connGrid}>

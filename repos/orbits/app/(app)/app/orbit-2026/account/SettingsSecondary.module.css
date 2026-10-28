@@ -79,6 +79,7 @@
 
 /* iOrbit が使う情報, b12 W-R18a-02 */
 .half { grid-column: span 6; }
+.boneCard { display: grid; gap: 12px; align-content: start; }
 .full { grid-column: span 12; }
 .lbl { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--ink-3); }
 .cardTopRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

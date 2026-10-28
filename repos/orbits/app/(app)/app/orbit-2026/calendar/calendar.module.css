@@ -1,9 +1,8 @@
 .toolbar, .row, .status, .legend { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
 .toolbar { justify-content: space-between; margin-bottom: var(--space-14); }
-/* b3 #40: ‹ › 今日 on the left, the date centred, 日 / 週 / 月 on the right. */
-.dayToolbar { display: grid; grid-template-columns: 1fr auto 1fr; }
-.dayToolbar > :last-child { justify-self: end; }
-.dayToolbar .title { margin: 0; }
+.toolbar .title { margin: 0 0 0 var(--space-8); }
+/* 日 / 週 / 月 at the right edge, also when a narrow toolbar wraps it onto a row of its own. */
+.toolbar > :last-child { margin-left: auto; }
 .weekEmpty { margin: var(--space-12) 0 0; }
 .title { margin: 0 var(--space-8) 0 0; font-size: var(--fs-card-title); font-weight: var(--fw-heavy); }
 .status { margin: var(--space-12) 0; }
@@ -33,6 +32,7 @@
 .page { padding: 0 var(--space-34) var(--space-40); }
 .weekLayout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-18); align-items: stretch; }
 .weekCard, .agendaCard { min-width: 0; }
+.weekStatus { margin-top: 0; }
 .weekHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; margin-bottom: var(--space-12); }
 .weekGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-8); }
 .weekDay { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; min-height: 300px; padding: var(--space-8) var(--space-6); border-radius: var(--r-lg); background: var(--surface-2); }

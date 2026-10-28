@@ -72,7 +72,7 @@ export const SHELL_NAV: readonly { key: Exclude<ShellNavKey, "host" | "settings"
  * page's slots arrive. `toolbar` lists placeholder widths for the left / right controls (b11 TT2 row);
  * `subtitle` is the date range, the copy's own line, or a placeholder for a count the page reads.
  */
-export type ShellFrameTitle = "month" | "network" | "iorbit" | "events" | "task" | "inbox";
+export type ShellFrameTitle = "month" | "network" | "iorbit" | "events" | "task" | "inbox" | "settings";
 export type ShellFrame = {
   title: ShellFrameTitle;
   subtitle: "range" | "iorbit" | "pending" | null;
@@ -80,6 +80,7 @@ export type ShellFrame = {
   toolbar: { left: readonly number[]; right: readonly number[]; height?: number } | null;
   rail: boolean;
   phoneFold: boolean;
+  phoneBare?: boolean;
 };
 
 const SHELL_FRAMES: Readonly<Record<string, ShellFrame>> = {
@@ -91,6 +92,13 @@ const SHELL_FRAMES: Readonly<Record<string, ShellFrame>> = {
   "/app/inbox": { title: "inbox", subtitle: null, toolbar: null, rail: true, phoneFold: false },
 };
 
+// 設定 (AccountLayout): 「設定」 above every section; the profile (/app/profile, and /app/settings, which opens
+// it on desktop) has the public-preview rail, the other sections none.
+const SETTINGS_FRAME: ShellFrame = { title: "settings", subtitle: null, toolbar: null, rail: false, phoneFold: true, phoneBare: true };
+
 export function shellFrameFor(pathname: string): ShellFrame | null {
-  return SHELL_FRAMES[pathname.replace(/\/+$/u, "")] ?? null;
+  const path = pathname.replace(/\/+$/u, "");
+  if (path === "/app/profile" || path === "/app/settings") return { ...SETTINGS_FRAME, rail: true };
+  if (path.startsWith("/app/settings/")) return SETTINGS_FRAME;
+  return SHELL_FRAMES[path] ?? null;
 }

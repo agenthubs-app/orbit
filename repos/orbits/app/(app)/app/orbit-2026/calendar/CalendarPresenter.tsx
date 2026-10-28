@@ -33,7 +33,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   const entry = (item: CalendarEntry, timeLabel?: string) => <Button variant="ghost" className={`${styles.entry} ${styles[item.kind]}`}
     label={[timeLabel, item.title || t(taskCopy.calendarUntitled)].filter(Boolean).join(" ")} onClick={() => onEntrySelect(item)} />;
   const connect = connection === "not_connected" || connection === "needs_reconnect";
-  // 「今日」 only once today is off screen (it does nothing otherwise), which also keeps the week header on one row.
+  // 「今日」 does nothing while today is on screen: it stays in place, disabled, so ‹ › and the date never move.
   const showToday = !visible.some(day => day.date === today);
   const failedGoogle = externalState === "failed" || externalState === "ready" && connection === "unavailable";
   const googleOff = externalState === "ready" && connection === "off";
@@ -51,6 +51,9 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
   // One bone where a day's entries go (week columns, month cells) while the sources are on their way.
   const pendingEntry = settled ? null : <Bone width="80%" height={14} />;
   const controls = <Segmented label={t(taskCopy.calendarTitle)} value={mode} onChange={onModeChange} segments={[{ key: "day", label: t(taskCopy.calendarDay) }, { key: "week", label: t(taskCopy.calendarWeek) }, { key: "month", label: t(taskCopy.calendarMonth) }]} />;
+  // 2026-10-28 (user: the 日 / 週 / 月 switch must not move between views): one toolbar above every view, the
+  // same in all three, in Google Calendar's order — 今日 ‹ › at the left, then the range, 日 / 週 / 月 at the far right.
+  const toolbar = (title: string) => <header className={styles.toolbar} data-calendar-toolbar=""><div className={styles.row}><Button label={t(taskCopy.calendarToday)} size="sm" disabled={!showToday} onClick={onToday} /><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} /><h2 className={styles.title}>{title}</h2></div>{controls}</header>;
   const emptyMonthGuide = mode === "month" && internalState === "ready" && externalState === "ready" && connection === "not_connected" && !partial && !visible.some(day => day.items.length);
   if (mode === "week") {
     const selected = visible.find(day => day.date === date) ?? visible[0];
@@ -61,9 +64,11 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     const agendaHour = (hour: number) => selected?.hours.find(row => new RegExp(`^0?${hour}:00(?:\\s|$)`, "u").test(row.label))?.minute;
     const agendaStart = selected ? Math.min(agendaHour(9) ?? 0, ...selected.timed.map(item => item.startMinute)) : 0;
     const agendaEnd = selected ? Math.max(agendaHour(21) ?? selected.minutes, ...selected.timed.map(item => item.endMinute)) : 0;
-    return <section aria-label={t(taskCopy.calendarTitle)} className={styles.weekLayout}>
-      <Card className={styles.weekCard}><header className={styles.weekHeader}><div className={styles.row}><h2 className={styles.title}>{weekLabel}</h2><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} />{showToday ? <Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /> : null}</div><div className={styles.row}>{googleLinked ? <Chip label={t(taskCopy.calendarGoogleConnected)} tone="teal" /> : null}{controls}</div></header>
-        {!settled || googleLinked || googleOff ? null : <div className={styles.status}>{googleStatus}</div>}
+    return <section aria-label={t(taskCopy.calendarTitle)}>
+      {toolbar(weekLabel)}
+      <div className={styles.weekLayout}>
+      <Card className={styles.weekCard}>
+        {googleStatus ? <div className={`${styles.status} ${styles.weekStatus}`}>{googleStatus}</div> : null}
         {readStatus}{partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}
         <div className={styles.weekGrid}>{visible.map(day => <section key={day.date} data-calendar-date={day.date} aria-label={dateLabel.format(at(day.date))} className={`${styles.weekDay} ${day.date === date ? styles.weekDaySelected : ""} ${day.date < today ? styles.weekDayPast : ""}`}>
           <button type="button" aria-pressed={day.date === date} aria-current={day.date === today ? "date" : undefined} className={`btn ${styles.weekDayDate}`} onClick={() => onDaySelect(day.date)}><small>{shortWeekday.format(at(day.date))}</small><b>{day.dayNumber}</b></button>
@@ -78,6 +83,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
           <div className={styles.agendaTimeline} style={{ height: (agendaEnd - agendaStart) * 0.5 }}>{selected.hours.filter(hour => hour.minute >= agendaStart && hour.minute <= agendaEnd).map(hour => <div key={hour.minute} className={styles.agendaHour} style={{ top: (hour.minute - agendaStart) * 0.5 }}><time>{hour.label}</time></div>)}{selected.timed.map(item => <div key={item.key} className={styles.agendaEntry} style={{ top: (item.startMinute - agendaStart) * 0.5, height: Math.max(26, (item.endMinute - item.startMinute) * 0.5), left: `calc(48px + (100% - 48px) * ${item.column / item.columns})`, width: `calc((100% - 48px) / ${item.columns})` }}>{entry(item, item.timeLabel)}</div>)}</div>
         </section> : null}
       </Card>
+      </div>
     </section>;
   }
   if (mode === "day") {
@@ -90,7 +96,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     ];
     const overlap = timed.flatMap((item, index) => timed.slice(index + 1).filter(next => next.startMinute < item.endMinute).slice(0, 1).map(next => [item, next] as const))[0];
     return <section aria-label={t(taskCopy.calendarTitle)}>
-      <header className={`${styles.toolbar} ${styles.dayToolbar}`}><div className={styles.row}><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} />{showToday ? <Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /> : null}</div><h2 className={styles.title}>{heading}</h2>{controls}</header>
+      {toolbar(heading)}
       <div className={styles.status}><span className={styles.note}>{timeZone}</span>{googleStatus}</div>
       {readStatus}{partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}
       <div className={styles.legend}>{legendKinds.map(kind => <span key={kind} className={`${styles.legendItem} ${styles[kind]}`}>{t(kind === "personal" ? taskCopy.calendarPersonal : kind === "meeting" ? taskCopy.calendarMeeting : kind === "event" ? taskCopy.calendarEvent : taskCopy.calendarGoogleReadOnly)}</span>)}</div>
@@ -104,8 +110,7 @@ export function CalendarPresenter({ date, today, timeZone, mode, days, internalS
     </section>;
   }
   return <section aria-label={t(taskCopy.calendarTitle)}>
-    <header className={styles.toolbar}><div className={styles.row}><h2 className={styles.title}>{heading}</h2><IconButton label={t(taskCopy.calendarPrevious)} icon="left" size={34} onClick={() => onNavigate(-1)} /><IconButton label={t(taskCopy.calendarNext)} icon="right" size={34} onClick={() => onNavigate(1)} />{showToday ? <Button label={t(taskCopy.calendarToday)} size="sm" onClick={onToday} /> : null}</div>
-      {controls}</header>
+    {toolbar(heading)}
     <div className={styles.status}>{emptyMonthGuide ? <span className={styles.note}>{t(taskCopy.calendarGoogleNotConnected)}</span> : <><span className={styles.note}>{timeZone}</span>{googleStatus}</>}</div>
     {readStatus}
     {partial ? <p role="status" className={styles.note}>{t(taskCopy.calendarPartial)}</p> : null}

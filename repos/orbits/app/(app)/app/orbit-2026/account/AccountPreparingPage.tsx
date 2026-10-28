@@ -3,15 +3,11 @@
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
+import type { AccountPreparingSection } from "./account-preparing-sections";
 import { AccountLayout } from "./AccountLayout";
 import s from "./AccountPreparingPage.module.css";
 
-const deferred = ["account", "notifications", "permissions", "export", "help"] as const;
-export type AccountPreparingSection = (typeof deferred)[number];
-
-export function accountPreparingSection(value: string): AccountPreparingSection | null {
-  return deferred.find(section => section === value) ?? null;
-}
+export { accountPreparingSection, type AccountPreparingSection } from "./account-preparing-sections";
 
 export function AccountPreparingPage({ section }: { section: AccountPreparingSection }) {
   const { language } = useOrbitLanguage();

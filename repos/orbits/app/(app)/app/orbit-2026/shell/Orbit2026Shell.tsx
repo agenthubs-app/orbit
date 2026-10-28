@@ -20,6 +20,7 @@ import { shellCopy } from "../copy/shell";
 import { networkCopy } from "../copy/network";
 import { eventsCopy } from "../copy/events";
 import { iorbitCopy } from "../copy/iorbit";
+import { accountCopy } from "../copy/account";
 import { monthHeading } from "./month-heading";
 import { standardCopyFor } from "../copy/standard";
 import { useOrbitAsk } from "../../orbit-global-ask/orbit-ask-context";
@@ -175,6 +176,7 @@ const FRAME_TITLE: Record<RouteFrame["title"], (language: OrbitLanguage) => stri
   events: (language) => pickCopy(eventsCopy.title, language),
   task: (language) => pickCopy(shellCopy.taskTitle, language),
   inbox: (language) => pickCopy(shellCopy.inboxTitle, language),
+  settings: (language) => pickCopy(accountCopy.settings, language),
 };
 
 function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {
@@ -189,6 +191,7 @@ function frameSlots(frame: RouteFrame, language: OrbitLanguage): ShellSlots {
     right: frame.toolbar ? controls(frame.toolbar.right) : undefined,
     rightRail: frame.rail ? <FrameRail /> : undefined,
     phoneFold: frame.phoneFold,
+    ...(frame.phoneBare ? { phoneBare: true } : {}),
   };
 }
 

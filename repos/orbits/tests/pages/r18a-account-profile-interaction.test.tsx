@@ -6,6 +6,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { AccountProfilePage } from "../../app/(app)/app/orbit-2026/account/AccountProfilePage";
 import { createAccountDesignFixtureStore } from "../../features/profile/design-fixtures/service";
 
+// The settings menu is next/link (prefetched); without IntersectionObserver its prefetch waits for an idle
+// callback, which reads the browser's `self`.
+(globalThis as { self?: unknown }).self ??= globalThis;
+
 test("visibility switch changes preview before a confirmed CAS PUT", async t => {
   const store = createAccountDesignFixtureStore();
   const initial = store.read("actor", "100").data;

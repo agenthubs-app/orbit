@@ -1,13 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import type { ProfilePayload } from "../../../../../features/profile/contract";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../../orbit-theme";
-import { Icon } from "../ui";
+import { Bone, Icon } from "../ui";
 import { settingsCopy } from "./settings-copy";
 import { rightsCopy } from "../account-rights/copy";
+import { PROFILE_ANSWER_KEY } from "./profile-model";
 import styles from "./SettingsSecondary.module.css";
 
 // b12 W-R18a-03 / b5 #31: 言語 (three tiles, the native name over the UI-language name), 外観
@@ -20,16 +24,22 @@ function englishName(key: OrbitLanguage): string {
   try { return new Intl.DisplayNames(["en"], { type: "language" }).of(key) ?? key; } catch { return key; }
 }
 
-function useAccountIdentity() {
-  const [identity, setIdentity] = useState<{ name: string; email: string } | null>(null);
+type Identity = { name: string; email: string };
+const identityOf = (payload: ProfilePayload | undefined): Identity | null =>
+  payload?.profile?.displayName ? { name: payload.profile.displayName, email: payload.profile.handles?.email ?? "" } : null;
+
+// The profile the settings pages share (the 個人資料 page's last answer); undefined while the first read is out.
+function useAccountIdentity(): Identity | null | undefined {
+  const [identity, setIdentity] = useState<Identity | null | undefined>(() => identityOf(lastAnswer<ProfilePayload>(PROFILE_ANSWER_KEY)) ?? undefined);
   useEffect(() => {
+    if (identity && answerFresh(PROFILE_ANSWER_KEY, FRESH.slow)) return;
     let alive = true;
-    void fetch("/api/profile", { cache: "no-store" }).then(response => response.ok ? response.json() : null).then((body: { data?: { profile?: { displayName?: string; handles?: { email?: string } } } } | null) => {
-      const profile = body?.data?.profile;
-      if (alive && profile?.displayName) setIdentity({ name: profile.displayName, email: profile.handles?.email ?? "" });
-    }).catch(() => undefined);
+    void fetch("/api/profile", { cache: "no-store" }).then(response => response.ok ? response.json() : null).then((body: { success?: boolean; data?: ProfilePayload } | null) => {
+      if (body?.success && body.data?.profile) rememberAnswer(PROFILE_ANSWER_KEY, body.data);
+      if (alive) setIdentity(identityOf(body?.data) ?? null);
+    }).catch(() => { if (alive) setIdentity((current) => current ?? null); });
     return () => { alive = false; };
-  }, []);
+  }, []); // once per visit
   return identity;
 }
 
@@ -66,10 +76,12 @@ export function AppearanceSettings() {
     <section className={styles.setCard}>
       <div className={styles.setCardHead}><h2>{rights("account")}</h2></div>
       <div className={styles.accountRow}>
-        <span className={styles.accountAvatar} aria-hidden>{identity?.name.slice(0, 1) ?? <Icon name="user" size={20} />}</span>
-        <div className={styles.accountText}><b>{identity?.name ?? ""}</b>{identity?.email ? <span>{identity.email}</span> : null}</div>
-        <a className={`btn ${styles.accountButton}`} href="/app/settings/exports" aria-label={rights("export")}>{rights("export")}</a>
-        <a className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account" aria-label={rights("deletion")}>{rights("deletion")}</a>
+        {identity === undefined ? <><Bone width={56} height={56} round /><div className={`${styles.accountText} ${styles.boneCard}`}><Bone width={120} height={16} /><Bone width={180} height={13} /></div></> : <>
+          <span className={styles.accountAvatar} aria-hidden>{identity?.name.slice(0, 1) ?? <Icon name="user" size={20} />}</span>
+          <div className={styles.accountText}><b>{identity?.name ?? ""}</b>{identity?.email ? <span>{identity.email}</span> : null}</div>
+        </>}
+        <Link className={`btn ${styles.accountButton}`} href="/app/settings/exports" aria-label={rights("export")}>{rights("export")}</Link>
+        <Link className={`btn ${styles.accountButton} ${styles.accountDanger}`} href="/app/settings/account" aria-label={rights("deletion")}>{rights("deletion")}</Link>
       </div>
     </section>
   </div>;

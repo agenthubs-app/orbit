@@ -4,6 +4,7 @@ import { signOutAndForget } from "../../orbit-sign-out";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AccountExportContract } from "../../../../../shared/contract/account";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { AccountLayout } from "../account/AccountLayout";
 import { Button, Chip, Icon, MacTile } from "../ui";
@@ -14,23 +15,27 @@ import s from "./rights.module.css";
 type Choice = "contacts" | "notes" | "plans" | "events";
 const choices: Choice[] = ["contacts", "notes", "plans", "events"];
 
+const HISTORY_KEY = "settings:exports";
+
 export function ExportsPage() {
   const { language } = useOrbitLanguage();
   const t = useMemo(() => rightsCopy(language), [language]);
   const [selected, setSelected] = useState<Choice[]>(["contacts", "notes", "plans"]);
   const [all, setAll] = useState(false);
   const [format, setFormat] = useState<"csv" | "vcard">("csv");
-  const [history, setHistory] = useState<AccountExportContract[]>([]);
-  const [loading, setLoading] = useState(true);
+  // The history is a list in the browser read cache: coming back shows it at once and reads only once it is stale.
+  const [cached] = useState(() => lastAnswer<AccountExportContract[]>(HISTORY_KEY));
+  const [history, setHistory] = useState<AccountExportContract[]>(cached ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const requestKey = useRef<string | null>(null);
   const refresh = useCallback(async () => {
-    try { setHistory(await accountRightsApi.listExports()); setProblem(""); }
+    try { const list = await accountRightsApi.listExports(); setHistory(list); rememberAnswer(HISTORY_KEY, list); setProblem(""); }
     catch { setProblem(t("generalError")); }
     finally { setLoading(false); }
   }, [t]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (!(cached && answerFresh(HISTORY_KEY, FRESH.list))) void refresh(); }, [cached, refresh]);
   useEffect(() => {
     if (!history.some(item => item.status === "queued" || item.status === "running")) return;
     // A tab in the background skips its turns; the next one after it comes back reads again.

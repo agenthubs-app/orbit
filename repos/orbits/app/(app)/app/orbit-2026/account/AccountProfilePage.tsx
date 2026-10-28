@@ -5,22 +5,45 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import type { ManualProfileUpdateInput, ProfilePayload } from "../../../../../features/profile/contract";
 import { profileBioWithinLimit } from "../../../../../shared/api-schema/profile-bio";
 import type { ManualProfileContract, ProfilePublicFieldsContract } from "../../../../../shared/contract/profile";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { SEEK_OPTIONS } from "../../profile/profile-tag-options";
 import { eventsApi } from "../events/events-api";
 import { accountCopy } from "../copy/account";
 import { pickCopy } from "../copy/types";
 import { InviteCodeModal } from "../add/invite/InviteCodeModal";
-import { Button, Chip, Icon, MacTile, Toggle } from "../ui";
+import { Bone, Button, Chip, Icon, MacTile, Toggle, useStandardCopy } from "../ui";
 import { AccountLayout, type AccountSection } from "./AccountLayout";
 import { validSaveReceipt } from "./SuggestionsApi";
-import { cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
+import { PROFILE_ANSWER_KEY, cardProgress, previewForProfile, profileSaveInput, type CardKey } from "./profile-model";
 import { normalizeProfileTagValues } from "./profile-tag-normalization";
 import s from "./AccountProfilePage.module.css";
 
 type Envelope = { success: boolean; data?: ProfilePayload };
 type Draft = { organization: string; role: string; offering: string; seeking: string; bio: string; publicFields: ProfilePublicFieldsContract };
 type EventSummary = { hosted: number; active: number; attending: number };
+
+// The browser read cache (orbit-last-answer.ts): the profile is a slow resource, the event counts a list.
+const EVENTS_KEY = "profile:events";
+const seekKey = (language: string, profileId: string) => `profile:seek:${language}:${profileId}`;
+
+// The last grid row (招待コード · 主催 · 参加) as two half cards of bones: which cards there are, and how wide
+// 招待コード is, depends on the event counts.
+const rowBones = <>
+  <section className={`${s.rowCard} ${s.half}`} aria-hidden><Bone width={48} height={48} /><span className={s.boneLines}><Bone width={90} height={16} /><Bone width={200} height={13} /></span></section>
+  <section className={`${s.rowCard} ${s.half}`} aria-hidden><Bone width={48} height={48} /><span className={s.boneLines}><Bone width={90} height={16} /><Bone width={60} height={13} /></span></section>
+</>;
+
+/** The profile grid's cards as bones while the profile is on its way (the same grid). */
+export function ProfileSkeleton() {
+  const copy = useStandardCopy();
+  return <div className={s.grid} role="progressbar" aria-busy="true" aria-label={copy.loading.loading} data-profile-skeleton="">
+    <section className={`${s.businessCard} ${s.boneCard}`}><Bone width={96} height={22} /><span className={s.boneIdentity}><Bone width={72} height={72} round /><span className={s.boneLines}><Bone width={150} height={30} /><Bone width={190} height={14} /></span></span></section>
+    <section className={s.progressCard}><div className={s.progressHead}><Bone width={84} height={84} round /><span className={s.boneLines}><Bone width={80} height={12} /><Bone width={190} height={20} /></span></div></section>
+    <section className={`${s.detailsCard} ${s.boneLines}`}><Bone width={80} height={12} /><Bone width={230} height={24} /><Bone width={80} height={12} /><Bone width={230} height={24} /></section>
+    {rowBones}
+  </div>;
+}
 
 const defaultVisibility: ProfilePublicFieldsContract = { companyRole: true, offeringSeeking: true, intro: true };
 
@@ -76,8 +99,10 @@ function ProfilePreview({ profile, draft, t, onVisibility, busy }: { profile: Ma
 function ProfileContent({ initialPayload, design, active = "profile", edit, suggestions = [], eventSummary }: { initialPayload?: ProfilePayload; design?: "25" | "50" | "100"; active?: AccountSection; edit?: string; suggestions?: readonly string[]; eventSummary?: EventSummary }) {
   const { language } = useOrbitLanguage();
   const t = (key: keyof typeof accountCopy) => pickCopy(accountCopy[key], language);
-  const [payload, setPayload] = useState<ProfilePayload | null>(initialPayload ?? null);
-  const [loading, setLoading] = useState(!initialPayload);
+  // Coming back to the profile: the last answer at once (a demo design never uses the cache).
+  const [cached] = useState(() => initialPayload ?? (design ? undefined : lastAnswer<ProfilePayload>(PROFILE_ANSWER_KEY)));
+  const [cachedEvents] = useState(() => eventSummary ? undefined : lastAnswer<{ attending: number | null; hosted: number | null; active: number }>(EVENTS_KEY));
+  const [payload, setPayload] = useState<ProfilePayload | null>(cached ?? null);
   const [readError, setReadError] = useState<"unauthorized" | "failed" | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -86,54 +111,60 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const [dismissed, setDismissed] = useState<readonly string[]>([]);
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [attendingCount, setAttendingCount] = useState<number | null | undefined>(eventSummary?.attending);
-  const [hostedCount, setHostedCount] = useState<number | null | undefined>(eventSummary?.hosted);
-  const [activeCount, setActiveCount] = useState<number>(eventSummary?.active ?? 0);
+  const [attendingCount, setAttendingCount] = useState<number | null | undefined>(eventSummary?.attending ?? cachedEvents?.attending);
+  const [hostedCount, setHostedCount] = useState<number | null | undefined>(eventSummary?.hosted ?? cachedEvents?.hosted);
+  const [activeCount, setActiveCount] = useState<number>(eventSummary?.active ?? cachedEvents?.active ?? 0);
   const openedFromRoute = useRef(false);
   const pendingSave = useRef<{ fingerprint: string; id: string } | null>(null);
   const readVersion = useRef(0);
 
   const profileUrl = design ? `/api/profile?design=${design}` : "/api/profile";
-  const load = useCallback(async () => {
+  // `background`: the last answer is on screen; read again behind it and keep it if the read fails.
+  const load = useCallback(async (background = false) => {
     const version = ++readVersion.current;
-    setLoading(true);
     setReadError(null);
-    setPayload(null);
-    setDraft(null);
-    setSaved(false);
-    pendingSave.current = null;
+    if (!background) {
+      setPayload(null);
+      setDraft(null);
+      setSaved(false);
+      pendingSave.current = null;
+    }
     try {
       const response = await fetch(profileUrl, { cache: "no-store" });
       if (version !== readVersion.current) return;
       if (!response.ok) {
-        setReadError(response.status === 401 ? "unauthorized" : "failed");
+        if (!background) setReadError(response.status === 401 ? "unauthorized" : "failed");
         return;
       }
       const envelope = await response.json() as Envelope;
       if (version !== readVersion.current) return;
-      if (!envelope.success || !envelope.data?.profile) setReadError("failed");
-      else setPayload(envelope.data);
-    } catch { if (version === readVersion.current) setReadError("failed"); }
-    finally { if (version === readVersion.current) setLoading(false); }
-  }, [profileUrl]);
+      if (!envelope.success || !envelope.data?.profile) { if (!background) setReadError("failed"); }
+      else { setPayload(envelope.data); if (!design) rememberAnswer(PROFILE_ANSWER_KEY, envelope.data); }
+    } catch { if (version === readVersion.current && !background) setReadError("failed"); }
+  }, [profileUrl, design]);
 
-  useEffect(() => { if (!initialPayload) void load(); return () => { readVersion.current += 1; }; }, [initialPayload, load]);
   useEffect(() => {
-    if (eventSummary) return;
+    if (!initialPayload && !(cached && answerFresh(PROFILE_ANSWER_KEY, FRESH.slow))) void load(Boolean(cached));
+    return () => { readVersion.current += 1; };
+  }, [initialPayload, cached, load]);
+  useEffect(() => {
+    if (eventSummary || cachedEvents && answerFresh(EVENTS_KEY, FRESH.list)) return;
     let alive = true;
-    void eventsApi.mine("upcoming", 1).then(result => {
-      if (alive && result.ok) setAttendingCount(result.data.upcomingCount);
-      else if (alive) setAttendingCount(null);
-    });
-    void fetch("/api/events/center?summary=1").then(response => response.ok ? response.json() : null).then(body => {
+    const attending = eventsApi.mine("upcoming", 1).then(result => result.ok ? result.data.upcomingCount : null);
+    const hosted = fetch("/api/events/center?summary=1").then(response => response.ok ? response.json() : null).then(body => {
       const value = body?.data?.eventCount;
-      if (alive) {
-        setHostedCount(typeof value === "number" && Number.isFinite(value) ? value : null);
-        setActiveCount(typeof body?.data?.activeCount === "number" ? body.data.activeCount : 0);
-      }
-    }).catch(() => { if (alive) setHostedCount(null); });
+      return { hosted: typeof value === "number" && Number.isFinite(value) ? value : null, active: typeof body?.data?.activeCount === "number" ? body.data.activeCount as number : 0 };
+    }).catch(() => ({ hosted: null, active: 0 }));
+    // Both counts together: the 招待コード card's width depends on the attending count.
+    void Promise.all([attending, hosted]).then(([attendingValue, hostedValue]) => {
+      if (!alive) return;
+      setAttendingCount(attendingValue);
+      setHostedCount(hostedValue.hosted);
+      setActiveCount(hostedValue.active);
+      if (attendingValue !== null && hostedValue.hosted !== null) rememberAnswer(EVENTS_KEY, { attending: attendingValue, ...hostedValue });
+    });
     return () => { alive = false; };
-  }, [eventSummary]);
+  }, [eventSummary, cachedEvents]);
 
   const profile = payload?.profile;
   const profileId = profile?.id;
@@ -143,6 +174,8 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       setLiveSuggestions([]);
       return;
     }
+    const known = lastAnswer<string[]>(seekKey(language, profileId));
+    if (known) { setLiveSuggestions(known); return; }
     const controller = new AbortController();
     setLiveSuggestions([]);
     void fetch("/api/profile/seek-suggestions", {
@@ -151,7 +184,9 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
     }).then(async response => {
       const envelope = await response.json() as { success?: boolean; data?: { suggestions?: unknown } };
       if (!controller.signal.aborted && response.ok && envelope.success && Array.isArray(envelope.data?.suggestions)) {
-        setLiveSuggestions(envelope.data.suggestions.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).slice(0, 5));
+        const values = envelope.data.suggestions.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).slice(0, 5);
+        setLiveSuggestions(values);
+        rememberAnswer(seekKey(language, profileId), values);
       }
     }).catch(() => { if (!controller.signal.aborted) setLiveSuggestions([]); });
     return () => controller.abort();
@@ -180,6 +215,7 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
       const envelope = await response.json() as Envelope;
       if (!response.ok || !envelope.success || !validSaveReceipt(envelope.data, profile, edit, pendingSave.current.id)) throw new Error("save failed");
       setPayload(envelope.data);
+      if (!design) rememberAnswer(PROFILE_ANSWER_KEY, envelope.data);
       pendingSave.current = null;
       setSaved(true);
       return true;
@@ -200,8 +236,11 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
   const preview = profile ? <ProfilePreview profile={profile} draft={draft} t={t} busy={saving} onVisibility={fields => { if (draft) setDraft({ ...draft, publicFields: fields }); else void persistEdit({ publicFields: fields }); }} /> : null;
   const visibleSuggestions = suggestions.length ? suggestions : liveSuggestions;
   const pending = profile && !profile.seeking?.length ? visibleSuggestions.filter(value => !dismissed.includes(value)) : [];
-  return <AccountLayout active={active} title={t("profile")} subtitle={t("profileIntro")} rightRail={preview}>
-    {loading && !payload ? <div className={s.status} aria-busy="true">{t("profile")}</div> : null}
+  // Until the profile is in, the same grid as bones and the shell keeps its rail placeholder; until both event
+  // counts are in, the last row stays bones (the counts decide which cards it has).
+  const countsReady = attendingCount !== undefined && hostedCount !== undefined;
+  return <AccountLayout active={active} title={t("profile")} subtitle={t("profileIntro")} rightRail={preview} railPending={!profile && !readError}>
+    {!profile && !readError ? <ProfileSkeleton /> : null}
     {readError ? <div className={s.status} role="alert"><p>{readError === "unauthorized" ? t("profileLogin") : t("readError")}</p><Button label={t("retry")} size="sm" onClick={() => void load()} /></div> : null}
     {profile && progress ? <>
       {/* b12 W-R18a-01 / b5 #20: .wgrid — mycard 7 + ringcard 5, 提供/求め 12, 招待コード 12, 主催 / 参加 6 + 6. */}
@@ -232,9 +271,11 @@ function ProfileContent({ initialPayload, design, active = "profile", edit, sugg
           {saveError && !draft && pending.length ? <p role="alert" className={s.fillHint}>{t("saveError")}</p> : null}
           {!profile.offering?.length && !profile.seeking?.length && !pending.length ? <p className={s.fillHint}>{t("fillHint")}</p> : null}
         </section>
+        {!countsReady ? rowBones : <>
         <section className={`${s.rowCard} ${attendingCount ? s.inviteCard : s.half}`}><MacTile emoji="🔗" tone="teal" /><div><strong>{t("invite")}</strong><span>{t("inviteSub")}</span></div><Button label={t("inviteCreate")} size="sm" onClick={() => setInviteOpen(true)} /></section>
         {hostedCount !== null ? <a className={`${s.rowCard} ${s.half}`} href="/app/events/center"><MacTile emoji="🎤" tone="apricot" /><div><strong>{t("hosted")}</strong><span>{hostedCount === undefined || hostedCount === 0 ? t("hostedOpen") : `${t("eventCount").replace("{n}", String(hostedCount))}${activeCount ? ` · ${t("activeCount").replace("{n}", String(activeCount))}` : ""}`}</span></div><span className={s.go}><Icon name="right" size={16} /></span></a> : null}
         {attendingCount !== null && attendingCount !== 0 ? <a className={`${s.rowCard} ${s.half}`} href="/app/events?tab=going"><MacTile emoji="🎟️" tone="blue" /><div><strong>{t("attending")}</strong><span>{attendingCount === undefined ? t("attendingEmpty") : t("eventCount").replace("{n}", String(attendingCount))}</span></div><span className={s.go}><Icon name="right" size={16} /></span></a> : null}
+        </>}
       </div>
       <div className={s.mobilePreview}>{preview}</div>
       <InviteCodeModal open={inviteOpen} onClose={() => setInviteOpen(false)} language={language} />

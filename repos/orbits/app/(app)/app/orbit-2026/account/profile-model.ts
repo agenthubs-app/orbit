@@ -18,3 +18,6 @@ export function previewForProfile(profile: ManualProfileContract) {
 export function profileSaveInput(profile: ManualProfileContract, edit: ManualProfileUpdateInput, mutationId: string): ManualProfileUpdateInput {
   return { ...edit, expectedUpdatedAt: profile.updatedAt, mutationId };
 }
+
+/** The browser read cache key of GET /api/profile's payload (orbit-last-answer.ts), shared by the settings pages. */
+export const PROFILE_ANSWER_KEY = "profile:main";

@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {readContactMessageActor,readContactMessageActorForWrite} from '../inbox/inbox-request';
-import {Button,Card,Icon,Segmented,Toggle,type IconName} from '../orbit-2026/ui';
+import {Button,Card,Icon,Segmented,Skeleton,Toggle,type IconName} from '../orbit-2026/ui';
 import {notificationCopy} from '../orbit-2026/copy/notifications';
 import {pickCopy} from '../orbit-2026/copy/types';
 import type {InboxDeliveryPreferencesDTO,InboxDeliveryPreferencesInput} from '../../../../shared/contract/notification-delivery-policy';
@@ -34,7 +34,7 @@ export function NotificationDeliverySettings({conversationId,compact=false}:{con
   return <span className={s.threadToggle}><Icon name="bell" size={16}/>{label}<Toggle checked={!muted} disabled={busy} label={label} onChange={()=>void change({muteConversation:{conversationId,muted:!muted}})}/></span>;
  }
  if(unavailable)return <p role="status" className={s.hint}>{copy('unavailable')}</p>;
- if(!data)return error?<div role="alert" className={s.error}>{copy('unavailable')} <Button label={copy('refresh')} onClick={()=>setAttempt(v=>v+1)}/></div>:<p className={s.hint}>{copy('refresh')}…</p>;
+ if(!data)return error?<div role="alert" className={s.error}>{copy('unavailable')} <Button label={copy('refresh')} onClick={()=>setAttempt(v=>v+1)}/></div>:<Skeleton lines={6}/>;
  const icons:Record<string,IconName>={message:'mail',reminder:'clock',suggestion:'sparkle',update:'refresh'};
  const row=(key:string,label:string,checked:boolean,patch:Omit<InboxDeliveryPreferencesInput,'expectedRevision'>,hint?:string)=><div key={key} className={s.row}>{icons[key]?<span className={s.rowIcon} aria-hidden="true"><Icon name={icons[key]} size={16}/></span>:null}<div className={s.rowText}><strong>{label}</strong>{hint?<span>{hint}</span>:null}</div><Toggle checked={checked} disabled={busy} label={label} onChange={()=>void change(patch)}/></div>;
  if(conversationId){const muted=data.mutedConversationIds.includes(conversationId);return <Card className={s.conversation}>{row('mute',copy('mute'),muted,{muteConversation:{conversationId,muted:!muted}})}</Card>;}

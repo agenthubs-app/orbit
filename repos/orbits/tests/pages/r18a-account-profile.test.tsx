@@ -17,7 +17,8 @@ test("account profile renders server card states and live-filtered preview", () 
     const html = render(payload);
     assert.match(html, new RegExp(`${score}%`));
     assert.ok(html.includes("公開プレビュー"));
-    assert.ok(html.includes("/app/events?tab=going"));
+    // Without the event counts the last row (招待コード · 主催 · 参加) is bones: the counts decide its cards.
+    assert.ok(!html.includes("/app/events?tab=going"));
     assert.ok(!html.includes("今月の閲覧"));
     assert.ok(!html.includes("ご利用プラン"));
   }

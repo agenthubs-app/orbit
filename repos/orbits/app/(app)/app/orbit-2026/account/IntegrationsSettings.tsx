@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 
 import type { IntegrationAuthorization, OrbitIntegrationProvider } from "../../../../../features/integrations/contract";
+import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { Button, Chip, ConfirmDialog, MacTile, useToast } from "../ui";
+import { Bone, Button, Chip, ConfirmDialog, MacTile, useToast } from "../ui";
 import { checkIntegration, integrationAction, integrationStatus, listIntegrations, revokeIntegration } from "./integrations-api";
 import { settingsCopy } from "./settings-copy";
 import styles from "./SettingsSecondary.module.css";
@@ -18,19 +19,23 @@ const SERVICES: { provider: OrbitIntegrationProvider; name: "Gmail" | "Microsoft
   { provider: "microsoft_graph", name: "Microsoft 365", emoji: "🗂️", tone: "lav", note: "graphCard" },
 ];
 
+const LIST_KEY = "settings:integrations";
+
 export function IntegrationsSettings() {
   const { language } = useOrbitLanguage();
   const t = settingsCopy(language);
   const toast = useToast();
-  const [records, setRecords] = useState<IntegrationAuthorization[]>([]);
+  // null: not read yet — each card's status chip and button are bones, never a 「未接続」 that turns into 「接続済み」.
+  const [records, setRecords] = useState<IntegrationAuthorization[] | null>(() => lastAnswer<IntegrationAuthorization[]>(LIST_KEY) ?? null);
   const [busy, setBusy] = useState<OrbitIntegrationProvider | null>(null);
   const [removing, setRemoving] = useState<OrbitIntegrationProvider | null>(null);
   const [error, setError] = useState("");
   const reload = async () => {
-    try { setRecords(await listIntegrations()); setError(""); }
+    try { const list = await listIntegrations(); setRecords(list); rememberAnswer(LIST_KEY, list); setError(""); }
     catch { setError(t("failed")); }
   };
-  useEffect(() => { void reload(); }, []); // initial list; language changes navigate the page
+  // The initial list (language changes navigate the page); none while the last one is fresh.
+  useEffect(() => { if (!answerFresh(LIST_KEY, FRESH.slow)) void reload(); }, []);
 
   const health = async (provider: OrbitIntegrationProvider) => {
     setBusy(provider);
@@ -52,9 +57,15 @@ export function IntegrationsSettings() {
     {error ? <p role="alert" className={styles.error}>{error}</p> : null}
     <div className={styles.connGrid}>
       {SERVICES.map(({ provider, name, emoji, tone, note }) => {
-        const record = records.find((item) => item.provider === provider);
+        const record = records?.find((item) => item.provider === provider);
         const state = integrationStatus(record);
         if (provider === "microsoft_graph" && state === "preparing") return null;
+        if (!records) return <section key={provider} className={styles.connCard} aria-busy="true">
+          <div className={styles.connHead}><MacTile emoji={emoji} tone={tone} /><Bone width={64} height={22} round /></div>
+          <h2 className={styles.connTitle}>{name === "calendarName" ? t(name) : name}</h2>
+          <p className={styles.connNote}>{t(note)}</p>
+          <div className={styles.connFoot}><Bone width={72} height={30} round /></div>
+        </section>;
         const action = integrationAction(provider, state);
         const label = state === "connected" ? t("connected") : state === "preparing" ? t("preparing") : state === "disconnected" ? t("disconnected") : t("actionRequired");
         return <section key={provider} className={styles.connCard}>

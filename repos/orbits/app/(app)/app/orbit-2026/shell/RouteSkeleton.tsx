@@ -3,14 +3,25 @@
 import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { AccountLayout, accountSectionFor } from "../account/AccountLayout";
+import { ProfileSkeleton } from "../account/AccountProfilePage";
 import { Bone, Orbit2026Scope, Skeleton, useStandardCopy } from "../ui";
 import { PageSkeletonBody, pageSkeletonFor, type PageSkeletonKind } from "./PageSkeleton";
 
-/** app/(app)/app/loading.tsx: a left-rail page's own layout in skeletons; any other page, the plain lines. */
+/**
+ * app/(app)/app/loading.tsx: a left-rail page's own layout in skeletons; a settings section, the settings
+ * menu (real, the section selected) beside its heading and body as bones; any other page, the plain lines.
+ */
 export function RouteSkeleton({ plainClassName }: { plainClassName: string }) {
-  const kind = pageSkeletonFor(usePathname() ?? "");
+  const pathname = usePathname() ?? "";
+  const kind = pageSkeletonFor(pathname);
   const copy = useStandardCopy();
-  return kind ? <PageSkeletonBody kind={kind} label={copy.loading.loading} /> : <div className={plainClassName}><Skeleton lines={5} /></div>;
+  if (kind) return <PageSkeletonBody kind={kind} label={copy.loading.loading} />;
+  if (/^\/app\/(profile|settings)(\/[^/]+)?\/?$/u.test(pathname) && !/^\/app\/profile\/./u.test(pathname)) {
+    const section = accountSectionFor(pathname === "/app/profile" ? "/app/profile" : pathname);
+    return <AccountLayout active={section} shell={false}>{section === "profile" || section === "home" ? <ProfileSkeleton /> : <Skeleton lines={5} />}</AccountLayout>;
+  }
+  return <div className={plainClassName}><Skeleton lines={5} /></div>;
 }
 
 /** For a legacy page (no new-UI scope of its own, RD-18): the page's skeleton in a scope island. */

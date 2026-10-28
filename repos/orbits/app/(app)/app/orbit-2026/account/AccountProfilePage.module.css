@@ -54,6 +54,9 @@
 .rowCard > button { align-self: flex-start; }
 .inviteCard > :last-child { align-self: flex-start; }
 .half { grid-column: span 6; }
+.boneCard { justify-content: space-between; }
+.boneIdentity { display: flex; align-items: center; gap: 14px; padding-top: 18px; }
+.boneLines { display: grid; gap: 10px; align-content: start; }
 .go { color: var(--ink-3); display: grid; }
 .preview { display: flex; flex-direction: column; gap: var(--space-14); }
 .previewHeading { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); line-height: var(--lh-body); }

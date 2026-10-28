@@ -12,6 +12,10 @@
 .content { min-width: 0; }
 .heading { margin: 0 0 16px; }
 .heading h1 { margin: 0; font-size: var(--fs-section); line-height: var(--lh-body); font-weight: var(--fw-heavy); }
+/* The heading's two lines while the section has not mounted: the same line boxes as h1 and p. */
+.headingBone, .subheadingBone { display: flex; align-items: center; }
+.headingBone { height: calc(var(--fs-section) * var(--lh-body)); }
+.subheadingBone { height: calc(var(--fs-label) * var(--lh-body)); }
 .largeTitle h1 { font-size: var(--fs-title-lg); }
 .heading p { margin: 0; font-size: var(--fs-label); font-weight: var(--fw-medium); line-height: var(--lh-body); color: var(--ink-3); }
 .phoneAccount, .phoneTopbar { display: none; }
