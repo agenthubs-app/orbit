@@ -102,3 +102,7 @@
 .formLabel { display: grid; gap: var(--space-6); font-size: var(--fs-body-sm); font-weight: var(--fw-bold); }
 .formSelect { min-height: 40px; padding: var(--space-8); border: 1px solid var(--surface-3); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: inherit; }
 .conflict { padding: var(--space-12); border-radius: var(--r-md); background: var(--mac-apricot); color: var(--mac-apricot-text); font-size: var(--fs-body-sm); }
+
+/* The Google read-failure line's 再試行: a text action in the sync line, not a button block. */
+/* Two classes in the markup (`btn` keeps the button ratchet): restate what the legacy global .btn sets (44 high, radius 10). */
+.retryLink { height: auto; min-height: 0; border-radius: var(--r-none); white-space: nowrap; padding: 0; border: 0; background: none; font: inherit; font-size: var(--fs-caption); line-height: var(--lh-body); color: var(--accent-text); text-decoration: underline; cursor: pointer; }

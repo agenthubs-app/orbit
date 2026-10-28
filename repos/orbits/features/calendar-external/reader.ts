@@ -29,7 +29,8 @@ export function createCalendarExternalReader(input: {
       const empty = (connection: CalendarExternalEventsContract["connection"]): CalendarExternalEventsContract =>
         ({ connection, provider: "google_calendar", events: [], asOf });
       const service = await input.serviceForActor(actorId);
-      if (!service) return empty("unavailable");
+      // No integration service: this deployment does not offer Google Calendar (no key / store) — not a failure.
+      if (!service) return empty("off");
       let authorizations: readonly CalendarAuthorization[];
       try { authorizations = await service.listAuthorizations(); }
       catch { return empty("unavailable"); }

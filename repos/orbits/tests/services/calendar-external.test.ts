@@ -92,3 +92,14 @@ test("refreshable expired access tokens reach the existing calendar service and 
   assert.equal(reads, 1);
   assert.deepEqual(new Set(checked), new Set(["integrationTokens", "integrationHealth"]));
 });
+
+test("a deployment without the integration service answers off (nothing to offer), while a failing authorization list stays unavailable", async () => {
+  const query = { from: "2026-10-01T00:00:00.000Z", to: "2026-10-08T00:00:00.000Z" };
+  const off = createCalendarExternalReader({ serviceForActor: () => null });
+  assert.equal((await off.read("actor-a", query)).connection, "off");
+  const failing = createCalendarExternalReader({ serviceForActor: () => ({
+    listAuthorizations: async () => { throw new Error("store down"); },
+    listCalendarEvents: async () => [],
+  }) as never });
+  assert.equal((await failing.read("actor-a", query)).connection, "unavailable");
+});

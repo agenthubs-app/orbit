@@ -16,7 +16,7 @@ export const calendarExternalEventObject = z.object({
   allDay: z.boolean(), locationPreview: z.string().optional(),
 });
 export const calendarExternalEventsResponseObject = z.object({
-  connection: tolerantEnum(["connected", "not_connected", "needs_reconnect", "unavailable"], "unavailable"),
+  connection: tolerantEnum(["connected", "not_connected", "needs_reconnect", "unavailable", "off"], "unavailable"),
   provider: z.literal("google_calendar"), events: readableItems(calendarExternalEventObject), asOf: instant,
 });
 export const calendarExternalEventsResponseSchema = calendarExternalEventsResponseObject as z.ZodType<CalendarExternalEventsContract>;

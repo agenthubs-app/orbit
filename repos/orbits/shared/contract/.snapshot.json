@@ -2761,7 +2761,7 @@
         "connection": {
           "optional": false,
           "kind": "text",
-          "type": "'unavailable' | 'connected' | 'not_connected' | 'needs_reconnect'"
+          "type": "'unavailable' | 'connected' | 'not_connected' | 'needs_reconnect' | 'off'"
         },
         "provider": {
           "optional": false,

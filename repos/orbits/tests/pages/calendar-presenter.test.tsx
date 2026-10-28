@@ -60,9 +60,26 @@ test("week and day retain timed and all-day events, while external failures leav
   assert.equal(root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"])).length, 8);
   assert.ok(JSON.stringify(root!.toJSON()).includes("Private schedule"));
   assert.ok(JSON.stringify(root!.toJSON()).includes("読み取れない予定を除いて表示しています。"));
-  assert.ok(root!.root.findAllByProps({ role: "alert" }).length > 0);
+  // 2026-10-28: a Google read failure is one line in the sync-line slot (b3), not a blocking card; 再試行 reads again.
+  assert.equal(root!.root.findAllByProps({ role: "alert" }).length, 0, "no RetryCard for Google");
+  const line = root!.root.findAll(node => node.props.role === "status" && text(node).includes("Google カレンダーを読み込めませんでした"));
+  assert.equal(line.length, 1);
   await act(async () => root.update(render("day")));
   assert.equal(root!.root.findAll(node => node.type === "section" && Boolean(node.props["data-calendar-date"])).length, 1);
+});
+
+test("a deployment without Google Calendar (off) shows nothing about Google: no chip, no connect, no failure", async t => {
+  let root: ReactTestRenderer;
+  let retried = 0;
+  for (const mode of ["week", "day", "month"] as const) {
+    await act(async () => { root = create(<Orbit2026Scope language="ja"><CalendarPresenter {...base} mode={mode} days={days(mode === "month" ? "week" : mode)} externalState="ready" connection="off" partial={false} onRetry={() => { retried += 1; }} /></Orbit2026Scope>); });
+    const json = JSON.stringify(root!.toJSON());
+    assert.doesNotMatch(json, /Google/u, mode);
+    assert.equal(root!.root.findAllByProps({ role: "alert" }).length, 0, mode);
+    await act(async () => root.unmount());
+  }
+  assert.equal(retried, 0);
+  t.after(() => undefined);
 });
 test("day view groups real entries by time and reports overlapping intervals without a move action", async t => {
   const date = "2026-10-18";
