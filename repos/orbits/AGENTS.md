@@ -125,6 +125,15 @@ workspace root for implementation work.
 - Respect `prefers-reduced-motion`; decoding still gates image reveal, but the
   crossfade duration collapses through the global reduced-motion rule.
 
+## Web 页面不闪动与读取缓存（2026-10-28 用户定稿）
+
+所有 Web 页面（新页面和改动的页面）必须遵守 [`docs/development/web-no-flash-and-cache-rules.md`](docs/development/web-no-flash-and-cache-rules.md)。要点：
+
+- 先画固定框架（`shellFrameFor`）和同尺寸骨架，内容到齐后原位替换；不许先画一半再补数字或卡片，不许出现后再挪位置；同组视图共用的控件位置固定，无效的按钮禁用不隐藏。
+- 应用内跳转一律 `<Link prefetch>`，不用 `<a href>` 整页刷新，也不用 `router.refresh()` 做后台刷新。
+- 客户端读取一律经 `orbit-last-answer.ts`（上次结果先显示、`FRESH` 新鲜期内不重读、写后全部作废）；有新内容靠变更游标 `/api/changes`，不许自己写 `setInterval` 轮询。
+- 缓存只在内存、按账号隔离；新增带个人内容的浏览器存储项必须加进 `orbit-sign-out.ts` 的清单。
+
 ## App Documentation And Knowledge Manifest
 
 - App implementation changes must update the related 文档: `docs/**`, feature

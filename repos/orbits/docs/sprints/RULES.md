@@ -9,6 +9,10 @@
 - 真正改变目标、验收标准或引入不相关功能，才是范围变更。未知的真实数据库／账号／记录不能从批准推断出来；真实外部操作（生产数据写入、部署、push、付费 AI 调用）仍须有可识别目标及适用授权。
 - 信息不足先区分事实与决定：能从源码、测试和既有约定查明的事实由代理查明；有合理依据的可逆实现细节自行选择并说明；只有缺少会实质改变结果的用户决定时，暂停相应动作，继续独立工作。未决定项集中列在 [README 的「等待用户决定」](README.md#等待用户决定)。
 
+## 0.1 页面不闪动与读取缓存
+
+每个涉及 Web 页面的 Sprint，必须把 [`docs/development/web-no-flash-and-cache-rules.md`](../development/web-no-flash-and-cache-rules.md) 写进 PLANNER 的验收契约，验收时在本地生产构建上逐帧测量位置不变，并核对读取次数。
+
 ## 1. long-run-harness 简化版
 
 保留：SprintContract（可验证验收项）、Handoff、existing-codebase 文件边界、证据归档、预算、逐操作链提交和明确终止。
