@@ -387,7 +387,7 @@ export const eventsJourneyCopy = {
   liveNotRegistered: { ja: "会場モードは参加登録した人だけが使えます", zh: "只有已报名的人可以使用会场模式", en: "Venue mode is for registered attendees", kind: "label" },
   liveBeforeCheckIn: { ja: "受付をすませると使えます · 受付番号 {n}", zh: "签到后就能使用 · 签到号{n}", en: "Available after check-in · No. {n}", kind: "label" },
   liveEnded: { ja: "イベントは終了しました", zh: "活动已结束", en: "This event has ended", kind: "label" },
-  pastRegistrationCount: { ja: "申込人数 {n}人", zh: "报名人数 {n}人", en: "{n} registrations", kind: "label" },
+  pastRegistrationCount: { ja: "申込人数 {n}人", zh: "报名人数：{n}人", en: "{n} registrations", kind: "label" },
   pastRosterGate: { ja: "参加者情報は、このイベントに申し込んだ方のみ閲覧できます", zh: "仅报名过这场活动的用户可查看参加者信息", en: "Attendee details are available only to people registered for this event", kind: "cardTitle" },
   registrationClosed: { ja: "申込受付は終了しました", zh: "报名已截止", en: "Registration is closed", kind: "label" },
   rosterCountsOnly: { ja: "参加予定 {n}人", zh: "预计参加 {n}人", en: "{n} going", kind: "label" },
