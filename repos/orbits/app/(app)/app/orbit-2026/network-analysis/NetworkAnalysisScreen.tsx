@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
-import type { NetworkAnalysisViewDTO } from "../../../../../shared/contract/network-analysis-view";
+import type { NetworkAnalysisPeopleDTO, NetworkAnalysisViewDTO } from "../../../../../shared/contract/network-analysis-view";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { networkSnapshotViewSchema } from "../../../../../shared/api-schema/network-analysis-view";
 import { ContactDrawer } from "../network/ContactDrawer";
@@ -28,6 +28,8 @@ export interface NetworkAnalysisScreenProps {
   /** Names of the snapshot's evidence people (this owner's contacts only). */
   evidenceNames: Record<string, EvidencePerson>;
   initialTab: AnalysisTab;
+  /** The rail's first page for the selections the screen opens on (keyed `dimension:bucket`), read with the view. */
+  initialRail?: Record<string, NetworkAnalysisPeopleDTO>;
   /** W0005 guide example (R28 owns it): the demo world's numbers, no drill-down reads. */
   demo?: boolean;
 }
@@ -64,7 +66,7 @@ function defaultSelection(view: NetworkAnalysisViewDTO | null, tab: AnalysisTab)
   return first ? { dimension: "industry", bucketId: first.id } : null;
 }
 
-function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceNames, initialTab, demo = false }: NetworkAnalysisScreenProps) {
+function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceNames, initialTab, initialRail, demo = false }: NetworkAnalysisScreenProps) {
   const t = useAnalysisT();
   const router = useRouter();
   const params = useSearchParams();
@@ -73,6 +75,10 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
   const [tab, setTab] = useState<AnalysisTab>(initialTab);
   const [selection, setSelection] = useState<DrillSelection | null>(() => defaultSelection(view, initialTab));
   const [contactId, setContactId] = useState<string | null>(null);
+  // The opening selection's rail comes with the page; once the selection moves, the rail reads as before.
+  const selectionKey = selection ? `${selection.dimension}:${selection.bucketId}` : null;
+  const [openingKey, setOpeningKey] = useState<string | null>(selectionKey);
+  useEffect(() => { if (selectionKey !== openingKey) setOpeningKey(null); }, [selectionKey, openingKey]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [recomputing, setRecomputing] = useState(false);
 
@@ -134,7 +140,8 @@ function AnalysisInner({ language, view, snapshot: initialSnapshot, evidenceName
     );
   }
   const tabs = <Segmented variant="seg" label={t("tabsLabel")} value={tab} onChange={chooseTab} segments={ANALYSIS_TABS.map((key) => ({ key, label: t(key === "structure" ? "tabStructure" : key === "opportunities" ? "tabOpportunities" : "tabInsight") }))} data-analysis-tabs="" />;
-  const rail = selection ? <DrillList key={`${selection.dimension}:${selection.bucketId}`} selection={selection} compact onOpenPerson={setContactId} /> : <p className={styles.lbl}>{t("listPick")}</p>;
+  const rail = selection ? <DrillList key={`${selection.dimension}:${selection.bucketId}`} selection={selection} compact onOpenPerson={setContactId}
+    initial={selectionKey !== null && selectionKey === openingKey ? initialRail?.[selectionKey] : undefined} /> : <p className={styles.lbl}>{t("listPick")}</p>;
   return (
     <>
       <ShellPage title={t("title")} subtitle={subtitle} left={back} right={tabs} rightRail={demo ? false : rail} />

@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { networkAnalysisPeopleSchema } from "../../../../../shared/api-schema/network-analysis-view";
+import { NETWORK_ANALYSIS_RAIL_LIMIT, networkAnalysisPeopleSchema } from "../../../../../shared/api-schema/network-analysis-view";
 import type { NetworkAnalysisDimension, NetworkAnalysisPeopleDTO, NetworkAnalysisPeopleSort, NetworkAnalysisPersonRow } from "../../../../../shared/contract/network-analysis-view";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Avatar, Icon, RetryCard, Segmented, Skeleton } from "../ui";
@@ -28,17 +28,22 @@ async function readPeople(selection: DrillSelection, sort: NetworkAnalysisPeople
 }
 
 /** The 1440 rail shows the first five (b5 #40), then the list button / the full page; the full page pages by 30. */
-export const RAIL_LIMIT = 5;
+export const RAIL_LIMIT = NETWORK_ANALYSIS_RAIL_LIMIT;
 const PAGE_LIMIT = 30;
 
-export function usePeople(selection: DrillSelection | null, limit: number = PAGE_LIMIT) {
-  const [state, setState] = useState<State>({ kind: "loading" });
+/** `initial`: this selection's first page as the page already read it (default order, `limit`); it is not asked again. */
+export function usePeople(selection: DrillSelection | null, limit: number = PAGE_LIMIT, initial?: NetworkAnalysisPeopleDTO) {
+  const [state, setState] = useState<State>(() => (initial ? { kind: "ready", data: initial, loadingMore: false } : { kind: "loading" }));
   const [sort, setSort] = useState<NetworkAnalysisPeopleSort | null>(null);
   const key = selection ? `${selection.dimension}:${selection.bucketId}` : "";
   const keyRef = useRef(key);
+  const seeded = useRef<string | null>(initial ? key : null);
   useEffect(() => { if (keyRef.current !== key) { keyRef.current = key; setSort(null); } }, [key]);
-  const load = useCallback(() => {
+  const load = useCallback((force = false) => {
     if (!selection) return () => undefined;
+    // The seeded first page stands until the order changes or a retry asks again.
+    if (!force && sort === null && seeded.current === key) return () => undefined;
+    seeded.current = null;
     const controller = new AbortController();
     setState({ kind: "loading" });
     readPeople(selection, sort, null, limit, controller.signal).then((data) => setState({ kind: "ready", data, loadingMore: false })).catch((error: unknown) => {
@@ -47,6 +52,7 @@ export function usePeople(selection: DrillSelection | null, limit: number = PAGE
     return () => controller.abort();
   }, [key, sort]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => load(), [load]);
+  const reload = useCallback(() => { load(true); }, [load]);
   const more = useCallback(() => {
     if (!selection || state.kind !== "ready" || !state.data.nextCursor || state.loadingMore) return;
     const current = state.data;
@@ -54,7 +60,7 @@ export function usePeople(selection: DrillSelection | null, limit: number = PAGE
     readPeople(selection, current.sort, current.nextCursor, limit).then((next) => setState({ kind: "ready", data: { ...next, items: [...current.items, ...next.items] }, loadingMore: false }))
       .catch(() => setState({ kind: "ready", data: current, loadingMore: false }));
   }, [selection, state]);
-  return { state, sort, setSort, reload: load, more };
+  return { state, sort, setSort, reload, more };
 }
 
 function stageChip(person: NetworkAnalysisPersonRow, t: AnalysisT) {
@@ -85,10 +91,10 @@ export function PersonCard({ person, onOpen }: { person: NetworkAnalysisPersonRo
  * The list body. `compact` = the 1440 rail (b5 #40: heading, two orders, cards, the list button); otherwise the full page
  * (b5 #37 adapted to Web: 段階の内訳 on top, every available order).
  */
-export function DrillList({ selection, compact, onOpenPerson, onTotal }: { selection: DrillSelection; compact: boolean; onOpenPerson: (id: string) => void; onTotal?: (total: number) => void }) {
+export function DrillList({ selection, compact, onOpenPerson, onTotal, initial }: { selection: DrillSelection; compact: boolean; onOpenPerson: (id: string) => void; onTotal?: (total: number) => void; initial?: NetworkAnalysisPeopleDTO }) {
   const t = useAnalysisT();
   const { language } = useOrbitLanguage();
-  const { state, setSort, reload, more } = usePeople(selection, compact ? RAIL_LIMIT : PAGE_LIMIT);
+  const { state, setSort, reload, more } = usePeople(selection, compact ? RAIL_LIMIT : PAGE_LIMIT, compact ? initial : undefined);
   const label = bucketLabel(selection.dimension, selection.bucketId, t, language);
   const loadedTotal = state.kind === "ready" ? state.data.total : null;
   useEffect(() => { if (loadedTotal !== null) onTotal?.(loadedTotal); }, [loadedTotal, onTotal]);

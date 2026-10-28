@@ -35,5 +35,5 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     return <NetworkAnalysisScreen language={language} view={data.view} snapshot={null} evidenceNames={{}} initialTab={initialTab} demo />;
   }
   const data = await loadNetworkAnalysisPage({ id: actor.id, workspaceId: actor.workspaceId }, language);
-  return <NetworkAnalysisScreen language={language} view={data.view} snapshot={data.snapshot} evidenceNames={data.evidenceNames} initialTab={initialTab} />;
+  return <NetworkAnalysisScreen language={language} view={data.view} snapshot={data.snapshot} evidenceNames={data.evidenceNames} initialRail={data.rail} initialTab={initialTab} />;
 }

@@ -10,15 +10,17 @@
 import type { ContactCardActor } from "../contacts/card-service";
 import { redesignContractMode } from "../redesign-contracts/route";
 import type { OrbitLanguage } from "../../shared/contract/language";
-import type { NetworkAnalysisViewDTO } from "../../shared/contract/network-analysis-view";
+import type { NetworkAnalysisPeopleDTO, NetworkAnalysisViewDTO } from "../../shared/contract/network-analysis-view";
 import type { NetworkSnapshotView } from "./contract";
-import { loadNetworkAnalysisView, type NetworkAnalysisReadDeps } from "./analysis-reader";
+import { loadNetworkAnalysisViewWithRail, type NetworkAnalysisReadDeps } from "./analysis-reader";
 import { resolveNetworkAnalysisReadDeps } from "./analysis-handlers";
 
 export interface NetworkAnalysisPageData {
   view: NetworkAnalysisViewDTO | null;
   snapshot: NetworkSnapshotView | "failed" | null;
   evidenceNames: Record<string, { contactId: string; name: string }>;
+  /** The drill-down rail's first page for the selections the screen opens on (keyed `dimension:bucket`). */
+  rail?: Record<string, NetworkAnalysisPeopleDTO>;
 }
 
 export interface NetworkAnalysisPageDeps {
@@ -60,8 +62,9 @@ export async function defaultNetworkAnalysisPageDeps(): Promise<NetworkAnalysisP
 export async function loadNetworkAnalysisPage(actor: ContactCardActor, language: OrbitLanguage, deps?: NetworkAnalysisPageDeps): Promise<NetworkAnalysisPageData> {
   const resolved = deps ?? await defaultNetworkAnalysisPageDeps();
   let view: NetworkAnalysisViewDTO | null;
+  let rail: Record<string, NetworkAnalysisPeopleDTO> = {};
   try {
-    view = await loadNetworkAnalysisView(actor, await resolved.readDeps());
+    ({ view, rail } = await loadNetworkAnalysisViewWithRail(actor, await resolved.readDeps()));
   } catch (error) {
     log("network_analysis_page_view_failed", error);
     return { view: null, snapshot: null, evidenceNames: {} };
@@ -76,5 +79,5 @@ export async function loadNetworkAnalysisPage(actor: ContactCardActor, language:
   }
   const ids = snapshot && snapshot !== "failed" ? [...new Set(snapshot.blocks.flatMap((block) => block.evidence.contactIds))].slice(0, 30) : [];
   const evidenceNames = await resolved.readNames(actor.id, ids).catch((error: unknown) => { log("network_analysis_page_names_failed", error); return {}; });
-  return { view, snapshot, evidenceNames };
+  return { view, snapshot, evidenceNames, rail };
 }
