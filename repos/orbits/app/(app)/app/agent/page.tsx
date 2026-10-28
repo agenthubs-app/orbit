@@ -13,8 +13,8 @@
  *
  * R25：W0008 的 `?plan=<id>` 计划回答卡片随 v1 计划删除；带 `?plan=` 的旧链接落在概览（计划在 Task › プラン）。
  *
- * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标仍取首页数据的
- * relationshipGoal，首页数据读不到时按真实页面处理）。处于示例期时只读了判定所需的首页数据，
+ * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标取本人资料的
+ * relationshipGoal，资料读不到时按真实页面处理；2026-10-28 起不再为此加载整份首页数据）。处于示例期时只读了判定所需的首页数据，
  * 对话路由模型、活动报名／canonical id 一概不读（社群状态见 W0037）——示例壳不用它们，真实
  * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
  * 开关关闭时判定零读取，下面的真实路径与改动前一致。
@@ -40,7 +40,6 @@ import { redirect } from "next/navigation";
 import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
 import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { IOrbit2026 } from "./iorbit-2026/IOrbit2026";
-import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { loadAppProfileRouteViewModel } from "../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
 import { readGuideStatusForActor } from "../../../../features/guide/progress";
@@ -113,28 +112,23 @@ export default async function AppAgentPage({
 
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);
-  // iOrbit 工作台首屏（dashboard）与旧 /app/home 同源的数据：账户、统计、活动旅程。
-  // 同一次请求只读一次：示例判定（目标）与真实首页共用。
-  let loadedHomeModel: Awaited<ReturnType<typeof loadAppHomeRouteViewModel>> | null = null;
-  const loadHomeModel = async () =>
-    (loadedHomeModel ??= await loadAppHomeRouteViewModel(undefined, {
-      displayName:
-        session?.user?.name?.trim() ||
-        session?.user?.email?.trim() ||
-        "Orbit member",
-      email: session?.user?.email,
-      id: actorId,
-      rawSubject: session.user.id,
-    }));
+  // One profile read per request: the demo check's goal and the live screen's greeting both come from it
+  // (not the whole home model — events, recommendations, readiness — which neither shows).
+  let loadedProfile: Awaited<ReturnType<typeof loadAppProfileRouteViewModel>> | null = null;
+  const loadProfile = async () =>
+    (loadedProfile ??= await loadAppProfileRouteViewModel(
+      { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
+      { suggestions: "skip" },
+    ));
   // W0004／W0014：开关关闭时不读任何东西，返回 null。首页数据读不到时目标未知，按真实首页处理。
   const guide = await readDemoModeViewForActor(
     { actorId, userId: session.user.id },
     {
       readGuideStatus: readGuideStatusForActor,
       readRelationshipGoal: async () => {
-        const model = await loadHomeModel();
-        if (model.state !== "success") throw new Error("Home data is unavailable.");
-        return model.home.account?.relationshipGoal ?? "";
+        const model = await loadProfile();
+        if (model.state !== "success") throw new Error("Profile data is unavailable.");
+        return model.profile.profile.relationshipGoal ?? "";
       },
     },
   );
@@ -162,12 +156,8 @@ export default async function AppAgentPage({
       </>
     );
   }
-  // The live iOrbit 2026 screen greets by name and reads nothing else from the server: the
-  // profile alone, not the whole home model (events, recommendations, readiness, registrations).
-  const profileModel = await loadAppProfileRouteViewModel(
-    { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
-    { suggestions: "skip" },
-  );
+  // The live iOrbit 2026 screen greets by name and reads nothing else from the server.
+  const profileModel = await loadProfile();
   const language = requestedLanguage ?? (await getAgentPageLanguage());
   const accountName = profileModel.state === "success"
     ? localizeOrbitTree(profileModel.profile.profile.displayName || "Orbit operator", language)

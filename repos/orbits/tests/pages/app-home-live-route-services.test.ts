@@ -29,10 +29,10 @@ test("app-home-route renders the R07 home placeholder while the iOrbit workspace
   assert.doesNotMatch(hubSource, /OrbitRealHome|HomeRouteStateBoundary/);
 
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
-  // The home model is read only for the demo check (the goal); the live iOrbit 2026 screen
-  // greets by the profile's name and shows no events, so it reads no events or registrations.
-  assert.match(agentPageSource, /loadAppHomeRouteViewModel\(undefined,/);
+  // One profile read serves the demo check (the goal) and the live iOrbit 2026 screen (the greeting);
+  // neither shows events, so the page reads no home model, events or registrations.
   assert.match(agentPageSource, /loadAppProfileRouteViewModel\(/);
+  assert.doesNotMatch(agentPageSource, /loadAppHomeRouteViewModel/);
   assert.match(agentPageSource, /accountName=\{accountName\}/);
   assert.doesNotMatch(agentPageSource, /readRuntimeEventRegistrationStates|resolveConfiguredActorEventCanonicalIds|presentOrbitEvents/);
 
