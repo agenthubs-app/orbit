@@ -11,6 +11,7 @@ import { readInboxUnreadCounts } from "../../inbox/relationship-inbox-panel";
 // R17 / 读取缓存规则：注销时清掉本机这个账号的东西（受付库、读取缓存、个人 localStorage 项），见 orbit-sign-out.ts。
 import { signOutAndForget } from "../../orbit-sign-out";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { installChangeWatch, useAreaChanges } from "../../orbit-change-watch";
 import { installWriteWatch } from "../../orbit-write-watch";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { getOrbitThemePreference, setOrbitThemePreference, type OrbitThemePreference } from "../../orbit-theme";
@@ -48,6 +49,8 @@ export function Orbit2026Shell({ language, signedIn, currentBuildId, children }:
   // and a successful write anywhere marks it stale (orbit-write-watch).
   useSharedReadAccount();
   useEffect(() => { installWriteWatch(); }, []);
+  // Signed in: one small change-cursor question replaces each list's own timer (orbit-change-watch).
+  useEffect(() => { if (signedIn) installChangeWatch(); }, [signedIn]);
   const returnTo = useSearchParams()?.get("returnTo") ?? null;
   if (!shellAppliesTo(pathname, signedIn)) return <>{children}</>;
   const focus = returnTo && onboardingImportFocus(pathname, returnTo) ? <OnboardingImportHeader returnTo={returnTo} /> : null;
@@ -261,15 +264,17 @@ function useInboxDot(language: OrbitLanguage, pathname: string): boolean {
   // One unread read when the shell mounts and when the inbox page is left, shared
   // by the rail and the narrow top bar. With next/link the shell stays mounted
   // across pages, so this reads less often than the old top bar (once per page).
-  // The inbox page itself keeps its 15-second refresh.
+  // It reads again when the change cursor says the inbox moved (a message or notification arrived elsewhere).
   const [dot, setDot] = useState(false);
+  const [moved, setMoved] = useState(0);
   const onInbox = pathname.startsWith("/app/inbox");
+  useAreaChanges(["inbox"], () => setMoved((value) => value + 1));
   useEffect(() => {
     if (onInbox) return;
     let live = true;
     readInboxUnreadCounts(language).then((counts) => { if (live) setDot(counts.threads > 0 || counts.alerts > 0); }).catch(() => undefined);
     return () => { live = false; };
-  }, [language, onInbox]);
+  }, [language, onInbox, moved]);
   return dot && !onInbox;
 }
 

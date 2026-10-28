@@ -4,6 +4,7 @@ import {useOrbitLanguage} from '../orbit-language-context';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor} from './inbox-request';
 import {notificationDetailView,type NotificationRow} from './notification-inbox-view-model';
 import {notificationDetailPath,verifiedSourceNote} from './notification-source-view-model';
+import { AREA_FALLBACK_MS } from '../orbit-change-watch';
 export function NotificationSourcePage({notificationId}:{notificationId:string}) {
  const {t,language}=useOrbitLanguage(),[record,setRecord]=useState<NotificationRow|null>(null),[note,setNote]=useState<{title:string;body:string}|null>(null),[error,setError]=useState(false),[attempt,setAttempt]=useState(0);
  useEffect(()=>{let controller=new AbortController(),busy=false;setRecord(null);setNote(null);setError(false);
@@ -15,7 +16,7 @@ export function NotificationSourcePage({notificationId}:{notificationId:string})
    if(!active.signal.aborted){setRecord(n);setNote(original);setError(false);}
   }catch{if(!active.signal.aborted){invalidateInboxActorConfirmation();setRecord(null);setNote(null);setError(true);}}finally{busy=false;}}
   function visibility(){controller.abort();controller=new AbortController();busy=false;setRecord(null);setNote(null);if(document.visibilityState!=='hidden')void load();}
-  void load();const timer=setInterval(()=>void load(),15000);document.addEventListener('visibilitychange',visibility);
+  void load();const timer=setInterval(()=>void load(),AREA_FALLBACK_MS);document.addEventListener('visibilitychange',visibility);
   return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',visibility);};
  },[notificationId,language,attempt]);
  return <section style={{maxWidth:720,margin:'32px auto',padding:24}}>

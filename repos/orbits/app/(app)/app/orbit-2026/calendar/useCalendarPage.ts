@@ -5,6 +5,7 @@ import { calendarWindow, type CalendarMode } from "./calendar-range";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { CalendarReadError, createCalendarReadClient, type CalendarInternalRead, type CalendarExternalRead } from "./calendar-read-client";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { useAreaChanges } from "../../orbit-change-watch";
 
 export type CalendarPart<T> = { state: "idle" | "loading" | "ready" | "failed"; data: T | null };
 interface Snapshot { scope: string; denied: boolean; internal: CalendarPart<CalendarInternalRead>; external: CalendarPart<CalendarExternalRead> }
@@ -46,6 +47,8 @@ export function useCalendarPage(zone: string, date: string, mode: CalendarMode, 
     if (active()) request.current = null;
   }, [cancel, client, enabled, language, ready, scope, window]);
   useEffect(() => { void refresh(); return cancel; }, [cancel, refresh]);
+  // Schedule items or tasks changed elsewhere: read the range again behind the entries on screen.
+  useAreaChanges(["calendar"], () => { void refresh(); });
   const visible = snapshot.scope === scope ? snapshot : empty(scope, enabled ? "loading" : "idle");
   return { internal: visible.internal, external: visible.external, denied: visible.denied, window, refresh };
 }

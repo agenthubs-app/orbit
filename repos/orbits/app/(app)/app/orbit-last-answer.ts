@@ -18,6 +18,7 @@
  */
 "use client";
 
+import type { ChangeArea } from "../../../shared/storage/change-tokens";
 import { getSharedReadAccount } from "./orbit-shared-read";
 
 /** 新鲜期：挂载时在这之内就不重读。准实时的数据（收件箱）另有自己的轮询。 */
@@ -36,7 +37,7 @@ export const FRESH = {
 const LIMIT = 64;
 type Entry = { value: unknown; at: number; stale: boolean };
 const answers = new Map<string, Entry>();
-const staleListeners = new Set<() => void>();
+const staleListeners = new Set<(areas: readonly ChangeArea[] | null) => void>();
 let owner: string | null = null;
 
 function keyOf(resource: string): string | null {
@@ -77,14 +78,35 @@ export function rememberAnswer<T>(resource: string, value: T): void {
   while (answers.size > LIMIT) answers.delete(answers.keys().next().value as string);
 }
 
-/** 一次写操作之后：全部结果「需要重读」（仍然先显示），并通知订阅者。 */
+/** 一次写操作之后：全部结果「需要重读」（仍然先显示），并通知订阅者（areas = null 表示全部）。 */
 export function markAllAnswersStale(): void {
   for (const entry of answers.values()) entry.stale = true;
-  for (const listener of staleListeners) listener();
+  for (const listener of staleListeners) listener(null);
 }
 
-/** 订阅「全部作废」（正在显示的读取方据此立刻在后台重读）；返回取消订阅。 */
-export function onAnswersStale(listener: () => void): () => void {
+/** 每个区域（/api/changes 的 token）对应的结果 key 前缀。 */
+export const AREA_ANSWER_PREFIXES: Readonly<Record<ChangeArea, readonly string[]>> = {
+  inbox: ["inbox:"],
+  contacts: ["network:", "contacts:"],
+  tasks: ["todo:"],
+  calendar: ["todo:"],
+  memo: ["memo:"],
+  agent: ["agent:"],
+};
+
+/** 变更游标说某些区域变了（别的设备、别人发来的消息）：只把这些区域的结果标成需要重读，并通知订阅者。 */
+export function markAreaAnswersStale(areas: readonly ChangeArea[]): void {
+  if (!areas.length) return;
+  const prefixes = areas.flatMap((area) => AREA_ANSWER_PREFIXES[area]);
+  for (const [key, entry] of answers) {
+    const resource = key.slice(key.indexOf("\u0000") + 1);
+    if (prefixes.some((prefix) => resource.startsWith(prefix))) entry.stale = true;
+  }
+  for (const listener of staleListeners) listener(areas);
+}
+
+/** 订阅作废（areas：变了的区域；null：一次写操作之后的全部）；返回取消订阅。 */
+export function onAnswersStale(listener: (areas: readonly ChangeArea[] | null) => void): () => void {
   staleListeners.add(listener);
   return () => { staleListeners.delete(listener); };
 }

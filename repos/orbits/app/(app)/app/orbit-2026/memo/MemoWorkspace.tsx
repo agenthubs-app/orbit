@@ -10,6 +10,7 @@ import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { Bone, Button, CategoryTabs, Chip, EmptyState, Modal, Orbit2026Scope, RetryCard, SearchField, Skeleton, TextField, ToastProvider, useStandardCopy, useToast } from "../ui";
 import { activeMemoMentionQuery, insertMemoMention, memoContactIds, memoPage, memoRequest, memoTabForKind, rebaseMemoMentions, type MemoMentionCandidate, type MemoRow, type MemoTab } from "./memo-model";
 import styles from "./memo.module.css";
+import { useAreaChanges } from "../../orbit-change-watch";
 
 type Counts = Record<MemoTab, number | null>;
 const countsKey = (query: string) => `memo:counts:${query}`;
@@ -127,6 +128,9 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
     }
   }, [cursor, settledQuery, tab]);
   useEffect(() => { setNotes(null); setCursor(undefined); void read(); return () => { generation.current++; }; }, [tab, settledQuery]); // read is intentionally triggered only by the query, not each page cursor
+  // Notes changed elsewhere: the list and the tab counts read again behind what is shown.
+  const [notesMoved, setNotesMoved] = useState(0);
+  useAreaChanges(["memo"], () => { void read(); setNotesMoved((value) => value + 1); });
   useEffect(() => {
     const controller = new AbortController();
     // A new search keeps the shown numbers until the new ones are in (or the remembered ones for that search).
@@ -148,7 +152,7 @@ function Workspace({ language, initialAdd, initialSelectedId }: { language: Orbi
       setCounts(next);
     });
     return () => controller.abort();
-  }, [settledQuery]);
+  }, [settledQuery, notesMoved]);
   const select = (id: string) => {
     pinnedId.current = id;
     setSelected(id);

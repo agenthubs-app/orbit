@@ -10,6 +10,7 @@ import shellStyles from "../orbit-2026/shell/shell.module.css";
 import ws from "./inbox-workspace.module.css";
 import { inboxListTime } from "./inbox-list-time";
 import { lastAnswer, rememberAnswer } from "../orbit-last-answer";
+import { AREA_FALLBACK_MS, useAreaChanges } from "../orbit-change-watch";
 import { BoundedMessageReadError, filterMessageCards, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
@@ -38,6 +39,8 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const changed = useRef(onIdentityChanged); changed.current = onIdentityChanged;
   const lifetime = useRef<AbortController | null>(null);
   const readKey = useRef("");
+  const refreshList = useRef<(() => void) | null>(null);
+  const refreshWindow = useRef<(() => void) | null>(null);
   useEffect(() => {
     const controller = new AbortController(); lifetime.current = controller;
     return () => { controller.abort(); lifetime.current = null; };
@@ -56,9 +59,11 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
         setCards(null); setListError(true);
       } finally { busy = false; }
     };
-    void refresh(); const timer = setInterval(() => void refresh(), 15_000);
+    // New messages arrive through the change cursor (useAreaChanges below); the timer is only the slow fallback.
+    void refresh(); const timer = setInterval(() => void refresh(), AREA_FALLBACK_MS);
+    refreshList.current = () => void refresh();
     document.addEventListener("visibilitychange", refresh);
-    return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+    return () => { controller.abort(); clearInterval(timer); refreshList.current = null; document.removeEventListener("visibilitychange", refresh); };
   }, [actorId, listCursor, attempt]);
   useEffect(() => {
     setDetail(null); setDetailError(false);
@@ -76,11 +81,13 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     };
     void refresh();
     // Browsing an older page must not jump to the latest window or mark a
-    // backwards read pointer. Foreground latest windows still refresh in 15s.
-    const timer = historyCursor ? undefined : setInterval(() => void refresh(), 15_000);
+    // backwards read pointer. The latest window reads again when the inbox moves (change cursor) or on the fallback.
+    const timer = historyCursor ? undefined : setInterval(() => void refresh(), AREA_FALLBACK_MS);
+    refreshWindow.current = historyCursor ? null : () => void refresh();
     document.addEventListener("visibilitychange", refresh);
-    return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+    return () => { controller.abort(); clearInterval(timer); refreshWindow.current = null; document.removeEventListener("visibilitychange", refresh); };
   }, [actorId, selected, historyCursor, attempt]);
+  useAreaChanges(["inbox"], () => { refreshList.current?.(); refreshWindow.current?.(); });
   // Load the saved reply draft once per opened conversation, unless the user
   // already started typing.
   useEffect(() => {

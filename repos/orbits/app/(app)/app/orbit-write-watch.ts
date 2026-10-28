@@ -7,6 +7,7 @@
  */
 "use client";
 
+import { adoptNextChanges } from "./orbit-change-watch";
 import { markAllAnswersStale } from "./orbit-last-answer";
 
 const READS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -27,7 +28,7 @@ export function installWriteWatch(): void {
   const original = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const response = await original(input, init);
-    if (response.ok && isDataWrite(input, init)) markAllAnswersStale();
+    if (response.ok && isDataWrite(input, init)) { markAllAnswersStale(); adoptNextChanges(); }
     return response;
   };
 }

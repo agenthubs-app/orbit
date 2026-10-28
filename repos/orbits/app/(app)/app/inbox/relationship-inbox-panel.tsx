@@ -4,6 +4,7 @@ import { sanitizeInboxComposeSeed, type NewThreadSeed } from './inbox-compose-se
 import { Segmented } from '../orbit-2026/ui';
 import { ScopedBone, ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
 import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
+import { AREA_FALLBACK_MS, useAreaChanges } from '../orbit-change-watch';
 import { ShellPage } from '../orbit-2026/shell/slots';
 import { readWebInboxSummary } from './inbox-summary-client';
 
@@ -982,6 +983,7 @@ function RelationshipInboxPanel({
   const [identityError, setIdentityError] = useState(false);
   // null until the first count read answers: the tabs wait as a skeleton rather than gaining their numbers later.
   const [counts, setCounts] = useState<Record<InboxTab, number> | null>(() => lastAnswer<Record<InboxTab, number>>("inbox:counts") ?? null);
+  const refreshCountsRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!actorId) return;
     let active = true;
@@ -994,9 +996,12 @@ function RelationshipInboxPanel({
       finally { loading = false; }
     }
     void refreshCounts();
-    const timer = setInterval(() => void refreshCounts(), 15_000);
-    return () => { active = false; clearInterval(timer); };
+    refreshCountsRef.current = () => void refreshCounts();
+    // The change cursor says when the inbox moved (useAreaChanges below); this is only the slow fallback.
+    const timer = setInterval(() => void refreshCounts(), AREA_FALLBACK_MS);
+    return () => { active = false; refreshCountsRef.current = null; clearInterval(timer); };
   }, [actorId, language, tab]);
+  useAreaChanges(["inbox"], () => refreshCountsRef.current?.());
   useEffect(() => {
     const controller = new AbortController();
     void readContactMessageActor(controller.signal).then(actor => {

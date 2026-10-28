@@ -23,6 +23,7 @@ import {
   OTHER_KEY, industryOptionLabel, lastTouch, networkQuery, networkRow, regionLabel, toggle, topFacetOptions, type NetworkCityKey, type NetworkFilters, type NetworkRow, type NetworkTab,
 } from "./network-model";
 import styles from "./network.module.css";
+import { useAreaChanges } from "../../orbit-change-watch";
 
 const CHIP_KEY = { meishi: "chipMeishi", phone: "chipPhone", manual: "chipManual", self: "chipSelf", event: "chipEvent" } as const;
 /** Brand names are not translated (same in ja / zh / en). */
@@ -125,6 +126,8 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
   // with the bare key and again once the summary lands. Wait for the summary then (the list keeps its skeleton).
   const needsFacets = summary === null && (filters.industries.includes(OTHER_KEY) || filters.regions.includes(OTHER_KEY));
   const firstList = useRef(true);
+  // A refresh (retry, or contacts changed elsewhere) reads the list again even when the query string is the same.
+  const [listVersion, setListVersion] = useState(0);
   useEffect(() => {
     if (designLoading || needsFacets) return;
     const first = firstList.current;
@@ -143,14 +146,16 @@ function NetworkInner({ language, nowIso, initialContactId = null }: NetworkScre
       });
     }, query ? 250 : 0);
     return () => clearTimeout(handle);
-  }, [pageQuery, designLoading, needsFacets]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageQuery, designLoading, needsFacets, listVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = async () => {
     if (!cursor) return;
     const result = await networkApi.page(networkQuery({ query, tab, filters, facets: summary, limit: PAGE_SIZE, cursor }));
     if (result.ok) { setItems((current) => [...(current ?? []), ...result.data.items]); setCursor(result.data.nextCursor); }
   };
-  const refresh = () => { void loadSummary(); setFilters((current) => ({ ...current })); };
+  const refresh = () => { void loadSummary(); setListVersion((value) => value + 1); };
+  // Contacts changed elsewhere (another device, an import finishing): read the counts and the list again behind them.
+  useAreaChanges(["contacts"], refresh);
   const rows = useMemo(() => (items ?? []).map((card) => networkRow(card, links ?? NO_LINKS)), [items, links]);
   const planCandidates = rows.filter((row) => row.goal).slice(0, 2);
   const planCandidateNames = planCandidates.map((row) => language === "ja" ? t("railPersonName", { name: row.name.split(/\s+/u)[0] }) : row.name)

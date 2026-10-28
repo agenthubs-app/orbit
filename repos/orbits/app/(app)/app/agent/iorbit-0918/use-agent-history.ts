@@ -52,6 +52,7 @@ import {
   type AgentSessionSummary,
   type AgentSessionUndoReceipt,
 } from "./iorbit-model";
+import { useAreaChanges } from "../../orbit-change-watch";
 
 // 删除当前会话时要重置的对话侧状态。`use-agent-chat` 在组件里通过 `bindChat`
 // 注册；它们全是 `useState` 的 setter 与 ref，引用稳定。
@@ -103,6 +104,8 @@ export function useAgentHistory() {
   const [historyPageLoading, setHistoryPageLoading] = useState(!remembered);
   const [historyReadError, setHistoryReadError] = useState<"page" | "more" | null>(null);
   const [historyRefreshVersion, setHistoryRefreshVersion] = useState(0);
+  // A conversation changed elsewhere (another device): the history reads again behind the list on screen.
+  useAreaChanges(["agent"], () => setHistoryRefreshVersion((version) => version + 1));
   const [groupMutationPending, setGroupMutationPending] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);

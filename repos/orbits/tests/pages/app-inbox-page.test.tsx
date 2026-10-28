@@ -21,8 +21,10 @@ test("the page renders the panel inline: no scrim, focus trap, resize handle or 
   assert.match(panel, /role=\{inline \? "region" : "dialog"\}/u);
 });
 
-test("reads and cadence are unchanged: one counts read per 15 seconds while visible, the same summary endpoint", () => {
-  assert.equal((panel.match(/setInterval\(\(\) => void refreshCounts\(\), 15_000\)/gu) ?? []).length, 1);
+test("counts read when the change cursor says the inbox moved, with a slow fallback while visible; the same summary endpoint", () => {
+  assert.match(panel, /useAreaChanges\(\["inbox"\], \(\) => refreshCountsRef\.current\?\.\(\)\)/u);
+  assert.equal((panel.match(/setInterval\(\(\) => void refreshCounts\(\), AREA_FALLBACK_MS\)/gu) ?? []).length, 1);
+  assert.doesNotMatch(panel, /15_000/u, "no 15-second polling any more");
   assert.match(panel, /if \(loading \|\| document\.visibilityState === "hidden"\) return;/u);
   const shell = readFileSync("app/(app)/app/orbit-2026/shell/Orbit2026Shell.tsx", "utf8");
   assert.equal((shell.match(/readInboxUnreadCounts\(/gu) ?? []).length, 1);

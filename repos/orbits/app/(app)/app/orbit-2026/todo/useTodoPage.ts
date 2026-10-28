@@ -5,6 +5,7 @@ import { TODO_SECTION_SOURCES, todoPageSchema } from "../../../../../shared/api-
 import type { TodoPageContract, TodoSection, TodoSectionKey, TodoSourceKey } from "../../../../../shared/contract/todo-page";
 import { FRESH, answerFresh, lastAnswer, rememberAnswer } from "../../orbit-last-answer";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
+import { useAreaChanges } from "../../orbit-change-watch";
 
 type ReadState = "idle" | "loading" | "ready" | "failed" | "not_implemented";
 type PagingState = Partial<Record<TodoSourceKey, "loading" | "failed">>;
@@ -86,6 +87,8 @@ export function useTodoPage(timeZone: string, date: string, enabled = true) {
     publish({ scope, state: answer.kind === "ok" ? "ready" : answer.kind === "not_implemented" ? "not_implemented" : "failed", page: answer.kind === "ok" ? answer.page : null, paging: {}, denied: answer.kind === "denied" });
   }, [cancel, date, enabled, publish, ready, scope, timeZone, url]);
 
+  // Tasks, follow-ups or contacts changed elsewhere: read the page again behind what is shown.
+  useAreaChanges(["tasks", "contacts"], () => { void refresh(); });
   // A remembered page younger than FRESH.list (and no write since) is not read again on mount (orbit-last-answer).
   useEffect(() => {
     if (seeded.current && answerFresh(answerKey(date, timeZone), FRESH.list)) { seeded.current = false; return cancel; }

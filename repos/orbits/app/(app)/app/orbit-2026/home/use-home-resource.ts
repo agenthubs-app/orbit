@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ZodType } from "zod";
 
+import type { ChangeArea } from "../../../../../shared/storage/change-tokens";
 import { FRESH, onAnswersStale } from "../../orbit-last-answer";
 import { getSharedReadAccount } from "../../orbit-shared-read";
 
@@ -69,6 +70,16 @@ function toResource<T>(answer: Body, schema: ZodType<T>): HomeResource<T> {
     ? { kind: "ready", data: parsed.data, readAt: answer.readAt } : { kind: "error" };
 }
 
+/** The home cards' reads behind each change-cursor area. */
+const AREA_PATHS: Readonly<Record<ChangeArea, readonly string[]>> = {
+  inbox: ["/api/inbox"],
+  contacts: ["/api/contacts", "/api/home/guide-progress"],
+  tasks: ["/api/todo"],
+  calendar: ["/api/schedule-items", "/api/todo"],
+  memo: ["/api/notes"],
+  agent: ["/api/ai/conversations"],
+};
+
 let focusWired = false;
 function wireFocusRefresh(): void {
   if (focusWired) return;
@@ -79,9 +90,15 @@ function wireFocusRefresh(): void {
   };
   window.addEventListener("focus", onFocus);
   document.addEventListener("visibilitychange", onFocus);
-  // A write anywhere on the page: the cards on screen read again now (behind their content), the others on mount.
-  onAnswersStale(() => {
-    for (const [path, entry] of entries) { entry.startedAt = 0; if (entry.listeners.size > 0) revalidate(path, 0); }
+  // A write anywhere on the page (areas null), or an area moved elsewhere (the change cursor): the matching cards on
+  // screen read again now (behind their content), the others on their next mount.
+  onAnswersStale((areas) => {
+    const prefixes = areas ? areas.flatMap((area) => AREA_PATHS[area]) : null;
+    for (const [path, entry] of entries) {
+      if (prefixes && !prefixes.some((prefix) => path.startsWith(prefix))) continue;
+      entry.startedAt = 0;
+      if (entry.listeners.size > 0) revalidate(path, 0);
+    }
   });
 }
 

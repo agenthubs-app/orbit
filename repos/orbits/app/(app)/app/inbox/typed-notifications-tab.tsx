@@ -8,6 +8,7 @@ import { CategoryTabs, Icon, MacTile, type IconName } from '../orbit-2026/ui';
 import { ShellPage } from '../orbit-2026/shell/slots';
 import { ScopedPageSkeleton } from '../orbit-2026/shell/RouteSkeleton';
 import { lastAnswer, rememberAnswer } from '../orbit-last-answer';
+import { AREA_FALLBACK_MS, useAreaChanges } from '../orbit-change-watch';
 import ws from './inbox-workspace.module.css';
 import {inboxListTime} from './inbox-list-time';
 import {useEffect,useMemo,useRef,useState,type ComponentProps} from 'react';
@@ -109,6 +110,8 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  function selectFilter(next:keyof typeof categories){setFilter(next);const url=new URL(window.location.href);url.searchParams.set('filter',next);window.history.replaceState(window.history.state,'',url);}
  const scope=useRef<AbortController|null>(null),pending=useRef<{id:string;request:{action:keyof typeof actions;expectedRevision:number;idempotencyKey:string;scheduledFor?:string}}|null>(null),lock=useRef(false),query=`language=${language}${filter==='history'?'&history=true':filter==='all'||filter==='secretary'?'':'&kind='+filter}`;
  const changed=useRef(onIdentityChanged);changed.current=onIdentityChanged;
+ const refreshList=useRef<(()=>void)|null>(null);
+ useAreaChanges(['inbox'],()=>{refreshList.current?.();setStatsVersion(n=>n+1);});
  const listKey='inbox:notifications:'+actorId+':'+query;
  async function request(path:string,options:RequestInit={},controller=scope.current,allowMissing=false){
   if(!controller||controller.signal.aborted)throw new Error();
@@ -129,7 +132,9 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     const next=filter==='secretary'?await scanSecretaryNotificationPage(load):await load();
     if(!controller.signal.aborted){setData({...next,items:[...next.items]});setError('');rememberAnswer(listKey,next);}
   }catch{if(!controller.signal.aborted){invalidateInboxActorConfirmation();setData(null);setError(t({zh:'通知读取失败，请重试。',en:'Could not load notifications. Retry.',ja:'通知を読み込めません。再試行してください。'}));}}finally{loading=false;}}
-  void refresh();const timer=setInterval(()=>void refresh(),15000);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
+  // New notifications arrive through the change cursor (useAreaChanges below); the timer is only the slow fallback
+  // (a reminder that comes due writes nothing the cursor sees).
+  void refresh();refreshList.current=()=>void refresh();const timer=setInterval(()=>void refresh(),AREA_FALLBACK_MS);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();refreshList.current=null;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[actorId,query,filter,attempt]);
  // Chip counts come from a complete 'all' list only; a partial page would undercount, so then there are none.

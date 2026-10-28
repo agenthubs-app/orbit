@@ -13,6 +13,7 @@
 
 import { signOut } from "next-auth/react";
 
+import { resetChangeWatch } from "./orbit-change-watch";
 import { clearAnswers } from "./orbit-last-answer";
 import { clearHomeResources } from "./orbit-2026/home/use-home-resource";
 import { clearKioskDevice } from "./orbit-2026/host/kiosk-store";
@@ -23,6 +24,7 @@ const PERSONAL_PREFIXES = ["orbit.onboarding.v1:", "orbit:inbox:tab:"];
 export function forgetThisAccountOnDevice(): void {
   clearAnswers();
   clearHomeResources();
+  resetChangeWatch();
   try {
     for (const key of PERSONAL_KEYS) window.localStorage.removeItem(key);
     for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
