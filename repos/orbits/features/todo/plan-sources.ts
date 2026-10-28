@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { PlanPoolLike } from "../plans/repository";
 import { createPostgresPlanV2Repository } from "../plans/v2/repository";
+import type { PlanV2Reader, PlanV2Repository } from "../plans/v2/types";
 import { createPlanV2Service } from "../plans/v2/service";
 import type { PlanEventFact } from "../plans/v2/overview";
 import { localParts } from "../tasks/local-date-time";
@@ -35,10 +36,36 @@ function boundedReadPool(pool: PlanPoolLike): PlanPoolLike {
   } };
 }
 
+/** The two plan sources (pending, today's chance) read the same plan rows: within one to-do read
+ * (`answers`, created per read() by the to-do service) each read is asked once and its answer
+ * shared, handed out as a copy so neither caller can change what the other sees. Writes are refused. */
+function sharedPlanReads(repository: PlanV2Repository, answers: Map<string, Promise<unknown>>): PlanV2Repository {
+  return {
+    transact: () => { throw Error("TODO_PLAN_READ_SHAPE_UNSUPPORTED"); },
+    read: (scope, operation) => repository.read(scope, reader => operation(new Proxy(reader, {
+      get(target, name) {
+        const method = Reflect.get(target, name) as unknown;
+        if (typeof method !== "function" || typeof name !== "string") return method;
+        return (...args: unknown[]) => {
+          const key = JSON.stringify(["todo-plan", scope.workspaceId, scope.actorId, name, args]);
+          let answer = answers.get(key);
+          if (!answer) {
+            answer = (method as (...values: unknown[]) => Promise<unknown>).apply(target, args);
+            answers.set(key, answer);
+            answer.catch(() => answers.delete(key));
+          }
+          return answer.then(value => structuredClone(value));
+        };
+      },
+    }) as PlanV2Reader)),
+  };
+}
+
 export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: string; now?: () => Date; assertAllowed: (collection: string) => void; events?: (actorId: string, at: Date) => Promise<PlanEventFact[]> }): { plan_pending: TodoSourceReader; plan_today_chance: TodoSourceReader } {
-  const makeService = (actorId: string, events?: () => Promise<PlanEventFact[]>, now = input.now) => {
+  const makeService = (actorId: string, shared: Map<string, Promise<unknown>> | undefined, events?: () => Promise<PlanEventFact[]>, now = input.now) => {
     for (const collection of collections) input.assertAllowed(collection);
-    return createPlanV2Service({ repository: createPostgresPlanV2Repository({ pool: boundedReadPool(input.pool) }),
+    const repository = createPostgresPlanV2Repository({ pool: boundedReadPool(input.pool) });
+    return createPlanV2Service({ repository: shared ? sharedPlanReads(repository, shared) : repository,
       scope: { actorId, workspaceId: input.workspaceId }, now,
       ...(events ? { events } : {}),
     });
@@ -47,7 +74,7 @@ export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: 
     plan_pending: async query => {
       // pendingItems uses only plans, log, types, candidates and contacts; event
       // facts do not affect it. Do not execute pending()'s optional event loader.
-      const items = await makeService(query.actorId).pending();
+      const items = await makeService(query.actorId, query.shared).pending();
       const unique = [...new Map(items.map(item => [item.id, item])).values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
       const after = query.cursor ? z.string().min(1).max(2048).parse(JSON.parse(query.cursor)) : null;
       const remaining = unique.filter(item => !after || item.id > after);
@@ -60,7 +87,7 @@ export function createTodoPlanReaders(input: { pool: PlanPoolLike; workspaceId: 
     plan_today_chance: async query => {
       let facts: PlanEventFact[] = [];
       const at = input.now?.() ?? new Date();
-      const service = makeService(query.actorId, async () => facts, () => at);
+      const service = makeService(query.actorId, query.shared, async () => facts, () => at);
       // Only the chance is shown: not summary()'s goal scores, nor the rest of overview().
       const planId = await service.currentPlanId();
       if (!planId) return { entries: [], total: 0, hasMore: false, notImplemented: true };

@@ -66,6 +66,10 @@ export function createTodoContactReadStore(input: { client: LiveRecordSqlClient;
     if (!query.collectionName || !allowed.has(query.collectionName) || query.workspaceId !== input.workspaceId || (query.userId && query.userId !== input.actorId)) throw Error("TODO_SOURCE_READ_SCOPE_INVALID");
     input.assertAllowed(query.collectionName);
     if (!query.recordId && DRAFT_ANCHORS.has(query.collectionName)) return (await anchor(query.collectionName)).map((row) => rowToRecord<Record<string, unknown>>(row));
+    // Evidence only fills each draft's evidence summaries; a to-do row shows the draft's id, name,
+    // relationship context and creation time, and which drafts are pending does not depend on it.
+    // It is the largest join (the qa account cites 4,483 records, 1.8 MB), so it is not read here.
+    if (!query.recordId && query.collectionName === "evidence") return [];
     if (!query.recordId && DRAFT_JOINS.has(query.collectionName)) return (await join(query.collectionName)).map((row) => rowToRecord<Record<string, unknown>>(row));
     const reply = await input.client.query<PostgresLiveRecordRow>(`select ${ROW_COLUMNS} from orbit_records
       where ${live} and ($4::text is null or record_id=$4) order by updated_at desc,record_id limit $5`,

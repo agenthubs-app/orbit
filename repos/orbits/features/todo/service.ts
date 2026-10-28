@@ -5,7 +5,8 @@ import type { TodoDecisionItem, TodoFollowupItem, TodoNextMoveItem, TodoPageCont
 
 export interface TodoReadInput { actorId: string; date: string; timeZone: string; section?: TodoSectionKey; source?: TodoSourceKey; cursor?: string; limit?: number }
 export type TodoItem = TodoDecisionItem | TodoNextMoveItem | TodoFollowupItem;
-export type TodoSourceReader = (input: Omit<TodoReadInput, "cursor"> & { limit: number; cursor: string | null }) => Promise<{ entries: readonly { item: TodoItem; cursor: string }[]; total: number; hasMore: boolean; capped?: boolean; overdue?: number; notImplemented?: boolean }>;
+/** `shared` lives for one read(): sources that need the same rows (the plan sources) answer each read once within it. */
+export type TodoSourceReader = (input: Omit<TodoReadInput, "cursor"> & { limit: number; cursor: string | null; shared?: Map<string, Promise<unknown>> }) => Promise<{ entries: readonly { item: TodoItem; cursor: string }[]; total: number; hasMore: boolean; capped?: boolean; overdue?: number; notImplemented?: boolean }>;
 export const TODO_FIRST_PAGE_LIMITS = { decisions: 5, nextMoves: 3, followups: 20 } as const;
 const cursorPosition = z.object({ position: z.string().min(1).max(8000).nullable() }).strict();
 const sections = ["decisions", "nextMoves", "followups"] as const;
@@ -44,13 +45,14 @@ export function createTodoPageService(input: { workspaceId: string; secret: stri
       counts: { decisions: 0, nextMoves: 0, followups: 0, overdue: 0 }, countsCapped: { decisions: false, nextMoves: false },
       decisions: { items: [], next: {} }, nextMoves: { items: [], next: {} }, followups: { items: [], next: {} }, sources: {},
     };
+    const shared = new Map<string, Promise<unknown>>();
     for (const section of sections) {
       const limit = query.section === section ? query.limit ?? TODO_FIRST_PAGE_LIMITS[section] : TODO_FIRST_PAGE_LIMITS[section];
       const answers = await Promise.all(TODO_SECTION_SOURCES[section].map(async source => {
         const reader = input.readers[source];
         if (!reader) { result.sources[source] = "not_implemented"; return null; }
         try {
-          const answer = await reader({ ...query, cursor: source === query.source ? position : null, limit });
+          const answer = await reader({ ...query, cursor: source === query.source ? position : null, limit, shared });
           if (answer.notImplemented) { result.sources[source] = "not_implemented"; return null; }
           const itemSchema = section === "decisions" ? todoDecisionItemObject : section === "nextMoves" ? todoNextMoveItemObject : todoFollowupItemObject;
           if (!Number.isSafeInteger(answer.total) || answer.total < 0 || answer.entries.length > limit
