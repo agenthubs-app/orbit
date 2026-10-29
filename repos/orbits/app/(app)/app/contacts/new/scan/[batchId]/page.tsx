@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 
 // R12 名刺 · 読み取り / まとめて確認 / 完成（DESIGN §2.2 第 4–7 步 Web）。批次数据由客户端按需拉取（useCardBatch）。
 export default async function AppContactsScanBatchPage({ params, searchParams }: { params: Promise<{ batchId: string }>; searchParams?: Promise<{ returnTo?: string | string[] }> }) {
-  const { batchId } = await params;
+  const { batchId: rawBatchId } = await params;
+  // 路由参数保留了编码（`bcb2%3A…`）；照片暂存与轮询都按原样的 `bcb2:…` 记，不解码会全部对不上、卡在上传。
+  let batchId = rawBatchId;
+  try { batchId = decodeURIComponent(rawBatchId); } catch { /* keep the raw id */ }
   const returnTo = webGuideReturnTo((await searchParams)?.returnTo);
   const session = await auth();
   if (!session?.user?.id) redirect(`/app/account/login?${new URLSearchParams({ next: appendWebGuideReturnTo(`/app/contacts/new/scan/${encodeURIComponent(batchId)}`, returnTo) })}`);
