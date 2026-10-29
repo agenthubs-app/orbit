@@ -282,52 +282,59 @@ function batchView(stage: "review" | "done", completed = false, serverMerged = f
   });
 }
 
-test("まとめて確認 (b9 ④ Web 统一): three tiles, 重複 as checked rows, 要確認 by reason, 会った場所 and unreadable cards below", async (t) => {
+test("名刺を確認 v2: one card at a time — why it needs a look, the photo, everything read, one decision each", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-unified-review]").waitFor();
-  await settles(page, '[data-review-tile="duplicate"] b', 1);
-  await settles(page, '[data-review-tile="review"] b', 1);
-  await settles(page, '[data-review-tile="asIs"] b', 2); // 1 already added + 1 held for 会った場所
-  assert.match(await page.locator('[data-review-duplicate="c-dup"]').innerText(), /高橋 美咲 · 青葉 VC[\s\S]*高橋 美咲 · 青葉ベンチャーズ/);
-  assert.equal(await page.locator('[data-review-duplicate="c-dup"] [role="checkbox"]').getAttribute("aria-checked"), "true");
-  await page.locator('[data-review-group="orgSuffix"]').waitFor();
+  await page.locator("[data-scan-review]").waitFor();
+  assert.equal(await page.locator("[data-review-queue]").getAttribute("data-review-queue"), "3");
+  assert.deepEqual(await page.locator("[data-review-queue-card]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-review-queue-card"))), ["c-dup", "c-guess", "c-fail"]);
   await page.locator("[data-scan-met]").getByRole("button", { name: "付けない" }).click();
   assert.deepEqual((await calls(page)).filter((c) => "chooseEvent" in c), [{ chooseEvent: null }]);
-  for (const button of ["retake", "manual", "skip"]) await page.locator(`[data-failed-${button}="c-fail"]`).waitFor();
-  // 1件ずつ見る opens the cards of 要確認 to edit.
-  await page.locator("[data-review-one-by-one]").click();
-  await page.locator('[data-review-edit="c-guess"]').click();
+  // 重複: the match reason on top, the photo, every field side by side, 同じ人 by default.
+  assert.match(await page.locator('[data-review-reason="duplicate"]').innerText(), /メールが一致/);
+  await page.locator('[data-review-photo="c-dup"]').waitFor();
+  assert.match(await page.locator('[data-review-compare="c-dup"]').innerText(), /青葉 VC[\s\S]*青葉ベンチャーズ/);
+  assert.equal(await page.locator('[data-review-choice="merge"]').getAttribute("aria-checked"), "true");
+  assert.equal(await page.locator('[data-review-confirm="c-dup"]').textContent(), "高橋 美咲 に統合して次へ");
+  await page.locator('[data-review-confirm="c-dup"]').click();
+  // 要確認: the issue on top and every field, editable in place.
+  await page.locator('[data-review-card="c-guess"]').waitFor();
+  assert.match(await page.locator('[data-review-reason="review"]').innerText(), /会社名の後半が欠けているかもしれません/);
   await page.locator('[data-field-editor="c-guess"] input').first().fill("松本 千尋さん");
   assert.ok((await calls(page)).some((c) => c.setDraft === "c-guess" && c.name === "松本 千尋さん"));
-  // 「N人を人脈に追加」: duplicates (統合 when checked), 要確認 and the held one — not the unreadable card.
-  assert.equal(await page.locator("[data-review-add-all]").getAttribute("data-review-add-all"), "3");
-  await page.locator("[data-review-add-all]").click();
-  await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.refresh));
-  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"], ["c-held", "confirm"]]);
+  await page.locator('[data-review-confirm="c-guess"]').click();
+  // 読み取れず: retake / type in / leave out — no add button until typed in.
+  await page.locator('[data-review-card="c-fail"]').waitFor();
+  for (const button of ["retake"]) await page.locator(`[data-failed-${button}="c-fail"]`).waitFor();
+  assert.equal(await page.locator('[data-review-confirm="c-fail"]').count(), 0);
+  await page.locator('[data-review-skip="c-fail"]').click();
+  // Then the clean held card is added with 会った場所.
+  await page.locator('[data-review-add-held="1"]').click();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.filter((c: any) => c.settle).length >= 4);
+  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"], ["c-fail", "skip"], ["c-held", "confirm"]]);
+  assert.deepEqual(await page.locator("[data-review-result]").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-review-result"))), ["added", "added", "skipped"]);
 });
 
-test("まとめて確認: 選んだ N件を統合 merges the checked rows; unchecked ones are added as someone else; 提案どおりに直す confirms 要確認", async (t) => {
+test("名刺を確認 v2: 別の人 adds the duplicate as a new person", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-unified-review]").waitFor();
-  assert.equal(await page.locator("[data-review-merge]").textContent(), "選んだ 1件を統合");
-  await page.locator("[data-review-merge]").click();
+  await page.locator('[data-review-card="c-dup"]').waitFor();
+  await page.locator('[data-review-choice="separate"]').click();
+  assert.equal(await page.locator('[data-review-confirm="c-dup"]').textContent(), "新しく追加して次へ");
+  await page.locator('[data-review-confirm="c-dup"]').click();
   await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.settle));
-  await page.locator("[data-review-apply]").click();
-  await page.waitForFunction(() => (window as any).shellFixture.calls.filter((c: any) => c.settle).length >= 2);
-  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-guess", "confirm"]]);
+  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "confirm"]]);
 });
 
-test("まとめて確認 keyboard (1件ずつ): → moves to the next card, S skips it, ↵ confirms", async (t) => {
+test("名刺を確認 v2 keyboard: ↵ confirms the card on screen, → moves to the next, S leaves it out", async (t) => {
   const page = await screen(t, { view: "batch", batch: batchView("review") });
-  await page.locator("[data-unified-review]").waitFor();
-  await page.locator("[data-review-one-by-one]").click();
+  await page.locator('[data-review-card="c-dup"]').waitFor();
   await page.locator("body").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("Enter");
-  await page.waitForFunction(() => (window as any).shellFixture.calls.some((c: any) => c.settle));
+  await page.locator('[data-review-card="c-guess"]').waitFor();
   await page.keyboard.press("ArrowRight");
+  await page.locator('[data-review-card="c-fail"]').waitFor();
   await page.keyboard.press("s");
   await page.waitForFunction(() => (window as any).shellFixture.calls.filter((c: any) => c.settle).length >= 2);
-  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle).slice(0, 1), [["c-guess", "confirm"]]);
+  assert.deepEqual((await calls(page)).filter((c) => c.settle).map((c) => c.settle), [["c-dup", "merge"], ["c-fail", "skip"]]);
 });
 
 test("完成: new / merged / unreadable (unreadable not counted as added); plan line waits for the batch to complete", async (t) => {
@@ -396,7 +403,7 @@ test("手入力 (b11 A3 Web): a 520 drawer, the save row follows the fields (保
 
 test("dark mode and 390 render without errors", async (t) => {
   const dark = await screen(t, { view: "batch", batch: batchView("review") }, { dark: true });
-  await dark.locator("[data-unified-review]").waitFor();
+  await dark.locator("[data-scan-review]").waitFor();
   const narrow = await screen(t, { view: "manual", handlers: [EVENTS, UPCOMING] }, { width: 390 });
   await narrow.locator("[data-manual-form]").waitFor();
 });

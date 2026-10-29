@@ -199,21 +199,19 @@ test("e2e: upload 4 cards (one front + back) → read → auto into 人脈 → �
   await page.locator('[data-scan-phase="review"]').waitFor({ timeout: 45_000 });
   const contacts = () => page.evaluate(() => (window as any).fakeServer.contacts.length);
   assert.equal(await contacts(), before + 1, "normal card added automatically; the identical one merged");
-  // R12 rework (UnifiedReview): the similar card is a duplicate row; the unreadable card is the only card left below.
-  assert.equal(await page.locator("[data-review-duplicates]").getAttribute("data-review-duplicates"), "1");
-  assert.equal(await page.locator("[data-review-duplicate]").count(), 1);
-  assert.equal(await page.locator("[data-failed-card]").count(), 1);
+  // 名刺を確認 v2: the similar card (重複) and the unreadable card wait, one at a time, with the photo.
+  assert.equal(await page.locator("[data-review-queue]").getAttribute("data-review-queue"), "2");
+  await page.locator('[data-review-section="duplicate"] [data-review-photo]').waitFor();
   const manifest = await page.evaluate(() => (window as any).fakeServer.items.map((item: any) => [item.sourceFileName, item.side, item.cardId]));
   const back = manifest.find(([name]: string[]) => name === "normal-back.jpg");
   const front = manifest.find(([name]: string[]) => name === "normal.jpg");
   assert.equal(back[1], "back");
   assert.equal(back[2], front[2], "the back is paired with the card before it");
 
-  // まとめて確認: the similar card is someone else; the unreadable card is skipped.
-  await page.locator("[data-review-separate]").click();
-  await page.locator("[data-review-duplicate]").waitFor({ state: "detached" });
-  await page.locator("[data-failed-skip]").waitFor();
-  await page.locator("[data-failed-skip]").click();
+  // 名刺を確認: the similar card is someone else; the unreadable card is left out.
+  await page.locator('[data-review-choice="separate"]').click();
+  await page.locator('[data-review-section="duplicate"] [data-review-confirm]').click();
+  await page.locator('[data-review-section="failed"] [data-review-skip]').click();
 
   await page.locator('[data-scan-phase="done"]').waitFor({ timeout: 20_000 });
   const settled = (key: string, n: number) => page.waitForFunction(([css, value]) => document.querySelector(css as string)?.textContent?.startsWith(String(value)), [`[data-done-tile="${key}"]`, n] as const);
@@ -237,8 +235,8 @@ test("R12 review m9: when the duplicate lookup fails nothing is added automatica
   assert.equal(await page.evaluate(() => (window as any).fakeServer.contacts.length), before, "nothing was added behind the person's back");
   const confirms = await page.evaluate(() => (window as any).fakeServer.log.filter((line: string) => /\/confirm$/.test(line)));
   assert.deepEqual(confirms, []);
-  assert.equal(await page.locator("[data-review-duplicate]").count(), 0);
-  assert.equal(await page.locator("[data-review-add-all]").getAttribute("data-review-add-all"), "2");
+  assert.equal(await page.locator("[data-review-queue]").getAttribute("data-review-queue"), "0");
+  assert.equal(await page.locator("[data-review-add-held]").getAttribute("data-review-add-held"), "2");
 });
 
 test("R12 review m12: the batch id is encoded before it goes into the API path", { timeout: 30_000 }, async (t) => {

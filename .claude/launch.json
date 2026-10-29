@@ -139,6 +139,24 @@
         "ORBIT_NEXT_DIST_DIR": ".next-r207",
         "ORBIT_REDESIGN_MOCK": "add-scan,add-import,invite-codes"
       }
+    },
+    {
+      "name": "orbits-scan",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3031"
+      ],
+      "port": 3031,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-scan",
+        "ORBIT_REDESIGN_MOCK": "add-scan"
+      }
     }
   ]
 }

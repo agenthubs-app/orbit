@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>名片确认 v2 提案</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#fff;--surface-2:#F2EFF3;--surface-3:#EAE6EC;--line:rgba(40,30,50,.08);
+  --ink:#1E1A24;--ink-2:#5E5866;--ink-3:#6F6778;--ink-4:#C4BEC9;
+  --accent:#6E628A;--accent-soft:#E9E4F2;
+  --apricot:#F7ECDD;--apricot-ink:#8B602E;--lav:#ECE6F7;--lav-ink:#6E5C9A;
+  --coral-soft:#FBE7E1;--coral-text:#B83E23;--ok:#5E9E86;--ok-soft:#E3F1EA;--ok-text:#447361;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"PingFang SC","Hiragino Sans",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;gap:12px;padding:20px 28px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#efeaf5,#f7f1f3)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:600}
+.steps{margin-left:auto;display:flex;gap:18px;color:var(--ink-3);font-size:13px}
+.steps b{color:var(--ink)}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 28px 120px}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
+.head h1{margin:0;font-size:24px}
+.head p{margin:4px 0 0;color:var(--ink-3)}
+.met{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.pill{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start}
+.card{background:var(--surface);border-radius:20px;box-shadow:0 1px 2px rgba(30,20,40,.04)}
+/* left queue */
+.queue{padding:14px}
+.qh{font-size:12px;color:var(--ink-3);padding:4px 8px 8px}
+.qi{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;border-radius:12px;padding:8px}
+.qi:hover{background:var(--surface-2)}
+.qi.on{background:var(--accent-soft)}
+.qi.done{opacity:.5}
+.thumb{width:54px;height:34px;border-radius:5px;background:#fff;border:1px solid var(--surface-3);flex:none;position:relative;overflow:hidden}
+.thumb:after{content:"";position:absolute;left:6px;top:8px;width:26px;height:3px;background:var(--ink-4);box-shadow:0 7px 0 var(--surface-3),0 13px 0 var(--surface-3)}
+.qm{min-width:0;flex:1}
+.qm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;margin-top:2px}
+.c-dup{background:var(--lav);color:var(--lav-ink)}
+.c-chk{background:var(--apricot);color:var(--apricot-ink)}
+.c-fail{background:var(--coral-soft);color:var(--coral-text)}
+.c-ok{background:var(--ok-soft);color:var(--ok-text)}
+.sep{height:1px;background:var(--line);margin:10px 8px}
+.added{font-size:13px;color:var(--ink-2);padding:6px 8px;display:flex;justify-content:space-between;width:100%;border:0;background:none;border-radius:10px}
+.added:hover{background:var(--surface-2)}
+.addedList{font-size:12px;color:var(--ink-3);padding:0 8px 6px;display:none}
+.addedList.show{display:block}
+/* main */
+.main{padding:22px}
+.reason{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;margin-bottom:18px}
+.reason b{display:block}
+.reason span{color:var(--ink-2);font-size:13px}
+.r-dup{background:var(--lav)} .r-chk{background:var(--apricot)} .r-fail{background:var(--coral-soft)}
+.body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:22px}
+.photoBox{background:var(--surface-2);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.photo{aspect-ratio:91/55;background:#fdfcf9;border-radius:6px;box-shadow:0 6px 18px rgba(30,20,40,.12);padding:18px 20px;position:relative;transform:rotate(-1.2deg);cursor:zoom-in;transition:transform .2s}
+.photo.zoom{transform:scale(1.25);cursor:zoom-out;z-index:5}
+.photo .co{font-size:11px;color:#555;letter-spacing:.04em}
+.photo .nm{font-size:22px;font-weight:600;margin-top:12px;letter-spacing:.08em}
+.photo .rl{font-size:11px;color:#444}
+.photo .ct{position:absolute;left:20px;bottom:14px;font-size:10px;color:#444;line-height:1.6}
+.photo.blur{filter:blur(2.6px) brightness(.92)}
+.mark{background:rgba(247,190,90,.35);border-radius:2px}
+.ptools{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink-3)}
+.ptools .pill{padding:3px 10px;font-size:12px}
+.fields h3,.cmp h3{margin:0 0 10px;font-size:14px}
+.f{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;padding:6px 0}
+.f label{color:var(--ink-3);font-size:13px}
+.f input{width:100%;border:1px solid var(--surface-3);border-radius:10px;padding:8px 10px;font:inherit;background:#fff}
+.f.flag input{border-color:#E7B36A;background:#FFF9EF}
+.f .alt{grid-column:2;font-size:12px;color:var(--apricot-ink);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:-2px}
+.f .alt button{border:1px solid #E7CFA8;background:#fff;border-radius:999px;padding:1px 9px;font-size:12px}
+.f.empty input{color:var(--ink-3)}
+.cmp table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th{font-weight:500;color:var(--ink-3);text-align:left;padding:6px 8px;font-size:12px}
+.cmp td{padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+.cmp td:first-child{color:var(--ink-3);width:48px;white-space:nowrap}
+.cmp tr.diff td:nth-child(3){background:#FFF9EF}
+.cmp tr.same td:nth-child(n+2){color:var(--ok-text)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.opt{border:1.5px solid var(--surface-3);border-radius:14px;padding:12px;text-align:left;background:#fff}
+.opt b{display:block}
+.opt span{font-size:12px;color:var(--ink-3)}
+.opt.on{border-color:var(--accent);background:#FAF8FD}
+.acts{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.btn{border-radius:999px;padding:10px 18px;border:0;background:var(--surface-2);font-weight:500}
+.btn.primary{background:var(--ink);color:#fff;margin-left:auto}
+.btn.ghost{background:none;color:var(--ink-2)}
+.kbd{font-size:11px;color:var(--ink-3);margin-left:4px}
+.foot{position:fixed;left:0;right:0;bottom:0;background:rgba(247,245,247,.92);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.foot .in{max-width:1240px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:14px}
+.prog{flex:1;display:flex;align-items:center;gap:12px;color:var(--ink-2);font-size:13px}
+.bar{width:160px;height:6px;border-radius:9px;background:var(--surface-3);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.doneBox{text-align:center;padding:60px 20px}
+.doneBox .big{font-size:40px}
+.notes{max-width:1240px;margin:28px auto 0;padding:0 28px;color:var(--ink-2);font-size:13px}
+.notes table{border-collapse:collapse;width:100%;background:#fff;border-radius:14px;overflow:hidden}
+.notes td,.notes th{padding:8px 12px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+.notes th{background:var(--surface-2);font-weight:600;color:var(--ink)}
+@media (max-width:900px){.grid,.body,.choice{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><div class="logo">O</div><b>Orbit</b>
+  <div class="steps"><span>✓ 基本信息</span><span>✓ 目标</span><span>✓ 优势与需求</span><span>✓ 自我介绍</span><b>5 导入名片</b></div>
+</div>
+
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>确认名片</h1>
+      <p id="sub"></p>
+    </div>
+    <div class="met">📍 这批名片是在哪认识的
+      <button class="pill on" data-met>10月24日 · 东京 SaaS Meetup</button>
+      <button class="pill" data-met>不记录</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <aside class="card queue">
+      <div class="qh">需要你看一下</div>
+      <div id="queue"></div>
+      <div class="sep"></div>
+      <button class="added" id="addedBtn"><span>✓ 已直接加入人脉</span><b id="addedN">7 人 ›</b></button>
+      <div class="addedList" id="addedList">识别清楚、没有重复的名片已自动加入：<br>中村 美咲 · 小林 拓也 · 加藤 由衣 · 吉田 翔 · 山口 恵 · 松本 大輔 · 井上 真央</div>
+    </aside>
+    <section class="card main" id="main"></section>
+  </div>
+</div>
+
+<div class="foot"><div class="in">
+  <div class="prog"><div class="bar"><i id="barI"></i></div><span id="progT"></span></div>
+  <span style="font-size:12px;color:var(--ink-3)">每张确认后立即保存。没看完可以先离开，剩下的留在「人脉 › 待确认」。</span>
+  <button class="btn" id="leave">先到这里</button>
+</div></div>
+
+<div class="notes">
+  <h3>按钮对照（旧 → 新）</h3>
+  <table>
+    <tr><th>旧</th><th>问题</th><th>新</th></tr>
+    <tr><td>作为另一个人添加 / 合并选中的1条</td><td>两个按钮都作用于「勾选的行」，勾选本身又表示合并，互相矛盾；只看姓名+公司无法判断是不是同一人</td><td>每张重复名片单独判断：左边照片、右边逐字段对照，二选一「是同一人 → 合并到 X」/「不是同一人 → 新建」，然后点一个按钮</td></tr>
+    <tr><td>逐条查看 / 按建议修改</td><td>看不到“建议”是什么就要一键套用</td><td>取消。没读准的字段直接黄色标出，旁边列出「也可能是：…」，点一下替换</td></tr>
+    <tr><td>稍后继续</td><td>不知道已确认的会不会丢、剩下的去哪</td><td>「先到这里」+ 一句说明：确认过的已保存，剩下的在「人脉 › 待确认」</td></tr>
+    <tr><td>将4人加入人脉</td><td>和上面“直接添加 7”数字对不上；不看就把需确认的也加进去</td><td>取消全局批量按钮。每张自己的主按钮写清结果：「加入人脉」「合并到 山本 健太」「新建 山本 健太」</td></tr>
+  </table>
+</div>
+
+<script>
+const cards=[
+ {id:1,type:'dup',name:'山本 健太',org:'株式会社ブルーリーフ',
+  reason:['人脉里可能已有这个人','邮箱一致 · 公司不同，可能换了工作'],
+  fields:{姓名:'山本 健太',公司:'株式会社ブルーリーフ',职位:'事業開発部 マネージャー',邮箱:'k.yamamoto@blueleaf.jp',电话:'090-1234-5678',地址:'東京都渋谷区神南1-2-3',行业:'IT · SaaS',地区:'日本 · 东京'},
+  existing:{姓名:'山本 健太',公司:'グリーンフィールド株式会社',职位:'営業部',邮箱:'k.yamamoto@blueleaf.jp',电话:'',地址:'',行业:'IT · SaaS',地区:'日本 · 东京'}},
+ {id:2,type:'chk',name:'佐々木 遥',org:'ノースウィンド合同会社',
+  reason:['姓名没读准','两次读取的结果不一样，请对照照片确认'],
+  fields:{姓名:'佐々本 遥',公司:'ノースウィンド合同会社',职位:'代表',邮箱:'haruka@northwind.co.jp',电话:'03-5555-0101',地址:'東京都港区芝浦4-5-6',行业:'咨询',地区:'日本 · 东京'},
+  flags:{姓名:['佐々木 遥','佐ヶ木 遥']}},
+ {id:3,type:'chk',name:'Lin Wei',org:'Harbor Labs',
+  reason:['公司名和电话正反两面写法不同','选一个要保存的写法'],
+  fields:{姓名:'Lin Wei',公司:'Harbor Labs Inc',职位:'Head of Partnerships',邮箱:'lin.wei@harborlabs.io',电话:'+81 80-0000-111',地址:'',行业:'软件',地区:'日本 · 东京'},
+  flags:{公司:['Harbor Labs, Inc.','ハーバーラボ株式会社'],电话:['+81 80-0000-1111']},twoSided:true},
+ {id:4,type:'fail',name:'没读出来',org:'IMG_4821.jpg',
+  reason:['这张照片读不出来','可以重新拍一张，或者照着照片手动填'],
+  fields:{姓名:'',公司:'',职位:'',邮箱:'',电话:'',地址:'',行业:'',地区:''}},
+];
+const state={cur:0,done:{},dupChoice:{},manual:{},addedExtra:0};
+const tag={dup:['可能重复','c-dup'],chk:['有字段没读准','c-chk'],fail:['没读出来','c-fail']};
+const $=s=>document.querySelector(s);
+
+function renderQueue(){
+  $('#queue').innerHTML=cards.map((c,i)=>{
+    const d=state.done[c.id];
+    const chip=d?`<span class="chip c-ok">${d}</span>`:`<span class="chip ${tag[c.type][1]}">${tag[c.type][0]}</span>`;
+    return `<button class="qi ${i===state.cur?'on':''} ${d?'done':''}" onclick="go(${i})"><span class="thumb"></span><span class="qm"><b>${c.name}</b><span style="font-size:12px;color:var(--ink-3)">${c.org}</span><br>${chip}</span></button>`;
+  }).join('');
+  const n=Object.keys(state.done).length, left=cards.length-n;
+  $('#sub').textContent=`11 张名片 · 7 张已直接加入 · ${left?`还有 ${left} 张需要你看一下`:'全部看完了'}`;
+  $('#barI').style.width=(n/cards.length*100)+'%';
+  $('#progT').textContent=`${n} / ${cards.length} 已确认`;
+}
+
+function photo(c){
+  if(c.type==='fail') return `<div class="photo blur"><div class="co">??? 株式会社</div><div class="nm">■■ ■■</div><div class="ct">TEL ■■■-■■■■<br>■■■@■■■.jp</div></div>`;
+  const f=c.fields, fl=c.flags||{};
+  const m=(k,v)=>fl[k]?`<span class="mark">${v}</span>`:v;
+  const right = c.flags&&c.flags.姓名 ? (c.flags.姓名[0]) : f.姓名;
+  return `<div class="photo" onclick="this.classList.toggle('zoom')"><div class="co">${m('公司',fl.公司?fl.公司[0]:f.公司)}</div><div class="rl">${f.职位}</div><div class="nm">${m('姓名',right)}</div><div class="ct">${m('电话',fl.电话?fl.电话[0]:f.电话)}<br>${f.邮箱}${f.地址?'<br>'+f.地址:''}</div></div>`;
+}
+
+function fieldsHtml(c){
+  const fl=c.flags||{}; const manual=state.manual[c.id];
+  if(c.type==='fail'&&!manual) return `<div class="fields"><h3>识别结果</h3><p style="color:var(--ink-3);font-size:13px">什么都没读出来。</p></div>`;
+  return `<div class="fields"><h3>${c.type==='fail'?'照着照片填写':'名片上读到的全部信息'} <span style="font-weight:400;color:var(--ink-3);font-size:12px">· 可以直接改</span></h3>`+
+   Object.entries(c.fields).map(([k,v])=>{
+     const alts=fl[k];
+     return `<div class="f ${alts?'flag':''} ${!v?'empty':''}"><label>${k}</label><input value="${v}" placeholder="${v?'':'名片上没有'}" data-k="${k}">${alts?`<div class="alt">⚠ 没读准，也可能是：${alts.map(a=>`<button onclick="pick(this,'${k}','${a}')">${a}</button>`).join('')}</div>`:''}</div>`;
+   }).join('')+`</div>`;
+}
+
+function cmpHtml(c){
+  const ch=state.dupChoice[c.id]||'merge';
+  const rows=Object.keys(c.fields).map(k=>{
+    const a=c.existing[k]||'—', b=c.fields[k]||'—';
+    const cls=a===b?'same':(c.existing[k]?'diff':'');
+    return `<tr class="${cls}"><td>${k}</td><td>${a}</td><td>${b}</td></tr>`;}).join('');
+  return `<div class="cmp"><h3>和人脉里的这个人对照</h3><table><tr><th></th><th>人脉里已有</th><th>这张名片</th></tr>${rows}</table>
+   <div class="choice">
+     <button class="opt ${ch==='merge'?'on':''}" onclick="setDup(${c.id},'merge')"><b>是同一个人</b><span>合并：公司、职位更新为名片上的，空着的字段补上，原来的记录和备注都保留</span></button>
+     <button class="opt ${ch==='new'?'on':''}" onclick="setDup(${c.id},'new')"><b>不是同一个人</b><span>另外新建一个联系人，两个人互不影响</span></button>
+   </div></div>`;
+}
+
+function render(){
+  renderQueue();
+  const c=cards[state.cur];
+  if(!c){ $('#main').innerHTML=`<div class="doneBox"><div class="big">🎉</div><h2>这批名片都处理好了</h2><p style="color:var(--ink-3)">共加入 ${7+state.addedExtra} 人，下一步回到引导</p><button class="btn primary" style="margin:12px auto 0">继续引导</button></div>`; return; }
+  const [t1,t2]=c.reason, rc={dup:'r-dup',chk:'r-chk',fail:'r-fail'}[c.type];
+  const ch=state.dupChoice[c.id]||'merge';
+  let primary, extra='';
+  if(c.type==='dup') primary= ch==='merge'?`合并到「${c.existing.姓名}」`:`新建「${c.fields.姓名}」`;
+  else if(c.type==='fail') { primary= state.manual[c.id]?'加入人脉':null;
+    extra=`<button class="btn">重新上传照片</button>${state.manual[c.id]?'':`<button class="btn" onclick="state.manual[${c.id}]=1;render()">手动填写</button>`}`; }
+  else primary='加入人脉';
+  $('#main').innerHTML=`
+   <div class="reason ${rc}"><div>${c.type==='dup'?'👥':c.type==='fail'?'📷':'🔍'}</div><div><b>${t1}</b><span>${t2}</span></div></div>
+   <div class="body">
+     <div class="photoBox">${photo(c)}
+       <div class="ptools">${c.twoSided?'<button class="pill on">正面</button><button class="pill">反面</button>':''}<span>点照片放大</span><span style="margin-left:auto">${state.cur+1} / ${cards.length}</span></div>
+     </div>
+     <div>${c.type==='dup'?cmpHtml(c):fieldsHtml(c)}</div>
+   </div>
+   ${c.type==='dup'?`<details style="margin-top:14px"><summary style="cursor:pointer;color:var(--ink-2);font-size:13px">查看 / 修改这张名片读到的全部信息</summary><div style="margin-top:10px">${fieldsHtml(c)}</div></details>`:''}
+   <div class="acts">
+     <button class="btn ghost" onclick="finish('不加入')">不要这张</button>
+     ${extra}
+     ${primary?`<button class="btn primary" onclick="finish('${c.type==='dup'?(ch==='merge'?'已合并':'已新建'):'已加入'}')">${primary}，下一张 →<span class="kbd" style="color:#bbb">↵</span></button>`:''}
+   </div>`;
+}
+function go(i){state.cur=i;render()}
+function setDup(id,v){state.dupChoice[id]=v;render()}
+function pick(btn,k,v){const inp=btn.closest('.f').querySelector('input');inp.value=v;btn.closest('.f').classList.remove('flag');btn.parentElement.remove()}
+function finish(label){
+  const c=cards[state.cur]; state.done[c.id]=label; if(label!=='不加入')state.addedExtra++;
+  const next=cards.findIndex((x,i)=>!state.done[x.id]);
+  state.cur= next===-1?cards.length:next; render();
+}
+$('#addedBtn').onclick=()=>$('#addedList').classList.toggle('show');
+document.querySelectorAll('[data-met]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-met]').forEach(x=>x.classList.remove('on'));b.classList.add('on')});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName!=='INPUT'){const p=document.querySelector('.btn.primary');p&&p.click()}});
+render();
+</script>
+</body>
+</html>

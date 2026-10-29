@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { planTaskSegmentHref } from "../../../../../shared/compute/plan-href";
 import { appendWebGuideReturnTo, type WebGuideReturnTo } from "../../../../../features/guide/return-to";
@@ -31,7 +31,8 @@ import type { OrbitCopyEntry } from "../copy/types";
 import { ShellPage } from "../shell/slots";
 import { Button, Card, Chip, CountUp, FilterOption, Icon, IconButton, Kbd, MacTile, Orbit2026Scope, ProgressBar, Skeleton, TextField, ToastProvider } from "../ui";
 import { DensityDots, translator, type Translate } from "./add-parts";
-import { ReviewRail, UnifiedReview, type ReviewDuplicateRow, type ReviewGroupRow } from "./UnifiedReview";
+import { IngestV2PrivateImage } from "../../contacts/ingest-v2/ingest-v2-private-image";
+import { INGEST_V2_API_BASE } from "../../contacts/ingest-v2/ingest-v2-client";
 import { ManualContactDrawer } from "./ManualContactDrawer";
 import { DropZone, ScanGuide, useStagedCards, type ScanStartResult } from "./ScanUploadScreen";
 import type { StagedCard } from "./upload-model";
@@ -58,18 +59,6 @@ const GROUP_COPY: Record<ScanIssueGroup, OrbitCopyEntry> = {
   format: b.groupFormat,
   other: b.groupOther,
 };
-/** 要確認 row labels (b9 ④ .frow 84px key). */
-const GROUP_SHORT: Record<ScanIssueGroup, OrbitCopyEntry> = {
-  name: b.shortName,
-  orgSuffix: b.shortOrgSuffix,
-  misread: b.shortMisread,
-  sides: b.shortSides,
-  enrichment: b.shortEnrichment,
-  format: b.shortFormat,
-  other: b.shortOther,
-};
-const GROUP_ORDER: readonly ScanIssueGroup[] = ["name", "sides", "misread", "orgSuffix", "format", "enrichment", "other"];
-
 const FIELD_COPY: Record<IngestV2Field, OrbitCopyEntry> = {
   displayName: b.fieldName,
   organization: b.fieldOrganization,
@@ -81,7 +70,6 @@ const FIELD_COPY: Record<IngestV2Field, OrbitCopyEntry> = {
 
 const MATCH_COPY: Record<string, OrbitCopyEntry> = { email: b.matchedEmail, phone: b.matchedPhone, name_organization: b.matchedNameOrg, name: b.matchedName };
 
-const SECTION_ID = { duplicate: "add-scan-duplicates", review: "add-scan-review", ready: "add-scan-ready", failed: "add-scan-failed" } as const;
 
 /**
  * The single-line Enter of the review (b1 B5 ↵): not inside a textarea, a button, a select,
@@ -127,12 +115,14 @@ export function ScanBatchScreen({ view, actions, onStart, returnTo = null }: { v
   const go = (href: string) => router.push(preserveHref(href.startsWith("/app/contacts/new/scan") ? appendWebGuideReturnTo(href, returnTo) : href));
   const reading = view.phase === "uploading" || view.phase === "reading" || view.phase === "importing";
   const title = reading ? t(s.pageTitle) : view.phase === "review" ? t(b.reviewPageTitle) : t(b.pageTitle);
-  const subtitle = view.phase === "review" ? t(b.reviewPageSub, { n: view.cards.length }) : t(s.pageSubtitle);
+  const left = view.cards.filter((card) => card.section === "duplicate" || card.section === "review" || card.section === "failed").length;
+  const added = view.cards.filter((card) => card.card.allConfirmed).length;
+  const subtitle = view.phase === "review" ? t(left ? b.reviewPageSub : b.reviewPageSubDone, { n: view.cards.length, added, left }) : t(s.pageSubtitle);
   const back = <IconButton icon="left" label={t(returnTo ? s.backToGuide : s.back)} onClick={() => go(returnTo ?? "/app/contacts/new")} />;
   return (
     <Orbit2026Scope language={language} className={styles.page}>
       <ToastProvider>
-        <ShellPage title={title} subtitle={subtitle} left={back} rightRail={view.phase === "review" ? <ReviewRail t={t} emoji="📇" tone="apricot" title={t(b.railTitle)} body={t(b.railBody)} level={1} levelNote={t(b.railLevelNote)} /> : undefined} />
+        <ShellPage title={title} subtitle={subtitle} left={back} />
         <div className={styles.fade} data-scan-batch={view.batchId} data-scan-phase={view.phase}>
           {view.phase === "loading" ? <Skeleton lines={6} /> : null}
           {view.phase === "missing" || view.phase === "expired" || view.phase === "cancelled" ? <BatchErrorCard phase={view.phase} t={t} go={go} /> : null}
@@ -257,63 +247,84 @@ function AfterCard({ t }: { t: Translate }) {
 }
 
 type Choice = "merge" | "separate";
+type Settled = "added" | "merged" | "skipped";
 
+const REASON_TONE: Record<"duplicate" | "review" | "failed", string> = { duplicate: styles.reasonDup, review: styles.reasonCheck, failed: styles.reasonFail };
+const QUEUE_CHIP: Record<"duplicate" | "review" | "failed", { copy: OrbitCopyEntry; tone: "lav" | "apricot" | "coral" }> = {
+  duplicate: { copy: b.stateDuplicate, tone: "lav" },
+  review: { copy: b.stateGuess, tone: "apricot" },
+  failed: { copy: b.stateFailed, tone: "coral" },
+};
+const RESULT_COPY: Record<Settled, OrbitCopyEntry> = { added: b.resultAdded, merged: b.resultMerged, skipped: b.resultSkipped };
+const COMPARE_FIELDS = [["displayName", b.fieldName], ["organization", b.fieldOrganization], ["role", b.fieldRole], ["email", b.fieldEmail], ["phone", b.fieldPhone], ["address", b.fieldAddress]] as const;
+
+/** Cards that ask the person something (重複 / 要確認 / 読み取れず); clean held cards wait for the end. */
+function asks(card: ScanCardView): card is ScanCardView & { section: "duplicate" | "review" | "failed" } {
+  return card.section === "duplicate" || card.section === "review" || card.section === "failed";
+}
+
+/**
+ * 名刺を確認 (2026-10-29 v2, docs/designs/redesign-2026-10/card-confirm-v2-proposal.html): one card at a time —
+ * the photo beside everything that was read, why it needs a look on top, and one decision per card
+ * (人脈に追加 / ○○ に統合 / 新しく追加 / 追加しない; 読み取れず: 撮り直す / 手入力). Every decision is saved
+ * at once; clean cards held for 会った場所 are added together once the queue is done.
+ * Keyboard: ↵ confirm · → next card · S leave out.
+ */
 function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchView; actions: ScanBatchActions; t: Translate; language: OrbitLanguage; onLater: () => void }) {
   const [choices, setChoices] = useState<Record<string, Choice>>({});
-  const [open, setOpen] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [problems, setProblems] = useState<Record<string, ScanSettleResult>>({});
+  const [settled, setSettled] = useState<Record<string, Settled>>({});
   const [busy, setBusy] = useState(false);
-  const [oneByOne, setOneByOne] = useState(false);
-  const pending = useMemo(() => view.cards.filter((card) => card.section !== null), [view.cards]);
-  const dups = pending.filter((card) => card.section === "duplicate");
-  const reviews = pending.filter((card) => card.section === "review");
-  const ready = pending.filter((card) => card.section === "ready");
-  const failed = pending.filter((card) => card.section === "failed");
-  // Keyboard (↵ / → / S) walks the cards shown one by one: 要確認 and 読み取れなかった (重複 are rows in the table).
-  const order = [...reviews, ...failed];
-  const addable = [...dups, ...reviews, ...ready];
-  // R12 review m5: 統合 is not 追加 — the button counts them apart.
-  const merging = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge").length;
-  const adding = addable.length - merging;
-  const current = order.find((card) => card.cardId === focused) ?? order[0] ?? null;
+  const [addedOpen, setAddedOpen] = useState(false);
+  // The queue keeps the cards decided here (greyed, with what happened) so the list does not jump.
+  const asked = useRef(new Set<string>());
+  for (const card of view.cards) if (asks(card)) asked.current.add(card.cardId);
+  const queue = view.cards.filter((card) => asked.current.has(card.cardId));
+  const open = queue.filter(asks).filter((card) => !settled[card.cardId]);
+  const held = view.cards.filter((card) => card.section === "ready" && !settled[card.cardId]);
+  const autoAdded = view.cards.filter((card) => card.section === null && card.card.allConfirmed && !settled[card.cardId]);
+  const current = open.find((card) => card.cardId === focused) ?? open[0] ?? null;
 
-  const settleOne = async (card: ScanCardView): Promise<ScanSettleResult> => {
-    const kind = card.section === "duplicate" ? (choices[card.cardId] ?? "merge") === "merge" ? "merge" : "confirm" : "confirm";
-    const result = await actions.settle(card.cardId, kind);
-    setProblems((current) => {
-      const next = { ...current };
+  const record = (card: ScanCardView, result: ScanSettleResult, kind: "confirm" | "merge" | "skip") => {
+    setProblems((now) => {
+      const next = { ...now };
       if (result === "created" || result === "merged" || result === "skipped") delete next[card.cardId];
       else next[card.cardId] = result;
       return next;
     });
-    return result;
+    if (result === "created" || result === "merged" || result === "skipped") {
+      setSettled((now) => ({ ...now, [card.cardId]: kind === "skip" || result === "skipped" ? "skipped" : result === "merged" ? "merged" : "added" }));
+    }
   };
   const run = async (work: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
     try { await work(); } finally { await actions.refresh(); setBusy(false); }
   };
-  const addAll = () => run(async () => { for (const card of addable) await settleOne(card); });
-  const confirmOne = (card: ScanCardView) => run(async () => { await settleOne(card); });
-  const skipOne = (card: ScanCardView) => run(async () => { await actions.settle(card.cardId, "skip"); });
+  const confirmOne = (card: ScanCardView) => run(async () => {
+    const kind = card.section === "duplicate" && (choices[card.cardId] ?? "merge") === "merge" ? "merge" : "confirm";
+    record(card, await actions.settle(card.cardId, kind), kind);
+  });
+  const skipOne = (card: ScanCardView) => run(async () => { record(card, await actions.settle(card.cardId, "skip"), "skip"); });
+  const addHeld = () => run(async () => { for (const card of held) record(card, await actions.settle(card.cardId, "confirm"), "confirm"); });
 
-  // ↵ confirm the focused card · → next card · S skip (b1 B5 right rail).
-  const keys = useRef({ current, order, confirmOne, skipOne });
-  keys.current = { current, order, confirmOne, skipOne };
+  // ↵ confirm the card on screen · → next card · S leave it out.
+  const keys = useRef({ current, open, confirmOne, skipOne });
+  keys.current = { current, open, confirmOne, skipOne };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const { current: card, order: list } = keys.current;
+      const { current: card, open: list } = keys.current;
       if (!card || event.metaKey || event.ctrlKey || event.altKey) return;
       if (enterConfirms(event)) {
-        if (card.section === "failed" && open !== card.cardId) return;
+        if (card.section === "failed") return;
         event.preventDefault();
         void keys.current.confirmOne(card);
       } else if (event.key === "ArrowRight" && !typing(event.target)) {
         event.preventDefault();
         const index = list.findIndex((entry) => entry.cardId === card.cardId);
         const next = list[(index + 1) % list.length];
-        if (next) { setFocused(next.cardId); document.querySelector(`[data-review-card="${next.cardId}"]`)?.scrollIntoView({ block: "nearest" }); }
+        if (next) setFocused(next.cardId);
       } else if ((event.key === "s" || event.key === "S") && !typing(event.target)) {
         event.preventDefault();
         void keys.current.skipOne(card);
@@ -321,106 +332,89 @@ function ReviewPanel({ view, actions, t, language, onLater }: { view: ScanBatchV
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, []);
 
-  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  const groups = GROUP_ORDER.map((group) => [group, reviews.filter((card) => card.issueGroup === group)] as const).filter(([, cards]) => cards.length);
-
-  const cardProps = (card: ScanCardView) => ({
-    card, t, language, actions, busy,
-    focused: current?.cardId === card.cardId,
-    open: open === card.cardId,
-    problem: problems[card.cardId] ?? null,
-    onFocus: () => setFocused(card.cardId),
-    onToggle: () => setOpen((value) => (value === card.cardId ? null : card.cardId)),
-    onConfirm: () => void confirmOne(card),
-    onSkip: () => void skipOne(card),
-  });
-
-  // 重複: checked = 統合 (default), unchecked = 別人として追加 (b9 A2 / A3 ④ table).
-  const duplicateRows: ReviewDuplicateRow[] = dups.flatMap((card) => {
-    const candidate = card.candidate;
-    if (!candidate) return [];
-    const incoming = [card.name || t(b.noName), card.organization].filter(Boolean).join(" · ");
-    const existing = [candidate.displayName, candidate.organization].filter(Boolean).join(" · ");
-    const moved = Boolean(candidate.organization && card.organization && normalizedText(candidate.organization) !== normalizedText(card.organization) && normalizedText(candidate.displayName) === normalizedText(card.name));
-    return [{ id: card.cardId, existing, incoming, difference: moved ? t(b.diffMoved) : differenceLabel(card, t), warn: moved, selected: (choices[card.cardId] ?? "merge") === "merge" }];
-  });
-  const settleMany = (cards: readonly ScanCardView[], kind: "merge" | "confirm") => run(async () => {
-    for (const card of cards) {
-      const result = await actions.settle(card.cardId, kind);
-      setProblems((current) => { const next = { ...current }; if (result === "created" || result === "merged" || result === "skipped") delete next[card.cardId]; else next[card.cardId] = result; return next; });
-    }
-  });
-  const selectedDups = dups.filter((card) => (choices[card.cardId] ?? "merge") === "merge");
-  const reviewGroups: ReviewGroupRow[] = groups.map(([group, cards]) => ({
-    key: group,
-    label: t(GROUP_SHORT[group]),
-    example: [cards[0]!.name || t(b.noName), cards[0]!.organization].filter(Boolean).join(" · "),
-    tone: group === "name" || group === "misread" ? "lo" : "mid",
-    count: cards.length,
-  }));
-
+  const total = queue.length;
+  const done = queue.filter((card) => settled[card.cardId]).length;
   return (
-    <div data-scan-review="">
-      <UnifiedReview
-        t={t}
-        tiles={{
-          duplicate: { count: view.counts.duplicate, sub: t(b.tileDuplicateSub) },
-          review: { count: view.counts.review, sub: reviewGroups[0]?.label ?? t(b.tileReviewNone) },
-          asIs: { count: view.counts.asIs, sub: t(b.tileAsIsSub) },
-        }}
-        onTile={(key) => scrollTo(key === "duplicate" ? SECTION_ID.duplicate : key === "review" ? SECTION_ID.review : SECTION_ID.ready)}
-        sourceLabel={t(b.incomingCards)}
-        autoMerged={view.counts.merged}
-        autoMergedLabel={t(b.autoMergedCards, { n: view.counts.merged })}
-        duplicates={duplicateRows}
-        onToggleDuplicate={(id) => setChoices((current) => ({ ...current, [id]: (current[id] ?? "merge") === "merge" ? "separate" : "merge" }))}
-        onSeparate={() => void settleMany(selectedDups, "confirm")}
-        onMergeSelected={() => void settleMany(selectedDups, "merge")}
-        groups={reviewGroups}
-        onOneByOne={() => setOneByOne((value) => !value)}
-        onApplySuggestions={() => void settleMany(reviews, "confirm")}
-        note={t(b.reviewNote)}
-        onLater={onLater}
-        addCount={addable.length}
-        onAddAll={() => void addAll()}
-        busy={busy}
-        extra={(view.events.length || failed.length || oneByOne) ? (
-          <div className={styles.stack}>
-            {view.events.length ? (
-              <Card data-scan-met="">
-                <div className={styles.stack}>
-                  <div className={styles.row}><span aria-hidden>📍</span><b>{t(b.metTitle)}</b><Chip label={t(b.metEstimated)} tone="apricot" /></div>
-                  <div className={styles.row} role="group" aria-label={t(b.metTitle)}>
-                    {view.events.map((event) => (
-                      <FilterOption key={event.eventId} label={`${dayLabel(event.startsAt, language)} · ${event.title}`} selected={view.selectedEventId === event.eventId} onToggle={() => actions.chooseEvent(event.eventId)} />
-                    ))}
-                    <FilterOption label={t(b.metNone)} selected={view.selectedEventId === null} onToggle={() => actions.chooseEvent(null)} />
-                  </div>
-                  <p className={styles.label}>{t(b.metLead)}</p>
-                </div>
-              </Card>
-            ) : null}
-            {oneByOne && groups.length ? (
-              <section id={SECTION_ID.review} className={styles.section} data-scan-section="review">
-                {groups.map(([group, cards]) => (
-                  <div key={group} className={styles.stack} data-scan-group={group}>
-                    <span className={styles.label}>{t(GROUP_COPY[group])} · {cards.length}</span>
-                    {cards.map((card) => <ReviewCard key={card.cardId} {...cardProps(card)} />)}
-                  </div>
-                ))}
-              </section>
-            ) : null}
-            {failed.length ? (
-              <section id={SECTION_ID.failed} className={styles.section} data-scan-section="failed">
-                <h3 className={styles.sectionTitle}>{t(b.sectionFailed)}</h3>
-                {failed.map((card) => <FailedCard key={card.cardId} {...cardProps(card)} />)}
-              </section>
-            ) : null}
+    <div className={`${styles.wgrid} ${styles.fade}`} data-scan-review="">
+      {view.events.length ? (
+        <Card className={styles.span12} data-scan-met="">
+          <div className={styles.row} role="group" aria-label={t(b.metTitle)}>
+            <span aria-hidden>📍</span><b>{t(b.metTitle)}</b><Chip label={t(b.metEstimated)} tone="apricot" />
+            {view.events.map((event) => (
+              <FilterOption key={event.eventId} label={`${dayLabel(event.startsAt, language)} · ${event.title}`} selected={view.selectedEventId === event.eventId} onToggle={() => actions.chooseEvent(event.eventId)} />
+            ))}
+            <FilterOption label={t(b.metNone)} selected={view.selectedEventId === null} onToggle={() => actions.chooseEvent(null)} />
+          </div>
+          <p className={styles.label}>{t(b.metLead)}</p>
+        </Card>
+      ) : null}
+      <Card className={`${styles.span3} ${styles.queue}`} data-review-queue={open.length}>
+        {total ? <span className={styles.queueHead}>{t(b.queueTitle)}</span> : null}
+        {queue.map((card) => {
+          const result = settled[card.cardId];
+          const chip = result ? { copy: RESULT_COPY[result], tone: "ok" as const } : asks(card) ? QUEUE_CHIP[card.section] : null;
+          return (
+            <button key={card.cardId} type="button" className={[styles.queueRow, current?.cardId === card.cardId ? styles.queueOn : "", result ? styles.queueDone : ""].filter(Boolean).join(" ")} disabled={Boolean(result)} onClick={() => setFocused(card.cardId)} data-review-queue-card={card.cardId} data-review-result={result}>
+              <span className={`${styles.cardTile} ${card.section === "failed" ? styles.cardTileFail : styles.cardTileRead}`} aria-hidden />
+              <span className={styles.grow}>
+                <b className={styles.ellipsis}>{card.section === "failed" && !card.name ? t(b.stateFailed) : card.name || t(b.noName)}</b>
+                <span className={`${styles.label} ${styles.ellipsis}`}>{card.organization || card.fileName}</span>
+                {chip ? <span><Chip label={t(chip.copy)} tone={chip.tone} /></span> : null}
+              </span>
+            </button>
+          );
+        })}
+        {held.length ? (
+          <div className={styles.queueGroup} data-review-held={held.length}>
+            <span className={styles.queueHead}>{t(b.queueHeld)}</span>
+            <span className={styles.label}>{held.map((card) => card.name || t(b.noName)).join(t(b.listSep))}</span>
           </div>
         ) : null}
-      />
+        {autoAdded.length ? (
+          <div className={styles.queueGroup}>
+            <button type="button" className={styles.queueToggle} aria-expanded={addedOpen} onClick={() => setAddedOpen((value) => !value)} data-review-added={autoAdded.length}>
+              <Icon name="check" size={16} /><span className={styles.grow}>{t(b.queueAdded)}</span><b>{t(b.queueCount, { n: autoAdded.length })}</b>
+            </button>
+            {addedOpen ? <span className={styles.label}>{autoAdded.map((card) => card.name || t(b.noName)).join(t(b.listSep))}</span> : null}
+          </div>
+        ) : null}
+      </Card>
+      <Card className={`${styles.span9} ${styles.confirmMain}`}>
+        {current ? (
+          <ConfirmCard
+            key={current.cardId}
+            card={current}
+            batchId={view.batchId}
+            t={t}
+            language={language}
+            actions={actions}
+            busy={busy}
+            problem={problems[current.cardId] ?? null}
+            choice={choices[current.cardId] ?? "merge"}
+            onChoice={(choice) => setChoices((now) => ({ ...now, [current.cardId]: choice }))}
+            onConfirm={() => void confirmOne(current)}
+            onSkip={() => void skipOne(current)}
+          />
+        ) : (
+          <div className={styles.confirmDone} data-review-queue-done="">
+            <span className={styles.okMark} aria-hidden><Icon name="check" size={16} /></span>
+            <b>{t(b.queueDoneTitle)}</b>
+            {held.length ? (
+              <>
+                <span className={styles.label}>{t(b.heldBody, { n: held.length })}</span>
+                <Button variant="primary" className={styles.h46} loading={busy} label={t(b.heldAdd, { n: held.length })} onClick={() => void addHeld()} data-review-add-held={held.length} />
+              </>
+            ) : null}
+          </div>
+        )}
+      </Card>
+      <div className={`${styles.span12} ${styles.reviewFoot}`}>
+        {total ? <span className={styles.queueProgress}><ProgressBar value={done / total} label={t(b.queueProgress, { done, total })} />{t(b.queueProgress, { done, total })}</span> : null}
+        <span className={styles.footNote}>{t(b.leaveNote)}</span>
+        <Button label={t(b.leave)} onClick={onLater} data-review-later="" />
+      </div>
     </div>
   );
 }
@@ -429,28 +423,11 @@ function normalizedText(value: string): string {
   return value.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
 }
 
-/** 違い: the fields that read differently from the person already in 人脈. */
-function differenceLabel(card: ScanCardView, t: Translate): string {
-  const candidate = card.candidate;
-  if (!candidate) return "";
-  const fields = ([["displayName", b.diffName], ["organization", b.diffOrganization], ["role", b.diffRole]] as const)
-    .filter(([field]) => (candidate[field] ?? "").trim() && (card[field === "displayName" ? "name" : field] ?? "").trim() && normalizedText(candidate[field]) !== normalizedText(card[field === "displayName" ? "name" : field]));
-  return fields.length ? fields.map(([, copy]) => t(copy)).join(" · ") : t(b.diffSame);
-}
-
 type CardProps = {
   card: ScanCardView;
   t: Translate;
   language: OrbitLanguage;
   actions: ScanBatchActions;
-  busy: boolean;
-  focused: boolean;
-  open: boolean;
-  problem: ScanSettleResult | null;
-  onFocus: () => void;
-  onToggle: () => void;
-  onConfirm: () => void;
-  onSkip: () => void;
 };
 
 function problemCopy(card: ScanCardView, problem: ScanSettleResult | null): OrbitCopyEntry | null {
@@ -462,71 +439,140 @@ function problemCopy(card: ScanCardView, problem: ScanSettleResult | null): Orbi
   return problem === "failed" ? b.saveFailed : null;
 }
 
-function cardClass(focused: boolean, problem: ScanSettleResult | null): string {
-  return [styles.reviewCard, styles.fade, focused ? styles.reviewCardFocus : "", problem === "blocked" || problem === "failed" ? styles.reviewCardError : ""].filter(Boolean).join(" ");
+/** Why this card needs a look, from what the batch already knows (match reason, issue group, failure kind). */
+function reasonOf(card: ScanCardView & { section: "duplicate" | "review" | "failed" }, t: Translate): { title: string; sub: string } {
+  if (card.section === "failed") return { title: t(card.failure === "busy" ? b.failedBusy : b.failedImage), sub: t(card.failure === "busy" ? b.reasonBusySub : b.reasonFailedSub) };
+  if (card.section === "review") return { title: t(GROUP_COPY[card.issueGroup ?? "other"]), sub: t(b.reasonCheckSub) };
+  const candidate = card.candidate;
+  const matched = (candidate?.matchedOn ?? []).map((reason) => MATCH_COPY[reason] ?? b.matchedNameOrg).map((copy) => t(copy));
+  const moved = Boolean(candidate?.organization && card.organization && normalizedText(candidate.organization) !== normalizedText(card.organization));
+  return { title: t(b.reasonDuplicate), sub: [...new Set(matched), moved ? t(b.diffMoved) : ""].filter(Boolean).join(" · ") };
 }
 
-function ReviewCard(props: CardProps) {
-  const { card, t, busy, focused, open, problem, onFocus, onToggle, onConfirm, onSkip } = props;
+function ConfirmCard({ card, batchId, t, language, actions, busy, problem, choice, onChoice, onConfirm, onSkip }: CardProps & {
+  card: ScanCardView & { section: "duplicate" | "review" | "failed" };
+  batchId: string;
+  busy: boolean;
+  problem: ScanSettleResult | null;
+  choice: Choice;
+  onChoice: (choice: Choice) => void;
+  onConfirm: () => void;
+  onSkip: () => void;
+}) {
+  const [showFields, setShowFields] = useState(false);
+  const [typingIn, setTypingIn] = useState(false);
+  const [replaceFailed, setReplaceFailed] = useState(false);
+  const file = useRef<HTMLInputElement | null>(null);
+  const reason = reasonOf(card, t);
   const message = problemCopy(card, problem);
-  return (
-    <div className={cardClass(focused, problem)} onFocusCapture={onFocus} onMouseDown={onFocus} data-review-card={card.cardId} data-review-open={open || undefined}>
-      <div className={styles.row}>
-        <MacTile emoji="📇" size="sm" />
-        <span className={styles.grow}>
-          <b className={styles.ellipsis}>{card.name || t(b.noName)}</b>
-          <span className={`${styles.label} ${styles.ellipsis}`}>{[card.organization, card.role].filter(Boolean).join(" · ") || card.fileName}</span>
-        </span>
-        {card.twoSided ? <Chip label={t(b.sideBoth)} /> : null}
-        <Button size="sm" variant="ghost" label={open ? t(b.closeCard) : t(b.editCard)} onClick={onToggle} data-review-edit={card.cardId} />
+  const editor = <FieldEditor card={card} t={t} language={language} actions={actions} />;
+  const failed = card.section === "failed";
+  const candidate = card.candidate;
+  const primary = card.section === "duplicate"
+    ? choice === "merge" && candidate ? t(b.actMerge, { name: candidate.displayName }) : t(b.actSeparate)
+    : failed && !typingIn ? null : t(b.actAdd);
+  let side: ReactNode;
+  if (card.section === "duplicate" && candidate) {
+    const draft = card.draft?.fields;
+    side = (
+      <div className={styles.stack} data-review-compare={card.cardId}>
+        <b>{t(b.compareTitle)}</b>
+        <table className={styles.compare}>
+          <thead><tr><th aria-label={t(b.fieldName)} /><th>{t(b.compareExisting)}</th><th>{t(b.compareCard)}</th></tr></thead>
+          <tbody>
+            {COMPARE_FIELDS.map(([field, label]) => {
+              const had = (candidate[field] ?? "").trim();
+              const read = (draft?.[field] ?? "").trim();
+              const state = had && read ? normalizedText(had) === normalizedText(read) ? "same" : "diff" : "";
+              return <tr key={field} data-compare={state || undefined}><td>{t(label)}</td><td>{had || "—"}</td><td>{read || "—"}</td></tr>;
+            })}
+          </tbody>
+        </table>
+        <div className={styles.choices} role="radiogroup" aria-label={t(b.reasonDuplicate)}>
+          {(["merge", "separate"] as const).map((value) => (
+            <button key={value} type="button" role="radio" aria-checked={choice === value} className={`${styles.choice} ${choice === value ? styles.choiceOn : ""}`} onClick={() => onChoice(value)} data-review-choice={value}>
+              <b>{t(value === "merge" ? b.choiceSame : b.choiceOther)}</b>
+              <span className={styles.label}>{t(value === "merge" ? b.choiceSameBody : b.choiceOtherBody)}</span>
+            </button>
+          ))}
+        </div>
+        <span><Button size="sm" variant="ghost" label={t(showFields ? b.hideFields : b.showFields)} onClick={() => setShowFields((value) => !value)} data-review-show-fields={card.cardId} /></span>
       </div>
-      {open ? <FieldEditor {...props} /> : null}
+    );
+  } else if (failed && !typingIn) {
+    side = (
+      <div className={styles.stack}>
+        <b>{t(b.fieldsTitle)}</b>
+        <span className={styles.label}>{card.name || card.organization ? t(b.failedPartial) : t(b.nothingRead)}</span>
+      </div>
+    );
+  } else {
+    side = (
+      <div className={styles.stack}>
+        <div className={styles.row}><b>{t(b.fieldsTitle)}</b><span className={styles.label}>{t(b.fieldsEditable)}</span></div>
+        {editor}
+      </div>
+    );
+  }
+  return (
+    <div className={styles.confirm} data-review-card={card.cardId} data-review-section={card.section}>
+      <div className={`${styles.reason} ${REASON_TONE[card.section]}`} data-review-reason={card.section}>
+        <b>{reason.title}</b>
+        {reason.sub ? <span>{reason.sub}</span> : null}
+      </div>
+      <div className={styles.confirmBody}>
+        <CardPhoto card={card} batchId={batchId} t={t} />
+        {side}
+      </div>
+      {card.section === "duplicate" && showFields ? editor : null}
       {message ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(message)}</p> : null}
-      <div className={styles.row}>
-        <Button size="sm" variant="primary" label={t(b.addThis)} disabled={busy} onClick={onConfirm} data-review-confirm={card.cardId} />
-        <Button size="sm" variant="ghost" label={t(b.skip)} disabled={busy} onClick={onSkip} data-review-skip={card.cardId} />
+      {replaceFailed ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(b.replaceFailed)}</p> : null}
+      <div className={styles.confirmActs}>
+        <Button variant="ghost" label={t(b.actLeaveOut)} disabled={busy} onClick={onSkip} data-review-skip={card.cardId} />
+        {failed ? (
+          <>
+            {card.failure === "busy" ? <Button icon="refresh" label={t(b.retryRead)} disabled={busy} onClick={() => void actions.retryRecognition(card.cardId)} data-failed-retry={card.cardId} /> : null}
+            <Button icon="camera" label={t(b.retake)} disabled={busy} onClick={() => file.current?.click()} data-failed-retake={card.cardId} />
+            <input ref={file} className={styles.srOnly} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" tabIndex={-1} aria-hidden onChange={(event) => {
+              const picked = event.target.files?.[0];
+              event.target.value = "";
+              if (picked) void actions.replace(card.cardId, picked).then((ok) => setReplaceFailed(!ok));
+            }} />
+            {typingIn || !card.draft ? null : <Button icon="pen" label={t(b.typeIn)} disabled={busy} onClick={() => setTypingIn(true)} data-failed-manual={card.cardId} />}
+          </>
+        ) : null}
+        {primary ? (
+          <Button variant="primary" className={styles.confirmPrimary} loading={busy} label={primary} onClick={onConfirm} data-review-confirm={card.cardId} />
+        ) : null}
       </div>
     </div>
   );
 }
 
-function FailedCard(props: CardProps) {
-  const { card, t, busy, focused, open, problem, actions, onFocus, onToggle, onConfirm, onSkip } = props;
-  const message = problemCopy(card, problem);
-  const file = useRef<HTMLInputElement | null>(null);
-  const [replaceFailed, setReplaceFailed] = useState(false);
+/** The card photo (front / back) from the batch's private image endpoint; click to zoom. */
+function CardPhoto({ card, batchId, t }: { card: ScanCardView; batchId: string; t: Translate }) {
+  const [side, setSide] = useState<"front" | "back">("front");
+  const [zoom, setZoom] = useState(false);
+  const item = (side === "back" ? card.card.back : card.card.front) ?? card.card.items[0] ?? null;
   return (
-    <div className={cardClass(focused, problem)} onFocusCapture={onFocus} onMouseDown={onFocus} data-review-card={card.cardId} data-failed-card={card.cardId}>
-      <div className={styles.row}>
-        <span className={`${styles.cardTile} ${styles.cardTileFail}`} aria-hidden />
-        <span className={styles.grow}>
-          <b>{t(card.failure === "busy" ? b.failedBusy : b.failedImage)}</b>
-          <span className={`${styles.label} ${styles.ellipsis}`}>{card.fileName}</span>
-        </span>
-        {card.organization || card.name ? <Chip label={[card.name, card.organization].filter(Boolean).join(" · ")} tone="apricot" /> : null}
-      </div>
-      {open ? (
-        <>
-          <span className={styles.label}>{t(b.failedPartial)}</span>
-          <FieldEditor {...props} />
-          <span><Button size="sm" variant="primary" label={t(b.addThis)} disabled={busy} onClick={onConfirm} data-failed-confirm={card.cardId} /></span>
-        </>
+    <div className={styles.photoBox} data-review-photo={card.cardId}>
+      <button type="button" className={`${styles.photo} ${zoom ? styles.photoZoom : ""}`} aria-label={t(zoom ? b.photoZoomOut : b.photoZoom)} onClick={() => setZoom((value) => !value)}>
+        {item?.derivativeObjectKey && item.imageDigest ? (
+          <IngestV2PrivateImage
+            key={`${item.id}:${item.version}`}
+            alt={item.sourceFileName}
+            src={`${INGEST_V2_API_BASE}/${encodeURIComponent(batchId)}/items/${encodeURIComponent(item.id)}/image`}
+            loadingLabel={t(b.photoLoading)}
+            expiredLabel={t(b.photoExpired)}
+            errorLabel={t(b.photoError)}
+          />
+        ) : <span className={styles.label}>{t(b.photoNone)}</span>}
+      </button>
+      {card.card.isTwoSided ? (
+        <div className={styles.row} role="group">
+          {(["front", "back"] as const).map((value) => <FilterOption key={value} label={t(value === "front" ? b.photoFront : b.photoBack)} selected={side === value} onToggle={() => setSide(value)} />)}
+        </div>
       ) : null}
-      {message ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(message)}</p> : null}
-      {replaceFailed ? <p className={styles.error} role="alert"><Icon name="alert" size={16} />{t(b.replaceFailed)}</p> : null}
-      <div className={styles.row}>
-        {card.failure === "busy" ? (
-          <Button size="sm" variant="primary" icon="refresh" label={t(b.retryRead)} disabled={busy} onClick={() => void actions.retryRecognition(card.cardId)} data-failed-retry={card.cardId} />
-        ) : null}
-        <Button size="sm" variant={card.failure === "busy" ? "secondary" : "primary"} icon="camera" label={t(b.retake)} disabled={busy} onClick={() => file.current?.click()} data-failed-retake={card.cardId} />
-        <input ref={file} className={styles.srOnly} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" tabIndex={-1} aria-hidden onChange={(event) => {
-          const picked = event.target.files?.[0];
-          event.target.value = "";
-          if (picked) void actions.replace(card.cardId, picked).then((ok) => setReplaceFailed(!ok));
-        }} />
-        <Button size="sm" variant="secondary" icon="pen" label={t(b.typeIn)} disabled={busy} onClick={onToggle} data-failed-manual={card.cardId} />
-        <Button size="sm" variant="ghost" label={t(b.skip)} disabled={busy} onClick={onSkip} data-failed-skip={card.cardId} />
-      </div>
     </div>
   );
 }
