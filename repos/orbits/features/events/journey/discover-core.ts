@@ -209,6 +209,11 @@ function matches(item: Enriched, query: EventDiscoverParsedQuery, window: { from
   return true;
 }
 
+// 活动还少：开催済み直接以灰卡片平铺在结果下方（2026-10-29 用户），不再只给一行入口。
+function endedOf(ended: Enriched[], toRow: (item: Enriched) => EventDiscoverRow): Pick<EventDiscoverResponse, "past" | "pastTotal"> {
+  return { past: ended.slice(0, ALL_ROWS).map(toRow), pastTotal: ended.length };
+}
+
 export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?: boolean } = {}): EventDiscoverResponse {
   const href = input.hrefFor ?? ((eventId: string) => `/events/${eventId}`);
   const enriched = input.candidates.map(enrich);
@@ -218,8 +223,8 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
   // 開催済み：不打分、不推荐，只按开始时间倒序列出（DISCOVER-RULES D4）。
   const past = input.query.period === "past";
   const effects = new Map(matched.map((item) => [item.candidate.eventId, feedbackEffect({ area: item.area, eventId: item.candidate.eventId, organizerId: item.candidate.organizerId, startsAt: item.candidate.startsAt, themes: item.themes }, input.feedback)]));
-  const toRow = (item: Enriched, communityReason?: EventDiscoverCommunityReason | null): EventDiscoverRow => {
-    const judge = scored && !past ? item.candidate.judge ?? null : null;
+  const toRow = (item: Enriched, communityReason?: EventDiscoverCommunityReason | null, ended = past): EventDiscoverRow => {
+    const judge = scored && !ended ? item.candidate.judge ?? null : null;
     return {
       area: item.area,
       emoji: item.candidate.emoji,
@@ -295,7 +300,7 @@ export function buildDiscover(input: DiscoverInput, options: { dailyCandidates?:
     popularityFallback: !scored,
     total: matched.length,
     ...(widen.length ? { widen } : {}),
-    ...(past ? {} : { pastTotal: enriched.filter((item) => matches(item, input.query, periodWindow({ period: "past" }, input.now))).length }),
+    ...(past ? {} : endedOf(enriched.filter((item) => matches(item, input.query, periodWindow({ period: "past" }, input.now))).sort((a, b) => byDate(b, a)), (item) => toRow(item, null, true))),
     ...(input.signedIn ? {} : { signedOut: true }),
   };
 }

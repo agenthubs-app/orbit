@@ -183,12 +183,14 @@ test("探す DISCOVER-RULES 2026-10-29: これから includes ongoing, 開催済
   const upcoming = buildDiscover({ ...base, candidates: events, query: q({ period: "upcoming" }) });
   assert.deepEqual(upcoming.all.map((row) => row.eventId).sort(), ["next", "ongoing"], "ongoing counts as これから; ended ones do not");
   assert.equal(upcoming.pastTotal, 2, "ended in the last year, too-old excluded");
+  assert.deepEqual(upcoming.past?.map((row) => row.eventId), ["ended-1", "ended-2"], "ended cards inline under the results, newest first");
+  assert.equal(upcoming.past?.every((row) => row.score === undefined && row.verdict === undefined), true, "inline ended cards are never scored");
   assert.equal(buildDiscover({ ...base, candidates: events, query: q({ areas: "tokyo", period: "upcoming" }) }).pastTotal, 1, "same area filter");
   assert.deepEqual(buildDiscover({ ...base, candidates: events, query: q({ period: "this_month" }) }).all.map((row) => row.eventId).includes("ongoing"), true, "今月 overlaps too");
   const past = buildDiscover({ ...base, candidates: events, query: q({ period: "past" }) });
   assert.deepEqual(past.all.map((row) => row.eventId), ["ended-1", "ended-2"], "newest first");
   assert.equal(past.all.every((row) => row.score === undefined), true, "never scored");
-  assert.deepEqual([past.planFit.length, past.community.length, past.widen, past.pastTotal], [0, 0, undefined, undefined]);
+  assert.deepEqual([past.planFit.length, past.community.length, past.widen, past.pastTotal, past.past], [0, 0, undefined, undefined, undefined]);
   assert.equal(past.popularityFallback, false, "a plan holder still is not shown the no-plan guide");
   assert.doesNotThrow(() => eventDiscoverResponseSchema.parse(upcoming));
 });

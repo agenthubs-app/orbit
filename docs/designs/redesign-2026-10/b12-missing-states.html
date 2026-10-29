@@ -9250,27 +9250,31 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
 (function () {
   const { wDiscover, wFilters, discover, searchRow, datebox, segTop, evalSeg } = window.__r27DiscoverKit;
   const S8 = (title, note) => '<div class="section-title"><h2>' + title + '</h2><span>' + note + '</span></div>';
-  const PAST = [[[10, 27], 'CFO Night Tokyo vol.18', '渋谷', '¥5,000'], [[6, 21], 'スタートアップ × CVC 交流会 #6', '大手町', '¥3,000'], [[5, 24], 'シリーズA 実務勉強会', 'オンライン', '無料'], [[4, 25], '製造業 DX ナイト 東京', '日本橋', '¥2,000'], [[3, 22], 'Japan SaaS Meetup 春', '六本木', '¥1,000']];
+  const PAST = [[[10, 27], 'CFO Night Tokyo vol.18', '渋谷', '¥5,000', '🥂', '火'], [[6, 21], 'スタートアップ × CVC 交流会 #6', '大手町', '¥3,000', '🤝', '土'], [[5, 24], 'シリーズA 実務勉強会', 'オンライン', '無料', '📚', '土'], [[4, 25], '製造業 DX ナイト 東京', '日本橋', '¥2,000', '🏭', '土'], [[3, 22], 'Japan SaaS Meetup 春', '六本木', '¥1,000', '🎤', '日']];
   const ended = '<span class="chip">終了</span>';
-  const pastEntry = (n) => `<div class="card span12 flat k-wpast"><div class="row" style="gap:12px"><span class="emo sm lav">🗂️</span><div style="flex:1"><b>開催済みのイベント ${n}件</b><div class="lbl">過去1年に終わったイベントを、同じ条件で見られます</div></div>${ic('right', 'sm')}</div></div>`;
+  // 2026-10-29 用户：活动还少，開催済み不折叠成入口行，照卡片平铺、整体灰掉（opacity .55 + grayscale），仍可点开详情。
+  const GREY = 'opacity:.55;filter:grayscale(1)';
+  const endedCard = ([md, n, place, fee, emo, wd]) => `<div class="span4 k-wended" style="display:flex;${GREY}"><div class="evc" style="flex:1;display:flex;flex-direction:column"><div class="row between"><span class="emo lav">${emo}</span></div><b style="display:block;margin-top:12px">${n}</b><div class="lbl">${md[0]}/${md[1]}（${wd}）19:00 · ${place} · ${fee}</div><div class="row" style="margin-top:auto;padding-top:12px;gap:6px">${ended}<button class="btn sm" style="margin-left:auto">詳細</button></div></div></div>`;
+  const pastHead = (n, cls) => `<div class="span12 card-h ${cls}" style="margin:14px 0 0"><h3>開催済み · ${n}件</h3><span class="lbl">新しい順</span></div>`;
+  const pastCards = (rows) => rows.map(endedCard).join('');
+  const pastRowsPhone = (rows) => rows.map(([md, n, place]) => `<div class="li" style="${GREY}">${datebox(md)}<div class="meta"><b>${n}</b><span>${place}</span></div>${ended}</div>`).join('');
+  const pastEntry = (n) => pastHead(n, 'k-wpast') + pastCards(PAST.slice(0, n));
   const periodPop = `<div class="popover k-wperiod" style="top:136px;right:520px"><b>時期</b><div class="chips" style="margin-top:12px;gap:8px">${['これから*', '今週', '今月', '来月', '開催済み'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`;
   const pastWeb = () => mainhead('イベント', '開催済み 5件 · 過去1年', `<button class="rbtn">${ic('search')}</button>`, evalSeg(2)) + `<div class="wgrid">${wFilters(1, '開催済み')}
-    <div class="card span12 k-wpastlist"><div class="card-h"><h3>開催済み · 5件</h3><span class="more">新しい順 ${ic('down', 'sm')}</span></div>
-      <table class="table"><thead><tr><th>日付</th><th>イベント</th><th>場所</th><th>参加費</th><th>判定</th></tr></thead><tbody>
-      ${PAST.map(([md, n, place, fee]) => `<tr><td class="score">${md[0]}/${md[1]}</td><td><b>${n}</b></td><td class="muted">${place}</td><td>${fee}</td><td>${ended}</td></tr>`).join('')}</tbody></table></div></div>`;
+    ${pastHead(5, 'k-wpastlist')}${pastCards(PAST)}</div>`;
   const pastPhone = () => mwHead + topbar('イベント', '開催済み 5件 · 過去1年', `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('calendar')}</button>`) + segTop(2) + searchRow(1) + `
     <div class="chips" style="margin:10px 0 0"><span class="chip lav">開催済み ✕</span><span class="chip">テーマ ${ic('down', 'sm')}</span><span class="chip">参加費 ${ic('down', 'sm')}</span></div>
     <div class="card k-mpastlist" style="margin-top:14px;padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>開催済み · 5件</h3><span class="lbl">新しい順</span></div>
-      <div class="list">${PAST.map(([md, n, place]) => `<div class="li">${datebox(md)}<div class="meta"><b>${n}</b><span>${place}</span></div>${ended}</div>`).join('')}</div></div>`;
+      <div class="list">${pastRowsPhone(PAST)}</div></div>`;
   const manyWithEntry = () => wDiscover('many').replace(/<\/div>\s*$/, pastEntry(4) + '</div>');
-  const phoneWithEntry = () => mwHead + discover('many').replace('<span class="chip lav">今月 ✕</span><span class="chip lav">東京 ✕</span>', '') + `<div class="card flat k-mpast" style="margin-top:14px"><div class="row" style="gap:10px"><span class="emo sm lav">🗂️</span><div style="flex:1"><b style="font-size:13px">開催済みのイベント 4件</b><div class="lbl">過去1年に終わったイベント</div></div>${ic('right', 'sm')}</div></div>`;
-  let html = S8('补画 · 2026-10-29 · 探す 时期规则', '用户 10-29：默认 今月 · 東京 + 只取现在之后，历史活动看不到 → 对标 Luma / Meetup（Upcoming | Past）、connpass。默认「時期：これから · 場所：すべて」；時期 加 これから / 開催済み；開催済み = 过去 1 年结束、新しい順、无分数；これから 底部给「開催済みのイベント N件」入口。App 端暂不改。');
+  const phoneWithEntry = () => mwHead + discover('many').replace('<span class="chip lav">今月 ✕</span><span class="chip lav">東京 ✕</span>', '') + `<div class="card k-mpast" style="margin-top:14px;padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>開催済み · 4件</h3><span class="lbl">新しい順</span></div><div class="list">${pastRowsPhone(PAST.slice(0, 4))}</div></div>`;
+  let html = S8('补画 · 2026-10-29 · 探す 时期规则', '用户 10-29：默认 今月 · 東京 + 只取现在之后，历史活动看不到 → 对标 Luma / Meetup（Upcoming | Past）、connpass。默认「時期：これから · 場所：すべて」；時期 加 これから / 開催済み；開催済み = 过去 1 年结束、新しい順、无分数；これから 结果下方直接平铺已结束活动的灰卡片（10-29 追加：活动少，不折叠成入口）。App 端暂不改。');
   html += WP('W-R27-D1 探す · 時期 弹层（これから / 開催済み）· 1440', 'state', () => ({ nav: 3, body: wDiscover('many'), ov: periodPop }), [['.k-wperiod', 0, '時期 选项：これから（默认）· 今週 · 今月 · 来月 · 開催済み；場所 默认「すべて」']], 'DISCOVER-RULES D1–D3 · 补画 2026-10-29');
-  html += WP('W-R27-D2 探す · 開催済み · 1440', 'state', () => ({ nav: 3, body: pastWeb() }), [['.k-wpastlist', 0, '過去1年に終わった公開イベント、新しい順；スコア列なし、判定 =「終了」、☆ / 興味なし なし；点行进详情（详情页显示「イベントは終了しました」、无参加登録）']], 'DISCOVER-RULES D4 / D6 · 补画 2026-10-29');
+  html += WP('W-R27-D2 探す · 開催済み · 1440', 'state', () => ({ nav: 3, body: pastWeb() }), [['.k-wpastlist', 0, '過去1年に終わった公開イベント、新しい順；与これから同一卡片，整体灰掉；无分数、chip =「終了」、无 ☆ / 興味なし；点卡片进详情（详情页显示「イベントは終了しました」、无参加登録）']], 'DISCOVER-RULES D4 / D6 · 补画 2026-10-29');
   html += WP('W-R27-D2-1024 探す · 開催済み · 1024', 'state', () => ({ nav: 3, body: pastWeb() }), null, 'W-R27-D2 · 补画 2026-10-29', 1024);
-  html += WP('W-R27-D2-390 探す · 開催済み · 390', 'state', () => ({ body: pastPhone(), tab: 3 }), [['.k-mpastlist', 0, '390 = 手机列表：日付ボックス + 名前 + 場所 +「終了」']], 'W-R27-D2 · 补画 2026-10-29', 390);
-  html += WP('W-R27-D3 探す · これから 底部「開催済み」入口 · 1440', 'state', () => ({ nav: 3, body: manyWithEntry() }), [['.k-wpast', 0, '同条件下过去 1 年已结束 N件；0 件不显示；点了切到「開催済み」']], 'DISCOVER-RULES D5 · 补画 2026-10-29');
-  html += WP('W-R27-D3-390 探す · これから 底部「開催済み」入口 · 390', 'state', () => ({ body: phoneWithEntry(), tab: 3 }), [['.k-mpast', 0, '390 默认不再有「今月 ✕ 東京 ✕」chip；列表最下方同一入口']], 'W-R27-D3 · 补画 2026-10-29', 390);
+  html += WP('W-R27-D2-390 探す · 開催済み · 390', 'state', () => ({ body: pastPhone(), tab: 3 }), [['.k-mpastlist', 0, '390 = 手机列表：日付ボックス + 名前 + 場所 +「終了」，整行灰掉']], 'W-R27-D2 · 补画 2026-10-29', 390);
+  html += WP('W-R27-D3 探す · これから 底部「開催済み」灰卡片 · 1440', 'state', () => ({ nav: 3, body: manyWithEntry() }), [['.k-wpast', 0, '结果下方直接平铺同条件下过去 1 年已结束的活动（灰卡片，不折叠）；0 件不显示；超过 50 件时标题右侧给「すべて見る」切到「開催済み」']], 'DISCOVER-RULES D5 · 补画 2026-10-29');
+  html += WP('W-R27-D3-390 探す · これから 底部「開催済み」灰卡片 · 390', 'state', () => ({ body: phoneWithEntry(), tab: 3 }), [['.k-mpast', 0, '390 默认不再有「今月 ✕ 東京 ✕」chip；列表最下方一张「開催済み」卡，行整体灰掉']], 'W-R27-D3 · 补画 2026-10-29', 390);
   document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-discover-rules', html));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();

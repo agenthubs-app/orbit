@@ -64,7 +64,9 @@ export interface EventDiscoverResponse {
   /** Current-plan goal label for the 「?」 text, when there is a plan. */
   planGoal?: string | null;
   widen?: readonly EventDiscoverWidenSuggestion[];
-  /** Not on `past`: ended events (last year) matching the same area / theme filters — the 「開催済みのイベント N件」 row. */
+  /** Not on `past`: ended events (last year) matching the same area / theme filters, newest first, unscored — shown as greyed cards under the results. */
+  past?: readonly EventDiscoverRow[];
+  /** Not on `past`: how many such ended events in all (`past` is capped). */
   pastTotal?: number;
   /** Signed-out visitors: only `all`, no scores. */
   signedOut?: boolean;

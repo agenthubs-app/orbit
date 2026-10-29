@@ -44,14 +44,16 @@
 .widenBtn { gap: 6px; }
 .guideTitle { font-size: var(--fs-number); font-weight: var(--fw-heavy); margin: 4px 0; }
 .signedOut { padding: 14px 20px; font-size: var(--fs-control); color: var(--ink-2); }
-/* DISCOVER-RULES D5：「開催済みのイベント N件 →」（与 widen 行同一 flat 卡）。 */
-.pastRow.pastRow { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; height: auto; text-align: left; cursor: pointer; }
+/* 開催済み：灰掉的卡片 / 行，仍可点开详情（2026-10-29）。 */
+.ended { opacity: 0.55; filter: grayscale(1); transition: opacity 0.2s; }
+.ended:hover, .ended:focus-within { opacity: 0.8; }
+.moreBtn.moreBtn { border: 0; background: transparent; min-height: 0; height: auto; padding: 0; cursor: pointer; }
 .searchPanel { gap: 8px; }
 .searchRow.searchRow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 0; border: 0; border-radius: var(--r-row); background: transparent; min-height: 0; height: auto; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .groupLbl { margin-top: 14px; font-size: var(--fs-label); color: var(--ink-3); font-weight: 600; }
 .av { width: 32px; height: 32px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--mac-lav); color: var(--mac-lav-ink); font-weight: var(--fw-heavy); font-size: var(--fs-body-sm); flex: 0 0 auto; }
 .pasteRow { display: flex; align-items: center; gap: 10px; margin-top: 12px; color: inherit; text-decoration: none; }
-@media (prefers-reduced-motion: reduce) { .table tr, .hovActs { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .table tr, .hovActs, .ended { transition: none; } }
 .railHero.railHero { text-align: center; align-items: center; padding: 18px; }
 .railName { display: block; font-size: var(--fs-emph); }
 .railRing { width: 120px; margin: 14px auto 8px; }

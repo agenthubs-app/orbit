@@ -43,6 +43,7 @@ export const eventDiscoverResponseObject = z.object({
   popularityFallback: z.boolean(),
   planGoal: z.string().nullable().optional(),
   widen: readableItems(z.object({ kind: z.enum(["period", "area", "theme"]), value: z.string(), extra: z.number().int().min(0) })).optional().catch(undefined),
+  past: readableItems(eventDiscoverRowObject).optional().catch(undefined),
   pastTotal: z.number().int().min(0).optional().catch(undefined),
   signedOut: z.boolean().optional(),
 });
