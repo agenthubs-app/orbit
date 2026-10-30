@@ -37,6 +37,7 @@ interface Harness {
   profilePuts: Record<string, unknown>[];
   refreshes: () => number;
   requests: string[];
+  intakeBodies: Record<string, unknown>[];
 }
 
 function stubBrowser(
@@ -86,6 +87,7 @@ function stubBrowser(
   const patches: Record<string, unknown>[] = [];
   const profilePuts: Record<string, unknown>[] = [];
   const requests: string[] = [];
+  const intakeBodies: Record<string, unknown>[] = [];
   const bootstraps: Record<string, unknown>[] = [];
   let profile: Record<string, unknown> = {
     relationshipGoal: options.relationshipGoal ?? "",
@@ -118,13 +120,14 @@ function stubBrowser(
       return Response.json({ success: true, data: { intakes: [] } });
     }
     if (url === "/api/agent/plans/intakes" && init?.method === "POST") {
+      intakeBodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
       return Response.json({ success: true, data: {
         intakeId: "first-intake", goal: "获取客户", goalKind: "sales", source: "onboarding", href: "/app/plans/flow/first-intake",
       } });
     }
     return Response.json({ success: false }, { status: 404 });
   });
-  return { assigned, bootstraps, patches, profilePuts, refreshes: () => refreshCount, requests };
+  return { assigned, bootstraps, intakeBodies, patches, profilePuts, refreshes: () => refreshCount, requests };
 }
 
 let refreshCount = 0;
@@ -521,17 +524,33 @@ test("step 3: edit the goal in place as a draft — cancel keeps the saved goal,
   act(() => root.unmount());
 });
 
-test("step 3 creates an onboarding intake and opens its Web flow href", async (t) => {
+test("step 3 picks the plan type from the goal and creates an onboarding intake that opens its Web flow href", async (t) => {
   const api = stubBrowser(t);
   const root = await mount(props({ relationshipGoal: "获取客户", snapshot: { confirmedContacts: 3 } }));
-  assert.equal(one(root, "data-start-analyze").props.disabled, true, "the suggested type needs explicit confirmation");
-  const sales = root.root.find((node) => node.type === "button" && text(node) === "开拓客户");
-  await click(sales);
+  // 2026-10-30：类型按目标自动选好（获取客户 → 开拓客户），不用先手动点一下。
+  assert.equal(one(root, "data-start-kind", "sales").props["aria-checked"], true);
+  assert.equal(one(root, "data-start-analyze").props.disabled, false);
   await click(one(root, "data-start-analyze"));
   assert.deepEqual(api.assigned, ["/app/plans/flow/first-intake"]);
   assert.deepEqual(api.bootstraps, [], "the retired v1 bootstrap is never called");
   assert.ok(api.requests.includes("POST /api/agent/plans/intakes"));
   assert.deepEqual(api.patches, [], "no guide write either");
+  act(() => root.unmount());
+});
+
+test("step 3 with two saved goals: choose which goal comes first; the plan type follows it and can still be changed", async (t) => {
+  const api = stubBrowser(t);
+  const root = await mount(props({ relationshipGoal: "寻找投资、获取客户：把产品推广到日本市场", snapshot: { confirmedContacts: 3 } }));
+  one(root, "data-start-goal-text");
+  assert.equal(byData(root, "data-start-plan-confirm").flatMap((node) => node.findAll((child) => child.type === "input")).length, 0, "no second goal input");
+  assert.equal(one(root, "data-start-priority", "0").props["aria-checked"], true);
+  assert.equal(one(root, "data-start-kind", "fundraising").props["aria-checked"], true);
+  await click(one(root, "data-start-priority", "1"));
+  assert.equal(one(root, "data-start-kind", "sales").props["aria-checked"], true);
+  await click(one(root, "data-start-kind", "partnership"));
+  assert.equal(one(root, "data-start-kind", "partnership").props["aria-checked"], true);
+  await click(one(root, "data-start-analyze"));
+  assert.deepEqual(api.intakeBodies.map((body) => [body.goalText, body.goalKind]), [["获取客户：把产品推广到日本市场", "partnership"]]);
   act(() => root.unmount());
 });
 

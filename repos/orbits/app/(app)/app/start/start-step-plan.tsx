@@ -3,17 +3,20 @@
  *
  * - 显示当前目标，「修改」就地打开 W0002 的同一个编辑器，编辑的是草稿：取消不覆盖，
  *   保存才写资料里的 relationshipGoal；
- * - 确认第一目标和计划类型后，续接或创建 source:onboarding 的 v2 intake，
- *   只使用服务端返回并核验过的 Web href 进入计划流程。
+ * - 目标只显示一次；资料里存了两个目标时，在同一个框里选先做哪一个（2026-10-30）；
+ * - 计划类型按目标自动选好（资料目标自带的类型 → `/goal-kind` 推测 → 关键词），可以改；
+ *   之后续接或创建 source:onboarding 的 v2 intake，只使用服务端返回并核验过的 Web href 进入计划流程。
  */
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { StartContactSample } from "../../../../features/guide/start-steps";
-import type { PlanGoalKind } from "../../../../shared/contract/plan-v2";
-import { firstProfileGoalForPlan } from "../../../../shared/compute/profile-onboarding-goal";
-import { PLAN_GOAL_KINDS } from "../../../../shared/compute/plan-templates";
+import type { PlanGoalKind, PlanGoalKindResult } from "../../../../shared/contract/plan-v2";
+import { parseProfileOnboardingGoal, profileGoalChoice } from "../../../../shared/compute/profile-onboarding-goal";
+import { PLAN_GOAL_KINDS, guessGoalKindByKeywords } from "../../../../shared/compute/plan-templates";
+import { planApi } from "../orbit-2026/plan/plan-api";
+import { goalGuessReady } from "../orbit-2026/plan/plan-model";
 import { PLAN_GOAL_KIND_COPY, planCopy } from "../../../../shared/compute/plan-template-copy";
 import { GoalEditor } from "../profile/goal-editor/goal-editor";
 import {
@@ -50,16 +53,45 @@ export function StepPlan({
   const { language, preserveHref, t } = useStartCopy();
   const editorLang = language === "en" ? "en" : "zh";
   const parsed = parseRelationshipGoal(goal);
-  const first = firstProfileGoalForPlan(goal);
+  const [priority, setPriority] = useState(0);
+  const plan = planGoalFor(goal, priority);
+  const planText = plan.text;
 
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [draftHorizon, setDraftHorizon] = useState<GoalHorizon | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [planText, setPlanText] = useState(first.text);
-  const [goalKind, setGoalKind] = useState<PlanGoalKind | null>(null);
+  const [goalKind, setGoalKind] = useState<PlanGoalKind | null>(plan.kind);
+  const chosenByHand = useRef(false);
   const actionRef = useRef<{ fingerprint: string; key: string } | null>(null);
+
+  // 计划类型自动选好：目标自带类型时直接用；否则先按关键词，再用 Task 计划页同一个 `/goal-kind` 推测（失败保持关键词结果）。
+  useEffect(() => {
+    if (chosenByHand.current) return;
+    if (plan.kind) { setGoalKind(plan.kind); return; }
+    const text = planText.trim();
+    if (!text) { setGoalKind(null); return; }
+    setGoalKind(guessGoalKindByKeywords(text));
+    if (!goalGuessReady(text)) return;
+    let alive = true;
+    void planApi<PlanGoalKindResult>("/goal-kind", { body: { text }, language }).then((result) => {
+      if (alive && result.ok && !chosenByHand.current) setGoalKind(result.data.goalKind);
+    });
+    return () => { alive = false; };
+  }, [plan.kind, planText, language]);
+
+  function pickKind(kind: PlanGoalKind) {
+    chosenByHand.current = true;
+    actionRef.current = null;
+    setGoalKind(kind);
+  }
+
+  function pickPriority(index: number) {
+    chosenByHand.current = false;
+    actionRef.current = null;
+    setPriority(index);
+  }
 
   function startEdit() {
     const current = parseRelationshipGoal(goal);
@@ -81,9 +113,8 @@ export function StepPlan({
     try {
       const saved = await saveGuideGoal(value, profileUpdatedAt);
       onGoalSaved(saved.relationshipGoal, saved.updatedAt);
-      const updated = firstProfileGoalForPlan(saved.relationshipGoal);
-      setPlanText(updated.text);
-      setGoalKind(null);
+      chosenByHand.current = false;
+      setPriority(0);
       actionRef.current = null;
       setEditing(false);
     } catch (caught) {
@@ -184,16 +215,28 @@ export function StepPlan({
         )}
       </div>
 
-      {!planDone ? <div className="sg-goalbox" data-start-plan-confirm>
-        <label>{t({ en: "Confirm your first goal", zh: "确认第一优先目标", ja: "優先 1 の目標を確認" })}
-          <input className="sg-input" onChange={(event) => { setPlanText(event.target.value); actionRef.current = null; }} value={planText} />
-        </label>
-        <div className="sg-acts" role="group" aria-label={t({ en: "Plan type", zh: "计划类型", ja: "プランの種類" })}>
-          {PLAN_GOAL_KINDS.map((kind) => <button aria-pressed={goalKind === kind} aria-label={planCopy(PLAN_GOAL_KIND_COPY[kind], language)} className={`btn sg-link${goalKind === kind ? " sg-pill-good" : ""}`} key={kind}
-            onClick={() => { setGoalKind(kind); actionRef.current = null; }} type="button">{planCopy(PLAN_GOAL_KIND_COPY[kind], language)}</button>)}
+      {!planDone ? (
+        <div className="sg-field" data-start-plan-confirm>
+          {plan.choices.length > 1 && !editing ? (
+            <>
+              <span className="sg-field-h">{t({ en: "Which goal first?", zh: "先做哪一个目标", ja: "どちらの目標から始めますか" })}</span>
+              <div className="sg-acts" role="radiogroup" aria-label={t({ en: "Which goal first?", zh: "先做哪一个目标", ja: "どちらの目標から始めますか" })}>
+                {plan.choices.map((choice, index) => (
+                  <button aria-checked={priority === index} className="btn sg-choice" data-start-priority={index} key={choice} onClick={() => pickPriority(index)} role="radio" type="button">{choice}</button>
+                ))}
+              </div>
+            </>
+          ) : null}
+          <span className="sg-field-h">{t({ en: "Plan type · picked from your goal, change it if it's off", zh: "计划类型 · 已按你的目标选好，可以改", ja: "プランの種類 · 目標に合わせて選びました。変更できます" })}</span>
+          <div className="sg-acts" role="radiogroup" aria-label={t({ en: "Plan type", zh: "计划类型", ja: "プランの種類" })}>
+            {PLAN_GOAL_KINDS.map((kind) => (
+              <button aria-checked={goalKind === kind} className="btn sg-choice" data-start-kind={kind} key={kind} onClick={() => pickKind(kind)} role="radio" type="button">
+                {planCopy(PLAN_GOAL_KIND_COPY[kind], language)}
+              </button>
+            ))}
+          </div>
         </div>
-        {!goalKind ? <p className="sg-error">{t({ en: "Choose the plan type that fits this goal.", zh: "请选择符合目标的计划类型。", ja: "目標に合うプランの種類を選んでください。" })}</p> : null}
-      </div> : null}
+      ) : null}
 
       <div className="sg-reads">
         <span>{t({ en: "iOrbit will read:", zh: "iOrbit 会读到：" })}</span>
@@ -226,4 +269,15 @@ export function StepPlan({
       {error ? <p className="sg-error" role="alert">{error}</p> : null}
     </article>
   );
+}
+
+/**
+ * The goal the plan starts from: with two saved profile goals (寻找投资、获取客户：…) the chosen one plus the shared
+ * focus, and the plan kind that profile goal maps to; any other goal text is used as it is, its kind guessed.
+ */
+function planGoalFor(saved: string, priority: number): { choices: string[]; kind: PlanGoalKind | null; text: string } {
+  const parsed = parseProfileOnboardingGoal(saved);
+  if (!parsed.choices.length) return { choices: [], kind: null, text: parsed.raw };
+  const choice = parsed.choices[Math.min(priority, parsed.choices.length - 1)]!;
+  return { choices: parsed.choices, kind: profileGoalChoice(choice)?.planKind ?? null, text: parsed.focus ? `${choice}：${parsed.focus}` : choice };
 }

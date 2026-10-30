@@ -3,7 +3,7 @@
 // 选择器限定在本线指南，避免影响其他路由。
 const S = '[data-r28-guide]';
 
-const BUTTONS = ["sg-primary", "sg-secondary", "sg-link", "sg-step"];
+const BUTTONS = ["sg-primary", "sg-secondary", "sg-link", "sg-step", "sg-choice"];
 
 export const START_GUIDE_STYLES = `
 ${S} { min-height: 100dvh; background: #FBFBFE; color: #0E1225; font-family: var(--font); -webkit-font-smoothing: antialiased; }
@@ -20,6 +20,11 @@ ${S} .btn.sg-link { padding: 0; border: 0; border-radius: 0; background: transpa
 ${S} .btn.sg-link:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 3px; }
 ${S} .btn.sg-link.sg-muted { color: #6B6F99; }
 ${S} .btn.sg-link:disabled { opacity: .6; cursor: progress; }
+${S} .btn.sg-choice { padding: 6px 14px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #2E3270; font-size: 13px; font-weight: 500; }
+${S} .btn.sg-choice:hover:not([aria-checked="true"]) { border-color: #B9BCEB; background: #F6F6FD; }
+${S} .btn.sg-choice[aria-checked="true"] { border-color: #24212B; background: #24212B; color: #FFFFFF; }
+${S} .sg-field { display: flex; flex-direction: column; gap: 8px; }
+${S} .sg-field-h { font-size: 12px; color: #6B6F99; }
 ${S} .sg-lk { color: #4B4FC7; font-size: 13.5px; }
 ${S} .sg-lk:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 3px; }
 ${S} .sg-lk.sg-muted { color: #6B6F99; }
