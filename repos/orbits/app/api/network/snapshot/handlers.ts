@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { readDemoModeViewForActor } from "../../../(app)/app/_demo/demo-guide-view";
 import { unavailableSnapshotView } from "../../../../features/network-analysis/service";
 import { getConfiguredNetworkAnalysisRuntime, readSnapshotProfile, type NetworkAnalysisRuntime } from "../../../../features/network-analysis/runtime";
 import { markContactInsightsGoalDirty } from "../../../../features/contacts/insights/repository";
@@ -23,11 +22,9 @@ import {
  * - `POST /api/network/snapshot/recompute`：手动重新分析，用户主动池 1 次操作，请求内同步生成；
  *   第 4 次 429 `MANUAL_REFRESH_LIMIT`、用户池总熔断用满 429 `USER_DAILY_LIMIT`（两者 0 次调用）；
  *   已确认联系人不足 3 位 409 `INSUFFICIENT_CONTACTS`（不预留）。
- * 示例模式（引导期示例）：两个接口都不读写快照、不预留配额。
  */
 export interface NetworkSnapshotRouteDependencies {
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
-  isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
   runtime?: () => NetworkAnalysisRuntime | null;
   after?: (task: () => Promise<void>) => void;
   /** W0051（W51-1）：手动重新分析成功后把目标哈希不同的洞察统一标待更新（0 次 AI）；失败只记日志。 */
@@ -37,10 +34,6 @@ export interface NetworkSnapshotRouteDependencies {
 async function defaultMarkInsightsGoalDirty(runtime: NetworkAnalysisRuntime, actorId: string): Promise<void> {
   const goal = (await readSnapshotProfile(actorId)).goal;
   await markContactInsightsGoalDirty(runtime.client, { actorId, goal, workspaceId: runtime.workspaceId });
-}
-
-async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
-  return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
 }
 
 /** R11b（§2 B-7）：`lang=ja` 读日文叙述（旧快照没有时块为空，不回退）；`en`；其余 zh（旧行为）。 */
@@ -55,7 +48,6 @@ function isUndefinedTable(error: unknown): boolean {
 
 export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshotRouteDependencies = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
-  const isDemo = dependencies.isDemo ?? defaultIsDemo;
   const resolveRuntime = dependencies.runtime ?? (() => getConfiguredNetworkAnalysisRuntime());
   /** 排队后在响应之外尝试领取（next/server after）；不在请求作用域时交给维护任务。 */
   const schedule = (runtime: NetworkAnalysisRuntime, actorId: string) => {
@@ -79,7 +71,6 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
       const headers = runtimeBoundaryHeaders(mode);
       const actor = await resolveActor();
       if (!actor?.id) return authenticatedApiActorRequiredResponse(mode);
-      if (await isDemo(actor)) return NextResponse.json(success(unavailableSnapshotView()), { headers, status: 200 });
       // R11b：人脈分析 mock（本机 ORBIT_REDESIGN_MOCK=network-analysis，非生产）读 fixture 世界的快照，不读库、不排队、不调 AI。
       if (!dependencies.runtime && redesignContractMode("network-analysis") === "mock") {
         const { fixtureNetworkSnapshotView } = await import("../../../../features/network-analysis/analysis-fixtures");
@@ -105,9 +96,6 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
         NextResponse.json(failure(appError, context), { headers, status });
       const actor = await resolveActor();
       if (!actor?.id) return authenticatedApiActorRequiredResponse(mode);
-      if (await isDemo(actor)) {
-        return fail(new AppError("FORBIDDEN", "The example network cannot be re-analysed."), 403, { reason: "DEMO_MODE" });
-      }
       const body = await request.json().catch(() => ({}));
       const key = body && typeof body === "object" && typeof (body as { idempotencyKey?: unknown }).idempotencyKey === "string"
         ? (body as { idempotencyKey: string }).idempotencyKey.trim()

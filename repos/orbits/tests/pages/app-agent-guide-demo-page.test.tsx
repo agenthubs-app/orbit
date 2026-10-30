@@ -357,49 +357,13 @@ test("flag set to anything but on / true / 1 still behaves as off", async (t) =>
   assert.equal(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)).length, 0);
 });
 
-test("flag on + new user: the shell gets the demo view, read as the canonical actor", async (t) => {
-  const { calls, guideRecords, page } = loadPage(t, { contacts: 0, flag: "on" });
+test("2026-10-30: flag on + a new user still in the guide: the live iOrbit 2026, no guide source read, one profile read", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
   const props = shellPropsOf(await page());
-  assert.equal(props.__screen, "demo");
-  assert.deepEqual(props.guide, {
-    bannerCollapsed: false,
-    completed: 0,
-    confirmedContacts: 0,
-    nextStep: "contacts",
-    steps: { contacts: false, goal: false, plan: false },
-  });
-  assert.deepEqual(calls.find((call) => call.operation === "contacts")?.input, ["workspace:test", "account:canonical"]);
-  assert.equal(calls.find((call) => call.operation === "plan")?.input, "account:canonical");
-  assert.equal(calls.find((call) => call.operation === "guide-state")?.input, "account:canonical");
-  // 联系人不足 3 位：不读账号记录，首次判定 false 落库。
-  assert.equal(calls.filter((call) => call.operation === "account").length, 0);
-  assert.equal(guideRecords.get("account:canonical")?.grandfathered, false);
-});
-
-test("flag on + D2 legacy user (created before SINCE, ≥3 contacts): the real home", async (t) => {
-  const { calls, guideRecords, page } = loadPage(t, {
-    contacts: 4,
-    createdAt: "2026-06-01T00:00:00.000Z",
-    flag: "on",
-    goal: "推进日本合作",
-    since: "2026-10-15",
-  });
-  assert.equal(shellPropsOf(await page()).guide, null);
-  assert.deepEqual(calls.find((call) => call.operation === "account")?.input, { userId: "subject:external" });
-  assert.equal(guideRecords.get("account:canonical")?.grandfathered, true);
-});
-
-test("flag on + registered after SINCE with ≥3 contacts and a goal: still in the demo until a plan exists", async (t) => {
-  const { page } = loadPage(t, {
-    contacts: 3,
-    createdAt: "2026-10-20T00:00:00.000Z",
-    flag: "on",
-    goal: "三个月内找到 5 家试用客户",
-    since: "2026-10-15",
-  });
-  const guide = shellPropsOf(await page()).guide as { completed: number; nextStep: string } | null;
-  assert.equal(guide?.completed, 2);
-  assert.equal(guide?.nextStep, "plan");
+  assert.equal(props.__screen, "live");
+  assert.deepEqual(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)), []);
+  assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
+  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
 });
 
 test("W0054 SC-02: flag on + completedAt recorded + only 2 contacts left: the real home, no contact count or plan read", async (t) => {
@@ -439,27 +403,6 @@ const POLLUTED_VIEW_MODEL = {
   suggests: [{ icon: "users", label: "约真实联系人甲斐真由美", q: "给甲斐真由美（真实公司）的草稿" }],
 };
 
-test("W0014 in the guide: every real chat / home-business loader throws, yet the demo shell renders with zero such calls", async (t) => {
-  const { calls, page } = loadPage(t, {
-    contacts: 0,
-    flag: "on",
-    realLoadersThrow: true,
-    realViewModel: POLLUTED_VIEW_MODEL,
-  });
-  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:x", q: "hi" }) }));
-  assert.ok(props.guide, "the demo shell is rendered");
-  assert.deepEqual(calls.filter((call) => REAL_BUSINESS_READS.includes(call.operation)), []);
-  // W0037：社群读取 1 次；它抛错时示例照常渲染，按未加入处理。
-  assert.equal(calls.filter((call) => call.operation === "community").length, 1);
-  assert.equal(props.communityJoined, false);
-  // 示例判定的目标取自本人资料（读一次）；首页数据不读；示例壳拿不到真实 home／viewModel。
-  assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
-  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-  assert.equal(props.home, null);
-  assert.equal("initialPlanCard" in props, false);
-  assert.ok(!JSON.stringify(props.viewModel).includes("甲斐真由美"), "no real suggests reach the demo shell");
-});
-
 test("W0014 flag off: the live path reads the profile once and no home, events, registrations or community (legacy chat retired in 0104)", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined });
   const props = shellPropsOf(await page());
@@ -490,14 +433,6 @@ test("W0035 flag off: guideEnabled false, no guideStep4Pending prop, community n
   assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
   assert.equal(communityReads(calls).length, 0);
-});
-
-test("W0035 in the demo: no step-4 read and no guide-step-4 prop on the demo shell", async (t) => {
-  const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
-  const props = shellPropsOf(await page());
-  assert.ok(props.guide);
-  assert.ok(!("guideStep4Pending" in props));
-  assert.equal(step4Reads(calls).length, 0);
 });
 
 const LEGACY = { contacts: 4, createdAt: "2026-06-01T00:00:00.000Z", flag: "on", goal: "推进日本合作", since: "2026-10-15" } as const;
@@ -533,54 +468,6 @@ test("W0035 flag on: joined or registered changes nothing about step-4 reads (st
 // W0037：社群从禁止列表移出（示例期恰好读 1 次，见下方 W0037 用例）。
 const DEMO_FORBIDDEN = ["events", "registrations", "plan-read", "registered-any"];
 
-test("W0036 in the demo: one catalogue and one own-registration read, real upcoming events reach the demo shell, nothing else real", async (t) => {
-  const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
-  const props = shellPropsOf(await page());
-  assert.ok(props.guide, "the demo shell is rendered");
-  // 示例判定只读本人资料 1 次（不再复合 home 读取），不注入示例壳。
-  assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
-  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-  assert.equal(props.home, null);
-  // 本 Sprint 新增：目录 1 次、本人报名 1 次（以 canonical actor 读）。
-  assert.equal(calls.filter((call) => call.operation === "catalogue").length, 1);
-  const registrations = calls.filter((call) => call.operation === "demo-registrations");
-  assert.equal(registrations.length, 1);
-  assert.deepEqual(registrations[0]!.input, ["account:canonical", ["event_01"]]);
-  assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
-  assert.deepEqual(props.demoEventCandidates, [
-    {
-      endsAt: "2099-01-01T03:00:00.000Z",
-      eventId: "event_01",
-      publicCode: "CODE-event_01",
-      startsAt: "2099-01-01T01:00:00.000Z",
-      title: "未来活动",
-      venue: "渋谷",
-    },
-  ]);
-});
-
-test("W0036 in the demo: a failed catalogue read leaves an empty list and the demo still renders", async (t) => {
-  const { calls, page } = loadPage(t, { catalogue: "throw", contacts: 0, flag: "on" });
-  const props = shellPropsOf(await page());
-  assert.ok(props.guide);
-  assert.deepEqual(props.demoEventCandidates, []);
-  assert.equal(calls.filter((call) => call.operation === "demo-registrations").length, 0);
-});
-
-test("W0036 the demo list is capped at the pool limit (8), earliest first", async (t) => {
-  const records = Array.from({ length: 12 }, (_, index) => ({
-    id: `event:${String(12 - index).padStart(2, "0")}`,
-    startsAt: `2099-01-${String(12 - index).padStart(2, "0")}T01:00:00.000Z`,
-    title: `活动 ${12 - index}`,
-  }));
-  const { page } = loadPage(t, { catalogue: demoCatalogue(records), contacts: 0, flag: "on" });
-  const props = shellPropsOf(await page());
-  assert.deepEqual(
-    (props.demoEventCandidates as Array<{ eventId: string }>).map((item) => item.eventId),
-    ["event:01", "event:02", "event:03", "event:04", "event:05", "event:06", "event:07", "event:08"],
-  );
-});
-
 test("W0036 the live path never reads the demo upcoming events", async (t) => {
   for (const scenario of [{ contacts: 0, flag: undefined }, LEGACY]) {
     const { calls, page } = loadPage(t, scenario);
@@ -594,40 +481,10 @@ test("W0036 the live path never reads the demo upcoming events", async (t) => {
 
 /* ── W0037：示例期再放开社群状态 1 次（canonical actor），只多给示例壳 `communityJoined` ─────── */
 
-test("W0037 in the demo: the community state is read once for the canonical actor and handed to the demo shell", async (t) => {
-  for (const communityJoined of [false, true]) {
-    const { calls, page } = loadPage(t, { communityJoined, contacts: 0, flag: "on" });
-    const props = shellPropsOf(await page());
-    assert.ok(props.guide, "the demo shell is rendered");
-    assert.deepEqual(communityReads(calls).map((call) => call.input), [[{ actorId: "account:canonical" }]]);
-    assert.equal(props.communityJoined, communityJoined);
-    // 其余矩阵：资料 1 次、home 0 次（不注入）、目录 1 次、本人报名 1 次、其余 0 次。
-    assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
-    assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-    assert.equal(props.home, null);
-    assert.equal(calls.filter((call) => call.operation === "catalogue").length, 1);
-    assert.equal(calls.filter((call) => call.operation === "demo-registrations").length, 1);
-    assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
-    assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
-    // 示例壳相对 W0036 只多收到 communityJoined。
-    assert.deepEqual(Object.keys(props).sort(), ["__screen", "communityJoined", "demoEventCandidates", "guide", "home", "viewModel"]);
-  }
-});
-
 /* ── W0040：首页那 1 次复合读取不再触发资料建议（整 workspace signal graph） ─────── */
 
 const suggestionReads = (calls: Array<{ operation: string; input?: unknown }>) =>
   calls.filter((call) => call.operation === "profile-suggestions");
-
-test("W0040 in the demo: one profile read and no home read, no home in the demo shell, and zero profile suggestion reads", async (t) => {
-  const { calls, page } = loadPage(t, { contacts: 0, flag: "on", throughRealHomeLoader: true });
-  const props = shellPropsOf(await page());
-  assert.ok(props.guide, "an empty goal keeps the user in the demo");
-  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-  assert.deepEqual(calls.filter((call) => call.operation === "profile-real").map((call) => call.input), ["success"]);
-  assert.equal(props.home, null);
-  assert.deepEqual(suggestionReads(calls), []);
-});
 
 test("W0040 flag off: one profile read and no home, events, registrations or community, zero profile suggestion reads", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, throughRealHomeLoader: true });
@@ -640,44 +497,5 @@ test("W0040 flag off: one profile read and no home, events, registrations or com
   assert.deepEqual(suggestionReads(calls), []);
 });
 
-test("W0040 flag on + D2 legacy user with a goal: the real screen, one profile read and no home read, zero profile suggestion reads", async (t) => {
-  const { calls, guideRecords, page } = loadPage(t, {
-    contacts: 4,
-    createdAt: "2026-06-01T00:00:00.000Z",
-    flag: "on",
-    goal: "推进日本合作",
-    since: "2026-10-15",
-    throughRealHomeLoader: true,
-  });
-  assert.equal(shellPropsOf(await page()).guide, null);
-  assert.equal(guideRecords.get("account:canonical")?.grandfathered, true);
-  assert.equal(calls.filter((call) => call.operation === "profile").length, 1);
-  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-  assert.deepEqual(suggestionReads(calls), []);
-});
-
 /* ── W0041：示例期不读首页数据（2026-10-28 起示例判定只读本人资料），联系人计数与页模型都不组合 ─────── */
 
-test("W0041 in the demo: no home read, so neither the contacts summary nor the contacts page model is composed", async (t) => {
-  const listStacks: string[] = [];
-  const listCreate = contactsListSearchAndFilterServiceFactory.create;
-  t.mock.method(contactsListSearchAndFilterServiceFactory, "create", (mode?: string) => {
-    listStacks.push(new Error().stack ?? "");
-    return listCreate.call(contactsListSearchAndFilterServiceFactory, mode);
-  });
-  let summaryCreates = 0;
-  const summaryCreate = homeContactsSummaryServiceFactory.create;
-  t.mock.method(homeContactsSummaryServiceFactory, "create", (mode?: string) => {
-    summaryCreates += 1;
-    return summaryCreate.call(homeContactsSummaryServiceFactory, mode);
-  });
-  const { calls, page } = loadPage(t, { contacts: 0, flag: "on", throughRealHomeLoader: true });
-  const props = shellPropsOf(await page());
-  assert.ok(props.guide, "an empty goal keeps the user in the demo");
-  assert.equal(props.home, null);
-  assert.equal(calls.filter((call) => call.operation === "home").length, 0);
-  assert.deepEqual(calls.filter((call) => call.operation === "profile-real").map((call) => call.input), ["success"]);
-  assert.equal(summaryCreates, 0, "the demo check reads the profile's goal, not the home model's contact counts");
-  assert.equal(listStacks.filter((stack) => stack.includes("contacts-route-view-model")).length, 0, "no contacts page model composition");
-  assert.deepEqual(suggestionReads(calls), []);
-});

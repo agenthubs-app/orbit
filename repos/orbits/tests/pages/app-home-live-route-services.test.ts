@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -29,18 +28,15 @@ test("app-home-route renders the R07 home placeholder while the iOrbit workspace
   assert.doesNotMatch(hubSource, /OrbitRealHome|HomeRouteStateBoundary/);
 
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
-  // One profile read serves the demo check (the goal) and the live iOrbit 2026 screen (the greeting);
-  // neither shows events, so the page reads no home model, events or registrations.
+  // One profile read serves the live iOrbit 2026 screen (the greeting); it shows no events,
+  // so the page reads no home model, events or registrations (2026-10-30: no guide-period sample shell either).
   assert.match(agentPageSource, /loadAppProfileRouteViewModel\(/);
   assert.doesNotMatch(agentPageSource, /loadAppHomeRouteViewModel/);
   assert.match(agentPageSource, /accountName=\{accountName\}/);
   assert.doesNotMatch(agentPageSource, /readRuntimeEventRegistrationStates|resolveConfiguredActorEventCanonicalIds|presentOrbitEvents/);
 
-  // iOrbit 任务 6a：`orbit-real-agent.tsx` 与 `orbit-agent-dashboard.tsx` 都已删除；
-  // 首屏组件今天是 `iorbit-0918/iorbit-home.tsx`，由壳按视图挂载。
-  assert.match(agentPageSource, /IOrbitShell/);
-  const agentUiSource = iorbitChatSurfaceSource();
-  assert.match(agentUiSource, /<IOrbitHome/);
+  assert.match(agentPageSource, /<IOrbit2026/);
+  assert.doesNotMatch(agentPageSource, /IOrbitShell|readDemoModeViewForActor/);
 });
 
 test("web root redirects members and renders the landing only for anonymous visitors", () => {

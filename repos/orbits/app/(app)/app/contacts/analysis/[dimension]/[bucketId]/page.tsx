@@ -8,7 +8,6 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../../../api/_shared/authenticated-actor";
 import { getOrbitServerLanguage } from "../../../../orbit-language-server";
-import { readDemoModeViewForActor } from "../../../../_demo/demo-guide-view";
 import { NetworkAnalysisListScreen } from "../../../../orbit-2026/network-analysis/NetworkAnalysisListScreen";
 import { resolveNetworkAnalysisReadDeps } from "../../../../../../../features/network-analysis/analysis-handlers";
 import { networkAnalysisPageLock } from "../../../../../../../features/network-analysis/page-lock";
@@ -27,7 +26,6 @@ export default async function AppContactsAnalysisListPage({ params }: { params: 
   const actor = await resolveAuthenticatedApiActorFromSession({ email: session.user.email, name: session.user.name, userId: session.user.id });
   if (!actor) throw new Error("Authenticated Orbit account membership is unavailable.");
   if (!(DIMENSIONS as readonly string[]).includes(dimension)) redirect("/app/contacts/dashboard?tab=structure");
-  if (await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id })) redirect("/app/contacts/dashboard?tab=structure");
   const language = await getOrbitServerLanguage();
   const lock = networkAnalysisPageLock(await (await resolveNetworkAnalysisReadDeps()).readTotal({ id: actor.id, workspaceId: actor.workspaceId }).catch(() => null));
   return (

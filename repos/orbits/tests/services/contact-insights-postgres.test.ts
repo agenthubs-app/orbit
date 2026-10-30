@@ -569,20 +569,19 @@ test("SC-03 insights tab page: server-side 30 per page, sort by relevance / tier
   });
 });
 
-test("SC-04 regenerate route: concurrent POSTs → 202 + 202(inProgress), provider called once; 429 USER_DAILY_LIMIT with 0 calls; 404 foreign; 409 no goal; 403 demo", databaseTest, async () => {
+test("SC-04 regenerate route: concurrent POSTs → 202 + 202(inProgress), provider called once; 429 USER_DAILY_LIMIT with 0 calls; 404 foreign; 409 no goal", databaseTest, async () => {
   await withDatabase(async (harness) => {
     const { pool, client, runtime } = harness;
     for (const id of ["contact:a", "contact:b"]) await seedContact(pool, id, "actor:alice");
     await seedContact(pool, "contact:bob-1", "actor:bob");
     const tasks: (() => Promise<void>)[] = [];
-    const handler = (actorId: string, demo = false) => createContactInsightRegenerateHandler({
+    const handler = (actorId: string) => createContactInsightRegenerateHandler({
       deps: () => ({ ...runtime, client }),
-      isDemo: async () => demo,
       resolveActor: async () => ({ id: actorId }) as never,
       schedule: (task) => { tasks.push(task); },
     });
-    const post = (actorId: string, contactId: string, demo = false) =>
-      handler(actorId, demo)(new Request(`https://orbit.test/api/contacts/${encodeURIComponent(contactId)}/insight/regenerate`, { method: "POST" }), { params: Promise.resolve({ id: encodeURIComponent(contactId) }) });
+    const post = (actorId: string, contactId: string) =>
+      handler(actorId)(new Request(`https://orbit.test/api/contacts/${encodeURIComponent(contactId)}/insight/regenerate`, { method: "POST" }), { params: Promise.resolve({ id: encodeURIComponent(contactId) }) });
     const responses = await Promise.all([post("actor:alice", "contact:a"), post("actor:alice", "contact:a")]);
     assert.deepEqual(responses.map((response) => response.status), [202, 202]);
     const bodies = await Promise.all(responses.map(async (response) => (await response.json() as { data: { inProgress: boolean } }).data.inProgress));
@@ -591,7 +590,6 @@ test("SC-04 regenerate route: concurrent POSTs → 202 + 202(inProgress), provid
     assert.equal(harness.stub.requests.length, 1);
     assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.status, "ready");
     assert.equal((await post("actor:alice", "contact:bob-1")).status, 404);
-    assert.equal((await post("actor:alice", "contact:b", true)).status, 403);
     await fillPool(pool, "actor:alice", "user", 9);
     const limited = await post("actor:alice", "contact:b");
     assert.equal(limited.status, 429);

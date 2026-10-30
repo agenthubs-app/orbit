@@ -43,13 +43,12 @@ function runtimeFor(harness: NetworkHarness, generator: NetworkSnapshotGenerator
   });
 }
 
-function routes(runtime: NetworkAnalysisRuntime | null, options: { demo?: boolean; actor?: string; resolved?: { count: number }; goalMarks?: string[] } = {}) {
+function routes(runtime: NetworkAnalysisRuntime | null, options: { actor?: string; resolved?: { count: number }; goalMarks?: string[] } = {}) {
   const tasks: (() => Promise<void>)[] = [];
   const handlers = createNetworkSnapshotRouteHandlers({
     after: (task) => { tasks.push(task); },
     // W0051：手动重新分析成功后统一标目标已变的洞察（这里只记录调用；真实标记见 contact-insights-postgres）。
     markInsightsGoalDirty: async (_runtime, actorId) => { options.goalMarks?.push(actorId); },
-    isDemo: async () => options.demo ?? false,
     resolveActor: async () => ({ id: options.actor ?? ALICE }),
     runtime: () => {
       if (options.resolved) options.resolved.count += 1;
@@ -178,24 +177,6 @@ test("SC-01 GET reads only narrative_<lang> + evidence (never included_contact_i
     await runtime.ledger.reserve({ actorId: ALICE, idempotencyKey: "s", now: NOW, pool: "system", purpose: "enrichment", trigger: "auto" });
     const quota = (await getView(handlers)).quota;
     assert.deepEqual(quota, { background: { limit: 60, usedToday: 3 }, manual: { limit: 3, usedToday: 1 }, user: { limit: 10, usedToday: 2 } });
-  });
-});
-
-test("SC-01 demo mode: GET and recompute read and write nothing and reserve nothing", databaseTest, async () => {
-  await withNetworkDatabase(async (harness) => {
-    await seedContacts(harness, ALICE, 4);
-    const generator = generatorOf(buildMockSnapshotContent);
-    const runtime = runtimeFor(harness, generator);
-    const resolved = { count: 0 };
-    const { handlers } = routes(runtime, { demo: true, resolved });
-    harness.meter.statements.length = 0;
-    const view = await getView(handlers);
-    assert.equal(view.state, "unavailable");
-    const recompute = await handlers.recompute(new Request("http://localhost/api/network/snapshot/recompute", { body: "{}", method: "POST" }));
-    assert.equal(recompute.status, 403);
-    assert.equal(resolved.count, 0, "the runtime is never resolved");
-    assert.deepEqual(harness.meter.statements, [], "0 database statements");
-    assert.equal(generator.calls, 0);
   });
 });
 

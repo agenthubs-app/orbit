@@ -1,6 +1,5 @@
 import { after, NextResponse } from "next/server";
 
-import { readDemoModeViewForActor } from "../../../../../(app)/app/_demo/demo-guide-view";
 import { requestContactInsightRegeneration, type InsightRegenerationDeps } from "../../../../../../features/contacts/insights/regenerate";
 import { getConfiguredContactInsightsRuntime } from "../../../../../../features/contacts/insights/runtime";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../../../shared/api/envelope";
@@ -14,17 +13,12 @@ import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, ty
  * 202 `{ state: "pending" }`：已排队（或已有执行器在跑，`inProgress: true`，0 次调用）；
  * 200 `{ state: "ready", unchanged: true }`：数据没变，不调用；
  * 429 `USER_DAILY_LIMIT`：用户主动池当日 10 次操作用满（0 次调用）；409 `NO_GOAL`／`RETRY_EXHAUSTED`；
- * 404：不是本人的联系人；403 `DEMO_MODE`；503：服务不可用。
+ * 404：不是本人的联系人；503：服务不可用。
  */
 export interface ContactInsightRegenerateDependencies {
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
-  isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
   deps?: () => Omit<InsightRegenerationDeps, "schedule"> | null;
   schedule?: (task: () => Promise<void>) => void;
-}
-
-async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
-  return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
 }
 
 function isUndefinedTable(error: unknown): boolean {
@@ -33,7 +27,6 @@ function isUndefinedTable(error: unknown): boolean {
 
 export function createContactInsightRegenerateHandler(dependencies: ContactInsightRegenerateDependencies = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
-  const isDemo = dependencies.isDemo ?? defaultIsDemo;
   const resolveDeps = dependencies.deps ?? (() => getConfiguredContactInsightsRuntime());
   const schedule = dependencies.schedule ?? ((task: () => Promise<void>) => after(task));
   return async function POST(_request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -46,7 +39,6 @@ export function createContactInsightRegenerateHandler(dependencies: ContactInsig
     const { id } = await context.params;
     const contactId = typeof id === "string" ? decodeURIComponent(id).trim() : "";
     if (!contactId || contactId.length > 512) return fail(new AppError("VALIDATION_ERROR", "Contact id is invalid."), 400);
-    if (await isDemo(actor)) return fail(new AppError("FORBIDDEN", "The example contacts cannot be regenerated."), 403, "DEMO_MODE");
     const deps = resolveDeps();
     const unavailable = () => fail(new AppError("SERVICE_UNAVAILABLE", "Insights are temporarily unavailable."), 503, "UNAVAILABLE");
     if (!deps) return unavailable();

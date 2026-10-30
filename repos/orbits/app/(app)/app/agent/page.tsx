@@ -7,28 +7,9 @@
  * （`agent/iorbit-0918/iorbit-shell.tsx`）：home 分支渲染 `iorbit-home.tsx`，chat 分支渲染
  * `iorbit-chat.tsx`。旧的 `OrbitRealAgent` 已于任务 6a 删除。
  *
- * W0004 示例模式：开关 `ORBIT_GUIDE_DEMO` 打开时，服务端按真实数据推导引导进度
- * （`features/guide/progress.ts`），处于引导期的人把 `guide` 下传给壳，壳改渲染示例。
- * 开关关闭时 `readGuideStatusForActor` 不做任何读取、直接返回 null，页面与 W0001 一致。
- *
+ * 2026-10-30：引导期也渲染真实的 iOrbit 2026（W0004 / W0014 / W0036 / W0037 的旧示例壳不再挂载）；
+ * 引导进度由 Task 横条与 `/app/start` 负责。
  * R25：W0008 的 `?plan=<id>` 计划回答卡片随 v1 计划删除；带 `?plan=` 的旧链接落在概览（计划在 Task › プラン）。
- *
- * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标取本人资料的
- * relationshipGoal，资料读不到时按真实页面处理；2026-10-28 起不再为此加载整份首页数据）。处于示例期时只读了判定所需的首页数据，
- * 对话路由模型、活动报名／canonical id 一概不读（社群状态见 W0037）——示例壳不用它们，真实
- * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
- * 开关关闭时判定零读取，下面的真实路径与改动前一致。
- *
- * W0022：开关状态交给壳：首页「帮我制定推进计划 →」去 `/app/start?step=3`（开关关闭时
- * 去 Task › プラン）。W0035 删去引导的「活动」一步后，首页不再判定它、不再提醒，
- * 也不再为它读报名事实（`hasAnyActiveRegistration` 0 次）。
- *
- * W0036（RH-03「活动始终真实」）：示例期唯一新增的真实读取——「近期可报名」活动（公开目录 1 次 +
- * 本人报名 1 次），作为 `demoEventCandidates` 交给示例壳组活动池；其余真实数据仍一概不读、不下传。
- * 真实分支不做这次读取（真实期活动池由首页从 snapshot + 计划算出）。
- *
- * W0037（W37-1）：示例期再放开本人社群状态 1 次（`readCommunityJoinedForActor`，canonical actor），
- * 交给示例壳的活动小模组；读取失败按未加入处理，示例照常渲染。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -37,14 +18,8 @@ import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
-import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
-import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { IOrbit2026 } from "./iorbit-2026/IOrbit2026";
 import { loadAppProfileRouteViewModel } from "../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
-import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
-import { readGuideStatusForActor } from "../../../../features/guide/progress";
-import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
-import { readDemoHomeEventCandidates } from "../../../../features/agent/home-event-pool-runtime";
 
 export type AppAgentSearchParams = {
   /** 历史会话深链（由 iOrbit 壳在客户端读取）。 */
@@ -112,52 +87,12 @@ export default async function AppAgentPage({
 
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);
-  // One profile read per request: the demo check's goal and the live screen's greeting both come from it
-  // (not the whole home model — events, recommendations, readiness — which neither shows).
-  let loadedProfile: Awaited<ReturnType<typeof loadAppProfileRouteViewModel>> | null = null;
-  const loadProfile = async () =>
-    (loadedProfile ??= await loadAppProfileRouteViewModel(
-      { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
-      { suggestions: "skip" },
-    ));
-  // W0004／W0014：开关关闭时不读任何东西，返回 null。首页数据读不到时目标未知，按真实首页处理。
-  const guide = await readDemoModeViewForActor(
-    { actorId, userId: session.user.id },
-    {
-      readGuideStatus: readGuideStatusForActor,
-      readRelationshipGoal: async () => {
-        const model = await loadProfile();
-        if (model.state !== "success") throw new Error("Profile data is unavailable.");
-        return model.profile.profile.relationshipGoal ?? "";
-      },
-    },
+  // The live iOrbit 2026 screen greets by name and reads nothing else from the server
+  // (not the whole home model — events, recommendations, readiness).
+  const profileModel = await loadAppProfileRouteViewModel(
+    { displayName: session.user.name?.trim() || session.user.email?.trim() || "Orbit member", email: session.user.email, id: actorId },
+    { suggestions: "skip" },
   );
-  if (guide) {
-    // 示例壳只吃引导视图；home／viewModel 一律不带真实数据（起步模型不含任何人物）。
-    // W0036：例外只有真实的近期可报名活动（读不到时为空数组，示例照常渲染）；
-    // W0037：再加本人社群状态（读不到按未加入）。
-    const [demoEventCandidates, communityJoined] = await Promise.all([
-      readDemoHomeEventCandidates({ accountId: actorId }),
-      readCommunityJoinedForActor({ actorId }).catch(() => false),
-    ]);
-    return (
-      <>
-        <OrbitReferenceStyles />
-        <OrbitVisualFreezeRuntime />
-        <div data-orbit-route="app-agent-route">
-          <IOrbitShell
-            communityJoined={communityJoined}
-            demoEventCandidates={demoEventCandidates}
-            guide={guide}
-            home={null}
-            viewModel={createOrbitAgentStarterViewModel()}
-          />
-        </div>
-      </>
-    );
-  }
-  // The live iOrbit 2026 screen greets by name and reads nothing else from the server.
-  const profileModel = await loadProfile();
   const language = requestedLanguage ?? (await getAgentPageLanguage());
   const accountName = profileModel.state === "success"
     ? localizeOrbitTree(profileModel.profile.profile.displayName || "Orbit operator", language)

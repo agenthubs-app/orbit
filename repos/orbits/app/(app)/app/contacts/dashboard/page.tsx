@@ -5,15 +5,12 @@
  * 服务端读取（features/network-analysis/analysis-page-loader.ts）：先读 R11a summary 的 total；不足 10 人整页锁定，
  * 0 次行读取、0 次计划读取、0 次快照 GET / 排队（B-1 / B-8）。10 人起读分析视图（R11a 行 + 计划需要），并按界面语言读快照
  * （ja 无日文句时不显示 AI 句，不回退）与依据姓名。人数读不到时显示重试，不当作 0 人。
- *
- * W0005 示例模式（引导期示例，归 R28）：用演示世界的数字渲染，不读真实数据、不读快照、不开下钻。
  */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { getOrbitServerLanguage } from "../../orbit-language-server";
-import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { NetworkAnalysisScreen } from "../../orbit-2026/network-analysis/NetworkAnalysisScreen";
 import { analysisTabFrom } from "../../orbit-2026/network-analysis/analysis-labels";
 import { loadNetworkAnalysisPage } from "../../../../../features/network-analysis/analysis-page-loader";
@@ -27,13 +24,8 @@ export default async function AppContactsDashboardPage({ searchParams }: {
   if (!session?.user?.id) redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fdashboard");
   const actor = await resolveAuthenticatedApiActorFromSession({ email: session.user.email, name: session.user.name, userId: session.user.id });
   if (!actor) throw new Error("Authenticated Orbit account membership is unavailable.");
-  const [params, language, guide] = await Promise.all([searchParams, getOrbitServerLanguage(), readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id })]);
+  const [params, language] = await Promise.all([searchParams, getOrbitServerLanguage()]);
   const initialTab = analysisTabFrom(typeof params?.tab === "string" ? params.tab : null);
-  if (guide) {
-    const { fixtureNetworkAnalysisReadDeps } = await import("../../../../../features/network-analysis/analysis-fixtures");
-    const data = await loadNetworkAnalysisPage({ id: actor.id }, language, { readDeps: async () => fixtureNetworkAnalysisReadDeps(), readSnapshot: async () => null, readNames: async () => ({}) });
-    return <NetworkAnalysisScreen language={language} view={data.view} snapshot={null} evidenceNames={{}} initialTab={initialTab} demo />;
-  }
   const data = await loadNetworkAnalysisPage({ id: actor.id, workspaceId: actor.workspaceId }, language);
   return <NetworkAnalysisScreen language={language} view={data.view} snapshot={data.snapshot} evidenceNames={data.evidenceNames} initialRail={data.rail} initialTab={initialTab} />;
 }

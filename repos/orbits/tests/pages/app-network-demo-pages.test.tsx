@@ -239,13 +239,6 @@ test("R11a: the meeting-memo / appointment deep links still use the old detail (
   assert.equal(calls.filter((call) => call.operation === "threshold").length, 1, "the old detail reads the threshold once");
 });
 
-test("demo: a real contact id redirects to the demo list before any real read", async (t) => {
-  const { calls, page } = loadPage(t, "detail", { flag: "on" });
-  await assert.rejects(page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) }), /redirect:\/app\/contacts$/);
-  assert.deepEqual(operations(calls, REAL_READS), []);
-  assert.deepEqual(operations(calls, GUIDE_READS), ["profile", "guide"]);
-});
-
 test("flag on but out of the guide: a real contact id takes the real path (one guide read is allowed)", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on", guide: "out" });
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
@@ -261,12 +254,6 @@ test("flag off: the analysis drill-down reads the real bucket and no guide state
   assert.deepEqual(operations(calls, REAL_READS), ["count"]);
   assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.deepEqual(find(tree, "NetworkAnalysisListScreen")?.lock, { state: "open" });
-});
-
-test("demo: the analysis drill-down redirects back to the demo structure tab before any real read (W54-6: no demo list page)", async (t) => {
-  const { calls, page } = loadPage(t, "drilldown", { flag: "on" });
-  await assert.rejects(page({ params: Promise.resolve({ bucketId: "b1", dimension: "industry" }) }), /redirect:\/app\/contacts\/dashboard\?tab=structure$/);
-  assert.deepEqual(operations(calls, REAL_READS), []);
 });
 
 test("flag on but out of the guide: the drill-down is the real page", async (t) => {
@@ -297,53 +284,6 @@ test("flag on but the profile goal cannot be read: fail closed to the real page"
 
 /* ── SC-02／SC-03：开关开 + 在引导期 ───────────────────────────────── */
 
-test("demo: /app/contacts renders 30 demo contacts and never calls a real contact loader", async (t) => {
-  const { calls, page } = loadPage(t, "contacts", { flag: "on" });
-  const tree = await page({ searchParams: Promise.resolve({ sourceGroup: "scan" }) });
-  assert.deepEqual(operations(calls, REAL_READS), []);
-  const frame = find(tree, "NetworkDemoFrame");
-  assert.equal(frame?.route, "app-contacts-route");
-  assert.deepEqual(frame?.guide, {
-    bannerCollapsed: false,
-    completed: 1,
-    confirmedContacts: 3,
-    nextStep: "goal",
-    steps: { contacts: true, goal: false, plan: false },
-  });
-  const all = find(tree, "NetworkAll");
-  const vm = all?.viewModel as DemoVm;
-  assert.equal(vm.connections.length, 30);
-  assert.ok(vm.connections.every((contact) => contact.id.startsWith("demo:")));
-  assert.equal(all?.initialSource, "scan");
-  // 引导判定以 canonical actor 进行，资料目标一并交给进度判定。
-  assert.deepEqual(calls.find((call) => call.operation === "profile")?.input, { actorId: "account:canonical" });
-  assert.deepEqual(calls.find((call) => call.operation === "guide")?.input, {
-    actorId: "account:canonical",
-    relationshipGoal: "",
-    userId: "subject:external",
-  });
-});
-
-test("demo: an unknown sourceGroup falls back to all sources", async (t) => {
-  const { page } = loadPage(t, "contacts", { flag: "on" });
-  const tree = await page({ searchParams: Promise.resolve({ sourceGroup: "bogus" }) });
-  assert.equal(find(tree, "NetworkAll")?.initialSource, "all");
-});
-
-test("demo: /app/contacts/demo:wang-yan opens the full demo detail over the demo list, no real read", async (t) => {
-  const { calls, page } = loadPage(t, "detail", { flag: "on" });
-  const tree = await page({ params: Promise.resolve({ id: "demo%3Awang-yan" }), searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), []);
-  assert.equal(find(tree, "NetworkDemoFrame")?.route, "app-contact-detail-route");
-  const all = find(tree, "NetworkAll");
-  assert.equal((all?.viewModel as DemoVm).connections.length, 30);
-  const detail = all?.openDetail as { closeHref: string; contact: { id: string; displayName: string; notes: unknown[] } };
-  assert.equal(detail.closeHref, "/app/contacts");
-  assert.equal(detail.contact.id, "demo:wang-yan");
-  assert.equal(detail.contact.displayName, "王砚");
-  assert.equal(detail.contact.notes.length, 2);
-});
-
 /* ── SC-03：demo: id 在非示例时 404 ─────────────────────────────────── */
 
 test("flag off: /app/contacts/demo:* is a 404 and never reaches the real detail read", async (t) => {
@@ -364,15 +304,3 @@ test("demo: an unknown demo id is a 404 too", async (t) => {
   await assert.rejects(page({ params: Promise.resolve({ id: "demo:nobody" }), searchParams: Promise.resolve({}) }), /NEXT_NOT_FOUND/);
   assert.deepEqual(operations(calls, REAL_READS), []);
 });
-test("R11b demo: the analysis page renders the new screen from the demo world (demo, no drill-down), with no real read", async (t) => {
-  const { calls, page } = loadPage(t, "dashboard", { flag: "on" });
-  const tree = await page({ searchParams: Promise.resolve({ tab: "opportunities" }) });
-  const screen = find(tree, "NetworkAnalysisScreen");
-  assert.equal(screen?.demo, true);
-  assert.equal(screen?.initialTab, "opportunities");
-  assert.equal(screen?.snapshot, null);
-  const load = calls.find((call) => call.operation === "networkAnalysis");
-  assert.ok(load && (load.input as unknown[])[2], "the demo load gets its own (fixture) reads");
-  assert.deepEqual(operations(calls, ["cards", "contacts", "detail", "count", "threshold", "insightDetail"]), []);
-});
-
