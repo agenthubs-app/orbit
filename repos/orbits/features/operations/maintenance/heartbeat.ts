@@ -177,6 +177,38 @@ export async function ensureMaintenanceHeartbeat({
   return outcome;
 }
 
+/** Due time of a parked chain: never overdue, so no build restarts it as a dead chain. */
+export const PARKED_MAINTENANCE_HEARTBEAT_DUE_AT = new Date("9999-12-31T00:00:00.000Z");
+
+/**
+ * Stops the chain when the heartbeat is switched off (ORBIT_MAINTENANCE_HEARTBEAT=0). Ticks return to the
+ * deployment that sent them, and that deployment was built with the switch on, so a new deployment cannot stop
+ * the chain just by not starting one: every 10 minutes it would keep waking the database. Parking swaps in a
+ * chain id no message carries (the next tick is superseded and not re-sent), records this build as the owner and
+ * moves the due time to the far future, so older builds neither restart it as overdue nor take it over. A later
+ * build with the switch on takes it over as usual (newer build). An older build never parks a newer owner's
+ * chain. Returns whether a live chain was parked (false: no row, already parked, or owned by a newer build).
+ */
+export async function parkMaintenanceHeartbeat({
+  pool, workspaceId, id = randomUUID, identity = NO_IDENTITY,
+}: {
+  pool: Pick<Pool, "query">;
+  workspaceId: string;
+  id?: () => string;
+  identity?: MaintenanceDeploymentIdentity;
+}): Promise<boolean> {
+  if (!workspaceId.trim()) throw new Error("Invalid maintenance workspace.");
+  const mine = buildMillis(identity.buildAt);
+  const result = await pool.query(
+    `UPDATE orbit_maintenance_heartbeat SET chain_id = $2, seq = 0, dispatched_seq = 0, next_due_at = $3,
+       owner_deployment_id = $4, owner_build_at = coalesce($5::timestamptz, owner_build_at), updated_at = now()
+     WHERE workspace_id = $1 AND next_due_at < $3
+       AND ($5::timestamptz IS NULL OR owner_build_at IS NULL OR owner_build_at <= $5::timestamptz)`,
+    [workspaceId, id(), PARKED_MAINTENANCE_HEARTBEAT_DUE_AT, identity.deploymentId, mine === null ? null : new Date(mine)],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export interface ProcessMaintenanceHeartbeatResult {
   outcome: "ran" | "resent" | "superseded";
   pass?: MaintenancePassResult;
