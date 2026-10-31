@@ -29,7 +29,7 @@ import type {
 /** `repairs`：服务端确定性修理过的问题码（只在有修理时出现；调用方写日志 `plan_v2_ai_output_repaired`）。 */
 export type Checked<T> = { ok: true; value: T; repairs?: string[] } | { ok: false; issues: string[] };
 
-const text = (max: number) => z.string().trim().max(max);
+export const text = (max: number) => z.string().trim().max(max);
 const stance = z.enum(["owner", "cofounder", "employee", "individual"]).nullable().catch(null);
 const relation = z.enum(["cofounder", "employee", "contractor", "advisor"]).nullable().catch(null);
 
@@ -43,7 +43,7 @@ function zodIssues(error: z.ZodError): string[] {
   return error.issues.slice(0, 8).map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`);
 }
 
-function parse<T>(schema: z.ZodType<T>, raw: unknown): Checked<T> {
+export function parse<T>(schema: z.ZodType<T>, raw: unknown): Checked<T> {
   const result = schema.safeParse(raw);
   return result.success ? { ok: true, value: result.data } : { ok: false, issues: zodIssues(result.error) };
 }
@@ -128,7 +128,8 @@ export function checkQuestions(raw: unknown, input: QuestionsInput): Checked<Que
 }
 
 const flowCell = z.object({ emoji: text(8), label: text(40), note: text(80) });
-const draftSchema = z.object({
+/** C6 方案的 zod（R33：`schemas-v3.ts` 复用它做 v3 的基础部分）。 */
+export const draftSchema = z.object({
   diagnosis: text(1200).pipe(z.string().min(1)),
   conclusion: text(400).pipe(z.string().min(1)),
   flow: z.array(flowCell).max(4).catch([]),

@@ -8,11 +8,18 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
 import type {
   PlanAiLimitKind,
   PlanCitation,
+  PlanComparisonVerdict,
+  PlanConfidenceLevel,
   PlanFlowCell,
   PlanGoalKind,
+  PlanMarkedText,
   PlanMemberRelation,
   PlanPremiseRow,
+  PlanRef,
+  PlanRisk,
+  PlanSource,
   PlanStance,
+  PlanVerdict,
 } from "../../../../shared/contract/plan-v2";
 import type { IndustryIdCode } from "../../../../shared/contract/industries";
 
@@ -234,4 +241,50 @@ export interface PlanFlowAi {
   reviewMarks(input: ReviewMarksInput, context: PlanAiContext): Promise<PlanAiOutcome<ReviewMarksOutput>>;
   reviewFix(input: ReviewFixInput, context: PlanAiContext): Promise<PlanAiOutcome<FixOutput>>;
   nextGoals(input: NextGoalsInput, context: PlanAiContext): Promise<PlanAiOutcome<NextGoalsOutput>>;
+  /** R33：v3 初版（mock 已实现；R35 给 deepseek 实现并把 `flow-service` 的初版步骤切过去，届时改为必选）。 */
+  firstDraftV3?(input: FirstDraftInputV3, context: PlanAiContext): Promise<PlanAiOutcome<DraftOutputV3>>;
+}
+
+/* ------------------------------------------------------------------ */
+/* R33 计划 v3 的起草（plan-v3/DESIGN.md §2.1 / §2.2 / §3.1；R35 接线）  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * v3 初版的输入：v2.2 的输入 + 来源清单（业界现状库条目与 R34 的网页来源，由服务层编号 `id`）+ 本次回答的题 id
+ * （理由段只能引用这两种）。
+ */
+export interface FirstDraftInputV3 extends FirstDraftInput {
+  sources: readonly PlanSource[];
+  /** 本次回答过的题 id（`PlanIntakeAnswer.questionId`）；`refs` 的 `questionKey` 只能是这些。 */
+  answerKeys: readonly string[];
+}
+
+/** 理由段的一句：`bold` = 要加粗的原句子串（≤14 字，每句至多 1 处）；`refs` = 这句的依据（至少 1 条）。 */
+export interface DraftSummarySentence {
+  text: string;
+  bold: string | null;
+  refs: PlanRef[];
+}
+
+/** 模型给出的 v3 方案：v2 的方案 + 目标结果、理由段（按句）、判定、信心、顺序理由、对比条、关键数字、风险。来源清单不由模型产出。 */
+export interface DraftOutputV3 extends DraftOutput {
+  outcome: string;
+  summary: DraftSummarySentence[];
+  verdict: PlanVerdict;
+  confidence: { level: PlanConfidenceLevel; reason: string };
+  orderReasons: Array<{ text: string; sourceIds: string[] }>;
+  comparison: { title: string; funnel: string; rows: Array<{ label: string; score: number; verdict: PlanComparisonVerdict; sourceIds: string[]; typeKey: string | null }> } | null;
+  keyNumbers: Array<{ value: string; label: string; sourceIds: string[] }>;
+  risks: PlanRisk[];
+}
+
+/**
+ * `checkDraftV3` 通过后的方案：理由段已算成 `PlanMarkedText`（下标由服务端算）、每个人物类型带 `stepKey`（`step-<n>`，
+ * 与 Step 的 `personTypeKeys` 一致）、`sources` 为输入的来源清单、`citations` 由用到的 landscape 来源导出（v2 读取方照旧）。
+ */
+export interface DraftV3 extends Omit<DraftOutputV3, "summary" | "personTypes"> {
+  schemaVersion: 3;
+  summary: PlanMarkedText;
+  personTypes: Array<DraftOutput["personTypes"][number] & { stepKey: string }>;
+  sources: PlanSource[];
 }

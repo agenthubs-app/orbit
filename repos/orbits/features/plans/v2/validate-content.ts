@@ -60,8 +60,24 @@ export function allocationSlotsOf(goalKind: PlanGoalKind, content: { personTypes
   ];
 }
 
-/** 返回问题清单；空数组 = 合格。 */
+/** 返回问题清单；空数组 = 合格。= `checkDraftStructure` + 引用规则（①② 与「无引用不得带数字」）。 */
 export function checkDraftContent(content: DraftOutput, input: ContentCheckInput): string[] {
+  const issues = checkDraftStructure(content, input);
+  const published = new Map(input.landscape.map((entry) => [entry.id, entry.version]));
+  for (const citation of content.citations) {
+    if (published.get(citation.id) !== citation.version) issues.push(`citation ${citation.id}: not a published entry`);
+  }
+  issues.push(...citationMarkerIssues(content.diagnosis, content.citations.length, "diagnosis"));
+  issues.push(...citationMarkerIssues(content.conclusion, content.citations.length, "conclusion"));
+  issues.push(...unusedCitationIssues([content.diagnosis, content.conclusion], content.citations.length));
+  return issues;
+}
+
+/**
+ * R33：方案结构的规则（Step 数、人物类型、短名、人数、配点、3 问、紹介ルート、Step 引用、合计 100、模板 ±5），
+ * 不含 v2 的 ①② 引用规则——v3 的来源用 `sourceId`（`ai/schemas-v3.ts`），引用规则各自做。
+ */
+export function checkDraftStructure(content: Pick<DraftOutput, "steps" | "personTypes" | "event">, input: ContentCheckInput): string[] {
   const issues: string[] = [];
   const template = PLAN_GOAL_TEMPLATES[input.goalKind];
   const slotInfo = new Map(input.slots.map((slot) => [slot.slot, slot]));
@@ -101,13 +117,6 @@ export function checkDraftContent(content: DraftOutput, input: ContentCheckInput
     const adjustment = checkTemplateAdjustment(input.goalKind, allocations);
     if (adjustment.ok === false) issues.push(`template: ${adjustment.reason}`);
   }
-  const published = new Map(input.landscape.map((entry) => [entry.id, entry.version]));
-  for (const citation of content.citations) {
-    if (published.get(citation.id) !== citation.version) issues.push(`citation ${citation.id}: not a published entry`);
-  }
-  issues.push(...citationMarkerIssues(content.diagnosis, content.citations.length, "diagnosis"));
-  issues.push(...citationMarkerIssues(content.conclusion, content.citations.length, "conclusion"));
-  issues.push(...unusedCitationIssues([content.diagnosis, content.conclusion], content.citations.length));
   return issues;
 }
 
