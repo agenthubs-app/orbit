@@ -27,6 +27,8 @@ import {
   isEventAssessmentOperation,
   isInstantInsightOperation,
   isPlanFlowOperation,
+  isRecordOnlyUserOperation,
+  PLAN_PREP_REGENERATE_TRIGGER,
   MANUAL_REANALYSIS_DAILY_LIMIT,
   nextTokyoMidnight,
   nextTokyoMonthStart,
@@ -93,12 +95,15 @@ function count(value: unknown): number {
 }
 
 // R22：计划生成流程的用途（PLAN_FLOW_PURPOSES）不计入 user_used，单独计 plan_flow_used；其他用途的计数不变。
+// R33：plan_search 与初次生成的 plan_prep 只记账、不计入任何日上限；重生成的 plan_prep（trigger = manual）计入 plan_flow_used。
 const PLAN_FLOW_SQL_LIST = PLAN_FLOW_PURPOSES.map((purpose) => `'${purpose}'`).join(", ");
+const PLAN_FLOW_SQL = `(purpose in (${PLAN_FLOW_SQL_LIST}) or (purpose = 'plan_prep' and trigger = '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
+const RECORD_ONLY_SQL = `(purpose = 'plan_search' or (purpose = 'plan_prep' and trigger <> '${PLAN_PREP_REGENERATE_TRIGGER}'))`;
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
-    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and purpose not in (${PLAN_FLOW_SQL_LIST}) and purpose <> 'event_assessment')::int as user_used,
+    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto') and not ${PLAN_FLOW_SQL} and not ${RECORD_ONLY_SQL} and purpose <> 'event_assessment')::int as user_used,
     count(*) filter (where pool = 'user' and purpose = 'event_assessment')::int as event_assessment_used,
-    count(*) filter (where pool = 'user' and purpose in (${PLAN_FLOW_SQL_LIST}))::int as plan_flow_used,
+    count(*) filter (where pool = 'user' and ${PLAN_FLOW_SQL})::int as plan_flow_used,
     count(*) filter (where pool = 'user' and purpose = 'insight' and trigger = 'auto')::int as instant_used,
     count(*) filter (where pool = 'user' and purpose = 'snapshot' and trigger = 'manual')::int as manual_used,
     count(*) filter (where pool = 'background')::int as background_used
@@ -161,7 +166,8 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       return { ok: true, operationId: String(replay.id), owner: status === "reserved" && request.takeover === true, status };
     }
     const day = tokyoUsageDay(request.now);
-    if (request.pool !== "system") {
+    // R33：只记账的用户池用途（联网搜索、准备卡初次生成）不查任何日上限（每份计划的上限由调用处守）。
+    if (request.pool !== "system" && !isRecordOnlyUserOperation(request)) {
       const usage = (await executor.query<Row>(USAGE_SQL, [workspaceId, actorId, day])).rows[0];
       const retryOn = nextTokyoMidnight(request.now);
       if (request.pool === "background" && count(usage?.background_used) >= BACKGROUND_POOL_DAILY_LIMIT) {

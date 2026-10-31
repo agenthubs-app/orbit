@@ -26,7 +26,11 @@ export type AiQuotaPurpose =
   | "event_registration_question"
   | "event_post_summary"
   // R17（host DESIGN §10 A6，用户 2026-10-16「全按推荐」）：编组生成（现有 event-ops worker 的付费 AI）——只记账，不设上限、不拦调用。
-  | "event_matching";
+  | "event_matching"
+  // R33（plan-v3/DESIGN.md §2.6，用户 2026-11-01 定）：起草前的联网搜索（provider = tavily，不计入计划生成流程的 15 次；
+  // 每份计划 ≤8 次由 R34 在调用处守）与准备卡生成（初次 `trigger: "plan"` 不计日限、重生成 `manual` 计入 15 次，R37a 接）。
+  | "plan_search"
+  | "plan_prep";
 export type AiQuotaTrigger = "auto" | "manual" | "plan";
 
 export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "system"];
@@ -34,6 +38,7 @@ export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = [
   "plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment",
   "plan_intake", "plan_background", "plan_draft", "plan_revise", "plan_review_mark", "plan_review", "event_assessment",
   "event_registration_interview", "event_registration_question", "event_post_summary", "event_matching",
+  "plan_search", "plan_prep",
 ];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
@@ -79,6 +84,9 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   event_post_summary: 2,
   // R17：一次编组任务尝试（推荐分片 / 分组 / 卓内容）= 1 次操作 1 次调用（维护任务事后补记）。
   event_matching: 1,
+  // R33：一次搜索 = 1 次 HTTP；一张准备卡 = 生成 + 对账修复（输入过长时另加 1 次「压缩成事实清单」）。
+  plan_search: 1,
+  plan_prep: 3,
 };
 
 /**
@@ -87,6 +95,15 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
  */
 export const PLAN_FLOW_PURPOSES: readonly AiQuotaPurpose[] = ["plan_background", "plan_draft", "plan_revise", "plan_review"];
 export const PLAN_FLOW_DAILY_LIMIT = 15;
+/**
+ * R33（plan-v3/DESIGN.md §2.6）：准备卡的重生成（「資料が更新されました」后用户点重生成，`trigger: "manual"`）计入
+ * 计划生成流程的 15 次；确定计划时的初次生成（`trigger: "plan"`）不计日限。`plan_search` 永远不计入 15 次。
+ */
+export const PLAN_PREP_REGENERATE_TRIGGER: AiQuotaTrigger = "manual";
+/** R33：每份计划的联网搜索上限（R34 在调用处守，账本不数）。 */
+export const PLAN_SEARCH_PER_PLAN_LIMIT = 8;
+/** R33：每份计划初次生成的准备卡张数上限（R37a 在调用处守）。 */
+export const PLAN_PREP_INITIAL_CARDS_LIMIT = 4;
 
 /**
  * R22（DESIGN §5.3、§10 用户已确认 2026-10-10）：每用户每东京自然月的操作上限（不含 released）。
@@ -132,6 +149,9 @@ export const AI_QUOTA_PURPOSE_POOLS: Readonly<Partial<Record<AiQuotaPurpose, AiQ
   // LF4: the event-registration runner reserves from the system pool (journey/ledgered-runner.ts).
   event_registration_interview: "system",
   event_registration_question: "system",
+  // R33：两者都在用户池（记在本人名下）。
+  plan_search: "user",
+  plan_prep: "user",
 };
 
 /**
@@ -142,8 +162,19 @@ export const AI_QUOTA_DAILY_PURPOSE_LIMITS: Readonly<Partial<Record<AiQuotaPurpo
   event_registration_question: 40,
 };
 
-export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose }): boolean {
+export function isPlanFlowOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger?: AiQuotaTrigger }): boolean {
+  if (input.pool === "user" && input.purpose === "plan_prep") return input.trigger === PLAN_PREP_REGENERATE_TRIGGER;
   return input.pool === "user" && PLAN_FLOW_PURPOSES.includes(input.purpose);
+}
+
+/**
+ * R33：不占任何日上限、只记账的用户池用途（`plan_search`；准备卡的初次生成 `plan_prep` / `plan`）。
+ * 账本的 `user_used` / `plan_flow_used` 都不数它们。
+ */
+export function isRecordOnlyUserOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger: AiQuotaTrigger }): boolean {
+  if (input.pool !== "user") return false;
+  if (input.purpose === "plan_search") return true;
+  return input.purpose === "plan_prep" && input.trigger !== PLAN_PREP_REGENERATE_TRIGGER;
 }
 
 /** W0057：用户池里的即时洞察生成（独立计数，不占 10 次总熔断）。 */
