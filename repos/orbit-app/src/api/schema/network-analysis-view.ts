@@ -123,3 +123,6 @@ export const networkSnapshotViewObject = z.object({
   quota: z.object({ manual: quotaPool, user: quotaPool, background: quotaPool.extend({ retryOn: z.string().max(40).optional() }) }),
 });
 export const networkSnapshotViewSchema = networkSnapshotViewObject;
+
+/** The 1440 rail's first page (b5 #40): the drill-down's first five (the page reads it with the view). */
+export const NETWORK_ANALYSIS_RAIL_LIMIT = 5;

@@ -5997,8 +5997,10 @@
       "values": [
         "'custom'",
         "'next_month'",
+        "'past'",
         "'this_month'",
-        "'this_week'"
+        "'this_week'",
+        "'upcoming'"
       ]
     },
     "event-discover.ts::EventDiscoverArea": {
@@ -6240,6 +6242,16 @@
           "optional": true,
           "kind": "text",
           "type": "readonly EventDiscoverWidenSuggestion[]"
+        },
+        "past": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly EventDiscoverRow[]"
+        },
+        "pastTotal": {
+          "optional": true,
+          "kind": "text",
+          "type": "number"
         },
         "signedOut": {
           "optional": true,
@@ -13498,7 +13510,13 @@
         "PlanCandidateView",
         "PlanCitation",
         "PlanCitationView",
+        "PlanCitedLine",
         "PlanCommandResult",
+        "PlanComparison",
+        "PlanComparisonRow",
+        "PlanComparisonVerdict",
+        "PlanConfidence",
+        "PlanConfidenceLevel",
         "PlanConfirmResult",
         "PlanContactFit",
         "PlanContactFitStatus",
@@ -13539,10 +13557,13 @@
         "PlanIntroDraftResult",
         "PlanIntroRoute",
         "PlanIntroRouteView",
+        "PlanKeyNumber",
         "PlanLadderRung",
+        "PlanLandscapeSource",
         "PlanLegacyDetail",
         "PlanLegacyItem",
         "PlanLegacyListResponse",
+        "PlanMarkedText",
         "PlanMemberRelation",
         "PlanMemberSource",
         "PlanNextGoalCandidate",
@@ -13563,13 +13584,16 @@
         "PlanQuotaView",
         "PlanReadingItem",
         "PlanRecentAward",
+        "PlanRef",
         "PlanReviewFixRequest",
         "PlanReviewStartRequest",
         "PlanReviewToggleRequest",
         "PlanReviewView",
+        "PlanRisk",
         "PlanScoreSegment",
         "PlanScoreView",
         "PlanSkipRequest",
+        "PlanSource",
         "PlanStance",
         "PlanStepProgress",
         "PlanStepRequest",
@@ -13589,6 +13613,9 @@
         "PlanV2PersonType",
         "PlanV2Step",
         "PlanV2SummaryResponse",
+        "PlanV3Fields",
+        "PlanVerdict",
+        "PlanWebSource",
         "PortraitAnswerProof",
         "PortraitField",
         "PortraitGeneration",
@@ -16869,6 +16896,11 @@
           "optional": false,
           "kind": "text",
           "type": "boolean"
+        },
+        "stepKey": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -16959,6 +16991,56 @@
           "optional": true,
           "kind": "text",
           "type": "true"
+        },
+        "schemaVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "2 | 3"
+        },
+        "outcome": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "summary": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanMarkedText"
+        },
+        "verdict": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanVerdict"
+        },
+        "confidence": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanConfidence"
+        },
+        "orderReasons": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanCitedLine[]"
+        },
+        "comparison": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanComparison | null"
+        },
+        "keyNumbers": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanKeyNumber[]"
+        },
+        "risks": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanRisk[]"
+        },
+        "sources": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanSource[]"
         }
       }
     },
@@ -20235,6 +20317,328 @@
         }
       }
     },
+    "plan-v2.ts::PlanRef": {
+      "kind": "alias",
+      "type": "PlanRef"
+    },
+    "plan-v2.ts::PlanMarkedText": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "marks": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "start": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "end": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              }
+            }
+          }
+        },
+        "refs": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "start": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "end": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "ref": {
+                "optional": false,
+                "kind": "text",
+                "type": "PlanRef"
+              }
+            }
+          }
+        }
+      }
+    },
+    "plan-v2.ts::PlanCitedLine": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanVerdict": {
+      "kind": "enum",
+      "values": [
+        "'conditional'",
+        "'feasible'",
+        "'not_recommended'"
+      ]
+    },
+    "plan-v2.ts::PlanConfidenceLevel": {
+      "kind": "enum",
+      "values": [
+        "'high'",
+        "'low'",
+        "'mid'"
+      ]
+    },
+    "plan-v2.ts::PlanConfidence": {
+      "kind": "object",
+      "members": {
+        "level": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanConfidenceLevel"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanComparisonVerdict": {
+      "kind": "enum",
+      "values": [
+        "'not_recommended'",
+        "'possible'",
+        "'preferred'"
+      ]
+    },
+    "plan-v2.ts::PlanComparisonRow": {
+      "kind": "object",
+      "members": {
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "score": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "verdict": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanComparisonVerdict"
+        },
+        "sourceIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "typeKey": {
+          "optional": true,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanComparison": {
+      "kind": "object",
+      "members": {
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "funnel": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanComparisonRow[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanKeyNumber": {
+      "kind": "object",
+      "members": {
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "label": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "sourceIds": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanRisk": {
+      "kind": "object",
+      "members": {
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'risk' | 'unverified'"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanLandscapeSource": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'landscape'"
+        },
+        "landscapeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "version": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanWebSource": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'web'"
+        },
+        "url": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "fetchedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "snippet": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "query": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanSource": {
+      "kind": "alias",
+      "type": "PlanSource"
+    },
+    "plan-v2.ts::PlanV3Fields": {
+      "kind": "object",
+      "members": {
+        "schemaVersion": {
+          "optional": true,
+          "kind": "text",
+          "type": "2 | 3"
+        },
+        "outcome": {
+          "optional": true,
+          "kind": "text",
+          "type": "string"
+        },
+        "summary": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanMarkedText"
+        },
+        "verdict": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanVerdict"
+        },
+        "confidence": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanConfidence"
+        },
+        "orderReasons": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanCitedLine[]"
+        },
+        "comparison": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanComparison | null"
+        },
+        "keyNumbers": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanKeyNumber[]"
+        },
+        "risks": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanRisk[]"
+        },
+        "sources": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanSource[]"
+        }
+      }
+    },
     "profile.ts::SeniorityLevelCode": {
       "kind": "enum",
       "values": [
@@ -22518,7 +22922,7 @@
         "priority": {
           "optional": false,
           "kind": "text",
-          "type": "'normal' | 'high'"
+          "type": "'high' | 'normal'"
         },
         "plannedDate": {
           "optional": false,
@@ -22784,7 +23188,7 @@
         "priority": {
           "optional": false,
           "kind": "text",
-          "type": "'normal' | 'high'"
+          "type": "'high' | 'normal'"
         },
         "source": {
           "optional": false,
@@ -22984,7 +23388,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
+          "type": "'cancelled' | 'upcoming' | 'ended' | 'ongoing'"
         },
         "title": {
           "optional": false,
@@ -23115,7 +23519,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
+          "type": "'cancelled' | 'upcoming' | 'ended' | 'ongoing'"
         },
         "title": {
           "optional": false,
@@ -23254,7 +23658,7 @@
         "priority": {
           "optional": false,
           "kind": "text",
-          "type": "'normal' | 'high'"
+          "type": "'high' | 'normal'"
         },
         "plannedDate": {
           "optional": false,
@@ -23294,7 +23698,7 @@
         "state": {
           "optional": false,
           "kind": "text",
-          "type": "'cancelled' | 'ended' | 'upcoming' | 'ongoing'"
+          "type": "'cancelled' | 'upcoming' | 'ended' | 'ongoing'"
         },
         "startsAt": {
           "optional": false,

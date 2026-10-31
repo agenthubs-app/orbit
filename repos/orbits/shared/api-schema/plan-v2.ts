@@ -152,8 +152,44 @@ const personType = z.object({
   opener: z.string().nullable().optional(),
   introRoutes: readableItems(z.object({ viaContactId: z.string().min(1), why: z.string() })),
   skipped: z.boolean(),
+  // R33（v3）：属于哪个阶段；v2 计划缺省。
+  stepKey: z.string().nullable().optional(),
 });
+// R33 计划 v3（plan-v3/DESIGN.md §2）：都可选；读不懂的值当作缺省（界面退回 v2.2 画面），不整页失败。
+const sourceIds = z.array(z.string());
+const planRef = z.union([
+  z.object({ kind: z.literal("answer"), questionKey: z.string() }),
+  z.object({ kind: z.literal("source"), sourceId: z.string() }),
+]);
+const span = z.object({ start: z.number().int().min(0), end: z.number().int().min(0) });
+export const planMarkedTextObject = z.object({
+  text: z.string(),
+  marks: readableItems(span),
+  refs: readableItems(z.object({ start: z.number().int().min(0), end: z.number().int().min(0), ref: planRef })),
+});
+const citedLine = z.object({ text: z.string(), sourceIds });
+const planSource = z.union([
+  z.object({ id: z.string(), kind: z.literal("landscape"), landscapeId: z.string(), version: z.number().int() }),
+  z.object({ id: z.string(), kind: z.literal("web"), url: z.string(), title: z.string(), fetchedAt: z.string(), snippet: z.string(), query: z.string() }),
+]);
+const planV3Fields = {
+  schemaVersion: z.union([z.literal(2), z.literal(3)]).optional().catch(undefined),
+  outcome: z.string().optional(),
+  summary: planMarkedTextObject.optional().catch(undefined),
+  verdict: z.enum(["feasible", "conditional", "not_recommended"]).optional().catch(undefined),
+  confidence: z.object({ level: z.enum(["high", "mid", "low"]), reason: z.string() }).optional().catch(undefined),
+  orderReasons: readableItems(citedLine).optional(),
+  comparison: z.object({
+    title: z.string(),
+    funnel: z.string(),
+    rows: readableItems(z.object({ label: z.string(), score: z.number(), verdict: z.enum(["preferred", "possible", "not_recommended"]), sourceIds, typeKey: z.string().nullable().optional() })),
+  }).nullable().optional().catch(undefined),
+  keyNumbers: readableItems(z.object({ value: z.string(), label: z.string(), sourceIds })).optional(),
+  risks: readableItems(z.object({ kind: z.enum(["risk", "unverified"]), text: z.string() })).optional(),
+  sources: readableItems(planSource).optional(),
+};
 export const planV2ContentObject = z.object({
+  ...planV3Fields,
   diagnosis: z.string(),
   conclusion: z.string(),
   flow: z.array(z.object({ emoji: z.string(), label: z.string(), note: z.string() })).optional(),

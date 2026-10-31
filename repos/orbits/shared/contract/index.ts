@@ -491,6 +491,22 @@ export type {
   PlanReviewStartRequest,
   PlanReviewToggleRequest,
   PlanReviewView,
+  // R33 计划 v3。
+  PlanRef,
+  PlanMarkedText,
+  PlanCitedLine,
+  PlanVerdict,
+  PlanConfidenceLevel,
+  PlanConfidence,
+  PlanComparisonVerdict,
+  PlanComparisonRow,
+  PlanComparison,
+  PlanKeyNumber,
+  PlanRisk,
+  PlanLandscapeSource,
+  PlanWebSource,
+  PlanSource,
+  PlanV3Fields,
 } from "./plan-v2";
 
 // R12 手入力（DESIGN §4.1）。Owner: 甲 (R12).

@@ -70,6 +70,8 @@ export interface PlanV2PersonType {
   opener?: string | null;
   introRoutes: readonly PlanIntroRoute[];
   skipped: boolean;
+  /** R33（v3）：属于哪个阶段（`PlanV2Step.key`）；v2 计划与旧条目为缺省。写入时与 `Step.personTypeKeys` 保持一致。 */
+  stepKey?: string | null;
 }
 
 export interface PlanV2EventBlock {
@@ -84,8 +86,8 @@ export interface PlanFlowCell {
   note: string;
 }
 
-/** 一份方案的内容（初版、修正、确定后都是这个形状）。 */
-export interface PlanV2Content {
+/** 一份方案的内容（初版、修正、确定后都是这个形状）。R33：v3 的新字段见 `PlanV3Fields`（都可选）。 */
+export interface PlanV2Content extends PlanV3Fields {
   diagnosis: string;
   conclusion: string;
   flow?: readonly PlanFlowCell[];
@@ -1077,4 +1079,104 @@ export interface PlanLegacyDetail extends PlanLegacyItem {
     contactName?: string | null;
     organization?: string | null;
   }[];
+}
+
+/* ------------------------------------------------------------------ */
+/* R33 计划 v3（plan-v3/DESIGN.md §2，只加不改）：目标结果、理由段、判定、对比条、关键数字、风险、来源清单 */
+/* ------------------------------------------------------------------ */
+
+/** 理由段 / 准备卡里一处引用：回答（`questionKey` = 本次回答的题 id）或来源清单里的一条（`sourceId`）。 */
+export type PlanRef = { kind: "answer"; questionKey: string } | { kind: "source"; sourceId: string };
+
+/** 带加粗与引用的一段文字：`marks` / `refs` 的 `start` / `end` 是 `text` 的 UTF-16 下标（半开区间），由服务端算好。 */
+export interface PlanMarkedText {
+  text: string;
+  marks: readonly { start: number; end: number }[];
+  refs: readonly { start: number; end: number; ref: PlanRef }[];
+}
+
+/** 带来源的一行（顺序理由等）；`sourceIds` 指向 `PlanV2Content.sources[].id`。 */
+export interface PlanCitedLine {
+  text: string;
+  sourceIds: readonly string[];
+}
+
+export type PlanVerdict = "feasible" | "conditional" | "not_recommended";
+export type PlanConfidenceLevel = "high" | "mid" | "low";
+
+export interface PlanConfidence {
+  level: PlanConfidenceLevel;
+  /** ≤60 字。 */
+  reason: string;
+}
+
+export type PlanComparisonVerdict = "preferred" | "possible" | "not_recommended";
+
+/** 对比条的一行；`typeKey` = 对应人物类型的 key（筛掉的类型为 null）。 */
+export interface PlanComparisonRow {
+  label: string;
+  /** 0–100。 */
+  score: number;
+  verdict: PlanComparisonVerdict;
+  sourceIds: readonly string[];
+  typeKey?: string | null;
+}
+
+export interface PlanComparison {
+  title: string;
+  /** 「7 类按…筛出 5 类」一句。 */
+  funnel: string;
+  rows: readonly PlanComparisonRow[];
+}
+
+export interface PlanKeyNumber {
+  value: string;
+  label: string;
+  sourceIds: readonly string[];
+}
+
+export interface PlanRisk {
+  kind: "risk" | "unverified";
+  text: string;
+}
+
+/** 来源清单里的业界现状库条目（`landscapeId` + `version` 同 `PlanCitation`）。 */
+export interface PlanLandscapeSource {
+  id: string;
+  kind: "landscape";
+  landscapeId: string;
+  version: number;
+}
+
+/** 来源清单里的网页来源（R34 联网搜索）：只存这些，不存全文；`snippet` ≤300 字。 */
+export interface PlanWebSource {
+  id: string;
+  kind: "web";
+  url: string;
+  title: string;
+  fetchedAt: string;
+  snippet: string;
+  query: string;
+}
+
+export type PlanSource = PlanLandscapeSource | PlanWebSource;
+
+/** `PlanV2Content` 在 `schemaVersion: 3` 时多出的部分（都可选；v2 计划读出时全部缺省，界面退回 v2.2 画面）。 */
+export interface PlanV3Fields {
+  schemaVersion?: 2 | 3;
+  /** 目标的结果，≤20 字。 */
+  outcome?: string;
+  /** 理由段：3–4 句 ≤150 字，带加粗与引用。 */
+  summary?: PlanMarkedText;
+  verdict?: PlanVerdict;
+  confidence?: PlanConfidence;
+  /** 为什么是这个顺序，2–3 条。 */
+  orderReasons?: readonly PlanCitedLine[];
+  comparison?: PlanComparison | null;
+  /** 0–3。 */
+  keyNumbers?: readonly PlanKeyNumber[];
+  /** 0–3。 */
+  risks?: readonly PlanRisk[];
+  /** 来源清单；正文用 `sourceId` 字符串引用，不用数组下标。 */
+  sources?: readonly PlanSource[];
 }
