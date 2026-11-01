@@ -4,8 +4,9 @@
 import { eventFactsA, fixturesA } from "./a";
 import { eventFactsB, fixturesB } from "./b";
 import { eventFactsC, fixturesC } from "./c";
+import { eventFactsD, fixturesD } from "./d";
 import type { PlanDesignEventFacts, PlanDesignFixture } from "./base";
 
-export const PLAN_DESIGN_FIXTURES: Readonly<Record<string, PlanDesignFixture>> = { ...fixturesA, ...fixturesB, ...fixturesC };
+export const PLAN_DESIGN_FIXTURES: Readonly<Record<string, PlanDesignFixture>> = { ...fixturesA, ...fixturesB, ...fixturesC, ...fixturesD };
 
-export const PLAN_DESIGN_EVENT_FACTS: Readonly<Record<string, PlanDesignEventFacts>> = { ...eventFactsA, ...eventFactsB, ...eventFactsC };
+export const PLAN_DESIGN_EVENT_FACTS: Readonly<Record<string, PlanDesignEventFacts>> = { ...eventFactsA, ...eventFactsB, ...eventFactsC, ...eventFactsD };

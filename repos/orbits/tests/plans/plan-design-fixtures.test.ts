@@ -13,7 +13,10 @@ import test from "node:test";
 import { PLAN_DESIGN_EVENT_FACTS, PLAN_DESIGN_FIXTURES } from "../../features/plans/v2/design-fixtures";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
 import { createPlanV2Service } from "../../features/plans/v2/service";
-import { planV2DetailSchema, planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
+import { planDraftViewSchema, planV2DetailSchema, planV2SummaryResponseSchema } from "../../shared/api-schema/plan-v2";
+import { D_FLOW_IDS } from "../../features/plans/v2/design-fixtures/d";
+import { JA, flowWorld } from "./flow-fixture";
+import { SCOPE } from "./v2-fixture";
 
 const ROOT = process.cwd();
 const require = createRequire(path.join(ROOT, "package.json"));
@@ -141,4 +144,25 @@ test("b12-244 lawyer record preview retains the two lawyer event examples", () =
     "fx-a-ev-saas-summit",
     "fx-a-ev-cfo-night",
   ]);
+});
+
+// R36a：v16 初稿页的三份 fixture 经同一个生成流程服务读出来都过草稿 schema（v3 字段、stepKey、来源条数照原型、合计 100）。
+test("v16 draft fixtures read through the flow service as v3 drafts that fit the draft schema", async () => {
+  const expected = { fund: { sources: 10, types: 6, keyNumbers: 3 }, hire: { sources: 5, types: 4, keyNumbers: 2 }, sales: { sources: 7, types: 5, keyNumbers: 3 } } as const;
+  for (const name of ["fund", "hire", "sales"] as const) {
+    const world = flowWorld();
+    world.repository.seed(SCOPE, PLAN_DESIGN_FIXTURES[`v16-${name}`]!());
+    const view = planDraftViewSchema.parse(await world.flow.getDraft(D_FLOW_IDS[name].draft, JA));
+    assert.equal(view.content.schemaVersion, 3);
+    assert.equal(view.content.sources?.length, expected[name].sources);
+    assert.equal(view.content.personTypes.length, expected[name].types);
+    assert.equal(view.content.keyNumbers?.length, expected[name].keyNumbers);
+    assert.ok(view.content.personTypes.every((type) => view.content.steps.some((step) => step.key === type.stepKey && step.personTypeKeys.includes(type.key))), "every type belongs to its step");
+    assert.equal(view.content.personTypes.reduce((sum, type) => sum + type.allocation, 0) + view.content.event.allocation, 100);
+    assert.ok(view.content.summary!.refs.every(({ ref }) => (ref.kind === "source" ? view.content.sources!.some((source) => source.id === ref.sourceId) : view.premise.some((row) => row.key === ref.questionKey))), "every ref resolves");
+    assert.ok(view.content.sources!.filter((source) => source.kind === "landscape").every((source) => view.citations.some((citation) => citation.id === (source as { landscapeId: string }).landscapeId)), "landscape sources resolve to citations");
+    const intake = await world.flow.getIntake(D_FLOW_IDS[name].intake, JA);
+    assert.equal(intake?.status, "drafted");
+    assert.equal(intake?.draftId, D_FLOW_IDS[name].draft);
+  }
 });
