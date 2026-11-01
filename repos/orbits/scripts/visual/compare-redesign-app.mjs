@@ -255,7 +255,8 @@ function compareShot(v, designPng, board, shotFile) {
   const statusPt = v["keep-system"] === "true" ? 0 : Number(v["status-height"] ?? 50);
   const design = { ...designPng, data: Buffer.from(designPng.data) };
   // 规格格（spec）设计侧已经是那一格，不画状态栏；整屏画板才涂状态栏。
-  if (!board?.spec) for (const png of [design, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
+  // 整页原型（page）没有画状态栏：只涂实现侧（设计侧从 0 起就是页面内容，靠 --region / --design-region 对位）。
+  if (!board?.spec) for (const png of board?.page ? [app] : [design, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
   // --region（实现侧 rect，设计点）/ --design-region（设计侧，另给时分侧裁）；规格格的设计侧不再裁。
   const screen = { width: app.width, height: app.height };
   const region = v.region ? parseRegion(v.region, screen) : null;
