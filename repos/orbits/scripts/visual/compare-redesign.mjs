@@ -493,6 +493,8 @@ async function runView(v) {
   if (v.styleDiff && designStyles && app.styles) {
     styleDiff = diffStyles(designStyles, app.styles);
     writeFileSync(join(v.out, "style-diff.json"), `${JSON.stringify(styleDiff, null, 2)}\n`);
+    // 两侧的原始取样（元素键 + 位置 + 样式）也留下：逐带归因时按带的 y 范围查「这一带设计 / 实现各是哪些元素」。
+    writeFileSync(join(v.out, "styles.json"), `${JSON.stringify({ app: app.styles, design: designStyles })}\n`);
   }
   return { ...result, styleDiff, key: v.key, triptych: join(v.out, "triptych.png"), out: v.out, ms: Date.now() - t0 };
 }
