@@ -6,6 +6,7 @@ import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy, type PlanCopyLangu
 import { guessGoalKindByKeywords, PLAN_EVENT_SLOT, PLAN_GOAL_TEMPLATES } from "../../../../shared/compute/plan-templates";
 import type { PlanGoalKind } from "../../../../shared/contract/plan-v2";
 import { ruleQuestions, stableNumber } from "./rules";
+import { checkDraftV3 } from "./schemas-v3";
 import type { BackgroundOutput, DraftOutput, DraftOutputV3, DraftSummarySentence, FirstDraftInputV3, FixOutput, LadderOutput, PlanAiOutcome, PlanFlowAi } from "./types";
 
 type Tri = Record<PlanCopyLanguage, string>;
@@ -260,7 +261,9 @@ export function createMockPlanFlowAi(): PlanFlowAi {
       return ok(draftFor(input.goalKind, input.goalText, context.language, input.landscape.slice(0, 2).map((entry) => ({ id: entry.id, version: entry.version })), input.contacts.map((contact) => contact.alias)));
     },
     async firstDraftV3(input, context) {
-      return ok(mockDraftV3(input, context.language));
+      // R35：mock 也过同一校验（R33 的固定输出 0 次修理通过）；校验不过就按真实实现一样报 failed，不交出半成品。
+      const checked = checkDraftV3(mockDraftV3(input, context.language), { aliases: new Set(input.contacts.map((contact) => contact.alias)), answerKeys: new Set(input.answerKeys), enforceTemplate: true, goalKind: input.goalKind, landscape: input.landscape, slots: input.slots, sources: input.sources });
+      return checked.ok === true ? ok(checked.value) : { ok: false, reason: "failed" };
     },
     async fix(input, context) {
       if (NO_CHANGE.test(input.request)) {

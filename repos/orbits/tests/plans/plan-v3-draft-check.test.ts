@@ -53,13 +53,15 @@ function good(kind: PlanGoalKind = "fundraising"): { draft: DraftOutputV3; input
 test("mock v3 drafts for the three goals pass checkDraftV3 without repairs and come back as schemaVersion 3", async () => {
   for (const kind of ["fundraising", "launch", "sales"] as const) {
     const input = inputFor(kind);
-    const outcome = await createMockPlanFlowAi().firstDraftV3!(input, CONTEXT);
-    assert.equal(outcome.ok, true, kind);
-    const checked = checkDraftV3(structuredClone((outcome as { value: DraftOutputV3 }).value), checkInput(input));
+    const checked = checkDraftV3(structuredClone(mockDraftV3(input, "ja")), checkInput(input));
     assert.equal(checked.ok, true, `${kind}: ${JSON.stringify((checked as { issues?: string[] }).issues)}`);
     if (checked.ok !== true) return;
     assert.equal(checked.repairs, undefined, `${kind}: no repairs`);
     const value = checked.value;
+    // R35：接口返回的就是校验后的 DraftV3（mock 也过同一校验）。
+    const outcome = await createMockPlanFlowAi().firstDraftV3(input, CONTEXT);
+    assert.equal(outcome.ok, true, kind);
+    assert.deepEqual((outcome as { value: unknown }).value, value, `${kind}: the mock returns the checked draft`);
     assert.equal(value.schemaVersion, 3);
     assert.ok(value.summary.text.length > 0 && value.summary.refs.length === 3, "three sentences, each with a ref");
     assert.ok(value.summary.marks.every((mark) => mark.end - mark.start > 0 && mark.end <= value.summary.text.length));

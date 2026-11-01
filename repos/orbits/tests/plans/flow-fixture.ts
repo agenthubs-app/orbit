@@ -20,7 +20,7 @@ export interface CountingAi extends PlanFlowAi {
 }
 
 export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingAi {
-  const calls = { background: 0, firstDraft: 0, fix: 0, goalKind: 0, ladder: 0, members: 0, nextGoals: 0, questions: 0, reviewFix: 0, reviewMarks: 0 } as Record<AiStep, number>;
+  const calls = { background: 0, firstDraft: 0, firstDraftV3: 0, fix: 0, goalKind: 0, ladder: 0, members: 0, nextGoals: 0, questions: 0, reviewFix: 0, reviewMarks: 0 } as Record<AiStep, number>;
   const keys: string[] = [];
   const next: CountingAi["next"] = {};
   const wrap = <K extends AiStep>(step: K) => (async (input: never, context: { ledgerKey: string }) => {
@@ -37,6 +37,7 @@ export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingA
     background: wrap("background"),
     calls,
     firstDraft: wrap("firstDraft"),
+    firstDraftV3: wrap("firstDraftV3"),
     fix: wrap("fix"),
     goalKind: wrap("goalKind"),
     id: "mock",

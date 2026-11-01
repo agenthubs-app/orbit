@@ -241,8 +241,11 @@ export interface PlanFlowAi {
   reviewMarks(input: ReviewMarksInput, context: PlanAiContext): Promise<PlanAiOutcome<ReviewMarksOutput>>;
   reviewFix(input: ReviewFixInput, context: PlanAiContext): Promise<PlanAiOutcome<FixOutput>>;
   nextGoals(input: NextGoalsInput, context: PlanAiContext): Promise<PlanAiOutcome<NextGoalsOutput>>;
-  /** R33：v3 初版（mock 已实现；R35 给 deepseek 实现并把 `flow-service` 的初版步骤切过去，届时改为必选）。 */
-  firstDraftV3?(input: FirstDraftInputV3, context: PlanAiContext): Promise<PlanAiOutcome<DraftOutputV3>>;
+  /**
+   * R33 / R35：v3 初版（plan-v3/DESIGN.md §3.1）。返回的是过了 `checkDraftV3` 的 `DraftV3`（理由段已算下标、类型带 stepKey、
+   * sources / citations 已定）：mock 固定输出也过同一校验，deepseek 新提示词 + 修复重试 1 次，disabled 返回 disabled。
+   */
+  firstDraftV3(input: FirstDraftInputV3, context: PlanAiContext): Promise<PlanAiOutcome<DraftV3>>;
 }
 
 /* ------------------------------------------------------------------ */

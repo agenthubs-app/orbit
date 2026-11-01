@@ -8,9 +8,10 @@ import { DeepseekJsonChatError } from "../../../ai/deepseek-json-chat";
 import { AI_QUOTA_MAX_CALLS, AI_QUOTA_PURPOSE_POOLS, type AiQuotaPurpose } from "../../../ai-quota/constants";
 import type { AiQuotaGate } from "../../../ai-quota/gate";
 import type { PlanAiChat } from "../../ai-generator";
-import { firstDraftTask, PLAN_V2_PROMPT_VERSION, repairMessage, systemPrompt, TASKS } from "./prompts";
+import { firstDraftTask, firstDraftV3Task, PLAN_V2_PROMPT_VERSION, repairMessage, systemPrompt, TASKS } from "./prompts";
 import { checkBackground, checkDraft, checkFix, checkGoalKind, checkLadder, checkMembers, checkNextGoals, checkQuestions, checkReviewFix, checkReviewMarks, type Checked } from "./schemas";
-import type { FirstDraftInput, PlanAiContext, PlanAiOutcome, PlanFlowAi } from "./types";
+import { checkDraftV3 } from "./schemas-v3";
+import type { FirstDraftInput, FirstDraftInputV3, PlanAiContext, PlanAiOutcome, PlanFlowAi } from "./types";
 
 export type PlanFlowAiLog = (entry: Record<string, unknown>) => void;
 
@@ -91,6 +92,8 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
     id: "deepseek",
     background: (input, context) => run("background", "plan_background", context, TASKS.background, input, (raw) => checkBackground(raw, input)),
     firstDraft: (input, context) => run("first_draft", "plan_draft", context, firstDraftTask(input.contacts.map((contact) => contact.alias)), input, (raw) => checkDraft(raw, draftCheckInput(input))),
+    // R35：v3 初版同一用途（plan_draft）、同一骨架（reserve → 最多 2 次 chat，第二次带 issues → finish）；校验换成 checkDraftV3。
+    firstDraftV3: (input, context) => run("first_draft_v3", "plan_draft", context, firstDraftV3Task({ aliases: input.contacts.map((contact) => contact.alias), answerKeys: input.answerKeys, sourceIds: input.sources.map((source) => source.id) }), input, (raw) => checkDraftV3(raw, draftCheckInputV3(input))),
     fix: (input, context) => run("fix", "plan_revise", context, TASKS.fix, input, (raw) => checkFix(raw, draftCheckInput(input), input.current)),
     goalKind: (input, context) => run("goal_kind", "plan_intake", context, TASKS.goalKind, input, checkGoalKind),
     ladder: (input, context) => run("ladder", "plan_intake", context, TASKS.ladder, input, (raw) => checkLadder(raw, input.goalText)),
@@ -104,4 +107,8 @@ export function createDeepseekPlanFlowAi(deps: DeepseekPlanFlowAiDeps): PlanFlow
 
 function draftCheckInput(input: Pick<FirstDraftInput, "goalKind" | "slots" | "landscape" | "contacts">) {
   return { aliases: new Set(input.contacts.map((contact) => contact.alias)), enforceTemplate: true, goalKind: input.goalKind, landscape: input.landscape, slots: input.slots };
+}
+
+function draftCheckInputV3(input: Pick<FirstDraftInputV3, "goalKind" | "slots" | "landscape" | "contacts" | "sources" | "answerKeys">) {
+  return { ...draftCheckInput(input), answerKeys: new Set(input.answerKeys), sources: input.sources };
 }

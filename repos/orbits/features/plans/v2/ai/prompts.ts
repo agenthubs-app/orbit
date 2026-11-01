@@ -18,8 +18,12 @@ import type { PlanCopyLanguage } from "../../../../shared/compute/plan-template-
  * v8（staging 新账号 0 联系人时 C6 每次被拒，2026-10-26）：C6 在任务里列出实际的联系人别名（可能为空），写明紹介ルート只能用
  *     这些别名、没有就输出空数组（示例不再写 "C1"）；聞くこと「恰好 3 条」、引用「每条都要在文中标出、没用到就别列」写成硬规则。
  *     服务端同时做确定性修理（ai/normalize.ts）。v8 只用 fake 测过，上线前须用真实调用验证。
+ * v9（R35 计划 v3 起草，2026-11-01）：新任务 `firstDraftV3`（plan-v3/DESIGN.md §3.1 五条要点：只引用输入里的来源 id 与回答 id、
+ *     先 outcome / conclusion 再 summary 且每个外部事实带 sourceId、doneCriteria 写成可观察结果、分量按 comparison 判定排、
+ *     每类恰好 3 问）。输出 `DraftOutputV3`，经 `checkDraftV3`（schemas-v3.ts）。其余任务的提示词不变。v9 只用 fake 测过，
+ *     **真实 DeepSeek 验证留 R38**（一份计划、登记 token 与修理码）。
  */
-export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v8";
+export const PLAN_V2_PROMPT_VERSION = "plan-v2-flow-2026-10-v9";
 
 const LANGUAGE: Record<PlanCopyLanguage, string> = { en: "English", ja: "Japanese (natural, polite です・ます)", zh: "Simplified Chinese" };
 
@@ -100,6 +104,19 @@ export const TASKS = {
     "For each candidate also write subtitle: one short sentence (at most 60 characters, one line) saying why this goal follows, based only on the records (for example who the user met or what was completed). No digits unless they appear in the records.",
     'Output: {"candidates": [{"goalText": "...", "goalKind": "...", "subtitle": "...", "evidenceIds": ["..."]}]}',
   ].join("\n"),
+  firstDraftV3: [
+    "Write the first plan (version 3) for the goal from the confirmed premise, the background, the source list and the answers. Besides the plan body (steps, personTypes, event) you give the outcome, a reasoning summary, a verdict with confidence, order reasons, a comparison bar, key numbers and risks.",
+    "RULE 1 — evidence: you may cite ONLY the sources listed in the input (by their \"id\", such as S1) and the answers listed in the input (by their \"questionKey\"). Never invent a source id or a question key. A judgement that has no source behind it may appear ONLY in risks (kind \"unverified\"); it must not appear in summary, orderReasons, comparison or keyNumbers.",
+    "RULE 2 — order of writing: first write outcome (the result of the goal, at most 20 characters) and conclusion (one sentence, no digits), then write summary: 3–4 sentences, at most 150 characters in total. Each summary sentence is {\"text\", \"bold\", \"refs\"}: bold = one short phrase copied verbatim from that sentence (at most 14 characters) or null; refs = at least one {\"kind\": \"source\", \"sourceId\": \"S1\"} or {\"kind\": \"answer\", \"questionKey\": \"<key>\"}. EVERY external fact in summary (a number, a market practice, a rule) must carry a sourceId; a sentence that rests on the user's own answer carries that questionKey.",
+    "RULE 3 — steps: 2–4 steps; each doneCriteria is an observable result you could tick off (for example \"one investor agrees to a second meeting\"), never a date, never an activity like \"research\". personTypeKeys: slot ids from personTypes (or \"event\"); every person type must belong to at least one step.",
+    "RULE 4 — comparison and allocation: comparison = {\"title\", \"funnel\" (one sentence such as \"7 types narrowed to 5 by stage\"), \"rows\": [{\"label\", \"score\" 0–100, \"verdict\": preferred | possible | not_recommended, \"sourceIds\": [\"S1\"], \"typeKey\": \"<slot id>\" or null}]} or null. Allocations must follow the verdicts: a preferred type never gets fewer points than a possible one, and a possible one never fewer than a not_recommended one. Keep every template slot, copy the template allocations (move at most 5 points between at most 2 slots only when the premise clearly calls for it), multiples of 5, total with event.allocation exactly 100.",
+    "RULE 5 — person types: 3–6 types, one per template slot you keep (slot ids from the given slots only; shortLabelId from that slot's shortNames). questions: EXACTLY 3 strings per person type (not 2, not 4). roleSituation one sentence 'role × situation'. countRule, recognizeHints (up to 3), persona and opener (or null). primaryIndustryId: an industry id if obvious, else null.",
+    "verdict: feasible | conditional | not_recommended. confidence: {\"level\": high | mid | low, \"reason\": one short clause, at most 60 characters}. orderReasons: 2–3 lines {\"text\", \"sourceIds\": [\"S1\"]} saying why the steps come in this order. keyNumbers: 0–3 {\"value\", \"label\", \"sourceIds\"} taken from the sources. risks: 0–3 {\"kind\": \"risk\" | \"unverified\", \"text\"}.",
+    "diagnosis: 2–4 plain sentences without digits (numbers live in keyNumbers and summary). Do NOT output citations or sources: the server derives them from the source ids you reference. flow: []. allocationReasons: one line per slot you changed.",
+    'Every personType object must have ALL of these keys: {"slot": "<slot id>", "shortLabelId": "<one of that slot shortNames ids>", "roleSituation": "...", "allocation": 25, "targetCount": 3, "why": "...", "questions": ["...", "...", "..."], "countRule": "...", "recognizeHints": ["..."], "persona": null, "opener": null, "introRoutes": [], "primaryIndustryId": null}. An intro route is {"viaAlias": "<a given alias>", "why": "..."} (why without headcounts).',
+    'Every step object: {"title": "...", "doneCriteria": "...", "why": null, "personTypeKeys": ["<slot id>", "event"]}.',
+    'Output: {"outcome": "...", "conclusion": "...", "diagnosis": "...", "summary": [{"text": "...", "bold": "..." | null, "refs": [{"kind": "source", "sourceId": "S1"}]}], "verdict": "feasible", "confidence": {"level": "mid", "reason": "..."}, "orderReasons": [{"text": "...", "sourceIds": ["S1"]}], "comparison": {"title": "...", "funnel": "...", "rows": [{"label": "...", "score": 80, "verdict": "preferred", "sourceIds": ["S1"], "typeKey": "<slot id>"}]}, "keyNumbers": [{"value": "3", "label": "...", "sourceIds": ["S1"]}], "risks": [{"kind": "risk", "text": "..."}], "flow": [], "steps": [...], "personTypes": [...], "event": {"allocation": 10, "targetCount": 2}, "allocationReasons": []}',
+  ].join("\n"),
 } as const;
 
 /** C6 的任务文本 + 本次实际的联系人别名（v8）：紹介ルート只能经由这些别名，没有就是空数组。 */
@@ -108,6 +125,20 @@ export function firstDraftTask(aliases: readonly string[]): string {
     ? `Contact aliases you may use in introRoutes (no others exist): ${aliases.join(", ")}. Add a route only when that contact's card or notes clearly suggest they can introduce this kind of person; otherwise use "introRoutes": [].`
     : 'The user has no contacts yet: every introRoutes must be [] (an empty array). Never invent aliases such as C1.';
   return `${TASKS.firstDraft}\n${rule}`;
+}
+
+/** C6 v3 的任务文本（v9）：联系人别名规则 + 本次可引用的来源 id 清单与回答 id 清单（模型只能引用这些）。 */
+export function firstDraftV3Task(input: { aliases: readonly string[]; sourceIds: readonly string[]; answerKeys: readonly string[] }): string {
+  const aliasRule = input.aliases.length > 0
+    ? `Contact aliases you may use in introRoutes (no others exist): ${input.aliases.join(", ")}. Add a route only when that contact's card or notes clearly suggest they can introduce this kind of person; otherwise use "introRoutes": [].`
+    : 'The user has no contacts yet: every introRoutes must be [] (an empty array). Never invent aliases such as C1.';
+  const sourceRule = input.sourceIds.length > 0
+    ? `Source ids you may cite (no others exist): ${input.sourceIds.join(", ")}.`
+    : "There are no sources this time: every sourceIds must be [] and summary sentences may only cite answers; put market facts you cannot back into risks as unverified.";
+  const answerRule = input.answerKeys.length > 0
+    ? `Answer keys you may cite as questionKey (no others exist): ${input.answerKeys.join(", ")}.`
+    : "There are no answers this time: never output a ref of kind answer.";
+  return `${TASKS.firstDraftV3}\n${aliasRule}\n${sourceRule}\n${answerRule}`;
 }
 
 export function repairMessage(user: string, issues: readonly string[]): string {
