@@ -1,0 +1,6 @@
+{
+ "_note": "R36b App 计划 v3 初稿页的超阈值带归因（RD-16 / RD-26 / RD-29）：键 = <id>-<theme>，值 = { \"<y0>-<y1>\": \"[data] | [raster] | [contrast] 理由\" }。门禁跑通前为空。",
+ "A-R36b-fund-light": {},
+ "A-R36b-sales-light": {},
+ "A-R36b-hire-light": {}
+}
