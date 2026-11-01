@@ -134,7 +134,7 @@
 .sumline.bad { color: var(--coral-text); }
 .btn.btn { border-radius: var(--r-pill); padding: 12px 22px; font-size: var(--fs-body); background: var(--surface); box-shadow: var(--shadow-btn-soft); text-align: center; }
 .pri.pri { background: var(--ink); color: var(--surface); padding: 12px 28px; }
-.btn.btn:disabled { opacity: .5; }
+.btn.btn:disabled { opacity: .5; cursor: default; }
 
 /* mobile（原型 body.m） */
 @media (max-width: 767px) {
