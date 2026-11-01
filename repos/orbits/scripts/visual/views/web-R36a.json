@@ -1,0 +1,34 @@
+{
+ "_note": "R36a 初版 v3（plan-draft-v5-proposal.html v16「初稿 · 确认」页）像素门禁清单。先切 fixture：node features/plans/v2/design-fixtures/switch.mjs --origin http://localhost:3201 --storage <qa-storage> --name v16-all（三份一起；单份 v16-fund / v16-sales / v16-hire 也可）。整页模式（--design-page + clip，见 README-redesign「整页原型」）：设计侧只截 .page（下边延到 .app 底，带 dock），实现侧只截 [data-plan-draft-v3]；导航壳不在比对范围。原型无深色、无 1024：各三张只截图留档（--theme dark / --width 1024，不进门禁）。键 = <id>-<width>-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3201",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R36a.json",
+  "design-page": true,
+  "design-clip": ".page",
+  "design-clip-bottom": ".app",
+  "app-clip": "[data-plan-draft-v3]",
+  "wait-for": "[data-plan-draft-v3]",
+  "themes": ["light"],
+  "steps": [{ "waitFor": "[data-plan-draft-v3]" }, { "wait": 1500 }]
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/plan/DraftV3.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/DraftV3.module.css",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/draft-v3-model.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanFlowScreen.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/FlowKit.module.css",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/plan.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/tokens.css",
+  "repos/orbits/features/plans/v2/design-fixtures/d.ts"
+ ],
+ "views": [
+  { "id": "W-R36a-fund", "app": "/app/plans/flow/intake_v16_fund", "design": "plan-draft-v5-proposal.html?goal=fund&page=draft&device=web&bar=0", "width": 1440 },
+  { "id": "W-R36a-fund", "app": "/app/plans/flow/intake_v16_fund", "design": "plan-draft-v5-proposal.html?goal=fund&page=draft&device=m&bar=0", "width": 390, "design-as-mweb": true },
+  { "id": "W-R36a-sales", "app": "/app/plans/flow/intake_v16_sales", "design": "plan-draft-v5-proposal.html?goal=sales&page=draft&device=web&bar=0", "width": 1440 },
+  { "id": "W-R36a-sales", "app": "/app/plans/flow/intake_v16_sales", "design": "plan-draft-v5-proposal.html?goal=sales&page=draft&device=m&bar=0", "width": 390, "design-as-mweb": true },
+  { "id": "W-R36a-hire", "app": "/app/plans/flow/intake_v16_hire", "design": "plan-draft-v5-proposal.html?goal=hire&page=draft&device=web&bar=0", "width": 1440 },
+  { "id": "W-R36a-hire", "app": "/app/plans/flow/intake_v16_hire", "design": "plan-draft-v5-proposal.html?goal=hire&page=draft&device=m&bar=0", "width": 390, "design-as-mweb": true }
+ ]
+}

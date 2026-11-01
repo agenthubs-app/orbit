@@ -76,7 +76,7 @@ export function KnownRail({ rows, t, pending }: { rows: readonly FlowSummaryRow[
  * Right rail with a draft (b10 reviseRail): 「AI 修正」 — the big number left, three bars, the
  * input with send; 「方案の下書き」 once a revision is used; 手動で編集 / この内容で確定.
  */
-export function DraftRail({ draft, t, busy, onFix, onManual, onConfirm, offMessage, onPremise }: {
+export function DraftRail({ draft, t, busy, onFix, onManual, onConfirm, offMessage, onPremise, confirmOff }: {
   draft: PlanDraftView;
   t: Translate;
   busy: string | null;
@@ -87,6 +87,8 @@ export function DraftRail({ draft, t, busy, onFix, onManual, onConfirm, offMessa
   onConfirm: () => void;
   /** AI limit (b12 W-R23-16c): the input is off with this message, the count is not used. */
   offMessage?: string;
+  /** R36a: the v3 draft page's points do not add up to 100 — 「この内容で確定」 is off (same rule as the page's own button). */
+  confirmOff?: boolean;
 }) {
   const [text, setText] = useState("");
   const left = Math.max(0, draft.aiFixLimit - draft.aiFixUsed);
@@ -126,7 +128,7 @@ export function DraftRail({ draft, t, busy, onFix, onManual, onConfirm, offMessa
       ) : null}
       <div className={k.grid2}>
         <button type="button" className={`btn ${k.btn}`} disabled={!draft.manualEditAvailable || Boolean(busy)} onClick={onManual}><Icon name="edit" size={16} />{t(planFlowCopy.manualEdit)}</button>
-        <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy)} aria-busy={busy === "confirm" || undefined} onClick={onConfirm}>{t(planFlowCopy.confirmPlan)}</button>
+        <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy) || Boolean(confirmOff)} aria-busy={busy === "confirm" || undefined} onClick={onConfirm}>{t(planFlowCopy.confirmPlan)}</button>
       </div>
       <div className={`${k.card} ${k.flat} ${k.railNote}`}>
         {t(planFlowCopy.fixRailNote)}

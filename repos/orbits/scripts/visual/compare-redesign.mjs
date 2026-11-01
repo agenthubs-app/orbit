@@ -443,7 +443,8 @@ async function runView(v) {
   const t0 = Date.now();
   mkdirSync(v.out, { recursive: true });
   const local = !/^https?:/.test(v.design) && v.cache !== false;
-  const hash = local ? designInputsHash(DESIGN_DIR, v.design) : null;
+  // 整页原型的状态在 URL 参数里（?goal=…）：算内容哈希时只看文件名。
+  const hash = local ? designInputsHash(DESIGN_DIR, String(v.design).split("?")[0]) : null;
   // 整页模式（--design-page）另起一组键（v: 2 + page / clip），不与画板模式的缓存混用。
   const pageMode = v["design-page"] === true || v["design-page"] === "true";
   const cache = hash ? designCache({ v: pageMode ? 2 : 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-as-mweb"] ? { asMweb: true } : {}), ...(pageMode ? { page: true, clip: v["design-clip"] ?? null, clipBottom: v["design-clip-bottom"] ?? null } : {}) }) : null;

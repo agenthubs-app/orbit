@@ -69,12 +69,19 @@
   --preview-light-line: #E3DEE7;
   --preview-dark-bg: #19181C;
   --preview-dark-line: #393840;
+  --chart-preferred: #7FB8A2;
+  --chart-possible: #D9B07A;
+  --chart-not: #E7A493;
+  --verdict-conditional: #C08A45;
   --shadow-float: 0 10px 30px -12px rgba(60, 40, 90, 0.22);
   --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-knob: 0 1px 3px rgba(30, 26, 36, 0.25);
   --shadow-ring-select: 0 0 0 2px #8E82A9;
   --shadow-ring-dot: 0 0 0 4px rgba(185, 137, 149, 0.25);
   --shadow-ring-error: inset 0 0 0 1.5px #E58A76;
+  --shadow-card-soft: 0 1px 2px rgba(30, 20, 40, 0.04);
+  --shadow-btn-soft: 0 1px 2px rgba(30, 20, 40, 0.06);
+  --shadow-ring-node: 0 0 0 6px rgba(110, 98, 138, 0.14);
   --r-none: 0px;
   --r-xl: 24px;
   --r-lg: 20px;
@@ -174,6 +181,8 @@
   --fw-bold: 700;
   --fw-heavy: 800;
   --fw-black: 900;
+  --fw-semibold: 600;
+  --fw-demi: 650;
   --lh-display: 1.05;
   --lh-title: 1.35;
   --lh-body: 1.5;
@@ -185,6 +194,8 @@
   --lh-prose-lg: 1.7;
   --lh-quote: 1.75;
   --lh-letter: 1.8;
+  --lh-compact: 1.3;
+  --lh-figure: 1.15;
   --track-tight: -0.02em;
   --track-snug: -0.01em;
   --track-title: 0.01em;
@@ -278,12 +289,19 @@
     --preview-light-line: #E3DEE7;
     --preview-dark-bg: #19181C;
     --preview-dark-line: #393840;
+    --chart-preferred: #8FC6B0;
+    --chart-possible: #E0BB86;
+    --chart-not: #EDAA98;
+    --verdict-conditional: #D09A56;
     --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
     --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-knob: 0 1px 3px rgba(243, 240, 246, 0.25);
     --shadow-ring-select: 0 0 0 2px #A79BC4;
     --shadow-ring-dot: 0 0 0 4px rgba(212, 163, 175, 0.25);
     --shadow-ring-error: inset 0 0 0 1.5px #F29C88;
+    --shadow-card-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-btn-soft: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-ring-node: 0 0 0 6px rgba(167, 155, 196, 0.2);
   }
 }
 
@@ -354,10 +372,17 @@
   --preview-light-line: #E3DEE7;
   --preview-dark-bg: #19181C;
   --preview-dark-line: #393840;
+  --chart-preferred: #8FC6B0;
+  --chart-possible: #E0BB86;
+  --chart-not: #EDAA98;
+  --verdict-conditional: #D09A56;
   --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
   --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-knob: 0 1px 3px rgba(243, 240, 246, 0.25);
   --shadow-ring-select: 0 0 0 2px #A79BC4;
   --shadow-ring-dot: 0 0 0 4px rgba(212, 163, 175, 0.25);
   --shadow-ring-error: inset 0 0 0 1.5px #F29C88;
+  --shadow-card-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-btn-soft: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-ring-node: 0 0 0 6px rgba(167, 155, 196, 0.2);
 }

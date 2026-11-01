@@ -13,7 +13,10 @@ import { standardCopyFor } from "../copy/standard";
 import { Icon, Modal, Orbit2026Scope, ToastProvider } from "../ui";
 import { BackgroundBlocks, STANCE_COPY, meIsOpen, type BlockKey, type MeDraft } from "./BackgroundBlocks";
 import { DraftCard, DraftTurns, draftName } from "./DraftCard";
+import { DraftV3 } from "./DraftV3";
+import { adjustTotal, adjustmentsOf, initialAdjust, isFull, type DraftV3Adjust } from "./draft-v3-model";
 import { AiBubble, DegradeRow, DialogActs, ErrCard, FlowDialog, FlowHead, FmBar, LimitCard, MeBubble, NgCard, OkLine, RailHead } from "./FlowParts";
+import { isPlanV3 } from "../../../../../features/plans/v2/v3-fields";
 import { DraftRail, KnownRail } from "./FlowRail";
 import { PremiseCard, QuestionsCard, answeredRows, answersBody, answersBubbleText, initialAnswers, type AnswerDraft } from "./IntakeCards";
 import { newActionKey, planApi, type PlanApiResult } from "./plan-api";
@@ -61,6 +64,12 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   // b12 W-R23-15: after revisions the premises open from the rail (「前提を直す」).
   const [premiseOpen, setPremiseOpen] = useState(false);
   const [reopenAsk, setReopenAsk] = useState(false);
+  // R36a（D-1）：初版 v3 页上的调整（删一类 / 人数 / 分量）只在客户端，按草稿版本重置；确定时随请求带 `adjustments`。
+  const [adjustFor, setAdjustFor] = useState<{ revision: string; adjust: DraftV3Adjust } | null>(null);
+  const v3 = Boolean(draft && isPlanV3(draft.content));
+  const adjust = draft && adjustFor?.revision === draft.revision ? adjustFor.adjust : draft ? initialAdjust(draft.content) : {};
+  const setAdjust = useCallback((next: DraftV3Adjust) => { if (draft) setAdjustFor({ adjust: next, revision: draft.revision }); }, [draft]);
+  const v3Full = !v3 || !draft || isFull(adjustTotal(draft, adjust));
 
   /** Take a fresh intake from the server and reset the local drafts to it. */
   const adopt = useCallback((next: PlanIntakeView, previous: PlanIntakeView | null) => {
@@ -126,8 +135,15 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const fixAct = useCallback((text: string) => (draft ? act<PlanDraftView>("fix", "fix", (key) => planApi(`/drafts/${enc(draft.draftId)}/fix`, { body: { idempotencyKey: key, text }, language }), setDraft) : Promise.resolve(false)), [act, draft, language]);
   const confirmAct = useCallback(() => {
     if (!draft) return;
-    void act<PlanConfirmResult>("confirm", "other", (key) => planApi(`/drafts/${enc(draft.draftId)}/confirm`, { body: { idempotencyKey: key }, language }), (result) => router.push(result.href));
-  }, [act, draft, language, router]);
+    // v3：带上初稿页的调整（没动过就不带字段，请求与改前相同）；合计 ≠ 100 时按钮本就禁用。
+    const adjustments = v3 ? adjustmentsOf(draft, adjust) : undefined;
+    void act<PlanConfirmResult>("confirm", "other", (key) => planApi(`/drafts/${enc(draft.draftId)}/confirm`, { body: { idempotencyKey: key, ...(adjustments ? { adjustments } : {}) }, language }), (result) => router.push(result.href));
+  }, [act, adjust, draft, language, router, v3]);
+  const focusAiFix = useCallback(() => {
+    const input = document.querySelector<HTMLTextAreaElement>("[data-plan-fixbar] textarea");
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.focus();
+  }, []);
 
   const limitView = failed?.view.tone === "limit" ? failed.view : null;
   const rail = useMemo(() => {
@@ -144,7 +160,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     }
     if (hasDraft && draft) {
       const offMessage = limitView && failed?.where === "fix" ? t(limitView.limit === "monthly" ? planFlowCopy.fixOffMonthly : planFlowCopy.fixOffDaily) : undefined;
-      return <DraftRail draft={draft} t={t} busy={busy} onFix={fixAct} onManual={() => router.push(planDraftEditHref("web", draft.draftId))} onConfirm={confirmAct} offMessage={offMessage}
+      return <DraftRail draft={draft} t={t} busy={busy} onFix={fixAct} onManual={() => router.push(planDraftEditHref("web", draft.draftId))} onConfirm={confirmAct} offMessage={offMessage} confirmOff={!v3Full}
         onPremise={draft.turns.length && !premiseOpen ? () => { setPremiseOpen(true); window.scrollTo({ behavior: "smooth", top: 0 }); } : undefined} />;
     }
     const rows = flowSummary({
@@ -162,7 +178,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     return <KnownRail rows={rows} t={t} pending={intake.status === "drafting"} />;
     // t is derived from language
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intake, draft, answers, language, purposeLevel, me, team, busy, hasDraft, planned, limitView, failed, fixAct, confirmAct, plan, premiseOpen]);
+  }, [intake, draft, answers, language, purposeLevel, me, team, busy, hasDraft, planned, limitView, failed, fixAct, confirmAct, plan, premiseOpen, v3Full]);
 
   const subtitle = planned || !intake ? t(planFlowCopy.flowPageTitle) : t(planFlowCopy.flowSubtitle, { flow: t(planFlowCopy.flowPageTitle), stage: t(STAGE_TITLE[stage]) });
   const shell = (
@@ -386,15 +402,20 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
       body = (
         <>
           {staleRow}
-          <FmBar at={FM_AT[stage]} t={t} />
-          {draft.turns.length === 0 ? (
+          {/* R36a（主会话 2026-11-01 决定）：v3 草稿的开放态整屏按原型——不画五段进度 / 目标气泡 / 前提卡（前提折进结论区的
+              「あなたの資料と N 個の回答…▾」），页身 = 结论区 → 路线 → 类型表 → 依据；右栏「前提を直す」打开的前提卡照旧。 */}
+          {v3 ? null : <FmBar at={FM_AT[stage]} t={t} />}
+          {draft.turns.length === 0 && !v3 ? (
             <>
               {ans ? <MeBubble>{ans}</MeBubble> : null}
               {premiseCard(true)}
               <AiBubble>{t(planFlowCopy.draftLead)}</AiBubble>
             </>
           ) : premiseOpen ? premiseCard(false) /* b12 W-R23-15: opened from the rail's 「前提を直す」 */ : null}
-          <DraftCard draft={draft} t={t} language={language} mini={usedUp && !premiseOpen} />
+          {/* v3 草稿（schemaVersion 3）用设计稿 v16 的初稿页；v2 旧草稿仍是 R23 的 DraftCard。 */}
+          {v3
+            ? <DraftV3 draft={draft} t={t} language={language} adjust={adjust} onAdjust={setAdjust} busy={Boolean(busy)} onConfirm={confirmAct} onAiFix={focusAiFix} />
+            : <DraftCard draft={draft} t={t} language={language} mini={usedUp && !premiseOpen} />}
           {/* b12 W-R23-14: once used up, only the last round stays (all rounds are in 修正の履歴); W-R23-15: while the
               premises are open the column is premises + plan (changing one discards the rounds). */}
           {premiseOpen ? null : <DraftTurns draft={draft} t={t} only={usedUp ? draft.turns[draft.turns.length - 1]?.n : undefined} />}
@@ -409,7 +430,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                 <div className={k.hist}>{draft.turns.map((turn) => <span key={turn.n} className={k.chip}>{t(planFlowCopy.turnChip, { n: turn.n, text: turn.changes.length ? turnPreview(turn.input) : t(planFlowCopy.noChange) })}</span>)}</div>
                 <span className={k.grow} />
                 <button type="button" className={`btn ${k.btn}`} disabled={!draft.manualEditAvailable || Boolean(busy)} onClick={() => router.push(planDraftEditHref("web", draft.draftId))}><Icon name="edit" size={16} />{t(planFlowCopy.manualEdit)}</button>
-                <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy)} onClick={confirmAct}>{t(planFlowCopy.confirmPlan)}</button>
+                <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy) || !v3Full} onClick={confirmAct}>{t(planFlowCopy.confirmPlan)}</button>
               </div>
             </div>
           ) : null}

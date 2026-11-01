@@ -452,7 +452,7 @@ export function changedFiles(ref, cwd) {
 export function selectChanged(runs, files, designRoot) {
   return runs.filter((r) => {
     const own = [...r.sources];
-    if (r.design && !/^https?:/.test(r.design)) own.push(`${designRoot}/${r.design}`, `${designRoot}/kit/**`);
+    if (r.design && !/^https?:/.test(r.design)) own.push(`${designRoot}/${String(r.design).split("?")[0]}`, `${designRoot}/kit/**`);
     return files.some((f) => matchesAny(f, own));
   });
 }

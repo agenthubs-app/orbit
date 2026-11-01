@@ -140,3 +140,45 @@ export function draftFixture(overrides: Partial<PlanDraftView> = {}): PlanDraftV
     ...overrides,
   };
 }
+
+/**
+ * R36a: a v3 draft (plan-draft-v5 v16 shape) on top of `draftFixture`: outcome / summary with marks and refs / verdict /
+ * confidence / order reasons / comparison / key numbers / risks (one unverified) / sources (landscape + web, one web
+ * source older than 180 days); every person type belongs to a step. Numbers: 30 + 25 + 20 + 10 + 15 (event) = 100.
+ */
+export function draftV3Fixture(overrides: Partial<PlanDraftView> = {}, contentOverrides: Partial<PlanDraftView["content"]> = {}): PlanDraftView {
+  const base = draftFixture();
+  const text = "Building is strong. The one-line pitch is missing. Organisers pay first.";
+  const content: PlanDraftView["content"] = {
+    ...base.content,
+    comparison: {
+      funnel: "6 types narrowed to 4 by stage",
+      rows: [
+        { label: "First payer", score: 85, sourceIds: ["S1"], typeKey: "first_payer", verdict: "preferred" },
+        { label: "Brand builder", score: 60, sourceIds: ["S2"], typeKey: "brand_pr", verdict: "possible" },
+        { label: "Paid ads", score: 15, sourceIds: ["S3"], typeKey: null, verdict: "not_recommended" },
+      ],
+      title: "Who to reach first",
+    },
+    confidence: { level: "mid", reason: "The product is already in beta." },
+    keyNumbers: [{ label: "paying customers that prove the model", sourceIds: ["S2"], value: "5" }],
+    orderReasons: [{ sourceIds: ["S1"], text: "Paying customers first; brand later." }, { sourceIds: ["S2", "S3"], text: "Talk to a shipped founder before you set a price." }],
+    outcome: "Five paying customers",
+    personTypes: base.content.personTypes.map((type, index) => ({ ...type, stepKey: ["step-1", "step-1", "step-2", "step-3"][index]! })),
+    risks: [{ kind: "risk", text: "A beta that is free for too long is hard to price." }, { kind: "unverified", text: "Could not check this online this time." }],
+    schemaVersion: 3,
+    sources: [
+      { id: "S1", kind: "landscape", landscapeId: "L-012", version: 3 },
+      { fetchedAt: "2026-10-01T00:00:00.000Z", id: "S2", kind: "web", query: "saas pricing", snippet: "Most personal apps are free.", title: "Pricing survey 2026", url: "https://example.org/pricing-2026" },
+      { fetchedAt: "2025-01-01T00:00:00.000Z", id: "S3", kind: "web", query: "ads", snippet: "Ads rarely pay for B2B.", title: "Old ads report", url: "https://example.org/ads-old" },
+    ],
+    summary: {
+      marks: [{ end: 18, start: 0 }],
+      refs: [{ end: 19, ref: { kind: "answer", questionKey: "R1" }, start: 0 }, { end: 51, ref: { kind: "source", sourceId: "S1" }, start: 20 }, { end: 74, ref: { kind: "source", sourceId: "S-missing" }, start: 52 }],
+      text,
+    },
+    verdict: "feasible",
+    ...contentOverrides,
+  };
+  return { ...base, content, originContent: content, premise: [{ guessed: false, key: "R1", label: "現在地", source: "q1", value: "完成・β 運用中" }], ...overrides };
+}

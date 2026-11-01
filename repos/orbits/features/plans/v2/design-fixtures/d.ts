@@ -357,6 +357,13 @@ function fixtureFor(name: keyof typeof D_FLOW_IDS): PlanDesignFixture {
 }
 
 export const fixturesD: Record<string, PlanDesignFixture> = {
+  /** 门禁用：三份一起（六张画面并行跑，不用来回切 fixture）。 */
+  "v16-all": fromDemo((state) => {
+    for (const name of ["fund", "sales", "hire"] as const) {
+      state.intakes = [...(state.intakes ?? []), intakeOf(SPECS[name], D_FLOW_IDS[name].intake, D_FLOW_IDS[name].draft)];
+      state.drafts = [...(state.drafts ?? []), draftOf(SPECS[name], D_FLOW_IDS[name].draft, D_FLOW_IDS[name].intake)];
+    }
+  }),
   /** v16「初稿 · 确认」融资（W-R36a-fund）。 */
   "v16-fund": fixtureFor("fund"),
   /** v16「初稿 · 确认」招聘（W-R36a-hire）。 */
