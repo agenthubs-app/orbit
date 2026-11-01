@@ -327,7 +327,7 @@ export function DraftV3({ draft, t, language, adjust, onAdjust, busy, onConfirm,
           <div className={s.in}>
             <span className={`${s.sumline} ${ok ? "" : s.bad}`}>{ok ? t(planFlowCopy.v3DockOk) : t(planFlowCopy.v3DockBad, { total })}</span>
             {/* 「重新起草」：原型有、没有对应接口（主会话 2026-11-01：按原型位置画、置灰，接重新生成接口还是去掉待用户拍板）。 */}
-            <button type="button" className={s.btn} disabled aria-disabled="true" data-plan-v3-redraft="">{t(planFlowCopy.v3Redraft)}</button>
+            <button type="button" className={s.btn} disabled aria-disabled="true" tabIndex={-1} data-plan-v3-redraft="">{t(planFlowCopy.v3Redraft)}</button>
             <button type="button" className={`${s.btn} ${s.pri}`} disabled={!ok || busy} aria-busy={busy || undefined} onClick={onConfirm} data-plan-v3-confirm="">{t(planFlowCopy.confirmPlan)}</button>
           </div>
         </div>
