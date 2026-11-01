@@ -70,6 +70,7 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { planFailureOf, type PlanResult } from "./plan-failure";
 import type { ContactCandidate } from "./plan-model";
+import type { PlanDraftConfirmAdjustments } from "./plan-draft-v3-model";
 
 export type { PlanFailure, PlanResult } from "./plan-failure";
 
@@ -100,7 +101,8 @@ export interface PlanApi {
   makeDraft(intakeId: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
   getDraft(draftId: string): Promise<PlanResult<PlanDraftView>>;
   fix(draftId: string, text: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
-  confirm(draftId: string, idempotencyKey: string): Promise<PlanResult<PlanConfirmResult>>;
+  /** R36b: `adjustments` (the v3 draft page's people / points / dropped types) rides along only when given; without it the body is unchanged. */
+  confirm(draftId: string, idempotencyKey: string, adjustments?: PlanDraftConfirmAdjustments): Promise<PlanResult<PlanConfirmResult>>;
   manualEdit(draftId: string, body: PlanDraftManualEditRequest): Promise<PlanResult<PlanConfirmResult>>;
   /** 人脈から選ぶ: the existing contacts list search (id, name, company, role, tags only). */
   searchContacts(query: string): Promise<PlanResult<ContactCandidate[]>>;
@@ -186,7 +188,7 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
     unskip: (id, itemId, idempotencyKey) => call("delete", type(id, itemId, "/skip"), planCommandResultSchema, { idempotencyKey }),
     addMembers: (id, body) => call("post", intake(id, "/members"), planIntakeViewSchema, body),
     answers: (id, answers, idempotencyKey) => call("post", intake(id, "/answers"), planIntakeViewSchema, { answers, idempotencyKey }),
-    confirm: (id, idempotencyKey) => call("post", draft(id, "/confirm"), planConfirmResultSchema, { idempotencyKey }),
+    confirm: (id, idempotencyKey, adjustments) => call("post", draft(id, "/confirm"), planConfirmResultSchema, adjustments ? { adjustments, idempotencyKey } : { idempotencyKey }),
     confirmBlock: (id, body) => call("patch", intake(id), planIntakeViewSchema, body),
     createIntake: (body) => call("post", `${PLANS}/intakes`, planIntakeViewSchema, body),
     fix: (id, text, idempotencyKey) => call("post", draft(id, "/fix"), planDraftViewSchema, { idempotencyKey, text }),

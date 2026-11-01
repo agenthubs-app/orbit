@@ -19,6 +19,8 @@ import { usePlanApi, type PlanFailure } from "./plan-api";
 import { flowStage, isKnownGoalKind, newIdempotencyKey, turnChipText } from "./plan-model";
 import { PlanBackground } from "./PlanBackground";
 import { DraftActions, DraftUsedUp, PlanDraftCard, PlanFixBar, PlanTurn } from "./PlanDraft";
+import { PlanDraftV3 } from "./PlanDraftV3";
+import { adjustmentsOf, draftAdjustStateOf, isDraftV3, type DraftAdjustState } from "./plan-draft-v3-model";
 import { PlanPremiseCard, PlanQuestions } from "./PlanQuestions";
 import { FailureNote, LimitNote, usePlanStyles } from "./plan-ui";
 import { KitButton, KitChip, kitText, useKitStyles } from "./plan-kit";
@@ -49,6 +51,10 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const [failure, setFailure] = useState<{ op: "draft" | "fix" | "confirm"; failure: PlanFailure } | null>(null);
   const [fixText, setFixText] = useState("");
   const [reloading, setReloading] = useState(false);
+  // R36b: the v3 draft page's local adjustments (people / points / dropped types; D-1: not a manual edit) and
+  // whether its AI-fix composer is open. Reset whenever the draft (or its revision) changes.
+  const [adjust, setAdjust] = useState<{ revision: string; state: DraftAdjustState } | null>(null);
+  const [fixOpen, setFixOpen] = useState(false);
   const sequence = useRef(0);
 
   const read = useCallback(async () => {
@@ -116,7 +122,8 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     if (!draft || busy) return;
     setBusy("confirm");
     setFailure(null);
-    const result = await api.confirm(draft.draftId, newIdempotencyKey("confirm"));
+    const adjustments = isDraftV3(draft.content) && adjust?.revision === draft.revision ? adjustmentsOf(draft.content, adjust.state, draft.revision) : null;
+    const result = await api.confirm(draft.draftId, newIdempotencyKey("confirm"), adjustments ?? undefined);
     setBusy(null);
     if (!result.ok) return setFailure({ failure: result.failure, op: "confirm" });
     openMainTab(router, result.data.href);
@@ -125,6 +132,10 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const stage = intake ? flowStage(intake, draft) : 0;
   const kind = intake && isKnownGoalKind(intake.goalKind) ? intake.goalKind : null;
   const draftOpen = Boolean(draft && draft.status === "open" && intake?.status !== "planned");
+  // R36b: a v3 draft that is still open renders the design's draft page as the whole body (REPORT 自定决定 A).
+  const v3 = draft && draftOpen && isDraftV3(draft.content) ? draft.content : null;
+  const adjustState = draft && adjust?.revision === draft.revision ? adjust.state : draft ? draftAdjustStateOf(draft.content) : null;
+  const onAdjust = (state: DraftAdjustState) => draft && setAdjust({ revision: draft.revision, state });
 
   const failureView = (op: "draft" | "fix" | "confirm") => {
     if (failure?.op !== op) return null;
@@ -143,12 +154,12 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
 
 
   const subtitle = intake?.status === "planned" ? t("plan.flow.title") : t("plan.flow.subtitle", { stage: t(STAGE_TITLES[stage]) });
-  const footFix = draft && draftOpen ? <PlanFixBar draft={draft} text={fixText} onText={setFixText} onSend={() => void sendFix()} sending={busy === "fix"} /> : null;
+  const footFix = draft && draftOpen && (!v3 || fixOpen) ? <PlanFixBar draft={draft} text={fixText} onText={setFixText} onSend={() => void sendFix()} sending={busy === "fix"} /> : null;
 
   return (
     <PlanChatFrame
       subtitle={subtitle}
-      stage={intake?.status === "planned" ? 5 : stage}
+      stage={v3 ? null : intake?.status === "planned" ? 5 : stage}
       onClose={close}
       onMenu={() => openMainTab(router, "/ai")}
       scrollRef={scrollRef}
@@ -161,11 +172,11 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
       ) : null}
       {load.kind === "ready" && intake ? (
         <>
-          <Bubble me>{t("plan.flow.goal", { goal: intake.goal })}</Bubble>
+          {v3 ? null : <Bubble me>{t("plan.flow.goal", { goal: intake.goal })}</Bubble>}
           {intake.status === "planned" ? <PlannedCards intake={intake} draft={draft} onOpen={() => openMainTab(router, planTaskSegmentHref("app", intake.planId))} /> : null}
           {intake.status === "drafting" ? <DraftingCards intake={intake} reloading={reloading} onReload={() => void reload()} /> : null}
           {kind && intake.status === "background" ? <PlanBackground intake={intake} kind={kind} api={api} onIntake={onIntake} onReload={() => void reload()} /> : null}
-          {kind && intake.status !== "background" && intake.status !== "drafting" && intake.status !== "planned" ? (
+          {kind && !v3 && intake.status !== "background" && intake.status !== "drafting" && intake.status !== "planned" ? (
             <View style={styles.okCard} testID="flow-background-done">
               <View pointerEvents="none" style={styles.okBorder} />
               <View style={styles.row8}>
@@ -176,7 +187,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
             </View>
           ) : null}
           {kind && intake.status === "questions" ? <PlanQuestions intake={intake} kind={kind} api={api} onIntake={onIntake} onReload={() => void reload()} /> : null}
-          {kind && intake.premise && (intake.status === "premise" || intake.status === "drafted") ? (
+          {kind && !v3 && intake.premise && (intake.status === "premise" || intake.status === "drafted") ? (
             <PlanPremiseCard
               intake={intake}
               kind={kind}
@@ -204,24 +215,40 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                 const last = draft.turns.length - 1;
                 return (
                   <>
-                    {!draft.turns.length ? <Bubble>{t("plan.draft.bubble")}</Bubble> : null}
-                    <ChatScrollTarget active={draft.turns.length > 0}>
-                      <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions()} />
-                    </ChatScrollTarget>
+                    {v3 && adjustState ? (
+                      <PlanDraftV3
+                        draft={draft}
+                        content={v3}
+                        state={adjustState}
+                        onState={onAdjust}
+                        aiFixLeft={Math.max(0, draft.aiFixLimit - draft.aiFixUsed)}
+                        aiFixOpen={fixOpen}
+                        onAiFix={() => setFixOpen((value) => !value)}
+                        onConfirm={() => void confirm()}
+                        confirming={busy === "confirm"}
+                      />
+                    ) : (
+                      <>
+                        {!draft.turns.length ? <Bubble>{t("plan.draft.bubble")}</Bubble> : null}
+                        <ChatScrollTarget active={draft.turns.length > 0}>
+                          <PlanDraftCard draft={draft} clamp={draft.turns.length > 0} footer={draft.turns.length ? undefined : actions()} />
+                        </ChatScrollTarget>
+                      </>
+                    )}
                     {draft.turns.map((turn, index) => (
                       <View key={turn.n} style={styles.turn} onLayout={(event) => {
                         const y = event.nativeEvent.layout.y;
                         turnOffsets.current[turn.n] = y;
                         if (revealTurn.current === turn.n) { revealTurn.current = null; setTimeout(() => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, y - 8) }), 250); }
                       }}>
-                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last ? actions() : undefined} mark={index === last} />
+                        <PlanTurn turn={turn} limit={draft.aiFixLimit} footer={index === last && !v3 ? actions() : undefined} mark={index === last} />
                       </View>
                     ))}
                     {busy === "fix" ? <UiText style={kit.lbl}>{t("plan.fix.sending")}</UiText> : null}
                     {failureView("fix")}
                     {failureView("confirm")}
                     {draft.fix.state === "fallback" && draft.fix.limit ? <LimitNote failure={{ kind: "aiLimit", limit: draft.fix.limit, retryOn: draft.fix.retryOn ?? null }} /> : null}
-                    {usedUp && draftOpen ? <DraftUsedUp draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} onTurn={(n) => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, (turnOffsets.current[n] ?? 0) - 8) })} /> : null}
+                    {usedUp && draftOpen && !v3 ? <DraftUsedUp draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} onTurn={(n) => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, (turnOffsets.current[n] ?? 0) - 8) })} /> : null}
                   </>
                 );
               })()}
