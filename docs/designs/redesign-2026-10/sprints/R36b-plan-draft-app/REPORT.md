@@ -1,6 +1,6 @@
 # Sprint R36b — 计划 v3：初稿页 App · REPORT
 
-**结果：blocked（画面、调整、契约同步、分组、门禁工具均已提交；SC-04 像素门禁截不到真机画面——本机没有任何 iOS 模拟器运行时；全量测试对照未收口——会话额度用尽）。**
+**结果：blocked（画面、调整、契约同步、分组、门禁工具均已提交；SC-04 像素门禁截不到真机画面——本机没有任何 iOS 模拟器运行时）。**
 Generator：Claude Fable 5.1（side session r36b）／2026-11-01；Planner revision 1，PLANNER.md SHA256 前 16 位 `8abb007571a9fc73`。
 分支：直接在 `chat-agent` 按路径提交（基线 `2a5d36f61`）；与 R36a 并行，R36a 的提交（`7b4693937` 契约、`1f6b351f5` 原型 URL 参数、`ac2a683df` Web 工具整页模式、`ae3f546ae` fixture）夹在本 Sprint 提交之间，文件无重叠；未 push。
 执行台账（Ruling 全文）：`~/Library/Application Support/Claude/side-session-notes/local_53b01837-…/r36b-plan-draft-app-ledger.md`。
@@ -42,12 +42,14 @@ Generator：Claude Fable 5.1（side session r36b）／2026-11-01；Planner revis
 
 ### 全量测试对照（RULES 5.2）
 
-（跑完后填：基线 = `2a5d36f61` 导出到 scratchpad 的 `repos/orbit-app` 副本；HEAD = `dd7707e43`；顺序跑、不并行、不 source env。）
+基线 = `2a5d36f61` 的 `repos/orbit-app` 导出到 scratchpad（软链 node_modules）；HEAD = `dd7707e43`（之后只改了 4 处颜色 token 与工具，定向重跑通过）；顺序跑、不并行、不 source env。日志：`~/orbit-sprint-evidence/app/sprint-R36b/run-01/npm-test-{baseline,head}.txt`、`{baseline,head}-failures.txt`。
 
 | | 总数 | 通过 | 失败 | 跳过 |
 | --- | --- | --- | --- | --- |
-| 基线 | — | — | — | — |
-| HEAD | — | — | — | — |
+| 基线 | 3279 | 3107 | 171 | 1 |
+| HEAD | 3391 | 3384 | 5 | 2 |
+
+失败清单去掉用时后 `comm -13`：**新增 0 条**。HEAD 的 5 个失败都在基线清单里；基线多出的 166 个是副本不在 `repos/orbit-app` 原路径跑出的路径依赖用例（AI 会话页等，与 R33 / R35 REPORT 同一现象）。新增用例 +112 = 本 Sprint 的 14 个 + 基线因路径没跑到的。
 
 ## 像素门禁（SC-04）
 
@@ -72,7 +74,7 @@ Generator：Claude Fable 5.1（side session r36b）／2026-11-01；Planner revis
 5. **调整不做 `plan-allocation` 回流**：原型 stepper 只改自己那一类，合计 ≠100 时禁用确定并提示；合计与 =100 校验用 `validateAllocations`，人数 1–5 用 `PLAN_TYPE_TARGET_MAX`，分量 5–50（字段表）为本地常量。
 6. **缺失即不显示**（字段表）：类型行「人脉里已有 N 位」、活动行的活动名、`.mine` 的身份 / 公司 / 来自 / 语言、来源抓取日期——契约 / 草稿里都没有；来源 >180 天只加「更新の可能性あり」pill。`.mine` 列出全部前提行（背景行标「あなたの情報」、回答行标「あなたの回答」，推测行用 ink-4）。
 7. **分组以 steps 为准**（SC-05）：`typeGroups` 按 `steps[].personTypeKeys`；无人认领的类型按 `stepKey` 回家，再不行进第一组。服务端 `manualEdit` 仍不重算 `stepKey`（交 R37a）。
-8. **原型写死的颜色**：对比条 `#7FB8A2 / #D9B07A / #E7A493`、判定点 `#C08A45` 没有 token，App 测试禁止字面量 → 暂映射最近 token（`ok` / `macApricotInk` / `coral`；判定 conditional = `macApricotInk`，not_recommended = `coralText`）。R36a 已在 `tokens.json` 加 `chart-preferred / chart-possible / chart-not / verdict-conditional`（**未提交**）；落地后 `sync:contract` 并换成这四个名字。半透明白底（`rgba(255,255,255,.8/.85)`）用 `glass`（.62）；`.cur .node` 光环 = `plum700` 加 `opacity .14`。
+8. **原型写死的颜色**：对比条 `#7FB8A2 / #D9B07A / #E7A493`、判定点 `#C08A45` 没有 token，App 测试禁止字面量 → 暂映射最近 token（`ok` / `macApricotInk` / `coral`；判定 conditional = `macApricotInk`，not_recommended = `coralText`）。R36a 随后在 `f1e74e707` 提交了 `chart-preferred / chart-possible / chart-not / verdict-conditional`，已同步并换名（提交见 git log）；shadow `card-soft / btn-soft / ring-node`、font `demi 650` 等 App 侧继续用 `shadowColor + opacity`、`"600"`（RN 无 650）。半透明白底（`rgba(255,255,255,.8/.85)`）用 `glass`（.62）；`.cur .node` 光环 = `plum700` 加 `opacity .14`。
 9. **路线连线**：原型写死 3 阶段的 `left/right: 16.6%`，App 按 `1/(2N)` 算（mock 是 4 阶段，含イベント单独一步）；h1 字重 650 → `"600"`。
 10. **深色**：原型无 → 用既有 token，只截图留档、不进门禁（与 R36a 同）。
 11. 数字字体：`--num`（SF Pro Rounded）→ iOS `fontFamily: "ui-rounded"`（同 `UnderlineTabs` 先例）。
@@ -88,8 +90,8 @@ Generator：Claude Fable 5.1（side session r36b）／2026-11-01；Planner revis
 
 1. **SC-04 门禁三张 + 深色三张留档**：等 iOS 模拟器运行时（主会话 / 用户决定是否下载）；运行时就绪后：`xcrun simctl create "iPhone 16e" "iPhone 16e" <runtime>` → 日文 + 9:41 → 装开发包（需 `expo run:ios` 重新构建，含 `orbit-text-leading` 原生模块 pod）→ `.env.development.local` 指向 `http://localhost:3201`（R36a 已加 `launch.json` `orbits-plan-mock` :3201，未提交）→ `switch.mjs --name v16-fund` → 跑 `--suite views/app-R36b.json`，按上面的对位补 `--region`，归因写 `attribution-redesign-R36b.json`。
 2. 「重新起草」接口与否：待用户拍板（壳 A 已定）。
-3. **token 换名**：等 R36a 提交 `tokens.json` → `sync:contract` → `PlanDraftV3.tsx` 的四处颜色换成 `chartPreferred / chartPossible / chartNot / verdictConditional`。
-4. 全量测试对照表：基线 → HEAD 顺序跑在后台（scratchpad `npm-test-baseline.txt` / `npm-test-head.txt`），本会话额度用尽前没跑完，下次接手先 `grep -E "^ℹ (pass|fail)"` 两份日志并 `comm -13` 失败清单。
+3. ~~token 换名~~ 已做：R36a `f1e74e707` → sync（`src/api/design/tokens.ts`）→ `PlanDraftV3.tsx` 用 `chartPreferred / chartPossible / chartNot / verdictConditional`（判定 not_recommended = `coral`）。
+4. ~~全量测试对照表~~ 已填（新增 0 失败）。
 
 ## 交接
 
