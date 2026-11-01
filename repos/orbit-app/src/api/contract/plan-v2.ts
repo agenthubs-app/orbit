@@ -622,6 +622,24 @@ export interface PlanDraftManualEditRequest {
   idempotencyKey: string;
 }
 
+/**
+ * R36a（plan-v3 D-1）：初稿页上的删一类 / 调人数 / 调分量随「确定」一起送来，不占「手動編集 1回」。
+ * 形状 = `PlanDraftManualEditRequest` 去掉 `steps` 与 `idempotencyKey`（初稿页不改阶段）；服务端用手动编辑同一套校验
+ * （合计 100、5 分一档、人数上限、至少留 1 类），`expectedRevision` 过期 → STALE。
+ */
+export interface PlanDraftConfirmAdjustments {
+  expectedRevision: string;
+  /** 留下的类型（不在里面的就是删掉）；`key` = 草稿里人物类型的 key。 */
+  personTypes: readonly { key: string; targetCount: number; allocation: number }[];
+  event: { targetCount: number; allocation: number };
+}
+
+/** `POST …/drafts/[draftId]/confirm` 的请求体：`adjustments` 可选（R36a）；不带时与 `PlanFlowStepRequest` 相同。 */
+export interface PlanDraftConfirmRequest {
+  idempotencyKey: string;
+  adjustments?: PlanDraftConfirmAdjustments;
+}
+
 /* ------------------------------------------------------------------ */
 /* R24 概要、人物类型详情与记录加分                                         */
 /* ------------------------------------------------------------------ */
