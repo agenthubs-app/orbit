@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PLAN_GOAL_TEMPLATES } from "../../shared/compute/plan-templates";
-import type { PlanV2Content, PlanWebSource } from "../../shared/contract/plan-v2";
+import type { PlanAllocationError } from "../../shared/compute/plan-allocation";
+import type { PlanDraftConfirmAdjustments, PlanV2Content, PlanWebSource } from "../../shared/contract/plan-v2";
 import { createDeepseekPlanFlowAi } from "../../features/plans/v2/ai/deepseek";
 import { createMockPlanFlowAi } from "../../features/plans/v2/ai/mock";
 import type { AiQuotaGate } from "../../features/ai-quota/gate";
@@ -146,6 +147,68 @@ test("confirming writes one active v2 plan, archives v1, keeps a manual edit for
   const state = world.repository.dump(SCOPE);
   assert.equal(state.plans.length, 1);
   assert.ok(state.typeItems.length === PLAN_GOAL_TEMPLATES.fundraising.slots.length - 1);
+});
+
+// R36a SC-R36a-01（D-1）：确定带初稿页的调整——同一套 plan-allocation 校验，通过则按调整建计划且不占手动编辑。
+test("R36a: confirming with adjustments refuses what plan-allocation refuses, then builds the plan from the adjusted numbers without using the manual edit", async () => {
+  const world = flowWorld();
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  const types = draft.content.personTypes;
+  assert.ok(types.length >= 3);
+  const adjust = (allocations: Record<string, number>, keep = types): PlanDraftConfirmAdjustments => ({
+    event: { allocation: draft.content.event.allocation, targetCount: draft.content.event.targetCount },
+    expectedRevision: draft.revision,
+    personTypes: keep.map((type) => ({ allocation: allocations[type.key] ?? type.allocation, key: type.key, targetCount: type.targetCount })),
+  });
+  const refusedBy = (code: PlanAllocationError) => (error: unknown) => error instanceof PlanFlowError && error.reason === "INVALID_INPUT" && error.details.allocationError === code;
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, adjust({ [types[0]!.key]: types[0]!.allocation + 5 })), refusedBy("total_not_100"), "合计 ≠ 100");
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, adjust({ [types[0]!.key]: types[0]!.allocation + 3, [types[1]!.key]: types[1]!.allocation - 3 })), refusedBy("not_multiple_of_step"), "5 分一档");
+  const tooMany = adjust({});
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, { ...tooMany, personTypes: tooMany.personTypes.map((type, index) => (index === 0 ? { ...type, targetCount: 6 } : type)) }), refusedBy("target_out_of_range"), "人数上限 5");
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, { ...adjust({}), personTypes: [] }), rejects("INVALID_INPUT"), "删到 0 类");
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, { ...adjust({}), personTypes: [{ allocation: 100 - draft.content.event.allocation, key: "no-such-type", targetCount: 1 }] }), rejects("INVALID_INPUT"), "未知类型");
+  await assert.rejects(world.flow.confirm(draft.draftId, key(), JA, { ...adjust({}), expectedRevision: "someone-else" }), rejects("STALE"), "expectedRevision 过期");
+  assert.equal(world.repository.dump(SCOPE).plans.length, 0, "a refused confirm creates nothing");
+
+  // 通过：删掉最后一类、它的分给第一类、第二类人数改成 1。
+  const removed = types[types.length - 1]!;
+  const kept = types.slice(0, -1);
+  const good = adjust({ [types[0]!.key]: types[0]!.allocation + removed.allocation }, kept);
+  good.personTypes = good.personTypes.map((type, index) => (index === 1 ? { ...type, targetCount: 1 } : type));
+  const confirmed = await world.flow.confirm(draft.draftId, key(), JA, good);
+  assert.equal(confirmed.replayed, false);
+  const detail = await world.planService.detail(confirmed.planId);
+  assert.equal(detail!.quota.manualEditAvailable, true, "D-1: adjustments on the draft page do not use the one manual edit");
+  assert.deepEqual(
+    detail!.content.personTypes.map((type) => [type.key, type.allocation, type.targetCount]),
+    good.personTypes.map((type) => [type.key, type.allocation, type.targetCount]),
+  );
+  assert.equal(detail!.content.personTypes.reduce((sum, type) => sum + type.allocation, 0) + detail!.content.event.allocation, 100);
+  assert.ok(detail!.content.steps.every((step) => !step.personTypeKeys.includes(removed.key)), "the removed type leaves its step");
+  assert.equal(detail!.content.steps.length, draft.content.steps.length, "steps are not edited on the draft page");
+  const row = world.repository.dump(SCOPE).drafts.find((item) => item.id === draft.draftId)!;
+  assert.equal(row.manualEditUsed, false);
+  assert.equal(row.status, "confirmed");
+  assert.equal(row.content.personTypes.length, kept.length, "the draft row keeps the adjusted content");
+  // 已确定后再带调整 = 回放同一份计划，不再套调整。
+  const again = await world.flow.confirm(draft.draftId, key(), JA, { ...good, expectedRevision: "ignored-after-confirm" });
+  assert.equal(again.planId, confirmed.planId);
+  assert.equal(again.replayed, true);
+});
+
+test("R36a regression: confirming without adjustments leaves the draft content untouched and answers with the same four fields", async () => {
+  const world = flowWorld();
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  const before = JSON.stringify(world.repository.dump(SCOPE).drafts.find((item) => item.id === draft.draftId)!.content);
+  const confirmed = await world.flow.confirm(draft.draftId, key(), JA);
+  assert.deepEqual(Object.keys(confirmed).sort(), ["archivedV1PlanId", "href", "planId", "replayed"]);
+  const row = world.repository.dump(SCOPE).drafts.find((item) => item.id === draft.draftId)!;
+  assert.equal(JSON.stringify(row.content), before, "no adjustments → the stored content is byte for byte the draft");
+  assert.equal(row.manualEditUsed, false);
+  const detail = await world.planService.detail(confirmed.planId);
+  assert.deepEqual(detail!.content.personTypes.map((type) => [type.key, type.allocation, type.targetCount]), draft.content.personTypes.map((type) => [type.key, type.allocation, type.targetCount]));
 });
 
 test("a third active goal is refused at confirm time", async () => {

@@ -18774,6 +18774,72 @@
         }
       }
     },
+    "plan-v2.ts::PlanDraftConfirmAdjustments": {
+      "kind": "object",
+      "members": {
+        "expectedRevision": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "personTypes": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "key": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "targetCount": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "allocation": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              }
+            }
+          }
+        },
+        "event": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "targetCount": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            },
+            "allocation": {
+              "optional": false,
+              "kind": "text",
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "plan-v2.ts::PlanDraftConfirmRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "adjustments": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanDraftConfirmAdjustments"
+        }
+      }
+    },
     "plan-v2.ts::PlanTypeStats": {
       "kind": "object",
       "members": {

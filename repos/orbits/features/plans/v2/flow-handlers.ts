@@ -8,6 +8,7 @@ import { z, type ZodType } from "zod";
 
 import {
   planConfirmResultSchema,
+  planDraftConfirmRequestSchema,
   planDraftFixRequestSchema,
   planDraftManualEditRequestSchema,
   planDraftViewSchema,
@@ -150,9 +151,10 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     reset: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.reset(params.draftId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context) }), dependencies),
     /** POST …/manual-edit：手动编辑并确定。 */
     manualEdit: flowRoute(planConfirmResultSchema, async (service, request, params, context) => ({ data: await service.manualEdit(params.draftId ?? "", await body(request, planDraftManualEditRequestSchema), context), status: 201 }), dependencies),
-    /** POST …/confirm：确定。 */
+    /** POST …/confirm：确定（R36a：可带初稿页的 `adjustments`，不占手动编辑）。 */
     confirm: flowRoute(planConfirmResultSchema, async (service, request, params, context) => {
-      const result = await service.confirm(params.draftId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context);
+      const parsed = await body(request, planDraftConfirmRequestSchema);
+      const result = await service.confirm(params.draftId ?? "", parsed.idempotencyKey, context, parsed.adjustments);
       return { data: result, status: result.replayed ? 200 : 201 };
     }, dependencies),
 

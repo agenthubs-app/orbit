@@ -13,6 +13,7 @@ import type {
   PlanV2SummaryResponse,
   PlanConfirmResult,
   PlanDraftFixRequest,
+  PlanDraftConfirmRequest,
   PlanDraftManualEditRequest,
   PlanDraftView,
   PlanFlowStepRequest,
@@ -549,6 +550,19 @@ export const planDraftManualEditRequestObject = z.object({
   idempotencyKey,
 }).strict();
 export const planDraftManualEditRequestSchema = planDraftManualEditRequestObject as z.ZodType<PlanDraftManualEditRequest>;
+
+// R36a：确定时可带初稿页的调整（不含 steps）；人数 / 配点范围与手动编辑一致，合计等服务端用同一套校验。
+export const planDraftConfirmAdjustmentsObject = z.object({
+  expectedRevision: z.string().min(1).max(64),
+  personTypes: z.array(z.object({
+    key: z.string().min(1).max(40),
+    targetCount: z.number().int().min(1).max(5),
+    allocation: z.number().int().min(0).max(100),
+  }).strict()).min(1).max(8),
+  event: z.object({ targetCount: z.number().int().min(1).max(10), allocation: z.number().int().min(0).max(100) }).strict(),
+}).strict();
+export const planDraftConfirmRequestObject = z.object({ idempotencyKey, adjustments: planDraftConfirmAdjustmentsObject.optional() }).strict();
+export const planDraftConfirmRequestSchema = planDraftConfirmRequestObject as z.ZodType<PlanDraftConfirmRequest>;
 
 /* ------------------------------------------------------------------ */
 /* R24 概要、人物类型详情与记录加分                                         */

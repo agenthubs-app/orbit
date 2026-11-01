@@ -10,7 +10,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 
-import { validateAllocations, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
+import { PLAN_ALLOCATION_STEP, validateAllocations, type PlanAllocationError, type PlanAllocationSlot } from "../../../shared/compute/plan-allocation";
 import { planFlowHref, planTaskSegmentHref, type PlanHrefPlatform } from "../../../shared/compute/plan-href";
 import { PLAN_EVENT_SEGMENT_KEY } from "../../../shared/compute/plan-score";
 import {
@@ -36,6 +36,7 @@ import type {
   PlanBackgroundTeam,
   PlanConfirmResult,
   PlanDraftChange,
+  PlanDraftConfirmAdjustments,
   PlanDraftManualEditRequest,
   PlanDraftSlotState,
   PlanDraftTurn,
@@ -148,10 +149,13 @@ const REASON_CODES: Record<PlanFlowErrorReason, AppErrorCode> = {
   STALE: "CONFLICT",
 };
 
+/** `details.allocationError`（R36a）：确定带调整被配点校验拒绝时的 `PlanAllocationError` 码（HTTP 400 的 context 里一并返回）。 */
+export type PlanFlowErrorDetails = { limit?: "daily" | "monthly"; retryOn?: string | null; allocationError?: PlanAllocationError };
+
 export class PlanFlowError extends AppError {
   readonly reason: PlanFlowErrorReason;
-  readonly details: { limit?: "daily" | "monthly"; retryOn?: string | null };
-  constructor(reason: PlanFlowErrorReason, message: string, details: { limit?: "daily" | "monthly"; retryOn?: string | null } = {}) {
+  readonly details: PlanFlowErrorDetails;
+  constructor(reason: PlanFlowErrorReason, message: string, details: PlanFlowErrorDetails = {}) {
     super(REASON_CODES[reason], message);
     this.name = "PlanFlowError";
     this.reason = reason;
@@ -185,7 +189,8 @@ export interface PlanFlowService {
   fix(draftId: string, request: { text: string; idempotencyKey: string }, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   reset(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   manualEdit(draftId: string, request: PlanDraftManualEditRequest, context: PlanFlowRequestContext): Promise<PlanConfirmResult>;
-  confirm(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanConfirmResult>;
+  /** 确定。R36a：`adjustments`（可选）= 初稿页上的调整，随确定一起落到计划里，不占手动编辑；不带时行为与以前相同。 */
+  confirm(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext, adjustments?: PlanDraftConfirmAdjustments): Promise<PlanConfirmResult>;
   /* ---------- R25 ---------- */
   /** 開始見直し：打开（或续上）这份计划的见直草稿 + 前提预标（C8，每天最多一次；打开不扣次数）。 */
   startReview(planId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanReviewView>;
@@ -747,7 +752,30 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
 
   /* ---------- 确定 ---------- */
 
-  async function confirmDraft(draft: PlanDraftRow, intake: PlanIntakeRow, manualEdit: boolean, context: PlanFlowRequestContext): Promise<PlanConfirmResult> {
+  /**
+   * R36a（D-1）：把初稿页的调整套到草稿内容上。只认草稿里已有的类型（不在列表里的 = 删掉；阶段的 `personTypeKeys` 跟着去掉），
+   * 不改阶段、不加新类型；校验与手动编辑同一套（`validateAllocations`：合计 100、5 分一档、人数范围），每类至少 5 分。
+   */
+  function adjustedContent(content: PlanDraftContent, goalKind: PlanGoalKind, adjustments: PlanDraftConfirmAdjustments): PlanDraftContent {
+    const byKey = new Map(content.personTypes.map((type) => [type.key, type]));
+    const personTypes: PlanDraftPersonType[] = adjustments.personTypes.map((change) => {
+      const type = byKey.get(change.key);
+      if (!type) throw new PlanFlowError("INVALID_INPUT", `Unknown person type ${change.key}.`);
+      return { ...type, allocation: change.allocation, targetCount: change.targetCount };
+    });
+    const keys = new Set(personTypes.map((type) => type.key));
+    if (keys.size !== personTypes.length) throw new PlanFlowError("INVALID_INPUT", "Person types must be unique.");
+    if (personTypes.length === 0) throw new PlanFlowError("INVALID_INPUT", "Keep at least one person type.");
+    const steps = content.steps.map((step) => ({ ...step, personTypeKeys: step.personTypeKeys.filter((key) => key === PLAN_EVENT_SLOT || keys.has(key)) }));
+    const next: PlanDraftContent = { ...content, event: { ...adjustments.event }, personTypes, steps };
+    const allocation = validateAllocations(allocationSlotsOf(goalKind, next));
+    if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`, { allocationError: allocation.error });
+    if (personTypes.some((type) => type.allocation < PLAN_ALLOCATION_STEP)) throw new PlanFlowError("INVALID_INPUT", "Each person type needs at least 5 points; remove the type instead.", { allocationError: "not_multiple_of_step" });
+    return next;
+  }
+
+  /** `adjusted`（R36a）：`draft.content` 已按初稿页的调整改过，确定时把它一并写回草稿行（`manualEditUsed` 不动）。 */
+  async function confirmDraft(draft: PlanDraftRow, intake: PlanIntakeRow, manualEdit: boolean, context: PlanFlowRequestContext, adjusted = false): Promise<PlanConfirmResult> {
     const content = draft.content;
     const result = await planService.createPlanFromDraft({
       content: {
@@ -780,7 +808,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const currentDraft = await requireDraft(tx, draft.id);
       const currentIntake = await requireIntake(tx, intake.id);
       const at = now();
-      if (currentDraft.status !== "confirmed") await tx.updateDraft({ ...currentDraft, confirmedAt: at, manualEditUsed: currentDraft.manualEditUsed || manualEdit, planId, status: "confirmed", updatedAt: at });
+      if (currentDraft.status !== "confirmed") await tx.updateDraft({ ...currentDraft, ...(adjusted ? { content } : {}), confirmedAt: at, manualEditUsed: currentDraft.manualEditUsed || manualEdit, planId, status: "confirmed", updatedAt: at });
       if (currentIntake.status !== "planned") await tx.updateIntake({ ...currentIntake, planId, status: "planned", updatedAt: at });
     });
     if (result.created && options.afterConfirmed) {
@@ -2102,17 +2130,23 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       return result;
     },
 
-    async confirm(draftId, idempotencyKey, context) {
+    async confirm(draftId, idempotencyKey, context, adjustments) {
       const { draft, intake } = await repository.read(scope, async (reader) => {
         const current = await requireDraft(reader, draftId);
         const owner = current.intakeId ? await requireIntake(reader, current.intakeId) : null;
         return { draft: current, intake: owner };
       });
-      if (draft.kind === "review") return confirmReviewDraft(draftId, context);
+      if (draft.kind === "review") {
+        if (adjustments) throw new PlanFlowError("INVALID_INPUT", "Adjustments apply to the first draft only.");
+        return confirmReviewDraft(draftId, context);
+      }
       if (!intake || draft.kind !== "initial" || intake.status === "abandoned") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       if (draft.status === "discarded") throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
       void idempotencyKey; // 同一份草稿重复确定只建一份（creationKey = 草稿 id），幂等由 createPlanFromDraft 保证。
-      return confirmDraft(draft, intake, draft.manualEditUsed, context);
+      // R36a（D-1）：带调整时按调整后的内容建计划，`manualEditUsed` 不动；已确定的草稿只回放，不再套调整。
+      if (!adjustments || draft.status === "confirmed") return confirmDraft(draft, intake, draft.manualEditUsed, context);
+      if (draft.updatedAt !== adjustments.expectedRevision) throw new PlanFlowError("STALE", "This draft was changed on another device.");
+      return confirmDraft({ ...draft, content: adjustedContent(draft.content, intake.goalKind, adjustments) }, intake, draft.manualEditUsed, context, true);
     },
   };
 }
