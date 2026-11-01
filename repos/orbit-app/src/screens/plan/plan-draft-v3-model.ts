@@ -2,7 +2,7 @@
 // §1.2 第 3 条). No React, no requests. The adjust state lives only on the client (D-1: it is not a manual
 // edit); the total and the 100 check reuse the shared plan-allocation copy, the type groups follow
 // `steps[].personTypeKeys` (the truth) rather than `personTypes[].stepKey` (SC-05, R35 hand-over).
-import type { PlanMarkedText, PlanPremiseRow, PlanSource, PlanV2Content, PlanV2PersonType, PlanV2Step, PlanCitationView } from "../../api/contract/plan-v2";
+import type { PlanCitationView, PlanDraftConfirmAdjustments, PlanMarkedText, PlanPremiseRow, PlanSource, PlanV2Content, PlanV2PersonType, PlanV2Step } from "../../api/contract/plan-v2";
 import { PLAN_ALLOCATION_STEP, PLAN_TYPE_TARGET_MAX, validateAllocations, type PlanAllocationSlot } from "../../api/compute/plan-allocation";
 import { PLAN_EVENT_SLOT } from "../../api/compute/plan-templates";
 
@@ -151,15 +151,8 @@ export function adjustTotals(content: PlanV2Content, state: DraftAdjustState): A
   };
 }
 
-/**
- * `confirm` 的可选 `adjustments`（R36a 契约：`PlanDraftManualEditRequest` 去掉 `steps` / `idempotencyKey`）。
- * 同步契约后换成 `src/api/contract/plan-v2` 的类型；形状相同。
- */
-export interface PlanDraftConfirmAdjustments {
-  expectedRevision: string;
-  personTypes: readonly { key: string; targetCount: number; allocation: number }[];
-  event: { targetCount: number; allocation: number };
-}
+/** `confirm` 的可选 `adjustments`（R36a 契约 `PlanDraftConfirmAdjustments`，经 `sync:contract` 同步）。 */
+export type { PlanDraftConfirmAdjustments } from "../../api/contract/plan-v2";
 
 /** null when nothing differs from the AI's draft (then `confirm` goes out without the field). */
 export function adjustmentsOf(content: PlanV2Content, state: DraftAdjustState, expectedRevision: string): PlanDraftConfirmAdjustments | null {

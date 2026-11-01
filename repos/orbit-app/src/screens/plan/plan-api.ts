@@ -29,6 +29,7 @@ import type {
   PlanIntakeMembersRequest,
   PlanIntakeView,
   PlanV2SummaryResponse,
+  PlanDraftConfirmAdjustments,
   PlanDraftManualEditRequest,
   PlanAchievementView,
   PlanGoalEditRequest,
@@ -70,7 +71,6 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { planFailureOf, type PlanResult } from "./plan-failure";
 import type { ContactCandidate } from "./plan-model";
-import type { PlanDraftConfirmAdjustments } from "./plan-draft-v3-model";
 
 export type { PlanFailure, PlanResult } from "./plan-failure";
 
