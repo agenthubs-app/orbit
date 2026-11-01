@@ -51,7 +51,7 @@ test("timeout: the request is aborted via AbortController after 10 s and surface
   assert.equal(TAVILY_SEARCH_TIMEOUT_MS, 10_000);
   let requests = 0;
   const fetchImplementation: typeof fetch = (_url, init) =>
-    new Promise((_resolve, reject) => {
+    new Promise<Response>((_resolve, reject) => {
       requests += 1;
       init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
     });
@@ -86,7 +86,7 @@ test("an outer signal aborts the request too; connection failure, non-2xx and un
 
   const outer = new AbortController();
   const hanging: typeof fetch = (_url, init) =>
-    new Promise((_resolve, reject) => {
+    new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
     });
   const pending = createTavilySearchProvider({ apiKey: "k", fetchImplementation: hanging }).search("q", { signal: outer.signal });
