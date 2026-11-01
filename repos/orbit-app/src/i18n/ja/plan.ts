@@ -760,6 +760,7 @@ export const plan = {
   "plan.legacy.notInNetwork": "まだ人脈にいません",
   "plan.fix.placeholderLeft": "直したいこと（あと {count} 回）",
   // R36b: the v3 draft page (plan-draft-v5-proposal.html v16 「初稿 · 确认」).
+  "plan.v3.crumb": "iOrbit · プランを作る · 初版",
   "plan.v3.aiFix": "✦ AI に直してもらう · あと {count} 回",
   "plan.v3.kickPre": "もとにしたのは ",
   "plan.v3.kickMine": "あなたの情報と {answers} 件の回答",

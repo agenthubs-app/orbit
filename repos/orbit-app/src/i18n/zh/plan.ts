@@ -760,6 +760,7 @@ export const plan = {
   "plan.legacy.notInNetwork": "还不在人脉里",
   "plan.fix.placeholderLeft": "想改哪里？（还能改 {count} 次）",
   // R36b: the v3 draft page (plan-draft-v5-proposal.html v16 「初稿 · 确认」).
+  "plan.v3.crumb": "iOrbit · 制定计划 · 初稿",
   "plan.v3.aiFix": "✦ 让 AI 改 · 剩{count}次",
   "plan.v3.kickPre": "根据",
   "plan.v3.kickMine": "你的资料、{answers}个回答",

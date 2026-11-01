@@ -760,6 +760,7 @@ export const plan = {
   "plan.legacy.notInNetwork": "Not in your network yet",
   "plan.fix.placeholderLeft": "What should change? ({count} left)",
   // R36b: the v3 draft page (plan-draft-v5-proposal.html v16 「初稿 · 确认」).
+  "plan.v3.crumb": "iOrbit · Make a plan · First draft",
   "plan.v3.aiFix": "✦ Ask AI to revise · {count} left",
   "plan.v3.kickPre": "From ",
   "plan.v3.kickMine": "your profile and {answers} answers",

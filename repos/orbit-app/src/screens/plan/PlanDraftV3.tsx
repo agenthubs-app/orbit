@@ -90,8 +90,9 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
 
   return (
     <View style={styles.page} testID="draft-v3">
-      {/* .top：手机视图只剩 AI 修正 pill（面包屑由顶栏承担，REPORT 自定决定）。 */}
+      {/* .top：面包屑 + AI 修正 pill（顶栏是壳，页身从这里起与原型一致；REPORT 自定决定）。 */}
       <View style={styles.top}>
+        <UiText style={styles.crumb}>{t("plan.v3.crumb")}</UiText>
         <UiPressable accessibilityRole="button" accessibilityState={{ disabled: aiFixLeft === 0, expanded: aiFixOpen }} disabled={aiFixLeft === 0} hitSlop={6} onPress={onAiFix} style={[styles.ai, aiFixLeft === 0 && styles.aiOff]} testID="draft-v3-ai">
           <UiText style={styles.aiText}>{t("plan.v3.aiFix", { count: aiFixLeft })}</UiText>
         </UiPressable>
@@ -378,6 +379,7 @@ const num = (size: number, weight: TextStyle["fontWeight"], lineHeight = 1.6): T
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { paddingTop: 18 },
   top: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26, minHeight: 34.8 },
+  crumb: { color: colors.ink3, ...kitText(12.5, "400", 1.6) },
   ai: { marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.glass, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 14 },
   aiOff: { opacity: 0.45 },
   aiText: { color: colors.plum700, ...kitText(13, "400", 1.6) },

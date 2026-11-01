@@ -161,6 +161,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["session.*", "sentence"],
   // R23 plan v2.2 generation flow (src/screens/plan).
   // R36b: the v3 draft page.
+  ["plan.v3.crumb", "label"],
   ["plan.v3.aiFix", "label"],
   ["plan.v3.redraft", "button"],
   ["plan.v3.confirm", "button"],
