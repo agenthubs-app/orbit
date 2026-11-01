@@ -2,8 +2,7 @@
 // .page padding 18). Sections in the design's order: .top (AI 修正 pill) → .hero（kick + mine / goal / h1 結論 /
 // .sum 理由段 / .badges 判定 + 確信度 / .why1）→ .route → .seats（stage headers + adjustable .adj rows + .tot）→
 // .evi（.ord / ladder / .more: .nums + .risk + .srcl / .toggle）→ .dock（書き直す / この内容で確定）. Numbers are
-// the design's CSS values; colours are tokens (the prototype's own hex for the ladder fills and verdict dots
-// are mapped to the nearest token until shared tokens land, see REPORT). Adjustments live in
+// the design's CSS values; colours are tokens (ladder fills / verdict dot = R36a's chart-* / verdict-conditional). Adjustments live in
 // `plan-draft-v3-model`; nothing here sends a request.
 import { useState } from "react";
 import { Linking, Platform, StyleSheet, View, type TextStyle, type ViewStyle } from "react-native";
@@ -74,8 +73,9 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
   const answers = draft.premise.filter((row) => row.source !== "background");
   const totals = adjustTotals(content, state);
   const groups = typeGroups(content);
-  const verdictColor = (verdict: PlanVerdict) => verdict === "feasible" ? colors.ok : verdict === "conditional" ? colors.macApricotInk : colors.coralText;
-  const fillColor = (verdict: PlanComparisonVerdict) => verdict === "preferred" ? colors.ok : verdict === "possible" ? colors.macApricotInk : colors.coral;
+  // 判定点：可行 = ok、有条件 = verdict-conditional、不建议 = coral；对比条填充 = chart-* token（R36a 加，原型的写死色）。
+  const verdictColor = (verdict: PlanVerdict) => verdict === "feasible" ? colors.ok : verdict === "conditional" ? colors.verdictConditional : colors.coral;
+  const fillColor = (verdict: PlanComparisonVerdict) => verdict === "preferred" ? colors.chartPreferred : verdict === "possible" ? colors.chartPossible : colors.chartNot;
   const vColor = (verdict: PlanComparisonVerdict) => verdict === "preferred" ? colors.okText : verdict === "possible" ? colors.macApricotText : colors.coralText;
   const badge = (n: number) => <View key={`src-${n}`} style={styles.src}><UiText style={styles.srcText}>{String(n)}</UiText></View>;
   const sg = (label: string) => <View style={styles.sg}><UiText style={styles.sgText}>{label}</UiText></View>;
