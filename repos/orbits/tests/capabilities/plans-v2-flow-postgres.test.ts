@@ -76,7 +76,7 @@ test("the whole flow round-trips through PostgreSQL and confirms one v2 plan", d
     const detail = await planService.detail(confirmed.planId);
     assert.equal(detail!.goalKind, "launch");
     assert.equal(ai.calls.background, 1);
-    assert.equal(ai.calls.firstDraft, 2);
+    assert.equal(ai.calls.firstDraftV3, 2);
   });
 });
 

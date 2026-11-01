@@ -216,10 +216,15 @@ export function mockDraftV3(input: FirstDraftInputV3, language: PlanCopyLanguage
   });
   const firstSource = sourceIds.slice(0, 1);
   // Step 2–4 个，每个人物类型都属于一个 Step（イベント枠放最后一个）。
-  const groups = [slots.slice(0, 2), slots.slice(2, 4), [...slots.slice(4), PLAN_EVENT_SLOT]].filter((group) => group.length > 0);
+  // Step 2–4 个：人物类型两类一组，イベント枠单独最后一步（与 v2 mock 同为 4 步，设计稿 C 的「Step 3 / Step 4」样例照旧）；
+  // 组数到 3 时イベント并进最后一组，保证不超过 4 步。
+  const pairs: string[][] = [];
+  for (let index = 0; index < slots.length; index += 2) pairs.push(slots.slice(index, index + 2));
+  const groups = pairs.length >= 4 ? [...pairs.slice(0, 3), [...pairs.slice(3).flat(), PLAN_EVENT_SLOT]] : [...pairs, [PLAN_EVENT_SLOT]];
   const stepCopy: Tri[][] = [
     [{ en: "Hear from the people closest to the goal", ja: "目標にいちばん近い人に話を聞く", zh: "先听离目标最近的人怎么说" }, { en: "You can say in one line who this is for", ja: "誰のための何かを、一言で言える", zh: "能用一句话说清为谁做什么" }],
     [{ en: "Work through the plan with the next group", ja: "次の相手と進め方を詰める", zh: "和下一批人理清做法" }, { en: "One person agrees to the next concrete step", ja: "次の具体的な一歩に、1 人が合意する", zh: "有 1 个人同意下一步" }],
+    [{ en: "Borrow strength from the rest", ja: "残りの相手の力を借りる", zh: "借助其余人的力量" }, { en: "A missing skill is covered by someone you can ask again", ja: "足りない力を、続けて頼める人が見つかる", zh: "找到能持续求助的人补上缺的能力" }],
     [{ en: "Widen the circle at events", ja: "イベントで輪を広げる", zh: "在活动上扩大圈子" }, { en: "You leave an event with a follow-up you can act on", ja: "イベントのあと、動けるフォローが 1 件ある", zh: "活动后有 1 个能推进的跟进" }],
   ];
   return {
@@ -234,7 +239,10 @@ export function mockDraftV3(input: FirstDraftInputV3, language: PlanCopyLanguage
     orderReasons: copy.orderReasons.map((line) => ({ sourceIds: firstSource, text: pick(line, language) })),
     outcome: pick(copy.outcome, language),
     risks: copy.risks.map((risk) => ({ kind: risk.kind, text: pick(risk.text, language) })),
-    steps: groups.map((keys, index) => ({ doneCriteria: pick(stepCopy[index]![1]!, language), personTypeKeys: keys, title: pick(stepCopy[index]![0]!, language), why: null })),
+    steps: groups.map((keys, index) => {
+      const copy = keys.includes(PLAN_EVENT_SLOT) && keys.length === 1 ? stepCopy[3]! : stepCopy[Math.min(index, 2)]!;
+      return { doneCriteria: pick(copy[1]!, language), personTypeKeys: keys, title: pick(copy[0]!, language), why: null };
+    }),
     summary,
     verdict: "feasible",
   };

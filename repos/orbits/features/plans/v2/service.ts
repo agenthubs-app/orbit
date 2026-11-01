@@ -50,6 +50,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/co
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import type { PlanContactLink, PlanReferenceValidator } from "../contract";
 import { needStatus } from "./repository";
+import { pickPlanV3Fields } from "./v3-fields";
 import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
   PLAN_V2_GOAL_LIMIT,
@@ -466,6 +467,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     return {
       achievedAt: plan.achievedAt,
       content: {
+        // R35：v3 计划透传新字段（与存储一致）；v2 计划一个键都不多，返回体与改前逐字节相同。
+        ...pickPlanV3Fields(plan.analysis),
         allocationReasons: plan.analysis.allocationReasons,
         basis: plan.analysis.basis,
         citations: plan.analysis.citations,
@@ -489,6 +492,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           shortLabelId: item.personType.shortLabelId,
           skipped: Boolean(item.skippedAt),
           slot: item.slot,
+          ...(item.personType.stepKey != null ? { stepKey: item.personType.stepKey } : {}),
           targetCount: item.targetCount,
           why: item.personType.why,
         })),
@@ -905,6 +909,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             diagnosis: content.diagnosis,
             ...(content.flow ? { flow: [...content.flow] } : {}),
             schemaVersion: 2,
+            // R35：v3 草稿 → `schemaVersion: 3` + 新字段；v2 草稿什么都不多。
+            ...pickPlanV3Fields(content),
             ...(content.sample ? { sample: true as const } : {}),
           },
           archivedAt: null,
@@ -945,6 +951,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
             recognizeHints: [...type.recognizeHints],
             shortLabelId: type.shortLabelId,
             why: type.why,
+            // R35：所属阶段（v3；v2 草稿缺省）。
+            ...(type.stepKey != null ? { stepKey: type.stepKey } : {}),
           },
           planId: plan.id,
           primaryIndustryId: type.primaryIndustryId ?? null,

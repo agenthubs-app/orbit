@@ -63,17 +63,20 @@ import type {
   PlanReviewFixRequest,
   PlanReviewToggleRequest,
   PlanReviewView,
+  PlanSource,
 } from "../../../shared/contract/plan-v2";
 import type { IndustryIdCode } from "../../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import { AI_QUOTA_MONTHLY_LIMITS, nextTokyoMidnight, nextTokyoMonthStart, tokyoUsageMonth } from "../../ai-quota/constants";
 import { publishedEntriesFor, resolveCitations } from "../landscape/store";
 import { backgroundCacheKey, ruleLadder, ruleQuestions } from "./ai/rules";
-import type { DraftOutput, DraftSlotInfo, PlanAiContact, PlanAiOutcome, PlanAiRecord, PlanFlowAi } from "./ai/types";
+import type { DraftOutput, DraftSlotInfo, DraftV3, PlanAiContact, PlanAiOutcome, PlanAiRecord, PlanFlowAi } from "./ai/types";
 import type { PlanFlowContact, PlanFlowContextSource, PlanFlowMemo } from "./flow-context";
 import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
+import type { PlanSearchLike } from "./search-port";
+import { pickPlanV3Fields, withUnverifiedNetworkRisk } from "./v3-fields";
 import { rankPlanMemberCandidates } from "../../../shared/compute/plan-member-candidates";
 import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planReviewQuota, planSinceConfirmed, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
 import type { PlanV2LogEntry, PlanV2Row, PlanV2TypeItem } from "./types";
@@ -217,6 +220,11 @@ export interface PlanFlowServiceOptions {
   afterConfirmed?: (input: { actorId: string; planId: string }) => Promise<void>;
   /** R25 复核 M1：AI 账本里本月见直已占的次数（live 由账本给；没有时只按用户次数）。 */
   reviewBudget?: PlanReviewBudgetReader;
+  /**
+   * R35：起草前的联网搜索（R34 实现，主会话在 `flow-factory.ts` 注入）。缺省 / `unavailable` / 抛错都不阻塞起草：
+   * 来源只有业界现状库，`risks` 多一条「本次未能联网核实」。
+   */
+  search?: PlanSearchLike;
 }
 
 /* ------------------------------------------------------------------ */
@@ -624,11 +632,49 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     };
   }
 
+  /** R35：v3 初版 → 草稿内容：v2 的形状 + `schemaVersion: 3` 与新字段（扁平放在 content 上）+ 每个人物类型的 `stepKey`。 */
+  function toDraftContentV3(value: DraftV3, kind: PlanGoalKind, aliases: Map<string, PlanFlowContact>, language: PlanCopyLanguage, premise: readonly PlanPremiseRow[]): PlanDraftContent {
+    const base = toDraftContent(value, kind, aliases, language, premise);
+    const stepKeyBySlot = new Map(value.personTypes.map((type) => [type.slot, type.stepKey]));
+    return {
+      ...base,
+      comparison: value.comparison,
+      confidence: value.confidence,
+      keyNumbers: value.keyNumbers,
+      orderReasons: value.orderReasons,
+      outcome: value.outcome,
+      personTypes: base.personTypes.map((type) => ({ ...type, stepKey: stepKeyBySlot.get(type.slot) ?? null })),
+      risks: value.risks,
+      schemaVersion: 3,
+      sources: value.sources,
+      summary: value.summary,
+      verdict: value.verdict,
+    };
+  }
+
+  /**
+   * R35（SC-04）：AI 修正 / 見直し修正仍按 v2 重建内容；重建后把原内容里已有的 v3 字段与每类的 `stepKey` 原样带过去
+   * （v2 的内容什么都不加）。修正路径真正改成 v3 留 R36a 之后。
+   */
+  function carryV3(from: PlanDraftContent, to: PlanDraftContent): PlanDraftContent {
+    if (from.schemaVersion !== 3) return to;
+    const stepKeyBySlot = new Map(from.personTypes.flatMap((type) => (type.stepKey != null ? [[type.slot, type.stepKey] as const] : [])));
+    return {
+      ...to,
+      ...pickPlanV3Fields(from),
+      // citations / 依据区的 landscape 行由来源清单导出（toDraftOutput 给 AI 的是空引用），修正后原样还原。
+      basis: [...to.basis.filter((row) => row.kind !== "landscape"), ...from.basis.filter((row) => row.kind === "landscape")].sort((a, b) => Number(a.kind === "template") - Number(b.kind === "template")),
+      citations: [...from.citations],
+      personTypes: to.personTypes.map((type) => (stepKeyBySlot.has(type.slot) ? { ...type, stepKey: stepKeyBySlot.get(type.slot)! } : type)),
+    };
+  }
+
   /** 给 AI 的当前方案（C7）：人物类型以枠 id 为 key；紹介ルート换回别名。 */
   function toDraftOutput(content: PlanDraftContent, aliasesById: Map<string, string>): DraftOutput {
     return {
       allocationReasons: [...content.allocationReasons],
-      citations: [...content.citations],
+      // R35：v3 的 citations 是从来源清单导出的、見立て里没有 ①② 标记；给 v2 修正校验器就当没有引用，修正后由 carryV3 还原。
+      citations: content.schemaVersion === 3 ? [] : [...content.citations],
       conclusion: content.conclusion,
       diagnosis: content.diagnosis,
       event: { ...content.event },
@@ -714,6 +760,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         flow: content.flow,
         personTypes: content.personTypes.map(({ itemId: _itemId, ...type }) => type),
         steps: content.steps,
+        // R35：v3 草稿的新字段（v2 草稿什么都不多）。
+        ...pickPlanV3Fields(content),
       },
       creationKey: draft.id,
       goalId: intake.id,
@@ -759,6 +807,8 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
 
   function planContentOf(plan: PlanV2Row, types: readonly PlanV2TypeItem[]): PlanDraftContent {
     return {
+      // R35：v3 计划的新字段跟着进見直し草稿（v2 计划一个键都不多）。
+      ...pickPlanV3Fields(plan.analysis),
       allocationReasons: [...plan.analysis.allocationReasons],
       basis: [...plan.analysis.basis],
       citations: [...plan.analysis.citations],
@@ -783,6 +833,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         shortLabel: type.shortLabel,
         shortLabelId: type.personType.shortLabelId,
         slot: type.slot,
+        ...(type.personType.stepKey != null ? { stepKey: type.personType.stepKey } : {}),
         targetCount: type.targetCount,
         why: type.personType.why,
       })),
@@ -1017,7 +1068,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
     let sortKey = Math.max(0, ...types.map((type) => type.sortKey));
     for (const type of content.personTypes) {
       const current = byKey.get(type.key);
-      const meta = { countRule: type.countRule, emoji: type.emoji, introRoutes: [...type.introRoutes], key: type.key, opener: type.opener ?? null, persona: type.persona ?? null, questions: [...type.questions], recognizeHints: [...type.recognizeHints], shortLabelId: type.shortLabelId, why: type.why };
+      const meta = { countRule: type.countRule, emoji: type.emoji, introRoutes: [...type.introRoutes], key: type.key, opener: type.opener ?? null, persona: type.persona ?? null, questions: [...type.questions], recognizeHints: [...type.recognizeHints], shortLabelId: type.shortLabelId, why: type.why, ...(type.stepKey != null ? { stepKey: type.stepKey } : {}) };
       if (current) {
         await tx.updateTypeItem({ ...current, allocation: type.allocation, personType: meta, roleSituation: type.roleSituation, shortLabel: type.shortLabel, targetCount: type.targetCount, updatedAt: at });
       } else {
@@ -1474,7 +1525,25 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
       const landscape = publishedEntriesFor({ goalKind: before.goalKind, industries, now: nowDate() }).map((entry) => ({ id: entry.id, summary: entry.summary[context.language], title: entry.title[context.language], version: entry.version }));
       const { aliases, input: contacts } = await aliasesForDraft(before);
       const summary = backgroundSummary(before, context.language);
-      const outcome = await ai.firstDraft({
+      // R35（v3）：来源清单在调模型之前编号——业界现状库条目 S1… 在前，网页来源接着编；模型只能引用这些 id。
+      const sources: PlanSource[] = landscape.map((entry, index) => ({ id: `S${index + 1}`, kind: "landscape", landscapeId: entry.id, version: entry.version }));
+      const purpose = purposeTextOf(before);
+      // 搜索（R34 实现，可选依赖）：缺省 / unavailable / 抛错都按「未能联网核实」处理，绝不阻塞起草。
+      let searched: "ok" | "partial" | "unavailable" = "unavailable";
+      if (options.search) {
+        try {
+          const result = await options.search.search({ goalKind: before.goalKind, goalText: before.goalText, industries, language: context.language, premise: before.premise, purpose }, { actorId: scope.actorId, ledgerKeyPrefix: ledgerKey, now: nowDate() });
+          searched = result.status;
+          if (result.status !== "unavailable") for (const source of result.sources) sources.push({ ...source, id: `S${sources.length + 1}`, kind: "web" });
+        } catch (error) {
+          searched = "unavailable";
+          console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "plan_v3_search_failed", ledgerKey }));
+        }
+      }
+      // 回答 id：前提表每行的 key（回答行 = questionId，背景行 = purpose 等）；理由段的 `questionKey` 只能是这些。
+      const answerKeys = before.premise.map((row) => row.key);
+      const outcome = await ai.firstDraftV3({
+        answerKeys,
         background: summary.text,
         contacts,
         eventSlot: { allocation: eventTemplate.allocation, targetCount: eventTemplate.targetCount },
@@ -1483,8 +1552,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         goalText: before.goalText,
         landscape,
         premise: before.premise,
-        purpose: purposeTextOf(before),
+        purpose,
         slots,
+        sources,
       }, { actorId: scope.actorId, language: context.language, ledgerKey, now: nowDate() });
       const result = await repository.transact(scope, async (tx) => {
         const body = { intakeId, premiseVersion };
@@ -1502,7 +1572,9 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           }
           return { failure, intake: current };
         }
-        const content = toDraftContent(outcome.value, current.goalKind, aliases, context.language, current.premise ?? []);
+        // 未联网核实的提示由服务层在校验之后追加（不交给模型；同文案不重复）。
+        const value: DraftV3 = searched === "unavailable" ? { ...outcome.value, risks: withUnverifiedNetworkRisk(outcome.value.risks, context.language) } : outcome.value;
+        const content = toDraftContentV3(value, current.goalKind, aliases, context.language, current.premise ?? []);
         const draft: PlanDraftRow = {
           aiFixUsed: 0,
           baseRevision: null,
@@ -1588,7 +1660,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           return { failure };
         }
         const keys = current.content.steps.map((step) => step.key);
-        const revised = toDraftContent(outcome.value.revised, intake.goalKind, aliases, context.language, current.premise, keys);
+        const revised = carryV3(current.content, toDraftContent(outcome.value.revised, intake.goalKind, aliases, context.language, current.premise, keys));
         const reasons = new Map(outcome.value.reasons.map((reason) => [reason.path, reason.reason]));
         const changes = diffContent(current.content, revised, context.language, reasons);
         const turn: PlanDraftTurn = {
@@ -1833,7 +1905,7 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         const usedNow = await reviewUsedThisMonth(tx);
         if (usedNow >= PLAN_REVIEW_MONTHLY_LIMIT) throw new PlanFlowError("REVIEW_LIMIT", "All reviews for this month have been used.", { limit: "monthly", retryOn: nextTokyoMonthStart(nowDate()) });
         const keys = current.content.steps.map((step) => step.key);
-        const revised = toDraftContent(outcome.value.revised, plan.goalKind, contacts.aliases, context.language, premise, keys);
+        const revised = carryV3(current.content, toDraftContent(outcome.value.revised, plan.goalKind, contacts.aliases, context.language, premise, keys));
         // 保留原方案里人物类型的 key（确定时按 key 对应已有条目）。
         revised.personTypes = revised.personTypes.map((type) => {
           const original = current.content.personTypes.find((item) => item.slot === type.slot);
