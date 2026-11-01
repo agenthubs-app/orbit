@@ -16,6 +16,8 @@ import { createLivePlanFlowContext, createMockPlanFlowContext } from "./flow-con
 import { createPlanFlowService, type PlanFlowService } from "./flow-service";
 import { configuredPlanReviewBudget, resolvePlanV2Parts } from "./service-factory";
 import { enqueuePlanSourceMatchAfterSave } from "../matching-runtime";
+import { configuredPlanSearch } from "../search/factory";
+import { createMockPlanSearch } from "../search/mock";
 
 /** 初版 / 修正的完整方案 JSON 约 2–4k token；显式给足上限，避免被供应商默认值截断成不完整 JSON（R25 真实 C9 第一次失败）。 */
 export const PLAN_V2_MAX_OUTPUT_TOKENS = 8192;
@@ -51,6 +53,8 @@ export function resolvePlanFlowService(input: { actorId: string; mode?: ModuleMo
       repository,
       reviewBudget: live ? configuredPlanReviewBudget() : undefined,
       scope,
+      // R34 / R35 合流：起草前的联网搜索。live 下按 `ORBIT_PLAN_SEARCH` / `TAVILY_API_KEY` 选 tavily 或 disabled，mock 模式给固定来源。
+      search: live ? configuredPlanSearch() : createMockPlanSearch(),
     }),
     success: true,
   };
