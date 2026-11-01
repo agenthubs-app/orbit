@@ -14,7 +14,8 @@
 //     node scripts/visual/compare-redesign-app.mjs --shot <png> --design app.html --board-index 20 --theme dark --out <dir> --grid 100
 //   系统外壳：默认去掉设计画框的灵动岛与 Home 指示条，并把两侧顶部 50pt 状态栏涂成同色不计差异（--keep-system 关闭）。
 //   整页原型（R36b）：--design plan-draft-v5-proposal.html --design-page --design-query "goal=fund&page=draft&device=m&bar=0"
-//         （去掉手机外壳后 .app = 390 宽，截整页；默认比顶部一屏，滚动后的画面用 --region / --design-region 对位）。
+//         （去掉手机外壳后 .app = 390 宽，截整页；默认比页身：实现侧从 --page-top（默认 = 状态栏 50）起、设计侧从 .page 顶起同高；
+//         滚动后的画面用 --region / --design-region 对位）。
 //   选项：--scale 3（截图像素 / 点，默认按设计宽 390 自动推算）；--design-click "<画框内选择器>"（先在画板里点开抽屉 / 弹层）；
 //         --design-remove "<画框内选择器>"；--attribution <json> --grid-view <key>（同 Web 版，只认 [data] / [raster]）。
 //   批量（门禁提速，2026-10-12）：--suite scripts/visual/views/app-<Sprint>.json [--only a,b] [--changed [ref]] --simulator booted --out <dir>
@@ -260,10 +261,13 @@ function compareShot(v, designPng, board, shotFile) {
   // --region（实现侧 rect，设计点）/ --design-region（设计侧，另给时分侧裁）；规格格的设计侧不再裁。
   const screen = { width: app.width, height: app.height };
   const region = v.region ? parseRegion(v.region, screen) : null;
-  // 整页设计稿比截图高：没给裁剪时默认比顶部与截图同高的一段（第一屏）。
+  // 整页设计稿比截图高：没给裁剪时默认比「页身」——实现侧从 --page-top（状态栏 + 顶栏壳的高度，设计点）起到屏底，
+  // 设计侧从原型 .page 顶（0）起同高（口径同 R36a Web：原型 .page(+dock) ↔ 页身根元素，导航壳不在比对里）。
+  const pageTop = board?.page && !region && !v["design-region"] ? Number(v["page-top"] ?? statusPt) : 0;
+  const pageRegion = pageTop ? [0, pageTop, app.width, app.height - pageTop] : null;
   const designRegion = board?.spec ? null : v["design-region"] ? parseRegion(v["design-region"], { width: design.width, height: design.height })
-    : board?.page && !region && design.height > app.height ? [0, 0, design.width, app.height] : null;
-  const cropped = board?.spec ? { design, app: region ? crop(app, ...region) : app } : cropPair({ design, app, region, designRegion });
+    : board?.page && !region ? [0, 0, design.width, Math.min(design.height, app.height - pageTop)] : null;
+  const cropped = board?.spec ? { design, app: region ? crop(app, ...region) : app } : cropPair({ design, app, region: region ?? pageRegion, designRegion });
   writePng(join(v.out, "app.png"), cropped.app);
   writePng(join(v.out, "design.png"), cropped.design);
   const result = compareImages({
