@@ -24,12 +24,18 @@
 //                 设计侧裁成该格（整数对齐）；实现侧按 --region 裁（整数 CSS px，视口坐标），或 --app-clip "<选择器>" 按元素外接矩形裁；
 //                 --design-region 用于画板区域对比时分侧裁。
 //   [contrast]：归因理由以 [contrast] 开头的带按 contrast-substitutions.json 逐像素判定（RD-26）。
+//   整页原型（R36a，设计稿不是 kit 画板、没有 .web / .phone 画框时）：
+//               --design "plan-draft-v5-proposal.html?goal=fund&page=draft&device=web&bar=0" --design-page \
+//                 --design-clip ".page" --design-clip-bottom ".app" --app-clip "[data-plan-draft-v3]" [--design-as-mweb]
+//               设计侧把整个 body 当画框（视口宽 = --width；--design-as-mweb 时去掉原型的手机外框，页面就是 --width 宽的手机网页），
+//               --design-clip 只截该元素的外接矩形（--design-clip-bottom 把下边缘延到另一元素的底边，把底部 dock 一起截进来），
+//               --app-clip 实现侧同样只截该元素；两侧按同一块比，导航壳不在比对范围内（壳另有自己的门禁）。
 //
 // 退出码：0 通过；2 用法错误；3 画板 / 元素找不到；5 有超阈值带未以 [data] / [raster] / [contrast] 归因；6 整屏 raw > --raw-threshold（RD-29 起默认不卡 raw；批量取各张最大值）。
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
-import { STYLE_PROPS, changedFiles, collectStyles, compareImages, cropPair, parseRegion, specCellsInPage, designCache, diffStyles, extractBoardSource, formatBandReport, formatStyleDiff, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
+import { STYLE_PROPS, changedFiles, collectStyles, compareImages, crop, cropPair, parseRegion, specCellsInPage, designCache, diffStyles, extractBoardSource, formatBandReport, formatStyleDiff, designInputsHash, listBoardsInPage, loadSuite, many, parseArgs, pool, printSummary, readPng, readSecret, selectChanged, selectOnly, writePng } from "./redesign-pixel-lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const designBase = args["design-base"] ?? "http://localhost:3320/redesign-2026-10/";
@@ -100,7 +106,32 @@ if (args.list) {
 }
 
 // ---------- 设计侧截图 ----------
+// --design-page（R36a）：没有画板的整页原型（plan-draft-v5-proposal.html）——整个 body 就是画框，视口宽 = --width。
+// --design-as-mweb 时原型的手机外框（.stage 内边距、.app 的 10px 边框 / 圆角 / 阴影）是设备外壳不是网页内容，去掉后页面就是 --width 宽；
+// 同 mweb390 去状态栏 / 地址栏的口径。裁剪（--design-clip / --design-clip-bottom）在 finishDesign 里做（要先定高）。
+async function shootDesignPage(v) {
+  const { width, theme } = v;
+  const asMweb = v["design-as-mweb"] === true || v["design-as-mweb"] === "true";
+  const { ctx, page } = await openDesign(v, width);
+  for (const sel of many(v["design-click"])) { await page.locator(sel).first().click(); await page.waitForTimeout(300); }
+  await page.evaluate(({ theme, removes, asMweb, width }) => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.style.margin = "0";
+    for (const sel of removes) for (const el of document.querySelectorAll(sel)) el.remove();
+    if (asMweb) {
+      for (const el of document.querySelectorAll(".stage")) el.style.padding = "0";
+      for (const el of document.querySelectorAll(".app")) Object.assign(el.style, { maxWidth: `${width}px`, width: `${width}px`, border: "0", borderRadius: "0", boxShadow: "none" });
+    }
+  }, { theme, removes: many(v["design-remove"]), asMweb, width });
+  await page.waitForTimeout(300);
+  const frame = await page.$("body");
+  const naturalHeight = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+  const board = { index: -1, label: `整页 ${v.design}`, kind: asMweb ? "mweb390" : "web", theme, size: [width, naturalHeight], page: true, clip: v["design-clip"] ?? null, clipBottom: v["design-clip-bottom"] ?? null };
+  return { ctx, page, frame, board, naturalHeight };
+}
+
 async function shootDesign(v) {
+  if (v["design-page"] === true || v["design-page"] === "true") return shootDesignPage(v);
   const { width, theme, fullPage } = v;
   const { ctx, page } = await openDesign(v, Math.max(1700, width + 200));
   // 画板由 kit.js 渲染；并行加载、机器忙时可能还没画完：找不到目标就每秒重列一次（最多 45 秒；b12 近 300 块画板，机器忙时加载慢）。
@@ -182,6 +213,20 @@ async function shootDesign(v) {
 
 const designStylesOf = (v, d) => d.frame.evaluate((f, [src, o]) => (0, eval)(`(${src})`)(f, o), [collectStyles.toString(), { props: STYLE_PROPS, region: v.regionBox }]);
 
+// 元素外接矩形（页面坐标，整数）；--design-clip-bottom / 第二个选择器把下边缘延到那个元素的底边。
+const clipRectIn = async (page, selector, bottomSelector) => {
+  const rect = await page.evaluate(([sel, bottomSel]) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const b = bottomSel ? document.querySelector(bottomSel)?.getBoundingClientRect().bottom : null;
+    const x = Math.round(r.left + window.scrollX), y = Math.round(r.top + window.scrollY);
+    return [x, y, Math.round(r.width), Math.round((b ?? r.bottom) + window.scrollY) - y];
+  }, [selector, bottomSelector ?? null]);
+  if (!rect) throw new Stop(3, `裁剪元素找不到：${selector}`);
+  return rect;
+};
+
 async function finishDesign(v, d, height) {
   if (v.fullPage) {
     await d.frame.evaluate((f, h) => {
@@ -192,11 +237,20 @@ async function finishDesign(v, d, height) {
     await d.page.waitForTimeout(200);
   }
   const file = join(v.out, "design.png");
-  // --style-diff：在画框定高之后、截图之前取样式（定高前底部对齐的元素位置还不对）。
-  if (v.styleDiff) d.styles = await designStylesOf(v, d);
+  // --style-diff：在画框定高之后、截图之前取样式（定高前底部对齐的元素位置还不对）；--design-clip 时以该元素为根取样。
+  if (v.styleDiff) {
+    const root = v["design-clip"] ? await d.page.$(v["design-clip"]) : null;
+    if (v["design-clip"] && !root) throw new Stop(3, `裁剪元素找不到：${v["design-clip"]}`);
+    d.styles = await (root ?? d.frame).evaluate((f, [src, o]) => (0, eval)(`(${src})`)(f, o), [collectStyles.toString(), { props: STYLE_PROPS, region: v.regionBox }]);
+  }
+  const rect = v["design-clip"] ? await clipRectIn(d.page, v["design-clip"], v["design-clip-bottom"]) : null;
   await d.frame.screenshot({ path: file, animations: "disabled" });
   await d.ctx.close();
-  return readPng(file);
+  if (!rect) return readPng(file);
+  // 裁剪后写回同一文件：设计稿缓存存的就是裁好的那块。
+  const cropped = crop(readPng(file), ...rect);
+  writePng(file, cropped);
+  return cropped;
 }
 
 // ---------- 实现侧截图 ----------
@@ -306,13 +360,17 @@ async function finishApp(v, a, height) {
     await a.page.setViewportSize({ width: v.width, height });
     await a.page.waitForTimeout(Number(v["app-wait"] ?? 800));
   }
-  // 字符串表达式走 CDP Runtime.evaluate，不受页面 CSP 限制。
-  if (v.styleDiff) a.styles = await a.page.evaluate(`(${collectStyles})(document.body, ${JSON.stringify({ props: STYLE_PROPS, region: v.regionBox })})`).catch((e) => { console.warn(`warn: [${v.key}] style-diff 实现侧取样失败：${e.message.split("\n")[0]}`); return null; });
+  // 字符串表达式走 CDP Runtime.evaluate，不受页面 CSP 限制；--app-clip 时以该元素为根取样（与设计侧 --design-clip 配对）。
+  if (v.styleDiff) a.styles = await a.page.evaluate(`(${collectStyles})(${v["app-clip"] ? `document.querySelector(${JSON.stringify(v["app-clip"])}) ?? document.body` : "document.body"}, ${JSON.stringify({ props: STYLE_PROPS, region: v.regionBox })})`).catch((e) => { console.warn(`warn: [${v.key}] style-diff 实现侧取样失败：${e.message.split("\n")[0]}`); return null; });
   const file = join(v.out, "app.png");
+  // --app-clip "<选择器>"（整页原型口径）：实现侧只截该元素的外接矩形（整页视口下截完再裁，和设计侧同一做法）。
+  const rect = v["app-clip"] ? await clipRectIn(a.page, v["app-clip"]) : null;
   await a.page.screenshot({ path: file, animations: "disabled" });
   const finalUrl = a.page.url();
   await a.ctx.close();
-  return { png: readPng(file), finalUrl, styles: a.styles ?? null };
+  const png = rect ? crop(readPng(file), ...rect) : readPng(file);
+  if (rect) writePng(file, png);
+  return { png, finalUrl, styles: a.styles ?? null };
 }
 
 const VIEWPORT_H = { web: 960, web1024: 880, phone: 844, mweb390: 844 };
@@ -386,7 +444,9 @@ async function runView(v) {
   mkdirSync(v.out, { recursive: true });
   const local = !/^https?:/.test(v.design) && v.cache !== false;
   const hash = local ? designInputsHash(DESIGN_DIR, v.design) : null;
-  const cache = hash ? designCache({ v: 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-as-mweb"] ? { asMweb: true } : {}) }) : null;
+  // 整页模式（--design-page）另起一组键（v: 2 + page / clip），不与画板模式的缓存混用。
+  const pageMode = v["design-page"] === true || v["design-page"] === "true";
+  const cache = hash ? designCache({ v: pageMode ? 2 : 1, hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? null, nth: v["board-nth"] ?? null, width: v.width, theme: v.theme, fullPage: v.fullPage, click: many(v["design-click"]), remove: many(v["design-remove"]), unroll: v["design-unroll"] ?? null, ...(v["design-as-mweb"] ? { asMweb: true } : {}), ...(pageMode ? { page: true, clip: v["design-clip"] ?? null, clipBottom: v["design-clip-bottom"] ?? null } : {}) }) : null;
   const meta = cache?.meta();
   let d = null, board, designNatural, designPng = null, cached = false, designStyles = null;
   v.regionBox = v.region ? String(v.region).split(",").map(Number) : null;
@@ -405,7 +465,7 @@ async function runView(v) {
     designStyles = d.styles ?? null;
     if (cache) { cache.saveMeta({ board, naturalHeight: designNatural }); cache.savePng(tall, join(v.out, "design.png")); }
   }
-  if (designPng.width !== v.width) console.warn(`warn: [${v.key}] 画板宽 ${designPng.width} ≠ --width ${v.width}（${board.kind}）；比对只取两者较窄的宽度`);
+  if (designPng.width !== v.width && !v["design-clip"]) console.warn(`warn: [${v.key}] 画板宽 ${designPng.width} ≠ --width ${v.width}（${board.kind}）；比对只取两者较窄的宽度`);
   const app = await finishApp(v, a, tall === "vp" ? viewportH : tall);
   // --region "x,y,w,h"：只比画面里的一块（导航壳的左栏 / 主标题区 / 右栏单独验收时用）；全屏数字仍以不带本项为准。
   // --design-region（R31a）：另给时设计侧按它裁、实现侧按 --region 裁（两侧不在同一位置时用，DEFERRED-A R30-02）。
