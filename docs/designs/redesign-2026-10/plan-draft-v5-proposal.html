@@ -602,6 +602,16 @@ document.addEventListener("click", e => {
   else if (b.id === "tg") { full = !full; render(); }
   else if (b.id === "cf") $("#why1").classList.toggle("on");
 });
+// URL 参数（R36a 像素门禁用，只读取、不改样式与内容；不带参数时与以前一样）：
+//   ?goal=fund|sales|hire&page=draft|home&device=web|m&spec=0|1&bar=0（bar=0 = 不渲染顶部 .proto 操作条）
+const Q = new URLSearchParams(location.search);
+if (G[Q.get("goal")]) goal = Q.get("goal");
+if (["draft", "home"].includes(Q.get("page"))) pg = Q.get("page");
+document.querySelectorAll("[data-goal]").forEach(x => x.classList.toggle("on", x.dataset.goal === goal));
+document.querySelectorAll("[data-page]").forEach(x => x.classList.toggle("on", x.dataset.page === pg));
+if (Q.get("device") === "m") { document.body.classList.add("m"); document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === "m")); }
+if (Q.get("spec") === "1") { document.body.classList.add("specon"); $("[data-spec]").classList.add("on"); }
+if (Q.get("bar") === "0") $(".proto").remove();
 render();
 </script>
 </body>
