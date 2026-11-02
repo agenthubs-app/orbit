@@ -102,7 +102,11 @@ const client = {
     }
     return result;
   },
-  async put(path) { return answer("put", path); },
+  async put(path, options) {
+    // Sprint 0147: PUT bodies are kept too (the home layout order that was saved).
+    state.putBodies = [...(state.putBodies ?? []), { path, body: options?.body }];
+    return answer("put", path);
+  },
   async delete(path) { return answer("delete", path); },
 };
 export const useOrbitApiClient = () => client;

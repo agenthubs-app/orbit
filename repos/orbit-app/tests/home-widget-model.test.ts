@@ -8,7 +8,7 @@ test("App opening layout gives People and assistant full-width cards", () => {
     ["today", "m"], ["planScore", "s"], ["nextEvent", "s"], ["network", "m"], ["secretary", "m"],
   ]);
 });
-import { HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, nextRegisteredEvent, removeWidget, resizeWidget, signedDelta } from "../src/screens/home/home-widget-model";
+import { HOME_WIDGETS, addWidget, homeDropPlan, homeGridFlow, moveWidget, moveWidgetTo, nextRegisteredEvent, removeWidget, resizeWidget, signedDelta } from "../src/screens/home/home-widget-model";
 
 test("App layout edits keep unique known keys, accept two sizes and hide unboarded deadline", () => {
   const initial = DEFAULT_HOME_LAYOUT.app;
@@ -19,10 +19,40 @@ test("App layout edits keep unique known keys, accept two sizes and hide unboard
   assert.equal(changed[1]?.key, "today");
   assert.equal(changed[1]?.size, "s");
   assert.deepEqual(moveWidgetTo(initial, "today", 4).map(slot => slot.key), ["planScore", "nextEvent", "network", "secretary", "today"]);
-  assert.equal(dragTargetIndex(0, 5, 190, 0, 210), 1);
-  assert.equal(dragTargetIndex(2, 5, 190, 130, 190), 4);
-  assert.equal(dragTargetIndex(4, 5, 190, 0, 900), 4);
   assert.equal(addWidget(removeWidget(changed, "nextEvent"), { key: "memo", size: "m" }).at(-1)?.key, "memo");
+});
+
+// Sprint 0147: a 358-wide grid (390 phone minus gutters), gap 12; small widgets are 48% wide.
+const W = 358, SMALL = W * 0.48;
+const box = (width: number, height: number) => ({ x: 0, y: 0, width, height });
+// today (full, 200 high) · planScore + nextEvent (small pair, 160) · network (full, 180)
+const mixed = [box(W, 200), box(SMALL, 160), box(SMALL, 160), box(W, 180)];
+
+test("0147: the grid flow places full rows and small pairs like the home grid", () => {
+  const flow = homeGridFlow(mixed, W);
+  assert.deepEqual(flow.map(item => [Math.round(item.x), item.y]), [[0, 0], [0, 212], [186, 212], [0, 384]]);
+  // Two small widgets that no longer fit side by side (narrow screen) each get their own row.
+  assert.deepEqual(homeGridFlow([box(150, 100), box(150, 100)], 300).map(item => item.y), [0, 112]);
+});
+
+test("0147: the drop index follows measured rects with mixed widget sizes", () => {
+  // Drag the right small widget (nextEvent, index 2) up over the top card: it goes first.
+  assert.equal(homeDropPlan(mixed, 2, 179 - (186.16 + SMALL / 2), 100 - 292, W).to, 0);
+  // Drag the left small widget sideways onto its neighbour: the pair swaps.
+  assert.equal(homeDropPlan(mixed, 1, 186, 0, W).to, 2);
+  // Drag the full top card down by one row (the small pair): it lands below the pair, not between them.
+  assert.equal(homeDropPlan(mixed, 0, 0, 212, W).to, 2);
+  // Far past either end clamps to the first or last place; a small jitter keeps the place.
+  assert.equal(homeDropPlan(mixed, 0, 0, 2000, W).to, 3);
+  assert.equal(homeDropPlan(mixed, 3, 0, -2000, W).to, 0);
+  assert.equal(homeDropPlan(mixed, 1, 8, -6, W).to, 1);
+});
+
+test("0147: the other widgets shift to preview the drop; the dragged slot is its landing offset", () => {
+  const plan = homeDropPlan(mixed, 0, 0, 212, W);
+  assert.deepEqual(plan.shift.map(item => [Math.round(item.x), Math.round(item.y)]), [[0, 172], [0, -212], [0, -212], [0, 0]]);
+  assert.deepEqual(homeDropPlan(mixed, 1, 0, 0, W).shift, mixed.map(() => ({ x: 0, y: 0 })));
+  assert.deepEqual(homeDropPlan([], 0, 0, 0, W), { to: 0, shift: [] });
 });
 
 test("App next event only selects a future registration and preserves negative score delta", () => {

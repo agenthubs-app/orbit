@@ -18,11 +18,57 @@ export function moveWidgetTo(slots: readonly HomeWidgetSlot[], key: HomeWidgetKe
   if (from < 0 || to < 0 || to >= slots.length || from === to) return [...slots];
   const result = [...slots]; result.splice(to, 0, result.splice(from, 1)[0]!); return result;
 }
-export function dragTargetIndex(from: number, count: number, cellHeight: number, dx: number, dy: number): number {
-  if (count <= 0) return 0;
-  const vertical = Math.round(dy / Math.max(1, cellHeight));
-  const horizontal = dx > 100 ? 1 : dx < -100 ? -1 : 0;
-  return Math.max(0, Math.min(count - 1, from + vertical + horizontal));
+
+export type WidgetBox = { x: number; y: number; width: number; height: number };
+/**
+ * Sprint 0147: where widgets of these measured sizes sit in the home grid (flex-wrap rows, `gap` apart,
+ * space-between): a widget goes on the current row while it fits, else starts the next one.
+ * Runs on the UI thread during a drag, so it is a worklet.
+ */
+export function homeGridFlow(sizes: readonly { width: number; height: number }[], containerWidth: number, gap = 12): WidgetBox[] {
+  "worklet";
+  const result: WidgetBox[] = [];
+  let row: number[] = [], used = 0, top = 0, rowHeight = 0;
+  const close = () => {
+    const free = containerWidth - row.reduce((sum, at) => sum + sizes[at]!.width, 0);
+    let x = 0;
+    for (const at of row) { result[at] = { x, y: top, width: sizes[at]!.width, height: sizes[at]!.height }; x += sizes[at]!.width + (row.length > 1 ? free / (row.length - 1) : 0); }
+    top += rowHeight + gap; row = []; used = 0; rowHeight = 0;
+  };
+  sizes.forEach((size, at) => {
+    if (row.length > 0 && used + gap + size.width > containerWidth + 0.5) close();
+    used += (row.length > 0 ? gap : 0) + size.width; rowHeight = Math.max(rowHeight, size.height); row.push(at);
+  });
+  if (row.length > 0) close();
+  return result;
+}
+/**
+ * Sprint 0147: the drop place for the widget at `from` dragged by (dx, dy), from the widgets' measured boxes
+ * (in grid order). Each place is tried by re-flowing the grid; the one whose slot for the dragged widget is
+ * nearest its centre wins, and on a tie the one that moves the other widgets least. `shift[i]` is how far
+ * widget i moves to preview that drop (for the dragged widget: from its own slot to the landing slot).
+ */
+export function homeDropPlan(boxes: readonly WidgetBox[], from: number, dx: number, dy: number, containerWidth: number, gap = 12): { to: number; shift: { x: number; y: number }[] } {
+  "worklet";
+  const count = boxes.length;
+  if (count === 0 || from < 0 || from >= count) return { to: Math.max(0, Math.min(from, count - 1)), shift: boxes.map(() => ({ x: 0, y: 0 })) };
+  const base = homeGridFlow(boxes, containerWidth, gap);
+  const cx = base[from]!.x + base[from]!.width / 2 + dx, cy = base[from]!.y + base[from]!.height / 2 + dy;
+  let best = { to: from, distance: Infinity, moved: Infinity, shift: boxes.map(() => ({ x: 0, y: 0 })) };
+  for (let to = 0; to < count; to++) {
+    const order = boxes.map((_, at) => at); order.splice(to, 0, order.splice(from, 1)[0]!);
+    const flow = homeGridFlow(order.map(at => boxes[at]!), containerWidth, gap);
+    const shift = boxes.map(() => ({ x: 0, y: 0 }));
+    let moved = 0;
+    order.forEach((at, place) => {
+      shift[at] = { x: flow[place]!.x - base[at]!.x, y: flow[place]!.y - base[at]!.y };
+      if (at !== from) moved += Math.abs(shift[at]!.x) + Math.abs(shift[at]!.y);
+    });
+    const slot = flow[to]!;
+    const distance = Math.hypot(slot.x + slot.width / 2 - cx, slot.y + slot.height / 2 - cy);
+    if (distance < best.distance - 1 || (distance <= best.distance + 1 && moved < best.moved)) best = { to, distance: Math.min(distance, best.distance), moved, shift };
+  }
+  return { to: best.to, shift: best.shift };
 }
 export function resizeWidget(slots: readonly HomeWidgetSlot[], key: HomeWidgetKey, size?: "s" | "m"): HomeWidgetSlot[] {
   return slots.map(slot => slot.key === key ? { ...slot, size: size ?? (slot.size === "s" ? "m" : "s") } : slot);

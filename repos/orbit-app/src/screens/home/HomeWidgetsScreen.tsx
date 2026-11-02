@@ -1,8 +1,10 @@
 import { type Href, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, PanResponder, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { z } from "zod";
 
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -17,7 +19,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Icon } from "../../components/ui/Icon";
 import { IconButton } from "../../components/ui/IconButton";
-import { useReducedMotion } from "../../components/ui/motion";
+import { durations, useReducedMotion } from "../../components/ui/motion";
 import { Segmented } from "../../components/ui/Segmented";
 import { UiPressable } from "../../components/ui/Pressable";
 import { UiPortal } from "../../components/ui/Portal";
@@ -32,7 +34,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { homeAppTargetHref } from "./home-target";
 import { HomeWidgetBody } from "./HomeWidgetCards";
-import { HOME_COPY_FRESH_MS, HOME_WIDGETS, addWidget, dragTargetIndex, moveWidget, moveWidgetTo, removeWidget, resizeWidget } from "./home-widget-model";
+import { HOME_COPY_FRESH_MS, HOME_WIDGETS, addWidget, homeDropPlan, moveWidget, moveWidgetTo, removeWidget, resizeWidget, type WidgetBox } from "./home-widget-model";
 import { useHomeLayout } from "./use-home-layout";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useHomeWidgetSnapshot } from "./use-home-widget-snapshot";
@@ -73,7 +75,6 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
   const [library, setLibrary] = useState(false);
   const [menu, setMenu] = useState<HomeWidgetKey | null>(null);
   const [hintHidden, setHintHidden] = useState(false);
-  const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const badge = useRelationshipInboxBadgeCount(actorId);
   // LF1: the guide's last answer is a page copy (no domain derives it on the device); re-read after its fresh window or a write.
@@ -97,6 +98,12 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     if (isTabPageHref(href)) openMainTab(router, href); else router.push(href as Href);
   };
   const begin = () => { if (state === "error") return; setDraft([...layout.app]); setEditRevision(layout.revision); setEditing(true); };
+  const drag = useWidgetDrag(items, editing, begin, {
+    onDrop: (key, to) => setDraft(current => current ? moveWidgetTo(current, key, to) : current),
+    // Held and let go without moving, from the normal home screen: like iOS, that is the widget's menu.
+    onHoldRelease: key => { setEditing(false); setDraft(null); setMenu(key); },
+    onDragging: setDragging,
+  });
   const finish = async () => {
     if (!draft || JSON.stringify(draft) === JSON.stringify(layout.app)) { setEditing(false); return; }
     const result = await save(draft, undefined, editRevision ?? undefined);
@@ -143,14 +150,14 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
       {state === "stale" || pending ? <UiText style={styles.stale}>{t("home.widgetSavedOffline")}{fetchedAt ? ` · ${new Date(fetchedAt).toLocaleString(language === "ja" ? "ja-JP" : language === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</UiText> : null}
       {!editing && !layout.hintDismissedAt && !hintHidden ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetHint")}</UiText><UiPressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={() => void dismissHint()}><UiText style={styles.hintText}>×</UiText></UiPressable></View> : null}
       {editing ? <View style={styles.hint}><UiText style={styles.hintText}>{t("home.widgetDragHint")}</UiText></View> : null}
-      <View style={styles.grid}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} count={items.length} editing={editing}
-        small={slot.size === "s"} dropTarget={dropTarget === index} onTarget={setDropTarget} onLift={setDragging} onDrop={(key, to) => setDraft(moveWidgetTo(items, key, to))}>
-        <UiPressable accessible={false} pointerEvents={editing ? "none" : "auto"} onLongPress={() => { if (!editing) setMenu(slot.key); }} delayLongPress={400} style={styles.widgetPress}>
+      <View style={styles.grid} onLayout={event => drag.measureGrid(event.nativeEvent.layout.width)}>{items.map((slot, index) => <DraggableWidget key={slot.key} widget={slot.key} index={index} editing={editing}
+        small={slot.size === "s"} enabled={!saving} drag={drag}>
+        <View pointerEvents={editing ? "none" : "auto"} style={styles.widgetPress}>
           <Card style={styles.widget}><View style={styles.widgetHead}><UiText style={styles.widgetTitle}>{iconFor(slot.key)}  {t(TITLE[slot.key])}</UiText></View>
             <HomeWidgetBody widget={slot.key} size={slot.size} client={client} actorId={actorId} navigate={navigate} guide={guideProgress}
               onDataSettled={() => setWidgetRefreshRevision(value => value + 1)} />
           </Card>
-        </UiPressable>
+        </View>
         {editing ? <RemoveBadge label={`${t(TITLE[slot.key])} ${t("home.widgetRemove")}`} onPress={() => remove(slot.key)} /> : null}
         {/* Screen readers cannot drag: reordering stays available as actions on the widget. */}
         {editing ? <View accessible pointerEvents="none" accessibilityLabel={t(TITLE[slot.key])} style={styles.a11yReorder}
@@ -219,12 +226,54 @@ function RemoveBadge({ label, onPress }: { label: string; onPress: () => void })
   </UiPressable>;
 }
 
-function DraggableWidget({ widget, index, count, editing, small, dropTarget, onTarget, onLift, onDrop, children }: {
-  widget: HomeWidgetKey; index: number; count: number; editing: boolean; small: boolean; dropTarget: boolean;
-  onTarget: (value: number | null) => void; onLift: (lifted: boolean) => void; onDrop: (key: HomeWidgetKey, to: number) => void; children: ReactNode;
+type WidgetDrag = ReturnType<typeof useWidgetDrag>;
+type DragState = { key: HomeWidgetKey | null; x: number; y: number; to: number; moved: boolean };
+
+/**
+ * Sprint 0147: iOS-style widget dragging. Holding a widget lifts it (from the normal home screen this
+ * also starts edit mode); it then follows the finger on the UI thread, the others slide aside to show
+ * where it would land (computed from every widget's measured box), and letting go commits the order.
+ */
+function useWidgetDrag(items: readonly HomeWidgetSlot[], editing: boolean, begin: () => void, handlers: {
+  onDrop: (key: HomeWidgetKey, to: number) => void; onHoldRelease: (key: HomeWidgetKey) => void; onDragging: (dragging: boolean) => void;
+}) {
+  const state = useSharedValue<DragState>({ key: null, x: 0, y: 0, to: -1, moved: false });
+  const shift = useSharedValue<{ x: number; y: number }[]>([]);
+  const boxes = useSharedValue<WidgetBox[]>([]);
+  const gridWidth = useSharedValue(0);
+  const measured = useRef<Partial<Record<HomeWidgetKey, WidgetBox>>>({});
+  const live = useRef({ items, editing, begin, handlers });
+  live.current = { items, editing, begin, handlers };
+  const fromHome = useRef(false);
+  const resetAfterLayout = useRef(false);
+  const syncBoxes = useCallback(() => { boxes.value = live.current.items.map(slot => measured.current[slot.key] ?? { x: 0, y: 0, width: 0, height: 0 }); }, [boxes]);
+  const reset = useCallback(() => { shift.value = []; state.value = { key: null, x: 0, y: 0, to: -1, moved: false }; }, [shift, state]);
+  // The new order and the cleared offsets land together, so the widgets do not jump for a frame.
+  useLayoutEffect(() => { syncBoxes(); if (resetAfterLayout.current) { resetAfterLayout.current = false; reset(); } }, [items, syncBoxes, reset]);
+  const lift = useCallback((_key: HomeWidgetKey) => {
+    fromHome.current = !live.current.editing;
+    if (fromHome.current) live.current.begin();
+    live.current.handlers.onDragging(true);
+  }, []);
+  const release = useCallback((key: HomeWidgetKey, to: number, moved: boolean, success: boolean) => {
+    const { items: current, handlers: on } = live.current;
+    on.onDragging(false);
+    const from = current.findIndex(slot => slot.key === key);
+    if (success && moved && to >= 0 && to !== from) { resetAfterLayout.current = true; on.onDrop(key, to); }
+    else { reset(); if (success && !moved && fromHome.current) on.onHoldRelease(key); }
+    fromHome.current = false;
+  }, [reset]);
+  return {
+    state, shift, boxes, gridWidth, lift, release,
+    measureGrid: (width: number) => { gridWidth.value = width; },
+    measure: (key: HomeWidgetKey, box: WidgetBox) => { measured.current[key] = box; syncBoxes(); },
+  };
+}
+
+function DraggableWidget({ widget, index, editing, small, enabled, drag, children }: {
+  widget: HomeWidgetKey; index: number; editing: boolean; small: boolean; enabled: boolean; drag: WidgetDrag; children: ReactNode;
 }) {
   const { styles } = useStyles();
-  const pan = useRef(new Animated.ValueXY()).current;
   // UX-2: in edit mode every widget jiggles like an iOS home screen icon (alternating phase per
   // position); Reduce Motion keeps them still.
   const reduced = useReducedMotion();
@@ -238,51 +287,44 @@ function DraggableWidget({ widget, index, count, editing, small, dropTarget, onT
     return () => { loop.stop(); wiggle.setValue(0); };
   }, [editing, reduced, index, wiggle]);
   const rotate = wiggle.interpolate({ inputRange: [-1, 1], outputRange: [small ? "-1.6deg" : "-0.8deg", small ? "1.6deg" : "0.8deg"] });
-  const height = useRef(180);
-  const target = useRef(index);
-  const props = useRef({ widget, index, count, editing, onTarget, onLift, onDrop });
-  props.current = { widget, index, count, editing, onTarget, onLift, onDrop };
-  // UX-2: like iOS, hold to lift a widget (it grows a little and the page stops scrolling), then
-  // drag it; a quick swipe before it lifts still scrolls the page.
-  const lift = useRef(new Animated.Value(1)).current;
-  const lifted = useRef(false);
-  const [isLifted, setIsLifted] = useState(false);
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearHold = () => { if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; };
-  const settle = (drop: boolean) => {
-    clearHold();
-    if (!lifted.current) return;
-    const { widget: key, index: from, onDrop: dropAt, onTarget: mark, onLift: setLifted } = props.current;
-    if (drop && target.current !== from) dropAt(key, target.current);
-    lifted.current = false; setIsLifted(false); mark(null); setLifted(false);
-    Animated.parallel([
-      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }),
-      Animated.spring(lift, { toValue: 1, useNativeDriver: true }),
-    ]).start();
-  };
-  const responder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => props.current.editing,
-    onMoveShouldSetPanResponder: () => props.current.editing && lifted.current,
-    onPanResponderTerminationRequest: () => !lifted.current,
-    onPanResponderGrant: () => {
-      target.current = props.current.index;
-      clearHold();
-      holdTimer.current = setTimeout(() => {
-        lifted.current = true; setIsLifted(true); props.current.onLift(true);
-        Animated.spring(lift, { toValue: 1.04, useNativeDriver: true }).start();
-      }, 220);
-    },
-    onPanResponderMove: (_, gesture) => {
-      if (!lifted.current) { if (Math.abs(gesture.dx) + Math.abs(gesture.dy) > 10) clearHold(); return; }
-      pan.setValue({ x: gesture.dx, y: gesture.dy });
-      const next = dragTargetIndex(props.current.index, props.current.count, height.current, gesture.dx, gesture.dy);
-      if (next !== target.current) { target.current = next; props.current.onTarget(next === props.current.index ? null : next); }
-    },
-    onPanResponderRelease: () => settle(true),
-    onPanResponderTerminate: () => settle(false),
-  }), [pan, lift]);
-  return <Animated.View {...responder.panHandlers} onLayout={event => { height.current = event.nativeEvent.layout.height + 12; }}
-    style={[styles.widgetWrap, small && styles.widgetSmall, dropTarget && styles.dropTarget, { transform: [...pan.getTranslateTransform(), { rotate }, { scale: lift }], zIndex: isLifted ? 3 : dropTarget ? 2 : 1 }]}>{children}</Animated.View>;
+  const { state, shift, boxes, gridWidth, lift, release, measure } = drag;
+  // Hold to lift (400ms on the home screen, 220ms in edit mode); moving before that scrolls the page.
+  const pan = Gesture.Pan()
+    .enabled(enabled)
+    .activateAfterLongPress(editing ? 220 : 400)
+    .onStart(() => {
+      state.value = { key: widget, x: 0, y: 0, to: index, moved: false };
+      runOnJS(lift)(widget);
+    })
+    .onUpdate(event => {
+      const plan = homeDropPlan(boxes.value, index, event.translationX, event.translationY, gridWidth.value);
+      const moved = state.value.moved || Math.abs(event.translationX) + Math.abs(event.translationY) > 10;
+      state.value = { key: widget, x: event.translationX, y: event.translationY, to: plan.to, moved };
+      shift.value = plan.shift;
+    })
+    .onEnd((_event, success) => {
+      runOnJS(release)(widget, state.value.to, state.value.moved, success);
+    });
+  const motion = useAnimatedStyle(() => {
+    const active = state.value.key === widget;
+    const offset = shift.value[index] ?? { x: 0, y: 0 };
+    // While a drag is on, the others glide to their preview places; when it ends they are set at once,
+    // because the committed order moves them there in the same frame.
+    const glide = (value: number) => state.value.key !== null && !reduced ? withTiming(value, { duration: durations.press }) : value;
+    return {
+      zIndex: active ? 3 : 1,
+      transform: [
+        { translateX: active ? state.value.x : glide(offset.x) },
+        { translateY: active ? state.value.y : glide(offset.y) },
+        { scale: reduced ? 1 : withTiming(active ? 1.04 : 1, { duration: durations.press }) },
+      ],
+    };
+  });
+  return <GestureDetector gesture={pan} touchAction="pan-y">
+    <Reanimated.View onLayout={event => measure(widget, event.nativeEvent.layout)} style={[styles.widgetWrap, small && styles.widgetSmall, motion]}>
+      <Animated.View style={[styles.widgetFill, { transform: [{ rotate }] }]}>{children}</Animated.View>
+    </Reanimated.View>
+  </GestureDetector>;
 }
 
 const DESCRIPTION: Record<HomeWidgetKey, "home.widgetTodayDescription" | "home.widgetPendingDescription" | "home.widgetWeekDescription" | "home.widgetPlanDescription" | "home.widgetEventDescription" | "home.widgetEventPickDescription" | "home.widgetNetworkDescription" | "home.widgetSecretaryDescription" | "home.widgetMemoDescription"> = {
@@ -327,8 +369,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 11 }, avatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, avatarText: { color: colors.accentText, fontSize: 17, fontWeight: "700" }, headerWords: { flex: 1, minWidth: 0 }, date: { color: colors.ink, fontSize: 20, fontWeight: "700" }, greeting: { color: colors.ink3Text, fontSize: 12 },
   error: { color: colors.coralText, fontSize: 14 }, stale: { color: colors.coralText, fontSize: 13 },
   hint: { borderWidth: 1, borderColor: colors.line, borderStyle: "dashed", borderRadius: 10, paddingHorizontal: 12, minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, hintText: { color: colors.ink3Text, fontSize: 13 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }, widgetWrap: { width: "100%" }, widgetSmall: { width: "48%" }, widgetPress: { flex: 1 }, widget: { flex: 1, minHeight: 155 }, widgetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 3, marginBottom: 12 }, widgetTitle: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
-  dropTarget: { borderColor: colors.accentText, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }, widgetWrap: { width: "100%" }, widgetSmall: { width: "48%" }, widgetFill: { flex: 1 }, widgetPress: { flex: 1 }, widget: { flex: 1, minHeight: 155 }, widgetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 3, marginBottom: 12 }, widgetTitle: { color: colors.ink2, fontSize: 14, fontWeight: "700" },
   widgetHeadEditing: { flexDirection: "column", alignItems: "stretch" },
   disabled: { opacity: 0.4 },
   editBarSpace: { width: 120, height: 44 }, editBar: { position: "absolute", right: 12, flexDirection: "row", alignItems: "center", gap: 6, padding: 4, borderRadius: 26, backgroundColor: colors.surface },

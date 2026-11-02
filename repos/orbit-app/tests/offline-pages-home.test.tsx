@@ -180,3 +180,56 @@ test("UX: the plan card keeps the goal on one line and lists at most two score p
   assert.equal(await page.getByText(/天使投资人/u).count(), 0, "a third part is left to the plan page");
   assert.equal(await page.getByText(/ · /u).filter({ hasText: "前 CFO" }).count(), 0, "no run-on dotted list");
 });
+
+// Sprint 0147: hold a widget, drag it, let go — the long-press pan is emulated with pointer events in the harness.
+const widgetTitle = (page: import("playwright").Page, title: string) => page.getByText(new RegExp(`^\\S+\\s+${title}$`, "u")).first();
+async function holdAndDrag(page: import("playwright").Page, from: string, to: string | null, holdMs = 650) {
+  const start = (await widgetTitle(page, from).boundingBox())!;
+  const x = start.x + start.width / 2, y = start.y + start.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.waitForTimeout(holdMs);
+  if (to) {
+    const end = (await widgetTitle(page, to).boundingBox())!;
+    for (let step = 1; step <= 8; step++) await page.mouse.move(x, y + (end.y + end.height / 2 - y) * step / 8);
+  }
+  await page.mouse.up();
+}
+const widgetOrder = (page: import("playwright").Page) => page.evaluate(() => {
+  const text = document.body.innerText;
+  return ["今日待办", "计划分数", "下一场活动", "人脉", "秘书建议"].map(title => [title, text.indexOf(title)] as const)
+    .filter(([, at]) => at >= 0).sort((a, b) => a[1] - b[1]).map(([title]) => title);
+});
+
+test("0147: long-pressing a widget enters edit mode and drags it; 完成 saves the new order", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses });
+  await widgetTitle(page, "人脉").waitFor();
+  assert.deepEqual(await widgetOrder(page), ["今日待办", "计划分数", "下一场活动", "人脉", "秘书建议"]);
+  await holdAndDrag(page, "人脉", "今日待办");
+  await page.getByRole("button", { name: "完成" }).waitFor();
+  await page.getByRole("button", { name: "人脉 移除" }).waitFor();
+  assert.deepEqual(await widgetOrder(page), ["人脉", "今日待办", "计划分数", "下一场活动", "秘书建议"]);
+  // In edit mode × still removes and + still adds.
+  await page.getByRole("button", { name: "秘书建议 移除" }).click();
+  await page.getByRole("button", { name: "添加小组件" }).click();
+  await page.getByRole("button", { name: "笔记 添加" }).click();
+  await page.getByRole("button", { name: "完成" }).click();
+  await page.getByRole("button", { name: "编辑" }).waitFor();
+  const puts = await fixtureValue<{ path: string; body: { app: { key: string }[] } }[]>(page, "putBodies");
+  assert.equal(puts.length, 1);
+  assert.deepEqual(puts[0]!.body.app.map(slot => slot.key), ["network", "today", "planScore", "nextEvent", "memo"]);
+});
+
+test("0147: a held widget let go without moving opens its menu; a quick swipe never starts editing", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses });
+  await widgetTitle(page, "人脉").waitFor();
+  // A swipe that moves before the hold is up is page scrolling, not a drag.
+  const box = (await widgetTitle(page, "计划分数").boundingBox())!;
+  await page.mouse.move(box.x + 10, box.y + 10); await page.mouse.down(); await page.mouse.move(box.x + 10, box.y - 60, { steps: 4 }); await page.mouse.up();
+  await page.waitForTimeout(600);
+  assert.equal(await page.getByRole("button", { name: "完成" }).count(), 0);
+  await holdAndDrag(page, "计划分数", null);
+  await page.getByText(/编辑首页/u).waitFor();
+  assert.equal(await page.getByRole("button", { name: "完成" }).count(), 0);
+  assert.equal(await page.getByText(/从首页移除/u).count(), 1);
+});
