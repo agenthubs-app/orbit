@@ -1,8 +1,8 @@
-import { type Href, useRouter } from "expo-router";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
+import { Animated, AppState, Easing, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { z } from "zod";
@@ -111,6 +111,16 @@ function HomeWorkspace({ actorId, baseUrl, client }: { actorId: string; baseUrl:
     else if (result === "conflict") { setEditing(false); setDraft(null); }
     else toast.error(t("home.widgetUnavailable"), { action: { label: t("home.readAgain"), onPress: () => void finish() } });
   };
+  // Sprint 0147: leaving the home screen (another tab, a pushed page) or the app going to the background
+  // ends edit mode like 完成 — the same save, so an unchanged layout writes nothing and offline queues a draft.
+  // A save already on its way (完成 just tapped) is not started twice.
+  const leave = useRef({ editing, saving, finish }); leave.current = { editing, saving, finish };
+  const saveOnLeave = useCallback(() => { if (leave.current.editing && !leave.current.saving) void leave.current.finish(); }, []);
+  useFocusEffect(useCallback(() => saveOnLeave, [saveOnLeave]));
+  useEffect(() => {
+    const event = AppState.addEventListener("change", next => { if (next === "background") saveOnLeave(); });
+    return () => event.remove();
+  }, [saveOnLeave]);
   const remove = (key: HomeWidgetKey) => {
     const before = [...items]; setDraft(removeWidget(before, key));
     toast.info(t("home.widgetRemovedToast", { name: t(TITLE[key]) }), { undo: () => setDraft(before) });

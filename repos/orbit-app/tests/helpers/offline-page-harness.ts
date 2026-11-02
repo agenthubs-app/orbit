@@ -48,7 +48,11 @@ export const useIsFocused = () => true;
 export const usePreventRemove = () => {};
 export const notifyReminderPlansChanged = () => {};
 export const requestNotificationPermission = async () => ({ granted: false });
-export const useFocusEffect = (effect) => { React.useEffect(() => effect(), [effect]); };
+// Sprint 0147: fixture.bump({ focused: false }) blurs the screen (its focus effects clean up), as switching tabs does.
+export const useFocusEffect = (effect) => {
+  const focused = React.useSyncExternalStore(subscribeMirror, () => state.focused !== false);
+  React.useEffect(() => focused ? effect() : undefined, [effect, focused]);
+};
 export const useNavigation = () => ({ addListener: () => () => {}, setOptions() {} });
 export const Redirect = ({ href }) => { state.navigation.push("redirect:" + (typeof href === "string" ? href : JSON.stringify(href))); return null; };
 export const Link = ({ children }) => children;

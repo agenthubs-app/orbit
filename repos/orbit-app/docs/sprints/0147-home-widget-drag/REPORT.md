@@ -69,3 +69,10 @@
 1. 没有在真机（iOS / Android）上验证，只有 phoneweb 和 babel 转换检查。UI 线程跟手、原生上和页面滚动的配合需要真机确认。
 2. 手机浏览器里长按后竖着拖可能被页面滚动接走（见第 4 节最后一条）；Playwright 用的是鼠标，模拟不出这一点。
 3. 「离开页面时保存」：现有逻辑只在点「完成」时保存，编辑中离开页面不会保存，这次没有改。
+
+## 9. 补充：离开首页时也保存（协调者追加）
+- GOAL 写的是「点完成**或离开页面**后保存」。现在编辑模式中如果首页失去焦点（切到别的页签、打开别的页面），或者 App 退到后台，就和点「完成」一样：退出编辑，走同一个 `finish` → `save`（断网时存本机草稿）。没有改动就不写。保存已经在进行时（刚点过「完成」）不会再发一次。
+- 改动：`src/screens/home/HomeWidgetsScreen.tsx`（:114–123，`useFocusEffect` 的清理函数 + `AppState` 变为 `background`）。测试替身 `tests/helpers/offline-page-harness.ts` 的 `useFocusEffect` 现在可以用 `fixture.bump({ focused: false })` 模拟失焦，默认行为不变。
+- 先写测试：`tests/offline-pages-home.test.tsx` 新增 2 条，在原代码上都失败：① 进入编辑不改、失焦 → 退出编辑，没有 PUT；拖动后失焦 → 一次 PUT，顺序 `network, today, planScore, nextEvent, secretary`。② 断网时拖动后页面变为隐藏（App 退到后台）→ 本机草稿里 `network` 排第一，退出编辑。
+- 结果：定向 26 条全过；`npx tsc --noEmit` 0 错误；全量 **3425 条，3420 通过，3 失败（已知的 3 条），2 跳过**。
+- 没在 phoneweb 或真机上重做这一项的运行时检查，只有上面的浏览器测试。

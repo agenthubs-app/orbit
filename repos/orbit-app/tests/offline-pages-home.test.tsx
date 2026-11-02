@@ -233,3 +233,41 @@ test("0147: a held widget let go without moving opens its menu; a quick swipe ne
   assert.equal(await page.getByRole("button", { name: "完成" }).count(), 0);
   assert.equal(await page.getByText(/从首页移除/u).count(), 1);
 });
+
+test("0147: leaving the home screen while editing saves the dragged order; leaving without a change saves nothing", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses });
+  await widgetTitle(page, "人脉").waitFor();
+  // Enter edit mode, change nothing, switch tabs: edit mode ends without a write.
+  await page.getByRole("button", { name: "编辑" }).click();
+  await page.getByRole("button", { name: "完成" }).waitFor();
+  await page.evaluate(() => (window as any).fixture.bump({ focused: false }));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => (window as any).fixture.bump({ focused: true }));
+  await page.getByRole("button", { name: "编辑" }).waitFor();
+  assert.equal((await fixtureValue<unknown[] | undefined>(page, "putBodies"))?.length ?? 0, 0);
+  // Drag, then switch tabs: edit mode ends and the new order is saved through the same path.
+  await holdAndDrag(page, "人脉", "今日待办");
+  await page.getByRole("button", { name: "完成" }).waitFor();
+  await page.evaluate(() => (window as any).fixture.bump({ focused: false }));
+  await page.waitForFunction(() => ((window as any).fixture.putBodies ?? []).length === 1, undefined, { timeout: 5000 });
+  const puts = await fixtureValue<{ body: { app: { key: string }[] } }[]>(page, "putBodies");
+  assert.deepEqual(puts[0]!.body.app.map(slot => slot.key), ["network", "today", "planScore", "nextEvent", "secretary"]);
+  await page.evaluate(() => (window as any).fixture.bump({ focused: true }));
+  await page.getByRole("button", { name: "编辑" }).waitFor();
+});
+
+test("0147: the app going to the background while editing saves the dragged order offline as a device draft", async (t) => {
+  const page = await harness.open(t, { screen: "home", online: false });
+  const key = homeLayoutStorageKey(actor, baseUrl)!;
+  await page.evaluate(({ storageKey, snapshot }) => localStorage.setItem(storageKey, JSON.stringify({ snapshot, fetchedAt: "2026-10-20T00:00:00Z", draft: null })), { storageKey: key, snapshot: DEFAULT_HOME_LAYOUT });
+  await page.reload();
+  await widgetTitle(page, "人脉").waitFor();
+  await holdAndDrag(page, "人脉", "今日待办");
+  await page.getByRole("button", { name: "完成" }).waitFor();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.waitForFunction((storageKey) => JSON.parse(localStorage.getItem(storageKey) ?? "null")?.draft?.app?.[0]?.key === "network", key, { timeout: 5000 });
+  await page.getByRole("button", { name: "编辑" }).waitFor();
+});
