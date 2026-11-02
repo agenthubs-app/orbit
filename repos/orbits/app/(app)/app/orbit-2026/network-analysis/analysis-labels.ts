@@ -34,6 +34,14 @@ export function cityLabel(city: string, language: OrbitLanguage): string {
   return (NETWORK_CITY_KEYS as readonly string[]).includes(city) ? pickCopy(networkCopy[`city${city}` as keyof typeof networkCopy], language) : city;
 }
 
+/** Sprint 0148: a region bucket with only a country (two-letter code) reads its name in the page language; the code when Intl has none. */
+export function regionLabel(id: string, language: OrbitLanguage): string {
+  if (!/^[A-Z]{2}$/u.test(id)) return cityLabel(id, language);
+  try {
+    return new Intl.DisplayNames([language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US"], { type: "region" }).of(id) ?? id;
+  } catch { return id; }
+}
+
 export function industryName(id: string, language: OrbitLanguage): string {
   return isIndustryIdCode(id) ? industryLabel(id, language) : id;
 }
@@ -42,7 +50,7 @@ export function bucketLabel(dimension: NetworkAnalysisDimension, id: string, t: 
   if (id === "rest") return t("rest");
   switch (dimension) {
     case "industry": return industryName(id, language);
-    case "region": return cityLabel(id, language);
+    case "region": return regionLabel(id, language);
     case "seniority": return t(SENIORITY_KEY[id as keyof typeof SENIORITY_KEY] ?? "seniorityUnset");
     case "met": return t(MET_KEY[id as keyof typeof MET_KEY] ?? "metOther");
     case "opportunity": return t(OPPORTUNITY_KEY[id as keyof typeof OPPORTUNITY_KEY] ?? "oppReconnect");
