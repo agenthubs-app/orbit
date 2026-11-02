@@ -147,6 +147,17 @@ test("a rejected iOrbit edit can be discarded without discarding another actor's
   assert.equal((await d.records("ai_session")).length, 1);
 });
 
+// Sprint 0144: iOrbit history organize/delete is registered in the shared offline table; the coordinator asks it first.
+test("SC-0144-01: an iOrbit history write is queued only when the shared offline check allows it", async (t) => {
+  const host: Host = { epoch: "e1", granted: [SESSIONS], calls: [], named: [], log: { [SESSIONS]: [sessionRow("s1", 1)] } };
+  const d = await device(t, host);
+  await d.sync();
+  const forged = { ...buildOfflineAiSessionMutation({ mutationId: "forged-s1", sessionId: "s1", expectedRevision: 0,
+    patch: { customTitle: "Forged" }, createdAt: NOW }), operation: "create" as never };
+  await assert.rejects(d.session.enqueueOfflineAiSessionMutation(forged), /not offline eligible/);
+  assert.equal((await d.session.readOutboxOverlay("ai_session"))?.queuedMutations.length, 0);
+});
+
 test("the three domains are known to this build and mirrored in the browser too", () => {
   assert.equal(KNOWN_SYNC_DOMAINS[INBOX], "inbox_notification");
   assert.equal(KNOWN_SYNC_DOMAINS[SESSIONS], "ai_session");

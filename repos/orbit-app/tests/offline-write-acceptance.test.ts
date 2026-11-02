@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
+import { createLocalSyncRepository } from "../src/data/sync/local-sync-repository";
 import { buildOfflineMessageMutation } from "../src/data/sync/message-outbox-mutation";
 import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
 import { buildOfflineScheduleMutation } from "../src/data/sync/schedule-outbox-mutation";
@@ -34,8 +35,18 @@ function world(t: TestContext): World {
   return { host, device, seeded: { task, item, note }, bBefore: host.snapshot(B) };
 }
 
+/**
+ * Sprint 0144: new offline sends are refused (messages are drafts only); a message queued before that is put straight
+ * into the device's outbox, the way 0135 stored it, so the matrix still covers the old queue draining.
+ */
+async function queueMessageAsBefore(lifecycle: ReturnType<typeof launchApp>["lifecycle"], account: string, mutation: ReturnType<typeof buildOfflineMessageMutation>) {
+  await lifecycle.withDatabase({ baseUrl: "https://host.example", actorId: account }, database =>
+    createLocalSyncRepository({ actorId: account, database }).enqueueOutboxMutation({ ...mutation, actorId: account, workspaceId: `workspace-${account}`, dependsOn: null }));
+}
+
 /** Queue one write in each kind (plus a dependent pair in notes→schedule and two messages) while the host is unreachable. */
-async function queueFourKinds(session: ReturnType<ReturnType<typeof launchApp>["open"]>["session"], seeded: World["seeded"], tag = "w") {
+async function queueFourKinds(app: { client: { session: ReturnType<ReturnType<typeof launchApp>["open"]>["session"] }; lifecycle: ReturnType<typeof launchApp>["lifecycle"] }, seeded: World["seeded"], tag = "w") {
+  const session = app.client.session;
   const noteId = uuid(1);
   await session.enqueueOfflineNoteMutation(buildOfflineNoteMutation({ mutationId: `${tag}-note-create`, entityId: noteId, operation: "create", baseRevision: null,
     requestBody: { title: "Three things", body: "quote, intro, revisit", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: `${tag}-note-create` }, createdAt: at(1) }));
@@ -49,8 +60,8 @@ async function queueFourKinds(session: ReturnType<ReturnType<typeof launchApp>["
     requestBody: { title: "Call Chen", startsAt: "2026-10-07T01:00:00.000Z", noteIds: [noteId], idempotencyKey: `${tag}-schedule-create` }, createdAt: at(5) }));
   await session.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: `${tag}-schedule-edit`, entityId: seeded.item.id as string, operation: "update", baseRevision: "r1",
     requestBody: { expectedUpdatedAt: seeded.item.updatedAt, patch: { title: "Dentist (moved)" }, idempotencyKey: `${tag}-schedule-edit` }, createdAt: at(6) }));
-  await session.enqueueOfflineMessageMutation(buildOfflineMessageMutation({ requestId: `${tag}-message-1`, conversationId: CONVERSATION, body: "on my way", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(7) }));
-  await session.enqueueOfflineMessageMutation(buildOfflineMessageMutation({ requestId: `${tag}-message-2`, conversationId: CONVERSATION, body: "ten minutes", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(8) }));
+  await queueMessageAsBefore(app.lifecycle, A, buildOfflineMessageMutation({ requestId: `${tag}-message-1`, conversationId: CONVERSATION, body: "on my way", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(7) }));
+  await queueMessageAsBefore(app.lifecycle, A, buildOfflineMessageMutation({ requestId: `${tag}-message-2`, conversationId: CONVERSATION, body: "ten minutes", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(8) }));
   return [`${tag}-note-create`, `${tag}-note-edit`, `${tag}-task-create`, `${tag}-task-complete`, `${tag}-schedule-create`, `${tag}-schedule-edit`, `${tag}-message-1`, `${tag}-message-2`];
 }
 
@@ -86,10 +97,11 @@ async function onlineApp(w: World, account = A) {
 
 test("one sync round after reconnect drains every queued write in all four kinds, in order, and the mirror updates after each acknowledgement", async t => {
   const w = world(t);
-  const { client } = await onlineApp(w);
+  const app = await onlineApp(w);
+  const { client } = app;
   assert.equal((await client.sync())?.error, null, "first online sync holds the lease and mirror");
   w.host.offline = true;
-  const keys = await queueFourKinds(client.session, w.seeded);
+  const keys = await queueFourKinds(app, w.seeded);
   assert.equal((await client.queue()).length, 8);
   await client.sync();
   assert.equal(w.host.requests.length, 0, "nothing leaves the device while the host is unreachable");
@@ -112,7 +124,7 @@ async function pendingInFourKinds(t: TestContext) {
   const app = await onlineApp(w);
   assert.equal((await app.client.sync())?.error, null);
   w.host.offline = true;
-  const keys = await queueFourKinds(app.client.session, w.seeded);
+  const keys = await queueFourKinds(app, w.seeded);
   await app.client.sync();
   assert.equal(w.host.requests.length, 0);
   return { w, app, keys };
@@ -385,7 +397,7 @@ test("matrix · a conflict in each kind: both versions are kept, nothing is over
     requestBody: { action: "update", expectedUpdatedAt: w.seeded.task.updatedAt, idempotencyKey: "c-task", patch: { title: "phone title" } }, createdAt: at(2) }));
   await s.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: "c-schedule", entityId: "personal:a:seed", operation: "update", baseRevision: "r1",
     requestBody: { expectedUpdatedAt: w.seeded.item.updatedAt, patch: { title: "phone title" }, idempotencyKey: "c-schedule" }, createdAt: at(3) }));
-  await s.enqueueOfflineMessageMutation(buildOfflineMessageMutation({ requestId: "c-message", conversationId: CONVERSATION, body: "still there?", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(4) }));
+  await queueMessageAsBefore(app.lifecycle, A, buildOfflineMessageMutation({ requestId: "c-message", conversationId: CONVERSATION, body: "still there?", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: at(4) }));
 
   // Meanwhile on the web: the same account edits the note, the task and the schedule; the other side ends the conversation.
   w.host.webNote(A, { id: "note:a:seed", body: "web version" });

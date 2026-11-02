@@ -31,11 +31,13 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
     action,
     policy: policy("task", "durable_normalized", "offline_queue"),
   })),
+  // Sprint 0144 (user decision 2026-11-02): an existing open follow-up may be completed without an outcome or moved to a
+  // later date offline (R20a; the App narrows update/complete to exactly that); reopen, cancel and delete need the network.
   ...["update", "complete", "reopen", "cancel", "delete"].map((action) => ({
     method: action === "delete" ? "DELETE" : "PATCH",
     pathname: "/api/tasks/:id",
     action: `relationship_followup.${action}`,
-    policy: policy("relationship_followup", "durable_normalized", "offline_queue"),
+    policy: policy("relationship_followup", "durable_normalized", action === "update" || action === "complete" ? "offline_queue" : "online_only"),
   })),
   { method: "GET", pathname: "/api/schedule-items", action: "read", policy: policy("personal_schedule", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/schedule-items", action: "calendar.read", policy: policy("calendar_meetings", "encrypted_ttl_snapshot", "online_only") },
@@ -47,8 +49,9 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("relationship_message", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/relationship-communication/conversation-summaries", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/relationship-communication/unread-summary", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
-  // Sprint 0135 (message plan M4): a text message into a conversation the device holds and that is active is queued offline; drafts, marking read, invitations and revocation stay online.
-  { method: "POST", pathname: "/api/relationship-communication/conversations/:id/messages", action: "send", policy: policy("relationship_message", "durable_normalized", "offline_queue") },
+  // Sprint 0135 queued message sends offline; Sprint 0144 (user decision 2026-11-02) took sending out of the offline scope because
+  // messages are drafts only since 2026-10-27. Messages already queued on a device can still be retried or discarded.
+  { method: "POST", pathname: "/api/relationship-communication/conversations/:id/messages", action: "send", policy: policy("relationship_message", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/events/public", action: "read", policy: policy("public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted") },
   // Sprint 0115: the registered attendee's event day (sync domains registered-events, event-registrations, event-published-results).
   { method: "GET", pathname: "/api/events/public/:id", action: "read", policy: policy("registered_event", "durable_normalized", "online_only") },
@@ -58,6 +61,8 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/contacts/page", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/contacts/summary", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/contacts/:id", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
+  // LF12 / Sprint 0144: deleting one of your own contacts waits in the device outbox (the server soft-deletes only the actor's row).
+  { method: "DELETE", pathname: "/api/contacts/:id", action: "delete", policy: policy("contact", "durable_normalized", "offline_queue") },
   // Sprint 0117: the dashboard and contacts-analysis sections are computed on the device from the sync domain dashboard-graph.
   { method: "GET", pathname: "/api/dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/dashboard/summary", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
@@ -71,6 +76,9 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/inbox/notifications/:id", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/ai/conversations/sessions", action: "read", policy: policy("ai_session", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/ai/conversations/sessions/:id", action: "read", policy: policy("ai_session_message", "durable_normalized", "online_only") },
+  // R21 / Sprint 0144: organizing (rename, group, pin) and deleting your own iOrbit history waits in the device outbox.
+  { method: "PATCH", pathname: "/api/ai/conversations/sessions/:id", action: "update", policy: policy("ai_session", "durable_normalized", "offline_queue") },
+  { method: "DELETE", pathname: "/api/ai/conversations/sessions/:id", action: "delete", policy: policy("ai_session", "durable_normalized", "offline_queue") },
   // Sprint 0131: page copies — the device keeps the last successful read of these server-computed pages (bound to
   // the offline read lease epoch, AES-GCM per value in the browser; App src/data/sync/page-copies.ts). Writes stay online.
   { method: "GET", pathname: "/api/profile", action: "read", policy: policy("self_profile", "encrypted_ttl_snapshot", "online_only") },

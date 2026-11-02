@@ -928,7 +928,9 @@ export function createSyncCoordinator(input: {
             } else {
               const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "task", id: mutation.id });
               const task = record?.payload && typeof record.payload === "object" ? record.payload as Record<string, unknown> : null;
+              // Sprint 0144: a follow-up write is also checked against the shared offline table (complete / update only).
               const followup = task && isOfflineRelationshipFollowupMutation(task, mutation.operation, request.patch) &&
+                isOfflineEligible("relationship_followup", mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) }) &&
                 request.baseRevision === record?.revision &&
                 (mutation.operation !== "update" || parsed.requestBody.expectedUpdatedAt === task.updatedAt);
               if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId ||
@@ -950,6 +952,10 @@ export function createSyncCoordinator(input: {
           grant.workspaceId === sessionScope.workspaceId && grant.domainId === sessionScope.domainId &&
           grant.authorizationEpoch === sessionScope.authorizationEpoch));
         if (!hasGrant) throw new TypeError("AI session mutation is not eligible");
+        // Sprint 0144: iOrbit history organize/delete is in the shared offline table; ask it like every other offline write.
+        if (!isOfflineEligible(mutation.kind, mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) })) {
+          throw new TypeError("AI session mutation is not offline eligible");
+        }
         if (mutation.operation === "delete") parseOfflineAiSessionDelete(mutation);
         else parseOfflineAiSessionRequest(mutation);
         await withRepository(bound, async repository => {
@@ -1005,6 +1011,10 @@ export function createSyncCoordinator(input: {
           grant.workspaceId === contactScope.workspaceId && grant.domainId === contactScope.domainId &&
           grant.authorizationEpoch === contactScope.authorizationEpoch));
         if (!hasGrant) throw new TypeError("contact delete is not eligible");
+        // Sprint 0144: contact delete is in the shared offline table; ask it like every other offline write.
+        if (!isOfflineEligible(mutation.kind, mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) })) {
+          throw new TypeError("contact mutation is not offline eligible");
+        }
         parseOfflineContactDelete(mutation);
         await withRepository(bound, async repository => {
           const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "contact", id: mutation.id });

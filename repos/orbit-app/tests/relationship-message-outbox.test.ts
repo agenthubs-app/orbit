@@ -7,6 +7,7 @@ import test, { type TestContext } from "node:test";
 import type { OrbitApiClient } from "../src/api/client";
 import type { DomainChange, DomainPage, OfflineReadEnvelope } from "../src/api/contract/universal-read";
 import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-database";
+import { createLocalSyncRepository } from "../src/data/sync/local-sync-repository";
 import { buildOfflineMessageMutation } from "../src/data/sync/message-outbox-mutation";
 import { createMessageOutboxUploader } from "../src/data/sync/message-outbox-upload";
 import { createSyncCoordinator, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
@@ -153,24 +154,36 @@ async function setup(t: TestContext) {
   return { host, path, device };
 }
 
+/** A message queued before 0144 (the coordinator no longer accepts new ones). */
+async function queueAsBefore(device: { database: NodeTestDatabase }, mutation: ReturnType<typeof write>) {
+  const repository = createLocalSyncRepository({ actorId: A, database: device.database });
+  await repository.enqueueOutboxMutation({ ...mutation, actorId: A, workspaceId: W, dependsOn: null });
+}
+
 const write = (body: string, requestId: string, retireDraftThrough: string | null = null, at = 0) =>
   buildOfflineMessageMutation({ requestId, conversationId: CID, body, qualificationVersion: "qv_1", retireDraftThrough, createdAt: new Date(T0 + at).toISOString() });
 
-test("offline send is registered: message send is offline_queue in the shared policy and eligible on the device", () => {
+// Sprint 0144 (user decision 2026-11-02): messages are drafts only since 2026-10-27, so sending is no longer an offline
+// write and the coordinator refuses new sends. Messages queued before that still upload, retry and discard; the tests
+// below put them in the queue the way 0135 did, straight into the device's outbox.
+test("SC-0144-02: message send is not an offline write; the coordinator refuses a new send", async (t) => {
   const registration = OFFLINE_POLICY_REGISTRATIONS.find((item) => item.method === "POST" && item.pathname === "/api/relationship-communication/conversations/:id/messages");
   assert.equal(registration?.action, "send");
-  assert.equal(registration?.policy.mutationPolicy, "offline_queue");
-  assert.equal(isOfflineEligible("relationship_message", "send", { actorPrivate: true, confirmed: true, connectionActive: true }), true);
-  for (const operation of ["create", "update", "delete", "read"]) assert.equal(isOfflineEligible("relationship_message", operation, { actorPrivate: true, confirmed: true, connectionActive: true }), false, operation);
-  assert.equal(isOfflineEligible("relationship_message", "send", { actorPrivate: true, confirmed: true, connectionActive: false }), false);
+  assert.equal(registration?.policy.mutationPolicy, "online_only");
+  for (const operation of ["send", "create", "update", "delete", "read"]) assert.equal(isOfflineEligible("relationship_message", operation, { actorPrivate: true, confirmed: true, connectionActive: true }), false, operation);
+  const { host, device } = await setup(t);
+  t.after(() => { try { device.close(); } catch { /* closed */ } });
+  host.offline = true;
+  await assert.rejects(device.session.enqueueOfflineMessageMutation(write("新写的", "new-1", null, 1)), /not eligible/);
+  assert.deepEqual(await device.queued(), []);
 });
 
 test("three messages written offline survive a killed app and arrive once each, in order, with server sequence numbers and times; a lost receipt is replayed once", async (t) => {
   const { host, path, device } = await setup(t);
   host.offline = true;
-  await device.session.enqueueOfflineMessageMutation(write("第一条", "req-1", null, 1));
-  await device.session.enqueueOfflineMessageMutation(write("第二条", "req-2", null, 2));
-  await device.session.enqueueOfflineMessageMutation(write("第三条", "req-3", null, 3));
+  await queueAsBefore(device, write("第一条", "req-1", null, 1));
+  await queueAsBefore(device, write("第二条", "req-2", null, 2));
+  await queueAsBefore(device, write("第三条", "req-3", null, 3));
   await device.sync(); // offline: nothing leaves the device
   assert.deepEqual((await device.queued()).map((item) => [item.body, item.status]), [["第一条", "pending"], ["第二条", "pending"], ["第三条", "pending"]]);
   assert.equal(host.posts.length, 0);
@@ -197,8 +210,8 @@ test("revoked before the device is back online: nothing is delivered, every queu
   const { host, device } = await setup(t);
   t.after(() => { try { device.close(); } catch { /* closed */ } });
   host.offline = true;
-  await device.session.enqueueOfflineMessageMutation(write("撤销前写的一", "rv-1", null, 1));
-  await device.session.enqueueOfflineMessageMutation(write("撤销前写的二", "rv-2", null, 2));
+  await queueAsBefore(device, write("撤销前写的一", "rv-1", null, 1));
+  await queueAsBefore(device, write("撤销前写的二", "rv-2", null, 2));
   host.revoked = true;
   publishConversation(host);
   host.offline = false;
@@ -220,7 +233,7 @@ test("a refused message can be retried with the same request id, and a queued me
   const { host, device } = await setup(t);
   t.after(() => { try { device.close(); } catch { /* closed */ } });
   host.offline = true;
-  await device.session.enqueueOfflineMessageMutation(write("带草稿时间", "dr-1", "2026-10-03T08:00:00.000Z", 1));
+  await queueAsBefore(device, write("带草稿时间", "dr-1", "2026-10-03T08:00:00.000Z", 1));
   host.offline = false;
   host.revoked = true; // refused (409) without the conversation leaving yet
   await device.sync();
@@ -235,10 +248,10 @@ test("a refused message can be retried with the same request id, and a queued me
   assert.deepEqual(await device.queued(), []);
 });
 
-test("only an active conversation on this device accepts an offline message; a malformed request is refused", async (t) => {
+test("no conversation accepts a new offline message (0144); a malformed request is refused", async (t) => {
   const { device } = await setup(t);
   t.after(() => { try { device.close(); } catch { /* closed */ } });
-  await assert.rejects(device.session.enqueueOfflineMessageMutation(buildOfflineMessageMutation({ requestId: "x-1", conversationId: "relationship-conversation:other", body: "没有这个对话", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: new Date(T0).toISOString() })), /active conversation/);
+  await assert.rejects(device.session.enqueueOfflineMessageMutation(buildOfflineMessageMutation({ requestId: "x-1", conversationId: "relationship-conversation:other", body: "没有这个对话", qualificationVersion: "qv_1", retireDraftThrough: null, createdAt: new Date(T0).toISOString() })), /not eligible/);
   const forged = { ...write("改过的正文", "x-2"), patch: { body: "别的正文" } };
   await assert.rejects(device.session.enqueueOfflineMessageMutation(forged), /not eligible/);
   assert.throws(() => write("   ", "x-3"), /invalid/);
@@ -250,7 +263,7 @@ test("clearing with a non-empty queue keeps queued messages: the vault round tri
   const { host, device } = await setup(t);
   t.after(() => { try { device.close(); } catch { /* closed */ } });
   host.offline = true;
-  await device.session.enqueueOfflineMessageMutation(write("清空前排队的", "vault-1", null, 1));
+  await queueAsBefore(device, write("清空前排队的", "vault-1", null, 1));
   const { archivePendingWrites, restorePendingWrites } = await import("../src/data/sync/pending-write-vault");
   const vault = new NodeTestDatabase();
   t.after(() => vault.close());

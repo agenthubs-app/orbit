@@ -6,6 +6,10 @@ import type {
   OfflinePolicyRegistration,
 } from "../../api/contract/offline-policy";
 
+/**
+ * Sprint 0144: the shared table is the single offline policy; the App no longer overrides it (relationship follow-up
+ * complete/update are offline there, reopen/cancel/delete online).
+ */
 export class OfflineDataPolicyRegistry {
   private readonly registry: ContractPolicyRegistry;
 
@@ -14,16 +18,6 @@ export class OfflineDataPolicyRegistry {
   }
 
   resolve(method: string, pathname: string, action: string): OfflinePolicy {
-    const policy = this.registry.resolve(method, pathname, action);
-    if (relationshipFollowupActions.has(action)) return { ...policy, mutationPolicy: "online_only" };
-    return policy;
+    return this.registry.resolve(method, pathname, action);
   }
 }
-
-const relationshipFollowupActions = new Set([
-  "relationship_followup.update",
-  "relationship_followup.complete",
-  "relationship_followup.reopen",
-  "relationship_followup.cancel",
-  "relationship_followup.delete",
-]);

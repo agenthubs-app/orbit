@@ -129,3 +129,33 @@ test("a contact that is not on the device cannot be queued", async (t) => {
   await sync();
   await assert.rejects(session.enqueueOfflineContactDelete(buildOfflineContactDelete({ mutationId: "m-2", recordId: "record-x", contactId: "contact-x", createdAt: at })));
 });
+
+// Sprint 0144: contact delete is registered in the shared offline table; the coordinator asks that table before it
+// queues, and the uploader asks it again before it sends a stored row.
+test("SC-0144-01: the coordinator queues a contact write only when the shared offline check allows it", async (t) => {
+  const { session, sync } = await device(t, []);
+  await sync();
+  const forged = { ...buildOfflineContactDelete({ mutationId: "m-3", recordId: "record-1", contactId: "contact-1", createdAt: at }), operation: "update" as never };
+  await assert.rejects(session.enqueueOfflineContactDelete(forged), /not offline eligible/);
+  assert.deepEqual(await queued(session), []);
+  await session.enqueueOfflineContactDelete(buildOfflineContactDelete({ mutationId: "m-4", recordId: "record-1", contactId: "contact-1", createdAt: at }));
+  assert.deepEqual(await queued(session), ["record-1:queued"]);
+});
+
+test("SC-0144-01: a stored contact row the shared check does not allow is never sent", async () => {
+  const mutation = { ...buildOfflineContactDelete({ mutationId: "del-x", recordId: "record-1", contactId: "contact-1", createdAt: at }), kind: "contact_tag" as never };
+  let row: LocalSyncQueuedMutation | null = { ...mutation, actorId: "actor-1", workspaceId: "workspace-1", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  const paths: string[] = [];
+  let failure: { state: string } | null = null;
+  const repository = {
+    async listQueuedMutations() { return row ? [row] : []; },
+    async beginOutboxMutationAttempt() { return row; },
+    async acknowledgeOutboxMutation() { throw new Error("must not acknowledge"); },
+    async markOutboxMutationFailure(input: { state: string }) { failure = input; row = null; },
+    async getRecord() { return mirror; },
+  };
+  const writeClient = { async delete(path: string) { paths.push(path); return { success: true, status: 200, data: {} }; } };
+  await createContactOutboxUploader({ actorId: "actor-1", workspaceId: "workspace-1", repository: repository as never, writeClient: writeClient as never, now: () => Date.parse(at) }).run();
+  assert.deepEqual(paths, []);
+  assert.equal((failure as { state: string } | null)?.state, "failed");
+});

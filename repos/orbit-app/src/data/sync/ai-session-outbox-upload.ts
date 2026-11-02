@@ -4,6 +4,7 @@ import type { SyncRecord } from "../../api/contract/sync";
 import { aiConversationSessionPath } from "../../api/endpoints";
 import { parseOfflineAiSessionDelete, parseOfflineAiSessionRequest, type OfflineAiSessionDeleteInput, type OfflineAiSessionMutationInput } from "./ai-session-outbox-mutation";
 import type { LocalSyncQueuedMutation } from "./local-sync-repository";
+import { isOfflineEligible } from "./mutation-adapters";
 import { createOutboxUploader, type OutboxUploadRepository } from "./outbox-uploader";
 
 type Repository = OutboxUploadRepository & {
@@ -31,6 +32,8 @@ export function createAiSessionOutboxUploader(input: {
     confirmOnline: async () => true,
     now,
     uploadOne: async (row: LocalSyncQueuedMutation, signal) => {
+      // Sprint 0144: the stored row is checked against the shared offline table again before it is sent.
+      if (!isOfflineEligible(row.kind, row.operation, { actorPrivate: true, confirmed: true, connectionActive: true })) return { status: 400 };
       if (row.operation === "delete") {
         let expectedRevision: number;
         try { expectedRevision = parseOfflineAiSessionDelete(row as OfflineAiSessionDeleteInput).expectedRevision; }

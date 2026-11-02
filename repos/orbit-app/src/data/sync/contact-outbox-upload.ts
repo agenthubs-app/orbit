@@ -2,6 +2,7 @@ import type { OrbitApiClient } from "../../api/client";
 import type { SyncRecord } from "../../api/contract/sync";
 import { parseOfflineContactDelete } from "./contact-outbox-mutation";
 import type { LocalSyncQueuedMutation } from "./local-sync-repository";
+import { isOfflineEligible } from "./mutation-adapters";
 import { createOutboxUploader, type OutboxUploadRepository } from "./outbox-uploader";
 
 type Repository = OutboxUploadRepository & {
@@ -33,6 +34,8 @@ export function createContactOutboxUploader(input: {
     confirmOnline: async () => true,
     now,
     uploadOne: async (row: LocalSyncQueuedMutation, signal) => {
+      // Sprint 0144: the stored row is checked against the shared offline table again before it is sent.
+      if (!isOfflineEligible(row.kind, row.operation, { actorPrivate: true, confirmed: true, connectionActive: true })) return { status: 400 };
       let contactId: string;
       try { contactId = parseOfflineContactDelete(row).contactId; } catch { return { status: 400 }; }
       const response = await input.writeClient.delete<unknown>(`/api/contacts/${encodeURIComponent(contactId)}`, { signal });

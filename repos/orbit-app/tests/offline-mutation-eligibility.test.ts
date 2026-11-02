@@ -10,7 +10,7 @@ const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
 const command = { mutationId: "m1", kind: "note", entityId: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
   baseRevision: null, patch: { body: "Hello" }, createdAt: "2026-09-16T00:00:00Z" };
 
-test("only private, confirmed note, personal task and personal schedule mutations are offline eligible", () => {
+test("only private, confirmed note, personal task, personal schedule and follow-up complete/defer mutations are offline eligible", () => {
   const productOperations: Record<string, string[]> = {
     note: ["create", "update", "delete"], task: ["create", "update", "complete", "reopen", "cancel", "delete"],
     relationship_followup: ["update", "complete", "reopen", "cancel", "delete"], personal_schedule: ["create", "update", "delete"],
@@ -19,7 +19,9 @@ test("only private, confirmed note, personal task and personal schedule mutation
     for (const operation of operations) {
       const expected = (kind === "note" && (operation === "create" || operation === "update")) ||
         (kind === "task" && ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation)) ||
-        kind === "personal_schedule";
+        kind === "personal_schedule" ||
+        // Sprint 0144: follow-up complete (without outcome) and defer (update) only; the coordinator narrows them further.
+        (kind === "relationship_followup" && (operation === "complete" || operation === "update"));
       assert.equal(isOfflineEligible(kind, operation, facts), expected, `${kind}.${operation}`);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, actorPrivate: false }), false);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, confirmed: false }), false);
@@ -34,11 +36,12 @@ test("only private, confirmed note, personal task and personal schedule mutation
   assert.equal(isOfflineEligible("relationship_followup", "update", { ...facts, connectionActive: false }), false);
   assert.equal(isOfflineEligible("note", "create", { ...facts, connectionActive: false }), false);
   const policy = new OfflineDataPolicyRegistry(OFFLINE_POLICY_REGISTRATIONS);
-  assert.equal(OFFLINE_POLICY_REGISTRATIONS.find(item => item.action === "relationship_followup.update")?.policy.mutationPolicy, "offline_queue",
-    "the shared generated policy stays canonical; App-specific eligibility is applied by the facade");
+  // Sprint 0144: the App facade no longer overrides the shared table; both say the same thing.
   for (const action of ["relationship_followup.update", "relationship_followup.complete", "relationship_followup.reopen", "relationship_followup.cancel", "relationship_followup.delete"]) {
     const method = action.endsWith(".delete") ? "DELETE" : "PATCH";
-    assert.equal(policy.resolve(method, "/api/tasks/task-1", action).mutationPolicy, "online_only");
+    const expected = action.endsWith(".update") || action.endsWith(".complete") ? "offline_queue" : "online_only";
+    assert.equal(OFFLINE_POLICY_REGISTRATIONS.find(item => item.action === action)?.policy.mutationPolicy, expected, action);
+    assert.equal(policy.resolve(method, "/api/tasks/task-1", action).mutationPolicy, expected, action);
   }
 });
 

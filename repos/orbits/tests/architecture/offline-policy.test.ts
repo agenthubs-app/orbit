@@ -21,11 +21,12 @@ const APPROVED_POLICY_MATRIX = [
   ["PATCH", "/api/tasks/:id", "reopen", "task", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/tasks/:id", "cancel", "task", "durable_normalized", "offline_queue", "metadata_only"],
   ["DELETE", "/api/tasks/:id", "delete", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  // Sprint 0144: a follow-up may be completed without an outcome or moved later offline; the rest needs the network.
   ["PATCH", "/api/tasks/:id", "relationship_followup.update", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/tasks/:id", "relationship_followup.complete", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
-  ["PATCH", "/api/tasks/:id", "relationship_followup.reopen", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
-  ["PATCH", "/api/tasks/:id", "relationship_followup.cancel", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
-  ["DELETE", "/api/tasks/:id", "relationship_followup.delete", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.reopen", "relationship_followup", "durable_normalized", "online_only", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.cancel", "relationship_followup", "durable_normalized", "online_only", "metadata_only"],
+  ["DELETE", "/api/tasks/:id", "relationship_followup.delete", "relationship_followup", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/schedule-items", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/schedule-items", "calendar.read", "calendar_meetings", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/schedule-items/:id", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
@@ -36,8 +37,8 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "relationship_message", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/relationship-communication/conversation-summaries", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/relationship-communication/unread-summary", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
-  // Sprint 0135: message send is queued offline (message plan M4).
-  ["POST", "/api/relationship-communication/conversations/:id/messages", "send", "relationship_message", "durable_normalized", "offline_queue", "metadata_only"],
+  // Sprint 0135 queued message sends offline; Sprint 0144 took sending out of the offline scope (messages are drafts only).
+  ["POST", "/api/relationship-communication/conversations/:id/messages", "send", "relationship_message", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
   // Sprint 0115: the registered attendee's event day is read from the device mirror; every write needs the network.
   ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],
@@ -47,6 +48,8 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/contacts/page", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/contacts/summary", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/contacts/:id", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  // LF12 / Sprint 0144: deleting your own contact waits in the device outbox.
+  ["DELETE", "/api/contacts/:id", "delete", "contact", "durable_normalized", "offline_queue", "metadata_only"],
   // Sprint 0117: the dashboard and contacts analysis are computed on the device (sync domain dashboard-graph).
   ["GET", "/api/dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/dashboard/summary", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
@@ -60,6 +63,9 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/inbox/notifications/:id", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/ai/conversations/sessions", "read", "ai_session", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/ai/conversations/sessions/:id", "read", "ai_session_message", "durable_normalized", "online_only", "metadata_only"],
+  // R21 / Sprint 0144: organizing and deleting your own iOrbit history waits in the device outbox.
+  ["PATCH", "/api/ai/conversations/sessions/:id", "update", "ai_session", "durable_normalized", "offline_queue", "metadata_only"],
+  ["DELETE", "/api/ai/conversations/sessions/:id", "delete", "ai_session", "durable_normalized", "offline_queue", "metadata_only"],
   ["GET", "/api/profile", "read", "self_profile", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/agent/actions", "read", "agent_actions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["GET", "/api/agent/ledger", "read", "agent_ledger", "encrypted_ttl_snapshot", "online_only", "metadata_only"],

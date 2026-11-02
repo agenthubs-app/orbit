@@ -1,5 +1,18 @@
 import type { Mutation } from "../../api/contract/offline-mutations";
 import { parseOfflineMutation } from "../../api/schema/offline-mutations";
+import { OFFLINE_POLICY_REGISTRATIONS } from "../../api/schema/offline-policy";
+
+/**
+ * Sprint 0144: the single offline policy table decides which writes may wait offline. A write of `kind` (the table's
+ * domain) and `operation` is eligible when the table queues that action offline (actions are either the operation or
+ * `<domain>.<operation>`, e.g. relationship_followup.complete). Save time (the coordinator) and pre-upload checks call this.
+ */
+const offlineQueuedWrites = new Set(OFFLINE_POLICY_REGISTRATIONS
+  .filter((entry) => entry.policy.mutationPolicy === "offline_queue")
+  .map((entry) => {
+    const prefix = `${entry.policy.domainId}.`;
+    return `${entry.policy.domainId}\u0000${entry.action.startsWith(prefix) ? entry.action.slice(prefix.length) : entry.action}`;
+  }));
 
 export function isOfflineEligible(
   kind: string,
@@ -10,15 +23,7 @@ export function isOfflineEligible(
     connectionActive: boolean;
   },
 ): boolean {
-  const privateNoteWrite = kind === "note" && (operation === "create" || operation === "update");
-  const personalTaskWrite = kind === "task" &&
-    ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation);
-  // Sprint 0134: non-recurring personal schedules (design D7; the series/occurrence rule is checked against the mirrored item).
-  const personalScheduleWrite = kind === "personal_schedule" && ["create", "update", "delete"].includes(operation);
-  // Sprint 0135: a text message into a conversation the device holds and that is active.
-  const relationshipMessageSend = kind === "relationship_message" && operation === "send";
-  return (privateNoteWrite || personalTaskWrite || personalScheduleWrite || relationshipMessageSend) &&
-    facts.actorPrivate && facts.confirmed && facts.connectionActive;
+  return offlineQueuedWrites.has(`${kind}\u0000${operation}`) && facts.actorPrivate && facts.confirmed && facts.connectionActive;
 }
 
 export function parseMutation(input: unknown): Mutation {
