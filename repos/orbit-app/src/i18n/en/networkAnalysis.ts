@@ -32,6 +32,7 @@ export const networkAnalysis = {
   "networkAnalysis.metVisit": "Visit / meeting",
   "networkAnalysis.metOther": "Other",
   "networkAnalysis.rest": "Other",
+  "networkAnalysis.unset": "Not filled in",
   "networkAnalysis.openDimension": "{label} list",
   "networkAnalysis.gapTitle": "Missing: {title}",
   "networkAnalysis.gapBody": "The plan needs {target}; you have {linked}. ",

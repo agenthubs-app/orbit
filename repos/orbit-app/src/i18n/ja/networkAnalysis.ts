@@ -32,6 +32,7 @@ export const networkAnalysis = {
   "networkAnalysis.metVisit": "訪問・商談",
   "networkAnalysis.metOther": "その他",
   "networkAnalysis.rest": "その他",
+  "networkAnalysis.unset": "未入力",
   "networkAnalysis.openDimension": "{label}の名簿",
   "networkAnalysis.gapTitle": "不足：{title}",
   "networkAnalysis.gapBody": "プランでは {target}人必要ですが、今は {linked}人。",

@@ -19,7 +19,7 @@ import { readSnapshot, retireSnapshot, writeSnapshot } from "../../data/snapshot
 import { pageCopyFreshness } from "../../data/sync/page-copy-freshness";
 import { buildNetworkAnalysisPeople, buildNetworkAnalysisView, type NetworkAnalysisNeeds, type NetworkAnalysisRow } from "../../api/compute/network-analysis-model";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
-import { localNetworkAnalysisRows } from "../../view-models/network-analysis-local";
+import { localNetworkAnalysisRows, withUnsetApart } from "../../view-models/network-analysis-local";
 import { useNetworkMerge } from "../network/useNetworkMerge";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { z } from "zod";
@@ -157,7 +157,7 @@ export function useNetworkAnalysisViewLocalFirst(): CachedReadState<NetworkAnaly
   const local = useLocalAnalysisRows(needs !== undefined);
   return useMemo(() => {
     if (!local.rows || needs === undefined) return server;
-    const data = buildNetworkAnalysisView({ total: local.rows.length, rows: local.rows, needs, now: new Date() });
+    const data = withUnsetApart(buildNetworkAnalysisView({ total: local.rows.length, rows: local.rows, needs, now: new Date() }), local.rows);
     const verified = server.status === "ready" && server.verified === true;
     return { status: "ready" as const, data, offline: local.offline || (server.status !== "loading" && server.offline), verified, refresh: server.refresh };
   }, [local.rows, local.offline, needs, server]);
@@ -174,7 +174,7 @@ export function useNetworkAnalysisPeopleLocal(dimension: NetworkAnalysisDimensio
   const view = useMemo(() => (local.rows && needs !== undefined ? buildNetworkAnalysisView({ total: local.rows.length, rows: local.rows, needs, now: new Date() }) : null), [local.rows, needs]);
   const locked = view && view.lock.state === "locked" ? view.lock : null;
   const page = useCallback((cursor: string | null) => (local.rows && dimension && needs !== undefined && !locked
-    ? buildNetworkAnalysisPeople({ rows: local.rows, needs, dimension, bucketId, ...(sort ? { sort } : {}), ...(cursor ? { cursor } : {}), limit: PEOPLE_PAGE_LIMIT, now: new Date() })
+    ? buildNetworkAnalysisPeople({ rows: local.rows, needs, dimension, bucketId, unsetApart: true, ...(sort ? { sort } : {}), ...(cursor ? { cursor } : {}), limit: PEOPLE_PAGE_LIMIT, now: new Date() })
     : null), [bucketId, dimension, local.rows, locked, needs, sort]);
   return { available, page, locked, offline: local.offline };
 }

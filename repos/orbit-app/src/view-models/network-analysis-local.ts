@@ -1,5 +1,6 @@
 import type { ContactSyncPayload } from "../api/contract/contact-local-directory";
-import type { NetworkAnalysisRow } from "../api/compute/network-analysis-model";
+import { analysisBucketKey, type NetworkAnalysisRow } from "../api/compute/network-analysis-model";
+import type { NetworkAnalysisDistribution, NetworkAnalysisViewDTO } from "../api/contract/network-analysis-view";
 import { localContactDirectory } from "../api/schema/contact-local-directory";
 
 const record = (value: unknown): Record<string, unknown> | null => (value && typeof value === "object" ? value as Record<string, unknown> : null);
@@ -40,4 +41,24 @@ export function localNetworkAnalysisRows(rows: readonly ContactSyncPayload[], me
       nextActionPreview: card.nextActionPreview,
     }];
   });
+}
+
+/**
+ * Sprint 0148: the App's analysis page shows the people without an industry / region as their own `none` bucket
+ * (the home card's 未填写), instead of inside `rest`; `rest` keeps only the named groups after the top three.
+ * The shared view folds every unset person into `rest`, so `rest` minus the unset count is exactly the named rest.
+ * Lists opened from this view pass `unsetApart` so each list equals its row.
+ */
+export function withUnsetApart(view: NetworkAnalysisViewDTO, rows: readonly NetworkAnalysisRow[]): NetworkAnalysisViewDTO {
+  if (!view.structure) return view;
+  const split = (distribution: NetworkAnalysisDistribution, dimension: "industry" | "region"): NetworkAnalysisDistribution => {
+    const unset = rows.filter((row) => analysisBucketKey(row, dimension) === "none").length;
+    const rest = distribution.buckets.find((bucket) => bucket.id === "rest");
+    if (!unset || !rest) return distribution;
+    const namedRest = rest.count - unset;
+    return { ...distribution, buckets: [...distribution.buckets.filter((bucket) => bucket.id !== "rest"), ...(namedRest > 0 ? [{ id: "rest", count: namedRest }] : []), { id: "none", count: unset }] };
+  };
+  const industries = split(view.structure.industries, "industry");
+  const regions = split(view.structure.regions, "region");
+  return industries === view.structure.industries && regions === view.structure.regions ? view : { ...view, structure: { ...view.structure, industries, regions } };
 }

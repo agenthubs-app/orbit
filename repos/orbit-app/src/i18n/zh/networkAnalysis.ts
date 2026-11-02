@@ -32,6 +32,7 @@ export const networkAnalysis = {
   "networkAnalysis.metVisit": "拜访、商谈",
   "networkAnalysis.metOther": "其他",
   "networkAnalysis.rest": "其他",
+  "networkAnalysis.unset": "未填写",
   "networkAnalysis.openDimension": "{label}名单",
   "networkAnalysis.gapTitle": "缺少：{title}",
   "networkAnalysis.gapBody": "计划需要{target}位，目前{linked}位。",

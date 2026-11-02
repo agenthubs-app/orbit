@@ -158,3 +158,15 @@ test("0148: a region without a city reads the country code; a city still wins", 
   assert.equal(analysisBucketKey(person({}), "region"), "none");
   assert.equal(bucketMembers(rows, "region", "CN", { nowMs: NOW.getTime(), hasPlan: false })?.length, 2);
 });
+
+test("0148: with unsetApart (the App's split view) the rest list leaves out the unset people; the server default is unchanged", () => {
+  const rows = [...many(4, { primaryIndustryId: "a_one" }), ...many(3, { primaryIndustryId: "b_two" }), ...many(2, { primaryIndustryId: "c_three" }), ...many(1, { primaryIndustryId: "d_four" }), ...many(2, {})];
+  const context = { nowMs: NOW.getTime(), hasPlan: false };
+  assert.deepEqual(distribution(rows, "industry").buckets.at(-1), { id: "rest", count: 3 }, "the card still folds the unset people into the rest");
+  assert.equal(bucketMembers(rows, "industry", "rest", context)?.length, 3);
+  assert.equal(bucketMembers(rows, "industry", "rest", { ...context, unsetApart: true })?.length, 1);
+  assert.equal(bucketMembers(rows, "industry", "none", context)?.length, 2);
+  assert.equal(buildNetworkAnalysisPeople({ rows, needs: [], dimension: "industry", bucketId: "rest", unsetApart: true, now: NOW })?.total, 1);
+  assert.equal(buildNetworkAnalysisPeople({ rows, needs: [], dimension: "industry", bucketId: "rest", now: NOW })?.total, 3);
+  assert.equal(bucketMembers(rows, "met", "other", { ...context, unsetApart: true })?.length, 12, "other dimensions are not affected");
+});

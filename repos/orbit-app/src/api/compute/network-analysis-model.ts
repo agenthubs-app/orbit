@@ -267,15 +267,20 @@ export function buildNetworkAnalysisView(input: { total: number; rows: readonly 
   };
 }
 
-/** The people of one drill-down bucket — the same rule the card counted with. null = unknown dimension / bucket. */
-export function bucketMembers(rows: readonly NetworkAnalysisRow[], dimension: NetworkAnalysisDimension, bucketId: string, context: { nowMs: number; hasPlan: boolean }): NetworkAnalysisRow[] | null {
+/**
+ * The people of one drill-down bucket — the same rule the card counted with. null = unknown dimension / bucket.
+ * `unsetApart` (sprint 0148, the App's analysis page): industry / region show the unset people as their own `none`
+ * bucket, so `rest` leaves them out. The server's view keeps them in `rest` (no flag).
+ */
+export function bucketMembers(rows: readonly NetworkAnalysisRow[], dimension: NetworkAnalysisDimension, bucketId: string, context: { nowMs: number; hasPlan: boolean; unsetApart?: boolean }): NetworkAnalysisRow[] | null {
   if (dimension === "opportunity") {
     return bucketId === "reconnect" || bucketId === "stalled" ? opportunityMembers(rows, bucketId, context.nowMs, context.hasPlan) : null;
   }
   const shown = distribution(rows, dimension).buckets;
   if (bucketId === "rest" && dimension !== "met") {
     const named = new Set(shown.filter((bucket) => bucket.id !== "rest").map((bucket) => bucket.id));
-    return rows.filter((row) => !named.has(bucketKey(row, dimension)));
+    const apart = context.unsetApart === true && (dimension === "industry" || dimension === "region");
+    return rows.filter((row) => !named.has(bucketKey(row, dimension)) && !(apart && bucketKey(row, dimension) === "none"));
   }
   return rows.filter((row) => bucketKey(row, dimension) === bucketId);
 }
@@ -359,10 +364,12 @@ export function buildNetworkAnalysisPeople(input: {
   sort?: NetworkAnalysisPeopleSort;
   cursor?: string;
   limit?: number;
+  /** See bucketMembers. */
+  unsetApart?: boolean;
   now: Date;
 }): NetworkAnalysisPeopleDTO | null {
   const hasPlan = Array.isArray(input.needs) && input.needs.length > 0;
-  const members = bucketMembers(input.rows, input.dimension, input.bucketId, { nowMs: input.now.getTime(), hasPlan });
+  const members = bucketMembers(input.rows, input.dimension, input.bucketId, { nowMs: input.now.getTime(), hasPlan, ...(input.unsetApart ? { unsetApart: true } : {}) });
   if (!members) return null;
   const sorts = availableSorts(members, hasPlan);
   const sort = input.sort && sorts.includes(input.sort) ? input.sort : sorts[0]!;

@@ -58,6 +58,8 @@ export function regionName(id: string, t: OrbitTranslator, language: OrbitLangua
 
 export function bucketLabel(dimension: NetworkAnalysisDimension, id: string, t: OrbitTranslator, language: OrbitLanguage): string {
   if (id === "rest") return t("networkAnalysis.rest");
+  // Sprint 0148: on the device's view the people without an industry / region are their own group.
+  if (id === "none" && (dimension === "industry" || dimension === "region")) return t("networkAnalysis.unset");
   switch (dimension) {
     case "industry": return industryName(id, language);
     case "region": return regionName(id, t, language);

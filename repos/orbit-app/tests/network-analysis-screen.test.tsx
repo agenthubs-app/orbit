@@ -18,7 +18,8 @@ import React from "react";
 import { View } from "react-native";
 const card = (id, name, org, role) => ({ id, displayName: name, organization: org, role, sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z" });
 const row = (recordId, c) => ({ id: recordId, payload: { id: recordId, card: c, tags: [], search: { text: c.displayName, occurredAt: "2026-10-01T00:00:00.000000Z", updatedAt: "2026-10-01T00:00:00.000000Z", error: null }, detail: null } });
-const contacts = () => [row("rec-ito", card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO")), row("rec-kobayashi", card("c-kobayashi", "小林 健", "丸の内イノベーションラボ", "代表"))];
+// Sprint 0148: a test may hand in its own cards (initialFixture.contactCards: [id, name, industry?, city?]).
+const contacts = () => window.initialFixture?.contactCards ? window.initialFixture.contactCards.map(([id, name, industry, city]) => row("rec-" + id, { ...card(id, name, "会社", "担当"), ...(industry ? { primaryIndustryId: industry } : {}), ...(city ? { region: { countryCode: "JP", city } } : {}) })) : [row("rec-ito", card("c-ito", "伊藤 直子", "株式会社ハルモニア", "CFO")), row("rec-kobayashi", card("c-kobayashi", "小林 健", "丸の内イノベーションラボ", "代表"))];
 export const state = window.fixture = { requests: [], navigation: [], writes: [], retired: [], release: {}, online: true, answers: {}, cache: {}, pathname: "/contacts/dashboard", ...window.initialFixture };
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
@@ -427,4 +428,22 @@ test("LF3: with plan needs from the server, the analysis is computed on the devi
   const page = await openPage(t, { answers: { [VIEW]: { ...few14, needs: [] } } });
   await page.getByTestId("analysis-locked").waitFor();
   await text(page, "あと8人で分析が始まります").waitFor();
+});
+
+test("0148: computed on the device, 未入力 is its own group for industry and opens its own list; その他 keeps only the named rest", async (t) => {
+  const cards = [
+    ...Array.from({ length: 4 }, (_, i) => [`t${i}`, `テック${i}`, "technology_internet", "Tokyo"]),
+    ...Array.from({ length: 3 }, (_, i) => [`f${i}`, `金融${i}`, "finance_investment", "Osaka"]),
+    ...Array.from({ length: 2 }, (_, i) => [`m${i}`, `製造${i}`, "manufacturing_supply_chain", null]),
+    ["r0", "小売0", "retail_consumer", null], ["u0", "未設定0", null, null], ["u1", "未設定1", null, null],
+  ];
+  const page = await openPage(t, { answers: { [VIEW]: { ...few14, needs: [] } }, contactCards: cards });
+  await page.getByTestId("analysis-composition").waitFor();
+  const composition = page.getByTestId("analysis-dimension-industry");
+  await composition.getByText("未入力", { exact: true }).waitFor();
+  const body = await composition.innerText();
+  assert.match(body, /その他\s*1\s*8%/u, "その他 is the one retail person");
+  assert.match(body, /未入力\s*2\s*17%/u);
+  await composition.getByText("未入力", { exact: true }).click();
+  assert.ok((await navigation(page)).includes("/contacts/analysis/industry/none"));
 });
