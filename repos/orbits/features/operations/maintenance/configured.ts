@@ -7,6 +7,7 @@ import {
   MAINTENANCE_HEARTBEAT_TOPIC,
   ensureMaintenanceHeartbeat,
   ensureMaintenanceHeartbeatSchema,
+  parkMaintenanceHeartbeat,
   processMaintenanceHeartbeat,
   resolveMaintenanceIntervalSeconds,
   type EnsureMaintenanceHeartbeatResult,
@@ -59,6 +60,11 @@ export function maintenanceHeartbeatEnabled(env: NodeJS.ProcessEnv = process.env
   return env.VERCEL === "1" && env.ORBIT_MAINTENANCE_HEARTBEAT !== "0";
 }
 
+/** Switched off on purpose on Vercel (not merely absent, as in local runs): a live chain must be parked. */
+export function maintenanceHeartbeatSwitchedOff(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VERCEL === "1" && env.ORBIT_MAINTENANCE_HEARTBEAT === "0";
+}
+
 async function sendHeartbeat(message: MaintenanceHeartbeatMessage, delaySeconds: number): Promise<void> {
   await send(MAINTENANCE_HEARTBEAT_TOPIC, message, { delaySeconds, retentionSeconds: 7 * 24 * 60 * 60 });
 }
@@ -67,8 +73,20 @@ export function runConfiguredMaintenancePass(workerId = "maintenance"): Promise<
   return runMaintenancePass({ tasks: createConfiguredMaintenanceTasks({ workerId }) });
 }
 
-/** Starts or repairs the queue heartbeat chain; `null` when the heartbeat is not applicable here. */
+/**
+ * Starts or repairs the queue heartbeat chain; `null` when the heartbeat is not applicable here. Switched off
+ * (ORBIT_MAINTENANCE_HEARTBEAT=0), it parks the chain an older deployment may still be running instead, so the
+ * daily cron or the next queue consumer stops it (see parkMaintenanceHeartbeat).
+ */
 export async function ensureConfiguredMaintenanceHeartbeat(): Promise<EnsureMaintenanceHeartbeatResult | null> {
+  if (maintenanceHeartbeatSwitchedOff()) {
+    const runtime = getConfiguredMaintenanceRuntime();
+    if (!runtime) return null;
+    await runtime.ready;
+    const parked = await parkMaintenanceHeartbeat({ pool: runtime.pool, workspaceId: runtime.workspaceId, identity: currentMaintenanceDeploymentIdentity() });
+    if (parked) console.info(JSON.stringify({ event: "maintenance_heartbeat_parked" }));
+    return null;
+  }
   if (!maintenanceHeartbeatEnabled()) return null;
   const runtime = getConfiguredMaintenanceRuntime();
   if (!runtime) return null;

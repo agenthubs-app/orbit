@@ -157,6 +157,24 @@
         "ORBIT_NEXT_DIST_DIR": ".next-scan",
         "ORBIT_REDESIGN_MOCK": "add-scan"
       }
+    },
+    {
+      "name": "orbits-plan-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits",
+        "--",
+        "--port",
+        "3201"
+      ],
+      "port": 3201,
+      "env": {
+        "ORBIT_NEXT_DIST_DIR": ".next-plan-mock",
+        "ORBIT_REDESIGN_MOCK": "plan-v2-summary"
+      }
     }
   ]
 }

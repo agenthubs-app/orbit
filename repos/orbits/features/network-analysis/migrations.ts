@@ -228,7 +228,57 @@ begin
 end;
 `,
   },
+  {
+    // R33（plan-v3/DESIGN.md §2.6，用户 2026-11-01 定）：计划 v3 的联网搜索（plan_search，provider = tavily）与准备卡（plan_prep）
+    // 两个用途接进账本。同 v7 写法：按定义找 purpose 约束再重建；生产执行等 R38 授权。回退用 `AI_USAGE_PLAN_V3_ROLLBACK_SQL`。
+    name: "ai-usage-plan-v3-purposes",
+    version: 8,
+    sql: `
+declare
+  purpose_check record;
+begin
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
+      'event_registration_interview', 'event_registration_question', 'event_post_summary', 'event_matching',
+      'plan_search', 'plan_prep'));
+end;
+`,
+  },
 ];
+
+/**
+ * R33：v8 的回退（同 v5–v7 的先例：回退前先删掉只有新约束才接受的行，约束才加得回去）。
+ * 删 `plan_search` / `plan_prep` 的操作行（子账随外键级联删除）→ 恢复 v7 的 purpose 约束 → 删掉 v8 的登记，之后重跑迁移会再次前进到 v8。
+ * 只给测试与运维脚本用；生产执行需要单独授权。
+ */
+export const AI_USAGE_PLAN_V3_ROLLBACK_SQL = `
+do $ai_usage_plan_v3_rollback$
+declare
+  purpose_check record;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(${sqlLiteral(MIGRATION_LOCK_KEY)}, 0));
+  delete from ai_usage_ledger where purpose in ('plan_search', 'plan_prep');
+  for purpose_check in
+    select conname from pg_constraint
+    where conrelid = 'ai_usage_ledger'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%purpose%'
+  loop
+    execute format('alter table ai_usage_ledger drop constraint %I', purpose_check.conname);
+  end loop;
+  alter table ai_usage_ledger add constraint ai_usage_ledger_purpose_check
+    check (purpose in ('plan', 'plan_refine', 'snapshot', 'memo_extraction', 'insight', 'enrichment',
+      'plan_intake', 'plan_background', 'plan_draft', 'plan_revise', 'plan_review_mark', 'plan_review', 'event_assessment',
+      'event_registration_interview', 'event_registration_question', 'event_post_summary', 'event_matching'));
+  delete from network_analysis_schema_migrations where version = 8;
+end
+$ai_usage_plan_v3_rollback$;
+`;
 
 function checksum(sql: string): string {
   return createHash("sha256").update(sql).digest("hex");

@@ -185,6 +185,25 @@ node scripts/visual/compare-redesign.mjs \
 - **局部**：`--region "x,y,w,h"` 只比一块（例：1440 左栏 `0,0,84,960`、右栏 `1080,0,360,960`），用于导航壳分件验收；画面是否通过仍以整屏数字为准。
 - **交互**：`--steps '<JSON 数组>'` 按顺序执行实现侧操作（`{"click":sel}` / `{"keys":"Meta+k"}` / `{"type":"文字"}` / `{"fill":[sel,文字]}` / `{"upload":[sel,文件]}` / `{"hover":sel}` / `{"wait":ms}` / `{"waitFor":sel}`）；`--click "<选择器>"`（可重复，实现侧先点开抽屉 / 弹层）、`--design-click "<画框内选择器>"`（设计侧）、`--wait-for "<选择器>"`、`--design-remove` / `--app-remove`（**只用于临时归因调查，正式数字不许用**）。
 
+## 整页原型：`--design-page`（R36a，2026-11-01）
+
+`plan-draft-v5-proposal.html`（计划初稿 v16）不是 kit 画板：没有 `.web` / `.phone` 画框，状态靠 URL 参数（`?goal=fund|sales|hire&page=draft|home&device=web|m&spec=0|1&bar=0`，`bar=0` 不渲染顶部 `.proto` 操作条；原型只加了读取，不带参数时与改前渲染逐像素相同）。这类设计稿用整页模式：
+
+```bash
+node scripts/visual/compare-redesign.mjs \
+  --design "plan-draft-v5-proposal.html?goal=fund&page=draft&device=web&bar=0" --design-page \
+  --design-clip ".page" --design-clip-bottom ".app" \
+  --app http://localhost:3201/app/plans/flow/intake_v16_fund --app-clip "[data-plan-draft-v3]" \
+  --login qa@orbit.test --wait-for "[data-plan-draft-v3]" --width 1440 --theme light --grid 100 --out <dir>
+# 手机：--design "…&device=m&bar=0" --design-page --design-as-mweb --width 390（同样的 clip）
+```
+
+- `--design-page`：设计侧把整个 `body` 当画框，视口宽 = `--width`；`--design-as-mweb` 时去掉原型的手机外框（`.stage` 内边距、`.app` 的 10px 边框 / 圆角 / 阴影：设备外壳不是网页内容，同 mweb390 去状态栏的口径），页面就是 `--width` 宽的手机网页。
+- `--design-clip "<选择器>"`：只截该元素的外接矩形；`--design-clip-bottom "<选择器>"` 把下边缘延到另一元素的底边（原型的底部 dock 是 `.app` 的绝对定位子元素，不在 `.page` 里，这样一起截进来）。`--app-clip "<选择器>"`：实现侧同样只截该元素（整页视口下截完再裁）。两侧按同一块比；导航壳（左栏 / 页头 / 右栏）不在比对范围内——它们是 R07 / R23 已过门禁的壳，原型里画的是 76px 示意轨。
+- `--style-diff` 在 clip 模式下以两侧的 clip 元素为根取样（配对键不变）。
+- 设计稿缓存另起一组键（`v: 2` + `page` / `clip` / `clipBottom`），不与画板模式混用；清单里每张可写 `"design-page": true, "design-clip": …, "design-clip-bottom": …, "app-clip": …, "design-as-mweb": true`（见 `views/web-R36a.json`）。
+- 整页模式也能拿来验「原型改动没改视觉」：改前文件另存到 `docs/designs/redesign-2026-10/_x.html`（不提交），`--design _x.html --design-page --app http://localhost:3320/redesign-2026-10/<改后>.html --no-cache`，raw 应为 0。
+
 ## App：`compare-redesign-app.mjs`
 
 ```bash

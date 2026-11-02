@@ -67,7 +67,11 @@ export const designColors = {
     previewLightBg: "#F7F5F7",
     previewLightLine: "#E3DEE7",
     previewDarkBg: "#19181C",
-    previewDarkLine: "#393840"
+    previewDarkLine: "#393840",
+    chartPreferred: "#7FB8A2",
+    chartPossible: "#D9B07A",
+    chartNot: "#E7A493",
+    verdictConditional: "#C08A45"
   },
   dark: {
     bg: "#19181C",
@@ -134,7 +138,11 @@ export const designColors = {
     previewLightBg: "#F7F5F7",
     previewLightLine: "#E3DEE7",
     previewDarkBg: "#19181C",
-    previewDarkLine: "#393840"
+    previewDarkLine: "#393840",
+    chartPreferred: "#8FC6B0",
+    chartPossible: "#E0BB86",
+    chartNot: "#EDAA98",
+    verdictConditional: "#D09A56"
   }
 } as const;
 
@@ -281,7 +289,9 @@ export const designFont = {
     medium: 500,
     bold: 700,
     heavy: 800,
-    black: 900
+    black: 900,
+    semibold: 600,
+    demi: 650
   },
   lineHeight: {
     display: 1.05,
@@ -294,7 +304,9 @@ export const designFont = {
     prose: 1.6,
     proseLg: 1.7,
     quote: 1.75,
-    letter: 1.8
+    letter: 1.8,
+    compact: 1.3,
+    figure: 1.15
   },
   tracking: {
     tight: -0.02,
@@ -327,6 +339,18 @@ export const designShadow = {
   ringError: {
     light: "inset 0 0 0 1.5px #E58A76",
     dark: "inset 0 0 0 1.5px #F29C88"
+  },
+  cardSoft: {
+    light: "0 1px 2px rgba(30, 20, 40, 0.04)",
+    dark: "0 1px 2px rgba(0, 0, 0, 0.3)"
+  },
+  btnSoft: {
+    light: "0 1px 2px rgba(30, 20, 40, 0.06)",
+    dark: "0 1px 2px rgba(0, 0, 0, 0.35)"
+  },
+  ringNode: {
+    light: "0 0 0 6px rgba(110, 98, 138, 0.14)",
+    dark: "0 0 0 6px rgba(167, 155, 196, 0.2)"
   }
 } as const;
 

@@ -13,6 +13,9 @@
 //   比对已有截图：
 //     node scripts/visual/compare-redesign-app.mjs --shot <png> --design app.html --board-index 20 --theme dark --out <dir> --grid 100
 //   系统外壳：默认去掉设计画框的灵动岛与 Home 指示条，并把两侧顶部 50pt 状态栏涂成同色不计差异（--keep-system 关闭）。
+//   整页原型（R36b）：--design plan-draft-v5-proposal.html --design-page --design-query "goal=fund&page=draft&device=m&bar=0"
+//         （去掉手机外壳后 .app = 390 宽，截整页；默认比页身：实现侧从 --page-top（默认 = 状态栏 50）起、设计侧从 .page 顶起同高；
+//         滚动后的画面用 --region / --design-region 对位）。
 //   选项：--scale 3（截图像素 / 点，默认按设计宽 390 自动推算）；--design-click "<画框内选择器>"（先在画板里点开抽屉 / 弹层）；
 //         --design-remove "<画框内选择器>"；--attribution <json> --grid-view <key>（同 Web 版，只认 [data] / [raster]）。
 //   批量（门禁提速，2026-10-12）：--suite scripts/visual/views/app-<Sprint>.json [--only a,b] [--changed [ref]] --simulator booted --out <dir>
@@ -48,8 +51,10 @@ const useCache = !(args["no-cache"] || args.cache === "false");
 // ---------- 设计稿画板（带缓存）----------
 const designScale = (v) => Number(v["design-scale"] ?? 3);
 let browser;
+const pageMode = (v) => v["design-page"] === true || v["design-page"] === "true";
 async function designFor(v) {
   if (v.section !== undefined) return specDesignFor(v);
+  if (pageMode(v)) return pageDesignFor(v);
   const hash = !/^https?:/.test(v.design) && useCache ? designInputsHash(DESIGN_DIR, v.design) : null;
   const cache = hash ? designCache({ v: 3, app: true, font: APP_DESIGN_FONT_FIX, frame: "top", scale: designScale(v), hash, design: v.design, board: v.board ?? null, boardIndex: v["board-index"] ?? null, kind: v["board-kind"] ?? "phone", nth: v["board-nth"] ?? null, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]), keepSystem: v["keep-system"] === "true" }) : null;
   const meta = cache?.meta();
@@ -101,6 +106,54 @@ async function designFor(v) {
     let png = readPng(file);
     if (scale !== 1) { png = resize(png, Math.round(png.width / scale), Math.round(png.height / scale)); writePng(file, png); }
     if (cache) { cache.saveMeta({ board }); cache.savePng("frame", file); }
+    return { png, board, cached: false };
+  } finally {
+    await ctx.close();
+  }
+}
+
+// ---------- 设计稿整页（R36b；口径同 compare-redesign.mjs 的 --design-page + --design-as-mweb，R36a）----------
+// 没有画板的整页原型（plan-draft-v5-proposal.html）：`--design-query "goal=fund&page=draft&device=m&bar=0"` 选状态，
+// 原型里 `.m .app` 是手机外壳（.stage 内边距、10px 边框、圆角、阴影）→ 去掉后 `.app` 就是 390 宽的屏幕内容；
+// 同样 3x 渲染 + SF 字体映射再缩到 1x。截的是整页（自然高度），比对时默认取顶部与截图同高的一段
+// （`--design-region` / `--region` 另给时按它们裁：滚动后的画面、底部 dock 各自对）。
+async function pageDesignFor(v) {
+  const width = Number(v.width ?? 390);
+  const query = v["design-query"] ? String(v["design-query"]).replace(/^\?/, "") : "";
+  const hash = !/^https?:/.test(v.design) && useCache ? designInputsHash(DESIGN_DIR, v.design) : null;
+  const cache = hash ? designCache({ v: 4, app: true, page: true, font: APP_DESIGN_FONT_FIX, scale: designScale(v), hash, design: v.design, query, width, theme: v.theme, click: many(v["design-click"]), remove: many(v["design-remove"]) }) : null;
+  const meta = cache?.meta();
+  const hit = meta && cache.png("page");
+  if (hit) return { png: hit, board: meta.board, cached: true };
+  browser ??= await chromium.launch({ channel: args.channel ?? "chrome" });
+  const scale = designScale(v);
+  const ctx = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: scale, locale: "ja-JP" });
+  try {
+    const page = await ctx.newPage();
+    await page.goto(designUrl(v.design) + (query ? `?${query}` : ""), { waitUntil: "load" });
+    await page.evaluate(() => document.fonts?.ready);
+    await page.evaluate(() => document.body.classList.add("no-pins"));
+    if (v["keep-design-font"] !== "true") await page.evaluate(appDesignFontFix);
+    await page.waitForTimeout(Number(v["design-wait"] ?? 1600));
+    for (const sel of many(v["design-click"])) { await page.locator(sel).first().click(); await page.waitForTimeout(300); }
+    await page.evaluate(({ theme, removes, width }) => {
+      document.documentElement.setAttribute("data-theme", theme);
+      document.body.style.margin = "0";
+      for (const sel of removes) for (const el of document.querySelectorAll(sel)) el.remove();
+      for (const el of document.querySelectorAll(".stage")) el.style.padding = "0";
+      for (const el of document.querySelectorAll(".app")) Object.assign(el.style, { maxWidth: `${width}px`, width: `${width}px`, border: "0", borderRadius: "0", boxShadow: "none" });
+    }, { theme: v.theme, removes: many(v["design-remove"]), width });
+    await page.waitForTimeout(300);
+    const app = await page.$(".app");
+    if (!app) throw Object.assign(new Error("design page has no .app（整页模式只认 plan-draft-v5 这类原型）"), { code: 3 });
+    const naturalHeight = Math.ceil((await app.boundingBox()).height);
+    mkdirSync(v.out, { recursive: true });
+    const file = join(v.out, "design.png");
+    await app.screenshot({ path: file, animations: "disabled" });
+    let png = readPng(file);
+    if (scale !== 1) { png = resize(png, Math.round(png.width / scale), Math.round(png.height / scale)); writePng(file, png); }
+    const board = { index: -1, label: `整页 ${v.design}?${query}`, kind: "page", page: true, theme: v.theme, size: [width, naturalHeight] };
+    if (cache) { cache.saveMeta({ board }); cache.savePng("page", file); }
     return { png, board, cached: false };
   } finally {
     await ctx.close();
@@ -203,12 +256,18 @@ function compareShot(v, designPng, board, shotFile) {
   const statusPt = v["keep-system"] === "true" ? 0 : Number(v["status-height"] ?? 50);
   const design = { ...designPng, data: Buffer.from(designPng.data) };
   // 规格格（spec）设计侧已经是那一格，不画状态栏；整屏画板才涂状态栏。
-  if (!board?.spec) for (const png of [design, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
+  // 整页原型（page）没有画状态栏：只涂实现侧（设计侧从 0 起就是页面内容，靠 --region / --design-region 对位）。
+  if (!board?.spec) for (const png of board?.page ? [app] : [design, app]) for (let y = 0; y < Math.min(statusPt, png.height); y++) png.data.fill(0x80, y * png.width * 4, (y + 1) * png.width * 4);
   // --region（实现侧 rect，设计点）/ --design-region（设计侧，另给时分侧裁）；规格格的设计侧不再裁。
   const screen = { width: app.width, height: app.height };
   const region = v.region ? parseRegion(v.region, screen) : null;
-  const designRegion = board?.spec ? null : v["design-region"] ? parseRegion(v["design-region"], { width: design.width, height: design.height }) : null;
-  const cropped = board?.spec ? { design, app: region ? crop(app, ...region) : app } : cropPair({ design, app, region, designRegion });
+  // 整页设计稿比截图高：没给裁剪时默认比「页身」——实现侧从 --page-top（状态栏 + 顶栏壳的高度，设计点）起到屏底，
+  // 设计侧从原型 .page 顶（0）起同高（口径同 R36a Web：原型 .page(+dock) ↔ 页身根元素，导航壳不在比对里）。
+  const pageTop = board?.page && !region && !v["design-region"] ? Number(v["page-top"] ?? statusPt) : 0;
+  const pageRegion = pageTop ? [0, pageTop, app.width, app.height - pageTop] : null;
+  const designRegion = board?.spec ? null : v["design-region"] ? parseRegion(v["design-region"], { width: design.width, height: design.height })
+    : board?.page && !region ? [0, 0, design.width, Math.min(design.height, app.height - pageTop)] : null;
+  const cropped = board?.spec ? { design, app: region ? crop(app, ...region) : app } : cropPair({ design, app, region: region ?? pageRegion, designRegion });
   writePng(join(v.out, "app.png"), cropped.app);
   writePng(join(v.out, "design.png"), cropped.design);
   const result = compareImages({

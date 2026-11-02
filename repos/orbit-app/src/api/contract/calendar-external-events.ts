@@ -9,7 +9,12 @@ export interface CalendarExternalEventContract {
 }
 
 export interface CalendarExternalEventsContract {
-  connection: "connected" | "not_connected" | "needs_reconnect" | "unavailable";
+  /**
+   * "off" (2026-10-28, appended): this deployment does not offer Google Calendar at all (no integration key), so
+   * clients show nothing about it — not a connect button, not an error. "unavailable" stays a real read failure.
+   * Clients that predate "off" read it as "unavailable" (tolerantEnum fallback).
+   */
+  connection: "connected" | "not_connected" | "needs_reconnect" | "unavailable" | "off";
   provider: "google_calendar";
   events: CalendarExternalEventContract[];
   asOf: string;

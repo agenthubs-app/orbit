@@ -10,10 +10,12 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 
-import { maintenanceHeartbeatEnabled } from "../../features/operations/maintenance/configured";
+import { maintenanceHeartbeatEnabled, maintenanceHeartbeatSwitchedOff } from "../../features/operations/maintenance/configured";
 import {
   ensureMaintenanceHeartbeat,
   ensureMaintenanceHeartbeatSchema,
+  PARKED_MAINTENANCE_HEARTBEAT_DUE_AT,
+  parkMaintenanceHeartbeat,
   processMaintenanceHeartbeat,
   type MaintenanceDeploymentIdentity,
   type MaintenanceHeartbeatMessage,
@@ -32,6 +34,12 @@ test("heartbeat is disabled off Vercel and with ORBIT_MAINTENANCE_HEARTBEAT=0", 
   assert.equal(maintenanceHeartbeatEnabled({ VERCEL: "1" } as unknown as NodeJS.ProcessEnv), true);
   assert.equal(maintenanceHeartbeatEnabled({ ORBIT_MAINTENANCE_HEARTBEAT: "0", VERCEL: "1" } as unknown as NodeJS.ProcessEnv), false);
   assert.equal(maintenanceHeartbeatEnabled({} as unknown as NodeJS.ProcessEnv), false);
+});
+
+test("only an explicit ORBIT_MAINTENANCE_HEARTBEAT=0 on Vercel parks a live chain; local runs never do", () => {
+  assert.equal(maintenanceHeartbeatSwitchedOff({ ORBIT_MAINTENANCE_HEARTBEAT: "0", VERCEL: "1" } as unknown as NodeJS.ProcessEnv), true);
+  assert.equal(maintenanceHeartbeatSwitchedOff({ VERCEL: "1" } as unknown as NodeJS.ProcessEnv), false);
+  assert.equal(maintenanceHeartbeatSwitchedOff({ ORBIT_MAINTENANCE_HEARTBEAT: "0" } as unknown as NodeJS.ProcessEnv), false);
 });
 
 test("Postgres: a newer build takes the chain over, the older build is superseded and can never take it back", { timeout: 60_000 }, async (t) => {
@@ -117,6 +125,79 @@ test("Postgres: a newer build takes the chain over, the older build is supersede
     const rebuilt = await ensureMaintenanceHeartbeat({ identity: BUILD_A, now, pool, send, workspaceId });
     assert.equal(rebuilt.outcome, "started");
     assert.equal((await row())?.owner_deployment_id, "dpl_A");
+  } finally {
+    await pool.end();
+    await admin.query(`drop schema if exists ${schema} cascade`);
+    await admin.end();
+  }
+});
+
+const BUILD_C: MaintenanceDeploymentIdentity = { buildAt: "2026-10-03T15:00:00.000Z", deploymentId: "dpl_C" };
+const BUILD_OLD: MaintenanceDeploymentIdentity = { buildAt: "2026-10-01T00:00:00.000Z", deploymentId: "dpl_OLD" };
+
+test("Postgres: a switched-off build parks the chain an older build still runs; it stays parked until a newer build with the switch on", { timeout: 60_000 }, async (t) => {
+  const databaseUrl = process.env.ORBIT_MAINTENANCE_TEST_DATABASE_URL;
+  if (!databaseUrl) {
+    t.skip("explicit local maintenance test database not configured");
+    return;
+  }
+  const url = new URL(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(url.hostname), "maintenance tests require a local database");
+  assert.equal(url.pathname, "/orbit_reminder_test", "maintenance tests require the dedicated orbit_reminder_test database");
+  const schema = `maintenance_park_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+  url.searchParams.set("options", `-c search_path=${schema}`);
+  const pool = new Pool({ connectionString: url.toString(), max: 3 });
+  const workspaceId = "workspace:park";
+  let clock = Date.parse("2026-10-03T12:00:00.000Z");
+  const now = () => new Date(clock);
+  const sent: MaintenanceHeartbeatMessage[] = [];
+  const send = async (message: MaintenanceHeartbeatMessage) => { sent.push(message); };
+  let passes = 0;
+  const runPass = async () => { passes += 1; return pass(); };
+  const row = async () => (await pool.query("SELECT chain_id, next_due_at, owner_deployment_id, owner_build_at FROM orbit_maintenance_heartbeat WHERE workspace_id = $1", [workspaceId])).rows[0] as
+    { chain_id: string; next_due_at: Date; owner_deployment_id: string | null; owner_build_at: Date | null } | undefined;
+  try {
+    await admin.query(`create schema ${schema}`);
+    await ensureMaintenanceHeartbeatSchema(pool);
+    // No row yet: nothing to park.
+    assert.equal(await parkMaintenanceHeartbeat({ identity: BUILD_B, pool, workspaceId }), false);
+
+    // Build A (switch on) runs the chain.
+    const started = await ensureMaintenanceHeartbeat({ identity: BUILD_A, now, pool, send, workspaceId });
+    assert.equal(started.outcome, "started");
+    const tickA = sent.at(-1)!;
+
+    // An older build cannot park a newer owner's chain.
+    assert.equal(await parkMaintenanceHeartbeat({ identity: BUILD_OLD, pool, workspaceId }), false);
+    assert.equal((await row())?.chain_id, started.chainId);
+
+    // Build B (switch off) parks it: new chain id, far-future due time, B recorded as owner. Nothing is sent.
+    const sentBefore = sent.length;
+    assert.equal(await parkMaintenanceHeartbeat({ identity: BUILD_B, pool, workspaceId }), true);
+    const parked = await row();
+    assert.notEqual(parked?.chain_id, started.chainId);
+    assert.equal(parked?.next_due_at.toISOString(), PARKED_MAINTENANCE_HEARTBEAT_DUE_AT.toISOString());
+    assert.deepEqual([parked?.owner_deployment_id, parked?.owner_build_at?.toISOString()], ["dpl_B", BUILD_B.buildAt]);
+    assert.equal(sent.length, sentBefore);
+    // Parking again is a no-op.
+    assert.equal(await parkMaintenanceHeartbeat({ identity: BUILD_B, pool, workspaceId }), false);
+
+    // A's pending tick arrives at A: superseded, no pass, nothing re-sent. The chain is dead.
+    assert.equal((await processMaintenanceHeartbeat(tickA, { identity: BUILD_A, now, pool, runPass, send, workspaceId })).outcome, "superseded");
+    assert.equal(passes, 0);
+    assert.equal(sent.length, sentBefore);
+    // A's own consumers / cron call ensure, even days later: never overdue, not newer → no restart.
+    clock += 7 * 24 * 60 * 60 * 1_000;
+    assert.equal((await ensureMaintenanceHeartbeat({ identity: BUILD_A, now, pool, send, workspaceId })).outcome, "alive");
+    assert.equal(sent.length, sentBefore);
+    assert.equal((await row())?.chain_id, parked?.chain_id);
+
+    // A newer build with the switch back on takes it over and the chain runs again.
+    const resumed = await ensureMaintenanceHeartbeat({ identity: BUILD_C, now, pool, send, workspaceId });
+    assert.equal(resumed.outcome, "taken_over");
+    assert.deepEqual([sent.at(-1)!.chainId, sent.at(-1)!.seq], [resumed.chainId, 0]);
+    assert.ok((await row())!.next_due_at.getTime() < PARKED_MAINTENANCE_HEARTBEAT_DUE_AT.getTime());
   } finally {
     await pool.end();
     await admin.query(`drop schema if exists ${schema} cascade`);

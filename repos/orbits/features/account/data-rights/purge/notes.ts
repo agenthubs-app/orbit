@@ -3,7 +3,8 @@ import { inboxNotificationWriteSchema } from "../../../../shared/api-schema/inbo
 import { acquireSyncCommitOrderLock } from "../../../../features/sync/commit-order-lock";
 import { assertLocalAccountPurgeDatabase, assertLocalAccountPurgeTarget } from "./local-gate";
 
-const PERSONAL_COLLECTIONS = ["notes", "memo_extractions", "tasks", "task_mutations", "personal_schedule_items",
+// R33: contact_facts holds facts extracted from the account's memos, so it is purged with them.
+const PERSONAL_COLLECTIONS = ["notes", "memo_extractions", "contact_facts", "tasks", "task_mutations", "personal_schedule_items",
   "personal_schedule_mutations", "personal_schedule_occurrence_exceptions", "reminderPlans", "meetings"];
 
 async function remove(sql: TransactionalSqlExecutor, statement: string, values: readonly unknown[]): Promise<number> {

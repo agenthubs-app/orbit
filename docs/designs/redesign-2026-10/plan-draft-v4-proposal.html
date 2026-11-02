@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>计划初稿 v4 提案</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#fff;--surface-2:#F2EFF3;--surface-3:#EAE6EC;--line:rgba(40,30,50,.08);
+  --ink:#1E1A24;--ink-2:#5E5866;--ink-3:#6F6778;--ink-4:#C4BEC9;
+  --accent:#6E628A;--accent-soft:#E9E4F2;
+  --apricot:#F7ECDD;--apricot-ink:#8B602E;--lav:#ECE6F7;--lav-ink:#6E5C9A;
+  --coral-soft:#FBE7E1;--coral-text:#B83E23;--ok-soft:#E3F1EA;--ok-text:#447361;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E6EC;color:var(--ink);font:15px/1.55 -apple-system,"PingFang SC","Hiragino Sans",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;text-align:left}
+
+.proto{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 20px;background:#2A2532;color:#EDE9F2;font-size:13px}
+.proto .grp{display:flex;gap:4px;align-items:center}
+.proto .grp span{opacity:.7;margin-right:4px}
+.proto button{border:1px solid rgba(255,255,255,.18);color:#EDE9F2;border-radius:999px;padding:3px 10px;font-size:12px}
+.proto button.on{background:#EDE9F2;color:#2A2532}
+.proto .note{margin-left:auto;opacity:.65;font-size:12px}
+
+.stage{padding:24px 20px 60px;display:flex;justify-content:center}
+.app{position:relative;width:100%;max-width:1200px;min-height:820px;background:var(--bg);border-radius:22px;overflow:hidden;box-shadow:0 10px 40px rgba(30,20,40,.08);display:grid;grid-template-columns:72px 1fr}
+.rail{border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px 0;color:var(--ink-3);font-size:11px}
+.rail .lg{width:40px;height:40px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:600}
+.rail .it{display:flex;flex-direction:column;align-items:center;gap:2px}
+.rail .it.on{color:var(--ink);font-weight:600}
+.rail .ic{width:22px;height:22px;border-radius:7px;border:1.6px solid currentColor;opacity:.7}
+.main{min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:10px;padding:18px 28px 6px}
+.hdr .t{font-size:13px;color:var(--ink-3)}
+.hdr .ai{margin-left:auto;font-size:13px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:6px 12px}
+.page{width:100%;max-width:620px;margin:0 auto;padding:10px 24px 120px}
+
+/* home */
+.kick{font-size:12px;color:var(--ink-3);margin-bottom:8px}
+.concl{font-size:26px;line-height:1.4;font-weight:650;margin:0 0 10px;letter-spacing:.01em}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:28px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;border-radius:999px;padding:2px 10px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.c-ok{background:var(--ok-soft);color:var(--ok-text)} .c-mid{background:var(--apricot);color:var(--apricot-ink)} .c-no{background:var(--coral-soft);color:var(--coral-text)} .c-lav{background:var(--lav);color:var(--lav-ink)}
+button.chip{cursor:pointer}
+.now{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.now b{font-size:15px}
+.now span{font-size:12px;color:var(--ink-3)}
+.acts{display:grid;gap:10px}
+.act{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center;background:var(--surface);border-radius:18px;padding:14px 16px;box-shadow:0 1px 2px rgba(30,20,40,.04)}
+.act .no{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:14px}
+.act b{display:block;font-size:15px}
+.act small{display:block;font-size:12px;color:var(--ink-3);margin-top:1px}
+.act .go{color:var(--ink-4);font-size:18px}
+.next{display:flex;gap:8px;margin-top:12px;font-size:12px;color:var(--ink-3);align-items:center;flex-wrap:wrap}
+.next i{font-style:normal;color:var(--ink-4)}
+.links{margin-top:30px;background:var(--surface);border-radius:18px;overflow:hidden}
+.lk{display:flex;width:100%;align-items:center;gap:12px;padding:16px 18px;border-top:1px solid var(--line)}
+.lk:first-child{border-top:0}
+.lk b{font-size:15px}
+.lk span{font-size:12px;color:var(--ink-3)}
+.lk .go{margin-left:auto;color:var(--ink-4);font-size:18px}
+.lk .bar{display:flex;gap:2px;width:90px;height:6px;border-radius:3px;overflow:hidden;margin-left:auto}
+.lk .bar i{display:block;height:100%;filter:saturate(4) brightness(.82)}
+
+.dock{position:absolute;left:72px;right:0;bottom:0;display:flex;justify-content:center;padding:14px 24px 18px;background:linear-gradient(transparent,var(--bg) 35%)}
+.dock .in{width:100%;max-width:572px;display:grid;grid-template-columns:1fr 1.6fr;gap:8px}
+.btn{border-radius:999px;padding:12px 16px;background:var(--surface);font-size:14px;text-align:center;box-shadow:0 1px 2px rgba(30,20,40,.06)}
+.btn.pri{background:var(--ink);color:#fff}
+
+/* drawer */
+.scrim{position:absolute;inset:0;background:rgba(30,20,40,.18);opacity:0;pointer-events:none;transition:.2s;z-index:5}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:480px;max-width:100%;background:var(--bg);z-index:6;transform:translateX(102%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(30,20,40,.08)}
+.open .scrim{opacity:1;pointer-events:auto}
+.open .drawer{transform:none}
+.dh{display:flex;align-items:center;gap:10px;padding:18px 20px 10px}
+.dh .bk{width:32px;height:32px;border-radius:50%;background:var(--surface);display:grid;place-items:center;text-align:center}
+.dh b{font-size:17px}
+.db{overflow:auto;padding:4px 20px 40px;flex:1}
+.sec{font-size:12px;color:var(--ink-3);margin:18px 0 8px}
+.sec:first-child{margin-top:4px}
+.list{background:var(--surface);border-radius:18px;overflow:hidden}
+.row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;width:100%;padding:12px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.tile{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px}
+.row b{font-size:14px}
+.row small{display:block;font-size:12px;color:var(--ink-3)}
+.row .r{text-align:right;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.row .r b{display:block;color:var(--ink)}
+.found{color:var(--ok-text)} .miss{color:var(--apricot-ink)}
+.detail p{margin:0 0 14px;color:var(--ink-2);font-size:14px}
+.box{background:var(--surface);border-radius:18px;padding:14px 16px;margin-bottom:10px}
+.box h4{margin:0 0 8px;font-size:13px;color:var(--ink-3);font-weight:500}
+.box ol{margin:0;padding-left:20px;font-size:14px}
+.box ol li{margin:3px 0}
+.cand{display:flex;align-items:center;gap:10px;padding:6px 0}
+.av{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--lav-ink);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none}
+.cand small{display:block;color:var(--ink-3);font-size:12px}
+/* evidence blocks */
+.ev{background:var(--surface);border-radius:18px;padding:16px;margin-bottom:12px}
+.ev h4{margin:0 0 4px;font-size:15px}
+.ev .so{font-size:13px;color:var(--ink-2);margin:0 0 12px}
+.vr{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.vr:first-of-type{border-top:0}
+.vr>span:first-child{flex:1}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.num{background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.num b{display:block;font-size:18px}
+.num span{font-size:12px;color:var(--ink-2)}
+.src{display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:9px;background:var(--accent-soft);color:var(--lav-ink);font-size:10px;padding:0 4px;margin-left:3px;vertical-align:1px}
+.rk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.rk:first-of-type{border-top:0}
+.conf{position:absolute;z-index:8;width:280px;background:#2A2532;color:#EDE9F2;border-radius:12px;padding:12px 14px;font-size:12px;display:none}
+
+/* mobile */
+.m .stage{padding-top:28px}
+.m .app{max-width:390px;min-height:800px;grid-template-columns:1fr;border-radius:38px;border:10px solid #1E1A24}
+.m .rail{display:none}
+.m .hdr{padding:16px 18px 4px}
+.m .page{padding:6px 18px 120px}
+.m .concl{font-size:22px}
+.m .dock{left:0;padding:12px 14px 16px}
+.m .drawer{width:100%;transform:translateY(102%)}
+.m .open .drawer{transform:none}
+.m .nums{grid-template-columns:1fr 1fr}
+
+.diff{max-width:1200px;margin:0 auto 80px;padding:0 20px}
+.diff .card{background:#fff;border-radius:20px;padding:22px 26px}
+.diff h2{margin:0 0 10px;font-size:17px}
+.diff table{width:100%;border-collapse:collapse;font-size:13px}
+.diff th,.diff td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.diff th{color:var(--ink-3);font-weight:500}
+.m .diff{display:none}
+</style>
+</head>
+<body>
+<div class="proto">
+  <b>计划初稿 v4 提案 · 首屏只回答「现在先做什么」</b>
+  <div class="grp"><span>目标</span><button data-goal="fund" class="on">融资</button><button data-goal="sales">开拓客户</button><button data-goal="hire">招聘</button></div>
+  <div class="grp"><span>端</span><button data-view="web" class="on">Web</button><button data-view="m">手机</button></div>
+  <div class="note">数据全部是示例，组织名和数字未核实</div>
+</div>
+
+<div class="stage">
+<div class="app" id="app">
+  <nav class="rail"><div class="lg">O</div><div class="it"><i class="ic"></i>首页</div><div class="it"><i class="ic"></i>人脉</div><div class="it on"><i class="ic"></i>iOrbit</div><div class="it"><i class="ic"></i>活动</div><div class="it"><i class="ic"></i>Task</div></nav>
+  <div class="main">
+    <div class="hdr"><span class="t">制定计划 · 初稿</span><button class="ai" data-open="ai">让 AI 改 · 剩 3 次</button></div>
+    <div class="page" id="home"></div>
+  </div>
+  <div class="dock"><div class="in"><button class="btn">手动编辑</button><button class="btn pri">按此内容确定</button></div></div>
+  <div class="scrim" data-close></div>
+  <aside class="drawer"><div class="dh"><button class="bk" data-close>‹</button><b id="dt"></b></div><div class="db" id="db"></div></aside>
+  <div class="conf" id="conf"></div>
+</div>
+</div>
+
+<div class="diff"><div class="card">
+  <h2>和 v3 比，改了什么</h2>
+  <table>
+    <tr><th>v3</th><th>v4</th></tr>
+    <tr><td>一页四区：结论 / 找谁 / 为什么 / 风险，同时铺开</td><td>首屏只有：一句结论 + 现在这个阶段的 3 件事 + 两个入口</td></tr>
+    <tr><td>结论 60–80 字，带信心理由段落</td><td>结论 ≤30 字；信心只是一个标签，点开才看理由</td></tr>
+    <tr><td>6 类人逐个展开：描述、候选人、引荐提示、3 个问题</td><td>「完整计划」里每类人一行（图标 · 名称 · 分数 · 找到几人），点进去才看细节</td></tr>
+    <tr><td>调研区块 4 块 + 风险 3 条在主页面</td><td>「为什么这么排」单独一页：一个判断表 + 一组数字 + 风险，最多 3 块</td></tr>
+    <tr><td>右侧常驻 AI 修改栏</td><td>右上角一个「让 AI 改」按钮</td></tr>
+  </table>
+</div></div>
+
+<script>
+const G = {
+fund: {
+  concl: "先补齐财务和合同，再去见投资人。",
+  verdict: ["可行", "c-ok"], conf: ["中", "日本早期融资的公开数据充分；但你的产品还没有收入数据，投资人会更看团队和早期用户，所以不是「高」。"],
+  stages: ["补财务与法务", "精准对话投资人", "活动带用户"],
+  now: [
+    ["约 佐藤 健 聊财务模型", "前 CFO · 你的人脉 · 名片 10/12", "佐"],
+    ["找一位投资协议律师", "请 佐藤 健 推荐", "⚖️"],
+    ["11/12 Startup Night 渋谷", "活动 · 约 40 位投资人与创业者", "🎟️"]
+  ],
+  types: [
+    [1, "📊", "#E8EEF8", "前 CFO", 10, 1, 1, "在高强度融资里把控过数字与资金规划，能帮首次融资的团队把模型讲清楚", [["佐", "佐藤 健", "前 CFO · 某 SaaS · 名片 10/12"]], ["首轮投资人最常追问哪三个数字？", "日本投资合同里哪些条款最容易吃亏？", "你会怎么拆我们的 18 个月资金用途？"]],
+    [1, "⚖️", "#EAF1EC", "律师（投资协议）", 10, 1, 0, "处理投资协议与公司设立手续的律师", [], ["种子轮常用的合同模板？", "股权与期权要先做哪些准备？", "费用大概多少？"]],
+    [2, "🧗", "#F6EEE2", "融资过的创业者", 15, 3, 2, "在日本从零完成过种子轮的创业者", [["山", "山本 彩", "创始人 · 已完成种子轮"], ["李", "李 明", "联合创始人 · 跨境 SaaS"]], ["第一张投资意向书是怎么拿到的？", "哪位投资人值得先见？能否引荐？", "路演材料里哪一页最关键？"]],
+    [2, "👼", "#FBF0D9", "天使投资人", 10, 2, 0, "愿意用小额资金和引荐支持新团队的个人投资人", [], ["你判断早期项目最看重什么？", "日本天使通常的投资额与条件？", "还有哪些人可能感兴趣？"]],
+    [2, "🏦", "#E9E6F4", "VC 合伙人", 30, 3, 1, "在种子轮评估日本市场落地能力的基金合伙人", [["田", "田中 誠", "パートナー · 某 VC"]], ["你们种子轮今年的投资节奏？", "日本本地化你最想看到什么证据？", "下一次见面前我们该准备什么？"]],
+    [3, "🏢", "#E6EEF0", "企业投资人（CVC）", 15, 3, 0, "在找新业务场景的企业投资部门负责人", [], ["你们现在找哪类业务合作？", "试点合作的决策流程多长？", "投资和业务合作哪个先谈？"]]
+  ],
+  events: 10,
+  table: ["先找哪类投资人", "日本早期投资方 7 类 → 按「投首轮 + 看海外团队」筛出 4 类", [["天使投资人", "首选"], ["VC 种子基金", "首选"], ["企业投资（CVC）", "可做"], ["政策性贷款", "可做"], ["大型成长基金", "不建议"]]],
+  nums: [["7,793 亿", "2024 日本初创融资总额（日元）"], ["36%", "新设 VC 基金中企业系占比"], ["67.9%", "开业资金来自金融机构借款"]],
+  risks: [["待核实", "c-mid", "日本天使常见投资额只在博客中看到，没有官方统计。"], ["风险", "c-no", "没有收入数据，VC 面谈可能停在第一轮。"]],
+  sources: 19
+},
+sales: {
+  concl: "先拿下 5 家试用客户，再借代理商铺开。",
+  verdict: ["可行", "c-ok"], conf: ["中", "展会与代理商信息充分；但产品在日本还没有案例，转化率只能参考同类 SaaS。"],
+  stages: ["找试用客户", "做出案例", "借渠道放大"],
+  now: [
+    ["约 鈴木 隆 聊试用", "物流公司代表 · 你的人脉 · 名片 10/15", "鈴"],
+    ["请 鈴木 隆 引荐行业协会", "协会会员交流会 11/26", "🏛️"],
+    ["12/03 Japan IT Week 秋", "活动 · 代理商密集", "🎟️"]
+  ],
+  types: [
+    [1, "🧭", "#E8EEF8", "中小企业经营者", 25, 5, 2, "员工 30–300 人、正在找效率工具的企业老板或业务负责人", [["鈴", "鈴木 隆", "代表取締役 · 物流"], ["高", "高橋 恵", "営業部長 · 制造业"]], ["现在用什么工具管客户？", "上一次换工具是谁拍板？", "试用 1 个月你最想看到什么结果？"]],
+    [1, "🏛️", "#E9E6F4", "行业协会负责人", 15, 1, 0, "协会事务局或会员企业负责人，能介绍会员企业", [], ["会员企业最近最头疼什么？", "协会有没有推荐工具的渠道？", "可以在交流会上做 5 分钟介绍吗？"]],
+    [2, "🧑‍💼", "#EAF1EC", "用过同类工具的人", 15, 3, 1, "用过竞品、知道哪里不好用的一线负责人", [["王", "王 磊", "运营经理 · 用过竞品 2 年"]], ["竞品哪里最不好用？", "当时为什么选它？", "换掉它的门槛是什么？"]],
+    [2, "📣", "#FBF0D9", "行业媒体 / KOL", 15, 2, 1, "在目标行业写测评或办研讨会的人", [["中", "中村 光", "编辑 · 行业媒体"]], ["你们怎么选测评产品？", "什么样的案例读者爱看？", "有没有合适的研讨会可以讲？"]],
+    [3, "🤝", "#F6EEE2", "代理商 / SIer", 20, 2, 0, "向大企业卖软件的代理商负责人", [], ["你们代理一个新产品看哪三点？", "分成通常怎么定？", "先从哪个客户试？"]]
+  ],
+  events: 10,
+  table: ["先打哪个渠道", "可用渠道 6 种 → 按「3 个月内能见到决策人」筛出 4 种", [["行业展会", "首选"], ["熟人引荐", "首选"], ["代理商", "可做"], ["线上广告", "不建议"]]],
+  nums: [["99.7%", "中小企业占日本企业总数"], ["约 3 个月", "中小企业采购新工具的决策周期"], ["2.1 万人", "Japan IT Week 秋 上届来场"]],
+  risks: [["待核实", "c-mid", "代理商分成 20–30% 来自同类 SaaS 访谈，行业差异大。"], ["风险", "c-no", "前 5 家试用做不出可公开的案例，阶段 3 会卡住。"]],
+  sources: 16
+},
+hire: {
+  concl: "先兼职找一位日本业务负责人，工程师远程招。",
+  verdict: ["可做", "c-mid"], conf: ["中", "招聘市场数据充分；但你的预算和签证情况没有确认，所以只给「可做」。"],
+  stages: ["找业务负责人", "远程补工程师", "日本全职团队"],
+  now: [
+    ["约 小林 翔 聊兼职加入", "事業開発 · 你的人脉 · 名片 10/01", "小"],
+    ["请 小林 翔 推荐一位猎头", "问清市场年薪", "🔎"],
+    ["11/18 Startup HR Meetup", "活动 · 创业公司 HR 与猎头", "🎟️"]
+  ],
+  types: [
+    [1, "🧭", "#E8EEF8", "日本业务负责人候选", 30, 3, 1, "在日本做过 B2B 业务开拓、愿意加入早期团队的人", [["小", "小林 翔", "事業開発 · 前外资 SaaS"]], ["你最想在早期团队做成什么？", "兼职起步你能接受吗？", "你身边还有谁合适？"]],
+    [1, "🔎", "#F6EEE2", "猎头 / 招聘顾问", 15, 2, 0, "专做外资与创业公司的猎头", [], ["这类岗位现在年薪多少？", "创业公司怎么打动候选人？", "你们怎么收费？"]],
+    [2, "💻", "#FBF0D9", "远程工程师社群主理人", 15, 2, 1, "运营海外工程师社群的人", [["陈", "陈 静", "社群主理人 · 越南开发者"]], ["远程工程师最在意什么？", "日本公司远程招聘常见坑？", "可以在社群里发招聘吗？"]],
+    [3, "⚖️", "#EAF1EC", "劳务士", 10, 1, 0, "处理雇佣合同、社保与签证手续的社会保险劳务士", [], ["兼职转全职要注意什么？", "外籍员工签证要多久？", "社保从什么时候开始交？"]]
+  ],
+  events: 10,
+  table: ["第一个人用什么方式招", "招聘方式 5 种 → 按「3 个月内能到岗 + 预算」筛出 3 种", [["兼职 / 顾问", "首选"], ["熟人引荐全职", "可做"], ["猎头全职", "不建议"]]],
+  nums: [["1.28 倍", "日本有效求人倍率（2025）"], ["800–1,200 万", "B2B 业务开发常见年薪（日元）"]],
+  risks: [["待核实", "c-mid", "年薪区间来自 2 家招聘网站的样本，样本量不大。"], ["风险", "c-no", "兼职负责人投入不足会拖慢阶段 1。"]],
+  sources: 14
+}};
+const VC = { "首选": "c-ok", "可做": "c-mid", "不建议": "c-no" };
+const TONES = ["#E8EEF8", "#F6EEE2", "#FBF0D9"];
+let goal = "fund";
+const $ = s => document.querySelector(s);
+
+function home() {
+  const g = G[goal];
+  const total = g.types.reduce((a, t) => a + t[4], 0) + g.events;
+  $("#home").innerHTML = `
+    <div class="kick">AI 初稿 · 根据你的背景、3 个回答和 ${g.sources} 个来源</div>
+    <h1 class="concl">${g.concl}</h1>
+    <div class="tags"><span class="chip ${g.verdict[1]}">${g.verdict[0]}</span><button class="chip c-lav" id="confBtn">信心 ${g.conf[0]} ⓘ</button></div>
+    <div class="now"><b>现在先做这 3 件</b><span>阶段 1 · ${g.stages[0]}</span></div>
+    <div class="acts">${g.now.map((a, i) => `<div class="act"><span class="no" style="background:${TONES[i]}">${a[2]}</span><div><b>${a[0]}</b><small>${a[1]}</small></div><span class="go">›</span></div>`).join("")}</div>
+    <div class="next">之后：<span>${g.stages[1]}</span><i>→</i><span>${g.stages[2]}</span></div>
+    <div class="links">
+      <button class="lk" data-open="plan"><div><b>完整计划</b><br><span>${g.types.length} 类人 · 3 个阶段 · 满分 ${total}</span></div><span class="bar">${g.types.map(t => `<i style="width:${t[4]}%;background:${t[2]}"></i>`).join("")}</span><span class="go">›</span></button>
+      <button class="lk" data-open="why"><div><b>为什么这么排</b><br><span>${g.sources} 个来源 · ${g.risks.length} 条风险与待核实</span></div><span class="go">›</span></button>
+    </div>`;
+}
+
+function openDrawer(kind, arg) {
+  const g = G[goal];
+  let t = "", h = "";
+  if (kind === "plan") {
+    t = "完整计划";
+    h = g.stages.map((s, i) => `<div class="sec">阶段 ${i + 1} · ${s}</div><div class="list">${g.types.map((x, j) => [x, j]).filter(([x]) => x[0] === i + 1).map(([x, j]) => `
+      <button class="row" data-type="${j}"><span class="tile" style="background:${x[2]}">${x[1]}</span><div><b>${x[3]}</b><small class="${x[6] ? "found" : "miss"}">${x[6] ? `人脉里找到 ${x[6]} 人` : "人脉里还没有"}</small></div><div class="r"><b>${x[4]} 分</b>目标 ${x[5]} 人</div></button>`).join("")}</div>`).join("")
+      + `<div class="sec">贯穿全程</div><div class="list"><div class="row"><span class="tile" style="background:#FBE7E1">🎟️</span><div><b>活动</b><small>每去一场加分</small></div><div class="r"><b>${g.events} 分</b>目标 2 场</div></div></div>`;
+  }
+  if (kind === "type") {
+    const x = g.types[arg]; t = x[3];
+    h = `<div class="detail"><p>${x[7]}</p>
+      <div class="box"><h4>你的人脉里可能是这类的</h4>${x[8].length ? x[8].map(c => `<div class="cand"><span class="av">${c[0]}</span><div><b>${c[1]}</b><small>${c[2]}</small></div></div>`).join("") : `<div style="font-size:14px;color:var(--apricot-ink)">还没有 · 可以请人引荐，或去相关活动</div>`}</div>
+      <div class="box"><h4>见面时问这 3 个问题</h4><ol>${x[9].map(q => `<li>${q}</li>`).join("")}</ol></div>
+      <div class="box"><h4>记分</h4><div style="font-size:14px">${x[4]} 分 · 目标 ${x[5]} 人 · 每认识 1 人加 ${Math.round(x[4] / x[5])} 分</div></div></div>`;
+  }
+  if (kind === "why") {
+    t = "为什么这么排";
+    h = `<div class="ev"><h4>${g.table[0]}</h4><p class="so">${g.table[1]}</p>${g.table[2].map((r, i) => `<div class="vr"><span>${r[0]}<i class="src">${i + 1}</i></span><span class="chip ${VC[r[1]]}">${r[1]}</span></div>`).join("")}</div>
+      <div class="ev"><h4>关键数字</h4><div class="nums">${g.nums.map((n, i) => `<div class="num"><b>${n[0]}</b><span>${n[1]}<i class="src">${i + 1}</i></span></div>`).join("")}</div></div>
+      <div class="ev"><h4>风险与待核实</h4>${g.risks.map(r => `<div class="rk"><span class="chip ${r[1]}">${r[0]}</span><span>${r[2]}</span></div>`).join("")}</div>
+      <div style="font-size:12px;color:var(--ink-3)">点编号可看原文片段、网址和抓取日期</div>`;
+  }
+  if (kind === "ai") {
+    t = "让 AI 改";
+    h = `<div class="box"><div style="font-size:14px;color:var(--ink-2)">还剩 3 次。想改哪里就直接说，比如「VC 先放一放，先找天使」。</div></div><div class="box" style="color:var(--ink-4);min-height:90px">输入想修改的内容</div>`;
+  }
+  $("#dt").textContent = t; $("#db").innerHTML = h; $("#db").dataset.back = kind === "type" ? "plan" : "";
+  $("#app").classList.add("open");
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("button,[data-close]");
+  $("#conf").style.display = "none";
+  if (!b) return;
+  if (b.dataset.goal) { goal = b.dataset.goal; document.querySelectorAll("[data-goal]").forEach(x => x.classList.toggle("on", x === b)); $("#app").classList.remove("open"); home(); }
+  if (b.dataset.view) { document.body.classList.toggle("m", b.dataset.view === "m"); document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x === b)); }
+  if (b.dataset.open) openDrawer(b.dataset.open);
+  if (b.dataset.type !== undefined) openDrawer("type", +b.dataset.type);
+  if (b.hasAttribute("data-close")) { if ($("#db").dataset.back) openDrawer($("#db").dataset.back); else $("#app").classList.remove("open"); }
+  if (b.id === "confBtn") { const c = $("#conf"), r = b.getBoundingClientRect(), a = $("#app").getBoundingClientRect(); c.textContent = G[goal].conf[1]; c.style.left = (r.left - a.left) + "px"; c.style.top = (r.bottom - a.top + 8) + "px"; c.style.display = "block"; e.stopPropagation(); }
+});
+home();
+</script>
+</body>
+</html>

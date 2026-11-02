@@ -9,6 +9,8 @@ import { createConfiguredAiQuotaGate, type AiQuotaGate } from "../../ai-quota/ga
 import type { LiveRecord, LiveRecordStore } from "../../../shared/storage/live-record-store";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import { createConfiguredStorageContactGraphProvider } from "../storage/contact-live-record-provider";
+import { accumulateContactFacts } from "../facts/accumulate";
+import { createLiveRecordContactFactStore } from "../facts/store";
 import { runMemoExtraction, type MemoExtractionJobInput, type MemoExtractionRecord, type MemoExtractionStore } from "./job";
 import { createConfiguredMemoExtractionProvider, type MemoExtractionProvider } from "./provider";
 
@@ -90,6 +92,8 @@ export async function runConfiguredMemoExtraction(
       gate: overrides.gate ?? createConfiguredAiQuotaGate(),
       provider: overrides.provider !== undefined ? overrides.provider : createConfiguredMemoExtractionProvider(),
       store: createLiveRecordMemoExtractionStore({ store: configured.store as unknown as StoreLike, workspaceId: configured.workspaceId }),
+      // R33：抽取成功后累积到 contact_facts（同一个 orbit_records 存储）。
+      accumulateFacts: (facts) => accumulateContactFacts(createLiveRecordContactFactStore({ store: configured.store as unknown as Parameters<typeof createLiveRecordContactFactStore>[0]["store"], workspaceId: configured.workspaceId }), facts),
       applyValues: async ({ actorId, contactId, values, at }) => {
         if (!contacts?.applyContactMemoExtraction) return [];
         return contacts.applyContactMemoExtraction(contactId, actorId, values, at);

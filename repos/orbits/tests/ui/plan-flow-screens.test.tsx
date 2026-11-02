@@ -8,13 +8,13 @@ import { createPlanV2Handlers } from "../../features/plans/v2/handlers";
 import { resetPlansV2MockRepositoryForTests } from "../../features/plans/v2/service-factory";
 import { bundle, errorsOf, launch, open } from "./support/orbit-2026-harness";
 import { SHELL_STUBS } from "./support/orbit-2026-shell-harness";
-import { confirmed, draftFixture, intakeFixture, premiseIntake, questionsIntake } from "./support/plan-flow-fixtures";
+import { confirmed, draftFixture, draftV3Fixture, intakeFixture, premiseIntake, questionsIntake } from "./support/plan-flow-fixtures";
 
 // R23 (UI-SPEC ① ② ③): the Web plan generation screens rendered for real. fetch is
 // stubbed in the page and every call is recorded, so each test asserts which
 // requests a step makes — and that ticking, choosing and typing make none.
 type Reply = { status: number; body: unknown };
-type Handler = { method: string; url: string; replies: Reply[] };
+type Handler = { method: string; url: string; replies: Reply[]; delay?: number };
 type Fixture = { view: "goal" | "flow" | "edit" | "overview" | "slot-error"; id?: string; lang?: string; handlers: Handler[] };
 type Call = { url: string; method: string; body?: any; lang?: string };
 
@@ -50,6 +50,7 @@ test.before(async () => {
       const handler = f.handlers[index];
       const n = counts[index] = (counts[index] ?? -1) + 1;
       const reply = handler.replies[Math.min(n, handler.replies.length - 1)];
+      if (handler.delay) await new Promise((resolve) => setTimeout(resolve, handler.delay));
       return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { "content-type": "application/json" } });
     };
     const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "overview" ? <PlanOverview planId={f.id} /> : f.view === "slot-error" ? <PlanSlotError /> : <PlanManualEditScreen draftId={f.id} />;
@@ -283,6 +284,161 @@ test("draft card: citations open by default on the Web and fold away; sources li
   assert.equal(await page.locator("[aria-current='step']").textContent(), "初版");
 });
 
+/* ---------- R36a: 初版 v3（plan-draft-v5 v16「初稿 · 确认」） ---------- */
+
+test("R36a v3 draft: the v16 page renders the conclusion, route, grouped types and evidence; missing blocks are not drawn; a v2 draft keeps the DraftCard", async (t) => {
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  const root = page.locator("[data-plan-draft-v3]");
+  await root.waitFor();
+  assert.equal(await root.getAttribute("data-plan-draft-total"), "100");
+  // 结论区：outcome · conclusion · summary（按 marks 加粗、引用标记：回答 / 来源号；指向不存在来源的标记跳过）· 判定 · 信心
+  await root.getByText("目標 · Five paying customers").waitFor();
+  assert.equal(await root.locator("h1").textContent(), draftFixture().content.conclusion);
+  assert.equal(await root.locator("[data-plan-v3-summary] u").textContent(), "Building is strong");
+  assert.equal(await root.locator("[data-plan-v3-summary] button").count(), 2, "answer marker + source 1; the missing source marker is skipped");
+  await root.locator("[data-plan-v3-summary]").getByRole("button", { name: "あなたの回答" }).click();
+  await root.locator("[data-plan-v3-ref]").getByText("あなたの回答「現在地」：完成・β 運用中").waitFor();
+  await root.locator("[data-plan-v3-summary]").getByRole("button", { name: "1" }).click();
+  await root.locator("[data-plan-v3-ref]").getByText("情報源 1：Card and contact apps").waitFor();
+  assert.equal(await root.locator("[data-plan-v3-verdict]").getAttribute("data-plan-v3-verdict"), "feasible");
+  await root.getByRole("button", { name: "確信度 中 ⓘ" }).click();
+  await root.getByText("The product is already in beta.").waitFor();
+  // 路线：3 个阶段，当前 = 第 1 个
+  assert.equal(await root.locator("[data-plan-v3-route] [aria-current='step']").textContent(), "1Say who it is for");
+  assert.equal(await root.locator("[data-plan-v3-route] > div").count(), 3);
+  // 按阶段分组的类型表：3 个阶段头（Step 1 有 2 类）、4 类 + イベント行、合计 100
+  const types = root.locator("[data-plan-v3-types]");
+  assert.deepEqual(await types.locator("b").filter({ hasText: /^ステージ/u }).allTextContents(), ["ステージ 1 · Say who it is for", "ステージ 2 · First paying customer", "ステージ 3 · Fill the missing skills"]);
+  assert.equal(await types.locator("[data-type]").count(), 5);
+  await types.getByText("4 タイプ · 12 人 · イベント 3 回").waitFor();
+  // 依据区：顺序理由 2 条（来源号 1 / 2 3）、对比条 3 行按判定、折叠态不画数字 / 风险 / 来源
+  const evidence = root.locator("[data-plan-v3-evidence]");
+  assert.equal(await evidence.getAttribute("data-plan-v3-evidence"), "closed");
+  assert.deepEqual(await evidence.locator("[data-plan-v3-cmp]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-plan-v3-cmp"))), ["preferred", "possible", "not_recommended"]);
+  assert.equal(await evidence.locator("[data-plan-v3-risk]").count(), 0);
+  await evidence.getByRole("button", { name: "さらに 1 個の数字、2 件のリスク、3 個の情報源を見る ▾" }).click();
+  assert.deepEqual(await evidence.locator("[data-plan-v3-risk]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-plan-v3-risk"))), ["risk", "unverified"]);
+  await evidence.getByText("未確認").waitFor();
+  assert.equal(await evidence.locator("[data-plan-v3-source]").count(), 3);
+  assert.equal(await evidence.locator("[data-plan-v3-source='S3']").getAttribute("data-plan-v3-stale"), "true", "a web source fetched over 180 days ago is marked");
+  assert.equal(await evidence.locator("[data-plan-v3-source='S2']").getAttribute("data-plan-v3-stale"), null);
+  await evidence.locator("[data-plan-v3-source='S3']").getByText("更新されている可能性あり").waitFor();
+  assert.equal(await evidence.locator("[data-plan-v3-source='S1']").getByRole("link", { name: "原文を見る ↗" }).getAttribute("href"), "https://example.org/l-012");
+  // 用到的你的信息：展开才读资料；读不到 → 「未記入」+ 補足；回答行照前提
+  await root.getByRole("button", { name: /あなたの資料と 1 個の回答/u }).click();
+  await root.getByText("現在地").waitFor();
+  assert.equal(await root.getByText("未記入", { exact: true }).count(), 4);
+  // 老画面入口不变：右栏 AI 修正 / 手動で編集 / この内容で確定
+  assert.equal(await page.locator("[data-plan-rail='draft']").getByRole("button", { name: "この内容で確定" }).isDisabled(), false);
+  assert.equal(await page.locator("[data-plan-rail='draft']").getByRole("button", { name: "手動で編集" }).count(), 1);
+  assert.equal(await page.locator("[data-plan-draft='']").count(), 0, "no DraftCard for a v3 draft");
+  assert.equal(await page.locator("[aria-current='step']").filter({ hasText: "初版" }).count(), 0, "v3: no five-step bar, the page is the prototype's whole screen");
+  assert.equal(await page.locator("[data-plan-premise]").count(), 0, "v3: the premise card is folded into the hero");
+
+  // 缺字段隐藏：没有对比条 / 关键数字 / 风险 / 来源 / 信心 / 判定 / outcome → 这些块一律不画
+  const bare = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture({}, { comparison: null, confidence: undefined, keyNumbers: [], outcome: undefined, risks: [], sources: [], verdict: undefined }))], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await bare.locator("[data-plan-draft-v3]").waitFor();
+  assert.equal(await bare.locator("[data-plan-v3-cmp], [data-plan-v3-verdict], [data-plan-v3-confidence], [data-plan-v3-risk]").count(), 0);
+  assert.equal(await bare.getByText(/^目標 · /u).count(), 0);
+  assert.equal(await bare.locator("[data-plan-v3-summary] button").count(), 1, "only the answer marker survives without sources");
+
+  // v2 退回：schemaVersion 缺省 → R23 DraftCard
+  const v2 = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftFixture())], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await v2.locator("[data-plan-draft='']").waitFor();
+  assert.equal(await v2.locator("[data-plan-draft-v3]").count(), 0);
+});
+
+test("R36a v3 adjust: counts, points and removals move the total with plan-allocation; ≠100 turns both confirm buttons off and names the total; confirm sends adjustments only when something changed", async (t) => {
+  const confirmReply = ok({ archivedV1PlanId: null, href: "/app/tasks?tab=plan&plan=p-1", planId: "p-1", replayed: false }, 201);
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [confirmReply], url: "/drafts/dr-1/confirm$" },
+  ], id: "in-1", view: "flow" });
+  const root = page.locator("[data-plan-draft-v3]");
+  await root.waitFor();
+  const row = (key: string) => root.locator(`[data-type='${key}']`);
+  const dockConfirm = root.locator("[data-plan-v3-confirm]");
+  const railConfirm = page.locator("[data-plan-rail='draft']").getByRole("button", { name: "この内容で確定" });
+  const total = () => root.getAttribute("data-plan-draft-total");
+  // 分量 +5 → 105：两个确定都禁用，dock 显示差值；再 −5 回到 100
+  await row("first_payer").locator("[data-plan-v3-points] button[aria-label='+5']").click();
+  assert.equal(await total(), "105");
+  assert.equal(await dockConfirm.isDisabled(), true);
+  assert.equal(await railConfirm.isDisabled(), true);
+  await root.getByText("配点の合計が 105 で、100 ではありません").waitFor();
+  await root.getByText("合計 105 / 100 点、確定する前に 100 にしてください").waitFor();
+  await row("first_payer").getByText("変更あり").waitFor();
+  await row("first_payer").locator("[data-plan-v3-points] button[aria-label='-5']").click();
+  assert.equal(await total(), "100");
+  assert.equal(await dockConfirm.isDisabled(), false);
+  assert.equal(await row("first_payer").getByText("変更あり").count(), 0);
+  // 人数：1–5 之间；分量：5–50 之间（到边界按钮禁用）
+  await row("first_payer").locator("[data-plan-v3-count] button[aria-label='-']").click();
+  assert.equal(await row("first_payer").locator("[data-plan-v3-count] b").textContent(), "4人");
+  assert.equal(await row("brand_pr").locator("[data-plan-v3-points] button[aria-label='+5']").isDisabled(), false);
+  for (let n = 0; n < 5; n++) await row("brand_pr").locator("[data-plan-v3-points] button[aria-label='+5']").click();
+  assert.equal(await row("brand_pr").locator("[data-plan-v3-points] b").textContent(), "50点");
+  assert.equal(await row("brand_pr").locator("[data-plan-v3-points] button[aria-label='+5']").isDisabled(), true);
+  for (let n = 0; n < 5; n++) await row("brand_pr").locator("[data-plan-v3-points] button[aria-label='-5']").click();
+  assert.equal(await total(), "100");
+  // 删一类（10 点）→ 90；它的分给第一类 → 100；删到只剩 1 类时删按钮禁用
+  await row("same_path_founder").locator("[data-plan-v3-remove]").click();
+  assert.equal(await row("same_path_founder").getAttribute("data-plan-v3-type-on"), "false");
+  assert.equal(await total(), "90");
+  assert.equal(await row("same_path_founder").locator("[data-plan-v3-count] button[aria-label='+']").isDisabled(), true, "a removed row's steppers are off");
+  await row("first_payer").locator("[data-plan-v3-points] button[aria-label='+5']").click();
+  await row("first_payer").locator("[data-plan-v3-points] button[aria-label='+5']").click();
+  assert.equal(await total(), "100");
+  await row("brand_pr").locator("[data-plan-v3-remove]").click();
+  await row("prior_product").locator("[data-plan-v3-remove]").click();
+  assert.equal(await row("first_payer").locator("[data-plan-v3-remove]").isDisabled(), true, "the last type cannot be removed");
+  await row("brand_pr").locator("[data-plan-v3-remove]").click();
+  await row("prior_product").locator("[data-plan-v3-remove]").click();
+  assert.equal(await total(), "100");
+  // 确定：带 adjustments（删掉的类型不在 personTypes 里、人数 / 分量是调整后的、expectedRevision = 草稿 revision）
+  await dockConfirm.click();
+  await page.waitForFunction(() => (window as any).shellFixture.calls.length > 0);
+  const [{ push }] = (await calls(page)) as { push: string }[];
+  assert.equal(push, "/app/tasks?tab=plan&plan=p-1");
+  const posted = (await fetches(page)).filter((call) => call.method === "POST");
+  assert.equal(posted.length, 1);
+  assert.deepEqual(posted[0]!.body.adjustments, {
+    event: { allocation: 15, targetCount: 3 },
+    expectedRevision: draftV3Fixture().revision,
+    personTypes: [
+      { allocation: 40, key: "first_payer", targetCount: 4 },
+      { allocation: 25, key: "brand_pr", targetCount: 2 },
+      { allocation: 20, key: "prior_product", targetCount: 2 },
+    ],
+  });
+
+  // 没动过：请求体只有 idempotencyKey（和改前逐字节相同）
+  const clean = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [confirmReply], url: "/drafts/dr-1/confirm$" },
+  ], id: "in-1", view: "flow" });
+  await clean.locator("[data-plan-draft-v3]").waitFor();
+  // 「作り直す」已接接口（R36a，用户 2026-11-02 拍板）：次数没用完、没手动编辑 → 可用；调一下再调回来也算没动过
+  assert.equal(await clean.locator("[data-plan-v3-redraft]").isDisabled(), false);
+  await clean.locator("[data-type='first_payer'] [data-plan-v3-count] button[aria-label='-']").click();
+  await clean.locator("[data-type='first_payer'] [data-plan-v3-count] button[aria-label='+']").click();
+  await clean.locator("[data-plan-v3-confirm]").click();
+  await clean.waitForFunction(() => (window as any).shellFixture.calls.length > 0);
+  const cleanPost = (await fetches(clean)).filter((call) => call.method === "POST");
+  assert.deepEqual(Object.keys(cleanPost[0]!.body), ["idempotencyKey"]);
+});
+
 test("fix bar: shows what is left; at 0 the input is off and only edit / confirm remain", async (t) => {
   const page = await screen(t, { handlers: [
     { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
@@ -466,7 +622,8 @@ test("mock end to end: goal input → background → questions → premise → d
   await page.getByRole("button", { name: "この前提で初版をつくる" }).click();
   await page.locator("[data-plan-draft]").waitFor();
   await page.locator("[data-plan-fix-left]").filter({ hasText: "3" }).waitFor();
-  await page.getByRole("button", { name: "この内容で確定" }).click();
+  // R36a: the mock first draft is v3, so the page has the rail's and the dock's 「この内容で確定」; the rail's is first.
+  await page.getByRole("button", { name: "この内容で確定" }).first().click();
   await page.waitForFunction(() => (window as any).shellFixture.calls.length > 0);
   const [{ push: done }] = (await calls(page)) as { push: string }[];
   assert.match(done, /^\/app\/tasks\?tab=plan&plan=/u);
@@ -612,4 +769,70 @@ test("人脈から選ぶ: the default list comes from member-candidates (no quer
   await page.getByRole("checkbox", { name: "Mio Mori" }).click();
   await page.locator("[data-plan-add-preview]").getByText("Mio Moriさんの「できること」").waitFor();
   assert.equal(await page.getByRole("button", { name: "1名を追加" }).isDisabled(), false);
+});
+
+// R36a「重新起草」：没动过 → 直接 POST …/redraft（body 只有 idempotencyKey），进行中显示生成中骨架，回来换成新稿、页上的调整作废；
+// 有未保存调整 → 先确认（取消不发请求）；次数用完 / 已手动编辑 → 按钮禁用。
+test("R36a v3 redraft: sends POST …/redraft, shows the drafting skeleton meanwhile and swaps in the new draft; unsaved adjustments ask first; used-up or hand-edited drafts disable the button", async (t) => {
+  const redrawn = draftV3Fixture({ aiFixUsed: 1, revision: "rev-2" }, { conclusion: "作り直した結論" });
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { delay: 300, method: "POST", replies: [ok(redrawn)], url: "/drafts/dr-1/redraft$" },
+  ], id: "in-1", view: "flow" });
+  const root = page.locator("[data-plan-draft-v3]");
+  await root.waitFor();
+  const redraft = root.locator("[data-plan-v3-redraft]");
+  assert.equal(await redraft.isDisabled(), false);
+  // 没动过：不问，直接发；进行中 = 生成中骨架（data-plan-drafting），回来 = 新稿、aiFixUsed +1
+  await redraft.click();
+  await page.locator("[data-plan-drafting]").waitFor();
+  assert.equal(await page.locator("[data-plan-redraft-ask]").count(), 0);
+  await page.locator("[data-plan-draft-v3] h1", { hasText: "作り直した結論" }).waitFor();
+  assert.equal(await page.locator("[data-plan-drafting]").count(), 0);
+  const posted = (await fetches(page)).filter((call) => call.method === "POST");
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0]!.url, "/api/agent/plans/drafts/dr-1/redraft");
+  assert.deepEqual(Object.keys(posted[0]!.body), ["idempotencyKey"]);
+  assert.equal(await page.locator("[data-plan-fix-left]").textContent(), "2");
+
+  // 有未保存调整 → 确认框：取消不发请求、调整还在；确认 → 发请求，回来后调整作废（新稿按 revision 重置）
+  const asked = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [ok(redrawn)], url: "/drafts/dr-1/redraft$" },
+  ], id: "in-1", view: "flow" });
+  const askedRoot = asked.locator("[data-plan-draft-v3]");
+  await askedRoot.waitFor();
+  await askedRoot.locator("[data-type='first_payer'] [data-plan-v3-points] button[aria-label='+5']").click();
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "105");
+  await askedRoot.locator("[data-plan-v3-redraft]").click();
+  const dialog = asked.locator("[data-plan-redraft-ask]");
+  await dialog.waitFor();
+  await dialog.getByText("いまの調整を捨てて、作り直しますか？").waitFor();
+  await dialog.getByText("AI 修正を 1 回使います（あと 2 回）").waitFor();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal(await dialog.count(), 0);
+  assert.equal((await fetches(asked)).filter((call) => call.method === "POST").length, 0, "cancel sends nothing");
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "105", "the adjustments stay");
+  await askedRoot.locator("[data-plan-v3-redraft]").click();
+  await asked.locator("[data-plan-redraft-confirm]").click();
+  await asked.locator("[data-plan-draft-v3] h1", { hasText: "作り直した結論" }).waitFor();
+  assert.equal((await fetches(asked)).filter((call) => call.method === "POST").length, 1);
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "100", "the unsaved adjustments are gone with the new draft");
+  assert.equal(await askedRoot.locator("[data-plan-v3-redraft]").isDisabled(), false);
+
+  // 次数用完 → 禁用；已手动编辑（manualEditAvailable false）→ 禁用
+  const usedUp = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture({ aiFixUsed: 3 }))], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await usedUp.locator("[data-plan-draft-v3]").waitFor();
+  assert.equal(await usedUp.locator("[data-plan-v3-redraft]").isDisabled(), true);
+  const edited = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture({ manualEditAvailable: false }))], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await edited.locator("[data-plan-draft-v3]").waitFor();
+  assert.equal(await edited.locator("[data-plan-v3-redraft]").isDisabled(), true);
 });

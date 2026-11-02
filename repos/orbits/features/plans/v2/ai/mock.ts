@@ -6,7 +6,8 @@ import { PLAN_GOAL_KIND_COPY, PLAN_SHORT_NAME_COPY, planCopy, type PlanCopyLangu
 import { guessGoalKindByKeywords, PLAN_EVENT_SLOT, PLAN_GOAL_TEMPLATES } from "../../../../shared/compute/plan-templates";
 import type { PlanGoalKind } from "../../../../shared/contract/plan-v2";
 import { ruleQuestions, stableNumber } from "./rules";
-import type { BackgroundOutput, DraftOutput, FixOutput, LadderOutput, PlanAiOutcome, PlanFlowAi } from "./types";
+import { checkDraftV3 } from "./schemas-v3";
+import type { BackgroundOutput, DraftOutput, DraftOutputV3, DraftSummarySentence, FirstDraftInputV3, FixOutput, LadderOutput, PlanAiOutcome, PlanFlowAi } from "./types";
 
 type Tri = Record<PlanCopyLanguage, string>;
 const pick = (text: Tri, language: PlanCopyLanguage) => text[language];
@@ -83,6 +84,170 @@ function draftFor(kind: PlanGoalKind, goalText: string, language: PlanCopyLangua
   };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* R33：v3 初版的固定输出（plan-v3/DESIGN.md §3.4；三种目标按设计稿示例写死，其余目标按模板生成）          */
+/* ------------------------------------------------------------------ */
+
+interface V3Copy {
+  outcome: Tri;
+  summary: Array<{ text: Tri; bold: Tri | null }>;
+  confidenceReason: Tri;
+  orderReasons: Tri[];
+  comparison: { title: Tri; funnel: Tri; rows: Array<{ label: Tri; score: number; verdict: "preferred" | "possible" | "not_recommended"; slot: string | null }> };
+  keyNumbers: Array<{ value: string; label: Tri }>;
+  risks: Array<{ kind: "risk" | "unverified"; text: Tri }>;
+}
+
+const V3_COPY: Partial<Record<PlanGoalKind, V3Copy>> = {
+  fundraising: {
+    outcome: { en: "A lead investor is decided", ja: "リード投資家が 1 社決まる", zh: "定下 1 家领投方" },
+    summary: [
+      { text: { en: "After seed, Series A rounds are led by VCs.", ja: "シード後のシリーズA は VC がリードするのが一般的です。", zh: "种子轮之后的 A 轮一般由 VC 领投。" }, bold: { en: "led by VCs", ja: "VC がリード", zh: "VC 领投" } },
+      { text: { en: "You already have one lead candidate, so start from VC partners.", ja: "リード候補が 1 社あるので、VC パートナーから当たるのが近道です。", zh: "已有 1 家领投候选，先从 VC 合伙人入手最快。" }, bold: null },
+      { text: { en: "CVCs can run in parallel once PoC terms are visible.", ja: "CVC は PoC の条件が見えてから並行で進められます。", zh: "CVC 等 PoC 条件明确后再并行推进。" }, bold: { en: "in parallel", ja: "並行で", zh: "并行推进" } },
+    ],
+    confidenceReason: { en: "One lead candidate is already in hand.", ja: "リード候補が 1 社ある", zh: "已有 1 家领投候选" },
+    orderReasons: [
+      { en: "Fix the numbers with a CFO before meeting investors.", ja: "投資家に会う前に CFO 経験者と数字を固める", zh: "见投资人之前先和 CFO 把数字定下来" },
+      { en: "VC partners decide the round; CVCs follow.", ja: "ラウンドを決めるのは VC パートナー、CVC は後から", zh: "VC 合伙人决定轮次，CVC 随后" },
+    ],
+    comparison: {
+      title: { en: "Which investors to meet first", ja: "先に会う投資家", zh: "先找哪类投资人" },
+      funnel: { en: "7 types narrowed to 5 by stage and ticket size", ja: "7 類型をステージと投資規模で 5 類型に", zh: "7 类按阶段和单笔规模筛出 5 类" },
+      rows: [
+        { label: { en: "VC partner", ja: "VC パートナー", zh: "VC 合伙人" }, score: 82, verdict: "preferred", slot: "vc_partner" },
+        { label: { en: "Funded founder", ja: "調達経験のある起業家", zh: "融过资的创业者" }, score: 64, verdict: "possible", slot: "funded_founder" },
+        { label: { en: "CVC", ja: "CVC", zh: "CVC" }, score: 55, verdict: "possible", slot: "cvc" },
+        { label: { en: "Angel", ja: "エンジェル", zh: "天使投资人" }, score: 48, verdict: "possible", slot: "angel" },
+        { label: { en: "Bank loan", ja: "銀行融資", zh: "银行贷款" }, score: 20, verdict: "not_recommended", slot: null },
+      ],
+    },
+    keyNumbers: [{ value: "3", label: { en: "VC partners to meet before a term sheet", ja: "タームシートまでに会う VC パートナーの目安", zh: "拿到条款书前要见的 VC 合伙人数" } }],
+    risks: [{ kind: "risk", text: { en: "Terms shift if the market cools.", ja: "市況が冷えると条件が変わる", zh: "市场转冷条件会变" } }, { kind: "unverified", text: { en: "CVC PoC budgets this year", ja: "今年の CVC の PoC 予算", zh: "今年 CVC 的 PoC 预算" } }],
+  },
+  launch: {
+    outcome: { en: "Five paying customers", ja: "有料顧客が 5 社つく", zh: "拿到 5 个付费客户" },
+    summary: [
+      { text: { en: "A first paying customer usually comes from direct conversations, not ads.", ja: "最初の有料顧客は広告ではなく直接の対話から生まれるのが普通です。", zh: "第一个付费客户通常来自直接对话而不是广告。" }, bold: { en: "direct conversations", ja: "直接の対話", zh: "直接对话" } },
+      { text: { en: "You are at beta, so the fastest proof is a few customers who pay.", ja: "ベータ段階なので、少数でも払ってくれる顧客がいちばんの証拠になります。", zh: "处在测试阶段，几个愿意付费的客户就是最好的证明。" }, bold: null },
+      { text: { en: "Founders who shipped before shorten the pricing decision.", ja: "先に出した起業家の話は、値付けの判断を短くします。", zh: "先发布过的创业者能缩短定价决策。" }, bold: { en: "pricing decision", ja: "値付けの判断", zh: "定价决策" } },
+    ],
+    confidenceReason: { en: "The product is already in beta.", ja: "すでにベータが動いている", zh: "产品已在测试" },
+    orderReasons: [
+      { en: "Paying customers first; brand later.", ja: "有料顧客が先、ブランドは後", zh: "先有付费客户，再做品牌" },
+      { en: "Talk to a shipped founder before you set a price.", ja: "値段を決める前に、出した起業家に聞く", zh: "定价前先问已发布的创业者" },
+    ],
+    comparison: {
+      title: { en: "Who to reach first", ja: "先に当たる相手", zh: "先接触谁" },
+      funnel: { en: "6 types narrowed to 4 by stage", ja: "6 類型をステージで 4 類型に", zh: "6 类按阶段筛出 4 类" },
+      rows: [
+        { label: { en: "First payer", ja: "最初の有料顧客", zh: "首批付费客户" }, score: 85, verdict: "preferred", slot: "first_payer" },
+        { label: { en: "Shipped founder", ja: "先に出した起業家", zh: "先发布过的创业者" }, score: 60, verdict: "possible", slot: "same_path_founder" },
+        { label: { en: "Brand / PR", ja: "ブランド・PR", zh: "品牌 / PR" }, score: 50, verdict: "possible", slot: "brand_pr" },
+        { label: { en: "Paid ads", ja: "広告出稿", zh: "投放广告" }, score: 15, verdict: "not_recommended", slot: null },
+      ],
+    },
+    keyNumbers: [{ value: "5", label: { en: "paying customers that prove the model", ja: "モデルの証明になる有料顧客数", zh: "能证明模式的付费客户数" } }],
+    risks: [{ kind: "risk", text: { en: "A beta that is free for too long is hard to price.", ja: "無料期間が長いほど値付けが難しくなる", zh: "免费期越长越难定价" } }],
+  },
+  sales: {
+    outcome: { en: "Three signed customers", ja: "成約が 3 社つく", zh: "签下 3 家客户" },
+    summary: [
+      { text: { en: "Enterprise deals move when a decision maker is in the room.", ja: "法人営業は決裁者が同席して初めて動きます。", zh: "企业销售要有决策者在场才会推进。" }, bold: { en: "decision maker", ja: "決裁者", zh: "决策者" } },
+      { text: { en: "Field leads tell you the real pain before the pitch.", ja: "現場リーダーは提案の前に本当の困りごとを教えてくれます。", zh: "一线负责人会在提案前告诉你真正的痛点。" }, bold: null },
+      { text: { en: "Introducers cut the first meeting from months to weeks.", ja: "紹介者がいると初回面談までが数か月から数週間になります。", zh: "有引荐人能把首次会面从几个月缩短到几周。" }, bold: { en: "months to weeks", ja: "数週間", zh: "几周" } },
+    ],
+    confidenceReason: { en: "Two field leads are already in your network.", ja: "現場リーダーが人脈に 2 人いる", zh: "人脉里已有 2 位一线负责人" },
+    orderReasons: [
+      { en: "Hear the field first, then go to the decision maker.", ja: "現場に聞いてから決裁者へ", zh: "先听一线，再找决策者" },
+      { en: "Introducers come in once you can name the account.", ja: "狙う会社が決まってから紹介者に頼む", zh: "定下目标客户后再找引荐人" },
+    ],
+    comparison: {
+      title: { en: "Who to meet first", ja: "先に会う相手", zh: "先见谁" },
+      funnel: { en: "6 types narrowed to 4 by deal stage", ja: "6 類型を商談段階で 4 類型に", zh: "6 类按商谈阶段筛出 4 类" },
+      rows: [
+        { label: { en: "Decision maker", ja: "決裁者", zh: "决策者" }, score: 80, verdict: "preferred", slot: "decision_maker" },
+        { label: { en: "Field lead", ja: "現場リーダー", zh: "一线负责人" }, score: 70, verdict: "possible", slot: "field_lead" },
+        { label: { en: "Introducer", ja: "紹介者", zh: "引荐人" }, score: 58, verdict: "possible", slot: "introducer" },
+        { label: { en: "Cold outbound", ja: "飛び込み営業", zh: "陌生拜访" }, score: 18, verdict: "not_recommended", slot: null },
+      ],
+    },
+    keyNumbers: [{ value: "3", label: { en: "accounts to run in parallel", ja: "並行して進める商談数の目安", zh: "并行推进的商谈数" } }],
+    risks: [{ kind: "unverified", text: { en: "Budget timing of the target accounts", ja: "狙う会社の予算時期", zh: "目标客户的预算周期" } }],
+  },
+};
+
+/** 没有写死文案的目标：从模板生成一份合规的 v3（第一类 preferred、其余 possible；理由段引用第一条来源 / 第一个回答）。 */
+function genericV3Copy(kind: PlanGoalKind, language: PlanCopyLanguage, slots: readonly string[]): V3Copy {
+  const field = planCopy(PLAN_GOAL_KIND_COPY[kind], language);
+  const label = (slot: string) => planCopy(PLAN_SHORT_NAME_COPY[slot] ?? { en: slot, ja: slot, zh: slot }, language);
+  const tri = (value: string): Tri => ({ en: value, ja: value, zh: value });
+  return {
+    comparison: {
+      funnel: tri(pick({ en: `${slots.length} types narrowed by how close they are to ${field}`, ja: `${slots.length} 類型を${field}への近さで絞る`, zh: `${slots.length} 类按与${field}的距离筛选` }, language)),
+      rows: slots.map((slot, index) => ({ label: tri(label(slot)), score: 80 - index * 10, slot, verdict: index === 0 ? "preferred" : "possible" })),
+      title: tri(pick({ en: "Who to meet first", ja: "先に会う相手", zh: "先见谁" }, language)),
+    },
+    confidenceReason: tri(pick({ en: "Based on the template for this goal.", ja: "この目標の型に沿っている", zh: "按这类目标的常规做法" }, language)),
+    keyNumbers: [],
+    orderReasons: [tri(pick({ en: `Start with ${label(slots[0]!)}; the rest follow.`, ja: `まず${label(slots[0]!)}、ほかはその後`, zh: `先找${label(slots[0]!)}，其余随后` }, language))],
+    outcome: tri(pick({ en: `First result in ${field}`, ja: `${field}の最初の成果`, zh: `${field}的第一个结果` }, language)),
+    risks: [],
+    summary: [{ bold: null, text: tri(pick({ en: `In ${field}, people who have done it are the fastest check of your premise.`, ja: `${field}では、実際にやった人の話が前提のいちばん早い確かめ方です。`, zh: `在${field}上，做过的人是验证前提最快的途径。` }, language)) }],
+  };
+}
+
+/** v3 初版（mock）：v2 的方案 + 设计稿示例；理由段只引用输入里的来源 / 回答（没有可引用的就没有理由段，交给校验器判「没能起草」）。 */
+export function mockDraftV3(input: FirstDraftInputV3, language: PlanCopyLanguage): DraftOutputV3 {
+  const base = draftFor(input.goalKind, input.goalText, language, [], input.contacts.map((contact) => contact.alias));
+  const slots = base.personTypes.map((type) => type.slot);
+  const copy = V3_COPY[input.goalKind] ?? genericV3Copy(input.goalKind, language, slots);
+  const sourceIds = input.sources.map((source) => source.id);
+  const refFor = (index: number) => {
+    const source = sourceIds[index % Math.max(1, sourceIds.length)];
+    if (source && (index < sourceIds.length || input.answerKeys.length === 0)) return { kind: "source" as const, sourceId: source };
+    const key = input.answerKeys[index % Math.max(1, input.answerKeys.length)];
+    return key ? { kind: "answer" as const, questionKey: key } : null;
+  };
+  const summary: DraftSummarySentence[] = copy.summary.map((sentence, index) => {
+    const ref = refFor(index);
+    return { bold: sentence.bold ? pick(sentence.bold, language) : null, refs: ref ? [ref] : [], text: pick(sentence.text, language) };
+  });
+  const firstSource = sourceIds.slice(0, 1);
+  // Step 2–4 个，每个人物类型都属于一个 Step（イベント枠放最后一个）。
+  // Step 2–4 个：人物类型两类一组，イベント枠单独最后一步（与 v2 mock 同为 4 步，设计稿 C 的「Step 3 / Step 4」样例照旧）；
+  // 组数到 3 时イベント并进最后一组，保证不超过 4 步。
+  const pairs: string[][] = [];
+  for (let index = 0; index < slots.length; index += 2) pairs.push(slots.slice(index, index + 2));
+  const groups = pairs.length >= 4 ? [...pairs.slice(0, 3), [...pairs.slice(3).flat(), PLAN_EVENT_SLOT]] : [...pairs, [PLAN_EVENT_SLOT]];
+  const stepCopy: Tri[][] = [
+    [{ en: "Hear from the people closest to the goal", ja: "目標にいちばん近い人に話を聞く", zh: "先听离目标最近的人怎么说" }, { en: "You can say in one line who this is for", ja: "誰のための何かを、一言で言える", zh: "能用一句话说清为谁做什么" }],
+    [{ en: "Work through the plan with the next group", ja: "次の相手と進め方を詰める", zh: "和下一批人理清做法" }, { en: "One person agrees to the next concrete step", ja: "次の具体的な一歩に、1 人が合意する", zh: "有 1 个人同意下一步" }],
+    [{ en: "Borrow strength from the rest", ja: "残りの相手の力を借りる", zh: "借助其余人的力量" }, { en: "A missing skill is covered by someone you can ask again", ja: "足りない力を、続けて頼める人が見つかる", zh: "找到能持续求助的人补上缺的能力" }],
+    [{ en: "Widen the circle at events", ja: "イベントで輪を広げる", zh: "在活动上扩大圈子" }, { en: "You leave an event with a follow-up you can act on", ja: "イベントのあと、動けるフォローが 1 件ある", zh: "活动后有 1 个能推进的跟进" }],
+  ];
+  return {
+    ...base,
+    comparison: {
+      funnel: pick(copy.comparison.funnel, language),
+      rows: copy.comparison.rows.map((row) => ({ label: pick(row.label, language), score: row.score, sourceIds: firstSource, typeKey: row.slot, verdict: row.verdict })),
+      title: pick(copy.comparison.title, language),
+    },
+    confidence: { level: "mid", reason: pick(copy.confidenceReason, language) },
+    keyNumbers: copy.keyNumbers.map((number) => ({ label: pick(number.label, language), sourceIds: firstSource, value: number.value })),
+    orderReasons: copy.orderReasons.map((line) => ({ sourceIds: firstSource, text: pick(line, language) })),
+    outcome: pick(copy.outcome, language),
+    risks: copy.risks.map((risk) => ({ kind: risk.kind, text: pick(risk.text, language) })),
+    steps: groups.map((keys, index) => {
+      const copy = keys.includes(PLAN_EVENT_SLOT) && keys.length === 1 ? stepCopy[3]! : stepCopy[Math.min(index, 2)]!;
+      return { doneCriteria: pick(copy[1]!, language), personTypeKeys: keys, title: pick(copy[0]!, language), why: null };
+    }),
+    summary,
+    verdict: "feasible",
+  };
+}
+
 const NO_CHANGE = /変更しない|変えない|そのまま|no change|keep it|不改|不用改/i;
 
 export function createMockPlanFlowAi(): PlanFlowAi {
@@ -102,6 +267,11 @@ export function createMockPlanFlowAi(): PlanFlowAi {
     },
     async firstDraft(input, context) {
       return ok(draftFor(input.goalKind, input.goalText, context.language, input.landscape.slice(0, 2).map((entry) => ({ id: entry.id, version: entry.version })), input.contacts.map((contact) => contact.alias)));
+    },
+    async firstDraftV3(input, context) {
+      // R35：mock 也过同一校验（R33 的固定输出 0 次修理通过）；校验不过就按真实实现一样报 failed，不交出半成品。
+      const checked = checkDraftV3(mockDraftV3(input, context.language), { aliases: new Set(input.contacts.map((contact) => contact.alias)), answerKeys: new Set(input.answerKeys), enforceTemplate: true, goalKind: input.goalKind, landscape: input.landscape, slots: input.slots, sources: input.sources });
+      return checked.ok === true ? ok(checked.value) : { ok: false, reason: "failed" };
     },
     async fix(input, context) {
       if (NO_CHANGE.test(input.request)) {

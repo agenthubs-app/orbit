@@ -1,0 +1,74 @@
+{
+ "_note": "R36b App 计划 v3 初稿页（plan-draft-v5-proposal.html v16「手机」·「初稿 · 确认」）。设计侧 = --design-page 整页模式（原型 ?goal=…&page=draft&device=m&bar=0，390 宽、3x 渲染再缩）；实现侧 = iPhone 16e 模拟器（iOS 26.0；iOS 27 上 App 启动即崩，见 R36b REPORT 交接）连 :3201 mock 服务器（launch.json orbits-plan-mock，ORBIT_REDESIGN_MOCK=plan-v2-summary，switch.mjs --name v16-all），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path，用 path 跳转（深链会弹系统确认框）。页身视图比 page-top 120 起（状态栏 50 + ShellTopBar 70）↔ 原型 .page 顶；*-dock 三条用 region / design-region 单独比屏底 80pt（原型 .dock 绝对定位贴 .app 底，整页截图落在页尾）。原型没有深色：深色三张只截图留档，不进门禁。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R36b.json",
+  "design": "plan-draft-v5-proposal.html",
+  "design-page": "true",
+  "themes": [
+   "light"
+  ],
+  "page-top": 120
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/plan/PlanDraftV3.tsx",
+  "repos/orbit-app/src/screens/plan/plan-draft-v3-model.ts",
+  "repos/orbit-app/src/screens/plan/PlanFlowScreen.tsx",
+  "repos/orbit-app/src/screens/plan/plan-flow-kit.tsx",
+  "repos/orbit-app/src/screens/plan/plan-kit.tsx",
+  "repos/orbit-app/src/i18n/ja/plan.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/Shell*.tsx"
+ ],
+ "views": [
+  {
+   "id": "A-R36b-fund",
+   "design-query": "goal=fund&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_fund",
+   "fixture": "v16-all",
+   "note": "融资 · 初稿 · 确认"
+  },
+  {
+   "id": "A-R36b-sales",
+   "design-query": "goal=sales&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_sales",
+   "fixture": "v16-all",
+   "note": "开拓客户 · 初稿 · 确认"
+  },
+  {
+   "id": "A-R36b-hire",
+   "design-query": "goal=hire&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_hire",
+   "fixture": "v16-all",
+   "note": "招聘 · 初稿 · 确认"
+  },
+  {
+   "design-query": "goal=fund&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_fund",
+   "fixture": "v16-all",
+   "id": "A-R36b-fund-dock",
+   "region": "0,764,390,80",
+   "design-region": "0,2321,390,80",
+   "note": "底部 dock 段单独比：原型 .dock 绝对定位贴 .app 底（整页截图落在页尾），实现 dock 固定在屏底"
+  },
+  {
+   "design-query": "goal=sales&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_sales",
+   "fixture": "v16-all",
+   "id": "A-R36b-sales-dock",
+   "region": "0,764,390,80",
+   "design-region": "0,2090,390,80",
+   "note": "底部 dock 段单独比：原型 .dock 绝对定位贴 .app 底（整页截图落在页尾），实现 dock 固定在屏底"
+  },
+  {
+   "design-query": "goal=hire&page=draft&device=m&bar=0",
+   "path": "/plans/flow/intake_v16_hire",
+   "fixture": "v16-all",
+   "id": "A-R36b-hire-dock",
+   "region": "0,764,390,80",
+   "design-region": "0,1987,390,80",
+   "note": "底部 dock 段单独比：原型 .dock 绝对定位贴 .app 底（整页截图落在页尾），实现 dock 固定在屏底"
+  }
+ ]
+}

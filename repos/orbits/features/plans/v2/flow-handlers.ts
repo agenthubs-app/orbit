@@ -8,7 +8,9 @@ import { z, type ZodType } from "zod";
 
 import {
   planConfirmResultSchema,
+  planDraftConfirmRequestSchema,
   planDraftFixRequestSchema,
+  planDraftRedraftRequestSchema,
   planDraftManualEditRequestSchema,
   planDraftViewSchema,
   planFlowStepRequestSchema,
@@ -146,13 +148,16 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     getDraft: flowRoute(planDraftViewSchema, async (service, _request, params, context) => ({ data: (await service.getDraft(params.draftId ?? "", context)) ?? notFound("draft") }), dependencies),
     /** POST …/fix：AI 修正（C7）。 */
     fix: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.fix(params.draftId ?? "", await body(request, planDraftFixRequestSchema), context) }), dependencies),
+    /** POST …/redraft：重新起草（R36a，占一次 AI 修正、不重新搜索）。 */
+    redraft: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.redraft(params.draftId ?? "", (await body(request, planDraftRedraftRequestSchema)).idempotencyKey, context) }), dependencies),
     /** POST …/reset：恢复到 AI 方案。 */
     reset: flowRoute(planDraftViewSchema, async (service, request, params, context) => ({ data: await service.reset(params.draftId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context) }), dependencies),
     /** POST …/manual-edit：手动编辑并确定。 */
     manualEdit: flowRoute(planConfirmResultSchema, async (service, request, params, context) => ({ data: await service.manualEdit(params.draftId ?? "", await body(request, planDraftManualEditRequestSchema), context), status: 201 }), dependencies),
-    /** POST …/confirm：确定。 */
+    /** POST …/confirm：确定（R36a：可带初稿页的 `adjustments`，不占手动编辑）。 */
     confirm: flowRoute(planConfirmResultSchema, async (service, request, params, context) => {
-      const result = await service.confirm(params.draftId ?? "", (await body(request, planFlowStepRequestSchema)).idempotencyKey, context);
+      const parsed = await body(request, planDraftConfirmRequestSchema);
+      const result = await service.confirm(params.draftId ?? "", parsed.idempotencyKey, context, parsed.adjustments);
       return { data: result, status: result.replayed ? 200 : 201 };
     }, dependencies),
 

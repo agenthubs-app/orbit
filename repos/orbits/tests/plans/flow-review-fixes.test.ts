@@ -129,17 +129,17 @@ test("m2: a failed first draft replayed with the same key returns the same error
   const ai = countingAi();
   const world = flowWorld({ ai });
   const premise = await premiseReady(world);
-  ai.next.firstDraft = { ok: false, reason: "failed" };
+  ai.next.firstDraftV3 = { ok: false, reason: "failed" };
   const draftKey = key("draft");
   await assert.rejects(world.flow.makeDraft(premise.intakeId, draftKey, JA), rejects("AI_FAILED"));
   await assert.rejects(world.flow.makeDraft(premise.intakeId, draftKey, JA), rejects("AI_FAILED"));
-  assert.equal(ai.calls.firstDraft, 1);
+  assert.equal(ai.calls.firstDraftV3, 1);
 });
 
 test("m17: AI inputs never carry contact, intake or draft ids", async () => {
   const inputs: unknown[] = [];
   const base = createMockPlanFlowAi();
-  const spy = countingAi({ ...base, background: async (input, context) => { inputs.push(input); return base.background(input, context); }, firstDraft: async (input, context) => { inputs.push(input); return base.firstDraft(input, context); }, members: async (input, context) => { inputs.push(input); return base.members(input, context); } });
+  const spy = countingAi({ ...base, background: async (input, context) => { inputs.push(input); return base.background(input, context); }, firstDraft: async (input, context) => { inputs.push(input); return base.firstDraft(input, context); }, firstDraftV3: async (input, context) => { inputs.push(input); return base.firstDraftV3(input, context); }, members: async (input, context) => { inputs.push(input); return base.members(input, context); } });
   const world = flowWorld({ ai: spy });
   const premise = await premiseReady(world);
   await world.flow.addMembers(premise.intakeId, { contactIds: ["demo-person-matsui"], idempotencyKey: key(), mode: "network" }, JA).catch(() => undefined);

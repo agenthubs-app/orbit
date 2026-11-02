@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>计划初稿 v3 提案</title>
+<style>
+:root{
+  --bg:#F7F5F7;--surface:#fff;--surface-2:#F2EFF3;--surface-3:#EAE6EC;--line:rgba(40,30,50,.08);
+  --ink:#1E1A24;--ink-2:#5E5866;--ink-3:#6F6778;--ink-4:#C4BEC9;
+  --accent:#6E628A;--accent-soft:#E9E4F2;
+  --apricot:#F7ECDD;--apricot-ink:#8B602E;--lav:#ECE6F7;--lav-ink:#6E5C9A;
+  --coral-soft:#FBE7E1;--coral-text:#B83E23;--ok:#5E9E86;--ok-soft:#E3F1EA;--ok-text:#447361;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E6EC;color:var(--ink);font:14px/1.55 -apple-system,"PingFang SC","Hiragino Sans",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+
+/* ---------- prototype controls (not product) ---------- */
+.proto{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 20px;background:#2A2532;color:#EDE9F2;font-size:13px}
+.proto b{font-weight:600}
+.proto .grp{display:flex;gap:4px;align-items:center}
+.proto .grp span{opacity:.7;margin-right:4px}
+.proto button{border:1px solid rgba(255,255,255,.18);background:transparent;color:#EDE9F2;border-radius:999px;padding:3px 10px;font-size:12px}
+.proto button.on{background:#EDE9F2;color:#2A2532}
+.proto .note{margin-left:auto;opacity:.65;font-size:12px}
+
+/* ---------- product shell ---------- */
+.stage{padding:24px 20px 60px;display:flex;justify-content:center}
+.app{width:100%;max-width:1320px;background:var(--bg);border-radius:22px;overflow:hidden;box-shadow:0 10px 40px rgba(30,20,40,.08);display:grid;grid-template-columns:72px 1fr}
+.rail{background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px 0;color:var(--ink-3);font-size:11px}
+.rail .lg{width:40px;height:40px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:600}
+.rail .it{display:flex;flex-direction:column;align-items:center;gap:2px}
+.rail .it.on{color:var(--ink);font-weight:600}
+.rail .ic{width:22px;height:22px;border-radius:7px;border:1.6px solid currentColor;opacity:.7}
+.main{min-width:0}
+.hdr{text-align:center;padding:16px 20px 8px;background:linear-gradient(180deg,#EFEAF5,var(--bg))}
+.hdr h1{margin:0;font-size:20px}
+.hdr p{margin:2px 0 0;color:var(--ink-3);font-size:13px}
+.bar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:6px 24px 14px}
+.bar div{font-size:12px;color:var(--ink-4);text-align:center}
+.bar div:before{content:"";display:block;height:4px;border-radius:4px;background:var(--surface-3);margin-bottom:6px}
+.bar .done{color:var(--ink-3)} .bar .done:before{background:var(--accent)}
+.bar .cur{color:var(--ink);font-weight:600} .bar .cur:before{background:var(--accent)}
+.body{display:grid;grid-template-columns:1fr 300px;gap:20px;padding:0 24px 28px;align-items:start}
+.card{background:var(--surface);border-radius:20px;box-shadow:0 1px 2px rgba(30,20,40,.04)}
+.zone{padding:22px 24px;border-bottom:1px solid var(--line)}
+.zone:last-child{border-bottom:0}
+.zh{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.zh .n{width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;display:grid;place-items:center;flex:none}
+.zh h2{margin:0;font-size:16px}
+.zh .sub{color:var(--ink-3);font-size:12px}
+.zh .r{margin-left:auto}
+.lbl{color:var(--ink-3);font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.c-ok{background:var(--ok-soft);color:var(--ok-text)} .c-mid{background:var(--apricot);color:var(--apricot-ink)} .c-no{background:var(--coral-soft);color:var(--coral-text)} .c-lav{background:var(--lav);color:var(--lav-ink)}
+.btn{border:0;border-radius:999px;padding:9px 16px;background:var(--surface-2);font-size:13px}
+.btn.pri{background:var(--ink);color:#fff}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+
+/* zone 1 */
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.concl{font-size:21px;line-height:1.45;font-weight:600;margin:0 0 12px;letter-spacing:.01em}
+.conf{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--ink-2)}
+.conf b{color:var(--ink)}
+.stages{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stg{border-radius:14px;padding:12px 14px;background:var(--lav);position:relative}
+.stg .k{font-size:11px;color:var(--lav-ink)}
+.stg b{display:block;margin:2px 0}
+.stg span{font-size:12px;color:var(--ink-2)}
+.stg.cur{background:var(--ink);color:#fff}
+.stg.cur .k,.stg.cur span{color:#D9D2E6}
+
+/* zone 2 */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:12px}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pt{display:grid;grid-template-columns:40px 1fr auto;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.pt:first-of-type{border-top:0}
+.tile{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:19px}
+.pt h3{margin:0;font-size:14px}
+.pt h3 i{font-style:normal;color:var(--ink-3);font-weight:500;margin-right:4px}
+.pt p{margin:2px 0 8px;color:var(--ink-2);font-size:13px}
+.score{text-align:right;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.score b{font-size:17px;color:var(--ink)}
+.cands{display:flex;flex-wrap:wrap;gap:8px}
+.cand{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:6px 10px 6px 6px;background:var(--surface)}
+.av{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--lav-ink);display:grid;place-items:center;font-size:12px;font-weight:600}
+.cand small{display:block;color:var(--ink-3);font-size:11px;line-height:1.3}
+.cand b{font-size:13px;line-height:1.3}
+.empty{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink-2);background:var(--apricot);border-radius:12px;padding:8px 10px}
+.empty b{color:var(--apricot-ink)}
+.more{margin-top:8px;font-size:12px;color:var(--accent);background:none;border:0;padding:0}
+.qs{margin:8px 0 0;padding:10px 14px 10px 30px;background:var(--surface-2);border-radius:12px;font-size:13px;color:var(--ink-2);display:none}
+.qs.show{display:block}
+.qs li{margin:2px 0}
+.ev{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px}
+.ev .d{width:40px;text-align:center;line-height:1.1;font-size:11px;color:var(--ink-3)}
+.ev .d b{display:block;font-size:16px;color:var(--ink)}
+
+/* zone 3 blocks */
+.blk{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:12px;position:relative}
+.blk h4{margin:0 0 10px;font-size:14px;display:flex;gap:8px;align-items:center}
+.btype{display:none;position:absolute;top:-9px;right:12px;background:#2A2532;color:#fff;font-size:10px;border-radius:6px;padding:1px 7px}
+.showtypes .btype{display:block}
+.blk.fold .bb{display:none}
+.blk .tg{margin-left:auto;font-size:12px;color:var(--accent);background:none;border:0;padding:0;font-weight:500}
+table.vt{width:100%;border-collapse:collapse;font-size:13px}
+.vt th{text-align:left;font-weight:500;color:var(--ink-3);font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.vt td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.vt tr:last-child td{border-bottom:0}
+.vt td:last-child{white-space:nowrap;text-align:right}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.num{background:var(--surface-2);border-radius:14px;padding:12px 14px}
+.num b{display:block;font-size:22px;letter-spacing:-.01em}
+.num span{font-size:12px;color:var(--ink-2)}
+.named{display:grid;gap:8px}
+.nm{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.nm:first-child{border-top:0;padding-top:0}
+.nm b{font-size:14px}
+.nm p{margin:0;grid-column:1/-1;font-size:13px;color:var(--ink-2)}
+.nm .how{grid-column:1/-1;font-size:12px;color:var(--ink-3)}
+ol.steps{margin:0;padding-left:20px;font-size:13px}
+ol.steps li{margin:4px 0}
+.cmp{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cmp>div{background:var(--surface-2);border-radius:14px;padding:12px 14px;font-size:13px}
+.cmp ul{margin:6px 0 0;padding-left:18px;color:var(--ink-2)}
+.src{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:var(--accent-soft);color:var(--lav-ink);font-size:11px;padding:0 5px;border:0;vertical-align:1px;margin-left:2px}
+.srcs{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.sx{font-size:11px;color:var(--ink-3);background:var(--surface-2);border-radius:8px;padding:2px 8px}
+.funnel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink-2);margin-bottom:12px}
+.funnel span{background:var(--surface-2);border-radius:8px;padding:3px 8px}
+.funnel i{font-style:normal;color:var(--ink-4)}
+
+/* zone 4 */
+.risk{display:grid;gap:8px}
+.rk{display:grid;grid-template-columns:auto 1fr;gap:10px;font-size:13px;align-items:start}
+.rk p{margin:0;color:var(--ink-2)}
+
+/* right rail */
+.side{display:grid;gap:12px;position:sticky;top:64px}
+.side .card{padding:16px 18px}
+.side h3{margin:0 0 8px;font-size:14px}
+.inp{border-radius:14px;background:var(--surface-2);padding:12px 14px;color:var(--ink-4);font-size:13px;margin-top:8px}
+.acts{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.left3{display:flex;align-items:baseline;gap:6px}
+.left3 b{font-size:30px}
+
+/* popover */
+.pop{position:fixed;z-index:50;max-width:340px;background:#2A2532;color:#EDE9F2;border-radius:12px;padding:12px 14px;font-size:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:none}
+.pop b{color:#fff}
+.pop q{display:block;margin:6px 0;color:#D9D2E6}
+.pop a{color:#C9BCF0}
+
+/* ---------- mobile frame ---------- */
+.m .stage{padding-top:28px}
+.m .app{max-width:390px;grid-template-columns:1fr;border-radius:38px;border:10px solid #1E1A24}
+.m .rail{display:none}
+.m .bar{padding:6px 14px 12px;gap:4px}
+.m .bar div{font-size:10px}
+.m .body{grid-template-columns:1fr;padding:0 10px 90px}
+.m .zone{padding:18px 16px}
+.m .concl{font-size:18px}
+.m .stages{grid-template-columns:1fr;gap:6px}
+.m .stg{padding:10px 12px}
+.m .pt{grid-template-columns:34px 1fr;}
+.m .pt .score{grid-column:2;text-align:left;order:-1}
+.m .tile{width:34px;height:34px;font-size:16px}
+.m .nums{grid-template-columns:1fr 1fr}
+.m .num b{font-size:18px}
+.m .cmp{grid-template-columns:1fr}
+.m .side{position:fixed;left:50%;transform:translateX(-50%);bottom:30px;width:350px;top:auto;grid-template-columns:1fr;z-index:10}
+.m .side .card:not(.dock){display:none}
+.m .side .dock{padding:10px;border-radius:22px;box-shadow:0 8px 30px rgba(30,20,40,.18)}
+/* table → cards on mobile */
+.m table.vt thead{display:none}
+.m table.vt,.m .vt tbody,.m .vt tr,.m .vt td{display:block;width:100%}
+.m .vt tr{border-bottom:1px solid var(--line);padding:8px 0;position:relative}
+.m .vt tr:last-child{border-bottom:0}
+.m .vt td{border:0;padding:1px 0}
+.m .vt td:first-child{font-weight:600;padding-right:80px}
+.m .vt td:last-child{position:absolute;top:8px;right:0}
+
+/* spec section */
+.spec{max-width:1320px;margin:0 auto 80px;padding:0 20px}
+.spec .card{padding:24px 28px;margin-bottom:16px}
+.spec h2{margin:0 0 4px;font-size:18px}
+.spec .lead{color:var(--ink-3);margin:0 0 14px}
+.spec table{width:100%;border-collapse:collapse;font-size:13px}
+.spec th{text-align:left;color:var(--ink-3);font-weight:500;font-size:12px;padding:8px;border-bottom:1px solid var(--line)}
+.spec td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;font-size:13px}
+.flow div{background:var(--surface-2);border-radius:14px;padding:12px}
+.flow b{display:block;margin-bottom:4px}
+.m .spec{display:none}
+</style>
+</head>
+<body>
+<div class="proto">
+  <b>计划初稿 v3 提案</b>
+  <div class="grp"><span>目标</span><button data-goal="fund" class="on">融资</button><button data-goal="sales">开拓客户</button><button data-goal="hire">招聘</button></div>
+  <div class="grp"><span>端</span><button data-view="web" class="on">Web</button><button data-view="m">手机</button></div>
+  <div class="grp"><button id="types">显示区块类型</button></div>
+  <div class="note">数据全部是示例，组织名和数字未核实</div>
+</div>
+
+<div class="stage">
+<div class="app" id="app">
+  <nav class="rail"><div class="lg">O</div><div class="it"><i class="ic"></i>首页</div><div class="it"><i class="ic"></i>人脉</div><div class="it on"><i class="ic"></i>iOrbit</div><div class="it"><i class="ic"></i>活动</div><div class="it"><i class="ic"></i>Task</div></nav>
+  <div class="main">
+    <div class="hdr"><h1>iOrbit</h1><p>制定计划 · 初稿</p></div>
+    <div class="bar"><div class="done">了解背景</div><div class="done">问题</div><div class="cur">初稿</div><div>AI 修改</div><div>手动编辑</div></div>
+    <div class="body">
+      <div class="card" id="draft"></div>
+      <aside class="side">
+        <div class="card">
+          <h3>AI 修改</h3>
+          <div class="left3"><span class="lbl">还剩</span><b>3</b><span class="lbl">次 / 共 3 次</span></div>
+          <div class="lbl" style="margin-top:6px">想改哪里就直接说，比如「VC 先放一放，先找天使」。</div>
+          <div class="inp">输入想修改的内容</div>
+        </div>
+        <div class="card dock">
+          <div class="acts"><button class="btn">手动编辑</button><button class="btn pri">按此内容确定</button></div>
+        </div>
+        <div class="card"><div class="lbl">确定后，第 ② 区会成为你的计划主页：每认识一类人就加分，候选人会出现在今日要事里。第 ③④ 区随时可以在「依据」里打开。</div></div>
+      </aside>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="spec">
+  <div class="card">
+    <h2>自由度的边界：骨架固定 · 区块可选 · 区块内有上限</h2>
+    <p class="lead">AI 只能从下面 6 种区块里挑，用哪几种由内容决定；前端为每种准备固定样式。超出上限时截断或改用别的区块，不会撑乱版面。</p>
+    <table>
+      <thead><tr><th>区块</th><th>什么时候用</th><th>上限</th><th>手机上</th><th>必须带来源</th></tr></thead>
+      <tbody>
+        <tr><td><b>判断表</b></td><td>比较几个方向 / 品类 / 渠道，并逐个表态</td><td>≤6 行，3–4 列；判断只能是 首选 / 可做 / 不建议</td><td>每行变一张小卡，判断放右上</td><td>每行 ≥1 个</td></tr>
+        <tr><td><b>关键数字</b></td><td>用 2–4 个数字撑住结论</td><td>2–4 个；数字 ≤8 字，说明 ≤30 字</td><td>两列</td><td>每个数字</td></tr>
+        <tr><td><b>点名清单</b></td><td>具体的组织 / 活动 / 机构 / 平台</td><td>≤5 条；每条「为什么」≤60 字 +「怎么接触」</td><td>不变</td><td>每条</td></tr>
+        <tr><td><b>编号步骤</b></td><td>有先后顺序的事（申请流程、准备材料）</td><td>3–6 步，每步 ≤40 字</td><td>不变</td><td>按需</td></tr>
+        <tr><td><b>对比</b></td><td>两三个做法的利弊</td><td>2–3 栏，每栏 ≤4 条</td><td>上下排</td><td>按需</td></tr>
+        <tr><td><b>风险与待核实</b></td><td>固定在第 ④ 区；没来源的说法只能放这里</td><td>≤5 条</td><td>不变</td><td>写明「没查到」</td></tr>
+      </tbody>
+    </table>
+    <p class="lead" style="margin-top:14px">第 ③ 区最多 4 块，默认展开前 2 块。不做时间线：计划没有期限，进度按「认识了几类人、去了几场活动」记分。</p>
+  </div>
+  <div class="card">
+    <h2>联网调研怎么做（学 Grok 报告）</h2>
+    <p class="lead">一份初稿一次调研，最多 12 次搜索；搜索词只用目标与行业，不带你的姓名、公司和联系人。</p>
+    <div class="flow">
+      <div><b>① 拆问题</b>从目标 + 背景 + 回答拆出 3–5 个要查的问题，按 点名 &gt; 规则门槛 &gt; 市场数据 排优先级</div>
+      <div><b>② 搜与读</b>每个问题搜 2–3 次，只读原文页面；记下网址、抓取日期和原文片段</div>
+      <div><b>③ 漏斗筛选</b>先列全量候选，再写明过滤条件逐层筛，筛掉的也说原因</div>
+      <div><b>④ 表态</b>每个结论给 首选 / 可做 / 不建议 + 信心；没有来源的只能进 ④ 区</div>
+      <div><b>⑤ 自我审计</b>写出没查到什么、哪里可能错、多久后需要重查</div>
+    </div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+
+<script>
+const GOALS = {
+fund: {
+  sources: 19,
+  conclusion: "先在 3 个月内补齐财务模型和投资合同准备，再用 10 场左右的精准面谈接触早期投资人；同时用线下活动攒出第一批用户数据，给融资故事加证据。",
+  verdict: ["可行", "c-ok"], first: "先做：补财务与法务",
+  conf: ["中", "日本早期融资的公开数据充分；但你的产品还没有收入数据，投资人会更看团队和早期用户，所以不是「高」。"],
+  stages: [["阶段 1", "补财务与法务", "让数字和合同经得起追问"], ["阶段 2", "精准对话投资人", "少而深的面谈，不广撒网"], ["阶段 3", "活动带用户", "把活动做成用户与投资人的共同入口"]],
+  types: [
+    { s: 1, e: "📊", bg: "#E8EEF8", L: "A", name: "前 CFO", pts: "10 分 · 1 人", role: "在高强度融资里把控过数字与资金规划，能帮首次融资的团队把模型讲清楚",
+      cands: [["佐", "佐藤 健", "前 CFO · 某 SaaS · 名片 10/12"]], qs: ["首轮投资人最常追问哪三个数字？", "日本投资合同里哪些条款最容易吃亏？", "你会怎么拆我们的 18 个月资金用途？"] },
+    { s: 2, e: "🧗", bg: "#F6EEE2", L: "B", name: "融资过的创业者", pts: "15 分 · 3 人", role: "在日本从零完成过种子轮的创业者，能给第一次融资的团队实战参照",
+      cands: [["山", "山本 彩", "创始人 · 已完成种子轮 · 活动 10/03"], ["李", "李 明", "联合创始人 · 跨境 SaaS"]], qs: ["第一张投资意向书是怎么拿到的？", "哪位投资人值得先见？能否引荐？", "路演材料里哪一页最关键？"] },
+    { s: 2, e: "👼", bg: "#FBF0D9", L: "C", name: "天使投资人", pts: "10 分 · 2 人", role: "对早期产品有兴趣、愿意用小额资金和引荐支持新团队的个人投资人",
+      cands: [], empty: ["请 山本 彩 引荐", "11/12 Startup Night 渋谷"], qs: ["你判断早期项目最看重什么？", "日本天使通常的投资额与条件？", "还有哪些人可能感兴趣？"] },
+    { s: 2, e: "🏦", bg: "#E9E6F4", L: "D", name: "VC 合伙人", pts: "30 分 · 3 人", role: "在种子轮评估日本市场落地能力的基金合伙人，关注用户增长与本地化路径",
+      cands: [["田", "田中 誠", "パートナー · 某 VC · 名片 09/28"]], qs: ["你们种子轮今年的投资节奏？", "日本本地化你最想看到什么证据？", "下一次见面前我们该准备什么？"] },
+    { s: 3, e: "🏢", bg: "#E6EEF0", L: "E", name: "企业投资人（CVC）", pts: "15 分 · 3 人", role: "在找新业务场景的企业投资部门负责人，能把产品接进公司内部的人脉与活动",
+      cands: [], empty: ["11/20 CVC Meetup 大手町", "通讯录里 2 位大企业员工可引荐"], qs: ["你们现在找哪类业务合作？", "试点合作的决策流程多长？", "投资和业务合作哪个先谈？"] },
+    { s: 1, e: "⚖️", bg: "#EAF1EC", L: "F", name: "律师（投资协议）", pts: "10 分 · 1 人", role: "处理投资协议与公司设立手续的律师，帮首次融资的团队把住条款与合规",
+      cands: [], empty: ["请 佐藤 健 推荐", "日本律师联合会 · 创业支援名单"], qs: ["种子轮常用的合同模板？", "股权与期权要先做哪些准备？", "费用大概多少？"] }
+  ],
+  events: [["11", "12", "Startup Night 渋谷", "预计 40 位投资人与创业者"], ["11", "20", "CVC Meetup 大手町", "企业投资部门为主"]],
+  blocks: [
+    { t: "判断表", h: "先找哪类投资人", funnel: ["日本早期投资方 7 类", "按「投首轮 + 看海外团队」筛", "剩 4 类", "按你的阶段排序"],
+      rows: [["天使投资人", "额度小但决策快，可以拿来验证故事", 1, "首选"], ["VC 种子基金", "主力资金，但要先有用户数据", 2, "首选"], ["企业投资（CVC）", "看业务合作价值，周期长", 3, "可做"], ["政策性贷款", "不稀释股权，但需要事业计划审查", 4, "可做"], ["大型成长基金", "种子阶段基本不看", 5, "不建议"]] },
+    { t: "关键数字", h: "支撑这个判断的数字", nums: [["7,793 亿日元", "2024 年日本初创企业融资总额", 1], ["36%", "企业系基金在新设 VC 基金中的占比", 2], ["67.9%", "开业资金中来自金融机构借款的比例", 4]] },
+    { t: "点名清单", h: "可以直接去接触的地方", named: [["J-Startup 公开活动", "政府主导的创业支持项目，常办投资人对接会", "官网活动日历报名", 3], ["日本政策金融公库 · 创业融资", "首次创业者可申请无担保贷款，可作为股权融资的补充", "线上预约面谈", 4], ["Startup Hub Tokyo", "东京都运营的免费创业据点，每周有投资人 office hour", "到场登记即可", 5]] },
+    { t: "编号步骤", h: "面谈前的准备", steps: ["财务模型：18 个月收支与关键假设", "一页纸：问题 · 方案 · 为什么是日本 · 为什么是我们", "早期用户数据：活动报名数、留存", "投资合同要点：请律师先过一遍"] }
+  ],
+  risks: [["待核实", "c-mid", "「日本天使通常投资 500 万–2,000 万日元」只在博客中看到，没有找到官方统计。"], ["风险", "c-no", "你目前没有收入数据，VC 面谈可能停在第一轮；阶段 3 的用户数据是关键。"], ["需重查", "c-lav", "融资额数据每年 1 次更新，2027 年 3 月后需要重查。"]],
+  src: { 1: ["initial.inc", "2024年スタートアップ資金調達額…", "10-28"], 2: ["nikkei.com", "CVCによる出資の先に何が起きているのか…", "10-28"], 3: ["j-startup.go.jp", "J-Startup Program イベント一覧", "10-29"], 4: ["jfc.go.jp", "2025年度 新規開業実態調査", "10-28"], 5: ["startuphub.tokyo", "Office Hours 毎週開催", "10-29"] }
+},
+sales: {
+  sources: 16,
+  conclusion: "先用 2 个行业展会找到 5 家愿意试用的中小企业，再借代理商把渠道铺到大企业；第一个月就把试用反馈做成案例，用案例去谈下一批。",
+  verdict: ["可行", "c-ok"], first: "先做：找试用客户",
+  conf: ["中", "目标行业的展会与代理商信息充分；但你的产品在日本还没有案例，转化率只能参考同类 SaaS。"],
+  stages: [["阶段 1", "找试用客户", "展会 + 引荐，先拿 5 家试用"], ["阶段 2", "做出案例", "把试用反馈写成可以给人看的案例"], ["阶段 3", "借渠道放大", "代理商与行业协会铺开"]],
+  types: [
+    { s: 1, e: "🧭", bg: "#E8EEF8", L: "A", name: "中小企业经营者", pts: "25 分 · 5 人", role: "员工 30–300 人、正在找效率工具的企业老板或业务负责人",
+      cands: [["鈴", "鈴木 隆", "代表取締役 · 物流 · 名片 10/15"], ["高", "高橋 恵", "営業部長 · 制造业"]], qs: ["现在用什么工具管客户？", "上一次换工具是谁拍板？", "试用 1 个月你最想看到什么结果？"] },
+    { s: 3, e: "🤝", bg: "#F6EEE2", L: "B", name: "代理商 / SIer", pts: "20 分 · 2 人", role: "向大企业卖软件的代理商负责人，能把产品放进他们的提案清单",
+      cands: [], empty: ["12/03 Japan IT Week 秋", "通讯录里 1 位前 SIer 员工可引荐"], qs: ["你们代理一个新产品看哪三点？", "分成通常怎么定？", "先从哪个客户试？"] },
+    { s: 2, e: "📣", bg: "#FBF0D9", L: "C", name: "行业媒体 / KOL", pts: "15 分 · 2 人", role: "在目标行业写测评或办研讨会的人，能把案例传出去",
+      cands: [["中", "中村 光", "编辑 · 行业媒体"]], qs: ["你们怎么选测评产品？", "什么样的案例读者爱看？", "有没有合适的研讨会可以讲？"] },
+    { s: 1, e: "🏛️", bg: "#E9E6F4", L: "D", name: "行业协会负责人", pts: "15 分 · 1 人", role: "协会事务局或会员企业负责人，能介绍会员企业",
+      cands: [], empty: ["行业协会 · 会员交流会 11/26", "请 鈴木 隆 引荐"], qs: ["会员企业最近最头疼什么？", "协会有没有推荐工具的渠道？", "可以在交流会上做 5 分钟介绍吗？"] },
+    { s: 2, e: "🧑‍💼", bg: "#EAF1EC", L: "E", name: "已用过同类工具的人", pts: "15 分 · 3 人", role: "用过竞品、知道哪里不好用的一线负责人",
+      cands: [["王", "王 磊", "运营经理 · 用过竞品 2 年"]], qs: ["竞品哪里最不好用？", "当时为什么选它？", "换掉它的门槛是什么？"] }
+  ],
+  events: [["11", "26", "行业协会 · 会员交流会", "约 60 家会员企业"], ["12", "03", "Japan IT Week 秋", "幕張メッセ · 代理商密集"]],
+  blocks: [
+    { t: "判断表", h: "先打哪个渠道", funnel: ["可用渠道 6 种", "按「3 个月内能见到决策人」筛", "剩 4 种", "按成本排序"],
+      rows: [["行业展会", "一次见到几十个决策人", 3, "首选"], ["熟人引荐", "成交率最高，但数量有限", 1, "首选"], ["代理商", "能进大企业，但要先有案例", 2, "可做"], ["线上广告", "日本 B2B 线上获客成本高", 4, "不建议"]] },
+    { t: "关键数字", h: "支撑这个判断的数字", nums: [["99.7%", "中小企业占日本企业总数的比例", 4], ["约 3 个月", "日本中小企业采购新工具的常见决策周期", 2], ["2.1 万人", "Japan IT Week 秋 上届来场人数", 3]] },
+    { t: "对比", h: "直接卖 vs 借代理商", cmp: [["直接卖", ["利润高、反馈快", "只能覆盖中小企业", "适合阶段 1–2"]], ["借代理商", ["能进大企业", "要分成 20–30%", "没有案例时代理商不接"]]] }
+  ],
+  risks: [["待核实", "c-mid", "「代理商分成 20–30%」来自同类 SaaS 访谈，不同行业差异大。"], ["风险", "c-no", "日本企业很看重案例，前 5 家试用如果做不出可公开的案例，阶段 3 会卡住。"]],
+  src: { 2: ["smrj.go.jp", "中小企業のIT導入実態調査", "10-29"], 3: ["japan-it.jp", "Japan IT Week 秋 来場者数", "10-29"], 4: ["chusho.meti.go.jp", "2025年版 中小企業白書", "10-28"] }
+},
+hire: {
+  sources: 14,
+  conclusion: "先找 1 位懂日本市场的业务负责人，用兼职或顾问身份起步；工程师先从海外远程招，等融资到位再在日本招全职。",
+  verdict: ["可做", "c-mid"], first: "先做：找业务负责人",
+  conf: ["中", "日本招聘市场数据充分；但你的预算和签证情况没有确认，所以只能给「可做」。"],
+  stages: [["阶段 1", "找业务负责人", "兼职 / 顾问起步"], ["阶段 2", "远程补工程师", "海外远程，控制成本"], ["阶段 3", "日本全职团队", "融资后再招"]],
+  types: [
+    { s: 1, e: "🧭", bg: "#E8EEF8", L: "A", name: "日本业务负责人候选", pts: "30 分 · 3 人", role: "在日本做过 B2B 业务开拓、愿意加入早期团队的人",
+      cands: [["小", "小林 翔", "事業開発 · 前外资 SaaS · 名片 10/01"]], qs: ["你最想在早期团队做成什么？", "兼职起步你能接受吗？", "你身边还有谁合适？"] },
+    { s: 1, e: "🔎", bg: "#F6EEE2", L: "B", name: "猎头 / 招聘顾问", pts: "15 分 · 2 人", role: "专做外资与创业公司的猎头，知道市场价和候选人去向",
+      cands: [], empty: ["请 小林 翔 推荐", "11/18 Startup HR Meetup"], qs: ["这类岗位现在年薪多少？", "创业公司怎么才能打动候选人？", "你们怎么收费？"] },
+    { s: 2, e: "💻", bg: "#FBF0D9", L: "C", name: "远程工程师社群主理人", pts: "15 分 · 2 人", role: "运营海外工程师社群的人，能帮你找到远程候选人",
+      cands: [["陈", "陈 静", "社群主理人 · 越南开发者"]], qs: ["远程工程师最在意什么？", "日本公司远程招聘常见坑？", "可以在社群里发招聘吗？"] },
+    { s: 3, e: "⚖️", bg: "#EAF1EC", L: "D", name: "劳务士", pts: "10 分 · 1 人", role: "处理雇佣合同、社保与签证手续的社会保险劳务士",
+      cands: [], empty: ["日本政策金融公库面谈时可咨询", "请 佐藤 健 推荐"], qs: ["兼职转全职要注意什么？", "外籍员工签证要多久？", "社保从什么时候开始交？"] }
+  ],
+  events: [["11", "18", "Startup HR Meetup", "创业公司 HR 与猎头"]],
+  blocks: [
+    { t: "判断表", h: "第一个人用什么方式招", funnel: ["招聘方式 5 种", "按「3 个月内能到岗 + 预算」筛", "剩 3 种", "按风险排序"],
+      rows: [["兼职 / 顾问", "成本低，先验证合不合拍", 1, "首选"], ["熟人引荐全职", "最快，但要给股票期权", 2, "可做"], ["猎头全职", "年薪 25–35% 的费用", 1, "不建议"]] },
+    { t: "关键数字", h: "支撑这个判断的数字", nums: [["1.28 倍", "日本有效求人倍率（2025 年平均）", 1], ["800–1,200 万", "日本 B2B 业务开发岗位常见年薪（日元）", 2]] },
+    { t: "编号步骤", h: "兼职起步要准备的", steps: ["写清 3 个月要做成的 2 件事", "业务委托合同（请劳务士看一遍）", "约定转全职的条件与期权"] }
+  ],
+  risks: [["待核实", "c-mid", "年薪区间来自 2 家招聘网站的岗位样本，样本量不大。"], ["风险", "c-no", "兼职负责人投入不足时容易拖慢阶段 1，建议约定每周最少时长。"]],
+  src: { 1: ["mhlw.go.jp", "一般職業紹介状況（2025年平均）", "10-29"], 2: ["doda.jp", "職種別平均年収ランキング", "10-29"] }
+}};
+
+let goal = "fund", stageF = 0;
+const $ = (s, r = document) => r.querySelector(s);
+const vclass = { "首选": "c-ok", "可做": "c-mid", "不建议": "c-no" };
+const sref = n => `<button class="src" data-src="${n}">${n}</button>`;
+
+function blockHtml(b, i) {
+  const fold = i >= 2 ? " fold" : "";
+  let inner = "";
+  if (b.t === "判断表") inner = `<div class="funnel">${b.funnel.map((f, j) => `<span>${f}</span>${j < b.funnel.length - 1 ? "<i>→</i>" : ""}`).join("")}</div>
+    <table class="vt"><thead><tr><th>选项</th><th>理由</th><th>判断</th></tr></thead><tbody>${b.rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}${sref(r[2])}</td><td><span class="chip ${vclass[r[3]]}">${r[3]}</span></td></tr>`).join("")}</tbody></table>`;
+  if (b.t === "关键数字") inner = `<div class="nums">${b.nums.map(n => `<div class="num"><b>${n[0]}</b><span>${n[1]}${sref(n[2])}</span></div>`).join("")}</div>`;
+  if (b.t === "点名清单") inner = `<div class="named">${b.named.map(n => `<div class="nm"><b>${n[0]}</b>${sref(n[3])}<p>${n[1]}</p><div class="how">怎么接触：${n[2]}</div></div>`).join("")}</div>`;
+  if (b.t === "编号步骤") inner = `<ol class="steps">${b.steps.map(s => `<li>${s}</li>`).join("")}</ol>`;
+  if (b.t === "对比") inner = `<div class="cmp">${b.cmp.map(c => `<div><b>${c[0]}</b><ul>${c[1].map(x => `<li>${x}</li>`).join("")}</ul></div>`).join("")}</div>`;
+  return `<div class="blk${fold}"><span class="btype">区块：${b.t}</span><h4>${b.h}<button class="tg">${fold ? "展开" : "收起"}</button></h4><div class="bb">${inner}</div></div>`;
+}
+
+function render() {
+  const g = GOALS[goal];
+  const types = g.types.filter(t => !stageF || t.s === stageF);
+  $("#draft").innerHTML = `
+  <section class="zone">
+    <div class="meta"><span class="lbl">AI 初稿 · 查了 ${g.sources} 个来源 · 用到你的背景和 3 个回答</span></div>
+    <p class="concl">${g.conclusion}</p>
+    <div class="meta"><span class="chip ${g.verdict[1]}">${g.verdict[0]}</span><span class="chip c-lav">${g.first}</span></div>
+    <div class="conf"><span class="chip c-mid">信心 ${g.conf[0]}</span><span>${g.conf[1]}</span></div>
+    <div class="stages">${g.stages.map((s, i) => `<div class="stg${i === 0 ? " cur" : ""}"><div class="k">${s[0]}${i === 0 ? " · 从这里开始" : ""}</div><b>${s[1]}</b><span>${s[2]}</span></div>`).join("")}</div>
+  </section>
+  <section class="zone">
+    <div class="zh"><span class="n">2</span><h2>下一步找谁、去哪</h2><span class="sub">满分 100 · 认识一类人就加分</span></div>
+    <div class="tabs"><button class="tab${stageF ? "" : " on"}" data-s="0">全部</button>${g.stages.map((s, i) => `<button class="tab${stageF === i + 1 ? " on" : ""}" data-s="${i + 1}">${s[0]} · ${s[1]}</button>`).join("")}</div>
+    ${types.map(t => `<div class="pt">
+      <div class="tile" style="background:${t.bg}">${t.e}</div>
+      <div><h3><i>${t.L}</i>${t.name}</h3><p>${t.role}</p>
+        ${t.cands.length ? `<div class="lbl" style="margin-bottom:6px">你的人脉里可能是这类的</div><div class="cands">${t.cands.map(c => `<div class="cand"><span class="av">${c[0]}</span><div><b>${c[1]}</b><small>${c[2]}</small></div></div>`).join("")}</div>`
+          : `<div class="empty"><b>人脉里还没有这类人</b>可以：${t.empty.map(x => `<span class="chip" style="background:#fff">${x}</span>`).join("")}</div>`}
+        <button class="more" data-q>见面时问这 3 个问题 ▾</button>
+        <ol class="qs">${t.qs.map(q => `<li>${q}</li>`).join("")}</ol>
+      </div>
+      <div class="score"><b>${t.pts.split(" · ")[0]}</b> · ${t.pts.split(" · ")[1]}</div>
+    </div>`).join("")}
+    <div class="lbl" style="margin:14px 0 8px">该去的活动 · 每去一场加分</div>
+    <div class="cands">${g.events.map(e => `<div class="ev"><div class="d">${e[0]}月<b>${e[1]}</b></div><div><b>${e[2]}</b><div class="lbl">${e[3]}</div></div></div>`).join("")}</div>
+  </section>
+  <section class="zone">
+    <div class="zh"><span class="n">3</span><h2>为什么这么排</h2><span class="sub">联网调研 · 每条都能点开来源</span></div>
+    ${g.blocks.map(blockHtml).join("")}
+    <div class="srcs">${Object.entries(g.src).map(([n, s]) => `<span class="sx">${n} ${s[0]}</span>`).join("")}</div>
+  </section>
+  <section class="zone">
+    <div class="zh"><span class="n">4</span><h2>风险与待核实</h2><span class="sub">没查到的、可能错的、要重查的</span></div>
+    <div class="risk">${g.risks.map(r => `<div class="rk"><span class="chip ${r[1]}">${r[0]}</span><p>${r[2]}</p></div>`).join("")}</div>
+  </section>`;
+  // zone 1 header label
+  $("#draft .zone").insertAdjacentHTML("afterbegin", `<div class="zh" style="margin-bottom:8px"><span class="n">1</span><h2>结论</h2></div>`);
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button");
+  const pop = $("#pop");
+  if (!t) { pop.style.display = "none"; return; }
+  if (t.dataset.goal) { goal = t.dataset.goal; stageF = 0; document.querySelectorAll("[data-goal]").forEach(b => b.classList.toggle("on", b === t)); render(); }
+  if (t.dataset.view) { document.body.classList.toggle("m", t.dataset.view === "m"); document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b === t)); }
+  if (t.id === "types") { document.body.classList.toggle("showtypes"); t.classList.toggle("on"); }
+  if (t.dataset.s !== undefined && t.classList.contains("tab")) { stageF = +t.dataset.s; render(); }
+  if (t.hasAttribute("data-q")) { const ol = t.nextElementSibling; ol.classList.toggle("show"); t.textContent = ol.classList.contains("show") ? "见面时问这 3 个问题 ▴" : "见面时问这 3 个问题 ▾"; }
+  if (t.classList.contains("tg")) { const b = t.closest(".blk"); b.classList.toggle("fold"); t.textContent = b.classList.contains("fold") ? "展开" : "收起"; }
+  if (t.dataset.src) {
+    const s = GOALS[goal].src[t.dataset.src]; if (!s) return;
+    pop.innerHTML = `<b>来源 ${t.dataset.src} · ${s[0]}</b><q>「${s[1]}」</q>抓取于 2026-${s[2]} · <a href="#">打开原文 ↗</a>`;
+    const r = t.getBoundingClientRect(); pop.style.display = "block";
+    pop.style.left = Math.min(r.left, innerWidth - 360) + "px"; pop.style.top = (r.bottom + 8) + "px";
+    e.stopPropagation(); return;
+  }
+  pop.style.display = "none";
+});
+render();
+</script>
+</body>
+</html>

@@ -13,12 +13,21 @@
  * 并发：认领是原子的（insert-if-absent 或以上一版 updatedAt 为前提的 CAS），只有认领胜者才会
  * reserve／beginCall／调用 provider；之后每次状态推进都是 CAS，丢失认领即停手。
  * 一条 memo 提取只 reserve 1 次操作；每次 HTTP 各有 beginCall／endCall；只由认领者调用一次 finish。
+ *
+ * R33（plan-v3/DESIGN.md §2.4）：
+ * - 成功写入后追加一步「累积到 `contact_facts`」（`deps.accumulateFacts`；失败只记 `factsError`，不影响提取本身）；
+ *   `memo_extractions` 记录与 `publicProfile` 的既有写入不变；
+ * - 超过 `MEMO_EXTRACTION_LIMITS.memoChars` 的备注切段（`segment.ts`）：每段一次 reserve（键 `<key>#<i>`，各占一次后台池
+ *   配额）、一次 beginCall／endCall／finish；每段成功即累积事实；某段失败 → 其余段照常、作业记 `failed` 并在 `segments.failed`
+ *   登记；某段被日限挡住 → 记 `deferred`（已成功的段结果保留在 `segmentOutputs`），到期重跑只做剩下的段。
+ *   联系人行的 offering / seeking / topics 在全部段结束后按合并结果写一次。
  */
 import { createHash, randomUUID } from "node:crypto";
 
 import type { AiQuotaGate } from "../../ai-quota/gate";
 import type { AppliedEnrichmentField, EnrichedValue } from "../enrichment/apply-enrichment";
-import { MEMO_EXTRACTION_PLAN_PROMPT_VERSION, MemoExtractionError, type MemoExtractionOutput, type MemoExtractionProvider } from "./provider";
+import { MEMO_EXTRACTION_LIMITS, MEMO_EXTRACTION_PLAN_PROMPT_VERSION, MemoExtractionError, type MemoExtractionOutput, type MemoExtractionProvider } from "./provider";
+import { segmentMemo } from "./segment";
 
 export type MemoExtractionStatus = "claimed" | "disabled" | "deferred" | "started" | "succeeded" | "failed";
 
@@ -45,6 +54,12 @@ export interface MemoExtractionRecord {
   error?: string;
   /** R24（C11）：这次调用带了计划的 3 问时的提示词版本（复核 M5：版本要能追溯到每次调用）。 */
   planPromptVersion?: string;
+  /** R33：切段作业的进度（只在备注超长时出现）：段数、已成功的段、失败的段（下标）。 */
+  segments?: { total: number; done: number[]; failed: number[] };
+  /** R33：各段的抽取结果（键 = 段下标），deferred 后重跑时沿用。 */
+  segmentOutputs?: Record<string, MemoExtractionOutput>;
+  /** R33：事实累积失败（提取本身已成功）。 */
+  factsError?: "FACTS_WRITE_FAILED";
 }
 
 export interface MemoExtractionStore {
@@ -65,6 +80,8 @@ export interface MemoExtractionJobInput {
   contact: { organization?: string | null; role?: string | null };
   /** R24（C11）：该联系人作为候补 / 已关联所在人物类型的 3 问（memo 打开「プランの話せた に使う」时才带）。 */
   planQuestions?: ReadonlyArray<{ itemId: string; questions: readonly string[] }>;
+  /** R33：备注的日期（事实的 `memoDate`）；没有就用写入时刻。 */
+  memoDate?: string | null;
 }
 
 export interface MemoExtractionJobDeps {
@@ -79,6 +96,8 @@ export interface MemoExtractionJobDeps {
    * AI 不可用（关闸、顺延、没有 provider、调用失败）时 `manual: true` → 手动勾选卡。
    */
   onPlanCoverage?: (input: { memoId: string; coverage: ReadonlyArray<{ itemId: string; answered: readonly number[] }>; manual: boolean }) => Promise<void>;
+  /** R33：抽取成功后把结果累积到 `contact_facts`（`features/contacts/facts/accumulate.ts`）；不给就不累积。 */
+  accumulateFacts?: (input: { actorId: string; contactId: string; memoId: string; memoDate: string | null; output: MemoExtractionOutput; at: string }) => Promise<unknown>;
 }
 
 export const MEMO_EXTRACTION_CLAIM_LEASE_MS = 5 * 60_000;
@@ -128,6 +147,9 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     updatedAt: nextStamp(now, existing?.updatedAt),
     claimToken,
     leaseUntil: new Date(now.getTime() + MEMO_EXTRACTION_CLAIM_LEASE_MS).toISOString(),
+    // R33：切段作业 deferred 后重跑，沿用已完成的段。
+    ...(existing?.segments ? { segments: existing.segments } : {}),
+    ...(existing?.segmentOutputs ? { segmentOutputs: existing.segmentOutputs } : {}),
   };
   const won = existing ? await deps.store.replace(current, existing.updatedAt) : await deps.store.insert(current);
   if (!won) return (await deps.store.get({ actorId: input.actorId, key })) ?? existing ?? current;
@@ -168,6 +190,21 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     if (!input.planQuestions?.length || !deps.onPlanCoverage) return;
     await reportPlanCoverage({ coverage: input.planQuestions.map((item) => ({ answered: [], itemId: item.itemId })), manual: true, memoId: key });
   };
+
+  /** R33：抽取成功后累积事实；失败只记 factsError（提取与联系人写回不受影响），并写结构化日志。 */
+  const accumulate = async (output: MemoExtractionOutput, at: string): Promise<boolean> => {
+    if (!deps.accumulateFacts) return true;
+    try {
+      await deps.accumulateFacts({ actorId: input.actorId, at, contactId: input.contactId, memoDate: input.memoDate ?? null, memoId: input.noteId, output });
+      return true;
+    } catch {
+      console.error(JSON.stringify({ event: "memo_extraction_error", stage: "facts_failed", code: "FACTS_WRITE_FAILED" }));
+      return false;
+    }
+  };
+
+  const segments = segmentMemo(input.body, MEMO_EXTRACTION_LIMITS.memoChars);
+  if (segments.length > 1) return runSegmented(segments);
 
   // 2. 认领胜者才 reserve（一条 memo 一次操作）。
   const reservation = await deps.gate.reserve({
@@ -242,27 +279,145 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
   }
 
   const at = clock().toISOString();
-  const values: EnrichedValue[] = (["offering", "seeking", "topics"] as const)
-    .filter((field) => output[field].length > 0)
-    .map((field) => ({ field, value: output[field], origin: "ai" as const, via: "memo_extraction" as const }));
-  let writtenFields: readonly AppliedEnrichmentField[] = [];
-  let writeError: string | undefined;
-  try {
-    writtenFields = values.length ? await deps.applyValues({ actorId: input.actorId, contactId: input.contactId, values, at }) : [];
-  } catch {
-    // 提取本身已成功（计费已发生）：结果留在缓存里，写回失败如实记下，不再调用 provider。
-    writeError = "WRITE_BACK_FAILED";
-  }
+  const { writtenFields, writeError } = await writeBack(output, at);
+  const factsOk = await accumulate(output, at);
   await advance({
     status: "succeeded",
     usage,
     output,
     writtenFields,
     ...(writeError ? { error: writeError } : {}),
+    ...(factsOk ? {} : { factsError: "FACTS_WRITE_FAILED" }),
   });
   await deps.gate.finish(operationId, "succeeded");
   if (input.planQuestions?.length && deps.onPlanCoverage && output.questionCoverage) {
     await reportPlanCoverage({ coverage: output.questionCoverage, manual: false, memoId: key });
   }
   return current;
+
+  /** 联系人行写回（offering / seeking / topics）；写回失败如实记下，不再调用 provider。 */
+  async function writeBack(result: MemoExtractionOutput, writtenAt: string): Promise<{ writtenFields: readonly AppliedEnrichmentField[]; writeError?: string }> {
+    const values: EnrichedValue[] = (["offering", "seeking", "topics"] as const)
+      .filter((field) => result[field].length > 0)
+      .map((field) => ({ field, value: result[field], origin: "ai" as const, via: "memo_extraction" as const }));
+    try {
+      return { writtenFields: values.length ? await deps.applyValues({ actorId: input.actorId, contactId: input.contactId, values, at: writtenAt }) : [] };
+    } catch {
+      // 提取本身已成功（计费已发生）：结果留在缓存里，写回失败如实记下。
+      return { writeError: "WRITE_BACK_FAILED", writtenFields: [] };
+    }
+  }
+
+  /** R33：超长备注——每段一次操作，段级失败 / 顺延不影响其他段；全部段结束后合并写回联系人行。 */
+  async function runSegmented(parts: readonly string[]): Promise<MemoExtractionRecord> {
+    const state = current.segments && current.segments.total === parts.length ? { ...current.segments, done: [...current.segments.done], failed: [...current.segments.failed] } : { done: [] as number[], failed: [] as number[], total: parts.length };
+    const outputs: Record<string, MemoExtractionOutput> = { ...(current.segmentOutputs ?? {}) };
+    let factsOk = current.factsError ? false : true;
+    let attempted = false;
+    const usageSum = { inputTokens: 0, outputTokens: 0 };
+    for (let index = 0; index < parts.length; index += 1) {
+      if (state.done.includes(index) || state.failed.includes(index)) continue;
+      const segmentKey = `${key}#${index}`;
+      const reservation = await deps.gate.reserve({ actorId: input.actorId, pool: "background", purpose: "memo_extraction", trigger: "auto", idempotencyKey: segmentKey, now: clock(), takeover: true });
+      if (reservation.ok !== true) {
+        const refusal = reservation as Extract<typeof reservation, { ok: false }>;
+        // 已成功的段保留；到期重跑只做剩下的段。
+        await advance(refusal.reason === "daily_limit"
+          ? { status: "deferred", segments: state, segmentOutputs: outputs, ...(refusal.retryOn ? { retryOn: refusal.retryOn } : {}) }
+          : { status: "disabled", segments: state, segmentOutputs: outputs });
+        await planManual();
+        return current;
+      }
+      const operationId = reservation.operationId;
+      if (!deps.provider) {
+        await advance({ status: "deferred", retryOn: clock().toISOString(), operationId, error: "PROVIDER_UNCONFIGURED", segments: state, segmentOutputs: outputs });
+        await deps.gate.finish(operationId, "failed");
+        await planManual();
+        return current;
+      }
+      let callId: string;
+      try {
+        ({ callId } = await deps.gate.beginCall(operationId, { provider: deps.provider.providerName, model: deps.provider.model }));
+      } catch {
+        await deps.gate.finish(operationId, "failed").catch(() => undefined);
+        await advance({ status: "deferred", retryOn: clock().toISOString(), operationId, error: "BEGIN_CALL_FAILED", segments: state, segmentOutputs: outputs });
+        return current;
+      }
+      // 这一段的 started 先落库（CAS）再发请求。
+      const startedOk = await advance({
+        status: "started",
+        attempts: attempted ? current.attempts : current.attempts + 1,
+        operationId,
+        provider: deps.provider.providerName,
+        model: deps.provider.model,
+        segments: state,
+        segmentOutputs: outputs,
+        ...(input.planQuestions?.length ? { planPromptVersion: MEMO_EXTRACTION_PLAN_PROMPT_VERSION } : {}),
+      });
+      attempted = true;
+      if (!startedOk) {
+        await deps.gate.endCall(callId, null).catch(() => undefined);
+        await deps.gate.finish(operationId, "failed").catch(() => undefined);
+        return (await deps.store.get({ actorId: input.actorId, key })) ?? current;
+      }
+      try {
+        const result = await deps.provider.extract({ memo: parts[index]!, contact: input.contact, ...(input.planQuestions?.length ? { planQuestions: input.planQuestions } : {}) });
+        usageSum.inputTokens += result.usage.inputTokens;
+        usageSum.outputTokens += result.usage.outputTokens;
+        await deps.gate.endCall(callId, { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens });
+        outputs[String(index)] = result.output;
+        state.done.push(index);
+        // 每段成功即累积事实：后面的段失败也不丢这一段。
+        if (!(await accumulate(result.output, clock().toISOString()))) factsOk = false;
+        await deps.gate.finish(operationId, "succeeded");
+      } catch (error) {
+        const errorUsage = error instanceof MemoExtractionError && error.usage ? { inputTokens: error.usage.inputTokens, outputTokens: error.usage.outputTokens } : null;
+        await deps.gate.endCall(callId, errorUsage).catch(() => undefined);
+        state.failed.push(index);
+        await deps.gate.finish(operationId, "failed");
+      }
+      await advance({ status: "started", segments: state, segmentOutputs: outputs });
+    }
+    const merged = mergeSegmentOutputs(parts.map((_, index) => outputs[String(index)]).filter((output): output is MemoExtractionOutput => Boolean(output)));
+    const at = clock().toISOString();
+    const { writtenFields, writeError } = state.done.length > 0 ? await writeBack(merged, at) : { writtenFields: [] as readonly AppliedEnrichmentField[], writeError: undefined };
+    const failed = state.failed.length > 0;
+    await advance({
+      status: failed ? "failed" : "succeeded",
+      usage: usageSum,
+      output: merged,
+      writtenFields,
+      segments: state,
+      segmentOutputs: outputs,
+      ...(failed ? { error: "SEGMENT_FAILED" } : writeError ? { error: writeError } : {}),
+      ...(factsOk ? {} : { factsError: "FACTS_WRITE_FAILED" }),
+    });
+    if (input.planQuestions?.length && deps.onPlanCoverage) {
+      if (merged.questionCoverage && !failed) await reportPlanCoverage({ coverage: merged.questionCoverage, manual: false, memoId: key });
+      else await planManual();
+    }
+    return current;
+  }
+}
+
+/** R33：多段结果合并（各字段去重、保留顺序、每字段最多 `itemsPerField` 条；eventTypes 取并集；3 问覆盖取并集）。 */
+export function mergeSegmentOutputs(outputs: readonly MemoExtractionOutput[]): MemoExtractionOutput {
+  const list = (field: "offering" | "seeking" | "topics") => [...new Set(outputs.flatMap((output) => output[field]))].slice(0, MEMO_EXTRACTION_LIMITS.itemsPerField);
+  const coverage = new Map<string, Set<number>>();
+  let hasCoverage = false;
+  for (const output of outputs) {
+    for (const item of output.questionCoverage ?? []) {
+      hasCoverage = true;
+      const answered = coverage.get(item.itemId) ?? new Set<number>();
+      for (const index of item.answered) answered.add(index);
+      coverage.set(item.itemId, answered);
+    }
+  }
+  return {
+    offering: list("offering"),
+    seeking: list("seeking"),
+    topics: list("topics"),
+    eventTypes: [...new Set(outputs.flatMap((output) => output.eventTypes))],
+    ...(hasCoverage ? { questionCoverage: [...coverage.entries()].map(([itemId, answered]) => ({ answered: [...answered].sort((a, b) => a - b), itemId })) } : {}),
+  };
 }

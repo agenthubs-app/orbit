@@ -237,3 +237,40 @@ test("R17: undoing a check-in reverses that event's イベント枠 score (score
   const again = await service.recordEventAttendanceForPlans({ eventId: "event:1" });
   assert.equal(again.length, 1, "checking in again scores again");
 });
+
+/* ---------- R35 SC-R35-05：detail() 透传 v3 字段；v2 计划的返回体逐字节不变 ---------- */
+
+test("R35: detail() returns the v3 fields exactly as stored (schemaVersion, outcome, summary, verdict, confidence, orderReasons, comparison, keyNumbers, risks, sources) and each person type's stepKey", async () => {
+  const { V3_ANALYSIS } = await import("./plan-v3-analysis-roundtrip.test");
+  const { pickPlanV3Fields } = await import("../../features/plans/v2/v3-fields");
+  const repository = createMemoryPlanV2Repository();
+  const service = serviceFor(repository);
+  const base = draftInput({ creationKey: "v3-1", goalId: "intake-v3" });
+  const v3 = pickPlanV3Fields(V3_ANALYSIS);
+  const { plan } = await service.createPlanFromDraft({
+    ...base,
+    content: { ...base.content, ...v3, personTypes: base.content.personTypes.map((type, index) => ({ ...type, stepKey: index < 2 ? "s1" : "s2" })) },
+  });
+  const detail = await service.detail(plan.planId);
+  assert.equal(detail!.content.schemaVersion, 3);
+  assert.deepEqual(pickPlanV3Fields(detail!.content), v3, "every v3 field round-trips through plans.analysis");
+  assert.deepEqual(detail!.content.personTypes.map((type) => [type.key, type.stepKey]), base.content.personTypes.map((type, index) => [type.key, index < 2 ? "s1" : "s2"]));
+  assert.deepEqual(JSON.parse(JSON.stringify(detail!.content.sources)), JSON.parse(JSON.stringify(V3_ANALYSIS.sources)));
+  const stored = repository.dump(SCOPE).plans.find((row) => row.id === plan.planId)!;
+  assert.equal(stored.analysis.schemaVersion, 3);
+  assert.ok(repository.dump(SCOPE).typeItems.filter((item) => item.planId === plan.planId).every((item) => item.personType.stepKey === "s1" || item.personType.stepKey === "s2"));
+});
+
+test("R35: a v2 plan's detail() is byte-for-byte what it was — no schemaVersion, no v3 keys, no stepKey on person types", async () => {
+  const repository = createMemoryPlanV2Repository();
+  const service = serviceFor(repository);
+  const { plan } = await service.createPlanFromDraft(draftInput());
+  const detail = await service.detail(plan.planId);
+  const json = JSON.stringify(detail);
+  // 改前（R33 `3eb4194dd` 起）v2 详情里 content 的键就是这些；多一个键都算回归。
+  assert.deepEqual(Object.keys(detail!.content).sort(), ["allocationReasons", "basis", "citations", "conclusion", "diagnosis", "event", "personTypes", "steps"]);
+  assert.deepEqual(Object.keys(detail!.content.personTypes[0]!).sort(), ["allocation", "countRule", "emoji", "introRoutes", "itemId", "key", "opener", "persona", "questions", "recognizeHints", "roleSituation", "shortLabel", "shortLabelId", "skipped", "slot", "targetCount", "why"]);
+  for (const forbidden of ["schemaVersion", "stepKey", "outcome", "summary", "verdict", "confidence", "orderReasons", "comparison", "keyNumbers", "risks", "sources"]) assert.equal(json.includes(`"${forbidden}"`), false, forbidden);
+  assert.equal(repository.dump(SCOPE).plans[0]!.analysis.schemaVersion, 2);
+  assert.equal(JSON.stringify(await service.detail(plan.planId)), json, "stable across reads");
+});

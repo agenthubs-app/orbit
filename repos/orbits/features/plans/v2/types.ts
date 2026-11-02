@@ -31,6 +31,7 @@ import type {
   PlanIntroRoute,
   PlanPremiseRow,
   PlanV2Step,
+  PlanV3Fields,
 } from "../../../shared/contract/plan-v2";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
 import type { PlanContactLink } from "../contract";
@@ -54,9 +55,13 @@ export const PLAN_V2_LOG_EVENTS = [
 ] as const;
 export type PlanV2LogEvent = (typeof PLAN_V2_LOG_EVENTS)[number];
 
-/** `plans.analysis`（schemaVersion 2）：方案里除 Step、人物类型、イベント枠以外的部分。 */
-export interface PlanV2Analysis {
-  schemaVersion: 2;
+/**
+ * `plans.analysis`（schemaVersion 2 | 3）：方案里除 Step、人物类型、イベント枠以外的部分。
+ * R33：`schemaVersion: 3` 只追加可选字段（`PlanV3Fields`：outcome / summary / verdict / confidence / orderReasons /
+ * comparison / keyNumbers / risks / sources）；v2 行照旧读写，读出时这些字段为 undefined，现有读取方不改。
+ */
+export interface PlanV2Analysis extends Omit<PlanV3Fields, "schemaVersion"> {
+  schemaVersion: 2 | 3;
   diagnosis: string;
   conclusion: string;
   flow?: PlanFlowCell[];
@@ -107,6 +112,8 @@ export interface PlanV2PersonTypeMeta {
   persona: string | null;
   opener: string | null;
   introRoutes: PlanIntroRoute[];
+  /** R33（v3）：属于哪个阶段（`PlanV2Step.key`）；v2 条目缺省。 */
+  stepKey?: string | null;
 }
 
 export interface PlanV2TypeItem {

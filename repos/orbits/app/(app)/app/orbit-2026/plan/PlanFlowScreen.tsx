@@ -13,7 +13,10 @@ import { standardCopyFor } from "../copy/standard";
 import { Icon, Modal, Orbit2026Scope, ToastProvider } from "../ui";
 import { BackgroundBlocks, STANCE_COPY, meIsOpen, type BlockKey, type MeDraft } from "./BackgroundBlocks";
 import { DraftCard, DraftTurns, draftName } from "./DraftCard";
+import { DraftV3 } from "./DraftV3";
+import { adjustTotal, adjustmentsOf, initialAdjust, isFull, type DraftV3Adjust } from "./draft-v3-model";
 import { AiBubble, DegradeRow, DialogActs, ErrCard, FlowDialog, FlowHead, FmBar, LimitCard, MeBubble, NgCard, OkLine, RailHead } from "./FlowParts";
+import { isPlanV3 } from "../../../../../features/plans/v2/v3-fields";
 import { DraftRail, KnownRail } from "./FlowRail";
 import { PremiseCard, QuestionsCard, answeredRows, answersBody, answersBubbleText, initialAnswers, type AnswerDraft } from "./IntakeCards";
 import { newActionKey, planApi, type PlanApiResult } from "./plan-api";
@@ -61,6 +64,14 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   // b12 W-R23-15: after revisions the premises open from the rail (「前提を直す」).
   const [premiseOpen, setPremiseOpen] = useState(false);
   const [reopenAsk, setReopenAsk] = useState(false);
+  // R36a「重新起草」：页上有未保存的调整时先问一句（与「破棄して直す」同一种确认框）。
+  const [redraftAsk, setRedraftAsk] = useState(false);
+  // R36a（D-1）：初版 v3 页上的调整（删一类 / 人数 / 分量）只在客户端，按草稿版本重置；确定时随请求带 `adjustments`。
+  const [adjustFor, setAdjustFor] = useState<{ revision: string; adjust: DraftV3Adjust } | null>(null);
+  const v3 = Boolean(draft && isPlanV3(draft.content));
+  const adjust = draft && adjustFor?.revision === draft.revision ? adjustFor.adjust : draft ? initialAdjust(draft.content) : {};
+  const setAdjust = useCallback((next: DraftV3Adjust) => { if (draft) setAdjustFor({ adjust: next, revision: draft.revision }); }, [draft]);
+  const v3Full = !v3 || !draft || isFull(adjustTotal(draft, adjust));
 
   /** Take a fresh intake from the server and reset the local drafts to it. */
   const adopt = useCallback((next: PlanIntakeView, previous: PlanIntakeView | null) => {
@@ -126,8 +137,25 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const fixAct = useCallback((text: string) => (draft ? act<PlanDraftView>("fix", "fix", (key) => planApi(`/drafts/${enc(draft.draftId)}/fix`, { body: { idempotencyKey: key, text }, language }), setDraft) : Promise.resolve(false)), [act, draft, language]);
   const confirmAct = useCallback(() => {
     if (!draft) return;
-    void act<PlanConfirmResult>("confirm", "other", (key) => planApi(`/drafts/${enc(draft.draftId)}/confirm`, { body: { idempotencyKey: key }, language }), (result) => router.push(result.href));
-  }, [act, draft, language, router]);
+    // v3：带上初稿页的调整（没动过就不带字段，请求与改前相同）；合计 ≠ 100 时按钮本就禁用。
+    const adjustments = v3 ? adjustmentsOf(draft, adjust) : undefined;
+    void act<PlanConfirmResult>("confirm", "other", (key) => planApi(`/drafts/${enc(draft.draftId)}/confirm`, { body: { idempotencyKey: key, ...(adjustments ? { adjustments } : {}) }, language }), (result) => router.push(result.href));
+  }, [act, adjust, draft, language, router, v3]);
+  // R36a「重新起草」：失败 / 次数用完沿用 fix 的失败卡与上限卡（op "fix"）；进行中（busy === "redraft"）显示生成中骨架。
+  const redraftAct = useCallback(() => {
+    if (!draft) return;
+    void act<PlanDraftView>("redraft", "fix", (key) => planApi(`/drafts/${enc(draft.draftId)}/redraft`, { body: { idempotencyKey: key }, language }), setDraft);
+  }, [act, draft, language]);
+  const redraftAsk0 = useCallback(() => {
+    if (!draft) return;
+    if (adjustmentsOf(draft, adjust)) setRedraftAsk(true);
+    else redraftAct();
+  }, [adjust, draft, redraftAct]);
+  const focusAiFix = useCallback(() => {
+    const input = document.querySelector<HTMLTextAreaElement>("[data-plan-fixbar] textarea");
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.focus();
+  }, []);
 
   const limitView = failed?.view.tone === "limit" ? failed.view : null;
   const rail = useMemo(() => {
@@ -144,7 +172,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     }
     if (hasDraft && draft) {
       const offMessage = limitView && failed?.where === "fix" ? t(limitView.limit === "monthly" ? planFlowCopy.fixOffMonthly : planFlowCopy.fixOffDaily) : undefined;
-      return <DraftRail draft={draft} t={t} busy={busy} onFix={fixAct} onManual={() => router.push(planDraftEditHref("web", draft.draftId))} onConfirm={confirmAct} offMessage={offMessage}
+      return <DraftRail draft={draft} t={t} busy={busy} onFix={fixAct} onManual={() => router.push(planDraftEditHref("web", draft.draftId))} onConfirm={confirmAct} offMessage={offMessage} confirmOff={!v3Full}
         onPremise={draft.turns.length && !premiseOpen ? () => { setPremiseOpen(true); window.scrollTo({ behavior: "smooth", top: 0 }); } : undefined} />;
     }
     const rows = flowSummary({
@@ -162,7 +190,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     return <KnownRail rows={rows} t={t} pending={intake.status === "drafting"} />;
     // t is derived from language
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intake, draft, answers, language, purposeLevel, me, team, busy, hasDraft, planned, limitView, failed, fixAct, confirmAct, plan, premiseOpen]);
+  }, [intake, draft, answers, language, purposeLevel, me, team, busy, hasDraft, planned, limitView, failed, fixAct, confirmAct, plan, premiseOpen, v3Full]);
 
   const subtitle = planned || !intake ? t(planFlowCopy.flowPageTitle) : t(planFlowCopy.flowSubtitle, { flow: t(planFlowCopy.flowPageTitle), stage: t(STAGE_TITLE[stage]) });
   const shell = (
@@ -196,6 +224,25 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   ) : null;
   const busyRow = notice === "busy" ? <DegradeRow busy title={t(planFlowCopy.busy)} data={{ "data-plan-notice": "busy" }} /> : null;
   const goalBubble = <MeBubble>{t(planFlowCopy.goalLine, { goal: intake.goal })}</MeBubble>;
+  // 「生成中」骨架：初版起草时（intake.status === "drafting"）和 R36a「重新起草」进行中共用。
+  const draftingView = (
+    <>
+      <AiBubble>{t(planFlowCopy.draftingAi)}</AiBubble>
+      <div className={k.bgGrid} data-plan-drafting="">
+        <div className={`${k.card} ${k.teamCard}`}>
+          {(["blockMe", "blockTeam", "blockPurpose"] as const).map((key, index) => (
+            <div key={key} className={k.bsk}><span className={k.bsn}>{index + 1}</span><b>{t(planFlowCopy[key])}</b>
+              <div className={k.shimCol}><i className={k.shim} style={{ width: `${[80, 62, 70][index]}%` }} /><i className={k.shim} style={{ width: `${[46, 54, 38][index]}%` }} /></div></div>
+          ))}
+        </div>
+        <div className={`${k.card} ${k.flat} ${k.teamCard}`}>
+          <div className={k.readsHead}>{t(planFlowCopy.readingTitle)}</div>
+          <dl className={k.known}>{intake.reading.map((item) => <div key={item.kind}><dt className={k.lbl}>{t(READING[item.kind])}</dt><dd>{item.detail}</dd></div>)}</dl>
+        </div>
+      </div>
+      <div className={k.actRow}><span className={k.lbl}>{t(planFlowCopy.draftingHint)}</span>{/* A status, not a control: it reads as the disabled kit button (b12 W-R23-03). */}<span role="status" className={`${k.btn} ${k.primary} ${k.btnOff}`}>{t(planFlowCopy.draftingButton)}</span></div>
+    </>
+  );
   const purposeText = intake.background.purpose.value.rungs.find((rung) => rung.level === intake.background.purpose.value.selectedLevel)?.text ?? intake.goal;
 
   const confirmBlock = (block: BlockKey) => void act<PlanIntakeView>(block, "other", (key) => patchBlock(intake, block, key), (next) => { adopt(next, intake); setEditing(null); });
@@ -287,20 +334,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
       <>
         <FmBar at={0} t={t} />
         {goalBubble}
-        <AiBubble>{t(planFlowCopy.draftingAi)}</AiBubble>
-        <div className={k.bgGrid} data-plan-drafting="">
-          <div className={`${k.card} ${k.teamCard}`}>
-            {(["blockMe", "blockTeam", "blockPurpose"] as const).map((key, index) => (
-              <div key={key} className={k.bsk}><span className={k.bsn}>{index + 1}</span><b>{t(planFlowCopy[key])}</b>
-                <div className={k.shimCol}><i className={k.shim} style={{ width: `${[80, 62, 70][index]}%` }} /><i className={k.shim} style={{ width: `${[46, 54, 38][index]}%` }} /></div></div>
-            ))}
-          </div>
-          <div className={`${k.card} ${k.flat} ${k.teamCard}`}>
-            <div className={k.readsHead}>{t(planFlowCopy.readingTitle)}</div>
-            <dl className={k.known}>{intake.reading.map((item) => <div key={item.kind}><dt className={k.lbl}>{t(READING[item.kind])}</dt><dd>{item.detail}</dd></div>)}</dl>
-          </div>
-        </div>
-        <div className={k.actRow}><span className={k.lbl}>{t(planFlowCopy.draftingHint)}</span>{/* A status, not a control: it reads as the disabled kit button (b12 W-R23-03). */}<span role="status" className={`${k.btn} ${k.primary} ${k.btnOff}`}>{t(planFlowCopy.draftingButton)}</span></div>
+        {draftingView}
       </>
     );
   } else if (intake.status === "background") {
@@ -386,20 +420,26 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
       body = (
         <>
           {staleRow}
-          <FmBar at={FM_AT[stage]} t={t} />
-          {draft.turns.length === 0 ? (
+          {/* R36a（主会话 2026-11-01 决定）：v3 草稿的开放态整屏按原型——不画五段进度 / 目标气泡 / 前提卡（前提折进结论区的
+              「あなたの資料と N 個の回答…▾」），页身 = 结论区 → 路线 → 类型表 → 依据；右栏「前提を直す」打开的前提卡照旧。 */}
+          {v3 ? null : <FmBar at={FM_AT[stage]} t={t} />}
+          {draft.turns.length === 0 && !v3 ? (
             <>
               {ans ? <MeBubble>{ans}</MeBubble> : null}
               {premiseCard(true)}
               <AiBubble>{t(planFlowCopy.draftLead)}</AiBubble>
             </>
           ) : premiseOpen ? premiseCard(false) /* b12 W-R23-15: opened from the rail's 「前提を直す」 */ : null}
-          <DraftCard draft={draft} t={t} language={language} mini={usedUp && !premiseOpen} />
+          {/* v3 草稿（schemaVersion 3）用设计稿 v16 的初稿页；v2 旧草稿仍是 R23 的 DraftCard。 */}
+          {v3
+            ? busy === "redraft" ? draftingView : <DraftV3 draft={draft} t={t} language={language} adjust={adjust} onAdjust={setAdjust} busy={Boolean(busy)} onConfirm={confirmAct} onAiFix={focusAiFix} onRedraft={redraftAsk0} redraftOff={left === 0 || !draft.manualEditAvailable} />
+            : <DraftCard draft={draft} t={t} language={language} mini={usedUp && !premiseOpen} />}
           {/* b12 W-R23-14: once used up, only the last round stays (all rounds are in 修正の履歴); W-R23-15: while the
               premises are open the column is premises + plan (changing one discards the rounds). */}
           {premiseOpen ? null : <DraftTurns draft={draft} t={t} only={usedUp ? draft.turns[draft.turns.length - 1]?.n : undefined} />}
           {failureAt("fix", t(planFlowCopy.fixFailed), t(planFlowCopy.fixFailedBody))}
-          {limitView && failed?.where === "fix" ? <LimitCard title={t(limitView.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)} sub={t(planFlowCopy.limitFixSub)} data={{ "data-plan-limit": limitView.limit }} /> : null}
+          {failureAt("redraft", t(planFlowCopy.fixFailed), t(planFlowCopy.fixFailedBody))}
+          {limitView && (failed?.where === "fix" || failed?.where === "redraft") ? <LimitCard title={t(limitView.limit === "monthly" ? planFlowCopy.limitMonthly : planFlowCopy.limitDaily)} sub={t(planFlowCopy.limitFixSub)} data={{ "data-plan-limit": limitView.limit }} /> : null}
           {usedUp && draft.turns.length ? (
             <div className={`${k.card} ${k.flat} ${k.usedUp}`} data-plan-fix-end="">
               <div className={k.row} style={{ gap: 8 }}><b className={k.usedUpTitle}>{t(planFlowCopy.usedUpTitle, { limit: draft.aiFixLimit })}</b><span className={k.chip}>{t(planFlowCopy.fixLeftChip, { n: 0 })}</span></div>
@@ -409,7 +449,7 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                 <div className={k.hist}>{draft.turns.map((turn) => <span key={turn.n} className={k.chip}>{t(planFlowCopy.turnChip, { n: turn.n, text: turn.changes.length ? turnPreview(turn.input) : t(planFlowCopy.noChange) })}</span>)}</div>
                 <span className={k.grow} />
                 <button type="button" className={`btn ${k.btn}`} disabled={!draft.manualEditAvailable || Boolean(busy)} onClick={() => router.push(planDraftEditHref("web", draft.draftId))}><Icon name="edit" size={16} />{t(planFlowCopy.manualEdit)}</button>
-                <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy)} onClick={confirmAct}>{t(planFlowCopy.confirmPlan)}</button>
+                <button type="button" className={`btn ${k.btn} ${k.primary}`} disabled={Boolean(busy) || !v3Full} onClick={confirmAct}>{t(planFlowCopy.confirmPlan)}</button>
               </div>
             </div>
           ) : null}
@@ -447,6 +487,21 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                 if (!next.draftId) setDraft(null);
               }).then(pending.resolve);
             }}>{t(planFlowCopy.discardConfirm)}</button>
+          </DialogActs>
+        </FlowDialog>
+        {/* R36a「重新起草」：页上有未保存的调整 → 先确认（样式同「破棄して直す」）。 */}
+        <FlowDialog open={redraftAsk} role="alertdialog" label={t(planFlowCopy.v3RedraftAskTitle)} onClose={() => setRedraftAsk(false)} data={{ "data-plan-redraft-ask": "" }}>
+          <div className={`${k.row} ${k.discHead}`}>
+            <div className={k.dic}><Icon name="refresh" size={24} /></div>
+            <div className={k.grow}><b className={k.dialogTitle}>{t(planFlowCopy.v3RedraftAskTitle)}</b><div className={`${k.sub} ${k.discBody}`}>{t(planFlowCopy.v3RedraftAskBody)}</div></div>
+          </div>
+          <div className={`${k.card} ${k.flat} ${k.discList}`}>
+            <div className={k.eff}><Icon name="refresh" size={16} />{t(planFlowCopy.v3RedraftUses, { n: Math.max(0, (draft?.aiFixLimit ?? 0) - (draft?.aiFixUsed ?? 0) - 1) })}</div>
+            <div className={k.eff}><Icon name="check" size={16} />{t(planFlowCopy.v3RedraftKeeps)}</div>
+          </div>
+          <DialogActs hint={std.action.cancel}>
+            <button type="button" className={`btn ${k.btn} ${k.btnFocus}`} data-autofocus="" onClick={() => setRedraftAsk(false)}>{std.action.cancel}</button>
+            <button type="button" className={`btn ${k.btn} ${k.danger}`} onClick={() => { setRedraftAsk(false); redraftAct(); }} data-plan-redraft-confirm="">{t(planFlowCopy.v3RedraftConfirm)}</button>
           </DialogActs>
         </FlowDialog>
         <BackgroundModal open={backgroundOpen} onClose={() => setBackgroundOpen(false)} intake={intake} t={t} language={language}

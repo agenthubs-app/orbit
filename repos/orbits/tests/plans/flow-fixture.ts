@@ -5,6 +5,7 @@ import { createMockPlanFlowAi } from "../../features/plans/v2/ai/mock";
 import type { PlanAiOutcome, PlanFlowAi } from "../../features/plans/v2/ai/types";
 import { createMockPlanFlowContext, type PlanFlowContextSource } from "../../features/plans/v2/flow-context";
 import { createPlanFlowService, type PlanFlowRequestContext } from "../../features/plans/v2/flow-service";
+import type { PlanSearchLike } from "../../features/plans/v2/search-port";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
 import type { PlanReviewBudgetReader } from "../../features/plans/v2/service";
 import { SCOPE, serviceFor, steppingClock } from "./v2-fixture";
@@ -20,7 +21,7 @@ export interface CountingAi extends PlanFlowAi {
 }
 
 export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingAi {
-  const calls = { background: 0, firstDraft: 0, fix: 0, goalKind: 0, ladder: 0, members: 0, nextGoals: 0, questions: 0, reviewFix: 0, reviewMarks: 0 } as Record<AiStep, number>;
+  const calls = { background: 0, firstDraft: 0, firstDraftV3: 0, fix: 0, goalKind: 0, ladder: 0, members: 0, nextGoals: 0, questions: 0, reviewFix: 0, reviewMarks: 0 } as Record<AiStep, number>;
   const keys: string[] = [];
   const next: CountingAi["next"] = {};
   const wrap = <K extends AiStep>(step: K) => (async (input: never, context: { ledgerKey: string }) => {
@@ -37,6 +38,7 @@ export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingA
     background: wrap("background"),
     calls,
     firstDraft: wrap("firstDraft"),
+    firstDraftV3: wrap("firstDraftV3"),
     fix: wrap("fix"),
     goalKind: wrap("goalKind"),
     id: "mock",
@@ -51,13 +53,13 @@ export function countingAi(base: PlanFlowAi = createMockPlanFlowAi()): CountingA
   };
 }
 
-export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date; reviewBudget?: PlanReviewBudgetReader } = {}) {
+export function flowWorld(options: { context?: PlanFlowContextSource; ai?: CountingAi; now?: () => Date; reviewBudget?: PlanReviewBudgetReader; search?: PlanSearchLike } = {}) {
   const repository = createMemoryPlanV2Repository();
   const now = options.now ?? steppingClock();
   const planService = serviceFor(repository, SCOPE, now);
   const ai = options.ai ?? countingAi();
   let n = 0;
-  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, reviewBudget: options.reviewBudget, scope: SCOPE });
+  const flow = createPlanFlowService({ ai, context: options.context ?? createMockPlanFlowContext(), newId: () => `f${(n += 1)}`, now, planService, repository, reviewBudget: options.reviewBudget, scope: SCOPE, search: options.search });
   return { ai, flow, planService, repository };
 }
 
