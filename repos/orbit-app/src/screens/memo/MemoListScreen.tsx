@@ -6,7 +6,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState, presentActionSheet, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
 import { useToast } from "../../components/ui/Toast";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { deleteNoteOnServer } from "./delete-note";
+import { deleteNoteOnServer, hasPendingNoteWrite } from "./delete-note";
 import { Icon } from "../../components/ui/Icon";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
@@ -52,16 +52,18 @@ export function MemoListScreen({ actorId, scopeKey }: { actorId: string; scopeKe
   const toast = useToast();
   const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
   const notes = source.notes?.filter(note => !deletedIds.has(note.id)) ?? null;
-  async function offerDelete(note: { id: string; version: number; title: string }) {
+  async function offerDelete(note: { id: string; version: number; title: string; localMutationState?: "queued" | "conflict" | "failed" }) {
     if (note.id.startsWith("local:") || source.offline) return;
+    // Sprint 0144: a change still waiting to sync would be lost or conflict; delete after it syncs.
+    if (hasPendingNoteWrite(note)) { toast.error(locale.t("notes.deletePending")); return; }
     const choice = await presentActionSheet({ title: note.title, options: [{ key: "delete", label: locale.t("notes.deleteNote"), destructive: true }, { key: "cancel", label: locale.t("common.cancel") }] });
     if (choice === "delete") await deleteNote(note);
   }
-  async function deleteNote(note: { id: string; version: number }) {
+  async function deleteNote(note: { id: string; version: number; localMutationState?: "queued" | "conflict" | "failed" }) {
     const confirmed = await presentConfirm({ title: locale.t("notes.deleteConfirm"), message: locale.t("notes.deleteBody"), confirmLabel: locale.t("notes.deleteNote"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "trash" });
     if (!confirmed) return;
     const outcome = await deleteNoteOnServer(client, note).catch(() => "failed" as const);
-    if (outcome !== "deleted") { toast.error(locale.t(outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
+    if (outcome !== "deleted") { toast.error(locale.t(outcome === "pending" ? "notes.deletePending" : outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
     setDeletedIds(current => new Set([...current, note.id]));
     toast.success(locale.t("notes.deleted"));
     source.refresh();

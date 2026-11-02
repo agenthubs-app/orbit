@@ -431,6 +431,15 @@ test("a refused note write shows 未能保存 with 重试 and 放弃; discarding
   await value.waitForFunction(() => JSON.stringify((window as any).fixture.navigation ?? []).includes("/notes"));
 });
 
+test("SC-0144-03: a note whose edit is still waiting to sync cannot be deleted, and the page says why", async (t) => {
+  const value = await page(t, "detail");
+  await value.evaluate(() => { const state = (window as any).fixture; state.update({ note: { ...state.note, localMutationState: "queued" } }); });
+  await value.getByRole("button", { name: "删除笔记" }).click();
+  await value.getByText("这条笔记还有修改没同步，同步完成后才能删除。", { exact: true }).waitFor();
+  assert.equal(await value.getByText("删除这条笔记？", { exact: true }).count(), 0, "no confirmation is offered");
+  assert.deepEqual((await value.evaluate(() => (window as any).fixture.requests)).filter((request: any) => request.method === "DELETE"), []);
+});
+
 test("opening a resolved local note replaces the stale local route with its canonical server id", async (t) => {
   const value = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => value.close());

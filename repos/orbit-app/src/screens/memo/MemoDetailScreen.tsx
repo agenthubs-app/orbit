@@ -9,7 +9,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { Chip, EmptyState, presentConfirm, RetryCard, Skeleton, UiText as Text } from "../../components/ui";
 import { useToast } from "../../components/ui/Toast";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { deleteNoteOnServer } from "./delete-note";
+import { deleteNoteOnServer, hasPendingNoteWrite } from "./delete-note";
 import { Icon } from "../../components/ui/Icon";
 import { MemoOfflineNotice } from "./MemoOfflineNotice";
 import { createThemedStyles } from "../../design/theme";
@@ -84,12 +84,14 @@ export function MemoDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   async function deleteNote() {
     const target = source.note;
     if (!target || deleting) return;
+    // Sprint 0144: a change still waiting to sync would be lost or conflict; delete after it syncs.
+    if (hasPendingNoteWrite(target)) { setDeleteError(locale.t("notes.deletePending")); return; }
     const confirmed = await presentConfirm({ title: locale.t("notes.deleteConfirm"), message: locale.t("notes.deleteBody"), confirmLabel: locale.t("notes.deleteNote"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "trash" });
     if (!confirmed) return;
     setDeleting(true); setDeleteError("");
     const outcome = await deleteNoteOnServer(client, target).catch(() => "failed" as const);
     setDeleting(false);
-    if (outcome !== "deleted") { setDeleteError(locale.t(outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
+    if (outcome !== "deleted") { setDeleteError(locale.t(outcome === "pending" ? "notes.deletePending" : outcome === "conflict" ? "notes.deleteConflict" : "notes.deleteFailed")); return; }
     source.refresh();
     toast.success(locale.t("notes.deleted"));
     if (router.canGoBack()) router.back(); else router.replace("/notes");

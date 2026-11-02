@@ -29,3 +29,11 @@ test("QA-D: a note that only exists on this phone is never sent", async () => {
   assert.equal(await deleteNoteOnServer(fake, { id: "local:1", version: 1 }), "failed");
   assert.deepEqual(fake.calls, []);
 });
+
+test("SC-0144-03: a note with a change still waiting to sync is not deleted", async () => {
+  for (const localMutationState of ["queued", "conflict", "failed"] as const) {
+    const fake = client(200);
+    assert.equal(await deleteNoteOnServer(fake, { id: "note:1", version: 2, localMutationState }), "pending", localMutationState);
+    assert.deepEqual(fake.calls, []);
+  }
+});

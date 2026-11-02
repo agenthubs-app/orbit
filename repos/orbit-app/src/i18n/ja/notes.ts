@@ -154,6 +154,7 @@ export const notes = {
   "notes.deleteBody": "削除すると元に戻せません。",
   "notes.deleteFailed": "メモを削除できませんでした。通信状況を確認してもう一度お試しください。",
   "notes.deleteConflict": "このメモはほかの端末で変更されました。開き直してから削除してください。",
+  "notes.deletePending": "このメモにはまだ同期していない変更があります。同期が終わってから削除できます。",
   "notes.deleted": "メモを削除しました",
   "notes.removeRelatedNote": "関係するメモ「{name}」を外す",
 } as const;

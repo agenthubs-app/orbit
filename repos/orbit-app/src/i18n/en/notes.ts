@@ -154,6 +154,7 @@ export const notes = {
   "notes.deleteBody": "This can't be undone.",
   "notes.deleteFailed": "Couldn't delete the note. Check your connection and try again.",
   "notes.deleteConflict": "This note was changed on another device. Reopen it, then delete.",
+  "notes.deletePending": "This note has changes that haven't synced yet. You can delete it once they sync.",
   "notes.deleted": "Note deleted",
   "notes.removeRelatedNote": "Remove related note “{name}”",
 } as const;

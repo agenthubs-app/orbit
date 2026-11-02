@@ -154,6 +154,7 @@ export const notes = {
   "notes.deleteBody": "删除后无法恢复。",
   "notes.deleteFailed": "没能删除笔记，请检查网络后重试。",
   "notes.deleteConflict": "这条笔记在其他设备上被修改过，请重新打开后再删除。",
+  "notes.deletePending": "这条笔记还有修改没同步，同步完成后才能删除。",
   "notes.deleted": "已删除笔记",
   "notes.removeRelatedNote": "移除关联笔记「{name}」",
 } as const;
