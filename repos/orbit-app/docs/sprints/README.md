@@ -54,7 +54,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0137](0137-offline-wrapup/GOAL.md) | 离线收口：关系推进看板在手机上计算；联系人详情断网提示；别人内容的空状态；模拟器补测 | Codex A 线起，Claude 2026-10-03 接手收尾。合并提交 `c4c4b3cf4`；协调者复核两端全量 0 失败（orbits 5369、App 3967）。报告 [REPORT](0137-offline-wrapup/REPORT.md) | completed |
 | [0139](0139-discovery-enqueue-contention/GOAL.md) | 通知发现入队不再因整表谓词锁和无关写入冲突（生产风险） | 0137 发现，协调者立项。执行顺序 0139 → 0133 基线 e8b892ad7 run-01 · 报告 [REPORT](0139-discovery-enqueue-contention/REPORT.md)；含 claim/updatePreferences | completed |
 | [0140](0140-contact-add-entry/GOAL.md) | 大图名片上传前压缩；扫描与手动添加分开进入、核对后明确保存 | 合并提交 `b15b39c9d`；协调者复核 orbits 5399/0、App 4062/0；手动添加备注改为可选（协调者决定）；实体 iPhone 验收 pending。报告 [REPORT](0140-contact-add-entry/REPORT.md) | completed |
-| [0141](0141-save-survives-network-drop/GOAL.md) | 待办与个人日程保存时网络中途断开，修改进待上传队列而不是丢失 | 2026-11-02 断网写设计核对偏差 1；用户批准，逐个执行 | 无 | planned |
+| [0141](0141-save-survives-network-drop/GOAL.md) | 待办与个人日程保存时网络中途断开，修改进待上传队列而不是丢失 | 2026-11-02 断网写设计核对偏差 1；功能 `a31608623`，报告 [REPORT](0141-save-survives-network-drop/REPORT.md)；协调者复核定向 29/29、typecheck 0；App 全量 3384/3 失败均为既有（契约副本、/settings/account/delete 路由）；模拟器断网未手测 | 无 | completed |
 | [0142](0142-note-replay-first/GOAL.md) | 笔记重传先查收据，已存上的修改不因权限变化被当成失败 | 核对偏差 2 | 0141 | planned |
 | [0143](0143-event-prep-schedule-outbox/GOAL.md) | 活动准备页「加入日程」可断网、不重复、用手机时区 | 核对偏差 4 | 0142 | planned |
 | [0144](0144-offline-policy-alignment/GOAL.md) | 离线资格表与实际一致：补登记关系跟进／iOrbit 历史／删除联系人，去掉断网发消息 | 核对偏差 3、5 与小问题；用户 2026-11-02 决定 | 0143 | planned |
