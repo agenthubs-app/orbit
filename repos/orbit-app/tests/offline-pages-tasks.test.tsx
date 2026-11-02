@@ -139,3 +139,77 @@ test("the task list offline labels only follow-ups as needing the network; an un
   assert.equal(await own.isDisabled(), false);
   assert.equal(await page.getByRole("checkbox", { name: /回访佐藤.*需要联网/ }).isDisabled(), true);
 });
+
+// Sprint 0141: the page thinks it is online, but the save itself loses the connection (status 0). On the phone an
+// own personal task goes to the device outbox under the same receipt key; a server error answer is never queued.
+const dropped = (patch: Record<string, unknown>) => ({ platform: "ios", taskOutbox: true, writeFailure: 0, syncStatus: "fresh", ...patch });
+type Queued = Array<{ operation: string; id: string; requestJson: string }> | undefined;
+
+test("SC-0141-01 the task list: completing an own task whose request loses the connection is queued and shows 尚未同步", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const page = await harness.open(t, dropped({ screen: "tasks", records: { task: [work], inbox_notification: [] } }));
+  await page.getByRole("checkbox", { name: "完成：整理路演材料", exact: true }).dispatchEvent("click");
+  await page.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1, undefined, { timeout: 5000 });
+  const [done] = (await fixtureValue<Queued>(page, "enqueued"))!;
+  assert.deepEqual({ operation: done!.operation, id: done!.id }, { operation: "complete", id: "t7" });
+  assert.match(JSON.parse(done!.requestJson).idempotencyKey, /^ios:complete:t7:/u, "the receipt key of the request that was tried");
+  assert.deepEqual((await requestsOf(page)).filter((entry) => entry.startsWith("patch:")), ["patch:/api/tasks/t7"]);
+  await page.getByRole("button", { name: /已完成/u }).first().dispatchEvent("click");
+  await page.getByText("尚未同步", { exact: true }).waitFor();
+  assert.equal(await page.getByText("操作未完成，请重试。", { exact: true }).count(), 0);
+});
+
+test("SC-0141-03 the task list: a server error answer or a follow-up task is not queued and says 操作未完成 as today", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const refused = await harness.open(t, dropped({ screen: "tasks", writeFailure: 500, records: { task: [work], inbox_notification: [] } }));
+  await refused.getByRole("checkbox", { name: "完成：整理路演材料", exact: true }).dispatchEvent("click");
+  await refused.getByText("操作未完成，请重试。", { exact: true }).waitFor({ timeout: 5000 });
+  assert.equal((await fixtureValue<Queued>(refused, "enqueued")) ?? null, null);
+  const followUp = await harness.open(t, dropped({ screen: "tasks", records: { task: [task("t9", "回访佐藤")], inbox_notification: [] } }));
+  await followUp.getByRole("checkbox", { name: "完成：回访佐藤", exact: true }).dispatchEvent("click");
+  await followUp.getByText("操作未完成，请重试。", { exact: true }).waitFor({ timeout: 5000 });
+  assert.equal((await fixtureValue<Queued>(followUp, "enqueued")) ?? null, null, "relationship tasks keep needing the network");
+});
+
+async function editTitle(page: Awaited<ReturnType<typeof harness.open>>, value: string) {
+  const title = page.getByLabel("待办标题");
+  await title.waitFor();
+  await title.focus();
+  await title.evaluate((element, text) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    setter.call(element, text);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  }, value);
+  await title.blur();
+}
+
+test("SC-0141-01 task detail: a title edit whose request loses the connection is queued with its version and shows 尚未同步", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const page = await harness.open(t, dropped({ screen: "detail", params: { id: "t7" }, records: { task: [work] }, responses: { "/api/tasks/t7": { task: work } } }));
+  await page.getByText("带上储能资料").waitFor();
+  await editTitle(page, "整理路演材料（第二版）");
+  await page.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
+  const [edit] = (await fixtureValue<Queued>(page, "enqueued"))!;
+  assert.deepEqual({ operation: edit!.operation, id: edit!.id }, { operation: "update", id: "t7" });
+  const body = JSON.parse(edit!.requestJson);
+  assert.equal(body.expectedUpdatedAt, "2026-09-27T00:00:00.000Z");
+  assert.equal(body.patch.title, "整理路演材料（第二版）");
+  assert.match(body.idempotencyKey, /^ios:task:/u);
+  await page.getByText("尚未同步", { exact: true }).waitFor();
+  assert.equal(await page.getByText("操作未完成，请重试。", { exact: true }).count(), 0);
+});
+
+test("SC-0141-03 task detail: a server error answer is not queued and says 操作未完成 as today; a meeting task is not queued either", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const refused = await harness.open(t, dropped({ screen: "detail", writeFailure: 409, params: { id: "t7" }, records: { task: [work] }, responses: { "/api/tasks/t7": { task: work } } }));
+  await refused.getByText("带上储能资料").waitFor();
+  await editTitle(refused, "整理路演材料（第二版）");
+  await refused.getByText("操作未完成，请重试。", { exact: true }).waitFor();
+  assert.equal((await fixtureValue<Queued>(refused, "enqueued")) ?? null, null);
+  const meeting = task("t6", "准备会面议程", { category: "meeting" });
+  const blocked = await harness.open(t, dropped({ screen: "detail", params: { id: "t6" }, records: { task: [meeting] }, responses: { "/api/tasks/t6": { task: meeting } } }));
+  await blocked.getByText("带上储能资料").waitFor();
+  await editTitle(blocked, "准备会面议程（改）");
+  await blocked.getByText("操作未完成，请重试。", { exact: true }).waitFor();
+  assert.equal((await fixtureValue<Queued>(blocked, "enqueued")) ?? null, null);
+});

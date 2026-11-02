@@ -183,28 +183,39 @@ export function TaskDetailScreen() {
     try {
       const payload = typeof body === "function" ? await body() : body;
       if (!isCurrent()) return false;
-      if (offline && isTaskPath) {
-        if (!isOfflineTaskCategory(detail?.category)) return false;
-        const mutationId = mutationKey();
+      const enqueue = async (mutationId: string, baseRevision: string | null) => {
         const operation = method === "delete" ? "delete" : method === "patch" ? String(payload.action ?? "update") : "";
         const requestBody = { ...payload, idempotencyKey: mutationId };
         const mutation = buildOfflineTaskMutation({
           mutationId,
           entityId: taskId,
           operation,
-          baseRevision: mirrorRow?.revision ?? null,
+          baseRevision,
           requestBody,
           createdAt: new Date().toISOString(),
         });
         await taskOutbox.enqueueOfflineMutation(mutation);
         onSuccess({});
         return true;
+      };
+      if (offline && isTaskPath) {
+        if (!isOfflineTaskCategory(detail?.category)) return false;
+        return await enqueue(mutationKey(), mirrorRow?.revision ?? null);
       }
       const fingerprint = JSON.stringify([method, path, payload]);
       const key = scope.keys.get(fingerprint) ?? mutationKey();
       scope.keys.set(fingerprint, key);
       const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key }, signal: scope.controller.signal });
       if (!isCurrent()) return false;
+      // Sprint 0141: the connection dropped during the request: on the phone an own personal task the device holds
+      // is queued with the same receipt key instead of losing the change.
+      const deviceRow = taskMirror.records.find((record) => record.id === taskId && record.deletedAt === null);
+      if (!result.success && result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR" && isTaskPath &&
+          Platform.OS !== "web" && deviceRow && isOfflineTaskCategory(detail?.category)) {
+        const queued = await enqueue(key, deviceRow.revision);
+        scope.keys.delete(fingerprint);
+        return queued;
+      }
       if (result.success) {
         if (accepts && (result.status < 200 || result.status >= 300 || !accepts(result.data))) {
           setMutationError(locale.t("taskDetail.saveDateUnconfirmed"));

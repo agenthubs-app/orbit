@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -164,24 +164,25 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
     setMutationError(null);
     try {
       const action = item.status === "completed" ? "reopen" : "complete";
-      if (source.offline) {
-        if (!isOfflineTaskCategory(baseline.category)) {
-          setMutationError(locale.t("sync.needsNetwork"));
-          return null;
-        }
-        const idempotencyKey = Crypto.randomUUID();
-        const createdAt = new Date().toISOString();
+      const enqueue = async (idempotencyKey: string): Promise<TaskListEntry> => {
         await source.enqueueOfflineMutation(buildOfflineTaskMutation({
           mutationId: idempotencyKey,
           entityId: baseline.id,
           operation: action,
           baseRevision: baseline.baseRevision,
           requestBody: { action, idempotencyKey },
-          createdAt,
+          createdAt: new Date().toISOString(),
         }));
         setPosition({ scope: pageScope, cursor: null });
         setCompletedPosition({ scope: foldScope, cursor: null });
         return { ...baseline, status: action === "complete" ? "completed" : "open" };
+      };
+      if (source.offline) {
+        if (!isOfflineTaskCategory(baseline.category)) {
+          setMutationError(locale.t("sync.needsNetwork"));
+          return null;
+        }
+        return await enqueue(Crypto.randomUUID());
       }
       const intent = JSON.stringify([item.id, action, baseline.updatedAt]);
       const key = scope.keys.get(intent) ?? mutationKey(`${action}:${item.id}`);
@@ -190,6 +191,12 @@ export function TasksScreen({ listHeader }: { listHeader?: ReactNode } = {}) {
         body: { action, idempotencyKey: key }, signal: scope.controller.signal,
       });
       if (!scope.active || currentScope.current !== scope) return null;
+      // Sprint 0141: the connection dropped during the request: on the phone an own personal task is queued with the same receipt key.
+      if (!result.success && result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR" && Platform.OS !== "web" && isOfflineTaskCategory(baseline.category)) {
+        const queued = await enqueue(key);
+        scope.keys.delete(intent);
+        return queued;
+      }
       if (!result.success) setMutationError(locale.t("tasks.operationFailed"));
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
       else if (await source.confirmMutation(item.id, action)) {

@@ -105,18 +105,19 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
     const method = remove ? "delete" : baseline ? "patch" : "post";
     const path = personalSchedulePath(id || undefined); const fingerprint = JSON.stringify([method, path, body]);
     const key = scope.keys.get(fingerprint) ?? `ios:personal:${Crypto.randomUUID()}`; scope.keys.set(fingerprint, key);
+    const enqueue = async (queue: NonNullable<typeof outbox>) => {
+      const entityId = id || `local:${Crypto.randomUUID()}`;
+      const mutation = buildOfflineScheduleMutation({ mutationId: key, entityId, operation: remove ? "delete" : baseline ? "update" : "create",
+        baseRevision: id && !isLocal ? source.baseRevision ?? null : null, requestBody: { ...body, idempotencyKey: key }, createdAt: new Date().toISOString() });
+      await queue.enqueue(mutation);
+      scope.keys.delete(fingerprint);
+      if (!scope.active || current.current !== scope) return;
+      if (!remove && id && router.canGoBack()) router.back(); else router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
+    };
     if (queueMode && outbox) {
       if (!remove && change.fields.recurrence) { setError(locale.t("schedule.repeatNeedsNetwork")); return; }
       scope.busy = true; setSaving(true); setError(""); setMessage("");
-      try {
-        const entityId = id || `local:${Crypto.randomUUID()}`;
-        const mutation = buildOfflineScheduleMutation({ mutationId: key, entityId, operation: remove ? "delete" : baseline ? "update" : "create",
-          baseRevision: id && !isLocal ? source.baseRevision ?? null : null, requestBody: { ...body, idempotencyKey: key }, createdAt: new Date().toISOString() });
-        await outbox.enqueue(mutation);
-        scope.keys.delete(fingerprint);
-        if (!scope.active || current.current !== scope) return;
-        if (!remove && id && router.canGoBack()) router.back(); else router.replace((remove ? "/schedule" : `/schedule/personal/${encodeURIComponent(entityId)}`) as Href);
-      } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
+      try { await enqueue(outbox); } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
       finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
       return;
     }
@@ -124,6 +125,10 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime, conta
     try {
       const result = await client[method]<unknown>(path, { headers: { "x-orbit-personal-schedule-version": "3" }, body: { ...body, idempotencyKey: key }, signal: scope.controller.signal });
       if (!scope.active || current.current !== scope) return;
+      // Sprint 0141: the connection dropped during the request: on the phone a non-recurring schedule is queued
+      // with the same receipt key, like an offline write (repeating ones still need the network).
+      if (!result.success && result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR" && Platform.OS !== "web" && outbox &&
+          (!baseline || isOfflineScheduleEditable(baseline, actorId)) && (remove || !change.fields.recurrence)) { await enqueue(outbox); return; }
       if (!result.success) { setError(locale.t("schedule.operationFailed")); return; }
       const item = readPersonalSchedule(result.data);
       if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, receiptFields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }

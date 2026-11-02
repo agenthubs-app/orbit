@@ -182,3 +182,81 @@ test("a conflicting delete shows the server version first and deletes only after
   assert.equal(JSON.parse(resolved!.replacement!.requestJson).expectedUpdatedAt, "2026-10-02T03:00:00.000Z");
   assert.ok((await navigation(page)).includes("replace:/schedule"));
 });
+
+// Sprint 0141: the page thinks it is online, but the save itself loses the connection (status 0). On the phone a
+// non-recurring personal schedule goes to the device outbox under the same receipt key; a server error is never queued.
+const dropped = { platform: "ios", scheduleOutbox: true, online: true, syncStatus: "fresh", writeFailure: 0 };
+const schedulePath = (id: string) => `/api/schedule-items/${encodeURIComponent(id)}`;
+
+test("SC-0141-02 editing a one-off schedule whose request loses the connection queues the edit; its detail shows 未同步", async t => {
+  const one = item("personal:one", "和陈总通话");
+  const page = await harness.open(t, { ...dropped, screen: "editor", params: { id: "personal:one" }, records: { personal_schedule: [one] }, responses: { [schedulePath("personal:one")]: { scheduleItem: one } } });
+  const title = page.getByRole("textbox", { name: "日程标题", exact: true });
+  await title.waitFor(); await settle(page);
+  await type(title, "和陈总通话（改到下午）"); await settle(page);
+  await page.getByRole("button", { name: "保存", exact: true }).dispatchEvent("click");
+  await page.waitForFunction(() => ((window as any).fixture.enqueuedSchedules ?? []).length === 1);
+  const [edit] = await enqueued(page);
+  assert.deepEqual({ operation: edit?.operation, id: edit?.id, baseRevision: edit?.baseRevision }, { operation: "update", id: "personal:one", baseRevision: "1" });
+  const body = JSON.parse(edit!.requestJson);
+  assert.equal(body.expectedUpdatedAt, updatedAt);
+  assert.deepEqual(body.patch, { title: "和陈总通话（改到下午）" });
+  assert.match(body.idempotencyKey, /^ios:personal:/u);
+  assert.equal((await writes(page)).length, 1, "the request was tried once, then queued");
+  assert.ok((await navigation(page)).some(entry => entry.startsWith("replace:/schedule/personal/personal%3Aone")));
+  assert.equal(await page.getByText("操作未完成，草稿已保留，请重试。").count(), 0);
+  const detail = await harness.open(t, { ...offline, screen: "detail", params: { id: "personal:one" }, records: { personal_schedule: [one] },
+    queuedSchedules: [queuedSchedule({ ...edit, attemptCount: 0, firstAttemptAt: null })] });
+  await detail.getByText("和陈总通话（改到下午）").first().waitFor();
+  await detail.getByText("未同步", { exact: true }).waitFor();
+});
+
+test("SC-0141-02 creating and deleting a one-off schedule whose request loses the connection are queued", async t => {
+  const created = await harness.open(t, { ...dropped, screen: "editor", params: {}, records: { personal_schedule: [], note: [] } });
+  const title = created.getByRole("textbox", { name: "日程标题", exact: true });
+  await title.waitFor(); await settle(created);
+  await type(title, "和陈总复盘"); await settle(created);
+  await created.getByRole("button", { name: "添加", exact: true }).dispatchEvent("click");
+  await created.waitForFunction(() => ((window as any).fixture.enqueuedSchedules ?? []).length === 1);
+  const [create] = await enqueued(created);
+  assert.equal(create?.operation, "create");
+  assert.match(create!.id, /^local:[0-9a-f-]{36}$/u);
+  assert.equal(JSON.parse(create!.requestJson).title, "和陈总复盘");
+  assert.deepEqual(await writes(created), ["post:/api/schedule-items"]);
+
+  const one = item("personal:one", "和陈总通话");
+  const removed = await harness.open(t, { ...dropped, screen: "editor", params: { id: "personal:one" }, records: { personal_schedule: [one] } });
+  await removed.getByRole("button", { name: "删除个人日程", exact: true }).dispatchEvent("click");
+  await removed.getByRole("button", { name: "删除", exact: true }).dispatchEvent("click");
+  await removed.waitForFunction(() => ((window as any).fixture.enqueuedSchedules ?? []).length === 1);
+  const [remove] = await enqueued(removed);
+  assert.equal(remove?.operation, "delete");
+  assert.equal(JSON.parse(remove!.requestJson).expectedUpdatedAt, updatedAt);
+  assert.ok((await navigation(removed)).includes("replace:/schedule"));
+});
+
+test("SC-0141-03 a schedule save answered with a server error is not queued and says what it says today", async t => {
+  for (const status of [409, 500]) {
+    const one = item("personal:one", "和陈总通话");
+    const page = await harness.open(t, { ...dropped, writeFailure: status, screen: "editor", params: { id: "personal:one" }, records: { personal_schedule: [one] } });
+    const title = page.getByRole("textbox", { name: "日程标题", exact: true });
+    await title.waitFor(); await settle(page);
+    await type(title, "和陈总通话（改到下午）"); await settle(page);
+    await page.getByRole("button", { name: "保存", exact: true }).dispatchEvent("click");
+    await page.getByText("操作未完成，草稿已保留，请重试。").waitFor();
+    assert.equal(await fixtureValue(page, "enqueuedSchedules") ?? null, null, `HTTP ${status} is not queued`);
+  }
+});
+
+test("SC-0141-03 a repeating schedule whose request loses the connection is not queued", async t => {
+  const page = await harness.open(t, { ...dropped, screen: "editor", params: { id: "personal:series" }, records: { personal_schedule: [series] } });
+  const title = page.getByRole("textbox", { name: "日程标题", exact: true });
+  await title.waitFor(); await settle(page);
+  await page.getByRole("button", { name: "修改范围", exact: true }).dispatchEvent("click"); await settle(page);
+  await page.getByRole("radio", { name: "整个重复系列", exact: true }).dispatchEvent("click"); await settle(page);
+  await type(title, "每周例会（改）"); await settle(page);
+  await page.getByRole("button", { name: "保存", exact: true }).dispatchEvent("click");
+  await page.getByText("操作未完成，草稿已保留，请重试。").waitFor();
+  assert.equal((await writes(page)).length, 1, "the save was tried online");
+  assert.equal(await fixtureValue(page, "enqueuedSchedules") ?? null, null);
+});

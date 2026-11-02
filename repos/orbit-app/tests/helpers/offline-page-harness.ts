@@ -12,7 +12,9 @@ import { nativeUiStubs } from "./native-ui-stubs";
  *     window.fixture.responses (longest matching path prefix) while
  *     `online`, and fail like a lost connection (status 0) otherwise; every
  *     request is recorded, and the real server-reachability store hears the
- *     outcome exactly as the real client reports it;
+ *     outcome exactly as the real client reports it; `writeFailure` makes every
+ *     write (not reads) fail with that HTTP status, or like a lost connection
+ *     when it is 0, while reads still answer (sprint 0141);
  *   - the device mirror: useSyncedCollection returns window.fixture.records[kind]
  *     with `syncStatus`, and useSyncCoordinatorSession returns a session whose
  *     page copies live in window.fixture.copies (the real binding rules are
@@ -50,9 +52,11 @@ export const router = { push(href) { state.navigation.push(typeof href === "stri
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push: router.push, replace: router.replace, navigate: router.push, dismissTo: router.push });
 function answer(method, path) {
   state.requests.push(method + ":" + path);
-  if (!state.online) { serverReachability.markUnreachable(base); return { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "暂时无法连接 Orbit 服务，请检查网络后再试。" }, meta: {} }; }
+  const lost = !state.online || (state.writeFailure === 0 && method !== "get" && method !== "resource");
+  if (lost) { serverReachability.markUnreachable(base); return { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "暂时无法连接 Orbit 服务，请检查网络后再试。" }, meta: {} }; }
   // cacheAnswers: the answer is the phone's snapshot cache, so the server stays unreachable.
   if (!state.cacheAnswers) serverReachability.markReachable(base);
+  if (state.writeFailure && method !== "get" && method !== "resource") return { success: false, status: state.writeFailure, error: { code: "WRITE_REFUSED", message: "write refused" }, meta: {} };
   if (state.status5xx) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "service unavailable" }, meta: {} };
   const keys = Object.keys(state.responses).filter((prefix) => path.startsWith(prefix)).sort((a, b) => b.length - a.length);
   const hit = keys.length ? state.responses[keys[0]] : null;
@@ -198,11 +202,14 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
         ${imports}
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
+        import { ToastProvider } from "./src/components/ui/Toast";
         const language = window.initialFixture?.language ?? "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         const screens = { ${table} };
         const Screen = screens[window.initialFixture?.screen];
-        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><Screen /></OrbitLocaleContext.Provider>);`,
+        // toasts: true shows the screen's toasts (sprint 0141); other tests keep the toast calls silent.
+        const Toasts = window.initialFixture?.toasts ? ToastProvider : React.Fragment;
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><Toasts><Screen /></Toasts></OrbitLocaleContext.Provider>);`,
       resolveDir: root, loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",

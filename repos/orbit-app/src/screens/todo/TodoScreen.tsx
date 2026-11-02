@@ -371,23 +371,29 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
     if (busy || staleDay || item.sample || !auth.actorId) return;
     if (item.kind === "lifecycle") { toast.error(locale.t("todo.unavailable")); return; }
     const row = todo.mirror.records.find(record => record.id === item.taskId && record.deletedAt === null);
-    if (offline && (Platform.OS === "web" || !row || !mirroredTaskIds.has(item.taskId))) { toast.error(locale.t("todo.unavailable")); return; }
+    const queueable = Platform.OS !== "web" && row && mirroredTaskIds.has(item.taskId) ? row : null;
+    if (offline && !queueable) { toast.error(locale.t("todo.unavailable")); return; }
     setBusy(true);
     try {
-      if (offline && row) {
-        const idempotencyKey = `ios:todo-complete:${Crypto.randomUUID()}`;
+      const enqueue = async (idempotencyKey: string, base: NonNullable<typeof queueable>) => {
         await todo.outbox.enqueueOfflineMutation(buildOfflineTaskMutation({
-          mutationId: idempotencyKey, entityId: item.taskId, operation: "complete", baseRevision: row.revision,
+          mutationId: idempotencyKey, entityId: item.taskId, operation: "complete", baseRevision: base.revision,
           requestBody: { action: "complete", idempotencyKey }, createdAt: new Date().toISOString(),
         }));
         if (isCurrent()) toast.info(locale.t("tasks.outboxQueued"));
-        return;
-      }
+      };
+      if (offline && queueable) { await enqueue(`ios:todo-complete:${Crypto.randomUUID()}`, queueable); return; }
       const intent = `complete:${item.taskId}`;
       const idempotencyKey = scope.keys.get(intent) ?? `ios:todo-complete:${Crypto.randomUUID()}`;
       scope.keys.set(intent, idempotencyKey);
       const result = await client.patch<unknown>(taskPath(item.taskId), { body: { action: "complete", idempotencyKey }, signal: scope.controller.signal });
       if (!isCurrent()) return;
+      // Sprint 0141: the connection dropped during the request: queue it with the same receipt key instead of losing it.
+      if (!result.success && result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR" && queueable) {
+        await enqueue(idempotencyKey, queueable);
+        scope.keys.delete(intent);
+        return;
+      }
       if (!result.success || result.status < 200 || result.status >= 300 || !todoTaskCompletionReceipt(result.data, auth.actorId, item.taskId)) {
         toast.error(locale.t("todo.unavailable"));
         return;
@@ -405,7 +411,8 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
   async function defer(item: TodoFollowupItem, selectedDate: string) {
     if (busy || staleDay || item.sample || !auth.actorId || item.kind !== "task") return;
     const row = todo.mirror.records.find(record => record.id === item.taskId && record.deletedAt === null);
-    if (offline && (Platform.OS === "web" || !row || !mirroredTaskIds.has(item.taskId))) { toast.error(locale.t("todo.unavailable")); return; }
+    const queueable = Platform.OS !== "web" && row && mirroredTaskIds.has(item.taskId) ? row : null;
+    if (offline && !queueable) { toast.error(locale.t("todo.unavailable")); return; }
     setBusy(true);
     try {
       let baseline: TaskItemContract | undefined;
@@ -423,16 +430,22 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
       const idempotencyKey = scope.keys.get(intent) ?? `ios:todo-defer:${Crypto.randomUUID()}`;
       scope.keys.set(intent, idempotencyKey);
       const body = { action: "update", expectedUpdatedAt: baseline.updatedAt, patch, idempotencyKey };
-      if (offline && row) {
+      const enqueue = async (base: NonNullable<typeof queueable>) => {
         await todo.outbox.enqueueOfflineMutation(buildOfflineTaskMutation({
-          mutationId: idempotencyKey, entityId: item.taskId, operation: "update", baseRevision: row.revision,
+          mutationId: idempotencyKey, entityId: item.taskId, operation: "update", baseRevision: base.revision,
           requestBody: body, createdAt: new Date().toISOString(),
         }));
         if (isCurrent()) { setDeferItem(null); toast.info(locale.t("tasks.outboxQueued")); }
-        return;
-      }
+      };
+      if (offline && queueable) { await enqueue(queueable); return; }
       const result = await client.patch<unknown>(taskPath(item.taskId), { body, signal: scope.controller.signal });
       if (!isCurrent()) return;
+      // Sprint 0141: the connection dropped during the request: queue it with the same receipt key instead of losing it.
+      if (!result.success && result.status === 0 && result.error.code === "ORBIT_APP_NETWORK_ERROR" && queueable) {
+        await enqueue(queueable);
+        scope.keys.delete(intent);
+        return;
+      }
       if (!result.success || result.status < 200 || result.status >= 300 || !taskDateReceiptMatches(result.data, item.taskId, auth.actorId, patch)) {
         toast.error(locale.t("todo.unavailable"));
         return;
