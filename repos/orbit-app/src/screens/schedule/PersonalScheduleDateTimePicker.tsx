@@ -7,7 +7,8 @@ import { localParts, shiftCalendarDate, validTimeZone } from "../../time/date-ti
 // Mount a fresh session for each trigger; only Done publishes its staged value.
 // Far-off dates (a birthday): `yearJump` adds year steps in place of 今天/明天, `initialMonth` opens an
 // empty picker on that month with nothing chosen yet, and days after `max` cannot be chosen.
-export function PersonalScheduleDateTimePicker({ kind, value, zone, disabled: saving, embedded = false, yearJump = false, initialMonth, max, title, onCancel, onConfirm }: { kind: "date" | "time"; value: string; zone: string; disabled: boolean; embedded?: boolean; yearJump?: boolean; initialMonth?: string; max?: string; title?: string; onCancel(): void; onConfirm(value: string): void }) {
+// `latestYear` puts later years in the year list (a calendar looks ahead; a birthday stops at `max`).
+export function PersonalScheduleDateTimePicker({ kind, value, zone, disabled: saving, embedded = false, yearJump = false, initialMonth, max, latestYear, title, onCancel, onConfirm }: { kind: "date" | "time"; value: string; zone: string; disabled: boolean; embedded?: boolean; yearJump?: boolean; initialMonth?: string; max?: string; latestYear?: number; title?: string; onCancel(): void; onConfirm(value: string): void }) {
   const { t, language } = useOrbitLocale();
   const { styles } = useStyles();
   const available = validTimeZone(zone);
@@ -25,7 +26,7 @@ export function PersonalScheduleDateTimePicker({ kind, value, zone, disabled: sa
   const navigate = (amount: number) => setMonth(new Date(Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth() + amount, 1)).toISOString().slice(0, 7));
   // With `yearJump`, tapping the month title lists years (like the iOS year wheel) instead of stepping one year at a time.
   const [yearsOpen, setYearsOpen] = useState(false);
-  const lastYear = Number((max ?? today.date).slice(0, 4));
+  const lastYear = latestYear ?? Number((max ?? today.date).slice(0, 4));
   const monthTitle = new Intl.DateTimeFormat(language, { year: "numeric", month: "long", timeZone: "UTC" }).format(firstDate);
   const chooseTime = (index: number, part: number) => { const parts = selected.split(":"); parts[index] = String(part).padStart(2, "0"); setSelected(parts.join(":")); };
   const content = <View style={styles.overlay}>

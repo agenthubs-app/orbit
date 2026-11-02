@@ -116,6 +116,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["meetingDetails.cancelled", "toast"],
   ["meetingDetails.*", "label"],
   ["calendar.view.more", "label"],
+  ["calendar.view.pickDate", "label"],
   ["calendar.view.emptyTitle", "label"],
   ["calendar.view.emptyBody", "sentence"],
   ["calendar.view.overlap", "sentence"],

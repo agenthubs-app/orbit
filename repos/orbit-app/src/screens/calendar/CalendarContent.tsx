@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Button, Card, EmptyState, IconButton, Segmented, UiPressable, UiText } from "../../components/ui";
+import { Button, Card, EmptyState, Icon, IconButton, Segmented, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import type { OrbitColors } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { ScheduleCalendarDay, ScheduleTimelineItem } from "../../view-models/schedule";
 import type { CalendarExternalEventContract } from "../../api/contract/calendar-external-events";
+import { PersonalScheduleDateTimePicker } from "../schedule/PersonalScheduleDateTimePicker";
 import { calendarDateKeys, type CalendarMode, type CalendarProjection } from "./calendar-projection";
 import type { CalendarExternalView } from "./calendar-external-state";
 import { calendarExternalEventsByDay } from "./calendar-external-view";
@@ -37,6 +39,8 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
   const personalConflict = selectedOverlaps.flatMap(pair => pair.ids).find(id => projection.selectedItems.some(item => item.id === id && item.kind === "personal"));
   const previous = t(mode === "month" ? "schedule.previousMonth" : mode === "week" ? "schedule.previousWeek" : "schedule.previousDay");
   const next = t(mode === "month" ? "schedule.nextMonth" : mode === "week" ? "schedule.nextWeek" : "schedule.nextDay");
+  // The title opens the shared date picker; Done jumps there through onSelectDate, Cancel changes nothing.
+  const [picking, setPicking] = useState(false);
   return <View style={styles.body}>
     {external?.connection === "not_connected" || external?.connection === "needs_reconnect" ? <Card variant="flat" style={styles.externalNotice}>
       <UiText style={styles.externalNoticeText}>{t(external.connection === "not_connected" ? "calendar.view.externalNotConnected" : "calendar.view.externalReconnectNeeded")}</UiText>
@@ -52,9 +56,14 @@ export function CalendarContent({ mode, projection, external, timeZone, onConnec
     </View>
     <View style={styles.navigation}>
       <IconButton icon="left" size={34} accessibilityLabel={previous} onPress={() => onShift(-1)} />
-      <UiText accessibilityRole="header" style={styles.heading}>{header}</UiText>
+      <UiPressable accessibilityRole="button" accessibilityLabel={`${header} ${t("calendar.view.pickDate")}`} onPress={() => setPicking(true)} style={styles.headingButton}>
+        <UiText style={styles.heading}>{header}</UiText>
+        <Icon name="down" size={16} color={colors.ink2} />
+      </UiPressable>
       <IconButton icon="right" size={34} accessibilityLabel={next} onPress={() => onShift(1)} />
     </View>
+    {picking ? <PersonalScheduleDateTimePicker kind="date" value={selected} zone={timeZone} disabled={false} yearJump latestYear={Number(selected.slice(0, 4)) + 10} title={t("calendar.view.pickDate")}
+      onCancel={() => setPicking(false)} onConfirm={value => { setPicking(false); onSelectDate(value); }} /> : null}
     {mode === "month" ? <Card style={styles.gridCard}>
       <View style={styles.grid}>
         {projection.days.slice(0, 7).map(day => <UiText key={`weekday:${day.dateKey}`} style={styles.weekday}>{day.weekdayLabel}</UiText>)}
@@ -117,7 +126,7 @@ function tone(kind: ScheduleTimelineItem["kind"], colors: OrbitColors) {
 }
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
-  body: { gap: 14 }, controlRow: { flexDirection: "row", gap: 10, alignItems: "center" }, navigation: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }, heading: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  body: { gap: 14 }, controlRow: { flexDirection: "row", gap: 10, alignItems: "center" }, navigation: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 }, headingButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 1, minHeight: 44, minWidth: 44, paddingHorizontal: 8 }, heading: { color: colors.ink, fontSize: 20, fontWeight: "800", flexShrink: 1 },
   externalNotice: { backgroundColor: colors.macLav, flexDirection: "row", alignItems: "center", gap: 8 }, externalNoticeText: { color: colors.macLavText, flex: 1, fontSize: 14 },
   externalItem: { backgroundColor: colors.macLav }, externalItemTitle: { color: colors.macLavText, fontSize: 14, fontWeight: "700" }, externalSource: { color: colors.macLavText, fontSize: 13 },
   gridCard: { paddingHorizontal: 8, paddingVertical: 12 }, grid: { flexDirection: "row", flexWrap: "wrap" }, weekday: { width: "14.285%", textAlign: "center", color: colors.ink3Text, fontSize: 13, fontWeight: "700", marginBottom: 8 },
