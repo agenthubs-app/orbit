@@ -151,3 +151,20 @@ test("property: fixed slots plus notes lose no non-empty field value", () => {
                 }
               }
 });
+
+test("Sprint 0150: otherText is appended under 「名片上的其他信息」 without repeating note lines", () => {
+  const notes = aggregateBusinessCardNotes(
+    extraction({
+      departments: ["事業開発室"],
+      otherText: ["受託開発・技術顧問", "事業開発室", "受託開発 ・ 技術顧問", "ISO 27001 認証"],
+    }),
+    { email: null, phone: null },
+  );
+
+  assert.equal(notes, "部门: 事業開発室\n名片上的其他信息\n受託開発・技術顧問\nISO 27001 認証");
+  assert.equal(aggregateBusinessCardNotes(extraction({ otherText: [] }), { email: null, phone: null }), "");
+  assert.equal(
+    aggregateBusinessCardNotes(extraction({ departments: ["事業開発室"] }), { email: null, phone: null }),
+    "部门: 事業開発室",
+  );
+});

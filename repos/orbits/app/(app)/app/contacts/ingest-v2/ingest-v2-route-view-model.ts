@@ -11,7 +11,7 @@ import type {
   IngestItemDTO,
   IngestManifestEntry,
 } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
-import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
+import { aggregateBusinessCardNotes, businessCardOtherTextSection } from "../../../../../features/acquisition/business-card-notes-aggregation";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import { sanitizeIndustryPair } from "../../../../../shared/domain/industries";
 import { REGION_CITY_MAX_LENGTH, isValidCountryCode, normalizeRegion } from "../../../../../shared/domain/regions";
@@ -393,13 +393,15 @@ function sourceMatches(snapshot: IngestV2SourceSnapshot, item: IngestItemDTO): b
 
 function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {
   const chosenAddress = fields.address.trim();
-  return card.items
+  const sides = card.items
     .flatMap((item) => {
       if (!item.extraction) return [];
       // 已进「地址」固定字段的那条不再重复写进备注；其余地址（多个办公地点）照旧保留。
+      // otherText 不按面分开写，下面正反面合并成一段。
+      const { otherText: _otherText, ...rest } = item.extraction;
       const extraction = chosenAddress
-        ? { ...item.extraction, addresses: item.extraction.addresses.filter((address) => address.value.trim() !== chosenAddress) }
-        : item.extraction;
+        ? { ...rest, addresses: rest.addresses.filter((address) => address.value.trim() !== chosenAddress) }
+        : rest;
       const notes = aggregateBusinessCardNotes(extraction, {
         email: fields.email || null,
         phone: fields.phone || null,
@@ -407,6 +409,11 @@ function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFie
       return notes ? [`${item.side === "front" ? "正面" : "反面"} · ${item.sourceFileName}\n${notes}`] : [];
     })
     .join("\n\n");
+  const otherText = businessCardOtherTextSection(
+    orderedSides(card).map((item) => item.extraction?.otherText),
+    [sides, fields.email, fields.phone, fields.address].join("\n"),
+  );
+  return [sides, otherText].filter(Boolean).join("\n\n");
 }
 
 function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {

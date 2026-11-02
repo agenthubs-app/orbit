@@ -11,6 +11,7 @@ import {
 } from "./business-card-ocr-validation";
 import { businessCardEnrichmentInstruction } from "./business-card-enrichment-prompt";
 import { businessCardIndustryInstruction } from "./business-card-industry-prompt";
+import { BUSINESS_CARD_OTHER_TEXT_INSTRUCTION } from "./business-card-other-text";
 
 export {
   BUSINESS_CARD_EXTRACTION_JSON_SCHEMA,
@@ -30,6 +31,7 @@ export const BUSINESS_CARD_EXTRACTION_PROMPT = [
   "Preserve organization, department, title, office labels, and address wording.",
   "Label every phone, mobile, fax, email, and address with its printed office label when visible.",
   "Never infer or invent missing values, except the industry, seniority, and region fields described below. Return null or an empty array when absent.",
+  BUSINESS_CARD_OTHER_TEXT_INSTRUCTION,
   // Gemini 是单次视觉+结构化调用，行业随同一次请求输出（D5：不另发请求）。
   businessCardIndustryInstruction(),
   businessCardEnrichmentInstruction(),

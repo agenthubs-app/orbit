@@ -1,4 +1,7 @@
 import type { BusinessCardStructuredExtraction } from "./business-card-cloud-ocr";
+import { normalizeBusinessCardText } from "./business-card-other-text";
+
+export const BUSINESS_CARD_OTHER_TEXT_HEADING = "名片上的其他信息";
 
 const CONTACT_POINT_TYPE_LABEL: Record<string, string> = {
   fax: "传真",
@@ -67,5 +70,29 @@ export function aggregateBusinessCardNotes(
     lines.push(line("资质", certification));
   }
 
-  return lines.join("\n");
+  const notes = lines.join("\n");
+  return [notes, businessCardOtherTextSection([extraction.otherText], notes)].filter(Boolean).join("\n");
+}
+
+/**
+ * Sprint 0150：「名片上的其他信息」一段。各面（正面在前）合并、规范化后去重，
+ * 已经出现在备注里的行不再重复；没有可写的行时返回空串（旧数据没有 otherText）。
+ */
+export function businessCardOtherTextSection(
+  sides: readonly (readonly string[] | undefined)[],
+  existingNotes: string,
+): string {
+  const existing = normalizeBusinessCardText(existingNotes);
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const otherText of sides) {
+    for (const value of otherText ?? []) {
+      const text = value.trim();
+      const key = normalizeBusinessCardText(text);
+      if (!key || seen.has(key) || existing.includes(key)) continue;
+      seen.add(key);
+      lines.push(text);
+    }
+  }
+  return lines.length > 0 ? [BUSINESS_CARD_OTHER_TEXT_HEADING, ...lines].join("\n") : "";
 }

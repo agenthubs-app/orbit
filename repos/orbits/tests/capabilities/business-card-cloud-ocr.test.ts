@@ -497,3 +497,26 @@ test("messenger contact points survive normalization and skip phone validation",
   );
   assert.ok(!issues.some((issue) => issue.code === "INVALID_PHONE"));
 });
+
+test("Sprint 0150: Gemini asks for otherText in its prompt and schema, and filters what comes back", async () => {
+  let body: Record<string, unknown> = {};
+  const provider = createConfiguredGeminiBusinessCardOcrProvider({
+    env: { GEMINI_API_KEY: "k" },
+    fetchImplementation: (async (_input, init) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return interactionResponse({
+        ...providerExtraction(),
+        otherText: ["技術で、明日を軽くする。", "■ 受託開発", "室長", "https://example.test", "★"],
+      });
+    }) as typeof fetch,
+  });
+
+  const result = await provider!.extract({ imageBase64: "aW1hZ2U=", mimeType: "image/jpeg" });
+  const input = body.input as readonly { text?: string }[];
+  const schema = (body.response_format as { schema: { properties: Record<string, unknown>; required: string[] } }).schema;
+
+  assert.match(input[0]?.text ?? "", /otherText/);
+  assert.deepEqual(schema.properties.otherText, { items: { type: "string" }, type: "array" });
+  assert.ok(schema.required.includes("otherText"));
+  assert.deepEqual(result.extraction.otherText, ["技術で、明日を軽くする。", "受託開発"]);
+});

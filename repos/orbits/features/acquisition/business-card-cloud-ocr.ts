@@ -9,6 +9,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contr
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { SeniorityLevelValue } from "../../shared/domain/seniority";
 import { sanitizeCardEnrichment } from "./business-card-enrichment-prompt";
+import { filterBusinessCardOtherText } from "./business-card-other-text";
 
 export const BUSINESS_CARD_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -66,6 +67,11 @@ export interface BusinessCardStructuredExtraction {
   seniorityLevel?: SeniorityLevelValue | null;
   regionCountryCode?: string | null;
   regionCity?: string | null;
+  /**
+   * Sprint 0150：印在名片上、但不属于任何栏位的有意义文字（口号、业务范围、资格说明等）。
+   * 已由 filterBusinessCardOtherText 去重过滤；没有时缺省，旧数据同样缺省。
+   */
+  otherText?: readonly string[];
 }
 
 export type BusinessCardReviewIssueCode =
@@ -161,7 +167,7 @@ function contactPoints(
 export function normalizeBusinessCardExtraction(
   extraction: BusinessCardStructuredExtraction,
 ): BusinessCardStructuredExtraction {
-  return {
+  const normalized: BusinessCardStructuredExtraction = {
     fullName: optionalText(extraction.fullName),
     nativeFullName: optionalText(extraction.nativeFullName),
     romanizedFullName: optionalText(extraction.romanizedFullName),
@@ -177,6 +183,9 @@ export function normalizeBusinessCardExtraction(
     ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
     ...sanitizeCardEnrichment(extraction.seniorityLevel, extraction.regionCountryCode, extraction.regionCity),
   };
+  const otherText = filterBusinessCardOtherText(extraction.otherText ?? [], normalized);
+
+  return otherText.length > 0 ? { ...normalized, otherText } : normalized;
 }
 
 function validEmail(value: string): boolean {

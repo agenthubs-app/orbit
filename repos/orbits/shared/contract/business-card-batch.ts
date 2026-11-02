@@ -36,6 +36,8 @@ export interface BusinessCardStructuredExtractionContract {
   regionCountryCode?: string | null;
   /** W0045：规范英文城市名（如 "Tokyo"）；没有国家码时为 null。 */
   regionCity?: string | null;
+  /** Sprint 0150：名片上印着、但不属于任何栏位的有意义文字（已去重过滤）；没有或旧数据缺省。 */
+  otherText?: readonly string[];
 }
 
 export type BusinessCardReviewIssueCode =

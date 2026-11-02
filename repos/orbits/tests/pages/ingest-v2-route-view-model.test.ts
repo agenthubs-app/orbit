@@ -390,3 +390,21 @@ test("W0045 an edited seniority or region survives polling, and clearing is subm
   assert.equal(setDraftSeniority(edited, "boss").seniority.value, null, "an unknown level is never submitted");
   assert.equal(setDraftRegion(edited, { countryCode: "XX", city: "Tokyo" }).region.countryCode, null);
 });
+
+test("Sprint 0150: both sides' other printed text becomes one deduped 「名片上的其他信息」 section", () => {
+  const front = item({ extraction: { ...item().extraction!, departments: ["研究開発部"], otherText: ["確かな技術で未来をつくる", "研究開発部"] } });
+  const back = item({
+    id: "item-back",
+    side: "back",
+    seq: 2,
+    extraction: { ...item({ side: "back" }).extraction!, otherText: ["確かな技術で、未来をつくる", "■ 受託開発 ■ 技術顧問", "aki@example.test"] },
+  });
+  const notes = initialCardDraft(card([back, front])).fields.notes;
+  const [sides, section] = notes.split("\n\n名片上的其他信息\n");
+  assert.ok(sides?.includes("部门: 研究開発部"));
+  assert.equal(section, "確かな技術で未来をつくる\n■ 受託開発 ■ 技術顧問", notes);
+  assert.equal(notes.match(/名片上的其他信息/g)?.length, 1);
+
+  const legacy = initialCardDraft(card([item(), item({ id: "item-back", side: "back", seq: 2 })])).fields.notes;
+  assert.ok(!legacy.includes("名片上的其他信息"));
+});

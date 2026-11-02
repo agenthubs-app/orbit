@@ -10,6 +10,11 @@ import {
 } from "./business-card-ocr-validation";
 import { businessCardEnrichmentInstruction } from "./business-card-enrichment-prompt";
 import { businessCardIndustryInstruction } from "./business-card-industry-prompt";
+import {
+  BUSINESS_CARD_OTHER_TEXT_INSTRUCTION,
+  businessCardTranscriptLines,
+  filterBusinessCardOtherText,
+} from "./business-card-other-text";
 
 const DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT =
   "https://api.deepseek.com/chat/completions";
@@ -42,6 +47,7 @@ export function businessCardStructuringPrompt(): string {
     "Classify messenger handles as contactPoints with type wechat, line, or whatsapp; use type website for printed URLs, and type other for any remaining printed contact method so nothing is dropped.",
     "If the transcription contains multiple business cards, structure only the single card with the most complete details, and never merge values from different cards.",
     "Return null or an empty array for absent fields; never fabricate a value the transcription does not contain.",
+    BUSINESS_CARD_OTHER_TEXT_INSTRUCTION,
     businessCardIndustryInstruction(),
     businessCardEnrichmentInstruction(),
     "Respond with a single JSON object matching this JSON schema exactly:",
@@ -279,8 +285,14 @@ export function createConfiguredDeepseekBusinessCardOcrProvider({
         );
       }
 
+      const extraction = parseBusinessCardStructuredExtraction(parsed);
+      // Sprint 0150 兜底：模型没给 otherText 时，从转写全文里取没进任何栏位的行。
+      const fallbackOtherText = extraction.otherText
+        ? []
+        : filterBusinessCardOtherText(businessCardTranscriptLines(transcription.content), extraction);
+
       return {
-        extraction: parseBusinessCardStructuredExtraction(parsed),
+        extraction: fallbackOtherText.length > 0 ? { ...extraction, otherText: fallbackOtherText } : extraction,
         transcript: transcription.content,
         usage: {
           inputTokens: transcription.inputTokens + structured.inputTokens,

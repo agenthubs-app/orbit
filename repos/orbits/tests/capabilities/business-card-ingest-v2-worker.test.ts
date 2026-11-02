@@ -18,6 +18,7 @@ import {
   type BusinessCardIngestRepository,
 } from "../../features/acquisition/business-card-ingest-v2/repository";
 import { createIngestV2Worker } from "../../features/acquisition/business-card-ingest-v2/worker";
+import { groupIngestItemsByCardId, initialCardDraft } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 import type { IngestDerivativeStore } from "../../features/acquisition/business-card-ingest-v2/derivative-store";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -159,6 +160,30 @@ test("worker extracts, reconciles, and delivers exactly one generation-1 notific
     const second = await worker.runOnce();
     assert.equal(second.claimed, 0);
     assert.equal(second.notificationsSent, 0);
+  });
+});
+
+test("Sprint 0150: other printed text from the fake OCR is filtered, persisted, and reaches the draft notes", { skip }, async () => {
+  await withHarness(async (harness) => {
+    const created = await readyBatch(harness, 1);
+    const worker = createIngestV2Worker({
+      repository: harness.repo,
+      store: harness.store,
+      provider: providerReturning({
+        ...EXTRACTION,
+        otherText: ["暮らしに、もっと安心を。", "Orbit KK", "hanako@example.com", "- 1 -", "■ 不動産売買仲介"],
+      }),
+      notify: async () => undefined,
+    });
+
+    assert.equal((await worker.runOnce()).extracted, 1);
+
+    const stored = await harness.pool.query(`select extraction from bc_ingest_items where id = $1`, [created.items[0]!.id]);
+    assert.deepEqual(stored.rows[0]?.extraction.otherText, ["暮らしに、もっと安心を。", "不動産売買仲介"]);
+    const detail = await harness.repo.getBatch({ actorId: ACTOR, batchId: created.batch.id });
+    assert.deepEqual(detail?.items[0]?.extraction?.otherText, ["暮らしに、もっと安心を。", "不動産売買仲介"]);
+    const draft = initialCardDraft(groupIngestItemsByCardId(detail!.items)[0]!);
+    assert.ok(draft.fields.notes.endsWith("名片上的其他信息\n暮らしに、もっと安心を。\n不動産売買仲介"), draft.fields.notes);
   });
 });
 

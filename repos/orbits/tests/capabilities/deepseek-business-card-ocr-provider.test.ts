@@ -205,3 +205,66 @@ test("business card OCR provider selection prefers DeepSeek and falls back to Ge
 
   assert.equal(createConfiguredBusinessCardCloudOcrProvider({ env: {} }), null);
 });
+
+function twoStageFetch(transcript: string, structured: unknown, requests: Record<string, unknown>[] = []): typeof fetch {
+  return (async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return requests.length === 1
+      ? chatResponse(transcript, { prompt: 1, completion: 1 })
+      : chatResponse(JSON.stringify(structured), { prompt: 1, completion: 1 });
+  }) as typeof fetch;
+}
+
+test("Sprint 0150: DeepSeek asks for otherText and keeps only lines that fit no field", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const provider = createConfiguredDeepseekBusinessCardOcrProvider({
+    env: { DEEPSEEK_API_KEY: "k" },
+    fetchImplementation: twoStageFetch("架空技研株式会社\n未来をつくる技術", {
+      ...providerExtraction(),
+      otherText: ["未来をつくる技術", "架空技研株式会社", "TEL(本社) 03-0000-3333", "3"],
+    }, requests),
+  });
+
+  const result = await provider!.extract({ imageBase64: "aGVsbG8=", mimeType: "image/jpeg" });
+
+  const system = (requests[1]?.messages as { content: string }[])[0]!.content;
+  assert.match(system, /otherText/);
+  assert.match(system, /"otherText":\{"items":\{"type":"string"\},"type":"array"\}/);
+  assert.deepEqual(result.extraction.otherText, ["未来をつくる技術"]);
+});
+
+test("Sprint 0150: without otherText from the model, DeepSeek falls back to uncovered transcript lines", async () => {
+  const provider = createConfiguredDeepseekBusinessCardOcrProvider({
+    env: { DEEPSEEK_API_KEY: "k" },
+    fetchImplementation: twoStageFetch(
+      [
+        "架空技研株式会社",
+        "事業開発室 室長",
+        "青空 太郎",
+        "TEL(本社) 03-0000-3333 / FAX 03-0000-4444",
+        "email: taro.a@example.test",
+        "https://example.test",
+        "東京都テスト区7-8-9",
+        "■ 半導体検査装置の設計・製造",
+        "ISO 9001 認証取得",
+        "1/2",
+      ].join("\n"),
+      providerExtraction(),
+    ),
+  });
+
+  const result = await provider!.extract({ imageBase64: "aGVsbG8=", mimeType: "image/jpeg" });
+
+  assert.deepEqual(result.extraction.otherText, ["半導体検査装置の設計・製造", "ISO 9001 認証取得"]);
+});
+
+test("Sprint 0150: a transcript fully covered by fields leaves otherText absent", async () => {
+  const provider = createConfiguredDeepseekBusinessCardOcrProvider({
+    env: { DEEPSEEK_API_KEY: "k" },
+    fetchImplementation: twoStageFetch("架空技研株式会社\n青空 太郎 室長\nTEL(本社) 03-0000-3333", providerExtraction()),
+  });
+
+  const result = await provider!.extract({ imageBase64: "aGVsbG8=", mimeType: "image/jpeg" });
+
+  assert.equal("otherText" in result.extraction, false);
+});

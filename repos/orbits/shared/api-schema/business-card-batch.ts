@@ -61,6 +61,8 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   seniorityLevel: z.unknown().optional(),
   regionCountryCode: z.unknown().optional(),
   regionCity: z.unknown().optional(),
+  // Sprint 0150 起才有；格式不对只丢掉这一栏。
+  otherText: z.unknown().optional(),
 }).transform((value) => ({
   fullName: value.fullName,
   nativeFullName: value.nativeFullName,
@@ -82,6 +84,9 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   ...(value.seniorityLevel === undefined && value.regionCountryCode === undefined && value.regionCity === undefined
     ? {}
     : sanitizeExtractionEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity)),
+  ...(Array.isArray(value.otherText) && value.otherText.every((line) => typeof line === "string")
+    ? { otherText: value.otherText as readonly string[] }
+    : {}),
 }));
 
 export const businessCardReviewIssueSchema: z.ZodType<Contract.BusinessCardReviewIssueContract> = z.object({

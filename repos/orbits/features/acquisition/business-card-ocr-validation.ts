@@ -14,6 +14,7 @@ import type {
 } from "./business-card-cloud-ocr";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import { sanitizeCardEnrichment } from "./business-card-enrichment-prompt";
+import { filterBusinessCardOtherText } from "./business-card-other-text";
 
 const nullableStringSchema = {
   type: ["string", "null"],
@@ -71,6 +72,10 @@ export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
     fullName: nullableStringSchema,
     nativeFullName: nullableStringSchema,
     organization: nullableStringSchema,
+    otherText: {
+      items: { type: "string" },
+      type: "array",
+    },
     primaryIndustryId: nullableStringSchema,
     regionCity: nullableStringSchema,
     regionCountryCode: nullableStringSchema,
@@ -98,6 +103,7 @@ export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
     "seniorityLevel",
     "regionCountryCode",
     "regionCity",
+    "otherText",
   ],
   type: "object",
 } as const;
@@ -257,7 +263,7 @@ export function parseBusinessCardStructuredExtraction(
     );
   }
 
-  return {
+  const extraction: BusinessCardStructuredExtraction = {
     fullName,
     nativeFullName,
     romanizedFullName,
@@ -275,4 +281,8 @@ export function parseBusinessCardStructuredExtraction(
     // W0045：职级与地区同样是推断值，规则同行业：不合法清成 null，不让整张名片失败。
     ...sanitizeCardEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity),
   };
+  // Sprint 0150：otherText 是补充信息，格式不对只丢掉这一栏，不让整张名片失败。
+  const otherText = filterBusinessCardOtherText(stringArray(value.otherText) ?? [], extraction);
+
+  return otherText.length > 0 ? { ...extraction, otherText } : extraction;
 }
