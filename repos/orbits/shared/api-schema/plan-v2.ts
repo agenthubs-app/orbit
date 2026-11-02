@@ -13,6 +13,7 @@ import type {
   PlanV2SummaryResponse,
   PlanConfirmResult,
   PlanDraftFixRequest,
+  PlanDraftRedraftRequest,
   PlanDraftConfirmRequest,
   PlanDraftManualEditRequest,
   PlanDraftView,
@@ -563,6 +564,10 @@ export const planDraftConfirmAdjustmentsObject = z.object({
 }).strict();
 export const planDraftConfirmRequestObject = z.object({ idempotencyKey, adjustments: planDraftConfirmAdjustmentsObject.optional() }).strict();
 export const planDraftConfirmRequestSchema = planDraftConfirmRequestObject as z.ZodType<PlanDraftConfirmRequest>;
+
+/** R36a「重新起草」：请求体只有 idempotencyKey（严格，多余字段 400）。 */
+export const planDraftRedraftRequestObject = z.object({ idempotencyKey }).strict();
+export const planDraftRedraftRequestSchema = planDraftRedraftRequestObject as z.ZodType<PlanDraftRedraftRequest>;
 
 /* ------------------------------------------------------------------ */
 /* R24 概要、人物类型详情与记录加分                                         */

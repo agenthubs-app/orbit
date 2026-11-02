@@ -18840,6 +18840,121 @@
         }
       }
     },
+    "plan-v2.ts::PlanDraftRedraftRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanDraftRedraftResponse": {
+      "kind": "object",
+      "members": {
+        "draftId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'review' | 'initial'"
+        },
+        "status": {
+          "optional": false,
+          "kind": "text",
+          "type": "'confirmed' | 'open' | 'discarded'"
+        },
+        "intakeId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "planId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "goal": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "goalKind": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanGoalKindRead"
+        },
+        "purposeText": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "premise": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPremiseRow[]"
+        },
+        "content": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanV2Content"
+        },
+        "originContent": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanV2Content"
+        },
+        "citations": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanCitationView[]"
+        },
+        "aiFixUsed": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "aiFixLimit": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "manualEditAvailable": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "turns": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanDraftTurn[]"
+        },
+        "fix": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanAiStepView"
+        },
+        "revision": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "updatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "slotState": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanDraftSlotState[]"
+        }
+      }
+    },
     "plan-v2.ts::PlanTypeStats": {
       "kind": "object",
       "members": {

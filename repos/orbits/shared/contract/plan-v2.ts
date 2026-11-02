@@ -640,6 +640,19 @@ export interface PlanDraftConfirmRequest {
   adjustments?: PlanDraftConfirmAdjustments;
 }
 
+/**
+ * R36a「重新起草」（用户 2026-11-02 拍板）：`POST …/drafts/[draftId]/redraft`。只对 intake 来的 open 初稿（`kind: "initial"`、
+ * `content.schemaVersion === 3`、未手动编辑）开放，否则 DRAFT_CLOSED；占一次 AI 修正（与 `…/fix` 共用 `aiFixLimit`，用完
+ * FIX_LIMIT）；不重新联网搜索——复用草稿已有的 `content.sources`（S1… 编号不变）、同一前提再起草一遍；失败（含 busy）不扣次数。
+ * 成功后 `content` 与 `originContent` 都换成新稿（「AI 初稿に戻す」回到这一版），回执 kind `draft_redraft`。
+ */
+export interface PlanDraftRedraftRequest {
+  idempotencyKey: string;
+}
+
+/** `POST …/drafts/[draftId]/redraft` 的响应：换稿后的草稿（与 `…/fix` 同形）。 */
+export type PlanDraftRedraftResponse = PlanDraftView;
+
 /* ------------------------------------------------------------------ */
 /* R24 概要、人物类型详情与记录加分                                         */
 /* ------------------------------------------------------------------ */
