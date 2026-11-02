@@ -334,6 +334,7 @@ figcaption{font-size:13.5px;color:var(--muted)}
   </table></div>
   <p>这张表以代码里的离线资格表为唯一依据（<code>src/api/schema/offline-policy.ts</code>）：每期把对应的行改成 <code>offline_queue</code>，删掉登记了却不支持的笔记删除，补上消息发送。手机在两个时刻各查一次：你点下保存时（不在表里就提示需要联网，不进队列），和真正上传前。</p>
   <p>还有两个边界：离线读取租约（最长 7 天）过期、本地数据显示为锁定时，写入也关掉；浏览器版第一轮不开放断网写（<a href="#s13">D2</a>），原因是浏览器可能自己清掉站点存储，队列会悄悄消失。</p>
+  <div class="callout"><p><strong>调整（2026-11-02，用户决定，Sprint 0144）：</strong>关系跟进的「直接完成」（不记录结果）和「推迟到更晚的日期」可以断网做；iOrbit 历史的整理和删除、删除联系人可以断网做，都只改你自己的数据；「完成并记录结果」仍需要联网。消息发送移出断网范围，因为 2026-10-27 起消息只存草稿；已经排队的旧消息仍可重试或放弃。资格表已按此登记。</p></div>
   <div class="recap"><div class="tag">这一步的结论</div><p>四类可以：笔记新建编辑、个人待办、不重复的日程、消息发送。其余一律需要联网，资格表是唯一依据。</p></div>
 </section>
 
@@ -645,7 +646,7 @@ figcaption{font-size:13.5px;color:var(--muted)}
   <div class="decision"><div class="dno">D3 · 笔记冲突的第三个选项</div><p>除了「保留本机」「使用服务器」，笔记要不要给「另存为新笔记」？</p><p class="rec">建议：<strong>给，只限笔记</strong>。笔记是大段文字，两边都想留的情况最常见；待办和日程只给两个选项。</p></div>
   <div class="decision"><div class="dno">D4 · 笔记删除</div><p>服务器没有笔记删除接口，离线资格表却登记了。</p><p class="rec">建议：<strong>断网不开放笔记删除</strong>，在 0132 把资格表里这一行去掉。是否给笔记加删除功能是产品问题，不借断网写引入。</p></div>
   <div class="decision"><div class="dno">D5 · 待办删除和状态操作的版本</div><p>删除、完成、重新打开、取消要不要带基准版本？</p><p class="rec">建议：<strong>删除带版本（可选字段，离线重放时必带），对不上回 409；三个状态操作不带</strong>。在线路径不受影响。</p></div>
-  <div class="decision"><div class="dno">D6 · 关系跟进</div><p>0034 把关系跟进列进了首批，要不要开放？</p><p class="rec">建议：<strong>本轮不开放</strong>。「完成并记录结果」会同时改关系状态和版本，牵涉对方；普通个人待办已覆盖会场场景。</p></div>
+  <div class="decision"><div class="dno">D6 · 关系跟进</div><p>0034 把关系跟进列进了首批，要不要开放？</p><p class="rec">建议：<strong>本轮不开放</strong>。「完成并记录结果」会同时改关系状态和版本，牵涉对方；普通个人待办已覆盖会场场景。</p><p><strong>2026-11-02 用户决定：</strong>已有的、未完成的跟进可以断网「直接完成」（不记录结果）和「推迟到更晚的日期」；「完成并记录结果」仍需要联网。见第 6 步的调整说明（Sprint 0144）。</p></div>
   <div class="decision"><div class="dno">D7 · 重复日程</div><p>重复系列和单次修改断网能不能改？</p><p class="rec">建议：<strong>不能</strong>，只开放不重复的日程。系列和例外的核对都在服务器上，放到手机上容易算错。</p></div>
   <div class="decision"><div class="dno">D8 · 未上传修改的合并</div><p>同一条记录还没上传过的多次编辑，合并成一条还是逐条发？</p><p class="rec">建议：<strong>合并</strong>，只合并从未尝试上传过的；上传过的冻结不动。</p></div>
   <div class="decision"><div class="dno">D9 · 笔记收据数组的增长</div><p>笔记的收据存在笔记行里，每次编辑多一条，要不要裁剪？</p><p class="rec">建议：<strong>本轮不裁剪</strong>（现在永久保留，满足「至少 90 天」）。0132 加一条测试钉住「90 天内的收据不会被删」，裁剪等真实数据量出现再议。</p></div>
