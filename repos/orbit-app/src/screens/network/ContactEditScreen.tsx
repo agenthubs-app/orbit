@@ -6,13 +6,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 
-import { seniorityGroup, type SeniorityGroup } from "../../api/compute/seniority-group";
+import { seniorityGroup } from "../../api/compute/seniority-group";
 import type { IndustryIdCode } from "../../api/contract/industries";
 import { INDUSTRY_CATALOG, listSecondaryIndustries } from "../../api/domain/industries";
 import { meetingNoteValue } from "../../api/compute/contact-source-chip";
 import { mergeEditedContactTags, userFacingContactTags } from "../../api/compute/contact-tags";
 import { FormScreen } from "../../components/FormScreen";
-import { Avatar, BottomSheet, Button, CategoryTabs, Chip, ConfirmDialog, Icon, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
+import { Avatar, Button, Chip, ConfirmDialog, Icon, OfflineBar, RetryCard, Segmented, Skeleton, TextField, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -20,11 +20,9 @@ import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localContactDetail } from "../../view-models/contacts-local";
 import { detailContactFrom, localizedMeetingValue } from "./contact-detail-model";
+import { GROUP_COPY, IndustryPickerSheet } from "./IndustryPickerSheet";
 import { useDeleteContact } from "./useDeleteContact";
 import { useNetworkDesignContacts } from "./network-design-fixture";
-
-const GROUP_LEVEL: Record<SeniorityGroup, string | null> = { decision: "c_level", manager: "manager", staff: "individual_contributor", other: null };
-const GROUP_COPY = { decision: "network.edit.seniorityDecision", manager: "network.edit.seniorityManager", staff: "network.edit.seniorityStaff", other: "network.edit.seniorityOther" } as const;
 
 interface Draft {
   displayName: string; organization: string; role: string; email: string; phone: string;
@@ -155,55 +153,6 @@ export function ContactEditScreen({ contactId, now = () => Date.now() }: { conta
   );
 }
 
-function IndustryPickerSheet({ visible, onClose, onDone, primary, secondary, seniority, role }: {
-  visible: boolean; onClose: () => void; role: string;
-  primary: string | null; secondary: string | null; seniority: string | null;
-  onDone: (next: { primaryIndustryId: string | null; secondaryIndustryId: string | null; seniorityLevel: string | null }) => void;
-}) {
-  const { styles, colors } = useStyles();
-  const { t, language } = useOrbitLocale();
-  const [tab, setTab] = useState<"industry" | "seniority">("industry");
-  const [picked, setPicked] = useState({ primary, secondary, seniority });
-  const [query, setQuery] = useState("");
-  const industries = INDUSTRY_CATALOG.filter((item) => !query.trim() || item.labels[language].includes(query.trim()));
-  const subs = picked.primary ? listSecondaryIndustries(picked.primary as IndustryIdCode) : [];
-  return (
-    <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("network.edit.pickerTitle")}>
-      <View testID="network-industry-picker" style={styles.sheet}>
-        <View style={styles.between}>
-          <UiText style={styles.sheetTitle}>{t("network.edit.pickerTitle")}</UiText>
-          <Button variant="primary" size="sm" label={t("network.edit.pickerDone")} onPress={() => onDone({ primaryIndustryId: picked.primary, secondaryIndustryId: picked.secondary, seniorityLevel: picked.seniority })} />
-        </View>
-        <Segmented accessibilityLabel={t("network.edit.pickerTitle")} value={tab} onChange={setTab} segments={[{ key: "industry", label: t("network.edit.pickerIndustry") }, { key: "seniority", label: t("network.edit.pickerSeniority") }]} />
-        {tab === "industry" ? (
-          <>
-            <TextInput accessibilityLabel={t("network.edit.industrySearch")} value={query} onChangeText={setQuery} placeholder={t("network.edit.industrySearch")} placeholderTextColor={colors.ink3Text} style={styles.search} />
-            <CategoryTabs accessibilityLabel={t("network.edit.pickerIndustry")} value={(picked.primary ?? "") as string} onChange={(key) => setPicked({ ...picked, primary: key, secondary: null })}
-              options={industries.map((item) => ({ key: item.id as string, label: item.labels[language] }))} />
-            {picked.primary ? <UiText style={styles.lbl}>{t("network.edit.pickerDetail", { industry: INDUSTRY_CATALOG.find((item) => item.id === picked.primary)?.labels[language] ?? "" })}</UiText> : null}
-            {subs.map((item) => {
-              const on = picked.secondary === item.id;
-              return (
-                <UiPressable key={item.id} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={item.labels[language]} onPress={() => setPicked({ ...picked, secondary: item.id })} style={[styles.pickRow, on && styles.pickRowOn]}>
-                  <UiText style={[styles.pickText, styles.grow]}>{item.labels[language]}</UiText>{on ? <Icon name="check" size={16} color={colors.plum700} /> : null}
-                </UiPressable>
-              );
-            })}
-          </>
-        ) : (
-          <View style={styles.chips}>
-            {(["decision", "manager", "staff", "other"] as const).map((key) => {
-              const on = seniorityGroup(picked.seniority) === key && (key !== "other" || picked.seniority === null);
-              return <UiPressable key={key} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={t(GROUP_COPY[key])} onPress={() => setPicked({ ...picked, seniority: GROUP_LEVEL[key] })} style={[styles.pickRow, on && styles.pickRowOn]}><UiText style={styles.pickText}>{t(GROUP_COPY[key])}</UiText></UiPressable>;
-            })}
-          </View>
-        )}
-        {picked.seniority && role ? <UiText style={styles.lbl}>{t("network.edit.seniorityGuess", { level: t(GROUP_COPY[seniorityGroup(picked.seniority)]), role })}</UiText> : null}
-      </View>
-    </BottomSheet>
-  );
-}
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   gapBottom: { marginBottom: 12, gap: 6 },
@@ -218,10 +167,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" },
   tagInput: { minWidth: 80, color: colors.ink, fontSize: 15, paddingVertical: 4 },
   deleteRow: { marginTop: 22 },
-  sheet: { gap: 12 },
-  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sheetTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
-  search: { height: 40, borderRadius: 20, backgroundColor: colors.surface2, paddingHorizontal: 14, color: colors.ink },
-  pickRow: { minHeight: 44, borderRadius: 14, backgroundColor: colors.surface2, flexDirection: "row", alignItems: "center", paddingHorizontal: 14 },
-  pickRowOn: { backgroundColor: colors.accentSoft },
 }));
