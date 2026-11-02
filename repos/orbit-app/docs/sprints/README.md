@@ -60,7 +60,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0144](0144-offline-policy-alignment/GOAL.md) | 离线资格表与实际一致：补登记关系跟进／iOrbit 历史／删除联系人，去掉断网发消息 | 核对偏差 3、5 与小问题；用户 2026-11-02 决定；功能 `7a5be52e0`、`ea34352a4`、`602aea5b3`，报告 [REPORT](0144-offline-policy-alignment/REPORT.md)；共享表同步改 orbits `shared/api-schema/offline-policy.ts`（服务器只引用类型）；协调者复核表副本一致、架构测试 4/4；App 全量 3398/3 既有失败 | 0143 | completed |
 | [0145](0145-upload-and-signout-details/GOAL.md) | 上传整轮 30 秒、退出前可先同步、待办日程临时编号跳转 | 核对小问题；功能 `d3b5fe78e`、`d0551a648`、`9f5b90a5d`，报告 [REPORT](0145-upload-and-signout-details/REPORT.md)；协调者复核 App 全量 3407/3 既有失败、typecheck 0；退出按钮沿用现有文案（待定）；真机未测 | 0144 | completed |
 | [0146](0146-manual-add-industry-draft/GOAL.md) | 手动添加常驻公司、可选行业，未保存内容自动保留为本机草稿 | 用户 2026-11-02 需求 1；功能 `e48ae49b3`、`7b9596f13`、`a3572ea4a`，报告 [REPORT](0146-manual-add-industry-draft/REPORT.md)；phoneweb + 本地服务实测并截图；协调者复核相关 App 测试 47/47、查看截图；App 全量 3413/3、orbits 6942/22 均为既有失败 | 无 | completed |
-| [0147](0147-home-widget-drag/GOAL.md) | 首页长按小组件即可拖动，其他组件让位，落点准确并保存 | 需求 2 | 0146 | planned |
+| [0147](0147-home-widget-drag/GOAL.md) | 首页长按小组件即可拖动，其他组件让位，落点准确并保存 | 需求 2；功能 `4ec6e4c73`、`e7d567050`（离开页面／退到后台也保存），报告 [REPORT](0147-home-widget-drag/REPORT.md)；phoneweb 实拖并刷新回读；协调者复核相关测试 24/24、查看截图；App 全量 3420/3 既有失败；真机手势冲突未测 | 0146 | completed |
 | [0148](0148-home-network-distribution/GOAL.md) | 首页人脉小组件展示行业／地区／认识场合分布 | 需求 3 | 0147 | planned |
 | [0149](0149-calendar-date-jump/GOAL.md) | 点日历标题选年月日直接跳转 | 需求 4 | 0148 | planned |
 | [0150](0150-card-scan-leftover-notes/GOAL.md) | 名片上未归类的有意义文字放进备注 | 需求 5 | 0149 | planned |
