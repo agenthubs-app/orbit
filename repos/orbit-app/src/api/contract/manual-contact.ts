@@ -1,6 +1,7 @@
 // R12 契约（DESIGN §2.3、§3.1、§4.1）— 手入力で人脈を追加。Owner: 甲 (R12). Used by: 人脈を追加 · 手入力（两端）。
 // 响应宽进、请求体严格（shared/api-schema/manual-contact.ts）。候选与名片共用 IngestContactCandidateContract：查重一种口径。
 import type { IngestContactCandidateContract } from "./business-card-batch";
+import type { IndustryIdCode } from "./industries";
 
 /** 统合时冲突字段逐个选：保留已有的值，或用这次输入的值覆盖（只列不同的字段）。 */
 export type ManualContactMergeField = "displayName" | "organization" | "role" | "email" | "phone";
@@ -23,6 +24,8 @@ export interface ManualContactCreateInput {
   role?: string;
   email?: string;
   phone?: string;
+  /** 0146：主行业（固定目录）。新建时写入；统合时按名片并入的规则，只在对方没有行业或只有 AI 推测的行业时写。 */
+  primaryIndustryId?: IndustryIdCode;
   metContext?: ManualContactMetContext;
   /** 保存为这个人的联系人备注（不进 Task › メモ）。 */
   note?: string;

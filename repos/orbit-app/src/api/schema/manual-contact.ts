@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { INDUSTRY_IDS } from "../domain/industries";
 import { ingestContactCandidateObject } from "./business-card-batch";
 import { readableItems, tolerantEnum } from "./tolerant";
 import type {
@@ -35,6 +36,7 @@ export const manualContactCreateInputObject = z.object({
   role: optionalText(120),
   email: optionalText(254),
   phone: optionalText(40),
+  primaryIndustryId: z.enum(INDUSTRY_IDS).optional(),
   metContext: manualContactMetContextObject.optional(),
   note: optionalText(2000),
   mergeIntoContactId: requestId.optional(),

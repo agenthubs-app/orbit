@@ -16,6 +16,7 @@
  */
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import { ownedByActor } from "./business-card-contact-match";
+import { applyEnrichedValues, type EnrichedValue } from "./enrichment/apply-enrichment";
 
 export type ContactWritableField = "displayName" | "organization" | "role" | "email" | "phone";
 export type ContactFieldWriteSource = "manual" | "invite" | "invite_sync" | "completion";
@@ -67,6 +68,8 @@ export interface ApplyContactFieldValuesInput {
   appendNoteLines?: readonly string[];
   /** 「在该活动认识」：联系人还没记着活动时才补上（与名片 `fillEmptyMetEvent` 同一口径）。 */
   fillMetEvent?: { eventId: string; title?: string | null } | null;
+  /** 0146：行业等补全值，按名片并入的规则写（`mergeIntoExisting`：只补空、只替换 `ai`）。 */
+  fillEnrichment?: readonly EnrichedValue[];
   now?: () => Date;
 }
 
@@ -145,7 +148,9 @@ function nextPayload(record: ContactRecord, input: ApplyContactFieldValuesInput,
     metEventChanged = true;
   }
 
-  if (!changed.length && !notesChanged && !metEventChanged) return null;
+  const enrichmentChanged = input.fillEnrichment?.length ? applyEnrichedValues(payload, input.fillEnrichment, at, { mergeIntoExisting: true }).length > 0 : false;
+
+  if (!changed.length && !notesChanged && !metEventChanged && !enrichmentChanged) return null;
   if (changed.length) payload.fieldHistory = history.slice(-CONTACT_FIELD_HISTORY_LIMIT);
   return { changed, payload };
 }

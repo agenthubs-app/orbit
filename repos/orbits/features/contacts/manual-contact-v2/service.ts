@@ -8,6 +8,7 @@
  * - 活动核对（复核 M3）：`metEventId` 只写「存在、本人看得到（与 GET /api/events 同一份列表）、已经开始」的活动；
  *   查不到 / 别人的 / 还没开始 / 查询失败 → 不写 `metEventId`（计划会按它记「已参加」），选的活动名改写成备注一行「出会い：…」。
  * - 统合 = `mergeIntoContactId` + `fieldChoices`，经 `applyContactFieldValues`（逐字段覆盖 + `fieldHistory`）。
+ * - 主行业（0146）：新建时以 `user` 来源写 `primaryIndustryId`（经 `applyEnrichedValues`）；统合时按名片并入的规则只补空。
  * - 幂等：`idempotencyKey` 的回执存 `orbit_records`（集合 `manual_contact_commands`，同 `task_mutations` 的做法）；
  *   重放返回第一次的结果，同键不同内容 → `IDEMPOTENCY_CONFLICT`；新建的人已被撤销 → `UNDONE`（复核 m2：不再回放
  *   指向已删除联系人的 `created`）。`duplicate_review` 没有写入，不留回执
@@ -33,6 +34,7 @@ import type { LiveRecordStoreLike } from "../../../shared/storage/live-record-st
 import { listActorContactRecords, ownedByActor, type CardContactFields } from "../business-card-contact-match";
 import { findManualContactCandidates } from "../contact-duplicate-candidates";
 import { applyContactFieldValues, CONTACT_FIELD_PAYLOAD_KEY, ContactFieldWriteError, type ContactWritableField } from "../contact-field-write";
+import { applyEnrichedValues, type EnrichedValue } from "../enrichment/apply-enrichment";
 import { createStorageBusinessCardContactWriteProvider } from "../storage/contact-write-live-record-provider";
 
 export const MANUAL_CONTACT_CREATED_VIA = "manual_v2";
@@ -161,6 +163,11 @@ function noteLines(input: ManualContactCreateInput, eventVerified: boolean): str
   return [...(meeting ? [meeting] : []), ...(note ? note.split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.trim()) : [])];
 }
 
+/** 0146：手入力选的主行业 = 用户自己的值（`user`），之后的 AI 补全不会覆盖。 */
+function industryValues(input: ManualContactCreateInput): EnrichedValue[] {
+  return input.primaryIndustryId ? [{ field: "industry", origin: "user", value: { primaryIndustryId: input.primaryIndustryId, secondaryIndustryId: null }, via: "contact_edit" }] : [];
+}
+
 function metEventOf(input: ManualContactCreateInput): { eventId: string; title: string | null } | null {
   const context = input.metContext;
   const eventId = context?.kind === "event" ? text(context.eventId) : "";
@@ -240,6 +247,7 @@ export function createManualContactV2Service({ storage, events = null, now = () 
       updatedAt: at,
       createdVia: MANUAL_CONTACT_CREATED_VIA,
     } as ContactDTO & { createdVia: string };
+    applyEnrichedValues(contact as unknown as Record<string, unknown>, industryValues(input), at);
     const provider = createStorageBusinessCardContactWriteProvider({ recordProvider: MANUAL_CONTACT_RECORD_PROVIDER, store: unit.store, workspaceId });
     await provider.saveContact(contact, actorId);
     return {
@@ -261,6 +269,7 @@ export function createManualContactV2Service({ storage, events = null, now = () 
         appendNoteLines: noteLines(input, metEvent !== null),
         contactId,
         fillBlanks,
+        fillEnrichment: industryValues(input),
         fillMetEvent: metEvent,
         now,
         source: "manual",

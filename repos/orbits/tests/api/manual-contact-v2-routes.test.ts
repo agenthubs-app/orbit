@@ -138,6 +138,34 @@ test("R12 review: replay after undo is 409 UNDONE; over-long ids are 400 before 
   assert.equal((await h.undo(post("/u", {}), undoContext(long))).status, 400);
 });
 
+test("0146: company and industry are written to the contact; an industry outside the catalog is a 400 and writes nothing", async () => {
+  const storage = createMemoryManualContactV2Storage();
+  const h = handlers({ mode: "mock", resolveActor: actor("actor:industry"), service: createManualContactV2Service({ storage }) });
+  const contacts = () => storage.store.listRecords({ collectionName: "contacts", limit: 100, workspaceId: storage.workspaceId });
+  const bad = await read(await h.create(post("/api/contacts/manual", { displayName: "行業 違反", idempotencyKey: "i0", primaryIndustryId: "space_travel" })));
+  assert.equal(bad.status, 400);
+  assert.equal((await contacts()).length, 0);
+  const created = await read(await h.create(post("/api/contacts/manual", { displayName: "佐藤 工", idempotencyKey: "i1", organization: "ミライ精機", primaryIndustryId: "manufacturing_supply_chain" })));
+  assert.equal(created.status, 201);
+  const payload = (await storage.store.getRecord({ collectionName: "contacts", recordId: String(created.data.contactId), workspaceId: storage.workspaceId }))!.payload;
+  assert.equal(payload.organization, "ミライ精機");
+  assert.equal(payload.primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal(payload.secondaryIndustryId ?? null, null);
+  assert.deepEqual((payload.enrichment as { fields: Record<string, { origin: string }> }).fields.industry?.origin, "user", "a typed industry is the user's own value (AI enrichment never overwrites it)");
+});
+
+test("0146: merging fills the industry only when the existing person has none", async () => {
+  const storage = createMemoryManualContactV2Storage();
+  const h = handlers({ mode: "mock", resolveActor: actor("actor:merge-industry"), service: createManualContactV2Service({ storage }) });
+  const blank = await read(await h.create(post("/m", { displayName: "空 欄", idempotencyKey: "b1" })));
+  const set = await read(await h.create(post("/m", { displayName: "既 存", idempotencyKey: "b2", primaryIndustryId: "finance_investment" })));
+  const payloadOf = async (id: unknown) => (await storage.store.getRecord({ collectionName: "contacts", recordId: String(id), workspaceId: storage.workspaceId }))!.payload;
+  assert.equal((await read(await h.create(post("/m", { displayName: "空 欄", idempotencyKey: "b3", mergeIntoContactId: String(blank.data.contactId), primaryIndustryId: "retail_consumer" })))).data.outcome, "merged");
+  assert.equal((await payloadOf(blank.data.contactId)).primaryIndustryId, "retail_consumer");
+  assert.equal((await read(await h.create(post("/m", { displayName: "既 存", idempotencyKey: "b4", mergeIntoContactId: String(set.data.contactId), primaryIndustryId: "retail_consumer" })))).data.outcome, "merged");
+  assert.equal((await payloadOf(set.data.contactId)).primaryIndustryId, "finance_investment", "the person's own industry stays");
+});
+
 test("live mode without a configured database answers 503", async () => {
   const h = handlers({ mode: "live", resolveActor: actor("actor:live"), service: null });
   const res = await read(await h.create(post("/m", { displayName: "A", idempotencyKey: "l1" })));
@@ -175,10 +203,13 @@ test("live mode over PostgreSQL: create then undo through the routes", databaseT
   const client = createTransactionalPostgresClient({ connectionString: databaseUrl!, pool: pool as unknown as TransactionalPostgresPool });
   const service = createManualContactV2Service({ storage: createPostgresManualContactV2Storage({ client, workspaceId: "workspace:api" }) });
   const h = handlers({ mode: "live", resolveActor: actor("actor:live"), service });
-  const created = await read(await h.create(post("/m", { displayName: "Live Person", idempotencyKey: "live-1" })));
+  const created = await read(await h.create(post("/m", { displayName: "Live Person", idempotencyKey: "live-1", organization: "Live Co", primaryIndustryId: "technology_internet" })));
   assert.equal(created.status, 201);
   const contactId = String(created.data.contactId);
   assert.equal((await pool!.query(`select count(*)::int as n from plan_match_jobs`)).rows[0].n, 1);
+  // 0146: company and industry are in the stored contact (network analysis groups by payload->>'primaryIndustryId').
+  const stored = (await pool!.query(`select payload->>'organization' as organization, payload->>'primaryIndustryId' as industry from orbit_records where record_id = $1`, [contactId])).rows[0];
+  assert.deepEqual({ ...stored }, { industry: "technology_internet", organization: "Live Co" });
   const undone = await read(await h.undo(post("/u", {}), undoContext(contactId)));
   assert.equal(undone.status, 200);
   assert.equal((await pool!.query(`select lifecycle_state from orbit_records where record_id = $1`, [contactId])).rows[0].lifecycle_state, "deleted");
