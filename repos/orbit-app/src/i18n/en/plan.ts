@@ -816,6 +816,9 @@ export const plan = {
   "plan.v3.morePost": " ▾",
   "plan.v3.less": "Show less",
   "plan.v3.redraft": "Draft again",
+  "plan.v3.redraftConfirmTitle": "Your people and points changes will be lost",
+  "plan.v3.redraftConfirmBody": "Drafting again uses 1 AI revision, and the people and points you changed on this page are not kept.",
+  "plan.v3.redraftFailedTitle": "Could not draft again",
   "plan.v3.confirm": "Confirm this",
   "plan.v3.confirmBlocked": "The total is {total}, not 100",
 } as const;

@@ -51,7 +51,7 @@ const CMP_KEYS: Record<PlanComparisonVerdict, "plan.v3.cmpPreferred" | "plan.v3.
   preferred: "plan.v3.cmpPreferred",
 };
 
-export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOpen, onAiFix, onConfirm, confirming, now = new Date() }: {
+export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOpen, onAiFix, onConfirm, confirming, onRedraft, redraftEnabled, redrafting, now = new Date() }: {
   draft: PlanDraftView;
   content: PlanDraftV3Content;
   state: DraftAdjustState;
@@ -62,6 +62,10 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
   onAiFix: () => void;
   onConfirm: () => void;
   confirming: boolean;
+  /** 「重新起草」(R36b, 用户拍板接接口): off when the AI fixes are used up, after a manual edit, or while anything runs. */
+  onRedraft: () => void;
+  redraftEnabled: boolean;
+  redrafting: boolean;
   now?: Date;
 }) {
   const { styles, colors } = useStyles();
@@ -290,10 +294,10 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
           <View style={styles.dock} testID="draft-v3-dock">
             <View pointerEvents="none" style={styles.dockFade}><KitGradient id="draft-v3-dock" from={colors.bg} fromOpacity={0} to={colors.bg} stop={0.4} vertical /></View>
             <View style={styles.dockIn}>
-              <UiPressable accessibilityRole="button" accessibilityState={{ disabled: true }} disabled style={styles.btn} testID="draft-v3-redraft">
+              <UiPressable accessibilityRole="button" accessibilityState={{ busy: redrafting, disabled: !redraftEnabled || redrafting }} disabled={!redraftEnabled || redrafting} onPress={onRedraft} style={styles.btn} testID="draft-v3-redraft">
                 <UiText style={styles.btnText}>{t("plan.v3.redraft")}</UiText>
               </UiPressable>
-              <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.v3.confirm")} accessibilityHint={totals.ok ? undefined : t("plan.v3.confirmBlocked", { total: totals.total })} accessibilityState={{ disabled: !totals.ok || confirming }} disabled={!totals.ok || confirming} onPress={onConfirm} style={[styles.btn, styles.btnPri]} testID="draft-confirm">
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("plan.v3.confirm")} accessibilityHint={totals.ok ? undefined : t("plan.v3.confirmBlocked", { total: totals.total })} accessibilityState={{ disabled: !totals.ok || confirming || redrafting }} disabled={!totals.ok || confirming || redrafting} onPress={onConfirm} style={[styles.btn, styles.btnPri]} testID="draft-confirm">
                 <UiText style={[styles.btnText, styles.btnTextPri]}>{t("plan.v3.confirm")}</UiText>
               </UiPressable>
             </View>

@@ -816,6 +816,9 @@ export const plan = {
   "plan.v3.morePost": " ▾",
   "plan.v3.less": "收起",
   "plan.v3.redraft": "重新起草",
+  "plan.v3.redraftConfirmTitle": "改过的人数和分数会作废",
+  "plan.v3.redraftConfirmBody": "重新起草会用掉1次AI修改，这页上改过的人数和分数不会保留。",
+  "plan.v3.redraftFailedTitle": "没能重新起草",
   "plan.v3.confirm": "按此内容确定",
   "plan.v3.confirmBlocked": "分数合计{total}，不是100",
 } as const;

@@ -11,6 +11,7 @@ import { planDraftEditHref, planTaskSegmentHref } from "../../api/compute/plan-h
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { openMainTab } from "../../components/shell-navigation";
+import { presentConfirm } from "../../components/ui/feedback-requests";
 import { Icon, RetryCard, Skeleton, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -47,8 +48,8 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [intake, setIntake] = useState<PlanIntakeView | null>(null);
   const [draft, setDraft] = useState<PlanDraftView | null>(null);
-  const [busy, setBusy] = useState<"draft" | "fix" | "confirm" | null>(null);
-  const [failure, setFailure] = useState<{ op: "draft" | "fix" | "confirm"; failure: PlanFailure } | null>(null);
+  const [busy, setBusy] = useState<"draft" | "fix" | "redraft" | "confirm" | null>(null);
+  const [failure, setFailure] = useState<{ op: "draft" | "fix" | "redraft" | "confirm"; failure: PlanFailure } | null>(null);
   const [fixText, setFixText] = useState("");
   const [reloading, setReloading] = useState(false);
   // R36b: the v3 draft page's local adjustments (people / points / dropped types; D-1: not a manual edit) and
@@ -118,6 +119,25 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
     setFixText("");
   };
 
+  // R36b: 「重新起草」spends one AI fix (shared with 「让 AI 改」); a new draft text makes the local adjustments
+  // meaningless, so when any exist the user confirms first. A failed attempt costs nothing (the server says so).
+  const redraft = async () => {
+    if (!draft || busy) return;
+    const pending = isDraftV3(draft.content) && adjust?.revision === draft.revision ? adjustmentsOf(draft.content, adjust.state, draft.revision) : null;
+    if (pending) {
+      const go = await presentConfirm({ cancelLabel: copy.action.cancel, confirmLabel: t("plan.v3.redraft"), message: t("plan.v3.redraftConfirmBody"), title: t("plan.v3.redraftConfirmTitle") });
+      if (!go) return;
+    }
+    setBusy("redraft");
+    setFailure(null);
+    const result = await api.redraft(draft.draftId, newIdempotencyKey("redraft"));
+    setBusy(null);
+    if (!result.ok) return setFailure({ failure: result.failure, op: "redraft" });
+    setAdjust(null);
+    setFixOpen(false);
+    setDraft(result.data);
+  };
+
   const confirm = async () => {
     if (!draft || busy) return;
     setBusy("confirm");
@@ -137,15 +157,15 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
   const adjustState = draft && adjust?.revision === draft.revision ? adjust.state : draft ? draftAdjustStateOf(draft.content) : null;
   const onAdjust = (state: DraftAdjustState) => draft && setAdjust({ revision: draft.revision, state });
 
-  const failureView = (op: "draft" | "fix" | "confirm") => {
+  const failureView = (op: "draft" | "fix" | "redraft" | "confirm") => {
     if (failure?.op !== op) return null;
     const item = failure.failure;
     if (item.kind === "aiFailed" && op !== "confirm") {
       return (
         <RetryCard
-          title={t(op === "draft" ? "plan.draft.failedTitle" : "plan.fix.failedTitle")}
+          title={t(op === "draft" ? "plan.draft.failedTitle" : op === "redraft" ? "plan.v3.redraftFailedTitle" : "plan.fix.failedTitle")}
           message={t(op === "draft" ? "plan.draft.failedBody" : "plan.fix.failedBody")}
-          onRetry={() => void (op === "draft" ? makeDraft() : sendFix())}
+          onRetry={() => void (op === "draft" ? makeDraft() : op === "redraft" ? redraft() : sendFix())}
         />
       );
     }
@@ -226,6 +246,9 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                         onAiFix={() => setFixOpen((value) => !value)}
                         onConfirm={() => void confirm()}
                         confirming={busy === "confirm"}
+                        onRedraft={() => void redraft()}
+                        redraftEnabled={draft.aiFixUsed < draft.aiFixLimit && draft.manualEditAvailable && busy === null}
+                        redrafting={busy === "redraft"}
                       />
                     ) : (
                       <>
@@ -245,7 +268,9 @@ export function PlanFlowScreen({ intakeId }: { intakeId: string }) {
                       </View>
                     ))}
                     {busy === "fix" ? <UiText style={kit.lbl}>{t("plan.fix.sending")}</UiText> : null}
+                    {busy === "redraft" ? <UiText style={kit.lbl} testID="draft-v3-redrafting">{t("plan.premise.making")}</UiText> : null}
                     {failureView("fix")}
+                    {failureView("redraft")}
                     {failureView("confirm")}
                     {draft.fix.state === "fallback" && draft.fix.limit ? <LimitNote failure={{ kind: "aiLimit", limit: draft.fix.limit, retryOn: draft.fix.retryOn ?? null }} /> : null}
                     {usedUp && draftOpen && !v3 ? <DraftUsedUp draft={draft} onManual={() => router.push(planDraftEditHref("app", draft.draftId) as Href)} onConfirm={() => void confirm()} confirming={busy === "confirm"} onTurn={(n) => scrollRef.current?.scrollTo({ animated: true, y: Math.max(0, (turnOffsets.current[n] ?? 0) - 8) })} /> : null}

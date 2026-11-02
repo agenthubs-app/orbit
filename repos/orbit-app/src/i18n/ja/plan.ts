@@ -816,6 +816,9 @@ export const plan = {
   "plan.v3.morePost": "を見る ▾",
   "plan.v3.less": "閉じる",
   "plan.v3.redraft": "書き直す",
+  "plan.v3.redraftConfirmTitle": "変えた人数と配点は消えます",
+  "plan.v3.redraftConfirmBody": "書き直すと AI 修正を 1 回使い、このページで変えた人数と配点は残りません。",
+  "plan.v3.redraftFailedTitle": "書き直せませんでした",
   "plan.v3.confirm": "この内容で確定",
   "plan.v3.confirmBlocked": "合計 {total} 点です。100 にすると確定できます。",
 } as const;

@@ -101,6 +101,8 @@ export interface PlanApi {
   makeDraft(intakeId: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
   getDraft(draftId: string): Promise<PlanResult<PlanDraftView>>;
   fix(draftId: string, text: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
+  /** R36b: 「重新起草」— one AI fix spent, shared with `fix`; the server keeps the same draft id and bumps the revision. */
+  redraft(draftId: string, idempotencyKey: string): Promise<PlanResult<PlanDraftView>>;
   /** R36b: `adjustments` (the v3 draft page's people / points / dropped types) rides along only when given; without it the body is unchanged. */
   confirm(draftId: string, idempotencyKey: string, adjustments?: PlanDraftConfirmAdjustments): Promise<PlanResult<PlanConfirmResult>>;
   manualEdit(draftId: string, body: PlanDraftManualEditRequest): Promise<PlanResult<PlanConfirmResult>>;
@@ -192,6 +194,7 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
     confirmBlock: (id, body) => call("patch", intake(id), planIntakeViewSchema, body),
     createIntake: (body) => call("post", `${PLANS}/intakes`, planIntakeViewSchema, body),
     fix: (id, text, idempotencyKey) => call("post", draft(id, "/fix"), planDraftViewSchema, { idempotencyKey, text }),
+    redraft: (id, idempotencyKey) => call("post", draft(id, "/redraft"), planDraftViewSchema, { idempotencyKey }),
     getDraft: (id) => call("get", draft(id), planDraftViewSchema),
     getIntake: (id) => call("get", intake(id), planIntakeViewSchema),
     abandonIntake: (id, idempotencyKey) => call("delete", intake(id), z.object({ intakeId: z.string().min(1), abandoned: z.literal(true) }), { idempotencyKey }),

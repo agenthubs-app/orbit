@@ -33,13 +33,13 @@ test.before(async () => {
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { PlanFlowScreen } from "./src/screens/plan/PlanFlowScreen";
-import { ToastProvider, UiPortalHost } from "./src/components/ui";
+import { ToastProvider, UiFeedbackHost, UiPortalHost } from "./src/components/ui";
 function Root() {
   const [path, setPath] = React.useState(window.planNav.path);
   window.planNav.setPath = setPath;
   const flow = path.match(/^\\/plans\\/flow\\/([^/?]+)/);
   const screen = flow ? <PlanFlowScreen key={path} intakeId={decodeURIComponent(flow[1])} /> : null;
-  return <ToastProvider><UiPortalHost>{screen}</UiPortalHost></ToastProvider>;
+  return <ToastProvider><UiPortalHost>{screen}<UiFeedbackHost /></UiPortalHost></ToastProvider>;
 }
 window.fetch = async (input, init) => {
   const url = new URL(String(input));
@@ -285,6 +285,64 @@ test("AI fix from the page: the pill opens the composer in place of the dock, th
   assert.equal(await page.getByTestId("draft-v3").count(), 1, "the page stays above the revision card");
   assert.equal(await page.getByTestId("draft-turn").getByTestId("draft-confirm").count(), 0, "no v2 buttons under the card: the dock confirms");
   assert.match(await page.getByTestId("draft-v3-ai").innerText(), /あと 2 回/);
+});
+
+test("redraft (R36b, 用户拍板): the dock button posts idempotencyKey only, the page swaps to the new draft, the AI count drops", async (t) => {
+  const { draft, intake } = fixture("sales");
+  const next = fixture("hiring").draft;
+  const redrafted: PlanDraftView = { ...clone(next), aiFixUsed: 1, draftId: draft.draftId, intakeId: draft.intakeId, revision: "rev_redraft" };
+  const { page, calls } = await open(t, "/plans/flow/intake_v3_sales", serverFor(intake, draft, (call) => call.method === "POST" && call.path === "/api/agent/plans/drafts/draft_v3_sales/redraft" ? ok(redrafted) : undefined));
+  await page.getByTestId("draft-v3").waitFor();
+  const before = await page.getByTestId("draft-v3-summary").innerText();
+  const redraft = page.getByTestId("draft-v3-redraft");
+  assert.equal(await redraft.getAttribute("aria-disabled"), null, "open v3 draft with fixes left → enabled");
+  await redraft.click();
+  await page.waitForFunction((text) => document.querySelector('[data-testid="draft-v3-summary"]')?.textContent !== text, before);
+  assert.deepEqual(writes(calls), ["POST /api/agent/plans/drafts/draft_v3_sales/redraft"]);
+  assert.deepEqual(Object.keys(calls.find((call) => call.method === "POST")!.body as Record<string, unknown>), ["idempotencyKey"]);
+  assert.match(await page.getByTestId("draft-v3-ai").innerText(), /あと 2 回/, "one AI fix spent, shared with 「AI に直してもらう」");
+  assert.equal(await page.getByTestId("draft-v3-redrafting").count(), 0, "the generating line leaves with the answer");
+  assert.equal(await page.getByTestId("draft-v3-dock").count(), 1);
+});
+
+test("redraft with pending adjustments asks first: cancel sends nothing and keeps the changes; confirm sends and the changes are gone", async (t) => {
+  const { draft, intake } = fixture("fundraising");
+  const redrafted: PlanDraftView = { ...clone(draft), aiFixUsed: 1, revision: "rev_redraft" };
+  const { page, calls } = await open(t, "/plans/flow/intake_v3_fund", serverFor(intake, draft, (call) => call.method === "POST" && call.path === "/api/agent/plans/drafts/draft_v3_fund/redraft" ? ok(redrafted) : undefined));
+  await page.getByTestId("draft-v3").waitFor();
+  await page.getByRole("button", { name: "VC パートナーの配点を増やす" }).click();
+  assert.equal(await page.getByTestId("draft-v3-type-vc_partner").getByText("変更あり").count(), 1);
+  await page.getByTestId("draft-v3-redraft").click();
+  await page.getByRole("alert").getByText("変えた人数と配点は消えます").waitFor();
+  await page.getByRole("alert").getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("alert").waitFor({ state: "detached" });
+  assert.deepEqual(writes(calls), [], "cancel → nothing sent");
+  assert.equal(await page.getByTestId("draft-v3-type-vc_partner").getByText("変更あり").count(), 1, "the change stays");
+  await page.getByTestId("draft-v3-redraft").click();
+  await page.getByRole("alert").getByRole("button", { name: "書き直す" }).click();
+  await page.waitForFunction(() => /あと 2 回/.test(document.querySelector('[data-testid="draft-v3-ai"]')?.textContent ?? ""));
+  assert.deepEqual(writes(calls), ["POST /api/agent/plans/drafts/draft_v3_fund/redraft"]);
+  assert.equal(await page.getByTestId("draft-v3-type-vc_partner").getByText("変更あり").count(), 0, "the new draft starts from the AI's values");
+  assert.match(await page.getByTestId("draft-v3-total").innerText(), /合計 100 \/ 100 点/);
+});
+
+test("redraft is off when the AI fixes are used up or after a manual edit; a failed attempt shows the retry card and spends nothing", async (t) => {
+  const { draft, intake } = fixture("sales");
+  const usedUp: PlanDraftView = { ...clone(draft), aiFixUsed: draft.aiFixLimit };
+  const { page: pageA } = await open(t, "/plans/flow/intake_v3_sales", serverFor(intake, usedUp));
+  await pageA.getByTestId("draft-v3").waitFor();
+  assert.equal(await pageA.getByTestId("draft-v3-redraft").getAttribute("aria-disabled"), "true", "no fixes left → off");
+  const edited: PlanDraftView = { ...clone(draft), manualEditAvailable: false };
+  const { page: pageB } = await open(t, "/plans/flow/intake_v3_sales", serverFor(intake, edited));
+  await pageB.getByTestId("draft-v3").waitFor();
+  assert.equal(await pageB.getByTestId("draft-v3-redraft").getAttribute("aria-disabled"), "true", "manual edit used → off (the server would answer DRAFT_CLOSED)");
+  const { page: pageC, calls } = await open(t, "/plans/flow/intake_v3_sales", serverFor(intake, draft, (call) => call.method === "POST" && call.path === "/api/agent/plans/drafts/draft_v3_sales/redraft" ? { body: { error: { code: "SERVICE_UNAVAILABLE", context: { reason: "AI_FAILED" }, message: "ai" }, success: false }, status: 503 } : undefined));
+  await pageC.getByTestId("draft-v3").waitFor();
+  await pageC.getByTestId("draft-v3-redraft").click();
+  await pageC.getByText("書き直せませんでした").waitFor();
+  assert.equal(writes(calls).length, 1);
+  assert.match(await pageC.getByTestId("draft-v3-ai").innerText(), /あと 3 回/, "nothing spent");
+  assert.equal(await pageC.getByTestId("draft-v3-redraft").getAttribute("aria-disabled"), null, "可以再试");
 });
 
 test("dark theme renders the v3 page without errors", async (t) => {
