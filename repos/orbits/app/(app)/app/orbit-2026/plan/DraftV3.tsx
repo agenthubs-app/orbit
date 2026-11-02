@@ -96,13 +96,17 @@ export interface DraftV3Props {
   onConfirm: () => void;
   /** 「让 AI 改」：把焦点交给右栏的 AI 修正输入框。 */
   onAiFix: () => void;
+  /** 「作り直す」（R36a，用户 2026-11-02 拍板接接口）：占一次 AI 修正；父组件负责「有未保存调整先确认」。 */
+  onRedraft: () => void;
+  /** 次数用完或已手动编辑时按钮禁用（与服务端 FIX_LIMIT / DRAFT_CLOSED 对应）。 */
+  redraftOff: boolean;
 }
 
 /**
  * ④ 初版 v3（`content.schemaVersion === 3`，plan-draft-v5-proposal.html v16「初稿 · 确认」页）：结论区 / 路线 / 按阶段分组的
  * 可调类型表 / 依据区 / 底部确定条。类名与结构照原型；调整态在父组件（和右栏的「この内容で確定」共用），合计用 plan-allocation。
  */
-export function DraftV3({ draft, t, language, adjust, onAdjust, busy, onConfirm, onAiFix }: DraftV3Props) {
+export function DraftV3({ draft, t, language, adjust, onAdjust, busy, onConfirm, onAiFix, onRedraft, redraftOff }: DraftV3Props) {
   const content = draft.content;
   const [mine, setMine] = useState(false);
   const [me, setMe] = useState<MeFacts | null>(null);
@@ -326,8 +330,8 @@ export function DraftV3({ draft, t, language, adjust, onAdjust, busy, onConfirm,
         <div className={s.dock} data-plan-v3-dock="">
           <div className={s.in}>
             <span className={`${s.sumline} ${ok ? "" : s.bad}`}>{ok ? t(planFlowCopy.v3DockOk) : t(planFlowCopy.v3DockBad, { total })}</span>
-            {/* 「重新起草」：原型有、没有对应接口（主会话 2026-11-01：按原型位置画、置灰，接重新生成接口还是去掉待用户拍板）。 */}
-            <button type="button" className={s.btn} disabled aria-disabled="true" tabIndex={-1} data-plan-v3-redraft="">{t(planFlowCopy.v3Redraft)}</button>
+            {/* 「作り直す」（R36a，用户 2026-11-02 拍板接接口）：POST …/redraft，占一次 AI 修正；用完 / 已手动编辑时禁用。 */}
+            <button type="button" className={s.btn} disabled={redraftOff || busy} aria-busy={busy || undefined} onClick={onRedraft} data-plan-v3-redraft="">{t(planFlowCopy.v3Redraft)}</button>
             <button type="button" className={`${s.btn} ${s.pri}`} disabled={!ok || busy} aria-busy={busy || undefined} onClick={onConfirm} data-plan-v3-confirm="">{t(planFlowCopy.confirmPlan)}</button>
           </div>
         </div>

@@ -442,6 +442,12 @@ export const planFlowCopy = {
   v3DockOk: { ja: "確定するとプランのホームができ、追跡が始まります", zh: "确定后生成计划主页，开始追踪", en: "Confirming creates the plan home and starts tracking", kind: "label" },
   v3DockBad: { ja: "配点の合計が {total} で、100 ではありません", zh: "分数合计 {total}，不是 100", en: "Points add up to {total}, not 100", kind: "label" },
   v3Redraft: { ja: "作り直す", zh: "重新起草", en: "Draft again", kind: "button" },
+  // R36a「重新起草」（用户 2026-11-02 拍板）：页上有未确定的调整时先确认；进行中沿用「生成中」骨架。
+  v3RedraftAskTitle: { ja: "いまの調整を捨てて、作り直しますか？", zh: "要放弃当前的调整并重新起草吗？", en: "Discard the current adjustments and draft again?", kind: "confirmTitle" },
+  v3RedraftAskBody: { ja: "この画面で変えた人数・配点・外した種類は保存されていません。作り直すと、最初からの新しい初版に置き換わります。", zh: "这页上改过的人数、分数和删掉的类型还没有保存。重新起草后会换成一份全新的初稿。", en: "The counts, points and removed types changed on this page are not saved. Drafting again replaces everything with a new first draft.", kind: "sentence" },
+  v3RedraftUses: { ja: "AI 修正を 1 回使います（あと {n} 回）", zh: "会用掉1次 AI 修改（还剩{n}次）", en: "Uses one AI revision ({n} left)", kind: "label" },
+  v3RedraftKeeps: { ja: "前提と情報源はそのまま使い、検索はやり直しません", zh: "沿用现在的前提和来源，不重新联网搜索", en: "Keeps the premises and sources; no new search", kind: "label" },
+  v3RedraftConfirm: { ja: "捨てて作り直す", zh: "放弃并重新起草", en: "Discard and draft again", kind: "button" },
   v3SourceRef: { ja: "情報源 {n}：{title}", zh: "来源 {n}：{title}", en: "Source {n}: {title}", kind: "label" },
   v3AnswerRef: { ja: "あなたの回答「{label}」：{value}", zh: "你的回答「{label}」：{value}", en: "Your answer ({label}): {value}", kind: "label" },
 } as const satisfies OrbitCopyTable;

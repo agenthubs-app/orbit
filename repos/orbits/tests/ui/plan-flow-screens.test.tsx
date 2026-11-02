@@ -14,7 +14,7 @@ import { confirmed, draftFixture, draftV3Fixture, intakeFixture, premiseIntake, 
 // stubbed in the page and every call is recorded, so each test asserts which
 // requests a step makes — and that ticking, choosing and typing make none.
 type Reply = { status: number; body: unknown };
-type Handler = { method: string; url: string; replies: Reply[] };
+type Handler = { method: string; url: string; replies: Reply[]; delay?: number };
 type Fixture = { view: "goal" | "flow" | "edit" | "overview" | "slot-error"; id?: string; lang?: string; handlers: Handler[] };
 type Call = { url: string; method: string; body?: any; lang?: string };
 
@@ -50,6 +50,7 @@ test.before(async () => {
       const handler = f.handlers[index];
       const n = counts[index] = (counts[index] ?? -1) + 1;
       const reply = handler.replies[Math.min(n, handler.replies.length - 1)];
+      if (handler.delay) await new Promise((resolve) => setTimeout(resolve, handler.delay));
       return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { "content-type": "application/json" } });
     };
     const view = f.view === "goal" ? <PlanGoalEntry /> : f.view === "flow" ? <PlanFlowScreen intakeId={f.id} /> : f.view === "overview" ? <PlanOverview planId={f.id} /> : f.view === "slot-error" ? <PlanSlotError /> : <PlanManualEditScreen draftId={f.id} />;
@@ -428,8 +429,8 @@ test("R36a v3 adjust: counts, points and removals move the total with plan-alloc
     { method: "POST", replies: [confirmReply], url: "/drafts/dr-1/confirm$" },
   ], id: "in-1", view: "flow" });
   await clean.locator("[data-plan-draft-v3]").waitFor();
-  // 「作り直す」没有接口：按原型画、置灰（待用户拍板）；调一下再调回来也算没动过
-  assert.equal(await clean.locator("[data-plan-v3-redraft]").isDisabled(), true);
+  // 「作り直す」已接接口（R36a，用户 2026-11-02 拍板）：次数没用完、没手动编辑 → 可用；调一下再调回来也算没动过
+  assert.equal(await clean.locator("[data-plan-v3-redraft]").isDisabled(), false);
   await clean.locator("[data-type='first_payer'] [data-plan-v3-count] button[aria-label='-']").click();
   await clean.locator("[data-type='first_payer'] [data-plan-v3-count] button[aria-label='+']").click();
   await clean.locator("[data-plan-v3-confirm]").click();
@@ -768,4 +769,70 @@ test("人脈から選ぶ: the default list comes from member-candidates (no quer
   await page.getByRole("checkbox", { name: "Mio Mori" }).click();
   await page.locator("[data-plan-add-preview]").getByText("Mio Moriさんの「できること」").waitFor();
   assert.equal(await page.getByRole("button", { name: "1名を追加" }).isDisabled(), false);
+});
+
+// R36a「重新起草」：没动过 → 直接 POST …/redraft（body 只有 idempotencyKey），进行中显示生成中骨架，回来换成新稿、页上的调整作废；
+// 有未保存调整 → 先确认（取消不发请求）；次数用完 / 已手动编辑 → 按钮禁用。
+test("R36a v3 redraft: sends POST …/redraft, shows the drafting skeleton meanwhile and swaps in the new draft; unsaved adjustments ask first; used-up or hand-edited drafts disable the button", async (t) => {
+  const redrawn = draftV3Fixture({ aiFixUsed: 1, revision: "rev-2" }, { conclusion: "作り直した結論" });
+  const page = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { delay: 300, method: "POST", replies: [ok(redrawn)], url: "/drafts/dr-1/redraft$" },
+  ], id: "in-1", view: "flow" });
+  const root = page.locator("[data-plan-draft-v3]");
+  await root.waitFor();
+  const redraft = root.locator("[data-plan-v3-redraft]");
+  assert.equal(await redraft.isDisabled(), false);
+  // 没动过：不问，直接发；进行中 = 生成中骨架（data-plan-drafting），回来 = 新稿、aiFixUsed +1
+  await redraft.click();
+  await page.locator("[data-plan-drafting]").waitFor();
+  assert.equal(await page.locator("[data-plan-redraft-ask]").count(), 0);
+  await page.locator("[data-plan-draft-v3] h1", { hasText: "作り直した結論" }).waitFor();
+  assert.equal(await page.locator("[data-plan-drafting]").count(), 0);
+  const posted = (await fetches(page)).filter((call) => call.method === "POST");
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0]!.url, "/api/agent/plans/drafts/dr-1/redraft");
+  assert.deepEqual(Object.keys(posted[0]!.body), ["idempotencyKey"]);
+  assert.equal(await page.locator("[data-plan-fix-left]").textContent(), "2");
+
+  // 有未保存调整 → 确认框：取消不发请求、调整还在；确认 → 发请求，回来后调整作废（新稿按 revision 重置）
+  const asked = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture())], url: "/drafts/dr-1$" },
+    { method: "POST", replies: [ok(redrawn)], url: "/drafts/dr-1/redraft$" },
+  ], id: "in-1", view: "flow" });
+  const askedRoot = asked.locator("[data-plan-draft-v3]");
+  await askedRoot.waitFor();
+  await askedRoot.locator("[data-type='first_payer'] [data-plan-v3-points] button[aria-label='+5']").click();
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "105");
+  await askedRoot.locator("[data-plan-v3-redraft]").click();
+  const dialog = asked.locator("[data-plan-redraft-ask]");
+  await dialog.waitFor();
+  await dialog.getByText("いまの調整を捨てて、作り直しますか？").waitFor();
+  await dialog.getByText("AI 修正を 1 回使います（あと 2 回）").waitFor();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  assert.equal(await dialog.count(), 0);
+  assert.equal((await fetches(asked)).filter((call) => call.method === "POST").length, 0, "cancel sends nothing");
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "105", "the adjustments stay");
+  await askedRoot.locator("[data-plan-v3-redraft]").click();
+  await asked.locator("[data-plan-redraft-confirm]").click();
+  await asked.locator("[data-plan-draft-v3] h1", { hasText: "作り直した結論" }).waitFor();
+  assert.equal((await fetches(asked)).filter((call) => call.method === "POST").length, 1);
+  assert.equal(await askedRoot.getAttribute("data-plan-draft-total"), "100", "the unsaved adjustments are gone with the new draft");
+  assert.equal(await askedRoot.locator("[data-plan-v3-redraft]").isDisabled(), false);
+
+  // 次数用完 → 禁用；已手动编辑（manualEditAvailable false）→ 禁用
+  const usedUp = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture({ aiFixUsed: 3 }))], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await usedUp.locator("[data-plan-draft-v3]").waitFor();
+  assert.equal(await usedUp.locator("[data-plan-v3-redraft]").isDisabled(), true);
+  const edited = await screen(t, { handlers: [
+    { method: "GET", replies: [ok(drafted())], url: "/intakes/in-1$" },
+    { method: "GET", replies: [ok(draftV3Fixture({ manualEditAvailable: false }))], url: "/drafts/dr-1$" },
+  ], id: "in-1", view: "flow" });
+  await edited.locator("[data-plan-draft-v3]").waitFor();
+  assert.equal(await edited.locator("[data-plan-v3-redraft]").isDisabled(), true);
 });

@@ -468,3 +468,105 @@ test("R35 SC-04: the real (deepseek) revision checker accepts a v3 draft — the
   assert.deepEqual(revised.draft.content.citations, draft.content.citations);
   assert.deepEqual(pickPlanV3Fields(revised.draft.content), v3);
 });
+
+/* ---------- R36a「重新起草」（用户 2026-11-02 拍板）：整篇再起草，占一次 AI 修正、不重新搜索、失败不扣、幂等回放、非 v3 拒绝 ---------- */
+
+/** 第 2 次起的 `firstDraftV3` 把结论改掉，证明真的换了稿（mock 本身是确定性的）。 */
+function redraftingAi(calls: { search?: ReturnType<typeof fakeSearch> } = {}) {
+  const inputs: FirstDraftInputV3[] = [];
+  const base = createMockPlanFlowAi();
+  const ai = countingAi({ ...base, firstDraftV3: async (input, context) => {
+    inputs.push(input);
+    const result = await base.firstDraftV3(input, context);
+    return result.ok && inputs.length > 1 ? { ...result, value: { ...result.value, outcome: `作り直し ${inputs.length} 回目の結論` } } : result;
+  } });
+  void calls;
+  return { ai, inputs };
+}
+
+test("R36a redraft: the whole v3 draft is written again from the same premise and the draft's own sources — no new search, S-numbers unchanged, content and originContent both replaced, one AI revision used", async () => {
+  const { ai, inputs } = redraftingAi();
+  const search = fakeSearch({ failed: 0, queries: 8, sources: WEB, status: "ok" });
+  const world = flowWorld({ ai, search });
+  const premise = await premiseReady(world);
+  const first = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  const fixed = await world.flow.fix(first.draftId, { idempotencyKey: key(), text: "主催者には最初の 1 回は無料で試してほしい" }, JA);
+  assert.equal(fixed.aiFixUsed, 1);
+  const again = await world.flow.redraft(first.draftId, key(), JA);
+  assert.equal(again.draftId, first.draftId, "the same draft row, not a new one");
+  assert.equal(again.aiFixUsed, 2, "a redraft costs one AI revision");
+  assert.equal(again.status, "open");
+  assert.equal(again.content.schemaVersion, 3);
+  assert.equal(again.content.outcome, "作り直し 2 回目の結論");
+  assert.notEqual(again.content.outcome, fixed.content.outcome);
+  // 不重新搜索：搜索只在初版时调过 1 次；交给模型的来源 = 草稿已有的来源（含网页来源、编号不变）。
+  assert.equal(search.calls.length, 1);
+  assert.equal(ai.calls.firstDraftV3, 2);
+  assert.deepEqual(inputs[1]!.sources, first.content.sources);
+  assert.deepEqual(again.content.sources, first.content.sources);
+  assert.deepEqual(inputs[1]!.answerKeys, first.premise.map((row) => row.key));
+  assert.deepEqual(inputs[1]!.premise, first.premise);
+  assert.equal(ai.keys.at(-1), `redraft:${first.draftId}#2`);
+  // 有网页来源 → 不追加「未能联网核实」。
+  assert.equal(again.content.risks!.filter((risk) => risk.text === UNVERIFIED_JA).length, 0);
+  // originContent 也换成新稿：「AI 初稿に戻す」回到这一版，而不是最初那版。
+  const row = world.repository.dump(SCOPE).drafts.find((item) => item.id === first.draftId)!;
+  assert.equal(row.originContent.outcome, "作り直し 2 回目の結論");
+  assert.equal(row.manualEditUsed, false);
+  const reset = await world.flow.reset(first.draftId, key(), JA);
+  assert.equal(reset.content.outcome, "作り直し 2 回目の結論");
+  assert.equal(again.manualEditAvailable, true);
+  assert.equal(again.turns.length, 1, "the revision history stays");
+});
+
+test("R36a redraft: without web sources the network risk is appended exactly once; the limit is shared with fix; a failed or busy redraft does not count; the same key replays without calling the AI", async () => {
+  const { ai } = redraftingAi();
+  const world = flowWorld({ ai });
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  assert.equal(draft.content.risks!.filter((risk) => risk.text === UNVERIFIED_JA).length, 1);
+  // 失败不扣次数、内容不变
+  ai.next.firstDraftV3 = { ok: false, reason: "failed" };
+  await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("AI_FAILED"));
+  let current = (await world.flow.getDraft(draft.draftId, JA))!;
+  assert.equal(current.aiFixUsed, 0);
+  assert.equal(current.content.outcome, draft.content.outcome);
+  assert.equal(current.fix.state, "failed", "the step record shows the failure (same card as a failed fix)");
+  // busy：不扣、不写回执（同一个 key 再来一次能成功）
+  ai.next.firstDraftV3 = { ok: false, reason: "busy" };
+  const busyKey = key();
+  await assert.rejects(world.flow.redraft(draft.draftId, busyKey, JA), rejects("AI_BUSY"));
+  current = (await world.flow.getDraft(draft.draftId, JA))!;
+  assert.equal(current.aiFixUsed, 0);
+  const one = await world.flow.redraft(draft.draftId, busyKey, JA);
+  assert.equal(one.aiFixUsed, 1);
+  assert.equal(one.content.risks!.filter((risk) => risk.text === UNVERIFIED_JA).length, 1, "the network risk is appended once, not doubled");
+  // 幂等回放：同 key 不再调 AI
+  const calls = ai.calls.firstDraftV3;
+  const replay = await world.flow.redraft(draft.draftId, busyKey, JA);
+  assert.equal(replay.aiFixUsed, 1);
+  assert.equal(ai.calls.firstDraftV3, calls);
+  // 次数与 fix 共用：fix 2 次 → 3 次用完 → 再起草 FIX_LIMIT
+  await world.flow.fix(draft.draftId, { idempotencyKey: key(), text: "事例は 3 件にしたい" }, JA);
+  const three = await world.flow.fix(draft.draftId, { idempotencyKey: key(), text: "このままで、変更しないでください" }, JA);
+  assert.equal(three.aiFixUsed, 3);
+  await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("FIX_LIMIT"));
+  assert.equal(ai.calls.firstDraftV3, calls, "FIX_LIMIT is checked before the AI is called");
+});
+
+test("R36a redraft: only an open, intake-born v3 first draft may be redrafted — a v2 draft, a hand-edited draft and a confirmed draft are DRAFT_CLOSED", async () => {
+  const world = flowWorld();
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  const row = () => world.repository.dump(SCOPE).drafts.find((item) => item.id === draft.draftId)!;
+  const patch = async (change: Partial<ReturnType<typeof row>>) => world.repository.transact(SCOPE, async (tx) => { await tx.updateDraft({ ...row(), ...change }); });
+  const v3 = row().content;
+  await patch({ content: { ...v3, schemaVersion: 2 } as typeof v3 });
+  await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("DRAFT_CLOSED"));
+  await patch({ content: v3, manualEditUsed: true });
+  await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("DRAFT_CLOSED"));
+  await patch({ manualEditUsed: false });
+  await world.flow.confirm(draft.draftId, key(), JA);
+  await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("DRAFT_CLOSED"));
+  assert.equal(world.ai.calls.firstDraftV3, 1, "no AI call on a refused redraft");
+});

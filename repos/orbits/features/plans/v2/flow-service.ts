@@ -187,6 +187,12 @@ export interface PlanFlowService {
   makeDraft(intakeId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   getDraft(draftId: string, context: PlanFlowRequestContext): Promise<PlanDraftView | null>;
   fix(draftId: string, request: { text: string; idempotencyKey: string }, context: PlanFlowRequestContext): Promise<PlanDraftView>;
+  /**
+   * R36a「重新起草」（用户 2026-11-02 拍板）：把 intake 来的 open v3 初稿整篇再起草一遍。占一次 AI 修正（与 `fix` 共用
+   * `PLAN_AI_FIX_LIMIT`，用完 FIX_LIMIT）；不重新联网搜索——复用草稿已有的 `content.sources`、同一前提 / answerKeys 再调
+   * `firstDraftV3`；成功后 `content` 与 `originContent` 都换成新稿，失败（含 busy）不扣次数。非 v3 / 已手动编辑 → DRAFT_CLOSED。
+   */
+  redraft(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   reset(draftId: string, idempotencyKey: string, context: PlanFlowRequestContext): Promise<PlanDraftView>;
   manualEdit(draftId: string, request: PlanDraftManualEditRequest, context: PlanFlowRequestContext): Promise<PlanConfirmResult>;
   /** 确定。R36a：`adjustments`（可选）= 初稿页上的调整，随确定一起落到计划里，不占手动编辑；不带时行为与以前相同。 */
@@ -1710,6 +1716,76 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
         };
         await tx.updateDraft(next);
         await writeReceipt(tx, { body, draftId, key: request.idempotencyKey, kind: "draft_fix", response: { draftId } });
+        return next;
+      });
+      if ("failure" in draft) throw aiError(draft.failure as Extract<PlanAiOutcome<unknown>, { ok: false }>);
+      return draftView(draft as PlanDraftRow, intake, context);
+    },
+
+    async redraft(draftId, idempotencyKey, context) {
+      const body = { draftId };
+      const prior = await repository.read(scope, (reader) => replayed<Record<string, unknown>>(reader, idempotencyKey, "draft_redraft", body));
+      throwIfFailedReceipt(prior);
+      const before = await repository.read(scope, (reader) => requireDraft(reader, draftId));
+      const intake = before.intakeId ? await repository.read(scope, (reader) => requireIntake(reader, before.intakeId!)) : null;
+      if (prior) return draftView(before, intake, context);
+      // 只对 intake 来的 open v3 初稿开放；已手动编辑的也关（手动编辑后的稿不能整篇换掉）。
+      if (before.status !== "open" || before.kind !== "initial" || !intake || before.content.schemaVersion !== 3 || before.manualEditUsed) throw new PlanFlowError("DRAFT_CLOSED", "This draft is closed.");
+      if (before.aiFixUsed >= PLAN_AI_FIX_LIMIT) throw new PlanFlowError("FIX_LIMIT", "All AI revisions have been used.");
+      const n = before.aiFixUsed + 1;
+      const attempt = before.fix.state === "failed" ? before.fix.attempts + 1 : 1;
+      const ledgerKey = attempt > 1 ? `redraft:${draftId}#${n}.${attempt}` : `redraft:${draftId}#${n}`;
+      const industries: IndustryIdCode[] = [];
+      const slots = slotInfos(intake.goalKind, industries, context.language);
+      const eventTemplate = PLAN_GOAL_TEMPLATES[intake.goalKind].slots.find((slot) => slot.slot === PLAN_EVENT_SLOT)!;
+      const landscape = publishedEntriesFor({ goalKind: intake.goalKind, industries, now: nowDate() }).map((entry) => ({ id: entry.id, summary: entry.summary[context.language], title: entry.title[context.language], version: entry.version }));
+      const { aliases, input: contacts } = await aliasesForDraft(intake);
+      const summary = backgroundSummary(intake, context.language);
+      // 不重新联网搜索：来源清单原样复用（S1… 编号不变）；原稿没有网页来源 = 当时未能联网核实 → 这次照旧追加那条风险。
+      const sources: PlanSource[] = [...(before.content.sources ?? [])];
+      const unverified = !sources.some((source) => source.kind === "web");
+      const answerKeys = before.premise.map((row) => row.key);
+      const outcome = await ai.firstDraftV3({
+        answerKeys,
+        background: summary.text,
+        contacts,
+        eventSlot: { allocation: eventTemplate.allocation, targetCount: eventTemplate.targetCount },
+        gaps: summary.gaps,
+        goalKind: intake.goalKind,
+        goalText: intake.goalText,
+        landscape,
+        premise: before.premise,
+        purpose: purposeTextOf(intake),
+        slots,
+        sources,
+      }, { actorId: scope.actorId, language: context.language, ledgerKey, now: nowDate() });
+      const draft = await repository.transact(scope, async (tx) => {
+        const again = await replayed<{ draftId: string }>(tx, idempotencyKey, "draft_redraft", body);
+        const current = await requireDraft(tx, draftId);
+        if (again) return current;
+        if (current.aiFixUsed !== before.aiFixUsed || current.status !== "open" || current.manualEditUsed || current.updatedAt !== before.updatedAt) throw new PlanFlowError("STALE", "The draft changed while it was being written again.");
+        const at = now();
+        if (outcome.ok === false) {
+          // 失败不计次：只记步骤状态（与 fix 共用 `fix` 步骤记录），次数不变。
+          const failure = outcome as Extract<PlanAiOutcome<unknown>, { ok: false }>;
+          if (failure.reason !== "busy") {
+            await tx.updateDraft({ ...current, fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: attempt }, updatedAt: at });
+            await writeReceipt(tx, { body, draftId, key: idempotencyKey, kind: "draft_redraft", response: failureResponse(failure) });
+          }
+          return { failure };
+        }
+        const value: DraftV3 = unverified ? { ...outcome.value, risks: withUnverifiedNetworkRisk(outcome.value.risks, context.language) } : outcome.value;
+        const content = toDraftContentV3(value, intake.goalKind, aliases, context.language, current.premise);
+        const next: PlanDraftRow = {
+          ...current,
+          aiFixUsed: n,
+          content,
+          fix: { ...outcomeStep(current.fix, outcome, at, false), attempts: 0 },
+          originContent: content,
+          updatedAt: at,
+        };
+        await tx.updateDraft(next);
+        await writeReceipt(tx, { body, draftId, key: idempotencyKey, kind: "draft_redraft", response: { draftId } });
         return next;
       });
       if ("failure" in draft) throw aiError(draft.failure as Extract<PlanAiOutcome<unknown>, { ok: false }>);

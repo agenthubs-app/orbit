@@ -152,3 +152,39 @@ test("sample intake POST returns 403 before resolving storage or AI", async () =
   assert.equal(marked.status, 403);
   assert.equal(resolutions, 0);
 });
+
+// R36a「重新起草」：POST …/drafts/[draftId]/redraft（body 只有 idempotencyKey、严格）→ 200 一份草稿、aiFixUsed +1；用完 → 409 FIX_LIMIT；确定后 → 409 DRAFT_CLOSED。
+test("R36a: redraft goes through the route — strict body, one AI revision per call, FIX_LIMIT when used up, DRAFT_CLOSED once confirmed", async () => {
+  resetPlansV2MockRepositoryForTests();
+  const h = createPlanFlowHandlers({ resolveActor: async () => null, resolveMode: () => "mock" });
+  const created = await call(h.createIntake, "POST", {}, { goalKind: "fundraising", goalText: "シリーズA の資金調達をしたい", idempotencyKey: "rd-c1", source: "task" });
+  let intake = planIntakeViewSchema.parse(await data(created));
+  const params = { intakeId: intake.intakeId };
+  intake = planIntakeViewSchema.parse(await data(await call(h.confirmBlock, "PATCH", params, { block: "me", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "rd-b1", me: { stance: "owner", wants: intake.background.me.value.wants } })));
+  const members = intake.background.team.value.members.map((member) => ({ capabilities: [...member.capabilities], memberId: member.memberId, otherCapabilities: [], relation: member.relation }));
+  intake = planIntakeViewSchema.parse(await data(await call(h.confirmBlock, "PATCH", params, { block: "team", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "rd-b2", team: { members, mode: intake.background.team.value.mode } })));
+  intake = planIntakeViewSchema.parse(await data(await call(h.confirmBlock, "PATCH", params, { block: "purpose", expectedUpdatedAt: intake.updatedAt, idempotencyKey: "rd-b3", purpose: { selectedLevel: 3 } })));
+  intake = planIntakeViewSchema.parse(await data(await call(h.questions, "POST", params, { idempotencyKey: "rd-q1" })));
+  intake = planIntakeViewSchema.parse(await data(await call(h.answers, "POST", params, { answers: [], idempotencyKey: "rd-a1" })));
+  let draft = planDraftViewSchema.parse(await data(await call(h.draft, "POST", params, { idempotencyKey: "rd-d1" })));
+  assert.equal(draft.content.schemaVersion, 3);
+  const extra = await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-x", text: "x" });
+  assert.equal(extra.status, 400, "the body is strict");
+  const first = await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-1" });
+  assert.equal(first.status, 200);
+  draft = planDraftViewSchema.parse(await data(first));
+  assert.equal(draft.aiFixUsed, 1);
+  assert.equal(draft.manualEditAvailable, true);
+  const replay = planDraftViewSchema.parse(await data(await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-1" })));
+  assert.equal(replay.aiFixUsed, 1, "the same key replays");
+  for (const keyName of ["rd-2", "rd-3"]) draft = planDraftViewSchema.parse(await data(await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: keyName })));
+  assert.equal(draft.aiFixUsed, 3);
+  const used = await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-4" });
+  assert.equal(used.status, 409);
+  assert.equal((await used.json()).error.context.reason, "FIX_LIMIT");
+  assert.equal((await call(h.confirm, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-ok" })).status, 201);
+  const closed = await call(h.redraft, "POST", { draftId: draft.draftId }, { idempotencyKey: "rd-5" });
+  assert.equal(closed.status, 409);
+  assert.equal((await closed.json()).error.context.reason, "DRAFT_CLOSED");
+  resetPlansV2MockRepositoryForTests();
+});

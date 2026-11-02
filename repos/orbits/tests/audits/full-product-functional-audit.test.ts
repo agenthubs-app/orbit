@@ -554,8 +554,6 @@ export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Ma
   // R17：申込設定的申込页预览（b6 #13–#15）里「申し込む」只是画出来给主办方看（aria-hidden、tabIndex=-1），不是可用控件。
   ["repos/orbits/app/(app)/app/orbit-2026/host/HostSetup.tsx#{t(\"pvApply\")}", "intentional preview-only control: the 申込 page preview draws the attendee's button (aria-hidden, tabIndex -1); it has no behavior by design"],
   ["repos/orbits/app/(app)/app/orbit-2026/auth-public/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
-  // R36a：初版 v3 页底部 dock 的「作り直す」按原型画出来、置灰（disabled、tabIndex -1）：没有重新生成接口，接接口还是去掉待用户拍板（R36a REPORT）。
-  ["repos/orbits/app/(app)/app/orbit-2026/plan/DraftV3.tsx#{t(planFlowCopy.v3Redraft)}", "intentional placeholder control: the prototype's 「重新起草」 drawn greyed (disabled, tabIndex -1) until the user decides between a regenerate endpoint and removing it; it has no behavior by design"],
 ]);
 
 test("visible controls do not rely on missing static behavior evidence", () => {
