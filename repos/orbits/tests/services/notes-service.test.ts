@@ -545,3 +545,53 @@ test("editing the text of a historical voice memo preserves its source kind", as
   assert.equal((await service.get({ actorId: "account:one", noteId: created.id }))?.noteKind, "voice");
   assert.deepEqual((await service.search({ actorId: "account:one", noteKind: "free" })).notes.map((note) => note.id), [created.id]);
 });
+
+test("a committed create or edit replays its original result after event or contact access is lost", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createNoteRepository({ store, workspaceId: "workspace:test" });
+  const access = { events: new Set(["event:launch"]), contacts: new Set(["contact:a"]) };
+  const service = createNoteService({
+    repository,
+    associationReader: {
+      async accessibleContactIds({ ids }) { return ids.filter((id) => access.contacts.has(id)); },
+      async accessibleEventIds({ ids }) { return ids.filter((id) => access.events.has(id)); },
+      async searchContactIds() { return []; },
+    },
+  });
+  const createInput = {
+    actorId: "account:one", body: "Launch recap", eventIds: ["event:launch"], contactIds: ["contact:a"],
+    noteKind: "meeting" as const, usedForPlan: true, idempotencyKey: "replay-first:create", now: "2026-11-02T00:00:00.000Z",
+  };
+  const created = await service.create(createInput);
+  const updateInput = {
+    actorId: "account:one", noteId: created.id, body: "Launch recap, budget agreed",
+    expectedVersion: 1, idempotencyKey: "replay-first:update", now: "2026-11-02T00:01:00.000Z",
+  };
+  const updated = await service.update(updateInput);
+  const eventOnlyInput = { actorId: "account:one", body: "Booth notes", eventIds: ["event:launch"], idempotencyKey: "replay-first:create:event-only", now: "2026-11-02T00:02:00.000Z" };
+  const eventOnly = await service.create(eventOnlyInput);
+  const unavailable = (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT";
+  const conflict = (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_IDEMPOTENCY_CONFLICT";
+
+  // Registration cancelled: the event is no longer accessible. A replay
+  // answers from the receipt with the note as stored (checkReplay returns the
+  // current note, here the edited version 2, not a snapshot).
+  access.events.clear();
+  assert.equal(created.version, 1);
+  assert.deepEqual(await service.create({ ...createInput, now: "2026-11-02T00:05:00.000Z" }), updated);
+  assert.deepEqual(await service.update({ ...updateInput, now: "2026-11-02T00:05:00.000Z" }), updated);
+  assert.deepEqual(await service.create({ ...eventOnlyInput, now: "2026-11-02T00:06:00.000Z" }), eventOnly);
+  await assert.rejects(service.create({ ...createInput, idempotencyKey: "replay-first:create:new" }), unavailable);
+  await assert.rejects(service.update({ ...updateInput, body: "A new edit", expectedVersion: 2, idempotencyKey: "replay-first:update:new" }), unavailable);
+  await assert.rejects(service.create({ ...createInput, body: "Different body" }), conflict);
+  await assert.rejects(service.update({ ...updateInput, body: "Different edit" }), conflict);
+
+  // The contact is gone too (plan-use eligibility can no longer be met).
+  access.contacts.clear();
+  assert.deepEqual(await service.create(createInput), updated);
+  assert.deepEqual(await service.update(updateInput), updated);
+  await assert.rejects(service.create({ ...createInput, eventIds: [], idempotencyKey: "replay-first:create:contact" }), unavailable);
+  await assert.rejects(service.create({ ...createInput, body: "Different body" }), conflict);
+  await assert.rejects(service.update({ ...updateInput, body: "Different edit" }), conflict);
+  assert.equal((await service.get({ actorId: "account:one", noteId: created.id }))?.version, 2);
+});

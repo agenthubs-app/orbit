@@ -319,12 +319,18 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const contactIds = canonicalContactIds(manualContactIds, mentions);
       const nextNoteKind = noteKind(createInput.noteKind);
       const nextUsedForPlan = usedForPlan(createInput.usedForPlan);
-      requirePlanUseEligibility(nextNoteKind, nextUsedForPlan, contactIds);
-      await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: createInput.actorId, ids }), "contactIds");
-      await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: createInput.actorId, ids }), "eventIds");
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
       const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
+        // Sprint 0142: a committed create is answered from its receipt before
+        // access checks, so a lost receipt followed by a revoked event or
+        // contact still replays the original note.
+        const stored = await input.repository.get(createInput.actorId, noteId);
+        const storedReplay = stored && checkReplay(stored, { idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint });
+        if (storedReplay) return storedReplay;
+        requirePlanUseEligibility(nextNoteKind, nextUsedForPlan, contactIds);
+        await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: createInput.actorId, ids }), "contactIds");
+        await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: createInput.actorId, ids }), "eventIds");
         const note: NoteDTO = {
           id: noteId,
           accountId: createInput.actorId,
@@ -374,11 +380,12 @@ export function createNoteService(input: { repository: NoteRepository; associati
         const contactIds = canonicalContactIds(manualContactIds, mentions);
         const nextNoteKind = noteKind(updateInput.noteKind);
         const nextUsedForPlan = usedForPlan(updateInput.usedForPlan);
-        await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: updateInput.actorId, ids }), "contactIds");
-        await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: updateInput.actorId, ids }), "eventIds");
         const operationFingerprint = fingerprint({ title: updateInput.title, body, contactIds: updateInput.contactIds, manualContactIds: updateInput.manualContactIds, mentions: updateInput.mentions, eventIds: updateInput.eventIds, noteKind: nextNoteKind, usedForPlan: nextUsedForPlan, expectedVersion: updateInput.expectedVersion });
+        // Sprint 0142: the receipt is checked before access, as for create.
         const replay = checkReplay(stored, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
         if (replay) return replay;
+        await requireAccessibleIds(contactIds, (ids) => associationReader.accessibleContactIds({ actorId: updateInput.actorId, ids }), "contactIds");
+        await requireAccessibleIds(eventIds, (ids) => associationReader.accessibleEventIds({ actorId: updateInput.actorId, ids }), "eventIds");
         if (stored.note.version !== updateInput.expectedVersion) {
           throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
         }
