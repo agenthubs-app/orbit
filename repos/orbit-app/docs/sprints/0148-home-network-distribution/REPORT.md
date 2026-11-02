@@ -66,5 +66,19 @@
 ## 8. 未决
 1. 没在真机上看，只有 phoneweb。原生上切换文字会自动缩小，图例截断位置也可能和网页不同。
 2. iOS 桌面小组件（WidgetKit，`src/widgets/read-home-sources.ts`）仍读总数和最近 4 人，这次没改。
-3. 网页版人脉分析页对「只有国家」的分组显示国家代码（如 `CN`），没改网页文案。
+3. ~~网页版人脉分析页对「只有国家」的分组显示国家代码~~ 已在第 9 节修好。
 4. 认识场合没有截到「活动」一类（需要先有活动才能用手动添加 API 选活动）。
+
+## 9. 补充：协调者追加的两项
+1. **网页版人脉分析的国家名**：只有国家的地区分组原来在网页上显示代码（如 `CN`）。现在网页的 `analysis-labels.ts`（`regionLabel`）和 App 一样用 `Intl.DisplayNames` 按页面语言显示国家名（中国 / China / 日本），拿不到时显示代码；已知城市照旧用人脉的城市文案。测试 `repos/orbits/tests/ui/network-analysis-labels.test.ts`（先失败：函数不存在）。
+2. **App 人脉分析页把「未填写」单独列出**（行业、地区）：
+   - App 在手机上算出分析结果后，用 `withUnsetApart`（`src/view-models/network-analysis-local.ts`）把没填的人从「其他」里拿出来，单独成「未填写」（`none`），「其他」只剩第 4 名以后的已填分组；只有一个「其他」且全是没填的人时，「其他」这一行不再出现。职位层级、认识途径不变。
+   - 点「未填写」进入只有这些人的名单；点「其他」的名单也不再包含没填的人：共用的 `bucketMembers` / `buildNetworkAnalysisPeople` 加了可选参数 `unsetApart`，只有 App 本机名单传它，服务器的结果和名单都不变。
+   - 新文案 `networkAnalysis.unset`：未填写 / Not filled in / 未入力（与首页卡相同）。
+   - 没有本机库、用服务器结果时（浏览器没有本机库或服务器不给 needs），仍然是合并的「其他」——服务器结果里没有未填写人数，拆不出来。
+   - 网页版用的是服务器结果，和 App 不是同一个视图模型，没改，仍然合并。
+   - 分析页原本把「其他」「未填写」等不明分组都画成同一种灰色，这次没改颜色。
+   - 测试：`tests/network-analysis-unset-apart.test.ts` 3 条（先失败：函数不存在）；`tests/network-analysis-screen.test.tsx` 新增 1 条（本机 12 人，行业构成里「その他 1 8%」「未入力 2 17%」，点「未入力」进入 `/contacts/analysis/industry/none`，先失败）；orbits `network-analysis-model.test.ts` 新增 1 条（`unsetApart` 时「其他」名单不含没填的人，默认不变，先失败）。
+- **结果**：App `npx tsc --noEmit` 0 错误；orbits `npx tsc --noEmit` 0 错误。App 全量 **3440 条，3435 通过，3 失败（已知的 3 条），2 跳过**。orbits 相关 8 个文件 44 条，42 通过；失败的 2 条在 `tests/pages/app-network-demo-pages.test.tsx`（联系人详情页的引导读取次数），把这次追加的 orbits 改动撤掉后同样失败，和本次无关。
+- **运行时**：同样的方式重建临时库 `orbit_0148_runtime`、21 人（手动添加 13 人 + 导入 8 人）。首页卡「其他 33% · 未填写 14%」，点进人脉分析，行业构成是「其他 7 · 33%」「未填写 3 · 14%」，两边一致；点「未填写」进入 3 人的名单。截图 `0148-zh-light-analysis-unset.png`。8091、8092 已停，3000 没碰，临时库已删除。（这次导入的人当时还没按文字推断出行业，所以数字和第 6 节不同。）
+- **提交**：`6274754c4` fix(web): name a country-only region group in the page language；`27e5be2a4` feat(app): the analysis page shows people without an industry or region apart；本节和截图单独一个 docs 提交。
