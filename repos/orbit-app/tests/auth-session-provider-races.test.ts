@@ -104,8 +104,9 @@ export const syncLifecycle = {
     state.currentScope = null;
     return true;
   },
-  async withDatabase(_, callback) { return callback({ get: async () => ({ count: 0 }) }); }
+  async withDatabase(_, callback) { return callback({ get: async () => ({ count: state.outboxCount ?? 0 }), run: async () => {}, transaction: async fn => fn() }); }
 };
+export const serverReachability = { state: () => state.reachability ?? "unknown" };
 export async function cancelOrbitManagedNotifications() {
   if (state.holdNotificationCleanup) {
     state.holdNotificationCleanup = false;
@@ -146,7 +147,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
     plugins: [{
       name: "auth-provider-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$|\/widgets\/native-runtime$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
+        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$|\/server-reachability$|\/widgets\/native-runtime$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-crypto$/ }, () => ({ path: "crypto", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "router", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-web-browser$/ }, () => ({ path: "browser", namespace: "auth-race" }));
@@ -464,6 +465,65 @@ test("logout key deletion failure is visible and keeps the current session from 
   await page.evaluate(() => (window as any).fixture.update({ keyDeleteFails: true }));
   assert.equal(await page.evaluate(async () => (await (window as any).fixture.auth.signOut()).success), false);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:canonical");
+});
+
+test("SC-0145-02: with unsynced writes and the server reachable, sign-out offers 先同步再退出 as the only prompt, then signs out once the queue is empty", async t => {
+  const page = await open(t, { storedCookie: "session=restored", outboxCount: 2, alertChoice: "先同步再退出" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.signedIn === true);
+  // String scripts: tsx would wrap named callbacks in a __name helper the page does not have.
+  const result = await page.evaluate(`(() => {
+    const state = window.fixture; state.syncRuns = 0; state.genericConfirms = 0;
+    return state.auth.signOut({
+      confirmSignOut: async () => { state.genericConfirms += 1; return true; },
+      syncFirst: async () => { state.syncRuns += 1; state.outboxCount = 0; },
+    });
+  })()`) as { success: boolean };
+  assert.equal(result.success, true);
+  const state = await page.evaluate(() => { const s = (window as any).fixture; return { alerts: s.alerts, syncRuns: s.syncRuns, genericConfirms: s.genericConfirms, signOuts: s.signOuts.length }; });
+  assert.equal(state.genericConfirms, 0, "no generic confirm before the pending-writes sheet");
+  assert.equal(state.alerts.length, 1);
+  assert.deepEqual(state.alerts[0].buttons, ["先同步再退出", "放弃修改并退出登录", "加密保存并退出登录", "取消"]);
+  assert.equal(state.alerts[0].message, "还有 2 项修改没有同步。退出后会在这台设备上保留 30 天，用同一账号登录会继续上传。");
+  assert.equal(state.syncRuns, 1);
+  assert.equal(state.signOuts, 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), false);
+});
+
+test("SC-0145-02: writes left after 先同步再退出 bring back keep/discard with the remaining count", async t => {
+  const page = await open(t, { storedCookie: "session=restored", outboxCount: 3, alertChoice: "先同步再退出" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.signedIn === true);
+  const result = await page.evaluate(`(() => {
+    const state = window.fixture;
+    return state.auth.signOut({ syncFirst: async () => { state.outboxCount = 1; state.alertChoice = "取消"; } });
+  })()`);
+  assert.deepEqual(result, { message: "已取消退出登录。", success: false });
+  const alerts = await page.evaluate(() => (window as any).fixture.alerts);
+  assert.equal(alerts.length, 2);
+  assert.deepEqual(alerts[1].buttons, ["放弃修改并退出登录", "加密保存并退出登录", "取消"]);
+  assert.equal(alerts[1].message, "还有 1 项修改没有同步。退出后会在这台设备上保留 30 天，用同一账号登录会继续上传。");
+  assert.equal(await page.evaluate(() => (window as any).fixture.signOuts.length), 0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), true);
+});
+
+test("SC-0145-02: while the server is unreachable the sheet has no 先同步再退出", async t => {
+  const page = await open(t, { storedCookie: "session=restored", outboxCount: 1, reachability: "unreachable", alertChoice: "加密保存并退出登录" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.signedIn === true);
+  const result = await page.evaluate(`window.fixture.auth.signOut({ syncFirst: async () => { throw new Error("must not sync"); } })`) as { success: boolean };
+  assert.equal(result.success, true);
+  const alerts = await page.evaluate(() => (window as any).fixture.alerts);
+  assert.deepEqual(alerts.map((alert: { buttons: string[] }) => alert.buttons), [["放弃修改并退出登录", "加密保存并退出登录", "取消"]]);
+});
+
+test("SC-0145-02: an empty queue keeps the generic confirm, and declining it signs nothing out", async t => {
+  const page = await open(t, { storedCookie: "session=restored" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.signedIn === true);
+  const declined = await page.evaluate(`window.fixture.auth.signOut({ confirmSignOut: async () => false })`) as { success: boolean; cancelled?: boolean };
+  assert.equal(declined.success, false);
+  assert.equal(declined.cancelled, true);
+  assert.equal(await page.evaluate(() => (window as any).fixture.signOuts.length), 0);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.alerts), []);
+  const confirmed = await page.evaluate(`window.fixture.auth.signOut({ confirmSignOut: async () => true })`) as { success: boolean };
+  assert.equal(confirmed.success, true);
 });
 
 test("session expiry uses one lifecycle purge", async t => {

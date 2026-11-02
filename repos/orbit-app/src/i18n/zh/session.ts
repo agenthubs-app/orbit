@@ -1,7 +1,8 @@
 export const session = {
   "session.serverChanged": "登录服务器已切换，请重新登录。",
   "session.pendingChangesTitle": "还有修改等待同步",
-  "session.pendingChangesBody": "退出登录前可以把这些修改加密保存在本机，之后用同一账号登录可继续同步；也可以直接放弃。",
+  "session.pendingChangesBody": "还有 {count} 项修改没有同步。退出后会在这台设备上保留 30 天，用同一账号登录会继续上传。",
+  "session.syncAndSignOut": "先同步再退出",
   "session.keepAndSignOut": "加密保存并退出登录",
   "session.discardAndSignOut": "放弃修改并退出登录",
   "session.otherAccountTitle": "这台设备还保存着其他账号的修改",

@@ -7,6 +7,7 @@ import { presentConfirm, UiText } from "../../components/ui";
 import { resetStackTo } from "../../components/shell-navigation";
 import { clearProfileEditSession } from "../../data/profile-edit-session";
 import { setAppearanceChoice, useAppearanceChoice } from "../../design/appearance";
+import { useSyncCoordinatorSession } from "../../hooks/useSyncedCollection";
 import { useOrbitTheme } from "../../design/theme";
 import { localizeAuthMessage } from "../../view-models/account-auth";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -20,13 +21,18 @@ export function AccountSettingsScreen() {
   const { colors } = useOrbitTheme();
   const locale = useOrbitLocale(); const appearance = useAppearanceChoice(); const profile = useAccountProfile(); const permission = useAccountPermissions();
   const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const syncSession = useSyncCoordinatorSession(auth.ready && auth.signedIn);
   async function signOut() {
     if (busy || !auth.actorId) return; setBusy(true); setError(null);
     const actorId = auth.actorId;
-    const confirmed = await presentConfirm({ title: locale.t("me.logoutConfirm"), confirmLabel: locale.t("me.logout"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "out" });
-    if (!confirmed) { setBusy(false); return; }
-    // AuthSessionProvider owns the pending-write action sheet and encrypted keep/discard choices.
-    const result = await auth.signOut();
+    // AuthSessionProvider owns the pending-write action sheet and encrypted keep/discard choices; with unsynced
+    // writes that sheet is the only prompt, otherwise it asks this confirm (Sprint 0145).
+    const result = await auth.signOut({
+      confirmSignOut: () => presentConfirm({ title: locale.t("me.logoutConfirm"), confirmLabel: locale.t("me.logout"), cancelLabel: locale.t("common.cancel"), destructive: true, icon: "out" }),
+      // 先同步再退出: one round through the coordinator's single flight (lease → upload → pull).
+      syncFirst: async () => { if (syncSession?.isCurrent()) await syncSession.synchronize("note", { reason: "explicit" }).promise; },
+    });
+    if (result.cancelled) { setBusy(false); return; }
     if (result.success) {
       clearProfileEditSession({ actorId, apiOrigin: server.baseUrl });
       // Login becomes the only page: nothing of this account stays to go back to.

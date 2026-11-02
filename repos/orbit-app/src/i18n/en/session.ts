@@ -1,7 +1,8 @@
 export const session = {
   "session.serverChanged": "The sign-in server changed. Please sign in again.",
   "session.pendingChangesTitle": "Some changes are waiting to sync",
-  "session.pendingChangesBody": "You can save these changes encrypted on this device and keep syncing after you sign in with the same account, or discard them.",
+  "session.pendingChangesBody": "{count} changes haven't synced yet. If you sign out, they stay on this device for 30 days and keep uploading when you sign in with the same account.",
+  "session.syncAndSignOut": "Sync, then sign out",
   "session.keepAndSignOut": "Keep and sign out",
   "session.discardAndSignOut": "Discard and sign out",
   "session.otherAccountTitle": "This device still has another account's changes",

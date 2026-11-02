@@ -23,6 +23,7 @@ import {
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
 import { onSessionExpired } from "./session-expiry";
+import { serverReachability } from "./server-reachability";
 import { createLocalSyncRepository } from "../data/sync/local-sync-repository";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import {
@@ -68,6 +69,15 @@ interface AuthActionResult {
   message?: string;
   success: boolean;
   pendingDeletion?: boolean;
+  /** The caller's own confirm was declined; nothing changed and there is nothing to report. */
+  cancelled?: boolean;
+}
+
+interface SignOutOptions {
+  /** Asked only when nothing waits to upload; with unsynced writes their sheet is the only prompt. */
+  confirmSignOut?: () => Promise<boolean>;
+  /** Sprint 0145: one upload round through the app's single-flight sync, offered as 先同步再退出 while online. */
+  syncFirst?: () => Promise<void>;
 }
 
 interface RegisterInput {
@@ -100,7 +110,7 @@ interface AuthSessionContextValue {
   register: (input: RegisterInput) => Promise<AuthActionResult>;
   signIn: (input: SignInInput) => Promise<AuthActionResult>;
   signInWithGoogle: (next?: string, purpose?: "deletion-request") => Promise<AuthActionResult>;
-  signOut: () => Promise<AuthActionResult>;
+  signOut: (options?: SignOutOptions) => Promise<AuthActionResult>;
   signedIn: boolean;
   startGoogleSignIn: (input?: { redirectTo?: string }) => Promise<AuthActionResult>;
   user: MobileAuthUser | null;
@@ -120,18 +130,19 @@ function obsoleteAuthActionResult(): AuthActionResult {
 
 // R04: the old Alert.alert confirmations, now the component library's action sheet
 // (three choices) and confirm dialog, presented above every screen by UiFeedbackHost.
-async function confirmPendingWriteSignOut(): Promise<"keep" | "discard" | "cancel"> {
+async function confirmPendingWriteSignOut(count: number, offerSync: boolean): Promise<"sync" | "keep" | "discard" | "cancel"> {
   const t = currentTranslator();
   const choice = await presentActionSheet({
     title: t("session.pendingChangesTitle"),
-    effects: [{ icon: "info", text: t("session.pendingChangesBody") }],
+    effects: [{ icon: "info", text: t("session.pendingChangesBody", { count }) }],
     options: [
+      ...(offerSync ? [{ key: "sync", label: t("session.syncAndSignOut") }] : []),
       { key: "discard", label: t("session.discardAndSignOut"), destructive: true },
       { key: "keep", label: t("session.keepAndSignOut") },
       { key: "cancel", label: currentStandardCopy().action.cancel },
     ],
   });
-  return choice === "keep" || choice === "discard" ? choice : "cancel";
+  return choice === "sync" || choice === "keep" || choice === "discard" ? choice : "cancel";
 }
 
 function confirmPendingOtherAccountWrites(count: number): Promise<boolean> {
@@ -653,20 +664,40 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     [baseUrl]
   );
 
-  const signOut = useCallback(async (): Promise<AuthActionResult> => {
+  const signOut = useCallback(async (options: SignOutOptions = {}): Promise<AuthActionResult> => {
     const requestRevision = ++authEnvironment.current.revision;
     let discardPendingWrites = false;
+    let pendingSheetShown = false;
+    const countOutbox = (actorId: string) => syncLifecycle.withDatabase({ baseUrl, actorId }, async database =>
+      (await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox"))?.count ?? 0,
+    );
     if (Platform.OS !== "web" && accountId) {
-      const count = await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
-        (await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox"))?.count ?? 0,
-      );
-      if (count === null) return { message: currentTranslator()("session.pendingUnknown"), success: false };
-      if (count > 0) {
-        const choice = await confirmPendingWriteSignOut();
+      const counted = await countOutbox(accountId);
+      if (counted === null) return { message: currentTranslator()("session.pendingUnknown"), success: false };
+      let count = counted;
+      // Design step 9: 先同步再退出 only while the server answers; after one round, what is left gets keep/discard again.
+      let offerSync = Boolean(options.syncFirst) && !offline && serverReachability.state(baseUrl) !== "unreachable";
+      while (count > 0) {
+        pendingSheetShown = true;
+        const choice = await confirmPendingWriteSignOut(count, offerSync);
         if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
         if (choice === "cancel") return { message: currentTranslator()("session.signOutCancelled"), success: false };
-        discardPendingWrites = choice === "discard";
+        if (choice !== "sync") {
+          discardPendingWrites = choice === "discard";
+          break;
+        }
+        await options.syncFirst?.().catch(() => undefined);
+        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+        const left = await countOutbox(accountId);
+        if (left === null) return { message: currentTranslator()("session.pendingUnknown"), success: false };
+        count = left;
+        offerSync = false;
       }
+    }
+    if (!pendingSheetShown && options.confirmSignOut) {
+      const confirmed = await options.confirmSignOut();
+      if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+      if (!confirmed) return { success: false, cancelled: true };
     }
     if (user !== null) {
       await widgetSnapshotRuntime.clear();
@@ -719,7 +750,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setDeletionPending(false);
     setUser(null);
     return { success: true };
-  }, [accountId, baseUrl, clearNotificationSession, cookieHeader, user]);
+  }, [accountId, baseUrl, clearNotificationSession, cookieHeader, offline, user]);
 
   const readPendingWritesOnDevice = useCallback(async (): Promise<number | null> => {
     const summary = await syncLifecycle.pendingWriteSummary();

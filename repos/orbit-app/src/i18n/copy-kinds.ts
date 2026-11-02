@@ -154,6 +154,7 @@ export const appCopyKinds: readonly (readonly [pattern: string, kind: string])[]
   ["session.otherAccountBody", "sentence"],
   ["auth.devicePendingWritesUnknown", "sentence"],
   ["auth.devicePendingWriteCount", "sentence"],
+  ["session.syncAndSignOut", "fullButton"],
   ["session.keepAndSignOut", "fullButton"],
   ["session.discardAndSignOut", "fullButton"],
   ["session.backToSignIn", "fullButton"],

@@ -1,7 +1,8 @@
 export const session = {
   "session.serverChanged": "ログイン先のサーバーが変わりました。もう一度ログインしてください。",
   "session.pendingChangesTitle": "同期待ちの変更があります",
-  "session.pendingChangesBody": "ログアウトの前に、これらの変更をこの端末に暗号化して保存できます。同じアカウントでログインすると、続きから同期できます。保存せずに破棄することもできます。",
+  "session.pendingChangesBody": "まだ同期されていない変更が{count}件あります。ログアウトしても、この端末に30日間保存され、同じアカウントでログインすると続きからアップロードされます。",
+  "session.syncAndSignOut": "同期してからログアウト",
   "session.keepAndSignOut": "暗号化して保存し、ログアウト",
   "session.discardAndSignOut": "変更を破棄してログアウト",
   "session.otherAccountTitle": "この端末に別のアカウントの変更が残っています",

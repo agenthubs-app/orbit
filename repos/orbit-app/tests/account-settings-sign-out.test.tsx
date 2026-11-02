@@ -14,7 +14,12 @@ const fixture = `
 let revision = 0; const listeners = new Set();
 const state = window.fixture = { calls: [], navigation: [], ...window.initialFixture, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "actor:1", actorId: "actor:1", user: { id: "actor:1", name: "程川", email: "cheng@example.test" },
-  signOut: async () => { state.calls.push("sign-out"); return state.logoutFailure ? { success: false, message: "退出未完成，请重试。" } : { success: true }; } });
+  // Sprint 0145: the provider asks the screen's confirm only when nothing waits to upload; otherwise its own sheet (here: 先同步再退出) is the one prompt.
+  signOut: async (options = {}) => {
+    if (state.pendingWrites) { state.calls.push("pending-sheet"); await options.syncFirst?.(); }
+    else if (options.confirmSignOut && !(await options.confirmSignOut())) return { success: false, cancelled: true };
+    state.calls.push("sign-out"); return state.logoutFailure ? { success: false, message: "退出未完成，请重试。" } : { success: true }; } });
+export const useSyncCoordinatorSession = () => ({ isCurrent: () => true, synchronize: () => { state.calls.push("sync-round"); return { promise: Promise.resolve(null) }; } });
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://orbit.test", ready: true });
 export const useRouter = () => ({ canGoBack: () => true, push(href) { state.navigation.push("push:" + href); }, replace(href) { state.navigation.push("replace:" + href); }, back() {}, dismissAll() { state.navigation.push("dismissAll"); } });
 export const usePathname = () => "/settings";
@@ -41,7 +46,7 @@ createRoot(document.getElementById("root")).render(<ToastProvider><UiPortalHost>
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "settings-native" }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onLoad({ filter: /.*/, namespace: "settings-native" }, () => ({ contents: 'import * as RNW from "react-native-web"; export * from "react-native-web"; export const findNodeHandle = instance => instance ?? null; export const AccessibilityInfo = { ...RNW.AccessibilityInfo, isReduceMotionEnabled: async () => false, addEventListener: () => ({ remove() {} }), setAccessibilityFocus() {} };', resolveDir: process.cwd(), loader: "js" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|useAccountProfile|useAccountPermissions|profile-edit-session)$/ }, () => ({ path: "fixture", namespace: "settings-sign-out" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|useSyncedCollection|ApiBaseUrlProvider|useAccountProfile|useAccountPermissions|profile-edit-session)$/ }, () => ({ path: "fixture", namespace: "settings-sign-out" }));
       plugin.onLoad({ filter: /.*/, namespace: "settings-sign-out" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }, nativeUiStubs],
   });
@@ -91,4 +96,14 @@ test("a failed sign-out stays on settings and says so", async t => {
   await page.getByRole("button", { name: "退出登录", exact: true }).last().click();
   await page.getByText("退出未完成，请重试。", { exact: true }).waitFor();
   assert.deepEqual(await fx(page), { calls: ["sign-out"], navigation: [] });
+});
+
+test("SC-0145-02: with unsynced writes the pending-writes sheet is the only prompt, and 先同步再退出 runs one sync round", async t => {
+  const page = await open(t, { pendingWrites: 2 });
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.equal(await page.getByText("退出登录？", { exact: true }).count(), 0, "no generic confirm before the sheet");
+  const { calls, navigation } = await fx(page);
+  assert.deepEqual(calls, ["pending-sheet", "sync-round", "sign-out", "clear-edit-session"]);
+  assert.equal(navigation.at(-1), "replace:/account/login");
 });
