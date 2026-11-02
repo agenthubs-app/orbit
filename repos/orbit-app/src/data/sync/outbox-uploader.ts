@@ -3,7 +3,8 @@ import { compareSyncTimestamps, type LocalSyncQueuedMutation } from "./local-syn
 
 const MAX_PARALLEL_UPLOADS = 4;
 const MAX_ATTEMPTS_PER_ROW_PER_ROUND = 5;
-const MAX_ROUND_MS = 30_000;
+/** Sprint 0145: one upload round's total budget, shared by every uploader in the round (see upload-outboxes.ts). */
+export const MAX_ROUND_MS = 30_000;
 const RETRY_BASE_MS = 1_000;
 const RETRY_CAP_MS = 60_000;
 const RETRY_AFTER_CAP_MS = 5 * 60_000;
@@ -54,18 +55,19 @@ export function createOutboxUploader(input: {
   let active: Promise<OutboxUploadResult> | null = null;
   let activeController: AbortController | null = null;
 
-  function run(): Promise<OutboxUploadResult> {
+  /** `deadline` (ms on `now`'s clock) caps this run inside a longer shared round; rows not reached stay queued untouched. */
+  function run(options: { deadline?: number } = {}): Promise<OutboxUploadResult> {
     if (active) return active;
     activeController = new AbortController();
-    active = runRound(activeController).finally(() => { active = null; activeController = null; });
+    active = runRound(activeController, options.deadline).finally(() => { active = null; activeController = null; });
     return active;
   }
 
-  async function runRound(controller: AbortController): Promise<OutboxUploadResult> {
+  async function runRound(controller: AbortController, sharedDeadline?: number): Promise<OutboxUploadResult> {
     const result: OutboxUploadResult = { status: "complete", sent: 0, acknowledged: 0, conflicts: 0, failed: 0, retrying: 0 };
-    const deadline = now() + MAX_ROUND_MS;
+    const deadline = Math.min(now() + MAX_ROUND_MS, sharedDeadline ?? Infinity);
     let wallDeadlineReached = false;
-    const timer = setTimeout(() => { wallDeadlineReached = true; controller.abort(); }, MAX_ROUND_MS);
+    const timer = setTimeout(() => { wallDeadlineReached = true; controller.abort(); }, Math.max(0, deadline - now()));
     let unauthorized = false;
     const pausedDomains = new Set<string>();
     const succeeded = new Set<string>();

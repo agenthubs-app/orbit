@@ -87,9 +87,9 @@ export function createMessageOutboxUploader(input: {
   }
 
   return {
-    async run() {
+    async run(options?: { deadline?: number }) {
       await failEndedConversations();
-      return uploader.run();
+      return uploader.run(options);
     },
     cancel: () => uploader.cancel(),
   };

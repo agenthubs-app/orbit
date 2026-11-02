@@ -306,3 +306,38 @@ test("a lost receipt response replays identical bytes once and resolves its alia
   }), "canonical-receipt-fixture");
   assert.equal((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_records"))?.count, 0);
 });
+
+test("SC-0145-01: a caller's round deadline stops the uploader before it claims rows, leaving them queued with unspent attempts", async () => {
+  const setup = harness([queued({ mutationId: "m1", id: "record-1" }), queued({ mutationId: "m2", id: "record-2" })]);
+  const result = await (await setup.uploader()).run({ deadline: 0 });
+  assert.equal(result.status, "time_budget");
+  assert.deepEqual(setup.sent, []);
+  assert.deepEqual([...setup.rows.values()].map(row => [row.mutationId, row.state, row.attemptCount]), [["m1", "queued", 0], ["m2", "queued", 0]]);
+});
+
+test("SC-0145-01: one upload round shares a single 30 s budget across all uploaders; later domains wait for the next trigger", async (t) => {
+  const actorId = "actor-a", workspaceId = "workspace-a", baseUrl = "https://round.example";
+  let clock = Date.parse("2026-11-02T00:00:00.000Z");
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const repository = createLocalSyncRepository({ actorId, database, baseUrl, registeredDomainIds: ["notes", "tasks"] });
+  const createdAt = new Date(clock).toISOString();
+  const { buildOfflineNoteMutation } = await import("../src/data/sync/note-outbox-mutation");
+  const { buildOfflineTaskMutation } = await import("../src/data/sync/task-outbox-mutation");
+  await repository.enqueueOutboxMutation({ ...buildOfflineNoteMutation({ mutationId: "note-create", entityId: "local:123e4567-e89b-42d3-a456-426614174001", operation: "create", baseRevision: null, requestBody: { title: "Slow note", body: "Waits for the server", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "note-create" }, createdAt }), actorId, workspaceId });
+  await repository.enqueueOutboxMutation({ ...buildOfflineTaskMutation({ mutationId: "task-create", entityId: "local:123e4567-e89b-42d3-a456-426614174002", operation: "create", baseRevision: null, requestBody: { title: "Waiting task", category: "personal", idempotencyKey: "task-create" }, createdAt }), actorId, workspaceId });
+  const posted: string[] = [];
+  const writeClient = {
+    // The note server is slow: one request eats the whole round budget, then fails retryably.
+    async post(path: string) { posted.push(path); clock += 31_000; return { success: false as const, status: 503, error: { code: "UNAVAILABLE", message: "slow" } }; },
+    async patch() { throw new Error("unused"); },
+    async delete() { throw new Error("unused"); },
+  } as never;
+  const { uploadAllOutboxes } = await import("../src/data/sync/upload-outboxes");
+  await uploadAllOutboxes({ actorId, baseUrl, workspaceId, signal: new AbortController().signal, repository, syncClient: {} as never, writeClient }, { now: () => clock });
+  assert.equal(posted.length, 1, `only the note was sent: ${posted.join(", ")}`);
+  const queuedRows = await repository.listQueuedMutations({ workspaceId });
+  assert.deepEqual(queuedRows.map(row => [row.mutationId, row.state]).sort(), [["note-create", "queued"], ["task-create", "queued"]]);
+  assert.equal(queuedRows.find(row => row.mutationId === "task-create")?.attemptCount, 0, "the unreached task keeps its attempts");
+});
