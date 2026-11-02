@@ -100,3 +100,22 @@ test("SC-0141-03 To-do 完成 for a task the device cannot queue (meeting task) 
   await online.getByText("现在无法操作", { exact: true }).waitFor();
   assert.equal((await enqueued(online)) ?? null, null);
 });
+
+// Sprint 0144: while the page is offline, a To-do write the device cannot take says 需要联网 (not 现在无法操作).
+test("SC-0144-03 To-do 完成 and 推迟 the device refuses while offline say 需要联网", async t => {
+  const offlinePage = () => dropped({ online: false, writeFailure: undefined, enqueueRefused: true,
+    copies: { "todo-page|main": { data: page, syncedAt: new Date(Date.now() - 10 * 60_000).toISOString() } } });
+  const completing = await harness.open(t, offlinePage());
+  await completing.getByText("山本さんへ返信").waitFor();
+  await completing.getByRole("button", { name: "完成", exact: true }).first().click();
+  await completing.getByText("需要联网", { exact: true }).waitFor();
+  assert.equal(await completing.getByText("现在无法操作", { exact: true }).count(), 0);
+  assert.deepEqual(await writesOf(completing), [], "nothing is sent while offline");
+
+  const deferring = await harness.open(t, offlinePage());
+  await deferring.getByText("山本さんへ返信").waitFor();
+  await deferring.getByRole("button", { name: "推迟", exact: true }).first().click();
+  await deferring.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click();
+  await deferring.getByText("需要联网", { exact: true }).waitFor();
+  assert.equal(await deferring.getByText("现在无法操作", { exact: true }).count(), 0);
+});

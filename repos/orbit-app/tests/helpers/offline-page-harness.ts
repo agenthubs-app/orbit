@@ -164,6 +164,8 @@ const taskOutboxSession = {
     return 1;
   },
   async enqueueOfflineTaskMutation(mutation) {
+    // Sprint 0144: enqueueRefused: true makes the device refuse the write, as the coordinator does for an ineligible one.
+    if (state.enqueueRefused) throw new TypeError("task mutation is not eligible");
     state.enqueued = [...(state.enqueued ?? []), mutation];
     state.queuedTasks = [...(state.queuedTasks ?? []), { ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null }];
   },

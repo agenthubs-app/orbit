@@ -372,7 +372,8 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
     if (item.kind === "lifecycle") { toast.error(locale.t("todo.unavailable")); return; }
     const row = todo.mirror.records.find(record => record.id === item.taskId && record.deletedAt === null);
     const queueable = Platform.OS !== "web" && row && mirroredTaskIds.has(item.taskId) ? row : null;
-    if (offline && !queueable) { toast.error(locale.t("todo.unavailable")); return; }
+    // Sprint 0144: a write the device cannot take while offline needs the network (not 「现在无法操作」).
+    if (offline && !queueable) { toast.error(locale.t("sync.needsNetwork")); return; }
     setBusy(true);
     try {
       const enqueue = async (idempotencyKey: string, base: NonNullable<typeof queueable>) => {
@@ -402,7 +403,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
       toast.success(locale.t("todo.complete"));
       refresh();
     } catch {
-      if (isCurrent()) toast.error(locale.t("todo.unavailable"));
+      if (isCurrent()) toast.error(locale.t(offline ? "sync.needsNetwork" : "todo.unavailable"));
     } finally {
       if (isCurrent()) setBusy(false);
     }
@@ -412,7 +413,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
     if (busy || staleDay || item.sample || !auth.actorId || item.kind !== "task") return;
     const row = todo.mirror.records.find(record => record.id === item.taskId && record.deletedAt === null);
     const queueable = Platform.OS !== "web" && row && mirroredTaskIds.has(item.taskId) ? row : null;
-    if (offline && !queueable) { toast.error(locale.t("todo.unavailable")); return; }
+    if (offline && !queueable) { toast.error(locale.t("sync.needsNetwork")); return; }
     setBusy(true);
     try {
       let baseline: TaskItemContract | undefined;
@@ -455,7 +456,7 @@ export function TodoScreen({ onShowTasks, focusedEntryId, hideFollowups = false 
       toast.success(locale.t("todo.deferred"));
       refresh();
     } catch {
-      if (isCurrent()) toast.error(locale.t("todo.unavailable"));
+      if (isCurrent()) toast.error(locale.t(offline ? "sync.needsNetwork" : "todo.unavailable"));
     } finally {
       if (isCurrent()) setBusy(false);
     }
