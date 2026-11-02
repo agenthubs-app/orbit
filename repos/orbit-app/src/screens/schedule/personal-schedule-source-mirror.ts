@@ -43,6 +43,8 @@ export interface PersonalScheduleItemSource extends PersonalScheduleStatus {
   /** Something to translate, or a message to show as is; both empty when there is no error. */
   errorKey: MessageKey | null;
   errorText: string;
+  /** Sprint 0145 (native): the formal id of an uploaded offline create opened on its local: id. */
+  canonicalId?: string | null;
   refresh(): void;
 }
 

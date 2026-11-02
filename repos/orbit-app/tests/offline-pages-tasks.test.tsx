@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { Page } from "playwright";
 import { OFFLINE_BANNER, TASKS_OFFLINE_BANNER, fixtureValue, requestsOf, startOfflinePageHarness } from "./helpers/offline-page-harness";
 
 // Sprint 0131: The task list with its relationship follow-ups and
@@ -213,3 +214,27 @@ test("SC-0141-03 task detail: a server error answer is not queued and says 操�
   await blocked.getByText("操作未完成，请重试。", { exact: true }).waitFor();
   assert.equal((await fixtureValue<Queued>(blocked, "enqueued")) ?? null, null);
 });
+
+test("SC-0145-03 task detail opened on a local: id follows the uploaded create to its formal id, never showing 待办暂时打不开", async (t) => {
+  const localId = "local:c31d0000-0000-4000-8000-000000000003";
+  const create = { domainId: "tasks", mutationId: "t-create", kind: "task", id: localId, operation: "create", patch: { title: "订机票", category: "personal" },
+    requestJson: JSON.stringify({ title: "订机票", category: "personal", idempotencyKey: "t-create" }), baseRevision: null, createdAt: "2026-11-02T01:00:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null, actorId: A, workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  const page = await harness.open(t, { screen: "detail", platform: "ios", taskOutbox: true, online: true, params: { id: localId }, records: { task: [] }, queuedTasks: [create] });
+  await page.waitForFunction(() => [...document.querySelectorAll("input,textarea")].some((element) => (element as HTMLInputElement).value === "订机票"));
+  await watchFor(page, "待办暂时打不开");
+  // The upload acknowledges the create: the queue row goes, the formal row arrives and the alias table maps the temporary id.
+  await page.evaluate(([id, formal]) => (window as any).fixture.bump({ queuedTasks: [], aliases: { [id]: formal.id }, records: { task: [formal] } }),
+    [localId, task("task:formal", "订机票", { category: "personal" })] as const);
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("replace:/tasks/task%3Aformal"));
+  await settle(page);
+  assert.equal(await page.evaluate(() => (window as any).sawText), false, "no 找不到 between the upload and the redirect");
+});
+
+async function settle(page: Page) { await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
+async function watchFor(page: Page, text: string) {
+  await page.evaluate((needle) => {
+    const w = window as any; w.sawText = false;
+    new MutationObserver(() => { if (document.body.innerText.includes(needle)) w.sawText = true; }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  }, text);
+}

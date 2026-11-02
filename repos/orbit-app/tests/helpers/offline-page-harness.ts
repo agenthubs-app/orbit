@@ -34,6 +34,11 @@ import { StyleSheet, View } from "react-native";
 import { serverReachability } from ${JSON.stringify(reachabilityPath)};
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, saves: [], online: true, syncStatus: "fresh", records: {}, copies: {}, responses: {}, params: {}, ...window.initialFixture };
 const base = "http://fixture";
+// Sprint 0145: fixture.bump(patch) changes the device state and re-renders the mirror readers, as an upload acknowledgement does.
+let mirrorVersion = 0;
+const mirrorListeners = new Set();
+state.bump = (patch) => { Object.assign(state, patch); mirrorVersion++; mirrorListeners.forEach((listener) => listener()); };
+const subscribeMirror = (listener) => { mirrorListeners.add(listener); return () => { mirrorListeners.delete(listener); }; };
 if (state.startUnreachable) serverReachability.markUnreachable(base);
 if (state.startReachable) serverReachability.markReachable(base);
 export const useLocalSearchParams = () => window.fixture.params ?? {};
@@ -129,7 +134,7 @@ const mirrorRecords = (kind) => {
   recordCache.set(kind, { source, records });
   return records;
 };
-export const useSyncedCollection = ({ kind }) => ({
+export const useSyncedCollection = ({ kind }) => (React.useSyncExternalStore(subscribeMirror, () => mirrorVersion), {
   status: state.syncStatus, error: state.syncStatus === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T01:30:00.000Z", workspaceId: "workspace:one",
   records: mirrorRecords(kind),
@@ -144,6 +149,8 @@ function currentSession() { return state.taskOutbox || state.scheduleOutbox ? ta
 // Sprint 0134: scheduleOutbox: true adds schedule enqueues and conflict resolution; queued rows are read per kind.
 const queuedRow = (mutation) => ({ ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null });
 const taskOutboxSession = {
+  // Sprint 0145: an acknowledged create's temporary id, as the device alias table answers it (fixture aliases).
+  async resolveLocalAlias(_kind, localId) { return state.aliases?.[localId] ?? null; },
   async readOutboxOverlay(kind) { if (state.outboxReadFails && kind === "task") throw Error("device outbox read failed"); return { queuedMutations: kind === "personal_schedule" ? state.queuedSchedules ?? [] : kind === "note" ? state.queuedNotes ?? [] : state.queuedTasks ?? [] }; },
   async enqueueOfflineScheduleMutation(mutation) {
     state.enqueuedSchedules = [...(state.enqueuedSchedules ?? []), mutation];

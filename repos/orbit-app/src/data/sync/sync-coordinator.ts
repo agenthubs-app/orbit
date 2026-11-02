@@ -146,6 +146,8 @@ export interface SyncCoordinatorSession {
   deletePageCopy(id: string, variant: string): Promise<void>;
   /** Resolve an acknowledged local note id through the active actor/workspace alias table. */
   resolveNoteAlias(localId: string): Promise<string | null>;
+  /** Sprint 0145: the same alias lookup for the other kinds created offline (tasks, personal schedules). */
+  resolveLocalAlias(kind: "note" | "task" | "personal_schedule", localId: string): Promise<string | null>;
   /** Test-only queue insertion; product domains remain closed until their own Sprint adapter exists. */
   enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void>;
   /** Sprint 0132: private note writes admitted to the native offline outbox. */
@@ -818,13 +820,16 @@ export function createSyncCoordinator(input: {
         if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
         try { await withRepository(bound, (repository) => repository.deletePageCopy(binding, id, variant)); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
-      async resolveNoteAlias(localId: string): Promise<string | null> {
+      resolveNoteAlias(localId: string): Promise<string | null> {
+        return session.resolveLocalAlias("note", localId);
+      },
+      async resolveLocalAlias(kind: "note" | "task" | "personal_schedule", localId: string): Promise<string | null> {
         await bound.ready;
-        const readScope = readScopeFor(bound, "note");
+        const readScope = readScopeFor(bound, kind);
         if (!isCurrent(bound) || !readScope || !localId.startsWith("local:")) return null;
         return withRepository(bound, repository => repository.resolveAlias({
           workspaceId: readScope.workspaceId,
-          domainId: "notes",
+          domainId: readScope.domainId,
           localId,
           now: new Date(now()).toISOString(),
         }));

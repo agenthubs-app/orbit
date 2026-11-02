@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOfflineScheduleOutbox } from "../../data/sync/useOfflineScheduleOutbox";
+import { useLocalAlias } from "../../data/sync/useLocalAlias";
 import {
   mirrorScheduleItem,
   mirrorScheduleList,
@@ -34,7 +35,12 @@ export function usePersonalScheduleItem(input: { actorId: string; ready: boolean
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
   const outbox = useOfflineScheduleOutbox(state, Platform.OS !== "web" && input.ready);
   useMirrorProbe(state.refresh, input.ready && Boolean(input.id));
-  return useMemo(() => mirrorScheduleItem(state, input, Date.now(), outbox), [state.records, state.status, state.lastSyncedAt, state.error, state.refresh, input.actorId, input.ready, input.id, outbox]);
+  // Sprint 0145: on the local: id of a schedule created offline, wait (loading, not 找不到) for its formal id once uploaded.
+  const alias = useLocalAlias(state, "personal_schedule", input.id, outbox?.queuedMutations);
+  const source = useMemo(() => mirrorScheduleItem(state, input, Date.now(), outbox), [state.records, state.status, state.lastSyncedAt, state.error, state.refresh, input.actorId, input.ready, input.id, outbox]);
+  return useMemo(() => alias.pending || alias.canonicalId
+    ? { ...source, loading: true, errorKey: null, errorText: "", canonicalId: alias.canonicalId }
+    : source, [source, alias.pending, alias.canonicalId]);
 }
 
 export function usePersonalScheduleWriteStatus(input: { actorId: string; ready: boolean }): PersonalScheduleWriteStatus {

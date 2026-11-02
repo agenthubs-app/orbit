@@ -260,3 +260,24 @@ test("SC-0141-03 a repeating schedule whose request loses the connection is not 
   assert.equal((await writes(page)).length, 1, "the save was tried online");
   assert.equal(await fixtureValue(page, "enqueuedSchedules") ?? null, null);
 });
+
+test("SC-0145-03 schedule detail opened on a local: id follows the uploaded create to its formal id, never showing 无法确认日程数据", async t => {
+  const localId = "local:d41e0000-0000-4000-8000-000000000004";
+  const create = queuedSchedule({ mutationId: "s-create", id: localId, operation: "create", baseRevision: null, attemptCount: 0, firstAttemptAt: null,
+    patch: { title: "和陈总复盘", startsAt: "2026-12-21T01:00:00.000Z" }, requestJson: JSON.stringify({ title: "和陈总复盘", startsAt: "2026-12-21T01:00:00.000Z", idempotencyKey: "s-create" }) });
+  const page = await harness.open(t, { ...offline, screen: "detail", params: { id: localId }, records: { personal_schedule: [], note: [] }, queuedSchedules: [create] });
+  await page.getByText("和陈总复盘").first().waitFor();
+  await watchFor(page, "无法确认日程数据");
+  await page.evaluate(([id, formal]) => (window as any).fixture.bump({ queuedSchedules: [], aliases: { [id]: formal.id }, records: { personal_schedule: [formal], note: [] } }),
+    [localId, item("personal:formal", "和陈总复盘", { startsAt: "2026-12-21T01:00:00.000Z", endsAt: "2026-12-21T01:30:00.000Z" })] as const);
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("replace:/schedule/personal/personal%3Aformal"));
+  await settle(page);
+  assert.equal(await page.evaluate(() => (window as any).sawText), false, "no 找不到 between the upload and the redirect");
+});
+
+async function watchFor(page: Page, text: string) {
+  await page.evaluate((needle) => {
+    const w = window as any; w.sawText = false;
+    new MutationObserver(() => { if (document.body.innerText.includes(needle)) w.sawText = true; }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  }, text);
+}

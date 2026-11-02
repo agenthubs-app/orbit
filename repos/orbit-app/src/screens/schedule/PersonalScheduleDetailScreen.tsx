@@ -32,6 +32,10 @@ function Detail({ actorId, id, ready, scopeKey }: { actorId: string; id: string;
   const [view, setView] = useState<ReturnType<typeof personalScheduleDetail>>(null); const [error, setError] = useState("");
   const [rules, setRules] = useState<ReturnType<typeof personalScheduleDraft> | null>(null);
   const loading = source.loading;
+  // Sprint 0145: a schedule created offline, opened on its local: id, moves to its formal id once uploaded.
+  useEffect(() => {
+    if (source.canonicalId) router.replace(`/schedule/personal/${encodeURIComponent(source.canonicalId)}` as Href);
+  }, [source.canonicalId]);
   // Sprint 0134: a one-off personal schedule stays editable offline on the phone (its change queues); a series does not.
   const editBlocked = source.offline && !(Platform.OS !== "web" && !!source.outbox && isOfflineScheduleEditable(source.item, actorId));
   const conflict = source.conflict ?? null;

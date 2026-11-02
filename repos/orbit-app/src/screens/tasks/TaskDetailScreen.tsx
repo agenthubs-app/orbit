@@ -23,6 +23,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
+import { useLocalAlias } from "../../data/sync/useLocalAlias";
 import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
 import type { TaskItemContract } from "../../api/contract/tasks";
@@ -93,6 +94,12 @@ export function TaskDetailScreen() {
   // copy (sync domain tasks); it is read-only with 截至 until the connection is back.
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
   const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
+  // Sprint 0145: opened on the local: id of a task created offline, the page moves to its formal id once uploaded.
+  const localAlias = useLocalAlias(taskMirror, "task", taskId, taskOutbox.queuedMutations);
+  const followingAlias = localAlias.pending || localAlias.canonicalId !== null;
+  useEffect(() => {
+    if (localAlias.canonicalId) router.replace(`/tasks/${encodeURIComponent(localAlias.canonicalId)}` as Href);
+  }, [localAlias.canonicalId]);
   const mirrorState = mirrorFreshness(taskMirror, ready);
   // On the phone the snapshot cache can answer an offline read as if it were the server; the
   // client's reachability record is what says the server was not reached.
@@ -517,7 +524,7 @@ export function TaskDetailScreen() {
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || remindersState.refreshing} tintColor={colors.accentText} />}
       title={locale.t("taskDetail.title")}
     >
-      {detailState.kind === "loading" ? <LoadingState /> : null}
+      {detailState.kind === "loading" || followingAlias ? <LoadingState /> : null}
       {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={reach === "unreachable" || detailState.kind === "offline" ? "unreachable" : "unavailable"} queues="tasks" /> : null}
       {detail?.localMutationState && !taskConflict ? <Text style={styles.localMutationLabel}>{locale.t(detail.localMutationState === "conflict" ? "tasks.outboxConflict" : detail.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
       {taskFailure && !taskConflict ? <View style={styles.conflictActions}>
@@ -532,8 +539,8 @@ export function TaskDetailScreen() {
           <Pressable accessibilityRole="button" onPress={() => void resolveTaskConflict("replace")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t(taskConflict.operation === "delete" && confirmConflictDelete ? "taskDetail.confirmDeleteConflict" : "taskDetail.keepLocalVersion")}</Text></Pressable>
         </View>
       </View> : null}
-      {!offline && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
-      {!offline && detailState.kind === "failure" ? <ErrorState message={locale.t("taskDetail.readFailed")} title={locale.t("taskDetail.unavailable")} /> : null}
+      {!offline && !followingAlias && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
+      {!offline && !followingAlias && detailState.kind === "failure" ? <ErrorState message={locale.t("taskDetail.readFailed")} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           {/* Reminders detail: the round check, the title and the note in one card. */}
