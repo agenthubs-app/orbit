@@ -74,6 +74,8 @@ const client = {
   },
   async post(path, options) {
     const result = answer("post", path);
+    // Sprint 0143: every POST body is kept, so a test can read the receipt key and time zone that were sent.
+    state.postBodies = [...(state.postBodies ?? []), { path, body: options?.body }];
     if (state.online && path === "/api/encounters" && state.echoEncounter) {
       state.encounterRequests = [...(state.encounterRequests ?? []), options];
       if (state.failEncounterOnce && state.encounterRequests.length === 1) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "test outage" }, meta: {} };
@@ -239,7 +241,8 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
   const browser: Browser = await chromium.launch({ headless: true, ...(process.env.ORBIT_TEST_CHROME_PATH ? { executablePath: process.env.ORBIT_TEST_CHROME_PATH } : {}) });
   return {
     async open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown>): Promise<Page> {
-      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      // timeZoneId (sprint 0143): the page runs as a phone set to that time zone.
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, ...(typeof patch.timeZoneId === "string" ? { timezoneId: patch.timeZoneId } : {}) });
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.addInitScript((initialFixture) => { (window as unknown as { initialFixture: unknown }).initialFixture = initialFixture; }, patch);

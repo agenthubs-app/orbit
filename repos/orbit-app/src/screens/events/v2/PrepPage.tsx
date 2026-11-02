@@ -3,18 +3,24 @@
 // 名刺の残り只存这台设备（AsyncStorage），从不发给服务端（DESIGN §2.5）。
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
+import * as Crypto from "expo-crypto";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Linking, Platform, StyleSheet, TextInput, View } from "react-native";
 
+import { useOrbitApiBaseUrl } from "../../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../../api/AuthSessionProvider";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../api/contract/event-prep";
 import { Icon, IconButton, UiPressable, UiText, useToast } from "../../../components/ui";
 import Svg, { Circle, Path, Rect } from "../../../components/ui/svg";
+import { buildOfflineScheduleMutation } from "../../../data/sync/schedule-outbox-mutation";
 import { createThemedStyles } from "../../../design/theme";
 import { radius } from "../../../design/tokens";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
+import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
 import { addDesignMock } from "../../add/add-design-mock";
+import { usePersonalScheduleWriteStatus } from "../../schedule/personal-schedule-source";
 import { newIdempotencyKey } from "./events-api";
 import { useJourneyApi } from "./journey-api";
 import { eventRange, hm, tokyo, type JourneyT } from "./journey-model";
@@ -55,6 +61,13 @@ export function PrepPage() {
   const locale = useOrbitLocale();
   const api = useJourneyApi();
   const client = useOrbitApiClient();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.actorId ?? "";
+  const writeStatus = usePersonalScheduleWriteStatus({ actorId, ready: auth.ready && auth.signedIn && server.ready && !!actorId });
+  const { timeZone } = useOrbitTimeZone();
+  // Sprint 0143: one receipt key per follow-up slot for every tap and retry; a tap while saving does nothing.
+  const followSave = useRef({ busy: false, keys: new Map<string, string>() });
   const noKeyboard = addDesignMock("no-keyboard");
   const params = useLocalSearchParams<{ id?: string }>();
   const eventId = String(params.id ?? "");
@@ -107,8 +120,32 @@ export function PrepPage() {
     if (!slot) return;
     // 示例世界只读：不写真实日历。
     if (data?.sample) { setFollowDone("added"); toast.success(t("followAdded")); return; }
-    const response = await client.post<unknown>("/api/schedule-items", { body: { endsAt: slot.endsAt, idempotencyKey: newIdempotencyKey(), startsAt: slot.startsAt, timeZone: "Asia/Tokyo", title: slot.title } }).catch(() => null);
-    if (response?.success) { setFollowDone("added"); toast.success(t("followAdded")); } else toast.error(locale.t("eventsV2.genericError"));
+    if (followSave.current.busy) return;
+    const body = { endsAt: slot.endsAt, startsAt: slot.startsAt, timeZone, title: slot.title };
+    const fingerprint = JSON.stringify([eventId, body]);
+    const key = followSave.current.keys.get(fingerprint) ?? newIdempotencyKey();
+    followSave.current.keys.set(fingerprint, key);
+    // Like the personal schedule editor (0134/0141): on the phone a one-off schedule is queued in the device outbox
+    // while offline or when the request loses the connection, under the same key; the browser needs the network.
+    const outbox = Platform.OS !== "web" ? writeStatus.outbox : null;
+    const enqueue = async (queue: NonNullable<typeof outbox>) => {
+      await queue.enqueue(buildOfflineScheduleMutation({ mutationId: key, entityId: `local:${Crypto.randomUUID()}`, operation: "create", baseRevision: null,
+        requestBody: { ...body, idempotencyKey: key }, createdAt: new Date().toISOString() }));
+      setFollowDone("added"); toast.success(locale.t("schedule.offlineQueued"));
+    };
+    followSave.current.busy = true;
+    try {
+      if (writeStatus.offline) {
+        if (outbox) await enqueue(outbox); else toast.error(locale.t("sync.needsNetwork"));
+        return;
+      }
+      const response = await client.post<unknown>("/api/schedule-items", { body: { ...body, idempotencyKey: key } }).catch(() => null);
+      const lost = !!response && !response.success && response.status === 0 && response.error.code === "ORBIT_APP_NETWORK_ERROR";
+      if (response?.success) { setFollowDone("added"); toast.success(t("followAdded")); }
+      else if (lost && outbox) await enqueue(outbox);
+      else toast.error(locale.t(lost ? "sync.needsNetwork" : "eventsV2.genericError"));
+    } catch { toast.error(locale.t("eventsV2.genericError")); }
+    finally { followSave.current.busy = false; }
   };
 
   const back = { fallback: base, leftLabel: t("back") };
