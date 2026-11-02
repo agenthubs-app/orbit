@@ -240,6 +240,9 @@ test("手入力: a name alone is checked; 統合 lists only differing fields; th
   });
   assert.equal("note" in createBody({ ...form, note: "Private meeting memo" }, { kind: "separate" }, "memo-intent"), false, "memo text is not stored as a contact remark");
   assert.deepEqual(createBody(form, { kind: "separate" }, "k2").allowDuplicate, true);
+  // 0146: the picked industry goes with the save; none picked → no key.
+  assert.equal(createBody({ ...form, primaryIndustryId: "manufacturing_supply_chain" }, { kind: "none" }, "k3").primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal("primaryIndustryId" in createBody(form, { kind: "none" }, "k4"), false);
   assert.equal(formDensity({ ...EMPTY_MANUAL_FORM, displayName: "A" }), 1);
   assert.equal(formDensity({ ...form, met: { eventId: "e", kind: "event" } }), 2);
   const chips = eventChips([{ id: "far", startsAt: "2026-12-30T00:00:00Z", title: "Far" }, { id: "near", startsAt: "2026-10-07T10:00:00Z", title: "CFO Night" }, { id: "tomorrow", startsAt: "2026-10-12T01:00:00Z", title: "製造業 DX" }, { id: "x" }], new Date("2026-10-11T00:00:00Z"));

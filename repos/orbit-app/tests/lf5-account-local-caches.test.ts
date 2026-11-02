@@ -8,6 +8,7 @@ import { CONTACT_DELETE_QUEUE_PREFIX } from "../src/screens/network/contact-dele
 import { NETWORK_MERGE_CACHE_PREFIX } from "../src/screens/network/network-merge-cache-key";
 import { homeLayoutStorageKey } from "../src/screens/home/home-layout-storage";
 import { todoHandoffStorageKey } from "../src/screens/todo/todo-handoff-state";
+import { manualContactDraftKey } from "../src/storage/manual-contact-draft-storage";
 
 // AsyncStorage's web build reads window.localStorage at call time; a memory one stands in for the device.
 const memory = new Map<string, string>();
@@ -29,6 +30,8 @@ async function seed(): Promise<Record<string, string>> {
     home: homeLayoutStorageKey(scope.actorId, scope.baseUrl)!, handoff: todoHandoffStorageKey(scope.actorId, scope.baseUrl)!,
     merge: `${NETWORK_MERGE_CACHE_PREFIX}${scope.actorId}`, deletes: `${CONTACT_DELETE_QUEUE_PREFIX}${scope.actorId}`,
     otherGlobal: recentSearchKey("global", other)!,
+    manualDraft: manualContactDraftKey({ accountId: scope.actorId, server: scope.baseUrl }),
+    otherManualDraft: manualContactDraftKey({ accountId: other, server: scope.baseUrl }),
   };
   for (const key of Object.values(keys)) await AsyncStorage.setItem(key, "[\"x\"]");
   return keys;
@@ -42,9 +45,10 @@ test("LF5: recent-search keys are per account", () => {
 test("LF5: sign-out clears the account caches and the legacy device-wide lists, keeps queued deletes and other accounts", async () => {
   const keys = await seed();
   await clearAccountLocalCaches(scope, { discardPendingWrites: false });
-  for (const name of ["legacyGlobal", "legacyEvents", "global", "events", "home", "handoff", "merge"]) assert.equal(await AsyncStorage.getItem(keys[name]!), null, name);
+  for (const name of ["legacyGlobal", "legacyEvents", "global", "events", "home", "handoff", "merge", "manualDraft"]) assert.equal(await AsyncStorage.getItem(keys[name]!), null, name);
   assert.notEqual(await AsyncStorage.getItem(keys.deletes!), null, "unsent deletes stay for the same account");
   assert.notEqual(await AsyncStorage.getItem(keys.otherGlobal!), null, "another account's list is untouched");
+  assert.notEqual(await AsyncStorage.getItem(keys.otherManualDraft!), null, "0146: another account's 手入力 draft is untouched");
 });
 
 test("LF5: discarding unsent writes (or deleting the account) also drops the queued contact deletes", async () => {

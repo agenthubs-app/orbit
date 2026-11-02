@@ -5,6 +5,7 @@
 import { contactDensity, type ContactDensityLevel } from "../../api/compute/contact-density";
 import { normalizePersonName } from "../../api/compute/contact-name-match";
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
+import type { IndustryIdCode } from "../../api/contract/industries";
 import type {
   ManualContactCreateInput,
   ManualContactDuplicateCheckInput,
@@ -21,9 +22,11 @@ export type ManualForm = {
   phone: string;
   note: string;
   met: ManualContactMetContext | null;
+  /** 0146: the primary industry (fixed catalog), picked with the contact-edit picker. */
+  primaryIndustryId: IndustryIdCode | null;
 };
 
-export const EMPTY_MANUAL_FORM: ManualForm = { displayName: "", email: "", met: null, note: "", organization: "", phone: "", role: "" };
+export const EMPTY_MANUAL_FORM: ManualForm = { displayName: "", email: "", met: null, note: "", organization: "", phone: "", primaryIndustryId: null, role: "" };
 
 export const MERGE_FIELDS: readonly ManualContactMergeField[] = ["displayName", "organization", "role", "email", "phone"];
 
@@ -51,6 +54,7 @@ export function createBody(form: ManualForm, decision: ManualDecision, idempoten
   for (const field of ["organization", "role", "email", "phone"] as const) {
     if (clean(form[field])) body[field] = clean(form[field]);
   }
+  if (form.primaryIndustryId) body.primaryIndustryId = form.primaryIndustryId;
   if (form.met) {
     const met: ManualContactMetContext = { kind: form.met.kind };
     if (form.met.eventId) met.eventId = form.met.eventId;

@@ -7,12 +7,13 @@
 // duplicate_review unless the person chose (mergeIntoContactId / allowDuplicate), a card
 // confirmed twice is refused, and a batch whose cards are all settled is completed.
 import type { IngestBatchContract, IngestContactCandidateContract, IngestItemContract } from "../../src/api/contract/business-card-batch";
+import { manualContactCreateInputSchema } from "../../src/api/schema/manual-contact";
 import { batch as batchFixture, extraction, FUTURE, hex, T0 } from "./add-fixtures";
 
 export type Call = { method: string; path: string; body: unknown; headers: Record<string, string> };
 export type Reply = { status: number; body: unknown };
 
-export interface Person { id: string; displayName: string; organization: string; role: string; email: string; phone: string; createdVia: string; merged: number }
+export interface Person { id: string; displayName: string; organization: string; role: string; email: string; phone: string; createdVia: string; merged: number; primaryIndustryId?: string }
 
 type Reading = { kind: "read"; fields: Parameters<typeof extraction>[0]; issues?: { code: string; field: string; message: string }[] } | { kind: "fail"; code: "IMAGE_INVALID" | "OCR_PROVIDER_FAILED" };
 
@@ -223,6 +224,8 @@ export class FakeAddServer {
     }
     if (call.method === "POST" && path === "/api/contacts/manual") {
       if (this.sample) return fail(403, "FORBIDDEN", "SAMPLE_READ_ONLY");
+      // 0146: the body goes through the real (strict) request schema, as on the server.
+      if (!manualContactCreateInputSchema.safeParse(body).success) return fail(400, "VALIDATION_ERROR");
       const fields = { displayName: String(body.displayName), email: String(body.email ?? ""), organization: String(body.organization ?? ""), phone: String(body.phone ?? ""), role: String(body.role ?? "") };
       if (typeof body.mergeIntoContactId === "string") {
         const person = this.people.find((entry) => entry.id === body.mergeIntoContactId)!;
@@ -230,13 +233,14 @@ export class FakeAddServer {
         for (const field of ["displayName", "organization", "role", "email", "phone"] as const) {
           if (fields[field] && (!person[field] || choices[field] === "incoming")) person[field] = fields[field];
         }
+        if (typeof body.primaryIndustryId === "string" && !person.primaryIndustryId) person.primaryIndustryId = body.primaryIndustryId;
         person.merged += 1;
         return ok({ contactId: person.id, outcome: "merged" });
       }
       const candidate = body.allowDuplicate === true ? null : this.candidateFor(fields);
       if (candidate) return ok({ candidates: [{ ...candidate, identical: false }], outcome: "duplicate_review" });
       const contactId = this.next("contact-manual");
-      this.people.push({ ...fields, createdVia: "manual_v2", id: contactId, merged: 0 });
+      this.people.push({ ...fields, createdVia: "manual_v2", id: contactId, merged: 0, ...(typeof body.primaryIndustryId === "string" ? { primaryIndustryId: body.primaryIndustryId } : {}) });
       return ok({ contactId, outcome: "created", undoUntil: FUTURE });
     }
     if ((match = /^\/api\/contacts\/manual\/([^/]+)\/undo$/.exec(path)) && call.method === "POST") {

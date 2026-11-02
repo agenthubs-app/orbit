@@ -1,6 +1,6 @@
 // R12 `contacts/new/manual` 手入力 (DESIGN §2.3, b11 A3 ①–④, App):
-//   名前 (必須) and あるといいもの chips — 会社 (people's companies already in 人脈 as you
-//   type), 出会った場所 (参加予定 / recent events, 紹介, その他), メモ (opens a scoped Memo after save),
+//   名前 (必須); 会社 (people's companies already in 人脈 as you type) and 業界 (the contact-edit
+//   picker, primary industry only) always on the form (0146); あるといいもの chips — 出会った場所 (参加予定 / recent events, 紹介, その他), メモ (opens a scoped Memo after save),
 //   連絡先 (メール / 電話); the density the save would give;
 //   duplicates checked as you type, a name alone included (same rule as cards + 同名):
 //   いま入力中 / 人脈にいる人 with 統合する（おすすめ） — only the differing fields, one
@@ -8,18 +8,26 @@
 //   保存 opens the person's page with 「人脈に追加しました · 手入力 [元に戻す]」 for 5 s
 //   (元に戻す = the server's undo: within 10 minutes and untouched only).
 // The sample account cannot save (403 SAMPLE_READ_ONLY): the page says so.
+// 0146: what is typed is kept as a draft on this device (per server + account); the next open restores it
+// with 「前回保存しなかった内容を戻しました [クリア]」; saving or クリア deletes it, and so does sign-out.
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { Keyboard, StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 
 import type { IngestContactCandidateContract } from "../../api/contract/business-card-batch";
+import type { IndustryIdCode } from "../../api/contract/industries";
 import type { ManualContactFieldChoice, ManualContactMergeField, ManualContactOrganizationSuggestion } from "../../api/contract/manual-contact";
+import { INDUSTRY_CATALOG } from "../../api/domain/industries";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { BottomSheet, Button, ConfirmDialog, FilterOption, Icon, MacTile, Radio, UiPressable, UiText, useToast } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { floatShadow } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
+import { manualContactDraftStorage, type ManualDraftExtra } from "../../storage/manual-contact-draft-storage";
+import { IndustryPickerSheet } from "../network/IndustryPickerSheet";
 import { useAddApi } from "./add-api";
 import { addDesignMock } from "./add-design-mock";
 import { ManualSavedView, type ManualSaved } from "./ManualSavedView";
@@ -42,8 +50,10 @@ import {
 
 const DUPLICATE_DEBOUNCE_MS = 400;
 const ORGANIZATION_DEBOUNCE_MS = 250;
+const DRAFT_DEBOUNCE_MS = 500;
 
-type Extra = "organization" | "met" | "note" | "contact";
+type Extra = ManualDraftExtra;
+const EMPTY_FORM_KEY = JSON.stringify(EMPTY_MANUAL_FORM);
 
 const FIELD_KEY: Record<ManualContactMergeField, MessageKey> = {
   displayName: "add.manual.name",
@@ -59,8 +69,10 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const router = useRouter();
   const api = useAddApi();
   const toast = useToast();
-  const { t } = useOrbitLocale();
+  const { t, language } = useOrbitLocale();
   const { colors, m } = useManualStyles();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [form, setForm] = useState<ManualForm>(EMPTY_MANUAL_FORM);
   const [open, setOpen] = useState<Set<Extra>>(() => new Set());
@@ -78,11 +90,46 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   // Simulator QA M1: a chip that adds a field moves the keyboard there (or closes it when the field has no text box),
   // so typing no longer runs on into 名前.
   const [justOpened, setJustOpened] = useState<Extra | null>(null);
-  const organizationInput = useRef<TextInput>(null);
   const emailInput = useRef<TextInput>(null);
   const mounted = useRef(true);
   // Set on every mount: Fast Refresh and StrictMode re-run effects, and a ref left false would drop answers.
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const [industryOpen, setIndustryOpen] = useState(false);
+
+  // 0146 下書き: restored once per account; what the person types before it loads wins. Autosave starts after the load.
+  const draftScope = useMemo(() => (auth.actorId && server.ready ? { accountId: auth.actorId, server: server.baseUrl } : null), [auth.actorId, server.baseUrl, server.ready]);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const touched = useRef(false);
+  const pendingDraft = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    setDraftLoaded(false);
+    if (!draftScope) return;
+    let active = true;
+    void manualContactDraftStorage.load(draftScope).catch(() => null).then((stored) => {
+      if (!active || !mounted.current) return;
+      setDraftLoaded(true);
+      if (!stored || touched.current) return;
+      setForm(stored.form);
+      setOpen(new Set(stored.open));
+      setRestored(true);
+    });
+    return () => { active = false; };
+  }, [draftScope]);
+  useEffect(() => {
+    if (!draftScope || !draftLoaded) return;
+    const empty = JSON.stringify(form) === EMPTY_FORM_KEY;
+    const draft = { form, open: [...open], savedAt: new Date().toISOString() };
+    const write = () => {
+      pendingDraft.current = null;
+      void (empty ? manualContactDraftStorage.clear(draftScope) : manualContactDraftStorage.save(draftScope, draft)).catch(() => undefined);
+    };
+    pendingDraft.current = write;
+    const timer = setTimeout(write, DRAFT_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [draftScope, draftLoaded, form, open]);
+  // Leaving within the debounce still keeps what was typed last.
+  useEffect(() => () => pendingDraft.current?.(), []);
 
   useEffect(() => {
     void api.listEvents().then((list) => { if (mounted.current) setEvents(eventChips(list, now())); });
@@ -122,17 +169,31 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   }, [api, orgFocused, orgQuery]);
 
   const set = <K extends keyof ManualForm>(field: K, value: ManualForm[K]) => {
+    touched.current = true;
     setForm((current) => ({ ...current, [field]: value }));
     setProblem(null);
   };
-  const toggle = (extra: Extra) => { setOpen((current) => new Set(current).add(extra)); setJustOpened(extra); };
+  const toggle = (extra: Extra) => { touched.current = true; setOpen((current) => new Set(current).add(extra)); setJustOpened(extra); };
   useEffect(() => {
     if (!justOpened) return;
-    const input = justOpened === "organization" ? organizationInput.current : justOpened === "contact" ? emailInput.current : null;
+    const input = justOpened === "contact" ? emailInput.current : null;
     if (input) input.focus(); else Keyboard.dismiss();
     setJustOpened(null);
   }, [justOpened]);
   const differing = useMemo(() => (candidate ? differingFields(candidate, form) : []), [candidate, form]);
+
+  // クリア: the restored draft goes, on the form and on the device.
+  function clearDraft() {
+    setForm(EMPTY_MANUAL_FORM);
+    setOpen(new Set());
+    setCandidates([]);
+    setDecision({ kind: "none" });
+    setOrgChosen(null);
+    setProblem(null);
+    setRestored(false);
+    key.current = null;
+    if (draftScope) void manualContactDraftStorage.clear(draftScope).catch(() => undefined);
+  }
 
   async function save() {
     if (saving) return;
@@ -159,6 +220,8 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
       return;
     }
     const contactId = answer.contactId;
+    if (draftScope) void manualContactDraftStorage.clear(draftScope).catch(() => undefined);
+    setRestored(false);
     setForm(EMPTY_MANUAL_FORM);
     setOpen(new Set());
     setCandidates([]);
@@ -206,12 +269,18 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
   const problemKey: MessageKey | null = problem === "name" ? "add.manual.nameMissing" : problem === "review" ? "add.manual.reviewNeeded" : problem === "failed" ? "add.manual.saveFailed" : null;
   if (saved) return <ManualSavedView saved={saved} />;
   const anyOpen = open.size > 0;
-  const showSuggestions = open.has("organization") && orgFocused && Boolean(orgQuery) && orgChosen !== orgQuery;
+  const showSuggestions = orgFocused && Boolean(orgQuery) && orgChosen !== orgQuery;
   const sheetOpen = Boolean(candidate) && decision.kind === "none" && dismissed !== candidate?.contactId;
   return (
     <AppScreen inset="kit" title={t("add.manual.title")} subtitle={t("add.manual.lead")} backIcon="x"
       headerActions={<KitHeadAction label={t("add.manual.save")} disabled={!form.displayName.trim() || saving} onPress={() => void save()} testID="add-manual-save" />}>
       <FadeIn testID="add-manual">
+        {restored ? (
+          <View style={m.restored} testID="add-manual-draft-restored">
+            <UiText style={[m.lbl, m.grow]}>{t("add.manual.draftRestored")}</UiText>
+            <Button size="sm" variant="ghost" label={t("add.manual.draftClear")} onPress={clearDraft} />
+          </View>
+        ) : null}
         <Field label={t("add.manual.name")} required={t("add.manual.required")} hint={anyOpen ? undefined : t("add.manual.nameHint")} first>
           <FieldInput value={form.displayName} onChangeText={(value) => set("displayName", value)} autoFocus returnKeyType="done" accessibilityLabel={t("add.manual.name")} testID="add-manual-name" />
         </Field>
@@ -233,9 +302,8 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
             onChoose={(field, choice) => setDecision((current) => (current.kind === "merge" ? { ...current, choices: { ...current.choices, [field]: choice } } : current))} />
         ) : null}
 
-        {open.has("organization") ? (
-          <Field label={t("add.manual.organization")}>
-            <FieldInput ref={organizationInput} value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
+        <Field label={t("add.manual.organization")}>
+            <FieldInput value={form.organization} onChangeText={(value) => set("organization", value)} accessibilityLabel={t("add.manual.organization")}
               autoCorrect={false} onFocus={() => setOrgFocused(true)} onBlur={() => setTimeout(() => { if (mounted.current) setOrgFocused(false); }, 150)} testID="add-manual-organization" />
             {showSuggestions ? (
               <View style={m.sugg} testID="add-manual-org-suggestions">
@@ -254,14 +322,24 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
                 )}
               </View>
             ) : null}
-          </Field>
-        ) : null}
-        {/* QA-C: the form always carried a title (role) but had no field for it; it opens with Company, like iOS Contacts. */}
-        {open.has("organization") ? (
-          <Field label={t("add.manual.role")}>
-            <FieldInput value={form.role} onChangeText={(value) => set("role", value)} accessibilityLabel={t("add.manual.role")} testID="add-manual-role" />
-          </Field>
-        ) : null}
+        </Field>
+        {/* 0146: 業界 under 会社 — the contact-edit picker, primary industry only. */}
+        <Field label={t("add.manual.industry")}>
+          <View style={[m.in, m.pick]}>
+            <UiPressable accessibilityRole="button" accessibilityLabel={t("add.manual.industry")} onPress={() => setIndustryOpen(true)} style={[m.pickMain, m.grow]} testID="add-manual-industry">
+              <UiText numberOfLines={1} style={[m.pickText, form.primaryIndustryId ? null : m.pickUnset]}>{form.primaryIndustryId ? INDUSTRY_CATALOG.find((item) => item.id === form.primaryIndustryId)?.labels[language] : t("add.manual.industryUnset")}</UiText>
+            </UiPressable>
+            {form.primaryIndustryId ? (
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("add.manual.industryClear")} onPress={() => set("primaryIndustryId", null)} hitSlop={8} testID="add-manual-industry-clear">
+                <Icon name="x" size={16} color={colors.ink3} />
+              </UiPressable>
+            ) : <Icon name="right" size={16} color={colors.ink3} />}
+          </View>
+        </Field>
+        {/* QA-C: the form always carried a title (role) but had no field for it; it sits with Company, like iOS Contacts. */}
+        <Field label={t("add.manual.role")}>
+          <FieldInput value={form.role} onChangeText={(value) => set("role", value)} accessibilityLabel={t("add.manual.role")} testID="add-manual-role" />
+        </Field>
 
         {open.has("met") ? (
           <Field label={t("add.manual.met")} hint={events.length > 0 && form.met?.kind !== "intro" && form.met?.kind !== "other" ? t("add.manual.metHint") : undefined} testID="add-manual-met">
@@ -294,12 +372,12 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
         {/* b11 A3 ②: once a field is open the heading and the merge note go; the chips not opened yet stay
             (decision §18: 連絡先 must stay reachable — the board's ② omitted it). */}
         {anyOpen ? null : <UiText style={m.more}>{t("add.manual.optionalTitle")} <UiText style={m.moreNote}>{t("add.manual.optionalNote")}</UiText></UiText>}
-        {open.size < 4 ? (
+        {open.size < 3 ? (
           <View style={[m.chips, anyOpen ? m.chipsAfter : null]} testID="add-manual-chips">
-            {(["organization", "met", "note", "contact"] as const).filter((extra) => !open.has(extra)).map((extra) => (
+            {(["met", "note", "contact"] as const).filter((extra) => !open.has(extra)).map((extra) => (
               <UiPressable key={extra} accessibilityRole="button" onPress={() => toggle(extra)} style={m.addf} testID={`add-manual-chip-${extra}`}>
                 <Icon name="plus" size={16} color={colors.plum700} />
-                <UiText style={m.addfText}>{t(extra === "organization" ? "add.manual.chipOrganization" : extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")}</UiText>
+                <UiText style={m.addfText}>{t(extra === "met" ? "add.manual.chipMet" : extra === "note" ? "add.manual.chipNote" : "add.manual.chipContact")}</UiText>
               </UiPressable>
             ))}
           </View>
@@ -311,6 +389,10 @@ export function ManualContactScreen({ now = deviceNow }: { now?: () => Date } = 
           onConfirm={() => { setProblem(null); router.push("/profile/onboarding" as Href); }} onCancel={() => setProblem(null)} />
       </FadeIn>
 
+      {industryOpen ? (
+        <IndustryPickerSheet visible primaryOnly title={t("add.manual.industryPicker")} role="" primary={form.primaryIndustryId} secondary={null} seniority={null}
+          onClose={() => setIndustryOpen(false)} onDone={(next) => { set("primaryIndustryId", next.primaryIndustryId as IndustryIdCode | null); setIndustryOpen(false); }} />
+      ) : null}
       <BottomSheet visible={sheetOpen} onClose={() => setDismissed(candidate?.contactId ?? null)} accessibilityLabel={t("add.manual.dupSheetTitle")}>
         {candidate ? (
           <View testID="add-manual-dup-sheet">
@@ -447,4 +529,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sheetActs: { marginTop: 14, gap: 8 },
   mergePanel: { marginTop: 8, gap: 8 },
   mergeField: { gap: 4 },
+  restored: { marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surface2, borderRadius: 14, paddingVertical: 4, paddingLeft: 12, paddingRight: 4 },
+  pick: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pickMain: { minHeight: 43, justifyContent: "center" },
+  pickText: { fontSize: 17, color: colors.ink },
+  pickUnset: { color: colors.ink3Text },
 }));

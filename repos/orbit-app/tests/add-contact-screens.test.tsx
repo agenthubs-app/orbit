@@ -85,11 +85,11 @@ export const AppState = { currentState: "active", addEventListener: (type, liste
       plugin.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: join(root, "tests/helpers/stubs/react-native-safe-area-context.js") }));
       plugin.onResolve({ filter: /^(expo-router|expo-camera|expo-image-picker|expo-crypto|@react-native-async-storage\/async-storage)$/ }, (args) => ({ path: args.path, namespace: "add-stub" }));
       plugin.onResolve({ filter: /(AuthSessionProvider|ApiBaseUrlProvider)$/ }, (args) => ({ path: args.path, namespace: "add-stub" }));
-      plugin.onLoad({ filter: /AuthSessionProvider$/, namespace: "add-stub" }, () => ({ contents: `export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor-r12", cookieHeader: "c", user: { id: "actor-r12" } });`, loader: "js" }));
+      plugin.onLoad({ filter: /AuthSessionProvider$/, namespace: "add-stub" }, () => ({ contents: `export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: window.authActorId ?? "actor-r12", cookieHeader: "c", user: { id: window.authActorId ?? "actor-r12" } });`, loader: "js" }));
       plugin.onLoad({ filter: /ApiBaseUrlProvider$/, namespace: "add-stub" }, () => ({ contents: `export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "http://local.test" });`, loader: "js" }));
       plugin.onLoad({ filter: /^@react-native-async-storage\/async-storage$/, namespace: "add-stub" }, () => ({ contents: `
 const store = () => (window.deviceStore ??= {});
-export default { getItem: async (key) => store()[key] ?? null, setItem: async (key, value) => { store()[key] = value; } };`, loader: "js" }));
+export default { getItem: async (key) => store()[key] ?? null, setItem: async (key, value) => { store()[key] = value; }, removeItem: async (key) => { delete store()[key]; } };`, loader: "js" }));
       plugin.onLoad({ filter: /^expo-crypto$/, namespace: "add-stub" }, () => ({ contents: `
 import { sha256 } from "./tests/helpers/stubs/sha256.js";
 export const CryptoDigestAlgorithm = { SHA256: "SHA-256" };
@@ -153,6 +153,7 @@ interface OpenOptions {
   onRequest?: { granted: boolean; canAskAgain: boolean };
   deviceStore?: Record<string, string>;
   pickCount?: number;
+  actorId?: string;
 }
 
 async function open(t: { after: (fn: () => Promise<void>) => void }, path: string, options: OpenOptions = {}): Promise<{ page: Page; server: FakeAddServer }> {
@@ -172,6 +173,7 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, path: strin
 window.reduceMotion=${Boolean(options.reduceMotion)};
 window.addNav=${JSON.stringify({ navigation: [], stack: options.stack ?? [path] })};
 window.deviceStore=${JSON.stringify(options.deviceStore ?? {})};
+window.authActorId=${JSON.stringify(options.actorId ?? "actor-r12")};
 window.camera={ permission: ${JSON.stringify(camera)}, onRequest: ${JSON.stringify(options.onRequest ?? { canAskAgain: true, granted: true })}, requests: 0 };
 window.pickCount=${options.pickCount ?? 0};
 window.photoSeq=0;
@@ -578,11 +580,11 @@ test("模拟器走查 M1: a chip moves the keyboard to the field it adds; 連絡
   const text = await page.getByTestId("add-manual").innerText();
   for (const jargon of ["統合", "出どころ", "手入力」", "毎日の 1問"]) assert.ok(!text.includes(jargon), `no "${jargon}" on the form`);
   const chipColor = (extra: string) => page.getByTestId(`add-manual-chip-${extra}`).evaluate((node) => [getComputedStyle(node).borderTopColor, getComputedStyle(node.querySelector("div[dir], div:last-child")!).color].join("|"));
-  assert.equal(await chipColor("contact"), await chipColor("organization"), "連絡先 is not greyed out");
+  assert.equal(await chipColor("contact"), await chipColor("met"), "連絡先 is not greyed out");
   const name = page.getByRole("textbox", { name: "名前" });
   await name.fill("集中 太郎");
-  await page.getByTestId("add-manual-chip-organization").click();
-  await page.waitForFunction(() => document.activeElement?.getAttribute("data-testid") === "add-manual-organization");
+  assert.equal(await page.getByTestId("add-manual-chip-organization").count(), 0, "0146: 会社 is on the form, not behind a chip");
+  await page.getByTestId("add-manual-organization").click();
   await page.keyboard.type("ミライ");
   assert.equal(await name.inputValue(), "集中 太郎", "typing goes to 会社, not 名前");
   assert.equal(await page.getByTestId("add-manual-organization").inputValue(), "ミライ");
@@ -610,7 +612,6 @@ test("手入力: a name alone finds a 同名 candidate; 統合 asks only the dif
   await page.getByText("保存の前に、同じ人かどうか選んでください。").waitFor();
   assert.equal(server.writes().filter((write) => write === "POST /api/contacts/manual").length, 0);
   // 統合: company differs → only that field, one choice.
-  await page.getByTestId("add-manual-chip-organization").click();
   await page.getByTestId("add-manual-organization").fill("ミライ精機株式会社");
   await page.getByTestId("add-manual-duplicate").click();
   await page.getByRole("button", { name: "統合する（おすすめ）" }).click();
@@ -723,6 +724,79 @@ test("手入力: the sample account cannot save (403 SAMPLE_READ_ONLY) and the p
   await page.getByText("これはサンプルです").waitFor({ state: "detached" });
   assert.equal(server.people.length, 0);
   assert.equal((await nav(page)).stack.at(-1), "/contacts/new/manual");
+});
+
+const DRAFT_PREFIX = "orbit:manual-contact-draft:";
+const manualDrafts = (page: Page) => page.evaluate((prefix) => Object.fromEntries(Object.entries((window as unknown as { deviceStore: Record<string, string> }).deviceStore).filter(([key]) => key.startsWith(prefix))), DRAFT_PREFIX);
+
+test("0146 手入力: 会社 and 業界 are on the form; 業界 opens the contact-edit picker; saving sends organization + primaryIndustryId", async (t) => {
+  const { page, server } = await open(t, "/contacts/new/manual");
+  await page.getByTestId("add-manual").waitFor();
+  await page.getByTestId("add-manual-organization").waitFor();
+  await page.getByTestId("add-manual-industry").waitFor();
+  await page.getByRole("textbox", { name: "名前" }).fill("佐藤 工");
+  await page.getByTestId("add-manual-organization").fill("ミライ精機");
+  await page.getByTestId("add-manual-industry").click();
+  const picker = page.getByTestId("network-industry-picker");
+  await picker.waitFor();
+  assert.equal(await picker.getByRole("tab", { name: "役職層" }).count(), 0, "only the primary industry is asked here");
+  await picker.getByRole("tab", { name: "製造・サプライチェーン" }).click();
+  await picker.getByRole("button", { name: "決定" }).click();
+  await picker.waitFor({ state: "detached" });
+  await page.getByTestId("add-manual-industry").getByText("製造・サプライチェーン").waitFor();
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "保存" }).first().click();
+  await page.getByTestId("add-manual-saved").waitFor();
+  const created = server.calls.find((call) => call.path === "/api/contacts/manual" && call.method === "POST")!.body as Record<string, unknown>;
+  assert.equal(created.organization, "ミライ精機");
+  assert.equal(created.primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal(server.people[0]?.primaryIndustryId, "manufacturing_supply_chain");
+});
+
+test("0146 手入力: a half-filled form comes back on the next open with a notice; クリア empties it; saving deletes the draft", async (t) => {
+  const first = await open(t, "/contacts/new/manual");
+  await first.page.getByRole("textbox", { name: "名前" }).fill("下書き 花子");
+  await first.page.getByTestId("add-manual-organization").fill("星野商事");
+  await first.page.getByTestId("add-manual-chip-contact").click();
+  await first.page.getByRole("textbox", { name: "メール" }).fill("hana@example.jp");
+  await first.page.waitForFunction((prefix) => Object.keys((window as unknown as { deviceStore: Record<string, string> }).deviceStore).some((key) => key.startsWith(prefix) && key.includes("actor-r12")), DRAFT_PREFIX);
+  const stored = await manualDrafts(first.page);
+  assert.equal(Object.keys(stored).length, 1);
+  assert.ok(Object.keys(stored)[0]!.includes(encodeURIComponent("http://local.test")), "scoped by server");
+
+  // Leave and come back (a new page with the same device store).
+  const again = await open(t, "/contacts/new/manual", { deviceStore: stored });
+  await again.page.getByText("前回保存しなかった内容を戻しました").waitFor();
+  assert.equal(await again.page.getByRole("textbox", { name: "名前" }).inputValue(), "下書き 花子");
+  assert.equal(await again.page.getByTestId("add-manual-organization").inputValue(), "星野商事");
+  assert.equal(await again.page.getByRole("textbox", { name: "メール" }).inputValue(), "hana@example.jp", "the opened 連絡先 field comes back open");
+  await again.page.getByTestId("add-manual-draft-restored").getByRole("button", { name: "クリア" }).click();
+  await again.page.getByText("前回保存しなかった内容を戻しました").waitFor({ state: "detached" });
+  assert.equal(await again.page.getByRole("textbox", { name: "名前" }).inputValue(), "");
+  assert.equal(await again.page.getByTestId("add-manual-organization").inputValue(), "");
+  await again.page.waitForFunction((prefix) => !Object.keys((window as unknown as { deviceStore: Record<string, string> }).deviceStore).some((key) => key.startsWith(prefix)), DRAFT_PREFIX);
+
+  // Restored, then saved: the draft is gone; the duplicate check ran on the restored form.
+  const third = await open(t, "/contacts/new/manual", { deviceStore: stored });
+  await third.page.getByText("前回保存しなかった内容を戻しました").waitFor();
+  await third.page.waitForTimeout(500);
+  assert.ok(third.server.calls.some((call) => call.path === "/api/contacts/manual/duplicates" && (call.body as { displayName?: string }).displayName === "下書き 花子"), "duplicates are checked again after restoring");
+  await third.page.getByRole("button", { name: "保存" }).first().click();
+  await third.page.getByTestId("add-manual-saved").waitFor();
+  await third.page.waitForFunction((prefix) => !Object.keys((window as unknown as { deviceStore: Record<string, string> }).deviceStore).some((key) => key.startsWith(prefix)), DRAFT_PREFIX);
+  assert.equal(third.server.people[0]?.organization, "星野商事");
+});
+
+test("0146 手入力: another account on the same device does not see the draft", async (t) => {
+  const first = await open(t, "/contacts/new/manual");
+  await first.page.getByRole("textbox", { name: "名前" }).fill("秘密 太郎");
+  await first.page.waitForFunction((prefix) => Object.keys((window as unknown as { deviceStore: Record<string, string> }).deviceStore).some((key) => key.startsWith(prefix)), DRAFT_PREFIX);
+  const stored = await manualDrafts(first.page);
+  const other = await open(t, "/contacts/new/manual", { actorId: "actor-other", deviceStore: stored });
+  await other.page.getByTestId("add-manual").waitFor();
+  await other.page.waitForTimeout(300);
+  assert.equal(await other.page.getByRole("textbox", { name: "名前" }).inputValue(), "");
+  assert.equal(await other.page.getByText("前回保存しなかった内容を戻しました").count(), 0);
 });
 
 test("確認待ちの下書き: 確認して追加 / 破棄; with ?eventId= 参加者から取り込む", async (t) => {
