@@ -114,7 +114,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   track: { flexDirection: "row", padding: 3, gap: 2, borderRadius: 999, backgroundColor: colors.surface2, alignSelf: "stretch" },
   trackInline: { alignSelf: "flex-start" },
   option: { flex: 1, borderRadius: 999, alignItems: "center", justifyContent: "center", paddingVertical: 6, paddingHorizontal: 13 },
-  optionInline: { flex: 0, flexGrow: 0, flexShrink: 0 },
+  // flexBasis auto: on react-native-web `flex: 0` sizes the option from a 0 basis and hides the label.
+  optionInline: { flex: 0, flexGrow: 0, flexShrink: 0, flexBasis: "auto" },
   // kit .seg button.on / .tseg button.on: surface + 0 1px 2px.
   selected: { backgroundColor: colors.surface, ...shadows.segment },
   label: { color: colors.ink2, fontSize: 14, fontWeight: "600", lineHeight: 21, textAlign: "center" },

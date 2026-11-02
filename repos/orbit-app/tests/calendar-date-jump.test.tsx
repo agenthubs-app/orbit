@@ -158,3 +158,12 @@ test("cancel leaves the calendar where it was", async t => {
   assert.deepEqual(await page.evaluate(() => (window as any).selections), []);
   assert.match(await titleButton(page).getAttribute("aria-label") ?? "", /2026年10月/u);
 });
+
+test("the day/week/month switcher keeps its labels visible on the web", async t => {
+  // Found while checking 0149 on phoneweb: inline segments collapsed to their padding and hid 日/周/月.
+  const page = await open(t);
+  for (const name of ["日", "周", "月"]) {
+    const width = await page.getByRole("tab", { name, exact: true }).locator("div[dir]").evaluate(node => node.getBoundingClientRect().width);
+    assert.ok(width > 0, `${name} label width ${width}`);
+  }
+});
