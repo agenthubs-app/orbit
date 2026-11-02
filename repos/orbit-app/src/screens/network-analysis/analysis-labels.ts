@@ -46,11 +46,21 @@ export function cityName(city: string, t: OrbitTranslator): string {
   return (NETWORK_CITY_KEYS as readonly string[]).includes(city) ? t(`network.city.${city}` as MessageKey) : city;
 }
 
+/** Sprint 0148: a region with only a country reads its two-letter code; the device's own name for it when it has one. */
+export function regionName(id: string, t: OrbitTranslator, language: OrbitLanguage): string {
+  if (!/^[A-Z]{2}$/u.test(id)) return cityName(id, t);
+  try {
+    const names = new (Intl as unknown as { DisplayNames: new (locales: string[], options: { type: "region" }) => { of(code: string): string | undefined } }).DisplayNames(
+      [language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US"], { type: "region" });
+    return names.of(id) ?? id;
+  } catch { return id; }
+}
+
 export function bucketLabel(dimension: NetworkAnalysisDimension, id: string, t: OrbitTranslator, language: OrbitLanguage): string {
   if (id === "rest") return t("networkAnalysis.rest");
   switch (dimension) {
     case "industry": return industryName(id, language);
-    case "region": return cityName(id, t);
+    case "region": return regionName(id, t, language);
     case "seniority": return t(SENIORITY_KEY[id] ?? "networkAnalysis.seniorityUnset");
     case "met": return t(MET_KEY[id] ?? "networkAnalysis.metOther");
     case "opportunity": return t(OPPORTUNITY_KEY[id] ?? "networkAnalysis.oppReconnect");

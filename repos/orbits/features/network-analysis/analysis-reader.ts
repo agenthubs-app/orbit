@@ -100,7 +100,7 @@ export async function readNetworkAnalysisRows(
   const extras = await readProfileExtras(actor.id, cards.map((card) => card.id));
   return cards.map((card) => ({
     id: card.id, name: card.displayName, organization: card.organization, role: card.role, status: card.status,
-    primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, location: extras.get(card.id)?.location ?? null,
+    primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, location: extras.get(card.id)?.location ?? null, countryCode: card.region?.countryCode ?? null,
     metKind: card.metKind ?? null, seniorityLevel: extras.get(card.id)?.level ?? null, addedAt: card.addedAt ?? null, lastInteractionAt: card.lastInteractionAt ?? null,
     goalRelated: card.goalRelated === true, needsFollowUp: followUpIds.has(card.id), nextActionPreview: card.nextActionPreview,
   }));

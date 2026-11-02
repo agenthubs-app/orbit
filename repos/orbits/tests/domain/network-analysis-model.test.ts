@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { REGION_CITY_ALIASES } from "../../shared/domain/regions";
 import {
-  ANALYSIS_CITY_ALIASES, analysisCityFromLocation, analysisSeniorityFromTitle,
+  ANALYSIS_CITY_ALIASES, analysisBucketKey, analysisCityFromLocation, analysisSeniorityFromTitle,
   availableSorts, buildNetworkAnalysisPeople, buildNetworkAnalysisView, bucketMembers, distribution, insights, opportunities, planGaps,
   type NetworkAnalysisNeed, type NetworkAnalysisRow,
 } from "../../features/network-analysis/analysis-model";
@@ -149,4 +149,12 @@ test("display fallbacks: an empty city reads the location, an empty level reads 
 
 test("the analysis city aliases are the region domain's aliases (compute cannot import shared/domain)", () => {
   assert.deepEqual(ANALYSIS_CITY_ALIASES.map(([city, aliases]) => [city, [...aliases]]), REGION_CITY_ALIASES.map((entry) => [entry.city, [...entry.aliases]]));
+});
+
+test("0148: a region without a city reads the country code; a city still wins", () => {
+  const rows = [person({ city: "Tokyo", countryCode: "JP" }), person({ countryCode: "CN" }), person({ countryCode: "CN" }), person({ location: "大阪", countryCode: "JP" }), person({})];
+  assert.deepEqual(distribution(rows, "region").buckets, [{ id: "CN", count: 2 }, { id: "Osaka", count: 1 }, { id: "Tokyo", count: 1 }, { id: "rest", count: 1 }]);
+  assert.equal(analysisBucketKey(person({ countryCode: "SG" }), "region"), "SG");
+  assert.equal(analysisBucketKey(person({}), "region"), "none");
+  assert.equal(bucketMembers(rows, "region", "CN", { nowMs: NOW.getTime(), hasPlan: false })?.length, 2);
 });

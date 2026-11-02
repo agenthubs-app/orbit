@@ -34,7 +34,7 @@ export function localNetworkAnalysisRows(rows: readonly ContactSyncPayload[], me
     if (!card) return [];
     return [{
       id: card.id, name: card.displayName, organization: card.organization, role: card.role, status: card.status,
-      primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, location: locationOf(row.detail as Record<string, unknown> | null), metKind: card.metKind ?? null,
+      primaryIndustryId: card.primaryIndustryId ?? null, city: card.region?.city ?? null, location: locationOf(row.detail as Record<string, unknown> | null), countryCode: card.region?.countryCode ?? null, metKind: card.metKind ?? null,
       seniorityLevel: seniorityOf(row.detail as Record<string, unknown> | null), addedAt: card.addedAt ?? null,
       lastInteractionAt: card.lastInteractionAt ?? null, goalRelated: goal.has(card.id), needsFollowUp: followUp.has(card.id),
       nextActionPreview: card.nextActionPreview,

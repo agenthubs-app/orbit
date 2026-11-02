@@ -48,7 +48,7 @@ function serverRows(): NetworkAnalysisRow[] {
   const goal = new Set(merge.goalIds), followUp = new Set(merge.followUpIds);
   return rows.map(({ card, detail }) => ({
     id: card!.id, name: card!.displayName, organization: card!.organization, role: card!.role, status: card!.status,
-    primaryIndustryId: card!.primaryIndustryId ?? null, city: card!.region?.city ?? null,
+    primaryIndustryId: card!.primaryIndustryId ?? null, city: card!.region?.city ?? null, countryCode: card!.region?.countryCode ?? null,
     location: (detail as { contact: { location?: string } }).contact.location ?? null, metKind: card!.metKind ?? null,
     seniorityLevel: (detail as { contact: { publicProfile?: { seniorityLevel?: string } } }).contact.publicProfile?.seniorityLevel ?? null,
     addedAt: card!.addedAt ?? null, lastInteractionAt: card!.lastInteractionAt ?? null,

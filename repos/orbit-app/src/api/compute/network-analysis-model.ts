@@ -36,6 +36,8 @@ export interface NetworkAnalysisRow {
   city?: string | null;
   /** The contact's free-text location; read only when `city` is empty. */
   location?: string | null;
+  /** Sprint 0148: the region's ISO country code; read only when neither `city` nor `location` names a city. */
+  countryCode?: string | null;
   metKind?: string | null;
   seniorityLevel?: string | null;
   addedAt?: string | null;
@@ -124,7 +126,7 @@ export function analysisSeniorityFromTitle(role: string | null | undefined): "de
 function bucketKey(row: NetworkAnalysisRow, dimension: Exclude<NetworkAnalysisDimension, "opportunity">): string {
   switch (dimension) {
     case "industry": return row.primaryIndustryId?.trim() || "none";
-    case "region": return row.city?.trim() || analysisCityFromLocation(row.location) || "none";
+    case "region": return row.city?.trim() || analysisCityFromLocation(row.location) || row.countryCode?.trim() || "none";
     case "met": return row.metKind === "event" || row.metKind === "referral" || row.metKind === "visit" ? row.metKind : "other";
     case "seniority": {
       const group = seniorityGroup(row.seniorityLevel);
@@ -132,6 +134,9 @@ function bucketKey(row: NetworkAnalysisRow, dimension: Exclude<NetworkAnalysisDi
     }
   }
 }
+
+/** Sprint 0148: the bucket a person counts in (the home 人脉 card groups with the same rule). */
+export const analysisBucketKey = bucketKey;
 
 function countBy(rows: readonly NetworkAnalysisRow[], dimension: Exclude<NetworkAnalysisDimension, "opportunity">): Map<string, number> {
   const counts = new Map<string, number>();
