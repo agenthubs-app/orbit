@@ -12,6 +12,7 @@ export const businessCard = {
   "businessCard.fieldPhone": "Phone",
   "businessCard.fieldRelationshipContext": "How you met",
   "businessCard.fieldNotes": "Notes",
+  "businessCard.otherTextHeading": "Other text on the card",
   "businessCard.source": "Source: {value}",
   "businessCard.sourceUnselected": "Not selected",
   "businessCard.sideFront": "front",

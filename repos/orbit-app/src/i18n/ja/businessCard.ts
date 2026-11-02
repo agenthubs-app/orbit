@@ -12,6 +12,7 @@ export const businessCard = {
   "businessCard.fieldPhone": "電話",
   "businessCard.fieldRelationshipContext": "出会った背景",
   "businessCard.fieldNotes": "メモ",
+  "businessCard.otherTextHeading": "名刺に記載のその他の情報",
   "businessCard.source": "参照元：{value}",
   "businessCard.sourceUnselected": "未選択",
   "businessCard.sideFront": "表面",

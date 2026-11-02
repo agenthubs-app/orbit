@@ -1,6 +1,7 @@
 import type { BusinessCardBatchDetailContract, BusinessCardStructuredExtractionContract, IngestCardFieldSourcesContract, IngestItemContract } from "../api/contract/business-card-batch";
 import type { ApiResult } from "../api/types";
 import { businessCardBatchConfirmationResponseSchema, businessCardBatchDetailSchema } from "../api/schema/business-card-batch";
+import { currentTranslator } from "../i18n/messages";
 
 export type BusinessCardReviewFields = { displayName: string; organization: string; role: string; email: string; phone: string; relationshipContext: string; notes: string };
 /** 字段来源里 App 审阅页实际处理的字段（Web 契约后来加的 `address` 等不在 App 审阅范围内）。 */
@@ -22,6 +23,29 @@ export function reconcileBusinessCardReviewDraft(extraction: BusinessCardStructu
 }
 
 export function businessCardReviewFields(extraction: BusinessCardStructuredExtractionContract | null | undefined): BusinessCardReviewFields {
+  const fields = fieldNotesReviewFields(extraction);
+  return { ...fields, notes: withOtherText(fields, [extraction?.otherText]) };
+}
+
+const otherTextKey = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[\s\p{P}\p{S}]/gu, "");
+
+/** Sprint 0150：「名片上的其他信息」追加在备注末尾；各面合并、规范化去重，已在备注或固定栏位里的行不重复。 */
+function withOtherText(fields: BusinessCardReviewFields, sides: readonly (readonly string[] | undefined)[]): string {
+  const { notes } = fields;
+  const existing = otherTextKey([notes, fields.displayName, fields.organization, fields.role, fields.email, fields.phone].join("\n"));
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const value of sides.flatMap(side => side ?? [])) {
+    const text = value.trim();
+    const key = otherTextKey(text);
+    if (!key || seen.has(key) || existing.includes(key)) continue;
+    seen.add(key);
+    lines.push(text);
+  }
+  return lines.length ? [notes, currentTranslator()("businessCard.otherTextHeading"), ...lines].filter(Boolean).join("\n") : notes;
+}
+
+function fieldNotesReviewFields(extraction: BusinessCardStructuredExtractionContract | null | undefined): BusinessCardReviewFields {
   const fields: BusinessCardReviewFields = { displayName: "", organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "" };
   if (!extraction) return fields;
   const native = extraction.nativeFullName?.trim() ?? "";
@@ -60,7 +84,7 @@ export function reconcileBusinessCardReviewCard(
   const ordered = [...items].sort((a, b) => a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1);
   const itemVersions = Object.fromEntries(ordered.map(item => [item.id, JSON.stringify([item.version, item.imageDigest, item.extractionSchemaVersion])])) as Readonly<Record<string, string>>;
   if (previous?.dirty && !reload && JSON.stringify(previous.itemVersions) === JSON.stringify(itemVersions)) return previous;
-  const byItem = ordered.map(item => ({ item, fields: businessCardReviewFields(item.extraction) }));
+  const byItem = ordered.map(item => ({ item, fields: fieldNotesReviewFields(item.extraction) }));
   const fields: BusinessCardReviewFields = { displayName: "", organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "" };
   const sources: IngestCardFieldSourcesContract = { displayName: null, organization: null, role: null, email: null, phone: null };
   const conflicts: BusinessCardReviewCardDraft["conflicts"] = {};
@@ -84,6 +108,7 @@ export function reconcileBusinessCardReviewCard(
     }
   }
   fields.notes = [...new Set(byItem.flatMap(({ fields: value }) => value.notes.split("\n").filter(Boolean)))].join("\n");
+  fields.notes = withOtherText(fields, byItem.map(({ item }) => item.extraction?.otherText));
   const manualFields = previous?.dirty && !reload ? [...previous.manualFields] : [];
   for (const field of manualFields) {
     fields[field] = previous!.fields[field];

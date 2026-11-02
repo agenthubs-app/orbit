@@ -5,6 +5,7 @@ import type { PreparedBatchImage } from "../src/api/batch-images";
 import type { IngestBatchDetailContract, IngestItemContract } from "../src/api/contract/business-card-batch";
 import * as ingest from "../src/view-models/business-card-ingest";
 import * as review from "../src/view-models/business-card-batch";
+import { createTranslator, currentTranslator } from "../src/i18n/messages";
 
 const digest = (value: string) => `sha256:${value.repeat(64)}`;
 const file: PreparedBatchImage = { uri: "file:///front.png", fileName: "front.png", mimeType: "image/png", rawSize: 10, clientDigest: digest("a") };
@@ -118,4 +119,25 @@ test("detail acceptance rejects orphan or duplicate sides instead of hiding malf
   assert.ok(ingest.acceptedIngestDetail(ok([front, back]), batch.id, null));
   assert.equal(ingest.acceptedIngestDetail(ok([{ ...front, side: "back" }, back]), batch.id, null), null);
   assert.equal(ingest.acceptedIngestDetail(ok([front, { ...back, side: "front" }]), batch.id, null), null);
+});
+
+test("Sprint 0150: other printed text from both sides lands once under 「名片上的其他信息」 after the field notes", () => {
+  const front = item("item:front", "front", { ...extraction("山田 太郎", "Orbit", ""), departments: ["研究開発部"], otherText: ["確かな技術で未来をつくる", "研究開発部"] } as unknown as ReturnType<typeof extraction>);
+  const back = item("item:back", "back", { ...extraction("山田 太郎", "Orbit", "taro@example.test"), departments: ["営業部"], otherText: ["確かな技術で、未来をつくる", "■ 受託開発 ■ 技術顧問", "taro@example.test"] } as unknown as ReturnType<typeof extraction>);
+  assert.equal(createTranslator("zh")("businessCard.otherTextHeading"), "名片上的其他信息");
+  const heading = currentTranslator()("businessCard.otherTextHeading");
+  const draft = review.reconcileBusinessCardReviewCard([back, front]);
+  assert.equal(draft.fields.notes, `部门: 研究開発部\n部门: 営業部\n${heading}\n確かな技術で未来をつくる\n■ 受託開発 ■ 技術顧問`);
+  // 单面也一样追加。
+  assert.equal(review.businessCardReviewFields(front.extraction).notes, `部门: 研究開発部\n${heading}\n確かな技術で未来をつくる`);
+});
+
+test("Sprint 0150: extractions without otherText keep today's notes, and the API schema keeps the field", async () => {
+  const front = item("item:front", "front", { ...extraction("山田 太郎", "Orbit", ""), departments: ["研究開発部"] } as unknown as ReturnType<typeof extraction>);
+  assert.equal(review.reconcileBusinessCardReviewCard([front]).fields.notes, "部门: 研究開発部");
+  const { businessCardStructuredExtractionSchema } = await import("../src/api/schema/business-card-batch");
+  const base = extraction("山田 太郎", "Orbit", "");
+  assert.deepEqual(businessCardStructuredExtractionSchema.parse({ ...base, otherText: ["受託開発"] }).otherText, ["受託開発"]);
+  assert.equal("otherText" in businessCardStructuredExtractionSchema.parse(base), false);
+  assert.equal("otherText" in businessCardStructuredExtractionSchema.parse({ ...base, otherText: [1] }), false);
 });

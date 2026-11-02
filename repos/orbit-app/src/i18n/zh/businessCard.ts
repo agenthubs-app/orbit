@@ -12,6 +12,7 @@ export const businessCard = {
   "businessCard.fieldPhone": "电话",
   "businessCard.fieldRelationshipContext": "认识背景",
   "businessCard.fieldNotes": "备注",
+  "businessCard.otherTextHeading": "名片上的其他信息",
   "businessCard.source": "来源：{value}",
   "businessCard.sourceUnselected": "尚未选择",
   "businessCard.sideFront": "正面",
