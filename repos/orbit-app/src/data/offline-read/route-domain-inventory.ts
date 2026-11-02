@@ -826,8 +826,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/home/HomeScreen.tsx","GET","/api/events/public"],
   // R10 Home widgets read only their mounted sources; the layout hook owns its actor-scoped offline draft.
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/agent/plans/v2/summary"],
-  // LF1: the next five are fallbacks only — read when the browser has no device mirror; native Home reads its domains.
-  ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/page"],
+  // LF1: the next four are fallbacks only — read when the browser has no device mirror; native Home reads its domains.
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/contacts/summary"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/events/mine"],
   ["src/screens/home/HomeWidgetCards.tsx","GET","/api/inbox/secretary/preview"],

@@ -271,3 +271,70 @@ test("0147: the app going to the background while editing saves the dragged orde
   await page.waitForFunction((storageKey) => JSON.parse(localStorage.getItem(storageKey) ?? "null")?.draft?.app?.[0]?.key === "network", key, { timeout: 5000 });
   await page.getByRole("button", { name: "编辑" }).waitFor();
 });
+
+// Sprint 0148: the 人脉 card shows how the network spreads, computed on the device from the contacts mirror.
+const contact = (index: number, card: Record<string, unknown>) => {
+  const id = `contact:${index}`;
+  return { id: `record:${index}`, card: { id, displayName: `联系人${index}`, organization: "", role: "", sourceType: "manual", status: "active", pendingInitialization: false,
+    nextActionPreview: "", valueTypes: [], updatedAt: "2026-10-01T00:00:00.000Z", addedAt: "2026-01-10T00:00:00.000Z", ...card },
+    tags: [], search: { text: `联系人${index}`, occurredAt: `2026-10-01T00:0${index}:00.000000Z`, updatedAt: `2026-10-01T00:0${index}:00.000000Z`, error: null },
+    detail: { state: "success", contact: { id, displayName: `联系人${index}` } } };
+};
+const spread = [
+  contact(1, { primaryIndustryId: "technology_internet", region: { countryCode: "JP", city: "Tokyo" } }),
+  contact(2, { primaryIndustryId: "technology_internet" }),
+  contact(3, { primaryIndustryId: "technology_internet" }),
+  contact(4, { primaryIndustryId: "finance_investment" }),
+  contact(5, {}),
+  contact(6, {}),
+];
+const networkOnly = { ...DEFAULT_HOME_LAYOUT, app: [{ key: "network", size: "m" }] };
+/** A legend row: the group name and its share (two texts on the card). */
+const legendRow = (page: Awaited<ReturnType<typeof harness.open>>, label: string, percent: number) =>
+  page.waitForFunction(({ label, percent }) => new RegExp(`${label}\\s*${percent}%`).test(document.body.innerText), { label, percent }, { timeout: 10000 });
+const networkCard = async (page: Awaited<ReturnType<typeof harness.open>>) => {
+  const all = await page.locator("body").innerText();
+  return all.slice(all.indexOf("人脉"));
+};
+
+test("0148: offline, the 人脉 card shows the most filled-in breakdown from the device, and a switch is remembered", async (t) => {
+  const page = await harness.open(t, { screen: "home", online: false, responses, records: { contact: spread } });
+  // Offline the layout comes from the device too (the saved copy).
+  await page.evaluate(({ storageKey, snapshot }) => { localStorage.setItem(storageKey, JSON.stringify({ snapshot, fetchedAt: "2026-10-20T00:00:00Z", draft: null })); },
+    { storageKey: homeLayoutStorageKey(actor, baseUrl)!, snapshot: networkOnly });
+  await page.reload();
+  await legendRow(page, "科技与互联网", 50);
+  assert.equal((await requestsOf(page)).some((request) => request.includes("/api/contacts")), false, "no contacts read: the mirror is the source");
+  const body = await networkCard(page);
+  assert.match(body, /6\s*位/u, "the total stays");
+  assert.match(body, /金融与投资\s*17%/u);
+  assert.match(body, /未填写\s*33%/u, "people without an industry are their own group");
+  assert.equal(await page.getByRole("tab", { name: "行业" }).getAttribute("aria-selected"), "true", "industry 4/6 is filled in the most");
+  await page.getByRole("tab", { name: "地区" }).click();
+  await legendRow(page, "东京", 17);
+  await legendRow(page, "未填写", 83);
+  const key = "orbit:home-network-dimension:v1:http%3A%2F%2Ffixture:account%3Aone";
+  await page.waitForFunction((storageKey) => localStorage.getItem(storageKey) === "region", key);
+  await page.reload();
+  await legendRow(page, "东京", 17);
+  assert.equal(await page.getByRole("tab", { name: "地区" }).getAttribute("aria-selected"), "true");
+});
+
+test("0148: tapping the breakdown opens 人脉分析", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses: { ...responses, "/api/home/layout": networkOnly }, records: { contact: spread } });
+  await page.getByText("科技与互联网").click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/contacts/dashboard"));
+});
+
+test("0148: with fewer than three people the card says so instead of drawing a bar", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses: { ...responses, "/api/home/layout": networkOnly }, records: { contact: spread.slice(0, 2) } });
+  await page.getByText(/再加几位/u).waitFor();
+  assert.equal(await page.getByText(/%$/u).count(), 0);
+});
+
+test("0148: the small card shows the bar and the top group only, without the switch", async (t) => {
+  const page = await harness.open(t, { screen: "home", responses: { ...responses, "/api/home/layout": { ...networkOnly, app: [{ key: "network", size: "s" }] } }, records: { contact: spread } });
+  await legendRow(page, "科技与互联网", 50);
+  assert.equal(await page.getByText("金融与投资").count(), 0);
+  assert.equal(await page.getByRole("tab", { name: "地区" }).count(), 0);
+});

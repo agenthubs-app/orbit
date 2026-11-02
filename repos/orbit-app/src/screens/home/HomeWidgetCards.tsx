@@ -1,11 +1,11 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { z } from "zod";
 
 import type { OrbitApiClient } from "../../api/client";
 import type { HomeWidgetKey } from "../../api/contract/home-layout";
 import { planV2SummaryResponseSchema } from "../../api/schema/plan-v2";
-import { contactCardPageSchema, contactCardSummarySchema } from "../../api/schema/contact-card-page";
+import { contactCardSummarySchema } from "../../api/schema/contact-card-page";
 import { myEventsResponseSchema } from "../../api/schema/events-mine";
 import { secretaryPreviewSchema } from "../../api/schema/secretary-preview";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -19,15 +19,19 @@ import { useLocalInbox } from "../../hooks/useLocalInbox";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import type { PageCopyResourceState } from "../../hooks/usePageCopyResource";
-import { localContactCardPage, localContactCardSummary } from "../../view-models/contacts-local";
+import { localContactCardSummary } from "../../view-models/contacts-local";
+import { localNetworkAnalysisRows } from "../../view-models/network-analysis-local";
 import { localRegisteredEvents } from "../../view-models/event-day-local";
 import { notesFromMirror } from "../../view-models/notes-mirror";
 import { tokyoMonthStart } from "../network/network-model";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Button } from "../../components/ui/Button";
+import { Segmented } from "../../components/ui/Segmented";
 import { UiPressable } from "../../components/ui/Pressable";
 import { UiText } from "../../components/ui/Text";
 import { createThemedStyles } from "../../design/theme";
+import type { OrbitColors } from "../../design/tokens";
+import { bucketLabel } from "../network-analysis/analysis-labels";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { TodayQuestionCard } from "../add/CompletionQuestionCard";
@@ -42,6 +46,10 @@ import { useCalendarMeetings } from "../calendar/useCalendarMeetings";
 import { calendarProjection } from "../calendar/calendar-projection";
 import { mergeCalendarScheduleItems } from "../calendar/calendar-meeting-source";
 import { HOME_COPY_FRESH_MS, homeTodaySummary, nextLocalRegisteredEvent, nextRegisteredEvent, nextTodayScheduleItem, signedDelta } from "./home-widget-model";
+import {
+  HOME_NETWORK_DIMENSIONS, HOME_NETWORK_MIN_PEOPLE, defaultHomeNetworkDimension, homeNetworkCounts, homeNetworkDimensionKey, homeNetworkDistribution, readHomeNetworkDimension, writeHomeNetworkDimension,
+  type HomeNetworkDimension, type HomeNetworkDistribution, type HomeNetworkSlice,
+} from "./home-network-distribution";
 
 type Navigate = (href: string) => void;
 type GuideProgress = { completed: number; steps: { contacts: boolean; goal: boolean; plan: boolean } };
@@ -197,28 +205,77 @@ function EventWidget({ navigate }: { navigate: Navigate }) {
     : <View><UiText style={styles.muted}>{t("home.widgetEventEmptyDetail")}</UiText><Button label={t("home.widgetAssessEvent")} onPress={() => navigate("/events/assess")} variant="secondary" size="sm" /></View>}</View>;
 }
 
-function NetworkWidget({ navigate }: { navigate: Navigate }) {
+function NetworkWidget({ actorId, size, navigate }: { actorId: string; size: "s" | "m"; navigate: Navigate }) {
   const { styles } = useStyles(); const { t } = useOrbitLocale();
-  // LF1: total, this month's additions and the four most recently added come from the contacts domain (0116),
-  // computed with the same shared directory rules as GET /api/contacts/summary and /api/contacts/page?sort=added.
+  // LF1: total and this month's additions come from the contacts domain (0116), computed with the same shared directory
+  // rules as GET /api/contacts/summary. 0148: the breakdown groups the same rows with the analysis page's rule.
   const local = useLocalContacts();
   const fallbackSummary = useFallbackRead("/api/contacts/summary", contactCardSummarySchema, !local.available);
-  const fallbackPage = useFallbackRead("/api/contacts/page?sort=added&limit=4", contactCardPageSchema, !local.available);
   const asOf = local.freshness.lastSyncedAt ?? new Date().toISOString();
   const summary = useMemo(() => localContactCardSummary(local.rows, { monthStart: tokyoMonthStart(Date.now()) }, asOf), [asOf, local.rows]);
-  const recent = useMemo(() => localContactCardPage(local.rows, { sort: "added" }, null, asOf).items.slice(0, 4), [asOf, local.rows]);
-  if (!local.available && (!fallbackSummary.data || !fallbackPage.data)) return <FallbackState loading={fallbackSummary.loading || fallbackPage.loading} refresh={() => { fallbackSummary.refresh(); fallbackPage.refresh(); }} />;
+  const rows = useMemo(() => localNetworkAnalysisRows(local.rows, { goalIds: [], followUpIds: [] }), [local.rows]);
+  const views = useMemo((): Record<HomeNetworkDimension, HomeNetworkDistribution> | null => {
+    if (local.available) return { industry: homeNetworkDistribution(homeNetworkCounts(rows, "industry"), "industry", rows.length),
+      region: homeNetworkDistribution(homeNetworkCounts(rows, "region"), "region", rows.length), met: homeNetworkDistribution(homeNetworkCounts(rows, "met"), "met", rows.length) };
+    const data = fallbackSummary.data;
+    // Without a device mirror the server summary's facets (industry id / city / where met) stand in for the rows.
+    return data ? { industry: homeNetworkDistribution(data.industries ?? {}, "industry", data.total), region: homeNetworkDistribution(data.regions ?? {}, "region", data.total),
+      met: homeNetworkDistribution(data.metKinds ?? {}, "met", data.total) } : null;
+  }, [fallbackSummary.data, local.available, rows]);
+  const [chosen, choose] = useHomeNetworkDimension(actorId);
+  if (!local.available && !fallbackSummary.data) return <FallbackState loading={fallbackSummary.loading} refresh={fallbackSummary.refresh} />;
   if (local.available && !local.freshness.readable) return <UiText style={styles.muted}>{local.freshness.loading ? "…" : t("home.widgetUnavailable")}</UiText>;
-  return <NetworkCardBody navigate={navigate} offline={local.available && local.freshness.offline} lastSyncedAt={local.freshness.lastSyncedAt}
-    summary={local.available ? summary : fallbackSummary.data!} recent={local.available ? recent : fallbackPage.data!.items.slice(0, 4)} />;
+  const shown = local.available ? summary : fallbackSummary.data!;
+  return <NetworkCardBody navigate={navigate} size={size} offline={local.available && local.freshness.offline} lastSyncedAt={local.freshness.lastSyncedAt}
+    summary={shown} views={views!} dimension={chosen ?? defaultHomeNetworkDimension(views!)} onDimension={choose} />;
 }
 
-function NetworkCardBody({ navigate, offline, lastSyncedAt, summary, recent }: { navigate: Navigate; offline: boolean; lastSyncedAt: string | null;
-  summary: { total: number; addedThisMonth?: number | undefined }; recent: readonly { id: string; displayName: string }[] }) {
-  const { styles } = useStyles(); const { t } = useOrbitLocale();
+/** 0148: the card's dimension as saved on this device (per server + account); null until the user picks one. */
+function useHomeNetworkDimension(actorId: string): [HomeNetworkDimension | null, (dimension: HomeNetworkDimension) => void] {
+  const server = useOrbitApiBaseUrl();
+  const key = server.ready ? homeNetworkDimensionKey(actorId, server.baseUrl) : null;
+  const [saved, setSaved] = useState<{ key: string; dimension: HomeNetworkDimension | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (key) void readHomeNetworkDimension(key).then(dimension => { if (live) setSaved(current => current?.key === key && current.dimension ? current : { key, dimension }); });
+    return () => { live = false; };
+  }, [key]);
+  const choose = useCallback((dimension: HomeNetworkDimension) => {
+    if (!key) return;
+    setSaved({ key, dimension });
+    void writeHomeNetworkDimension(key, dimension);
+  }, [key]);
+  return [saved?.key === key ? saved.dimension : null, choose];
+}
+
+/** Distinct hues for the three named groups (the analysis page's slice colours); 其他 and 未填写 are greys, always last. */
+const networkSliceColor = (colors: OrbitColors, slice: HomeNetworkSlice, index: number) =>
+  slice.kind === "rest" ? colors.ink3 : slice.kind === "unset" ? colors.ink4 : [colors.plum700, colors.macBlueInk, colors.macTealInk][index % 3]!;
+
+function NetworkCardBody({ navigate, size, offline, lastSyncedAt, summary, views, dimension, onDimension }: { navigate: Navigate; size: "s" | "m"; offline: boolean; lastSyncedAt: string | null;
+  summary: { total: number; addedThisMonth?: number | undefined }; views: Record<HomeNetworkDimension, HomeNetworkDistribution>; dimension: HomeNetworkDimension; onDimension: (dimension: HomeNetworkDimension) => void }) {
+  const { styles, colors } = useStyles(); const { t, language } = useOrbitLocale();
+  const view = views[dimension];
+  const label = (slice: HomeNetworkSlice) => slice.kind === "rest" ? t("networkAnalysis.rest")
+    : slice.kind === "unset" ? t(dimension === "met" ? "networkAnalysis.metOther" : "home.widgetNetworkUnset") : bucketLabel(dimension, slice.id, t, language);
+  const percent = (slice: HomeNetworkSlice) => Math.round((slice.count / Math.max(1, view.total)) * 100);
+  const legend = size === "m" ? view.slices : view.slices.slice(0, 1);
+  const titles: Record<HomeNetworkDimension, string> = { industry: t("home.widgetNetworkIndustry"), region: t("home.widgetNetworkRegion"), met: t("home.widgetNetworkMet") };
   return <View><MirrorNotice offline={offline} lastSyncedAt={lastSyncedAt} />
-    {summary.total > 0 ? <View style={styles.score}><UiText style={styles.scoreNumber}>{summary.total}</UiText><UiText style={styles.muted}>{t("home.widgetPeopleUnit")}</UiText>{summary.addedThisMonth !== undefined ? <UiText style={styles.delta}>+{summary.addedThisMonth} {t("home.widgetAdded")}</UiText> : null}</View> : <UiText style={styles.muted}>{t("home.widgetNetworkEmptyDetail")}</UiText>}
-    {recent.length ? <View><View style={styles.people}>{recent.map(person => <UiPressable key={person.id} accessibilityRole="link" accessibilityLabel={person.displayName} onPress={() => navigate(`/contacts/${encodeURIComponent(person.id)}`)} style={styles.person}><View style={styles.avatar}><UiText>{person.displayName.slice(0, 1)}</UiText></View><UiText numberOfLines={1} style={styles.personName}>{person.displayName}</UiText></UiPressable>)}</View><LinkRow label={t("home.widgetMore")} href="/contacts" navigate={navigate} /></View> : <Button label={t("home.widgetScanCard")} onPress={() => navigate("/contacts/new/scan")} variant="primary" size="sm" />}
+    {/* The small card has no room beside the number: 本月新增 goes on its own line. */}
+    {summary.total > 0 ? <View style={size === "s" ? null : styles.score}><View style={styles.score}><UiText style={styles.scoreNumber}>{summary.total}</UiText><UiText style={styles.muted}>{t("home.widgetPeopleUnit")}</UiText></View>{summary.addedThisMonth !== undefined ? <UiText numberOfLines={1} style={size === "s" ? styles.deltaLine : styles.delta}>{size === "s" ? t("home.widgetAddedShort", { count: summary.addedThisMonth }) : `+${summary.addedThisMonth} ${t("home.widgetAdded")}`}</UiText> : null}</View> : <UiText style={styles.muted}>{t("home.widgetNetworkEmptyDetail")}</UiText>}
+    {summary.total === 0 ? <Button label={t("home.widgetScanCard")} onPress={() => navigate("/contacts/new/scan")} variant="primary" size="sm" />
+      : view.total < HOME_NETWORK_MIN_PEOPLE ? <UiText style={styles.muted}>{t("home.widgetNetworkFew")}</UiText>
+      : <View style={styles.spread}>
+        {size === "m" ? <Segmented accessibilityLabel={t("home.widgetNetworkPick")} value={dimension} onChange={onDimension}
+          segments={HOME_NETWORK_DIMENSIONS.map(key => ({ key, label: titles[key] }))} /> : null}
+        <UiPressable accessibilityRole="link" accessibilityLabel={`${t("home.widgetNetworkOpen")} · ${titles[dimension]}`} onPress={() => navigate("/contacts/dashboard")}>
+          <View style={styles.bar}>{view.slices.map((slice, index) => <View key={slice.id} style={{ flex: slice.count, backgroundColor: networkSliceColor(colors, slice, index) }} />)}</View>
+          <View style={styles.legend}>{legend.map((slice, index) => <View key={slice.id} style={[styles.legendItem, size === "s" && styles.legendItemFull]}>
+            <View style={[styles.legendDot, { backgroundColor: networkSliceColor(colors, slice, index) }]} />
+            <UiText numberOfLines={1} style={styles.legendText}>{label(slice)}</UiText><UiText style={styles.legendPercent}>{percent(slice)}%</UiText></View>)}</View>
+        </UiPressable>
+      </View>}
   </View>;
 }
 
@@ -308,7 +365,7 @@ export function HomeWidgetBody({ widget, size, client, actorId, navigate, guide,
     case "today": return <TodayWidget actorId={actorId} size={size} navigate={navigate} guide={guide} onDataSettled={onDataSettled} />;
     case "planScore": return <PlanWidget navigate={navigate} />;
     case "nextEvent": return <EventWidget navigate={navigate} />;
-    case "network": return <NetworkWidget navigate={navigate} />;
+    case "network": return <NetworkWidget actorId={actorId} size={size} navigate={navigate} />;
     case "secretary": return <SecretaryWidget actorId={actorId} size={size} navigate={navigate} />;
     case "pending": return <PendingWidget size={size} navigate={navigate} />;
     case "week": return <WeekWidget size={size} navigate={navigate} />;
@@ -325,6 +382,9 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   segmentRow: { flexDirection: "row", alignItems: "baseline", gap: 8 }, segmentName: { flex: 1, minWidth: 0 }, segmentValue: { color: colors.ink2, fontSize: 13, lineHeight: 21, fontWeight: "600", fontVariant: ["tabular-nums"] },
   score: { flexDirection: "row", alignItems: "baseline", gap: 4 }, scoreNumber: { color: colors.ink, fontSize: 34, fontWeight: "700" }, delta: { marginLeft: "auto", color: colors.accentText, fontSize: 13, fontWeight: "700" }, negative: { marginLeft: "auto", color: colors.coralText, fontSize: 13, fontWeight: "700" },
   eventTitle: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 24 },
+  deltaLine: { color: colors.accentText, fontSize: 13, fontWeight: "700" }, spread: { marginTop: 10, gap: 10 }, bar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", gap: 2 },
+  legend: { flexDirection: "row", flexWrap: "wrap", rowGap: 4, marginTop: 8 }, legendItem: { width: "50%", flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 8 }, legendItemFull: { width: "100%" },
+  legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 2 }, legendText: { flexShrink: 1, color: colors.ink2, fontSize: 13, lineHeight: 20 }, legendPercent: { color: colors.ink2, fontSize: 13, lineHeight: 20, fontVariant: ["tabular-nums"] },
   people: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 }, person: { width: "24%", alignItems: "center", gap: 4 }, avatar: { width: 33, height: 33, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 }, personName: { color: colors.ink2, fontSize: 12 },
   guideHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, guideCount: { backgroundColor: colors.surface2, color: colors.accentText, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2, fontSize: 13, fontWeight: "700" }, guideStep: { minHeight: 30, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.line }, guideText: { color: colors.ink, fontSize: 14, fontWeight: "600" },
 }));
