@@ -74,7 +74,8 @@ export function reconcileDraft(sentences: PlanPrepCardOutput["sentences"], sourc
   const kept: Array<{ text: string; underlines: Array<{ start: number; end: number; ref: PlanPrepRef }> }> = [];
   let removed = 0;
   for (const sentence of sentences) {
-    const text = sentence.text.trim();
+    // R38 真调用：模型偶尔自己用 `{…}` 把画线片段括起来（「{3か月以内}の完了を…」）；正文里不该出现花括号，先去掉再对账。
+    const text = sentence.text.replace(/[{}｛｝]/gu, "").trim();
     if (!text) continue;
     const spans: Array<{ start: number; end: number; ref: PlanPrepRef }> = [];
     let ok = true;

@@ -42,6 +42,12 @@ test("reconcileDraft: an underline that is not a substring of its own sentence f
   assert.equal(result.removed, 1);
 });
 
+test("reconcileDraft strips braces the model wraps around an underline (R38 real call) and keeps the span on the bare text", () => {
+  const result = reconcileDraft([{ text: "{产品已上线、还没有付费客户}，想听听您的看法。", underlines: [{ ref: { kind: "answer", questionKey: "q1" }, text: "产品已上线、还没有付费客户" }] }], sources);
+  assert.equal(result.draft.text, "产品已上线、还没有付费客户，想听听您的看法。");
+  assert.deepEqual(result.draft.refs.map((span) => result.draft.text.slice(span.start, span.end)), ["产品已上线、还没有付费客户"]);
+});
+
 test("reconcileDraft keeps the draft ≤160 characters by dropping whole trailing sentences", () => {
   const long = "あ".repeat(100);
   const result = reconcileDraft([{ text: `${long}。`, underlines: [] }, { text: `${long}。`, underlines: [] }], sources);

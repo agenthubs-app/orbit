@@ -57,7 +57,7 @@ function liveContext(pool: PlanPoolLike, workspaceId: string): PlanPrepContext {
         rows = ((await client.query(
         `select c.record_id, c.payload->>'displayName' as name, c.payload->>'organization' as organization, c.payload->>'role' as role,
                 c.payload->>'primaryIndustryLabel' as industry, c.created_at, c.payload->'source'->>'type' as source_type,
-                c.payload->'source'->>'eventTitle' as source_event_title,
+                coalesce(nullif(c.payload->>'metEventTitle', ''), c.payload->'source'->>'eventTitle') as source_event_title,
                 (select max(d.payload->'lastInteraction'->>'occurredAt') from orbit_records d
                   where d.workspace_id = c.workspace_id and d.collection_name = 'contact_detail_states' and d.lifecycle_state <> 'deleted'
                     and d.user_id = $2 and d.payload->>'contactId' = c.record_id) as last_interaction_at
