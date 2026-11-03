@@ -166,3 +166,27 @@ test("v16 draft fixtures read through the flow service as v3 drafts that fit the
     assert.equal(intake?.draftId, D_FLOW_IDS[name].draft);
   }
 });
+
+// R37a：v16 主页的三份 fixture 经同一个概要读取出来：v3 计划、3 件先做的事都有准备卡，事实 / 回答引用都能对上，
+// 「要认识的人」的已在人脉里的人数照原型（fund 4 / sales 4 / hire 2）。
+test("v16 home fixtures read through the plan service as v3 homes that fit the detail schema", async () => {
+  const expected = { fund: 4, hire: 2, sales: 4 } as const;
+  for (const name of ["fund", "hire", "sales"] as const) {
+    const repository = createMemoryPlanV2Repository();
+    repository.seed(SCOPE, PLAN_DESIGN_FIXTURES[`v16-home-${name}`]!());
+    const service = createPlanV2Service({ now: () => new Date("2026-11-03T00:00:00Z"), references: { findMissingContactIds: async () => [], findMissingEventIds: async () => [] }, repository, sample: true, scope: SCOPE });
+    const detail = planV2DetailSchema.parse(await service.overview(`plan_v16_${name}`, { language: "ja" }));
+    assert.equal(detail.content.schemaVersion, 3);
+    assert.equal(detail.home!.state, "ready");
+    assert.equal(detail.home!.actions.length, 3);
+    for (const action of detail.home!.actions) {
+      const prep = action.prep!;
+      for (const span of prep.draft.refs) {
+        if (span.ref.kind === "fact") assert.ok(prep.usedFacts.some((fact) => span.ref.kind === "fact" && fact.id === span.ref.factId), `${action.actionKey} fact ref`);
+        if (span.ref.kind === "answer") assert.ok(detail.premise.some((row) => span.ref.kind === "answer" && row.key === span.ref.questionKey), `${action.actionKey} answer ref`);
+        assert.ok(span.end <= prep.draft.text.length && span.start < span.end);
+      }
+    }
+    assert.equal(detail.home!.seats!.reduce((sum, seat) => sum + seat.people.length, 0), expected[name]);
+  }
+});

@@ -641,10 +641,13 @@ test("mock end to end: goal input → background → questions → premise → d
   assert.ok(pickActiveV2Plan(summary.data), "an active plan → the overview, not the goal input");
   assert.ok(card);
   const view = await screen(t, { bridge: true, handlers: [], id: card.planId, view: "overview" }, bridge);
-  // The goal switcher (web.html .k-wgoal) now reads 「💰 goal」 in one span, so the goal text is a substring.
+  // R37a: the mock flow confirms a v3 plan → the plan home v3 (stage first, score behind); the goal switcher sits under it.
+  await view.locator("[data-plan-home-v3]").waitFor();
   await view.locator("[data-plan-goal]").getByText("シリーズA の資金調達をしたい").waitFor();
-  assert.equal(await view.locator("[data-plan-score]").getAttribute("data-plan-score"), String(card.total));
-  assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`), [`GET /v2/${encodeURIComponent(card.planId)}`, "GET /v2"], "the overview only reads (R25: the plan and the goal list behind the switcher)");
+  assert.match((await view.locator("[data-plan-home-head]").textContent())!, new RegExp(`${card.total} / 100 点`, "u"));
+  // The home is still being prepared (no after() in a test), so the page re-reads the plan while it waits; it never writes.
+  assert.deepEqual((await fetches(view)).map((call) => `${call.method} ${path(call)}`).slice(0, 2), [`GET /v2/${encodeURIComponent(card.planId)}`, "GET /v2"], "the overview only reads (R25: the plan and the goal list behind the switcher)");
+  assert.ok((await fetches(view)).every((call) => call.method === "GET"));
 });
 
 /* ---------- R23 review: m10 / m15 / m16 / AI_BUSY ---------- */

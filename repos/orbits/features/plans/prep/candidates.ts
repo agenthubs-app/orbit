@@ -5,8 +5,8 @@
  * 活动：推荐分最高的 ≤2 场（`eventsFor` 的顺序）。合计 ≤8，编号 = 下标 + 1。
  */
 import type { PlanCopyLanguage } from "../../../shared/compute/plan-template-copy";
-import type { PlanEventOption } from "../../../shared/contract/plan-v2";
-import { candidatesFor, type OverviewInput } from "../v2/overview";
+import type { PlanEventOption, PlanHomeSeat } from "../../../shared/contract/plan-v2";
+import { candidatesFor, eventsFor, type OverviewInput } from "../v2/overview";
 import type { PlanV2Row, PlanV2TypeItem } from "../v2/types";
 import { PLAN_HOME_LIMITS, type PlanHomeCandidate } from "./types";
 
@@ -91,4 +91,28 @@ export function homeCandidates(input: OverviewInput, events: readonly PlanEventO
 /** 候选签名：候选 key 排序后拼接（候选变了才允许补生成）。 */
 export function candidateSignature(candidates: readonly PlanHomeCandidate[]): string {
   return candidates.map((candidate) => candidate.key).sort().join("|");
+}
+
+/**
+ * 「要认识的人」每类（读概要时现算）：已在人脉里 = 关联到这一类的联系人（候补接受 / 手动关联）∪ 这一类计过 base 分的人
+ * （按人去重；无名字自报占一个无名位）；去哪里认识 = 活动事实里写明有这类参加者的、分数最高的一场（`eventsFor(input, type)` 第一场）。
+ */
+export function homeSeats(input: OverviewInput): PlanHomeSeat[] {
+  return input.types.map((type) => {
+    const ids: string[] = type.contactLinks.map((link) => link.contactId);
+    let anonymous = 0;
+    for (const entry of input.awards) {
+      if (entry.award.typeKey !== type.personType.key || entry.award.part !== "base" || entry.award.basis === "skip") continue;
+      if (entry.award.contactId) { if (!ids.includes(entry.award.contactId)) ids.push(entry.award.contactId); } else anonymous += 1;
+    }
+    const people = [
+      ...ids.flatMap((id) => {
+        const contact = input.contacts.get(id);
+        return contact ? [{ contactId: contact.id, name: contact.name, note: [contact.role, contact.organization].filter(Boolean).join(" · ") || null }] : [];
+      }),
+      ...Array.from({ length: anonymous }, () => ({ contactId: null, name: "", note: null })),
+    ];
+    const event = eventsFor(input, type)[0];
+    return { meetAt: event ? [event.title, eventDay(event.startsAt)].filter(Boolean).join(" ") : null, people, typeKey: type.personType.key };
+  });
 }

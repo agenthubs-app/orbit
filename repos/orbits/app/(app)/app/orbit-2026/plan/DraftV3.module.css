@@ -50,6 +50,9 @@
 .st span { font-size: var(--fs-meta); color: var(--ink-3-text); }
 .cur b { color: var(--ink); }
 .st:not(.cur) b { color: var(--ink-2); font-weight: var(--fw-medium); }
+/* R37a 主页：路线每段下的「完成标志」（原型 route(g, true) 的 em） */
+.st em { display: block; font-style: normal; font-size: var(--fs-label); line-height: var(--lh-prose); color: var(--ink-2); margin-top: 6px; padding: 0 4px; }
+.st:not(.cur) em { color: var(--ink-3-text); }
 
 /* section heads */
 .sh { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
@@ -144,6 +147,7 @@
   .route { margin: 30px 0 26px; }
   .st b { font-size: var(--fs-control); }
   .st span { display: none; }
+  .st em { display: none; }
   .mine .pr { grid-template-columns: 64px 1fr; }
   .mine .pr .sg, .mine .pr .gaps { grid-column: 2; justify-self: start; }
   .lr { grid-template-columns: 96px 1fr 50px; }

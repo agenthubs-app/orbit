@@ -19,6 +19,7 @@ import { planApi } from "./plan-api";
 import { takePlanFlash } from "./plan-flash";
 import { AchieveDialog, GoalEditModal, GoalSwitcher } from "./PlanGoalDialogs";
 import { ReviewEntryModal } from "./PlanReviewEntry";
+import { PlanHomeV3 } from "./PlanHomeV3";
 import { sinceFromDetail } from "./review-model";
 import { useLayoutTier, usePlanWrites, v2Path, enc, type LayoutTier } from "./plan-v2-actions";
 import { translator, type Translate } from "./PlanParts";
@@ -124,6 +125,36 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
   const handlers = { onAchieve: () => setDialog("achieve"), onManual: () => void openManualEdit(), onPremise: () => setPremiseOpen(true), onReview: () => setDialog("review") };
   const pending = <PendingCard detail={detail} t={t} actions={actions} language={language} tier={tier} />;
 
+  const dialogs = (
+    <>
+      <PremiseModal open={premiseOpen} detail={detail} t={t} language={language} onClose={() => setPremiseOpen(false)} onChange={() => { setPremiseOpen(false); setDialog("review"); }} />
+      <ReviewEntryModal open={dialog === "review"} onClose={() => setDialog(null)} planId={detail.planId}
+        serverSince={detail.sinceConfirmed ? { events: detail.sinceConfirmed.events, stepsCompleted: detail.sinceConfirmed.stepsDone, talked: detail.sinceConfirmed.talkedPeople } : null} fallbackSince={sinceFromDetail(detail)} t={t} language={language} />
+      <GoalEditModal open={dialog === "edit"} onClose={() => setDialog(null)} planId={detail.planId} goal={detail.goal} goalKind={detail.goalKind} revision={detail.revision}
+        reviewLeft={detail.quota.reviewLeftThisMonth} t={t} language={language} onSaved={() => { setDialog(null); toast.success(t(r.savedToast)); void load(); }} />
+      <AchieveDialog open={dialog === "achieve"} onClose={() => setDialog(null)} planId={detail.planId} revision={detail.revision} score={detail.score.total}
+        talkedPeople={current?.talkedPeople ?? null} t={t} language={language} onStale={() => void load()} />
+    </>
+  );
+
+  // R37a：v3 计划 → 计划主页 v3（plan-draft-v5-proposal.html v16「计划主页 · 执行」）；目标切换、見直し、手动编辑、达成等入口
+  // 原型没有画（原型只有页身），放在页身之下照旧可用；待确认卡（memo 计分提议等）也在页身之下。
+  if (detail.content.schemaVersion === 3 && detail.home) {
+    return (
+      <div data-plan-overview={detail.planId} data-tier={tier} data-plan-overview-v3="">
+        {tier !== "narrow" && rail ? <ShellPage rightRail={rail} /> : <ShellPage rightRail />}
+        <PlanHomeV3 detail={detail} t={t} language={language} onReload={load} onAiAdjust={handlers.onReview} />
+        {hasPending(detail, true) ? <div className={styles.homePending}>{pending}</div> : null}
+        <div className={`${styles.goalRow} ${styles.homeGoalRow}`}>
+          <div>{switcher}</div>
+          <div className={styles.acts}><PlanButtons detail={detail} t={t} busy={busy} {...handlers} /></div>
+        </div>
+        {!inShell && tier !== "narrow" && rail ? <div className={styles.inlineRail}>{rail}</div> : null}
+        {dialogs}
+      </div>
+    );
+  }
+
   return (
     <div data-plan-overview={detail.planId} data-tier={tier}>
       {/* 1440: the iOrbit rail (web.html planRail); 768–1279 the shell's 次の一手 drawer shows the same rail. */}
@@ -185,13 +216,7 @@ function OverviewBody({ planId, language }: { planId: string; language: OrbitLan
       )}
       {/* Outside the shell (a page on its own, tests) the rail content stays on the page; under 768 it is not drawn (b8 390). */}
       {!inShell && tier !== "narrow" && rail ? <div className={styles.inlineRail}>{rail}</div> : null}
-      <PremiseModal open={premiseOpen} detail={detail} t={t} language={language} onClose={() => setPremiseOpen(false)} onChange={() => { setPremiseOpen(false); setDialog("review"); }} />
-      <ReviewEntryModal open={dialog === "review"} onClose={() => setDialog(null)} planId={detail.planId}
-        serverSince={detail.sinceConfirmed ? { events: detail.sinceConfirmed.events, stepsCompleted: detail.sinceConfirmed.stepsDone, talked: detail.sinceConfirmed.talkedPeople } : null} fallbackSince={sinceFromDetail(detail)} t={t} language={language} />
-      <GoalEditModal open={dialog === "edit"} onClose={() => setDialog(null)} planId={detail.planId} goal={detail.goal} goalKind={detail.goalKind} revision={detail.revision}
-        reviewLeft={detail.quota.reviewLeftThisMonth} t={t} language={language} onSaved={() => { setDialog(null); toast.success(t(r.savedToast)); void load(); }} />
-      <AchieveDialog open={dialog === "achieve"} onClose={() => setDialog(null)} planId={detail.planId} revision={detail.revision} score={detail.score.total}
-        talkedPeople={current?.talkedPeople ?? null} t={t} language={language} onStale={() => void load()} />
+      {dialogs}
     </div>
   );
 }

@@ -59,7 +59,7 @@ function personType(spec: TypeSpec): PlanDraftPersonType {
 type StepSpec = { key: string; title: string; why: string; doneCriteria: string; personTypeKeys: string[] };
 const steps = (list: StepSpec[]): PlanV2Step[] => list.map((item) => ({ doneCriteria: item.doneCriteria, key: item.key, personTypeKeys: item.personTypeKeys, title: item.title, why: item.why }));
 
-interface GoalSpec {
+export interface GoalSpec {
   goalKind: PlanGoalKind;
   goalText: string;
   purpose: string;
@@ -80,7 +80,7 @@ interface GoalSpec {
   sources: PlanSource[];
 }
 
-function premiseOf(spec: GoalSpec): PlanPremiseRow[] {
+export function premiseOf(spec: GoalSpec): PlanPremiseRow[] {
   return [
     { guessed: false, key: "purpose", label: "目的", source: "background", value: spec.purpose },
     { guessed: false, key: "team", label: "チーム", source: "background", value: "2 名 · 本業と並行" },
@@ -106,7 +106,7 @@ function intakeOf(spec: GoalSpec, id: string, draftId: string): PlanIntakeRow {
   };
 }
 
-function contentOf(spec: GoalSpec): PlanDraftContent {
+export function contentOf(spec: GoalSpec): PlanDraftContent {
   const landscapeIds = spec.sources.flatMap((item) => (item.kind === "landscape" ? [{ id: item.landscapeId, version: item.version }] : []));
   return {
     allocationReasons: [],
@@ -345,7 +345,7 @@ const HIRE: GoalSpec = {
   verdict: "conditional",
 };
 
-const SPECS: Record<keyof typeof D_FLOW_IDS, GoalSpec> = { fund: FUND, hire: HIRE, sales: SALES };
+export const SPECS: Record<keyof typeof D_FLOW_IDS, GoalSpec> = { fund: FUND, hire: HIRE, sales: SALES };
 
 function fixtureFor(name: keyof typeof D_FLOW_IDS): PlanDesignFixture {
   const spec = SPECS[name];

@@ -1,0 +1,77 @@
+{
+ "_note": "R37a 计划主页 v3（plan-draft-v5-proposal.html v16「计划主页 · 执行」页，原型 renderHome）像素门禁清单。先切 fixture：node features/plans/v2/design-fixtures/switch.mjs --origin http://localhost:3201 --storage <qa-storage> --name v16-home-all（三份一起；单份 v16-home-fund / -sales / -hire 也可）。整页模式（--design-page + clip）：设计侧只截 .page（下边延到 .app 底：dock 关闭，.main 底部留 110px），实现侧只截 [data-plan-home-v3]；导航壳、页身之下的入口行不在比对范围。默认态 = 准备卡全收起、空位行全收起、「为什么这么排」收起（原型打开页面时的样子）。原型无深色、无 1024：各三张只截图留档（--theme dark / --width 1024，不进门禁）。键 = <id>-<width>-<theme>。",
+ "defaults": {
+  "app-origin": "http://localhost:3201",
+  "login": "qa@orbit.test",
+  "grid": 100,
+  "attribution": "scripts/visual/attribution-redesign-R37a.json",
+  "design-page": true,
+  "design-clip": ".page",
+  "design-clip-bottom": ".app",
+  "app-clip": "[data-plan-home-v3]",
+  "wait-for": "[data-plan-home-v3]",
+  "themes": [
+   "light"
+  ],
+  "steps": [
+   {
+    "waitFor": "[data-plan-home-v3]"
+   },
+   {
+    "wait": 1500
+   }
+  ]
+ },
+ "sources": [
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanHomeV3.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanHomeV3.module.css",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/DraftV3Parts.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/DraftV3.module.css",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/home-v3-model.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/plan/PlanOverview.tsx",
+  "repos/orbits/app/(app)/app/orbit-2026/copy/plan.ts",
+  "repos/orbits/app/(app)/app/orbit-2026/tokens.css",
+  "repos/orbits/features/plans/v2/design-fixtures/e.ts"
+ ],
+ "views": [
+  {
+   "id": "W-R37a-fund",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_fund",
+   "design": "plan-draft-v5-proposal.html?goal=fund&page=home&device=web&bar=0",
+   "width": 1440
+  },
+  {
+   "id": "W-R37a-fund",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_fund",
+   "design": "plan-draft-v5-proposal.html?goal=fund&page=home&device=m&bar=0",
+   "width": 390,
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R37a-sales",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_sales",
+   "design": "plan-draft-v5-proposal.html?goal=sales&page=home&device=web&bar=0",
+   "width": 1440
+  },
+  {
+   "id": "W-R37a-sales",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_sales",
+   "design": "plan-draft-v5-proposal.html?goal=sales&page=home&device=m&bar=0",
+   "width": 390,
+   "design-as-mweb": true
+  },
+  {
+   "id": "W-R37a-hire",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_hire",
+   "design": "plan-draft-v5-proposal.html?goal=hire&page=home&device=web&bar=0",
+   "width": 1440
+  },
+  {
+   "id": "W-R37a-hire",
+   "app": "/app/tasks?tab=plan&plan=plan_v16_hire",
+   "design": "plan-draft-v5-proposal.html?goal=hire&page=home&device=m&bar=0",
+   "width": 390,
+   "design-as-mweb": true
+  }
+ ]
+}

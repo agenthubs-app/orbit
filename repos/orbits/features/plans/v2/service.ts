@@ -52,6 +52,7 @@ import type { PlanContactLink, PlanReferenceValidator } from "../contract";
 import { needStatus } from "./repository";
 import { pickPlanV3Fields } from "./v3-fields";
 import { planHomeView } from "../prep/view";
+import { homeSeats } from "../prep/candidates";
 import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
   PLAN_V2_GOAL_LIMIT,
@@ -553,6 +554,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     for (const candidate of candidates) contactIds.add(candidate.contactId);
     for (const entry of awards) if (entry.award.contactId) contactIds.add(entry.award.contactId);
     for (const type of types) for (const route of type.personType.introRoutes) contactIds.add(route.viaContactId);
+    // R37a：主页「要认识的人」的已关联联系人（候补接受 / 手动关联）也要名字。
+    for (const type of types) for (const link of type.contactLinks) contactIds.add(link.contactId);
     for (const entry of log) if (entry.event === "memo_coverage_proposed" && typeof entry.payload.contactId === "string") contactIds.add(entry.payload.contactId);
     const contacts = new Map((await reader.contactViews([...contactIds])).map((contact) => [contact.id, contact]));
     // 「最近の加点」的活动名：这份计划记下的参加活动（eventItems.title）。
@@ -1157,6 +1160,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           stepSuggestions: stepSuggestions(input),
           todayChance: plan.status === "active" ? todayChance(input, at) : null,
           typeStats: typeStats(input, at),
+          // R37a：v3 主页「要认识的人」的已认识的人与去哪里认识（现算，不存）。
+          ...(detail.home ? { home: { ...detail.home, seats: homeSeats(input) } } : {}),
           // R26（D53）：概要「🎟 イベント」卡的推荐活动（分数降序 ≤3）。
           recommendedEvents: plan.status === "active" ? eventsFor(input, null).slice(0, 3) : [],
         };

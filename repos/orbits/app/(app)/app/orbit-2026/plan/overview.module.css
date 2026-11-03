@@ -67,6 +67,10 @@
 .goalRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin: -6px 0 18px; }
 .goalRow > :first-child { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
 .acts { display: flex; align-items: center; gap: var(--space-8); }
+/* R37a：v3 主页页身之下的入口行与待确认卡（原型没有这一块；页身宽 760 居中，跟它对齐）。 */
+.homeGoalRow { max-width: 760px; margin: 0 auto 24px; padding: 0 28px; flex-wrap: wrap; }
+.homePending { max-width: 760px; margin: 0 auto 18px; padding: 0 28px; }
+@media (max-width: 767px) { .homeGoalRow, .homePending { padding: 0; } }
 @media (max-width: 767px) { .goalRow { margin: 0 0 10px; } }
 
 /* kit .wgrid */
