@@ -24,6 +24,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "./plugins/with-ios-build-settings",
+    "./plugins/with-ios-scene-lifecycle",
     "./plugins/with-orbit-widget-autolinking",
     ...(widgetkitEnabled ? ["./plugins/with-orbit-widgetkit"] : []),
     "expo-secure-store",
