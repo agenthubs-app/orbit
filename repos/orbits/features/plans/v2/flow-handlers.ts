@@ -48,6 +48,7 @@ import { isSampleWrite } from "../../guide/sample-write";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { resolvePlanFlowService } from "./flow-factory";
 import { PlanFlowError, type PlanFlowRequestContext, type PlanFlowService } from "./flow-service";
+import { schedulePlanHome } from "../prep/handlers";
 
 type Params = Record<string, string>;
 type Reply = { data: unknown; status?: number };
@@ -56,6 +57,8 @@ export interface PlanFlowRouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;
   resolveMode?: () => FeatureMode;
   resolveService?: (input: { actorId: string; mode: FeatureMode }) => ServiceResolution<PlanFlowService>;
+  /** R37a：确定成功后在 `after()` 里生成「先做的事」与准备卡（测试注入）。 */
+  schedulePlanHome?: (input: { actorId: string; mode: FeatureMode; planId: string; language: PlanCopyLanguage }) => void;
 }
 
 export function requestContext(request: Request): PlanFlowRequestContext {
@@ -66,7 +69,7 @@ export function requestContext(request: Request): PlanFlowRequestContext {
   return { language, platform: (platform === "app" ? "app" : "web") as PlanHrefPlatform };
 }
 
-function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, request: Request, params: Params, context: PlanFlowRequestContext) => Promise<Reply>, dependencies: PlanFlowRouteDependencies, guardSampleWrite = false) {
+function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, request: Request, params: Params, context: PlanFlowRequestContext, meta: { actorId: string; mode: FeatureMode }) => Promise<Reply>, dependencies: PlanFlowRouteDependencies, guardSampleWrite = false) {
   return async function route(request: Request, routeContext?: { params?: Promise<Params> }): Promise<Response> {
     const mode = (dependencies.resolveMode ?? (() => redesignContractMode("plan-v2-summary")))();
     const headers = runtimeBoundaryHeaders(mode);
@@ -81,7 +84,7 @@ function flowRoute<T>(schema: ZodType<T>, handle: (service: PlanFlowService, req
     }
     let reply: Reply;
     try {
-      reply = await handle(resolution.service, request, (await routeContext?.params) ?? {}, requestContext(request));
+      reply = await handle(resolution.service, request, (await routeContext?.params) ?? {}, requestContext(request), { actorId: actor?.id ?? DEMO_ACTOR_ID, mode });
     } catch (error) {
       if (error instanceof PlanFlowError) {
         return NextResponse.json(failure(error, { reason: error.reason, ...error.details }), { headers, status: getHttpStatusForAppErrorCode(error.code) });
@@ -155,9 +158,11 @@ export function createPlanFlowHandlers(dependencies: PlanFlowRouteDependencies =
     /** POST …/manual-edit：手动编辑并确定。 */
     manualEdit: flowRoute(planConfirmResultSchema, async (service, request, params, context) => ({ data: await service.manualEdit(params.draftId ?? "", await body(request, planDraftManualEditRequestSchema), context), status: 201 }), dependencies),
     /** POST …/confirm：确定（R36a：可带初稿页的 `adjustments`，不占手动编辑）。 */
-    confirm: flowRoute(planConfirmResultSchema, async (service, request, params, context) => {
+    confirm: flowRoute(planConfirmResultSchema, async (service, request, params, context, meta) => {
       const parsed = await body(request, planDraftConfirmRequestSchema);
       const result = await service.confirm(params.draftId ?? "", parsed.idempotencyKey, context, parsed.adjustments);
+      // R37a：新建的计划在 `after()` 里生成「先做的事」与准备卡（v2 计划服务会直接跳过）。
+      if (!result.replayed) (dependencies.schedulePlanHome ?? schedulePlanHome)({ actorId: meta.actorId, language: context.language, mode: meta.mode, planId: result.planId });
       return { data: result, status: result.replayed ? 200 : 201 };
     }, dependencies),
 

@@ -3,6 +3,7 @@ import { after, NextResponse } from "next/server";
 
 import type { NoteService } from "../../../features/notes/service";
 import type { NoteDTO } from "../../../features/notes/contract";
+import { markPlanPrepStale } from "../../../features/plans/prep/factory";
 import type { MemoExtractionJobInput } from "../../../features/contacts/memo-extraction/job";
 import { runConfiguredMemoExtraction } from "../../../features/contacts/memo-extraction/store";
 import type { NoteMentionContract } from "../../../shared/contract/notes";
@@ -35,12 +36,17 @@ export function noteService(dependencies?: NoteRouteDependencies): NoteService {
 /** Only persisted, eligible notes reach this hook; the service suppresses replay and enqueue failures. */
 export function noteOnPersisted(note: NoteDTO, dependencies?: NoteRouteDependencies): void {
   if (note.usedForPlan !== true || note.noteKind !== "meeting" || note.contactIds.length !== 1) return;
+  // R37a（R33 交接）：事实的 `memoDate` = 这条备注的日期。
   const job = {
     actorId: note.ownerUserId, contactId: note.contactIds[0]!, noteId: note.id,
-    body: note.body, contact: {}, usedForPlan: true as const,
+    body: note.body, contact: {}, usedForPlan: true as const, memoDate: note.createdAt,
   };
   (dependencies?.scheduleMemoExtraction ?? ((input: MemoExtractionJobInput & { usedForPlan: true }) => {
-    after(async () => { await runConfiguredMemoExtraction(input); });
+    after(async () => {
+      await runConfiguredMemoExtraction(input);
+      // R37a：备注抽出了新事实 → 这个人的准备卡标「资料有更新」（失败只记日志）。
+      await markPlanPrepStale({ actorId: input.actorId, contactId: input.contactId });
+    });
   }))(job);
 }
 

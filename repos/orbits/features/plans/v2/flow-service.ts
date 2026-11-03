@@ -77,7 +77,7 @@ import { emptyIntakeAiSteps, emptyStep } from "./repository";
 import { PLAN_V2_GOAL_LIMIT, type PlanDraftContent, type PlanDraftPersonType, type PlanDraftRow, type PlanFlowStepRecord, type PlanIntakeRow, type PlanV2Repository, type PlanV2Scope, type PlanV2Transaction } from "./types";
 import { allocationSlotsOf } from "./validate-content";
 import type { PlanSearchLike } from "./search-port";
-import { pickPlanV3Fields, withUnverifiedNetworkRisk } from "./v3-fields";
+import { isPlanV3, pickPlanV3Fields, withUnverifiedNetworkRisk } from "./v3-fields";
 import { rankPlanMemberCandidates } from "../../../shared/compute/plan-member-candidates";
 import { activeAwards, PLAN_REVIEW_MONTHLY_LIMIT, planReviewQuota, planSinceConfirmed, type PlanReviewBudgetReader, type PlanV2Service } from "./service";
 import type { PlanV2LogEntry, PlanV2Row, PlanV2TypeItem } from "./types";
@@ -1863,7 +1863,17 @@ export function createPlanFlowService(options: PlanFlowServiceOptions): PlanFlow
           const previous = step.key ? current.content.steps.find((item) => item.key === step.key) : undefined;
           return { doneCriteria: step.doneCriteria, key: step.key ?? `step-${(counter += 1)}`, personTypeKeys: typeKeys, title: step.title, why: previous?.why ?? null };
         });
-        const content: PlanDraftContent = { ...current.content, event: { ...request.event }, personTypes, steps };
+        // R37a（R36b 交接）：v3 草稿的 `stepKey` 按新的 `steps[].personTypeKeys` 重算（主页分组、类型详情的阶段都读它）；
+        // 没有阶段认领的类型保留原值（原阶段还在时），否则去掉。v2 草稿不加这个键。
+        const stepOfType = new Map<string, string>();
+        for (const step of steps) for (const typeKey of step.personTypeKeys) if (!stepOfType.has(typeKey)) stepOfType.set(typeKey, step.key);
+        const typed = isPlanV3(current.content)
+          ? personTypes.map(({ stepKey: previous, ...type }) => {
+            const stepKey = stepOfType.get(type.key) ?? (previous && steps.some((step) => step.key === previous) ? previous : null);
+            return stepKey ? { ...type, stepKey } : type;
+          })
+          : personTypes;
+        const content: PlanDraftContent = { ...current.content, event: { ...request.event }, personTypes: typed, steps };
         const slots: PlanAllocationSlot[] = allocationSlotsOf(goalKind, content);
         const allocation = validateAllocations(slots);
         if (allocation.ok === false) throw new PlanFlowError("INVALID_INPUT", `The allocation is not valid (${allocation.error}).`);

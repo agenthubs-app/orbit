@@ -222,6 +222,8 @@ test("HTTP schedules C11 only after a new eligible save", async () => {
   await collection.POST(new Request("https://orbit.local/api/notes", { method: "POST", body: JSON.stringify(createBody) }));
   assert.deepEqual(jobs.map((job) => [job.actorId, job.contactId, job.noteId, job.body, job.usedForPlan]),
     [[actorId, "contact:a", created.id, "Met Ada", true]]);
+  // R37a（R33 交接）：事实的 memoDate = 这条备注的日期。
+  assert.equal((jobs[0] as { memoDate?: string }).memoDate, created.createdAt);
   const detail = createNoteDetailHandlers(deps);
   const context = { params: Promise.resolve({ id: created.id }) };
   const updateBody = { body: "Met Ada again", expectedVersion: 1, idempotencyKey: "c11:update" };

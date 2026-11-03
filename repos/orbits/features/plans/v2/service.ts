@@ -51,6 +51,7 @@ import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import type { PlanContactLink, PlanReferenceValidator } from "../contract";
 import { needStatus } from "./repository";
 import { pickPlanV3Fields } from "./v3-fields";
+import { planHomeView } from "../prep/view";
 import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
   PLAN_V2_GOAL_LIMIT,
@@ -464,6 +465,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
     const used = await reviewUsedThisMonth(reader);
     const review = planReviewQuota(used, options.reviewBudget ? await options.reviewBudget(scope.actorId, new Date(now())) : null);
     const since = planSinceConfirmed(plan, log);
+    const home = planHomeView(plan);
     return {
       achievedAt: plan.achievedAt,
       content: {
@@ -519,6 +521,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
       // 计划页像素返工（D59）：背景説明 / ひとこと（存在 plans.analysis；旧计划没有就不出现）。
       ...(plan.analysis.goalBackground ? { goalBackground: plan.analysis.goalBackground } : {}),
       ...(plan.analysis.goalNote ? { goalNote: plan.analysis.goalNote } : {}),
+      // R37a：v3 计划主页「先做的事」（还没生成 → pending；v2 计划不出现这个键）。
+      ...(home ? { home } : {}),
       ...(options.sample ? { sample: true as const } : {}),
     };
   }

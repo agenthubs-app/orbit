@@ -47,6 +47,7 @@ import { redesignContractMode } from "../../redesign-contracts/route";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../app/api/_shared/authenticated-actor";
 import { PlanV2Error, type PlanV2Service } from "./service";
 import { resolvePlanV2Service } from "./service-factory";
+import { schedulePlanHome, type PlanHomeScheduleInput } from "../prep/handlers";
 
 type Params = Record<string, string>;
 
@@ -54,11 +55,13 @@ export interface PlanV2RouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;
   resolveMode?: () => FeatureMode;
   resolveService?: (input: { actorId: string; mode: FeatureMode }) => ServiceResolution<PlanV2Service>;
+  /** R37a：v3 计划的「先做的事」还没好时，在 `after()` 里补生成（测试注入）。 */
+  schedulePlanHome?: (input: PlanHomeScheduleInput) => void;
 }
 
 type Reply = { data: unknown; status?: number } | { error: AppError };
 
-function planV2Route<T>(schema: ZodType<T> | null, handle: (service: PlanV2Service, request: Request, params: Params) => Promise<Reply>, dependencies: PlanV2RouteDependencies = {}) {
+function planV2Route<T>(schema: ZodType<T> | null, handle: (service: PlanV2Service, request: Request, params: Params, meta: { actorId: string; mode: FeatureMode }) => Promise<Reply>, dependencies: PlanV2RouteDependencies = {}) {
   return async function route(request: Request, context?: { params?: Promise<Params> }): Promise<Response> {
     const mode = (dependencies.resolveMode ?? (() => redesignContractMode("plan-v2-summary")))();
     const headers = runtimeBoundaryHeaders(mode);
@@ -74,7 +77,7 @@ function planV2Route<T>(schema: ZodType<T> | null, handle: (service: PlanV2Servi
     }
     let reply: Reply;
     try {
-      reply = await handle(resolution.service, request, (await context?.params) ?? {});
+      reply = await handle(resolution.service, request, (await context?.params) ?? {}, { actorId: actor?.id ?? DEMO_ACTOR_ID, mode });
     } catch (error) {
       if (error instanceof PlanV2Error) {
         return NextResponse.json(failure(error, { reason: error.reason }), { headers, status: getHttpStatusForAppErrorCode(error.code) });
@@ -108,8 +111,13 @@ export function createPlanV2Handlers(dependencies: PlanV2RouteDependencies = {})
     /** GET /api/agent/plans/v2：目标列表（生效 + 已达成）。 */
     list: planV2Route(planGoalListResponseSchema, async (service) => ({ data: { goals: await service.listGoals() } }), dependencies),
     /** GET /api/agent/plans/v2/[planId]：概要（R24 带今日のチャンス、三格、Step 进度、最近加分、待确认）。 */
-    detail: planV2Route(planV2DetailSchema, async (service, request, params) => {
-      const detail = await service.overview(params.planId ?? "", requestContext(request));
+    detail: planV2Route(planV2DetailSchema, async (service, request, params, meta) => {
+      const context = requestContext(request);
+      const detail = await service.overview(params.planId ?? "", context);
+      // R37a：v3 计划的「先做的事」还在生成 / 上次失败 / 上次没候选 → 响应照发，`after()` 里补生成（服务自己判断要不要做）。
+      if (detail?.home && detail.achievedAt === null && (detail.home.state !== "ready" || detail.home.actions.length === 0)) {
+        (dependencies.schedulePlanHome ?? schedulePlanHome)({ actorId: meta.actorId, language: context.language, mode: meta.mode, planId: detail.planId });
+      }
       return detail ? { data: detail } : notFound();
     }, dependencies),
     /** GET /api/agent/plans/v2/[planId]/types/[itemId]：人物タイプ詳細。 */

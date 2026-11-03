@@ -570,3 +570,33 @@ test("R36a redraft: only an open, intake-born v3 first draft may be redrafted �
   await assert.rejects(world.flow.redraft(draft.draftId, key(), JA), rejects("DRAFT_CLOSED"));
   assert.equal(world.ai.calls.firstDraftV3, 1, "no AI call on a refused redraft");
 });
+
+test("R37a: manual edit of a v3 draft recomputes personTypes[].stepKey from steps[].personTypeKeys (v2 drafts get no stepKey)", async () => {
+  const world = flowWorld();
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  assert.equal(draft.content.schemaVersion, 3);
+  const steps = draft.content.steps;
+  assert.ok(steps.length >= 2);
+  const moved = draft.content.personTypes.find((type) => steps[0]!.personTypeKeys.includes(type.key))!;
+  const request = {
+    event: { allocation: draft.content.event.allocation, targetCount: draft.content.event.targetCount },
+    expectedRevision: draft.revision,
+    idempotencyKey: key(),
+    personTypes: draft.content.personTypes.map((type) => ({ allocation: type.allocation, key: type.key, targetCount: type.targetCount })),
+    // 把第 1 阶段的一个类型挪到最后一个阶段。
+    steps: steps.map((step, index) => ({
+      doneCriteria: step.doneCriteria,
+      key: step.key,
+      personTypeKeys: index === 0 ? step.personTypeKeys.filter((typeKey) => typeKey !== moved.key) : index === steps.length - 1 ? [...step.personTypeKeys, moved.key] : [...step.personTypeKeys],
+      title: step.title,
+    })),
+  };
+  const confirmed = await world.flow.manualEdit(draft.draftId, request, JA);
+  const detail = await world.planService.detail(confirmed.planId);
+  assert.equal(detail!.content.personTypes.find((type) => type.key === moved.key)!.stepKey, steps.at(-1)!.key);
+  for (const type of detail!.content.personTypes) {
+    const owner = detail!.content.steps.find((step) => step.personTypeKeys.includes(type.key));
+    if (owner) assert.equal(type.stepKey, owner.key, `${type.key} follows its step`);
+  }
+});
