@@ -614,5 +614,191 @@ if (Q.get("spec") === "1") { document.body.classList.add("specon"); $("[data-spe
 if (Q.get("bar") === "0") $(".proto").remove();
 render();
 </script>
+<!-- ===== 2026-11-03 补画：计划主页「页身之下的入口行」换位置（方案 A 推荐 / 方案 B 备选） =====
+     只追加、不改上面任何画面：不带 ?entries= 参数时页面与 v16 完全一样（R36a / R37a / R37b 门禁基准不变）。
+     参数：?page=home&entries=a|b&state=pending|menu|goals&device=web|m&goal=fund|sales|hire&bar=0
+     说明与字段表：sprints/plan-v3/HOME-ENTRIES.md；字段表也在本页「字段表」末尾。 -->
+<style>
+.x-btn{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.8);color:var(--ink-2);font:600 15px/1 var(--num);letter-spacing:1px;text-align:center}
+.x-btn.on{background:var(--surface);box-shadow:var(--shadow-float)}
+.x-on .top{position:relative}
+.x-on .top .ai{margin-left:auto}
+.x-gl{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--plum-700);font-weight:500;margin-bottom:8px;border-radius:8px;padding:0}
+.x-gl i{font-style:normal;font-size:11px;color:var(--plum-500)}
+.x-gw{position:relative}
+.x-pop{position:absolute;z-index:20;background:var(--surface);border-radius:16px;box-shadow:var(--shadow-float),0 0 0 1px var(--line);padding:6px}
+.x-menu{right:0;top:42px;width:256px}
+.x-gpop{left:-6px;top:26px;width:340px}
+.x-mi{display:flex;flex-direction:column;gap:1px;width:100%;padding:9px 12px;border-radius:11px}
+.x-mi:hover{background:var(--surface-2)}
+.x-mi b{font-size:14px;font-weight:500;color:var(--ink)}
+.x-mi small{font-size:12px;color:var(--ink-3)}
+.x-mi.off b{color:var(--ink-4)}
+.x-mi.off:hover{background:none}
+.x-sep{height:1px;background:var(--line);margin:5px 8px}
+.x-gh{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);padding:8px 12px 4px}
+.x-gi{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start;width:100%;padding:9px 12px;border-radius:11px}
+.x-gi:hover{background:var(--surface-2)}
+.x-gi .x-ck{font-size:13px;color:var(--plum-700);line-height:1.4}
+.x-gi b{display:block;font-size:14px;font-weight:600;line-height:1.4;color:var(--ink)}
+.x-gi:not(.on) b{font-weight:500}
+.x-gi small{font-size:12px;color:var(--ink-3)}
+/* 待确认 */
+.x-pend .sh h2 .x-cnt{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:10px;padding:0 6px;margin-left:8px;background:var(--coral-soft);color:var(--coral-text);font:600 11.5px var(--num);vertical-align:3px}
+.x-pr{display:grid;grid-template-columns:36px 1fr auto;gap:14px;align-items:center;padding:13px 20px}
+.x-pr+.x-pr{border-top:1px solid var(--line)}
+.x-pr .em{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:17px}
+.x-pr .av{width:36px;height:36px;border-radius:50%;background:var(--plum-100);color:var(--mac-lav-text);display:grid;place-items:center;font-size:14px;font-weight:600}
+.x-pr .nd{width:32px;height:32px;margin:0 2px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--num);background:var(--ink);color:#fff}
+.x-pr .tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.x-pr .tx b{font-size:14px;font-weight:600;line-height:1.5}
+.x-pr .tx small{font-size:12px;color:var(--ink-3);line-height:1.5}
+.x-acts{display:flex;gap:8px;align-items:center}
+.x-acts button{font-size:12.5px;border-radius:999px;padding:5px 13px;white-space:nowrap}
+.x-acts .p{background:var(--ink);color:#fff}
+.x-acts .s{color:var(--ink-2);background:var(--surface-2)}
+.x-acts .go{color:var(--ink-3);font-size:18px;padding:0 2px}
+.x-more{display:block;width:100%;padding:10px 20px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--plum-700)}
+/* 方案 B：页底「这个计划」 */
+.x-mng .x-row{display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:baseline;width:100%;padding:13px 20px;font-size:14px}
+.x-mng .x-row+.x-row{border-top:1px solid var(--line)}
+.x-mng .k{font-size:12px;color:var(--ink-3)}
+.x-mng .v{color:var(--ink);font-weight:500}
+.x-mng .v small{display:block;font-size:12px;font-weight:400;color:var(--ink-3)}
+.x-mng .go{font-size:12.5px;color:var(--plum-700);white-space:nowrap}
+.x-mng .x-row.off .v{color:var(--ink-4)}
+.x-mng .x-row.off .go{color:var(--ink-4)}
+/* 手机：底部弹层（action sheet） */
+.m .app.x-clip{height:844px}
+.x-ov{position:absolute;inset:0;z-index:30;background:rgba(30,26,36,.32)}
+.x-sheet{position:absolute;left:0;right:0;bottom:0;z-index:31;background:var(--bg);border-radius:24px 24px 0 0;padding:8px 12px 26px}
+.x-sheet .x-grab{width:36px;height:5px;border-radius:3px;background:var(--ink-4);margin:0 auto 10px}
+.x-sheet .x-grp{background:var(--surface);border-radius:16px;padding:4px}
+.x-sheet .x-mi,.x-sheet .x-gi{padding:12px 14px}
+.x-sheet .x-cancel{display:block;width:100%;margin-top:10px;background:var(--surface);border-radius:16px;padding:14px;text-align:center;font-size:15px;font-weight:600;color:var(--ink)}
+.x-sheet .x-gh{padding:10px 14px 4px}
+.m .x-pr{grid-template-columns:32px 1fr;padding:12px 16px;row-gap:10px}
+.m .x-pr .em,.m .x-pr .av{width:32px;height:32px}
+.m .x-pr .nd{width:28px;height:28px;margin:0 2px}
+.m .x-pr .x-acts{grid-column:2}
+.m .x-pr .x-acts:has(.go){grid-column:3;grid-row:1}
+.m .x-pr:has(.go){grid-template-columns:32px 1fr auto}
+.m .x-mng .x-row{grid-template-columns:64px 1fr auto;padding:12px 16px}
+</style>
+<script>
+(() => {
+  const EQ = new URLSearchParams(location.search);
+  let ent = ["a", "b"].includes(EQ.get("entries")) ? EQ.get("entries") : "";
+  let est = ["pending", "menu", "goals"].includes(EQ.get("state")) ? EQ.get("state") : "";
+  // 示例：记分提议（类型下标、备注日期、聊到的问题）、候选人（头像字、名字、名片职位、类型下标）、其他目标的示例进度
+  const XP = {
+    fund: { memo: [0, "10/28", [1, 3]], cand: ["森", "森 由美", "エンジェル投資家 · 元 IT 起業家", 3] },
+    sales: { memo: [0, "10/30", [1, 2]], cand: ["佐", "佐々木 聡", "事務局長 · 物流協会", 1] },
+    hire: { memo: [0, "10/29", [1, 3]], cand: ["藤", "藤田 茜", "コンサルタント · 人材紹介", 1] }
+  };
+  const KEYS = Object.keys(G);
+  const isM = () => document.body.classList.contains("m");
+
+  function pending(g) {
+    const x = XP[goal], t = g.types[x.memo[0]], who = t[8][0], ct = g.types[x.cand[3]];
+    const pts = Math.round(t[4] / t[5]);
+    return `<section class="x-pend">
+      <div class="sh"><h2>待确认<i class="x-cnt">3</i></h2><span>你选之前不会加分</span></div>
+      <div class="todo">
+        <div class="x-pr"><span class="em" style="background:${t[1]}">${t[0]}</span><span class="tx"><b>和${who[1]}的面谈聊到了 3 个问题中的 ${x.memo[2].length} 个 · 要记 +${pts} 分吗？</b><small>${x.memo[1]} 的备注 · 问题 ${x.memo[2].join("、")} · ${t[2]}</small></span><span class="x-acts"><button class="p">记分</button><button class="s">不记分</button></span></div>
+        <div class="x-pr"><span class="av">${x.cand[0]}</span><span class="tx"><b>${x.cand[1]}是「${ct[2]}」的候选</b><small>${x.cand[2]}</small></span><span class="x-acts"><button class="go">›</button></span></div>
+        <div class="x-pr"><span class="nd">1</span><span class="tx"><b>「${g.stages[0][0]}」完成了吗？</b><small>完成标志：${g.stages[0][2]} · 是否完成由你决定</small></span><span class="x-acts"><button class="p">完成了</button><button class="s">还没有</button></span></div>
+      </div>
+    </section>`;
+  }
+  function menuItems() {
+    return `<button class="x-mi"><b>查看前提</b><small>制定计划时用到的你的信息和回答</small></button>
+      <button class="x-mi off"><b>手动编辑</b><small>审视后可再编辑 1 次</small></button>
+      <div class="x-sep"></div>
+      <button class="x-mi"><b>标记目标达成</b><small>移到「已达成」，记录都会保留</small></button>`;
+  }
+  function goalItems(g) {
+    const other = G[KEYS[(KEYS.indexOf(goal) + 1) % KEYS.length]], done = G[KEYS[(KEYS.indexOf(goal) + 2) % KEYS.length]];
+    return `<div class="x-gh"><span>进行中</span><span>2 / 2</span></div>
+      <button class="x-gi on"><span class="x-ck">✓</span><span><b>${g.outcome}</b><small>阶段 1 / ${g.stages.length} · ${g.stages[0][0]}</small></span></button>
+      <button class="x-gi"><span class="x-ck"></span><span><b>${other.outcome}</b><small>阶段 2 / ${other.stages.length} · ${other.stages[1][0]}</small></span></button>
+      <div class="x-sep"></div>
+      <button class="x-mi"><b>修改这个目标</b><small>改目标要重新审视计划</small></button>
+      <button class="x-mi off"><b>+ 添加目标</b><small>进行中最多 2 个，先达成一个再加</small></button>
+      <div class="x-sep"></div>
+      <div class="x-gh"><span>已达成 · 1</span><span>▾</span></div>`;
+  }
+  function sheet(inner) {
+    $("#app").classList.add("x-clip");
+    $("#app").insertAdjacentHTML("beforeend", `<div class="x-ov" data-xs=""></div><div class="x-sheet"><div class="x-grab"></div><div class="x-grp">${inner}</div><button class="x-cancel" data-xs="">取消</button></div>`);
+  }
+
+  function aug(g) {
+    const page = $("#page"), app = $("#app");
+    app.classList.remove("x-clip");
+    app.querySelectorAll(".x-ov,.x-sheet").forEach(n => n.remove());
+    page.classList.toggle("x-on", !!ent);
+    if (!ent) return;
+    // 待确认：路线之下、「建议先从这 N 件开始」之上；0 条整块不画
+    if (est === "pending") page.querySelector(".route").insertAdjacentHTML("afterend", pending(g));
+    if (ent === "a") {
+      $(".top .ai").insertAdjacentHTML("afterend", `<button class="x-btn${est === "menu" ? " on" : ""}" data-xs="menu" aria-label="更多">···</button>`);
+      const gl = $(".hh .goal");
+      gl.outerHTML = `<div class="x-gw"><button class="x-gl" data-xs="goals">目标 · ${g.outcome}<i>⌄</i></button></div>`;
+      if (est === "menu") isM() ? sheet(menuItems()) : $(".top").insertAdjacentHTML("beforeend", `<div class="x-pop x-menu">${menuItems()}</div>`);
+      if (est === "goals") isM() ? sheet(goalItems(g)) : $(".x-gw").insertAdjacentHTML("beforeend", `<div class="x-pop x-gpop">${goalItems(g)}</div>`);
+    } else {
+      page.insertAdjacentHTML("beforeend", `<section><div class="sh"><h2>这个计划</h2></div><div class="todo x-mng">
+        <button class="x-row"><span class="k">目标</span><span class="v">${g.outcome}<small>进行中 2 / 2</small></span><span class="go">切换 ›</span></button>
+        <button class="x-row"><span class="k">前提</span><span class="v">制定时用到的你的信息和回答</span><span class="go">查看 ›</span></button>
+        <button class="x-row off"><span class="k">手动编辑</span><span class="v">审视后可再编辑 1 次</span><span class="go">编辑 ›</span></button>
+        <button class="x-row"><span class="k">达成</span><span class="v">目标达成了就标记，记录都会保留</span><span class="go">标记 ›</span></button>
+      </div></section>`);
+    }
+  }
+  const base = renderHome;
+  renderHome = function (g) { base(g); aug(g); };
+
+  // 原型操作条：加「入口（11-03）」和「状态」两组；bar=0 时操作条已被删掉
+  const bar = $(".proto");
+  if (bar) {
+    bar.querySelector(".note").insertAdjacentHTML("beforebegin",
+      `<div class="grp"><span>入口 11-03</span><button data-xe="">原型</button><button data-xe="a">A 推荐</button><button data-xe="b">B 备选</button></div>
+       <div class="grp"><span>状态</span><button data-xs2="">默认</button><button data-xs2="pending">有待确认</button><button data-xs2="menu">··· 菜单</button><button data-xs2="goals">切换目标</button></div>`);
+  }
+  const mark = () => {
+    document.querySelectorAll("[data-xe]").forEach(x => x.classList.toggle("on", x.dataset.xe === ent));
+    document.querySelectorAll("[data-xs2]").forEach(x => x.classList.toggle("on", x.dataset.xs2 === est));
+  };
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-xe],[data-xs],[data-xs2]");
+    if (!b) return;
+    if (b.dataset.xe !== undefined) { ent = b.dataset.xe; if (ent && pg !== "home") $("[data-page=home]")?.click(); }
+    else if (b.dataset.xs2 !== undefined) est = b.dataset.xs2;
+    else est = b.dataset.xs && est !== b.dataset.xs ? b.dataset.xs : "";
+    mark(); render();
+  });
+  // 切到手机/Web 时重画（弹层形态不同）
+  document.querySelectorAll("[data-view]").forEach(x => x.addEventListener("click", () => setTimeout(render)));
+  // 字段表页末尾追加：入口行（11-03）
+  $("#spec .foot").insertAdjacentHTML("beforebegin", `<h2>计划主页 · 入口（2026-11-03 补画，方案 A）</h2>
+<p class="lead">入口全部是固定文案，AI 不填；只有待确认区里「聊到了哪几个问题」来自已有的备注抽取（memo_extraction），其余都是系统数据。说明与方案 B 见 sprints/plan-v3/HOME-ENTRIES.md。</p>
+<table>
+<tr><th>入口</th><th>出现条件</th><th>位置</th><th>点了去哪</th><th>谁来填</th><th>不可用 / 缺了怎么显示</th></tr>
+<tr><td>✦ 让 AI 调整（見直し）</td><td>计划进行中，一直显示</td><td>顶栏右，原型已画，不改</td><td>现有审视对话框 → 审视页</td><td>固定文案；次数 = 系统 quota.reviewLeftThisMonth（每月 3 次）</td><td>次数用完照样可点，对话框里说明恢复日期（沿用现有规则）；按钮上不显示次数</td></tr>
+<tr><td>··· 更多</td><td>一直显示</td><td>顶栏最右，「让 AI 调整」右边 8px，32px 圆钮</td><td>Web 下拉菜单 / App 底部弹层</td><td>固定</td><td>—</td></tr>
+<tr><td>查看前提</td><td>一直</td><td>··· 第 1 项</td><td>现有前提弹窗（只读；「在审视中修改」→ 审视）</td><td>系统：你的资料 + 制定时的回答</td><td>资料没填的行显示「没填」</td></tr>
+<tr><td>手动编辑</td><td>一直列出</td><td>··· 第 2 项</td><td>手动编辑页</td><td>可用与否 = 系统 quota.manualEditAvailable</td><td>不可用：标题灰，副文「审视后可再编辑 1 次」，点了不动</td></tr>
+<tr><td>标记目标达成</td><td>一直</td><td>··· 最后一项（分隔线下）</td><td>现有达成对话框</td><td>固定</td><td>—</td></tr>
+<tr><td>目标切换 ⌄</td><td>一直（列表里还有修改 / 添加目标）</td><td>「目标 · outcome」行末加 ⌄，整行可点；行文字不变</td><td>Web 下拉 / App 底部弹层：进行中目标（当前打 ✓）→ 点别的目标跳到它的主页；「修改这个目标」→ 现有目标编辑弹窗；「+ 添加目标」→ 目标起点页；「已达成 · N」折叠</td><td>目标名 = 各计划的 outcome（v2 计划没有 outcome 用 goal 原文）；阶段 N / 总数 · 阶段名 = 系统</td><td>进行中满 2 个：「添加目标」灰，副文「进行中最多 2 个，先达成一个再加」；没有已达成就不显示那一组</td></tr>
+<tr><td rowspan="4">待确认区</td><td>pending 里有记分提议 / 候选人 / 阶段完成建议，任一 ≥1 条；0 条整块不画</td><td>路线之下、「建议先从这 N 件开始」之上</td><td>—</td><td>标题、说明固定；数字角标 = 条数</td><td>最多显示 3 条，多出的收成「还有 N 条 ▾」</td></tr>
+<tr><td>记分提议行</td><td>memo_coverage</td><td>按创建时间新的在前</td><td>就地「记分 / 不记分」，记分后出撤销 Toast（沿用 R24）</td><td>模板固定；名字、问题序号、分数 = 系统（nextAward）；聊到哪几个问题 = 备注抽取</td><td>没名字 / 没分数用现有 NoName / NoPoints 文案</td></tr>
+<tr><td>候选人行</td><td>candidate（最多 3 个）</td><td>记分提议之后</td><td>› → 该类型详情页，在那里确认算不算</td><td>系统匹配；名片职位 = 名片</td><td>没有职位只显示一行</td></tr>
+<tr><td>阶段完成建议行</td><td>服务端给出「这一阶段可能已完成」</td><td>最后</td><td>就地「完成了 / 还没有」</td><td>阶段名、完成标志 = 计划 stages；其余固定</td><td>v2 计划沿用步骤文案</td></tr>
+</table>`);
+  mark();
+  if (ent && pg === "home") render();
+})();
+</script>
 </body>
 </html>
