@@ -198,7 +198,7 @@ export interface PlanQuotaView {
 }
 
 /** `GET /api/agent/plans/v2/[planId]`：概要。R24 加了可选的概要字段（今日のチャンス、类型三格、Step 进度、最近加分、待确认）。 */
-export interface PlanV2Detail {
+export interface PlanV2Detail extends PlanV2DetailHome {
   planId: string;
   revision: number;
   goal: string;
@@ -1210,4 +1210,117 @@ export interface PlanV3Fields {
   risks?: readonly PlanRisk[];
   /** 来源清单；正文用 `sourceId` 字符串引用，不用数组下标。 */
   sources?: readonly PlanSource[];
+}
+
+/* ------------------------------------------------------------------ */
+/* R37a 计划 v3 主页：「先做的事」与准备卡（plan-v3/DESIGN.md §2.5 / §3.3，只加不改）  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 开场白里一处画线的出处：联系人事实（`contact_facts.id`）、本次回答（`questionKey`）、或名片 / 资料 / 活动页的系统字段
+ * （`field` = `PlanPrepRow.key` 或 `profile.*`）。画线片段必须是出处原文的子串（服务端对账）。
+ */
+export type PlanPrepRef = { kind: "fact"; factId: string } | { kind: "answer"; questionKey: string } | { kind: "card"; field: string };
+
+/** 开场白草稿：`marks` = 画线片段（UTF-16 半开区间），每处都有一条 `refs` 指向出处。≤160 字。 */
+export interface PlanPrepDraft {
+  text: string;
+  refs: readonly { start: number; end: number; ref: PlanPrepRef }[];
+}
+
+/** 准备卡里一行系统信息（他是谁 / 怎么认识 / 上次联系 / 时间地点 / 活动介绍 …）；没有记录的行不下发。 */
+export interface PlanPrepRow {
+  key: "who" | "met" | "last_contact" | "common" | "when_where" | "about" | "plan_fit";
+  value: string;
+  /** 出处标签（「名片」「名片记录」「活动页」…），系统定。 */
+  source: string;
+}
+
+/** 这张卡用到的联系人事实（生成时的快照：文本 + 备注日期 + 来源备注；`memoId` 为空 = 手动补的）。 */
+export interface PlanPrepFactView {
+  id: string;
+  text: string;
+  date: string | null;
+  memoId: string | null;
+}
+
+export type PlanPrepGap = "memo" | "interaction";
+
+/** 一张准备卡（DESIGN §2.5 读出形状）。 */
+export interface PlanPrepCardView {
+  rows: readonly PlanPrepRow[];
+  /** 用到的事实（0–4）；没有事实时为空数组，`gaps` 含 `memo`。 */
+  usedFacts: readonly PlanPrepFactView[];
+  /** 用到的回答（`questionKey`）。 */
+  usedAnswers: readonly string[];
+  /** 切入点 ≤12 字 + 为什么这样开口 ≤60 字。 */
+  hook: { label: string; reason: string };
+  draft: PlanPrepDraft;
+  gaps: readonly PlanPrepGap[];
+  generatedAt: string;
+  /** 卡片生成后该联系人的事实有新增 / 更新的时刻（「资料有更新」）；没有为 null。 */
+  staleSince: string | null;
+  /** 校验不过退回了通用模板。 */
+  fallback: boolean;
+}
+
+/** 「先做的事」一件：系统候选里 AI 挑出来的人或活动。 */
+export interface PlanHomeAction {
+  actionKey: string;
+  kind: "contact" | "event";
+  contactId: string | null;
+  eventId: string | null;
+  /** 建议口吻的标题 ≤18 字。 */
+  title: string;
+  /** 理由 ≤50 字，≤1 处加粗（`marks`）；`refs` 不用（空数组）。 */
+  reason: PlanMarkedText;
+  /** 所属阶段（1 起）；>1 时界面标「阶段 N · 可以提前」。 */
+  stepNumber: number;
+  /** 所属人物类型（活动为 null）。 */
+  typeKey: string | null;
+  done: boolean;
+  /** 右侧头像字（人 = 名字首字，活动 = emoji）与一行说明（「前 CFO · 你的人脉」/「渋谷 · 投资人与创业者交流」）。 */
+  avatar: string;
+  meta: string;
+  /** 准备卡；生成失败或还没生成为 null。 */
+  prep: PlanPrepCardView | null;
+}
+
+/** v3 计划主页的「先做的事」整块；`state: pending` = 正在生成（界面显示骨架并轮询）。 */
+export interface PlanHomeView {
+  state: "pending" | "ready" | "failed";
+  /** 阶段目标一句 ≤40 字；没有为 null（不显示）。 */
+  lead: string | null;
+  /** 0–3 件；空 = 只显示「去认识」提示。 */
+  actions: readonly PlanHomeAction[];
+}
+
+export interface PlanHomeDoneRequest {
+  done: boolean;
+  idempotencyKey: string;
+}
+
+export interface PlanHomeRegenerateRequest {
+  idempotencyKey: string;
+}
+
+/** 勾选 / 重新生成的回应：更新后的整块。 */
+export type PlanHomeActionResponse = PlanHomeView;
+
+/** `POST /api/contacts/[id]/facts`：手动补一条事实（≤80 字，同文本合并）。 */
+export interface ContactManualFactRequest {
+  text: string;
+  idempotencyKey: string;
+}
+
+export interface ContactManualFactResult {
+  factId: string;
+  text: string;
+  /** 因此被标为「资料有更新」的准备卡数。 */
+  staleCards: number;
+}
+
+/** R37a：`PlanV2Detail` 的可选主页字段（只在 `content.schemaVersion === 3` 的计划上出现）。 */
+export interface PlanV2DetailHome {
+  home?: PlanHomeView | null;
 }

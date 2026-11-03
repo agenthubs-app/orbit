@@ -1667,6 +1667,11 @@
           "optional": true,
           "kind": "text",
           "type": "string | null"
+        },
+        "otherText": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly string[]"
         }
       }
     },
@@ -13136,6 +13141,8 @@
         "ContactInsightText",
         "ContactLabelsContract",
         "ContactListItemContract",
+        "ContactManualFactRequest",
+        "ContactManualFactResult",
         "ContactMemoNoteInputContract",
         "ContactRelationshipValueContract",
         "ContactRestoreResult",
@@ -13538,6 +13545,11 @@
         "PlanGoalListItem",
         "PlanGoalListResponse",
         "PlanGoalStatus",
+        "PlanHomeAction",
+        "PlanHomeActionResponse",
+        "PlanHomeDoneRequest",
+        "PlanHomeRegenerateRequest",
+        "PlanHomeView",
         "PlanIntakeAnswer",
         "PlanIntakeAnswersRequest",
         "PlanIntakeBlock",
@@ -13578,6 +13590,12 @@
         "PlanPremiseMark",
         "PlanPremiseRow",
         "PlanPremiseSource",
+        "PlanPrepCardView",
+        "PlanPrepDraft",
+        "PlanPrepFactView",
+        "PlanPrepGap",
+        "PlanPrepRef",
+        "PlanPrepRow",
         "PlanProposalRequest",
         "PlanProposalResult",
         "PlanQuotaResponse",
@@ -13608,6 +13626,7 @@
         "PlanUndoRequest",
         "PlanV2Content",
         "PlanV2Detail",
+        "PlanV2DetailHome",
         "PlanV2EventBlock",
         "PlanV2HomeSummary",
         "PlanV2PersonType",
@@ -14460,6 +14479,11 @@
           "optional": true,
           "kind": "text",
           "type": "string"
+        },
+        "primaryIndustryId": {
+          "optional": true,
+          "kind": "text",
+          "type": "IndustryIdCode"
         },
         "metContext": {
           "optional": true,
@@ -17464,6 +17488,11 @@
           "optional": true,
           "kind": "text",
           "type": "readonly PlanEventOption[]"
+        },
+        "home": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanHomeView | null"
         }
       }
     },
@@ -20817,6 +20846,333 @@
           "optional": true,
           "kind": "text",
           "type": "readonly PlanSource[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPrepRef": {
+      "kind": "alias",
+      "type": "PlanPrepRef"
+    },
+    "plan-v2.ts::PlanPrepDraft": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "refs": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "start": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "end": {
+                "optional": false,
+                "kind": "text",
+                "type": "number"
+              },
+              "ref": {
+                "optional": false,
+                "kind": "text",
+                "type": "PlanPrepRef"
+              }
+            }
+          }
+        }
+      }
+    },
+    "plan-v2.ts::PlanPrepRow": {
+      "kind": "object",
+      "members": {
+        "key": {
+          "optional": false,
+          "kind": "text",
+          "type": "'met' | 'who' | 'last_contact' | 'common' | 'when_where' | 'about' | 'plan_fit'"
+        },
+        "value": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "source": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPrepFactView": {
+      "kind": "object",
+      "members": {
+        "id": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "date": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "memoId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanPrepGap": {
+      "kind": "enum",
+      "values": [
+        "'interaction'",
+        "'memo'"
+      ]
+    },
+    "plan-v2.ts::PlanPrepCardView": {
+      "kind": "object",
+      "members": {
+        "rows": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPrepRow[]"
+        },
+        "usedFacts": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPrepFactView[]"
+        },
+        "usedAnswers": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly string[]"
+        },
+        "hook": {
+          "optional": false,
+          "kind": "object",
+          "members": {
+            "label": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            },
+            "reason": {
+              "optional": false,
+              "kind": "text",
+              "type": "string"
+            }
+          }
+        },
+        "draft": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanPrepDraft"
+        },
+        "gaps": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanPrepGap[]"
+        },
+        "generatedAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "staleSince": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "fallback": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeAction": {
+      "kind": "object",
+      "members": {
+        "actionKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "kind": {
+          "optional": false,
+          "kind": "text",
+          "type": "'contact' | 'event'"
+        },
+        "contactId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "eventId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "title": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "reason": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanMarkedText"
+        },
+        "stepNumber": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        },
+        "typeKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "avatar": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "meta": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "prep": {
+          "optional": false,
+          "kind": "text",
+          "type": "PlanPrepCardView | null"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeView": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'ready' | 'failed' | 'pending'"
+        },
+        "lead": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "actions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanHomeAction[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeDoneRequest": {
+      "kind": "object",
+      "members": {
+        "done": {
+          "optional": false,
+          "kind": "text",
+          "type": "boolean"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeRegenerateRequest": {
+      "kind": "object",
+      "members": {
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeActionResponse": {
+      "kind": "object",
+      "members": {
+        "state": {
+          "optional": false,
+          "kind": "text",
+          "type": "'ready' | 'failed' | 'pending'"
+        },
+        "lead": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
+        },
+        "actions": {
+          "optional": false,
+          "kind": "text",
+          "type": "readonly PlanHomeAction[]"
+        }
+      }
+    },
+    "plan-v2.ts::ContactManualFactRequest": {
+      "kind": "object",
+      "members": {
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        }
+      }
+    },
+    "plan-v2.ts::ContactManualFactResult": {
+      "kind": "object",
+      "members": {
+        "factId": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "text": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "staleCards": {
+          "optional": false,
+          "kind": "text",
+          "type": "number"
+        }
+      }
+    },
+    "plan-v2.ts::PlanV2DetailHome": {
+      "kind": "object",
+      "members": {
+        "home": {
+          "optional": true,
+          "kind": "text",
+          "type": "PlanHomeView | null"
         }
       }
     },
