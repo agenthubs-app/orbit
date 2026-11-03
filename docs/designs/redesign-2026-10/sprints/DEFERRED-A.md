@@ -104,6 +104,10 @@
 | R11a 设计稿无 | Web 1024 / 390 除列表、详情外的画面（目標に関係 / 要フォロー / 絞り込み / 編集 / 招待连接 / 确认卡 / 以前の値）、App 全部深色画面没有画板（R11a 代定 2） | 结构照浅色 / 1440 画板、颜色只用 token；有画板后再进门禁 |
 | R37a-01 | 初稿页「人脉里已有 N 位」：草稿阶段没跑候补匹配，数字会和确定后不一致（R37a 自定：不做，对标 LinkedIn 只对确认过的关系显示） | 若用户要显示：服务端给 `PlanDraftView` 加匹配数（起草时跑一次规则匹配），两端同步 |
 | R37a-02 | v3 计划主页页身之下的入口行（目标切换 / 見直し / 手动编辑 / 达成 / 前提 / 待确认卡）原型没画，暂沿用 R24 样式放在页身下 | 用户定位置后补画板，再进门禁 |
+| R38-01 | 初稿提示词 v9 真调用通过率低：4 个样本第一次输出全被拒、最终失败 1/4（「没能起草」）；开场白语气（见过还写「はじめまして」、自己的备注写成「…と伺っております」）；阶段 `why` 恒为 null | 服务端先对「人物类型不在任何阶段 / 非模板槽位 / 人数越界」做确定性修理；提示词 v10 补 `why`、`outcome` ≤20 字与开场白两条规则；被拒原文（`~/orbit-sprint-evidence/web/sprint-R38/run-01/ai/`）做 fixture；再做一轮真调用验证（需授权） |
+| R38-02 | 准备卡「共同点」把 `homeMarket`（资料页「所在地」，真实值「东京」）当「来自」用，只认国家名、无日本、不认城市，真实数据基本命中不了 | 产品定口径（所在地 vs 出身）后改规则与三语文案，两端同步 |
+| R38-03 | 确定后第一屏可能先显示「去认识」：匹配作业与补生成都在 `after()` 里、先后不定，`ready` 且 0 件时前端不轮询 | 0 件且该计划有排队中的匹配作业时返回 `pending`（前端已有 3 s × 10 轮询） |
+| R38-04 | App 依据区展开后现状库来源标题显示库 id（R37b 交接） | `PlanV2Detail` 加 `citations`（契约只加），App `sync:contract` 后显示标题 |
 
 ## 4. 待外部条件或授权
 
@@ -113,6 +117,7 @@
 | R27 Web 未登录详情「あなた N回」 | 已在实现里隐藏（服务端不给），画板 #394 仍画着，等 design-decisions 按 §36 改画板（10-16） | 拿到新序号后把 W-R27-P41 改指重跑 |
 | R27 App A-R27-26 | b2 #26 画板把一段 CSS 审计注释画成了可见文字（topbar 下两行），整屏下移约 40px；已报主会话（10-15） | 画板修正后清缓存重跑 A-R27-26（同时受 seg G23 与 expo-brightness 两条影响）；seg 部分由 R31a 重比，预计「部分 / 交还」 |
 | R22-02 | 计划 v2 的生产 AI 开关和月上限 | 等用户拍板 |
+| R38 计划 v3 上线 | 生产迁移 network-analysis v8（先迁移再部署）、部署 `chat-agent`、生产 `TAVILY_API_KEY` / `ORBIT_PLAN_SEARCH`（用户未注册）、App TestFlight | 按 R38 REPORT「部署准备」执行；Tavily 注册后跑 R34 的召回验证（≤24 次）；App 门禁 `app-R36b` / `app-R37b` 在 Text.tsx 会话落地后复跑 |
 | R17-08 / R17-11 生产 | event-ops v19（`event_host_roster_match_requests`）与旧 actor 级主办方关注 → 资料页关注的数据迁移（`scripts/migrate-organizer-follows-to-profiles.ts`，脚本只认回环库） | **done（2026-10-17 执行）**：生产 Neon `orbit-production-20260924` 默认分支执行 event-ops v16 / v17 / v18 / v19 与 network-analysis v4 / v5（先在临时分支试跑与重放，确认全部只新增：约束只加取值、新列可空；执行后版本表 checksum 与代码一致，临时分支已删）；Vercel 生产已加 `ORBIT_CHECKIN_TOKEN_SECRET`（随机生成，未回显）。关注迁移：**生产 0 条，未执行，空操作**。部署未做（等意味検索 lite） |
 | 用语统一 §45（文字） | **done（2026-10-17，`46a9135f1`）**：orbits / orbit-app 示例数据、契约示例、脚本、测试里「製造業DX」「DX推進室」「中部ものづくりDX協議会」「Seedline株式会社」「代表取締役CEO」「青葉VC」等拉丁字母与日文紧贴写法已加半角空格（保留シリーズA、N人、To-do、・并列两侧）；`shared/contract/host-console.ts` 已 `sync:contract`；copy-qa 示例文字检查（demo-world-copy）转绿。遗留 **done（2026-10-17，提交号见 `git log -1 -- 本文件`）**：生产 ja 文案（`orbit-event-content.ts`、`contact-detail-localization.ts`、App `src/i18n/ja/**`、`profile-onboarding.ts`）已按同规则加空格；`copy-qa/check.mjs` 的拉丁字母规则改为不把「・」当日文字符（并列两侧紧贴是规范允许写法）；`copy:qa` 里这条规则的红项 8 → 0（总红项 212 → 204，其余规则未动）；「青葉 VC」恢复带空格 | 已做 |
 | R30-05 意味検索（真 embedding） | **lite 已打开（2026-10-17，§50）**；真 embedding 等用户在 Vercel 设 OpenAI key | 按 DESIGN §5.2 接 provider / 迁移 / 账本，补 #58 / #55 live 回归 |
