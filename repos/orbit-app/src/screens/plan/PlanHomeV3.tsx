@@ -85,16 +85,20 @@ export function PlanHomeV3({ plan, onReload, onAiAdjust, now = new Date() }: {
   const pending = home?.state === "pending";
   const reload = useRef(onReload);
   reload.current = onReload;
+  // Focus is read through a ref so this is not a focus-keyed read (LF6): a tick while the page is out of view is skipped.
+  const inView = useRef(focused);
+  inView.current = focused;
   const polls = useRef(0);
   useEffect(() => {
-    if (!pending || !focused) return;
+    if (!pending) return;
     const timer = setInterval(() => {
       if (polls.current >= PLAN_HOME_POLL_MAX) { clearInterval(timer); return; }
+      if (!inView.current) return;
       polls.current += 1;
       void reload.current();
     }, PLAN_HOME_POLL_MS);
     return () => clearInterval(timer);
-  }, [pending, focused]);
+  }, [pending]);
 
   const header = homeHeader({ ...plan, home });
   const stage = content.steps[header.stepIndex];
