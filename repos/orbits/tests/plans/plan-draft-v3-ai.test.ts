@@ -83,12 +83,14 @@ test("firstDraftV3 is a required method: mock, deepseek and disabled all impleme
   assert.deepEqual(await createDisabledPlanFlowAi().firstDraftV3(inputFor(), CONTEXT), { ok: false, reason: "disabled" });
 });
 
-test("prompt v9: the v3 task carries the five §3.1 points, the source ids, the answer keys and the aliases — never a real name", () => {
-  assert.equal(PLAN_V2_PROMPT_VERSION, "plan-v2-flow-2026-10-v9");
+test("prompt v10: the v3 task carries the five §3.1 points (+ v10 subtitle, outcome count, no event type), the source ids, the answer keys and the aliases — never a real name", () => {
+  assert.equal(PLAN_V2_PROMPT_VERSION, "plan-v2-flow-2026-11-v10");
   const task = TASKS.firstDraftV3;
   assert.match(task, /cite ONLY the sources listed in the input/u, "1. only input sources / answers");
   assert.match(task, /may appear ONLY in risks/u);
-  assert.match(task, /first write outcome .* and conclusion .*, then write summary/u, "2. outcome / conclusion first");
+  assert.match(task, /first write outcome .* and conclusion .*\. Count the characters of outcome .* Then write summary/u, "2. outcome / conclusion first (v10: count outcome characters)");
+  assert.match(task, /"why": "<subtitle, at most 10 characters>"/u, "v10: stage subtitle is asked for, never a fixed null");
+  assert.match(task, /Never put \\"event\\" in personTypes|Never put "event" in personTypes/u, "v10: event is not a person type");
   assert.match(task, /EVERY external fact in summary .* must carry a sourceId/u);
   assert.match(task, /doneCriteria is an observable result/u, "3. observable doneCriteria");
   assert.match(task, /Allocations must follow the verdicts/u, "4. allocation by comparison");
@@ -124,7 +126,7 @@ test("deepseek firstDraftV3: a good answer passes on the first call, is ledgered
   assert.match(system, /no others exist\): C1\./u);
   assert.doesNotMatch(system, new RegExp(REAL_NAME, "u"), "the task text names aliases only");
   assert.ok(user.includes('"id":"S1"') && user.includes('"answerKeys":["F3","purpose"]'), "the user message carries the numbered source list and the answer keys");
-  assert.ok(entries.some((entry) => entry.event === "plan_v2_ai_succeeded" && entry.step === "first_draft_v3" && entry.promptVersion === "plan-v2-flow-2026-10-v9"));
+  assert.ok(entries.some((entry) => entry.event === "plan_v2_ai_succeeded" && entry.step === "first_draft_v3" && entry.promptVersion === "plan-v2-flow-2026-11-v10"));
   assert.equal(entries.some((entry) => entry.event === "plan_v2_ai_output_rejected"), false);
 });
 

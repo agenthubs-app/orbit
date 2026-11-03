@@ -22,6 +22,9 @@ import type { DraftOutput, DraftOutputV3, DraftSummarySentence, DraftV3 } from "
 
 export const PLAN_V3_LIMITS = {
   outcomeChars: 20,
+  /** 路线副标题（字段表「副标题 ≤10 字」）；纯拉丁字母的按 24 个字符。超了不拒绝，只是不显示（置 null）。 */
+  stepWhyChars: 10,
+  stepWhyLatinChars: 24,
   summaryChars: 150,
   summarySentences: 4,
   markChars: 14,
@@ -50,7 +53,10 @@ const planRef = z.union([
   z.object({ kind: z.literal("source"), sourceId: z.string() }),
 ]);
 const sourceIds = z.array(z.string()).max(12).catch([]);
+const basePersonType = draftSchema.shape.personTypes.element;
 const draftV3Schema = draftSchema.extend({
+  // R38-01：真实 v9 输出里人物类型的 `why` 偶尔为 null（多半是被误写成人物类型的 event 那一项）；v3 界面不显示它，按空串收下。
+  personTypes: z.array(basePersonType.extend({ why: text(400).nullable().catch(null).transform((value) => value ?? "") })).max(10),
   // v3 的引用是来源 id；模型不产出 citations（由用到的 landscape 来源导出）。
   citations: z.array(z.object({ id: z.string(), version: z.number().int() })).max(12).catch([]),
   outcome: text(PLAN_V3_LIMITS.outcomeChars * 2).pipe(z.string().min(1)),
@@ -79,6 +85,47 @@ export function rerankAllocationsByVerdict(draft: DraftOutputV3): { draft: Draft
   const allocations = ranked.map((type) => type.allocation).sort((a, b) => b - a);
   const assigned = new Map(order.map((type, index) => [type.slot, allocations[index]!]));
   return { changed: true, draft: { ...draft, personTypes: draft.personTypes.map((type) => (assigned.has(type.slot) ? { ...type, allocation: assigned.get(type.slot)! } : type)) } };
+}
+
+/**
+ * R38-01（真实 v9 输出被拒的三类，都是规则唯一确定的结构毛病，修完照常过同一套校验）：
+ * - 把活动写成了人物类型（`slot: "event"`）：活动的分量和人数在 `event` 里，这一项是重复 → 删掉；
+ * - 人数不在 1–5（例如 0 = 模型想去掉这一类）：夹到 1–5；分量 0 由规整器按「配点不合模板 → 整份回到模板配点」处理。
+ */
+function repairTypeShape(draft: DraftOutputV3, repairs: string[]): DraftOutputV3 {
+  let personTypes = draft.personTypes;
+  if (personTypes.some((type) => type.slot === PLAN_EVENT_SLOT)) {
+    repairs.push("event_person_type_dropped");
+    personTypes = personTypes.filter((type) => type.slot !== PLAN_EVENT_SLOT);
+  }
+  personTypes = personTypes.map((type) => {
+    if (type.targetCount >= 1 && type.targetCount <= 5) return type;
+    repairs.push(`target_clamped:${type.slot}`);
+    return { ...type, targetCount: Math.min(5, Math.max(1, Math.round(type.targetCount) || 1)) };
+  });
+  return personTypes === draft.personTypes ? draft : { ...draft, personTypes };
+}
+
+/**
+ * R38-01：
+ * - 没挂到任何阶段的人物类型 → 挂到最后一个阶段（规则 3「每类至少属于一个阶段」；最后阶段 = 不急的那一档，主页上显示「可以提前」）；
+ * - 阶段副标题 `why` 超过字段表上限 → 置 null（界面缺省不画），不为一个副标题拒掉整份方案。
+ */
+function attachStepFields(draft: DraftOutput, repairs: string[]): DraftOutput {
+  if (draft.steps.length === 0) return draft;
+  const listed = new Set(draft.steps.flatMap((step) => step.personTypeKeys));
+  const orphans = draft.personTypes.map((type) => type.slot).filter((slot) => !listed.has(slot));
+  for (const slot of orphans) repairs.push(`orphan_type_attached:${slot}`);
+  const last = draft.steps.length - 1;
+  const steps = draft.steps.map((step, index) => {
+    const why = step.why?.trim() || null;
+    const limit = why && /^[\x20-\x7e]+$/u.test(why) ? PLAN_V3_LIMITS.stepWhyLatinChars : PLAN_V3_LIMITS.stepWhyChars;
+    const keptWhy = why && chars(why) <= limit ? why : null;
+    if (why && !keptWhy) repairs.push(`step_why_dropped:${index + 1}`);
+    const personTypeKeys = index === last && orphans.length > 0 ? [...step.personTypeKeys, ...orphans] : step.personTypeKeys;
+    return { ...step, personTypeKeys, why: keptWhy };
+  });
+  return { ...draft, steps };
 }
 
 /** 规则 1：按句处置，并把句子拼成 `PlanMarkedText`（下标由这里算）。 */
@@ -123,13 +170,13 @@ export function checkDraftV3(raw: unknown, input: ContentCheckInputV3, normalize
   const sourceById = new Map(input.sources.map((source) => [source.id, source]));
 
   // 规则 3（先于结构校验：重排后的配点仍要过合计 100 / 模板 ±5）。
-  let draft = parsed.value;
+  let draft = repairTypeShape(parsed.value, repairs);
   const reranked = rerankAllocationsByVerdict(draft);
   if (reranked.changed) {
     repairs.push("allocation_reranked_by_verdict");
     draft = reranked.draft;
   }
-  const base: DraftOutput = normalizeDraftOutput({ ...draft, citations: [] }, { ...normalize, aliases: input.aliases, enforceTemplate: input.enforceTemplate, goalKind: input.goalKind, repairs });
+  const base: DraftOutput = attachStepFields(normalizeDraftOutput({ ...draft, citations: [] }, { ...normalize, aliases: input.aliases, enforceTemplate: input.enforceTemplate, goalKind: input.goalKind, repairs }), repairs);
   issues.push(...checkDraftStructure(base, input));
   if (reranked.changed && rerankAllocationsByVerdict({ ...draft, personTypes: base.personTypes }).changed) issues.push("allocation: order still contradicts the comparison verdicts after one fix");
 

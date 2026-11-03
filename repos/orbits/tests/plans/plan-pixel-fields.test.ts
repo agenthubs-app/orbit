@@ -104,7 +104,7 @@ describe("目標を編集: goalBackground / goalNote", () => {
 
 describe("C10 subtitle (prompt v7)", () => {
   test("the prompt asks for a subtitle and the version is v7 or later", () => {
-    assert.equal(PLAN_V2_PROMPT_VERSION, "plan-v2-flow-2026-10-v9");
+    assert.equal(PLAN_V2_PROMPT_VERSION, "plan-v2-flow-2026-11-v10");
     assert.match(TASKS.nextGoals, /subtitle/u);
   });
 

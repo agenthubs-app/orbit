@@ -1,0 +1,1679 @@
+[
+ {
+  "run": "run-01",
+  "goalKind": "fundraising",
+  "attempt": 1,
+  "issues": [
+   "personType cfo: not in any step"
+  ],
+  "content": {
+   "outcome": "シリーズAで3億円調達",
+   "conclusion": "リード候補がいるうちに、調達経験者と専門家の支援でピッチと事業計画を整え、投資家との面談を重ねる計画です。",
+   "diagnosis": "ひとりで調達に臨む初めての挑戦ですが、リード候補がいるのは大きな強みです。売上前の段階なので、事業の成長ストーリーと数字の裏づけを整えることが重要です。調達経験のある起業家や弁護士の助けを借りて、投資家対応の型を早く作るのが近道です。",
+   "summary": [
+    {
+     "text": "国内スタートアップの調達環境は前年比で伸びています。",
+     "bold": "前年比で伸びています",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S1"
+      }
+     ]
+    },
+    {
+     "text": "事業会社系ファンドの比重も高く、CVC は現実的な選択肢です。",
+     "bold": "現実的な選択肢",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S2"
+      }
+     ]
+    },
+    {
+     "text": "リード候補がいるため、面談の組み立てを優先できます。",
+     "bold": "リード候補がいる",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "F3"
+      }
+     ]
+    },
+    {
+     "text": "調達は初めてなので、経験者と専門家の支援で補います。",
+     "bold": "経験者と専門家",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "F4"
+      }
+     ]
+    }
+   ],
+   "verdict": "conditional",
+   "confidence": {
+    "level": "mid",
+    "reason": "リード候補はいるが調達は初めてで体制が一人"
+   },
+   "orderReasons": [
+    {
+     "text": "まず調達経験者と弁護士の支援でピッチと事業計画の土台を整えます。",
+     "sourceIds": [
+      "S1"
+     ]
+    },
+    {
+     "text": "土台ができたらリード候補とVC、CVCとの面談を進めます。",
+     "sourceIds": [
+      "S2"
+     ]
+    },
+    {
+     "text": "並行してエンジェルやイベントで接点を広げ、面談数を確保します。",
+     "sourceIds": [
+      "S3"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "調達を支える相手の優先度",
+    "funnel": "6種類の候補を役割で優先度づけしました",
+    "rows": [
+     {
+      "label": "VC パートナー",
+      "score": 90,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "vc_partner"
+     },
+     {
+      "label": "CVC 担当者",
+      "score": 75,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "cvc"
+     },
+     {
+      "label": "調達経験のある起業家",
+      "score": 70,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "funded_founder"
+     },
+     {
+      "label": "エンジェル投資家",
+      "score": 55,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "angel"
+     },
+     {
+      "label": "弁護士（投資契約）",
+      "score": 50,
+      "verdict": "possible",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "lawyer"
+     },
+     {
+      "label": "CFO 経験者",
+      "score": 40,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "cfo"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "約3.1億円",
+     "label": "2024年の1社あたり平均調達額",
+     "sourceIds": [
+      "S1"
+     ]
+    },
+    {
+     "value": "約36%",
+     "label": "事業会社系ファンドの比重",
+     "sourceIds": [
+      "S2"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "risk",
+     "text": "調達までの期限が短く、準備と面談の時間が足りなくなるおそれがあります。"
+    },
+    {
+     "kind": "unverified",
+     "text": "リード候補が実際に投資意思を持っているかは、まだ確認できていません。"
+    }
+   ],
+   "flow": [],
+   "steps": [
+    {
+     "title": "調達経験者と弁護士の支援でピッチと事業計画を整える",
+     "doneCriteria": "調達経験者がピッチ資料と事業計画に同意し、弁護士が契約手順の初回相談を完了する",
+     "why": null,
+     "personTypeKeys": [
+      "funded_founder",
+      "lawyer"
+     ]
+    },
+    {
+     "title": "リード候補とVC、CVCに面談を申し込み、初回面談を行う",
+     "doneCriteria": "リード候補を含む投資家が初回面談に応じる",
+     "why": null,
+     "personTypeKeys": [
+      "vc_partner",
+      "cvc"
+     ]
+    },
+    {
+     "title": "エンジェルやイベントで接点を広げ、面談数を増やす",
+     "doneCriteria": "投資家向けイベントで新たな投資家と名刺交換し、次回面談の約束を得る",
+     "why": null,
+     "personTypeKeys": [
+      "angel",
+      "event"
+     ]
+    }
+   ],
+   "personTypes": [
+    {
+     "slot": "cfo",
+     "shortLabelId": "cfo",
+     "roleSituation": "CFO 経験者 × 資金調達の体制づくりを支援する場面",
+     "allocation": 10,
+     "targetCount": 1,
+     "why": "財務モデルやKPI管理の整備を助けてもらうため",
+     "questions": [
+      "これまでどのような資金調達を支援しましたか。",
+      "財務モデルはどの粒度で作るべきでしょうか。",
+      "投資家向けのKPIはどう選べばよいですか。"
+     ],
+     "countRule": "1名",
+     "recognizeHints": [
+      "CFO経験がある",
+      "上場企業やスタートアップの財務責任者を務めた"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "funded_founder",
+     "shortLabelId": "funded_founder",
+     "roleSituation": "調達経験のある起業家 × 初めてのシリーズAに助言する場面",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "ピッチとストーリーを投資家目線で磨いてもらうため",
+     "questions": [
+      "シリーズAで最も重視した数字は何でしたか。",
+      "ピッチで投資家に響いた構成はどのようなものでしたか。",
+      "初めての調達で後悔した点はありますか。"
+     ],
+     "countRule": "3名",
+     "recognizeHints": [
+      "シリーズA以上を経験",
+      "投資家から資金調達した創業者"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "angel",
+     "shortLabelId": "angel",
+     "roleSituation": "エンジェル投資家 × 売上前の事業に初期の資金と助言を検討する場面",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "少額のつなぎ資金や紹介の接点を得るため",
+     "questions": [
+      "どのような段階の事業に投資しますか。",
+      "投資家の紹介をお願いできますか。",
+      "売上前の事業で気になる点は何ですか。"
+     ],
+     "countRule": "2名",
+     "recognizeHints": [
+      "個人でスタートアップに投資",
+      "エンジェル投資の実績がある"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "vc_partner",
+     "shortLabelId": "vc_partner",
+     "roleSituation": "VC パートナー × シリーズAの投資判断を行う場面",
+     "allocation": 30,
+     "targetCount": 3,
+     "why": "シリーズAの主たる出資者として最も重要な相手だから",
+     "questions": [
+      "シリーズAで重視する指標は何ですか。",
+      "投資判断までの流れと期間を教えてください。",
+      "リードとして出資いただく可能性はありますか。"
+     ],
+     "countRule": "3名",
+     "recognizeHints": [
+      "シリーズAを主導",
+      "投資パートナーとして活動"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "finance_investment"
+    },
+    {
+     "slot": "cvc",
+     "shortLabelId": "cvc",
+     "roleSituation": "CVC 担当者 × 事業会社の資金と事業シナジーを検討する場面",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "事業会社系ファンドの比重が高く、協業も見込めるため",
+     "questions": [
+      "投資の際に重視する協業の可能性は何ですか。",
+      "意思決定にはどれくらいの期間がかかりますか。",
+      "出資後の連携はどのように進めますか。"
+     ],
+     "countRule": "3名",
+     "recognizeHints": [
+      "事業会社のCVC担当",
+      "CVC投資の実績がある"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "lawyer",
+     "shortLabelId": "lawyer",
+     "roleSituation": "弁護士（投資契約） × 初めての投資契約を整える場面",
+     "allocation": 10,
+     "targetCount": 1,
+     "why": "投資契約や手続きの不安を解消するため",
+     "questions": [
+      "投資契約で確認すべきポイントは何ですか。",
+      "契約までの一般的な流れを教えてください。",
+      "初めての調達で注意すべき点はありますか。"
+     ],
+     "countRule": "1名",
+     "recognizeHints": [
+      "投資契約の実務経験",
+      "スタートアップ支援を行う弁護士"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "professional_services"
+    }
+   ],
+   "event": {
+    "allocation": 10,
+    "targetCount": 2
+   },
+   "allocationReasons": []
+  }
+ },
+ {
+  "run": "run-02",
+  "goalKind": "sales",
+  "attempt": 1,
+  "issues": [
+   "personType senior_seller: not in any step"
+  ],
+  "content": {
+   "outcome": "製造業SaaSの新規10社獲得",
+   "conclusion": "決裁者への接点と紹介の余地を活かし、初期購買・検証の流れに沿って段階的に商談を積み上げる計画です。",
+   "diagnosis": "中小企業の製造業に絞り、単価を抑えた導入しやすい形で進めるのが現実的です。決裁者との接点がすでにあるため、現場責任者と決裁者を組にして商談を設計できます。紹介の余地が大きいので、既存のつながりから製造業の実務者へ広げる経路を先に固めます。商談数がまだ無いため、最初は接触数を作る活動に重心を置きます。",
+   "summary": [
+    {
+     "text": "中小企業は企業全体のほとんどを占め、狙う母集団は十分にあります。",
+     "bold": "狙う母集団",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S2"
+      }
+     ]
+    },
+    {
+     "text": "公的事業は大企業とスタートアップの連携を後押ししています。",
+     "bold": "連携を後押し",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S3"
+      }
+     ]
+    },
+    {
+     "text": "本格導入の前に初期購買で検証する段階が示されています。",
+     "bold": "初期購買で検証",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S4"
+      }
+     ]
+    },
+    {
+     "text": "単価十万円未満のため、まずは検証導入から始めます。",
+     "bold": "検証導入",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "S1"
+      }
+     ]
+    }
+   ],
+   "verdict": "conditional",
+   "confidence": {
+    "level": "mid",
+    "reason": "接点と紹介の余地はあるが商談実績が無いため"
+   },
+   "orderReasons": [
+    {
+     "text": "商談数が無いため、まず接触先の候補を具体化する必要があります。",
+     "sourceIds": [
+      "S1"
+     ]
+    },
+    {
+     "text": "初期購買で検証する流れに沿い、小さな導入合意を先に取ります。",
+     "sourceIds": [
+      "S4"
+     ]
+    },
+    {
+     "text": "本格導入の判断は現場での検証結果を経てから決裁者に諮ります。",
+     "sourceIds": [
+      "S3"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "製造業SaaSの商談相手の優先度",
+    "funnel": "5種類を役割と接点の有無で絞り込み",
+    "rows": [
+     {
+      "label": "決裁者",
+      "score": 85,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "decision_maker"
+     },
+     {
+      "label": "現場責任者",
+      "score": 75,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S4"
+      ],
+      "typeKey": "field_lead"
+     },
+     {
+      "label": "紹介者・代理店",
+      "score": 65,
+      "verdict": "possible",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "introducer"
+     },
+     {
+      "label": "業界団体",
+      "score": 45,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "industry_body"
+     },
+     {
+      "label": "同業の先輩営業",
+      "score": 35,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "senior_seller"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "99.7%",
+     "label": "企業全体に占める中小企業の割合",
+     "sourceIds": [
+      "S2"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "risk",
+     "text": "単価が低く、検証導入から本格導入への移行が止まる可能性があります。"
+    },
+    {
+     "kind": "unverified",
+     "text": "製造業の現場がSaaSの検証導入をどの程度受け入れるかは未確認です。"
+    }
+   ],
+   "flow": [],
+   "steps": [
+    {
+     "title": "製造業の決裁者と現場責任者の候補を接触リストにする",
+     "doneCriteria": "製造業の決裁者と現場責任者が各3名以上、名簿に載っている",
+     "why": null,
+     "personTypeKeys": [
+      "decision_maker",
+      "field_lead",
+      "event"
+     ]
+    },
+    {
+     "title": "検証導入の小さな合意を取る",
+     "doneCriteria": "1社が有償の検証導入に合意する",
+     "why": null,
+     "personTypeKeys": [
+      "decision_maker",
+      "field_lead",
+      "introducer"
+     ]
+    },
+    {
+     "title": "紹介から商談を広げ、本格導入の判断を得る",
+     "doneCriteria": "本格導入の見積り提出が3社に達する",
+     "why": null,
+     "personTypeKeys": [
+      "introducer",
+      "industry_body",
+      "decision_maker"
+     ]
+    }
+   ],
+   "personTypes": [
+    {
+     "slot": "decision_maker",
+     "shortLabelId": "decision_maker",
+     "roleSituation": "製造業の経営層 × 生産性向上の投資判断を迫られている",
+     "allocation": 30,
+     "targetCount": 3,
+     "why": "接点がすでにあり、導入の最終判断を握るため。",
+     "questions": [
+      "現在の生産管理や業務の課題は何ですか。",
+      "少額の検証導入から始めることに抵抗はありますか。",
+      "導入を決める際に重視する条件は何ですか。"
+     ],
+     "countRule": "製造業の決裁権を持つ経営層を1社1名",
+     "recognizeHints": [
+      "製造業の経営層",
+      "投資判断の権限",
+      "現場の課題を把握"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "manufacturing_supply_chain"
+    },
+    {
+     "slot": "field_lead",
+     "shortLabelId": "field_lead",
+     "roleSituation": "製造業の現場責任者 × 日々の業務改善を求められている",
+     "allocation": 20,
+     "targetCount": 4,
+     "why": "現場の課題が検証導入の成否を左右するため。",
+     "questions": [
+      "日々の業務で最も時間を取られている作業は何ですか。",
+      "新しいツールの検証を現場で試すことは可能ですか。",
+      "導入後に効果をどう測りたいですか。"
+     ],
+     "countRule": "製造業の現場を預かる責任者を1社1名",
+     "recognizeHints": [
+      "現場の責任者",
+      "業務改善の担当",
+      "製造ラインの管理"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "manufacturing_supply_chain"
+    },
+    {
+     "slot": "introducer",
+     "shortLabelId": "introducer",
+     "roleSituation": "支援者・代理店 × 製造業とのつながりを持つ",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "紹介の余地が大きく、商談の入口を増やせるため。",
+     "questions": [
+      "製造業の顧客をどのくらい紹介できますか。",
+      "紹介時にどんな情報を伝えてもらえますか。",
+      "紹介の見返りとして何を期待しますか。"
+     ],
+     "countRule": "製造業への紹介実績がある支援者を1名",
+     "recognizeHints": [
+      "製造業とのつながり",
+      "紹介の実績",
+      "支援業の立場"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "senior_seller",
+     "shortLabelId": "senior_seller",
+     "roleSituation": "同業の先輩営業 × 製造業向けの商談経験が豊富",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "商談の進め方を学ぶ参考として置く。",
+     "questions": [
+      "製造業の商談で最初に何を確認しますか。",
+      "検証導入を断られる典型例は何ですか。",
+      "決裁者に会うための入口はどこにありますか。"
+     ],
+     "countRule": "製造業向けの商談経験がある営業を1名",
+     "recognizeHints": [
+      "同業の営業",
+      "製造業の商談経験",
+      "決裁者との接点"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "industry_body",
+     "shortLabelId": "industry_body",
+     "roleSituation": "業界団体の担当者 × 製造業の会員企業を支援している",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "公的な連携の流れを踏まえ、会員企業への経路を補うため。",
+     "questions": [
+      "会員企業の課題として多いものは何ですか。",
+      "会員企業への紹介の仕組みはありますか。",
+      "新しい取り組みを紹介する場はありますか。"
+     ],
+     "countRule": "製造業の会員企業を持つ団体の担当者を1名",
+     "recognizeHints": [
+      "業界団体の担当",
+      "会員企業への経路",
+      "製造業の支援"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    }
+   ],
+   "event": {
+    "allocation": 15,
+    "targetCount": 3
+   },
+   "allocationReasons": []
+  }
+ },
+ {
+  "run": "run-02",
+  "goalKind": "hiring",
+  "attempt": 1,
+  "issues": [
+   "personTypes.5.why: Invalid input: expected string, received null"
+  ],
+  "content": {
+   "outcome": "フルスタックエンジニア2名の採用",
+   "conclusion": "採用は条件付きで実現可能であり、候補者との接点づくりを先に進めるべきです。",
+   "diagnosis": "開発チームの基盤を整えるために、フルスタックエンジニアを二人そろえる採用が目的です。チームは現在お一人で、条件は柔軟、採用経路はまだ決まっておらず、面接もお一人で対応する体制です。まず候補者との接点を広げ、そのうえで選考の型を整える順が現実的です。締切が未定のため、接点づくりの目標を先に定めると進めやすくなります。",
+   "summary": [
+    {
+     "text": "人手不足が続くなか、中途採用に取り組む企業は増えています。",
+     "bold": "中途採用",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S1"
+      },
+      {
+       "kind": "source",
+       "sourceId": "S3"
+      }
+     ]
+    },
+    {
+     "text": "有効求人倍率は一倍を超え、候補者との接点づくりが重要です。",
+     "bold": "接点づくり",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S2"
+      }
+     ]
+    },
+    {
+     "text": "条件は柔軟で、採用経路はまだ何も決まっていません。",
+     "bold": null,
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "H2"
+      },
+      {
+       "kind": "answer",
+       "questionKey": "H3"
+      }
+     ]
+    },
+    {
+     "text": "面接はお一人の体制のため、選考の型を整える必要があります。",
+     "bold": null,
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "H6"
+      }
+     ]
+    }
+   ],
+   "verdict": "conditional",
+   "confidence": {
+    "level": "mid",
+    "reason": "経路と面接体制が未整備で接点づくりが鍵"
+   },
+   "orderReasons": [
+    {
+     "text": "候補者との接点がなければ選考が始まらないため、最初に置きます。",
+     "sourceIds": [
+      "S2"
+     ]
+    },
+    {
+     "text": "紹介者の協力を得ることで、母集団を効率よく広げられます。",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "text": "面接はお一人の体制のため、形式を整えてから選考に入ります。",
+     "sourceIds": [
+      "S3"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "採用ターゲットの優先度",
+    "funnel": "5種類を段階で絞り込み",
+    "rows": [
+     {
+      "label": "候補者本人",
+      "score": 90,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "candidate"
+     },
+     {
+      "label": "候補者を紹介できる人",
+      "score": 75,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "referrer"
+     },
+     {
+      "label": "同職種の先輩",
+      "score": 60,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "senior_peer"
+     },
+     {
+      "label": "採用担当の経験者",
+      "score": 50,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "recruiter"
+     },
+     {
+      "label": "コミュニティ運営者",
+      "score": 40,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "community_host"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "1.22",
+     "label": "有効求人倍率（2025年平均）",
+     "sourceIds": [
+      "S2"
+     ]
+    },
+    {
+     "value": "84.4",
+     "label": "中途採用を実施した企業の割合",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "value": "3対7",
+     "label": "新卒と中途の採用比率",
+     "sourceIds": [
+      "S4"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "risk",
+     "text": "面接がお一人の体制のため、選考の負荷が集中し日程が遅れるおそれがあります。"
+    },
+    {
+     "kind": "unverified",
+     "text": "フルスタックエンジニアの市場での希少性は、手元の情報だけでは判断できません。"
+    }
+   ],
+   "flow": [],
+   "steps": [
+    {
+     "title": "候補者との接点をつくる",
+     "doneCriteria": "フルスタックエンジニア候補者と一度面談し、関心を確認できる",
+     "why": null,
+     "personTypeKeys": [
+      "candidate",
+      "event"
+     ]
+    },
+    {
+     "title": "紹介者から候補者を紹介してもらう",
+     "doneCriteria": "紹介者から候補者を一人紹介してもらえる",
+     "why": null,
+     "personTypeKeys": [
+      "referrer",
+      "senior_peer"
+     ]
+    },
+    {
+     "title": "面接の型を整えて選考する",
+     "doneCriteria": "採用担当経験者の助言をもとに面接の質問項目を一式そろえる",
+     "why": null,
+     "personTypeKeys": [
+      "recruiter",
+      "community_host"
+     ]
+    }
+   ],
+   "personTypes": [
+    {
+     "slot": "candidate",
+     "shortLabelId": "candidate",
+     "roleSituation": "フルスタックエンジニアとして開発全般を担いたい状況",
+     "allocation": 30,
+     "targetCount": 5,
+     "why": "採用の直接の対象であり、最初に接点を作るべき相手です。",
+     "questions": [
+      "担当してきた開発の範囲を教えてください。",
+      "開発チームの基盤づくりに関心はありますか。",
+      "希望する働き方や条件を教えてください。"
+     ],
+     "countRule": "接点を作る候補者の人数",
+     "recognizeHints": [
+      "フルスタックの実務経験",
+      "自ら手を動かす志向",
+      "小規模チームへの関心"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "referrer",
+     "shortLabelId": "referrer",
+     "roleSituation": "エンジニア人脈を持ち候補者を紹介できる状況",
+     "allocation": 20,
+     "targetCount": 4,
+     "why": "母集団を効率よく広げられる協力者です。",
+     "questions": [
+      "知り合いのエンジニアに心当たりはありますか。",
+      "どんな経験の方を紹介できますか。",
+      "紹介の際に気をつける点はありますか。"
+     ],
+     "countRule": "紹介を依頼する人数",
+     "recognizeHints": [
+      "エンジニア人脈",
+      "採用への協力的姿勢"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "senior_peer",
+     "shortLabelId": "senior_peer",
+     "roleSituation": "同職種の経験者として助言できる状況",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "採用基準の相談相手として有用です。",
+     "questions": [
+      "採用で見るべき点は何ですか。",
+      "見極めの質問例を教えてください。",
+      "市場の候補者の傾向はどうですか。"
+     ],
+     "countRule": "相談する人数",
+     "recognizeHints": [
+      "豊富な開発経験",
+      "後進への助言"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "recruiter",
+     "shortLabelId": "recruiter",
+     "roleSituation": "採用担当の経験者として進め方を助言できる状況",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "お一人の面接体制を補う助言が得られます。",
+     "questions": [
+      "選考の進め方の要点は何ですか。",
+      "面接の型はどう作ればよいですか。",
+      "候補者への連絡で気をつける点は何ですか。"
+     ],
+     "countRule": "助言をもらう人数",
+     "recognizeHints": [
+      "採用実務の経験",
+      "選考設計の知見"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "professional_services"
+    },
+    {
+     "slot": "community_host",
+     "shortLabelId": "community_host",
+     "roleSituation": "技術コミュニティを運営し接点を提供できる状況",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "優先度は低いものの接点の補完になります。",
+     "questions": [
+      "参加するエンジニアの層を教えてください。",
+      "候補者と出会える場はありますか。"
+     ],
+     "countRule": "接点を持つ人数",
+     "recognizeHints": [
+      "技術コミュニティ運営",
+      "勉強会の主催"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "community_nonprofit"
+    },
+    {
+     "slot": "event",
+     "shortLabelId": "candidate",
+     "roleSituation": "採用イベントで候補者と出会う状況",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": null,
+     "questions": [
+      "参加するエンジニアの層を教えてください。",
+      "候補者と出会える場はありますか。"
+     ],
+     "countRule": "参加するイベント数",
+     "recognizeHints": [
+      "技術系の採用イベント"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    }
+   ],
+   "event": {
+    "allocation": 15,
+    "targetCount": 3
+   },
+   "allocationReasons": []
+  }
+ },
+ {
+  "run": "run-02",
+  "goalKind": "hiring",
+  "attempt": 2,
+  "issues": [
+   "outcome: at most 20 characters"
+  ],
+  "content": {
+   "outcome": "フルスタックエンジニア2名の採用基盤づくり",
+   "conclusion": "候補者への直接アプローチと紹介経路を軸に、採用担当経験者の助言を取り入れて進めるのが現実的です。",
+   "diagnosis": "採用活動の実績がまだなく、面接もお一人で担う体制です。したがって、まず候補者と接点を持つ経路を整え、紹介の連鎖をつくることが先決です。条件は柔軟に調整できるため、候補者本人への直接的な訴求と紹介の両輪で進められます。",
+   "summary": [
+    {
+     "text": "中小企業では人手不足が深刻化しています。",
+     "bold": "人手不足",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S1"
+      }
+     ]
+    },
+    {
+     "text": "中途採用を実施する企業の割合は過去最高です。",
+     "bold": "過去最高",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S3"
+      }
+     ]
+    },
+    {
+     "text": "採用は中途が中心の時代になっています。",
+     "bold": "中途が中心",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S4"
+      }
+     ]
+    },
+    {
+     "text": "面接はお一人で担うため、紹介経路の確保が鍵です。",
+     "bold": "紹介経路",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "H6"
+      }
+     ]
+    }
+   ],
+   "verdict": "conditional",
+   "confidence": {
+    "level": "mid",
+    "reason": "採用実績がなく面接も一人のため"
+   },
+   "orderReasons": [
+    {
+     "text": "候補者との接点づくりが採用活動の起点になるためです。",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "text": "紹介経路を広げることで候補者接点を補強できるためです。",
+     "sourceIds": [
+      "S1"
+     ]
+    },
+    {
+     "text": "面接体制が一人のため、評価基準の整備を最後に置くためです。",
+     "sourceIds": [
+      "S4"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "採用アプローチの優先順位",
+    "funnel": "5種類の接点を採用への影響度で絞り込みました。",
+    "rows": [
+     {
+      "label": "候補者本人",
+      "score": 85,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "candidate"
+     },
+     {
+      "label": "候補者を紹介できる人",
+      "score": 75,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "referrer"
+     },
+     {
+      "label": "同職種の先輩",
+      "score": 55,
+      "verdict": "possible",
+      "sourceIds": [
+       "S4"
+      ],
+      "typeKey": "senior_peer"
+     },
+     {
+      "label": "採用担当の経験者",
+      "score": 45,
+      "verdict": "possible",
+      "sourceIds": [
+       "S4"
+      ],
+      "typeKey": "recruiter"
+     },
+     {
+      "label": "コミュニティ運営者",
+      "score": 30,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "community_host"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "1.22倍",
+     "label": "2025年平均の有効求人倍率",
+     "sourceIds": [
+      "S2"
+     ]
+    },
+    {
+     "value": "84.4%",
+     "label": "中途採用を実施した企業の割合",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "value": "3対7",
+     "label": "新卒と中途の採用比率",
+     "sourceIds": [
+      "S4"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "risk",
+     "text": "採用活動の実績がなく、候補者接点の立ち上げに時間がかかる可能性があります。"
+    },
+    {
+     "kind": "risk",
+     "text": "面接を一人で担うため、評価のばらつきや負荷集中が生じるおそれがあります。"
+    },
+    {
+     "kind": "unverified",
+     "text": "候補者の希望条件と提示条件の一致度は現時点では不明です。"
+    }
+   ],
+   "flow": [],
+   "steps": [
+    {
+     "title": "候補者との直接接点をつくる",
+     "doneCriteria": "候補者本人と一次面談の日程が1件決まる",
+     "why": null,
+     "personTypeKeys": [
+      "candidate",
+      "event"
+     ]
+    },
+    {
+     "title": "紹介経路を広げる",
+     "doneCriteria": "紹介者から候補者の紹介が1件得られる",
+     "why": null,
+     "personTypeKeys": [
+      "referrer",
+      "senior_peer",
+      "community_host"
+     ]
+    },
+    {
+     "title": "評価基準と面接プロセスを整える",
+     "doneCriteria": "評価項目をまとめた面接シートが1枚完成する",
+     "why": null,
+     "personTypeKeys": [
+      "recruiter",
+      "senior_peer"
+     ]
+    }
+   ],
+   "personTypes": [
+    {
+     "slot": "candidate",
+     "shortLabelId": "candidate",
+     "roleSituation": "フルスタックエンジニアとして転職を検討している候補者",
+     "allocation": 30,
+     "targetCount": 5,
+     "why": "採用の直接対象であり、接点の中心となるためです。",
+     "questions": [
+      "現在の開発経験と得意領域を教えてください。",
+      "転職を検討している理由は何ですか。",
+      "弊社のミッションに共感できる点はどこですか。"
+     ],
+     "countRule": "直接接点を持つ候補者を5名",
+     "recognizeHints": [
+      "フロントとバックエンドの両方を経験している",
+      "転職活動中である",
+      "ミッションへの共感を重視している"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "referrer",
+     "shortLabelId": "referrer",
+     "roleSituation": "エンジニア人脈を持ち候補者を紹介できる人",
+     "allocation": 20,
+     "targetCount": 4,
+     "why": "一人での採用活動を補う紹介経路として有効なためです。",
+     "questions": [
+      "知人にフルスタックエンジニアはいますか。",
+      "紹介する際に重視する点は何ですか。",
+      "どのような接点でエンジニアとつながっていますか。"
+     ],
+     "countRule": "紹介可能な人を4名",
+     "recognizeHints": [
+      "エンジニア人脈が広い",
+      "採用紹介の経験がある",
+      "技術コミュニティに参加している"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [
+      {
+       "viaAlias": "C13",
+       "why": "IT企業のプロジェクトマネージャーで技術者との接点が期待できるためです。"
+      }
+     ],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "senior_peer",
+     "shortLabelId": "senior_peer",
+     "roleSituation": "同職種の先輩として助言できるエンジニア",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "採用基準や訴求内容の助言が得られるためです。",
+     "questions": [
+      "フルスタックエンジニアに求められる力は何ですか。",
+      "採用時に見るべきポイントはどこですか。",
+      "魅力を伝える工夫は何がありますか。"
+     ],
+     "countRule": "助言可能な先輩を3名",
+     "recognizeHints": [
+      "豊富な開発経験がある",
+      "採用に関わった経験がある",
+      "後輩育成に関心がある"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "recruiter",
+     "shortLabelId": "recruiter",
+     "roleSituation": "採用担当の経験がありプロセス設計を支援できる人",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "一人面接の負荷を補う助言が期待できるためです。",
+     "questions": [
+      "採用プロセス設計で重視する点は何ですか。",
+      "面接評価の基準はどう作りますか。",
+      "候補者への訴求で効果的な方法は何ですか。"
+     ],
+     "countRule": "助言可能な経験者を2名",
+     "recognizeHints": [
+      "採用業務の経験がある",
+      "評価制度に詳しい",
+      "面接設計を支援している"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "professional_services"
+    },
+    {
+     "slot": "community_host",
+     "shortLabelId": "community_host",
+     "roleSituation": "技術者コミュニティを運営し接点を提供できる人",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "接点拡大の補助経路として限定的に有効なためです。",
+     "questions": [
+      "コミュニティの参加者はどんな層ですか。",
+      "エンジニアとの接点をどう作っていますか。",
+      "採用目的での参加は歓迎されますか。"
+     ],
+     "countRule": "接点提供が見込める運営者を2名",
+     "recognizeHints": [
+      "技術コミュニティを運営している",
+      "勉強会を主催している",
+      "エンジニアとのつながりが広い"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "community_nonprofit"
+    }
+   ],
+   "event": {
+    "allocation": 15,
+    "targetCount": 3
+   },
+   "allocationReasons": []
+  }
+ },
+ {
+  "run": "run-03",
+  "goalKind": "hiring",
+  "attempt": 1,
+  "issues": [
+   "personType community_host: target 1–5",
+   "personType event: not a template slot",
+   "allocation: target_out_of_range:community_host",
+   "personType community_host: not in any step",
+   "personType event: not in any step"
+  ],
+  "content": {
+   "outcome": "フルスタックエンジニア2名の採用",
+   "conclusion": "まず職務設計と魅力の言語化を固め、紹介経路を軸に候補者との接点をつくり、締切に向けて面接と処遇の合意まで進めます。",
+   "diagnosis": "目的が明確で、紹介を軸にする方針も決まっているため、進め方は十分に描けます。ただ、職務設計から受け入れまでを一人で担う前提なので、候補者に伝える材料を先に整えることが成否を分けます。面接も自分だけのため、判断基準を先に決めておくと迷いが減ります。締切が近いので、接点づくりと選考を並行して走らせるのが現実的です。",
+   "summary": [
+    {
+     "text": "中小企業では人手不足が深刻で、売上回復後も採用難が続くと整理されています。",
+     "bold": "人手不足が深刻",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S1"
+      }
+     ]
+    },
+    {
+     "text": "中途採用を実施する企業の割合は過去最高で、競争は激しくなっています。",
+     "bold": "過去最高",
+     "refs": [
+      {
+       "kind": "source",
+       "sourceId": "S3"
+      }
+     ]
+    },
+    {
+     "text": "紹介を軸にする方針は、候補者との接点づくりとして筋が通っています。",
+     "bold": "筋が通って",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "H3"
+      }
+     ]
+    },
+    {
+     "text": "魅力はミッションで語り、条件は柔軟に提示する方針です。",
+     "bold": "ミッション",
+     "refs": [
+      {
+       "kind": "answer",
+       "questionKey": "H4"
+      },
+      {
+       "kind": "answer",
+       "questionKey": "H2"
+      }
+     ]
+    }
+   ],
+   "verdict": "conditional",
+   "confidence": {
+    "level": "mid",
+    "reason": "方針は明確だが、一人で全工程を担うため"
+   },
+   "orderReasons": [
+    {
+     "text": "職務設計と魅力の言語化がないと、紹介してくれる人にも候補者にも価値が伝わらないためです。",
+     "sourceIds": [
+      "H4"
+     ]
+    },
+    {
+     "text": "紹介経路が決まっているので、接点づくりを選考より先に動かす必要があります。",
+     "sourceIds": [
+      "H3"
+     ]
+    },
+    {
+     "text": "面接は自分だけのため、判断基準を固めてから選考に入ると締切に間に合います。",
+     "sourceIds": [
+      "H6",
+      "H5"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "候補者接点の優先順位",
+    "funnel": "5種類の接点を、方針と締切で3種類に絞り込み",
+    "rows": [
+     {
+      "label": "候補者本人",
+      "score": 90,
+      "verdict": "preferred",
+      "sourceIds": [
+       "H3"
+      ],
+      "typeKey": "candidate"
+     },
+     {
+      "label": "候補者を紹介できる人",
+      "score": 85,
+      "verdict": "preferred",
+      "sourceIds": [
+       "H3"
+      ],
+      "typeKey": "referrer"
+     },
+     {
+      "label": "同職種の先輩",
+      "score": 60,
+      "verdict": "possible",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "senior_peer"
+     },
+     {
+      "label": "採用担当の経験者",
+      "score": 45,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "recruiter"
+     },
+     {
+      "label": "コミュニティ運営者",
+      "score": 30,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "H3"
+      ],
+      "typeKey": "community_host"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "1.22倍",
+     "label": "2025年平均の有効求人倍率",
+     "sourceIds": [
+      "S2"
+     ]
+    },
+    {
+     "value": "84.4%",
+     "label": "中途採用を実施した企業の割合",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "value": "3対7",
+     "label": "新卒と中途の正規社員採用の比率",
+     "sourceIds": [
+      "S4"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "risk",
+     "text": "一人で職務設計から受け入れまで担うため、接点づくりと選考が同時に進まず遅れる恐れがあります。"
+    },
+    {
+     "kind": "risk",
+     "text": "締切が1か月以内のため、紹介からの候補者接触が集まらないと選考に十分な時間が取れません。"
+    },
+    {
+     "kind": "unverified",
+     "text": "紹介者が実際に候補者を紹介してくれるかは、現時点の情報では確認できていません。"
+    }
+   ],
+   "flow": [],
+   "steps": [
+    {
+     "title": "職務定義と魅力の言語化",
+     "doneCriteria": "職務内容・求める経験・ミッションの伝え方を含む採用資料が1本完成する",
+     "why": null,
+     "personTypeKeys": [
+      "candidate",
+      "senior_peer"
+     ]
+    },
+    {
+     "title": "紹介経路での候補者接点づくり",
+     "doneCriteria": "候補者本人または紹介者との面談が複数件決まる",
+     "why": null,
+     "personTypeKeys": [
+      "referrer",
+      "candidate",
+      "event"
+     ]
+    },
+    {
+     "title": "面接と処遇の合意",
+     "doneCriteria": "2名の候補者が条件面も含めて内定を承諾する",
+     "why": null,
+     "personTypeKeys": [
+      "candidate",
+      "recruiter",
+      "senior_peer"
+     ]
+    }
+   ],
+   "personTypes": [
+    {
+     "slot": "candidate",
+     "shortLabelId": "candidate",
+     "roleSituation": "フルスタックの開発経験を持つエンジニアが、ミッションに共感して転職を検討している状況",
+     "allocation": 30,
+     "targetCount": 5,
+     "why": "採用の直接の対象であり、方針としても候補者本人との接点が中心です。",
+     "questions": [
+      "これまでフロントとバックエンドの両方を担当した経験を教えてください。",
+      "転職で最も重視している点は何ですか。",
+      "入社後最初に取り組みたいことは何ですか。"
+     ],
+     "countRule": "紹介経路から接触できる候補者本人の数",
+     "recognizeHints": [
+      "フルスタックの実務経験",
+      "ミッションへの共感",
+      "転職を前向きに検討"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [
+      {
+       "viaAlias": "C8",
+       "why": "製造業の部長として社外の技術人材との接点を持つ可能性があるため"
+      },
+      {
+       "viaAlias": "C13",
+       "why": "IT企業のプロジェクトマネージャーとして開発人材の紹介が期待できるため"
+      }
+     ],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "referrer",
+     "shortLabelId": "referrer",
+     "roleSituation": "技術人材の知人ネットワークを持つ人が、信頼できる候補者を紹介できる状況",
+     "allocation": 25,
+     "targetCount": 4,
+     "why": "採用経路が紹介のため、候補者につながる紹介者の存在が鍵になります。",
+     "questions": [
+      "知人のエンジニアで転職を考えている方はいますか。",
+      "どのような技術領域の方とつながりがありますか。",
+      "紹介の際に気をつけている点はありますか。"
+     ],
+     "countRule": "候補者を紹介できると見込める人の数",
+     "recognizeHints": [
+      "技術人材の知人ネットワーク",
+      "紹介実績",
+      "エンジニアコミュニティへの参加"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [
+      {
+       "viaAlias": "C82",
+       "why": "創業者支援コミュニティの責任者として技術人材との接点が期待できるため"
+      },
+      {
+       "viaAlias": "C80",
+       "why": "投資パートナーとして創業期の技術チームとつながっている可能性があるため"
+      }
+     ],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "senior_peer",
+     "shortLabelId": "senior_peer",
+     "roleSituation": "フルスタック開発の経験が長い先輩エンジニアが、採用の現場で技術観点の助言を求められている状況",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "面接が自分だけのため、技術観点の助言をくれる先輩が判断を支えます。",
+     "questions": [
+      "フルスタック人材を見極める際に重視する点は何ですか。",
+      "面接で聞くと有効な質問は何ですか。",
+      "入社後の育成で気をつけることは何ですか。"
+     ],
+     "countRule": "技術観点で助言を得られる先輩の数",
+     "recognizeHints": [
+      "フルスタックの実務経験が長い",
+      "採用面接の経験",
+      "育成への関心"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": "technology_internet"
+    },
+    {
+     "slot": "recruiter",
+     "shortLabelId": "recruiter",
+     "roleSituation": "採用担当の経験を持つ人が、少人数の採用をどう進めるかの助言を求められている状況",
+     "allocation": 15,
+     "targetCount": 2,
+     "why": "職務設計や処遇設計の勘所を、経験者から短期間で補えるためです。",
+     "questions": [
+      "少人数での採用で最初に整えるべきことは何ですか。",
+      "処遇条件はどう組み立てると良いですか。",
+      "候補者対応で気をつける点は何ですか。"
+     ],
+     "countRule": "採用経験の助言を得られる人の数",
+     "recognizeHints": [
+      "採用担当の実務経験",
+      "少人数採用の知見",
+      "処遇設計の経験"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "community_host",
+     "shortLabelId": "community_host",
+     "roleSituation": "技術コミュニティを運営する人が、転職を考えるエンジニアとの接点を持っている状況",
+     "allocation": 0,
+     "targetCount": 0,
+     "why": "今回の方針では紹介経路が中心のため、優先度を下げています。",
+     "questions": [
+      "エンジニアが集まる場はどこにありますか。",
+      "転職を考える方はどんな経緯で参加しますか。",
+      "採用企業との接点づくりはどうしていますか。"
+     ],
+     "countRule": "接点を持てるコミュニティ運営者の数",
+     "recognizeHints": [
+      "技術コミュニティの運営",
+      "エンジニアとの接点"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    },
+    {
+     "slot": "event",
+     "shortLabelId": "candidate",
+     "roleSituation": "エンジニア向けの交流イベントに参加する人が、登壇や名刺交換を通じて採用企業と出会う状況",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "短期間で複数の候補者や紹介者と接点を持てる場として活用します。",
+     "questions": [
+      "参加する目的は何ですか。",
+      "どんな技術領域に関心がありますか。",
+      "転職活動の状況を教えてください。"
+     ],
+     "countRule": "イベントで接点を持てる参加者の数",
+     "recognizeHints": [
+      "エンジニア交流会への参加",
+      "登壇やLTの経験"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "primaryIndustryId": null
+    }
+   ],
+   "event": {
+    "allocation": 15,
+    "targetCount": 3
+   },
+   "allocationReasons": [
+    "コミュニティ運営者は方針と合わないため配分を外し、その分を候補者本人と紹介者に寄せました。"
+   ]
+  }
+ }
+]

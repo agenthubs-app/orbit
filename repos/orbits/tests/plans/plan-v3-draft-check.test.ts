@@ -161,7 +161,7 @@ test("a reference to an unknown sourceId or questionKey deletes the sentence; un
   assert.deepEqual(unverified.slice(-3), [draft.orderReasons[1]!.text, `${draft.keyNumbers[0]!.value} ${draft.keyNumbers[0]!.label}`, draft.comparison!.rows[1]!.label]);
 });
 
-test("rule 4: bad enums, too few steps, an empty doneCriteria or a type outside every step are refused", () => {
+test("rule 4: bad enums, too few steps or an empty doneCriteria are refused (a type outside every step is repaired since R38-01)", () => {
   const base = good();
   const bad = (mutate: (draft: DraftOutputV3) => void, pattern: RegExp) => {
     const draft = structuredClone(base.draft);
@@ -174,6 +174,14 @@ test("rule 4: bad enums, too few steps, an empty doneCriteria or a type outside 
   bad((draft) => { (draft.confidence as { level: string }).level = "sure"; }, /confidence/u);
   bad((draft) => { draft.steps = draft.steps.slice(0, 1); }, /^steps: 2–4$/u);
   bad((draft) => { draft.steps[0]!.doneCriteria = " "; }, /doneCriteria is empty/u);
-  bad((draft) => { draft.steps[0]!.personTypeKeys = draft.steps[0]!.personTypeKeys.slice(1); }, /not in any step/u);
+  const orphan = structuredClone(base.draft);
+  const dropped = orphan.steps[0]!.personTypeKeys[0]!;
+  for (const step of orphan.steps) step.personTypeKeys = step.personTypeKeys.filter((key) => key !== dropped);
+  const repaired = checkDraftV3(orphan, checkInput(base.input));
+  assert.equal(repaired.ok, true, JSON.stringify((repaired as { issues?: string[] }).issues));
+  if (repaired.ok === true) {
+    assert.ok(repaired.repairs?.includes(`orphan_type_attached:${dropped}`));
+    assert.ok(repaired.value.steps.at(-1)!.personTypeKeys.includes(dropped));
+  }
   bad((draft) => { draft.outcome = "二十一文字より長い目標の結果をここに書いてみる文"; }, /^outcome:/u);
 });
