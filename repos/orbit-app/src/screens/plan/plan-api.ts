@@ -40,6 +40,8 @@ import type {
   PlanOpenResult,
   PlanQuotaResponse,
   PlanReviewView,
+  ContactManualFactResult,
+  PlanHomeView,
 } from "../../api/contract/plan-v2";
 import { contactsListPath } from "../../api/endpoints";
 import {
@@ -66,6 +68,8 @@ import {
   planOpenResultSchema,
   planQuotaResponseSchema,
   planReviewViewSchema,
+  contactManualFactResultSchema,
+  planHomeViewSchema,
 } from "../../api/schema/plan-v2";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -140,6 +144,13 @@ export interface PlanApi {
   openGoal(planId: string): Promise<PlanResult<PlanOpenResult>>;
   legacyList(): Promise<PlanResult<PlanLegacyListResponse>>;
   legacyDetail(planId: string): Promise<PlanResult<PlanLegacyDetail>>;
+  // R37b: the v3 plan home (R37a endpoints; answers are the whole home block without `seats`).
+  /** Ticks / unticks one 「先做的事」 item; `actionKey` (`c:<id>` / `e:<id>`) is URL-encoded in the path. */
+  homeDone(planId: string, actionKey: string, done: boolean, idempotencyKey: string): Promise<PlanResult<PlanHomeView>>;
+  /** Regenerates one prep card (counts toward the daily plan-flow limit; 409 `LIMIT` when used up). */
+  homeRegenerate(planId: string, actionKey: string, idempotencyKey: string): Promise<PlanResult<PlanHomeView>>;
+  /** Adds one manual fact (≤80 characters) to a contact; that contact's prep cards turn stale. */
+  addContactFact(contactId: string, text: string, idempotencyKey: string): Promise<PlanResult<ContactManualFactResult>>;
 }
 
 type Method = "get" | "post" | "patch" | "delete";
@@ -161,6 +172,9 @@ export function createPlanApi(client: OrbitApiClient, language: string): PlanApi
   return {
     achieve: (id, expectedRevision, idempotencyKey) => call("post", plan(id, "/achieve"), planAchievedSchema, { expectedRevision, idempotencyKey }),
     achievement: (id) => call("get", plan(id, "/achievement"), planAchievementViewSchema),
+    addContactFact: (contactId, text, idempotencyKey) => call("post", `/api/contacts/${segment(contactId)}/facts`, contactManualFactResultSchema, { idempotencyKey, text }),
+    homeDone: (id, actionKey, done, idempotencyKey) => call("post", plan(id, `/home/actions/${segment(actionKey)}/done`), planHomeViewSchema, { done, idempotencyKey }),
+    homeRegenerate: (id, actionKey, idempotencyKey) => call("post", plan(id, `/home/actions/${segment(actionKey)}/regenerate`), planHomeViewSchema, { idempotencyKey }),
     currentReview: (id) => call("get", plan(id, "/reviews/current"), planReviewViewSchema),
     deleteGoal: (id, idempotencyKey) => call("delete", plan(id), planDeletedSchema, { idempotencyKey }),
     editGoal: (id, body) => call("patch", plan(id, "/goal"), planGoalEditResultSchema, body),

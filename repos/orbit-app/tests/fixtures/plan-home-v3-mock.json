@@ -1,0 +1,3702 @@
+{
+ "fund": {
+  "planId": "plan_v16_fund",
+  "revision": 1,
+  "goal": "初めての資金調達をしたい",
+  "goalKind": "fundraising",
+  "purposeText": "最初の資金調達を獲得する",
+  "startsOn": "2026-10-30",
+  "premise": [
+   {
+    "key": "purpose",
+    "label": "目的",
+    "value": "最初の資金調達を獲得する",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "team",
+    "label": "チーム",
+    "value": "2 名 · 本業と並行",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "F1",
+    "label": "資金調達の段階",
+    "value": "初めての調達、金額は未定",
+    "source": "q1",
+    "guessed": false
+   },
+   {
+    "key": "F2",
+    "label": "チーム",
+    "value": "2 人",
+    "source": "q2",
+    "guessed": false
+   },
+   {
+    "key": "F3",
+    "label": "プロダクト",
+    "value": "公開済み、有料顧客はまだなし",
+    "source": "q3",
+    "guessed": false
+   }
+  ],
+  "content": {
+   "schemaVersion": 3,
+   "outcome": "最初の資金調達を獲得する",
+   "summary": {
+    "text": "あなたのプロダクトは公開済みですが、有料顧客はまだいません。売上データがない段階で投資家が初回面談で最も聞くのは収益予測と資金使途。また初めて調達するチームは、投資契約の優先清算・買戻しなどの条項で不利になりがちです。どちらも準備に時間がかかるので、先に固めてから投資家に会うほうが自信を持って話せ、遠回りも減ります。",
+    "marks": [
+     {
+      "start": 10,
+      "end": 29
+     },
+     {
+      "start": 56,
+      "end": 65
+     },
+     {
+      "start": 85,
+      "end": 98
+     }
+    ],
+    "refs": [
+     {
+      "start": 0,
+      "end": 29,
+      "ref": {
+       "kind": "answer",
+       "questionKey": "F3"
+      }
+     },
+     {
+      "start": 29,
+      "end": 65,
+      "ref": {
+       "kind": "source",
+       "sourceId": "S9"
+      }
+     },
+     {
+      "start": 65,
+      "end": 98,
+      "ref": {
+       "kind": "source",
+       "sourceId": "S10"
+      }
+     }
+    ]
+   },
+   "verdict": "feasible",
+   "confidence": {
+    "level": "mid",
+    "reason": "日本の初期資金調達の公開データは十分。ただし売上データがなく、投資家はチームと初期ユーザーを重視するため「中」。"
+   },
+   "orderReasons": [
+    {
+     "text": "売上データがない段階では、投資家はまず収益予測と資金使途を聞く。ここが固まっていないと面談は 1 回目で止まる",
+     "sourceIds": [
+      "S9"
+     ]
+    },
+    {
+     "text": "初めて調達するチームは優先清算や買戻しの条項で不利になりやすい。契約はタームシートに署名する前に確認する",
+     "sourceIds": [
+      "S10"
+     ]
+    },
+    {
+     "text": "エンジェルとシードファンドはデータよりチームと初期ユーザーを見る。数字と契約を整えてから、この 2 類型に集中する",
+     "sourceIds": [
+      "S1"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "先に会う投資家",
+    "funnel": "日本の初期投資家 7 類型を「初回ラウンドに出資」と「海外チームを見る」で 5 類型に絞る",
+    "rows": [
+     {
+      "label": "エンジェル投資家",
+      "score": 92,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "angel"
+     },
+     {
+      "label": "VC シードファンド",
+      "score": 85,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "vc_partner"
+     },
+     {
+      "label": "事業会社の投資",
+      "score": 60,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "cvc"
+     },
+     {
+      "label": "政策金融（融資）",
+      "score": 55,
+      "verdict": "possible",
+      "sourceIds": [
+       "S4"
+      ],
+      "typeKey": null
+     },
+     {
+      "label": "大型グロースファンド",
+      "score": 18,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S5"
+      ],
+      "typeKey": null
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "7,793億",
+     "label": "2024 年の国内スタートアップ資金調達総額（円）",
+     "sourceIds": [
+      "S6"
+     ]
+    },
+    {
+     "value": "36%",
+     "label": "新設 VC ファンドに占める事業会社系の割合",
+     "sourceIds": [
+      "S7"
+     ]
+    },
+    {
+     "value": "67.9%",
+     "label": "開業資金のうち金融機関からの借入の割合",
+     "sourceIds": [
+      "S8"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "unverified",
+     "text": "日本のエンジェルの一般的な投資額はブログでしか確認できず、公的統計はない。"
+    },
+    {
+     "kind": "risk",
+     "text": "売上データがないため VC 面談が 1 回目で止まる可能性がある。ステージ 3 の利用データが鍵。"
+    }
+   ],
+   "sources": [
+    {
+     "id": "S1",
+     "kind": "landscape",
+     "landscapeId": "L-101",
+     "version": 1
+    },
+    {
+     "id": "S2",
+     "kind": "web",
+     "url": "https://example.org/jvca/stats",
+     "title": "JVCA 年次統計",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "JVCA 年次統計（抜粋）",
+     "query": "JVCA 年次統計 シード"
+    },
+    {
+     "id": "S3",
+     "kind": "web",
+     "url": "https://example.org/meti/startup-support",
+     "title": "METI 創業支援レポート",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "METI 創業支援レポート（抜粋）",
+     "query": "経産省 創業支援 レポート"
+    },
+    {
+     "id": "S4",
+     "kind": "landscape",
+     "landscapeId": "L-103",
+     "version": 1
+    },
+    {
+     "id": "S5",
+     "kind": "web",
+     "url": "https://example.org/jvca/stats-by-size",
+     "title": "JVCA 年次統計（ファンド規模別）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "JVCA 年次統計（ファンド規模別）（抜粋）",
+     "query": "JVCA ファンド規模"
+    },
+    {
+     "id": "S6",
+     "kind": "web",
+     "url": "https://example.org/initial/2024",
+     "title": "INITIAL 2024 年報",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "INITIAL 2024 年報（抜粋）",
+     "query": "スタートアップ 資金調達 総額 2024"
+    },
+    {
+     "id": "S7",
+     "kind": "landscape",
+     "landscapeId": "L-102",
+     "version": 1
+    },
+    {
+     "id": "S8",
+     "kind": "web",
+     "url": "https://example.org/jfc/survey",
+     "title": "日本政策金融公庫 新規開業実態調査",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "日本政策金融公庫 新規開業実態調査（抜粋）",
+     "query": "新規開業 実態調査 資金"
+    },
+    {
+     "id": "S9",
+     "kind": "web",
+     "url": "https://example.org/blog/first-meeting",
+     "title": "初期投資家との面談でよく聞かれること（投資家ブログ）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "初期投資家との面談でよく聞かれること（投資家ブログ）（抜粋）",
+     "query": "エンジェル 面談 質問"
+    },
+    {
+     "id": "S10",
+     "kind": "web",
+     "url": "https://example.org/law/preferred-shares",
+     "title": "種類株式・条項の解説（法律事務所コラム）",
+     "fetchedAt": "2026-03-20T09:00:00.000Z",
+     "snippet": "種類株式・条項の解説（法律事務所コラム）（抜粋）",
+     "query": "優先株 条項 解説"
+    }
+   ],
+   "diagnosis": "あなたのプロダクトは公開済みですが、有料顧客はまだいません。売上データがない段階で投資家が初回面談で最も聞くのは収益予測と資金使途。また初めて調達するチームは、投資契約の優先清算・買戻しなどの条項で不利になりがちです。どちらも準備に時間がかかるので、先に固めてから投資家に会うほうが自信を持って話せ、遠回りも減ります。",
+   "conclusion": "まず財務と契約を整えてから、投資家に会うことを勧めます",
+   "flow": [],
+   "steps": [
+    {
+     "key": "s1",
+     "title": "財務と法務を固める",
+     "doneCriteria": "18 か月の資金使途表ができ、投資契約のひな形を弁護士に見てもらった",
+     "why": "数字が追及に耐えるように",
+     "personTypeKeys": [
+      "cfo",
+      "lawyer"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s2",
+     "title": "投資家と的を絞って対話",
+     "doneCriteria": "エンジェルかシードファンド 2 人と 2 回目の面談まで進む",
+     "why": "広く浅くではなく、少なく深く",
+     "personTypeKeys": [
+      "funded_founder",
+      "angel",
+      "vc_partner"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s3",
+     "title": "イベントで利用者を連れてくる",
+     "doneCriteria": "3 社が利用中で、利用データを示せる",
+     "why": "ストーリーに証拠を足す",
+     "personTypeKeys": [
+      "cvc",
+      "event"
+     ],
+     "completedAt": null
+    }
+   ],
+   "personTypes": [
+    {
+     "itemId": "plan_v16_fund_cfo",
+     "key": "cfo",
+     "slot": "cfo",
+     "shortLabelId": "cfo",
+     "shortLabel": "元 CFO",
+     "emoji": "📊",
+     "roleSituation": "厳しい資金調達で数字と資金計画を管理してきた人",
+     "allocation": 10,
+     "targetCount": 1,
+     "why": "",
+     "questions": [
+      "初回の投資家が最も聞く 3 つの数字は？",
+      "日本の投資契約で不利になりやすい条項は？",
+      "18 か月の資金使途はどう分ける？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "元 CFO"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_fund_lawyer",
+     "key": "lawyer",
+     "slot": "lawyer",
+     "shortLabelId": "lawyer",
+     "shortLabel": "投資契約の弁護士",
+     "emoji": "⚖️",
+     "roleSituation": "投資契約と会社設立の手続きを扱う弁護士",
+     "allocation": 10,
+     "targetCount": 1,
+     "why": "",
+     "questions": [
+      "シードでよく使う契約のひな形は？",
+      "株式とオプションで先に準備することは？",
+      "費用はどのくらい？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "投資契約の弁護士"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_fund_funded_founder",
+     "key": "funded_founder",
+     "slot": "funded_founder",
+     "shortLabelId": "funded_founder",
+     "shortLabel": "調達経験のある起業家",
+     "emoji": "🧗",
+     "roleSituation": "日本でゼロからシードラウンドを終えた起業家",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "",
+     "questions": [
+      "最初の投資意向書はどう取った？",
+      "先に会うべき投資家は誰？",
+      "ピッチ資料で一番大事なページは？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "調達経験のある起業家"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_fund_angel",
+     "key": "angel",
+     "slot": "angel",
+     "shortLabelId": "angel",
+     "shortLabel": "エンジェル投資家",
+     "emoji": "👼",
+     "roleSituation": "少額の資金と紹介で新しいチームを支える個人",
+     "allocation": 20,
+     "targetCount": 2,
+     "why": "",
+     "questions": [
+      "初期案件で最も重視することは？",
+      "一般的な投資額と条件は？",
+      "ほかに興味を持ちそうな人は？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "エンジェル投資家"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_fund_vc_partner",
+     "key": "vc_partner",
+     "slot": "vc_partner",
+     "shortLabelId": "vc_partner",
+     "shortLabel": "VC パートナー",
+     "emoji": "🏦",
+     "roleSituation": "シードで日本展開力を評価するファンドのパートナー",
+     "allocation": 20,
+     "targetCount": 3,
+     "why": "",
+     "questions": [
+      "今年のシードの投資ペースは？",
+      "日本展開で最も見たい証拠は？",
+      "次の面談までに準備することは？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "VC パートナー"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_fund_cvc",
+     "key": "cvc",
+     "slot": "cvc",
+     "shortLabelId": "cvc",
+     "shortLabel": "事業会社の投資担当",
+     "emoji": "🏢",
+     "roleSituation": "新しい事業の場を探している企業投資部門の責任者",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "",
+     "questions": [
+      "いま探している事業連携は？",
+      "試験導入の決裁にかかる期間は？",
+      "投資と連携はどちらを先に話す？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "事業会社の投資担当"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s3"
+    }
+   ],
+   "event": {
+    "allocation": 10,
+    "targetCount": 2
+   },
+   "citations": [
+    {
+     "id": "L-101",
+     "version": 1
+    },
+    {
+     "id": "L-103",
+     "version": 1
+    },
+    {
+     "id": "L-102",
+     "version": 1
+    }
+   ],
+   "allocationReasons": [],
+   "basis": [
+    {
+     "kind": "premise",
+     "ref": "premise@1",
+     "label": "確定した前提 5件"
+    }
+   ]
+  },
+  "score": {
+   "total": 26,
+   "talked": 26,
+   "skipped": 0,
+   "overflow": 0,
+   "remainingToFull": 74,
+   "todayDelta": 0,
+   "segments": [
+    {
+     "key": "cfo",
+     "shortLabel": "元 CFO",
+     "emoji": "📊",
+     "allocation": 10,
+     "earned": 10,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "lawyer",
+     "shortLabel": "投資契約の弁護士",
+     "emoji": "⚖️",
+     "allocation": 10,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "funded_founder",
+     "shortLabel": "調達経験のある起業家",
+     "emoji": "🧗",
+     "allocation": 15,
+     "earned": 10,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "angel",
+     "shortLabel": "エンジェル投資家",
+     "emoji": "👼",
+     "allocation": 20,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "vc_partner",
+     "shortLabel": "VC パートナー",
+     "emoji": "🏦",
+     "allocation": 20,
+     "earned": 6,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "cvc",
+     "shortLabel": "事業会社の投資担当",
+     "emoji": "🏢",
+     "allocation": 15,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "event",
+     "shortLabel": "イベント",
+     "emoji": "🎟️",
+     "allocation": 10,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    }
+   ]
+  },
+  "quota": {
+   "reviewLeftThisMonth": 3,
+   "reviewMonthlyLimit": 3,
+   "manualEditAvailable": true,
+   "activeGoals": 4,
+   "activeGoalLimit": 2
+  },
+  "achievedAt": null,
+  "sample": true,
+  "todayChance": {
+   "label": "11月5日（木）の ロボティクス起業家ミートアップ に エンジェル投資家 が 2人来ます。1人と話せば +10。",
+   "points": 10,
+   "href": "/plans/plan_v16_fund/types/plan_v16_fund_angel",
+   "kind": "event",
+   "basis": "ロボティクス起業家ミートアップ の登壇者・出展から推定 約2名 · エンジェル投資家 は 0 / 2人で未達（1人 10点）",
+   "actionLabel": "会う準備をする",
+   "progressLabel": "エンジェル投資家 · 0 / 2人",
+   "eventId": "demo-event-robotics-meetup"
+  },
+  "typeStats": [
+   {
+    "itemId": "plan_v16_fund_cfo",
+    "candidates": 1,
+    "events": 1,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_fund_lawyer",
+    "candidates": 0,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_fund_funded_founder",
+    "candidates": 2,
+    "events": 2,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_fund_angel",
+    "candidates": 0,
+    "events": 1,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_fund_vc_partner",
+    "candidates": 1,
+    "events": 1,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_fund_cvc",
+    "candidates": 0,
+    "events": 1,
+    "introRoutes": 0
+   }
+  ],
+  "stepProgress": [
+   {
+    "stepKey": "s1",
+    "label": "1 / 2",
+    "done": 1,
+    "total": 2,
+    "parts": [
+     {
+      "key": "cfo",
+      "shortLabel": "元 CFO",
+      "emoji": "📊",
+      "unit": "people",
+      "done": 1,
+      "total": 1,
+      "skipped": false
+     },
+     {
+      "key": "lawyer",
+      "shortLabel": "投資契約の弁護士",
+      "emoji": "⚖️",
+      "unit": "people",
+      "done": 0,
+      "total": 1,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s2",
+    "label": "3 / 8",
+    "done": 3,
+    "total": 8,
+    "parts": [
+     {
+      "key": "funded_founder",
+      "shortLabel": "調達経験のある起業家",
+      "emoji": "🧗",
+      "unit": "people",
+      "done": 2,
+      "total": 3,
+      "skipped": false
+     },
+     {
+      "key": "angel",
+      "shortLabel": "エンジェル投資家",
+      "emoji": "👼",
+      "unit": "people",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     },
+     {
+      "key": "vc_partner",
+      "shortLabel": "VC パートナー",
+      "emoji": "🏦",
+      "unit": "people",
+      "done": 1,
+      "total": 3,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s3",
+    "label": "0 / 5",
+    "done": 0,
+    "total": 5,
+    "parts": [
+     {
+      "key": "cvc",
+      "shortLabel": "事業会社の投資担当",
+      "emoji": "🏢",
+      "unit": "people",
+      "done": 0,
+      "total": 3,
+      "skipped": false
+     },
+     {
+      "key": "event",
+      "shortLabel": "イベント",
+      "emoji": "🎟️",
+      "unit": "events",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     }
+    ]
+   }
+  ],
+  "stepSuggestions": [],
+  "recentAwards": [
+   {
+    "awardLogId": "plan_v16_fund_award_c_v16_sato",
+    "itemId": "plan_v16_fund_cfo",
+    "typeKey": "cfo",
+    "shortLabel": "元 CFO",
+    "emoji": "📊",
+    "points": 10,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "佐藤 健",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_fund_award_c_v16_yamamoto",
+    "itemId": "plan_v16_fund_funded_founder",
+    "typeKey": "funded_founder",
+    "shortLabel": "調達経験のある起業家",
+    "emoji": "🧗",
+    "points": 5,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "山本 彩",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_fund_award_c_v16_li",
+    "itemId": "plan_v16_fund_funded_founder",
+    "typeKey": "funded_founder",
+    "shortLabel": "調達経験のある起業家",
+    "emoji": "🧗",
+    "points": 5,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "李 明",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_fund_award_c_v16_tanaka",
+    "itemId": "plan_v16_fund_vc_partner",
+    "typeKey": "vc_partner",
+    "shortLabel": "VC パートナー",
+    "emoji": "🏦",
+    "points": 6,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "田中 誠",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   }
+  ],
+  "pending": [],
+  "sinceConfirmed": {
+   "talkedPeople": 4,
+   "events": 0,
+   "stepsDone": 0
+  },
+  "recommendedEvents": [
+   {
+    "eventId": "demo-event-saas-summit",
+    "title": "SaaS Summit 2026",
+    "startsAt": "2026-10-22T10:00:00+09:00",
+    "venue": "東京・虎ノ門",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 53,
+     "verdict": "conditional",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 7,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "事業会社の投資担当 約4名 · VC パートナー 約3名"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 10,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "登壇者のみ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 16,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 30分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 45分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🎤",
+    "fitLabel": "VC パートナー 約3名 · 事業会社の投資担当 約4名",
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 28
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 80
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-cfo-night",
+    "title": "CFO Night Tokyo vol.18",
+    "startsAt": "2026-10-09T19:00:00+09:00",
+    "venue": "東京・丸の内",
+    "expectedCount": null,
+    "fee": 3000,
+    "score": {
+     "total": 52,
+     "verdict": "conditional",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 3,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "元 CFO 6名 · 調達経験のある起業家 3名"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 12,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "申込者タグ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 17,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥3,000",
+        "移動 25分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 60分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🥂",
+    "fitLabel": "調達経験のある起業家 3名",
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 25
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 85
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-robotics-meetup",
+    "title": "ロボティクス起業家ミートアップ",
+    "startsAt": "2026-11-05T19:00:00+09:00",
+    "venue": "東京・渋谷",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 51,
+     "verdict": "conditional",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 7,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "エンジェル投資家 約2名 · 調達経験のある起業家 約5名"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 9,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "過去回の参加者のみ"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 18,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 35分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 7,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 30分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🤝",
+    "fitLabel": "エンジェル投資家 約2名 · 調達経験のある起業家 約5名",
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 27
+     },
+     "people": {
+      "value": 85
+     },
+     "timeCost": {
+      "value": 90
+     }
+    }
+   }
+  ],
+  "home": {
+   "state": "ready",
+   "lead": "この段階の目標は、投資家に聞かれても数字で答えられるようにすること。下の数件がいちばん始めやすく、助けになります。",
+   "actions": [
+    {
+     "actionKey": "c:c_v16_sato",
+     "kind": "contact",
+     "contactId": "c_v16_sato",
+     "eventId": null,
+     "title": "佐藤 健さんと財務モデルを話す",
+     "reason": {
+      "text": "「公開済み、有料顧客はまだなし」と答えたので、投資家は収益予測の根拠を詳しく聞いてきます。名刺によると彼は CFO 経験者で、ここに一番詳しい人です。",
+      "marks": [
+       {
+        "start": 27,
+        "end": 34
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": "cfo",
+     "done": false,
+     "avatar": "佐",
+     "meta": "元 CFO · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "元 CFO · ミライ会計（会計 / 財務）",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2025/09/18 に名刺を読み取り、関連イベント：JETRO 起業交流会",
+        "source": "名刺の記録"
+       },
+       {
+        "key": "common",
+        "value": "あなたは中国出身、相手は上海で働いていた",
+        "source": "あなたの資料 + メモ"
+       }
+      ],
+      "usedFacts": [
+       {
+        "id": "fx_sato_1",
+        "text": "上海で 3 年働いていた話になった",
+        "date": "2025-09-18",
+        "memoId": "memo_fx_sato_1"
+       }
+      ],
+      "usedAnswers": [
+       "F3"
+      ],
+      "hook": {
+       "label": "前回の話から",
+       "reason": "メモに前回話した話題があります。最初にそれに触れると、相手も思い出しやすく、覚えていたことも伝わります。"
+      },
+      "draft": {
+       "text": "佐藤さん、こんにちは。去年 9 月の JETRO 起業交流会で名刺を交換した X（星橋テック）です。そのとき上海で 3 年働いていらしたとうかがい、印象に残っています。いま資金調達の準備をしていて、プロダクトは公開済みで、有料顧客はまだいません。収益予測が甘くないかが一番の心配で、元 CFOの佐藤さんにご意見をいただけないでしょうか。30 分で十分です。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 30,
+         "ref": {
+          "kind": "card",
+          "field": "met"
+         }
+        },
+        {
+         "start": 41,
+         "end": 46,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 54,
+         "end": 68,
+         "ref": {
+          "kind": "fact",
+          "factId": "fx_sato_1"
+         }
+        },
+        {
+         "start": 99,
+         "end": 122,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "F3"
+         }
+        },
+        {
+         "start": 141,
+         "end": 146,
+         "ref": {
+          "kind": "card",
+          "field": "who"
+         }
+        }
+       ]
+      },
+      "gaps": [
+       "interaction"
+      ],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "c:c_v16_yamamoto",
+     "kind": "contact",
+     "contactId": "c_v16_yamamoto",
+     "eventId": null,
+     "title": "山本 彩さんと初回調達の契約を話す",
+     "reason": {
+      "text": "名刺によると彼女は HR SaaS の共同創業者で、あなたと同じく日本で SaaS を起業しています。契約の半分はまだ聞ける人がいません。",
+      "marks": [
+       {
+        "start": 10,
+        "end": 24
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 2,
+     "typeKey": "funded_founder",
+     "done": false,
+     "avatar": "山",
+     "meta": "Co-founder · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "Co-founder · ワークリンク（HR SaaS）",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2026/05/14 に名刺を読み取り、関連イベントなし",
+        "source": "名刺の記録"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [
+       "F1"
+      ],
+      "hook": {
+       "label": "自己紹介と小さなお願い",
+       "reason": "情報が少ないときは距離を詰めすぎず、誰なのか、なぜ彼女なのか（役職が合う）を伝え、お願いを小さくします。"
+      },
+      "draft": {
+       "text": "山本さん、こんにちは。今年 5 月に名刺を交換した X です。日本で中小企業向けの顧客管理 SaaS（星橋テック）をつくっています。初めての資金調達で一番不安なのが投資契約で、同じく日本で SaaS を起業された方に、弁護士の探し方や気をつける条項をうかがえればと思っています。オンラインで 20 分ほどいかがでしょうか。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 17,
+         "ref": {
+          "kind": "card",
+          "field": "met"
+         }
+        },
+        {
+         "start": 51,
+         "end": 56,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 66,
+         "end": 74,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "F1"
+         }
+        },
+        {
+         "start": 91,
+         "end": 106,
+         "ref": {
+          "kind": "card",
+          "field": "who"
+         }
+        }
+       ]
+      },
+      "gaps": [
+       "memo",
+       "interaction"
+      ],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "e:ev_v16_startup_night",
+     "kind": "event",
+     "contactId": null,
+     "eventId": "ev_v16_startup_night",
+     "title": "11/12 Startup Night に行ってみる",
+     "reason": {
+      "text": "イベント紹介に投資家と起業家の自由交流とあり、まず投資家が何を気にしているのかを聞くのに向いています。",
+      "marks": [
+       {
+        "start": 7,
+        "end": 19
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": null,
+     "done": false,
+     "avatar": "🎟️",
+     "meta": "渋谷 · 投資家と起業家の交流",
+     "prep": {
+      "rows": [
+       {
+        "key": "when_where",
+        "value": "11/12（水）19:00 · 渋谷",
+        "source": "イベントページ"
+       },
+       {
+        "key": "about",
+        "value": "投資家と初期の起業家の自由交流会。ピッチの時間はなし",
+        "source": "イベントページ"
+       },
+       {
+        "key": "plan_fit",
+        "value": "ステージ 1 で投資家の関心を知り、ステージ 2 で面談を申し込む",
+        "source": "—"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [],
+      "hook": {
+       "label": "先に聞いてから話す",
+       "reason": "まず相手が最近見ている案件を聞き、それから一言で自己紹介すると、いきなり製品の話をするより会話が続きます。"
+      },
+      "draft": {
+       "text": "X です。星橋テックで越境 SaaSをやっていて、チームは 2 人です。今日は皆さんが最近どんな初期の案件に注目しているのかをうかがいたくて来ました。最近、これはと思った案件はありましたか。",
+       "refs": [
+        {
+         "start": 5,
+         "end": 10,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 11,
+         "end": 18,
+         "ref": {
+          "kind": "card",
+          "field": "profile.role"
+         }
+        }
+       ]
+      },
+      "gaps": [],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    }
+   ],
+   "seats": [
+    {
+     "typeKey": "cfo",
+     "people": [
+      {
+       "contactId": "c_v16_sato",
+       "name": "佐藤 健",
+       "note": "元 CFO · ある SaaS"
+      }
+     ],
+     "meetAt": "CFO Night Tokyo vol.18 10/9"
+    },
+    {
+     "typeKey": "lawyer",
+     "people": [],
+     "meetAt": null
+    },
+    {
+     "typeKey": "funded_founder",
+     "people": [
+      {
+       "contactId": "c_v16_yamamoto",
+       "name": "山本 彩",
+       "note": "Co-founder · HR SaaS"
+      },
+      {
+       "contactId": "c_v16_li",
+       "name": "李 明",
+       "note": "越境 SaaS 共同創業者"
+      }
+     ],
+     "meetAt": "CFO Night Tokyo vol.18 10/9"
+    },
+    {
+     "typeKey": "angel",
+     "people": [],
+     "meetAt": "ロボティクス起業家ミートアップ 11/5"
+    },
+    {
+     "typeKey": "vc_partner",
+     "people": [
+      {
+       "contactId": "c_v16_tanaka",
+       "name": "田中 誠",
+       "note": "パートナー · ある VC"
+      }
+     ],
+     "meetAt": "SaaS Summit 2026 10/22"
+    },
+    {
+     "typeKey": "cvc",
+     "people": [],
+     "meetAt": "SaaS Summit 2026 10/22"
+    }
+   ]
+  }
+ },
+ "sales": {
+  "planId": "plan_v16_sales",
+  "revision": 1,
+  "goal": "日本で最初の顧客を開拓したい",
+  "goalKind": "sales",
+  "purposeText": "5 社が試用し、公開できる事例が 1 件できる",
+  "startsOn": "2026-10-30",
+  "premise": [
+   {
+    "key": "purpose",
+    "label": "目的",
+    "value": "5 社が試用し、公開できる事例が 1 件できる",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "team",
+    "label": "チーム",
+    "value": "2 名 · 本業と並行",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "S1q",
+    "label": "プロダクト",
+    "value": "中小企業向け顧客管理ツール、公開済み",
+    "source": "q1",
+    "guessed": false
+   },
+   {
+    "key": "S2q",
+    "label": "ターゲット",
+    "value": "物流・製造業の中小企業",
+    "source": "q2",
+    "guessed": false
+   },
+   {
+    "key": "S3q",
+    "label": "営業の人手",
+    "value": "自分 1 人だけ",
+    "source": "q3",
+    "guessed": false
+   }
+  ],
+  "content": {
+   "schemaVersion": 3,
+   "outcome": "5 社が試用し、公開できる事例が 1 件できる",
+   "summary": {
+    "text": "あなたのプロダクトは公開済みで、ターゲットは物流・製造業の中小企業ですが、営業はあなた 1 人です。中小企業が新しいツールを採用するまで平均約 3 か月かかり、1 人で多くの顧客を同時に追うのは難しい。だからまず 5 社の試用に集中し、人に見せられる事例をつくってから、代理店の人手で広げることを勧めます。",
+    "marks": [
+     {
+      "start": 37,
+      "end": 47
+     },
+     {
+      "start": 70,
+      "end": 76
+     }
+    ],
+    "refs": [
+     {
+      "start": 0,
+      "end": 47,
+      "ref": {
+       "kind": "answer",
+       "questionKey": "S3q"
+      }
+     },
+     {
+      "start": 47,
+      "end": 76,
+      "ref": {
+       "kind": "source",
+       "sourceId": "S6"
+      }
+     }
+    ]
+   },
+   "verdict": "feasible",
+   "confidence": {
+    "level": "mid",
+    "reason": "展示会と代理店の情報は十分。ただし日本での事例がまだなく、転換率は同種 SaaS の参考値しかないため「中」。"
+   },
+   "orderReasons": [
+    {
+     "text": "中小企業の新ツール採用は平均約 3 か月。営業が 1 人なら、5 社に集中するほうが広く当たるより早く結果が出る",
+     "sourceIds": [
+      "S6"
+     ]
+    },
+    {
+     "text": "代理店は事例がないと新製品を扱わない。だから事例はチャネルより先",
+     "sourceIds": [
+      "S3"
+     ]
+    },
+    {
+     "text": "業界展示会と知人の紹介は 3 か月以内に決裁者に会える。最初に置く",
+     "sourceIds": [
+      "S1"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "先に攻めるチャネル",
+    "funnel": "使えるチャネル 6 種を「3 か月以内に決裁者に会える」で 4 種に絞る",
+    "rows": [
+     {
+      "label": "業界展示会",
+      "score": 90,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": null
+     },
+     {
+      "label": "知人の紹介",
+      "score": 86,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "decision_maker"
+     },
+     {
+      "label": "代理店",
+      "score": 58,
+      "verdict": "possible",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "introducer"
+     },
+     {
+      "label": "オンライン広告",
+      "score": 20,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S4"
+      ],
+      "typeKey": null
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "99.7%",
+     "label": "日本の企業数に占める中小企業の割合",
+     "sourceIds": [
+      "S5"
+     ]
+    },
+    {
+     "value": "約 3 か月",
+     "label": "中小企業が新しいツールを採用するまでの決裁期間",
+     "sourceIds": [
+      "S6"
+     ]
+    },
+    {
+     "value": "2.1万",
+     "label": "Japan IT Week 秋 前回の来場者数",
+     "sourceIds": [
+      "S7"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "unverified",
+     "text": "代理店の分配率 20〜30% は同種 SaaS へのヒアリングによるもので、業界差が大きい。"
+    },
+    {
+     "kind": "risk",
+     "text": "最初の 5 社で公開できる事例が作れないと、ステージ 3 で止まる。"
+    }
+   ],
+   "sources": [
+    {
+     "id": "S1",
+     "kind": "web",
+     "url": "https://example.org/jea/visitors",
+     "title": "日本展示会協会 来場者統計",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "日本展示会協会 来場者統計（抜粋）",
+     "query": "展示会 来場者 統計"
+    },
+    {
+     "id": "S2",
+     "kind": "web",
+     "url": "https://example.org/notes/saas-interviews",
+     "title": "同種 SaaS へのヒアリング（3 社）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "同種 SaaS へのヒアリング（3 社）（抜粋）",
+     "query": "SaaS 中小企業 紹介 営業"
+    },
+    {
+     "id": "S3",
+     "kind": "web",
+     "url": "https://example.org/notes/saas-interviews-reseller",
+     "title": "同種 SaaS へのヒアリング（代理店）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "同種 SaaS へのヒアリング（代理店）（抜粋）",
+     "query": "SaaS 代理店 分配率"
+    },
+    {
+     "id": "S4",
+     "kind": "web",
+     "url": "https://example.org/ads/report",
+     "title": "Web 広告効果レポート（広告プラットフォーム）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "Web 広告効果レポート（広告プラットフォーム）（抜粋）",
+     "query": "中小企業 Web 広告 効果"
+    },
+    {
+     "id": "S5",
+     "kind": "landscape",
+     "landscapeId": "L-203",
+     "version": 1
+    },
+    {
+     "id": "S6",
+     "kind": "web",
+     "url": "https://example.org/chusho/it-survey",
+     "title": "中小企業庁 IT 導入実態調査",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "中小企業庁 IT 導入実態調査（抜粋）",
+     "query": "中小企業 IT 導入 決裁 期間"
+    },
+    {
+     "id": "S7",
+     "kind": "web",
+     "url": "https://example.org/japan-it-week/data",
+     "title": "Japan IT Week 公式 前回開催データ",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "Japan IT Week 公式 前回開催データ（抜粋）",
+     "query": "Japan IT Week 来場者数"
+    }
+   ],
+   "diagnosis": "あなたのプロダクトは公開済みで、ターゲットは物流・製造業の中小企業ですが、営業はあなた 1 人です。中小企業が新しいツールを採用するまで平均約 3 か月かかり、1 人で多くの顧客を同時に追うのは難しい。だからまず 5 社の試用に集中し、人に見せられる事例をつくってから、代理店の人手で広げることを勧めます。",
+   "conclusion": "まず 5 社の試用を取り、代理店で広げることを勧めます",
+   "flow": [],
+   "steps": [
+    {
+     "key": "s1",
+     "title": "試用客を見つける",
+     "doneCriteria": "5 社が試用を始める",
+     "why": "展示会 + 紹介",
+     "personTypeKeys": [
+      "decision_maker",
+      "industry_body"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s2",
+     "title": "事例をつくる",
+     "doneCriteria": "少なくとも 1 社が導入効果の公開に同意する",
+     "why": "人に見せられる形に",
+     "personTypeKeys": [
+      "field_lead",
+      "senior_seller"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s3",
+     "title": "チャネルで広げる",
+     "doneCriteria": "代理店 1 社と契約するか、協会で 1 回登壇する",
+     "why": "代理店と協会",
+     "personTypeKeys": [
+      "introducer",
+      "event"
+     ],
+     "completedAt": null
+    }
+   ],
+   "personTypes": [
+    {
+     "itemId": "plan_v16_sales_decision_maker",
+     "key": "decision_maker",
+     "slot": "decision_maker",
+     "shortLabelId": "decision_maker",
+     "shortLabel": "中小企業の経営者",
+     "emoji": "🧭",
+     "roleSituation": "従業員 30〜300 人で、効率化ツールを探している経営者や事業責任者",
+     "allocation": 25,
+     "targetCount": 5,
+     "why": "",
+     "questions": [
+      "いま顧客管理に使っているツールは？",
+      "前回ツールを替えたとき誰が決めた？",
+      "1 か月の試用で一番見たいことは？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "中小企業の経営者"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_sales_industry_body",
+     "key": "industry_body",
+     "slot": "industry_body",
+     "shortLabelId": "industry_body",
+     "shortLabel": "業界団体の責任者",
+     "emoji": "🏛️",
+     "roleSituation": "会員企業を紹介できる協会の事務局や理事",
+     "allocation": 20,
+     "targetCount": 1,
+     "why": "",
+     "questions": [
+      "会員企業が最近いちばん困っていることは？",
+      "協会にツールを紹介する仕組みは？",
+      "交流会で 5 分話せる？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "業界団体の責任者"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_sales_field_lead",
+     "key": "field_lead",
+     "slot": "field_lead",
+     "shortLabelId": "field_lead",
+     "shortLabel": "同種ツールの利用者",
+     "emoji": "🧑‍💼",
+     "roleSituation": "競合製品を使い、どこが使いにくいか知っている現場責任者",
+     "allocation": 15,
+     "targetCount": 3,
+     "why": "",
+     "questions": [
+      "競合製品でいちばん使いにくかった点は？",
+      "当時それを選んだ理由は？",
+      "乗り換えの壁は何？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "同種ツールの利用者"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_sales_senior_seller",
+     "key": "senior_seller",
+     "slot": "senior_seller",
+     "shortLabelId": "senior_seller",
+     "shortLabel": "業界メディア",
+     "emoji": "📣",
+     "roleSituation": "レビューを書いたりセミナーを開く編集者や KOL",
+     "allocation": 15,
+     "targetCount": 2,
+     "why": "",
+     "questions": [
+      "レビュー対象の製品はどう選ぶ？",
+      "読者が好む事例は？",
+      "合うセミナーはある？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "業界メディア"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_sales_introducer",
+     "key": "introducer",
+     "slot": "introducer",
+     "shortLabelId": "introducer",
+     "shortLabel": "代理店",
+     "emoji": "🤝",
+     "roleSituation": "大企業にソフトウェアを販売する代理店の責任者",
+     "allocation": 15,
+     "targetCount": 2,
+     "why": "",
+     "questions": [
+      "新製品を扱うとき見る 3 点は？",
+      "分配はふつうどう決める？",
+      "最初にどの顧客で試す？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "代理店"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s3"
+    }
+   ],
+   "event": {
+    "allocation": 10,
+    "targetCount": 2
+   },
+   "citations": [
+    {
+     "id": "L-203",
+     "version": 1
+    }
+   ],
+   "allocationReasons": [],
+   "basis": [
+    {
+     "kind": "premise",
+     "ref": "premise@1",
+     "label": "確定した前提 5件"
+    }
+   ]
+  },
+  "score": {
+   "total": 22,
+   "talked": 22,
+   "skipped": 0,
+   "overflow": 0,
+   "remainingToFull": 78,
+   "todayDelta": 0,
+   "segments": [
+    {
+     "key": "decision_maker",
+     "shortLabel": "中小企業の経営者",
+     "emoji": "🧭",
+     "allocation": 25,
+     "earned": 10,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "industry_body",
+     "shortLabel": "業界団体の責任者",
+     "emoji": "🏛️",
+     "allocation": 20,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "field_lead",
+     "shortLabel": "同種ツールの利用者",
+     "emoji": "🧑‍💼",
+     "allocation": 15,
+     "earned": 5,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "senior_seller",
+     "shortLabel": "業界メディア",
+     "emoji": "📣",
+     "allocation": 15,
+     "earned": 7,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "introducer",
+     "shortLabel": "代理店",
+     "emoji": "🤝",
+     "allocation": 15,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "event",
+     "shortLabel": "イベント",
+     "emoji": "🎟️",
+     "allocation": 10,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    }
+   ]
+  },
+  "quota": {
+   "reviewLeftThisMonth": 3,
+   "reviewMonthlyLimit": 3,
+   "manualEditAvailable": true,
+   "activeGoals": 4,
+   "activeGoalLimit": 2
+  },
+  "achievedAt": null,
+  "sample": true,
+  "todayChance": null,
+  "typeStats": [
+   {
+    "itemId": "plan_v16_sales_decision_maker",
+    "candidates": 2,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_sales_industry_body",
+    "candidates": 0,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_sales_field_lead",
+    "candidates": 1,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_sales_senior_seller",
+    "candidates": 1,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_sales_introducer",
+    "candidates": 0,
+    "events": 0,
+    "introRoutes": 0
+   }
+  ],
+  "stepProgress": [
+   {
+    "stepKey": "s1",
+    "label": "2 / 6",
+    "done": 2,
+    "total": 6,
+    "parts": [
+     {
+      "key": "decision_maker",
+      "shortLabel": "中小企業の経営者",
+      "emoji": "🧭",
+      "unit": "people",
+      "done": 2,
+      "total": 5,
+      "skipped": false
+     },
+     {
+      "key": "industry_body",
+      "shortLabel": "業界団体の責任者",
+      "emoji": "🏛️",
+      "unit": "people",
+      "done": 0,
+      "total": 1,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s2",
+    "label": "2 / 5",
+    "done": 2,
+    "total": 5,
+    "parts": [
+     {
+      "key": "field_lead",
+      "shortLabel": "同種ツールの利用者",
+      "emoji": "🧑‍💼",
+      "unit": "people",
+      "done": 1,
+      "total": 3,
+      "skipped": false
+     },
+     {
+      "key": "senior_seller",
+      "shortLabel": "業界メディア",
+      "emoji": "📣",
+      "unit": "people",
+      "done": 1,
+      "total": 2,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s3",
+    "label": "0 / 4",
+    "done": 0,
+    "total": 4,
+    "parts": [
+     {
+      "key": "introducer",
+      "shortLabel": "代理店",
+      "emoji": "🤝",
+      "unit": "people",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     },
+     {
+      "key": "event",
+      "shortLabel": "イベント",
+      "emoji": "🎟️",
+      "unit": "events",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     }
+    ]
+   }
+  ],
+  "stepSuggestions": [],
+  "recentAwards": [
+   {
+    "awardLogId": "plan_v16_sales_award_c_v16_suzuki",
+    "itemId": "plan_v16_sales_decision_maker",
+    "typeKey": "decision_maker",
+    "shortLabel": "中小企業の経営者",
+    "emoji": "🧭",
+    "points": 5,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "鈴木 隆",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_sales_award_c_v16_takahashi",
+    "itemId": "plan_v16_sales_decision_maker",
+    "typeKey": "decision_maker",
+    "shortLabel": "中小企業の経営者",
+    "emoji": "🧭",
+    "points": 5,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "高橋 恵",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_sales_award_c_v16_wang",
+    "itemId": "plan_v16_sales_field_lead",
+    "typeKey": "field_lead",
+    "shortLabel": "同種ツールの利用者",
+    "emoji": "🧑‍💼",
+    "points": 5,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "王 磊",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_sales_award_c_v16_nakamura",
+    "itemId": "plan_v16_sales_senior_seller",
+    "typeKey": "senior_seller",
+    "shortLabel": "業界メディア",
+    "emoji": "📣",
+    "points": 7,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "中村 光",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   }
+  ],
+  "pending": [],
+  "sinceConfirmed": {
+   "talkedPeople": 4,
+   "events": 0,
+   "stepsDone": 0
+  },
+  "recommendedEvents": [
+   {
+    "eventId": "demo-event-cfo-night",
+    "title": "CFO Night Tokyo vol.18",
+    "startsAt": "2026-10-09T19:00:00+09:00",
+    "venue": "東京・丸の内",
+    "expectedCount": null,
+    "fee": 3000,
+    "score": {
+     "total": 49,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 12,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "申込者タグ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 17,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥3,000",
+        "移動 25分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 60分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🥂",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 20
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 85
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-saas-summit",
+    "title": "SaaS Summit 2026",
+    "startsAt": "2026-10-22T10:00:00+09:00",
+    "venue": "東京・虎ノ門",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 46,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 10,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "登壇者のみ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 16,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 30分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 45分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🎤",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 17
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 80
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-robotics-meetup",
+    "title": "ロボティクス起業家ミートアップ",
+    "startsAt": "2026-11-05T19:00:00+09:00",
+    "venue": "東京・渋谷",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 44,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 9,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "過去回の参加者のみ"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 18,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 35分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 7,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 30分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🤝",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 15
+     },
+     "people": {
+      "value": 85
+     },
+     "timeCost": {
+      "value": 90
+     }
+    }
+   }
+  ],
+  "home": {
+   "state": "ready",
+   "lead": "この段階の目標は、試してくれる最初の顧客を見つけること。すでに知っている人から始めるのが一番速く、確実です。",
+   "actions": [
+    {
+     "actionKey": "c:c_v16_suzuki",
+     "kind": "contact",
+     "contactId": "c_v16_suzuki",
+     "eventId": null,
+     "title": "鈴木 隆さんと試用を話す",
+     "reason": {
+      "text": "メモに、まだ Excel で顧客を管理していると書いてあります。彼は代表なので、試用するかどうかをその場で決められます。",
+      "marks": [
+       {
+        "start": 4,
+        "end": 23
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": "decision_maker",
+     "done": false,
+     "avatar": "鈴",
+     "meta": "物流会社 代表 · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "代表取締役 · 鈴木運輸（物流）",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2026/03/05 に名刺を読み取り、関連イベント：国際物流展",
+        "source": "名刺の記録"
+       },
+       {
+        "key": "last_contact",
+        "value": "2026/04/10 メールのやりとり",
+        "source": "やりとりの記録"
+       }
+      ],
+      "usedFacts": [
+       {
+        "id": "fx_suzuki_1",
+        "text": "まだ Excel で顧客を管理している",
+        "date": "2026-03-05",
+        "memoId": "memo_fx_suzuki_1"
+       }
+      ],
+      "usedAnswers": [
+       "S1q"
+      ],
+      "hook": {
+       "label": "相手が話した困りごと",
+       "reason": "相手が自分で困りごとを話しています。そこから入ると、覚えていたことも、本当に役に立てそうなことも伝わります。"
+      },
+      "draft": {
+       "text": "鈴木さん、こんにちは。3 月の国際物流展でお話しした X（星橋テック）です。そのときまだ Excel で顧客を管理しているとうかがいました。私たちがつくっているのはまさにそのためのツールで、すでに公開済みです。1 か月無料で試していただき、まず実際の状況をうかがえないでしょうか。来週 20 分ほどいかがですか。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 20,
+         "ref": {
+          "kind": "card",
+          "field": "met"
+         }
+        },
+        {
+         "start": 29,
+         "end": 34,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 42,
+         "end": 61,
+         "ref": {
+          "kind": "fact",
+          "factId": "fx_suzuki_1"
+         }
+        },
+        {
+         "start": 95,
+         "end": 102,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "S1q"
+         }
+        }
+       ]
+      },
+      "gaps": [],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "c:c_v16_takahashi",
+     "kind": "contact",
+     "contactId": "c_v16_takahashi",
+     "eventId": null,
+     "title": "高橋 恵さんと顧客管理の方法を話す",
+     "reason": {
+      "text": "製造業はあなたが答えた 2 つ目のターゲット業界で、彼女は営業部長として、チームがふだんどう顧客を管理しているかを一番よく知っています。",
+      "marks": [
+       {
+        "start": 29,
+        "end": 33
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": "decision_maker",
+     "done": false,
+     "avatar": "高",
+     "meta": "製造業 営業部長 · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "営業部長 · 高橋精機（製造業）",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2025/11/20 に名刺を読み取り、関連イベントなし",
+        "source": "名刺の記録"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [
+       "S1q"
+      ],
+      "hook": {
+       "label": "売り込まないと伝える",
+       "reason": "情報が少なく、売り込みを警戒されるかもしれません。来意をはっきりさせ「聞くだけ」と伝え、お願いを 20 分にします。"
+      },
+      "draft": {
+       "text": "高橋さん、こんにちは。去年 11 月に名刺を交換した X です。営業チームの顧客管理を助けるツールをつくっていて、営業部長の高橋さんに、いま一番時間がかかっているのはどこかをうかがいたいです。売り込みではなく、実際の状況を聞くだけです。20 分で十分です。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 18,
+         "ref": {
+          "kind": "card",
+          "field": "met"
+         }
+        },
+        {
+         "start": 32,
+         "end": 49,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "S1q"
+         }
+        },
+        {
+         "start": 57,
+         "end": 61,
+         "ref": {
+          "kind": "card",
+          "field": "who"
+         }
+        }
+       ]
+      },
+      "gaps": [
+       "memo",
+       "interaction"
+      ],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "e:ev_v16_assoc",
+     "kind": "event",
+     "contactId": null,
+     "eventId": "ev_v16_assoc",
+     "title": "11/26 協会の交流会に行ってみる",
+     "reason": {
+      "text": "イベント紹介に会員企業の経営者と営業責任者が参加とあり、1 回で複数のターゲット企業に会えるので、ステージ 1 で一番手間がかかりません。",
+      "marks": [
+       {
+        "start": 7,
+        "end": 21
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": null,
+     "done": false,
+     "avatar": "🎟️",
+     "meta": "日本橋 · 会員企業の経営者",
+     "prep": {
+      "rows": [
+       {
+        "key": "when_where",
+        "value": "11/26（水）18:30 · 日本橋",
+        "source": "イベントページ"
+       },
+       {
+        "key": "about",
+        "value": "協会会員企業の交流会。経営者と営業責任者が参加",
+        "source": "イベントページ"
+       },
+       {
+        "key": "plan_fit",
+        "value": "ステージ 1 で試用客を探す。代理店はステージ 3 の Japan IT Week で",
+        "source": "—"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [
+       "S1q",
+       "S1q"
+      ],
+      "hook": {
+       "label": "先に聞いてから話す",
+       "reason": "先に相手がいまどう顧客を管理し何に困っているかを聞き、それから自分の話をすると、資料を先に渡すより会話が続きます。"
+      },
+      "draft": {
+       "text": "星橋テックです。中小企業向けの顧客管理ツールをつくっていて、すでに公開済みです。無料で試してくださる企業を 5 社探しています。まずうかがいたいのですが、御社はいまどうやって顧客を管理していますか。",
+       "refs": [
+        {
+         "start": 0,
+         "end": 5,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 8,
+         "end": 22,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "S1q"
+         }
+        },
+        {
+         "start": 30,
+         "end": 37,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "S1q"
+         }
+        }
+       ]
+      },
+      "gaps": [],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    }
+   ],
+   "seats": [
+    {
+     "typeKey": "decision_maker",
+     "people": [
+      {
+       "contactId": "c_v16_suzuki",
+       "name": "鈴木 隆",
+       "note": "物流 · 代表"
+      },
+      {
+       "contactId": "c_v16_takahashi",
+       "name": "高橋 恵",
+       "note": "製造業 · 営業部長"
+      }
+     ],
+     "meetAt": null
+    },
+    {
+     "typeKey": "industry_body",
+     "people": [],
+     "meetAt": null
+    },
+    {
+     "typeKey": "field_lead",
+     "people": [
+      {
+       "contactId": "c_v16_wang",
+       "name": "王 磊",
+       "note": "競合製品を 2 年使用"
+      }
+     ],
+     "meetAt": null
+    },
+    {
+     "typeKey": "senior_seller",
+     "people": [
+      {
+       "contactId": "c_v16_nakamura",
+       "name": "中村 光",
+       "note": "業界メディア編集者"
+      }
+     ],
+     "meetAt": null
+    },
+    {
+     "typeKey": "introducer",
+     "people": [],
+     "meetAt": null
+    }
+   ]
+  }
+ },
+ "hire": {
+  "planId": "plan_v16_hire",
+  "revision": 1,
+  "goal": "日本の事業責任者とエンジニアを採用したい",
+  "goalKind": "hiring",
+  "purposeText": "日本の事業責任者とリモートのエンジニアを採用する",
+  "startsOn": "2026-10-30",
+  "premise": [
+   {
+    "key": "purpose",
+    "label": "目的",
+    "value": "日本の事業責任者とリモートのエンジニアを採用する",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "team",
+    "label": "チーム",
+    "value": "2 名 · 本業と並行",
+    "source": "background",
+    "guessed": false
+   },
+   {
+    "key": "H1",
+    "label": "採用したい人",
+    "value": "日本の事業責任者 1 名 + エンジニア",
+    "source": "q1",
+    "guessed": false
+   },
+   {
+    "key": "H2",
+    "label": "予算",
+    "value": "まだ決めていない",
+    "source": "q2",
+    "guessed": false
+   },
+   {
+    "key": "H3",
+    "label": "ビザ",
+    "value": "まだわからない",
+    "source": "q3",
+    "guessed": false
+   }
+  ],
+  "content": {
+   "schemaVersion": 3,
+   "outcome": "日本の事業責任者とリモートのエンジニアを採用する",
+   "summary": {
+    "text": "あなたは日本の事業責任者とエンジニアを採りたいが、予算とビザはまだ決まっていません。日本の有効求人倍率は 1.28 倍で、良い事業人材は取り合いになっており、正社員の年収は 800〜1200 万円が相場です。だからまず兼業で双方の敷居を下げ、エンジニアはリモートで採ってコストを抑え、資金調達後に正社員へ切り替えることを勧めます。",
+    "marks": [
+     {
+      "start": 25,
+      "end": 41
+     },
+     {
+      "start": 53,
+      "end": 59
+     },
+     {
+      "start": 87,
+      "end": 98
+     }
+    ],
+    "refs": [
+     {
+      "start": 0,
+      "end": 41,
+      "ref": {
+       "kind": "answer",
+       "questionKey": "H2"
+      }
+     },
+     {
+      "start": 41,
+      "end": 59,
+      "ref": {
+       "kind": "source",
+       "sourceId": "S4"
+      }
+     },
+     {
+      "start": 59,
+      "end": 98,
+      "ref": {
+       "kind": "source",
+       "sourceId": "S5"
+      }
+     }
+    ]
+   },
+   "verdict": "conditional",
+   "confidence": {
+    "level": "low",
+    "reason": "採用市場のデータは十分。ただし予算もビザも未定で、計画が進むかはこの 2 つ次第なので「条件付きで可能」、信心は「低」。"
+   },
+   "orderReasons": [
+    {
+     "text": "予算もビザも未定で、正社員の年収 800〜1200 万円の約束はいま出せない。兼業で始めれば双方の敷居が低い",
+     "sourceIds": [
+      "S5"
+     ]
+    },
+    {
+     "text": "有効求人倍率 1.28 倍で良い事業人材は取り合い。先に入ってもらい、あとで正社員に切り替えるほうが調達後に探すより早い",
+     "sourceIds": [
+      "S4"
+     ]
+    },
+    {
+     "text": "エンジニアのリモート採用はビザの制約を受けず費用も低い。事業責任者探しと並行できる",
+     "sourceIds": [
+      "S2"
+     ]
+    }
+   ],
+   "comparison": {
+    "title": "最初の 1 人をどう採るか",
+    "funnel": "採用方法 5 種を「3 か月以内に入社」と「予算」で 3 種に絞る",
+    "rows": [
+     {
+      "label": "兼業・顧問",
+      "score": 88,
+      "verdict": "preferred",
+      "sourceIds": [
+       "S1"
+      ],
+      "typeKey": "candidate"
+     },
+     {
+      "label": "知人紹介で正社員",
+      "score": 60,
+      "verdict": "possible",
+      "sourceIds": [
+       "S2"
+      ],
+      "typeKey": "community_host"
+     },
+     {
+      "label": "人材紹介で正社員",
+      "score": 22,
+      "verdict": "not_recommended",
+      "sourceIds": [
+       "S3"
+      ],
+      "typeKey": "recruiter"
+     }
+    ]
+   },
+   "keyNumbers": [
+    {
+     "value": "1.28倍",
+     "label": "日本の有効求人倍率（2025 年）",
+     "sourceIds": [
+      "S4"
+     ]
+    },
+    {
+     "value": "800〜1200万",
+     "label": "B2B 事業開発の一般的な年収（円）",
+     "sourceIds": [
+      "S5"
+     ]
+    }
+   ],
+   "risks": [
+    {
+     "kind": "unverified",
+     "text": "年収レンジは求人サイト 2 社のサンプルによるもので、母数は多くない。"
+    },
+    {
+     "kind": "risk",
+     "text": "兼業の責任者の稼働が足りないとステージ 1 が遅れる。週の最低時間を決めておく。"
+    }
+   ],
+   "sources": [
+    {
+     "id": "S1",
+     "kind": "web",
+     "url": "https://example.org/notes/hiring-interviews",
+     "title": "スタートアップの採用ヒアリング（4 社）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "スタートアップの採用ヒアリング（4 社）（抜粋）",
+     "query": "スタートアップ 採用 兼業"
+    },
+    {
+     "id": "S2",
+     "kind": "web",
+     "url": "https://example.org/notes/hiring-interviews-remote",
+     "title": "スタートアップの採用ヒアリング（リモート）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "スタートアップの採用ヒアリング（リモート）（抜粋）",
+     "query": "エンジニア リモート採用"
+    },
+    {
+     "id": "S3",
+     "kind": "web",
+     "url": "https://example.org/agents/fees",
+     "title": "人材紹介の手数料率（公開資料 2 社）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "人材紹介の手数料率（公開資料 2 社）（抜粋）",
+     "query": "人材紹介 手数料 相場"
+    },
+    {
+     "id": "S4",
+     "kind": "landscape",
+     "landscapeId": "L-401",
+     "version": 1
+    },
+    {
+     "id": "S5",
+     "kind": "web",
+     "url": "https://example.org/jobs/salary-sample",
+     "title": "求人サイトの年収サンプル（2 社）",
+     "fetchedAt": "2026-10-27T09:00:00.000Z",
+     "snippet": "求人サイトの年収サンプル（2 社）（抜粋）",
+     "query": "事業開発 年収 相場"
+    }
+   ],
+   "diagnosis": "あなたは日本の事業責任者とエンジニアを採りたいが、予算とビザはまだ決まっていません。日本の有効求人倍率は 1.28 倍で、良い事業人材は取り合いになっており、正社員の年収は 800〜1200 万円が相場です。だからまず兼業で双方の敷居を下げ、エンジニアはリモートで採ってコストを抑え、資金調達後に正社員へ切り替えることを勧めます。",
+   "conclusion": "まず兼業で日本の事業責任者を迎え、エンジニアはリモートで採ることを勧めます",
+   "flow": [],
+   "steps": [
+    {
+     "key": "s1",
+     "title": "事業責任者を見つける",
+     "doneCriteria": "兼業の事業責任者 1 人が毎週決まった時間で動き始める",
+     "why": "兼業から始める",
+     "personTypeKeys": [
+      "candidate",
+      "recruiter"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s2",
+     "title": "リモートでエンジニアを補う",
+     "doneCriteria": "リモートのエンジニア 1〜2 人が着任する",
+     "why": "コストを抑える",
+     "personTypeKeys": [
+      "community_host",
+      "event"
+     ],
+     "completedAt": null
+    },
+    {
+     "key": "s3",
+     "title": "日本の正社員チーム",
+     "doneCriteria": "資金が入ったら、事業責任者が正社員に切り替わる",
+     "why": "調達後に採る",
+     "personTypeKeys": [
+      "senior_peer"
+     ],
+     "completedAt": null
+    }
+   ],
+   "personTypes": [
+    {
+     "itemId": "plan_v16_hire_candidate",
+     "key": "candidate",
+     "slot": "candidate",
+     "shortLabelId": "candidate",
+     "shortLabel": "事業責任者の候補",
+     "emoji": "🧭",
+     "roleSituation": "日本で B2B の事業開拓をしてきて、初期チームに入りたい人",
+     "allocation": 40,
+     "targetCount": 3,
+     "why": "",
+     "questions": [
+      "初期チームで一番やりたいことは？",
+      "兼業からの開始は受け入れられる？",
+      "ほかに合いそうな人はいる？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "事業責任者の候補"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_hire_recruiter",
+     "key": "recruiter",
+     "slot": "recruiter",
+     "shortLabelId": "recruiter",
+     "shortLabel": "人材エージェント",
+     "emoji": "🔎",
+     "roleSituation": "外資とスタートアップ専門の採用コンサルタント",
+     "allocation": 10,
+     "targetCount": 2,
+     "why": "",
+     "questions": [
+      "この職種の今の年収相場は？",
+      "スタートアップが候補者を動かすには？",
+      "費用はどう決まる？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "人材エージェント"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s1"
+    },
+    {
+     "itemId": "plan_v16_hire_community_host",
+     "key": "community_host",
+     "slot": "community_host",
+     "shortLabelId": "community_host",
+     "shortLabel": "リモート開発者コミュニティ",
+     "emoji": "💻",
+     "roleSituation": "海外エンジニアのコミュニティを運営する主宰者",
+     "allocation": 20,
+     "targetCount": 2,
+     "why": "",
+     "questions": [
+      "リモートのエンジニアが最も気にすることは？",
+      "リモート採用でよくある失敗は？",
+      "コミュニティで求人を出せる？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "リモート開発者コミュニティ"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s2"
+    },
+    {
+     "itemId": "plan_v16_hire_senior_peer",
+     "key": "senior_peer",
+     "slot": "senior_peer",
+     "shortLabelId": "senior_peer",
+     "shortLabel": "社会保険労務士",
+     "emoji": "⚖️",
+     "roleSituation": "雇用契約・社会保険・ビザを扱う社会保険労務士",
+     "allocation": 20,
+     "targetCount": 1,
+     "why": "",
+     "questions": [
+      "兼業から正社員への切り替えで注意することは？",
+      "外国籍社員のビザはどのくらいかかる？",
+      "社会保険はいつから？"
+     ],
+     "countRule": "目標について話せたら 1 人",
+     "recognizeHints": [
+      "社会保険労務士"
+     ],
+     "persona": null,
+     "opener": null,
+     "introRoutes": [],
+     "skipped": false,
+     "stepKey": "s3"
+    }
+   ],
+   "event": {
+    "allocation": 10,
+    "targetCount": 2
+   },
+   "citations": [
+    {
+     "id": "L-401",
+     "version": 1
+    }
+   ],
+   "allocationReasons": [],
+   "basis": [
+    {
+     "kind": "premise",
+     "ref": "premise@1",
+     "label": "確定した前提 5件"
+    }
+   ]
+  },
+  "score": {
+   "total": 23,
+   "talked": 23,
+   "skipped": 0,
+   "overflow": 0,
+   "remainingToFull": 77,
+   "todayDelta": 0,
+   "segments": [
+    {
+     "key": "candidate",
+     "shortLabel": "事業責任者の候補",
+     "emoji": "🧭",
+     "allocation": 40,
+     "earned": 13,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "recruiter",
+     "shortLabel": "人材エージェント",
+     "emoji": "🔎",
+     "allocation": 10,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "community_host",
+     "shortLabel": "リモート開発者コミュニティ",
+     "emoji": "💻",
+     "allocation": 20,
+     "earned": 10,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "senior_peer",
+     "shortLabel": "社会保険労務士",
+     "emoji": "⚖️",
+     "allocation": 20,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    },
+    {
+     "key": "event",
+     "shortLabel": "イベント",
+     "emoji": "🎟️",
+     "allocation": 10,
+     "earned": 0,
+     "overflow": 0,
+     "skipped": false
+    }
+   ]
+  },
+  "quota": {
+   "reviewLeftThisMonth": 3,
+   "reviewMonthlyLimit": 3,
+   "manualEditAvailable": true,
+   "activeGoals": 4,
+   "activeGoalLimit": 2
+  },
+  "achievedAt": null,
+  "sample": true,
+  "todayChance": null,
+  "typeStats": [
+   {
+    "itemId": "plan_v16_hire_candidate",
+    "candidates": 1,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_hire_recruiter",
+    "candidates": 0,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_hire_community_host",
+    "candidates": 1,
+    "events": 0,
+    "introRoutes": 0
+   },
+   {
+    "itemId": "plan_v16_hire_senior_peer",
+    "candidates": 0,
+    "events": 0,
+    "introRoutes": 0
+   }
+  ],
+  "stepProgress": [
+   {
+    "stepKey": "s1",
+    "label": "1 / 5",
+    "done": 1,
+    "total": 5,
+    "parts": [
+     {
+      "key": "candidate",
+      "shortLabel": "事業責任者の候補",
+      "emoji": "🧭",
+      "unit": "people",
+      "done": 1,
+      "total": 3,
+      "skipped": false
+     },
+     {
+      "key": "recruiter",
+      "shortLabel": "人材エージェント",
+      "emoji": "🔎",
+      "unit": "people",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s2",
+    "label": "1 / 4",
+    "done": 1,
+    "total": 4,
+    "parts": [
+     {
+      "key": "community_host",
+      "shortLabel": "リモート開発者コミュニティ",
+      "emoji": "💻",
+      "unit": "people",
+      "done": 1,
+      "total": 2,
+      "skipped": false
+     },
+     {
+      "key": "event",
+      "shortLabel": "イベント",
+      "emoji": "🎟️",
+      "unit": "events",
+      "done": 0,
+      "total": 2,
+      "skipped": false
+     }
+    ]
+   },
+   {
+    "stepKey": "s3",
+    "label": "0 / 1",
+    "done": 0,
+    "total": 1,
+    "parts": [
+     {
+      "key": "senior_peer",
+      "shortLabel": "社会保険労務士",
+      "emoji": "⚖️",
+      "unit": "people",
+      "done": 0,
+      "total": 1,
+      "skipped": false
+     }
+    ]
+   }
+  ],
+  "stepSuggestions": [],
+  "recentAwards": [
+   {
+    "awardLogId": "plan_v16_hire_award_c_v16_kobayashi",
+    "itemId": "plan_v16_hire_candidate",
+    "typeKey": "candidate",
+    "shortLabel": "事業責任者の候補",
+    "emoji": "🧭",
+    "points": 13,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "小林 翔",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   },
+   {
+    "awardLogId": "plan_v16_hire_award_c_v16_chen",
+    "itemId": "plan_v16_hire_community_host",
+    "typeKey": "community_host",
+    "shortLabel": "リモート開発者コミュニティ",
+    "emoji": "💻",
+    "points": 10,
+    "part": "base",
+    "basis": "talked",
+    "contactName": "陈 静",
+    "eventTitle": null,
+    "at": "2026-10-30T01:00:00.000Z"
+   }
+  ],
+  "pending": [],
+  "sinceConfirmed": {
+   "talkedPeople": 2,
+   "events": 0,
+   "stepsDone": 0
+  },
+  "recommendedEvents": [
+   {
+    "eventId": "demo-event-cfo-night",
+    "title": "CFO Night Tokyo vol.18",
+    "startsAt": "2026-10-09T19:00:00+09:00",
+    "venue": "東京・丸の内",
+    "expectedCount": null,
+    "fee": 3000,
+    "score": {
+     "total": 49,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 12,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "申込者タグ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 17,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥3,000",
+        "移動 25分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 60分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🥂",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 20
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 85
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-saas-summit",
+    "title": "SaaS Summit 2026",
+    "startsAt": "2026-10-22T10:00:00+09:00",
+    "venue": "東京・虎ノ門",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 46,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 10,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "登壇者のみ公開"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 16,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 30分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 10,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 45分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🎤",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 17
+     },
+     "people": {
+      "value": 100
+     },
+     "timeCost": {
+      "value": 80
+     }
+    }
+   },
+   {
+    "eventId": "demo-event-robotics-meetup",
+    "title": "ロボティクス起業家ミートアップ",
+    "startsAt": "2026-11-05T19:00:00+09:00",
+    "venue": "東京・渋谷",
+    "expectedCount": null,
+    "fee": 0,
+    "score": {
+     "total": 44,
+     "verdict": "skip",
+     "scoreBreakdown": [
+      {
+       "criterion": "fit",
+       "score": 0,
+       "max": 45,
+       "reason": "会える人の適合",
+       "facts": [
+        "推定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "confidence",
+       "score": 9,
+       "max": 15,
+       "reason": "推定の確度",
+       "facts": [
+        "過去回の参加者のみ"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "timeCost",
+       "score": 18,
+       "max": 20,
+       "reason": "時間とコスト",
+       "facts": [
+        "¥0",
+        "移動 35分"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "connections",
+       "score": 10,
+       "max": 10,
+       "reason": "既存のつながり",
+       "facts": [
+        "人脈から 2名が参加予定"
+       ],
+       "estimated": false
+      },
+      {
+       "criterion": "format",
+       "score": 7,
+       "max": 10,
+       "reason": "交流の形式",
+       "facts": [
+        "交流タイム 30分"
+       ],
+       "estimated": false
+      }
+     ],
+     "rubricVersion": "event-score-v2"
+    },
+    "emoji": "🤝",
+    "fitLabel": null,
+    "assessmentHref": null,
+    "display": {
+     "goalFit": {
+      "value": 15
+     },
+     "people": {
+      "value": 85
+     },
+     "timeCost": {
+      "value": 90
+     }
+    }
+   }
+  ],
+  "home": {
+   "state": "ready",
+   "lead": "この段階の目標は、日本で最初の事業責任者を見つけること。兼業から始め、調達後に正社員に切り替えます。",
+   "actions": [
+    {
+     "actionKey": "c:c_v16_kobayashi",
+     "kind": "contact",
+     "contactId": "c_v16_kobayashi",
+     "eventId": null,
+     "title": "小林 翔さんと兼業参加を話す",
+     "reason": {
+      "text": "メモに、スタートアップを試してみたいと言っていたとあり、名刺では事業開発を担当していて、探している人にぴったりです。",
+      "marks": [
+       {
+        "start": 4,
+        "end": 18
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": "candidate",
+     "done": false,
+     "avatar": "小",
+     "meta": "事業開発 · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "事業開発 · 外資系 SaaS 企業",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2026/07/09 に名刺を読み取り、関連イベント：SaaS Meetup",
+        "source": "名刺の記録"
+       },
+       {
+        "key": "common",
+        "value": "どちらも SaaS の業界",
+        "source": "あなたの資料 + 名刺"
+       }
+      ],
+      "usedFacts": [
+       {
+        "id": "fx_kobayashi_1",
+        "text": "スタートアップを試してみたいと言っていた",
+        "date": "2026-07-09",
+        "memoId": "memo_fx_kobayashi_1"
+       }
+      ],
+      "usedAnswers": [
+       "H1"
+      ],
+      "hook": {
+       "label": "前回の話から",
+       "reason": "スタートアップを試したいと本人が言っていて、あなたが出せるのはまさにそれ。相手が得られるものから話します。"
+      },
+      "draft": {
+       "text": "小林さん、こんにちは。7 月の SaaS Meetupでお会いした X（星橋テック）です。スタートアップを試してみたいとおっしゃっていたのを覚えています。いま日本で最初の事業責任者を探していて、兼業から始めることもでき、すぐに辞める必要はありません。ご意見をうかがいたく、20 分ほどいかがでしょうか。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 27,
+         "ref": {
+          "kind": "card",
+          "field": "met"
+         }
+        },
+        {
+         "start": 36,
+         "end": 41,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 45,
+         "end": 59,
+         "ref": {
+          "kind": "fact",
+          "factId": "fx_kobayashi_1"
+         }
+        },
+        {
+         "start": 97,
+         "end": 109,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "H1"
+         }
+        }
+       ]
+      },
+      "gaps": [
+       "interaction"
+      ],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "c:c_v16_chen",
+     "kind": "contact",
+     "contactId": "c_v16_chen",
+     "eventId": null,
+     "title": "陈 静さんとリモート採用を話す",
+     "reason": {
+      "text": "名刺によると彼女は開発者コミュニティを運営していて、リモートのエンジニアが何を重視し、どこで採れるかを一番よく知っています。",
+      "marks": [
+       {
+        "start": 9,
+        "end": 21
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 2,
+     "typeKey": "community_host",
+     "done": false,
+     "avatar": "陈",
+     "meta": "コミュニティ運営 · あなたの人脈",
+     "prep": {
+      "rows": [
+       {
+        "key": "who",
+        "value": "コミュニティ運営 · Viet Dev Community",
+        "source": "名刺"
+       },
+       {
+        "key": "met",
+        "value": "2026/04/22 に追加、関連イベントなし",
+        "source": "連絡先の記録"
+       },
+       {
+        "key": "common",
+        "value": "どちらも中国語を話す",
+        "source": "あなたの資料 + 名刺"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [
+       "H1"
+      ],
+      "hook": {
+       "label": "相手にも役立つと伝える",
+       "reason": "情報が少ないので、来意をはっきりさせ、求人がコミュニティの人にも機会になることを伝えます。"
+      },
+      "draft": {
+       "text": "陈静さん、こんにちは。星橋テックの X です。日本で SaaS をやっています。いまリモートでエンジニアを 1〜2 人採用しようとしていて、まずコミュニティのエンジニアが何を重視するのかをうかがいたいです。合いそうなら求人をコミュニティで共有させていただければ。オンラインで 20 分ほどいかがでしょうか。",
+       "refs": [
+        {
+         "start": 11,
+         "end": 16,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 42,
+         "end": 59,
+         "ref": {
+          "kind": "answer",
+          "questionKey": "H1"
+         }
+        }
+       ]
+      },
+      "gaps": [
+       "memo",
+       "interaction"
+      ],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    },
+    {
+     "actionKey": "e:ev_v16_hr",
+     "kind": "event",
+     "contactId": null,
+     "eventId": "ev_v16_hr",
+     "title": "Startup HR Meetup に行ってみる",
+     "reason": {
+      "text": "「予算はまだ決めていない」と答えたので、人事と人材紹介の交流とあるこの会で、この職種の年収相場も聞けます。",
+      "marks": [
+       {
+        "start": 20,
+        "end": 30
+       }
+      ],
+      "refs": []
+     },
+     "stepNumber": 1,
+     "typeKey": null,
+     "done": false,
+     "avatar": "🎟️",
+     "meta": "11/18 · 人事と人材紹介",
+     "prep": {
+      "rows": [
+       {
+        "key": "when_where",
+        "value": "11/18（火）19:00 · 六本木",
+        "source": "イベントページ"
+       },
+       {
+        "key": "about",
+        "value": "スタートアップの人事と人材紹介会社の交流会",
+        "source": "イベントページ"
+       },
+       {
+        "key": "plan_fit",
+        "value": "ステージ 1 で予算を決める前に、市場の年収を知る",
+        "source": "—"
+       }
+      ],
+      "usedFacts": [],
+      "usedAnswers": [],
+      "hook": {
+       "label": "先に聞いてから話す",
+       "reason": "先に相場を聞いてから、自分が何を採用しているかを話すと、相手も本当の数字を教えてくれやすくなります。"
+      },
+      "draft": {
+       "text": "星橋テックです。日本に来たばかりの越境 SaaS チームで、最初の事業責任者を探しています。うかがいたいのですが、この職種の年収相場はいまどのくらいでしょうか。",
+       "refs": [
+        {
+         "start": 0,
+         "end": 5,
+         "ref": {
+          "kind": "card",
+          "field": "profile.organization"
+         }
+        },
+        {
+         "start": 8,
+         "end": 28,
+         "ref": {
+          "kind": "card",
+          "field": "profile.role"
+         }
+        }
+       ]
+      },
+      "gaps": [],
+      "generatedAt": "2026-10-30T01:00:00.000Z",
+      "staleSince": null,
+      "fallback": false
+     }
+    }
+   ],
+   "seats": [
+    {
+     "typeKey": "candidate",
+     "people": [
+      {
+       "contactId": "c_v16_kobayashi",
+       "name": "小林 翔",
+       "note": "元外資 SaaS · 事業開発"
+      }
+     ],
+     "meetAt": null
+    },
+    {
+     "typeKey": "recruiter",
+     "people": [],
+     "meetAt": null
+    },
+    {
+     "typeKey": "community_host",
+     "people": [
+      {
+       "contactId": "c_v16_chen",
+       "name": "陈 静",
+       "note": "ベトナム開発者コミュニティ"
+      }
+     ],
+     "meetAt": null
+    },
+    {
+     "typeKey": "senior_peer",
+     "people": [],
+     "meetAt": null
+    }
+   ]
+  }
+ }
+}

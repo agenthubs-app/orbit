@@ -5,13 +5,14 @@
 // the design's CSS values; colours are tokens (ladder fills / verdict dot = R36a's chart-* / verdict-conditional). Adjustments live in
 // `plan-draft-v3-model`; nothing here sends a request.
 import { useState } from "react";
-import { Linking, Platform, StyleSheet, View, type TextStyle, type ViewStyle } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import type { PlanComparisonVerdict, PlanConfidenceLevel, PlanDraftView, PlanV2PersonType, PlanVerdict } from "../../api/contract/plan-v2";
+import type { PlanConfidenceLevel, PlanDraftView, PlanV2PersonType, PlanVerdict } from "../../api/contract/plan-v2";
 import { Icon, UiPressable, UiText } from "../../components/ui";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { FlowFoot } from "./plan-flow-kit";
+import { SrcBadge, V3_INLINE as INLINE, V3Evidence, V3Route, v3Num as num, v3Shadow as shadow } from "./plan-draft-v3-kit";
 import { KitGradient, kitText, type KitTone } from "./plan-kit";
 import {
   adjustAllocation,
@@ -20,9 +21,6 @@ import {
   canToggleOff,
   PLAN_DRAFT_ALLOCATION_MAX,
   PLAN_DRAFT_ALLOCATION_MIN,
-  sourceStale,
-  sourceTitle,
-  sourceUrl,
   summarySegments,
   toggleType,
   typeAdjusted,
@@ -35,9 +33,6 @@ import { PLAN_ALLOCATION_STEP, PLAN_TYPE_TARGET_MAX } from "../../api/compute/pl
 
 /** 系统轮流 5 色（设计稿 types[i][1] 的顺序）。 */
 const TYPE_TONES: readonly Exclude<KitTone, "neutral" | "coral" | "ok">[] = ["blue", "teal", "apricot", "pink", "lav"];
-const NUM_FONT = Platform.OS === "ios" ? { fontFamily: "ui-rounded" } : null;
-// react-native-web (tests / sanity shots) lays a View inside Text out as a block; native iOS keeps it inline.
-const INLINE = Platform.OS === "web" ? ({ display: "inline-flex", verticalAlign: "middle" } as unknown as ViewStyle) : null;
 
 const VERDICT_KEYS: Record<PlanVerdict, "plan.v3.verdictFeasible" | "plan.v3.verdictConditional" | "plan.v3.verdictNotRecommended"> = {
   conditional: "plan.v3.verdictConditional",
@@ -45,11 +40,6 @@ const VERDICT_KEYS: Record<PlanVerdict, "plan.v3.verdictFeasible" | "plan.v3.ver
   not_recommended: "plan.v3.verdictNotRecommended",
 };
 const LEVEL_KEYS: Record<PlanConfidenceLevel, "plan.v3.levelHigh" | "plan.v3.levelMid" | "plan.v3.levelLow"> = { high: "plan.v3.levelHigh", low: "plan.v3.levelLow", mid: "plan.v3.levelMid" };
-const CMP_KEYS: Record<PlanComparisonVerdict, "plan.v3.cmpPreferred" | "plan.v3.cmpPossible" | "plan.v3.cmpNotRecommended"> = {
-  not_recommended: "plan.v3.cmpNotRecommended",
-  possible: "plan.v3.cmpPossible",
-  preferred: "plan.v3.cmpPreferred",
-};
 
 export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOpen, onAiFix, onConfirm, confirming, onRedraft, redraftEnabled, redrafting, now = new Date() }: {
   draft: PlanDraftView;
@@ -72,25 +62,16 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
   const { t } = useOrbitLocale();
   const [mine, setMine] = useState(false);
   const [why, setWhy] = useState(false);
-  const [full, setFull] = useState(false);
   const sources = content.sources ?? [];
   const answers = draft.premise.filter((row) => row.source !== "background");
   const totals = adjustTotals(content, state);
   const groups = typeGroups(content);
   // 判定点：可行 = ok、有条件 = verdict-conditional、不建议 = coral；对比条填充 = chart-* token（R36a 加，原型的写死色）。
   const verdictColor = (verdict: PlanVerdict) => verdict === "feasible" ? colors.ok : verdict === "conditional" ? colors.verdictConditional : colors.coral;
-  const fillColor = (verdict: PlanComparisonVerdict) => verdict === "preferred" ? colors.chartPreferred : verdict === "possible" ? colors.chartPossible : colors.chartNot;
-  const vColor = (verdict: PlanComparisonVerdict) => verdict === "preferred" ? colors.okText : verdict === "possible" ? colors.macApricotText : colors.coralText;
-  const badge = (n: number) => <View key={`src-${n}`} style={styles.src}><UiText style={styles.srcText}>{String(n)}</UiText></View>;
+  const badge = (n: number) => <SrcBadge key={`src-${n}`} n={n} />;
   const sg = (label: string) => <View style={styles.sg}><UiText style={styles.sgText}>{label}</UiText></View>;
 
   const summary = summarySegments(content.summary, sources, draft.premise);
-  const moreParts = [
-    content.keyNumbers?.length ? t("plan.v3.moreNums", { count: content.keyNumbers.length }) : null,
-    content.risks?.length ? t("plan.v3.moreRisks", { count: content.risks.length }) : null,
-    sources.length ? t("plan.v3.moreSources", { count: sources.length }) : null,
-  ].filter((part): part is string => Boolean(part));
-  const moreLabel = moreParts.length ? `${t("plan.v3.morePre")}${moreParts.length > 1 ? `${moreParts.slice(0, -1).join(t("plan.v3.moreJoin"))}${t("plan.v3.moreLast")}${moreParts[moreParts.length - 1]}` : moreParts[0]}${t("plan.v3.morePost")}` : null;
 
   return (
     <View style={styles.page} testID="draft-v3">
@@ -147,24 +128,7 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
       </View>
 
       {/* .route：N 个阶段，线从第一个节点中心到最后一个节点中心（left/right = 1/2N）。 */}
-      {content.steps.length ? (
-        <View style={styles.route} testID="draft-v3-route">
-          <View pointerEvents="none" style={[styles.routeLine, { left: `${50 / content.steps.length}%`, right: `${50 / content.steps.length}%` }]}>
-            <View style={[styles.routeHalf, { backgroundColor: colors.plum700 }]} />
-            <View style={[styles.routeHalf, { backgroundColor: colors.plum300 }]} />
-          </View>
-          {content.steps.map((step, index) => (
-            <View key={step.key} style={styles.st}>
-              <View style={styles.nodeBox}>
-                {index === 0 ? <View style={styles.halo} /> : null}
-                <View style={[styles.nodeRing, index === 0 && styles.nodeRingCur]} />
-                <View style={[styles.node, index === 0 && styles.nodeCur]}><UiText style={[styles.nodeText, index === 0 && styles.nodeTextCur]}>{String(index + 1)}</UiText></View>
-              </View>
-              <UiText style={[styles.stB, index === 0 && styles.stBCur]}>{step.title}</UiText>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <V3Route steps={content.steps} testID="draft-v3-route" />
 
       {/* 要认识这几类人 */}
       <View style={styles.section}>
@@ -204,90 +168,7 @@ export function PlanDraftV3({ draft, content, state, onState, aiFixLeft, aiFixOp
       </View>
 
       {/* 为什么这么排 */}
-      {content.orderReasons?.length || content.comparison ? (
-        <View style={styles.section}>
-          <View style={styles.sh}>
-            <UiText accessibilityRole="header" style={styles.h2}>{t("plan.v3.whyTitle")}</UiText>
-            <UiText style={styles.shSpan}>{t("plan.v3.whySub", { count: sources.length })}</UiText>
-          </View>
-          <View style={styles.evi} testID="draft-v3-evidence">
-            {content.orderReasons?.length ? (
-              <>
-                <View style={[styles.sh, styles.shTight]}><UiText style={styles.h2Sm}>{t("plan.v3.orderTitle")}</UiText></View>
-                <View style={styles.ord}>
-                  {content.orderReasons.map((line, index) => (
-                    <View key={index} style={styles.li}>
-                      <UiText style={styles.liNum}>{`${index + 1}.`}</UiText>
-                      <UiText style={styles.liText}>{line.text}{line.sourceIds.map((id) => { const n = sources.findIndex((source) => source.id === id) + 1; return n > 0 ? <UiText key={id}>{" "}{badge(n)}</UiText> : null; })}</UiText>
-                    </View>
-                  ))}
-                </View>
-              </>
-            ) : null}
-            {content.comparison ? (
-              <>
-                <View style={[styles.sh, styles.shLadder]}>
-                  <UiText style={styles.h2Sm}>{content.comparison.title}</UiText>
-                  <UiText style={styles.shSpan}>{t("plan.v3.ladderSub")}</UiText>
-                </View>
-                <UiText style={styles.funnel}>{content.comparison.funnel}</UiText>
-                <View style={styles.ladder}>
-                  {content.comparison.rows.map((row, index) => (
-                    <View key={`${row.label}-${index}`} style={styles.lr}>
-                      <UiText style={styles.lrLabel}>{row.label}{row.sourceIds.slice(0, 1).map((id) => { const n = sources.findIndex((source) => source.id === id) + 1; return n > 0 ? <UiText key={id}>{" "}{badge(n)}</UiText> : null; })}</UiText>
-                      <View style={styles.bar}><View style={[styles.barFill, { backgroundColor: fillColor(row.verdict), width: `${Math.max(0, Math.min(100, row.score))}%` }]} /></View>
-                      <UiText style={[styles.lrV, { color: vColor(row.verdict) }]}>{t(CMP_KEYS[row.verdict])}</UiText>
-                    </View>
-                  ))}
-                </View>
-              </>
-            ) : null}
-            {full ? (
-              <View testID="draft-v3-more">
-                {content.keyNumbers?.length ? (
-                  <View style={styles.nums}>
-                    {content.keyNumbers.map((number, index) => (
-                      <View key={`${number.value}-${index}`} style={[styles.nb, index > 0 && styles.nbLine]}>
-                        <UiText style={styles.nbB}>{number.value}</UiText>
-                        <UiText style={styles.nbSpan}>{number.label}{number.sourceIds.map((id) => { const n = sources.findIndex((source) => source.id === id) + 1; return n > 0 ? <UiText key={id}>{" "}{badge(n)}</UiText> : null; })}</UiText>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-                {content.risks?.length ? (
-                  <View style={styles.risks}>
-                    {content.risks.map((risk, index) => (
-                      <View key={index} style={styles.risk} testID={risk.kind === "unverified" ? "draft-v3-risk-unverified" : "draft-v3-risk"}>
-                        <View style={[styles.riskTag, risk.kind === "risk" ? styles.riskTagRisk : styles.riskTagUnverified]}><UiText style={[styles.riskTagText, risk.kind === "risk" ? styles.riskTagTextRisk : styles.riskTagTextUnverified]}>{t(risk.kind === "risk" ? "plan.v3.riskTag" : "plan.v3.unverifiedTag")}</UiText></View>
-                        <UiText style={styles.riskText}>{risk.text}</UiText>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-                {sources.length ? (
-                  <View style={styles.srcl}>
-                    {sources.map((source, index) => {
-                      const url = sourceUrl(source, draft.citations);
-                      return (
-                        <View key={source.id} style={styles.srclLi}>
-                          <View style={[styles.src, styles.srcInList]}><UiText style={styles.srcText}>{String(index + 1)}</UiText></View>
-                          <UiText style={styles.srclText}>{sourceTitle(source, draft.citations)}{sourceStale(source, now) ? <UiText>{" "}<View style={styles.chg}><UiText style={styles.chgText}>{t("plan.v3.sourceStale")}</UiText></View></UiText> : null}</UiText>
-                          {url ? <UiPressable accessibilityRole="link" hitSlop={6} onPress={() => void Linking.openURL(url)}><UiText style={styles.srclA}>{t("plan.v3.sourceOpen")}</UiText></UiPressable> : null}
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-            {moreLabel ? (
-              <UiPressable accessibilityRole="button" accessibilityState={{ expanded: full }} hitSlop={6} onPress={() => setFull((value) => !value)} style={styles.toggle} testID="draft-v3-toggle">
-                <UiText style={styles.toggleText}>{full ? t("plan.v3.less") : moreLabel}</UiText>
-              </UiPressable>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
+      <V3Evidence content={content} citations={draft.citations} now={now} />
 
       {!aiFixOpen ? (
         <FlowFoot>
@@ -377,9 +258,6 @@ function StpValue({ value, unit, label }: { value: number; unit: string; label?:
   return <UiText accessibilityLabel={label} style={styles.stpB}>{String(value)}<UiText style={styles.stpSmall}>{unit}</UiText></UiText>;
 }
 
-const shadow = (color: string, opacity: number): ViewStyle => ({ shadowColor: color, shadowOffset: { height: 1, width: 0 }, shadowOpacity: opacity, shadowRadius: 1 });
-const num = (size: number, weight: TextStyle["fontWeight"], lineHeight = 1.6): TextStyle => ({ ...kitText(size, weight, lineHeight), ...NUM_FONT });
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { paddingTop: 18 },
   top: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26, minHeight: 34.8 },
@@ -407,9 +285,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sumBold: { color: colors.ink, fontWeight: "600" },
   sg: { ...INLINE, backgroundColor: colors.surface, borderRadius: 999, paddingVertical: 1, paddingHorizontal: 8, marginHorizontal: 2, transform: [{ translateY: -1 }] },
   sgText: { color: colors.ink3Text, ...kitText(11, "400", 1.6) },
-  src: { ...INLINE, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.plum100, paddingHorizontal: 4, marginLeft: 3, alignItems: "center", justifyContent: "center", transform: [{ translateY: -1 }] },
-  srcText: { color: colors.macLavText, ...num(10, "600", 1.6) },
-  srcInList: { marginLeft: 0, transform: [] },
   badges: { flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 16 },
   pill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassLine, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 12 },
   pillDot: { width: 7, height: 7, borderRadius: 3.5 },
@@ -418,27 +293,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   why1: { maxWidth: 460, marginTop: 12, backgroundColor: colors.glass, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14 },
   why1Text: { color: colors.ink2, ...kitText(13, "400", 1.6) },
 
-  route: { flexDirection: "row", marginTop: 30, marginBottom: 26 },
-  routeLine: { position: "absolute", top: 15, height: 2, flexDirection: "row", opacity: 0.5 },
-  routeHalf: { flex: 1, height: 2 },
-  st: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
-  nodeBox: { width: 32, height: 32, marginBottom: 10, alignItems: "center", justifyContent: "center" },
-  halo: { position: "absolute", width: 44, height: 44, borderRadius: 22, backgroundColor: colors.plum700, opacity: 0.14 },
-  nodeRing: { position: "absolute", width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: colors.plum300 },
-  nodeRingCur: { borderColor: colors.ink, backgroundColor: colors.ink },
-  node: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  nodeCur: { backgroundColor: colors.ink },
-  nodeText: { color: colors.plum700, ...num(13, "600", 1.6) },
-  nodeTextCur: { color: colors.surface },
-  stB: { color: colors.ink2, textAlign: "center", ...kitText(12.5, "500", 1.6) },
-  stBCur: { color: colors.ink, fontWeight: "700" },
-
   section: { marginBottom: 42 },
   sh: { flexDirection: "row", alignItems: "baseline", gap: 10, marginBottom: 14 },
-  shTight: { marginBottom: 4 },
-  shLadder: { marginTop: 18, marginBottom: 4 },
   h2: { color: colors.ink, ...kitText(18, "600", 1.6) },
-  h2Sm: { color: colors.ink, ...kitText(15, "600", 1.6) },
   shSpan: { flex: 1, minWidth: 0, color: colors.ink3Text, ...kitText(12.5, "400", 1.6) },
   guide: { color: colors.ink2, ...kitText(13.5, "400", 1.7), marginTop: -4, marginHorizontal: 2, marginBottom: 12 },
   seats: { backgroundColor: colors.surface, borderRadius: 20, paddingTop: 16, paddingBottom: 6, ...shadow(colors.ink, 0.04) },
@@ -471,39 +328,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   totText: { color: colors.ink3Text, ...kitText(12.5, "400", 1.6) },
   totB: { color: colors.ink, ...num(15, "600", 1.6) },
   totBad: { color: colors.coralText },
-
-  evi: { backgroundColor: colors.surface, borderRadius: 22, paddingVertical: 20, paddingHorizontal: 22, ...shadow(colors.ink, 0.04) },
-  ord: { marginBottom: 4 },
-  li: { flexDirection: "row", paddingLeft: 2 },
-  liNum: { width: 18, color: colors.ink2, ...kitText(13.5, "400", 1.7) },
-  liText: { flex: 1, minWidth: 0, color: colors.ink2, ...kitText(13.5, "400", 1.7) },
-  funnel: { color: colors.ink3Text, ...kitText(12, "400", 1.6), marginBottom: 14 },
-  ladder: { gap: 8, marginBottom: 6 },
-  lr: { flexDirection: "row", alignItems: "center", gap: 12 },
-  lrLabel: { width: 96, color: colors.ink, ...kitText(13.5, "400", 1.6) },
-  bar: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.surface2, overflow: "hidden" },
-  barFill: { height: 8, borderRadius: 4 },
-  lrV: { width: 50, textAlign: "right", ...kitText(12, "400", 1.6) },
-  nums: { marginTop: 22, marginHorizontal: -22, borderTopWidth: 1, borderTopColor: colors.line },
-  nb: { paddingVertical: 12, paddingHorizontal: 22 },
-  nbLine: { borderTopWidth: 1, borderTopColor: colors.line },
-  nbB: { color: colors.ink, ...num(26, "600", 1.15), letterSpacing: -0.26 },
-  nbSpan: { color: colors.ink3Text, ...kitText(12, "400", 1.6) },
-  risks: { marginTop: 18 },
-  risk: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingTop: 10 },
-  riskTag: { borderRadius: 6, paddingVertical: 1, paddingHorizontal: 7, marginTop: 2 },
-  riskTagRisk: { backgroundColor: colors.coralSoft },
-  riskTagUnverified: { backgroundColor: colors.macApricot },
-  riskTagText: { ...kitText(11, "400", 1.6) },
-  riskTagTextRisk: { color: colors.coralText },
-  riskTagTextUnverified: { color: colors.macApricotText },
-  riskText: { flex: 1, minWidth: 0, color: colors.ink2, ...kitText(13, "400", 1.6) },
-  srcl: { marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line },
-  srclLi: { flexDirection: "row", alignItems: "center", gap: 8 },
-  srclText: { flex: 1, minWidth: 0, color: colors.ink2, ...kitText(12.5, "400", 1.7) },
-  srclA: { color: colors.plum700, ...kitText(12, "400", 1.7) },
-  toggle: { marginTop: 14, alignSelf: "flex-start" },
-  toggleText: { color: colors.plum700, ...kitText(13, "500", 1.6) },
 
   dock: { paddingTop: 14, paddingHorizontal: 14, paddingBottom: 18 },
   dockFade: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, opacity: 0.92 },

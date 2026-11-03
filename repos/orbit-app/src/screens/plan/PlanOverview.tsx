@@ -38,8 +38,10 @@ import { sinceConfirmedOf } from "./plan-review-model";
 import { InlineProblem, useFailureText } from "./plan-ui";
 import { KitButton, KitChip, KitEmo } from "./plan-kit";
 import { usePlanAwardToast } from "./usePlanAwardToast";
+import { PlanHomeV3 } from "./PlanHomeV3";
+import { isPlanHomeV3 } from "./plan-home-v3-model";
 
-export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = null }: { plan: PlanV2Detail; reload: () => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void; design?: string | null }) {
+export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = null }: { plan: PlanV2Detail; reload: (force?: boolean) => Promise<void>; goals?: readonly PlanGoalListItem[]; onAddGoal?: () => void; design?: string | null }) {
   const shared = usePlanOverviewStyles().styles;
   const { styles } = useStyles();
   const { t, language } = useOrbitLocale();
@@ -131,22 +133,22 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
 
   const cards = typeCards(plan);
   const suggestionFor = (step: { key: string; completedAt?: string | null }) => (step.completedAt ? undefined : pending.steps.get(step.key));
-  return (
-    <View style={styles.page} testID="plan-overview">
-      {/* QA-A: "目标 1/2" with a single goal read as "one of two goals"; count the goals there are. */}
-      <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 && activeGoals.length > 1 ? activeGoals.length : 0} onOpen={() => setSwitcherOpen(true)} />
-      <HeroCard plan={plan} onOpenType={openType} score={<ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />} />
-      <DiagCard
-        plan={plan}
-        busy={busy}
-        onPremise={() => setPremiseOpen(true)}
-        onReview={() => setReviewOpen(true)}
-        onManual={openManualEdit}
-        onAchieve={() => setAchieveOpen(true)}
-        onConversation={() => openMainTab(router, "/ai")} /* QA-A: "/agent" is a legacy redirect to Task › 待办 */
-        problem={cardProblem ? <InlineProblem text={cardProblem} /> : null}
-      />
-      <TodayCard plan={plan} cards={cards} onGo={() => router.push(plan.todayChance!.href as Href)} />
+  // QA-A: "目标 1/2" with a single goal read as "one of two goals"; count the goals there are.
+  const goalRow = <GoalRow plan={plan} index={goalIndex + 1} count={goalIndex >= 0 && activeGoals.length > 1 ? activeGoals.length : 0} onOpen={() => setSwitcherOpen(true)} />;
+  const diag = (
+    <DiagCard
+      plan={plan}
+      busy={busy}
+      onPremise={() => setPremiseOpen(true)}
+      onReview={() => setReviewOpen(true)}
+      onManual={openManualEdit}
+      onAchieve={() => setAchieveOpen(true)}
+      onConversation={() => openMainTab(router, "/ai")} /* QA-A: "/agent" is a legacy redirect to Task › 待办 */
+      problem={cardProblem ? <InlineProblem text={cardProblem} /> : null}
+    />
+  );
+  const pendingCards = (
+    <>
       {pending.memo.length > 0 || pending.candidates.length > 0 || pending.steps.size > 0 ? (
         <Section title={t("plan.overview.pendingTitle")}>
           {pending.memo.map((item) => (
@@ -173,10 +175,35 @@ export function PlanOverview({ plan, reload, goals = [], onAddGoal, design = nul
           ))}
         </Section>
       ) : null}
-      {problem ? <InlineProblem text={problem} /> : null}
-      <StepsCard plan={plan} cards={cards} onOpenType={openType} onOpenEvents={() => router.push("/events" as Href)} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
-      <TypesCard plan={plan} cards={cards} onOpenType={openType} />
-      <EventsCard plan={plan} onOpenEvent={(event) => router.push((event.assessmentHref ?? `/events/${encodeURIComponent(event.eventId)}`) as Href)} />
+    </>
+  );
+  // R37b: a v3 plan with a home block → the v3 plan home (plan-draft-v5-proposal.html v16「计划主页 · 执行」, same as the
+  // Web R37a). The design draws only the page body, so the goal switcher, 見直し / 手動編集 / 達成 / 前提 and the pending
+  // cards stay usable below it (R37a「待用户过目」①; the App does the same as the Web).
+  const v3 = isPlanHomeV3(plan);
+  return (
+    <View style={styles.page} testID="plan-overview">
+      {v3 ? (
+        <>
+          <PlanHomeV3 plan={plan} onReload={() => reload(true)} onAiAdjust={() => setReviewOpen(true)} />
+          {pendingCards}
+          {problem ? <InlineProblem text={problem} /> : null}
+          {goalRow}
+          {diag}
+        </>
+      ) : (
+        <>
+          {goalRow}
+          <HeroCard plan={plan} onOpenType={openType} score={<ScoreNumber value={score.total} accessibilityLabel={t("plan.overview.scoreA11y", { total: score.total })} />} />
+          {diag}
+          <TodayCard plan={plan} cards={cards} onGo={() => router.push(plan.todayChance!.href as Href)} />
+          {pendingCards}
+          {problem ? <InlineProblem text={problem} /> : null}
+          <StepsCard plan={plan} cards={cards} onOpenType={openType} onOpenEvents={() => router.push("/events" as Href)} onDoneMark={(step, number) => setReopen({ key: step.key, number })} />
+          <TypesCard plan={plan} cards={cards} onOpenType={openType} />
+          <EventsCard plan={plan} onOpenEvent={(event) => router.push((event.assessmentHref ?? `/events/${encodeURIComponent(event.eventId)}`) as Href)} />
+        </>
+      )}
 
       <BottomSheet visible={premiseOpen} onClose={() => setPremiseOpen(false)} accessibilityLabel={t("plan.overview.premiseTitle")}>
         <View style={styles.sheet} testID="premise-sheet">
