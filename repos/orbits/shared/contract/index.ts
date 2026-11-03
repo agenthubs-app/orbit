@@ -515,6 +515,7 @@ export type {
   PlanPrepCardView,
   PlanHomeAction,
   PlanHomeView,
+  PlanHomeSeat,
   PlanHomeDoneRequest,
   PlanHomeRegenerateRequest,
   PlanHomeActionResponse,

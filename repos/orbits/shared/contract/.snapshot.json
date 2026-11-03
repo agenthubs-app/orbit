@@ -13549,6 +13549,7 @@
         "PlanHomeActionResponse",
         "PlanHomeDoneRequest",
         "PlanHomeRegenerateRequest",
+        "PlanHomeSeat",
         "PlanHomeView",
         "PlanIntakeAnswer",
         "PlanIntakeAnswersRequest",
@@ -21083,6 +21084,51 @@
           "optional": false,
           "kind": "text",
           "type": "readonly PlanHomeAction[]"
+        },
+        "seats": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanHomeSeat[]"
+        }
+      }
+    },
+    "plan-v2.ts::PlanHomeSeat": {
+      "kind": "object",
+      "members": {
+        "typeKey": {
+          "optional": false,
+          "kind": "text",
+          "type": "string"
+        },
+        "people": {
+          "optional": false,
+          "kind": "array",
+          "readonly": true,
+          "element": {
+            "kind": "object",
+            "members": {
+              "contactId": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              },
+              "name": {
+                "optional": false,
+                "kind": "text",
+                "type": "string"
+              },
+              "note": {
+                "optional": false,
+                "kind": "text",
+                "type": "string | null"
+              }
+            }
+          }
+        },
+        "meetAt": {
+          "optional": false,
+          "kind": "text",
+          "type": "string | null"
         }
       }
     },
@@ -21128,6 +21174,11 @@
           "optional": false,
           "kind": "text",
           "type": "readonly PlanHomeAction[]"
+        },
+        "seats": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanHomeSeat[]"
         }
       }
     },

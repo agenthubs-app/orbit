@@ -250,10 +250,16 @@ export const planHomeActionObject = z.object({
   meta: z.string(),
   prep: planPrepCardViewObject.nullable().catch(null),
 });
+export const planHomeSeatObject = z.object({
+  typeKey: z.string().min(1),
+  people: readableItems(z.object({ contactId: z.string().nullable(), name: z.string(), note: z.string().nullable() })),
+  meetAt: z.string().nullable(),
+});
 export const planHomeViewObject = z.object({
   state: z.enum(["pending", "ready", "failed"]),
   lead: z.string().nullable(),
   actions: readableItems(planHomeActionObject),
+  seats: readableItems(planHomeSeatObject).optional(),
 });
 export const planHomeViewSchema = planHomeViewObject as z.ZodType<PlanHomeView>;
 export const planHomeDoneRequestObject = z.object({ done: z.boolean(), idempotencyKey: homeIdempotencyKey }).strict();

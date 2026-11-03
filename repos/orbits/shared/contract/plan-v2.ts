@@ -1293,6 +1293,17 @@ export interface PlanHomeView {
   lead: string | null;
   /** 0–3 件；空 = 只显示「去认识」提示。 */
   actions: readonly PlanHomeAction[];
+  /** 「要认识的人」每类的已认识的人与「去哪里认识」（读概要时现算；勾选 / 重新生成的回应里没有，界面沿用上次的）。 */
+  seats?: readonly PlanHomeSeat[];
+}
+
+/** 「要认识的人」一类（`typeKey` = 人物类型 key）：已认识（计过分）的人，与写明有这类参加者的活动。 */
+export interface PlanHomeSeat {
+  typeKey: string;
+  /** 计过分的人（有名字的在前；无名字自报的 `contactId` 为 null、`name` 为空串）。 */
+  people: readonly { contactId: string | null; name: string; note: string | null }[];
+  /** 活动页写明有这类参加者的最近一场（「活动名 月/日」）；没有为 null（界面显示「近期活动里没有…」）。 */
+  meetAt: string | null;
 }
 
 export interface PlanHomeDoneRequest {
