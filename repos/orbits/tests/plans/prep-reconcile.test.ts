@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { commonGround } from "../../features/plans/prep/common-ground";
-import { fallbackCard, hookValid, longestCommonSubstring, markedReason, reconcileDraft, reconcilePicks, underlineMatches } from "../../features/plans/prep/reconcile";
+import { dropFirstMeetingSentences, fallbackCard, hookValid, longestCommonSubstring, markedReason, reconcileDraft, reconcilePicks, underlineMatches } from "../../features/plans/prep/reconcile";
 import type { PlanPrepContactCard, PlanPrepProfile } from "../../features/plans/prep/types";
 
 const sources = {
@@ -46,6 +46,18 @@ test("reconcileDraft strips braces the model wraps around an underline (R38 real
   const result = reconcileDraft([{ text: "{产品已上线、还没有付费客户}，想听听您的看法。", underlines: [{ ref: { kind: "answer", questionKey: "q1" }, text: "产品已上线、还没有付费客户" }] }], sources);
   assert.equal(result.draft.text, "产品已上线、还没有付费客户，想听听您的看法。");
   assert.deepEqual(result.draft.refs.map((span) => result.draft.text.slice(span.start, span.end)), ["产品已上线、还没有付费客户"]);
+});
+
+test("R38-01: for someone already met, sentences with a first-meeting greeting are dropped; a first message ('初めてご連絡') is not a greeting", () => {
+  const result = dropFirstMeetingSentences([
+    { text: "佐藤健司様、はじめまして。", underlines: [] },
+    { text: "Nice to meet you, Ken.", underlines: [] },
+    { text: "初次见面，我是星桥科技的 X。", underlines: [] },
+    { text: "初めてご連絡いたします。", underlines: [] },
+    { text: "先日の交流会ではありがとうございました。", underlines: [] },
+  ]);
+  assert.equal(result.removed, 3);
+  assert.deepEqual(result.sentences.map((sentence) => sentence.text), ["初めてご連絡いたします。", "先日の交流会ではありがとうございました。"]);
 });
 
 test("reconcileDraft keeps the draft ≤160 characters by dropping whole trailing sentences", () => {

@@ -137,6 +137,11 @@ export interface PlanPrepCardInput {
   fields: ReadonlyArray<{ key: string; label: string; value: string }>;
   facts: ReadonlyArray<{ id: string; text: string; date: string | null }>;
   answers: ReadonlyArray<{ key: string; label: string; value: string }>;
+  /**
+   * R38-01：用户和这个人见过没有（系统判断，不让 AI 猜）。`met` = 扫过名片 / 有关联活动 / 有联系记录 / 用户记过关于他的备注（事实）；`unknown` = 只是加进了人脉；
+   * 活动卡为 `event`。`met` 时开场白不许用「初次见面」类问候。
+   */
+  relationship: "met" | "unknown" | "event";
 }
 
 /** 开场白按句给：每句带画线片段与出处。服务端逐句对账后拼成 `PlanPrepDraft`。 */

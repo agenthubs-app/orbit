@@ -216,3 +216,35 @@ test("v2 plans have no home and never need prep work; a v3 plan without home rea
   const { planId, world } = await v3Plan();
   assert.deepEqual((await world.planService.detail(planId))!.home, { actions: [], lead: null, state: "pending" });
 });
+
+test("R38-01: the card input says whether the user has met the person; for someone met, a first-meeting greeting is dropped from the opener", async () => {
+  const { planId, world } = await v3Plan();
+  const seen: Array<{ name: string | undefined; relationship: string }> = [];
+  const base = createMockPlanPrepAi();
+  const ai: PlanPrepAi = {
+    async card(input, context) {
+      seen.push({ name: input.fields.find((field) => field.key === "name")?.value, relationship: input.relationship });
+      return {
+        ok: true,
+        value: { hook: { label: "交流会の続き", reason: "会ったときの話から入れるため" }, planFit: null, sentences: [
+          { text: "佐藤さん、はじめまして。", underlines: [] },
+          { text: "上海で3年働いていたとおっしゃっていましたね。", underlines: [{ ref: { factId: "fact-1", kind: "fact" }, text: "上海で3年働いていた" }] },
+        ], usedAnswers: [], usedFacts: ["fact-1"] },
+      } as PlanAiOutcome<PlanPrepCardOutput>;
+      void context;
+    },
+    id: "mock",
+    pick: (input, context) => base.pick(input, context),
+  };
+  const context = contextOf();
+  const contacts = context.contacts;
+  // 山本：只是加进了人脉（没扫名片、没关联活动、没联系记录、没有事实）→ unknown。佐藤：有事实 → met（即使不看名片）。
+  context.contacts = async (actor, ids) => (await contacts(actor, ids)).map((contact) => ({ ...contact, sourceEventTitle: null, sourceLabel: "manual" }));
+  const prep = createPlanPrepService({ ai, context, now: clock(), repository: world.repository, scope: SCOPE });
+  const view = await prep.ensure(planId, "ja");
+  assert.deepEqual(seen.map((entry) => entry.relationship).sort(), ["met", "unknown"]);
+  const sato = view!.actions.find((action) => action.contactId === "contact:sato")!;
+  assert.equal(sato.prep!.draft.text, "上海で3年働いていたとおっしゃっていましたね。");
+  const yamamoto = view!.actions.find((action) => action.contactId === "contact:yamamoto")!;
+  assert.match(yamamoto.prep!.draft.text, /はじめまして/u, "not known to have met → the greeting stays (prompt rule only)");
+});

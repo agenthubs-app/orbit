@@ -17,7 +17,12 @@ import { repairMessage, systemPrompt } from "../v2/ai/prompts";
 import type { PlanPrepRef } from "../../../shared/contract/plan-v2";
 import type { PlanPickInput, PlanPickOutput, PlanPrepAi, PlanPrepAiContext, PlanPrepCardInput, PlanPrepCardOutput } from "./types";
 
-export const PLAN_PREP_PROMPT_VERSION = "plan-prep-2026-11-v1";
+/**
+ * v2（R38-01，2026-11-04）：只改 `card`。R38 真调用（v1）里，见过面的人开场白写「はじめまして」、用户自己记的备注写成转述
+ * （「…と伺っております」）。输入加 `relationship`（系统判断是否见过），提示词加两条规则；服务端另有兜底
+ * （见过时删掉「初次见面」问候句，`dropFirstMeetingSentences`）。`pick` 不变。
+ */
+export const PLAN_PREP_PROMPT_VERSION = "plan-prep-2026-11-v2";
 
 const disabled = async <T>(): Promise<PlanAiOutcome<T>> => ({ ok: false, reason: "disabled" });
 
@@ -96,6 +101,8 @@ export const PLAN_PREP_TASKS = {
   card: [
     "Write a short opening message for the user to contact one person (or to open a conversation at one event), and the angle to open with.",
     "Use only the input: fields (card / profile / event page, each with a key), facts (with ids, from the user's notes), and the user's answers (with keys). Do not guess motives; do not invent shared experiences.",
+    "relationship tells you whether the user has met this person: \"met\" (they exchanged cards, met at an event, or have been in touch) → never greet as a first meeting (no はじめまして / 初めまして / 初次见面 / nice to meet you); open by recalling where or how you met when a field says so (for example 「先日の◯◯ではありがとうございました」). \"unknown\" → a neutral opening that neither claims a past meeting nor a first one. \"event\" → a message for the event, not a person.",
+    "facts are the user's OWN notes, written after talking with this person: what the person said or did in front of the user. Write them as things the person told the user directly (「〜とおっしゃっていましたね」 / 「你之前提到…」 / \"you mentioned…\"), never as hearsay (no 「〜と伺いました」 / 「〜と伺っております」 / 「〜と聞きました」 / 「听说」 / \"I heard that…\"). Underline only the key phrase of the note (for example 「B2B SaaSへの出資を増やす」), not the note's own reporting words such as 「〜と話していた」 / 「〜と言っていた」, and write the sentence around it naturally.",
     "hook: label ≤12 characters, reason ≤60 characters (why this opening works).",
     "sentences: the message split into sentences, ≤160 characters in total. Every concrete detail taken from the input must be an underline: {text: an exact substring of that sentence, ref: {kind:\"fact\",factId} | {kind:\"answer\",questionKey} | {kind:\"card\",field}}. Sentences without input details have no underlines.",
     "usedFacts / usedAnswers: the ids / keys you used (facts 2–4 when available).",

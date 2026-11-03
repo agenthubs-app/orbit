@@ -126,7 +126,7 @@ test("deepseek prep AI reserves plan_prep with trigger plan for initial and manu
     log: () => undefined,
     model: "m",
   });
-  const input = { answers: [], facts: [], fields: [], goal: "g", kind: "contact" as const, language: "ja" as const, outcome: null, questions: [], typeLabel: null };
+  const input = { answers: [], facts: [], fields: [], goal: "g", kind: "contact" as const, language: "ja" as const, outcome: null, questions: [], relationship: "met" as const, typeLabel: null };
   assert.equal((await ai.card(input, { actorId: "a", language: "ja", ledgerKey: "k1", now: new Date(), trigger: "plan" })).ok, true);
   await ai.card(input, { actorId: "a", language: "ja", ledgerKey: "k2", now: new Date(), trigger: "manual" });
   assert.deepEqual(reserved, [{ pool: "user", purpose: "plan_prep", trigger: "plan" }, { pool: "user", purpose: "plan_prep", trigger: "manual" }]);

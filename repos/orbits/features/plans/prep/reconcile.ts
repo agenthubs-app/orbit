@@ -105,13 +105,22 @@ export function reconcileDraft(sentences: PlanPrepCardOutput["sentences"], sourc
   return { answerKeys, draft: { refs, text: kept.map((sentence) => sentence.text).join("") }, factIds, removed };
 }
 
+/** 「初次见面」类问候（只认问候语本身；「初めてご連絡します」这类首次发消息的说法不算）。 */
+const FIRST_MEETING = /はじめまして|初めまして|初次见面|初次見面|nice to meet you/iu;
+
+/** R38-01 兜底：已经见过的人，删掉含「初次见面」问候的句子（提示词 v2 已禁止，这里防模型不听）。 */
+export function dropFirstMeetingSentences<T extends { text: string }>(sentences: readonly T[]): { sentences: T[]; removed: number } {
+  const kept = sentences.filter((sentence) => !FIRST_MEETING.test(sentence.text));
+  return { removed: sentences.length - kept.length, sentences: kept };
+}
+
 const FALLBACK: Record<PlanCopyLanguage, { draft: (input: FallbackInput) => string; hook: { label: string; reason: string } }> = {
   en: {
     draft: ({ me, organization, name, goal }) => `Hello${name ? ` ${name}` : ""}, I'm ${me}${organization ? ` from ${organization}` : ""}. I'm working on ${goal}, and I'd value 20 minutes of your view on it. Any time that suits you works for me.`,
     hook: { label: "A small ask", reason: "Say who you are and keep the ask small." },
   },
   ja: {
-    draft: ({ me, organization, name, goal }) => `${name ? `${name}さん、` : ""}はじめまして、${organization ? `${organization}の` : ""}${me}です。いま「${goal}」に取り組んでいて、ぜひ一度ご意見をうかがえればと思っています。20分ほど、ご都合のよい時間にお話しできませんか。`,
+    draft: ({ me, organization, name, goal }) => `${name ? `${name}さん、` : ""}${organization ? `${organization}の` : ""}${me}です。いま「${goal}」に取り組んでいて、ぜひ一度ご意見をうかがえればと思っています。20分ほど、ご都合のよい時間にお話しできませんか。`,
     hook: { label: "自己紹介と小さなお願い", reason: "情報が少ないときは距離を詰めすぎず、誰なのかをはっきり伝え、お願いを小さくして答えやすくします。" },
   },
   zh: {

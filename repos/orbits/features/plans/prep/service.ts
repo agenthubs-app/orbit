@@ -17,7 +17,7 @@ import { activeAwards } from "../v2/service";
 import type { PlanV2Reader, PlanV2Repository, PlanV2Row, PlanV2Scope } from "../v2/types";
 import { candidateSignature, homeCandidates } from "./candidates";
 import { commonGround } from "./common-ground";
-import { fallbackCard, hookValid, reconcileDraft, reconcilePicks } from "./reconcile";
+import { dropFirstMeetingSentences, fallbackCard, hookValid, reconcileDraft, reconcilePicks } from "./reconcile";
 import {
   PLAN_HOME_LIMITS,
   type PlanHomeCandidate,
@@ -178,7 +178,7 @@ export function createPlanPrepService(options: PlanPrepServiceOptions): PlanPrep
       ...(event ? [{ key: "event_title", label: "event", value: event.title }] : []),
       ...(profile.organization ? [{ key: "profile.organization", label: "your company", value: profile.organization }] : []),
       ...(profile.role ? [{ key: "profile.role", label: "your role", value: profile.role }] : []),
-      ...(profile.homeMarket ? [{ key: "profile.homeMarket", label: "you are from", value: profile.homeMarket }] : []),
+      ...(profile.homeMarket ? [{ key: "profile.homeMarket", label: "where you are based", value: profile.homeMarket }] : []),
     ];
     const answers = answersOf(plan);
     const types = await repository.read(scope, (reader) => reader.typeItems(plan.id));
@@ -192,6 +192,7 @@ export function createPlanPrepService(options: PlanPrepServiceOptions): PlanPrep
       language,
       outcome: plan.analysis.outcome ?? null,
       questions: type?.personType.questions ?? [],
+      relationship: event ? "event" : contact && (contact.sourceLabel === "card" || contact.sourceEventTitle || contact.lastInteractionAt || facts.length > 0) ? "met" : "unknown",
       typeLabel: candidate.typeLabel,
     };
     const result = await ai.card(input, { actorId: scope.actorId, language, ledgerKey, now: at, trigger });
@@ -203,7 +204,9 @@ export function createPlanPrepService(options: PlanPrepServiceOptions): PlanPrep
       return { aiOk: false, card: { ...base, ...fallback, fallback: true, rows, usedAnswers: [], usedFacts: [] }, limited: result.reason === "limit" };
     }
     const output = result.value;
-    const reconciled = reconcileDraft(output.sentences, {
+    const greeting = input.relationship === "met" ? dropFirstMeetingSentences(output.sentences) : { removed: 0, sentences: output.sentences };
+    if (greeting.removed) log({ event: "plan_prep_first_meeting_greeting_dropped", planId: plan.id, removed: greeting.removed });
+    const reconciled = reconcileDraft(greeting.sentences, {
       answers: new Map(answers.map((answer) => [answer.key, answer.value])),
       facts: new Map(facts.map((fact) => [fact.id, fact.text])),
       fields: new Map(fields.map((field) => [field.key, field.value])),
