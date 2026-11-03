@@ -1,0 +1,49 @@
+{
+ "_note": "R37b App 计划主页 v3（plan-draft-v5-proposal.html v16「手机」·「计划主页 · 执行」）。设计侧 = --design-page 整页模式（原型 ?goal=…&page=home&device=m&bar=0，390 宽、3x 渲染再缩）；实现侧 = iPhone 16e 模拟器（iOS 26.0，926B48E0-…）连 :3201 mock 服务器（launch.json orbits-plan-mock），Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path，path 跳 Task › プラン。App 的プラン段只显示当前目标，所以每张先切单目标 fixture（switch.mjs --name v16-home-fund / -sales / -hire），再 --only 那一张。原型主页默认态：准备卡、空位行、依据全收起。原型没有深色：深色三张只截图留档，不进门禁。 实现侧 region 0,188,390,550（状态栏 50 + Task 头 + 段切换 + 指示点 = 188pt 起，止于底部 tab 栏之上）↔ 设计侧 .page 顶起同高 550pt（原型手机主页没有 tab 栏）。",
+ "defaults": {
+  "grid": 30,
+  "wait": 20000,
+  "attribution": "scripts/visual/attribution-redesign-R37b.json",
+  "design": "plan-draft-v5-proposal.html",
+  "design-page": "true",
+  "themes": [
+   "light"
+  ],
+  "region": "0,188,390,550",
+  "design-region": "0,0,390,550"
+ },
+ "sources": [
+  "repos/orbit-app/src/screens/plan/PlanHomeV3.tsx",
+  "repos/orbit-app/src/screens/plan/plan-home-v3-model.ts",
+  "repos/orbit-app/src/screens/plan/plan-draft-v3-kit.tsx",
+  "repos/orbit-app/src/screens/plan/PlanOverview.tsx",
+  "repos/orbit-app/src/screens/plan/PlanSegment.tsx",
+  "repos/orbit-app/src/screens/plan/plan-kit.tsx",
+  "repos/orbit-app/src/i18n/ja/plan.ts",
+  "repos/orbit-app/src/components/ui/**",
+  "repos/orbit-app/src/components/Shell*.tsx"
+ ],
+ "views": [
+  {
+   "id": "A-R37b-fund",
+   "design-query": "goal=fund&page=home&device=m&bar=0",
+   "path": "/task?seg=plan",
+   "fixture": "v16-home-fund",
+   "note": "融资 · 计划主页"
+  },
+  {
+   "id": "A-R37b-sales",
+   "design-query": "goal=sales&page=home&device=m&bar=0",
+   "path": "/task?seg=plan",
+   "fixture": "v16-home-sales",
+   "note": "开拓客户 · 计划主页"
+  },
+  {
+   "id": "A-R37b-hire",
+   "design-query": "goal=hire&page=home&device=m&bar=0",
+   "path": "/task?seg=plan",
+   "fixture": "v16-home-hire",
+   "note": "招聘 · 计划主页"
+  }
+ ]
+}

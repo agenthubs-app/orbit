@@ -522,15 +522,17 @@ const hidden = StyleSheet.create({ box: { left: 0, opacity: 0, position: "absolu
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   page: { paddingTop: 18 },
 
-  hh: { gap: 12, marginTop: 4, marginBottom: 22 },
+  // CSS collapses .hh's margins (4 / 22) into .top's 26 below and .route's 30 above, so none are left here.
+  hh: { gap: 12 },
   goal: { color: colors.plum700, ...kitText(12.5, "500", 1.6), marginBottom: 8 },
   h1: { color: colors.ink, ...kitText(22, "600", 1.35) },
-  pgB: { flexDirection: "row", alignItems: "baseline" },
+  // .pg's inline lines sit on the parent's 14px / 1.6 strut: the 26px b line box ends ~1.7pt lower, the 12px last line is 22.4 tall.
+  pgB: { flexDirection: "row", alignItems: "baseline", paddingBottom: 1.7 },
   pgBText: { color: colors.ink, ...v3Num(26, "600", 1) },
   pgBSmall: { color: colors.ink3Text, marginLeft: 3, ...kitText(11.5, "500", 1.2) },
   dn: { color: colors.ink2, marginTop: 4, ...kitText(12, "400", 1.5) },
   pgProg: { marginTop: 8, marginHorizontal: 0, marginBottom: 0 },
-  pgLine: { color: colors.ink3Text, ...kitText(12, "400", 1.6) },
+  pgLine: { color: colors.ink3Text, ...kitText(12, "400", 22.4 / 12) },
   prog: { height: 6, borderRadius: 3, backgroundColor: colors.surface2, marginHorizontal: 20, marginBottom: 8, overflow: "hidden" },
   progFill: { height: 6, borderRadius: 3, backgroundColor: colors.ok },
 
