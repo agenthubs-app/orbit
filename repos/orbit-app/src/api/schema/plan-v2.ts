@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
 import type {
+  ContactManualFactRequest,
+  ContactManualFactResult,
+  PlanHomeDoneRequest,
+  PlanHomeRegenerateRequest,
+  PlanHomeView,
   PlanAwardRequest,
   PlanAwardResult,
   PlanCommandResult,
@@ -213,6 +218,59 @@ const premiseRow = z.object({
   guessed: z.boolean(),
 });
 
+// R37a 主页「先做的事」与准备卡：读不懂的件 / 行整条跳过，整块读不懂按 null（界面不显示清单）。
+const homeIdempotencyKey = z.string().min(1).max(200);
+const planPrepRef = z.union([
+  z.object({ kind: z.literal("fact"), factId: z.string() }),
+  z.object({ kind: z.literal("answer"), questionKey: z.string() }),
+  z.object({ kind: z.literal("card"), field: z.string() }),
+]);
+export const planPrepCardViewObject = z.object({
+  rows: readableItems(z.object({ key: z.enum(["who", "met", "last_contact", "common", "when_where", "about", "plan_fit"]), value: z.string(), source: z.string() })),
+  usedFacts: readableItems(z.object({ id: z.string(), text: z.string(), date: z.string().nullable(), memoId: z.string().nullable() })),
+  usedAnswers: z.array(z.string()),
+  hook: z.object({ label: z.string(), reason: z.string() }),
+  draft: z.object({ text: z.string(), refs: readableItems(z.object({ start: z.number().int().min(0), end: z.number().int().min(0), ref: planPrepRef })) }),
+  gaps: readableItems(z.enum(["memo", "interaction"])),
+  generatedAt: z.string(),
+  staleSince: z.string().nullable(),
+  fallback: z.boolean(),
+});
+export const planHomeActionObject = z.object({
+  actionKey: z.string().min(1),
+  kind: z.enum(["contact", "event"]),
+  contactId: z.string().nullable(),
+  eventId: z.string().nullable(),
+  title: z.string(),
+  reason: planMarkedTextObject,
+  stepNumber: z.number().int().min(1),
+  typeKey: z.string().nullable(),
+  done: z.boolean(),
+  avatar: z.string(),
+  meta: z.string(),
+  prep: planPrepCardViewObject.nullable().catch(null),
+});
+export const planHomeSeatObject = z.object({
+  typeKey: z.string().min(1),
+  people: readableItems(z.object({ contactId: z.string().nullable(), name: z.string(), note: z.string().nullable() })),
+  meetAt: z.string().nullable(),
+});
+export const planHomeViewObject = z.object({
+  state: z.enum(["pending", "ready", "failed"]),
+  lead: z.string().nullable(),
+  actions: readableItems(planHomeActionObject),
+  seats: readableItems(planHomeSeatObject).optional(),
+});
+export const planHomeViewSchema = planHomeViewObject as z.ZodType<PlanHomeView>;
+export const planHomeDoneRequestObject = z.object({ done: z.boolean(), idempotencyKey: homeIdempotencyKey }).strict();
+export const planHomeDoneRequestSchema = planHomeDoneRequestObject as z.ZodType<PlanHomeDoneRequest>;
+export const planHomeRegenerateRequestObject = z.object({ idempotencyKey: homeIdempotencyKey }).strict();
+export const planHomeRegenerateRequestSchema = planHomeRegenerateRequestObject as z.ZodType<PlanHomeRegenerateRequest>;
+export const contactManualFactRequestObject = z.object({ text: z.string().trim().min(1).max(80), idempotencyKey: homeIdempotencyKey }).strict();
+export const contactManualFactRequestSchema = contactManualFactRequestObject as z.ZodType<ContactManualFactRequest>;
+export const contactManualFactResultObject = z.object({ factId: z.string().min(1), text: z.string(), staleCards: count });
+export const contactManualFactResultSchema = contactManualFactResultObject as z.ZodType<ContactManualFactResult>;
+
 export const planV2DetailObject = z.object({
   planId: z.string().min(1),
   revision: z.number().int().min(1),
@@ -265,6 +323,8 @@ export const planV2DetailObject = z.object({
   goalNote: z.string().nullable().optional().catch(null),
   // R26（D53）：概要推荐活动（与类型详情 events 同形状）。
   recommendedEvents: z.lazy(() => readableItems(planEventOption)).optional(),
+  // R37a：v3 计划主页「先做的事」（读不懂按 null）。
+  home: planHomeViewObject.nullable().optional().catch(null),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 

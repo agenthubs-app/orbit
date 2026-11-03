@@ -507,6 +507,21 @@ export type {
   PlanWebSource,
   PlanSource,
   PlanV3Fields,
+  PlanPrepRef,
+  PlanPrepDraft,
+  PlanPrepRow,
+  PlanPrepFactView,
+  PlanPrepGap,
+  PlanPrepCardView,
+  PlanHomeAction,
+  PlanHomeView,
+  PlanHomeSeat,
+  PlanHomeDoneRequest,
+  PlanHomeRegenerateRequest,
+  PlanHomeActionResponse,
+  ContactManualFactRequest,
+  ContactManualFactResult,
+  PlanV2DetailHome,
 } from "./plan-v2";
 
 // R12 手入力（DESIGN §4.1）。Owner: 甲 (R12).

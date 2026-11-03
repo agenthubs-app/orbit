@@ -282,7 +282,8 @@ export const designFont = {
     displayCompact: 36,
     numberXl: 34,
     displayBig: 52,
-    displayHuge: 60
+    displayHuge: 60,
+    taskTitle: 15.5
   },
   weight: {
     regular: 400,
@@ -306,7 +307,8 @@ export const designFont = {
     quote: 1.75,
     letter: 1.8,
     compact: 1.3,
-    figure: 1.15
+    figure: 1.15,
+    relaxed: 1.65
   },
   tracking: {
     tight: -0.02,
