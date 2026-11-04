@@ -271,6 +271,17 @@ export const contactManualFactRequestSchema = contactManualFactRequestObject as 
 export const contactManualFactResultObject = z.object({ factId: z.string().min(1), text: z.string(), staleCards: count });
 export const contactManualFactResultSchema = contactManualFactResultObject as z.ZodType<ContactManualFactResult>;
 
+const planCitationViewObject = z.object({
+  id: z.string().min(1),
+  version: z.number().int().min(1),
+  title: z.string(),
+  summary: z.string(),
+  sourceLabel: z.string(),
+  sourceUrl: z.string(),
+  sourcePublishedOn: z.string(),
+  updatedOn: z.string(),
+});
+
 export const planV2DetailObject = z.object({
   planId: z.string().min(1),
   revision: z.number().int().min(1),
@@ -325,6 +336,8 @@ export const planV2DetailObject = z.object({
   recommendedEvents: z.lazy(() => readableItems(planEventOption)).optional(),
   // R37a：v3 计划主页「先做的事」（读不懂按 null）。
   home: planHomeViewObject.nullable().optional().catch(null),
+  // R38-04：v3 依据区的现状库来源。
+  citations: readableItems(planCitationViewObject).optional(),
 });
 export const planV2DetailSchema = planV2DetailObject as z.ZodType<PlanV2Detail>;
 
@@ -468,16 +481,7 @@ export const planDraftViewObject = z.object({
   premise: premiseRows,
   content: planV2ContentObject,
   originContent: planV2ContentObject,
-  citations: readableItems(z.object({
-    id: z.string().min(1),
-    version: z.number().int().min(1),
-    title: z.string(),
-    summary: z.string(),
-    sourceLabel: z.string(),
-    sourceUrl: z.string(),
-    sourcePublishedOn: z.string(),
-    updatedOn: z.string(),
-  })),
+  citations: readableItems(planCitationViewObject),
   aiFixUsed: count,
   aiFixLimit: count,
   manualEditAvailable: z.boolean(),

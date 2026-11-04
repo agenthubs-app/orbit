@@ -17490,6 +17490,11 @@
           "kind": "text",
           "type": "readonly PlanEventOption[]"
         },
+        "citations": {
+          "optional": true,
+          "kind": "text",
+          "type": "readonly PlanCitationView[]"
+        },
         "home": {
           "optional": true,
           "kind": "text",

@@ -234,6 +234,8 @@ export interface PlanV2Detail extends PlanV2DetailHome {
   goalNote?: string | null;
   /** R26（D53）：概要「🎟 イベント」卡的推荐活动（按 `scoreEvent` 降序，≤3）。 */
   recommendedEvents?: readonly PlanEventOption[];
+  /** R38-04：v3 计划的 `content.citations` 解析后的现状库条目（依据区显示标题）；只在概要读取、`schemaVersion === 3` 时给。 */
+  citations?: readonly PlanCitationView[];
 }
 
 /** 记一次「话过了」（有名字 / 无名字）。 */

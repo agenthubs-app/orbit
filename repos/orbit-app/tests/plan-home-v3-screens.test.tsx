@@ -326,6 +326,20 @@ test("evidence: the link opens the draft's evidence card (order reasons, ladder)
   await page.getByTestId("plan-home-evlink").waitFor();
 });
 
+test("evidence: a library source shows the title from citations and links to its source (R38-04)", async (t) => {
+  const citation = { id: "L-101", sourceLabel: "JETRO", sourcePublishedOn: "2026-04-01", sourceUrl: "https://example.com/l-101", summary: "概要", title: "日本の VC 投資額の推移", updatedOn: "2026-05-01", version: 2 };
+  const plan = { ...clone(mock.fund), citations: [citation] };
+  plan.content = { ...plan.content, sources: [{ id: "S1", kind: "landscape", landscapeId: "L-101", version: 2 }] };
+  const { page } = await open(t, serverFor(() => plan));
+  await page.getByTestId("plan-home-evlink").click();
+  await page.getByTestId("draft-v3-toggle").click();
+  const more = page.getByTestId("draft-v3-more");
+  await more.waitFor();
+  const text = await more.innerText();
+  assert.match(text, /日本の VC 投資額の推移/);
+  assert.doesNotMatch(text, /L-101/);
+});
+
 test("準備中: the overview is read again every 3 s, at most 10 times", async (t) => {
   const plan = clone(mock.fund);
   plan.home = { actions: [], lead: null, seats: plan.home!.seats, state: "pending" };

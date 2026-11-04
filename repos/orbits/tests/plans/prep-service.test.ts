@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { LANDSCAPE_ENTRIES } from "../../features/plans/landscape/entries";
+import { resolveCitations } from "../../features/plans/landscape/store";
 import { createMockPlanPrepAi } from "../../features/plans/prep/ai";
 import { createPlanPrepService } from "../../features/plans/prep/service";
 import { PLAN_HOME_LIMITS, type PlanPrepAi, type PlanPrepCardOutput, type PlanPrepContext, type PlanPrepFact } from "../../features/plans/prep/types";
@@ -8,6 +10,7 @@ import { planHomeAwaitsMatch, planHomeNeedsWork, storedHomeOf } from "../../feat
 import type { PlanAiOutcome } from "../../features/plans/v2/ai/types";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
 import type { PlanV2MatchJob } from "../../features/plans/v2/types";
+import { planV2DetailSchema } from "../../shared/api-schema/plan-v2";
 import { serviceFor, SCOPE, draftInput } from "./v2-fixture";
 import { flowWorld, JA, key, premiseReady } from "./flow-fixture";
 
@@ -301,4 +304,23 @@ test("R38-03: only an empty ready home is affected; the overview reads pending, 
 
   const detail = await world.planService.detail(planId);
   assert.equal(detail!.home?.state, "ready", "the stored state itself is untouched");
+});
+
+test("R38-04: the v3 overview resolves citations for the evidence block in the reader's language; v2 stays without the key", async () => {
+  const { plan, planId, world } = await emptyHomePlan();
+  assert.ok(plan.analysis.citations.length > 0, "the mock flow cites the library");
+  const [cited] = plan.analysis.citations;
+  const entry = LANDSCAPE_ENTRIES.find((item) => item.id === cited!.id && item.version === cited!.version)!;
+  const ja = await world.planService.overview(planId, { language: "ja" });
+  assert.deepEqual(ja!.citations, resolveCitations(plan.analysis.citations, "ja"));
+  assert.equal(ja!.citations![0]!.title, entry.title.ja);
+  assert.equal(ja!.citations![0]!.sourceUrl, entry.source.url);
+  const zh = await world.planService.overview(planId, { language: "zh" });
+  assert.equal(zh!.citations![0]!.title, entry.title.zh);
+  assert.deepEqual(planV2DetailSchema.parse(ja).citations, ja!.citations, "the schema keeps the field");
+
+  const repository = createMemoryPlanV2Repository();
+  const service = serviceFor(repository, SCOPE, clock());
+  const { plan: v2 } = await service.createPlanFromDraft(draftInput());
+  assert.equal("citations" in (await service.overview(v2.planId, { language: "ja" }))!, false);
 });

@@ -53,6 +53,7 @@ import { needStatus } from "./repository";
 import { pickPlanV3Fields } from "./v3-fields";
 import { planHomeAwaitsMatch, planHomeView } from "../prep/view";
 import { homeSeats } from "../prep/candidates";
+import { resolveCitations } from "../landscape/store";
 import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
   PLAN_V2_GOAL_LIMIT,
@@ -1156,6 +1157,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         const awaitsMatch = emptyHome && planHomeAwaitsMatch(plan, await reader.planMatchJob(plan.id), new Date(at));
         return {
           ...detail,
+          // R38-04：v3 依据区的现状库来源标题（App 没有库，Web 直接查；v2 计划一个键都不多）。
+          ...(plan.analysis.schemaVersion === 3 ? { citations: resolveCitations(plan.analysis.citations, view.language ?? "ja") } : {}),
           pending: pendingItems(input, at),
           recentAwards: recentAwards(input),
           stepProgress: stepProgress(input),

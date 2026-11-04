@@ -280,7 +280,7 @@ export function PlanHomeV3({ plan, onReload, onAiAdjust, now = new Date() }: {
       {/* 为什么这么排：收起 = .evlink；展开 = 初稿页的依据区 */}
       {sources.length || content.orderReasons?.length || content.comparison ? (
         full ? (
-          <V3Evidence content={content} citations={[]} now={now} testID="plan-home-evidence" onClose={() => setFull(false)} />
+          <V3Evidence content={content} citations={plan.citations ?? []} now={now} testID="plan-home-evidence" onClose={() => setFull(false)} />
         ) : (
           <View style={kit.section}>
             <UiPressable accessibilityRole="button" accessibilityState={{ expanded: false }} onPress={() => setFull(true)} style={styles.evlink} testID="plan-home-evlink">
