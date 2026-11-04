@@ -121,3 +121,14 @@ node scripts/visual/compare-redesign-app.mjs --suite scripts/visual/views/app-R3
 - **给 R38**：真实 DeepSeek 的 v3 回包在 App 上的显示（`summary.marks` 越界、`refs` 指向不存在的来源、`comparison.rows[].typeKey` 为 null 的行）本 Sprint 都有兜底，但只用 mock 验过。
 - **给主会话（高优先）**：**iOS 27 上 App 启动即崩**。iOS 27.0 模拟器（24A434）启动 `app.agenthubs.orbit` 立刻 `EXC_BREAKPOINT`，栈顶 UIKitCore `_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`（iOS 27 强制 UIScene 生命周期；`ios/` 由 prebuild 生成、Info.plist 无 `UIApplicationSceneManifest`；Expo 57 / RN 0.86）。与计划页无关，装 iOS 27 的真机同样会崩。崩溃报告 `~/orbit-sprint-evidence/app/sprint-R36b/run-02/ios27-launch-crash.ips`。需另开任务做 UIScene 适配；在那之前 App 门禁一律用 iOS 26 模拟器。
 - **给主会话**：模拟器运行时 11-01 10:39 被清空过；现装有 iOS 26.0 与 iOS 27.0，门禁设备 `iPhone 16e (iOS 26)` `926B48E0-…`。`expo run:ios --device` 构建成功后会卡在「Connecting to …」（CPU 0%），用 DerivedData 产物 + `simctl install` 绕过。
+
+## 补记（2026-11-04 门禁复跑）
+
+R38 收口时 `Text.tsx` 正被另一会话修改，App 门禁没有复跑；该会话结论是无代码改动（简体字方框是 iOS 26.0 模拟器运行时缺陷），本次在 `chat-agent` `95d9865c4` + `938ea307c` 上复跑。
+
+- 环境：iPhone 16e（iOS 26）`926B48E0-…`，mock `:3201`，设计稿 `:3320`，Metro `:8081`（open-path）。
+- 结论：**PASS**，全部原始截图逐张看过，是真实页面；raw 与本报告原表逐张相同。
+- 六张：页身 fund 0.2440 / sales 0.2371 / hire 0.2426，dock 0.0790 / 0.0684 / 0.0786；超阈值带 21 / 22 / 21 / 2 / 2 / 2，未归因 0。
+- 这几屏没有简体字，iOS 26.0 方框缺陷不影响本次结果。
+- 证据：`~/orbit-sprint-evidence/app/sprint-R38/run-03/gate-R36b-2/`，日志 `gates-2.log`。
+- **门禁坑**：同目录第一轮（`gate-R36b` / `gate-R37b`，`gates.log`）**作废**。mock 与 Metro 改代码后还是冷的，20 s 等待截到「ログイン状態を確認しています…」和骨架屏，工具却把 R36b 判成 PASS（超阈值带只按归因表判，不看画面内容），raw 与原值不同才暴露。这一轮加 `--wait 45000` 重跑。复跑门禁时要核对 raw 或看 `simulator-raw.png`，不能只看退出码。

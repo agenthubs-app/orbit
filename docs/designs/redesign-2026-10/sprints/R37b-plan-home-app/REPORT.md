@@ -103,3 +103,15 @@ detect-changes：画面提交前 `--scope staged` 14 文件 17 符号 risk mediu
 - 门禁清单 `repos/orbits/scripts/visual/views/app-R37b.json`、归因 `attribution-redesign-R37b.json`。App プラン段只显示当前目标：每张先切 `v16-home-<goal>`，再 `POST /api/agent/plans/v2/plan_v16_<goal>/open` 设为最近打开，等 3 分钟页面副本过期再跑（脚本思路见本 Sprint scratchpad 的 `open-goal.mjs`）。
 - 真调用后在 App 上核对：准备卡行 / 画线 / `fallback` 模板、`staleSince` 与重新生成计次、409 LIMIT。
 - 暂缓：依据区展开后现状库来源标题（需 `PlanV2Detail` 带 citations）；copy-qa 提示两端一起改；简体字回退（见「发现」）。
+
+## 补记（2026-11-04 门禁复跑）
+
+R38 收口时 `Text.tsx` 正被另一会话修改，App 门禁没有复跑；该会话结论是无代码改动（简体字方框是 iOS 26.0 模拟器运行时缺陷），本次在 `chat-agent` `95d9865c4` + `938ea307c` 上复跑。
+
+- 环境：iPhone 16e（iOS 26）`926B48E0-…`，mock `:3201`，设计稿 `:3320`，Metro `:8081`（open-path）。
+- 结论：**PASS**，全部原始截图逐张看过，是真实页面；raw 与本报告原表逐张相同。
+- 三张：fund 0.1481 / sales 0.1366 / hire 0.1817；超阈值带 15 / 15 / 18，未归因 0。每张先切 `v16-home-<goal>`、POST open、等 190 s。
+- 本次顺带修了「仍未实现」里的现状库标题问题（R38-04 `938ea307c`）：依据区默认收起，不在门禁范围，由屏测 `tests/plan-home-v3-screens.test.tsx` 覆盖。
+- 首屏没有简体字；「陈」等在 iOS 26.0 上是方框，属环境问题，不算失败，要看真实字形用 iOS 27 模拟器。
+- 证据：`~/orbit-sprint-evidence/app/sprint-R38/run-03/gate-R37b-2/`，日志 `gates-2.log`。
+- **门禁坑**：同目录第一轮（`gate-R36b` / `gate-R37b`，`gates.log`）**作废**。mock 与 Metro 改代码后还是冷的，20 s 等待截到「ログイン状態を確認しています…」和骨架屏，工具却把 R36b 判成 PASS（超阈值带只按归因表判，不看画面内容），raw 与原值不同才暴露。这一轮加 `--wait 45000` 重跑。复跑门禁时要核对 raw 或看 `simulator-raw.png`，不能只看退出码。
