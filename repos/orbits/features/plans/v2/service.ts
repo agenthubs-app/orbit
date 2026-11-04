@@ -51,7 +51,7 @@ import { AppError, type AppErrorCode } from "../../../shared/errors/app-error";
 import type { PlanContactLink, PlanReferenceValidator } from "../contract";
 import { needStatus } from "./repository";
 import { pickPlanV3Fields } from "./v3-fields";
-import { planHomeView } from "../prep/view";
+import { planHomeAwaitsMatch, planHomeView } from "../prep/view";
 import { homeSeats } from "../prep/candidates";
 import { planPhaseIndexForWeek, planWeekAt } from "../week";
 import {
@@ -1152,6 +1152,8 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
         const detail = await buildDetail(reader, plan);
         const input = await overviewInput(reader, plan, events, view);
         const at = now();
+        const emptyHome = detail.home?.state === "ready" && detail.home.actions.length === 0;
+        const awaitsMatch = emptyHome && planHomeAwaitsMatch(plan, await reader.planMatchJob(plan.id), new Date(at));
         return {
           ...detail,
           pending: pendingItems(input, at),
@@ -1161,7 +1163,7 @@ export function createPlanV2Service(options: PlanV2ServiceOptions): PlanV2Servic
           todayChance: plan.status === "active" ? todayChance(input, at) : null,
           typeStats: typeStats(input, at),
           // R37a：v3 主页「要认识的人」的已认识的人与去哪里认识（现算，不存）。
-          ...(detail.home ? { home: { ...detail.home, seats: homeSeats(input) } } : {}),
+          ...(detail.home ? { home: { ...detail.home, ...(awaitsMatch ? { state: "pending" as const } : {}), seats: homeSeats(input) } } : {}),
           // R26（D53）：概要「🎟 イベント」卡的推荐活动（分数降序 ≤3）。
           recommendedEvents: plan.status === "active" ? eventsFor(input, null).slice(0, 3) : [],
         };

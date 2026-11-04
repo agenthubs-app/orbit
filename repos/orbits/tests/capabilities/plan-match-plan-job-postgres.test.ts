@@ -19,6 +19,7 @@ import { PLAN_MATCHING_MIGRATIONS, runPlanMatchingMigrations } from "../../featu
 import { createPostgresPlanMatchRepository, type PlanMatchRepository } from "../../features/plans/matching-repository";
 import { enqueuePlanSourceMatchAfterSave } from "../../features/plans/matching-runtime";
 import { PLAN_MATCH_PLAN_BACKFILL_LIMIT } from "../../features/plans/plan-match-plan-job";
+import { createPostgresPlanV2Repository } from "../../features/plans/v2/repository";
 import { runMaintenancePass } from "../../features/operations/maintenance/pass";
 import {
   ALICE,
@@ -92,6 +93,25 @@ test("migration v4: reruns idempotently and the source_kind check accepts 'plan'
     );
     await insert("plan");
     await assert.rejects(insert("bogus"), /check constraint/);
+  });
+});
+
+test("R38-03: planMatchJob reads this actor's 'plan' job only (status, rule hits, times); no job or another kind reads as null", databaseTest, async () => {
+  await withMatchingDatabase(async ({ pool }) => {
+    const repository = createPostgresPlanV2Repository({ pool });
+    const read = (actorId: string, planId: string) => repository.read({ actorId, workspaceId: WORKSPACE }, (reader) => reader.planMatchJob(planId));
+    assert.equal(await read(ALICE, "plan:a"), null);
+    const insert = (id: string, actor: string, kind: string, key: string, status: string, hits: number, completedAt: string | null) => pool.query(
+      `insert into plan_match_jobs (workspace_id, id, actor_id, source_kind, source_key, status, rule_hits, completed_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, '2026-11-04T00:00:00Z')`,
+      [WORKSPACE, id, actor, kind, key, status, hits, completedAt],
+    );
+    await insert("job:batch", ALICE, "batch", "plan:b", "pending", 0, null);
+    assert.equal(await read(ALICE, "plan:b"), null, "a batch job with the same key is not the plan's job");
+    await insert("job:a", ALICE, "plan", "plan:a", "pending", 0, null);
+    assert.deepEqual(await read(ALICE, "plan:a"), { completedAt: null, createdAt: "2026-11-04T00:00:00.000Z", ruleHits: 0, status: "pending" });
+    assert.equal(await read(BOB, "plan:a"), null, "another actor's job is invisible");
+    await insert("job:c", ALICE, "plan", "plan:c", "completed", 2, "2026-11-04T00:00:05Z");
+    assert.deepEqual(await read(ALICE, "plan:c"), { completedAt: "2026-11-04T00:00:05.000Z", createdAt: "2026-11-04T00:00:00.000Z", ruleHits: 2, status: "completed" });
   });
 });
 

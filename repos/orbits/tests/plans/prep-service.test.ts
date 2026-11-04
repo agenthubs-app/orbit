@@ -3,10 +3,11 @@ import test from "node:test";
 
 import { createMockPlanPrepAi } from "../../features/plans/prep/ai";
 import { createPlanPrepService } from "../../features/plans/prep/service";
-import type { PlanPrepAi, PlanPrepCardOutput, PlanPrepContext, PlanPrepFact } from "../../features/plans/prep/types";
-import { planHomeNeedsWork, storedHomeOf } from "../../features/plans/prep/view";
+import { PLAN_HOME_LIMITS, type PlanPrepAi, type PlanPrepCardOutput, type PlanPrepContext, type PlanPrepFact } from "../../features/plans/prep/types";
+import { planHomeAwaitsMatch, planHomeNeedsWork, storedHomeOf } from "../../features/plans/prep/view";
 import type { PlanAiOutcome } from "../../features/plans/v2/ai/types";
 import { createMemoryPlanV2Repository } from "../../features/plans/v2/repository";
+import type { PlanV2MatchJob } from "../../features/plans/v2/types";
 import { serviceFor, SCOPE, draftInput } from "./v2-fixture";
 import { flowWorld, JA, key, premiseReady } from "./flow-fixture";
 
@@ -247,4 +248,57 @@ test("R38-01: the card input says whether the user has met the person; for someo
   assert.equal(sato.prep!.draft.text, "上海で3年働いていたとおっしゃっていましたね。");
   const yamamoto = view!.actions.find((action) => action.contactId === "contact:yamamoto")!;
   assert.match(yamamoto.prep!.draft.text, /はじめまして/u, "not known to have met → the greeting stays (prompt rule only)");
+});
+
+const HOME_STARTED = "2026-11-03T01:00:00.000Z";
+const job = (over: Partial<PlanV2MatchJob>): PlanV2MatchJob => ({ completedAt: null, createdAt: HOME_STARTED, ruleHits: 0, status: "pending", ...over });
+const after = (ms: number) => new Date(Date.parse(HOME_STARTED) + ms);
+
+/** 确定一份 v3 计划，主页已生成为 `ready`（默认 0 件）；作业由各用例种子。 */
+async function emptyHomePlan(actions: unknown[] = []) {
+  const world = flowWorld();
+  const premise = await premiseReady(world);
+  const draft = await world.flow.makeDraft(premise.intakeId, key(), JA);
+  const { planId } = await world.flow.confirm(draft.draftId, key(), JA);
+  const state = world.repository.dump(SCOPE);
+  const plan = state.plans.find((row) => row.id === planId)!;
+  plan.analysis = { ...plan.analysis, home: { actions, candidateSignature: "", initialCalls: 0, lead: null, startedAt: HOME_STARTED, state: "ready", updatedAt: HOME_STARTED, version: 1 } } as typeof plan.analysis;
+  world.repository.seed(SCOPE, state);
+  return { plan, planId, state, world };
+}
+
+test("R38-03: an empty ready home waits for a queued or just-finished match job, not for a stale, failed or empty one", async () => {
+  const { plan } = await emptyHomePlan();
+  assert.equal(planHomeAwaitsMatch(plan, null, after(1000)), false, "no job: go-meet");
+  assert.equal(planHomeAwaitsMatch(plan, job({}), after(1000)), true, "queued");
+  assert.equal(planHomeAwaitsMatch(plan, job({ status: "running" }), after(1000)), true, "running");
+  assert.equal(planHomeAwaitsMatch(plan, job({ status: "failed" }), after(1000)), false, "failed");
+  assert.equal(planHomeAwaitsMatch(plan, job({}), after(PLAN_HOME_LIMITS.pendingStaleMs + 1)), false, "a stuck job stops counting after the pending window");
+  const finished = (ruleHits: number, completedAt: string) => job({ completedAt, ruleHits, status: "completed" });
+  const later = after(5000).toISOString();
+  assert.equal(planHomeAwaitsMatch(plan, finished(2, later), after(6000)), true, "finished after this home started, with candidates");
+  assert.equal(planHomeAwaitsMatch(plan, finished(0, later), after(6000)), false, "finished with nothing: go-meet");
+  assert.equal(planHomeAwaitsMatch(plan, finished(2, new Date(Date.parse(HOME_STARTED) - 1000).toISOString()), after(6000)), false, "this home already saw the candidates");
+  assert.equal(planHomeAwaitsMatch(plan, finished(2, later), after(5000 + PLAN_HOME_LIMITS.pendingStaleMs + 1)), false, "regeneration that changed nothing does not hold it forever");
+});
+
+test("R38-03: only an empty ready home is affected; the overview reads pending, keeps seats, and goes back to ready when the job has nothing", async () => {
+  const { plan, planId, state, world } = await emptyHomePlan();
+  assert.equal(planHomeAwaitsMatch({ ...plan, status: "archived" }, job({}), after(1000)), false, "not active");
+  const { plan: full } = await emptyHomePlan([{ actionKey: "c:a" }]);
+  assert.equal(planHomeAwaitsMatch(full, job({}), after(1000)), false, "has actions");
+
+  const createdAt = new Date().toISOString();
+  world.repository.seed(SCOPE, { ...state, matchJobs: { [planId]: job({ createdAt }) } });
+  const queued = await world.planService.overview(planId, { language: "ja" });
+  assert.equal(queued!.home?.state, "pending");
+  assert.deepEqual(queued!.home?.actions, []);
+  assert.ok(queued!.home?.seats, "seats are still computed");
+
+  world.repository.seed(SCOPE, { ...state, matchJobs: { [planId]: job({ completedAt: createdAt, createdAt, status: "completed" }) } });
+  const finished = await world.planService.overview(planId, { language: "ja" });
+  assert.equal(finished!.home?.state, "ready", "0 hits: 「去认识」");
+
+  const detail = await world.planService.detail(planId);
+  assert.equal(detail!.home?.state, "ready", "the stored state itself is untouched");
 });

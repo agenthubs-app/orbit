@@ -191,6 +191,14 @@ export interface PlanV2Scope {
   actorId: string;
 }
 
+/** R38-03：`plan_match_jobs` 里 `source_kind = 'plan'` 的一行（读主页状态用的字段）。 */
+export interface PlanV2MatchJob {
+  status: "pending" | "running" | "completed" | "failed";
+  ruleHits: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export interface PlanV2Reader {
   plan(planId: string): Promise<PlanV2Row | null>;
   planByCreationKey(creationKey: string): Promise<PlanV2Row | null>;
@@ -219,6 +227,8 @@ export interface PlanV2Reader {
   openReviewDraft(planId: string): Promise<PlanDraftRow | null>;
   /** R24：这些人物类型的匹配候补（待确认与已决定）。 */
   matchCandidates(itemIds: readonly string[]): Promise<PlanV2MatchCandidate[]>;
+  /** R38-03：这份计划的规则匹配作业（一份计划一条；还没入队为 null）。 */
+  planMatchJob(planId: string): Promise<PlanV2MatchJob | null>;
   /** R24：本人的联系人（名字、公司、职位、最后互动；他人的、已删除的不返回）。 */
   contactViews(contactIds: readonly string[]): Promise<PlanV2ContactView[]>;
   /** R24：按姓名找本人的联系人（线下聊过「この人ですか？」）。 */

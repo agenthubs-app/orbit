@@ -22,6 +22,7 @@ import type {
   PlanV2LegacyRow,
   PlanV2LogEntry,
   PlanV2LogEvent,
+  PlanV2MatchJob,
   PlanV2PersonTypeMeta,
   PlanV2Reader,
   PlanV2Repository,
@@ -367,6 +368,14 @@ function postgresReader(client: PlanQueryClient, scope: PlanV2Scope): PlanV2Read
         [ws, actor, [...itemIds]],
       )).map(candidateFromRow);
     },
+    async planMatchJob(planId) {
+      const [row] = await rows(
+        `select status, rule_hits, created_at, completed_at from plan_match_jobs where workspace_id = $1 and actor_id = $2 and source_kind = 'plan' and source_key = $3`,
+        [ws, actor, planId],
+      );
+      if (!row) return null;
+      return { completedAt: isoOrNull(row.completed_at), createdAt: iso(row.created_at), ruleHits: Number(row.rule_hits), status: row.status as PlanV2MatchJob["status"] };
+    },
     async countFlowReceipts(kind, sinceIso) {
       const [row] = await rows(
         `select count(*)::int as n from plan_flow_commands where workspace_id = $1 and actor_id = $2 and kind = $3 and created_at >= $4`,
@@ -668,6 +677,8 @@ export interface MemoryPlanV2State {
   drafts: PlanDraftRow[];
   /** R24：匹配候补与联系人投影（mock / 测试）。 */
   candidates: PlanV2MatchCandidate[];
+  /** R38-03：计划的规则匹配作业（测试种子，键 = 计划 id；内存实现不跑 worker）。 */
+  matchJobs: Record<string, PlanV2MatchJob>;
   contacts: PlanV2ContactView[];
   revisions: PlanV2RevisionRow[];
   /** 生效中的 v1 计划 id（测试用；内存实现不保存 v1 的行）。 */
@@ -684,7 +695,7 @@ export interface MemoryPlanV2Repository extends PlanV2Repository {
 }
 
 function emptyState(): MemoryPlanV2State {
-  return { activeV1PlanId: null, legacy: [], candidates: [], contacts: [], revisions: [], drafts: [], eventItems: [], intakes: [], log: [], maxVersion: 0, plans: [], receipts: [], typeItems: [] };
+  return { activeV1PlanId: null, legacy: [], candidates: [], contacts: [], revisions: [], drafts: [], eventItems: [], intakes: [], log: [], matchJobs: {}, maxVersion: 0, plans: [], receipts: [], typeItems: [] };
 }
 
 function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
@@ -703,6 +714,7 @@ function memoryReader(state: MemoryPlanV2State): PlanV2Reader {
     async contactViews(ids) { return structuredClone(state.contacts.filter((contact) => ids.includes(contact.id))); },
     async findContactsByName(name, limit) { return structuredClone(state.contacts.filter((contact) => contact.name.toLowerCase().includes(name.toLowerCase())).slice(0, limit)); },
     async matchCandidates(itemIds) { return structuredClone(state.candidates.filter((candidate) => itemIds.includes(candidate.needItemId))); },
+    async planMatchJob(planId) { return structuredClone(state.matchJobs[planId] ?? null); },
     async countFlowReceipts(kind, sinceIso) { return state.receipts.filter((receipt) => receipt.kind === kind && receipt.createdAt >= sinceIso).length; },
     async countIntakesSince(sinceIso) { return state.intakes.filter((intake) => intake.createdAt >= sinceIso).length; },
     async draft(draftId) { return structuredClone(state.drafts.find((draft) => draft.id === draftId) ?? null); },

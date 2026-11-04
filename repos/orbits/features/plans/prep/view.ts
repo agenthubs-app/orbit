@@ -3,7 +3,7 @@
  */
 import { PLAN_PREP_INITIAL_CARDS_LIMIT } from "../../ai-quota/constants";
 import type { PlanHomeView } from "../../../shared/contract/plan-v2";
-import type { PlanV2Row } from "../v2/types";
+import type { PlanV2MatchJob, PlanV2Row } from "../v2/types";
 import { PLAN_HOME_LIMITS, type StoredPlanHome } from "./types";
 
 function isStoredHome(value: unknown): value is StoredPlanHome {
@@ -39,3 +39,17 @@ export function planHomeNeedsWork(plan: Pick<PlanV2Row, "analysis" | "status">, 
   return home.actions.length === 0 && home.initialCalls < PLAN_PREP_INITIAL_CARDS_LIMIT;
 }
 
+/**
+ * R38-03：匹配作业与补生成都在 `after()` 里、先后不定。先生成的那次看不到候选，存下 `ready` 且 0 件，
+ * 前端不轮询，第一屏就停在「去认识」。这两种情况读成 pending（读路由同时补生成，轮询能等到结果）：
+ * - 作业还在排队 / 运行；
+ * - 作业晚于这次生成才完成，且确实落了候选（这次读刚好落在作业完成与补生成之间）。
+ * 只认 `pendingStaleMs` 内的作业：worker 中断时最多 2 分钟后回到「去认识」，不会一直显示准备中。
+ */
+export function planHomeAwaitsMatch(plan: Pick<PlanV2Row, "analysis" | "status">, job: PlanV2MatchJob | null, now: Date): boolean {
+  const home = storedHomeOf(plan);
+  if (!job || !home || home.state !== "ready" || home.actions.length > 0 || !planHomeNeedsWork(plan, now)) return false;
+  const fresh = (iso: string) => now.getTime() - Date.parse(iso) <= PLAN_HOME_LIMITS.pendingStaleMs;
+  if (job.status === "pending" || job.status === "running") return fresh(job.createdAt);
+  return job.status === "completed" && job.ruleHits > 0 && job.completedAt !== null && fresh(job.completedAt) && Date.parse(job.completedAt) > Date.parse(home.startedAt);
+}
