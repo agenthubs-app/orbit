@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { PNG } from "pngjs";
 
-import { bandReport, diffStyles, loadSuite, matchesAny, missingBlocks, selectChanged, selectOnly } from "../../scripts/visual/redesign-pixel-lib.mjs";
+import { bandReport, compareImages, contentInk, diffStyles, loadSuite, matchesAny, missingBlocks, selectChanged, selectOnly } from "../../scripts/visual/redesign-pixel-lib.mjs";
 
 // 门禁提速（2026-10-12）：画面清单展开、--only 前缀、--changed 的 glob、缺块检测。
 function suiteFile() {
@@ -80,6 +80,31 @@ test("a missing block is reported even when the whole picture barely differs; sa
   assert.ok(missing.length >= 1);
   assert.ok(missing[0].x <= 48 && missing[0].x + missing[0].w >= 200, JSON.stringify(missing));
   assert.deepEqual(missingBlocks(png(380, 80, text), png(380, 80, text)), []);
+});
+
+test("a loading screen fails the content gate even when every band is attributed; a real screen passes (R38 re-gate)", () => {
+  // 390×120: the design has six text rows; "loading" has one short line (spinner caption), "loaded" the same rows shifted by 2px.
+  const rows = (shift: number) => (x: number, y: number) => x >= 20 && x < 360 && (y - shift) % 20 >= 4 && (y - shift) % 20 < 12 && (x + y) % 2 === 0;
+  const spinner = (x: number, y: number) => x >= 150 && x < 240 && y >= 56 && y < 64 && (x + y) % 2 === 0;
+  assert.equal(contentInk(png(390, 120)), 0);
+  assert.ok(contentInk(png(390, 120, spinner)) / contentInk(png(390, 120, rows(0))) < 0.2);
+  const run = (app: PNG, minInkRatio: number) => {
+    const out = mkdtempSync(join(tmpdir(), "ink-"));
+    const attribution = join(out, "attribution.json");
+    writeFileSync(attribution, JSON.stringify({ v: { 0: "[data] 日文更长", 1: "[data] 日文更长", 2: "[data] 日文更长", 3: "[data] 日文更长" } }));
+    return compareImages({ design: png(390, 120, rows(0)), app, out, grid: 30, attributionPath: attribution, viewKey: "v", rawThreshold: Infinity, minInkRatio });
+  };
+  const loading = run(png(390, 120, spinner), 0.5);
+  assert.equal(loading.unattributed, 0, "every band is attributed, as in the R38 false pass");
+  assert.equal(loading.exitCode, 7);
+  assert.equal(loading.pass, false);
+  assert.match(loading.contentGuard, /像是还在加载/);
+  const loaded = run(png(390, 120, rows(2)), 0.5);
+  assert.equal(loaded.exitCode, 0);
+  assert.ok(loaded.inkRatio >= 0.85, String(loaded.inkRatio));
+  const off = run(png(390, 120, spinner), 0);
+  assert.equal(off.exitCode, 0, "off by default (the Web tool does not pass it)");
+  assert.equal(off.inkRatio, undefined);
 });
 
 test("the band report says how far a band moved and whether a side is empty", () => {

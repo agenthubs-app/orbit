@@ -239,7 +239,7 @@ export function checkContrastBand({ design, app, y0, y1, dy = 0, subs, deltaE = 
   return { diff, explained, unexplained, ratio: Number(ratio.toFixed(4)), pass: ratio <= maxUnexplained, bySub: Object.fromEntries(bySub) };
 }
 
-export function compareImages({ design, app, out, grid, gridDy = 12, threshold = 0.02, rawThreshold = 0.02, attributionPath, viewKey, contrast, meta = {} }) {
+export function compareImages({ design, app, out, grid, gridDy = 12, threshold = 0.02, rawThreshold = 0.02, attributionPath, viewKey, contrast, minInkRatio = 0, meta = {} }) {
   const width = Math.min(design.width, app.width);
   const h = Math.min(design.height, app.height);
   const diff = new PNG({ width, height: h });
@@ -320,6 +320,17 @@ export function compareImages({ design, app, out, grid, gridDy = 12, threshold =
     if (unattributed.length > 0) result.gate = "fail";
   }
   result.missing = missingBlocks(design, app);
+  // 内容门槛（R38 复跑，2026-11-11）：实现侧墨迹不到设计的 minInkRatio = 还在加载（转圈 / 骨架屏），
+  // 这时各带多是「缺内容」，归因表的 [data] 也会放行。整张判 7，归因不能放行。默认关闭（Web 不传）。
+  if (minInkRatio > 0) {
+    const designInk = contentInk(design);
+    result.inkRatio = designInk === 0 ? 1 : Number((contentInk(app) / designInk).toFixed(2));
+    if (result.inkRatio < minInkRatio) {
+      exitCode = 7;
+      result.gate = "fail";
+      result.contentGuard = `实现侧内容只有设计的 ${result.inkRatio}（< ${minInkRatio}），像是还在加载`;
+    }
+  }
   result.pass = exitCode === 0;
   writeFileSync(join(out, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
   return { ...result, exitCode };
@@ -361,6 +372,13 @@ function inkOf(png, x0, y0, w, h) {
     if (Math.abs(png.data[i] - bg[0]) >= 24 || Math.abs(png.data[i + 1] - bg[1]) >= 24 || Math.abs(png.data[i + 2] - bg[2]) >= 24) ink++;
   }
   return ink / (w * h);
+}
+
+/** 整张的墨迹量：24×24 小块各按自己的主色算墨迹，取平均（渐变底、深浅卡片不算墨）。 */
+export function contentInk(png, tile = 24) {
+  let sum = 0, n = 0;
+  for (let y = 0; y + tile <= png.height; y += tile) for (let x = 0; x + tile <= png.width; x += tile) { sum += inkOf(png, x, y, tile, tile); n++; }
+  return n === 0 ? 0 : sum / n;
 }
 
 export function missingBlocks(design, app, { tile = 24, minInk = 0.06, maxInk = 0.01, minDiff = 0.1 } = {}) {
@@ -475,7 +493,7 @@ export function printSummary(results, { file } = {}) {
   for (const r of results) {
     const status = r.error ? "ERR " : r.pass ? "PASS" : "FAIL";
     const miss = r.missing?.length ? `⚠${r.missing.length}` : "-";
-    console.log(`${pad(r.key, w)}  ${status}  ${pad(r.raw ?? "-", 6)}  ${pad(r.overBands ?? "-", 4)} ${pad(r.unattributed ?? "-", 6)} ${pad(miss, 5)} ${pad(`${(r.ms / 1000).toFixed(1)}s`, 6)} ${r.error ? r.error : r.out ?? ""}`);
+    console.log(`${pad(r.key, w)}  ${status}  ${pad(r.raw ?? "-", 6)}  ${pad(r.overBands ?? "-", 4)} ${pad(r.unattributed ?? "-", 6)} ${pad(miss, 5)} ${pad(`${(r.ms / 1000).toFixed(1)}s`, 6)} ${r.error ? r.error : r.contentGuard ? `${r.contentGuard}；${r.out}` : r.out ?? ""}`);
   }
   const pass = results.filter((r) => r.pass).length;
   const warn = results.filter((r) => r.missing?.length);

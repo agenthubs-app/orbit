@@ -175,6 +175,15 @@
         "ORBIT_NEXT_DIST_DIR": ".next-plan-mock",
         "ORBIT_REDESIGN_MOCK": "plan-v2-summary"
       }
+    },
+    {
+      "name": "orbit-app-metro",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd repos/orbit-app && EXPO_PUBLIC_ORBIT_REDESIGN_MOCK=open-path npx expo start --dev-client --port 8081"
+      ],
+      "port": 8081
     }
   ]
 }

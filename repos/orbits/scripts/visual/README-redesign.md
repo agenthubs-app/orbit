@@ -68,6 +68,7 @@ node scripts/visual/compare-redesign.mjs --suite scripts/visual/views/web-R07.js
 - **登录只做一次**：一轮里先验证 / 登录一次，存成 Playwright `storageState`（默认 `~/orbit-sprint-evidence/redesign/.auth/<账号>.json`，权限 600，在仓库外，**不要提交**；`--storage` 可另指），之后每张直接带上。
 - **设计稿缓存**：`~/orbit-sprint-evidence/redesign/.design-cache/`。键 = 画板 + 设计文件与 `kit/` 全部文件的内容哈希 + 宽度 + 主题 + 截图参数（点击、移除、展开）+ 渲染高度。设计稿没改就不开设计稿页面（每张省掉页面加载、字体和 1.6 秒动画等待）。设计稿一改，哈希变，自动重截；怀疑缓存时加 `--no-cache`，或直接删目录。
 - **终端摘要**：每张一行（结果、raw、超阈带、未归因带、缺块、耗时、triptych 路径），末尾合计；同样内容写进 `<out>/summary.json`。退出码取各张最大值。
+- **加载判定（App，R38 复跑后加，2026-11-11）**：以前截到转圈或骨架屏时，各带都是「缺内容」，归因表的 `[data]` 照样放行，门禁会判 PASS（R38 复跑第一轮 4 张假通过）。现在按 24×24 小块算两侧墨迹，实现侧不到设计的 `--min-ink-ratio`（默认 0.5）就判退出码 7，归因不能放行。从模拟器截的图会每 5 s 重截一次，最多再等 `--settle`（默认 30000 ms），加载完的就照常比。阈值的依据：1738 张历史 App 截图里，真实画面 ≥ 0.85，转圈 / 骨架屏 ≤ 0.08（登录页约 0.46，不是专门识别它）。`--min-ink-ratio 0` 关闭。Web 脚本没开。
 - **缺块警告**：按 24×24 小块找「设计稿有内容（与该块主色差 ≥24 的像素 ≥6%）、实现几乎为空（≤1%）、且两边真不一致的像素 ≥10%」的地方，合并成矩形报出来，**raw 低也报**（R07 复核 M6：1024 抽屉尾整块缺失时 raw 只有 0.013）。只报警、不改退出码——看到 ⚠ 一定要打开 triptych。用 R07 证据验证：第一轮假通过的 03DF 报出，修复后通过的局部视图除真缺块（1024 建议计数、メモ「＋」、抽屉中间建议）外零误报。
 - **App 版**同样支持 `--suite / --only / --changed / --no-cache` 和摘要：清单每张 `{ id, design, board-index | board, themes?, url?, wait?, shot? }`；设计稿截图按 `--workers` 并行预取（走同一缓存），模拟器部分严格串行：`simctl ui <sim> appearance <theme>` 切主题 → 有 `url` 就 `simctl openurl` 深链 → 等 `wait`（默认 2500ms）→ 截图。键为 `<id>-app-<theme>`。
 
@@ -238,7 +239,7 @@ node scripts/visual/compare-redesign-app.mjs --simulator <16e-udid> \
   ```
 
   理由必须是看过该带 design / app 对照之后写下的；排版、颜色、间距、字号、字重、圆角、阴影、图标、元素有无和顺序有任何不同，都不是 `[data]`，是缺陷，修完再跑。
-- 退出码：0 通过；2 用法 / 登录错误；3 画板 / 规格格找不到；5 有超阈值带未以 `[data]` / `[raster]` / `[contrast]`（判定通过）归因；6 整屏 raw > `--raw-threshold`（两端自 RD-29 / 决定表 §20 起默认不卡 raw，raw 只作参考；`--raw-threshold 0.02` 恢复旧卡法）。
+- 退出码：0 通过；2 用法 / 登录错误；3 画板 / 规格格找不到；5 有超阈值带未以 `[data]` / `[raster]` / `[contrast]`（判定通过）归因；6 整屏 raw > `--raw-threshold`（两端自 RD-29 / 决定表 §20 起默认不卡 raw，raw 只作参考；`--raw-threshold 0.02` 恢复旧卡法）。7（只有 App 脚本）实现侧内容不到设计的 `--min-ink-ratio`（默认 0.5），像是还在加载，归因不能放行。
 
 ## 输出
 

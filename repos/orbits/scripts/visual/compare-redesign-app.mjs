@@ -28,7 +28,10 @@
 //         AsyncStorage「orbit.dev.openPath」，再启动 App（需要 Metro 带 EXPO_PUBLIC_ORBIT_REDESIGN_MOCK 含 open-path）；不走 simctl openurl（会弹系统确认框）。
 //         --bundle-id 默认 app.agenthubs.orbit。
 //   [contrast]：归因理由以 [contrast] 开头的带按 contrast-substitutions.json 逐像素判定（RD-26，见 redesign-pixel-lib checkContrastBand）。
-// 退出码同 compare-redesign.mjs。
+//   加载判定（R38 复跑，2026-11-11）：实现侧墨迹不到设计的 --min-ink-ratio（默认 0.5）= 还在加载，判退出码 7，归因不能放行；
+//         从模拟器截的图先每 5 s 重截一次，最多再等 --settle 毫秒（默认 30000），加载完的就照常比。--min-ink-ratio 0 关闭。
+//         依据：1738 张历史 App 截图里真实画面 ≥ 0.85，转圈 / 骨架屏 ≤ 0.08。
+// 退出码同 compare-redesign.mjs，另加 7（实现侧内容不足，像是还在加载）。
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -228,6 +231,10 @@ async function shotFor(v) {
     else if (v.url) sim("openurl", v.simulator, v.url);
     await new Promise((r) => setTimeout(r, Number(v.wait ?? (v.path ? 8000 : 2500))));
   }
+  return screenshot(v, file);
+}
+
+function screenshot(v, file) {
   // simctl may not have permission to write directly to an external evidence volume.
   const temporaryDir = mkdtempSync(join(tmpdir(), "orbit-app-shot-"));
   try {
@@ -238,6 +245,20 @@ async function shotFor(v) {
     rmSync(temporaryDir, { recursive: true, force: true });
   }
   return file;
+}
+
+// 截完先比；实现侧像是还在加载（退出码 7）时不重开画面，每 5 s 重截一次，最多等 --settle。已有截图（shot）不重截。
+async function compareLoaded(v, designPng, board) {
+  let shotFile = await shotFor(v);
+  let r = compareShot(v, designPng, board, shotFile);
+  const settle = Number(v.settle ?? 30000);
+  for (let waited = 0; r.exitCode === 7 && !v.shot && waited < settle; waited += 5000) {
+    console.warn(`warn: [${v.key}] ${r.contentGuard}：5 s 后重截`);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 5000));
+    shotFile = screenshot(v, join(v.out, "simulator-raw.png"));
+    r = compareShot(v, designPng, board, shotFile);
+  }
+  return r;
 }
 
 // ---------- 按点宽缩放对齐 + 比对 ----------
@@ -280,6 +301,7 @@ function compareShot(v, designPng, board, shotFile) {
     // 决定表 §20（2026-10-14）：App 通过 = 每条超阈值带都归因 [data] / [raster] / [contrast]（RD-26，按替换清单判定）；整屏 raw 只作参考（iOS 字形栅格化让字多的画面 raw ≥ 0.04）。
     // --raw-threshold 0.02 可恢复旧卡法；Web 脚本不变。
     rawThreshold: v["raw-threshold"] === undefined ? Infinity : Number(v["raw-threshold"]),
+    minInkRatio: Number(v["min-ink-ratio"] ?? 0.5),
     attributionPath: v.attribution,
     viewKey: v.key,
     meta: { crop: Boolean(args.crop) || v.crop === true, view: v.key, design: v.design, board, region: v.region ?? null, designRegion: v["design-region"] ?? null, path: v.path ?? null, shot: shotFile, devicePoints: points, alignedTo: [targetW, targetH], theme: v.theme, triptychScale: 1 },
@@ -295,10 +317,9 @@ try {
     v.key = args["grid-view"] ?? `${args.section !== undefined ? `${args.section}-${args.cell ?? 0}` : args.board ?? args["board-index"]}-app-${v.theme}`;
     if (typeof v.path === "string") v.path = v.path.replaceAll("{theme}", v.theme);
     mkdirSync(v.out, { recursive: true });
-    const shotFile = await shotFor(v);
     const d = await designFor(v);
-    const r = compareShot(v, d.png, d.board, shotFile);
-    console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")} (device ${r.devicePoints.join("x")}pt)` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${d.cached ? " (design cached)" : ""} out=${v.out}`);
+    const r = await compareLoaded(v, d.png, d.board);
+    console.log(`raw=${r.raw} design=${r.designSize.join("x")} app=${r.appSize.join("x")} (device ${r.devicePoints.join("x")}pt)` + (r.band ? ` bands=${r.cells} over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` missing=${r.missing.length}` : "") + ` ${r.pass ? "PASS" : "FAIL"}${r.contentGuard ? `（${r.contentGuard}）` : ""}${d.cached ? " (design cached)" : ""} out=${v.out}`);
     for (const m of r.missing.slice(0, 5)) console.warn(`warn: ⚠ 缺块 x=${m.x} y=${m.y} ${m.w}x${m.h}：设计稿这块有内容、实现是空的（raw 低也要看 triptych）`);
     if (r.bandsReport) console.log(formatBandReport(v.key, r.bandsReport));
     code = r.exitCode;
@@ -323,9 +344,9 @@ try {
       const t1 = Date.now();
       try {
         if (designs[i].error) throw designs[i].error;
-        const r = compareShot(v, designs[i].png, designs[i].board, await shotFor(v));
+        const r = await compareLoaded(v, designs[i].png, designs[i].board);
         results.push({ ...r, ms: Date.now() - t1 });
-        console.log(`${v.key} ${r.pass ? "PASS" : "FAIL"} raw=${r.raw}` + (r.band ? ` over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` ⚠缺块=${r.missing.length}` : ""));
+        console.log(`${v.key} ${r.pass ? "PASS" : "FAIL"} raw=${r.raw}` + (r.contentGuard ? ` ${r.contentGuard}` : "") + (r.band ? ` over=${r.overBands} unattributed=${r.unattributed}` : "") + (r.missing.length ? ` ⚠缺块=${r.missing.length}` : ""));
       } catch (error) {
         console.error(`${v.key} ERROR ${error.message}`);
         results.push({ key: v.key, pass: false, error: String(error.message).split("\n")[0], exitCode: error.code ?? 1, ms: Date.now() - t1 });
