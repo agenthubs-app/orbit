@@ -171,6 +171,8 @@ export const eventsJourneyCopy = {
   // 2026-11-12 缺位状态：没有计划时评分卡位置的引导（探す页 noPlan 引导的缩版）、空议程、主办方没有公开名字。
   noPlanScoreTitle: { ja: "プランを作ると、このイベントの評価が出ます", zh: "做好计划后，这里会显示这场活动对你的评分", en: "Make a plan to see how this event scores for you", kind: "cardTitle" },
   noPlanScoreSub: { ja: "目標との一致・会える人・時間対効果で判定します。設定は約1分です。", zh: "按目标匹配、能见到的人、时间性价比判定。设定约需1分钟。", en: "Scored on goal fit, people you can meet and time cost. Takes about a minute.", kind: "label" },
+  readMore: { ja: "続きを読む", zh: "展开全文", en: "Read more", kind: "button" },
+  readLess: { ja: "閉じる", zh: "收起", en: "Show less", kind: "button" },
   agendaEmpty: { ja: "主催者からアジェンダは公開されていません", zh: "主办方没有公开议程", en: "The organizer hasn't published an agenda", kind: "label" },
   pastNoRoster: { ja: "参加者の記録はありません", zh: "没有参加者记录", en: "No attendee records", kind: "label" },
   hostUnnamed: { ja: "主催者（Orbit 未登録）", zh: "主办方（未入驻 Orbit）", en: "Organizer (not on Orbit)", kind: "label" },

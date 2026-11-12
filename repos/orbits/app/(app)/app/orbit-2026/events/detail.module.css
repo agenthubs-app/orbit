@@ -144,3 +144,25 @@
 .noPlanBody { line-height: var(--lh-letter); }
 .noPlanBtn.noPlanBtn { align-self: flex-start; margin-top: 8px; }
 .pNoPlan.pNoPlan { margin-top: 14px; }
+
+/* 2026-11-12 紹介 = Markdown（主催者が貼った長文の見出し・箇条書き・リンク・改行をそのまま）；長い時は 10 行で畳んで「続きを読む」。 */
+.md { line-height: var(--lh-letter); overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0 0 10px; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { font-size: var(--fs-row); font-weight: var(--fw-heavy); color: var(--ink); line-height: var(--lh-title); margin: 16px 0 6px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md li > p { margin: 0; }
+.md a { color: var(--plum-700); text-decoration: underline; text-underline-offset: 2px; }
+.md strong { font-weight: var(--fw-bold); color: var(--ink); }
+.md blockquote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--surface-3); color: var(--ink-3); }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+.md code { font-size: var(--fs-meta); background: var(--surface-2); border-radius: var(--r-sm); padding: 1px 5px; }
+.md pre { overflow-x: auto; background: var(--surface-2); border-radius: var(--r-md); padding: 10px 12px; margin: 0 0 10px; }
+.md pre code { background: none; padding: 0; }
+.md table { border-collapse: collapse; margin: 0 0 10px; max-width: 100%; }
+.md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.mdClamp { max-height: 240px; overflow: hidden; position: relative; }
+.mdClamp::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 72px; background: linear-gradient(180deg, transparent, var(--surface)); pointer-events: none; }
+.mdMore.mdMore { margin-top: 8px; align-self: flex-start; }

@@ -12,6 +12,7 @@ import { Icon, Orbit2026Scope, ToastProvider, UnderlineTabs, useToast } from "..
 import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { feeText, journeyTranslator, rowTone, toneClass, type JourneyT } from "./DiscoverTab";
 import { CancelDialog } from "./CancelDialog";
+import { EventDescription } from "./EventDescription";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { LoginAssessCard } from "./PublicEvents";
@@ -208,7 +209,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           </button>
         ))}
       </div>
-      {tab === "intro" ? <div className={`${styles.card} ${styles.sub} ${x.pText}`}>{data.description}</div> : null}
+      {tab === "intro" ? <div className={`${styles.card} ${styles.sub} ${x.pText}`}><EventDescription text={data.description} t={t} /></div> : null}
       {tab === "agenda" ? (
         <div className={styles.card}>{data.agenda.length ? data.agenda.map((item) => <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>) : <div className={x.ghostRow} data-agenda-empty=""><i />{t("agendaEmpty")}</div>}</div>
       ) : null}
@@ -290,7 +291,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           </div>
           <UnderlineTabs className={x.utabs} value={tab} onChange={choose}
             tabs={(["intro", "agenda", "host", "people"] as const).map((key) => ({ key, label: t(key === "intro" ? "tabIntro" : key === "agenda" ? "tabAgenda" : key === "host" ? "tabHost" : "tabPeople"), count: key === "people" ? data.attendeeCounts.all : undefined }))} />
-          <div className={`${styles.sub} ${x.intro}`}>{data.description}</div>
+          <EventDescription text={data.description} t={t} className={`${styles.sub} ${x.intro}`} />
         </div>
       </div>
       {data.signedOut ? (ended ? <div className={`${styles.card} ${styles.span4}`}><b>{t("liveEnded")}</b></div> : signedOutAside ?? <LoginAssessCard t={t} language={language} span="span4" />) : data.assessment ? (

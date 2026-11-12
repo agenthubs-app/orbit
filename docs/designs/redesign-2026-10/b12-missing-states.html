@@ -7468,6 +7468,8 @@ g += WP('W-R27-20u-390 イベント詳細 · 未登録 · 参加者 多 · 390',
 g += pubBoard('W-R26-41u 未ログイン · イベント詳細 · 参加者 · 1440', pub(pubDetailU()) + pub(pubDetailU(), 'dark'), ['未登录详情（W-R26-41）的参加者区：只给「参加予定 128人」（未登录不显示知り合い），名单换成占位卡，按钮「ログインして参加登録」']);
 /* 2026-10-29：探す新规则补画（文件末尾）要复用这里的画法；只导出，不加画板。 */
 window.__r27DiscoverKit = { wDiscover, wFilters, discover, searchRow, datebox, segTop, evalSeg, REC, MORE, mring };
+/* 2026-11-12：紹介 Markdown 补画（文件末尾）复用详情画法；只导出，不加画板。 */
+window.__r27DetailKit = { wDetail, detail, wDetailRail, ctaBar };
 __g7out(group('g7', g));
 })();
 
@@ -9276,6 +9278,28 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
   html += WP('W-R27-D3 探す · これから 底部「開催済み」灰卡片 · 1440', 'state', () => ({ nav: 3, body: manyWithEntry() }), [['.k-wpast', 0, '结果下方直接平铺同条件下过去 1 年已结束的活动（灰卡片，不折叠）；0 件不显示；超过 50 件时标题右侧给「すべて見る」切到「開催済み」']], 'DISCOVER-RULES D5 · 补画 2026-10-29');
   html += WP('W-R27-D3-390 探す · これから 底部「開催済み」灰卡片 · 390', 'state', () => ({ body: phoneWithEntry(), tab: 3 }), [['.k-mpast', 0, '390 默认不再有「今月 ✕ 東京 ✕」chip；列表最下方一张「開催済み」卡，行整体灰掉']], 'W-R27-D3 · 补画 2026-10-29', 390);
   document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-discover-rules', html));
+  /* ============================================================
+     补画 · 2026-11-12 · 紹介 = Markdown + 折りたたみ（用户 11-12 要求；实现 EventDescription.tsx）
+     ============================================================ */
+  const introMd = `<p style="margin:0 0 10px"><b>上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。</b>キーノートのあと、テーブルトークを 3ラウンド。席は申込内容をもとに主催者が決めます。</p>
+<h3 style="font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.3;margin:16px 0 6px">こんな方に</h3>
+<ul style="margin:0 0 10px;padding-left:22px"><li style="margin:3px 0">シリーズA〜B の資金調達を 12か月以内に予定している CFO・経営者</li><li style="margin:3px 0">IPO 準備中で、資本政策や監査法人の選定を相談したい方</li><li style="margin:3px 0">スタートアップ投資を担当する VC・CVC・金融機関の方</li></ul>
+<h3 style="font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.3;margin:16px 0 6px">タイムテーブル</h3>
+<p style="margin:0 0 10px"><b>19:00</b> 受付・開場（ウェルカムドリンク）<br><b>19:15</b> オープニング<br><b>19:30</b> キーノート「シリーズA前後の資本政策」伊藤 直子<br><b>20:00</b> テーブルトーク R1（テーマ別 6名卓）<br><b>20:10</b> テーブルトーク R2（席替えあり）<br><b>21:00</b> ネットワーキング・終了</p>
+<h3 style="font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.3;margin:16px 0 6px">参加にあたって</h3>
+<ul style="margin:0 0 10px;padding-left:22px"><li style="margin:3px 0">参加費には軽食とドリンク 2杯が含まれます</li><li style="margin:3px 0">名刺は 20枚ほどお持ちください（Orbit の名刺スキャンが使えます）</li><li style="margin:3px 0">キャンセルは前日 18:00 まで</li></ul>
+<p style="margin:0">過去回の様子：<a style="color:var(--plum-700);text-decoration:underline;text-underline-offset:2px">cfonight.example.com/vol17</a></p>`;
+  const introFade = '<div style="position:absolute;left:0;right:0;bottom:0;height:72px;background:linear-gradient(180deg,transparent,var(--surface));pointer-events:none"></div>';
+  const introBlock = (open, cls, lh, top) => `<div class="sub ${cls}" style="margin-top:${top}"><div style="line-height:${lh};overflow-wrap:anywhere;${open ? '' : 'max-height:240px;overflow:hidden;position:relative'}">${introMd}${open ? '' : introFade}</div><button class="btn sm" style="margin-top:8px">${open ? `閉じる<span style="display:inline-flex;transform:rotate(180deg)">${ic('down', 'sm')}</span>` : `続きを読む${ic('down', 'sm')}`}</button></div>`;
+  const K8 = window.__r27DetailKit;
+  const introWeb = (open) => K8.wDetail('many').replace(/<div class="sub" style="line-height:1\.8;margin-top:12px">[^<]*<\/div>/, introBlock(open, 'k-wintro', 1.8, '12px'));
+  // 手机：detail('few') 才是 紹介タブ（'many' 默认开在 参加者タブ）。
+  const introPhone = (open) => K8.detail('few').replace(/<div class="card"><div class="sub" style="line-height:1\.75">[^<]*<\/div><\/div>/, `<div class="card">${introBlock(open, 'k-mintro', 1.75, '0')}</div>`);
+  let html8 = S8('补画 · 2026-11-12 · 紹介 = Markdown + 折りたたみ', '用户 11-12：导入活动的长文介绍被压成一段、页面被撑得很长 → 对标 Luma（About · Show more）/ Peatix（もっと見る）。紹介は Markdown（見出し・箇条書き・太字・リンク・改行）で描く；raw HTML と画像は描かない；全高が約 10 行を超えたら 240px で畳み、下端をフェードして「続きを読む」、開いたら「閉じる」。短い紹介は今まで通り（ボタンなし）。');
+  html8 += WP('W-R27-70 イベント詳細 · 紹介 Markdown · 折りたたみ · 1440', 'state', () => ({ nav: 3, body: introWeb(false), rail: K8.wDetailRail('many') }), [['.k-wintro', 0, '紹介 = Markdown：見出し 13.5px/800、箇条書き padding-left 22、太字、リンク plum 下線；240px で畳み、下 72px を surface へフェード；「続きを読む」= btn sm + ▾']], 'b2 #19 · Luma / Peatix · 补画 2026-11-12');
+  html8 += WP('W-R27-70b イベント詳細 · 紹介 Markdown · 展開 · 1440', 'state', () => ({ nav: 3, body: introWeb(true), rail: K8.wDetailRail('many') }), [['.k-wintro', 0, '開いた状態：全文 + 「閉じる」（▴）；カードは内容分だけ伸び、下のアジェンダ / 主催 / 参加者はそのまま下へ']], 'W-R27-70 · 补画 2026-11-12');
+  html8 += WP('W-R27-70-390 イベント詳細 · 紹介 Markdown · 折りたたみ · 390', 'state', () => ({ body: introPhone(false), ov: K8.ctaBar }), [['.k-mintro', 0, '390 / App 紹介タブ：同じ Markdown と 240px 折りたたみをカード内で']], 'W-R27-70 · A-R27-16u · 补画 2026-11-12', 390);
+  document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-detail-intro', html8));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
 </script>
