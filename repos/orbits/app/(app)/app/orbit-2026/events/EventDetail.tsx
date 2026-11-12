@@ -49,8 +49,8 @@ export function hostName(data: Pick<EventOverviewResponse, "organizer">, t: Jour
 export const noPlan = (data: EventOverviewResponse): boolean => !data.signedOut && data.hasPlan === false;
 
 /**
- * 已结束、又没有评分可显示（未登录 / 没有计划）时的卡：这场的概况 → 主办方的下一场（有就直接点进去）
- * 或「还没公布」+ 关注（下一场发布时通知）→ 看接下来的活动。对标 Luma / Peatix 的已结束页，不留空卡。
+ * 已结束、又没有评分可显示（未登录 / 没有计划）时的卡：下一场（有就直接点进去，没有就「还没公布」）→ 关注主办方 →
+ * 接下来的活动。已结束状态和报名人数页面别处已有，这里不重复（用户 11-12：去 AI 感）。
  */
 export function EndedCard({ data, t, language, className }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string }) {
   const toast = useToast();
@@ -68,40 +68,31 @@ export function EndedCard({ data, t, language, className }: { data: EventOvervie
   const here = `/app/events/${encodeURIComponent(data.eventId)}`;
   return (
     <div className={`${styles.card} ${x.endedCard} ${className ?? ""}`} data-detail-ended="">
-      <b className={x.endedTitle}>{t("endedCardTitle")}</b>
-      {data.attendeeCounts.all > 0 ? <div className={styles.lbl}>{t("pastRegistrationCount", { n: data.attendeeCounts.all })}</div> : null}
-      <div className={x.endedSection}>
-        <div className={styles.lbl}>{t("endedNextLbl")}</div>
-        {next ? (
-          <a className={x.endedNext} href={`/app/events/${encodeURIComponent(next.eventId)}`} data-detail-ended-next={next.eventId}>
-            <span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span>
-            <span className={x.endedNextText}><b>{next.title}</b><span className={styles.lbl}>{eventRange(next.startsAt, null, language)}</span></span>
-            <Icon name="right" size={16} />
-          </a>
-        ) : (
-          <>
-            <b className={x.endedNone}>{t("endedNoNext")}</b>
-            <div className={styles.lbl}>{t("endedFollowHint")}</div>
-          </>
-        )}
-        {data.signedOut ? (
-          <a className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} href={`/app/account/login?next=${encodeURIComponent(here)}`}>{t("endedLoginFollow")}</a>
-        ) : organizerId ? (
-          <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-ended-follow="">{following ? t("following") : t("follow")}</button>
-        ) : null}
-      </div>
+      <div className={styles.lbl}>{t("endedNextLbl")}</div>
+      {next ? (
+        <a className={x.endedNext} href={`/app/events/${encodeURIComponent(next.eventId)}`} data-detail-ended-next={next.eventId}>
+          <span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span>
+          <span className={x.endedNextText}><b>{next.title}</b><span className={styles.lbl}>{eventRange(next.startsAt, null, language)}</span></span>
+          <Icon name="right" size={16} />
+        </a>
+      ) : <b className={x.endedNone}>{t("endedNoNext")}</b>}
+      {data.signedOut ? (
+        <a className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} href={`/app/account/login?next=${encodeURIComponent(here)}`}>{t("endedLoginFollow")}</a>
+      ) : organizerId ? (
+        <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-ended-follow="">{following ? t("following") : t("endedFollowHost")}</button>
+      ) : null}
       <a className={x.endedFoot} href={data.signedOut ? "/app/events" : "/app/events?tab=discover"}>{t("endedSeeUpcoming")}<Icon name="right" size={16} /></a>
     </div>
   );
 }
 
-function NoPlanCard({ t, className, title, body }: { t: JourneyT; className?: string; title: string; body: string }) {
+/** 没有计划时评分位 / 右栏的占位：一句「设定目标后显示」；评分位带一个「设定目标」按钮，右栏不重复放按钮。 */
+function NoPlanCard({ t, className, label, title, action = false }: { t: JourneyT; className?: string; label?: string; title: string; action?: boolean }) {
   return (
     <div className={`${styles.card} ${x.noPlan} ${className ?? ""}`} data-detail-no-plan="">
-      <div className={styles.lbl}>{t("noPlanLbl")}</div>
+      {label ? <div className={styles.lbl}>{label}</div> : null}
       <b className={x.noPlanTitle}>{title}</b>
-      <div className={`${styles.lbl} ${x.noPlanBody}`}>{body}</div>
-      <a className={`btn ${styles.btn} ${styles.primary} ${x.noPlanBtn}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t("setGoal")}</a>
+      {action ? <a className={`btn ${styles.btn} ${styles.primary} ${x.noPlanBtn}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t("setGoal")}</a> : null}
     </div>
   );
 }
@@ -148,7 +139,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("meetTitle")}</h4>
-      {noPlan(data) && !ended ? <NoPlanCard t={t} title={t("railNoPlanTitle")} body={t("railNoPlanBody")} /> : data.rosterLocked && data.attendeeCounts.all > 0 ? (
+      {noPlan(data) && !ended ? <NoPlanCard t={t} title={t("railNoPlanTitle")} /> : data.rosterLocked && data.attendeeCounts.all > 0 ? (
         <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t(ended ? "pastRosterGate" : "railGateBody")}</div></div>
       ) : <>
       <div className={`${styles.card} ${x.railList}`}>
@@ -250,7 +241,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           </div>
           {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
         </div>
-      ) : noPlan(data) && !ended ? <NoPlanCard t={t} className={x.pNoPlan} title={t("noPlanScoreTitle")} body={t("noPlanScoreSub")} /> : null}
+      ) : noPlan(data) && !ended ? <NoPlanCard t={t} className={x.pNoPlan} label={t("yourAssessment")} title={t("noPlanScoreTitle")} action /> : null}
       <div className={x.pTabs} role="tablist">
         {(["intro", "agenda", "host", "people"] as const).map((key) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.pTab} ${tab === key ? x.pTabOn : ""}`} data-detail-tab={key} onClick={() => setTab(key)}>
@@ -363,7 +354,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
             <Crit label={at("dimTime")} value={data.assessment.display.timeCost} rose />
           </div>
         </div>
-      ) : noPlan(data) ? (ended ? <EndedCard data={data} t={t} language={language} className={styles.span4} /> : <NoPlanCard t={t} className={styles.span4} title={t("noPlanScoreTitle")} body={t("noPlanScoreSub")} />) : null}
+      ) : noPlan(data) ? (ended ? <EndedCard data={data} t={t} language={language} className={styles.span4} /> : <NoPlanCard t={t} className={styles.span4} label={t("yourAssessment")} title={t("noPlanScoreTitle")} action />) : null}
       <div ref={agendaRef} className={`${styles.card} ${x.span7}`}>
         <div className={styles.cardH}><h3>{t("tabAgenda")}</h3></div>
         {data.agenda.length ? data.agenda.map((item) => (
