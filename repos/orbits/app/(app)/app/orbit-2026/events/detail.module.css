@@ -183,19 +183,27 @@
   .facts { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* 2026-11-12 名单锁着：Meetup 式一排（主办方 · 马赛克 · +N）。马赛克只是色块 + 模糊，不带任何参加者数据。 */
-.crowd { display: flex; gap: 10px; }
-.crowdTile { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px 12px; border-radius: var(--r-md); background: var(--surface-2); text-align: center; }
-.crowdWide .crowdTile { flex: 0 0 132px; }
-.crowdAvWrap { position: relative; display: inline-flex; }
-.crowdAv.crowdAv { width: 56px; height: 56px; border-radius: var(--r-pill); font-size: var(--fs-emoji-lg); }
-.crowdTag { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); padding: 1px 8px; border-radius: var(--r-pill); background: var(--surface); color: var(--plum-700); font-size: var(--fs-tiny); font-weight: var(--fw-bold); white-space: nowrap; }
-.crowdName { font-size: var(--fs-meta); line-height: var(--lh-snug); overflow-wrap: anywhere; margin-top: 2px; }
+/* 2026-11-12 名单锁着：Meetup 式 Attendees 一排（实测 Meetup：卡 131 × 174、圆角 28、内边距 16 / 12、头像 72、名字 14 / 600、身份 12、间距 12）。
+   桌面按宽度放满一排（列数由组件量出来）；手机同尺寸卡片横向滑动。马赛克只是色块 + 模糊，不带任何参加者数据。 */
+.crowd { gap: 12px; }
+.crowdGrid { display: grid; grid-template-columns: repeat(var(--crowd-cols, 5), minmax(0, 1fr)); }
+.crowdScroll { display: grid; grid-auto-flow: column; grid-auto-columns: 112px; overflow-x: auto; margin: 0 -2px; padding: 2px 2px 4px; scrollbar-width: none; }
+.crowdScroll::-webkit-scrollbar { display: none; }
+.crowdTile { display: flex; flex-direction: column; align-items: center; min-width: 0; min-height: 174px; padding: 16px 12px; border-radius: var(--r-dialog); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-card-soft); text-align: center; }
+.crowdAvWrap { position: relative; display: block; width: 72px; max-width: 100%; aspect-ratio: 1; flex: none; }
+.crowdAv.crowdAv { width: 100%; height: 100%; border-radius: var(--r-pill); font-size: var(--fs-emoji-lg); }
+.crowdTagRing { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); padding: 0 2px; border-radius: var(--r-pill); background: var(--surface); }
+.crowdTag { display: block; padding: 2px 6px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--plum-700) 10%, var(--surface)); color: var(--plum-700); font-size: var(--fs-caption); font-weight: var(--fw-bold); line-height: 16px; white-space: nowrap; }
+.crowdName { margin-top: 16px; font-size: var(--fs-body-sm); font-weight: var(--fw-semibold); line-height: var(--lh-snug); color: var(--ink); max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.crowdRole { margin-top: 4px; font-size: var(--fs-meta); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .mosaic { display: block; border-radius: var(--r-pill); filter: blur(2px); }
 .mosaic0 { background: radial-gradient(circle at 35% 35%, var(--mac-apricot), color-mix(in srgb, var(--mac-pink-ink) 45%, var(--mac-pink))); }
 .mosaic1 { background: radial-gradient(circle at 60% 30%, var(--mac-blue), color-mix(in srgb, var(--mac-lav-ink) 45%, var(--mac-lav))); }
 .mosaic2 { background: radial-gradient(circle at 40% 60%, var(--mac-teal), color-mix(in srgb, var(--mac-blue-ink) 45%, var(--mac-blue))); }
 .mosaic3 { background: radial-gradient(circle at 50% 40%, var(--mac-pink), color-mix(in srgb, var(--mac-teal-ink) 45%, var(--mac-teal))); }
-.mosaicBar { display: block; width: 64px; height: 10px; margin-top: 4px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ink-3) 35%, var(--surface-3)); filter: blur(2px); }
-.crowdStack { display: grid; grid-template-columns: repeat(2, 26px); gap: 4px; width: 56px; height: 56px; }
-.crowdStack i { width: 26px; height: 26px; }
+.mosaicBar { display: block; height: 12px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ink-3) 30%, var(--surface-3)); filter: blur(2px); }
+.mosaicName { width: 70%; margin-top: 18px; }
+.mosaicRole { width: 48%; height: 10px; margin-top: 8px; opacity: 0.7; }
+.crowdStack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.crowdStack i { width: 100%; aspect-ratio: 1; }
+

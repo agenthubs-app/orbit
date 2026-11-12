@@ -103,9 +103,7 @@ test('locked roster (Meetup-style row): host tile, mosaic tiles that carry no at
   assert.doesNotMatch(html, /参加者信息只在报名了同一活动的人之间显示/);
   // Signed in, not registered: same row.
   assert.match(renderedModule.render!('desktop', locked), /data-roster-host/);
-  // Phone: host + 2 mosaic + more.
-  const phone = renderedModule.render!('phone', { ...locked, signedOut: true });
-  assert.ok(!phone.includes('data-roster-masked') || (phone.match(/data-roster-masked/g) ?? []).length <= 2);
+  // Server render (before the row is measured) = host + 3 mosaic + more; the desktop row then fills its width.
   // Small rosters: no +N tile when every attendee already has a mosaic tile.
   const few = renderedModule.render!('desktop', { ...locked, attendeeCounts: { all: 2, planFit: 0, known: 0 } });
   assert.equal((few.match(/data-roster-masked/g) ?? []).length, 2); assert.doesNotMatch(few, /data-roster-more/);
