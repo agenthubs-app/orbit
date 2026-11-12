@@ -44,7 +44,7 @@ function stripSources(sources: readonly InboxNotificationSource[]): InboxNotific
 /**
  * What a reader sees in `language` at `nowMs`. A notification whose sources
  * are not available shows the "source unavailable" text and nothing of its
- * content; an open one past expiresAt reads as expired and only offers "read".
+ * content and only offers "read"; an open one past expiresAt reads as expired and only offers "read".
  * The server's list and detail use this same function.
  */
 export function presentInboxNotification<TNotification extends Omit<InboxNotificationDTO, "actorId">>(
@@ -60,7 +60,8 @@ export function presentInboxNotification<TNotification extends Omit<InboxNotific
       ...INBOX_UNAVAILABLE_TEXT[language],
       target: { ...notification.target, href: null, status: state },
       sources: stripSources(notification.sources),
-      actions: [],
+      // Only "read" stays: a reader can still clear the row, nothing else acts on a source that moved on.
+      actions: notification.actions.filter((action) => action === "read"),
     } as unknown as TNotification;
   }
   const expired = Boolean(notification.expiresAt) && parseTimestamp(notification.expiresAt!) <= nowMs && notification.disposition === "open";

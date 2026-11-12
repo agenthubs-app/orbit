@@ -42,6 +42,11 @@ function notificationTime(at:string,now:string,zone:string,language:string){
  const sameDay=notificationLocalDay(at,zone)===notificationLocalDay(now,zone);
  return new Intl.DateTimeFormat(language,{timeZone:zone,...(sameDay?{hour:'numeric',minute:'2-digit'}:{month:'numeric',day:'numeric'})}).format(new Date(at));
 }
+/** Chip badges count what is still unread (like a mail label), so reading a row lowers its chip at once. */
+function chipUnreadCounts(items:readonly NotificationRow[]) {
+ const unread=items.filter(n=>!n.readAt&&n.disposition==='open');
+ return {all:unread.length,secretary:unread.filter(n=>secretaryKind(n)).length,reminder:unread.filter(n=>n.kind==='reminder').length,suggestion:unread.filter(n=>n.kind==='suggestion').length,update:unread.filter(n=>n.kind==='update').length};
+}
 /** b5 D05 list row: tile, two lines (title, reason · source · due), time and the unread dot. Actions live in the detail pane. */
 export function NotificationRecordCard({notification:n,onSelect,selected=false,timeZone,now}:{notification:NotificationRow;onSelect:()=>void;selected?:boolean;timeZone?:string;now:string}) {
  const {t,language}=useOrbitLanguage();
@@ -141,8 +146,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  useEffect(()=>{
   if(filter!=='all'||!data)return;
   if(data.nextCursor){setCounts(null);return;}
-  const open=data.items.filter(n=>n.disposition==='open');
-  const next={all:data.items.length,secretary:data.items.filter(n=>secretaryKind(n)).length,reminder:open.filter(n=>n.kind==='reminder').length,suggestion:open.filter(n=>n.kind==='suggestion').length,update:open.filter(n=>n.kind==='update').length};
+  const next=chipUnreadCounts(data.items);
   setCounts(next);rememberAnswer('inbox:chips:'+actorId,next);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[filter,data]);
@@ -199,7 +203,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  async function more(){if(!data?.nextCursor||lock.current)return;const previous=data,controller=scope.current;if(!controller)return;lock.current=true;setBusy(true);try{const load=async(cursor?:string)=>notificationInboxView(await request('/api/inbox/notifications?'+query+(cursor?'&cursor='+encodeURIComponent(cursor):''),{},controller),actorId);const next=filter==='secretary'?await scanSecretaryNotificationPage(load,previous.nextCursor):await load(previous.nextCursor);if(!controller.signal.aborted)setData(old=>old===previous?{...next,items:[...new Map([...old.items,...next.items].map(n=>[n.id,n])).values()]}:old);}catch{if(!controller.signal.aborted)setError(t({zh:'加载失败，请重试。',en:'Could not load more. Retry.',ja:'読み込めません。再試行してください。'}));}finally{lock.current=false;if(!controller.signal.aborted)setBusy(false);}}
  const weekShown=week&&Object.values(week).some(value=>value>0)?week:null;
  // The chips' counts in the same render as the list they are counted from (the effect above only keeps them for the other filters).
- const chipCounts=useMemo(()=>filter!=='all'||!data?counts:data.nextCursor?null:(()=>{const open=data.items.filter(n=>n.disposition==='open');return {all:data.items.length,secretary:data.items.filter(n=>secretaryKind(n)).length,reminder:open.filter(n=>n.kind==='reminder').length,suggestion:open.filter(n=>n.kind==='suggestion').length,update:open.filter(n=>n.kind==='update').length};})(),[filter,data,counts]);
+ const chipCounts=useMemo(()=>filter!=='all'||!data?counts:data.nextCursor?null:chipUnreadCounts(data.items),[filter,data,counts]);
  useEffect(()=>{if(railReady)rememberAnswer<RailAnswer>('inbox:rail:'+actorId,{preferences,usage,week,timeZone});},[railReady,actorId,preferences,usage,week,timeZone]);
  // Until then no rail of its own: the shell keeps the page's rail skeleton in place (shellFrameFor).
  const rail=useMemo(()=>railReady?<NotificationStatusRail language={language} usage={usage} preferences={preferences} week={weekShown} quietBusy={quietBusy} onQuietChange={next=>void setQuiet(next)}/>:undefined,

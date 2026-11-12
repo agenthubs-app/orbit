@@ -44,8 +44,11 @@ test('source permission is checked before serialization and before replaying act
   const f=fixture();const record=await f.service.upsert(f.input);
   await f.service.action('a',record.id,{action:'read',expectedRevision:1,idempotencyKey:'read'});f.setAccess();
   const removed=await f.service.get('a',record.id);
-  assert.equal(removed.target.status,'unavailable'); assert.equal(removed.sources[0]?.excerpt,undefined); assert.equal(removed.title.includes('报价'),false); assert.equal(removed.object,undefined);assert.equal(removed.actions.length,0);
-  await assert.rejects(f.service.action('a',record.id,{action:'read',expectedRevision:1,idempotencyKey:'read'}),/unavailable/i);
+  assert.equal(removed.target.status,'unavailable'); assert.equal(removed.sources[0]?.excerpt,undefined); assert.equal(removed.title.includes('报价'),false); assert.equal(removed.object,undefined);assert.deepEqual(removed.actions,['read']);
+  await assert.rejects(f.service.action('a',record.id,{action:'dismiss',expectedRevision:2,idempotencyKey:'dismiss'}),/unavailable/i);
+  // A replayed receipt is presented again under the current source decision: nothing of the old content comes back.
+  const replayed=await f.service.action('a',record.id,{action:'read',expectedRevision:1,idempotencyKey:'read'});
+  assert.equal(replayed.notification.target.status,'unavailable');assert.equal(replayed.notification.title.includes('报价'),false);
   assert.equal((await f.service.list('a',{})).unreadCount,0);
 });
 
@@ -65,6 +68,13 @@ test('accept and snooze are durable idempotent actions with source and revision 
   const snooze={action:'snooze' as const,expectedRevision:1,idempotencyKey:'later',scheduledFor:'2026-09-16T04:00:00.000Z'};
   await f.service.action('a',reminder.id,snooze);await f.service.action('a',reminder.id,snooze);assert.equal(f.snoozed(),1);
   f.changeSource();await assert.rejects(f.service.action('a',reminder.id,{...snooze,idempotencyKey:'new',expectedRevision:2}),/changed|conflict/i);
+});
+
+test('a notification whose source is gone can still be marked read, and nothing else', async () => {
+  const f=fixture();const record=await f.service.upsert(f.input);f.setAccess();
+  const read=await f.service.action('a',record.id,{action:'read',expectedRevision:1,idempotencyKey:'read-gone'});
+  assert.ok(read.notification.readAt);assert.equal(read.notification.disposition,'open');
+  assert.ok((await f.service.list('a',{history:true})).items.find(n=>n.id===record.id)?.readAt);
 });
 
 test('stable actor-bound cursor and explicit read snapshot do not consume newly arriving items', async () => {

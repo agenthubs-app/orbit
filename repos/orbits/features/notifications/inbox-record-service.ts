@@ -150,8 +150,9 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
       return input.repository.transaction(actorId,async tx=>{
         const row=await tx.get(id);if(!row)throw new InboxRecordError('NOT_FOUND','Notification not found');
         const visible=await present(row.notification,'zh',tx);
-        if(visible.target.status==='unavailable')throw new InboxRecordError('SOURCE_UNAVAILABLE','Notification source unavailable');
-        if(visible.target.status==='changed')throw new InboxRecordError('CONFLICT','Notification source changed; refresh');
+        // Marking read only clears the row's unread state, so it stays allowed after its sources moved on.
+        if(visible.target.status==='unavailable'&&request.action!=='read')throw new InboxRecordError('SOURCE_UNAVAILABLE','Notification source unavailable');
+        if(visible.target.status==='changed'&&request.action!=='read')throw new InboxRecordError('CONFLICT','Notification source changed; refresh');
         const fingerprint=digest(request),replay=row.operations[request.idempotencyKey];
         if(replay) {if(replay.fingerprint!==fingerprint)throw new InboxRecordError('CONFLICT','Idempotency conflict');return {...replay.receipt,notification:await present(replay.receipt.notification,'zh',tx)};}
         if(row.notification.revision!==request.expectedRevision)throw new InboxRecordError('CONFLICT','Revision conflict');
