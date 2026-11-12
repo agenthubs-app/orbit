@@ -141,7 +141,6 @@
 /* 2026-11-12 缺位状态：没有计划时评分卡 / 右栏位置的「プランを作る」引导卡（探す页 noPlan 引导的缩版，同一文案口径）。 */
 .noPlan.noPlan { display: flex; flex-direction: column; gap: 6px; }
 .noPlanTitle { font-size: var(--fs-row); font-weight: var(--fw-heavy); line-height: var(--lh-letter); margin-top: 2px; }
-.noPlanBody { line-height: var(--lh-letter); }
 .noPlanBtn.noPlanBtn { align-self: flex-start; margin-top: 8px; }
 .pNoPlan.pNoPlan { margin-top: 14px; }
 
@@ -168,15 +167,14 @@
 .mdMore.mdMore { margin-top: 8px; align-self: flex-start; }
 
 /* 2026-11-12 已结束卡（没有评分可显示时的右上卡 / 390 底部）：概况 → 主办方的下一场或关注 → 看接下来的活动。 */
-.endedCard.endedCard { gap: 4px; }
-.endedTitle { font-size: var(--fs-row); font-weight: var(--fw-heavy); }
-.endedSection { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* 按内容定高、贴顶（不随封面卡拉伸成一大块空白）。 */
+.endedCard.endedCard { gap: 6px; align-self: start; }
 .endedNext { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); color: inherit; text-decoration: none; }
 .endedNextText { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .endedNextText b { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.endedNone { font-size: var(--fs-body-sm); }
+.endedNone { font-size: var(--fs-row); font-weight: var(--fw-heavy); }
 .endedFollow.endedFollow { align-self: flex-start; margin-top: 4px; }
-.endedFoot { display: inline-flex; align-items: center; gap: 4px; margin-top: auto; padding-top: 14px; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--plum-700); text-decoration: none; }
+.endedFoot { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--plum-700); text-decoration: none; }
 .pEnded.pEnded { margin-top: 14px; }
 
 /* < 768 兜底：本文件的 span8/7/5 不随 events.module.css 的 span 重置，单列网格里会撑出隐式列、把卡挤成窄条。 */

@@ -24,13 +24,13 @@ const base = { eventId: 'imported', title: '中日創業交流会', emoji: '🥂
 
 test('desktop: no plan → the score slot holds a make-a-plan guide, the empty agenda says so, the organizer hash is not shown', () => {
   const html = renderedModule.render!('desktop', base);
-  assert.match(html, /data-detail-no-plan/); assert.match(html, /还没有计划/); assert.match(html, /设定目标/); assert.match(html, /\/app\/tasks\?tab=plan/);
-  assert.match(html, /data-agenda-empty/); assert.match(html, /主办方没有公开议程/);
+  assert.match(html, /data-detail-no-plan/); assert.match(html, /对你的评估/); assert.match(html, /设定目标后显示/); assert.match(html, /\/app\/tasks\?tab=plan/);
+  assert.match(html, /data-agenda-empty/); assert.match(html, /暂未公开/);
   assert.doesNotMatch(html, /Organizer #/); assert.match(html, /主办方（未入驻 Orbit）/);
 });
-test('rail: no plan → the guide replaces 「约0人符合计划」', () => {
+test('rail: no plan → one line replaces 「约0人符合计划」, no second 设定目标 button', () => {
   const html = renderedModule.render!('rail', base);
-  assert.match(html, /有了计划，该见的人会列在这里/); assert.doesNotMatch(html, /可能符合计划的人/);
+  assert.match(html, /设定目标后显示/); assert.doesNotMatch(html, /可能符合计划的人/); assert.doesNotMatch(html, /tasks\?tab=plan/);
 });
 test('phone: no plan → guide under the cover, empty agenda tab, generic organizer', () => {
   const html = renderedModule.render!('phone', base);
@@ -70,13 +70,15 @@ test('ended card (no score to show): event summary, host next / follow, see-upco
   const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' };
   // Signed out, no next event: says so, offers log-in-to-follow and the public events list.
   const out = renderedModule.render!('desktop', { ...ended, signedOut: true, hasPlan: undefined });
-  assert.match(out, /data-detail-ended/); assert.match(out, /这场活动已经结束/); assert.match(out, /报名人数.*79/);
-  assert.match(out, /主办方还没有公布下一场/); assert.match(out, /登录后关注/); assert.match(out, /href="\/app\/events"/);
+  assert.match(out, /data-detail-ended/); assert.match(out, /下一场/); assert.match(out, /还没公布/); assert.match(out, /登录后关注/); assert.match(out, /href="\/app\/events"/);
+  // No repeated wording: the card does not restate the ended status, the count, or explain the button.
+  const card = out.slice(out.indexOf('data-detail-ended'));
+  assert.doesNotMatch(card.slice(0, card.indexOf('接下来的活动')), /主办方还没有|已经结束|报名人数|通知你/);
   // Signed in without a plan, host has a next event: links straight to it; follow button (organizerId present).
   const next = { eventId: 'evt next/5', title: '第5回 中日创业交流会', startsAt: '2099-07-19T09:30:00Z' };
   const inside = renderedModule.render!('desktop', { ...ended, organizer: { ...ended.organizer, organizerId: 'org_1', following: false, next } });
   assert.match(inside, /data-detail-ended-next="evt next\/5"/); assert.match(inside, /href="\/app\/events\/evt%20next%2F5"/); assert.match(inside, /第5回 中日创业交流会/);
-  assert.doesNotMatch(inside, /主办方还没有公布下一场/); assert.match(inside, /data-detail-ended-follow/); assert.match(inside, />关注</);
+  assert.doesNotMatch(inside, /还没公布/); assert.match(inside, /data-detail-ended-follow/); assert.match(inside, />关注主办方</);
   assert.match(inside, /\/app\/events\?tab=discover/);
   // Phone: the same card replaces the bottom CTA.
   assert.match(renderedModule.render!('phone', { ...ended, signedOut: true, hasPlan: undefined }), /data-detail-ended/);
