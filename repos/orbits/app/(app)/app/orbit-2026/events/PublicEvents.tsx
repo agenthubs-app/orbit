@@ -10,7 +10,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Icon, Orbit2026Scope, ToastProvider } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DEFAULT_DISCOVER_QUERY, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
-import { EventDetailBody, hostName, monthDaySlash } from "./EventDetail";
+import { EventDetailBody, PhoneDetailBody, hostName, monthDaySlash, usePhone } from "./EventDetail";
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
@@ -96,6 +96,8 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
   const [data, setData] = useState<EventOverviewResponse | null>(null);
   const [missing, setMissing] = useState(false);
   const { ended, canRegister } = useDetailTiming(data);
+  // < 768：和登录后一样用 App 式详情（b12 W-R27-20u-390）；桌面 12 栏网格在手机宽度会挤成窄列。
+  const phone = usePhone();
   useEffect(() => { void journeyApi.overview(eventId).then((result) => { if (result.ok) setData({ ...result.data, signedOut: true }); else setMissing(true); }); }, [eventId]);
   return (
     <div className={p.page}>
@@ -103,13 +105,16 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
       <div className={p.pubmain}>
         <div className={p.mainhead}>
           <div className={p.l}><a className={`btn ${x.rbtn}`} href="/app/events" aria-label={t("back")}><Icon name="left" size={16} /></a></div>
-          <div className={p.t}><b>{data?.title}</b><small>{data ? hostName(data, t) : ""}</small></div>
+          {/* 390（W-R27-20u-390）：顶栏只有返回 / 分享，标题与状态在封面卡和底部。 */}
+          <div className={p.t}>{phone ? null : <><b>{data?.title}</b><small>{data ? hostName(data, t) : ""}</small></>}</div>
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
-            {canRegister ? <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a> : data ? <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span> : null}
+            {phone ? null : canRegister ? <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a> : data ? <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span> : null}
           </div>
         </div>
-        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} /> : null}
+        {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone
+          ? <PhoneDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} />
+          : <EventDetailBody data={data} language={language} t={t} onRegister={() => window.location.assign(`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`)} signedOutAside={inviteCode ? <InviteCodeCard code={inviteCode} data={data} t={t} /> : undefined} />) : null}
       </div>
     </div>
   );

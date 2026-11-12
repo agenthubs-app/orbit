@@ -196,10 +196,10 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const now = new Date();
       // The detail already identifies its event. Read only this organizer's dates,
       // not every event's descriptions and source payloads in the workspace.
-      const mine: Array<{ eventId: string; startsAt: string }> = [];
+      const mine: Array<{ eventId: string; startsAt: string; title?: string | null }> = [];
       if (eventId) {
         const rows = await query(`/* events:r27-journey:organizer-event-dates */
-          select e.event_id,e.starts_at,origin.organizer_actor_id,origin.organizer_profile_id
+          select e.event_id,e.starts_at,e.title,origin.organizer_actor_id,origin.organizer_profile_id
             from event_ops_events origin join event_ops_events e on e.workspace_id=origin.workspace_id
              and (case when origin.organizer_profile_id is not null
                     then e.organizer_profile_id=origin.organizer_profile_id
@@ -210,7 +210,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
         for (const row of rows.rows) {
           if (eventOrganizerKey(str(row.organizer_actor_id),str(row.organizer_profile_id)) !== organizerKey) return null;
           const startsAt=iso(row.starts_at);
-          if (startsAt) mine.push({ eventId:String(row.event_id),startsAt });
+          if (startsAt) mine.push({ eventId:String(row.event_id),startsAt,title:str(row.title) });
         }
       } else {
         const published = await core.listPublishedEvents(now);
@@ -221,6 +221,9 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
           .slice(0, ORGANIZER_EVENTS_LIMIT));
       }
       if (!mine.length) return null;
+      // 已结束活动的「主办方的下一场」：同一主办方、还没开始的最早一场（同一份日期列表，不另查）。
+      const upcoming = mine.filter((event) => event.eventId !== eventId && Date.parse(event.startsAt) > now.getTime() && event.title?.trim()).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
+      const next = upcoming ? { eventId: upcoming.eventId, startsAt: upcoming.startsAt, title: upcoming.title!.trim() } : null;
       // R17 A11：平均参加 = 受付人数（签到）均值；第二格 = 申込回答 Q1 第一选项的比率（主办方自定义问题，<5 人不给）。
       const ids = mine.map((event) => event.eventId);
       const checkins = await query(`/* events:r27-journey:organizer-checkins */ select event_id, count(*)::int as n from event_ops_checkins where workspace_id = $1 and event_id = any($2::text[]) group by event_id`, [workspaceId, ids]).catch(warned("r27_journey_checkins_failed", { rows: [] as Array<Record<string, unknown>> }));
@@ -242,7 +245,7 @@ export function createJourneyLivePorts(): JourneyLivePorts | null {
       const row = share.rows[0];
       const answered = Number(row?.answered ?? 0);
       const typeShare = row?.label && answered >= 5 ? { label: String(row.label), percent: Math.round((Number(row.hit) / answered) * 100) } : null;
-      return { ...history, typeShare };
+      return { ...history, next, typeShare };
     },
 
     async eventIdByCode(code) {

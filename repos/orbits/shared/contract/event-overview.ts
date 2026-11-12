@@ -53,6 +53,8 @@ export interface EventOverviewResponse {
     typeShare?: { label: string; percent: number } | null;
     myAttendance?: number | null;
     following?: boolean;
+    /** The organizer's soonest event that has not started yet (shown on an ended event's 「次回」 card). */
+    next?: { eventId: string; title: string; startsAt: string } | null;
   };
   /** Rule-based (no AI) assessment for my current plan; absent when signed out or without a plan. */
   assessment?: {
