@@ -2,7 +2,7 @@
 
 // R27 イベント詳細（Web 1440：b2 #17 参加者 0 / #18 少 / #19 多，深色 #47；1024 / 390：b12 #350 / #352）。
 // 数据：GET /api/events/[id]/overview（规则评估、主办统计、只公开资料的参加者）。评估吸顶的分数与计划页同一套。
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { EventOverviewAttendee, EventOverviewResponse } from "../../../../../shared/contract/event-overview";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -121,49 +121,32 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
  * 后面是马赛克卡，最后一张是一叠模糊头像 +N。马赛克纯装饰：服务端不给任何参加者数据（与 Meetup 把真姓发到浏览器再 CSS 模糊不同），
  * 所以开发者工具里也读不到谁来了。卡里不放报名按钮：页头 / 手机底部已有（同屏不放两个同样的 CTA）。
  */
-/** Meetup 的 Attendees 卡：131 × 174、圆角 28、头像 72、名字 14 / 600、身份 12，间距 12。 */
-const CROWD_TILE = 131;
-const CROWD_GAP = 12;
-
 function RosterGate({ data, t, wide }: { data: EventOverviewResponse; t: JourneyT; wide?: boolean }) {
   const { ended } = useDetailTiming(data);
   const total = data.attendeeCounts.all;
-  // 桌面：按卡片实际宽度放满一排（至少 4 列）；手机：同尺寸卡片横向滑动，主办方 + 3 张马赛克 + N。
-  const row = useRef<HTMLDivElement | null>(null);
-  const [cols, setCols] = useState(5);
-  useEffect(() => {
-    const el = row.current;
-    if (!el || !wide || typeof ResizeObserver === "undefined") return;
-    const measure = () => setCols(Math.max(4, Math.floor((el.clientWidth + CROWD_GAP) / (CROWD_TILE + CROWD_GAP))));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [wide]);
-  const slots = cols - 1; // 主办方以外的格子
+  // 和报名后的名单同一套小卡（.pgrid / .pmini，头像 38）：桌面 2 行 × 4 = 8 张，手机 2 × 2 = 4 张。主办方 + 马赛克 + 「+N」。
+  const slots = (wide ? 8 : 4) - 1;
   const masked = total <= slots ? total : slots - 1;
   const rest = total - masked;
   return (
     <>
       {/* 未登录：只给人数（不提知り合い）、按钮是「ログインして参加登録」（b12 #394）。 */}
       <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{ended ? t("pastRegistrationCount", { n: total }) : data.signedOut ? t("rosterCountsOnly", { n: total }) : t("rosterCounts", { k: data.attendeeCounts.known, n: total })}</span></div>
-      <div ref={row} className={`${x.crowd} ${wide ? x.crowdGrid : x.crowdScroll}`} style={wide ? ({ "--crowd-cols": cols } as CSSProperties) : undefined} data-roster-gate="">
-        <div className={x.crowdTile} data-roster-host="">
-          <span className={x.crowdAvWrap}><span className={`${styles.emo} ${styles.t_lav} ${x.crowdAv}`}>{data.organizer.emoji ?? data.emoji}</span><span className={x.crowdTagRing}><span className={x.crowdTag}>{t("hostTag")}</span></span></span>
-          <b className={x.crowdName}>{hostName(data, t)}</b>
-          {data.organizer.editions ? <span className={x.crowdRole}>{t("hostEditions", { n: data.organizer.editions })}</span> : null}
+      <div className={`${x.pgrid} ${wide ? "" : x.pgrid2}`} data-roster-gate="">
+        <div className={x.pmini} data-roster-host="">
+          <div className={`${x.av} ${x.c1} ${x.avEmoji}`}>{data.organizer.emoji ?? data.emoji}</div>
+          <div className={x.meta}><b>{hostName(data, t)}</b><span>{[t("hostTag"), data.organizer.editions ? t("hostEditions", { n: data.organizer.editions }) : null].filter(Boolean).join(" · ")}</span></div>
         </div>
         {Array.from({ length: masked }, (_, index) => (
-          <div key={index} className={x.crowdTile} aria-hidden="true" data-roster-masked="">
-            <span className={x.crowdAvWrap}><span className={`${x.crowdAv} ${x.mosaic} ${x[`mosaic${index % 4}`]}`} /></span>
-            <span className={`${x.mosaicBar} ${x.mosaicName}`} />
-            <span className={`${x.mosaicBar} ${x.mosaicRole}`} />
+          <div key={index} className={x.pmini} aria-hidden="true" data-roster-masked="">
+            <div className={`${x.av} ${x.mosaic} ${x[`mosaic${index % 4}`]}`} />
+            <div className={x.meta}><i className={`${x.mosaicBar} ${x.mosaicName}`} /><i className={`${x.mosaicBar} ${x.mosaicRole}`} /></div>
           </div>
         ))}
         {rest > 0 ? (
-          <div className={x.crowdTile} data-roster-more="">
-            <span className={`${x.crowdAvWrap} ${x.crowdStack}`} aria-hidden="true">{[1, 2, 3, 0].map((tone) => <i key={tone} className={`${x.mosaic} ${x[`mosaic${tone}`]}`} />)}</span>
-            <b className={x.crowdName}>+{rest}</b>
+          <div className={x.pmini} data-roster-more="">
+            <div className={x.mosaicStack} aria-hidden="true">{[1, 2, 3].map((tone) => <i key={tone} className={`${x.mosaic} ${x[`mosaic${tone}`]}`} />)}</div>
+            <div className={x.meta}><b>+{rest}</b></div>
           </div>
         ) : null}
       </div>
