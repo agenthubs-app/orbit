@@ -39,6 +39,8 @@ export interface EventOverviewResponse {
   organizer: {
     organizerId?: string | null;
     name: string;
+    /** `name` is only the opaque fallback label (no public organizer name yet): the UI shows a generic 「主催者」 instead. */
+    unnamed?: boolean;
     /** Public organizer page slug (o/[slug]); absent when the organizer has no public page. */
     slug?: string | null;
     emoji?: string | null;
@@ -62,6 +64,8 @@ export interface EventOverviewResponse {
   } | null;
   /** Attendees not public yet: the assessment's 「会える人」 shows 「—」 and its `basis` explains why. */
   assessmentPeopleUnknown?: boolean;
+  /** Signed in: whether I have a current plan. `false` → the score slot and the rail show a 「プランを作る」 guide instead of staying empty. */
+  hasPlan?: boolean;
   /** Attendees not public yet: people I can likely meet, estimated from the speakers. */
   speakerCandidates?: readonly { emoji: string; name: string; label: string; note: string }[];
   /** One line about a known person (「伊藤さんがキーノートに登壇 · 9/24 にメールでやりとり」). */

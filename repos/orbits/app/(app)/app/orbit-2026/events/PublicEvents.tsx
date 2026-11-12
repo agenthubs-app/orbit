@@ -10,7 +10,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Icon, Orbit2026Scope, ToastProvider } from "../ui";
 import { translator as assessTranslator } from "./AssessmentDetail";
 import { DEFAULT_DISCOVER_QUERY, discoverWhen, journeyTranslator, rowTone, type JourneyT } from "./DiscoverTab";
-import { EventDetailBody, monthDaySlash } from "./EventDetail";
+import { EventDetailBody, hostName, monthDaySlash } from "./EventDetail";
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
@@ -81,7 +81,7 @@ function InviteCodeCard({ code, data, t }: { code: string; data: EventOverviewRe
     <div className={`${styles.card} ${styles.span4} ${p.codeCard}`} data-public-invite={code}>
       <div className={styles.lbl}>{t("inviteCodeLbl")}</div>
       <div className={p.code}>{code}</div>
-      <div className={styles.lbl}>{t("inviteFrom", { date: monthDaySlash(data.registrationClosesAt), org: data.organizer.name })}</div>
+      <div className={styles.lbl}>{t("inviteFrom", { date: monthDaySlash(data.registrationClosesAt), org: hostName(data, t) })}</div>
       {canRegister ? <div className={p.codeActions}>
         <a className={`btn ${styles.btn} ${styles.primary}`} href={`${LOGIN}?next=${next}`}>{t("loginRegister")}</a>
         <a className={`btn ${styles.btn}`} href={`/app/account/signup?next=${next}`}>{t("signupRegister")}</a>
@@ -103,7 +103,7 @@ function DetailInner({ eventId, language, inviteCode }: { eventId: string; langu
       <div className={p.pubmain}>
         <div className={p.mainhead}>
           <div className={p.l}><a className={`btn ${x.rbtn}`} href="/app/events" aria-label={t("back")}><Icon name="left" size={16} /></a></div>
-          <div className={p.t}><b>{data?.title}</b><small>{data?.organizer.name}</small></div>
+          <div className={p.t}><b>{data?.title}</b><small>{data ? hostName(data, t) : ""}</small></div>
           <div className={p.r}>
             <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}><Icon name="share" size={16} /></button>
             {canRegister ? <a className={`btn ${styles.btn} ${x.accent}`} href={`${LOGIN}?next=${encodeURIComponent(inviteCode ? `/app/register/${encodeURIComponent(inviteCode)}` : `/app/events/${eventId}/register`)}`}>{t("loginRegister")}</a> : data ? <span className={styles.chip}>{t(ended ? "liveEnded" : "registrationClosed")}</span> : null}

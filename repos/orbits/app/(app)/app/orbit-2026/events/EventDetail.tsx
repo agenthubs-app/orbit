@@ -42,6 +42,21 @@ const AV_TONES = ["c1", "c3", "c4", "c2", "c3", "c5", "c2", "c3"] as const;
 /** 登壇者（参加者未公开时）的头像色：teal、blue 轮换（b2 #17）。 */
 const SPEAKER_TONES = [2, 1] as const;
 export function avTone(index: number): string { return x[AV_TONES[index % AV_TONES.length]!]!; }
+/** 主办方没有公开名字（接口只给匿名占位 `unnamed`）时显示通用「主催者」，不把哈希串当名字。 */
+export function hostName(data: Pick<EventOverviewResponse, "organizer">, t: JourneyT): string { return data.organizer.unnamed ? t("hostUnnamed") : data.organizer.name; }
+/** 已登录但没有计划（接口 `hasPlan === false`）：评分卡 / 右栏位置换成「プランを作る」引导，不留空洞；旧接口没有该字段时维持原样。 */
+export const noPlan = (data: EventOverviewResponse): boolean => !data.signedOut && data.hasPlan === false;
+
+function NoPlanCard({ t, className, title, body }: { t: JourneyT; className?: string; title: string; body: string }) {
+  return (
+    <div className={`${styles.card} ${x.noPlan} ${className ?? ""}`} data-detail-no-plan="">
+      <div className={styles.lbl}>{t("noPlanLbl")}</div>
+      <b className={x.noPlanTitle}>{title}</b>
+      <div className={`${styles.lbl} ${x.noPlanBody}`}>{body}</div>
+      <a className={`btn ${styles.btn} ${styles.primary} ${x.noPlanBtn}`} href="/app/tasks?tab=plan"><Icon name="target" size={16} />{t("setGoal")}</a>
+    </div>
+  );
+}
 
 function Crit({ label, value, rose, unknown }: { label: string; value: number; rose?: boolean; unknown?: boolean }) {
   return (
@@ -85,7 +100,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
   return (
     <div className={`${styles.rail} ${d.rail} ${x.detailRail}`} data-detail-rail="">
       <h4 className={`${styles.railH} ${d.railH}`}><Icon name="sparkle" size={16} />{t("meetTitle")}</h4>
-      {data.rosterLocked && data.attendeeCounts.all > 0 ? (
+      {noPlan(data) ? <NoPlanCard t={t} title={t("railNoPlanTitle")} body={t("railNoPlanBody")} /> : data.rosterLocked && data.attendeeCounts.all > 0 ? (
         <div className={`${styles.card} ${x.railGate}`} data-rail-gate=""><b>{t("railGateTitle", { n: data.attendeeCounts.planFit })}</b><div className={styles.lbl}>{t(ended ? "pastRosterGate" : "railGateBody")}</div></div>
       ) : <>
       <div className={`${styles.card} ${x.railList}`}>
@@ -93,7 +108,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
           {fit.length ? fit.map((person, index) => <Person key={person.attendeeId} person={person} index={index} note={person.note} />)
             : (data.speakerCandidates ?? []).map((speaker, index) => <Person key={speaker.name} person={{ initial: speaker.name.charAt(0), name: speaker.name }} index={SPEAKER_TONES[index % SPEAKER_TONES.length]!} note={speaker.note} />)}
         </div>
-        {data.assessmentPeopleUnknown ? <div className={x.ghostRow}><i />{t("waitingPublic")}</div> : null}
+        {data.assessmentPeopleUnknown ? <div className={x.ghostRow}><i />{t(ended ? "pastNoRoster" : "waitingPublic")}</div> : null}
       </div>
       {data.knownAttendees.length > 1 ? (
         <div className={`${styles.card} ${x.flat} ${x.knownCard}`}>
@@ -153,7 +168,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
   const facts = [
     { icon: "calendar" as const, text: eventRange(data.startsAt, data.endsAt, language) },
     { icon: "pin" as const, text: data.venue ?? "—" },
-    { icon: "ticket" as const, text: [feeText(data.priceYen, t), data.capacity ? t("capacityN", { n: data.capacity }) : null, data.review ? t("reviewYes") : null].filter(Boolean).join(" · ") },
+    { icon: "ticket" as const, text: [feeText(data.priceYen, t), data.capacity ? t("capacityN", { n: data.capacity }) : null, data.review ? t("reviewYes") : null].filter(Boolean).join(" · ") || "—" },
   ];
   const known = data.knownAttendees;
   return (
@@ -164,7 +179,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           {!ended && data.deadlineSoon && typeof data.remaining === "number" ? <span className={`${styles.chip} ${x.pDeadline}`}>{t("deadlineChip", { n: data.remaining })}</span> : null}
         </div>
         <div className={x.pCoverBody}>
-          <div className={styles.lbl}>{data.organizer.name}</div>
+          <div className={styles.lbl}>{hostName(data, t)}</div>
           {ended ? <span className={styles.chip}>{t("liveEnded")}</span> : null}
           <b className={x.pTitle}>{data.title}</b>
           <div className={x.pFacts}>{facts.map((fact) => <div key={fact.icon}><Icon name={fact.icon} size={16} />{fact.text}</div>)}</div>
@@ -185,7 +200,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           </div>
           {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
         </div>
-      ) : null}
+      ) : noPlan(data) && !ended ? <NoPlanCard t={t} className={x.pNoPlan} title={t("noPlanScoreTitle")} body={t("noPlanScoreSub")} /> : null}
       <div className={x.pTabs} role="tablist">
         {(["intro", "agenda", "host", "people"] as const).map((key) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.pTab} ${tab === key ? x.pTabOn : ""}`} data-detail-tab={key} onClick={() => setTab(key)}>
@@ -195,10 +210,10 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       </div>
       {tab === "intro" ? <div className={`${styles.card} ${styles.sub} ${x.pText}`}>{data.description}</div> : null}
       {tab === "agenda" ? (
-        <div className={styles.card}>{data.agenda.map((item) => <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>)}</div>
+        <div className={styles.card}>{data.agenda.length ? data.agenda.map((item) => <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>) : <div className={x.ghostRow} data-agenda-empty=""><i />{t("agendaEmpty")}</div>}</div>
       ) : null}
       {tab === "host" ? (
-        <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{data.organizer.name}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
+        <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{hostName(data, t)}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
       ) : null}
       {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={`${styles.card} ${x.pGateCard}`}><RosterGate data={data} t={t} onRegister={onRegister} /></div> : null}
       {tab === "people" && !(data.rosterLocked && data.attendeeCounts.all > 0) ? (
@@ -298,18 +313,18 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
             <Crit label={at("dimTime")} value={data.assessment.display.timeCost} rose />
           </div>
         </div>
-      ) : null}
+      ) : noPlan(data) ? (ended ? <div className={`${styles.card} ${styles.span4}`}><b>{t("liveEnded")}</b></div> : <NoPlanCard t={t} className={styles.span4} title={t("noPlanScoreTitle")} body={t("noPlanScoreSub")} />) : null}
       <div ref={agendaRef} className={`${styles.card} ${x.span7}`}>
         <div className={styles.cardH}><h3>{t("tabAgenda")}</h3></div>
-        {data.agenda.map((item) => (
+        {data.agenda.length ? data.agenda.map((item) => (
           <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>
-        ))}
+        )) : <div className={`${x.ghostRow} ${x.tall}`} data-agenda-empty=""><i />{t("agendaEmpty")}</div>}
       </div>
       <div ref={hostRef} className={`${styles.card} ${x.span5}`}>
         <div className={styles.cardH}><h3>{t("tabHost")}</h3></div>
         <div className={styles.row} style={{ gap: 12 }}>
           <span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span>
-          <div><b>{data.organizer.name}</b><div className={styles.lbl}>{since && data.organizer.monthly ? t("hostMonthlySince", { n: data.organizer.editions ?? 0, y: since.year }) : t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div>
+          <div><b>{hostName(data, t)}</b><div className={styles.lbl}>{since && data.organizer.monthly ? t("hostMonthlySince", { n: data.organizer.editions ?? 0, y: since.year }) : t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div>
         </div>
         {/* 未登录只剩主办方公开的两格（§36），排两列。 */}
         <div className={`${x.mini3} ${x.hostq} ${data.signedOut ? x.mini2 : ""}`}>
@@ -326,7 +341,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
       ) : (
       <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">
         <div className={styles.cardH}><h3>{t("peopleTitle", { n: data.attendeeCounts.all })}</h3><span className={styles.lbl}>{data.attendeeCounts.all === 0 && data.attendeesPublicAt ? t("publicFrom", { date: monthDaySlash(data.attendeesPublicAt) }) : t("publicOnly")}</span></div>
-        {data.attendeeCounts.all === 0 ? (
+        {data.attendeeCounts.all === 0 && ended ? <div className={`${x.ghostRow} ${x.tall}`} data-past-no-roster=""><i />{t("pastNoRoster")}</div> : data.attendeeCounts.all === 0 ? (
           <>
             <div className={`${x.ghostRow} ${x.tall}`}><i />{t("ghostPeople")}</div>
             <div className={`${x.ghostRow} ${x.tall}`}><i />{t("ghostKnown")}</div>
@@ -441,7 +456,7 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
     <>
       <ShellPage
         title={phone ? "" : data?.title ?? ""}
-        subtitle={phone ? undefined : data?.organizer.name ?? ""}
+        subtitle={phone ? undefined : data ? hostName(data, t) : ""}
         left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
         rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} /> : false}

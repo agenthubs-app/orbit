@@ -5,6 +5,7 @@
  * - 会場：先查报名状态，未报名直接 `not_registered`，不读运营数据。
  */
 import { canSeeRoster } from "./roster-policy";
+import { isCanonicalPublicOrganizerLabel } from "../core/public-organizer-identity";
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../shared/contract/event-after";
 import type { EventDiscoverResponse, EventDiscoverRow } from "../../../shared/contract/event-discover";
@@ -181,7 +182,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         endsAt: event.endsAt,
         eventId,
         knownAttendees: [],
-        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(event.organizerSlug ? { slug: event.organizerSlug } : {}), since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}) },
+        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(isCanonicalPublicOrganizerLabel(event.organizerName) ? { unnamed: true } : {}), ...(event.organizerSlug ? { slug: event.organizerSlug } : {}), since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}) },
         priceYen: event.priceYen,
         registration: { href: `/events/${eventId}/register`, status: "none" },
         remaining: event.capacity ? Math.max(0, event.capacity - event.registrationCount) : null,
@@ -215,6 +216,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         ...base,
         assessment: result ? { assessmentId: result.assessmentId, basis: result.basis, display: result.display, score: result.score, verdict: result.verdict } : null,
         ...(result && roster.total === 0 ? { assessmentPeopleUnknown: true } : {}),
+        hasPlan: judged.hasPlan,
         attendeeCounts: { all: roster.total, known: lockedCounts?.known ?? known.length, planFit: lockedCounts?.planFit ?? attendees.filter((item) => item.planFit).length },
         attendees: rosterVisible ? [...attendees].sort(order).slice(0, cap) : [],
         knownAttendees: rosterVisible ? known.slice(0, 5).map((item) => ({ initial: item.name.trim().charAt(0), name: item.name.split(" ")[0] ?? item.name, speaker: item.speaker })) : [],

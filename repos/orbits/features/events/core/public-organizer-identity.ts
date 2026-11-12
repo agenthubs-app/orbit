@@ -20,3 +20,9 @@ export function canonicalPublicOrganizerLabel(
 
   return `Organizer #${fingerprint}`;
 }
+
+/** True when `name` is only the opaque fallback above (or empty): the organizer has no public name yet, so the UI shows a generic 「主催者」 instead of the hash. */
+export function isCanonicalPublicOrganizerLabel(name: string | null | undefined): boolean {
+  const normalized = name?.trim() ?? "";
+  return normalized === "" || normalized === PUBLIC_ORGANIZER_FALLBACK || /^Organizer #[0-9A-Z]{6,}$/.test(normalized);
+}
