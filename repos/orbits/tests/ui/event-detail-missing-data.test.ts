@@ -89,3 +89,27 @@ test('upcoming events never show the ended card', () => {
   assert.doesNotMatch(renderedModule.render!('desktop', base), /data-detail-ended/);
   assert.doesNotMatch(renderedModule.render!('phone', base), /data-detail-ended/);
 });
+
+test('locked roster (Meetup-style row): host tile, mosaic tiles that carry no attendee data, +N, no extra register button', () => {
+  const locked = { ...base, organizer: { name: '日中创新创业协会', emoji: '🥂' }, attendeeCounts: { all: 79, planFit: 0, known: 0 }, attendees: [], rosterLocked: true };
+  const html = renderedModule.render!('desktop', { ...locked, signedOut: true, hasPlan: undefined });
+  assert.match(html, /data-roster-host/); assert.match(html, /日中创新创业协会/); assert.match(html, />主办</);
+  assert.equal((html.match(/data-roster-masked/g) ?? []).length, 3);
+  assert.match(html, /data-roster-more[\s\S]*\+76/);
+  // The register action lives in the page header / phone bottom bar, not repeated inside the card.
+  assert.doesNotMatch(html.slice(html.indexOf('data-roster-gate')), /登录后报名|报名后查看全部|去报名/);
+  // Mosaic is decoration only: aria-hidden, and nothing but the host's name and counts is in the markup.
+  assert.match(html, /aria-hidden="true" data-roster-masked/);
+  assert.doesNotMatch(html, /参加者信息只在报名了同一活动的人之间显示/);
+  // Signed in, not registered: same row.
+  assert.match(renderedModule.render!('desktop', locked), /data-roster-host/);
+  // Phone: host + 2 mosaic + more.
+  const phone = renderedModule.render!('phone', { ...locked, signedOut: true });
+  assert.ok(!phone.includes('data-roster-masked') || (phone.match(/data-roster-masked/g) ?? []).length <= 2);
+  // Small rosters: no +N tile when every attendee already has a mosaic tile.
+  const few = renderedModule.render!('desktop', { ...locked, attendeeCounts: { all: 2, planFit: 0, known: 0 } });
+  assert.equal((few.match(/data-roster-masked/g) ?? []).length, 2); assert.doesNotMatch(few, /data-roster-more/);
+  // Ended: the row stays, no register button.
+  const ended = renderedModule.render!('desktop', { ...locked, signedOut: true, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' });
+  assert.match(ended, /data-roster-host/);
+});

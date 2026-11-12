@@ -7469,7 +7469,7 @@ g += pubBoard('W-R26-41u 未ログイン · イベント詳細 · 参加者 · 1
 /* 2026-10-29：探す新规则补画（文件末尾）要复用这里的画法；只导出，不加画板。 */
 window.__r27DiscoverKit = { wDiscover, wFilters, discover, searchRow, datebox, segTop, evalSeg, REC, MORE, mring };
 /* 2026-11-12：紹介 Markdown 补画（文件末尾）复用详情画法；只导出，不加画板。 */
-window.__r27DetailKit = { wDetail, detail, wDetailRail, ctaBar };
+window.__r27DetailKit = { wDetail, detail, wDetailRail, ctaBar, railUnreg };
 __g7out(group('g7', g));
 })();
 
@@ -9313,6 +9313,17 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
   html8 += S8('补画 · 2026-11-12 · 已結束イベント · 評価を出せない時の右上カード', '用户 11-12：已结束活动在未登录 / 没有计划时右上只剩一张空的「活动已结束」卡 → 对标 Luma（This event has ended + host 的下一场 / Subscribe）/ Peatix（終了 + 主催者フォロー + 他のイベント）。卡 = 次回（有就直接链到那场；没有就「未定」）→ 主催者をフォロー → これからのイベント；11-12 用户：不重复状态 / 人数，不写按钮说明。390 放在原 CTA 位置。有评分（已登录且有计划）时仍显示评分卡。');
   html8 += WP('W-R27-71 イベント詳細 · 終了 · 次回なし · 未ログイン · 1440', 'state', () => ({ nav: 3, body: k71Web(false, true), rail: k71Rail() }), [['.k-wended', 0, '評価が出せない（未ログイン / プランなし）終了イベント：次回 →「未定」→ フォロー（未ログインは「ログインしてフォロー」）→ これからのイベント']], 'Luma / Peatix · 补画 2026-11-12');
   html8 += WP('W-R27-71b イベント詳細 · 終了 · 次回あり · 1440', 'state', () => ({ nav: 3, body: k71Web(true, false), rail: k71Rail() }), [['.k-wended', 0, '主催者の次回（同じ主催者のまだ始まっていない最も近い公開イベント）を 1 行カードで；クリックでそのイベント詳細へ']], 'W-R27-71 · 补画 2026-11-12');
+  /* 补画 · 2026-11-12 · 名单锁着（未登录 / 未报名）= Meetup 式 Attendees 一排；取代 #386 / #388 的灰框门卡 */
+  const k72Tile = (inner, name) => `<div style="flex:0 0 132px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px 12px;border-radius:14px;background:var(--surface-2);text-align:center">${inner}${name}</div>`;
+  const k72Blob = (a, b, size) => `<span style="display:block;width:${size}px;height:${size}px;border-radius:999px;filter:blur(2px);background:radial-gradient(circle at 40% 40%, var(${a}), color-mix(in srgb, var(${b}-ink) 45%, var(${b})))"></span>`;
+  const k72Row = `<div class="k-wcrowd" style="display:flex;gap:10px">
+    ${k72Tile(`<span style="position:relative;display:inline-flex"><span class="emo lav" style="width:56px;height:56px;border-radius:999px;font-size:24px">🥂</span><span style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:var(--surface);color:var(--plum-700);font-size:10.5px;font-weight:700;white-space:nowrap">主催</span></span>`, '<b style="font-size:12px;margin-top:2px">CFO Night 実行委員会</b>')}
+    ${[['--mac-apricot', '--mac-pink'], ['--mac-blue', '--mac-lav'], ['--mac-teal', '--mac-blue']].map(([a, b]) => k72Tile(k72Blob(a, b, 56), '<span style="display:block;width:64px;height:10px;margin-top:4px;border-radius:999px;filter:blur(2px);background:color-mix(in srgb, var(--ink-3) 35%, var(--surface-3))"></span>')).join('')}
+    ${k72Tile(`<span style="display:grid;grid-template-columns:repeat(2,26px);gap:4px">${[['--mac-blue', '--mac-lav'], ['--mac-teal', '--mac-blue'], ['--mac-pink', '--mac-teal'], ['--mac-apricot', '--mac-pink']].map(([a, b]) => k72Blob(a, b, 26)).join('')}</span>`, '<b style="font-size:12px;margin-top:2px">+125</b>')}
+  </div>`;
+  const k72Web = () => { const t = K8.wDetail('many'); const i = t.indexOf('<div class="card span12 p-wparts">'); return t.slice(0, i) + `<div class="card span12"><div class="card-h"><h3>参加者</h3><span class="lbl">参加予定 128人 · 知り合い 3人</span></div>${k72Row}</div></div>`; };
+  html8 += S8('补画 · 2026-11-12 · 名单锁着 = Meetup 式 Attendees 一排', '用户 11-12：未报名的人也要看到「有人来」，像 Meetup（第一张 Host 卡露名字，其余模糊）。取代 #386 / #388 的灰框门卡。第一张 = 主办方（本来就公开，带「主催」标签），后面 = 马赛克卡（纯装饰：服务端不发参加者数据——Meetup 是把真姓发到浏览器再 CSS 模糊，我们不这样做），最后 = 一叠模糊头像 +N。卡里不放报名按钮（页头 / 底部已有）。390 = 主办方 + 2 张 + N。');
+  html8 += WP('W-R27-72 イベント詳細 · 参加者 · 名单锁着（Meetup 式）· 1440', 'state', () => ({ nav: 3, body: k72Web(), rail: K8.railUnreg('many') }), [['.k-wcrowd', 0, '主催者カード（公開情報）→ モザイク 3 枚（データなし・aria-hidden）→ ぼかしアバター 4 つ + 残り人数；タイル 132px 幅、背景 surface-2、角丸 14']], 'Meetup Attendees · 补画 2026-11-12');
   document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-detail-intro', html8));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();

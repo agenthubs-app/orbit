@@ -182,3 +182,20 @@
   .span8, .span7, .span5 { grid-column: auto; }
   .facts { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 2026-11-12 名单锁着：Meetup 式一排（主办方 · 马赛克 · +N）。马赛克只是色块 + 模糊，不带任何参加者数据。 */
+.crowd { display: flex; gap: 10px; }
+.crowdTile { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px 12px; border-radius: var(--r-md); background: var(--surface-2); text-align: center; }
+.crowdWide .crowdTile { flex: 0 0 132px; }
+.crowdAvWrap { position: relative; display: inline-flex; }
+.crowdAv.crowdAv { width: 56px; height: 56px; border-radius: var(--r-pill); font-size: var(--fs-emoji-lg); }
+.crowdTag { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); padding: 1px 8px; border-radius: var(--r-pill); background: var(--surface); color: var(--plum-700); font-size: var(--fs-tiny); font-weight: var(--fw-bold); white-space: nowrap; }
+.crowdName { font-size: var(--fs-meta); line-height: var(--lh-snug); overflow-wrap: anywhere; margin-top: 2px; }
+.mosaic { display: block; border-radius: var(--r-pill); filter: blur(2px); }
+.mosaic0 { background: radial-gradient(circle at 35% 35%, var(--mac-apricot), color-mix(in srgb, var(--mac-pink-ink) 45%, var(--mac-pink))); }
+.mosaic1 { background: radial-gradient(circle at 60% 30%, var(--mac-blue), color-mix(in srgb, var(--mac-lav-ink) 45%, var(--mac-lav))); }
+.mosaic2 { background: radial-gradient(circle at 40% 60%, var(--mac-teal), color-mix(in srgb, var(--mac-blue-ink) 45%, var(--mac-blue))); }
+.mosaic3 { background: radial-gradient(circle at 50% 40%, var(--mac-pink), color-mix(in srgb, var(--mac-teal-ink) 45%, var(--mac-teal))); }
+.mosaicBar { display: block; width: 64px; height: 10px; margin-top: 4px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ink-3) 35%, var(--surface-3)); filter: blur(2px); }
+.crowdStack { display: grid; grid-template-columns: repeat(2, 26px); gap: 4px; width: 56px; height: 56px; }
+.crowdStack i { width: 26px; height: 26px; }

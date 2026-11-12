@@ -116,18 +116,37 @@ function Person({ person, index, note }: { person: EventOverviewAttendee | { nam
   );
 }
 
-/** 名单锁着（roster-policy A：报名确定前）：人数 · 知り合い人数 + 「参加登録すると…」（b12 #382–#389）。 */
-function RosterGate({ data, t, onRegister, wide }: { data: EventOverviewResponse; t: JourneyT; onRegister?: () => void; wide?: boolean }) {
-  const { ended, canRegister } = useDetailTiming(data);
+/**
+ * 名单锁着（roster-policy A：报名确定前）——参照 Meetup 未登录时的 Attendees 行：第一张是主办方（本来就公开，带「主办」标签），
+ * 后面是马赛克卡，最后一张是一叠模糊头像 +N。马赛克纯装饰：服务端不给任何参加者数据（与 Meetup 把真姓发到浏览器再 CSS 模糊不同），
+ * 所以开发者工具里也读不到谁来了。卡里不放报名按钮：页头 / 手机底部已有（同屏不放两个同样的 CTA）。
+ */
+function RosterGate({ data, t, wide }: { data: EventOverviewResponse; t: JourneyT; wide?: boolean }) {
+  const { ended } = useDetailTiming(data);
+  const total = data.attendeeCounts.all;
+  const masked = Math.min(total, wide ? 3 : 2);
+  const rest = total - masked;
   return (
     <>
       {/* 未登录：只给人数（不提知り合い）、按钮是「ログインして参加登録」（b12 #394）。 */}
-      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{ended ? t("pastRegistrationCount", { n: data.attendeeCounts.all }) : data.signedOut ? t("rosterCountsOnly", { n: data.attendeeCounts.all }) : t("rosterCounts", { k: data.attendeeCounts.known, n: data.attendeeCounts.all })}</span></div>
-      <div className={`${x.gate} ${wide ? x.gateWide : ""}`} data-roster-gate="">
-        <div className={x.gateEmoji}>👥</div>
-        <b className={x.gateTitle}>{t(ended ? "pastRosterGate" : "rosterGateBody")}</b>
-        <div className={`${styles.lbl} ${x.gateNote}`}>{t("rosterGateNote")}</div>
-        {onRegister && canRegister ? <button type="button" className={`btn ${styles.btn} ${styles.primary}`} onClick={onRegister}>{t(data.signedOut ? "loginRegister" : "rosterGateCta")}</button> : null}
+      <div className={styles.cardH}><h3>{t("tabPeople")}</h3><span className={styles.lbl}>{ended ? t("pastRegistrationCount", { n: total }) : data.signedOut ? t("rosterCountsOnly", { n: total }) : t("rosterCounts", { k: data.attendeeCounts.known, n: total })}</span></div>
+      <div className={`${x.crowd} ${wide ? x.crowdWide : ""}`} data-roster-gate="">
+        <div className={x.crowdTile} data-roster-host="">
+          <span className={x.crowdAvWrap}><span className={`${styles.emo} ${styles.t_lav} ${x.crowdAv}`}>{data.organizer.emoji ?? data.emoji}</span><span className={x.crowdTag}>{t("hostTag")}</span></span>
+          <b className={x.crowdName}>{hostName(data, t)}</b>
+        </div>
+        {Array.from({ length: masked }, (_, index) => (
+          <div key={index} className={x.crowdTile} aria-hidden="true" data-roster-masked="">
+            <span className={x.crowdAvWrap}><span className={`${x.crowdAv} ${x.mosaic} ${x[`mosaic${index % 4}`]}`} /></span>
+            <span className={x.mosaicBar} />
+          </div>
+        ))}
+        {rest > 0 ? (
+          <div className={x.crowdTile} data-roster-more="">
+            <span className={x.crowdAvWrap}><span className={x.crowdStack} aria-hidden="true">{[1, 2, 3, 0].map((tone) => <i key={tone} className={`${x.mosaic} ${x[`mosaic${tone}`]}`} />)}</span></span>
+            <b className={x.crowdName}>+{rest}</b>
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -256,7 +275,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
       {tab === "host" ? (
         <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{hostName(data, t)}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
       ) : null}
-      {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={`${styles.card} ${x.pGateCard}`}><RosterGate data={data} t={t} onRegister={onRegister} /></div> : null}
+      {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={`${styles.card} ${x.pGateCard}`}><RosterGate data={data} t={t} /></div> : null}
       {tab === "people" && !(data.rosterLocked && data.attendeeCounts.all > 0) ? (
         <>
           <div className={`${styles.seg} ${x.pSeg}`} role="tablist">
@@ -377,7 +396,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
       </div>
       {data.rosterLocked && data.attendeeCounts.all > 0 ? (
         <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">
-          <RosterGate data={data} t={t} onRegister={onRegister} wide />
+          <RosterGate data={data} t={t} wide />
         </div>
       ) : (
       <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">

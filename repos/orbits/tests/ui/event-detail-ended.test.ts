@@ -24,12 +24,12 @@ for (const kind of ['desktop', 'phone', 'rail']) {
   const html = renderedModule.render!(kind, data);
   assert.doesNotMatch(html, /预计参加|登录后报名|去报名|开始报名|报名后可以看到/);
   assert.match(html, /活动已结束/);
-  if (kind === 'desktop') { assert.match(html, /报名人数.*92/); assert.match(html, /参加者信息只在报名了同一活动的人之间显示/); }
+  if (kind === 'desktop') { assert.match(html, /报名人数.*92/); assert.match(html, /data-roster-gate/); }
  });
 }
-test('upcoming public event keeps registration action and expected count', () => {
+test('upcoming public event keeps the expected count and the roster row (register action lives in the page header, not repeated in the card)', () => {
  const html = renderedModule.render!('desktop', { ...data, startsAt: '2099-03-22T09:00:00Z', endsAt: '2099-03-22T12:00:00Z' });
- assert.match(html, /预计参加/); assert.match(html, /登录后报名/);
+ assert.match(html, /预计参加/); assert.match(html, /data-roster-gate/);
 });
 
 test('ended registered users retain their authorized roster without future preparation prompts', () => {
