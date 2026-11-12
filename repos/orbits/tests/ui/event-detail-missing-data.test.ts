@@ -22,9 +22,10 @@ Object.assign(renderedModule, compiledModule.exports);
 
 const base = { eventId: 'imported', title: '中日創業交流会', emoji: '🥂', startsAt: '2099-04-25T09:30:00Z', endsAt: '2099-04-25T12:00:00Z', review: false, deadlineSoon: false, agenda: [], organizer: { name: 'Organizer #1N54UV4', unnamed: true, averageAttendance: 30, myAttendance: 0 }, attendeeCounts: { all: 79, planFit: 0, known: 0 }, rosterLocked: true, attendees: [], knownAttendees: [], registration: { status: 'none', href: '/app/events/imported/register' }, signedOut: false, assessment: null, hasPlan: false };
 
-test('desktop: no plan → the score slot holds a make-a-plan guide, the empty agenda says so, the organizer hash is not shown', () => {
+test('desktop: no plan → the score slot holds the mock assessment (blurred, aria-hidden) with a 设定目标 button; empty agenda; no organizer hash', () => {
   const html = renderedModule.render!('desktop', base);
-  assert.match(html, /data-detail-no-plan/); assert.match(html, /对你的评估/); assert.match(html, /设定目标后显示/); assert.match(html, /\/app\/tasks\?tab=plan/);
+  assert.match(html, /data-detail-mock-assess/); assert.match(html, /对你的评估/); assert.match(html, />设定目标</); assert.match(html, /\/app\/tasks\?tab=plan/);
+  assert.match(html, /与目标的契合/); assert.match(html, /aria-hidden="true"/);
   assert.match(html, /data-agenda-empty/); assert.match(html, /暂未公开/);
   assert.doesNotMatch(html, /Organizer #/); assert.match(html, /主办方（未入驻 Orbit）/);
 });
@@ -32,20 +33,22 @@ test('rail: no plan → one line replaces 「约0人符合计划」, no second �
   const html = renderedModule.render!('rail', base);
   assert.match(html, /设定目标后显示/); assert.doesNotMatch(html, /可能符合计划的人/); assert.doesNotMatch(html, /tasks\?tab=plan/);
 });
-test('phone: no plan → guide under the cover, empty agenda tab, generic organizer', () => {
+test('phone: no plan → mock score bar under the cover, generic organizer', () => {
   const html = renderedModule.render!('phone', base);
-  assert.match(html, /data-detail-no-plan/); assert.doesNotMatch(html, /Organizer #/); assert.match(html, /主办方（未入驻 Orbit）/);
+  assert.match(html, /data-detail-mock-assess/); assert.match(html, />设定目标</); assert.doesNotMatch(html, /Organizer #/); assert.match(html, /主办方（未入驻 Orbit）/);
 });
 test('with a plan (or an older payload without hasPlan) nothing new appears; a named organizer keeps its name', () => {
   for (const data of [{ ...base, hasPlan: true }, { ...base, hasPlan: undefined }]) {
-    assert.doesNotMatch(renderedModule.render!('desktop', data), /data-detail-no-plan/);
+    assert.doesNotMatch(renderedModule.render!('desktop', data), /data-detail-no-plan|data-detail-mock-assess/);
     assert.match(renderedModule.render!('rail', data), /可能符合计划的人 约0人/);
   }
   const named = renderedModule.render!('desktop', { ...base, agenda: [{ at: '19:00', title: '受付' }], organizer: { name: 'CFO Night 実行委員会' } });
   assert.match(named, /CFO Night 実行委員会/); assert.doesNotMatch(named, /data-agenda-empty/); assert.doesNotMatch(named, /未入驻/);
 });
-test('signed out: no guide (the login card owns that slot)', () => {
-  assert.doesNotMatch(renderedModule.render!('desktop', { ...base, signedOut: true, hasPlan: undefined }), /data-detail-no-plan/);
+test('signed out: the mock assessment with a 登录后查看 button that returns here', () => {
+  const html = renderedModule.render!('desktop', { ...base, signedOut: true, hasPlan: undefined });
+  assert.match(html, /data-detail-mock-assess/); assert.match(html, /登录后查看/); assert.match(html, /next=%2Fapp%2Fevents%2Fimported/);
+  assert.match(renderedModule.render!('phone', { ...base, signedOut: true, hasPlan: undefined }), /data-detail-mock-assess/);
 });
 
 import { canonicalPublicOrganizerLabel, isCanonicalPublicOrganizerLabel } from '../../features/events/core/public-organizer-identity';
@@ -57,16 +60,16 @@ test('isCanonicalPublicOrganizerLabel recognises the fallback label and nothing 
   assert.equal(isCanonicalPublicOrganizerLabel('Organizer Taro'), false);
 });
 
-test('ended + no plan: the score slot says the event ended (no plan nudge), an empty roster has no 「notify me」', () => {
+test('ended + no plan: the score slot still shows the mock assessment, an empty roster has no 「notify me」', () => {
   const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z', attendeeCounts: { all: 0, planFit: 0, known: 0 }, rosterLocked: false };
   const html = renderedModule.render!('desktop', ended);
-  assert.doesNotMatch(html, /data-detail-no-plan/); assert.match(html, /活动已结束/);
+  assert.match(html, /data-detail-mock-assess/); assert.match(html, /活动已结束/);
   assert.match(html, /data-past-no-roster/); assert.doesNotMatch(html, /公开后提醒我/);
-  assert.doesNotMatch(renderedModule.render!('phone', ended), /data-detail-no-plan/);
+  assert.match(renderedModule.render!('phone', ended), /data-detail-mock-assess/);
   assert.match(renderedModule.render!('rail', { ...ended, hasPlan: true, assessment: { score: 19, verdict: 'skip', display: { goalFit: 0, people: 0, timeCost: 65 }, basis: '' }, assessmentPeopleUnknown: true }), /没有参加者记录/);
 });
 
-test('ended card (no score to show): event summary, host next / follow, see-upcoming link — never an empty card', () => {
+test('ended: the host card gets a 下一场 row — next event or 还没公布, follow host, upcoming link', () => {
   const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' };
   // Signed out, no next event: says so, offers log-in-to-follow and the public events list.
   const out = renderedModule.render!('desktop', { ...ended, signedOut: true, hasPlan: undefined });
@@ -80,8 +83,8 @@ test('ended card (no score to show): event summary, host next / follow, see-upco
   assert.match(inside, /data-detail-ended-next="evt next\/5"/); assert.match(inside, /href="\/app\/events\/evt%20next%2F5"/); assert.match(inside, /第5回 中日创业交流会/);
   assert.doesNotMatch(inside, /还没公布/); assert.match(inside, /data-detail-ended-follow/); assert.match(inside, />关注主办方</);
   assert.match(inside, /\/app\/events\?tab=discover/);
-  // Phone: the same card replaces the bottom CTA.
-  assert.match(renderedModule.render!('phone', { ...ended, signedOut: true, hasPlan: undefined }), /data-detail-ended/);
+  // The next row sits inside the host card, after the stats; the top-right slot is the mock assessment.
+  assert.ok(out.indexOf('data-detail-ended') > out.indexOf('平均参会')); assert.match(out, /data-detail-mock-assess/);
   // Rail: no 「make a plan」 nudge on an ended event.
   assert.doesNotMatch(renderedModule.render!('rail', ended), /data-detail-no-plan/);
 });

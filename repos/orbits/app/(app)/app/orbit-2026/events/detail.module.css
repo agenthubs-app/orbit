@@ -167,15 +167,15 @@
 .mdMore.mdMore { margin-top: 8px; align-self: flex-start; }
 
 /* 2026-11-12 已结束卡（没有评分可显示时的右上卡 / 390 底部）：概况 → 主办方的下一场或关注 → 看接下来的活动。 */
-/* 按内容定高、贴顶（不随封面卡拉伸成一大块空白）。 */
-.endedCard.endedCard { gap: 6px; align-self: start; }
+/* 已结束：主办方卡底部的「下一场」一行。 */
+.hostNext { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.hostNextActions { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
+.hostNextActions .endedFoot { margin-top: 0; }
 .endedNext { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); color: inherit; text-decoration: none; }
 .endedNextText { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .endedNextText b { font-size: var(--fs-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .endedNone { font-size: var(--fs-row); font-weight: var(--fw-heavy); }
-.endedFollow.endedFollow { align-self: flex-start; margin-top: 4px; }
 .endedFoot { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--plum-700); text-decoration: none; }
-.pEnded.pEnded { margin-top: 14px; }
 
 /* < 768 兜底：本文件的 span8/7/5 不随 events.module.css 的 span 重置，单列网格里会撑出隐式列、把卡挤成窄条。 */
 @media (max-width: 767px) {
@@ -198,4 +198,10 @@
 .mosaicStack { display: flex; align-items: center; flex: 0 0 auto; height: 38px; }
 .mosaicStack i { width: 26px; height: 26px; border: 2px solid var(--surface-2); box-sizing: content-box; }
 .mosaicStack i + i { margin-left: -10px; }
+
+/* 2026-11-12 示例评估（未登录 / 没有计划）：真实评分卡同版式，分数 · 结论 · 条形做马赛克，只露维度名 + 按钮。 */
+.mockBlur { filter: blur(8px); user-select: none; pointer-events: none; }
+.mockCta.mockCta { align-self: center; margin-top: auto; }
+.scoreCard .crits + .mockCta { margin-top: 16px; }
+.mockLine { width: 60%; margin-top: 6px; }
 

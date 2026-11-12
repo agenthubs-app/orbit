@@ -15,7 +15,6 @@ import { CancelDialog } from "./CancelDialog";
 import { EventDescription } from "./EventDescription";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
-import { LoginAssessCard } from "./PublicEvents";
 import { useDetailTiming } from "./detail-timing";
 import styles from "./events.module.css";
 import d from "./discover.module.css";
@@ -49,10 +48,10 @@ export function hostName(data: Pick<EventOverviewResponse, "organizer">, t: Jour
 export const noPlan = (data: EventOverviewResponse): boolean => !data.signedOut && data.hasPlan === false;
 
 /**
- * 已结束、又没有评分可显示（未登录 / 没有计划）时的卡：下一场（有就直接点进去，没有就「还没公布」）→ 关注主办方 →
- * 接下来的活动。已结束状态和报名人数页面别处已有，这里不重复（用户 11-12：去 AI 感）。
+ * 已结束活动：主办方卡底部一行——下一场（有就直接点进去，没有就「还没公布」）→ 关注主办方 · 接下来的活动。
+ * 用户 11-12：右上角改放示例评估卡，这几项本来就是关于主办方的，挪进主办方卡。
  */
-export function EndedCard({ data, t, language, className }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string }) {
+export function HostNext({ data, t, language }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage }) {
   const toast = useToast();
   const [following, setFollowing] = useState(Boolean(data.organizer.following));
   const [busy, setBusy] = useState(false);
@@ -67,7 +66,7 @@ export function EndedCard({ data, t, language, className }: { data: EventOvervie
   };
   const here = `/app/events/${encodeURIComponent(data.eventId)}`;
   return (
-    <div className={`${styles.card} ${x.endedCard} ${className ?? ""}`} data-detail-ended="">
+    <div className={x.hostNext} data-detail-ended="">
       <div className={styles.lbl}>{t("endedNextLbl")}</div>
       {next ? (
         <a className={x.endedNext} href={`/app/events/${encodeURIComponent(next.eventId)}`} data-detail-ended-next={next.eventId}>
@@ -76,12 +75,65 @@ export function EndedCard({ data, t, language, className }: { data: EventOvervie
           <Icon name="right" size={16} />
         </a>
       ) : <b className={x.endedNone}>{t("endedNoNext")}</b>}
-      {data.signedOut ? (
-        <a className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} href={`/app/account/login?next=${encodeURIComponent(here)}`}>{t("endedLoginFollow")}</a>
-      ) : organizerId ? (
-        <button type="button" className={`btn ${styles.btn} ${styles.sm} ${x.endedFollow}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-ended-follow="">{following ? t("following") : t("endedFollowHost")}</button>
-      ) : null}
-      <a className={x.endedFoot} href={data.signedOut ? "/app/events" : "/app/events?tab=discover"}>{t("endedSeeUpcoming")}<Icon name="right" size={16} /></a>
+      <div className={x.hostNextActions}>
+        {data.signedOut ? (
+          <a className={`btn ${styles.btn} ${styles.sm}`} href={`/app/account/login?next=${encodeURIComponent(here)}`}>{t("endedLoginFollow")}</a>
+        ) : organizerId ? (
+          <button type="button" className={`btn ${styles.btn} ${styles.sm}`} aria-pressed={following} disabled={busy} onClick={() => void toggle()} data-detail-ended-follow="">{following ? t("following") : t("endedFollowHost")}</button>
+        ) : null}
+        <a className={x.endedFoot} href={data.signedOut ? "/app/events" : "/app/events?tab=discover"}>{t("endedSeeUpcoming")}<Icon name="right" size={16} /></a>
+      </div>
+    </div>
+  );
+}
+
+/** 示例评估的去向：未登录 → 登录后回到这场；已登录没计划 → 设定目标。 */
+function mockAssessCta(data: EventOverviewResponse, t: JourneyT) {
+  return data.signedOut
+    ? { href: `/app/account/login?next=${encodeURIComponent(`/app/events/${encodeURIComponent(data.eventId)}`)}`, label: t("mockAssessLogin") }
+    : { href: "/app/tasks?tab=plan", label: t("setGoal") };
+}
+
+/**
+ * 没有真实评分（未登录 / 没有计划）时右上角的示例评估卡：和真实评分卡同一版式，分数、结论、条形做成马赛克
+ * （没登录、没目标就算不出来，不放看得清的假分数），只露出三项维度名 + 一个按钮。用户 11-12。
+ */
+export function MockAssessCard({ data, t, language, className }: { data: EventOverviewResponse; t: JourneyT; language: OrbitLanguage; className?: string }) {
+  const at = assessTranslator(language);
+  const tone = rowTone({ verdict: "recommend" }, 0);
+  const cta = mockAssessCta(data, t);
+  return (
+    <div className={`${styles.card} ${x.scoreCard} ${className ?? ""}`} data-detail-mock-assess="">
+      <div className={styles.lbl}>{t("yourAssessment")}</div>
+      <div className={`${x.scoreRing} ${x.mockBlur}`} aria-hidden="true">
+        <ScoreRing score={72} size={120} stroke={12} label="">
+          <div className={`${styles.big} ${x.big36}`}>72</div>
+          <div className={styles.lbl}>{t("outOf")}</div>
+        </ScoreRing>
+      </div>
+      <div className={`${styles.row} ${x.mockBlur}`} style={{ gap: 6, justifyContent: "center" }} aria-hidden="true">
+        <span className={`${styles.chip} ${tone?.chip ? toneClass(tone.chip) : ""} ${styles.verdictBig}`}>{at("verdictRecommend")}</span>
+      </div>
+      <div className={x.crits}>
+        <Crit label={at("dimGoal")} value={80} mock />
+        <Crit label={at("dimPeople")} value={70} mock />
+        <Crit label={at("dimTime")} value={60} rose mock />
+      </div>
+      <a className={`btn ${styles.btn} ${styles.primary} ${x.mockCta}`} href={cta.href}>{cta.label}</a>
+    </div>
+  );
+}
+
+/** 手机：封面下的评分条同样做成示例（马赛克圆环 + 一个按钮）。 */
+function MockScoreBar({ data, t }: { data: EventOverviewResponse; t: JourneyT }) {
+  const cta = mockAssessCta(data, t);
+  return (
+    <div className={x.pScore} data-detail-mock-assess="">
+      <div className={x.pScoreRow}>
+        <div className={x.mockBlur} aria-hidden="true"><ScoreRing score={72} size={50} stroke={5} label=""><span className={styles.score} style={{ fontSize: "var(--fs-emph)" }}>72</span></ScoreRing></div>
+        <div className={x.pGrow}><div className={styles.lbl}>{t("yourAssessment")}</div><i className={`${x.mosaicBar} ${x.mockLine}`} aria-hidden="true" /></div>
+        <a className={`btn ${styles.btn} ${styles.sm} ${styles.primary}`} href={cta.href}>{cta.label}</a>
+      </div>
     </div>
   );
 }
@@ -97,12 +149,13 @@ function NoPlanCard({ t, className, label, title, action = false }: { t: Journey
   );
 }
 
-function Crit({ label, value, rose, unknown }: { label: string; value: number; rose?: boolean; unknown?: boolean }) {
+/** `mock`：示例评估卡用——维度名照常，条形与数字做成马赛克（aria-hidden）。 */
+function Crit({ label, value, rose, unknown, mock }: { label: string; value: number; rose?: boolean; unknown?: boolean; mock?: boolean }) {
   return (
     <div className={x.crit}>
       <span className={styles.muted}>{label}</span>
-      <div className={`${x.bar} ${rose ? x.barRose : ""}`}>{unknown ? null : <i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />}</div>
-      <b className={`${styles.score} ${x.critScore}`}>{unknown ? "—" : value}</b>
+      <div className={`${x.bar} ${rose ? x.barRose : ""} ${mock ? x.mockBlur : ""}`} aria-hidden={mock || undefined}>{unknown ? null : <i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />}</div>
+      <b className={`${styles.score} ${x.critScore} ${mock ? x.mockBlur : ""}`} aria-hidden={mock || undefined}>{unknown ? "—" : value}</b>
     </div>
   );
 }
@@ -262,7 +315,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           </div>
           {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
         </div>
-      ) : noPlan(data) && !ended ? <NoPlanCard t={t} className={x.pNoPlan} label={t("yourAssessment")} title={t("noPlanScoreTitle")} action /> : null}
+      ) : data.signedOut || noPlan(data) ? <MockScoreBar data={data} t={t} /> : null}
       <div className={x.pTabs} role="tablist">
         {(["intro", "agenda", "host", "people"] as const).map((key) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.pTab} ${tab === key ? x.pTabOn : ""}`} data-detail-tab={key} onClick={() => setTab(key)}>
@@ -275,7 +328,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
         <div className={styles.card}>{data.agenda.length ? data.agenda.map((item) => <div key={`${item.at}-${item.title}`} className={x.tline}><time>{item.at}</time><span className={x.dot} /><div><b>{item.title}</b>{item.detail ? <span className={styles.lbl}>{item.detail}</span> : null}</div></div>) : <div className={x.ghostRow} data-agenda-empty=""><i />{t("agendaEmpty")}</div>}</div>
       ) : null}
       {tab === "host" ? (
-        <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{hostName(data, t)}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div></div>
+        <div className={styles.card}><div className={styles.row} style={{ gap: 12 }}><span className={`${styles.emo} ${styles.t_lav}`}>{data.organizer.emoji ?? data.emoji}</span><div><b>{hostName(data, t)}</b><div className={styles.lbl}>{t("hostEditions", { n: data.organizer.editions ?? 0 })}</div></div></div>{ended ? <HostNext data={data} t={t} language={language} /> : null}</div>
       ) : null}
       {tab === "people" && data.rosterLocked && data.attendeeCounts.all > 0 ? <div className={`${styles.card} ${x.pGateCard}`}><RosterGate data={data} t={t} /></div> : null}
       {tab === "people" && !(data.rosterLocked && data.attendeeCounts.all > 0) ? (
@@ -306,7 +359,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           ) : null}
         </>
       ) : null}
-      {ended ? <EndedCard data={data} t={t} language={language} className={x.pEnded} /> : data.registration.status === "none" && canRegister ? (
+      {!ended && data.registration.status === "none" && canRegister ? (
         <div className={x.ctabar} data-detail-cta="">
           <button type="button" className={`btn ${x.ctaSave}`} aria-label={t("saveEvent")} onClick={() => void save()}><Icon name="star" size={20} /></button>
           <button type="button" className={`btn ${styles.btn} ${styles.primary} ${x.ctaMain}`} onClick={onRegister}>{t("ctaRegisterAi")}</button>
@@ -355,7 +408,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           <EventDescription text={data.description} t={t} className={`${styles.sub} ${x.intro}`} />
         </div>
       </div>
-      {data.signedOut ? (ended ? <EndedCard data={data} t={t} language={language} className={styles.span4} /> : signedOutAside ?? <LoginAssessCard t={t} language={language} span="span4" />) : data.assessment ? (
+      {data.signedOut ? (!ended && signedOutAside ? signedOutAside : <MockAssessCard data={data} t={t} language={language} className={styles.span4} />) : data.assessment ? (
         <div className={`${styles.card} ${styles.span4} ${x.scoreCard}`} data-why-box="">
           <div className={styles.lbl}>{t("yourAssessment")}</div>
           <div className={x.scoreRing}>
@@ -375,7 +428,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
             <Crit label={at("dimTime")} value={data.assessment.display.timeCost} rose />
           </div>
         </div>
-      ) : noPlan(data) ? (ended ? <EndedCard data={data} t={t} language={language} className={styles.span4} /> : <NoPlanCard t={t} className={styles.span4} label={t("yourAssessment")} title={t("noPlanScoreTitle")} action />) : null}
+      ) : noPlan(data) ? <MockAssessCard data={data} t={t} language={language} className={styles.span4} /> : null}
       <div ref={agendaRef} className={`${styles.card} ${x.span7}`}>
         <div className={styles.cardH}><h3>{t("tabAgenda")}</h3></div>
         {data.agenda.length ? data.agenda.map((item) => (
@@ -395,6 +448,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           {/* 「あなた N回」是个人数据：未登录（服务端不给）时不显示（主会话 10-16 / §36）。 */}
           {!data.signedOut && typeof data.organizer.myAttendance === "number" ? <div><span className={styles.lbl}>{t("youAttended")}</span><b>{data.organizer.myAttendance}<small>{t("timesUnit")}</small></b></div> : null}
         </div>
+        {ended ? <HostNext data={data} t={t} language={language} /> : null}
       </div>
       {data.rosterLocked && data.attendeeCounts.all > 0 ? (
         <div ref={peopleRef} className={`${styles.card} ${styles.span12}`} data-detail-people="">

@@ -174,6 +174,7 @@ export const eventsJourneyCopy = {
   readLess: { ja: "閉じる", zh: "收起", en: "Show less", kind: "button" },
   agendaEmpty: { ja: "未公開", zh: "暂未公开", en: "Not published", kind: "label" },
   // 2026-11-12 已结束活动的右上卡（没有评分可显示时）：下一场 → 关注主办方 → 接下来的活动。状态与人数页面别处已有，不重复（用户 11-12：去 AI 感、去重复）。
+  mockAssessLogin: { ja: "ログインして判定", zh: "登录后查看", en: "Log in to see", kind: "button" },
   endedNextLbl: { ja: "次回", zh: "下一场", en: "Next", kind: "label" },
   endedNoNext: { ja: "未定", zh: "还没公布", en: "Not announced", kind: "label" },
   endedFollowHost: { ja: "主催者をフォロー", zh: "关注主办方", en: "Follow host", kind: "button" },

@@ -7469,7 +7469,7 @@ g += pubBoard('W-R26-41u 未ログイン · イベント詳細 · 参加者 · 1
 /* 2026-10-29：探す新规则补画（文件末尾）要复用这里的画法；只导出，不加画板。 */
 window.__r27DiscoverKit = { wDiscover, wFilters, discover, searchRow, datebox, segTop, evalSeg, REC, MORE, mring };
 /* 2026-11-12：紹介 Markdown 补画（文件末尾）复用详情画法；只导出，不加画板。 */
-window.__r27DetailKit = { wDetail, detail, wDetailRail, ctaBar, railUnreg };
+window.__r27DetailKit = { wDetail, detail, wDetailRail, ctaBar, railUnreg, crit, ring, num };
 __g7out(group('g7', g));
 })();
 
@@ -9326,6 +9326,19 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
   const k72Web = () => { const t = K8.wDetail('many'); const i = t.indexOf('<div class="card span12 p-wparts">'); return t.slice(0, i) + `<div class="card span12"><div class="card-h"><h3>参加者</h3><span class="lbl">参加予定 128人 · 知り合い 3人</span></div>${k72Row}</div></div>`; };
   html8 += S8('补画 · 2026-11-12 · 名单锁着 = Meetup 式 Attendees 一排', '用户 11-12：未报名的人也要看到「有人来」，像 Meetup（第一张 Host 卡露名字，其余模糊）；Meetup 原尺寸（头像 72）与本页不协调，改用报名后名单同一套小卡。取代 #386 / #388 的灰框门卡。第一张 = 主办方（本来就公开，带「主催」标签），后面 = 马赛克卡（纯装饰：服务端不发参加者数据——Meetup 是把真姓发到浏览器再 CSS 模糊，我们不这样做），最后 = 一叠模糊头像 +N。卡里不放报名按钮（页头 / 底部已有）。390 = 主办方 + 2 张 + N。');
   html8 += WP('W-R27-72 イベント詳細 · 参加者 · 名单锁着（Meetup 式）· 1440', 'state', () => ({ nav: 3, body: k72Web(), rail: K8.railUnreg('many') }), [['.k-wcrowd', 0, '参加登録後の名簿と同じ小カード（pgrid 4 列 · pmini · 頭像 38）を 2 行：主催者（公開情報、2 行目「主催 · 累計 N回」）→ モザイク 6 枚（データなし・aria-hidden）→ ぼかし 3 つ重ね + 残り人数。390 は 2 列 × 2 行']], 'Meetup Attendees · 补画 2026-11-12');
+  /* 补画 · 2026-11-12 · 没有真实评分（未登录 / 没有计划）→ 右上 = 示例评估卡；已结束的「次回」挪进主催卡 */
+  const k73Blur = 'filter:blur(8px);user-select:none';
+  const k73Mock = (signedOut) => `<div class="card span4 p-wscore k-wmock" style="text-align:center"><div class="lbl">あなたにとっての評価</div><div style="width:120px;margin:12px auto 8px;${k73Blur}">${K8.ring(120, 11, [{ v: 72, c: 'var(--plum-700)', max: 100 }], `<div class="big" style="font-size:36px">${K8.num(72)}</div><div class="lbl">/ 100</div>`)}</div>
+      <div class="row" style="justify-content:center;gap:6px;${k73Blur}"><span class="chip teal" style="font-size:12px;padding:5px 12px">参加をおすすめ</span></div>
+      <div style="margin-top:14px;text-align:left">${K8.crit([['目標との一致', 80], ['会える人', 70], ['時間対効果', 60, 'rose']]).replace(/<div class="bar([^"]*)"/g, `<div class="bar$1" style="${k73Blur}"`).replace(/<b class="score" style="text-align:right">/g, `<b class="score" style="text-align:right;${k73Blur}">`)}</div>
+      <button class="btn primary" style="margin-top:16px;align-self:center">${signedOut ? 'ログインして判定' : '目標を設定する'}</button></div>`;
+  const k73Next = `<div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)"><div class="lbl">次回</div><b style="font-size:13.5px;font-weight:800">未定</b><div class="row" style="gap:14px;margin-top:4px"><button class="btn sm">ログインしてフォロー</button><a style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--plum-700)">これからのイベント${ic('right', 'sm')}</a></div></div>`;
+  const k73Web = () => k72Web()
+    .replace(/<div class="card span4 p-wscore"[\s\S]*?(?=\n    <div class="card span7">)/, k73Mock(true))
+    .replace('<button class="btn accent">参加登録</button>', '<span class="chip">終了</span>')
+    .replace(/(<div class="mini3 k-hostq1">[\s\S]*?<\/div><\/div>)(<\/div>)/, `$1${k73Next}$2`);
+  html8 += S8('补画 · 2026-11-12 · 没有真实评分时右上 = 示例评估卡', '用户 11-12：已结束卡太矮、没参加的活动右上改放「是否合适」示例卡。与真实评分卡同版式（圆环 / 结论 / 三项维度），分数 · 结论 · 条形做 8px 马赛克——没登录、没目标算不出来，不放看得清的假分数；只露维度名 + 一个按钮（未登录「ログインして判定」/ 没有计划「目標を設定する」）。已结束的「次回 · フォロー · これからのイベント」挪进主催卡底部一行。390：封面下评分条同样做示例。');
+  html8 += WP('W-R27-73 イベント詳細 · 評価なし（未ログイン）· 終了 · 1440', 'state', () => ({ nav: 3, body: k73Web(), rail: K8.railUnreg('many') }), [['.k-wmock', 0, '示例評価：実カードと同じ版式・高さ；数字 / 結論 / バーは blur 8px（aria-hidden）、項目名だけ読める；ボタン 1 つ']], 'b2 #19 p-wscore · 补画 2026-11-12');
   document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-detail-intro', html8));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();
