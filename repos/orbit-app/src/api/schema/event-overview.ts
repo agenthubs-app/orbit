@@ -44,6 +44,7 @@ export const eventOverviewResponseObject = z.object({
     typeShare: z.object({ label: z.string(), percent: z.number().int().min(0).max(100) }).nullable().optional().catch(null),
     myAttendance: z.number().int().min(0).nullable().optional().catch(null),
     following: z.boolean().optional(),
+    next: z.object({ eventId: z.string(), title: z.string(), startsAt: z.string() }).nullable().optional().catch(null),
   }),
   assessment: z.object({
     score: z.number().int().min(0).max(100),
