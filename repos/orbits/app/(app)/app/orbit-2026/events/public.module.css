@@ -25,6 +25,9 @@
 
 /* /register/〈コード〉着地页的参加コード卡（b12 #376）。 */
 .codeCard.codeCard { background: linear-gradient(160deg, var(--mac-lav), var(--surface) 65%); }
-.code { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-heavy); letter-spacing: .04em; margin: 6px 0 2px; }
+.code { font-family: var(--font-num); font-size: var(--fs-title); font-weight: var(--fw-heavy); letter-spacing: .04em; margin: 6px 0 2px; white-space: nowrap; }
+/* 导入 / 旧数据的长码：小一档，保证 900–1024 宽的窄卡里一行放下。 */
+.codeLong.codeLong { font-size: var(--fs-title-xs); }
+.codeXlong.codeXlong { font-size: var(--fs-emph); }
 .codeActions { display: grid; gap: 8px; margin-top: 14px; }
 .codeNote.codeNote { margin-top: 8px; }

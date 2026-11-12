@@ -32,10 +32,11 @@ export function PublicNav({ t }: { t: JourneyT }) {
   );
 }
 
-export function LoginAssessCard({ t, language, span }: { t: JourneyT; language: OrbitLanguage; span: "span12" | "span4" }) {
+/** 列表页顶部整行的「这场活动值得去吗？」。只做整行：窄卡（span4）会把标题和说明挤成一列（11-12 已从详情右上角撤下，由示例评估卡替代）。 */
+export function LoginAssessCard({ t, language }: { t: JourneyT; language: OrbitLanguage }) {
   const at = assessTranslator(language);
   return (
-    <div className={`${styles.card} ${span === "span12" ? styles.span12 : styles.span4} ${p.loginCard}`} data-public-login="">
+    <div className={`${styles.card} ${styles.span12} ${p.loginCard}`} data-public-login="">
       <div className={styles.row} style={{ gap: 12 }}>
         <span className={`${styles.emo} ${styles.t_lav}`}>🔍</span>
         <div style={{ flex: 1 }}><b className={p.loginTitle}>{at("assessTitle")}</b><div className={styles.lbl}>{t("loginAssessSub")}</div></div>
@@ -59,7 +60,7 @@ function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: stri
       <div className={p.pubmain}>
         <div className={`${styles.cardH} ${p.head}`}><h3 className={p.headTitle}>{t("pubTitle")}</h3><span className={styles.lbl}>{t("pubSub", { month })}</span></div>
         <div className={styles.wgrid}>
-          <LoginAssessCard t={t} language={language} span="span12" />
+          <LoginAssessCard t={t} language={language} />
           {(data?.all ?? []).map((row, index) => (
             <a key={row.eventId} href={`/app${row.href}`} className={`${styles.evc} ${styles.span3} ${p.evc}`} data-public-card={row.eventId}>
               <div className={`${styles.row} ${styles.between}`}><span className={`${styles.emo} ${styles[`t_${rowTone({ verdict: "recommend" }, index).emo}`]}`}>{row.emoji}</span><span className={styles.chip}>{t("loginChip")}</span></div>
@@ -74,13 +75,19 @@ function ListInner({ language, nowIso }: { language: OrbitLanguage; nowIso: stri
 }
 
 /** 参加コード卡（b12 #376）：码 · 发出方 · 期限 + 「ログインして参加登録」/「無料で登録して参加登録」，登录后回到 /register/〈コード〉再进报名。 */
+/** 参加码字号：新码「XXXX-XXXX」照常大字；导入 / 旧数据的长码换小一档，始终一行（窄卡里不从连字符处断开）。 */
+export function inviteCodeSize(code: string): "normal" | "long" | "xlong" {
+  const length = code.trim().length;
+  return length <= 9 ? "normal" : length <= 14 ? "long" : "xlong";
+}
+
 function InviteCodeCard({ code, data, t }: { code: string; data: EventOverviewResponse; t: JourneyT }) {
   const { ended, canRegister } = useDetailTiming(data);
   const next = encodeURIComponent(`/app/register/${encodeURIComponent(code)}`);
   return (
     <div className={`${styles.card} ${styles.span4} ${p.codeCard}`} data-public-invite={code}>
       <div className={styles.lbl}>{t("inviteCodeLbl")}</div>
-      <div className={p.code}>{code}</div>
+      <div className={`${p.code} ${inviteCodeSize(code) === "long" ? p.codeLong : inviteCodeSize(code) === "xlong" ? p.codeXlong : ""}`} data-public-invite-code="">{code}</div>
       <div className={styles.lbl}>{t("inviteFrom", { date: monthDaySlash(data.registrationClosesAt), org: hostName(data, t) })}</div>
       {canRegister ? <div className={p.codeActions}>
         <a className={`btn ${styles.btn} ${styles.primary}`} href={`${LOGIN}?next=${next}`}>{t("loginRegister")}</a>

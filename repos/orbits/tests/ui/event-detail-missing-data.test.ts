@@ -115,3 +115,10 @@ test('locked roster: same small tiles as the registered roster — host, mosaic 
   const ended = renderedModule.render!('desktop', { ...locked, signedOut: true, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' });
   assert.match(ended, /data-roster-host/);
 });
+
+import { inviteCodeSize } from '../../app/(app)/app/orbit-2026/events/PublicEvents';
+test('invite code size: new XXXX-XXXX codes stay large; imported long codes step down so they stay on one line', () => {
+  assert.equal(inviteCodeSize('K7P2-QX9M'), 'normal');
+  assert.equal(inviteCodeSize('SMALL-STAGING'), 'long');
+  assert.equal(inviteCodeSize('ORBIT-VERIFY-TODAY'), 'xlong');
+});
