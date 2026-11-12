@@ -174,6 +174,13 @@ export const eventsJourneyCopy = {
   readMore: { ja: "続きを読む", zh: "展开全文", en: "Read more", kind: "button" },
   readLess: { ja: "閉じる", zh: "收起", en: "Show less", kind: "button" },
   agendaEmpty: { ja: "主催者からアジェンダは公開されていません", zh: "主办方没有公开议程", en: "The organizer hasn't published an agenda", kind: "label" },
+  // 2026-11-12 已结束活动的右上卡（没有评分可显示时）：这场的概况 → 主办方的下一场 / 关注 → 看接下来的活动（对标 Luma / Peatix 的已结束页）。
+  endedCardTitle: { ja: "このイベントは終了しました", zh: "这场活动已经结束", en: "This event has ended", kind: "cardTitle" },
+  endedNextLbl: { ja: "主催者の次回", zh: "主办方的下一场", en: "Host's next event", kind: "label" },
+  endedNoNext: { ja: "主催者はまだ次回を公開していません", zh: "主办方还没有公布下一场", en: "The host hasn't announced the next one yet", kind: "label" },
+  endedFollowHint: { ja: "フォローすると、次回が公開されたときにお知らせします", zh: "关注后，下一场发布时会通知你", en: "Follow to hear when the next one is announced", kind: "label" },
+  endedLoginFollow: { ja: "ログインしてフォロー", zh: "登录后关注", en: "Log in to follow", kind: "button" },
+  endedSeeUpcoming: { ja: "これからのイベントを見る", zh: "看看接下来的活动", en: "See upcoming events", kind: "button" },
   pastNoRoster: { ja: "参加者の記録はありません", zh: "没有参加者记录", en: "No attendee records", kind: "label" },
   hostUnnamed: { ja: "主催者（Orbit 未登録）", zh: "主办方（未入驻 Orbit）", en: "Organizer (not on Orbit)", kind: "label" },
   hostMonthlySince: { ja: "{y}年から毎月開催 · 累計 {n}回", zh: "{y}年起每月举办 · 累计{n}次", en: "Monthly since {y} · {n} editions", kind: "label" },

@@ -182,7 +182,7 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         endsAt: event.endsAt,
         eventId,
         knownAttendees: [],
-        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(isCanonicalPublicOrganizerLabel(event.organizerName) ? { unnamed: true } : {}), ...(event.organizerSlug ? { slug: event.organizerSlug } : {}), since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}) },
+        organizer: { averageAttendance: stats?.averageAttendance ?? null, editions: stats?.editions ?? null, monthly: stats?.monthly ?? false, name: event.organizerName ?? "", organizerId: actorId ? event.organizerKey : null, ...(isCanonicalPublicOrganizerLabel(event.organizerName) ? { unnamed: true } : {}), ...(event.organizerSlug ? { slug: event.organizerSlug } : {}), since: stats?.since ?? null, ...(stats?.typeShare ? { typeShare: stats.typeShare } : {}), ...(stats?.next ? { next: stats.next } : {}) },
         priceYen: event.priceYen,
         registration: { href: `/events/${eventId}/register`, status: "none" },
         remaining: event.capacity ? Math.max(0, event.capacity - event.registrationCount) : null,

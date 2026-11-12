@@ -9299,6 +9299,20 @@ window.__r18bBoardKit = { S8, INDEX, PB, group, m390, setPage, phoneContent };
   html8 += WP('W-R27-70 イベント詳細 · 紹介 Markdown · 折りたたみ · 1440', 'state', () => ({ nav: 3, body: introWeb(false), rail: K8.wDetailRail('many') }), [['.k-wintro', 0, '紹介 = Markdown：見出し 13.5px/800、箇条書き padding-left 22、太字、リンク plum 下線；240px で畳み、下 72px を surface へフェード；「続きを読む」= btn sm + ▾']], 'b2 #19 · Luma / Peatix · 补画 2026-11-12');
   html8 += WP('W-R27-70b イベント詳細 · 紹介 Markdown · 展開 · 1440', 'state', () => ({ nav: 3, body: introWeb(true), rail: K8.wDetailRail('many') }), [['.k-wintro', 0, '開いた状態：全文 + 「閉じる」（▴）；カードは内容分だけ伸び、下のアジェンダ / 主催 / 参加者はそのまま下へ']], 'W-R27-70 · 补画 2026-11-12');
   html8 += WP('W-R27-70-390 イベント詳細 · 紹介 Markdown · 折りたたみ · 390', 'state', () => ({ body: introPhone(false), ov: K8.ctaBar }), [['.k-mintro', 0, '390 / App 紹介タブ：同じ Markdown と 240px 折りたたみをカード内で']], 'W-R27-70 · A-R27-16u · 补画 2026-11-12', 390);
+  /* 补画 · 2026-11-12 · 已結束イベント · 評価を出せない時の右上カード（用户 11-12：空の「活动已结束」卡を埋める） */
+  const k71Next = (next) => next
+    ? `<a style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2)"><span class="emo lav">🥂</span><span style="display:flex;flex-direction:column;flex:1;min-width:0"><b style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">CFO Night Tokyo vol.19</b><span class="lbl">11/11（水）19:00</span></span>${ic('right', 'sm')}</a>`
+    : `<b style="font-size:13px">主催者はまだ次回を公開していません</b><div class="lbl">フォローすると、次回が公開されたときにお知らせします</div>`;
+  const k71Card = (next, signedOut) => `<div class="card span4 k-wended" style="gap:4px"><b style="font-size:13.5px;font-weight:800">このイベントは終了しました</b><div class="lbl">申込人数 128人</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)"><div class="lbl">主催者の次回</div>${k71Next(next)}<button class="btn sm" style="align-self:flex-start;margin-top:4px">${signedOut ? 'ログインしてフォロー' : 'フォローする'}</button></div>
+    <a style="display:inline-flex;align-items:center;gap:4px;margin-top:auto;padding-top:14px;font-size:12px;font-weight:700;color:var(--plum-700)">これからのイベントを見る${ic('right', 'sm')}</a></div>`;
+  const k71Web = (next, signedOut) => K8.wDetail('many')
+    .replace(/<div class="card span4 p-wscore"[\s\S]*?(?=\n    <div class="card span7">)/, k71Card(next, signedOut))
+    .replace('<button class="btn accent">参加登録</button>', '<span class="chip">終了</span>');
+  const k71Rail = () => K8.wDetailRail('many').replace(/<div class="card p-wcta"[\s\S]*$/, '<span class="chip">終了</span>');
+  html8 += S8('补画 · 2026-11-12 · 已結束イベント · 評価を出せない時の右上カード', '用户 11-12：已结束活动在未登录 / 没有计划时右上只剩一张空的「活动已结束」卡 → 对标 Luma（This event has ended + host 的下一场 / Subscribe）/ Peatix（終了 + 主催者フォロー + 他のイベント）。卡 = 終了 + 申込人数 → 主催者の次回（有就直接链到那场；没有就写「まだ公開していません」+ フォローで通知）→ これからのイベントを見る。390 放在原 CTA 位置。有评分（已登录且有计划）时仍显示评分卡。');
+  html8 += WP('W-R27-71 イベント詳細 · 終了 · 次回なし · 未ログイン · 1440', 'state', () => ({ nav: 3, body: k71Web(false, true), rail: k71Rail() }), [['.k-wended', 0, '評価が出せない（未ログイン / プランなし）終了イベント：次回が未公開なら一行で言い切り、フォローで次回を知らせる；未ログインは「ログインしてフォロー」']], 'Luma / Peatix · 补画 2026-11-12');
+  html8 += WP('W-R27-71b イベント詳細 · 終了 · 次回あり · 1440', 'state', () => ({ nav: 3, body: k71Web(true, false), rail: k71Rail() }), [['.k-wended', 0, '主催者の次回（同じ主催者のまだ始まっていない最も近い公開イベント）を 1 行カードで；クリックでそのイベント詳細へ']], 'W-R27-71 · 补画 2026-11-12');
   document.getElementById('out').insertAdjacentHTML('beforeend', group('g7 r27-detail-intro', html8));
   document.querySelector('.idx').innerHTML = INDEX.map(([id, title]) => '<a href="#b-' + id + '"><b>' + id + '</b>' + title + '</a>').join('');
 })();

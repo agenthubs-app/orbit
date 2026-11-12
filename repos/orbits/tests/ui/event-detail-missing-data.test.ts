@@ -65,3 +65,25 @@ test('ended + no plan: the score slot says the event ended (no plan nudge), an e
   assert.doesNotMatch(renderedModule.render!('phone', ended), /data-detail-no-plan/);
   assert.match(renderedModule.render!('rail', { ...ended, hasPlan: true, assessment: { score: 19, verdict: 'skip', display: { goalFit: 0, people: 0, timeCost: 65 }, basis: '' }, assessmentPeopleUnknown: true }), /没有参加者记录/);
 });
+
+test('ended card (no score to show): event summary, host next / follow, see-upcoming link — never an empty card', () => {
+  const ended = { ...base, startsAt: '2026-04-25T09:30:00Z', endsAt: '2026-04-25T12:00:00Z' };
+  // Signed out, no next event: says so, offers log-in-to-follow and the public events list.
+  const out = renderedModule.render!('desktop', { ...ended, signedOut: true, hasPlan: undefined });
+  assert.match(out, /data-detail-ended/); assert.match(out, /这场活动已经结束/); assert.match(out, /报名人数.*79/);
+  assert.match(out, /主办方还没有公布下一场/); assert.match(out, /登录后关注/); assert.match(out, /href="\/app\/events"/);
+  // Signed in without a plan, host has a next event: links straight to it; follow button (organizerId present).
+  const next = { eventId: 'evt next/5', title: '第5回 中日创业交流会', startsAt: '2099-07-19T09:30:00Z' };
+  const inside = renderedModule.render!('desktop', { ...ended, organizer: { ...ended.organizer, organizerId: 'org_1', following: false, next } });
+  assert.match(inside, /data-detail-ended-next="evt next\/5"/); assert.match(inside, /href="\/app\/events\/evt%20next%2F5"/); assert.match(inside, /第5回 中日创业交流会/);
+  assert.doesNotMatch(inside, /主办方还没有公布下一场/); assert.match(inside, /data-detail-ended-follow/); assert.match(inside, />关注</);
+  assert.match(inside, /\/app\/events\?tab=discover/);
+  // Phone: the same card replaces the bottom CTA.
+  assert.match(renderedModule.render!('phone', { ...ended, signedOut: true, hasPlan: undefined }), /data-detail-ended/);
+  // Rail: no 「make a plan」 nudge on an ended event.
+  assert.doesNotMatch(renderedModule.render!('rail', ended), /data-detail-no-plan/);
+});
+test('upcoming events never show the ended card', () => {
+  assert.doesNotMatch(renderedModule.render!('desktop', base), /data-detail-ended/);
+  assert.doesNotMatch(renderedModule.render!('phone', base), /data-detail-ended/);
+});
