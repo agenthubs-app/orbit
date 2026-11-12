@@ -147,22 +147,27 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     },
 
     /** 受付名单：已报名（含签到状态、番号）+ キャンセル待ち。 */
-    async kioskRoster(eventId: string): Promise<Array<{ actorId: string; participantId: string | null; name: string; status: "not_arrived" | "checked_in" | "waitlisted"; checkedInAt: string | null; receptionNumber: string | null; answers: Record<string, string> }>> {
+    async kioskRoster(eventId: string): Promise<Array<{ actorId: string; participantId: string | null; name: string; org: string | null; role: string | null; status: "not_arrived" | "checked_in" | "waitlisted"; checkedInAt: string | null; receptionNumber: string | null; answers: Record<string, string> }>> {
+      // Name / company / role: the admission application when there is one; otherwise (first-come
+      // registrations, imported events) the member's own event profile snapshot.
       const result = await client.query<Row>(
-        `select m.actor_id, m.participant_id, c.checked_in_at, r.reception_no, a.profile_payload, 'member' as kind
+        `select m.actor_id, m.participant_id, c.checked_in_at, r.reception_no, a.profile_payload, v.profile_payload -> 'participant' as participant, 'member' as kind
            from event_ops_membership_heads m
+           left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
            left join event_ops_checkins c on c.workspace_id = m.workspace_id and c.event_id = m.event_id and c.participant_id = m.participant_id
            left join event_reception_numbers r on r.workspace_id = m.workspace_id and r.event_id = m.event_id and r.actor_id = m.actor_id
            left join event_ops_admission_application_heads a on a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id
           where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
          union all
-         select a.actor_id, null, null, null, a.profile_payload, 'waitlist' from event_ops_admission_application_heads a
+         select a.actor_id, null, null, null, a.profile_payload, null, 'waitlist' from event_ops_admission_application_heads a
           where a.workspace_id = $1 and a.event_id = $2 and a.status = 'waitlisted'`,
         [workspaceId, eventId],
       );
       return result.rows.map((row) => {
         const payload = (typeof row.profile_payload === "string" ? JSON.parse(row.profile_payload) : row.profile_payload ?? {}) as { displayName?: string; answers?: Record<string, string> };
-        return { actorId: String(row.actor_id), answers: payload.answers ?? {}, checkedInAt: iso(row.checked_in_at), name: payload.displayName ?? "", participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null, status: row.kind === "waitlist" ? "waitlisted" : row.checked_in_at ? "checked_in" : "not_arrived" };
+        const participant = (typeof row.participant === "string" ? JSON.parse(row.participant) : row.participant ?? {}) as { displayName?: unknown; company?: unknown; role?: unknown };
+        const textOf = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+        return { actorId: String(row.actor_id), answers: payload.answers ?? {}, checkedInAt: iso(row.checked_in_at), name: textOf(payload.displayName) ?? textOf(participant.displayName) ?? "", org: textOf(participant.company), participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null, role: textOf(participant.role), status: row.kind === "waitlist" ? "waitlisted" : row.checked_in_at ? "checked_in" : "not_arrived" };
       });
     },
 

@@ -86,6 +86,13 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.deepEqual(cohosts!.members.map((member) => [member.name, member.role]), [["佐藤 健一", "owner"], ["中村 由紀", "read_only_analyst"], ["小林 誠", "check_in"]]);
     const page = await service.organizerPublic(null, profile.slug);
     assert.deepEqual(page!.upcoming.map((item) => item.title), ["CFO Night Tokyo vol.19"]);
+    // Imported members (party-app) have no application name: the kiosk falls back to the member's event profile.
+    const participantName = await client.query<{ name: string | null; company: string | null }>(`select v.profile_payload -> 'participant' ->> 'displayName' as name, v.profile_payload -> 'participant' ->> 'company' as company from event_ops_membership_heads m join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version where m.workspace_id = $1 and m.event_id = $2 and m.actor_id = 'actor:p1'`, [workspaceId, eventId]);
+    await lockedFixtureQuery(pool, `update event_ops_admission_application_heads set profile_payload = profile_payload - 'displayName' - 'answers' where workspace_id = $1 and event_id = $2 and actor_id = 'actor:p1'`, [workspaceId, eventId]);
+    const fallback = (await service.kiosk(HOST, eventId, participantName.rows[0]!.name ?? "井上"))!.rows.find((row) => row.actorId === "actor:p1");
+    assert.equal(fallback?.name, participantName.rows[0]!.name, "name comes from the event profile");
+    assert.equal(fallback?.org, participantName.rows[0]!.company ?? null, "company comes from the event profile");
+    assert.ok(fallback?.name, "the event profile carries a display name");
   });
 });
 

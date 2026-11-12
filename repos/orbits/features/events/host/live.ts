@@ -514,7 +514,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const tableOf = new Map((grouping?.roundOne ?? []).flatMap((table) => table.members.map((member) => [member.participantId, String.fromCharCode(64 + Math.min(26, table.tableNumber))] as const)));
       const t = now();
       const rows: HostKioskRow[] = roster.map((row) => {
-        const { org, role } = splitPositioning(row.answers.positioning);
+        const positioning = splitPositioning(row.answers.positioning);
+        const org = positioning.org ?? row.org;
+        const role = positioning.role ?? row.role;
         return { actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role, status: row.status, table: row.participantId ? tableOf.get(row.participantId) ?? null : null, undoable: row.status === "checked_in" && row.checkedInAt !== null && t.getTime() - Date.parse(row.checkedInAt) <= 30 * 60_000 };
       });
       const query = q.trim();
@@ -546,7 +548,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     async kioskRoster(actorId, eventId) {
       const response = await this.kiosk(actorId, eventId, "");
       const roster = await reads.kioskRoster(eventId);
-      const rows = roster.map((row) => ({ actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org: splitPositioning(row.answers.positioning).org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role: splitPositioning(row.answers.positioning).role, status: row.status, table: null, undoable: false }));
+      const rows = roster.map((row) => ({ actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org: splitPositioning(row.answers.positioning).org ?? row.org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role: splitPositioning(row.answers.positioning).role ?? row.role, status: row.status, table: null, undoable: false }));
       return response ? { cacheUntil: response.cacheUntil, eventId, rows } : null;
     },
     async scanCheckIn(actorId, eventId, input) {
