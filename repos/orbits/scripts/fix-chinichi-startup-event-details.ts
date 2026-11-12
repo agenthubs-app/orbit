@@ -29,7 +29,10 @@ import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { loadLocalEnv } from "./load-local-env";
 
-export const ORGANIZER_NAME = "中日创业交流协会";
+/** 2026-11-12 用户确认的正式名称（第一次写入时用的是暂称「中日创业交流协会」，第二次运行把它换掉）。 */
+export const ORGANIZER_NAME = "日中创新创业协会";
+/** Names this script itself wrote before; only these may be replaced. Any other organizer name is never overwritten. */
+export const SUPERSEDED_ORGANIZER_NAMES: readonly string[] = ["中日创业交流协会"];
 
 type AgendaItem = { at: string; title: string };
 
@@ -91,7 +94,8 @@ const hasOrganizerName = (payload: Readonly<Record<string, unknown>>) => ["organ
 export function planPatch(payload: Readonly<Record<string, unknown>>, agenda: readonly AgendaItem[], organizerName = ORGANIZER_NAME): Record<string, unknown> | null {
   const patch: Record<string, unknown> = {};
   if (!hasAgenda(payload)) patch.agenda = agenda;
-  if (!hasOrganizerName(payload)) patch.organizerName = organizerName;
+  const current = typeof payload.organizerName === "string" ? payload.organizerName.trim() : "";
+  if (!hasOrganizerName(payload) || (current !== organizerName && SUPERSEDED_ORGANIZER_NAMES.includes(current))) patch.organizerName = organizerName;
   return Object.keys(patch).length ? patch : null;
 }
 
