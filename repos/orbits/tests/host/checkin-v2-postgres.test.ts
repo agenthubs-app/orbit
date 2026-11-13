@@ -12,6 +12,7 @@ import { HostError } from "../../features/events/host/service";
 import { createHostKiosk } from "../../features/events/host/storage/kiosk";
 import { createHostLifecycle } from "../../features/events/host/storage/lifecycle";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 
 const HOST = "actor:host";
 const SECRET = "test-secret-test-secret-test-secret-00";
@@ -70,6 +71,12 @@ test("kiosk check-in, QR v2, undo, walk-in and heartbeat", hostDatabaseTest, asy
     assert.deepEqual(reverted, ["actor:u1"], "plan score reverted");
     const again = await kiosk.checkIn(HOST, draft.eventId, p1, "key-checkin-2");
     assert.deepEqual([again.status, again.duplicate, again.receptionNumber], ["checked_in", false, "A-001"]);
+    // Without an application name (first-come / imported members) the result names them from the event profile.
+    const profileName = (await pool.query<{ name: string | null }>(`select v.profile_payload #>> '{participant,displayName}' as name from event_ops_membership_heads m join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version where m.workspace_id = $1 and m.event_id = $2 and m.participant_id = $3`, [workspaceId, draft.eventId, p1])).rows[0]?.name;
+    await lockedFixtureQuery(pool, `update event_ops_admission_application_heads set profile_payload = profile_payload - 'displayName' where workspace_id = $1 and event_id = $2 and actor_id = 'actor:u1'`, [workspaceId, draft.eventId]);
+    const named = await kiosk.checkIn(HOST, draft.eventId, p1, "key-checkin-name");
+    assert.ok(profileName, "the event profile carries a name");
+    assert.equal(named.name, profileName, "the check-in result falls back to the event profile name");
     clock = new Date(Date.now() + 31 * 60_000);
     await assert.rejects(kiosk.undo(HOST, draft.eventId, p1, "key-undo-2"), isHost("UNDO_EXPIRED"));
     clock = new Date();

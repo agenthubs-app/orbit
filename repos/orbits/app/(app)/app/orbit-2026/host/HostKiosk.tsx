@@ -92,7 +92,7 @@ export function HostKioskView(props: HostKioskViewProps) {
         <span className={`${s.chip} ${online ? s.c_teal : s.c_coral} ${k.netChip}`} role="status">{online ? <><i className={s.liveDot} />{t("kOnline")}</> : t("kOffline")}</span>
         <div className={`${k.row} ${k.topRight}`}>
           <span className={`${k.score} ${k.clock}`} aria-hidden>{hostTime(now.toISOString())}</span>
-          <button type="button" className={`btn ${s.btn}`} onClick={props.onScan} data-kiosk-scan=""><Icon name="scan" size={16} />{t("kScan")}</button>
+          {data.closed ? null : <button type="button" className={`btn ${s.btn}`} onClick={props.onScan} data-kiosk-scan=""><Icon name="scan" size={16} />{t("kScan")}</button>}
           <a className={k.rbtn} href={props.exitHref ?? "/app/events/center"} aria-label={t("kExit")}><Icon name="x" size={20} /></a>
         </div>
       </div>
@@ -105,6 +105,12 @@ export function HostKioskView(props: HostKioskViewProps) {
             <div><div className={k.lbl}>{t("kArrived")}</div><div className={k.big} data-kiosk-count={checkedIn}>{checkedIn}<small>{t("kOfTotal", { n: data.total })}</small></div></div>
             <div className={k.statRight}><div className={k.lbl}>{t("kNotArrived")}</div><div className={k.mid}>{notArrived(checkedIn, data.total)}</div></div>
           </div>
+          {data.closed ? (
+            <div className={k.banner} role="status" data-kiosk-closed="">
+              <span className={k.bannerEmo} aria-hidden>🔒</span>
+              <div className={k.grow}><b>{t("kClosedTitle")}</b><div className={k.lbl}>{t("kClosedBody")}</div></div>
+            </div>
+          ) : null}
           {!online ? (
             <div className={k.banner} role="alert" data-kiosk-offline={pendingCount}>
               <span className={k.bannerEmo} aria-hidden>📡</span>
@@ -120,7 +126,7 @@ export function HostKioskView(props: HostKioskViewProps) {
               {focused && q ? <span className={k.caretLine} aria-hidden><span className={k.ghostText}>{q}</span><span className={k.caret} data-kiosk-caret="" /></span> : null}
             </span>
           </label>
-          {!q.trim() && before ? (
+          {!q.trim() && before && !data.closed ? (
             <div className={k.emptyCard} data-kiosk-empty="">
               <div className={k.door} aria-hidden>🚪</div>
               <b className={k.emptyTitle}>{doors != null ? t("kDoorsIn", { n: doors }) : t("kDoorsOpen")}</b>
@@ -141,7 +147,7 @@ export function HostKioskView(props: HostKioskViewProps) {
                       <div className={`${k.sub} ${k.clamp1}`}>{sub}</div>
                       <span className={`${s.chip} ${chip.tone} ${k.resChip}`}>{chip.text}</span>
                     </div>
-                    {isQueued ? null : row.status === "checked_in"
+                    {isQueued || data.closed ? null : row.status === "checked_in"
                       ? <button type="button" className={`btn ${s.btn} ${k.resBtn}`} disabled={busy === row.participantId || !row.undoable} onClick={() => props.onUndo?.(row)} data-kiosk-undo="">{t("kUndo")}</button>
                       : row.status === "waitlisted"
                         ? <button type="button" className={`btn ${s.btn} ${k.resBtn}`} disabled={busy === row.participantId || !data.canWalkIn} onClick={() => props.onWalkIn?.(row)} data-kiosk-walkin="">{t("kWalkIn")}</button>
@@ -302,6 +308,7 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
   const [over, setOver] = useState<HostKioskRow | null>(null);
   const [scan, setScan] = useState(false);
   const [clock, setClock] = useState(() => new Date());
+  const closedRef = useRef(false);
   const store = useRef<KioskStore | null>(null);
   const roster = useRef<KioskRosterCache | null>(null);
   const offset = useRef(0);
@@ -314,6 +321,7 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
   const accept = useCallback((next: HostKioskResponse) => {
     offset.current = Date.parse(next.now) - Date.now();
     setClock(new Date(Date.parse(next.now)));
+    closedRef.current = next.closed === true;
     setData(next);
     setDevices(next.devices);
     if (qRef.current.trim()) setRows([...next.rows]);
@@ -378,7 +386,8 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
 
   // 5 秒轮询 + 时钟。
   useEffect(() => {
-    const poll = setInterval(() => { if (document.visibilityState !== "hidden") void load(qRef.current); }, POLL_MS);
+    // 受付終了後はポーリングしない（検索したときだけ読む）。
+    const poll = setInterval(() => { if (document.visibilityState !== "hidden" && !closedRef.current) void load(qRef.current); }, POLL_MS);
     const tick = setInterval(() => setClock(nowKiosk()), 15_000);
     return () => { clearInterval(poll); clearInterval(tick); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,7 +397,7 @@ function KioskInner({ eventId, language }: { eventId: string; language: OrbitLan
   useEffect(() => {
     const deviceId = kioskDeviceId();
     const beat = async () => {
-      if (!isOnline()) return;
+      if (!isOnline() || closedRef.current) return;
       const res = await hostApi.heartbeat(eventId, deviceId);
       if (res.ok) { setDevices(res.data.devices); return; }
       // 心跳发现权限没了（被移出共同运营等）：清这场的本机名单与队列，并显示说明。

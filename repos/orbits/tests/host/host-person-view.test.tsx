@@ -23,7 +23,7 @@ test("参加者詳細: answers, profile, tables with tablemates and the first fi
   assert.match(html, /第2ラウンド · テーブル C/);
   assert.match(html, /同じテーブル/);
   assert.match(html, /おすすめの相手/);
-  assert.equal((html.match(/class="[^"]*rec[^"]*"/g) ?? []).filter((item) => !item.includes("recs")).length <= 5, true);
+  assert.ok(((html.match(/<li /g) ?? []) as string[]).length <= 5, "the first five suggestions only");
   assert.doesNotMatch(html, /AI/);
 });
 
@@ -41,4 +41,18 @@ test("申込設定: an ended event is read-only (banner, no save bar, no suggest
   assert.match(html, /開催済みのため、申込設定は変更できません/);
   assert.match(html, /data-host-setup="ended"/);
   assert.doesNotMatch(html, /data-host-setup-save=/);
+});
+
+test("受付: after closing (12 h past the end) the kiosk is view-only — banner, no scan, no row actions", async () => {
+  const { HostKioskView } = await import("../../app/(app)/app/orbit-2026/host/HostKiosk");
+  const { hostKiosk } = await import("../../shared/mock/demo-world/host-events");
+  const open = hostKiosk(HOST_EVENT_IDS.cfo18, "森")!;
+  const data = { ...open, closed: true };
+  const html = renderToStaticMarkup(<HostKioskView data={data} t={t} now={new Date(data.now)} online q="森" rows={data.rows} queue={[]} devices={1} />);
+  assert.match(html, /data-kiosk-closed=""/);
+  assert.match(html, /受付は終了しました/);
+  assert.doesNotMatch(html, /data-kiosk-scan=""/);
+  assert.doesNotMatch(html, /data-kiosk-arrive=""|data-kiosk-undo=""|data-kiosk-walkin=""/);
+  const live = renderToStaticMarkup(<HostKioskView data={open} t={t} now={new Date(open.now)} online q="森" rows={open.rows} queue={[]} devices={1} />);
+  assert.doesNotMatch(live, /data-kiosk-closed/);
 });

@@ -134,6 +134,8 @@ export const hostCopy = {
   trendRangeToEvent: { ja: "開催まで", zh: "截至活动", en: "Up to the event", kind: "label" },
   trendPeak: { ja: "最多 {d}・{n}名", zh: "最多 {d}・{n}人", en: "Peak {d} · {n}", kind: "label" },
   trendNone: { ja: "この期間の申込はありません", zh: "这段时间没有报名", en: "No sign-ups in this period", kind: "label" },
+  kClosedTitle: { ja: "受付は終了しました", zh: "签到已结束", en: "Check-in has closed", kind: "title" },
+  kClosedBody: { ja: "開催終了から12時間が過ぎたため、受付の記録を見るだけになります。", zh: "活动结束已超过 12 小时，现在只能查看签到记录。", en: "It is more than 12 hours after the event; records are view-only.", kind: "body" },
   pdStatus_approved: { ja: "承認済み", zh: "已通过", en: "Approved", kind: "label" },
   pdStatus_pending: { ja: "審査待ち", zh: "待审核", en: "Pending", kind: "label" },
   pdStatus_waitlisted: { ja: "キャンセル待ち", zh: "候补", en: "Waitlisted", kind: "label" },

@@ -120,6 +120,7 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.ok(applicant!.profile.length > 0, "application answers are listed");
     await assert.rejects(service.person(HOST, eventId, "actor:nobody"), isHost("NOT_FOUND"));
     await assert.rejects(service.person("actor:stranger", eventId, "actor:p2"), isHost("NOT_FOUND"));
+    assert.equal((await service.kiosk(HOST, eventId, "")).closed, false, "the event has not ended: check-in is open");
   });
 });
 

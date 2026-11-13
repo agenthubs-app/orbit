@@ -325,6 +325,8 @@ export interface HostKioskRecent {
 /** `GET /api/host/events/[id]/kiosk?q=`。 */
 export interface HostKioskResponse {
   eventId: string;
+  /** 受付終了（開催終了から 12 時間後）：記録は見られるが受付・取り消し・当日枠は不可、ポーリングも止める。旧サーバーでは無い。 */
+  closed?: boolean;
   title: string;
   venue: string | null;
   /** 受付 担当 伊藤 直子（受付）。 */

@@ -46,6 +46,9 @@ export interface HostLiveDeps {
 }
 
 const ROLE_LABEL: Record<string, HostRole> = { check_in: "check_in", manager: "manager", operations: "operations", read_only_analyst: "read_only_analyst", reviewer: "reviewer" };
+/** 受付は開催終了から 12 時間後まで（端末の名簿キャッシュと同じ期限）。それ以降は記録を見るだけ。 */
+const kioskClosed = (facts: { endsAt: string | null; lifecycle: string }, at: Date) => facts.lifecycle === "cancelled" || facts.lifecycle === "archived" || (facts.endsAt !== null && at.getTime() > Date.parse(facts.endsAt) + 12 * 3_600_000);
+
 /** 受付名单在设备上缓存到活动结束后 12 小时。 */
 const kioskCacheUntil = (facts: { endsAt: string | null }, at: Date) => new Date(Date.parse(facts.endsAt ?? at.toISOString()) + 12 * 3_600_000).toISOString();
 
@@ -222,6 +225,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       : facts.matched === null && facts.generations === 0 ? { kind: "matching_missing" }
       : { kind: "none" };
     return { action: status === "live" ? "open_check_in" : "open_console", applied: facts.applied, capacity: facts.capacity, checkedIn: status === "live" || status === "ended" || status === "archived" || facts.checkedIn > 0 ? facts.checkedIn : null, emoji: facts.payload.emoji ?? null, endsAt: facts.endsAt, eventId: facts.eventId, matched: facts.matched, note, role: ROLE_LABEL[facts.role ?? ""] ?? "owner", startsAt: facts.startsAt, status, title: facts.title, venue: facts.venue };
+  }
+
+  /** 受付終了後は受付・取り消し・当日枠を受け付けない（代理受付が計画の参加記録になるため、数か月後の誤操作を防ぐ）。 */
+  async function requireKioskOpen(actorId: string, eventId: string) {
+    if (kioskClosed(await factsOrThrow(actorId, eventId), now())) throw new HostError("VALIDATION", "CHECK_IN_CLOSED");
   }
 
   /** 開催済み・中止・アーカイブの回は申込設定を変えられない（画面も読み取り専用）。 */
@@ -605,6 +613,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       return {
         cacheUntil: kioskCacheUntil(facts, t),
         canWalkIn: caps.includes("check_in.walk_in"),
+        closed: kioskClosed(facts, t),
         checkedIn: counts.checkedIn,
         devices: await kiosk.devices(eventId),
         doorsOpenAt: facts.startsAt,
@@ -633,16 +642,20 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async scanCheckIn(actorId, eventId, input) {
       await require(actorId, eventId, "check_in.roster.write");
+      await requireKioskOpen(actorId, eventId);
       return kiosk.scan(actorId, eventId, input.payload, input.idempotencyKey);
     },
     async checkIn(actorId, eventId, participantId, idempotencyKey) {
       await require(actorId, eventId, "check_in.roster.write");
+      await requireKioskOpen(actorId, eventId);
       return kiosk.checkIn(actorId, eventId, participantId, idempotencyKey);
     },
     async undoCheckIn(actorId, eventId, participantId, input) {
+      await requireKioskOpen(actorId, eventId);
       return kiosk.undo(actorId, eventId, participantId, input.idempotencyKey);
     },
     async admitOnSite(actorId, eventId, participantId, input) {
+      await requireKioskOpen(actorId, eventId);
       const subject = participantId.startsWith("waitlist:") ? participantId.slice("waitlist:".length) : participantId;
       return kiosk.admitOnSite(actorId, eventId, subject, input);
     },

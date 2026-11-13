@@ -231,6 +231,7 @@ export const hostKioskRecentObject = z.object({
 
 export const hostKioskResponseObject = z.object({
   eventId: z.string().min(1),
+  closed: z.boolean().optional(),
   title: z.string(),
   venue: z.string().nullable(),
   staffName: z.string(),

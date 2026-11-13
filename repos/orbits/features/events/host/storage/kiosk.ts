@@ -62,10 +62,14 @@ export function createHostKiosk(deps: HostKioskDeps) {
 
   async function participant(eventId: string, participantId: string): Promise<ParticipantRow | null> {
     const result = await client.query<{ actor_id: string; participant_id: string; display_name: string | null }>(
-      `select head.actor_id, head.participant_id, coalesce(application.profile_payload ->> 'displayName', '') as display_name
+      // Name: the application when there is one, otherwise the member's own event profile (first-come / imported events).
+      `select head.actor_id, head.participant_id,
+              coalesce(nullif(trim(application.profile_payload ->> 'displayName'), ''), version.profile_payload #>> '{participant,displayName}', '') as display_name
          from event_ops_membership_heads head
          left join event_ops_admission_application_heads application
            on application.workspace_id = head.workspace_id and application.event_id = head.event_id and application.actor_id = head.actor_id
+         left join event_ops_profile_versions version
+           on version.workspace_id = head.workspace_id and version.event_id = head.event_id and version.participant_id = head.participant_id and version.profile_version = head.profile_version
         where head.workspace_id = $1 and head.event_id = $2 and head.participant_id = $3`,
       [workspaceId, eventId, participantId],
     );
