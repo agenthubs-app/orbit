@@ -562,6 +562,23 @@ test("an earlier logout cannot purge a newer accepted login on the same server",
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges.at(-1)), { baseUrl: "https://first.example", actorId: "account:new" });
 });
 
+test("a credential rotation keeps the new sign-in when the old cookie is rejected meanwhile (password change)", async t => {
+  const page = await open(t, { storedCookie: "session=restored" });
+  await page.evaluate(() => {
+    const state = (window as any).fixture;
+    state.rotationPromise = state.auth.withCredentialRotation(() => state.auth.signIn({ email: "member@example.test", password: "new-secret" }));
+  });
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  // The change already ended the stored session: a request made with the old cookie answers 401.
+  await page.evaluate(() => (window as any).fixture.expire?.());
+  await page.evaluate(() => { const state = (window as any).fixture; state.canonicalAccountId = "account:rotated"; state.release(); });
+  const result = await page.evaluate(async () => (await (window as any).fixture.rotationPromise));
+  assert.equal(result.success, true, "the new sign-in is not discarded as obsolete");
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), true);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:rotated");
+  assert.equal(await page.evaluate(() => (window as any).fixture.storedCookie), "session=first");
+});
+
 test("rejecting obsolete login A cannot erase accepted login B's persisted cookie", async t => {
   const page = await open(t);
   await page.getByRole("button", { name: "sign in" }).click();

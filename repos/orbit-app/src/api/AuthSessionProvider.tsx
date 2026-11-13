@@ -111,6 +111,13 @@ interface AuthSessionContextValue {
   signIn: (input: SignInInput) => Promise<AuthActionResult>;
   signInWithGoogle: (next?: string, purpose?: "deletion-request") => Promise<AuthActionResult>;
   signOut: (options?: SignOutOptions) => Promise<AuthActionResult>;
+  /**
+   * Runs a credential rotation (change the password, then sign in again with the new one). The
+   * change ends the stored session at once, so until the new session is accepted (and for a short
+   * grace after) a 401 or a foreground re-check that saw the old cookie must not end the session —
+   * it would bump the revision and discard the new sign-in as obsolete.
+   */
+  withCredentialRotation: <T>(task: () => Promise<T>) => Promise<T>;
   signedIn: boolean;
   startGoogleSignIn: (input?: { redirectTo?: string }) => Promise<AuthActionResult>;
   user: MobileAuthUser | null;
@@ -123,6 +130,8 @@ const DEBUG_PENDING_WRITE_PREFIX = "debug-offline-write-0124-";
 const OFFLINE_REVALIDATE_INTERVAL_MS = 10_000;
 // While online, refresh the 30-day offline window on foreground at most this often.
 const ONLINE_REVALIDATE_AFTER_MS = 12 * 60 * 60 * 1000;
+// After a credential rotation, late answers to requests sent with the old cookie are ignored this long.
+const CREDENTIAL_ROTATION_GRACE_MS = 10_000;
 
 function obsoleteAuthActionResult(): AuthActionResult {
   return { message: currentTranslator()("session.serverChanged"), success: false };
@@ -223,6 +232,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const [offline, setOffline] = useState(false);
   const [deletionPending, setDeletionPending] = useState(false);
   const lastValidatedAt = useRef(0);
+  // Credential rotation in progress (or just finished): old-cookie rejections are expected, not a lost session.
+  const rotation = useRef({ active: 0, endedAt: 0 });
+  const rotating = () => rotation.current.active > 0 || Date.now() - rotation.current.endedAt < CREDENTIAL_ROTATION_GRACE_MS;
   const authEnvironment = useRef({ baseUrl, baseUrlReady, revision: 0 });
 
   if (
@@ -832,6 +844,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   // rejection when re-checking): forget the cached identity, purge the open mirror and
   // key, then the cookie, and go to login.
   const endRejectedSession = useCallback((alreadyConfirmed = false) => {
+    if (rotating()) return;
     const requestRevision = ++authEnvironment.current.revision;
     void (async () => {
       const accountStatus = alreadyConfirmed
@@ -887,7 +900,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     const signedInAccountId = accountId;
 
     const revalidate = async () => {
-      if (running || !active) return;
+      if (running || !active || rotating()) return;
       running = true;
       const requestRevision = authEnvironment.current.revision;
       const current = () => active && authEnvironment.current.revision === requestRevision;
@@ -961,6 +974,16 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     };
   }, [accountId, baseUrl, cookieHeader, endRejectedSession, offline, user]);
 
+  const withCredentialRotation = useCallback(async <T,>(task: () => Promise<T>): Promise<T> => {
+    rotation.current.active += 1;
+    try {
+      return await task();
+    } finally {
+      rotation.current.active -= 1;
+      rotation.current.endedAt = Date.now();
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       accountId,
@@ -980,6 +1003,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       signIn,
       signInWithGoogle,
       signOut,
+      withCredentialRotation,
       signedIn: user !== null,
       startGoogleSignIn: (input?: { redirectTo?: string }) =>
         signInWithGoogle(input?.redirectTo),
@@ -1001,6 +1025,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       signIn,
       signInWithGoogle,
       signOut,
+      withCredentialRotation,
       user
     ]
   );

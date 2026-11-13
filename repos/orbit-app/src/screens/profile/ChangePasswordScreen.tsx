@@ -48,10 +48,15 @@ export function ChangePasswordScreen() {
     setError(null);
     let leaving = false;
     try {
-      const result = await submitPasswordChange({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader, currentPassword, newPassword });
+      // One credential rotation: the change ends the old session, the sign-in brings the new one;
+      // in between, old-cookie rejections must not sign the person out (they did, now and then).
+      const outcome = await auth.withCredentialRotation(async () => {
+        const result = await submitPasswordChange({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader, currentPassword, newPassword });
+        if (!result.ok) return { result, renewed: null };
+        return { result, renewed: await auth.signIn({ email, password: newPassword, redirectTo: next }).catch(() => null) };
+      });
+      const { result, renewed } = outcome;
       if (!result.ok) { setError(locale.t(passwordChangeFailureKey(result.code))); return; }
-      // The old session ended with the change: sign in again with the new password and keep going.
-      const renewed = await auth.signIn({ email, password: newPassword, redirectTo: next }).catch(() => null);
       leaving = true;
       resetStackTo(router, renewed?.success ? (renewed.pendingDeletion ? "/account/pending" : onward) : `/account/login?next=${encodeURIComponent(next)}`);
     } finally {
