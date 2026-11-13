@@ -10,7 +10,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { participationCodeFromBytes } from "../../../../shared/compute/participation-code";
-import type { HostEventFeeKind, HostEventInput, HostEventUpdateInput } from "../../../../shared/contract/host-events";
+import { normalizeHostContact } from "../../../../shared/compute/host-contact";
+import type { HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput } from "../../../../shared/contract/host-events";
 import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import type { EventOperationsPostgresClient, EventOperationsSqlExecutor } from "../../event-operations/storage/postgres-client";
 import { HostError } from "../service";
@@ -28,6 +29,8 @@ export interface HostEventPayload {
   feeUrl: string | null;
   capacity: number | null;
   templateId: string | null;
+  /** 主催者の連絡先（只给已报名的人看；没填 = null / 缺省）。 */
+  contact?: HostEventContact | null;
   /** 归档前的中止时刻（归档时 cancelled_at 必须清空，解除归档时用它恢复）。 */
   cancelledAt?: string | null;
 }
@@ -228,6 +231,7 @@ async function hostTransaction<T>(client: EventOperationsPostgresClient, run: (e
 function payloadFrom(input: HostEventInput): HostEventPayload {
   return {
     capacity: input.capacity ?? null,
+    contact: normalizeHostContact(input.contact),
     emoji: input.emoji ?? null,
     feeAmountYen: input.feeKind === "amount" ? input.feeAmountYen ?? null : null,
     feeKind: input.feeKind,
@@ -338,6 +342,8 @@ export function createHostLifecycle(deps: HostLifecycleDeps) {
           ...(input.feeKind !== undefined ? { feeKind: input.feeKind } : {}),
           ...(input.feeAmountYen !== undefined ? { feeAmountYen: input.feeAmountYen } : {}),
           ...(input.feeUrl !== undefined ? { feeUrl: input.feeUrl } : {}),
+          // 連絡先只是给已报名的人看的信息：改它不算日時 / 会場变更，不通知、不出 changePreview。
+          ...(input.contact !== undefined ? { contact: normalizeHostContact(input.contact) } : {}),
         };
         const saved = await setEvent(executor, current, { ...current, description: input.description !== undefined ? input.description : current.description, endsAt, organizerProfileId: input.organizerProfileId ?? current.organizerProfileId, payload, startsAt, title: input.title?.trim() ?? current.title, venue });
         if (current.lifecycle === "published" && timeChanged) {

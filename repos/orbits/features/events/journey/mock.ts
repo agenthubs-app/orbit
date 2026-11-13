@@ -4,9 +4,11 @@
  * - 变体（空 / 少 / 多、会場状态）挂在 globalThis 上，由开发接口 `app/api/dev/event-design-fixture/route.dev.ts` 切换（Next dev 各路由包各一份模块，所以不用模块变量）。
  */
 import { canSeeRoster } from "./roster-policy";
+import { canSeeHostContact } from "../../../shared/compute/host-contact";
 import { DEMO_EVENTS } from "../../../shared/mock/demo-world";
 import {
   JOURNEY_EVENT_ID,
+  JOURNEY_HOST_CONTACT,
   journeyAfter,
   journeyDiscover,
   journeyEventIds,
@@ -90,11 +92,13 @@ export function createJourneyMockService(): JourneyService {
         const { assessment: _assessment, ...rest } = data;
         return { ...rest, attendees: [], knownAttendees: [], rosterLocked: true, organizer: { ...data.organizer, following: false, myAttendance: null, organizerId: null }, signedOut: true };
       }
+      // 主催者の連絡先：同 live，只给已报名的人。
+      const withContact = canSeeHostContact(data.registration.status) ? { ...data, hostContact: JOURNEY_HOST_CONTACT } : data;
       // 同 roster-policy：没报名确定只给人数与知り合い人数（示例世界的 registration 变体决定）。
       if (!canSeeRoster({ registrationStatus: data.registration.status, signedIn: true })) {
-        return { ...data, attendees: [], knownAttendees: [], knownNote: null, rosterLocked: true };
+        return { ...withContact, attendees: [], knownAttendees: [], knownNote: null, rosterLocked: true };
       }
-      return data;
+      return withContact;
     },
     async prep(_actorId, eventId) {
       if (eventId !== JOURNEY_EVENT_ID && !knownEvent(eventId)) return null;

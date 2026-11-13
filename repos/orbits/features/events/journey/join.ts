@@ -5,6 +5,7 @@
  * - 提交：先走普通报名；活动开了审核（409 admission）就走审核申请。公開範囲按字段由服务端定（registrationFieldVisibility）。
  * - 仮予定：用户确认后才写进日历；审核结果出来后（下次读详情时）改名为正式 / 被拒时删除（syncTentative）。
  */
+import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { HostSetupQuestion } from "../../../shared/contract/host-console";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinProfileItemKey, EventJoinQuestion, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../../../shared/contract/event-join";
 import type { JourneyLanguage } from "./prep-core";
@@ -64,7 +65,7 @@ export function tentativeTitle(title: string, language: JourneyLanguage, final =
 }
 
 export interface JoinPorts {
-  event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null } | null>;
+  event(eventId: string): Promise<{ title: string; startsAt: string; endsAt: string | null; review: boolean; registrationClosesAt: string | null; hostContact?: HostEventContact | null } | null>;
   /** `more`：用户在确认页点了「追加 / 質問に戻る」，即使访谈认为够了也再问一题（live 由 AI 自己决定，可能仍然结束）。 */
   next(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage, more?: boolean): Promise<Omit<EventJoinQuestion, "multi" | "max" | "help"> | null>;
   persona(eventId: string, answers: readonly EventJoinAnswer[], language: JourneyLanguage): Promise<{ selfIntroDraft?: string | null; tags?: readonly string[] } | null>;
@@ -149,6 +150,8 @@ export function createJoinService(deps: { ports: JoinPorts }) {
         status: outcome.status,
         submittedAt: outcome.submittedAt,
         tentative: { endsAt, startsAt: event.startsAt, title: tentativeTitle(event.title, language, outcome.status === "registered") },
+        // 刚报名成功（審査中 / 確定）= 能看主催者の連絡先；完成页有 ID 就弹窗。
+        hostContact: event.hostContact ?? null,
       };
     },
     async tentative(actorId: string, eventId: string, idempotencyKey: string, language: JourneyLanguage): Promise<EventJoinTentativeResult | null> {

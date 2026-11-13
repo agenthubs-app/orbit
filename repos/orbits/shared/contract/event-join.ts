@@ -3,6 +3,8 @@
 // questions are the existing AI interview (≤ 5), answers carry the signed question tokens, and the server keeps per-field
 // visibility (参加目的 / 会いたい人 = organizer only; name / company / intro / topics = attendees).
 
+import type { HostEventContact } from "./host-events";
+
 export type EventJoinProfileItemKey = "company" | "purpose" | "topics" | "target" | "offer";
 
 export interface EventJoinQuestion {
@@ -61,6 +63,8 @@ export interface EventJoinResult {
   endsAt?: string | null;
   /** 「カレンダーに仮で入れますか？」 suggestion; written only after the user confirms (`join/tentative`). */
   tentative?: { startsAt: string; endsAt: string; title: string } | null;
+  /** 主催者の連絡先（刚报名成功的人能看；null = 主办方没填）。完成页有 ID 就自动弹窗。 */
+  hostContact?: HostEventContact | null;
 }
 
 /** `POST /api/events/[id]/join/cancel` — 「参加を取り消す」; the tentative calendar entry is removed too. */

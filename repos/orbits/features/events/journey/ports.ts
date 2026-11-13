@@ -6,6 +6,7 @@
 import type { EventAfterConfirmResult } from "../../../shared/contract/event-after";
 import type { EventOverviewRegistrationStatus } from "../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem } from "../../../shared/contract/event-prep";
+import type { HostEventContact } from "../../../shared/contract/host-events";
 import type { AfterAiDraft, AfterMetPerson, AfterPlan } from "./after-core";
 import type { DiscoverCandidate } from "./discover-core";
 import type { PrepAttendee } from "./prep-core";
@@ -35,6 +36,11 @@ export interface JourneyEvent {
   registrationCount: number;
   badges: readonly ("members_only" | "early_access")[];
   publicCode: string | null;
+  /**
+   * 主催者の連絡先（source_payload.host.contact）。私有：只有 overview / 报名结果按报名状态决定是否带出，
+   * 不进探す、检索、公开页等任何列表。
+   */
+  hostContact?: HostEventContact | null;
 }
 
 /** A registrant who made their registration profile visible to attendees (`event_attendees`). */

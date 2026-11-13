@@ -29,6 +29,7 @@ import {
 import type { HostEventView, HostEventWriteResult } from "../../../shared/contract/host-events";
 import type { HostKioskRow, HostMatchingResponse, HostPeopleBucket, HostSetupResponse } from "../../../shared/contract/host-console";
 import type { OrganizerProfile } from "../../../shared/contract/organizer-profile";
+import { normalizeHostContact } from "../../../shared/compute/host-contact";
 import { applyMatchingMoves } from "../../../shared/compute/table-constraints";
 import { parseCheckInToken } from "../../../shared/compute/checkin-token";
 import { HostError, type HostService } from "./service";
@@ -109,7 +110,7 @@ export function createHostMockService(): HostService {
       const eventId = `demo-host-new-${m().events.size + 1}`;
       const view: HostEventView = {
         ...template, admissionMode: "review", appliedCount: 0, approvedCount: 0, archivedAt: null, cancelledAt: null, capacity: input.capacity ?? null, cohostCount: 0, cohosts: [],
-        description: input.description ?? null, emoji: input.emoji ?? null, endsAt: input.endsAt, eventId, feeAmountYen: input.feeAmountYen ?? null, feeKind: input.feeKind, feeUrl: input.feeUrl ?? null,
+        contact: normalizeHostContact(input.contact), description: input.description ?? null, emoji: input.emoji ?? null, endsAt: input.endsAt, eventId, feeAmountYen: input.feeAmountYen ?? null, feeKind: input.feeKind, feeUrl: input.feeUrl ?? null,
         lifecycle: "draft", online: input.online ?? false, organizerEmoji: profile.emoji, organizerName: profile.displayName, organizerProfileId: profile.profileId, organizerSlug: profile.slug,
         participationCode: null, publicSlug: null, startsAt: input.startsAt, status: "draft", title: input.title, venueArea: input.venueArea ?? null, venueName: input.venueName ?? null, version: 1, waitlistedCount: 0,
       };
@@ -125,8 +126,8 @@ export function createHostMockService(): HostService {
       if (current.lifecycle === "published" && (timeChanged || venueChanged) && input.notify === undefined) {
         return { changePreview: { afterStartsAt: input.startsAt ?? current.startsAt, afterVenue: input.venueName ?? current.venueName, approvedCount: current.approvedCount, beforeStartsAt: current.startsAt, beforeVenue: current.venueName, timeChanged, venueChanged, waitlistedCount: current.waitlistedCount }, event: current, notified: 0 };
       }
-      const { expectedVersion: _v, notify, ...patch } = input;
-      const next: HostEventView = { ...current, ...patch, version: current.version + 1 };
+      const { expectedVersion: _v, notify, contact, ...patch } = input;
+      const next: HostEventView = { ...current, ...patch, ...(contact !== undefined ? { contact: normalizeHostContact(contact) } : {}), version: current.version + 1 };
       m().events.set(eventId, next);
       return write(next, notify && (timeChanged || venueChanged) ? current.approvedCount + current.waitlistedCount : 0);
     },

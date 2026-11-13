@@ -13,6 +13,8 @@ import { ScoreRing, translator as assessTranslator } from "./AssessmentDetail";
 import { feeText, journeyTranslator, rowTone, toneClass, type JourneyT } from "./DiscoverTab";
 import { CancelDialog } from "./CancelDialog";
 import { EventDescription } from "./EventDescription";
+import { HostContactCard } from "./HostContact";
+import { canSeeHostContact } from "../../../../../shared/compute/host-contact";
 import { eventsApi, eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
 import { useDetailTiming } from "./detail-timing";
@@ -46,6 +48,8 @@ export function avTone(index: number): string { return x[AV_TONES[index % AV_TON
 export function hostName(data: Pick<EventOverviewResponse, "organizer">, t: JourneyT): string { return data.organizer.unnamed ? t("hostUnnamed") : data.organizer.name; }
 /** 已登录但没有计划（接口 `hasPlan === false`）：评分卡 / 右栏位置换成「プランを作る」引导，不留空洞；旧接口没有该字段时维持原样。 */
 export const noPlan = (data: EventOverviewResponse): boolean => !data.signedOut && data.hasPlan === false;
+/** 主催者の連絡先カード：サーバーが返したとき（申込済み）だけ。取り消し直後など手元の状態が変わったら隠す。 */
+export const showHostContact = (data: EventOverviewResponse): boolean => !data.signedOut && data.hostContact !== undefined && canSeeHostContact(data.registration.status);
 
 /**
  * 已结束活动：主办方卡底部一行——下一场（有就直接点进去，没有就「还没公布」）→ 关注主办方 · 接下来的活动。
@@ -207,7 +211,7 @@ function RosterGate({ data, t, wide }: { data: EventOverviewResponse; t: Journey
   );
 }
 
-export function DetailRail({ data, t, onRegister, language = "ja" }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void; language?: OrbitLanguage }) {
+export function DetailRail({ data, t, onRegister, language = "ja", toast }: { data: EventOverviewResponse; t: JourneyT; onRegister: () => void; language?: OrbitLanguage; toast?: ReturnType<typeof useToast> }) {
   const { ended, canRegister } = useDetailTiming(data);
   const fit = data.attendees.filter((item) => item.planFit && !item.known).slice(0, 5);
   return (
@@ -246,6 +250,7 @@ export function DetailRail({ data, t, onRegister, language = "ja" }: { data: Eve
           <div className={`${styles.lbl} ${x.goingLine}`}>{t("goingCardLine", { venue: (data.venue ?? "").split(/\s+/)[0] ?? "", when: eventRange(data.startsAt, null, language) })}</div>
         </div>
       ) : null}
+      {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} className={x.contactRail} toast={toast} /> : null}
     </div>
   );
 }
@@ -316,6 +321,7 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
           {whyOpen ? <div className={d.whyBody}>{data.assessment.basis}</div> : null}
         </div>
       ) : data.signedOut || noPlan(data) ? <MockScoreBar data={data} t={t} /> : null}
+      {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} /> : null}
       <div className={x.pTabs} role="tablist">
         {(["intro", "agenda", "host", "people"] as const).map((key) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={`btn ${x.pTab} ${tab === key ? x.pTabOn : ""}`} data-detail-tab={key} onClick={() => setTab(key)}>
@@ -370,7 +376,8 @@ export function PhoneDetailBody({ data, language, t, onRegister }: { data: Event
 }
 
 /** `onSeeAll`：「すべて見る」去取全部公开参加者（取过就不再显示按钮；其余人没有公开资料）。 */
-export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void }) {
+/** `contactInBody`：右栏没有显示（< 1280）时，主催者の連絡先卡片放在正文里。 */
+export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, onRegister, contactInBody = false }: { data: EventOverviewResponse; language: OrbitLanguage; t: JourneyT; signedOutAside?: ReactNode; onSeeAll?: () => void; onRegister?: () => void; contactInBody?: boolean }) {
   const { ended } = useDetailTiming(data);
   const at = assessTranslator(language);
   const toast = useToast();
@@ -429,6 +436,7 @@ export function EventDetailBody({ data, language, t, signedOutAside, onSeeAll, o
           </div>
         </div>
       ) : noPlan(data) ? <MockAssessCard data={data} t={t} language={language} className={styles.span4} /> : null}
+      {contactInBody && showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} className={styles.span12} /> : null}
       <div ref={agendaRef} className={`${styles.card} ${x.span7}`}>
         <div className={styles.cardH}><h3>{t("tabAgenda")}</h3></div>
         {data.agenda.length ? data.agenda.map((item) => (
@@ -575,10 +583,10 @@ function DetailInner({ eventId, language }: { eventId: string; language: OrbitLa
         subtitle={phone ? undefined : data ? hostName(data, t) : ""}
         left={<a className={`btn ${x.rbtn}`} href="/app/events?tab=discover" aria-label={t("back")}><Icon name="left" size={16} /></a>}
         right={phone ? <button type="button" className={`btn ${x.rbtn}`} aria-label={t("share")} onClick={() => void share()}><Icon name="share" size={20} /></button> : right}
-        rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} /> : false}
+        rightRail={wide && data ? <DetailRail data={data} t={t} onRegister={register} language={language} toast={toast} /> : false}
         phoneBare={phone}
       />
-      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
+      {missing ? <div className={`${styles.card} ${x.missing}`}>{t("notFound")}</div> : data ? (phone ? <PhoneDetailBody data={data} language={language} t={t} onRegister={register} /> : <EventDetailBody data={data} language={language} t={t} onRegister={register} contactInBody={!wide} {...(allLoaded ? {} : { onSeeAll: () => void seeAll() })} />) : null}
       {data ? <CancelDialog open={cancelOpen} event={data} language={language} t={t} busy={cancelBusy} onKeep={closeCancel} onCancel={() => void confirmCancel()} /> : null}
     </>
   );

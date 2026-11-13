@@ -15,6 +15,8 @@ import { journeyTranslator, type JourneyT } from "./DiscoverTab";
 import { eventRange, monthDaySlash, parts, usePhone, useWide } from "./EventDetail";
 import { eventsCall, newIdempotencyKey } from "./events-api";
 import { journeyApi } from "./journey-api";
+import { contactReviewLine, HostContactCard, HostContactModal } from "./HostContact";
+import { hostContactHasId } from "../../../../../shared/compute/host-contact";
 import { eventJoinCancelResultSchema, eventJoinProfileSchema, eventJoinResultSchema, eventJoinStepSchema, eventJoinTentativeResultSchema } from "../../../../../shared/api-schema/event-join";
 import type { ZodType } from "zod";
 import styles from "./events.module.css";
@@ -111,6 +113,8 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
   const [intro, setIntro] = useState<string | null>(null);
   const [editingIntro, setEditingIntro] = useState(false);
   const [why, setWhy] = useState(false);
+  // 主催者の連絡先：申込が通った直後、ID があれば自動で開く（閉じたあとは完了ページのカードに残る）。
+  const [contactOpen, setContactOpen] = useState(false);
   const freeRef = useRef<HTMLInputElement | null>(null);
   const Speech = useMemo(() => speechRecognition(), []);
   // 1024：右栏收起（b12 #354 没有右栏）。
@@ -166,7 +170,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
     const res = await joinApi.submit(eventId, answers, edited);
     setBusy(false);
-    if (res.ok) setResult(res.data); else toast.error(t("submitFailed"));
+    if (res.ok) { setResult(res.data); setContactOpen(hostContactHasId(res.data.hostContact)); } else toast.error(t("submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
@@ -321,6 +325,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
     </div>
   );
 
+  const contactLine = result?.status === "pending_review" ? contactReviewLine(result.hostContact, event?.priceYen, t) : null;
   const done = result ? (
     <div className={`${styles.card} ${x.span7} ${r.chat}`} data-join-done="">
       <div className={`${styles.card} ${r.inner} ${r.check}`}>
@@ -336,8 +341,9 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
           <div className={result.status === "registered" ? r.stepNow : undefined}>{t("flowResult")}</div>
           <div>{t("flowDay")}<br />{monthDaySlash(result.startsAt)}</div>
         </div>
-        {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{t("reviewWait")}</div> : null}
+        {result.status === "pending_review" ? <div className={`${styles.sub} ${r.doneSub}`}>{contactLine ?? t("reviewWait")}</div> : null}
       </div>
+      {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} className={r.gap} /> : null}
       {result.tentative && calendar === "asked" ? (
         <div className={`${styles.card} ${r.confirm}`} data-join-calendar="">
           <div className={styles.row} style={{ gap: 8 }}><span className={`${styles.emo} ${styles.t_lav} ${r.emoSm}`}>📅</span><b className={r.confirmTitle}>{t("calAsk")}</b></div>
@@ -375,6 +381,7 @@ function RegisterInner({ eventId, language }: { eventId: string; language: Orbit
         <ProfileCard profile={profile ? { ...profile, selfIntro: profile.selfIntro && intro ? { ...profile.selfIntro, text: intro } : profile.selfIntro } : null} t={t} mode={result ? "applied" : reviewing ? "review" : "live"} />
       </div>
       </>}
+      {result ? <HostContactModal open={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} /> : null}
     </>
   );
 }

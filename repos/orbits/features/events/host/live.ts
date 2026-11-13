@@ -7,6 +7,7 @@
 import { randomUUID } from "node:crypto";
 
 import { hostNextSteps, hostTodoItems, type HostTodoEventFacts } from "../../../shared/compute/host-todo";
+import { normalizeHostContact } from "../../../shared/compute/host-contact";
 import { suggestQuestions } from "../../../shared/compute/question-suggest";
 import { suppressCells, suppressedDistribution, suppressedRate, suppressSmall } from "../../../shared/compute/small-cell";
 import type { HostCenterEventRow, HostCenterResponse, HostEventStatus, HostEventView, HostEventWriteResult, HostRole } from "../../../shared/contract/host-events";
@@ -150,6 +151,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       cancelledAt: facts.cancelledAt,
       capabilities: mine,
       capacity: facts.capacity,
+      contact: normalizeHostContact(facts.payload.contact),
       cohostCount: cohostList.length,
       cohosts: cohostList.slice(0, 5),
       description: facts.description,

@@ -573,4 +573,13 @@ export const eventsJourneyCopy = {
   goingCardTitle: { ja: "参加予定", zh: "将要参加", en: "You're going", kind: "label" },
   goingCardLine: { ja: "{when} · {venue} · 受付 QR は当日ここに表示されます", zh: "{when} · {venue} · 签到二维码当天会显示在这里", en: "{when} · {venue} · Your check-in QR shows here on the day", kind: "label" },
   calendarAdded: { ja: "カレンダーに追加しました", zh: "已添加到日历", en: "Added to your calendar", kind: "toast" },
+  // 主催者の連絡先（2026-11-14）：申込後に主催者の WeChat / LINE を追加 → グループ招待・参加費 → 承認。申込済みの人だけに表示。
+  contactTitle: { ja: "主催者の連絡先", zh: "主办方联系方式", en: "Organizer contact", kind: "title" },
+  contactWechat: { ja: "WeChat", zh: "微信", en: "WeChat", kind: "label" },
+  contactLine: { ja: "LINE", zh: "LINE", en: "LINE", kind: "label" },
+  contactNone: { ja: "まだありません", zh: "暂无", en: "Not provided", kind: "label" },
+  contactCopyAria: { ja: "{label} をコピー", zh: "复制{label}", en: "Copy {label}", kind: "label" },
+  contactCopyFailed: { ja: "コピーできませんでした", zh: "无法复制", en: "Couldn't copy", kind: "toast" },
+  reviewWaitContact: { ja: "主催者に連絡して参加費をお支払いください。主催者が確認すると承認されます。", zh: "请联系主办方完成付款，主办方确认后会通过审核。", en: "Contact the organizer to pay the fee. You'll be approved once they confirm it.", kind: "sentence" },
+  reviewWaitContactFree: { ja: "主催者に連絡してください。主催者が確認すると承認されます。", zh: "请联系主办方，主办方确认后会通过审核。", en: "Contact the organizer. You'll be approved once they confirm.", kind: "sentence" },
 } satisfies OrbitCopyTable;

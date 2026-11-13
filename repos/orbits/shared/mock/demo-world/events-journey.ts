@@ -13,10 +13,13 @@ import type { EventOverviewAttendee, EventOverviewResponse } from "../../contrac
 import type { EventPrepResponse } from "../../contract/event-prep";
 import type { EventSearchResponse } from "../../contract/event-search";
 import type { EventVenuePerson, EventVenueResponse } from "../../contract/event-venue";
+import type { HostEventContact } from "../../contract/host-events";
 
 export const JOURNEY_EVENT_ID = "demo-event-cfo-night-18";
 export const JOURNEY_ME = { company: "ミナトリンク", name: "佐藤 健一", role: "CEO" } as const;
 export const JOURNEY_GOAL = "シリーズA 資金調達";
+/** 主催者の連絡先（示例：报名后加微信 / LINE，进群前付参加费，主办方确认后通过审核）。只给已报名的人。 */
+export const JOURNEY_HOST_CONTACT: HostEventContact = { lineId: "cfonight_tokyo", note: "申込後、LINE か WeChat で「お名前」をお送りください。参加費のお支払いを確認したら承認し、グループにご招待します。", wechatId: "cfonight-tokyo" };
 
 /** 画板的时刻：会う準備（开始前 3:12）、会場（20:22 · ラウンド 2 / 3）、会後（当日夜）。 */
 export const JOURNEY_NOW = {

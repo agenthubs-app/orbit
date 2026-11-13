@@ -1,10 +1,10 @@
 /**
  * R27 参加登録 facade 的示例世界（mock / 演示账号）：固定 5 问（画板 #20–#23 的文字），不调 AI、不写库。Owner: 甲 (R27).
  */
-import { JOURNEY_EVENT_ID, JOURNEY_JOIN_QUESTIONS, JOURNEY_JOIN_REVIEW_UNTIL, JOURNEY_JOIN_SELF_INTRO, JOURNEY_JOIN_SUBMITTED_AT } from "../../../shared/mock/demo-world/events-journey";
+import { JOURNEY_EVENT_ID, JOURNEY_HOST_CONTACT, JOURNEY_JOIN_QUESTIONS, JOURNEY_JOIN_REVIEW_UNTIL, JOURNEY_JOIN_SELF_INTRO, JOURNEY_JOIN_SUBMITTED_AT } from "../../../shared/mock/demo-world/events-journey";
 import type { JoinPorts } from "./join";
 
-const EVENT = { endsAt: "2026-10-07T21:30:00+09:00", registrationClosesAt: JOURNEY_JOIN_REVIEW_UNTIL, review: true, startsAt: "2026-10-07T19:00:00+09:00", title: "CFO Night Tokyo vol.18" };
+const EVENT = { endsAt: "2026-10-07T21:30:00+09:00", registrationClosesAt: JOURNEY_JOIN_REVIEW_UNTIL, review: true, startsAt: "2026-10-07T19:00:00+09:00", title: "CFO Night Tokyo vol.18", hostContact: JOURNEY_HOST_CONTACT };
 
 export function createJoinMockPorts(): JoinPorts {
   const tentative = new Map<string, { scheduleItemId: string; final: boolean; removed?: boolean }>();

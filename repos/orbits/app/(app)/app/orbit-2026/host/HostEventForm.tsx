@@ -9,9 +9,10 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { hostNoteText } from "../../../../../shared/api-schema/host-events";
+import { HOST_CONTACT_ID_MAX, HOST_CONTACT_NOTE_MAX, hostEventContactInputObject, hostNoteText } from "../../../../../shared/api-schema/host-events";
+import { normalizeHostContact } from "../../../../../shared/compute/host-contact";
 import type { HostSetupQuestion } from "../../../../../shared/contract/host-console";
-import type { HostEventChangePreview, HostEventFeeKind, HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
+import type { HostEventChangePreview, HostEventContact, HostEventFeeKind, HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { OrganizerProfile } from "../../../../../shared/contract/organizer-profile";
 import { ShellPage } from "../shell/slots";
@@ -45,6 +46,10 @@ export type EventDraft = {
   /** 申込フォームの初期質問（新規作成のみ；テンプレートから入る）。 */
   questions: HostSetupQuestion[];
   templateId: TemplateId | null;
+  /** 主催者の連絡先（任意；申込んだ人だけに表示）。旧い一時保存には無いことがある。 */
+  wechatId: string;
+  lineId: string;
+  contactNote: string;
 };
 
 const chars = (value: string) => [...value].length;
@@ -65,17 +70,25 @@ export function tokyoIso(date: string, time: string): string | null {
 
 export function draftFromEvent(event: HostEventView | null, profiles: readonly OrganizerProfile[]): EventDraft {
   if (!event) {
-    return { capacity: "", date: "", description: "", questions: [], end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "" };
+    return { capacity: "", contactNote: "", date: "", description: "", questions: [], end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", lineId: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "", wechatId: "" };
   }
   const start = tokyoInputs(event.startsAt);
   const end = tokyoInputs(event.endsAt);
   return {
     capacity: event.capacity == null ? "" : String(event.capacity), date: start.date, description: event.description ?? "", questions: [], end: end.time, feeAmount: event.feeAmountYen == null ? "" : String(event.feeAmountYen),
     feeKind: event.feeKind, feeUrl: event.feeUrl ?? "", online: event.online, organizerProfileId: event.organizerProfileId ?? profiles[0]?.profileId ?? "", start: start.time, templateId: null, title: event.title, venueName: event.venueName ?? "",
+    contactNote: event.contact?.note ?? "", lineId: event.contact?.lineId ?? "", wechatId: event.contact?.wechatId ?? "",
   };
 }
 
-export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidQuestion" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile";
+export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidQuestion" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile" | "evInvalidContact";
+
+/** 入力欄の連絡先 → 契約（全部空 = null）。ID ≤60 字、ひとこと ≤200 字・リンク不可に違反していれば problem。 */
+export function draftContact(draft: Pick<EventDraft, "wechatId" | "lineId" | "contactNote">): { contact: HostEventContact | null; problem: boolean } {
+  const raw = { lineId: (draft.lineId ?? "").trim() || null, note: (draft.contactNote ?? "").trim() || null, wechatId: (draft.wechatId ?? "").trim() || null };
+  if (!hostEventContactInputObject.safeParse(raw).success) return { contact: null, problem: true };
+  return { contact: normalizeHostContact(raw), problem: false };
+}
 
 /** 入力 → 契約（建 / 改共用）。問題があれば最初の 1 つ。 */
 export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "organizerProfileId"> & { organizerProfileId: string }; problem: null } | { input: null; problem: DraftProblem } {
@@ -98,11 +111,14 @@ export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "
   if (questions.some((question) => !question.prompt || (question.kind !== "free" && question.options.length < 2))) return { input: null, problem: "evInvalidQuestion" };
   const capacity = draft.capacity.trim() ? Number(draft.capacity) : null;
   if (capacity != null && (!Number.isInteger(capacity) || capacity <= 0)) return { input: null, problem: "evInvalidFee" };
+  const contact = draftContact(draft);
+  if (contact.problem) return { input: null, problem: "evInvalidContact" };
   return {
     input: {
       capacity, description: draft.description.trim() || null, endsAt, feeAmountYen: draft.feeKind === "free" || draft.feeKind === "external_link" ? null : amount, feeKind: draft.feeKind,
       feeUrl: draft.feeKind === "external_link" ? draft.feeUrl.trim() : null, online: draft.online, organizerProfileId: draft.organizerProfileId, startsAt, timezone: "Asia/Tokyo", title,
       venueName: venueName || null, ...(draft.templateId ? { templateId: draft.templateId } : {}), ...(questions.length ? { questions } : {}),
+      ...(contact.contact ? { contact: contact.contact } : {}),
     },
     problem: null,
   };
@@ -123,6 +139,10 @@ export function changedFields(event: HostEventView, input: Omit<HostEventInput, 
   if (!same(input.feeUrl, event.feeUrl)) out.feeUrl = input.feeUrl;
   if (!same(input.description, event.description)) out.description = input.description;
   if (!same(input.organizerProfileId, event.organizerProfileId)) out.organizerProfileId = input.organizerProfileId;
+  // 連絡先は丸ごと置き換え（消したときは null を送る）。日時・会場ではないので通知の判定には入らない。
+  const contact = normalizeHostContact(input.contact ?? null);
+  const before = normalizeHostContact(event.contact ?? null);
+  if (JSON.stringify(contact) !== JSON.stringify(before)) out.contact = contact;
   return out as Omit<HostEventUpdateInput, "expectedVersion">;
 }
 
@@ -314,6 +334,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
               <span className={`${f.counter} ${length > DESC_MAX - 100 ? f.counterBad : ""}`} aria-live="polite">{t("evCounter", { n: length })}</span>
             </label>
           </div>
+          <HostContactCard draft={draft} t={t} disabled={readOnly || event?.status === "ended"} onChange={(next) => onChange?.({ ...draft, ...next })} />
           {mode === "create" ? (
             <div className={`${s.card} ${f.blk}`} data-host-evquestions={draft.questions.length}>
               <div className={s.cardH}><h3>{t("evQuestions")}</h3><span className={s.lbl}>{t("suQHint", { n: draft.questions.length })}</span></div>
@@ -343,6 +364,34 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
   );
 }
 
+/** 主催者の連絡先（任意）：WeChat ID / LINE ID / 参加者へのひとこと。申込んだ人だけに表示される（説明カードと質問カードの間）。 */
+export function HostContactCard({ draft, t, disabled = false, onChange }: { draft: Pick<EventDraft, "wechatId" | "lineId" | "contactNote">; t: HostT; disabled?: boolean; onChange?: (next: Pick<EventDraft, "wechatId" | "lineId" | "contactNote">) => void }) {
+  const note = draft.contactNote ?? "";
+  const noteLength = chars(note);
+  const noteBad = draftContact({ contactNote: note, lineId: "", wechatId: "" }).problem;
+  const pick = { contactNote: note, lineId: draft.lineId ?? "", wechatId: draft.wechatId ?? "" };
+  const row = (label: string, key: "wechatId" | "lineId") => (
+    <div className={m.setrow}><span className={`${s.lbl} ${f.fl}`}>{label}</span><div className={f.input}><input value={pick[key]} maxLength={HOST_CONTACT_ID_MAX} autoComplete="off" spellCheck={false} aria-label={label} onChange={(ev) => onChange?.({ ...pick, [key]: ev.target.value })} /></div></div>
+  );
+  return (
+    <div className={`${s.card} ${f.blk}`} data-host-evcontact="">
+      <div className={s.cardH}><h3>{t("evContact")}</h3><span className={s.lbl}>{t("evContactSub")}</span></div>
+      <fieldset className={f.fs} disabled={disabled}>
+        {row(t("evContactWechat"), "wechatId")}
+        {row(t("evContactLine"), "lineId")}
+      </fieldset>
+      <label className={f.noteBlock}>
+        <span className={`${s.lbl} ${f.noteLbl}`}>{t("evContactMessage")}</span>
+        <span className={`${f.ta} ${noteBad ? f.taBad : ""}`}>
+          <textarea value={note} disabled={disabled} maxLength={HOST_CONTACT_NOTE_MAX + 20} placeholder={t("evContactMessagePh")} aria-label={t("evContactMessage")} aria-invalid={noteBad || undefined} onChange={(ev) => onChange?.({ ...pick, contactNote: ev.target.value })} />
+          <span className={`${f.counter} ${noteBad ? f.counterBad : ""}`} aria-live="polite">{t("evContactCounter", { n: noteLength })}</span>
+        </span>
+        {noteBad ? <span className={`${s.lbl} ${f.bad}`} role="alert">{t("evContactNoteInvalid")}</span> : null}
+      </label>
+    </div>
+  );
+}
+
 /** 「11/4（水）19:00」（プレビューの短い日時）。 */
 function hostDateShortLong(iso: string, language: OrbitLanguage, t: HostT): string {
   const p = tokyoParts(iso);
@@ -365,7 +414,8 @@ export type TempDraft = { savedAt: string; draft: EventDraft };
 
 /** 入力が何かあるか（既定値だけなら保存しない）。 */
 export function draftHasInput(draft: EventDraft): boolean {
-  return Boolean(draft.title.trim() || draft.description.trim() || draft.venueName.trim() || draft.date || draft.capacity.trim() || draft.feeAmount.trim() || draft.feeUrl.trim() || draft.templateId);
+  return Boolean(draft.title.trim() || draft.description.trim() || draft.venueName.trim() || draft.date || draft.capacity.trim() || draft.feeAmount.trim() || draft.feeUrl.trim() || draft.templateId
+    || (draft.wechatId ?? "").trim() || (draft.lineId ?? "").trim() || (draft.contactNote ?? "").trim());
 }
 
 export function readTempDraft(storage: Pick<Storage, "getItem" | "removeItem"> | null, userKey: string, now: Date): TempDraft | null {

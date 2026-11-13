@@ -33,6 +33,7 @@ import type {
 import type { HostCheckInEventsResponse, HostCohostInvitePreview, HostCohostsResponse } from "../../contract/host-cohosts";
 import type { HostNoticePreview } from "../../contract/host-notices";
 import type { OrganizerProfile, OrganizerProfileListResponse, OrganizerPublicResponse } from "../../contract/organizer-profile";
+import { JOURNEY_HOST_CONTACT } from "./events-journey";
 
 export type HostVariant = "empty" | "few" | "many";
 
@@ -199,6 +200,8 @@ export function hostEventView(eventId: string, state: HostMockState = DEFAULT_HO
     cancelledAt: seed.cancelledAt,
     capabilities: role === "owner" ? [...OWNER_CAPABILITIES] : ["event.center.read", "check_in.roster.read_limited", "check_in.roster.write", "check_in.walk_in", "analytics.read_aggregate"],
     capacity: seed.capacity,
+    // 主催者の連絡先：CFO Night 的两场填了（与参加者侧示例同一份），其余没填。
+    contact: seed.profileId === HOST_PROFILE_IDS.cfoNight && (seed.id === HOST_EVENT_IDS.cfo18 || seed.id === HOST_EVENT_IDS.roundtable) ? { ...JOURNEY_HOST_CONTACT } : null,
     cohostCount: HOST_COHOST_PEOPLE.length,
     cohosts: HOST_COHOST_PEOPLE.map((item) => ({ actorId: item.actorId, initial: item.initial, name: item.name })),
     description: seed.description,

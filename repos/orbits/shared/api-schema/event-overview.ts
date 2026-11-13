@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
 import type { EventOverviewResponse } from "../contract/event-overview";
+import { hostEventContactObject } from "./host-events";
 
 // R27 イベント詳細. Responses tolerant (unknown registration status → none, unreadable attendees skipped).
 const STATUSES = ["none", "registered", "pending_review", "waitlisted", "rejected", "cancelled", "attended"] as const;
@@ -65,6 +66,7 @@ export const eventOverviewResponseObject = z.object({
   attendees: readableItems(eventOverviewAttendeeObject),
   knownAttendees: readableItems(z.object({ name: z.string(), initial: z.string().max(4), speaker: z.boolean().optional() })),
   registration: z.object({ status: tolerantEnum(STATUSES, "none"), href: z.string().min(1) }),
+  hostContact: hostEventContactObject.nullable().optional().catch(null),
   signedOut: z.boolean().optional(),
   sample: z.literal(true).optional(),
 });

@@ -9,6 +9,7 @@ import { isCanonicalPublicOrganizerLabel } from "../core/public-organizer-identi
 import type { EventRecommendationDismissReason, EventRecommendationDismissResult } from "../../../shared/contract/event-recommendation-feedback";
 import type { EventAfterConfirmInput, EventAfterConfirmResult, EventAfterResponse } from "../../../shared/contract/event-after";
 import type { EventDiscoverResponse, EventDiscoverRow } from "../../../shared/contract/event-discover";
+import { canSeeHostContact } from "../../../shared/compute/host-contact";
 import type { EventOverviewResponse } from "../../../shared/contract/event-overview";
 import type { EventPrepChecklistItem, EventPrepResponse } from "../../../shared/contract/event-prep";
 import type { EventSearchResponse } from "../../../shared/contract/event-search";
@@ -223,6 +224,8 @@ export function createJourneyService(deps: { ports: JourneyLivePorts; records: J
         ...(rosterVisible ? {} : { rosterLocked: true }),
         organizer: { ...base.organizer, following: event.organizerKey ? followed.has(event.organizerKey) : false, myAttendance: event.organizerKey ? mine.filter((item) => item.organizerKey === event.organizerKey && item.status === "attended").length : null },
         registration: { href: `/events/${eventId}/register`, status },
+        // 主催者の連絡先：只给本场已报名的人（服务端按我的报名状态决定；未报名 / 未登录 / 公开页都不带这个字段）。
+        ...(canSeeHostContact(status) ? { hostContact: event.hostContact ?? null } : {}),
         hosting,
       };
     },

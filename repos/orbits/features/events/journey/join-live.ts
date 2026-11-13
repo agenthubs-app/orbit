@@ -35,7 +35,7 @@ export function createJoinLivePorts(input: { journey: JourneyLivePorts; query: (
   return {
     async event(eventId) {
       const event = await input.journey.event(eventId);
-      return event ? { endsAt: event.endsAt, registrationClosesAt: event.registrationClosesAt, review: event.review, startsAt: event.startsAt, title: event.title } : null;
+      return event ? { endsAt: event.endsAt, hostContact: event.hostContact ?? null, registrationClosesAt: event.registrationClosesAt, review: event.review, startsAt: event.startsAt, title: event.title } : null;
     },
     async next(eventId, answers, language) {
       const { createRegistrationInterviewPostHandler } = await import("../../../app/api/events/[id]/registration/adaptive-handlers");
