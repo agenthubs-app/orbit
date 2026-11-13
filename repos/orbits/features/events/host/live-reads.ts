@@ -270,29 +270,74 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       return result.rows.map((row) => ({ actorId: String(row.actor_id), attendCount: num(row.attend_count), hostAnswers: ((typeof row.host_answers === "string" ? JSON.parse(row.host_answers) : row.host_answers) ?? {}) as Record<string, string>, payload: (typeof row.profile_payload === "string" ? JSON.parse(row.profile_payload) : row.profile_payload) as { displayName?: string; answers?: Record<string, string> }, status: String(row.status), submittedAt: iso(row.submitted_at)!, version: num(row.application_version) }));
     },
 
-    /** 受付名单：已报名（含签到状态、番号）+ キャンセル待ち。 */
-    async kioskRoster(eventId: string): Promise<Array<{ actorId: string; participantId: string | null; name: string; org: string | null; role: string | null; status: "not_arrived" | "checked_in" | "waitlisted"; checkedInAt: string | null; receptionNumber: string | null; answers: Record<string, string> }>> {
-      // Name / company / role: the admission application when there is one; otherwise (first-come
-      // registrations, imported events) the member's own event profile snapshot.
+    /**
+     * 受付名单：已报名（含签到状态、番号）+ キャンセル待ち。只取显示用的几列（名字 / 公司 / 职位 / 立场一句），不带整份资料。
+     * Name / company / role: the admission application when there is one; otherwise (first-come
+     * registrations, imported events) the member's own event profile snapshot.
+     * 选项：q = 名字・公司里包含的文字（库里筛）；limit；participantIds = 只要这些人；withTables = 为返回的这几行查第一轮桌号
+     * （只在库里展开已发布分组，不把分组 JSON 传回来）。
+     */
+    async kioskRoster(eventId: string, options: { q?: string; limit?: number; participantIds?: readonly string[]; withTables?: boolean } = {}): Promise<Array<{ actorId: string; participantId: string | null; name: string; org: string | null; role: string | null; status: "not_arrived" | "checked_in" | "waitlisted"; checkedInAt: string | null; receptionNumber: string | null; answers: Record<string, string>; tableNumber: number | null }>> {
       const result = await client.query<Row>(
-        `select m.actor_id, m.participant_id, c.checked_in_at, r.reception_no, a.profile_payload, v.profile_payload -> 'participant' as participant, 'member' as kind
+        `with roster as (
+           select m.actor_id, m.participant_id, c.checked_in_at, r.reception_no, 'member' as kind,
+                  coalesce(nullif(trim(a.profile_payload ->> 'displayName'), ''), v.profile_payload #>> '{participant,displayName}') as name,
+                  a.profile_payload #>> '{answers,positioning}' as positioning,
+                  v.profile_payload #>> '{participant,company}' as company, v.profile_payload #>> '{participant,role}' as role
+             from event_ops_membership_heads m
+             left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
+             left join event_ops_checkins c on c.workspace_id = m.workspace_id and c.event_id = m.event_id and c.participant_id = m.participant_id
+             left join event_reception_numbers r on r.workspace_id = m.workspace_id and r.event_id = m.event_id and r.actor_id = m.actor_id
+             left join event_ops_admission_application_heads a on a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id
+            where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
+           union all
+           select a.actor_id, null, null, null, 'waitlist', a.profile_payload ->> 'displayName', a.profile_payload #>> '{answers,positioning}', null, null
+             from event_ops_admission_application_heads a
+            where a.workspace_id = $1 and a.event_id = $2 and a.status = 'waitlisted'
+         ), picked as (
+           select * from roster
+            where ($3 = '' or strpos(concat_ws(' ', name, positioning, company), $3) > 0)
+              and ($4::text[] is null or participant_id = any($4::text[]))
+            order by reception_no nulls last, name, actor_id
+            limit $5
+         )
+         select p.*,
+                case when $6 and p.participant_id is not null then (
+                  select (t ->> 'tableNumber')::int
+                    from event_ops_publication_heads ph
+                    join event_ops_publications pub on pub.workspace_id = ph.workspace_id and pub.publication_id = ph.publication_id
+                    cross join lateral jsonb_array_elements(pub.published_dto #> '{grouping,roundOne}') t
+                   where ph.workspace_id = $1 and ph.event_id = $2
+                     and exists (select 1 from jsonb_array_elements(t -> 'members') mm where mm ->> 'participantId' = p.participant_id)
+                   limit 1) end as table_number
+           from picked p`,
+        [workspaceId, eventId, options.q?.trim() ?? "", options.participantIds ? [...options.participantIds] : null, options.limit ?? null, options.withTables === true],
+      );
+      const textOf = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+      return result.rows.map((row) => ({
+        actorId: String(row.actor_id),
+        answers: textOf(row.positioning) ? { positioning: textOf(row.positioning)! } : {},
+        checkedInAt: iso(row.checked_in_at),
+        name: textOf(row.name) ?? "",
+        org: textOf(row.company),
+        participantId: (row.participant_id as string | null) ?? null,
+        receptionNumber: (row.reception_no as string | null) ?? null,
+        role: textOf(row.role),
+        status: row.kind === "waitlist" ? "waitlisted" : row.checked_in_at ? "checked_in" : "not_arrived",
+        tableNumber: row.table_number === null || row.table_number === undefined ? null : num(row.table_number),
+      }));
+    },
+
+    /** 受付の人数：参加中の総数と受付済み（库里数，不读名单）。 */
+    async kioskCounts(eventId: string): Promise<{ members: number; checkedIn: number }> {
+      const result = await client.query<{ members: number; checked_in: number }>(
+        `select count(*)::int as members, count(c.participant_id)::int as checked_in
            from event_ops_membership_heads m
-           left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
            left join event_ops_checkins c on c.workspace_id = m.workspace_id and c.event_id = m.event_id and c.participant_id = m.participant_id
-           left join event_reception_numbers r on r.workspace_id = m.workspace_id and r.event_id = m.event_id and r.actor_id = m.actor_id
-           left join event_ops_admission_application_heads a on a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id
-          where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
-         union all
-         select a.actor_id, null, null, null, a.profile_payload, null, 'waitlist' from event_ops_admission_application_heads a
-          where a.workspace_id = $1 and a.event_id = $2 and a.status = 'waitlisted'`,
+          where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'`,
         [workspaceId, eventId],
       );
-      return result.rows.map((row) => {
-        const payload = (typeof row.profile_payload === "string" ? JSON.parse(row.profile_payload) : row.profile_payload ?? {}) as { displayName?: string; answers?: Record<string, string> };
-        const participant = (typeof row.participant === "string" ? JSON.parse(row.participant) : row.participant ?? {}) as { displayName?: unknown; company?: unknown; role?: unknown };
-        const textOf = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
-        return { actorId: String(row.actor_id), answers: payload.answers ?? {}, checkedInAt: iso(row.checked_in_at), name: textOf(payload.displayName) ?? textOf(participant.displayName) ?? "", org: textOf(participant.company), participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null, role: textOf(participant.role), status: row.kind === "waitlist" ? "waitlisted" : row.checked_in_at ? "checked_in" : "not_arrived" };
-      });
+      return { checkedIn: num(result.rows[0]?.checked_in), members: num(result.rows[0]?.members) };
     },
 
     /** 交换：双方都确认的（contact request accepted）。按 requester / target 各自计人。 */
@@ -304,7 +349,16 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     },
 
     async publishedGrouping(eventId: string): Promise<{ roundOne: Array<{ tableNumber: number; members: Array<{ participantId: string }> }> } | null> {
-      const result = await client.query<{ grouping: unknown }>(`select p.published_dto -> 'grouping' as grouping from event_ops_publication_heads h join event_ops_publications p on p.workspace_id = h.workspace_id and p.publication_id = h.publication_id where h.workspace_id = $1 and h.event_id = $2`, [workspaceId, eventId]);
+      // Only table numbers and member ids leave the database (not themes, rationales or prompts).
+      const result = await client.query<{ grouping: unknown }>(
+        `select jsonb_build_object('roundOne', coalesce((
+                  select jsonb_agg(jsonb_build_object('tableNumber', t -> 'tableNumber', 'members',
+                           coalesce((select jsonb_agg(jsonb_build_object('participantId', mm -> 'participantId')) from jsonb_array_elements(t -> 'members') mm), '[]'::jsonb)))
+                    from jsonb_array_elements(p.published_dto #> '{grouping,roundOne}') t), '[]'::jsonb)) as grouping
+           from event_ops_publication_heads h join event_ops_publications p on p.workspace_id = h.workspace_id and p.publication_id = h.publication_id
+          where h.workspace_id = $1 and h.event_id = $2`,
+        [workspaceId, eventId],
+      );
       const raw = result.rows[0]?.grouping;
       return raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) as { roundOne: Array<{ tableNumber: number; members: Array<{ participantId: string }> }> } : null;
     },

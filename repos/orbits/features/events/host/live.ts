@@ -46,6 +46,9 @@ export interface HostLiveDeps {
 }
 
 const ROLE_LABEL: Record<string, HostRole> = { check_in: "check_in", manager: "manager", operations: "operations", read_only_analyst: "read_only_analyst", reviewer: "reviewer" };
+/** 受付名单在设备上缓存到活动结束后 12 小时。 */
+const kioskCacheUntil = (facts: { endsAt: string | null }, at: Date) => new Date(Date.parse(facts.endsAt ?? at.toISOString()) + 12 * 3_600_000).toISOString();
+
 /** 「参加者」一页的人数。 */
 const PEOPLE_PAGE_SIZE = 50;
 
@@ -534,27 +537,29 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
 
     async kiosk(actorId, eventId, q) {
+      // Polled every 5 s per kiosk device: counts are counted in the database, the search returns at
+      // most 20 people and only when there is a query, the recent list is 8 people, and table letters
+      // are looked up for those rows only — no full roster, profiles or grouping JSON per poll.
       const caps = await require(actorId, eventId, "check_in.roster.read_limited");
       const facts = await factsOrThrow(actorId, eventId);
-      const roster = await reads.kioskRoster(eventId);
-      const grouping = await reads.publishedGrouping(eventId);
-      const tableOf = new Map((grouping?.roundOne ?? []).flatMap((table) => table.members.map((member) => [member.participantId, String.fromCharCode(64 + Math.min(26, table.tableNumber))] as const)));
       const t = now();
-      const rows: HostKioskRow[] = roster.map((row) => {
-        const positioning = splitPositioning(row.answers.positioning);
-        const org = positioning.org ?? row.org;
-        const role = positioning.role ?? row.role;
-        return { actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role, status: row.status, table: row.participantId ? tableOf.get(row.participantId) ?? null : null, undoable: row.status === "checked_in" && row.checkedInAt !== null && t.getTime() - Date.parse(row.checkedInAt) <= 30 * 60_000 };
-      });
       const query = q.trim();
-      const recent = (await reads.recentCheckIns(eventId)).map((item) => rows.find((row) => row.participantId === item.participantId)).filter((row): row is HostKioskRow => Boolean(row));
-      const names = await actorNames(client, workspaceId, [actorId]);
-      const members = rows.filter((row) => row.status !== "waitlisted").length;
-      const checkedIn = rows.filter((row) => row.status === "checked_in").length;
+      const kioskRow = (row: Awaited<ReturnType<typeof reads.kioskRoster>>[number]): HostKioskRow => {
+        const positioning = splitPositioning(row.answers.positioning);
+        return { actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org: positioning.org ?? row.org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role: positioning.role ?? row.role, status: row.status, table: row.tableNumber !== null ? String.fromCharCode(64 + Math.min(26, row.tableNumber)) : null, undoable: row.status === "checked_in" && row.checkedInAt !== null && t.getTime() - Date.parse(row.checkedInAt) <= 30 * 60_000 };
+      };
+      const [counts, recentIds, found, names] = await Promise.all([
+        reads.kioskCounts(eventId),
+        reads.recentCheckIns(eventId),
+        query ? reads.kioskRoster(eventId, { limit: 20, q: query, withTables: true }) : Promise.resolve([]),
+        actorNames(client, workspaceId, [actorId]),
+      ]);
+      const recentRows = recentIds.length ? (await reads.kioskRoster(eventId, { participantIds: recentIds.map((item) => item.participantId), withTables: true })).map(kioskRow) : [];
+      const recent = recentIds.map((item) => recentRows.find((row) => row.participantId === item.participantId)).filter((row): row is HostKioskRow => Boolean(row));
       return {
-        cacheUntil: new Date(Date.parse(facts.endsAt ?? t.toISOString()) + 12 * 3_600_000).toISOString(),
+        cacheUntil: kioskCacheUntil(facts, t),
         canWalkIn: caps.includes("check_in.walk_in"),
-        checkedIn,
+        checkedIn: counts.checkedIn,
         devices: await kiosk.devices(eventId),
         doorsOpenAt: facts.startsAt,
         eventId,
@@ -562,21 +567,23 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         overCapacity: facts.capacity !== null && facts.admitted >= facts.capacity,
         approved: facts.admitted,
         capacity: facts.capacity,
-        rate: members > 0 ? Math.round((checkedIn / members) * 100) : 0,
+        rate: counts.members > 0 ? Math.round((counts.checkedIn / counts.members) * 100) : 0,
         recent: recent.map((row) => ({ at: row.checkedInAt!, initial: row.initial, name: row.name, org: row.org, participantId: row.participantId, receptionNumber: row.receptionNumber, table: row.table })),
-        rows: query ? rows.filter((row) => [row.name, row.kana ?? "", row.org ?? ""].some((text) => text.includes(query))).slice(0, 20) : [],
+        rows: found.map(kioskRow),
         staffName: names.get(actorId) ?? "",
         staffRole: facts.organizerActorId === actorId ? "主催" : "受付",
         title: facts.title,
-        total: members,
+        total: counts.members,
         venue: facts.venue,
       };
     },
     async kioskRoster(actorId, eventId) {
-      const response = await this.kiosk(actorId, eventId, "");
+      // The offline copy, fetched once when the kiosk starts: every person, display columns only.
+      await require(actorId, eventId, "check_in.roster.read_limited");
+      const facts = await factsOrThrow(actorId, eventId);
       const roster = await reads.kioskRoster(eventId);
       const rows = roster.map((row) => ({ actorId: row.actorId, checkedInAt: row.checkedInAt, initial: row.name.trim().charAt(0), kana: null, name: row.name, org: splitPositioning(row.answers.positioning).org ?? row.org, participantId: row.participantId ?? `waitlist:${row.actorId}`, receptionNumber: row.receptionNumber, role: splitPositioning(row.answers.positioning).role ?? row.role, status: row.status, table: null, undoable: false }));
-      return response ? { cacheUntil: response.cacheUntil, eventId, rows } : null;
+      return { cacheUntil: kioskCacheUntil(facts, now()), eventId, rows };
     },
     async scanCheckIn(actorId, eventId, input) {
       await require(actorId, eventId, "check_in.roster.write");
