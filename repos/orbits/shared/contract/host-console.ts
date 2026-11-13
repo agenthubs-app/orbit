@@ -196,6 +196,65 @@ export interface HostPeopleCounts {
   rejected: number;
 }
 
+/** 参加者詳細の一項目（主催者の質問 → 回答 / 申込資料の項目）。 */
+export interface HostPersonAnswer {
+  /** 主催者の質問は質問文そのもの；申込資料は固定キー（positioning / industry / topics …、画面側で訳す）。 */
+  label: string;
+  value: string;
+}
+
+export interface HostPersonMate {
+  participantId: string;
+  name: string;
+  org: string | null;
+}
+
+/** この人が座るテーブル（公開済みのマッチング）。 */
+export interface HostPersonTable {
+  round: number;
+  /** 「A」「B」… */
+  table: string;
+  theme: string | null;
+  /** この人がこの卓になった理由（無ければ卓の理由）。 */
+  why: string | null;
+  /** 同じ卓の他の人（本人を除く）。 */
+  mates: readonly HostPersonMate[];
+}
+
+export interface HostPersonRecommendation {
+  rank: number;
+  participantId: string;
+  name: string;
+  org: string | null;
+  role: string | null;
+  reason: string | null;
+}
+
+/** `GET /api/host/events/[id]/people/[actorId]`：参加者 1 人の申込内容とマッチング結果（その人の分だけ読む）。 */
+export interface HostPersonResponse {
+  eventId: string;
+  actorId: string;
+  name: string;
+  initial: string;
+  org: string | null;
+  role: string | null;
+  status: HostPeopleBucket;
+  /** application = 申込あり；member = 申込なしで登録（先着・移行した回）。 */
+  source: "application" | "member";
+  submittedAt: string | null;
+  checkedInAt: string | null;
+  receptionNumber: string | null;
+  attendCount: number;
+  hostAnswers: readonly HostPersonAnswer[];
+  profile: readonly HostPersonAnswer[];
+  topics: readonly string[];
+  offers: readonly string[];
+  needs: readonly string[];
+  /** null = 見る権限なし；published=false = まだ公開していない。 */
+  matching: { published: boolean; tables: readonly HostPersonTable[]; recommendations: readonly HostPersonRecommendation[] } | null;
+  sample?: true;
+}
+
 /** `GET /api/host/events/[id]/people?bucket=&q=&incomplete=1&cursor=`。 */
 export interface HostPeopleResponse {
   event: HostEventView;

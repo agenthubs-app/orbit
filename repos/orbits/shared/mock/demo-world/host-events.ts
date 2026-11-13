@@ -14,6 +14,7 @@ import type {
   HostRole,
 } from "../../contract/host-events";
 import type {
+  HostPersonResponse,
   HostKioskRecent,
   HostKioskResponse,
   HostKioskRow,
@@ -410,6 +411,32 @@ const ROUNDTABLE_PENDING: readonly Applicant[] = [
 function peopleRow(applicant: Applicant, status: HostPeopleBucket, version = 1): HostPeopleRow {
   const p = person(applicant.id);
   return { actorId: `actor:${p.id}`, answer: applicant.answer, applicationVersion: version, attendCount: applicant.attend, initial: initial(p.name), name: p.name, org: p.company, profileIncomplete: applicant.score < 50, profileScore: applicant.score, role: p.role, status };
+}
+
+/** 参加者詳細（示例）：申込回答 + 卓（第 1 回 A 卓）+ 推薦 5 名。 */
+export function hostPerson(eventId: string, actorId: string, state: HostMockState = DEFAULT_HOST_MOCK_STATE): HostPersonResponse | null {
+  const list = eventId === HOST_EVENT_IDS.cfo18 ? CFO18_PENDING : eventId === HOST_EVENT_IDS.roundtable ? ROUNDTABLE_PENDING : [];
+  const applicant = list.find((item) => `actor:${item.id}` === actorId);
+  if (!applicant || !hostEventView(eventId, state)) return null;
+  const row = peopleRow(applicant, "approved");
+  const others = list.filter((item) => item !== applicant).map((item) => person(item.id));
+  const mates = others.slice(0, 3).map((p) => ({ name: p.name, org: p.company, participantId: `participant:${p.id}` }));
+  return {
+    actorId, attendCount: row.attendCount, checkedInAt: null, eventId,
+    hostAnswers: [{ label: "今回いちばん話したいことは？", value: applicant.answer }, { label: "参加のきっかけ", value: "前回参加者の紹介" }],
+    initial: row.initial,
+    matching: {
+      published: true,
+      recommendations: others.slice(0, 5).map((p, index) => ({ name: p.name, org: p.company, participantId: `participant:${p.id}`, rank: index + 1, reason: index === 0 ? "資本政策の相談相手として、同じ段階の経験が近い" : "関心のある領域が重なり、提供できることと探していることが噛み合う", role: p.role })),
+      tables: [
+        { mates, round: 1, table: "A", theme: "資本政策と最初の調達", why: "シリーズA前後の論点が近い人で集めました" },
+        { mates: mates.slice(0, 2), round: 2, table: "C", theme: "財務チームの作り方", why: null },
+      ],
+    },
+    name: row.name, needs: ["投資家の紹介", "監査法人選びの経験"], offers: ["SaaS の財務モデル"], org: row.org,
+    profile: [{ label: "positioning", value: `${row.role ?? ""} @ ${row.org ?? ""}` }, { label: "desiredOutcome", value: applicant.answer }],
+    receptionNumber: null, role: row.role, sample: true, source: "application", status: "approved", submittedAt: "2026-09-28T03:12:00.000Z", topics: ["資本政策", "IPO 準備"],
+  };
 }
 
 /** 页面每页显示的条数（さらに表示）。 */

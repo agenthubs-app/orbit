@@ -38,6 +38,7 @@ import type {
   HostPeopleDecisionInput,
   HostPeopleDecisionResult,
   HostPeopleResponse,
+  HostPersonResponse,
   HostReportResponse,
   HostSetupDraftInput,
   HostSetupHostNoteInput,
@@ -108,6 +109,8 @@ export interface HostService {
   publishMatching(actorId: string, eventId: string, input: HostMatchingPublishInput): Promise<HostMatchingResponse>;
 
   people(actorId: string, eventId: string, query: HostPeopleQuery): Promise<HostPeopleResponse | null>;
+  /** 参加者 1 人の申込内容とマッチング結果（その人の分だけ読む）。 */
+  person(actorId: string, eventId: string, subjectActorId: string): Promise<HostPersonResponse | null>;
   decide(actorId: string, eventId: string, applicantActorId: string, input: HostPeopleDecisionInput): Promise<HostPeopleDecisionResult>;
 
   kiosk(actorId: string, eventId: string, q: string): Promise<HostKioskResponse | null>;

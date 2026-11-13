@@ -39,6 +39,7 @@ import {
   hostPeopleDecisionInputSchema,
   hostPeopleDecisionResultSchema,
   hostPeopleResponseSchema,
+  hostPersonResponseSchema,
   hostReportResponseSchema,
   hostRosterMatchInputSchema,
   hostRosterMatchResponseSchema,
@@ -189,6 +190,7 @@ export function createHostRoutes(deps: HostRouteDeps = {}) {
       const bucket = (BUCKETS as readonly string[]).includes(url.searchParams.get("bucket") ?? "") ? url.searchParams.get("bucket") as (typeof BUCKETS)[number] : "pending";
       return service.people(actorId!, id(params), { bucket, cursor: url.searchParams.get("cursor"), incomplete: url.searchParams.get("incomplete") === "1", q: (url.searchParams.get("q") ?? "").trim().slice(0, 80) });
     }),
+    person: r({ ...required, schema: hostPersonResponseSchema }, async ({ actorId, params, service }) => service.person(actorId!, id(params), id(params, "actorId"))),
     decide: r({ ...writes, schema: hostPeopleDecisionResultSchema }, async ({ actorId, params, request, service }) => service.decide(actorId!, id(params), id(params, "actorId"), await body(request, hostPeopleDecisionInputSchema))),
 
     rosterMatch: r({ ...required, schema: hostRosterMatchResponseSchema }, async ({ actorId, params, request, service }) => service.rosterMatch(actorId!, id(params), await body(request, hostRosterMatchInputSchema))),

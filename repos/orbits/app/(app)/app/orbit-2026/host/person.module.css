@@ -1,0 +1,37 @@
+/* 参加者詳細（HostPersonDrawer）。只用 token；卡片层级与共同運営者抽屉一致。 */
+.body { display: grid; gap: 18px; }
+.head { gap: 14px; align-items: flex-start; }
+.orgLine { font-size: var(--fs-body-sm); font-weight: var(--fw-bold); line-height: var(--lh-snug); padding-top: 6px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: var(--fs-meta); color: var(--ink-3); }
+.status { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--r-pill); font-size: var(--fs-caption); font-weight: var(--fw-bold); background: var(--surface-2); color: var(--ink-2); }
+.st_approved { background: var(--mac-teal); color: var(--mac-teal-ink); }
+.st_pending { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+.st_waitlisted { background: var(--mac-blue); color: var(--mac-blue-ink); }
+.st_rejected { background: var(--surface-2); color: var(--ink-3); }
+
+.section { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.h { margin: 0; font-size: var(--fs-body-sm); font-weight: var(--fw-heavy); }
+.qa { display: grid; gap: 10px; margin: 0; }
+.qa dt, .dt { font-size: var(--fs-caption); color: var(--ink-3); font-weight: var(--fw-bold); }
+.qa dd { margin: 2px 0 0; font-size: var(--fs-body-sm); line-height: var(--lh-prose); white-space: pre-wrap; overflow-wrap: anywhere; }
+.chipsRow { display: grid; gap: 6px; }
+.chips, .mates { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-meta); }
+.chip small { color: var(--ink-3); font-size: var(--fs-caption); }
+
+.note { font-size: var(--fs-meta); color: var(--ink-3); line-height: var(--lh-prose); padding: 12px; border-radius: var(--r-tile); background: var(--surface-2); }
+.table { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-tile); background: var(--surface-2); }
+.tableHead { gap: 10px; align-items: center; }
+.tno { width: 32px; height: 32px; flex: 0 0 auto; display: grid; place-items: center; border-radius: var(--r-input-sm); background: var(--plum-100); color: var(--plum-900); font-family: var(--font-num); font-weight: var(--fw-black); font-size: var(--fs-body-sm); }
+.theme { display: block; font-size: var(--fs-body-sm); }
+.why { margin: 0; font-size: var(--fs-meta); color: var(--ink-2); line-height: var(--lh-prose); }
+.mates .chip { background: var(--surface); }
+
+.recs { display: grid; gap: 8px; }
+.recs ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rec { display: grid; grid-template-columns: 24px 1fr; gap: 10px; font-size: var(--fs-body-sm); }
+.rank { width: 24px; height: 24px; display: grid; place-items: center; border-radius: var(--r-pill); background: var(--plum-100); color: var(--plum-900); font-family: var(--font-num); font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.reason { margin-top: 2px; font-size: var(--fs-meta); color: var(--ink-2); line-height: var(--lh-prose); }
+
+.loading { display: grid; gap: 12px; }
+.loading i { display: block; height: 56px; border-radius: var(--r-tile); background: var(--surface-2); }

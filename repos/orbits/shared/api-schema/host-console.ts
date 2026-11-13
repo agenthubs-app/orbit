@@ -20,6 +20,7 @@ import type {
   HostPeopleDecisionInput,
   HostPeopleDecisionResult,
   HostPeopleResponse,
+  HostPersonResponse,
   HostReportResponse,
   HostSetupDraftInput,
   HostSetupHostNoteInput,
@@ -144,6 +145,35 @@ export const hostPeopleRowObject = z.object({
   // 0 = a member who registered without an application (first-come / imported events): read-only row.
   applicationVersion: z.number().int().min(0),
 });
+
+const hostPersonAnswerObject = z.object({ label: z.string().max(400), value: z.string().max(4000) });
+const hostPersonMateObject = z.object({ participantId: z.string().min(1), name: z.string(), org: z.string().nullable() });
+export const hostPersonResponseObject = z.object({
+  eventId: z.string().min(1),
+  actorId: z.string().min(1),
+  name: z.string(),
+  initial: z.string().max(4),
+  org: z.string().nullable(),
+  role: z.string().nullable(),
+  status: z.enum(BUCKETS),
+  source: z.enum(["application", "member"]),
+  submittedAt: z.string().nullable(),
+  checkedInAt: z.string().nullable(),
+  receptionNumber: z.string().nullable(),
+  attendCount: count,
+  hostAnswers: readableItems(hostPersonAnswerObject),
+  profile: readableItems(hostPersonAnswerObject),
+  topics: z.array(z.string()).max(40),
+  offers: z.array(z.string()).max(40),
+  needs: z.array(z.string()).max(40),
+  matching: z.object({
+    published: z.boolean(),
+    tables: readableItems(z.object({ round: z.number().int().min(1), table: z.string().min(1), theme: z.string().nullable(), why: z.string().nullable(), mates: readableItems(hostPersonMateObject) })),
+    recommendations: readableItems(z.object({ rank: count, participantId: z.string().min(1), name: z.string(), org: z.string().nullable(), role: z.string().nullable(), reason: z.string().nullable() })),
+  }).nullable(),
+  sample: z.literal(true).optional(),
+});
+export const hostPersonResponseSchema = hostPersonResponseObject as unknown as z.ZodType<HostPersonResponse>;
 
 export const hostPeopleResponseObject = z.object({
   event: hostEventViewObject,

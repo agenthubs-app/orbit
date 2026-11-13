@@ -4,6 +4,7 @@
  * - 变体挂在 globalThis 上（Next dev 各路由包各一份模块），由开发接口 `app/api/dev/event-design-fixture/route.dev.ts` 切换。
  */
 import {
+  hostPerson,
   DEFAULT_HOST_MOCK_STATE,
   HOST_EVENT_IDS,
   HOST_INVITE_SAMPLE_CODE,
@@ -196,6 +197,11 @@ export function createHostMockService(): HostService {
     },
     async people(_actor, eventId, query) {
       return hostPeople(eventId, query.bucket, { decided: m().decisions.get(eventId), incomplete: query.incomplete, q: query.q }, m().state);
+    },
+    async person(_actor, eventId, subjectActorId) {
+      const view = hostPerson(eventId, subjectActorId, m().state);
+      if (!view) throw new HostError("NOT_FOUND");
+      return view;
     },
     async decide(_actor, eventId, applicantActorId, input) {
       const view = hostPeople(eventId, "pending", { decided: m().decisions.get(eventId) }, m().state);

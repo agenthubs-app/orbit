@@ -196,3 +196,8 @@
   .ring circle, .tgl::after { transition: none; }
 }
 :global([data-orbit-2026][data-reduced-motion="true"]) .mrow.drag { transform: none; }
+
+/* 参加者行の名前：押すと参加者詳細（HostPersonDrawer）が開く。見た目は行のまま、ホバーで名前に下線。 */
+.whoBtn.whoBtn { all: unset; box-sizing: border-box; display: flex; width: 100%; gap: 10px; align-items: center; cursor: pointer; border-radius: var(--r-sm); text-align: left; }
+.whoBtn:hover .whoName { text-decoration: underline; text-underline-offset: 3px; }
+.whoBtn:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; }

@@ -4,7 +4,7 @@
 // 失敗分類は R26 events-api と同じ形に、主催側で要る forbidden（権限なし）と conflict（版の衝突・状態）を足す。
 import type { ZodType } from "zod";
 
-import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema, hostRosterMatchResponseSchema, hostSetupResponseSchema } from "../../../../../shared/api-schema/host-console";
+import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostPersonResponseSchema, hostReportResponseSchema, hostRosterMatchResponseSchema, hostSetupResponseSchema } from "../../../../../shared/api-schema/host-console";
 import { hostCohostInviteResultSchema, hostCohostsResponseSchema } from "../../../../../shared/api-schema/host-cohosts";
 import { hostCenterResponseSchema, hostEventViewSchema, hostEventWriteResultSchema } from "../../../../../shared/api-schema/host-events";
 import { hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../../../../shared/api-schema/host-cohosts";
@@ -14,7 +14,7 @@ import type { HostEventInput, HostEventUpdateInput, HostEventView } from "../../
 import type { OrganizerProfile, OrganizerProfileInput, OrganizerProfileListResponse, OrganizerPublicResponse } from "../../../../../shared/contract/organizer-profile";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../../../../shared/api-schema/host-notices";
 import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostReportResponse, HostRosterMatchResponse, HostSetupDraftInput, HostSetupResponse } from "../../../../../shared/contract/host-console";
-import type { HostAdmissionDecision, HostMatchingConditions, HostMatchingMove, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse } from "../../../../../shared/contract/host-console";
+import type { HostAdmissionDecision, HostMatchingConditions, HostMatchingMove, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse } from "../../../../../shared/contract/host-console";
 import type { HostCohostInviteResult, HostCohostRole, HostCohostsResponse } from "../../../../../shared/contract/host-cohosts";
 import type { HostCenterFilter, HostCenterResponse, HostEventWriteResult } from "../../../../../shared/contract/host-events";
 import type { HostNoticePreview, HostNoticeSendResult, HostSendableNoticeKind } from "../../../../../shared/contract/host-notices";
@@ -81,6 +81,7 @@ export const hostApi = {
   generate: (eventId: string, conditions: HostMatchingConditions) => call(`/api/host/events/${id(eventId)}/matching/generate`, post({ conditions, idempotencyKey: newIdempotencyKey() }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
   overrides: (eventId: string, generationId: string, expectedVersion: number, moves: readonly HostMatchingMove[]) => call(`/api/host/events/${id(eventId)}/matching/overrides`, send("PUT", { expectedVersion, generationId, moves }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
   publishMatching: (eventId: string, generationId: string, overridesVersion: number, notifyCohosts = false) => call(`/api/host/events/${id(eventId)}/matching/publish`, post({ generationId, notifyCohosts, overridesVersion }), hostMatchingResponseSchema as ZodType<HostMatchingResponse>),
+  person: (eventId: string, actorId: string) => call(`/api/host/events/${id(eventId)}/people/${id(actorId)}`, undefined, hostPersonResponseSchema as ZodType<HostPersonResponse>),
   people: (eventId: string, query: HostPeopleQuery) => call(`/api/host/events/${id(eventId)}/people?${peopleQueryString(query)}`, undefined, hostPeopleResponseSchema as ZodType<HostPeopleResponse>),
   decide: (eventId: string, actorId: string, decision: HostAdmissionDecision, expectedVersion: number) => call(`/api/host/events/${id(eventId)}/people/${id(actorId)}/decision`, post({ decision, expectedVersion }), hostPeopleDecisionResultSchema as ZodType<HostPeopleDecisionResult>),
   cohosts: (eventId: string) => call(`/api/host/events/${id(eventId)}/cohosts`, undefined, hostCohostsResponseSchema as ZodType<HostCohostsResponse>),

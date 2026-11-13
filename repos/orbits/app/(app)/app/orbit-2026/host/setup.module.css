@@ -126,3 +126,7 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
 @media (prefers-reduced-motion: reduce) {
   .tpl:active { transform: none; }
 }
+
+/* 開催済み：設定は見るだけ（操作は inert、見た目も一段落とす）。 */
+.endedBanner { display: grid; gap: 4px; background: var(--surface-2); }
+.readOnly { opacity: 0.72; }

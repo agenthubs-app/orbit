@@ -3,13 +3,14 @@
 // R17 イベント運営 · 参加者（b6 #7 空 · 朝会 #3 / #8 少 · ラウンドテーブル / #9 大 · CFO18，§39 A10 审核说明与批量按钮写人数）。
 // 数据：GET /api/host/events/[id]/people?bucket=&q=&incomplete=1&cursor=；决定 POST /people/[actorId]/decision。
 // 批量 = 逐条调用，各带自己的版本号；失败的行就地标出（409 →「他の運営者が先に更新しました」并只重读这一行所在的列表）。
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { HostAdmissionDecision, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { InviteQr } from "../add/invite/InviteQr";
 import { Avatar, Icon, Modal, Segmented, useToast } from "../ui";
 import { failureOf, hostApi, type HostPeopleQuery } from "./host-api";
+import { HostPersonDrawer } from "./HostPersonDrawer";
 import { consoleHref, hostTranslator, type HostT } from "./host-model";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
@@ -57,6 +58,10 @@ export type HostPeopleViewProps = {
   onDecide?: (row: HostPeopleRow, decision: HostAdmissionDecision) => void;
   onBulk?: (decision: HostAdmissionDecision) => void;
   onMore?: () => void;
+  /** 行を開く（参加者詳細）。 */
+  onOpen?: (row: HostPeopleRow) => void;
+  /** 区分を切り替えて読み込み中（前の区分の行を出さない）。 */
+  loading?: boolean;
   onCopyLink?: () => void;
   onQr?: () => void;
   onImport?: () => void;
@@ -143,7 +148,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {props.loading ? [0, 1, 2].map((key) => <tr key={`ghost-${key}`} className={m.ghostTr} aria-hidden><td className={m.tdCheck} /><td><i style={{ width: 140 }} /></td><td><i style={{ width: 240 }} /></td><td><i style={{ width: 60 }} /></td><td><i style={{ width: 50 }} /></td><td /></tr>) : rows.map((row) => {
               const on = selected.has(row.actorId);
               const issue = issues.get(row.actorId);
               const low = row.profileScore < 50;
@@ -153,14 +158,14 @@ export function HostPeopleView(props: HostPeopleViewProps) {
                     {decidable ? <button type="button" role="checkbox" aria-checked={on} aria-label={t("pSelectRow", { name: row.name })} className={`btn ${m.cbx} ${on ? m.cbxOn : ""}`} onClick={() => props.onSelect?.(row.actorId)}>{on ? <Icon name="check" size={16} /> : null}</button> : null}
                   </td>
                   <td className={m.tdApplicant}>
-                    <div className={`${s.row} ${m.who}`}>
+                    <button type="button" className={`btn ${s.row} ${m.who} ${m.whoBtn}`} aria-label={t("pdOpen", { name: row.name })} onClick={() => props.onOpen?.(row)}>
                       <Avatar name={row.name} size="sm" />
                       <div className={s.minw0}>
                         <b className={`${s.clamp1} ${m.whoName}`}>{row.name}</b>
                         <div className={`${s.lbl} ${s.clamp1}`}>{[row.org, row.role].filter(Boolean).join(" · ")}</div>
                         {issue ? <span className={m.rowNote} role="status">{issue === "conflict" ? t("pRowConflict") : t("pRowFailed")}</span> : null}
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td className={m.tdAnswer}><div className={m.answer}>{row.answer ?? "—"}</div></td>
                   <td>
@@ -186,7 +191,7 @@ export function HostPeopleView(props: HostPeopleViewProps) {
             })}
           </tbody>
         </table>
-        {rows.length === 0 ? <div className={s.empty}>{query.q || query.incomplete ? t("pNoMatch") : t("pNone")}</div> : null}
+        {rows.length === 0 && !props.loading ? <div className={s.empty}>{query.q || query.incomplete ? t("pNoMatch") : t("pNone")}</div> : null}
         {data.more > 0 && data.nextCursor ? <div className={`${s.row} ${m.moreRow}`}><button type="button" className={`btn ${s.btn} ${s.sm}`} disabled={busy} onClick={props.onMore}>{t("pMore", { n: data.more })}</button></div> : null}
       </div>
       <div className={`${s.span3} ${m.side}`}>
@@ -235,11 +240,16 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   const [issues, setIssues] = useState<Map<string, RowIssue>>(new Map());
   const [origin, setOrigin] = useState("");
   const [dialog, setDialog] = useState<"qr" | "import" | null>(null);
+  const [open, setOpen] = useState<{ actorId: string; name: string } | null>(null);
 
   useEffect(() => { setOrigin(window.location.host); }, []);
 
+  // 只认最后一次请求的结果：快速切换区分时，晚到的旧响应不能盖掉新区分。
+  const latest = useRef(0);
   const load = useCallback(async (next: HostPeopleQuery = query) => {
+    const seq = ++latest.current;
     const res = await hostApi.people(eventId, next);
+    if (seq !== latest.current) return null;
     if (!res.ok) { setFailed(true); return null; }
     setFailed(false);
     setData(res.data);
@@ -251,7 +261,8 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
     return () => clearTimeout(timer);
   }, [load, query]);
 
-  const change = (patch: Partial<HostPeopleQuery>) => { setSelected(new Set()); setIssues(new Map()); setQuery((prev) => ({ ...prev, ...patch, cursor: null })); };
+  // 切换区分时先清空行（显示占位），不让上一个区分的行带着勾选框和审核按钮闪一下。
+  const change = (patch: Partial<HostPeopleQuery>) => { setSelected(new Set()); setIssues(new Map()); if (patch.bucket !== undefined && patch.bucket !== query.bucket) setRows([]); setQuery((prev) => ({ ...prev, ...patch, cursor: null })); };
 
   const more = async () => {
     if (!data?.nextCursor) return;
@@ -300,7 +311,8 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
   const visibleRows = rows.slice(0, Math.max(ROW_PAGE, rows.length));
   return (
     <>
-      <HostPeopleView data={data} t={t} rows={visibleRows} query={query} selected={selected} issues={issues} busy={busy} origin={origin}
+      <HostPeopleView data={data} t={t} rows={visibleRows} query={query} selected={selected} issues={issues} busy={busy} origin={origin} loading={data.bucket !== query.bucket}
+        onOpen={(row) => setOpen({ actorId: row.actorId, name: row.name })}
         onBucket={(bucket) => change({ bucket })}
         onSearch={(q) => change({ q })}
         onIncomplete={() => change({ incomplete: !query.incomplete })}
@@ -318,6 +330,7 @@ export function HostPeopleTab({ eventId, language, initialIncomplete = false, on
           <div className={m.qrBox}><InviteQr text={`${window.location.origin}${data.applyPath}`} label={t("pQrTitle")} /></div>
         </Modal>
       ) : null}
+      {open ? <HostPersonDrawer eventId={eventId} actorId={open.actorId} name={open.name} language={language} onClose={() => setOpen(null)} /> : null}
       {dialog === "import" ? (
         <Modal open onClose={() => setDialog(null)} title={t("pImport")} size={480} description={t("pImportBody")} hint={t("pImportSoon")} actions={<button type="button" className={`btn ${s.btn}`} onClick={() => setDialog(null)}>{t("close")}</button>} />
       ) : null}

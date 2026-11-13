@@ -13,7 +13,7 @@ import { shiftedRegistrationClose } from "../../features/events/host/storage/lif
 import { HostError } from "../../features/events/host/service";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
 import { lockedFixtureQuery } from "../support/sync-revision-fixture";
-import { hostPeopleRowObject } from "../../shared/api-schema/host-console";
+import { hostPeopleRowObject, hostPersonResponseObject } from "../../shared/api-schema/host-console";
 
 const HOST = "actor:host";
 const isHost = (code: string) => (error: unknown) => error instanceof HostError && error.code === code;
@@ -109,6 +109,17 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.equal(memberRow?.name, participantName.rows[0]!.name, "listed with the event profile name");
     assert.deepEqual([memberRow?.status, memberRow?.applicationVersion], ["approved", 0]);
     assert.ok(hostPeopleRowObject.safeParse(memberRow).success, "the response schema keeps member rows (it drops unreadable rows silently)");
+
+    // 参加者詳細: one person, only their own data; a member reads from the event profile, an applicant from the application.
+    const member = await service.person(HOST, eventId, "actor:p1");
+    assert.deepEqual([member!.source, member!.status, member!.name], ["member", "approved", participantName.rows[0]!.name]);
+    assert.deepEqual(member!.matching, { published: false, recommendations: [], tables: [] }, "nothing published yet");
+    assert.ok(hostPersonResponseObject.safeParse(member).success);
+    const applicant = await service.person(HOST, eventId, "actor:p2");
+    assert.deepEqual([applicant!.source, applicant!.status, applicant!.name], ["application", "waitlisted", "森 拓也"]);
+    assert.ok(applicant!.profile.length > 0, "application answers are listed");
+    await assert.rejects(service.person(HOST, eventId, "actor:nobody"), isHost("NOT_FOUND"));
+    await assert.rejects(service.person("actor:stranger", eventId, "actor:p2"), isHost("NOT_FOUND"));
   });
 });
 

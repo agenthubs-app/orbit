@@ -10,7 +10,7 @@ import { hostNextSteps, hostTodoItems, type HostTodoEventFacts } from "../../../
 import { suggestQuestions } from "../../../shared/compute/question-suggest";
 import { suppressCells, suppressedDistribution, suppressedRate, suppressSmall } from "../../../shared/compute/small-cell";
 import type { HostCenterEventRow, HostCenterResponse, HostEventStatus, HostEventView, HostEventWriteResult, HostRole } from "../../../shared/contract/host-events";
-import type { HostKioskRow, HostMatchingResponse, HostPeopleBucket, HostPeopleRow, HostReportResponse, HostSetupQuestion, HostSetupResponse } from "../../../shared/contract/host-console";
+import type { HostKioskRow, HostMatchingResponse, HostPeopleBucket, HostPeopleRow, HostPersonResponse, HostReportResponse, HostSetupQuestion, HostSetupResponse } from "../../../shared/contract/host-console";
 import type { HostCohostRole } from "../../../shared/contract/host-cohosts";
 import { createPostgresEventAdmissionRepository } from "../admission/storage/postgres-repository";
 import { canAccessEventCapability } from "../event-access/capability-policy";
@@ -222,6 +222,12 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       : facts.matched === null && facts.generations === 0 ? { kind: "matching_missing" }
       : { kind: "none" };
     return { action: status === "live" ? "open_check_in" : "open_console", applied: facts.applied, capacity: facts.capacity, checkedIn: status === "live" || status === "ended" || status === "archived" || facts.checkedIn > 0 ? facts.checkedIn : null, emoji: facts.payload.emoji ?? null, endsAt: facts.endsAt, eventId: facts.eventId, matched: facts.matched, note, role: ROLE_LABEL[facts.role ?? ""] ?? "owner", startsAt: facts.startsAt, status, title: facts.title, venue: facts.venue };
+  }
+
+  /** 開催済み・中止・アーカイブの回は申込設定を変えられない（画面も読み取り専用）。 */
+  async function requireNotEnded(actorId: string, eventId: string) {
+    const status = statusOf(await factsOrThrow(actorId, eventId), now());
+    if (status === "ended" || status === "cancelled" || status === "archived") throw new HostError("VALIDATION", "EVENT_ENDED");
   }
 
   async function setupView(actorId: string, eventId: string): Promise<HostSetupResponse> {
@@ -491,6 +497,46 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const total = result.rows.length ? result.total : offset;
       return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, total - offset - page.length), nextCursor: offset + page.length < total ? String(offset + page.length) : null, questionCount: (questionSet?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
     },
+    async person(actorId, eventId, subjectActorId) {
+      const caps = await require(actorId, eventId, "admission.read");
+      const facts = await factsOrThrow(actorId, eventId);
+      const found = await reads.person(eventId, subjectActorId, facts.organizerActorId);
+      if (!found) throw new HostError("NOT_FOUND");
+      const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+      const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()).slice(0, 40) : []);
+      const p = found.participant;
+      const fromApplication = found.status !== null;
+      const name = text(found.applicationName) ?? text(p.displayName) ?? "";
+      const positioning = splitPositioning(found.answers.positioning);
+      const org = positioning.org ?? text(p.company);
+      const role = positioning.role ?? text(p.role);
+      // 主催者の質問：公開済みの質問の順で、回答のあるものだけ（選択肢の「 · 」区切りはそのまま）。
+      const questions = (((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
+      const hostAnswers = questions.flatMap((question) => { const value = text(found.hostAnswers[question.id]); return value ? [{ label: question.prompt, value }] : []; });
+      // 申込資料（申込あり）/ 活動プロフィール（申込なし）の表示項目。キーは画面で訳す。
+      const profile = fromApplication
+        ? ANSWER_KEYS.flatMap((key) => { const value = text(found.answers[key]); return value ? [{ label: key, value }] : []; })
+        : (["company", "role", "industry", "seniority", "energyStyle", "experienceHighlight"] as const).flatMap((key) => { const value = text(p[key]); return value ? [{ label: key, value }] : []; });
+      const status: HostPeopleBucket = fromApplication ? ({ admitted: "approved", pending_review: "pending", rejected: "rejected", waitlisted: "waitlisted" } as Record<string, HostPeopleBucket>)[found.status!] ?? "pending" : "approved";
+      let matching: HostPersonResponse["matching"] = null;
+      if (caps.includes("operations.read_sensitive")) {
+        if (!found.participantId) matching = { published: false, recommendations: [], tables: [] };
+        else {
+          const result = await reads.personMatching(eventId, found.participantId);
+          const mate = (id: string) => ({ name: result.names[id]?.name ?? "", org: result.names[id]?.org ?? null, participantId: id });
+          matching = {
+            published: result.published,
+            recommendations: result.recommendations.map((item) => ({ name: result.names[item.participantId]?.name ?? "", org: result.names[item.participantId]?.org ?? null, participantId: item.participantId, rank: item.rank, reason: item.reason, role: result.names[item.participantId]?.role ?? null })),
+            tables: result.tables.map((table) => ({ mates: table.members.filter((id) => id !== found.participantId).map(mate), round: table.round, table: String.fromCharCode(64 + Math.min(26, Math.max(1, table.tableNumber))), theme: table.theme || null, why: table.why || null })),
+          };
+        }
+      }
+      return {
+        actorId: subjectActorId, attendCount: found.attendCount, checkedInAt: found.checkedInAt, eventId, hostAnswers, initial: name.charAt(0), matching, name,
+        needs: list(p.needs), offers: list(p.offers), org, profile, receptionNumber: found.receptionNumber, role, source: fromApplication ? "application" : "member",
+        status, submittedAt: found.submittedAt, topics: list(p.topics),
+      };
+    },
     async decide(actorId, eventId, applicantActorId, input) {
       await require(actorId, eventId, "admission.decide");
       try {
@@ -609,6 +655,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async saveSetup(actorId, eventId, input) {
       await require(actorId, eventId, "experience.configure");
+      await requireNotEnded(actorId, eventId);
       if (input.registrationClosesAt) {
         const facts = await factsOrThrow(actorId, eventId);
         if (facts.startsAt && Date.parse(input.registrationClosesAt) > Date.parse(facts.startsAt)) throw new HostError("VALIDATION", "REGISTRATION_CLOSES_AFTER_START");
@@ -625,6 +672,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async publishSetup(actorId, eventId, input) {
       await require(actorId, eventId, "experience.publish");
+      await requireNotEnded(actorId, eventId);
       const result = await client.query(`update event_host_question_sets set published = draft, published_at = now(), revision = revision + 1, updated_by = $3 where workspace_id = $1 and event_id = $2 and revision = $4`, [workspaceId, eventId, actorId, input.expectedRevision]);
       if ((result.rowCount ?? 0) === 0) throw new HostError("VERSION_CONFLICT");
       const draft = ((await reads.questionSet(eventId))?.draft ?? {}) as { capacity?: number | null; registrationClosesAt?: string | null; admissionMode?: "first_come" | "review"; description?: string };

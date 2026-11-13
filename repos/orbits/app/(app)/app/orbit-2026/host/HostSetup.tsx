@@ -292,12 +292,20 @@ export function HostSetupView(props: HostSetupViewProps) {
   const removeQuestion = (index: number) => { change({ ...draft, questions: draft.questions.filter((_, k) => k !== index) }); props.onEdit?.(-1); };
   const moveQuestion = (from: number, to: number) => { change({ ...draft, questions: moveItem(draft.questions, from, to) }); if (editing === from) props.onEdit?.(to); };
   const addQuestion = (kind: HostQuestionKind) => { if (draft.questions.length >= QUESTION_MAX) { props.onLimit?.(); return; } change({ ...draft, questions: [...draft.questions, blankQuestion(kind)] }); props.onEdit?.(draft.questions.length); };
-  const suggestion = data.suggestion && suggestionOpen ? data.suggestion : null;
+  // 開催済み・中止・アーカイブ：申込はもう来ないので、設定は見るだけ（成熟品と同じく終了後は変更不可）。
+  const ended = data.event.status === "ended" || data.event.status === "cancelled" || data.event.status === "archived";
+  const suggestion = data.suggestion && suggestionOpen && !ended ? data.suggestion : null;
   const ago = agoText(data.savedAt, now, t, (iso) => hostDateDay(iso, t, language));
   const status = saveState === "saving" ? t("suSaving") : saveState === "dirty" ? t("suUnsaved") : saveState === "invalid" ? t("suInvalid") : ago ? t("suSavedAgo", { ago }) : "";
   return (
     <>
-      <div className={`${u.col} ${u.span7}`} data-host-setup={empty ? "empty" : data.formPublished ? "published" : "draft"}>
+      {ended ? (
+        <div className={`${s.card} ${s.span12} ${u.endedBanner}`} role="status" data-host-setup-ended="">
+          <b>{t("suEndedTitle")}</b>
+          <div className={s.lbl}>{t("suEndedSub")}</div>
+        </div>
+      ) : null}
+      <div className={`${u.col} ${u.span7} ${ended ? u.readOnly : ""}`} inert={ended || undefined} data-host-setup={ended ? "ended" : empty ? "empty" : data.formPublished ? "published" : "draft"}>
         <div className={`${s.card} ${u.blk}`}>
           <div className={s.cardH}><h3>{t("suDesc")}</h3><span className={s.lbl}>{t("suDescMax")}</span></div>
           <label className={u.ta}>
@@ -347,12 +355,12 @@ export function HostSetupView(props: HostSetupViewProps) {
                 {draft.questions.length >= QUESTION_MAX ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
               </div>
             </div>
-            <div className={`${s.card} ${u.saveBar}`} data-host-setup-save={saveState}>
+            {ended ? null : <div className={`${s.card} ${u.saveBar}`} data-host-setup-save={saveState}>
               <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
               <span className={`${s.lbl} ${saveState === "invalid" ? u.saveWarn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
               <button type="button" className={`btn ${s.btn} ${u.saveFirst}`} disabled={busy || saveState === "saving"} onClick={props.onSave}>{t("suSaveDraft")}</button>
               <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy || saveState === "invalid" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved")} onClick={props.onPublish}>{t(data.formPublished ? "suPublishChanges" : "suPublish")}</button>
-            </div>
+            </div>}
             {saveState === "conflict" ? (
               <div className={`${s.card} ${u.saveBar} ${s.flat}`} role="alert" data-host-setup-conflict="">
                 <span className={s.grow}>{t("suConflict")}</span>
@@ -364,7 +372,7 @@ export function HostSetupView(props: HostSetupViewProps) {
       </div>
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
-        <Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} />
+        <div className={ended ? u.readOnly : undefined} inert={ended || undefined}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
       </div>
       <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy}
         onOpen={props.onNotesOpen} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />

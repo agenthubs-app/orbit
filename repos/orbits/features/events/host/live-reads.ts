@@ -231,6 +231,89 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       };
     },
 
+    /**
+     * 参加者詳細：この 1 人の申込（回答だけ）・活動プロフィール（表示する項目だけ）・受付・番号・参加歴・主催者質問への回答。
+     */
+    async person(eventId: string, subjectActorId: string, organizerActorId: string): Promise<{
+      status: string | null; submittedAt: string | null; applicationName: string | null; answers: Record<string, string>;
+      participantId: string | null; memberStatus: string | null; participant: Record<string, unknown>; checkedInAt: string | null; receptionNumber: string | null;
+      hostAnswers: Record<string, string>; attendCount: number;
+    } | null> {
+      const result = await client.query<Row>(
+        `select a.status, a.submitted_at, a.profile_payload ->> 'displayName' as application_name, a.profile_payload -> 'answers' as answers,
+                m.participant_id, m.status as member_status, c.checked_in_at, r.reception_no,
+                case when v.profile_payload is null then null else jsonb_build_object(
+                  'displayName', v.profile_payload #> '{participant,displayName}', 'company', v.profile_payload #> '{participant,company}',
+                  'role', v.profile_payload #> '{participant,role}', 'industry', v.profile_payload #> '{participant,industry}',
+                  'seniority', v.profile_payload #> '{participant,seniority}', 'energyStyle', v.profile_payload #> '{participant,energyStyle}',
+                  'experienceHighlight', v.profile_payload #> '{participant,experienceHighlight}', 'topics', v.profile_payload #> '{participant,topics}',
+                  'offers', v.profile_payload #> '{participant,offers}', 'needs', v.profile_payload #> '{participant,needs}') end as participant,
+                (select h.payload -> 'answers' from orbit_records h where h.workspace_id = $1 and h.collection_name = 'eventHostAnswers' and h.user_id = $3 and h.lifecycle_state <> 'deleted' and h.payload ->> 'eventId' = $2 limit 1) as host_answers,
+                (select count(*) from event_ops_checkins hc join event_ops_events oe on oe.workspace_id = hc.workspace_id and oe.event_id = hc.event_id
+                  where hc.workspace_id = $1 and hc.actor_id = $3 and oe.organizer_actor_id = $4 and hc.event_id <> $2) as attend_count
+           from (select $3::text as actor_id) x
+           left join event_ops_admission_application_heads a on a.workspace_id = $1 and a.event_id = $2 and a.actor_id = x.actor_id
+           left join event_ops_membership_heads m on m.workspace_id = $1 and m.event_id = $2 and m.actor_id = x.actor_id
+           left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
+           left join event_ops_checkins c on c.workspace_id = m.workspace_id and c.event_id = m.event_id and c.participant_id = m.participant_id
+           left join event_reception_numbers r on r.workspace_id = $1 and r.event_id = $2 and r.actor_id = x.actor_id`,
+        [workspaceId, eventId, subjectActorId, organizerActorId],
+      );
+      const row = result.rows[0];
+      if (!row || (row.status == null && row.participant_id == null)) return null;
+      const obj = (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : typeof value === "string" ? JSON.parse(value) as Record<string, unknown> : {});
+      const strings = (value: Record<string, unknown>) => Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+      return {
+        answers: strings(obj(row.answers)), applicationName: (row.application_name as string | null) ?? null, attendCount: num(row.attend_count),
+        checkedInAt: iso(row.checked_in_at), hostAnswers: strings(obj(row.host_answers)), memberStatus: (row.member_status as string | null) ?? null,
+        participant: obj(row.participant), participantId: (row.participant_id as string | null) ?? null, receptionNumber: (row.reception_no as string | null) ?? null,
+        status: (row.status as string | null) ?? null, submittedAt: iso(row.submitted_at),
+      };
+    },
+
+    /**
+     * 参加者詳細のマッチング：公開済み結果のうち、この人の卓（各ラウンド）・この人への推薦・そこに出てくる人の名前だけを
+     * DB 内で取り出す（published_dto 全体は返さない）。未公開なら published=false。
+     */
+    async personMatching(eventId: string, participantId: string): Promise<{ published: boolean; tables: Array<{ round: number; tableNumber: number; theme: string | null; why: string | null; members: string[] }>; recommendations: Array<{ rank: number; participantId: string; reason: string | null }>; names: Record<string, { name: string; org: string | null; role: string | null }> }> {
+      const result = await client.query<Row>(
+        `with pub as (
+           select p.published_dto as d from event_ops_publication_heads h
+             join event_ops_publications p on p.workspace_id = h.workspace_id and p.publication_id = h.publication_id
+            where h.workspace_id = $1 and h.event_id = $2
+         ), tbl as (
+           select rr.round, t from pub
+             cross join lateral (values (1, pub.d #> '{grouping,roundOne}'), (2, pub.d #> '{grouping,roundTwo}')) rr(round, arr)
+             cross join lateral jsonb_array_elements(case when jsonb_typeof(rr.arr) = 'array' then rr.arr else '[]'::jsonb end) t
+            where exists (select 1 from jsonb_array_elements(t -> 'members') mm where mm ->> 'participantId' = $3)
+         ), rec as (
+           select x from pub cross join lateral jsonb_array_elements(case when jsonb_typeof(pub.d -> 'recommendations') = 'array' then pub.d -> 'recommendations' else '[]'::jsonb end) row
+             cross join lateral jsonb_array_elements(case when jsonb_typeof(row -> 'recommendations') = 'array' then row -> 'recommendations' else '[]'::jsonb end) x
+            where row ->> 'sourceParticipantId' = $3
+         ), ids as (
+           select mm ->> 'participantId' as id from tbl cross join lateral jsonb_array_elements(t -> 'members') mm
+           union select x ->> 'targetParticipantId' from rec
+         )
+         select (select count(*) > 0 from pub) as published,
+                (select jsonb_agg(jsonb_build_object('round', round, 'tableNumber', t -> 'tableNumber', 'theme', t ->> 'theme',
+                         'why', coalesce(nullif(t -> 'memberRationales' ->> $3, ''), t ->> 'rationale'),
+                         'members', (select jsonb_agg(mm ->> 'participantId') from jsonb_array_elements(t -> 'members') mm)) order by round) from tbl) as tables,
+                (select jsonb_agg(jsonb_build_object('rank', x -> 'rank', 'participantId', x ->> 'targetParticipantId', 'reason', coalesce(nullif(x -> 'reasons' ->> 0, ''), x ->> 'memberHint')) order by (x ->> 'rank')::int) from rec) as recs,
+                (select jsonb_object_agg(e ->> 'participantId', jsonb_build_object('name', e ->> 'displayName', 'org', e ->> 'company', 'role', e ->> 'role'))
+                   from pub cross join lateral jsonb_array_elements(case when jsonb_typeof(pub.d -> 'directory') = 'array' then pub.d -> 'directory' else '[]'::jsonb end) e
+                  where e ->> 'participantId' in (select id from ids)) as names`,
+        [workspaceId, eventId, participantId],
+      );
+      const row = result.rows[0] ?? {};
+      const parse = <T,>(value: unknown, fallback: T): T => (value == null ? fallback : (typeof value === "string" ? JSON.parse(value) : value) as T);
+      return {
+        names: parse(row.names, {} as Record<string, { name: string; org: string | null; role: string | null }>),
+        published: row.published === true,
+        recommendations: parse(row.recs, [] as Array<{ rank: number; participantId: string; reason: string | null }>).map((item) => ({ participantId: String(item.participantId), rank: num(item.rank), reason: item.reason ?? null })),
+        tables: parse(row.tables, [] as Array<{ round: number; tableNumber: number; theme: string | null; why: string | null; members: string[] }>),
+      };
+    },
+
     /** 概要の「マッチ可能」「プロフィール未完了」：申込者の資料完成度を DB で数えるだけ（資料は運ばない）。 */
     async applicantScoreCounts(eventId: string, answerKeys: readonly string[], coverageWeights: Readonly<Record<string, number>>): Promise<{ incomplete: number; matchable: number }> {
       const result = await client.query<{ incomplete: number; matchable: number }>(
