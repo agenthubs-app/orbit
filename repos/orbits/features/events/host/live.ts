@@ -46,6 +46,9 @@ export interface HostLiveDeps {
 }
 
 const ROLE_LABEL: Record<string, HostRole> = { check_in: "check_in", manager: "manager", operations: "operations", read_only_analyst: "read_only_analyst", reviewer: "reviewer" };
+/** 「参加者」一页的人数。 */
+const PEOPLE_PAGE_SIZE = 50;
+
 const ANSWER_KEYS = ["positioning", "industry", "targetAttendees", "valueOffered", "desiredOutcome", "energyStyle", "experienceHighlight", "followUpPreference"] as const;
 
 /** R17-11：名簿照合每人每场每小时的上限。 */
@@ -379,11 +382,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const caps = await capabilities(actorId, eventId);
       if (!caps.includes("operations.read_summary") && !caps.includes("operations.read_sensitive")) throw new HostError(caps.length ? "FORBIDDEN" : "NOT_FOUND");
       const facts = await factsOrThrow(actorId, eventId);
-      const applicants = await reads.applicants(eventId, facts.organizerActorId, ["pending_review", "admitted", "waitlisted"]);
-      const incomplete = applicants.filter((item) => profileScore(item.payload as never) < 100).length;
+      // Counted in the database; no applicant profile leaves it for these two numbers.
+      const scores = await reads.applicantScoreCounts(eventId, ANSWER_KEYS, COVERAGE_OF_FIELD);
+      const incomplete = scores.incomplete;
       // + 没走申込直接登记的参加者（不审核的活动、从 party-app 搬来的场次）：进了已发布分组的就是可匹配的。
-      const matchable = applicants.filter((item) => item.status === "admitted" && profileScore(item.payload as never) === 100).length
-        + await reads.matchedMembersWithoutApplication(eventId);
+      const matchable = scores.matchable + await reads.matchedMembersWithoutApplication(eventId);
       const status = statusOf(facts, now());
       const steps = ["registration", "generation", "review_groups", "publish", "check_in"] as const;
       const reached = facts.matched !== null ? (status === "live" || status === "ended" ? 5 : 4) : facts.generations > 0 ? 2 : facts.lifecycle === "published" ? 1 : 0;
@@ -466,35 +469,24 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const facts = await factsOrThrow(actorId, eventId);
       const statusOfBucket: Record<HostPeopleBucket, string> = { approved: "admitted", pending: "pending_review", rejected: "rejected", waitlisted: "waitlisted" };
       const bucketOf: Record<string, HostPeopleBucket> = { admitted: "approved", pending_review: "pending", rejected: "rejected", waitlisted: "waitlisted" };
-      const applicants = await reads.applicants(eventId, facts.organizerActorId, [statusOfBucket[query.bucket]]);
       // 申込回答一栏：主办方问题里问「話したい…」的那一问（没有就用第 2 问 / 资料里的目的）。
-      const questions = (((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
+      const questionSet = await reads.questionSet(eventId);
+      const questions = ((questionSet?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
       const answerQuestion = questions.find((question) => question.prompt.includes("話したい")) ?? questions[1] ?? null;
-      const rows: HostPeopleRow[] = applicants.map((item): HostPeopleRow => {
-        const answers: Record<string, string> = { ...(item.payload.answers ?? {}), ...(answerQuestion && item.hostAnswers[answerQuestion.id] ? { desiredOutcome: item.hostAnswers[answerQuestion.id]! } : {}) };
-        const { org, role } = splitPositioning(answers.positioning);
-        const score = profileScore(item.payload as never);
-        const name = item.payload.displayName ?? "";
-        return { actorId: item.actorId, answer: answers.desiredOutcome?.trim() || null, applicationVersion: item.version, attendCount: item.attendCount, initial: name.trim().charAt(0), name, org, profileIncomplete: score < 100, profileScore: score, role, status: bucketOf[item.status] ?? "pending" };
-      });
-      // 承認済み also lists members who registered without an application (first-come events, the
-      // imported 中日创业交流会): read-only rows built from their own event profile.
-      if (query.bucket === "approved") {
-        for (const member of await reads.membersWithoutApplication(eventId, facts.organizerActorId)) {
-          const p = member.participant;
-          const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
-          const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : []);
-          const name = text(p.displayName) ?? "";
-          const filled = [name, text(p.company), text(p.role), list(p.topics).length ? "x" : null, list(p.offers).length || list(p.needs).length ? "x" : null].filter(Boolean).length;
-          const score = Math.round((filled / 5) * 100);
-          const needs = list(p.needs);
-          rows.push({ actorId: member.actorId, answer: needs.length ? needs.slice(0, 2).join("、") : null, applicationVersion: 0, attendCount: member.attendCount, initial: name.charAt(0), name, org: text(p.company), profileIncomplete: score < 100, profileScore: score, role: text(p.role), status: "approved" });
-        }
-      }
-      const filteredRows = rows.filter((row) => !query.incomplete || row.profileIncomplete).filter((row) => !query.q || [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(query.q)));
       const offset = Math.max(0, Number(query.cursor ?? "0") || 0);
-      const page = filteredRows.slice(offset, offset + 50);
-      return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, filteredRows.length - offset - page.length), nextCursor: offset + page.length < filteredRows.length ? String(offset + page.length) : null, questionCount: ((await reads.questionSet(eventId))?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
+      // One page from the database (filters, search and paging in SQL); 承認済み also lists members who
+      // registered without an application (first-come events, the imported 中日创业交流会), read-only.
+      const result = await reads.peoplePage({
+        answerKeys: ANSWER_KEYS, coverageWeights: COVERAGE_OF_FIELD, eventId, hostQuestionId: answerQuestion?.id ?? null, includeMembers: query.bucket === "approved",
+        incompleteOnly: query.incomplete, limit: PEOPLE_PAGE_SIZE, offset, organizerActorId: facts.organizerActorId, q: query.q, status: statusOfBucket[query.bucket],
+      });
+      const page: HostPeopleRow[] = result.rows.map((item) => {
+        const fromApplication = item.kind === "application" ? splitPositioning(item.positioning ?? undefined) : { org: item.org, role: item.role };
+        const answer = item.hostAnswer ?? item.desired;
+        return { actorId: item.actorId, answer: answer?.trim() || null, applicationVersion: item.version, attendCount: item.attendCount, initial: item.name.trim().charAt(0), name: item.name, org: fromApplication.org, profileIncomplete: item.score < 100, profileScore: item.score, role: fromApplication.role, status: item.kind === "member" ? "approved" : bucketOf[statusOfBucket[query.bucket]] ?? "pending" };
+      });
+      const total = result.rows.length ? result.total : offset;
+      return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, total - offset - page.length), nextCursor: offset + page.length < total ? String(offset + page.length) : null, questionCount: (questionSet?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
     },
     async decide(actorId, eventId, applicantActorId, input) {
       await require(actorId, eventId, "admission.decide");
@@ -661,14 +653,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const grouping = await reads.publishedGrouping(eventId);
       const perTable = (grouping?.roundOne ?? []).map((table) => table.members.reduce((sum, member) => sum + (exchanges.byParticipant.get(member.participantId) ?? 0), 0));
       const tableValues = suppressCells(perTable);
-      const applicants = await reads.applicants(eventId, facts.organizerActorId, ["admitted"]);
       const firstQuestion = ((((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [])[0];
-      const q1 = new Map<string, number>();
-      for (const item of applicants) {
-        const label = firstQuestion ? item.hostAnswers[firstQuestion.id]?.split(" · ")[0] : undefined;
-        if (label) q1.set(label, (q1.get(label) ?? 0) + 1);
-      }
-      const standingCounts = [...q1.entries()];
+      // Grouped in the database: one row per answer label, not every applicant's answers.
+      const standingCounts = firstQuestion ? (await reads.firstAnswerCounts(eventId, firstQuestion.id)).map((item) => [item.label, item.count] as const) : [];
       const standingPercents = suppressedDistribution(standingCounts.map(([, n]) => n));
       return {
         all: {

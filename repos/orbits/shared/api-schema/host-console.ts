@@ -95,7 +95,9 @@ export const hostMatchingResponseObject = z.object({
   minimumApplied: count,
   generationsUsed: count,
   generationsLimit: count,
-  conditions: hostMatchingConditionsObject,
+  // Reads report the table size the published grouping actually has (imported events reach 13);
+  // the 2–12 bound applies to what the organizer asks for (generate input), not to what is read back.
+  conditions: hostMatchingConditionsObject.extend({ tableSize: z.number().int().min(1).max(50) }),
   rounds: readableItems(z.object({ index: z.number().int().min(1), startsAt: z.string(), endsAt: z.string() })),
   round: z.number().int().min(1),
   tables: readableItems(hostMatchingTableObject),

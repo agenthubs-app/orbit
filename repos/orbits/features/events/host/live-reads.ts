@@ -7,6 +7,19 @@ import type { EventOperationsPostgresClient } from "../event-operations/storage/
 import type { HostEventPayload } from "./storage/lifecycle";
 
 type Row = Record<string, unknown>;
+
+/**
+ * profileScore() in SQL for an admission application row `alias`: with interview responses 44 + the
+ * coverage weights (jsonb param) of the answered fields; otherwise 100 when every answer key (text[]
+ * param) is filled, else 44. Lets lists and counts filter / count without shipping profiles.
+ */
+function applicationScoreSql(alias: string, weightsParam: string, keysParam: string): string {
+  return `case when jsonb_typeof(${alias}.profile_payload -> 'interviewResponses') = 'array' and jsonb_array_length(${alias}.profile_payload -> 'interviewResponses') > 0
+    then 44 + coalesce((select sum(coalesce((${weightsParam}::jsonb ->> x.f)::int, 0)) from (select distinct r ->> 'field' as f from jsonb_array_elements(${alias}.profile_payload -> 'interviewResponses') r where coalesce(trim(r #>> '{answer,displayText}'), '') <> '') x), 0)
+    else case when not exists (select 1 from unnest(${keysParam}::text[]) k where coalesce(trim(${alias}.profile_payload #>> array['answers', k]), '') = '') then 100 else 44 end
+  end`;
+}
+
 const num = (value: unknown) => Number(value ?? 0);
 const iso = (value: unknown) => (value === null || value === undefined ? null : new Date(value instanceof Date ? value : String(value)).toISOString());
 
@@ -156,38 +169,90 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
     },
 
     /**
-     * 参加中、但没有申込记录的成员（不审核直接登记 / 从 party-app 搬来的场次）：名字・公司・职位・资料取自本人的活动档案，
-     * 参加歴与申込者同口径。主办方「参加者」页签把他们列在承認済み里（只读，不能审核）。
+     * 「参加者」页签的一页：筛选、搜索、分页都在数据库里做，只返回这一页要显示的列；参加歴与主办方问题的回答
+     * 只为这一页的人查。成员（无申込，直接登记 / 搬迁场次）在 includeMembers 时并入，只取名字・公司・职位・前两项需求。
+     * score 与 profileScore() 同口径：有访谈回答 → 44 + 覆盖权重；否则 ANSWER_KEYS 全填 = 100，否则 44；成员按 5 项资料填了几项。
      */
-    async membersWithoutApplication(eventId: string, organizerActorId: string): Promise<Array<{ actorId: string; participant: Record<string, unknown>; registeredAt: string; attendCount: number }>> {
-      // Only the columns the list shows: name / company / role, how many topics, whether offers or needs
-      // exist, and the first two needs — never the whole profile snapshot (bio, intro, history).
+    async peoplePage(input: {
+      eventId: string; organizerActorId: string; status: string; includeMembers: boolean; q: string; incompleteOnly: boolean;
+      limit: number; offset: number; answerKeys: readonly string[]; coverageWeights: Readonly<Record<string, number>>; hostQuestionId: string | null;
+    }): Promise<{ total: number; rows: Array<{ actorId: string; kind: "application" | "member"; version: number; name: string; positioning: string | null; org: string | null; role: string | null; desired: string | null; hostAnswer: string | null; score: number; attendCount: number }> }> {
       const result = await client.query<Row>(
-        `select m.actor_id,
-                jsonb_build_object(
-                  'displayName', v.profile_payload #>> '{participant,displayName}',
-                  'company', v.profile_payload #>> '{participant,company}',
-                  'role', v.profile_payload #>> '{participant,role}',
-                  'topics', case when jsonb_typeof(v.profile_payload #> '{participant,topics}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,topics}') > 0 then '["x"]'::jsonb else '[]'::jsonb end,
-                  'offers', case when jsonb_typeof(v.profile_payload #> '{participant,offers}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,offers}') > 0 then '["x"]'::jsonb else '[]'::jsonb end,
-                  'needs', case when jsonb_typeof(v.profile_payload #> '{participant,needs}') = 'array' then jsonb_path_query_array(v.profile_payload #> '{participant,needs}', '$[0 to 1]') else '[]'::jsonb end
-                ) as participant,
-                (select min(mv.registered_at) from event_ops_membership_versions mv where mv.workspace_id = m.workspace_id and mv.event_id = m.event_id and mv.actor_id = m.actor_id) as registered_at,
+        `with apps as (
+           select a.actor_id, a.application_version::int as version, a.submitted_at as sort_at, 'application' as kind,
+                  a.profile_payload ->> 'displayName' as name,
+                  a.profile_payload #>> '{answers,positioning}' as positioning, null::text as org, null::text as role,
+                  a.profile_payload #>> '{answers,desiredOutcome}' as desired,
+                  ${applicationScoreSql("a", "$9", "$8")} as score
+             from event_ops_admission_application_heads a
+            where a.workspace_id = $1 and a.event_id = $2 and a.status = $3
+         ), members as (
+           select m.actor_id, 0 as version,
+                  (select min(mv.registered_at) from event_ops_membership_versions mv where mv.workspace_id = m.workspace_id and mv.event_id = m.event_id and mv.actor_id = m.actor_id) as sort_at,
+                  'member' as kind,
+                  v.profile_payload #>> '{participant,displayName}' as name, null::text as positioning,
+                  v.profile_payload #>> '{participant,company}' as org, v.profile_payload #>> '{participant,role}' as role,
+                  (select string_agg(n, '、') from (select jsonb_array_elements_text(case when jsonb_typeof(v.profile_payload #> '{participant,needs}') = 'array' then v.profile_payload #> '{participant,needs}' else '[]'::jsonb end) as n limit 2) needs) as desired,
+                  round(100.0 * (
+                    (case when coalesce(trim(v.profile_payload #>> '{participant,displayName}'), '') <> '' then 1 else 0 end)
+                  + (case when coalesce(trim(v.profile_payload #>> '{participant,company}'), '') <> '' then 1 else 0 end)
+                  + (case when coalesce(trim(v.profile_payload #>> '{participant,role}'), '') <> '' then 1 else 0 end)
+                  + (case when jsonb_typeof(v.profile_payload #> '{participant,topics}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,topics}') > 0 then 1 else 0 end)
+                  + (case when (jsonb_typeof(v.profile_payload #> '{participant,offers}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,offers}') > 0)
+                           or (jsonb_typeof(v.profile_payload #> '{participant,needs}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,needs}') > 0) then 1 else 0 end)
+                  ) / 5)::int as score
+             from event_ops_membership_heads m
+             left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
+            where $4 and m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
+              and not exists (select 1 from event_ops_admission_application_heads a where a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id)
+         ), filtered as (
+           select * from (select * from apps union all select * from members) b
+            where (not $6 or b.score < 100)
+              and ($5 = '' or strpos(concat_ws(' ', b.name, b.org, b.positioning, b.desired), $5) > 0
+                   or ($10::text is not null and exists (select 1 from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventHostAnswers' and r.user_id = b.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = $2 and strpos(coalesce(r.payload -> 'answers' ->> $10, ''), $5) > 0)))
+         ), page as (
+           select *, count(*) over () as total from filtered order by sort_at nulls last, actor_id limit $7 offset $11
+         )
+         select p.actor_id, p.kind, p.version, p.name, p.positioning, p.org, p.role, p.desired, p.score, p.total,
+                case when $10::text is null then null else (select r.payload -> 'answers' ->> $10 from orbit_records r where r.workspace_id = $1 and r.collection_name = 'eventHostAnswers' and r.user_id = p.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = $2 limit 1) end as host_answer,
                 (select count(*) from event_ops_checkins c join event_ops_events oe on oe.workspace_id = c.workspace_id and oe.event_id = c.event_id
-                  where c.workspace_id = m.workspace_id and c.actor_id = m.actor_id and oe.organizer_actor_id = $3 and c.event_id <> m.event_id) as attend_count
-           from event_ops_membership_heads m
-           left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
-          where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
-            and not exists (select 1 from event_ops_admission_application_heads a where a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id)
-          order by registered_at, m.actor_id`,
-        [workspaceId, eventId, organizerActorId],
+                  where c.workspace_id = $1 and c.actor_id = p.actor_id and oe.organizer_actor_id = $12 and c.event_id <> $2) as attend_count
+           from page p order by p.sort_at nulls last, p.actor_id`,
+        [workspaceId, input.eventId, input.status, input.includeMembers, input.q, input.incompleteOnly, input.limit, [...input.answerKeys], JSON.stringify(input.coverageWeights), input.hostQuestionId, input.offset, input.organizerActorId],
       );
-      return result.rows.map((row) => ({
-        actorId: String(row.actor_id),
-        attendCount: num(row.attend_count),
-        participant: (row.participant && typeof row.participant === "object" ? row.participant : {}) as Record<string, unknown>,
-        registeredAt: iso(row.registered_at) ?? "",
-      }));
+      const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+      return {
+        total: num(result.rows[0]?.total),
+        rows: result.rows.map((row) => ({
+          actorId: String(row.actor_id), attendCount: num(row.attend_count), desired: text(row.desired), hostAnswer: text(row.host_answer),
+          kind: row.kind === "member" ? "member" : "application", name: text(row.name) ?? "", org: text(row.org), positioning: text(row.positioning),
+          role: text(row.role), score: num(row.score), version: num(row.version),
+        })),
+      };
+    },
+
+    /** 概要の「マッチ可能」「プロフィール未完了」：申込者の資料完成度を DB で数えるだけ（資料は運ばない）。 */
+    async applicantScoreCounts(eventId: string, answerKeys: readonly string[], coverageWeights: Readonly<Record<string, number>>): Promise<{ incomplete: number; matchable: number }> {
+      const result = await client.query<{ incomplete: number; matchable: number }>(
+        `select count(*) filter (where s.score < 100)::int as incomplete, count(*) filter (where s.status = 'admitted' and s.score = 100)::int as matchable
+           from (select a.status, ${applicationScoreSql("a", "$4", "$3")} as score from event_ops_admission_application_heads a
+                  where a.workspace_id = $1 and a.event_id = $2 and a.status in ('pending_review', 'admitted', 'waitlisted')) s`,
+        [workspaceId, eventId, [...answerKeys], JSON.stringify(coverageWeights)],
+      );
+      return { incomplete: num(result.rows[0]?.incomplete), matchable: num(result.rows[0]?.matchable) };
+    },
+
+    /** レポートの「立場」：承認済み申込者の主催者第 1 問の回答（「 · 」の前）ごとの人数。 */
+    async firstAnswerCounts(eventId: string, questionId: string): Promise<Array<{ label: string; count: number }>> {
+      const result = await client.query<{ label: string; n: number }>(
+        `select split_part(r.payload -> 'answers' ->> $3, ' · ', 1) as label, count(*)::int as n
+           from event_ops_admission_application_heads a
+           join orbit_records r on r.workspace_id = a.workspace_id and r.collection_name = 'eventHostAnswers' and r.user_id = a.actor_id and r.lifecycle_state <> 'deleted' and r.payload ->> 'eventId' = a.event_id
+          where a.workspace_id = $1 and a.event_id = $2 and a.status = 'admitted' and coalesce(r.payload -> 'answers' ->> $3, '') <> ''
+          group by 1 order by min(a.submitted_at)`,
+        [workspaceId, eventId, questionId],
+      );
+      return result.rows.filter((row) => row.label).map((row) => ({ count: num(row.n), label: row.label }));
     },
 
     /** 申込者（一个 bucket），带资料回答与本主办方参加歴。 */
