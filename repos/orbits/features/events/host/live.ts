@@ -367,7 +367,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const facts = await factsOrThrow(actorId, eventId);
       const applicants = await reads.applicants(eventId, facts.organizerActorId, ["pending_review", "admitted", "waitlisted"]);
       const incomplete = applicants.filter((item) => profileScore(item.payload as never) < 100).length;
-      const matchable = applicants.filter((item) => item.status === "admitted" && profileScore(item.payload as never) === 100).length;
+      // + 没走申込直接登记的参加者（不审核的活动、从 party-app 搬来的场次）：进了已发布分组的就是可匹配的。
+      const matchable = applicants.filter((item) => item.status === "admitted" && profileScore(item.payload as never) === 100).length
+        + await reads.matchedMembersWithoutApplication(eventId);
       const status = statusOf(facts, now());
       const steps = ["registration", "generation", "review_groups", "publish", "check_in"] as const;
       const reached = facts.matched !== null ? (status === "live" || status === "ended" ? 5 : 4) : facts.generations > 0 ? 2 : facts.lifecycle === "published" ? 1 : 0;
@@ -388,7 +390,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         recommendationsPerPerson: 5,
         reportSummary: facts.checkedIn > 0 ? { asOf: now().toISOString(), checkInRate: facts.admitted >= 5 ? suppressedRate(facts.checkedIn, facts.admitted) : null, checkedIn: facts.checkedIn, exchangeRate: exchanges ? suppressedRate(exchanges.people, facts.checkedIn) : null, exchanges: exchanges ? suppressSmall(exchanges.pairs) : null, followupRate: suppressedRate(facts.followedUp, facts.checkedIn), total: facts.applied } : null,
         todos: [...(facts.pending > 0 ? [{ count: facts.pending, kind: "review_pending" as const, walkInSlots: facts.waitlisted }] : []), ...(incomplete > 0 ? [{ count: incomplete, kind: "profile_incomplete" as const }] : [])],
-        trend: await reads.trend(eventId, now()),
+        // 结束后看「到结束为止」的 14 天（标签随之变为 開催までの14日）；以 now 为终点几周后就只剩空白。
+        trend: await reads.trend(eventId, status === "ended" && facts.endsAt ? new Date(Math.min(now().getTime(), Date.parse(facts.endsAt))) : now()),
       };
     },
     async matching(actorId, eventId, round) {

@@ -125,7 +125,7 @@ export function HostOverviewView({ data, t }: HostOverviewViewProps) {
       {!inactive ? (
         <>
           <div className={`${s.card} ${s.span8}`} data-host-trend="">
-            <div className={s.cardH}><h3>{t("trendTitle")}</h3><span className={s.lbl}>{t("trendRange")}</span></div>
+            <div className={s.cardH}><h3>{t("trendTitle")}</h3><span className={s.lbl}>{t(event.status === "ended" ? "trendRangeToEvent" : "trendRange")}</span></div>
             <div className={s.bars}>{data.trend.map((value, index) => <i key={index} className={index === hiIndex ? s.hi : undefined} style={{ height: `${Math.round((value / max) * 96)}px` }} />)}</div>
           </div>
           <div className={`${s.card} ${s.span4}`} data-host-progress={data.currentStep}>

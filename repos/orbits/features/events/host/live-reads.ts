@@ -142,6 +142,19 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       });
     },
 
+    /** 没有申込记录、但在当前已发布分组名单里的参加中成员数（直接登记 / 搬迁来的场次的「マッチ可能」）。 */
+    async matchedMembersWithoutApplication(eventId: string): Promise<number> {
+      const result = await client.query<{ n: number }>(
+        `select count(*)::int as n from event_ops_membership_heads m
+          where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
+            and not exists (select 1 from event_ops_admission_application_heads a where a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id)
+            and exists (select 1 from event_ops_publication_heads p join event_ops_generation_participants g on g.workspace_id = p.workspace_id and g.generation_id = p.generation_id
+                         where p.workspace_id = m.workspace_id and p.event_id = m.event_id and g.participant_id = m.participant_id)`,
+        [workspaceId, eventId],
+      );
+      return Number(result.rows[0]?.n ?? 0);
+    },
+
     /** 申込者（一个 bucket），带资料回答与本主办方参加歴。 */
     async applicants(eventId: string, organizerActorId: string, statuses: readonly string[]): Promise<Array<{ actorId: string; status: string; version: number; payload: { displayName?: string; answers?: Record<string, string> }; hostAnswers: Record<string, string>; submittedAt: string; attendCount: number }>> {
       const result = await client.query<Row>(

@@ -131,6 +131,7 @@ export const hostCopy = {
   oWalkIn: { ja: "当日枠の判断", zh: "当天名额待定", en: "Walk-in slots to decide", kind: "label" },
   trendTitle: { ja: "申込の推移", zh: "报名趋势", en: "Sign-ups", kind: "title" },
   trendRange: { ja: "直近14日", zh: "最近14天", en: "Last 14 days", kind: "label" },
+  trendRangeToEvent: { ja: "開催までの14日", zh: "活动前14天", en: "14 days to the event", kind: "label" },
   progTitle: { ja: "運営の進捗", zh: "运营进度", en: "Progress", kind: "title" },
   pRegistration: { ja: "申込受付", zh: "接受报名", en: "Take sign-ups", kind: "label" },
   pGeneration: { ja: "マッチング生成", zh: "生成匹配", en: "Generate matching", kind: "label" },

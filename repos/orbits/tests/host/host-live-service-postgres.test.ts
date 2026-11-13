@@ -99,6 +99,9 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.equal(sum((await service.report(HOST, eventId, "all")).all!.trend), 2, "two applications, the admitted one is not counted twice");
     await lockedFixtureQuery(pool, `delete from event_ops_admission_application_heads where workspace_id = $1 and event_id = $2 and actor_id = 'actor:p1'`, [workspaceId, eventId]);
     assert.equal(sum((await service.report(HOST, eventId, "all")).all!.trend), 2, "the member without an application still counts, by registration time");
+    const overview = await service.overview(HOST, eventId);
+    assert.equal(sum(overview.trend), 2, "the overview trend counts the same people");
+    assert.equal(overview.matchable, 0, "a member without an application is matchable only once a published grouping includes them");
   });
 });
 
