@@ -23,11 +23,12 @@ export function answerSpread(counts: readonly number[]): number {
 /** 从模板库挑 `limit` 个当前问题里没有的问题。 */
 export function suggestQuestions(input: { library: readonly HostSetupQuestion[]; existing: readonly HostSetupQuestion[]; past: readonly PastAnswerStats[]; limit?: number }): HostSetupQuestion[] {
   const limit = input.limit ?? 3;
-  const taken = new Set(input.existing.map((question) => question.prompt.trim()));
+  // 同じ質問（同じ id か同じ文面）は出さない。
+  const taken = new Set(input.existing.flatMap((question) => [`id:${question.id}`, `p:${question.prompt.trim()}`]));
   const spread = new Map(input.past.map((stat) => [stat.questionId, answerSpread(stat.counts)]));
   return input.library
     .map((question, order) => ({ order, question, score: spread.get(question.id) ?? -1 }))
-    .filter((item) => !taken.has(item.question.prompt.trim()))
+    .filter((item) => !taken.has(`id:${item.question.id}`) && !taken.has(`p:${item.question.prompt.trim()}`))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .slice(0, limit)
     .map((item) => item.question);

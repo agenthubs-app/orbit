@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
+import { hostEventContactObject } from "./host-events";
 import type { EventJoinAnswer, EventJoinCancelResult, EventJoinProfile, EventJoinResult, EventJoinStep, EventJoinTentativeResult } from "../contract/event-join";
 
 // R27 参加登録 facade. Responses tolerant (unknown item keys skip the item); request bodies strict.
@@ -44,6 +45,7 @@ export const eventJoinResultObject = z.object({
   startsAt: z.string(),
   endsAt: z.string().nullable().optional(),
   tentative: z.object({ startsAt: z.string(), endsAt: z.string(), title: z.string() }).nullable().optional().catch(null),
+  hostContact: hostEventContactObject.nullable().optional().catch(null),
 });
 export const eventJoinResultSchema = eventJoinResultObject as unknown as z.ZodType<EventJoinResult>;
 export const eventJoinTentativeResultObject = z.object({ eventId: z.string().min(1), scheduleItemId: z.string().min(1), title: z.string() });

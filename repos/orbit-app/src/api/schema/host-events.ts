@@ -106,6 +106,13 @@ export const hostCenterResponseObject = z.object({
 });
 export const hostCenterResponseSchema = hostCenterResponseObject as unknown as z.ZodType<HostCenterResponse>;
 
+/** 主催者の連絡先（响应：读不懂就当没有）。 */
+export const hostEventContactObject = z.object({
+  wechatId: z.string().nullable(),
+  lineId: z.string().nullable(),
+  note: z.string().nullable(),
+});
+
 export const hostCohostAvatarObject = z.object({ actorId: z.string().min(1), name: z.string(), initial: z.string().max(4) });
 
 export const hostEventViewObject = z.object({
@@ -144,6 +151,7 @@ export const hostEventViewObject = z.object({
   cancelledAt: z.string().nullable(),
   archivedAt: z.string().nullable(),
   version: z.number().int().min(1),
+  contact: hostEventContactObject.nullable().optional().catch(null),
   sample: z.literal(true).optional(),
 });
 export const hostEventViewSchema = hostEventViewObject as unknown as z.ZodType<HostEventView>;
@@ -179,8 +187,34 @@ const venueText = z.string().trim().max(80).nullable();
 const yen = z.number().int().min(0).max(10_000_000).nullable();
 const url = z.string().trim().url().max(500).refine((value) => /^https:\/\//u.test(value), "https only").nullable();
 const capacity = z.number().int().min(1).max(10_000).nullable();
-const description = z.string().trim().max(200).nullable();
+// 2026-11-13 user: event descriptions up to 2000 characters (public pages fold long Markdown).
+const description = z.string().trim().max(2000).nullable();
 const profileId = z.string().trim().min(1).max(200);
+
+/** 申込フォームの質問 1 問（申込設定の下書きと、新規作成時の初期質問で共用）。 */
+export const hostQuestionInput = z.object({
+  id: z.string().trim().min(1).max(64),
+  prompt: z.string().trim().min(1).max(120),
+  kind: z.enum(["single", "multiple", "free"]),
+  required: z.boolean(),
+  options: z.array(z.string().trim().min(1).max(60)).max(12),
+}).strict().refine((question) => question.kind === "free" || question.options.length > 0, { message: "a choice question needs an option", path: ["options"] });
+
+/** 質問の一覧（5 問まで）。回答は question.id で保存するので、同じ id が 2 問あってはいけない。 */
+export const hostQuestionList = z.array(hostQuestionInput).max(5).refine((questions) => new Set(questions.map((question) => question.id)).size === questions.length, { message: "question ids must be unique" });
+
+/** 不能带链接（中止的ひとこと与连絡先说明共用）。 */
+const LINK_PATTERN = /(https?:\/\/|www\.|[a-z0-9-]+\.(com|jp|net|org|io|app|co)\b)/iu;
+
+/** 主催者の連絡先（2026-11-14）：ID ≤60 字、说明 ≤200 字且不能带链接；三项都选填，空字符串 = 不填。 */
+export const HOST_CONTACT_ID_MAX = 60;
+export const HOST_CONTACT_NOTE_MAX = 200;
+export const hostContactNoteText = z.string().trim().max(HOST_CONTACT_NOTE_MAX).refine((value) => !LINK_PATTERN.test(value), "no links");
+export const hostEventContactInputObject = z.object({
+  wechatId: z.string().trim().max(HOST_CONTACT_ID_MAX).nullable().optional(),
+  lineId: z.string().trim().max(HOST_CONTACT_ID_MAX).nullable().optional(),
+  note: hostContactNoteText.nullable().optional(),
+}).strict();
 
 export const hostEventInputObject = z.object({
   title,
@@ -198,6 +232,9 @@ export const hostEventInputObject = z.object({
   description: description.optional(),
   organizerProfileId: profileId,
   templateId: z.enum(["mixer", "study", "roundtable"]).nullable().optional(),
+  // 2026-11-13: the registration questions are set while creating the event (up to 5).
+  questions: hostQuestionList.optional(),
+  contact: hostEventContactInputObject.nullable().optional(),
 }).strict();
 export const hostEventInputSchema = hostEventInputObject as unknown as z.ZodType<HostEventInput>;
 
@@ -216,6 +253,7 @@ export const hostEventUpdateInputObject = z.object({
   capacity: capacity.optional(),
   description: description.optional(),
   organizerProfileId: profileId.optional(),
+  contact: hostEventContactInputObject.nullable().optional(),
   notify: z.boolean().optional(),
 }).strict();
 export const hostEventUpdateInputSchema = hostEventUpdateInputObject as unknown as z.ZodType<HostEventUpdateInput>;
@@ -224,7 +262,7 @@ export const hostEventPublishInputObject = z.object({ expectedVersion: z.number(
 export const hostEventPublishInputSchema = hostEventPublishInputObject as z.ZodType<HostEventPublishInput>;
 
 /** ≤140 字、不能带链接（A10 / §2.10）。 */
-export const hostNoteText = z.string().trim().max(140).refine((value) => !/(https?:\/\/|www\.|[a-z0-9-]+\.(com|jp|net|org|io|app|co)\b)/iu.test(value), "no links");
+export const hostNoteText = z.string().trim().max(140).refine((value) => !LINK_PATTERN.test(value), "no links");
 
 export const hostEventCancelInputObject = z.object({ expectedVersion: z.number().int().min(1), hostNote: hostNoteText.nullable().optional() }).strict();
 export const hostEventCancelInputSchema = hostEventCancelInputObject as unknown as z.ZodType<HostEventCancelInput>;

@@ -1,3 +1,4 @@
+import type { HostSetupQuestion } from "./host-console";
 // R17 — 主催：運営センター、建活动 / 编辑 / 发布 / 中止。Owner: 甲 (R17). Used by: host (Web 運営センター / 建活动, App 運営センター).
 // DESIGN: docs/designs/redesign-2026-10/sprints/host/DESIGN.md §2.1–§2.2、§4。
 // 所有接口走 `requireEventCapability`（主办侧不经过参加者的名单规则 A）。
@@ -140,6 +141,27 @@ export interface HostCohostAvatar {
   initial: string;
 }
 
+/**
+ * 主催者の連絡先（2026-11-14 用户）：参加者报名后加主办方微信 / LINE，主办方拉群、收参加费后在「参加者」里审核通过。
+ * 存在 `event_ops_events.source_payload.host.contact`；只返回给本场已报名（審査中 / 確定 / キャンセル待ち / 受付済み）的人，
+ * 公开页、未登录、未报名都拿不到。三项都是选填，全空 = null。
+ */
+export interface HostEventContact {
+  /** 微信 ID（≤60 字）。 */
+  wechatId: string | null;
+  /** LINE ID（≤60 字）。 */
+  lineId: string | null;
+  /** 给参加者的一句说明（≤200 字，不能带链接）。 */
+  note: string | null;
+}
+
+/** 写入时的连絡先（三项选填；空字符串 = 不填）。 */
+export interface HostEventContactInput {
+  wechatId?: string | null;
+  lineId?: string | null;
+  note?: string | null;
+}
+
 /** 一场活动的主办侧视图（建活动 / 编辑 / 运营台页头共用）。 */
 export interface HostEventView {
   eventId: string;
@@ -184,6 +206,8 @@ export interface HostEventView {
   archivedAt: string | null;
   /** 乐观锁版本（Event Core `event_version`）。 */
   version: number;
+  /** 主催者の連絡先（编辑表单预填；旧服务端没有这个字段）。 */
+  contact?: HostEventContact | null;
   sample?: true;
 }
 
@@ -205,6 +229,10 @@ export interface HostEventInput {
   organizerProfileId: string;
   /** 从模板开始（交流会 / 勉強会 / ラウンドテーブル）：预填说明文骨架、问题集、编组条件。 */
   templateId?: "mixer" | "study" | "roundtable" | null;
+  /** 申込フォームの初期質問（作成画面で決める；最大 5 問）。公開時にフォームも公開される。 */
+  questions?: readonly HostSetupQuestion[];
+  /** 主催者の連絡先（任意）。只给已报名的人看。 */
+  contact?: HostEventContactInput | null;
 }
 
 /** `PATCH /api/host/events/[id]`：改基本情報（`event.edit`）。已公开的活动改日時或会場时，`notify` 决定是否发定型通知。 */
@@ -223,6 +251,8 @@ export interface HostEventUpdateInput {
   capacity?: number | null;
   description?: string | null;
   organizerProfileId?: string;
+  /** 主催者の連絡先：给了就整体替换（null / 全空 = 清除）；改它不通知参加者。 */
+  contact?: HostEventContactInput | null;
   /** 已公开且日時 / 会場有变化：true = 保存して知らせる，false = 知らせずに保存。 */
   notify?: boolean;
 }

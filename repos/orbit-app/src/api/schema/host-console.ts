@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
-import { hostEventViewObject, hostNoteText } from "./host-events";
+import { hostEventViewObject, hostNoteText, hostQuestionList } from "./host-events";
 import type {
   HostRosterMatchInput,
   HostRosterMatchResponse,
@@ -20,6 +20,7 @@ import type {
   HostPeopleDecisionInput,
   HostPeopleDecisionResult,
   HostPeopleResponse,
+  HostPersonResponse,
   HostReportResponse,
   HostSetupDraftInput,
   HostSetupHostNoteInput,
@@ -49,6 +50,7 @@ export const hostOverviewResponseObject = z.object({
   recommendationRate: percent.nullable(),
   recommendationsPerPerson: count,
   trend: z.array(count).max(60),
+  trendStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).optional(),
   currentStep: tolerantEnum(STEPS, "registration"),
   completedSteps: z.array(z.string()).transform((items) => items.filter((item): item is (typeof STEPS)[number] => (STEPS as readonly string[]).includes(item))),
   todos: readableItems(z.object({ kind: z.enum(["review_pending", "profile_incomplete"]), count, walkInSlots: count.nullable().optional() })),
@@ -94,7 +96,9 @@ export const hostMatchingResponseObject = z.object({
   minimumApplied: count,
   generationsUsed: count,
   generationsLimit: count,
-  conditions: hostMatchingConditionsObject,
+  // Reads report the table size the published grouping actually has (imported events reach 13);
+  // the 2–12 bound applies to what the organizer asks for (generate input), not to what is read back.
+  conditions: hostMatchingConditionsObject.extend({ tableSize: z.number().int().min(1).max(50) }),
   rounds: readableItems(z.object({ index: z.number().int().min(1), startsAt: z.string(), endsAt: z.string() })),
   round: z.number().int().min(1),
   tables: readableItems(hostMatchingTableObject),
@@ -138,8 +142,38 @@ export const hostPeopleRowObject = z.object({
   profileIncomplete: z.boolean(),
   attendCount: count,
   status: z.enum(BUCKETS),
-  applicationVersion: z.number().int().min(1),
+  // 0 = a member who registered without an application (first-come / imported events): read-only row.
+  applicationVersion: z.number().int().min(0),
 });
+
+const hostPersonAnswerObject = z.object({ label: z.string().max(400), value: z.string().max(4000) });
+const hostPersonMateObject = z.object({ participantId: z.string().min(1), name: z.string(), org: z.string().nullable() });
+export const hostPersonResponseObject = z.object({
+  eventId: z.string().min(1),
+  actorId: z.string().min(1),
+  name: z.string(),
+  initial: z.string().max(4),
+  org: z.string().nullable(),
+  role: z.string().nullable(),
+  status: z.enum(BUCKETS),
+  source: z.enum(["application", "member"]),
+  submittedAt: z.string().nullable(),
+  checkedInAt: z.string().nullable(),
+  receptionNumber: z.string().nullable(),
+  attendCount: count,
+  hostAnswers: readableItems(hostPersonAnswerObject),
+  profile: readableItems(hostPersonAnswerObject),
+  topics: z.array(z.string()).max(40),
+  offers: z.array(z.string()).max(40),
+  needs: z.array(z.string()).max(40),
+  matching: z.object({
+    published: z.boolean(),
+    tables: readableItems(z.object({ round: z.number().int().min(1), table: z.string().min(1), theme: z.string().nullable(), why: z.string().nullable(), mates: readableItems(hostPersonMateObject) })),
+    recommendations: readableItems(z.object({ rank: count, participantId: z.string().min(1), name: z.string(), org: z.string().nullable(), role: z.string().nullable(), reason: z.string().nullable() })),
+  }).nullable(),
+  sample: z.literal(true).optional(),
+});
+export const hostPersonResponseSchema = hostPersonResponseObject as unknown as z.ZodType<HostPersonResponse>;
 
 export const hostPeopleResponseObject = z.object({
   event: hostEventViewObject,
@@ -197,6 +231,7 @@ export const hostKioskRecentObject = z.object({
 
 export const hostKioskResponseObject = z.object({
   eventId: z.string().min(1),
+  closed: z.boolean().optional(),
   title: z.string(),
   venue: z.string().nullable(),
   staffName: z.string(),
@@ -276,17 +311,10 @@ export const hostSetupResponseObject = z.object({
 });
 export const hostSetupResponseSchema = hostSetupResponseObject as unknown as z.ZodType<HostSetupResponse>;
 
-const questionInput = z.object({
-  id: z.string().trim().min(1).max(64),
-  prompt: z.string().trim().min(1).max(120),
-  kind: z.enum(QUESTION_KINDS),
-  required: z.boolean(),
-  options: z.array(z.string().trim().min(1).max(60)).max(12),
-}).strict();
 export const hostSetupDraftInputObject = z.object({
   expectedRevision: z.number().int().min(0),
-  description: z.string().trim().max(200),
-  questions: z.array(questionInput).max(5),
+  description: z.string().trim().max(2000),
+  questions: hostQuestionList,
   capacity: z.number().int().min(1).max(10_000).nullable(),
   registrationClosesAt: z.string().datetime({ offset: true }).nullable(),
   admissionMode: z.enum(["first_come", "review"]),
@@ -316,6 +344,7 @@ export const hostReportAllObject = z.object({
   daysSincePublish: z.number().int().nullable(),
   daysPublishToEvent: z.number().int().nullable(),
   trend: z.array(count).max(120),
+  trendStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).optional(),
   trendLabels: z.array(z.string()).max(12),
   trendMarks: z.array(z.object({ index: count, label: z.string().max(40) })).max(12).optional(),
   checkInRate: percent.nullable(),

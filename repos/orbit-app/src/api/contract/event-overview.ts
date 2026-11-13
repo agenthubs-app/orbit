@@ -1,6 +1,7 @@
 // R27 — イベント詳細 read model: event facts, my rule-based assessment strip, organizer stats, public attendees.
 // Owner: 甲 (R27). Used by: events (詳細, both clients; signed-out visitors get the public part only, R26-08).
 import type { EventAssessmentVerdict } from "./event-assessment";
+import type { HostEventContact } from "./host-events";
 
 /** My relation to the event (same vocabulary as 参加予定, plus `none`). */
 export type EventOverviewRegistrationStatus = "none" | "registered" | "pending_review" | "waitlisted" | "rejected" | "cancelled" | "attended";
@@ -85,6 +86,11 @@ export interface EventOverviewResponse {
   attendees: readonly EventOverviewAttendee[];
   knownAttendees: readonly { name: string; initial: string; speaker?: boolean }[];
   registration: { status: EventOverviewRegistrationStatus; href: string };
+  /**
+   * 主催者の連絡先（微信 / LINE / 一句说明）。服务端只给本场已报名的人（審査中 / 確定 / キャンセル待ち / 受付済み）：
+   * 字段缺省 = 我看不到；null = 我能看但主办方没填（界面显示「まだありません」）。
+   */
+  hostContact?: HostEventContact | null;
   signedOut?: boolean;
   sample?: true;
 }
