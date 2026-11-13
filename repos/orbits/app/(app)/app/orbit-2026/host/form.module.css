@@ -24,7 +24,7 @@
 
 .ta { display: block; position: relative; border-radius: var(--r-tile); background: var(--surface-2); padding: 14px 16px 30px; font-size: var(--fs-body-sm); line-height: var(--lh-quote); color: var(--ink); }
 .ta:focus-within { box-shadow: 0 0 0 2px var(--plum-300); }
-.ta textarea { display: block; width: 100%; min-height: 82px; margin: 0; padding: 0; border: 0; outline: 0; resize: none; background: transparent; font: inherit; color: inherit; }
+.ta textarea { display: block; width: 100%; min-height: 82px; max-height: 60vh; margin: 0; padding: 0; border: 0; outline: 0; resize: none; background: transparent; font: inherit; color: inherit; field-sizing: content; overflow-y: auto; }
 .ta textarea::placeholder { color: var(--ink-4); }
 .taBad { box-shadow: 0 0 0 1.5px var(--coral); }
 .counter { position: absolute; right: 14px; bottom: 10px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-3); font-family: var(--font-num); pointer-events: none; }
@@ -97,3 +97,6 @@
 .pfStats b { font-size: var(--fs-body); }
 .taSm { min-height: 90px; padding-bottom: 14px; }
 .taSm textarea { min-height: 40px; }
+
+/* 一時保存の復元（新規作成）：左に案内、右に「破棄」。 */
+.restored.restored { display: flex; flex-direction: row; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 16px; text-align: left; }

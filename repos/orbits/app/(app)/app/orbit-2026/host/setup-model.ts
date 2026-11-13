@@ -2,8 +2,8 @@
 import type { HostQuestionKind, HostSetupDraftInput, HostSetupQuestion, HostSetupResponse } from "../../../../../shared/contract/host-console";
 import type { HostT } from "./host-model";
 
-export const DESC_MAX = 200;
-export const DESC_WARN = 180;
+export const DESC_MAX = 2000;
+export const DESC_WARN = 1900;
 export const NOTE_MAX = 140;
 export const QUESTION_MAX = 5;
 

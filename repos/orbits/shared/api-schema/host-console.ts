@@ -320,7 +320,7 @@ const questionInput = z.object({
 }).strict();
 export const hostSetupDraftInputObject = z.object({
   expectedRevision: z.number().int().min(0),
-  description: z.string().trim().max(200),
+  description: z.string().trim().max(2000),
   questions: z.array(questionInput).max(5),
   capacity: z.number().int().min(1).max(10_000).nullable(),
   registrationClosesAt: z.string().datetime({ offset: true }).nullable(),

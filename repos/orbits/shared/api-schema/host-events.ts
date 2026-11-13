@@ -179,7 +179,8 @@ const venueText = z.string().trim().max(80).nullable();
 const yen = z.number().int().min(0).max(10_000_000).nullable();
 const url = z.string().trim().url().max(500).refine((value) => /^https:\/\//u.test(value), "https only").nullable();
 const capacity = z.number().int().min(1).max(10_000).nullable();
-const description = z.string().trim().max(200).nullable();
+// 2026-11-13 user: event descriptions up to 2000 characters (public pages fold long Markdown).
+const description = z.string().trim().max(2000).nullable();
 const profileId = z.string().trim().min(1).max(200);
 
 export const hostEventInputObject = z.object({

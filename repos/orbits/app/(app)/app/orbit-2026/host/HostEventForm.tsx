@@ -21,7 +21,7 @@ import f from "./form.module.css";
 import s from "./host.module.css";
 import m from "./tabs.module.css";
 
-export const DESC_MAX = 200;
+export const DESC_MAX = 2000;
 export const NOTE_MAX = 140;
 const TEMPLATES = [["mixer", "🥂", "tplMixer", "m_lav"], ["study", "📚", "tplStudy", "m_blue"], ["roundtable", "💬", "tplRound", "m_pink"]] as const;
 type TemplateId = (typeof TEMPLATES)[number][0];
@@ -70,7 +70,7 @@ export function draftFromEvent(event: HostEventView | null, profiles: readonly O
   };
 }
 
-export type DraftProblem = "evInvalidName" | "evInvalidTime" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile";
+export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile";
 
 /** 入力 → 契約（建 / 改共用）。問題があれば最初の 1 つ。 */
 export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "organizerProfileId"> & { organizerProfileId: string }; problem: null } | { input: null; problem: DraftProblem } {
@@ -80,6 +80,7 @@ export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "
   let endsAt = tokyoIso(draft.date, draft.end);
   // 終了が開始より前 = 日をまたぐ（23:00–01:00）。
   if (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt)) endsAt = new Date(Date.parse(endsAt) + 86_400_000).toISOString();
+  if (!draft.date) return { input: null, problem: "evInvalidDate" };
   if (!startsAt || !endsAt || Date.parse(endsAt) - Date.parse(startsAt) > 86_400_000) return { input: null, problem: "evInvalidTime" };
   const venueName = draft.venueName.trim();
   if (!venueName && !draft.online) return { input: null, problem: "evInvalidVenue" };
@@ -228,7 +229,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
   const isDraft = mode === "create" || event?.lifecycle === "draft";
   const right = (
     <div className={s.headRight}>
-      {isDraft ? <button type="button" className={`btn ${s.btn}`} disabled={busy || readOnly} onClick={onSaveDraft} data-host-save-draft="">{t("evSaveDraft")}</button> : null}
+      {isDraft ? <button type="button" className={`btn ${s.btn}`} disabled={busy || readOnly} onClick={onSaveDraft} data-host-save-draft="">{t(mode === "create" ? "evSaveTemp" : "evSaveDraft")}</button> : null}
       <button type="button" className={`btn ${s.btn} ${s.accent}`} disabled={busy || readOnly} onClick={onPrimary} data-host-form-primary="">{t(mode === "create" ? "evToPublish" : "evSaveChanges")}</button>
     </div>
   );
@@ -297,7 +298,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
             <div className={s.cardH}><h3>{t("evDesc")}</h3><span className={s.lbl}>{t("evDescMax")}</span></div>
             <label className={f.ta}>
               <textarea value={draft.description} disabled={readOnly} maxLength={DESC_MAX} placeholder={t("evDescPh")} aria-label={t("evDesc")} onChange={(ev) => set("description", ev.target.value)} />
-              <span className={`${f.counter} ${length > 180 ? f.counterBad : ""}`} aria-live="polite">{t("evCounter", { n: length })}</span>
+              <span className={`${f.counter} ${length > DESC_MAX - 100 ? f.counterBad : ""}`} aria-live="polite">{t("evCounter", { n: length })}</span>
             </label>
           </div>
         </div>
@@ -331,6 +332,54 @@ function hostDateShortLong(iso: string, language: OrbitLanguage, t: HostT): stri
   return `${p.month}/${p.day}${wd}${long.slice(long.lastIndexOf("）") + 1)}`;
 }
 
+// ─── 一時保存（2026-11-13 用户：新建活动允许暂存） ─────────────────────
+// 必須項目がそろっていればサーバーの下書き（本人だけに見える）として保存し、このページに留まる。
+// そろっていなければこの端末に保存し、足りない項目を伝える。新規作成ページは入力のたびに端末へ自動保存し、
+// 次に開いたとき復元する（下書き作成・作成完了で消える）。端末保存はアカウントごとのキー。
+
+const TEMP_KEY_PREFIX = "orbit:host-event-temp:v1:";
+const TEMP_MAX_AGE_MS = 30 * 86_400_000;
+
+export type TempDraft = { savedAt: string; draft: EventDraft };
+
+/** 入力が何かあるか（既定値だけなら保存しない）。 */
+export function draftHasInput(draft: EventDraft): boolean {
+  return Boolean(draft.title.trim() || draft.description.trim() || draft.venueName.trim() || draft.date || draft.capacity.trim() || draft.feeAmount.trim() || draft.feeUrl.trim() || draft.templateId);
+}
+
+export function readTempDraft(storage: Pick<Storage, "getItem" | "removeItem"> | null, userKey: string, now: Date): TempDraft | null {
+  if (!storage || !userKey) return null;
+  try {
+    const raw = storage.getItem(TEMP_KEY_PREFIX + userKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TempDraft;
+    if (!parsed?.draft || typeof parsed.savedAt !== "string" || now.getTime() - Date.parse(parsed.savedAt) > TEMP_MAX_AGE_MS) { storage.removeItem(TEMP_KEY_PREFIX + userKey); return null; }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeTempDraft(storage: Pick<Storage, "setItem" | "removeItem"> | null, userKey: string, draft: EventDraft, now: Date): boolean {
+  if (!storage || !userKey) return false;
+  try {
+    if (!draftHasInput(draft)) { storage.removeItem(TEMP_KEY_PREFIX + userKey); return true; }
+    storage.setItem(TEMP_KEY_PREFIX + userKey, JSON.stringify({ draft, savedAt: now.toISOString() } satisfies TempDraft));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearTempDraft(storage: Pick<Storage, "removeItem"> | null, userKey: string): void {
+  if (!storage || !userKey) return;
+  try { storage.removeItem(TEMP_KEY_PREFIX + userKey); } catch { /* storage blocked: nothing to clear */ }
+}
+
+function browserStorage(): Storage | null {
+  try { return typeof window === "undefined" ? null : window.localStorage; } catch { return null; }
+}
+
 // ─── 容器 ──────────────────────────────────────────────
 
 function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; eventId: string | null; language: OrbitLanguage }) {
@@ -346,6 +395,9 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   const [conflict, setConflict] = useState(false);
   const [preview, setPreview] = useState<{ change: HostEventChangePreview; patch: Omit<HostEventUpdateInput, "expectedVersion"> } | null>(null);
   const [publishFor, setPublishFor] = useState<HostEventView | null>(null);
+  // 端末の一時保存（新規作成のみ）：アカウントごとのキーと、復元したときの案内。
+  const [userKey, setUserKey] = useState("");
+  const [restoredAt, setRestoredAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setConflict(false);
@@ -355,10 +407,25 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     if (eventRes && !eventRes.ok) { setFailure(failureOf(eventRes)); return; }
     const view = eventRes && eventRes.ok ? eventRes.data : null;
     setEvent(view);
-    setDraft(draftFromEvent(view, list));
+    const fresh = draftFromEvent(view, list);
     setFailure(null);
-  }, [eventId]);
+    if (mode === "create") {
+      const session = await fetch("/api/auth/session").then((res) => res.json() as Promise<{ user?: { id?: string } } | null>).catch(() => null);
+      const key = session?.user?.id ?? "";
+      setUserKey(key);
+      const temp = readTempDraft(browserStorage(), key, new Date());
+      if (temp) { setDraft({ ...fresh, ...temp.draft, organizerProfileId: list.some((item) => item.profileId === temp.draft.organizerProfileId) ? temp.draft.organizerProfileId : fresh.organizerProfileId }); setRestoredAt(temp.savedAt); return; }
+    }
+    setDraft(fresh);
+  }, [eventId, mode]);
   useEffect(() => { void load(); }, [load]);
+
+  // 新規作成：入力のたびに（0.8 秒まとめて）端末へ自動保存。
+  useEffect(() => {
+    if (mode !== "create" || !draft || !userKey) return;
+    const timer = setTimeout(() => { writeTempDraft(browserStorage(), userKey, draft, new Date()); }, 800);
+    return () => clearTimeout(timer);
+  }, [draft, mode, userKey]);
 
   const problemOf = (): ReturnType<typeof draftToInput> | null => {
     if (!draft) return null;
@@ -374,9 +441,27 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
     const res = await hostEventApi.create(result.input);
     setBusy(false);
     if (!res.ok) { toast.error(failureOf(res) === "sample" ? t("evSample") : t("saveError")); return; }
+    clearTempDraft(browserStorage(), userKey);
     if (thenPublish) { setEvent(res.data.event); setPublishFor(res.data.event); return; }
     toast.success(t("evDraftSaved"));
-    router.push(consoleHref(res.data.event.eventId, "setup"));
+    // 下書きになったら編集ページへ（このまま続けて編集・保存できる）。
+    router.replace(`/app/events/${encodeURIComponent(res.data.event.eventId)}/edit`);
+  };
+
+  /** 一時保存：そろっていればサーバーの下書き、足りなければ端末に保存して足りない項目を伝える。 */
+  const saveTemp = () => {
+    if (!draft) return;
+    const result = draftToInput(draft);
+    if (result.input) { void create(false); return; }
+    if (!writeTempDraft(browserStorage(), userKey, draft, new Date())) { toast.error(t("saveError")); return; }
+    setRestoredAt(null);
+    toast.success(t("evTempSaved", { what: t(result.problem) }));
+  };
+
+  const discardTemp = () => {
+    clearTempDraft(browserStorage(), userKey);
+    setRestoredAt(null);
+    setDraft(draftFromEvent(null, profiles ?? []));
   };
 
   const patch = async (fields: Omit<HostEventUpdateInput, "expectedVersion">, notify?: boolean) => {
@@ -435,9 +520,15 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
         </div>
       ) : null}
       {readOnly ? <div className={`${s.card} ${s.flat} ${f.conflict}`} data-host-form-readonly="">{t("evReadOnly")}</div> : null}
+      {restoredAt ? (
+        <div className={`${s.card} ${s.flat} ${s.row} ${f.restored}`} role="status" data-host-form-restored="">
+          <span className={s.grow}>{t("evRestored", { time: hostDateLong(restoredAt, language, t) })}</span>
+          <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={discardTemp}>{t("evDiscardTemp")}</button>
+        </div>
+      ) : null}
       <HostEventFormView mode={mode} draft={draft} profiles={profiles} language={language} event={event} busy={busy} readOnly={readOnly}
         showTemplates={mode === "create" && params.get("from") === "template"} onChange={setDraft}
-        onSaveDraft={() => (mode === "create" ? void create(false) : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
+        onSaveDraft={() => (mode === "create" ? saveTemp() : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
       {preview ? <ChangeNotifyConfirm preview={preview.change} t={t} language={language} busy={busy} onClose={() => setPreview(null)} onSilent={() => void patch(preview.patch, false)} onNotify={() => void patch(preview.patch, true)} /> : null}
       {publishFor ? <PublishEventConfirm event={publishFor} t={t} language={language} busy={busy} onCancel={() => { setPublishFor(null); router.push(`/app/events/${encodeURIComponent(publishFor.eventId)}/edit`); }} onPublish={() => void publish()} /> : null}
     </>
