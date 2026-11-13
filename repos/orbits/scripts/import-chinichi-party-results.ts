@@ -232,7 +232,7 @@ async function loadHeads(sql: EventOperationsSqlExecutor, ws: string, eventId: s
   return rows.rows.map((r) => ({ actorId: r.actor_id, participantId: r.participant_id, membershipVersion: Number(r.membership_version), profileVersion: Number(r.profile_version), participant: (r.payload?.participant ?? {}) as Record<string, unknown> }));
 }
 
-async function importEvent(sql: EventOperationsSqlExecutor, ws: string, eventId: string, data: ImportEvent, write: boolean) {
+export async function importEvent(sql: EventOperationsSqlExecutor, ws: string, eventId: string, data: ImportEvent, write: boolean) {
   const event = (await sql.query<{ organizer_actor_id: string; starts_at: unknown; ends_at: unknown; event_version: string; title: string }>(
     `select organizer_actor_id, starts_at, ends_at, event_version::text, title from event_ops_events where workspace_id=$1 and event_id=$2 ${write ? "for update" : ""}`, [ws, eventId])).rows[0];
   if (!event || event.title.trim() !== TARGETS[eventId]!.title) throw new Error(`GUARD_EVENT:${eventId}`);

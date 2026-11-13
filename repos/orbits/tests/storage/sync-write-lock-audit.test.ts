@@ -40,6 +40,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/agent/storage/agent-runtime-live-record-provider.ts": { policy: "non-sync", statements: 2, collections: "orbit_agent_chat_requests and agent runtime collections" },
   "features/appointments/notification-projector.ts": { policy: "non-sync", statements: 2, collections: "notifications" },
   "features/events/actor-records/store.ts": { policy: "non-sync", statements: 2, collections: "R27 per-person event records (eventRecommendationFeedback, organizerFollows, eventPrepChecklists, eventAfterConfirmations, eventTentativeSchedules, eventJoinIntros, eventVenueMemos); never synced, owner never changes" },
+  "features/auth/password-change.ts": { policy: "non-sync", statements: 1, collections: "auth_users" },
   "features/auth/password-reset-store.ts": { policy: "non-sync", statements: 4, collections: "auth_users" },
   "features/auth/storage/mobile-auth-exchange-provider.ts": { policy: "non-sync", statements: 1, collections: "mobile_auth_exchanges" },
   "features/dashboard/storage/dashboard-snapshot.ts": { policy: "non-sync", statements: 1, collections: "dashboard analysis snapshots" },
@@ -89,6 +90,10 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "scripts/measure-home-event-pool-traffic.ts": { statements: 1, how: "W0036: lockedWrite takes the lock first in each write transaction (temporary schema)" },
   "scripts/seed-verify-accounts.ts": { statements: 1, how: "the verify event seed transaction takes the lock first" },
   "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
+  "scripts/fix-chinichi-startup-event-details.ts": { statements: 1, how: "2026-11-12 one-off: its write transaction takes acquireSyncCommitOrderLock first" },
+  "scripts/import-chinichi-party-results.ts": { statements: 3, how: "2026-11-12 one-off import: the write transaction takes acquireSyncCommitOrderLock first (also when called from migrate-chinichi-party-attendees)" },
+  "scripts/merge-chinichi-party-account.ts": { statements: 2, how: "2026-11-12 one-off merge: the write transaction takes acquireSyncCommitOrderLock first" },
+  "scripts/migrate-chinichi-party-attendees.ts": { statements: 1, how: "2026-11-13 one-off attendee migration: the write transaction takes acquireSyncCommitOrderLock first" },
 };
 
 const ROOT = join(__dirname, "../..");
