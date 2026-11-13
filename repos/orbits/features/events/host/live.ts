@@ -231,13 +231,13 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
 
   /** 受付終了後は受付・取り消し・当日枠を受け付けない（代理受付が計画の参加記録になるため、数か月後の誤操作を防ぐ）。 */
   async function requireKioskOpen(actorId: string, eventId: string) {
-    if (kioskClosed(await factsOrThrow(actorId, eventId), now())) throw new HostError("VALIDATION", "CHECK_IN_CLOSED");
+    if (kioskClosed(await factsOrThrow(actorId, eventId), now())) throw new HostError("INVALID_STATE", "CHECK_IN_CLOSED");
   }
 
   /** 開催済み・中止・アーカイブの回は申込設定を変えられない（画面も読み取り専用）。 */
   async function requireNotEnded(actorId: string, eventId: string) {
     const status = statusOf(await factsOrThrow(actorId, eventId), now());
-    if (status === "ended" || status === "cancelled" || status === "archived") throw new HostError("VALIDATION", "EVENT_ENDED");
+    if (status === "ended" || status === "cancelled" || status === "archived") throw new HostError("INVALID_STATE", "EVENT_ENDED");
   }
 
   async function setupView(actorId: string, eventId: string): Promise<HostSetupResponse> {
