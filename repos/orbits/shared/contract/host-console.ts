@@ -42,6 +42,8 @@ export interface HostOverviewResponse {
   recommendationsPerPerson: number;
   /** 申込の推移：直近 14 日每天的申込数（旧 → 新）。 */
   trend: readonly number[];
+  /** trend[0] 那一天（东京日 YYYY-MM-DD），画日期轴用；结束的活动会裁掉开头没人报名的日子。可缺省（旧服务端）。 */
+  trendStartDate?: string;
   currentStep: HostProgressStep;
   completedSteps: readonly HostProgressStep[];
   todos: readonly HostOverviewTodo[];
@@ -447,6 +449,8 @@ export interface HostReportAll {
   /** 告知から開催まで N日。 */
   daysPublishToEvent: number | null;
   trend: readonly number[];
+  /** trend[0] 那一天（东京日 YYYY-MM-DD）；可缺省（旧服务端）。 */
+  trendStartDate?: string;
   trendLabels: readonly string[];
   /** 柱上的标注（「告知メール」「登壇者発表」，b6 #17 / #18；主办方的告知记录，可缺省）。 */
   trendMarks?: readonly HostReportTrendMark[];

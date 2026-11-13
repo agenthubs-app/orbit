@@ -331,6 +331,7 @@ export function hostOverview(eventId: string, state: HostMockState = DEFAULT_HOS
     sample: true,
     todos: inactive ? [] : eventId === HOST_EVENT_IDS.cfo18 ? [{ count: 12, kind: "review_pending", walkInSlots: 8 }, { count: 16, kind: "profile_incomplete" }] : [],
     trend: [...TREND_14],
+    trendStartDate: trendStartDateEnding(seed.startsAt, TREND_14.length),
   };
 }
 
@@ -620,12 +621,12 @@ export function hostReport(eventId: string, view: "all" | "mine", state: HostMoc
     };
   }
   if (eventId === HOST_EVENT_IDS.asakai3 || event.status === "upcoming" || event.status === "draft") {
-    return { all: { ...nothing, applied: seed.applied, capacity: seed.capacity, daysSincePublish: 9, daysToStart: 14, followupWindowDays: 7, state: "before", suppressedBelow: 5, trend: trendBefore, trendLabels: [] }, event, mine: null, sample: true, view };
+    return { all: { ...nothing, applied: seed.applied, capacity: seed.capacity, daysSincePublish: 9, daysToStart: 14, followupWindowDays: 7, state: "before", suppressedBelow: 5, trend: trendBefore, trendLabels: [], trendStartDate: event.startsAt ? trendStartDateEnding(new Date(Date.parse(event.startsAt) - 14 * 86_400_000).toISOString(), trendBefore.length) : undefined }, event, mine: null, sample: true, view };
   }
   if (eventId === HOST_EVENT_IDS.founders11) {
-    return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: 48, exchangesPerPerson: 2.2, followupRate: 73, followupWindowDays: 7, followups: 16, funnel: { drafted: 18, exchanged: 21, followed: 16, meetings: 6 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend: trendFew, trendLabels: labels, trendMarks }, event, mine: null, sample: true, view };
+    return { all: { applied: 24, capacity: 24, checkInRate: 92, checkedIn: 22, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 95, exchanges: 48, exchangesPerPerson: 2.2, followupRate: 73, followupWindowDays: 7, followups: 16, funnel: { drafted: 18, exchanged: 21, followed: 16, meetings: 6 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: null, tables: [["A", 14], ["B", 12], ["C", 11], ["D", 11]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend: trendFew, trendLabels: labels, trendMarks, trendStartDate: trendStartDateEnding(event.startsAt, trendFew.length) }, event, mine: null, sample: true, view };
   }
-  return { all: { applied: seed.applied, capacity: seed.applied, checkInRate: 84, checkedIn: 118, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 91, exchanges: 312, exchangesPerPerson: 2.6, followupRate: 61, followupWindowDays: 7, followups: 52, funnel: { drafted: 74, exchanged: 107, followed: 52, meetings: 19 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: "テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討", tables: [["A", 19], ["B", 17], ["C", 16], ["D", 15], ["E", 9], ["F", 14]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend, trendLabels: labels, trendMarks }, event, mine: null, sample: true, view };
+  return { all: { applied: seed.applied, capacity: seed.applied, checkInRate: 84, checkedIn: 118, daysPublishToEvent: 21, daysSincePublish: null, daysToStart: null, exchangeRate: 91, exchanges: 312, exchangesPerPerson: 2.6, followupRate: 61, followupWindowDays: 7, followups: 52, funnel: { drafted: 74, exchanged: 107, followed: 52, meetings: 19 }, standing, standingQuestion: "申込回答 Q1", state: "after", suppressedBelow: 5, tableNote: "テーブル E は欠席 2名で 3名卓に。次回は当日の再配置を検討", tables: [["A", 19], ["B", 17], ["C", 16], ["D", 15], ["E", 9], ["F", 14]].map(([t, n]) => ({ exchanges: n as number, round: 1, table: t as string })), trend, trendLabels: labels, trendMarks, trendStartDate: trendStartDateEnding(event.startsAt, trend.length) }, event, mine: null, sample: true, view };
 }
 
 // ─── 共同運営者 ─────────────────────────────────────────
@@ -698,6 +699,13 @@ export function organizerPublic(slug: string, state: HostMockState = DEFAULT_HOS
   if (state.organizer === "empty") return { following, organizerKey, past: [], pastTotal: 0, profile, sample: true, stats: { attendeesTotal: 0, eventsHeld: 0, followers: 12 }, upcoming: [] };
   if (state.organizer === "few") return { following, organizerKey, past: past(PAST_MANY.slice(0, 1)), pastTotal: 1, profile, sample: true, stats: { attendeesTotal: 128, eventsHeld: 1, followers: 140 }, upcoming: [vol19] };
   return { following, organizerKey, past: past(PAST_MANY), pastTotal: 18, profile, sample: true, stats: { attendeesTotal: 2140, eventsHeld: 18, followers: 860 }, upcoming: [vol19, special] };
+}
+
+/** 申込推移の先頭日（東京日 YYYY-MM-DD；開催日で終わる days 日分）。 */
+export function trendStartDateEnding(startsAt: string | null | undefined, days: number): string | undefined {
+  const start = startsAt ? Date.parse(startsAt) : Number.NaN;
+  if (!Number.isFinite(start)) return undefined;
+  return new Date(start - (days - 1) * 86_400_000 + 9 * 3_600_000).toISOString().slice(0, 10);
 }
 
 /** 申込推移の横軸ラベル（開催日で終わる days 日分：先頭・+7・+14・開催日）。 */

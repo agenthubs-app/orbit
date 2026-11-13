@@ -155,6 +155,31 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       return Number(result.rows[0]?.n ?? 0);
     },
 
+    /**
+     * 参加中、但没有申込记录的成员（不审核直接登记 / 从 party-app 搬来的场次）：名字・公司・职位・资料取自本人的活动档案，
+     * 参加歴与申込者同口径。主办方「参加者」页签把他们列在承認済み里（只读，不能审核）。
+     */
+    async membersWithoutApplication(eventId: string, organizerActorId: string): Promise<Array<{ actorId: string; participant: Record<string, unknown>; registeredAt: string; attendCount: number }>> {
+      const result = await client.query<Row>(
+        `select m.actor_id, v.profile_payload -> 'participant' as participant,
+                (select min(mv.registered_at) from event_ops_membership_versions mv where mv.workspace_id = m.workspace_id and mv.event_id = m.event_id and mv.actor_id = m.actor_id) as registered_at,
+                (select count(*) from event_ops_checkins c join event_ops_events oe on oe.workspace_id = c.workspace_id and oe.event_id = c.event_id
+                  where c.workspace_id = m.workspace_id and c.actor_id = m.actor_id and oe.organizer_actor_id = $3 and c.event_id <> m.event_id) as attend_count
+           from event_ops_membership_heads m
+           left join event_ops_profile_versions v on v.workspace_id = m.workspace_id and v.event_id = m.event_id and v.participant_id = m.participant_id and v.profile_version = m.profile_version
+          where m.workspace_id = $1 and m.event_id = $2 and m.status = 'rsvped'
+            and not exists (select 1 from event_ops_admission_application_heads a where a.workspace_id = m.workspace_id and a.event_id = m.event_id and a.actor_id = m.actor_id)
+          order by registered_at, m.actor_id`,
+        [workspaceId, eventId, organizerActorId],
+      );
+      return result.rows.map((row) => ({
+        actorId: String(row.actor_id),
+        attendCount: num(row.attend_count),
+        participant: (row.participant && typeof row.participant === "object" ? row.participant : {}) as Record<string, unknown>,
+        registeredAt: iso(row.registered_at) ?? "",
+      }));
+    },
+
     /** 申込者（一个 bucket），带资料回答与本主办方参加歴。 */
     async applicants(eventId: string, organizerActorId: string, statuses: readonly string[]): Promise<Array<{ actorId: string; status: string; version: number; payload: { displayName?: string; answers?: Record<string, string> }; hostAnswers: Record<string, string>; submittedAt: string; attendCount: number }>> {
       const result = await client.query<Row>(

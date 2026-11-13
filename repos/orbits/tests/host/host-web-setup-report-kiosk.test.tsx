@@ -94,7 +94,7 @@ test("お知らせの文面（b12 #406，折叠区）：6 种定型只显示 + �
   assert.match(html, /CFO Night Tokyo vol\.18 への参加が承認されました/);
 });
 
-test("レポート · 開催前（b6 #16）：说明卡、申込 42 / 60名、推移 9 + 12 根、サンプル 4 格", () => {
+test("レポート · 開催前（b6 #16）：说明卡、申込 42 / 60名、推移 9 根（日付つき）、サンプル 4 格", () => {
   const data = hostReport(HOST_EVENT_IDS.asakai3, "all")!;
   const html = renderToStaticMarkup(<HostReportView data={data} t={t} />);
   assert.match(html, /data-host-report="before"/);
@@ -103,7 +103,9 @@ test("レポート · 開催前（b6 #16）：说明卡、申込 42 / 60名、�
   assert.match(html, /開催まで 14日/);
   assert.match(html, /公開から 9日/);
   assert.match(html, /サンプル/);
-  assert.equal((html.match(/<i[ >\/]/g) ?? []).length, 9 + 12 + 1);
+  // 2026-11-13 redesign (SignupTrend): one column per day with a date, no placeholder bars for the days ahead.
+  assert.equal(count(html, "data-trend-day="), 9);
+  assert.match(html, /最多 /);
   assert.deepEqual(barHeights([3, 5, 8], true), [27, 45, 72]);
   assert.equal(consoleSubtitle(data.event, "ja", t, NOW, "report"), "主催 · 10月21日（水）8:00 · 開催前");
 });
@@ -113,7 +115,7 @@ test("レポート · 少 / 全体（b6 #17 / #18）：受付率环、交換率 
   assert.match(few, /22<small[^>]*> \/ 24<\/small>/);
   assert.match(few, /1人あたり 2\.2名/);
   assert.match(few, /73% · 7日以内/);
-  assert.equal(count(few, "data-mk="), 2);
+  assert.equal(count(few, "data-trend-mark="), 2, "event marks sit in their own row above the bars");
   assert.doesNotMatch(few, /テーブル E は/);
   const data = hostReport(HOST_EVENT_IDS.cfo17, "all")!;
   const many = renderToStaticMarkup(<HostReportView data={data} t={t} why />);

@@ -102,6 +102,11 @@ test("live host service end to end", hostDatabaseTest, async () => {
     const overview = await service.overview(HOST, eventId);
     assert.equal(sum(overview.trend), 2, "the overview trend counts the same people");
     assert.equal(overview.matchable, 0, "a member without an application is matchable only once a published grouping includes them");
+    // 参加者 tab: a member without an application is listed (read-only) under 承認済み from their event profile.
+    const approvedNow = await service.people(HOST, eventId, { bucket: "approved", cursor: null, incomplete: false, q: "" });
+    const memberRow = approvedNow!.rows.find((row) => row.actorId === "actor:p1");
+    assert.equal(memberRow?.name, participantName.rows[0]!.name, "listed with the event profile name");
+    assert.deepEqual([memberRow?.status, memberRow?.applicationVersion], ["approved", 0]);
   });
 });
 

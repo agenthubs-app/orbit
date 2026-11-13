@@ -10,6 +10,7 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { Avatar, Icon } from "../ui";
 import { hostApi } from "./host-api";
 import { ScoreRing } from "./HostPeople";
+import { SignupTrend } from "./SignupTrend";
 import { hostTranslator, type HostT } from "./host-model";
 import s from "./host.module.css";
 import r from "./report.module.css";
@@ -60,7 +61,6 @@ function Why({ label, body, open, onToggle }: { label: string; body: string; ope
 }
 
 function Before({ all, t }: { all: HostReportAll; t: HostT }) {
-  const heights = barHeights(all.trend, true);
   const pct = all.capacity ? Math.round((all.applied / all.capacity) * 100) : 0;
   return (
     <>
@@ -78,10 +78,7 @@ function Before({ all, t }: { all: HostReportAll; t: HostT }) {
       </div>
       <div className={`${s.card} ${s.span12}`}>
         <div className={s.cardH}><h3>{t("trendTitle")}</h3>{all.daysSincePublish != null ? <span className={s.lbl}>{t("rpSincePub", { n: all.daysSincePublish })}</span> : null}</div>
-        <div className={`${r.bars} ${r.bars90}`} role="img" aria-label={t("trendTitle")}>
-          {heights.map((height, index) => <i key={index} style={{ height: `${height}px` }} />)}
-          {Array.from({ length: futureBars(all.trend) }, (_, index) => <i key={`f${index}`} className={r.future} />)}
-        </div>
+        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} height={96} />
       </div>
       <div className={`${s.cardH} ${r.sampleHead}`}><h3>{t("rpSampleHead")} <span className={s.sampleTag}>{t("sampleTag")}</span></h3></div>
       <div className={`${r.sampleGrid} ${s.faded}`} aria-hidden>
@@ -94,8 +91,6 @@ function Before({ all, t }: { all: HostReportAll; t: HostT }) {
 }
 
 function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: boolean; onWhy: () => void }) {
-  const heights = barHeights(all.trend);
-  const marks = new Map((all.trendMarks ?? []).map((mark) => [mark.index, mark.label]));
   const base = all.funnel.exchanged;
   const funnel = [
     ["rpFunExchanged", all.funnel.exchanged, base == null ? 0 : 100, ""],
@@ -132,10 +127,7 @@ function After({ all, t, why, onWhy }: { all: HostReportAll; t: HostT; why: bool
       </div>
       <div className={`${s.card} ${s.span8}`}>
         <div className={s.cardH}><h3>{t("trendTitle")}</h3>{all.daysPublishToEvent != null ? <span className={s.lbl}>{t("rpPubToEvent", { n: all.daysPublishToEvent })}</span> : null}</div>
-        <div className={r.bars} role="img" aria-label={t("trendTitle")}>
-          {heights.map((height, index) => <i key={index} className={marks.has(index) ? r.hi : undefined} data-mk={marks.get(index)} style={{ height: `${height}px` }} />)}
-        </div>
-        {all.trendLabels.length ? <div className={r.axis}>{all.trendLabels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}</div> : null}
+        <SignupTrend values={all.trend} startDate={all.trendStartDate} t={t} marks={all.trendMarks} />
       </div>
       <div className={`${s.card} ${s.span4}`}>
         <div className={s.cardH}><h3>{t("rpAfterTitle")}</h3><span className={s.lbl}>{t("rpByAttendees")}</span></div>

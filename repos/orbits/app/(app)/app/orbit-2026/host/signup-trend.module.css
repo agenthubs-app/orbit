@@ -1,0 +1,23 @@
+/* 申込の推移（SignupTrend）。全部走 token：柱 plum-300，峰值 plum-700，轴与网格用 ink-3 / line。 */
+.wrap { display: grid; gap: 10px; }
+.summary { display: flex; align-items: baseline; gap: 12px; font-size: var(--fs-meta); color: var(--ink-3); }
+.total { font-family: var(--font-num); font-size: var(--fs-number); font-weight: var(--fw-heavy); color: var(--ink); margin-right: 2px; }
+.peak { color: var(--ink-3); }
+
+.plot { position: relative; display: grid; align-items: end; gap: 6px; border-bottom: 1px solid var(--line); }
+.grid { position: absolute; left: 0; right: 0; top: 22px; border-top: 1px dashed var(--line); pointer-events: none; }
+.col { all: unset; position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: default; }
+.col:focus-visible { outline: 2px solid var(--plum-500); outline-offset: 2px; border-radius: var(--r-sm); }
+.bar { display: block; width: 100%; max-width: 40px; border-top-left-radius: var(--r-dot); border-top-right-radius: var(--r-dot); background: var(--plum-300); font-style: normal; }
+.bar.hi { background: var(--plum-700); }
+.bar.on { background: var(--plum-500); }
+.bar.zero { height: 2px; background: var(--line); border-radius: var(--r-none); }
+.value { margin-bottom: 4px; white-space: nowrap; font-family: var(--font-num); font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink); line-height: 1; }
+.marks { display: grid; gap: 6px; margin-bottom: -4px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-2); }
+.marks span { text-align: center; white-space: nowrap; }
+.marks span:not(:empty)::after { content: ""; display: block; width: 1px; height: 6px; margin: 2px auto 0; background: var(--ink-3); }
+
+.axis { display: grid; gap: 6px; font-size: var(--fs-caption); color: var(--ink-3); font-family: var(--font-num); }
+.axis span { text-align: center; white-space: nowrap; overflow: visible; }
+
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

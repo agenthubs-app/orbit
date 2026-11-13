@@ -73,6 +73,20 @@ export function profileScore(payload: { answers?: Record<string, string>; interv
   }
   return ANSWER_KEYS.every((key) => (payload?.answers?.[key] ?? "").trim().length > 0) ? 100 : 44;
 }
+/**
+ * 申込の推移的显示窗口：`values` 是截至 `end` 的每日申込数（旧 → 新）。开场前原样返回（固定 N 天）；
+ * 结束后裁掉开头没人报名的日子（至少留 7 天），图不会挤在右边。返回第一天的东京日期。
+ */
+export function trendWindow(values: readonly number[], end: Date, trimLeadingZeros: boolean): { trend: number[]; trendStartDate: string } {
+  let from = 0;
+  if (trimLeadingZeros) {
+    const first = values.findIndex((value) => value > 0);
+    from = first < 0 ? 0 : Math.min(first, Math.max(0, values.length - 7));
+  }
+  const trend = values.slice(from);
+  const trendStartDate = new Date(end.getTime() - (trend.length - 1) * 86_400_000 + 9 * 3_600_000).toISOString().slice(0, 10);
+  return { trend, trendStartDate };
+}
 const splitPositioning = (value: string | undefined) => {
   const [role, org] = (value ?? "").split(/\s*[@＠]\s*/u);
   return { org: org?.trim() || null, role: role?.trim() || null };
@@ -390,8 +404,11 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
         recommendationsPerPerson: 5,
         reportSummary: facts.checkedIn > 0 ? { asOf: now().toISOString(), checkInRate: facts.admitted >= 5 ? suppressedRate(facts.checkedIn, facts.admitted) : null, checkedIn: facts.checkedIn, exchangeRate: exchanges ? suppressedRate(exchanges.people, facts.checkedIn) : null, exchanges: exchanges ? suppressSmall(exchanges.pairs) : null, followupRate: suppressedRate(facts.followedUp, facts.checkedIn), total: facts.applied } : null,
         todos: [...(facts.pending > 0 ? [{ count: facts.pending, kind: "review_pending" as const, walkInSlots: facts.waitlisted }] : []), ...(incomplete > 0 ? [{ count: incomplete, kind: "profile_incomplete" as const }] : [])],
-        // 结束后看「到结束为止」的 14 天（标签随之变为 開催までの14日）；以 now 为终点几周后就只剩空白。
-        trend: await reads.trend(eventId, status === "ended" && facts.endsAt ? new Date(Math.min(now().getTime(), Date.parse(facts.endsAt))) : now()),
+        // 结束后看「到结束为止」的 14 天（标签随之变为 開催までの14日），并裁掉开头没人报名的日子。
+        ...await (async () => {
+          const end = status === "ended" && facts.endsAt ? new Date(Math.min(now().getTime(), Date.parse(facts.endsAt))) : now();
+          return trendWindow(await reads.trend(eventId, end), end, status === "ended");
+        })(),
       };
     },
     async matching(actorId, eventId, round) {
@@ -453,16 +470,31 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       // 申込回答一栏：主办方问题里问「話したい…」的那一问（没有就用第 2 问 / 资料里的目的）。
       const questions = (((await reads.questionSet(eventId))?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
       const answerQuestion = questions.find((question) => question.prompt.includes("話したい")) ?? questions[1] ?? null;
-      const rows: HostPeopleRow[] = applicants.map((item) => {
+      const rows: HostPeopleRow[] = applicants.map((item): HostPeopleRow => {
         const answers: Record<string, string> = { ...(item.payload.answers ?? {}), ...(answerQuestion && item.hostAnswers[answerQuestion.id] ? { desiredOutcome: item.hostAnswers[answerQuestion.id]! } : {}) };
         const { org, role } = splitPositioning(answers.positioning);
         const score = profileScore(item.payload as never);
         const name = item.payload.displayName ?? "";
         return { actorId: item.actorId, answer: answers.desiredOutcome?.trim() || null, applicationVersion: item.version, attendCount: item.attendCount, initial: name.trim().charAt(0), name, org, profileIncomplete: score < 100, profileScore: score, role, status: bucketOf[item.status] ?? "pending" };
-      }).filter((row) => !query.incomplete || row.profileIncomplete).filter((row) => !query.q || [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(query.q)));
+      });
+      // 承認済み also lists members who registered without an application (first-come events, the
+      // imported 中日创业交流会): read-only rows built from their own event profile.
+      if (query.bucket === "approved") {
+        for (const member of await reads.membersWithoutApplication(eventId, facts.organizerActorId)) {
+          const p = member.participant;
+          const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+          const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : []);
+          const name = text(p.displayName) ?? "";
+          const filled = [name, text(p.company), text(p.role), list(p.topics).length ? "x" : null, list(p.offers).length || list(p.needs).length ? "x" : null].filter(Boolean).length;
+          const score = Math.round((filled / 5) * 100);
+          const needs = list(p.needs);
+          rows.push({ actorId: member.actorId, answer: needs.length ? needs.slice(0, 2).join("、") : null, applicationVersion: 0, attendCount: member.attendCount, initial: name.charAt(0), name, org: text(p.company), profileIncomplete: score < 100, profileScore: score, role: text(p.role), status: "approved" });
+        }
+      }
+      const filteredRows = rows.filter((row) => !query.incomplete || row.profileIncomplete).filter((row) => !query.q || [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(query.q)));
       const offset = Math.max(0, Number(query.cursor ?? "0") || 0);
-      const page = rows.slice(offset, offset + 50);
-      return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, rows.length - offset - page.length), nextCursor: offset + page.length < rows.length ? String(offset + page.length) : null, questionCount: ((await reads.questionSet(eventId))?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
+      const page = filteredRows.slice(offset, offset + 50);
+      return { answerLabel: answerQuestion ? answerQuestion.prompt.replace(/[（(].*$/u, "").replace(/^今回/u, "").slice(0, 20) : "いちばん話したいこと", applyPath: facts.publicSlug ? `/e/${facts.publicSlug}` : null, bucket: query.bucket, capacity: facts.capacity, counts: { approved: facts.admitted, pending: facts.pending, rejected: facts.rejected, waitlisted: facts.waitlisted }, event: await view(actorId, facts, caps), more: Math.max(0, filteredRows.length - offset - page.length), nextCursor: offset + page.length < filteredRows.length ? String(offset + page.length) : null, questionCount: ((await reads.questionSet(eventId))?.draft?.questions as unknown[] | undefined)?.length ?? 0, remaining: facts.capacity === null ? null : Math.max(0, facts.capacity - facts.admitted), rows: page };
     },
     async decide(actorId, eventId, applicantActorId, input) {
       await require(actorId, eventId, "admission.decide");
@@ -621,9 +653,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       // 开场后（当天与会后）看的是「到活动结束为止」怎么报上来的（含当天现场登记）；以 now 为终点会在几周后变成一排 0。
       const closesAt = facts.endsAt ? Date.parse(facts.endsAt) : start;
       const trendEnd = status === "upcoming" || status === "draft" || !Number.isFinite(closesAt) ? now() : new Date(Math.min(now().getTime(), closesAt));
-      const trend = await reads.trend(eventId, trendEnd, 21);
+      const { trend, trendStartDate } = trendWindow(await reads.trend(eventId, trendEnd, 21), trendEnd, status !== "upcoming" && status !== "draft");
       if (status === "upcoming" || status === "draft") {
-        return { all: { applied: facts.applied, capacity: facts.capacity, checkInRate: null, checkedIn: null, daysPublishToEvent: null, daysSincePublish: null, daysToStart: Number.isFinite(start) ? Math.ceil((start - now().getTime()) / 86_400_000) : null, exchangeRate: null, exchanges: null, exchangesPerPerson: null, followupRate: null, followupWindowDays: 7, followups: null, funnel: { drafted: null, exchanged: null, followed: null, meetings: null }, standing: [], standingQuestion: null, state: "before", suppressedBelow: 5, tableNote: null, tables: [], trend, trendLabels: [] }, event, mine: null, view: "all" };
+        return { all: { applied: facts.applied, capacity: facts.capacity, checkInRate: null, checkedIn: null, daysPublishToEvent: null, daysSincePublish: null, daysToStart: Number.isFinite(start) ? Math.ceil((start - now().getTime()) / 86_400_000) : null, exchangeRate: null, exchanges: null, exchangesPerPerson: null, followupRate: null, followupWindowDays: 7, followups: null, funnel: { drafted: null, exchanged: null, followed: null, meetings: null }, standing: [], standingQuestion: null, state: "before", suppressedBelow: 5, tableNote: null, tables: [], trend, trendLabels: [], trendStartDate }, event, mine: null, view: "all" };
       }
       const exchanges = await reads.exchanges(eventId);
       const grouping = await reads.publishedGrouping(eventId);
@@ -655,7 +687,7 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
           standingQuestion: standingCounts.length ? "申込回答 Q1" : null,
           state: "after", suppressedBelow: 5, tableNote: null,
           tables: (grouping?.roundOne ?? []).map((table, index) => ({ exchanges: tableValues[index] ?? null, round: 1, table: String.fromCharCode(64 + Math.min(26, table.tableNumber)) })),
-          trend, trendLabels: [],
+          trend, trendLabels: [], trendStartDate,
         },
         event, mine: null, view: "all",
       };

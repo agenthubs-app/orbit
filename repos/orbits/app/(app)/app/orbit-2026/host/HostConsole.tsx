@@ -18,6 +18,7 @@ import { failureOf, hostApi, hostEventApi, type HostApiFailure, type HostApiResu
 import { CancelEventConfirm, PublishEventConfirm } from "./HostEventForm";
 import { HOST_CONSOLE_TABS, HostTabContent, HostTabPlaceholder, parseConsoleTab, type HostConsoleTab } from "./HostConsoleTabs";
 import { HostCohostsDrawer } from "./HostCohosts";
+import { SignupTrend } from "./SignupTrend";
 import { checkInHref, consoleHref, hostDateLong, hostDateShort, hostTime, hostTranslator, sameTokyoDay, type HostT } from "./host-model";
 import s from "./host.module.css";
 
@@ -112,8 +113,6 @@ export function HostOverviewView({ data, t }: HostOverviewViewProps) {
   const arrival = inactive ? "" : data.arrivalRate != null ? t("oArrival", { r: data.arrivalRate }) : data.doorsOpenAt ? t("oDoorsOpen", { time: hostTime(data.doorsOpenAt) }) : "";
   const walkIn = data.todos.find((todo) => todo.kind === "review_pending")?.walkInSlots;
   const profile = data.todos.find((todo) => todo.kind === "profile_incomplete");
-  const max = Math.max(1, ...data.trend);
-  const hiIndex = data.trend.indexOf(Math.max(...data.trend));
   return (
     <>
       <Kpi chip={t("kApplied")} tone="lav" value={data.applied} lbl={data.capacity ? t("kCapacity", { n: data.capacity }) : ""} faded={archived} />
@@ -126,7 +125,7 @@ export function HostOverviewView({ data, t }: HostOverviewViewProps) {
         <>
           <div className={`${s.card} ${s.span8}`} data-host-trend="">
             <div className={s.cardH}><h3>{t("trendTitle")}</h3><span className={s.lbl}>{t(event.status === "ended" ? "trendRangeToEvent" : "trendRange")}</span></div>
-            <div className={s.bars}>{data.trend.map((value, index) => <i key={index} className={index === hiIndex ? s.hi : undefined} style={{ height: `${Math.round((value / max) * 96)}px` }} />)}</div>
+            <SignupTrend values={data.trend} startDate={data.trendStartDate} t={t} />
           </div>
           <div className={`${s.card} ${s.span4}`} data-host-progress={data.currentStep}>
             <div className={s.cardH}><h3>{t("progTitle")}</h3></div>
