@@ -160,8 +160,18 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
      * 参加歴与申込者同口径。主办方「参加者」页签把他们列在承認済み里（只读，不能审核）。
      */
     async membersWithoutApplication(eventId: string, organizerActorId: string): Promise<Array<{ actorId: string; participant: Record<string, unknown>; registeredAt: string; attendCount: number }>> {
+      // Only the columns the list shows: name / company / role, how many topics, whether offers or needs
+      // exist, and the first two needs — never the whole profile snapshot (bio, intro, history).
       const result = await client.query<Row>(
-        `select m.actor_id, v.profile_payload -> 'participant' as participant,
+        `select m.actor_id,
+                jsonb_build_object(
+                  'displayName', v.profile_payload #>> '{participant,displayName}',
+                  'company', v.profile_payload #>> '{participant,company}',
+                  'role', v.profile_payload #>> '{participant,role}',
+                  'topics', case when jsonb_typeof(v.profile_payload #> '{participant,topics}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,topics}') > 0 then '["x"]'::jsonb else '[]'::jsonb end,
+                  'offers', case when jsonb_typeof(v.profile_payload #> '{participant,offers}') = 'array' and jsonb_array_length(v.profile_payload #> '{participant,offers}') > 0 then '["x"]'::jsonb else '[]'::jsonb end,
+                  'needs', case when jsonb_typeof(v.profile_payload #> '{participant,needs}') = 'array' then jsonb_path_query_array(v.profile_payload #> '{participant,needs}', '$[0 to 1]') else '[]'::jsonb end
+                ) as participant,
                 (select min(mv.registered_at) from event_ops_membership_versions mv where mv.workspace_id = m.workspace_id and mv.event_id = m.event_id and mv.actor_id = m.actor_id) as registered_at,
                 (select count(*) from event_ops_checkins c join event_ops_events oe on oe.workspace_id = c.workspace_id and oe.event_id = c.event_id
                   where c.workspace_id = m.workspace_id and c.actor_id = m.actor_id and oe.organizer_actor_id = $3 and c.event_id <> m.event_id) as attend_count
