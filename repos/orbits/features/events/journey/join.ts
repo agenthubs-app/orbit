@@ -98,7 +98,8 @@ export function validHostAnswers(questions: readonly HostSetupQuestion[], answer
     const text = answer.answer.trim();
     if (!question || !text) continue;
     if (question.kind === "free") { out[question.id] = text.slice(0, 200); continue; }
-    const picked = text.split(/\s*·\s*/u).filter((item) => question.options.includes(item));
+    // 选项本身含「·」（旧模板的「专业服务 · 支援机构」）时整句就是一个选项，不能按「·」拆开。
+    const picked = question.options.includes(text) ? [text] : text.split(/\s*·\s*/u).filter((item) => question.options.includes(item));
     if (picked.length === 0 || (question.kind === "single" && picked.length > 1)) continue;
     out[question.id] = picked.join(" · ");
   }

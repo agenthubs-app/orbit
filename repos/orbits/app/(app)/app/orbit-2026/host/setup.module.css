@@ -130,3 +130,39 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
 /* 開催済み：設定は見るだけ（操作は inert、見た目も一段落とす）。 */
 .endedBanner { display: grid; gap: 4px; background: var(--surface-2); }
 .readOnly { opacity: 0.72; }
+
+/* 質問集（右ドロワー）：検索とカテゴリは上に固定、質問は行ごとにチェック。選択肢は小さなタグで先頭 6 個。 */
+
+.libBtn.libBtn { gap: 6px; }
+
+.qlPanel { display: grid; gap: 4px; }
+.qlTools { position: sticky; top: 0; z-index: var(--z-sticky); display: grid; gap: 12px; padding: 4px 0 12px; background: var(--bg); }
+.qlNote { padding: 10px 14px; border-radius: var(--r-row); background: var(--surface-2); color: var(--ink-2); }
+.qlEmpty { padding: 24px 0; text-align: center; }
+.qlGroup { display: grid; gap: 6px; }
+.qlGroup + .qlGroup { margin-top: 14px; }
+.qlCat { margin: 0 0 2px; font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--ink-3); }
+.qlRow.qlRow { display: flex; align-items: flex-start; gap: 12px; width: 100%; height: auto; min-height: 0; padding: 12px 14px; border: 0; border-radius: var(--r-bubble); background: var(--surface); color: var(--ink); font: inherit; text-align: left; line-height: var(--lh-body); cursor: pointer; }
+.qlRow:hover { box-shadow: 0 0 0 1.5px var(--surface-3); }
+.qlRowOn.qlRowOn { box-shadow: 0 0 0 2px var(--plum-300); }
+.qlRowIn.qlRowIn { cursor: default; box-shadow: none; background: var(--surface-2); }
+.qlRowBlocked { opacity: 0.5; }
+.qlBox { width: 20px; height: 20px; margin-top: 1px; border-radius: var(--r-check); border: 1.8px solid var(--ink-4); display: grid; place-items: center; flex: 0 0 auto; color: var(--surface); }
+.qlBox > svg { opacity: 0; }
+.qlBoxOn { background: var(--plum-700); border-color: var(--plum-700); }
+.qlBoxOn > svg { opacity: 1; }
+.qlRowIn .qlBoxOn { background: var(--ink-4); border-color: var(--ink-4); }
+.qlMain { display: grid; gap: 8px; flex: 1 1 0%; min-width: 0; }
+.qlHead { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.qlHead > b { flex: 1 1 220px; font-size: var(--fs-body-sm); }
+.qlOpts { display: flex; flex-wrap: wrap; gap: 6px; }
+.qlOpt { padding: 3px 9px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-caption); font-weight: var(--fw-medium); }
+.qlRowIn .qlOpt { background: var(--surface); }
+.qlMore { align-self: center; }
+.qlStatus { margin-right: auto; align-self: center; }
+.qEmptyHint { margin-top: 2px; }
+/* 手机：カテゴリは 1 行で横スクロール（固定部分が画面の半分を取らないように）。 */
+@media (max-width: 767px) {
+  .qlTools > :last-child { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -22px; padding: 0 22px; }
+  .qlTools > :last-child > * { flex: 0 0 auto; }
+}

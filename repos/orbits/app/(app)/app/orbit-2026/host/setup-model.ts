@@ -1,11 +1,13 @@
 // R17 申込設定：画面から切り離した純関数（字数・並べ替え・テンプレート・草稿入力の整形・「N分前」）。React なし、テストから直接呼ぶ。
 import type { HostQuestionKind, HostSetupDraftInput, HostSetupQuestion, HostSetupResponse } from "../../../../../shared/contract/host-console";
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { HOST_QUESTION_MAX, isLibraryQuestionId, localizeQuestion, templateLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import type { HostT } from "./host-model";
 
 export const DESC_MAX = 2000;
 export const DESC_WARN = 1900;
 export const NOTE_MAX = 140;
-export const QUESTION_MAX = 5;
+export const QUESTION_MAX = HOST_QUESTION_MAX;
 
 /** 申込設定の編集中の状態（説明文・質問・受付の設定）。 */
 export type SetupDraft = Pick<HostSetupDraftInput, "description" | "questions" | "capacity" | "registrationClosesAt" | "admissionMode">;
@@ -43,27 +45,32 @@ export const switchKind = (question: HostSetupQuestion, kind: HostQuestionKind):
 
 export type TemplateKey = "mixer" | "study" | "round" | "blank";
 
-const opts = (text: string) => text.split("|").map((item) => item.trim()).filter(Boolean);
-
-/** テンプレートの質問（文案は copy 表；UI の言語で作る）。 */
-export function templateQuestions(key: TemplateKey, t: HostT): HostSetupQuestion[] {
-  const q = (prompt: string, kind: HostQuestionKind, options: string[], required: boolean): HostSetupQuestion => ({ id: newQuestionId(), kind, options, prompt, required });
-  switch (key) {
-    case "mixer": return [q(t("tqRole"), "single", opts(t("tqRoleOpts")), true), q(t("tqTopic"), "multiple", opts(t("tqTopicOpts")), true), q(t("tqMeet"), "free", [], false)];
-    case "study": return [q(t("tqLevel"), "single", opts(t("tqLevelOpts")), true), q(t("tqInterest"), "multiple", opts(t("tqInterestOpts")), true)];
-    case "round": return [q(t("tqIssue"), "free", [], true), q(t("tqShare"), "free", [], false)];
-    case "blank": return [blankQuestion("single")];
-  }
+/** テンプレートの質問 = 質問集から決まった数問（主催者の画面の言語で入れる）。「空白」は単一選択 1 問。 */
+export function templateQuestions(key: TemplateKey, language: OrbitLanguage): HostSetupQuestion[] {
+  return key === "blank" ? [blankQuestion("single")] : templateLibraryQuestions(key, language);
 }
 
-/** 質問案を足す（5 問まで、同じ文の質問は足さない）。 */
-export function addSuggested(questions: readonly HostSetupQuestion[], suggested: readonly HostSetupQuestion[]): HostSetupQuestion[] {
-  const have = new Set(questions.map((question) => question.prompt.trim()));
+/** 新規作成のテンプレート id（mixer / study / roundtable、未選択 = 交流会）→ 申込設定のテンプレート。 */
+export const templateKeyOf = (templateId: "mixer" | "study" | "roundtable" | null | undefined): TemplateKey => (templateId === "study" ? "study" : templateId === "roundtable" ? "round" : "mixer");
+
+/**
+ * 質問案を足す（5 問まで、同じ質問は足さない）。質問集の質問は id をそのまま使い、画面の言語に直す
+ * （サーバーは言語を知らないので日本語で来る）。それ以外は新しい id。
+ */
+export function addSuggested(questions: readonly HostSetupQuestion[], suggested: readonly HostSetupQuestion[], language: OrbitLanguage = "ja"): HostSetupQuestion[] {
+  const prompts = new Set(questions.map((question) => question.prompt.trim()));
+  const ids = new Set(questions.map((question) => question.id));
   const next = [...questions];
-  for (const item of suggested) {
+  for (const raw of suggested) {
     if (next.length >= QUESTION_MAX) break;
-    if (have.has(item.prompt.trim())) continue;
-    next.push({ ...item, id: newQuestionId() });
+    const library = isLibraryQuestionId(raw.id);
+    const item = library ? localizeQuestion(raw, language) : raw;
+    if (ids.has(item.id) && library) continue;
+    if (prompts.has(item.prompt.trim()) || prompts.has(raw.prompt.trim())) continue;
+    const id = library ? item.id : newQuestionId();
+    next.push({ ...item, id });
+    ids.add(id);
+    prompts.add(item.prompt.trim());
   }
   return next;
 }

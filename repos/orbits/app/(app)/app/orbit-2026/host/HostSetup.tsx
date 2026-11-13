@@ -7,7 +7,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 
 import type { HostNoticeTemplateKind, HostQuestionKind, HostSetupQuestion, HostSetupResponse } from "../../../../../shared/contract/host-console";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { HOST_QUESTION_LIBRARY_ENTRIES, addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import { ConfirmDialog, Icon, Segmented, useToast } from "../ui";
+import { QuestionLibraryDrawer } from "./QuestionLibrary";
 import { failureOf, hostApi } from "./host-api";
 import { eventTone, hostDateDay, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import {
@@ -62,6 +64,11 @@ export type HostSetupViewProps = {
   onPublish?: () => void;
   /** 5 問を超えて足そうとした。 */
   onLimit?: () => void;
+  /** 質問集ドロワー。 */
+  libraryOpen?: boolean;
+  onLibrary?: (open: boolean) => void;
+  /** 質問集から n 問入れた。 */
+  onAdded?: (count: number) => void;
   onReload?: () => void;
   onNotesOpen?: (open: boolean) => void;
   onNoticeKind?: (kind: HostNoticeTemplateKind) => void;
@@ -232,11 +239,31 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onChange, on
 }
 
 /**
- * 質問の一覧と「質問を追加」（新規作成画面で使う；申込設定と同じカード）。2026-11-13 用户：作成時に質問も決める。
+ * 質問の一覧 +「質問集から選ぶ」+「質問を追加」（申込設定と新規作成で同じ）。2026-11-13 用户：作成時に質問も決める。
+ * 質問集はドロワーで選ぶ（カテゴリ・検索・選択肢のプレビュー、5 問まで）；入れた質問はこのカードで編集・並べ替え。
  */
-export function QuestionsEditor({ questions, t, editing, onEdit, onChange }: { questions: readonly HostSetupQuestion[]; t: HostT; editing: number; onEdit: (index: number) => void; onChange: (questions: HostSetupQuestion[]) => void }) {
+export function QuestionsEditor({ questions, t, language, editing, onEdit, onChange, onLimit, onAdded, libraryOpen, onLibrary }: {
+  questions: readonly HostSetupQuestion[];
+  t: HostT;
+  language: OrbitLanguage;
+  editing: number;
+  onEdit: (index: number) => void;
+  onChange: (questions: HostSetupQuestion[]) => void;
+  /** 5 問を超えて足そうとした。 */
+  onLimit?: () => void;
+  /** 質問集から n 問入れた（トースト用）。 */
+  onAdded?: (count: number) => void;
+  /** 質問集ドロワー（親が持つ場合。省略時はこの中で持つ）。 */
+  libraryOpen?: boolean;
+  onLibrary?: (open: boolean) => void;
+}) {
   const list = [...questions];
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = libraryOpen ?? ownOpen;
+  const setOpen = onLibrary ?? setOwnOpen;
+  const full = list.length >= QUESTION_MAX;
   const move = (from: number, to: number) => { onChange(moveItem(list, from, to)); if (editing === from) onEdit(to); };
+  const addBlank = (kind: HostQuestionKind) => { if (full) { onLimit?.(); return; } onChange([...list, blankQuestion(kind)]); onEdit(list.length); };
   return (
     <>
       {list.map((question, index) => (
@@ -244,16 +271,25 @@ export function QuestionsEditor({ questions, t, editing, onEdit, onChange }: { q
           onEdit={() => onEdit(index)} onChange={(next) => onChange(list.map((item, k) => (k === index ? next : item)))} onDelete={() => { onChange(list.filter((_, k) => k !== index)); onEdit(-1); }}
           onMove={(to) => move(index, to)} onDropFrom={(from) => move(from, index)} />
       ))}
-      <div className={u.addRow} data-host-qadd={list.length >= QUESTION_MAX ? "full" : ""}>
+      {list.length ? null : <div className={`${s.lbl} ${u.qEmptyHint}`}>{t("qlOpenSub", { n: HOST_QUESTION_LIBRARY_ENTRIES.length })}</div>}
+      <div className={u.addRow} data-host-qadd={full ? "full" : ""}>
+        <button type="button" className={`btn ${s.btn} ${s.sm} ${u.libBtn} ${full ? u.addFull : ""}`} disabled={full} onClick={() => setOpen(true)} data-host-qlib-open=""><Icon name="book" size={16} />{t("qlOpen")}</button>
         <span className={s.lbl}>{t("suAddQ")}</span>
-        {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${list.length >= QUESTION_MAX ? u.addFull : ""}`} disabled={list.length >= QUESTION_MAX} onClick={() => { onChange([...list, blankQuestion(kind)]); onEdit(list.length); }}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
-        {list.length >= QUESTION_MAX ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
+        {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${full ? u.addFull : ""}`} disabled={full} onClick={() => addBlank(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
+        {full ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
       </div>
+      <QuestionLibraryDrawer open={open} questions={list} t={t} language={language} onClose={() => setOpen(false)}
+        onAdd={(ids) => {
+          const result = addLibraryQuestions(list, ids, language, QUESTION_MAX);
+          setOpen(false);
+          if (result.added.length) { onChange(result.questions); onEdit(-1); onAdded?.(result.added.length); }
+          if (result.skipped.length) onLimit?.();
+        }} />
     </>
   );
 }
 
-function NoticesSection({ data, t, open, kind, note, busy, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
+function NoticesSection({ data, t, open, kind, note, busy, readOnly, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; /** 開催済み・中止・アーカイブ：ひとことも変えられない（サーバーも拒否）。 */ readOnly: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
   const selected = data.notices.find((item) => item.kind === kind) ?? data.notices[0];
   const link = hasLink(note);
   const changed = (note.trim() || null) !== (data.hostNote?.trim() || null);
@@ -275,11 +311,11 @@ function NoticesSection({ data, t, open, kind, note, busy, onOpen, onKind, onNot
                   <div className={u.nnote}>
                     <label className={`${s.lbl} ${u.nnoteLbl}`} htmlFor="host-note">{t("ntNoteLbl")}</label>
                     <div className={`${u.ta} ${u.nta}`}>
-                      <textarea id="host-note" value={note} maxLength={NOTE_MAX} placeholder={t("ntNotePh")} onChange={(event) => onNote?.(clampText(event.target.value, NOTE_MAX))} />
+                      <textarea id="host-note" value={note} readOnly={readOnly} maxLength={NOTE_MAX} placeholder={t("ntNotePh")} onChange={(event) => onNote?.(clampText(event.target.value, NOTE_MAX))} />
                       <span className={u.counter}>{t("ntCounter", { n: charCount(note) })}</span>
                     </div>
                     <div className={`${s.lbl} ${u.nnoteHint} ${link ? u.saveWarn : ""}`}>{link ? t("ntNoLink") : t("ntNoteHint")}</div>
-                    {changed ? <div className={`${s.row} ${u.nnoteActs}`}><button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy || link} onClick={onSave}>{t("ntSave")}</button></div> : null}
+                    {changed && !readOnly ? <div className={`${s.row} ${u.nnoteActs}`}><button type="button" className={`btn ${s.btn} ${s.sm} ${s.primary}`} disabled={busy || link} onClick={onSave}>{t("ntSave")}</button></div> : null}
                   </div>
                 ) : null}
               </div>
@@ -310,10 +346,7 @@ export function HostSetupView(props: HostSetupViewProps) {
   const change = (next: SetupDraft) => props.onChange?.(next);
   const empty = draft.questions.length === 0;
   const length = charCount(draft.description);
-  const setQuestion = (index: number, question: HostSetupQuestion) => change({ ...draft, questions: draft.questions.map((item, k) => (k === index ? question : item)) });
-  const removeQuestion = (index: number) => { change({ ...draft, questions: draft.questions.filter((_, k) => k !== index) }); props.onEdit?.(-1); };
-  const moveQuestion = (from: number, to: number) => { change({ ...draft, questions: moveItem(draft.questions, from, to) }); if (editing === from) props.onEdit?.(to); };
-  const addQuestion = (kind: HostQuestionKind) => { if (draft.questions.length >= QUESTION_MAX) { props.onLimit?.(); return; } change({ ...draft, questions: [...draft.questions, blankQuestion(kind)] }); props.onEdit?.(draft.questions.length); };
+  const setQuestions = (questions: HostSetupQuestion[]) => change({ ...draft, questions });
   // 開催済み・中止・アーカイブ：申込はもう来ないので、設定は見るだけ（成熟品と同じく終了後は変更不可）。
   const ended = data.event.status === "ended" || data.event.status === "cancelled" || data.event.status === "archived";
   const suggestion = data.suggestion && suggestionOpen && !ended ? data.suggestion : null;
@@ -359,44 +392,34 @@ export function HostSetupView(props: HostSetupViewProps) {
               </div>
             ) : null}
           </>
-        ) : (
-          <>
-            <div className={`${s.card} ${u.blk}`}>
-              <div className={s.cardH}>
-                <h3>{t("suQuestions")} <span className={`${s.lbl} ${u.qHint}`}>{t("suQHint", { n: draft.questions.length })}</span></h3>
-                <span className={s.lbl}>{t("suQUse")}</span>
-              </div>
-              {draft.questions.map((question, index) => (
-                <QuestionCard key={question.id} question={question} index={index} count={draft.questions.length} t={t} editing={editing === index}
-                  onEdit={() => props.onEdit?.(index)} onChange={(next) => setQuestion(index, next)} onDelete={() => removeQuestion(index)}
-                  onMove={(to) => moveQuestion(index, to)} onDropFrom={(from) => moveQuestion(from, index)} />
-              ))}
-              <div className={u.addRow} data-host-qadd={draft.questions.length >= QUESTION_MAX ? "full" : ""}>
-                <span className={s.lbl}>{t("suAddQ")}</span>
-                {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${draft.questions.length >= QUESTION_MAX ? u.addFull : ""}`} disabled={draft.questions.length >= QUESTION_MAX} onClick={() => addQuestion(kind)}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
-                {draft.questions.length >= QUESTION_MAX ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
-              </div>
-            </div>
-            {ended ? null : <div className={`${s.card} ${u.saveBar}`} data-host-setup-save={saveState}>
-              <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
-              <span className={`${s.lbl} ${saveState === "invalid" ? u.saveWarn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
-              <button type="button" className={`btn ${s.btn} ${u.saveFirst}`} disabled={busy || saveState === "saving"} onClick={props.onSave}>{t("suSaveDraft")}</button>
-              <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy || saveState === "invalid" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved")} onClick={props.onPublish}>{t(data.formPublished ? "suPublishChanges" : "suPublish")}</button>
-            </div>}
-            {saveState === "conflict" ? (
-              <div className={`${s.card} ${u.saveBar} ${s.flat}`} role="alert" data-host-setup-conflict="">
-                <span className={s.grow}>{t("suConflict")}</span>
-                <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={props.onReload}>{t("retry")}</button>
-              </div>
-            ) : null}
-          </>
-        )}
+        ) : null}
+        <div className={`${s.card} ${u.blk}`} data-host-questions={draft.questions.length}>
+          <div className={s.cardH}>
+            <h3>{t("suQuestions")} {empty ? null : <span className={`${s.lbl} ${u.qHint}`}>{t("suQHint", { n: draft.questions.length })}</span>}</h3>
+            <span className={s.lbl}>{t("suQUse")}</span>
+          </div>
+          <QuestionsEditor questions={draft.questions} t={t} language={language} editing={editing} onEdit={(index) => props.onEdit?.(index)} onChange={setQuestions}
+            onLimit={props.onLimit} onAdded={props.onAdded} libraryOpen={props.libraryOpen ?? false} onLibrary={(open) => props.onLibrary?.(open)} />
+        </div>
+        {/* 質問 0 問でも説明文・受付の設定は保存・公開できる（公開中の質問を全部消したときも「変更を公開」できるように）。 */}
+        {ended ? null : <div className={`${s.card} ${u.saveBar}`} data-host-setup-save={saveState}>
+          <span className={`${s.chip} ${data.formPublished ? s.c_teal : s.c_apricot}`}>{t(data.formPublished ? "suLiveChip" : "suDraftChip")}</span>
+          <span className={`${s.lbl} ${saveState === "invalid" ? u.saveWarn : ""}`}>{data.formPublished && data.unpublishedChanges > 0 ? t("suUnpub", { n: data.unpublishedChanges }) : ""}{status}</span>
+          <button type="button" className={`btn ${s.btn} ${u.saveFirst}`} disabled={busy || saveState === "saving"} onClick={props.onSave}>{t("suSaveDraft")}</button>
+          <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={busy || saveState === "invalid" || saveState === "conflict" || (data.formPublished && data.unpublishedChanges === 0 && saveState === "saved")} onClick={props.onPublish}>{t(data.formPublished ? "suPublishChanges" : "suPublish")}</button>
+        </div>}
+        {saveState === "conflict" ? (
+          <div className={`${s.card} ${u.saveBar} ${s.flat}`} role="alert" data-host-setup-conflict="">
+            <span className={s.grow}>{t("suConflict")}</span>
+            <button type="button" className={`btn ${s.btn} ${s.sm}`} onClick={props.onReload}>{t("retry")}</button>
+          </div>
+        ) : null}
       </div>
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
         <div className={ended ? u.readOnly : undefined} inert={ended || undefined}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
       </div>
-      <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy}
+      <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}
         onOpen={props.onNotesOpen} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />
     </>
   );
@@ -420,6 +443,7 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
   const [notesOpen, setNotesOpen] = useState(false);
   const [noticeKind, setNoticeKind] = useState<HostNoticeTemplateKind>("admission_approved");
   const [noteDraft, setNoteDraft] = useState("");
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [host, setHost] = useState("");
   const saved = useRef<SetupDraft | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -440,9 +464,11 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
   }, [eventId, accept]);
   useEffect(() => { void load(); }, [load]);
 
-  const save = useCallback(async (manual: boolean): Promise<HostSetupResponse | null> => {
-    if (!data || !draft || inflight.current) return null;
-    if (draftProblems(draft) > 0) { setSaveState("invalid"); return null; }
+  // 結果：保存できた最新の設定 / 保存しなかった理由（公開ボタンが理由ごとに案内を変える）。
+  const save = useCallback(async (manual: boolean): Promise<HostSetupResponse | "busy" | "invalid" | "conflict" | "error"> => {
+    if (!data || !draft) return "error";
+    if (inflight.current) return "busy";
+    if (draftProblems(draft) > 0) { setSaveState("invalid"); return "invalid"; }
     if (saved.current && sameDraft(draft, saved.current)) { setSaveState("saved"); return data; }
     inflight.current = true;
     setSaveState("saving");
@@ -450,10 +476,10 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
     const res = await hostApi.saveSetup(eventId, draftInput(sent, data.revision));
     inflight.current = false;
     if (!res.ok) {
-      if (failureOf(res) === "conflict") { setSaveState("conflict"); return null; }
+      if (failureOf(res) === "conflict") { setSaveState("conflict"); return "conflict"; }
       setSaveState("dirty");
       if (manual) toast.error(t("saveError"));
-      return null;
+      return "error";
     }
     accept(res.data, false);
     setSaveState((current) => (current === "saving" ? "saved" : current));
@@ -472,13 +498,30 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
     timer.current = setTimeout(() => { void save(false); }, AUTOSAVE_MS);
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [draft, saveState, save]);
+  // 1.5 秒以内にタブを移ったら、待たずにその場で保存する（以前は予約ごと消えて変更が失われた）。
+  const flush = useRef<() => void>(() => {});
+  flush.current = () => { if (saveState === "dirty") void save(false); };
+  useEffect(() => () => flush.current(), []);
+  // 保存前・保存できない変更があるままページを離れようとしたら、ブラウザの確認を出す。
+  useEffect(() => {
+    if (saveState !== "dirty" && saveState !== "saving" && saveState !== "invalid") return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [saveState]);
 
   const publish = async () => {
     setConfirm(false);
     if (!draft) return;
     setBusy(true);
     const current = await save(false);
-    if (!current) { setBusy(false); if (draftProblems(draft) === 0) toast.error(t("saveError")); return; }
+    if (typeof current === "string") {
+      setBusy(false);
+      // invalid は保存バーに理由が出る；conflict は再読込の案内が出る；保存中は終わってからもう一度。
+      if (current === "busy") toast.info(t("suSaving"));
+      if (current === "error") toast.error(t("saveError"));
+      return;
+    }
     const wasPublished = current.formPublished;
     const res = await hostApi.publishSetup(eventId, current.revision);
     setBusy(false);
@@ -507,10 +550,11 @@ export function HostSetupTab({ eventId, language, onChanged, onHeader }: { event
       <HostSetupView data={data} draft={draft} t={t} language={language} editing={editing} preview={preview} suggestionOpen={suggestionOpen} saveState={saveState} busy={busy} host={host}
         notesOpen={notesOpen} noticeKind={noticeKind} noteDraft={noteDraft}
         onChange={change} onEdit={setEditing} onPreview={setPreview}
-        onTemplate={(key) => { change({ ...draft, questions: templateQuestions(key, t) }); setEditing(0); }}
+        libraryOpen={libraryOpen} onLibrary={setLibraryOpen} onAdded={(n) => toast.success(t("suAdded", { n }))}
+        onTemplate={(key) => { change({ ...draft, questions: templateQuestions(key, language) }); setEditing(key === "blank" ? 0 : -1); }}
         onSuggestion={(add) => {
           setSuggestionOpen(false);
-          if (add && data.suggestion) { const questions = addSuggested(draft.questions, data.suggestion.questions); change({ ...draft, questions }); setEditing(0); toast.success(t("suAdded", { n: questions.length - draft.questions.length })); }
+          if (add && data.suggestion) { const questions = addSuggested(draft.questions, data.suggestion.questions, language); change({ ...draft, questions }); setEditing(0); toast.success(t("suAdded", { n: questions.length - draft.questions.length })); }
         }}
         onSave={() => { if (saveState === "saved") toast.success(t("suSavedToast")); else void save(true); }}
         onLimit={() => toast.info(t("suQLimit"))}

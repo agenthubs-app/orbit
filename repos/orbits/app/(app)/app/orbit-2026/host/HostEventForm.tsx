@@ -18,7 +18,7 @@ import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostEventApi } from "./host-api";
 import { QuestionsEditor } from "./HostSetup";
-import { templateQuestions, type TemplateKey } from "./setup-model";
+import { templateKeyOf, templateQuestions } from "./setup-model";
 import { consoleHref, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import f from "./form.module.css";
 import s from "./host.module.css";
@@ -233,6 +233,7 @@ export type HostEventFormViewProps = {
 
 export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate }: HostEventFormViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
+  const toast = useToast();
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => onChange?.({ ...draft, [key]: value });
   const profile = profiles.find((item) => item.profileId === draft.organizerProfileId) ?? null;
   const length = chars(draft.description);
@@ -317,7 +318,8 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
             <div className={`${s.card} ${f.blk}`} data-host-evquestions={draft.questions.length}>
               <div className={s.cardH}><h3>{t("evQuestions")}</h3><span className={s.lbl}>{t("suQHint", { n: draft.questions.length })}</span></div>
               <div className={`${s.lbl} ${f.qNote}`}>{t("evQuestionsNote")}</div>
-              <QuestionsEditor questions={draft.questions} t={t} editing={editingQuestion} onEdit={(index) => onEditQuestion?.(index)} onChange={(questions) => set("questions", questions)} />
+              <QuestionsEditor questions={draft.questions} t={t} language={language} editing={editingQuestion} onEdit={(index) => onEditQuestion?.(index)} onChange={(questions) => set("questions", questions)}
+                onLimit={() => toast.info(t("suQLimit"))} onAdded={(n) => toast.success(t("suAdded", { n }))} />
             </div>
           ) : null}
         </div>
@@ -418,8 +420,8 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   const [userKey, setUserKey] = useState("");
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState(-1);
-  // テンプレート → 申込フォームの初期質問（未選択は「交流会」と同じ汎用 3 問）。
-  const questionsFor = useCallback((templateId: EventDraft["templateId"]) => templateQuestions(({ mixer: "mixer", roundtable: "round", study: "study" } as Record<string, TemplateKey>)[templateId ?? "mixer"] ?? "mixer", t), [t]);
+  // テンプレート → 申込フォームの初期質問（質問集から；未選択は「交流会」と同じ。主催者の画面の言語で入れる）。
+  const questionsFor = useCallback((templateId: EventDraft["templateId"]) => templateQuestions(templateKeyOf(templateId), language), [language]);
 
   const load = useCallback(async () => {
     setConflict(false);

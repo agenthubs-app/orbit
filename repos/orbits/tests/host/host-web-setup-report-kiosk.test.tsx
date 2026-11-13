@@ -31,7 +31,10 @@ test("申込設定 · 空（b6 #13）：テンプレート 4 种、質問案 3�
   assert.match(html, /10月20日（火）23:59/);
   assert.match(html, /orbit\.app\/e\/mfg-dx-asakai-3/);
   assert.match(html, /（説明文を入力するとここに表示されます）/);
-  assert.doesNotMatch(html, /data-host-setup-save/);
+  // 質問 0 問でも説明文・受付の設定は保存・公開できる（保存バーを出す）；質問カードには「質問集から選ぶ」。
+  assert.match(html, /data-host-setup-save="saved"/);
+  assert.match(html, /data-host-qlib-open=""/);
+  assert.match(html, /立場・業界・会いたい人など \d+問/);
   assert.equal(consoleSubtitle(data.event, "ja", t, NOW, "setup", data.formPublished), "主催 · 申込フォーム未公開");
 });
 
@@ -57,7 +60,9 @@ test("申込設定 · 大（b6 #15，§43）：公開中 5問、未公開の変�
   assert.match(html, />変更を公開</);
   assert.match(html, /data-host-setup-settings/);
   assert.match(html, /data-host-qadd="full"/);
+  // 単一 / 複数 / 自由 と「質問集から選ぶ」がどれも無効。
   assert.equal(count(html, "disabled=\"\"><svg"), 3);
+  assert.match(html, /disabled="" data-host-qlib-open=""/);
   assert.match(html, />5問まで</);
   assert.equal(consoleSubtitle(data.event, "ja", t, NOW, "setup", true), "主催 · 申込フォーム公開中");
 });
@@ -70,8 +75,8 @@ test("申込設定 · 纯函数：字数、排序、题型切换暂存、模板�
   assert.deepEqual(free.options, ["A", "B"]);
   assert.deepEqual(draftInput({ admissionMode: "review", capacity: 10, description: " d ", questions: [free, { ...q, options: ["A", " ", ""] }], registrationClosesAt: null }, 3).questions.map((item) => item.options), [[], ["A"]]);
   assert.equal(draftProblems({ admissionMode: "review", capacity: null, description: "", questions: [{ ...q, prompt: " " }], registrationClosesAt: null }), 1);
-  assert.equal(templateQuestions("mixer", t).length, 3);
-  assert.equal(templateQuestions("blank", t).length, 1);
+  assert.equal(templateQuestions("mixer", "ja").length, 4);
+  assert.equal(templateQuestions("blank", "ja").length, 1);
   const suggested = hostSetup(HOST_EVENT_IDS.asakai3)!.suggestion!.questions;
   assert.equal(addSuggested(suggested.slice(0, 1), suggested).length, 3);
   assert.equal(addSuggested(Array.from({ length: 5 }, (_, i) => ({ ...q, id: `q${i}`, prompt: `p${i}` })), suggested).length, 5);

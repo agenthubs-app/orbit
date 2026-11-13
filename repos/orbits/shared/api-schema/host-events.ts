@@ -190,7 +190,10 @@ export const hostQuestionInput = z.object({
   kind: z.enum(["single", "multiple", "free"]),
   required: z.boolean(),
   options: z.array(z.string().trim().min(1).max(60)).max(12),
-}).strict();
+}).strict().refine((question) => question.kind === "free" || question.options.length > 0, { message: "a choice question needs an option", path: ["options"] });
+
+/** 質問の一覧（5 問まで）。回答は question.id で保存するので、同じ id が 2 問あってはいけない。 */
+export const hostQuestionList = z.array(hostQuestionInput).max(5).refine((questions) => new Set(questions.map((question) => question.id)).size === questions.length, { message: "question ids must be unique" });
 
 export const hostEventInputObject = z.object({
   title,
@@ -209,7 +212,7 @@ export const hostEventInputObject = z.object({
   organizerProfileId: profileId,
   templateId: z.enum(["mixer", "study", "roundtable"]).nullable().optional(),
   // 2026-11-13: the registration questions are set while creating the event (up to 5).
-  questions: z.array(hostQuestionInput).max(5).optional(),
+  questions: hostQuestionList.optional(),
 }).strict();
 export const hostEventInputSchema = hostEventInputObject as unknown as z.ZodType<HostEventInput>;
 

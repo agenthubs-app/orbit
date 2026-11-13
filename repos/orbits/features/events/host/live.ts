@@ -500,10 +500,10 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const facts = await factsOrThrow(actorId, eventId);
       const statusOfBucket: Record<HostPeopleBucket, string> = { approved: "admitted", pending: "pending_review", rejected: "rejected", waitlisted: "waitlisted" };
       const bucketOf: Record<string, HostPeopleBucket> = { admitted: "approved", pending_review: "pending", rejected: "rejected", waitlisted: "waitlisted" };
-      // 申込回答一栏：主办方问题里问「話したい…」的那一问（没有就用第 2 问 / 资料里的目的）。
+      // 申込回答一栏：题库的「話したいテーマ」那一问（id 不随语言变），旧问题按文面找「話したい…」（没有就用第 2 问 / 资料里的目的）。
       const questionSet = await reads.questionSet(eventId);
       const questions = ((questionSet?.published ?? {}) as { questions?: HostSetupQuestion[] }).questions ?? [];
-      const answerQuestion = questions.find((question) => question.prompt.includes("話したい")) ?? questions[1] ?? null;
+      const answerQuestion = questions.find((question) => question.id === "lib-topic") ?? questions.find((question) => question.prompt.includes("話したい")) ?? questions[1] ?? null;
       const offset = Math.max(0, Number(query.cursor ?? "0") || 0);
       // One page from the database (filters, search and paging in SQL); 承認済み also lists members who
       // registered without an application (first-come events, the imported 中日创业交流会), read-only.
@@ -708,6 +708,8 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async saveHostNote(actorId, eventId, input) {
       await require(actorId, eventId, "experience.configure");
+      // 開催済み・中止・アーカイブの回はお知らせももう出ない：申込設定と同じく変更不可（画面も読み取り専用）。
+      await requireNotEnded(actorId, eventId);
       await client.query(`insert into event_host_notice_extras (workspace_id, event_id, host_note, updated_by) values ($1, $2, $3, $4) on conflict (workspace_id, event_id) do update set host_note = excluded.host_note, updated_by = excluded.updated_by, updated_at = now()`, [workspaceId, eventId, input.hostNote, actorId]);
       return setupView(actorId, eventId);
     },
