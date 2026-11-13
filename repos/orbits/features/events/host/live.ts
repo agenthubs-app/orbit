@@ -358,6 +358,16 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
     },
     async createEvent(actorId, input) {
       const created = await lifecycle.create(actorId, input);
+      // 申込フォームの質問は作成画面で決める（2026-11-13 用户：作成後に申込設定を探さなくていい）。下書きとして保存し、
+      // イベントを公開するときにフォームも公開される（publishEvent）。
+      const questions = (input.questions ?? []).slice(0, 5);
+      if (questions.length) {
+        await client.query(
+          `insert into event_host_question_sets (workspace_id, event_id, draft, revision, saved_at, updated_by) values ($1, $2, $3::jsonb, 1, now(), $4)
+           on conflict (workspace_id, event_id) do nothing`,
+          [workspaceId, created.eventId, JSON.stringify({ questions }), actorId],
+        );
+      }
       return writeResult(actorId, created.eventId);
     },
     async updateEvent(actorId, eventId, input) {
@@ -376,6 +386,10 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       const facts = await factsOrThrow(actorId, eventId);
       const followers = await client.query<{ user_id: string }>(`select user_id from orbit_records where workspace_id = $1 and collection_name = 'organizerFollows' and lifecycle_state <> 'deleted' and payload ->> 'organizerId' = $2 limit 2000`, [workspaceId, eventOrganizerKey(facts.organizerActorId, facts.organizerProfileId)]);
       const published = await lifecycle.publish(actorId, eventId, input.expectedVersion, { followerActorIds: followers.rows.map((row) => row.user_id), registrationClosesAt: draft.registrationClosesAt ?? null });
+      // フォームを一度も公開していなければ、イベントと一緒に公開する（申込者が質問に答えられるように）。
+      if (set && !set.publishedAt && Array.isArray((set.draft as { questions?: unknown }).questions) && ((set.draft as { questions: unknown[] }).questions.length > 0)) {
+        await client.query(`update event_host_question_sets set published = draft, published_at = now(), revision = revision + 1, updated_by = $3 where workspace_id = $1 and event_id = $2 and published_at is null`, [workspaceId, eventId, actorId]);
+      }
       await applyPolicy(actorId, eventId, { admissionMode: draft.admissionMode ?? "review", capacity: draft.capacity !== undefined ? draft.capacity : facts.payload.capacity ?? null, registrationClosesAt: draft.registrationClosesAt ?? null });
       return writeResult(actorId, eventId, published.notified);
     },

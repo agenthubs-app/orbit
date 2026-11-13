@@ -51,3 +51,12 @@ test("一時保存: nothing typed means nothing stored; clearing removes it", ()
   assert.equal(readTempDraft(null, "user_a", NOW), null, "blocked storage reads as nothing");
   assert.equal(writeTempDraft(null, "user_a", { ...blank, title: "x" }, NOW), false);
 });
+
+test("作成時の質問: sent with the event; an empty question or a choice with fewer than 2 options stops saving", () => {
+  const filled = { ...blank, title: "勉強会", date: "2026-12-01", venueName: "渋谷", questions: [{ id: "a", kind: "single" as const, options: ["A", " B ", ""], prompt: " 立場 ", required: true }] };
+  const ok = draftToInput(filled);
+  assert.deepEqual(ok.input?.questions, [{ id: "a", kind: "single", options: ["A", "B"], prompt: "立場", required: true }]);
+  assert.equal(draftToInput({ ...filled, questions: [{ id: "a", kind: "single", options: ["A"], prompt: "立場", required: true }] }).problem, "evInvalidQuestion");
+  assert.equal(draftToInput({ ...filled, questions: [{ id: "a", kind: "free", options: [], prompt: "  ", required: false }] }).problem, "evInvalidQuestion");
+  assert.equal(draftToInput({ ...filled, questions: [] }).input?.questions, undefined, "no questions: nothing sent");
+});

@@ -231,6 +231,28 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onChange, on
   );
 }
 
+/**
+ * 質問の一覧と「質問を追加」（新規作成画面で使う；申込設定と同じカード）。2026-11-13 用户：作成時に質問も決める。
+ */
+export function QuestionsEditor({ questions, t, editing, onEdit, onChange }: { questions: readonly HostSetupQuestion[]; t: HostT; editing: number; onEdit: (index: number) => void; onChange: (questions: HostSetupQuestion[]) => void }) {
+  const list = [...questions];
+  const move = (from: number, to: number) => { onChange(moveItem(list, from, to)); if (editing === from) onEdit(to); };
+  return (
+    <>
+      {list.map((question, index) => (
+        <QuestionCard key={question.id} question={question} index={index} count={list.length} t={t} editing={editing === index}
+          onEdit={() => onEdit(index)} onChange={(next) => onChange(list.map((item, k) => (k === index ? next : item)))} onDelete={() => { onChange(list.filter((_, k) => k !== index)); onEdit(-1); }}
+          onMove={(to) => move(index, to)} onDropFrom={(from) => move(from, index)} />
+      ))}
+      <div className={u.addRow} data-host-qadd={list.length >= QUESTION_MAX ? "full" : ""}>
+        <span className={s.lbl}>{t("suAddQ")}</span>
+        {KINDS.map((kind) => <button key={kind} type="button" className={`btn ${s.btn} ${s.sm} ${list.length >= QUESTION_MAX ? u.addFull : ""}`} disabled={list.length >= QUESTION_MAX} onClick={() => { onChange([...list, blankQuestion(kind)]); onEdit(list.length); }}><Icon name="plus" size={16} />{t(KIND_LABEL[kind])}</button>)}
+        {list.length >= QUESTION_MAX ? <span className={`${s.lbl} ${u.addMax}`}>{t("suAddMax")}</span> : null}
+      </div>
+    </>
+  );
+}
+
 function NoticesSection({ data, t, open, kind, note, busy, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
   const selected = data.notices.find((item) => item.kind === kind) ?? data.notices[0];
   const link = hasLink(note);

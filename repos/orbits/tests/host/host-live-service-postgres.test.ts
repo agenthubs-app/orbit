@@ -121,6 +121,19 @@ test("live host service end to end", hostDatabaseTest, async () => {
     await assert.rejects(service.person(HOST, eventId, "actor:nobody"), isHost("NOT_FOUND"));
     await assert.rejects(service.person("actor:stranger", eventId, "actor:p2"), isHost("NOT_FOUND"));
     assert.equal((await service.kiosk(HOST, eventId, "")).closed, false, "the event has not ended: check-in is open");
+
+    // 作成時の質問（2026-11-13）：作成画面で決めた質問が申込設定の下書きに入り、イベント公開でフォームも公開される。
+    const questions = [
+      { id: "q-role", kind: "single" as const, options: ["経営者", "投資家"], prompt: "あなたの立場", required: true },
+      { id: "q-meet", kind: "free" as const, options: [], prompt: "会いたい人", required: false },
+    ];
+    const second = await service.createEvent(HOST, { endsAt: new Date(start.getTime() + 2 * 3600_000).toISOString(), feeKind: "free", organizerProfileId: profile.profileId, questions, startsAt: start.toISOString(), title: "勉強会 vol.1" });
+    const draftSetup = await service.setup(HOST, second.event.eventId);
+    assert.deepEqual([draftSetup!.questions.map((q) => q.prompt), draftSetup!.formPublished, draftSetup!.suggestion], [["あなたの立場", "会いたい人"], false, null], "seeded as the draft, no suggestion card");
+    await service.publishEvent(HOST, second.event.eventId, { expectedVersion: second.event.version });
+    const liveSetup = await service.setup(HOST, second.event.eventId);
+    assert.equal(liveSetup!.formPublished, true, "publishing the event publishes the never-published form");
+    assert.equal(liveSetup!.unpublishedChanges, 0);
   });
 });
 

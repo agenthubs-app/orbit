@@ -100,3 +100,6 @@
 
 /* 一時保存の復元（新規作成）：左に案内、右に「破棄」。 */
 .restored.restored { display: flex; flex-direction: row; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 16px; text-align: left; }
+
+/* 申込フォームの質問（新規作成）：カード見出しの下の一行説明。 */
+.qNote { margin: -4px 0 12px; line-height: var(--lh-prose); }

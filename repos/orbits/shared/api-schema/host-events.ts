@@ -183,6 +183,15 @@ const capacity = z.number().int().min(1).max(10_000).nullable();
 const description = z.string().trim().max(2000).nullable();
 const profileId = z.string().trim().min(1).max(200);
 
+/** 申込フォームの質問 1 問（申込設定の下書きと、新規作成時の初期質問で共用）。 */
+export const hostQuestionInput = z.object({
+  id: z.string().trim().min(1).max(64),
+  prompt: z.string().trim().min(1).max(120),
+  kind: z.enum(["single", "multiple", "free"]),
+  required: z.boolean(),
+  options: z.array(z.string().trim().min(1).max(60)).max(12),
+}).strict();
+
 export const hostEventInputObject = z.object({
   title,
   emoji: emoji.optional(),
@@ -199,6 +208,8 @@ export const hostEventInputObject = z.object({
   description: description.optional(),
   organizerProfileId: profileId,
   templateId: z.enum(["mixer", "study", "roundtable"]).nullable().optional(),
+  // 2026-11-13: the registration questions are set while creating the event (up to 5).
+  questions: z.array(hostQuestionInput).max(5).optional(),
 }).strict();
 export const hostEventInputSchema = hostEventInputObject as unknown as z.ZodType<HostEventInput>;
 

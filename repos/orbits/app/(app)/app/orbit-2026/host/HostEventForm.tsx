@@ -10,12 +10,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { hostNoteText } from "../../../../../shared/api-schema/host-events";
+import type { HostSetupQuestion } from "../../../../../shared/contract/host-console";
 import type { HostEventChangePreview, HostEventFeeKind, HostEventInput, HostEventUpdateInput, HostEventView } from "../../../../../shared/contract/host-events";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { OrganizerProfile } from "../../../../../shared/contract/organizer-profile";
 import { ShellPage } from "../shell/slots";
 import { Icon, Modal, Orbit2026Scope, ToastProvider, useToast } from "../ui";
 import { failureOf, hostEventApi } from "./host-api";
+import { QuestionsEditor } from "./HostSetup";
+import { templateQuestions, type TemplateKey } from "./setup-model";
 import { consoleHref, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import f from "./form.module.css";
 import s from "./host.module.css";
@@ -39,6 +42,8 @@ export type EventDraft = {
   feeUrl: string;
   organizerProfileId: string;
   description: string;
+  /** 申込フォームの初期質問（新規作成のみ；テンプレートから入る）。 */
+  questions: HostSetupQuestion[];
   templateId: TemplateId | null;
 };
 
@@ -60,17 +65,17 @@ export function tokyoIso(date: string, time: string): string | null {
 
 export function draftFromEvent(event: HostEventView | null, profiles: readonly OrganizerProfile[]): EventDraft {
   if (!event) {
-    return { capacity: "", date: "", description: "", end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "" };
+    return { capacity: "", date: "", description: "", questions: [], end: "21:30", feeAmount: "", feeKind: "free", feeUrl: "", online: false, organizerProfileId: profiles[0]?.profileId ?? "", start: "19:00", templateId: null, title: "", venueName: "" };
   }
   const start = tokyoInputs(event.startsAt);
   const end = tokyoInputs(event.endsAt);
   return {
-    capacity: event.capacity == null ? "" : String(event.capacity), date: start.date, description: event.description ?? "", end: end.time, feeAmount: event.feeAmountYen == null ? "" : String(event.feeAmountYen),
+    capacity: event.capacity == null ? "" : String(event.capacity), date: start.date, description: event.description ?? "", questions: [], end: end.time, feeAmount: event.feeAmountYen == null ? "" : String(event.feeAmountYen),
     feeKind: event.feeKind, feeUrl: event.feeUrl ?? "", online: event.online, organizerProfileId: event.organizerProfileId ?? profiles[0]?.profileId ?? "", start: start.time, templateId: null, title: event.title, venueName: event.venueName ?? "",
   };
 }
 
-export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile";
+export type DraftProblem = "evInvalidName" | "evInvalidDate" | "evInvalidTime" | "evInvalidQuestion" | "evInvalidVenue" | "evInvalidFee" | "evInvalidProfile";
 
 /** 入力 → 契約（建 / 改共用）。問題があれば最初の 1 つ。 */
 export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "organizerProfileId"> & { organizerProfileId: string }; problem: null } | { input: null; problem: DraftProblem } {
@@ -88,13 +93,16 @@ export function draftToInput(draft: EventDraft): { input: Omit<HostEventInput, "
   if ((draft.feeKind === "amount" && (amount == null || !Number.isInteger(amount) || amount <= 0)) || (amount != null && (!Number.isInteger(amount) || amount < 0))) return { input: null, problem: "evInvalidFee" };
   if (draft.feeKind === "external_link" && !/^https:\/\/\S+$/u.test(draft.feeUrl.trim())) return { input: null, problem: "evInvalidFee" };
   if (!draft.organizerProfileId) return { input: null, problem: "evInvalidProfile" };
+  // 質問：空の質問文・選択肢 2 つ未満の選択式は保存できない（申込設定と同じ規則）。
+  const questions = draft.questions.map((question) => ({ ...question, options: question.kind === "free" ? [] : question.options.map((option) => option.trim()).filter(Boolean), prompt: question.prompt.trim() }));
+  if (questions.some((question) => !question.prompt || (question.kind !== "free" && question.options.length < 2))) return { input: null, problem: "evInvalidQuestion" };
   const capacity = draft.capacity.trim() ? Number(draft.capacity) : null;
   if (capacity != null && (!Number.isInteger(capacity) || capacity <= 0)) return { input: null, problem: "evInvalidFee" };
   return {
     input: {
       capacity, description: draft.description.trim() || null, endsAt, feeAmountYen: draft.feeKind === "free" || draft.feeKind === "external_link" ? null : amount, feeKind: draft.feeKind,
       feeUrl: draft.feeKind === "external_link" ? draft.feeUrl.trim() : null, online: draft.online, organizerProfileId: draft.organizerProfileId, startsAt, timezone: "Asia/Tokyo", title,
-      venueName: venueName || null, ...(draft.templateId ? { templateId: draft.templateId } : {}),
+      venueName: venueName || null, ...(draft.templateId ? { templateId: draft.templateId } : {}), ...(questions.length ? { questions } : {}),
     },
     problem: null,
   };
@@ -217,9 +225,13 @@ export type HostEventFormViewProps = {
   onChange?: (next: EventDraft) => void;
   onSaveDraft?: () => void;
   onPrimary?: () => void;
+  /** 新規作成：いま開いている質問カード（-1 = なし）と、テンプレートを選び直したとき。 */
+  editingQuestion?: number;
+  onEditQuestion?: (index: number) => void;
+  onTemplate?: (templateId: EventDraft["templateId"]) => void;
 };
 
-export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary }: HostEventFormViewProps) {
+export function HostEventFormView({ mode, draft, profiles, language, event = null, busy = false, readOnly = false, showTemplates = false, onChange, onSaveDraft, onPrimary, editingQuestion = -1, onEditQuestion, onTemplate }: HostEventFormViewProps) {
   const t = useMemo(() => hostTranslator(language), [language]);
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => onChange?.({ ...draft, [key]: value });
   const profile = profiles.find((item) => item.profileId === draft.organizerProfileId) ?? null;
@@ -247,7 +259,7 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
               <div className={s.cardH}><h3>{t("evTemplates")}</h3><span className={s.lbl}>{t("evTemplatesSub")}</span></div>
               <div className={f.tpls}>
                 {TEMPLATES.map(([id, emoji, label, tone]) => (
-                  <button key={id} type="button" className={`btn ${f.tpl} ${f[tone]} ${draft.templateId === id ? f.tplOn : ""}`} aria-pressed={draft.templateId === id} onClick={() => set("templateId", draft.templateId === id ? null : id)}>
+                  <button key={id} type="button" className={`btn ${f.tpl} ${f[tone]} ${draft.templateId === id ? f.tplOn : ""}`} aria-pressed={draft.templateId === id} onClick={() => (onTemplate ? onTemplate(draft.templateId === id ? null : id) : set("templateId", draft.templateId === id ? null : id))}>
                     <span className={f.tplEmoji} aria-hidden>{emoji}</span><b>{t(label)}</b>
                   </button>
                 ))}
@@ -301,6 +313,13 @@ export function HostEventFormView({ mode, draft, profiles, language, event = nul
               <span className={`${f.counter} ${length > DESC_MAX - 100 ? f.counterBad : ""}`} aria-live="polite">{t("evCounter", { n: length })}</span>
             </label>
           </div>
+          {mode === "create" ? (
+            <div className={`${s.card} ${f.blk}`} data-host-evquestions={draft.questions.length}>
+              <div className={s.cardH}><h3>{t("evQuestions")}</h3><span className={s.lbl}>{t("suQHint", { n: draft.questions.length })}</span></div>
+              <div className={`${s.lbl} ${f.qNote}`}>{t("evQuestionsNote")}</div>
+              <QuestionsEditor questions={draft.questions} t={t} editing={editingQuestion} onEdit={(index) => onEditQuestion?.(index)} onChange={(questions) => set("questions", questions)} />
+            </div>
+          ) : null}
         </div>
         <div className={`${f.col} ${f.span5}`}>
           <div className={`${s.card} ${f.blk}`} data-host-evprev="">
@@ -398,6 +417,9 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   // 端末の一時保存（新規作成のみ）：アカウントごとのキーと、復元したときの案内。
   const [userKey, setUserKey] = useState("");
   const [restoredAt, setRestoredAt] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState(-1);
+  // テンプレート → 申込フォームの初期質問（未選択は「交流会」と同じ汎用 3 問）。
+  const questionsFor = useCallback((templateId: EventDraft["templateId"]) => templateQuestions(({ mixer: "mixer", roundtable: "round", study: "study" } as Record<string, TemplateKey>)[templateId ?? "mixer"] ?? "mixer", t), [t]);
 
   const load = useCallback(async () => {
     setConflict(false);
@@ -414,10 +436,10 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
       const key = session?.user?.id ?? "";
       setUserKey(key);
       const temp = readTempDraft(browserStorage(), key, new Date());
-      if (temp) { setDraft({ ...fresh, ...temp.draft, organizerProfileId: list.some((item) => item.profileId === temp.draft.organizerProfileId) ? temp.draft.organizerProfileId : fresh.organizerProfileId }); setRestoredAt(temp.savedAt); return; }
+      if (temp) { setDraft({ ...fresh, ...temp.draft, questions: Array.isArray(temp.draft.questions) && temp.draft.questions.length ? temp.draft.questions : questionsFor(temp.draft.templateId ?? null), organizerProfileId: list.some((item) => item.profileId === temp.draft.organizerProfileId) ? temp.draft.organizerProfileId : fresh.organizerProfileId }); setRestoredAt(temp.savedAt); return; }
     }
-    setDraft(fresh);
-  }, [eventId, mode]);
+    setDraft(mode === "create" ? { ...fresh, questions: questionsFor(fresh.templateId) } : fresh);
+  }, [eventId, mode, questionsFor]);
   useEffect(() => { void load(); }, [load]);
 
   // 新規作成：入力のたびに（0.8 秒まとめて）端末へ自動保存。
@@ -461,7 +483,7 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
   const discardTemp = () => {
     clearTempDraft(browserStorage(), userKey);
     setRestoredAt(null);
-    setDraft(draftFromEvent(null, profiles ?? []));
+    setDraft({ ...draftFromEvent(null, profiles ?? []), questions: questionsFor(null) });
   };
 
   const patch = async (fields: Omit<HostEventUpdateInput, "expectedVersion">, notify?: boolean) => {
@@ -528,6 +550,8 @@ function FormInner({ mode, eventId, language }: { mode: "create" | "edit"; event
       ) : null}
       <HostEventFormView mode={mode} draft={draft} profiles={profiles} language={language} event={event} busy={busy} readOnly={readOnly}
         showTemplates={mode === "create" && params.get("from") === "template"} onChange={setDraft}
+        editingQuestion={editingQuestion} onEditQuestion={setEditingQuestion}
+        onTemplate={(templateId) => { setDraft((current) => (current ? { ...current, templateId, questions: questionsFor(templateId) } : current)); setEditingQuestion(-1); }}
         onSaveDraft={() => (mode === "create" ? saveTemp() : save())} onPrimary={() => (mode === "create" ? void create(true) : save())} />
       {preview ? <ChangeNotifyConfirm preview={preview.change} t={t} language={language} busy={busy} onClose={() => setPreview(null)} onSilent={() => void patch(preview.patch, false)} onNotify={() => void patch(preview.patch, true)} /> : null}
       {publishFor ? <PublishEventConfirm event={publishFor} t={t} language={language} busy={busy} onCancel={() => { setPublishFor(null); router.push(`/app/events/${encodeURIComponent(publishFor.eventId)}/edit`); }} onPublish={() => void publish()} /> : null}

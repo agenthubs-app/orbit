@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { readableItems, tolerantEnum } from "./tolerant";
-import { hostEventViewObject, hostNoteText } from "./host-events";
+import { hostEventViewObject, hostNoteText, hostQuestionInput } from "./host-events";
 import type {
   HostRosterMatchInput,
   HostRosterMatchResponse,
@@ -311,13 +311,7 @@ export const hostSetupResponseObject = z.object({
 });
 export const hostSetupResponseSchema = hostSetupResponseObject as unknown as z.ZodType<HostSetupResponse>;
 
-const questionInput = z.object({
-  id: z.string().trim().min(1).max(64),
-  prompt: z.string().trim().min(1).max(120),
-  kind: z.enum(QUESTION_KINDS),
-  required: z.boolean(),
-  options: z.array(z.string().trim().min(1).max(60)).max(12),
-}).strict();
+const questionInput = hostQuestionInput;
 export const hostSetupDraftInputObject = z.object({
   expectedRevision: z.number().int().min(0),
   description: z.string().trim().max(2000),

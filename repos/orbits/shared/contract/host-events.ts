@@ -1,3 +1,4 @@
+import type { HostSetupQuestion } from "./host-console";
 // R17 — 主催：運営センター、建活动 / 编辑 / 发布 / 中止。Owner: 甲 (R17). Used by: host (Web 運営センター / 建活动, App 運営センター).
 // DESIGN: docs/designs/redesign-2026-10/sprints/host/DESIGN.md §2.1–§2.2、§4。
 // 所有接口走 `requireEventCapability`（主办侧不经过参加者的名单规则 A）。
@@ -205,6 +206,8 @@ export interface HostEventInput {
   organizerProfileId: string;
   /** 从模板开始（交流会 / 勉強会 / ラウンドテーブル）：预填说明文骨架、问题集、编组条件。 */
   templateId?: "mixer" | "study" | "roundtable" | null;
+  /** 申込フォームの初期質問（作成画面で決める；最大 5 問）。公開時にフォームも公開される。 */
+  questions?: readonly HostSetupQuestion[];
 }
 
 /** `PATCH /api/host/events/[id]`：改基本情報（`event.edit`）。已公开的活动改日時或会場时，`notify` 决定是否发定型通知。 */
