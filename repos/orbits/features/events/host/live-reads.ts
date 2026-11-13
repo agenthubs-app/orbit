@@ -117,12 +117,23 @@ export function createHostLiveReads(deps: { client: EventOperationsPostgresClien
       return result.rows[0] ? factsFromRow(result.rows[0]) : null;
     },
 
-    /** 近 14 天每天的申込数（东京日；旧 → 新）。 */
+    /**
+     * 截至 `now` 的近 N 天每天的申込数（东京日；旧 → 新）。一人一次：有申込（admission）的取提交时间；
+     * 没走申込直接登记参加的人（不审核的活动、从 party-app 搬来的场次）取最早一版参加登记的 registered_at。
+     */
     async trend(eventId: string, now: Date, days = 14): Promise<number[]> {
       const result = await client.query<{ day: string; n: number }>(
-        `select to_char((submitted_at at time zone 'Asia/Tokyo')::date, 'YYYY-MM-DD') as day, count(*)::int as n from event_ops_admission_application_heads
-          where workspace_id = $1 and event_id = $2 and submitted_at >= $3 group by 1`,
-        [workspaceId, eventId, new Date(now.getTime() - days * 86_400_000).toISOString()],
+        `with applied as (
+           select actor_id, submitted_at as at from event_ops_admission_application_heads where workspace_id = $1 and event_id = $2
+         ), registered as (
+           select v.actor_id, min(v.registered_at) as at from event_ops_membership_versions v
+            where v.workspace_id = $1 and v.event_id = $2 and not exists (select 1 from applied a where a.actor_id = v.actor_id)
+            group by v.actor_id
+         )
+         select to_char((at at time zone 'Asia/Tokyo')::date, 'YYYY-MM-DD') as day, count(*)::int as n
+           from (select at from applied union all select at from registered) s
+          where at >= $3 and at <= $4 group by 1`,
+        [workspaceId, eventId, new Date(now.getTime() - days * 86_400_000).toISOString(), now.toISOString()],
       );
       const byDay = new Map(result.rows.map((row) => [row.day, Number(row.n)]));
       return Array.from({ length: days }, (_, index) => {

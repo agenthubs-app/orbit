@@ -93,6 +93,12 @@ test("live host service end to end", hostDatabaseTest, async () => {
     assert.equal(fallback?.name, participantName.rows[0]!.name, "name comes from the event profile");
     assert.equal(fallback?.org, participantName.rows[0]!.company ?? null, "company comes from the event profile");
     assert.ok(fallback?.name, "the event profile carries a display name");
+
+    // 申込の推移: each person once; a member without an application (imported / direct registration) counts by registered_at.
+    const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
+    assert.equal(sum((await service.report(HOST, eventId, "all")).all!.trend), 2, "two applications, the admitted one is not counted twice");
+    await lockedFixtureQuery(pool, `delete from event_ops_admission_application_heads where workspace_id = $1 and event_id = $2 and actor_id = 'actor:p1'`, [workspaceId, eventId]);
+    assert.equal(sum((await service.report(HOST, eventId, "all")).all!.trend), 2, "the member without an application still counts, by registration time");
   });
 });
 

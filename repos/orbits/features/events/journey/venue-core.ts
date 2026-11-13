@@ -75,7 +75,16 @@ export function buildVenue(input: VenueInput): EventVenueResponse {
   const nowIso = input.now.toISOString();
   const base = { endsAt: input.event.endsAt ?? null, eventId: input.event.eventId, now: nowIso, startsAt: input.event.startsAt, title: input.event.title };
   const empty = { agenda: [], attendeeTotal: 0, attendees: [], nextOrder: [], openers: [], recommendations: [], stats: { exchanged: 0, incoming: 0, wantedMet: 0, wantedTotal: 0 } };
-  if (!input.registered || !input.workspace) return { ...base, ...empty, state: "not_registered" };
+  if (!input.registered) return { ...base, ...empty, state: "not_registered" };
+  // Registered but no operations workspace: not in the published results (e.g. registered and never
+  // seated — the imported 中日创业交流会 no-shows) or a failed read. They did register, so never say
+  // "registered attendees only": after the event it is simply ended, before it they still check in.
+  if (!input.workspace) {
+    const endedWithoutWorkspace = input.now.getTime() >= Date.parse(input.event.endsAt || input.event.startsAt);
+    return endedWithoutWorkspace
+      ? { ...base, ...empty, state: "ended" }
+      : { ...base, ...empty, checkIn: { available: false, displayName: "", qrPayload: input.checkInPass?.qrPayload ?? null, receptionNumber: input.checkInPass?.receptionNumber ?? null }, state: "before_check_in" };
+  }
   const ws = input.workspace;
   const now = input.now.getTime();
   const ended = now >= Date.parse(ws.configuration.eventEndsAt || input.event.endsAt || input.event.startsAt);
