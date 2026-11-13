@@ -100,3 +100,15 @@ export function authRoutePath(view: AuthView, next: string): string {
 export function authTitleId(view: AuthView): string {
   return `au-title-${view}`;
 }
+
+/**
+ * 登录屏密码框的粘贴：初始密码从邮件里复制时常带首尾空格或换行。只裁剪粘贴进来的文本（手打的内容不动）；
+ * 文本本身没有首尾空白时返回 null（交给浏览器默认粘贴）。`start`/`end` 是当前选区，结果按 `maxLength` 截断。
+ */
+export function trimPastedPassword(value: string, start: number, end: number, pasted: string, maxLength: number): { value: string; caret: number } | null {
+  const trimmed = pasted.trim();
+  if (trimmed === pasted) return null;
+  const head = value.slice(0, start);
+  const next = `${head}${trimmed}${value.slice(end)}`.slice(0, maxLength);
+  return { value: next, caret: Math.min(head.length + trimmed.length, next.length) };
+}

@@ -1,10 +1,10 @@
 "use client";
 
 /** 认证四态共用的邮箱、密码、错误提示和提交控件。 */
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ClipboardEvent, type FormEvent, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, validateEmail, validatePassword, type AuthView } from "./auth-model";
+import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, trimPastedPassword, validateEmail, validatePassword, type AuthView } from "./auth-model";
 import type { AccountAuthSession } from "./use-account-auth";
 
 export const AUTH_EMAIL_ID = "au-email";
@@ -45,17 +45,22 @@ export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthVie
   return { error, localError, localField, label, onSubmit };
 }
 
-export function AuthEmailField({ session, error }: { session: AccountAuthSession; error?: string }) {
+/**
+ * `autoComplete`：登录屏用 `username`（密码管理器按它配对已存的账号）；注册 / 找回保持 `email`
+ * （注册时浏览器可直接填入自己的邮箱，密码管理器仍会把 type=email 字段和 new-password 配对）。
+ */
+export function AuthEmailField({ autoComplete = "email", session, error }: { autoComplete?: "email" | "username"; session: AccountAuthSession; error?: string }) {
   const { t } = useOrbitLanguage();
   return (
     <div className="au-label">
       <label htmlFor={AUTH_EMAIL_ID}>{t({ en: "Email", ja: "メールアドレス", zh: "邮箱" })}</label>
       <input
-        autoComplete="email"
+        autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
         className={`au-input${error ? " au-input-invalid" : ""}`}
         id={AUTH_EMAIL_ID}
         inputMode="email"
+        name="email"
         onChange={(event) => session.setEmail(event.target.value)}
         placeholder="you@company.com"
         required
@@ -73,14 +78,28 @@ export function AuthPasswordField({
   labelExtra,
   placeholder,
   session,
+  trimPaste = false,
 }: {
   autoComplete: "current-password" | "new-password";
   error?: string;
   labelExtra?: ReactNode;
   placeholder: string;
   session: AccountAuthSession;
+  /** 登录屏：只裁掉粘贴文本的首尾空白（从邮件复制初始密码时常带空格 / 换行），手动输入不处理。 */
+  trimPaste?: boolean;
 }) {
   const { t } = useOrbitLanguage();
+  function onPaste(event: ClipboardEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const result = trimPastedPassword(input.value, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length,
+      event.clipboardData.getData("text"), AUTH_PASSWORD_MAX_LENGTH);
+    if (!result) return;
+    event.preventDefault();
+    session.setPassword(result.value);
+    window.requestAnimationFrame(() => {
+      try { input.setSelectionRange(result.caret, result.caret); } catch { /* detached or unsupported input type */ }
+    });
+  }
   const label = <label htmlFor={AUTH_PASSWORD_ID}>{t({ en: "Password", ja: "パスワード", zh: "密码" })}</label>;
   return (
     <div className="au-label">
@@ -93,7 +112,9 @@ export function AuthPasswordField({
           id={AUTH_PASSWORD_ID}
           maxLength={AUTH_PASSWORD_MAX_LENGTH}
           minLength={AUTH_PASSWORD_MIN_LENGTH}
+          name="password"
           onChange={(event) => session.setPassword(event.target.value)}
+          onPaste={trimPaste ? onPaste : undefined}
           placeholder={placeholder}
           required
           type={session.showPassword ? "text" : "password"}

@@ -359,10 +359,13 @@ test("credential login requires a concrete NextAuth result and then uses profile
   );
 
   assert.match(credentialsBranch, /if \(!result \|\| result\.error\)/);
+  // Bulk-provisioned accounts first change their initial password; otherwise profile continuation
+  // (credentialsLandingPath falls back to profileContinuationPath, see password-change.test.ts).
   assert.match(
     credentialsBranch,
-    /navigate\(profileContinuationPath\(query\.next\)\)/,
+    /navigate\(await credentialsLandingPath\(query\.next\)\)/,
   );
+  assert.match(source("app/(app)/app/orbit-2026/auth-public/password-change-client.ts"), /return profileContinuationPath\(next\);/);
 });
 
 test("Google callback also enters the authenticated profile continuation", () => {

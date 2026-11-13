@@ -11,6 +11,7 @@ import {
 import type { OrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { AUTH_ERROR_COPY } from "./auth-model";
+import { credentialsLandingPath } from "./password-change-client";
 
 // 原样抽自 account/orbit-real-account-auth.tsx（15–57 行：productHref / navigate /
 // AccountAuthQuery / SSR 安全回退 / 从 location 读 query；68–78 行：状态；83–87 行：
@@ -232,7 +233,8 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
       }
 
       setSucceeded(true);
-      navigate(profileContinuationPath(query.next));
+      // 批量建的账户首次登录要先改初始密码（软强制，读不到状态时照常续接）。
+      navigate(await credentialsLandingPath(query.next));
     } catch {
       setError(t({ en: "Something went wrong. Please try again.", ja: "通信エラーが発生しました。もう一度お試しください。", zh: "网络异常,请稍后再试。" }));
     } finally {

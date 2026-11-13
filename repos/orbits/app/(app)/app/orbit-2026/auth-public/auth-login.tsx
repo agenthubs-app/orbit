@@ -26,12 +26,13 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
       {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} label={t({ en: "Sign in with Google", ja: "Google でログイン", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       {oauthProviders.includes("google") ? <span className="au-divider">{t({ en: "Or use your email", ja: "またはメールアドレスで", zh: "或使用邮箱" })}</span> : null}
       <div className="au-fields">
-        <AuthEmailField error={emailError} session={session} />
+        <AuthEmailField autoComplete="username" error={emailError} session={session} />
         <AuthPasswordField
           autoComplete="current-password"
           error={passwordError}
           placeholder="••••••••"
           session={session}
+          trimPaste
         />
       </div>
       <a className="au-forgot" href={authRoutePath("forgot", next)}>{t({ en: "Forgot password?", ja: "パスワードをお忘れですか？", zh: "忘记密码？" })}</a>

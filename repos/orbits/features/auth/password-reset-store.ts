@@ -53,9 +53,10 @@ export function createPasswordResetStore(client: LiveRecordSqlClient, workspaceI
     },
     async consume(tokenHash, passwordHash, now) {
       // Credential update and token consumption are ONE conditional SQL statement.
-      // Row locking makes simultaneous redemption succeed at most once.
+      // Row locking makes simultaneous redemption succeed at most once. A reset also satisfies the
+      // bulk-provisioning "change your initial password" flag (password-change.ts).
       const result = await client.query(`UPDATE orbit_records SET
-        payload = (payload - 'passwordReset') || jsonb_build_object('passwordHash', $3::text,
+        payload = (payload - 'passwordReset' - 'mustChangePassword') || jsonb_build_object('passwordHash', $3::text,
           'passwordChangedAt', $4::text, 'updatedAt', $4::text), updated_at = $4
         WHERE workspace_id = $1 AND collection_name = 'auth_users' AND lifecycle_state = 'active'
           AND payload->'passwordReset'->>'tokenHash' = $2

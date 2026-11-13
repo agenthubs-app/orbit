@@ -30,6 +30,8 @@ interface InstallOptions {
   credentials?: "failure" | "success";
   hash?: string;
   hold?: () => Promise<void>;
+  passwordChange?: () => Response | Promise<Response>;
+  passwordStatus?: () => Response | Promise<Response>;
   register?: () => Response;
   resetRequest?: () => Response | Promise<Response>;
 }
@@ -66,6 +68,8 @@ function install(search: string, options: InstallOptions = {}): Harness {
     if (url === "/api/auth/register") return options.register ? options.register() : Response.json({ success: true });
     if (url === "/api/auth/password-reset/request") return options.resetRequest ? options.resetRequest() : Response.json({ success: true });
     if (url === "/api/auth/password-reset/confirm") return options.confirm ? options.confirm() : Response.json({ success: true });
+    if (url === "/api/auth/password/status") return options.passwordStatus ? options.passwordStatus() : Response.json({ mustChangePassword: false });
+    if (url === "/api/auth/password/change") return options.passwordChange ? options.passwordChange() : Response.json({ success: true, data: { message: "密码已更新。" } });
     if (url.endsWith("/providers")) return Response.json({ credentials: { id: "credentials", type: "credentials" }, google: { id: "google", type: "oauth" } });
     if (url.endsWith("/csrf")) return Response.json({ csrfToken: "test-csrf-token" });
     if (url.includes("/callback/credentials")) {
@@ -559,5 +563,165 @@ test("reset: server message wins, fallback 重置失败，请稍后重试。; pe
     await act(async () => { release(); await pending; await settle(); });
     assert.equal(hasForm(renderer), false);
     assert.equal(harness.observed.length, 3);
+  });
+});
+
+// ---- 首次登录强制改密 / 登录后修改密码 ----
+
+test("login: email field is autocomplete=username, both inputs carry name, and it stays a real <form> submit", () => {
+  const html = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="login" />);
+  assert.match(html, /<form[^>]*class="au-view"/);
+  assert.match(html, /<input autoComplete="username"[^>]*id="au-email"[^>]*name="email"/i);
+  assert.match(html, /<input autoComplete="current-password"[^>]*id="au-password"[^>]*name="password"/i);
+  assert.match(html, /<button[^>]*type="submit"/);
+  assert.doesNotMatch(html, /onpaste|oncopy/i);
+  const register = renderToStaticMarkup(<AuthModal defaultNext="/app/home" view="register" />);
+  assert.match(register, /<input autoComplete="email"[^>]*id="au-email"[^>]*name="email"/i);
+});
+
+test("login: pasted password text is trimmed (selection replaced, caret after it); typed text and clean pastes are untouched", async () => {
+  await withModal("login", "", {}, async (renderer) => {
+    const carets: number[] = [];
+    (globalThis.window as unknown as { requestAnimationFrame: (run: () => void) => void }).requestAnimationFrame = (run) => run();
+    const paste = async (value: string, start: number, end: number, text: string) => {
+      let prevented = false;
+      await act(async () => {
+        input(renderer, "au-password").props.onPaste({
+          clipboardData: { getData: () => text },
+          currentTarget: { selectionEnd: end, selectionStart: start, setSelectionRange: (caret: number) => carets.push(caret), value },
+          preventDefault() { prevented = true; },
+        });
+      });
+      return prevented;
+    };
+    assert.equal(await paste("", 0, 0, "  Init-Pass-8x\r\n"), true);
+    assert.equal(input(renderer, "au-password").props.value, "Init-Pass-8x");
+    assert.deepEqual(carets, [12]);
+    assert.equal(await paste("abXYcd", 2, 4, "\tmid "), true);
+    assert.equal(input(renderer, "au-password").props.value, "abmidcd");
+    assert.equal(await paste("abc", 3, 3, "clean"), false, "a paste without surrounding whitespace uses the browser default");
+    await act(async () => { input(renderer, "au-password").props.onChange({ target: { value: " typed " } }); });
+    assert.equal(input(renderer, "au-password").props.value, " typed ");
+  });
+});
+
+test("register: the password field has no paste handler (only sign-in trims pastes)", async () => {
+  await withModal("register", "", {}, async (renderer) => {
+    assert.equal(input(renderer, "au-password").props.onPaste, undefined);
+  });
+});
+
+test("login: an account flagged mustChangePassword goes to the change-password page with the original next", async () => {
+  await withModal("login", `?next=${encodeURIComponent(NEXT)}`, { credentials: "success", passwordStatus: () => Response.json({ mustChangePassword: true }) }, async (renderer, harness) => {
+    await fill(renderer, "owner@example.invalid", "password-123");
+    await submit(renderer);
+    assert.ok(harness.observed.some((call) => call.url === "/api/auth/password/status" && call.method === "GET"));
+    assert.deepEqual(harness.navigation.assigned, [`/app/account/change-password?next=${encodeURIComponent(NEXT)}&first=1`]);
+  });
+});
+
+test("login: an unreadable password status does not block sign-in", async () => {
+  await withModal("login", `?next=${encodeURIComponent(NEXT)}`, { credentials: "success", passwordStatus: () => Response.json({ success: false }, { status: 503 }) }, async (renderer, harness) => {
+    await fill(renderer, "owner@example.invalid", "password-123");
+    await submit(renderer);
+    assert.deepEqual(harness.navigation.assigned, [profileContinuationPath(NEXT)]);
+  });
+});
+
+async function withChangeModal(options: InstallOptions, run: (renderer: ReactTestRenderer, harness: Harness) => Promise<void>, first = true): Promise<void> {
+  const harness = install("", options);
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    await act(async () => {
+      renderer = create(<AuthModal changePassword={{ email: "owner@example.invalid", first, next: NEXT }} closeHref={NEXT} view="change-password" />);
+      await settle();
+    });
+    await run(renderer!, harness);
+  } finally {
+    if (renderer) await act(async () => { renderer!.unmount(); });
+    harness.restore();
+  }
+}
+
+async function fillChange(renderer: ReactTestRenderer, current: string, next: string): Promise<void> {
+  await act(async () => {
+    input(renderer, "au-current-password").props.onChange({ target: { value: current } });
+    input(renderer, "au-changed-password").props.onChange({ target: { value: next } });
+  });
+}
+
+test("change-password SSR reuses the reset screen classes with current/new autocomplete and a hidden username", () => {
+  const html = renderToStaticMarkup(<AuthModal changePassword={{ email: "owner@example.invalid", first: true, next: "/app/home" }} closeHref="/app/home" view="change-password" />);
+  assert.match(html, /aria-labelledby="au-title-change-password"/);
+  assert.match(html, /<h2 class="au-h2" id="au-title-change-password">修改密码<\/h2>/);
+  assert.match(html, /邮件里的初始密码/);
+  assert.match(html, /<input aria-hidden="true" autoComplete="username" hidden="" name="username" readOnly="" tabindex="-1" type="email" value="owner@example.invalid"\/>/i);
+  assert.match(html, /<input autoComplete="current-password" class="au-input" id="au-current-password"[^>]*type="password"/i);
+  assert.match(html, /<input autoComplete="new-password" class="au-input" id="au-changed-password"[^>]*type="password"/i);
+  assert.match(html, /<span class="au-hint">至少 8 位<\/span>/);
+  assert.match(html, /class="btn au-btn-primary"/);
+  const plain = renderToStaticMarkup(<AuthModal changePassword={{ email: "owner@example.invalid", first: false, next: "/app/home" }} view="change-password" />);
+  assert.match(plain, /输入当前密码和新密码。/);
+});
+
+test("change-password: local validation (current required / 8+ / differs) sends nothing", async () => {
+  await withChangeModal({}, async (renderer, harness) => {
+    await fillChange(renderer, "", "new-password-1");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["请输入当前密码。"]);
+    await fillChange(renderer, "old-password", "short");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["新密码至少 8 位。"]);
+    await fillChange(renderer, "same-password", "same-password");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["新密码不能与当前密码相同。"]);
+    assert.equal(harness.observed.length, 0);
+  });
+});
+
+test("change-password: success posts {currentPassword,newPassword}, re-signs in with the new password and continues to next", async () => {
+  await withChangeModal({ credentials: "success" }, async (renderer, harness) => {
+    await fillChange(renderer, "Init-Pass-8x", "my-own-password");
+    await submit(renderer);
+    const change = harness.observed.find((call) => call.url === "/api/auth/password/change");
+    assert.ok(change);
+    assert.equal(change.method, "POST");
+    assert.deepEqual(JSON.parse(String(change.body)), { currentPassword: "Init-Pass-8x", newPassword: "my-own-password" });
+    const callback = harness.observed.find((call) => call.url.includes("/callback/credentials"));
+    assert.ok(callback);
+    const body = new URLSearchParams(String(callback.body));
+    assert.equal(body.get("email"), "owner@example.invalid");
+    assert.equal(body.get("password"), "my-own-password");
+    assert.deepEqual(harness.navigation.assigned, [profileContinuationPath(NEXT)]);
+    assert.equal(submitButton(renderer).props.disabled, true, "stays busy while leaving the page");
+  });
+});
+
+test("change-password: a failed re-sign-in falls back to the login page with next", async () => {
+  await withChangeModal({ credentials: "failure" }, async (renderer, harness) => {
+    await fillChange(renderer, "Init-Pass-8x", "my-own-password");
+    await submit(renderer);
+    assert.deepEqual(harness.navigation.assigned, [`/app/account/login?next=${encodeURIComponent(NEXT)}`]);
+  });
+});
+
+test("change-password: server error codes map to localized copy; unknown errors show the server message", async () => {
+  let reply = Response.json({ success: false, error: { code: "WRONG_PASSWORD", message: "当前密码不正确。" } }, { status: 400 });
+  await withChangeModal({ passwordChange: () => reply }, async (renderer, harness) => {
+    await fillChange(renderer, "wrong-password", "my-own-password");
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["当前密码不正确。"]);
+    reply = Response.json({ success: false, error: { code: "SOMETHING_NEW", message: "服务端说明" } }, { status: 400 });
+    await submit(renderer);
+    assert.deepEqual(alerts(renderer), ["服务端说明"]);
+    assert.deepEqual(harness.navigation.assigned, []);
+    assert.equal(submitButton(renderer).props.disabled, false);
+  });
+});
+
+test("change-password: closing goes back to next instead of the landing page", async () => {
+  await withChangeModal({}, async (renderer, harness) => {
+    await act(async () => { renderer.root.findByProps({ "aria-label": "关闭" }).props.onClick(); });
+    assert.deepEqual(harness.navigation.assigned, [NEXT]);
   });
 });
