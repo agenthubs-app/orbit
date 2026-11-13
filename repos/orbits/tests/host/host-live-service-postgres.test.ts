@@ -13,6 +13,7 @@ import { shiftedRegistrationClose } from "../../features/events/host/storage/lif
 import { HostError } from "../../features/events/host/service";
 import { hostDatabaseTest, withHostDatabase } from "../support/host-harness";
 import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { hostPeopleRowObject } from "../../shared/api-schema/host-console";
 
 const HOST = "actor:host";
 const isHost = (code: string) => (error: unknown) => error instanceof HostError && error.code === code;
@@ -107,6 +108,7 @@ test("live host service end to end", hostDatabaseTest, async () => {
     const memberRow = approvedNow!.rows.find((row) => row.actorId === "actor:p1");
     assert.equal(memberRow?.name, participantName.rows[0]!.name, "listed with the event profile name");
     assert.deepEqual([memberRow?.status, memberRow?.applicationVersion], ["approved", 0]);
+    assert.ok(hostPeopleRowObject.safeParse(memberRow).success, "the response schema keeps member rows (it drops unreadable rows silently)");
   });
 });
 

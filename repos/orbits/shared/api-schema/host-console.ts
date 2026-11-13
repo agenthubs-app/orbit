@@ -141,7 +141,8 @@ export const hostPeopleRowObject = z.object({
   profileIncomplete: z.boolean(),
   attendCount: count,
   status: z.enum(BUCKETS),
-  applicationVersion: z.number().int().min(1),
+  // 0 = a member who registered without an application (first-come / imported events): read-only row.
+  applicationVersion: z.number().int().min(0),
 });
 
 export const hostPeopleResponseObject = z.object({
