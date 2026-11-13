@@ -94,6 +94,7 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "scripts/import-chinichi-party-results.ts": { statements: 3, how: "2026-11-12 one-off import: the write transaction takes acquireSyncCommitOrderLock first (also when called from migrate-chinichi-party-attendees)" },
   "scripts/merge-chinichi-party-account.ts": { statements: 2, how: "2026-11-12 one-off merge: the write transaction takes acquireSyncCommitOrderLock first" },
   "scripts/migrate-chinichi-party-attendees.ts": { statements: 1, how: "2026-11-13 one-off attendee migration: the write transaction takes acquireSyncCommitOrderLock first" },
+  "scripts/create-chinichi-organizer-profile.ts": { statements: 1, how: "2026-11-14 one-off: organizer page + linking the four events, in one transaction that takes acquireSyncCommitOrderLock first" },
 };
 
 const ROOT = join(__dirname, "../..");

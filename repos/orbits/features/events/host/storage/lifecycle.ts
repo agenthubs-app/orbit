@@ -89,7 +89,7 @@ function contentHash(event: HostEventRow): string {
   return createHash("sha256").update(JSON.stringify(content)).digest("hex");
 }
 
-async function appendVersion(executor: EventOperationsSqlExecutor, workspaceId: string, event: HostEventRow): Promise<void> {
+export async function appendVersion(executor: EventOperationsSqlExecutor, workspaceId: string, event: HostEventRow): Promise<void> {
   await executor.query(
     `insert into event_event_versions (
        workspace_id, event_id, event_version, public_code, title, description, venue, timezone, starts_at, ends_at,
