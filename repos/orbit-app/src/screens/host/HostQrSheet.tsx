@@ -10,7 +10,7 @@ import type { HostT } from "./host-model";
 import { useKioskStyles } from "./check-in-view";
 
 /** QR 読み取り（b12 #428）：深色取景弹层；读到 QR v2 → scan；「名前で探す」退回。 */
-export function QrSheet({ visible, onClose, onDone, t, api, eventId }: { visible: boolean; onClose: () => void; onDone: () => void; t: HostT; api: HostApi; eventId: string }) {
+export function QrSheet({ visible, onClose, onDone, onRefused, t, api, eventId }: { visible: boolean; onClose: () => void; onDone: () => void; onRefused?: () => void; t: HostT; api: HostApi; eventId: string }) {
   const { styles } = useKioskStyles();
   const toast = useToast();
   const camera = useCameraAccess();
@@ -22,7 +22,9 @@ export function QrSheet({ visible, onClose, onDone, t, api, eventId }: { visible
     const res = await api.scan(eventId, payload);
     reading.current = false;
     if (res.ok) { toast.success(res.data.duplicate ? t("kDup", { name: res.data.name }) : res.data.table ? t("kDoneTable", { name: res.data.name, t: res.data.table }) : t("kDone", { name: res.data.name })); onDone(); return; }
-    toast.error(res.code === "WAITLISTED" ? t("kWaitlistedErr") : res.reason === "network" ? t("kOfflineAction") : t("kQrInvalid"));
+    toast.error(res.code === "WAITLISTED" ? t("kWaitlistedErr") : res.code === "CHECK_IN_CLOSED" ? t("kClosedErr") : res.reason === "network" ? t("kOfflineAction") : t("kQrInvalid"));
+    // 断られた：画面側で kiosk を読み直す（受付終了なら QR ごと閉じる）。
+    if (res.reason !== "network") onRefused?.();
   };
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel={t("kQrTitle")}>

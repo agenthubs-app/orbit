@@ -548,4 +548,13 @@ export const eventsJourney = {
   "eventsJourney.savedEvent": "Saved",
   "eventsJourney.hostManage": "Manage event",
   "eventsJourney.hostCheckIn": "Check-in",
+  "eventsJourney.contactTitle": "Organizer contact",
+  "eventsJourney.contactWechat": "WeChat",
+  "eventsJourney.contactLine": "LINE",
+  "eventsJourney.contactNone": "Not provided",
+  "eventsJourney.contactCopyAria": "Copy {label}",
+  "eventsJourney.contactCopyFailed": "Couldn't copy",
+  "eventsJourney.reviewWaitContact": "Contact the organizer to pay the fee. You'll be approved once they confirm it.",
+  "eventsJourney.reviewWaitContactFree": "Contact the organizer. You'll be approved once they confirm.",
+  "eventsJourney.liveBeforeCheckInPlain": "Available after check-in",
 } as const;

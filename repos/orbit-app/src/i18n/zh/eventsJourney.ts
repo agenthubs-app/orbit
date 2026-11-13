@@ -548,4 +548,13 @@ export const eventsJourney = {
   "eventsJourney.savedEvent": "已收藏",
   "eventsJourney.hostManage": "管理活动",
   "eventsJourney.hostCheckIn": "签到",
+  "eventsJourney.contactTitle": "主办方联系方式",
+  "eventsJourney.contactWechat": "微信",
+  "eventsJourney.contactLine": "LINE",
+  "eventsJourney.contactNone": "暂无",
+  "eventsJourney.contactCopyAria": "复制{label}",
+  "eventsJourney.contactCopyFailed": "无法复制",
+  "eventsJourney.reviewWaitContact": "请联系主办方完成付款，主办方确认后会通过审核。",
+  "eventsJourney.reviewWaitContactFree": "请联系主办方，主办方确认后会通过审核。",
+  "eventsJourney.liveBeforeCheckInPlain": "签到后就能使用",
 } as const;

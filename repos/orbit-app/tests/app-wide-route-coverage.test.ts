@@ -194,6 +194,8 @@ const integratedFeatureRoutes = [
   "/inbox/notifications/[id]",
   "/inbox/sources/[id]",
   "/account/reset-password",
+  // 首次登录强制改密（Web /app/account/change-password）。
+  "/account/change-password",
   // R18c account rights are functional routes; the older visual snapshot predates them.
   "/account/exports",
   "/account/deletion",

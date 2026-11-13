@@ -8,10 +8,23 @@ import { createThemedStyles } from "../../design/theme";
 import { addDesignMock } from "../add/add-design-mock";
 import { Avatar, Chip } from "../events/v2/venue-ui";
 import { clock, type HostT } from "./host-model";
-import { BtnSm, numFont, Ring, useHostStyles } from "./host-ui";
+import { BtnSm, numFont, PcCard, Ring, useHostStyles } from "./host-ui";
 import { streamRows, type KioskQueueItem } from "./kiosk-queue";
 export const HEARTBEAT_MS = 30_000;
 export const POLL_MS = 10_000;
+
+/** 受付終了（開催終了から 12 時間後 / 中止 / アーカイブ）：記録は見られるが、受付・取り消し・当日枠・QR は出さない。旧サーバーは closed なし = 開いている。 */
+export const kioskClosed = (data: Pick<HostKioskResponse, "closed"> | null | undefined): boolean => data?.closed === true;
+
+/**
+ * 受付の書き込みが断られたときの一言（キー）。kiosk を読み直して closed なら「受付は終了しました」（服务端此时回
+ * VALIDATION / CHECK_IN_CLOSED，画面同时切到只读）；時間外の CHECK_IN_CLOSED は「今は受付時間外です」；それ以外は null（呼び出し側の既定）。
+ */
+export function checkInRefusalKey(code: string | null | undefined, closedNow: boolean): "kClosedTitle" | "kClosedErr" | null {
+  if (closedNow) return "kClosedTitle";
+  if (code === "CHECK_IN_CLOSED") return "kClosedErr";
+  return null;
+}
 
 export interface CheckInBodyProps {
   data: HostKioskResponse;
@@ -38,6 +51,7 @@ export function CheckInBody(props: CheckInBodyProps) {
   const stream = streamRows(data.recent, queue);
   const queued = new Set(queue.map((item) => item.participantId));
   const total = data.total || 0;
+  const closed = kioskClosed(data);
   return (
     <View testID="host-check-in">
       <View style={styles.card}>
@@ -49,6 +63,7 @@ export function CheckInBody(props: CheckInBodyProps) {
           <Ring share={total ? data.checkedIn / total : 0}><UiText style={k.ringNum}>{data.rate}<UiText style={k.ringPct}>%</UiText></UiText></Ring>
         </View>
       </View>
+      {closed ? <PcCard emoji="🔒" tone="apricot" title={t("kClosedTitle")} text={t("kClosedBody")} style={k.closed} /> : null}
       <View style={k.search}>
         <Icon name="search" size={16} color={colors.ink} />
         <TextInput value={q} onChangeText={props.onQ} placeholder={t("kSearchPh")} placeholderTextColor={colors.ink3} autoFocus={Boolean(props.focusSearch)} showSoftInputOnFocus={!noKeyboard} selectionColor={colors.plum700} accessibilityLabel={t("kSearch")} style={k.searchInput} testID="host-check-in-search" />
@@ -58,13 +73,14 @@ export function CheckInBody(props: CheckInBodyProps) {
           {rows.length ? rows.map((row, index) => {
             const isQueued = queued.has(row.participantId);
             const sub = row.status === "checked_in" && row.checkedInAt ? `${row.org ?? ""} · ${t("appCheckedAt", { time: clock(row.checkedInAt) })}` : row.org ?? "";
-            const tap = row.status === "checked_in" && row.undoable && !isQueued ? () => props.onUndo(row) : row.status === "waitlisted" && data.canWalkIn ? () => props.onWalkIn(row) : undefined;
+            const tap = closed ? undefined : row.status === "checked_in" && row.undoable && !isQueued ? () => props.onUndo(row) : row.status === "waitlisted" && data.canWalkIn ? () => props.onWalkIn(row) : undefined;
             return (
               <UiPressable key={row.participantId} accessibilityRole="button" accessibilityLabel={row.name} disabled={!tap} onPress={tap ?? (() => undefined)} style={k.li} testID={`host-check-in-row-${row.participantId}`}>
                 {index ? <View style={k.liLine} /> : null}
                 <Avatar initial={row.initial} tone={avatarTone(row.name)} />
                 <View style={styles.grow}><UiText style={k.metaB} numberOfLines={1}>{row.name}</UiText><UiText style={k.metaS} numberOfLines={1}>{sub.replace(/^ · /, "")}</UiText></View>
-                {row.status === "not_arrived" && !isQueued ? <BtnSm label={busy === row.participantId ? "…" : t("appArrive")} primary icon="check" onPress={() => props.onArrive(row)} testID={`host-arrive-${row.participantId}`} />
+                {row.status === "not_arrived" && !isQueued && closed ? <View><Chip label={t("kStNot")} /></View>
+                  : row.status === "not_arrived" && !isQueued ? <BtnSm label={busy === row.participantId ? "…" : t("appArrive")} primary icon="check" onPress={() => props.onArrive(row)} testID={`host-arrive-${row.participantId}`} />
                   : <View>{isQueued ? <Chip label={t("kStPending")} coral />
                     : row.status === "checked_in" ? <Chip label={row.table ? t("kTable", { t: row.table }) : t("kArrived")} tone="teal" />
                       : <Chip label={t("kStWait")} tone="apricot" />}</View>}
@@ -85,7 +101,7 @@ export function CheckInBody(props: CheckInBodyProps) {
                 <UiText style={k.metaB} numberOfLines={1}>{row.name}</UiText>
                 <UiText style={k.metaS} numberOfLines={1}>{[clock(row.at), row.queued ? t("appSendFailed") : row.org].filter(Boolean).join(" · ")}</UiText>
               </View>
-              {row.queued && item ? <BtnSm label={t("kRetry")} icon="refresh" onPress={() => props.onRetry(item)} testID={`host-retry-${row.participantId}`} /> : row.table ? <View><Chip label={row.table} tone="lav" /></View> : null}
+              {row.queued && item && !closed ? <BtnSm label={t("kRetry")} icon="refresh" onPress={() => props.onRetry(item)} testID={`host-retry-${row.participantId}`} /> : row.table ? <View><Chip label={row.table} tone="lav" /></View> : null}
             </View>
           );
         }) : <UiText style={[styles.sub, k.none]}>{t("kStreamEmpty")}</UiText>}
@@ -111,6 +127,7 @@ export const useKioskStyles = createThemedStyles((colors) => StyleSheet.create({
   metaB: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   metaS: { color: colors.ink3, fontSize: 14, lineHeight: 21 },
   streamH: { marginBottom: 0, marginTop: 18 },
+  closed: { marginTop: 14 },
   none: { paddingVertical: 14, textAlign: "center" },
   qrSheet: { alignItems: "stretch" },
   viewfinder: { alignSelf: "center", borderColor: colors.plum300, borderRadius: 24, borderWidth: 3, height: 220, marginVertical: 10, overflow: "hidden", width: 220 },

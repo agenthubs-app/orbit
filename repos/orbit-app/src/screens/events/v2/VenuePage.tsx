@@ -196,6 +196,16 @@ export function VenuePage() {
   if (!data) return <JourneyPage title={t("liveTitle")} {...back}>{missing === "network"
     ? <RetryCard title={locale.t("sync.needsNetwork")} message={locale.t("sync.needsNetworkBody")} onRetry={() => { setMissing(null); void load(); }} />
     : missing ? <View style={vs.card}><UiText style={vs.sub}>{t("notFound")}</UiText></View> : null}</JourneyPage>;
+  // Registered but not in the host's published results (server 9683ee88f: no operations workspace): there is no name or QR
+  // to show at reception yet, so say it opens after check-in (as Web) instead of an empty name card.
+  if (data.state === "before_check_in" && !data.checkIn?.qrPayload && !data.checkIn?.displayName?.trim()) {
+    return (
+      <JourneyPage title={t("liveTitle")} subtitle={data.title} {...back} testID="events-venue">
+        {notice}
+        <View style={vs.card} testID="events-venue-wait-checkin"><UiText style={vs.sub}>{data.checkIn?.receptionNumber ? t("liveBeforeCheckIn", { n: data.checkIn.receptionNumber }) : t("liveBeforeCheckInPlain")}</UiText></View>
+      </JourneyPage>
+    );
+  }
   if (data.state === "before_check_in") {
     return <JourneyPage title={t("checkIn")} subtitle={data.title} {...back} testID="events-venue">{notice}<CheckInView data={data} t={t} /></JourneyPage>;
   }

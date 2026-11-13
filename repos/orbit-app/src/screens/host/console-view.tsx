@@ -2,12 +2,15 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import type { HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleResponse, HostPeopleRow } from "../../api/contract/host-console";
+import type { HostEventStatus } from "../../api/contract/host-events";
 import { Icon, Segmented, UiPressable, UiText } from "../../components/ui";
 import { avatarTone } from "../../components/ui/Avatar";
 import { createThemedStyles } from "../../design/theme";
+import { radius } from "../../design/tokens";
 import { Avatar, Chip } from "../events/v2/venue-ui";
 import { hostDateShort, hostTime, sameTokyoDay, type HostSeg, type HostT } from "./host-model";
 import { Bar, BtnSm, Btn, Emo, numFont, PcCard, useHostStyles } from "./host-ui";
+import { SignupTrend } from "./signup-trend";
 export const SEG_LABEL: Record<HostSeg, string> = { "check-in": "tCheckIn", matching: "tMatching", overview: "tOverview", people: "tPeople", report: "tReport" };
 
 export const CHIP_SEGS: readonly HostSeg[] = ["overview", "matching", "people", "check-in", "report"];
@@ -59,6 +62,7 @@ export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onRevie
           </View>
         ) : <Btn label={t("openCheckIn")} variant="primary" icon="check" height={46} onPress={onCheckIn} style={c.mt12} testID="host-open-check-in" />}
       </View>
+      {TREND_HIDDEN.has(data.event.status) ? null : <TrendCard data={data} t={t} testID="host-overview-trend" />}
       <View style={[styles.card, styles.next]} testID="host-overview-matching">
         <View style={[styles.row, styles.between]}>
           <View style={styles.grow}>
@@ -99,6 +103,20 @@ export function OverviewBody({ data, t, onCheckIn, onResults, onPublish, onRevie
   );
 }
 
+/** 下書き / 中止 / アーカイブ 的概要不画申込の推移（同 Web HostOverviewView 的 INACTIVE）。 */
+const TREND_HIDDEN: ReadonlySet<HostEventStatus> = new Set<HostEventStatus>(["draft", "cancelled", "archived"]);
+
+/** 申込の推移卡（Web 概要 data-host-trend）：标题 + 范围（结束的活动 = 開催まで，否则 直近14日）。 */
+export function TrendCard({ data, t, testID }: { data: Pick<HostOverviewResponse, "trend" | "trendStartDate" | "event">; t: HostT; testID?: string }) {
+  const { styles } = useHostStyles();
+  return (
+    <View style={[styles.card, styles.next]} testID={testID}>
+      <View style={styles.cardH}><UiText style={styles.h3}>{t("trendTitle")}</UiText><UiText style={styles.lbl}>{t(data.event.status === "ended" ? "trendRangeToEvent" : "trendRange")}</UiText></View>
+      <SignupTrend values={data.trend} startDate={data.trendStartDate} t={t} />
+    </View>
+  );
+}
+
 /** レポート摘要（b12 #430）。 */
 export function ReportBody({ data, t, now, onPc }: { data: HostOverviewResponse; t: HostT; now: Date; onPc: () => void }) {
   const { styles } = useHostStyles();
@@ -116,6 +134,7 @@ export function ReportBody({ data, t, now, onPc }: { data: HostOverviewResponse;
         </View>
         {s ? <UiText style={[styles.lbl, c.mt8]}>{s.exchanges == null ? t("appReportLineNoX", { a: s.checkedIn, at: asOf, n: s.total }) : t("appReportLine", { a: s.checkedIn, at: asOf, n: s.total, x: s.exchanges })}</UiText> : <UiText style={[styles.lbl, c.mt8]}>{t("appReportBefore")}</UiText>}
       </View>
+      <TrendCard data={data} t={t} testID="host-report-trend" />
       <PcCard title={t("appReportPcTitle")} text={t("appReportPcSub")} style={styles.next} action={<BtnSm label={t("appPcDetail")} onPress={onPc} />} />
     </View>
   );
@@ -154,25 +173,50 @@ export function MatchingBody({ data, t, onRound }: { data: HostMatchingResponse;
 export const BUCKETS: readonly HostPeopleBucket[] = ["pending", "approved", "waitlisted", "rejected"];
 const BUCKET_LABEL: Record<HostPeopleBucket, string> = { approved: "appBApproved", pending: "appBPending", rejected: "appBRejected", waitlisted: "appBWaitlisted" };
 
+/**
+ * 审核按钮只给走过申込的 審査待ち / キャンセル待ち。申込なしで登録した人（先着・移行した回）以 applicationVersion 0
+ * 出现在「承認済み」，只能查看（服务端也会拒绝）。
+ */
+export function canDecide(row: Pick<HostPeopleRow, "status" | "applicationVersion">): boolean {
+  return (row.status === "pending" || row.status === "waitlisted") && row.applicationVersion > 0;
+}
+
+export interface PeopleBodyProps {
+  data: HostPeopleResponse;
+  t: HostT;
+  approving: string | null;
+  onBucket: (bucket: HostPeopleBucket) => void;
+  onApprove: (row: HostPeopleRow) => void;
+  /** 当前选中的分组；和 data.bucket 不同 = 新分组还在读，先显示占位，不显示上一个分组的行。 */
+  bucket?: HostPeopleBucket;
+  /** 点名字打开参加者詳細。 */
+  onOpen?: (row: HostPeopleRow) => void;
+}
+
 /** 参加者 · 審査（b12 #424）。 */
-export function PeopleBody({ data, t, approving, onBucket, onApprove }: { data: HostPeopleResponse; t: HostT; approving: string | null; onBucket: (bucket: HostPeopleBucket) => void; onApprove: (row: HostPeopleRow) => void }) {
+export function PeopleBody({ data, t, approving, onBucket, onApprove, bucket = data.bucket, onOpen }: PeopleBodyProps) {
   const { styles } = useHostStyles();
   const c = useConsoleStyles().styles;
+  const loading = bucket !== data.bucket;
   return (
     <View testID="host-people">
-      <View style={c.mb12}><Segmented segments={BUCKETS.map((key) => ({ key, label: t(BUCKET_LABEL[key], { n: data.counts[key] }) }))} value={data.bucket} onChange={onBucket} accessibilityLabel={t("tPeople")} /></View>
-      {data.rows.length ? (
+      <View style={c.mb12}><Segmented segments={BUCKETS.map((key) => ({ key, label: t(BUCKET_LABEL[key], { n: data.counts[key] }) }))} value={bucket} onChange={onBucket} accessibilityLabel={t("tPeople")} /></View>
+      {loading ? (
+        <View style={c.loading} accessibilityState={{ busy: true }} testID="host-people-loading"><View style={c.loadingRow} /><View style={c.loadingRow} /><View style={c.loadingRow} /></View>
+      ) : data.rows.length ? (
         <View style={[styles.card, c.listCard]}>
           {data.rows.map((row, index) => (
             <View key={row.actorId} style={c.li}>
               {index ? <View style={c.liLine} /> : null}
-              <Avatar initial={row.initial} tone={avatarTone(row.name)} size="sm" />
-              <View style={styles.grow}>
-                <UiText style={c.metaB} numberOfLines={1}>{row.name}</UiText>
-                {row.org ? <UiText style={c.metaS} numberOfLines={1}>{row.org}</UiText> : null}
-                {row.answer ? <UiText style={[c.metaS, c.answer]} numberOfLines={1}>{row.answer}</UiText> : null}
-              </View>
-              {row.status === "pending" || row.status === "waitlisted" ? <BtnSm label={approving === row.actorId ? "…" : t("pApprove")} primary onPress={() => onApprove(row)} testID={`host-approve-${row.actorId}`} /> : null}
+              <UiPressable accessibilityRole="button" accessibilityLabel={t("pdOpen", { name: row.name })} disabled={!onOpen} onPress={() => onOpen?.(row)} style={[styles.row, c.liMain]} testID={`host-person-open-${row.actorId}`}>
+                <Avatar initial={row.initial} tone={avatarTone(row.name)} size="sm" />
+                <View style={styles.grow}>
+                  <UiText style={c.metaB} numberOfLines={1}>{row.name}</UiText>
+                  {row.org ? <UiText style={c.metaS} numberOfLines={1}>{row.org}</UiText> : null}
+                  {row.answer ? <UiText style={[c.metaS, c.answer]} numberOfLines={1}>{row.answer}</UiText> : null}
+                </View>
+              </UiPressable>
+              {canDecide(row) ? <BtnSm label={approving === row.actorId ? "…" : t("pApprove")} primary onPress={() => onApprove(row)} testID={`host-approve-${row.actorId}`} /> : null}
             </View>
           ))}
         </View>
@@ -204,6 +248,9 @@ export const useConsoleStyles = createThemedStyles((colors) => StyleSheet.create
   pctSmall: { color: colors.ink3, fontFamily: numFont, fontSize: 14, fontWeight: "700" },
   listCard: { paddingHorizontal: 16, paddingVertical: 6 },
   li: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 11 },
+  liMain: { flex: 1, gap: 12, minWidth: 0 },
+  loading: { gap: 12 },
+  loadingRow: { backgroundColor: colors.surface2, borderRadius: radius.tile, height: 56 },
   liLine: { backgroundColor: colors.line, height: 1, left: 50, position: "absolute", right: 0, top: 0 },
   metaB: { color: colors.ink, fontSize: 17, fontWeight: "700", lineHeight: 25 },
   metaS: { color: colors.ink3, fontSize: 14, lineHeight: 21 },

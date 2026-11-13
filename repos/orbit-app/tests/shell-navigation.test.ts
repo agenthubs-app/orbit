@@ -62,7 +62,9 @@ test("resetStackTo pops every level, then replaces, so the target is the only pa
 test("every auth change resets the stack instead of replacing one page", () => {
   const read = (file: string) => readFileSync(join(root, file), "utf8");
   const auth = read("src/screens/profile/AccountAuthScreen.tsx");
-  assert.equal((auth.match(/resetStackTo\(router, /gu) ?? []).length, 3, "password sign-in, sign-up, Google");
+  // Password sign-in has two: pending deletion, and the landing after the mustChangePassword check.
+  assert.equal((auth.match(/resetStackTo\(router, /gu) ?? []).length, 4, "password sign-in (×2), sign-up, Google");
+  assert.equal((read("src/screens/profile/ChangePasswordScreen.tsx").match(/resetStackTo\(router, /gu) ?? []).length, 2, "after the change (signed in again or back to login); skip");
   assert.doesNotMatch(auth, /router\.replace\([^)]*nextHrefForAccountAuthSubmit\(\{\s*mode(?!: "forgot")/u, "no plain replace after signing in");
   const provider = read("src/api/AuthSessionProvider.tsx");
   assert.equal((provider.match(/resetStackTo\(router, "\/account\/login"\)/gu) ?? []).length, 2, "session rejected; offline window over");

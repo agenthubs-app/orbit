@@ -15,6 +15,7 @@ import { radius } from "../../../design/tokens";
 import { addDesignMock } from "../../add/add-design-mock";
 import { LinearGradient } from "../../plan/plan-svg";
 import { useJourneyApi } from "./journey-api";
+import { contactReviewLine, HostContactCard, HostContactSheet, shouldOpenHostContact } from "./HostContact";
 import { announceEventChanged, eventRange, monthDaySlash, tokyo } from "./journey-model";
 import { JourneyPage } from "./JourneyPage";
 import { ScoreRing } from "./ScoreRing";
@@ -60,6 +61,8 @@ export function RegisterPage() {
   const [free, setFree] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<EventJoinResult | null>(null);
+  // 申込完了直後：主催者の連絡先（ID がある時だけ）を自動で開く。閉じても完了ページのカードに残る。
+  const [contactOpen, setContactOpen] = useState(false);
   const [calendar, setCalendar] = useState<"asked" | "added" | "declined">("asked");
   const [intro, setIntro] = useState<string | null>(null);
   const [editingIntro, setEditingIntro] = useState(false);
@@ -99,7 +102,7 @@ export function RegisterPage() {
       if (shown.ok) { setProfile(shown.data); setIntro(shown.data.selfIntro?.text ?? null); }
       if (replay && params.to === "done" && current.done) {
         const res = await api.joinSubmit(eventId, given);
-        if (live && res.ok) setResult(res.data);
+        if (live && res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); }
       }
     })();
     return () => { live = false; };
@@ -143,7 +146,7 @@ export function RegisterPage() {
     const edited = intro && intro !== profile?.selfIntro?.text ? intro : undefined;
     const res = await api.joinSubmit(eventId, answers, edited);
     setBusy(false);
-    if (res.ok) { setResult(res.data); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
+    if (res.ok) { setResult(res.data); setContactOpen(shouldOpenHostContact(res.data.hostContact)); announceEventChanged(eventId); } else toast.error(t("submitFailed"));
   };
   const addTentative = async () => {
     if (busy) return;
@@ -159,6 +162,7 @@ export function RegisterPage() {
     const submitted = tokyo(result.submittedAt);
     const reviewUntil = result.reviewUntil ?? profile?.reviewUntil ?? null;
     const pending = result.status === "pending_review";
+    const contactLine = pending ? contactReviewLine(result.hostContact, event?.priceYen, t) : null;
     return (
       <JourneyPage key="done" title={t("doneTitle")} leftIcon="x" leftLabel={t("close")} fallback={detail} onLeft={close} testID="events-join-done">
         <View style={[styles.card, styles.doneHero]}>
@@ -187,8 +191,9 @@ export function RegisterPage() {
               </View>
             ))}
           </View>
-          {pending ? <UiText style={[styles.sub, { marginTop: 12 }]}>{t("reviewWait")}</UiText> : null}
+          {pending ? <UiText style={[styles.sub, { marginTop: 12 }]}>{contactLine ?? t("reviewWait")}</UiText> : null}
         </View>
+        {result.hostContact !== undefined ? <HostContactCard contact={result.hostContact} t={t} style={styles.gap} /> : null}
         {result.tentative && calendar === "asked" ? (
           <View style={[styles.card, styles.gap, styles.confirm]} testID="events-join-calendar">
             <View style={[styles.row, { gap: 8 }]}>
@@ -203,6 +208,7 @@ export function RegisterPage() {
           </View>
         ) : null}
         <UiPressable accessibilityRole="button" accessibilityLabel={t("editProfile")} onPress={() => router.push("/profile" as Href)} style={styles.ghostBlock}><UiText style={styles.ghostText}>{t("editProfile")}</UiText></UiPressable>
+        <HostContactSheet visible={contactOpen} contact={result.hostContact} t={t} reviewLine={contactLine} onClose={() => setContactOpen(false)} />
       </JourneyPage>
     );
   }

@@ -16,7 +16,8 @@ import { useHostApi } from "./host-api";
 import { checkInHref, consoleHref, consoleSubtitle, desktopPath, openingPeopleBucket, parseSeg, type HostSeg, type HostT } from "./host-model";
 import { PcCard } from "./host-ui";
 import { useHostT } from "./useHostT";
-import { BUCKETS, MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips, useConsoleStyles } from "./console-view";
+import { BUCKETS, canDecide, MatchingBody, OverviewBody, PeopleBody, ReportBody, SegChips, useConsoleStyles } from "./console-view";
+import { HostPersonSheet } from "./HostPersonSheet";
 
 
 export function HostConsoleScreen() {
@@ -39,6 +40,9 @@ export function HostConsoleScreen() {
   const [approving, setApproving] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
+  // 参加者詳細：打开的是谁（关上后保留，弹层收起动画期间内容不变）。
+  const [person, setPerson] = useState<{ actorId: string; name: string } | null>(null);
+  const [personOpen, setPersonOpen] = useState(false);
   const now = new Date();
 
   const loadOverview = useCallback(async () => {
@@ -81,7 +85,8 @@ export function HostConsoleScreen() {
     if (sent.ok) toast.success(t("appNotified", { n: sent.data.queued })); else toast.error(sent.reason === "sample" ? t("appSampleReadOnly") : t("saveError"));
   };
   const approve = async (row: HostPeopleRow) => {
-    if (approving) return;
+    // 申込なしの成員（applicationVersion 0）は見るだけ：按钮不会出现，这里再挡一次，不调 decide。
+    if (approving || !canDecide(row)) return;
     setApproving(row.actorId);
     const res = await api.approve(eventId, row.actorId, row.applicationVersion);
     setApproving(null);
@@ -108,7 +113,9 @@ export function HostConsoleScreen() {
       <JourneyPage title={t("tPeople")} subtitle={title ? `${title} · ${t("todoReview", { n: pending })}` : undefined} {...back} onLeft={() => go("overview")}
         right={<IconButton icon="search" accessibilityLabel={t("pSearchPh")} onPress={() => setSearching((value) => !value)} />} testID="host-console-people">
         {searching ? <PeopleSearch q={q} onChange={setQ} t={t} /> : null}
-        {people ? <PeopleBody data={q.trim() ? { ...people, rows: people.rows.filter((row) => [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(q.trim()))) } : people} t={t} approving={approving} onBucket={setBucket} onApprove={(row) => void approve(row)} /> : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
+        {/* 切换分组：新分组读到之前 PeopleBody 显示占位（bucket ≠ data.bucket），不闪上一个分组的行；晚到的旧回答由 effect 的 live 丢弃。 */}
+        {people ? <PeopleBody data={q.trim() ? { ...people, rows: people.rows.filter((row) => [row.name, row.org ?? "", row.answer ?? ""].some((text) => text.includes(q.trim()))) } : people} bucket={bucket} t={t} approving={approving} onBucket={setBucket} onApprove={(row) => void approve(row)} onOpen={(row) => { setPerson({ actorId: row.actorId, name: row.name }); setPersonOpen(true); }} /> : failed ? <PcCard text={t("appLoadError")} emoji="⚠️" tone="apricot" /> : null}
+        <HostPersonSheet person={person} visible={personOpen} onClose={() => setPersonOpen(false)} api={api} eventId={eventId} t={t} />
       </JourneyPage>
     );
   }

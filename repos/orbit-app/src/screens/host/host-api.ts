@@ -7,13 +7,13 @@ import type { ZodType } from "zod";
 import type { OrbitApiClient } from "../../api/client";
 import type { ApiResult } from "../../api/types";
 import type { HostCheckInEventsResponse, HostCohostAcceptResult, HostCohostInvitePreview } from "../../api/contract/host-cohosts";
-import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostReportResponse } from "../../api/contract/host-console";
+import type { HostCheckInResult, HostKioskHeartbeatResult, HostKioskResponse, HostKioskRosterResponse, HostMatchingResponse, HostOverviewResponse, HostPeopleBucket, HostPeopleDecisionResult, HostPeopleResponse, HostPersonResponse, HostReportResponse } from "../../api/contract/host-console";
 import type { HostNoticePreview, HostNoticeSendResult } from "../../api/contract/host-notices";
 import type { HostCenterFilter, HostCenterResponse, HostCenterSummary, HostDesktopLinkResult, HostEventSlugResolveResult, HostEventView } from "../../api/contract/host-events";
 import type { OrganizerFollowResult } from "../../api/contract/organizer-follow";
 import type { OrganizerProfileListResponse, OrganizerPublicResponse } from "../../api/contract/organizer-profile";
 import { hostCheckInEventsResponseSchema, hostCohostAcceptResultSchema, hostCohostInvitePreviewSchema } from "../../api/schema/host-cohosts";
-import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostReportResponseSchema } from "../../api/schema/host-console";
+import { hostCheckInResultSchema, hostKioskHeartbeatResultSchema, hostKioskResponseSchema, hostKioskRosterResponseSchema, hostMatchingResponseSchema, hostOverviewResponseSchema, hostPeopleDecisionResultSchema, hostPeopleResponseSchema, hostPersonResponseSchema, hostReportResponseSchema } from "../../api/schema/host-console";
 import { hostCenterResponseSchema, hostCenterSummarySchema, hostDesktopLinkResultSchema, hostEventSlugResolveResultSchema, hostEventViewSchema } from "../../api/schema/host-events";
 import { hostNoticePreviewSchema, hostNoticeSendResultSchema } from "../../api/schema/host-notices";
 import { organizerFollowResultSchema } from "../../api/schema/organizer-follow";
@@ -66,6 +66,8 @@ export function createHostApi(client: OrbitApiClient) {
     noticePreview: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/preview`, { body: { kind: "profile_incomplete" } }), hostNoticePreviewSchema as ZodType<HostNoticePreview>),
     noticeSend: (eventId: string) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/notices/send`, { body: { idempotencyKey: newIdempotencyKey(), kind: "profile_incomplete" } }), hostNoticeSendResultSchema as ZodType<HostNoticeSendResult>),
     people: (eventId: string, bucket: HostPeopleBucket) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people?bucket=${bucket}`), hostPeopleResponseSchema as ZodType<HostPeopleResponse>),
+    /** 参加者詳細：只读这一个人（申込回答 / プロフィール / マッチング結果）。 */
+    person: (eventId: string, actorId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}`), hostPersonResponseSchema as ZodType<HostPersonResponse>),
     approve: (eventId: string, actorId: string, expectedVersion: number) => hostRead(client.post<unknown>(`/api/host/events/${id(eventId)}/people/${id(actorId)}/decision`, { body: { decision: "approve", expectedVersion } }), hostPeopleDecisionResultSchema as ZodType<HostPeopleDecisionResult>),
     report: (eventId: string) => hostRead(client.get<unknown>(`/api/host/events/${id(eventId)}/report?view=all`), hostReportResponseSchema as ZodType<HostReportResponse>),
     kiosk: (eventId: string, q = "") => hostRead(q.trim() ? client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk?q=${encodeURIComponent(q.trim())}`) : client.get<unknown>(`/api/host/events/${id(eventId)}/kiosk`), hostKioskResponseSchema as ZodType<HostKioskResponse>),

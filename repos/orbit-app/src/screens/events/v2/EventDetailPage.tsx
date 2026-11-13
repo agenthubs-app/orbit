@@ -23,6 +23,7 @@ import { createThemedStyles, useOrbitTheme } from "../../../design/theme";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { radius, shadows } from "../../../design/tokens";
 import { CancelSheet } from "./CancelSheet";
+import { HostContactCard, showHostContact } from "./HostContact";
 import { newIdempotencyKey, useEventsApi } from "./events-api";
 import { useJourneyApi } from "./journey-api";
 import { eventRange, feeText, publicOrganizerName, rowTone, subscribeEventChanged } from "./journey-model";
@@ -269,6 +270,7 @@ export function EventDetailPage() {
             {whyOpen ? <View style={styles.whyBody}><UiText style={styles.whyBodyText}>{assessment.basis}</UiText></View> : null}
           </View>
         ) : null}
+        {showHostContact(data) ? <HostContactCard contact={data.hostContact} t={t} status={data.registration.status} priceYen={data.priceYen} style={styles.gap} /> : null}
         <UnderlineTabs value={tab} onChange={setTab} testIDPrefix="events-detail-tab-"
           tabs={[{ key: "intro", label: t("tabIntro") }, { key: "agenda", label: t("tabAgenda") }, { key: "host", label: t("tabHost") }, { key: "people", label: t("tabPeople"), count: data.attendeeCounts.all }]} />
         {tab === "intro" ? (

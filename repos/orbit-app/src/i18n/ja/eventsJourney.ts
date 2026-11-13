@@ -548,4 +548,13 @@ export const eventsJourney = {
   "eventsJourney.savedEvent": "保存済み",
   "eventsJourney.hostManage": "イベントを管理",
   "eventsJourney.hostCheckIn": "受付",
+  "eventsJourney.contactTitle": "主催者の連絡先",
+  "eventsJourney.contactWechat": "WeChat",
+  "eventsJourney.contactLine": "LINE",
+  "eventsJourney.contactNone": "まだありません",
+  "eventsJourney.contactCopyAria": "{label} をコピー",
+  "eventsJourney.contactCopyFailed": "コピーできませんでした",
+  "eventsJourney.reviewWaitContact": "主催者に連絡して参加費をお支払いください。主催者が確認すると承認されます。",
+  "eventsJourney.reviewWaitContactFree": "主催者に連絡してください。主催者が確認すると承認されます。",
+  "eventsJourney.liveBeforeCheckInPlain": "受付をすませると使えます",
 } as const;

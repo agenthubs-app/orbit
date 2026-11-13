@@ -68,3 +68,31 @@ test("LF2: offline, the events tab keeps its saved lists with 「截至」 inste
   } });
   await page.getByText(/无法连接 · 显示截至/).waitFor();
 });
+
+test("server 9683ee88f: registered but outside the host's results — before the event waits for check-in, after it is ended (never 'registered only')", async (t) => {
+  const outside = { ...journeyVenue("before_check_in", "app"), checkIn: { available: false, displayName: "", qrPayload: null, receptionNumber: null } };
+  const waiting = await harness.open(t, { screen: "venue", online: false, params: { id: eventId }, copies: { [`event-venue|${eventId}`]: { data: outside, syncedAt } } });
+  await waiting.getByText("签到后就能使用", { exact: true }).waitFor();
+  assert.equal(await waiting.getByText("只有已报名的人可以使用会场模式").count(), 0);
+  const numbered = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
+    copies: { [`event-venue|${eventId}`]: { data: { ...outside, checkIn: { ...outside.checkIn, receptionNumber: "12" } }, syncedAt } } });
+  await numbered.getByText("签到后就能使用 · 签到号12", { exact: true }).waitFor();
+  const ended = await harness.open(t, { screen: "venue", online: false, params: { id: eventId },
+    copies: { [`event-venue|${eventId}`]: { data: { ...journeyVenue("ended", "app") }, syncedAt } } });
+  await ended.getByText("活动已结束", { exact: true }).waitFor();
+  assert.equal(await ended.getByText("只有已报名的人可以使用会场模式").count(), 0);
+});
+
+test("event detail: an applicant sees the organizer's WeChat / LINE card; someone who has not applied does not", async (t) => {
+  const contact = { wechatId: "orbit_wx", lineId: null, note: "加好友时请备注姓名" };
+  const applied = { ...overview, hostContact: contact, registration: { ...overview.registration, status: "pending_review" as const } };
+  const page = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`/api/events/${encodeURIComponent(eventId)}/overview`]: applied } });
+  await page.getByText("主办方联系方式", { exact: true }).waitFor();
+  await page.getByText("orbit_wx", { exact: true }).waitFor();
+  await page.getByText("加好友时请备注姓名", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "复制微信", exact: true }).count(), 1);
+  const outsider = { ...overview, hostContact: undefined, registration: { ...overview.registration, status: "none" as const } };
+  const other = await harness.open(t, { screen: "detail", params: { id: eventId }, responses: { [`/api/events/${encodeURIComponent(eventId)}/overview`]: outsider } });
+  await other.getByText(overview.title).first().waitFor();
+  assert.equal(await other.getByText("主办方联系方式", { exact: true }).count(), 0);
+});

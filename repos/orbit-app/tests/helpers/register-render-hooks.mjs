@@ -40,6 +40,7 @@ const REDIRECTS = new Map([
   ["react-native-reanimated", join(helpersDir, "stubs", "react-native-reanimated.js")],
   ["react-native-gesture-handler", join(helpersDir, "stubs", "react-native-gesture-handler.js")],
   ["expo-haptics", join(helpersDir, "stubs", "expo-haptics.js")],
+  ["expo-clipboard", join(helpersDir, "stubs", "expo-clipboard.js")],
   ["expo-blur", join(helpersDir, "stubs", "expo-blur.js")]
 ]);
 

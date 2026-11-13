@@ -229,6 +229,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/host/host-api.ts","GET","/api/host/events/:id/matching"],
   ["src/screens/host/host-api.ts","GET","/api/host/events/:id/overview"],
   ["src/screens/host/host-api.ts","GET","/api/host/events/:id/people"],
+  ["src/screens/host/host-api.ts","GET","/api/host/events/:id/people/:id"],
   ["src/screens/host/host-api.ts","GET","/api/host/events/:id/report"],
   ["src/screens/host/host-api.ts","GET","/api/host/organizer-profiles"],
   ["src/screens/host/host-api.ts","GET","/api/organizers/by-slug/:id"],
@@ -914,6 +915,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/account-rights/api.ts","POST","/api/account/deletion-request"],
   ["src/screens/account-rights/api.ts","DELETE","/api/account/deletion-request"],
   ["src/screens/profile/PasswordResetScreen.tsx","POST","/api/auth/password-reset/confirm"],
+  // 首次登录强制改密：登录后读 status、改密页提交 change（凭据，只在线）。
+  ["src/view-models/password-change.ts","GET","/api/auth/password/status"],
+  ["src/view-models/password-change.ts","POST","/api/auth/password/change"],
   ["src/screens/profile/useProfileEditSessionScreen.ts","GET","/api/profile"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","GET","/api/appointments/:id"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","PATCH","/api/appointments/:id"],

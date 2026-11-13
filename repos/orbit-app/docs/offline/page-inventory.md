@@ -12,9 +12,9 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 12 |
-| 只能在线 | 56 |
+| 只能在线 | 57 |
 | 不读账号数据（布局、跳转、本机设置） | 40 |
-| 合计（路由文件） | 135 |
+| 合计（路由文件） | 136 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -78,6 +78,7 @@
 | `/account/signup` | 注册 | 涉及凭据或会话：建账号需要服务器 | /api/auth/register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/forgot-password` | 忘记密码 | 涉及凭据或会话：发送重置邮件需要服务器 | /api/auth/password-reset/request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/reset-password` | 重置密码 | 涉及凭据或会话：重置令牌由服务器验证 | /api/auth/password-reset/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/account/change-password` | 修改密码（首次登录强制改密） | 涉及凭据或会话：当前密码由服务器校验，改完要用新密码重新登录 | /api/auth/password/status、/api/auth/password/change | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/exports` | 账户数据导出（R18c） | 涉及凭据或会话：导出任务、下载资格和期限由服务器按当前账号验证 | /api/account/exports、/api/account/exports/:id/download | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/deletion` | 退会申请（R18c） | 涉及凭据或会话：近期再认证与退会状态需服务器实时验证 | /api/account/deletion-request、/method、/reauth | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/account/pending` | 退会冷静期与取消（R18c） | 涉及凭据或会话：取消资格与清除领取状态由服务器判定 | /api/account/deletion-request | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -184,6 +185,7 @@
 | `app/[...legacy].tsx` | `/*（旧链接或未知路由）` | device-only |
 | `app/+html.tsx` | `(浏览器外壳)` | device-only |
 | `app/account.tsx` | `/account` | online-only |
+| `app/account/change-password.tsx` | `/account/change-password` | online-only |
 | `app/account/deleted.tsx` | `/account/deleted` | device-only |
 | `app/account/deletion.tsx` | `/account/deletion` | online-only |
 | `app/account/exports.tsx` | `/account/exports` | online-only |

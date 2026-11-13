@@ -105,7 +105,57 @@ for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payloa
   await page.getByRole("button", { name: "显示密码", exact: true }).click(); assert.equal(await page.locator("input[type=password]").count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ failure: false })); await primary.click();
   assert.deepEqual((await requests(page))[0], { name: mode === "login" ? "signIn" : "register", payload: { email: "cheng.chuan@example.test", password: "fixture8", ...(mode === "login" ? { redirectTo: "/profile" } : {}) } });
+  // Login now reads /api/auth/password/status first (aborted here → never blocks sign-in), so the move is async.
+  if (mode === "login") await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
   assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
+});
+
+async function answerPasswordStatus(page: Page, body: unknown, status = 200) {
+  const seen: string[] = [];
+  await page.route("https://orbit.test/api/auth/password/status", route => {
+    seen.push(`${route.request().method()} ${route.request().url()}`);
+    return route.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "null", "access-control-allow-credentials": "true" }, body: JSON.stringify(body) });
+  });
+  return seen;
+}
+
+test("email + password login of an account marked mustChangePassword goes to change the password first, keeping next", async t => {
+  const page = await open(t, { next: "/events/event-1?tab=details" });
+  const seen = await answerPasswordStatus(page, { mustChangePassword: true });
+  await fill(page);
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+  assert.deepEqual(await navigation(page), ["/account/change-password?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails&first=1"]);
+  assert.deepEqual(seen, ["GET https://orbit.test/api/auth/password/status"]);
+});
+
+test("login carries on as before when the account is not marked or the status cannot be read", async t => {
+  for (const [body, status] of [[{ mustChangePassword: false }, 200], [{ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "x" } }, 503]] as const) {
+    const page = await open(t);
+    await answerPasswordStatus(page, body, status);
+    await fill(page);
+    await page.getByRole("button", { name: "登录", exact: true }).click();
+    await page.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+    assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
+  }
+});
+
+test("Google login does not read the password status", async t => {
+  const page = await open(t);
+  const seen = await answerPasswordStatus(page, { mustChangePassword: true });
+  await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
+  assert.deepEqual(await navigation(page), ["/profile/onboarding?next=%2Fprofile"]);
+  assert.deepEqual(seen, []);
+});
+
+test("a pasted login password loses surrounding spaces; typed spaces stay", async t => {
+  const page = await open(t);
+  const password = page.locator("input[type=password]");
+  await password.fill("  pasted-secret \n");
+  assert.equal(await password.inputValue(), "pasted-secret");
+  await password.fill("");
+  await password.pressSequentially("ab ");
+  assert.equal(await password.inputValue(), "ab ");
 });
 
 test("Google login enters profile completion while preserving the safe return target", async t => {

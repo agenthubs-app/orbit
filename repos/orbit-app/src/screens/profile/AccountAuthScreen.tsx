@@ -33,6 +33,7 @@ import {
 } from "../../view-models/account-auth";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
+import { credentialsLandingHref, readMustChangePassword, trimPastedPassword } from "../../view-models/password-change";
 
 function firstParam(value: string | string[] | undefined, fallback = ""): string {
   if (Array.isArray(value)) {
@@ -79,6 +80,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const authScopeKey = `${server.baseUrl}\u0000${mode}`;
   const authScopeRef = useRef(authScopeKey);
   const recoveryPending = useRef(false);
+  // Email + password sign-in succeeded: where it was going, until the account's mustChangePassword is read with the new session.
+  const [landing, setLanding] = useState<string | null>(null);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -102,6 +105,16 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     );
     return () => { active = false; };
   }, [auth.readPendingWritesOnDevice, mode, ready, server.baseUrl]);
+  useEffect(() => {
+    if (landing === null) return;
+    let live = true;
+    // Runs on the render that carries `landing`, which already has the session signIn() accepted.
+    // An unreadable status never blocks sign-in (as Web credentialsLandingPath).
+    void readMustChangePassword({ baseUrl: server.baseUrl, cookieHeader: auth.cookieHeader }).then((mustChange) => {
+      if (live && mounted.current) resetStackTo(router, credentialsLandingHref(mustChange, landing));
+    });
+    return () => { live = false; };
+  }, [auth.cookieHeader, landing, router, server.baseUrl]);
   const view = useMemo(
     () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled, t: locale.t }),
     [auth.googleEnabled, locale.t, mode]
@@ -142,7 +155,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   function updateValue(field: AccountAuthFieldView, value: string) {
     setValues((current) => ({
       ...current,
-      [field.name]: value
+      // Login: a pasted password loses its surrounding spaces (as Web); typing is untouched.
+      [field.name]: mode === "login" && field.name === "password" ? trimPastedPassword(current.password, value) : value
     }));
   }
 
@@ -224,12 +238,12 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      resetStackTo(router, result.pendingDeletion ? "/account/pending" :
-        nextHrefForAccountAuthSubmit({
-          mode,
-          next
-        })
-      );
+      if (result.pendingDeletion) {
+        resetStackTo(router, "/account/pending");
+        return;
+      }
+      // First sign-in of an account created with an initial password: change it first (checked once the new session is in).
+      setLanding(next);
     } finally {
       if (isCurrent()) {
         authPending.current = false;
@@ -356,6 +370,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             <AuthField
               field={field}
               key={field.name}
+              mode={mode}
               onChange={(value) => updateValue(field, value)}
               t={locale.t}
               value={fieldValue(field, values)}
@@ -380,15 +395,15 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           ><Text style={styles.primaryButtonText}>{locale.t("auth.loginPrimary")}</Text></Pressable> : <Pressable
             accessibilityLabel={mode === "forgot" ? locale.t("auth.forgotRequest") : view.primaryLabel}
             accessibilityRole="button"
-            disabled={submitting || !auth.ready || (mode === "forgot" && !ready)}
+            disabled={submitting || landing !== null || !auth.ready || (mode === "forgot" && !ready)}
             onPress={submit}
             style={({ pressed }) => [
               styles.primaryButton,
               pressed ? styles.pressed : null,
-              submitting || !auth.ready ? styles.disabledButton : null
+              submitting || landing !== null || !auth.ready ? styles.disabledButton : null
             ]}
           >
-            <Text style={styles.primaryButtonText}>{submitting ? view.busyLabel : mode === "forgot" ? locale.t("auth.forgotRequest") : view.primaryLabel}</Text>
+            <Text style={styles.primaryButtonText}>{submitting || landing !== null ? view.busyLabel : mode === "forgot" ? locale.t("auth.forgotRequest") : view.primaryLabel}</Text>
           </Pressable>}
           {mode === "signup" ? <View style={styles.signupLegal}>
             <Text style={styles.signupLegalText}>{locale.t("publicInfo.signupLegalPrefix")}</Text>
@@ -447,11 +462,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
 function AuthField({
   field,
+  mode,
   onChange,
   t,
   value
 }: {
   field: AccountAuthFieldView;
+  mode: AccountAuthMode;
   onChange: (value: string) => void;
   t: OrbitTranslator;
   value: string;
@@ -480,7 +497,8 @@ function AuthField({
           placeholderTextColor={colors.ink3Text}
           secureTextEntry={field.secure && !passwordVisible}
           style={styles.input}
-          textContentType={field.name === "email" ? "emailAddress" : "password"}
+          // iOS keychain: the email is the account name; sign-up offers to save a new password.
+          textContentType={field.name === "email" ? "username" : mode === "signup" ? "newPassword" : "password"}
           value={value}
         />
         {field.secure ? (
