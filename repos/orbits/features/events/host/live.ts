@@ -615,8 +615,9 @@ export function createHostLiveService(deps: HostLiveDeps): HostService {
       }
       const status = statusOf(facts, now());
       const start = facts.startsAt ? Date.parse(facts.startsAt) : Number.NaN;
-      // 开场后（当天与会后）看的是「开场前 21 天」怎么报上来的；以 now 为终点会在几周后变成一排 0。
-      const trendEnd = status === "upcoming" || status === "draft" || !Number.isFinite(start) ? now() : new Date(Math.min(now().getTime(), start));
+      // 开场后（当天与会后）看的是「到活动结束为止」怎么报上来的（含当天现场登记）；以 now 为终点会在几周后变成一排 0。
+      const closesAt = facts.endsAt ? Date.parse(facts.endsAt) : start;
+      const trendEnd = status === "upcoming" || status === "draft" || !Number.isFinite(closesAt) ? now() : new Date(Math.min(now().getTime(), closesAt));
       const trend = await reads.trend(eventId, trendEnd, 21);
       if (status === "upcoming" || status === "draft") {
         return { all: { applied: facts.applied, capacity: facts.capacity, checkInRate: null, checkedIn: null, daysPublishToEvent: null, daysSincePublish: null, daysToStart: Number.isFinite(start) ? Math.ceil((start - now().getTime()) / 86_400_000) : null, exchangeRate: null, exchanges: null, exchangesPerPerson: null, followupRate: null, followupWindowDays: 7, followups: null, funnel: { drafted: null, exchanged: null, followed: null, meetings: null }, standing: [], standingQuestion: null, state: "before", suppressedBelow: 5, tableNote: null, tables: [], trend, trendLabels: [] }, event, mine: null, view: "all" };
