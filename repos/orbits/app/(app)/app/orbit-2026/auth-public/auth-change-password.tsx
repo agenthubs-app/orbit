@@ -6,7 +6,7 @@
  */
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { AuthErrorCard, AuthPrimaryButton, AUTH_PASSWORD_MAX_LENGTH } from "./auth-form";
-import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH } from "./auth-model";
+import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, trimPastedPassword } from "./auth-model";
 import { usePasswordChange } from "./use-password-change";
 
 export const AUTH_CHANGE_PASSWORD_TITLE_ID = "au-title-change-password";
@@ -38,6 +38,15 @@ export function AuthChangePassword({ email, first, next }: { email: string; firs
               maxLength={AUTH_PASSWORD_MAX_LENGTH}
               name="current-password"
               onChange={(event) => session.setCurrentPassword(event.target.value)}
+              // 初始密码多是从邮件复制来的：粘贴时去掉首尾空白（和登录页一致），手打的不处理。
+              onPaste={(event) => {
+                const input = event.currentTarget;
+                const result = trimPastedPassword(input.value, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length, event.clipboardData.getData("text"), AUTH_PASSWORD_MAX_LENGTH);
+                if (!result) return;
+                event.preventDefault();
+                session.setCurrentPassword(result.value);
+                window.requestAnimationFrame(() => { try { input.setSelectionRange(result.caret, result.caret); } catch { /* detached input */ } });
+              }}
               placeholder="••••••••"
               required
               type="password"
