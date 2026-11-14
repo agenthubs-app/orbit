@@ -169,6 +169,8 @@ type QuestionProps = {
   t: HostT;
   editing: boolean;
   onEdit: () => void;
+  /** 編集中のカードを閉じて一行表示に戻す（2026-11-15 用户：選択肢を畳めるように）。 */
+  onCollapse: () => void;
   onChange: (question: HostSetupQuestion) => void;
   onDelete: () => void;
   onMove: (to: number) => void;
@@ -180,7 +182,7 @@ const keyMove = (event: KeyboardEvent, index: number, count: number, move: (to: 
   if (event.key === "ArrowDown" && index < count - 1) { event.preventDefault(); move(index + 1); }
 };
 
-function QuestionCard({ question, index, count, t, editing, onEdit, onChange, onDelete, onMove, onDropFrom }: QuestionProps) {
+function QuestionCard({ question, index, count, t, editing, onEdit, onCollapse, onChange, onDelete, onMove, onDropFrom }: QuestionProps) {
   const [over, setOver] = useState(false);
   const n = index + 1;
   // 拖动排序（HTML5 DnD）；键盘：⋮⋮ 上按 ↑ / ↓。
@@ -212,6 +214,7 @@ function QuestionCard({ question, index, count, t, editing, onEdit, onChange, on
         {handle}
         <span className={`${s.chip} ${s.c_lav}`}>Q{n}</span>
         <label className={u.qprompt}><input value={question.prompt} maxLength={120} placeholder={t("suPromptPh")} aria-label={`Q${n}`} onChange={(event) => onChange({ ...question, prompt: event.target.value })} /></label>
+        <button type="button" className={`btn ${m.lbtn}`} aria-label={t("suCollapseQ", { n })} aria-expanded="true" onClick={onCollapse} data-host-question-collapse=""><Icon name="up" size={16} /></button>
         <button type="button" className={`btn ${m.lbtn}`} aria-label={t("suDeleteQ", { n })} onClick={onDelete}><Icon name="x" size={16} /></button>
       </div>
       <div className={u.qkind}>
@@ -269,7 +272,7 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
     <>
       {list.map((question, index) => (
         <QuestionCard key={question.id} question={question} index={index} count={list.length} t={t} editing={editing === index}
-          onEdit={() => onEdit(index)} onChange={(next) => onChange(list.map((item, k) => (k === index ? next : item)))} onDelete={() => { onChange(list.filter((_, k) => k !== index)); onEdit(-1); }}
+          onEdit={() => onEdit(index)} onCollapse={() => onEdit(-1)} onChange={(next) => onChange(list.map((item, k) => (k === index ? next : item)))} onDelete={() => { onChange(list.filter((_, k) => k !== index)); onEdit(-1); }}
           onMove={(to) => move(index, to)} onDropFrom={(from) => move(from, index)} />
       ))}
       {list.length ? null : <div className={`${s.lbl} ${u.qEmptyHint}`}>{t("qlOpenSub", { n: HOST_QUESTION_LIBRARY_ENTRIES.length })}</div>}

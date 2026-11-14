@@ -462,6 +462,7 @@ export const hostCopy = {
   suOptionPh: { ja: "選択肢", zh: "选项", en: "Option", kind: "placeholder" },
   suKept: { ja: "選択肢は保管中（選択式に戻すと復元）", zh: "选项已暂存（改回选择题即可恢复）", en: "Options kept — switch back to restore", kind: "label" },
   suEditQ: { ja: "Q{n} を編集", zh: "编辑问题{n}", en: "Edit Q{n}", kind: "label" },
+  suCollapseQ: { ja: "Q{n} を閉じる", zh: "收起 Q{n}", en: "Collapse Q{n}", kind: "label" },
   suDeleteQ: { ja: "Q{n} を削除", zh: "删除问题{n}", en: "Delete Q{n}", kind: "label" },
   suMoveQ: { ja: "Q{n} を並べ替え（↑↓）", zh: "调整问题{n}的顺序（↑↓）", en: "Reorder Q{n} (↑↓)", kind: "label" },
   suDeleteOpt: { ja: "「{o}」を削除", zh: "删除「{o}」", en: "Remove “{o}”", kind: "label" },

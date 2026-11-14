@@ -70,3 +70,12 @@ test("申込設定: the host contact card sits in the right column with the even
   assert.match(endedHtml, /data-host-setup-contact=""/);
   assert.doesNotMatch(endedHtml, /data-host-setup-contact-save/);
 });
+
+test("申込設定: the open question card has a collapse button next to delete; collapsed cards show none", () => {
+  const data = hostSetup(HOST_EVENT_IDS.cfo18)!;
+  const open = renderToStaticMarkup(<HostSetupView data={data} draft={draftOf(data)} t={t} language="ja" editing={0} />);
+  assert.equal((open.match(/data-host-question-collapse=""/g) ?? []).length, 1, "only the open card can be collapsed");
+  assert.match(open, /aria-label="Q1 を閉じる"/);
+  const closed = renderToStaticMarkup(<HostSetupView data={data} draft={draftOf(data)} t={t} language="ja" editing={-1} />);
+  assert.doesNotMatch(closed, /data-host-question-collapse/);
+});
