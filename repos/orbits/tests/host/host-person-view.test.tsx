@@ -56,3 +56,17 @@ test("受付: after closing (12 h past the end) the kiosk is view-only — banne
   const live = renderToStaticMarkup(<HostKioskView data={open} t={t} now={new Date(open.now)} online q="森" rows={open.rows} queue={[]} devices={1} />);
   assert.doesNotMatch(live, /data-kiosk-closed/);
 });
+
+test("申込設定: the host contact card sits in the right column with the event's IDs; ended events have no save button", () => {
+  const data = hostSetup(HOST_EVENT_IDS.cfo18)!;
+  const withContact = { ...data, event: { ...data.event, contact: { lineId: "line_demo", note: null, wechatId: "wx_demo" } } };
+  const html = renderToStaticMarkup(<HostSetupView data={withContact} draft={draftOf(withContact)} t={t} language="ja" />);
+  assert.match(html, /data-host-setup-contact=""/);
+  assert.match(html, /value="wx_demo"/);
+  assert.match(html, /value="line_demo"/);
+  assert.match(html, /data-host-setup-contact-save=""/);
+  const ended = { ...withContact, event: { ...withContact.event, status: "ended" as const } };
+  const endedHtml = renderToStaticMarkup(<HostSetupView data={ended} draft={draftOf(ended)} t={t} language="ja" />);
+  assert.match(endedHtml, /data-host-setup-contact=""/);
+  assert.doesNotMatch(endedHtml, /data-host-setup-contact-save/);
+});

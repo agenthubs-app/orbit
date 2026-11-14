@@ -10,7 +10,8 @@ import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { HOST_QUESTION_LIBRARY_ENTRIES, addLibraryQuestions } from "../../../../../shared/domain/host-question-library";
 import { ConfirmDialog, Icon, Segmented, useToast } from "../ui";
 import { QuestionLibraryDrawer } from "./QuestionLibrary";
-import { failureOf, hostApi } from "./host-api";
+import { failureOf, hostApi, hostEventApi } from "./host-api";
+import { HostContactCard, draftContact } from "./HostEventForm";
 import { eventTone, hostDateDay, hostDateLong, hostTranslator, tokyoParts, type HostT } from "./host-model";
 import {
   DESC_MAX, DESC_WARN, NOTE_MAX, QUESTION_MAX, addSuggested, agoText, applyLinkText, blankQuestion, charCount, clampText, draftInput, draftOf, draftProblems, hasLink, moveItem, sameDraft, switchKind, templateQuestions,
@@ -289,6 +290,42 @@ export function QuestionsEditor({ questions, t, language, editing, onEdit, onCha
   );
 }
 
+/**
+ * 主催者の連絡先 on 申込設定 (2026-11-14 user: it belongs with the registration flow — apply, add the host,
+ * pay in the group, get approved). Same field and card as 基本情報を編集; saved on its own through the event
+ * update (no change preview, nobody is notified), separate from the form's autosave.
+ */
+function SetupContactCard({ event, t, disabled }: { event: HostSetupResponse["event"]; t: HostT; disabled: boolean }) {
+  const toast = useToast();
+  const initial = { contactNote: event.contact?.note ?? "", lineId: event.contact?.lineId ?? "", wechatId: event.contact?.wechatId ?? "" };
+  const [draft, setDraft] = useState(initial);
+  const [saved, setSaved] = useState(initial);
+  const [version, setVersion] = useState(event.version);
+  const [busy, setBusy] = useState(false);
+  const dirty = draft.wechatId !== saved.wechatId || draft.lineId !== saved.lineId || draft.contactNote !== saved.contactNote;
+  const checked = draftContact(draft);
+  const save = async () => {
+    if (checked.problem || busy) return;
+    setBusy(true);
+    const res = await hostEventApi.update(event.eventId, { contact: checked.contact, expectedVersion: version });
+    setBusy(false);
+    if (!res.ok) { toast.error(t(failureOf(res) === "conflict" ? "conflictError" : "saveError")); return; }
+    setVersion(res.data.event.version);
+    setSaved(draft);
+    toast.success(t("evSaved"));
+  };
+  return (
+    <div data-host-setup-contact="">
+      <HostContactCard draft={draft} t={t} disabled={disabled || busy} onChange={(next) => setDraft({ contactNote: next.contactNote ?? "", lineId: next.lineId ?? "", wechatId: next.wechatId ?? "" })} />
+      {disabled ? null : (
+        <div className={`${s.row} ${u.contactActs}`}>
+          <button type="button" className={`btn ${s.btn} ${s.primary}`} disabled={!dirty || checked.problem || busy} onClick={() => void save()} data-host-setup-contact-save="">{t("evContactSaveBtn")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NoticesSection({ data, t, open, kind, note, busy, readOnly, onOpen, onKind, onNote, onSave }: { data: HostSetupResponse; t: HostT; open: boolean; kind: HostNoticeTemplateKind; note: string; busy: boolean; /** 開催済み・中止・アーカイブ：ひとことも変えられない（サーバーも拒否）。 */ readOnly: boolean; onOpen?: (open: boolean) => void; onKind?: (kind: HostNoticeTemplateKind) => void; onNote?: (text: string) => void; onSave?: () => void }) {
   const selected = data.notices.find((item) => item.kind === kind) ?? data.notices[0];
   const link = hasLink(note);
@@ -418,6 +455,7 @@ export function HostSetupView(props: HostSetupViewProps) {
       <div className={`${u.col} ${u.span5}`}>
         <Preview data={data} draft={draft} t={t} language={language} mode={preview} onMode={props.onPreview} />
         <div className={ended ? u.readOnly : undefined} inert={ended || undefined}><Settings data={data} draft={draft} t={t} language={language} host={host} onChange={change} /></div>
+        <SetupContactCard key={`${data.event.eventId}:${data.event.version}`} event={data.event} t={t} disabled={ended} />
       </div>
       <NoticesSection data={data} t={t} open={notesOpen} kind={props.noticeKind ?? "admission_approved"} note={noteDraft} busy={busy} readOnly={ended}
         onOpen={props.onNotesOpen} onKind={props.onNoticeKind} onNote={props.onNoteDraft} onSave={props.onNoteSave} />

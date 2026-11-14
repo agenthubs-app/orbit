@@ -166,3 +166,6 @@ button.setVal:hover { text-decoration: underline; text-decoration-color: var(--i
   .qlTools > :last-child { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -22px; padding: 0 22px; }
   .qlTools > :last-child > * { flex: 0 0 auto; }
 }
+
+/* 主催者の連絡先（申込設定の右列）：カードの下に保存ボタン。 */
+.contactActs { justify-content: flex-end; margin-top: 10px; }

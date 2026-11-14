@@ -679,6 +679,7 @@ export const hostCopy = {
   evDescPh: { ja: "どんな人が集まり、何を話す会かを書きましょう", zh: "写下会有哪些人参加、聊什么", en: "Who's coming and what you'll talk about", kind: "placeholder" },
   evCounter: { ja: "{n} / 2000", zh: "{n} / 2000", en: "{n} / 2000", kind: "label" },
   // 主催者の連絡先（2026-11-14）：申込んだ人だけに表示（WeChat / LINE で連絡 → グループ・参加費 → 承認）。
+  evContactSaveBtn: { ja: "保存", zh: "保存", en: "Save", kind: "button" },
   evContact: { ja: "主催者の連絡先（任意）", zh: "主办方联系方式（选填）", en: "Your contact (optional)", kind: "title" },
   evContactSub: { ja: "申込んだ人だけに表示されます", zh: "只有报名的人能看到", en: "Only people who registered see this", kind: "label" },
   evContactWechat: { ja: "WeChat ID", zh: "微信 ID", en: "WeChat ID", kind: "label" },
